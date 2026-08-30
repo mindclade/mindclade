@@ -105,7 +105,8 @@ mindclade/
 │   ├── CODEOWNERS
 │   ├── dependabot.yml
 │   ├── labeler.yml
-│   └── pull_request_template.md
+│   ├── pull_request_template.md
+│   └── actionlint.yaml
 ├── .devcontainer/
 │   ├── devcontainer.json
 │   ├── Containerfile

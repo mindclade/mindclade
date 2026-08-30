@@ -42,7 +42,7 @@ Version 3.4.3 applies the document's own precedence rules:
 - The connected-ratification schema, `FounderBootstrapException/v1` schema,
   and FBE-0001 source record are active Wave 0 governance contracts. Their
   presence does not claim that connected ratification has occurred.
-- The 2,487-path manifest permits Wave 1 source work in
+- The 2,488-path manifest permits Wave 1 source work in
   `FOUNDER_BOOTSTRAPPED` state while keeping `production_authority: false`;
   independent connected evidence remains required for `CONNECTED_QUALIFIED`.
 - The canonical remote and Go module are lowercase

@@ -28,9 +28,9 @@ BLUEPRINT_SHA256 = "d099074e755168bbdce076d50918bf06aff677f9e5d620fdfe53cb7cef74
 ANCHOR_COMMIT = "292b71f47b1b29cc9ba7cf760a9bd07cd5e0ffa7"
 AUTHORITY_FILE_COUNT = 2461
 AUTHORITY_DIRECTORY_COUNT = 787
-CANONICAL_FILE_COUNT = 2487
+CANONICAL_FILE_COUNT = 2488
 AUTHORITY_PATH_SET_SHA256 = "f2011dd32ccc19649e6abb70ffb4473aea4a224410062d40292222e2e6263692"
-CANONICAL_PATH_SET_SHA256 = "394b25cd54363260f70afa96eee5351f6add7ce4079780efe8cee0dba265200b"
+CANONICAL_PATH_SET_SHA256 = "18ecbf2fb4c9bfecdabbf66b061fc077af7c31ae6d01464bedb0e30d66e200a2"
 
 ADR_REPLACEMENTS = {
     "docs/adr/0001-repository-identity.md": "docs/adr/0001-repository-identity-and-ownership.md",
@@ -57,6 +57,7 @@ FOUNDER_BOOTSTRAP_GOVERNANCE_ADDITIONS = (
 )
 
 WAVE_ZERO_REQUIRED_ADDITIONS = (
+    ".github/actionlint.yaml",
     "docs/architecture/blueprint/provenance/MINDCLADE_MONOREPO_BLUEPRINT_v3.4.0_OPTIMIZED.md",
     "docs/architecture/blueprint/provenance/MONOREPO_TREE.md",
     "MODULE.bazel.lock",
@@ -1236,6 +1237,8 @@ def build_path_entry(path: str) -> dict[str, Any]:
 
 
 def _reconciliation_addition_reason(path: str) -> str:
+    if path == ".github/actionlint.yaml":
+        return "Required Wave 0 GitHub Actions lint configuration omitted by A6."
     if path == "MODULE.bazel.lock":
         return (
             "Required root workspace lock omitted by A6; Bazel 9 Bzlmod resolution is "

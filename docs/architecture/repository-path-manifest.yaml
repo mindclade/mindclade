@@ -2491,6 +2491,10 @@
       ],
       "additions": [
         {
+          "path": ".github/actionlint.yaml",
+          "reason": "Required Wave 0 GitHub Actions lint configuration omitted by A6."
+        },
+        {
           "path": "docs/architecture/blueprint/provenance/MINDCLADE_MONOREPO_BLUEPRINT_v3.4.0_OPTIMIZED.md",
           "reason": "Immutable user-supplied authority provenance required for exact-tree verification."
         },
@@ -2630,8 +2634,8 @@
           "reason": "Sections 1-18 and Section 14.1 take precedence over the stale A6 short ADR name."
         }
       ],
-      "canonical_file_count": 2487,
-      "canonical_path_set_sha256": "394b25cd54363260f70afa96eee5351f6add7ce4079780efe8cee0dba265200b"
+      "canonical_file_count": 2488,
+      "canonical_path_set_sha256": "18ecbf2fb4c9bfecdabbf66b061fc077af7c31ae6d01464bedb0e30d66e200a2"
     },
     "owners": {
       "agent-platform": {
@@ -3238,6 +3242,22 @@
     {
       "path": ".github/pull_request_template.md",
       "kind": "documentation",
+      "owner": "developer-platform",
+      "component": "repository-github",
+      "status": "active",
+      "activation_wave": "0",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:wave0_governance_sources"
+      ],
+      "test_targets": [
+        "//:wave0_tests"
+      ],
+      "public_surface": false
+    },
+    {
+      "path": ".github/actionlint.yaml",
+      "kind": "configuration",
       "owner": "developer-platform",
       "component": "repository-github",
       "status": "active",

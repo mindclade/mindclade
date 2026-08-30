@@ -107,16 +107,16 @@
         "extra_paths": [],
         "missing_paths": [],
         "observed": {
-          "path_count": 96,
-          "path_set_sha256": "dacfaa1078ebb051b65bd961e9293f4782df210ae59c81c6f8c866493c688dad",
+          "path_count": 97,
+          "path_set_sha256": "b434492b629326079595b776db6b9845ca98f1aef98c36c6c46b5476081ca935",
           "revision": "1111111111111111111111111111111111111111"
         },
         "status": "PASS",
         "target_authority": {
-          "content_sha256": "46cfd7b3aecf43799bb392e8821548772c9f9a69be9501fcb1a4213668d8d60d",
+          "content_sha256": "b9ee4a96b8f2278f293ea6c4e6a784a66a80839d83c1173a0472f79c8970c6fc",
           "path": "docs/architecture/blueprint/appendices/A03-repository-estate-and-trust-boundaries.md",
-          "path_count": 96,
-          "path_set_sha256": "dacfaa1078ebb051b65bd961e9293f4782df210ae59c81c6f8c866493c688dad",
+          "path_count": 97,
+          "path_set_sha256": "b434492b629326079595b776db6b9845ca98f1aef98c36c6c46b5476081ca935",
           "root": "bootstrap",
           "section": "`bootstrap` canonical file tree"
         }
@@ -195,16 +195,16 @@
         "extra_paths": [],
         "missing_paths": [],
         "observed": {
-          "path_count": 109,
-          "path_set_sha256": "5a906c4a6fc618cc7bb11291619725ad10aa12109f7a9e07ca1de63d6480194e",
+          "path_count": 110,
+          "path_set_sha256": "f3e60d31b1df1ff170f7f7e4fd32bd6a428284cc6f02e960e69a08b8ba0b318b",
           "revision": "2222222222222222222222222222222222222222"
         },
         "status": "PASS",
         "target_authority": {
-          "content_sha256": "46cfd7b3aecf43799bb392e8821548772c9f9a69be9501fcb1a4213668d8d60d",
+          "content_sha256": "b9ee4a96b8f2278f293ea6c4e6a784a66a80839d83c1173a0472f79c8970c6fc",
           "path": "docs/architecture/blueprint/appendices/A03-repository-estate-and-trust-boundaries.md",
-          "path_count": 109,
-          "path_set_sha256": "5a906c4a6fc618cc7bb11291619725ad10aa12109f7a9e07ca1de63d6480194e",
+          "path_count": 110,
+          "path_set_sha256": "f3e60d31b1df1ff170f7f7e4fd32bd6a428284cc6f02e960e69a08b8ba0b318b",
           "root": "github-config",
           "section": "`github-config` canonical file tree"
         }
@@ -283,16 +283,16 @@
         "extra_paths": [],
         "missing_paths": [],
         "observed": {
-          "path_count": 126,
-          "path_set_sha256": "aad89db6c2869be585090cc705c782e322beae10331ce664d27ee2d050328c94",
+          "path_count": 127,
+          "path_set_sha256": "63a64bd1c30bd42583ff85131932aad538fb263e8056bb211c22ceef0dc059bb",
           "revision": "3333333333333333333333333333333333333333"
         },
         "status": "PASS",
         "target_authority": {
-          "content_sha256": "46cfd7b3aecf43799bb392e8821548772c9f9a69be9501fcb1a4213668d8d60d",
+          "content_sha256": "b9ee4a96b8f2278f293ea6c4e6a784a66a80839d83c1173a0472f79c8970c6fc",
           "path": "docs/architecture/blueprint/appendices/A03-repository-estate-and-trust-boundaries.md",
-          "path_count": 126,
-          "path_set_sha256": "aad89db6c2869be585090cc705c782e322beae10331ce664d27ee2d050328c94",
+          "path_count": 127,
+          "path_set_sha256": "63a64bd1c30bd42583ff85131932aad538fb263e8056bb211c22ceef0dc059bb",
           "root": "gitops",
           "section": "`gitops` canonical file tree"
         }
@@ -371,16 +371,16 @@
         "extra_paths": [],
         "missing_paths": [],
         "observed": {
-          "path_count": 310,
-          "path_set_sha256": "d773d2fa7f8272ea26dd8e4d571738b8eb188282436d71697c218199d50fe68b",
+          "path_count": 311,
+          "path_set_sha256": "4af2dfee5bbcb95041d0199ebff047843bed01d5a4e5778691d6c7f898d5781d",
           "revision": "4444444444444444444444444444444444444444"
         },
         "status": "PASS",
         "target_authority": {
-          "content_sha256": "46cfd7b3aecf43799bb392e8821548772c9f9a69be9501fcb1a4213668d8d60d",
+          "content_sha256": "b9ee4a96b8f2278f293ea6c4e6a784a66a80839d83c1173a0472f79c8970c6fc",
           "path": "docs/architecture/blueprint/appendices/A03-repository-estate-and-trust-boundaries.md",
-          "path_count": 310,
-          "path_set_sha256": "d773d2fa7f8272ea26dd8e4d571738b8eb188282436d71697c218199d50fe68b",
+          "path_count": 311,
+          "path_set_sha256": "4af2dfee5bbcb95041d0199ebff047843bed01d5a4e5778691d6c7f898d5781d",
           "root": "infrastructure-live",
           "section": "`infrastructure-live` canonical file tree"
         }
@@ -459,16 +459,16 @@
         "extra_paths": [],
         "missing_paths": [],
         "observed": {
-          "path_count": 56,
-          "path_set_sha256": "5ec461d85a46ff2a3fc12fd97fc954ffb2b3a250b119ed7b483a7175d5cc9b1e",
+          "path_count": 57,
+          "path_set_sha256": "d4e3c10701f31492dbfbb6e48c848f89184429f3140b884e35752ef46344de65",
           "revision": "5555555555555555555555555555555555555555"
         },
         "status": "PASS",
         "target_authority": {
-          "content_sha256": "46cfd7b3aecf43799bb392e8821548772c9f9a69be9501fcb1a4213668d8d60d",
+          "content_sha256": "b9ee4a96b8f2278f293ea6c4e6a784a66a80839d83c1173a0472f79c8970c6fc",
           "path": "docs/architecture/blueprint/appendices/A03-repository-estate-and-trust-boundaries.md",
-          "path_count": 56,
-          "path_set_sha256": "5ec461d85a46ff2a3fc12fd97fc954ffb2b3a250b119ed7b483a7175d5cc9b1e",
+          "path_count": 57,
+          "path_set_sha256": "d4e3c10701f31492dbfbb6e48c848f89184429f3140b884e35752ef46344de65",
           "root": ".github",
           "section": "Organization `.github` canonical file tree"
         }
@@ -493,7 +493,7 @@
   "schema_version": "repository_drift.v1",
   "summary": {
     "branch_protection_observations_incomplete": 5,
-    "canonical_target_paths": 2487,
+    "canonical_target_paths": 2488,
     "component_count": 0,
     "default_branch_observations_incomplete": 5,
     "dependency_edge_count": 0,
@@ -508,8 +508,8 @@
   },
   "target_authority": {
     "blueprint_sha256": "d099074e755168bbdce076d50918bf06aff677f9e5d620fdfe53cb7cef745803",
-    "canonical_file_count": 2487,
-    "canonical_path_set_sha256": "394b25cd54363260f70afa96eee5351f6add7ce4079780efe8cee0dba265200b",
+    "canonical_file_count": 2488,
+    "canonical_path_set_sha256": "18ecbf2fb4c9bfecdabbf66b061fc077af7c31ae6d01464bedb0e30d66e200a2",
     "original_file_count": 2461,
     "reconciliation_version": "3.4.3",
     "source": "MONOREPO_TREE.md",

@@ -57,7 +57,7 @@ The monorepo defines four separate authorities that MUST never be conflated:
 | Immutable scientific and execution evidence | content-addressed object storage plus catalog metadata | signed manifests and digests |
 | Live environment desired state | separately protected GitOps/environment repositories | reconciled GKE and cloud resources |
 
-This document is an approved target architecture, not evidence that the target exists. Version 3.4.3 reconciles 2,487 canonical paths against the greenfield repository, its Wave 0 governance sources, and the five operational source repositories. The 386 Wave 1 paths remain target-only and absent. ADR-0008, `FounderBootstrapException/v1`, and FBE-0001 establish the `FOUNDER_BOOTSTRAPPED` source-only state for the public GitHub Free repository-level profile; `production_authority` remains `false`. That source authority does not prove connected GitHub controls, independent review, signed CI evidence, later-wave capabilities, deployment, or production readiness. Those claims remain `INCONCLUSIVE` until their named executable gates pass.
+This document is an approved target architecture, not evidence that the target exists. Version 3.4.3 reconciles 2,488 canonical paths against the greenfield repository, its Wave 0 governance sources, and the five operational source repositories. The 386 Wave 1 paths remain target-only and absent. ADR-0008, `FounderBootstrapException/v1`, and FBE-0001 establish the `FOUNDER_BOOTSTRAPPED` source-only state for the public GitHub Free repository-level profile; `production_authority` remains `false`. That source authority does not prove connected GitHub controls, independent review, signed CI evidence, later-wave capabilities, deployment, or production readiness. Those claims remain `INCONCLUSIVE` until their named executable gates pass.
 
 ### 1.1 Finalization outcomes
 
@@ -1746,7 +1746,7 @@ Failure of any applicable gate blocks promotion. Waivers are not permitted for c
 | Markdown structure, source inclusion, and fence balance | `PASS` — the locked source validator checks the manifest schema, ordered inclusion, headings, line endings, whitespace, placeholders, relative links, and balanced fences |
 | Heading and numbering integrity | `PASS` — section/appendix numbering is exact and the combined render has no duplicate generated or explicit anchors |
 | Table of contents and internal anchors | `PASS` — the table of contents is generated from the ordered manifest and every internal anchor target resolves |
-| Monorepo and operational repository trees | `FOUNDER_BOOTSTRAPPED` at source level — Appendix A6 is generated from the sole corrected path manifest: 2,487 explicit files with canonical path-set SHA-256 `394b25cd54363260f70afa96eee5351f6add7ce4079780efe8cee0dba265200b`. The preserved v3.4.0 tree is provenance, not a second path authority. Populated-path evidence is recomputed by source validation; this row does not infer live protection or connected qualification |
+| Monorepo and operational repository trees | `FOUNDER_BOOTSTRAPPED` at source level — Appendix A6 is generated from the sole corrected path manifest: 2,488 explicit files with canonical path-set SHA-256 `18ecbf2fb4c9bfecdabbf66b061fc077af7c31ae6d01464bedb0e30d66e200a2`. The preserved v3.4.0 tree is provenance, not a second path authority. Populated-path evidence is recomputed by source validation; this row does not infer live protection or connected qualification |
 | Stale planning markers and unsupported readiness claims | `PASS` — no actionable placeholders; readiness statements are conditional gates, not current-state claims |
 | Referenced top-level path vocabulary | `PASS` at document level — paths resolve to Section 4/A6, activation-gated paths, local relative paths, or named external repositories; populated target status is checked separately by the path-manifest validator |
 | Implementation or production readiness | `NOT CLAIMED` |
@@ -2529,6 +2529,7 @@ On a pull request, repo-local metadata validation classifies the event and sourc
 │   │   ├── architecture-change.yml
 │   │   ├── scientific-correctness.yml
 │   │   └── config.yml
+│   ├── actionlint.yaml
 │   ├── CODEOWNERS
 │   ├── dependabot.yml
 │   └── pull_request_template.md
@@ -2597,6 +2598,7 @@ github-config/
 │   │   ├── pull-request.yml
 │   │   ├── drift-detection.yml
 │   │   └── protected-apply.yml
+│   ├── actionlint.yaml
 │   ├── CODEOWNERS
 │   ├── dependabot.yml
 │   └── pull_request_template.md
@@ -2760,6 +2762,7 @@ bootstrap/
 │   │   ├── pull-request.yml
 │   │   ├── recovery-verification.yml
 │   │   └── protected-apply.yml
+│   ├── actionlint.yaml
 │   ├── CODEOWNERS
 │   ├── dependabot.yml
 │   └── pull_request_template.md
@@ -2911,6 +2914,7 @@ infrastructure-live/
 │   │   ├── drift-detection.yml
 │   │   ├── protected-apply.yml
 │   │   └── disaster-recovery.yml
+│   ├── actionlint.yaml
 │   ├── CODEOWNERS
 │   ├── dependabot.yml
 │   └── pull_request_template.md
@@ -3326,6 +3330,7 @@ gitops/
 │   │   ├── promotion.yml
 │   │   ├── drift-detection.yml
 │   │   └── rollback-verification.yml
+│   ├── actionlint.yaml
 │   ├── CODEOWNERS
 │   ├── dependabot.yml
 │   └── pull_request_template.md
@@ -4046,7 +4051,8 @@ mindclade/
 │   ├── CODEOWNERS
 │   ├── dependabot.yml
 │   ├── labeler.yml
-│   └── pull_request_template.md
+│   ├── pull_request_template.md
+│   └── actionlint.yaml
 ├── .devcontainer/
 │   ├── devcontainer.json
 │   ├── Containerfile

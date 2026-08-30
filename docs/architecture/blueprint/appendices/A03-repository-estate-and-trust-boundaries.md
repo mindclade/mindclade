@@ -263,6 +263,7 @@ On a pull request, repo-local metadata validation classifies the event and sourc
 │   │   ├── architecture-change.yml
 │   │   ├── scientific-correctness.yml
 │   │   └── config.yml
+│   ├── actionlint.yaml
 │   ├── CODEOWNERS
 │   ├── dependabot.yml
 │   └── pull_request_template.md
@@ -331,6 +332,7 @@ github-config/
 │   │   ├── pull-request.yml
 │   │   ├── drift-detection.yml
 │   │   └── protected-apply.yml
+│   ├── actionlint.yaml
 │   ├── CODEOWNERS
 │   ├── dependabot.yml
 │   └── pull_request_template.md
@@ -494,6 +496,7 @@ bootstrap/
 │   │   ├── pull-request.yml
 │   │   ├── recovery-verification.yml
 │   │   └── protected-apply.yml
+│   ├── actionlint.yaml
 │   ├── CODEOWNERS
 │   ├── dependabot.yml
 │   └── pull_request_template.md
@@ -645,6 +648,7 @@ infrastructure-live/
 │   │   ├── drift-detection.yml
 │   │   ├── protected-apply.yml
 │   │   └── disaster-recovery.yml
+│   ├── actionlint.yaml
 │   ├── CODEOWNERS
 │   ├── dependabot.yml
 │   └── pull_request_template.md
@@ -1060,6 +1064,7 @@ gitops/
 │   │   ├── promotion.yml
 │   │   ├── drift-detection.yml
 │   │   └── rollback-verification.yml
+│   ├── actionlint.yaml
 │   ├── CODEOWNERS
 │   ├── dependabot.yml
 │   └── pull_request_template.md
