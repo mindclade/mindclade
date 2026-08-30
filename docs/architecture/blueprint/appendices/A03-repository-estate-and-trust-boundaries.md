@@ -7,8 +7,8 @@
     v
 github-config
     |
-    | GitHub Enterprise policy, teams, rulesets, repository settings,
-    | environments, Actions/OIDC governance
+    | GitHub Free public-repository policy, repository settings,
+    | branch protection, Actions/OIDC governance
     v
 +----------------------+----------------------+----------------------+
 | bootstrap            | infrastructure-live  | gitops               |
@@ -22,7 +22,7 @@ github-config
                       immutable artifact digests
                                   |
                                   v
-                      mindclade internal monorepo
+                      mindclade public source monorepo
 ```
 
 ### Repository ownership
@@ -30,12 +30,12 @@ github-config
 | Repository | Owns | Must not own |
 |---|---|---|
 | `.github` | Organization profile, community health files, shared workflow implementations and templates | Product code, cloud state, environment credentials |
-| `mindclade/.github/` | Monorepo-local GitHub metadata and thin reusable-workflow/Buildkite bridges | Shared workflow authority, organization settings, heavy builds, release or deployment |
-| `github-config` | Organization/repository governance, teams, rulesets, Actions policy, OIDC policy | Runtime services or Kubernetes application manifests |
+| `mindclade/.github/` | Monorepo-local GitHub metadata and thin reusable-workflow/Buildkite bridges | Organization settings, heavy builds, release, deployment, or privileged founder governance |
+| `github-config` | Desired organization/repository governance, teams, repository-level protection, Actions policy, OIDC policy, and the bounded FBE-0001 mode of its existing protected-apply workflow | Runtime services or Kubernetes application manifests; evidence that desired controls are live; privilege outside FBE-0001 or normal independently reviewed apply |
 | `bootstrap` | Minimum durable cloud trust, state, recovery, break-glass IAM | Normal application infrastructure |
 | `infrastructure-live` | Cloud projects/accounts, networks, clusters, storage, databases, registries, observability backends | Application source or model code |
 | `gitops` | Environment-specific Kubernetes desired state and promotion by immutable digest | Building application artifacts |
-| `mindclade` | Product, model, data, training, evaluation, inference, service, worker, SDK, and service-owned deployment source | Live cloud/environment desired state |
+| `mindclade` | Public product, model, data, training, evaluation, inference, service, worker, SDK, and service-owned deployment source | Secrets, protected data, live cloud/environment desired state, or production authority |
 | Public SDK repositories | Stable public SDKs only when external distribution requires independent lifecycle and visibility | Internal implementation details |
 
 ### Monorepo deployment boundary
@@ -199,11 +199,11 @@ Every path in the following trees has one of four meanings:
 | `# local output` | ignored plan/test output | never committed or used as authority |
 | `# JIT` | approved activation stub | create only at the named decision gate with a real consumer |
 
-“Stub” means the minimum reviewable first-PR surface named in these trees. It is not an empty directory or placeholder implementation. Each activated stub contains valid metadata, an executable validation/build target where applicable, an owner, tests for its contract, and no unfinished body marker. All five repositories use protected default branches, signed human or workload identity, `CODEOWNERS`, dependency pinning, secret scanning, immutable CI evidence, and a root `component.yaml` identifying owner, repository class, trust tier, recovery tier, and release behavior.
+“Stub” means the minimum reviewable first-PR surface named in these trees. It is not an empty directory or placeholder implementation. Each activated stub contains valid metadata, an executable validation/build target where applicable, an owner, tests for its contract, and no unfinished body marker. At `CONNECTED_QUALIFIED`, all five repositories use protected default branches, signed human or workload identity, `CODEOWNERS`, dependency pinning, secret scanning, immutable CI evidence, and a root `component.yaml` identifying owner, repository class, trust tier, recovery tier, and release behavior. `FOUNDER_BOOTSTRAPPED` is a source-only intermediate state and is not evidence that these connected controls are active.
 
 Common rules are:
 
-- repository-local `.github/workflows/` files are thin callers of pinned reusable workflows from the organization `.github` repository;
+- repository-local `.github/workflows/` files are thin callers of pinned reusable workflows from the organization `.github` repository; the only privileged founder exception is the exact single-use FBE-0001 mode of `github-config/.github/workflows/protected-apply.yml` under A3.10;
 - reusable workflows pin every third-party action by commit digest, set explicit permissions, reject untrusted secret access, and emit a typed evidence record;
 - plan and apply are separate identities; apply accepts the exact reviewed plan digest and protected revision only;
 - state backends use locking, encryption, versioning, retention, access logging, and independently tested recovery;
@@ -211,9 +211,23 @@ Common rules are:
 - all desired-state writes are pull requests; emergency mutation requires an audited break-glass event, bounded lease, and mandatory reconciliation PR;
 - compatibility is schema-versioned for cross-repository manifests; repository paths and provider object names are never public resource identity.
 
+#### Public GitHub Free founder-bootstrap profile
+
+The canonical `mindclade/mindclade` repository is public under GitHub Free and uses repository-level protection. Public visibility does not make the proprietary source license permissive and does not authorize secrets, protected biological data, model weights, customer artifacts, provider state, or production configuration in Git.
+
+Readiness progresses only as follows:
+
+```text
+BLOCKED -> FOUNDER_BOOTSTRAPPED -> CONNECTED_QUALIFIED
+```
+
+ADR-0008 and `docs/governance/exceptions/FBE-0001.yaml` permit `FOUNDER_BOOTSTRAPPED` to proceed with Wave 1 source work while `production_authority` remains `false`. Before the workflow exists on `github-config:main`, the record allows `mindclade-founder` one ordinary pull-request merge publishing only the pinned `.github/workflows/protected-apply.yml` artifact. This distinct initial-publication state is bound to the target branch, exact SHA-256 content digest, actor, and immutable pull-request receipt containing the actual merge SHA, PR URL and number, merge actor, and UTC time; direct `main` pushes, protection waivers, governance mutations, and independent-review claims are denied. It exists only to make the normal repository-local entry point available. That entry point may then perform one fail-closed FBE-0001 foundation execution, bound to the exact public `mindclade/mindclade` repository, `main`, protected revision, and foundation identity. It may only create, adopt, protect, set a non-secret repository variable, and activate the foundation identity. It may not delete, replace, bypass, promote to production, export a secret, force-push, or extend itself. The authorization expires after 2026-09-30.
+
+The workflow must preserve no bypass and two approvals after protection is established. A subject- and revision-bound connected receipt is the consumption authority. The repository records the authorization contract but neither stores a secret nor invents a receipt. Independent review, branch-protection observation, required-check evidence, trusted Buildkite definition evidence, signing trust, and recovery evidence remain required for `CONNECTED_QUALIFIED`.
+
 #### Repo-local `mindclade/.github/` blueprint
 
-The exact directory tree is part of Appendix A6. Developer Platform owns repository event mapping, issue/PR metadata, dependency-update configuration, code scanning entrypoints, and the Buildkite dispatch/required-check bridge; Security reviews permissions and trust-context handling. Each workflow is a thin caller pinned to an organization `.github` reusable workflow or invokes a bounded repo-local action whose implementation is fully present in the directory. It MUST NOT encode the authoritative test graph, compile/release product artifacts, assume production credentials, or deploy.
+The exact directory tree is part of Appendix A6. Developer Platform owns repository event mapping, issue/PR metadata, dependency-update configuration, code scanning entrypoints, and the Buildkite dispatch/required-check bridge; Security reviews permissions and trust-context handling. Each workflow is a thin caller pinned to an organization `.github` reusable workflow or invokes a bounded repo-local action whose implementation is fully present in the directory. No monorepo-local workflow is privileged by FBE-0001; the exception binds only `github-config/.github/workflows/protected-apply.yml` under A3.10. Monorepo-local workflows MUST NOT encode the authoritative test graph, compile/release product artifacts, assume production credentials, or deploy.
 
 On a pull request, repo-local metadata validation classifies the event and source trust, then the dispatch workflow calls the shared reusable workflow with the exact revision. Buildkite returns typed evidence; the repo-local required-check bridge verifies revision, plan, caller, and trust context before publishing one conclusion. GitHub-native CodeQL, dependency review, scorecard, documentation, and mirror verification use explicit least-privilege permissions. Cancellation propagates to Buildkite; an unavailable or ambiguous downstream result stays non-successful. Tests validate YAML/action syntax, pinning, permissions, fork behavior, required-check freshness, issue forms, CODEOWNERS coverage, and label/config drift. Repo-local workflow changes cannot alter organization rulesets or self-approve protected releases.
 
@@ -463,7 +477,7 @@ github-config/
 
 **Responsibility.** Developer Platform is semantic owner; Security is required reviewer for Actions, OIDC, app, environment, and token policy; team owners approve membership. The YAML catalog is the human-reviewed authority and the compiled OpenTofu graph is derived. Direct provider edits are break-glass drift, not a second source of truth.
 
-**Execution and consistency.** Pull-request CI validates schemas, compiles deterministically, imports observed GitHub state read-only, renders a plan, evaluates policy, and signs the plan digest. Protected apply rechecks revision, plan digest, approvals, provider version, and observed-state preconditions before serial execution. Repository/team/ruleset changes are convergent and idempotent; removals require an explicit destructive-change acknowledgement and dependency analysis. Apply concurrency is one per organization.
+**Execution and consistency.** Pull-request CI validates schemas, compiles deterministically, imports observed GitHub state read-only, renders a plan, evaluates policy, and signs the plan digest. Before that CI/workflow can be present on its own default branch, the FBE record permits exactly one non-privileged PR merge by the declared actor that publishes only the pinned workflow artifact to `github-config:main`; the source contract requires its canonical content digest and an immutable PR receipt containing the observed merge SHA, PR URL and number, merge actor, and UTC time, and rejects direct-main publication, branch-protection waiver, independent-review claims, governance mutations, and replay. That publication is not a protected apply and does not activate any provider or production authority. Protected apply rechecks revision, plan digest, approvals, provider version, and observed-state preconditions before serial execution. Repository/team/ruleset changes are convergent and idempotent; removals require an explicit destructive-change acknowledgement and dependency analysis. Apply concurrency is one per organization. Under ADR-0008 and an unexpired, unused FBE-0001 only, the existing `github-config/.github/workflows/protected-apply.yml` entry point may perform one founder foundation execution before `CONNECTED_QUALIFIED`; this is not a new or parallel monorepo workflow. It must bind `mindclade/mindclade`, `main`, the exact protected revision and foundation identity, enforce the five allowed and seven denied operations, and consume authority only through the immutable connected receipt. Missing or mismatched scope, expiry, unused state, workflow identity, revision, identity, or receipt fails closed. After consumption or expiry, the workflow retains only its normal independently reviewed protected-apply authority.
 
 **Failure and recovery.** Rate limits use bounded backoff and checkpointed reconciliation; permission loss, provider drift, partial apply, or ambiguous API completion stops the run and re-plans from observed state. Cancellation stops before the next mutation but does not pretend already accepted GitHub mutations rolled back. Last-known-good configuration plus state backup supports restoration; lockout recovery uses bootstrap-controlled break-glass identity. Drift detection runs at least hourly for critical rules and daily for full configuration.
 

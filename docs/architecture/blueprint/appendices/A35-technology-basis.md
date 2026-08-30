@@ -46,7 +46,7 @@ This blueprint is intentionally version-agnostic at the document level; exact ve
 
 ---
 
-**Canonical repository name:** `mindclade` for the internal monorepo.
+**Canonical repository name:** `mindclade` for the public product-source monorepo.
 **Canonical Git remote:** `github.com/mindclade/mindclade`.
 **Canonical Go module:** `github.com/mindclade/mindclade`.
 **Recommended Python namespace:** `mindclade.*`.

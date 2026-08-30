@@ -1,0 +1,102 @@
+{
+  "apiVersion": "mindclade.dev/v1",
+  "kind": "FounderBootstrapException",
+  "metadata": {
+    "id": "FBE-0001",
+    "name": "founder-bootstrap-public-estate-transition",
+    "createdOn": "2026-08-30",
+    "expiresOn": "2026-09-30"
+  },
+  "spec": {
+    "authority": {
+      "adr": "ADR-0008",
+      "grantedBy": "founder",
+      "owners": ["architecture", "security"],
+      "independentReviewRequired": true,
+      "connectedQualificationRequired": true,
+      "selfExtensionAllowed": false
+    },
+    "profile": {
+      "repository": "mindclade/mindclade",
+      "visibility": "public",
+      "githubPlan": "free",
+      "controlPlane": "repository-level",
+      "defaultBranch": "main",
+      "privilegedWorkflow": "github-config/.github/workflows/protected-apply.yml"
+    },
+    "scope": {
+      "sourceWave": "1",
+      "sourceOnly": true,
+      "productionAuthority": false
+    },
+    "lifecycle": {
+      "from": "BLOCKED",
+      "through": "FOUNDER_BOOTSTRAPPED",
+      "to": "CONNECTED_QUALIFIED"
+    },
+    "permissions": {
+      "allow": [
+        "create",
+        "adopt",
+        "protect",
+        "set-non-secret-variable",
+        "activate-foundation-identity"
+      ],
+      "deny": [
+        "delete",
+        "replace",
+        "bypass",
+        "promote-production",
+        "export-secret",
+        "force-push",
+        "self-extend"
+      ]
+    },
+    "guards": {
+      "singleUse": true,
+      "failClosed": true,
+      "maxUses": 1,
+      "exactRevisionRequired": true,
+      "noBypass": true,
+      "twoApprovalsAfterProtection": true,
+      "nonSecretVariablesOnly": true
+    },
+    "initialPublication": {
+      "target": {
+        "repository": "mindclade/github-config",
+        "branch": "main",
+        "workflowPath": ".github/workflows/protected-apply.yml",
+        "workflowContentDigest": "sha256:d9109bd4227557cb98a032cfaaa4748744ec8c280733f4f13400da340f1c8de9"
+      },
+      "actor": {
+        "githubLogin": "mindclade-founder"
+      },
+      "state": "UNPUBLISHED",
+      "maxUses": 1,
+      "guards": {
+        "pullRequestMergeRequired": true,
+        "directMainPushAllowed": false,
+        "branchProtectionWaiverAllowed": false,
+        "independentReviewClaimAllowed": false,
+        "productionAuthority": false
+      },
+      "receipt": {
+        "pullRequest": null,
+        "pullRequestNumber": null,
+        "publishedMainSha": null,
+        "mergeActor": null,
+        "publishedAt": null,
+        "digest": null
+      }
+    },
+    "consumption": {
+      "authority": "protected-connected-receipt",
+      "state": "UNUSED",
+      "consumedAt": null,
+      "receiptDigest": null
+    }
+  },
+  "status": {
+    "phase": "AUTHORIZED_SOURCE_ONLY"
+  }
+}

@@ -2479,7 +2479,7 @@
       ]
     },
     "reconciliation": {
-      "version": "3.4.2",
+      "version": "3.4.3",
       "remove_paths": [
         "docs/adr/0001-repository-identity.md",
         "docs/adr/0002-dependency-direction.md",
@@ -2527,8 +2527,20 @@
           "reason": "Required Wave 0 schema, deterministic golden, or executable governance test omitted by A6."
         },
         {
+          "path": "docs/adr/0008-founder-bootstrap-public-estate-transition.md",
+          "reason": "Required Wave 0 governance source for the bounded founder bootstrap and public-estate transition authorized by ADR-0008."
+        },
+        {
           "path": "docs/adr/connected-ratification.v1.schema.json",
           "reason": "Required Wave 0 schema for machine-verifiable connected ADR ratification; declared active before its separately reviewed implementation."
+        },
+        {
+          "path": "docs/governance/founder-bootstrap-exception.v1.schema.json",
+          "reason": "Required Wave 0 governance source for the bounded founder bootstrap and public-estate transition authorized by ADR-0008."
+        },
+        {
+          "path": "docs/governance/exceptions/FBE-0001.yaml",
+          "reason": "Required Wave 0 governance source for the bounded founder bootstrap and public-estate transition authorized by ADR-0008."
         },
         {
           "path": "services/control_plane/internal/operations/operation_commands.go",
@@ -2618,8 +2630,8 @@
           "reason": "Sections 1-18 and Section 14.1 take precedence over the stale A6 short ADR name."
         }
       ],
-      "canonical_file_count": 2484,
-      "canonical_path_set_sha256": "f6909661ea3098c4390934753f848ed68be1c52b9f84a968965587443fdfdbbb"
+      "canonical_file_count": 2487,
+      "canonical_path_set_sha256": "394b25cd54363260f70afa96eee5351f6add7ce4079780efe8cee0dba265200b"
     },
     "owners": {
       "agent-platform": {
@@ -34601,6 +34613,22 @@
       "public_surface": false
     },
     {
+      "path": "docs/adr/0008-founder-bootstrap-public-estate-transition.md",
+      "kind": "documentation",
+      "owner": "architecture",
+      "component": "docs-adr",
+      "status": "active",
+      "activation_wave": "0",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:wave0_governance_sources"
+      ],
+      "test_targets": [
+        "//:wave0_tests"
+      ],
+      "public_surface": false
+    },
+    {
       "path": "docs/adr/connected-ratification.v1.schema.json",
       "kind": "schema",
       "owner": "architecture",
@@ -35196,6 +35224,38 @@
       "kind": "documentation",
       "owner": "developer-platform",
       "component": "docs-readme-md",
+      "status": "active",
+      "activation_wave": "0",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:wave0_governance_sources"
+      ],
+      "test_targets": [
+        "//:wave0_tests"
+      ],
+      "public_surface": false
+    },
+    {
+      "path": "docs/governance/founder-bootstrap-exception.v1.schema.json",
+      "kind": "schema",
+      "owner": "architecture",
+      "component": "docs-governance",
+      "status": "active",
+      "activation_wave": "0",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:wave0_governance_sources"
+      ],
+      "test_targets": [
+        "//:wave0_tests"
+      ],
+      "public_surface": false
+    },
+    {
+      "path": "docs/governance/exceptions/FBE-0001.yaml",
+      "kind": "configuration",
+      "owner": "architecture",
+      "component": "docs-governance",
       "status": "active",
       "activation_wave": "0",
       "source_authority": "hand-authored",

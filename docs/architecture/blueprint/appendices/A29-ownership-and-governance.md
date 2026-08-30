@@ -176,6 +176,18 @@ An architecture/policy exception contains:
 
 Exceptions are machine-readable where possible and visible in component/release evidence. Expired exceptions fail CI. An exception is not a permanent alternative architecture.
 
+#### Founder bootstrap exception
+
+ADR-0008 defines one exceptional lifecycle for the public GitHub Free repository-level foundation:
+
+```text
+BLOCKED -> FOUNDER_BOOTSTRAPPED -> CONNECTED_QUALIFIED
+```
+
+`FounderBootstrapException/v1` is the machine authority and FBE-0001 is the only authorized record. It expires after 2026-09-30, is single-use and fail-closed, and grants Wave 1 source-only permission with `production_authority: false`. Before protected apply can exist on the `github-config` default branch, the same record permits one separately tracked, non-privileged pull-request publication of the exact workflow artifact by the declared actor. Its machine fields bind the target `main` branch, canonical SHA-256 content digest, actor, immutable receipt containing the actual merge SHA, PR URL and number, merge actor, and UTC time, and `UNPUBLISHED`/`PUBLISHED` state; no direct-main push, branch-protection waiver, independent-review claim, governance mutation, or production authority is allowed. Once published, the record authorizes only create, adopt, protect, set-non-secret-variable, and activate-foundation-identity through the exact `github-config/.github/workflows/protected-apply.yml` repository-local privileged workflow under A3.10. No workflow in `mindclade/.github/workflows/` receives this authority. Deletes, replacement, bypass, production promotion, secret export, force push, and self-extension are always denied.
+
+Founder authorization is not independent review. Initial publication cannot assert that it is and does not waive the later no-bypass/two-approval protection. The exception cannot emit or stand in for connected GitHub, Buildkite, signer, recovery, or production evidence. Missing expiry, subject, protected revision, workflow identity, publication or consumption state, or immutable receipt fails closed. `CONNECTED_QUALIFIED` remains available only through the normal independent review and connected-evidence path.
+
 ### A29.12 Maturity model
 
 Maturity gates are evidence-based:

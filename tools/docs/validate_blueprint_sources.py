@@ -260,8 +260,8 @@ def validate_blueprint(manifest_path: Path, require_generated: bool = True) -> l
     document_value = manifest.get("document")
     if not isinstance(document_value, dict):
         errors.append("manifest.document must be a mapping")
-    elif cast(dict[str, Any], document_value).get("version") != "3.4.2":
-        errors.append("active blueprint version must be 3.4.2")
+    elif cast(dict[str, Any], document_value).get("version") != "3.4.3":
+        errors.append("active blueprint version must be 3.4.3")
 
     sections = [(kind, entry) for kind, entry in entries if kind == "sections"]
     appendices = [(kind, entry) for kind, entry in entries if kind == "appendices"]

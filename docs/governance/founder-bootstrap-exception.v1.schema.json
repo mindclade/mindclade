@@ -1,0 +1,211 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.mindclade.dev/governance/founder-bootstrap-exception.v1.schema.json",
+  "title": "Mindclade FounderBootstrapException/v1",
+  "type": "object",
+  "required": ["apiVersion", "kind", "metadata", "spec", "status"],
+  "properties": {
+    "apiVersion": {"const": "mindclade.dev/v1"},
+    "kind": {"const": "FounderBootstrapException"},
+    "metadata": {
+      "type": "object",
+      "required": ["id", "name", "createdOn", "expiresOn"],
+      "properties": {
+        "id": {"type": "string", "pattern": "^FBE-[0-9]{4}$"},
+        "name": {"type": "string", "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$"},
+        "createdOn": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"},
+        "expiresOn": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"}
+      },
+      "additionalProperties": false
+    },
+    "spec": {
+      "type": "object",
+      "required": ["authority", "profile", "scope", "lifecycle", "permissions", "guards", "initialPublication", "consumption"],
+      "properties": {
+        "authority": {
+          "type": "object",
+          "required": ["adr", "grantedBy", "owners", "independentReviewRequired", "connectedQualificationRequired", "selfExtensionAllowed"],
+          "properties": {
+            "adr": {"type": "string", "pattern": "^ADR-[0-9]{4}$"},
+            "grantedBy": {"type": "string", "minLength": 1},
+            "owners": {"type": "array", "items": {"type": "string", "minLength": 1}, "minItems": 1, "uniqueItems": true},
+            "independentReviewRequired": {"const": true},
+            "connectedQualificationRequired": {"const": true},
+            "selfExtensionAllowed": {"const": false}
+          },
+          "additionalProperties": false
+        },
+        "profile": {
+          "type": "object",
+          "required": ["repository", "visibility", "githubPlan", "controlPlane", "defaultBranch", "privilegedWorkflow"],
+          "properties": {
+            "repository": {"type": "string", "pattern": "^[a-z0-9](?:[a-z0-9-]*/)[a-z0-9][a-z0-9-]*$"},
+            "visibility": {"enum": ["public"]},
+            "githubPlan": {"enum": ["free"]},
+            "controlPlane": {"enum": ["repository-level"]},
+            "defaultBranch": {"type": "string", "pattern": "^[A-Za-z0-9._/-]+$"},
+            "privilegedWorkflow": {"const": "github-config/.github/workflows/protected-apply.yml"}
+          },
+          "additionalProperties": false
+        },
+        "scope": {
+          "type": "object",
+          "required": ["sourceWave", "sourceOnly", "productionAuthority"],
+          "properties": {
+            "sourceWave": {"const": "1"},
+            "sourceOnly": {"const": true},
+            "productionAuthority": {"const": false}
+          },
+          "additionalProperties": false
+        },
+        "lifecycle": {
+          "type": "object",
+          "required": ["from", "through", "to"],
+          "properties": {
+            "from": {"const": "BLOCKED"},
+            "through": {"const": "FOUNDER_BOOTSTRAPPED"},
+            "to": {"const": "CONNECTED_QUALIFIED"}
+          },
+          "additionalProperties": false
+        },
+        "permissions": {
+          "type": "object",
+          "required": ["allow", "deny"],
+          "properties": {
+            "allow": {
+              "type": "array",
+              "items": {"enum": ["create", "adopt", "protect", "set-non-secret-variable", "activate-foundation-identity"]},
+              "minItems": 1,
+              "uniqueItems": true
+            },
+            "deny": {
+              "type": "array",
+              "items": {"enum": ["delete", "replace", "bypass", "promote-production", "export-secret", "force-push", "self-extend"]},
+              "minItems": 1,
+              "uniqueItems": true
+            }
+          },
+          "additionalProperties": false
+        },
+        "guards": {
+          "type": "object",
+          "required": ["singleUse", "failClosed", "maxUses", "exactRevisionRequired", "noBypass", "twoApprovalsAfterProtection", "nonSecretVariablesOnly"],
+          "properties": {
+            "singleUse": {"const": true},
+            "failClosed": {"const": true},
+            "maxUses": {"const": 1},
+            "exactRevisionRequired": {"const": true},
+            "noBypass": {"const": true},
+            "twoApprovalsAfterProtection": {"const": true},
+            "nonSecretVariablesOnly": {"const": true}
+          },
+          "additionalProperties": false
+        },
+        "initialPublication": {
+          "type": "object",
+          "required": ["target", "actor", "state", "maxUses", "guards", "receipt"],
+          "properties": {
+            "target": {
+              "type": "object",
+              "required": ["repository", "branch", "workflowPath", "workflowContentDigest"],
+              "properties": {
+                "repository": {"const": "mindclade/github-config"},
+                "branch": {"const": "main"},
+                "workflowPath": {"const": ".github/workflows/protected-apply.yml"},
+                "workflowContentDigest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+              },
+              "additionalProperties": false
+            },
+            "actor": {
+              "type": "object",
+              "required": ["githubLogin"],
+              "properties": {
+                "githubLogin": {"const": "mindclade-founder"}
+              },
+              "additionalProperties": false
+            },
+            "state": {"enum": ["UNPUBLISHED", "PUBLISHED"]},
+            "maxUses": {"const": 1},
+            "guards": {
+              "type": "object",
+              "required": ["pullRequestMergeRequired", "directMainPushAllowed", "branchProtectionWaiverAllowed", "independentReviewClaimAllowed", "productionAuthority"],
+              "properties": {
+                "pullRequestMergeRequired": {"const": true},
+                "directMainPushAllowed": {"const": false},
+                "branchProtectionWaiverAllowed": {"const": false},
+                "independentReviewClaimAllowed": {"const": false},
+                "productionAuthority": {"const": false}
+              },
+              "additionalProperties": false
+            },
+            "receipt": {
+              "type": "object",
+              "required": ["pullRequest", "pullRequestNumber", "publishedMainSha", "mergeActor", "publishedAt", "digest"],
+              "properties": {
+                "pullRequest": {"type": ["string", "null"], "pattern": "^https://github\\.com/mindclade/github-config/pull/[1-9][0-9]*$"},
+                "pullRequestNumber": {"type": ["integer", "null"], "minimum": 1},
+                "publishedMainSha": {"type": ["string", "null"], "pattern": "^[0-9a-f]{40}$"},
+                "mergeActor": {"type": ["string", "null"], "pattern": "^[A-Za-z0-9-]+$"},
+                "publishedAt": {"type": ["string", "null"], "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"},
+                "digest": {"type": ["string", "null"], "pattern": "^sha256:[0-9a-f]{64}$"}
+              },
+              "additionalProperties": false
+            }
+          },
+          "allOf": [
+            {
+              "if": {"properties": {"state": {"const": "UNPUBLISHED"}}, "required": ["state"]},
+              "then": {"properties": {"receipt": {"properties": {"pullRequest": {"const": null}, "pullRequestNumber": {"const": null}, "publishedMainSha": {"const": null}, "mergeActor": {"const": null}, "publishedAt": {"const": null}, "digest": {"const": null}}}}}
+            },
+            {
+              "if": {"properties": {"state": {"const": "PUBLISHED"}}, "required": ["state"]},
+              "then": {"properties": {"receipt": {"properties": {"pullRequest": {"type": "string"}, "pullRequestNumber": {"type": "integer"}, "publishedMainSha": {"type": "string"}, "mergeActor": {"type": "string"}, "publishedAt": {"type": "string"}, "digest": {"type": "string"}}}}}
+            }
+          ],
+          "additionalProperties": false
+        },
+        "consumption": {
+          "type": "object",
+          "required": ["authority", "state", "consumedAt", "receiptDigest"],
+          "properties": {
+            "authority": {"const": "protected-connected-receipt"},
+            "state": {"enum": ["UNUSED", "CONSUMED"]},
+            "consumedAt": {"type": ["string", "null"], "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"},
+            "receiptDigest": {"type": ["string", "null"], "pattern": "^sha256:[0-9a-f]{64}$"}
+          },
+          "allOf": [
+            {
+              "if": {"properties": {"state": {"const": "UNUSED"}}, "required": ["state"]},
+              "then": {"properties": {"consumedAt": {"const": null}, "receiptDigest": {"const": null}}}
+            },
+            {
+              "if": {"properties": {"state": {"const": "CONSUMED"}}, "required": ["state"]},
+              "then": {"properties": {"consumedAt": {"type": "string"}, "receiptDigest": {"type": "string"}}}
+            }
+          ],
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "status": {
+      "type": "object",
+      "required": ["phase"],
+      "properties": {
+        "phase": {"enum": ["AUTHORIZED_SOURCE_ONLY", "CONSUMED", "EXPIRED", "REVOKED"]}
+      },
+      "additionalProperties": false
+    }
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"status": {"properties": {"phase": {"const": "AUTHORIZED_SOURCE_ONLY"}}, "required": ["phase"]}}, "required": ["status"]},
+      "then": {"properties": {"spec": {"properties": {"consumption": {"properties": {"state": {"const": "UNUSED"}}}}}}}
+    },
+    {
+      "if": {"properties": {"status": {"properties": {"phase": {"const": "CONSUMED"}}, "required": ["phase"]}}, "required": ["status"]},
+      "then": {"properties": {"spec": {"properties": {"consumption": {"properties": {"state": {"const": "CONSUMED"}}}}}}}
+    }
+  ],
+  "additionalProperties": false
+}
