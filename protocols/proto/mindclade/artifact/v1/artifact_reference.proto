@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package mindclade.artifact.v1;
 
-option go_package = "github.com/mindclade/mindclade/protocols/generated/go/mindclade/artifact/v1;artifactv1";
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/artifact/v1;artifactv1";
 
 // Immutable content-addressed artifact identity. digest uses sha256:<64 lowercase hex>.
 message ArtifactRef {

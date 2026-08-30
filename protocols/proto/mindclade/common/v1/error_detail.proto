@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package mindclade.common.v1;
 
-option go_package = "github.com/mindclade/mindclade/protocols/generated/go/mindclade/common/v1;commonv1";
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/common/v1;commonv1";
 
 // Structured, non-secret failure detail for durable command results.
 message ErrorDetail {

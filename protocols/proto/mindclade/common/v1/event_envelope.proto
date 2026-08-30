@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package mindclade.common.v1;
 
-option go_package = "github.com/mindclade/mindclade/protocols/generated/go/mindclade/common/v1;commonv1";
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/common/v1;commonv1";
 
 // Envelope that makes at-least-once event delivery idempotent and traceable.
 message EventEnvelope {

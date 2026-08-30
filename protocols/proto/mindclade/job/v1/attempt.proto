@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package mindclade.job.v1;
 
-option go_package = "github.com/mindclade/mindclade/protocols/generated/go/mindclade/job/v1;jobv1";
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/job/v1;jobv1";
 
 // Fenced lease-bound execution try. Only the current epoch may commit.
 message Attempt {

@@ -5,7 +5,7 @@ package mindclade.artifact.v1;
 import "proto/mindclade/common/v1/command_context.proto";
 import "proto/mindclade/artifact/v1/artifact_reference.proto";
 
-option go_package = "github.com/mindclade/mindclade/protocols/generated/go/mindclade/artifact/v1;artifactv1";
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/artifact/v1;artifactv1";
 
 // Request to atomically publish verified immutable artifact metadata.
 message CommitArtifactCommand {

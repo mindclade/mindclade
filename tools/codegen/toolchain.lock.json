@@ -1,1 +1,49 @@
-{"generator":"mindclade-contract-codegen","languages":["go","python","rust","typescript"],"schema_version":"mindclade.codegen-toolchain/v1","version":"1.0.0"}
+{
+  "domain_language_matrix": {
+    "mindclade.artifact.v1": ["go", "python", "rust", "typescript"],
+    "mindclade.common.v1": ["go", "python", "rust", "typescript"],
+    "mindclade.events.artifact.v1": ["go", "python", "rust", "typescript"],
+    "mindclade.events.audit.v1": ["go", "python", "rust", "typescript"],
+    "mindclade.events.inference.v1": ["go", "python"],
+    "mindclade.events.job.v1": ["go", "python", "rust", "typescript"],
+    "mindclade.inference.v1": ["go", "python"],
+    "mindclade.job.v1": ["go", "python", "rust", "typescript"]
+  },
+  "generator": "mindclade-contract-codegen",
+  "schema_version": "mindclade.codegen-toolchain/v2",
+  "tools": {
+    "buf": {
+      "authority": "flake.lock:nixpkgs",
+      "version": "1.71.0",
+      "version_output": "1.71.0"
+    },
+    "protoc": {
+      "authority": "flake.lock:nixpkgs",
+      "version": "36.0",
+      "version_output": "libprotoc 36.0"
+    },
+    "protoc-gen-es": {
+      "authority": "pnpm-lock.yaml",
+      "integrity": "sha512-VzQuwEQDXipbZ1soWUuAWm1Z0C3B/IDWGeysnbX6ogJ6As91C2mdvAND/ekQ4YIWgen4d5nqLfIBOWLqCCjYUA==",
+      "version": "2.11.0",
+      "version_output": "protoc-gen-es v2.11.0"
+    },
+    "protoc-gen-go": {
+      "authority": "go.sum",
+      "checksum": "h1:pJOKDDOyeXErUroCihFAd5LQuwXBSpVnKGrj5o/fwxc=",
+      "version": "1.36.12",
+      "version_output": "protoc-gen-go v1.36.12"
+    },
+    "protoc-gen-python": {
+      "authority": "protoc builtin and uv.lock",
+      "runtime": "protobuf==7.36.0",
+      "version": "7.36.0"
+    },
+    "protoc-gen-rs": {
+      "authority": "Cargo.lock",
+      "package": "protobuf-codegen",
+      "version": "3.7.2"
+    }
+  },
+  "version": "2.0.0"
+}
