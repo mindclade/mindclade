@@ -49,6 +49,25 @@ ADR_RATIFICATION_MEDIA_TYPE = "application/vnd.mindclade.adr-connected-ratificat
 ADR_DECISION_CANONICALIZATION = "adr-decision-v1"
 ADR_RATIFICATION_SCHEMA = "connected-ratification.v1.schema.json"
 ADR_PENDING_RATIFICATION = "Pending independent review on protected infrastructure"
+FOUNDER_BOOTSTRAP_SCHEMA = "docs/governance/founder-bootstrap-exception.v1.schema.json"
+FOUNDER_BOOTSTRAP_RECORD = "docs/governance/exceptions/FBE-0001.yaml"
+FOUNDER_BOOTSTRAP_EXPIRY = date(2026, 9, 30)
+FOUNDER_BOOTSTRAP_ALLOWED_OPERATIONS = (
+    "create",
+    "adopt",
+    "protect",
+    "set-non-secret-variable",
+    "activate-foundation-identity",
+)
+FOUNDER_BOOTSTRAP_DENIED_OPERATIONS = (
+    "delete",
+    "replace",
+    "bypass",
+    "promote-production",
+    "export-secret",
+    "force-push",
+    "self-extend",
+)
 MAX_CLOCK_SKEW = timedelta(minutes=5)
 ORG_FIELDS = {
     "schema_version",
@@ -78,6 +97,7 @@ ADR_PATHS = (
     "0005-biological-identity-and-schema-evolution.md",
     "0006-durable-work-and-fencing.md",
     "0007-training-state-progress-and-checkpoint.md",
+    "0008-founder-bootstrap-public-estate-transition.md",
 )
 ADR_METADATA_FIELDS = {
     "status",
@@ -235,6 +255,159 @@ def _ratification_projection(entry: Mapping[str, str]) -> dict[str, str]:
     }
 
 
+def validate_founder_bootstrap_exception(root: Path) -> list[str]:
+    errors: list[str] = []
+    schema_path = root / FOUNDER_BOOTSTRAP_SCHEMA
+    record_path = root / FOUNDER_BOOTSTRAP_RECORD
+    try:
+        schema_value = json.loads(schema_path.read_text(encoding="utf-8"))
+        record_value = json.loads(record_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as error:
+        return [f"cannot read founder bootstrap contract: {error}"]
+    if not isinstance(schema_value, dict) or not isinstance(record_value, dict):
+        return ["founder bootstrap schema and record roots must be objects"]
+    schema = cast(dict[str, object], schema_value)
+    record = cast(dict[str, object], record_value)
+    try:
+        Draft202012Validator.check_schema(schema)
+    except SchemaError as error:
+        return [f"founder bootstrap schema is invalid: {error.message}"]
+    if schema.get("additionalProperties") is not False:
+        errors.append("founder bootstrap schema must reject additional properties")
+    validator = cast(_Validator, Draft202012Validator(schema))
+    schema_errors = sorted(
+        validator.iter_errors(record),
+        key=lambda error: tuple(str(part) for part in error.absolute_path),
+    )
+    for error in schema_errors:
+        location = "/".join(str(part) for part in error.absolute_path) or "<root>"
+        errors.append(f"FBE-0001 schema validation at {location}: {error.message}")
+    if schema_errors:
+        return errors
+
+    metadata = cast(dict[str, object], record["metadata"])
+    spec = cast(dict[str, object], record["spec"])
+    authority = cast(dict[str, object], spec["authority"])
+    profile = cast(dict[str, object], spec["profile"])
+    scope = cast(dict[str, object], spec["scope"])
+    lifecycle = cast(dict[str, object], spec["lifecycle"])
+    permissions = cast(dict[str, object], spec["permissions"])
+    guards = cast(dict[str, object], spec["guards"])
+    initial_publication = cast(dict[str, object], spec["initialPublication"])
+    consumption = cast(dict[str, object], spec["consumption"])
+    status = cast(dict[str, object], record["status"])
+
+    immutable_contract = {
+        "metadata": metadata,
+        "authority": authority,
+        "profile": profile,
+        "scope": scope,
+        "lifecycle": lifecycle,
+        "allow": permissions["allow"],
+        "deny": permissions["deny"],
+        "guards": guards,
+        "initialPublication": {
+            "target": initial_publication["target"],
+            "actor": initial_publication["actor"],
+            "maxUses": initial_publication["maxUses"],
+            "guards": initial_publication["guards"],
+        },
+        "consumptionAuthority": consumption["authority"],
+    }
+    expected_contract = {
+        "metadata": {
+            "id": "FBE-0001",
+            "name": "founder-bootstrap-public-estate-transition",
+            "createdOn": "2026-08-30",
+            "expiresOn": "2026-09-30",
+        },
+        "authority": {
+            "adr": "ADR-0008",
+            "grantedBy": "founder",
+            "owners": ["architecture", "security"],
+            "independentReviewRequired": True,
+            "connectedQualificationRequired": True,
+            "selfExtensionAllowed": False,
+        },
+        "profile": {
+            "repository": "mindclade/mindclade",
+            "visibility": "public",
+            "githubPlan": "free",
+            "controlPlane": "repository-level",
+            "defaultBranch": "main",
+            "privilegedWorkflow": "github-config/.github/workflows/protected-apply.yml",
+        },
+        "scope": {"sourceWave": "1", "sourceOnly": True, "productionAuthority": False},
+        "lifecycle": {
+            "from": "BLOCKED",
+            "through": "FOUNDER_BOOTSTRAPPED",
+            "to": "CONNECTED_QUALIFIED",
+        },
+        "allow": list(FOUNDER_BOOTSTRAP_ALLOWED_OPERATIONS),
+        "deny": list(FOUNDER_BOOTSTRAP_DENIED_OPERATIONS),
+        "guards": {
+            "singleUse": True,
+            "failClosed": True,
+            "maxUses": 1,
+            "exactRevisionRequired": True,
+            "noBypass": True,
+            "twoApprovalsAfterProtection": True,
+            "nonSecretVariablesOnly": True,
+        },
+        "initialPublication": {
+            "target": {
+                "repository": "mindclade/github-config",
+                "branch": "main",
+                "workflowPath": ".github/workflows/protected-apply.yml",
+                "workflowContentDigest": "sha256:d9109bd4227557cb98a032cfaaa4748744ec8c280733f4f13400da340f1c8de9",
+            },
+            "actor": {"githubLogin": "mindclade-founder"},
+            "maxUses": 1,
+            "guards": {
+                "pullRequestMergeRequired": True,
+                "directMainPushAllowed": False,
+                "branchProtectionWaiverAllowed": False,
+                "independentReviewClaimAllowed": False,
+                "productionAuthority": False,
+            },
+        },
+        "consumptionAuthority": "protected-connected-receipt",
+    }
+    if immutable_contract != expected_contract:
+        errors.append("FBE-0001 immutable authority, scope, permissions, or guards drifted")
+
+    phase = status["phase"]
+    if phase == "AUTHORIZED_SOURCE_ONLY" and FOUNDER_BOOTSTRAP_EXPIRY < date.today():
+        errors.append("FBE-0001 source authorization is expired")
+    initial_publication_state = initial_publication["state"]
+    initial_publication_receipt = cast(dict[str, object], initial_publication["receipt"])
+    if initial_publication_state == "PUBLISHED":
+        receipt_digest = initial_publication_receipt["digest"]
+        published_at = initial_publication_receipt["publishedAt"]
+        pull_request = initial_publication_receipt["pullRequest"]
+        pull_request_number = initial_publication_receipt["pullRequestNumber"]
+        if not isinstance(receipt_digest, str) or not DIGEST_PATTERN.fullmatch(receipt_digest):
+            errors.append("FBE-0001 initial publication requires an immutable receipt digest")
+        if not isinstance(published_at, str) or not published_at.endswith("Z"):
+            errors.append("FBE-0001 initial publication requires a canonical UTC timestamp")
+        if (
+            not isinstance(pull_request, str)
+            or not isinstance(pull_request_number, int)
+            or pull_request != f"https://github.com/mindclade/github-config/pull/{pull_request_number}"
+        ):
+            errors.append("FBE-0001 initial publication receipt must bind its canonical pull-request URL and number")
+    if phase == "CONSUMED" and initial_publication_state != "PUBLISHED":
+        errors.append("FBE-0001 cannot be consumed before its initial workflow publication")
+    if phase == "CONSUMED":
+        receipt_digest = consumption["receiptDigest"]
+        consumed_at = consumption["consumedAt"]
+        if not isinstance(receipt_digest, str) or not DIGEST_PATTERN.fullmatch(receipt_digest):
+            errors.append("FBE-0001 consumed state requires an immutable receipt digest")
+        if not isinstance(consumed_at, str) or not consumed_at.endswith("Z"):
+            errors.append("FBE-0001 consumed state requires a canonical UTC timestamp")
+    return errors
+
+
 def validate_adrs(root: Path) -> list[str]:
     errors: list[str] = []
     adr_root = root / "docs/adr"
@@ -243,13 +416,14 @@ def validate_adrs(root: Path) -> list[str]:
     except ValueError as error:
         return [str(error)]
     ratification_validator = cast(_Validator, Draft202012Validator(ratification_schema))
+    errors.extend(validate_founder_bootstrap_exception(root))
     actual_paths = sorted(path.name for path in adr_root.glob("*.md"))
     if actual_paths != list(ADR_PATHS):
-        errors.append("ADR file set does not match the exact seven Section-14 decisions")
+        errors.append("ADR file set does not match the exact eight Section-14 decisions")
     index_entries = _parse_adr_index(adr_root / "index.yaml")
     index_by_id = {entry.get("id", ""): entry for entry in index_entries}
     if len(index_entries) != len(index_by_id) or len(index_entries) != len(ADR_PATHS):
-        errors.append("ADR index must contain exactly seven unique decision IDs")
+        errors.append("ADR index must contain exactly eight unique decision IDs")
 
     discovered_ids: set[str] = set()
     supersession_edges: dict[str, str] = {}

@@ -2,7 +2,7 @@ apiVersion: mindclade.dev/v1
 kind: Component
 metadata:
   name: mindclade
-  description: Canonical private monorepo for Mindclade product source, contracts, and immutable build artifacts.
+  description: Canonical public product-source monorepo for Mindclade contracts and immutable build inputs.
   annotations:
     github.com/project-slug: mindclade/mindclade
     mindclade.dev/module-identity: github.com/mindclade/mindclade
@@ -15,9 +15,9 @@ spec:
   security_reviewers:
     - security
   repository_class: application-source
-  trust_tier: trusted-source
+  trust_tier: founder-bootstrap-source
   recovery_tier: tier-0
-  data_classification: internal
+  data_classification: public
   production_authority: false
   dependencies: []
   provides:
@@ -33,7 +33,9 @@ spec:
   activation:
     source_ready:
       description: Wave 0 source, ownership, build, and evidence checks pass at an exact protected revision.
+    founder_bootstrap:
+      description: ADR-0008 and FBE-0001 permit Wave 1 source work only; connected and production authority remain false.
     connected:
-      description: Enterprise branch protection, independent review, trusted Buildkite, signing, and recovery evidence are verified at that revision.
+      description: Repository-level branch protection, independent review, trusted Buildkite, signing, and recovery evidence are verified at that revision.
 status:
-  readiness: WAVE-0
+  readiness: FOUNDER_BOOTSTRAPPED

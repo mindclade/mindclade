@@ -28,9 +28,9 @@ BLUEPRINT_SHA256 = "d099074e755168bbdce076d50918bf06aff677f9e5d620fdfe53cb7cef74
 ANCHOR_COMMIT = "292b71f47b1b29cc9ba7cf760a9bd07cd5e0ffa7"
 AUTHORITY_FILE_COUNT = 2461
 AUTHORITY_DIRECTORY_COUNT = 787
-CANONICAL_FILE_COUNT = 2484
+CANONICAL_FILE_COUNT = 2487
 AUTHORITY_PATH_SET_SHA256 = "f2011dd32ccc19649e6abb70ffb4473aea4a224410062d40292222e2e6263692"
-CANONICAL_PATH_SET_SHA256 = "f6909661ea3098c4390934753f848ed68be1c52b9f84a968965587443fdfdbbb"
+CANONICAL_PATH_SET_SHA256 = "394b25cd54363260f70afa96eee5351f6add7ce4079780efe8cee0dba265200b"
 
 ADR_REPLACEMENTS = {
     "docs/adr/0001-repository-identity.md": "docs/adr/0001-repository-identity-and-ownership.md",
@@ -47,6 +47,14 @@ ADR_REPLACEMENTS = {
 # Sections 14 and 15 require these machine interfaces even though the supplied A6
 # rendering omitted them. These lists are intentionally closed and machine tested.
 CONNECTED_RATIFICATION_SCHEMA = "docs/adr/connected-ratification.v1.schema.json"
+FOUNDER_BOOTSTRAP_ADR = "docs/adr/0008-founder-bootstrap-public-estate-transition.md"
+FOUNDER_BOOTSTRAP_SCHEMA = "docs/governance/founder-bootstrap-exception.v1.schema.json"
+FOUNDER_BOOTSTRAP_RECORD = "docs/governance/exceptions/FBE-0001.yaml"
+FOUNDER_BOOTSTRAP_GOVERNANCE_ADDITIONS = (
+    FOUNDER_BOOTSTRAP_ADR,
+    FOUNDER_BOOTSTRAP_SCHEMA,
+    FOUNDER_BOOTSTRAP_RECORD,
+)
 
 WAVE_ZERO_REQUIRED_ADDITIONS = (
     "docs/architecture/blueprint/provenance/MINDCLADE_MONOREPO_BLUEPRINT_v3.4.0_OPTIMIZED.md",
@@ -58,7 +66,10 @@ WAVE_ZERO_REQUIRED_ADDITIONS = (
     "tools/repo/tests/test_monorepo_tree_authority.py",
     "tools/repo/tests/test_repository_policies.py",
     "tools/repo/tests/golden/repository_drift.v1.json",
+    FOUNDER_BOOTSTRAP_ADR,
     CONNECTED_RATIFICATION_SCHEMA,
+    FOUNDER_BOOTSTRAP_SCHEMA,
+    FOUNDER_BOOTSTRAP_RECORD,
 )
 
 WAVE_ONE_DURABILITY_ADDITIONS = (
@@ -303,7 +314,7 @@ def extract_authority_paths(markdown: str) -> list[str]:
 
 
 def reconcile_authority_paths(source_paths: Sequence[str]) -> list[str]:
-    """Apply the closed v3.4.2 reconciliation while retaining display order."""
+    """Apply the closed v3.4.3 reconciliation while retaining display order."""
 
     source_set = set(source_paths)
     missing = set(ADR_REPLACEMENTS) - source_set
@@ -371,7 +382,7 @@ def infer_owner(path: str) -> str:
         return "platform-operations"
     if path == "docs/adr/0005-biological-identity-and-schema-evolution.md":
         return "computational-biology"
-    if path.startswith(("docs/architecture/", "docs/adr/")):
+    if path.startswith(("docs/architecture/", "docs/adr/", "docs/governance/")):
         return "architecture"
     if path.startswith("workers/"):
         worker = PurePosixPath(path).parts[1]
@@ -1237,6 +1248,11 @@ def _reconciliation_addition_reason(path: str) -> str:
             "Required Wave 0 schema for machine-verifiable connected ADR ratification; "
             "declared active before its separately reviewed implementation."
         )
+    if path in FOUNDER_BOOTSTRAP_GOVERNANCE_ADDITIONS:
+        return (
+            "Required Wave 0 governance source for the bounded founder bootstrap and public-estate "
+            "transition authorized by ADR-0008."
+        )
     if path in GENERATED_PACKAGE_AUTHORITY_ADDITIONS:
         return (
             "Required Wave 1 native generated-binding package authority omitted by A6; "
@@ -1311,7 +1327,7 @@ def build_manifest(authority_path: Path, blueprint_path: Path) -> dict[str, Any]
                 "original_paths": source_paths,
             },
             "reconciliation": {
-                "version": "3.4.2",
+                "version": "3.4.3",
                 "remove_paths": list(ADR_REPLACEMENTS),
                 "additions": additions,
                 "canonical_file_count": len(canonical_paths),
@@ -1387,7 +1403,7 @@ def validate_manifest(manifest: Mapping[str, Any]) -> list[str]:
     if list(removes) != list(ADR_REPLACEMENTS):
         errors.append("reconciliation removal list is not the closed ADR replacement set")
     if set(addition_paths) != expected_additions or len(addition_paths) != len(expected_additions):
-        errors.append("reconciliation additions are not the closed v3.4.2 set")
+        errors.append("reconciliation additions are not the closed v3.4.3 set")
     replacement_map = {
         str(item.get("replaces")): str(item.get("path"))
         for item in additions
@@ -1462,7 +1478,7 @@ def validate_manifest(manifest: Mapping[str, Any]) -> list[str]:
     ):
         errors.append("canonical_file_count does not match path entries")
     if reconciliation.get("canonical_path_set_sha256") != CANONICAL_PATH_SET_SHA256:
-        errors.append("canonical path-set digest is not the approved v3.4.2 digest")
+        errors.append("canonical path-set digest is not the approved v3.4.3 digest")
     if reconciliation.get("canonical_path_set_sha256") != path_set_sha256(entry_paths):
         errors.append("canonical path-set checksum mismatch")
     return errors

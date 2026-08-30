@@ -3266,6 +3266,7 @@ mindclade/
 │   │   ├── 0006-durable-work-and-fencing.md
 │   │   ├── 0007-training-state-progress-and-checkpoint.md
 │   │   ├── index.yaml
+│   │   ├── 0008-founder-bootstrap-public-estate-transition.md
 │   │   └── connected-ratification.v1.schema.json
 │   ├── domains/
 │   │   ├── bio.md
@@ -3319,7 +3320,11 @@ mindclade/
 │   │   ├── README.md
 │   │   └── dataset-card.schema.json
 │   ├── BUILD.bazel
-│   └── README.md
+│   ├── README.md
+│   └── governance/
+│       ├── founder-bootstrap-exception.v1.schema.json
+│       └── exceptions/
+│           └── FBE-0001.yaml
 ├── examples/
 │   ├── sdk/
 │   │   ├── submit_operation.py

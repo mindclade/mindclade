@@ -1,6 +1,6 @@
 ## 14. ADR index and decision log
 
-The blueprint accepts all decisions recorded in this section, but Wave 0 creates only seven standalone ADRs: the decisions that are expensive to reverse after implementation begins. Version 3.4.2 binds their canonical filenames below. Repository validation proves file presence and metadata; independent review and protected-branch evidence determine acceptance and are never inferred from this index.
+The blueprint accepts all decisions recorded in this section, but Wave 0 creates only eight standalone ADRs: the seven decisions that are expensive to reverse after implementation begins plus the bounded founder bootstrap required to establish the public estate. Version 3.4.3 binds their canonical filenames below. Repository validation proves file presence and metadata; independent review and protected-branch evidence determine connected acceptance and are never inferred from this index.
 
 ### 14.1 Wave 0 foundational ADRs
 
@@ -13,10 +13,11 @@ The blueprint accepts all decisions recorded in this section, but Wave 0 creates
 | ADR-0005 | Canonical biological entity/sample identity, source-faithful parsing versus normalization, schema evolution, and lineage-preserving migration | parser-specific identity, mutable biological meaning, file paths as durable identity | `docs/adr/0005-biological-identity-and-schema-evolution.md` |
 | ADR-0006 | `Operation`/`Job`/`Run`/`Attempt` semantics, transactional idempotency/audit/outbox, at-least-once delivery, inbox deduplication, lease fencing, and reconciliation | queue/Kubernetes as business truth, exactly-once claims, worker database mutation | `docs/adr/0006-durable-work-and-fencing.md` |
 | ADR-0007 | Mindclade-owned training logical state, committed update/data progress, snapshot epochs, prepare/write/verify/commit checkpointing, and recovery guarantees | provider-native state/checkpoint authority, best-effort rank saves, ambiguous progress replay | `docs/adr/0007-training-state-progress-and-checkpoint.md` |
+| ADR-0008 | Public GitHub Free repository-level founder bootstrap, `github-config` repo-local protected-apply exception, and `BLOCKED` -> `FOUNDER_BOOTSTRAPPED` -> `CONNECTED_QUALIFIED` lifecycle | self-ratifying founder approval, broad administration, a second monorepo bootstrap workflow, private/enterprise-only bootstrap dependency, connected or production claims without evidence | `docs/adr/0008-founder-bootstrap-public-estate-transition.md` |
 
-These seven files MAY consolidate several related design consequences, but each MUST remain reviewable as one invariant cluster. Wave 0 does not create empty ADR shells for later systems.
+These eight files MAY consolidate several related design consequences, but each MUST remain reviewable as one invariant cluster. Wave 0 does not create empty ADR shells for later systems.
 
-Version 3.4.2 also declares `docs/adr/connected-ratification.v1.schema.json` as the active Wave 0 machine contract for connected ratification evidence. This manifest-first precursor does not create that file: source readiness remains `INCONCLUSIVE` until the schema, its build/test coverage, and independently reviewed evidence land together. The schema supports the seven foundational ADRs and does not create an eighth ADR.
+Version 3.4.3 declares `docs/adr/connected-ratification.v1.schema.json` as the active Wave 0 machine contract for all eight ADR connected-ratification states. It also declares `docs/governance/founder-bootstrap-exception.v1.schema.json` and `docs/governance/exceptions/FBE-0001.yaml` as the closed, expiring source authority for the founder transition. FBE-0001 contains a separate, one-time initial-publication contract for the exact `github-config` workflow artifact: it is bound to `main`, its canonical SHA-256 content digest, actor, immutable pull-request receipt containing the observed merge SHA, and `UNPUBLISHED`/`PUBLISHED` state, prohibits a direct default-branch push or a protection waiver, and cannot claim independent review. These sources establish `FOUNDER_BOOTSTRAPPED`; they do not create a connected ratification receipt or satisfy independent review.
 
 ### 14.2 Just-in-time decision register
 
@@ -44,7 +45,7 @@ An ADR states context, decision, alternatives, consequences, affected invariants
 
 ### 14.4 Assumptions carried by this revision
 
-- The canonical implementation will be a private monorepo with protected CI and artifact infrastructure.
+- The canonical implementation is a public product-source monorepo under the GitHub Free repository-level founder-bootstrap profile; protected CI and artifact infrastructure still require connected qualification.
 - GCP/GKE is the first production environment, while on-premises is a required extension profile after the first verticals are stable.
 - PostgreSQL-compatible transactional semantics and a strongly consistent CAS-finalization path are available.
 - Python and TypeScript are the only public SDK commitments in the initial program.

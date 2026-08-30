@@ -1,7 +1,7 @@
 # Architecture blueprint sources
 
 The ordered files in `manifest.yaml` are the editable authority for MC-ARCH-001
-v3.4.2. The manifest uses JSON syntax, which is valid YAML 1.2, so the
+v3.4.3. The manifest uses JSON syntax, which is valid YAML 1.2, so the
 renderer has deterministic parsing and the validator can enforce its committed
 JSON Schema through the locked `jsonschema` dependency. Edit a section or
 appendix source, regenerate the combined document, and commit both changes.
@@ -19,17 +19,18 @@ database; `tools/repo/render_repository_tree.py` replaces the region bounded
 by the `repository-path-manifest` markers before the full blueprint is
 rendered.
 
-## Provenance and v3.4.2 reconciliation
+## Provenance and v3.4.3 reconciliation
 
 `provenance/MINDCLADE_MONOREPO_BLUEPRINT_v3.4.0_OPTIMIZED.md` and
 `provenance/MONOREPO_TREE.md` are byte-preserved inputs. Their SHA-256 digests
 are fixed in `manifest.yaml` and checked on every validation run. They are
 evidence, not editable or competing authorities.
 
-Version 3.4.2 applies the document's own precedence rules:
+Version 3.4.3 applies the document's own precedence rules:
 
-- Section 14's seven long ADR filenames replace the short filenames embedded
-  in the supplied tree.
+- Section 14's seven original long ADR filenames replace the short filenames
+  embedded in the supplied tree, and ADR-0008 records the bounded founder
+  bootstrap and public-estate transition.
 - The sole repository-path manifest adds the mandatory Bazel workspace lock
   plus Wave 0 schema, test, golden, blueprint-source, and provenance paths
   omitted by the supplied tree.
@@ -38,9 +39,12 @@ Version 3.4.2 applies the document's own precedence rules:
   five native package authorities for generated bindings. All 386 Wave 1 paths
   remain `target` and absent until implementation, targets, tests, and evidence
   are delivered together.
-- The connected-ratification schema is declared as an active Wave 0 requirement.
-  Its missing source is reported explicitly; this precursor does not claim the
-  schema or connected ratification is implemented.
+- The connected-ratification schema, `FounderBootstrapException/v1` schema,
+  and FBE-0001 source record are active Wave 0 governance contracts. Their
+  presence does not claim that connected ratification has occurred.
+- The 2,487-path manifest permits Wave 1 source work in
+  `FOUNDER_BOOTSTRAPPED` state while keeping `production_authority: false`;
+  independent connected evidence remains required for `CONNECTED_QUALIFIED`.
 - The canonical remote and Go module are lowercase
   `github.com/mindclade/mindclade`.
 - Owner-selected deployment inputs are development/staging/production,

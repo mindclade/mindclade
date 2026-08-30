@@ -34,7 +34,7 @@
           "type": "object",
           "required": ["version", "remove_paths", "additions", "canonical_file_count", "canonical_path_set_sha256"],
           "properties": {
-            "version": {"const": "3.4.2"},
+            "version": {"const": "3.4.3"},
             "remove_paths": {"type": "array", "items": {"$ref": "#/$defs/path"}, "uniqueItems": true},
             "additions": {"type": "array", "items": {"$ref": "#/$defs/addition"}},
             "canonical_file_count": {"type": "integer", "minimum": 1},

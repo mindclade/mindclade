@@ -28,7 +28,7 @@ class RenderArchitectureBlueprintTest(unittest.TestCase):
 
     def test_render_has_canonical_document_control_and_identity(self) -> None:
         rendered = render_blueprint(self.manifest_path)
-        self.assertIn("| Version | `3.4.2` |", rendered)
+        self.assertIn("| Version | `3.4.3` |", rendered)
         self.assertIn("| Effective date | 2026-08-30 |", rendered)
         self.assertIn("github.com/mindclade/mindclade", rendered)
         self.assertNotIn("github.com/Mindclade/mindclade", rendered)

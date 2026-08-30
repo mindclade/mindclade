@@ -3,16 +3,16 @@
 | Document control | Value |
 |---|---|
 | Document ID | `MC-ARCH-001` |
-| Version | `3.4.2` |
-| Status | Authoritative approved architecture; Wave 0 source implementation and connected qualification pending |
-| Scope | Mindclade internal product, platform, biological-agent, data, model, training, evaluation, inference, development-kit, and developer-tooling source |
+| Version | `3.4.3` |
+| Status | Authoritative approved architecture; founder-bootstrap source governance active and connected qualification pending |
+| Scope | Mindclade public product-source monorepo plus platform, biological-agent, data, model, training, evaluation, inference, development-kit, and developer-tooling contracts |
 | Audience | Founding engineers, ML researchers, computational biologists, platform engineers, security, safety, operations, product engineering, and technical leadership |
 | Effective date | 2026-08-30 |
-| Supersedes | MC-ARCH-001 version 3.4.0 |
+| Supersedes | MC-ARCH-001 version 3.4.2 |
 | Review cadence | Quarterly and on any constitutional trigger in Appendices A34.16, A34.17, or A35.20 |
-| Repository evidence reviewed | Greenfield canonical repository and five operational source repositories inspected on 2026-08-30; connected-state and implementation qualification remain pending |
+| Repository evidence reviewed | Greenfield canonical repository and five operational source repositories inspected on 2026-08-30; public GitHub Free repository-level founder bootstrap is authorized in source only, while connected-state and implementation qualification remain pending |
 
-> **Authority note:** Version 3.4.2 is the single design authority. Sections 1–18 contain the reconciled implementation contract. Appendices A1–A40 provide normative domain detail. The editable architecture sources are the ordered files declared by docs/architecture/blueprint/manifest.yaml; the combined blueprint is their deterministic full render. docs/architecture/repository-path-manifest.yaml is the sole machine-readable repository-path authority, and Appendix A6 is its generated, human-reviewable explicit tree. Any source/render/manifest mismatch fails architecture validation. When wording conflicts, the architecture constitution, Sections 1–18, and an explicitly superseding ADR take precedence in that order. A target tree or planned wave is future state until direct repository and qualification evidence proves implementation.
+> **Authority note:** Version 3.4.3 is the single design authority. Sections 1–18 contain the reconciled implementation contract. Appendices A1–A40 provide normative domain detail. ADR-0008 and FBE-0001 authorize a bounded, expiring, single-use founder bootstrap and Wave 1 source work without granting production authority or connected qualification. The editable architecture sources are the ordered files declared by docs/architecture/blueprint/manifest.yaml; the combined blueprint is their deterministic full render. docs/architecture/repository-path-manifest.yaml is the sole machine-readable repository-path authority, and Appendix A6 is its generated, human-reviewable explicit tree. Any source/render/manifest mismatch fails architecture validation. When wording conflicts, the architecture constitution, Sections 1–18, and an explicitly superseding ADR take precedence in that order. A target tree or planned wave is future state until direct repository and qualification evidence proves implementation.
 
 ## Contents
 
@@ -57,7 +57,7 @@ The monorepo defines four separate authorities that MUST never be conflated:
 | Immutable scientific and execution evidence | content-addressed object storage plus catalog metadata | signed manifests and digests |
 | Live environment desired state | separately protected GitOps/environment repositories | reconciled GKE and cloud resources |
 
-This document is an approved target architecture, not evidence that the target exists. Version 3.4.2 reconciles 2,484 canonical paths against the greenfield repository, its Wave 0 governance sources, and the five operational source repositories. The 386 Wave 1 paths remain target-only and absent, while the active `docs/adr/connected-ratification.v1.schema.json` requirement is intentionally reported missing until its implementation change. That source inspection establishes repository identity and an implementation starting point; it does not prove connected GitHub controls, signed CI evidence, later-wave capabilities, deployment, or production readiness. Those claims remain `INCONCLUSIVE` until their named executable gates pass.
+This document is an approved target architecture, not evidence that the target exists. Version 3.4.3 reconciles 2,487 canonical paths against the greenfield repository, its Wave 0 governance sources, and the five operational source repositories. The 386 Wave 1 paths remain target-only and absent. ADR-0008, `FounderBootstrapException/v1`, and FBE-0001 establish the `FOUNDER_BOOTSTRAPPED` source-only state for the public GitHub Free repository-level profile; `production_authority` remains `false`. That source authority does not prove connected GitHub controls, independent review, signed CI evidence, later-wave capabilities, deployment, or production readiness. Those claims remain `INCONCLUSIVE` until their named executable gates pass.
 
 ### 1.1 Finalization outcomes
 
@@ -127,7 +127,7 @@ An ADR cannot waive law or safety. Exact dependency versions belong in lockfiles
 
 ### 1.4 Production-readiness conclusion
 
-The architecture is implementation-ready for Wave 0. The system is not production-ready. Wave 0 MUST first bind these target decisions to the actual repository, produce the authoritative repository drift baseline, create machine-readable ownership and dependency metadata, establish contract/build baselines, and ratify the seven foundational ADRs in Section 14. Production use remains prohibited until the applicable wave gates and Section 16 acceptance evidence pass.
+The architecture is source-ready under the bounded founder-bootstrap exception. The system is not connected- or production-ready. Wave 0 MUST bind these target decisions to the actual repository, produce the authoritative repository drift baseline, create machine-readable ownership and dependency metadata, establish contract/build baselines, and independently ratify the eight foundational ADRs in Section 14 before `CONNECTED_QUALIFIED`. Production use remains prohibited until the applicable wave gates and Section 16 acceptance evidence pass.
 
 ---
 
@@ -1401,7 +1401,7 @@ Each supported package has domain-specific README content: purpose/non-purpose, 
 
 ## 14. ADR index and decision log
 
-The blueprint accepts all decisions recorded in this section, but Wave 0 creates only seven standalone ADRs: the decisions that are expensive to reverse after implementation begins. Version 3.4.2 binds their canonical filenames below. Repository validation proves file presence and metadata; independent review and protected-branch evidence determine acceptance and are never inferred from this index.
+The blueprint accepts all decisions recorded in this section, but Wave 0 creates only eight standalone ADRs: the seven decisions that are expensive to reverse after implementation begins plus the bounded founder bootstrap required to establish the public estate. Version 3.4.3 binds their canonical filenames below. Repository validation proves file presence and metadata; independent review and protected-branch evidence determine connected acceptance and are never inferred from this index.
 
 ### 14.1 Wave 0 foundational ADRs
 
@@ -1414,10 +1414,11 @@ The blueprint accepts all decisions recorded in this section, but Wave 0 creates
 | ADR-0005 | Canonical biological entity/sample identity, source-faithful parsing versus normalization, schema evolution, and lineage-preserving migration | parser-specific identity, mutable biological meaning, file paths as durable identity | `docs/adr/0005-biological-identity-and-schema-evolution.md` |
 | ADR-0006 | `Operation`/`Job`/`Run`/`Attempt` semantics, transactional idempotency/audit/outbox, at-least-once delivery, inbox deduplication, lease fencing, and reconciliation | queue/Kubernetes as business truth, exactly-once claims, worker database mutation | `docs/adr/0006-durable-work-and-fencing.md` |
 | ADR-0007 | Mindclade-owned training logical state, committed update/data progress, snapshot epochs, prepare/write/verify/commit checkpointing, and recovery guarantees | provider-native state/checkpoint authority, best-effort rank saves, ambiguous progress replay | `docs/adr/0007-training-state-progress-and-checkpoint.md` |
+| ADR-0008 | Public GitHub Free repository-level founder bootstrap, `github-config` repo-local protected-apply exception, and `BLOCKED` -> `FOUNDER_BOOTSTRAPPED` -> `CONNECTED_QUALIFIED` lifecycle | self-ratifying founder approval, broad administration, a second monorepo bootstrap workflow, private/enterprise-only bootstrap dependency, connected or production claims without evidence | `docs/adr/0008-founder-bootstrap-public-estate-transition.md` |
 
-These seven files MAY consolidate several related design consequences, but each MUST remain reviewable as one invariant cluster. Wave 0 does not create empty ADR shells for later systems.
+These eight files MAY consolidate several related design consequences, but each MUST remain reviewable as one invariant cluster. Wave 0 does not create empty ADR shells for later systems.
 
-Version 3.4.2 also declares `docs/adr/connected-ratification.v1.schema.json` as the active Wave 0 machine contract for connected ratification evidence. This manifest-first precursor does not create that file: source readiness remains `INCONCLUSIVE` until the schema, its build/test coverage, and independently reviewed evidence land together. The schema supports the seven foundational ADRs and does not create an eighth ADR.
+Version 3.4.3 declares `docs/adr/connected-ratification.v1.schema.json` as the active Wave 0 machine contract for all eight ADR connected-ratification states. It also declares `docs/governance/founder-bootstrap-exception.v1.schema.json` and `docs/governance/exceptions/FBE-0001.yaml` as the closed, expiring source authority for the founder transition. FBE-0001 contains a separate, one-time initial-publication contract for the exact `github-config` workflow artifact: it is bound to `main`, its canonical SHA-256 content digest, actor, immutable pull-request receipt containing the observed merge SHA, and `UNPUBLISHED`/`PUBLISHED` state, prohibits a direct default-branch push or a protection waiver, and cannot claim independent review. These sources establish `FOUNDER_BOOTSTRAPPED`; they do not create a connected ratification receipt or satisfy independent review.
 
 ### 14.2 Just-in-time decision register
 
@@ -1445,7 +1446,7 @@ An ADR states context, decision, alternatives, consequences, affected invariants
 
 ### 14.4 Assumptions carried by this revision
 
-- The canonical implementation will be a private monorepo with protected CI and artifact infrastructure.
+- The canonical implementation is a public product-source monorepo under the GitHub Free repository-level founder-bootstrap profile; protected CI and artifact infrastructure still require connected qualification.
 - GCP/GKE is the first production environment, while on-premises is a required extension profile after the first verticals are stable.
 - PostgreSQL-compatible transactional semantics and a strongly consistent CAS-finalization path are available.
 - Python and TypeScript are the only public SDK commitments in the initial program.
@@ -1461,7 +1462,7 @@ Section 15 is the sole authoritative dependency order. Appendix “milestones”
 
 ### 15.1 Wave 0 — Repository evidence and governance baseline
 
-**Objective and scope.** Establish the evidence baseline before moving code. Bind the target design to the canonical repository, freeze only the seven expensive-to-reverse decisions in Section 14.1, and make ownership/dependency/build policy executable.
+**Objective and scope.** Establish the evidence baseline before moving code. Bind the target design to the canonical repository, freeze the eight foundational decisions in Section 14.1, and make ownership/dependency/build policy executable.
 
 **Prerequisites.** The greenfield canonical repository and module identity are fixed as `github.com/mindclade/mindclade`; repository instructions and the five operational source repositories are present. Wave 0 records their exact immutable revisions before deriving evidence. No product implementation prerequisite exists.
 
@@ -1481,7 +1482,7 @@ compatibility shims, migrations, rollback, and owning wave
 
 The report records facts before proposing moves. It MUST NOT create missing target directories, rename imports, or classify planned capabilities as current implementation. Architecture owners approve the baseline; its migration backlog, not the target tree alone, determines subsequent changes.
 
-**Packages/files.** Root native workspace files and locks; `MODULE.bazel`, `BUILD.bazel`, `.bazelrc`, Nix/devcontainer files; `AGENTS.md`; `ARCHITECTURE.md`; `mindclade/.github/`; `CODEOWNERS`; `tools/repo/`, `tools/bazel/`, `tools/ci/`, `tools/generators/stub_catalog.yaml`; `tools/docs/`; `docs/architecture/repository-path-manifest.yaml`; `docs/architecture/blueprint/manifest.yaml` plus its section/appendix source files and generated full render; the seven `docs/adr/0001`–`0007` files in Section 14.1; package `component.yaml` schema; `CONTRIBUTING.md`; `SECURITY.md`. The estate inventory also resolves the organization `.github`, `github-config`, `bootstrap`, `infrastructure-live`, and `gitops` repositories against Appendix A3 without applying live changes.
+**Packages/files.** Root native workspace files and locks; `MODULE.bazel`, `BUILD.bazel`, `.bazelrc`, Nix/devcontainer files; `AGENTS.md`; `ARCHITECTURE.md`; `mindclade/.github/`; `CODEOWNERS`; `tools/repo/`, `tools/bazel/`, `tools/ci/`, `tools/generators/stub_catalog.yaml`; `tools/docs/`; `docs/architecture/repository-path-manifest.yaml`; `docs/architecture/blueprint/manifest.yaml` plus its section/appendix source files and generated full render; the eight `docs/adr/0001`–`0008` files in Section 14.1; `FounderBootstrapException/v1` and FBE-0001; package `component.yaml` schema; `CONTRIBUTING.md`; `SECURITY.md`. The estate inventory also resolves the organization `.github`, `github-config`, `bootstrap`, `infrastructure-live`, and `gitops` repositories against Appendix A3 without applying live changes.
 
 **Contracts stabilized.** Canonical repository/module identity; owner/component identity; dependency classes and visibility; artifact-digest vocabulary sufficient to identify evidence; readiness labels; approved top-level namespace. Domain protocols are not stabilized in Wave 0.
 
@@ -1491,13 +1492,15 @@ The report records facts before proposing moves. It MUST NOT create missing targ
 
 **Security/operations/migration.** Quarantine committed secrets and revoke credentials immediately; preserve unrelated work; record existing ownership before correcting it; use compatibility shims only when the drift report shows a real caller. CI reports report-diff, graph exceptions, owner gaps, build duration, flake, and cache behavior.
 
-**Exit gate.** The canonical commit and repository/module identity are fixed; the drift baseline is approved and reproducible; every populated component has a known owner or a time-bounded owner-assignment action; the actual graph has no unknown cycle; clean CPU CI passes; ADR-0001 through ADR-0007 exist or are explicitly superseded; every observed capability is evidence-labeled; repo-local and organization `.github` authority is disjoint; and every operational repository has a named owner, protected default branch, recovery tier, and observed-versus-target inventory. Wave 0 does **not** require the target tree migration, later ADRs, Kubernetes, SDKs, domain schemas, or cloud/GitOps apply. **Rollback:** revert enforcement independently while retaining the signed baseline and backlog. **Deferred:** all product/domain implementation and live estate mutation.
+**Exit gate.** The canonical commit and repository/module identity are fixed; the drift baseline is approved and reproducible; every populated component has a known owner or a time-bounded owner-assignment action; the actual graph has no unknown cycle; clean CPU CI passes; ADR-0001 through ADR-0008 exist or are explicitly superseded; every observed capability is evidence-labeled; repo-local and organization `.github` authority is disjoint; and every operational repository has a named owner, protected default branch, recovery tier, and observed-versus-target inventory. Wave 0 does **not** require the target tree migration, later ADRs, Kubernetes, SDKs, domain schemas, or cloud/GitOps apply. **Rollback:** revert enforcement independently while retaining the signed baseline and backlog. **Deferred:** all product/domain implementation and live estate mutation.
+
+The ordinary Wave 0 exit state is `CONNECTED_QUALIFIED`. ADR-0008 and an unexpired, unused FBE-0001 authorize the intermediate `FOUNDER_BOOTSTRAPPED` state solely to establish the public GitHub Free repository-level foundation and proceed with Wave 1 source work. This does not waive independent review or connected evidence, and `production_authority` remains `false`.
 
 ### 15.2 Wave 1 — Minimal contract and durability kernel
 
 **Objective.** Implement only the cross-system primitives required by both initial slices: identifiers/references, command/event envelopes, durable work identity, artifact/evidence references, idempotency/fencing, configuration resolution, and release manifest.
 
-**Prerequisites.** Wave 0 exit; module/remote identity and initial identity-provider choice resolved.
+**Prerequisites.** Wave 0 `CONNECTED_QUALIFIED`, or `FOUNDER_BOOTSTRAPPED` under the exact unexpired and unconsumed FBE-0001 source exception; module/remote identity and initial identity-provider choice resolved. The exception permits source implementation only and cannot satisfy a connected or production gate.
 
 **Packages/files.** Only the needed packages under `protocols/proto/mindclade/{common,artifact,job}/v1/`, `protocols/events/mindclade/{artifact,job,audit}/v1/`, `protocols/schemas/{artifact_manifest,evidence_manifest,release_manifest,configuration}/`, generated clients and compatibility baselines for those sources; foundational `libs/*/{identifiers,config,artifacts,observability,retry,testing}`; Go transaction/idempotency/audit/outbox/lease primitives; `tools/{codegen,release,qualification}`; initial migrations; local integration profile.
 
@@ -1509,7 +1512,7 @@ The report records facts before proposing moves. It MUST NOT create missing targ
 
 **Exit gate.** Every field in the minimal kernel has one authority and cross-language conformance; the proof survives injected process/queue/database/object failures without double transition or lost acknowledged command; artifact/evidence lineage reaches source/build; access/audit tests pass; no future-domain placeholder is generated. **Rollback:** expand-only schema and feature-disabled dispatcher. **Deferred:** all domain schemas and public API breadth.
 
-The v3.4.2 Wave 1 manifest closure contains 386 target-only paths. It reclassifies 36 existing control-plane durability and integration paths from Wave 2P, adds eight missing operation, audit, inbox, configuration-resolution, release-signing, and conformance paths, and adds five native package authorities required to compile reviewed-generated Go/Python/Rust/TypeScript bindings under native and Bazel authorities. Every Wave 1 entry remains absent and `target`; an incremental subset may be reviewed only as a coherent manifest-governed source patch and MUST NOT claim Wave 1 exit until all Wave 1 exit evidence passes. Wave 2P consumes this kernel rather than redefining it.
+The v3.4.3 Wave 1 manifest closure contains 386 target-only paths. It reclassifies 36 existing control-plane durability and integration paths from Wave 2P, adds eight missing operation, audit, inbox, configuration-resolution, release-signing, and conformance paths, and adds five native package authorities required to compile reviewed-generated Go/Python/Rust/TypeScript bindings under native and Bazel authorities. Every Wave 1 entry remains absent and `target`; an incremental subset may be reviewed only as a coherent manifest-governed source patch and MUST NOT claim Wave 1 exit until all Wave 1 exit evidence passes. `FOUNDER_BOOTSTRAPPED` authorizes this source work but no release, promotion, deployment, connected mutation outside FBE-0001, or production authority. Wave 2P consumes this kernel rather than redefining it.
 
 ### 15.3 Wave 2 — Two independent initial vertical slices
 
@@ -1697,9 +1700,9 @@ Feature/data-transform materialization uses the ordinary `Job`/`Run`/`Attempt`/f
 | CI/CD/SBOM/signing/provenance | Sections 7.15, 11 | A21–A23, A26 | trusted release verification / W1 | `TARGET` |
 | developer kits MCDK–MADK | Sections 4.3, 14 | A36 | assembly/conformance per wave | `TARGET` |
 | development workflow/documentation | Section 13 | A30 | fresh contributor and compiled docs / W0/W8 | `TARGET` |
-| repository-path and architecture-source generation | Sections 4, 13, 15.1 | A6, A21, A30 | path-manifest→A6 exact render, blueprint-manifest→combined-document exact render, populated-path/source inclusion and drift-negative fixtures / W0 | `INCONCLUSIVE`; v3.4.2 manifest reconciliation is complete, but the active connected-ratification schema source is intentionally pending |
+| repository-path and architecture-source generation | Sections 4, 13, 15.1 | A6, A21, A30 | path-manifest→A6 exact render, blueprint-manifest→combined-document exact render, populated-path/source inclusion and drift-negative fixtures / W0 | `FOUNDER_BOOTSTRAPPED`; v3.4.3 manifests and governance schemas are source-complete, while connected qualification remains pending |
 | one implementation sequence | Section 15 | appendix local milestones | wave exit evidence | `TARGET` |
-| seven foundational ADRs and just-in-time decisions | Section 14 | A31.13 | seven reviewed files / W0; decision-specific evidence before dependent wave | `INCONCLUSIVE`; seven source-complete ADRs exist, independent review pending |
+| eight foundational ADRs and just-in-time decisions | Section 14 | A31.13 | eight reviewed files / W0; decision-specific evidence before dependent wave | `FOUNDER_BOOTSTRAPPED`; eight source-complete ADRs exist, independent connected ratification pending |
 | independent initial scientific/platform slices | Sections 15.3–15.4 | A31.3–A31.5, A31.9, A31.12 | independent slice evidence plus one integration / W2S/W2P/W3 | `TARGET` |
 | exact first scientific workload | Section 15.3.1 | A31.3, A31.11 | SQP-001 owner approval and frozen qualification report / W2S | `TARGET`; owner approval pending |
 | narrow technology allowlist and measured intake | Sections 3.5, 15.6–15.7 | A14, A35.12 | active-dependency graph / W2–W5; bottleneck and JIT-06 / W6 | `TARGET` |
@@ -1743,7 +1746,7 @@ Failure of any applicable gate blocks promotion. Waivers are not permitted for c
 | Markdown structure, source inclusion, and fence balance | `PASS` — the locked source validator checks the manifest schema, ordered inclusion, headings, line endings, whitespace, placeholders, relative links, and balanced fences |
 | Heading and numbering integrity | `PASS` — section/appendix numbering is exact and the combined render has no duplicate generated or explicit anchors |
 | Table of contents and internal anchors | `PASS` — the table of contents is generated from the ordered manifest and every internal anchor target resolves |
-| Monorepo and operational repository trees | `INCONCLUSIVE` at specification/source level — Appendix A6 is generated from the sole corrected path manifest: 2,484 explicit files with canonical path-set SHA-256 `f6909661ea3098c4390934753f848ed68be1c52b9f84a968965587443fdfdbbb`. The preserved v3.4.0 tree is provenance, not a second path authority. The 199 populated paths have SHA-256 `f2e1b0715337ed27f478011c8fd00adb34aef3ee908b65f2631bded78700c964` with zero unknown or premature paths and one intentionally missing active connected-ratification schema |
+| Monorepo and operational repository trees | `FOUNDER_BOOTSTRAPPED` at source level — Appendix A6 is generated from the sole corrected path manifest: 2,487 explicit files with canonical path-set SHA-256 `394b25cd54363260f70afa96eee5351f6add7ce4079780efe8cee0dba265200b`. The preserved v3.4.0 tree is provenance, not a second path authority. Populated-path evidence is recomputed by source validation; this row does not infer live protection or connected qualification |
 | Stale planning markers and unsupported readiness claims | `PASS` — no actionable placeholders; readiness statements are conditional gates, not current-state claims |
 | Referenced top-level path vocabulary | `PASS` at document level — paths resolve to Section 4/A6, activation-gated paths, local relative paths, or named external repositories; populated target status is checked separately by the path-manifest validator |
 | Implementation or production readiness | `NOT CLAIMED` |
@@ -1771,6 +1774,7 @@ Failure of any applicable gate blocks promotion. Waivers are not permitted for c
 | Generated architecture/path drift | full tree or combined specification no longer reflects editable authorities | manifest-first editing, deterministic render, source inclusion checks, generated-diff presubmit and clean-checkout regeneration |
 | Toolchain appears hermetic only with a warm cache | a clean worker reaches undeclared external archives or fails offline | package the complete Bzlmod/PyPI archive closure in the Nix/store registry or distdir and qualify with empty caches plus denied egress |
 | Asserted operational evidence is mistaken for verified evidence | stale or fabricated PASS claims activate a protected phase | subject/revision-bound signed receipts, independently anchored trust roots, cryptographic verification, and fail-closed consumers; asserted observations remain non-qualifying |
+| Founder bootstrap exception expands or is replayed | a temporary source authorization becomes unreviewed administration or a false connected claim | closed FBE-0001 scope bound only to `github-config/.github/workflows/protected-apply.yml`; a separate one-time publication record binds the `github-config:main` branch, exact workflow SHA-256 content digest, actor, PR receipt with observed merge SHA, and `UNPUBLISHED`/`PUBLISHED` state; hard 2026-09-30 expiry, no direct-main push or protection waiver, and production authority fixed false |
 | Over-engineering deferred capabilities | critical path delay and unused abstractions | activation-gated paths, no empty scaffolds, two-consumer rule |
 | GCP coupling blocks on-prem | expensive rewrite | bounded environment ports and capability manifest, not pervasive abstraction |
 | Qualification cost grows without bounds | developer bypass or release delay | risk-tiered/affected tests, reusable evidence, scheduled full matrix, cost signals |
@@ -1794,7 +1798,7 @@ Deferred means absent from production source and dependency graphs, not hidden b
 
 ### 17.3 Genuine blockers requiring owner decisions
 
-1. **Connected Wave 0 governance and independent review.** Canonical identity is fixed as `github.com/mindclade/mindclade`, and the greenfield repository plus five explicitly pinned operational source revisions are available. Connected exit remains blocked until Enterprise Cloud protections, exact required checks, a cryptographically verified signed baseline, and an independent reviewer are active. The inspected `application-source` ruleset names `.github/workflows/pull-request.yml` while the canonical tree names `.github/workflows/required-check.yml`; the operational authority MUST reconcile to the canonical path before activation. The same ruleset has no bypass actor, organization policy prohibits one, and the current dispatch contract offers no reviewed candidate-definition lane, so a change to the protected CI enforcement closure cannot satisfy its own required check. Developer Platform and Security MUST establish an externally governed two-stage roll-forward or an immutable organization-owned candidate validator, MUST evidence that Buildkite executes the pinned definition revision rather than an untrusted source checkout, and MUST implement a subject/revision-bound ECDSA receipt verifier backed by independently approved trust roots before asserted source or connected-control observations can qualify. Developer Platform MUST also package and deny-egress qualify the complete cold-cache Bzlmod/PyPI archive closure before the clean CPU CI gate can pass. Temporary founder stewardship expires on 2026-09-30 and supplies ownership continuity, not independent authorization.
+1. **Connected Wave 0 governance and independent review.** Canonical identity is fixed as `github.com/mindclade/mindclade`, and source governance now selects the public GitHub Free repository-level profile. ADR-0008 and FBE-0001 establish `FOUNDER_BOOTSTRAPPED`, permit Wave 1 source work with `production_authority: false`, and authorize exactly one fail-closed execution of the existing `github-config/.github/workflows/protected-apply.yml` entry point under A3.10 before expiry on 2026-09-30; no monorepo bootstrap workflow is authorized. That execution may only create, adopt, protect, set a non-secret variable, and activate the foundation identity; it may not delete, replace, bypass, promote to production, export a secret, force-push, or extend itself. The desired `application-source` ruleset now names canonical `.github/workflows/required-check.yml`, but source reconciliation is not live-control evidence. `CONNECTED_QUALIFIED` remains blocked until repository protection and exact required checks are observed, a cryptographically verified signed baseline is bound to the protected revision, and an independent reviewer approves. The no-bypass/two-approval policy remains normal authority. Developer Platform and Security MUST still establish a reviewed candidate-definition lane, evidence that Buildkite executes the pinned definition revision rather than an untrusted source checkout, and verify subject/revision-bound ECDSA receipts against independently approved trust roots. Developer Platform MUST also package and deny-egress qualify the complete cold-cache Bzlmod/PyPI archive closure before clean CPU CI can satisfy the connected gate. Founder authorization is source authority only and cannot stand in for any of this evidence.
 2. **Data rights and biological-governance policy.** Legal, Data Governance, and Biological Safety owners MUST approve the source-use/license matrix, restricted-data classes, screening/escalation rules, retention/export controls, and release authority before Wave 2S acquires/publishes SQP-001 data or Wave 7 activates biological agents.
 3. **Production residency and continuity policy.** The initial environments are development, staging, and production, with `us-central1` primary and `us-east4` recovery. Security/Privacy and Platform owners MUST still approve residency partitions, cross-region replication classes, and whether each protected dataset may enter the recovery region before production data infrastructure is approved.
 4. **Scientific and launch hardware profile.** ML Systems and Finance/Operations MUST approve the SQP-001 one-H100/eight-H100 ceiling and exact driver/software envelope before Wave 2S, then name the reservation/capacity budget and representative distributed scale before Wave 5 qualification and SLO/cost gates.
@@ -2269,8 +2273,8 @@ The goals chapter is operationalized when:
     v
 github-config
     |
-    | GitHub Enterprise policy, teams, rulesets, repository settings,
-    | environments, Actions/OIDC governance
+    | GitHub Free public-repository policy, repository settings,
+    | branch protection, Actions/OIDC governance
     v
 +----------------------+----------------------+----------------------+
 | bootstrap            | infrastructure-live  | gitops               |
@@ -2284,7 +2288,7 @@ github-config
                       immutable artifact digests
                                   |
                                   v
-                      mindclade internal monorepo
+                      mindclade public source monorepo
 ```
 
 ### Repository ownership
@@ -2292,12 +2296,12 @@ github-config
 | Repository | Owns | Must not own |
 |---|---|---|
 | `.github` | Organization profile, community health files, shared workflow implementations and templates | Product code, cloud state, environment credentials |
-| `mindclade/.github/` | Monorepo-local GitHub metadata and thin reusable-workflow/Buildkite bridges | Shared workflow authority, organization settings, heavy builds, release or deployment |
-| `github-config` | Organization/repository governance, teams, rulesets, Actions policy, OIDC policy | Runtime services or Kubernetes application manifests |
+| `mindclade/.github/` | Monorepo-local GitHub metadata and thin reusable-workflow/Buildkite bridges | Organization settings, heavy builds, release, deployment, or privileged founder governance |
+| `github-config` | Desired organization/repository governance, teams, repository-level protection, Actions policy, OIDC policy, and the bounded FBE-0001 mode of its existing protected-apply workflow | Runtime services or Kubernetes application manifests; evidence that desired controls are live; privilege outside FBE-0001 or normal independently reviewed apply |
 | `bootstrap` | Minimum durable cloud trust, state, recovery, break-glass IAM | Normal application infrastructure |
 | `infrastructure-live` | Cloud projects/accounts, networks, clusters, storage, databases, registries, observability backends | Application source or model code |
 | `gitops` | Environment-specific Kubernetes desired state and promotion by immutable digest | Building application artifacts |
-| `mindclade` | Product, model, data, training, evaluation, inference, service, worker, SDK, and service-owned deployment source | Live cloud/environment desired state |
+| `mindclade` | Public product, model, data, training, evaluation, inference, service, worker, SDK, and service-owned deployment source | Secrets, protected data, live cloud/environment desired state, or production authority |
 | Public SDK repositories | Stable public SDKs only when external distribution requires independent lifecycle and visibility | Internal implementation details |
 
 ### Monorepo deployment boundary
@@ -2461,11 +2465,11 @@ Every path in the following trees has one of four meanings:
 | `# local output` | ignored plan/test output | never committed or used as authority |
 | `# JIT` | approved activation stub | create only at the named decision gate with a real consumer |
 
-“Stub” means the minimum reviewable first-PR surface named in these trees. It is not an empty directory or placeholder implementation. Each activated stub contains valid metadata, an executable validation/build target where applicable, an owner, tests for its contract, and no unfinished body marker. All five repositories use protected default branches, signed human or workload identity, `CODEOWNERS`, dependency pinning, secret scanning, immutable CI evidence, and a root `component.yaml` identifying owner, repository class, trust tier, recovery tier, and release behavior.
+“Stub” means the minimum reviewable first-PR surface named in these trees. It is not an empty directory or placeholder implementation. Each activated stub contains valid metadata, an executable validation/build target where applicable, an owner, tests for its contract, and no unfinished body marker. At `CONNECTED_QUALIFIED`, all five repositories use protected default branches, signed human or workload identity, `CODEOWNERS`, dependency pinning, secret scanning, immutable CI evidence, and a root `component.yaml` identifying owner, repository class, trust tier, recovery tier, and release behavior. `FOUNDER_BOOTSTRAPPED` is a source-only intermediate state and is not evidence that these connected controls are active.
 
 Common rules are:
 
-- repository-local `.github/workflows/` files are thin callers of pinned reusable workflows from the organization `.github` repository;
+- repository-local `.github/workflows/` files are thin callers of pinned reusable workflows from the organization `.github` repository; the only privileged founder exception is the exact single-use FBE-0001 mode of `github-config/.github/workflows/protected-apply.yml` under A3.10;
 - reusable workflows pin every third-party action by commit digest, set explicit permissions, reject untrusted secret access, and emit a typed evidence record;
 - plan and apply are separate identities; apply accepts the exact reviewed plan digest and protected revision only;
 - state backends use locking, encryption, versioning, retention, access logging, and independently tested recovery;
@@ -2473,9 +2477,23 @@ Common rules are:
 - all desired-state writes are pull requests; emergency mutation requires an audited break-glass event, bounded lease, and mandatory reconciliation PR;
 - compatibility is schema-versioned for cross-repository manifests; repository paths and provider object names are never public resource identity.
 
+#### Public GitHub Free founder-bootstrap profile
+
+The canonical `mindclade/mindclade` repository is public under GitHub Free and uses repository-level protection. Public visibility does not make the proprietary source license permissive and does not authorize secrets, protected biological data, model weights, customer artifacts, provider state, or production configuration in Git.
+
+Readiness progresses only as follows:
+
+```text
+BLOCKED -> FOUNDER_BOOTSTRAPPED -> CONNECTED_QUALIFIED
+```
+
+ADR-0008 and `docs/governance/exceptions/FBE-0001.yaml` permit `FOUNDER_BOOTSTRAPPED` to proceed with Wave 1 source work while `production_authority` remains `false`. Before the workflow exists on `github-config:main`, the record allows `mindclade-founder` one ordinary pull-request merge publishing only the pinned `.github/workflows/protected-apply.yml` artifact. This distinct initial-publication state is bound to the target branch, exact SHA-256 content digest, actor, and immutable pull-request receipt containing the actual merge SHA, PR URL and number, merge actor, and UTC time; direct `main` pushes, protection waivers, governance mutations, and independent-review claims are denied. It exists only to make the normal repository-local entry point available. That entry point may then perform one fail-closed FBE-0001 foundation execution, bound to the exact public `mindclade/mindclade` repository, `main`, protected revision, and foundation identity. It may only create, adopt, protect, set a non-secret repository variable, and activate the foundation identity. It may not delete, replace, bypass, promote to production, export a secret, force-push, or extend itself. The authorization expires after 2026-09-30.
+
+The workflow must preserve no bypass and two approvals after protection is established. A subject- and revision-bound connected receipt is the consumption authority. The repository records the authorization contract but neither stores a secret nor invents a receipt. Independent review, branch-protection observation, required-check evidence, trusted Buildkite definition evidence, signing trust, and recovery evidence remain required for `CONNECTED_QUALIFIED`.
+
 #### Repo-local `mindclade/.github/` blueprint
 
-The exact directory tree is part of Appendix A6. Developer Platform owns repository event mapping, issue/PR metadata, dependency-update configuration, code scanning entrypoints, and the Buildkite dispatch/required-check bridge; Security reviews permissions and trust-context handling. Each workflow is a thin caller pinned to an organization `.github` reusable workflow or invokes a bounded repo-local action whose implementation is fully present in the directory. It MUST NOT encode the authoritative test graph, compile/release product artifacts, assume production credentials, or deploy.
+The exact directory tree is part of Appendix A6. Developer Platform owns repository event mapping, issue/PR metadata, dependency-update configuration, code scanning entrypoints, and the Buildkite dispatch/required-check bridge; Security reviews permissions and trust-context handling. Each workflow is a thin caller pinned to an organization `.github` reusable workflow or invokes a bounded repo-local action whose implementation is fully present in the directory. No monorepo-local workflow is privileged by FBE-0001; the exception binds only `github-config/.github/workflows/protected-apply.yml` under A3.10. Monorepo-local workflows MUST NOT encode the authoritative test graph, compile/release product artifacts, assume production credentials, or deploy.
 
 On a pull request, repo-local metadata validation classifies the event and source trust, then the dispatch workflow calls the shared reusable workflow with the exact revision. Buildkite returns typed evidence; the repo-local required-check bridge verifies revision, plan, caller, and trust context before publishing one conclusion. GitHub-native CodeQL, dependency review, scorecard, documentation, and mirror verification use explicit least-privilege permissions. Cancellation propagates to Buildkite; an unavailable or ambiguous downstream result stays non-successful. Tests validate YAML/action syntax, pinning, permissions, fork behavior, required-check freshness, issue forms, CODEOWNERS coverage, and label/config drift. Repo-local workflow changes cannot alter organization rulesets or self-approve protected releases.
 
@@ -2725,7 +2743,7 @@ github-config/
 
 **Responsibility.** Developer Platform is semantic owner; Security is required reviewer for Actions, OIDC, app, environment, and token policy; team owners approve membership. The YAML catalog is the human-reviewed authority and the compiled OpenTofu graph is derived. Direct provider edits are break-glass drift, not a second source of truth.
 
-**Execution and consistency.** Pull-request CI validates schemas, compiles deterministically, imports observed GitHub state read-only, renders a plan, evaluates policy, and signs the plan digest. Protected apply rechecks revision, plan digest, approvals, provider version, and observed-state preconditions before serial execution. Repository/team/ruleset changes are convergent and idempotent; removals require an explicit destructive-change acknowledgement and dependency analysis. Apply concurrency is one per organization.
+**Execution and consistency.** Pull-request CI validates schemas, compiles deterministically, imports observed GitHub state read-only, renders a plan, evaluates policy, and signs the plan digest. Before that CI/workflow can be present on its own default branch, the FBE record permits exactly one non-privileged PR merge by the declared actor that publishes only the pinned workflow artifact to `github-config:main`; the source contract requires its canonical content digest and an immutable PR receipt containing the observed merge SHA, PR URL and number, merge actor, and UTC time, and rejects direct-main publication, branch-protection waiver, independent-review claims, governance mutations, and replay. That publication is not a protected apply and does not activate any provider or production authority. Protected apply rechecks revision, plan digest, approvals, provider version, and observed-state preconditions before serial execution. Repository/team/ruleset changes are convergent and idempotent; removals require an explicit destructive-change acknowledgement and dependency analysis. Apply concurrency is one per organization. Under ADR-0008 and an unexpired, unused FBE-0001 only, the existing `github-config/.github/workflows/protected-apply.yml` entry point may perform one founder foundation execution before `CONNECTED_QUALIFIED`; this is not a new or parallel monorepo workflow. It must bind `mindclade/mindclade`, `main`, the exact protected revision and foundation identity, enforce the five allowed and seven denied operations, and consume authority only through the immutable connected receipt. Missing or mismatched scope, expiry, unused state, workflow identity, revision, identity, or receipt fails closed. After consumption or expiry, the workflow retains only its normal independently reviewed protected-apply authority.
 
 **Failure and recovery.** Rate limits use bounded backoff and checkpointed reconciliation; permission loss, provider drift, partial apply, or ambiguous API completion stops the run and re-plans from observed state. Cancellation stops before the next mutation but does not pretend already accepted GitHub mutations rolled back. Last-known-good configuration plus state backup supports restoration; lockout recovery uses bootstrap-controlled break-glass identity. Drift detection runs at least hourly for critical rules and daily for full configuration.
 
@@ -7189,6 +7207,7 @@ mindclade/
 │   │   ├── 0006-durable-work-and-fencing.md
 │   │   ├── 0007-training-state-progress-and-checkpoint.md
 │   │   ├── index.yaml
+│   │   ├── 0008-founder-bootstrap-public-estate-transition.md
 │   │   └── connected-ratification.v1.schema.json
 │   ├── domains/
 │   │   ├── bio.md
@@ -7242,7 +7261,11 @@ mindclade/
 │   │   ├── README.md
 │   │   └── dataset-card.schema.json
 │   ├── BUILD.bazel
-│   └── README.md
+│   ├── README.md
+│   └── governance/
+│       ├── founder-bootstrap-exception.v1.schema.json
+│       └── exceptions/
+│           └── FBE-0001.yaml
 ├── examples/
 │   ├── sdk/
 │   │   ├── submit_operation.py
@@ -18224,6 +18247,18 @@ An architecture/policy exception contains:
 
 Exceptions are machine-readable where possible and visible in component/release evidence. Expired exceptions fail CI. An exception is not a permanent alternative architecture.
 
+#### Founder bootstrap exception
+
+ADR-0008 defines one exceptional lifecycle for the public GitHub Free repository-level foundation:
+
+```text
+BLOCKED -> FOUNDER_BOOTSTRAPPED -> CONNECTED_QUALIFIED
+```
+
+`FounderBootstrapException/v1` is the machine authority and FBE-0001 is the only authorized record. It expires after 2026-09-30, is single-use and fail-closed, and grants Wave 1 source-only permission with `production_authority: false`. Before protected apply can exist on the `github-config` default branch, the same record permits one separately tracked, non-privileged pull-request publication of the exact workflow artifact by the declared actor. Its machine fields bind the target `main` branch, canonical SHA-256 content digest, actor, immutable receipt containing the actual merge SHA, PR URL and number, merge actor, and UTC time, and `UNPUBLISHED`/`PUBLISHED` state; no direct-main push, branch-protection waiver, independent-review claim, governance mutation, or production authority is allowed. Once published, the record authorizes only create, adopt, protect, set-non-secret-variable, and activate-foundation-identity through the exact `github-config/.github/workflows/protected-apply.yml` repository-local privileged workflow under A3.10. No workflow in `mindclade/.github/workflows/` receives this authority. Deletes, replacement, bypass, production promotion, secret export, force push, and self-extension are always denied.
+
+Founder authorization is not independent review. Initial publication cannot assert that it is and does not waive the later no-bypass/two-approval protection. The exception cannot emit or stand in for connected GitHub, Buildkite, signer, recovery, or production evidence. Missing expiry, subject, protected revision, workflow identity, publication or consumption state, or immutable receipt fails closed. `CONNECTED_QUALIFIED` remains available only through the normal independent review and connected-evidence path.
+
 ### A29.12 Maturity model
 
 Maturity gates are evidence-based:
@@ -20066,7 +20101,7 @@ This blueprint is intentionally version-agnostic at the document level; exact ve
 
 ---
 
-**Canonical repository name:** `mindclade` for the internal monorepo.
+**Canonical repository name:** `mindclade` for the public product-source monorepo.
 **Canonical Git remote:** `github.com/mindclade/mindclade`.
 **Canonical Go module:** `github.com/mindclade/mindclade`.
 **Recommended Python namespace:** `mindclade.*`.

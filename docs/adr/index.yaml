@@ -2,7 +2,7 @@ apiVersion: mindclade.dev/v1
 kind: ArchitectureDecisionIndex
 metadata:
   name: foundational-decisions
-  description: Wave 0 architecture decisions that are expensive to reverse after implementation begins.
+  description: Wave 0 foundational decisions and the bounded founder-bootstrap authority.
 spec:
   decisions:
     - id: ADR-0001
@@ -53,4 +53,11 @@ spec:
       connectedRatification: pending
       path: docs/adr/0007-training-state-progress-and-checkpoint.md
       owners: [training-systems, architecture]
+      specificationAccepted: "2026-08-30"
+    - id: ADR-0008
+      title: Founder bootstrap and public-estate transition
+      status: accepted-in-specification
+      connectedRatification: pending
+      path: docs/adr/0008-founder-bootstrap-public-estate-transition.md
+      owners: [architecture, security]
       specificationAccepted: "2026-08-30"

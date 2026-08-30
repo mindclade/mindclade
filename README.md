@@ -1,6 +1,6 @@
 # Mindclade
 
-`mindclade` is the canonical private monorepo at
+`mindclade` is the canonical public product-source monorepo at
 `github.com/mindclade/mindclade`. It will contain Mindclade product source,
 contracts, build definitions, and immutable release inputs.
 

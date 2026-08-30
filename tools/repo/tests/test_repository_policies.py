@@ -44,7 +44,7 @@ class RepositoryPolicyTest(unittest.TestCase):
 
     def test_manifest_is_semantically_valid(self) -> None:
         self.assertEqual(validate_manifest(self.manifest), [])
-        self.assertEqual(len(self.manifest["paths"]), 2484)
+        self.assertEqual(len(self.manifest["paths"]), 2487)
         wave_one = [entry for entry in self.manifest["paths"] if entry["activation_wave"] == "1"]
         self.assertEqual(len(wave_one), 386)
         self.assertEqual({entry["status"] for entry in wave_one}, {"target"})
@@ -222,6 +222,22 @@ class RepositoryPolicyTest(unittest.TestCase):
         self.assertEqual(ratification["kind"], "schema")
         self.assertEqual(ratification["status"], "active")
         self.assertEqual(ratification["activation_wave"], "0")
+        founder_adr = entries["docs/adr/0008-founder-bootstrap-public-estate-transition.md"]
+        founder_schema = entries[
+            "docs/governance/founder-bootstrap-exception.v1.schema.json"
+        ]
+        founder_record = entries["docs/governance/exceptions/FBE-0001.yaml"]
+        self.assertEqual(founder_adr["kind"], "documentation")
+        self.assertEqual(founder_schema["kind"], "schema")
+        self.assertEqual(founder_record["kind"], "configuration")
+        self.assertEqual(
+            {entry["status"] for entry in (founder_adr, founder_schema, founder_record)},
+            {"active"},
+        )
+        self.assertEqual(
+            {entry["activation_wave"] for entry in (founder_adr, founder_schema, founder_record)},
+            {"0"},
+        )
         self.assertEqual(
             entries["protocols/generated/typescript/package.json"]["kind"],
             "configuration",

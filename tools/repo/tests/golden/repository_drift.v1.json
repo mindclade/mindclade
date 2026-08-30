@@ -113,7 +113,7 @@
         },
         "status": "PASS",
         "target_authority": {
-          "content_sha256": "208aeb68fa543e17420c3f809b0ea44e416701a56626f9bb9ab784e13cc89869",
+          "content_sha256": "46cfd7b3aecf43799bb392e8821548772c9f9a69be9501fcb1a4213668d8d60d",
           "path": "docs/architecture/blueprint/appendices/A03-repository-estate-and-trust-boundaries.md",
           "path_count": 96,
           "path_set_sha256": "dacfaa1078ebb051b65bd961e9293f4782df210ae59c81c6f8c866493c688dad",
@@ -201,7 +201,7 @@
         },
         "status": "PASS",
         "target_authority": {
-          "content_sha256": "208aeb68fa543e17420c3f809b0ea44e416701a56626f9bb9ab784e13cc89869",
+          "content_sha256": "46cfd7b3aecf43799bb392e8821548772c9f9a69be9501fcb1a4213668d8d60d",
           "path": "docs/architecture/blueprint/appendices/A03-repository-estate-and-trust-boundaries.md",
           "path_count": 109,
           "path_set_sha256": "5a906c4a6fc618cc7bb11291619725ad10aa12109f7a9e07ca1de63d6480194e",
@@ -289,7 +289,7 @@
         },
         "status": "PASS",
         "target_authority": {
-          "content_sha256": "208aeb68fa543e17420c3f809b0ea44e416701a56626f9bb9ab784e13cc89869",
+          "content_sha256": "46cfd7b3aecf43799bb392e8821548772c9f9a69be9501fcb1a4213668d8d60d",
           "path": "docs/architecture/blueprint/appendices/A03-repository-estate-and-trust-boundaries.md",
           "path_count": 126,
           "path_set_sha256": "aad89db6c2869be585090cc705c782e322beae10331ce664d27ee2d050328c94",
@@ -377,7 +377,7 @@
         },
         "status": "PASS",
         "target_authority": {
-          "content_sha256": "208aeb68fa543e17420c3f809b0ea44e416701a56626f9bb9ab784e13cc89869",
+          "content_sha256": "46cfd7b3aecf43799bb392e8821548772c9f9a69be9501fcb1a4213668d8d60d",
           "path": "docs/architecture/blueprint/appendices/A03-repository-estate-and-trust-boundaries.md",
           "path_count": 310,
           "path_set_sha256": "d773d2fa7f8272ea26dd8e4d571738b8eb188282436d71697c218199d50fe68b",
@@ -465,7 +465,7 @@
         },
         "status": "PASS",
         "target_authority": {
-          "content_sha256": "208aeb68fa543e17420c3f809b0ea44e416701a56626f9bb9ab784e13cc89869",
+          "content_sha256": "46cfd7b3aecf43799bb392e8821548772c9f9a69be9501fcb1a4213668d8d60d",
           "path": "docs/architecture/blueprint/appendices/A03-repository-estate-and-trust-boundaries.md",
           "path_count": 56,
           "path_set_sha256": "5ec461d85a46ff2a3fc12fd97fc954ffb2b3a250b119ed7b483a7175d5cc9b1e",
@@ -493,7 +493,7 @@
   "schema_version": "repository_drift.v1",
   "summary": {
     "branch_protection_observations_incomplete": 5,
-    "canonical_target_paths": 2484,
+    "canonical_target_paths": 2487,
     "component_count": 0,
     "default_branch_observations_incomplete": 5,
     "dependency_edge_count": 0,
@@ -508,10 +508,10 @@
   },
   "target_authority": {
     "blueprint_sha256": "d099074e755168bbdce076d50918bf06aff677f9e5d620fdfe53cb7cef745803",
-    "canonical_file_count": 2484,
-    "canonical_path_set_sha256": "f6909661ea3098c4390934753f848ed68be1c52b9f84a968965587443fdfdbbb",
+    "canonical_file_count": 2487,
+    "canonical_path_set_sha256": "394b25cd54363260f70afa96eee5351f6add7ce4079780efe8cee0dba265200b",
     "original_file_count": 2461,
-    "reconciliation_version": "3.4.2",
+    "reconciliation_version": "3.4.3",
     "source": "MONOREPO_TREE.md",
     "source_sha256": "1854013cd9bf44bf03087e6d5a3de4283b371d878d91e02604c0029e417e5e3b"
   }
