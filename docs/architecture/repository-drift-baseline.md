@@ -8,7 +8,7 @@ operational repositories are inputs for comparison only and are not migration so
 
 - Anchor commit: `292b71f47b1b29cc9ba7cf760a9bd07cd5e0ffa7`
 - Observation scope: `working-tree`
-- Base commit: `24fb216bdaada93f07cfd5df48cf28928e94e8b5`
+- Base commit: `5ca67c4d87e17a124a169aff8356dd8c15fd6f9e`
 - Observed immutable commit: `not commit-bound`
 - Working tree state: `dirty`
 - Populated path-set SHA-256: `8edfafc9794f5391d2ba521a69fc17fc0ab52f67f699888535e4ca5b505c21c9`
