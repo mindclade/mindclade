@@ -56,6 +56,21 @@ def self_test() -> None:
             "mindclade-untrusted-cpu",
         }:
             raise AssertionError(f"pipeline {pipeline_class} has an invalid agent queue")
+        environment = value["env"]
+        for key in (
+            "MINDCLADE_LAUNCHER_DIGEST",
+            "MINDCLADE_LAUNCHER_IDENTITY",
+            "MINDCLADE_LAUNCHER_REVISION",
+            "MINDCLADE_PIPELINE_DEFINITION_REVISION",
+            "MINDCLADE_SOURCE_REVISION",
+            "MINDCLADE_CACHE_MODE",
+            "MINDCLADE_CACHE_PLATFORM",
+            "MINDCLADE_CACHE_ARCHITECTURE",
+            "MINDCLADE_CACHE_TOOLCHAIN_DIGEST",
+            "MINDCLADE_CACHE_BUILD_MODE",
+        ):
+            if key not in environment:
+                raise AssertionError(f"pipeline {pipeline_class} omits immutable binding {key}")
     pre_command = (BUILDKITE_ROOT / "hooks/pre-command").read_text(encoding="utf-8")
     protected_fragments = (
         ".buildkite",

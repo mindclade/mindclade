@@ -16,12 +16,61 @@ DEFAULT_TARGETS = (
     "//tools:repository_governance_tests",
 )
 
+WAVE1_TARGET = "//:wave1_tests"
+WAVE2S_TARGET = "//:wave2s_tests"
+WAVE2P_TARGET = "//:wave2p_tests"
+
 WAVE1_PREFIXES = (
+    "deploy/local/",
+    "libs/",
     "protocols/",
+    "services/control_plane/",
+    "tests/",
     "tests/conformance/",
     "tools/codegen/",
+    "tools/qualification/",
+    "tools/release/",
     "third_party/",
 )
+
+WAVE2S_PREFIXES = (
+    "bio/",
+    "data/",
+    "evaluation/",
+    "kernels/",
+    "models/",
+    "runtime/",
+    "training/",
+)
+
+WAVE2P_PREFIXES = (
+    "protocols/generated/go/inference/v1/",
+    "protocols/generated/python/inference/v1/",
+    "protocols/proto/mindclade/inference/v1/",
+    "sdk/",
+    "workers/",
+)
+
+WAVE2P_CONTROL_PLANE_PREFIXES = (
+    "services/control_plane/cmd/control-plane/",
+    "services/control_plane/internal/platform/",
+    "services/control_plane/internal/policies/",
+    "services/control_plane/internal/projects/",
+    "services/control_plane/internal/tenants/",
+    "services/control_plane/internal/users/",
+)
+
+WAVE2P_EXACT_PATHS = {
+    "inference/contracts/request_contract.py",
+    "inference/contracts/result_contract.py",
+    "inference/tests/test_request_contract.py",
+    "services/BUILD.bazel",
+    "services/README.md",
+    "tests/end_to_end/platform_slice_test.py",
+}
+
+WAVE2S_EXACT_PATHS = {"tests/end_to_end/scientific_slice_test.py"}
+TARGET_ORDER = (*DEFAULT_TARGETS, WAVE1_TARGET, WAVE2S_TARGET, WAVE2P_TARGET)
 
 GLOBAL_PATHS = {
     ".bazelrc",
@@ -114,20 +163,86 @@ def changed_paths(
 
 
 def targets_for_paths(paths: Iterable[str]) -> list[str]:
-    """Map changed files to the smallest currently governed test closure.
+    """Map changed files to the conservative governed test closure.
 
-    Wave 0 has no product packages. Every populated path therefore affects the
-    repository-governance closure. Later waves extend this function only when a
-    real component and Bazel target are activated.
+    Future Wave 2 labels are emitted only for paths already assigned to that
+    wave by the repository path authority. Their root suites must be activated
+    atomically with the first implementation. Unknown paths broaden to the
+    complete active Wave 1 closure; governance independently rejects paths
+    absent from the manifest.
     """
     normalized = sorted({normalize_path(path) for path in paths})
     if not normalized:
         return []
-    if any(path.startswith(WAVE1_PREFIXES) for path in normalized):
-        return ["//:wave1_contract_tests"]
-    if any(path in GLOBAL_PATHS or path.startswith(GLOBAL_PREFIXES) for path in normalized):
-        return [*DEFAULT_TARGETS, "//:wave1_contract_tests"]
-    return list(DEFAULT_TARGETS)
+    selected: set[str] = set(DEFAULT_TARGETS)
+    matched_domain = False
+    for path in normalized:
+        if path.startswith(WAVE1_PREFIXES):
+            selected.add(WAVE1_TARGET)
+            matched_domain = True
+        if path.startswith(WAVE2S_PREFIXES) or path.startswith("inference/"):
+            selected.add(WAVE2S_TARGET)
+            matched_domain = True
+        if (
+            path.startswith(WAVE2P_PREFIXES)
+            or path.startswith(WAVE2P_CONTROL_PLANE_PREFIXES)
+            or path in WAVE2P_EXACT_PATHS
+        ):
+            selected.add(WAVE2P_TARGET)
+            matched_domain = True
+        if path in WAVE2S_EXACT_PATHS:
+            selected.add(WAVE2S_TARGET)
+            matched_domain = True
+        if path in GLOBAL_PATHS or path.startswith(GLOBAL_PREFIXES):
+            selected.add(WAVE1_TARGET)
+            matched_domain = True
+    if not matched_domain:
+        selected.add(WAVE1_TARGET)
+    return [target for target in TARGET_ORDER if target in selected]
+
+
+def self_test() -> None:
+    cases = {
+        "libs/go/audit/writer.go": [*DEFAULT_TARGETS, WAVE1_TARGET],
+        "services/control_plane/internal/storage/store.go": [*DEFAULT_TARGETS, WAVE1_TARGET],
+        "bio/identity/sequence.py": [*DEFAULT_TARGETS, WAVE2S_TARGET],
+        "inference/sampling/deterministic_sampler.py": [*DEFAULT_TARGETS, WAVE2S_TARGET],
+        "inference/contracts/request_contract.py": [
+            *DEFAULT_TARGETS,
+            WAVE2S_TARGET,
+            WAVE2P_TARGET,
+        ],
+        "protocols/proto/mindclade/inference/v1/inference_request.proto": [
+            *DEFAULT_TARGETS,
+            WAVE1_TARGET,
+            WAVE2P_TARGET,
+        ],
+        "services/control_plane/internal/tenants/tenant_commands.go": [
+            *DEFAULT_TARGETS,
+            WAVE1_TARGET,
+            WAVE2P_TARGET,
+        ],
+        "workers/inference_worker/python/main.py": [*DEFAULT_TARGETS, WAVE2P_TARGET],
+        "BUILD.bazel": [*DEFAULT_TARGETS, WAVE1_TARGET],
+        "new/governed/domain/file.py": [*DEFAULT_TARGETS, WAVE1_TARGET],
+    }
+    for path, expected in cases.items():
+        actual = targets_for_paths([path])
+        if actual != expected:
+            raise AssertionError(
+                f"affected target mapping drift for {path}: {actual} != {expected}"
+            )
+    combined = targets_for_paths(
+        ["data/curation/pipeline.py", "workers/inference_worker/python/main.py"]
+    )
+    if combined != [*DEFAULT_TARGETS, WAVE2S_TARGET, WAVE2P_TARGET]:
+        raise AssertionError(f"multi-wave target selection is not conservative: {combined}")
+    for invalid in ("", "../escape", "/absolute", "a/../../escape"):
+        try:
+            normalize_path(invalid)
+        except SelectionError:
+            continue
+        raise AssertionError(f"unsafe path was accepted: {invalid!r}")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -137,11 +252,16 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--head", default="HEAD")
     parser.add_argument("--changed-file", action="append", default=[])
     parser.add_argument("--format", choices=("lines", "json"), default="lines")
+    parser.add_argument("--self-test", action="store_true")
     return parser
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
+    if args.self_test:
+        self_test()
+        print("affected-target mapping self-test passed")
+        return 0
     root = args.root.resolve()
     try:
         paths = (

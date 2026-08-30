@@ -19,29 +19,34 @@ component_metadata(
 
 filegroup(
     name = "repository_governance",
-    srcs = glob(["**"], exclude = _IGNORED_SOURCE_PATTERNS),
+    srcs = glob(
+        ["**"],
+        exclude = _IGNORED_SOURCE_PATTERNS,
+    ),
     visibility = ["//visibility:public"],
 )
 
 py_test(
     name = "required_check_contract_test",
     srcs = [
+        "ci/affected_targets.py",
         "ci/evidence_bundle.py",
+        "ci/pipeline_plan.py",
         "ci/required_check.py",
     ],
-    main = "ci/required_check.py",
     args = ["--self-test"],
     data = [
         "repo/repository_drift.v1.schema.json",
         "repo/tests/golden/repository_drift.v1.json",
     ],
+    imports = ["ci"],
+    legacy_create_init = 0,
+    main = "ci/required_check.py",
+    python_version = "PY3",
     deps = [
         "@mindclade_pypi//cryptography",
         "@mindclade_pypi//jsonschema",
     ],
-    imports = ["ci"],
-    legacy_create_init = 0,
-    python_version = "PY3",
 )
 
 py_test(
@@ -50,14 +55,10 @@ py_test(
         "ci/affected_targets.py",
         "ci/pipeline_plan.py",
     ],
-    main = "ci/pipeline_plan.py",
-    args = [
-        "--source-revision=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-        "--pipeline-definition-revision=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-        "--changed-file=BUILD.bazel",
-    ],
+    args = ["--self-test"],
     imports = ["ci"],
     legacy_create_init = 0,
+    main = "ci/pipeline_plan.py",
     python_version = "PY3",
 )
 
@@ -74,33 +75,33 @@ py_test(
     name = "repository_drift_report_test",
     srcs = ["repo/tests/test_build_repository_drift_report.py"],
     data = _REPOSITORY_TEST_DATA,
+    legacy_create_init = 0,
+    main = "repo/tests/test_build_repository_drift_report.py",
+    python_version = "PY3",
     deps = [
         "@mindclade_pypi//cryptography",
         "@mindclade_pypi//jsonschema",
     ],
-    legacy_create_init = 0,
-    main = "repo/tests/test_build_repository_drift_report.py",
-    python_version = "PY3",
 )
 
 py_test(
     name = "monorepo_tree_authority_test",
     srcs = ["repo/tests/test_monorepo_tree_authority.py"],
     data = _REPOSITORY_TEST_DATA,
-    deps = ["@mindclade_pypi//jsonschema"],
     legacy_create_init = 0,
     main = "repo/tests/test_monorepo_tree_authority.py",
     python_version = "PY3",
+    deps = ["@mindclade_pypi//jsonschema"],
 )
 
 py_test(
     name = "repository_policies_test",
     srcs = ["repo/tests/test_repository_policies.py"],
     data = _REPOSITORY_TEST_DATA,
-    deps = ["@mindclade_pypi//jsonschema"],
     legacy_create_init = 0,
     main = "repo/tests/test_repository_policies.py",
     python_version = "PY3",
+    deps = ["@mindclade_pypi//jsonschema"],
 )
 
 py_test(
@@ -109,10 +110,10 @@ py_test(
     data = [
         "//:wave0_governance_sources",
     ],
-    deps = ["@mindclade_pypi//jsonschema"],
     legacy_create_init = 0,
     main = "docs/tests/test_blueprint_source_manifest.py",
     python_version = "PY3",
+    deps = ["@mindclade_pypi//jsonschema"],
 )
 
 py_test(
@@ -121,10 +122,10 @@ py_test(
     data = [
         "//:wave0_governance_sources",
     ],
-    deps = ["@mindclade_pypi//jsonschema"],
     legacy_create_init = 0,
     main = "docs/tests/test_render_architecture_blueprint.py",
     python_version = "PY3",
+    deps = ["@mindclade_pypi//jsonschema"],
 )
 
 test_suite(
@@ -143,12 +144,15 @@ test_suite(
 
 filegroup(
     name = "wave0_tooling",
-    srcs = glob([
-        "bazel/**",
-        "ci/**",
-        "dev/**",
-        "licenses/**",
-    ], exclude = _IGNORED_SOURCE_PATTERNS),
+    srcs = glob(
+        [
+            "bazel/**",
+            "ci/**",
+            "dev/**",
+            "licenses/**",
+        ],
+        exclude = _IGNORED_SOURCE_PATTERNS,
+    ),
     visibility = ["//visibility:public"],
 )
 
@@ -167,7 +171,6 @@ filegroup(
     name = "wave1_tooling_sources",
     srcs = [
         "BUILD.bazel",
-        ":wave1_codegen_sources",
         "qualification/collect_evidence.py",
         "qualification/hardware_envelope.py",
         "qualification/resolve_policy.py",
@@ -177,6 +180,7 @@ filegroup(
         "release/revoke_release.py",
         "release/sign_release.py",
         "release/verify_release.py",
+        ":wave1_codegen_sources",
     ],
     visibility = ["//visibility:public"],
 )
