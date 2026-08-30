@@ -196,6 +196,26 @@ Remote cache keys include all declared action inputs and platform properties. Ca
 
 Untrusted builds cannot poison trusted caches. Release jobs may consume only cache entries produced under compatible trusted identities or recompute actions.
 
+Bazel HTTP cache responses can expose action-cache records, CAS outputs, and captured stdout/stderr. Public-readable and private-internal entries therefore use separate GCP buckets or equivalently IAM- and cryptographically isolated namespaces. The default classification is private; only an explicit target allowlist permits public publication. Writer IAM remains denied until the producing builder identity, target class, and platform envelope are qualified.
+
+The cache namespace/key contract binds:
+
+```text
+cache schema version
+trust class
+operating platform
+machine architecture
+complete toolchain identity
+build mode
+ordinary Bazel action identity
+```
+
+A public/private or other classification change revokes existing access and rotates to a new namespace. Existing objects are not relabeled in place. Noncurrent namespace versions have short lifecycle retention. Read/write access logs are exported to a separate destination outside cache-writer mutation authority.
+
+Qualification periodically forces a cacheless canary and compares the resulting digests with compatible cached outputs. Suspected cache poison invokes namespace write denial/revocation, clean cacheless rebuild, and digest comparison before read authority is restored. Release provenance records cache consultation, namespace identity, and hit/miss state, but the cache is never evidence and does not replace provenance, SBOM, qualification, signature, or reproducibility evidence.
+
+Repository authority is deliberately split. The monorepo owns machine-readable cache classification, key-shape, public-target allowlist, canary, and poison-recovery contracts. `bootstrap` owns foundational GCP trust and identity. `infrastructure-live` owns bucket, IAM, log-destination, and lifecycle desired state. Source policy does not claim connected GCP implementation.
+
 Remote execution workers are immutable or regularly rebuilt, have restricted egress, no persistent credentials, bounded local state, and platform labels that accurately describe CPU, OS, accelerator, driver, and toolchain capabilities.
 
 ### A9.13 Python lock and environment architecture

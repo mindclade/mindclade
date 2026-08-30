@@ -7,6 +7,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+from jsonschema import Draft202012Validator
+
 REPO_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(REPO_ROOT / "tools/repo"))
 
@@ -44,7 +46,7 @@ class RepositoryPolicyTest(unittest.TestCase):
 
     def test_manifest_is_semantically_valid(self) -> None:
         self.assertEqual(validate_manifest(self.manifest), [])
-        self.assertEqual(len(self.manifest["paths"]), 2488)
+        self.assertEqual(len(self.manifest["paths"]), 2497)
         wave_one = [entry for entry in self.manifest["paths"] if entry["activation_wave"] == "1"]
         self.assertEqual(len(wave_one), 386)
         for entry in wave_one:
@@ -261,6 +263,59 @@ class RepositoryPolicyTest(unittest.TestCase):
             entries["protocols/generated/rust/lib.rs"]["source_authority"],
             "reviewed-generated",
         )
+
+    def test_wave_two_preflight_decisions_and_approval_contracts_fail_closed(self) -> None:
+        entries = {entry["path"]: entry for entry in self.manifest["paths"]}
+        decisions = (
+            "docs/adr/0010-modular-go-control-plane-relational-durability-worker-isolation.md",
+            "docs/adr/0011-sqp-001-scientific-qualification-profile.md",
+            "docs/adr/0012-http-json-operation-projection-python-sdk.md",
+        )
+        contracts = (
+            (
+                "docs/policies/pdb-source-use-approval.v1.schema.json",
+                "docs/policies/pdb-source-use-approval.template.yaml",
+            ),
+            (
+                "docs/policies/sqp-001-h100-approval.v1.schema.json",
+                "docs/policies/sqp-001-h100-approval.template.yaml",
+            ),
+        )
+        for path in decisions:
+            with self.subTest(decision=path):
+                self.assertEqual(entries[path]["status"], "active")
+                self.assertEqual(entries[path]["activation_wave"], "0")
+                text = (REPO_ROOT / path).read_text(encoding="utf-8")
+                self.assertIn("- Status: Proposed", text)
+                self.assertIn(
+                    "- Connected ratification: Pending independent review on protected infrastructure",
+                    text,
+                )
+                self.assertIn("production_authority", text)
+
+        forbidden_pending_fields = {
+            "approvalSubjectRevision",
+            "approvals",
+            "approvalReceiptDigest",
+            "approvedAt",
+            "revokedAt",
+            "revocationReceiptDigest",
+        }
+        for schema_path, template_path in contracts:
+            with self.subTest(contract=schema_path):
+                schema = json.loads((REPO_ROOT / schema_path).read_text(encoding="utf-8"))
+                Draft202012Validator.check_schema(schema)
+                validator = Draft202012Validator(schema)
+                pending = load_yaml_or_json(REPO_ROOT / template_path)
+                self.assertEqual(list(validator.iter_errors(pending)), [])
+                self.assertEqual(pending["spec"]["status"], "pending")
+                self.assertIs(pending["spec"]["productionAuthority"], False)
+                self.assertTrue(forbidden_pending_fields.isdisjoint(pending["spec"]))
+                falsely_approved = json.loads(json.dumps(pending))
+                falsely_approved["spec"]["status"] = "approved"
+                self.assertTrue(list(validator.iter_errors(falsely_approved)))
+                self.assertEqual(entries[schema_path]["kind"], "schema")
+                self.assertEqual(entries[template_path]["kind"], "configuration")
 
     def test_authority_display_order_round_trips(self) -> None:
         paths = [entry["path"] for entry in self.manifest["paths"]]
