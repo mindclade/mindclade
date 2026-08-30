@@ -1,0 +1,72 @@
+# Copyright (c) 2026 Mindclade. All rights reserved.
+# Proprietary and confidential. Unauthorized use, copying, or distribution is prohibited.
+
+package(default_visibility = ["//visibility:private"])
+
+cc_library(
+    name = "native_schema",
+    srcs = [
+        "stable_abi/registration.cpp",
+        "stable_abi/tensor_bridge.cpp",
+    ],
+    defines = [
+        "MINDCLADE_NATIVE_SCHEMA_ONLY=1",
+        "MINDCLADE_TORCH_STABLE_ABI_MAJOR=2",
+        "MINDCLADE_TORCH_STABLE_ABI_MINOR=10",
+    ],
+    linkstatic = False,
+)
+
+filegroup(
+    name = "native_policy_inputs",
+    srcs = [
+        "BUILD.bazel",
+        "CMakeLists.txt",
+        "IMPLEMENTATION_STATUS.md",
+        "MIGRATION.md",
+        "README.md",
+        "cmake/MindcladeTorchStable.cmake",
+        "component.yaml",
+        "cuda/CMakeLists.txt",
+        "cuda/README.md",
+        "cuda/operation_registry.cpp",
+        "stable_abi/CMakeLists.txt",
+        "stable_abi/abi_manifest.json",
+        "stable_abi/registration.cpp",
+        "stable_abi/tensor_bridge.cpp",
+        "tilelang/README.md",
+    ],
+)
+
+py_test(
+    name = "test_abi_compatibility",
+    srcs = ["tests/test_abi_compatibility.py"],
+    data = [":native_policy_inputs"],
+    main = "tests/test_abi_compatibility.py",
+    python_version = "PY3",
+)
+
+py_test(
+    name = "test_cmake_policy",
+    srcs = ["tests/test_cmake_policy.py"],
+    data = [":native_policy_inputs"],
+    main = "tests/test_cmake_policy.py",
+    python_version = "PY3",
+)
+
+py_test(
+    name = "test_policy",
+    srcs = ["tests/test_policy.py"],
+    data = [":native_policy_inputs"],
+    main = "tests/test_policy.py",
+    python_version = "PY3",
+)
+
+test_suite(
+    name = "policy_tests",
+    tests = [
+        ":test_abi_compatibility",
+        ":test_cmake_policy",
+        ":test_policy",
+    ],
+)

@@ -1,0 +1,44 @@
+# Copyright (c) 2026 Mindclade. All rights reserved.
+# Proprietary and confidential. Unauthorized use, copying, or distribution is prohibited.
+
+apiVersion: mindclade.dev/v1
+kind: Component
+metadata:
+  name: kernels-native
+  description: Target-only native operator integration and qualification boundary
+  annotations:
+    mindclade.dev/activation-gate: JIT-06
+    mindclade.dev/operator-contract: "torch.ops.mindclade.<name>"
+spec:
+  type: library
+  lifecycle: proposed
+  maturity: target
+  owner: ml-systems-performance
+  repository_class: product-source
+  trust_tier: internal
+  recovery_tier: rebuildable
+  data_classification: internal
+  production_authority: false
+  dependencies: []
+  provides:
+    - schema-only native integration boundary
+    - "single operator registration contract: torch.ops.mindclade.<name>"
+  release:
+    publishable: false
+    qualified_operations: 0
+    active_operations: 0
+  activation:
+    wave: 6
+    gate: JIT-06
+    state: proposed
+    prerequisites:
+      - measured bottleneck
+      - operation-local PyTorch reference
+      - numerical and recovery qualification
+      - immutable artifact provenance
+      - fallback and rollback
+status:
+  readiness: TARGET
+  kernel_k0: not-achieved
+  qualified_operations: 0
+  active_operations: 0

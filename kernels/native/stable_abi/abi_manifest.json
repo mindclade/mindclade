@@ -1,0 +1,26 @@
+{
+  "_mindclade_proprietary": "Copyright (c) 2026 Mindclade. All rights reserved. Proprietary and confidential.",
+  "schema_version": "1.0.0",
+  "component": "kernels-native",
+  "lifecycle": "proposed",
+  "readiness": "TARGET",
+  "activation_wave": 6,
+  "activation_gate": "JIT-06",
+  "production_authority": false,
+  "torch_stable_abi": {
+    "version": "2.10",
+    "major": 2,
+    "minor": 10
+  },
+  "operator_namespace": "mindclade",
+  "registration_contract": "torch.ops.mindclade.<name>",
+  "alternate_public_namespaces": [],
+  "qualified_operations": [],
+  "active_operations": [],
+  "operators": [],
+  "qualification": {
+    "kernel_k0": "not-achieved",
+    "gpu": "not-qualified",
+    "tilelang": "not-qualified"
+  }
+}
