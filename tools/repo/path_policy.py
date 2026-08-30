@@ -28,9 +28,9 @@ BLUEPRINT_SHA256 = "d099074e755168bbdce076d50918bf06aff677f9e5d620fdfe53cb7cef74
 ANCHOR_COMMIT = "292b71f47b1b29cc9ba7cf760a9bd07cd5e0ffa7"
 AUTHORITY_FILE_COUNT = 2461
 AUTHORITY_DIRECTORY_COUNT = 787
-CANONICAL_FILE_COUNT = 2488
+CANONICAL_FILE_COUNT = 2497
 AUTHORITY_PATH_SET_SHA256 = "f2011dd32ccc19649e6abb70ffb4473aea4a224410062d40292222e2e6263692"
-CANONICAL_PATH_SET_SHA256 = "18ecbf2fb4c9bfecdabbf66b061fc077af7c31ae6d01464bedb0e30d66e200a2"
+CANONICAL_PATH_SET_SHA256 = "99b1ce57ef58de22fdc69d22b992f57fecf031b4fb4f1e73d0d1a5788e994de8"
 
 ADR_REPLACEMENTS = {
     "docs/adr/0001-repository-identity.md": "docs/adr/0001-repository-identity-and-ownership.md",
@@ -56,6 +56,18 @@ FOUNDER_BOOTSTRAP_GOVERNANCE_ADDITIONS = (
     FOUNDER_BOOTSTRAP_RECORD,
 )
 
+WAVE_TWO_PREFLIGHT_GOVERNANCE_ADDITIONS = (
+    "docs/adr/0010-modular-go-control-plane-relational-durability-worker-isolation.md",
+    "docs/adr/0011-sqp-001-scientific-qualification-profile.md",
+    "docs/adr/0012-http-json-operation-projection-python-sdk.md",
+    "docs/policies/pdb-source-use-approval.template.yaml",
+    "docs/policies/pdb-source-use-approval.v1.schema.json",
+    "docs/policies/pdb-source-use-data-governance.md",
+    "docs/policies/sqp-001-h100-approval.template.yaml",
+    "docs/policies/sqp-001-h100-approval.v1.schema.json",
+    "docs/policies/sqp-001-h100-qualification-envelope.md",
+)
+
 WAVE_ZERO_REQUIRED_ADDITIONS = (
     ".github/actionlint.yaml",
     "docs/architecture/blueprint/provenance/MINDCLADE_MONOREPO_BLUEPRINT_v3.4.0_OPTIMIZED.md",
@@ -71,6 +83,7 @@ WAVE_ZERO_REQUIRED_ADDITIONS = (
     CONNECTED_RATIFICATION_SCHEMA,
     FOUNDER_BOOTSTRAP_SCHEMA,
     FOUNDER_BOOTSTRAP_RECORD,
+    *WAVE_TWO_PREFLIGHT_GOVERNANCE_ADDITIONS,
 )
 
 WAVE_ONE_DURABILITY_ADDITIONS = (
@@ -383,7 +396,9 @@ def infer_owner(path: str) -> str:
         return "platform-operations"
     if path == "docs/adr/0005-biological-identity-and-schema-evolution.md":
         return "computational-biology"
-    if path.startswith(("docs/architecture/", "docs/adr/", "docs/governance/")):
+    if path.startswith(
+        ("docs/architecture/", "docs/adr/", "docs/governance/", "docs/policies/")
+    ):
         return "architecture"
     if path.startswith("workers/"):
         worker = PurePosixPath(path).parts[1]
@@ -1265,6 +1280,11 @@ def _reconciliation_addition_reason(path: str) -> str:
         return (
             "Required Wave 1 durability, reconciliation, configuration, or release-signing "
             "interface omitted by A6."
+        )
+    if path in WAVE_TWO_PREFLIGHT_GOVERNANCE_ADDITIONS:
+        return (
+            "Required fail-closed Wave 2 decision or approval contract omitted by A6; "
+            "activation records a proposal or pending approval and grants no production authority."
         )
     return (
         "Required Wave 0 schema, deterministic golden, or executable governance test omitted by A6."
