@@ -1,0 +1,15 @@
+{
+  "generator": {
+    "id": "kernels.native.codegen.generate",
+    "version": 2
+  },
+  "namespace": "mindclade",
+  "operators": [],
+  "optimized_math_authority": "tilelang",
+  "registration_mode": "build_time_generated",
+  "request_time_compilation": false,
+  "runtime_discovery": false,
+  "schema_version": 2,
+  "semantic_digest": "sha256:ce3aac06a3e049be8ecc303ec99446f42965485f355809f18831e62faf697ee8",
+  "source_inventory_sha256": "sha256:4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+}

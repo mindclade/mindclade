@@ -17,6 +17,53 @@ cc_library(
     linkstatic = False,
 )
 
+# Operation declarations are explicit build inputs. The Wave 6 TARGET has no
+# authoring sources until a JIT-06-qualified operation is activated.
+filegroup(
+    name = "native_operator_authoring_sources",
+    srcs = [],
+)
+
+py_library(
+    name = "tilelang_codegen_lib",
+    srcs = [
+        "tilelang/__init__.py",
+        "tilelang/decorator.py",
+        "tilelang/manifest.py",
+        "tilelang/model.py",
+        "tilelang/registry.py",
+    ],
+)
+
+py_library(
+    name = "native_codegen_lib",
+    srcs = [
+        "codegen/__init__.py",
+        "codegen/discover.py",
+        "codegen/schema.py",
+    ],
+    data = [":native_operator_authoring_sources"],
+    deps = [":tilelang_codegen_lib"],
+)
+
+# This is the sole generated-output owner. It runs only as an explicit Bazel
+# build/codegen action and receives no implicit discovery or network inputs.
+py_binary(
+    name = "generate_native_ops",
+    srcs = ["codegen/generate.py"],
+    data = [":native_operator_authoring_sources"],
+    deps = [":native_codegen_lib"],
+)
+
+py_library(
+    name = "native_python",
+    srcs = [
+        "python/__init__.py",
+        "python/loader.py",
+        "python/registration.py",
+    ],
+)
+
 filegroup(
     name = "native_policy_inputs",
     srcs = [
@@ -26,6 +73,10 @@ filegroup(
         "MIGRATION.md",
         "README.md",
         "cmake/MindcladeTorchStable.cmake",
+        "codegen/__init__.py",
+        "codegen/discover.py",
+        "codegen/generate.py",
+        "codegen/schema.py",
         "component.yaml",
         "cuda/CMakeLists.txt",
         "cuda/README.md",
@@ -35,6 +86,12 @@ filegroup(
         "stable_abi/registration.cpp",
         "stable_abi/tensor_bridge.cpp",
         "tilelang/README.md",
+        "tilelang/__init__.py",
+        "tilelang/decorator.py",
+        "tilelang/manifest.py",
+        "tilelang/model.py",
+        "tilelang/registry.py",
+        "generated/native_ops.json",
     ],
 )
 
@@ -62,11 +119,71 @@ py_test(
     python_version = "PY3",
 )
 
+py_test(
+    name = "test_autograd",
+    srcs = ["tests/test_autograd.py"],
+    data = [":native_policy_inputs"],
+    main = "tests/test_autograd.py",
+    python_version = "PY3",
+    deps = [":native_python"],
+)
+
+py_test(
+    name = "test_export",
+    srcs = ["tests/test_export.py"],
+    data = [":native_policy_inputs"],
+    main = "tests/test_export.py",
+    python_version = "PY3",
+    deps = [":native_python"],
+)
+
+py_test(
+    name = "test_fake_tensor",
+    srcs = ["tests/test_fake_tensor.py"],
+    data = [":native_policy_inputs"],
+    main = "tests/test_fake_tensor.py",
+    python_version = "PY3",
+    deps = [":native_python"],
+)
+
+py_test(
+    name = "test_loader_policy",
+    srcs = ["tests/test_loader_policy.py"],
+    data = [":native_policy_inputs"],
+    main = "tests/test_loader_policy.py",
+    python_version = "PY3",
+    deps = [":native_python"],
+)
+
+py_test(
+    name = "test_namespace",
+    srcs = ["tests/test_namespace.py"],
+    data = [":native_policy_inputs"],
+    main = "tests/test_namespace.py",
+    python_version = "PY3",
+    deps = [":native_python"],
+)
+
+py_test(
+    name = "test_opcheck",
+    srcs = ["tests/test_opcheck.py"],
+    data = [":native_policy_inputs"],
+    main = "tests/test_opcheck.py",
+    python_version = "PY3",
+    deps = [":native_python"],
+)
+
 test_suite(
     name = "policy_tests",
     tests = [
         ":test_abi_compatibility",
+        ":test_autograd",
         ":test_cmake_policy",
+        ":test_export",
+        ":test_fake_tensor",
+        ":test_loader_policy",
+        ":test_namespace",
+        ":test_opcheck",
         ":test_policy",
     ],
 )

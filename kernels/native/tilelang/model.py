@@ -208,6 +208,8 @@ class KernelSpec:
         devices = value["devices"]
         if not isinstance(devices, list) or not all(isinstance(device, str) for device in devices):
             raise ValueError("operator devices must be a JSON string array")
+        if not isinstance(value["launch_symbol"], str):
+            raise ValueError("operator launch_symbol must be a nonempty symbol string")
         spec = cls(
             name=value["name"],  # type: ignore[arg-type]
             schema=value["schema"],  # type: ignore[arg-type]

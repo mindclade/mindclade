@@ -1,0 +1,189 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.mindclade.dev/kernels/native-ops/v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "generator",
+    "source_inventory_sha256",
+    "namespace",
+    "registration_mode",
+    "optimized_math_authority",
+    "runtime_discovery",
+    "request_time_compilation",
+    "operators",
+    "semantic_digest"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 2
+    },
+    "generator": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "version"],
+      "properties": {
+        "id": {
+          "const": "kernels.native.codegen.generate"
+        },
+        "version": {
+          "const": 2
+        }
+      }
+    },
+    "source_inventory_sha256": {
+      "$ref": "#/$defs/digest"
+    },
+    "namespace": {
+      "const": "mindclade"
+    },
+    "registration_mode": {
+      "const": "build_time_generated"
+    },
+    "optimized_math_authority": {
+      "const": "tilelang"
+    },
+    "runtime_discovery": {
+      "const": false
+    },
+    "request_time_compilation": {
+      "const": false
+    },
+    "operators": {
+      "type": "array",
+      "maxItems": 4096,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/operator"
+      }
+    },
+    "semantic_digest": {
+      "$ref": "#/$defs/digest"
+    }
+  },
+  "$defs": {
+    "digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "callable_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["module", "symbol"],
+      "properties": {
+        "module": {
+          "type": "string",
+          "maxLength": 256,
+          "pattern": "^kernels\\.[a-z][a-z0-9_]{0,63}\\.[a-z][a-z0-9_]{0,63}\\.tilelang$"
+        },
+        "symbol": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+        }
+      }
+    },
+    "autograd": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["mode"],
+          "properties": {
+            "mode": {
+              "const": "not_supported"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["mode", "setup_context", "backward"],
+          "properties": {
+            "mode": {
+              "const": "registered"
+            },
+            "setup_context": {
+              "$ref": "#/$defs/callable_ref"
+            },
+            "backward": {
+              "$ref": "#/$defs/callable_ref"
+            }
+          }
+        }
+      ]
+    },
+    "operator": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "qualified_name",
+        "schema",
+        "family",
+        "source",
+        "source_sha256",
+        "fake",
+        "namespace",
+        "backend",
+        "version",
+        "launch_symbol",
+        "autograd",
+        "devices"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]{0,63}$"
+        },
+        "qualified_name": {
+          "type": "string",
+          "pattern": "^mindclade::[a-z][a-z0-9_]{0,63}$"
+        },
+        "schema": {
+          "type": "string",
+          "maxLength": 2048,
+          "pattern": "^[a-z][a-z0-9_]{0,63}\\((?:|(?:Tensor|float|int|bool) [A-Za-z_][A-Za-z0-9_]{0,63}(?:, (?:Tensor|float|int|bool) [A-Za-z_][A-Za-z0-9_]{0,63})*)\\) -> Tensor$"
+        },
+        "family": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]{0,63}$"
+        },
+        "source": {
+          "type": "string",
+          "maxLength": 147,
+          "pattern": "^[a-z][a-z0-9_]{0,63}/[a-z][a-z0-9_]{0,63}/tilelang\\.py$"
+        },
+        "source_sha256": {
+          "$ref": "#/$defs/digest"
+        },
+        "fake": {
+          "$ref": "#/$defs/callable_ref"
+        },
+        "namespace": {
+          "const": "mindclade"
+        },
+        "backend": {
+          "const": "tilelang"
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2147483647
+        },
+        "launch_symbol": {
+          "type": "string",
+          "maxLength": 256,
+          "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+        },
+        "autograd": {
+          "$ref": "#/$defs/autograd"
+        },
+        "devices": {
+          "const": ["cuda"]
+        }
+      }
+    }
+  }
+}

@@ -41,6 +41,15 @@ def _normalize_source(kernels_root: Path, source: str | Path) -> tuple[Path, str
         raise ValueError(f"kernel source must not contain '..': {source}")
     candidate = raw if raw.is_absolute() else kernels_root / raw
     try:
+        lexical_relative = candidate.relative_to(kernels_root)
+    except ValueError as exc:
+        raise ValueError(f"declared kernel source escapes kernels root: {candidate}") from exc
+    current = kernels_root
+    for part in lexical_relative.parts:
+        current = current / part
+        if current.is_symlink():
+            raise ValueError(f"declared kernel source must not traverse a symlink: {candidate}")
+    try:
         resolved = candidate.resolve(strict=True)
     except (FileNotFoundError, RuntimeError) as exc:
         raise ValueError(f"declared kernel source does not exist: {candidate}") from exc
@@ -49,11 +58,6 @@ def _normalize_source(kernels_root: Path, source: str | Path) -> tuple[Path, str
     except ValueError as exc:
         raise ValueError(f"declared kernel source escapes kernels root: {candidate}") from exc
 
-    current = kernels_root
-    for part in relative.parts:
-        current = current / part
-        if current.is_symlink():
-            raise ValueError(f"declared kernel source must not traverse a symlink: {candidate}")
     if not resolved.is_file():
         raise ValueError(f"declared kernel source is not a regular file: {candidate}")
     if len(relative.parts) != 3 or relative.parts[2] != "tilelang.py":
