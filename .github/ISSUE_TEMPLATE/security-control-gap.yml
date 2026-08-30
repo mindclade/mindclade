@@ -1,0 +1,33 @@
+name: Security control gap
+description: Track a non-secret design or evidence gap; vulnerabilities must use a private advisory.
+title: "[security-control] "
+labels: [security, needs-triage]
+body:
+  - type: markdown
+    attributes:
+      value: Do not disclose an exploitable vulnerability or secret here. Open a private GitHub security advisory instead.
+  - type: input
+    id: control
+    attributes:
+      label: Control or invariant
+    validations:
+      required: true
+  - type: textarea
+    id: gap
+    attributes:
+      label: Observed gap
+      description: Separate source evidence from connected-system observation.
+    validations:
+      required: true
+  - type: textarea
+    id: containment
+    attributes:
+      label: Containment and fail-closed behavior
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Required qualification evidence
+    validations:
+      required: true

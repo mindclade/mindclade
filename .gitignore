@@ -1,0 +1,48 @@
+# Editor and operating-system state
+.DS_Store
+.idea/
+*.swp
+*.swo
+!.vscode/
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/tasks.json
+
+# Local environments and caches
+.direnv/
+.env
+.env.*
+!.env.example
+.venv/
+.uv-cache/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+__pycache__/
+*.py[cod]
+
+# Native and integration build output
+bazel-*
+target/
+node_modules/
+dist/
+build/
+coverage/
+.coverage
+
+# Local evidence, credentials, and provider state
+*.pem
+*.key
+*.p12
+*.pfx
+*.tfstate
+*.tfstate.*
+*.tfplan
+*.kubeconfig
+/repository_drift.v1.json
+!tools/repo/tests/golden/repository_drift.v1.json
+estate-audit.json
+diagnostic-bundle*.json
+
+# Generated local blueprint comparison output
+docs/architecture/blueprint/generated/*.tmp

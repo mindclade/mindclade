@@ -1,0 +1,23 @@
+package(default_visibility = ["//visibility:private"])
+
+_IGNORED_SOURCE_PATTERNS = [
+    "**/__pycache__/**",
+    "**/*.pyc",
+    "**/*.pyo",
+    "**/.DS_Store",
+]
+
+filegroup(
+    name = "architecture_governance",
+    srcs = glob([
+        "adr/**",
+        "architecture/**",
+    ], exclude = _IGNORED_SOURCE_PATTERNS),
+    visibility = ["//visibility:public"],
+)
+
+filegroup(
+    name = "documentation",
+    srcs = glob(["**"], exclude = _IGNORED_SOURCE_PATTERNS),
+    visibility = ["//visibility:public"],
+)

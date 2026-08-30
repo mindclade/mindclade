@@ -1,0 +1,91 @@
+load("@rules_python//python:defs.bzl", "py_test")
+
+package(default_visibility = ["//visibility:private"])
+
+exports_files([
+    "ARCHITECTURE.md",
+    "LICENSE",
+    "NOTICE",
+    "README.md",
+    "component.yaml",
+])
+
+filegroup(
+    name = "wave0_governance_sources",
+    srcs = [
+        ".bazelrc",
+        ".bazelversion",
+        ".editorconfig",
+        ".gitattributes",
+        ".gitignore",
+        ".markdownlint-cli2.yaml",
+        ".pre-commit-config.yaml",
+        ".python-version",
+        ".yamllint.yaml",
+        "AGENTS.md",
+        "ARCHITECTURE.md",
+        "BUILD.bazel",
+        "CODE_OF_CONDUCT.md",
+        "CONTRIBUTING.md",
+        "Cargo.lock",
+        "Cargo.toml",
+        "LICENSE",
+        "MODULE.bazel",
+        "MODULE.bazel.lock",
+        "NOTICE",
+        "README.md",
+        "SECURITY.md",
+        "buf.gen.yaml",
+        "buf.yaml",
+        "component.yaml",
+        "flake.lock",
+        "flake.nix",
+        "go.mod",
+        "go.sum",
+        "justfile",
+        "package.json",
+        "pnpm-lock.yaml",
+        "pnpm-workspace.yaml",
+        "pyproject.toml",
+        "rust-toolchain.toml",
+        "uv.lock",
+        "//docs:documentation",
+        "//tools:repository_governance",
+    ] + glob([
+        ".buildkite/**",
+        ".devcontainer/**",
+        ".github/**",
+        ".vscode/**",
+    ], exclude = [
+        "**/__pycache__/**",
+        "**/*.pyc",
+        "**/*.pyo",
+        "**/.DS_Store",
+    ]),
+    visibility = ["//visibility:public"],
+)
+
+py_test(
+    name = "buildkite_pipeline_model_test",
+    srcs = [".buildkite/pipeline.py"] + glob([
+        ".buildkite/lib/*.py",
+        ".buildkite/steps/*.py",
+    ]),
+    main = ".buildkite/pipeline.py",
+    args = ["--check"],
+    imports = [
+        ".buildkite/lib",
+        ".buildkite/steps",
+    ],
+    legacy_create_init = 0,
+    python_version = "PY3",
+)
+
+test_suite(
+    name = "wave0_tests",
+    tests = [
+        ":buildkite_pipeline_model_test",
+        "//tools:repository_governance_tests",
+    ],
+    visibility = ["//visibility:public"],
+)

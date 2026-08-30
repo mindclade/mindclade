@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+umask 027
+export LANG=C
+export LC_ALL=C
+export TZ=UTC
+export PYTHONHASHSEED=0
+export PYTHONDONTWRITEBYTECODE=1
+export CARGO_NET_OFFLINE=true
+export GOTOOLCHAIN=local
+export UV_FROZEN=true
+
+if [[ -z "${BUILDKITE_BUILD_CHECKOUT_PATH:-}" ]]; then
+  echo "BUILDKITE_BUILD_CHECKOUT_PATH is required" >&2
+  exit 1
+fi
+export MINDCLADE_REPOSITORY_ROOT="${BUILDKITE_BUILD_CHECKOUT_PATH}"

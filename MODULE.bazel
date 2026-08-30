@@ -1,0 +1,26 @@
+module(
+    name = "mindclade",
+    version = "0.0.0",
+)
+
+bazel_dep(name = "rules_shell", version = "0.8.0")
+bazel_dep(name = "rules_python", version = "2.3.2")
+
+# The Wave 0 governance suite is Python 3.12 and consumes the root uv.lock
+# directly. Bazel therefore owns the interpreter and wheel closure instead of
+# inheriting an ambient host Python.
+python = use_extension("@rules_python//python/extensions:python.bzl", "python")
+python.defaults(
+    python_version = "3.12",
+)
+python.toolchain(
+    python_version = "3.12",
+)
+
+pip = use_extension("@rules_python//python/extensions:pip.bzl", "pip")
+pip.parse(
+    hub_name = "mindclade_pypi",
+    python_version = "3.12",
+    uv_lock = "//:uv.lock",
+)
+use_repo(pip, "mindclade_pypi")

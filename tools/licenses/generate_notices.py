@@ -1,0 +1,96 @@
+#!/usr/bin/env python3.12
+"""Render deterministic third-party notices from a policy-recorded inventory."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import sys
+from collections.abc import Mapping, Sequence
+from pathlib import Path
+from typing import cast
+
+
+def render(inventory: Mapping[str, object]) -> str:
+    if inventory.get("schema_version") != "license-inventory.v1":
+        raise ValueError("inventory must use license-inventory.v1")
+    if inventory.get("violations"):
+        raise ValueError("cannot generate notices from an inventory with violations")
+    lines = [
+        "Mindclade Monorepo Notices",
+        "",
+        "Copyright (c) 2026 Mindclade. All rights reserved.",
+        "",
+        "This private repository is governed by the Mindclade Proprietary",
+        "Internal-Use License in LICENSE. Mindclade does not relicense the",
+        "third-party build and validation dependencies listed below.",
+        "",
+        "Policy-recorded Wave 0 dependency inventory:",
+        "",
+    ]
+    records = inventory.get("records")
+    if not isinstance(records, list):
+        raise ValueError("inventory records must be an array")
+    typed_records: list[dict[str, str]] = []
+    for raw_record in cast(list[object], records):
+        if not isinstance(raw_record, dict):
+            raise ValueError("inventory record must be an object")
+        record = cast(dict[str, object], raw_record)
+        required = ("ecosystem", "name", "version", "license", "scope")
+        if not all(isinstance(record.get(field), str) for field in required):
+            raise ValueError("inventory record has an invalid required field")
+        typed_records.append({field: cast(str, record[field]) for field in required})
+    third_party = [
+        record
+        for record in typed_records
+        if record.get("license") != "LicenseRef-Mindclade-Proprietary"
+    ]
+    if not third_party:
+        lines.append("No third-party dependency is active in Wave 0.")
+    else:
+        for record in sorted(third_party, key=lambda value: (value["ecosystem"], value["name"])):
+            lines.append(
+                f"- {record['ecosystem']}:{record['name']}@{record['version']} — "
+                f"{record['license']} ({record['scope']})"
+            )
+    lines.extend(
+        [
+            "",
+            "The pinned nixpkgs source describes a development-only package set; its",
+            "resolved shell closure is excluded from product artifacts. Product or public",
+            "distribution remains prohibited until artifact-specific SBOM, license text,",
+            "notice, vulnerability, provenance, and approval evidence is complete.",
+            "",
+            "Authoritative package license texts remain with their upstream packages.",
+        ]
+    )
+    return "\n".join(lines) + "\n"
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--inventory", type=Path, required=True)
+    parser.add_argument("--output", type=Path)
+    return parser
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    args = build_parser().parse_args(argv)
+    try:
+        raw_inventory: object = json.loads(args.inventory.read_text(encoding="utf-8"))
+        if not isinstance(raw_inventory, dict):
+            raise ValueError("inventory root must be an object")
+        inventory = cast(dict[str, object], raw_inventory)
+        content = render(inventory)
+    except (OSError, json.JSONDecodeError, KeyError, TypeError, ValueError) as error:
+        print(f"notice generation failed: {error}", file=sys.stderr)
+        return 1
+    if args.output:
+        args.output.write_text(content, encoding="utf-8")
+    else:
+        sys.stdout.write(content)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

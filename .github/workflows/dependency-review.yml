@@ -1,0 +1,29 @@
+name: Dependency review
+
+on:
+  pull_request:
+    paths:
+      - "**/MODULE.bazel"
+      - "**/Cargo.toml"
+      - "**/Cargo.lock"
+      - "**/go.mod"
+      - "**/go.sum"
+      - "**/package.json"
+      - "**/pnpm-lock.yaml"
+      - "**/pyproject.toml"
+      - "**/uv.lock"
+      - ".github/dependabot.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.repository }}-dependency-review-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    uses: mindclade/.github/.github/workflows/reusable-dependency-review.yml@6399abc50c4678d0dff7f33bbd7f6868043ef736
+    with:
+      source_revision: ${{ github.event.pull_request.head.sha }}
+      base_revision: ${{ github.event.pull_request.base.sha }}

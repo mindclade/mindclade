@@ -1,0 +1,32 @@
+{
+  "name": "Mindclade Wave 0",
+  "build": {
+    "dockerfile": "Containerfile",
+    "context": ".."
+  },
+  "containerUser": "root",
+  "remoteUser": "root",
+  "workspaceFolder": "/workspaces/mindclade",
+  "mounts": [
+    "source=mindclade-nix-store,target=/nix,type=volume"
+  ],
+  "containerEnv": {
+    "LANG": "C",
+    "LC_ALL": "C",
+    "TZ": "UTC"
+  },
+  "postCreateCommand": "nix develop --command just bootstrap",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "bazelbuild.vscode-bazel",
+        "charliermarsh.ruff",
+        "golang.go",
+        "jnoortheen.nix-ide",
+        "redhat.vscode-yaml",
+        "rust-lang.rust-analyzer",
+        "tamasfe.even-better-toml"
+      ]
+    }
+  }
+}

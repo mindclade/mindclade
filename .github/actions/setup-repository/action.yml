@@ -1,0 +1,25 @@
+name: Set up Mindclade repository
+description: Validate an already checked-out exact source revision without installing tools or credentials.
+inputs:
+  source-revision:
+    description: Full lowercase Git commit SHA expected at HEAD.
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Validate checkout binding
+      shell: bash
+      env:
+        EXPECTED_REVISION: ${{ inputs.source-revision }}
+      run: |
+        set -euo pipefail
+        [[ "${EXPECTED_REVISION}" =~ ^[0-9a-f]{40}$ ]]
+        [[ "$(git rev-parse HEAD)" == "${EXPECTED_REVISION}" ]]
+        git diff --quiet
+        git diff --cached --quiet
+        test -s component.yaml
+        test -s flake.lock
+        test -s uv.lock
+        test -s Cargo.lock
+        test -f go.sum
+        test -s pnpm-lock.yaml

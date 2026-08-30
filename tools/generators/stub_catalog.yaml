@@ -1,0 +1,57 @@
+{
+  "api_version": "mindclade.dev/v1",
+  "kind": "StubCatalog",
+  "metadata": {
+    "name": "mindclade-component-stubs",
+    "owner": "developer-platform",
+    "policy": "Profiles activate only an already-approved manifest namespace with a concrete consumer and real targets."
+  },
+  "profiles": {
+    "governed_component": {
+      "required_files": ["component.yaml", "BUILD.bazel", "README.md"],
+      "required_proof": ["metadata", "owner", "dependency-law", "real-target"]
+    },
+    "python_library": {
+      "required_files": ["pyproject.toml", "src/__init__.py", "src/py.typed", "src/${domain_contract}.py", "tests/test_${domain_contract}.py", "BUILD.bazel", "component.yaml", "README.md"],
+      "required_proof": ["import", "type", "unit", "dependency-law", "wheel"]
+    },
+    "rust_crate": {
+      "required_files": ["Cargo.toml", "src/lib.rs", "src/${domain_contract}.rs", "tests/${domain_contract}_contract.rs", "BUILD.bazel", "component.yaml", "README.md"],
+      "required_proof": ["cargo-bazel-parity", "clippy", "unit", "conformance", "license-audit"]
+    },
+    "go_package": {
+      "required_files": ["${domain_contract}.go", "${domain_contract}_test.go", "BUILD.bazel", "component.yaml", "README.md"],
+      "required_proof": ["go-bazel-parity", "race", "unit", "contract"]
+    },
+    "typescript_package": {
+      "required_files": ["package.json", "src/${domain_contract}.ts", "tests/${domain_contract}.test.ts", "BUILD.bazel", "component.yaml", "README.md"],
+      "optional_public_files": ["src/index.ts"],
+      "required_proof": ["typecheck", "unit", "contract", "bundle", "dependency-law"]
+    },
+    "protobuf_event": {
+      "required_files": ["${domain_contract}.proto", "BUILD.bazel", "compatibility/${domain_contract}.json", "README.md"],
+      "required_proof": ["lint", "generation-drift", "breaking-change", "cross-language-roundtrip"]
+    },
+    "json_schema": {
+      "required_files": ["${domain_contract}.schema.json", "fixtures/positive.json", "fixtures/negative.json", "BUILD.bazel", "compatibility/${domain_contract}.json", "README.md"],
+      "required_proof": ["metaschema", "stable-id", "compatibility", "generated-validator"]
+    },
+    "service_worker_image": {
+      "required_files": ["${composition_root}", "component.yaml", "BUILD.bazel", "README.md", "tests/${domain_contract}_failure_test.py", "release-package.yaml"],
+      "required_proof": ["clean-image", "cancellation", "fencing", "health", "sbom", "provenance", "local-integration"]
+    },
+    "deployment_package": {
+      "required_files": ["release-package.yaml", "values.schema.json", "${domain_contract}-base.yaml", "tests/${domain_contract}_policy_test.py", "BUILD.bazel", "component.yaml", "README.md"],
+      "required_proof": ["deterministic-render", "schema", "policy", "upgrade", "rollback", "digest-pin"]
+    },
+    "documentation_index": {
+      "required_files": ["README.md", "${domain_contract}.md", "BUILD.bazel", "link-test.yaml"],
+      "required_proof": ["compiled-examples", "links", "ownership", "review-date"]
+    }
+  },
+  "forbidden_materialized_names": ["utils", "service", "manager", "domain_contract", "<domain_contract>"],
+  "variables": {
+    "domain_contract": "Concrete durable capability name already present in the repository path manifest.",
+    "composition_root": "Concrete domain-specific process entrypoint already present in the repository path manifest."
+  }
+}

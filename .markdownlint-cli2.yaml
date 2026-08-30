@@ -1,0 +1,24 @@
+config:
+  default: true
+  MD013: false
+  MD024:
+    siblings_only: true
+  MD033:
+    allowed_elements:
+      - details
+      - summary
+  MD041: false
+  # Blueprint source tables intentionally use compact separator rows. MD060
+  # changed defaults in the pinned markdownlint release and would rewrite the
+  # authoritative source formatting without improving semantic validation.
+  MD060: false
+globs:
+  - "**/*.md"
+ignores:
+  - "docs/architecture/blueprint/generated/**"
+  # Immutable v3.4.0 and MONOREPO_TREE provenance is verified by SHA-256; lint
+  # the corrected editable sources instead of requesting changes to evidence.
+  - "docs/architecture/blueprint/provenance/**"
+  - ".venv/**"
+  - "bazel-*/**"
+  - "build/**"

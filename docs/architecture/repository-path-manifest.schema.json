@@ -1,0 +1,97 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.mindclade.dev/repository/repository-path-manifest.v1.schema.json",
+  "title": "Mindclade repository path manifest v1",
+  "type": "object",
+  "required": ["api_version", "kind", "metadata", "paths"],
+  "properties": {
+    "$schema": {"type": "string"},
+    "api_version": {"const": "mindclade.dev/v1"},
+    "kind": {"const": "RepositoryPathManifest"},
+    "metadata": {
+      "type": "object",
+      "required": ["name", "canonical_repository", "canonical_anchor_commit", "authority", "reconciliation", "owners"],
+      "properties": {
+        "name": {"const": "mindclade"},
+        "canonical_repository": {"const": "https://github.com/mindclade/mindclade"},
+        "canonical_anchor_commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+        "authority": {
+          "type": "object",
+          "required": ["source", "sha256", "blueprint_source", "blueprint_sha256", "original_file_count", "original_directory_count", "original_path_set_sha256", "original_paths"],
+          "properties": {
+            "source": {"const": "MONOREPO_TREE.md"},
+            "sha256": {"$ref": "#/$defs/sha256"},
+            "blueprint_source": {"type": "string"},
+            "blueprint_sha256": {"$ref": "#/$defs/sha256"},
+            "original_file_count": {"type": "integer", "minimum": 1},
+            "original_directory_count": {"const": 787},
+            "original_path_set_sha256": {"$ref": "#/$defs/sha256"},
+            "original_paths": {"type": "array", "items": {"$ref": "#/$defs/path"}, "uniqueItems": true}
+          },
+          "additionalProperties": false
+        },
+        "reconciliation": {
+          "type": "object",
+          "required": ["version", "remove_paths", "additions", "canonical_file_count", "canonical_path_set_sha256"],
+          "properties": {
+            "version": {"const": "3.4.2"},
+            "remove_paths": {"type": "array", "items": {"$ref": "#/$defs/path"}, "uniqueItems": true},
+            "additions": {"type": "array", "items": {"$ref": "#/$defs/addition"}},
+            "canonical_file_count": {"type": "integer", "minimum": 1},
+            "canonical_path_set_sha256": {"$ref": "#/$defs/sha256"}
+          },
+          "additionalProperties": false
+        },
+        "owners": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "required": ["team"],
+            "properties": {"team": {"type": "string", "pattern": "^@mindclade/[a-z0-9-]+$"}},
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "paths": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/entry"}
+    }
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "path": {"type": "string", "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*[\\\\*{}<>…]).+$"},
+    "addition": {
+      "type": "object",
+      "required": ["path", "reason"],
+      "properties": {
+        "path": {"$ref": "#/$defs/path"},
+        "replaces": {"$ref": "#/$defs/path"},
+        "reason": {"type": "string", "minLength": 1}
+      },
+      "additionalProperties": false
+    },
+    "entry": {
+      "type": "object",
+      "required": ["path", "kind", "owner", "component", "status", "activation_wave", "source_authority", "build_targets", "test_targets", "public_surface"],
+      "properties": {
+        "path": {"$ref": "#/$defs/path"},
+        "kind": {"enum": ["source", "test", "documentation", "schema", "fixture", "build", "configuration", "data"]},
+        "owner": {"type": "string", "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$"},
+        "component": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$"},
+        "status": {"enum": ["target", "active", "generated", "deferred", "retired"]},
+        "activation_wave": {"type": "string", "pattern": "^(?:[0-9]+|[0-9]+[PS])$"},
+        "source_authority": {
+          "enum": ["hand-authored", "immutable-provenance", "reviewed-generated"]
+        },
+        "build_targets": {"type": "array", "items": {"type": "string", "pattern": "^//[^:]*:[A-Za-z0-9_.+-]+$"}, "uniqueItems": true},
+        "test_targets": {"type": "array", "items": {"type": "string", "pattern": "^//[^:]*:[A-Za-z0-9_.+-]+$"}, "uniqueItems": true},
+        "public_surface": {"type": "boolean"},
+        "activation_criterion": {"type": "string", "minLength": 1}
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

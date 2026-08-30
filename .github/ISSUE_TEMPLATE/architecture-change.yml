@@ -1,0 +1,32 @@
+name: Architecture change
+description: Propose a change to ownership, authority, contracts, dependency law, or a constitutional invariant.
+title: "[architecture] "
+labels: [architecture, needs-triage]
+body:
+  - type: input
+    id: owner
+    attributes:
+      label: Accountable owner team
+    validations:
+      required: true
+  - type: textarea
+    id: decision
+    attributes:
+      label: Proposed decision
+      description: State the authority, interfaces, dependency direction, and affected invariants.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence and alternatives
+      description: Name measured evidence, rejected alternatives, and why the change is needed now.
+    validations:
+      required: true
+  - type: textarea
+    id: migration
+    attributes:
+      label: Migration and rollback
+      description: Include compatibility, owners, expiry, recovery, and rollback.
+    validations:
+      required: true

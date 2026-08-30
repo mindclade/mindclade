@@ -1,0 +1,152 @@
+load("@rules_python//python:defs.bzl", "py_test")
+load("//tools:bazel/rules/component_rule.bzl", "component_metadata")
+
+package(default_visibility = ["//visibility:private"])
+
+_IGNORED_SOURCE_PATTERNS = [
+    "**/__pycache__/**",
+    "**/*.pyc",
+    "**/*.pyo",
+    "**/.DS_Store",
+]
+
+component_metadata(
+    name = "root_component_metadata",
+    component_name = "mindclade",
+    metadata = "//:component.yaml",
+    owner = "product-engineering",
+)
+
+filegroup(
+    name = "repository_governance",
+    srcs = glob(["**"], exclude = _IGNORED_SOURCE_PATTERNS),
+    visibility = ["//visibility:public"],
+)
+
+py_test(
+    name = "required_check_contract_test",
+    srcs = [
+        "ci/evidence_bundle.py",
+        "ci/required_check.py",
+    ],
+    main = "ci/required_check.py",
+    args = ["--self-test"],
+    data = [
+        "repo/repository_drift.v1.schema.json",
+        "repo/tests/golden/repository_drift.v1.json",
+    ],
+    deps = [
+        "@mindclade_pypi//cryptography",
+        "@mindclade_pypi//jsonschema",
+    ],
+    imports = ["ci"],
+    legacy_create_init = 0,
+    python_version = "PY3",
+)
+
+py_test(
+    name = "pipeline_plan_contract_test",
+    srcs = [
+        "ci/affected_targets.py",
+        "ci/pipeline_plan.py",
+    ],
+    main = "ci/pipeline_plan.py",
+    args = [
+        "--source-revision=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "--pipeline-definition-revision=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "--changed-file=BUILD.bazel",
+    ],
+    imports = ["ci"],
+    legacy_create_init = 0,
+    python_version = "PY3",
+)
+
+_REPOSITORY_TEST_DATA = glob(
+    ["repo/**"],
+    exclude = _IGNORED_SOURCE_PATTERNS,
+) + [
+    "//:wave0_governance_sources",
+    "ci/evidence_bundle.py",
+]
+
+py_test(
+    name = "repository_drift_report_test",
+    srcs = ["repo/tests/test_build_repository_drift_report.py"],
+    data = _REPOSITORY_TEST_DATA,
+    deps = [
+        "@mindclade_pypi//cryptography",
+        "@mindclade_pypi//jsonschema",
+    ],
+    legacy_create_init = 0,
+    main = "repo/tests/test_build_repository_drift_report.py",
+    python_version = "PY3",
+)
+
+py_test(
+    name = "monorepo_tree_authority_test",
+    srcs = ["repo/tests/test_monorepo_tree_authority.py"],
+    data = _REPOSITORY_TEST_DATA,
+    deps = ["@mindclade_pypi//jsonschema"],
+    legacy_create_init = 0,
+    main = "repo/tests/test_monorepo_tree_authority.py",
+    python_version = "PY3",
+)
+
+py_test(
+    name = "repository_policies_test",
+    srcs = ["repo/tests/test_repository_policies.py"],
+    data = _REPOSITORY_TEST_DATA,
+    deps = ["@mindclade_pypi//jsonschema"],
+    legacy_create_init = 0,
+    main = "repo/tests/test_repository_policies.py",
+    python_version = "PY3",
+)
+
+py_test(
+    name = "blueprint_source_manifest_test",
+    srcs = ["docs/tests/test_blueprint_source_manifest.py"],
+    data = [
+        "//:wave0_governance_sources",
+    ],
+    deps = ["@mindclade_pypi//jsonschema"],
+    legacy_create_init = 0,
+    main = "docs/tests/test_blueprint_source_manifest.py",
+    python_version = "PY3",
+)
+
+py_test(
+    name = "blueprint_render_test",
+    srcs = ["docs/tests/test_render_architecture_blueprint.py"],
+    data = [
+        "//:wave0_governance_sources",
+    ],
+    deps = ["@mindclade_pypi//jsonschema"],
+    legacy_create_init = 0,
+    main = "docs/tests/test_render_architecture_blueprint.py",
+    python_version = "PY3",
+)
+
+test_suite(
+    name = "repository_governance_tests",
+    tests = [
+        ":blueprint_render_test",
+        ":blueprint_source_manifest_test",
+        ":monorepo_tree_authority_test",
+        ":pipeline_plan_contract_test",
+        ":repository_drift_report_test",
+        ":repository_policies_test",
+        ":required_check_contract_test",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+filegroup(
+    name = "wave0_tooling",
+    srcs = glob([
+        "bazel/**",
+        "ci/**",
+        "dev/**",
+        "licenses/**",
+    ], exclude = _IGNORED_SOURCE_PATTERNS),
+    visibility = ["//visibility:public"],
+)

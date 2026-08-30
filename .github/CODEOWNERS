@@ -1,0 +1,62 @@
+# Default semantic owner for the canonical product monorepo.
+* @mindclade/product-engineering
+
+# Exact active root governance ownership.
+/.bazelrc @mindclade/developer-platform
+/.bazelversion @mindclade/developer-platform
+/.editorconfig @mindclade/developer-platform
+/.gitattributes @mindclade/developer-platform
+/.gitignore @mindclade/developer-platform
+/.markdownlint-cli2.yaml @mindclade/developer-platform
+/.pre-commit-config.yaml @mindclade/developer-platform
+/.python-version @mindclade/developer-platform
+/.yamllint.yaml @mindclade/developer-platform
+/AGENTS.md @mindclade/developer-platform
+/ARCHITECTURE.md @mindclade/developer-platform
+/BUILD.bazel @mindclade/developer-platform
+/CODE_OF_CONDUCT.md @mindclade/developer-platform
+/CONTRIBUTING.md @mindclade/developer-platform
+/Cargo.lock @mindclade/developer-platform
+/Cargo.toml @mindclade/developer-platform
+/LICENSE @mindclade/security
+/MODULE.bazel @mindclade/developer-platform
+/MODULE.bazel.lock @mindclade/developer-platform
+/NOTICE @mindclade/security
+/README.md @mindclade/developer-platform
+/SECURITY.md @mindclade/security
+/buf.gen.yaml @mindclade/developer-platform
+/buf.yaml @mindclade/developer-platform
+/component.yaml @mindclade/product-engineering
+/flake.lock @mindclade/developer-platform
+/flake.nix @mindclade/developer-platform
+/go.mod @mindclade/developer-platform
+/go.sum @mindclade/developer-platform
+/justfile @mindclade/developer-platform
+/package.json @mindclade/developer-platform
+/pnpm-lock.yaml @mindclade/developer-platform
+/pnpm-workspace.yaml @mindclade/developer-platform
+/pyproject.toml @mindclade/developer-platform
+/rust-toolchain.toml @mindclade/developer-platform
+/uv.lock @mindclade/developer-platform
+
+# Repository build, automation, and developer experience.
+/.buildkite/ @mindclade/developer-platform @mindclade/security
+/.devcontainer/ @mindclade/developer-platform
+/.github/ @mindclade/developer-platform @mindclade/security
+/.vscode/ @mindclade/developer-platform
+/BUILD.bazel @mindclade/developer-platform
+/MODULE.bazel @mindclade/developer-platform
+/flake.lock @mindclade/developer-platform
+/flake.nix @mindclade/developer-platform
+/justfile @mindclade/developer-platform
+/tools/ @mindclade/developer-platform
+/docs/BUILD.bazel @mindclade/developer-platform
+/docs/README.md @mindclade/developer-platform
+
+# Architecture, security, and foundational domain decisions.
+/docs/architecture/ @mindclade/architecture
+/docs/adr/ @mindclade/architecture
+/docs/adr/0005-biological-identity-and-schema-evolution.md @mindclade/computational-biology @mindclade/biological-safety
+/docs/adr/0007-training-state-progress-and-checkpoint.md @mindclade/ml-systems @mindclade/architecture
+/SECURITY.md @mindclade/security
+/tools/licenses/ @mindclade/security @mindclade/developer-platform

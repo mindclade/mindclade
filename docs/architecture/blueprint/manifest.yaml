@@ -1,0 +1,99 @@
+{
+  "schema": "mindclade.dev/architecture-blueprint-manifest/v1",
+  "document": {
+    "id": "MC-ARCH-001",
+    "title": "Mindclade Monorepo Authoritative Architecture and Implementation Blueprint",
+    "version": "3.4.2",
+    "status": "Authoritative approved architecture; Wave 0 source implementation and connected qualification pending",
+    "scope": "Mindclade internal product, platform, biological-agent, data, model, training, evaluation, inference, development-kit, and developer-tooling source",
+    "audience": "Founding engineers, ML researchers, computational biologists, platform engineers, security, safety, operations, product engineering, and technical leadership",
+    "effective_date": "2026-08-30",
+    "supersedes": "MC-ARCH-001 version 3.4.0",
+    "review_cadence": "Quarterly and on any constitutional trigger in Appendices A34.16, A34.17, or A35.20",
+    "repository_evidence_reviewed": "Greenfield canonical repository and five operational source repositories inspected on 2026-08-30; connected-state and implementation qualification remain pending",
+    "authority_note": "Version 3.4.2 is the single design authority. Sections 1–18 contain the reconciled implementation contract. Appendices A1–A40 provide normative domain detail. The editable architecture sources are the ordered files declared by docs/architecture/blueprint/manifest.yaml; the combined blueprint is their deterministic full render. docs/architecture/repository-path-manifest.yaml is the sole machine-readable repository-path authority, and Appendix A6 is its generated, human-reviewable explicit tree. Any source/render/manifest mismatch fails architecture validation. When wording conflicts, the architecture constitution, Sections 1–18, and an explicitly superseding ADR take precedence in that order. A target tree or planned wave is future state until direct repository and qualification evidence proves implementation."
+  },
+  "sources": {
+    "sections": [
+      {"number": 1, "title": "Executive summary", "path": "sections/01-executive-summary.md"},
+      {"number": 2, "title": "Goals, non-goals, principles, and system invariants", "path": "sections/02-goals-non-goals-principles-invariants.md"},
+      {"number": 3, "title": "Architecture overview", "path": "sections/03-architecture-overview.md"},
+      {"number": 4, "title": "Authoritative repository tree", "path": "sections/04-authoritative-repository-tree.md"},
+      {"number": 5, "title": "Ownership and dependency matrix", "path": "sections/05-ownership-and-dependency-matrix.md"},
+      {"number": 6, "title": "Contract and compatibility model", "path": "sections/06-contract-and-compatibility-model.md"},
+      {"number": 7, "title": "Detailed system designs", "path": "sections/07-detailed-system-designs.md"},
+      {"number": 8, "title": "End-to-end execution flows", "path": "sections/08-end-to-end-execution-flows.md"},
+      {"number": 9, "title": "Security and trust model", "path": "sections/09-security-and-trust-model.md"},
+      {"number": 10, "title": "Reliability and operational model", "path": "sections/10-reliability-and-operational-model.md"},
+      {"number": 11, "title": "Build, test, CI/CD, and release architecture", "path": "sections/11-build-test-cicd-release-architecture.md"},
+      {"number": 12, "title": "Deployment architecture", "path": "sections/12-deployment-architecture.md"},
+      {"number": 13, "title": "Developer workflows", "path": "sections/13-developer-workflows.md"},
+      {"number": 14, "title": "ADR index and decision log", "path": "sections/14-adr-index-and-decision-log.md"},
+      {"number": 15, "title": "Phased implementation plan", "path": "sections/15-phased-implementation-plan.md"},
+      {"number": 16, "title": "Verification and acceptance matrix", "path": "sections/16-verification-and-acceptance-matrix.md"},
+      {"number": 17, "title": "Risks, technical debt, deferred work, and blockers", "path": "sections/17-risks-technical-debt-deferred-blockers.md"},
+      {"number": 18, "title": "Glossary", "path": "sections/18-glossary.md"}
+    ],
+    "appendices": [
+      {"number": 1, "title": "Executive decision", "path": "appendices/A01-executive-decision.md"},
+      {"number": 2, "title": "Goals", "path": "appendices/A02-goals.md"},
+      {"number": 3, "title": "Repository estate and trust boundaries", "path": "appendices/A03-repository-estate-and-trust-boundaries.md"},
+      {"number": 4, "title": "Language ownership model", "path": "appendices/A04-language-ownership-model.md"},
+      {"number": 5, "title": "Organizing principle: domain first, language second", "path": "appendices/A05-domain-first-language-second.md"},
+      {"number": 6, "title": "Authoritative repository tree", "path": "appendices/A06-authoritative-repository-tree.md"},
+      {"number": 7, "title": "Dependency laws", "path": "appendices/A07-dependency-laws.md"},
+      {"number": 8, "title": "Standard package shape", "path": "appendices/A08-standard-package-shape.md"},
+      {"number": 9, "title": "Build and dependency architecture", "path": "appendices/A09-build-and-dependency-architecture.md"},
+      {"number": 10, "title": "Protocol and schema architecture", "path": "appendices/A10-protocol-and-schema-architecture.md"},
+      {"number": 11, "title": "Biological domain architecture", "path": "appendices/A11-biological-domain-architecture.md"},
+      {"number": 12, "title": "Data platform architecture", "path": "appendices/A12-data-platform-architecture.md"},
+      {"number": 13, "title": "Model architecture", "path": "appendices/A13-model-architecture.md"},
+      {"number": 14, "title": "Training architecture", "path": "appendices/A14-training-architecture.md"},
+      {"number": 15, "title": "Kernel architecture", "path": "appendices/A15-kernel-architecture.md"},
+      {"number": 16, "title": "Evaluation architecture", "path": "appendices/A16-evaluation-architecture.md"},
+      {"number": 17, "title": "Inference architecture", "path": "appendices/A17-inference-architecture.md"},
+      {"number": 18, "title": "Service and worker architecture", "path": "appendices/A18-service-and-worker-architecture.md"},
+      {"number": 19, "title": "SDK and application architecture", "path": "appendices/A19-sdk-and-application-architecture.md"},
+      {"number": 20, "title": "Research graduation policy", "path": "appendices/A20-research-graduation-policy.md"},
+      {"number": 21, "title": "CI architecture", "path": "appendices/A21-ci-architecture.md"},
+      {"number": 22, "title": "Test and qualification matrix", "path": "appendices/A22-test-and-qualification-matrix.md"},
+      {"number": 23, "title": "Release and artifact model", "path": "appendices/A23-release-and-artifact-model.md"},
+      {"number": 24, "title": "Kubernetes and workload execution", "path": "appendices/A24-kubernetes-and-workload-execution.md"},
+      {"number": 25, "title": "Observability", "path": "appendices/A25-observability.md"},
+      {"number": 26, "title": "Security, supply chain, and biological governance", "path": "appendices/A26-security-supply-chain-biological-governance.md"},
+      {"number": 27, "title": "Configuration architecture", "path": "appendices/A27-configuration-architecture.md"},
+      {"number": 28, "title": "Database and migration policy", "path": "appendices/A28-database-and-migration-policy.md"},
+      {"number": 29, "title": "Ownership and governance", "path": "appendices/A29-ownership-and-governance.md"},
+      {"number": 30, "title": "Developer workflow", "path": "appendices/A30-developer-workflow.md"},
+      {"number": 31, "title": "Capability-local implementation guidance", "path": "appendices/A31-capability-local-implementation-guidance.md"},
+      {"number": 32, "title": "What to defer", "path": "appendices/A32-what-to-defer.md"},
+      {"number": 33, "title": "Repository anti-patterns", "path": "appendices/A33-repository-anti-patterns.md"},
+      {"number": 34, "title": "Architecture constitution", "path": "appendices/A34-architecture-constitution.md"},
+      {"number": 35, "title": "Technology basis", "path": "appendices/A35-technology-basis.md"},
+      {"number": 36, "title": "Agent and development-kit architecture", "path": "appendices/A36-agent-and-development-kit-architecture.md"},
+      {"number": 37, "title": "Google Cloud reference deployment profile", "path": "appendices/A37-google-cloud-reference-deployment-profile.md"},
+      {"number": 38, "title": "Reliability, continuity, and first-production acceptance", "path": "appendices/A38-reliability-continuity-first-production-acceptance.md"},
+      {"number": 39, "title": "Feature derivation, caching, and model-specific feature architecture", "path": "appendices/A39-feature-derivation-caching-model-specific-features.md"},
+      {"number": 40, "title": "Feature and data transform architecture", "path": "appendices/A40-feature-and-data-transform-architecture.md"}
+    ]
+  },
+  "heading_anchor_expectations": {
+    "source_heading_level": 2,
+    "section_heading_template": "## {number}. {title}",
+    "appendix_heading_template": "## Appendix A{number} — {title}",
+    "anchor_algorithm": "gfm",
+    "reject_duplicate_anchors": true
+  },
+  "repository_path_manifest": "../repository-path-manifest.yaml",
+  "generated_output": "generated/MINDCLADE_MONOREPO_BLUEPRINT_FULL.md",
+  "provenance": {
+    "blueprint_v3_4_0": {
+      "path": "provenance/MINDCLADE_MONOREPO_BLUEPRINT_v3.4.0_OPTIMIZED.md",
+      "sha256": "d099074e755168bbdce076d50918bf06aff677f9e5d620fdfe53cb7cef745803"
+    },
+    "repository_tree": {
+      "path": "provenance/MONOREPO_TREE.md",
+      "sha256": "1854013cd9bf44bf03087e6d5a3de4283b371d878d91e02604c0029e417e5e3b"
+    }
+  }
+}

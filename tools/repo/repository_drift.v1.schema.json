@@ -1,0 +1,425 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.mindclade.dev/repository/repository_drift.v1.schema.json",
+  "title": "Mindclade repository drift report v1",
+  "type": "object",
+  "required": [
+    "schema_version", "generator", "canonical_repository", "target_authority", "summary",
+    "actual_paths", "drift", "components", "dependency_edges", "ownership_gaps",
+    "contract_authorities", "deployables", "artifact_release_authorities",
+    "duplicate_systems", "boundaries", "reference_sources", "missing_reference_sources",
+    "migration_dispositions", "readiness"
+  ],
+  "properties": {
+    "schema_version": {"const": "repository_drift.v1"},
+    "generator": {
+      "type": "object",
+      "required": ["name", "version"],
+      "properties": {
+        "name": {"const": "tools/repo/build_repository_drift_report.py"},
+        "version": {"const": "1"}
+      },
+      "additionalProperties": false
+    },
+    "canonical_repository": {
+      "type": "object",
+      "required": [
+        "name", "url", "anchor_commit", "observation_scope", "base_commit",
+        "observed_commit", "working_tree_state", "path_set_sha256",
+        "content_snapshot_sha256", "evidence_outputs_excluded"
+      ],
+      "properties": {
+        "name": {"const": "mindclade"},
+        "url": {"const": "https://github.com/mindclade/mindclade"},
+        "anchor_commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+        "observation_scope": {"enum": ["commit", "working-tree"]},
+        "base_commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+        "observed_commit": {
+          "oneOf": [
+            {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+            {"type": "null"}
+          ]
+        },
+        "working_tree_state": {"enum": ["clean", "dirty"]},
+        "path_set_sha256": {"$ref": "#/$defs/sha256"},
+        "content_snapshot_sha256": {"$ref": "#/$defs/sha256"},
+        "evidence_outputs_excluded": {
+          "type": "array", "items": {"type": "string"}, "uniqueItems": true
+        }
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"observation_scope": {"const": "commit"}}},
+          "then": {
+            "properties": {
+              "observed_commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+              "working_tree_state": {"const": "clean"}
+            }
+          },
+          "else": {"properties": {"observed_commit": {"type": "null"}}}
+        }
+      ],
+      "additionalProperties": false
+    },
+    "target_authority": {"type": "object"},
+    "summary": {
+      "type": "object",
+      "required": [
+        "canonical_target_paths", "populated_paths", "unknown_paths", "premature_paths",
+        "missing_active_paths", "component_count", "dependency_edge_count",
+        "source_check_failures", "source_checks_missing", "operational_metadata_failures",
+        "default_branch_observations_incomplete", "branch_protection_observations_incomplete",
+        "operational_inventory_failures"
+      ],
+      "additionalProperties": {"type": "integer", "minimum": 0}
+    },
+    "actual_paths": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+    "drift": {
+      "type": "object",
+      "required": [
+        "unknown_paths", "premature_paths", "missing_active_paths", "restricted_artifacts",
+        "oversized_files"
+      ],
+      "additionalProperties": {
+        "type": "array", "items": {"type": "string"}, "uniqueItems": true
+      }
+    },
+    "components": {"type": "array", "items": {"type": "object"}},
+    "dependency_edges": {"type": "array", "items": {"$ref": "#/$defs/edge"}},
+    "ownership_gaps": {"type": "array", "items": {"type": "object"}},
+    "contract_authorities": {"type": "array", "items": {"type": "object"}},
+    "deployables": {"type": "array", "items": {"type": "object"}},
+    "artifact_release_authorities": {"type": "array", "items": {"type": "object"}},
+    "duplicate_systems": {"type": "array", "items": {"type": "object"}},
+    "boundaries": {"type": "object"},
+    "reference_sources": {
+      "type": "array", "items": {"$ref": "#/$defs/reference"}, "uniqueItems": true
+    },
+    "missing_reference_sources": {
+      "type": "array", "items": {"type": "string"}, "uniqueItems": true
+    },
+    "migration_dispositions": {"type": "array", "items": {"type": "object"}},
+    "readiness": {
+      "type": "object",
+      "required": ["label", "reason"],
+      "properties": {
+        "label": {
+          "enum": [
+            "IMPLEMENTED", "TARGET", "WAVE-0", "DEFERRED", "PROHIBITED", "INCONCLUSIVE"
+          ]
+        },
+        "reason": {"type": "string", "minLength": 1}
+      },
+      "additionalProperties": false
+    }
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "nullableSha256": {
+      "oneOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]
+    },
+    "nullableRevision": {
+      "oneOf": [
+        {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+        {"type": "null"}
+      ]
+    },
+    "edge": {
+      "type": "object",
+      "required": [
+        "source", "target", "kind", "visibility", "owner", "justification", "scope",
+        "exception"
+      ],
+      "properties": {
+        "source": {"type": "string"}, "target": {"type": "string"},
+        "kind": {"type": "string"}, "visibility": {"type": "string"},
+        "owner": {"type": "string"}, "justification": {"type": "string"},
+        "scope": {"type": "string"}, "exception": {"type": ["string", "null"]}
+      },
+      "additionalProperties": false
+    },
+    "releaseBehavior": {
+      "type": "object",
+      "required": ["strategy", "artifact", "immutable", "evidence"],
+      "properties": {
+        "strategy": {"type": "string", "minLength": 1},
+        "artifact": {"type": "string", "minLength": 1},
+        "immutable": {"const": true},
+        "evidence": {
+          "type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "componentMetadata": {
+      "type": "object",
+      "required": [
+        "status", "path", "revision", "content_sha256", "api_version", "metadata_name",
+        "project_slug", "owner", "repository_class", "trust_tier", "recovery_tier", "release"
+      ],
+      "properties": {
+        "status": {"const": "PASS"}, "path": {"const": "component.yaml"},
+        "revision": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+        "content_sha256": {"$ref": "#/$defs/sha256"},
+        "api_version": {"type": "string", "minLength": 1},
+        "metadata_name": {"type": "string", "minLength": 1},
+        "project_slug": {"type": "string", "minLength": 1},
+        "owner": {"type": "string", "minLength": 1},
+        "repository_class": {"type": "string", "minLength": 1},
+        "trust_tier": {"type": "string", "minLength": 1},
+        "recovery_tier": {"type": "string", "minLength": 1},
+        "release": {"$ref": "#/$defs/releaseBehavior"}
+      },
+      "additionalProperties": false
+    },
+    "connectedObservation": {
+      "oneOf": [
+        {"$ref": "#/$defs/unqualifiedObservation"},
+        {"$ref": "#/$defs/qualifiedObservation"}
+      ]
+    },
+    "unqualifiedObservation": {
+      "type": "object",
+      "required": [
+        "status", "source", "revision", "evidence_sha256", "signature_verification", "finding"
+      ],
+      "properties": {
+        "status": {"const": "INCONCLUSIVE"},
+        "source": {"enum": ["local-checkout", "not-observed"]},
+        "revision": {"$ref": "#/$defs/nullableRevision"},
+        "evidence_sha256": {"$ref": "#/$defs/nullableSha256"},
+        "signature_verification": {"const": "NOT_VERIFIED"},
+        "finding": {"type": "string", "minLength": 1},
+        "observed": {"type": ["string", "null"]}
+      },
+      "additionalProperties": false
+    },
+    "connectedSubject": {
+      "type": "object",
+      "required": ["repository", "revision", "ref", "control", "expected_value"],
+      "properties": {
+        "repository": {"type": "string", "pattern": "^mindclade/[A-Za-z0-9._-]+$"},
+        "revision": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+        "ref": {"const": "refs/heads/main"},
+        "control": {"enum": ["default_branch", "branch_protection"]},
+        "expected_value": {"type": "string", "minLength": 1}
+      },
+      "additionalProperties": false
+    },
+    "receiptVerification": {
+      "type": "object",
+      "required": [
+        "verifier", "verifier_version", "verifier_source_revision", "algorithm",
+        "key_version", "public_key_sha256", "signature_sha256", "trust_record_sha256"
+      ],
+      "properties": {
+        "verifier": {"const": "mindclade-connected-observation-verifier"},
+        "verifier_version": {"const": "1"},
+        "verifier_source_revision": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+        "algorithm": {"const": "ECDSA_P256_SHA256"},
+        "key_version": {"type": "string", "minLength": 1},
+        "public_key_sha256": {"$ref": "#/$defs/sha256"},
+        "signature_sha256": {"$ref": "#/$defs/sha256"},
+        "trust_record_sha256": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/sha256"},
+          "minItems": 2,
+          "maxItems": 2,
+          "uniqueItems": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "qualifiedObservation": {
+      "type": "object",
+      "required": [
+        "status", "source", "revision", "evidence_sha256", "signature_verification",
+        "finding", "subject", "verification"
+      ],
+      "properties": {
+        "status": {"const": "PASS"},
+        "source": {"const": "cryptographically-verified-receipt"},
+        "revision": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+        "evidence_sha256": {"$ref": "#/$defs/sha256"},
+        "signature_verification": {"const": "PASS"},
+        "finding": {"type": "string", "minLength": 1},
+        "observed": {"type": "string", "minLength": 1},
+        "subject": {"$ref": "#/$defs/connectedSubject"},
+        "verification": {"$ref": "#/$defs/receiptVerification"}
+      },
+      "additionalProperties": false
+    },
+    "defaultBranch": {
+      "type": "object",
+      "required": ["target", "observation"],
+      "properties": {
+        "target": {"const": "main"},
+        "observation": {
+          "allOf": [
+            {"$ref": "#/$defs/connectedObservation"},
+            {"required": ["observed"]}
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "branchProtection": {
+      "type": "object",
+      "required": ["target", "observation"],
+      "properties": {
+        "target": {
+          "type": "object",
+          "required": [
+            "ref", "ruleset", "policy_path", "policy_revision", "policy_content_sha256"
+          ],
+          "properties": {
+            "ref": {"const": "refs/heads/main"},
+            "ruleset": {
+              "enum": ["governance-source", "infrastructure-source", "deployment-source"]
+            },
+            "policy_path": {"type": "string", "pattern": "^config/rulesets/[a-z-]+\\.yaml$"},
+            "policy_revision": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+            "policy_content_sha256": {"$ref": "#/$defs/sha256"}
+          },
+          "additionalProperties": false
+        },
+        "observation": {"$ref": "#/$defs/connectedObservation"}
+      },
+      "additionalProperties": false
+    },
+    "inventoryAuthority": {
+      "type": "object",
+      "required": ["path", "content_sha256", "section", "root", "path_count", "path_set_sha256"],
+      "properties": {
+        "path": {"const": "docs/architecture/blueprint/appendices/A03-repository-estate-and-trust-boundaries.md"},
+        "content_sha256": {"$ref": "#/$defs/sha256"},
+        "section": {"type": "string", "minLength": 1},
+        "root": {"type": "string", "minLength": 1},
+        "path_count": {"type": "integer", "minimum": 1},
+        "path_set_sha256": {"$ref": "#/$defs/sha256"}
+      },
+      "additionalProperties": false
+    },
+    "observedInventory": {
+      "type": "object",
+      "required": ["revision", "path_count", "path_set_sha256"],
+      "properties": {
+        "revision": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+        "path_count": {"type": "integer", "minimum": 0},
+        "path_set_sha256": {"$ref": "#/$defs/sha256"}
+      },
+      "additionalProperties": false
+    },
+    "inventoryDisposition": {
+      "type": "object",
+      "required": ["classification", "path", "disposition", "rationale"],
+      "properties": {
+        "classification": {"enum": ["missing", "extra", "conflict"]},
+        "path": {"type": "string", "minLength": 1}, "disposition": {"const": "unresolved"},
+        "rationale": {"type": "string", "minLength": 1}
+      },
+      "additionalProperties": false
+    },
+    "inventory": {
+      "type": "object",
+      "required": [
+        "status", "target_authority", "observed", "missing_paths", "extra_paths",
+        "conflicts", "dispositions"
+      ],
+      "properties": {
+        "status": {"enum": ["PASS", "FAIL"]},
+        "target_authority": {"$ref": "#/$defs/inventoryAuthority"},
+        "observed": {"$ref": "#/$defs/observedInventory"},
+        "missing_paths": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+        "extra_paths": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+        "conflicts": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+        "dispositions": {
+          "type": "array", "items": {"$ref": "#/$defs/inventoryDisposition"},
+          "uniqueItems": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "sourceCheck": {
+      "oneOf": [
+        {"$ref": "#/$defs/assertedSourceCheck"},
+        {"$ref": "#/$defs/verifiedSourceCheck"}
+      ]
+    },
+    "assertedSourceCheck": {
+      "type": "object",
+      "required": ["qualification", "status", "scope", "command", "finding"],
+      "properties": {
+        "qualification": {"const": "ASSERTED"},
+        "status": {"enum": ["PASS", "FAIL", "BLOCKED", "NOT_RUN"]},
+        "scope": {"enum": ["immutable-head", "working-tree"]},
+        "command": {"type": "string", "minLength": 1},
+        "finding": {"type": "string", "minLength": 1}
+      },
+      "additionalProperties": false
+    },
+    "sourceCheckSubject": {
+      "type": "object",
+      "required": ["repository", "revision", "check"],
+      "properties": {
+        "repository": {"type": "string", "pattern": "^mindclade/[A-Za-z0-9._-]+$"},
+        "revision": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+        "check": {"type": "string", "minLength": 1}
+      },
+      "additionalProperties": false
+    },
+    "verifiedSourceCheck": {
+      "type": "object",
+      "required": [
+        "qualification", "status", "scope", "command", "finding", "evidence_sha256",
+        "subject", "verification"
+      ],
+      "properties": {
+        "qualification": {"const": "VERIFIED"},
+        "status": {"const": "PASS"},
+        "scope": {"const": "immutable-head"},
+        "command": {"type": "string", "minLength": 1},
+        "finding": {"type": "string", "minLength": 1},
+        "evidence_sha256": {"$ref": "#/$defs/sha256"},
+        "subject": {"$ref": "#/$defs/sourceCheckSubject"},
+        "verification": {"$ref": "#/$defs/receiptVerification"}
+      },
+      "additionalProperties": false
+    },
+    "reference": {
+      "type": "object",
+      "required": [
+        "name", "role", "revision", "revision_selection", "checkout_head", "remote",
+        "remote_status", "working_tree_state", "dirty_state_excluded", "component_metadata",
+        "default_branch", "branch_protection", "observed_vs_target_inventory", "source_checks"
+      ],
+      "properties": {
+        "name": {
+          "enum": [
+            "bootstrap", "github-config", "gitops", "infrastructure-live",
+            "organization-workflows"
+          ]
+        },
+        "role": {"const": "reference_only"},
+        "revision": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+        "revision_selection": {"enum": ["declared", "head"]},
+        "checkout_head": {
+          "oneOf": [
+            {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+            {"type": "null"}
+          ]
+        },
+        "remote": {"type": "string", "minLength": 1}, "remote_status": {"const": "PASS"},
+        "working_tree_state": {"enum": ["clean", "dirty", "excluded"]},
+        "dirty_state_excluded": {"const": true},
+        "component_metadata": {"$ref": "#/$defs/componentMetadata"},
+        "default_branch": {"$ref": "#/$defs/defaultBranch"},
+        "branch_protection": {"$ref": "#/$defs/branchProtection"},
+        "observed_vs_target_inventory": {"$ref": "#/$defs/inventory"},
+        "source_checks": {"type": "array", "items": {"$ref": "#/$defs/sourceCheck"}}
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

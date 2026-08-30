@@ -1,0 +1,39 @@
+apiVersion: mindclade.dev/v1
+kind: Component
+metadata:
+  name: mindclade
+  description: Canonical private monorepo for Mindclade product source, contracts, and immutable build artifacts.
+  annotations:
+    github.com/project-slug: mindclade/mindclade
+    mindclade.dev/module-identity: github.com/mindclade/mindclade
+    mindclade.dev/security-owner: security
+spec:
+  type: product-source-monorepo
+  lifecycle: pre-production
+  maturity: governed-baseline
+  owner: product-engineering
+  security_reviewers:
+    - security
+  repository_class: application-source
+  trust_tier: trusted-source
+  recovery_tier: tier-0
+  data_classification: internal
+  production_authority: false
+  dependencies: []
+  provides:
+    - repository-drift-v1
+    - repository-path-manifest-v1
+    - architecture-blueprint-v3
+    - immutable-product-build-source
+  release:
+    strategy: protected-build-once
+    artifact: signed-release-manifest
+    immutable: true
+    promotion: digest-only
+  activation:
+    source_ready:
+      description: Wave 0 source, ownership, build, and evidence checks pass at an exact protected revision.
+    connected:
+      description: Enterprise branch protection, independent review, trusted Buildkite, signing, and recovery evidence are verified at that revision.
+status:
+  readiness: WAVE-0

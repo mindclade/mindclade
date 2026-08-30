@@ -1,0 +1,43 @@
+[project]
+name = "mindclade-workspace"
+version = "0.0.0"
+description = "Private Mindclade monorepo workspace tooling"
+requires-python = "==3.12.*"
+dependencies = [
+  "cryptography==50.0.0",
+  "jsonschema==4.26.0",
+]
+
+[tool.uv]
+package = false
+required-version = "==0.12.5"
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+extend-exclude = ["docs/architecture/blueprint/generated"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "UP", "B", "C4", "SIM", "PTH", "RUF"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "lf"
+
+[tool.pyright]
+pythonVersion = "3.12"
+typeCheckingMode = "strict"
+include = [".buildkite", "tools"]
+exclude = ["docs/architecture/blueprint/generated"]
+extraPaths = [
+  "tools/ci",
+  ".buildkite/lib",
+  ".buildkite/steps",
+  "tools/docs",
+  "tools/repo",
+]
+
+[tool.pytest.ini_options]
+addopts = "-ra --strict-config --strict-markers"
+testpaths = ["tools"]

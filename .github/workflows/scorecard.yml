@@ -1,0 +1,20 @@
+name: OpenSSF Scorecard
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "31 6 * * 3"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.repository }}-scorecard-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  scorecard:
+    uses: mindclade/.github/.github/workflows/reusable-scorecard.yml@6399abc50c4678d0dff7f33bbd7f6868043ef736
+    with:
+      source_revision: ${{ github.sha }}

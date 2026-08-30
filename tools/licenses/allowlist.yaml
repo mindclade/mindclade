@@ -1,0 +1,74 @@
+{
+  "apiVersion": "mindclade.dev/v1",
+  "kind": "LicenseAllowlist",
+  "metadata": {
+    "name": "product-build-dependencies"
+  },
+  "spec": {
+    "licenses": [
+      "Apache-2.0",
+      "Apache-2.0 OR BSD-3-Clause",
+      "BSD-2-Clause",
+      "BSD-3-Clause",
+      "ISC",
+      "MIT",
+      "MPL-2.0",
+      "PSF-2.0",
+      "Python-2.0",
+      "Unicode-3.0",
+      "Zlib",
+      "LicenseRef-Mindclade-Proprietary"
+    ],
+    "reviewRequired": [
+      "LGPL-2.1-only",
+      "LGPL-2.1-or-later",
+      "LGPL-3.0-only",
+      "LGPL-3.0-or-later"
+    ],
+    "prohibited": [
+      "AGPL-1.0-only",
+      "AGPL-3.0-only",
+      "AGPL-3.0-or-later",
+      "SSPL-1.0"
+    ],
+    "packages": [
+      {"ecosystem": "bazel", "name": "abseil-cpp", "version": "20250814.1", "license": "Apache-2.0"},
+      {"ecosystem": "bazel", "name": "apple_support", "version": "1.24.2", "license": "Apache-2.0"},
+      {"ecosystem": "bazel", "name": "bazel_features", "version": "1.42.1", "license": "Apache-2.0"},
+      {"ecosystem": "bazel", "name": "bazel_skylib", "version": "1.8.2", "license": "Apache-2.0"},
+      {"ecosystem": "bazel", "name": "googletest", "version": "1.17.0", "license": "BSD-3-Clause"},
+      {"ecosystem": "bazel", "name": "jsoncpp", "version": "1.9.6", "license": "MIT"},
+      {"ecosystem": "bazel", "name": "nlohmann_json", "version": "3.6.1", "license": "MIT"},
+      {"ecosystem": "bazel", "name": "package_metadata", "version": "0.0.7", "license": "Apache-2.0"},
+      {"ecosystem": "bazel", "name": "platforms", "version": "1.0.0", "license": "Apache-2.0"},
+      {"ecosystem": "bazel", "name": "protobuf", "version": "33.4", "license": "BSD-3-Clause"},
+      {"ecosystem": "bazel", "name": "pybind11_bazel", "version": "2.12.0", "license": "BSD-3-Clause"},
+      {"ecosystem": "bazel", "name": "re2", "version": "2024-07-02.bcr.1", "license": "BSD-3-Clause"},
+      {"ecosystem": "bazel", "name": "rules_android", "version": "0.1.1", "license": "Apache-2.0"},
+      {"ecosystem": "bazel", "name": "rules_apple", "version": "4.1.0", "license": "Apache-2.0"},
+      {"ecosystem": "bazel", "name": "rules_cc", "version": "0.2.17", "license": "Apache-2.0"},
+      {"ecosystem": "bazel", "name": "rules_java", "version": "9.1.0", "license": "Apache-2.0"},
+      {"ecosystem": "bazel", "name": "rules_jvm_external", "version": "6.7", "license": "Apache-2.0"},
+      {"ecosystem": "bazel", "name": "rules_kotlin", "version": "1.9.6", "license": "Apache-2.0"},
+      {"ecosystem": "bazel", "name": "rules_license", "version": "1.0.0", "license": "Apache-2.0"},
+      {"ecosystem": "bazel", "name": "rules_pkg", "version": "1.0.1", "license": "Apache-2.0"},
+      {"ecosystem": "bazel", "name": "rules_proto", "version": "7.1.0", "license": "Apache-2.0"},
+      {"ecosystem": "bazel", "name": "rules_python", "version": "2.3.2", "license": "Apache-2.0"},
+      {"ecosystem": "bazel", "name": "rules_shell", "version": "0.8.0", "license": "Apache-2.0"},
+      {"ecosystem": "bazel", "name": "rules_swift", "version": "3.1.2", "license": "Apache-2.0"},
+      {"ecosystem": "bazel", "name": "swift_argument_parser", "version": "1.3.1.2", "license": "Apache-2.0"},
+      {"ecosystem": "bazel", "name": "toml.bzl", "version": "0.4.1", "license": "MIT"},
+      {"ecosystem": "bazel", "name": "zlib", "version": "1.3.1.bcr.5", "license": "Zlib"},
+      {"ecosystem": "nix", "name": "nixpkgs", "version": "83199d0d373dd3ac2b9a1996b1d0263f76ab7a4c", "license": "MIT"},
+      {"ecosystem": "python", "name": "attrs", "version": "26.1.0", "license": "MIT"},
+      {"ecosystem": "python", "name": "cffi", "version": "2.1.1", "license": "MIT"},
+      {"ecosystem": "python", "name": "cryptography", "version": "50.0.0", "license": "Apache-2.0 OR BSD-3-Clause"},
+      {"ecosystem": "python", "name": "jsonschema", "version": "4.26.0", "license": "MIT"},
+      {"ecosystem": "python", "name": "jsonschema-specifications", "version": "2025.9.1", "license": "MIT"},
+      {"ecosystem": "python", "name": "pycparser", "version": "3.0", "license": "BSD-3-Clause"},
+      {"ecosystem": "python", "name": "referencing", "version": "0.37.0", "license": "MIT"},
+      {"ecosystem": "python", "name": "rpds-py", "version": "2026.6.3", "license": "MIT"},
+      {"ecosystem": "python", "name": "typing-extensions", "version": "4.16.0", "license": "PSF-2.0"}
+    ]
+  }
+}

@@ -1,0 +1,56 @@
+apiVersion: mindclade.dev/v1
+kind: ArchitectureDecisionIndex
+metadata:
+  name: foundational-decisions
+  description: Wave 0 architecture decisions that are expensive to reverse after implementation begins.
+spec:
+  decisions:
+    - id: ADR-0001
+      title: Repository Identity and Ownership
+      status: accepted-in-specification
+      connectedRatification: pending
+      path: docs/adr/0001-repository-identity-and-ownership.md
+      owners: [architecture, developer-platform]
+      specificationAccepted: "2026-08-30"
+    - id: ADR-0002
+      title: Dependency and Build Law
+      status: accepted-in-specification
+      connectedRatification: pending
+      path: docs/adr/0002-dependency-and-build-law.md
+      owners: [architecture, developer-platform]
+      specificationAccepted: "2026-08-30"
+    - id: ADR-0003
+      title: Artifact Identity and Content-Addressed Storage
+      status: accepted-in-specification
+      connectedRatification: pending
+      path: docs/adr/0003-artifact-identity-and-cas.md
+      owners: [architecture, data-platform]
+      specificationAccepted: "2026-08-30"
+    - id: ADR-0004
+      title: Contract and Code-Generation Authority
+      status: accepted-in-specification
+      connectedRatification: pending
+      path: docs/adr/0004-contract-and-codegen-authority.md
+      owners: [architecture, contract-governance]
+      specificationAccepted: "2026-08-30"
+    - id: ADR-0005
+      title: Biological Identity and Schema Evolution
+      status: accepted-in-specification
+      connectedRatification: pending
+      path: docs/adr/0005-biological-identity-and-schema-evolution.md
+      owners: [computational-biology, architecture]
+      specificationAccepted: "2026-08-30"
+    - id: ADR-0006
+      title: Durable Work, Idempotency, and Fencing
+      status: accepted-in-specification
+      connectedRatification: pending
+      path: docs/adr/0006-durable-work-and-fencing.md
+      owners: [control-plane, architecture]
+      specificationAccepted: "2026-08-30"
+    - id: ADR-0007
+      title: Training State, Progress, and Checkpoint Recovery
+      status: accepted-in-specification
+      connectedRatification: pending
+      path: docs/adr/0007-training-state-progress-and-checkpoint.md
+      owners: [training-systems, architecture]
+      specificationAccepted: "2026-08-30"

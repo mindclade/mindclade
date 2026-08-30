@@ -1,0 +1,22 @@
+common --announce_rc
+common --color=yes
+common --curses=yes
+common --show_timestamps
+common --enable_bzlmod
+common --repo_contents_cache=
+
+build --incompatible_strict_action_env
+build --action_env=LANG=C
+build --action_env=LC_ALL=C
+build --action_env=TZ=UTC
+build --stamp=no
+
+test --test_output=errors
+test --test_env=LANG=C
+test --test_env=LC_ALL=C
+test --test_env=TZ=UTC
+
+build:ci --color=no
+build:ci --curses=no
+build:ci --show_result=20
+test:ci --test_output=errors

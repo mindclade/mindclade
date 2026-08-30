@@ -1,0 +1,26 @@
+name: Pull request metadata
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, edited, labeled, unlabeled, ready_for_review]
+  merge_group:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.repository }}-pr-metadata-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    uses: mindclade/.github/.github/workflows/reusable-metadata-validation.yml@6399abc50c4678d0dff7f33bbd7f6868043ef736
+    with:
+      source_revision: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha || github.sha }}
+      component_path: component.yaml
+      required_files: |-
+        README.md
+        ARCHITECTURE.md
+        SECURITY.md
+        LICENSE
+        component.yaml

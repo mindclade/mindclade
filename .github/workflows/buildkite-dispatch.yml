@@ -1,0 +1,68 @@
+name: Protected Buildkite
+
+on:
+  push:
+    branches: [main]
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.repository }}-protected-buildkite-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  classify:
+    uses: mindclade/.github/.github/workflows/reusable-metadata-validation.yml@6399abc50c4678d0dff7f33bbd7f6868043ef736
+    with:
+      source_revision: ${{ github.sha }}
+
+  dispatch:
+    needs: classify
+    if: needs.classify.result == 'success'
+    uses: mindclade/.github/.github/workflows/reusable-buildkite-dispatch.yml@6399abc50c4678d0dff7f33bbd7f6868043ef736
+    with:
+      source_revision: ${{ github.sha }}
+      pipeline_definition_revision: ${{ github.sha }}
+      pipeline_class: ${{ github.event_name == 'release' && 'release' || 'protected' }}
+    secrets:
+      buildkite_dispatch_token: ${{ secrets.MINDCLADE_BUILDKITE_DISPATCH_TOKEN }}
+      buildkite_pipeline: ${{ secrets.MINDCLADE_BUILDKITE_PIPELINE }}
+
+  verify:
+    needs: [classify, dispatch]
+    if: needs.dispatch.result == 'success'
+    uses: mindclade/.github/.github/workflows/reusable-required-check.yml@6399abc50c4678d0dff7f33bbd7f6868043ef736
+    with:
+      source_revision: ${{ github.sha }}
+      pipeline_definition_revision: ${{ needs.dispatch.outputs.pipeline_definition_revision }}
+      build_id: ${{ needs.dispatch.outputs.build_id }}
+      build_number: ${{ needs.dispatch.outputs.build_number }}
+      correlation_id: ${{ needs.dispatch.outputs.correlation_id }}
+      context_digest: ${{ needs.dispatch.outputs.context_digest }}
+      archive_evidence: false
+    secrets:
+      buildkite_cancel_token: ${{ secrets.MINDCLADE_BUILDKITE_CANCEL_TOKEN }}
+      buildkite_evidence_token: ${{ secrets.MINDCLADE_BUILDKITE_EVIDENCE_TOKEN }}
+      buildkite_pipeline: ${{ secrets.MINDCLADE_BUILDKITE_PIPELINE }}
+
+  protected:
+    name: protected
+    needs: [classify, dispatch, verify]
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions: {}
+    env:
+      CLASSIFY_RESULT: ${{ needs.classify.result }}
+      DISPATCH_RESULT: ${{ needs.dispatch.result }}
+      VERIFY_RESULT: ${{ needs.verify.result }}
+    steps:
+      - name: Require verified protected evidence
+        run: |
+          set -euo pipefail
+          [[ "${CLASSIFY_RESULT}" == success ]]
+          [[ "${DISPATCH_RESULT}" == success ]]
+          [[ "${VERIFY_RESULT}" == success ]]

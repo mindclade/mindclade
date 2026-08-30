@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.mindclade.dev/repository/component.v1.schema.json",
+  "title": "Mindclade component metadata v1",
+  "type": "object",
+  "required": ["apiVersion", "kind", "metadata", "spec", "status"],
+  "properties": {
+    "apiVersion": {"const": "mindclade.dev/v1"},
+    "kind": {"const": "Component"},
+    "metadata": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": {"type": "string", "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$"},
+        "description": {"type": "string", "minLength": 1},
+        "annotations": {"type": "object", "additionalProperties": {"type": "string"}}
+      },
+      "additionalProperties": false
+    },
+    "spec": {
+      "type": "object",
+      "required": [
+        "type", "lifecycle", "maturity", "owner", "repository_class", "trust_tier",
+        "recovery_tier", "data_classification", "production_authority", "dependencies",
+        "provides", "release", "activation"
+      ],
+      "properties": {
+        "type": {"type": "string", "minLength": 1},
+        "lifecycle": {"enum": ["proposed", "pre-production", "experimental", "qualified", "supported", "deprecated", "retired"]},
+        "maturity": {"enum": ["target", "governed-baseline", "internal", "experimental", "qualified", "stable", "production", "supported"]},
+        "owner": {"type": "string", "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$"},
+        "security_reviewers": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+        "repository_class": {"type": "string", "minLength": 1},
+        "trust_tier": {"type": "string", "minLength": 1},
+        "recovery_tier": {"type": "string", "minLength": 1},
+        "data_classification": {"type": "string", "minLength": 1},
+        "production_authority": {"oneOf": [{"type": "boolean"}, {"type": "string", "minLength": 1}]},
+        "dependencies": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/dependency"}
+        },
+        "provides": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+        "release": {"type": "object"},
+        "activation": {"type": "object"}
+      },
+      "additionalProperties": true
+    },
+    "status": {
+      "type": "object",
+      "required": ["readiness"],
+      "properties": {
+        "readiness": {
+          "type": "string",
+          "pattern": "^(IMPLEMENTED|TARGET|WAVE-(?:[0-9]+|[0-9]+[PS])|DEFERRED|PROHIBITED|INCONCLUSIVE)$"
+        }
+      },
+      "additionalProperties": true
+    }
+  },
+  "$defs": {
+    "dependency": {
+      "type": "object",
+      "required": ["component", "kind", "visibility", "owner", "justification", "scope"],
+      "properties": {
+        "component": {"type": "string", "minLength": 1},
+        "kind": {"enum": ["compile-api", "runtime", "protocol", "data-artifact", "tool-codegen", "test-only", "deployment", "operational"]},
+        "visibility": {"enum": ["private", "component", "repository", "public"]},
+        "owner": {"type": "string", "minLength": 1},
+        "justification": {"type": "string", "minLength": 1},
+        "scope": {"type": "string", "minLength": 1},
+        "exception": {"type": ["string", "null"]}
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

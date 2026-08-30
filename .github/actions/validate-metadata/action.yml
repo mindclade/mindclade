@@ -1,0 +1,25 @@
+name: Validate Mindclade metadata
+description: Perform bounded local checks of canonical root identity and required metadata.
+inputs:
+  component-path:
+    description: Repository-relative root component metadata path.
+    required: false
+    default: component.yaml
+runs:
+  using: composite
+  steps:
+    - name: Validate canonical metadata
+      shell: bash
+      env:
+        COMPONENT_PATH: ${{ inputs.component-path }}
+      run: |
+        set -euo pipefail
+        [[ "${COMPONENT_PATH}" == component.yaml ]]
+        test -s "${COMPONENT_PATH}"
+        grep -Fqx 'apiVersion: mindclade.dev/v1' "${COMPONENT_PATH}"
+        grep -Fqx '  name: mindclade' "${COMPONENT_PATH}"
+        grep -Fq 'github.com/mindclade/mindclade' "${COMPONENT_PATH}"
+        test -s README.md
+        test -s ARCHITECTURE.md
+        test -s SECURITY.md
+        test -s LICENSE

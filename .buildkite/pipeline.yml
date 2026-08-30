@@ -1,0 +1,34 @@
+steps:
+  - label: ":pipeline: Load isolated untrusted pipeline"
+    key: load-untrusted-pipeline
+    if: build.env("MINDCLADE_EXECUTION_TIER") == "untrusted"
+    command: "python3.12 .buildkite/pipeline.py | buildkite-agent pipeline upload"
+    agents:
+      queue: mindclade-untrusted-cpu
+    timeout_in_minutes: 5
+    retry:
+      automatic:
+        - exit_status: -1
+          limit: 1
+  - label: ":pipeline: Load trusted pipeline"
+    key: load-trusted-pipeline
+    if: build.env("MINDCLADE_EXECUTION_TIER") == "trusted"
+    command: "python3.12 .buildkite/pipeline.py | buildkite-agent pipeline upload"
+    agents:
+      queue: mindclade-trusted-cpu
+    timeout_in_minutes: 5
+    retry:
+      automatic:
+        - exit_status: -1
+          limit: 1
+  - label: ":pipeline: Load release pipeline"
+    key: load-release-pipeline
+    if: build.env("MINDCLADE_EXECUTION_TIER") == "release"
+    command: "python3.12 .buildkite/pipeline.py | buildkite-agent pipeline upload"
+    agents:
+      queue: mindclade-release
+    timeout_in_minutes: 5
+    retry:
+      automatic:
+        - exit_status: -1
+          limit: 1

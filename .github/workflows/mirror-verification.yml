@@ -1,0 +1,41 @@
+name: Mirror verification
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "43 6 * * 4"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.repository }}-mirror-verification-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Check out exact revision without credentials
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Verify canonical identity and source shape
+        env:
+          EXPECTED_REVISION: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          [[ "$(git rev-parse HEAD)" == "${EXPECTED_REVISION}" ]]
+          [[ "$(go list -m)" == github.com/mindclade/mindclade ]]
+          [[ ! -f .gitmodules ]]
+          if git grep -Il '^version https://git-lfs.github.com/spec/v1$' -- .; then
+            echo "Git LFS pointer found in canonical source" >&2
+            exit 1
+          fi
+          git fsck --full --no-dangling

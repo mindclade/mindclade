@@ -1,0 +1,35 @@
+name: Bug report
+description: Report reproducible incorrect behavior that is not a security vulnerability.
+title: "[bug] "
+labels: [bug, needs-triage]
+body:
+  - type: markdown
+    attributes:
+      value: Do not include credentials, protected biological data, customer data, model weights, or checkpoints.
+  - type: input
+    id: revision
+    attributes:
+      label: Exact revision
+      description: Full Git commit SHA or immutable artifact digest.
+    validations:
+      required: true
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Observed behavior
+      description: Include a minimal synthetic reproduction and redacted output.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: dropdown
+    id: classification
+    attributes:
+      label: Highest data classification involved
+      options: [public, internal, confidential, restricted, synthetic-only]
+    validations:
+      required: true

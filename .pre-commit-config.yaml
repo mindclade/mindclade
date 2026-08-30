@@ -1,0 +1,21 @@
+minimum_pre_commit_version: "4.0.0"
+default_install_hook_types: [pre-commit, pre-push]
+fail_fast: false
+repos:
+  - repo: local
+    hooks:
+      - id: wave0-required-check-contract
+        name: Validate required-check evidence contract
+        entry: python3.12 tools/ci/required_check.py --self-test
+        language: system
+        pass_filenames: false
+      - id: wave0-buildkite-model
+        name: Validate Buildkite pipeline model
+        entry: python3.12 .buildkite/pipeline.py --check
+        language: system
+        pass_filenames: false
+      - id: wave0-repository-governance
+        name: Validate repository governance
+        entry: just governance
+        language: system
+        pass_filenames: false

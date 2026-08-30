@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+cd "${MINDCLADE_REPOSITORY_ROOT:?environment hook did not bind repository root}"
+
+source_revision="${MINDCLADE_SOURCE_REVISION:?missing source revision}"
+pipeline_revision="${MINDCLADE_PIPELINE_DEFINITION_REVISION:?missing pipeline definition revision}"
+pipeline_class="${MINDCLADE_PIPELINE_CLASS:?missing pipeline class}"
+
+[[ "${source_revision}" =~ ^[0-9a-f]{40}$ ]]
+[[ "${pipeline_revision}" =~ ^[0-9a-f]{40}$ ]]
+[[ "$(git rev-parse HEAD)" == "${source_revision}" ]]
+git cat-file -e "${pipeline_revision}^{commit}"
+
+if [[ "${pipeline_class}" == presubmit ]]; then
+  protected_definition_paths=(
+    .bazelrc
+    .bazelversion
+    .buildkite
+    .github
+    .gitignore
+    .markdownlint-cli2.yaml
+    .pre-commit-config.yaml
+    .python-version
+    .yamllint.yaml
+    BUILD.bazel
+    Cargo.lock
+    Cargo.toml
+    MODULE.bazel
+    MODULE.bazel.lock
+    buf.gen.yaml
+    buf.yaml
+    component.yaml
+    docs/adr
+    docs/architecture
+    flake.lock
+    flake.nix
+    go.mod
+    go.sum
+    justfile
+    package.json
+    pnpm-lock.yaml
+    pnpm-workspace.yaml
+    pyproject.toml
+    rust-toolchain.toml
+    tools
+    uv.lock
+  )
+  if ! git diff --quiet "${pipeline_revision}" -- "${protected_definition_paths[@]}"; then
+    echo "Presubmit source changes the protected Wave 0 enforcement closure:" >&2
+    git diff --name-only "${pipeline_revision}" -- "${protected_definition_paths[@]}" >&2
+    echo "Use the independently reviewed protected-definition roll-forward described in .buildkite/README.md." >&2
+    exit 78
+  fi
+else
+  [[ "${source_revision}" == "${pipeline_revision}" ]]
+fi
+
+python3.12 \
+  tools/dev/environment_profile.py --format json >/dev/null

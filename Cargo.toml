@@ -1,0 +1,16 @@
+[workspace]
+members = []
+resolver = "3"
+
+[workspace.package]
+edition = "2024"
+license = "LicenseRef-Mindclade-Proprietary"
+repository = "https://github.com/mindclade/mindclade"
+rust-version = "1.97.1"
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+
+[workspace.lints.clippy]
+all = "deny"
+pedantic = "deny"

@@ -1,0 +1,6 @@
+apiVersion: mindclade.dev/v1
+kind: LicenseExceptionRegister
+metadata:
+  name: product-build-dependencies
+spec:
+  exceptions: []

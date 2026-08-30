@@ -1,0 +1,102 @@
+name: Pull request
+
+on:
+  pull_request:
+  merge_group:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.repository }}-required-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  classify:
+    uses: mindclade/.github/.github/workflows/reusable-metadata-validation.yml@6399abc50c4678d0dff7f33bbd7f6868043ef736
+    with:
+      source_revision: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha || github.sha }}
+
+  fork_checks:
+    needs: classify
+    if: >-
+      needs.classify.result == 'success' &&
+      github.event_name == 'pull_request' &&
+      needs.classify.outputs.trust_classification == 'untrusted'
+    uses: mindclade/.github/.github/workflows/reusable-documentation-check.yml@6399abc50c4678d0dff7f33bbd7f6868043ef736
+    with:
+      source_revision: ${{ github.event.pull_request.head.sha }}
+      documentation_roots: |-
+        README.md
+        docs
+
+  dispatch:
+    needs: classify
+    if: >-
+      needs.classify.result == 'success' &&
+      (
+        github.event_name != 'pull_request' ||
+        needs.classify.outputs.trust_classification == 'trusted'
+      )
+    uses: mindclade/.github/.github/workflows/reusable-buildkite-dispatch.yml@6399abc50c4678d0dff7f33bbd7f6868043ef736
+    with:
+      source_revision: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha || github.sha }}
+      pipeline_definition_revision: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.sha }}
+      pipeline_class: ${{ (github.event_name == 'pull_request' || github.event_name == 'merge_group') && 'presubmit' || github.event_name == 'release' && 'release' || 'protected' }}
+    secrets:
+      buildkite_dispatch_token: ${{ secrets.MINDCLADE_BUILDKITE_DISPATCH_TOKEN }}
+      buildkite_pipeline: ${{ secrets.MINDCLADE_BUILDKITE_PIPELINE }}
+
+  buildkite_required:
+    needs: [classify, dispatch]
+    if: needs.dispatch.result == 'success'
+    uses: mindclade/.github/.github/workflows/reusable-required-check.yml@6399abc50c4678d0dff7f33bbd7f6868043ef736
+    with:
+      source_revision: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha || github.sha }}
+      pipeline_definition_revision: ${{ needs.dispatch.outputs.pipeline_definition_revision }}
+      build_id: ${{ needs.dispatch.outputs.build_id }}
+      build_number: ${{ needs.dispatch.outputs.build_number }}
+      correlation_id: ${{ needs.dispatch.outputs.correlation_id }}
+      context_digest: ${{ needs.dispatch.outputs.context_digest }}
+      archive_evidence: false
+    secrets:
+      buildkite_cancel_token: ${{ secrets.MINDCLADE_BUILDKITE_CANCEL_TOKEN }}
+      buildkite_evidence_token: ${{ secrets.MINDCLADE_BUILDKITE_EVIDENCE_TOKEN }}
+      buildkite_pipeline: ${{ secrets.MINDCLADE_BUILDKITE_PIPELINE }}
+
+  required:
+    name: required
+    needs: [classify, fork_checks, dispatch, buildkite_required]
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions: {}
+    env:
+      BUILDKITE_REQUIRED_RESULT: ${{ needs.buildkite_required.result }}
+      CLASSIFY_RESULT: ${{ needs.classify.result }}
+      DISPATCH_RESULT: ${{ needs.dispatch.result }}
+      EVENT_NAME: ${{ github.event_name }}
+      FORK_CHECKS_RESULT: ${{ needs.fork_checks.result }}
+      TRUST_CLASSIFICATION: ${{ needs.classify.outputs.trust_classification }}
+    steps:
+      - name: Enforce the event-specific fail-closed path
+        run: |
+          set -euo pipefail
+          [[ "${CLASSIFY_RESULT}" == success ]]
+          case "${EVENT_NAME}:${TRUST_CLASSIFICATION}" in
+            pull_request:untrusted)
+              [[ "${FORK_CHECKS_RESULT}" == success ]]
+              [[ "${DISPATCH_RESULT}" == skipped ]]
+              [[ "${BUILDKITE_REQUIRED_RESULT}" == skipped ]]
+              echo "Untrusted code requires maintainer transfer to the isolated Buildkite path" >&2
+              exit 1
+              ;;
+            pull_request:trusted|pull_request:protected|merge_group:protected)
+              [[ "${FORK_CHECKS_RESULT}" == skipped ]]
+              [[ "${DISPATCH_RESULT}" == success ]]
+              [[ "${BUILDKITE_REQUIRED_RESULT}" == success ]]
+              ;;
+            *)
+              exit 1
+              ;;
+          esac

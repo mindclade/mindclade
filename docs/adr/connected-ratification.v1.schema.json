@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.mindclade.dev/adr/connected-ratification.v1.schema.json",
+  "title": "Mindclade connected ADR ratification reference",
+  "description": "Closed index projection binding an ADR decision to an immutable external ratification receipt.",
+  "x-mindclade-media-type": "application/vnd.mindclade.adr-connected-ratification.v1+json",
+  "x-mindclade-decision-canonicalization": "adr-decision-v1",
+  "type": "object",
+  "required": ["connectedRatification"],
+  "properties": {
+    "connectedRatification": {
+      "enum": ["pending", "ratified"]
+    },
+    "ratificationSubjectRevision": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "ratificationDecisionDigest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "ratificationReceiptDigest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "ratifiedAt": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-([0-2][0-9]|3[01])T([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]Z$"
+    }
+  },
+  "oneOf": [
+    {
+      "properties": {
+        "connectedRatification": {"const": "pending"}
+      },
+      "not": {
+        "anyOf": [
+          {"required": ["ratificationSubjectRevision"]},
+          {"required": ["ratificationDecisionDigest"]},
+          {"required": ["ratificationReceiptDigest"]},
+          {"required": ["ratifiedAt"]}
+        ]
+      }
+    },
+    {
+      "properties": {
+        "connectedRatification": {"const": "ratified"}
+      },
+      "required": [
+        "ratificationSubjectRevision",
+        "ratificationDecisionDigest",
+        "ratificationReceiptDigest",
+        "ratifiedAt"
+      ]
+    }
+  ],
+  "additionalProperties": false
+}

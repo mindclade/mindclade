@@ -1,0 +1,25 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Mindclade: doctor",
+      "type": "shell",
+      "command": "nix develop --command just doctor",
+      "problemMatcher": []
+    },
+    {
+      "label": "Mindclade: check",
+      "type": "shell",
+      "command": "nix develop --command just check",
+      "group": "test",
+      "problemMatcher": []
+    },
+    {
+      "label": "Mindclade: affected tests",
+      "type": "shell",
+      "command": "nix develop --command just test-affected",
+      "group": "test",
+      "problemMatcher": []
+    }
+  ]
+}

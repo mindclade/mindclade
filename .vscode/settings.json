@@ -1,0 +1,14 @@
+{
+  "editor.formatOnSave": false,
+  "files.eol": "\n",
+  "files.insertFinalNewline": true,
+  "files.trimTrailingWhitespace": true,
+  "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
+  "python.terminal.activateEnvironment": false,
+  "ruff.nativeServer": "on",
+  "rust-analyzer.check.command": "clippy",
+  "yaml.schemas": {
+    "./tools/repo/component.schema.json": "**/component.yaml",
+    "./docs/architecture/repository-path-manifest.schema.json": "docs/architecture/repository-path-manifest.yaml"
+  }
+}
