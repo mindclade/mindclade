@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-import sys
+import hashlib
+import json
 import unittest
 from pathlib import Path
 
@@ -15,11 +16,16 @@ def root() -> Path:
 class SchemaCompatibilityTest(unittest.TestCase):
     def test_committed_baseline_matches_all_schema_sources(self) -> None:
         repository = root()
-        sys.path.insert(0, str(repository / "tools" / "codegen"))
-        from generate_protocols import rendered_files
-
         baseline = repository / "protocols/compatibility/baselines/json-schema.lock.json"
-        self.assertEqual(baseline.read_bytes(), rendered_files(repository)[baseline].encode("utf-8"))
+        expected = {
+            str(path.relative_to(repository)): "sha256:"
+            + hashlib.sha256(path.read_bytes()).hexdigest()
+            for path in sorted((repository / "protocols/schemas").glob("**/*.schema.json"))
+        }
+        self.assertEqual(
+            json.loads(baseline.read_text()),
+            {"schema_version": "mindclade.json-schema-baseline/v1", "sources": expected},
+        )
 
 
 if __name__ == "__main__":

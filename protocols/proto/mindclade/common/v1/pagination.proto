@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package mindclade.common.v1;
 
-option go_package = "github.com/mindclade/mindclade/protocols/generated/go/mindclade/common/v1;commonv1";
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/common/v1;commonv1";
 
 // Opaque pagination cursor and bounded page size convention.
 message PageRequest {
