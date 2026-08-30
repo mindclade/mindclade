@@ -16,6 +16,13 @@ DEFAULT_TARGETS = (
     "//tools:repository_governance_tests",
 )
 
+WAVE1_PREFIXES = (
+    "protocols/",
+    "tests/conformance/",
+    "tools/codegen/",
+    "third_party/",
+)
+
 GLOBAL_PATHS = {
     ".bazelrc",
     ".bazelversion",
@@ -116,8 +123,10 @@ def targets_for_paths(paths: Iterable[str]) -> list[str]:
     normalized = sorted({normalize_path(path) for path in paths})
     if not normalized:
         return []
+    if any(path.startswith(WAVE1_PREFIXES) for path in normalized):
+        return ["//:wave1_contract_tests"]
     if any(path in GLOBAL_PATHS or path.startswith(GLOBAL_PREFIXES) for path in normalized):
-        return list(DEFAULT_TARGETS)
+        return [*DEFAULT_TARGETS, "//:wave1_contract_tests"]
     return list(DEFAULT_TARGETS)
 
 

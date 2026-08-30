@@ -27,17 +27,24 @@ bootstrap trust
 No downstream repository rebuilds product artifacts or writes source state back
 into this repository.
 
-## Wave 0 boundary
+## Current activation boundary
 
-The current repository is a greenfield Wave 0 governance baseline. It contains
-no implemented product or domain capability. Its active outcomes are the
-repository drift report, governed path/owner/dependency metadata, deterministic
-architecture rendering, foundational ADRs, and trusted-CI source definitions.
+Wave 0 governance remains an independently testable evidence closure. Under
+ADR-0008 and FBE-0001, Wave 1 activates only the minimal contract and durability
+kernel: shared identifiers and envelopes, immutable artifact/evidence
+references, durable operation/job/run/attempt state, idempotency, outbox/inbox,
+lease fencing, deterministic configuration, release manifests, and local
+qualification evidence.
 
 The normative sources live under `docs/architecture/blueprint/`. The generated
 full blueprint is a review artifact and must reproduce exactly. The repository
 path manifest is the file-level authority; target-only and deferred paths must
 not be created early.
+
+Wave 1 has no public API or SDK compatibility promise and no dataset, model,
+training, inference, Kubernetes, cloud, connected promotion, or production
+authority. Workers cannot mutate control-plane state, filesystem paths are not
+durable identity, and local signing evidence is not trusted connected signing.
 
 ## Decision records
 

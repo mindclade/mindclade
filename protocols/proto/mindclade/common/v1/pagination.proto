@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package mindclade.common.v1;
+
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/mindclade/common/v1;commonv1";
+
+// Opaque pagination cursor and bounded page size convention.
+message PageRequest {
+  string page_token = 1;
+  uint32 page_size = 2;
+}
+
+message PageResponse {
+  string next_page_token = 1;
+}

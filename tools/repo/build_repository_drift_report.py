@@ -452,9 +452,9 @@ def _load_connected_observation_verifier(
         loaded_key = serialization.load_pem_public_key(public_key_bytes)
     except (TypeError, ValueError) as error:
         raise ValueError("connected observation public key is not valid PEM") from error
-    if not isinstance(loaded_key, ec.EllipticCurvePublicKey) or not isinstance(
-        loaded_key.curve, ec.SECP256R1
-    ):
+    if not isinstance(loaded_key, ec.EllipticCurvePublicKey):
+        raise ValueError("connected observation public key must be ECDSA P-256")
+    if loaded_key.curve.name != "secp256r1":
         raise ValueError("connected observation public key must be ECDSA P-256")
     canonical_key = loaded_key.public_bytes(
         serialization.Encoding.PEM,

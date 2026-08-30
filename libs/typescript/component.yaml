@@ -1,0 +1,30 @@
+apiVersion: mindclade.dev/v1
+kind: Component
+metadata:
+  name: libs-typescript
+  description: Wave 1 TypeScript shared primitives.
+spec:
+  type: foundation-library
+  lifecycle: pre-production
+  maturity: internal
+  owner: developer-platform
+  security_reviewers:
+    - security
+  repository_class: application-source
+  trust_tier: source-only
+  recovery_tier: rebuildable
+  data_classification: public
+  production_authority: false
+  dependencies: []
+  provides:
+    - typescript-foundation-primitives
+  release:
+    strategy: source-only
+    artifact: null
+    immutable: false
+  activation:
+    wave: "1"
+    connected: false
+status:
+  readiness: IMPLEMENTED
+  source_readiness: SOURCE_IMPLEMENTED

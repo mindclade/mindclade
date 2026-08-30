@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package mindclade.events.audit.v1;
+
+import "proto/mindclade/common/v1/event_envelope.proto";
+
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/audit/v1;auditv1";
+
+// Immutable audit record for accepted or rejected durable intent.
+message AuditEvent {
+  mindclade.common.v1.EventEnvelope envelope = 1;
+  string actor_principal_id = 2;
+  string action = 3;
+  string decision = 4;
+  string policy_digest = 5;
+}

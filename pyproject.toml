@@ -31,6 +31,7 @@ typeCheckingMode = "strict"
 include = [".buildkite", "tools"]
 exclude = ["docs/architecture/blueprint/generated"]
 extraPaths = [
+  "libs/python",
   "tools/ci",
   ".buildkite/lib",
   ".buildkite/steps",

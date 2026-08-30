@@ -1,0 +1,18 @@
+api_version: mindclade.dev/v1
+kind: FakeIdentityProfile
+metadata:
+  name: wave1-local
+spec:
+  issuer: https://identity.local.mindclade.invalid
+  audience: mindclade-local-kernel
+  signing:
+    algorithm: ES256
+    key_source: ephemeral-process-memory
+    committed_private_key_allowed: false
+  claims:
+    required: [sub, aud, iss, exp, iat]
+    tenant_and_project_resolved_server_side: true
+  limits:
+    maximum_token_lifetime_seconds: 300
+    clock_skew_seconds: 5
+  connected_authority: false

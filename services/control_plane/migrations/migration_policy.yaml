@@ -1,0 +1,11 @@
+version: v1
+database: postgresql
+owner: platform-control-plane
+policy:
+  lifecycle: expand-migrate-contract
+  transactional: required
+  require_tenant_scope: true
+  require_row_level_security: true
+  direct_database_edits: prohibited
+  external_side_effects_in_transactions: prohibited
+  down_migrations: development-and-preproduction-only

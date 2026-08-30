@@ -10,6 +10,7 @@
     "pnpm": ">=11.0.0 <12"
   },
   "scripts": {
-    "check": "node -e \"JSON.parse(require('node:fs').readFileSync('package.json', 'utf8'))\""
+    "check": "node -e \"JSON.parse(require('node:fs').readFileSync('package.json', 'utf8'))\"",
+    "contracts:check": "python3.12 tools/codegen/verify_generated_drift.py --root ."
   }
 }

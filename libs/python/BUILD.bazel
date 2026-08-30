@@ -1,0 +1,21 @@
+load("@rules_python//python:defs.bzl", "py_library")
+py_library(name="libs_python",deps=["//libs/python/artifacts","//libs/python/config","//libs/python/contracts","//libs/python/identifiers","//libs/python/observability","//libs/python/retry","//libs/python/serialization","//libs/python/testing","//libs/python/time"])
+
+filegroup(
+    name = "governed_sources",
+    srcs = [
+        "BUILD.bazel",
+        "README.md",
+        "component.yaml",
+        "//libs/python/artifacts:governed_sources",
+        "//libs/python/config:governed_sources",
+        "//libs/python/contracts:governed_sources",
+        "//libs/python/identifiers:governed_sources",
+        "//libs/python/observability:governed_sources",
+        "//libs/python/retry:governed_sources",
+        "//libs/python/serialization:governed_sources",
+        "//libs/python/testing:governed_sources",
+        "//libs/python/time:governed_sources",
+    ],
+    visibility = ["//visibility:public"],
+)

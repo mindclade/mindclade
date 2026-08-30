@@ -47,7 +47,20 @@ class RepositoryPolicyTest(unittest.TestCase):
         self.assertEqual(len(self.manifest["paths"]), 2487)
         wave_one = [entry for entry in self.manifest["paths"] if entry["activation_wave"] == "1"]
         self.assertEqual(len(wave_one), 386)
-        self.assertEqual({entry["status"] for entry in wave_one}, {"target"})
+        for entry in wave_one:
+            with self.subTest(path=entry["path"]):
+                status = entry["status"]
+                self.assertIn(status, {"target", "active", "generated"})
+                if status == "target":
+                    self.assertEqual(entry["build_targets"], [])
+                    self.assertEqual(entry["test_targets"], [])
+                else:
+                    self.assertTrue(entry["build_targets"])
+                    self.assertTrue(entry["test_targets"])
+                if entry["source_authority"] == "reviewed-generated":
+                    self.assertEqual(status, "generated")
+                if entry["source_authority"] == "hand-authored":
+                    self.assertEqual(status, "active")
 
     def test_target_validation_never_falls_back_to_bazelisk(self) -> None:
         manifest = {
@@ -223,9 +236,7 @@ class RepositoryPolicyTest(unittest.TestCase):
         self.assertEqual(ratification["status"], "active")
         self.assertEqual(ratification["activation_wave"], "0")
         founder_adr = entries["docs/adr/0008-founder-bootstrap-public-estate-transition.md"]
-        founder_schema = entries[
-            "docs/governance/founder-bootstrap-exception.v1.schema.json"
-        ]
+        founder_schema = entries["docs/governance/founder-bootstrap-exception.v1.schema.json"]
         founder_record = entries["docs/governance/exceptions/FBE-0001.yaml"]
         self.assertEqual(founder_adr["kind"], "documentation")
         self.assertEqual(founder_schema["kind"], "schema")

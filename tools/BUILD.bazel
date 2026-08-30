@@ -66,6 +66,7 @@ _REPOSITORY_TEST_DATA = glob(
     exclude = _IGNORED_SOURCE_PATTERNS,
 ) + [
     "//:wave0_governance_sources",
+    "//:wave1_sources",
     "ci/evidence_bundle.py",
 ]
 
@@ -148,5 +149,34 @@ filegroup(
         "dev/**",
         "licenses/**",
     ], exclude = _IGNORED_SOURCE_PATTERNS),
+    visibility = ["//visibility:public"],
+)
+
+filegroup(
+    name = "wave1_codegen_sources",
+    srcs = [
+        "codegen/generate_protocols.py",
+        "codegen/generate_schemas.py",
+        "codegen/toolchain.lock.json",
+        "codegen/verify_generated_drift.py",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+filegroup(
+    name = "wave1_tooling_sources",
+    srcs = [
+        "BUILD.bazel",
+        ":wave1_codegen_sources",
+        "qualification/collect_evidence.py",
+        "qualification/hardware_envelope.py",
+        "qualification/resolve_policy.py",
+        "qualification/verify_evidence.py",
+        "release/build_release_manifest.py",
+        "release/promote_release.py",
+        "release/revoke_release.py",
+        "release/sign_release.py",
+        "release/verify_release.py",
+    ],
     visibility = ["//visibility:public"],
 )

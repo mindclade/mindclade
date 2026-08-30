@@ -1,25 +1,28 @@
 # Mindclade
 
 `mindclade` is the canonical public product-source monorepo at
-`github.com/mindclade/mindclade`. It will contain Mindclade product source,
+`github.com/mindclade/mindclade`. It contains Mindclade product source,
 contracts, build definitions, and immutable release inputs.
 
 ## Current status
 
-The repository is a greenfield **Wave 0 governance baseline**. Product, domain,
-SDK, service, worker, model, data, and deployment capabilities are not yet
-implemented and their target-only paths are intentionally absent.
+The repository is **FOUNDER_BOOTSTRAPPED** and Wave 1 source implementation is
+active. Wave 1 is limited to the common contract and durability kernel,
+cross-language generated projections, foundational libraries, local PostgreSQL
+integration, and offline release/qualification evidence.
 
-Wave 0 establishes:
+The active source boundary provides:
 
-- deterministic repository drift and architecture evidence;
-- path, component, owner, and dependency governance;
-- foundational architecture decisions;
-- pinned polyglot workspace contracts; and
-- a thin GitHub bridge to the authoritative Buildkite CI graph.
+- deterministic repository and architecture evidence;
+- common, artifact, job, audit, configuration, and release contracts;
+- pinned Go, Python, Rust, and TypeScript projections;
+- tenant-scoped idempotency, outbox/inbox, lease fencing, and reconciliation;
+- immutable artifact finalization and offline qualification tooling; and
+- a local CPU-only integration profile with no production authority.
 
-Source readiness does not imply protected GitHub, signing, cloud, cluster, or
-production qualification.
+Dataset, model, training, inference, SDK, Kubernetes, cloud, and production
+capabilities remain absent. Source implementation does not imply connected
+GitHub, trusted signing, cloud, cluster, release, or production qualification.
 
 ## Start here
 

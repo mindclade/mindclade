@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package mindclade.common.v1;
+
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/mindclade/common/v1;commonv1";
+
+// ResourceRef separates immutable logical identity from a mutable locator.
+message ResourceRef {
+  string resource_type = 1;
+  string resource_id = 2;
+  string tenant_id = 3;
+  int64 resource_version = 4;
+}

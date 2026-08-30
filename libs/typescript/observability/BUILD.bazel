@@ -1,0 +1,42 @@
+load("@aspect_rules_js//js:defs.bzl", "js_library", "js_test")
+load("@aspect_rules_ts//ts:defs.bzl", "ts_project")
+
+ts_project(
+    name = "observability",
+    srcs = glob(["src/*.ts"]),
+    declaration = True,
+    transpiler = "tsc",
+    tsconfig = {
+        "compilerOptions": {
+            "declaration": True,
+            "module": "ES2022",
+            "moduleResolution": "Bundler",
+            "strict": True,
+            "target": "ES2022",
+        },
+    },
+    visibility = ["//visibility:public"],
+)
+
+js_test(
+    name = "tracing_test",
+    entry_point = "tests/tracing.test.ts",
+    data = [
+        ":observability",
+        "package.json",
+    ],
+)
+
+test_suite(
+    name = "tests",
+    tests = [
+        ":observability_typecheck_test",
+        ":tracing_test",
+    ],
+)
+
+filegroup(
+    name = "governed_sources",
+    srcs = ["BUILD.bazel", "package.json"] + glob(["src/*.ts", "tests/*.ts"]),
+    visibility = ["//visibility:public"],
+)

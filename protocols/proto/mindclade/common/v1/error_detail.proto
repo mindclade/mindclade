@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package mindclade.common.v1;
+
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/mindclade/common/v1;commonv1";
+
+// Structured, non-secret failure detail for durable command results.
+message ErrorDetail {
+  string code = 1;
+  string message = 2;
+  string retry_class = 3;
+  string subject_ref = 4;
+}

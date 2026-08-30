@@ -80,11 +80,11 @@ _governance-report observation_scope allow_inconclusive:
     bootstrap_reference="${MINDCLADE_BOOTSTRAP_REFERENCE:-../bootstrap}"
     infrastructure_live_reference="${MINDCLADE_INFRASTRUCTURE_LIVE_REFERENCE:-../infrastructure-live}"
     gitops_reference="${MINDCLADE_GITOPS_REFERENCE:-../gitops}"
-    organization_workflows_revision="${MINDCLADE_ORGANIZATION_WORKFLOWS_REFERENCE_REVISION:-6399abc50c4678d0dff7f33bbd7f6868043ef736}"
-    github_config_revision="${MINDCLADE_GITHUB_CONFIG_REFERENCE_REVISION:-8cdf1f256c0d9310c825fd05ab068295488070a6}"
-    bootstrap_revision="${MINDCLADE_BOOTSTRAP_REFERENCE_REVISION:-620d17fcd589cdeb8cef7c292f47e2b7be3b4987}"
-    infrastructure_live_revision="${MINDCLADE_INFRASTRUCTURE_LIVE_REFERENCE_REVISION:-c6eded5a2dafd47d62eb587f76d21bb17a9343f0}"
-    gitops_revision="${MINDCLADE_GITOPS_REFERENCE_REVISION:-a74d7447b05fca142d54a09504f4d0a9050b9e73}"
+    organization_workflows_revision="${MINDCLADE_ORGANIZATION_WORKFLOWS_REFERENCE_REVISION:-e195b71d3657aca32cb325990e5e4ef8789b7eee}"
+    github_config_revision="${MINDCLADE_GITHUB_CONFIG_REFERENCE_REVISION:-0ebe461d003e37321c545e6b56c8f1d7016825ed}"
+    bootstrap_revision="${MINDCLADE_BOOTSTRAP_REFERENCE_REVISION:-9a221078120026167624d5d38b5fcd3f7c93560a}"
+    infrastructure_live_revision="${MINDCLADE_INFRASTRUCTURE_LIVE_REFERENCE_REVISION:-b9de2e33d5d441893b9777bbfa48d6129c339963}"
+    gitops_revision="${MINDCLADE_GITOPS_REFERENCE_REVISION:-7a7ad44c0b0bffc5983ce1040ac7b6bf865efdd1}"
     organization_workflows_check="${MINDCLADE_ORGANIZATION_WORKFLOWS_REFERENCE_CHECK:-PASS|immutable-head|just ci|Bazel workflow governance tests passed (3/3).}"
     organization_workflows_launcher_check="${MINDCLADE_ORGANIZATION_WORKFLOWS_LAUNCHER_REFERENCE_CHECK:-BLOCKED|immutable-head|Buildkite protected-definition launcher qualification|The dispatcher supplies the definition revision as metadata but no connected immutable launcher proves that the initial loader and hooks came from that revision.}"
     github_config_check="${MINDCLADE_GITHUB_CONFIG_REFERENCE_CHECK:-PASS|immutable-head|just ci|Go, Python, Bazel presubmit, policy, OpenTofu, workflow, buildifier, and whitespace checks passed.}"
@@ -182,6 +182,14 @@ generate:
       --write
     {{ python }} tools/docs/render_architecture_blueprint.py --manifest docs/architecture/blueprint/manifest.yaml
 
+# Generate committed Wave 1 protocol bindings and compatibility inventories.
+generate-contracts:
+    {{ python }} tools/codegen/generate_protocols.py --root .
+
+# Fail when a contract source change has not regenerated every committed binding.
+check-contract-drift:
+    {{ python }} tools/codegen/verify_generated_drift.py --root .
+
 # Execute all local source, lock, policy, and documentation gates.
 check: bootstrap
     {{ uv }} lock --check
@@ -193,9 +201,14 @@ check: bootstrap
     buf config ls-lint-rules >/dev/null
     buf config ls-breaking-rules >/dev/null
     if [[ -d protocols ]] && [[ -n "$(find protocols -type f -name '*.proto' -print -quit)" ]]; then buf lint; fi
-    ruff check .buildkite tools
-    ruff format --check .buildkite tools
-    pyright .buildkite tools
+    just check-contract-drift
+    go test ./libs/go/... ./services/control_plane/...
+    cargo test --workspace --locked
+    pnpm --recursive --if-present run typecheck
+    pnpm --recursive --if-present run test
+    ruff check .buildkite tools libs/python tests
+    ruff format --check .buildkite tools libs/python tests
+    pyright .buildkite tools libs/python tests
     actionlint -no-color
     yamllint -c .yamllint.yaml .
     nix flake check path:. --no-build
@@ -237,10 +250,17 @@ test-planned:
     printf '%s\n' '{"conclusion":"PASS","schema_version":"bazel-native-agreement.v1"}' > \
       {{ evidence_dir }}/bazel-native-agreement.v1.json
 
-# Wave 0 has no active product domain.
+# Run a bounded Wave 1 domain suite.
 test-domain domain:
-    @echo "Domain '{{ domain }}' is not active in Wave 0" >&2
-    @exit 78
+    #!/usr/bin/env bash
+    set -euo pipefail
+    case "{{ domain }}" in
+      contracts) {{ bazel }} test --config=ci //:wave1_contract_tests ;;
+      foundations) {{ bazel }} test --config=ci //libs:foundation_tests ;;
+      control-plane) {{ bazel }} test --config=ci //services/control_plane:tests ;;
+      local) {{ bazel }} test --config=ci //tests:local_stack_integration_test ;;
+      *) echo "Unknown Wave 1 domain: {{ domain }}" >&2; exit 64 ;;
+    esac
 
 # Scan the populated source tree and declared licenses without connected access.
 security:
@@ -372,9 +392,25 @@ package target:
     @exit 78
 
 integration-up:
-    @echo "Local integration services are deferred until the Wave 1 kernel" >&2
-    @exit 78
+    #!/usr/bin/env bash
+    set -euo pipefail
+    compose=(docker compose -f deploy/local/compose.yaml)
+    "${compose[@]}" up -d --wait postgres
+    if ! "${compose[@]}" run --rm migrate-control-plane; then
+      "${compose[@]}" down --volumes --remove-orphans
+      exit 1
+    fi
 
 integration-test:
-    @echo "Integration tests are deferred until the Wave 1 kernel" >&2
-    @exit 78
+    #!/usr/bin/env bash
+    set -euo pipefail
+    dsn='postgres://mindclade@127.0.0.1:55432/mindclade?sslmode=disable'
+    {{ bazel }} test --config=ci \
+      --test_env="MINDCLADE_TEST_POSTGRES_DSN=${dsn}" \
+      --test_env=MINDCLADE_REQUIRE_POSTGRES_INTEGRATION=1 \
+      //tests:artifact_commit_integration_test \
+      //tests:control_worker_integration_test \
+      //tests:local_stack_integration_test
+
+integration-down:
+    docker compose -f deploy/local/compose.yaml down --volumes --remove-orphans

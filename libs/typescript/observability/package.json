@@ -1,0 +1,16 @@
+{
+  "name": "@mindclade/observability",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": "./src/index.ts",
+  "scripts": {
+    "build": "rm -rf dist/native && tsc --strict --exactOptionalPropertyTypes --noUncheckedIndexedAccess --noFallthroughCasesInSwitch --target ES2022 --module NodeNext --moduleResolution NodeNext --esModuleInterop --rootDir . --outDir dist/native --sourceMap false --incremental false src/index.ts src/tracing.ts tests/tracing.test.ts",
+    "typecheck": "tsc --strict --exactOptionalPropertyTypes --noUncheckedIndexedAccess --noFallthroughCasesInSwitch --target ES2022 --module NodeNext --moduleResolution NodeNext --esModuleInterop --noEmit src/index.ts src/tracing.ts tests/tracing.test.ts",
+    "test": "pnpm run build && node --test dist/native/tests/tracing.test.js"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "typescript": "catalog:"
+  }
+}

@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package mindclade.events.audit.v1;
+
+import "proto/mindclade/common/v1/event_envelope.proto";
+
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/audit/v1;auditv1";
+
+message SecurityEvent {
+  mindclade.common.v1.EventEnvelope envelope = 1;
+  string severity = 2;
+  string control = 3;
+  string evidence_digest = 4;
+}

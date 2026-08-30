@@ -10,7 +10,7 @@ metadata:
 spec:
   type: product-source-monorepo
   lifecycle: pre-production
-  maturity: governed-baseline
+  maturity: internal
   owner: product-engineering
   security_reviewers:
     - security
@@ -25,6 +25,9 @@ spec:
     - repository-path-manifest-v1
     - architecture-blueprint-v3
     - immutable-product-build-source
+    - contract-kernel-v1
+    - durability-kernel-v1
+    - release-manifest-v1
   release:
     strategy: protected-build-once
     artifact: signed-release-manifest

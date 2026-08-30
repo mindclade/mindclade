@@ -1,0 +1,17 @@
+package(default_visibility = ["//visibility:private"])
+
+filegroup(
+    name = "wave1_third_party_sources",
+    srcs = [
+        "BUILD.bazel",
+        "README.md",
+        "licenses/README.md",
+        "licenses/license_inventory.json",
+        "notices/NOTICE.generated.txt",
+        "patches/README.md",
+        "patches/patches.lock.json",
+        "source_mirrors/README.md",
+        "source_mirrors/sources.lock.json",
+    ],
+    visibility = ["//visibility:public"],
+)

@@ -20,5 +20,6 @@ ignores:
   # the corrected editable sources instead of requesting changes to evidence.
   - "docs/architecture/blueprint/provenance/**"
   - ".venv/**"
+  - "**/node_modules/**"
   - "bazel-*/**"
   - "build/**"

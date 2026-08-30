@@ -1,0 +1,14 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+go_library(name = "auth", srcs = glob(["*.go"], exclude = ["*_test.go"]), importpath = "github.com/mindclade/mindclade/libs/go/auth")
+go_test(
+    name = "authorizer_test",
+    srcs = ["authorizer_test.go"],
+    embed = [":auth"],
+    pure = "on",
+)
+
+filegroup(
+    name = "governed_sources",
+    srcs = ["BUILD.bazel"] + glob(["**"], exclude = ["BUILD.bazel"]),
+    visibility = ["//visibility:public"],
+)

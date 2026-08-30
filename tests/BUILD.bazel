@@ -1,0 +1,116 @@
+load("@rules_python//python:defs.bzl", "py_test")
+
+package(default_visibility = ["//visibility:private"])
+
+_WAVE1_DATA = [
+    "//protocols:wave1_contract_sources",
+    "//third_party:wave1_third_party_sources",
+    "//tools:wave1_tooling_sources",
+]
+
+py_test(
+    name = "artifact_manifests_test",
+    srcs = ["conformance/test_artifact_manifests.py"],
+    data = _WAVE1_DATA,
+    deps = ["@mindclade_pypi//jsonschema"],
+    imports = [".."],
+    legacy_create_init = 0,
+    main = "conformance/test_artifact_manifests.py",
+    python_version = "PY3",
+)
+
+py_test(
+    name = "generated_clients_test",
+    srcs = ["conformance/test_generated_clients.py"],
+    data = _WAVE1_DATA,
+    imports = [".."],
+    legacy_create_init = 0,
+    main = "conformance/test_generated_clients.py",
+    python_version = "PY3",
+)
+
+
+py_test(
+    name = "configuration_resolution_test",
+    srcs = ["conformance/test_configuration_resolution.py"],
+    data = _WAVE1_DATA,
+    deps = ["//libs/python/config:config"],
+    imports = [".."],
+    legacy_create_init = 0,
+    main = "conformance/test_configuration_resolution.py",
+    python_version = "PY3",
+)
+
+py_test(
+    name = "release_signing_test",
+    srcs = ["conformance/test_release_signing.py"],
+    data = _WAVE1_DATA,
+    deps = ["@mindclade_pypi//cryptography"],
+    imports = [".."],
+    legacy_create_init = 0,
+    main = "conformance/test_release_signing.py",
+    python_version = "PY3",
+)
+
+py_test(
+    name = "local_stack_integration_test",
+    srcs = ["integration/local_stack_test.py"],
+    data = _WAVE1_DATA,
+    imports = [".."],
+    legacy_create_init = 0,
+    main = "integration/local_stack_test.py",
+    python_version = "PY3",
+)
+
+py_test(
+    name = "control_worker_integration_test",
+    srcs = ["integration/control_worker_test.py"],
+    args = ["$(rootpath //services/control_plane:control_plane_test)"],
+    data = _WAVE1_DATA + ["//services/control_plane:control_plane_test"],
+    imports = [".."],
+    legacy_create_init = 0,
+    main = "integration/control_worker_test.py",
+    python_version = "PY3",
+)
+
+py_test(
+    name = "artifact_commit_integration_test",
+    srcs = ["integration/artifact_commit_test.py"],
+    args = ["$(rootpath //services/control_plane:control_plane_test)"],
+    data = _WAVE1_DATA + ["//services/control_plane:control_plane_test"],
+    imports = [".."],
+    legacy_create_init = 0,
+    main = "integration/artifact_commit_test.py",
+    python_version = "PY3",
+)
+
+filegroup(
+    name = "wave1_contract_sources",
+    srcs = [
+        "BUILD.bazel",
+        "README.md",
+        "conformance/contract_matrix.yaml",
+        "conformance/test_artifact_manifests.py",
+        "conformance/test_configuration_resolution.py",
+        "conformance/test_generated_clients.py",
+        "conformance/test_release_signing.py",
+        "integration/artifact_commit_test.py",
+        "integration/control_worker_test.py",
+        "integration/local_stack_test.py",
+        "//third_party:wave1_third_party_sources",
+        "//tools:wave1_tooling_sources",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+test_suite(
+    name = "wave1_contract_tests",
+    tests = [
+        ":artifact_manifests_test",
+        ":generated_clients_test",
+        "//protocols:openapi_compatibility_test",
+        "//protocols:protobuf_compatibility_test",
+        "//protocols:schema_compatibility_test",
+    ],
+    visibility = ["//visibility:public"],
+)

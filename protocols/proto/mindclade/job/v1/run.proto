@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package mindclade.job.v1;
+
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/mindclade/job/v1;jobv1";
+
+// Frozen logical execution of a durable job.
+message Run {
+  string run_id = 1;
+  string job_id = 2;
+  string input_digest = 3;
+  string configuration_digest = 4;
+  string plan_digest = 5;
+  string state = 6;
+}

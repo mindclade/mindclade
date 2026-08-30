@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package mindclade.artifact.v1;
+
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/mindclade/artifact/v1;artifactv1";
+
+// EvidenceRef binds evidence to its immutable subject and collection policy.
+message EvidenceRef {
+  string digest = 1;
+  string subject_digest = 2;
+  string evidence_kind = 3;
+  string policy_digest = 4;
+}

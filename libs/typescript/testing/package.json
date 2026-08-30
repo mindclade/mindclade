@@ -1,0 +1,16 @@
+{
+  "name": "@mindclade/testing",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": "./src/index.ts",
+  "scripts": {
+    "build": "rm -rf dist/native && tsc --strict --exactOptionalPropertyTypes --noUncheckedIndexedAccess --noFallthroughCasesInSwitch --target ES2022 --module NodeNext --moduleResolution NodeNext --rootDir . --outDir dist/native --sourceMap false --incremental false src/index.ts src/fixtures.ts",
+    "typecheck": "tsc --strict --exactOptionalPropertyTypes --noUncheckedIndexedAccess --noFallthroughCasesInSwitch --target ES2022 --module NodeNext --moduleResolution NodeNext --noEmit src/index.ts src/fixtures.ts",
+    "test": "pnpm run build && node --input-type=module --eval \"import { FIXTURE_EPOCH_MILLIS, fixedClock, sequence } from './dist/native/src/index.js'; const clock = fixedClock(); if (clock.now() !== FIXTURE_EPOCH_MILLIS) throw new Error('fixed clock mismatch'); const next = sequence(['first', 'second']); if (next() !== 'first' || next() !== 'second') throw new Error('sequence order mismatch'); let exhausted = false; try { next(); } catch { exhausted = true; } if (!exhausted) throw new Error('sequence exhaustion was not enforced');\""
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "typescript": "catalog:"
+  }
+}

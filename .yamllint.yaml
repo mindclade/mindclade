@@ -2,6 +2,7 @@ extends: default
 
 ignore: |
   build/
+  node_modules/
 
 rules:
   document-start: disable

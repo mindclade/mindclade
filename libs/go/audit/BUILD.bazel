@@ -1,0 +1,14 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+go_library(name = "audit", srcs = glob(["*.go"], exclude = ["*_test.go"]), importpath = "github.com/mindclade/mindclade/libs/go/audit")
+go_test(
+    name = "writer_test",
+    srcs = ["writer_test.go"],
+    embed = [":audit"],
+    pure = "on",
+)
+
+filegroup(
+    name = "governed_sources",
+    srcs = ["BUILD.bazel"] + glob(["**"], exclude = ["BUILD.bazel"]),
+    visibility = ["//visibility:public"],
+)

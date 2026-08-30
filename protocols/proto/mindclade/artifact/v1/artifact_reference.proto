@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package mindclade.artifact.v1;
+
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/mindclade/artifact/v1;artifactv1";
+
+// Immutable content-addressed artifact identity. digest uses sha256:<64 lowercase hex>.
+message ArtifactRef {
+  string digest = 1;
+  string media_type = 2;
+  int64 size_bytes = 3;
+  string artifact_kind = 4;
+  string schema_id = 5;
+  string integrity_digest = 6;
+}

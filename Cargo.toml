@@ -1,5 +1,16 @@
 [workspace]
-members = []
+members = [
+    "protocols/generated/rust",
+    "libs/rust/artifact",
+    "libs/rust/bytes",
+    "libs/rust/config",
+    "libs/rust/errors",
+    "libs/rust/identifiers",
+    "libs/rust/observability",
+    "libs/rust/retry",
+    "libs/rust/storage",
+    "libs/rust/testing",
+]
 resolver = "3"
 
 [workspace.package]
@@ -7,6 +18,11 @@ edition = "2024"
 license = "LicenseRef-Mindclade-Proprietary"
 repository = "https://github.com/mindclade/mindclade"
 rust-version = "1.97.1"
+
+[workspace.dependencies]
+serde = "1.0.228"
+serde_json = "1.0.149"
+sha2 = "0.10.9"
 
 [workspace.lints.rust]
 unsafe_code = "forbid"

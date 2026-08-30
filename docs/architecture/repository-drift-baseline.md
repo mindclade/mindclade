@@ -8,14 +8,14 @@ operational repositories are inputs for comparison only and are not migration so
 
 - Anchor commit: `292b71f47b1b29cc9ba7cf760a9bd07cd5e0ffa7`
 - Observation scope: `working-tree`
-- Base commit: `1431ee03ec3c43c21a33baed8f95e19a011bb0e1`
+- Base commit: `bade4b2fabe2044818a18f263cbf0dfa404c5b36`
 - Observed immutable commit: `not commit-bound`
 - Working tree state: `dirty`
-- Populated path-set SHA-256: `2e392708788de3a12247a819bc6e313316d7411a45a5a473d4487310085d6cad`
-- Content snapshot SHA-256: `5a4ecc58a10c76a0633f76ad3da2826d27741cb098f148fe907691946e48b185`
+- Populated path-set SHA-256: `8edfafc9794f5391d2ba521a69fc17fc0ab52f67f699888535e4ca5b505c21c9`
+- Content snapshot SHA-256: `fb33b57dc1ed24356b79e6cdf82dc3e376b627f3fa130d98fdfd4f536c333342`
 - Evidence outputs excluded from content snapshot: `build/evidence/repository_drift.v1.json`, `docs/architecture/repository-drift-baseline.md`
-- Canonical target paths: 2487
-- Populated paths: 203
+- Canonical target paths: 2488
+- Populated paths: 590
 - Unknown paths: 0
 - Premature target paths: 0
 - Missing active paths: 0
@@ -24,7 +24,7 @@ operational repositories are inputs for comparison only and are not migration so
 - Operational metadata failures: 0
 - Default-branch observations incomplete: 5
 - Branch-protection observations incomplete: 5
-- Appendix A3 inventory failures: 0
+- Appendix A3 inventory failures: 5
 - Readiness: `INCONCLUSIVE`
 
 The repository Markdown evidence is a worktree-scoped observation and is excluded from its own
@@ -37,11 +37,11 @@ scope.
 
 | Source | Immutable revision | Canonical remote | Working tree and evidence scope |
 |---|---|---|---|
-| `bootstrap` | `620d17fcd589cdeb8cef7c292f47e2b7be3b4987` | `https://github.com/mindclade/bootstrap.git` | excluded; immutable object inspected; selection=declared; checkout HEAD=`excluded`; checks retain their listed scopes |
-| `github-config` | `8cdf1f256c0d9310c825fd05ab068295488070a6` | `https://github.com/mindclade/github-config.git` | excluded; immutable object inspected; selection=declared; checkout HEAD=`excluded`; checks retain their listed scopes |
-| `gitops` | `a74d7447b05fca142d54a09504f4d0a9050b9e73` | `https://github.com/mindclade/gitops.git` | excluded; immutable object inspected; selection=declared; checkout HEAD=`excluded`; checks retain their listed scopes |
-| `infrastructure-live` | `c6eded5a2dafd47d62eb587f76d21bb17a9343f0` | `https://github.com/mindclade/infrastructure-live.git` | excluded; immutable object inspected; selection=declared; checkout HEAD=`excluded`; checks retain their listed scopes |
-| `organization-workflows` | `6399abc50c4678d0dff7f33bbd7f6868043ef736` | `https://github.com/mindclade/.github.git` | excluded; immutable object inspected; selection=declared; checkout HEAD=`excluded`; checks retain their listed scopes |
+| `bootstrap` | `9a221078120026167624d5d38b5fcd3f7c93560a` | `https://github.com/mindclade/bootstrap.git` | excluded; immutable object inspected; selection=declared; checkout HEAD=`excluded`; checks retain their listed scopes |
+| `github-config` | `0ebe461d003e37321c545e6b56c8f1d7016825ed` | `https://github.com/mindclade/github-config.git` | excluded; immutable object inspected; selection=declared; checkout HEAD=`excluded`; checks retain their listed scopes |
+| `gitops` | `7a7ad44c0b0bffc5983ce1040ac7b6bf865efdd1` | `https://github.com/mindclade/gitops.git` | excluded; immutable object inspected; selection=declared; checkout HEAD=`excluded`; checks retain their listed scopes |
+| `infrastructure-live` | `b9de2e33d5d441893b9777bbfa48d6129c339963` | `https://github.com/mindclade/infrastructure-live.git` | excluded; immutable object inspected; selection=declared; checkout HEAD=`excluded`; checks retain their listed scopes |
+| `organization-workflows` | `e195b71d3657aca32cb325990e5e4ef8789b7eee` | `https://github.com/mindclade/.github.git` | excluded; immutable object inspected; selection=declared; checkout HEAD=`excluded`; checks retain their listed scopes |
 
 ## Operational estate contract
 
@@ -52,11 +52,11 @@ Appendix A3 repository trees.
 
 | Source | Owner | Class | Trust / recovery | Default | Protection | A3 tree |
 |---|---|---|---|---|---|---|
-| `bootstrap` | `security` | `infrastructure-source` | `ring-0` / `isolated-ring-0` | `INCONCLUSIVE` | `INCONCLUSIVE` | `PASS` (96 target / 96 observed) |
-| `github-config` | `developer-platform` | `governance-source` | `privileged-governance` / `tier-0` | `INCONCLUSIVE` | `INCONCLUSIVE` | `PASS` (109 target / 109 observed) |
-| `gitops` | `platform-operations` | `deployment-source` | `deployment-control` / `isolated-git` | `INCONCLUSIVE` | `INCONCLUSIVE` | `PASS` (126 target / 126 observed) |
-| `infrastructure-live` | `platform-operations` | `infrastructure-source` | `privileged` / `tier-0` | `INCONCLUSIVE` | `INCONCLUSIVE` | `PASS` (310 target / 310 observed) |
-| `organization-workflows` | `developer-platform` | `governance-source` | `trusted` / `tier-1` | `INCONCLUSIVE` | `INCONCLUSIVE` | `PASS` (56 target / 56 observed) |
+| `bootstrap` | `security` | `infrastructure-source` | `ring-0` / `isolated-ring-0` | `INCONCLUSIVE` | `INCONCLUSIVE` | `FAIL` (97 target / 98 observed) |
+| `github-config` | `developer-platform` | `governance-source` | `privileged-governance` / `tier-0` | `INCONCLUSIVE` | `INCONCLUSIVE` | `FAIL` (110 target / 111 observed) |
+| `gitops` | `platform-operations` | `deployment-source` | `deployment-control` / `isolated-git` | `INCONCLUSIVE` | `INCONCLUSIVE` | `FAIL` (127 target / 128 observed) |
+| `infrastructure-live` | `platform-operations` | `infrastructure-source` | `privileged` / `tier-0` | `INCONCLUSIVE` | `INCONCLUSIVE` | `FAIL` (311 target / 312 observed) |
+| `organization-workflows` | `developer-platform` | `governance-source` | `trusted` / `tier-1` | `INCONCLUSIVE` | `INCONCLUSIVE` | `FAIL` (57 target / 58 observed) |
 
 ## Source validation observations
 

@@ -359,7 +359,9 @@ def validate_founder_bootstrap_exception(root: Path) -> list[str]:
                 "repository": "mindclade/github-config",
                 "branch": "main",
                 "workflowPath": ".github/workflows/protected-apply.yml",
-                "workflowContentDigest": "sha256:d9109bd4227557cb98a032cfaaa4748744ec8c280733f4f13400da340f1c8de9",
+                "workflowContentDigest": (
+                    "sha256:d9109bd4227557cb98a032cfaaa4748744ec8c280733f4f13400da340f1c8de9"
+                ),
             },
             "actor": {"githubLogin": "mindclade-founder"},
             "maxUses": 1,
@@ -377,7 +379,7 @@ def validate_founder_bootstrap_exception(root: Path) -> list[str]:
         errors.append("FBE-0001 immutable authority, scope, permissions, or guards drifted")
 
     phase = status["phase"]
-    if phase == "AUTHORIZED_SOURCE_ONLY" and FOUNDER_BOOTSTRAP_EXPIRY < date.today():
+    if phase == "AUTHORIZED_SOURCE_ONLY" and date.today() > FOUNDER_BOOTSTRAP_EXPIRY:
         errors.append("FBE-0001 source authorization is expired")
     initial_publication_state = initial_publication["state"]
     initial_publication_receipt = cast(dict[str, object], initial_publication["receipt"])
@@ -393,9 +395,13 @@ def validate_founder_bootstrap_exception(root: Path) -> list[str]:
         if (
             not isinstance(pull_request, str)
             or not isinstance(pull_request_number, int)
-            or pull_request != f"https://github.com/mindclade/github-config/pull/{pull_request_number}"
+            or pull_request
+            != f"https://github.com/mindclade/github-config/pull/{pull_request_number}"
         ):
-            errors.append("FBE-0001 initial publication receipt must bind its canonical pull-request URL and number")
+            errors.append(
+                "FBE-0001 initial publication receipt must bind its canonical pull-request "
+                "URL and number"
+            )
     if phase == "CONSUMED" and initial_publication_state != "PUBLISHED":
         errors.append("FBE-0001 cannot be consumed before its initial workflow publication")
     if phase == "CONSUMED":

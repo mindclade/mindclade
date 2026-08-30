@@ -1,0 +1,14 @@
+{
+  "contracts": [
+    {"compatibility": "additive-only", "name": "mindclade.common.v1"},
+    {"compatibility": "additive-only", "name": "mindclade.artifact.v1"},
+    {"compatibility": "additive-only", "name": "mindclade.job.v1"},
+    {"compatibility": "additive-only", "name": "mindclade.events.audit.v1"},
+    {"compatibility": "schema-versioned", "name": "artifact_manifest"},
+    {"compatibility": "schema-versioned", "name": "evidence_manifest"},
+    {"compatibility": "schema-versioned", "name": "release_manifest"},
+    {"compatibility": "schema-versioned", "name": "configuration"}
+  ],
+  "generated_languages": ["go", "python", "rust", "typescript"],
+  "schema_version": "mindclade.contract-matrix/v1"
+}

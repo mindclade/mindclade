@@ -1,0 +1,15 @@
+package(default_visibility = ["//visibility:private"])
+
+filegroup(
+    name = "local_profile",
+    srcs = [
+        "BUILD.bazel",
+        "README.md",
+        "component.yaml",
+        "local/README.md",
+        "local/compose.yaml",
+        "local/fake-identity.yaml",
+        "local/local-values.yaml",
+    ],
+    visibility = ["//visibility:public"],
+)

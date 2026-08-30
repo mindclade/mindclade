@@ -1,0 +1,47 @@
+package(default_visibility = ["//visibility:public"])
+
+filegroup(
+    name = "foundation_sources",
+    srcs = [
+        "BUILD.bazel",
+        "README.md",
+        "go/README.md",
+        "go/component.yaml",
+        "rust/README.md",
+        "rust/component.yaml",
+        "typescript/README.md",
+        "typescript/component.yaml",
+        "//libs/go/audit:governed_sources",
+        "//libs/go/auth:governed_sources",
+        "//libs/go/clock:governed_sources",
+        "//libs/go/faults:governed_sources",
+        "//libs/go/identifiers:governed_sources",
+        "//libs/go/observability:governed_sources",
+        "//libs/go/storage:governed_sources",
+        "//libs/go/testing:governed_sources",
+        "//libs/python:governed_sources",
+        "//libs/rust/artifact:governed_sources",
+        "//libs/rust/bytes:governed_sources",
+        "//libs/rust/config:governed_sources",
+        "//libs/rust/errors:governed_sources",
+        "//libs/rust/identifiers:governed_sources",
+        "//libs/rust/observability:governed_sources",
+        "//libs/rust/retry:governed_sources",
+        "//libs/rust/storage:governed_sources",
+        "//libs/rust/testing:governed_sources",
+        "//libs/typescript/config:governed_sources",
+        "//libs/typescript/observability:governed_sources",
+        "//libs/typescript/testing:governed_sources",
+    ],
+)
+
+test_suite(
+    name = "foundation_tests",
+    tests = [
+        "//libs/go/audit:writer_test",
+        "//libs/go/auth:authorizer_test",
+        "//libs/go/clock:clock_test",
+        "//libs/typescript/config:resolution_test",
+        "//libs/typescript/observability:tracing_test",
+    ],
+)

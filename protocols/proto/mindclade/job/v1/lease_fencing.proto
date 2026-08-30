@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package mindclade.job.v1;
+
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/mindclade/job/v1;jobv1";
+
+// Lease fencing receipt required for worker completion acceptance.
+message LeaseFence {
+  string job_id = 1;
+  string run_id = 2;
+  string attempt_id = 3;
+  uint64 lease_epoch = 4;
+  string deadline_utc = 5;
+}

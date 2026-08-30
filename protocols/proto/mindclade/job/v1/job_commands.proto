@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package mindclade.job.v1;
+
+import "proto/mindclade/common/v1/command_context.proto";
+
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/mindclade/job/v1;jobv1";
+
+// Idempotent command to request durable work.
+message RequestJobCommand {
+  mindclade.common.v1.CommandContext context = 1;
+  string job_kind = 2;
+  string input_digest = 3;
+  string configuration_digest = 4;
+}

@@ -1,0 +1,32 @@
+apiVersion: mindclade.dev/v1
+kind: Component
+metadata:
+  name: services-control-plane
+  description: Wave 1 durable tenant-scoped control-plane kernel.
+spec:
+  type: control-plane-service
+  lifecycle: pre-production
+  maturity: internal
+  owner: platform-control-plane
+  security_reviewers:
+    - security
+  repository_class: application-source
+  trust_tier: transactional-control
+  recovery_tier: tier-0
+  data_classification: public
+  production_authority: false
+  dependencies: []
+  provides:
+    - durable-operation-kernel-v1
+    - transactional-outbox-v1
+    - fenced-attempt-v1
+  release:
+    strategy: source-only
+    artifact: null
+    immutable: false
+  activation:
+    wave: "1"
+    connected: false
+status:
+  readiness: IMPLEMENTED
+  source_readiness: SOURCE_IMPLEMENTED

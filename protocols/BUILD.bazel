@@ -1,0 +1,47 @@
+load("@rules_python//python:defs.bzl", "py_test")
+
+package(default_visibility = ["//visibility:private"])
+
+filegroup(
+    name = "wave1_contract_sources",
+    srcs = glob([
+        "BUILD.bazel",
+        "README.md",
+        "proto/**/*.proto",
+        "events/**/*.proto",
+        "schemas/**/*.json",
+        "compatibility/baselines/*.json",
+        "compatibility/tests/*.py",
+    ]) + ["//protocols/generated:generated_sources"],
+    visibility = ["//visibility:public"],
+)
+
+py_test(
+    name = "protobuf_compatibility_test",
+    srcs = ["compatibility/tests/test_protobuf_compatibility.py"],
+    data = [":wave1_contract_sources", "//tools:wave1_codegen_sources"],
+    imports = [".."],
+    legacy_create_init = 0,
+    main = "compatibility/tests/test_protobuf_compatibility.py",
+    python_version = "PY3",
+)
+
+py_test(
+    name = "schema_compatibility_test",
+    srcs = ["compatibility/tests/test_schema_compatibility.py"],
+    data = [":wave1_contract_sources", "//tools:wave1_codegen_sources"],
+    imports = [".."],
+    legacy_create_init = 0,
+    main = "compatibility/tests/test_schema_compatibility.py",
+    python_version = "PY3",
+)
+
+py_test(
+    name = "openapi_compatibility_test",
+    srcs = ["compatibility/tests/test_openapi_compatibility.py"],
+    data = [":wave1_contract_sources", "//tools:wave1_codegen_sources"],
+    imports = [".."],
+    legacy_create_init = 0,
+    main = "compatibility/tests/test_openapi_compatibility.py",
+    python_version = "PY3",
+)

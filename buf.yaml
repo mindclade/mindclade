@@ -1,16 +1,13 @@
 version: v2
 modules:
-  - path: .
+  - path: protocols
     excludes:
-      - .venv
-      - bazel-bin
-      - bazel-mindclade
-      - bazel-out
-      - bazel-testlogs
-      - build
+      - protocols/generated
 lint:
   use:
     - STANDARD
+  except:
+    - PACKAGE_DIRECTORY_MATCH
   disallow_comment_ignores: true
 breaking:
   use:

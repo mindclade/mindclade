@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package mindclade.job.v1;
+
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/mindclade/job/v1;jobv1";
+
+// Client-visible long-running command record.
+message Operation {
+  string operation_id = 1;
+  string tenant_id = 2;
+  string state = 3;
+  int64 resource_version = 4;
+  string result_digest = 5;
+  string error_code = 6;
+}

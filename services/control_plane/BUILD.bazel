@@ -1,0 +1,194 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+package(default_visibility = ["//visibility:private"])
+
+go_library(
+    name = "tenants",
+    srcs = ["internal/tenants/tenant_isolation.go"],
+    importpath = "github.com/mindclade/mindclade/services/control_plane/internal/tenants",
+)
+
+go_library(
+    name = "policies",
+    srcs = [
+        "internal/policies/authorization.go",
+        "internal/policies/decision_audit.go",
+    ],
+    importpath = "github.com/mindclade/mindclade/services/control_plane/internal/policies",
+    deps = [":tenants"],
+)
+
+go_library(
+    name = "jobs",
+    srcs = [
+        "internal/jobs/job_commands.go",
+        "internal/jobs/job_reconciler.go",
+        "internal/jobs/job_repository.go",
+        "internal/jobs/lease_fencing.go",
+    ],
+    importpath = "github.com/mindclade/mindclade/services/control_plane/internal/jobs",
+    deps = [
+        ":policies",
+        ":tenants",
+    ],
+)
+
+go_library(
+    name = "operations",
+    srcs = [
+        "internal/operations/operation_commands.go",
+        "internal/operations/operation_reconciler.go",
+        "internal/operations/operation_repository.go",
+    ],
+    importpath = "github.com/mindclade/mindclade/services/control_plane/internal/operations",
+    deps = [
+        ":policies",
+        ":tenants",
+    ],
+)
+
+go_library(
+    name = "storage",
+    srcs = [
+        "internal/platform/storage/artifact_catalog.go",
+        "internal/platform/storage/object_store.go",
+    ],
+    importpath = "github.com/mindclade/mindclade/services/control_plane/internal/platform/storage",
+)
+
+go_library(
+    name = "artifacts",
+    srcs = [
+        "internal/artifacts/artifact_commands.go",
+        "internal/artifacts/artifact_reconciler.go",
+        "internal/artifacts/artifact_repository.go",
+    ],
+    importpath = "github.com/mindclade/mindclade/services/control_plane/internal/artifacts",
+    deps = [
+        ":policies",
+        ":storage",
+        ":tenants",
+    ],
+)
+
+go_library(
+    name = "audit",
+    srcs = ["internal/platform/audit/audit_store.go"],
+    importpath = "github.com/mindclade/mindclade/services/control_plane/internal/platform/audit",
+)
+
+go_library(
+    name = "database",
+    srcs = [
+        "internal/platform/database/migration_guard.go",
+        "internal/platform/database/transactions.go",
+    ],
+    importpath = "github.com/mindclade/mindclade/services/control_plane/internal/platform/database",
+)
+
+go_library(
+    name = "idempotency",
+    srcs = [
+        "internal/platform/idempotency/command_keys.go",
+        "internal/platform/idempotency/idempotency_store.go",
+    ],
+    importpath = "github.com/mindclade/mindclade/services/control_plane/internal/platform/idempotency",
+)
+
+go_library(
+    name = "inbox",
+    srcs = ["internal/platform/inbox/inbox_store.go"],
+    importpath = "github.com/mindclade/mindclade/services/control_plane/internal/platform/inbox",
+)
+
+go_library(
+    name = "outbox",
+    srcs = [
+        "internal/platform/outbox/delivery_fencing.go",
+        "internal/platform/outbox/dispatcher.go",
+        "internal/platform/outbox/outbox_store.go",
+    ],
+    importpath = "github.com/mindclade/mindclade/services/control_plane/internal/platform/outbox",
+)
+
+go_library(
+    name = "queue",
+    srcs = [
+        "internal/platform/queue/dead_letter.go",
+        "internal/platform/queue/delivery.go",
+        "internal/platform/queue/transport.go",
+    ],
+    importpath = "github.com/mindclade/mindclade/services/control_plane/internal/platform/queue",
+)
+
+go_library(
+    name = "telemetry",
+    srcs = ["internal/platform/telemetry/audit_events.go"],
+    importpath = "github.com/mindclade/mindclade/services/control_plane/internal/platform/telemetry",
+)
+
+filegroup(
+    name = "governed_inputs",
+    srcs = [
+        "BUILD.bazel",
+        "README.md",
+        "component.yaml",
+        "migrations/000001_kernel.down.sql",
+        "migrations/000001_kernel.up.sql",
+        "migrations/migration_policy.yaml",
+    ],
+)
+
+filegroup(
+    name = "control_plane_test_sources",
+    srcs = [
+        "tests/idempotency_test.go",
+        "tests/lease_fencing_test.go",
+        "tests/tenant_isolation_test.go",
+        "tests/transaction_outbox_test.go",
+    ],
+)
+
+go_test(
+    name = "control_plane_test",
+    srcs = [":control_plane_test_sources"],
+    data = [":governed_inputs"],
+    pure = "on",
+    visibility = ["//tests:__pkg__"],
+    deps = [
+        ":artifacts",
+        ":inbox",
+        ":jobs",
+        ":operations",
+        ":policies",
+        ":storage",
+        "@com_github_jackc_pgx_v5//stdlib",
+    ],
+)
+
+test_suite(
+    name = "tests",
+    tests = [":control_plane_test"],
+)
+
+filegroup(
+    name = "control_plane_sources",
+    srcs = [
+        ":artifacts",
+        ":audit",
+        ":database",
+        ":idempotency",
+        ":inbox",
+        ":jobs",
+        ":operations",
+        ":outbox",
+        ":policies",
+        ":queue",
+        ":storage",
+        ":telemetry",
+        ":tenants",
+        ":control_plane_test_sources",
+        ":governed_inputs",
+    ],
+    visibility = ["//visibility:public"],
+)

@@ -1,0 +1,14 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+go_library(name = "clock", srcs = glob(["*.go"], exclude = ["*_test.go"]), importpath = "github.com/mindclade/mindclade/libs/go/clock")
+go_test(
+    name = "clock_test",
+    srcs = ["clock_test.go"],
+    embed = [":clock"],
+    pure = "on",
+)
+
+filegroup(
+    name = "governed_sources",
+    srcs = ["BUILD.bazel"] + glob(["**"], exclude = ["BUILD.bazel"]),
+    visibility = ["//visibility:public"],
+)

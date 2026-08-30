@@ -1,0 +1,37 @@
+apiVersion: mindclade.dev/v1
+kind: Component
+metadata:
+  name: deploy
+  description: Source-only Wave 1 local durability-kernel profile.
+spec:
+  type: local-integration-profile
+  lifecycle: pre-production
+  maturity: internal
+  owner: platform-operations
+  security_reviewers:
+    - security
+  repository_class: application-source
+  trust_tier: local-untrusted
+  recovery_tier: rebuildable
+  data_classification: synthetic
+  production_authority: false
+  dependencies:
+    - component: services-control-plane
+      kind: runtime
+      visibility: repository
+      owner: platform-control-plane
+      justification: Exercises the kernel against local PostgreSQL.
+      scope: local-test-only
+      exception: null
+  provides:
+    - wave1-local-integration-profile
+  release:
+    strategy: source-only
+    artifact: null
+    immutable: false
+  activation:
+    wave: "1"
+    connected: false
+status:
+  readiness: IMPLEMENTED
+  source_readiness: SOURCE_IMPLEMENTED

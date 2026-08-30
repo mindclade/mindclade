@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package mindclade.events.job.v1;
+
+import "proto/mindclade/common/v1/event_envelope.proto";
+
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/job/v1;jobv1";
+
+message AttemptLeased {
+  mindclade.common.v1.EventEnvelope envelope = 1;
+  string attempt_id = 2;
+  uint64 lease_epoch = 3;
+  string lease_expires_at_utc = 4;
+}

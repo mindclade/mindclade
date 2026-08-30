@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package mindclade.common.v1;
+
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/mindclade/common/v1;commonv1";
+
+// Envelope that makes at-least-once event delivery idempotent and traceable.
+message EventEnvelope {
+  string event_id = 1;
+  string event_type = 2;
+  uint32 event_version = 3;
+  string occurred_at_utc = 4;
+  string tenant_id = 5;
+  string trace_id = 6;
+  string subject_ref = 7;
+  string payload_digest = 8;
+}

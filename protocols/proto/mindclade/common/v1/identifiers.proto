@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package mindclade.common.v1;
+
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/mindclade/common/v1;commonv1";
+
+// Stable opaque identifiers used across commands, events, persistence, and generated clients.
+message Identifiers {
+  string tenant_id = 1;
+  string project_id = 2;
+  string principal_id = 3;
+  string request_id = 4;
+  string trace_id = 5;
+}

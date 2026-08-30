@@ -1,0 +1,12 @@
+[package]
+name = "mindclade-testing"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+mindclade-retry = { path = "../retry" }
+
+[lints]
+workspace = true

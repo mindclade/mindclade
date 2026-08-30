@@ -50,8 +50,18 @@
 /flake.nix @mindclade/developer-platform
 /justfile @mindclade/developer-platform
 /tools/ @mindclade/developer-platform
+/tools/release/ @mindclade/developer-platform @mindclade/security
+/tools/qualification/ @mindclade/developer-platform @mindclade/security
 /docs/BUILD.bazel @mindclade/developer-platform
 /docs/README.md @mindclade/developer-platform
+
+# Wave 1 contract, library, durability, and local-integration ownership.
+/protocols/ @mindclade/architecture @mindclade/security
+/libs/ @mindclade/developer-platform
+/services/control_plane/ @mindclade/product-engineering @mindclade/security
+/deploy/ @mindclade/platform-operations @mindclade/security
+/tests/ @mindclade/developer-platform @mindclade/security
+/third_party/ @mindclade/security @mindclade/developer-platform
 
 # Architecture, security, and foundational domain decisions.
 /docs/architecture/ @mindclade/architecture

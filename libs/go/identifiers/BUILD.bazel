@@ -1,0 +1,8 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+go_library(name = "identifiers", srcs = glob(["*.go"], exclude = ["*_test.go"]), importpath = "github.com/mindclade/mindclade/libs/go/identifiers")
+
+filegroup(
+    name = "governed_sources",
+    srcs = ["BUILD.bazel"] + glob(["**"], exclude = ["BUILD.bazel"]),
+    visibility = ["//visibility:public"],
+)

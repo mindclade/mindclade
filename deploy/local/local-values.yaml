@@ -1,0 +1,22 @@
+api_version: mindclade.dev/v1
+kind: LocalKernelConfiguration
+metadata:
+  name: wave1-local
+spec:
+  database:
+    dsn: postgresql://mindclade@127.0.0.1:55432/mindclade?sslmode=disable
+    maximum_connections: 8
+    statement_timeout_seconds: 10
+  queue:
+    adapter: deterministic-memory
+    delivery: at-least-once
+    maximum_attempts: 5
+  object_store:
+    adapter: filesystem-cas
+    root: build/local/object-store
+    digest_algorithm: sha256
+  identity_profile: deploy/local/fake-identity.yaml
+  telemetry:
+    exporter: in-memory
+    sensitive_values_allowed: false
+  production_authority: false

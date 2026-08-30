@@ -89,3 +89,50 @@ test_suite(
     ],
     visibility = ["//visibility:public"],
 )
+
+filegroup(
+    name = "wave1_contract_sources",
+    srcs = [
+        "//protocols:wave1_contract_sources",
+        "//tests:wave1_contract_sources",
+        "//third_party:wave1_third_party_sources",
+        "//tools:wave1_tooling_sources",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+test_suite(
+    name = "wave1_contract_tests",
+    tests = ["//tests:wave1_contract_tests"],
+    visibility = ["//visibility:public"],
+)
+
+filegroup(
+    name = "wave1_sources",
+    srcs = [
+        ":wave1_contract_sources",
+        "//deploy:local_profile",
+        "//libs:foundation_sources",
+        "//services/control_plane:control_plane_sources",
+        "//tests:wave1_contract_sources",
+        "//third_party:wave1_third_party_sources",
+        "//tools:wave1_tooling_sources",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+test_suite(
+    name = "wave1_tests",
+    tests = [
+        ":wave1_contract_tests",
+        "//libs:foundation_tests",
+        "//services/control_plane:tests",
+        "//tests:artifact_commit_integration_test",
+        "//tests:configuration_resolution_test",
+        "//tests:control_worker_integration_test",
+        "//tests:local_stack_integration_test",
+        "//tests:release_signing_test",
+        "//tools:repository_policies_test",
+    ],
+    visibility = ["//visibility:public"],
+)
