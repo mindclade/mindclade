@@ -3,6 +3,8 @@ packages:
   - libs/typescript/observability
   - libs/typescript/testing
 
+allowBuilds: {}
+
 catalog:
   '@types/node': 24.10.1
   typescript: 5.9.3
