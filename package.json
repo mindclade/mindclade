@@ -12,5 +12,10 @@
   "scripts": {
     "check": "node -e \"JSON.parse(require('node:fs').readFileSync('package.json', 'utf8'))\"",
     "contracts:check": "python3.12 tools/codegen/verify_generated_drift.py --root ."
+  },
+  "devDependencies": {
+    "@bufbuild/protobuf": "2.11.0",
+    "@bufbuild/protoc-gen-es": "2.11.0",
+    "typescript": "5.9.3"
   }
 }

@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package mindclade.job.v1;
 
-option go_package = "github.com/mindclade/mindclade/protocols/generated/go/mindclade/job/v1;jobv1";
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/job/v1;jobv1";
 
 // Durable admitted work and policy/accounting boundary.
 message Job {

@@ -4,7 +4,7 @@ package mindclade.job.v1;
 
 import "proto/mindclade/common/v1/command_context.proto";
 
-option go_package = "github.com/mindclade/mindclade/protocols/generated/go/mindclade/job/v1;jobv1";
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/job/v1;jobv1";
 
 // Idempotent command to request durable work.
 message RequestJobCommand {
