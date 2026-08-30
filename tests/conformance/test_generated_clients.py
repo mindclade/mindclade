@@ -35,9 +35,16 @@ class GeneratedClientsContractTest(unittest.TestCase):
                 cwd=repository,
                 check=True,
             )
+        typescript = (
+            repository / "protocols/generated/typescript/common/v1/identifiers_pb.ts"
+        ).read_text()
         self.assertIn(
-            "export interface",
-            (repository / "protocols/generated/typescript/common/v1/identifiers_pb.ts").read_text(),
+            'export type Identifiers = Message<"mindclade.common.v1.Identifiers"> & {',
+            typescript,
+        )
+        self.assertIn(
+            "export const IdentifiersSchema: GenMessage<Identifiers> = /*@__PURE__*/",
+            typescript,
         )
 
 

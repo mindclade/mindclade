@@ -81,6 +81,8 @@
       {"ecosystem": "python", "name": "jsonschema", "version": "4.26.0", "license": "MIT"},
       {"ecosystem": "python", "name": "jsonschema-specifications", "version": "2025.9.1", "license": "MIT"},
       {"ecosystem": "python", "name": "pycparser", "version": "3.0", "license": "BSD-3-Clause"},
+      {"ecosystem": "python", "name": "protobuf", "version": "7.36.0", "license": "BSD-3-Clause"},
+      {"ecosystem": "python", "name": "pyyaml", "version": "6.0.3", "license": "MIT"},
       {"ecosystem": "python", "name": "referencing", "version": "0.37.0", "license": "MIT"},
       {"ecosystem": "python", "name": "rpds-py", "version": "2026.6.3", "license": "MIT"},
       {"ecosystem": "python", "name": "typing-extensions", "version": "4.16.0", "license": "PSF-2.0"}
