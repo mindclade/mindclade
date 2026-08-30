@@ -6,11 +6,60 @@ cd "${MINDCLADE_REPOSITORY_ROOT:?environment hook did not bind repository root}"
 source_revision="${MINDCLADE_SOURCE_REVISION:?missing source revision}"
 pipeline_revision="${MINDCLADE_PIPELINE_DEFINITION_REVISION:?missing pipeline definition revision}"
 pipeline_class="${MINDCLADE_PIPELINE_CLASS:?missing pipeline class}"
+launcher_revision="${MINDCLADE_LAUNCHER_REVISION:?missing immutable launcher revision}"
+launcher_digest="${MINDCLADE_LAUNCHER_DIGEST:?missing immutable launcher digest}"
+launcher_identity="${MINDCLADE_LAUNCHER_IDENTITY:?missing immutable launcher identity}"
+cache_mode="${MINDCLADE_CACHE_MODE:?missing explicit cache mode}"
+cache_platform="${MINDCLADE_CACHE_PLATFORM:?missing cache platform}"
+cache_architecture="${MINDCLADE_CACHE_ARCHITECTURE:?missing cache architecture}"
+cache_toolchain_digest="${MINDCLADE_CACHE_TOOLCHAIN_DIGEST:?missing cache toolchain digest}"
+cache_build_mode="${MINDCLADE_CACHE_BUILD_MODE:?missing cache build mode}"
+: "${MINDCLADE_CONTEXT_JSON:?missing trusted context JSON}"
+: "${MINDCLADE_CONTEXT_DIGEST:?missing trusted context digest}"
 
 [[ "${source_revision}" =~ ^[0-9a-f]{40}$ ]]
 [[ "${pipeline_revision}" =~ ^[0-9a-f]{40}$ ]]
+[[ "${launcher_revision}" =~ ^[0-9a-f]{40}$ ]]
+[[ "${launcher_digest}" =~ ^sha256:[0-9a-f]{64}$ ]]
+[[ "${launcher_identity}" =~ ^buildkite://[a-z0-9][a-z0-9._/-]{7,255}$ ]]
+[[ "${cache_mode}" == disabled ]]
+[[ "${cache_platform}" =~ ^[a-z0-9][a-z0-9._-]{1,63}$ ]]
+[[ "${cache_architecture}" =~ ^[a-z0-9][a-z0-9._-]{1,63}$ ]]
+[[ "${cache_toolchain_digest}" =~ ^sha256:[0-9a-f]{64}$ ]]
+[[ "${cache_build_mode}" == "${pipeline_class}" ]]
+[[ -z "${MINDCLADE_CACHE_IAM_QUALIFICATION_DIGEST:-}" ]]
+[[ -z "${MINDCLADE_CACHE_WRITE_ACTIVATION_DIGEST:-}" ]]
 [[ "$(git rev-parse HEAD)" == "${source_revision}" ]]
 git cat-file -e "${pipeline_revision}^{commit}"
+
+python3.12 - <<'PY'
+import hashlib
+import json
+import os
+
+context = json.loads(os.environ["MINDCLADE_CONTEXT_JSON"])
+if not isinstance(context, dict):
+    raise SystemExit("trusted context must be a JSON object")
+encoded = json.dumps(context, ensure_ascii=False, separators=(",", ":"), sort_keys=True).encode()
+actual_digest = "sha256:" + hashlib.sha256(encoded).hexdigest()
+if actual_digest != os.environ["MINDCLADE_CONTEXT_DIGEST"]:
+    raise SystemExit("trusted context digest does not bind the exact JSON")
+bindings = {
+    "source_revision": "MINDCLADE_SOURCE_REVISION",
+    "pipeline_definition_revision": "MINDCLADE_PIPELINE_DEFINITION_REVISION",
+    "launcher_revision": "MINDCLADE_LAUNCHER_REVISION",
+    "launcher_digest": "MINDCLADE_LAUNCHER_DIGEST",
+    "launcher_identity": "MINDCLADE_LAUNCHER_IDENTITY",
+    "cache_mode": "MINDCLADE_CACHE_MODE",
+    "cache_platform": "MINDCLADE_CACHE_PLATFORM",
+    "cache_architecture": "MINDCLADE_CACHE_ARCHITECTURE",
+    "cache_toolchain_digest": "MINDCLADE_CACHE_TOOLCHAIN_DIGEST",
+    "cache_build_mode": "MINDCLADE_CACHE_BUILD_MODE",
+}
+for field, environment_name in bindings.items():
+    if context.get(field) != os.environ[environment_name]:
+        raise SystemExit(f"trusted context {field} does not match immutable launcher environment")
+PY
 
 if [[ "${pipeline_class}" == presubmit ]]; then
   protected_definition_paths=(
@@ -54,6 +103,10 @@ if [[ "${pipeline_class}" == presubmit ]]; then
   fi
 else
   [[ "${source_revision}" == "${pipeline_revision}" ]]
+  if ! git diff --quiet || ! git diff --cached --quiet; then
+    echo "Protected pipeline requires a clean tracked source checkout" >&2
+    exit 78
+  fi
 fi
 
 python3.12 \

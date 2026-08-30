@@ -15,6 +15,8 @@ def steps() -> list[Step]:
             artifact_paths=(
                 "build/evidence/pipeline-plan.v1.json",
                 "build/evidence/trusted-context.v1.json",
+                "build/evidence/immutable-launcher.v1.json",
+                "build/evidence/cache-boundary.v1.json",
             ),
         ),
         Step(

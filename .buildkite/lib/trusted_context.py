@@ -10,6 +10,7 @@ from dataclasses import dataclass
 SHA_PATTERN = re.compile(r"^[0-9a-f]{40}$")
 DIGEST_PATTERN = re.compile(r"^sha256:[0-9a-f]{64}$")
 CORRELATION_PATTERN = re.compile(r"^[A-Za-z0-9._:/-]{8,200}$")
+LAUNCHER_IDENTITY_PATTERN = re.compile(r"^buildkite://[a-z0-9][a-z0-9._/-]{7,255}$")
 
 
 @dataclass(frozen=True)
@@ -21,6 +22,14 @@ class TrustedContext:
     source_trust: str
     correlation_id: str
     context_digest: str
+    launcher_revision: str
+    launcher_digest: str
+    launcher_identity: str
+    cache_mode: str
+    cache_platform: str
+    cache_architecture: str
+    cache_toolchain_digest: str
+    cache_build_mode: str
 
     @classmethod
     def from_environment(cls, environment: Mapping[str, str] | None = None) -> TrustedContext:
@@ -40,6 +49,14 @@ class TrustedContext:
             source_trust=required("MINDCLADE_SOURCE_TRUST"),
             correlation_id=required("MINDCLADE_CORRELATION_ID"),
             context_digest=required("MINDCLADE_CONTEXT_DIGEST"),
+            launcher_revision=required("MINDCLADE_LAUNCHER_REVISION"),
+            launcher_digest=required("MINDCLADE_LAUNCHER_DIGEST"),
+            launcher_identity=required("MINDCLADE_LAUNCHER_IDENTITY"),
+            cache_mode=required("MINDCLADE_CACHE_MODE"),
+            cache_platform=required("MINDCLADE_CACHE_PLATFORM"),
+            cache_architecture=required("MINDCLADE_CACHE_ARCHITECTURE"),
+            cache_toolchain_digest=required("MINDCLADE_CACHE_TOOLCHAIN_DIGEST"),
+            cache_build_mode=required("MINDCLADE_CACHE_BUILD_MODE"),
         )
         context.validate()
         return context
@@ -57,6 +74,14 @@ class TrustedContext:
             source_trust="untrusted" if pipeline_class == "presubmit" else "protected",
             correlation_id="wave0-pipeline-self-test",
             context_digest="sha256:" + "c" * 64,
+            launcher_revision="d" * 40,
+            launcher_digest="sha256:" + "e" * 64,
+            launcher_identity="buildkite://mindclade/protected-launcher",
+            cache_mode="disabled",
+            cache_platform="linux",
+            cache_architecture="x86_64",
+            cache_toolchain_digest="sha256:" + "f" * 64,
+            cache_build_mode=pipeline_class,
         )
 
     def validate(self) -> None:
@@ -66,6 +91,24 @@ class TrustedContext:
             raise ValueError("pipeline definition revision must be one full lowercase Git SHA")
         if not DIGEST_PATTERN.fullmatch(self.context_digest):
             raise ValueError("trusted-context digest must be a canonical SHA-256 digest")
+        if not SHA_PATTERN.fullmatch(self.launcher_revision):
+            raise ValueError("launcher revision must be one full lowercase Git SHA")
+        if not DIGEST_PATTERN.fullmatch(self.launcher_digest):
+            raise ValueError("launcher digest must be a canonical SHA-256 digest")
+        if not LAUNCHER_IDENTITY_PATTERN.fullmatch(self.launcher_identity):
+            raise ValueError("launcher identity must be a canonical buildkite:// identity")
+        if self.cache_mode != "disabled":
+            raise ValueError("remote cache mode is not activated by source policy")
+        for value, field in (
+            (self.cache_platform, "platform"),
+            (self.cache_architecture, "architecture"),
+        ):
+            if not re.fullmatch(r"[a-z0-9][a-z0-9._-]{1,63}", value):
+                raise ValueError(f"cache {field} is not canonical")
+        if not DIGEST_PATTERN.fullmatch(self.cache_toolchain_digest):
+            raise ValueError("cache toolchain digest must be canonical")
+        if self.cache_build_mode != self.pipeline_class:
+            raise ValueError("cache build mode must match the pipeline class")
         if not CORRELATION_PATTERN.fullmatch(self.correlation_id):
             raise ValueError("correlation ID has an invalid format")
         if self.pipeline_class not in {
@@ -109,4 +152,12 @@ class TrustedContext:
             "MINDCLADE_PIPELINE_DEFINITION_REVISION": self.pipeline_definition_revision,
             "MINDCLADE_SOURCE_REVISION": self.source_revision,
             "MINDCLADE_SOURCE_TRUST": self.source_trust,
+            "MINDCLADE_LAUNCHER_REVISION": self.launcher_revision,
+            "MINDCLADE_LAUNCHER_DIGEST": self.launcher_digest,
+            "MINDCLADE_LAUNCHER_IDENTITY": self.launcher_identity,
+            "MINDCLADE_CACHE_MODE": self.cache_mode,
+            "MINDCLADE_CACHE_PLATFORM": self.cache_platform,
+            "MINDCLADE_CACHE_ARCHITECTURE": self.cache_architecture,
+            "MINDCLADE_CACHE_TOOLCHAIN_DIGEST": self.cache_toolchain_digest,
+            "MINDCLADE_CACHE_BUILD_MODE": self.cache_build_mode,
         }
