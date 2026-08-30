@@ -19,9 +19,27 @@ queues are separate ephemeral pools with the declared identity and secret
 boundary. Missing pools leave a build unscheduled rather than falling back to a
 default agent.
 
-GPU and release paths are activation-gated and fail while Wave 0 has no real
-target. Successful local commands create unsigned evidence inputs only. The
+GPU and release paths are activation-gated and fail while their governed
+targets remain inactive. Successful local commands create unsigned evidence inputs only. The
 qualified trusted CI signer, not this source tree, produces a signature.
+
+Every dynamic pipeline requires the connected launcher to inject a canonical
+`buildkite://` identity, an immutable launcher revision, and a `sha256:`
+launcher digest into both the protected environment and trusted context.
+`ci-plan` hashes the exact protected definition closure from Git and emits
+`immutable-launcher.v1.json` with
+`qualification: UNSIGNED_OBSERVATION_INPUT`. Final CI evidence binds that input
+by digest; only the independently qualified detached signer can produce the
+required-check signature.
+
+Remote Bazel cache use is not source-activated. The only accepted mode is
+explicit `disabled`, the public-cache target allowlist is empty, and the cache
+namespace still binds schema, trust class, platform, architecture, toolchain,
+and build mode. Cache metadata is provenance only and never qualification
+evidence. Protected builds run a clean output-root Wave 1 canary. The recorded
+poison-recovery sequence requires namespace revocation, a cacheless rebuild,
+output-digest comparison, and reviewed reactivation. IAM, bucket, and cache
+write state remain connected GCP authority outside this repository.
 
 Validate the source model without a Buildkite credential:
 
@@ -45,18 +63,14 @@ path; only a later build may use that revision as its protected pipeline
 definition. Dependent source changes are rebased and rerun after the
 roll-forward.
 
-That connected handoff does not exist in the current estate: the active
-application-source ruleset has no bypass actors and organization policy rejects
-ruleset bypasses. It also names `pull-request.yml` while this repository's
-canonical required workflow is `required-check.yml`. GitHub governance must be
-reconciled through its separately protected repository before this source path
-can qualify an enforcement change. Until then, such a change is intentionally
-blocked rather than self-qualifying from pull-request code.
+The source-side handoff is fail closed until the connected Buildkite control
+plane and pinned organization reusable workflows provide the exact launcher
+bindings. GitHub governance and signer trust remain separately protected
+authorities; this repository cannot provision or self-approve them.
 
-Likewise, repository source cannot prove that Buildkite's initial loader and
-hooks came from the protected definition revision: the dispatcher checks out
-the source revision and passes the definition revision only as environment
-metadata. The connected Buildkite control plane must supply an immutable
-launcher outside the pull-request checkout. Without that independently
-verified launcher, protected-base execution remains blocked even though the
-source hook validates the intended closure.
+Repository source still cannot prove the origin of Buildkite's initial loader.
+The connected control plane must execute an immutable launcher outside the
+pull-request checkout, pin it to the reviewed definition revision, and
+authorize the qualified signer only after it verifies the observation input.
+Missing or mismatched launcher identity, revision, digest, definition tree,
+source commit, plan, build ID, or signature remains non-successful.

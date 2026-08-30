@@ -310,12 +310,56 @@ ci-presubmit:
 
 # Buildkite protected full-CPU entrypoint.
 ci-nightly:
-    just check
+    just ci-source-check
     just governance-ci
-    {{ bazel }} test --config=ci //...
+    just test-planned
+    just ci-wave1
+    just ci-cacheless-canary
+
+# Produce a revision-bound receipt only after the canonical source gate passes.
+ci-source-check:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    : "${MINDCLADE_SOURCE_REVISION:?missing source revision}"
+    [[ "${MINDCLADE_SOURCE_REVISION}" =~ ^[0-9a-f]{40}$ ]]
+    just check
     mkdir -p {{ evidence_dir }}
-    printf '%s\n' '{"conclusion":"PASS","schema_version":"bazel-native-agreement.v1"}' > \
-      {{ evidence_dir }}/bazel-native-agreement.v1.json
+    {{ python }} -c 'import json,sys; print(json.dumps({"conclusion":"PASS","schema_version":"source-check.v1","source_revision":sys.argv[1],"target":"just check"},sort_keys=True,separators=(",",":")))' \
+      "${MINDCLADE_SOURCE_REVISION}" > {{ evidence_dir }}/source-check.v1.json
+
+# Execute the complete Wave 1 closure independently of affected selection.
+ci-wave1:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    : "${MINDCLADE_SOURCE_REVISION:?missing source revision}"
+    [[ "${MINDCLADE_SOURCE_REVISION}" =~ ^[0-9a-f]{40}$ ]]
+    {{ bazel }} test --config=ci //:wave1_tests
+    mkdir -p {{ evidence_dir }}
+    {{ python }} -c 'import json,sys; print(json.dumps({"conclusion":"PASS","schema_version":"wave1-full.v1","source_revision":sys.argv[1],"target":"//:wave1_tests"},sort_keys=True,separators=(",",":")))' \
+      "${MINDCLADE_SOURCE_REVISION}" > {{ evidence_dir }}/wave1-full.v1.json
+
+# Periodically prove Wave 1 in a clean action-output root with remote caches disabled.
+ci-cacheless-canary:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    : "${MINDCLADE_SOURCE_REVISION:?missing source revision}"
+    [[ "${MINDCLADE_SOURCE_REVISION}" =~ ^[0-9a-f]{40}$ ]]
+    rm -rf build/bazel-cacheless-user-root
+    bazel \
+      --nohome_rc \
+      --noworkspace_rc \
+      --output_user_root="${PWD}/build/bazel-cacheless-user-root" \
+      --bazelrc="${PWD}/.bazelrc" \
+      test \
+      --config=ci \
+      --remote_cache= \
+      --disk_cache= \
+      --noremote_accept_cached \
+      --noremote_upload_local_results \
+      //:wave1_tests
+    mkdir -p {{ evidence_dir }}
+    {{ python }} -c 'import json,sys; print(json.dumps({"conclusion":"PASS","schema_version":"cacheless-reproducibility.v1","source_revision":sys.argv[1],"target":"//:wave1_tests"},sort_keys=True,separators=(",",":")))' \
+      "${MINDCLADE_SOURCE_REVISION}" > {{ evidence_dir }}/cacheless-reproducibility.v1.json
 
 # Resolve the exact changed set and target/gate plan before Buildkite executes it.
 ci-plan:
@@ -326,9 +370,29 @@ ci-plan:
     : "${MINDCLADE_PIPELINE_CLASS:?missing pipeline class}"
     : "${MINDCLADE_CONTEXT_JSON:?missing trusted context JSON}"
     : "${MINDCLADE_CONTEXT_DIGEST:?missing trusted context digest}"
+    : "${MINDCLADE_LAUNCHER_REVISION:?missing immutable launcher revision}"
+    : "${MINDCLADE_LAUNCHER_DIGEST:?missing immutable launcher digest}"
+    : "${MINDCLADE_LAUNCHER_IDENTITY:?missing immutable launcher identity}"
+    : "${MINDCLADE_CACHE_MODE:?missing explicit cache mode}"
+    : "${MINDCLADE_CACHE_PLATFORM:?missing cache platform}"
+    : "${MINDCLADE_CACHE_ARCHITECTURE:?missing cache architecture}"
+    : "${MINDCLADE_CACHE_TOOLCHAIN_DIGEST:?missing cache toolchain digest}"
+    : "${MINDCLADE_CACHE_BUILD_MODE:?missing cache build mode}"
+    : "${BUILDKITE_BUILD_ID:?missing Buildkite build ID}"
     base_arguments=()
     if [[ -n "${MINDCLADE_BASE_REVISION:-}" ]]; then
       base_arguments=(--base "${MINDCLADE_BASE_REVISION}")
+    fi
+    cache_activation_arguments=()
+    if [[ -n "${MINDCLADE_CACHE_IAM_QUALIFICATION_DIGEST:-}" ]]; then
+      cache_activation_arguments+=(
+        --cache-iam-qualification-digest "${MINDCLADE_CACHE_IAM_QUALIFICATION_DIGEST}"
+      )
+    fi
+    if [[ -n "${MINDCLADE_CACHE_WRITE_ACTIVATION_DIGEST:-}" ]]; then
+      cache_activation_arguments+=(
+        --cache-write-activation-digest "${MINDCLADE_CACHE_WRITE_ACTIVATION_DIGEST}"
+      )
     fi
     mkdir -p {{ evidence_dir }}
     printf '%s\n' "${MINDCLADE_CONTEXT_JSON}" > {{ evidence_dir }}/trusted-context.v1.json
@@ -336,10 +400,23 @@ ci-plan:
       --source-revision "${MINDCLADE_SOURCE_REVISION}" \
       --pipeline-definition-revision "${MINDCLADE_PIPELINE_DEFINITION_REVISION}" \
       --pipeline-class "${MINDCLADE_PIPELINE_CLASS}" \
+      --launcher-revision "${MINDCLADE_LAUNCHER_REVISION}" \
+      --launcher-digest "${MINDCLADE_LAUNCHER_DIGEST}" \
+      --launcher-identity "${MINDCLADE_LAUNCHER_IDENTITY}" \
+      --build-id "${BUILDKITE_BUILD_ID}" \
+      --cache-mode "${MINDCLADE_CACHE_MODE}" \
+      --cache-trust-class "${MINDCLADE_SOURCE_TRUST}" \
+      --cache-platform "${MINDCLADE_CACHE_PLATFORM}" \
+      --cache-architecture "${MINDCLADE_CACHE_ARCHITECTURE}" \
+      --cache-toolchain-digest "${MINDCLADE_CACHE_TOOLCHAIN_DIGEST}" \
+      --cache-build-mode "${MINDCLADE_CACHE_BUILD_MODE}" \
+      "${cache_activation_arguments[@]}" \
       --root . \
       "${base_arguments[@]}" \
       --head "${MINDCLADE_SOURCE_REVISION}" \
-      --output {{ evidence_dir }}/pipeline-plan.v1.json
+      --output {{ evidence_dir }}/pipeline-plan.v1.json \
+      --launcher-observation-output {{ evidence_dir }}/immutable-launcher.v1.json \
+      --cache-boundary-output {{ evidence_dir }}/cache-boundary.v1.json
 
 # Emit the exact flat organization CI evidence contract for artifact upload.
 ci-evidence:
@@ -354,10 +431,15 @@ ci-evidence:
     [[ -f "${plan}" && -f "${context}" ]]
     checks=()
     for item in \
+      "immutable-launcher={{ evidence_dir }}/immutable-launcher.v1.json" \
+      "cache-boundary={{ evidence_dir }}/cache-boundary.v1.json" \
       "repository-governance={{ evidence_dir }}/repository_drift.v1.json" \
       "dependency-and-license-policy={{ evidence_dir }}/license-inventory.v1.json" \
       "secret-scan={{ evidence_dir }}/secret-scan.v1.json" \
-      "bazel-native-agreement={{ evidence_dir }}/bazel-native-agreement.v1.json"; do
+      "bazel-native-agreement={{ evidence_dir }}/bazel-native-agreement.v1.json" \
+      "source-check={{ evidence_dir }}/source-check.v1.json" \
+      "wave1-full={{ evidence_dir }}/wave1-full.v1.json" \
+      "cacheless-reproducibility={{ evidence_dir }}/cacheless-reproducibility.v1.json"; do
       report="${item#*=}"
       [[ -f "${report}" ]] && checks+=(--check "${item}")
     done
