@@ -1,0 +1,19 @@
+apiVersion: mindclade.dev/v1
+kind: PDBSourceUseApproval
+metadata:
+  name: sqp-001-pdb-source-use
+spec:
+  profile: SQP-001
+  status: pending
+  productionAuthority: false
+  source:
+    provider: PDB
+    releasedOnOrBefore: "2025-12-31T23:59:59Z"
+  requiredApprovers:
+    - legal
+    - data-governance
+    - biological-safety
+  blockedUntilApproval:
+    - pdb-acquisition
+    - sqp-001-dataset-publication
+    - wave-2s-implementation

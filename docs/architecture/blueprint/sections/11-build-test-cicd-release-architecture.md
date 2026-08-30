@@ -15,6 +15,12 @@ Bazel is the cross-repository target, visibility, affected-test, and release-clo
 
 A clean-checkout release build MUST run with network disabled after declared dependency fetch/mirroring, a sanitized environment, fixed locale/timezone, controlled timestamps, no home-directory inputs, and declared hardware/toolchain. Build provenance records source revision, dirty-state prohibition, lock/toolchain digests, Bazel target, builder identity, parameters, dependencies, and outputs. Reproducible byte identity is required where ecosystem formats permit it; otherwise semantic reproducibility and explained nondeterminism are recorded.
 
+Remote cache is acceleration only. Bazel HTTP cache can expose action-cache records, CAS outputs, and captured stdout/stderr; therefore public-readable and private-internal cache data MUST use separate GCP buckets or equivalently IAM- and cryptographically isolated namespaces. Public publication is denied unless the target is on the explicit public-output allowlist, and cache writes are denied until the builder identity, target class, and platform envelope are qualified. Cache keys bind cache-schema version, trust class, platform, architecture, toolchain closure, and build mode. A classification change revokes access to the prior namespace and rotates the namespace; it never relabels existing objects in place. Noncurrent versions receive a short lifecycle, and access logs are exported to a separate destination that cache writers cannot alter.
+
+Trusted qualification runs a periodic cacheless canary. Suspected poisoning revokes or write-denies the affected namespace, performs a clean cacheless rebuild, and compares output digests before reads resume. Release provenance records cache consultation and the compatible cache namespace, but a cache hit is never evidence and cannot replace subject verification, SBOM, qualification, signature, or reproducibility proof.
+
+The monorepo owns cache policy, schemas, allowlists, key contracts, canary behavior, and poison-recovery tests. `bootstrap` owns foundational GCP identities and trust. `infrastructure-live` owns GCP buckets, IAM, access-log destinations, and lifecycle desired state. No policy source in this repository proves that connected resources or controls exist.
+
 ### 11.2 Test and qualification ladder
 
 | Gate | Trigger | Minimum evidence |

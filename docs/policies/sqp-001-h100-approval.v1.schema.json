@@ -1,0 +1,194 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.mindclade.dev/policies/sqp-001-h100-approval.v1.schema.json",
+  "title": "Mindclade SQP-001 H100 qualification envelope approval",
+  "description": "Fail-closed approval contract for the exact SQP-001 accelerator, software, reservation, and cost envelope.",
+  "type": "object",
+  "required": ["apiVersion", "kind", "metadata", "spec"],
+  "properties": {
+    "apiVersion": {"const": "mindclade.dev/v1"},
+    "kind": {"const": "SQP001H100Approval"},
+    "metadata": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {"name": {"const": "sqp-001-h100-qualification"}},
+      "additionalProperties": false
+    },
+    "spec": {
+      "type": "object",
+      "required": [
+        "profile",
+        "status",
+        "productionAuthority",
+        "hardwareEnvelope",
+        "softwareEnvelope",
+        "costEnvelope",
+        "requiredApprovers",
+        "blockedUntilApproval"
+      ],
+      "properties": {
+        "profile": {"const": "SQP-001"},
+        "status": {"enum": ["pending", "approved", "revoked"]},
+        "productionAuthority": {"const": false},
+        "hardwareEnvelope": {
+          "const": {
+            "accelerator": "NVIDIA H100 80 GB",
+            "functionalAcceleratorCount": 1,
+            "maximumAcceleratorCount": 8,
+            "maximumNodeCount": 1,
+            "multiNodeAllowed": false,
+            "kubernetesRequired": false
+          }
+        },
+        "softwareEnvelope": {
+          "oneOf": [
+            {
+              "type": "object",
+              "required": ["status"],
+              "properties": {"status": {"const": "pending"}},
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "required": [
+                "status",
+                "nvidiaDriverVersion",
+                "cudaVersion",
+                "cudnnVersion",
+                "pytorchVersion",
+                "containerImageDigest",
+                "nixClosureDigest"
+              ],
+              "properties": {
+                "status": {"const": "approved"},
+                "nvidiaDriverVersion": {"type": "string", "minLength": 1},
+                "cudaVersion": {"type": "string", "minLength": 1},
+                "cudnnVersion": {"type": "string", "minLength": 1},
+                "pytorchVersion": {"type": "string", "minLength": 1},
+                "containerImageDigest": {"$ref": "#/$defs/digest"},
+                "nixClosureDigest": {"$ref": "#/$defs/digest"}
+              },
+              "additionalProperties": false
+            }
+          ]
+        },
+        "costEnvelope": {
+          "oneOf": [
+            {
+              "type": "object",
+              "required": ["status"],
+              "properties": {"status": {"const": "pending"}},
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "required": [
+                "status",
+                "currency",
+                "maximumAuthorizedCost",
+                "reservationIdentifier",
+                "costCenter",
+                "expiresAt"
+              ],
+              "properties": {
+                "status": {"const": "approved"},
+                "currency": {"type": "string", "pattern": "^[A-Z]{3}$"},
+                "maximumAuthorizedCost": {"type": "number", "exclusiveMinimum": 0},
+                "reservationIdentifier": {"type": "string", "minLength": 1},
+                "costCenter": {"type": "string", "minLength": 1},
+                "expiresAt": {"$ref": "#/$defs/utc"}
+              },
+              "additionalProperties": false
+            }
+          ]
+        },
+        "requiredApprovers": {"const": ["ml-systems", "finance-operations"]},
+        "blockedUntilApproval": {
+          "const": ["one-h100-functional-qualification", "pre-wave-5-multi-gpu-run"]
+        },
+        "approvalSubjectRevision": {"$ref": "#/$defs/revision"},
+        "approvals": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/approval"},
+          "minItems": 2,
+          "maxItems": 2,
+          "uniqueItems": true,
+          "allOf": [
+            {"contains": {"properties": {"role": {"const": "ml-systems"}}, "required": ["role"]}, "minContains": 1, "maxContains": 1},
+            {"contains": {"properties": {"role": {"const": "finance-operations"}}, "required": ["role"]}, "minContains": 1, "maxContains": 1}
+          ]
+        },
+        "approvalReceiptDigest": {"$ref": "#/$defs/digest"},
+        "approvedAt": {"$ref": "#/$defs/utc"},
+        "revokedAt": {"$ref": "#/$defs/utc"},
+        "revocationReason": {"type": "string", "minLength": 1},
+        "revocationReceiptDigest": {"$ref": "#/$defs/digest"}
+      },
+      "oneOf": [
+        {
+          "properties": {
+            "status": {"const": "pending"},
+            "softwareEnvelope": {"properties": {"status": {"const": "pending"}}},
+            "costEnvelope": {"properties": {"status": {"const": "pending"}}}
+          },
+          "not": {
+            "anyOf": [
+              {"required": ["approvalSubjectRevision"]},
+              {"required": ["approvals"]},
+              {"required": ["approvalReceiptDigest"]},
+              {"required": ["approvedAt"]},
+              {"required": ["revokedAt"]}
+            ]
+          }
+        },
+        {
+          "properties": {
+            "status": {"const": "approved"},
+            "softwareEnvelope": {"properties": {"status": {"const": "approved"}}},
+            "costEnvelope": {"properties": {"status": {"const": "approved"}}}
+          },
+          "required": ["approvalSubjectRevision", "approvals", "approvalReceiptDigest", "approvedAt"],
+          "not": {"anyOf": [{"required": ["revokedAt"]}, {"required": ["revocationReason"]}, {"required": ["revocationReceiptDigest"]}]}
+        },
+        {
+          "properties": {
+            "status": {"const": "revoked"},
+            "softwareEnvelope": {"properties": {"status": {"const": "approved"}}},
+            "costEnvelope": {"properties": {"status": {"const": "approved"}}}
+          },
+          "required": [
+            "approvalSubjectRevision",
+            "approvals",
+            "approvalReceiptDigest",
+            "approvedAt",
+            "revokedAt",
+            "revocationReason",
+            "revocationReceiptDigest"
+          ]
+        }
+      ],
+      "additionalProperties": false
+    }
+  },
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "revision": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "utc": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-([0-2][0-9]|3[01])T([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]Z$"
+    },
+    "approval": {
+      "type": "object",
+      "required": ["role", "reviewer", "reviewedAt", "receiptDigest"],
+      "properties": {
+        "role": {"enum": ["ml-systems", "finance-operations"]},
+        "reviewer": {"type": "string", "minLength": 1},
+        "reviewedAt": {"$ref": "#/$defs/utc"},
+        "receiptDigest": {"$ref": "#/$defs/digest"}
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,6 +1,6 @@
 ## 14. ADR index and decision log
 
-The blueprint accepts all decisions recorded in this section, but Wave 0 creates only eight standalone ADRs: the seven decisions that are expensive to reverse after implementation begins plus the bounded founder bootstrap required to establish the public estate. Version 3.4.3 binds their canonical filenames below. Repository validation proves file presence and metadata; independent review and protected-branch evidence determine connected acceptance and are never inferred from this index.
+The blueprint accepts the eight foundational decisions recorded in Section 14.1. Later just-in-time records can exist as proposals, but they are not effective and do not satisfy a phase prerequisite until the required owners ratify their immutable decision digest through protected review. Repository validation proves file presence and metadata; independent review and protected-branch evidence determine connected acceptance and are never inferred from this index.
 
 ### 14.1 Wave 0 foundational ADRs
 
@@ -25,9 +25,9 @@ The following decisions remain normative in this blueprint. Their standalone ADR
 
 | Gate | Decision to ratify | Due before | Required evidence at ratification |
 |---|---|---|---|
-| JIT-01 | Go modular control-plane monolith, relational ownership, tenant/auth/audit enforcement | Wave 2P implementation | minimal contract kernel, threat model, transaction/outbox prototype |
-| JIT-02 | `SQP-001` dataset, biological filters, reduced Pairformer, objective, and hardware qualification profile | Wave 2S implementation | scientific, data-rights, and ML-systems owner approval |
-| JIT-03 | External API projection and Python SDK support contract | Wave 2P supported surface | one resource/LRO shape, versioning test, consumer journey |
+| JIT-01 / proposed ADR-0010 | Go modular control-plane monolith, relational ownership, tenant/auth/audit enforcement | Wave 2P implementation | minimal contract kernel, threat model, transaction/outbox prototype |
+| JIT-02 / proposed ADR-0011 | `SQP-001` dataset, biological filters, reduced Pairformer, objective, and hardware qualification profile | Wave 2S implementation | scientific, data-rights, and ML-systems owner approval |
+| JIT-03 / proposed ADR-0012 | External API projection and Python SDK support contract | Wave 2P supported surface | one resource/LRO shape, versioning test, consumer journey |
 | JIT-04 | Evaluation evidence and dataset/model promotion policy | Wave 3 release graduation | SQP metrics, baseline, uncertainty and rollback evidence |
 | JIT-05 | GCP/GKE topology, Kueue/JobSet authority, `deploy/` versus foundation/GitOps boundary, and workload identity | Wave 5 infrastructure merge | environment capability, security review, capacity and failure tests |
 | JIT-06 | Each optimized kernel or numerical provider activation | each Wave 6 activation | measured bottleneck, reference parity, recovery mapping, performance threshold, rollback |
@@ -38,6 +38,10 @@ The following decisions remain normative in this blueprint. Their standalone ADR
 | JIT-11 | Service extraction from the modular monolith | first extraction | measured trust/failure/scaling/release boundary and state/API migration |
 
 An implementer cannot use missing ADR ratification to invent a local alternative. The blueprint decision remains controlling; the just-in-time ADR records concrete context, alternatives, migration, and evidence when that decision becomes operationally relevant.
+
+ADR-0010, ADR-0011, and ADR-0012 are proposed source records only. Their `connectedRatification` state remains `pending`, they grant no production authority, and their presence does not satisfy the Wave 2P or Wave 2S prerequisites. The PDB source-use and SQP-001 H100 approval contracts likewise remain pending until accountable independent owners bind approvals to immutable source, terms, software, hardware, cost, and receipt digests.
+
+Wave 2S may design and exercise internal typed scientific contracts needed to prove the local slice. The public dataset, feature, transform, model, training, checkpoint, evaluation, and scientific inference schemas that graduate in Wave 3 remain absent and manifest status `target` until both Wave 2 slices exit independently and Wave 3 activates them. A proposal, local type, or test fixture cannot create an early compatibility promise.
 
 ### 14.3 Decision-change protocol
 
