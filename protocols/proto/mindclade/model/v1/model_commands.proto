@@ -1,0 +1,62 @@
+syntax = "proto3";
+
+package mindclade.model.v1;
+
+import "proto/mindclade/artifact/v1/artifact_reference.proto";
+import "proto/mindclade/artifact/v1/evidence_reference.proto";
+import "proto/mindclade/common/v1/command_context.proto";
+import "proto/mindclade/common/v1/resource_reference.proto";
+import "proto/mindclade/model/v1/model_release.proto";
+
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/model/v1;modelv1";
+
+// RegisterModelCommand creates a logical model family entry.
+message RegisterModelCommand {
+  mindclade.common.v1.CommandContext context = 1;
+  mindclade.common.v1.ResourceRef project = 2;
+  string model_id = 3;
+  string display_name = 4;
+  string family = 5;
+  mindclade.artifact.v1.ArtifactRef definition_manifest = 6;
+  mindclade.artifact.v1.ArtifactRef feature_requirement_set = 7;
+  mindclade.artifact.v1.ArtifactRef model_feature_view = 8;
+  mindclade.artifact.v1.ArtifactRef input_contract = 9;
+  mindclade.artifact.v1.ArtifactRef output_contract = 10;
+  map<string, string> labels = 11;
+  string policy_classification = 12;
+}
+
+// RegisterModelReleaseCommand creates an immutable release candidate.
+message RegisterModelReleaseCommand {
+  mindclade.common.v1.CommandContext context = 1;
+  mindclade.common.v1.ResourceRef model = 2;
+  string release_id = 3;
+  mindclade.artifact.v1.ArtifactRef bundle_manifest = 4;
+  mindclade.artifact.v1.ArtifactRef model_manifest = 5;
+  mindclade.common.v1.ResourceRef checkpoint = 6;
+  repeated mindclade.artifact.v1.EvidenceRef evaluation_evidence = 7;
+  mindclade.artifact.v1.ArtifactRef feature_requirement_set = 8;
+  mindclade.artifact.v1.ArtifactRef model_feature_view = 9;
+  mindclade.common.v1.ResourceRef release_policy = 10;
+  string policy_classification = 11;
+}
+
+// PromoteModelReleaseCommand advances a release using typed evidence and an etag precondition.
+message PromoteModelReleaseCommand {
+  mindclade.common.v1.CommandContext context = 1;
+  mindclade.common.v1.ResourceRef model_release = 2;
+  string etag = 3;
+  ModelReleaseStage expected_stage = 4;
+  ModelReleaseStage target_stage = 5;
+  repeated mindclade.artifact.v1.EvidenceRef evidence = 6;
+  mindclade.artifact.v1.EvidenceRef promotion_decision = 7;
+}
+
+// RevokeModelReleaseCommand records a non-destructive release revocation.
+message RevokeModelReleaseCommand {
+  mindclade.common.v1.CommandContext context = 1;
+  mindclade.common.v1.ResourceRef model_release = 2;
+  string etag = 3;
+  string reason = 4;
+  repeated mindclade.artifact.v1.EvidenceRef evidence = 5;
+}

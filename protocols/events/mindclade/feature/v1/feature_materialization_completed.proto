@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package mindclade.events.feature.v1;
+
+import "google/protobuf/timestamp.proto";
+import "proto/mindclade/artifact/v1/artifact_reference.proto";
+import "proto/mindclade/common/v1/error_detail.proto";
+import "proto/mindclade/common/v1/event_envelope.proto";
+import "proto/mindclade/feature/v1/feature_materialization.proto";
+import "proto/mindclade/job/v1/lease_fencing.proto";
+
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/feature/v1;featurev1";
+
+// FeatureMaterializationCompleted is an immutable fenced completion fact.
+message FeatureMaterializationCompleted {
+  mindclade.common.v1.EventEnvelope envelope = 1;
+  string materialization_name = 2;
+  int64 materialization_revision = 3;
+  mindclade.job.v1.LeaseFence fence = 4;
+  mindclade.feature.v1.FeatureMaterializationTerminalClassification classification = 5;
+  mindclade.artifact.v1.ArtifactRef receipt = 6;
+  repeated mindclade.artifact.v1.ArtifactRef output_refs = 7;
+  mindclade.common.v1.ErrorDetail error = 8;
+  google.protobuf.Timestamp completed_at = 9;
+}

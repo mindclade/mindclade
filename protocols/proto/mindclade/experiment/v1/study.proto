@@ -1,0 +1,58 @@
+syntax = "proto3";
+
+package mindclade.experiment.v1;
+
+import "google/protobuf/duration.proto";
+import "google/protobuf/timestamp.proto";
+import "proto/mindclade/artifact/v1/artifact_reference.proto";
+import "proto/mindclade/common/v1/resource_reference.proto";
+
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/experiment/v1;experimentv1";
+
+// StudyType identifies whether substitutions change scientific or systems intent.
+enum StudyType {
+  STUDY_TYPE_UNSPECIFIED = 0;
+  STUDY_TYPE_SCIENTIFIC = 1;
+  STUDY_TYPE_SYSTEMS = 2;
+}
+
+// StudyState is the durable lifecycle of a study.
+enum StudyState {
+  STUDY_STATE_UNSPECIFIED = 0;
+  STUDY_STATE_CREATED = 1;
+  STUDY_STATE_RUNNING = 2;
+  STUDY_STATE_PAUSED = 3;
+  STUDY_STATE_COMPLETED = 4;
+  STUDY_STATE_CANCELLED = 5;
+  STUDY_STATE_FAILED = 6;
+}
+
+// StudyBudget is the bounded admission envelope for one study.
+message StudyBudget {
+  uint32 maximum_trials = 1;
+  uint32 maximum_parallel_trials = 2;
+  google.protobuf.Duration maximum_duration = 3;
+}
+
+// Study binds a typed search space to immutable base intent and objectives.
+message Study {
+  string name = 1;
+  string uid = 2;
+  int64 revision = 3;
+  string etag = 4;
+  string tenant_name = 5;
+  string project_name = 6;
+  mindclade.common.v1.ResourceRef experiment = 7;
+  StudyType type = 8;
+  StudyState state = 9;
+  mindclade.artifact.v1.ArtifactRef study_manifest = 10;
+  mindclade.artifact.v1.ArtifactRef base_configuration = 11;
+  mindclade.artifact.v1.ArtifactRef search_space = 12;
+  mindclade.artifact.v1.ArtifactRef objective_specification = 13;
+  StudyBudget budget = 14;
+  uint32 admitted_trial_count = 15;
+  uint32 completed_trial_count = 16;
+  google.protobuf.Timestamp create_time = 17;
+  google.protobuf.Timestamp start_time = 18;
+  google.protobuf.Timestamp complete_time = 19;
+}

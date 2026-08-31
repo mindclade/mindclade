@@ -1,0 +1,57 @@
+syntax = "proto3";
+
+package mindclade.experiment.v1;
+
+import "google/protobuf/duration.proto";
+import "google/protobuf/timestamp.proto";
+import "proto/mindclade/artifact/v1/artifact_reference.proto";
+import "proto/mindclade/artifact/v1/evidence_reference.proto";
+import "proto/mindclade/common/v1/error_detail.proto";
+import "proto/mindclade/common/v1/resource_reference.proto";
+
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/experiment/v1;experimentv1";
+
+// TrialState is the durable lifecycle of a fully resolved trial.
+enum TrialState {
+  TRIAL_STATE_UNSPECIFIED = 0;
+  TRIAL_STATE_CREATED = 1;
+  TRIAL_STATE_ADMITTED = 2;
+  TRIAL_STATE_RUNNING = 3;
+  TRIAL_STATE_COMPLETED = 4;
+  TRIAL_STATE_FAILED = 5;
+  TRIAL_STATE_CANCELLED = 6;
+  TRIAL_STATE_INVALID = 7;
+}
+
+// TrialOutcome is a stable high-level result classification.
+enum TrialOutcome {
+  TRIAL_OUTCOME_UNSPECIFIED = 0;
+  TRIAL_OUTCOME_SUCCEEDED = 1;
+  TRIAL_OUTCOME_FAILED = 2;
+  TRIAL_OUTCOME_INFEASIBLE = 3;
+  TRIAL_OUTCOME_PRUNED = 4;
+  TRIAL_OUTCOME_CANCELLED = 5;
+}
+
+// Trial records one immutable resolved configuration and its governed result references.
+message Trial {
+  string name = 1;
+  string uid = 2;
+  int64 revision = 3;
+  string etag = 4;
+  string tenant_name = 5;
+  string project_name = 6;
+  mindclade.common.v1.ResourceRef study = 7;
+  uint32 trial_number = 8;
+  TrialState state = 9;
+  TrialOutcome outcome = 10;
+  mindclade.artifact.v1.ArtifactRef resolved_configuration = 11;
+  mindclade.common.v1.ResourceRef execution = 12;
+  mindclade.artifact.v1.ArtifactRef result_manifest = 13;
+  repeated mindclade.artifact.v1.EvidenceRef evidence = 14;
+  mindclade.common.v1.ErrorDetail error = 15;
+  google.protobuf.Timestamp create_time = 16;
+  google.protobuf.Timestamp start_time = 17;
+  google.protobuf.Timestamp complete_time = 18;
+  google.protobuf.Duration elapsed_time = 19;
+}

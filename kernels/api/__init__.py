@@ -6,7 +6,11 @@ contracts and construct one canonical ``KernelSpec`` in ``spec.py``.
 """
 
 from .backward import BackwardSpec
-from .capability import CapabilityEnvelope, DimensionConstraint
+from .capability import (
+    CapabilityEnvelope,
+    DimensionConstraint,
+    TensorCapabilityConstraint,
+)
 from .effects import EffectSpec
 from .environment import CompileEnvironment, DeviceCapabilities, RuntimeCompatibility
 from .errors import (
@@ -23,7 +27,9 @@ from .expressions import (
     And,
     BoolExpr,
     BoolLiteral,
+    Broadcastable,
     CeilDiv,
+    ConcatShape,
     ConstantDType,
     ConstantDevice,
     DeviceExpr,
@@ -42,6 +48,7 @@ from .expressions import (
     InSet,
     IntExpr,
     IntLiteral,
+    IsFinite,
     LessEqual,
     LessThan,
     Maximum,
@@ -59,6 +66,10 @@ from .expressions import (
     ScalarType,
     Select,
     ShapeExpr,
+    ShapeOf,
+    ShapePrefix,
+    ShapeTuple,
+    ShapeTuple,
     StringLiteral,
     Subtract,
     TensorMetadata,
@@ -91,8 +102,10 @@ __all__ = (
     "BackwardSpec",
     "BoolExpr",
     "BoolLiteral",
+    "Broadcastable",
     "CapabilityEnvelope",
     "CeilDiv",
+    "ConcatShape",
     "CompileEnvironment",
     "CompositeAutogradSpec",
     "ConstantDType",
@@ -127,6 +140,7 @@ __all__ = (
     "InSet",
     "IntExpr",
     "IntLiteral",
+    "IsFinite",
     "KernelContractError",
     "KernelSpec",
     "LaunchContract",
@@ -157,10 +171,15 @@ __all__ = (
     "SchemaError",
     "Select",
     "ShapeExpr",
+    "ShapeOf",
+    "ShapePrefix",
+    "ShapeTuple",
+    "ShapeTuple",
     "SpecializationSpec",
     "StringLiteral",
     "Subtract",
     "TensorMetadata",
+    "TensorCapabilityConstraint",
     "TensorTolerance",
     "WorkloadSpec",
     "WorkspaceSpec",
@@ -174,4 +193,3 @@ __all__ = (
     "generate_python_validator",
     "render",
 )
-

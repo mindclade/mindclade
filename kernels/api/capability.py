@@ -28,6 +28,41 @@ class DimensionConstraint(ContractModel):
 
 
 @dataclass(frozen=True, slots=True)
+class TensorCapabilityConstraint(ContractModel):
+    """Argument-specific tensor restrictions within one implementation envelope."""
+
+    argument: str
+    dtypes: tuple[str, ...] = ()
+    layouts: tuple[str, ...] = ()
+    devices: tuple[str, ...] = ()
+    ranks: tuple[int, ...] = ()
+    version: int = 1
+
+    def __post_init__(self) -> None:
+        _nonempty(self.argument, "tensor capability argument")
+        if self.version != 1:
+            raise KernelContractError(
+                f"unsupported TensorCapabilityConstraint version: {self.version}"
+            )
+        for label, values in (
+            ("dtypes", self.dtypes),
+            ("layouts", self.layouts),
+            ("devices", self.devices),
+        ):
+            for value in values:
+                _nonempty(value, f"tensor capability {label} value")
+            _unique(values, f"tensor capability {label}")
+        if any(isinstance(rank, bool) or not isinstance(rank, int) or rank < 0 for rank in self.ranks):
+            raise KernelContractError("tensor capability ranks must be non-negative integers")
+        if len(self.ranks) != len(set(self.ranks)):
+            raise KernelContractError("tensor capability ranks must not contain duplicates")
+        if not any((self.dtypes, self.layouts, self.devices, self.ranks)):
+            raise KernelContractError(
+                "tensor capability constraint must restrict dtype, layout, device, or rank"
+            )
+
+
+@dataclass(frozen=True, slots=True)
 class CapabilityEnvelope(ContractModel):
     architectures: tuple[str, ...]
     dtypes: tuple[str, ...]
@@ -36,6 +71,7 @@ class CapabilityEnvelope(ContractModel):
     constraints: tuple[DimensionConstraint, ...]
     graph_capture_safe: bool
     training_capable: bool
+    tensor_constraints: tuple[TensorCapabilityConstraint, ...] = ()
     version: int = 1
 
     def __post_init__(self) -> None:
@@ -53,3 +89,7 @@ class CapabilityEnvelope(ContractModel):
                 _nonempty(value, f"capability {label} value")
             _unique(values, f"capability {label}")
         _unique(tuple(constraint.code for constraint in self.constraints), "constraint codes")
+        _unique(
+            tuple(constraint.argument for constraint in self.tensor_constraints),
+            "tensor capability argument identities",
+        )

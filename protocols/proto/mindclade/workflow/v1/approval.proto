@@ -1,0 +1,95 @@
+syntax = "proto3";
+
+package mindclade.workflow.v1;
+
+import "google/protobuf/timestamp.proto";
+import "proto/mindclade/artifact/v1/artifact_reference.proto";
+import "proto/mindclade/common/v1/command_context.proto";
+import "proto/mindclade/common/v1/resource_reference.proto";
+import "proto/mindclade/policy/v1/authorization_decision.proto";
+import "proto/mindclade/policy/v1/policy_reference.proto";
+
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/workflow/v1;workflowv1";
+
+// ApprovalState is the durable state of an exact approval request.
+enum ApprovalState {
+  APPROVAL_STATE_UNSPECIFIED = 0;
+  APPROVAL_STATE_PENDING = 1;
+  APPROVAL_STATE_APPROVED = 2;
+  APPROVAL_STATE_DENIED = 3;
+  APPROVAL_STATE_EXPIRED = 4;
+  APPROVAL_STATE_CANCELLED = 5;
+  APPROVAL_STATE_CONSUMED = 6;
+}
+
+// ApprovalDecisionValue is the human decision recorded by a trusted authority.
+enum ApprovalDecisionValue {
+  APPROVAL_DECISION_VALUE_UNSPECIFIED = 0;
+  APPROVAL_DECISION_VALUE_APPROVE = 1;
+  APPROVAL_DECISION_VALUE_DENY = 2;
+}
+
+// ApprovalReusePolicy defines whether a receipt may authorize more than one execution.
+enum ApprovalReusePolicy {
+  APPROVAL_REUSE_POLICY_UNSPECIFIED = 0;
+  APPROVAL_REUSE_POLICY_SINGLE_USE = 1;
+  APPROVAL_REUSE_POLICY_SAME_INTENT_UNTIL_EXPIRY = 2;
+}
+
+// ApprovalBinding freezes the exact consequential action presented to approvers.
+message ApprovalBinding {
+  string action = 1;
+  string intent_digest = 2;
+  string parameters_digest = 3;
+  repeated mindclade.artifact.v1.ArtifactRef input_artifacts = 4;
+  string agent_run_name = 5;
+  string agent_step_name = 6;
+  mindclade.common.v1.ResourceRef tool = 7;
+  string tool_version = 8;
+  mindclade.policy.v1.PolicyReference policy_snapshot = 9;
+  string risk_class = 10;
+  // sha256 digest over every field in the canonical binding.
+  string binding_digest = 11;
+}
+
+// ApprovalRequest is idempotent durable intent for independent human review.
+message ApprovalRequest {
+  mindclade.common.v1.CommandContext context = 1;
+  string name = 2;
+  string uid = 3;
+  int64 revision = 4;
+  string etag = 5;
+  string tenant_id = 6;
+  string project_id = 7;
+  ApprovalBinding binding = 8;
+  string requested_by_principal_ref = 9;
+  uint32 minimum_independent_approvers = 10;
+  ApprovalReusePolicy reuse_policy = 11;
+  ApprovalState state = 12;
+  repeated mindclade.policy.v1.AuthorizationDecision policy_decisions = 13;
+  google.protobuf.Timestamp requested_at = 14;
+  google.protobuf.Timestamp expire_time = 15;
+}
+
+// ApprovalReceipt is immutable proof emitted by the approval authority.
+message ApprovalReceipt {
+  mindclade.common.v1.CommandContext context = 1;
+  string name = 2;
+  string uid = 3;
+  mindclade.common.v1.ResourceRef request = 4;
+  ApprovalBinding binding = 5;
+  ApprovalDecisionValue decision = 6;
+  string approver_principal_ref = 7;
+  // Exact authority/role resource validated independently of agent input.
+  mindclade.common.v1.ResourceRef approver_authority = 8;
+  string reason_code = 9;
+  string safe_reason = 10;
+  ApprovalReusePolicy reuse_policy = 11;
+  google.protobuf.Timestamp decided_at = 12;
+  google.protobuf.Timestamp expire_time = 13;
+  optional google.protobuf.Timestamp consumed_at = 14;
+  string consumed_by_call_id = 15;
+  string signer_identity = 16;
+  // sha256 digest of the canonical signed receipt.
+  string receipt_digest = 17;
+}

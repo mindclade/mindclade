@@ -1,0 +1,63 @@
+syntax = "proto3";
+
+package mindclade.policy.v1;
+
+import "google/protobuf/duration.proto";
+import "google/protobuf/timestamp.proto";
+import "proto/mindclade/artifact/v1/artifact_reference.proto";
+import "proto/mindclade/policy/v1/policy_reference.proto";
+
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/policy/v1;policyv1";
+
+// UsePolicyState is the administrative lifecycle of a use-policy resource.
+enum UsePolicyState {
+  USE_POLICY_STATE_UNSPECIFIED = 0;
+  USE_POLICY_STATE_DRAFT = 1;
+  USE_POLICY_STATE_ACTIVE = 2;
+  USE_POLICY_STATE_SUSPENDED = 3;
+  USE_POLICY_STATE_REVOKED = 4;
+  USE_POLICY_STATE_ARCHIVED = 5;
+}
+
+// UseRiskClass is a policy-defined consequence class, not a scientific score.
+enum UseRiskClass {
+  USE_RISK_CLASS_UNSPECIFIED = 0;
+  USE_RISK_CLASS_LOW = 1;
+  USE_RISK_CLASS_MODERATE = 2;
+  USE_RISK_CLASS_HIGH = 3;
+  USE_RISK_CLASS_CRITICAL = 4;
+}
+
+// ApprovalRequirement specifies the human control required for an action class.
+message ApprovalRequirement {
+  string action = 1;
+  UseRiskClass risk_class = 2;
+  uint32 minimum_independent_approvers = 3;
+  bool step_up_authentication_required = 4;
+  google.protobuf.Duration maximum_receipt_age = 5;
+  bool single_use = 6;
+}
+
+// UsePolicy is the resource projection of an interoperable policy document.
+message UsePolicy {
+  string name = 1;
+  string uid = 2;
+  int64 revision = 3;
+  string etag = 4;
+  string tenant_id = 5;
+  string project_id = 6;
+  string display_name = 7;
+  UsePolicyState state = 8;
+  // Immutable JSON-Schema-qualified policy document; its document is authoritative.
+  mindclade.artifact.v1.ArtifactRef policy_document = 9;
+  // Exact active snapshot resolved from policy_document.
+  PolicyReference active_snapshot = 10;
+  repeated string permitted_purposes = 11;
+  repeated string permitted_capabilities = 12;
+  repeated string prohibited_capabilities = 13;
+  repeated string accepted_classifications = 14;
+  repeated ApprovalRequirement approval_requirements = 15;
+  google.protobuf.Timestamp create_time = 16;
+  google.protobuf.Timestamp update_time = 17;
+  optional google.protobuf.Timestamp delete_time = 18;
+}

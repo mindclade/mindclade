@@ -1,0 +1,48 @@
+syntax = "proto3";
+
+package mindclade.admin.v1;
+
+import "google/protobuf/timestamp.proto";
+import "proto/mindclade/common/v1/resource_reference.proto";
+import "proto/mindclade/policy/v1/policy_reference.proto";
+
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/admin/v1;adminv1";
+
+// ProjectState is the administrative lifecycle inside one tenant.
+enum ProjectState {
+  PROJECT_STATE_UNSPECIFIED = 0;
+  PROJECT_STATE_PROVISIONING = 1;
+  PROJECT_STATE_ACTIVE = 2;
+  PROJECT_STATE_SUSPENDED = 3;
+  PROJECT_STATE_DELETING = 4;
+  PROJECT_STATE_DELETED = 5;
+}
+
+// ProjectQuota is an admission ceiling; observed usage comes from metering authority.
+message ProjectQuota {
+  uint32 maximum_concurrent_jobs = 1;
+  uint32 maximum_concurrent_accelerator_jobs = 2;
+  uint64 maximum_storage_bytes = 3;
+  uint64 maximum_monthly_spend_micros = 4;
+  uint64 maximum_daily_inference_work_units = 5;
+}
+
+// Project is a tenant-scoped resource, policy, and workload boundary.
+message Project {
+  string name = 1;
+  string uid = 2;
+  int64 revision = 3;
+  string etag = 4;
+  mindclade.common.v1.ResourceRef tenant = 5;
+  string display_name = 6;
+  string purpose = 7;
+  ProjectState state = 8;
+  repeated mindclade.policy.v1.PolicyReference policy_snapshots = 9;
+  string default_classification = 10;
+  ProjectQuota quota = 11;
+  map<string, string> labels = 12;
+  map<string, string> annotations = 13;
+  google.protobuf.Timestamp create_time = 14;
+  google.protobuf.Timestamp update_time = 15;
+  optional google.protobuf.Timestamp delete_time = 16;
+}

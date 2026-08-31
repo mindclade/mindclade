@@ -6,7 +6,7 @@
 - Effective date: Pending connected ratification and required owner approvals
 - Compatibility window: A ratified frozen field changes only through SQP-002 or a versioned successor
 - Supersedes: None
-- Superseded by: None
+- Superseded by: ADR-0015 only for the prohibition on early protocol/schema implementation; scientific and approval gates remain in force
 - Owners: Scientific Leadership, Data Governance, ML Systems
 - Reviewers: Computational Biology, Biological Safety, Finance and Operations, Architecture
 
@@ -52,6 +52,10 @@ The proposed first scientific qualification profile is exactly:
 PDB acquisition and dataset publication remain blocked until a cryptographically verified PDB source-use approval binds the source terms, snapshot manifest, permitted purposes, retention/export controls, safety escalation, independent approvers, protected revision, and receipt digests. Wave 2S implementation and H100 execution remain blocked until a cryptographically verified SQP-001 H100 approval binds the exact driver, CUDA, cuDNN, PyTorch, container/Nix closure, hardware, reservation, expiry, and maximum authorized cost. The current v1 repository schemas accept only pending templates; an approved or revoked state cannot be represented until its protected receipt verifier and verifier-controlled activation schema land together.
 
 Wave 2S implements only internal typed Python/Rust scientific contracts and local immutable evidence required for this proof. Dataset, feature, transform, model, training, checkpoint, evaluation, and scientific inference protocol/schema paths scheduled for Wave 3 remain absent and manifest status `target`. Their design may be reviewed during Wave 2S, but they receive no public compatibility promise and cannot be created or generated before Wave 3 activation.
+
+ADR-0015 supersedes the preceding protocol/schema timing prohibition and no
+other part of this proposed scientific profile. Contract presence does not
+approve PDB use, H100 execution, publication, scientific claims, or production.
 
 ## Consequences
 

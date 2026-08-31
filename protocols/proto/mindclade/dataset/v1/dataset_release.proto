@@ -1,0 +1,42 @@
+syntax = "proto3";
+
+package mindclade.dataset.v1;
+
+import "google/protobuf/timestamp.proto";
+import "proto/mindclade/artifact/v1/artifact_reference.proto";
+import "proto/mindclade/artifact/v1/evidence_reference.proto";
+import "proto/mindclade/common/v1/resource_reference.proto";
+
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/dataset/v1;datasetv1";
+
+// DatasetReleaseState is the immutable-release publication lifecycle.
+enum DatasetReleaseState {
+  DATASET_RELEASE_STATE_UNSPECIFIED = 0;
+  DATASET_RELEASE_STATE_DRAFT = 1;
+  DATASET_RELEASE_STATE_QUALIFIED = 2;
+  DATASET_RELEASE_STATE_PUBLISHED = 3;
+  DATASET_RELEASE_STATE_DEPRECATED = 4;
+  DATASET_RELEASE_STATE_REVOKED = 5;
+}
+
+// DatasetRelease binds a logical dataset version to one content-addressed manifest.
+message DatasetRelease {
+  string name = 1;
+  string uid = 2;
+  int64 revision = 3;
+  string etag = 4;
+  string tenant_name = 5;
+  string project_name = 6;
+  string dataset_name = 7;
+  string release_id = 8;
+  DatasetReleaseState state = 9;
+  mindclade.artifact.v1.ArtifactRef manifest = 10;
+  repeated mindclade.artifact.v1.EvidenceRef qualification_evidence = 11;
+  mindclade.common.v1.ResourceRef parent_release = 12;
+  mindclade.common.v1.ResourceRef use_policy = 13;
+  string policy_classification = 14;
+  google.protobuf.Timestamp create_time = 15;
+  google.protobuf.Timestamp publish_time = 16;
+  google.protobuf.Timestamp revoke_time = 17;
+  string revocation_reason = 18;
+}

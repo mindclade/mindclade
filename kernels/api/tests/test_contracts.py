@@ -5,11 +5,21 @@ from dataclasses import FrozenInstanceError
 import pytest
 
 from kernels.api.backward import BackwardSpec
-from kernels.api.capability import CapabilityEnvelope, DimensionConstraint
+from kernels.api.capability import (
+    CapabilityEnvelope,
+    DimensionConstraint,
+    TensorCapabilityConstraint,
+)
 from kernels.api.effects import EffectSpec
 from kernels.api.environment import CompileEnvironment, RuntimeCompatibility
 from kernels.api.errors import KernelContractError, SchemaError
-from kernels.api.expressions import BoolLiteral, ConstantDType, ConstantDevice, DimRef
+from kernels.api.expressions import (
+    BoolLiteral,
+    ConstantDType,
+    ConstantDevice,
+    DimRef,
+    ShapeTuple,
+)
 from kernels.api.forward import ForwardSpec
 from kernels.api.gradient import GradientSpec
 from kernels.api.kernel import AutogradPolicy, CompositeAutogradSpec, KernelSpec
@@ -27,7 +37,7 @@ _SHA = "sha256:" + "a" * 64
 def output(name: str = "result", *, visible: bool = True, saved: bool = False) -> OutputSpec:
     return OutputSpec(
         name=name,
-        shape=(DimRef("x", 0), DimRef("x", 1)),
+        shape=ShapeTuple((DimRef("x", 0), DimRef("x", 1))),
         dtype=ConstantDType("float32"),
         device=ConstantDevice("cuda"),
         semantic_axes=("batch", "channel"),
@@ -77,7 +87,6 @@ def required_kernel(**changes: object) -> KernelSpec:
         "autograd_policy": AutogradPolicy.REQUIRED,
         "effects": EffectSpec(),
         "launch": LaunchContract(),
-        "capability_envelope": envelope(),
     }
     values.update(changes)
     return KernelSpec(**values)  # type: ignore[arg-type]
@@ -107,7 +116,13 @@ def test_composite_policy_requires_content_addressed_decomposition() -> None:
     spec = required_kernel(
         backward=None,
         autograd_policy=AutogradPolicy.COMPOSITE,
-        composite=CompositeAutogradSpec("pkg:backward", _SHA, "pytorch-2.10"),
+        composite=CompositeAutogradSpec(
+            "pkg:backward",
+            _SHA,
+            "pytorch-2.10",
+            (GradientSpec("x", "grad_x"),),
+            False,
+        ),
     )
     assert spec.composite is not None
 
@@ -173,8 +188,9 @@ def test_launch_and_effect_contracts_fail_on_false_safety_claims() -> None:
         LaunchContract(global_synchronization=True)
     with pytest.raises(KernelContractError, match="atomic kernel"):
         required_kernel(effects=EffectSpec(uses_atomics=True))
-    with pytest.raises(KernelContractError, match="graph-capture claims"):
-        required_kernel(launch=LaunchContract(graph_capture_safe=False))
+    assert not required_kernel(
+        launch=LaunchContract(graph_capture_safe=False)
+    ).launch.graph_capture_safe
     nondeterministic = required_kernel(
         effects=EffectSpec(uses_atomics=True),
         launch=LaunchContract(determinism=DeterminismClass.CONDITIONALLY_DETERMINISTIC),
@@ -185,7 +201,7 @@ def test_launch_and_effect_contracts_fail_on_false_safety_claims() -> None:
 def test_program_group_has_deterministic_topology_and_rejects_cycles() -> None:
     workspace = WorkspaceSpec(
         "delta",
-        (DimRef("x", 0),),
+        ShapeTuple((DimRef("x", 0),)),
         ConstantDType("float32"),
         zero_initialize=True,
     )
@@ -220,6 +236,20 @@ def test_capability_and_numerical_contract_reject_ambiguity() -> None:
             graph_capture_safe=True,
             training_capable=True,
         )
+    tensor_constraint = TensorCapabilityConstraint(
+        "mask", dtypes=("bool", "float32"), devices=("cuda",), ranks=(2, 3)
+    )
+    with pytest.raises(KernelContractError, match="argument identities"):
+        CapabilityEnvelope(
+            architectures=("sm90",),
+            dtypes=("bf16",),
+            layouts=("contiguous",),
+            modes=("default",),
+            constraints=(),
+            graph_capture_safe=True,
+            training_capable=True,
+            tensor_constraints=(tensor_constraint, tensor_constraint),
+        )
     with pytest.raises(KernelContractError, match="tolerance identities"):
         NumericalEnvelope(
             "bf16",
@@ -227,6 +257,21 @@ def test_capability_and_numerical_contract_reject_ambiguity() -> None:
             (
                 TensorTolerance("result", "bf16", 0.1),
                 TensorTolerance("result", "bf16", 0.2),
+            ),
+        )
+
+
+def test_composite_gradient_names_bind_semantic_arguments() -> None:
+    with pytest.raises(KernelContractError, match="not semantic operator arguments"):
+        required_kernel(
+            backward=None,
+            autograd_policy=AutogradPolicy.COMPOSITE,
+            composite=CompositeAutogradSpec(
+                "pkg:backward",
+                _SHA,
+                "pytorch-2.10",
+                (GradientSpec("weight", "grad_weight"),),
+                False,
             ),
         )
 

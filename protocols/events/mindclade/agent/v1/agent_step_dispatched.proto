@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package mindclade.events.agent.v1;
+
+import "google/protobuf/timestamp.proto";
+import "proto/mindclade/agent/v1/agent_step.proto";
+import "proto/mindclade/common/v1/event_envelope.proto";
+import "proto/mindclade/common/v1/resource_reference.proto";
+
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/agent/v1;agentv1";
+
+// AgentStepDispatched is the immutable fact that a fenced step became executable.
+message AgentStepDispatched {
+  mindclade.common.v1.EventEnvelope envelope = 1;
+  mindclade.agent.v1.AgentStep step = 2;
+  string attempt_id = 3;
+  uint64 lease_epoch = 4;
+  mindclade.common.v1.ResourceRef worker_profile = 5;
+  google.protobuf.Timestamp dispatch_deadline = 6;
+}

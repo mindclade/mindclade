@@ -14,7 +14,9 @@ from kernels.api.expressions import (
     Add,
     And,
     BoolLiteral,
+    Broadcastable,
     CeilDiv,
+    ConcatShape,
     ConstantDType,
     ConstantDevice,
     DeviceRef,
@@ -25,6 +27,7 @@ from kernels.api.expressions import (
     FloorDiv,
     GreaterEqual,
     InSet,
+    IsFinite,
     IntLiteral,
     LessThan,
     Maximum,
@@ -41,6 +44,9 @@ from kernels.api.expressions import (
     ScalarRef,
     ScalarType,
     Select,
+    ShapeOf,
+    ShapePrefix,
+    ShapeTuple,
     StringLiteral,
     Subtract,
     TensorMetadata,
@@ -227,6 +233,108 @@ def test_rendering_and_codegen_are_stable_and_inert() -> None:
     assert "mindclade_round_up" in native_source
     assert "eval(" not in python_source
     assert "exec(" not in python_source
+
+
+def test_shape_nodes_support_arbitrary_prefixes_and_concatenation(
+    context: EvaluationContext,
+) -> None:
+    prefix = ShapePrefix(argument="q", trailing_rank=2)
+    expression = ConcatShape(
+        parts=(
+            prefix,
+            ShapeTuple(dimensions=(DimRef("k", 2), IntLiteral(16))),
+        )
+    )
+    assert ShapeOf("q").evaluate(context) == (2, 7, 65, 32)
+    assert prefix.evaluate(context) == (2, 7)
+    assert expression.evaluate(context) == (2, 7, 33, 16)
+    assert ShapePrefix("q", trailing_rank=0).evaluate(context) == (2, 7, 65, 32)
+    with pytest.raises(ExpressionEvaluationError, match="exceeds rank"):
+        ShapePrefix("q", trailing_rank=5).evaluate(context)
+
+
+def test_broadcastable_uses_pytorch_trailing_dimension_semantics(
+    context: EvaluationContext,
+) -> None:
+    arbitrary_leading_prefix = ShapeTuple(
+        dimensions=(
+            IntLiteral(9),
+            IntLiteral(1),
+            IntLiteral(7),
+            IntLiteral(1),
+            IntLiteral(32),
+        )
+    )
+    incompatible = ShapeTuple(
+        dimensions=(IntLiteral(2), IntLiteral(8), IntLiteral(65), IntLiteral(32))
+    )
+    scalar = ShapeTuple(dimensions=())
+    assert Broadcastable(ShapeOf("q"), arbitrary_leading_prefix).evaluate(context)
+    assert Broadcastable(ShapeOf("q"), scalar).evaluate(context)
+    assert not Broadcastable(ShapeOf("q"), incompatible).evaluate(context)
+
+
+def test_is_finite_handles_integer_and_nonfinite_float_metadata() -> None:
+    assert IsFinite(IntLiteral(4)).evaluate(EvaluationContext(tensors={}))
+    assert IsFinite(ScalarRef("scale", ScalarType.FLOAT)).evaluate(
+        EvaluationContext(tensors={}, scalars={"scale": 0.125})
+    )
+    assert not IsFinite(ScalarRef("scale", ScalarType.FLOAT)).evaluate(
+        EvaluationContext(tensors={}, scalars={"scale": float("nan")})
+    )
+    assert not IsFinite(ScalarRef("scale", ScalarType.FLOAT)).evaluate(
+        EvaluationContext(tensors={}, scalars={"scale": float("inf")})
+    )
+
+
+def test_shape_round_trip_render_and_codegen(context: EvaluationContext) -> None:
+    expression = Broadcastable(
+        lhs=ConcatShape(
+            parts=(
+                ShapePrefix("q", trailing_rank=2),
+                ShapeTuple((IntLiteral(1), DimRef("q", -1))),
+            )
+        ),
+        rhs=ShapeOf("q"),
+    )
+    rebuilt = expression_from_json(canonical_json(expression))
+    assert rebuilt == expression
+    assert rebuilt.evaluate(context)
+    assert "shape_prefix(q, trailing_rank=2)" in render(expression)
+    assert "mindclade_broadcastable" in generate_python_validator(expression)
+    assert "mindclade_concat_shapes" in generate_native_host_validator(expression)
+
+
+def test_shape_decoder_and_domain_validation_fail_closed() -> None:
+    invalid = (
+        (
+            {"node": "shape_tuple", "dimensions": [{"node": "bool_literal", "value": True}]},
+            "must have int domain",
+        ),
+        (
+            {"node": "shape_prefix", "argument": "q", "trailing_rank": -1},
+            "must be nonnegative",
+        ),
+        (
+            {
+                "node": "broadcastable",
+                "lhs": {"node": "int_literal", "value": 1},
+                "rhs": {"node": "shape_tuple", "dimensions": []},
+            },
+            "must have shape domain",
+        ),
+        (
+            {"node": "is_finite", "value": {"node": "string_literal", "value": "nan"}},
+            "must have int or float domain",
+        ),
+        (
+            {"node": "shape_of", "argument": "q", "unknown": True},
+            "unknown=\\['unknown'\\]",
+        ),
+    )
+    for value, message in invalid:
+        with pytest.raises(ExpressionDecodeError, match=message):
+            expression_from_data(value)
 
 
 if __name__ == "__main__":

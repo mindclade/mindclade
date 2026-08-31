@@ -1,0 +1,59 @@
+syntax = "proto3";
+
+package mindclade.policy.v1;
+
+import "google/protobuf/timestamp.proto";
+import "proto/mindclade/common/v1/resource_reference.proto";
+import "proto/mindclade/policy/v1/policy_reference.proto";
+
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/policy/v1;policyv1";
+
+// AuthorizationOutcome is the fail-closed result of evaluating exact intent.
+enum AuthorizationOutcome {
+  AUTHORIZATION_OUTCOME_UNSPECIFIED = 0;
+  AUTHORIZATION_OUTCOME_ALLOW = 1;
+  AUTHORIZATION_OUTCOME_DENY = 2;
+  AUTHORIZATION_OUTCOME_REQUIRES_APPROVAL = 3;
+}
+
+// AuthorizationConstraint is a bounded condition attached to an allow decision.
+message AuthorizationConstraint {
+  // Stable machine-readable constraint kind.
+  string kind = 1;
+  // Digest of canonical constraint details; sensitive details remain in policy evidence.
+  string details_digest = 2;
+  // Optional end of this constraint's validity.
+  optional google.protobuf.Timestamp expire_time = 3;
+}
+
+// AuthorizationDecision records the exact principal, action, resource, and policy snapshot evaluated.
+message AuthorizationDecision {
+  // Canonical decision resource name.
+  string name = 1;
+  // Immutable decision identifier.
+  string uid = 2;
+  string tenant_id = 3;
+  string project_id = 4;
+  // Verified principal identity; credentials remain transport metadata.
+  string principal_ref = 5;
+  // Stable domain action.
+  string action = 6;
+  // Exact target resource and revision evaluated.
+  mindclade.common.v1.ResourceRef resource = 7;
+  // Canonical digest of proposed parameters or artifact references.
+  string intent_digest = 8;
+  repeated PolicyReference policies = 9;
+  AuthorizationOutcome outcome = 10;
+  // Stable machine-readable explanation code.
+  string reason_code = 11;
+  // Human-safe explanation with no secrets or protected payloads.
+  string safe_reason = 12;
+  repeated AuthorizationConstraint constraints = 13;
+  google.protobuf.Timestamp evaluated_at = 14;
+  // Optional decision expiry. Absence does not imply indefinite validity.
+  optional google.protobuf.Timestamp expire_time = 15;
+  // Digest of the complete canonical evaluation context.
+  string context_digest = 16;
+  // sha256 digest of this immutable decision record.
+  string decision_digest = 17;
+}

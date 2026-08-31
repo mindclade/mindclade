@@ -46,6 +46,7 @@ class ExprDomain(StrEnum):
     STRING = "string"
     DTYPE = "dtype"
     DEVICE = "device"
+    SHAPE = "shape"
 
 
 class ScalarType(StrEnum):
@@ -98,7 +99,7 @@ IntExpr: TypeAlias = Expr[int]
 BoolExpr: TypeAlias = Expr[bool]
 DTypeExpr: TypeAlias = Expr[str]
 DeviceExpr: TypeAlias = Expr[str]
-ShapeExpr: TypeAlias = tuple[IntExpr, ...]
+ShapeExpr: TypeAlias = Expr[tuple[int, ...]]
 
 
 def _validated_name(value: object, *, field_name: str) -> str:
@@ -133,12 +134,19 @@ def _validated_float(value: object, *, field_name: str) -> float:
     return value
 
 
-def _validated_scalar(value: object, *, field_name: str) -> ScalarValue:
+def _validated_scalar(
+    value: object,
+    *,
+    field_name: str,
+    allow_nonfinite_float: bool = False,
+) -> ScalarValue:
     if isinstance(value, bool):
         return value
     if isinstance(value, int):
         return _validated_int(value, field_name=field_name)
     if isinstance(value, float):
+        if allow_nonfinite_float:
+            return value
         return _validated_float(value, field_name=field_name)
     if isinstance(value, str):
         if len(value) > _MAX_STRING_LENGTH:
@@ -237,7 +245,11 @@ class EvaluationContext:
         scalars: dict[str, ScalarValue] = {}
         for name, value in sorted(self.scalars.items()):
             _validated_name(name, field_name="scalar argument")
-            scalars[name] = _validated_scalar(value, field_name=f"scalar {name!r}")
+            scalars[name] = _validated_scalar(
+                value,
+                field_name=f"scalar {name!r}",
+                allow_nonfinite_float=True,
+            )
         object.__setattr__(self, "tensors", MappingProxyType(tensors))
         object.__setattr__(self, "scalars", MappingProxyType(scalars))
 
@@ -418,6 +430,224 @@ class RankRef(Expr[int]):
 
     def to_native_host(self) -> str:
         return f"metadata.rank({_cpp_string(self.argument)})"
+
+
+@dataclass(frozen=True, slots=True)
+class ShapeTuple(Expr[tuple[int, ...]]):
+    """A shape assembled from declarative integer expressions."""
+
+    dimensions: tuple[IntExpr, ...]
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.dimensions, tuple) or len(self.dimensions) > _MAX_OPERANDS:
+            raise ExpressionValidationError(
+                f"shape_tuple dimensions must be a tuple with at most {_MAX_OPERANDS} items"
+            )
+        for axis, dimension in enumerate(self.dimensions):
+            _require_domain(
+                dimension,
+                ExprDomain.INT,
+                field_name=f"shape_tuple.dimensions[{axis}]",
+            )
+
+    @property
+    def domain(self) -> ExprDomain:
+        return ExprDomain.SHAPE
+
+    def evaluate(self, context: EvaluationContext) -> tuple[int, ...]:
+        result = tuple(dimension.evaluate(context) for dimension in self.dimensions)
+        for axis, dimension in enumerate(result):
+            if dimension < 0:
+                raise ExpressionEvaluationError(
+                    f"evaluated shape dimension {axis} must be nonnegative, got {dimension}"
+                )
+        return result
+
+    def to_data(self) -> dict[str, JsonValue]:
+        return {
+            "dimensions": [dimension.to_data() for dimension in self.dimensions],
+            "node": "shape_tuple",
+        }
+
+    def render(self) -> str:
+        dimensions = ", ".join(dimension.render() for dimension in self.dimensions)
+        if len(self.dimensions) == 1:
+            dimensions += ","
+        return f"({dimensions})"
+
+    def to_python(self) -> str:
+        dimensions = ", ".join(dimension.to_python() for dimension in self.dimensions)
+        if len(self.dimensions) == 1:
+            dimensions += ","
+        return f"({dimensions})"
+
+    def to_native_host(self) -> str:
+        dimensions = ", ".join(
+            dimension.to_native_host() for dimension in self.dimensions
+        )
+        return f"mindclade_shape({{{dimensions}}})"
+
+
+@dataclass(frozen=True, slots=True)
+class ShapeOf(Expr[tuple[int, ...]]):
+    """The complete shape of one tensor argument."""
+
+    argument: str
+
+    def __post_init__(self) -> None:
+        _validated_name(self.argument, field_name="shape argument")
+
+    @property
+    def domain(self) -> ExprDomain:
+        return ExprDomain.SHAPE
+
+    def evaluate(self, context: EvaluationContext) -> tuple[int, ...]:
+        return _lookup_tensor(context, self.argument).shape
+
+    def to_data(self) -> dict[str, JsonValue]:
+        return {"argument": self.argument, "node": "shape_of"}
+
+    def render(self) -> str:
+        return f"shape({self.argument})"
+
+    def to_python(self) -> str:
+        return f"tuple(metadata[{_json_string(self.argument)}].shape)"
+
+    def to_native_host(self) -> str:
+        return f"metadata.shape({_cpp_string(self.argument)})"
+
+
+@dataclass(frozen=True, slots=True)
+class ShapePrefix(Expr[tuple[int, ...]]):
+    """Leading dimensions before an operation-defined trailing tensor rank."""
+
+    argument: str
+    trailing_rank: int
+
+    def __post_init__(self) -> None:
+        _validated_name(self.argument, field_name="shape-prefix argument")
+        _validated_int(
+            self.trailing_rank,
+            field_name="shape-prefix trailing_rank",
+            nonnegative=True,
+        )
+
+    @property
+    def domain(self) -> ExprDomain:
+        return ExprDomain.SHAPE
+
+    def evaluate(self, context: EvaluationContext) -> tuple[int, ...]:
+        shape = _lookup_tensor(context, self.argument).shape
+        if self.trailing_rank > len(shape):
+            raise ExpressionEvaluationError(
+                f"shape prefix trailing rank {self.trailing_rank} exceeds rank "
+                f"{len(shape)} for {self.argument!r}"
+            )
+        if self.trailing_rank == 0:
+            return shape
+        return shape[: -self.trailing_rank]
+
+    def to_data(self) -> dict[str, JsonValue]:
+        return {
+            "argument": self.argument,
+            "node": "shape_prefix",
+            "trailing_rank": self.trailing_rank,
+        }
+
+    def render(self) -> str:
+        return f"shape_prefix({self.argument}, trailing_rank={self.trailing_rank})"
+
+    def to_python(self) -> str:
+        shape = f"metadata[{_json_string(self.argument)}].shape"
+        if self.trailing_rank == 0:
+            return f"tuple({shape})"
+        return f"tuple({shape}[:-{self.trailing_rank}])"
+
+    def to_native_host(self) -> str:
+        return (
+            f"metadata.shape_prefix({_cpp_string(self.argument)}, "
+            f"{self.trailing_rank})"
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class ConcatShape(Expr[tuple[int, ...]]):
+    """Compile-time concatenation of independently declared shape fragments."""
+
+    parts: tuple[ShapeExpr, ...]
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.parts, tuple) or not 1 <= len(self.parts) <= _MAX_OPERANDS:
+            raise ExpressionValidationError(
+                f"concat_shape parts must be a tuple containing 1..{_MAX_OPERANDS} shapes"
+            )
+        for index, part in enumerate(self.parts):
+            _require_domain(part, ExprDomain.SHAPE, field_name=f"concat_shape.parts[{index}]")
+
+    @property
+    def domain(self) -> ExprDomain:
+        return ExprDomain.SHAPE
+
+    def evaluate(self, context: EvaluationContext) -> tuple[int, ...]:
+        result: tuple[int, ...] = ()
+        for part in self.parts:
+            result += part.evaluate(context)
+        return result
+
+    def to_data(self) -> dict[str, JsonValue]:
+        return {"node": "concat_shape", "parts": [part.to_data() for part in self.parts]}
+
+    def render(self) -> str:
+        return "concat_shape(" + ", ".join(part.render() for part in self.parts) + ")"
+
+    def to_python(self) -> str:
+        return "(" + " + ".join(part.to_python() for part in self.parts) + ")"
+
+    def to_native_host(self) -> str:
+        parts = ", ".join(part.to_native_host() for part in self.parts)
+        return f"mindclade_concat_shapes({{{parts}}})"
+
+
+@dataclass(frozen=True, slots=True)
+class Broadcastable(Expr[bool]):
+    """Whether two shapes satisfy PyTorch's trailing broadcast rules."""
+
+    lhs: ShapeExpr
+    rhs: ShapeExpr
+
+    def __post_init__(self) -> None:
+        _require_domain(self.lhs, ExprDomain.SHAPE, field_name="broadcastable.lhs")
+        _require_domain(self.rhs, ExprDomain.SHAPE, field_name="broadcastable.rhs")
+
+    @property
+    def domain(self) -> ExprDomain:
+        return ExprDomain.BOOL
+
+    def evaluate(self, context: EvaluationContext) -> bool:
+        lhs = self.lhs.evaluate(context)
+        rhs = self.rhs.evaluate(context)
+        return all(
+            left == right or left == 1 or right == 1
+            for left, right in zip(reversed(lhs), reversed(rhs), strict=False)
+        )
+
+    def to_data(self) -> dict[str, JsonValue]:
+        return {"lhs": self.lhs.to_data(), "node": "broadcastable", "rhs": self.rhs.to_data()}
+
+    def render(self) -> str:
+        return f"broadcastable({self.lhs.render()}, {self.rhs.render()})"
+
+    def to_python(self) -> str:
+        return (
+            f"mindclade_broadcastable({self.lhs.to_python()}, "
+            f"{self.rhs.to_python()})"
+        )
+
+    def to_native_host(self) -> str:
+        return (
+            f"mindclade_broadcastable({self.lhs.to_native_host()}, "
+            f"{self.rhs.to_native_host()})"
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -773,6 +1003,44 @@ class RoundUp(Expr[int]):
             f"mindclade_round_up({self.value.to_native_host()}, "
             f"{self.multiple.to_native_host()})"
         )
+
+
+@dataclass(frozen=True, slots=True)
+class IsFinite(Expr[bool]):
+    """Finite-value predicate for integer and floating scalar expressions."""
+
+    value: Expr[int] | Expr[float]
+
+    def __post_init__(self) -> None:
+        expression = _require_expression(self.value, field_name="is_finite.value")
+        if expression.domain not in {ExprDomain.INT, ExprDomain.FLOAT}:
+            raise ExpressionValidationError(
+                f"is_finite.value must have int or float domain, got {expression.domain.value}"
+            )
+
+    @property
+    def domain(self) -> ExprDomain:
+        return ExprDomain.BOOL
+
+    def evaluate(self, context: EvaluationContext) -> bool:
+        value = self.value.evaluate(context)
+        return True if isinstance(value, int) else math.isfinite(value)
+
+    def to_data(self) -> dict[str, JsonValue]:
+        return {"node": "is_finite", "value": self.value.to_data()}
+
+    def render(self) -> str:
+        return f"is_finite({self.value.render()})"
+
+    def to_python(self) -> str:
+        if self.value.domain is ExprDomain.INT:
+            return "True"
+        return f"math.isfinite({self.value.to_python()})"
+
+    def to_native_host(self) -> str:
+        if self.value.domain is ExprDomain.INT:
+            return "true"
+        return f"std::isfinite({self.value.to_native_host()})"
 
 
 @dataclass(frozen=True, slots=True)
@@ -1227,6 +1495,48 @@ def _decode_expression(value: object, *, depth: int) -> Expr[object]:
         if node == "dim_ref":
             obj = _exact_object(value, node=node, fields=frozenset({"argument", "axis"}))
             return cast(Expr[object], DimRef(cast(str, obj["argument"]), cast(int, obj["axis"])))
+        if node == "shape_tuple":
+            obj = _exact_object(value, node=node, fields=frozenset({"dimensions"}))
+            return cast(
+                Expr[object],
+                ShapeTuple(
+                    tuple(
+                        _decode_expression(item, depth=depth + 1)
+                        for item in _decode_sequence(
+                            obj["dimensions"], field_name="shape_tuple.dimensions"
+                        )
+                    )
+                ),
+            )
+        if node == "shape_of":
+            obj = _exact_object(value, node=node, fields=frozenset({"argument"}))
+            return cast(Expr[object], ShapeOf(cast(str, obj["argument"])))
+        if node == "shape_prefix":
+            obj = _exact_object(
+                value,
+                node=node,
+                fields=frozenset({"argument", "trailing_rank"}),
+            )
+            return cast(
+                Expr[object],
+                ShapePrefix(
+                    cast(str, obj["argument"]),
+                    cast(int, obj["trailing_rank"]),
+                ),
+            )
+        if node == "concat_shape":
+            obj = _exact_object(value, node=node, fields=frozenset({"parts"}))
+            return cast(
+                Expr[object],
+                ConcatShape(
+                    tuple(
+                        _decode_expression(item, depth=depth + 1)
+                        for item in _decode_sequence(
+                            obj["parts"], field_name="concat_shape.parts"
+                        )
+                    )
+                ),
+            )
         if node in {"rank_ref", "dtype_ref", "device_ref", "same_as_input_dtype", "same_as_input_device"}:
             obj = _exact_object(value, node=node, fields=frozenset({"argument"}))
             reference_types = {
@@ -1300,6 +1610,21 @@ def _decode_expression(value: object, *, depth: int) -> Expr[object]:
                 RoundUp(
                     _decode_expression(obj["value"], depth=depth + 1),
                     _decode_expression(obj["multiple"], depth=depth + 1),
+                ),
+            )
+        if node == "is_finite":
+            obj = _exact_object(value, node=node, fields=frozenset({"value"}))
+            return cast(
+                Expr[object],
+                IsFinite(_decode_expression(obj["value"], depth=depth + 1)),
+            )
+        if node == "broadcastable":
+            obj = _exact_object(value, node=node, fields=frozenset({"lhs", "rhs"}))
+            return cast(
+                Expr[object],
+                Broadcastable(
+                    _decode_expression(obj["lhs"], depth=depth + 1),
+                    _decode_expression(obj["rhs"], depth=depth + 1),
                 ),
             )
         if node in {"and", "or"}:

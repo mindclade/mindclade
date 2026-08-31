@@ -67,6 +67,7 @@ py_library(
     srcs = [
         "codegen/__init__.py",
         "codegen/discover.py",
+        "codegen/parse_literal_ast.py",
         "codegen/schema.py",
     ],
     data = [
@@ -117,6 +118,7 @@ filegroup(
         "codegen/__init__.py",
         "codegen/discover.py",
         "codegen/generate.py",
+        "codegen/parse_literal_ast.py",
         "codegen/schema.py",
         "component.yaml",
         "cuda/CMakeLists.txt",
@@ -325,6 +327,20 @@ py_test(
     python_version = "PY3",
     deps = [
         ":native_codegen_lib",
+        "@mindclade_pypi//pytest",
+    ],
+)
+
+py_test(
+    name = "test_parse_literal_ast",
+    srcs = ["tests/pytest_runner.py"],
+    args = ["$(location tests/test_parse_literal_ast.py)"],
+    data = ["tests/test_parse_literal_ast.py"],
+    main = "tests/pytest_runner.py",
+    python_version = "PY3",
+    deps = [
+        ":native_codegen_lib",
+        "//kernels/api:api",
         "@mindclade_pypi//pytest",
     ],
 )

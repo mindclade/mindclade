@@ -1,0 +1,54 @@
+syntax = "proto3";
+
+package mindclade.workflow.v1;
+
+import "google/protobuf/duration.proto";
+import "google/protobuf/timestamp.proto";
+import "proto/mindclade/artifact/v1/artifact_reference.proto";
+import "proto/mindclade/common/v1/resource_reference.proto";
+import "proto/mindclade/policy/v1/policy_reference.proto";
+
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/workflow/v1;workflowv1";
+
+// WorkflowDefinitionState is the controlled lifecycle of a versioned graph.
+enum WorkflowDefinitionState {
+  WORKFLOW_DEFINITION_STATE_UNSPECIFIED = 0;
+  WORKFLOW_DEFINITION_STATE_DRAFT = 1;
+  WORKFLOW_DEFINITION_STATE_ACTIVE = 2;
+  WORKFLOW_DEFINITION_STATE_DEPRECATED = 3;
+  WORKFLOW_DEFINITION_STATE_REVOKED = 4;
+  WORKFLOW_DEFINITION_STATE_ARCHIVED = 5;
+}
+
+// WorkflowLimits make loops, fan-out, and wall time explicitly bounded.
+message WorkflowLimits {
+  uint32 maximum_iterations = 1;
+  uint32 maximum_fan_out = 2;
+  uint32 maximum_parallel_nodes = 3;
+  google.protobuf.Duration maximum_wall_time = 4;
+}
+
+// WorkflowDefinition projects one immutable, schema-validated workflow graph.
+message WorkflowDefinition {
+  string name = 1;
+  string uid = 2;
+  int64 revision = 3;
+  string etag = 4;
+  string tenant_id = 5;
+  string project_id = 6;
+  string display_name = 7;
+  string semantic_version = 8;
+  WorkflowDefinitionState state = 9;
+  // Authoritative typed graph document, including nodes, edges, and preconditions.
+  mindclade.artifact.v1.ArtifactRef definition = 10;
+  // sha256 digest of the fully resolved graph.
+  string resolved_graph_digest = 11;
+  WorkflowLimits limits = 12;
+  repeated mindclade.common.v1.ResourceRef eligible_tools = 13;
+  repeated mindclade.policy.v1.PolicyReference policy_snapshots = 14;
+  mindclade.artifact.v1.ArtifactRef input_schema = 15;
+  mindclade.artifact.v1.ArtifactRef output_schema = 16;
+  google.protobuf.Timestamp create_time = 17;
+  google.protobuf.Timestamp update_time = 18;
+  optional google.protobuf.Timestamp delete_time = 19;
+}

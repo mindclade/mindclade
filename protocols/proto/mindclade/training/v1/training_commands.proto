@@ -1,0 +1,102 @@
+syntax = "proto3";
+
+package mindclade.training.v1;
+
+import "google/protobuf/timestamp.proto";
+import "proto/mindclade/artifact/v1/artifact_reference.proto";
+import "proto/mindclade/artifact/v1/evidence_reference.proto";
+import "proto/mindclade/common/v1/command_context.proto";
+import "proto/mindclade/common/v1/error_detail.proto";
+import "proto/mindclade/common/v1/resource_reference.proto";
+import "proto/mindclade/job/v1/lease_fencing.proto";
+import "proto/mindclade/training/v1/training_progress.proto";
+import "proto/mindclade/training/v1/training_run.proto";
+
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/training/v1;trainingv1";
+
+// CreateTrainingRunCommand freezes scientific intent and creates a durable run.
+message CreateTrainingRunCommand {
+  mindclade.common.v1.CommandContext context = 1;
+  mindclade.common.v1.ResourceRef project = 2;
+  string training_run_id = 3;
+  mindclade.artifact.v1.ArtifactRef training_recipe = 4;
+  mindclade.common.v1.ResourceRef dataset_release = 5;
+  mindclade.common.v1.ResourceRef model_release = 6;
+  mindclade.artifact.v1.ArtifactRef executable_plan = 7;
+  mindclade.artifact.v1.ArtifactRef hardware_topology = 8;
+  mindclade.common.v1.ResourceRef use_policy = 9;
+  map<string, string> labels = 10;
+  string policy_classification = 11;
+}
+
+// StartTrainingAttemptCommand dispatches a fresh fenced training attempt.
+message StartTrainingAttemptCommand {
+  mindclade.common.v1.CommandContext context = 1;
+  mindclade.common.v1.ResourceRef training_run = 2;
+  mindclade.job.v1.LeaseFence fence = 3;
+  google.protobuf.Timestamp deadline = 4;
+  mindclade.common.v1.ResourceRef delegated_capability = 5;
+}
+
+// ResumeTrainingAttemptCommand dispatches recovery from a committed checkpoint.
+message ResumeTrainingAttemptCommand {
+  mindclade.common.v1.CommandContext context = 1;
+  mindclade.common.v1.ResourceRef training_run = 2;
+  mindclade.common.v1.ResourceRef checkpoint = 3;
+  mindclade.job.v1.LeaseFence fence = 4;
+  google.protobuf.Timestamp deadline = 5;
+  mindclade.common.v1.ResourceRef delegated_capability = 6;
+}
+
+// CommitTrainingProgressCommand advances the monotonic frontier for the current fence.
+message CommitTrainingProgressCommand {
+  mindclade.common.v1.CommandContext context = 1;
+  string training_run_name = 2;
+  mindclade.job.v1.LeaseFence fence = 3;
+  TrainingProgress progress = 4;
+}
+
+// PrepareCheckpointCommand freezes one logical-state descriptor at a snapshot epoch.
+message PrepareCheckpointCommand {
+  mindclade.common.v1.CommandContext context = 1;
+  string training_run_name = 2;
+  mindclade.job.v1.LeaseFence fence = 3;
+  uint64 snapshot_epoch = 4;
+  mindclade.artifact.v1.ArtifactRef logical_state_descriptor = 5;
+  TrainingProgress committed_progress = 6;
+}
+
+// CommitCheckpointCommand publishes only a fully verified immutable checkpoint manifest.
+message CommitCheckpointCommand {
+  mindclade.common.v1.CommandContext context = 1;
+  string training_run_name = 2;
+  mindclade.job.v1.LeaseFence fence = 3;
+  uint64 snapshot_epoch = 4;
+  mindclade.artifact.v1.ArtifactRef checkpoint_manifest = 5;
+  mindclade.artifact.v1.ArtifactRef logical_state_descriptor = 6;
+  TrainingProgress committed_progress = 7;
+  mindclade.common.v1.ResourceRef parent_checkpoint = 8;
+  mindclade.artifact.v1.ArtifactRef topology_envelope = 9;
+  mindclade.artifact.v1.EvidenceRef verification_evidence = 10;
+  google.protobuf.Timestamp committed_at = 11;
+}
+
+// CompleteTrainingRunCommand reconciles one fenced terminal training result.
+message CompleteTrainingRunCommand {
+  mindclade.common.v1.CommandContext context = 1;
+  string training_run_name = 2;
+  mindclade.job.v1.LeaseFence fence = 3;
+  TrainingTerminalClassification classification = 4;
+  mindclade.artifact.v1.ArtifactRef result_manifest = 5;
+  mindclade.common.v1.ResourceRef final_checkpoint = 6;
+  mindclade.common.v1.ErrorDetail error = 7;
+  google.protobuf.Timestamp completed_at = 8;
+}
+
+// CancelTrainingRunCommand records an idempotent desired-cancellation mutation.
+message CancelTrainingRunCommand {
+  mindclade.common.v1.CommandContext context = 1;
+  string training_run_name = 2;
+  string etag = 3;
+  string reason = 4;
+}

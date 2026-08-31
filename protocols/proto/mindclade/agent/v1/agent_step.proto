@@ -1,0 +1,107 @@
+syntax = "proto3";
+
+package mindclade.agent.v1;
+
+import "google/protobuf/duration.proto";
+import "google/protobuf/timestamp.proto";
+import "proto/mindclade/artifact/v1/artifact_reference.proto";
+import "proto/mindclade/common/v1/command_context.proto";
+import "proto/mindclade/common/v1/error_detail.proto";
+import "proto/mindclade/common/v1/resource_reference.proto";
+import "proto/mindclade/policy/v1/authorization_decision.proto";
+import "proto/mindclade/workflow/v1/approval.proto";
+
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/agent/v1;agentv1";
+
+// AgentStepKind identifies the closed set of durable step semantics.
+enum AgentStepKind {
+  AGENT_STEP_KIND_UNSPECIFIED = 0;
+  AGENT_STEP_KIND_DECISION = 1;
+  AGENT_STEP_KIND_TOOL = 2;
+  AGENT_STEP_KIND_DOMAIN_JOB = 3;
+  AGENT_STEP_KIND_APPROVAL = 4;
+  AGENT_STEP_KIND_WAIT = 5;
+  AGENT_STEP_KIND_TERMINAL = 6;
+}
+
+// AgentStepState is the fenced execution lifecycle of one step.
+enum AgentStepState {
+  AGENT_STEP_STATE_UNSPECIFIED = 0;
+  AGENT_STEP_STATE_CREATED = 1;
+  AGENT_STEP_STATE_DISPATCHED = 2;
+  AGENT_STEP_STATE_RUNNING = 3;
+  AGENT_STEP_STATE_WAITING = 4;
+  AGENT_STEP_STATE_SUCCEEDED = 5;
+  AGENT_STEP_STATE_FAILED = 6;
+  AGENT_STEP_STATE_CANCELLED = 7;
+  AGENT_STEP_STATE_EXPIRED = 8;
+}
+
+// ToolCall is exact authorized intent for one allowlisted tool invocation.
+message ToolCall {
+  mindclade.common.v1.CommandContext context = 1;
+  string call_id = 2;
+  string agent_run_name = 3;
+  string agent_step_name = 4;
+  mindclade.common.v1.ResourceRef tool = 5;
+  string tool_version = 6;
+  mindclade.policy.v1.AuthorizationDecision authorization = 7;
+  repeated mindclade.workflow.v1.ApprovalReceipt approvals = 8;
+  string input_digest = 9;
+  // Safe bounded parameters; large or sensitive values use input_artifacts.
+  mindclade.artifact.v1.ArtifactRef parameters = 10;
+  repeated mindclade.artifact.v1.ArtifactRef input_artifacts = 11;
+  google.protobuf.Timestamp deadline = 12;
+  mindclade.common.v1.ResourceRef budget_reservation = 13;
+  mindclade.artifact.v1.ArtifactRef expected_output_schema = 14;
+  string side_effect_class = 15;
+  string output_classification = 16;
+}
+
+// AgentWait directs a durable release of resources until a bounded time or event.
+message AgentWait {
+  google.protobuf.Duration maximum_duration = 1;
+  string correlation_ref = 2;
+}
+
+// AgentDecision is a safe attributable summary, never hidden chain-of-thought.
+message AgentDecision {
+  string decision_id = 1;
+  string decision_type = 2;
+  string rationale_summary = 3;
+  repeated mindclade.artifact.v1.ArtifactRef evidence = 4;
+
+  oneof next_action {
+    ToolCall tool_call = 5;
+    mindclade.common.v1.ResourceRef domain_job = 6;
+    mindclade.common.v1.ResourceRef approval_request = 7;
+    AgentWait wait = 8;
+    mindclade.artifact.v1.ArtifactRef terminal_result = 9;
+  }
+
+  // Digest of provider/model, sampling, context construction, and observation inputs.
+  string replay_digest = 10;
+}
+
+// AgentStep is an append-only, revisioned unit of a durable run.
+message AgentStep {
+  string name = 1;
+  string uid = 2;
+  mindclade.common.v1.ResourceRef run = 3;
+  uint64 sequence = 4;
+  int64 revision = 5;
+  string etag = 6;
+  AgentStepKind kind = 7;
+  AgentStepState state = 8;
+  string attempt_id = 9;
+  uint64 lease_epoch = 10;
+  repeated mindclade.policy.v1.AuthorizationDecision policy_decisions = 11;
+  // Ordered, bounded, attributable observations; raw content remains in artifacts.
+  repeated mindclade.artifact.v1.ArtifactRef observations = 12;
+  AgentDecision decision = 13;
+  mindclade.artifact.v1.ArtifactRef output = 14;
+  mindclade.common.v1.ErrorDetail failure = 15;
+  google.protobuf.Timestamp create_time = 16;
+  google.protobuf.Timestamp update_time = 17;
+  optional google.protobuf.Timestamp end_time = 18;
+}

@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package mindclade.events.agent.v1;
+
+import "google/protobuf/timestamp.proto";
+import "proto/mindclade/agent/v1/agent_run.proto";
+import "proto/mindclade/artifact/v1/artifact_reference.proto";
+import "proto/mindclade/common/v1/event_envelope.proto";
+
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/agent/v1;agentv1";
+
+// AgentRunCompleted is an immutable terminal fact backed by a verified run manifest.
+message AgentRunCompleted {
+  mindclade.common.v1.EventEnvelope envelope = 1;
+  mindclade.agent.v1.AgentRun run = 2;
+  mindclade.artifact.v1.ArtifactRef run_manifest = 3;
+  string attempt_id = 4;
+  uint64 lease_epoch = 5;
+  google.protobuf.Timestamp completed_at = 6;
+}

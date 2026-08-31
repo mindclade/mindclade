@@ -2,7 +2,7 @@ apiVersion: mindclade.dev/v1
 kind: ArchitectureDecisionIndex
 metadata:
   name: foundational-decisions
-  description: Foundational decisions, bounded bootstrap and native incubation authorities, and proposed Wave 2 just-in-time decisions.
+  description: Foundational decisions, bounded bootstrap and native incubation authorities, the accepted all-contracts clean-v1 baseline, and proposed connected qualification decisions.
 spec:
   decisions:
     - id: ADR-0001
@@ -99,4 +99,11 @@ spec:
       connectedRatification: pending
       path: docs/adr/0014-tilelang-kernel-platform-source-development.md
       owners: [architecture, ml-systems-performance]
+      specificationAccepted: "2026-08-31"
+    - id: ADR-0015
+      title: All-Contracts Clean-v1 Baseline
+      status: accepted-in-specification
+      connectedRatification: pending
+      path: docs/adr/0015-all-contracts-clean-v1-baseline.md
+      owners: [architecture, contract-governance]
       specificationAccepted: "2026-08-31"

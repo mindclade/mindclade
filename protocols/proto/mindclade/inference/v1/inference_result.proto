@@ -1,0 +1,65 @@
+syntax = "proto3";
+
+package mindclade.inference.v1;
+
+import "google/protobuf/timestamp.proto";
+import "proto/mindclade/artifact/v1/artifact_reference.proto";
+import "proto/mindclade/common/v1/resource_reference.proto";
+import "proto/mindclade/policy/v1/authorization_decision.proto";
+
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/inference/v1;inferencev1";
+
+// InferenceResultOutcome classifies terminal publication, not transport status.
+enum InferenceResultOutcome {
+  INFERENCE_RESULT_OUTCOME_UNSPECIFIED = 0;
+  INFERENCE_RESULT_OUTCOME_SUCCEEDED = 1;
+  INFERENCE_RESULT_OUTCOME_PARTIAL = 2;
+  INFERENCE_RESULT_OUTCOME_FAILED = 3;
+  INFERENCE_RESULT_OUTCOME_CANCELLED = 4;
+  INFERENCE_RESULT_OUTCOME_EXPIRED = 5;
+  INFERENCE_RESULT_OUTCOME_POLICY_DENIED = 6;
+}
+
+// InferenceCandidateResult is a bounded projection; scientific bytes remain artifacts.
+message InferenceCandidateResult {
+  string candidate_id = 1;
+  uint32 sample_index = 2;
+  mindclade.artifact.v1.ArtifactRef output = 3;
+  optional double confidence = 4;
+  bool selected = 5;
+  mindclade.artifact.v1.ArtifactRef diagnostics = 6;
+}
+
+// InferenceResult is the immutable authoritative terminal result for one request.
+message InferenceResult {
+  string name = 1;
+  string uid = 2;
+  // Exact request resource and revision.
+  mindclade.common.v1.ResourceRef request = 3;
+  string request_digest = 4;
+  mindclade.common.v1.ResourceRef operation = 5;
+  string job_id = 6;
+  string run_id = 7;
+  string attempt_id = 8;
+  uint64 lease_epoch = 9;
+  InferenceResultOutcome outcome = 10;
+  // Complete immutable result manifest; this is authoritative over summaries below.
+  mindclade.artifact.v1.ArtifactRef result_manifest = 11;
+  mindclade.artifact.v1.ArtifactRef input_artifact = 12;
+  mindclade.artifact.v1.ArtifactRef model_bundle = 13;
+  mindclade.artifact.v1.ArtifactRef feature_bundle = 14;
+  mindclade.artifact.v1.ArtifactRef executable_plan = 15;
+  mindclade.artifact.v1.ArtifactRef provider_manifest = 16;
+  mindclade.artifact.v1.ArtifactRef kernel_qualification = 17;
+  // Ordered by sample_index and bounded to 256 entries.
+  repeated InferenceCandidateResult candidates = 18;
+  string selected_candidate_id = 19;
+  mindclade.artifact.v1.ArtifactRef confidence_report = 20;
+  mindclade.artifact.v1.ArtifactRef ranking_report = 21;
+  repeated mindclade.policy.v1.AuthorizationDecision safety_decisions = 22;
+  mindclade.artifact.v1.ArtifactRef failure_diagnostics = 23;
+  string source_revision = 24;
+  google.protobuf.Timestamp completed_at = 25;
+  // sha256 digest of the canonical terminal record.
+  string result_digest = 26;
+}

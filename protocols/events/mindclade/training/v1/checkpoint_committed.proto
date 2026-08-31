@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package mindclade.events.training.v1;
+
+import "google/protobuf/timestamp.proto";
+import "proto/mindclade/artifact/v1/artifact_reference.proto";
+import "proto/mindclade/artifact/v1/evidence_reference.proto";
+import "proto/mindclade/common/v1/event_envelope.proto";
+import "proto/mindclade/job/v1/lease_fencing.proto";
+import "proto/mindclade/training/v1/training_progress.proto";
+
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/training/v1;trainingv1";
+
+// CheckpointCommitted is an immutable fact for a fully verified resumable snapshot.
+message CheckpointCommitted {
+  mindclade.common.v1.EventEnvelope envelope = 1;
+  string training_run_name = 2;
+  int64 training_run_revision = 3;
+  mindclade.job.v1.LeaseFence fence = 4;
+  string checkpoint_name = 5;
+  uint64 snapshot_epoch = 6;
+  mindclade.artifact.v1.ArtifactRef checkpoint_manifest = 7;
+  mindclade.training.v1.TrainingProgress committed_progress = 8;
+  mindclade.artifact.v1.EvidenceRef verification_evidence = 9;
+  google.protobuf.Timestamp committed_at = 10;
+}

@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+package mindclade.policy.v1;
+
+import "google/protobuf/timestamp.proto";
+import "proto/mindclade/artifact/v1/artifact_reference.proto";
+
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/policy/v1;policyv1";
+
+// PolicyReference identifies the exact immutable policy snapshot used for a decision.
+message PolicyReference {
+  // Canonical resource name for the policy, opaque to clients.
+  string name = 1;
+  // Immutable policy identifier.
+  string uid = 2;
+  // Stable policy kind such as use-policy or authorization-policy.
+  string policy_type = 3;
+  // Policy-owned semantic version.
+  string version = 4;
+  // sha256 digest of the canonical policy document.
+  string digest = 5;
+  // Immutable, schema-qualified policy document.
+  mindclade.artifact.v1.ArtifactRef document = 6;
+  // Revision of the policy resource from which this snapshot was resolved.
+  int64 resource_revision = 7;
+  // Time from which this snapshot is effective.
+  google.protobuf.Timestamp effective_time = 8;
+  // Optional end of the snapshot's validity window.
+  optional google.protobuf.Timestamp expire_time = 9;
+  // Data or biological classification applied by the policy authority.
+  string classification = 10;
+}

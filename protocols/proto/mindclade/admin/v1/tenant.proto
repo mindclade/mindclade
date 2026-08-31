@@ -1,0 +1,39 @@
+syntax = "proto3";
+
+package mindclade.admin.v1;
+
+import "google/protobuf/timestamp.proto";
+import "proto/mindclade/common/v1/resource_reference.proto";
+import "proto/mindclade/policy/v1/policy_reference.proto";
+
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/admin/v1;adminv1";
+
+// TenantState is the administrative lifecycle of a tenant boundary.
+enum TenantState {
+  TENANT_STATE_UNSPECIFIED = 0;
+  TENANT_STATE_PROVISIONING = 1;
+  TENANT_STATE_ACTIVE = 2;
+  TENANT_STATE_SUSPENDED = 3;
+  TENANT_STATE_DELETING = 4;
+  TENANT_STATE_DELETED = 5;
+}
+
+// Tenant is the top-level ownership, isolation, policy, and billing boundary.
+message Tenant {
+  string name = 1;
+  string uid = 2;
+  int64 revision = 3;
+  string etag = 4;
+  string display_name = 5;
+  TenantState state = 6;
+  repeated mindclade.policy.v1.PolicyReference policy_snapshots = 7;
+  string default_classification = 8;
+  // Allowed execution/storage region identifiers, never credentials or endpoints.
+  repeated string allowed_regions = 9;
+  mindclade.common.v1.ResourceRef billing_account = 10;
+  map<string, string> labels = 11;
+  map<string, string> annotations = 12;
+  google.protobuf.Timestamp create_time = 13;
+  google.protobuf.Timestamp update_time = 14;
+  optional google.protobuf.Timestamp delete_time = 15;
+}

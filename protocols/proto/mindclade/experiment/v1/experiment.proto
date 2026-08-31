@@ -1,0 +1,48 @@
+syntax = "proto3";
+
+package mindclade.experiment.v1;
+
+import "google/protobuf/timestamp.proto";
+import "proto/mindclade/artifact/v1/artifact_reference.proto";
+import "proto/mindclade/common/v1/resource_reference.proto";
+
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/experiment/v1;experimentv1";
+
+// ExperimentKind separates scientific-intent studies from systems studies.
+enum ExperimentKind {
+  EXPERIMENT_KIND_UNSPECIFIED = 0;
+  EXPERIMENT_KIND_SCIENTIFIC = 1;
+  EXPERIMENT_KIND_SYSTEMS = 2;
+}
+
+// ExperimentState is the durable lifecycle of an experiment container.
+enum ExperimentState {
+  EXPERIMENT_STATE_UNSPECIFIED = 0;
+  EXPERIMENT_STATE_DRAFT = 1;
+  EXPERIMENT_STATE_ACTIVE = 2;
+  EXPERIMENT_STATE_COMPLETED = 3;
+  EXPERIMENT_STATE_CANCELLED = 4;
+  EXPERIMENT_STATE_ARCHIVED = 5;
+}
+
+// Experiment groups immutable study intent and its governed resource inputs.
+message Experiment {
+  string name = 1;
+  string uid = 2;
+  int64 revision = 3;
+  string etag = 4;
+  string tenant_name = 5;
+  string project_name = 6;
+  string display_name = 7;
+  map<string, string> labels = 8;
+  map<string, string> annotations = 9;
+  ExperimentKind kind = 10;
+  ExperimentState state = 11;
+  mindclade.artifact.v1.ArtifactRef intent_manifest = 12;
+  repeated mindclade.common.v1.ResourceRef subjects = 13;
+  mindclade.common.v1.ResourceRef use_policy = 14;
+  string policy_classification = 15;
+  google.protobuf.Timestamp create_time = 16;
+  google.protobuf.Timestamp update_time = 17;
+  google.protobuf.Timestamp complete_time = 18;
+}

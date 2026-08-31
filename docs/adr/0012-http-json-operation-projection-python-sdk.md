@@ -6,7 +6,7 @@
 - Effective date: Pending connected ratification and required owner approvals
 - Compatibility window: Supported HTTP v1 and Python SDK 1.x remain additive within the major
 - Supersedes: None
-- Superseded by: None
+- Superseded by: ADR-0015 only for language/provider deferments; the curated operation and artifact-verification model remains in force
 - Owners: Developer Experience, Control Plane, Architecture
 - Reviewers: Security, Contract Governance, Inference Systems
 
@@ -73,7 +73,7 @@ Within HTTP v1 and Python SDK 1.x, changes are additive, existing field meaning 
 - Internal messages and persistence remain free to evolve behind one curated projection.
 - Idempotency, deadlines, ETags, and typed errors have one testable client/server meaning.
 - Artifact integrity is checked at the supported SDK boundary.
-- TypeScript SDK, console, streaming inference, and broader resources remain deferred.
+- ADR-0015 supersedes the TypeScript SDK, streaming-contract, and broader-resource deferments; the console runtime remains deferred until its own activation evidence exists.
 
 ## Rejected alternatives
 

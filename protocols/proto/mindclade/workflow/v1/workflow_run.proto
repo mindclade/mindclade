@@ -1,0 +1,62 @@
+syntax = "proto3";
+
+package mindclade.workflow.v1;
+
+import "google/protobuf/timestamp.proto";
+import "proto/mindclade/artifact/v1/artifact_reference.proto";
+import "proto/mindclade/common/v1/error_detail.proto";
+import "proto/mindclade/common/v1/resource_reference.proto";
+import "proto/mindclade/policy/v1/authorization_decision.proto";
+
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/workflow/v1;workflowv1";
+
+// WorkflowRunState is the durable replayable workflow lifecycle.
+enum WorkflowRunState {
+  WORKFLOW_RUN_STATE_UNSPECIFIED = 0;
+  WORKFLOW_RUN_STATE_CREATED = 1;
+  WORKFLOW_RUN_STATE_VALIDATING = 2;
+  WORKFLOW_RUN_STATE_ADMITTED = 3;
+  WORKFLOW_RUN_STATE_READY = 4;
+  WORKFLOW_RUN_STATE_RUNNING = 5;
+  WORKFLOW_RUN_STATE_WAITING = 6;
+  WORKFLOW_RUN_STATE_WAITING_FOR_JOB = 7;
+  WORKFLOW_RUN_STATE_WAITING_FOR_APPROVAL = 8;
+  WORKFLOW_RUN_STATE_RECONCILING = 9;
+  WORKFLOW_RUN_STATE_PAUSED = 10;
+  WORKFLOW_RUN_STATE_SUCCEEDED = 11;
+  WORKFLOW_RUN_STATE_FAILED = 12;
+  WORKFLOW_RUN_STATE_CANCELLING = 13;
+  WORKFLOW_RUN_STATE_CANCELLED = 14;
+  WORKFLOW_RUN_STATE_EXPIRED = 15;
+}
+
+// WorkflowRun is durable state derived from a frozen definition and append-only receipts.
+message WorkflowRun {
+  string name = 1;
+  string uid = 2;
+  int64 revision = 3;
+  string etag = 4;
+  string tenant_id = 5;
+  string project_id = 6;
+  mindclade.common.v1.ResourceRef definition = 7;
+  string definition_digest = 8;
+  mindclade.common.v1.ResourceRef agent_run = 9;
+  WorkflowRunState state = 10;
+  // Active node identifiers are ordered lexically for deterministic projections.
+  repeated string active_node_ids = 11;
+  uint32 completed_node_count = 12;
+  uint32 iteration_count = 13;
+  uint64 transition_sequence = 14;
+  string attempt_id = 15;
+  uint64 lease_epoch = 16;
+  mindclade.artifact.v1.ArtifactRef input = 17;
+  mindclade.artifact.v1.ArtifactRef output = 18;
+  mindclade.artifact.v1.ArtifactRef replay_state = 19;
+  mindclade.policy.v1.AuthorizationDecision admission_decision = 20;
+  // Immutable append-only transition/decision evidence; it cannot grow the resource row.
+  mindclade.artifact.v1.ArtifactRef decision_log = 21;
+  mindclade.common.v1.ErrorDetail failure = 22;
+  google.protobuf.Timestamp create_time = 23;
+  google.protobuf.Timestamp update_time = 24;
+  optional google.protobuf.Timestamp end_time = 25;
+}

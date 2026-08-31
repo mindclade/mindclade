@@ -8,10 +8,10 @@ from enum import StrEnum
 from pathlib import PurePosixPath
 
 from .backward import BackwardSpec
-from .capability import CapabilityEnvelope
 from .effects import EffectSpec
 from .errors import KernelContractError, SchemaError
 from .forward import ForwardSpec
+from .gradient import GradientSpec
 from .launch import DeterminismClass, LaunchContract
 from .output import ContractModel, _nonempty, _unique
 
@@ -33,6 +33,8 @@ class CompositeAutogradSpec(ContractModel):
     decomposition: str
     source_digest: str
     runtime_envelope: str
+    gradients: tuple[GradientSpec, ...]
+    supports_double_backward: bool
     version: int = 1
 
     def __post_init__(self) -> None:
@@ -42,6 +44,16 @@ class CompositeAutogradSpec(ContractModel):
             raise KernelContractError(f"unsupported CompositeAutogradSpec version: {self.version}")
         if not re.fullmatch(r"sha256:[0-9a-f]{64}", self.source_digest):
             raise KernelContractError("composite source_digest must be sha256:<64 lowercase hex>")
+        if not self.gradients:
+            raise KernelContractError("composite autograd must declare named gradients")
+        _unique(
+            tuple(gradient.input_name for gradient in self.gradients),
+            "composite gradient input mappings",
+        )
+        _unique(
+            tuple(gradient.output_name for gradient in self.gradients),
+            "composite gradient output mappings",
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -66,7 +78,6 @@ class KernelSpec(ContractModel):
     autograd_policy: AutogradPolicy
     effects: EffectSpec
     launch: LaunchContract
-    capability_envelope: CapabilityEnvelope
     backend: str = "tilelang"
     version: int = 1
     devices: tuple[str, ...] = ("cuda",)
@@ -118,8 +129,6 @@ class KernelSpec(ContractModel):
                 raise KernelContractError("AutogradPolicy.REQUIRED requires a backward provider")
             if self.composite is not None:
                 raise KernelContractError("REQUIRED native autograd cannot declare a composite decomposition")
-            if not self.capability_envelope.training_capable:
-                raise KernelContractError("REQUIRED kernel capability must be training-capable")
         elif self.autograd_policy is AutogradPolicy.NONE:
             if self.backward is not None:
                 raise KernelContractError("AutogradPolicy.NONE cannot declare a backward provider")
@@ -130,16 +139,13 @@ class KernelSpec(ContractModel):
                 raise KernelContractError("COMPOSITE autograd cannot declare a native backward provider")
             if self.composite is None:
                 raise KernelContractError("COMPOSITE autograd requires a qualified decomposition identity")
+            self._validate_composite(semantic_arguments)
 
         if self.effects.uses_rng and self.launch.determinism is DeterminismClass.DETERMINISTIC:
             raise KernelContractError("RNG-using kernel cannot claim unconditional determinism")
         if self.effects.uses_atomics and self.launch.determinism is DeterminismClass.DETERMINISTIC:
             raise KernelContractError("atomic kernel cannot claim unconditional determinism")
         self._validate_effects(semantic)
-        if self.launch.graph_capture_safe != self.capability_envelope.graph_capture_safe:
-            raise KernelContractError(
-                "launch and capability graph-capture claims must agree"
-            )
         if self.fake is not None and ":" not in self.fake:
             raise KernelContractError("custom fake must be a module:function identity")
 
@@ -187,6 +193,22 @@ class KernelSpec(ContractModel):
         if self.backward.supports_double_backward:
             raise KernelContractError(
                 "double-backward claims require an explicit second-order provider contract in schema version 2"
+            )
+
+    def _validate_composite(self, semantic_arguments: set[str]) -> None:
+        assert self.composite is not None
+        unknown = {
+            gradient.input_name
+            for gradient in self.composite.gradients
+            if gradient.input_name not in semantic_arguments
+        }
+        if unknown:
+            raise KernelContractError(
+                f"composite gradient inputs are not semantic operator arguments: {sorted(unknown)}"
+            )
+        if self.composite.supports_double_backward:
+            raise KernelContractError(
+                "composite double-backward claims require explicit second-order qualification in schema version 2"
             )
 
     def _validate_effects(self, semantic: _Schema) -> None:

@@ -1,0 +1,101 @@
+syntax = "proto3";
+
+package mindclade.inference.v1;
+
+import "google/protobuf/duration.proto";
+import "google/protobuf/timestamp.proto";
+import "proto/mindclade/artifact/v1/artifact_reference.proto";
+import "proto/mindclade/common/v1/command_context.proto";
+import "proto/mindclade/common/v1/resource_reference.proto";
+import "proto/mindclade/policy/v1/policy_reference.proto";
+
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/inference/v1;inferencev1";
+
+// InferenceMode selects a bounded transport-independent execution profile.
+enum InferenceMode {
+  INFERENCE_MODE_UNSPECIFIED = 0;
+  INFERENCE_MODE_SYNCHRONOUS = 1;
+  INFERENCE_MODE_ASYNCHRONOUS = 2;
+  INFERENCE_MODE_STREAMING = 3;
+  INFERENCE_MODE_BATCH = 4;
+  INFERENCE_MODE_QUALIFICATION = 5;
+}
+
+// ReproducibilityIntent declares the reproducibility claim requested by the caller.
+enum ReproducibilityIntent {
+  REPRODUCIBILITY_INTENT_UNSPECIFIED = 0;
+  REPRODUCIBILITY_INTENT_BEST_EFFORT = 1;
+  REPRODUCIBILITY_INTENT_STATISTICAL = 2;
+  REPRODUCIBILITY_INTENT_NUMERICAL = 3;
+  REPRODUCIBILITY_INTENT_BITWISE = 4;
+}
+
+// BoundedInlineInput carries only small values accepted by a declared input schema.
+message BoundedInlineInput {
+  // Media type of payload.
+  string media_type = 1;
+  // Schema identifier used before allocating scientific execution resources.
+  string schema_id = 2;
+  // At most 1 MiB. Larger or restricted inputs must use input_artifact.
+  bytes payload = 3;
+  // sha256 digest of payload.
+  string content_digest = 4;
+}
+
+// SamplingPolicy freezes candidate generation independently of provider internals.
+message SamplingPolicy {
+  string algorithm = 1;
+  string algorithm_version = 2;
+  // Positive and subject to a server-declared upper bound.
+  uint32 candidate_count = 3;
+  uint32 maximum_steps = 4;
+  optional double temperature = 5;
+  optional double guidance_scale = 6;
+  // Stable seed material identifier; raw secret seed material is not carried here.
+  string random_key = 7;
+  google.protobuf.Duration maximum_compute_time = 8;
+  mindclade.artifact.v1.ArtifactRef policy = 9;
+}
+
+// InferenceOutputOptions selects schemas and immutable artifact outputs.
+message InferenceOutputOptions {
+  string result_schema_id = 1;
+  repeated string requested_artifact_kinds = 2;
+  bool include_bounded_candidate_summaries = 3;
+  bool retain_diagnostics = 4;
+}
+
+// InferenceRequest is canonical durable inference intent after edge validation.
+message InferenceRequest {
+  // Idempotency, principal, trace, canonical digest, and deadline context.
+  mindclade.common.v1.CommandContext context = 1;
+  // Canonical request resource name assigned by the control plane.
+  string name = 2;
+  string uid = 3;
+  string tenant_id = 4;
+  string project_id = 5;
+  string capability = 6;
+  InferenceMode mode = 7;
+  // Logical model or deployment resource requested by the caller.
+  mindclade.common.v1.ResourceRef model = 8;
+  // Immutable model bundle resolved before admission.
+  mindclade.artifact.v1.ArtifactRef resolved_model_bundle = 9;
+
+  oneof input {
+    mindclade.artifact.v1.ArtifactRef input_artifact = 10;
+    BoundedInlineInput inline_input = 11;
+  }
+
+  // Immutable preprocessing/feature policy, never an embedded feature graph.
+  mindclade.artifact.v1.ArtifactRef feature_policy = 12;
+  SamplingPolicy sampling_policy = 13;
+  // Immutable confidence and ranking policy.
+  mindclade.artifact.v1.ArtifactRef confidence_policy = 14;
+  InferenceOutputOptions output_options = 15;
+  string resource_class = 16;
+  ReproducibilityIntent reproducibility = 17;
+  repeated mindclade.policy.v1.PolicyReference policy_snapshots = 18;
+  string data_classification = 19;
+  google.protobuf.Timestamp deadline = 20;
+  google.protobuf.Timestamp create_time = 21;
+}

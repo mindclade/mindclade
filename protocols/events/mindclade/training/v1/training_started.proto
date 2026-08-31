@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package mindclade.events.training.v1;
+
+import "google/protobuf/timestamp.proto";
+import "proto/mindclade/artifact/v1/artifact_reference.proto";
+import "proto/mindclade/common/v1/event_envelope.proto";
+import "proto/mindclade/common/v1/resource_reference.proto";
+import "proto/mindclade/job/v1/lease_fencing.proto";
+
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/training/v1;trainingv1";
+
+// TrainingStarted is the immutable fact that one fenced attempt began execution.
+message TrainingStarted {
+  mindclade.common.v1.EventEnvelope envelope = 1;
+  string training_run_name = 2;
+  int64 training_run_revision = 3;
+  mindclade.job.v1.LeaseFence fence = 4;
+  mindclade.artifact.v1.ArtifactRef training_recipe = 5;
+  mindclade.common.v1.ResourceRef dataset_release = 6;
+  mindclade.common.v1.ResourceRef model_release = 7;
+  mindclade.artifact.v1.ArtifactRef executable_plan = 8;
+  google.protobuf.Timestamp started_at = 9;
+}

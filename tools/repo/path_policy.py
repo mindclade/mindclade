@@ -28,9 +28,9 @@ BLUEPRINT_SHA256 = "d099074e755168bbdce076d50918bf06aff677f9e5d620fdfe53cb7cef74
 ANCHOR_COMMIT = "292b71f47b1b29cc9ba7cf760a9bd07cd5e0ffa7"
 AUTHORITY_FILE_COUNT = 2461
 AUTHORITY_DIRECTORY_COUNT = 787
-CANONICAL_FILE_COUNT = 2626
+CANONICAL_FILE_COUNT = 2632
 AUTHORITY_PATH_SET_SHA256 = "f2011dd32ccc19649e6abb70ffb4473aea4a224410062d40292222e2e6263692"
-CANONICAL_PATH_SET_SHA256 = "d46246cfa2483aed52b93dc3bd47ac0c4eceab07dc689fbadf549ff8a2c63a62"
+CANONICAL_PATH_SET_SHA256 = "c7b3bb14975e394850a2083e5fa5e899352c1b9e4712def7f420f8299c727184"
 
 ADR_REPLACEMENTS = {
     "docs/adr/0001-repository-identity.md": "docs/adr/0001-repository-identity-and-ownership.md",
@@ -68,6 +68,7 @@ NATIVE_SOURCE_INCUBATION_PATHS = (
     "kernels/native/codegen/__init__.py",
     "kernels/native/codegen/discover.py",
     "kernels/native/codegen/generate.py",
+    "kernels/native/codegen/parse_literal_ast.py",
     "kernels/native/codegen/schema.py",
     "kernels/native/component.yaml",
     "kernels/native/cuda/CMakeLists.txt",
@@ -109,6 +110,7 @@ NATIVE_SOURCE_INCUBATION_PATHS = (
     "kernels/native/tests/test_manifest.py",
     "kernels/native/tests/test_namespace.py",
     "kernels/native/tests/test_opcheck.py",
+    "kernels/native/tests/test_parse_literal_ast.py",
     "kernels/native/tests/test_policy.py",
     "kernels/native/tests/test_qualification.py",
     "kernels/native/tests/test_reference_runtime.py",
@@ -249,6 +251,7 @@ NATIVE_CODEGEN_TEST_LABELS = (
     "//kernels/native:test_codegen_drift",
     "//kernels/native:test_discovery",
     "//kernels/native:test_manifest",
+    "//kernels/native:test_parse_literal_ast",
     "//kernels/native:test_schema_manifest",
 )
 NATIVE_ACTIVATION_CRITERION = (
@@ -270,6 +273,33 @@ WAVE_TWO_PREFLIGHT_GOVERNANCE_ADDITIONS = (
     "docs/policies/sqp-001-h100-qualification-envelope.md",
 )
 
+ALL_CONTRACT_BASELINE_ADR = (
+    "docs/adr/0015-all-contracts-clean-v1-baseline.md"
+)
+
+ALL_CONTRACT_BASELINE_DOMAINS = frozenset(
+    {
+        "admin",
+        "agent",
+        "dataset",
+        "evaluation",
+        "experiment",
+        "feature",
+        "inference",
+        "model",
+        "policy",
+        "training",
+        "transform",
+        "workflow",
+    }
+)
+
+ALL_CONTRACT_RUST_PLUGIN_PATHS = (
+    "tools/codegen/rust_plugins/Cargo.toml",
+    "tools/codegen/rust_plugins/src/bin/protoc-gen-prost.rs",
+    "tools/codegen/rust_plugins/src/bin/protoc-gen-tonic.rs",
+)
+
 WAVE_ZERO_REQUIRED_ADDITIONS = (
     ".github/actionlint.yaml",
     "docs/architecture/blueprint/provenance/MINDCLADE_MONOREPO_BLUEPRINT_v3.4.0_OPTIMIZED.md",
@@ -286,6 +316,7 @@ WAVE_ZERO_REQUIRED_ADDITIONS = (
     FOUNDER_BOOTSTRAP_SCHEMA,
     FOUNDER_BOOTSTRAP_RECORD,
     DEEP_EP_INTAKE_ADR,
+    ALL_CONTRACT_BASELINE_ADR,
     *WAVE_TWO_PREFLIGHT_GOVERNANCE_ADDITIONS,
 )
 
@@ -370,6 +401,7 @@ REQUIRED_ADDITIONS = (
     *NATIVE_SOURCE_INCUBATION_ADDITIONS,
     *THIRD_PARTY_DEEP_EP_PACKAGE_PATHS,
     *DEEP_EP_PATCH_PATHS,
+    *ALL_CONTRACT_RUST_PLUGIN_PATHS,
 )
 
 STATUSES = {"target", "active", "generated", "deferred", "retired"}
@@ -1556,7 +1588,49 @@ def build_kernel_platform_source_entry(path: str) -> dict[str, Any]:
     }
 
 
+def is_all_contract_baseline_path(path: str) -> bool:
+    """Return whether ADR-0015 activates this predeclared v1 projection."""
+
+    parts = PurePosixPath(path).parts
+    if len(parts) >= 3 and parts[:2] in {
+        ("protocols", "openapi"),
+        ("protocols", "schemas"),
+    }:
+        return True
+    if len(parts) >= 6 and parts[:3] in {
+        ("protocols", "proto", "mindclade"),
+        ("protocols", "events", "mindclade"),
+    }:
+        return parts[3] in ALL_CONTRACT_BASELINE_DOMAINS and parts[-1].endswith(".proto")
+    if len(parts) >= 5 and parts[:2] == ("protocols", "generated"):
+        return parts[3] in ALL_CONTRACT_BASELINE_DOMAINS
+    return False
+
+
+def build_all_contract_rust_plugin_entry(path: str) -> dict[str, Any]:
+    if path not in ALL_CONTRACT_RUST_PLUGIN_PATHS:
+        raise PolicyError(f"unapproved Rust protocol plugin path: {path}")
+    return {
+        "path": path,
+        "kind": infer_kind(path),
+        "owner": "contract-governance",
+        "component": "codegen-rust-plugins",
+        "status": "active",
+        "activation_wave": "1",
+        "source_authority": "hand-authored",
+        "build_targets": ["//:all_contract_sources"],
+        "test_targets": ["//:all_contract_tests"],
+        "public_surface": False,
+        "activation_criterion": (
+            "Activated by ADR-0015 as a pinned hermetic Prost/Tonic plugin wrapper; "
+            "it grants no release or production authority."
+        ),
+    }
+
+
 def build_path_entry(path: str) -> dict[str, Any]:
+    if path in ALL_CONTRACT_RUST_PLUGIN_PATHS:
+        return build_all_contract_rust_plugin_entry(path)
     if path in KERNEL_PLATFORM_SOURCE_PATHS:
         return build_kernel_platform_source_entry(path)
     if path in NATIVE_SOURCE_INCUBATION_PATHS:
@@ -1586,7 +1660,10 @@ def build_path_entry(path: str) -> dict[str, Any]:
     wave = infer_wave(path)
     deferred = any(path.startswith(prefix) for prefix in DEFERRED_PREFIXES)
     generated = infer_source_authority(path) == "reviewed-generated"
-    if deferred:
+    all_contract_baseline = is_all_contract_baseline_path(path)
+    if all_contract_baseline:
+        status = "generated" if generated else "active"
+    elif deferred:
         status = "deferred"
     elif is_wave_zero_path(path) or wave == "1":
         status = "generated" if generated else "active"
@@ -1598,6 +1675,9 @@ def build_path_entry(path: str) -> dict[str, Any]:
     if active and wave == "0":
         build_targets = ["//:wave0_governance_sources"]
         test_targets = ["//:wave0_tests"]
+    elif active and all_contract_baseline:
+        build_targets = ["//:all_contract_sources"]
+        test_targets = ["//:all_contract_tests"]
     elif active and wave == "1":
         build_targets = ["//:wave1_sources"]
         test_targets = ["//:wave1_tests"]
@@ -1613,7 +1693,15 @@ def build_path_entry(path: str) -> dict[str, Any]:
         "test_targets": test_targets,
         "public_surface": path.startswith(("sdk/", "protocols/")),
     }
-    if status in {"target", "deferred"} or wave == "1":
+    if all_contract_baseline:
+        entry["activation_criterion"] = (
+            "Generated from the ADR-0015 clean-v1 contract baseline; the original wave "
+            "remains design-sequencing provenance."
+            if generated
+            else "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the "
+            "original wave remains design-sequencing provenance."
+        )
+    elif status in {"target", "deferred"} or wave == "1":
         entry["activation_criterion"] = (
             "Activate only in the declared wave with a concrete consumer, owner, real target, "
             "tests, and qualification evidence."
@@ -1686,6 +1774,16 @@ def _reconciliation_addition_reason(path: str) -> str:
         return (
             "Required Wave 1 durability, reconciliation, configuration, or release-signing "
             "interface omitted by A6."
+        )
+    if path == ALL_CONTRACT_BASELINE_ADR:
+        return (
+            "Required accepted authority for the one-time clean-v1 activation of the complete "
+            "contract catalog and its generated consumers."
+        )
+    if path in ALL_CONTRACT_RUST_PLUGIN_PATHS:
+        return (
+            "Required pinned in-workspace Prost/Tonic plugin wrapper eliminating mutable "
+            "cargo-install and cache dependencies from protocol generation."
         )
     if path in WAVE_TWO_PREFLIGHT_GOVERNANCE_ADDITIONS:
         return (

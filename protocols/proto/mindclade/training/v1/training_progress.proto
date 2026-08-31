@@ -1,0 +1,41 @@
+syntax = "proto3";
+
+package mindclade.training.v1;
+
+import "google/protobuf/timestamp.proto";
+import "proto/mindclade/artifact/v1/artifact_reference.proto";
+import "proto/mindclade/common/v1/resource_reference.proto";
+
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/training/v1;trainingv1";
+
+// UpdateId identifies one logical optimizer update independently of worker retries.
+message UpdateId {
+  string value = 1;
+  uint64 sequence = 2;
+}
+
+// DataProgressRange is the latest durably committed immutable data interval.
+message DataProgressRange {
+  mindclade.common.v1.ResourceRef dataset_release = 1;
+  string split_name = 2;
+  string partition_id = 3;
+  uint64 start_ordinal = 4;
+  uint64 end_ordinal_exclusive = 5;
+  mindclade.artifact.v1.ArtifactRef batch_receipt = 6;
+}
+
+// TrainingProgress is a bounded monotonic snapshot; historical detail stays in its ledger.
+message TrainingProgress {
+  string training_run_name = 1;
+  uint64 progress_revision = 2;
+  UpdateId latest_committed_update = 3;
+  uint64 committed_update_count = 4;
+  uint64 committed_sample_count = 5;
+  uint64 committed_token_count = 6;
+  uint64 effective_work_units = 7;
+  string effective_work_unit_name = 8;
+  DataProgressRange latest_data_range = 9;
+  mindclade.artifact.v1.ArtifactRef progress_ledger = 10;
+  mindclade.artifact.v1.ArtifactRef metric_snapshot = 11;
+  google.protobuf.Timestamp committed_at = 12;
+}

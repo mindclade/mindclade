@@ -117,6 +117,22 @@ test_suite(
     visibility = ["//visibility:public"],
 )
 
+# ADR-0015 activates the complete v1 contract catalog without changing the
+# existing Wave 1 compatibility aliases. The protocol package glob is the
+# source inventory; the conformance suite validates generated projections and
+# compatibility for that inventory.
+filegroup(
+    name = "all_contract_sources",
+    srcs = [":wave1_contract_sources"],
+    visibility = ["//visibility:public"],
+)
+
+test_suite(
+    name = "all_contract_tests",
+    tests = [":wave1_contract_tests"],
+    visibility = ["//visibility:public"],
+)
+
 filegroup(
     name = "wave1_sources",
     srcs = [

@@ -1,0 +1,59 @@
+syntax = "proto3";
+
+package mindclade.evaluation.v1;
+
+import "google/protobuf/timestamp.proto";
+import "proto/mindclade/artifact/v1/artifact_reference.proto";
+import "proto/mindclade/common/v1/resource_reference.proto";
+import "proto/mindclade/evaluation/v1/evaluation_result.proto";
+import "proto/mindclade/policy/v1/authorization_decision.proto";
+
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/evaluation/v1;evaluationv1";
+
+// PromotionOutcome is a governed evidence decision, not a deployment command.
+enum PromotionOutcome {
+  PROMOTION_OUTCOME_UNSPECIFIED = 0;
+  PROMOTION_OUTCOME_APPROVE = 1;
+  PROMOTION_OUTCOME_REJECT = 2;
+  PROMOTION_OUTCOME_HOLD = 3;
+  PROMOTION_OUTCOME_REVOKE = 4;
+}
+
+// PromotionRuleDecision records one rule's immutable contribution.
+message PromotionRuleDecision {
+  string rule_id = 1;
+  ThresholdResult result = 2;
+  string reason_code = 3;
+  mindclade.artifact.v1.ArtifactRef evidence = 4;
+}
+
+// PromotionException is explicit, expiring, and independently approved.
+message PromotionException {
+  string exception_id = 1;
+  string rule_id = 2;
+  mindclade.artifact.v1.ArtifactRef rationale = 3;
+  repeated mindclade.common.v1.ResourceRef approval_receipts = 4;
+  google.protobuf.Timestamp expire_time = 5;
+}
+
+// PromotionDecision binds release disposition to exact evaluation and policy evidence.
+message PromotionDecision {
+  string name = 1;
+  string uid = 2;
+  mindclade.common.v1.ResourceRef candidate_release = 3;
+  string candidate_digest = 4;
+  string target_profile = 5;
+  repeated mindclade.common.v1.ResourceRef evaluation_results = 6;
+  repeated PromotionRuleDecision rules = 7;
+  repeated PromotionException exceptions = 8;
+  repeated mindclade.policy.v1.AuthorizationDecision policy_decisions = 9;
+  PromotionOutcome outcome = 10;
+  string reason_code = 11;
+  string safe_reason = 12;
+  string decided_by_principal_ref = 13;
+  google.protobuf.Timestamp decided_at = 14;
+  optional google.protobuf.Timestamp expire_time = 15;
+  string source_revision = 16;
+  // sha256 digest of the canonical decision and all bound evidence identities.
+  string decision_digest = 17;
+}

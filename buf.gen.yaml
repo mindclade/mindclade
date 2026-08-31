@@ -9,13 +9,30 @@
       "strategy": "all"
     },
     {
+      "local": ["go", "tool", "protoc-gen-go-grpc"],
+      "out": ".mindclade-codegen/go",
+      "opt": ["paths=source_relative"],
+      "strategy": "all"
+    },
+    {
       "protoc_builtin": "python",
       "protoc_path": "protoc",
       "out": ".mindclade-codegen/python",
       "strategy": "all"
     },
     {
-      "local": "protoc-gen-rs",
+      "protoc_builtin": "pyi",
+      "protoc_path": "protoc",
+      "out": ".mindclade-codegen/python",
+      "strategy": "all"
+    },
+    {
+      "local": "protoc-gen-prost",
+      "out": ".mindclade-codegen/rust",
+      "strategy": "all"
+    },
+    {
+      "local": "protoc-gen-tonic",
       "out": ".mindclade-codegen/rust",
       "strategy": "all"
     },

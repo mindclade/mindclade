@@ -1,0 +1,55 @@
+syntax = "proto3";
+
+package mindclade.feature.v1;
+
+import "google/protobuf/timestamp.proto";
+import "proto/mindclade/artifact/v1/artifact_reference.proto";
+import "proto/mindclade/common/v1/error_detail.proto";
+import "proto/mindclade/job/v1/lease_fencing.proto";
+
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/feature/v1;featurev1";
+
+// FeatureMaterializationState is the durable execution lifecycle.
+enum FeatureMaterializationState {
+  FEATURE_MATERIALIZATION_STATE_UNSPECIFIED = 0;
+  FEATURE_MATERIALIZATION_STATE_ACCEPTED = 1;
+  FEATURE_MATERIALIZATION_STATE_RUNNING = 2;
+  FEATURE_MATERIALIZATION_STATE_SUCCEEDED = 3;
+  FEATURE_MATERIALIZATION_STATE_FAILED = 4;
+  FEATURE_MATERIALIZATION_STATE_CANCELLED = 5;
+  FEATURE_MATERIALIZATION_STATE_QUARANTINED = 6;
+}
+
+// FeatureMaterializationTerminalClassification describes an immutable terminal outcome.
+enum FeatureMaterializationTerminalClassification {
+  FEATURE_MATERIALIZATION_TERMINAL_CLASSIFICATION_UNSPECIFIED = 0;
+  FEATURE_MATERIALIZATION_TERMINAL_CLASSIFICATION_SUCCEEDED = 1;
+  FEATURE_MATERIALIZATION_TERMINAL_CLASSIFICATION_INVALID_PLAN = 2;
+  FEATURE_MATERIALIZATION_TERMINAL_CLASSIFICATION_POLICY_DENIED = 3;
+  FEATURE_MATERIALIZATION_TERMINAL_CLASSIFICATION_DETERMINISM_VIOLATION = 4;
+  FEATURE_MATERIALIZATION_TERMINAL_CLASSIFICATION_STALE_FENCE = 5;
+  FEATURE_MATERIALIZATION_TERMINAL_CLASSIFICATION_EXECUTION_FAILED = 6;
+  FEATURE_MATERIALIZATION_TERMINAL_CLASSIFICATION_CANCELLED = 7;
+  FEATURE_MATERIALIZATION_TERMINAL_CLASSIFICATION_DEADLINE_EXCEEDED = 8;
+}
+
+// FeatureMaterialization tracks bounded control state; feature values stay in artifacts.
+message FeatureMaterialization {
+  string name = 1;
+  string uid = 2;
+  int64 revision = 3;
+  string etag = 4;
+  string tenant_name = 5;
+  string project_name = 6;
+  FeatureMaterializationState state = 7;
+  mindclade.artifact.v1.ArtifactRef feature_plan = 8;
+  mindclade.artifact.v1.ArtifactRef transform_execution_plan = 9;
+  mindclade.job.v1.LeaseFence active_fence = 10;
+  mindclade.artifact.v1.ArtifactRef receipt = 11;
+  repeated mindclade.artifact.v1.ArtifactRef output_refs = 12;
+  mindclade.common.v1.ErrorDetail error = 13;
+  string policy_classification = 14;
+  google.protobuf.Timestamp create_time = 15;
+  google.protobuf.Timestamp start_time = 16;
+  google.protobuf.Timestamp complete_time = 17;
+}

@@ -1,0 +1,52 @@
+syntax = "proto3";
+
+package mindclade.dataset.v1;
+
+import "google/protobuf/field_mask.proto";
+import "proto/mindclade/artifact/v1/artifact_reference.proto";
+import "proto/mindclade/artifact/v1/evidence_reference.proto";
+import "proto/mindclade/common/v1/command_context.proto";
+import "proto/mindclade/common/v1/resource_reference.proto";
+import "proto/mindclade/dataset/v1/dataset.proto";
+
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/dataset/v1;datasetv1";
+
+// CreateDatasetCommand creates a logical dataset container.
+message CreateDatasetCommand {
+  mindclade.common.v1.CommandContext context = 1;
+  mindclade.common.v1.ResourceRef project = 2;
+  string dataset_id = 3;
+  string display_name = 4;
+  map<string, string> labels = 5;
+  map<string, string> annotations = 6;
+  string policy_classification = 7;
+}
+
+// UpdateDatasetCommand applies a concurrency-checked partial resource update.
+message UpdateDatasetCommand {
+  mindclade.common.v1.CommandContext context = 1;
+  Dataset dataset = 2;
+  google.protobuf.FieldMask update_mask = 3;
+  string etag = 4;
+}
+
+// PublishDatasetReleaseCommand atomically publishes a verified immutable manifest.
+message PublishDatasetReleaseCommand {
+  mindclade.common.v1.CommandContext context = 1;
+  mindclade.common.v1.ResourceRef dataset = 2;
+  string release_id = 3;
+  mindclade.artifact.v1.ArtifactRef manifest = 4;
+  repeated mindclade.artifact.v1.EvidenceRef qualification_evidence = 5;
+  mindclade.common.v1.ResourceRef parent_release = 6;
+  mindclade.common.v1.ResourceRef use_policy = 7;
+  string policy_classification = 8;
+}
+
+// RevokeDatasetReleaseCommand records a non-destructive release revocation.
+message RevokeDatasetReleaseCommand {
+  mindclade.common.v1.CommandContext context = 1;
+  mindclade.common.v1.ResourceRef dataset_release = 2;
+  string etag = 3;
+  string reason = 4;
+  repeated mindclade.artifact.v1.EvidenceRef evidence = 5;
+}

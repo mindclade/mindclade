@@ -1,0 +1,47 @@
+syntax = "proto3";
+
+package mindclade.training.v1;
+
+import "google/protobuf/timestamp.proto";
+import "proto/mindclade/artifact/v1/artifact_reference.proto";
+import "proto/mindclade/artifact/v1/evidence_reference.proto";
+import "proto/mindclade/common/v1/error_detail.proto";
+import "proto/mindclade/common/v1/resource_reference.proto";
+import "proto/mindclade/training/v1/training_progress.proto";
+
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/training/v1;trainingv1";
+
+// CheckpointState is the explicit prepare/write/verify/commit lifecycle.
+enum CheckpointState {
+  CHECKPOINT_STATE_UNSPECIFIED = 0;
+  CHECKPOINT_STATE_PREPARING = 1;
+  CHECKPOINT_STATE_WRITING = 2;
+  CHECKPOINT_STATE_VERIFYING = 3;
+  CHECKPOINT_STATE_COMMITTED = 4;
+  CHECKPOINT_STATE_INCOMPLETE = 5;
+  CHECKPOINT_STATE_REVOKED = 6;
+}
+
+// Checkpoint is resumable only when its immutable manifest is fully committed.
+message Checkpoint {
+  string name = 1;
+  string uid = 2;
+  int64 revision = 3;
+  string etag = 4;
+  string tenant_name = 5;
+  string project_name = 6;
+  string training_run_name = 7;
+  uint64 snapshot_epoch = 8;
+  CheckpointState state = 9;
+  mindclade.artifact.v1.ArtifactRef checkpoint_manifest = 10;
+  mindclade.artifact.v1.ArtifactRef logical_state_descriptor = 11;
+  TrainingProgress committed_progress = 12;
+  mindclade.common.v1.ResourceRef parent_checkpoint = 13;
+  mindclade.artifact.v1.ArtifactRef topology_envelope = 14;
+  mindclade.artifact.v1.EvidenceRef verification_evidence = 15;
+  mindclade.common.v1.ErrorDetail error = 16;
+  google.protobuf.Timestamp prepare_time = 17;
+  google.protobuf.Timestamp verify_time = 18;
+  google.protobuf.Timestamp commit_time = 19;
+  google.protobuf.Timestamp revoke_time = 20;
+}

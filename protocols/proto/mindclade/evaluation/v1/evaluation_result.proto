@@ -1,0 +1,92 @@
+syntax = "proto3";
+
+package mindclade.evaluation.v1;
+
+import "google/protobuf/timestamp.proto";
+import "proto/mindclade/artifact/v1/artifact_reference.proto";
+import "proto/mindclade/common/v1/resource_reference.proto";
+
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/evaluation/v1;evaluationv1";
+
+// EvaluationResultOutcome classifies complete report validity.
+enum EvaluationResultOutcome {
+  EVALUATION_RESULT_OUTCOME_UNSPECIFIED = 0;
+  EVALUATION_RESULT_OUTCOME_PASSED = 1;
+  EVALUATION_RESULT_OUTCOME_FAILED = 2;
+  EVALUATION_RESULT_OUTCOME_INCONCLUSIVE = 3;
+  EVALUATION_RESULT_OUTCOME_INVALID = 4;
+  EVALUATION_RESULT_OUTCOME_CANCELLED = 5;
+}
+
+// MetricDirection defines which direction is favorable for a metric.
+enum MetricDirection {
+  METRIC_DIRECTION_UNSPECIFIED = 0;
+  METRIC_DIRECTION_HIGHER_IS_BETTER = 1;
+  METRIC_DIRECTION_LOWER_IS_BETTER = 2;
+  METRIC_DIRECTION_TARGET_IS_BETTER = 3;
+}
+
+// ThresholdResult is the immutable evaluation of one frozen threshold rule.
+enum ThresholdResult {
+  THRESHOLD_RESULT_UNSPECIFIED = 0;
+  THRESHOLD_RESULT_PASS = 1;
+  THRESHOLD_RESULT_FAIL = 2;
+  THRESHOLD_RESULT_INCONCLUSIVE = 3;
+  THRESHOLD_RESULT_NOT_APPLICABLE = 4;
+}
+
+// MetricSummary is a bounded projection; sufficient statistics remain in report.
+message MetricSummary {
+  string metric_id = 1;
+  string metric_version = 2;
+  string unit = 3;
+  MetricDirection direction = 4;
+  double value = 5;
+  optional double interval_lower = 6;
+  optional double interval_upper = 7;
+  uint64 valid_count = 8;
+  uint64 invalid_count = 9;
+  string cohort_id = 10;
+}
+
+// ThresholdOutcome binds a rule to the exact observed metric and report evidence.
+message ThresholdOutcome {
+  string rule_id = 1;
+  string metric_id = 2;
+  ThresholdResult result = 3;
+  string reason_code = 4;
+  mindclade.artifact.v1.ArtifactRef evidence = 5;
+}
+
+// EvaluationFailureCount preserves classified failures without dropping hard samples.
+message EvaluationFailureCount {
+  string failure_class = 1;
+  uint64 count = 2;
+}
+
+// EvaluationResult is the immutable terminal projection of one evaluation report.
+message EvaluationResult {
+  string name = 1;
+  string uid = 2;
+  mindclade.common.v1.ResourceRef run = 3;
+  string run_digest = 4;
+  EvaluationResultOutcome outcome = 5;
+  // Authoritative machine-readable report with complete statistics and provenance.
+  mindclade.artifact.v1.ArtifactRef report = 6;
+  mindclade.artifact.v1.ArtifactRef suite = 7;
+  mindclade.artifact.v1.ArtifactRef snapshot = 8;
+  mindclade.artifact.v1.ArtifactRef dataset_manifest = 9;
+  mindclade.artifact.v1.ArtifactRef inference_protocol = 10;
+  // Ordered and bounded to the report's declared public summary limit.
+  repeated MetricSummary metrics = 11;
+  repeated ThresholdOutcome thresholds = 12;
+  repeated EvaluationFailureCount failure_counts = 13;
+  mindclade.artifact.v1.ArtifactRef leakage_evidence = 14;
+  mindclade.artifact.v1.ArtifactRef safety_evidence = 15;
+  mindclade.artifact.v1.ArtifactRef statistical_evidence = 16;
+  mindclade.artifact.v1.ArtifactRef performance_evidence = 17;
+  string source_revision = 18;
+  google.protobuf.Timestamp finalized_at = 19;
+  // sha256 digest of the canonical result projection.
+  string result_digest = 20;
+}

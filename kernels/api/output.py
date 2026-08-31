@@ -96,10 +96,8 @@ class OutputSpec(ContractModel):
         _nonempty(self.name, "output name")
         if self.version != 1:
             raise KernelContractError(f"unsupported OutputSpec version: {self.version}")
-        if not isinstance(self.shape, (Expr, tuple)):
+        if not isinstance(self.shape, ShapeExpr):
             raise KernelContractError("output shape must be a typed shape expression")
-        if isinstance(self.shape, tuple) and not all(isinstance(item, Expr) for item in self.shape):
-            raise KernelContractError("every output shape dimension must be a typed expression")
         if not isinstance(self.dtype, Expr):
             raise KernelContractError("output dtype must be a typed dtype expression")
         if not isinstance(self.device, Expr):
@@ -109,5 +107,3 @@ class OutputSpec(ContractModel):
         for axis in self.semantic_axes:
             _nonempty(axis, "semantic axis")
         _unique(self.semantic_axes, "output semantic_axes")
-        if isinstance(self.shape, tuple) and len(self.shape) != len(self.semantic_axes):
-            raise KernelContractError("output shape rank must match semantic_axes")

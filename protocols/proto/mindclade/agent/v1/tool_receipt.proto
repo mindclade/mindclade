@@ -1,0 +1,74 @@
+syntax = "proto3";
+
+package mindclade.agent.v1;
+
+import "google/protobuf/timestamp.proto";
+import "proto/mindclade/artifact/v1/artifact_reference.proto";
+import "proto/mindclade/common/v1/error_detail.proto";
+import "proto/mindclade/common/v1/resource_reference.proto";
+import "proto/mindclade/policy/v1/authorization_decision.proto";
+
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/agent/v1;agentv1";
+
+// ToolExecutionOutcome is the executor-observed terminal classification.
+enum ToolExecutionOutcome {
+  TOOL_EXECUTION_OUTCOME_UNSPECIFIED = 0;
+  TOOL_EXECUTION_OUTCOME_SUCCEEDED = 1;
+  TOOL_EXECUTION_OUTCOME_FAILED = 2;
+  TOOL_EXECUTION_OUTCOME_CANCELLED = 3;
+  TOOL_EXECUTION_OUTCOME_EXPIRED = 4;
+  TOOL_EXECUTION_OUTCOME_POLICY_DENIED = 5;
+  TOOL_EXECUTION_OUTCOME_RECONCILIATION_REQUIRED = 6;
+}
+
+// ToolSideEffectState is independently observed side-effect status.
+enum ToolSideEffectState {
+  TOOL_SIDE_EFFECT_STATE_UNSPECIFIED = 0;
+  TOOL_SIDE_EFFECT_STATE_NONE = 1;
+  TOOL_SIDE_EFFECT_STATE_COMMITTED = 2;
+  TOOL_SIDE_EFFECT_STATE_NOT_COMMITTED = 3;
+  TOOL_SIDE_EFFECT_STATE_PARTIAL = 4;
+  TOOL_SIDE_EFFECT_STATE_UNKNOWN = 5;
+  TOOL_SIDE_EFFECT_STATE_RECONCILED = 6;
+}
+
+// ToolResourceUsage is bounded reconciled accounting, not provider billing authority.
+message ToolResourceUsage {
+  uint64 input_bytes = 1;
+  uint64 output_bytes = 2;
+  uint64 cpu_milliseconds = 3;
+  uint64 accelerator_milliseconds = 4;
+  uint64 external_spend_micros = 5;
+}
+
+// ToolReceipt is executor-issued proof; a model assertion cannot substitute for it.
+message ToolReceipt {
+  string name = 1;
+  string uid = 2;
+  string call_id = 3;
+  string agent_run_name = 4;
+  string agent_step_name = 5;
+  mindclade.common.v1.ResourceRef tool = 6;
+  string tool_version = 7;
+  string attempt_id = 8;
+  uint64 lease_epoch = 9;
+  mindclade.policy.v1.AuthorizationDecision authorization = 10;
+  repeated mindclade.common.v1.ResourceRef approval_receipts = 11;
+  string idempotency_key = 12;
+  string input_digest = 13;
+  string expected_output_schema_digest = 14;
+  ToolExecutionOutcome outcome = 15;
+  ToolSideEffectState side_effect_state = 16;
+  // Ordered immutable outputs; unrestricted raw tool output is never embedded.
+  repeated mindclade.artifact.v1.ArtifactRef outputs = 17;
+  string output_digest = 18;
+  mindclade.artifact.v1.ArtifactRef reconciliation_evidence = 19;
+  mindclade.common.v1.ErrorDetail failure = 20;
+  ToolResourceUsage usage = 21;
+  google.protobuf.Timestamp started_at = 22;
+  google.protobuf.Timestamp completed_at = 23;
+  string executor_identity = 24;
+  string source_revision = 25;
+  // sha256 digest of the canonical signed receipt.
+  string receipt_digest = 26;
+}

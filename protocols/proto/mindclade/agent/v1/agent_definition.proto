@@ -1,0 +1,73 @@
+syntax = "proto3";
+
+package mindclade.agent.v1;
+
+import "google/protobuf/duration.proto";
+import "google/protobuf/timestamp.proto";
+import "proto/mindclade/artifact/v1/artifact_reference.proto";
+import "proto/mindclade/common/v1/resource_reference.proto";
+import "proto/mindclade/policy/v1/policy_reference.proto";
+
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/agent/v1;agentv1";
+
+// AgentDefinitionState is the controlled release lifecycle of an agent definition.
+enum AgentDefinitionState {
+  AGENT_DEFINITION_STATE_UNSPECIFIED = 0;
+  AGENT_DEFINITION_STATE_DRAFT = 1;
+  AGENT_DEFINITION_STATE_ACTIVE = 2;
+  AGENT_DEFINITION_STATE_DEPRECATED = 3;
+  AGENT_DEFINITION_STATE_REVOKED = 4;
+  AGENT_DEFINITION_STATE_ARCHIVED = 5;
+}
+
+// AgentBudgetEnvelope bounds every admitted run before work begins.
+message AgentBudgetEnvelope {
+  uint64 maximum_model_tokens = 1;
+  uint32 maximum_iterations = 2;
+  uint32 maximum_tool_calls = 3;
+  uint32 maximum_concurrent_branches = 4;
+  uint64 maximum_storage_bytes = 5;
+  uint64 maximum_external_spend_micros = 6;
+  google.protobuf.Duration maximum_wall_time = 7;
+  google.protobuf.Duration maximum_accelerator_time = 8;
+  google.protobuf.Duration maximum_cpu_time = 9;
+}
+
+// AgentExecutionLimits close recursive planning and dynamic tool expansion.
+message AgentExecutionLimits {
+  uint32 maximum_depth = 1;
+  uint32 maximum_fan_out = 2;
+  uint32 maximum_observations_per_step = 3;
+  uint32 maximum_artifact_references_per_call = 4;
+}
+
+// AgentDefinition is a versioned closed-world composition of released capabilities.
+message AgentDefinition {
+  string name = 1;
+  string uid = 2;
+  int64 revision = 3;
+  string etag = 4;
+  string tenant_id = 5;
+  string project_id = 6;
+  string display_name = 7;
+  string semantic_version = 8;
+  AgentDefinitionState state = 9;
+  string purpose = 10;
+  repeated string non_goals = 11;
+  // Authoritative schema-validated AgentDefinition document.
+  mindclade.artifact.v1.ArtifactRef definition = 12;
+  mindclade.common.v1.ResourceRef workflow_definition = 13;
+  // Exact allowlisted tool resources; runtime discovery cannot expand this set.
+  repeated mindclade.common.v1.ResourceRef eligible_tools = 14;
+  repeated mindclade.policy.v1.PolicyReference policy_snapshots = 15;
+  mindclade.artifact.v1.ArtifactRef input_schema = 16;
+  mindclade.artifact.v1.ArtifactRef output_schema = 17;
+  string model_capability = 18;
+  mindclade.common.v1.ResourceRef evaluation_suite = 19;
+  AgentBudgetEnvelope budget = 20;
+  AgentExecutionLimits limits = 21;
+  string qualification_level = 22;
+  google.protobuf.Timestamp create_time = 23;
+  google.protobuf.Timestamp update_time = 24;
+  optional google.protobuf.Timestamp delete_time = 25;
+}

@@ -1,0 +1,52 @@
+syntax = "proto3";
+
+package mindclade.feature.v1;
+
+import "google/protobuf/timestamp.proto";
+import "proto/mindclade/artifact/v1/artifact_reference.proto";
+import "proto/mindclade/common/v1/command_context.proto";
+import "proto/mindclade/common/v1/error_detail.proto";
+import "proto/mindclade/common/v1/resource_reference.proto";
+import "proto/mindclade/feature/v1/feature_materialization.proto";
+import "proto/mindclade/job/v1/lease_fencing.proto";
+
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/feature/v1;featurev1";
+
+// FeatureSchedulingHint is a bounded, advisory execution hint with no scientific meaning.
+message FeatureSchedulingHint {
+  string key = 1;
+  string value = 2;
+}
+
+// MaterializeFeaturesCommand dispatches fenced work using immutable plan references.
+message MaterializeFeaturesCommand {
+  mindclade.common.v1.CommandContext context = 1;
+  mindclade.common.v1.ResourceRef project = 2;
+  string materialization_id = 3;
+  mindclade.artifact.v1.ArtifactRef feature_plan = 4;
+  mindclade.artifact.v1.ArtifactRef transform_execution_plan = 5;
+  mindclade.job.v1.LeaseFence fence = 6;
+  google.protobuf.Timestamp deadline = 7;
+  mindclade.common.v1.ResourceRef delegated_capability = 8;
+  repeated FeatureSchedulingHint scheduling_hints = 9;
+}
+
+// CommitFeatureMaterializationCommand reconciles one fenced terminal worker result.
+message CommitFeatureMaterializationCommand {
+  mindclade.common.v1.CommandContext context = 1;
+  string materialization_name = 2;
+  mindclade.job.v1.LeaseFence fence = 3;
+  FeatureMaterializationTerminalClassification classification = 4;
+  mindclade.artifact.v1.ArtifactRef receipt = 5;
+  repeated mindclade.artifact.v1.ArtifactRef output_refs = 6;
+  mindclade.common.v1.ErrorDetail error = 7;
+  google.protobuf.Timestamp completed_at = 8;
+}
+
+// CancelFeatureMaterializationCommand requests cancellation without bypassing fencing.
+message CancelFeatureMaterializationCommand {
+  mindclade.common.v1.CommandContext context = 1;
+  string materialization_name = 2;
+  string etag = 3;
+  string reason = 4;
+}

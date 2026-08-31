@@ -6,7 +6,7 @@
 - Effective date: Pending connected ratification
 - Compatibility window: Authority fixed before Wave 1 durable contracts and generated clients
 - Supersedes: None
-- Superseded by: None
+- Superseded by: ADR-0015 for contract activation timing only; authority and compatibility law remains in force
 - Owners: Architecture, Contract Governance
 - Reviewers: Developer Platform, Security, Domain Owners
 
@@ -64,6 +64,11 @@ window where necessary, rollback, and explicit consumer evidence.
 
 Wave 0 freezes only the authority and generation law. Domain protocols are not
 stabilized until their owning wave demonstrates a real end-to-end consumer.
+
+ADR-0015 supersedes only that scheduling rule: the complete domain catalog now
+forms one clean-v1 baseline with generators, tests, and consumers. All source,
+generation, and post-baseline compatibility rules in this record remain in
+force.
 
 ## Consequences
 

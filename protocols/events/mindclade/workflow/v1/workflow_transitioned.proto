@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+package mindclade.events.workflow.v1;
+
+import "google/protobuf/timestamp.proto";
+import "proto/mindclade/artifact/v1/artifact_reference.proto";
+import "proto/mindclade/common/v1/event_envelope.proto";
+import "proto/mindclade/common/v1/resource_reference.proto";
+import "proto/mindclade/policy/v1/authorization_decision.proto";
+import "proto/mindclade/workflow/v1/workflow_run.proto";
+
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/workflow/v1;workflowv1";
+
+// WorkflowTransitioned is one revisioned append-only workflow state change.
+message WorkflowTransitioned {
+  mindclade.common.v1.EventEnvelope envelope = 1;
+  mindclade.common.v1.ResourceRef workflow_run = 2;
+  uint64 transition_sequence = 3;
+  mindclade.workflow.v1.WorkflowRunState from_state = 4;
+  mindclade.workflow.v1.WorkflowRunState to_state = 5;
+  repeated string from_node_ids = 6;
+  repeated string to_node_ids = 7;
+  string transition_reason_code = 8;
+  string attempt_id = 9;
+  uint64 lease_epoch = 10;
+  mindclade.policy.v1.AuthorizationDecision authorization = 11;
+  mindclade.artifact.v1.ArtifactRef transition_evidence = 12;
+  google.protobuf.Timestamp transitioned_at = 13;
+}

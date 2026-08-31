@@ -1,0 +1,79 @@
+syntax = "proto3";
+
+package mindclade.inference.v1;
+
+import "google/protobuf/timestamp.proto";
+import "proto/mindclade/artifact/v1/artifact_reference.proto";
+import "proto/mindclade/common/v1/error_detail.proto";
+import "proto/mindclade/common/v1/resource_reference.proto";
+import "proto/mindclade/inference/v1/inference_result.proto";
+
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/inference/v1;inferencev1";
+
+// InferenceCandidateState is the observable state of one bounded candidate.
+enum InferenceCandidateState {
+  INFERENCE_CANDIDATE_STATE_UNSPECIFIED = 0;
+  INFERENCE_CANDIDATE_STATE_QUEUED = 1;
+  INFERENCE_CANDIDATE_STATE_RUNNING = 2;
+  INFERENCE_CANDIDATE_STATE_PUBLISHED = 3;
+  INFERENCE_CANDIDATE_STATE_INVALID = 4;
+  INFERENCE_CANDIDATE_STATE_FAILED = 5;
+}
+
+// InferenceStreamCursor resumes strictly after a previously observed sequence.
+message InferenceStreamCursor {
+  string request_name = 1;
+  uint64 after_sequence = 2;
+  // Opaque, expiring token issued by the server for this exact request and sequence.
+  string resume_token = 3;
+}
+
+// InferenceProgress is a monotonic bounded progress projection.
+message InferenceProgress {
+  string lifecycle_state = 1;
+  // Integer basis points in the inclusive range 0..10000.
+  uint32 completion_basis_points = 2;
+  uint64 completed_work_units = 3;
+  optional uint64 total_work_units = 4;
+  // Stable safe status code, not an unrestricted log line.
+  string status_code = 5;
+}
+
+// InferenceCandidateUpdate publishes only identifiers and immutable artifacts.
+message InferenceCandidateUpdate {
+  string candidate_id = 1;
+  uint32 sample_index = 2;
+  InferenceCandidateState state = 3;
+  mindclade.artifact.v1.ArtifactRef output = 4;
+}
+
+// InferenceHeartbeat advances stream liveness without becoming durable progress truth.
+message InferenceHeartbeat {
+  google.protobuf.Timestamp observed_at = 1;
+}
+
+// InferenceFinalUpdate points to durable terminal truth without embedding a large result.
+message InferenceFinalUpdate {
+  mindclade.common.v1.ResourceRef result = 1;
+  InferenceResultOutcome outcome = 2;
+  mindclade.artifact.v1.ArtifactRef result_manifest = 3;
+  string result_digest = 4;
+}
+
+// InferenceStreamMessage is an ordered resumable update no larger than 64 KiB.
+message InferenceStreamMessage {
+  string request_name = 1;
+  // Strictly increasing within request_name; consumers deduplicate by this value.
+  uint64 sequence = 2;
+  google.protobuf.Timestamp emitted_at = 3;
+  // Opaque, expiring cursor for resuming after this message.
+  string resume_token = 4;
+
+  oneof update {
+    InferenceProgress progress = 5;
+    InferenceCandidateUpdate candidate = 6;
+    InferenceFinalUpdate final_result = 7;
+    mindclade.common.v1.ErrorDetail failure = 8;
+    InferenceHeartbeat heartbeat = 9;
+  }
+}

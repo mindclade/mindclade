@@ -6,23 +6,28 @@ contracts, build definitions, and immutable release inputs.
 
 ## Current status
 
-The repository is **FOUNDER_BOOTSTRAPPED** and Wave 1 source implementation is
-active. Wave 1 is limited to the common contract and durability kernel,
-cross-language generated projections, foundational libraries, local PostgreSQL
-integration, and offline release/qualification evidence.
+The repository is **FOUNDER_BOOTSTRAPPED**. The Wave 1 durability kernel remains
+active, and ADR-0015 activates the complete contract catalog as a one-time
+clean-v1 source baseline. Blueprint waves guide implementation order rather
+than deferring authoritative contract definitions.
 
 The active source boundary provides:
 
 - deterministic repository and architecture evidence;
-- common, artifact, job, audit, configuration, and release contracts;
-- pinned Go, Python, Rust, and TypeScript projections;
+- common, artifact, job, audit, and complete versioned domain contracts;
+- pinned Protobuf and gRPC projections for Go, Python, Rust, and TypeScript;
+- durable JSON Schema documents and a curated public OpenAPI facade;
+- generated-code consumption in product libraries and process boundaries;
+- Stainless-primary public SDK generation with an oagen parity shadow;
 - tenant-scoped idempotency, outbox/inbox, lease fencing, and reconciliation;
 - immutable artifact finalization and offline qualification tooling; and
 - a local CPU-only integration profile with no production authority.
 
-Dataset, model, training, inference, SDK, Kubernetes, cloud, and production
-capabilities remain absent. Source implementation does not imply connected
-GitHub, trusted signing, cloud, cluster, release, or production qualification.
+Contract activation does not by itself implement or qualify dataset, model,
+training, inference, agent, workflow, SDK-release, Kubernetes, cloud, or
+production capabilities. Source implementation does not imply connected
+GitHub, hosted SDK publication, trusted signing, cloud, cluster, release, GPU,
+scientific, or production qualification.
 
 ## Start here
 

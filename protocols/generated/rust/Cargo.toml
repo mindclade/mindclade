@@ -8,7 +8,11 @@ publish = false
 path = "lib.rs"
 
 [dependencies]
-protobuf.workspace = true
+prost.workspace = true
+prost-types.workspace = true
+tonic.workspace = true
+tonic-prost.workspace = true
 
 [dev-dependencies]
-protobuf-codegen.workspace = true
+protoc-gen-prost.workspace = true
+protoc-gen-tonic.workspace = true

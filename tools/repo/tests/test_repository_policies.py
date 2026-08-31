@@ -45,6 +45,7 @@ from owner_policy import (  # noqa: E402
 from path_policy import (  # noqa: E402
     PolicyError,
     discover_actual_paths,
+    is_all_contract_baseline_path,
     normalize_path,
     validate_manifest,
     validate_populated_paths,
@@ -70,7 +71,7 @@ class RepositoryPolicyTest(unittest.TestCase):
 
     def test_manifest_is_semantically_valid(self) -> None:
         self.assertEqual(validate_manifest(self.manifest), [])
-        self.assertEqual(len(self.manifest["paths"]), 2626)
+        self.assertEqual(len(self.manifest["paths"]), 2632)
         wave_one = [entry for entry in self.manifest["paths"] if entry["activation_wave"] == "1"]
         self.assertEqual(len(wave_one), 398)
         for entry in wave_one:
@@ -80,6 +81,9 @@ class RepositoryPolicyTest(unittest.TestCase):
                 if status == "target":
                     self.assertEqual(entry["build_targets"], [])
                     self.assertEqual(entry["test_targets"], [])
+                elif is_all_contract_baseline_path(entry["path"]):
+                    self.assertEqual(entry["build_targets"], ["//:all_contract_sources"])
+                    self.assertEqual(entry["test_targets"], ["//:all_contract_tests"])
                 elif entry["path"].startswith("third_party/packages/deep_ep/"):
                     self.assertEqual(
                         entry["build_targets"],
@@ -102,6 +106,35 @@ class RepositoryPolicyTest(unittest.TestCase):
                     self.assertEqual(status, "generated")
                 if entry["source_authority"] == "hand-authored":
                     self.assertEqual(status, "active")
+
+    def test_all_contract_clean_v1_activation_is_closed_and_authoritative(self) -> None:
+        entries = {entry["path"]: entry for entry in self.manifest["paths"]}
+        decision = entries["docs/adr/0015-all-contracts-clean-v1-baseline.md"]
+        self.assertEqual(decision["status"], "active")
+        self.assertEqual(decision["activation_wave"], "0")
+
+        baseline = [
+            entry
+            for entry in self.manifest["paths"]
+            if is_all_contract_baseline_path(entry["path"])
+        ]
+        self.assertGreaterEqual(len(baseline), 430)
+        for entry in baseline:
+            with self.subTest(path=entry["path"]):
+                expected_status = (
+                    "generated"
+                    if entry["source_authority"] == "reviewed-generated"
+                    else "active"
+                )
+                self.assertEqual(entry["status"], expected_status)
+                self.assertEqual(entry["build_targets"], ["//:all_contract_sources"])
+                self.assertEqual(entry["test_targets"], ["//:all_contract_tests"])
+
+        self.assertEqual(
+            entries["protocols/schemas/dataset_manifest/dataset_manifest.schema.json"]["status"],
+            "active",
+        )
+        self.assertEqual(entries["protocols/openapi/external-api.yaml"]["status"], "active")
 
     def test_target_validation_never_falls_back_to_bazelisk(self) -> None:
         manifest = {

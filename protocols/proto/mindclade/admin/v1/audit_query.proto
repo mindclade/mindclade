@@ -1,0 +1,74 @@
+syntax = "proto3";
+
+package mindclade.admin.v1;
+
+import "google/protobuf/timestamp.proto";
+import "proto/mindclade/artifact/v1/artifact_reference.proto";
+import "proto/mindclade/common/v1/pagination.proto";
+import "proto/mindclade/common/v1/resource_reference.proto";
+
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/admin/v1;adminv1";
+
+// AuditActionResult is the safe result projection of an audited action.
+enum AuditActionResult {
+  AUDIT_ACTION_RESULT_UNSPECIFIED = 0;
+  AUDIT_ACTION_RESULT_SUCCEEDED = 1;
+  AUDIT_ACTION_RESULT_FAILED = 2;
+  AUDIT_ACTION_RESULT_DENIED = 3;
+  AUDIT_ACTION_RESULT_CANCELLED = 4;
+}
+
+// AuditQuery is a bounded, side-effect-free tenant/project audit search.
+message AuditQuery {
+  // Canonical tenant or project parent; server authorization defines visibility.
+  string parent = 1;
+  google.protobuf.Timestamp start_time = 2;
+  google.protobuf.Timestamp end_time = 3;
+  repeated string actor_principal_refs = 4;
+  repeated string actions = 5;
+  repeated mindclade.common.v1.ResourceRef resources = 6;
+  repeated AuditActionResult results = 7;
+  repeated string policy_reason_codes = 8;
+  string request_id = 9;
+  string trace_id = 10;
+  mindclade.common.v1.PageRequest page = 11;
+}
+
+// AuditRecord is a payload-minimized query projection of immutable audit truth.
+message AuditRecord {
+  string event_id = 1;
+  google.protobuf.Timestamp occurred_at = 2;
+  string actor_principal_ref = 3;
+  string delegated_principal_ref = 4;
+  string authentication_context_digest = 5;
+  string request_origin_class = 6;
+  string tenant_id = 7;
+  string project_id = 8;
+  string action = 9;
+  mindclade.common.v1.ResourceRef resource = 10;
+  string authorization_decision_digest = 11;
+  string before_revision = 12;
+  string after_revision = 13;
+  string policy_reason_code = 14;
+  AuditActionResult result = 15;
+  string failure_class = 16;
+  string request_id = 17;
+  string trace_id = 18;
+  // Digest reference to protected detail; sensitive payloads are never embedded.
+  string detail_digest = 19;
+}
+
+// AuditQueryPage is an authorization-filtered stable page with no count leakage.
+message AuditQueryPage {
+  repeated AuditRecord records = 1;
+  mindclade.common.v1.PageResponse page = 2;
+}
+
+// AuditExport is an immutable, policy-controlled result for queries too large to page.
+message AuditExport {
+  string name = 1;
+  mindclade.artifact.v1.ArtifactRef artifact = 2;
+  string query_digest = 3;
+  google.protobuf.Timestamp create_time = 4;
+  google.protobuf.Timestamp expire_time = 5;
+}

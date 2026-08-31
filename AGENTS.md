@@ -16,9 +16,11 @@ weaken the architecture, security, safety, or evidence rules here.
   immutable release inputs. It does not own GitHub organization settings,
   bootstrap trust, cloud infrastructure, live Kubernetes desired state, or
   environment secrets.
-- Wave 0 contains governance and tooling only. Do not create a target or
-  deferred product path until its activation wave has a real implementation,
-  owner, tests, build target, and evidence.
+- Blueprint waves remain the default implementation sequence. ADR-0015 makes
+  their timing guidance for the complete contract program: a contract path may
+  be populated only when its manifest status is `active` or `generated` and it
+  has a real implementation, owner, build/test labels, consumer, and evidence.
+  Target and deferred non-contract product paths remain prohibited.
 
 ## Required workflow
 
