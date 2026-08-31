@@ -1,4 +1,4 @@
-# GENERATED FILE - DO NOT EDIT. Generator: kernels.native.codegen.generate@3.
+# GENERATED FILE - DO NOT EDIT. Generator: kernels.native.codegen.generate@4.
 from __future__ import annotations
 
 import torch

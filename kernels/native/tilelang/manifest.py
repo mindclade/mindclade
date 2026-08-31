@@ -13,7 +13,7 @@ import re
 from typing import Any
 
 GENERATOR_ID = "kernels.native.codegen.generate"
-GENERATOR_VERSION = 3
+GENERATOR_VERSION = 4
 NAMESPACE = "mindclade"
 REGISTRATION_MODE = "build_time_generated"
 

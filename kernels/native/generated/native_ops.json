@@ -1,9 +1,9 @@
 {
   "generator": {
     "id": "kernels.native.codegen.generate",
-    "version": 3
+    "version": 4
   },
-  "manifest_digest": "sha256:e8dd9b0b3cc0c2ba14a5fb89006ddac83e336c8674e6ff9e6bc69358f3f90729",
+  "manifest_digest": "sha256:40d45edddcfe9d487097c28cafda58498355e32ccba2340909b7258a9572ea79",
   "namespace": "mindclade",
   "operators": [
     {

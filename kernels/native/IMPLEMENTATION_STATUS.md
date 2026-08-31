@@ -18,7 +18,7 @@ Overall readiness: TARGET
 | Declared operations | 5 |
 | Qualified operations | 0 |
 | Active operations | 0 |
-| kernel-k0 | infrastructure checks pass; no operation promoted |
+| kernel-k0 | not achieved |
 | CUDA qualification | not qualified |
 | TileLang qualification | not qualified |
 | SM90 performance | unmeasured |
@@ -105,10 +105,11 @@ This is an architecture milestone, not a production-readiness claim.
 
 ## Current source verification
 
-- `python -m pytest -q -p no:cacheprovider kernels/native/tests`: 142 passed.
+- `python -m pytest -q -p no:cacheprovider kernels/native/tests`: 159 passed.
 - `python -m pytest -q -p no:cacheprovider tools/repo/tests/test_repository_policies.py`:
   18 passed with 908 subtests.
 - Selected Bazel API/native/codegen/TMA/swizzle lane: 14 targets passed.
+- Direct Pairformer/API source lane: 76 passed.
 - Repository-path manifest and architecture projections regenerate from their
   declared sources at 2,636 governed paths.
 

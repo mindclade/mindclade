@@ -4,7 +4,12 @@ from dataclasses import FrozenInstanceError
 
 import pytest
 
-from kernels.api.backward import BackwardSpec
+from kernels.api.backward import (
+    BackwardArgumentBinding,
+    BackwardArgumentSource,
+    BackwardSpec,
+    MissingGradientPolicy,
+)
 from kernels.api.capability import (
     CapabilityEnvelope,
     DimensionConstraint,
@@ -32,6 +37,17 @@ from kernels.api.schedule import ScheduleSpec, SpecializationSpec
 from kernels.api.workload import WorkloadSpec
 
 _SHA = "sha256:" + "a" * 64
+
+
+def required_bindings() -> tuple[BackwardArgumentBinding, ...]:
+    return (
+        BackwardArgumentBinding(
+            "x", BackwardArgumentSource.OPERATOR_ARGUMENT, "x"
+        ),
+        BackwardArgumentBinding(
+            "grad_result", BackwardArgumentSource.OUTPUT_GRADIENT, "result"
+        ),
+    )
 
 
 def output(name: str = "result", *, visible: bool = True, saved: bool = False) -> OutputSpec:
@@ -71,6 +87,7 @@ def required_kernel(**changes: object) -> KernelSpec:
         schema="_example_bwd(Tensor grad_result, Tensor x) -> Tensor grad_x",
         builder="kernels.demo.example.tilelang:build_backward",
         symbol="mindclade_tilelang_example_bwd_launch",
+        argument_bindings=required_bindings(),
         gradients=(GradientSpec("x", "grad_x"),),
         supports_double_backward=False,
     )
@@ -150,6 +167,7 @@ def test_named_gradient_must_reference_semantic_input_and_backward_output() -> N
         schema="_example_bwd(Tensor grad_result, Tensor x) -> Tensor grad_x",
         builder="pkg:builder",
         symbol="mindclade_tilelang_example_bwd_launch",
+        argument_bindings=required_bindings(),
         gradients=(GradientSpec("weight", "grad_x"),),
         supports_double_backward=False,
     )
@@ -178,11 +196,354 @@ def test_double_backward_claim_fails_without_second_order_contract() -> None:
         schema="_example_bwd(Tensor grad_result, Tensor x) -> Tensor grad_x",
         builder="pkg:backward",
         symbol="mindclade_tilelang_example_bwd_launch",
+        argument_bindings=required_bindings(),
         gradients=(GradientSpec("x", "grad_x"),),
         supports_double_backward=True,
     )
     with pytest.raises(KernelContractError, match="second-order provider"):
         required_kernel(backward=backward)
+
+
+def test_backward_bindings_are_canonical_and_cover_provider_arguments() -> None:
+    spec = required_kernel()
+    assert tuple(
+        binding.provider_argument for binding in spec.backward.argument_bindings
+    ) == ("grad_result", "x")
+    incomplete = BackwardSpec(
+        schema="_example_bwd(Tensor grad_result, Tensor x) -> Tensor grad_x",
+        builder="pkg:backward",
+        symbol="example_bwd_launch",
+        argument_bindings=(required_bindings()[0],),
+        gradients=(GradientSpec("x", "grad_x"),),
+        supports_double_backward=False,
+    )
+    with pytest.raises(KernelContractError, match="exactly cover"):
+        required_kernel(backward=incomplete)
+
+
+def test_semantic_and_forward_parameter_kinds_must_match() -> None:
+    forward = ForwardSpec(
+        schema="_example_fwd(float x) -> Tensor result",
+        builder="pkg:forward",
+        symbol="example_fwd_launch",
+        outputs=(output(),),
+    )
+    with pytest.raises(SchemaError, match="names and kinds"):
+        required_kernel(forward=forward)
+
+
+def test_semantic_and_forward_output_kinds_must_match() -> None:
+    forward = ForwardSpec(
+        schema="_example_fwd(Tensor x) -> float result",
+        builder="pkg:forward",
+        symbol="example_fwd_launch",
+        outputs=(output(),),
+    )
+    with pytest.raises(SchemaError, match="output names and kinds"):
+        required_kernel(forward=forward)
+
+
+def test_backward_binding_sources_and_kinds_are_validated_by_name() -> None:
+    bad_source = BackwardSpec(
+        schema="_example_bwd(Tensor grad_result, Tensor x) -> Tensor grad_x",
+        builder="pkg:backward",
+        symbol="example_bwd_launch",
+        argument_bindings=(
+            BackwardArgumentBinding(
+                "grad_result", BackwardArgumentSource.OUTPUT_GRADIENT, "missing"
+            ),
+            required_bindings()[0],
+        ),
+        gradients=(GradientSpec("x", "grad_x"),),
+        supports_double_backward=False,
+    )
+    with pytest.raises(KernelContractError, match="not a forward output"):
+        required_kernel(backward=bad_source)
+
+    bad_kind = BackwardSpec(
+        schema="_example_bwd(Tensor grad_result, float x) -> Tensor grad_x",
+        builder="pkg:backward",
+        symbol="example_bwd_launch",
+        argument_bindings=required_bindings(),
+        gradients=(GradientSpec("x", "grad_x"),),
+        supports_double_backward=False,
+    )
+    with pytest.raises(SchemaError, match="does not match semantic kind"):
+        required_kernel(backward=bad_kind)
+
+
+def test_saved_forward_outputs_require_named_consumption() -> None:
+    result = output()
+    lse = output("lse", visible=False, saved=True)
+    forward = ForwardSpec(
+        schema="_example_fwd(Tensor x) -> (Tensor result, Tensor lse)",
+        builder="pkg:forward",
+        symbol="example_fwd_launch",
+        outputs=(result, lse),
+    )
+    backward = BackwardSpec(
+        schema=(
+            "_example_bwd(Tensor grad_result, Tensor x, Tensor lse) "
+            "-> Tensor grad_x"
+        ),
+        builder="pkg:backward",
+        symbol="example_bwd_launch",
+        argument_bindings=(
+            *required_bindings(),
+            BackwardArgumentBinding(
+                "lse", BackwardArgumentSource.FORWARD_OUTPUT, "lse"
+            ),
+        ),
+        gradients=(GradientSpec("x", "grad_x"),),
+        supports_double_backward=False,
+    )
+    spec = required_kernel(
+        operator_schema="example(Tensor x) -> (Tensor result, Tensor lse)",
+        facade_outputs=("result",),
+        forward=forward,
+        backward=backward,
+    )
+    assert spec.backward is backward
+
+    unsaved = output("lse", visible=False, saved=False)
+    with pytest.raises(KernelContractError, match="not saved for backward"):
+        required_kernel(
+            operator_schema="example(Tensor x) -> (Tensor result, Tensor lse)",
+            facade_outputs=("result",),
+            forward=ForwardSpec(
+                schema="_example_fwd(Tensor x) -> (Tensor result, Tensor lse)",
+                builder="pkg:forward",
+                symbol="example_fwd_launch",
+                outputs=(result, unsaved),
+            ),
+            backward=backward,
+        )
+
+
+def test_needs_input_grad_requires_named_tensor_gradient_and_bool_provider() -> None:
+    backward = BackwardSpec(
+        schema=(
+            "_example_bwd(Tensor grad_result, Tensor x, bool need_x_grad) "
+            "-> Tensor grad_x"
+        ),
+        builder="pkg:backward",
+        symbol="example_bwd_launch",
+        argument_bindings=(
+            *required_bindings(),
+            BackwardArgumentBinding(
+                "need_x_grad", BackwardArgumentSource.NEEDS_INPUT_GRAD, "x"
+            ),
+        ),
+        gradients=(GradientSpec("x", "grad_x"),),
+        supports_double_backward=False,
+    )
+    assert required_kernel(backward=backward).backward is backward
+
+    bad = BackwardSpec(
+        schema=(
+            "_example_bwd(Tensor grad_result, Tensor x, bool need_y_grad) "
+            "-> Tensor grad_x"
+        ),
+        builder="pkg:backward",
+        symbol="example_bwd_launch",
+        argument_bindings=(
+            *required_bindings(),
+            BackwardArgumentBinding(
+                "need_y_grad", BackwardArgumentSource.NEEDS_INPUT_GRAD, "y"
+            ),
+        ),
+        gradients=(GradientSpec("x", "grad_x"),),
+        supports_double_backward=False,
+    )
+    with pytest.raises(KernelContractError, match="not a declared gradient input"):
+        required_kernel(backward=bad)
+
+
+def test_gradient_mappings_exactly_cover_named_backward_outputs() -> None:
+    backward = BackwardSpec(
+        schema=(
+            "_example_bwd(Tensor grad_result, Tensor x) "
+            "-> (Tensor grad_x, Tensor scratch)"
+        ),
+        builder="pkg:backward",
+        symbol="example_bwd_launch",
+        argument_bindings=required_bindings(),
+        gradients=(GradientSpec("x", "grad_x"),),
+        supports_double_backward=False,
+    )
+    with pytest.raises(KernelContractError, match="exactly cover backward outputs"):
+        required_kernel(backward=backward)
+
+
+def test_pass_none_requires_an_optional_provider_parameter() -> None:
+    binding = BackwardArgumentBinding(
+        "grad_result",
+        BackwardArgumentSource.OUTPUT_GRADIENT,
+        "result",
+        MissingGradientPolicy.PASS_NONE,
+    )
+    backward = BackwardSpec(
+        schema="_example_bwd(Tensor grad_result, Tensor x) -> Tensor grad_x",
+        builder="pkg:backward",
+        symbol="example_bwd_launch",
+        argument_bindings=(binding, required_bindings()[0]),
+        gradients=(GradientSpec("x", "grad_x"),),
+        supports_double_backward=False,
+    )
+    with pytest.raises(SchemaError, match="requires an optional provider kind"):
+        required_kernel(backward=backward)
+
+    optional = BackwardSpec(
+        schema="_example_bwd(Tensor? grad_result, Tensor x) -> Tensor grad_x",
+        builder="pkg:backward",
+        symbol="example_bwd_launch",
+        argument_bindings=(binding, required_bindings()[0]),
+        gradients=(GradientSpec("x", "grad_x"),),
+        supports_double_backward=False,
+    )
+    assert required_kernel(backward=optional).backward is optional
+
+
+def test_zero_missing_gradient_requires_and_consumes_saved_forward_output() -> None:
+    zero_binding = BackwardArgumentBinding(
+        "grad_result",
+        BackwardArgumentSource.OUTPUT_GRADIENT,
+        "result",
+        MissingGradientPolicy.ZERO,
+    )
+    backward = BackwardSpec(
+        schema="_example_bwd(Tensor grad_result, Tensor x) -> Tensor grad_x",
+        builder="pkg:backward",
+        symbol="example_bwd_launch",
+        argument_bindings=(zero_binding, required_bindings()[0]),
+        gradients=(GradientSpec("x", "grad_x"),),
+        supports_double_backward=False,
+    )
+    with pytest.raises(KernelContractError, match="ZERO.*saved for backward"):
+        required_kernel(backward=backward)
+
+    saved_result = output(saved=True)
+    forward = ForwardSpec(
+        schema="_example_fwd(Tensor x) -> Tensor result",
+        builder="pkg:forward",
+        symbol="example_fwd_launch",
+        outputs=(saved_result,),
+    )
+    with pytest.raises(KernelContractError, match="hidden_device_allocation=True"):
+        required_kernel(forward=forward, backward=backward)
+    allocation_launch = LaunchContract(
+        hidden_device_allocation=True,
+        graph_capture_safe=False,
+    )
+    assert required_kernel(
+        forward=forward,
+        backward=backward,
+        launch=allocation_launch,
+    ).backward is backward
+
+
+def test_duplicate_output_gradient_bindings_reject_conflicting_missing_policies() -> None:
+    backward = BackwardSpec(
+        schema=(
+            "_example_bwd(Tensor grad_primary, Tensor grad_secondary, Tensor x) "
+            "-> Tensor grad_x"
+        ),
+        builder="pkg:backward",
+        symbol="example_bwd_launch",
+        argument_bindings=(
+            BackwardArgumentBinding(
+                "grad_primary",
+                BackwardArgumentSource.OUTPUT_GRADIENT,
+                "result",
+                MissingGradientPolicy.ERROR,
+            ),
+            BackwardArgumentBinding(
+                "grad_secondary",
+                BackwardArgumentSource.OUTPUT_GRADIENT,
+                "result",
+                MissingGradientPolicy.ZERO,
+            ),
+            required_bindings()[0],
+        ),
+        gradients=(GradientSpec("x", "grad_x"),),
+        supports_double_backward=False,
+    )
+    with pytest.raises(KernelContractError, match="conflicting missing-gradient policies"):
+        required_kernel(backward=backward)
+
+
+def test_each_gradient_input_requires_operator_argument_metadata_binding() -> None:
+    backward = BackwardSpec(
+        schema="_example_bwd(Tensor grad_result, Tensor x) -> Tensor grad_x",
+        builder="pkg:backward",
+        symbol="example_bwd_launch",
+        argument_bindings=(
+            BackwardArgumentBinding(
+                "grad_result", BackwardArgumentSource.OUTPUT_GRADIENT, "result"
+            ),
+            BackwardArgumentBinding(
+                "x", BackwardArgumentSource.OUTPUT_GRADIENT, "result"
+            ),
+        ),
+        gradients=(GradientSpec("x", "grad_x"),),
+        supports_double_backward=False,
+    )
+    with pytest.raises(KernelContractError, match="requires an OPERATOR_ARGUMENT"):
+        required_kernel(backward=backward)
+
+
+def test_optional_gradient_requires_exactly_one_needs_input_grad_binding() -> None:
+    missing_request = BackwardSpec(
+        schema="_example_bwd(Tensor grad_result, Tensor x) -> Tensor? grad_x",
+        builder="pkg:backward",
+        symbol="example_bwd_launch",
+        argument_bindings=required_bindings(),
+        gradients=(GradientSpec("x", "grad_x", optional=True),),
+        supports_double_backward=False,
+    )
+    with pytest.raises(KernelContractError, match="exactly one NEEDS_INPUT_GRAD"):
+        required_kernel(backward=missing_request)
+
+    represented = BackwardSpec(
+        schema=(
+            "_example_bwd(Tensor grad_result, Tensor x, bool need_x_grad) "
+            "-> Tensor? grad_x"
+        ),
+        builder="pkg:backward",
+        symbol="example_bwd_launch",
+        argument_bindings=(
+            *required_bindings(),
+            BackwardArgumentBinding(
+                "need_x_grad", BackwardArgumentSource.NEEDS_INPUT_GRAD, "x"
+            ),
+        ),
+        gradients=(GradientSpec("x", "grad_x", optional=True),),
+        supports_double_backward=False,
+    )
+    assert required_kernel(backward=represented).backward is represented
+
+
+def test_optional_tensor_operator_argument_binding_requires_schema_v2() -> None:
+    forward = ForwardSpec(
+        schema="_example_fwd(Tensor? x) -> Tensor result",
+        builder="pkg:forward",
+        symbol="example_fwd_launch",
+        outputs=(output(),),
+    )
+    backward = BackwardSpec(
+        schema="_example_bwd(Tensor grad_result, Tensor? x) -> Tensor grad_x",
+        builder="pkg:backward",
+        symbol="example_bwd_launch",
+        argument_bindings=required_bindings(),
+        gradients=(GradientSpec("x", "grad_x"),),
+        supports_double_backward=False,
+    )
+    with pytest.raises(SchemaError, match="require schema version 2"):
+        required_kernel(
+            operator_schema="example(Tensor? x) -> Tensor result",
+            forward=forward,
+            backward=backward,
+        )
 
 
 def test_launch_and_effect_contracts_fail_on_false_safety_claims() -> None:

@@ -40,7 +40,7 @@ def _manifest(operators: list[dict] | None = None) -> bytes:
         "schema_version": 3,
         "generator": {
             "id": "kernels.native.codegen.generate",
-            "version": 3,
+            "version": 4,
         },
         "source_inventory_sha256": _digest(
             loader._canonical_json(source_inventory)

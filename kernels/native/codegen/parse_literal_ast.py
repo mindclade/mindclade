@@ -33,6 +33,7 @@ _CONSTRUCTOR_NAMES = frozenset(
     {
         "Add",
         "And",
+        "BackwardArgumentBinding",
         "BackwardSpec",
         "BoolLiteral",
         "Broadcastable",
@@ -100,8 +101,10 @@ _CONSTRUCTOR_NAMES = frozenset(
 _ENUM_NAMES = frozenset(
     {
         "AutogradPolicy",
+        "BackwardArgumentSource",
         "DeterminismClass",
         "ImplementationTier",
+        "MissingGradientPolicy",
         "ScalarType",
     }
 )

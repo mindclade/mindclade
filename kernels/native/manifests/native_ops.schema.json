@@ -15,7 +15,7 @@
       "required": ["id", "version"],
       "properties": {
         "id": {"const": "kernels.native.codegen.generate"},
-        "version": {"const": 3}
+        "version": {"const": 4}
       }
     },
     "source_inventory_sha256": {"$ref": "#/$defs/digest"},
@@ -128,6 +128,24 @@
         "version": {"const": 1}
       }
     },
+    "backward_argument_binding": {
+      "type": "object", "additionalProperties": false,
+      "required": [
+        "type", "provider_argument", "source", "source_name", "missing", "version"
+      ],
+      "properties": {
+        "type": {"const": "BackwardArgumentBinding"},
+        "provider_argument": {"$ref": "#/$defs/value_name"},
+        "source": {
+          "enum": [
+            "output_gradient", "operator_argument", "forward_output", "needs_input_grad"
+          ]
+        },
+        "source_name": {"$ref": "#/$defs/value_name"},
+        "missing": {"enum": ["error", "zero", "pass_none"]},
+        "version": {"const": 1}
+      }
+    },
     "workspace": {
       "type": "object", "additionalProperties": false,
       "required": ["type", "name", "shape", "dtype", "zero_initialize", "lifetime", "version"],
@@ -193,12 +211,17 @@
         {"type": "null"},
         {
           "type": "object", "additionalProperties": false,
-          "required": ["type", "schema", "builder", "symbol", "gradients", "supports_double_backward", "program_group", "version"],
+          "required": ["type", "schema", "builder", "symbol", "argument_bindings", "gradients", "supports_double_backward", "program_group", "version"],
           "properties": {
             "type": {"const": "BackwardSpec"},
             "schema": {"$ref": "#/$defs/schema"},
             "builder": {"$ref": "#/$defs/callable"},
             "symbol": {"$ref": "#/$defs/symbol"},
+            "argument_bindings": {
+              "type": "array", "minItems": 1, "maxItems": 64,
+              "items": {"$ref": "#/$defs/backward_argument_binding"},
+              "uniqueItems": true
+            },
             "gradients": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/gradient"}, "uniqueItems": true},
             "supports_double_backward": {"type": "boolean"},
             "program_group": {"$ref": "#/$defs/program_group"},

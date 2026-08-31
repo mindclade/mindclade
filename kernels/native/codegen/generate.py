@@ -9,12 +9,18 @@ import json
 from pathlib import Path
 from typing import Any
 
-from kernels.api import AutogradPolicy, Expr, content_digest
+from kernels.api import (
+    AutogradPolicy,
+    BackwardArgumentSource,
+    Expr,
+    MissingGradientPolicy,
+    content_digest,
+)
 from kernels.native.codegen.discover import DiscoveredKernelSpec, discover_specs
 from kernels.native.codegen.schema import ParsedSchema, parse_schema
 
 GENERATOR_ID = "kernels.native.codegen.generate"
-GENERATOR_VERSION = 3
+GENERATOR_VERSION = 4
 SCHEMA_VERSION = 3
 
 GENERATED_FILENAMES = (
@@ -230,8 +236,20 @@ def _split_identity(identity: str) -> tuple[str, str]:
 def _render_declarative_fake(item: DiscoveredKernelSpec, index: int) -> list[str]:
     spec = item.spec
     schema = parse_schema(spec.operator_schema)
-    tensor_arguments = [argument.name for argument in schema.args if argument.kind == "Tensor"]
-    scalar_arguments = [argument.name for argument in schema.args if argument.kind != "Tensor"]
+    for argument in schema.args:
+        if not argument.is_tensor or not argument.is_optional:
+            continue
+        if any(
+            _contract_references_argument(expression, argument.name)
+            for output in spec.forward.outputs
+            for expression in (output.shape, output.dtype, output.device)
+        ):
+            raise ValueError(
+                f"{spec.qualified_name} declarative fake depends on optional Tensor "
+                f"argument {argument.name!r}; declare a custom fake"
+            )
+    tensor_arguments = [argument.name for argument in schema.args if argument.is_tensor]
+    scalar_arguments = [argument.name for argument in schema.args if not argument.is_tensor]
     lines = [f"def _mindclade_fake_{index}({', '.join(schema.argument_names)}):"]
     lines.append("    metadata = {" + ", ".join(f"{name!r}: {name}" for name in tensor_arguments) + "}")
     lines.append("    scalars = {" + ", ".join(f"{name!r}: {name}" for name in scalar_arguments) + "}")
@@ -248,6 +266,226 @@ def _render_declarative_fake(item: DiscoveredKernelSpec, index: int) -> list[str
         lines.append("    return (" + ", ".join(rendered_outputs) + ")")
     lines.extend(("", ""))
     return lines
+
+
+def _contract_references_argument(value: Any, argument: str) -> bool:
+    data = _json_value(value)
+    if isinstance(data, dict):
+        if data.get("argument") == argument:
+            return True
+        return any(
+            _contract_references_argument(item, argument) for item in data.values()
+        )
+    if isinstance(data, list):
+        return any(_contract_references_argument(item, argument) for item in data)
+    return False
+
+
+def _binding_map(item: DiscoveredKernelSpec):
+    backward = item.spec.backward
+    if backward is None:
+        return {}
+    return {binding.provider_argument: binding for binding in backward.argument_bindings}
+
+
+def _required_saved_values(item: DiscoveredKernelSpec):
+    """Return deterministic tensor/scalar context plans for REQUIRED autograd."""
+
+    spec = item.spec
+    assert spec.backward is not None
+    semantic = parse_schema(spec.operator_schema)
+    bindings = spec.backward.argument_bindings
+    operator_sources = {
+        binding.source_name
+        for binding in bindings
+        if binding.source is BackwardArgumentSource.OPERATOR_ARGUMENT
+    }
+    forward_sources = {
+        binding.source_name
+        for binding in bindings
+        if binding.source is BackwardArgumentSource.FORWARD_OUTPUT
+        or (
+            binding.source is BackwardArgumentSource.OUTPUT_GRADIENT
+            and binding.missing is MissingGradientPolicy.ZERO
+        )
+    }
+    tensor_values: list[tuple[BackwardArgumentSource, str, str]] = []
+    scalar_values: list[tuple[BackwardArgumentSource, str, str]] = []
+    for position, argument in enumerate(semantic.args):
+        if argument.name not in operator_sources:
+            continue
+        target = tensor_values if argument.is_tensor else scalar_values
+        target.append(
+            (
+                BackwardArgumentSource.OPERATOR_ARGUMENT,
+                argument.name,
+                f"inputs[{position}]",
+            )
+        )
+    outputs = {output.name: output for output in spec.forward.outputs}
+    for position, output in enumerate(spec.forward.outputs):
+        if output.name not in forward_sources:
+            continue
+        if not output.saved_for_backward:
+            raise ValueError(
+                f"{spec.qualified_name} forward output {output.name!r} must be "
+                "saved_for_backward when used by native autograd"
+            )
+        tensor_values.append(
+            (
+                BackwardArgumentSource.FORWARD_OUTPUT,
+                output.name,
+                f"output_values[{position}]",
+            )
+        )
+    if set(forward_sources) - set(outputs):
+        raise ValueError(f"{spec.qualified_name} has an unknown saved forward source")
+    return tensor_values, scalar_values
+
+
+def _render_backward_fake(item: DiscoveredKernelSpec, index: int) -> list[str]:
+    spec = item.spec
+    assert spec.backward is not None
+    backward = parse_schema(spec.backward.schema)
+    bindings = _binding_map(item)
+    gradient_by_output = {
+        gradient.output_name: gradient for gradient in spec.backward.gradients
+    }
+    rendered: list[str] = []
+    for returned in backward.returns:
+        gradient = gradient_by_output[returned.name]
+        candidates = [
+            binding.provider_argument
+            for binding in spec.backward.argument_bindings
+            if binding.source is BackwardArgumentSource.OPERATOR_ARGUMENT
+            and binding.source_name == gradient.input_name
+        ]
+        if not candidates:
+            raise ValueError(
+                f"{spec.qualified_name} gradient {gradient.output_name!r} requires exactly "
+                f"one operator-argument binding for {gradient.input_name!r}"
+            )
+        provider_argument = backward.argument_by_name(sorted(candidates)[0])
+        if not provider_argument.is_tensor:
+            raise ValueError(
+                f"{spec.qualified_name} gradient source {gradient.input_name!r} must be a Tensor"
+            )
+        rendered.append(f"torch.empty_like({provider_argument.name})")
+    lines = [
+        f"def _mindclade_backward_fake_{index}({', '.join(backward.argument_names)}):"
+    ]
+    if len(rendered) == 1:
+        lines.append(f"    return {rendered[0]}")
+    else:
+        lines.append("    return (" + ", ".join(rendered) + ")")
+    lines.extend(("", ""))
+    return lines
+
+
+def _render_required_autograd(item: DiscoveredKernelSpec, index: int) -> tuple[list[str], str, str]:
+    spec = item.spec
+    assert spec.backward is not None
+    semantic = parse_schema(spec.operator_schema)
+    backward = parse_schema(spec.backward.schema)
+    bindings = _binding_map(item)
+    tensor_values, scalar_values = _required_saved_values(item)
+    setup_name = f"_mindclade_required_setup_context_{index}"
+    backward_name = f"_mindclade_required_backward_{index}"
+    lines = [
+        f"def {setup_name}(ctx, inputs, output):",
+        "    output_values = (output,)" if len(semantic.returns) == 1 else "    output_values = output",
+        "    ctx.set_materialize_grads(False)",
+    ]
+    tensor_expressions = ", ".join(value[2] for value in tensor_values)
+    if tensor_expressions:
+        lines.append(f"    ctx.save_for_backward({tensor_expressions})")
+    else:
+        lines.append("    ctx.save_for_backward()")
+    scalar_expressions = ", ".join(value[2] for value in scalar_values)
+    if len(scalar_values) == 1:
+        scalar_expressions += ","
+    lines.append(f"    ctx._mindclade_saved_scalars_{index} = ({scalar_expressions})")
+    lines.extend(("", "", f"def {backward_name}(ctx, *grad_outputs):"))
+    lines.extend(
+        (
+            "    if torch.is_grad_enabled():",
+            f"        raise RuntimeError({(spec.qualified_name + ' does not support double backward')!r})",
+        )
+    )
+    if tensor_values:
+        names = ", ".join(f"saved_tensor_{position}" for position in range(len(tensor_values)))
+        if len(tensor_values) == 1:
+            names += ","
+        lines.append(f"    {names} = ctx.saved_tensors")
+    if scalar_values:
+        names = ", ".join(f"saved_scalar_{position}" for position in range(len(scalar_values)))
+        if len(scalar_values) == 1:
+            names += ","
+        lines.append(f"    {names} = ctx._mindclade_saved_scalars_{index}")
+
+    saved: dict[tuple[BackwardArgumentSource, str], str] = {}
+    for position, (source, source_name, _expression) in enumerate(tensor_values):
+        saved[(source, source_name)] = f"saved_tensor_{position}"
+    for position, (source, source_name, _expression) in enumerate(scalar_values):
+        saved[(source, source_name)] = f"saved_scalar_{position}"
+
+    output_positions = {returned.name: position for position, returned in enumerate(semantic.returns)}
+    output_gradients: dict[str, str] = {}
+    for binding in spec.backward.argument_bindings:
+        if binding.source is not BackwardArgumentSource.OUTPUT_GRADIENT:
+            continue
+        variable = f"output_gradient_{binding.source_name}"
+        if binding.source_name not in output_gradients:
+            output_gradients[binding.source_name] = variable
+            lines.append(
+                f"    {variable} = grad_outputs[{output_positions[binding.source_name]}]"
+            )
+        if binding.missing is MissingGradientPolicy.ERROR:
+            lines.extend(
+                (
+                    f"    if {variable} is None:",
+                    f"        raise RuntimeError({(spec.qualified_name + ' requires a gradient for output ' + binding.source_name)!r})",
+                )
+            )
+        elif binding.missing is MissingGradientPolicy.ZERO:
+            template = saved[(BackwardArgumentSource.FORWARD_OUTPUT, binding.source_name)]
+            lines.append(
+                f"    if {variable} is None: {variable} = torch.zeros_like({template})"
+            )
+
+    semantic_positions = {
+        argument.name: position for position, argument in enumerate(semantic.args)
+    }
+    provider_values: list[str] = []
+    for provider_argument in backward.args:
+        binding = bindings[provider_argument.name]
+        if binding.source is BackwardArgumentSource.OUTPUT_GRADIENT:
+            provider_values.append(output_gradients[binding.source_name])
+        elif binding.source is BackwardArgumentSource.NEEDS_INPUT_GRAD:
+            provider_values.append(f"ctx.needs_input_grad[{semantic_positions[binding.source_name]}]")
+        else:
+            provider_values.append(saved[(binding.source, binding.source_name)])
+    lines.append(f"    raw = torch.ops.{spec.namespace}.{backward.name}(")
+    lines.extend(f"        {value}," for value in provider_values)
+    lines.append("    )")
+    lines.append("    raw_values = (raw,)" if len(backward.returns) == 1 else "    raw_values = raw")
+    gradient_by_input = {
+        gradient.input_name: gradient for gradient in spec.backward.gradients
+    }
+    return_values: list[str] = []
+    for position, argument in enumerate(semantic.args):
+        gradient = gradient_by_input.get(argument.name)
+        if gradient is None:
+            return_values.append("None")
+            continue
+        result_position = backward.return_names.index(gradient.output_name)
+        return_values.append(
+            f"raw_values[{result_position}] if ctx.needs_input_grad[{position}] else None"
+        )
+    lines.append("    return (")
+    lines.extend(f"        {value}," for value in return_values)
+    lines.extend(("    )", "", ""))
+    return lines, setup_name, backward_name
 
 
 def _render_python_registration(discovered: list[DiscoveredKernelSpec]) -> str:
@@ -276,6 +514,8 @@ def _render_python_registration(discovered: list[DiscoveredKernelSpec]) -> str:
             module, symbol = _split_identity(spec.fake)
             lines.append(f"from {module} import {symbol} as _mindclade_fake_{index}")
         fake_names.append(f"_mindclade_fake_{index}")
+        if spec.backward is not None:
+            lines.extend(_render_backward_fake(item, index))
         if spec.autograd_policy is AutogradPolicy.COMPOSITE:
             assert spec.composite is not None
             setup_module, setup_symbol = _split_identity(spec.composite.setup_context or "")
@@ -315,7 +555,9 @@ def _render_python_registration(discovered: list[DiscoveredKernelSpec]) -> str:
             none_wrappers.append((spec.qualified_name, wrapper))
             autograd.append(None)
         else:
-            autograd.append(None)
+            required_lines, setup_name, backward_name = _render_required_autograd(item, index)
+            lines.extend(required_lines)
+            autograd.append((setup_name, backward_name))
 
     lines.extend(("def register_python_kernels() -> None:", "    global _REGISTERED", "    if _REGISTERED:", "        return"))
     for index, item in enumerate(discovered):
@@ -324,17 +566,21 @@ def _render_python_registration(discovered: list[DiscoveredKernelSpec]) -> str:
         forward_name = parse_schema(spec.forward.schema).name
         lines.append(f"    torch.library.register_fake({spec.qualified_name!r})({fake_name})")
         lines.append(f"    torch.library.register_fake({(spec.namespace + '::' + forward_name)!r})({fake_name})")
+        if spec.backward is not None:
+            backward_name = parse_schema(spec.backward.schema).name
+            lines.append(
+                f"    torch.library.register_fake({(spec.namespace + '::' + backward_name)!r})(_mindclade_backward_fake_{index})"
+            )
         if spec.autograd_policy is AutogradPolicy.COMPOSITE:
             setup_alias, wrapper = autograd[index] or ("", "")
             lines.append(
                 f"    torch.library.register_autograd({spec.qualified_name!r}, {wrapper}, setup_context={setup_alias})"
             )
         elif spec.autograd_policy is AutogradPolicy.REQUIRED:
-            message = (
-                f"{spec.qualified_name} requires generated named provider-argument roles "
-                "before native autograd registration"
+            setup_name, backward_name = autograd[index] or ("", "")
+            lines.append(
+                f"    torch.library.register_autograd({spec.qualified_name!r}, {backward_name}, setup_context={setup_name})"
             )
-            lines.append(f"    raise RuntimeError({message!r})")
         else:
             wrapper = next(value for qualified, value in none_wrappers if qualified == spec.qualified_name)
             lines.append(f"    torch.library.register_autograd({spec.qualified_name!r}, {wrapper})")
