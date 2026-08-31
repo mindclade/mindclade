@@ -3,7 +3,7 @@
     "id": "kernels.native.codegen.generate",
     "version": 6
   },
-  "manifest_digest": "sha256:5faa543472e82343bdb8e4feaddfc2abf5582f70773f572ec197bcfbfa5746bf",
+  "manifest_digest": "sha256:2200ce064f6931caf89e69a567c940b06b63cf5698de2dec38113dd72f6c9993",
   "namespace": "mindclade",
   "operators": [
     {
@@ -753,7 +753,7 @@
         {
           "envelope": {
             "architectures": [
-              "sm100"
+              "sm100a"
             ],
             "constraints": [
               {
@@ -1063,7 +1063,7 @@
             "type": "CapabilityEnvelope",
             "version": 1
           },
-          "envelope_digest": "sha256:80dad763b7b5c92b5b1369b1b61acb684042e3a315a506f0664832eca0c67574",
+          "envelope_digest": "sha256:7b972eeb4d9a86dc9e8c4120ff41df1cd6e7c7b4c782e1692b9156a4b521f4ad",
           "name": "transition_sm100_pair_b1_r147456_h512_c128_bf16",
           "priority": 0,
           "promoted": false,
@@ -1080,7 +1080,7 @@
         {
           "envelope": {
             "architectures": [
-              "sm100"
+              "sm100a"
             ],
             "constraints": [
               {
@@ -1390,7 +1390,7 @@
             "type": "CapabilityEnvelope",
             "version": 1
           },
-          "envelope_digest": "sha256:b9b9c3d8ee5c095c9bdf792f7ebeb39691acae838b06ba403df0e6976de1ca72",
+          "envelope_digest": "sha256:636b7cb8f02bcc482109454b04904e605aecbb1767f34e6fb5b38d27e0968992",
           "name": "transition_sm100_single_b1_r768_h1536_c384_bf16",
           "priority": 0,
           "promoted": false,
@@ -1407,7 +1407,7 @@
         {
           "envelope": {
             "architectures": [
-              "sm90"
+              "sm90a"
             ],
             "constraints": [
               {
@@ -1717,7 +1717,7 @@
             "type": "CapabilityEnvelope",
             "version": 1
           },
-          "envelope_digest": "sha256:bccff3cf753bd41394f5eda4cee7450a8ef6606315ec943f0a2e9477ab79dc6a",
+          "envelope_digest": "sha256:d2a391e4e595c5433c52c5c3c0c21726a4ff898003dcdfe08502e0050c1a24ba",
           "name": "transition_sm90_pair_b1_r147456_h512_c128_bf16",
           "priority": 0,
           "promoted": false,
@@ -1734,7 +1734,7 @@
         {
           "envelope": {
             "architectures": [
-              "sm90"
+              "sm90a"
             ],
             "constraints": [
               {
@@ -2044,7 +2044,7 @@
             "type": "CapabilityEnvelope",
             "version": 1
           },
-          "envelope_digest": "sha256:39f0e29a27ca24575de202eadc040211ceae49f08d4d1af084b2d149a89c483b",
+          "envelope_digest": "sha256:83ff87ff6894247715f9e2aa989988c68b087823cac535da1e0190ac4d8391ea",
           "name": "transition_sm90_single_b1_r768_h1536_c384_bf16",
           "priority": 0,
           "promoted": false,
@@ -2059,7 +2059,7 @@
           "version": 1
         }
       ],
-      "implementation_digest": "sha256:104135a43256ef0a4b9e0a3968498232719445c943a0f8e6fb610a72991b70fa",
+      "implementation_digest": "sha256:f4b157d30e44a65b2093deb53a6642c2c98148a2aac6655c4b98ad10edcf4cc9",
       "kernel_spec_digest": "sha256:06873d83344d245826ef47467178b5d98b4d22ba37576cf54833d59f36df11c9",
       "launch": {
         "current_stream_only": true,
@@ -2093,7 +2093,7 @@
         }
       ],
       "source": "pairformer/transition/spec.py",
-      "spec_sha256": "sha256:0d8fe5f2d480d395196c13e278eea9e2d5010abdac75d921e139b7941b672203",
+      "spec_sha256": "sha256:2a1b7b23c3067f65506155418305236dcd7cd98aa57d2d1d01b3be9f7f765238",
       "version": 1
     },
     {
@@ -2364,5 +2364,5 @@
   "runtime_discovery": false,
   "schema_version": 3,
   "semantic_digest": "sha256:ce2bb7651aea3e29a1c26d7cce589095580ad106b193c209f93cd34055a7d979",
-  "source_inventory_sha256": "sha256:72687cc449a09d5abb8712deae413ddda2485a87e7df28ac05f8f740bfa3c869"
+  "source_inventory_sha256": "sha256:9b8a7c7d3975e23b659ebe907538701269ffb83bb96b2390f2ea840db6014730"
 }

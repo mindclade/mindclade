@@ -172,6 +172,20 @@ def _require_supported_receipt_contract(specs: Sequence[KernelSpec]) -> None:
             )
 
 
+def _require_supported_implementation_contract(
+    discovered: Sequence[DiscoveredKernelSpec],
+) -> None:
+    """Reject implementation identities that receipt schema v2 cannot bind."""
+
+    for entry in discovered:
+        if entry.implementations:
+            raise RuntimeError(
+                f"{entry.qualified_name}: current receipt schema v2 cannot represent "
+                "ImplementationSpec candidate and capability-envelope identity; "
+                "compilation requires receipt schema v3 candidate/envelope binding"
+            )
+
+
 def _resolve_builder(spec: KernelSpec, kernels_root: Path):
     builder_identity = spec.forward.builder
     if builder_identity.count(":") != 1:
@@ -283,6 +297,7 @@ def compile_all(
         raise ValueError("compiled artifacts must be emitted outside the native source tree")
 
     discovered = discover_specs(root.parent, source_files)
+    _require_supported_implementation_contract(discovered)
     specs = registry(discovered)
     _require_supported_receipt_contract(specs)
     declarations: dict[str, DiscoveredKernelSpec] = {

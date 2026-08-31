@@ -48,8 +48,8 @@ Overall readiness: TARGET
   imports builders or executes a Python DAG. CMake requires an explicitly
   supplied, digest-verified bridge artifact whenever private symbols exist.
 - Receipt schema v2 fails before TileLang import when a declaration requires a
-  backward provider or program group; it cannot silently emit a partial
-  forward-only artifact.
+  backward provider, program group, or nonempty implementation candidate set;
+  it cannot silently emit a partial or capability-unbound artifact.
 - Every canonical operation declares a separate literal
   `IMPLEMENTATION_SPECS` tuple. Generator v6 binds these authoring records to
   the semantic operation and emits independent implementation/envelope
@@ -58,6 +58,10 @@ Overall readiness: TARGET
   evaluation/rendering, layout-aware tensor metadata, expression-reference
   inventories, and checked signed-64-bit arithmetic. Every generated candidate
   is explicitly `promoted: false` and `selectable: false`.
+- Discovery validates every tensor constraint and expression reference against
+  the semantic schema, including tensor-versus-scalar argument kind. Transition
+  candidates bind exact `sm90a`/`sm100a` targets rather than weaker architecture
+  class names.
 - Declarative FakeTensor implementations and explicit COMPOSITE autograd hooks
   are generated without mutable saved-tensor state or runtime discovery.
 - The loader verifies an explicit bundle descriptor, file digests, external
@@ -126,7 +130,7 @@ This is an architecture milestone, not a production-readiness claim.
 
 ## Current source verification
 
-- `TMPDIR=/tmp PYTHONPATH=. python -m pytest -q -p no:cacheprovider kernels/native/tests`: 234 passed.
+- `TMPDIR=/tmp PYTHONPATH=. python -m pytest -q -p no:cacheprovider kernels/native/tests`: 242 passed.
 - `python -m pytest -q -p no:cacheprovider tools/repo/tests/test_repository_policies.py`:
   21 passed with 1,310 subtests.
 - Selected Bazel API/native/codegen/TMA/swizzle lane: 14 targets passed.
