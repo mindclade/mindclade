@@ -22,7 +22,7 @@ _runtime_version.ValidateProtobufRuntimeVersion(
 _sym_db = _symbol_database.Default()
 
 
-from proto.mindclade.common.v1 import command_context_pb2 as proto_dot_mindclade_dot_common_dot_v1_dot_command__context__pb2
+from common.v1 import command_context_pb2 as proto_dot_mindclade_dot_common_dot_v1_dot_command__context__pb2
 
 
 DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n)proto/mindclade/job/v1/job_commands.proto\x12\x10mindclade.job.v1\x1a/proto/mindclade/common/v1/command_context.proto\"\xc3\x01\n\x11RequestJobCommand\x12=\n\x07\x63ontext\x18\x01 \x01(\x0b\x32#.mindclade.common.v1.CommandContextR\x07\x63ontext\x12\x19\n\x08job_kind\x18\x02 \x01(\tR\x07jobKind\x12!\n\x0cinput_digest\x18\x03 \x01(\tR\x0binputDigest\x12\x31\n\x14\x63onfiguration_digest\x18\x04 \x01(\tR\x13\x63onfigurationDigestBDZBgithub.com/mindclade/mindclade/protocols/generated/go/job/v1;jobv1b\x06proto3')

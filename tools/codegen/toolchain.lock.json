@@ -14,8 +14,8 @@
   "tools": {
     "buf": {
       "authority": "flake.lock:nixpkgs",
-      "version": "1.71.0",
-      "version_output": "1.71.0"
+      "version": "1.72.0",
+      "version_output": "1.72.0"
     },
     "protoc": {
       "authority": "flake.lock:nixpkgs",
@@ -41,6 +41,7 @@
     },
     "protoc-gen-rs": {
       "authority": "Cargo.lock",
+      "checksum": "5d3976825c0014bbd2f3b34f0001876604fe87e0c86cd8fa54251530f1544ace",
       "package": "protobuf-codegen",
       "version": "3.7.2"
     }

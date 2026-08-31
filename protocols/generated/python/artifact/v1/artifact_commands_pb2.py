@@ -22,8 +22,8 @@ _runtime_version.ValidateProtobufRuntimeVersion(
 _sym_db = _symbol_database.Default()
 
 
-from proto.mindclade.common.v1 import command_context_pb2 as proto_dot_mindclade_dot_common_dot_v1_dot_command__context__pb2
-from proto.mindclade.artifact.v1 import artifact_reference_pb2 as proto_dot_mindclade_dot_artifact_dot_v1_dot_artifact__reference__pb2
+from common.v1 import command_context_pb2 as proto_dot_mindclade_dot_common_dot_v1_dot_command__context__pb2
+from artifact.v1 import artifact_reference_pb2 as proto_dot_mindclade_dot_artifact_dot_v1_dot_artifact__reference__pb2
 
 
 DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n3proto/mindclade/artifact/v1/artifact_commands.proto\x12\x15mindclade.artifact.v1\x1a/proto/mindclade/common/v1/command_context.proto\x1a\x34proto/mindclade/artifact/v1/artifact_reference.proto\"\xcc\x01\n\x15\x43ommitArtifactCommand\x12=\n\x07\x63ontext\x18\x01 \x01(\x0b\x32#.mindclade.common.v1.CommandContextR\x07\x63ontext\x12>\n\x08\x61rtifact\x18\x02 \x01(\x0b\x32\".mindclade.artifact.v1.ArtifactRefR\x08\x61rtifact\x12\x34\n\x16staging_receipt_digest\x18\x03 \x01(\tR\x14stagingReceiptDigestBNZLgithub.com/mindclade/mindclade/protocols/generated/go/artifact/v1;artifactv1b\x06proto3')

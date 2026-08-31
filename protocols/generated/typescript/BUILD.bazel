@@ -1,11 +1,15 @@
 load("@aspect_rules_ts//ts:defs.bzl", "ts_project")
+load("@npm//:defs.bzl", "npm_link_all_packages")
+
+npm_link_all_packages(name = "node_modules")
 
 ts_project(
     name = "bindings",
-    srcs = glob(["**/*.ts"]),
+    srcs = glob(["**/*.ts"], exclude = ["node_modules/**"]),
     declaration = True,
     tsconfig = "tsconfig.json",
-    deps = ["@npm//:node_modules/@bufbuild/protobuf"],
+    transpiler = "tsc",
+    deps = [":node_modules/@bufbuild/protobuf"],
     visibility = ["//visibility:public"],
 )
 

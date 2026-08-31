@@ -24,7 +24,14 @@ class GeneratedClientsContractTest(unittest.TestCase):
             check=True,
         )
         sys.path.insert(0, str(repository / "protocols/generated/python"))
-        module = importlib.import_module("common.v1.identifiers_pb2")
+        generated_python = repository / "protocols/generated/python"
+        modules = sorted(
+            ".".join(path.relative_to(generated_python).with_suffix("").parts)
+            for path in generated_python.glob("**/*_pb2.py")
+        )
+        self.assertTrue(modules)
+        imported = {name: importlib.import_module(name) for name in modules}
+        module = imported["common.v1.identifiers_pb2"]
         self.assertEqual(module.Identifiers(tenant_id="tenant").tenant_id, "tenant")
         if "TEST_SRCDIR" not in os.environ:
             subprocess.run(
