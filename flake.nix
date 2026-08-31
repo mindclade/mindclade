@@ -122,6 +122,7 @@
             git
             go_1_26
             golangci-lint
+            jdk21_headless
             jq
             just
             markdownlint-cli2
@@ -270,54 +271,62 @@
     {
       devShells = builtins.mapAttrs (system: shells: shells // (gpuShells.${system} or { })) baseShells;
 
-      packages = builtins.mapAttrs (
-        system: basePackages: basePackages // (gpuPackages.${system} or { })
-      ) (forAllSystems (
-        pkgs:
-        let
-          current = basePackageSet pkgs;
-        in
-        {
-          default = current.toolchain;
-          toolchain = current.toolchain;
-          "toolchain-manifest" = current.toolchainManifest;
-        }
-      ));
+      packages =
+        builtins.mapAttrs (system: basePackages: basePackages // (gpuPackages.${system} or { }))
+          (
+            forAllSystems (
+              pkgs:
+              let
+                current = basePackageSet pkgs;
+              in
+              {
+                default = current.toolchain;
+                toolchain = current.toolchain;
+                "toolchain-manifest" = current.toolchainManifest;
+              }
+            )
+          );
 
-      checks = builtins.mapAttrs (
-        system: baseChecks: baseChecks // (gpuChecks.${system} or { })
-      ) (forAllSystems (
-        pkgs:
-        let
-          current = basePackageSet pkgs;
-        in
-        {
-          toolchain = pkgs.runCommand "mindclade-toolchain-check" {
-            nativeBuildInputs = [ current.toolchain ];
-          } ''
-            set -euo pipefail
-            command -v bazel buildifier buf cargo go jq just nixfmt node pnpm python3 rustc uv >/dev/null
-            test "$(bazel --version)" = "bazel 9.1.1"
-            jq -e '.schema_version == "mindclade-toolchain.v1" and .bazel.version == "9.1.1"' \
-              ${current.toolchain}/share/mindclade/toolchain-manifest.json >/dev/null
-            mkdir -p "$out"
-            cp ${current.toolchain}/share/mindclade/toolchain-manifest.json "$out/"
-          '';
-          source = pkgs.runCommand "mindclade-source-check" {
-            nativeBuildInputs = [ current.toolchain ];
-          } ''
-            set -euo pipefail
-            export HOME="$TMPDIR/home"
-            mkdir -p "$HOME" "$out"
-            python3 ${self}/tools/docs/validate_blueprint_sources.py \
-              --manifest ${self}/docs/architecture/blueprint/manifest.yaml
-            python3 ${self}/tools/docs/render_architecture_blueprint.py \
-              --manifest ${self}/docs/architecture/blueprint/manifest.yaml --check
-            python3 -m unittest discover -s ${self}/tools/repo/tests -p 'test_*.py'
-            touch "$out/passed"
-          '';
-        }
-      ));
+      checks = builtins.mapAttrs (system: baseChecks: baseChecks // (gpuChecks.${system} or { })) (
+        forAllSystems (
+          pkgs:
+          let
+            current = basePackageSet pkgs;
+          in
+          {
+            toolchain =
+              pkgs.runCommand "mindclade-toolchain-check"
+                {
+                  nativeBuildInputs = [ current.toolchain ];
+                }
+                ''
+                  set -euo pipefail
+                  command -v bazel buildifier buf cargo go jq just nixfmt node pnpm python3 rustc uv >/dev/null
+                  test "$(bazel --version)" = "bazel 9.1.1"
+                  jq -e '.schema_version == "mindclade-toolchain.v1" and .bazel.version == "9.1.1"' \
+                    ${current.toolchain}/share/mindclade/toolchain-manifest.json >/dev/null
+                  mkdir -p "$out"
+                  cp ${current.toolchain}/share/mindclade/toolchain-manifest.json "$out/"
+                '';
+            source =
+              pkgs.runCommand "mindclade-source-check"
+                {
+                  nativeBuildInputs = [ current.toolchain ];
+                }
+                ''
+                  set -euo pipefail
+                  export HOME="$TMPDIR/home"
+                  mkdir -p "$HOME" "$out"
+                  python3 ${self}/tools/docs/validate_blueprint_sources.py \
+                    --manifest ${self}/docs/architecture/blueprint/manifest.yaml
+                  python3 ${self}/tools/docs/render_architecture_blueprint.py \
+                    --manifest ${self}/docs/architecture/blueprint/manifest.yaml --check
+                  python3 -m unittest discover -s ${self}/tools/repo/tests -p 'test_*.py'
+                  touch "$out/passed"
+                '';
+          }
+        )
+      );
 
       formatter = forAllSystems (pkgs: pkgs.nixfmt);
     };
