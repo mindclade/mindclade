@@ -1,5 +1,64 @@
 {
-  "entries": [],
+  "entries": [
+    {
+      "archive": {
+        "sha256": "sha256:14d41d961c0b1581db65d6bb7c569254d99559ae8e96cde54999fc1a768dcf51",
+        "strip_prefix": "DeepEP-01dc3aaac82068020353dce2c302e38153c0bfaa",
+        "submodules_included": false,
+        "url": "https://github.com/deepseek-ai/DeepEP/archive/01dc3aaac82068020353dce2c302e38153c0bfaa.tar.gz"
+      },
+      "build_authority": {
+        "cuda_capabilities": [
+          "9.0"
+        ],
+        "definition": "third_party/packages/deep_ep/package.nix",
+        "flake_input": "nixpkgs",
+        "nixpkgs_revision": "83199d0d373dd3ac2b9a1996b1d0263f76ab7a4c",
+        "package": "packages.deep-ep",
+        "runtime_profile": {
+          "cuda": "12.9",
+          "nccl": "2.31.2-1",
+          "nvshmem": "3.6.5-0",
+          "python": "3.12.14",
+          "torch": "2.12.0"
+        },
+        "source": "flake.nix+flake.lock",
+        "source_nar_hash": "sha256-Y4SOyPbjoLIs86Xi87kSky7BPDSbjRh6Lf0fTO4KHjg=",
+        "version": "2.0.0-unstable-2026-08-04"
+      },
+      "license": {
+        "file": "LICENSE",
+        "sha256": "sha256:6c73a30c14a2938abaa6afe98ebb19e6d81dac5bd4ace0cb05c61c20afa37b85",
+        "spdx": "MIT"
+      },
+      "name": "deep-ep",
+      "owner": "ml-systems-performance",
+      "review_reference": "docs/adr/0009-native-kernel-source-incubation.md",
+      "status": "intake-only",
+      "submodules": [
+        {
+          "license": {
+            "file": "third-party/fmt/LICENSE",
+            "sha256": "sha256:07580f2a3b35709ce703d523f447b242f6dfec7582a8c0df102c7fa2849375f8",
+            "spdx": "MIT"
+          },
+          "path": "third-party/fmt",
+          "repository": "https://github.com/fmtlib/fmt",
+          "revision": "a4c7e17133ee9cb6a2f45545f6e974dd3c393efa"
+        }
+      ],
+      "upstream": {
+        "repository": "https://github.com/deepseek-ai/DeepEP",
+        "revision": "01dc3aaac82068020353dce2c302e38153c0bfaa",
+        "version_line": "2.x"
+      },
+      "vllm_compatibility": {
+        "installer_path": "tools/ep_kernels/install_python_libraries.sh",
+        "minimum_nccl": "2.30.4",
+        "reference_revision": "c92b29a1d40644da710209f862b1be0ebd5c2e74"
+      }
+    }
+  ],
   "kind": "ThirdPartySourceMirrorLock",
   "schema_version": "mindclade.third-party-source-mirrors/v1"
 }

@@ -36,6 +36,21 @@ just check
 just test-affected
 ```
 
+The opt-in Linux SM90/Hopper GPU intake shell includes pinned modern DeepEP
+2.x, PyTorch, CUDA compiler, NCCL, vanilla NVSHMEM, and RDMA development
+inputs:
+
+```text
+nix develop .#gpu
+python -c "import deep_ep; print(deep_ep.__file__)"
+```
+
+DeepEP v2 uses NCCL Gin for expert parallelism; NVSHMEM remains present for
+the legacy objects upstream still compiles. Multi-node use additionally
+requires qualified host IBGDA or GDRCopy configuration. This shell is
+development intake only and does not mutate host drivers or grant GPU, kernel,
+network, or production qualification.
+
 Read `AGENTS.md`, `ARCHITECTURE.md`, and `CONTRIBUTING.md` before editing. The
 editable blueprint sources live under `docs/architecture/blueprint/`; the
 repository-path manifest governs which paths may be populated.

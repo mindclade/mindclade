@@ -1,4 +1,27 @@
+load("@rules_python//python:defs.bzl", "py_test")
+
 package(default_visibility = ["//visibility:private"])
+
+filegroup(
+    name = "deep_ep_package",
+    srcs = [
+        "packages/deep_ep/README.md",
+        "packages/deep_ep/package.nix",
+        "packages/deep_ep/test_package.py",
+        "patches/patches.lock.json",
+        "source_mirrors/sources.lock.json",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+py_test(
+    name = "test_deep_ep_package_policy",
+    srcs = ["packages/deep_ep/test_package.py"],
+    data = [":deep_ep_package"],
+    legacy_create_init = 0,
+    main = "packages/deep_ep/test_package.py",
+    python_version = "PY3",
+)
 
 filegroup(
     name = "wave1_third_party_sources",
@@ -8,6 +31,9 @@ filegroup(
         "licenses/README.md",
         "licenses/license_inventory.json",
         "notices/NOTICE.generated.txt",
+        "packages/deep_ep/README.md",
+        "packages/deep_ep/package.nix",
+        "packages/deep_ep/test_package.py",
         "patches/README.md",
         "patches/patches.lock.json",
         "source_mirrors/README.md",
