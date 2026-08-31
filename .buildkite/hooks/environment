@@ -10,6 +10,7 @@ export PYTHONDONTWRITEBYTECODE=1
 export CARGO_NET_OFFLINE=true
 export GOTOOLCHAIN=local
 export UV_FROZEN=true
+export NIX_CONFIG=$'experimental-features = nix-command flakes\nsubstituters = https://cache.nixos.org/\ntrusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=\nrequire-sigs = true'
 
 if [[ -z "${BUILDKITE_BUILD_CHECKOUT_PATH:-}" ]]; then
   echo "BUILDKITE_BUILD_CHECKOUT_PATH is required" >&2
