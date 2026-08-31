@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+from dataclasses import replace
 import json
 import sys
 from collections.abc import Sequence
@@ -68,18 +69,25 @@ def self_test() -> None:
             "MINDCLADE_CACHE_ARCHITECTURE",
             "MINDCLADE_CACHE_TOOLCHAIN_DIGEST",
             "MINDCLADE_CACHE_BUILD_MODE",
+            "MINDCLADE_CACHE_CLASSIFICATION",
+            "MINDCLADE_CACHE_NAMESPACE_EPOCH",
         ):
             if key not in environment:
                 raise AssertionError(f"pipeline {pipeline_class} omits immutable binding {key}")
+        invalid_tier = "release" if pipeline_class != "release" else "trusted"
+        try:
+            render(replace(TrustedContext.for_test(pipeline_class), execution_tier=invalid_tier))
+        except ValueError:
+            pass
+        else:
+            raise AssertionError(f"pipeline {pipeline_class} accepted an invalid execution tier")
     pre_command = (BUILDKITE_ROOT / "hooks/pre-command").read_text(encoding="utf-8")
     protected_fragments = (
-        ".buildkite",
-        ".github",
-        "docs/architecture",
-        "MODULE.bazel.lock",
-        "tools",
-        "uv.lock",
+        "PROTECTED_DEFINITION_PATHS",
+        'git show "${pipeline_revision}:tools/ci/pipeline_plan.py"',
         'git diff --quiet "${pipeline_revision}"',
+        "git status --porcelain=v1 --untracked-files=all",
+        "git submodule status --recursive",
         "protected-definition roll-forward",
     )
     missing = [fragment for fragment in protected_fragments if fragment not in pre_command]
@@ -87,6 +95,9 @@ def self_test() -> None:
         raise AssertionError(f"pre-command omits protected closure fragments: {missing}")
     if "ALLOW_CI_DEFINITION_CHANGE" in pre_command:
         raise AssertionError("presubmit protected-definition guard has a source-controlled bypass")
+    loader = (BUILDKITE_ROOT / "pipeline.yml").read_text(encoding="utf-8")
+    if "reject-invalid-execution-tier" not in loader:
+        raise AssertionError("static pipeline can succeed without a valid execution tier")
 
 
 def build_parser() -> argparse.ArgumentParser:

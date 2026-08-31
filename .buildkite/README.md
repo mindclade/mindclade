@@ -34,11 +34,13 @@ required-check signature.
 
 Remote Bazel cache use is not source-activated. The only accepted mode is
 explicit `disabled`, the public-cache target allowlist is empty, and the cache
-namespace still binds schema, trust class, platform, architecture, toolchain,
-and build mode. Cache metadata is provenance only and never qualification
+namespace still binds schema, private/public classification, namespace epoch,
+trust class, platform, architecture, toolchain, and build mode. Cache metadata is provenance only and never qualification
 evidence. Protected builds run a clean output-root Wave 1 canary. The recorded
 poison-recovery sequence requires namespace revocation, a cacheless rebuild,
-output-digest comparison, and reviewed reactivation. IAM, bucket, and cache
+output-digest comparison, and reviewed reactivation. All qualification Bazel
+tests use one source-controlled cache-disabled wrapper, and the periodic canary
+compares one declared binary from two independent output roots. IAM, bucket, and cache
 write state remain connected GCP authority outside this repository.
 
 Validate the source model without a Buildkite credential:

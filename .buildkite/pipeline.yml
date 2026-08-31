@@ -1,4 +1,11 @@
 steps:
+  - label: ":no_entry: Reject invalid execution tier"
+    key: reject-invalid-execution-tier
+    if: build.env("MINDCLADE_EXECUTION_TIER") != "untrusted" && build.env("MINDCLADE_EXECUTION_TIER") != "trusted" && build.env("MINDCLADE_EXECUTION_TIER") != "release"
+    command: "echo 'Missing or invalid MINDCLADE_EXECUTION_TIER' >&2; exit 78"
+    agents:
+      queue: mindclade-untrusted-cpu
+    timeout_in_minutes: 5
   - label: ":pipeline: Load isolated untrusted pipeline"
     key: load-untrusted-pipeline
     if: build.env("MINDCLADE_EXECUTION_TIER") == "untrusted"
