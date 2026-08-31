@@ -17,6 +17,7 @@ let
   cudaPackages = pkgs.cudaPackages;
   pythonPackages = pkgs.python312Packages;
   digestFile = path: "sha256:${builtins.hashFile "sha256" path}";
+  derivationIdentity = value: builtins.unsafeDiscardStringContext value.drvPath;
   patchPaths = [
     ../../patches/deep_ep/declared-toolchain-paths.patch
     ../../patches/deep_ep/deterministic-version.patch
@@ -98,12 +99,12 @@ let
         nix = {
           nixpkgs_revision = nixpkgsRevision;
           derivations = {
-            cuda = cudaToolkitRoot.drvPath;
-            nccl = ncclRoot.drvPath;
-            nvcc = cudaPackages.cuda_nvcc.drvPath;
-            nvshmem = nvshmemRoot.drvPath;
-            python = pkgs.python312.drvPath;
-            torch = pythonPackages.torch.drvPath;
+            cuda = derivationIdentity cudaToolkitRoot;
+            nccl = derivationIdentity ncclRoot;
+            nvcc = derivationIdentity cudaPackages.cuda_nvcc;
+            nvshmem = derivationIdentity nvshmemRoot;
+            python = derivationIdentity pkgs.python312;
+            torch = derivationIdentity pythonPackages.torch;
           };
           store_outputs = storeOutputs;
         };
@@ -300,7 +301,7 @@ let
             --runtime-manifest ${wheelRuntime.file} \
             --elf-manifest ${closureWheel}/elf-dependencies.json \
             --package ${runtimeEnvironment} \
-            --package-drv ${runtimeEnvironment.drvPath} \
+            --package-drv ${derivationIdentity runtimeEnvironment} \
             --closure-paths ${closure}/store-paths \
             --output "$out"
         '';
