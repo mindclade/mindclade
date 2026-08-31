@@ -45,6 +45,12 @@ _OPERATORS = (
         "kernels.pairformer.triangle_multiplication.tilelang",
         "reference",
     ),
+    (
+        "transition",
+        "transition(Tensor gate, Tensor value, Tensor output_weight, Tensor output_bias, Tensor mask) -> Tensor",
+        "kernels.pairformer.transition.tilelang",
+        "transition_reference",
+    ),
 )
 
 
@@ -57,7 +63,7 @@ def _operator_exists(torch: Any, name: str) -> bool:
 
 
 def enable_reference_runtime() -> tuple[Any, ...]:
-    """Register the four unqualified references under ``torch.ops.mindclade``.
+    """Register the five unqualified references under ``torch.ops.mindclade``.
 
     The caller must set ``MINDCLADE_NATIVE_REFERENCE_RUNTIME=1`` explicitly.
     A process that enables this mode must not subsequently load a native bundle.

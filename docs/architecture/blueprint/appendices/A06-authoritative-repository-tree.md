@@ -1733,7 +1733,11 @@ mindclade/
 │   │   ├── transition/
 │   │   │   ├── reference.py
 │   │   │   ├── spec.py
-│   │   │   └── dispatch.py
+│   │   │   ├── dispatch.py
+│   │   │   ├── BUILD.bazel
+│   │   │   ├── __init__.py
+│   │   │   ├── test_transition.py
+│   │   │   └── tilelang.py
 │   │   ├── tests/
 │   │   │   ├── test_triangle_attention.py
 │   │   │   ├── test_triangle_multiplication.py

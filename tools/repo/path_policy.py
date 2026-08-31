@@ -28,9 +28,9 @@ BLUEPRINT_SHA256 = "d099074e755168bbdce076d50918bf06aff677f9e5d620fdfe53cb7cef74
 ANCHOR_COMMIT = "292b71f47b1b29cc9ba7cf760a9bd07cd5e0ffa7"
 AUTHORITY_FILE_COUNT = 2461
 AUTHORITY_DIRECTORY_COUNT = 787
-CANONICAL_FILE_COUNT = 2572
+CANONICAL_FILE_COUNT = 2576
 AUTHORITY_PATH_SET_SHA256 = "f2011dd32ccc19649e6abb70ffb4473aea4a224410062d40292222e2e6263692"
-CANONICAL_PATH_SET_SHA256 = "24f3029f12bc826c2b014c3194a4115ce9bf1026599055f1dd8bc3bf6f1b2031"
+CANONICAL_PATH_SET_SHA256 = "0dbec61fc304b1892f86f18ed18f563ddcea5307f2c815b8ffc42db79d80de7b"
 
 ADR_REPLACEMENTS = {
     "docs/adr/0001-repository-identity.md": "docs/adr/0001-repository-identity-and-ownership.md",
@@ -138,6 +138,10 @@ NATIVE_SOURCE_INCUBATION_PATHS = (
     "kernels/pairformer/triangle_multiplication/__init__.py",
     "kernels/pairformer/triangle_multiplication/test_triangle_multiplication.py",
     "kernels/pairformer/triangle_multiplication/tilelang.py",
+    "kernels/pairformer/transition/BUILD.bazel",
+    "kernels/pairformer/transition/__init__.py",
+    "kernels/pairformer/transition/test_transition.py",
+    "kernels/pairformer/transition/tilelang.py",
 )
 NATIVE_SOURCE_INCUBATION_ADDITIONS = (
     NATIVE_SOURCE_INCUBATION_ADR,
@@ -1380,6 +1384,7 @@ def _native_source_incubation_targets(path: str) -> tuple[list[str], list[str]]:
             "pair_weighted_average": "test_tilelang",
             "triangle_attention": "test_triangle_attention",
             "triangle_multiplication": "test_triangle_multiplication",
+            "transition": "test_transition",
         }
         test_target = f"{package}:{test_names[operation]}"
         if name.startswith("test_") and name.endswith(".py"):

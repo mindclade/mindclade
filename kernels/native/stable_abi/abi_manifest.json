@@ -20,6 +20,7 @@
   "operators": [
     "mindclade::outer_product_mean",
     "mindclade::pair_weighted_average",
+    "mindclade::transition",
     "mindclade::triangle_attention",
     "mindclade::triangle_multiplication"
   ],

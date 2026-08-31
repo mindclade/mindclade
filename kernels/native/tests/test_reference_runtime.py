@@ -11,7 +11,7 @@ def test_reference_runtime_registers_only_mindclade_ops_in_isolated_process():
     script = r'''import torch
 from kernels.native.python.reference_runtime import enable_reference_runtime
 ops = enable_reference_runtime()
-assert len(ops) == 4
+assert len(ops) == 5
 left = torch.randn(2, 3, 2)
 right = torch.randn(2, 3, 4)
 mask = torch.ones(2, 3)
@@ -26,6 +26,12 @@ pair_mask = torch.ones(2, 2, dtype=torch.bool)
 assert torch.ops.mindclade.triangle_attention(q, q, q, bias, pair_mask, 0.5).shape == q.shape
 pair = torch.randn(2, 2, 3)
 assert torch.ops.mindclade.triangle_multiplication(pair, pair, pair_mask, True).shape == pair.shape
+gate = torch.randn(1, 3, 8)
+value = torch.randn_like(gate)
+output_weight = torch.randn(8, 4)
+output_bias = torch.randn(4)
+row_mask = torch.ones(1, 3, dtype=torch.bool)
+assert torch.ops.mindclade.transition(gate, value, output_weight, output_bias, row_mask).shape == (1, 3, 4)
 '''
     environment = os.environ.copy()
     environment["PYTHONPATH"] = str(root)

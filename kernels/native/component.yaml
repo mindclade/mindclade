@@ -40,7 +40,7 @@ spec:
 status:
   readiness: TARGET
   kernel_k0: not-achieved
-  declared_operations: 4
-  unqualified_operations: 4
+  declared_operations: 5
+  unqualified_operations: 5
   qualified_operations: 0
   active_operations: 0

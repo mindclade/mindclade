@@ -14,7 +14,7 @@
 ## Decision record metadata
 
 - Affected invariants: path-manifest authority, activation-gated source, Bazel/native dependency agreement, operation-local semantic ownership, immutable generated projections, strict `torch.ops.mindclade.<name>` registration, reference fallback, and evidence-gated production authority
-- Affected paths: `kernels/native/`, the exact four operation-local packages under `kernels/pairformer/{outer_product_mean,pair_weighted_average,triangle_attention,triangle_multiplication}/`, `docs/adr/`, `docs/architecture/repository-path-manifest.yaml`, Section 14, Section 15.7, and Appendix A15
+- Affected paths: `kernels/native/`, the exact five operation-local packages under `kernels/pairformer/{outer_product_mean,pair_weighted_average,triangle_attention,triangle_multiplication,transition}/`, `docs/adr/`, `docs/architecture/repository-path-manifest.yaml`, Section 14, Section 15.7, and Appendix A15
 - Affected contracts: native operator manifest v2, build-time registration projections, Stable Torch ABI schema registration, offline TileLang compilation, bundle trust decisions, and Wave 6 JIT-06 activation
 - Security and safety impact: permits reviewable native source and non-production tests before Wave 6 while prohibiting runtime discovery, request-time compilation, unverified loading, production dispatch, artifact publication, or qualification claims
 - Migration: retain exactly four declared source-incubated operators with zero qualified and zero active operations until operation-specific JIT-06 decisions name measured bottlenecks, hardware/software envelopes, numerical tolerances, performance thresholds, fallbacks, and revocation paths

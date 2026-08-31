@@ -19,6 +19,7 @@ _OPERATORS = frozenset(
         "pair_weighted_average",
         "triangle_attention",
         "triangle_multiplication",
+        "transition",
     }
 )
 _TARGET_CAPABILITIES = {"sm90": (9, 0), "sm100": (10, 0)}

@@ -33,6 +33,11 @@ EXPECTED_DECLARED_TILELANG_OPERATORS = (
         "tilelang",
         "pairformer/triangle_multiplication/tilelang.py",
     ),
+    (
+        "transition",
+        "tilelang",
+        "pairformer/transition/tilelang.py",
+    ),
 )
 
 

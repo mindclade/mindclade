@@ -23,8 +23,8 @@ class NativeModulePolicyTest(unittest.TestCase):
             "    gate: JIT-06",
             "  readiness: TARGET",
             "  kernel_k0: not-achieved",
-            "  declared_operations: 4",
-            "  unqualified_operations: 4",
+            "  declared_operations: 5",
+            "  unqualified_operations: 5",
             "  qualified_operations: 0",
             "  active_operations: 0",
         ):
@@ -189,6 +189,40 @@ class NativeModulePolicyTest(unittest.TestCase):
                         "name": "b1_n64_c64_outgoing_fp16",
                     },
                 ],
+            "mindclade::transition": [
+                {
+                    "arguments": {
+                        "batch_size": 1,
+                        "block_k": 32,
+                        "block_m": 64,
+                        "block_n": 64,
+                        "dtype": "bfloat16",
+                        "hidden_channels": 512,
+                        "mask_dtype": "float32",
+                        "num_stages": 2,
+                        "output_channels": 128,
+                        "rows": 147456,
+                        "threads": 128,
+                    },
+                    "name": "pair_b1_r147456_h512_c128_bf16",
+                },
+                {
+                    "arguments": {
+                        "batch_size": 1,
+                        "block_k": 32,
+                        "block_m": 64,
+                        "block_n": 64,
+                        "dtype": "bfloat16",
+                        "hidden_channels": 1536,
+                        "mask_dtype": "float32",
+                        "num_stages": 3,
+                        "output_channels": 384,
+                        "rows": 768,
+                        "threads": 128,
+                    },
+                    "name": "single_b1_r768_h1536_c384_bf16",
+                },
+            ],
             },
         )
 

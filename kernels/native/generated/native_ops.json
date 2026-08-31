@@ -68,6 +68,36 @@
     {
       "autograd": {
         "backward": {
+          "module": "kernels.pairformer.transition.tilelang",
+          "symbol": "backward"
+        },
+        "mode": "registered",
+        "setup_context": {
+          "module": "kernels.pairformer.transition.tilelang",
+          "symbol": "setup_context"
+        }
+      },
+      "backend": "tilelang",
+      "devices": [
+        "cuda"
+      ],
+      "fake": {
+        "module": "kernels.pairformer.transition.tilelang",
+        "symbol": "fake"
+      },
+      "family": "pairformer",
+      "launch_symbol": "mindclade_tilelang_transition_launch",
+      "name": "transition",
+      "namespace": "mindclade",
+      "qualified_name": "mindclade::transition",
+      "schema": "transition(Tensor gate, Tensor value, Tensor output_weight, Tensor output_bias, Tensor mask) -> Tensor",
+      "source": "pairformer/transition/tilelang.py",
+      "source_sha256": "sha256:e44fdcd5a82ea2f47a0dd05ce5212c642100a264f90902867e71a7edb6861214",
+      "version": 1
+    },
+    {
+      "autograd": {
+        "backward": {
           "module": "kernels.pairformer.triangle_attention.tilelang",
           "symbol": "backward"
         },
@@ -131,6 +161,6 @@
   "request_time_compilation": false,
   "runtime_discovery": false,
   "schema_version": 2,
-  "semantic_digest": "sha256:33d2da1e673dd37bb6efe93ab8ae2968fb559724b998b8921318773eb71148cd",
-  "source_inventory_sha256": "sha256:6c362ba546b19a0653c8aae7513b57269e8f4d22634bcdf24060430f054b746e"
+  "semantic_digest": "sha256:64c11e4d3dd8749a40624d6f9faaf7ea33c137f809af18d41bc434a727fd7eb0",
+  "source_inventory_sha256": "sha256:b38d5c03171b6c47fb96fe3d7ab4fdc53c463fede2b07846b2d55d8d3a349602"
 }
