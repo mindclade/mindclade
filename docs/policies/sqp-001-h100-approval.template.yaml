@@ -21,5 +21,6 @@ spec:
     - ml-systems
     - finance-operations
   blockedUntilApproval:
+    - wave-2s-implementation
     - one-h100-functional-qualification
     - pre-wave-5-multi-gpu-run

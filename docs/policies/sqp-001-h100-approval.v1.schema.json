@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://schemas.mindclade.dev/policies/sqp-001-h100-approval.v1.schema.json",
   "title": "Mindclade SQP-001 H100 qualification envelope approval",
-  "description": "Fail-closed approval contract for the exact SQP-001 accelerator, software, reservation, and cost envelope.",
+  "description": "Pending-only preactivation contract for the SQP-001 H100 envelope; approved and revoked states require a future cryptographic verifier.",
   "type": "object",
   "required": ["apiVersion", "kind", "metadata", "spec"],
   "properties": {
@@ -28,7 +28,7 @@
       ],
       "properties": {
         "profile": {"const": "SQP-001"},
-        "status": {"enum": ["pending", "approved", "revoked"]},
+        "status": {"const": "pending"},
         "productionAuthority": {"const": false},
         "hardwareEnvelope": {
           "const": {
@@ -104,7 +104,7 @@
         },
         "requiredApprovers": {"const": ["ml-systems", "finance-operations"]},
         "blockedUntilApproval": {
-          "const": ["one-h100-functional-qualification", "pre-wave-5-multi-gpu-run"]
+          "const": ["wave-2s-implementation", "one-h100-functional-qualification", "pre-wave-5-multi-gpu-run"]
         },
         "approvalSubjectRevision": {"$ref": "#/$defs/revision"},
         "approvals": {
@@ -124,47 +124,35 @@
         "revocationReason": {"type": "string", "minLength": 1},
         "revocationReceiptDigest": {"$ref": "#/$defs/digest"}
       },
-      "oneOf": [
+      "allOf": [
         {
           "properties": {
-            "status": {"const": "pending"},
-            "softwareEnvelope": {"properties": {"status": {"const": "pending"}}},
-            "costEnvelope": {"properties": {"status": {"const": "pending"}}}
-          },
+            "softwareEnvelope": {
+              "type": "object",
+              "required": ["status"],
+              "properties": {"status": {"const": "pending"}},
+              "additionalProperties": false
+            },
+            "costEnvelope": {
+              "type": "object",
+              "required": ["status"],
+              "properties": {"status": {"const": "pending"}},
+              "additionalProperties": false
+            }
+          }
+        },
+        {
           "not": {
             "anyOf": [
               {"required": ["approvalSubjectRevision"]},
               {"required": ["approvals"]},
               {"required": ["approvalReceiptDigest"]},
               {"required": ["approvedAt"]},
-              {"required": ["revokedAt"]}
+              {"required": ["revokedAt"]},
+              {"required": ["revocationReason"]},
+              {"required": ["revocationReceiptDigest"]}
             ]
           }
-        },
-        {
-          "properties": {
-            "status": {"const": "approved"},
-            "softwareEnvelope": {"properties": {"status": {"const": "approved"}}},
-            "costEnvelope": {"properties": {"status": {"const": "approved"}}}
-          },
-          "required": ["approvalSubjectRevision", "approvals", "approvalReceiptDigest", "approvedAt"],
-          "not": {"anyOf": [{"required": ["revokedAt"]}, {"required": ["revocationReason"]}, {"required": ["revocationReceiptDigest"]}]}
-        },
-        {
-          "properties": {
-            "status": {"const": "revoked"},
-            "softwareEnvelope": {"properties": {"status": {"const": "approved"}}},
-            "costEnvelope": {"properties": {"status": {"const": "approved"}}}
-          },
-          "required": [
-            "approvalSubjectRevision",
-            "approvals",
-            "approvalReceiptDigest",
-            "approvedAt",
-            "revokedAt",
-            "revocationReason",
-            "revocationReceiptDigest"
-          ]
         }
       ],
       "additionalProperties": false

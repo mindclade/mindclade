@@ -6,11 +6,28 @@ import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
+from urllib.parse import urlsplit
 
-from jsonschema import Draft202012Validator
+from jsonschema import Draft202012Validator, FormatChecker
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(REPO_ROOT / "tools/repo"))
+
+
+def strict_uri_format_checker() -> FormatChecker:
+    checker = FormatChecker()
+
+    @checker.checks("uri")
+    def is_absolute_uri(value: object) -> bool:
+        if not isinstance(value, str):
+            return True
+        try:
+            parsed = urlsplit(value)
+        except ValueError:
+            return False
+        return bool(parsed.scheme) and not any(character.isspace() for character in value)
+
+    return checker
 
 from dependency_policy import validate_dependency_graph  # noqa: E402
 from owner_policy import (  # noqa: E402
@@ -305,7 +322,10 @@ class RepositoryPolicyTest(unittest.TestCase):
             with self.subTest(contract=schema_path):
                 schema = json.loads((REPO_ROOT / schema_path).read_text(encoding="utf-8"))
                 Draft202012Validator.check_schema(schema)
-                validator = Draft202012Validator(schema)
+                validator = Draft202012Validator(
+                    schema,
+                    format_checker=strict_uri_format_checker(),
+                )
                 pending = load_yaml_or_json(REPO_ROOT / template_path)
                 self.assertEqual(list(validator.iter_errors(pending)), [])
                 self.assertEqual(pending["spec"]["status"], "pending")
@@ -314,8 +334,23 @@ class RepositoryPolicyTest(unittest.TestCase):
                 falsely_approved = json.loads(json.dumps(pending))
                 falsely_approved["spec"]["status"] = "approved"
                 self.assertTrue(list(validator.iter_errors(falsely_approved)))
+                falsely_revoked = json.loads(json.dumps(pending))
+                falsely_revoked["spec"]["status"] = "revoked"
+                self.assertTrue(list(validator.iter_errors(falsely_revoked)))
                 self.assertEqual(entries[schema_path]["kind"], "schema")
                 self.assertEqual(entries[template_path]["kind"], "configuration")
+                if "sourceTermsUri" in schema["properties"]["spec"]["properties"]:
+                    uri_schema = schema["properties"]["spec"]["properties"]["sourceTermsUri"]
+                    uri_validator = Draft202012Validator(
+                        uri_schema,
+                        format_checker=strict_uri_format_checker(),
+                    )
+                    self.assertTrue(list(uri_validator.iter_errors("not a URI")))
+
+        h100 = load_yaml_or_json(
+            REPO_ROOT / "docs/policies/sqp-001-h100-approval.template.yaml"
+        )
+        self.assertIn("wave-2s-implementation", h100["spec"]["blockedUntilApproval"])
 
     def test_authority_display_order_round_trips(self) -> None:
         paths = [entry["path"] for entry in self.manifest["paths"]]
