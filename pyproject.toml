@@ -57,5 +57,5 @@ dev = [
 
 native-kernels = [
     "tilelang==0.1.13; sys_platform == 'linux' and platform_machine == 'x86_64'",
-    "torch==2.10.0; sys_platform == 'linux' and platform_machine == 'x86_64'",
+    "torch==2.13.0; sys_platform == 'linux' and platform_machine == 'x86_64'",
 ]
