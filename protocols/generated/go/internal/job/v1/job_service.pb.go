@@ -11,6 +11,7 @@ import (
 	v1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	durationpb "google.golang.org/protobuf/types/known/durationpb"
 	fieldmaskpb "google.golang.org/protobuf/types/known/fieldmaskpb"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 	reflect "reflect"
@@ -1345,6 +1346,618 @@ func (x *ListAttemptsResponse) GetReadTime() *timestamppb.Timestamp {
 	return nil
 }
 
+// AcquireAttemptLeaseRequest atomically creates a fenced execution attempt.
+// The authenticated worker identity and raw lease token are transport metadata;
+// only the token digest is represented in LeaseFence.
+type AcquireAttemptLeaseRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Context       *v11.CommandContext    `protobuf:"bytes,1,opt,name=context,proto3" json:"context,omitempty"`
+	RunName       string                 `protobuf:"bytes,2,opt,name=run_name,json=runName,proto3" json:"run_name,omitempty"`
+	AttemptId     string                 `protobuf:"bytes,3,opt,name=attempt_id,json=attemptId,proto3" json:"attempt_id,omitempty"`
+	LeaseDuration *durationpb.Duration   `protobuf:"bytes,4,opt,name=lease_duration,json=leaseDuration,proto3" json:"lease_duration,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AcquireAttemptLeaseRequest) Reset() {
+	*x = AcquireAttemptLeaseRequest{}
+	mi := &file_proto_mindclade_internal_job_v1_job_service_proto_msgTypes[24]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AcquireAttemptLeaseRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AcquireAttemptLeaseRequest) ProtoMessage() {}
+
+func (x *AcquireAttemptLeaseRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_mindclade_internal_job_v1_job_service_proto_msgTypes[24]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AcquireAttemptLeaseRequest.ProtoReflect.Descriptor instead.
+func (*AcquireAttemptLeaseRequest) Descriptor() ([]byte, []int) {
+	return file_proto_mindclade_internal_job_v1_job_service_proto_rawDescGZIP(), []int{24}
+}
+
+func (x *AcquireAttemptLeaseRequest) GetContext() *v11.CommandContext {
+	if x != nil {
+		return x.Context
+	}
+	return nil
+}
+
+func (x *AcquireAttemptLeaseRequest) GetRunName() string {
+	if x != nil {
+		return x.RunName
+	}
+	return ""
+}
+
+func (x *AcquireAttemptLeaseRequest) GetAttemptId() string {
+	if x != nil {
+		return x.AttemptId
+	}
+	return ""
+}
+
+func (x *AcquireAttemptLeaseRequest) GetLeaseDuration() *durationpb.Duration {
+	if x != nil {
+		return x.LeaseDuration
+	}
+	return nil
+}
+
+// AcquireAttemptLeaseResponse returns the durable attempt and non-secret fence.
+type AcquireAttemptLeaseResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Attempt       *v1.Attempt            `protobuf:"bytes,1,opt,name=attempt,proto3" json:"attempt,omitempty"`
+	Fence         *v1.LeaseFence         `protobuf:"bytes,2,opt,name=fence,proto3" json:"fence,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AcquireAttemptLeaseResponse) Reset() {
+	*x = AcquireAttemptLeaseResponse{}
+	mi := &file_proto_mindclade_internal_job_v1_job_service_proto_msgTypes[25]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AcquireAttemptLeaseResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AcquireAttemptLeaseResponse) ProtoMessage() {}
+
+func (x *AcquireAttemptLeaseResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_mindclade_internal_job_v1_job_service_proto_msgTypes[25]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AcquireAttemptLeaseResponse.ProtoReflect.Descriptor instead.
+func (*AcquireAttemptLeaseResponse) Descriptor() ([]byte, []int) {
+	return file_proto_mindclade_internal_job_v1_job_service_proto_rawDescGZIP(), []int{25}
+}
+
+func (x *AcquireAttemptLeaseResponse) GetAttempt() *v1.Attempt {
+	if x != nil {
+		return x.Attempt
+	}
+	return nil
+}
+
+func (x *AcquireAttemptLeaseResponse) GetFence() *v1.LeaseFence {
+	if x != nil {
+		return x.Fence
+	}
+	return nil
+}
+
+// RenewAttemptLeaseRequest extends the current lease under token and epoch fencing.
+type RenewAttemptLeaseRequest struct {
+	state                   protoimpl.MessageState `protogen:"open.v1"`
+	Context                 *v11.CommandContext    `protobuf:"bytes,1,opt,name=context,proto3" json:"context,omitempty"`
+	Fence                   *v1.LeaseFence         `protobuf:"bytes,2,opt,name=fence,proto3" json:"fence,omitempty"`
+	LeaseDuration           *durationpb.Duration   `protobuf:"bytes,3,opt,name=lease_duration,json=leaseDuration,proto3" json:"lease_duration,omitempty"`
+	ExpectedResourceVersion int64                  `protobuf:"varint,4,opt,name=expected_resource_version,json=expectedResourceVersion,proto3" json:"expected_resource_version,omitempty"`
+	unknownFields           protoimpl.UnknownFields
+	sizeCache               protoimpl.SizeCache
+}
+
+func (x *RenewAttemptLeaseRequest) Reset() {
+	*x = RenewAttemptLeaseRequest{}
+	mi := &file_proto_mindclade_internal_job_v1_job_service_proto_msgTypes[26]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RenewAttemptLeaseRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RenewAttemptLeaseRequest) ProtoMessage() {}
+
+func (x *RenewAttemptLeaseRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_mindclade_internal_job_v1_job_service_proto_msgTypes[26]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RenewAttemptLeaseRequest.ProtoReflect.Descriptor instead.
+func (*RenewAttemptLeaseRequest) Descriptor() ([]byte, []int) {
+	return file_proto_mindclade_internal_job_v1_job_service_proto_rawDescGZIP(), []int{26}
+}
+
+func (x *RenewAttemptLeaseRequest) GetContext() *v11.CommandContext {
+	if x != nil {
+		return x.Context
+	}
+	return nil
+}
+
+func (x *RenewAttemptLeaseRequest) GetFence() *v1.LeaseFence {
+	if x != nil {
+		return x.Fence
+	}
+	return nil
+}
+
+func (x *RenewAttemptLeaseRequest) GetLeaseDuration() *durationpb.Duration {
+	if x != nil {
+		return x.LeaseDuration
+	}
+	return nil
+}
+
+func (x *RenewAttemptLeaseRequest) GetExpectedResourceVersion() int64 {
+	if x != nil {
+		return x.ExpectedResourceVersion
+	}
+	return 0
+}
+
+// RenewAttemptLeaseResponse returns the renewed attempt and fence deadline.
+type RenewAttemptLeaseResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Attempt       *v1.Attempt            `protobuf:"bytes,1,opt,name=attempt,proto3" json:"attempt,omitempty"`
+	Fence         *v1.LeaseFence         `protobuf:"bytes,2,opt,name=fence,proto3" json:"fence,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RenewAttemptLeaseResponse) Reset() {
+	*x = RenewAttemptLeaseResponse{}
+	mi := &file_proto_mindclade_internal_job_v1_job_service_proto_msgTypes[27]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RenewAttemptLeaseResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RenewAttemptLeaseResponse) ProtoMessage() {}
+
+func (x *RenewAttemptLeaseResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_mindclade_internal_job_v1_job_service_proto_msgTypes[27]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RenewAttemptLeaseResponse.ProtoReflect.Descriptor instead.
+func (*RenewAttemptLeaseResponse) Descriptor() ([]byte, []int) {
+	return file_proto_mindclade_internal_job_v1_job_service_proto_rawDescGZIP(), []int{27}
+}
+
+func (x *RenewAttemptLeaseResponse) GetAttempt() *v1.Attempt {
+	if x != nil {
+		return x.Attempt
+	}
+	return nil
+}
+
+func (x *RenewAttemptLeaseResponse) GetFence() *v1.LeaseFence {
+	if x != nil {
+		return x.Fence
+	}
+	return nil
+}
+
+// HeartbeatAttemptRequest proves liveness and renews the authenticated lease.
+type HeartbeatAttemptRequest struct {
+	state                   protoimpl.MessageState `protogen:"open.v1"`
+	Context                 *v11.CommandContext    `protobuf:"bytes,1,opt,name=context,proto3" json:"context,omitempty"`
+	Fence                   *v1.LeaseFence         `protobuf:"bytes,2,opt,name=fence,proto3" json:"fence,omitempty"`
+	LeaseDuration           *durationpb.Duration   `protobuf:"bytes,3,opt,name=lease_duration,json=leaseDuration,proto3" json:"lease_duration,omitempty"`
+	ExpectedResourceVersion int64                  `protobuf:"varint,4,opt,name=expected_resource_version,json=expectedResourceVersion,proto3" json:"expected_resource_version,omitempty"`
+	unknownFields           protoimpl.UnknownFields
+	sizeCache               protoimpl.SizeCache
+}
+
+func (x *HeartbeatAttemptRequest) Reset() {
+	*x = HeartbeatAttemptRequest{}
+	mi := &file_proto_mindclade_internal_job_v1_job_service_proto_msgTypes[28]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *HeartbeatAttemptRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*HeartbeatAttemptRequest) ProtoMessage() {}
+
+func (x *HeartbeatAttemptRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_mindclade_internal_job_v1_job_service_proto_msgTypes[28]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use HeartbeatAttemptRequest.ProtoReflect.Descriptor instead.
+func (*HeartbeatAttemptRequest) Descriptor() ([]byte, []int) {
+	return file_proto_mindclade_internal_job_v1_job_service_proto_rawDescGZIP(), []int{28}
+}
+
+func (x *HeartbeatAttemptRequest) GetContext() *v11.CommandContext {
+	if x != nil {
+		return x.Context
+	}
+	return nil
+}
+
+func (x *HeartbeatAttemptRequest) GetFence() *v1.LeaseFence {
+	if x != nil {
+		return x.Fence
+	}
+	return nil
+}
+
+func (x *HeartbeatAttemptRequest) GetLeaseDuration() *durationpb.Duration {
+	if x != nil {
+		return x.LeaseDuration
+	}
+	return nil
+}
+
+func (x *HeartbeatAttemptRequest) GetExpectedResourceVersion() int64 {
+	if x != nil {
+		return x.ExpectedResourceVersion
+	}
+	return 0
+}
+
+// HeartbeatAttemptResponse returns the server-clock lease state.
+type HeartbeatAttemptResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Attempt       *v1.Attempt            `protobuf:"bytes,1,opt,name=attempt,proto3" json:"attempt,omitempty"`
+	Fence         *v1.LeaseFence         `protobuf:"bytes,2,opt,name=fence,proto3" json:"fence,omitempty"`
+	ObservedAt    *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=observed_at,json=observedAt,proto3" json:"observed_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *HeartbeatAttemptResponse) Reset() {
+	*x = HeartbeatAttemptResponse{}
+	mi := &file_proto_mindclade_internal_job_v1_job_service_proto_msgTypes[29]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *HeartbeatAttemptResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*HeartbeatAttemptResponse) ProtoMessage() {}
+
+func (x *HeartbeatAttemptResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_mindclade_internal_job_v1_job_service_proto_msgTypes[29]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use HeartbeatAttemptResponse.ProtoReflect.Descriptor instead.
+func (*HeartbeatAttemptResponse) Descriptor() ([]byte, []int) {
+	return file_proto_mindclade_internal_job_v1_job_service_proto_rawDescGZIP(), []int{29}
+}
+
+func (x *HeartbeatAttemptResponse) GetAttempt() *v1.Attempt {
+	if x != nil {
+		return x.Attempt
+	}
+	return nil
+}
+
+func (x *HeartbeatAttemptResponse) GetFence() *v1.LeaseFence {
+	if x != nil {
+		return x.Fence
+	}
+	return nil
+}
+
+func (x *HeartbeatAttemptResponse) GetObservedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.ObservedAt
+	}
+	return nil
+}
+
+// CancelAttemptRequest cancels the current authenticated attempt lease.
+type CancelAttemptRequest struct {
+	state                   protoimpl.MessageState `protogen:"open.v1"`
+	Context                 *v11.CommandContext    `protobuf:"bytes,1,opt,name=context,proto3" json:"context,omitempty"`
+	Fence                   *v1.LeaseFence         `protobuf:"bytes,2,opt,name=fence,proto3" json:"fence,omitempty"`
+	ExpectedResourceVersion int64                  `protobuf:"varint,3,opt,name=expected_resource_version,json=expectedResourceVersion,proto3" json:"expected_resource_version,omitempty"`
+	Reason                  string                 `protobuf:"bytes,4,opt,name=reason,proto3" json:"reason,omitempty"`
+	unknownFields           protoimpl.UnknownFields
+	sizeCache               protoimpl.SizeCache
+}
+
+func (x *CancelAttemptRequest) Reset() {
+	*x = CancelAttemptRequest{}
+	mi := &file_proto_mindclade_internal_job_v1_job_service_proto_msgTypes[30]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CancelAttemptRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CancelAttemptRequest) ProtoMessage() {}
+
+func (x *CancelAttemptRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_mindclade_internal_job_v1_job_service_proto_msgTypes[30]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CancelAttemptRequest.ProtoReflect.Descriptor instead.
+func (*CancelAttemptRequest) Descriptor() ([]byte, []int) {
+	return file_proto_mindclade_internal_job_v1_job_service_proto_rawDescGZIP(), []int{30}
+}
+
+func (x *CancelAttemptRequest) GetContext() *v11.CommandContext {
+	if x != nil {
+		return x.Context
+	}
+	return nil
+}
+
+func (x *CancelAttemptRequest) GetFence() *v1.LeaseFence {
+	if x != nil {
+		return x.Fence
+	}
+	return nil
+}
+
+func (x *CancelAttemptRequest) GetExpectedResourceVersion() int64 {
+	if x != nil {
+		return x.ExpectedResourceVersion
+	}
+	return 0
+}
+
+func (x *CancelAttemptRequest) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
+// CancelAttemptResponse returns the terminal attempt and reconciled run.
+type CancelAttemptResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Attempt       *v1.Attempt            `protobuf:"bytes,1,opt,name=attempt,proto3" json:"attempt,omitempty"`
+	Run           *v1.Run                `protobuf:"bytes,2,opt,name=run,proto3" json:"run,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CancelAttemptResponse) Reset() {
+	*x = CancelAttemptResponse{}
+	mi := &file_proto_mindclade_internal_job_v1_job_service_proto_msgTypes[31]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CancelAttemptResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CancelAttemptResponse) ProtoMessage() {}
+
+func (x *CancelAttemptResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_mindclade_internal_job_v1_job_service_proto_msgTypes[31]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CancelAttemptResponse.ProtoReflect.Descriptor instead.
+func (*CancelAttemptResponse) Descriptor() ([]byte, []int) {
+	return file_proto_mindclade_internal_job_v1_job_service_proto_rawDescGZIP(), []int{31}
+}
+
+func (x *CancelAttemptResponse) GetAttempt() *v1.Attempt {
+	if x != nil {
+		return x.Attempt
+	}
+	return nil
+}
+
+func (x *CancelAttemptResponse) GetRun() *v1.Run {
+	if x != nil {
+		return x.Run
+	}
+	return nil
+}
+
+// ExpireAttemptLeasesRequest is a bounded reconciler command using server time.
+type ExpireAttemptLeasesRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Context       *v11.CommandContext    `protobuf:"bytes,1,opt,name=context,proto3" json:"context,omitempty"`
+	Parent        string                 `protobuf:"bytes,2,opt,name=parent,proto3" json:"parent,omitempty"`
+	Limit         uint32                 `protobuf:"varint,3,opt,name=limit,proto3" json:"limit,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ExpireAttemptLeasesRequest) Reset() {
+	*x = ExpireAttemptLeasesRequest{}
+	mi := &file_proto_mindclade_internal_job_v1_job_service_proto_msgTypes[32]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ExpireAttemptLeasesRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ExpireAttemptLeasesRequest) ProtoMessage() {}
+
+func (x *ExpireAttemptLeasesRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_mindclade_internal_job_v1_job_service_proto_msgTypes[32]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ExpireAttemptLeasesRequest.ProtoReflect.Descriptor instead.
+func (*ExpireAttemptLeasesRequest) Descriptor() ([]byte, []int) {
+	return file_proto_mindclade_internal_job_v1_job_service_proto_rawDescGZIP(), []int{32}
+}
+
+func (x *ExpireAttemptLeasesRequest) GetContext() *v11.CommandContext {
+	if x != nil {
+		return x.Context
+	}
+	return nil
+}
+
+func (x *ExpireAttemptLeasesRequest) GetParent() string {
+	if x != nil {
+		return x.Parent
+	}
+	return ""
+}
+
+func (x *ExpireAttemptLeasesRequest) GetLimit() uint32 {
+	if x != nil {
+		return x.Limit
+	}
+	return 0
+}
+
+// ExpireAttemptLeasesResponse returns attempts fenced by this reconciliation.
+type ExpireAttemptLeasesResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Attempts      []*v1.Attempt          `protobuf:"bytes,1,rep,name=attempts,proto3" json:"attempts,omitempty"`
+	ObservedAt    *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=observed_at,json=observedAt,proto3" json:"observed_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ExpireAttemptLeasesResponse) Reset() {
+	*x = ExpireAttemptLeasesResponse{}
+	mi := &file_proto_mindclade_internal_job_v1_job_service_proto_msgTypes[33]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ExpireAttemptLeasesResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ExpireAttemptLeasesResponse) ProtoMessage() {}
+
+func (x *ExpireAttemptLeasesResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_mindclade_internal_job_v1_job_service_proto_msgTypes[33]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ExpireAttemptLeasesResponse.ProtoReflect.Descriptor instead.
+func (*ExpireAttemptLeasesResponse) Descriptor() ([]byte, []int) {
+	return file_proto_mindclade_internal_job_v1_job_service_proto_rawDescGZIP(), []int{33}
+}
+
+func (x *ExpireAttemptLeasesResponse) GetAttempts() []*v1.Attempt {
+	if x != nil {
+		return x.Attempts
+	}
+	return nil
+}
+
+func (x *ExpireAttemptLeasesResponse) GetObservedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.ObservedAt
+	}
+	return nil
+}
+
 // CommitAttemptRequest applies a bounded worker update under both revision and lease fencing.
 type CommitAttemptRequest struct {
 	state                   protoimpl.MessageState `protogen:"open.v1"`
@@ -1359,7 +1972,7 @@ type CommitAttemptRequest struct {
 
 func (x *CommitAttemptRequest) Reset() {
 	*x = CommitAttemptRequest{}
-	mi := &file_proto_mindclade_internal_job_v1_job_service_proto_msgTypes[24]
+	mi := &file_proto_mindclade_internal_job_v1_job_service_proto_msgTypes[34]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1371,7 +1984,7 @@ func (x *CommitAttemptRequest) String() string {
 func (*CommitAttemptRequest) ProtoMessage() {}
 
 func (x *CommitAttemptRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_mindclade_internal_job_v1_job_service_proto_msgTypes[24]
+	mi := &file_proto_mindclade_internal_job_v1_job_service_proto_msgTypes[34]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1384,7 +1997,7 @@ func (x *CommitAttemptRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CommitAttemptRequest.ProtoReflect.Descriptor instead.
 func (*CommitAttemptRequest) Descriptor() ([]byte, []int) {
-	return file_proto_mindclade_internal_job_v1_job_service_proto_rawDescGZIP(), []int{24}
+	return file_proto_mindclade_internal_job_v1_job_service_proto_rawDescGZIP(), []int{34}
 }
 
 func (x *CommitAttemptRequest) GetContext() *v11.CommandContext {
@@ -1433,7 +2046,7 @@ type CommitAttemptResponse struct {
 
 func (x *CommitAttemptResponse) Reset() {
 	*x = CommitAttemptResponse{}
-	mi := &file_proto_mindclade_internal_job_v1_job_service_proto_msgTypes[25]
+	mi := &file_proto_mindclade_internal_job_v1_job_service_proto_msgTypes[35]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1445,7 +2058,7 @@ func (x *CommitAttemptResponse) String() string {
 func (*CommitAttemptResponse) ProtoMessage() {}
 
 func (x *CommitAttemptResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_mindclade_internal_job_v1_job_service_proto_msgTypes[25]
+	mi := &file_proto_mindclade_internal_job_v1_job_service_proto_msgTypes[35]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1458,7 +2071,7 @@ func (x *CommitAttemptResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CommitAttemptResponse.ProtoReflect.Descriptor instead.
 func (*CommitAttemptResponse) Descriptor() ([]byte, []int) {
-	return file_proto_mindclade_internal_job_v1_job_service_proto_rawDescGZIP(), []int{25}
+	return file_proto_mindclade_internal_job_v1_job_service_proto_rawDescGZIP(), []int{35}
 }
 
 func (x *CommitAttemptResponse) GetAttempt() *v1.Attempt {
@@ -1479,7 +2092,7 @@ var File_proto_mindclade_internal_job_v1_job_service_proto protoreflect.FileDesc
 
 const file_proto_mindclade_internal_job_v1_job_service_proto_rawDesc = "" +
 	"\n" +
-	"1proto/mindclade/internal/job/v1/job_service.proto\x12\x19mindclade.internal.job.v1\x1a google/protobuf/field_mask.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a/proto/mindclade/common/v1/command_context.proto\x1a*proto/mindclade/common/v1/pagination.proto\x1a$proto/mindclade/job/v1/attempt.proto\x1a proto/mindclade/job/v1/job.proto\x1a)proto/mindclade/job/v1/job_commands.proto\x1a*proto/mindclade/job/v1/lease_fencing.proto\x1a&proto/mindclade/job/v1/operation.proto\x1a proto/mindclade/job/v1/run.proto\"M\n" +
+	"1proto/mindclade/internal/job/v1/job_service.proto\x12\x19mindclade.internal.job.v1\x1a google/protobuf/field_mask.proto\x1a\x1egoogle/protobuf/duration.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a/proto/mindclade/common/v1/command_context.proto\x1a*proto/mindclade/common/v1/pagination.proto\x1a$proto/mindclade/job/v1/attempt.proto\x1a proto/mindclade/job/v1/job.proto\x1a)proto/mindclade/job/v1/job_commands.proto\x1a*proto/mindclade/job/v1/lease_fencing.proto\x1a&proto/mindclade/job/v1/operation.proto\x1a proto/mindclade/job/v1/run.proto\"M\n" +
 	"\x13GetOperationRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\"\n" +
 	"\rif_none_match\x18\x02 \x01(\tR\vifNoneMatch\"Q\n" +
@@ -1560,7 +2173,50 @@ const file_proto_mindclade_internal_job_v1_job_service_proto_rawDesc = "" +
 	"\x14ListAttemptsResponse\x125\n" +
 	"\battempts\x18\x01 \x03(\v2\x19.mindclade.job.v1.AttemptR\battempts\x125\n" +
 	"\x04page\x18\x02 \x01(\v2!.mindclade.common.v1.PageResponseR\x04page\x127\n" +
-	"\tread_time\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\breadTime\"\xb7\x02\n" +
+	"\tread_time\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\breadTime\"\xd7\x01\n" +
+	"\x1aAcquireAttemptLeaseRequest\x12=\n" +
+	"\acontext\x18\x01 \x01(\v2#.mindclade.common.v1.CommandContextR\acontext\x12\x19\n" +
+	"\brun_name\x18\x02 \x01(\tR\arunName\x12\x1d\n" +
+	"\n" +
+	"attempt_id\x18\x03 \x01(\tR\tattemptId\x12@\n" +
+	"\x0elease_duration\x18\x04 \x01(\v2\x19.google.protobuf.DurationR\rleaseDuration\"\x86\x01\n" +
+	"\x1bAcquireAttemptLeaseResponse\x123\n" +
+	"\aattempt\x18\x01 \x01(\v2\x19.mindclade.job.v1.AttemptR\aattempt\x122\n" +
+	"\x05fence\x18\x02 \x01(\v2\x1c.mindclade.job.v1.LeaseFenceR\x05fence\"\x8b\x02\n" +
+	"\x18RenewAttemptLeaseRequest\x12=\n" +
+	"\acontext\x18\x01 \x01(\v2#.mindclade.common.v1.CommandContextR\acontext\x122\n" +
+	"\x05fence\x18\x02 \x01(\v2\x1c.mindclade.job.v1.LeaseFenceR\x05fence\x12@\n" +
+	"\x0elease_duration\x18\x03 \x01(\v2\x19.google.protobuf.DurationR\rleaseDuration\x12:\n" +
+	"\x19expected_resource_version\x18\x04 \x01(\x03R\x17expectedResourceVersion\"\x84\x01\n" +
+	"\x19RenewAttemptLeaseResponse\x123\n" +
+	"\aattempt\x18\x01 \x01(\v2\x19.mindclade.job.v1.AttemptR\aattempt\x122\n" +
+	"\x05fence\x18\x02 \x01(\v2\x1c.mindclade.job.v1.LeaseFenceR\x05fence\"\x8a\x02\n" +
+	"\x17HeartbeatAttemptRequest\x12=\n" +
+	"\acontext\x18\x01 \x01(\v2#.mindclade.common.v1.CommandContextR\acontext\x122\n" +
+	"\x05fence\x18\x02 \x01(\v2\x1c.mindclade.job.v1.LeaseFenceR\x05fence\x12@\n" +
+	"\x0elease_duration\x18\x03 \x01(\v2\x19.google.protobuf.DurationR\rleaseDuration\x12:\n" +
+	"\x19expected_resource_version\x18\x04 \x01(\x03R\x17expectedResourceVersion\"\xc0\x01\n" +
+	"\x18HeartbeatAttemptResponse\x123\n" +
+	"\aattempt\x18\x01 \x01(\v2\x19.mindclade.job.v1.AttemptR\aattempt\x122\n" +
+	"\x05fence\x18\x02 \x01(\v2\x1c.mindclade.job.v1.LeaseFenceR\x05fence\x12;\n" +
+	"\vobserved_at\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
+	"observedAt\"\xdd\x01\n" +
+	"\x14CancelAttemptRequest\x12=\n" +
+	"\acontext\x18\x01 \x01(\v2#.mindclade.common.v1.CommandContextR\acontext\x122\n" +
+	"\x05fence\x18\x02 \x01(\v2\x1c.mindclade.job.v1.LeaseFenceR\x05fence\x12:\n" +
+	"\x19expected_resource_version\x18\x03 \x01(\x03R\x17expectedResourceVersion\x12\x16\n" +
+	"\x06reason\x18\x04 \x01(\tR\x06reason\"u\n" +
+	"\x15CancelAttemptResponse\x123\n" +
+	"\aattempt\x18\x01 \x01(\v2\x19.mindclade.job.v1.AttemptR\aattempt\x12'\n" +
+	"\x03run\x18\x02 \x01(\v2\x15.mindclade.job.v1.RunR\x03run\"\x89\x01\n" +
+	"\x1aExpireAttemptLeasesRequest\x12=\n" +
+	"\acontext\x18\x01 \x01(\v2#.mindclade.common.v1.CommandContextR\acontext\x12\x16\n" +
+	"\x06parent\x18\x02 \x01(\tR\x06parent\x12\x14\n" +
+	"\x05limit\x18\x03 \x01(\rR\x05limit\"\x91\x01\n" +
+	"\x1bExpireAttemptLeasesResponse\x125\n" +
+	"\battempts\x18\x01 \x03(\v2\x19.mindclade.job.v1.AttemptR\battempts\x12;\n" +
+	"\vobserved_at\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
+	"observedAt\"\xb7\x02\n" +
 	"\x14CommitAttemptRequest\x12=\n" +
 	"\acontext\x18\x01 \x01(\v2#.mindclade.common.v1.CommandContextR\acontext\x123\n" +
 	"\aattempt\x18\x02 \x01(\v2\x19.mindclade.job.v1.AttemptR\aattempt\x122\n" +
@@ -1582,14 +2238,19 @@ const file_proto_mindclade_internal_job_v1_job_service_proto_rawDesc = "" +
 	"RequestJob\x12,.mindclade.internal.job.v1.RequestJobRequest\x1a-.mindclade.internal.job.v1.RequestJobResponse\x12]\n" +
 	"\x06GetJob\x12(.mindclade.internal.job.v1.GetJobRequest\x1a).mindclade.internal.job.v1.GetJobResponse\x12c\n" +
 	"\bListJobs\x12*.mindclade.internal.job.v1.ListJobsRequest\x1a+.mindclade.internal.job.v1.ListJobsResponse\x12f\n" +
-	"\tCancelJob\x12+.mindclade.internal.job.v1.CancelJobRequest\x1a,.mindclade.internal.job.v1.CancelJobResponse2\xa0\x04\n" +
+	"\tCancelJob\x12+.mindclade.internal.job.v1.CancelJobRequest\x1a,.mindclade.internal.job.v1.CancelJobResponse2\x9f\t\n" +
 	"\n" +
 	"RunService\x12]\n" +
 	"\x06GetRun\x12(.mindclade.internal.job.v1.GetRunRequest\x1a).mindclade.internal.job.v1.GetRunResponse\x12c\n" +
 	"\bListRuns\x12*.mindclade.internal.job.v1.ListRunsRequest\x1a+.mindclade.internal.job.v1.ListRunsResponse\x12i\n" +
 	"\n" +
 	"GetAttempt\x12,.mindclade.internal.job.v1.GetAttemptRequest\x1a-.mindclade.internal.job.v1.GetAttemptResponse\x12o\n" +
-	"\fListAttempts\x12..mindclade.internal.job.v1.ListAttemptsRequest\x1a/.mindclade.internal.job.v1.ListAttemptsResponse\x12r\n" +
+	"\fListAttempts\x12..mindclade.internal.job.v1.ListAttemptsRequest\x1a/.mindclade.internal.job.v1.ListAttemptsResponse\x12\x84\x01\n" +
+	"\x13AcquireAttemptLease\x125.mindclade.internal.job.v1.AcquireAttemptLeaseRequest\x1a6.mindclade.internal.job.v1.AcquireAttemptLeaseResponse\x12~\n" +
+	"\x11RenewAttemptLease\x123.mindclade.internal.job.v1.RenewAttemptLeaseRequest\x1a4.mindclade.internal.job.v1.RenewAttemptLeaseResponse\x12{\n" +
+	"\x10HeartbeatAttempt\x122.mindclade.internal.job.v1.HeartbeatAttemptRequest\x1a3.mindclade.internal.job.v1.HeartbeatAttemptResponse\x12r\n" +
+	"\rCancelAttempt\x12/.mindclade.internal.job.v1.CancelAttemptRequest\x1a0.mindclade.internal.job.v1.CancelAttemptResponse\x12\x84\x01\n" +
+	"\x13ExpireAttemptLeases\x125.mindclade.internal.job.v1.ExpireAttemptLeasesRequest\x1a6.mindclade.internal.job.v1.ExpireAttemptLeasesResponse\x12r\n" +
 	"\rCommitAttempt\x12/.mindclade.internal.job.v1.CommitAttemptRequest\x1a0.mindclade.internal.job.v1.CommitAttemptResponseBUZSgithub.com/mindclade/mindclade/protocols/generated/go/internal/job/v1;internaljobv1b\x06proto3"
 
 var (
@@ -1604,114 +2265,157 @@ func file_proto_mindclade_internal_job_v1_job_service_proto_rawDescGZIP() []byte
 	return file_proto_mindclade_internal_job_v1_job_service_proto_rawDescData
 }
 
-var file_proto_mindclade_internal_job_v1_job_service_proto_msgTypes = make([]protoimpl.MessageInfo, 26)
+var file_proto_mindclade_internal_job_v1_job_service_proto_msgTypes = make([]protoimpl.MessageInfo, 36)
 var file_proto_mindclade_internal_job_v1_job_service_proto_goTypes = []any{
-	(*GetOperationRequest)(nil),     // 0: mindclade.internal.job.v1.GetOperationRequest
-	(*GetOperationResponse)(nil),    // 1: mindclade.internal.job.v1.GetOperationResponse
-	(*ListOperationsRequest)(nil),   // 2: mindclade.internal.job.v1.ListOperationsRequest
-	(*ListOperationsResponse)(nil),  // 3: mindclade.internal.job.v1.ListOperationsResponse
-	(*CancelOperationRequest)(nil),  // 4: mindclade.internal.job.v1.CancelOperationRequest
-	(*CancelOperationResponse)(nil), // 5: mindclade.internal.job.v1.CancelOperationResponse
-	(*WatchOperationRequest)(nil),   // 6: mindclade.internal.job.v1.WatchOperationRequest
-	(*WatchOperationResponse)(nil),  // 7: mindclade.internal.job.v1.WatchOperationResponse
-	(*RequestJobRequest)(nil),       // 8: mindclade.internal.job.v1.RequestJobRequest
-	(*RequestJobResponse)(nil),      // 9: mindclade.internal.job.v1.RequestJobResponse
-	(*GetJobRequest)(nil),           // 10: mindclade.internal.job.v1.GetJobRequest
-	(*GetJobResponse)(nil),          // 11: mindclade.internal.job.v1.GetJobResponse
-	(*ListJobsRequest)(nil),         // 12: mindclade.internal.job.v1.ListJobsRequest
-	(*ListJobsResponse)(nil),        // 13: mindclade.internal.job.v1.ListJobsResponse
-	(*CancelJobRequest)(nil),        // 14: mindclade.internal.job.v1.CancelJobRequest
-	(*CancelJobResponse)(nil),       // 15: mindclade.internal.job.v1.CancelJobResponse
-	(*GetRunRequest)(nil),           // 16: mindclade.internal.job.v1.GetRunRequest
-	(*GetRunResponse)(nil),          // 17: mindclade.internal.job.v1.GetRunResponse
-	(*ListRunsRequest)(nil),         // 18: mindclade.internal.job.v1.ListRunsRequest
-	(*ListRunsResponse)(nil),        // 19: mindclade.internal.job.v1.ListRunsResponse
-	(*GetAttemptRequest)(nil),       // 20: mindclade.internal.job.v1.GetAttemptRequest
-	(*GetAttemptResponse)(nil),      // 21: mindclade.internal.job.v1.GetAttemptResponse
-	(*ListAttemptsRequest)(nil),     // 22: mindclade.internal.job.v1.ListAttemptsRequest
-	(*ListAttemptsResponse)(nil),    // 23: mindclade.internal.job.v1.ListAttemptsResponse
-	(*CommitAttemptRequest)(nil),    // 24: mindclade.internal.job.v1.CommitAttemptRequest
-	(*CommitAttemptResponse)(nil),   // 25: mindclade.internal.job.v1.CommitAttemptResponse
-	(*v1.Operation)(nil),            // 26: mindclade.job.v1.Operation
-	(*v11.PageRequest)(nil),         // 27: mindclade.common.v1.PageRequest
-	(*v11.PageResponse)(nil),        // 28: mindclade.common.v1.PageResponse
-	(*timestamppb.Timestamp)(nil),   // 29: google.protobuf.Timestamp
-	(*v11.CommandContext)(nil),      // 30: mindclade.common.v1.CommandContext
-	(*v1.RequestJobCommand)(nil),    // 31: mindclade.job.v1.RequestJobCommand
-	(*v1.Job)(nil),                  // 32: mindclade.job.v1.Job
-	(*v1.Run)(nil),                  // 33: mindclade.job.v1.Run
-	(*v1.Attempt)(nil),              // 34: mindclade.job.v1.Attempt
-	(*v1.LeaseFence)(nil),           // 35: mindclade.job.v1.LeaseFence
-	(*fieldmaskpb.FieldMask)(nil),   // 36: google.protobuf.FieldMask
+	(*GetOperationRequest)(nil),         // 0: mindclade.internal.job.v1.GetOperationRequest
+	(*GetOperationResponse)(nil),        // 1: mindclade.internal.job.v1.GetOperationResponse
+	(*ListOperationsRequest)(nil),       // 2: mindclade.internal.job.v1.ListOperationsRequest
+	(*ListOperationsResponse)(nil),      // 3: mindclade.internal.job.v1.ListOperationsResponse
+	(*CancelOperationRequest)(nil),      // 4: mindclade.internal.job.v1.CancelOperationRequest
+	(*CancelOperationResponse)(nil),     // 5: mindclade.internal.job.v1.CancelOperationResponse
+	(*WatchOperationRequest)(nil),       // 6: mindclade.internal.job.v1.WatchOperationRequest
+	(*WatchOperationResponse)(nil),      // 7: mindclade.internal.job.v1.WatchOperationResponse
+	(*RequestJobRequest)(nil),           // 8: mindclade.internal.job.v1.RequestJobRequest
+	(*RequestJobResponse)(nil),          // 9: mindclade.internal.job.v1.RequestJobResponse
+	(*GetJobRequest)(nil),               // 10: mindclade.internal.job.v1.GetJobRequest
+	(*GetJobResponse)(nil),              // 11: mindclade.internal.job.v1.GetJobResponse
+	(*ListJobsRequest)(nil),             // 12: mindclade.internal.job.v1.ListJobsRequest
+	(*ListJobsResponse)(nil),            // 13: mindclade.internal.job.v1.ListJobsResponse
+	(*CancelJobRequest)(nil),            // 14: mindclade.internal.job.v1.CancelJobRequest
+	(*CancelJobResponse)(nil),           // 15: mindclade.internal.job.v1.CancelJobResponse
+	(*GetRunRequest)(nil),               // 16: mindclade.internal.job.v1.GetRunRequest
+	(*GetRunResponse)(nil),              // 17: mindclade.internal.job.v1.GetRunResponse
+	(*ListRunsRequest)(nil),             // 18: mindclade.internal.job.v1.ListRunsRequest
+	(*ListRunsResponse)(nil),            // 19: mindclade.internal.job.v1.ListRunsResponse
+	(*GetAttemptRequest)(nil),           // 20: mindclade.internal.job.v1.GetAttemptRequest
+	(*GetAttemptResponse)(nil),          // 21: mindclade.internal.job.v1.GetAttemptResponse
+	(*ListAttemptsRequest)(nil),         // 22: mindclade.internal.job.v1.ListAttemptsRequest
+	(*ListAttemptsResponse)(nil),        // 23: mindclade.internal.job.v1.ListAttemptsResponse
+	(*AcquireAttemptLeaseRequest)(nil),  // 24: mindclade.internal.job.v1.AcquireAttemptLeaseRequest
+	(*AcquireAttemptLeaseResponse)(nil), // 25: mindclade.internal.job.v1.AcquireAttemptLeaseResponse
+	(*RenewAttemptLeaseRequest)(nil),    // 26: mindclade.internal.job.v1.RenewAttemptLeaseRequest
+	(*RenewAttemptLeaseResponse)(nil),   // 27: mindclade.internal.job.v1.RenewAttemptLeaseResponse
+	(*HeartbeatAttemptRequest)(nil),     // 28: mindclade.internal.job.v1.HeartbeatAttemptRequest
+	(*HeartbeatAttemptResponse)(nil),    // 29: mindclade.internal.job.v1.HeartbeatAttemptResponse
+	(*CancelAttemptRequest)(nil),        // 30: mindclade.internal.job.v1.CancelAttemptRequest
+	(*CancelAttemptResponse)(nil),       // 31: mindclade.internal.job.v1.CancelAttemptResponse
+	(*ExpireAttemptLeasesRequest)(nil),  // 32: mindclade.internal.job.v1.ExpireAttemptLeasesRequest
+	(*ExpireAttemptLeasesResponse)(nil), // 33: mindclade.internal.job.v1.ExpireAttemptLeasesResponse
+	(*CommitAttemptRequest)(nil),        // 34: mindclade.internal.job.v1.CommitAttemptRequest
+	(*CommitAttemptResponse)(nil),       // 35: mindclade.internal.job.v1.CommitAttemptResponse
+	(*v1.Operation)(nil),                // 36: mindclade.job.v1.Operation
+	(*v11.PageRequest)(nil),             // 37: mindclade.common.v1.PageRequest
+	(*v11.PageResponse)(nil),            // 38: mindclade.common.v1.PageResponse
+	(*timestamppb.Timestamp)(nil),       // 39: google.protobuf.Timestamp
+	(*v11.CommandContext)(nil),          // 40: mindclade.common.v1.CommandContext
+	(*v1.RequestJobCommand)(nil),        // 41: mindclade.job.v1.RequestJobCommand
+	(*v1.Job)(nil),                      // 42: mindclade.job.v1.Job
+	(*v1.Run)(nil),                      // 43: mindclade.job.v1.Run
+	(*v1.Attempt)(nil),                  // 44: mindclade.job.v1.Attempt
+	(*durationpb.Duration)(nil),         // 45: google.protobuf.Duration
+	(*v1.LeaseFence)(nil),               // 46: mindclade.job.v1.LeaseFence
+	(*fieldmaskpb.FieldMask)(nil),       // 47: google.protobuf.FieldMask
 }
 var file_proto_mindclade_internal_job_v1_job_service_proto_depIdxs = []int32{
-	26, // 0: mindclade.internal.job.v1.GetOperationResponse.operation:type_name -> mindclade.job.v1.Operation
-	27, // 1: mindclade.internal.job.v1.ListOperationsRequest.page:type_name -> mindclade.common.v1.PageRequest
-	26, // 2: mindclade.internal.job.v1.ListOperationsResponse.operations:type_name -> mindclade.job.v1.Operation
-	28, // 3: mindclade.internal.job.v1.ListOperationsResponse.page:type_name -> mindclade.common.v1.PageResponse
-	29, // 4: mindclade.internal.job.v1.ListOperationsResponse.read_time:type_name -> google.protobuf.Timestamp
-	30, // 5: mindclade.internal.job.v1.CancelOperationRequest.context:type_name -> mindclade.common.v1.CommandContext
-	26, // 6: mindclade.internal.job.v1.CancelOperationResponse.operation:type_name -> mindclade.job.v1.Operation
-	29, // 7: mindclade.internal.job.v1.WatchOperationRequest.deadline:type_name -> google.protobuf.Timestamp
-	26, // 8: mindclade.internal.job.v1.WatchOperationResponse.operation:type_name -> mindclade.job.v1.Operation
-	29, // 9: mindclade.internal.job.v1.WatchOperationResponse.observed_at:type_name -> google.protobuf.Timestamp
-	31, // 10: mindclade.internal.job.v1.RequestJobRequest.command:type_name -> mindclade.job.v1.RequestJobCommand
-	32, // 11: mindclade.internal.job.v1.RequestJobResponse.job:type_name -> mindclade.job.v1.Job
-	26, // 12: mindclade.internal.job.v1.RequestJobResponse.operation:type_name -> mindclade.job.v1.Operation
-	32, // 13: mindclade.internal.job.v1.GetJobResponse.job:type_name -> mindclade.job.v1.Job
-	27, // 14: mindclade.internal.job.v1.ListJobsRequest.page:type_name -> mindclade.common.v1.PageRequest
-	32, // 15: mindclade.internal.job.v1.ListJobsResponse.jobs:type_name -> mindclade.job.v1.Job
-	28, // 16: mindclade.internal.job.v1.ListJobsResponse.page:type_name -> mindclade.common.v1.PageResponse
-	29, // 17: mindclade.internal.job.v1.ListJobsResponse.read_time:type_name -> google.protobuf.Timestamp
-	30, // 18: mindclade.internal.job.v1.CancelJobRequest.context:type_name -> mindclade.common.v1.CommandContext
-	26, // 19: mindclade.internal.job.v1.CancelJobResponse.operation:type_name -> mindclade.job.v1.Operation
-	33, // 20: mindclade.internal.job.v1.GetRunResponse.run:type_name -> mindclade.job.v1.Run
-	27, // 21: mindclade.internal.job.v1.ListRunsRequest.page:type_name -> mindclade.common.v1.PageRequest
-	33, // 22: mindclade.internal.job.v1.ListRunsResponse.runs:type_name -> mindclade.job.v1.Run
-	28, // 23: mindclade.internal.job.v1.ListRunsResponse.page:type_name -> mindclade.common.v1.PageResponse
-	29, // 24: mindclade.internal.job.v1.ListRunsResponse.read_time:type_name -> google.protobuf.Timestamp
-	34, // 25: mindclade.internal.job.v1.GetAttemptResponse.attempt:type_name -> mindclade.job.v1.Attempt
-	27, // 26: mindclade.internal.job.v1.ListAttemptsRequest.page:type_name -> mindclade.common.v1.PageRequest
-	34, // 27: mindclade.internal.job.v1.ListAttemptsResponse.attempts:type_name -> mindclade.job.v1.Attempt
-	28, // 28: mindclade.internal.job.v1.ListAttemptsResponse.page:type_name -> mindclade.common.v1.PageResponse
-	29, // 29: mindclade.internal.job.v1.ListAttemptsResponse.read_time:type_name -> google.protobuf.Timestamp
-	30, // 30: mindclade.internal.job.v1.CommitAttemptRequest.context:type_name -> mindclade.common.v1.CommandContext
-	34, // 31: mindclade.internal.job.v1.CommitAttemptRequest.attempt:type_name -> mindclade.job.v1.Attempt
-	35, // 32: mindclade.internal.job.v1.CommitAttemptRequest.fence:type_name -> mindclade.job.v1.LeaseFence
-	36, // 33: mindclade.internal.job.v1.CommitAttemptRequest.update_mask:type_name -> google.protobuf.FieldMask
-	34, // 34: mindclade.internal.job.v1.CommitAttemptResponse.attempt:type_name -> mindclade.job.v1.Attempt
-	33, // 35: mindclade.internal.job.v1.CommitAttemptResponse.run:type_name -> mindclade.job.v1.Run
-	0,  // 36: mindclade.internal.job.v1.OperationService.GetOperation:input_type -> mindclade.internal.job.v1.GetOperationRequest
-	2,  // 37: mindclade.internal.job.v1.OperationService.ListOperations:input_type -> mindclade.internal.job.v1.ListOperationsRequest
-	4,  // 38: mindclade.internal.job.v1.OperationService.CancelOperation:input_type -> mindclade.internal.job.v1.CancelOperationRequest
-	6,  // 39: mindclade.internal.job.v1.OperationService.WatchOperation:input_type -> mindclade.internal.job.v1.WatchOperationRequest
-	8,  // 40: mindclade.internal.job.v1.JobService.RequestJob:input_type -> mindclade.internal.job.v1.RequestJobRequest
-	10, // 41: mindclade.internal.job.v1.JobService.GetJob:input_type -> mindclade.internal.job.v1.GetJobRequest
-	12, // 42: mindclade.internal.job.v1.JobService.ListJobs:input_type -> mindclade.internal.job.v1.ListJobsRequest
-	14, // 43: mindclade.internal.job.v1.JobService.CancelJob:input_type -> mindclade.internal.job.v1.CancelJobRequest
-	16, // 44: mindclade.internal.job.v1.RunService.GetRun:input_type -> mindclade.internal.job.v1.GetRunRequest
-	18, // 45: mindclade.internal.job.v1.RunService.ListRuns:input_type -> mindclade.internal.job.v1.ListRunsRequest
-	20, // 46: mindclade.internal.job.v1.RunService.GetAttempt:input_type -> mindclade.internal.job.v1.GetAttemptRequest
-	22, // 47: mindclade.internal.job.v1.RunService.ListAttempts:input_type -> mindclade.internal.job.v1.ListAttemptsRequest
-	24, // 48: mindclade.internal.job.v1.RunService.CommitAttempt:input_type -> mindclade.internal.job.v1.CommitAttemptRequest
-	1,  // 49: mindclade.internal.job.v1.OperationService.GetOperation:output_type -> mindclade.internal.job.v1.GetOperationResponse
-	3,  // 50: mindclade.internal.job.v1.OperationService.ListOperations:output_type -> mindclade.internal.job.v1.ListOperationsResponse
-	5,  // 51: mindclade.internal.job.v1.OperationService.CancelOperation:output_type -> mindclade.internal.job.v1.CancelOperationResponse
-	7,  // 52: mindclade.internal.job.v1.OperationService.WatchOperation:output_type -> mindclade.internal.job.v1.WatchOperationResponse
-	9,  // 53: mindclade.internal.job.v1.JobService.RequestJob:output_type -> mindclade.internal.job.v1.RequestJobResponse
-	11, // 54: mindclade.internal.job.v1.JobService.GetJob:output_type -> mindclade.internal.job.v1.GetJobResponse
-	13, // 55: mindclade.internal.job.v1.JobService.ListJobs:output_type -> mindclade.internal.job.v1.ListJobsResponse
-	15, // 56: mindclade.internal.job.v1.JobService.CancelJob:output_type -> mindclade.internal.job.v1.CancelJobResponse
-	17, // 57: mindclade.internal.job.v1.RunService.GetRun:output_type -> mindclade.internal.job.v1.GetRunResponse
-	19, // 58: mindclade.internal.job.v1.RunService.ListRuns:output_type -> mindclade.internal.job.v1.ListRunsResponse
-	21, // 59: mindclade.internal.job.v1.RunService.GetAttempt:output_type -> mindclade.internal.job.v1.GetAttemptResponse
-	23, // 60: mindclade.internal.job.v1.RunService.ListAttempts:output_type -> mindclade.internal.job.v1.ListAttemptsResponse
-	25, // 61: mindclade.internal.job.v1.RunService.CommitAttempt:output_type -> mindclade.internal.job.v1.CommitAttemptResponse
-	49, // [49:62] is the sub-list for method output_type
-	36, // [36:49] is the sub-list for method input_type
-	36, // [36:36] is the sub-list for extension type_name
-	36, // [36:36] is the sub-list for extension extendee
-	0,  // [0:36] is the sub-list for field type_name
+	36, // 0: mindclade.internal.job.v1.GetOperationResponse.operation:type_name -> mindclade.job.v1.Operation
+	37, // 1: mindclade.internal.job.v1.ListOperationsRequest.page:type_name -> mindclade.common.v1.PageRequest
+	36, // 2: mindclade.internal.job.v1.ListOperationsResponse.operations:type_name -> mindclade.job.v1.Operation
+	38, // 3: mindclade.internal.job.v1.ListOperationsResponse.page:type_name -> mindclade.common.v1.PageResponse
+	39, // 4: mindclade.internal.job.v1.ListOperationsResponse.read_time:type_name -> google.protobuf.Timestamp
+	40, // 5: mindclade.internal.job.v1.CancelOperationRequest.context:type_name -> mindclade.common.v1.CommandContext
+	36, // 6: mindclade.internal.job.v1.CancelOperationResponse.operation:type_name -> mindclade.job.v1.Operation
+	39, // 7: mindclade.internal.job.v1.WatchOperationRequest.deadline:type_name -> google.protobuf.Timestamp
+	36, // 8: mindclade.internal.job.v1.WatchOperationResponse.operation:type_name -> mindclade.job.v1.Operation
+	39, // 9: mindclade.internal.job.v1.WatchOperationResponse.observed_at:type_name -> google.protobuf.Timestamp
+	41, // 10: mindclade.internal.job.v1.RequestJobRequest.command:type_name -> mindclade.job.v1.RequestJobCommand
+	42, // 11: mindclade.internal.job.v1.RequestJobResponse.job:type_name -> mindclade.job.v1.Job
+	36, // 12: mindclade.internal.job.v1.RequestJobResponse.operation:type_name -> mindclade.job.v1.Operation
+	42, // 13: mindclade.internal.job.v1.GetJobResponse.job:type_name -> mindclade.job.v1.Job
+	37, // 14: mindclade.internal.job.v1.ListJobsRequest.page:type_name -> mindclade.common.v1.PageRequest
+	42, // 15: mindclade.internal.job.v1.ListJobsResponse.jobs:type_name -> mindclade.job.v1.Job
+	38, // 16: mindclade.internal.job.v1.ListJobsResponse.page:type_name -> mindclade.common.v1.PageResponse
+	39, // 17: mindclade.internal.job.v1.ListJobsResponse.read_time:type_name -> google.protobuf.Timestamp
+	40, // 18: mindclade.internal.job.v1.CancelJobRequest.context:type_name -> mindclade.common.v1.CommandContext
+	36, // 19: mindclade.internal.job.v1.CancelJobResponse.operation:type_name -> mindclade.job.v1.Operation
+	43, // 20: mindclade.internal.job.v1.GetRunResponse.run:type_name -> mindclade.job.v1.Run
+	37, // 21: mindclade.internal.job.v1.ListRunsRequest.page:type_name -> mindclade.common.v1.PageRequest
+	43, // 22: mindclade.internal.job.v1.ListRunsResponse.runs:type_name -> mindclade.job.v1.Run
+	38, // 23: mindclade.internal.job.v1.ListRunsResponse.page:type_name -> mindclade.common.v1.PageResponse
+	39, // 24: mindclade.internal.job.v1.ListRunsResponse.read_time:type_name -> google.protobuf.Timestamp
+	44, // 25: mindclade.internal.job.v1.GetAttemptResponse.attempt:type_name -> mindclade.job.v1.Attempt
+	37, // 26: mindclade.internal.job.v1.ListAttemptsRequest.page:type_name -> mindclade.common.v1.PageRequest
+	44, // 27: mindclade.internal.job.v1.ListAttemptsResponse.attempts:type_name -> mindclade.job.v1.Attempt
+	38, // 28: mindclade.internal.job.v1.ListAttemptsResponse.page:type_name -> mindclade.common.v1.PageResponse
+	39, // 29: mindclade.internal.job.v1.ListAttemptsResponse.read_time:type_name -> google.protobuf.Timestamp
+	40, // 30: mindclade.internal.job.v1.AcquireAttemptLeaseRequest.context:type_name -> mindclade.common.v1.CommandContext
+	45, // 31: mindclade.internal.job.v1.AcquireAttemptLeaseRequest.lease_duration:type_name -> google.protobuf.Duration
+	44, // 32: mindclade.internal.job.v1.AcquireAttemptLeaseResponse.attempt:type_name -> mindclade.job.v1.Attempt
+	46, // 33: mindclade.internal.job.v1.AcquireAttemptLeaseResponse.fence:type_name -> mindclade.job.v1.LeaseFence
+	40, // 34: mindclade.internal.job.v1.RenewAttemptLeaseRequest.context:type_name -> mindclade.common.v1.CommandContext
+	46, // 35: mindclade.internal.job.v1.RenewAttemptLeaseRequest.fence:type_name -> mindclade.job.v1.LeaseFence
+	45, // 36: mindclade.internal.job.v1.RenewAttemptLeaseRequest.lease_duration:type_name -> google.protobuf.Duration
+	44, // 37: mindclade.internal.job.v1.RenewAttemptLeaseResponse.attempt:type_name -> mindclade.job.v1.Attempt
+	46, // 38: mindclade.internal.job.v1.RenewAttemptLeaseResponse.fence:type_name -> mindclade.job.v1.LeaseFence
+	40, // 39: mindclade.internal.job.v1.HeartbeatAttemptRequest.context:type_name -> mindclade.common.v1.CommandContext
+	46, // 40: mindclade.internal.job.v1.HeartbeatAttemptRequest.fence:type_name -> mindclade.job.v1.LeaseFence
+	45, // 41: mindclade.internal.job.v1.HeartbeatAttemptRequest.lease_duration:type_name -> google.protobuf.Duration
+	44, // 42: mindclade.internal.job.v1.HeartbeatAttemptResponse.attempt:type_name -> mindclade.job.v1.Attempt
+	46, // 43: mindclade.internal.job.v1.HeartbeatAttemptResponse.fence:type_name -> mindclade.job.v1.LeaseFence
+	39, // 44: mindclade.internal.job.v1.HeartbeatAttemptResponse.observed_at:type_name -> google.protobuf.Timestamp
+	40, // 45: mindclade.internal.job.v1.CancelAttemptRequest.context:type_name -> mindclade.common.v1.CommandContext
+	46, // 46: mindclade.internal.job.v1.CancelAttemptRequest.fence:type_name -> mindclade.job.v1.LeaseFence
+	44, // 47: mindclade.internal.job.v1.CancelAttemptResponse.attempt:type_name -> mindclade.job.v1.Attempt
+	43, // 48: mindclade.internal.job.v1.CancelAttemptResponse.run:type_name -> mindclade.job.v1.Run
+	40, // 49: mindclade.internal.job.v1.ExpireAttemptLeasesRequest.context:type_name -> mindclade.common.v1.CommandContext
+	44, // 50: mindclade.internal.job.v1.ExpireAttemptLeasesResponse.attempts:type_name -> mindclade.job.v1.Attempt
+	39, // 51: mindclade.internal.job.v1.ExpireAttemptLeasesResponse.observed_at:type_name -> google.protobuf.Timestamp
+	40, // 52: mindclade.internal.job.v1.CommitAttemptRequest.context:type_name -> mindclade.common.v1.CommandContext
+	44, // 53: mindclade.internal.job.v1.CommitAttemptRequest.attempt:type_name -> mindclade.job.v1.Attempt
+	46, // 54: mindclade.internal.job.v1.CommitAttemptRequest.fence:type_name -> mindclade.job.v1.LeaseFence
+	47, // 55: mindclade.internal.job.v1.CommitAttemptRequest.update_mask:type_name -> google.protobuf.FieldMask
+	44, // 56: mindclade.internal.job.v1.CommitAttemptResponse.attempt:type_name -> mindclade.job.v1.Attempt
+	43, // 57: mindclade.internal.job.v1.CommitAttemptResponse.run:type_name -> mindclade.job.v1.Run
+	0,  // 58: mindclade.internal.job.v1.OperationService.GetOperation:input_type -> mindclade.internal.job.v1.GetOperationRequest
+	2,  // 59: mindclade.internal.job.v1.OperationService.ListOperations:input_type -> mindclade.internal.job.v1.ListOperationsRequest
+	4,  // 60: mindclade.internal.job.v1.OperationService.CancelOperation:input_type -> mindclade.internal.job.v1.CancelOperationRequest
+	6,  // 61: mindclade.internal.job.v1.OperationService.WatchOperation:input_type -> mindclade.internal.job.v1.WatchOperationRequest
+	8,  // 62: mindclade.internal.job.v1.JobService.RequestJob:input_type -> mindclade.internal.job.v1.RequestJobRequest
+	10, // 63: mindclade.internal.job.v1.JobService.GetJob:input_type -> mindclade.internal.job.v1.GetJobRequest
+	12, // 64: mindclade.internal.job.v1.JobService.ListJobs:input_type -> mindclade.internal.job.v1.ListJobsRequest
+	14, // 65: mindclade.internal.job.v1.JobService.CancelJob:input_type -> mindclade.internal.job.v1.CancelJobRequest
+	16, // 66: mindclade.internal.job.v1.RunService.GetRun:input_type -> mindclade.internal.job.v1.GetRunRequest
+	18, // 67: mindclade.internal.job.v1.RunService.ListRuns:input_type -> mindclade.internal.job.v1.ListRunsRequest
+	20, // 68: mindclade.internal.job.v1.RunService.GetAttempt:input_type -> mindclade.internal.job.v1.GetAttemptRequest
+	22, // 69: mindclade.internal.job.v1.RunService.ListAttempts:input_type -> mindclade.internal.job.v1.ListAttemptsRequest
+	24, // 70: mindclade.internal.job.v1.RunService.AcquireAttemptLease:input_type -> mindclade.internal.job.v1.AcquireAttemptLeaseRequest
+	26, // 71: mindclade.internal.job.v1.RunService.RenewAttemptLease:input_type -> mindclade.internal.job.v1.RenewAttemptLeaseRequest
+	28, // 72: mindclade.internal.job.v1.RunService.HeartbeatAttempt:input_type -> mindclade.internal.job.v1.HeartbeatAttemptRequest
+	30, // 73: mindclade.internal.job.v1.RunService.CancelAttempt:input_type -> mindclade.internal.job.v1.CancelAttemptRequest
+	32, // 74: mindclade.internal.job.v1.RunService.ExpireAttemptLeases:input_type -> mindclade.internal.job.v1.ExpireAttemptLeasesRequest
+	34, // 75: mindclade.internal.job.v1.RunService.CommitAttempt:input_type -> mindclade.internal.job.v1.CommitAttemptRequest
+	1,  // 76: mindclade.internal.job.v1.OperationService.GetOperation:output_type -> mindclade.internal.job.v1.GetOperationResponse
+	3,  // 77: mindclade.internal.job.v1.OperationService.ListOperations:output_type -> mindclade.internal.job.v1.ListOperationsResponse
+	5,  // 78: mindclade.internal.job.v1.OperationService.CancelOperation:output_type -> mindclade.internal.job.v1.CancelOperationResponse
+	7,  // 79: mindclade.internal.job.v1.OperationService.WatchOperation:output_type -> mindclade.internal.job.v1.WatchOperationResponse
+	9,  // 80: mindclade.internal.job.v1.JobService.RequestJob:output_type -> mindclade.internal.job.v1.RequestJobResponse
+	11, // 81: mindclade.internal.job.v1.JobService.GetJob:output_type -> mindclade.internal.job.v1.GetJobResponse
+	13, // 82: mindclade.internal.job.v1.JobService.ListJobs:output_type -> mindclade.internal.job.v1.ListJobsResponse
+	15, // 83: mindclade.internal.job.v1.JobService.CancelJob:output_type -> mindclade.internal.job.v1.CancelJobResponse
+	17, // 84: mindclade.internal.job.v1.RunService.GetRun:output_type -> mindclade.internal.job.v1.GetRunResponse
+	19, // 85: mindclade.internal.job.v1.RunService.ListRuns:output_type -> mindclade.internal.job.v1.ListRunsResponse
+	21, // 86: mindclade.internal.job.v1.RunService.GetAttempt:output_type -> mindclade.internal.job.v1.GetAttemptResponse
+	23, // 87: mindclade.internal.job.v1.RunService.ListAttempts:output_type -> mindclade.internal.job.v1.ListAttemptsResponse
+	25, // 88: mindclade.internal.job.v1.RunService.AcquireAttemptLease:output_type -> mindclade.internal.job.v1.AcquireAttemptLeaseResponse
+	27, // 89: mindclade.internal.job.v1.RunService.RenewAttemptLease:output_type -> mindclade.internal.job.v1.RenewAttemptLeaseResponse
+	29, // 90: mindclade.internal.job.v1.RunService.HeartbeatAttempt:output_type -> mindclade.internal.job.v1.HeartbeatAttemptResponse
+	31, // 91: mindclade.internal.job.v1.RunService.CancelAttempt:output_type -> mindclade.internal.job.v1.CancelAttemptResponse
+	33, // 92: mindclade.internal.job.v1.RunService.ExpireAttemptLeases:output_type -> mindclade.internal.job.v1.ExpireAttemptLeasesResponse
+	35, // 93: mindclade.internal.job.v1.RunService.CommitAttempt:output_type -> mindclade.internal.job.v1.CommitAttemptResponse
+	76, // [76:94] is the sub-list for method output_type
+	58, // [58:76] is the sub-list for method input_type
+	58, // [58:58] is the sub-list for extension type_name
+	58, // [58:58] is the sub-list for extension extendee
+	0,  // [0:58] is the sub-list for field type_name
 }
 
 func init() { file_proto_mindclade_internal_job_v1_job_service_proto_init() }
@@ -1725,7 +2429,7 @@ func file_proto_mindclade_internal_job_v1_job_service_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_mindclade_internal_job_v1_job_service_proto_rawDesc), len(file_proto_mindclade_internal_job_v1_job_service_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   26,
+			NumMessages:   36,
 			NumExtensions: 0,
 			NumServices:   3,
 		},

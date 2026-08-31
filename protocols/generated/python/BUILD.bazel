@@ -6,6 +6,7 @@ py_library(
     imports = ["."],
     visibility = ["//visibility:public"],
     deps = [
+        "@mindclade_pypi//googleapis_common_protos",
         "@mindclade_pypi//grpcio",
         "@mindclade_pypi//protobuf",
     ],

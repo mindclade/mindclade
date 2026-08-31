@@ -204,6 +204,108 @@ pub struct ListAttemptsResponse {
     #[prost(message, optional, tag = "3")]
     pub read_time: ::core::option::Option<::prost_types::Timestamp>,
 }
+/// AcquireAttemptLeaseRequest atomically creates a fenced execution attempt.
+/// The authenticated worker identity and raw lease token are transport metadata;
+/// only the token digest is represented in LeaseFence.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct AcquireAttemptLeaseRequest {
+    #[prost(message, optional, tag = "1")]
+    pub context: ::core::option::Option<crate::common::v1::CommandContext>,
+    #[prost(string, tag = "2")]
+    pub run_name: ::prost::alloc::string::String,
+    #[prost(string, tag = "3")]
+    pub attempt_id: ::prost::alloc::string::String,
+    #[prost(message, optional, tag = "4")]
+    pub lease_duration: ::core::option::Option<::prost_types::Duration>,
+}
+/// AcquireAttemptLeaseResponse returns the durable attempt and non-secret fence.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct AcquireAttemptLeaseResponse {
+    #[prost(message, optional, tag = "1")]
+    pub attempt: ::core::option::Option<crate::job::v1::Attempt>,
+    #[prost(message, optional, tag = "2")]
+    pub fence: ::core::option::Option<crate::job::v1::LeaseFence>,
+}
+/// RenewAttemptLeaseRequest extends the current lease under token and epoch fencing.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct RenewAttemptLeaseRequest {
+    #[prost(message, optional, tag = "1")]
+    pub context: ::core::option::Option<crate::common::v1::CommandContext>,
+    #[prost(message, optional, tag = "2")]
+    pub fence: ::core::option::Option<crate::job::v1::LeaseFence>,
+    #[prost(message, optional, tag = "3")]
+    pub lease_duration: ::core::option::Option<::prost_types::Duration>,
+    #[prost(int64, tag = "4")]
+    pub expected_resource_version: i64,
+}
+/// RenewAttemptLeaseResponse returns the renewed attempt and fence deadline.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct RenewAttemptLeaseResponse {
+    #[prost(message, optional, tag = "1")]
+    pub attempt: ::core::option::Option<crate::job::v1::Attempt>,
+    #[prost(message, optional, tag = "2")]
+    pub fence: ::core::option::Option<crate::job::v1::LeaseFence>,
+}
+/// HeartbeatAttemptRequest proves liveness and renews the authenticated lease.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct HeartbeatAttemptRequest {
+    #[prost(message, optional, tag = "1")]
+    pub context: ::core::option::Option<crate::common::v1::CommandContext>,
+    #[prost(message, optional, tag = "2")]
+    pub fence: ::core::option::Option<crate::job::v1::LeaseFence>,
+    #[prost(message, optional, tag = "3")]
+    pub lease_duration: ::core::option::Option<::prost_types::Duration>,
+    #[prost(int64, tag = "4")]
+    pub expected_resource_version: i64,
+}
+/// HeartbeatAttemptResponse returns the server-clock lease state.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct HeartbeatAttemptResponse {
+    #[prost(message, optional, tag = "1")]
+    pub attempt: ::core::option::Option<crate::job::v1::Attempt>,
+    #[prost(message, optional, tag = "2")]
+    pub fence: ::core::option::Option<crate::job::v1::LeaseFence>,
+    #[prost(message, optional, tag = "3")]
+    pub observed_at: ::core::option::Option<::prost_types::Timestamp>,
+}
+/// CancelAttemptRequest cancels the current authenticated attempt lease.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct CancelAttemptRequest {
+    #[prost(message, optional, tag = "1")]
+    pub context: ::core::option::Option<crate::common::v1::CommandContext>,
+    #[prost(message, optional, tag = "2")]
+    pub fence: ::core::option::Option<crate::job::v1::LeaseFence>,
+    #[prost(int64, tag = "3")]
+    pub expected_resource_version: i64,
+    #[prost(string, tag = "4")]
+    pub reason: ::prost::alloc::string::String,
+}
+/// CancelAttemptResponse returns the terminal attempt and reconciled run.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct CancelAttemptResponse {
+    #[prost(message, optional, tag = "1")]
+    pub attempt: ::core::option::Option<crate::job::v1::Attempt>,
+    #[prost(message, optional, tag = "2")]
+    pub run: ::core::option::Option<crate::job::v1::Run>,
+}
+/// ExpireAttemptLeasesRequest is a bounded reconciler command using server time.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct ExpireAttemptLeasesRequest {
+    #[prost(message, optional, tag = "1")]
+    pub context: ::core::option::Option<crate::common::v1::CommandContext>,
+    #[prost(string, tag = "2")]
+    pub parent: ::prost::alloc::string::String,
+    #[prost(uint32, tag = "3")]
+    pub limit: u32,
+}
+/// ExpireAttemptLeasesResponse returns attempts fenced by this reconciliation.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ExpireAttemptLeasesResponse {
+    #[prost(message, repeated, tag = "1")]
+    pub attempts: ::prost::alloc::vec::Vec<crate::job::v1::Attempt>,
+    #[prost(message, optional, tag = "2")]
+    pub observed_at: ::core::option::Option<::prost_types::Timestamp>,
+}
 /// CommitAttemptRequest applies a bounded worker update under both revision and lease fencing.
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CommitAttemptRequest {

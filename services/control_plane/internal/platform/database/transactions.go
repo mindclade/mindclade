@@ -113,11 +113,11 @@ func StoreErrorDetail(ctx context.Context, tx *sql.Tx, tenantID string, value *c
 		return sql.NullInt64{}, errors.New("error detail requires a typed error code")
 	}
 	var (
-		subjectPresent bool
+		subjectPresent                                        bool
 		subjectType, subjectID, subjectTenant, subjectProject string
-		subjectVersion int64
-		retrySeconds sql.NullInt64
-		retryNanos sql.NullInt32
+		subjectVersion                                        int64
+		retrySeconds                                          sql.NullInt64
+		retryNanos                                            sql.NullInt32
 	)
 	if subject := value.GetSubject(); subject != nil {
 		subjectPresent = true
@@ -172,12 +172,12 @@ func LoadErrorDetail(ctx context.Context, tx *sql.Tx, tenantID string, id sql.Nu
 		return nil, nil
 	}
 	var (
-		code, retryClass int32
-		subjectPresent bool
+		code, retryClass                                      int32
+		subjectPresent                                        bool
 		subjectType, subjectID, subjectTenant, subjectProject string
-		subjectVersion int64
-		retrySeconds sql.NullInt64
-		retryNanos sql.NullInt32
+		subjectVersion                                        int64
+		retrySeconds                                          sql.NullInt64
+		retryNanos                                            sql.NullInt32
 	)
 	value := new(commonv1.ErrorDetail)
 	err := tx.QueryRowContext(ctx, `

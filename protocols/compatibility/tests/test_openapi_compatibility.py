@@ -195,7 +195,7 @@ class OpenApiCompatibilityTest(unittest.TestCase):
         artifact_ref = self.openapi["components"]["schemas"]["ArtifactRef"]
         self.assertEqual(
             artifact_ref["x-mindclade-authoritative-message"],
-            "mindclade.artifact.v1.ArtifactRef",
+            "mindclade.api.v1.ArtifactRef",
         )
         self.assertEqual(
             set(artifact_ref["required"]), {"artifactKind", "digest", "mediaType", "sizeBytes"}

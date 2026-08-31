@@ -28,9 +28,9 @@ BLUEPRINT_SHA256 = "d099074e755168bbdce076d50918bf06aff677f9e5d620fdfe53cb7cef74
 ANCHOR_COMMIT = "292b71f47b1b29cc9ba7cf760a9bd07cd5e0ffa7"
 AUTHORITY_FILE_COUNT = 2461
 AUTHORITY_DIRECTORY_COUNT = 787
-CANONICAL_FILE_COUNT = 2880
+CANONICAL_FILE_COUNT = 2893
 AUTHORITY_PATH_SET_SHA256 = "f2011dd32ccc19649e6abb70ffb4473aea4a224410062d40292222e2e6263692"
-CANONICAL_PATH_SET_SHA256 = "682e4cdc1d4bd5a4cd90692d58931eec90a59d9f043e3c219a67751b4e89866e"
+CANONICAL_PATH_SET_SHA256 = "87fc09476cd45c46ae95701cb89b448218d35237367a84b5643df120b409858a"
 
 ADR_REPLACEMENTS = {
     "docs/adr/0001-repository-identity.md": "docs/adr/0001-repository-identity-and-ownership.md",
@@ -303,11 +303,15 @@ ALL_CONTRACT_BASELINE_DOMAINS = frozenset(
         "admin",
         "agent",
         "api",
+        "artifact",
+        "audit",
+        "common",
         "dataset",
         "evaluation",
         "experiment",
         "feature",
         "inference",
+        "job",
         "model",
         "policy",
         "training",
@@ -392,7 +396,8 @@ ALL_CONTRACT_PYTHON_MODULES = (
 )
 
 ALL_CONTRACT_PYTHON_STUB_PATHS = tuple(
-    f"protocols/generated/python/{module}_pb2.pyi" for module in ALL_CONTRACT_PYTHON_MODULES
+    f"protocols/generated/python/mindclade/{module}_pb2.pyi"
+    for module in ALL_CONTRACT_PYTHON_MODULES
 )
 
 ALL_CONTRACT_GRPC_SERVICES = (
@@ -421,10 +426,10 @@ ALL_CONTRACT_GRPC_PROJECTION_PATHS = tuple(
     for path in (
         f"protocols/generated/go/{output_family}/v1/{stem}.pb.go",
         f"protocols/generated/go/{output_family}/v1/{stem}_grpc.pb.go",
-        f"protocols/generated/python/{output_family}/v1/{stem}_pb2.py",
-        f"protocols/generated/python/{output_family}/v1/{stem}_pb2.pyi",
-        f"protocols/generated/python/{output_family}/v1/{stem}_pb2_grpc.py",
-        f"protocols/generated/python/{output_family}/v1/{stem}_pb2_grpc.pyi",
+        f"protocols/generated/python/mindclade/{output_family}/v1/{stem}_pb2.py",
+        f"protocols/generated/python/mindclade/{output_family}/v1/{stem}_pb2.pyi",
+        f"protocols/generated/python/mindclade/{output_family}/v1/{stem}_pb2_grpc.py",
+        f"protocols/generated/python/mindclade/{output_family}/v1/{stem}_pb2_grpc.pyi",
         f"protocols/generated/rust/{output_family}/v1/{stem}.rs",
         f"protocols/generated/rust/{output_family}/v1/{stem}_grpc.rs",
         f"protocols/generated/typescript/{output_family}/v1/{stem}_pb.ts",
@@ -436,7 +441,7 @@ ALL_CONTRACT_GRPC_PACKAGE_PATHS = tuple(
     for _, _, output_family in ALL_CONTRACT_GRPC_SERVICES
     for path in (
         f"protocols/generated/go/{output_family}/v1/BUILD.bazel",
-        f"protocols/generated/python/{output_family}/v1/__init__.py",
+        f"protocols/generated/python/mindclade/{output_family}/v1/__init__.py",
         f"protocols/generated/rust/{output_family}/v1/mod.rs",
         f"protocols/generated/typescript/{output_family}/v1/index.ts",
     )
@@ -455,6 +460,24 @@ ALL_CONTRACT_RUST_PLUGIN_PATHS = (
     "tools/codegen/rust_plugins/src/bin/protoc-gen-tonic.rs",
 )
 
+CONTRACT_RUNTIME_ADDITIONS = (
+    "buf.lock",
+    "protocols/events/registry.yaml",
+    "protocols/generated/typescript/google/api/annotations_pb.ts",
+    "protocols/generated/typescript/google/api/http_pb.ts",
+    "services/control_plane/internal/platform/queue/event_registry_generated.go",
+)
+
+SCHEMA_BINDING_ADDITIONS = (
+    "protocols/generated/go/schema/v1/BUILD.bazel",
+    "protocols/generated/go/schema/v1/bindings.generated.go",
+    "protocols/generated/go/schema/v1/bindings_generated_test.go",
+    "protocols/generated/python/mindclade/schema/v1/__init__.py",
+    "protocols/generated/python/mindclade/schema/v1/bindings.py",
+    "protocols/generated/rust/schema/v1.rs",
+    "protocols/generated/typescript/schema/v1/bindings.ts",
+)
+
 WAVE_ZERO_REQUIRED_ADDITIONS = (
     ".bazelignore",
     ".golangci.yml",
@@ -462,6 +485,7 @@ WAVE_ZERO_REQUIRED_ADDITIONS = (
     "biome.json",
     "docs/architecture/blueprint/provenance/MINDCLADE_MONOREPO_BLUEPRINT_v3.4.0_OPTIMIZED.md",
     "docs/architecture/blueprint/provenance/MONOREPO_TREE.md",
+    "docs/architecture/authoritative-contract-integration-plan.md",
     "MODULE.bazel.lock",
     "tools/repo/component.schema.json",
     "tools/repo/repository_drift.v1.schema.json",
@@ -510,6 +534,8 @@ HAND_AUTHORED_GENERATED_PACKAGE_AUTHORITIES = frozenset(
 
 WAVE_ONE_REWAVE_PATHS = frozenset(
     {
+        "services/control_plane/cmd/control-plane/main.go",
+        "services/control_plane/cmd/control-plane/wire.go",
         "services/control_plane/BUILD.bazel",
         "services/control_plane/README.md",
         "services/control_plane/component.yaml",
@@ -529,6 +555,7 @@ WAVE_ONE_REWAVE_PATHS = frozenset(
         "services/control_plane/internal/platform/outbox/outbox_store.go",
         "services/control_plane/internal/platform/queue/dead_letter.go",
         "services/control_plane/internal/platform/queue/delivery.go",
+        "services/control_plane/internal/platform/queue/event_registry_generated.go",
         "services/control_plane/internal/platform/queue/transport.go",
         "services/control_plane/internal/platform/storage/artifact_catalog.go",
         "services/control_plane/internal/platform/storage/object_store.go",
@@ -543,6 +570,7 @@ WAVE_ONE_REWAVE_PATHS = frozenset(
         "services/control_plane/tests/lease_fencing_test.go",
         "services/control_plane/tests/tenant_isolation_test.go",
         "services/control_plane/tests/transaction_outbox_test.go",
+        "protocols/events/registry.yaml",
         "tests/integration/artifact_commit_test.py",
         "tests/integration/control_worker_test.py",
         "tests/integration/local_stack_test.py",
@@ -564,6 +592,8 @@ REQUIRED_ADDITIONS = (
     *DEEP_EP_PATCH_PATHS,
     *ALL_CONTRACT_RUST_PLUGIN_PATHS,
     *ALL_CONTRACT_GRPC_ADDITIONS,
+    *CONTRACT_RUNTIME_ADDITIONS,
+    *SCHEMA_BINDING_ADDITIONS,
 )
 
 STATUSES = {"target", "active", "generated", "deferred", "retired"}
@@ -762,7 +792,15 @@ def reconcile_authority_paths(source_paths: Sequence[str]) -> list[str]:
     )
     result: list[str] = []
     for path in source_paths:
-        result.append(ADR_REPLACEMENTS.get(path, path))
+        reconciled = ADR_REPLACEMENTS.get(path, path)
+        python_prefix = "protocols/generated/python/"
+        if reconciled.startswith(python_prefix) and reconciled not in {
+            "protocols/generated/python/BUILD.bazel",
+            "protocols/generated/python/README.generated.md",
+            "protocols/generated/python/pyproject.toml",
+        }:
+            reconciled = python_prefix + "mindclade/" + reconciled.removeprefix(python_prefix)
+        result.append(reconciled)
         if path == "MODULE.bazel":
             result.append("MODULE.bazel.lock")
         if path == ".bazelversion":
@@ -968,7 +1006,12 @@ def infer_kind(path: str) -> str:
 
 
 def infer_wave(path: str) -> str:
-    if path in WAVE_ONE_REWAVE_PATHS or path in WAVE_ONE_REQUIRED_ADDITIONS:
+    if (
+        path in WAVE_ONE_REWAVE_PATHS
+        or path in WAVE_ONE_REQUIRED_ADDITIONS
+        or path in CONTRACT_RUNTIME_ADDITIONS
+        or path in SCHEMA_BINDING_ADDITIONS
+    ):
         return "1"
     if is_wave_zero_path(path):
         return "0"
@@ -1783,6 +1826,8 @@ def build_kernel_platform_source_entry(path: str) -> dict[str, Any]:
 def is_all_contract_baseline_path(path: str) -> bool:
     """Return whether ADR-0015 activates this predeclared v1 projection."""
 
+    if path in SCHEMA_BINDING_ADDITIONS:
+        return True
     if path in ALL_CONTRACT_RUST_PLUGIN_PATHS:
         return True
     if path in ALL_CONTRACT_GRPC_ADDITIONS:
@@ -1803,7 +1848,14 @@ def is_all_contract_baseline_path(path: str) -> bool:
             } and parts[-1].endswith(".proto")
         return parts[3] in ALL_CONTRACT_BASELINE_DOMAINS and parts[-1].endswith(".proto")
     if len(parts) >= 5 and parts[:2] == ("protocols", "generated"):
-        domain = parts[4] if parts[3] == "internal" and len(parts) >= 6 else parts[3]
+        package_index = 3
+        if parts[2] == "python" and parts[3] == "mindclade":
+            package_index = 4
+        if len(parts) <= package_index:
+            return False
+        domain = parts[package_index]
+        if domain == "internal" and len(parts) > package_index + 1:
+            domain = parts[package_index + 1]
         return domain in ALL_CONTRACT_BASELINE_DOMAINS
     return False
 
@@ -2018,6 +2070,16 @@ def _reconciliation_addition_reason(path: str) -> str:
             "Required generated package authority for an isolated internal gRPC service "
             "namespace or the curated mindclade.api.v1 facade."
         )
+    if path in CONTRACT_RUNTIME_ADDITIONS:
+        return (
+            "Required contract runtime input or generated dependency for public HTTP annotations, "
+            "the authoritative event registry, and durable delivery enforcement."
+        )
+    if path in SCHEMA_BINDING_ADDITIONS:
+        return (
+            "Required generated typed binding and Draft 2020-12 validator projection from the "
+            "authoritative JSON Schema catalog."
+        )
     if path in WAVE_TWO_PREFLIGHT_GOVERNANCE_ADDITIONS:
         return (
             "Required fail-closed Wave 2 decision or approval contract omitted by A6; "
@@ -2172,9 +2234,7 @@ def validate_manifest(manifest: Mapping[str, Any]) -> list[str]:
     if replacement_map != ADR_REPLACEMENTS:
         errors.append("ADR replacement mapping differs from authoritative Section 14 filenames")
     try:
-        expected: set[str] = (set(normalized_original) - set(removes)) | {
-            normalize_path(path) for path in addition_paths
-        }
+        expected = set(reconcile_authority_paths(normalized_original))
     except PolicyError as error:
         errors.append(str(error))
         expected = set()

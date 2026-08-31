@@ -10,7 +10,7 @@ pub mod mindclade_service_client {
     )]
     use tonic::codegen::*;
     use tonic::codegen::http::Uri;
-    /** MindcladeService is the curated public gRPC facade transport-equivalent to external-api.yaml.
+    /** MindcladeService is the only public gRPC façade.
 */
     #[derive(Debug, Clone)]
     pub struct MindcladeServiceClient<T> {
@@ -92,15 +92,11 @@ pub mod mindclade_service_client {
             self.inner = self.inner.max_encoding_message_size(limit);
             self
         }
-        /** SubmitInference maps the submitInference HTTP operation.
-*/
+        ///
         pub async fn submit_inference(
             &mut self,
             request: impl tonic::IntoRequest<super::SubmitInferenceRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::SubmitInferenceResponse>,
-            tonic::Status,
-        > {
+        ) -> std::result::Result<tonic::Response<super::Operation>, tonic::Status> {
             self.inner
                 .ready()
                 .await
@@ -123,15 +119,11 @@ pub mod mindclade_service_client {
                 );
             self.inner.unary(req, path, codec).await
         }
-        /** GetOperation maps the getOperation HTTP operation.
-*/
+        ///
         pub async fn get_operation(
             &mut self,
-            request: impl tonic::IntoRequest<super::GetOperationRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::GetOperationResponse>,
-            tonic::Status,
-        > {
+            request: impl tonic::IntoRequest<super::GetResourceRequest>,
+        ) -> std::result::Result<tonic::Response<super::Operation>, tonic::Status> {
             self.inner
                 .ready()
                 .await
@@ -151,15 +143,11 @@ pub mod mindclade_service_client {
                 );
             self.inner.unary(req, path, codec).await
         }
-        /** CancelOperation maps the cancelOperation HTTP operation.
-*/
+        ///
         pub async fn cancel_operation(
             &mut self,
             request: impl tonic::IntoRequest<super::CancelOperationRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::CancelOperationResponse>,
-            tonic::Status,
-        > {
+        ) -> std::result::Result<tonic::Response<super::Operation>, tonic::Status> {
             self.inner
                 .ready()
                 .await
@@ -182,15 +170,41 @@ pub mod mindclade_service_client {
                 );
             self.inner.unary(req, path, codec).await
         }
-        /** GetArtifact maps the getArtifact HTTP operation.
-*/
-        pub async fn get_artifact(
+        ///
+        pub async fn watch_operation(
             &mut self,
-            request: impl tonic::IntoRequest<super::GetArtifactRequest>,
+            request: impl tonic::IntoRequest<super::WatchOperationRequest>,
         ) -> std::result::Result<
-            tonic::Response<super::GetArtifactResponse>,
+            tonic::Response<tonic::codec::Streaming<super::OperationEvent>>,
             tonic::Status,
         > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::unknown(
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic_prost::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/mindclade.api.v1.MindcladeService/WatchOperation",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new(
+                        "mindclade.api.v1.MindcladeService",
+                        "WatchOperation",
+                    ),
+                );
+            self.inner.server_streaming(req, path, codec).await
+        }
+        ///
+        pub async fn get_artifact(
+            &mut self,
+            request: impl tonic::IntoRequest<super::GetResourceRequest>,
+        ) -> std::result::Result<tonic::Response<super::ArtifactView>, tonic::Status> {
             self.inner
                 .ready()
                 .await
@@ -210,13 +224,12 @@ pub mod mindclade_service_client {
                 );
             self.inner.unary(req, path, codec).await
         }
-        /** DownloadArtifact maps the downloadArtifact HTTP data-plane operation.
-*/
+        ///
         pub async fn download_artifact(
             &mut self,
             request: impl tonic::IntoRequest<super::DownloadArtifactRequest>,
         ) -> std::result::Result<
-            tonic::Response<tonic::codec::Streaming<super::DownloadArtifactResponse>>,
+            tonic::Response<tonic::codec::Streaming<super::DownloadArtifactChunk>>,
             tonic::Status,
         > {
             self.inner
@@ -241,15 +254,11 @@ pub mod mindclade_service_client {
                 );
             self.inner.server_streaming(req, path, codec).await
         }
-        /** ListDatasets maps the listDatasets HTTP operation.
-*/
+        ///
         pub async fn list_datasets(
             &mut self,
-            request: impl tonic::IntoRequest<super::ListDatasetsRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::ListDatasetsResponse>,
-            tonic::Status,
-        > {
+            request: impl tonic::IntoRequest<super::ListResourcesRequest>,
+        ) -> std::result::Result<tonic::Response<super::DatasetList>, tonic::Status> {
             self.inner
                 .ready()
                 .await
@@ -269,15 +278,11 @@ pub mod mindclade_service_client {
                 );
             self.inner.unary(req, path, codec).await
         }
-        /** CreateDataset maps the createDataset HTTP operation.
-*/
+        ///
         pub async fn create_dataset(
             &mut self,
             request: impl tonic::IntoRequest<super::CreateDatasetRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::CreateDatasetResponse>,
-            tonic::Status,
-        > {
+        ) -> std::result::Result<tonic::Response<super::DatasetView>, tonic::Status> {
             self.inner
                 .ready()
                 .await
@@ -297,15 +302,11 @@ pub mod mindclade_service_client {
                 );
             self.inner.unary(req, path, codec).await
         }
-        /** GetDataset maps the getDataset HTTP operation.
-*/
+        ///
         pub async fn get_dataset(
             &mut self,
-            request: impl tonic::IntoRequest<super::GetDatasetRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::GetDatasetResponse>,
-            tonic::Status,
-        > {
+            request: impl tonic::IntoRequest<super::GetResourceRequest>,
+        ) -> std::result::Result<tonic::Response<super::DatasetView>, tonic::Status> {
             self.inner
                 .ready()
                 .await
@@ -325,15 +326,11 @@ pub mod mindclade_service_client {
                 );
             self.inner.unary(req, path, codec).await
         }
-        /** UpdateDataset maps the updateDataset HTTP operation.
-*/
+        ///
         pub async fn update_dataset(
             &mut self,
             request: impl tonic::IntoRequest<super::UpdateDatasetRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::UpdateDatasetResponse>,
-            tonic::Status,
-        > {
+        ) -> std::result::Result<tonic::Response<super::DatasetView>, tonic::Status> {
             self.inner
                 .ready()
                 .await
@@ -353,13 +350,12 @@ pub mod mindclade_service_client {
                 );
             self.inner.unary(req, path, codec).await
         }
-        /** ListDatasetReleases maps the listDatasetReleases HTTP operation.
-*/
+        ///
         pub async fn list_dataset_releases(
             &mut self,
-            request: impl tonic::IntoRequest<super::ListDatasetReleasesRequest>,
+            request: impl tonic::IntoRequest<super::ListResourcesRequest>,
         ) -> std::result::Result<
-            tonic::Response<super::ListDatasetReleasesResponse>,
+            tonic::Response<super::DatasetReleaseList>,
             tonic::Status,
         > {
             self.inner
@@ -384,13 +380,12 @@ pub mod mindclade_service_client {
                 );
             self.inner.unary(req, path, codec).await
         }
-        /** CreateDatasetRelease maps the createDatasetRelease HTTP operation.
-*/
+        ///
         pub async fn create_dataset_release(
             &mut self,
             request: impl tonic::IntoRequest<super::CreateDatasetReleaseRequest>,
         ) -> std::result::Result<
-            tonic::Response<super::CreateDatasetReleaseResponse>,
+            tonic::Response<super::DatasetReleaseView>,
             tonic::Status,
         > {
             self.inner
@@ -415,15 +410,11 @@ pub mod mindclade_service_client {
                 );
             self.inner.unary(req, path, codec).await
         }
-        /** ListModels maps the listModels HTTP operation.
-*/
+        ///
         pub async fn list_models(
             &mut self,
-            request: impl tonic::IntoRequest<super::ListModelsRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::ListModelsResponse>,
-            tonic::Status,
-        > {
+            request: impl tonic::IntoRequest<super::ListResourcesRequest>,
+        ) -> std::result::Result<tonic::Response<super::ModelList>, tonic::Status> {
             self.inner
                 .ready()
                 .await
@@ -443,15 +434,11 @@ pub mod mindclade_service_client {
                 );
             self.inner.unary(req, path, codec).await
         }
-        /** CreateModel maps the createModel HTTP operation.
-*/
+        ///
         pub async fn create_model(
             &mut self,
             request: impl tonic::IntoRequest<super::CreateModelRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::CreateModelResponse>,
-            tonic::Status,
-        > {
+        ) -> std::result::Result<tonic::Response<super::ModelView>, tonic::Status> {
             self.inner
                 .ready()
                 .await
@@ -471,15 +458,11 @@ pub mod mindclade_service_client {
                 );
             self.inner.unary(req, path, codec).await
         }
-        /** GetModel maps the getModel HTTP operation.
-*/
+        ///
         pub async fn get_model(
             &mut self,
-            request: impl tonic::IntoRequest<super::GetModelRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::GetModelResponse>,
-            tonic::Status,
-        > {
+            request: impl tonic::IntoRequest<super::GetResourceRequest>,
+        ) -> std::result::Result<tonic::Response<super::ModelView>, tonic::Status> {
             self.inner
                 .ready()
                 .await
@@ -499,15 +482,11 @@ pub mod mindclade_service_client {
                 );
             self.inner.unary(req, path, codec).await
         }
-        /** UpdateModel maps the updateModel HTTP operation.
-*/
+        ///
         pub async fn update_model(
             &mut self,
             request: impl tonic::IntoRequest<super::UpdateModelRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::UpdateModelResponse>,
-            tonic::Status,
-        > {
+        ) -> std::result::Result<tonic::Response<super::ModelView>, tonic::Status> {
             self.inner
                 .ready()
                 .await
@@ -527,13 +506,12 @@ pub mod mindclade_service_client {
                 );
             self.inner.unary(req, path, codec).await
         }
-        /** ListModelReleases maps the listModelReleases HTTP operation.
-*/
+        ///
         pub async fn list_model_releases(
             &mut self,
-            request: impl tonic::IntoRequest<super::ListModelReleasesRequest>,
+            request: impl tonic::IntoRequest<super::ListResourcesRequest>,
         ) -> std::result::Result<
-            tonic::Response<super::ListModelReleasesResponse>,
+            tonic::Response<super::ModelReleaseList>,
             tonic::Status,
         > {
             self.inner
@@ -558,13 +536,12 @@ pub mod mindclade_service_client {
                 );
             self.inner.unary(req, path, codec).await
         }
-        /** CreateModelRelease maps the createModelRelease HTTP operation.
-*/
+        ///
         pub async fn create_model_release(
             &mut self,
             request: impl tonic::IntoRequest<super::CreateModelReleaseRequest>,
         ) -> std::result::Result<
-            tonic::Response<super::CreateModelReleaseResponse>,
+            tonic::Response<super::ModelReleaseView>,
             tonic::Status,
         > {
             self.inner
@@ -589,13 +566,12 @@ pub mod mindclade_service_client {
                 );
             self.inner.unary(req, path, codec).await
         }
-        /** ListTrainingRuns maps the listTrainingRuns HTTP operation.
-*/
+        ///
         pub async fn list_training_runs(
             &mut self,
-            request: impl tonic::IntoRequest<super::ListTrainingRunsRequest>,
+            request: impl tonic::IntoRequest<super::ListResourcesRequest>,
         ) -> std::result::Result<
-            tonic::Response<super::ListTrainingRunsResponse>,
+            tonic::Response<super::TrainingRunList>,
             tonic::Status,
         > {
             self.inner
@@ -620,15 +596,11 @@ pub mod mindclade_service_client {
                 );
             self.inner.unary(req, path, codec).await
         }
-        /** CreateTrainingRun maps the createTrainingRun HTTP operation.
-*/
+        ///
         pub async fn create_training_run(
             &mut self,
             request: impl tonic::IntoRequest<super::CreateTrainingRunRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::CreateTrainingRunResponse>,
-            tonic::Status,
-        > {
+        ) -> std::result::Result<tonic::Response<super::Operation>, tonic::Status> {
             self.inner
                 .ready()
                 .await
@@ -651,13 +623,12 @@ pub mod mindclade_service_client {
                 );
             self.inner.unary(req, path, codec).await
         }
-        /** GetTrainingRun maps the getTrainingRun HTTP operation.
-*/
+        ///
         pub async fn get_training_run(
             &mut self,
-            request: impl tonic::IntoRequest<super::GetTrainingRunRequest>,
+            request: impl tonic::IntoRequest<super::GetResourceRequest>,
         ) -> std::result::Result<
-            tonic::Response<super::GetTrainingRunResponse>,
+            tonic::Response<super::TrainingRunView>,
             tonic::Status,
         > {
             self.inner
@@ -682,13 +653,12 @@ pub mod mindclade_service_client {
                 );
             self.inner.unary(req, path, codec).await
         }
-        /** ListEvaluationRuns maps the listEvaluationRuns HTTP operation.
-*/
+        ///
         pub async fn list_evaluation_runs(
             &mut self,
-            request: impl tonic::IntoRequest<super::ListEvaluationRunsRequest>,
+            request: impl tonic::IntoRequest<super::ListResourcesRequest>,
         ) -> std::result::Result<
-            tonic::Response<super::ListEvaluationRunsResponse>,
+            tonic::Response<super::EvaluationRunList>,
             tonic::Status,
         > {
             self.inner
@@ -713,15 +683,11 @@ pub mod mindclade_service_client {
                 );
             self.inner.unary(req, path, codec).await
         }
-        /** CreateEvaluationRun maps the createEvaluationRun HTTP operation.
-*/
+        ///
         pub async fn create_evaluation_run(
             &mut self,
             request: impl tonic::IntoRequest<super::CreateEvaluationRunRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::CreateEvaluationRunResponse>,
-            tonic::Status,
-        > {
+        ) -> std::result::Result<tonic::Response<super::Operation>, tonic::Status> {
             self.inner
                 .ready()
                 .await
@@ -744,13 +710,12 @@ pub mod mindclade_service_client {
                 );
             self.inner.unary(req, path, codec).await
         }
-        /** GetEvaluationRun maps the getEvaluationRun HTTP operation.
-*/
+        ///
         pub async fn get_evaluation_run(
             &mut self,
-            request: impl tonic::IntoRequest<super::GetEvaluationRunRequest>,
+            request: impl tonic::IntoRequest<super::GetResourceRequest>,
         ) -> std::result::Result<
-            tonic::Response<super::GetEvaluationRunResponse>,
+            tonic::Response<super::EvaluationRunView>,
             tonic::Status,
         > {
             self.inner
@@ -775,13 +740,12 @@ pub mod mindclade_service_client {
                 );
             self.inner.unary(req, path, codec).await
         }
-        /** GetEvaluationResult maps the getEvaluationResult HTTP operation.
-*/
+        ///
         pub async fn get_evaluation_result(
             &mut self,
-            request: impl tonic::IntoRequest<super::GetEvaluationResultRequest>,
+            request: impl tonic::IntoRequest<super::GetResourceRequest>,
         ) -> std::result::Result<
-            tonic::Response<super::GetEvaluationResultResponse>,
+            tonic::Response<super::EvaluationResultView>,
             tonic::Status,
         > {
             self.inner
@@ -806,13 +770,12 @@ pub mod mindclade_service_client {
                 );
             self.inner.unary(req, path, codec).await
         }
-        /** ListAgentDefinitions maps the listAgentDefinitions HTTP operation.
-*/
+        ///
         pub async fn list_agent_definitions(
             &mut self,
-            request: impl tonic::IntoRequest<super::ListAgentDefinitionsRequest>,
+            request: impl tonic::IntoRequest<super::ListResourcesRequest>,
         ) -> std::result::Result<
-            tonic::Response<super::ListAgentDefinitionsResponse>,
+            tonic::Response<super::AgentDefinitionList>,
             tonic::Status,
         > {
             self.inner
@@ -837,13 +800,12 @@ pub mod mindclade_service_client {
                 );
             self.inner.unary(req, path, codec).await
         }
-        /** CreateAgentDefinition maps the createAgentDefinition HTTP operation.
-*/
+        ///
         pub async fn create_agent_definition(
             &mut self,
             request: impl tonic::IntoRequest<super::CreateAgentDefinitionRequest>,
         ) -> std::result::Result<
-            tonic::Response<super::CreateAgentDefinitionResponse>,
+            tonic::Response<super::AgentDefinitionView>,
             tonic::Status,
         > {
             self.inner
@@ -868,15 +830,11 @@ pub mod mindclade_service_client {
                 );
             self.inner.unary(req, path, codec).await
         }
-        /** ListAgentRuns maps the listAgentRuns HTTP operation.
-*/
+        ///
         pub async fn list_agent_runs(
             &mut self,
-            request: impl tonic::IntoRequest<super::ListAgentRunsRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::ListAgentRunsResponse>,
-            tonic::Status,
-        > {
+            request: impl tonic::IntoRequest<super::ListResourcesRequest>,
+        ) -> std::result::Result<tonic::Response<super::AgentRunList>, tonic::Status> {
             self.inner
                 .ready()
                 .await
@@ -896,15 +854,11 @@ pub mod mindclade_service_client {
                 );
             self.inner.unary(req, path, codec).await
         }
-        /** CreateAgentRun maps the createAgentRun HTTP operation.
-*/
+        ///
         pub async fn create_agent_run(
             &mut self,
             request: impl tonic::IntoRequest<super::CreateAgentRunRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::CreateAgentRunResponse>,
-            tonic::Status,
-        > {
+        ) -> std::result::Result<tonic::Response<super::Operation>, tonic::Status> {
             self.inner
                 .ready()
                 .await
@@ -927,15 +881,11 @@ pub mod mindclade_service_client {
                 );
             self.inner.unary(req, path, codec).await
         }
-        /** GetAgentRun maps the getAgentRun HTTP operation.
-*/
+        ///
         pub async fn get_agent_run(
             &mut self,
-            request: impl tonic::IntoRequest<super::GetAgentRunRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::GetAgentRunResponse>,
-            tonic::Status,
-        > {
+            request: impl tonic::IntoRequest<super::GetResourceRequest>,
+        ) -> std::result::Result<tonic::Response<super::AgentRunView>, tonic::Status> {
             self.inner
                 .ready()
                 .await
@@ -955,13 +905,12 @@ pub mod mindclade_service_client {
                 );
             self.inner.unary(req, path, codec).await
         }
-        /** ListWorkflowDefinitions maps the listWorkflowDefinitions HTTP operation.
-*/
+        ///
         pub async fn list_workflow_definitions(
             &mut self,
-            request: impl tonic::IntoRequest<super::ListWorkflowDefinitionsRequest>,
+            request: impl tonic::IntoRequest<super::ListResourcesRequest>,
         ) -> std::result::Result<
-            tonic::Response<super::ListWorkflowDefinitionsResponse>,
+            tonic::Response<super::WorkflowDefinitionList>,
             tonic::Status,
         > {
             self.inner
@@ -986,13 +935,12 @@ pub mod mindclade_service_client {
                 );
             self.inner.unary(req, path, codec).await
         }
-        /** CreateWorkflowDefinition maps the createWorkflowDefinition HTTP operation.
-*/
+        ///
         pub async fn create_workflow_definition(
             &mut self,
             request: impl tonic::IntoRequest<super::CreateWorkflowDefinitionRequest>,
         ) -> std::result::Result<
-            tonic::Response<super::CreateWorkflowDefinitionResponse>,
+            tonic::Response<super::WorkflowDefinitionView>,
             tonic::Status,
         > {
             self.inner
@@ -1017,13 +965,12 @@ pub mod mindclade_service_client {
                 );
             self.inner.unary(req, path, codec).await
         }
-        /** ListWorkflowRuns maps the listWorkflowRuns HTTP operation.
-*/
+        ///
         pub async fn list_workflow_runs(
             &mut self,
-            request: impl tonic::IntoRequest<super::ListWorkflowRunsRequest>,
+            request: impl tonic::IntoRequest<super::ListResourcesRequest>,
         ) -> std::result::Result<
-            tonic::Response<super::ListWorkflowRunsResponse>,
+            tonic::Response<super::WorkflowRunList>,
             tonic::Status,
         > {
             self.inner
@@ -1048,15 +995,11 @@ pub mod mindclade_service_client {
                 );
             self.inner.unary(req, path, codec).await
         }
-        /** CreateWorkflowRun maps the createWorkflowRun HTTP operation.
-*/
+        ///
         pub async fn create_workflow_run(
             &mut self,
             request: impl tonic::IntoRequest<super::CreateWorkflowRunRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::CreateWorkflowRunResponse>,
-            tonic::Status,
-        > {
+        ) -> std::result::Result<tonic::Response<super::Operation>, tonic::Status> {
             self.inner
                 .ready()
                 .await
@@ -1079,13 +1022,12 @@ pub mod mindclade_service_client {
                 );
             self.inner.unary(req, path, codec).await
         }
-        /** GetWorkflowRun maps the getWorkflowRun HTTP operation.
-*/
+        ///
         pub async fn get_workflow_run(
             &mut self,
-            request: impl tonic::IntoRequest<super::GetWorkflowRunRequest>,
+            request: impl tonic::IntoRequest<super::GetResourceRequest>,
         ) -> std::result::Result<
-            tonic::Response<super::GetWorkflowRunResponse>,
+            tonic::Response<super::WorkflowRunView>,
             tonic::Status,
         > {
             self.inner
@@ -1110,13 +1052,12 @@ pub mod mindclade_service_client {
                 );
             self.inner.unary(req, path, codec).await
         }
-        /** ListApprovalRequests maps the listApprovalRequests HTTP operation.
-*/
+        ///
         pub async fn list_approval_requests(
             &mut self,
-            request: impl tonic::IntoRequest<super::ListApprovalRequestsRequest>,
+            request: impl tonic::IntoRequest<super::ListResourcesRequest>,
         ) -> std::result::Result<
-            tonic::Response<super::ListApprovalRequestsResponse>,
+            tonic::Response<super::ApprovalRequestList>,
             tonic::Status,
         > {
             self.inner
@@ -1141,13 +1082,12 @@ pub mod mindclade_service_client {
                 );
             self.inner.unary(req, path, codec).await
         }
-        /** DecideApproval maps the decideApproval HTTP operation.
-*/
+        ///
         pub async fn decide_approval(
             &mut self,
             request: impl tonic::IntoRequest<super::DecideApprovalRequest>,
         ) -> std::result::Result<
-            tonic::Response<super::DecideApprovalResponse>,
+            tonic::Response<super::ApprovalReceiptView>,
             tonic::Status,
         > {
             self.inner
@@ -1172,15 +1112,11 @@ pub mod mindclade_service_client {
                 );
             self.inner.unary(req, path, codec).await
         }
-        /** GetTenant maps the getTenant HTTP operation.
-*/
+        ///
         pub async fn get_tenant(
             &mut self,
-            request: impl tonic::IntoRequest<super::GetTenantRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::GetTenantResponse>,
-            tonic::Status,
-        > {
+            request: impl tonic::IntoRequest<super::GetResourceRequest>,
+        ) -> std::result::Result<tonic::Response<super::TenantView>, tonic::Status> {
             self.inner
                 .ready()
                 .await
@@ -1200,15 +1136,11 @@ pub mod mindclade_service_client {
                 );
             self.inner.unary(req, path, codec).await
         }
-        /** ListProjects maps the listProjects HTTP operation.
-*/
+        ///
         pub async fn list_projects(
             &mut self,
-            request: impl tonic::IntoRequest<super::ListProjectsRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::ListProjectsResponse>,
-            tonic::Status,
-        > {
+            request: impl tonic::IntoRequest<super::ListResourcesRequest>,
+        ) -> std::result::Result<tonic::Response<super::ProjectList>, tonic::Status> {
             self.inner
                 .ready()
                 .await
@@ -1228,15 +1160,11 @@ pub mod mindclade_service_client {
                 );
             self.inner.unary(req, path, codec).await
         }
-        /** CreateProject maps the createProject HTTP operation.
-*/
+        ///
         pub async fn create_project(
             &mut self,
             request: impl tonic::IntoRequest<super::CreateProjectRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::CreateProjectResponse>,
-            tonic::Status,
-        > {
+        ) -> std::result::Result<tonic::Response<super::ProjectView>, tonic::Status> {
             self.inner
                 .ready()
                 .await
@@ -1256,15 +1184,11 @@ pub mod mindclade_service_client {
                 );
             self.inner.unary(req, path, codec).await
         }
-        /** GetProject maps the getProject HTTP operation.
-*/
+        ///
         pub async fn get_project(
             &mut self,
-            request: impl tonic::IntoRequest<super::GetProjectRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::GetProjectResponse>,
-            tonic::Status,
-        > {
+            request: impl tonic::IntoRequest<super::GetResourceRequest>,
+        ) -> std::result::Result<tonic::Response<super::ProjectView>, tonic::Status> {
             self.inner
                 .ready()
                 .await
@@ -1284,13 +1208,12 @@ pub mod mindclade_service_client {
                 );
             self.inner.unary(req, path, codec).await
         }
-        /** ListAuditRecords maps the listAuditRecords HTTP operation.
-*/
+        ///
         pub async fn list_audit_records(
             &mut self,
             request: impl tonic::IntoRequest<super::ListAuditRecordsRequest>,
         ) -> std::result::Result<
-            tonic::Response<super::ListAuditRecordsResponse>,
+            tonic::Response<super::AuditRecordList>,
             tonic::Status,
         > {
             self.inner
@@ -1330,53 +1253,47 @@ pub mod mindclade_service_server {
     /// Generated trait containing gRPC methods that should be implemented for use with MindcladeServiceServer.
     #[async_trait]
     pub trait MindcladeService: std::marker::Send + std::marker::Sync + 'static {
-        /** SubmitInference maps the submitInference HTTP operation.
-*/
+        ///
         async fn submit_inference(
             &self,
             request: tonic::Request<super::SubmitInferenceRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::SubmitInferenceResponse>,
-            tonic::Status,
-        >;
-        /** GetOperation maps the getOperation HTTP operation.
-*/
+        ) -> std::result::Result<tonic::Response<super::Operation>, tonic::Status>;
+        ///
         async fn get_operation(
             &self,
-            request: tonic::Request<super::GetOperationRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::GetOperationResponse>,
-            tonic::Status,
-        >;
-        /** CancelOperation maps the cancelOperation HTTP operation.
-*/
+            request: tonic::Request<super::GetResourceRequest>,
+        ) -> std::result::Result<tonic::Response<super::Operation>, tonic::Status>;
+        ///
         async fn cancel_operation(
             &self,
             request: tonic::Request<super::CancelOperationRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::CancelOperationResponse>,
-            tonic::Status,
-        >;
-        /** GetArtifact maps the getArtifact HTTP operation.
-*/
-        async fn get_artifact(
-            &self,
-            request: tonic::Request<super::GetArtifactRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::GetArtifactResponse>,
-            tonic::Status,
-        >;
-        /// Server streaming response type for the DownloadArtifact method.
-        type DownloadArtifactStream: tonic::codegen::tokio_stream::Stream<
-                Item = std::result::Result<
-                    super::DownloadArtifactResponse,
-                    tonic::Status,
-                >,
+        ) -> std::result::Result<tonic::Response<super::Operation>, tonic::Status>;
+        /// Server streaming response type for the WatchOperation method.
+        type WatchOperationStream: tonic::codegen::tokio_stream::Stream<
+                Item = std::result::Result<super::OperationEvent, tonic::Status>,
             >
             + std::marker::Send
             + 'static;
-        /** DownloadArtifact maps the downloadArtifact HTTP data-plane operation.
-*/
+        ///
+        async fn watch_operation(
+            &self,
+            request: tonic::Request<super::WatchOperationRequest>,
+        ) -> std::result::Result<
+            tonic::Response<Self::WatchOperationStream>,
+            tonic::Status,
+        >;
+        ///
+        async fn get_artifact(
+            &self,
+            request: tonic::Request<super::GetResourceRequest>,
+        ) -> std::result::Result<tonic::Response<super::ArtifactView>, tonic::Status>;
+        /// Server streaming response type for the DownloadArtifact method.
+        type DownloadArtifactStream: tonic::codegen::tokio_stream::Stream<
+                Item = std::result::Result<super::DownloadArtifactChunk, tonic::Status>,
+            >
+            + std::marker::Send
+            + 'static;
+        ///
         async fn download_artifact(
             &self,
             request: tonic::Request<super::DownloadArtifactRequest>,
@@ -1384,332 +1301,227 @@ pub mod mindclade_service_server {
             tonic::Response<Self::DownloadArtifactStream>,
             tonic::Status,
         >;
-        /** ListDatasets maps the listDatasets HTTP operation.
-*/
+        ///
         async fn list_datasets(
             &self,
-            request: tonic::Request<super::ListDatasetsRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::ListDatasetsResponse>,
-            tonic::Status,
-        >;
-        /** CreateDataset maps the createDataset HTTP operation.
-*/
+            request: tonic::Request<super::ListResourcesRequest>,
+        ) -> std::result::Result<tonic::Response<super::DatasetList>, tonic::Status>;
+        ///
         async fn create_dataset(
             &self,
             request: tonic::Request<super::CreateDatasetRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::CreateDatasetResponse>,
-            tonic::Status,
-        >;
-        /** GetDataset maps the getDataset HTTP operation.
-*/
+        ) -> std::result::Result<tonic::Response<super::DatasetView>, tonic::Status>;
+        ///
         async fn get_dataset(
             &self,
-            request: tonic::Request<super::GetDatasetRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::GetDatasetResponse>,
-            tonic::Status,
-        >;
-        /** UpdateDataset maps the updateDataset HTTP operation.
-*/
+            request: tonic::Request<super::GetResourceRequest>,
+        ) -> std::result::Result<tonic::Response<super::DatasetView>, tonic::Status>;
+        ///
         async fn update_dataset(
             &self,
             request: tonic::Request<super::UpdateDatasetRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::UpdateDatasetResponse>,
-            tonic::Status,
-        >;
-        /** ListDatasetReleases maps the listDatasetReleases HTTP operation.
-*/
+        ) -> std::result::Result<tonic::Response<super::DatasetView>, tonic::Status>;
+        ///
         async fn list_dataset_releases(
             &self,
-            request: tonic::Request<super::ListDatasetReleasesRequest>,
+            request: tonic::Request<super::ListResourcesRequest>,
         ) -> std::result::Result<
-            tonic::Response<super::ListDatasetReleasesResponse>,
+            tonic::Response<super::DatasetReleaseList>,
             tonic::Status,
         >;
-        /** CreateDatasetRelease maps the createDatasetRelease HTTP operation.
-*/
+        ///
         async fn create_dataset_release(
             &self,
             request: tonic::Request<super::CreateDatasetReleaseRequest>,
         ) -> std::result::Result<
-            tonic::Response<super::CreateDatasetReleaseResponse>,
+            tonic::Response<super::DatasetReleaseView>,
             tonic::Status,
         >;
-        /** ListModels maps the listModels HTTP operation.
-*/
+        ///
         async fn list_models(
             &self,
-            request: tonic::Request<super::ListModelsRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::ListModelsResponse>,
-            tonic::Status,
-        >;
-        /** CreateModel maps the createModel HTTP operation.
-*/
+            request: tonic::Request<super::ListResourcesRequest>,
+        ) -> std::result::Result<tonic::Response<super::ModelList>, tonic::Status>;
+        ///
         async fn create_model(
             &self,
             request: tonic::Request<super::CreateModelRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::CreateModelResponse>,
-            tonic::Status,
-        >;
-        /** GetModel maps the getModel HTTP operation.
-*/
+        ) -> std::result::Result<tonic::Response<super::ModelView>, tonic::Status>;
+        ///
         async fn get_model(
             &self,
-            request: tonic::Request<super::GetModelRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::GetModelResponse>,
-            tonic::Status,
-        >;
-        /** UpdateModel maps the updateModel HTTP operation.
-*/
+            request: tonic::Request<super::GetResourceRequest>,
+        ) -> std::result::Result<tonic::Response<super::ModelView>, tonic::Status>;
+        ///
         async fn update_model(
             &self,
             request: tonic::Request<super::UpdateModelRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::UpdateModelResponse>,
-            tonic::Status,
-        >;
-        /** ListModelReleases maps the listModelReleases HTTP operation.
-*/
+        ) -> std::result::Result<tonic::Response<super::ModelView>, tonic::Status>;
+        ///
         async fn list_model_releases(
             &self,
-            request: tonic::Request<super::ListModelReleasesRequest>,
+            request: tonic::Request<super::ListResourcesRequest>,
         ) -> std::result::Result<
-            tonic::Response<super::ListModelReleasesResponse>,
+            tonic::Response<super::ModelReleaseList>,
             tonic::Status,
         >;
-        /** CreateModelRelease maps the createModelRelease HTTP operation.
-*/
+        ///
         async fn create_model_release(
             &self,
             request: tonic::Request<super::CreateModelReleaseRequest>,
         ) -> std::result::Result<
-            tonic::Response<super::CreateModelReleaseResponse>,
+            tonic::Response<super::ModelReleaseView>,
             tonic::Status,
         >;
-        /** ListTrainingRuns maps the listTrainingRuns HTTP operation.
-*/
+        ///
         async fn list_training_runs(
             &self,
-            request: tonic::Request<super::ListTrainingRunsRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::ListTrainingRunsResponse>,
-            tonic::Status,
-        >;
-        /** CreateTrainingRun maps the createTrainingRun HTTP operation.
-*/
+            request: tonic::Request<super::ListResourcesRequest>,
+        ) -> std::result::Result<tonic::Response<super::TrainingRunList>, tonic::Status>;
+        ///
         async fn create_training_run(
             &self,
             request: tonic::Request<super::CreateTrainingRunRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::CreateTrainingRunResponse>,
-            tonic::Status,
-        >;
-        /** GetTrainingRun maps the getTrainingRun HTTP operation.
-*/
+        ) -> std::result::Result<tonic::Response<super::Operation>, tonic::Status>;
+        ///
         async fn get_training_run(
             &self,
-            request: tonic::Request<super::GetTrainingRunRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::GetTrainingRunResponse>,
-            tonic::Status,
-        >;
-        /** ListEvaluationRuns maps the listEvaluationRuns HTTP operation.
-*/
+            request: tonic::Request<super::GetResourceRequest>,
+        ) -> std::result::Result<tonic::Response<super::TrainingRunView>, tonic::Status>;
+        ///
         async fn list_evaluation_runs(
             &self,
-            request: tonic::Request<super::ListEvaluationRunsRequest>,
+            request: tonic::Request<super::ListResourcesRequest>,
         ) -> std::result::Result<
-            tonic::Response<super::ListEvaluationRunsResponse>,
+            tonic::Response<super::EvaluationRunList>,
             tonic::Status,
         >;
-        /** CreateEvaluationRun maps the createEvaluationRun HTTP operation.
-*/
+        ///
         async fn create_evaluation_run(
             &self,
             request: tonic::Request<super::CreateEvaluationRunRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::CreateEvaluationRunResponse>,
-            tonic::Status,
-        >;
-        /** GetEvaluationRun maps the getEvaluationRun HTTP operation.
-*/
+        ) -> std::result::Result<tonic::Response<super::Operation>, tonic::Status>;
+        ///
         async fn get_evaluation_run(
             &self,
-            request: tonic::Request<super::GetEvaluationRunRequest>,
+            request: tonic::Request<super::GetResourceRequest>,
         ) -> std::result::Result<
-            tonic::Response<super::GetEvaluationRunResponse>,
+            tonic::Response<super::EvaluationRunView>,
             tonic::Status,
         >;
-        /** GetEvaluationResult maps the getEvaluationResult HTTP operation.
-*/
+        ///
         async fn get_evaluation_result(
             &self,
-            request: tonic::Request<super::GetEvaluationResultRequest>,
+            request: tonic::Request<super::GetResourceRequest>,
         ) -> std::result::Result<
-            tonic::Response<super::GetEvaluationResultResponse>,
+            tonic::Response<super::EvaluationResultView>,
             tonic::Status,
         >;
-        /** ListAgentDefinitions maps the listAgentDefinitions HTTP operation.
-*/
+        ///
         async fn list_agent_definitions(
             &self,
-            request: tonic::Request<super::ListAgentDefinitionsRequest>,
+            request: tonic::Request<super::ListResourcesRequest>,
         ) -> std::result::Result<
-            tonic::Response<super::ListAgentDefinitionsResponse>,
+            tonic::Response<super::AgentDefinitionList>,
             tonic::Status,
         >;
-        /** CreateAgentDefinition maps the createAgentDefinition HTTP operation.
-*/
+        ///
         async fn create_agent_definition(
             &self,
             request: tonic::Request<super::CreateAgentDefinitionRequest>,
         ) -> std::result::Result<
-            tonic::Response<super::CreateAgentDefinitionResponse>,
+            tonic::Response<super::AgentDefinitionView>,
             tonic::Status,
         >;
-        /** ListAgentRuns maps the listAgentRuns HTTP operation.
-*/
+        ///
         async fn list_agent_runs(
             &self,
-            request: tonic::Request<super::ListAgentRunsRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::ListAgentRunsResponse>,
-            tonic::Status,
-        >;
-        /** CreateAgentRun maps the createAgentRun HTTP operation.
-*/
+            request: tonic::Request<super::ListResourcesRequest>,
+        ) -> std::result::Result<tonic::Response<super::AgentRunList>, tonic::Status>;
+        ///
         async fn create_agent_run(
             &self,
             request: tonic::Request<super::CreateAgentRunRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::CreateAgentRunResponse>,
-            tonic::Status,
-        >;
-        /** GetAgentRun maps the getAgentRun HTTP operation.
-*/
+        ) -> std::result::Result<tonic::Response<super::Operation>, tonic::Status>;
+        ///
         async fn get_agent_run(
             &self,
-            request: tonic::Request<super::GetAgentRunRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::GetAgentRunResponse>,
-            tonic::Status,
-        >;
-        /** ListWorkflowDefinitions maps the listWorkflowDefinitions HTTP operation.
-*/
+            request: tonic::Request<super::GetResourceRequest>,
+        ) -> std::result::Result<tonic::Response<super::AgentRunView>, tonic::Status>;
+        ///
         async fn list_workflow_definitions(
             &self,
-            request: tonic::Request<super::ListWorkflowDefinitionsRequest>,
+            request: tonic::Request<super::ListResourcesRequest>,
         ) -> std::result::Result<
-            tonic::Response<super::ListWorkflowDefinitionsResponse>,
+            tonic::Response<super::WorkflowDefinitionList>,
             tonic::Status,
         >;
-        /** CreateWorkflowDefinition maps the createWorkflowDefinition HTTP operation.
-*/
+        ///
         async fn create_workflow_definition(
             &self,
             request: tonic::Request<super::CreateWorkflowDefinitionRequest>,
         ) -> std::result::Result<
-            tonic::Response<super::CreateWorkflowDefinitionResponse>,
+            tonic::Response<super::WorkflowDefinitionView>,
             tonic::Status,
         >;
-        /** ListWorkflowRuns maps the listWorkflowRuns HTTP operation.
-*/
+        ///
         async fn list_workflow_runs(
             &self,
-            request: tonic::Request<super::ListWorkflowRunsRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::ListWorkflowRunsResponse>,
-            tonic::Status,
-        >;
-        /** CreateWorkflowRun maps the createWorkflowRun HTTP operation.
-*/
+            request: tonic::Request<super::ListResourcesRequest>,
+        ) -> std::result::Result<tonic::Response<super::WorkflowRunList>, tonic::Status>;
+        ///
         async fn create_workflow_run(
             &self,
             request: tonic::Request<super::CreateWorkflowRunRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::CreateWorkflowRunResponse>,
-            tonic::Status,
-        >;
-        /** GetWorkflowRun maps the getWorkflowRun HTTP operation.
-*/
+        ) -> std::result::Result<tonic::Response<super::Operation>, tonic::Status>;
+        ///
         async fn get_workflow_run(
             &self,
-            request: tonic::Request<super::GetWorkflowRunRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::GetWorkflowRunResponse>,
-            tonic::Status,
-        >;
-        /** ListApprovalRequests maps the listApprovalRequests HTTP operation.
-*/
+            request: tonic::Request<super::GetResourceRequest>,
+        ) -> std::result::Result<tonic::Response<super::WorkflowRunView>, tonic::Status>;
+        ///
         async fn list_approval_requests(
             &self,
-            request: tonic::Request<super::ListApprovalRequestsRequest>,
+            request: tonic::Request<super::ListResourcesRequest>,
         ) -> std::result::Result<
-            tonic::Response<super::ListApprovalRequestsResponse>,
+            tonic::Response<super::ApprovalRequestList>,
             tonic::Status,
         >;
-        /** DecideApproval maps the decideApproval HTTP operation.
-*/
+        ///
         async fn decide_approval(
             &self,
             request: tonic::Request<super::DecideApprovalRequest>,
         ) -> std::result::Result<
-            tonic::Response<super::DecideApprovalResponse>,
+            tonic::Response<super::ApprovalReceiptView>,
             tonic::Status,
         >;
-        /** GetTenant maps the getTenant HTTP operation.
-*/
+        ///
         async fn get_tenant(
             &self,
-            request: tonic::Request<super::GetTenantRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::GetTenantResponse>,
-            tonic::Status,
-        >;
-        /** ListProjects maps the listProjects HTTP operation.
-*/
+            request: tonic::Request<super::GetResourceRequest>,
+        ) -> std::result::Result<tonic::Response<super::TenantView>, tonic::Status>;
+        ///
         async fn list_projects(
             &self,
-            request: tonic::Request<super::ListProjectsRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::ListProjectsResponse>,
-            tonic::Status,
-        >;
-        /** CreateProject maps the createProject HTTP operation.
-*/
+            request: tonic::Request<super::ListResourcesRequest>,
+        ) -> std::result::Result<tonic::Response<super::ProjectList>, tonic::Status>;
+        ///
         async fn create_project(
             &self,
             request: tonic::Request<super::CreateProjectRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::CreateProjectResponse>,
-            tonic::Status,
-        >;
-        /** GetProject maps the getProject HTTP operation.
-*/
+        ) -> std::result::Result<tonic::Response<super::ProjectView>, tonic::Status>;
+        ///
         async fn get_project(
             &self,
-            request: tonic::Request<super::GetProjectRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::GetProjectResponse>,
-            tonic::Status,
-        >;
-        /** ListAuditRecords maps the listAuditRecords HTTP operation.
-*/
+            request: tonic::Request<super::GetResourceRequest>,
+        ) -> std::result::Result<tonic::Response<super::ProjectView>, tonic::Status>;
+        ///
         async fn list_audit_records(
             &self,
             request: tonic::Request<super::ListAuditRecordsRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::ListAuditRecordsResponse>,
-            tonic::Status,
-        >;
+        ) -> std::result::Result<tonic::Response<super::AuditRecordList>, tonic::Status>;
     }
-    /** MindcladeService is the curated public gRPC facade transport-equivalent to external-api.yaml.
+    /** MindcladeService is the only public gRPC façade.
 */
     #[derive(Debug)]
     pub struct MindcladeServiceServer<T> {
@@ -1794,7 +1606,7 @@ pub mod mindclade_service_server {
                         T: MindcladeService,
                     > tonic::server::UnaryService<super::SubmitInferenceRequest>
                     for SubmitInferenceSvc<T> {
-                        type Response = super::SubmitInferenceResponse;
+                        type Response = super::Operation;
                         type Future = BoxFuture<
                             tonic::Response<Self::Response>,
                             tonic::Status,
@@ -1838,16 +1650,16 @@ pub mod mindclade_service_server {
                     struct GetOperationSvc<T: MindcladeService>(pub Arc<T>);
                     impl<
                         T: MindcladeService,
-                    > tonic::server::UnaryService<super::GetOperationRequest>
+                    > tonic::server::UnaryService<super::GetResourceRequest>
                     for GetOperationSvc<T> {
-                        type Response = super::GetOperationResponse;
+                        type Response = super::Operation;
                         type Future = BoxFuture<
                             tonic::Response<Self::Response>,
                             tonic::Status,
                         >;
                         fn call(
                             &mut self,
-                            request: tonic::Request<super::GetOperationRequest>,
+                            request: tonic::Request<super::GetResourceRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
@@ -1886,7 +1698,7 @@ pub mod mindclade_service_server {
                         T: MindcladeService,
                     > tonic::server::UnaryService<super::CancelOperationRequest>
                     for CancelOperationSvc<T> {
-                        type Response = super::CancelOperationResponse;
+                        type Response = super::Operation;
                         type Future = BoxFuture<
                             tonic::Response<Self::Response>,
                             tonic::Status,
@@ -1925,21 +1737,68 @@ pub mod mindclade_service_server {
                     };
                     Box::pin(fut)
                 }
+                "/mindclade.api.v1.MindcladeService/WatchOperation" => {
+                    #[allow(non_camel_case_types)]
+                    struct WatchOperationSvc<T: MindcladeService>(pub Arc<T>);
+                    impl<
+                        T: MindcladeService,
+                    > tonic::server::ServerStreamingService<super::WatchOperationRequest>
+                    for WatchOperationSvc<T> {
+                        type Response = super::OperationEvent;
+                        type ResponseStream = T::WatchOperationStream;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::ResponseStream>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::WatchOperationRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as MindcladeService>::watch_operation(&inner, request)
+                                    .await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = WatchOperationSvc(inner);
+                        let codec = tonic_prost::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.server_streaming(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
                 "/mindclade.api.v1.MindcladeService/GetArtifact" => {
                     #[allow(non_camel_case_types)]
                     struct GetArtifactSvc<T: MindcladeService>(pub Arc<T>);
                     impl<
                         T: MindcladeService,
-                    > tonic::server::UnaryService<super::GetArtifactRequest>
+                    > tonic::server::UnaryService<super::GetResourceRequest>
                     for GetArtifactSvc<T> {
-                        type Response = super::GetArtifactResponse;
+                        type Response = super::ArtifactView;
                         type Future = BoxFuture<
                             tonic::Response<Self::Response>,
                             tonic::Status,
                         >;
                         fn call(
                             &mut self,
-                            request: tonic::Request<super::GetArtifactRequest>,
+                            request: tonic::Request<super::GetResourceRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
@@ -1978,7 +1837,7 @@ pub mod mindclade_service_server {
                     > tonic::server::ServerStreamingService<
                         super::DownloadArtifactRequest,
                     > for DownloadArtifactSvc<T> {
-                        type Response = super::DownloadArtifactResponse;
+                        type Response = super::DownloadArtifactChunk;
                         type ResponseStream = T::DownloadArtifactStream;
                         type Future = BoxFuture<
                             tonic::Response<Self::ResponseStream>,
@@ -2023,16 +1882,16 @@ pub mod mindclade_service_server {
                     struct ListDatasetsSvc<T: MindcladeService>(pub Arc<T>);
                     impl<
                         T: MindcladeService,
-                    > tonic::server::UnaryService<super::ListDatasetsRequest>
+                    > tonic::server::UnaryService<super::ListResourcesRequest>
                     for ListDatasetsSvc<T> {
-                        type Response = super::ListDatasetsResponse;
+                        type Response = super::DatasetList;
                         type Future = BoxFuture<
                             tonic::Response<Self::Response>,
                             tonic::Status,
                         >;
                         fn call(
                             &mut self,
-                            request: tonic::Request<super::ListDatasetsRequest>,
+                            request: tonic::Request<super::ListResourcesRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
@@ -2071,7 +1930,7 @@ pub mod mindclade_service_server {
                         T: MindcladeService,
                     > tonic::server::UnaryService<super::CreateDatasetRequest>
                     for CreateDatasetSvc<T> {
-                        type Response = super::CreateDatasetResponse;
+                        type Response = super::DatasetView;
                         type Future = BoxFuture<
                             tonic::Response<Self::Response>,
                             tonic::Status,
@@ -2115,16 +1974,16 @@ pub mod mindclade_service_server {
                     struct GetDatasetSvc<T: MindcladeService>(pub Arc<T>);
                     impl<
                         T: MindcladeService,
-                    > tonic::server::UnaryService<super::GetDatasetRequest>
+                    > tonic::server::UnaryService<super::GetResourceRequest>
                     for GetDatasetSvc<T> {
-                        type Response = super::GetDatasetResponse;
+                        type Response = super::DatasetView;
                         type Future = BoxFuture<
                             tonic::Response<Self::Response>,
                             tonic::Status,
                         >;
                         fn call(
                             &mut self,
-                            request: tonic::Request<super::GetDatasetRequest>,
+                            request: tonic::Request<super::GetResourceRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
@@ -2162,7 +2021,7 @@ pub mod mindclade_service_server {
                         T: MindcladeService,
                     > tonic::server::UnaryService<super::UpdateDatasetRequest>
                     for UpdateDatasetSvc<T> {
-                        type Response = super::UpdateDatasetResponse;
+                        type Response = super::DatasetView;
                         type Future = BoxFuture<
                             tonic::Response<Self::Response>,
                             tonic::Status,
@@ -2206,16 +2065,16 @@ pub mod mindclade_service_server {
                     struct ListDatasetReleasesSvc<T: MindcladeService>(pub Arc<T>);
                     impl<
                         T: MindcladeService,
-                    > tonic::server::UnaryService<super::ListDatasetReleasesRequest>
+                    > tonic::server::UnaryService<super::ListResourcesRequest>
                     for ListDatasetReleasesSvc<T> {
-                        type Response = super::ListDatasetReleasesResponse;
+                        type Response = super::DatasetReleaseList;
                         type Future = BoxFuture<
                             tonic::Response<Self::Response>,
                             tonic::Status,
                         >;
                         fn call(
                             &mut self,
-                            request: tonic::Request<super::ListDatasetReleasesRequest>,
+                            request: tonic::Request<super::ListResourcesRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
@@ -2257,7 +2116,7 @@ pub mod mindclade_service_server {
                         T: MindcladeService,
                     > tonic::server::UnaryService<super::CreateDatasetReleaseRequest>
                     for CreateDatasetReleaseSvc<T> {
-                        type Response = super::CreateDatasetReleaseResponse;
+                        type Response = super::DatasetReleaseView;
                         type Future = BoxFuture<
                             tonic::Response<Self::Response>,
                             tonic::Status,
@@ -2304,16 +2163,16 @@ pub mod mindclade_service_server {
                     struct ListModelsSvc<T: MindcladeService>(pub Arc<T>);
                     impl<
                         T: MindcladeService,
-                    > tonic::server::UnaryService<super::ListModelsRequest>
+                    > tonic::server::UnaryService<super::ListResourcesRequest>
                     for ListModelsSvc<T> {
-                        type Response = super::ListModelsResponse;
+                        type Response = super::ModelList;
                         type Future = BoxFuture<
                             tonic::Response<Self::Response>,
                             tonic::Status,
                         >;
                         fn call(
                             &mut self,
-                            request: tonic::Request<super::ListModelsRequest>,
+                            request: tonic::Request<super::ListResourcesRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
@@ -2351,7 +2210,7 @@ pub mod mindclade_service_server {
                         T: MindcladeService,
                     > tonic::server::UnaryService<super::CreateModelRequest>
                     for CreateModelSvc<T> {
-                        type Response = super::CreateModelResponse;
+                        type Response = super::ModelView;
                         type Future = BoxFuture<
                             tonic::Response<Self::Response>,
                             tonic::Status,
@@ -2394,16 +2253,16 @@ pub mod mindclade_service_server {
                     struct GetModelSvc<T: MindcladeService>(pub Arc<T>);
                     impl<
                         T: MindcladeService,
-                    > tonic::server::UnaryService<super::GetModelRequest>
+                    > tonic::server::UnaryService<super::GetResourceRequest>
                     for GetModelSvc<T> {
-                        type Response = super::GetModelResponse;
+                        type Response = super::ModelView;
                         type Future = BoxFuture<
                             tonic::Response<Self::Response>,
                             tonic::Status,
                         >;
                         fn call(
                             &mut self,
-                            request: tonic::Request<super::GetModelRequest>,
+                            request: tonic::Request<super::GetResourceRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
@@ -2441,7 +2300,7 @@ pub mod mindclade_service_server {
                         T: MindcladeService,
                     > tonic::server::UnaryService<super::UpdateModelRequest>
                     for UpdateModelSvc<T> {
-                        type Response = super::UpdateModelResponse;
+                        type Response = super::ModelView;
                         type Future = BoxFuture<
                             tonic::Response<Self::Response>,
                             tonic::Status,
@@ -2484,16 +2343,16 @@ pub mod mindclade_service_server {
                     struct ListModelReleasesSvc<T: MindcladeService>(pub Arc<T>);
                     impl<
                         T: MindcladeService,
-                    > tonic::server::UnaryService<super::ListModelReleasesRequest>
+                    > tonic::server::UnaryService<super::ListResourcesRequest>
                     for ListModelReleasesSvc<T> {
-                        type Response = super::ListModelReleasesResponse;
+                        type Response = super::ModelReleaseList;
                         type Future = BoxFuture<
                             tonic::Response<Self::Response>,
                             tonic::Status,
                         >;
                         fn call(
                             &mut self,
-                            request: tonic::Request<super::ListModelReleasesRequest>,
+                            request: tonic::Request<super::ListResourcesRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
@@ -2535,7 +2394,7 @@ pub mod mindclade_service_server {
                         T: MindcladeService,
                     > tonic::server::UnaryService<super::CreateModelReleaseRequest>
                     for CreateModelReleaseSvc<T> {
-                        type Response = super::CreateModelReleaseResponse;
+                        type Response = super::ModelReleaseView;
                         type Future = BoxFuture<
                             tonic::Response<Self::Response>,
                             tonic::Status,
@@ -2582,16 +2441,16 @@ pub mod mindclade_service_server {
                     struct ListTrainingRunsSvc<T: MindcladeService>(pub Arc<T>);
                     impl<
                         T: MindcladeService,
-                    > tonic::server::UnaryService<super::ListTrainingRunsRequest>
+                    > tonic::server::UnaryService<super::ListResourcesRequest>
                     for ListTrainingRunsSvc<T> {
-                        type Response = super::ListTrainingRunsResponse;
+                        type Response = super::TrainingRunList;
                         type Future = BoxFuture<
                             tonic::Response<Self::Response>,
                             tonic::Status,
                         >;
                         fn call(
                             &mut self,
-                            request: tonic::Request<super::ListTrainingRunsRequest>,
+                            request: tonic::Request<super::ListResourcesRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
@@ -2630,7 +2489,7 @@ pub mod mindclade_service_server {
                         T: MindcladeService,
                     > tonic::server::UnaryService<super::CreateTrainingRunRequest>
                     for CreateTrainingRunSvc<T> {
-                        type Response = super::CreateTrainingRunResponse;
+                        type Response = super::Operation;
                         type Future = BoxFuture<
                             tonic::Response<Self::Response>,
                             tonic::Status,
@@ -2677,16 +2536,16 @@ pub mod mindclade_service_server {
                     struct GetTrainingRunSvc<T: MindcladeService>(pub Arc<T>);
                     impl<
                         T: MindcladeService,
-                    > tonic::server::UnaryService<super::GetTrainingRunRequest>
+                    > tonic::server::UnaryService<super::GetResourceRequest>
                     for GetTrainingRunSvc<T> {
-                        type Response = super::GetTrainingRunResponse;
+                        type Response = super::TrainingRunView;
                         type Future = BoxFuture<
                             tonic::Response<Self::Response>,
                             tonic::Status,
                         >;
                         fn call(
                             &mut self,
-                            request: tonic::Request<super::GetTrainingRunRequest>,
+                            request: tonic::Request<super::GetResourceRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
@@ -2723,16 +2582,16 @@ pub mod mindclade_service_server {
                     struct ListEvaluationRunsSvc<T: MindcladeService>(pub Arc<T>);
                     impl<
                         T: MindcladeService,
-                    > tonic::server::UnaryService<super::ListEvaluationRunsRequest>
+                    > tonic::server::UnaryService<super::ListResourcesRequest>
                     for ListEvaluationRunsSvc<T> {
-                        type Response = super::ListEvaluationRunsResponse;
+                        type Response = super::EvaluationRunList;
                         type Future = BoxFuture<
                             tonic::Response<Self::Response>,
                             tonic::Status,
                         >;
                         fn call(
                             &mut self,
-                            request: tonic::Request<super::ListEvaluationRunsRequest>,
+                            request: tonic::Request<super::ListResourcesRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
@@ -2774,7 +2633,7 @@ pub mod mindclade_service_server {
                         T: MindcladeService,
                     > tonic::server::UnaryService<super::CreateEvaluationRunRequest>
                     for CreateEvaluationRunSvc<T> {
-                        type Response = super::CreateEvaluationRunResponse;
+                        type Response = super::Operation;
                         type Future = BoxFuture<
                             tonic::Response<Self::Response>,
                             tonic::Status,
@@ -2821,16 +2680,16 @@ pub mod mindclade_service_server {
                     struct GetEvaluationRunSvc<T: MindcladeService>(pub Arc<T>);
                     impl<
                         T: MindcladeService,
-                    > tonic::server::UnaryService<super::GetEvaluationRunRequest>
+                    > tonic::server::UnaryService<super::GetResourceRequest>
                     for GetEvaluationRunSvc<T> {
-                        type Response = super::GetEvaluationRunResponse;
+                        type Response = super::EvaluationRunView;
                         type Future = BoxFuture<
                             tonic::Response<Self::Response>,
                             tonic::Status,
                         >;
                         fn call(
                             &mut self,
-                            request: tonic::Request<super::GetEvaluationRunRequest>,
+                            request: tonic::Request<super::GetResourceRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
@@ -2867,16 +2726,16 @@ pub mod mindclade_service_server {
                     struct GetEvaluationResultSvc<T: MindcladeService>(pub Arc<T>);
                     impl<
                         T: MindcladeService,
-                    > tonic::server::UnaryService<super::GetEvaluationResultRequest>
+                    > tonic::server::UnaryService<super::GetResourceRequest>
                     for GetEvaluationResultSvc<T> {
-                        type Response = super::GetEvaluationResultResponse;
+                        type Response = super::EvaluationResultView;
                         type Future = BoxFuture<
                             tonic::Response<Self::Response>,
                             tonic::Status,
                         >;
                         fn call(
                             &mut self,
-                            request: tonic::Request<super::GetEvaluationResultRequest>,
+                            request: tonic::Request<super::GetResourceRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
@@ -2916,16 +2775,16 @@ pub mod mindclade_service_server {
                     struct ListAgentDefinitionsSvc<T: MindcladeService>(pub Arc<T>);
                     impl<
                         T: MindcladeService,
-                    > tonic::server::UnaryService<super::ListAgentDefinitionsRequest>
+                    > tonic::server::UnaryService<super::ListResourcesRequest>
                     for ListAgentDefinitionsSvc<T> {
-                        type Response = super::ListAgentDefinitionsResponse;
+                        type Response = super::AgentDefinitionList;
                         type Future = BoxFuture<
                             tonic::Response<Self::Response>,
                             tonic::Status,
                         >;
                         fn call(
                             &mut self,
-                            request: tonic::Request<super::ListAgentDefinitionsRequest>,
+                            request: tonic::Request<super::ListResourcesRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
@@ -2967,7 +2826,7 @@ pub mod mindclade_service_server {
                         T: MindcladeService,
                     > tonic::server::UnaryService<super::CreateAgentDefinitionRequest>
                     for CreateAgentDefinitionSvc<T> {
-                        type Response = super::CreateAgentDefinitionResponse;
+                        type Response = super::AgentDefinitionView;
                         type Future = BoxFuture<
                             tonic::Response<Self::Response>,
                             tonic::Status,
@@ -3014,16 +2873,16 @@ pub mod mindclade_service_server {
                     struct ListAgentRunsSvc<T: MindcladeService>(pub Arc<T>);
                     impl<
                         T: MindcladeService,
-                    > tonic::server::UnaryService<super::ListAgentRunsRequest>
+                    > tonic::server::UnaryService<super::ListResourcesRequest>
                     for ListAgentRunsSvc<T> {
-                        type Response = super::ListAgentRunsResponse;
+                        type Response = super::AgentRunList;
                         type Future = BoxFuture<
                             tonic::Response<Self::Response>,
                             tonic::Status,
                         >;
                         fn call(
                             &mut self,
-                            request: tonic::Request<super::ListAgentRunsRequest>,
+                            request: tonic::Request<super::ListResourcesRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
@@ -3062,7 +2921,7 @@ pub mod mindclade_service_server {
                         T: MindcladeService,
                     > tonic::server::UnaryService<super::CreateAgentRunRequest>
                     for CreateAgentRunSvc<T> {
-                        type Response = super::CreateAgentRunResponse;
+                        type Response = super::Operation;
                         type Future = BoxFuture<
                             tonic::Response<Self::Response>,
                             tonic::Status,
@@ -3106,16 +2965,16 @@ pub mod mindclade_service_server {
                     struct GetAgentRunSvc<T: MindcladeService>(pub Arc<T>);
                     impl<
                         T: MindcladeService,
-                    > tonic::server::UnaryService<super::GetAgentRunRequest>
+                    > tonic::server::UnaryService<super::GetResourceRequest>
                     for GetAgentRunSvc<T> {
-                        type Response = super::GetAgentRunResponse;
+                        type Response = super::AgentRunView;
                         type Future = BoxFuture<
                             tonic::Response<Self::Response>,
                             tonic::Status,
                         >;
                         fn call(
                             &mut self,
-                            request: tonic::Request<super::GetAgentRunRequest>,
+                            request: tonic::Request<super::GetResourceRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
@@ -3152,18 +3011,16 @@ pub mod mindclade_service_server {
                     struct ListWorkflowDefinitionsSvc<T: MindcladeService>(pub Arc<T>);
                     impl<
                         T: MindcladeService,
-                    > tonic::server::UnaryService<super::ListWorkflowDefinitionsRequest>
+                    > tonic::server::UnaryService<super::ListResourcesRequest>
                     for ListWorkflowDefinitionsSvc<T> {
-                        type Response = super::ListWorkflowDefinitionsResponse;
+                        type Response = super::WorkflowDefinitionList;
                         type Future = BoxFuture<
                             tonic::Response<Self::Response>,
                             tonic::Status,
                         >;
                         fn call(
                             &mut self,
-                            request: tonic::Request<
-                                super::ListWorkflowDefinitionsRequest,
-                            >,
+                            request: tonic::Request<super::ListResourcesRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
@@ -3205,7 +3062,7 @@ pub mod mindclade_service_server {
                         T: MindcladeService,
                     > tonic::server::UnaryService<super::CreateWorkflowDefinitionRequest>
                     for CreateWorkflowDefinitionSvc<T> {
-                        type Response = super::CreateWorkflowDefinitionResponse;
+                        type Response = super::WorkflowDefinitionView;
                         type Future = BoxFuture<
                             tonic::Response<Self::Response>,
                             tonic::Status,
@@ -3254,16 +3111,16 @@ pub mod mindclade_service_server {
                     struct ListWorkflowRunsSvc<T: MindcladeService>(pub Arc<T>);
                     impl<
                         T: MindcladeService,
-                    > tonic::server::UnaryService<super::ListWorkflowRunsRequest>
+                    > tonic::server::UnaryService<super::ListResourcesRequest>
                     for ListWorkflowRunsSvc<T> {
-                        type Response = super::ListWorkflowRunsResponse;
+                        type Response = super::WorkflowRunList;
                         type Future = BoxFuture<
                             tonic::Response<Self::Response>,
                             tonic::Status,
                         >;
                         fn call(
                             &mut self,
-                            request: tonic::Request<super::ListWorkflowRunsRequest>,
+                            request: tonic::Request<super::ListResourcesRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
@@ -3302,7 +3159,7 @@ pub mod mindclade_service_server {
                         T: MindcladeService,
                     > tonic::server::UnaryService<super::CreateWorkflowRunRequest>
                     for CreateWorkflowRunSvc<T> {
-                        type Response = super::CreateWorkflowRunResponse;
+                        type Response = super::Operation;
                         type Future = BoxFuture<
                             tonic::Response<Self::Response>,
                             tonic::Status,
@@ -3349,16 +3206,16 @@ pub mod mindclade_service_server {
                     struct GetWorkflowRunSvc<T: MindcladeService>(pub Arc<T>);
                     impl<
                         T: MindcladeService,
-                    > tonic::server::UnaryService<super::GetWorkflowRunRequest>
+                    > tonic::server::UnaryService<super::GetResourceRequest>
                     for GetWorkflowRunSvc<T> {
-                        type Response = super::GetWorkflowRunResponse;
+                        type Response = super::WorkflowRunView;
                         type Future = BoxFuture<
                             tonic::Response<Self::Response>,
                             tonic::Status,
                         >;
                         fn call(
                             &mut self,
-                            request: tonic::Request<super::GetWorkflowRunRequest>,
+                            request: tonic::Request<super::GetResourceRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
@@ -3395,16 +3252,16 @@ pub mod mindclade_service_server {
                     struct ListApprovalRequestsSvc<T: MindcladeService>(pub Arc<T>);
                     impl<
                         T: MindcladeService,
-                    > tonic::server::UnaryService<super::ListApprovalRequestsRequest>
+                    > tonic::server::UnaryService<super::ListResourcesRequest>
                     for ListApprovalRequestsSvc<T> {
-                        type Response = super::ListApprovalRequestsResponse;
+                        type Response = super::ApprovalRequestList;
                         type Future = BoxFuture<
                             tonic::Response<Self::Response>,
                             tonic::Status,
                         >;
                         fn call(
                             &mut self,
-                            request: tonic::Request<super::ListApprovalRequestsRequest>,
+                            request: tonic::Request<super::ListResourcesRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
@@ -3446,7 +3303,7 @@ pub mod mindclade_service_server {
                         T: MindcladeService,
                     > tonic::server::UnaryService<super::DecideApprovalRequest>
                     for DecideApprovalSvc<T> {
-                        type Response = super::DecideApprovalResponse;
+                        type Response = super::ApprovalReceiptView;
                         type Future = BoxFuture<
                             tonic::Response<Self::Response>,
                             tonic::Status,
@@ -3490,16 +3347,16 @@ pub mod mindclade_service_server {
                     struct GetTenantSvc<T: MindcladeService>(pub Arc<T>);
                     impl<
                         T: MindcladeService,
-                    > tonic::server::UnaryService<super::GetTenantRequest>
+                    > tonic::server::UnaryService<super::GetResourceRequest>
                     for GetTenantSvc<T> {
-                        type Response = super::GetTenantResponse;
+                        type Response = super::TenantView;
                         type Future = BoxFuture<
                             tonic::Response<Self::Response>,
                             tonic::Status,
                         >;
                         fn call(
                             &mut self,
-                            request: tonic::Request<super::GetTenantRequest>,
+                            request: tonic::Request<super::GetResourceRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
@@ -3535,16 +3392,16 @@ pub mod mindclade_service_server {
                     struct ListProjectsSvc<T: MindcladeService>(pub Arc<T>);
                     impl<
                         T: MindcladeService,
-                    > tonic::server::UnaryService<super::ListProjectsRequest>
+                    > tonic::server::UnaryService<super::ListResourcesRequest>
                     for ListProjectsSvc<T> {
-                        type Response = super::ListProjectsResponse;
+                        type Response = super::ProjectList;
                         type Future = BoxFuture<
                             tonic::Response<Self::Response>,
                             tonic::Status,
                         >;
                         fn call(
                             &mut self,
-                            request: tonic::Request<super::ListProjectsRequest>,
+                            request: tonic::Request<super::ListResourcesRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
@@ -3583,7 +3440,7 @@ pub mod mindclade_service_server {
                         T: MindcladeService,
                     > tonic::server::UnaryService<super::CreateProjectRequest>
                     for CreateProjectSvc<T> {
-                        type Response = super::CreateProjectResponse;
+                        type Response = super::ProjectView;
                         type Future = BoxFuture<
                             tonic::Response<Self::Response>,
                             tonic::Status,
@@ -3627,16 +3484,16 @@ pub mod mindclade_service_server {
                     struct GetProjectSvc<T: MindcladeService>(pub Arc<T>);
                     impl<
                         T: MindcladeService,
-                    > tonic::server::UnaryService<super::GetProjectRequest>
+                    > tonic::server::UnaryService<super::GetResourceRequest>
                     for GetProjectSvc<T> {
-                        type Response = super::GetProjectResponse;
+                        type Response = super::ProjectView;
                         type Future = BoxFuture<
                             tonic::Response<Self::Response>,
                             tonic::Status,
                         >;
                         fn call(
                             &mut self,
-                            request: tonic::Request<super::GetProjectRequest>,
+                            request: tonic::Request<super::GetResourceRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
@@ -3674,7 +3531,7 @@ pub mod mindclade_service_server {
                         T: MindcladeService,
                     > tonic::server::UnaryService<super::ListAuditRecordsRequest>
                     for ListAuditRecordsSvc<T> {
-                        type Response = super::ListAuditRecordsResponse;
+                        type Response = super::AuditRecordList;
                         type Future = BoxFuture<
                             tonic::Response<Self::Response>,
                             tonic::Status,

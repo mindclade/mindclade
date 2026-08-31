@@ -8,10 +8,10 @@ import (
 const CreateAction = "operations.create"
 
 type CreateCommand struct {
-	Principal      policies.Principal
-	Operation      *jobv1.Operation
-	IdempotencyKey string
-	RequestDigest  string
+	Principal           policies.Principal
+	Operation           *jobv1.Operation
+	IdempotencyKey      string
+	RequestDigest       string
 	ConfigurationDigest string
 }
 

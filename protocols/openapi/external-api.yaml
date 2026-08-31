@@ -152,6 +152,42 @@ paths:
         '409':
           $ref: '#/components/responses/Conflict'
 
+  /v1/tenants/{tenant}/projects/{project}/operations/{operation}:watch:
+    get:
+      tags: [Operations]
+      operationId: watchOperation
+      summary: Watch durable operation revisions
+      description: Resumable server-sent events; each data field is one OperationEvent encoded with ProtoJSON.
+      parameters:
+        - $ref: '#/components/parameters/TenantId'
+        - $ref: '#/components/parameters/ProjectId'
+        - $ref: '#/components/parameters/OperationId'
+        - name: Last-Event-ID
+          in: header
+          required: false
+          description: Last fully processed opaque event identifier.
+          schema:
+            type: string
+            maxLength: 256
+      responses:
+        '200':
+          description: Ordered operation revisions until the operation is terminal or the client disconnects.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            text/event-stream:
+              schema:
+                $ref: '#/components/schemas/OperationEvent'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
   /v1/tenants/{tenant}/projects/{project}/artifacts/{artifact}:
     get:
       tags: [Artifacts]
@@ -1553,7 +1589,7 @@ components:
     ArtifactRef:
       type: object
       additionalProperties: false
-      x-mindclade-authoritative-message: mindclade.artifact.v1.ArtifactRef
+      x-mindclade-authoritative-message: mindclade.api.v1.ArtifactRef
       required: [digest, mediaType, sizeBytes, artifactKind]
       properties:
         digest:
@@ -1563,9 +1599,8 @@ components:
           minLength: 1
           maxLength: 255
         sizeBytes:
-          type: integer
-          format: int64
-          minimum: 0
+          type: string
+          pattern: '^(0|[1-9][0-9]*)$'
         artifactKind:
           type: string
           minLength: 1
@@ -1579,7 +1614,7 @@ components:
     EvidenceRef:
       type: object
       additionalProperties: false
-      x-mindclade-authoritative-message: mindclade.artifact.v1.EvidenceRef
+      x-mindclade-authoritative-message: mindclade.api.v1.EvidenceRef
       required: [digest, subjectDigest, evidenceKind, policyDigest]
       properties:
         digest:
@@ -1604,9 +1639,8 @@ components:
           minLength: 1
           maxLength: 128
         revision:
-          type: integer
-          format: int64
-          minimum: 1
+          type: string
+          pattern: '^[1-9][0-9]*$'
 
     ErrorDetail:
       type: object
@@ -1625,9 +1659,8 @@ components:
         resource:
           $ref: '#/components/schemas/ResourceRef'
         currentRevision:
-          type: integer
-          format: int64
-          minimum: 1
+          type: string
+          pattern: '^[1-9][0-9]*$'
         limitName:
           type: string
           maxLength: 128
@@ -1692,7 +1725,7 @@ components:
     Operation:
       type: object
       additionalProperties: false
-      x-mindclade-authoritative-message: mindclade.job.v1.Operation
+      x-mindclade-authoritative-message: mindclade.api.v1.Operation
       required: [name, uid, revision, etag, state, done, createTime, updateTime]
       properties:
         name:
@@ -1702,9 +1735,8 @@ components:
           minLength: 1
           maxLength: 128
         revision:
-          type: integer
-          format: int64
-          minimum: 1
+          type: string
+          pattern: '^[1-9][0-9]*$'
         etag:
           type: string
           minLength: 3
@@ -1742,6 +1774,19 @@ components:
           maxItems: 64
           items:
             $ref: '#/components/schemas/ArtifactRef'
+
+    OperationEvent:
+      type: object
+      additionalProperties: false
+      x-mindclade-authoritative-message: mindclade.api.v1.OperationEvent
+      required: [eventId, operation]
+      properties:
+        eventId:
+          type: string
+          minLength: 1
+          maxLength: 256
+        operation:
+          $ref: '#/components/schemas/Operation'
 
     CancellationRequest:
       type: object
@@ -1799,9 +1844,8 @@ components:
           minLength: 1
           maxLength: 128
         revision:
-          type: integer
-          format: int64
-          minimum: 1
+          type: string
+          pattern: '^[1-9][0-9]*$'
         etag:
           type: string
           minLength: 3
@@ -1839,7 +1883,7 @@ components:
         - $ref: '#/components/schemas/ResourceMetadata'
         - $ref: '#/components/schemas/MutableResourceMetadata'
         - type: object
-          x-mindclade-authoritative-message: mindclade.dataset.v1.Dataset
+          x-mindclade-authoritative-message: mindclade.api.v1.DatasetView
           required: [state]
           properties:
             state:
@@ -1883,7 +1927,7 @@ components:
       allOf:
         - $ref: '#/components/schemas/ResourceMetadata'
         - type: object
-          x-mindclade-authoritative-message: mindclade.dataset.v1.DatasetRelease
+          x-mindclade-authoritative-message: mindclade.api.v1.DatasetReleaseView
           required: [dataset, releaseId, state, manifest, policyClassification]
           properties:
             dataset:
@@ -1951,7 +1995,7 @@ components:
         - $ref: '#/components/schemas/ResourceMetadata'
         - $ref: '#/components/schemas/MutableResourceMetadata'
         - type: object
-          x-mindclade-authoritative-message: mindclade.model.v1.Model
+          x-mindclade-authoritative-message: mindclade.api.v1.ModelView
           required: [family, state, definitionManifest]
           properties:
             family:
@@ -2005,7 +2049,7 @@ components:
       allOf:
         - $ref: '#/components/schemas/ResourceMetadata'
         - type: object
-          x-mindclade-authoritative-message: mindclade.model.v1.ModelRelease
+          x-mindclade-authoritative-message: mindclade.api.v1.ModelReleaseView
           required: [model, releaseId, stage, bundleManifest, modelManifest]
           properties:
             model:
@@ -2044,7 +2088,7 @@ components:
     TrainingRunCreate:
       type: object
       additionalProperties: false
-      required: [trainingRunId, trainingRecipe, datasetRelease, executablePlan, hardwareTopology]
+      required: [trainingRunId, trainingRecipe, datasetRelease, hardwareTopology]
       properties:
         trainingRunId:
           $ref: '#/components/schemas/ResourceId'
@@ -2054,8 +2098,6 @@ components:
           $ref: '#/components/schemas/ResourceRef'
         modelRelease:
           $ref: '#/components/schemas/ResourceRef'
-        executablePlan:
-          $ref: '#/components/schemas/ArtifactRef'
         hardwareTopology:
           $ref: '#/components/schemas/ArtifactRef'
         usePolicy:
@@ -2069,8 +2111,8 @@ components:
       allOf:
         - $ref: '#/components/schemas/ResourceMetadata'
         - type: object
-          x-mindclade-authoritative-message: mindclade.training.v1.TrainingRun
-          required: [state, trainingRecipe, datasetRelease, executablePlan, hardwareTopology]
+          x-mindclade-authoritative-message: mindclade.api.v1.TrainingRunView
+          required: [state, trainingRecipe, datasetRelease, hardwareTopology]
           properties:
             state:
               type: string
@@ -2081,8 +2123,6 @@ components:
               $ref: '#/components/schemas/ResourceRef'
             modelRelease:
               $ref: '#/components/schemas/ResourceRef'
-            executablePlan:
-              $ref: '#/components/schemas/ArtifactRef'
             hardwareTopology:
               $ref: '#/components/schemas/ArtifactRef'
             latestCheckpoint:
@@ -2128,7 +2168,7 @@ components:
       allOf:
         - $ref: '#/components/schemas/ResourceMetadata'
         - type: object
-          x-mindclade-authoritative-message: mindclade.evaluation.v1.EvaluationRun
+          x-mindclade-authoritative-message: mindclade.api.v1.EvaluationRunView
           required: [state, suite, datasets, modelRelease]
           properties:
             state:
@@ -2144,13 +2184,11 @@ components:
             modelRelease:
               $ref: '#/components/schemas/ResourceRef'
             completedSamples:
-              type: integer
-              format: int64
-              minimum: 0
+              type: string
+              pattern: '^(0|[1-9][0-9]*)$'
             totalSamples:
-              type: integer
-              format: int64
-              minimum: 0
+              type: string
+              pattern: '^(0|[1-9][0-9]*)$'
             failure:
               $ref: '#/components/schemas/PublicError'
     EvaluationRunList:
@@ -2185,17 +2223,15 @@ components:
         intervalUpper:
           type: number
         validCount:
-          type: integer
-          format: int64
-          minimum: 0
+          type: string
+          pattern: '^(0|[1-9][0-9]*)$'
         invalidCount:
-          type: integer
-          format: int64
-          minimum: 0
+          type: string
+          pattern: '^(0|[1-9][0-9]*)$'
     EvaluationResult:
       type: object
       additionalProperties: false
-      x-mindclade-authoritative-message: mindclade.evaluation.v1.EvaluationResult
+      x-mindclade-authoritative-message: mindclade.api.v1.EvaluationResultView
       required: [name, uid, run, outcome, report, resultDigest]
       properties:
         name:
@@ -2224,7 +2260,7 @@ components:
     InferenceSubmission:
       type: object
       additionalProperties: false
-      x-mindclade-authoritative-message: mindclade.inference.v1.InferenceRequest
+      x-mindclade-authoritative-message: mindclade.api.v1.InferenceSubmission
       required: [requestId, capability, model, input, output]
       properties:
         requestId:
@@ -2264,7 +2300,7 @@ components:
     InferenceResult:
       type: object
       additionalProperties: false
-      x-mindclade-authoritative-message: mindclade.inference.v1.InferenceResult
+      x-mindclade-authoritative-message: mindclade.api.v1.InferenceResultView
       required: [name, uid, request, operation, resultManifest, resultDigest]
       properties:
         name:
@@ -2318,9 +2354,8 @@ components:
       required: [maximumModelTokens, maximumIterations, maximumToolCalls]
       properties:
         maximumModelTokens:
-          type: integer
-          format: int64
-          minimum: 0
+          type: string
+          pattern: '^(0|[1-9][0-9]*)$'
         maximumIterations:
           type: integer
           minimum: 1
@@ -2330,15 +2365,14 @@ components:
           minimum: 0
           maximum: 100000
         maximumExternalSpendMicros:
-          type: integer
-          format: int64
-          minimum: 0
+          type: string
+          pattern: '^(0|[1-9][0-9]*)$'
     AgentDefinition:
       allOf:
         - $ref: '#/components/schemas/ResourceMetadata'
         - $ref: '#/components/schemas/AgentDefinitionCreate'
         - type: object
-          x-mindclade-authoritative-message: mindclade.agent.v1.AgentDefinition
+          x-mindclade-authoritative-message: mindclade.api.v1.AgentDefinitionView
           required: [state]
           properties:
             state:
@@ -2374,7 +2408,7 @@ components:
       allOf:
         - $ref: '#/components/schemas/ResourceMetadata'
         - type: object
-          x-mindclade-authoritative-message: mindclade.agent.v1.AgentRun
+          x-mindclade-authoritative-message: mindclade.api.v1.AgentRunView
           required: [definition, definitionDigest, state]
           properties:
             definition:
@@ -2429,7 +2463,7 @@ components:
         - $ref: '#/components/schemas/ResourceMetadata'
         - $ref: '#/components/schemas/WorkflowDefinitionCreate'
         - type: object
-          x-mindclade-authoritative-message: mindclade.workflow.v1.WorkflowDefinition
+          x-mindclade-authoritative-message: mindclade.api.v1.WorkflowDefinitionView
           required: [state, resolvedGraphDigest]
           properties:
             state:
@@ -2467,7 +2501,7 @@ components:
       allOf:
         - $ref: '#/components/schemas/ResourceMetadata'
         - type: object
-          x-mindclade-authoritative-message: mindclade.workflow.v1.WorkflowRun
+          x-mindclade-authoritative-message: mindclade.api.v1.WorkflowRunView
           required: [definition, definitionDigest, state]
           properties:
             definition:
@@ -2501,7 +2535,7 @@ components:
       allOf:
         - $ref: '#/components/schemas/ResourceMetadata'
         - type: object
-          x-mindclade-authoritative-message: mindclade.workflow.v1.ApprovalRequest
+          x-mindclade-authoritative-message: mindclade.api.v1.ApprovalRequestView
           required: [state, action, intentDigest, minimumIndependentApprovers]
           properties:
             state:
@@ -2546,7 +2580,7 @@ components:
     ApprovalReceipt:
       type: object
       additionalProperties: false
-      x-mindclade-authoritative-message: mindclade.workflow.v1.ApprovalReceipt
+      x-mindclade-authoritative-message: mindclade.api.v1.ApprovalReceiptView
       required: [name, uid, request, decision, reasonCode, receiptDigest, createTime]
       properties:
         name:
@@ -2571,7 +2605,7 @@ components:
       allOf:
         - $ref: '#/components/schemas/ResourceMetadata'
         - type: object
-          x-mindclade-authoritative-message: mindclade.admin.v1.Tenant
+          x-mindclade-authoritative-message: mindclade.api.v1.TenantView
           required: [displayName, state, defaultClassification]
           properties:
             displayName:
@@ -2616,7 +2650,7 @@ components:
         - $ref: '#/components/schemas/ResourceMetadata'
         - $ref: '#/components/schemas/ProjectCreate'
         - type: object
-          x-mindclade-authoritative-message: mindclade.admin.v1.Project
+          x-mindclade-authoritative-message: mindclade.api.v1.ProjectView
           required: [state]
           properties:
             state:
@@ -2636,7 +2670,7 @@ components:
     AuditRecord:
       type: object
       additionalProperties: false
-      x-mindclade-authoritative-message: mindclade.admin.v1.AuditRecord
+      x-mindclade-authoritative-message: mindclade.api.v1.AuditRecordView
       required: [eventId, eventTime, actor, action, result, requestId]
       properties:
         eventId:

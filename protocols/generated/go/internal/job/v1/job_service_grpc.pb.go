@@ -479,11 +479,16 @@ var JobService_ServiceDesc = grpc.ServiceDesc{
 }
 
 const (
-	RunService_GetRun_FullMethodName        = "/mindclade.internal.job.v1.RunService/GetRun"
-	RunService_ListRuns_FullMethodName      = "/mindclade.internal.job.v1.RunService/ListRuns"
-	RunService_GetAttempt_FullMethodName    = "/mindclade.internal.job.v1.RunService/GetAttempt"
-	RunService_ListAttempts_FullMethodName  = "/mindclade.internal.job.v1.RunService/ListAttempts"
-	RunService_CommitAttempt_FullMethodName = "/mindclade.internal.job.v1.RunService/CommitAttempt"
+	RunService_GetRun_FullMethodName              = "/mindclade.internal.job.v1.RunService/GetRun"
+	RunService_ListRuns_FullMethodName            = "/mindclade.internal.job.v1.RunService/ListRuns"
+	RunService_GetAttempt_FullMethodName          = "/mindclade.internal.job.v1.RunService/GetAttempt"
+	RunService_ListAttempts_FullMethodName        = "/mindclade.internal.job.v1.RunService/ListAttempts"
+	RunService_AcquireAttemptLease_FullMethodName = "/mindclade.internal.job.v1.RunService/AcquireAttemptLease"
+	RunService_RenewAttemptLease_FullMethodName   = "/mindclade.internal.job.v1.RunService/RenewAttemptLease"
+	RunService_HeartbeatAttempt_FullMethodName    = "/mindclade.internal.job.v1.RunService/HeartbeatAttempt"
+	RunService_CancelAttempt_FullMethodName       = "/mindclade.internal.job.v1.RunService/CancelAttempt"
+	RunService_ExpireAttemptLeases_FullMethodName = "/mindclade.internal.job.v1.RunService/ExpireAttemptLeases"
+	RunService_CommitAttempt_FullMethodName       = "/mindclade.internal.job.v1.RunService/CommitAttempt"
 )
 
 // RunServiceClient is the client API for RunService service.
@@ -500,6 +505,16 @@ type RunServiceClient interface {
 	GetAttempt(ctx context.Context, in *GetAttemptRequest, opts ...grpc.CallOption) (*GetAttemptResponse, error)
 	// ListAttempts lists attempts for one run.
 	ListAttempts(ctx context.Context, in *ListAttemptsRequest, opts ...grpc.CallOption) (*ListAttemptsResponse, error)
+	// AcquireAttemptLease atomically issues one expiring, token-bound fence.
+	AcquireAttemptLease(ctx context.Context, in *AcquireAttemptLeaseRequest, opts ...grpc.CallOption) (*AcquireAttemptLeaseResponse, error)
+	// RenewAttemptLease extends only the current authenticated lease.
+	RenewAttemptLease(ctx context.Context, in *RenewAttemptLeaseRequest, opts ...grpc.CallOption) (*RenewAttemptLeaseResponse, error)
+	// HeartbeatAttempt records liveness and renews only the current lease.
+	HeartbeatAttempt(ctx context.Context, in *HeartbeatAttemptRequest, opts ...grpc.CallOption) (*HeartbeatAttemptResponse, error)
+	// CancelAttempt terminates only the current authenticated lease.
+	CancelAttempt(ctx context.Context, in *CancelAttemptRequest, opts ...grpc.CallOption) (*CancelAttemptResponse, error)
+	// ExpireAttemptLeases fences a bounded batch whose deadlines elapsed.
+	ExpireAttemptLeases(ctx context.Context, in *ExpireAttemptLeasesRequest, opts ...grpc.CallOption) (*ExpireAttemptLeasesResponse, error)
 	// CommitAttempt rejects stale resource revisions or lease epochs.
 	CommitAttempt(ctx context.Context, in *CommitAttemptRequest, opts ...grpc.CallOption) (*CommitAttemptResponse, error)
 }
@@ -552,6 +567,56 @@ func (c *runServiceClient) ListAttempts(ctx context.Context, in *ListAttemptsReq
 	return out, nil
 }
 
+func (c *runServiceClient) AcquireAttemptLease(ctx context.Context, in *AcquireAttemptLeaseRequest, opts ...grpc.CallOption) (*AcquireAttemptLeaseResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(AcquireAttemptLeaseResponse)
+	err := c.cc.Invoke(ctx, RunService_AcquireAttemptLease_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *runServiceClient) RenewAttemptLease(ctx context.Context, in *RenewAttemptLeaseRequest, opts ...grpc.CallOption) (*RenewAttemptLeaseResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RenewAttemptLeaseResponse)
+	err := c.cc.Invoke(ctx, RunService_RenewAttemptLease_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *runServiceClient) HeartbeatAttempt(ctx context.Context, in *HeartbeatAttemptRequest, opts ...grpc.CallOption) (*HeartbeatAttemptResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(HeartbeatAttemptResponse)
+	err := c.cc.Invoke(ctx, RunService_HeartbeatAttempt_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *runServiceClient) CancelAttempt(ctx context.Context, in *CancelAttemptRequest, opts ...grpc.CallOption) (*CancelAttemptResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CancelAttemptResponse)
+	err := c.cc.Invoke(ctx, RunService_CancelAttempt_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *runServiceClient) ExpireAttemptLeases(ctx context.Context, in *ExpireAttemptLeasesRequest, opts ...grpc.CallOption) (*ExpireAttemptLeasesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ExpireAttemptLeasesResponse)
+	err := c.cc.Invoke(ctx, RunService_ExpireAttemptLeases_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *runServiceClient) CommitAttempt(ctx context.Context, in *CommitAttemptRequest, opts ...grpc.CallOption) (*CommitAttemptResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(CommitAttemptResponse)
@@ -576,6 +641,16 @@ type RunServiceServer interface {
 	GetAttempt(context.Context, *GetAttemptRequest) (*GetAttemptResponse, error)
 	// ListAttempts lists attempts for one run.
 	ListAttempts(context.Context, *ListAttemptsRequest) (*ListAttemptsResponse, error)
+	// AcquireAttemptLease atomically issues one expiring, token-bound fence.
+	AcquireAttemptLease(context.Context, *AcquireAttemptLeaseRequest) (*AcquireAttemptLeaseResponse, error)
+	// RenewAttemptLease extends only the current authenticated lease.
+	RenewAttemptLease(context.Context, *RenewAttemptLeaseRequest) (*RenewAttemptLeaseResponse, error)
+	// HeartbeatAttempt records liveness and renews only the current lease.
+	HeartbeatAttempt(context.Context, *HeartbeatAttemptRequest) (*HeartbeatAttemptResponse, error)
+	// CancelAttempt terminates only the current authenticated lease.
+	CancelAttempt(context.Context, *CancelAttemptRequest) (*CancelAttemptResponse, error)
+	// ExpireAttemptLeases fences a bounded batch whose deadlines elapsed.
+	ExpireAttemptLeases(context.Context, *ExpireAttemptLeasesRequest) (*ExpireAttemptLeasesResponse, error)
 	// CommitAttempt rejects stale resource revisions or lease epochs.
 	CommitAttempt(context.Context, *CommitAttemptRequest) (*CommitAttemptResponse, error)
 	mustEmbedUnimplementedRunServiceServer()
@@ -599,6 +674,21 @@ func (UnimplementedRunServiceServer) GetAttempt(context.Context, *GetAttemptRequ
 }
 func (UnimplementedRunServiceServer) ListAttempts(context.Context, *ListAttemptsRequest) (*ListAttemptsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListAttempts not implemented")
+}
+func (UnimplementedRunServiceServer) AcquireAttemptLease(context.Context, *AcquireAttemptLeaseRequest) (*AcquireAttemptLeaseResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method AcquireAttemptLease not implemented")
+}
+func (UnimplementedRunServiceServer) RenewAttemptLease(context.Context, *RenewAttemptLeaseRequest) (*RenewAttemptLeaseResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method RenewAttemptLease not implemented")
+}
+func (UnimplementedRunServiceServer) HeartbeatAttempt(context.Context, *HeartbeatAttemptRequest) (*HeartbeatAttemptResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method HeartbeatAttempt not implemented")
+}
+func (UnimplementedRunServiceServer) CancelAttempt(context.Context, *CancelAttemptRequest) (*CancelAttemptResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CancelAttempt not implemented")
+}
+func (UnimplementedRunServiceServer) ExpireAttemptLeases(context.Context, *ExpireAttemptLeasesRequest) (*ExpireAttemptLeasesResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ExpireAttemptLeases not implemented")
 }
 func (UnimplementedRunServiceServer) CommitAttempt(context.Context, *CommitAttemptRequest) (*CommitAttemptResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method CommitAttempt not implemented")
@@ -696,6 +786,96 @@ func _RunService_ListAttempts_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _RunService_AcquireAttemptLease_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AcquireAttemptLeaseRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RunServiceServer).AcquireAttemptLease(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: RunService_AcquireAttemptLease_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RunServiceServer).AcquireAttemptLease(ctx, req.(*AcquireAttemptLeaseRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _RunService_RenewAttemptLease_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RenewAttemptLeaseRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RunServiceServer).RenewAttemptLease(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: RunService_RenewAttemptLease_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RunServiceServer).RenewAttemptLease(ctx, req.(*RenewAttemptLeaseRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _RunService_HeartbeatAttempt_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(HeartbeatAttemptRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RunServiceServer).HeartbeatAttempt(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: RunService_HeartbeatAttempt_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RunServiceServer).HeartbeatAttempt(ctx, req.(*HeartbeatAttemptRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _RunService_CancelAttempt_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CancelAttemptRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RunServiceServer).CancelAttempt(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: RunService_CancelAttempt_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RunServiceServer).CancelAttempt(ctx, req.(*CancelAttemptRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _RunService_ExpireAttemptLeases_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ExpireAttemptLeasesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RunServiceServer).ExpireAttemptLeases(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: RunService_ExpireAttemptLeases_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RunServiceServer).ExpireAttemptLeases(ctx, req.(*ExpireAttemptLeasesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _RunService_CommitAttempt_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(CommitAttemptRequest)
 	if err := dec(in); err != nil {
@@ -736,6 +916,26 @@ var RunService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListAttempts",
 			Handler:    _RunService_ListAttempts_Handler,
+		},
+		{
+			MethodName: "AcquireAttemptLease",
+			Handler:    _RunService_AcquireAttemptLease_Handler,
+		},
+		{
+			MethodName: "RenewAttemptLease",
+			Handler:    _RunService_RenewAttemptLease_Handler,
+		},
+		{
+			MethodName: "HeartbeatAttempt",
+			Handler:    _RunService_HeartbeatAttempt_Handler,
+		},
+		{
+			MethodName: "CancelAttempt",
+			Handler:    _RunService_CancelAttempt_Handler,
+		},
+		{
+			MethodName: "ExpireAttemptLeases",
+			Handler:    _RunService_ExpireAttemptLeases_Handler,
 		},
 		{
 			MethodName: "CommitAttempt",

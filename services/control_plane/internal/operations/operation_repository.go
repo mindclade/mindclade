@@ -195,7 +195,7 @@ type operationRow struct {
 	resourceVersion                         int64
 	done                                    bool
 	etag                                    string
-	resultRefID, errorDetailID               sql.NullInt64
+	resultRefID, errorDetailID              sql.NullInt64
 	result                                  *artifactv1.ArtifactRef
 	error                                   *commonv1.ErrorDetail
 	requestDigest                           string

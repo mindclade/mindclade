@@ -22,6 +22,7 @@ const (
 	MindcladeService_SubmitInference_FullMethodName          = "/mindclade.api.v1.MindcladeService/SubmitInference"
 	MindcladeService_GetOperation_FullMethodName             = "/mindclade.api.v1.MindcladeService/GetOperation"
 	MindcladeService_CancelOperation_FullMethodName          = "/mindclade.api.v1.MindcladeService/CancelOperation"
+	MindcladeService_WatchOperation_FullMethodName           = "/mindclade.api.v1.MindcladeService/WatchOperation"
 	MindcladeService_GetArtifact_FullMethodName              = "/mindclade.api.v1.MindcladeService/GetArtifact"
 	MindcladeService_DownloadArtifact_FullMethodName         = "/mindclade.api.v1.MindcladeService/DownloadArtifact"
 	MindcladeService_ListDatasets_FullMethodName             = "/mindclade.api.v1.MindcladeService/ListDatasets"
@@ -66,90 +67,50 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 //
-// MindcladeService is the curated public gRPC facade transport-equivalent to external-api.yaml.
+// MindcladeService is the only public gRPC façade.
 type MindcladeServiceClient interface {
-	// SubmitInference maps the submitInference HTTP operation.
-	SubmitInference(ctx context.Context, in *SubmitInferenceRequest, opts ...grpc.CallOption) (*SubmitInferenceResponse, error)
-	// GetOperation maps the getOperation HTTP operation.
-	GetOperation(ctx context.Context, in *GetOperationRequest, opts ...grpc.CallOption) (*GetOperationResponse, error)
-	// CancelOperation maps the cancelOperation HTTP operation.
-	CancelOperation(ctx context.Context, in *CancelOperationRequest, opts ...grpc.CallOption) (*CancelOperationResponse, error)
-	// GetArtifact maps the getArtifact HTTP operation.
-	GetArtifact(ctx context.Context, in *GetArtifactRequest, opts ...grpc.CallOption) (*GetArtifactResponse, error)
-	// DownloadArtifact maps the downloadArtifact HTTP data-plane operation.
-	DownloadArtifact(ctx context.Context, in *DownloadArtifactRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[DownloadArtifactResponse], error)
-	// ListDatasets maps the listDatasets HTTP operation.
-	ListDatasets(ctx context.Context, in *ListDatasetsRequest, opts ...grpc.CallOption) (*ListDatasetsResponse, error)
-	// CreateDataset maps the createDataset HTTP operation.
-	CreateDataset(ctx context.Context, in *CreateDatasetRequest, opts ...grpc.CallOption) (*CreateDatasetResponse, error)
-	// GetDataset maps the getDataset HTTP operation.
-	GetDataset(ctx context.Context, in *GetDatasetRequest, opts ...grpc.CallOption) (*GetDatasetResponse, error)
-	// UpdateDataset maps the updateDataset HTTP operation.
-	UpdateDataset(ctx context.Context, in *UpdateDatasetRequest, opts ...grpc.CallOption) (*UpdateDatasetResponse, error)
-	// ListDatasetReleases maps the listDatasetReleases HTTP operation.
-	ListDatasetReleases(ctx context.Context, in *ListDatasetReleasesRequest, opts ...grpc.CallOption) (*ListDatasetReleasesResponse, error)
-	// CreateDatasetRelease maps the createDatasetRelease HTTP operation.
-	CreateDatasetRelease(ctx context.Context, in *CreateDatasetReleaseRequest, opts ...grpc.CallOption) (*CreateDatasetReleaseResponse, error)
-	// ListModels maps the listModels HTTP operation.
-	ListModels(ctx context.Context, in *ListModelsRequest, opts ...grpc.CallOption) (*ListModelsResponse, error)
-	// CreateModel maps the createModel HTTP operation.
-	CreateModel(ctx context.Context, in *CreateModelRequest, opts ...grpc.CallOption) (*CreateModelResponse, error)
-	// GetModel maps the getModel HTTP operation.
-	GetModel(ctx context.Context, in *GetModelRequest, opts ...grpc.CallOption) (*GetModelResponse, error)
-	// UpdateModel maps the updateModel HTTP operation.
-	UpdateModel(ctx context.Context, in *UpdateModelRequest, opts ...grpc.CallOption) (*UpdateModelResponse, error)
-	// ListModelReleases maps the listModelReleases HTTP operation.
-	ListModelReleases(ctx context.Context, in *ListModelReleasesRequest, opts ...grpc.CallOption) (*ListModelReleasesResponse, error)
-	// CreateModelRelease maps the createModelRelease HTTP operation.
-	CreateModelRelease(ctx context.Context, in *CreateModelReleaseRequest, opts ...grpc.CallOption) (*CreateModelReleaseResponse, error)
-	// ListTrainingRuns maps the listTrainingRuns HTTP operation.
-	ListTrainingRuns(ctx context.Context, in *ListTrainingRunsRequest, opts ...grpc.CallOption) (*ListTrainingRunsResponse, error)
-	// CreateTrainingRun maps the createTrainingRun HTTP operation.
-	CreateTrainingRun(ctx context.Context, in *CreateTrainingRunRequest, opts ...grpc.CallOption) (*CreateTrainingRunResponse, error)
-	// GetTrainingRun maps the getTrainingRun HTTP operation.
-	GetTrainingRun(ctx context.Context, in *GetTrainingRunRequest, opts ...grpc.CallOption) (*GetTrainingRunResponse, error)
-	// ListEvaluationRuns maps the listEvaluationRuns HTTP operation.
-	ListEvaluationRuns(ctx context.Context, in *ListEvaluationRunsRequest, opts ...grpc.CallOption) (*ListEvaluationRunsResponse, error)
-	// CreateEvaluationRun maps the createEvaluationRun HTTP operation.
-	CreateEvaluationRun(ctx context.Context, in *CreateEvaluationRunRequest, opts ...grpc.CallOption) (*CreateEvaluationRunResponse, error)
-	// GetEvaluationRun maps the getEvaluationRun HTTP operation.
-	GetEvaluationRun(ctx context.Context, in *GetEvaluationRunRequest, opts ...grpc.CallOption) (*GetEvaluationRunResponse, error)
-	// GetEvaluationResult maps the getEvaluationResult HTTP operation.
-	GetEvaluationResult(ctx context.Context, in *GetEvaluationResultRequest, opts ...grpc.CallOption) (*GetEvaluationResultResponse, error)
-	// ListAgentDefinitions maps the listAgentDefinitions HTTP operation.
-	ListAgentDefinitions(ctx context.Context, in *ListAgentDefinitionsRequest, opts ...grpc.CallOption) (*ListAgentDefinitionsResponse, error)
-	// CreateAgentDefinition maps the createAgentDefinition HTTP operation.
-	CreateAgentDefinition(ctx context.Context, in *CreateAgentDefinitionRequest, opts ...grpc.CallOption) (*CreateAgentDefinitionResponse, error)
-	// ListAgentRuns maps the listAgentRuns HTTP operation.
-	ListAgentRuns(ctx context.Context, in *ListAgentRunsRequest, opts ...grpc.CallOption) (*ListAgentRunsResponse, error)
-	// CreateAgentRun maps the createAgentRun HTTP operation.
-	CreateAgentRun(ctx context.Context, in *CreateAgentRunRequest, opts ...grpc.CallOption) (*CreateAgentRunResponse, error)
-	// GetAgentRun maps the getAgentRun HTTP operation.
-	GetAgentRun(ctx context.Context, in *GetAgentRunRequest, opts ...grpc.CallOption) (*GetAgentRunResponse, error)
-	// ListWorkflowDefinitions maps the listWorkflowDefinitions HTTP operation.
-	ListWorkflowDefinitions(ctx context.Context, in *ListWorkflowDefinitionsRequest, opts ...grpc.CallOption) (*ListWorkflowDefinitionsResponse, error)
-	// CreateWorkflowDefinition maps the createWorkflowDefinition HTTP operation.
-	CreateWorkflowDefinition(ctx context.Context, in *CreateWorkflowDefinitionRequest, opts ...grpc.CallOption) (*CreateWorkflowDefinitionResponse, error)
-	// ListWorkflowRuns maps the listWorkflowRuns HTTP operation.
-	ListWorkflowRuns(ctx context.Context, in *ListWorkflowRunsRequest, opts ...grpc.CallOption) (*ListWorkflowRunsResponse, error)
-	// CreateWorkflowRun maps the createWorkflowRun HTTP operation.
-	CreateWorkflowRun(ctx context.Context, in *CreateWorkflowRunRequest, opts ...grpc.CallOption) (*CreateWorkflowRunResponse, error)
-	// GetWorkflowRun maps the getWorkflowRun HTTP operation.
-	GetWorkflowRun(ctx context.Context, in *GetWorkflowRunRequest, opts ...grpc.CallOption) (*GetWorkflowRunResponse, error)
-	// ListApprovalRequests maps the listApprovalRequests HTTP operation.
-	ListApprovalRequests(ctx context.Context, in *ListApprovalRequestsRequest, opts ...grpc.CallOption) (*ListApprovalRequestsResponse, error)
-	// DecideApproval maps the decideApproval HTTP operation.
-	DecideApproval(ctx context.Context, in *DecideApprovalRequest, opts ...grpc.CallOption) (*DecideApprovalResponse, error)
-	// GetTenant maps the getTenant HTTP operation.
-	GetTenant(ctx context.Context, in *GetTenantRequest, opts ...grpc.CallOption) (*GetTenantResponse, error)
-	// ListProjects maps the listProjects HTTP operation.
-	ListProjects(ctx context.Context, in *ListProjectsRequest, opts ...grpc.CallOption) (*ListProjectsResponse, error)
-	// CreateProject maps the createProject HTTP operation.
-	CreateProject(ctx context.Context, in *CreateProjectRequest, opts ...grpc.CallOption) (*CreateProjectResponse, error)
-	// GetProject maps the getProject HTTP operation.
-	GetProject(ctx context.Context, in *GetProjectRequest, opts ...grpc.CallOption) (*GetProjectResponse, error)
-	// ListAuditRecords maps the listAuditRecords HTTP operation.
-	ListAuditRecords(ctx context.Context, in *ListAuditRecordsRequest, opts ...grpc.CallOption) (*ListAuditRecordsResponse, error)
+	SubmitInference(ctx context.Context, in *SubmitInferenceRequest, opts ...grpc.CallOption) (*Operation, error)
+	GetOperation(ctx context.Context, in *GetResourceRequest, opts ...grpc.CallOption) (*Operation, error)
+	CancelOperation(ctx context.Context, in *CancelOperationRequest, opts ...grpc.CallOption) (*Operation, error)
+	WatchOperation(ctx context.Context, in *WatchOperationRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[OperationEvent], error)
+	GetArtifact(ctx context.Context, in *GetResourceRequest, opts ...grpc.CallOption) (*ArtifactView, error)
+	DownloadArtifact(ctx context.Context, in *DownloadArtifactRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[DownloadArtifactChunk], error)
+	ListDatasets(ctx context.Context, in *ListResourcesRequest, opts ...grpc.CallOption) (*DatasetList, error)
+	CreateDataset(ctx context.Context, in *CreateDatasetRequest, opts ...grpc.CallOption) (*DatasetView, error)
+	GetDataset(ctx context.Context, in *GetResourceRequest, opts ...grpc.CallOption) (*DatasetView, error)
+	UpdateDataset(ctx context.Context, in *UpdateDatasetRequest, opts ...grpc.CallOption) (*DatasetView, error)
+	ListDatasetReleases(ctx context.Context, in *ListResourcesRequest, opts ...grpc.CallOption) (*DatasetReleaseList, error)
+	CreateDatasetRelease(ctx context.Context, in *CreateDatasetReleaseRequest, opts ...grpc.CallOption) (*DatasetReleaseView, error)
+	ListModels(ctx context.Context, in *ListResourcesRequest, opts ...grpc.CallOption) (*ModelList, error)
+	CreateModel(ctx context.Context, in *CreateModelRequest, opts ...grpc.CallOption) (*ModelView, error)
+	GetModel(ctx context.Context, in *GetResourceRequest, opts ...grpc.CallOption) (*ModelView, error)
+	UpdateModel(ctx context.Context, in *UpdateModelRequest, opts ...grpc.CallOption) (*ModelView, error)
+	ListModelReleases(ctx context.Context, in *ListResourcesRequest, opts ...grpc.CallOption) (*ModelReleaseList, error)
+	CreateModelRelease(ctx context.Context, in *CreateModelReleaseRequest, opts ...grpc.CallOption) (*ModelReleaseView, error)
+	ListTrainingRuns(ctx context.Context, in *ListResourcesRequest, opts ...grpc.CallOption) (*TrainingRunList, error)
+	CreateTrainingRun(ctx context.Context, in *CreateTrainingRunRequest, opts ...grpc.CallOption) (*Operation, error)
+	GetTrainingRun(ctx context.Context, in *GetResourceRequest, opts ...grpc.CallOption) (*TrainingRunView, error)
+	ListEvaluationRuns(ctx context.Context, in *ListResourcesRequest, opts ...grpc.CallOption) (*EvaluationRunList, error)
+	CreateEvaluationRun(ctx context.Context, in *CreateEvaluationRunRequest, opts ...grpc.CallOption) (*Operation, error)
+	GetEvaluationRun(ctx context.Context, in *GetResourceRequest, opts ...grpc.CallOption) (*EvaluationRunView, error)
+	GetEvaluationResult(ctx context.Context, in *GetResourceRequest, opts ...grpc.CallOption) (*EvaluationResultView, error)
+	ListAgentDefinitions(ctx context.Context, in *ListResourcesRequest, opts ...grpc.CallOption) (*AgentDefinitionList, error)
+	CreateAgentDefinition(ctx context.Context, in *CreateAgentDefinitionRequest, opts ...grpc.CallOption) (*AgentDefinitionView, error)
+	ListAgentRuns(ctx context.Context, in *ListResourcesRequest, opts ...grpc.CallOption) (*AgentRunList, error)
+	CreateAgentRun(ctx context.Context, in *CreateAgentRunRequest, opts ...grpc.CallOption) (*Operation, error)
+	GetAgentRun(ctx context.Context, in *GetResourceRequest, opts ...grpc.CallOption) (*AgentRunView, error)
+	ListWorkflowDefinitions(ctx context.Context, in *ListResourcesRequest, opts ...grpc.CallOption) (*WorkflowDefinitionList, error)
+	CreateWorkflowDefinition(ctx context.Context, in *CreateWorkflowDefinitionRequest, opts ...grpc.CallOption) (*WorkflowDefinitionView, error)
+	ListWorkflowRuns(ctx context.Context, in *ListResourcesRequest, opts ...grpc.CallOption) (*WorkflowRunList, error)
+	CreateWorkflowRun(ctx context.Context, in *CreateWorkflowRunRequest, opts ...grpc.CallOption) (*Operation, error)
+	GetWorkflowRun(ctx context.Context, in *GetResourceRequest, opts ...grpc.CallOption) (*WorkflowRunView, error)
+	ListApprovalRequests(ctx context.Context, in *ListResourcesRequest, opts ...grpc.CallOption) (*ApprovalRequestList, error)
+	DecideApproval(ctx context.Context, in *DecideApprovalRequest, opts ...grpc.CallOption) (*ApprovalReceiptView, error)
+	GetTenant(ctx context.Context, in *GetResourceRequest, opts ...grpc.CallOption) (*TenantView, error)
+	ListProjects(ctx context.Context, in *ListResourcesRequest, opts ...grpc.CallOption) (*ProjectList, error)
+	CreateProject(ctx context.Context, in *CreateProjectRequest, opts ...grpc.CallOption) (*ProjectView, error)
+	GetProject(ctx context.Context, in *GetResourceRequest, opts ...grpc.CallOption) (*ProjectView, error)
+	ListAuditRecords(ctx context.Context, in *ListAuditRecordsRequest, opts ...grpc.CallOption) (*AuditRecordList, error)
 }
 
 type mindcladeServiceClient struct {
@@ -160,9 +121,9 @@ func NewMindcladeServiceClient(cc grpc.ClientConnInterface) MindcladeServiceClie
 	return &mindcladeServiceClient{cc}
 }
 
-func (c *mindcladeServiceClient) SubmitInference(ctx context.Context, in *SubmitInferenceRequest, opts ...grpc.CallOption) (*SubmitInferenceResponse, error) {
+func (c *mindcladeServiceClient) SubmitInference(ctx context.Context, in *SubmitInferenceRequest, opts ...grpc.CallOption) (*Operation, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(SubmitInferenceResponse)
+	out := new(Operation)
 	err := c.cc.Invoke(ctx, MindcladeService_SubmitInference_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -170,9 +131,9 @@ func (c *mindcladeServiceClient) SubmitInference(ctx context.Context, in *Submit
 	return out, nil
 }
 
-func (c *mindcladeServiceClient) GetOperation(ctx context.Context, in *GetOperationRequest, opts ...grpc.CallOption) (*GetOperationResponse, error) {
+func (c *mindcladeServiceClient) GetOperation(ctx context.Context, in *GetResourceRequest, opts ...grpc.CallOption) (*Operation, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(GetOperationResponse)
+	out := new(Operation)
 	err := c.cc.Invoke(ctx, MindcladeService_GetOperation_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -180,9 +141,9 @@ func (c *mindcladeServiceClient) GetOperation(ctx context.Context, in *GetOperat
 	return out, nil
 }
 
-func (c *mindcladeServiceClient) CancelOperation(ctx context.Context, in *CancelOperationRequest, opts ...grpc.CallOption) (*CancelOperationResponse, error) {
+func (c *mindcladeServiceClient) CancelOperation(ctx context.Context, in *CancelOperationRequest, opts ...grpc.CallOption) (*Operation, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(CancelOperationResponse)
+	out := new(Operation)
 	err := c.cc.Invoke(ctx, MindcladeService_CancelOperation_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -190,23 +151,13 @@ func (c *mindcladeServiceClient) CancelOperation(ctx context.Context, in *Cancel
 	return out, nil
 }
 
-func (c *mindcladeServiceClient) GetArtifact(ctx context.Context, in *GetArtifactRequest, opts ...grpc.CallOption) (*GetArtifactResponse, error) {
+func (c *mindcladeServiceClient) WatchOperation(ctx context.Context, in *WatchOperationRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[OperationEvent], error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(GetArtifactResponse)
-	err := c.cc.Invoke(ctx, MindcladeService_GetArtifact_FullMethodName, in, out, cOpts...)
+	stream, err := c.cc.NewStream(ctx, &MindcladeService_ServiceDesc.Streams[0], MindcladeService_WatchOperation_FullMethodName, cOpts...)
 	if err != nil {
 		return nil, err
 	}
-	return out, nil
-}
-
-func (c *mindcladeServiceClient) DownloadArtifact(ctx context.Context, in *DownloadArtifactRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[DownloadArtifactResponse], error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	stream, err := c.cc.NewStream(ctx, &MindcladeService_ServiceDesc.Streams[0], MindcladeService_DownloadArtifact_FullMethodName, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	x := &grpc.GenericClientStream[DownloadArtifactRequest, DownloadArtifactResponse]{ClientStream: stream}
+	x := &grpc.GenericClientStream[WatchOperationRequest, OperationEvent]{ClientStream: stream}
 	if err := x.ClientStream.SendMsg(in); err != nil {
 		return nil, err
 	}
@@ -217,11 +168,40 @@ func (c *mindcladeServiceClient) DownloadArtifact(ctx context.Context, in *Downl
 }
 
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
-type MindcladeService_DownloadArtifactClient = grpc.ServerStreamingClient[DownloadArtifactResponse]
+type MindcladeService_WatchOperationClient = grpc.ServerStreamingClient[OperationEvent]
 
-func (c *mindcladeServiceClient) ListDatasets(ctx context.Context, in *ListDatasetsRequest, opts ...grpc.CallOption) (*ListDatasetsResponse, error) {
+func (c *mindcladeServiceClient) GetArtifact(ctx context.Context, in *GetResourceRequest, opts ...grpc.CallOption) (*ArtifactView, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(ListDatasetsResponse)
+	out := new(ArtifactView)
+	err := c.cc.Invoke(ctx, MindcladeService_GetArtifact_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *mindcladeServiceClient) DownloadArtifact(ctx context.Context, in *DownloadArtifactRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[DownloadArtifactChunk], error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &MindcladeService_ServiceDesc.Streams[1], MindcladeService_DownloadArtifact_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &grpc.GenericClientStream[DownloadArtifactRequest, DownloadArtifactChunk]{ClientStream: stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type MindcladeService_DownloadArtifactClient = grpc.ServerStreamingClient[DownloadArtifactChunk]
+
+func (c *mindcladeServiceClient) ListDatasets(ctx context.Context, in *ListResourcesRequest, opts ...grpc.CallOption) (*DatasetList, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DatasetList)
 	err := c.cc.Invoke(ctx, MindcladeService_ListDatasets_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -229,9 +209,9 @@ func (c *mindcladeServiceClient) ListDatasets(ctx context.Context, in *ListDatas
 	return out, nil
 }
 
-func (c *mindcladeServiceClient) CreateDataset(ctx context.Context, in *CreateDatasetRequest, opts ...grpc.CallOption) (*CreateDatasetResponse, error) {
+func (c *mindcladeServiceClient) CreateDataset(ctx context.Context, in *CreateDatasetRequest, opts ...grpc.CallOption) (*DatasetView, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(CreateDatasetResponse)
+	out := new(DatasetView)
 	err := c.cc.Invoke(ctx, MindcladeService_CreateDataset_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -239,9 +219,9 @@ func (c *mindcladeServiceClient) CreateDataset(ctx context.Context, in *CreateDa
 	return out, nil
 }
 
-func (c *mindcladeServiceClient) GetDataset(ctx context.Context, in *GetDatasetRequest, opts ...grpc.CallOption) (*GetDatasetResponse, error) {
+func (c *mindcladeServiceClient) GetDataset(ctx context.Context, in *GetResourceRequest, opts ...grpc.CallOption) (*DatasetView, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(GetDatasetResponse)
+	out := new(DatasetView)
 	err := c.cc.Invoke(ctx, MindcladeService_GetDataset_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -249,9 +229,9 @@ func (c *mindcladeServiceClient) GetDataset(ctx context.Context, in *GetDatasetR
 	return out, nil
 }
 
-func (c *mindcladeServiceClient) UpdateDataset(ctx context.Context, in *UpdateDatasetRequest, opts ...grpc.CallOption) (*UpdateDatasetResponse, error) {
+func (c *mindcladeServiceClient) UpdateDataset(ctx context.Context, in *UpdateDatasetRequest, opts ...grpc.CallOption) (*DatasetView, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(UpdateDatasetResponse)
+	out := new(DatasetView)
 	err := c.cc.Invoke(ctx, MindcladeService_UpdateDataset_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -259,9 +239,9 @@ func (c *mindcladeServiceClient) UpdateDataset(ctx context.Context, in *UpdateDa
 	return out, nil
 }
 
-func (c *mindcladeServiceClient) ListDatasetReleases(ctx context.Context, in *ListDatasetReleasesRequest, opts ...grpc.CallOption) (*ListDatasetReleasesResponse, error) {
+func (c *mindcladeServiceClient) ListDatasetReleases(ctx context.Context, in *ListResourcesRequest, opts ...grpc.CallOption) (*DatasetReleaseList, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(ListDatasetReleasesResponse)
+	out := new(DatasetReleaseList)
 	err := c.cc.Invoke(ctx, MindcladeService_ListDatasetReleases_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -269,9 +249,9 @@ func (c *mindcladeServiceClient) ListDatasetReleases(ctx context.Context, in *Li
 	return out, nil
 }
 
-func (c *mindcladeServiceClient) CreateDatasetRelease(ctx context.Context, in *CreateDatasetReleaseRequest, opts ...grpc.CallOption) (*CreateDatasetReleaseResponse, error) {
+func (c *mindcladeServiceClient) CreateDatasetRelease(ctx context.Context, in *CreateDatasetReleaseRequest, opts ...grpc.CallOption) (*DatasetReleaseView, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(CreateDatasetReleaseResponse)
+	out := new(DatasetReleaseView)
 	err := c.cc.Invoke(ctx, MindcladeService_CreateDatasetRelease_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -279,9 +259,9 @@ func (c *mindcladeServiceClient) CreateDatasetRelease(ctx context.Context, in *C
 	return out, nil
 }
 
-func (c *mindcladeServiceClient) ListModels(ctx context.Context, in *ListModelsRequest, opts ...grpc.CallOption) (*ListModelsResponse, error) {
+func (c *mindcladeServiceClient) ListModels(ctx context.Context, in *ListResourcesRequest, opts ...grpc.CallOption) (*ModelList, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(ListModelsResponse)
+	out := new(ModelList)
 	err := c.cc.Invoke(ctx, MindcladeService_ListModels_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -289,9 +269,9 @@ func (c *mindcladeServiceClient) ListModels(ctx context.Context, in *ListModelsR
 	return out, nil
 }
 
-func (c *mindcladeServiceClient) CreateModel(ctx context.Context, in *CreateModelRequest, opts ...grpc.CallOption) (*CreateModelResponse, error) {
+func (c *mindcladeServiceClient) CreateModel(ctx context.Context, in *CreateModelRequest, opts ...grpc.CallOption) (*ModelView, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(CreateModelResponse)
+	out := new(ModelView)
 	err := c.cc.Invoke(ctx, MindcladeService_CreateModel_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -299,9 +279,9 @@ func (c *mindcladeServiceClient) CreateModel(ctx context.Context, in *CreateMode
 	return out, nil
 }
 
-func (c *mindcladeServiceClient) GetModel(ctx context.Context, in *GetModelRequest, opts ...grpc.CallOption) (*GetModelResponse, error) {
+func (c *mindcladeServiceClient) GetModel(ctx context.Context, in *GetResourceRequest, opts ...grpc.CallOption) (*ModelView, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(GetModelResponse)
+	out := new(ModelView)
 	err := c.cc.Invoke(ctx, MindcladeService_GetModel_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -309,9 +289,9 @@ func (c *mindcladeServiceClient) GetModel(ctx context.Context, in *GetModelReque
 	return out, nil
 }
 
-func (c *mindcladeServiceClient) UpdateModel(ctx context.Context, in *UpdateModelRequest, opts ...grpc.CallOption) (*UpdateModelResponse, error) {
+func (c *mindcladeServiceClient) UpdateModel(ctx context.Context, in *UpdateModelRequest, opts ...grpc.CallOption) (*ModelView, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(UpdateModelResponse)
+	out := new(ModelView)
 	err := c.cc.Invoke(ctx, MindcladeService_UpdateModel_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -319,9 +299,9 @@ func (c *mindcladeServiceClient) UpdateModel(ctx context.Context, in *UpdateMode
 	return out, nil
 }
 
-func (c *mindcladeServiceClient) ListModelReleases(ctx context.Context, in *ListModelReleasesRequest, opts ...grpc.CallOption) (*ListModelReleasesResponse, error) {
+func (c *mindcladeServiceClient) ListModelReleases(ctx context.Context, in *ListResourcesRequest, opts ...grpc.CallOption) (*ModelReleaseList, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(ListModelReleasesResponse)
+	out := new(ModelReleaseList)
 	err := c.cc.Invoke(ctx, MindcladeService_ListModelReleases_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -329,9 +309,9 @@ func (c *mindcladeServiceClient) ListModelReleases(ctx context.Context, in *List
 	return out, nil
 }
 
-func (c *mindcladeServiceClient) CreateModelRelease(ctx context.Context, in *CreateModelReleaseRequest, opts ...grpc.CallOption) (*CreateModelReleaseResponse, error) {
+func (c *mindcladeServiceClient) CreateModelRelease(ctx context.Context, in *CreateModelReleaseRequest, opts ...grpc.CallOption) (*ModelReleaseView, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(CreateModelReleaseResponse)
+	out := new(ModelReleaseView)
 	err := c.cc.Invoke(ctx, MindcladeService_CreateModelRelease_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -339,9 +319,9 @@ func (c *mindcladeServiceClient) CreateModelRelease(ctx context.Context, in *Cre
 	return out, nil
 }
 
-func (c *mindcladeServiceClient) ListTrainingRuns(ctx context.Context, in *ListTrainingRunsRequest, opts ...grpc.CallOption) (*ListTrainingRunsResponse, error) {
+func (c *mindcladeServiceClient) ListTrainingRuns(ctx context.Context, in *ListResourcesRequest, opts ...grpc.CallOption) (*TrainingRunList, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(ListTrainingRunsResponse)
+	out := new(TrainingRunList)
 	err := c.cc.Invoke(ctx, MindcladeService_ListTrainingRuns_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -349,9 +329,9 @@ func (c *mindcladeServiceClient) ListTrainingRuns(ctx context.Context, in *ListT
 	return out, nil
 }
 
-func (c *mindcladeServiceClient) CreateTrainingRun(ctx context.Context, in *CreateTrainingRunRequest, opts ...grpc.CallOption) (*CreateTrainingRunResponse, error) {
+func (c *mindcladeServiceClient) CreateTrainingRun(ctx context.Context, in *CreateTrainingRunRequest, opts ...grpc.CallOption) (*Operation, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(CreateTrainingRunResponse)
+	out := new(Operation)
 	err := c.cc.Invoke(ctx, MindcladeService_CreateTrainingRun_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -359,9 +339,9 @@ func (c *mindcladeServiceClient) CreateTrainingRun(ctx context.Context, in *Crea
 	return out, nil
 }
 
-func (c *mindcladeServiceClient) GetTrainingRun(ctx context.Context, in *GetTrainingRunRequest, opts ...grpc.CallOption) (*GetTrainingRunResponse, error) {
+func (c *mindcladeServiceClient) GetTrainingRun(ctx context.Context, in *GetResourceRequest, opts ...grpc.CallOption) (*TrainingRunView, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(GetTrainingRunResponse)
+	out := new(TrainingRunView)
 	err := c.cc.Invoke(ctx, MindcladeService_GetTrainingRun_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -369,9 +349,9 @@ func (c *mindcladeServiceClient) GetTrainingRun(ctx context.Context, in *GetTrai
 	return out, nil
 }
 
-func (c *mindcladeServiceClient) ListEvaluationRuns(ctx context.Context, in *ListEvaluationRunsRequest, opts ...grpc.CallOption) (*ListEvaluationRunsResponse, error) {
+func (c *mindcladeServiceClient) ListEvaluationRuns(ctx context.Context, in *ListResourcesRequest, opts ...grpc.CallOption) (*EvaluationRunList, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(ListEvaluationRunsResponse)
+	out := new(EvaluationRunList)
 	err := c.cc.Invoke(ctx, MindcladeService_ListEvaluationRuns_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -379,9 +359,9 @@ func (c *mindcladeServiceClient) ListEvaluationRuns(ctx context.Context, in *Lis
 	return out, nil
 }
 
-func (c *mindcladeServiceClient) CreateEvaluationRun(ctx context.Context, in *CreateEvaluationRunRequest, opts ...grpc.CallOption) (*CreateEvaluationRunResponse, error) {
+func (c *mindcladeServiceClient) CreateEvaluationRun(ctx context.Context, in *CreateEvaluationRunRequest, opts ...grpc.CallOption) (*Operation, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(CreateEvaluationRunResponse)
+	out := new(Operation)
 	err := c.cc.Invoke(ctx, MindcladeService_CreateEvaluationRun_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -389,9 +369,9 @@ func (c *mindcladeServiceClient) CreateEvaluationRun(ctx context.Context, in *Cr
 	return out, nil
 }
 
-func (c *mindcladeServiceClient) GetEvaluationRun(ctx context.Context, in *GetEvaluationRunRequest, opts ...grpc.CallOption) (*GetEvaluationRunResponse, error) {
+func (c *mindcladeServiceClient) GetEvaluationRun(ctx context.Context, in *GetResourceRequest, opts ...grpc.CallOption) (*EvaluationRunView, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(GetEvaluationRunResponse)
+	out := new(EvaluationRunView)
 	err := c.cc.Invoke(ctx, MindcladeService_GetEvaluationRun_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -399,9 +379,9 @@ func (c *mindcladeServiceClient) GetEvaluationRun(ctx context.Context, in *GetEv
 	return out, nil
 }
 
-func (c *mindcladeServiceClient) GetEvaluationResult(ctx context.Context, in *GetEvaluationResultRequest, opts ...grpc.CallOption) (*GetEvaluationResultResponse, error) {
+func (c *mindcladeServiceClient) GetEvaluationResult(ctx context.Context, in *GetResourceRequest, opts ...grpc.CallOption) (*EvaluationResultView, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(GetEvaluationResultResponse)
+	out := new(EvaluationResultView)
 	err := c.cc.Invoke(ctx, MindcladeService_GetEvaluationResult_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -409,9 +389,9 @@ func (c *mindcladeServiceClient) GetEvaluationResult(ctx context.Context, in *Ge
 	return out, nil
 }
 
-func (c *mindcladeServiceClient) ListAgentDefinitions(ctx context.Context, in *ListAgentDefinitionsRequest, opts ...grpc.CallOption) (*ListAgentDefinitionsResponse, error) {
+func (c *mindcladeServiceClient) ListAgentDefinitions(ctx context.Context, in *ListResourcesRequest, opts ...grpc.CallOption) (*AgentDefinitionList, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(ListAgentDefinitionsResponse)
+	out := new(AgentDefinitionList)
 	err := c.cc.Invoke(ctx, MindcladeService_ListAgentDefinitions_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -419,9 +399,9 @@ func (c *mindcladeServiceClient) ListAgentDefinitions(ctx context.Context, in *L
 	return out, nil
 }
 
-func (c *mindcladeServiceClient) CreateAgentDefinition(ctx context.Context, in *CreateAgentDefinitionRequest, opts ...grpc.CallOption) (*CreateAgentDefinitionResponse, error) {
+func (c *mindcladeServiceClient) CreateAgentDefinition(ctx context.Context, in *CreateAgentDefinitionRequest, opts ...grpc.CallOption) (*AgentDefinitionView, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(CreateAgentDefinitionResponse)
+	out := new(AgentDefinitionView)
 	err := c.cc.Invoke(ctx, MindcladeService_CreateAgentDefinition_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -429,9 +409,9 @@ func (c *mindcladeServiceClient) CreateAgentDefinition(ctx context.Context, in *
 	return out, nil
 }
 
-func (c *mindcladeServiceClient) ListAgentRuns(ctx context.Context, in *ListAgentRunsRequest, opts ...grpc.CallOption) (*ListAgentRunsResponse, error) {
+func (c *mindcladeServiceClient) ListAgentRuns(ctx context.Context, in *ListResourcesRequest, opts ...grpc.CallOption) (*AgentRunList, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(ListAgentRunsResponse)
+	out := new(AgentRunList)
 	err := c.cc.Invoke(ctx, MindcladeService_ListAgentRuns_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -439,9 +419,9 @@ func (c *mindcladeServiceClient) ListAgentRuns(ctx context.Context, in *ListAgen
 	return out, nil
 }
 
-func (c *mindcladeServiceClient) CreateAgentRun(ctx context.Context, in *CreateAgentRunRequest, opts ...grpc.CallOption) (*CreateAgentRunResponse, error) {
+func (c *mindcladeServiceClient) CreateAgentRun(ctx context.Context, in *CreateAgentRunRequest, opts ...grpc.CallOption) (*Operation, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(CreateAgentRunResponse)
+	out := new(Operation)
 	err := c.cc.Invoke(ctx, MindcladeService_CreateAgentRun_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -449,9 +429,9 @@ func (c *mindcladeServiceClient) CreateAgentRun(ctx context.Context, in *CreateA
 	return out, nil
 }
 
-func (c *mindcladeServiceClient) GetAgentRun(ctx context.Context, in *GetAgentRunRequest, opts ...grpc.CallOption) (*GetAgentRunResponse, error) {
+func (c *mindcladeServiceClient) GetAgentRun(ctx context.Context, in *GetResourceRequest, opts ...grpc.CallOption) (*AgentRunView, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(GetAgentRunResponse)
+	out := new(AgentRunView)
 	err := c.cc.Invoke(ctx, MindcladeService_GetAgentRun_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -459,9 +439,9 @@ func (c *mindcladeServiceClient) GetAgentRun(ctx context.Context, in *GetAgentRu
 	return out, nil
 }
 
-func (c *mindcladeServiceClient) ListWorkflowDefinitions(ctx context.Context, in *ListWorkflowDefinitionsRequest, opts ...grpc.CallOption) (*ListWorkflowDefinitionsResponse, error) {
+func (c *mindcladeServiceClient) ListWorkflowDefinitions(ctx context.Context, in *ListResourcesRequest, opts ...grpc.CallOption) (*WorkflowDefinitionList, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(ListWorkflowDefinitionsResponse)
+	out := new(WorkflowDefinitionList)
 	err := c.cc.Invoke(ctx, MindcladeService_ListWorkflowDefinitions_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -469,9 +449,9 @@ func (c *mindcladeServiceClient) ListWorkflowDefinitions(ctx context.Context, in
 	return out, nil
 }
 
-func (c *mindcladeServiceClient) CreateWorkflowDefinition(ctx context.Context, in *CreateWorkflowDefinitionRequest, opts ...grpc.CallOption) (*CreateWorkflowDefinitionResponse, error) {
+func (c *mindcladeServiceClient) CreateWorkflowDefinition(ctx context.Context, in *CreateWorkflowDefinitionRequest, opts ...grpc.CallOption) (*WorkflowDefinitionView, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(CreateWorkflowDefinitionResponse)
+	out := new(WorkflowDefinitionView)
 	err := c.cc.Invoke(ctx, MindcladeService_CreateWorkflowDefinition_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -479,9 +459,9 @@ func (c *mindcladeServiceClient) CreateWorkflowDefinition(ctx context.Context, i
 	return out, nil
 }
 
-func (c *mindcladeServiceClient) ListWorkflowRuns(ctx context.Context, in *ListWorkflowRunsRequest, opts ...grpc.CallOption) (*ListWorkflowRunsResponse, error) {
+func (c *mindcladeServiceClient) ListWorkflowRuns(ctx context.Context, in *ListResourcesRequest, opts ...grpc.CallOption) (*WorkflowRunList, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(ListWorkflowRunsResponse)
+	out := new(WorkflowRunList)
 	err := c.cc.Invoke(ctx, MindcladeService_ListWorkflowRuns_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -489,9 +469,9 @@ func (c *mindcladeServiceClient) ListWorkflowRuns(ctx context.Context, in *ListW
 	return out, nil
 }
 
-func (c *mindcladeServiceClient) CreateWorkflowRun(ctx context.Context, in *CreateWorkflowRunRequest, opts ...grpc.CallOption) (*CreateWorkflowRunResponse, error) {
+func (c *mindcladeServiceClient) CreateWorkflowRun(ctx context.Context, in *CreateWorkflowRunRequest, opts ...grpc.CallOption) (*Operation, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(CreateWorkflowRunResponse)
+	out := new(Operation)
 	err := c.cc.Invoke(ctx, MindcladeService_CreateWorkflowRun_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -499,9 +479,9 @@ func (c *mindcladeServiceClient) CreateWorkflowRun(ctx context.Context, in *Crea
 	return out, nil
 }
 
-func (c *mindcladeServiceClient) GetWorkflowRun(ctx context.Context, in *GetWorkflowRunRequest, opts ...grpc.CallOption) (*GetWorkflowRunResponse, error) {
+func (c *mindcladeServiceClient) GetWorkflowRun(ctx context.Context, in *GetResourceRequest, opts ...grpc.CallOption) (*WorkflowRunView, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(GetWorkflowRunResponse)
+	out := new(WorkflowRunView)
 	err := c.cc.Invoke(ctx, MindcladeService_GetWorkflowRun_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -509,9 +489,9 @@ func (c *mindcladeServiceClient) GetWorkflowRun(ctx context.Context, in *GetWork
 	return out, nil
 }
 
-func (c *mindcladeServiceClient) ListApprovalRequests(ctx context.Context, in *ListApprovalRequestsRequest, opts ...grpc.CallOption) (*ListApprovalRequestsResponse, error) {
+func (c *mindcladeServiceClient) ListApprovalRequests(ctx context.Context, in *ListResourcesRequest, opts ...grpc.CallOption) (*ApprovalRequestList, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(ListApprovalRequestsResponse)
+	out := new(ApprovalRequestList)
 	err := c.cc.Invoke(ctx, MindcladeService_ListApprovalRequests_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -519,9 +499,9 @@ func (c *mindcladeServiceClient) ListApprovalRequests(ctx context.Context, in *L
 	return out, nil
 }
 
-func (c *mindcladeServiceClient) DecideApproval(ctx context.Context, in *DecideApprovalRequest, opts ...grpc.CallOption) (*DecideApprovalResponse, error) {
+func (c *mindcladeServiceClient) DecideApproval(ctx context.Context, in *DecideApprovalRequest, opts ...grpc.CallOption) (*ApprovalReceiptView, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(DecideApprovalResponse)
+	out := new(ApprovalReceiptView)
 	err := c.cc.Invoke(ctx, MindcladeService_DecideApproval_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -529,9 +509,9 @@ func (c *mindcladeServiceClient) DecideApproval(ctx context.Context, in *DecideA
 	return out, nil
 }
 
-func (c *mindcladeServiceClient) GetTenant(ctx context.Context, in *GetTenantRequest, opts ...grpc.CallOption) (*GetTenantResponse, error) {
+func (c *mindcladeServiceClient) GetTenant(ctx context.Context, in *GetResourceRequest, opts ...grpc.CallOption) (*TenantView, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(GetTenantResponse)
+	out := new(TenantView)
 	err := c.cc.Invoke(ctx, MindcladeService_GetTenant_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -539,9 +519,9 @@ func (c *mindcladeServiceClient) GetTenant(ctx context.Context, in *GetTenantReq
 	return out, nil
 }
 
-func (c *mindcladeServiceClient) ListProjects(ctx context.Context, in *ListProjectsRequest, opts ...grpc.CallOption) (*ListProjectsResponse, error) {
+func (c *mindcladeServiceClient) ListProjects(ctx context.Context, in *ListResourcesRequest, opts ...grpc.CallOption) (*ProjectList, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(ListProjectsResponse)
+	out := new(ProjectList)
 	err := c.cc.Invoke(ctx, MindcladeService_ListProjects_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -549,9 +529,9 @@ func (c *mindcladeServiceClient) ListProjects(ctx context.Context, in *ListProje
 	return out, nil
 }
 
-func (c *mindcladeServiceClient) CreateProject(ctx context.Context, in *CreateProjectRequest, opts ...grpc.CallOption) (*CreateProjectResponse, error) {
+func (c *mindcladeServiceClient) CreateProject(ctx context.Context, in *CreateProjectRequest, opts ...grpc.CallOption) (*ProjectView, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(CreateProjectResponse)
+	out := new(ProjectView)
 	err := c.cc.Invoke(ctx, MindcladeService_CreateProject_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -559,9 +539,9 @@ func (c *mindcladeServiceClient) CreateProject(ctx context.Context, in *CreatePr
 	return out, nil
 }
 
-func (c *mindcladeServiceClient) GetProject(ctx context.Context, in *GetProjectRequest, opts ...grpc.CallOption) (*GetProjectResponse, error) {
+func (c *mindcladeServiceClient) GetProject(ctx context.Context, in *GetResourceRequest, opts ...grpc.CallOption) (*ProjectView, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(GetProjectResponse)
+	out := new(ProjectView)
 	err := c.cc.Invoke(ctx, MindcladeService_GetProject_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -569,9 +549,9 @@ func (c *mindcladeServiceClient) GetProject(ctx context.Context, in *GetProjectR
 	return out, nil
 }
 
-func (c *mindcladeServiceClient) ListAuditRecords(ctx context.Context, in *ListAuditRecordsRequest, opts ...grpc.CallOption) (*ListAuditRecordsResponse, error) {
+func (c *mindcladeServiceClient) ListAuditRecords(ctx context.Context, in *ListAuditRecordsRequest, opts ...grpc.CallOption) (*AuditRecordList, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(ListAuditRecordsResponse)
+	out := new(AuditRecordList)
 	err := c.cc.Invoke(ctx, MindcladeService_ListAuditRecords_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -583,90 +563,50 @@ func (c *mindcladeServiceClient) ListAuditRecords(ctx context.Context, in *ListA
 // All implementations must embed UnimplementedMindcladeServiceServer
 // for forward compatibility.
 //
-// MindcladeService is the curated public gRPC facade transport-equivalent to external-api.yaml.
+// MindcladeService is the only public gRPC façade.
 type MindcladeServiceServer interface {
-	// SubmitInference maps the submitInference HTTP operation.
-	SubmitInference(context.Context, *SubmitInferenceRequest) (*SubmitInferenceResponse, error)
-	// GetOperation maps the getOperation HTTP operation.
-	GetOperation(context.Context, *GetOperationRequest) (*GetOperationResponse, error)
-	// CancelOperation maps the cancelOperation HTTP operation.
-	CancelOperation(context.Context, *CancelOperationRequest) (*CancelOperationResponse, error)
-	// GetArtifact maps the getArtifact HTTP operation.
-	GetArtifact(context.Context, *GetArtifactRequest) (*GetArtifactResponse, error)
-	// DownloadArtifact maps the downloadArtifact HTTP data-plane operation.
-	DownloadArtifact(*DownloadArtifactRequest, grpc.ServerStreamingServer[DownloadArtifactResponse]) error
-	// ListDatasets maps the listDatasets HTTP operation.
-	ListDatasets(context.Context, *ListDatasetsRequest) (*ListDatasetsResponse, error)
-	// CreateDataset maps the createDataset HTTP operation.
-	CreateDataset(context.Context, *CreateDatasetRequest) (*CreateDatasetResponse, error)
-	// GetDataset maps the getDataset HTTP operation.
-	GetDataset(context.Context, *GetDatasetRequest) (*GetDatasetResponse, error)
-	// UpdateDataset maps the updateDataset HTTP operation.
-	UpdateDataset(context.Context, *UpdateDatasetRequest) (*UpdateDatasetResponse, error)
-	// ListDatasetReleases maps the listDatasetReleases HTTP operation.
-	ListDatasetReleases(context.Context, *ListDatasetReleasesRequest) (*ListDatasetReleasesResponse, error)
-	// CreateDatasetRelease maps the createDatasetRelease HTTP operation.
-	CreateDatasetRelease(context.Context, *CreateDatasetReleaseRequest) (*CreateDatasetReleaseResponse, error)
-	// ListModels maps the listModels HTTP operation.
-	ListModels(context.Context, *ListModelsRequest) (*ListModelsResponse, error)
-	// CreateModel maps the createModel HTTP operation.
-	CreateModel(context.Context, *CreateModelRequest) (*CreateModelResponse, error)
-	// GetModel maps the getModel HTTP operation.
-	GetModel(context.Context, *GetModelRequest) (*GetModelResponse, error)
-	// UpdateModel maps the updateModel HTTP operation.
-	UpdateModel(context.Context, *UpdateModelRequest) (*UpdateModelResponse, error)
-	// ListModelReleases maps the listModelReleases HTTP operation.
-	ListModelReleases(context.Context, *ListModelReleasesRequest) (*ListModelReleasesResponse, error)
-	// CreateModelRelease maps the createModelRelease HTTP operation.
-	CreateModelRelease(context.Context, *CreateModelReleaseRequest) (*CreateModelReleaseResponse, error)
-	// ListTrainingRuns maps the listTrainingRuns HTTP operation.
-	ListTrainingRuns(context.Context, *ListTrainingRunsRequest) (*ListTrainingRunsResponse, error)
-	// CreateTrainingRun maps the createTrainingRun HTTP operation.
-	CreateTrainingRun(context.Context, *CreateTrainingRunRequest) (*CreateTrainingRunResponse, error)
-	// GetTrainingRun maps the getTrainingRun HTTP operation.
-	GetTrainingRun(context.Context, *GetTrainingRunRequest) (*GetTrainingRunResponse, error)
-	// ListEvaluationRuns maps the listEvaluationRuns HTTP operation.
-	ListEvaluationRuns(context.Context, *ListEvaluationRunsRequest) (*ListEvaluationRunsResponse, error)
-	// CreateEvaluationRun maps the createEvaluationRun HTTP operation.
-	CreateEvaluationRun(context.Context, *CreateEvaluationRunRequest) (*CreateEvaluationRunResponse, error)
-	// GetEvaluationRun maps the getEvaluationRun HTTP operation.
-	GetEvaluationRun(context.Context, *GetEvaluationRunRequest) (*GetEvaluationRunResponse, error)
-	// GetEvaluationResult maps the getEvaluationResult HTTP operation.
-	GetEvaluationResult(context.Context, *GetEvaluationResultRequest) (*GetEvaluationResultResponse, error)
-	// ListAgentDefinitions maps the listAgentDefinitions HTTP operation.
-	ListAgentDefinitions(context.Context, *ListAgentDefinitionsRequest) (*ListAgentDefinitionsResponse, error)
-	// CreateAgentDefinition maps the createAgentDefinition HTTP operation.
-	CreateAgentDefinition(context.Context, *CreateAgentDefinitionRequest) (*CreateAgentDefinitionResponse, error)
-	// ListAgentRuns maps the listAgentRuns HTTP operation.
-	ListAgentRuns(context.Context, *ListAgentRunsRequest) (*ListAgentRunsResponse, error)
-	// CreateAgentRun maps the createAgentRun HTTP operation.
-	CreateAgentRun(context.Context, *CreateAgentRunRequest) (*CreateAgentRunResponse, error)
-	// GetAgentRun maps the getAgentRun HTTP operation.
-	GetAgentRun(context.Context, *GetAgentRunRequest) (*GetAgentRunResponse, error)
-	// ListWorkflowDefinitions maps the listWorkflowDefinitions HTTP operation.
-	ListWorkflowDefinitions(context.Context, *ListWorkflowDefinitionsRequest) (*ListWorkflowDefinitionsResponse, error)
-	// CreateWorkflowDefinition maps the createWorkflowDefinition HTTP operation.
-	CreateWorkflowDefinition(context.Context, *CreateWorkflowDefinitionRequest) (*CreateWorkflowDefinitionResponse, error)
-	// ListWorkflowRuns maps the listWorkflowRuns HTTP operation.
-	ListWorkflowRuns(context.Context, *ListWorkflowRunsRequest) (*ListWorkflowRunsResponse, error)
-	// CreateWorkflowRun maps the createWorkflowRun HTTP operation.
-	CreateWorkflowRun(context.Context, *CreateWorkflowRunRequest) (*CreateWorkflowRunResponse, error)
-	// GetWorkflowRun maps the getWorkflowRun HTTP operation.
-	GetWorkflowRun(context.Context, *GetWorkflowRunRequest) (*GetWorkflowRunResponse, error)
-	// ListApprovalRequests maps the listApprovalRequests HTTP operation.
-	ListApprovalRequests(context.Context, *ListApprovalRequestsRequest) (*ListApprovalRequestsResponse, error)
-	// DecideApproval maps the decideApproval HTTP operation.
-	DecideApproval(context.Context, *DecideApprovalRequest) (*DecideApprovalResponse, error)
-	// GetTenant maps the getTenant HTTP operation.
-	GetTenant(context.Context, *GetTenantRequest) (*GetTenantResponse, error)
-	// ListProjects maps the listProjects HTTP operation.
-	ListProjects(context.Context, *ListProjectsRequest) (*ListProjectsResponse, error)
-	// CreateProject maps the createProject HTTP operation.
-	CreateProject(context.Context, *CreateProjectRequest) (*CreateProjectResponse, error)
-	// GetProject maps the getProject HTTP operation.
-	GetProject(context.Context, *GetProjectRequest) (*GetProjectResponse, error)
-	// ListAuditRecords maps the listAuditRecords HTTP operation.
-	ListAuditRecords(context.Context, *ListAuditRecordsRequest) (*ListAuditRecordsResponse, error)
+	SubmitInference(context.Context, *SubmitInferenceRequest) (*Operation, error)
+	GetOperation(context.Context, *GetResourceRequest) (*Operation, error)
+	CancelOperation(context.Context, *CancelOperationRequest) (*Operation, error)
+	WatchOperation(*WatchOperationRequest, grpc.ServerStreamingServer[OperationEvent]) error
+	GetArtifact(context.Context, *GetResourceRequest) (*ArtifactView, error)
+	DownloadArtifact(*DownloadArtifactRequest, grpc.ServerStreamingServer[DownloadArtifactChunk]) error
+	ListDatasets(context.Context, *ListResourcesRequest) (*DatasetList, error)
+	CreateDataset(context.Context, *CreateDatasetRequest) (*DatasetView, error)
+	GetDataset(context.Context, *GetResourceRequest) (*DatasetView, error)
+	UpdateDataset(context.Context, *UpdateDatasetRequest) (*DatasetView, error)
+	ListDatasetReleases(context.Context, *ListResourcesRequest) (*DatasetReleaseList, error)
+	CreateDatasetRelease(context.Context, *CreateDatasetReleaseRequest) (*DatasetReleaseView, error)
+	ListModels(context.Context, *ListResourcesRequest) (*ModelList, error)
+	CreateModel(context.Context, *CreateModelRequest) (*ModelView, error)
+	GetModel(context.Context, *GetResourceRequest) (*ModelView, error)
+	UpdateModel(context.Context, *UpdateModelRequest) (*ModelView, error)
+	ListModelReleases(context.Context, *ListResourcesRequest) (*ModelReleaseList, error)
+	CreateModelRelease(context.Context, *CreateModelReleaseRequest) (*ModelReleaseView, error)
+	ListTrainingRuns(context.Context, *ListResourcesRequest) (*TrainingRunList, error)
+	CreateTrainingRun(context.Context, *CreateTrainingRunRequest) (*Operation, error)
+	GetTrainingRun(context.Context, *GetResourceRequest) (*TrainingRunView, error)
+	ListEvaluationRuns(context.Context, *ListResourcesRequest) (*EvaluationRunList, error)
+	CreateEvaluationRun(context.Context, *CreateEvaluationRunRequest) (*Operation, error)
+	GetEvaluationRun(context.Context, *GetResourceRequest) (*EvaluationRunView, error)
+	GetEvaluationResult(context.Context, *GetResourceRequest) (*EvaluationResultView, error)
+	ListAgentDefinitions(context.Context, *ListResourcesRequest) (*AgentDefinitionList, error)
+	CreateAgentDefinition(context.Context, *CreateAgentDefinitionRequest) (*AgentDefinitionView, error)
+	ListAgentRuns(context.Context, *ListResourcesRequest) (*AgentRunList, error)
+	CreateAgentRun(context.Context, *CreateAgentRunRequest) (*Operation, error)
+	GetAgentRun(context.Context, *GetResourceRequest) (*AgentRunView, error)
+	ListWorkflowDefinitions(context.Context, *ListResourcesRequest) (*WorkflowDefinitionList, error)
+	CreateWorkflowDefinition(context.Context, *CreateWorkflowDefinitionRequest) (*WorkflowDefinitionView, error)
+	ListWorkflowRuns(context.Context, *ListResourcesRequest) (*WorkflowRunList, error)
+	CreateWorkflowRun(context.Context, *CreateWorkflowRunRequest) (*Operation, error)
+	GetWorkflowRun(context.Context, *GetResourceRequest) (*WorkflowRunView, error)
+	ListApprovalRequests(context.Context, *ListResourcesRequest) (*ApprovalRequestList, error)
+	DecideApproval(context.Context, *DecideApprovalRequest) (*ApprovalReceiptView, error)
+	GetTenant(context.Context, *GetResourceRequest) (*TenantView, error)
+	ListProjects(context.Context, *ListResourcesRequest) (*ProjectList, error)
+	CreateProject(context.Context, *CreateProjectRequest) (*ProjectView, error)
+	GetProject(context.Context, *GetResourceRequest) (*ProjectView, error)
+	ListAuditRecords(context.Context, *ListAuditRecordsRequest) (*AuditRecordList, error)
 	mustEmbedUnimplementedMindcladeServiceServer()
 }
 
@@ -677,127 +617,130 @@ type MindcladeServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedMindcladeServiceServer struct{}
 
-func (UnimplementedMindcladeServiceServer) SubmitInference(context.Context, *SubmitInferenceRequest) (*SubmitInferenceResponse, error) {
+func (UnimplementedMindcladeServiceServer) SubmitInference(context.Context, *SubmitInferenceRequest) (*Operation, error) {
 	return nil, status.Error(codes.Unimplemented, "method SubmitInference not implemented")
 }
-func (UnimplementedMindcladeServiceServer) GetOperation(context.Context, *GetOperationRequest) (*GetOperationResponse, error) {
+func (UnimplementedMindcladeServiceServer) GetOperation(context.Context, *GetResourceRequest) (*Operation, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetOperation not implemented")
 }
-func (UnimplementedMindcladeServiceServer) CancelOperation(context.Context, *CancelOperationRequest) (*CancelOperationResponse, error) {
+func (UnimplementedMindcladeServiceServer) CancelOperation(context.Context, *CancelOperationRequest) (*Operation, error) {
 	return nil, status.Error(codes.Unimplemented, "method CancelOperation not implemented")
 }
-func (UnimplementedMindcladeServiceServer) GetArtifact(context.Context, *GetArtifactRequest) (*GetArtifactResponse, error) {
+func (UnimplementedMindcladeServiceServer) WatchOperation(*WatchOperationRequest, grpc.ServerStreamingServer[OperationEvent]) error {
+	return status.Error(codes.Unimplemented, "method WatchOperation not implemented")
+}
+func (UnimplementedMindcladeServiceServer) GetArtifact(context.Context, *GetResourceRequest) (*ArtifactView, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetArtifact not implemented")
 }
-func (UnimplementedMindcladeServiceServer) DownloadArtifact(*DownloadArtifactRequest, grpc.ServerStreamingServer[DownloadArtifactResponse]) error {
+func (UnimplementedMindcladeServiceServer) DownloadArtifact(*DownloadArtifactRequest, grpc.ServerStreamingServer[DownloadArtifactChunk]) error {
 	return status.Error(codes.Unimplemented, "method DownloadArtifact not implemented")
 }
-func (UnimplementedMindcladeServiceServer) ListDatasets(context.Context, *ListDatasetsRequest) (*ListDatasetsResponse, error) {
+func (UnimplementedMindcladeServiceServer) ListDatasets(context.Context, *ListResourcesRequest) (*DatasetList, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListDatasets not implemented")
 }
-func (UnimplementedMindcladeServiceServer) CreateDataset(context.Context, *CreateDatasetRequest) (*CreateDatasetResponse, error) {
+func (UnimplementedMindcladeServiceServer) CreateDataset(context.Context, *CreateDatasetRequest) (*DatasetView, error) {
 	return nil, status.Error(codes.Unimplemented, "method CreateDataset not implemented")
 }
-func (UnimplementedMindcladeServiceServer) GetDataset(context.Context, *GetDatasetRequest) (*GetDatasetResponse, error) {
+func (UnimplementedMindcladeServiceServer) GetDataset(context.Context, *GetResourceRequest) (*DatasetView, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetDataset not implemented")
 }
-func (UnimplementedMindcladeServiceServer) UpdateDataset(context.Context, *UpdateDatasetRequest) (*UpdateDatasetResponse, error) {
+func (UnimplementedMindcladeServiceServer) UpdateDataset(context.Context, *UpdateDatasetRequest) (*DatasetView, error) {
 	return nil, status.Error(codes.Unimplemented, "method UpdateDataset not implemented")
 }
-func (UnimplementedMindcladeServiceServer) ListDatasetReleases(context.Context, *ListDatasetReleasesRequest) (*ListDatasetReleasesResponse, error) {
+func (UnimplementedMindcladeServiceServer) ListDatasetReleases(context.Context, *ListResourcesRequest) (*DatasetReleaseList, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListDatasetReleases not implemented")
 }
-func (UnimplementedMindcladeServiceServer) CreateDatasetRelease(context.Context, *CreateDatasetReleaseRequest) (*CreateDatasetReleaseResponse, error) {
+func (UnimplementedMindcladeServiceServer) CreateDatasetRelease(context.Context, *CreateDatasetReleaseRequest) (*DatasetReleaseView, error) {
 	return nil, status.Error(codes.Unimplemented, "method CreateDatasetRelease not implemented")
 }
-func (UnimplementedMindcladeServiceServer) ListModels(context.Context, *ListModelsRequest) (*ListModelsResponse, error) {
+func (UnimplementedMindcladeServiceServer) ListModels(context.Context, *ListResourcesRequest) (*ModelList, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListModels not implemented")
 }
-func (UnimplementedMindcladeServiceServer) CreateModel(context.Context, *CreateModelRequest) (*CreateModelResponse, error) {
+func (UnimplementedMindcladeServiceServer) CreateModel(context.Context, *CreateModelRequest) (*ModelView, error) {
 	return nil, status.Error(codes.Unimplemented, "method CreateModel not implemented")
 }
-func (UnimplementedMindcladeServiceServer) GetModel(context.Context, *GetModelRequest) (*GetModelResponse, error) {
+func (UnimplementedMindcladeServiceServer) GetModel(context.Context, *GetResourceRequest) (*ModelView, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetModel not implemented")
 }
-func (UnimplementedMindcladeServiceServer) UpdateModel(context.Context, *UpdateModelRequest) (*UpdateModelResponse, error) {
+func (UnimplementedMindcladeServiceServer) UpdateModel(context.Context, *UpdateModelRequest) (*ModelView, error) {
 	return nil, status.Error(codes.Unimplemented, "method UpdateModel not implemented")
 }
-func (UnimplementedMindcladeServiceServer) ListModelReleases(context.Context, *ListModelReleasesRequest) (*ListModelReleasesResponse, error) {
+func (UnimplementedMindcladeServiceServer) ListModelReleases(context.Context, *ListResourcesRequest) (*ModelReleaseList, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListModelReleases not implemented")
 }
-func (UnimplementedMindcladeServiceServer) CreateModelRelease(context.Context, *CreateModelReleaseRequest) (*CreateModelReleaseResponse, error) {
+func (UnimplementedMindcladeServiceServer) CreateModelRelease(context.Context, *CreateModelReleaseRequest) (*ModelReleaseView, error) {
 	return nil, status.Error(codes.Unimplemented, "method CreateModelRelease not implemented")
 }
-func (UnimplementedMindcladeServiceServer) ListTrainingRuns(context.Context, *ListTrainingRunsRequest) (*ListTrainingRunsResponse, error) {
+func (UnimplementedMindcladeServiceServer) ListTrainingRuns(context.Context, *ListResourcesRequest) (*TrainingRunList, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListTrainingRuns not implemented")
 }
-func (UnimplementedMindcladeServiceServer) CreateTrainingRun(context.Context, *CreateTrainingRunRequest) (*CreateTrainingRunResponse, error) {
+func (UnimplementedMindcladeServiceServer) CreateTrainingRun(context.Context, *CreateTrainingRunRequest) (*Operation, error) {
 	return nil, status.Error(codes.Unimplemented, "method CreateTrainingRun not implemented")
 }
-func (UnimplementedMindcladeServiceServer) GetTrainingRun(context.Context, *GetTrainingRunRequest) (*GetTrainingRunResponse, error) {
+func (UnimplementedMindcladeServiceServer) GetTrainingRun(context.Context, *GetResourceRequest) (*TrainingRunView, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetTrainingRun not implemented")
 }
-func (UnimplementedMindcladeServiceServer) ListEvaluationRuns(context.Context, *ListEvaluationRunsRequest) (*ListEvaluationRunsResponse, error) {
+func (UnimplementedMindcladeServiceServer) ListEvaluationRuns(context.Context, *ListResourcesRequest) (*EvaluationRunList, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListEvaluationRuns not implemented")
 }
-func (UnimplementedMindcladeServiceServer) CreateEvaluationRun(context.Context, *CreateEvaluationRunRequest) (*CreateEvaluationRunResponse, error) {
+func (UnimplementedMindcladeServiceServer) CreateEvaluationRun(context.Context, *CreateEvaluationRunRequest) (*Operation, error) {
 	return nil, status.Error(codes.Unimplemented, "method CreateEvaluationRun not implemented")
 }
-func (UnimplementedMindcladeServiceServer) GetEvaluationRun(context.Context, *GetEvaluationRunRequest) (*GetEvaluationRunResponse, error) {
+func (UnimplementedMindcladeServiceServer) GetEvaluationRun(context.Context, *GetResourceRequest) (*EvaluationRunView, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetEvaluationRun not implemented")
 }
-func (UnimplementedMindcladeServiceServer) GetEvaluationResult(context.Context, *GetEvaluationResultRequest) (*GetEvaluationResultResponse, error) {
+func (UnimplementedMindcladeServiceServer) GetEvaluationResult(context.Context, *GetResourceRequest) (*EvaluationResultView, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetEvaluationResult not implemented")
 }
-func (UnimplementedMindcladeServiceServer) ListAgentDefinitions(context.Context, *ListAgentDefinitionsRequest) (*ListAgentDefinitionsResponse, error) {
+func (UnimplementedMindcladeServiceServer) ListAgentDefinitions(context.Context, *ListResourcesRequest) (*AgentDefinitionList, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListAgentDefinitions not implemented")
 }
-func (UnimplementedMindcladeServiceServer) CreateAgentDefinition(context.Context, *CreateAgentDefinitionRequest) (*CreateAgentDefinitionResponse, error) {
+func (UnimplementedMindcladeServiceServer) CreateAgentDefinition(context.Context, *CreateAgentDefinitionRequest) (*AgentDefinitionView, error) {
 	return nil, status.Error(codes.Unimplemented, "method CreateAgentDefinition not implemented")
 }
-func (UnimplementedMindcladeServiceServer) ListAgentRuns(context.Context, *ListAgentRunsRequest) (*ListAgentRunsResponse, error) {
+func (UnimplementedMindcladeServiceServer) ListAgentRuns(context.Context, *ListResourcesRequest) (*AgentRunList, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListAgentRuns not implemented")
 }
-func (UnimplementedMindcladeServiceServer) CreateAgentRun(context.Context, *CreateAgentRunRequest) (*CreateAgentRunResponse, error) {
+func (UnimplementedMindcladeServiceServer) CreateAgentRun(context.Context, *CreateAgentRunRequest) (*Operation, error) {
 	return nil, status.Error(codes.Unimplemented, "method CreateAgentRun not implemented")
 }
-func (UnimplementedMindcladeServiceServer) GetAgentRun(context.Context, *GetAgentRunRequest) (*GetAgentRunResponse, error) {
+func (UnimplementedMindcladeServiceServer) GetAgentRun(context.Context, *GetResourceRequest) (*AgentRunView, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetAgentRun not implemented")
 }
-func (UnimplementedMindcladeServiceServer) ListWorkflowDefinitions(context.Context, *ListWorkflowDefinitionsRequest) (*ListWorkflowDefinitionsResponse, error) {
+func (UnimplementedMindcladeServiceServer) ListWorkflowDefinitions(context.Context, *ListResourcesRequest) (*WorkflowDefinitionList, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListWorkflowDefinitions not implemented")
 }
-func (UnimplementedMindcladeServiceServer) CreateWorkflowDefinition(context.Context, *CreateWorkflowDefinitionRequest) (*CreateWorkflowDefinitionResponse, error) {
+func (UnimplementedMindcladeServiceServer) CreateWorkflowDefinition(context.Context, *CreateWorkflowDefinitionRequest) (*WorkflowDefinitionView, error) {
 	return nil, status.Error(codes.Unimplemented, "method CreateWorkflowDefinition not implemented")
 }
-func (UnimplementedMindcladeServiceServer) ListWorkflowRuns(context.Context, *ListWorkflowRunsRequest) (*ListWorkflowRunsResponse, error) {
+func (UnimplementedMindcladeServiceServer) ListWorkflowRuns(context.Context, *ListResourcesRequest) (*WorkflowRunList, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListWorkflowRuns not implemented")
 }
-func (UnimplementedMindcladeServiceServer) CreateWorkflowRun(context.Context, *CreateWorkflowRunRequest) (*CreateWorkflowRunResponse, error) {
+func (UnimplementedMindcladeServiceServer) CreateWorkflowRun(context.Context, *CreateWorkflowRunRequest) (*Operation, error) {
 	return nil, status.Error(codes.Unimplemented, "method CreateWorkflowRun not implemented")
 }
-func (UnimplementedMindcladeServiceServer) GetWorkflowRun(context.Context, *GetWorkflowRunRequest) (*GetWorkflowRunResponse, error) {
+func (UnimplementedMindcladeServiceServer) GetWorkflowRun(context.Context, *GetResourceRequest) (*WorkflowRunView, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetWorkflowRun not implemented")
 }
-func (UnimplementedMindcladeServiceServer) ListApprovalRequests(context.Context, *ListApprovalRequestsRequest) (*ListApprovalRequestsResponse, error) {
+func (UnimplementedMindcladeServiceServer) ListApprovalRequests(context.Context, *ListResourcesRequest) (*ApprovalRequestList, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListApprovalRequests not implemented")
 }
-func (UnimplementedMindcladeServiceServer) DecideApproval(context.Context, *DecideApprovalRequest) (*DecideApprovalResponse, error) {
+func (UnimplementedMindcladeServiceServer) DecideApproval(context.Context, *DecideApprovalRequest) (*ApprovalReceiptView, error) {
 	return nil, status.Error(codes.Unimplemented, "method DecideApproval not implemented")
 }
-func (UnimplementedMindcladeServiceServer) GetTenant(context.Context, *GetTenantRequest) (*GetTenantResponse, error) {
+func (UnimplementedMindcladeServiceServer) GetTenant(context.Context, *GetResourceRequest) (*TenantView, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetTenant not implemented")
 }
-func (UnimplementedMindcladeServiceServer) ListProjects(context.Context, *ListProjectsRequest) (*ListProjectsResponse, error) {
+func (UnimplementedMindcladeServiceServer) ListProjects(context.Context, *ListResourcesRequest) (*ProjectList, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListProjects not implemented")
 }
-func (UnimplementedMindcladeServiceServer) CreateProject(context.Context, *CreateProjectRequest) (*CreateProjectResponse, error) {
+func (UnimplementedMindcladeServiceServer) CreateProject(context.Context, *CreateProjectRequest) (*ProjectView, error) {
 	return nil, status.Error(codes.Unimplemented, "method CreateProject not implemented")
 }
-func (UnimplementedMindcladeServiceServer) GetProject(context.Context, *GetProjectRequest) (*GetProjectResponse, error) {
+func (UnimplementedMindcladeServiceServer) GetProject(context.Context, *GetResourceRequest) (*ProjectView, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetProject not implemented")
 }
-func (UnimplementedMindcladeServiceServer) ListAuditRecords(context.Context, *ListAuditRecordsRequest) (*ListAuditRecordsResponse, error) {
+func (UnimplementedMindcladeServiceServer) ListAuditRecords(context.Context, *ListAuditRecordsRequest) (*AuditRecordList, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListAuditRecords not implemented")
 }
 func (UnimplementedMindcladeServiceServer) mustEmbedUnimplementedMindcladeServiceServer() {}
@@ -840,7 +783,7 @@ func _MindcladeService_SubmitInference_Handler(srv interface{}, ctx context.Cont
 }
 
 func _MindcladeService_GetOperation_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetOperationRequest)
+	in := new(GetResourceRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -852,7 +795,7 @@ func _MindcladeService_GetOperation_Handler(srv interface{}, ctx context.Context
 		FullMethod: MindcladeService_GetOperation_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MindcladeServiceServer).GetOperation(ctx, req.(*GetOperationRequest))
+		return srv.(MindcladeServiceServer).GetOperation(ctx, req.(*GetResourceRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -875,8 +818,19 @@ func _MindcladeService_CancelOperation_Handler(srv interface{}, ctx context.Cont
 	return interceptor(ctx, in, info, handler)
 }
 
+func _MindcladeService_WatchOperation_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(WatchOperationRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(MindcladeServiceServer).WatchOperation(m, &grpc.GenericServerStream[WatchOperationRequest, OperationEvent]{ServerStream: stream})
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type MindcladeService_WatchOperationServer = grpc.ServerStreamingServer[OperationEvent]
+
 func _MindcladeService_GetArtifact_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetArtifactRequest)
+	in := new(GetResourceRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -888,7 +842,7 @@ func _MindcladeService_GetArtifact_Handler(srv interface{}, ctx context.Context,
 		FullMethod: MindcladeService_GetArtifact_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MindcladeServiceServer).GetArtifact(ctx, req.(*GetArtifactRequest))
+		return srv.(MindcladeServiceServer).GetArtifact(ctx, req.(*GetResourceRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -898,14 +852,14 @@ func _MindcladeService_DownloadArtifact_Handler(srv interface{}, stream grpc.Ser
 	if err := stream.RecvMsg(m); err != nil {
 		return err
 	}
-	return srv.(MindcladeServiceServer).DownloadArtifact(m, &grpc.GenericServerStream[DownloadArtifactRequest, DownloadArtifactResponse]{ServerStream: stream})
+	return srv.(MindcladeServiceServer).DownloadArtifact(m, &grpc.GenericServerStream[DownloadArtifactRequest, DownloadArtifactChunk]{ServerStream: stream})
 }
 
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
-type MindcladeService_DownloadArtifactServer = grpc.ServerStreamingServer[DownloadArtifactResponse]
+type MindcladeService_DownloadArtifactServer = grpc.ServerStreamingServer[DownloadArtifactChunk]
 
 func _MindcladeService_ListDatasets_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ListDatasetsRequest)
+	in := new(ListResourcesRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -917,7 +871,7 @@ func _MindcladeService_ListDatasets_Handler(srv interface{}, ctx context.Context
 		FullMethod: MindcladeService_ListDatasets_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MindcladeServiceServer).ListDatasets(ctx, req.(*ListDatasetsRequest))
+		return srv.(MindcladeServiceServer).ListDatasets(ctx, req.(*ListResourcesRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -941,7 +895,7 @@ func _MindcladeService_CreateDataset_Handler(srv interface{}, ctx context.Contex
 }
 
 func _MindcladeService_GetDataset_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetDatasetRequest)
+	in := new(GetResourceRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -953,7 +907,7 @@ func _MindcladeService_GetDataset_Handler(srv interface{}, ctx context.Context, 
 		FullMethod: MindcladeService_GetDataset_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MindcladeServiceServer).GetDataset(ctx, req.(*GetDatasetRequest))
+		return srv.(MindcladeServiceServer).GetDataset(ctx, req.(*GetResourceRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -977,7 +931,7 @@ func _MindcladeService_UpdateDataset_Handler(srv interface{}, ctx context.Contex
 }
 
 func _MindcladeService_ListDatasetReleases_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ListDatasetReleasesRequest)
+	in := new(ListResourcesRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -989,7 +943,7 @@ func _MindcladeService_ListDatasetReleases_Handler(srv interface{}, ctx context.
 		FullMethod: MindcladeService_ListDatasetReleases_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MindcladeServiceServer).ListDatasetReleases(ctx, req.(*ListDatasetReleasesRequest))
+		return srv.(MindcladeServiceServer).ListDatasetReleases(ctx, req.(*ListResourcesRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1013,7 +967,7 @@ func _MindcladeService_CreateDatasetRelease_Handler(srv interface{}, ctx context
 }
 
 func _MindcladeService_ListModels_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ListModelsRequest)
+	in := new(ListResourcesRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -1025,7 +979,7 @@ func _MindcladeService_ListModels_Handler(srv interface{}, ctx context.Context, 
 		FullMethod: MindcladeService_ListModels_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MindcladeServiceServer).ListModels(ctx, req.(*ListModelsRequest))
+		return srv.(MindcladeServiceServer).ListModels(ctx, req.(*ListResourcesRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1049,7 +1003,7 @@ func _MindcladeService_CreateModel_Handler(srv interface{}, ctx context.Context,
 }
 
 func _MindcladeService_GetModel_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetModelRequest)
+	in := new(GetResourceRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -1061,7 +1015,7 @@ func _MindcladeService_GetModel_Handler(srv interface{}, ctx context.Context, de
 		FullMethod: MindcladeService_GetModel_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MindcladeServiceServer).GetModel(ctx, req.(*GetModelRequest))
+		return srv.(MindcladeServiceServer).GetModel(ctx, req.(*GetResourceRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1085,7 +1039,7 @@ func _MindcladeService_UpdateModel_Handler(srv interface{}, ctx context.Context,
 }
 
 func _MindcladeService_ListModelReleases_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ListModelReleasesRequest)
+	in := new(ListResourcesRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -1097,7 +1051,7 @@ func _MindcladeService_ListModelReleases_Handler(srv interface{}, ctx context.Co
 		FullMethod: MindcladeService_ListModelReleases_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MindcladeServiceServer).ListModelReleases(ctx, req.(*ListModelReleasesRequest))
+		return srv.(MindcladeServiceServer).ListModelReleases(ctx, req.(*ListResourcesRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1121,7 +1075,7 @@ func _MindcladeService_CreateModelRelease_Handler(srv interface{}, ctx context.C
 }
 
 func _MindcladeService_ListTrainingRuns_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ListTrainingRunsRequest)
+	in := new(ListResourcesRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -1133,7 +1087,7 @@ func _MindcladeService_ListTrainingRuns_Handler(srv interface{}, ctx context.Con
 		FullMethod: MindcladeService_ListTrainingRuns_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MindcladeServiceServer).ListTrainingRuns(ctx, req.(*ListTrainingRunsRequest))
+		return srv.(MindcladeServiceServer).ListTrainingRuns(ctx, req.(*ListResourcesRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1157,7 +1111,7 @@ func _MindcladeService_CreateTrainingRun_Handler(srv interface{}, ctx context.Co
 }
 
 func _MindcladeService_GetTrainingRun_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetTrainingRunRequest)
+	in := new(GetResourceRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -1169,13 +1123,13 @@ func _MindcladeService_GetTrainingRun_Handler(srv interface{}, ctx context.Conte
 		FullMethod: MindcladeService_GetTrainingRun_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MindcladeServiceServer).GetTrainingRun(ctx, req.(*GetTrainingRunRequest))
+		return srv.(MindcladeServiceServer).GetTrainingRun(ctx, req.(*GetResourceRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _MindcladeService_ListEvaluationRuns_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ListEvaluationRunsRequest)
+	in := new(ListResourcesRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -1187,7 +1141,7 @@ func _MindcladeService_ListEvaluationRuns_Handler(srv interface{}, ctx context.C
 		FullMethod: MindcladeService_ListEvaluationRuns_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MindcladeServiceServer).ListEvaluationRuns(ctx, req.(*ListEvaluationRunsRequest))
+		return srv.(MindcladeServiceServer).ListEvaluationRuns(ctx, req.(*ListResourcesRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1211,7 +1165,7 @@ func _MindcladeService_CreateEvaluationRun_Handler(srv interface{}, ctx context.
 }
 
 func _MindcladeService_GetEvaluationRun_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetEvaluationRunRequest)
+	in := new(GetResourceRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -1223,13 +1177,13 @@ func _MindcladeService_GetEvaluationRun_Handler(srv interface{}, ctx context.Con
 		FullMethod: MindcladeService_GetEvaluationRun_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MindcladeServiceServer).GetEvaluationRun(ctx, req.(*GetEvaluationRunRequest))
+		return srv.(MindcladeServiceServer).GetEvaluationRun(ctx, req.(*GetResourceRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _MindcladeService_GetEvaluationResult_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetEvaluationResultRequest)
+	in := new(GetResourceRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -1241,13 +1195,13 @@ func _MindcladeService_GetEvaluationResult_Handler(srv interface{}, ctx context.
 		FullMethod: MindcladeService_GetEvaluationResult_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MindcladeServiceServer).GetEvaluationResult(ctx, req.(*GetEvaluationResultRequest))
+		return srv.(MindcladeServiceServer).GetEvaluationResult(ctx, req.(*GetResourceRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _MindcladeService_ListAgentDefinitions_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ListAgentDefinitionsRequest)
+	in := new(ListResourcesRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -1259,7 +1213,7 @@ func _MindcladeService_ListAgentDefinitions_Handler(srv interface{}, ctx context
 		FullMethod: MindcladeService_ListAgentDefinitions_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MindcladeServiceServer).ListAgentDefinitions(ctx, req.(*ListAgentDefinitionsRequest))
+		return srv.(MindcladeServiceServer).ListAgentDefinitions(ctx, req.(*ListResourcesRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1283,7 +1237,7 @@ func _MindcladeService_CreateAgentDefinition_Handler(srv interface{}, ctx contex
 }
 
 func _MindcladeService_ListAgentRuns_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ListAgentRunsRequest)
+	in := new(ListResourcesRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -1295,7 +1249,7 @@ func _MindcladeService_ListAgentRuns_Handler(srv interface{}, ctx context.Contex
 		FullMethod: MindcladeService_ListAgentRuns_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MindcladeServiceServer).ListAgentRuns(ctx, req.(*ListAgentRunsRequest))
+		return srv.(MindcladeServiceServer).ListAgentRuns(ctx, req.(*ListResourcesRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1319,7 +1273,7 @@ func _MindcladeService_CreateAgentRun_Handler(srv interface{}, ctx context.Conte
 }
 
 func _MindcladeService_GetAgentRun_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetAgentRunRequest)
+	in := new(GetResourceRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -1331,13 +1285,13 @@ func _MindcladeService_GetAgentRun_Handler(srv interface{}, ctx context.Context,
 		FullMethod: MindcladeService_GetAgentRun_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MindcladeServiceServer).GetAgentRun(ctx, req.(*GetAgentRunRequest))
+		return srv.(MindcladeServiceServer).GetAgentRun(ctx, req.(*GetResourceRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _MindcladeService_ListWorkflowDefinitions_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ListWorkflowDefinitionsRequest)
+	in := new(ListResourcesRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -1349,7 +1303,7 @@ func _MindcladeService_ListWorkflowDefinitions_Handler(srv interface{}, ctx cont
 		FullMethod: MindcladeService_ListWorkflowDefinitions_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MindcladeServiceServer).ListWorkflowDefinitions(ctx, req.(*ListWorkflowDefinitionsRequest))
+		return srv.(MindcladeServiceServer).ListWorkflowDefinitions(ctx, req.(*ListResourcesRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1373,7 +1327,7 @@ func _MindcladeService_CreateWorkflowDefinition_Handler(srv interface{}, ctx con
 }
 
 func _MindcladeService_ListWorkflowRuns_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ListWorkflowRunsRequest)
+	in := new(ListResourcesRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -1385,7 +1339,7 @@ func _MindcladeService_ListWorkflowRuns_Handler(srv interface{}, ctx context.Con
 		FullMethod: MindcladeService_ListWorkflowRuns_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MindcladeServiceServer).ListWorkflowRuns(ctx, req.(*ListWorkflowRunsRequest))
+		return srv.(MindcladeServiceServer).ListWorkflowRuns(ctx, req.(*ListResourcesRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1409,7 +1363,7 @@ func _MindcladeService_CreateWorkflowRun_Handler(srv interface{}, ctx context.Co
 }
 
 func _MindcladeService_GetWorkflowRun_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetWorkflowRunRequest)
+	in := new(GetResourceRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -1421,13 +1375,13 @@ func _MindcladeService_GetWorkflowRun_Handler(srv interface{}, ctx context.Conte
 		FullMethod: MindcladeService_GetWorkflowRun_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MindcladeServiceServer).GetWorkflowRun(ctx, req.(*GetWorkflowRunRequest))
+		return srv.(MindcladeServiceServer).GetWorkflowRun(ctx, req.(*GetResourceRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _MindcladeService_ListApprovalRequests_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ListApprovalRequestsRequest)
+	in := new(ListResourcesRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -1439,7 +1393,7 @@ func _MindcladeService_ListApprovalRequests_Handler(srv interface{}, ctx context
 		FullMethod: MindcladeService_ListApprovalRequests_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MindcladeServiceServer).ListApprovalRequests(ctx, req.(*ListApprovalRequestsRequest))
+		return srv.(MindcladeServiceServer).ListApprovalRequests(ctx, req.(*ListResourcesRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1463,7 +1417,7 @@ func _MindcladeService_DecideApproval_Handler(srv interface{}, ctx context.Conte
 }
 
 func _MindcladeService_GetTenant_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetTenantRequest)
+	in := new(GetResourceRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -1475,13 +1429,13 @@ func _MindcladeService_GetTenant_Handler(srv interface{}, ctx context.Context, d
 		FullMethod: MindcladeService_GetTenant_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MindcladeServiceServer).GetTenant(ctx, req.(*GetTenantRequest))
+		return srv.(MindcladeServiceServer).GetTenant(ctx, req.(*GetResourceRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _MindcladeService_ListProjects_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ListProjectsRequest)
+	in := new(ListResourcesRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -1493,7 +1447,7 @@ func _MindcladeService_ListProjects_Handler(srv interface{}, ctx context.Context
 		FullMethod: MindcladeService_ListProjects_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MindcladeServiceServer).ListProjects(ctx, req.(*ListProjectsRequest))
+		return srv.(MindcladeServiceServer).ListProjects(ctx, req.(*ListResourcesRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1517,7 +1471,7 @@ func _MindcladeService_CreateProject_Handler(srv interface{}, ctx context.Contex
 }
 
 func _MindcladeService_GetProject_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetProjectRequest)
+	in := new(GetResourceRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -1529,7 +1483,7 @@ func _MindcladeService_GetProject_Handler(srv interface{}, ctx context.Context, 
 		FullMethod: MindcladeService_GetProject_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MindcladeServiceServer).GetProject(ctx, req.(*GetProjectRequest))
+		return srv.(MindcladeServiceServer).GetProject(ctx, req.(*GetResourceRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1721,6 +1675,11 @@ var MindcladeService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "WatchOperation",
+			Handler:       _MindcladeService_WatchOperation_Handler,
+			ServerStreams: true,
+		},
 		{
 			StreamName:    "DownloadArtifact",
 			Handler:       _MindcladeService_DownloadArtifact_Handler,

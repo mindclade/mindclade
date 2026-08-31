@@ -1,1 +1,1 @@
-{"compilerOptions":{"declaration":true,"module":"NodeNext","moduleResolution":"NodeNext","noEmit":false,"strict":true,"target":"ES2024"},"include":["**/*.ts"]}
+{"compilerOptions":{"allowSyntheticDefaultImports":true,"declaration":true,"esModuleInterop":true,"module":"NodeNext","moduleResolution":"NodeNext","noEmit":false,"strict":true,"target":"ES2024"},"include":["**/*.ts"]}

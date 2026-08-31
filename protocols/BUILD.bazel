@@ -10,6 +10,7 @@ filegroup(
     ] + glob([
         "proto/**/*.proto",
         "events/**/*.proto",
+        "events/**/*.yaml",
         "schemas/**/*.json",
         "openapi/**/*.yaml",
         "compatibility/baselines/*.json",

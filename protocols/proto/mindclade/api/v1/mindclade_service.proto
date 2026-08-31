@@ -1,0 +1,1229 @@
+syntax = "proto3";
+
+package mindclade.api.v1;
+
+import "google/api/annotations.proto";
+import "google/protobuf/descriptor.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/api/v1;apiv1";
+
+// StreamProjection names the explicit HTTP representation of a streaming RPC.
+enum StreamProjection {
+  STREAM_PROJECTION_UNSPECIFIED = 0;
+  STREAM_PROJECTION_NONE = 1;
+  STREAM_PROJECTION_BINARY = 2;
+  STREAM_PROJECTION_SSE = 3;
+}
+
+// PublicHttpContract records HTTP facts not represented by google.api.http.
+message PublicHttpContract {
+  repeated uint32 success_status = 1;
+  bool bearer_auth = 2;
+  repeated string request_headers = 3;
+  repeated string response_headers = 4;
+  StreamProjection stream = 5;
+}
+
+extend google.protobuf.MethodOptions {
+  PublicHttpContract public_http = 51001;
+}
+
+// ResourceRef is the only cross-domain identity exposed by the public API.
+message ResourceRef {
+  string name = 1;
+  string uid = 2;
+  uint64 revision = 3;
+}
+
+// ArtifactRef identifies immutable content without a provider or storage locator.
+message ArtifactRef {
+  string digest = 1;
+  string media_type = 2;
+  uint64 size_bytes = 3;
+  string artifact_kind = 4;
+  string schema_id = 5;
+  string integrity_digest = 6;
+}
+
+// EvidenceRef identifies public qualification evidence by digest.
+message EvidenceRef {
+  string digest = 1;
+  string subject_digest = 2;
+  string evidence_kind = 3;
+  string policy_digest = 4;
+}
+
+// ErrorDetail carries bounded, non-secret error context.
+message ErrorDetail {
+  string kind = 1;
+  string field = 2;
+  string reason = 3;
+  ResourceRef resource = 4;
+  uint64 current_revision = 5;
+  string limit_name = 6;
+}
+
+// PublicError is a sanitized error and never contains internal payloads.
+message PublicError {
+  string code = 1;
+  string message = 2;
+  string request_id = 3;
+  string trace_id = 4;
+  bool retryable = 5;
+  string retry_after = 6;
+  string diagnostic_ref = 7;
+  repeated ErrorDetail details = 8;
+}
+
+// PageMetadata returns opaque continuation state.
+message PageMetadata {
+  string next_page_token = 1;
+  string snapshot_token = 2;
+}
+
+// OperationResult exposes typed summaries and immutable references, never Any.
+message OperationResult {
+  ResourceRef resource = 1;
+  InferenceResultView inference = 2;
+  ArtifactRef manifest = 3;
+  repeated ArtifactRef artifacts = 4;
+}
+
+// Operation is the public long-running-operation view.
+message Operation {
+  string name = 1;
+  string uid = 2;
+  uint64 revision = 3;
+  string etag = 4;
+  string state = 5;
+  bool done = 6;
+  google.protobuf.Timestamp create_time = 7;
+  google.protobuf.Timestamp update_time = 8;
+  ResourceRef target = 9;
+  OperationResult result = 10;
+  PublicError error = 11;
+}
+
+// OperationEvent is serialized as one server-sent event.
+message OperationEvent {
+  string event_id = 1;
+  Operation operation = 2;
+}
+
+// CancellationRequest is the public cancellation body.
+message CancellationRequest {
+  string reason = 1;
+}
+
+// ArtifactView is safe metadata for content download and verification.
+message ArtifactView {
+  string name = 1;
+  string uid = 2;
+  google.protobuf.Timestamp create_time = 3;
+  string policy_classification = 4;
+  ArtifactRef ref = 5;
+}
+
+// DownloadArtifactChunk is one verified segment of a binary download.
+message DownloadArtifactChunk {
+  uint64 offset = 1;
+  bytes data = 2;
+  uint64 total_size_bytes = 3;
+  string content_digest = 4;
+  bool complete = 5;
+}
+
+// DatasetCreate is public dataset creation intent.
+message DatasetCreate {
+  string dataset_id = 1;
+  string display_name = 2;
+  map<string, string> labels = 3;
+  map<string, string> annotations = 4;
+  string policy_classification = 5;
+}
+
+// DatasetUpdate is merge-patchable public dataset state.
+message DatasetUpdate {
+  optional string display_name = 1;
+  map<string, string> labels = 2;
+  map<string, string> annotations = 3;
+}
+
+// DatasetView is distinct from the internal dataset aggregate.
+message DatasetView {
+  string name = 1;
+  string uid = 2;
+  uint64 revision = 3;
+  string etag = 4;
+  google.protobuf.Timestamp create_time = 5;
+  google.protobuf.Timestamp update_time = 6;
+  string display_name = 7;
+  map<string, string> labels = 8;
+  map<string, string> annotations = 9;
+  string policy_classification = 10;
+  string state = 11;
+  ResourceRef current_release = 12;
+  google.protobuf.Timestamp delete_time = 13;
+}
+
+// DatasetList is a stable page of public dataset views.
+message DatasetList {
+  repeated DatasetView datasets = 1;
+  PageMetadata page = 2;
+}
+
+// DatasetReleaseCreate is immutable public release intent.
+message DatasetReleaseCreate {
+  string release_id = 1;
+  ArtifactRef manifest = 2;
+  repeated EvidenceRef qualification_evidence = 3;
+  ResourceRef parent_release = 4;
+  ResourceRef use_policy = 5;
+  string policy_classification = 6;
+}
+
+// DatasetReleaseView is distinct from the internal release aggregate.
+message DatasetReleaseView {
+  string name = 1;
+  string uid = 2;
+  uint64 revision = 3;
+  string etag = 4;
+  google.protobuf.Timestamp create_time = 5;
+  ResourceRef dataset = 6;
+  string release_id = 7;
+  string state = 8;
+  ArtifactRef manifest = 9;
+  repeated EvidenceRef qualification_evidence = 10;
+  string policy_classification = 11;
+  google.protobuf.Timestamp update_time = 12;
+  google.protobuf.Timestamp delete_time = 13;
+}
+
+// DatasetReleaseList is a stable page of public release views.
+message DatasetReleaseList {
+  repeated DatasetReleaseView releases = 1;
+  PageMetadata page = 2;
+}
+
+// ModelCreate is public model creation intent.
+message ModelCreate {
+  string model_id = 1;
+  string display_name = 2;
+  map<string, string> labels = 3;
+  map<string, string> annotations = 4;
+  string policy_classification = 5;
+  string family = 6;
+  ArtifactRef definition_manifest = 7;
+  ArtifactRef input_contract = 8;
+  ArtifactRef output_contract = 9;
+}
+
+// ModelUpdate is merge-patchable public model state.
+message ModelUpdate {
+  optional string display_name = 1;
+  map<string, string> labels = 2;
+  map<string, string> annotations = 3;
+}
+
+// ModelView is distinct from the internal model aggregate.
+message ModelView {
+  string name = 1;
+  string uid = 2;
+  uint64 revision = 3;
+  string etag = 4;
+  google.protobuf.Timestamp create_time = 5;
+  google.protobuf.Timestamp update_time = 6;
+  string display_name = 7;
+  map<string, string> labels = 8;
+  map<string, string> annotations = 9;
+  string policy_classification = 10;
+  string family = 11;
+  string state = 12;
+  ArtifactRef definition_manifest = 13;
+  ArtifactRef input_contract = 14;
+  ArtifactRef output_contract = 15;
+  ResourceRef current_release = 16;
+  google.protobuf.Timestamp delete_time = 17;
+}
+
+// ModelList is a stable page of public model views.
+message ModelList {
+  repeated ModelView models = 1;
+  PageMetadata page = 2;
+}
+
+// ModelReleaseCreate is immutable public model-release intent.
+message ModelReleaseCreate {
+  string release_id = 1;
+  ArtifactRef bundle_manifest = 2;
+  ArtifactRef model_manifest = 3;
+  ResourceRef checkpoint = 4;
+  repeated EvidenceRef evaluation_evidence = 5;
+  ResourceRef release_policy = 6;
+  string policy_classification = 7;
+}
+
+// ModelReleaseView is distinct from the internal release aggregate.
+message ModelReleaseView {
+  string name = 1;
+  string uid = 2;
+  uint64 revision = 3;
+  string etag = 4;
+  google.protobuf.Timestamp create_time = 5;
+  ResourceRef model = 6;
+  string release_id = 7;
+  string stage = 8;
+  ArtifactRef bundle_manifest = 9;
+  ArtifactRef model_manifest = 10;
+  ResourceRef checkpoint = 11;
+  repeated EvidenceRef evaluation_evidence = 12;
+  string policy_classification = 13;
+  google.protobuf.Timestamp update_time = 14;
+  google.protobuf.Timestamp delete_time = 15;
+}
+
+// ModelReleaseList is a stable page of public model-release views.
+message ModelReleaseList {
+  repeated ModelReleaseView releases = 1;
+  PageMetadata page = 2;
+}
+
+// TrainingRunCreate excludes executable plans; admission resolves them internally.
+message TrainingRunCreate {
+  string training_run_id = 1;
+  ArtifactRef training_recipe = 2;
+  ResourceRef dataset_release = 3;
+  ResourceRef model_release = 4;
+  ArtifactRef hardware_topology = 5;
+  ResourceRef use_policy = 6;
+  map<string, string> labels = 7;
+  string policy_classification = 8;
+}
+
+// TrainingRunView is a non-executable public training status summary.
+message TrainingRunView {
+  string name = 1;
+  string uid = 2;
+  uint64 revision = 3;
+  string etag = 4;
+  google.protobuf.Timestamp create_time = 5;
+  google.protobuf.Timestamp update_time = 6;
+  string state = 7;
+  ArtifactRef training_recipe = 8;
+  ResourceRef dataset_release = 9;
+  ResourceRef model_release = 10;
+  ArtifactRef hardware_topology = 11;
+  ResourceRef latest_checkpoint = 12;
+  ArtifactRef result_manifest = 13;
+  PublicError failure = 14;
+  google.protobuf.Timestamp delete_time = 15;
+}
+
+// TrainingRunList is a stable page of public training views.
+message TrainingRunList {
+  repeated TrainingRunView training_runs = 1;
+  PageMetadata page = 2;
+}
+
+// EvaluationRunCreate is public evaluation intent.
+message EvaluationRunCreate {
+  string evaluation_run_id = 1;
+  ArtifactRef suite = 2;
+  repeated ArtifactRef datasets = 3;
+  ArtifactRef snapshot = 4;
+  ResourceRef model_release = 5;
+  ArtifactRef inference_protocol = 6;
+}
+
+// EvaluationRunView is distinct from the internal evaluation aggregate.
+message EvaluationRunView {
+  string name = 1;
+  string uid = 2;
+  uint64 revision = 3;
+  string etag = 4;
+  google.protobuf.Timestamp create_time = 5;
+  google.protobuf.Timestamp update_time = 6;
+  string state = 7;
+  ArtifactRef suite = 8;
+  repeated ArtifactRef datasets = 9;
+  ResourceRef model_release = 10;
+  uint64 completed_samples = 11;
+  uint64 total_samples = 12;
+  PublicError failure = 13;
+  google.protobuf.Timestamp delete_time = 14;
+}
+
+// EvaluationRunList is a stable page of public evaluation views.
+message EvaluationRunList {
+  repeated EvaluationRunView evaluation_runs = 1;
+  PageMetadata page = 2;
+}
+
+// MetricSummary is a bounded public metric projection.
+message MetricSummary {
+  string metric_id = 1;
+  string metric_version = 2;
+  string unit = 3;
+  double value = 4;
+  optional double interval_lower = 5;
+  optional double interval_upper = 6;
+  uint64 valid_count = 7;
+  uint64 invalid_count = 8;
+}
+
+// EvaluationResultView is immutable public evaluation evidence.
+message EvaluationResultView {
+  string name = 1;
+  string uid = 2;
+  ResourceRef run = 3;
+  string outcome = 4;
+  ArtifactRef report = 5;
+  repeated MetricSummary metrics = 6;
+  ArtifactRef safety_evidence = 7;
+  ArtifactRef statistical_evidence = 8;
+  string result_digest = 9;
+}
+
+// InferenceOutput describes requested public result artifacts.
+message InferenceOutput {
+  string result_schema_id = 1;
+  repeated string requested_artifact_kinds = 2;
+}
+
+// InferenceSubmission is immutable public inference intent.
+message InferenceSubmission {
+  string request_id = 1;
+  string capability = 2;
+  ResourceRef model = 3;
+  ArtifactRef resolved_model_bundle = 4;
+  ArtifactRef input = 5;
+  ArtifactRef sampling_policy = 6;
+  InferenceOutput output = 7;
+  string resource_class = 8;
+  string data_classification = 9;
+}
+
+// InferenceResultView is immutable public inference output metadata.
+message InferenceResultView {
+  string name = 1;
+  string uid = 2;
+  ResourceRef request = 3;
+  ResourceRef operation = 4;
+  ArtifactRef result_manifest = 5;
+  repeated ArtifactRef outputs = 6;
+  string result_digest = 7;
+}
+
+// AgentBudget bounds one public agent definition.
+message AgentBudget {
+  uint64 maximum_model_tokens = 1;
+  uint32 maximum_iterations = 2;
+  uint32 maximum_tool_calls = 3;
+  uint64 maximum_external_spend_micros = 4;
+}
+
+// AgentDefinitionCreate is public definition intent by immutable reference.
+message AgentDefinitionCreate {
+  string agent_definition_id = 1;
+  string display_name = 2;
+  string semantic_version = 3;
+  string purpose = 4;
+  ArtifactRef definition = 5;
+  ResourceRef workflow_definition = 6;
+  ArtifactRef input_schema = 7;
+  ArtifactRef output_schema = 8;
+  AgentBudget budget = 9;
+}
+
+// AgentDefinitionView is a non-executable public definition summary.
+message AgentDefinitionView {
+  string name = 1;
+  string uid = 2;
+  uint64 revision = 3;
+  string etag = 4;
+  google.protobuf.Timestamp create_time = 5;
+  google.protobuf.Timestamp update_time = 6;
+  string display_name = 7;
+  string semantic_version = 8;
+  string purpose = 9;
+  ArtifactRef definition = 10;
+  ResourceRef workflow_definition = 11;
+  ArtifactRef input_schema = 12;
+  ArtifactRef output_schema = 13;
+  AgentBudget budget = 14;
+  string state = 15;
+  string agent_definition_id = 16;
+  google.protobuf.Timestamp delete_time = 17;
+}
+
+// AgentDefinitionList is a stable page of public definition views.
+message AgentDefinitionList {
+  repeated AgentDefinitionView agent_definitions = 1;
+  PageMetadata page = 2;
+}
+
+// AgentRunCreate is public agent-run intent.
+message AgentRunCreate {
+  string agent_run_id = 1;
+  ResourceRef definition = 2;
+  string definition_digest = 3;
+  ArtifactRef input = 4;
+  ArtifactRef model_provider_manifest = 5;
+}
+
+// AgentRunView is distinct from the internal run aggregate.
+message AgentRunView {
+  string name = 1;
+  string uid = 2;
+  uint64 revision = 3;
+  string etag = 4;
+  google.protobuf.Timestamp create_time = 5;
+  google.protobuf.Timestamp update_time = 6;
+  ResourceRef definition = 7;
+  string definition_digest = 8;
+  string state = 9;
+  ArtifactRef input = 10;
+  ArtifactRef run_manifest = 11;
+  ArtifactRef output = 12;
+  PublicError failure = 13;
+  google.protobuf.Timestamp delete_time = 14;
+}
+
+// AgentRunList is a stable page of public run views.
+message AgentRunList {
+  repeated AgentRunView agent_runs = 1;
+  PageMetadata page = 2;
+}
+
+// WorkflowDefinitionCreate is public workflow intent by immutable reference.
+message WorkflowDefinitionCreate {
+  string workflow_definition_id = 1;
+  string display_name = 2;
+  string semantic_version = 3;
+  ArtifactRef definition = 4;
+  ArtifactRef input_schema = 5;
+  ArtifactRef output_schema = 6;
+}
+
+// WorkflowDefinitionView is a non-executable public workflow summary.
+message WorkflowDefinitionView {
+  string name = 1;
+  string uid = 2;
+  uint64 revision = 3;
+  string etag = 4;
+  google.protobuf.Timestamp create_time = 5;
+  google.protobuf.Timestamp update_time = 6;
+  string display_name = 7;
+  string semantic_version = 8;
+  ArtifactRef definition = 9;
+  ArtifactRef input_schema = 10;
+  ArtifactRef output_schema = 11;
+  string state = 12;
+  string resolved_graph_digest = 13;
+  string workflow_definition_id = 14;
+  google.protobuf.Timestamp delete_time = 15;
+}
+
+// WorkflowDefinitionList is a stable page of public definition views.
+message WorkflowDefinitionList {
+  repeated WorkflowDefinitionView workflow_definitions = 1;
+  PageMetadata page = 2;
+}
+
+// WorkflowRunCreate is public workflow-run intent.
+message WorkflowRunCreate {
+  string workflow_run_id = 1;
+  ResourceRef definition = 2;
+  string definition_digest = 3;
+  ResourceRef agent_run = 4;
+  ArtifactRef input = 5;
+}
+
+// WorkflowRunView is distinct from the internal run aggregate.
+message WorkflowRunView {
+  string name = 1;
+  string uid = 2;
+  uint64 revision = 3;
+  string etag = 4;
+  google.protobuf.Timestamp create_time = 5;
+  google.protobuf.Timestamp update_time = 6;
+  ResourceRef definition = 7;
+  string definition_digest = 8;
+  string state = 9;
+  ArtifactRef input = 10;
+  ArtifactRef output = 11;
+  ArtifactRef replay_state = 12;
+  PublicError failure = 13;
+  google.protobuf.Timestamp delete_time = 14;
+}
+
+// WorkflowRunList is a stable page of public run views.
+message WorkflowRunList {
+  repeated WorkflowRunView workflow_runs = 1;
+  PageMetadata page = 2;
+}
+
+// ApprovalRequestView is a public approval status summary.
+message ApprovalRequestView {
+  string name = 1;
+  string uid = 2;
+  uint64 revision = 3;
+  string etag = 4;
+  google.protobuf.Timestamp create_time = 5;
+  google.protobuf.Timestamp update_time = 6;
+  string state = 7;
+  string action = 8;
+  string intent_digest = 9;
+  uint32 minimum_independent_approvers = 10;
+  google.protobuf.Timestamp expire_time = 11;
+  google.protobuf.Timestamp delete_time = 12;
+}
+
+// ApprovalRequestList is a stable page of public approval views.
+message ApprovalRequestList {
+  repeated ApprovalRequestView approvals = 1;
+  PageMetadata page = 2;
+}
+
+// ApprovalDecision is an independently authenticated human decision.
+message ApprovalDecision {
+  string decision = 1;
+  string reason_code = 2;
+  string safe_reason = 3;
+}
+
+// ApprovalReceiptView is immutable public decision evidence.
+message ApprovalReceiptView {
+  string name = 1;
+  string uid = 2;
+  ResourceRef request = 3;
+  string decision = 4;
+  string reason_code = 5;
+  string safe_reason = 6;
+  string receipt_digest = 7;
+  google.protobuf.Timestamp create_time = 8;
+}
+
+// TenantView is a public summary without trusted identity inputs.
+message TenantView {
+  string name = 1;
+  string uid = 2;
+  uint64 revision = 3;
+  string etag = 4;
+  google.protobuf.Timestamp create_time = 5;
+  google.protobuf.Timestamp update_time = 6;
+  string display_name = 7;
+  string state = 8;
+  string default_classification = 9;
+  repeated string allowed_regions = 10;
+  map<string, string> labels = 11;
+  google.protobuf.Timestamp delete_time = 12;
+}
+
+// ProjectCreate is public project creation intent.
+message ProjectCreate {
+  string project_id = 1;
+  string display_name = 2;
+  string purpose = 3;
+  string default_classification = 4;
+  map<string, string> labels = 5;
+}
+
+// ProjectView is distinct from the internal project aggregate.
+message ProjectView {
+  string name = 1;
+  string uid = 2;
+  uint64 revision = 3;
+  string etag = 4;
+  google.protobuf.Timestamp create_time = 5;
+  google.protobuf.Timestamp update_time = 6;
+  string display_name = 7;
+  string purpose = 8;
+  string default_classification = 9;
+  map<string, string> labels = 10;
+  string state = 11;
+  string project_id = 12;
+  google.protobuf.Timestamp delete_time = 13;
+}
+
+// ProjectList is a stable page of public project views.
+message ProjectList {
+  repeated ProjectView projects = 1;
+  PageMetadata page = 2;
+}
+
+// AuditRecordView is a sanitized append-only audit summary.
+message AuditRecordView {
+  string event_id = 1;
+  google.protobuf.Timestamp event_time = 2;
+  string actor = 3;
+  string action = 4;
+  ResourceRef resource = 5;
+  string result = 6;
+  string policy_reason_code = 7;
+  string request_id = 8;
+  string trace_id = 9;
+  string detail_digest = 10;
+}
+
+// AuditRecordList is a stable page of public audit summaries.
+message AuditRecordList {
+  repeated AuditRecordView records = 1;
+  PageMetadata page = 2;
+}
+
+// GetResourceRequest identifies a canonical resource; auth identity is metadata.
+message GetResourceRequest {
+  string name = 1;
+}
+
+// ListResourcesRequest carries only public query parameters.
+message ListResourcesRequest {
+  string parent = 1;
+  uint32 page_size = 2;
+  string page_token = 3;
+  string filter = 4;
+  string order_by = 5;
+}
+
+// ListChildResourcesRequest carries pagination for immutable child collections.
+message ListChildResourcesRequest {
+  string parent = 1;
+  uint32 page_size = 2;
+  string page_token = 3;
+}
+
+// SubmitInferenceRequest binds public inference intent below a canonical parent.
+message SubmitInferenceRequest {
+  string parent = 1;
+  InferenceSubmission submission = 2;
+}
+// CancelOperationRequest binds a public cancellation body to an operation name.
+message CancelOperationRequest {
+  string name = 1;
+  CancellationRequest cancellation = 2;
+}
+// DownloadArtifactRequest selects an optional half-open byte range.
+message DownloadArtifactRequest {
+  string name = 1;
+}
+// WatchOperationRequest resumes after an optional public revision.
+message WatchOperationRequest { string name = 1; }
+// CreateDatasetRequest binds creation intent below a canonical parent.
+message CreateDatasetRequest {
+  string parent = 1;
+  DatasetCreate dataset = 2;
+}
+// UpdateDatasetRequest binds a merge patch to a canonical resource name.
+message UpdateDatasetRequest {
+  string name = 1;
+  DatasetUpdate dataset = 2;
+}
+// CreateDatasetReleaseRequest binds immutable release intent.
+message CreateDatasetReleaseRequest {
+  string parent = 1;
+  DatasetReleaseCreate release = 2;
+}
+// CreateModelRequest binds model intent below a canonical parent.
+message CreateModelRequest {
+  string parent = 1;
+  ModelCreate model = 2;
+}
+// UpdateModelRequest binds a merge patch to a canonical resource name.
+message UpdateModelRequest {
+  string name = 1;
+  ModelUpdate model = 2;
+}
+// CreateModelReleaseRequest binds immutable model-release intent.
+message CreateModelReleaseRequest {
+  string parent = 1;
+  ModelReleaseCreate release = 2;
+}
+// CreateTrainingRunRequest binds non-executable training intent.
+message CreateTrainingRunRequest {
+  string parent = 1;
+  TrainingRunCreate training_run = 2;
+}
+// CreateEvaluationRunRequest binds evaluation intent.
+message CreateEvaluationRunRequest {
+  string parent = 1;
+  EvaluationRunCreate evaluation_run = 2;
+}
+// CreateAgentDefinitionRequest binds definition intent.
+message CreateAgentDefinitionRequest {
+  string parent = 1;
+  AgentDefinitionCreate agent_definition = 2;
+}
+// CreateAgentRunRequest binds agent-run intent.
+message CreateAgentRunRequest {
+  string parent = 1;
+  AgentRunCreate agent_run = 2;
+}
+// CreateWorkflowDefinitionRequest binds workflow definition intent.
+message CreateWorkflowDefinitionRequest {
+  string parent = 1;
+  WorkflowDefinitionCreate workflow_definition = 2;
+}
+// CreateWorkflowRunRequest binds workflow-run intent.
+message CreateWorkflowRunRequest {
+  string parent = 1;
+  WorkflowRunCreate workflow_run = 2;
+}
+// DecideApprovalRequest binds a decision to a canonical approval name.
+message DecideApprovalRequest {
+  string name = 1;
+  ApprovalDecision approval = 2;
+}
+// CreateProjectRequest binds project intent below a canonical tenant name.
+message CreateProjectRequest {
+  string parent = 1;
+  ProjectCreate project = 2;
+}
+// ListAuditRecordsRequest carries the curated audit query surface.
+message ListAuditRecordsRequest {
+  string parent = 1;
+  uint32 page_size = 2;
+  string page_token = 3;
+  string actor = 4;
+  string action = 5;
+  string request_id = 6;
+}
+
+// MindcladeService is the only public gRPC façade.
+service MindcladeService {
+  rpc SubmitInference(SubmitInferenceRequest) returns (Operation) {
+    option (google.api.http) = {
+      post: "/v1/{parent=tenants/*/projects/*}/inferenceOperations"
+      body: "submission"
+    };
+    option (public_http) = {
+      success_status: 202
+      bearer_auth: true
+      request_headers: "Idempotency-Key"
+      request_headers: "X-Mindclade-Deadline"
+      stream: STREAM_PROJECTION_NONE
+    };
+  }
+  rpc GetOperation(GetResourceRequest) returns (Operation) {
+    option (google.api.http) = {get: "/v1/{name=tenants/*/projects/*/operations/*}"};
+    option (public_http) = {
+      success_status: 200
+      bearer_auth: true
+      request_headers: "If-None-Match"
+      response_headers: "ETag"
+      stream: STREAM_PROJECTION_NONE
+    };
+  }
+  rpc CancelOperation(CancelOperationRequest) returns (Operation) {
+    option (google.api.http) = {
+      post: "/v1/{name=tenants/*/projects/*/operations/*}:cancel"
+      body: "cancellation"
+    };
+    option (public_http) = {
+      success_status: 200
+      bearer_auth: true
+      request_headers: "Idempotency-Key"
+      request_headers: "X-Mindclade-Deadline"
+      request_headers: "If-Match"
+      stream: STREAM_PROJECTION_NONE
+    };
+  }
+  rpc WatchOperation(WatchOperationRequest) returns (stream OperationEvent) {
+    option (google.api.http) = {get: "/v1/{name=tenants/*/projects/*/operations/*}:watch"};
+    option (public_http) = {
+      success_status: 200
+      bearer_auth: true
+      request_headers: "Last-Event-ID"
+      stream: STREAM_PROJECTION_SSE
+    };
+  }
+  rpc GetArtifact(GetResourceRequest) returns (ArtifactView) {
+    option (google.api.http) = {get: "/v1/{name=tenants/*/projects/*/artifacts/*}"};
+    option (public_http) = {
+      success_status: 200
+      bearer_auth: true
+      request_headers: "If-None-Match"
+      response_headers: "ETag"
+      stream: STREAM_PROJECTION_NONE
+    };
+  }
+  rpc DownloadArtifact(DownloadArtifactRequest) returns (stream DownloadArtifactChunk) {
+    option (google.api.http) = {get: "/v1/{name=tenants/*/projects/*/artifacts/*}:download"};
+    option (public_http) = {
+      success_status: 200
+      success_status: 206
+      bearer_auth: true
+      request_headers: "Range"
+      response_headers: "Content-Range"
+      stream: STREAM_PROJECTION_BINARY
+    };
+  }
+  rpc ListDatasets(ListResourcesRequest) returns (DatasetList) {
+    option (google.api.http) = {get: "/v1/{parent=tenants/*/projects/*}/datasets"};
+    option (public_http) = {
+      success_status: 200
+      bearer_auth: true
+      stream: STREAM_PROJECTION_NONE
+    };
+  }
+  rpc CreateDataset(CreateDatasetRequest) returns (DatasetView) {
+    option (google.api.http) = {
+      post: "/v1/{parent=tenants/*/projects/*}/datasets"
+      body: "dataset"
+    };
+    option (public_http) = {
+      success_status: 201
+      bearer_auth: true
+      request_headers: "Idempotency-Key"
+      stream: STREAM_PROJECTION_NONE
+    };
+  }
+  rpc GetDataset(GetResourceRequest) returns (DatasetView) {
+    option (google.api.http) = {get: "/v1/{name=tenants/*/projects/*/datasets/*}"};
+    option (public_http) = {
+      success_status: 200
+      bearer_auth: true
+      request_headers: "If-None-Match"
+      response_headers: "ETag"
+      stream: STREAM_PROJECTION_NONE
+    };
+  }
+  rpc UpdateDataset(UpdateDatasetRequest) returns (DatasetView) {
+    option (google.api.http) = {
+      patch: "/v1/{name=tenants/*/projects/*/datasets/*}"
+      body: "dataset"
+    };
+    option (public_http) = {
+      success_status: 200
+      bearer_auth: true
+      request_headers: "Idempotency-Key"
+      request_headers: "If-Match"
+      stream: STREAM_PROJECTION_NONE
+    };
+  }
+  rpc ListDatasetReleases(ListChildResourcesRequest) returns (DatasetReleaseList) {
+    option (google.api.http) = {get: "/v1/{parent=tenants/*/projects/*/datasets/*}/releases"};
+    option (public_http) = {
+      success_status: 200
+      bearer_auth: true
+      stream: STREAM_PROJECTION_NONE
+    };
+  }
+  rpc CreateDatasetRelease(CreateDatasetReleaseRequest) returns (DatasetReleaseView) {
+    option (google.api.http) = {
+      post: "/v1/{parent=tenants/*/projects/*/datasets/*}/releases"
+      body: "release"
+    };
+    option (public_http) = {
+      success_status: 201
+      bearer_auth: true
+      request_headers: "Idempotency-Key"
+      stream: STREAM_PROJECTION_NONE
+    };
+  }
+  rpc ListModels(ListResourcesRequest) returns (ModelList) {
+    option (google.api.http) = {get: "/v1/{parent=tenants/*/projects/*}/models"};
+    option (public_http) = {
+      success_status: 200
+      bearer_auth: true
+      stream: STREAM_PROJECTION_NONE
+    };
+  }
+  rpc CreateModel(CreateModelRequest) returns (ModelView) {
+    option (google.api.http) = {
+      post: "/v1/{parent=tenants/*/projects/*}/models"
+      body: "model"
+    };
+    option (public_http) = {
+      success_status: 201
+      bearer_auth: true
+      request_headers: "Idempotency-Key"
+      stream: STREAM_PROJECTION_NONE
+    };
+  }
+  rpc GetModel(GetResourceRequest) returns (ModelView) {
+    option (google.api.http) = {get: "/v1/{name=tenants/*/projects/*/models/*}"};
+    option (public_http) = {
+      success_status: 200
+      bearer_auth: true
+      request_headers: "If-None-Match"
+      response_headers: "ETag"
+      stream: STREAM_PROJECTION_NONE
+    };
+  }
+  rpc UpdateModel(UpdateModelRequest) returns (ModelView) {
+    option (google.api.http) = {
+      patch: "/v1/{name=tenants/*/projects/*/models/*}"
+      body: "model"
+    };
+    option (public_http) = {
+      success_status: 200
+      bearer_auth: true
+      request_headers: "Idempotency-Key"
+      request_headers: "If-Match"
+      stream: STREAM_PROJECTION_NONE
+    };
+  }
+  rpc ListModelReleases(ListChildResourcesRequest) returns (ModelReleaseList) {
+    option (google.api.http) = {get: "/v1/{parent=tenants/*/projects/*/models/*}/releases"};
+    option (public_http) = {
+      success_status: 200
+      bearer_auth: true
+      stream: STREAM_PROJECTION_NONE
+    };
+  }
+  rpc CreateModelRelease(CreateModelReleaseRequest) returns (ModelReleaseView) {
+    option (google.api.http) = {
+      post: "/v1/{parent=tenants/*/projects/*/models/*}/releases"
+      body: "release"
+    };
+    option (public_http) = {
+      success_status: 201
+      bearer_auth: true
+      request_headers: "Idempotency-Key"
+      stream: STREAM_PROJECTION_NONE
+    };
+  }
+  rpc ListTrainingRuns(ListResourcesRequest) returns (TrainingRunList) {
+    option (google.api.http) = {get: "/v1/{parent=tenants/*/projects/*}/trainingRuns"};
+    option (public_http) = {
+      success_status: 200
+      bearer_auth: true
+      stream: STREAM_PROJECTION_NONE
+    };
+  }
+  rpc CreateTrainingRun(CreateTrainingRunRequest) returns (Operation) {
+    option (google.api.http) = {
+      post: "/v1/{parent=tenants/*/projects/*}/trainingRuns"
+      body: "training_run"
+    };
+    option (public_http) = {
+      success_status: 202
+      bearer_auth: true
+      request_headers: "Idempotency-Key"
+      request_headers: "X-Mindclade-Deadline"
+      stream: STREAM_PROJECTION_NONE
+    };
+  }
+  rpc GetTrainingRun(GetResourceRequest) returns (TrainingRunView) {
+    option (google.api.http) = {get: "/v1/{name=tenants/*/projects/*/trainingRuns/*}"};
+    option (public_http) = {
+      success_status: 200
+      bearer_auth: true
+      request_headers: "If-None-Match"
+      response_headers: "ETag"
+      stream: STREAM_PROJECTION_NONE
+    };
+  }
+  rpc ListEvaluationRuns(ListResourcesRequest) returns (EvaluationRunList) {
+    option (google.api.http) = {get: "/v1/{parent=tenants/*/projects/*}/evaluationRuns"};
+    option (public_http) = {
+      success_status: 200
+      bearer_auth: true
+      stream: STREAM_PROJECTION_NONE
+    };
+  }
+  rpc CreateEvaluationRun(CreateEvaluationRunRequest) returns (Operation) {
+    option (google.api.http) = {
+      post: "/v1/{parent=tenants/*/projects/*}/evaluationRuns"
+      body: "evaluation_run"
+    };
+    option (public_http) = {
+      success_status: 202
+      bearer_auth: true
+      request_headers: "Idempotency-Key"
+      request_headers: "X-Mindclade-Deadline"
+      stream: STREAM_PROJECTION_NONE
+    };
+  }
+  rpc GetEvaluationRun(GetResourceRequest) returns (EvaluationRunView) {
+    option (google.api.http) = {get: "/v1/{name=tenants/*/projects/*/evaluationRuns/*}"};
+    option (public_http) = {
+      success_status: 200
+      bearer_auth: true
+      request_headers: "If-None-Match"
+      response_headers: "ETag"
+      stream: STREAM_PROJECTION_NONE
+    };
+  }
+  rpc GetEvaluationResult(GetResourceRequest) returns (EvaluationResultView) {
+    option (google.api.http) = {get: "/v1/{name=tenants/*/projects/*/evaluationResults/*}"};
+    option (public_http) = {
+      success_status: 200
+      bearer_auth: true
+      stream: STREAM_PROJECTION_NONE
+    };
+  }
+  rpc ListAgentDefinitions(ListResourcesRequest) returns (AgentDefinitionList) {
+    option (google.api.http) = {get: "/v1/{parent=tenants/*/projects/*}/agentDefinitions"};
+    option (public_http) = {
+      success_status: 200
+      bearer_auth: true
+      stream: STREAM_PROJECTION_NONE
+    };
+  }
+  rpc CreateAgentDefinition(CreateAgentDefinitionRequest) returns (AgentDefinitionView) {
+    option (google.api.http) = {
+      post: "/v1/{parent=tenants/*/projects/*}/agentDefinitions"
+      body: "agent_definition"
+    };
+    option (public_http) = {
+      success_status: 201
+      bearer_auth: true
+      request_headers: "Idempotency-Key"
+      stream: STREAM_PROJECTION_NONE
+    };
+  }
+  rpc ListAgentRuns(ListResourcesRequest) returns (AgentRunList) {
+    option (google.api.http) = {get: "/v1/{parent=tenants/*/projects/*}/agentRuns"};
+    option (public_http) = {
+      success_status: 200
+      bearer_auth: true
+      stream: STREAM_PROJECTION_NONE
+    };
+  }
+  rpc CreateAgentRun(CreateAgentRunRequest) returns (Operation) {
+    option (google.api.http) = {
+      post: "/v1/{parent=tenants/*/projects/*}/agentRuns"
+      body: "agent_run"
+    };
+    option (public_http) = {
+      success_status: 202
+      bearer_auth: true
+      request_headers: "Idempotency-Key"
+      request_headers: "X-Mindclade-Deadline"
+      stream: STREAM_PROJECTION_NONE
+    };
+  }
+  rpc GetAgentRun(GetResourceRequest) returns (AgentRunView) {
+    option (google.api.http) = {get: "/v1/{name=tenants/*/projects/*/agentRuns/*}"};
+    option (public_http) = {
+      success_status: 200
+      bearer_auth: true
+      request_headers: "If-None-Match"
+      response_headers: "ETag"
+      stream: STREAM_PROJECTION_NONE
+    };
+  }
+  rpc ListWorkflowDefinitions(ListResourcesRequest) returns (WorkflowDefinitionList) {
+    option (google.api.http) = {get: "/v1/{parent=tenants/*/projects/*}/workflowDefinitions"};
+    option (public_http) = {
+      success_status: 200
+      bearer_auth: true
+      stream: STREAM_PROJECTION_NONE
+    };
+  }
+  rpc CreateWorkflowDefinition(CreateWorkflowDefinitionRequest) returns (WorkflowDefinitionView) {
+    option (google.api.http) = {
+      post: "/v1/{parent=tenants/*/projects/*}/workflowDefinitions"
+      body: "workflow_definition"
+    };
+    option (public_http) = {
+      success_status: 201
+      bearer_auth: true
+      request_headers: "Idempotency-Key"
+      stream: STREAM_PROJECTION_NONE
+    };
+  }
+  rpc ListWorkflowRuns(ListResourcesRequest) returns (WorkflowRunList) {
+    option (google.api.http) = {get: "/v1/{parent=tenants/*/projects/*}/workflowRuns"};
+    option (public_http) = {
+      success_status: 200
+      bearer_auth: true
+      stream: STREAM_PROJECTION_NONE
+    };
+  }
+  rpc CreateWorkflowRun(CreateWorkflowRunRequest) returns (Operation) {
+    option (google.api.http) = {
+      post: "/v1/{parent=tenants/*/projects/*}/workflowRuns"
+      body: "workflow_run"
+    };
+    option (public_http) = {
+      success_status: 202
+      bearer_auth: true
+      request_headers: "Idempotency-Key"
+      request_headers: "X-Mindclade-Deadline"
+      stream: STREAM_PROJECTION_NONE
+    };
+  }
+  rpc GetWorkflowRun(GetResourceRequest) returns (WorkflowRunView) {
+    option (google.api.http) = {get: "/v1/{name=tenants/*/projects/*/workflowRuns/*}"};
+    option (public_http) = {
+      success_status: 200
+      bearer_auth: true
+      request_headers: "If-None-Match"
+      response_headers: "ETag"
+      stream: STREAM_PROJECTION_NONE
+    };
+  }
+  rpc ListApprovalRequests(ListResourcesRequest) returns (ApprovalRequestList) {
+    option (google.api.http) = {get: "/v1/{parent=tenants/*/projects/*}/approvals"};
+    option (public_http) = {
+      success_status: 200
+      bearer_auth: true
+      stream: STREAM_PROJECTION_NONE
+    };
+  }
+  rpc DecideApproval(DecideApprovalRequest) returns (ApprovalReceiptView) {
+    option (google.api.http) = {
+      post: "/v1/{name=tenants/*/projects/*/approvals/*}:decide"
+      body: "approval"
+    };
+    option (public_http) = {
+      success_status: 201
+      bearer_auth: true
+      request_headers: "Idempotency-Key"
+      request_headers: "If-Match"
+      stream: STREAM_PROJECTION_NONE
+    };
+  }
+  rpc GetTenant(GetResourceRequest) returns (TenantView) {
+    option (google.api.http) = {get: "/v1/{name=tenants/*}"};
+    option (public_http) = {
+      success_status: 200
+      bearer_auth: true
+      request_headers: "If-None-Match"
+      response_headers: "ETag"
+      stream: STREAM_PROJECTION_NONE
+    };
+  }
+  rpc ListProjects(ListResourcesRequest) returns (ProjectList) {
+    option (google.api.http) = {get: "/v1/{parent=tenants/*}/projects"};
+    option (public_http) = {
+      success_status: 200
+      bearer_auth: true
+      stream: STREAM_PROJECTION_NONE
+    };
+  }
+  rpc CreateProject(CreateProjectRequest) returns (ProjectView) {
+    option (google.api.http) = {
+      post: "/v1/{parent=tenants/*}/projects"
+      body: "project"
+    };
+    option (public_http) = {
+      success_status: 201
+      bearer_auth: true
+      request_headers: "Idempotency-Key"
+      stream: STREAM_PROJECTION_NONE
+    };
+  }
+  rpc GetProject(GetResourceRequest) returns (ProjectView) {
+    option (google.api.http) = {get: "/v1/{name=tenants/*/projects/*}"};
+    option (public_http) = {
+      success_status: 200
+      bearer_auth: true
+      request_headers: "If-None-Match"
+      response_headers: "ETag"
+      stream: STREAM_PROJECTION_NONE
+    };
+  }
+  rpc ListAuditRecords(ListAuditRecordsRequest) returns (AuditRecordList) {
+    option (google.api.http) = {get: "/v1/{parent=tenants/*/projects/*}/auditRecords"};
+    option (public_http) = {
+      success_status: 200
+      bearer_auth: true
+      stream: STREAM_PROJECTION_NONE
+    };
+  }
+}

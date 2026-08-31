@@ -3,8 +3,11 @@ package controlplane_test
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
+
+	"google.golang.org/protobuf/proto"
 
 	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
 	"github.com/mindclade/mindclade/services/control_plane/internal/jobs"
@@ -23,14 +26,30 @@ func TestStaleCompletionIsRetainedButCannotAdvanceRun(t *testing.T) {
 	if err := repository.CreateRun(&jobv1.Run{RunId: "run-1", TenantId: "tenant-a", JobId: "job-1"}); err != nil {
 		t.Fatal(err)
 	}
-	first, err := repository.AcquireLease("tenant-a", "run-1", "attempt-1")
+	now := time.Now().UTC()
+	firstToken := "first-lease-token-" + strings.Repeat("a", 32)
+	first, firstFence, err := repository.AcquireLease(jobs.AcquireLeaseCommand{
+		TenantID: "tenant-a", RunID: "run-1", AttemptID: "attempt-1",
+		WorkerID: "worker-1", Token: firstToken, Duration: jobs.MinimumLeaseDuration, Now: now,
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, leaseErr := repository.AcquireLease("tenant-a", "run-1", "attempt-2"); leaseErr != nil {
+	if !jobs.ValidLease(first, firstFence, "worker-1", firstToken, now.Add(time.Second)) {
+		t.Fatal("fresh token-bound lease must validate")
+	}
+	secondToken := "second-lease-token-" + strings.Repeat("b", 32)
+	if _, _, leaseErr := repository.AcquireLease(jobs.AcquireLeaseCommand{
+		TenantID: "tenant-a", RunID: "run-1", AttemptID: "attempt-2",
+		WorkerID: "worker-2", Token: secondToken, Duration: jobs.MinimumLeaseDuration,
+		Now: now.Add(jobs.MinimumLeaseDuration + time.Second),
+	}); leaseErr != nil {
 		t.Fatal(leaseErr)
 	}
-	if completionErr := repository.CompleteAttempt("tenant-a", first.GetAttemptId(), first.GetLeaseEpoch(), jobv1.AttemptState_ATTEMPT_STATE_SUCCEEDED, time.Now()); !errors.Is(completionErr, jobs.ErrStaleCompletion) {
+	completion := proto.Clone(first).(*jobv1.Attempt)
+	completion.State = jobv1.AttemptState_ATTEMPT_STATE_SUCCEEDED
+	credentials := jobs.LeaseCredentials{TenantID: "tenant-a", AttemptID: first.GetAttemptId(), WorkerID: "worker-1", Token: firstToken, Epoch: first.GetLeaseEpoch()}
+	if completionErr := repository.CompleteAttempt(credentials, completion, first.GetResourceVersion(), now.Add(jobs.MinimumLeaseDuration+2*time.Second)); !errors.Is(completionErr, jobs.ErrStaleCompletion) {
 		t.Fatalf("expected stale completion, got %v", completionErr)
 	}
 	run, err := repository.Run("tenant-a", "run-1")

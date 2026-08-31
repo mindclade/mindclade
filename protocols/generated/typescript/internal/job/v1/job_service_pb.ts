@@ -4,8 +4,8 @@
 
 import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
 import { fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
-import type { FieldMask, Timestamp } from "@bufbuild/protobuf/wkt";
-import { file_google_protobuf_field_mask, file_google_protobuf_timestamp } from "@bufbuild/protobuf/wkt";
+import type { Duration, FieldMask, Timestamp } from "@bufbuild/protobuf/wkt";
+import { file_google_protobuf_duration, file_google_protobuf_field_mask, file_google_protobuf_timestamp } from "@bufbuild/protobuf/wkt";
 import type { CommandContext } from "../../../common/v1/command_context_pb.js";
 import { file_proto_mindclade_common_v1_command_context } from "../../../common/v1/command_context_pb.js";
 import type { PageRequest, PageResponse } from "../../../common/v1/pagination_pb.js";
@@ -28,7 +28,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file proto/mindclade/internal/job/v1/job_service.proto.
  */
 export const file_proto_mindclade_internal_job_v1_job_service: GenFile = /*@__PURE__*/
-  fileDesc("CjFwcm90by9taW5kY2xhZGUvaW50ZXJuYWwvam9iL3YxL2pvYl9zZXJ2aWNlLnByb3RvEhltaW5kY2xhZGUuaW50ZXJuYWwuam9iLnYxIjoKE0dldE9wZXJhdGlvblJlcXVlc3QSDAoEbmFtZRgBIAEoCRIVCg1pZl9ub25lX21hdGNoGAIgASgJIkYKFEdldE9wZXJhdGlvblJlc3BvbnNlEi4KCW9wZXJhdGlvbhgBIAEoCzIbLm1pbmRjbGFkZS5qb2IudjEuT3BlcmF0aW9uInkKFUxpc3RPcGVyYXRpb25zUmVxdWVzdBIOCgZwYXJlbnQYASABKAkSLgoEcGFnZRgCIAEoCzIgLm1pbmRjbGFkZS5jb21tb24udjEuUGFnZVJlcXVlc3QSDgoGZmlsdGVyGAMgASgJEhAKCG9yZGVyX2J5GAQgASgJIqkBChZMaXN0T3BlcmF0aW9uc1Jlc3BvbnNlEi8KCm9wZXJhdGlvbnMYASADKAsyGy5taW5kY2xhZGUuam9iLnYxLk9wZXJhdGlvbhIvCgRwYWdlGAIgASgLMiEubWluZGNsYWRlLmNvbW1vbi52MS5QYWdlUmVzcG9uc2USLQoJcmVhZF90aW1lGAMgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCJ6ChZDYW5jZWxPcGVyYXRpb25SZXF1ZXN0EjQKB2NvbnRleHQYASABKAsyIy5taW5kY2xhZGUuY29tbW9uLnYxLkNvbW1hbmRDb250ZXh0EgwKBG5hbWUYAiABKAkSDAoEZXRhZxgDIAEoCRIOCgZyZWFzb24YBCABKAkiSQoXQ2FuY2VsT3BlcmF0aW9uUmVzcG9uc2USLgoJb3BlcmF0aW9uGAEgASgLMhsubWluZGNsYWRlLmpvYi52MS5PcGVyYXRpb24iawoVV2F0Y2hPcGVyYXRpb25SZXF1ZXN0EgwKBG5hbWUYASABKAkSFgoOYWZ0ZXJfc2VxdWVuY2UYAiABKAQSLAoIZGVhZGxpbmUYAyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIosBChZXYXRjaE9wZXJhdGlvblJlc3BvbnNlEi4KCW9wZXJhdGlvbhgBIAEoCzIbLm1pbmRjbGFkZS5qb2IudjEuT3BlcmF0aW9uEhAKCHNlcXVlbmNlGAIgASgEEi8KC29ic2VydmVkX2F0GAMgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCJJChFSZXF1ZXN0Sm9iUmVxdWVzdBI0Cgdjb21tYW5kGAEgASgLMiMubWluZGNsYWRlLmpvYi52MS5SZXF1ZXN0Sm9iQ29tbWFuZCJoChJSZXF1ZXN0Sm9iUmVzcG9uc2USIgoDam9iGAEgASgLMhUubWluZGNsYWRlLmpvYi52MS5Kb2ISLgoJb3BlcmF0aW9uGAIgASgLMhsubWluZGNsYWRlLmpvYi52MS5PcGVyYXRpb24iNAoNR2V0Sm9iUmVxdWVzdBIMCgRuYW1lGAEgASgJEhUKDWlmX25vbmVfbWF0Y2gYAiABKAkiNAoOR2V0Sm9iUmVzcG9uc2USIgoDam9iGAEgASgLMhUubWluZGNsYWRlLmpvYi52MS5Kb2IicwoPTGlzdEpvYnNSZXF1ZXN0Eg4KBnBhcmVudBgBIAEoCRIuCgRwYWdlGAIgASgLMiAubWluZGNsYWRlLmNvbW1vbi52MS5QYWdlUmVxdWVzdBIOCgZmaWx0ZXIYAyABKAkSEAoIb3JkZXJfYnkYBCABKAkilwEKEExpc3RKb2JzUmVzcG9uc2USIwoEam9icxgBIAMoCzIVLm1pbmRjbGFkZS5qb2IudjEuSm9iEi8KBHBhZ2UYAiABKAsyIS5taW5kY2xhZGUuY29tbW9uLnYxLlBhZ2VSZXNwb25zZRItCglyZWFkX3RpbWUYAyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wInQKEENhbmNlbEpvYlJlcXVlc3QSNAoHY29udGV4dBgBIAEoCzIjLm1pbmRjbGFkZS5jb21tb24udjEuQ29tbWFuZENvbnRleHQSDAoEbmFtZRgCIAEoCRIMCgRldGFnGAMgASgJEg4KBnJlYXNvbhgEIAEoCSJDChFDYW5jZWxKb2JSZXNwb25zZRIuCglvcGVyYXRpb24YASABKAsyGy5taW5kY2xhZGUuam9iLnYxLk9wZXJhdGlvbiIdCg1HZXRSdW5SZXF1ZXN0EgwKBG5hbWUYASABKAkiNAoOR2V0UnVuUmVzcG9uc2USIgoDcnVuGAEgASgLMhUubWluZGNsYWRlLmpvYi52MS5SdW4iYQoPTGlzdFJ1bnNSZXF1ZXN0Eg4KBnBhcmVudBgBIAEoCRIuCgRwYWdlGAIgASgLMiAubWluZGNsYWRlLmNvbW1vbi52MS5QYWdlUmVxdWVzdBIOCgZmaWx0ZXIYAyABKAkilwEKEExpc3RSdW5zUmVzcG9uc2USIwoEcnVucxgBIAMoCzIVLm1pbmRjbGFkZS5qb2IudjEuUnVuEi8KBHBhZ2UYAiABKAsyIS5taW5kY2xhZGUuY29tbW9uLnYxLlBhZ2VSZXNwb25zZRItCglyZWFkX3RpbWUYAyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIiEKEUdldEF0dGVtcHRSZXF1ZXN0EgwKBG5hbWUYASABKAkiQAoSR2V0QXR0ZW1wdFJlc3BvbnNlEioKB2F0dGVtcHQYASABKAsyGS5taW5kY2xhZGUuam9iLnYxLkF0dGVtcHQiVQoTTGlzdEF0dGVtcHRzUmVxdWVzdBIOCgZwYXJlbnQYASABKAkSLgoEcGFnZRgCIAEoCzIgLm1pbmRjbGFkZS5jb21tb24udjEuUGFnZVJlcXVlc3QiowEKFExpc3RBdHRlbXB0c1Jlc3BvbnNlEisKCGF0dGVtcHRzGAEgAygLMhkubWluZGNsYWRlLmpvYi52MS5BdHRlbXB0Ei8KBHBhZ2UYAiABKAsyIS5taW5kY2xhZGUuY29tbW9uLnYxLlBhZ2VSZXNwb25zZRItCglyZWFkX3RpbWUYAyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIvkBChRDb21taXRBdHRlbXB0UmVxdWVzdBI0Cgdjb250ZXh0GAEgASgLMiMubWluZGNsYWRlLmNvbW1vbi52MS5Db21tYW5kQ29udGV4dBIqCgdhdHRlbXB0GAIgASgLMhkubWluZGNsYWRlLmpvYi52MS5BdHRlbXB0EisKBWZlbmNlGAMgASgLMhwubWluZGNsYWRlLmpvYi52MS5MZWFzZUZlbmNlEi8KC3VwZGF0ZV9tYXNrGAQgASgLMhouZ29vZ2xlLnByb3RvYnVmLkZpZWxkTWFzaxIhChlleHBlY3RlZF9yZXNvdXJjZV92ZXJzaW9uGAUgASgDImcKFUNvbW1pdEF0dGVtcHRSZXNwb25zZRIqCgdhdHRlbXB0GAEgASgLMhkubWluZGNsYWRlLmpvYi52MS5BdHRlbXB0EiIKA3J1bhgCIAEoCzIVLm1pbmRjbGFkZS5qb2IudjEuUnVuMu0DChBPcGVyYXRpb25TZXJ2aWNlEm8KDEdldE9wZXJhdGlvbhIuLm1pbmRjbGFkZS5pbnRlcm5hbC5qb2IudjEuR2V0T3BlcmF0aW9uUmVxdWVzdBovLm1pbmRjbGFkZS5pbnRlcm5hbC5qb2IudjEuR2V0T3BlcmF0aW9uUmVzcG9uc2USdQoOTGlzdE9wZXJhdGlvbnMSMC5taW5kY2xhZGUuaW50ZXJuYWwuam9iLnYxLkxpc3RPcGVyYXRpb25zUmVxdWVzdBoxLm1pbmRjbGFkZS5pbnRlcm5hbC5qb2IudjEuTGlzdE9wZXJhdGlvbnNSZXNwb25zZRJ4Cg9DYW5jZWxPcGVyYXRpb24SMS5taW5kY2xhZGUuaW50ZXJuYWwuam9iLnYxLkNhbmNlbE9wZXJhdGlvblJlcXVlc3QaMi5taW5kY2xhZGUuaW50ZXJuYWwuam9iLnYxLkNhbmNlbE9wZXJhdGlvblJlc3BvbnNlEncKDldhdGNoT3BlcmF0aW9uEjAubWluZGNsYWRlLmludGVybmFsLmpvYi52MS5XYXRjaE9wZXJhdGlvblJlcXVlc3QaMS5taW5kY2xhZGUuaW50ZXJuYWwuam9iLnYxLldhdGNoT3BlcmF0aW9uUmVzcG9uc2UwATKjAwoKSm9iU2VydmljZRJpCgpSZXF1ZXN0Sm9iEiwubWluZGNsYWRlLmludGVybmFsLmpvYi52MS5SZXF1ZXN0Sm9iUmVxdWVzdBotLm1pbmRjbGFkZS5pbnRlcm5hbC5qb2IudjEuUmVxdWVzdEpvYlJlc3BvbnNlEl0KBkdldEpvYhIoLm1pbmRjbGFkZS5pbnRlcm5hbC5qb2IudjEuR2V0Sm9iUmVxdWVzdBopLm1pbmRjbGFkZS5pbnRlcm5hbC5qb2IudjEuR2V0Sm9iUmVzcG9uc2USYwoITGlzdEpvYnMSKi5taW5kY2xhZGUuaW50ZXJuYWwuam9iLnYxLkxpc3RKb2JzUmVxdWVzdBorLm1pbmRjbGFkZS5pbnRlcm5hbC5qb2IudjEuTGlzdEpvYnNSZXNwb25zZRJmCglDYW5jZWxKb2ISKy5taW5kY2xhZGUuaW50ZXJuYWwuam9iLnYxLkNhbmNlbEpvYlJlcXVlc3QaLC5taW5kY2xhZGUuaW50ZXJuYWwuam9iLnYxLkNhbmNlbEpvYlJlc3BvbnNlMqAECgpSdW5TZXJ2aWNlEl0KBkdldFJ1bhIoLm1pbmRjbGFkZS5pbnRlcm5hbC5qb2IudjEuR2V0UnVuUmVxdWVzdBopLm1pbmRjbGFkZS5pbnRlcm5hbC5qb2IudjEuR2V0UnVuUmVzcG9uc2USYwoITGlzdFJ1bnMSKi5taW5kY2xhZGUuaW50ZXJuYWwuam9iLnYxLkxpc3RSdW5zUmVxdWVzdBorLm1pbmRjbGFkZS5pbnRlcm5hbC5qb2IudjEuTGlzdFJ1bnNSZXNwb25zZRJpCgpHZXRBdHRlbXB0EiwubWluZGNsYWRlLmludGVybmFsLmpvYi52MS5HZXRBdHRlbXB0UmVxdWVzdBotLm1pbmRjbGFkZS5pbnRlcm5hbC5qb2IudjEuR2V0QXR0ZW1wdFJlc3BvbnNlEm8KDExpc3RBdHRlbXB0cxIuLm1pbmRjbGFkZS5pbnRlcm5hbC5qb2IudjEuTGlzdEF0dGVtcHRzUmVxdWVzdBovLm1pbmRjbGFkZS5pbnRlcm5hbC5qb2IudjEuTGlzdEF0dGVtcHRzUmVzcG9uc2UScgoNQ29tbWl0QXR0ZW1wdBIvLm1pbmRjbGFkZS5pbnRlcm5hbC5qb2IudjEuQ29tbWl0QXR0ZW1wdFJlcXVlc3QaMC5taW5kY2xhZGUuaW50ZXJuYWwuam9iLnYxLkNvbW1pdEF0dGVtcHRSZXNwb25zZUJVWlNnaXRodWIuY29tL21pbmRjbGFkZS9taW5kY2xhZGUvcHJvdG9jb2xzL2dlbmVyYXRlZC9nby9pbnRlcm5hbC9qb2IvdjE7aW50ZXJuYWxqb2J2MWIGcHJvdG8z", [file_google_protobuf_field_mask, file_google_protobuf_timestamp, file_proto_mindclade_common_v1_command_context, file_proto_mindclade_common_v1_pagination, file_proto_mindclade_job_v1_attempt, file_proto_mindclade_job_v1_job, file_proto_mindclade_job_v1_job_commands, file_proto_mindclade_job_v1_lease_fencing, file_proto_mindclade_job_v1_operation, file_proto_mindclade_job_v1_run]);
+  fileDesc("CjFwcm90by9taW5kY2xhZGUvaW50ZXJuYWwvam9iL3YxL2pvYl9zZXJ2aWNlLnByb3RvEhltaW5kY2xhZGUuaW50ZXJuYWwuam9iLnYxIjoKE0dldE9wZXJhdGlvblJlcXVlc3QSDAoEbmFtZRgBIAEoCRIVCg1pZl9ub25lX21hdGNoGAIgASgJIkYKFEdldE9wZXJhdGlvblJlc3BvbnNlEi4KCW9wZXJhdGlvbhgBIAEoCzIbLm1pbmRjbGFkZS5qb2IudjEuT3BlcmF0aW9uInkKFUxpc3RPcGVyYXRpb25zUmVxdWVzdBIOCgZwYXJlbnQYASABKAkSLgoEcGFnZRgCIAEoCzIgLm1pbmRjbGFkZS5jb21tb24udjEuUGFnZVJlcXVlc3QSDgoGZmlsdGVyGAMgASgJEhAKCG9yZGVyX2J5GAQgASgJIqkBChZMaXN0T3BlcmF0aW9uc1Jlc3BvbnNlEi8KCm9wZXJhdGlvbnMYASADKAsyGy5taW5kY2xhZGUuam9iLnYxLk9wZXJhdGlvbhIvCgRwYWdlGAIgASgLMiEubWluZGNsYWRlLmNvbW1vbi52MS5QYWdlUmVzcG9uc2USLQoJcmVhZF90aW1lGAMgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCJ6ChZDYW5jZWxPcGVyYXRpb25SZXF1ZXN0EjQKB2NvbnRleHQYASABKAsyIy5taW5kY2xhZGUuY29tbW9uLnYxLkNvbW1hbmRDb250ZXh0EgwKBG5hbWUYAiABKAkSDAoEZXRhZxgDIAEoCRIOCgZyZWFzb24YBCABKAkiSQoXQ2FuY2VsT3BlcmF0aW9uUmVzcG9uc2USLgoJb3BlcmF0aW9uGAEgASgLMhsubWluZGNsYWRlLmpvYi52MS5PcGVyYXRpb24iawoVV2F0Y2hPcGVyYXRpb25SZXF1ZXN0EgwKBG5hbWUYASABKAkSFgoOYWZ0ZXJfc2VxdWVuY2UYAiABKAQSLAoIZGVhZGxpbmUYAyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIosBChZXYXRjaE9wZXJhdGlvblJlc3BvbnNlEi4KCW9wZXJhdGlvbhgBIAEoCzIbLm1pbmRjbGFkZS5qb2IudjEuT3BlcmF0aW9uEhAKCHNlcXVlbmNlGAIgASgEEi8KC29ic2VydmVkX2F0GAMgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCJJChFSZXF1ZXN0Sm9iUmVxdWVzdBI0Cgdjb21tYW5kGAEgASgLMiMubWluZGNsYWRlLmpvYi52MS5SZXF1ZXN0Sm9iQ29tbWFuZCJoChJSZXF1ZXN0Sm9iUmVzcG9uc2USIgoDam9iGAEgASgLMhUubWluZGNsYWRlLmpvYi52MS5Kb2ISLgoJb3BlcmF0aW9uGAIgASgLMhsubWluZGNsYWRlLmpvYi52MS5PcGVyYXRpb24iNAoNR2V0Sm9iUmVxdWVzdBIMCgRuYW1lGAEgASgJEhUKDWlmX25vbmVfbWF0Y2gYAiABKAkiNAoOR2V0Sm9iUmVzcG9uc2USIgoDam9iGAEgASgLMhUubWluZGNsYWRlLmpvYi52MS5Kb2IicwoPTGlzdEpvYnNSZXF1ZXN0Eg4KBnBhcmVudBgBIAEoCRIuCgRwYWdlGAIgASgLMiAubWluZGNsYWRlLmNvbW1vbi52MS5QYWdlUmVxdWVzdBIOCgZmaWx0ZXIYAyABKAkSEAoIb3JkZXJfYnkYBCABKAkilwEKEExpc3RKb2JzUmVzcG9uc2USIwoEam9icxgBIAMoCzIVLm1pbmRjbGFkZS5qb2IudjEuSm9iEi8KBHBhZ2UYAiABKAsyIS5taW5kY2xhZGUuY29tbW9uLnYxLlBhZ2VSZXNwb25zZRItCglyZWFkX3RpbWUYAyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wInQKEENhbmNlbEpvYlJlcXVlc3QSNAoHY29udGV4dBgBIAEoCzIjLm1pbmRjbGFkZS5jb21tb24udjEuQ29tbWFuZENvbnRleHQSDAoEbmFtZRgCIAEoCRIMCgRldGFnGAMgASgJEg4KBnJlYXNvbhgEIAEoCSJDChFDYW5jZWxKb2JSZXNwb25zZRIuCglvcGVyYXRpb24YASABKAsyGy5taW5kY2xhZGUuam9iLnYxLk9wZXJhdGlvbiIdCg1HZXRSdW5SZXF1ZXN0EgwKBG5hbWUYASABKAkiNAoOR2V0UnVuUmVzcG9uc2USIgoDcnVuGAEgASgLMhUubWluZGNsYWRlLmpvYi52MS5SdW4iYQoPTGlzdFJ1bnNSZXF1ZXN0Eg4KBnBhcmVudBgBIAEoCRIuCgRwYWdlGAIgASgLMiAubWluZGNsYWRlLmNvbW1vbi52MS5QYWdlUmVxdWVzdBIOCgZmaWx0ZXIYAyABKAkilwEKEExpc3RSdW5zUmVzcG9uc2USIwoEcnVucxgBIAMoCzIVLm1pbmRjbGFkZS5qb2IudjEuUnVuEi8KBHBhZ2UYAiABKAsyIS5taW5kY2xhZGUuY29tbW9uLnYxLlBhZ2VSZXNwb25zZRItCglyZWFkX3RpbWUYAyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIiEKEUdldEF0dGVtcHRSZXF1ZXN0EgwKBG5hbWUYASABKAkiQAoSR2V0QXR0ZW1wdFJlc3BvbnNlEioKB2F0dGVtcHQYASABKAsyGS5taW5kY2xhZGUuam9iLnYxLkF0dGVtcHQiVQoTTGlzdEF0dGVtcHRzUmVxdWVzdBIOCgZwYXJlbnQYASABKAkSLgoEcGFnZRgCIAEoCzIgLm1pbmRjbGFkZS5jb21tb24udjEuUGFnZVJlcXVlc3QiowEKFExpc3RBdHRlbXB0c1Jlc3BvbnNlEisKCGF0dGVtcHRzGAEgAygLMhkubWluZGNsYWRlLmpvYi52MS5BdHRlbXB0Ei8KBHBhZ2UYAiABKAsyIS5taW5kY2xhZGUuY29tbW9uLnYxLlBhZ2VSZXNwb25zZRItCglyZWFkX3RpbWUYAyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIqsBChpBY3F1aXJlQXR0ZW1wdExlYXNlUmVxdWVzdBI0Cgdjb250ZXh0GAEgASgLMiMubWluZGNsYWRlLmNvbW1vbi52MS5Db21tYW5kQ29udGV4dBIQCghydW5fbmFtZRgCIAEoCRISCgphdHRlbXB0X2lkGAMgASgJEjEKDmxlYXNlX2R1cmF0aW9uGAQgASgLMhkuZ29vZ2xlLnByb3RvYnVmLkR1cmF0aW9uInYKG0FjcXVpcmVBdHRlbXB0TGVhc2VSZXNwb25zZRIqCgdhdHRlbXB0GAEgASgLMhkubWluZGNsYWRlLmpvYi52MS5BdHRlbXB0EisKBWZlbmNlGAIgASgLMhwubWluZGNsYWRlLmpvYi52MS5MZWFzZUZlbmNlItMBChhSZW5ld0F0dGVtcHRMZWFzZVJlcXVlc3QSNAoHY29udGV4dBgBIAEoCzIjLm1pbmRjbGFkZS5jb21tb24udjEuQ29tbWFuZENvbnRleHQSKwoFZmVuY2UYAiABKAsyHC5taW5kY2xhZGUuam9iLnYxLkxlYXNlRmVuY2USMQoObGVhc2VfZHVyYXRpb24YAyABKAsyGS5nb29nbGUucHJvdG9idWYuRHVyYXRpb24SIQoZZXhwZWN0ZWRfcmVzb3VyY2VfdmVyc2lvbhgEIAEoAyJ0ChlSZW5ld0F0dGVtcHRMZWFzZVJlc3BvbnNlEioKB2F0dGVtcHQYASABKAsyGS5taW5kY2xhZGUuam9iLnYxLkF0dGVtcHQSKwoFZmVuY2UYAiABKAsyHC5taW5kY2xhZGUuam9iLnYxLkxlYXNlRmVuY2Ui0gEKF0hlYXJ0YmVhdEF0dGVtcHRSZXF1ZXN0EjQKB2NvbnRleHQYASABKAsyIy5taW5kY2xhZGUuY29tbW9uLnYxLkNvbW1hbmRDb250ZXh0EisKBWZlbmNlGAIgASgLMhwubWluZGNsYWRlLmpvYi52MS5MZWFzZUZlbmNlEjEKDmxlYXNlX2R1cmF0aW9uGAMgASgLMhkuZ29vZ2xlLnByb3RvYnVmLkR1cmF0aW9uEiEKGWV4cGVjdGVkX3Jlc291cmNlX3ZlcnNpb24YBCABKAMipAEKGEhlYXJ0YmVhdEF0dGVtcHRSZXNwb25zZRIqCgdhdHRlbXB0GAEgASgLMhkubWluZGNsYWRlLmpvYi52MS5BdHRlbXB0EisKBWZlbmNlGAIgASgLMhwubWluZGNsYWRlLmpvYi52MS5MZWFzZUZlbmNlEi8KC29ic2VydmVkX2F0GAMgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCKsAQoUQ2FuY2VsQXR0ZW1wdFJlcXVlc3QSNAoHY29udGV4dBgBIAEoCzIjLm1pbmRjbGFkZS5jb21tb24udjEuQ29tbWFuZENvbnRleHQSKwoFZmVuY2UYAiABKAsyHC5taW5kY2xhZGUuam9iLnYxLkxlYXNlRmVuY2USIQoZZXhwZWN0ZWRfcmVzb3VyY2VfdmVyc2lvbhgDIAEoAxIOCgZyZWFzb24YBCABKAkiZwoVQ2FuY2VsQXR0ZW1wdFJlc3BvbnNlEioKB2F0dGVtcHQYASABKAsyGS5taW5kY2xhZGUuam9iLnYxLkF0dGVtcHQSIgoDcnVuGAIgASgLMhUubWluZGNsYWRlLmpvYi52MS5SdW4icQoaRXhwaXJlQXR0ZW1wdExlYXNlc1JlcXVlc3QSNAoHY29udGV4dBgBIAEoCzIjLm1pbmRjbGFkZS5jb21tb24udjEuQ29tbWFuZENvbnRleHQSDgoGcGFyZW50GAIgASgJEg0KBWxpbWl0GAMgASgNInsKG0V4cGlyZUF0dGVtcHRMZWFzZXNSZXNwb25zZRIrCghhdHRlbXB0cxgBIAMoCzIZLm1pbmRjbGFkZS5qb2IudjEuQXR0ZW1wdBIvCgtvYnNlcnZlZF9hdBgCIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAi+QEKFENvbW1pdEF0dGVtcHRSZXF1ZXN0EjQKB2NvbnRleHQYASABKAsyIy5taW5kY2xhZGUuY29tbW9uLnYxLkNvbW1hbmRDb250ZXh0EioKB2F0dGVtcHQYAiABKAsyGS5taW5kY2xhZGUuam9iLnYxLkF0dGVtcHQSKwoFZmVuY2UYAyABKAsyHC5taW5kY2xhZGUuam9iLnYxLkxlYXNlRmVuY2USLwoLdXBkYXRlX21hc2sYBCABKAsyGi5nb29nbGUucHJvdG9idWYuRmllbGRNYXNrEiEKGWV4cGVjdGVkX3Jlc291cmNlX3ZlcnNpb24YBSABKAMiZwoVQ29tbWl0QXR0ZW1wdFJlc3BvbnNlEioKB2F0dGVtcHQYASABKAsyGS5taW5kY2xhZGUuam9iLnYxLkF0dGVtcHQSIgoDcnVuGAIgASgLMhUubWluZGNsYWRlLmpvYi52MS5SdW4y7QMKEE9wZXJhdGlvblNlcnZpY2USbwoMR2V0T3BlcmF0aW9uEi4ubWluZGNsYWRlLmludGVybmFsLmpvYi52MS5HZXRPcGVyYXRpb25SZXF1ZXN0Gi8ubWluZGNsYWRlLmludGVybmFsLmpvYi52MS5HZXRPcGVyYXRpb25SZXNwb25zZRJ1Cg5MaXN0T3BlcmF0aW9ucxIwLm1pbmRjbGFkZS5pbnRlcm5hbC5qb2IudjEuTGlzdE9wZXJhdGlvbnNSZXF1ZXN0GjEubWluZGNsYWRlLmludGVybmFsLmpvYi52MS5MaXN0T3BlcmF0aW9uc1Jlc3BvbnNlEngKD0NhbmNlbE9wZXJhdGlvbhIxLm1pbmRjbGFkZS5pbnRlcm5hbC5qb2IudjEuQ2FuY2VsT3BlcmF0aW9uUmVxdWVzdBoyLm1pbmRjbGFkZS5pbnRlcm5hbC5qb2IudjEuQ2FuY2VsT3BlcmF0aW9uUmVzcG9uc2USdwoOV2F0Y2hPcGVyYXRpb24SMC5taW5kY2xhZGUuaW50ZXJuYWwuam9iLnYxLldhdGNoT3BlcmF0aW9uUmVxdWVzdBoxLm1pbmRjbGFkZS5pbnRlcm5hbC5qb2IudjEuV2F0Y2hPcGVyYXRpb25SZXNwb25zZTABMqMDCgpKb2JTZXJ2aWNlEmkKClJlcXVlc3RKb2ISLC5taW5kY2xhZGUuaW50ZXJuYWwuam9iLnYxLlJlcXVlc3RKb2JSZXF1ZXN0Gi0ubWluZGNsYWRlLmludGVybmFsLmpvYi52MS5SZXF1ZXN0Sm9iUmVzcG9uc2USXQoGR2V0Sm9iEigubWluZGNsYWRlLmludGVybmFsLmpvYi52MS5HZXRKb2JSZXF1ZXN0GikubWluZGNsYWRlLmludGVybmFsLmpvYi52MS5HZXRKb2JSZXNwb25zZRJjCghMaXN0Sm9icxIqLm1pbmRjbGFkZS5pbnRlcm5hbC5qb2IudjEuTGlzdEpvYnNSZXF1ZXN0GisubWluZGNsYWRlLmludGVybmFsLmpvYi52MS5MaXN0Sm9ic1Jlc3BvbnNlEmYKCUNhbmNlbEpvYhIrLm1pbmRjbGFkZS5pbnRlcm5hbC5qb2IudjEuQ2FuY2VsSm9iUmVxdWVzdBosLm1pbmRjbGFkZS5pbnRlcm5hbC5qb2IudjEuQ2FuY2VsSm9iUmVzcG9uc2UynwkKClJ1blNlcnZpY2USXQoGR2V0UnVuEigubWluZGNsYWRlLmludGVybmFsLmpvYi52MS5HZXRSdW5SZXF1ZXN0GikubWluZGNsYWRlLmludGVybmFsLmpvYi52MS5HZXRSdW5SZXNwb25zZRJjCghMaXN0UnVucxIqLm1pbmRjbGFkZS5pbnRlcm5hbC5qb2IudjEuTGlzdFJ1bnNSZXF1ZXN0GisubWluZGNsYWRlLmludGVybmFsLmpvYi52MS5MaXN0UnVuc1Jlc3BvbnNlEmkKCkdldEF0dGVtcHQSLC5taW5kY2xhZGUuaW50ZXJuYWwuam9iLnYxLkdldEF0dGVtcHRSZXF1ZXN0Gi0ubWluZGNsYWRlLmludGVybmFsLmpvYi52MS5HZXRBdHRlbXB0UmVzcG9uc2USbwoMTGlzdEF0dGVtcHRzEi4ubWluZGNsYWRlLmludGVybmFsLmpvYi52MS5MaXN0QXR0ZW1wdHNSZXF1ZXN0Gi8ubWluZGNsYWRlLmludGVybmFsLmpvYi52MS5MaXN0QXR0ZW1wdHNSZXNwb25zZRKEAQoTQWNxdWlyZUF0dGVtcHRMZWFzZRI1Lm1pbmRjbGFkZS5pbnRlcm5hbC5qb2IudjEuQWNxdWlyZUF0dGVtcHRMZWFzZVJlcXVlc3QaNi5taW5kY2xhZGUuaW50ZXJuYWwuam9iLnYxLkFjcXVpcmVBdHRlbXB0TGVhc2VSZXNwb25zZRJ+ChFSZW5ld0F0dGVtcHRMZWFzZRIzLm1pbmRjbGFkZS5pbnRlcm5hbC5qb2IudjEuUmVuZXdBdHRlbXB0TGVhc2VSZXF1ZXN0GjQubWluZGNsYWRlLmludGVybmFsLmpvYi52MS5SZW5ld0F0dGVtcHRMZWFzZVJlc3BvbnNlEnsKEEhlYXJ0YmVhdEF0dGVtcHQSMi5taW5kY2xhZGUuaW50ZXJuYWwuam9iLnYxLkhlYXJ0YmVhdEF0dGVtcHRSZXF1ZXN0GjMubWluZGNsYWRlLmludGVybmFsLmpvYi52MS5IZWFydGJlYXRBdHRlbXB0UmVzcG9uc2UScgoNQ2FuY2VsQXR0ZW1wdBIvLm1pbmRjbGFkZS5pbnRlcm5hbC5qb2IudjEuQ2FuY2VsQXR0ZW1wdFJlcXVlc3QaMC5taW5kY2xhZGUuaW50ZXJuYWwuam9iLnYxLkNhbmNlbEF0dGVtcHRSZXNwb25zZRKEAQoTRXhwaXJlQXR0ZW1wdExlYXNlcxI1Lm1pbmRjbGFkZS5pbnRlcm5hbC5qb2IudjEuRXhwaXJlQXR0ZW1wdExlYXNlc1JlcXVlc3QaNi5taW5kY2xhZGUuaW50ZXJuYWwuam9iLnYxLkV4cGlyZUF0dGVtcHRMZWFzZXNSZXNwb25zZRJyCg1Db21taXRBdHRlbXB0Ei8ubWluZGNsYWRlLmludGVybmFsLmpvYi52MS5Db21taXRBdHRlbXB0UmVxdWVzdBowLm1pbmRjbGFkZS5pbnRlcm5hbC5qb2IudjEuQ29tbWl0QXR0ZW1wdFJlc3BvbnNlQlVaU2dpdGh1Yi5jb20vbWluZGNsYWRlL21pbmRjbGFkZS9wcm90b2NvbHMvZ2VuZXJhdGVkL2dvL2ludGVybmFsL2pvYi92MTtpbnRlcm5hbGpvYnYxYgZwcm90bzM", [file_google_protobuf_field_mask, file_google_protobuf_duration, file_google_protobuf_timestamp, file_proto_mindclade_common_v1_command_context, file_proto_mindclade_common_v1_pagination, file_proto_mindclade_job_v1_attempt, file_proto_mindclade_job_v1_job, file_proto_mindclade_job_v1_job_commands, file_proto_mindclade_job_v1_lease_fencing, file_proto_mindclade_job_v1_operation, file_proto_mindclade_job_v1_run]);
 
 /**
  * GetOperationRequest identifies a durable operation and optional cache validator.
@@ -637,6 +637,298 @@ export const ListAttemptsResponseSchema: GenMessage<ListAttemptsResponse> = /*@_
   messageDesc(file_proto_mindclade_internal_job_v1_job_service, 23);
 
 /**
+ * AcquireAttemptLeaseRequest atomically creates a fenced execution attempt.
+ * The authenticated worker identity and raw lease token are transport metadata;
+ * only the token digest is represented in LeaseFence.
+ *
+ * @generated from message mindclade.internal.job.v1.AcquireAttemptLeaseRequest
+ */
+export type AcquireAttemptLeaseRequest = Message<"mindclade.internal.job.v1.AcquireAttemptLeaseRequest"> & {
+  /**
+   * @generated from field: mindclade.common.v1.CommandContext context = 1;
+   */
+  context?: CommandContext;
+
+  /**
+   * @generated from field: string run_name = 2;
+   */
+  runName: string;
+
+  /**
+   * @generated from field: string attempt_id = 3;
+   */
+  attemptId: string;
+
+  /**
+   * @generated from field: google.protobuf.Duration lease_duration = 4;
+   */
+  leaseDuration?: Duration;
+};
+
+/**
+ * Describes the message mindclade.internal.job.v1.AcquireAttemptLeaseRequest.
+ * Use `create(AcquireAttemptLeaseRequestSchema)` to create a new message.
+ */
+export const AcquireAttemptLeaseRequestSchema: GenMessage<AcquireAttemptLeaseRequest> = /*@__PURE__*/
+  messageDesc(file_proto_mindclade_internal_job_v1_job_service, 24);
+
+/**
+ * AcquireAttemptLeaseResponse returns the durable attempt and non-secret fence.
+ *
+ * @generated from message mindclade.internal.job.v1.AcquireAttemptLeaseResponse
+ */
+export type AcquireAttemptLeaseResponse = Message<"mindclade.internal.job.v1.AcquireAttemptLeaseResponse"> & {
+  /**
+   * @generated from field: mindclade.job.v1.Attempt attempt = 1;
+   */
+  attempt?: Attempt;
+
+  /**
+   * @generated from field: mindclade.job.v1.LeaseFence fence = 2;
+   */
+  fence?: LeaseFence;
+};
+
+/**
+ * Describes the message mindclade.internal.job.v1.AcquireAttemptLeaseResponse.
+ * Use `create(AcquireAttemptLeaseResponseSchema)` to create a new message.
+ */
+export const AcquireAttemptLeaseResponseSchema: GenMessage<AcquireAttemptLeaseResponse> = /*@__PURE__*/
+  messageDesc(file_proto_mindclade_internal_job_v1_job_service, 25);
+
+/**
+ * RenewAttemptLeaseRequest extends the current lease under token and epoch fencing.
+ *
+ * @generated from message mindclade.internal.job.v1.RenewAttemptLeaseRequest
+ */
+export type RenewAttemptLeaseRequest = Message<"mindclade.internal.job.v1.RenewAttemptLeaseRequest"> & {
+  /**
+   * @generated from field: mindclade.common.v1.CommandContext context = 1;
+   */
+  context?: CommandContext;
+
+  /**
+   * @generated from field: mindclade.job.v1.LeaseFence fence = 2;
+   */
+  fence?: LeaseFence;
+
+  /**
+   * @generated from field: google.protobuf.Duration lease_duration = 3;
+   */
+  leaseDuration?: Duration;
+
+  /**
+   * @generated from field: int64 expected_resource_version = 4;
+   */
+  expectedResourceVersion: bigint;
+};
+
+/**
+ * Describes the message mindclade.internal.job.v1.RenewAttemptLeaseRequest.
+ * Use `create(RenewAttemptLeaseRequestSchema)` to create a new message.
+ */
+export const RenewAttemptLeaseRequestSchema: GenMessage<RenewAttemptLeaseRequest> = /*@__PURE__*/
+  messageDesc(file_proto_mindclade_internal_job_v1_job_service, 26);
+
+/**
+ * RenewAttemptLeaseResponse returns the renewed attempt and fence deadline.
+ *
+ * @generated from message mindclade.internal.job.v1.RenewAttemptLeaseResponse
+ */
+export type RenewAttemptLeaseResponse = Message<"mindclade.internal.job.v1.RenewAttemptLeaseResponse"> & {
+  /**
+   * @generated from field: mindclade.job.v1.Attempt attempt = 1;
+   */
+  attempt?: Attempt;
+
+  /**
+   * @generated from field: mindclade.job.v1.LeaseFence fence = 2;
+   */
+  fence?: LeaseFence;
+};
+
+/**
+ * Describes the message mindclade.internal.job.v1.RenewAttemptLeaseResponse.
+ * Use `create(RenewAttemptLeaseResponseSchema)` to create a new message.
+ */
+export const RenewAttemptLeaseResponseSchema: GenMessage<RenewAttemptLeaseResponse> = /*@__PURE__*/
+  messageDesc(file_proto_mindclade_internal_job_v1_job_service, 27);
+
+/**
+ * HeartbeatAttemptRequest proves liveness and renews the authenticated lease.
+ *
+ * @generated from message mindclade.internal.job.v1.HeartbeatAttemptRequest
+ */
+export type HeartbeatAttemptRequest = Message<"mindclade.internal.job.v1.HeartbeatAttemptRequest"> & {
+  /**
+   * @generated from field: mindclade.common.v1.CommandContext context = 1;
+   */
+  context?: CommandContext;
+
+  /**
+   * @generated from field: mindclade.job.v1.LeaseFence fence = 2;
+   */
+  fence?: LeaseFence;
+
+  /**
+   * @generated from field: google.protobuf.Duration lease_duration = 3;
+   */
+  leaseDuration?: Duration;
+
+  /**
+   * @generated from field: int64 expected_resource_version = 4;
+   */
+  expectedResourceVersion: bigint;
+};
+
+/**
+ * Describes the message mindclade.internal.job.v1.HeartbeatAttemptRequest.
+ * Use `create(HeartbeatAttemptRequestSchema)` to create a new message.
+ */
+export const HeartbeatAttemptRequestSchema: GenMessage<HeartbeatAttemptRequest> = /*@__PURE__*/
+  messageDesc(file_proto_mindclade_internal_job_v1_job_service, 28);
+
+/**
+ * HeartbeatAttemptResponse returns the server-clock lease state.
+ *
+ * @generated from message mindclade.internal.job.v1.HeartbeatAttemptResponse
+ */
+export type HeartbeatAttemptResponse = Message<"mindclade.internal.job.v1.HeartbeatAttemptResponse"> & {
+  /**
+   * @generated from field: mindclade.job.v1.Attempt attempt = 1;
+   */
+  attempt?: Attempt;
+
+  /**
+   * @generated from field: mindclade.job.v1.LeaseFence fence = 2;
+   */
+  fence?: LeaseFence;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp observed_at = 3;
+   */
+  observedAt?: Timestamp;
+};
+
+/**
+ * Describes the message mindclade.internal.job.v1.HeartbeatAttemptResponse.
+ * Use `create(HeartbeatAttemptResponseSchema)` to create a new message.
+ */
+export const HeartbeatAttemptResponseSchema: GenMessage<HeartbeatAttemptResponse> = /*@__PURE__*/
+  messageDesc(file_proto_mindclade_internal_job_v1_job_service, 29);
+
+/**
+ * CancelAttemptRequest cancels the current authenticated attempt lease.
+ *
+ * @generated from message mindclade.internal.job.v1.CancelAttemptRequest
+ */
+export type CancelAttemptRequest = Message<"mindclade.internal.job.v1.CancelAttemptRequest"> & {
+  /**
+   * @generated from field: mindclade.common.v1.CommandContext context = 1;
+   */
+  context?: CommandContext;
+
+  /**
+   * @generated from field: mindclade.job.v1.LeaseFence fence = 2;
+   */
+  fence?: LeaseFence;
+
+  /**
+   * @generated from field: int64 expected_resource_version = 3;
+   */
+  expectedResourceVersion: bigint;
+
+  /**
+   * @generated from field: string reason = 4;
+   */
+  reason: string;
+};
+
+/**
+ * Describes the message mindclade.internal.job.v1.CancelAttemptRequest.
+ * Use `create(CancelAttemptRequestSchema)` to create a new message.
+ */
+export const CancelAttemptRequestSchema: GenMessage<CancelAttemptRequest> = /*@__PURE__*/
+  messageDesc(file_proto_mindclade_internal_job_v1_job_service, 30);
+
+/**
+ * CancelAttemptResponse returns the terminal attempt and reconciled run.
+ *
+ * @generated from message mindclade.internal.job.v1.CancelAttemptResponse
+ */
+export type CancelAttemptResponse = Message<"mindclade.internal.job.v1.CancelAttemptResponse"> & {
+  /**
+   * @generated from field: mindclade.job.v1.Attempt attempt = 1;
+   */
+  attempt?: Attempt;
+
+  /**
+   * @generated from field: mindclade.job.v1.Run run = 2;
+   */
+  run?: Run;
+};
+
+/**
+ * Describes the message mindclade.internal.job.v1.CancelAttemptResponse.
+ * Use `create(CancelAttemptResponseSchema)` to create a new message.
+ */
+export const CancelAttemptResponseSchema: GenMessage<CancelAttemptResponse> = /*@__PURE__*/
+  messageDesc(file_proto_mindclade_internal_job_v1_job_service, 31);
+
+/**
+ * ExpireAttemptLeasesRequest is a bounded reconciler command using server time.
+ *
+ * @generated from message mindclade.internal.job.v1.ExpireAttemptLeasesRequest
+ */
+export type ExpireAttemptLeasesRequest = Message<"mindclade.internal.job.v1.ExpireAttemptLeasesRequest"> & {
+  /**
+   * @generated from field: mindclade.common.v1.CommandContext context = 1;
+   */
+  context?: CommandContext;
+
+  /**
+   * @generated from field: string parent = 2;
+   */
+  parent: string;
+
+  /**
+   * @generated from field: uint32 limit = 3;
+   */
+  limit: number;
+};
+
+/**
+ * Describes the message mindclade.internal.job.v1.ExpireAttemptLeasesRequest.
+ * Use `create(ExpireAttemptLeasesRequestSchema)` to create a new message.
+ */
+export const ExpireAttemptLeasesRequestSchema: GenMessage<ExpireAttemptLeasesRequest> = /*@__PURE__*/
+  messageDesc(file_proto_mindclade_internal_job_v1_job_service, 32);
+
+/**
+ * ExpireAttemptLeasesResponse returns attempts fenced by this reconciliation.
+ *
+ * @generated from message mindclade.internal.job.v1.ExpireAttemptLeasesResponse
+ */
+export type ExpireAttemptLeasesResponse = Message<"mindclade.internal.job.v1.ExpireAttemptLeasesResponse"> & {
+  /**
+   * @generated from field: repeated mindclade.job.v1.Attempt attempts = 1;
+   */
+  attempts: Attempt[];
+
+  /**
+   * @generated from field: google.protobuf.Timestamp observed_at = 2;
+   */
+  observedAt?: Timestamp;
+};
+
+/**
+ * Describes the message mindclade.internal.job.v1.ExpireAttemptLeasesResponse.
+ * Use `create(ExpireAttemptLeasesResponseSchema)` to create a new message.
+ */
+export const ExpireAttemptLeasesResponseSchema: GenMessage<ExpireAttemptLeasesResponse> = /*@__PURE__*/
+  messageDesc(file_proto_mindclade_internal_job_v1_job_service, 33);
+
+/**
  * CommitAttemptRequest applies a bounded worker update under both revision and lease fencing.
  *
  * @generated from message mindclade.internal.job.v1.CommitAttemptRequest
@@ -673,7 +965,7 @@ export type CommitAttemptRequest = Message<"mindclade.internal.job.v1.CommitAtte
  * Use `create(CommitAttemptRequestSchema)` to create a new message.
  */
 export const CommitAttemptRequestSchema: GenMessage<CommitAttemptRequest> = /*@__PURE__*/
-  messageDesc(file_proto_mindclade_internal_job_v1_job_service, 24);
+  messageDesc(file_proto_mindclade_internal_job_v1_job_service, 34);
 
 /**
  * CommitAttemptResponse returns the accepted attempt and reconciled run state.
@@ -697,7 +989,7 @@ export type CommitAttemptResponse = Message<"mindclade.internal.job.v1.CommitAtt
  * Use `create(CommitAttemptResponseSchema)` to create a new message.
  */
 export const CommitAttemptResponseSchema: GenMessage<CommitAttemptResponse> = /*@__PURE__*/
-  messageDesc(file_proto_mindclade_internal_job_v1_job_service, 25);
+  messageDesc(file_proto_mindclade_internal_job_v1_job_service, 35);
 
 /**
  * OperationService owns durable long-running-operation queries and cancellation.
@@ -842,6 +1134,56 @@ export const RunService: GenService<{
     methodKind: "unary";
     input: typeof ListAttemptsRequestSchema;
     output: typeof ListAttemptsResponseSchema;
+  },
+  /**
+   * AcquireAttemptLease atomically issues one expiring, token-bound fence.
+   *
+   * @generated from rpc mindclade.internal.job.v1.RunService.AcquireAttemptLease
+   */
+  acquireAttemptLease: {
+    methodKind: "unary";
+    input: typeof AcquireAttemptLeaseRequestSchema;
+    output: typeof AcquireAttemptLeaseResponseSchema;
+  },
+  /**
+   * RenewAttemptLease extends only the current authenticated lease.
+   *
+   * @generated from rpc mindclade.internal.job.v1.RunService.RenewAttemptLease
+   */
+  renewAttemptLease: {
+    methodKind: "unary";
+    input: typeof RenewAttemptLeaseRequestSchema;
+    output: typeof RenewAttemptLeaseResponseSchema;
+  },
+  /**
+   * HeartbeatAttempt records liveness and renews only the current lease.
+   *
+   * @generated from rpc mindclade.internal.job.v1.RunService.HeartbeatAttempt
+   */
+  heartbeatAttempt: {
+    methodKind: "unary";
+    input: typeof HeartbeatAttemptRequestSchema;
+    output: typeof HeartbeatAttemptResponseSchema;
+  },
+  /**
+   * CancelAttempt terminates only the current authenticated lease.
+   *
+   * @generated from rpc mindclade.internal.job.v1.RunService.CancelAttempt
+   */
+  cancelAttempt: {
+    methodKind: "unary";
+    input: typeof CancelAttemptRequestSchema;
+    output: typeof CancelAttemptResponseSchema;
+  },
+  /**
+   * ExpireAttemptLeases fences a bounded batch whose deadlines elapsed.
+   *
+   * @generated from rpc mindclade.internal.job.v1.RunService.ExpireAttemptLeases
+   */
+  expireAttemptLeases: {
+    methodKind: "unary";
+    input: typeof ExpireAttemptLeasesRequestSchema;
+    output: typeof ExpireAttemptLeasesResponseSchema;
   },
   /**
    * CommitAttempt rejects stale resource revisions or lease epochs.

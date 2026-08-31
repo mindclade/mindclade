@@ -1329,6 +1329,161 @@ pub mod run_service_client {
                 );
             self.inner.unary(req, path, codec).await
         }
+        /** AcquireAttemptLease atomically issues one expiring, token-bound fence.
+*/
+        pub async fn acquire_attempt_lease(
+            &mut self,
+            request: impl tonic::IntoRequest<super::AcquireAttemptLeaseRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::AcquireAttemptLeaseResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::unknown(
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic_prost::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/mindclade.internal.job.v1.RunService/AcquireAttemptLease",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new(
+                        "mindclade.internal.job.v1.RunService",
+                        "AcquireAttemptLease",
+                    ),
+                );
+            self.inner.unary(req, path, codec).await
+        }
+        /** RenewAttemptLease extends only the current authenticated lease.
+*/
+        pub async fn renew_attempt_lease(
+            &mut self,
+            request: impl tonic::IntoRequest<super::RenewAttemptLeaseRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::RenewAttemptLeaseResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::unknown(
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic_prost::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/mindclade.internal.job.v1.RunService/RenewAttemptLease",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new(
+                        "mindclade.internal.job.v1.RunService",
+                        "RenewAttemptLease",
+                    ),
+                );
+            self.inner.unary(req, path, codec).await
+        }
+        /** HeartbeatAttempt records liveness and renews only the current lease.
+*/
+        pub async fn heartbeat_attempt(
+            &mut self,
+            request: impl tonic::IntoRequest<super::HeartbeatAttemptRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::HeartbeatAttemptResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::unknown(
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic_prost::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/mindclade.internal.job.v1.RunService/HeartbeatAttempt",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new(
+                        "mindclade.internal.job.v1.RunService",
+                        "HeartbeatAttempt",
+                    ),
+                );
+            self.inner.unary(req, path, codec).await
+        }
+        /** CancelAttempt terminates only the current authenticated lease.
+*/
+        pub async fn cancel_attempt(
+            &mut self,
+            request: impl tonic::IntoRequest<super::CancelAttemptRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::CancelAttemptResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::unknown(
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic_prost::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/mindclade.internal.job.v1.RunService/CancelAttempt",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new(
+                        "mindclade.internal.job.v1.RunService",
+                        "CancelAttempt",
+                    ),
+                );
+            self.inner.unary(req, path, codec).await
+        }
+        /** ExpireAttemptLeases fences a bounded batch whose deadlines elapsed.
+*/
+        pub async fn expire_attempt_leases(
+            &mut self,
+            request: impl tonic::IntoRequest<super::ExpireAttemptLeasesRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::ExpireAttemptLeasesResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::unknown(
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic_prost::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/mindclade.internal.job.v1.RunService/ExpireAttemptLeases",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new(
+                        "mindclade.internal.job.v1.RunService",
+                        "ExpireAttemptLeases",
+                    ),
+                );
+            self.inner.unary(req, path, codec).await
+        }
         /** CommitAttempt rejects stale resource revisions or lease epochs.
 */
         pub async fn commit_attempt(
@@ -1406,6 +1561,51 @@ pub mod run_service_server {
             request: tonic::Request<super::ListAttemptsRequest>,
         ) -> std::result::Result<
             tonic::Response<super::ListAttemptsResponse>,
+            tonic::Status,
+        >;
+        /** AcquireAttemptLease atomically issues one expiring, token-bound fence.
+*/
+        async fn acquire_attempt_lease(
+            &self,
+            request: tonic::Request<super::AcquireAttemptLeaseRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::AcquireAttemptLeaseResponse>,
+            tonic::Status,
+        >;
+        /** RenewAttemptLease extends only the current authenticated lease.
+*/
+        async fn renew_attempt_lease(
+            &self,
+            request: tonic::Request<super::RenewAttemptLeaseRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::RenewAttemptLeaseResponse>,
+            tonic::Status,
+        >;
+        /** HeartbeatAttempt records liveness and renews only the current lease.
+*/
+        async fn heartbeat_attempt(
+            &self,
+            request: tonic::Request<super::HeartbeatAttemptRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::HeartbeatAttemptResponse>,
+            tonic::Status,
+        >;
+        /** CancelAttempt terminates only the current authenticated lease.
+*/
+        async fn cancel_attempt(
+            &self,
+            request: tonic::Request<super::CancelAttemptRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::CancelAttemptResponse>,
+            tonic::Status,
+        >;
+        /** ExpireAttemptLeases fences a bounded batch whose deadlines elapsed.
+*/
+        async fn expire_attempt_leases(
+            &self,
+            request: tonic::Request<super::ExpireAttemptLeasesRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::ExpireAttemptLeasesResponse>,
             tonic::Status,
         >;
         /** CommitAttempt rejects stale resource revisions or lease epochs.
@@ -1659,6 +1859,234 @@ pub mod run_service_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let method = ListAttemptsSvc(inner);
+                        let codec = tonic_prost::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/mindclade.internal.job.v1.RunService/AcquireAttemptLease" => {
+                    #[allow(non_camel_case_types)]
+                    struct AcquireAttemptLeaseSvc<T: RunService>(pub Arc<T>);
+                    impl<
+                        T: RunService,
+                    > tonic::server::UnaryService<super::AcquireAttemptLeaseRequest>
+                    for AcquireAttemptLeaseSvc<T> {
+                        type Response = super::AcquireAttemptLeaseResponse;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::Response>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::AcquireAttemptLeaseRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as RunService>::acquire_attempt_lease(&inner, request)
+                                    .await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = AcquireAttemptLeaseSvc(inner);
+                        let codec = tonic_prost::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/mindclade.internal.job.v1.RunService/RenewAttemptLease" => {
+                    #[allow(non_camel_case_types)]
+                    struct RenewAttemptLeaseSvc<T: RunService>(pub Arc<T>);
+                    impl<
+                        T: RunService,
+                    > tonic::server::UnaryService<super::RenewAttemptLeaseRequest>
+                    for RenewAttemptLeaseSvc<T> {
+                        type Response = super::RenewAttemptLeaseResponse;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::Response>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::RenewAttemptLeaseRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as RunService>::renew_attempt_lease(&inner, request)
+                                    .await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = RenewAttemptLeaseSvc(inner);
+                        let codec = tonic_prost::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/mindclade.internal.job.v1.RunService/HeartbeatAttempt" => {
+                    #[allow(non_camel_case_types)]
+                    struct HeartbeatAttemptSvc<T: RunService>(pub Arc<T>);
+                    impl<
+                        T: RunService,
+                    > tonic::server::UnaryService<super::HeartbeatAttemptRequest>
+                    for HeartbeatAttemptSvc<T> {
+                        type Response = super::HeartbeatAttemptResponse;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::Response>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::HeartbeatAttemptRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as RunService>::heartbeat_attempt(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = HeartbeatAttemptSvc(inner);
+                        let codec = tonic_prost::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/mindclade.internal.job.v1.RunService/CancelAttempt" => {
+                    #[allow(non_camel_case_types)]
+                    struct CancelAttemptSvc<T: RunService>(pub Arc<T>);
+                    impl<
+                        T: RunService,
+                    > tonic::server::UnaryService<super::CancelAttemptRequest>
+                    for CancelAttemptSvc<T> {
+                        type Response = super::CancelAttemptResponse;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::Response>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::CancelAttemptRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as RunService>::cancel_attempt(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = CancelAttemptSvc(inner);
+                        let codec = tonic_prost::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/mindclade.internal.job.v1.RunService/ExpireAttemptLeases" => {
+                    #[allow(non_camel_case_types)]
+                    struct ExpireAttemptLeasesSvc<T: RunService>(pub Arc<T>);
+                    impl<
+                        T: RunService,
+                    > tonic::server::UnaryService<super::ExpireAttemptLeasesRequest>
+                    for ExpireAttemptLeasesSvc<T> {
+                        type Response = super::ExpireAttemptLeasesResponse;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::Response>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::ExpireAttemptLeasesRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as RunService>::expire_attempt_leases(&inner, request)
+                                    .await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = ExpireAttemptLeasesSvc(inner);
                         let codec = tonic_prost::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(

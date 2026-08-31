@@ -11,6 +11,8 @@ allowBuilds: {}
 catalog:
   '@connectrpc/connect': 2.1.2
   '@types/node': 24.10.1
+  ajv: 8.20.0
+  ajv-formats: 3.0.1
   typescript: 5.9.3
 
 catalogMode: strict

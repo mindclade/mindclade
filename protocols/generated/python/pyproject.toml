@@ -2,4 +2,4 @@
 name = "mindclade-generated-protocols"
 version = "0.1.0"
 requires-python = "==3.12.*"
-dependencies = ["grpcio==1.83.1", "protobuf==7.36.0"]
+dependencies = ["googleapis-common-protos==1.75.2", "grpcio==1.83.1", "jsonschema==4.26.0", "protobuf==7.36.0"]

@@ -635,6 +635,8 @@ def generate_connected(args: argparse.Namespace) -> int:
         "MINDCLADE_GENERATION_CONFIG_PATH": generation_path.as_posix(),
         "MINDCLADE_SDK_LANGUAGE": args.language,
         "MINDCLADE_SDK_OUTPUT_DIRECTORY": output_directory.as_posix(),
+        "MINDCLADE_SDK_POLICY_SHA256": policy_digest,
+        "MINDCLADE_SDK_POLICY_SOURCE": SDK_POLICY_SOURCE,
         "MINDCLADE_SDK_PROVIDER": args.provider,
     }
     try:

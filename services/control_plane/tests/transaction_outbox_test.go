@@ -13,6 +13,7 @@ import (
 	"time"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
+	"google.golang.org/protobuf/proto"
 
 	foundationaudit "github.com/mindclade/mindclade/libs/go/audit"
 	artifactv1 "github.com/mindclade/mindclade/protocols/generated/go/artifact/v1"
@@ -73,7 +74,8 @@ func TestOperationAcceptanceCommitsAuditAndOutboxAtomically(t *testing.T) {
 	requestDigest := "sha256:" + strings.Repeat("a", 64)
 	operation, replay, err := operations.Create(policies.DenyByDefault{}, repository, operations.CreateCommand{
 		Principal: principal, IdempotencyKey: "key-1", RequestDigest: requestDigest,
-		Operation: &jobv1.Operation{OperationId: "operation-1", TenantId: "tenant-a", ProjectId: "project-a", JobId: "job-1"},
+		ConfigurationDigest: "sha256:" + strings.Repeat("c", 64),
+		Operation:           &jobv1.Operation{OperationId: "operation-1", TenantId: "tenant-a", ProjectId: "project-a", JobId: "job-1"},
 	})
 	if err != nil || replay || operation.GetState() != jobv1.OperationState_OPERATION_STATE_PENDING {
 		t.Fatalf("unexpected operation result: %#v replay=%v err=%v", operation, replay, err)
@@ -157,14 +159,21 @@ func TestPostgresKernelJourney(t *testing.T) {
 	jobID := "job-" + unique
 	operationID := "operation-" + unique
 	requestHash := "sha256:" + strings.Repeat("a", 64)
-	if _, err := db.ExecContext(context, `INSERT INTO jobs (id, tenant_id, desired_state, version, created_at, updated_at) VALUES ($1, $2, 'ACCEPTED', 1, now(), now())`, jobID, tenantID); err != nil {
-		t.Fatalf("seed PostgreSQL job: %v", err)
-	}
+	configurationDigest := "sha256:" + strings.Repeat("c", 64)
 	t.Cleanup(func() {
-		_, _ = db.ExecContext(context, `DELETE FROM attempt_completion_history WHERE tenant_id = $1; DELETE FROM attempts WHERE tenant_id = $1; DELETE FROM runs WHERE tenant_id = $1; DELETE FROM outbox_messages WHERE tenant_id = $1; DELETE FROM audit_events WHERE tenant_id = $1; DELETE FROM idempotency_records WHERE tenant_id = $1; DELETE FROM operations WHERE tenant_id = $1; DELETE FROM jobs WHERE tenant_id = $1`, tenantID)
+		_, _ = db.ExecContext(context, `DELETE FROM attempt_completion_history WHERE tenant_id = $1; DELETE FROM attempt_output_refs WHERE tenant_id = $1; DELETE FROM attempts WHERE tenant_id = $1; DELETE FROM run_output_refs WHERE tenant_id = $1; DELETE FROM runs WHERE tenant_id = $1; DELETE FROM inbox_messages WHERE tenant_id = $1; DELETE FROM outbox_messages WHERE tenant_id = $1; DELETE FROM audit_events WHERE tenant_id = $1; DELETE FROM idempotency_records WHERE tenant_id = $1; DELETE FROM operations WHERE tenant_id = $1; DELETE FROM jobs WHERE tenant_id = $1; DELETE FROM error_precondition_violations WHERE tenant_id = $1; DELETE FROM error_field_violations WHERE tenant_id = $1; DELETE FROM error_details WHERE tenant_id = $1; DELETE FROM artifact_references WHERE tenant_id = $1`, tenantID)
 	})
+	jobsSQL := jobs.SQLRepository{DB: db}
+	configuration := &artifactv1.ArtifactRef{Digest: configurationDigest, MediaType: "application/json", SizeBytes: 128, ArtifactKind: "configuration", SchemaId: "mindclade.configuration", IntegrityDigest: configurationDigest, Uri: "gs://internal/configuration", SchemaVersion: "1"}
+	createdJob, err := jobsSQL.CreateJobSQL(context, &jobv1.Job{
+		JobId: jobID, TenantId: tenantID, ProjectId: "project-integration", JobKind: "training",
+		PolicyDigest: "sha256:" + strings.Repeat("b", 64), Configuration: configuration, Etag: "job-etag-1",
+	})
+	if err != nil || createdJob.GetConfiguration().GetDigest() != configurationDigest {
+		t.Fatalf("create PostgreSQL generated job: job=%v err=%v", createdJob, err)
+	}
 	operationsSQL := operations.SQLRepository{DB: db}
-	operationInput := &jobv1.Operation{OperationId: operationID, TenantId: tenantID, JobId: jobID}
+	operationInput := &jobv1.Operation{OperationId: operationID, TenantId: tenantID, ProjectId: "project-integration", JobId: jobID, Etag: "operation-etag-1"}
 	operation, replay, err := operationsSQL.CreateAtomicallySQL(context, operationInput, requestHash, "journey-key", "integration-principal")
 	if err != nil || replay || operation.GetState() != jobv1.OperationState_OPERATION_STATE_PENDING {
 		t.Fatalf("PostgreSQL operation acceptance failed: operation=%#v replay=%v err=%v", operation, replay, err)
@@ -180,23 +189,47 @@ func TestPostgresKernelJourney(t *testing.T) {
 	if auditPayload, validationErr := foundationaudit.ValidateEvent(auditEnvelope); validationErr != nil || auditPayload.GetAction() != operations.CreateAction {
 		t.Fatalf("validate PostgreSQL generated audit payload: payload=%v err=%v", auditPayload, validationErr)
 	}
-	if _, replay, err = operationsSQL.CreateAtomicallySQL(context, operationInput, requestHash, "journey-key", "integration-principal"); err != nil || !replay {
+	replayed, replay, err := operationsSQL.CreateAtomicallySQL(context, operationInput, requestHash, "journey-key", "integration-principal")
+	if err != nil || !replay || replayed.GetProjectId() != operationInput.GetProjectId() || replayed.GetEtag() != operationInput.GetEtag() {
 		t.Fatalf("PostgreSQL idempotency replay failed: replay=%v err=%v", replay, err)
 	}
-	if accepted, err := inbox.AcceptSQL(context, db, "integration-worker", "event-"+unique, tenantID); err != nil || !accepted {
+	var outboxEnvelopeBytes []byte
+	if queryErr := db.QueryRowContext(context, `SELECT envelope_bytes FROM outbox_messages WHERE tenant_id = $1 AND id = $2`, tenantID, "job-requested:"+operationID).Scan(&outboxEnvelopeBytes); queryErr != nil {
+		t.Fatalf("read PostgreSQL outbox envelope: %v", queryErr)
+	}
+	outboxEnvelope, err := queue.UnmarshalEnvelope(outboxEnvelopeBytes)
+	if err != nil {
+		t.Fatalf("decode PostgreSQL outbox envelope: %v", err)
+	}
+	jobRequested := new(jobv1.JobRequested)
+	if err = proto.Unmarshal(outboxEnvelope.GetPayload(), jobRequested); err != nil || jobRequested.GetConfigurationDigest() != configurationDigest {
+		t.Fatalf("JobRequested configuration digest: payload=%v err=%v", jobRequested, err)
+	}
+	if accepted, err := inbox.AcceptSQL(context, db, "integration-worker", outboxEnvelope); err != nil || !accepted {
 		t.Fatalf("PostgreSQL inbox first delivery failed: accepted=%v err=%v", accepted, err)
 	}
-	if accepted, err := inbox.AcceptSQL(context, db, "integration-worker", "event-"+unique, tenantID); err != nil || accepted {
+	if accepted, err := inbox.AcceptSQL(context, db, "integration-worker", outboxEnvelope); err != nil || accepted {
 		t.Fatalf("PostgreSQL inbox duplicate was not rejected: accepted=%v err=%v", accepted, err)
 	}
-	runID, attemptID := "run-"+unique, "attempt-"+unique
-	if _, err := db.ExecContext(context, `INSERT INTO runs (id, tenant_id, job_id, status, version, lease_epoch, created_at, updated_at) VALUES ($1, $2, $3, 'EXECUTING', 1, 2, now(), now())`, runID, tenantID, jobID); err != nil {
-		t.Fatalf("seed PostgreSQL run: %v", err)
+	runID := "run-" + unique
+	createdRun, err := jobsSQL.CreateRunSQL(context, &jobv1.Run{RunId: runID, TenantId: tenantID, ProjectId: "project-integration", JobId: jobID, Configuration: configuration, Etag: "run-etag-1"})
+	if err != nil || createdRun.GetConfiguration().GetDigest() != configurationDigest {
+		t.Fatalf("create PostgreSQL generated run: run=%v err=%v", createdRun, err)
 	}
-	if _, err := db.ExecContext(context, `INSERT INTO attempts (id, tenant_id, run_id, lease_epoch, status, created_at) VALUES ($1, $2, $3, 1, 'FENCED', now())`, attemptID, tenantID, runID); err != nil {
-		t.Fatalf("seed PostgreSQL fenced attempt: %v", err)
+	leaseTime := time.Now().UTC()
+	firstToken := "postgres-first-token-" + strings.Repeat("d", 32)
+	first, _, err := jobsSQL.AcquireLeaseSQL(context, jobs.AcquireLeaseCommand{TenantID: tenantID, RunID: runID, AttemptID: "attempt-first-" + unique, WorkerID: "worker-first", Token: firstToken, Duration: jobs.MinimumLeaseDuration, Now: leaseTime})
+	if err != nil {
+		t.Fatalf("acquire first PostgreSQL lease: %v", err)
 	}
-	if err := (jobs.SQLRepository{DB: db}).CompleteAttemptSQL(context, tenantID, attemptID, 1, jobv1.AttemptState_ATTEMPT_STATE_SUCCEEDED); !errors.Is(err, jobs.ErrStaleCompletion) {
-		t.Fatalf("PostgreSQL stale completion must be retained and fenced: %v", err)
+	secondToken := "postgres-second-token-" + strings.Repeat("e", 32)
+	if _, _, err = jobsSQL.AcquireLeaseSQL(context, jobs.AcquireLeaseCommand{TenantID: tenantID, RunID: runID, AttemptID: "attempt-second-" + unique, WorkerID: "worker-second", Token: secondToken, Duration: jobs.MinimumLeaseDuration, Now: leaseTime.Add(jobs.MinimumLeaseDuration + time.Second)}); err != nil {
+		t.Fatalf("acquire replacement PostgreSQL lease: %v", err)
+	}
+	completion := proto.Clone(first).(*jobv1.Attempt)
+	completion.State = jobv1.AttemptState_ATTEMPT_STATE_SUCCEEDED
+	credentials := jobs.LeaseCredentials{TenantID: tenantID, AttemptID: first.GetAttemptId(), WorkerID: first.GetWorkerId(), Token: firstToken, Epoch: first.GetLeaseEpoch()}
+	if _, _, completionErr := jobsSQL.CompleteAttemptSQL(context, credentials, completion, first.GetResourceVersion(), leaseTime.Add(jobs.MinimumLeaseDuration+2*time.Second)); !errors.Is(completionErr, jobs.ErrStaleCompletion) {
+		t.Fatalf("PostgreSQL stale completion must be retained and fenced: %v", completionErr)
 	}
 }
