@@ -66,6 +66,7 @@ py_test(
     name = "license_scanner_contract_test",
     srcs = ["licenses/scan_licenses.py"],
     args = ["--self-test"],
+    legacy_create_init = 0,
     main = "licenses/scan_licenses.py",
     python_version = "PY3",
 )
