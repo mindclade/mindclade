@@ -16,3 +16,6 @@ MINDCLADE_TILELANG_KERNEL_SOURCES = [
     "//kernels/pairformer/triangle_attention:tilelang.py",
     "//kernels/pairformer/triangle_multiplication:tilelang.py",
 ]
+
+MINDCLADE_TILELANG_REQUIRED_PRIVATE_SYMBOLS = [
+]

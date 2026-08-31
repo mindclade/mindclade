@@ -13,7 +13,7 @@ import re
 from typing import Any
 
 GENERATOR_ID = "kernels.native.codegen.generate"
-GENERATOR_VERSION = 4
+GENERATOR_VERSION = 5
 NAMESPACE = "mindclade"
 REGISTRATION_MODE = "build_time_generated"
 
@@ -32,7 +32,7 @@ _OPERATOR_KEYS = {
     "name", "qualified_name", "namespace", "family", "source", "spec_sha256",
     "kernel_spec_digest", "operator_schema", "facade_outputs", "fake", "forward",
     "backward", "autograd_policy", "composite", "effects", "launch", "backend",
-    "version", "devices", "registrations",
+    "version", "devices", "registrations", "launcher_plans",
 }
 _REGISTRATION_KEYS = {"qualified_name", "schema", "kind", "implementation_symbol"}
 _FORWARD_KEYS = {"type", "schema", "builder", "symbol", "outputs", "program_group", "version"}
@@ -60,14 +60,19 @@ _LAUNCH_KEYS = {
     "graph_capture_safe", "determinism", "version",
 }
 _PROGRAM_GROUP_KEYS = {
-    "type", "nodes", "current_stream_only", "global_synchronization",
-    "hidden_device_allocation", "graph_capture_safe", "version",
+    "type", "nodes", "workspaces", "version",
 }
 _PROGRAM_NODE_KEYS = {
-    "type", "name", "builder", "symbol", "depends_on", "workspaces", "version",
+    "type", "name", "builder", "symbol", "depends_on", "workspace_uses", "version",
 }
+_WORKSPACE_USE_KEYS = {"type", "workspace", "access", "version"}
 _WORKSPACE_KEYS = {
     "type", "name", "shape", "dtype", "zero_initialize", "lifetime", "version",
+}
+_LAUNCHER_PLANS_KEYS = {"forward", "backward"}
+_LAUNCHER_PLAN_KEYS = {
+    "phase", "logical_symbol", "bridge_requirement", "execution_order",
+    "required_private_symbols", "nodes", "workspaces",
 }
 
 
@@ -157,9 +162,9 @@ def _validate_gradient(value: object, label: str) -> tuple[str, str]:
     return mapping
 
 
-def _validate_program_group(value: object, label: str) -> None:
+def _validate_program_group(value: object, label: str) -> dict[str, Any] | None:
     if value is None:
-        return
+        return None
     group = _exact_mapping(value, _PROGRAM_GROUP_KEYS, label)
     if group["type"] != "ProgramGroupSpec":
         raise ValueError(f"native manifest {label} has unsupported contract type")
@@ -169,6 +174,25 @@ def _validate_program_group(value: object, label: str) -> None:
     names: list[str] = []
     symbols: list[str] = []
     dependencies: dict[str, list[str]] = {}
+    workspaces = group["workspaces"]
+    if not isinstance(workspaces, list):
+        raise ValueError(f"native manifest {label} workspaces must be an array")
+    workspace_names: list[str] = []
+    for workspace_index, raw_workspace in enumerate(workspaces):
+        workspace_label = f"{label} workspace {workspace_index}"
+        workspace = _exact_mapping(raw_workspace, _WORKSPACE_KEYS, workspace_label)
+        if workspace["type"] != "WorkspaceSpec":
+            raise ValueError(f"native manifest {workspace_label} has unsupported type")
+        workspace_names.append(_identifier(workspace["name"], f"{workspace_label} name"))
+        _expression(workspace["shape"], f"{workspace_label} shape")
+        _expression(workspace["dtype"], f"{workspace_label} dtype")
+        _boolean(workspace["zero_initialize"], f"{workspace_label} zero_initialize")
+        if workspace["lifetime"] not in {"node", "program_group"}:
+            raise ValueError(f"native manifest {workspace_label} has unsupported lifetime")
+        _version(workspace["version"], f"{workspace_label} version")
+    if len(workspace_names) != len(set(workspace_names)):
+        raise ValueError(f"native manifest {label} workspace names must be unique")
+    known_workspaces = set(workspace_names)
     for index, raw_node in enumerate(nodes):
         node_label = f"{label} node {index}"
         node = _exact_mapping(raw_node, _PROGRAM_NODE_KEYS, node_label)
@@ -180,24 +204,23 @@ def _validate_program_group(value: object, label: str) -> None:
         if _SYMBOL.fullmatch(symbol) is None:
             raise ValueError(f"native manifest {node_label} symbol must be a C identifier")
         depends_on = _string_list(node["depends_on"], f"{node_label} depends_on")
-        workspaces = node["workspaces"]
-        if not isinstance(workspaces, list):
-            raise ValueError(f"native manifest {node_label} workspaces must be an array")
-        workspace_names: list[str] = []
-        for workspace_index, raw_workspace in enumerate(workspaces):
-            workspace_label = f"{node_label} workspace {workspace_index}"
-            workspace = _exact_mapping(raw_workspace, _WORKSPACE_KEYS, workspace_label)
-            if workspace["type"] != "WorkspaceSpec":
-                raise ValueError(f"native manifest {workspace_label} has unsupported type")
-            workspace_names.append(_identifier(workspace["name"], f"{workspace_label} name"))
-            _expression(workspace["shape"], f"{workspace_label} shape")
-            _expression(workspace["dtype"], f"{workspace_label} dtype")
-            _boolean(workspace["zero_initialize"], f"{workspace_label} zero_initialize")
-            if workspace["lifetime"] not in {"node", "program_group"}:
-                raise ValueError(f"native manifest {workspace_label} has unsupported lifetime")
-            _version(workspace["version"], f"{workspace_label} version")
-        if len(workspace_names) != len(set(workspace_names)):
-            raise ValueError(f"native manifest {node_label} workspace names must be unique")
+        uses = node["workspace_uses"]
+        if not isinstance(uses, list):
+            raise ValueError(f"native manifest {node_label} workspace_uses must be an array")
+        used_workspaces: list[str] = []
+        for use_index, raw_use in enumerate(uses):
+            use_label = f"{node_label} workspace use {use_index}"
+            use = _exact_mapping(raw_use, _WORKSPACE_USE_KEYS, use_label)
+            if use["type"] != "WorkspaceUseSpec":
+                raise ValueError(f"native manifest {use_label} has unsupported type")
+            used_workspaces.append(_identifier(use["workspace"], f"{use_label} workspace"))
+            if use["access"] not in {"read", "write", "read_write"}:
+                raise ValueError(f"native manifest {use_label} has unsupported access")
+            _version(use["version"], f"{use_label} version")
+        if len(used_workspaces) != len(set(used_workspaces)):
+            raise ValueError(f"native manifest {node_label} workspace uses must be unique")
+        if set(used_workspaces) - known_workspaces:
+            raise ValueError(f"native manifest {node_label} uses an unknown workspace")
         _version(node["version"], f"{node_label} version")
         names.append(name)
         symbols.append(symbol)
@@ -216,8 +239,74 @@ def _validate_program_group(value: object, label: str) -> None:
             del pending[name]
         for items in pending.values():
             items.difference_update(ready)
-    _validate_launch_fields(group, label)
     _version(group["version"], f"{label} version")
+    return group
+
+
+def _expected_launcher_plan(
+    phase: str,
+    logical_symbol: str,
+    group: dict[str, Any] | None,
+) -> dict[str, Any] | None:
+    if group is None:
+        return None
+    return {
+        "phase": phase,
+        "logical_symbol": logical_symbol,
+        "bridge_requirement": "mindclade_program_group_bridge_v1",
+        "execution_order": [node["name"] for node in group["nodes"]],
+        "required_private_symbols": [node["symbol"] for node in group["nodes"]],
+        "nodes": [
+            {
+                "name": node["name"],
+                "symbol": node["symbol"],
+                "depends_on": node["depends_on"],
+                "workspace_uses": [
+                    {"workspace": use["workspace"], "access": use["access"]}
+                    for use in node["workspace_uses"]
+                ],
+            }
+            for node in group["nodes"]
+        ],
+        "workspaces": [
+            {
+                "name": workspace["name"],
+                "shape": workspace["shape"],
+                "dtype": workspace["dtype"],
+                "zero_initialize": workspace["zero_initialize"],
+                "lifetime": workspace["lifetime"],
+            }
+            for workspace in group["workspaces"]
+        ],
+    }
+
+
+def _validate_launcher_plans(
+    value: object,
+    name: str,
+    forward: dict[str, Any],
+    backward: dict[str, Any] | None,
+) -> None:
+    plans = _exact_mapping(value, _LAUNCHER_PLANS_KEYS, f"{name} launcher_plans")
+    expected = {
+        "forward": _expected_launcher_plan(
+            "forward", forward["symbol"], forward["program_group"]
+        ),
+        "backward": (
+            _expected_launcher_plan(
+                "backward", backward["symbol"], backward["program_group"]
+            )
+            if backward is not None
+            else None
+        ),
+    }
+    for phase, plan in plans.items():
+        if plan is not None:
+            _exact_mapping(plan, _LAUNCHER_PLAN_KEYS, f"{name} {phase} launcher plan")
+    if plans != expected:
+        raise ValueError(
+            f"native manifest {name} launcher_plans do not match provider program groups"
+        )
 
 
 def _validate_output(value: object, label: str) -> tuple[str, bool]:
@@ -262,7 +351,9 @@ def _validate_forward(value: object, name: str) -> dict[str, Any]:
     metadata = [_validate_output(item, f"{name} output {index}") for index, item in enumerate(outputs)]
     if len({item[0] for item in metadata}) != len(metadata):
         raise ValueError(f"native manifest {name} forward outputs must be unique")
-    _validate_program_group(forward["program_group"], f"{name} forward group")
+    forward["program_group"] = _validate_program_group(
+        forward["program_group"], f"{name} forward group"
+    )
     _version(forward["version"], f"{name} forward version")
     return forward
 
@@ -287,7 +378,9 @@ def _validate_backward(value: object, name: str) -> dict[str, Any] | None:
     if len({item[0] for item in mappings}) != len(mappings) or len({item[1] for item in mappings}) != len(mappings):
         raise ValueError(f"native manifest {name} backward gradients must be unique")
     _boolean(backward["supports_double_backward"], f"{name} supports_double_backward")
-    _validate_program_group(backward["program_group"], f"{name} backward group")
+    backward["program_group"] = _validate_program_group(
+        backward["program_group"], f"{name} backward group"
+    )
     _version(backward["version"], f"{name} backward version")
     return backward
 
@@ -385,6 +478,7 @@ def _validate_operator(value: object, index: int) -> dict[str, Any]:
         raise ValueError(f"native manifest {name} NONE autograd is inconsistent")
     if policy == "composite" and (backward is not None or composite is None):
         raise ValueError(f"native manifest {name} COMPOSITE autograd is incomplete")
+    _validate_launcher_plans(operator["launcher_plans"], name, forward, backward)
     _validate_effects(operator["effects"], name)
     _validate_launch(operator["launch"], name)
     if operator["backend"] != "tilelang" or operator["devices"] != ["cuda"]:

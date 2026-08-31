@@ -71,6 +71,7 @@ _OPERATOR_KEYS = frozenset(
         "version",
         "devices",
         "registrations",
+        "launcher_plans",
     }
 )
 _REGISTRATION_KEYS = frozenset(
@@ -78,6 +79,52 @@ _REGISTRATION_KEYS = frozenset(
 )
 _REGISTRATION_KINDS = ("semantic", "forward", "backward")
 _AUTOGRAD_POLICIES = frozenset({"required", "none", "composite"})
+_PROGRAM_GROUP_KEYS = frozenset({"type", "nodes", "workspaces", "version"})
+_PROGRAM_NODE_KEYS = frozenset(
+    {"type", "name", "builder", "symbol", "depends_on", "workspace_uses", "version"}
+)
+_WORKSPACE_USE_KEYS = frozenset({"type", "workspace", "access", "version"})
+_WORKSPACE_KEYS = frozenset(
+    {"type", "name", "shape", "dtype", "zero_initialize", "lifetime", "version"}
+)
+_LAUNCHER_PLANS_KEYS = frozenset({"forward", "backward"})
+_LAUNCHER_PLAN_KEYS = frozenset(
+    {
+        "phase",
+        "logical_symbol",
+        "bridge_requirement",
+        "execution_order",
+        "required_private_symbols",
+        "nodes",
+        "workspaces",
+    }
+)
+_LAUNCHER_NODE_KEYS = frozenset(
+    {"name", "symbol", "depends_on", "workspace_uses"}
+)
+_LAUNCHER_WORKSPACE_USE_KEYS = frozenset({"workspace", "access"})
+_LAUNCHER_WORKSPACE_KEYS = frozenset(
+    {"name", "shape", "dtype", "zero_initialize", "lifetime"}
+)
+_WORKSPACE_ACCESSES = frozenset({"read", "write", "read_write"})
+_WORKSPACE_LIFETIMES = frozenset({"node", "program_group"})
+_SHAPE_EXPRESSION_NODES = frozenset(
+    {"shape_of", "shape_prefix", "shape_tuple", "concat_shape"}
+)
+_DTYPE_EXPRESSION_NODES = frozenset(
+    {"dtype_ref", "same_as_input_dtype", "constant_dtype", "select"}
+)
+_EXPRESSION_KEYS = frozenset(
+    {
+        "node", "argument", "axis", "trailing_rank", "value_type", "value",
+        "lhs", "rhs", "operand", "operands", "members", "condition",
+        "when_true", "when_false", "multiple", "dimensions", "parts",
+    }
+)
+_MAX_PLAN_ITEMS = 64
+_MAX_EXPRESSION_DEPTH = 32
+_MAX_EXPRESSION_NODES = 1024
+_MAX_EXPRESSION_BYTES = 64 * 1024
 _DEVICE_DISPATCH_KEYS = {"cuda": "CUDA"}
 _CONTROLLED_DISPATCH_KEYS = frozenset(
     {
@@ -252,6 +299,39 @@ class _ManifestRegistration:
 
 
 @dataclass(frozen=True, slots=True)
+class _ManifestWorkspaceUse:
+    workspace: str
+    access: str
+
+
+@dataclass(frozen=True, slots=True)
+class _ManifestWorkspace:
+    name: str
+    shape_json: bytes
+    dtype_json: bytes
+    zero_initialize: bool
+    lifetime: str
+
+
+@dataclass(frozen=True, slots=True)
+class _ManifestProgramNode:
+    name: str
+    symbol: str
+    depends_on: tuple[str, ...]
+    workspace_uses: tuple[_ManifestWorkspaceUse, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class _ManifestLauncherPlan:
+    phase: str
+    logical_symbol: str
+    execution_order: tuple[str, ...]
+    required_private_symbols: tuple[str, ...]
+    nodes: tuple[_ManifestProgramNode, ...]
+    workspaces: tuple[_ManifestWorkspace, ...]
+
+
+@dataclass(frozen=True, slots=True)
 class _ManifestOperator:
     name: str
     qualified_name: str
@@ -259,6 +339,8 @@ class _ManifestOperator:
     devices: tuple[str, ...]
     autograd_policy: str
     registrations: tuple[_ManifestRegistration, ...]
+    forward_launcher_plan: _ManifestLauncherPlan | None = None
+    backward_launcher_plan: _ManifestLauncherPlan | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -457,6 +539,428 @@ def _contract_field(
     return value.get(key)
 
 
+def _require_v1(value: object, label: str) -> None:
+    if type(value) is not int or value != 1:
+        raise NativeBundleVerificationError(f"{label}.version must be integer 1")
+
+
+def _require_identifier(value: object, label: str) -> str:
+    if not isinstance(value, str) or _IDENTIFIER_RE.fullmatch(value) is None:
+        raise NativeBundleVerificationError(f"{label} must be an identifier")
+    return value
+
+
+def _identifier_tuple(
+    value: object, label: str, *, nonempty: bool = False
+) -> tuple[str, ...]:
+    if (
+        not isinstance(value, list)
+        or len(value) > _MAX_PLAN_ITEMS
+        or (nonempty and not value)
+    ):
+        raise NativeBundleVerificationError(f"{label} must be a bounded array")
+    result = tuple(
+        _require_identifier(item, f"{label}[{index}]")
+        for index, item in enumerate(value)
+    )
+    if len(result) != len(set(result)):
+        raise NativeBundleVerificationError(f"{label} must contain unique values")
+    return result
+
+
+def _canonical_expression(value: object, domain: str, label: str) -> bytes:
+    if not isinstance(value, Mapping):
+        raise NativeBundleVerificationError(f"{label} must be an expression object")
+    node = value.get("node")
+    allowed = (
+        _SHAPE_EXPRESSION_NODES
+        if domain == "shape"
+        else _DTYPE_EXPRESSION_NODES
+    )
+    if node not in allowed:
+        raise NativeBundleVerificationError(
+            f"{label} must be a {domain}-domain expression"
+        )
+    count = 0
+
+    def walk(item: object, depth: int) -> None:
+        nonlocal count
+        if depth > _MAX_EXPRESSION_DEPTH:
+            raise NativeBundleVerificationError(f"{label} exceeds maximum depth")
+        count += 1
+        if count > _MAX_EXPRESSION_NODES:
+            raise NativeBundleVerificationError(f"{label} exceeds maximum size")
+        if isinstance(item, Mapping):
+            if not all(isinstance(key, str) for key in item):
+                raise NativeBundleVerificationError(f"{label} has a non-string key")
+            unexpected = set(item) - _EXPRESSION_KEYS
+            if unexpected:
+                raise NativeBundleVerificationError(
+                    f"{label} has unsupported fields: {sorted(unexpected)}"
+                )
+            nested_node = item.get("node")
+            if not isinstance(nested_node, str) or not nested_node:
+                raise NativeBundleVerificationError(
+                    f"{label} contains a malformed expression node"
+                )
+            for nested in item.values():
+                walk(nested, depth + 1)
+        elif isinstance(item, list):
+            if len(item) > _MAX_PLAN_ITEMS:
+                raise NativeBundleVerificationError(
+                    f"{label} contains an oversized array"
+                )
+            for nested in item:
+                walk(nested, depth + 1)
+        elif item is None or isinstance(item, (str, bool, int)):
+            if isinstance(item, str) and len(item) > 4096:
+                raise NativeBundleVerificationError(
+                    f"{label} contains an oversized string"
+                )
+        elif isinstance(item, float):
+            if item != item or item in {float("inf"), float("-inf")}:
+                raise NativeBundleVerificationError(
+                    f"{label} contains a non-finite number"
+                )
+        else:
+            raise NativeBundleVerificationError(
+                f"{label} contains an unsupported JSON value"
+            )
+
+    walk(value, 0)
+    encoded = _canonical_json(value)
+    if len(encoded) > _MAX_EXPRESSION_BYTES:
+        raise NativeBundleVerificationError(f"{label} exceeds maximum byte size")
+    return encoded
+
+
+def _parse_workspace_use(
+    value: object, label: str, *, derived: bool
+) -> _ManifestWorkspaceUse:
+    if not isinstance(value, Mapping):
+        raise NativeBundleVerificationError(f"{label} must be an object")
+    _exact_keys(
+        value,
+        _LAUNCHER_WORKSPACE_USE_KEYS if derived else _WORKSPACE_USE_KEYS,
+        label,
+    )
+    if not derived:
+        if value["type"] != "WorkspaceUseSpec":
+            raise NativeBundleVerificationError(f"{label}.type is invalid")
+        _require_v1(value["version"], label)
+    workspace = _require_identifier(value["workspace"], f"{label}.workspace")
+    access = value["access"]
+    if access not in _WORKSPACE_ACCESSES:
+        raise NativeBundleVerificationError(f"{label}.access is invalid")
+    return _ManifestWorkspaceUse(workspace, access)
+
+
+def _parse_workspace(
+    value: object, label: str, *, derived: bool
+) -> _ManifestWorkspace:
+    if not isinstance(value, Mapping):
+        raise NativeBundleVerificationError(f"{label} must be an object")
+    _exact_keys(
+        value,
+        _LAUNCHER_WORKSPACE_KEYS if derived else _WORKSPACE_KEYS,
+        label,
+    )
+    if not derived:
+        if value["type"] != "WorkspaceSpec":
+            raise NativeBundleVerificationError(f"{label}.type is invalid")
+        _require_v1(value["version"], label)
+    name = _require_identifier(value["name"], f"{label}.name")
+    zero_initialize = value["zero_initialize"]
+    if type(zero_initialize) is not bool:
+        raise NativeBundleVerificationError(
+            f"{label}.zero_initialize must be a boolean"
+        )
+    lifetime = value["lifetime"]
+    if lifetime not in _WORKSPACE_LIFETIMES:
+        raise NativeBundleVerificationError(f"{label}.lifetime is invalid")
+    return _ManifestWorkspace(
+        name=name,
+        shape_json=_canonical_expression(value["shape"], "shape", f"{label}.shape"),
+        dtype_json=_canonical_expression(value["dtype"], "dtype", f"{label}.dtype"),
+        zero_initialize=zero_initialize,
+        lifetime=lifetime,
+    )
+
+
+def _parse_program_node(
+    value: object, label: str, *, derived: bool
+) -> _ManifestProgramNode:
+    if not isinstance(value, Mapping):
+        raise NativeBundleVerificationError(f"{label} must be an object")
+    _exact_keys(value, _LAUNCHER_NODE_KEYS if derived else _PROGRAM_NODE_KEYS, label)
+    if not derived:
+        if value["type"] != "ProgramNodeSpec":
+            raise NativeBundleVerificationError(f"{label}.type is invalid")
+        _require_v1(value["version"], label)
+        builder = value["builder"]
+        if not isinstance(builder, str):
+            raise NativeBundleVerificationError(f"{label}.builder is invalid")
+        _validate_python_identity(builder, f"{label}.builder")
+    name = _require_identifier(value["name"], f"{label}.name")
+    symbol = _require_identifier(value["symbol"], f"{label}.symbol")
+    depends_on = _identifier_tuple(value["depends_on"], f"{label}.depends_on")
+    if depends_on != tuple(sorted(depends_on)):
+        raise NativeBundleVerificationError(
+            f"{label}.depends_on is not canonically ordered"
+        )
+    raw_uses = value["workspace_uses"]
+    if not isinstance(raw_uses, list) or len(raw_uses) > _MAX_PLAN_ITEMS:
+        raise NativeBundleVerificationError(
+            f"{label}.workspace_uses must be a bounded array"
+        )
+    uses = tuple(
+        _parse_workspace_use(item, f"{label}.workspace_uses[{index}]", derived=derived)
+        for index, item in enumerate(raw_uses)
+    )
+    use_names = tuple(item.workspace for item in uses)
+    if len(use_names) != len(set(use_names)):
+        raise NativeBundleVerificationError(
+            f"{label}.workspace_uses contains duplicate workspaces"
+        )
+    if use_names != tuple(sorted(use_names)):
+        raise NativeBundleVerificationError(
+            f"{label}.workspace_uses is not canonically ordered"
+        )
+    return _ManifestProgramNode(name, symbol, depends_on, uses)
+
+
+def _validated_program_components(
+    nodes: tuple[_ManifestProgramNode, ...],
+    workspaces: tuple[_ManifestWorkspace, ...],
+    label: str,
+) -> tuple[str, ...]:
+    names = tuple(node.name for node in nodes)
+    symbols = tuple(node.symbol for node in nodes)
+    workspace_names = tuple(workspace.name for workspace in workspaces)
+    if len(names) != len(set(names)):
+        raise NativeBundleVerificationError(f"{label} has duplicate node names")
+    if len(symbols) != len(set(symbols)):
+        raise NativeBundleVerificationError(f"{label} has duplicate node symbols")
+    if len(workspace_names) != len(set(workspace_names)):
+        raise NativeBundleVerificationError(f"{label} has duplicate workspace names")
+    if workspace_names != tuple(sorted(workspace_names)):
+        raise NativeBundleVerificationError(
+            f"{label} workspaces are not canonically ordered"
+        )
+    known = set(names)
+    dependencies = {node.name: set(node.depends_on) for node in nodes}
+    for node in nodes:
+        unknown = set(node.depends_on) - known
+        if unknown:
+            raise NativeBundleVerificationError(
+                f"{label} node {node.name!r} has unknown dependencies: {sorted(unknown)}"
+            )
+        if node.name in node.depends_on:
+            raise NativeBundleVerificationError(
+                f"{label} node {node.name!r} depends on itself"
+            )
+    pending = {name: set(items) for name, items in dependencies.items()}
+    order: list[str] = []
+    while pending:
+        ready = sorted(name for name, items in pending.items() if not items)
+        if not ready:
+            raise NativeBundleVerificationError(f"{label} contains a dependency cycle")
+        order.extend(ready)
+        for name in ready:
+            del pending[name]
+        for items in pending.values():
+            items.difference_update(ready)
+    execution_order = tuple(order)
+    if names != execution_order:
+        raise NativeBundleVerificationError(
+            f"{label} nodes are not in canonical execution order"
+        )
+
+    declared = {workspace.name: workspace for workspace in workspaces}
+    users: dict[str, list[tuple[str, str]]] = {name: [] for name in declared}
+    for node in nodes:
+        for use in node.workspace_uses:
+            if use.workspace not in declared:
+                raise NativeBundleVerificationError(
+                    f"{label} node {node.name!r} uses undeclared workspace {use.workspace!r}"
+                )
+            users[use.workspace].append((node.name, use.access))
+    unused = sorted(name for name, items in users.items() if not items)
+    if unused:
+        raise NativeBundleVerificationError(
+            f"{label} has unused workspaces: {unused}"
+        )
+
+    def transitively_depends(node: str, dependency: str) -> bool:
+        remaining = list(dependencies[node])
+        visited: set[str] = set()
+        while remaining:
+            current = remaining.pop()
+            if current == dependency:
+                return True
+            if current not in visited:
+                visited.add(current)
+                remaining.extend(dependencies[current])
+        return False
+
+    for name, workspace in declared.items():
+        accesses = users[name]
+        if workspace.lifetime == "node" and len(accesses) != 1:
+            raise NativeBundleVerificationError(
+                f"{label} node-lifetime workspace {name!r} must have one using node"
+            )
+        writers = [
+            node
+            for node, access in accesses
+            if access in {"write", "read_write"}
+        ]
+        if len(writers) > 1:
+            raise NativeBundleVerificationError(
+                f"{label} workspace {name!r} has multiple writers"
+            )
+        if not writers and not workspace.zero_initialize:
+            raise NativeBundleVerificationError(
+                f"{label} non-zero-initialized workspace {name!r} requires a writer"
+            )
+        if writers:
+            writer = writers[0]
+            for reader, access in accesses:
+                if reader == writer or access == "write":
+                    continue
+                if not transitively_depends(reader, writer):
+                    raise NativeBundleVerificationError(
+                        f"{label} reader {reader!r} must depend on writer {writer!r}"
+                    )
+    return execution_order
+
+
+def _parse_program_group(
+    value: object, label: str
+) -> tuple[
+    tuple[_ManifestProgramNode, ...],
+    tuple[_ManifestWorkspace, ...],
+    tuple[str, ...],
+] | None:
+    if value is None:
+        return None
+    if not isinstance(value, Mapping):
+        raise NativeBundleVerificationError(f"{label} must be an object or null")
+    _exact_keys(value, _PROGRAM_GROUP_KEYS, label)
+    if value["type"] != "ProgramGroupSpec":
+        raise NativeBundleVerificationError(f"{label}.type is invalid")
+    _require_v1(value["version"], label)
+    raw_nodes = value["nodes"]
+    raw_workspaces = value["workspaces"]
+    if (
+        not isinstance(raw_nodes, list)
+        or not raw_nodes
+        or len(raw_nodes) > _MAX_PLAN_ITEMS
+    ):
+        raise NativeBundleVerificationError(f"{label}.nodes must be a bounded non-empty array")
+    if not isinstance(raw_workspaces, list) or len(raw_workspaces) > _MAX_PLAN_ITEMS:
+        raise NativeBundleVerificationError(f"{label}.workspaces must be a bounded array")
+    nodes = tuple(
+        _parse_program_node(item, f"{label}.nodes[{index}]", derived=False)
+        for index, item in enumerate(raw_nodes)
+    )
+    workspaces = tuple(
+        _parse_workspace(item, f"{label}.workspaces[{index}]", derived=False)
+        for index, item in enumerate(raw_workspaces)
+    )
+    order = _validated_program_components(nodes, workspaces, label)
+    return nodes, workspaces, order
+
+
+def _parse_launcher_plan(
+    value: object,
+    *,
+    phase: str,
+    logical_symbol: str,
+    raw_group: tuple[
+        tuple[_ManifestProgramNode, ...],
+        tuple[_ManifestWorkspace, ...],
+        tuple[str, ...],
+    ] | None,
+    label: str,
+) -> _ManifestLauncherPlan | None:
+    if value is None:
+        if raw_group is not None:
+            raise NativeBundleVerificationError(
+                f"{label} is required for its declared program group"
+            )
+        return None
+    if raw_group is None:
+        raise NativeBundleVerificationError(
+            f"{label} cannot exist without a declared program group"
+        )
+    if not isinstance(value, Mapping):
+        raise NativeBundleVerificationError(f"{label} must be an object or null")
+    _exact_keys(value, _LAUNCHER_PLAN_KEYS, label)
+    if value["phase"] != phase:
+        raise NativeBundleVerificationError(f"{label}.phase must be {phase}")
+    if value["logical_symbol"] != logical_symbol:
+        raise NativeBundleVerificationError(
+            f"{label}.logical_symbol does not match its provider"
+        )
+    if value["bridge_requirement"] != "mindclade_program_group_bridge_v1":
+        raise NativeBundleVerificationError(
+            f"{label}.bridge_requirement is unsupported"
+        )
+    execution_order = _identifier_tuple(
+        value["execution_order"], f"{label}.execution_order", nonempty=True
+    )
+    required_symbols = _identifier_tuple(
+        value["required_private_symbols"],
+        f"{label}.required_private_symbols",
+        nonempty=True,
+    )
+    raw_nodes = value["nodes"]
+    raw_workspaces = value["workspaces"]
+    if (
+        not isinstance(raw_nodes, list)
+        or not raw_nodes
+        or len(raw_nodes) > _MAX_PLAN_ITEMS
+    ):
+        raise NativeBundleVerificationError(f"{label}.nodes must be a bounded non-empty array")
+    if not isinstance(raw_workspaces, list) or len(raw_workspaces) > _MAX_PLAN_ITEMS:
+        raise NativeBundleVerificationError(f"{label}.workspaces must be a bounded array")
+    nodes = tuple(
+        _parse_program_node(item, f"{label}.nodes[{index}]", derived=True)
+        for index, item in enumerate(raw_nodes)
+    )
+    workspaces = tuple(
+        _parse_workspace(item, f"{label}.workspaces[{index}]", derived=True)
+        for index, item in enumerate(raw_workspaces)
+    )
+    calculated_order = _validated_program_components(nodes, workspaces, label)
+    if execution_order != calculated_order:
+        raise NativeBundleVerificationError(
+            f"{label}.execution_order is not the canonical node order"
+        )
+    node_symbols = tuple(node.symbol for node in nodes)
+    if required_symbols != node_symbols:
+        raise NativeBundleVerificationError(
+            f"{label}.required_private_symbols does not match node symbols"
+        )
+    raw_nodes_expected, raw_workspaces_expected, raw_order_expected = raw_group
+    if (
+        nodes != raw_nodes_expected
+        or workspaces != raw_workspaces_expected
+        or execution_order != raw_order_expected
+    ):
+        raise NativeBundleVerificationError(
+            f"{label} does not exactly match its raw program group"
+        )
+    return _ManifestLauncherPlan(
+        phase=phase,
+        logical_symbol=logical_symbol,
+        execution_order=execution_order,
+        required_private_symbols=required_symbols,
+        nodes=nodes,
+        workspaces=workspaces,
+    )
+
+
 def _parse_registration(
     value: object,
     *,
@@ -578,6 +1082,10 @@ def _parse_operator(value: object, index: int) -> _ManifestOperator:
     forward_symbol = _contract_field(forward, "symbol", f"{label}.forward")
     if not isinstance(forward_symbol, str) or _IDENTIFIER_RE.fullmatch(forward_symbol) is None:
         raise NativeBundleVerificationError(f"{label}.forward.symbol is invalid")
+    forward_group = _parse_program_group(
+        _contract_field(forward, "program_group", f"{label}.forward"),
+        f"{label}.forward.program_group",
+    )
     backward = value["backward"]
     composite = value["composite"]
     if autograd_policy == "required":
@@ -596,6 +1104,7 @@ def _parse_operator(value: object, index: int) -> _ManifestOperator:
         )
     backward_schema: str | None = None
     backward_symbol: str | None = None
+    backward_group = None
     if isinstance(backward, Mapping):
         backward_schema = _validate_schema(
             _contract_field(backward, "schema", f"{label}.backward"),
@@ -611,8 +1120,12 @@ def _parse_operator(value: object, index: int) -> _ManifestOperator:
         ):
             raise NativeBundleVerificationError(
                 f"{label}.backward.symbol is invalid"
-            )
+        )
         backward_symbol = raw_backward_symbol
+        backward_group = _parse_program_group(
+            _contract_field(backward, "program_group", f"{label}.backward"),
+            f"{label}.backward.program_group",
+        )
     if not isinstance(value["effects"], Mapping):
         raise NativeBundleVerificationError(f"{label}.effects must be an object")
     if not isinstance(value["launch"], Mapping):
@@ -661,6 +1174,24 @@ def _parse_operator(value: object, index: int) -> _ManifestOperator:
             raise NativeBundleVerificationError(
                 f"{label} backward registration symbol differs from BackwardSpec"
             )
+    launcher_plans = value["launcher_plans"]
+    if not isinstance(launcher_plans, Mapping):
+        raise NativeBundleVerificationError(f"{label}.launcher_plans must be an object")
+    _exact_keys(launcher_plans, _LAUNCHER_PLANS_KEYS, f"{label}.launcher_plans")
+    forward_launcher_plan = _parse_launcher_plan(
+        launcher_plans["forward"],
+        phase="forward",
+        logical_symbol=forward_symbol,
+        raw_group=forward_group,
+        label=f"{label}.launcher_plans.forward",
+    )
+    backward_launcher_plan = _parse_launcher_plan(
+        launcher_plans["backward"],
+        phase="backward",
+        logical_symbol=backward_symbol or "",
+        raw_group=backward_group,
+        label=f"{label}.launcher_plans.backward",
+    )
     return _ManifestOperator(
         name=name,
         qualified_name=qualified_name,
@@ -668,6 +1199,8 @@ def _parse_operator(value: object, index: int) -> _ManifestOperator:
         devices=tuple(devices),
         autograd_policy=autograd_policy,
         registrations=registrations,
+        forward_launcher_plan=forward_launcher_plan,
+        backward_launcher_plan=backward_launcher_plan,
     )
 
 
@@ -693,7 +1226,7 @@ def _parse_manifest(
         )
     if manifest["generator"] != {
         "id": "kernels.native.codegen.generate",
-        "version": 4,
+        "version": 5,
     }:
         raise NativeBundleVerificationError(
             "native manifest generator is unsupported"

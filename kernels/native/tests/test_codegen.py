@@ -129,6 +129,72 @@ KERNEL_SPEC: KernelSpec = KernelSpec(
     return native_root, "pairformer/required_fixture/spec.py"
 
 
+def _program_group_fixture_native_root(tmp_path: Path) -> tuple[Path, str]:
+    kernels_root = tmp_path / "kernels"
+    native_root = kernels_root / "native"
+    native_root.mkdir(parents=True)
+    operation = kernels_root / "pairformer" / "group_fixture"
+    operation.mkdir(parents=True)
+    (operation / "spec.py").write_text(
+        '''from kernels.api import (
+    AutogradPolicy, ConstantDType, EffectSpec, ForwardSpec, KernelSpec,
+    LaunchContract, OutputSpec, ProgramGroupSpec, ProgramNodeSpec, ShapeOf,
+    SameAsInputDevice, WorkspaceAccess, WorkspaceLifetime, WorkspaceSpec,
+    WorkspaceUseSpec,
+)
+KERNEL_SPEC: KernelSpec = KernelSpec(
+    name="group_fixture", namespace="mindclade", family="pairformer",
+    source="pairformer/group_fixture/spec.py",
+    operator_schema="group_fixture(Tensor x) -> Tensor output",
+    facade_outputs=("output",), fake=None,
+    forward=ForwardSpec(
+        schema="_group_fixture_fwd(Tensor x) -> Tensor output",
+        builder="kernels.pairformer.group_fixture.tilelang:build_forward",
+        symbol="mindclade_tilelang_group_fixture_fwd_launch",
+        outputs=(OutputSpec(
+            name="output", shape=ShapeOf(argument="x"),
+            dtype=ConstantDType(value="float32"),
+            device=SameAsInputDevice(argument="x"), semantic_axes=("element",),
+            visible_in_facade=True, saved_for_backward=False,
+        ),),
+        program_group=ProgramGroupSpec(
+            nodes=(
+                ProgramNodeSpec(
+                    name="reduce",
+                    builder="kernels.pairformer.group_fixture.tilelang:build_reduce",
+                    symbol="mindclade_tilelang_group_fixture_reduce_launch",
+                    depends_on=("load",),
+                    workspace_uses=(WorkspaceUseSpec(
+                        workspace="scratch", access=WorkspaceAccess.READ,
+                    ),),
+                ),
+                ProgramNodeSpec(
+                    name="load",
+                    builder="kernels.pairformer.group_fixture.tilelang:build_load",
+                    symbol="mindclade_tilelang_group_fixture_load_launch",
+                    workspace_uses=(WorkspaceUseSpec(
+                        workspace="scratch", access=WorkspaceAccess.WRITE,
+                    ),),
+                ),
+            ),
+            workspaces=(WorkspaceSpec(
+                name="scratch", shape=ShapeOf(argument="x"),
+                dtype=ConstantDType(value="float32"), zero_initialize=False,
+                lifetime=WorkspaceLifetime.PROGRAM_GROUP,
+            ),),
+        ),
+    ), backward=None, autograd_policy=AutogradPolicy.NONE,
+    effects=EffectSpec(),
+    launch=LaunchContract(
+        hidden_device_allocation=True, graph_capture_safe=False,
+    ),
+)
+''',
+        encoding="utf-8",
+    )
+    return native_root, "pairformer/group_fixture/spec.py"
+
+
 def test_render_is_deterministic_and_write_emits_exact_surfaces(tmp_path: Path):
     native_root, source = _fixture_native_root(tmp_path)
     first = render_all(native_root, source_files=[source])
@@ -157,13 +223,14 @@ def test_manifest_has_exact_operator_keys_and_recomputable_digests(tmp_path: Pat
     native_root, source = _fixture_native_root(tmp_path)
     manifest = json.loads(render_all(native_root, source_files=[source])["native_ops.json"])
     assert manifest["schema_version"] == 3
-    assert manifest["generator"] == {"id": "kernels.native.codegen.generate", "version": 4}
+    assert manifest["generator"] == {"id": "kernels.native.codegen.generate", "version": 5}
     operator = manifest["operators"][0]
     assert set(operator) == {
         "name", "qualified_name", "namespace", "family", "source", "spec_sha256",
         "kernel_spec_digest", "operator_schema", "facade_outputs", "fake", "forward",
         "backward", "autograd_policy", "composite", "effects", "launch", "backend",
         "version", "devices", "registrations",
+        "launcher_plans",
     }
     assert [entry["kind"] for entry in operator["registrations"]] == ["semantic", "forward"]
     without_digest = dict(manifest)
@@ -259,6 +326,31 @@ def test_required_autograd_executes_named_provider_and_rejects_double_backward(
     result = torch.ops.mindclade.required_fixture(x, y, 3)
     with pytest.raises(RuntimeError, match="does not support double backward"):
         torch.autograd.grad(result, x, create_graph=True)
+
+
+def test_program_group_emits_canonical_launcher_plan_and_bridge_guard(tmp_path: Path):
+    native_root, source = _program_group_fixture_native_root(tmp_path)
+    rendered = render_all(native_root, source_files=[source])
+    operator = json.loads(rendered["native_ops.json"])["operators"][0]
+    plan = operator["launcher_plans"]["forward"]
+
+    assert plan["execution_order"] == ["load", "reduce"]
+    assert plan["required_private_symbols"] == [
+        "mindclade_tilelang_group_fixture_load_launch",
+        "mindclade_tilelang_group_fixture_reduce_launch",
+    ]
+    assert [node["name"] for node in plan["nodes"]] == ["load", "reduce"]
+    assert "builder" not in json.dumps(plan, sort_keys=True)
+    assert plan["bridge_requirement"] == "mindclade_program_group_bridge_v1"
+    assert plan["workspaces"][0]["shape"]["node"] == "shape_of"
+    registry = rendered["operation_registry.generated.cpp"]
+    assert "#if !defined(MINDCLADE_PROGRAM_GROUP_BRIDGE_V1)" in registry
+    assert "program-group CUDA registry requires qualified bridge v1" in registry
+    assert "mindclade_tilelang_group_fixture_load_launch(" not in registry
+    assert "mindclade_tilelang_group_fixture_reduce_launch(" not in registry
+    for symbol in plan["required_private_symbols"]:
+        assert symbol in rendered["native_ops.generated.bzl"]
+        assert symbol in rendered["native_ops.generated.cmake"]
 
 
 def test_declarative_fake_rejects_optional_tensor_metadata_dependency(tmp_path: Path):

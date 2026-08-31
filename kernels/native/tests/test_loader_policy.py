@@ -40,7 +40,7 @@ def _manifest(operators: list[dict] | None = None) -> bytes:
         "schema_version": 3,
         "generator": {
             "id": "kernels.native.codegen.generate",
-            "version": 4,
+            "version": 5,
         },
         "source_inventory_sha256": _digest(
             loader._canonical_json(source_inventory)
@@ -89,6 +89,7 @@ def _operator(*, autograd_policy: str = "none") -> dict:
         backward = {
             "schema": backward_schema,
             "symbol": backward_symbol,
+            "program_group": None,
         }
         registrations.append(
             {
@@ -111,7 +112,11 @@ def _operator(*, autograd_policy: str = "none") -> dict:
         "operator_schema": "sample(Tensor x) -> Tensor output",
         "facade_outputs": ["output"],
         "fake": None,
-        "forward": {"schema": forward_schema, "symbol": forward_symbol},
+        "forward": {
+            "schema": forward_schema,
+            "symbol": forward_symbol,
+            "program_group": None,
+        },
         "backward": backward,
         "autograd_policy": autograd_policy,
         "composite": composite,
@@ -121,7 +126,104 @@ def _operator(*, autograd_policy: str = "none") -> dict:
         "version": 1,
         "devices": ["cuda"],
         "registrations": registrations,
+        "launcher_plans": {"forward": None, "backward": None},
     }
+
+
+def _program_group() -> dict:
+    return {
+        "type": "ProgramGroupSpec",
+        "nodes": [
+            {
+                "type": "ProgramNodeSpec",
+                "name": "produce",
+                "builder": "kernels.testing.sample.tilelang:build_produce",
+                "symbol": "mindclade_tilelang_sample_produce_launch",
+                "depends_on": [],
+                "workspace_uses": [
+                    {
+                        "type": "WorkspaceUseSpec",
+                        "workspace": "scratch",
+                        "access": "write",
+                        "version": 1,
+                    }
+                ],
+                "version": 1,
+            },
+            {
+                "type": "ProgramNodeSpec",
+                "name": "consume",
+                "builder": "kernels.testing.sample.tilelang:build_consume",
+                "symbol": "mindclade_tilelang_sample_consume_launch",
+                "depends_on": ["produce"],
+                "workspace_uses": [
+                    {
+                        "type": "WorkspaceUseSpec",
+                        "workspace": "scratch",
+                        "access": "read",
+                        "version": 1,
+                    }
+                ],
+                "version": 1,
+            },
+        ],
+        "workspaces": [
+            {
+                "type": "WorkspaceSpec",
+                "name": "scratch",
+                "shape": {
+                    "node": "shape_tuple",
+                    "dimensions": [
+                        {"node": "dim_ref", "argument": "x", "axis": 0}
+                    ],
+                },
+                "dtype": {"node": "constant_dtype", "value": "float32"},
+                "zero_initialize": False,
+                "lifetime": "program_group",
+                "version": 1,
+            }
+        ],
+        "version": 1,
+    }
+
+
+def _launcher_plan() -> dict:
+    group = _program_group()
+    return {
+        "phase": "forward",
+        "logical_symbol": "mindclade_tilelang_sample_fwd_launch",
+        "bridge_requirement": "mindclade_program_group_bridge_v1",
+        "execution_order": [node["name"] for node in group["nodes"]],
+        "required_private_symbols": [node["symbol"] for node in group["nodes"]],
+        "nodes": [
+            {
+                "name": node["name"],
+                "symbol": node["symbol"],
+                "depends_on": node["depends_on"],
+                "workspace_uses": [
+                    {"workspace": use["workspace"], "access": use["access"]}
+                    for use in node["workspace_uses"]
+                ],
+            }
+            for node in group["nodes"]
+        ],
+        "workspaces": [
+            {
+                key: workspace[key]
+                for key in (
+                    "name", "shape", "dtype", "zero_initialize", "lifetime"
+                )
+            }
+            for workspace in group["workspaces"]
+        ],
+    }
+
+
+def _operator_with_launcher_plan() -> dict:
+    operator = _operator()
+    operator["forward"]["program_group"] = _program_group()
+    operator["launcher_plans"]["forward"] = _launcher_plan()
+    return operator
 
 
 def _bundle(
@@ -432,3 +534,130 @@ def test_reconcile_checks_every_v3_registration(monkeypatch):
     assert {
         qualified_name for qualified_name, _dispatch_key in inspected
     } == {"mindclade::sample", "mindclade::_sample_fwd"}
+
+
+def test_v3_loader_retains_only_immutable_launcher_projection():
+    operator = loader._parse_manifest(
+        _manifest([_operator_with_launcher_plan()]),
+        loader.BundleActivationPolicy.PRODUCTION,
+    )[0]
+    plan = operator.forward_launcher_plan
+    assert plan is not None
+    assert plan.phase == "forward"
+    assert plan.execution_order == ("produce", "consume")
+    assert plan.required_private_symbols == tuple(node.symbol for node in plan.nodes)
+    assert plan.workspaces[0].shape_json == loader._canonical_json(
+        _program_group()["workspaces"][0]["shape"]
+    )
+    assert not hasattr(plan.nodes[0], "builder")
+    assert operator.backward_launcher_plan is None
+
+
+@pytest.mark.parametrize(
+    ("case", "message"),
+    (
+        ("noncanonical", "canonical execution order"),
+        ("cycle", "dependency cycle"),
+        ("duplicate", "duplicate node names"),
+        ("undeclared", "undeclared workspace"),
+        ("multiple_writers", "multiple writers"),
+        ("no_writer", "requires a writer"),
+        ("node_lifetime", "must have one using node"),
+        ("plan_mismatch", "does not exactly match"),
+        ("malformed_expression", "malformed expression"),
+        ("deep_expression", "maximum depth"),
+    ),
+)
+def test_v3_loader_rejects_invalid_launcher_topology_and_workspace_dataflow(
+    case: str, message: str
+):
+    operator = _operator_with_launcher_plan()
+    group = operator["forward"]["program_group"]
+    plan = operator["launcher_plans"]["forward"]
+    if case == "noncanonical":
+        group["nodes"].reverse()
+    elif case == "cycle":
+        group["nodes"][0]["depends_on"] = ["consume"]
+    elif case == "duplicate":
+        group["nodes"][1]["name"] = "produce"
+    elif case == "undeclared":
+        group["nodes"][0]["workspace_uses"][0]["workspace"] = "missing"
+    elif case == "multiple_writers":
+        group["nodes"][1]["workspace_uses"][0]["access"] = "write"
+    elif case == "no_writer":
+        group["nodes"][0]["workspace_uses"][0]["access"] = "read"
+    elif case == "node_lifetime":
+        group["workspaces"][0]["lifetime"] = "node"
+    elif case == "plan_mismatch":
+        plan["workspaces"][0]["zero_initialize"] = True
+    elif case == "malformed_expression":
+        group["workspaces"][0]["shape"] = {
+            "node": "shape_tuple",
+            "dimensions": [{"argument": "x", "axis": 0}],
+        }
+    elif case == "deep_expression":
+        expression = {"node": "shape_of", "argument": "x"}
+        for _ in range(40):
+            expression = {"node": "concat_shape", "parts": [expression]}
+        group["workspaces"][0]["shape"] = expression
+    with pytest.raises(loader.NativeBundleVerificationError, match=message):
+        loader._parse_manifest(
+            _manifest([operator]), loader.BundleActivationPolicy.PRODUCTION
+        )
+
+
+@pytest.mark.parametrize(
+    ("field", "invalid", "message"),
+    (
+        ("bridge_requirement", "other_bridge", "bridge_requirement"),
+        ("phase", "backward", "phase"),
+        ("logical_symbol", "other_launch", "logical_symbol"),
+        (
+            "required_private_symbols",
+            ["mindclade_tilelang_sample_consume_launch"],
+            "required_private_symbols",
+        ),
+    ),
+)
+def test_v3_loader_rejects_launcher_identity_drift(
+    field: str, invalid: object, message: str
+):
+    operator = _operator_with_launcher_plan()
+    operator["launcher_plans"]["forward"][field] = invalid
+    with pytest.raises(loader.NativeBundleVerificationError, match=message):
+        loader._parse_manifest(
+            _manifest([operator]), loader.BundleActivationPolicy.PRODUCTION
+        )
+
+
+@pytest.mark.parametrize(
+    ("field", "invalid", "domain"),
+    (
+        ("shape", [], "expression object"),
+        ("dtype", [], "expression object"),
+        ("shape", {"node": "constant_dtype", "value": "float32"}, "shape-domain"),
+        ("dtype", {"node": "shape_of", "argument": "x"}, "dtype-domain"),
+    ),
+)
+def test_v3_loader_rejects_wrong_workspace_expression_domains(
+    field: str, invalid: object, domain: str
+):
+    operator = _operator_with_launcher_plan()
+    operator["forward"]["program_group"]["workspaces"][0][field] = invalid
+    with pytest.raises(loader.NativeBundleVerificationError, match=domain):
+        loader._parse_manifest(
+            _manifest([operator]), loader.BundleActivationPolicy.PRODUCTION
+        )
+
+
+def test_loader_source_has_no_authoring_or_execution_plane_imports():
+    source = Path(loader.__file__).read_text(encoding="utf-8")
+    for prohibited in (
+        "kernels.api",
+        "tilelang",
+        "kernels.planning",
+        "kernels.tuning",
+        "kernels.benchmarks",
+    ):
+        assert f"import {prohibited}" not in source
+        assert f"from {prohibited}" not in source

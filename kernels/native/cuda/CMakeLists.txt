@@ -124,7 +124,7 @@ add_library(
     ../generated/operation_registry.generated.cpp
     operation_registry.cpp
 )
-mindclade_apply_native_target_policy(mindclade_native_cuda_registry)
+mindclade_apply_gpu_registry_target_policy(mindclade_native_cuda_registry)
 
 add_library(mindclade_native_gpu_artifact SHARED IMPORTED GLOBAL)
 set_target_properties(
@@ -140,3 +140,67 @@ target_link_libraries(
   mindclade_native_schema
   PRIVATE mindclade_native_gpu_artifact
 )
+
+if(MINDCLADE_TILELANG_REQUIRED_PRIVATE_SYMBOLS)
+  if("${MINDCLADE_NATIVE_PROGRAM_GROUP_BRIDGE_LIBRARY}" STREQUAL "")
+    message(
+      FATAL_ERROR
+      "Private TileLang symbols require an explicit qualified program-group bridge library"
+    )
+  endif()
+  if(NOT IS_ABSOLUTE "${MINDCLADE_NATIVE_PROGRAM_GROUP_BRIDGE_LIBRARY}")
+    message(FATAL_ERROR "Program-group bridge library path must be absolute")
+  endif()
+  if(
+    NOT EXISTS "${MINDCLADE_NATIVE_PROGRAM_GROUP_BRIDGE_LIBRARY}"
+    OR IS_DIRECTORY "${MINDCLADE_NATIVE_PROGRAM_GROUP_BRIDGE_LIBRARY}"
+  )
+    message(FATAL_ERROR "Program-group bridge library must be an existing file")
+  endif()
+  if("${MINDCLADE_NATIVE_PROGRAM_GROUP_BRIDGE_LIBRARY_SHA256}" STREQUAL "")
+    message(FATAL_ERROR "Program-group bridge library requires an immutable digest")
+  endif()
+  if(
+    NOT MINDCLADE_NATIVE_PROGRAM_GROUP_BRIDGE_LIBRARY_SHA256
+    MATCHES "^sha256:[0-9a-f]{64}$"
+  )
+    message(
+      FATAL_ERROR
+      "MINDCLADE_NATIVE_PROGRAM_GROUP_BRIDGE_LIBRARY_SHA256 must use sha256:<64 lowercase hex>"
+    )
+  endif()
+
+  file(
+    SHA256
+    "${MINDCLADE_NATIVE_PROGRAM_GROUP_BRIDGE_LIBRARY}"
+    _program_group_bridge_actual_sha256
+  )
+  string(
+    REGEX REPLACE
+    "^sha256:"
+    ""
+    _program_group_bridge_expected_sha256
+    "${MINDCLADE_NATIVE_PROGRAM_GROUP_BRIDGE_LIBRARY_SHA256}"
+  )
+  if(
+    NOT _program_group_bridge_actual_sha256
+    STREQUAL _program_group_bridge_expected_sha256
+  )
+    message(FATAL_ERROR "Program-group bridge library digest mismatch")
+  endif()
+
+  add_library(mindclade_native_program_group_bridge UNKNOWN IMPORTED GLOBAL)
+  set_target_properties(
+    mindclade_native_program_group_bridge
+    PROPERTIES
+      IMPORTED_LOCATION "${MINDCLADE_NATIVE_PROGRAM_GROUP_BRIDGE_LIBRARY}"
+  )
+  target_link_libraries(
+    mindclade_native_schema
+    PRIVATE mindclade_native_program_group_bridge
+  )
+  target_compile_definitions(
+    mindclade_native_cuda_registry
+    PRIVATE MINDCLADE_PROGRAM_GROUP_BRIDGE_V1=1
+  )
+endif()

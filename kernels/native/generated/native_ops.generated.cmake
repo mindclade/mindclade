@@ -13,3 +13,5 @@ set(MINDCLADE_TILELANG_KERNEL_SOURCES
   "${CMAKE_CURRENT_LIST_DIR}/../../pairformer/triangle_attention/tilelang.py"
   "${CMAKE_CURRENT_LIST_DIR}/../../pairformer/triangle_multiplication/tilelang.py"
 )
+set(MINDCLADE_TILELANG_REQUIRED_PRIVATE_SYMBOLS
+)

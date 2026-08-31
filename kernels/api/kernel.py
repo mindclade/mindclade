@@ -18,6 +18,7 @@ from .forward import ForwardSpec
 from .gradient import GradientSpec
 from .launch import DeterminismClass, LaunchContract
 from .output import ContractModel, _nonempty, _unique
+from .program_group import ProgramGroupSpec
 
 _SCHEMA_RE = re.compile(
     r"^\s*(?P<name>[A-Za-z_][A-Za-z0-9_]*)\s*\((?P<args>.*)\)\s*->\s*(?P<returns>.+?)\s*$",
@@ -130,6 +131,7 @@ class KernelSpec(ContractModel):
         if self.devices != ("cuda",):
             raise KernelContractError("v1 native kernels must declare exactly the cuda device")
         self._validate_source()
+        self._validate_program_groups()
 
         semantic = _parse_schema(self.operator_schema)
         forward = _parse_schema(self.forward.schema)
@@ -205,6 +207,43 @@ class KernelSpec(ContractModel):
         if len(path.parts) < 3 or path.parts[-3:] != (self.family, self.name, "spec.py"):
             raise KernelContractError(
                 "kernel source must end with <family>/<operation>/spec.py"
+            )
+
+    def _validate_program_groups(self) -> None:
+        raw_groups = (
+            self.forward.program_group,
+            self.backward.program_group if self.backward is not None else None,
+        )
+        if any(
+            group is not None and not isinstance(group, ProgramGroupSpec)
+            for group in raw_groups
+        ):
+            raise KernelContractError("provider program_group must be a ProgramGroupSpec")
+        groups = tuple(group for group in raw_groups if group is not None)
+        logical_symbols = {self.forward.symbol}
+        if self.backward is not None:
+            logical_symbols.add(self.backward.symbol)
+        private_symbols = [node.symbol for group in groups for node in group.nodes]
+        collisions = sorted(logical_symbols.intersection(private_symbols))
+        if collisions:
+            raise KernelContractError(
+                f"private program symbols collide with logical launchers: {collisions}"
+            )
+        if len(private_symbols) != len(set(private_symbols)):
+            raise KernelContractError("private program symbols must be globally unique")
+        if groups and not self.launch.current_stream_only:
+            raise KernelContractError("v1 program groups require current-stream-only launch")
+        if groups and self.launch.global_synchronization:
+            raise KernelContractError("v1 program groups prohibit global synchronization")
+        has_workspaces = any(group.workspaces for group in groups)
+        if self.launch.hidden_device_allocation is not has_workspaces:
+            raise KernelContractError(
+                "launch.hidden_device_allocation must equal whether program-group "
+                "workspaces are declared"
+            )
+        if has_workspaces and self.launch.graph_capture_safe:
+            raise KernelContractError(
+                "workspace-bearing v1 program groups cannot claim graph capture safety"
             )
 
     def _validate_backward(self, semantic: _Schema, forward: _Schema) -> None:

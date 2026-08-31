@@ -148,6 +148,30 @@ def _normalize_profiles(
     return normalized
 
 
+def _require_supported_receipt_contract(specs: Sequence[KernelSpec]) -> None:
+    """Reject contracts that the current forward-only receipt cannot represent."""
+
+    for spec in specs:
+        if spec.forward.program_group is not None:
+            raise RuntimeError(
+                f"{spec.qualified_name}: current receipt schema v2 cannot represent a "
+                "forward ProgramGroupSpec; program-group compilation requires the newer "
+                "program-group receipt/bridge implementation"
+            )
+        if spec.backward is not None and spec.backward.program_group is not None:
+            raise RuntimeError(
+                f"{spec.qualified_name}: current receipt schema v2 cannot represent a "
+                "backward ProgramGroupSpec; program-group compilation requires the newer "
+                "program-group receipt/bridge implementation"
+            )
+        if spec.backward is not None:
+            raise RuntimeError(
+                f"{spec.qualified_name}: current receipt schema v2 cannot represent a "
+                "backward provider; compilation requires atomic forward/backward co-build "
+                "receipts and the newer co-build receipt/bridge implementation"
+            )
+
+
 def _resolve_builder(spec: KernelSpec, kernels_root: Path):
     builder_identity = spec.forward.builder
     if builder_identity.count(":") != 1:
@@ -260,6 +284,7 @@ def compile_all(
 
     discovered = discover_specs(root.parent, source_files)
     specs = registry(discovered)
+    _require_supported_receipt_contract(specs)
     declarations: dict[str, DiscoveredKernelSpec] = {
         entry.qualified_name: entry for entry in discovered
     }

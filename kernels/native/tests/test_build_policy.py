@@ -81,6 +81,143 @@ def _profiles():
     }
 
 
+def _unsupported_source(
+    tmp_path: Path,
+    *,
+    phase: str,
+) -> tuple[Path, str]:
+    native_root, source, _builder_source = _fixture_source(tmp_path)
+    if phase not in {"backward", "forward_group", "backward_group"}:
+        raise AssertionError(f"unsupported test phase: {phase}")
+
+    forward_group = ""
+    if phase == "forward_group":
+        forward_group = '''
+        program_group=ProgramGroupSpec(
+            nodes=(ProgramNodeSpec(
+                name="forward_stage",
+                builder="kernels.family_a.fixture_op.tilelang:build_forward_stage",
+                symbol="mindclade_tilelang_fixture_op_forward_stage_launch",
+            ),),
+        ),'''
+
+    backward = "None"
+    autograd_policy = "AutogradPolicy.COMPOSITE"
+    composite = '''CompositeAutogradSpec(
+        decomposition="kernels.family_a.fixture_op.reference:reference",
+        source_digest="sha256:0000000000000000000000000000000000000000000000000000000000000000",
+        runtime_envelope="pytorch>=2.10,<2.11",
+        gradients=(GradientSpec(input_name="x", output_name="grad_x"),),
+        supports_double_backward=False,
+        setup_context="kernels.family_a.fixture_op.reference:setup_context",
+        backward="kernels.family_a.fixture_op.reference:backward",
+    )'''
+    if phase in {"backward", "backward_group"}:
+        backward_group = ""
+        if phase == "backward_group":
+            backward_group = '''
+        program_group=ProgramGroupSpec(
+            nodes=(ProgramNodeSpec(
+                name="backward_stage",
+                builder="kernels.family_a.fixture_op.tilelang:build_backward_stage",
+                symbol="mindclade_tilelang_fixture_op_backward_stage_launch",
+            ),),
+        ),'''
+        backward = f'''BackwardSpec(
+        schema="_fixture_op_bwd(Tensor grad_output, Tensor x) -> Tensor grad_x",
+        builder="kernels.family_a.fixture_op.tilelang:build_backward",
+        symbol="mindclade_tilelang_fixture_op_bwd_launch",
+        argument_bindings=(
+            BackwardArgumentBinding(
+                provider_argument="grad_output",
+                source=BackwardArgumentSource.OUTPUT_GRADIENT,
+                source_name="output",
+            ),
+            BackwardArgumentBinding(
+                provider_argument="x",
+                source=BackwardArgumentSource.OPERATOR_ARGUMENT,
+                source_name="x",
+            ),
+        ),
+        gradients=(GradientSpec(input_name="x", output_name="grad_x"),),
+        supports_double_backward=False,{backward_group}
+    )'''
+        autograd_policy = "AutogradPolicy.REQUIRED"
+        composite = "None"
+
+    spec_file = native_root.parent / source
+    spec_file.write_text(
+        f'''from kernels.api import (
+    AutogradPolicy, BackwardArgumentBinding, BackwardArgumentSource,
+    BackwardSpec, CompositeAutogradSpec, DeviceRef, DTypeRef, EffectSpec,
+    ForwardSpec, GradientSpec, KernelSpec, LaunchContract, OutputSpec,
+    ProgramGroupSpec, ProgramNodeSpec, ShapeOf,
+)
+
+KERNEL_SPEC = KernelSpec(
+    name="fixture_op",
+    namespace="mindclade",
+    family="family_a",
+    source="family_a/fixture_op/spec.py",
+    operator_schema="fixture_op(Tensor x) -> Tensor output",
+    facade_outputs=("output",),
+    fake=None,
+    forward=ForwardSpec(
+        schema="_fixture_op_fwd(Tensor x) -> Tensor output",
+        builder="kernels.family_a.fixture_op.tilelang:build_tilelang_program",
+        symbol="mindclade_tilelang_fixture_op_fwd_launch",
+        outputs=(OutputSpec(
+            name="output",
+            shape=ShapeOf(argument="x"),
+            dtype=DTypeRef(argument="x"),
+            device=DeviceRef(argument="x"),
+            semantic_axes=("elements",),
+            visible_in_facade=True,
+            saved_for_backward=False,
+        ),),{forward_group}
+    ),
+    backward={backward},
+    autograd_policy={autograd_policy},
+    composite={composite},
+    effects=EffectSpec(),
+    launch=LaunchContract(graph_capture_safe=False),
+)
+''',
+        encoding="utf-8",
+    )
+    return native_root, source
+
+
+def _assert_rejected_before_tilelang_or_builder(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    phase: str,
+    message: str,
+) -> None:
+    native_root, source = _unsupported_source(tmp_path, phase=phase)
+    monkeypatch.setattr(
+        build.importlib,
+        "import_module",
+        lambda name: (_ for _ in ()).throw(AssertionError(f"unexpected import: {name}")),
+    )
+    monkeypatch.setattr(
+        build,
+        "_resolve_builder",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            AssertionError("unexpected builder resolution")
+        ),
+    )
+    with pytest.raises(RuntimeError, match=message):
+        compile_all(
+            native_root,
+            tmp_path / "compiled",
+            source_files=[source],
+            profiles=_profiles(),
+            target="cuda-sm90",
+        )
+
+
 def test_retired_decorator_fails_with_canonical_migration_path():
     with pytest.raises(RuntimeError, match=r"KERNEL_SPEC.*spec\.py"):
         mindclade_kernel(name="fixture_op")
@@ -191,6 +328,39 @@ def test_offline_builder_requires_exact_bounded_profile_inventory(tmp_path: Path
             profiles={},
             target="cuda-sm90",
         )
+
+
+def test_offline_builder_rejects_backward_provider_before_tilelang_import(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    _assert_rejected_before_tilelang_or_builder(
+        tmp_path,
+        monkeypatch,
+        phase="backward",
+        message=r"receipt schema v2.*atomic forward/backward co-build.*receipt/bridge implementation",
+    )
+
+
+def test_offline_builder_rejects_forward_program_group_before_tilelang_import(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    _assert_rejected_before_tilelang_or_builder(
+        tmp_path,
+        monkeypatch,
+        phase="forward_group",
+        message=r"receipt schema v2.*forward ProgramGroupSpec.*program-group receipt/bridge implementation",
+    )
+
+
+def test_offline_builder_rejects_backward_program_group_before_tilelang_import(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    _assert_rejected_before_tilelang_or_builder(
+        tmp_path,
+        monkeypatch,
+        phase="backward_group",
+        message=r"receipt schema v2.*backward ProgramGroupSpec.*program-group receipt/bridge implementation",
+    )
 
 
 def test_offline_builder_fails_closed_when_tilelang_missing(

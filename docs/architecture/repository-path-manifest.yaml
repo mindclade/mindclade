@@ -2491,6 +2491,10 @@
       ],
       "additions": [
         {
+          "path": ".bazelignore",
+          "reason": "Required Wave 0 schema, deterministic golden, or executable governance test omitted by A6."
+        },
+        {
           "path": ".golangci.yml",
           "reason": "Required tracked Wave 0 lint configuration omitted by A6."
         },

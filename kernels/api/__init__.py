@@ -94,7 +94,14 @@ from .kernel import AutogradPolicy, CompositeAutogradSpec, KernelSpec
 from .launch import DeterminismClass, LaunchContract
 from .numerics import NumericalEnvelope, TensorTolerance
 from .output import ContractModel, InitializationSpec, OutputSpec
-from .program_group import ProgramGroupSpec, ProgramNodeSpec, WorkspaceSpec
+from .program_group import (
+    ProgramGroupSpec,
+    ProgramNodeSpec,
+    WorkspaceAccess,
+    WorkspaceLifetime,
+    WorkspaceSpec,
+    WorkspaceUseSpec,
+)
 from .qualification import QualifiedCapability
 from .schedule import ScheduleSpec, SpecializationSpec
 from .workload import ScalarValue, WorkloadSpec
@@ -189,6 +196,9 @@ __all__ = (
     "TensorTolerance",
     "WorkloadSpec",
     "WorkspaceSpec",
+    "WorkspaceAccess",
+    "WorkspaceLifetime",
+    "WorkspaceUseSpec",
     "canonical_data",
     "canonical_json",
     "content_digest",

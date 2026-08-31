@@ -120,6 +120,7 @@ mindclade/
 ├── BUILD.bazel
 ├── .bazelrc
 ├── .bazelversion
+├── .bazelignore
 ├── flake.nix
 ├── flake.lock
 ├── pyproject.toml

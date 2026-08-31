@@ -115,6 +115,105 @@ def _with_backward_bindings(manifest: dict) -> dict:
     return manifest
 
 
+def _program_group() -> dict:
+    return {
+        "type": "ProgramGroupSpec",
+        "nodes": [
+            {
+                "type": "ProgramNodeSpec",
+                "name": "produce",
+                "builder": "kernels.family_a.fixture_op.tilelang:build_produce",
+                "symbol": "mindclade_tilelang_fixture_op_produce_launch",
+                "depends_on": [],
+                "workspace_uses": [
+                    {
+                        "type": "WorkspaceUseSpec",
+                        "workspace": "scratch",
+                        "access": "write",
+                        "version": 1,
+                    }
+                ],
+                "version": 1,
+            },
+            {
+                "type": "ProgramNodeSpec",
+                "name": "consume",
+                "builder": "kernels.family_a.fixture_op.tilelang:build_consume",
+                "symbol": "mindclade_tilelang_fixture_op_consume_launch",
+                "depends_on": ["produce"],
+                "workspace_uses": [
+                    {
+                        "type": "WorkspaceUseSpec",
+                        "workspace": "scratch",
+                        "access": "read_write",
+                        "version": 1,
+                    }
+                ],
+                "version": 1,
+            },
+        ],
+        "workspaces": [
+            {
+                "type": "WorkspaceSpec",
+                "name": "scratch",
+                "shape": {
+                    "node": "shape_tuple",
+                    "dimensions": [
+                        {"node": "dim_ref", "argument": "x", "axis": 0}
+                    ],
+                },
+                "dtype": {"node": "constant_dtype", "value": "float32"},
+                "zero_initialize": True,
+                "lifetime": "program_group",
+                "version": 1,
+            }
+        ],
+        "version": 1,
+    }
+
+
+def _launcher_plan(phase: str) -> dict:
+    group = _program_group()
+    logical_symbol = f"mindclade_tilelang_fixture_op_{phase}_launch"
+    return {
+        "phase": phase,
+        "logical_symbol": logical_symbol,
+        "bridge_requirement": "mindclade_program_group_bridge_v1",
+        "execution_order": ["produce", "consume"],
+        "required_private_symbols": [
+            node["symbol"] for node in group["nodes"]
+        ],
+        "nodes": [
+            {
+                "name": node["name"],
+                "symbol": node["symbol"],
+                "depends_on": node["depends_on"],
+                "workspace_uses": [
+                    {
+                        "workspace": use["workspace"],
+                        "access": use["access"],
+                    }
+                    for use in node["workspace_uses"]
+                ],
+            }
+            for node in group["nodes"]
+        ],
+        "workspaces": [
+            {
+                key: workspace[key]
+                for key in (
+                    "name",
+                    "shape",
+                    "dtype",
+                    "zero_initialize",
+                    "lifetime",
+                )
+            }
+            for workspace in group["workspaces"]
+        ],
+    }
+
+
 def test_generated_manifest_validates_against_strict_v3_schema():
     manifest = json.loads((ROOT / "generated" / "native_ops.json").read_text())
     _validator().validate(manifest)
@@ -179,5 +278,225 @@ def test_schema_rejects_missing_named_backward_binding_fields(tmp_path: Path):
     manifest = _with_backward_bindings(_fixture_manifest(tmp_path))
     binding = manifest["operators"][0]["backward"]["argument_bindings"][0]
     del binding["source_name"]
+    with pytest.raises(jsonschema.ValidationError):
+        _validator().validate(manifest)
+
+
+def test_schema_accepts_forward_and_backward_program_groups(tmp_path: Path):
+    manifest = _with_backward_bindings(_fixture_manifest(tmp_path))
+    manifest["operators"][0]["forward"]["program_group"] = _program_group()
+    manifest["operators"][0]["backward"]["program_group"] = _program_group()
+    manifest["operators"][0]["launcher_plans"] = {
+        "forward": _launcher_plan("forward"),
+        "backward": _launcher_plan("backward"),
+    }
+    _validator().validate(manifest)
+
+
+@pytest.mark.parametrize(
+    ("contract", "field"),
+    (
+        ("group", "workspaces"),
+        ("node", "workspace_uses"),
+        ("workspace", "shape"),
+        ("use", "access"),
+    ),
+)
+def test_schema_rejects_missing_program_group_fields(
+    tmp_path: Path, contract: str, field: str
+):
+    manifest = _fixture_manifest(tmp_path)
+    group = _program_group()
+    target = {
+        "group": group,
+        "node": group["nodes"][0],
+        "workspace": group["workspaces"][0],
+        "use": group["nodes"][0]["workspace_uses"][0],
+    }[contract]
+    del target[field]
+    manifest["operators"][0]["forward"]["program_group"] = group
+    with pytest.raises(jsonschema.ValidationError):
+        _validator().validate(manifest)
+
+
+@pytest.mark.parametrize("contract", ("group", "node", "workspace", "use"))
+def test_schema_rejects_extra_program_group_fields(
+    tmp_path: Path, contract: str
+):
+    manifest = _fixture_manifest(tmp_path)
+    group = _program_group()
+    target = {
+        "group": group,
+        "node": group["nodes"][0],
+        "workspace": group["workspaces"][0],
+        "use": group["nodes"][0]["workspace_uses"][0],
+    }[contract]
+    target["runtime_expression"] = "prohibited"
+    manifest["operators"][0]["forward"]["program_group"] = group
+    with pytest.raises(jsonschema.ValidationError):
+        _validator().validate(manifest)
+
+
+@pytest.mark.parametrize(
+    ("contract", "field", "invalid"),
+    (
+        ("group", "type", "RuntimeProgramGroup"),
+        ("group", "version", 2),
+        ("node", "type", "RuntimeProgramNode"),
+        ("node", "version", 2),
+        ("workspace", "type", "RuntimeWorkspace"),
+        ("workspace", "version", 2),
+        ("workspace", "lifetime", "process"),
+        ("use", "type", "RuntimeWorkspaceUse"),
+        ("use", "version", 2),
+        ("use", "access", "execute"),
+    ),
+)
+def test_schema_rejects_invalid_program_group_contract_values(
+    tmp_path: Path, contract: str, field: str, invalid: object
+):
+    manifest = _fixture_manifest(tmp_path)
+    group = _program_group()
+    target = {
+        "group": group,
+        "node": group["nodes"][0],
+        "workspace": group["workspaces"][0],
+        "use": group["nodes"][0]["workspace_uses"][0],
+    }[contract]
+    target[field] = invalid
+    manifest["operators"][0]["forward"]["program_group"] = group
+    with pytest.raises(jsonschema.ValidationError):
+        _validator().validate(manifest)
+
+
+def test_schema_rejects_empty_or_oversized_program_group_arrays(tmp_path: Path):
+    validator = _validator()
+    for field in ("nodes",):
+        manifest = _fixture_manifest(tmp_path / f"empty-{field}")
+        group = _program_group()
+        group[field] = []
+        manifest["operators"][0]["forward"]["program_group"] = group
+        with pytest.raises(jsonschema.ValidationError):
+            validator.validate(manifest)
+    for field, item in (
+        ("nodes", _program_group()["nodes"][0]),
+        ("workspaces", _program_group()["workspaces"][0]),
+    ):
+        manifest = _fixture_manifest(tmp_path / f"oversized-{field}")
+        group = _program_group()
+        group[field] = [dict(item, name=f"item_{index}") for index in range(65)]
+        manifest["operators"][0]["forward"]["program_group"] = group
+        with pytest.raises(jsonschema.ValidationError):
+            validator.validate(manifest)
+
+
+@pytest.mark.parametrize(
+    ("field", "invalid"),
+    (
+        ("shape", []),
+        ("dtype", []),
+        ("shape", {"node": "constant_dtype", "value": "float32"}),
+        ("dtype", {"node": "shape_of", "argument": "x"}),
+    ),
+)
+def test_schema_rejects_invalid_workspace_expression_domains(
+    tmp_path: Path, field: str, invalid: object
+):
+    manifest = _fixture_manifest(tmp_path)
+    group = _program_group()
+    group["workspaces"][0][field] = invalid
+    manifest["operators"][0]["forward"]["program_group"] = group
+    with pytest.raises(jsonschema.ValidationError):
+        _validator().validate(manifest)
+
+
+@pytest.mark.parametrize(
+    ("location", "field"),
+    (
+        ("plans", "backward"),
+        ("plan", "execution_order"),
+        ("node", "workspace_uses"),
+        ("workspace", "shape"),
+        ("use", "access"),
+    ),
+)
+def test_schema_rejects_missing_launcher_plan_fields(
+    tmp_path: Path, location: str, field: str
+):
+    manifest = _fixture_manifest(tmp_path)
+    manifest["operators"][0]["launcher_plans"] = {
+        "forward": _launcher_plan("forward"),
+        "backward": None,
+    }
+    plan = manifest["operators"][0]["launcher_plans"]["forward"]
+    target = {
+        "plans": manifest["operators"][0]["launcher_plans"],
+        "plan": plan,
+        "node": plan["nodes"][0],
+        "workspace": plan["workspaces"][0],
+        "use": plan["nodes"][0]["workspace_uses"][0],
+    }[location]
+    del target[field]
+    with pytest.raises(jsonschema.ValidationError):
+        _validator().validate(manifest)
+
+
+@pytest.mark.parametrize("location", ("plans", "plan", "node", "workspace", "use"))
+def test_schema_rejects_extra_launcher_plan_fields(
+    tmp_path: Path, location: str
+):
+    manifest = _fixture_manifest(tmp_path)
+    manifest["operators"][0]["launcher_plans"] = {
+        "forward": _launcher_plan("forward"),
+        "backward": None,
+    }
+    plan = manifest["operators"][0]["launcher_plans"]["forward"]
+    target = {
+        "plans": manifest["operators"][0]["launcher_plans"],
+        "plan": plan,
+        "node": plan["nodes"][0],
+        "workspace": plan["workspaces"][0],
+        "use": plan["nodes"][0]["workspace_uses"][0],
+    }[location]
+    target["builder"] = "prohibited"
+    with pytest.raises(jsonschema.ValidationError):
+        _validator().validate(manifest)
+
+
+@pytest.mark.parametrize(
+    ("field", "invalid"),
+    (
+        ("phase", "training"),
+        ("logical_symbol", "not a symbol"),
+        ("bridge_requirement", "unreviewed_bridge_v2"),
+    ),
+)
+def test_schema_rejects_invalid_launcher_plan_contract_values(
+    tmp_path: Path, field: str, invalid: object
+):
+    manifest = _fixture_manifest(tmp_path)
+    plan = _launcher_plan("forward")
+    plan[field] = invalid
+    manifest["operators"][0]["launcher_plans"] = {
+        "forward": plan,
+        "backward": None,
+    }
+    with pytest.raises(jsonschema.ValidationError):
+        _validator().validate(manifest)
+
+
+@pytest.mark.parametrize(
+    "field", ("execution_order", "required_private_symbols", "nodes")
+)
+def test_schema_rejects_empty_launcher_plan_execution_arrays(
+    tmp_path: Path, field: str
+):
+    manifest = _fixture_manifest(tmp_path)
+    plan = _launcher_plan("forward")
+    plan[field] = []
+    manifest["operators"][0]["launcher_plans"] = {
+        "forward": plan,
+        "backward": None,
+    }
     with pytest.raises(jsonschema.ValidationError):
         _validator().validate(manifest)

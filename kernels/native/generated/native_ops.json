@@ -3,7 +3,7 @@
     "id": "kernels.native.codegen.generate",
     "version": 5
   },
-  "manifest_digest": "sha256:77d5b14d3b4736616608fc8bf422e3b9d57f5692a583bd07edd6f6c692fb86ed",
+  "manifest_digest": "sha256:43a633f350dc4d75cc364b28159505cb3298d4d57a4ea0cd331f02f990c4754d",
   "namespace": "mindclade",
   "operators": [
     {
@@ -139,6 +139,10 @@
         "hidden_device_allocation": false,
         "type": "LaunchContract",
         "version": 1
+      },
+      "launcher_plans": {
+        "backward": null,
+        "forward": null
       },
       "name": "outer_product_mean",
       "namespace": "mindclade",
@@ -281,6 +285,10 @@
         "hidden_device_allocation": false,
         "type": "LaunchContract",
         "version": 1
+      },
+      "launcher_plans": {
+        "backward": null,
+        "forward": null
       },
       "name": "pair_weighted_average",
       "namespace": "mindclade",
@@ -429,6 +437,10 @@
         "type": "LaunchContract",
         "version": 1
       },
+      "launcher_plans": {
+        "backward": null,
+        "forward": null
+      },
       "name": "transition",
       "namespace": "mindclade",
       "operator_schema": "transition(Tensor gate, Tensor value, Tensor output_weight, Tensor output_bias, Tensor mask) -> Tensor output",
@@ -562,6 +574,10 @@
         "type": "LaunchContract",
         "version": 1
       },
+      "launcher_plans": {
+        "backward": null,
+        "forward": null
+      },
       "name": "triangle_attention",
       "namespace": "mindclade",
       "operator_schema": "triangle_attention(Tensor q, Tensor k, Tensor v, Tensor bias, Tensor mask, float scale) -> Tensor output",
@@ -677,6 +693,10 @@
         "hidden_device_allocation": false,
         "type": "LaunchContract",
         "version": 1
+      },
+      "launcher_plans": {
+        "backward": null,
+        "forward": null
       },
       "name": "triangle_multiplication",
       "namespace": "mindclade",

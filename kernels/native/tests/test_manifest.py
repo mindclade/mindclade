@@ -121,6 +121,7 @@ def _operator(source: str) -> dict[str, object]:
                 "implementation_symbol": symbol,
             },
         ],
+        "launcher_plans": {"forward": None, "backward": None},
     }
     kernel_spec = {
         "type": "KernelSpec",
@@ -168,7 +169,7 @@ def _resign(manifest: dict[str, object]) -> dict[str, object]:
 def _manifest() -> dict[str, object]:
     manifest: dict[str, object] = {
         "schema_version": 3,
-        "generator": {"id": "kernels.native.codegen.generate", "version": 4},
+        "generator": {"id": "kernels.native.codegen.generate", "version": 5},
         "source_inventory_sha256": "",
         "namespace": "mindclade",
         "registration_mode": "build_time_generated",
@@ -252,6 +253,14 @@ def test_manifest_rejects_registration_contract_drift():
     manifest = _manifest()
     manifest["operators"][0]["registrations"][1]["kind"] = "semantic"
     with pytest.raises(ValueError, match="registrations do not match"):
+        validate_manifest(manifest)
+
+
+def test_manifest_rejects_launcher_plan_drift():
+    manifest = _manifest()
+    manifest["operators"][0]["launcher_plans"]["forward"] = {}
+    _resign(manifest)
+    with pytest.raises(ValueError, match="launcher plan"):
         validate_manifest(manifest)
 
 
