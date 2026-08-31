@@ -23,6 +23,10 @@ py_test(
     name = "generated_clients_test",
     srcs = ["conformance/test_generated_clients.py"],
     data = _WAVE1_DATA,
+    deps = [
+        "@mindclade_pypi//protobuf",
+        "@mindclade_pypi//pyyaml",
+    ],
     imports = [".."],
     legacy_create_init = 0,
     main = "conformance/test_generated_clients.py",
