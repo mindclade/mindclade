@@ -16,42 +16,35 @@ import os
 from threading import Lock
 from typing import Any
 
+from kernels.native.tilelang.manifest import load_manifest
+
 _ENABLE_ENV = "MINDCLADE_NATIVE_REFERENCE_RUNTIME"
 _LOCK = Lock()
 _LIBRARY: Any | None = None
+_OPERATOR_NAMES: tuple[str, ...] = ()
 
-_OPERATORS = (
-    (
-        "outer_product_mean",
-        "outer_product_mean(Tensor left, Tensor right, Tensor mask, float epsilon) -> Tensor",
-        "kernels.pairformer.outer_product_mean.tilelang",
-        "outer_product_mean_reference",
-    ),
-    (
-        "pair_weighted_average",
-        "pair_weighted_average(Tensor value, Tensor weights, Tensor mask, float epsilon) -> Tensor",
-        "kernels.pairformer.pair_weighted_average.tilelang",
-        "_reference",
-    ),
-    (
-        "triangle_attention",
-        "triangle_attention(Tensor q, Tensor k, Tensor v, Tensor bias, Tensor mask, float scale) -> Tensor",
-        "kernels.pairformer.triangle_attention.tilelang",
-        "triangle_attention_reference",
-    ),
-    (
-        "triangle_multiplication",
-        "triangle_multiplication(Tensor left, Tensor right, Tensor mask, bool outgoing) -> Tensor",
-        "kernels.pairformer.triangle_multiplication.tilelang",
-        "reference",
-    ),
-    (
-        "transition",
-        "transition(Tensor gate, Tensor value, Tensor output_weight, Tensor output_bias, Tensor mask) -> Tensor",
-        "kernels.pairformer.transition.tilelang",
-        "transition_reference",
-    ),
-)
+
+def _operator_inventory() -> tuple[tuple[str, str, str, str], ...]:
+    manifest = load_manifest()
+    inventory: list[tuple[str, str, str, str]] = []
+    for operator in manifest["operators"]:
+        composite = operator["composite"]
+        if operator["autograd_policy"] != "composite" or composite is None:
+            raise RuntimeError(
+                "reference runtime requires a declared composite implementation: "
+                + operator["qualified_name"]
+            )
+        decomposition = composite["decomposition"]
+        module, symbol = decomposition.rsplit(":", 1)
+        inventory.append(
+            (
+                operator["name"],
+                operator["operator_schema"],
+                module,
+                symbol,
+            )
+        )
+    return tuple(inventory)
 
 
 def _operator_exists(torch: Any, name: str) -> bool:
@@ -69,7 +62,7 @@ def enable_reference_runtime() -> tuple[Any, ...]:
     A process that enables this mode must not subsequently load a native bundle.
     """
 
-    global _LIBRARY
+    global _LIBRARY, _OPERATOR_NAMES
     if os.environ.get(_ENABLE_ENV) != "1":
         raise RuntimeError(f"reference runtime requires explicit {_ENABLE_ENV}=1")
 
@@ -77,8 +70,9 @@ def enable_reference_runtime() -> tuple[Any, ...]:
 
     with _LOCK:
         if _LIBRARY is not None:
-            return tuple(getattr(torch.ops.mindclade, name).default for name, *_ in _OPERATORS)
-        occupied = [name for name, *_ in _OPERATORS if _operator_exists(torch, name)]
+            return tuple(getattr(torch.ops.mindclade, name).default for name in _OPERATOR_NAMES)
+        operators = _operator_inventory()
+        occupied = [name for name, *_ in operators if _operator_exists(torch, name)]
         if occupied:
             raise RuntimeError(
                 "reference runtime cannot coexist with registered native schemas: "
@@ -87,7 +81,7 @@ def enable_reference_runtime() -> tuple[Any, ...]:
 
         library = torch.library.Library("mindclade", "DEF")
         implementations: list[tuple[str, Any]] = []
-        for name, schema, module_name, symbol in _OPERATORS:
+        for name, schema, module_name, symbol in operators:
             implementation = getattr(importlib.import_module(module_name), symbol)
             if not callable(implementation):
                 raise RuntimeError(f"reference implementation is not callable: {module_name}.{symbol}")
@@ -96,7 +90,8 @@ def enable_reference_runtime() -> tuple[Any, ...]:
         for name, implementation in implementations:
             library.impl(name, implementation, "CompositeImplicitAutograd")
         _LIBRARY = library
-        return tuple(getattr(torch.ops.mindclade, name).default for name, *_ in _OPERATORS)
+        _OPERATOR_NAMES = tuple(name for name, *_ in operators)
+        return tuple(getattr(torch.ops.mindclade, name).default for name in _OPERATOR_NAMES)
 
 
 def reference_runtime_enabled() -> bool:

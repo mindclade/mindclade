@@ -1,17 +1,15 @@
-"""Triangle multiplication reference and TileLang implementation contract."""
+"""Pairformer triangle-multiplication facade, contract, reference, and builder."""
 
-from .tilelang import (
-    backward,
-    build_tilelang_program,
-    fake,
-    reference,
-    setup_context,
-)
+from .dispatch import NativeOperatorUnavailable, ReferenceFallback, triangle_multiplication
+from .reference import triangle_multiplication_reference
+from .spec import KERNEL_SPEC
+from .tilelang import build_tilelang_program
 
-__all__ = [
-    "backward",
+__all__ = (
+    "KERNEL_SPEC",
+    "NativeOperatorUnavailable",
+    "ReferenceFallback",
     "build_tilelang_program",
-    "fake",
-    "reference",
-    "setup_context",
-]
+    "triangle_multiplication",
+    "triangle_multiplication_reference",
+)

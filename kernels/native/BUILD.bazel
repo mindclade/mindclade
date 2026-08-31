@@ -37,7 +37,18 @@ cc_library(
 # Operation declarations are explicit build inputs owned by operation-local
 # packages. Codegen receives no implicit repository discovery inputs.
 filegroup(
-    name = "native_operator_authoring_sources",
+    name = "native_operator_spec_sources",
+    srcs = [
+        "//kernels/pairformer/outer_product_mean:spec.py",
+        "//kernels/pairformer/pair_weighted_average:spec.py",
+        "//kernels/pairformer/triangle_attention:spec.py",
+        "//kernels/pairformer/triangle_multiplication:spec.py",
+        "//kernels/pairformer/transition:spec.py",
+    ],
+)
+
+filegroup(
+    name = "native_tilelang_builder_sources",
     srcs = [
         "//kernels/pairformer/outer_product_mean:tilelang.py",
         "//kernels/pairformer/pair_weighted_average:tilelang.py",
@@ -60,6 +71,11 @@ py_library(
         "tilelang/targets.py",
         "tilelang/swizzle.py",
     ],
+    deps = [
+        ":native_codegen_lib",
+        "//kernels/api:api",
+    ],
+    visibility = ["//kernels/pairformer/transition:__pkg__"],
 )
 
 py_library(
@@ -67,14 +83,16 @@ py_library(
     srcs = [
         "codegen/__init__.py",
         "codegen/discover.py",
+        "codegen/generate.py",
         "codegen/parse_literal_ast.py",
         "codegen/schema.py",
     ],
     data = [
-        ":native_operator_authoring_sources",
+        ":native_operator_spec_sources",
+        ":native_tilelang_builder_sources",
         "manifests/native_ops.schema.json",
     ],
-    deps = [":tilelang_codegen_lib"],
+    deps = ["//kernels/api:api"],
 )
 
 # This is the sole generated-output owner. It runs only as an explicit Bazel
@@ -83,7 +101,8 @@ py_binary(
     name = "generate_native_ops",
     srcs = ["codegen/generate.py"],
     data = [
-        ":native_operator_authoring_sources",
+        ":native_operator_spec_sources",
+        ":native_tilelang_builder_sources",
         "generated/native_ops.generated.bzl",
         "generated/native_ops.generated.cmake",
         "generated/native_ops.json",
@@ -96,6 +115,15 @@ py_binary(
 )
 
 py_library(
+    name = "native_manifest",
+    srcs = [
+        "tilelang/__init__.py",
+        "tilelang/manifest.py",
+    ],
+    data = ["generated/native_ops.json"],
+)
+
+py_library(
     name = "native_python",
     srcs = [
         "python/__init__.py",
@@ -104,6 +132,8 @@ py_library(
         "python/reference_runtime.py",
         "python/registration.py",
     ],
+    data = ["generated/python_registration_generated.py"],
+    deps = [":native_manifest"],
 )
 
 filegroup(
@@ -410,6 +440,19 @@ py_test(
 )
 
 py_test(
+    name = "test_schema",
+    srcs = ["tests/pytest_runner.py"],
+    args = ["$(location tests/test_schema.py)"],
+    data = ["tests/test_schema.py"],
+    main = "tests/pytest_runner.py",
+    python_version = "PY3",
+    deps = [
+        ":native_codegen_lib",
+        "@mindclade_pypi//pytest",
+    ],
+)
+
+py_test(
     name = "test_schema_manifest",
     srcs = ["tests/pytest_runner.py"],
     args = ["$(location tests/test_schema_manifest.py)"],
@@ -436,8 +479,13 @@ test_suite(
         ":test_codegen_drift",
         ":test_discovery",
         ":test_manifest",
+        ":test_parse_literal_ast",
         ":test_policy",
+        ":test_schema",
         ":test_schema_manifest",
+        ":test_tilelang_swizzle",
+        ":test_tilelang_targets",
+        ":test_tilelang_tma",
     ],
 )
 
@@ -468,19 +516,29 @@ exports_files([
 ])
 
 py_test(
-    name = "tilelang_targets_test",
+    name = "test_tilelang_targets",
     srcs = ["tests/test_tilelang_targets.py"],
-    deps = [":tilelang_codegen_lib", "@mindclade_pypi//jsonschema"],
+    deps = [
+        ":tilelang_codegen_lib",
+        "@mindclade_pypi//jsonschema",
+        "@mindclade_pypi//pytest",
+    ],
 )
 
 py_test(
-    name = "tilelang_swizzle_test",
+    name = "test_tilelang_swizzle",
     srcs = ["tests/test_tilelang_swizzle.py"],
-    deps = [":tilelang_codegen_lib"],
+    deps = [
+        ":tilelang_codegen_lib",
+        "@mindclade_pypi//pytest",
+    ],
 )
 
 py_test(
-    name = "tilelang_tma_test",
+    name = "test_tilelang_tma",
     srcs = ["tests/test_tilelang_tma.py"],
-    deps = [":tilelang_codegen_lib"],
+    deps = [
+        ":tilelang_codegen_lib",
+        "@mindclade_pypi//pytest",
+    ],
 )

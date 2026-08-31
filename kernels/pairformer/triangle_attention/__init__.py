@@ -2,22 +2,19 @@
 # Mindclade Proprietary and Confidential.
 # SPDX-License-Identifier: LicenseRef-Mindclade-Proprietary
 
-"""Operation-local triangle-attention contract and reference implementation."""
+"""Pairformer triangle-attention facade, contract, reference, and builder."""
 
-from kernels.pairformer.triangle_attention.tilelang import (
-    TRIANGLE_ATTENTION_PROFILES,
-    backward,
-    build_tilelang_program,
-    fake,
-    setup_context,
-    triangle_attention_reference,
-)
+from .dispatch import NativeOperatorUnavailable, ReferenceFallback, triangle_attention
+from .reference import triangle_attention_reference
+from .spec import KERNEL_SPEC
+from .tilelang import TRIANGLE_ATTENTION_PROFILES, build_tilelang_program
 
 __all__ = (
+    "KERNEL_SPEC",
+    "NativeOperatorUnavailable",
+    "ReferenceFallback",
     "TRIANGLE_ATTENTION_PROFILES",
-    "backward",
     "build_tilelang_program",
-    "fake",
-    "setup_context",
+    "triangle_attention",
     "triangle_attention_reference",
 )

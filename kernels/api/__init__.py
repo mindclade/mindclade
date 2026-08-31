@@ -5,7 +5,12 @@ registration side effects.  Operation declarations may import only these data
 contracts and construct one canonical ``KernelSpec`` in ``spec.py``.
 """
 
-from .backward import BackwardSpec
+from .backward import (
+    BackwardArgumentBinding,
+    BackwardArgumentSource,
+    BackwardSpec,
+    MissingGradientPolicy,
+)
 from .capability import (
     CapabilityEnvelope,
     DimensionConstraint,
@@ -69,7 +74,6 @@ from .expressions import (
     ShapeOf,
     ShapePrefix,
     ShapeTuple,
-    ShapeTuple,
     StringLiteral,
     Subtract,
     TensorMetadata,
@@ -99,6 +103,8 @@ __all__ = (
     "Add",
     "And",
     "AutogradPolicy",
+    "BackwardArgumentBinding",
+    "BackwardArgumentSource",
     "BackwardSpec",
     "BoolExpr",
     "BoolLiteral",
@@ -148,6 +154,7 @@ __all__ = (
     "LessThan",
     "Maximum",
     "Minimum",
+    "MissingGradientPolicy",
     "Modulo",
     "Multiply",
     "Not",
@@ -173,7 +180,6 @@ __all__ = (
     "ShapeExpr",
     "ShapeOf",
     "ShapePrefix",
-    "ShapeTuple",
     "ShapeTuple",
     "SpecializationSpec",
     "StringLiteral",

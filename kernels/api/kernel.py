@@ -7,7 +7,11 @@ from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import PurePosixPath
 
-from .backward import BackwardSpec
+from .backward import (
+    BackwardArgumentSource,
+    BackwardSpec,
+    MissingGradientPolicy,
+)
 from .effects import EffectSpec
 from .errors import KernelContractError, SchemaError
 from .forward import ForwardSpec
@@ -35,11 +39,32 @@ class CompositeAutogradSpec(ContractModel):
     runtime_envelope: str
     gradients: tuple[GradientSpec, ...]
     supports_double_backward: bool
+    setup_context: str | None = None
+    backward: str | None = None
     version: int = 1
 
     def __post_init__(self) -> None:
         _nonempty(self.decomposition, "composite decomposition")
         _nonempty(self.runtime_envelope, "composite runtime envelope")
+        _nonempty(self.setup_context, "composite setup_context")
+        _nonempty(self.backward, "composite backward")
+        for label, identity in (
+            ("decomposition", self.decomposition),
+            ("setup_context", self.setup_context),
+            ("backward", self.backward),
+        ):
+            assert identity is not None
+            if identity.count(":") != 1:
+                raise KernelContractError(
+                    f"composite {label} must be one module:function identity"
+                )
+            module, function = identity.split(":", 1)
+            if not module or not function or not all(
+                part.isidentifier() for part in module.split(".")
+            ) or not function.isidentifier():
+                raise KernelContractError(
+                    f"composite {label} must be one module:function identity"
+                )
         if self.version != 1:
             raise KernelContractError(f"unsupported CompositeAutogradSpec version: {self.version}")
         if not re.fullmatch(r"sha256:[0-9a-f]{64}", self.source_digest):
@@ -60,8 +85,18 @@ class CompositeAutogradSpec(ContractModel):
 class _Schema:
     name: str
     arguments: tuple[str, ...]
+    argument_kinds: tuple[str, ...]
     outputs: tuple[str | None, ...]
+    output_kinds: tuple[str, ...]
     raw: str
+
+    @property
+    def argument_signature(self) -> tuple[tuple[str, str], ...]:
+        return tuple(zip(self.arguments, self.argument_kinds, strict=True))
+
+    @property
+    def output_signature(self) -> tuple[tuple[str | None, str], ...]:
+        return tuple(zip(self.outputs, self.output_kinds, strict=True))
 
 
 @dataclass(frozen=True, slots=True)
@@ -106,6 +141,16 @@ class KernelSpec(ContractModel):
             raise SchemaError(
                 f"forward provider must be named _{self.name}_fwd, got {forward.name!r}"
             )
+        if forward.argument_signature != semantic.argument_signature:
+            raise SchemaError(
+                "semantic and forward provider argument names and kinds must match exactly "
+                "in declaration order"
+            )
+        if forward.output_signature != semantic.output_signature:
+            raise SchemaError(
+                "semantic and forward provider output names and kinds do not match exactly "
+                "in declaration order"
+            )
         output_names = tuple(output.name for output in self.forward.outputs)
         _validate_schema_outputs(semantic, output_names, "semantic")
         _validate_schema_outputs(forward, output_names, "forward")
@@ -123,7 +168,7 @@ class KernelSpec(ContractModel):
 
         semantic_arguments = set(semantic.arguments)
         if self.backward is not None:
-            self._validate_backward(semantic_arguments)
+            self._validate_backward(semantic, forward)
         if self.autograd_policy is AutogradPolicy.REQUIRED:
             if self.backward is None:
                 raise KernelContractError("AutogradPolicy.REQUIRED requires a backward provider")
@@ -162,16 +207,132 @@ class KernelSpec(ContractModel):
                 "kernel source must end with <family>/<operation>/spec.py"
             )
 
-    def _validate_backward(self, semantic_arguments: set[str]) -> None:
+    def _validate_backward(self, semantic: _Schema, forward: _Schema) -> None:
         assert self.backward is not None
         backward_schema = _parse_schema(self.backward.schema)
         if backward_schema.name != f"_{self.name}_bwd":
             raise SchemaError(
                 f"backward provider must be named _{self.name}_bwd, got {backward_schema.name!r}"
             )
-        backward_outputs = tuple(
-            output for output in backward_schema.outputs if output is not None
-        )
+        semantic_kinds = dict(semantic.argument_signature)
+        forward_output_kinds = {
+            name: kind
+            for name, kind in forward.output_signature
+            if name is not None
+        }
+        backward_argument_kinds = dict(backward_schema.argument_signature)
+        backward_outputs = tuple(output for output in backward_schema.outputs if output is not None)
+        if len(backward_outputs) != len(backward_schema.outputs):
+            raise SchemaError("backward provider outputs must all be explicitly named")
+
+        bindings = {
+            binding.provider_argument: binding
+            for binding in self.backward.argument_bindings
+        }
+        provider_arguments = set(backward_schema.arguments)
+        if set(bindings) != provider_arguments:
+            missing = sorted(provider_arguments - set(bindings))
+            extra = sorted(set(bindings) - provider_arguments)
+            raise KernelContractError(
+                "backward argument bindings must exactly cover provider parameters; "
+                f"missing={missing}, extra={extra}"
+            )
+
+        gradient_inputs = {gradient.input_name for gradient in self.backward.gradients}
+        forward_outputs = {output.name: output for output in self.forward.outputs}
+        consumed_forward_outputs: set[str] = set()
+        operator_argument_sources: set[str] = set()
+        needs_input_grad_counts: dict[str, int] = {}
+        output_gradient_policies: dict[str, MissingGradientPolicy] = {}
+        for provider_argument in backward_schema.arguments:
+            binding = bindings[provider_argument]
+            provider_kind = backward_argument_kinds[provider_argument]
+            if binding.source is BackwardArgumentSource.OUTPUT_GRADIENT:
+                if binding.source_name not in forward_outputs:
+                    raise KernelContractError(
+                        f"output-gradient source {binding.source_name!r} is not a forward output"
+                    )
+                prior_policy = output_gradient_policies.get(binding.source_name)
+                if prior_policy is not None and prior_policy is not binding.missing:
+                    raise KernelContractError(
+                        f"output-gradient source {binding.source_name!r} has conflicting "
+                        "missing-gradient policies"
+                    )
+                output_gradient_policies[binding.source_name] = binding.missing
+                expected_kind = forward_output_kinds[binding.source_name]
+                if binding.missing is MissingGradientPolicy.PASS_NONE:
+                    if provider_kind != f"{expected_kind}?":
+                        raise SchemaError(
+                            "PASS_NONE output-gradient binding requires an optional provider kind"
+                        )
+                elif provider_kind != expected_kind:
+                    raise SchemaError(
+                        f"output-gradient provider argument {provider_argument!r} kind "
+                        f"{provider_kind!r} must match forward output kind {expected_kind!r}"
+                    )
+                if binding.missing is MissingGradientPolicy.ZERO:
+                    output = forward_outputs[binding.source_name]
+                    if not output.saved_for_backward:
+                        raise KernelContractError(
+                            f"ZERO output-gradient source {binding.source_name!r} must be "
+                            "saved for backward"
+                        )
+                    if not self.launch.hidden_device_allocation:
+                        raise KernelContractError(
+                            "ZERO missing-gradient policy requires "
+                            "launch.hidden_device_allocation=True"
+                        )
+                    consumed_forward_outputs.add(binding.source_name)
+            elif binding.source is BackwardArgumentSource.OPERATOR_ARGUMENT:
+                if binding.source_name not in semantic_kinds:
+                    raise KernelContractError(
+                        f"operator-argument source {binding.source_name!r} is not a semantic argument"
+                    )
+                if semantic_kinds[binding.source_name] == "Tensor?":
+                    raise SchemaError(
+                        "optional Tensor operator-argument bindings require schema version 2"
+                    )
+                if provider_kind != semantic_kinds[binding.source_name]:
+                    raise SchemaError(
+                        f"operator-argument provider kind {provider_kind!r} does not match "
+                        f"semantic kind {semantic_kinds[binding.source_name]!r}"
+                    )
+                operator_argument_sources.add(binding.source_name)
+            elif binding.source is BackwardArgumentSource.FORWARD_OUTPUT:
+                output = forward_outputs.get(binding.source_name)
+                if output is None:
+                    raise KernelContractError(
+                        f"forward-output source {binding.source_name!r} is not a forward output"
+                    )
+                if not output.saved_for_backward:
+                    raise KernelContractError(
+                        f"forward output {binding.source_name!r} is not saved for backward"
+                    )
+                if provider_kind != forward_output_kinds[binding.source_name]:
+                    raise SchemaError(
+                        f"forward-output provider kind {provider_kind!r} does not match "
+                        f"output kind {forward_output_kinds[binding.source_name]!r}"
+                    )
+                consumed_forward_outputs.add(binding.source_name)
+            elif binding.source is BackwardArgumentSource.NEEDS_INPUT_GRAD:
+                if binding.source_name not in gradient_inputs:
+                    raise KernelContractError(
+                        f"needs_input_grad source {binding.source_name!r} is not a declared gradient input"
+                    )
+                if semantic_kinds.get(binding.source_name) != "Tensor":
+                    raise KernelContractError(
+                        f"needs_input_grad source {binding.source_name!r} must be a Tensor argument"
+                    )
+                if provider_kind != "bool":
+                    raise SchemaError("needs_input_grad provider argument must have bool kind")
+                count = needs_input_grad_counts.get(binding.source_name, 0) + 1
+                if count > 1:
+                    raise KernelContractError(
+                        f"needs_input_grad source {binding.source_name!r} is bound more than once"
+                    )
+                needs_input_grad_counts[binding.source_name] = count
+
+        semantic_arguments = set(semantic.arguments)
         for gradient in self.backward.gradients:
             if gradient.input_name not in semantic_arguments:
                 raise KernelContractError(
@@ -181,14 +342,53 @@ class KernelSpec(ContractModel):
                 raise KernelContractError(
                     f"gradient output {gradient.output_name!r} is not a named backward output"
                 )
+            if semantic_kinds[gradient.input_name] != "Tensor":
+                raise KernelContractError(
+                    f"gradient input {gradient.input_name!r} must be a Tensor semantic argument"
+                )
+            output_index = backward_schema.outputs.index(gradient.output_name)
+            output_kind = backward_schema.output_kinds[output_index]
+            expected_kind = "Tensor?" if gradient.optional else "Tensor"
+            if output_kind != expected_kind:
+                raise SchemaError(
+                    f"gradient output {gradient.output_name!r} kind {output_kind!r} "
+                    f"must be {expected_kind!r}"
+                )
+        mapped_outputs = {gradient.output_name for gradient in self.backward.gradients}
+        if mapped_outputs != set(backward_outputs):
+            missing = sorted(set(backward_outputs) - mapped_outputs)
+            extra = sorted(mapped_outputs - set(backward_outputs))
+            raise KernelContractError(
+                "gradient mappings must exactly cover backward outputs; "
+                f"missing={missing}, extra={extra}"
+            )
+        missing_metadata_sources = gradient_inputs - operator_argument_sources
+        if missing_metadata_sources:
+            raise KernelContractError(
+                "every gradient input requires an OPERATOR_ARGUMENT binding for "
+                "declarative backward metadata; "
+                f"missing={sorted(missing_metadata_sources)}"
+            )
+        missing_optional_requests = sorted(
+            gradient.input_name
+            for gradient in self.backward.gradients
+            if gradient.optional
+            and needs_input_grad_counts.get(gradient.input_name, 0) != 1
+        )
+        if missing_optional_requests:
+            raise KernelContractError(
+                "optional gradients require exactly one NEEDS_INPUT_GRAD binding; "
+                f"missing={missing_optional_requests}"
+            )
         saved_outputs = {
             output.name for output in self.forward.outputs if output.saved_for_backward
         }
-        backward_arguments = set(backward_schema.arguments)
-        missing_saved = saved_outputs - backward_arguments
-        if missing_saved:
+        if saved_outputs != consumed_forward_outputs:
+            missing_saved = sorted(saved_outputs - consumed_forward_outputs)
+            unexpected = sorted(consumed_forward_outputs - saved_outputs)
             raise KernelContractError(
-                f"saved forward outputs missing from backward schema: {sorted(missing_saved)}"
+                "saved forward outputs must be consumed exactly once by named bindings; "
+                f"missing={missing_saved}, unexpected={unexpected}"
             )
         if self.backward.supports_double_backward:
             raise KernelContractError(
@@ -232,17 +432,33 @@ def _parse_schema(schema: str) -> _Schema:
     match = _SCHEMA_RE.match(schema)
     if match is None:
         raise SchemaError(f"invalid operator schema: {schema!r}")
-    arguments = tuple(_argument_name(item) for item in _split_top_level(match.group("args")))
+    parsed_arguments = tuple(
+        _typed_schema_item(item, require_name=True)
+        for item in _split_top_level(match.group("args"))
+    )
     returns = match.group("returns").strip()
     if returns.startswith("(") and returns.endswith(")"):
         return_items = _split_top_level(returns[1:-1])
     else:
         return_items = (returns,)
-    outputs = tuple(_output_name(item) for item in return_items)
+    parsed_outputs = tuple(
+        _typed_schema_item(item, require_name=False) for item in return_items
+    )
+    arguments = tuple(name for name, _ in parsed_arguments)
+    argument_kinds = tuple(kind for _, kind in parsed_arguments)
+    outputs = tuple(name for name, _ in parsed_outputs)
+    output_kinds = tuple(kind for _, kind in parsed_outputs)
     _unique(arguments, "schema argument names")
     named_outputs = tuple(item for item in outputs if item is not None)
     _unique(named_outputs, "schema output names")
-    return _Schema(match.group("name"), arguments, outputs, schema)
+    return _Schema(
+        match.group("name"),
+        arguments,
+        argument_kinds,
+        outputs,
+        output_kinds,
+        schema,
+    )
 
 
 def _split_top_level(value: str) -> tuple[str, ...]:
@@ -269,19 +485,20 @@ def _split_top_level(value: str) -> tuple[str, ...]:
     return tuple(result)
 
 
-def _argument_name(item: str) -> str:
+def _typed_schema_item(
+    item: str, *, require_name: bool
+) -> tuple[str | None, str]:
     without_default = item.split("=", 1)[0].strip()
-    matches = _NAME_RE.findall(without_default)
-    if len(matches) < 2:
-        raise SchemaError(f"schema argument must have a type and name: {item!r}")
-    return matches[-1]
-
-
-def _output_name(item: str) -> str | None:
-    matches = _NAME_RE.findall(item.strip())
-    if not matches:
-        raise SchemaError(f"invalid schema output: {item!r}")
-    return matches[-1] if len(matches) >= 2 else None
+    match = re.fullmatch(r"(?P<kind>\S(?:.*\S)?)\s+(?P<name>[A-Za-z_][A-Za-z0-9_]*)", without_default)
+    if match is None:
+        if require_name:
+            raise SchemaError(f"schema argument must have a type and name: {item!r}")
+        kind = re.sub(r"\s+", "", without_default)
+        if not kind or _NAME_RE.search(kind) is None:
+            raise SchemaError(f"invalid schema output: {item!r}")
+        return None, kind
+    kind = re.sub(r"\s+", "", match.group("kind"))
+    return match.group("name"), kind
 
 
 def _validate_schema_outputs(schema: _Schema, expected: tuple[str, ...], label: str) -> None:

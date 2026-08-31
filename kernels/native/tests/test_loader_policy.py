@@ -4,6 +4,7 @@
 
 from dataclasses import replace
 import hashlib
+import json
 from pathlib import Path
 
 import pytest
@@ -15,23 +16,112 @@ def _digest(contents: bytes) -> str:
     return f"sha256:{hashlib.sha256(contents).hexdigest()}"
 
 
-def _empty_manifest() -> bytes:
+def _manifest(operators: list[dict] | None = None) -> bytes:
+    operators = [] if operators is None else operators
+    semantic_input = [
+        {
+            "qualified_name": operator["qualified_name"],
+            "kernel_spec_digest": operator["kernel_spec_digest"],
+        }
+        for operator in operators
+    ]
+    source_inventory = sorted(
+        (
+            {
+                "source": operator["source"],
+                "spec_sha256": operator["spec_sha256"],
+                "kernel_spec_digest": operator["kernel_spec_digest"],
+            }
+            for operator in operators
+        ),
+        key=lambda item: item["source"],
+    )
     value = {
-        "schema_version": 2,
+        "schema_version": 3,
         "generator": {
             "id": "kernels.native.codegen.generate",
-            "version": 2,
+            "version": 4,
         },
-        "source_inventory_sha256": "sha256:" + "0" * 64,
+        "source_inventory_sha256": _digest(
+            loader._canonical_json(source_inventory)
+        ),
         "namespace": "mindclade",
         "registration_mode": "build_time_generated",
         "optimized_math_authority": "tilelang",
         "runtime_discovery": False,
         "request_time_compilation": False,
-        "operators": [],
+        "operators": operators,
+        "semantic_digest": _digest(loader._canonical_json(semantic_input)),
     }
-    value["semantic_digest"] = _digest(loader._canonical_json(value))
+    value["manifest_digest"] = _digest(loader._canonical_json(value))
     return loader._canonical_json(value)
+
+
+def _empty_manifest() -> bytes:
+    return _manifest()
+
+
+def _operator(*, autograd_policy: str = "none") -> dict:
+    name = "sample"
+    forward_schema = "_sample_fwd(Tensor x) -> Tensor output"
+    forward_symbol = "mindclade_tilelang_sample_fwd_launch"
+    registrations = [
+        {
+            "qualified_name": "mindclade::sample",
+            "schema": "sample(Tensor x) -> Tensor output",
+            "kind": "semantic",
+            "implementation_symbol": forward_symbol,
+        },
+        {
+            "qualified_name": "mindclade::_sample_fwd",
+            "schema": forward_schema,
+            "kind": "forward",
+            "implementation_symbol": forward_symbol,
+        },
+    ]
+    backward = None
+    composite = None
+    if autograd_policy == "required":
+        backward_schema = (
+            "_sample_bwd(Tensor grad_output, Tensor x) -> Tensor grad_x"
+        )
+        backward_symbol = "mindclade_tilelang_sample_bwd_launch"
+        backward = {
+            "schema": backward_schema,
+            "symbol": backward_symbol,
+        }
+        registrations.append(
+            {
+                "qualified_name": "mindclade::_sample_bwd",
+                "schema": backward_schema,
+                "kind": "backward",
+                "implementation_symbol": backward_symbol,
+            }
+        )
+    elif autograd_policy == "composite":
+        composite = {"decomposition": "kernels.sample.reference:backward"}
+    return {
+        "name": name,
+        "qualified_name": "mindclade::sample",
+        "namespace": "mindclade",
+        "family": "testing",
+        "source": "kernels/testing/sample/spec.py",
+        "spec_sha256": "sha256:" + "1" * 64,
+        "kernel_spec_digest": "sha256:" + "2" * 64,
+        "operator_schema": "sample(Tensor x) -> Tensor output",
+        "facade_outputs": ["output"],
+        "fake": None,
+        "forward": {"schema": forward_schema, "symbol": forward_symbol},
+        "backward": backward,
+        "autograd_policy": autograd_policy,
+        "composite": composite,
+        "effects": {},
+        "launch": {},
+        "backend": "tilelang",
+        "version": 1,
+        "devices": ["cuda"],
+        "registrations": registrations,
+    }
 
 
 def _bundle(
@@ -266,3 +356,79 @@ def test_second_bundle_is_rejected(monkeypatch, tmp_path):
             second,
             signature_verifier=lambda value, _payload: _trust(value),
         )
+
+
+@pytest.mark.parametrize("autograd_policy", ["none", "composite", "required"])
+def test_v3_manifest_parses_each_autograd_policy(autograd_policy):
+    operators = loader._parse_manifest(
+        _manifest([_operator(autograd_policy=autograd_policy)]),
+        loader.BundleActivationPolicy.PRODUCTION,
+    )
+    assert operators[0].autograd_policy == autograd_policy
+    expected_kinds = (
+        ("semantic", "forward", "backward")
+        if autograd_policy == "required"
+        else ("semantic", "forward")
+    )
+    assert tuple(item.kind for item in operators[0].registrations) == expected_kinds
+
+
+def test_v3_manifest_digest_domains_fail_closed():
+    manifest = loader._unique_json_object(
+        list(json.loads(_manifest([_operator()])).items())
+    )
+    manifest["semantic_digest"] = "sha256:" + "f" * 64
+    manifest["manifest_digest"] = _digest(
+        loader._canonical_json(
+            {key: value for key, value in manifest.items() if key != "manifest_digest"}
+        )
+    )
+    with pytest.raises(
+        loader.NativeBundleVerificationError, match="semantic digest mismatch"
+    ):
+        loader._parse_manifest(
+            loader._canonical_json(manifest),
+            loader.BundleActivationPolicy.PRODUCTION,
+        )
+
+
+def test_v3_required_policy_rejects_missing_backward_registration():
+    operator = _operator(autograd_policy="required")
+    operator["registrations"] = operator["registrations"][:-1]
+    with pytest.raises(
+        loader.NativeBundleVerificationError, match="canonically ordered"
+    ):
+        loader._parse_manifest(
+            _manifest([operator]), loader.BundleActivationPolicy.PRODUCTION
+        )
+
+
+def test_reconcile_checks_every_v3_registration(monkeypatch):
+    operator = loader._parse_manifest(
+        _manifest([_operator(autograd_policy="composite")]),
+        loader.BundleActivationPolicy.PRODUCTION,
+    )[0]
+    schemas = {
+        registration.qualified_name: loader._qualified_schema(registration.schema)
+        for registration in operator.registrations
+    }
+    inspected: list[tuple[str, str]] = []
+    monkeypatch.setattr(loader, "_dispatcher_schema", schemas.__getitem__)
+    monkeypatch.setattr(
+        loader, "_public_operator_overloads", lambda _name: ("default",)
+    )
+
+    def has_kernel(qualified_name, dispatch_key):
+        inspected.append((qualified_name, dispatch_key))
+        if dispatch_key in {"CUDA", "Meta"}:
+            return True
+        return qualified_name == "mindclade::sample" and dispatch_key == "Autograd"
+
+    monkeypatch.setattr(loader, "_dispatcher_has_kernel", has_kernel)
+    loader._reconcile_dispatcher(
+        (operator,),
+        frozenset(registration.qualified_name for registration in operator.registrations),
+    )
+    assert {
+        qualified_name for qualified_name, _dispatch_key in inspected
+    } == {"mindclade::sample", "mindclade::_sample_fwd"}

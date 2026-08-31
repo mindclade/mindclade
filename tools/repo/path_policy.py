@@ -28,9 +28,9 @@ BLUEPRINT_SHA256 = "d099074e755168bbdce076d50918bf06aff677f9e5d620fdfe53cb7cef74
 ANCHOR_COMMIT = "292b71f47b1b29cc9ba7cf760a9bd07cd5e0ffa7"
 AUTHORITY_FILE_COUNT = 2461
 AUTHORITY_DIRECTORY_COUNT = 787
-CANONICAL_FILE_COUNT = 2829
+CANONICAL_FILE_COUNT = 2833
 AUTHORITY_PATH_SET_SHA256 = "f2011dd32ccc19649e6abb70ffb4473aea4a224410062d40292222e2e6263692"
-CANONICAL_PATH_SET_SHA256 = "662ab17c6b2e87f5c2ab2cbdef662a790b7b971f52844a404a58b8d4d34ac18d"
+CANONICAL_PATH_SET_SHA256 = "71c526c65136f6dc86b08f5551da804c2ac62423cf893601918ab231348f1431"
 
 ADR_REPLACEMENTS = {
     "docs/adr/0001-repository-identity.md": "docs/adr/0001-repository-identity-and-ownership.md",
@@ -113,6 +113,7 @@ NATIVE_SOURCE_INCUBATION_PATHS = (
     "kernels/native/tests/test_parse_literal_ast.py",
     "kernels/native/tests/test_policy.py",
     "kernels/native/tests/test_qualification.py",
+    "kernels/native/tests/test_schema.py",
     "kernels/native/tests/test_reference_runtime.py",
     "kernels/native/tests/test_schema_manifest.py",
     "kernels/native/tilelang/README.md",
@@ -183,6 +184,27 @@ KERNEL_PLATFORM_SOURCE_PATHS = (
     "kernels/api/tests/__init__.py",
     "kernels/api/tests/test_contracts.py",
     "kernels/api/tests/test_expressions.py",
+    "kernels/pairformer/pair_weighted_average/dispatch.py",
+    "kernels/pairformer/pair_weighted_average/reference.py",
+    "kernels/pairformer/pair_weighted_average/spec.py",
+)
+KERNEL_PLATFORM_PREDECLARED_OPERATION_PATHS = (
+    "kernels/pairformer/outer_product_mean/dispatch.py",
+    "kernels/pairformer/outer_product_mean/reference.py",
+    "kernels/pairformer/outer_product_mean/spec.py",
+    "kernels/pairformer/transition/dispatch.py",
+    "kernels/pairformer/transition/reference.py",
+    "kernels/pairformer/transition/spec.py",
+    "kernels/pairformer/triangle_attention/dispatch.py",
+    "kernels/pairformer/triangle_attention/reference.py",
+    "kernels/pairformer/triangle_attention/spec.py",
+    "kernels/pairformer/triangle_multiplication/dispatch.py",
+    "kernels/pairformer/triangle_multiplication/reference.py",
+    "kernels/pairformer/triangle_multiplication/spec.py",
+)
+KERNEL_PLATFORM_AUTHORIZED_PATHS = (
+    *KERNEL_PLATFORM_SOURCE_PATHS,
+    *KERNEL_PLATFORM_PREDECLARED_OPERATION_PATHS,
 )
 KERNEL_PLATFORM_SOURCE_ADDITIONS = (
     KERNEL_PLATFORM_SOURCE_ADR,
@@ -252,6 +274,7 @@ NATIVE_CODEGEN_TEST_LABELS = (
     "//kernels/native:test_discovery",
     "//kernels/native:test_manifest",
     "//kernels/native:test_parse_literal_ast",
+    "//kernels/native:test_schema",
     "//kernels/native:test_schema_manifest",
 )
 NATIVE_ACTIVATION_CRITERION = (
@@ -539,7 +562,7 @@ REQUIRED_ADDITIONS = (
 STATUSES = {"target", "active", "generated", "deferred", "retired"}
 SOURCE_AUTHORITIES = {"hand-authored", "immutable-provenance", "reviewed-generated"}
 PRE_ACTIVATION_SOURCE_PATHS = frozenset(
-    (*NATIVE_SOURCE_INCUBATION_PATHS, *KERNEL_PLATFORM_SOURCE_PATHS)
+    (*NATIVE_SOURCE_INCUBATION_PATHS, *KERNEL_PLATFORM_AUTHORIZED_PATHS)
 )
 FORBIDDEN_PATH_TOKENS = ("*", "{", "}", "<", ">", "…")
 IGNORED_PARTS = {
@@ -1630,7 +1653,7 @@ def _native_source_incubation_targets(path: str) -> tuple[list[str], list[str]]:
         package = f"//kernels/pairformer/{operation}"
         test_names = {
             "outer_product_mean": "test_outer_product_mean",
-            "pair_weighted_average": "test_tilelang",
+            "pair_weighted_average": "test_pair_weighted_average",
             "triangle_attention": "test_triangle_attention",
             "triangle_multiplication": "test_triangle_multiplication",
             "transition": "test_transition",
@@ -1695,6 +1718,17 @@ def build_native_source_incubation_entry(path: str) -> dict[str, Any]:
 
 
 def _kernel_platform_source_targets(path: str) -> tuple[list[str], list[str]]:
+    if path.startswith("kernels/pairformer/"):
+        operation = PurePosixPath(path).parts[2]
+        package = f"//kernels/pairformer/{operation}"
+        test_names = {
+            "outer_product_mean": "test_outer_product_mean",
+            "pair_weighted_average": "test_pair_weighted_average",
+            "transition": "test_transition",
+            "triangle_attention": "test_triangle_attention",
+            "triangle_multiplication": "test_triangle_multiplication",
+        }
+        return [f"{package}:tilelang.py"], [f"{package}:{test_names[operation]}"]
     if path == "kernels/api/tests/test_contracts.py":
         return [], ["//kernels/api/tests:test_contracts"]
     if path == "kernels/api/tests/test_expressions.py":
@@ -1708,9 +1742,17 @@ def _kernel_platform_source_targets(path: str) -> tuple[list[str], list[str]]:
 
 
 def build_kernel_platform_source_entry(path: str) -> dict[str, Any]:
-    if path not in KERNEL_PLATFORM_SOURCE_PATHS:
+    if path not in KERNEL_PLATFORM_AUTHORIZED_PATHS:
         raise PolicyError(f"unapproved kernel-platform source path: {path}")
     build_targets, test_targets = _kernel_platform_source_targets(path)
+    predeclared_operation_path = path in KERNEL_PLATFORM_PREDECLARED_OPERATION_PATHS
+    activation_wave = "6" if predeclared_operation_path else "2S"
+    activation_criterion = (
+        "Activate only in Wave 6 with a concrete operation consumer, qualified native "
+        "implementation, real target, tests, and qualification evidence."
+        if predeclared_operation_path
+        else KERNEL_PLATFORM_SOURCE_ACTIVATION_CRITERION
+    )
     return {
         "path": path,
         "kind": (
@@ -1721,12 +1763,12 @@ def build_kernel_platform_source_entry(path: str) -> dict[str, Any]:
         "owner": "ml-systems-performance",
         "component": "kernels",
         "status": "target",
-        "activation_wave": "2S",
+        "activation_wave": activation_wave,
         "source_authority": "hand-authored",
         "build_targets": build_targets,
         "test_targets": test_targets,
         "public_surface": False,
-        "activation_criterion": KERNEL_PLATFORM_SOURCE_ACTIVATION_CRITERION,
+        "activation_criterion": activation_criterion,
     }
 
 
@@ -1779,7 +1821,7 @@ def build_all_contract_rust_plugin_entry(path: str) -> dict[str, Any]:
 def build_path_entry(path: str) -> dict[str, Any]:
     if path in ALL_CONTRACT_RUST_PLUGIN_PATHS:
         return build_all_contract_rust_plugin_entry(path)
-    if path in KERNEL_PLATFORM_SOURCE_PATHS:
+    if path in KERNEL_PLATFORM_AUTHORIZED_PATHS:
         return build_kernel_platform_source_entry(path)
     if path in NATIVE_SOURCE_INCUBATION_PATHS:
         return build_native_source_incubation_entry(path)
@@ -1884,7 +1926,7 @@ def _reconciliation_addition_reason(path: str) -> str:
             "Accepted ADR-0014 authority for bounded, pre-activation development of the typed "
             "TileLang kernel-platform contract surface."
         )
-    if path in KERNEL_PLATFORM_SOURCE_PATHS:
+    if path in KERNEL_PLATFORM_AUTHORIZED_PATHS:
         return (
             "ADR-0014 bounded Wave 2S kernel-platform API source surface with real Bazel "
             "ownership and tests; TARGET only, with no runtime or production authority."
