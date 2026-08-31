@@ -22,9 +22,12 @@ _runtime_version.ValidateProtobufRuntimeVersion(
 _sym_db = _symbol_database.Default()
 
 
+from google.protobuf import timestamp_pb2 as google_dot_protobuf_dot_timestamp__pb2
+from artifact.v1 import artifact_reference_pb2 as proto_dot_mindclade_dot_artifact_dot_v1_dot_artifact__reference__pb2
+from common.v1 import error_detail_pb2 as proto_dot_mindclade_dot_common_dot_v1_dot_error__detail__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n$proto/mindclade/job/v1/attempt.proto\x12\x10mindclade.job.v1\"\xa7\x01\n\x07\x41ttempt\x12\x1d\n\nattempt_id\x18\x01 \x01(\tR\tattemptId\x12\x15\n\x06run_id\x18\x02 \x01(\tR\x05runId\x12\x1f\n\x0blease_epoch\x18\x03 \x01(\x04R\nleaseEpoch\x12\x14\n\x05state\x18\x04 \x01(\tR\x05state\x12/\n\x14lease_expires_at_utc\x18\x05 \x01(\tR\x11leaseExpiresAtUtcBDZBgithub.com/mindclade/mindclade/protocols/generated/go/job/v1;jobv1b\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n$proto/mindclade/job/v1/attempt.proto\x12\x10mindclade.job.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x34proto/mindclade/artifact/v1/artifact_reference.proto\x1a,proto/mindclade/common/v1/error_detail.proto\"\xa0\x05\n\x07\x41ttempt\x12\x1d\n\nattempt_id\x18\x01 \x01(\tR\tattemptId\x12\x15\n\x06run_id\x18\x02 \x01(\tR\x05runId\x12\x1f\n\x0blease_epoch\x18\x03 \x01(\x04R\nleaseEpoch\x12\x34\n\x05state\x18\x04 \x01(\x0e\x32\x1e.mindclade.job.v1.AttemptStateR\x05state\x12\x44\n\x10lease_expires_at\x18\x05 \x01(\x0b\x32\x1a.google.protobuf.TimestampR\x0eleaseExpiresAt\x12\x1b\n\ttenant_id\x18\x06 \x01(\tR\x08tenantId\x12\x1d\n\nproject_id\x18\x07 \x01(\tR\tprojectId\x12\x15\n\x06job_id\x18\x08 \x01(\tR\x05jobId\x12\x1b\n\tworker_id\x18\t \x01(\tR\x08workerId\x12\x37\n\tleased_at\x18\n \x01(\x0b\x32\x1a.google.protobuf.TimestampR\x08leasedAt\x12\x39\n\nstarted_at\x18\x0b \x01(\x0b\x32\x1a.google.protobuf.TimestampR\tstartedAt\x12=\n\x0c\x63ompleted_at\x18\x0c \x01(\x0b\x32\x1a.google.protobuf.TimestampR\x0b\x63ompletedAt\x12<\n\x07outputs\x18\r \x03(\x0b\x32\".mindclade.artifact.v1.ArtifactRefR\x07outputs\x12\x36\n\x05\x65rror\x18\x0e \x01(\x0b\x32 .mindclade.common.v1.ErrorDetailR\x05\x65rror\x12)\n\x10resource_version\x18\x0f \x01(\x03R\x0fresourceVersion*\xed\x01\n\x0c\x41ttemptState\x12\x1d\n\x19\x41TTEMPT_STATE_UNSPECIFIED\x10\x00\x12\x18\n\x14\x41TTEMPT_STATE_LEASED\x10\x01\x12\x19\n\x15\x41TTEMPT_STATE_RUNNING\x10\x02\x12\x1b\n\x17\x41TTEMPT_STATE_SUCCEEDED\x10\x03\x12\x18\n\x14\x41TTEMPT_STATE_FAILED\x10\x04\x12\x1b\n\x17\x41TTEMPT_STATE_CANCELLED\x10\x05\x12\x18\n\x14\x41TTEMPT_STATE_FENCED\x10\x06\x12\x1b\n\x17\x41TTEMPT_STATE_TIMED_OUT\x10\x07\x42\x44ZBgithub.com/mindclade/mindclade/protocols/generated/go/job/v1;jobv1b\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -32,6 +35,8 @@ _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'job.v1.attempt_pb2', _globa
 if not _descriptor._USE_C_DESCRIPTORS:
   _globals['DESCRIPTOR']._loaded_options = None
   _globals['DESCRIPTOR']._serialized_options = b'ZBgithub.com/mindclade/mindclade/protocols/generated/go/job/v1;jobv1'
-  _globals['_ATTEMPT']._serialized_start=59
-  _globals['_ATTEMPT']._serialized_end=226
+  _globals['_ATTEMPTSTATE']._serialized_start=867
+  _globals['_ATTEMPTSTATE']._serialized_end=1104
+  _globals['_ATTEMPT']._serialized_start=192
+  _globals['_ATTEMPT']._serialized_end=864
 # @@protoc_insertion_point(module_scope)

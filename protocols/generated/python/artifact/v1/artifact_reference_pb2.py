@@ -24,7 +24,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n4proto/mindclade/artifact/v1/artifact_reference.proto\x12\x15mindclade.artifact.v1\"\xd0\x01\n\x0b\x41rtifactRef\x12\x16\n\x06\x64igest\x18\x01 \x01(\tR\x06\x64igest\x12\x1d\n\nmedia_type\x18\x02 \x01(\tR\tmediaType\x12\x1d\n\nsize_bytes\x18\x03 \x01(\x03R\tsizeBytes\x12#\n\rartifact_kind\x18\x04 \x01(\tR\x0c\x61rtifactKind\x12\x1b\n\tschema_id\x18\x05 \x01(\tR\x08schemaId\x12)\n\x10integrity_digest\x18\x06 \x01(\tR\x0fintegrityDigestBNZLgithub.com/mindclade/mindclade/protocols/generated/go/artifact/v1;artifactv1b\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n4proto/mindclade/artifact/v1/artifact_reference.proto\x12\x15mindclade.artifact.v1\"\x89\x02\n\x0b\x41rtifactRef\x12\x16\n\x06\x64igest\x18\x01 \x01(\tR\x06\x64igest\x12\x1d\n\nmedia_type\x18\x02 \x01(\tR\tmediaType\x12\x1d\n\nsize_bytes\x18\x03 \x01(\x03R\tsizeBytes\x12#\n\rartifact_kind\x18\x04 \x01(\tR\x0c\x61rtifactKind\x12\x1b\n\tschema_id\x18\x05 \x01(\tR\x08schemaId\x12)\n\x10integrity_digest\x18\x06 \x01(\tR\x0fintegrityDigest\x12\x10\n\x03uri\x18\x07 \x01(\tR\x03uri\x12%\n\x0eschema_version\x18\x08 \x01(\tR\rschemaVersionBNZLgithub.com/mindclade/mindclade/protocols/generated/go/artifact/v1;artifactv1b\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -33,5 +33,5 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['DESCRIPTOR']._loaded_options = None
   _globals['DESCRIPTOR']._serialized_options = b'ZLgithub.com/mindclade/mindclade/protocols/generated/go/artifact/v1;artifactv1'
   _globals['_ARTIFACTREF']._serialized_start=80
-  _globals['_ARTIFACTREF']._serialized_end=288
+  _globals['_ARTIFACTREF']._serialized_end=345
 # @@protoc_insertion_point(module_scope)

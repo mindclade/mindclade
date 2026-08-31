@@ -2,15 +2,68 @@
 // @generated from file proto/mindclade/common/v1/error_detail.proto (package mindclade.common.v1, syntax proto3)
 /* eslint-disable */
 
-import type { GenFile, GenMessage } from "@bufbuild/protobuf/codegenv2";
-import { fileDesc, messageDesc } from "@bufbuild/protobuf/codegenv2";
+import type { GenEnum, GenFile, GenMessage } from "@bufbuild/protobuf/codegenv2";
+import { enumDesc, fileDesc, messageDesc } from "@bufbuild/protobuf/codegenv2";
+import type { Duration } from "@bufbuild/protobuf/wkt";
+import { file_google_protobuf_duration } from "@bufbuild/protobuf/wkt";
+import type { ResourceRef } from "./resource_reference_pb.js";
+import { file_proto_mindclade_common_v1_resource_reference } from "./resource_reference_pb.js";
 import type { Message } from "@bufbuild/protobuf";
 
 /**
  * Describes the file proto/mindclade/common/v1/error_detail.proto.
  */
 export const file_proto_mindclade_common_v1_error_detail: GenFile = /*@__PURE__*/
-  fileDesc("Cixwcm90by9taW5kY2xhZGUvY29tbW9uL3YxL2Vycm9yX2RldGFpbC5wcm90bxITbWluZGNsYWRlLmNvbW1vbi52MSJWCgtFcnJvckRldGFpbBIMCgRjb2RlGAEgASgJEg8KB21lc3NhZ2UYAiABKAkSEwoLcmV0cnlfY2xhc3MYAyABKAkSEwoLc3ViamVjdF9yZWYYBCABKAlCSlpIZ2l0aHViLmNvbS9taW5kY2xhZGUvbWluZGNsYWRlL3Byb3RvY29scy9nZW5lcmF0ZWQvZ28vY29tbW9uL3YxO2NvbW1vbnYxYgZwcm90bzM");
+  fileDesc("Cixwcm90by9taW5kY2xhZGUvY29tbW9uL3YxL2Vycm9yX2RldGFpbC5wcm90bxITbWluZGNsYWRlLmNvbW1vbi52MSI0Cg5GaWVsZFZpb2xhdGlvbhINCgVmaWVsZBgBIAEoCRITCgtkZXNjcmlwdGlvbhgCIAEoCSJLChVQcmVjb25kaXRpb25WaW9sYXRpb24SDAoEdHlwZRgBIAEoCRIPCgdzdWJqZWN0GAIgASgJEhMKC2Rlc2NyaXB0aW9uGAMgASgJIoMDCgtFcnJvckRldGFpbBIsCgRjb2RlGAEgASgOMh4ubWluZGNsYWRlLmNvbW1vbi52MS5FcnJvckNvZGUSDwoHbWVzc2FnZRgCIAEoCRI0CgtyZXRyeV9jbGFzcxgDIAEoDjIfLm1pbmRjbGFkZS5jb21tb24udjEuUmV0cnlDbGFzcxIxCgdzdWJqZWN0GAQgASgLMiAubWluZGNsYWRlLmNvbW1vbi52MS5SZXNvdXJjZVJlZhI9ChBmaWVsZF92aW9sYXRpb25zGAUgAygLMiMubWluZGNsYWRlLmNvbW1vbi52MS5GaWVsZFZpb2xhdGlvbhJLChdwcmVjb25kaXRpb25fdmlvbGF0aW9ucxgGIAMoCzIqLm1pbmRjbGFkZS5jb21tb24udjEuUHJlY29uZGl0aW9uVmlvbGF0aW9uEi4KC3JldHJ5X2FmdGVyGAcgASgLMhkuZ29vZ2xlLnByb3RvYnVmLkR1cmF0aW9uEhAKCGVycm9yX2lkGAggASgJKoAECglFcnJvckNvZGUSGgoWRVJST1JfQ09ERV9VTlNQRUNJRklFRBAAEh8KG0VSUk9SX0NPREVfSU5WQUxJRF9BUkdVTUVOVBABEiIKHkVSUk9SX0NPREVfRkFJTEVEX1BSRUNPTkRJVElPThACEhgKFEVSUk9SX0NPREVfTk9UX0ZPVU5EEAMSHQoZRVJST1JfQ09ERV9BTFJFQURZX0VYSVNUUxAEEiAKHEVSUk9SX0NPREVfUEVSTUlTU0lPTl9ERU5JRUQQBRIeChpFUlJPUl9DT0RFX1VOQVVUSEVOVElDQVRFRBAGEiEKHUVSUk9SX0NPREVfUkVTT1VSQ0VfRVhIQVVTVEVEEAcSFgoSRVJST1JfQ09ERV9BQk9SVEVEEAgSFwoTRVJST1JfQ09ERV9DT05GTElDVBAJEhoKFkVSUk9SX0NPREVfVU5BVkFJTEFCTEUQChIgChxFUlJPUl9DT0RFX0RFQURMSU5FX0VYQ0VFREVEEAsSGAoURVJST1JfQ09ERV9DQU5DRUxMRUQQDBIXChNFUlJPUl9DT0RFX0lOVEVSTkFMEA0SGAoURVJST1JfQ09ERV9EQVRBX0xPU1MQDhIaChZFUlJPUl9DT0RFX1VOU1VQUE9SVEVEEA8SHAoYRVJST1JfQ09ERV9QT0xJQ1lfREVOSUVEEBAqfAoKUmV0cnlDbGFzcxIbChdSRVRSWV9DTEFTU19VTlNQRUNJRklFRBAAEhUKEVJFVFJZX0NMQVNTX05FVkVSEAESFAoQUkVUUllfQ0xBU1NfU0FGRRACEiQKIFJFVFJZX0NMQVNTX0FGVEVSX1JFQ09OQ0lMSUFUSU9OEANCSlpIZ2l0aHViLmNvbS9taW5kY2xhZGUvbWluZGNsYWRlL3Byb3RvY29scy9nZW5lcmF0ZWQvZ28vY29tbW9uL3YxO2NvbW1vbnYxYgZwcm90bzM", [file_google_protobuf_duration, file_proto_mindclade_common_v1_resource_reference]);
+
+/**
+ * @generated from message mindclade.common.v1.FieldViolation
+ */
+export type FieldViolation = Message<"mindclade.common.v1.FieldViolation"> & {
+  /**
+   * @generated from field: string field = 1;
+   */
+  field: string;
+
+  /**
+   * @generated from field: string description = 2;
+   */
+  description: string;
+};
+
+/**
+ * Describes the message mindclade.common.v1.FieldViolation.
+ * Use `create(FieldViolationSchema)` to create a new message.
+ */
+export const FieldViolationSchema: GenMessage<FieldViolation> = /*@__PURE__*/
+  messageDesc(file_proto_mindclade_common_v1_error_detail, 0);
+
+/**
+ * @generated from message mindclade.common.v1.PreconditionViolation
+ */
+export type PreconditionViolation = Message<"mindclade.common.v1.PreconditionViolation"> & {
+  /**
+   * @generated from field: string type = 1;
+   */
+  type: string;
+
+  /**
+   * @generated from field: string subject = 2;
+   */
+  subject: string;
+
+  /**
+   * @generated from field: string description = 3;
+   */
+  description: string;
+};
+
+/**
+ * Describes the message mindclade.common.v1.PreconditionViolation.
+ * Use `create(PreconditionViolationSchema)` to create a new message.
+ */
+export const PreconditionViolationSchema: GenMessage<PreconditionViolation> = /*@__PURE__*/
+  messageDesc(file_proto_mindclade_common_v1_error_detail, 1);
 
 /**
  * Structured, non-secret failure detail for durable command results.
@@ -19,9 +72,9 @@ export const file_proto_mindclade_common_v1_error_detail: GenFile = /*@__PURE__*
  */
 export type ErrorDetail = Message<"mindclade.common.v1.ErrorDetail"> & {
   /**
-   * @generated from field: string code = 1;
+   * @generated from field: mindclade.common.v1.ErrorCode code = 1;
    */
-  code: string;
+  code: ErrorCode;
 
   /**
    * @generated from field: string message = 2;
@@ -29,14 +82,34 @@ export type ErrorDetail = Message<"mindclade.common.v1.ErrorDetail"> & {
   message: string;
 
   /**
-   * @generated from field: string retry_class = 3;
+   * @generated from field: mindclade.common.v1.RetryClass retry_class = 3;
    */
-  retryClass: string;
+  retryClass: RetryClass;
 
   /**
-   * @generated from field: string subject_ref = 4;
+   * @generated from field: mindclade.common.v1.ResourceRef subject = 4;
    */
-  subjectRef: string;
+  subject?: ResourceRef;
+
+  /**
+   * @generated from field: repeated mindclade.common.v1.FieldViolation field_violations = 5;
+   */
+  fieldViolations: FieldViolation[];
+
+  /**
+   * @generated from field: repeated mindclade.common.v1.PreconditionViolation precondition_violations = 6;
+   */
+  preconditionViolations: PreconditionViolation[];
+
+  /**
+   * @generated from field: google.protobuf.Duration retry_after = 7;
+   */
+  retryAfter?: Duration;
+
+  /**
+   * @generated from field: string error_id = 8;
+   */
+  errorId: string;
 };
 
 /**
@@ -44,4 +117,131 @@ export type ErrorDetail = Message<"mindclade.common.v1.ErrorDetail"> & {
  * Use `create(ErrorDetailSchema)` to create a new message.
  */
 export const ErrorDetailSchema: GenMessage<ErrorDetail> = /*@__PURE__*/
-  messageDesc(file_proto_mindclade_common_v1_error_detail, 0);
+  messageDesc(file_proto_mindclade_common_v1_error_detail, 2);
+
+/**
+ * @generated from enum mindclade.common.v1.ErrorCode
+ */
+export enum ErrorCode {
+  /**
+   * @generated from enum value: ERROR_CODE_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: ERROR_CODE_INVALID_ARGUMENT = 1;
+   */
+  INVALID_ARGUMENT = 1,
+
+  /**
+   * @generated from enum value: ERROR_CODE_FAILED_PRECONDITION = 2;
+   */
+  FAILED_PRECONDITION = 2,
+
+  /**
+   * @generated from enum value: ERROR_CODE_NOT_FOUND = 3;
+   */
+  NOT_FOUND = 3,
+
+  /**
+   * @generated from enum value: ERROR_CODE_ALREADY_EXISTS = 4;
+   */
+  ALREADY_EXISTS = 4,
+
+  /**
+   * @generated from enum value: ERROR_CODE_PERMISSION_DENIED = 5;
+   */
+  PERMISSION_DENIED = 5,
+
+  /**
+   * @generated from enum value: ERROR_CODE_UNAUTHENTICATED = 6;
+   */
+  UNAUTHENTICATED = 6,
+
+  /**
+   * @generated from enum value: ERROR_CODE_RESOURCE_EXHAUSTED = 7;
+   */
+  RESOURCE_EXHAUSTED = 7,
+
+  /**
+   * @generated from enum value: ERROR_CODE_ABORTED = 8;
+   */
+  ABORTED = 8,
+
+  /**
+   * @generated from enum value: ERROR_CODE_CONFLICT = 9;
+   */
+  CONFLICT = 9,
+
+  /**
+   * @generated from enum value: ERROR_CODE_UNAVAILABLE = 10;
+   */
+  UNAVAILABLE = 10,
+
+  /**
+   * @generated from enum value: ERROR_CODE_DEADLINE_EXCEEDED = 11;
+   */
+  DEADLINE_EXCEEDED = 11,
+
+  /**
+   * @generated from enum value: ERROR_CODE_CANCELLED = 12;
+   */
+  CANCELLED = 12,
+
+  /**
+   * @generated from enum value: ERROR_CODE_INTERNAL = 13;
+   */
+  INTERNAL = 13,
+
+  /**
+   * @generated from enum value: ERROR_CODE_DATA_LOSS = 14;
+   */
+  DATA_LOSS = 14,
+
+  /**
+   * @generated from enum value: ERROR_CODE_UNSUPPORTED = 15;
+   */
+  UNSUPPORTED = 15,
+
+  /**
+   * @generated from enum value: ERROR_CODE_POLICY_DENIED = 16;
+   */
+  POLICY_DENIED = 16,
+}
+
+/**
+ * Describes the enum mindclade.common.v1.ErrorCode.
+ */
+export const ErrorCodeSchema: GenEnum<ErrorCode> = /*@__PURE__*/
+  enumDesc(file_proto_mindclade_common_v1_error_detail, 0);
+
+/**
+ * @generated from enum mindclade.common.v1.RetryClass
+ */
+export enum RetryClass {
+  /**
+   * @generated from enum value: RETRY_CLASS_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: RETRY_CLASS_NEVER = 1;
+   */
+  NEVER = 1,
+
+  /**
+   * @generated from enum value: RETRY_CLASS_SAFE = 2;
+   */
+  SAFE = 2,
+
+  /**
+   * @generated from enum value: RETRY_CLASS_AFTER_RECONCILIATION = 3;
+   */
+  AFTER_RECONCILIATION = 3,
+}
+
+/**
+ * Describes the enum mindclade.common.v1.RetryClass.
+ */
+export const RetryClassSchema: GenEnum<RetryClass> = /*@__PURE__*/
+  enumDesc(file_proto_mindclade_common_v1_error_detail, 1);

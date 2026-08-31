@@ -9,7 +9,10 @@ ts_project(
     declaration = True,
     tsconfig = "tsconfig.json",
     transpiler = "tsc",
-    deps = [":node_modules/@bufbuild/protobuf"],
+    deps = [
+        ":node_modules/@bufbuild/protobuf",
+        ":node_modules/@connectrpc/connect",
+    ],
     visibility = ["//visibility:public"],
 )
 

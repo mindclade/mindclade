@@ -1,0 +1,15 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "bindings",
+    srcs = ["approval.pb.go", "approval_recorded.pb.go", "workflow_definition.pb.go", "workflow_run.pb.go", "workflow_service.pb.go", "workflow_service_grpc.pb.go", "workflow_transitioned.pb.go"],
+    importpath = "github.com/mindclade/mindclade/protocols/generated/go/workflow/v1",
+    deps = ["@org_golang_google_protobuf//reflect/protoreflect", "@org_golang_google_protobuf//runtime/protoimpl", "@org_golang_google_protobuf//types/known/durationpb", "@org_golang_google_protobuf//types/known/fieldmaskpb", "@org_golang_google_protobuf//types/known/timestamppb", "@org_golang_google_grpc//:grpc", "@org_golang_google_grpc//codes", "@org_golang_google_grpc//status", "//protocols/generated/go/artifact/v1:bindings", "//protocols/generated/go/common/v1:bindings", "//protocols/generated/go/job/v1:bindings", "//protocols/generated/go/policy/v1:bindings"],
+    visibility = ["//visibility:public"],
+)
+
+filegroup(
+    name = "generated_sources",
+    srcs = ["BUILD.bazel", "approval.pb.go", "approval_recorded.pb.go", "workflow_definition.pb.go", "workflow_run.pb.go", "workflow_service.pb.go", "workflow_service_grpc.pb.go", "workflow_transitioned.pb.go"],
+    visibility = ["//visibility:public"],
+)

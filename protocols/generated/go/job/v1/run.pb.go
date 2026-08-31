@@ -7,8 +7,11 @@
 package jobv1
 
 import (
+	v1 "github.com/mindclade/mindclade/protocols/generated/go/artifact/v1"
+	v11 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
@@ -21,17 +24,88 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+type RunState int32
+
+const (
+	RunState_RUN_STATE_UNSPECIFIED RunState = 0
+	RunState_RUN_STATE_READY       RunState = 1
+	RunState_RUN_STATE_EXECUTING   RunState = 2
+	RunState_RUN_STATE_SUCCEEDED   RunState = 3
+	RunState_RUN_STATE_FAILED      RunState = 4
+	RunState_RUN_STATE_CANCELLING  RunState = 5
+	RunState_RUN_STATE_CANCELLED   RunState = 6
+)
+
+// Enum value maps for RunState.
+var (
+	RunState_name = map[int32]string{
+		0: "RUN_STATE_UNSPECIFIED",
+		1: "RUN_STATE_READY",
+		2: "RUN_STATE_EXECUTING",
+		3: "RUN_STATE_SUCCEEDED",
+		4: "RUN_STATE_FAILED",
+		5: "RUN_STATE_CANCELLING",
+		6: "RUN_STATE_CANCELLED",
+	}
+	RunState_value = map[string]int32{
+		"RUN_STATE_UNSPECIFIED": 0,
+		"RUN_STATE_READY":       1,
+		"RUN_STATE_EXECUTING":   2,
+		"RUN_STATE_SUCCEEDED":   3,
+		"RUN_STATE_FAILED":      4,
+		"RUN_STATE_CANCELLING":  5,
+		"RUN_STATE_CANCELLED":   6,
+	}
+)
+
+func (x RunState) Enum() *RunState {
+	p := new(RunState)
+	*p = x
+	return p
+}
+
+func (x RunState) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (RunState) Descriptor() protoreflect.EnumDescriptor {
+	return file_proto_mindclade_job_v1_run_proto_enumTypes[0].Descriptor()
+}
+
+func (RunState) Type() protoreflect.EnumType {
+	return &file_proto_mindclade_job_v1_run_proto_enumTypes[0]
+}
+
+func (x RunState) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use RunState.Descriptor instead.
+func (RunState) EnumDescriptor() ([]byte, []int) {
+	return file_proto_mindclade_job_v1_run_proto_rawDescGZIP(), []int{0}
+}
+
 // Frozen logical execution of a durable job.
 type Run struct {
-	state               protoimpl.MessageState `protogen:"open.v1"`
-	RunId               string                 `protobuf:"bytes,1,opt,name=run_id,json=runId,proto3" json:"run_id,omitempty"`
-	JobId               string                 `protobuf:"bytes,2,opt,name=job_id,json=jobId,proto3" json:"job_id,omitempty"`
-	InputDigest         string                 `protobuf:"bytes,3,opt,name=input_digest,json=inputDigest,proto3" json:"input_digest,omitempty"`
-	ConfigurationDigest string                 `protobuf:"bytes,4,opt,name=configuration_digest,json=configurationDigest,proto3" json:"configuration_digest,omitempty"`
-	PlanDigest          string                 `protobuf:"bytes,5,opt,name=plan_digest,json=planDigest,proto3" json:"plan_digest,omitempty"`
-	State               string                 `protobuf:"bytes,6,opt,name=state,proto3" json:"state,omitempty"`
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	RunId           string                 `protobuf:"bytes,1,opt,name=run_id,json=runId,proto3" json:"run_id,omitempty"`
+	JobId           string                 `protobuf:"bytes,2,opt,name=job_id,json=jobId,proto3" json:"job_id,omitempty"`
+	Input           *v1.ArtifactRef        `protobuf:"bytes,3,opt,name=input,proto3" json:"input,omitempty"`
+	Configuration   *v1.ArtifactRef        `protobuf:"bytes,4,opt,name=configuration,proto3" json:"configuration,omitempty"`
+	Plan            *v1.ArtifactRef        `protobuf:"bytes,5,opt,name=plan,proto3" json:"plan,omitempty"`
+	State           RunState               `protobuf:"varint,6,opt,name=state,proto3,enum=mindclade.job.v1.RunState" json:"state,omitempty"`
+	TenantId        string                 `protobuf:"bytes,7,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
+	ProjectId       string                 `protobuf:"bytes,8,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
+	ResourceVersion int64                  `protobuf:"varint,9,opt,name=resource_version,json=resourceVersion,proto3" json:"resource_version,omitempty"`
+	LeaseEpoch      uint64                 `protobuf:"varint,10,opt,name=lease_epoch,json=leaseEpoch,proto3" json:"lease_epoch,omitempty"`
+	CreatedAt       *timestamppb.Timestamp `protobuf:"bytes,11,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	StartedAt       *timestamppb.Timestamp `protobuf:"bytes,12,opt,name=started_at,json=startedAt,proto3" json:"started_at,omitempty"`
+	CompletedAt     *timestamppb.Timestamp `protobuf:"bytes,13,opt,name=completed_at,json=completedAt,proto3" json:"completed_at,omitempty"`
+	Outputs         []*v1.ArtifactRef      `protobuf:"bytes,14,rep,name=outputs,proto3" json:"outputs,omitempty"`
+	Error           *v11.ErrorDetail       `protobuf:"bytes,15,opt,name=error,proto3" json:"error,omitempty"`
+	Etag            string                 `protobuf:"bytes,16,opt,name=etag,proto3" json:"etag,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *Run) Reset() {
@@ -78,30 +152,100 @@ func (x *Run) GetJobId() string {
 	return ""
 }
 
-func (x *Run) GetInputDigest() string {
+func (x *Run) GetInput() *v1.ArtifactRef {
 	if x != nil {
-		return x.InputDigest
+		return x.Input
 	}
-	return ""
+	return nil
 }
 
-func (x *Run) GetConfigurationDigest() string {
+func (x *Run) GetConfiguration() *v1.ArtifactRef {
 	if x != nil {
-		return x.ConfigurationDigest
+		return x.Configuration
 	}
-	return ""
+	return nil
 }
 
-func (x *Run) GetPlanDigest() string {
+func (x *Run) GetPlan() *v1.ArtifactRef {
 	if x != nil {
-		return x.PlanDigest
+		return x.Plan
 	}
-	return ""
+	return nil
 }
 
-func (x *Run) GetState() string {
+func (x *Run) GetState() RunState {
 	if x != nil {
 		return x.State
+	}
+	return RunState_RUN_STATE_UNSPECIFIED
+}
+
+func (x *Run) GetTenantId() string {
+	if x != nil {
+		return x.TenantId
+	}
+	return ""
+}
+
+func (x *Run) GetProjectId() string {
+	if x != nil {
+		return x.ProjectId
+	}
+	return ""
+}
+
+func (x *Run) GetResourceVersion() int64 {
+	if x != nil {
+		return x.ResourceVersion
+	}
+	return 0
+}
+
+func (x *Run) GetLeaseEpoch() uint64 {
+	if x != nil {
+		return x.LeaseEpoch
+	}
+	return 0
+}
+
+func (x *Run) GetCreatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return nil
+}
+
+func (x *Run) GetStartedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.StartedAt
+	}
+	return nil
+}
+
+func (x *Run) GetCompletedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.CompletedAt
+	}
+	return nil
+}
+
+func (x *Run) GetOutputs() []*v1.ArtifactRef {
+	if x != nil {
+		return x.Outputs
+	}
+	return nil
+}
+
+func (x *Run) GetError() *v11.ErrorDetail {
+	if x != nil {
+		return x.Error
+	}
+	return nil
+}
+
+func (x *Run) GetEtag() string {
+	if x != nil {
+		return x.Etag
 	}
 	return ""
 }
@@ -110,15 +254,37 @@ var File_proto_mindclade_job_v1_run_proto protoreflect.FileDescriptor
 
 const file_proto_mindclade_job_v1_run_proto_rawDesc = "" +
 	"\n" +
-	" proto/mindclade/job/v1/run.proto\x12\x10mindclade.job.v1\"\xc0\x01\n" +
+	" proto/mindclade/job/v1/run.proto\x12\x10mindclade.job.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a4proto/mindclade/artifact/v1/artifact_reference.proto\x1a,proto/mindclade/common/v1/error_detail.proto\"\xe8\x05\n" +
 	"\x03Run\x12\x15\n" +
 	"\x06run_id\x18\x01 \x01(\tR\x05runId\x12\x15\n" +
-	"\x06job_id\x18\x02 \x01(\tR\x05jobId\x12!\n" +
-	"\finput_digest\x18\x03 \x01(\tR\vinputDigest\x121\n" +
-	"\x14configuration_digest\x18\x04 \x01(\tR\x13configurationDigest\x12\x1f\n" +
-	"\vplan_digest\x18\x05 \x01(\tR\n" +
-	"planDigest\x12\x14\n" +
-	"\x05state\x18\x06 \x01(\tR\x05stateBDZBgithub.com/mindclade/mindclade/protocols/generated/go/job/v1;jobv1b\x06proto3"
+	"\x06job_id\x18\x02 \x01(\tR\x05jobId\x128\n" +
+	"\x05input\x18\x03 \x01(\v2\".mindclade.artifact.v1.ArtifactRefR\x05input\x12H\n" +
+	"\rconfiguration\x18\x04 \x01(\v2\".mindclade.artifact.v1.ArtifactRefR\rconfiguration\x126\n" +
+	"\x04plan\x18\x05 \x01(\v2\".mindclade.artifact.v1.ArtifactRefR\x04plan\x120\n" +
+	"\x05state\x18\x06 \x01(\x0e2\x1a.mindclade.job.v1.RunStateR\x05state\x12\x1b\n" +
+	"\ttenant_id\x18\a \x01(\tR\btenantId\x12\x1d\n" +
+	"\n" +
+	"project_id\x18\b \x01(\tR\tprojectId\x12)\n" +
+	"\x10resource_version\x18\t \x01(\x03R\x0fresourceVersion\x12\x1f\n" +
+	"\vlease_epoch\x18\n" +
+	" \x01(\x04R\n" +
+	"leaseEpoch\x129\n" +
+	"\n" +
+	"created_at\x18\v \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
+	"\n" +
+	"started_at\x18\f \x01(\v2\x1a.google.protobuf.TimestampR\tstartedAt\x12=\n" +
+	"\fcompleted_at\x18\r \x01(\v2\x1a.google.protobuf.TimestampR\vcompletedAt\x12<\n" +
+	"\aoutputs\x18\x0e \x03(\v2\".mindclade.artifact.v1.ArtifactRefR\aoutputs\x126\n" +
+	"\x05error\x18\x0f \x01(\v2 .mindclade.common.v1.ErrorDetailR\x05error\x12\x12\n" +
+	"\x04etag\x18\x10 \x01(\tR\x04etag*\xb5\x01\n" +
+	"\bRunState\x12\x19\n" +
+	"\x15RUN_STATE_UNSPECIFIED\x10\x00\x12\x13\n" +
+	"\x0fRUN_STATE_READY\x10\x01\x12\x17\n" +
+	"\x13RUN_STATE_EXECUTING\x10\x02\x12\x17\n" +
+	"\x13RUN_STATE_SUCCEEDED\x10\x03\x12\x14\n" +
+	"\x10RUN_STATE_FAILED\x10\x04\x12\x18\n" +
+	"\x14RUN_STATE_CANCELLING\x10\x05\x12\x17\n" +
+	"\x13RUN_STATE_CANCELLED\x10\x06BDZBgithub.com/mindclade/mindclade/protocols/generated/go/job/v1;jobv1b\x06proto3"
 
 var (
 	file_proto_mindclade_job_v1_run_proto_rawDescOnce sync.Once
@@ -132,16 +298,30 @@ func file_proto_mindclade_job_v1_run_proto_rawDescGZIP() []byte {
 	return file_proto_mindclade_job_v1_run_proto_rawDescData
 }
 
+var file_proto_mindclade_job_v1_run_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
 var file_proto_mindclade_job_v1_run_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
 var file_proto_mindclade_job_v1_run_proto_goTypes = []any{
-	(*Run)(nil), // 0: mindclade.job.v1.Run
+	(RunState)(0),                 // 0: mindclade.job.v1.RunState
+	(*Run)(nil),                   // 1: mindclade.job.v1.Run
+	(*v1.ArtifactRef)(nil),        // 2: mindclade.artifact.v1.ArtifactRef
+	(*timestamppb.Timestamp)(nil), // 3: google.protobuf.Timestamp
+	(*v11.ErrorDetail)(nil),       // 4: mindclade.common.v1.ErrorDetail
 }
 var file_proto_mindclade_job_v1_run_proto_depIdxs = []int32{
-	0, // [0:0] is the sub-list for method output_type
-	0, // [0:0] is the sub-list for method input_type
-	0, // [0:0] is the sub-list for extension type_name
-	0, // [0:0] is the sub-list for extension extendee
-	0, // [0:0] is the sub-list for field type_name
+	2, // 0: mindclade.job.v1.Run.input:type_name -> mindclade.artifact.v1.ArtifactRef
+	2, // 1: mindclade.job.v1.Run.configuration:type_name -> mindclade.artifact.v1.ArtifactRef
+	2, // 2: mindclade.job.v1.Run.plan:type_name -> mindclade.artifact.v1.ArtifactRef
+	0, // 3: mindclade.job.v1.Run.state:type_name -> mindclade.job.v1.RunState
+	3, // 4: mindclade.job.v1.Run.created_at:type_name -> google.protobuf.Timestamp
+	3, // 5: mindclade.job.v1.Run.started_at:type_name -> google.protobuf.Timestamp
+	3, // 6: mindclade.job.v1.Run.completed_at:type_name -> google.protobuf.Timestamp
+	2, // 7: mindclade.job.v1.Run.outputs:type_name -> mindclade.artifact.v1.ArtifactRef
+	4, // 8: mindclade.job.v1.Run.error:type_name -> mindclade.common.v1.ErrorDetail
+	9, // [9:9] is the sub-list for method output_type
+	9, // [9:9] is the sub-list for method input_type
+	9, // [9:9] is the sub-list for extension type_name
+	9, // [9:9] is the sub-list for extension extendee
+	0, // [0:9] is the sub-list for field type_name
 }
 
 func init() { file_proto_mindclade_job_v1_run_proto_init() }
@@ -154,13 +334,14 @@ func file_proto_mindclade_job_v1_run_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_mindclade_job_v1_run_proto_rawDesc), len(file_proto_mindclade_job_v1_run_proto_rawDesc)),
-			NumEnums:      0,
+			NumEnums:      1,
 			NumMessages:   1,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
 		GoTypes:           file_proto_mindclade_job_v1_run_proto_goTypes,
 		DependencyIndexes: file_proto_mindclade_job_v1_run_proto_depIdxs,
+		EnumInfos:         file_proto_mindclade_job_v1_run_proto_enumTypes,
 		MessageInfos:      file_proto_mindclade_job_v1_run_proto_msgTypes,
 	}.Build()
 	File_proto_mindclade_job_v1_run_proto = out.File

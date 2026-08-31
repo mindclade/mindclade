@@ -4,7 +4,7 @@ go_library(
     name = "bindings",
     srcs = ["command_context.pb.go", "error_detail.pb.go", "event_envelope.pb.go", "identifiers.pb.go", "pagination.pb.go", "resource_reference.pb.go"],
     importpath = "github.com/mindclade/mindclade/protocols/generated/go/common/v1",
-    deps = ["@org_golang_google_protobuf//reflect/protoreflect", "@org_golang_google_protobuf//runtime/protoimpl"],
+    deps = ["@org_golang_google_protobuf//reflect/protoreflect", "@org_golang_google_protobuf//runtime/protoimpl", "@org_golang_google_protobuf//types/known/durationpb", "@org_golang_google_protobuf//types/known/timestamppb"],
     visibility = ["//visibility:public"],
 )
 

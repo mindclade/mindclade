@@ -4,32 +4,25 @@
 
 import type { GenFile, GenMessage } from "@bufbuild/protobuf/codegenv2";
 import { fileDesc, messageDesc } from "@bufbuild/protobuf/codegenv2";
-import type { EventEnvelope } from "../../common/v1/event_envelope_pb.js";
-import { file_proto_mindclade_common_v1_event_envelope } from "../../common/v1/event_envelope_pb.js";
 import type { Message } from "@bufbuild/protobuf";
 
 /**
  * Describes the file events/mindclade/job/v1/job_requested.proto.
  */
 export const file_events_mindclade_job_v1_job_requested: GenFile = /*@__PURE__*/
-  fileDesc("CitldmVudHMvbWluZGNsYWRlL2pvYi92MS9qb2JfcmVxdWVzdGVkLnByb3RvEhdtaW5kY2xhZGUuZXZlbnRzLmpvYi52MSJyCgxKb2JSZXF1ZXN0ZWQSNAoIZW52ZWxvcGUYASABKAsyIi5taW5kY2xhZGUuY29tbW9uLnYxLkV2ZW50RW52ZWxvcGUSDgoGam9iX2lkGAIgASgJEhwKFGNvbmZpZ3VyYXRpb25fZGlnZXN0GAMgASgJQkRaQmdpdGh1Yi5jb20vbWluZGNsYWRlL21pbmRjbGFkZS9wcm90b2NvbHMvZ2VuZXJhdGVkL2dvL2pvYi92MTtqb2J2MWIGcHJvdG8z", [file_proto_mindclade_common_v1_event_envelope]);
+  fileDesc("CitldmVudHMvbWluZGNsYWRlL2pvYi92MS9qb2JfcmVxdWVzdGVkLnByb3RvEhdtaW5kY2xhZGUuZXZlbnRzLmpvYi52MSI8CgxKb2JSZXF1ZXN0ZWQSDgoGam9iX2lkGAEgASgJEhwKFGNvbmZpZ3VyYXRpb25fZGlnZXN0GAIgASgJQkRaQmdpdGh1Yi5jb20vbWluZGNsYWRlL21pbmRjbGFkZS9wcm90b2NvbHMvZ2VuZXJhdGVkL2dvL2pvYi92MTtqb2J2MWIGcHJvdG8z");
 
 /**
  * @generated from message mindclade.events.job.v1.JobRequested
  */
 export type JobRequested = Message<"mindclade.events.job.v1.JobRequested"> & {
   /**
-   * @generated from field: mindclade.common.v1.EventEnvelope envelope = 1;
-   */
-  envelope?: EventEnvelope;
-
-  /**
-   * @generated from field: string job_id = 2;
+   * @generated from field: string job_id = 1;
    */
   jobId: string;
 
   /**
-   * @generated from field: string configuration_digest = 3;
+   * @generated from field: string configuration_digest = 2;
    */
   configurationDigest: string;
 };

@@ -2,15 +2,19 @@
 // @generated from file proto/mindclade/job/v1/job.proto (package mindclade.job.v1, syntax proto3)
 /* eslint-disable */
 
-import type { GenFile, GenMessage } from "@bufbuild/protobuf/codegenv2";
-import { fileDesc, messageDesc } from "@bufbuild/protobuf/codegenv2";
+import type { GenEnum, GenFile, GenMessage } from "@bufbuild/protobuf/codegenv2";
+import { enumDesc, fileDesc, messageDesc } from "@bufbuild/protobuf/codegenv2";
+import type { Timestamp } from "@bufbuild/protobuf/wkt";
+import { file_google_protobuf_timestamp } from "@bufbuild/protobuf/wkt";
+import type { ArtifactRef } from "../../artifact/v1/artifact_reference_pb.js";
+import { file_proto_mindclade_artifact_v1_artifact_reference } from "../../artifact/v1/artifact_reference_pb.js";
 import type { Message } from "@bufbuild/protobuf";
 
 /**
  * Describes the file proto/mindclade/job/v1/job.proto.
  */
 export const file_proto_mindclade_job_v1_job: GenFile = /*@__PURE__*/
-  fileDesc("CiBwcm90by9taW5kY2xhZGUvam9iL3YxL2pvYi5wcm90bxIQbWluZGNsYWRlLmpvYi52MSJ+CgNKb2ISDgoGam9iX2lkGAEgASgJEhQKDG9wZXJhdGlvbl9pZBgCIAEoCRIRCgl0ZW5hbnRfaWQYAyABKAkSDQoFc3RhdGUYBCABKAkSGAoQcmVzb3VyY2VfdmVyc2lvbhgFIAEoAxIVCg1wb2xpY3lfZGlnZXN0GAYgASgJQkRaQmdpdGh1Yi5jb20vbWluZGNsYWRlL21pbmRjbGFkZS9wcm90b2NvbHMvZ2VuZXJhdGVkL2dvL2pvYi92MTtqb2J2MWIGcHJvdG8z");
+  fileDesc("CiBwcm90by9taW5kY2xhZGUvam9iL3YxL2pvYi5wcm90bxIQbWluZGNsYWRlLmpvYi52MSKcAwoDSm9iEg4KBmpvYl9pZBgBIAEoCRIUCgxvcGVyYXRpb25faWQYAiABKAkSEQoJdGVuYW50X2lkGAMgASgJEikKBXN0YXRlGAQgASgOMhoubWluZGNsYWRlLmpvYi52MS5Kb2JTdGF0ZRIYChByZXNvdXJjZV92ZXJzaW9uGAUgASgDEhUKDXBvbGljeV9kaWdlc3QYBiABKAkSEgoKcHJvamVjdF9pZBgHIAEoCRIQCghqb2Jfa2luZBgIIAEoCRIxCgVpbnB1dBgJIAEoCzIiLm1pbmRjbGFkZS5hcnRpZmFjdC52MS5BcnRpZmFjdFJlZhI5Cg1jb25maWd1cmF0aW9uGAogASgLMiIubWluZGNsYWRlLmFydGlmYWN0LnYxLkFydGlmYWN0UmVmEi4KCmNyZWF0ZWRfYXQYCyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEi4KCnVwZGF0ZWRfYXQYDCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEgwKBGV0YWcYDSABKAkqzAEKCEpvYlN0YXRlEhkKFUpPQl9TVEFURV9VTlNQRUNJRklFRBAAEhYKEkpPQl9TVEFURV9BQ0NFUFRFRBABEhQKEEpPQl9TVEFURV9RVUVVRUQQAhIVChFKT0JfU1RBVEVfUlVOTklORxADEhcKE0pPQl9TVEFURV9TVUNDRUVERUQQBBIUChBKT0JfU1RBVEVfRkFJTEVEEAUSGAoUSk9CX1NUQVRFX0NBTkNFTExJTkcQBhIXChNKT0JfU1RBVEVfQ0FOQ0VMTEVEEAdCRFpCZ2l0aHViLmNvbS9taW5kY2xhZGUvbWluZGNsYWRlL3Byb3RvY29scy9nZW5lcmF0ZWQvZ28vam9iL3YxO2pvYnYxYgZwcm90bzM", [file_google_protobuf_timestamp, file_proto_mindclade_artifact_v1_artifact_reference]);
 
 /**
  * Durable admitted work and policy/accounting boundary.
@@ -34,9 +38,9 @@ export type Job = Message<"mindclade.job.v1.Job"> & {
   tenantId: string;
 
   /**
-   * @generated from field: string state = 4;
+   * @generated from field: mindclade.job.v1.JobState state = 4;
    */
-  state: string;
+  state: JobState;
 
   /**
    * @generated from field: int64 resource_version = 5;
@@ -47,6 +51,41 @@ export type Job = Message<"mindclade.job.v1.Job"> & {
    * @generated from field: string policy_digest = 6;
    */
   policyDigest: string;
+
+  /**
+   * @generated from field: string project_id = 7;
+   */
+  projectId: string;
+
+  /**
+   * @generated from field: string job_kind = 8;
+   */
+  jobKind: string;
+
+  /**
+   * @generated from field: mindclade.artifact.v1.ArtifactRef input = 9;
+   */
+  input?: ArtifactRef;
+
+  /**
+   * @generated from field: mindclade.artifact.v1.ArtifactRef configuration = 10;
+   */
+  configuration?: ArtifactRef;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp created_at = 11;
+   */
+  createdAt?: Timestamp;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp updated_at = 12;
+   */
+  updatedAt?: Timestamp;
+
+  /**
+   * @generated from field: string etag = 13;
+   */
+  etag: string;
 };
 
 /**
@@ -55,3 +94,54 @@ export type Job = Message<"mindclade.job.v1.Job"> & {
  */
 export const JobSchema: GenMessage<Job> = /*@__PURE__*/
   messageDesc(file_proto_mindclade_job_v1_job, 0);
+
+/**
+ * @generated from enum mindclade.job.v1.JobState
+ */
+export enum JobState {
+  /**
+   * @generated from enum value: JOB_STATE_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: JOB_STATE_ACCEPTED = 1;
+   */
+  ACCEPTED = 1,
+
+  /**
+   * @generated from enum value: JOB_STATE_QUEUED = 2;
+   */
+  QUEUED = 2,
+
+  /**
+   * @generated from enum value: JOB_STATE_RUNNING = 3;
+   */
+  RUNNING = 3,
+
+  /**
+   * @generated from enum value: JOB_STATE_SUCCEEDED = 4;
+   */
+  SUCCEEDED = 4,
+
+  /**
+   * @generated from enum value: JOB_STATE_FAILED = 5;
+   */
+  FAILED = 5,
+
+  /**
+   * @generated from enum value: JOB_STATE_CANCELLING = 6;
+   */
+  CANCELLING = 6,
+
+  /**
+   * @generated from enum value: JOB_STATE_CANCELLED = 7;
+   */
+  CANCELLED = 7,
+}
+
+/**
+ * Describes the enum mindclade.job.v1.JobState.
+ */
+export const JobStateSchema: GenEnum<JobState> = /*@__PURE__*/
+  enumDesc(file_proto_mindclade_job_v1_job, 0);

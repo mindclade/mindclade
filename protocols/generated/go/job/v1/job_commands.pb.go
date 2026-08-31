@@ -7,6 +7,7 @@
 package jobv1
 
 import (
+	v11 "github.com/mindclade/mindclade/protocols/generated/go/artifact/v1"
 	v1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
@@ -24,13 +25,14 @@ const (
 
 // Idempotent command to request durable work.
 type RequestJobCommand struct {
-	state               protoimpl.MessageState `protogen:"open.v1"`
-	Context             *v1.CommandContext     `protobuf:"bytes,1,opt,name=context,proto3" json:"context,omitempty"`
-	JobKind             string                 `protobuf:"bytes,2,opt,name=job_kind,json=jobKind,proto3" json:"job_kind,omitempty"`
-	InputDigest         string                 `protobuf:"bytes,3,opt,name=input_digest,json=inputDigest,proto3" json:"input_digest,omitempty"`
-	ConfigurationDigest string                 `protobuf:"bytes,4,opt,name=configuration_digest,json=configurationDigest,proto3" json:"configuration_digest,omitempty"`
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	Context        *v1.CommandContext     `protobuf:"bytes,1,opt,name=context,proto3" json:"context,omitempty"`
+	JobKind        string                 `protobuf:"bytes,2,opt,name=job_kind,json=jobKind,proto3" json:"job_kind,omitempty"`
+	Input          *v11.ArtifactRef       `protobuf:"bytes,3,opt,name=input,proto3" json:"input,omitempty"`
+	Configuration  *v11.ArtifactRef       `protobuf:"bytes,4,opt,name=configuration,proto3" json:"configuration,omitempty"`
+	RequestedJobId string                 `protobuf:"bytes,5,opt,name=requested_job_id,json=requestedJobId,proto3" json:"requested_job_id,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *RequestJobCommand) Reset() {
@@ -77,16 +79,23 @@ func (x *RequestJobCommand) GetJobKind() string {
 	return ""
 }
 
-func (x *RequestJobCommand) GetInputDigest() string {
+func (x *RequestJobCommand) GetInput() *v11.ArtifactRef {
 	if x != nil {
-		return x.InputDigest
+		return x.Input
 	}
-	return ""
+	return nil
 }
 
-func (x *RequestJobCommand) GetConfigurationDigest() string {
+func (x *RequestJobCommand) GetConfiguration() *v11.ArtifactRef {
 	if x != nil {
-		return x.ConfigurationDigest
+		return x.Configuration
+	}
+	return nil
+}
+
+func (x *RequestJobCommand) GetRequestedJobId() string {
+	if x != nil {
+		return x.RequestedJobId
 	}
 	return ""
 }
@@ -95,12 +104,13 @@ var File_proto_mindclade_job_v1_job_commands_proto protoreflect.FileDescriptor
 
 const file_proto_mindclade_job_v1_job_commands_proto_rawDesc = "" +
 	"\n" +
-	")proto/mindclade/job/v1/job_commands.proto\x12\x10mindclade.job.v1\x1a/proto/mindclade/common/v1/command_context.proto\"\xc3\x01\n" +
+	")proto/mindclade/job/v1/job_commands.proto\x12\x10mindclade.job.v1\x1a4proto/mindclade/artifact/v1/artifact_reference.proto\x1a/proto/mindclade/common/v1/command_context.proto\"\x9b\x02\n" +
 	"\x11RequestJobCommand\x12=\n" +
 	"\acontext\x18\x01 \x01(\v2#.mindclade.common.v1.CommandContextR\acontext\x12\x19\n" +
-	"\bjob_kind\x18\x02 \x01(\tR\ajobKind\x12!\n" +
-	"\finput_digest\x18\x03 \x01(\tR\vinputDigest\x121\n" +
-	"\x14configuration_digest\x18\x04 \x01(\tR\x13configurationDigestBDZBgithub.com/mindclade/mindclade/protocols/generated/go/job/v1;jobv1b\x06proto3"
+	"\bjob_kind\x18\x02 \x01(\tR\ajobKind\x128\n" +
+	"\x05input\x18\x03 \x01(\v2\".mindclade.artifact.v1.ArtifactRefR\x05input\x12H\n" +
+	"\rconfiguration\x18\x04 \x01(\v2\".mindclade.artifact.v1.ArtifactRefR\rconfiguration\x12(\n" +
+	"\x10requested_job_id\x18\x05 \x01(\tR\x0erequestedJobIdBDZBgithub.com/mindclade/mindclade/protocols/generated/go/job/v1;jobv1b\x06proto3"
 
 var (
 	file_proto_mindclade_job_v1_job_commands_proto_rawDescOnce sync.Once
@@ -118,14 +128,17 @@ var file_proto_mindclade_job_v1_job_commands_proto_msgTypes = make([]protoimpl.M
 var file_proto_mindclade_job_v1_job_commands_proto_goTypes = []any{
 	(*RequestJobCommand)(nil), // 0: mindclade.job.v1.RequestJobCommand
 	(*v1.CommandContext)(nil), // 1: mindclade.common.v1.CommandContext
+	(*v11.ArtifactRef)(nil),   // 2: mindclade.artifact.v1.ArtifactRef
 }
 var file_proto_mindclade_job_v1_job_commands_proto_depIdxs = []int32{
 	1, // 0: mindclade.job.v1.RequestJobCommand.context:type_name -> mindclade.common.v1.CommandContext
-	1, // [1:1] is the sub-list for method output_type
-	1, // [1:1] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	2, // 1: mindclade.job.v1.RequestJobCommand.input:type_name -> mindclade.artifact.v1.ArtifactRef
+	2, // 2: mindclade.job.v1.RequestJobCommand.configuration:type_name -> mindclade.artifact.v1.ArtifactRef
+	3, // [3:3] is the sub-list for method output_type
+	3, // [3:3] is the sub-list for method input_type
+	3, // [3:3] is the sub-list for extension type_name
+	3, // [3:3] is the sub-list for extension extendee
+	0, // [0:3] is the sub-list for field type_name
 }
 
 func init() { file_proto_mindclade_job_v1_job_commands_proto_init() }

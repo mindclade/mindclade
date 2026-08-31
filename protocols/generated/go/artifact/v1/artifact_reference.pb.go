@@ -30,6 +30,8 @@ type ArtifactRef struct {
 	ArtifactKind    string                 `protobuf:"bytes,4,opt,name=artifact_kind,json=artifactKind,proto3" json:"artifact_kind,omitempty"`
 	SchemaId        string                 `protobuf:"bytes,5,opt,name=schema_id,json=schemaId,proto3" json:"schema_id,omitempty"`
 	IntegrityDigest string                 `protobuf:"bytes,6,opt,name=integrity_digest,json=integrityDigest,proto3" json:"integrity_digest,omitempty"`
+	Uri             string                 `protobuf:"bytes,7,opt,name=uri,proto3" json:"uri,omitempty"`
+	SchemaVersion   string                 `protobuf:"bytes,8,opt,name=schema_version,json=schemaVersion,proto3" json:"schema_version,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -106,11 +108,25 @@ func (x *ArtifactRef) GetIntegrityDigest() string {
 	return ""
 }
 
+func (x *ArtifactRef) GetUri() string {
+	if x != nil {
+		return x.Uri
+	}
+	return ""
+}
+
+func (x *ArtifactRef) GetSchemaVersion() string {
+	if x != nil {
+		return x.SchemaVersion
+	}
+	return ""
+}
+
 var File_proto_mindclade_artifact_v1_artifact_reference_proto protoreflect.FileDescriptor
 
 const file_proto_mindclade_artifact_v1_artifact_reference_proto_rawDesc = "" +
 	"\n" +
-	"4proto/mindclade/artifact/v1/artifact_reference.proto\x12\x15mindclade.artifact.v1\"\xd0\x01\n" +
+	"4proto/mindclade/artifact/v1/artifact_reference.proto\x12\x15mindclade.artifact.v1\"\x89\x02\n" +
 	"\vArtifactRef\x12\x16\n" +
 	"\x06digest\x18\x01 \x01(\tR\x06digest\x12\x1d\n" +
 	"\n" +
@@ -119,7 +135,9 @@ const file_proto_mindclade_artifact_v1_artifact_reference_proto_rawDesc = "" +
 	"size_bytes\x18\x03 \x01(\x03R\tsizeBytes\x12#\n" +
 	"\rartifact_kind\x18\x04 \x01(\tR\fartifactKind\x12\x1b\n" +
 	"\tschema_id\x18\x05 \x01(\tR\bschemaId\x12)\n" +
-	"\x10integrity_digest\x18\x06 \x01(\tR\x0fintegrityDigestBNZLgithub.com/mindclade/mindclade/protocols/generated/go/artifact/v1;artifactv1b\x06proto3"
+	"\x10integrity_digest\x18\x06 \x01(\tR\x0fintegrityDigest\x12\x10\n" +
+	"\x03uri\x18\a \x01(\tR\x03uri\x12%\n" +
+	"\x0eschema_version\x18\b \x01(\tR\rschemaVersionBNZLgithub.com/mindclade/mindclade/protocols/generated/go/artifact/v1;artifactv1b\x06proto3"
 
 var (
 	file_proto_mindclade_artifact_v1_artifact_reference_proto_rawDescOnce sync.Once

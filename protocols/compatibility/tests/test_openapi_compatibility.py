@@ -3,6 +3,9 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import subprocess
+import sys
+import tempfile
 import unittest
 from collections.abc import Iterator, Mapping
 from pathlib import Path
@@ -100,22 +103,6 @@ def parameter_names(document: Mapping[str, Any], operation: Mapping[str, Any]) -
     return names
 
 
-def sdk_plan(openapi: Mapping[str, Any], generation: Mapping[str, Any]) -> dict[str, Any]:
-    """Return the deterministic, source-only SdkGenerator planning projection."""
-    operation_ids = sorted(operation["operationId"] for _, _, operation in operations(openapi))
-    schema_names = sorted(openapi["components"]["schemas"])
-    providers = {
-        provider["id"]: sorted(provider["languages"])
-        for provider in generation["spec"]["providers"]
-    }
-    return {
-        "api_profile": openapi["x-mindclade-api-profile"],
-        "operation_ids": operation_ids,
-        "public_schemas": schema_names,
-        "providers": providers,
-    }
-
-
 class OpenApiCompatibilityTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
@@ -123,6 +110,7 @@ class OpenApiCompatibilityTest(unittest.TestCase):
         cls.openapi_path = cls.repository / "protocols/openapi/external-api.yaml"
         cls.generation_path = cls.repository / "protocols/openapi/generation.yaml"
         cls.policy_path = cls.repository / "protocols/openapi/compatibility-policy.yaml"
+        cls.sdk_generator_path = cls.repository / "tools/codegen/sdk_generator.py"
         cls.openapi = load_yaml(cls.openapi_path)
         cls.generation = load_yaml(cls.generation_path)
         cls.policy = load_yaml(cls.policy_path)
@@ -242,10 +230,7 @@ class OpenApiCompatibilityTest(unittest.TestCase):
             self.assertRegex(proto_text, rf"\bmessage {re.escape(message)}\s*\{{", mapping)
 
     def test_public_grpc_facade_exactly_covers_openapi_operations(self) -> None:
-        grpc_path = (
-            self.repository
-            / "protocols/proto/mindclade/api/v1/mindclade_service.proto"
-        )
+        grpc_path = self.repository / "protocols/proto/mindclade/api/v1/mindclade_service.proto"
         grpc_source = grpc_path.read_text()
         service = re.search(
             r"\bservice\s+MindcladeService\s*\{(?P<body>.*?)^\}",
@@ -267,7 +252,11 @@ class OpenApiCompatibilityTest(unittest.TestCase):
         spec = self.generation["spec"]
         self.assertEqual(spec["authority"]["source"], "protocols/openapi/external-api.yaml")
         self.assertEqual(spec["interface"]["name"], "SdkGenerator")
-        self.assertEqual(spec["localContractAdapter"]["mode"], "plan-and-verify-only")
+        self.assertEqual(spec["localContractAdapter"]["mode"], "offline-plan-and-verify")
+        self.assertEqual(
+            spec["localContractAdapter"]["implementation"], "tools/codegen/sdk_generator.py"
+        )
+        self.assertEqual(spec["localContractAdapter"]["readiness"], "implemented")
         self.assertFalse(spec["localContractAdapter"]["emitsSdkSource"])
         providers = {provider["id"]: provider for provider in spec["providers"]}
         self.assertEqual(set(providers), {"oagen", "stainless"})
@@ -276,22 +265,122 @@ class OpenApiCompatibilityTest(unittest.TestCase):
         self.assertEqual(providers["oagen"]["role"], "shadow-promotable")
         for provider in providers.values():
             self.assertEqual(set(provider["languages"]), {"go", "python", "typescript"})
+            self.assertEqual(provider["adapter"]["contractVersion"], "v1")
+            self.assertEqual(provider["adapter"]["providerVersion"], "unpinned")
+            self.assertIsNone(provider["adapter"]["executable"])
+            self.assertIsNone(provider["adapter"]["executableSha256"])
             self.assertFalse(provider["release"]["publish"])
+        self.assertFalse(spec["connectedGap"]["stainlessYmlPresent"])
         self.assertEqual(spec["qualification"]["connectedStatus"], "not-run")
         self.assertFalse(spec["qualification"]["publishAuthorized"])
 
     def test_local_sdk_plan_is_deterministic_and_provider_neutral(self) -> None:
-        first = sdk_plan(self.openapi, self.generation)
-        second = sdk_plan(load_yaml(self.openapi_path), load_yaml(self.generation_path))
-        self.assertEqual(first, second)
-        self.assertEqual(first["providers"]["stainless"], first["providers"]["oagen"])
-        self.assertIn("submitInference", first["operation_ids"])
-        self.assertIn("ArtifactRef", first["public_schemas"])
-        first_bytes = json.dumps(first, sort_keys=True, separators=(",", ":")).encode()
-        second_bytes = json.dumps(second, sort_keys=True, separators=(",", ":")).encode()
-        self.assertEqual(
-            hashlib.sha256(first_bytes).hexdigest(), hashlib.sha256(second_bytes).hexdigest()
-        )
+        with tempfile.TemporaryDirectory() as directory:
+            output_root = Path(directory)
+            base = [
+                sys.executable,
+                str(self.sdk_generator_path),
+                "--openapi",
+                str(self.openapi_path),
+                "--generation",
+                str(self.generation_path),
+                "--output-root",
+                str(output_root),
+                "--source-revision",
+                "test-revision",
+            ]
+            first = subprocess.run(
+                [*base[:2], "plan", *base[2:], "--output", "first.json"],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+            second = subprocess.run(
+                [*base[:2], "plan", *base[2:], "--output", "second.json"],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+            self.assertEqual(first.returncode, 0, first.stderr)
+            self.assertEqual(second.returncode, 0, second.stderr)
+            first_bytes = (output_root / "first.json").read_bytes()
+            self.assertEqual(first_bytes, (output_root / "second.json").read_bytes())
+            plan = json.loads(first_bytes)
+            self.assertEqual(plan["schemaVersion"], "mindclade.sdk-generation-plan/v1")
+            self.assertIn("submitInference", plan["inventory"]["operationIds"])
+            self.assertIn("ArtifactRef", plan["inventory"]["publicSchemas"])
+            self.assertEqual(
+                {(item["provider"], item["language"]) for item in plan["provenance"]},
+                {
+                    (provider, language)
+                    for provider in ("oagen", "stainless")
+                    for language in ("go", "python", "typescript")
+                },
+            )
+            self.assertTrue(
+                all(item["providerVersion"] == "unpinned" for item in plan["provenance"])
+            )
+            verify = subprocess.run(
+                [*base[:2], "verify", *base[2:], "--plan", "first.json"],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+            self.assertEqual(verify.returncode, 0, verify.stderr)
+
+    def test_sdk_generator_confines_outputs_and_fails_closed_before_provider_execution(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            output_root = Path(directory)
+            common = [
+                "--openapi",
+                str(self.openapi_path),
+                "--generation",
+                str(self.generation_path),
+                "--output-root",
+                str(output_root),
+                "--source-revision",
+                "test-revision",
+            ]
+            escape = subprocess.run(
+                [
+                    sys.executable,
+                    str(self.sdk_generator_path),
+                    "plan",
+                    *common,
+                    "--output",
+                    "../escape.json",
+                ],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+            self.assertEqual(escape.returncode, 2)
+            self.assertIn("beneath output root", escape.stderr)
+            self.assertFalse((output_root.parent / "escape.json").exists())
+
+            generate = subprocess.run(
+                [
+                    sys.executable,
+                    str(self.sdk_generator_path),
+                    "generate",
+                    *common,
+                    "--provider",
+                    "stainless",
+                    "--language",
+                    "python",
+                    "--allow-connected",
+                    "--provider-command",
+                    "/definitely/not/a/provider",
+                ],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+            self.assertEqual(generate.returncode, 3)
+            self.assertIn("configuration-only", generate.stderr)
+            self.assertFalse((output_root / "stainless/python").exists())
 
     def test_compatibility_policy_freezes_the_clean_v1_baseline(self) -> None:
         spec = self.policy["spec"]

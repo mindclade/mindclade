@@ -4,37 +4,30 @@
 
 import type { GenFile, GenMessage } from "@bufbuild/protobuf/codegenv2";
 import { fileDesc, messageDesc } from "@bufbuild/protobuf/codegenv2";
-import type { EventEnvelope } from "../../common/v1/event_envelope_pb.js";
-import { file_proto_mindclade_common_v1_event_envelope } from "../../common/v1/event_envelope_pb.js";
 import type { Message } from "@bufbuild/protobuf";
 
 /**
  * Describes the file events/mindclade/job/v1/attempt_leased.proto.
  */
 export const file_events_mindclade_job_v1_attempt_leased: GenFile = /*@__PURE__*/
-  fileDesc("CixldmVudHMvbWluZGNsYWRlL2pvYi92MS9hdHRlbXB0X2xlYXNlZC5wcm90bxIXbWluZGNsYWRlLmV2ZW50cy5qb2IudjEijAEKDUF0dGVtcHRMZWFzZWQSNAoIZW52ZWxvcGUYASABKAsyIi5taW5kY2xhZGUuY29tbW9uLnYxLkV2ZW50RW52ZWxvcGUSEgoKYXR0ZW1wdF9pZBgCIAEoCRITCgtsZWFzZV9lcG9jaBgDIAEoBBIcChRsZWFzZV9leHBpcmVzX2F0X3V0YxgEIAEoCUJEWkJnaXRodWIuY29tL21pbmRjbGFkZS9taW5kY2xhZGUvcHJvdG9jb2xzL2dlbmVyYXRlZC9nby9qb2IvdjE7am9idjFiBnByb3RvMw", [file_proto_mindclade_common_v1_event_envelope]);
+  fileDesc("CixldmVudHMvbWluZGNsYWRlL2pvYi92MS9hdHRlbXB0X2xlYXNlZC5wcm90bxIXbWluZGNsYWRlLmV2ZW50cy5qb2IudjEiVgoNQXR0ZW1wdExlYXNlZBISCgphdHRlbXB0X2lkGAEgASgJEhMKC2xlYXNlX2Vwb2NoGAIgASgEEhwKFGxlYXNlX2V4cGlyZXNfYXRfdXRjGAMgASgJQkRaQmdpdGh1Yi5jb20vbWluZGNsYWRlL21pbmRjbGFkZS9wcm90b2NvbHMvZ2VuZXJhdGVkL2dvL2pvYi92MTtqb2J2MWIGcHJvdG8z");
 
 /**
  * @generated from message mindclade.events.job.v1.AttemptLeased
  */
 export type AttemptLeased = Message<"mindclade.events.job.v1.AttemptLeased"> & {
   /**
-   * @generated from field: mindclade.common.v1.EventEnvelope envelope = 1;
-   */
-  envelope?: EventEnvelope;
-
-  /**
-   * @generated from field: string attempt_id = 2;
+   * @generated from field: string attempt_id = 1;
    */
   attemptId: string;
 
   /**
-   * @generated from field: uint64 lease_epoch = 3;
+   * @generated from field: uint64 lease_epoch = 2;
    */
   leaseEpoch: bigint;
 
   /**
-   * @generated from field: string lease_expires_at_utc = 4;
+   * @generated from field: string lease_expires_at_utc = 3;
    */
   leaseExpiresAtUtc: string;
 };

@@ -1,0 +1,105 @@
+import datetime
+
+from google.protobuf import timestamp_pb2 as _timestamp_pb2
+from artifact.v1 import artifact_reference_pb2 as _artifact_reference_pb2
+from common.v1 import error_detail_pb2 as _error_detail_pb2
+from common.v1 import resource_reference_pb2 as _resource_reference_pb2
+from inference.v1 import inference_result_pb2 as _inference_result_pb2
+from google.protobuf.internal import enum_type_wrapper as _enum_type_wrapper
+from google.protobuf import descriptor as _descriptor
+from google.protobuf import message as _message
+from collections.abc import Mapping as _Mapping
+from typing import ClassVar as _ClassVar, Optional as _Optional, Union as _Union
+
+DESCRIPTOR: _descriptor.FileDescriptor
+
+class InferenceCandidateState(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
+    __slots__ = ()
+    INFERENCE_CANDIDATE_STATE_UNSPECIFIED: _ClassVar[InferenceCandidateState]
+    INFERENCE_CANDIDATE_STATE_QUEUED: _ClassVar[InferenceCandidateState]
+    INFERENCE_CANDIDATE_STATE_RUNNING: _ClassVar[InferenceCandidateState]
+    INFERENCE_CANDIDATE_STATE_PUBLISHED: _ClassVar[InferenceCandidateState]
+    INFERENCE_CANDIDATE_STATE_INVALID: _ClassVar[InferenceCandidateState]
+    INFERENCE_CANDIDATE_STATE_FAILED: _ClassVar[InferenceCandidateState]
+INFERENCE_CANDIDATE_STATE_UNSPECIFIED: InferenceCandidateState
+INFERENCE_CANDIDATE_STATE_QUEUED: InferenceCandidateState
+INFERENCE_CANDIDATE_STATE_RUNNING: InferenceCandidateState
+INFERENCE_CANDIDATE_STATE_PUBLISHED: InferenceCandidateState
+INFERENCE_CANDIDATE_STATE_INVALID: InferenceCandidateState
+INFERENCE_CANDIDATE_STATE_FAILED: InferenceCandidateState
+
+class InferenceStreamCursor(_message.Message):
+    __slots__ = ("request_name", "after_sequence", "resume_token")
+    REQUEST_NAME_FIELD_NUMBER: _ClassVar[int]
+    AFTER_SEQUENCE_FIELD_NUMBER: _ClassVar[int]
+    RESUME_TOKEN_FIELD_NUMBER: _ClassVar[int]
+    request_name: str
+    after_sequence: int
+    resume_token: str
+    def __init__(self, request_name: _Optional[str] = ..., after_sequence: _Optional[int] = ..., resume_token: _Optional[str] = ...) -> None: ...
+
+class InferenceProgress(_message.Message):
+    __slots__ = ("lifecycle_state", "completion_basis_points", "completed_work_units", "total_work_units", "status_code")
+    LIFECYCLE_STATE_FIELD_NUMBER: _ClassVar[int]
+    COMPLETION_BASIS_POINTS_FIELD_NUMBER: _ClassVar[int]
+    COMPLETED_WORK_UNITS_FIELD_NUMBER: _ClassVar[int]
+    TOTAL_WORK_UNITS_FIELD_NUMBER: _ClassVar[int]
+    STATUS_CODE_FIELD_NUMBER: _ClassVar[int]
+    lifecycle_state: str
+    completion_basis_points: int
+    completed_work_units: int
+    total_work_units: int
+    status_code: str
+    def __init__(self, lifecycle_state: _Optional[str] = ..., completion_basis_points: _Optional[int] = ..., completed_work_units: _Optional[int] = ..., total_work_units: _Optional[int] = ..., status_code: _Optional[str] = ...) -> None: ...
+
+class InferenceCandidateUpdate(_message.Message):
+    __slots__ = ("candidate_id", "sample_index", "state", "output")
+    CANDIDATE_ID_FIELD_NUMBER: _ClassVar[int]
+    SAMPLE_INDEX_FIELD_NUMBER: _ClassVar[int]
+    STATE_FIELD_NUMBER: _ClassVar[int]
+    OUTPUT_FIELD_NUMBER: _ClassVar[int]
+    candidate_id: str
+    sample_index: int
+    state: InferenceCandidateState
+    output: _artifact_reference_pb2.ArtifactRef
+    def __init__(self, candidate_id: _Optional[str] = ..., sample_index: _Optional[int] = ..., state: _Optional[_Union[InferenceCandidateState, str]] = ..., output: _Optional[_Union[_artifact_reference_pb2.ArtifactRef, _Mapping]] = ...) -> None: ...
+
+class InferenceHeartbeat(_message.Message):
+    __slots__ = ("observed_at",)
+    OBSERVED_AT_FIELD_NUMBER: _ClassVar[int]
+    observed_at: _timestamp_pb2.Timestamp
+    def __init__(self, observed_at: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ...) -> None: ...
+
+class InferenceFinalUpdate(_message.Message):
+    __slots__ = ("result", "outcome", "result_manifest", "result_digest")
+    RESULT_FIELD_NUMBER: _ClassVar[int]
+    OUTCOME_FIELD_NUMBER: _ClassVar[int]
+    RESULT_MANIFEST_FIELD_NUMBER: _ClassVar[int]
+    RESULT_DIGEST_FIELD_NUMBER: _ClassVar[int]
+    result: _resource_reference_pb2.ResourceRef
+    outcome: _inference_result_pb2.InferenceResultOutcome
+    result_manifest: _artifact_reference_pb2.ArtifactRef
+    result_digest: str
+    def __init__(self, result: _Optional[_Union[_resource_reference_pb2.ResourceRef, _Mapping]] = ..., outcome: _Optional[_Union[_inference_result_pb2.InferenceResultOutcome, str]] = ..., result_manifest: _Optional[_Union[_artifact_reference_pb2.ArtifactRef, _Mapping]] = ..., result_digest: _Optional[str] = ...) -> None: ...
+
+class InferenceStreamMessage(_message.Message):
+    __slots__ = ("request_name", "sequence", "emitted_at", "resume_token", "progress", "candidate", "final_result", "failure", "heartbeat")
+    REQUEST_NAME_FIELD_NUMBER: _ClassVar[int]
+    SEQUENCE_FIELD_NUMBER: _ClassVar[int]
+    EMITTED_AT_FIELD_NUMBER: _ClassVar[int]
+    RESUME_TOKEN_FIELD_NUMBER: _ClassVar[int]
+    PROGRESS_FIELD_NUMBER: _ClassVar[int]
+    CANDIDATE_FIELD_NUMBER: _ClassVar[int]
+    FINAL_RESULT_FIELD_NUMBER: _ClassVar[int]
+    FAILURE_FIELD_NUMBER: _ClassVar[int]
+    HEARTBEAT_FIELD_NUMBER: _ClassVar[int]
+    request_name: str
+    sequence: int
+    emitted_at: _timestamp_pb2.Timestamp
+    resume_token: str
+    progress: InferenceProgress
+    candidate: InferenceCandidateUpdate
+    final_result: InferenceFinalUpdate
+    failure: _error_detail_pb2.ErrorDetail
+    heartbeat: InferenceHeartbeat
+    def __init__(self, request_name: _Optional[str] = ..., sequence: _Optional[int] = ..., emitted_at: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., resume_token: _Optional[str] = ..., progress: _Optional[_Union[InferenceProgress, _Mapping]] = ..., candidate: _Optional[_Union[InferenceCandidateUpdate, _Mapping]] = ..., final_result: _Optional[_Union[InferenceFinalUpdate, _Mapping]] = ..., failure: _Optional[_Union[_error_detail_pb2.ErrorDetail, _Mapping]] = ..., heartbeat: _Optional[_Union[InferenceHeartbeat, _Mapping]] = ...) -> None: ...

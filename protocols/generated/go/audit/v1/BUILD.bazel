@@ -4,7 +4,7 @@ go_library(
     name = "bindings",
     srcs = ["audit_event.pb.go", "security_event.pb.go"],
     importpath = "github.com/mindclade/mindclade/protocols/generated/go/audit/v1",
-    deps = ["@org_golang_google_protobuf//reflect/protoreflect", "@org_golang_google_protobuf//runtime/protoimpl", "//protocols/generated/go/common/v1:bindings"],
+    deps = ["@org_golang_google_protobuf//reflect/protoreflect", "@org_golang_google_protobuf//runtime/protoimpl"],
     visibility = ["//visibility:public"],
 )
 

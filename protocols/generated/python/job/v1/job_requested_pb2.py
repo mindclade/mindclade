@@ -22,10 +22,9 @@ _runtime_version.ValidateProtobufRuntimeVersion(
 _sym_db = _symbol_database.Default()
 
 
-from common.v1 import event_envelope_pb2 as proto_dot_mindclade_dot_common_dot_v1_dot_event__envelope__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n+events/mindclade/job/v1/job_requested.proto\x12\x17mindclade.events.job.v1\x1a.proto/mindclade/common/v1/event_envelope.proto\"\x98\x01\n\x0cJobRequested\x12>\n\x08\x65nvelope\x18\x01 \x01(\x0b\x32\".mindclade.common.v1.EventEnvelopeR\x08\x65nvelope\x12\x15\n\x06job_id\x18\x02 \x01(\tR\x05jobId\x12\x31\n\x14\x63onfiguration_digest\x18\x03 \x01(\tR\x13\x63onfigurationDigestBDZBgithub.com/mindclade/mindclade/protocols/generated/go/job/v1;jobv1b\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n+events/mindclade/job/v1/job_requested.proto\x12\x17mindclade.events.job.v1\"X\n\x0cJobRequested\x12\x15\n\x06job_id\x18\x01 \x01(\tR\x05jobId\x12\x31\n\x14\x63onfiguration_digest\x18\x02 \x01(\tR\x13\x63onfigurationDigestBDZBgithub.com/mindclade/mindclade/protocols/generated/go/job/v1;jobv1b\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -33,6 +32,6 @@ _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'job.v1.job_requested_pb2', 
 if not _descriptor._USE_C_DESCRIPTORS:
   _globals['DESCRIPTOR']._loaded_options = None
   _globals['DESCRIPTOR']._serialized_options = b'ZBgithub.com/mindclade/mindclade/protocols/generated/go/job/v1;jobv1'
-  _globals['_JOBREQUESTED']._serialized_start=121
-  _globals['_JOBREQUESTED']._serialized_end=273
+  _globals['_JOBREQUESTED']._serialized_start=72
+  _globals['_JOBREQUESTED']._serialized_end=160
 # @@protoc_insertion_point(module_scope)

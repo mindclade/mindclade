@@ -20,7 +20,11 @@ filegroup(
 py_test(
     name = "protobuf_compatibility_test",
     srcs = ["compatibility/tests/test_protobuf_compatibility.py"],
-    data = [":wave1_contract_sources", "//tools:wave1_codegen_sources"],
+    data = [
+        ":wave1_contract_sources",
+        "//tools:sdk_generator",
+        "//tools:wave1_codegen_sources",
+    ],
     deps = ["@mindclade_pypi//protobuf"],
     imports = [".."],
     legacy_create_init = 0,

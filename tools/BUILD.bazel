@@ -1,4 +1,4 @@
-load("@rules_python//python:defs.bzl", "py_test")
+load("@rules_python//python:defs.bzl", "py_binary", "py_test")
 load("//tools:bazel/rules/component_rule.bzl", "component_metadata")
 
 package(default_visibility = ["//visibility:private"])
@@ -171,10 +171,20 @@ filegroup(
     srcs = [
         "codegen/generate_protocols.py",
         "codegen/generate_schemas.py",
+        "codegen/sdk_generator.py",
         "codegen/toolchain.lock.json",
         "codegen/verify_generated_drift.py",
     ],
     visibility = ["//visibility:public"],
+)
+
+py_binary(
+    name = "sdk_generator",
+    srcs = ["codegen/sdk_generator.py"],
+    main = "codegen/sdk_generator.py",
+    python_version = "PY3",
+    visibility = ["//visibility:public"],
+    deps = ["@mindclade_pypi//pyyaml"],
 )
 
 filegroup(

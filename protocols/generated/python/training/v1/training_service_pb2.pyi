@@ -1,0 +1,208 @@
+import datetime
+
+from google.protobuf import timestamp_pb2 as _timestamp_pb2
+from common.v1 import pagination_pb2 as _pagination_pb2
+from job.v1 import operation_pb2 as _operation_pb2
+from training.v1 import checkpoint_pb2 as _checkpoint_pb2
+from training.v1 import training_commands_pb2 as _training_commands_pb2
+from training.v1 import training_progress_pb2 as _training_progress_pb2
+from training.v1 import training_run_pb2 as _training_run_pb2
+from google.protobuf.internal import containers as _containers
+from google.protobuf import descriptor as _descriptor
+from google.protobuf import message as _message
+from collections.abc import Iterable as _Iterable, Mapping as _Mapping
+from typing import ClassVar as _ClassVar, Optional as _Optional, Union as _Union
+
+DESCRIPTOR: _descriptor.FileDescriptor
+
+class CreateTrainingRunRequest(_message.Message):
+    __slots__ = ("command",)
+    COMMAND_FIELD_NUMBER: _ClassVar[int]
+    command: _training_commands_pb2.CreateTrainingRunCommand
+    def __init__(self, command: _Optional[_Union[_training_commands_pb2.CreateTrainingRunCommand, _Mapping]] = ...) -> None: ...
+
+class CreateTrainingRunResponse(_message.Message):
+    __slots__ = ("operation",)
+    OPERATION_FIELD_NUMBER: _ClassVar[int]
+    operation: _operation_pb2.Operation
+    def __init__(self, operation: _Optional[_Union[_operation_pb2.Operation, _Mapping]] = ...) -> None: ...
+
+class GetTrainingRunRequest(_message.Message):
+    __slots__ = ("name", "if_none_match")
+    NAME_FIELD_NUMBER: _ClassVar[int]
+    IF_NONE_MATCH_FIELD_NUMBER: _ClassVar[int]
+    name: str
+    if_none_match: str
+    def __init__(self, name: _Optional[str] = ..., if_none_match: _Optional[str] = ...) -> None: ...
+
+class GetTrainingRunResponse(_message.Message):
+    __slots__ = ("training_run",)
+    TRAINING_RUN_FIELD_NUMBER: _ClassVar[int]
+    training_run: _training_run_pb2.TrainingRun
+    def __init__(self, training_run: _Optional[_Union[_training_run_pb2.TrainingRun, _Mapping]] = ...) -> None: ...
+
+class ListTrainingRunsRequest(_message.Message):
+    __slots__ = ("parent", "page", "filter", "order_by")
+    PARENT_FIELD_NUMBER: _ClassVar[int]
+    PAGE_FIELD_NUMBER: _ClassVar[int]
+    FILTER_FIELD_NUMBER: _ClassVar[int]
+    ORDER_BY_FIELD_NUMBER: _ClassVar[int]
+    parent: str
+    page: _pagination_pb2.PageRequest
+    filter: str
+    order_by: str
+    def __init__(self, parent: _Optional[str] = ..., page: _Optional[_Union[_pagination_pb2.PageRequest, _Mapping]] = ..., filter: _Optional[str] = ..., order_by: _Optional[str] = ...) -> None: ...
+
+class ListTrainingRunsResponse(_message.Message):
+    __slots__ = ("training_runs", "page", "read_time")
+    TRAINING_RUNS_FIELD_NUMBER: _ClassVar[int]
+    PAGE_FIELD_NUMBER: _ClassVar[int]
+    READ_TIME_FIELD_NUMBER: _ClassVar[int]
+    training_runs: _containers.RepeatedCompositeFieldContainer[_training_run_pb2.TrainingRun]
+    page: _pagination_pb2.PageResponse
+    read_time: _timestamp_pb2.Timestamp
+    def __init__(self, training_runs: _Optional[_Iterable[_Union[_training_run_pb2.TrainingRun, _Mapping]]] = ..., page: _Optional[_Union[_pagination_pb2.PageResponse, _Mapping]] = ..., read_time: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ...) -> None: ...
+
+class StartTrainingAttemptRequest(_message.Message):
+    __slots__ = ("command",)
+    COMMAND_FIELD_NUMBER: _ClassVar[int]
+    command: _training_commands_pb2.StartTrainingAttemptCommand
+    def __init__(self, command: _Optional[_Union[_training_commands_pb2.StartTrainingAttemptCommand, _Mapping]] = ...) -> None: ...
+
+class StartTrainingAttemptResponse(_message.Message):
+    __slots__ = ("training_run",)
+    TRAINING_RUN_FIELD_NUMBER: _ClassVar[int]
+    training_run: _training_run_pb2.TrainingRun
+    def __init__(self, training_run: _Optional[_Union[_training_run_pb2.TrainingRun, _Mapping]] = ...) -> None: ...
+
+class ResumeTrainingAttemptRequest(_message.Message):
+    __slots__ = ("command",)
+    COMMAND_FIELD_NUMBER: _ClassVar[int]
+    command: _training_commands_pb2.ResumeTrainingAttemptCommand
+    def __init__(self, command: _Optional[_Union[_training_commands_pb2.ResumeTrainingAttemptCommand, _Mapping]] = ...) -> None: ...
+
+class ResumeTrainingAttemptResponse(_message.Message):
+    __slots__ = ("training_run",)
+    TRAINING_RUN_FIELD_NUMBER: _ClassVar[int]
+    training_run: _training_run_pb2.TrainingRun
+    def __init__(self, training_run: _Optional[_Union[_training_run_pb2.TrainingRun, _Mapping]] = ...) -> None: ...
+
+class CommitTrainingProgressRequest(_message.Message):
+    __slots__ = ("command",)
+    COMMAND_FIELD_NUMBER: _ClassVar[int]
+    command: _training_commands_pb2.CommitTrainingProgressCommand
+    def __init__(self, command: _Optional[_Union[_training_commands_pb2.CommitTrainingProgressCommand, _Mapping]] = ...) -> None: ...
+
+class CommitTrainingProgressResponse(_message.Message):
+    __slots__ = ("progress", "training_run")
+    PROGRESS_FIELD_NUMBER: _ClassVar[int]
+    TRAINING_RUN_FIELD_NUMBER: _ClassVar[int]
+    progress: _training_progress_pb2.TrainingProgress
+    training_run: _training_run_pb2.TrainingRun
+    def __init__(self, progress: _Optional[_Union[_training_progress_pb2.TrainingProgress, _Mapping]] = ..., training_run: _Optional[_Union[_training_run_pb2.TrainingRun, _Mapping]] = ...) -> None: ...
+
+class PrepareCheckpointRequest(_message.Message):
+    __slots__ = ("command",)
+    COMMAND_FIELD_NUMBER: _ClassVar[int]
+    command: _training_commands_pb2.PrepareCheckpointCommand
+    def __init__(self, command: _Optional[_Union[_training_commands_pb2.PrepareCheckpointCommand, _Mapping]] = ...) -> None: ...
+
+class PrepareCheckpointResponse(_message.Message):
+    __slots__ = ("checkpoint",)
+    CHECKPOINT_FIELD_NUMBER: _ClassVar[int]
+    checkpoint: _checkpoint_pb2.Checkpoint
+    def __init__(self, checkpoint: _Optional[_Union[_checkpoint_pb2.Checkpoint, _Mapping]] = ...) -> None: ...
+
+class CommitCheckpointRequest(_message.Message):
+    __slots__ = ("command",)
+    COMMAND_FIELD_NUMBER: _ClassVar[int]
+    command: _training_commands_pb2.CommitCheckpointCommand
+    def __init__(self, command: _Optional[_Union[_training_commands_pb2.CommitCheckpointCommand, _Mapping]] = ...) -> None: ...
+
+class CommitCheckpointResponse(_message.Message):
+    __slots__ = ("checkpoint", "training_run")
+    CHECKPOINT_FIELD_NUMBER: _ClassVar[int]
+    TRAINING_RUN_FIELD_NUMBER: _ClassVar[int]
+    checkpoint: _checkpoint_pb2.Checkpoint
+    training_run: _training_run_pb2.TrainingRun
+    def __init__(self, checkpoint: _Optional[_Union[_checkpoint_pb2.Checkpoint, _Mapping]] = ..., training_run: _Optional[_Union[_training_run_pb2.TrainingRun, _Mapping]] = ...) -> None: ...
+
+class CompleteTrainingRunRequest(_message.Message):
+    __slots__ = ("command",)
+    COMMAND_FIELD_NUMBER: _ClassVar[int]
+    command: _training_commands_pb2.CompleteTrainingRunCommand
+    def __init__(self, command: _Optional[_Union[_training_commands_pb2.CompleteTrainingRunCommand, _Mapping]] = ...) -> None: ...
+
+class CompleteTrainingRunResponse(_message.Message):
+    __slots__ = ("training_run",)
+    TRAINING_RUN_FIELD_NUMBER: _ClassVar[int]
+    training_run: _training_run_pb2.TrainingRun
+    def __init__(self, training_run: _Optional[_Union[_training_run_pb2.TrainingRun, _Mapping]] = ...) -> None: ...
+
+class CancelTrainingRunRequest(_message.Message):
+    __slots__ = ("command",)
+    COMMAND_FIELD_NUMBER: _ClassVar[int]
+    command: _training_commands_pb2.CancelTrainingRunCommand
+    def __init__(self, command: _Optional[_Union[_training_commands_pb2.CancelTrainingRunCommand, _Mapping]] = ...) -> None: ...
+
+class CancelTrainingRunResponse(_message.Message):
+    __slots__ = ("training_run",)
+    TRAINING_RUN_FIELD_NUMBER: _ClassVar[int]
+    training_run: _training_run_pb2.TrainingRun
+    def __init__(self, training_run: _Optional[_Union[_training_run_pb2.TrainingRun, _Mapping]] = ...) -> None: ...
+
+class GetCheckpointRequest(_message.Message):
+    __slots__ = ("name",)
+    NAME_FIELD_NUMBER: _ClassVar[int]
+    name: str
+    def __init__(self, name: _Optional[str] = ...) -> None: ...
+
+class GetCheckpointResponse(_message.Message):
+    __slots__ = ("checkpoint",)
+    CHECKPOINT_FIELD_NUMBER: _ClassVar[int]
+    checkpoint: _checkpoint_pb2.Checkpoint
+    def __init__(self, checkpoint: _Optional[_Union[_checkpoint_pb2.Checkpoint, _Mapping]] = ...) -> None: ...
+
+class ListCheckpointsRequest(_message.Message):
+    __slots__ = ("parent", "page", "filter", "order_by")
+    PARENT_FIELD_NUMBER: _ClassVar[int]
+    PAGE_FIELD_NUMBER: _ClassVar[int]
+    FILTER_FIELD_NUMBER: _ClassVar[int]
+    ORDER_BY_FIELD_NUMBER: _ClassVar[int]
+    parent: str
+    page: _pagination_pb2.PageRequest
+    filter: str
+    order_by: str
+    def __init__(self, parent: _Optional[str] = ..., page: _Optional[_Union[_pagination_pb2.PageRequest, _Mapping]] = ..., filter: _Optional[str] = ..., order_by: _Optional[str] = ...) -> None: ...
+
+class ListCheckpointsResponse(_message.Message):
+    __slots__ = ("checkpoints", "page", "read_time")
+    CHECKPOINTS_FIELD_NUMBER: _ClassVar[int]
+    PAGE_FIELD_NUMBER: _ClassVar[int]
+    READ_TIME_FIELD_NUMBER: _ClassVar[int]
+    checkpoints: _containers.RepeatedCompositeFieldContainer[_checkpoint_pb2.Checkpoint]
+    page: _pagination_pb2.PageResponse
+    read_time: _timestamp_pb2.Timestamp
+    def __init__(self, checkpoints: _Optional[_Iterable[_Union[_checkpoint_pb2.Checkpoint, _Mapping]]] = ..., page: _Optional[_Union[_pagination_pb2.PageResponse, _Mapping]] = ..., read_time: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ...) -> None: ...
+
+class WatchTrainingRunRequest(_message.Message):
+    __slots__ = ("name", "after_sequence", "deadline")
+    NAME_FIELD_NUMBER: _ClassVar[int]
+    AFTER_SEQUENCE_FIELD_NUMBER: _ClassVar[int]
+    DEADLINE_FIELD_NUMBER: _ClassVar[int]
+    name: str
+    after_sequence: int
+    deadline: _timestamp_pb2.Timestamp
+    def __init__(self, name: _Optional[str] = ..., after_sequence: _Optional[int] = ..., deadline: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ...) -> None: ...
+
+class WatchTrainingRunResponse(_message.Message):
+    __slots__ = ("training_run", "progress", "sequence", "observed_at")
+    TRAINING_RUN_FIELD_NUMBER: _ClassVar[int]
+    PROGRESS_FIELD_NUMBER: _ClassVar[int]
+    SEQUENCE_FIELD_NUMBER: _ClassVar[int]
+    OBSERVED_AT_FIELD_NUMBER: _ClassVar[int]
+    training_run: _training_run_pb2.TrainingRun
+    progress: _training_progress_pb2.TrainingProgress
+    sequence: int
+    observed_at: _timestamp_pb2.Timestamp
+    def __init__(self, training_run: _Optional[_Union[_training_run_pb2.TrainingRun, _Mapping]] = ..., progress: _Optional[_Union[_training_progress_pb2.TrainingProgress, _Mapping]] = ..., sequence: _Optional[int] = ..., observed_at: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ...) -> None: ...

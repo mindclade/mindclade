@@ -7,7 +7,6 @@
 package jobv1
 
 import (
-	v1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -24,9 +23,8 @@ const (
 
 type JobRequested struct {
 	state               protoimpl.MessageState `protogen:"open.v1"`
-	Envelope            *v1.EventEnvelope      `protobuf:"bytes,1,opt,name=envelope,proto3" json:"envelope,omitempty"`
-	JobId               string                 `protobuf:"bytes,2,opt,name=job_id,json=jobId,proto3" json:"job_id,omitempty"`
-	ConfigurationDigest string                 `protobuf:"bytes,3,opt,name=configuration_digest,json=configurationDigest,proto3" json:"configuration_digest,omitempty"`
+	JobId               string                 `protobuf:"bytes,1,opt,name=job_id,json=jobId,proto3" json:"job_id,omitempty"`
+	ConfigurationDigest string                 `protobuf:"bytes,2,opt,name=configuration_digest,json=configurationDigest,proto3" json:"configuration_digest,omitempty"`
 	unknownFields       protoimpl.UnknownFields
 	sizeCache           protoimpl.SizeCache
 }
@@ -61,13 +59,6 @@ func (*JobRequested) Descriptor() ([]byte, []int) {
 	return file_events_mindclade_job_v1_job_requested_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *JobRequested) GetEnvelope() *v1.EventEnvelope {
-	if x != nil {
-		return x.Envelope
-	}
-	return nil
-}
-
 func (x *JobRequested) GetJobId() string {
 	if x != nil {
 		return x.JobId
@@ -86,11 +77,10 @@ var File_events_mindclade_job_v1_job_requested_proto protoreflect.FileDescriptor
 
 const file_events_mindclade_job_v1_job_requested_proto_rawDesc = "" +
 	"\n" +
-	"+events/mindclade/job/v1/job_requested.proto\x12\x17mindclade.events.job.v1\x1a.proto/mindclade/common/v1/event_envelope.proto\"\x98\x01\n" +
-	"\fJobRequested\x12>\n" +
-	"\benvelope\x18\x01 \x01(\v2\".mindclade.common.v1.EventEnvelopeR\benvelope\x12\x15\n" +
-	"\x06job_id\x18\x02 \x01(\tR\x05jobId\x121\n" +
-	"\x14configuration_digest\x18\x03 \x01(\tR\x13configurationDigestBDZBgithub.com/mindclade/mindclade/protocols/generated/go/job/v1;jobv1b\x06proto3"
+	"+events/mindclade/job/v1/job_requested.proto\x12\x17mindclade.events.job.v1\"X\n" +
+	"\fJobRequested\x12\x15\n" +
+	"\x06job_id\x18\x01 \x01(\tR\x05jobId\x121\n" +
+	"\x14configuration_digest\x18\x02 \x01(\tR\x13configurationDigestBDZBgithub.com/mindclade/mindclade/protocols/generated/go/job/v1;jobv1b\x06proto3"
 
 var (
 	file_events_mindclade_job_v1_job_requested_proto_rawDescOnce sync.Once
@@ -106,16 +96,14 @@ func file_events_mindclade_job_v1_job_requested_proto_rawDescGZIP() []byte {
 
 var file_events_mindclade_job_v1_job_requested_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
 var file_events_mindclade_job_v1_job_requested_proto_goTypes = []any{
-	(*JobRequested)(nil),     // 0: mindclade.events.job.v1.JobRequested
-	(*v1.EventEnvelope)(nil), // 1: mindclade.common.v1.EventEnvelope
+	(*JobRequested)(nil), // 0: mindclade.events.job.v1.JobRequested
 }
 var file_events_mindclade_job_v1_job_requested_proto_depIdxs = []int32{
-	1, // 0: mindclade.events.job.v1.JobRequested.envelope:type_name -> mindclade.common.v1.EventEnvelope
-	1, // [1:1] is the sub-list for method output_type
-	1, // [1:1] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	0, // [0:0] is the sub-list for method output_type
+	0, // [0:0] is the sub-list for method input_type
+	0, // [0:0] is the sub-list for extension type_name
+	0, // [0:0] is the sub-list for extension extendee
+	0, // [0:0] is the sub-list for field type_name
 }
 
 func init() { file_events_mindclade_job_v1_job_requested_proto_init() }

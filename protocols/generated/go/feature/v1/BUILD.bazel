@@ -1,0 +1,15 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "bindings",
+    srcs = ["feature_commands.pb.go", "feature_materialization.pb.go", "feature_materialization_completed.pb.go"],
+    importpath = "github.com/mindclade/mindclade/protocols/generated/go/feature/v1",
+    deps = ["@org_golang_google_protobuf//reflect/protoreflect", "@org_golang_google_protobuf//runtime/protoimpl", "@org_golang_google_protobuf//types/known/timestamppb", "//protocols/generated/go/artifact/v1:bindings", "//protocols/generated/go/common/v1:bindings", "//protocols/generated/go/job/v1:bindings"],
+    visibility = ["//visibility:public"],
+)
+
+filegroup(
+    name = "generated_sources",
+    srcs = ["BUILD.bazel", "feature_commands.pb.go", "feature_materialization.pb.go", "feature_materialization_completed.pb.go"],
+    visibility = ["//visibility:public"],
+)

@@ -5,7 +5,7 @@ import os
 import subprocess
 import sys
 import unittest
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 
@@ -134,7 +134,7 @@ class GeneratedClientsContractTest(unittest.TestCase):
             tenant_id="tenant_1",
             project_id="project_1",
             producer="control-plane",
-            occurred_at=datetime(2026, 8, 31, tzinfo=timezone.utc),
+            occurred_at=datetime(2026, 8, 31, tzinfo=UTC),
             subject=resource,
             job_id="job_1",
         )

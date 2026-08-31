@@ -4,7 +4,7 @@ metadata:
   name: public-api-v1
   owner: developer-experience
   contractOwner: contract-governance
-  status: source-configured-unconnected
+  status: offline-plan-verify-implemented-connected-unqualified
   productionAuthority: false
 spec:
   authority:
@@ -49,8 +49,9 @@ spec:
       - redacts-credentials-and-request-payloads
 
   localContractAdapter:
-    mode: plan-and-verify-only
-    implementation: protocols/compatibility/tests/test_openapi_compatibility.py
+    mode: offline-plan-and-verify
+    implementation: tools/codegen/sdk_generator.py
+    readiness: implemented
     network: forbidden
     emitsSdkSource: false
     deterministicOutputs:
@@ -72,6 +73,11 @@ spec:
       readiness: configuration-only
       languages: [go, python, typescript]
       source: protocols/openapi/external-api.yaml
+      adapter:
+        contractVersion: v1
+        providerVersion: unpinned
+        executable: null
+        executableSha256: null
       configuration:
         apiNamespace: mindclade
         clientName: Mindclade
@@ -108,6 +114,11 @@ spec:
       readiness: configuration-only
       languages: [go, python, typescript]
       source: protocols/openapi/external-api.yaml
+      adapter:
+        contractVersion: v1
+        providerVersion: unpinned
+        executable: null
+        executableSha256: null
       configuration:
         emitterPolicy: mindclade-owned-or-pinned-open-source
         licenseReviewRequired: true
@@ -124,6 +135,16 @@ spec:
       release:
         publish: false
         connectedQualificationRequired: true
+
+  connectedGap:
+    stainlessYmlPresent: false
+    reason: No pinned official Stainless configuration validator or generator is in the hermetic toolchain.
+    portableConfiguration: protocols/openapi/generation.yaml
+    closureRequired:
+      - govern-and-pin-provider-executable
+      - record-provider-version-and-executable-sha256
+      - validate-provider-native-configuration-with-that-version
+      - qualify-generated-packages-against-shared-fixtures
 
   outputs:
     committed: false

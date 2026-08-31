@@ -22,9 +22,11 @@ _runtime_version.ValidateProtobufRuntimeVersion(
 _sym_db = _symbol_database.Default()
 
 
+from google.protobuf import duration_pb2 as google_dot_protobuf_dot_duration__pb2
+from common.v1 import resource_reference_pb2 as proto_dot_mindclade_dot_common_dot_v1_dot_resource__reference__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n,proto/mindclade/common/v1/error_detail.proto\x12\x13mindclade.common.v1\"}\n\x0b\x45rrorDetail\x12\x12\n\x04\x63ode\x18\x01 \x01(\tR\x04\x63ode\x12\x18\n\x07message\x18\x02 \x01(\tR\x07message\x12\x1f\n\x0bretry_class\x18\x03 \x01(\tR\nretryClass\x12\x1f\n\x0bsubject_ref\x18\x04 \x01(\tR\nsubjectRefBJZHgithub.com/mindclade/mindclade/protocols/generated/go/common/v1;commonv1b\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n,proto/mindclade/common/v1/error_detail.proto\x12\x13mindclade.common.v1\x1a\x1egoogle/protobuf/duration.proto\x1a\x32proto/mindclade/common/v1/resource_reference.proto\"H\n\x0e\x46ieldViolation\x12\x14\n\x05\x66ield\x18\x01 \x01(\tR\x05\x66ield\x12 \n\x0b\x64\x65scription\x18\x02 \x01(\tR\x0b\x64\x65scription\"g\n\x15PreconditionViolation\x12\x12\n\x04type\x18\x01 \x01(\tR\x04type\x12\x18\n\x07subject\x18\x02 \x01(\tR\x07subject\x12 \n\x0b\x64\x65scription\x18\x03 \x01(\tR\x0b\x64\x65scription\"\xe5\x03\n\x0b\x45rrorDetail\x12\x32\n\x04\x63ode\x18\x01 \x01(\x0e\x32\x1e.mindclade.common.v1.ErrorCodeR\x04\x63ode\x12\x18\n\x07message\x18\x02 \x01(\tR\x07message\x12@\n\x0bretry_class\x18\x03 \x01(\x0e\x32\x1f.mindclade.common.v1.RetryClassR\nretryClass\x12:\n\x07subject\x18\x04 \x01(\x0b\x32 .mindclade.common.v1.ResourceRefR\x07subject\x12N\n\x10\x66ield_violations\x18\x05 \x03(\x0b\x32#.mindclade.common.v1.FieldViolationR\x0f\x66ieldViolations\x12\x63\n\x17precondition_violations\x18\x06 \x03(\x0b\x32*.mindclade.common.v1.PreconditionViolationR\x16preconditionViolations\x12:\n\x0bretry_after\x18\x07 \x01(\x0b\x32\x19.google.protobuf.DurationR\nretryAfter\x12\x19\n\x08\x65rror_id\x18\x08 \x01(\tR\x07\x65rrorId*\x80\x04\n\tErrorCode\x12\x1a\n\x16\x45RROR_CODE_UNSPECIFIED\x10\x00\x12\x1f\n\x1b\x45RROR_CODE_INVALID_ARGUMENT\x10\x01\x12\"\n\x1e\x45RROR_CODE_FAILED_PRECONDITION\x10\x02\x12\x18\n\x14\x45RROR_CODE_NOT_FOUND\x10\x03\x12\x1d\n\x19\x45RROR_CODE_ALREADY_EXISTS\x10\x04\x12 \n\x1c\x45RROR_CODE_PERMISSION_DENIED\x10\x05\x12\x1e\n\x1a\x45RROR_CODE_UNAUTHENTICATED\x10\x06\x12!\n\x1d\x45RROR_CODE_RESOURCE_EXHAUSTED\x10\x07\x12\x16\n\x12\x45RROR_CODE_ABORTED\x10\x08\x12\x17\n\x13\x45RROR_CODE_CONFLICT\x10\t\x12\x1a\n\x16\x45RROR_CODE_UNAVAILABLE\x10\n\x12 \n\x1c\x45RROR_CODE_DEADLINE_EXCEEDED\x10\x0b\x12\x18\n\x14\x45RROR_CODE_CANCELLED\x10\x0c\x12\x17\n\x13\x45RROR_CODE_INTERNAL\x10\r\x12\x18\n\x14\x45RROR_CODE_DATA_LOSS\x10\x0e\x12\x1a\n\x16\x45RROR_CODE_UNSUPPORTED\x10\x0f\x12\x1c\n\x18\x45RROR_CODE_POLICY_DENIED\x10\x10*|\n\nRetryClass\x12\x1b\n\x17RETRY_CLASS_UNSPECIFIED\x10\x00\x12\x15\n\x11RETRY_CLASS_NEVER\x10\x01\x12\x14\n\x10RETRY_CLASS_SAFE\x10\x02\x12$\n RETRY_CLASS_AFTER_RECONCILIATION\x10\x03\x42JZHgithub.com/mindclade/mindclade/protocols/generated/go/common/v1;commonv1b\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -32,6 +34,14 @@ _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'common.v1.error_detail_pb2'
 if not _descriptor._USE_C_DESCRIPTORS:
   _globals['DESCRIPTOR']._loaded_options = None
   _globals['DESCRIPTOR']._serialized_options = b'ZHgithub.com/mindclade/mindclade/protocols/generated/go/common/v1;commonv1'
-  _globals['_ERRORDETAIL']._serialized_start=69
-  _globals['_ERRORDETAIL']._serialized_end=194
+  _globals['_ERRORCODE']._serialized_start=821
+  _globals['_ERRORCODE']._serialized_end=1333
+  _globals['_RETRYCLASS']._serialized_start=1335
+  _globals['_RETRYCLASS']._serialized_end=1459
+  _globals['_FIELDVIOLATION']._serialized_start=153
+  _globals['_FIELDVIOLATION']._serialized_end=225
+  _globals['_PRECONDITIONVIOLATION']._serialized_start=227
+  _globals['_PRECONDITIONVIOLATION']._serialized_end=330
+  _globals['_ERRORDETAIL']._serialized_start=333
+  _globals['_ERRORDETAIL']._serialized_end=818
 # @@protoc_insertion_point(module_scope)

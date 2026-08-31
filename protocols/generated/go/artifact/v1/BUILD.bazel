@@ -2,14 +2,14 @@ load("@rules_go//go:def.bzl", "go_library")
 
 go_library(
     name = "bindings",
-    srcs = ["artifact_commands.pb.go", "artifact_committed.pb.go", "artifact_quarantined.pb.go", "artifact_reference.pb.go", "evidence_reference.pb.go"],
+    srcs = ["artifact_commands.pb.go", "artifact_committed.pb.go", "artifact_quarantined.pb.go", "artifact_reference.pb.go", "artifact_service.pb.go", "artifact_service_grpc.pb.go", "evidence_reference.pb.go"],
     importpath = "github.com/mindclade/mindclade/protocols/generated/go/artifact/v1",
-    deps = ["@org_golang_google_protobuf//reflect/protoreflect", "@org_golang_google_protobuf//runtime/protoimpl", "//protocols/generated/go/common/v1:bindings"],
+    deps = ["@org_golang_google_protobuf//reflect/protoreflect", "@org_golang_google_protobuf//runtime/protoimpl", "@org_golang_google_protobuf//types/known/timestamppb", "@org_golang_google_grpc//:grpc", "@org_golang_google_grpc//codes", "@org_golang_google_grpc//status", "//protocols/generated/go/common/v1:bindings", "//protocols/generated/go/job/v1:bindings"],
     visibility = ["//visibility:public"],
 )
 
 filegroup(
     name = "generated_sources",
-    srcs = ["BUILD.bazel", "artifact_commands.pb.go", "artifact_committed.pb.go", "artifact_quarantined.pb.go", "artifact_reference.pb.go", "evidence_reference.pb.go"],
+    srcs = ["BUILD.bazel", "artifact_commands.pb.go", "artifact_committed.pb.go", "artifact_quarantined.pb.go", "artifact_reference.pb.go", "artifact_service.pb.go", "artifact_service_grpc.pb.go", "evidence_reference.pb.go"],
     visibility = ["//visibility:public"],
 )

@@ -87,7 +87,7 @@ var File_proto_mindclade_artifact_v1_artifact_commands_proto protoreflect.FileDe
 
 const file_proto_mindclade_artifact_v1_artifact_commands_proto_rawDesc = "" +
 	"\n" +
-	"3proto/mindclade/artifact/v1/artifact_commands.proto\x12\x15mindclade.artifact.v1\x1a/proto/mindclade/common/v1/command_context.proto\x1a4proto/mindclade/artifact/v1/artifact_reference.proto\"\xcc\x01\n" +
+	"3proto/mindclade/artifact/v1/artifact_commands.proto\x12\x15mindclade.artifact.v1\x1a4proto/mindclade/artifact/v1/artifact_reference.proto\x1a/proto/mindclade/common/v1/command_context.proto\"\xcc\x01\n" +
 	"\x15CommitArtifactCommand\x12=\n" +
 	"\acontext\x18\x01 \x01(\v2#.mindclade.common.v1.CommandContextR\acontext\x12>\n" +
 	"\bartifact\x18\x02 \x01(\v2\".mindclade.artifact.v1.ArtifactRefR\bartifact\x124\n" +

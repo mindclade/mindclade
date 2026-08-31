@@ -7,7 +7,6 @@
 package artifactv1
 
 import (
-	v1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -25,10 +24,9 @@ const (
 // Immutable record that a subject could not be accepted into the artifact catalog.
 type ArtifactQuarantined struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
-	Envelope       *v1.EventEnvelope      `protobuf:"bytes,1,opt,name=envelope,proto3" json:"envelope,omitempty"`
-	SubjectDigest  string                 `protobuf:"bytes,2,opt,name=subject_digest,json=subjectDigest,proto3" json:"subject_digest,omitempty"`
-	ReasonCode     string                 `protobuf:"bytes,3,opt,name=reason_code,json=reasonCode,proto3" json:"reason_code,omitempty"`
-	EvidenceDigest string                 `protobuf:"bytes,4,opt,name=evidence_digest,json=evidenceDigest,proto3" json:"evidence_digest,omitempty"`
+	SubjectDigest  string                 `protobuf:"bytes,1,opt,name=subject_digest,json=subjectDigest,proto3" json:"subject_digest,omitempty"`
+	ReasonCode     string                 `protobuf:"bytes,2,opt,name=reason_code,json=reasonCode,proto3" json:"reason_code,omitempty"`
+	EvidenceDigest string                 `protobuf:"bytes,3,opt,name=evidence_digest,json=evidenceDigest,proto3" json:"evidence_digest,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -63,13 +61,6 @@ func (*ArtifactQuarantined) Descriptor() ([]byte, []int) {
 	return file_events_mindclade_artifact_v1_artifact_quarantined_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *ArtifactQuarantined) GetEnvelope() *v1.EventEnvelope {
-	if x != nil {
-		return x.Envelope
-	}
-	return nil
-}
-
 func (x *ArtifactQuarantined) GetSubjectDigest() string {
 	if x != nil {
 		return x.SubjectDigest
@@ -95,13 +86,12 @@ var File_events_mindclade_artifact_v1_artifact_quarantined_proto protoreflect.Fi
 
 const file_events_mindclade_artifact_v1_artifact_quarantined_proto_rawDesc = "" +
 	"\n" +
-	"7events/mindclade/artifact/v1/artifact_quarantined.proto\x12\x1cmindclade.events.artifact.v1\x1a.proto/mindclade/common/v1/event_envelope.proto\"\xc6\x01\n" +
-	"\x13ArtifactQuarantined\x12>\n" +
-	"\benvelope\x18\x01 \x01(\v2\".mindclade.common.v1.EventEnvelopeR\benvelope\x12%\n" +
-	"\x0esubject_digest\x18\x02 \x01(\tR\rsubjectDigest\x12\x1f\n" +
-	"\vreason_code\x18\x03 \x01(\tR\n" +
+	"7events/mindclade/artifact/v1/artifact_quarantined.proto\x12\x1cmindclade.events.artifact.v1\"\x86\x01\n" +
+	"\x13ArtifactQuarantined\x12%\n" +
+	"\x0esubject_digest\x18\x01 \x01(\tR\rsubjectDigest\x12\x1f\n" +
+	"\vreason_code\x18\x02 \x01(\tR\n" +
 	"reasonCode\x12'\n" +
-	"\x0fevidence_digest\x18\x04 \x01(\tR\x0eevidenceDigestBNZLgithub.com/mindclade/mindclade/protocols/generated/go/artifact/v1;artifactv1b\x06proto3"
+	"\x0fevidence_digest\x18\x03 \x01(\tR\x0eevidenceDigestBNZLgithub.com/mindclade/mindclade/protocols/generated/go/artifact/v1;artifactv1b\x06proto3"
 
 var (
 	file_events_mindclade_artifact_v1_artifact_quarantined_proto_rawDescOnce sync.Once
@@ -118,15 +108,13 @@ func file_events_mindclade_artifact_v1_artifact_quarantined_proto_rawDescGZIP() 
 var file_events_mindclade_artifact_v1_artifact_quarantined_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
 var file_events_mindclade_artifact_v1_artifact_quarantined_proto_goTypes = []any{
 	(*ArtifactQuarantined)(nil), // 0: mindclade.events.artifact.v1.ArtifactQuarantined
-	(*v1.EventEnvelope)(nil),    // 1: mindclade.common.v1.EventEnvelope
 }
 var file_events_mindclade_artifact_v1_artifact_quarantined_proto_depIdxs = []int32{
-	1, // 0: mindclade.events.artifact.v1.ArtifactQuarantined.envelope:type_name -> mindclade.common.v1.EventEnvelope
-	1, // [1:1] is the sub-list for method output_type
-	1, // [1:1] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	0, // [0:0] is the sub-list for method output_type
+	0, // [0:0] is the sub-list for method input_type
+	0, // [0:0] is the sub-list for extension type_name
+	0, // [0:0] is the sub-list for extension extendee
+	0, // [0:0] is the sub-list for field type_name
 }
 
 func init() { file_events_mindclade_artifact_v1_artifact_quarantined_proto_init() }

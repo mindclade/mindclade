@@ -7,7 +7,6 @@
 package artifactv1
 
 import (
-	v1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -24,9 +23,8 @@ const (
 
 type ArtifactCommitted struct {
 	state             protoimpl.MessageState `protogen:"open.v1"`
-	Envelope          *v1.EventEnvelope      `protobuf:"bytes,1,opt,name=envelope,proto3" json:"envelope,omitempty"`
-	Artifact          *ArtifactRef           `protobuf:"bytes,2,opt,name=artifact,proto3" json:"artifact,omitempty"`
-	ProducerAttemptId string                 `protobuf:"bytes,3,opt,name=producer_attempt_id,json=producerAttemptId,proto3" json:"producer_attempt_id,omitempty"`
+	Artifact          *ArtifactRef           `protobuf:"bytes,1,opt,name=artifact,proto3" json:"artifact,omitempty"`
+	ProducerAttemptId string                 `protobuf:"bytes,2,opt,name=producer_attempt_id,json=producerAttemptId,proto3" json:"producer_attempt_id,omitempty"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
 }
@@ -61,13 +59,6 @@ func (*ArtifactCommitted) Descriptor() ([]byte, []int) {
 	return file_events_mindclade_artifact_v1_artifact_committed_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *ArtifactCommitted) GetEnvelope() *v1.EventEnvelope {
-	if x != nil {
-		return x.Envelope
-	}
-	return nil
-}
-
 func (x *ArtifactCommitted) GetArtifact() *ArtifactRef {
 	if x != nil {
 		return x.Artifact
@@ -86,11 +77,10 @@ var File_events_mindclade_artifact_v1_artifact_committed_proto protoreflect.File
 
 const file_events_mindclade_artifact_v1_artifact_committed_proto_rawDesc = "" +
 	"\n" +
-	"5events/mindclade/artifact/v1/artifact_committed.proto\x12\x1cmindclade.events.artifact.v1\x1a4proto/mindclade/artifact/v1/artifact_reference.proto\x1a.proto/mindclade/common/v1/event_envelope.proto\"\xc3\x01\n" +
+	"5events/mindclade/artifact/v1/artifact_committed.proto\x12\x1cmindclade.events.artifact.v1\x1a4proto/mindclade/artifact/v1/artifact_reference.proto\"\x83\x01\n" +
 	"\x11ArtifactCommitted\x12>\n" +
-	"\benvelope\x18\x01 \x01(\v2\".mindclade.common.v1.EventEnvelopeR\benvelope\x12>\n" +
-	"\bartifact\x18\x02 \x01(\v2\".mindclade.artifact.v1.ArtifactRefR\bartifact\x12.\n" +
-	"\x13producer_attempt_id\x18\x03 \x01(\tR\x11producerAttemptIdBNZLgithub.com/mindclade/mindclade/protocols/generated/go/artifact/v1;artifactv1b\x06proto3"
+	"\bartifact\x18\x01 \x01(\v2\".mindclade.artifact.v1.ArtifactRefR\bartifact\x12.\n" +
+	"\x13producer_attempt_id\x18\x02 \x01(\tR\x11producerAttemptIdBNZLgithub.com/mindclade/mindclade/protocols/generated/go/artifact/v1;artifactv1b\x06proto3"
 
 var (
 	file_events_mindclade_artifact_v1_artifact_committed_proto_rawDescOnce sync.Once
@@ -107,17 +97,15 @@ func file_events_mindclade_artifact_v1_artifact_committed_proto_rawDescGZIP() []
 var file_events_mindclade_artifact_v1_artifact_committed_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
 var file_events_mindclade_artifact_v1_artifact_committed_proto_goTypes = []any{
 	(*ArtifactCommitted)(nil), // 0: mindclade.events.artifact.v1.ArtifactCommitted
-	(*v1.EventEnvelope)(nil),  // 1: mindclade.common.v1.EventEnvelope
-	(*ArtifactRef)(nil),       // 2: mindclade.artifact.v1.ArtifactRef
+	(*ArtifactRef)(nil),       // 1: mindclade.artifact.v1.ArtifactRef
 }
 var file_events_mindclade_artifact_v1_artifact_committed_proto_depIdxs = []int32{
-	1, // 0: mindclade.events.artifact.v1.ArtifactCommitted.envelope:type_name -> mindclade.common.v1.EventEnvelope
-	2, // 1: mindclade.events.artifact.v1.ArtifactCommitted.artifact:type_name -> mindclade.artifact.v1.ArtifactRef
-	2, // [2:2] is the sub-list for method output_type
-	2, // [2:2] is the sub-list for method input_type
-	2, // [2:2] is the sub-list for extension type_name
-	2, // [2:2] is the sub-list for extension extendee
-	0, // [0:2] is the sub-list for field type_name
+	1, // 0: mindclade.events.artifact.v1.ArtifactCommitted.artifact:type_name -> mindclade.artifact.v1.ArtifactRef
+	1, // [1:1] is the sub-list for method output_type
+	1, // [1:1] is the sub-list for method input_type
+	1, // [1:1] is the sub-list for extension type_name
+	1, // [1:1] is the sub-list for extension extendee
+	0, // [0:1] is the sub-list for field type_name
 }
 
 func init() { file_events_mindclade_artifact_v1_artifact_committed_proto_init() }

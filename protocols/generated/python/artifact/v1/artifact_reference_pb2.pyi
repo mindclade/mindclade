@@ -1,0 +1,25 @@
+from google.protobuf import descriptor as _descriptor
+from google.protobuf import message as _message
+from typing import ClassVar as _ClassVar, Optional as _Optional
+
+DESCRIPTOR: _descriptor.FileDescriptor
+
+class ArtifactRef(_message.Message):
+    __slots__ = ("digest", "media_type", "size_bytes", "artifact_kind", "schema_id", "integrity_digest", "uri", "schema_version")
+    DIGEST_FIELD_NUMBER: _ClassVar[int]
+    MEDIA_TYPE_FIELD_NUMBER: _ClassVar[int]
+    SIZE_BYTES_FIELD_NUMBER: _ClassVar[int]
+    ARTIFACT_KIND_FIELD_NUMBER: _ClassVar[int]
+    SCHEMA_ID_FIELD_NUMBER: _ClassVar[int]
+    INTEGRITY_DIGEST_FIELD_NUMBER: _ClassVar[int]
+    URI_FIELD_NUMBER: _ClassVar[int]
+    SCHEMA_VERSION_FIELD_NUMBER: _ClassVar[int]
+    digest: str
+    media_type: str
+    size_bytes: int
+    artifact_kind: str
+    schema_id: str
+    integrity_digest: str
+    uri: str
+    schema_version: str
+    def __init__(self, digest: _Optional[str] = ..., media_type: _Optional[str] = ..., size_bytes: _Optional[int] = ..., artifact_kind: _Optional[str] = ..., schema_id: _Optional[str] = ..., integrity_digest: _Optional[str] = ..., uri: _Optional[str] = ..., schema_version: _Optional[str] = ...) -> None: ...

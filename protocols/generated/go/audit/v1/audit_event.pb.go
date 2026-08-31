@@ -7,7 +7,6 @@
 package auditv1
 
 import (
-	v1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -25,11 +24,10 @@ const (
 // Immutable audit record for accepted or rejected durable intent.
 type AuditEvent struct {
 	state            protoimpl.MessageState `protogen:"open.v1"`
-	Envelope         *v1.EventEnvelope      `protobuf:"bytes,1,opt,name=envelope,proto3" json:"envelope,omitempty"`
-	ActorPrincipalId string                 `protobuf:"bytes,2,opt,name=actor_principal_id,json=actorPrincipalId,proto3" json:"actor_principal_id,omitempty"`
-	Action           string                 `protobuf:"bytes,3,opt,name=action,proto3" json:"action,omitempty"`
-	Decision         string                 `protobuf:"bytes,4,opt,name=decision,proto3" json:"decision,omitempty"`
-	PolicyDigest     string                 `protobuf:"bytes,5,opt,name=policy_digest,json=policyDigest,proto3" json:"policy_digest,omitempty"`
+	ActorPrincipalId string                 `protobuf:"bytes,1,opt,name=actor_principal_id,json=actorPrincipalId,proto3" json:"actor_principal_id,omitempty"`
+	Action           string                 `protobuf:"bytes,2,opt,name=action,proto3" json:"action,omitempty"`
+	Decision         string                 `protobuf:"bytes,3,opt,name=decision,proto3" json:"decision,omitempty"`
+	PolicyDigest     string                 `protobuf:"bytes,4,opt,name=policy_digest,json=policyDigest,proto3" json:"policy_digest,omitempty"`
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
 }
@@ -64,13 +62,6 @@ func (*AuditEvent) Descriptor() ([]byte, []int) {
 	return file_events_mindclade_audit_v1_audit_event_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *AuditEvent) GetEnvelope() *v1.EventEnvelope {
-	if x != nil {
-		return x.Envelope
-	}
-	return nil
-}
-
 func (x *AuditEvent) GetActorPrincipalId() string {
 	if x != nil {
 		return x.ActorPrincipalId
@@ -103,14 +94,13 @@ var File_events_mindclade_audit_v1_audit_event_proto protoreflect.FileDescriptor
 
 const file_events_mindclade_audit_v1_audit_event_proto_rawDesc = "" +
 	"\n" +
-	"+events/mindclade/audit/v1/audit_event.proto\x12\x19mindclade.events.audit.v1\x1a.proto/mindclade/common/v1/event_envelope.proto\"\xd3\x01\n" +
+	"+events/mindclade/audit/v1/audit_event.proto\x12\x19mindclade.events.audit.v1\"\x93\x01\n" +
 	"\n" +
-	"AuditEvent\x12>\n" +
-	"\benvelope\x18\x01 \x01(\v2\".mindclade.common.v1.EventEnvelopeR\benvelope\x12,\n" +
-	"\x12actor_principal_id\x18\x02 \x01(\tR\x10actorPrincipalId\x12\x16\n" +
-	"\x06action\x18\x03 \x01(\tR\x06action\x12\x1a\n" +
-	"\bdecision\x18\x04 \x01(\tR\bdecision\x12#\n" +
-	"\rpolicy_digest\x18\x05 \x01(\tR\fpolicyDigestBHZFgithub.com/mindclade/mindclade/protocols/generated/go/audit/v1;auditv1b\x06proto3"
+	"AuditEvent\x12,\n" +
+	"\x12actor_principal_id\x18\x01 \x01(\tR\x10actorPrincipalId\x12\x16\n" +
+	"\x06action\x18\x02 \x01(\tR\x06action\x12\x1a\n" +
+	"\bdecision\x18\x03 \x01(\tR\bdecision\x12#\n" +
+	"\rpolicy_digest\x18\x04 \x01(\tR\fpolicyDigestBHZFgithub.com/mindclade/mindclade/protocols/generated/go/audit/v1;auditv1b\x06proto3"
 
 var (
 	file_events_mindclade_audit_v1_audit_event_proto_rawDescOnce sync.Once
@@ -126,16 +116,14 @@ func file_events_mindclade_audit_v1_audit_event_proto_rawDescGZIP() []byte {
 
 var file_events_mindclade_audit_v1_audit_event_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
 var file_events_mindclade_audit_v1_audit_event_proto_goTypes = []any{
-	(*AuditEvent)(nil),       // 0: mindclade.events.audit.v1.AuditEvent
-	(*v1.EventEnvelope)(nil), // 1: mindclade.common.v1.EventEnvelope
+	(*AuditEvent)(nil), // 0: mindclade.events.audit.v1.AuditEvent
 }
 var file_events_mindclade_audit_v1_audit_event_proto_depIdxs = []int32{
-	1, // 0: mindclade.events.audit.v1.AuditEvent.envelope:type_name -> mindclade.common.v1.EventEnvelope
-	1, // [1:1] is the sub-list for method output_type
-	1, // [1:1] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	0, // [0:0] is the sub-list for method output_type
+	0, // [0:0] is the sub-list for method input_type
+	0, // [0:0] is the sub-list for extension type_name
+	0, // [0:0] is the sub-list for extension extendee
+	0, // [0:0] is the sub-list for field type_name
 }
 
 func init() { file_events_mindclade_audit_v1_audit_event_proto_init() }

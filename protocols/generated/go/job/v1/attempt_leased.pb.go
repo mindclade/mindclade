@@ -7,7 +7,6 @@
 package jobv1
 
 import (
-	v1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -24,10 +23,9 @@ const (
 
 type AttemptLeased struct {
 	state             protoimpl.MessageState `protogen:"open.v1"`
-	Envelope          *v1.EventEnvelope      `protobuf:"bytes,1,opt,name=envelope,proto3" json:"envelope,omitempty"`
-	AttemptId         string                 `protobuf:"bytes,2,opt,name=attempt_id,json=attemptId,proto3" json:"attempt_id,omitempty"`
-	LeaseEpoch        uint64                 `protobuf:"varint,3,opt,name=lease_epoch,json=leaseEpoch,proto3" json:"lease_epoch,omitempty"`
-	LeaseExpiresAtUtc string                 `protobuf:"bytes,4,opt,name=lease_expires_at_utc,json=leaseExpiresAtUtc,proto3" json:"lease_expires_at_utc,omitempty"`
+	AttemptId         string                 `protobuf:"bytes,1,opt,name=attempt_id,json=attemptId,proto3" json:"attempt_id,omitempty"`
+	LeaseEpoch        uint64                 `protobuf:"varint,2,opt,name=lease_epoch,json=leaseEpoch,proto3" json:"lease_epoch,omitempty"`
+	LeaseExpiresAtUtc string                 `protobuf:"bytes,3,opt,name=lease_expires_at_utc,json=leaseExpiresAtUtc,proto3" json:"lease_expires_at_utc,omitempty"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
 }
@@ -62,13 +60,6 @@ func (*AttemptLeased) Descriptor() ([]byte, []int) {
 	return file_events_mindclade_job_v1_attempt_leased_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *AttemptLeased) GetEnvelope() *v1.EventEnvelope {
-	if x != nil {
-		return x.Envelope
-	}
-	return nil
-}
-
 func (x *AttemptLeased) GetAttemptId() string {
 	if x != nil {
 		return x.AttemptId
@@ -94,14 +85,13 @@ var File_events_mindclade_job_v1_attempt_leased_proto protoreflect.FileDescripto
 
 const file_events_mindclade_job_v1_attempt_leased_proto_rawDesc = "" +
 	"\n" +
-	",events/mindclade/job/v1/attempt_leased.proto\x12\x17mindclade.events.job.v1\x1a.proto/mindclade/common/v1/event_envelope.proto\"\xc0\x01\n" +
-	"\rAttemptLeased\x12>\n" +
-	"\benvelope\x18\x01 \x01(\v2\".mindclade.common.v1.EventEnvelopeR\benvelope\x12\x1d\n" +
+	",events/mindclade/job/v1/attempt_leased.proto\x12\x17mindclade.events.job.v1\"\x80\x01\n" +
+	"\rAttemptLeased\x12\x1d\n" +
 	"\n" +
-	"attempt_id\x18\x02 \x01(\tR\tattemptId\x12\x1f\n" +
-	"\vlease_epoch\x18\x03 \x01(\x04R\n" +
+	"attempt_id\x18\x01 \x01(\tR\tattemptId\x12\x1f\n" +
+	"\vlease_epoch\x18\x02 \x01(\x04R\n" +
 	"leaseEpoch\x12/\n" +
-	"\x14lease_expires_at_utc\x18\x04 \x01(\tR\x11leaseExpiresAtUtcBDZBgithub.com/mindclade/mindclade/protocols/generated/go/job/v1;jobv1b\x06proto3"
+	"\x14lease_expires_at_utc\x18\x03 \x01(\tR\x11leaseExpiresAtUtcBDZBgithub.com/mindclade/mindclade/protocols/generated/go/job/v1;jobv1b\x06proto3"
 
 var (
 	file_events_mindclade_job_v1_attempt_leased_proto_rawDescOnce sync.Once
@@ -117,16 +107,14 @@ func file_events_mindclade_job_v1_attempt_leased_proto_rawDescGZIP() []byte {
 
 var file_events_mindclade_job_v1_attempt_leased_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
 var file_events_mindclade_job_v1_attempt_leased_proto_goTypes = []any{
-	(*AttemptLeased)(nil),    // 0: mindclade.events.job.v1.AttemptLeased
-	(*v1.EventEnvelope)(nil), // 1: mindclade.common.v1.EventEnvelope
+	(*AttemptLeased)(nil), // 0: mindclade.events.job.v1.AttemptLeased
 }
 var file_events_mindclade_job_v1_attempt_leased_proto_depIdxs = []int32{
-	1, // 0: mindclade.events.job.v1.AttemptLeased.envelope:type_name -> mindclade.common.v1.EventEnvelope
-	1, // [1:1] is the sub-list for method output_type
-	1, // [1:1] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	0, // [0:0] is the sub-list for method output_type
+	0, // [0:0] is the sub-list for method input_type
+	0, // [0:0] is the sub-list for extension type_name
+	0, // [0:0] is the sub-list for extension extendee
+	0, // [0:0] is the sub-list for field type_name
 }
 
 func init() { file_events_mindclade_job_v1_attempt_leased_proto_init() }

@@ -1,0 +1,159 @@
+import datetime
+
+from google.protobuf import field_mask_pb2 as _field_mask_pb2
+from google.protobuf import timestamp_pb2 as _timestamp_pb2
+from admin.v1 import audit_query_pb2 as _audit_query_pb2
+from admin.v1 import project_pb2 as _project_pb2
+from admin.v1 import tenant_pb2 as _tenant_pb2
+from common.v1 import command_context_pb2 as _command_context_pb2
+from common.v1 import pagination_pb2 as _pagination_pb2
+from job.v1 import operation_pb2 as _operation_pb2
+from google.protobuf.internal import containers as _containers
+from google.protobuf import descriptor as _descriptor
+from google.protobuf import message as _message
+from collections.abc import Iterable as _Iterable, Mapping as _Mapping
+from typing import ClassVar as _ClassVar, Optional as _Optional, Union as _Union
+
+DESCRIPTOR: _descriptor.FileDescriptor
+
+class GetTenantRequest(_message.Message):
+    __slots__ = ("name", "if_none_match")
+    NAME_FIELD_NUMBER: _ClassVar[int]
+    IF_NONE_MATCH_FIELD_NUMBER: _ClassVar[int]
+    name: str
+    if_none_match: str
+    def __init__(self, name: _Optional[str] = ..., if_none_match: _Optional[str] = ...) -> None: ...
+
+class GetTenantResponse(_message.Message):
+    __slots__ = ("tenant",)
+    TENANT_FIELD_NUMBER: _ClassVar[int]
+    tenant: _tenant_pb2.Tenant
+    def __init__(self, tenant: _Optional[_Union[_tenant_pb2.Tenant, _Mapping]] = ...) -> None: ...
+
+class UpdateTenantRequest(_message.Message):
+    __slots__ = ("context", "tenant", "update_mask", "etag")
+    CONTEXT_FIELD_NUMBER: _ClassVar[int]
+    TENANT_FIELD_NUMBER: _ClassVar[int]
+    UPDATE_MASK_FIELD_NUMBER: _ClassVar[int]
+    ETAG_FIELD_NUMBER: _ClassVar[int]
+    context: _command_context_pb2.CommandContext
+    tenant: _tenant_pb2.Tenant
+    update_mask: _field_mask_pb2.FieldMask
+    etag: str
+    def __init__(self, context: _Optional[_Union[_command_context_pb2.CommandContext, _Mapping]] = ..., tenant: _Optional[_Union[_tenant_pb2.Tenant, _Mapping]] = ..., update_mask: _Optional[_Union[_field_mask_pb2.FieldMask, _Mapping]] = ..., etag: _Optional[str] = ...) -> None: ...
+
+class UpdateTenantResponse(_message.Message):
+    __slots__ = ("operation",)
+    OPERATION_FIELD_NUMBER: _ClassVar[int]
+    operation: _operation_pb2.Operation
+    def __init__(self, operation: _Optional[_Union[_operation_pb2.Operation, _Mapping]] = ...) -> None: ...
+
+class CreateProjectRequest(_message.Message):
+    __slots__ = ("context", "parent", "project_id", "project")
+    CONTEXT_FIELD_NUMBER: _ClassVar[int]
+    PARENT_FIELD_NUMBER: _ClassVar[int]
+    PROJECT_ID_FIELD_NUMBER: _ClassVar[int]
+    PROJECT_FIELD_NUMBER: _ClassVar[int]
+    context: _command_context_pb2.CommandContext
+    parent: str
+    project_id: str
+    project: _project_pb2.Project
+    def __init__(self, context: _Optional[_Union[_command_context_pb2.CommandContext, _Mapping]] = ..., parent: _Optional[str] = ..., project_id: _Optional[str] = ..., project: _Optional[_Union[_project_pb2.Project, _Mapping]] = ...) -> None: ...
+
+class CreateProjectResponse(_message.Message):
+    __slots__ = ("operation",)
+    OPERATION_FIELD_NUMBER: _ClassVar[int]
+    operation: _operation_pb2.Operation
+    def __init__(self, operation: _Optional[_Union[_operation_pb2.Operation, _Mapping]] = ...) -> None: ...
+
+class GetProjectRequest(_message.Message):
+    __slots__ = ("name", "if_none_match")
+    NAME_FIELD_NUMBER: _ClassVar[int]
+    IF_NONE_MATCH_FIELD_NUMBER: _ClassVar[int]
+    name: str
+    if_none_match: str
+    def __init__(self, name: _Optional[str] = ..., if_none_match: _Optional[str] = ...) -> None: ...
+
+class GetProjectResponse(_message.Message):
+    __slots__ = ("project",)
+    PROJECT_FIELD_NUMBER: _ClassVar[int]
+    project: _project_pb2.Project
+    def __init__(self, project: _Optional[_Union[_project_pb2.Project, _Mapping]] = ...) -> None: ...
+
+class ListProjectsRequest(_message.Message):
+    __slots__ = ("parent", "page", "filter", "order_by")
+    PARENT_FIELD_NUMBER: _ClassVar[int]
+    PAGE_FIELD_NUMBER: _ClassVar[int]
+    FILTER_FIELD_NUMBER: _ClassVar[int]
+    ORDER_BY_FIELD_NUMBER: _ClassVar[int]
+    parent: str
+    page: _pagination_pb2.PageRequest
+    filter: str
+    order_by: str
+    def __init__(self, parent: _Optional[str] = ..., page: _Optional[_Union[_pagination_pb2.PageRequest, _Mapping]] = ..., filter: _Optional[str] = ..., order_by: _Optional[str] = ...) -> None: ...
+
+class ListProjectsResponse(_message.Message):
+    __slots__ = ("projects", "page", "read_time")
+    PROJECTS_FIELD_NUMBER: _ClassVar[int]
+    PAGE_FIELD_NUMBER: _ClassVar[int]
+    READ_TIME_FIELD_NUMBER: _ClassVar[int]
+    projects: _containers.RepeatedCompositeFieldContainer[_project_pb2.Project]
+    page: _pagination_pb2.PageResponse
+    read_time: _timestamp_pb2.Timestamp
+    def __init__(self, projects: _Optional[_Iterable[_Union[_project_pb2.Project, _Mapping]]] = ..., page: _Optional[_Union[_pagination_pb2.PageResponse, _Mapping]] = ..., read_time: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ...) -> None: ...
+
+class UpdateProjectRequest(_message.Message):
+    __slots__ = ("context", "project", "update_mask", "etag")
+    CONTEXT_FIELD_NUMBER: _ClassVar[int]
+    PROJECT_FIELD_NUMBER: _ClassVar[int]
+    UPDATE_MASK_FIELD_NUMBER: _ClassVar[int]
+    ETAG_FIELD_NUMBER: _ClassVar[int]
+    context: _command_context_pb2.CommandContext
+    project: _project_pb2.Project
+    update_mask: _field_mask_pb2.FieldMask
+    etag: str
+    def __init__(self, context: _Optional[_Union[_command_context_pb2.CommandContext, _Mapping]] = ..., project: _Optional[_Union[_project_pb2.Project, _Mapping]] = ..., update_mask: _Optional[_Union[_field_mask_pb2.FieldMask, _Mapping]] = ..., etag: _Optional[str] = ...) -> None: ...
+
+class UpdateProjectResponse(_message.Message):
+    __slots__ = ("operation",)
+    OPERATION_FIELD_NUMBER: _ClassVar[int]
+    operation: _operation_pb2.Operation
+    def __init__(self, operation: _Optional[_Union[_operation_pb2.Operation, _Mapping]] = ...) -> None: ...
+
+class QueryAuditRecordsRequest(_message.Message):
+    __slots__ = ("query",)
+    QUERY_FIELD_NUMBER: _ClassVar[int]
+    query: _audit_query_pb2.AuditQuery
+    def __init__(self, query: _Optional[_Union[_audit_query_pb2.AuditQuery, _Mapping]] = ...) -> None: ...
+
+class QueryAuditRecordsResponse(_message.Message):
+    __slots__ = ("result",)
+    RESULT_FIELD_NUMBER: _ClassVar[int]
+    result: _audit_query_pb2.AuditQueryPage
+    def __init__(self, result: _Optional[_Union[_audit_query_pb2.AuditQueryPage, _Mapping]] = ...) -> None: ...
+
+class ExportAuditRecordsRequest(_message.Message):
+    __slots__ = ("context", "query")
+    CONTEXT_FIELD_NUMBER: _ClassVar[int]
+    QUERY_FIELD_NUMBER: _ClassVar[int]
+    context: _command_context_pb2.CommandContext
+    query: _audit_query_pb2.AuditQuery
+    def __init__(self, context: _Optional[_Union[_command_context_pb2.CommandContext, _Mapping]] = ..., query: _Optional[_Union[_audit_query_pb2.AuditQuery, _Mapping]] = ...) -> None: ...
+
+class ExportAuditRecordsResponse(_message.Message):
+    __slots__ = ("operation",)
+    OPERATION_FIELD_NUMBER: _ClassVar[int]
+    operation: _operation_pb2.Operation
+    def __init__(self, operation: _Optional[_Union[_operation_pb2.Operation, _Mapping]] = ...) -> None: ...
+
+class GetAuditExportRequest(_message.Message):
+    __slots__ = ("name",)
+    NAME_FIELD_NUMBER: _ClassVar[int]
+    name: str
+    def __init__(self, name: _Optional[str] = ...) -> None: ...
+
+class GetAuditExportResponse(_message.Message):
+    __slots__ = ("audit_export",)
+    AUDIT_EXPORT_FIELD_NUMBER: _ClassVar[int]
+    audit_export: _audit_query_pb2.AuditExport
+    def __init__(self, audit_export: _Optional[_Union[_audit_query_pb2.AuditExport, _Mapping]] = ...) -> None: ...

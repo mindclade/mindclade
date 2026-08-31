@@ -9,6 +9,7 @@ package commonv1
 import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	durationpb "google.golang.org/protobuf/types/known/durationpb"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
@@ -21,20 +22,279 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// Structured, non-secret failure detail for durable command results.
-type ErrorDetail struct {
+type ErrorCode int32
+
+const (
+	ErrorCode_ERROR_CODE_UNSPECIFIED         ErrorCode = 0
+	ErrorCode_ERROR_CODE_INVALID_ARGUMENT    ErrorCode = 1
+	ErrorCode_ERROR_CODE_FAILED_PRECONDITION ErrorCode = 2
+	ErrorCode_ERROR_CODE_NOT_FOUND           ErrorCode = 3
+	ErrorCode_ERROR_CODE_ALREADY_EXISTS      ErrorCode = 4
+	ErrorCode_ERROR_CODE_PERMISSION_DENIED   ErrorCode = 5
+	ErrorCode_ERROR_CODE_UNAUTHENTICATED     ErrorCode = 6
+	ErrorCode_ERROR_CODE_RESOURCE_EXHAUSTED  ErrorCode = 7
+	ErrorCode_ERROR_CODE_ABORTED             ErrorCode = 8
+	ErrorCode_ERROR_CODE_CONFLICT            ErrorCode = 9
+	ErrorCode_ERROR_CODE_UNAVAILABLE         ErrorCode = 10
+	ErrorCode_ERROR_CODE_DEADLINE_EXCEEDED   ErrorCode = 11
+	ErrorCode_ERROR_CODE_CANCELLED           ErrorCode = 12
+	ErrorCode_ERROR_CODE_INTERNAL            ErrorCode = 13
+	ErrorCode_ERROR_CODE_DATA_LOSS           ErrorCode = 14
+	ErrorCode_ERROR_CODE_UNSUPPORTED         ErrorCode = 15
+	ErrorCode_ERROR_CODE_POLICY_DENIED       ErrorCode = 16
+)
+
+// Enum value maps for ErrorCode.
+var (
+	ErrorCode_name = map[int32]string{
+		0:  "ERROR_CODE_UNSPECIFIED",
+		1:  "ERROR_CODE_INVALID_ARGUMENT",
+		2:  "ERROR_CODE_FAILED_PRECONDITION",
+		3:  "ERROR_CODE_NOT_FOUND",
+		4:  "ERROR_CODE_ALREADY_EXISTS",
+		5:  "ERROR_CODE_PERMISSION_DENIED",
+		6:  "ERROR_CODE_UNAUTHENTICATED",
+		7:  "ERROR_CODE_RESOURCE_EXHAUSTED",
+		8:  "ERROR_CODE_ABORTED",
+		9:  "ERROR_CODE_CONFLICT",
+		10: "ERROR_CODE_UNAVAILABLE",
+		11: "ERROR_CODE_DEADLINE_EXCEEDED",
+		12: "ERROR_CODE_CANCELLED",
+		13: "ERROR_CODE_INTERNAL",
+		14: "ERROR_CODE_DATA_LOSS",
+		15: "ERROR_CODE_UNSUPPORTED",
+		16: "ERROR_CODE_POLICY_DENIED",
+	}
+	ErrorCode_value = map[string]int32{
+		"ERROR_CODE_UNSPECIFIED":         0,
+		"ERROR_CODE_INVALID_ARGUMENT":    1,
+		"ERROR_CODE_FAILED_PRECONDITION": 2,
+		"ERROR_CODE_NOT_FOUND":           3,
+		"ERROR_CODE_ALREADY_EXISTS":      4,
+		"ERROR_CODE_PERMISSION_DENIED":   5,
+		"ERROR_CODE_UNAUTHENTICATED":     6,
+		"ERROR_CODE_RESOURCE_EXHAUSTED":  7,
+		"ERROR_CODE_ABORTED":             8,
+		"ERROR_CODE_CONFLICT":            9,
+		"ERROR_CODE_UNAVAILABLE":         10,
+		"ERROR_CODE_DEADLINE_EXCEEDED":   11,
+		"ERROR_CODE_CANCELLED":           12,
+		"ERROR_CODE_INTERNAL":            13,
+		"ERROR_CODE_DATA_LOSS":           14,
+		"ERROR_CODE_UNSUPPORTED":         15,
+		"ERROR_CODE_POLICY_DENIED":       16,
+	}
+)
+
+func (x ErrorCode) Enum() *ErrorCode {
+	p := new(ErrorCode)
+	*p = x
+	return p
+}
+
+func (x ErrorCode) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (ErrorCode) Descriptor() protoreflect.EnumDescriptor {
+	return file_proto_mindclade_common_v1_error_detail_proto_enumTypes[0].Descriptor()
+}
+
+func (ErrorCode) Type() protoreflect.EnumType {
+	return &file_proto_mindclade_common_v1_error_detail_proto_enumTypes[0]
+}
+
+func (x ErrorCode) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use ErrorCode.Descriptor instead.
+func (ErrorCode) EnumDescriptor() ([]byte, []int) {
+	return file_proto_mindclade_common_v1_error_detail_proto_rawDescGZIP(), []int{0}
+}
+
+type RetryClass int32
+
+const (
+	RetryClass_RETRY_CLASS_UNSPECIFIED          RetryClass = 0
+	RetryClass_RETRY_CLASS_NEVER                RetryClass = 1
+	RetryClass_RETRY_CLASS_SAFE                 RetryClass = 2
+	RetryClass_RETRY_CLASS_AFTER_RECONCILIATION RetryClass = 3
+)
+
+// Enum value maps for RetryClass.
+var (
+	RetryClass_name = map[int32]string{
+		0: "RETRY_CLASS_UNSPECIFIED",
+		1: "RETRY_CLASS_NEVER",
+		2: "RETRY_CLASS_SAFE",
+		3: "RETRY_CLASS_AFTER_RECONCILIATION",
+	}
+	RetryClass_value = map[string]int32{
+		"RETRY_CLASS_UNSPECIFIED":          0,
+		"RETRY_CLASS_NEVER":                1,
+		"RETRY_CLASS_SAFE":                 2,
+		"RETRY_CLASS_AFTER_RECONCILIATION": 3,
+	}
+)
+
+func (x RetryClass) Enum() *RetryClass {
+	p := new(RetryClass)
+	*p = x
+	return p
+}
+
+func (x RetryClass) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (RetryClass) Descriptor() protoreflect.EnumDescriptor {
+	return file_proto_mindclade_common_v1_error_detail_proto_enumTypes[1].Descriptor()
+}
+
+func (RetryClass) Type() protoreflect.EnumType {
+	return &file_proto_mindclade_common_v1_error_detail_proto_enumTypes[1]
+}
+
+func (x RetryClass) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use RetryClass.Descriptor instead.
+func (RetryClass) EnumDescriptor() ([]byte, []int) {
+	return file_proto_mindclade_common_v1_error_detail_proto_rawDescGZIP(), []int{1}
+}
+
+type FieldViolation struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Code          string                 `protobuf:"bytes,1,opt,name=code,proto3" json:"code,omitempty"`
-	Message       string                 `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
-	RetryClass    string                 `protobuf:"bytes,3,opt,name=retry_class,json=retryClass,proto3" json:"retry_class,omitempty"`
-	SubjectRef    string                 `protobuf:"bytes,4,opt,name=subject_ref,json=subjectRef,proto3" json:"subject_ref,omitempty"`
+	Field         string                 `protobuf:"bytes,1,opt,name=field,proto3" json:"field,omitempty"`
+	Description   string                 `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+func (x *FieldViolation) Reset() {
+	*x = FieldViolation{}
+	mi := &file_proto_mindclade_common_v1_error_detail_proto_msgTypes[0]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *FieldViolation) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*FieldViolation) ProtoMessage() {}
+
+func (x *FieldViolation) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_mindclade_common_v1_error_detail_proto_msgTypes[0]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use FieldViolation.ProtoReflect.Descriptor instead.
+func (*FieldViolation) Descriptor() ([]byte, []int) {
+	return file_proto_mindclade_common_v1_error_detail_proto_rawDescGZIP(), []int{0}
+}
+
+func (x *FieldViolation) GetField() string {
+	if x != nil {
+		return x.Field
+	}
+	return ""
+}
+
+func (x *FieldViolation) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
+type PreconditionViolation struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Type          string                 `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`
+	Subject       string                 `protobuf:"bytes,2,opt,name=subject,proto3" json:"subject,omitempty"`
+	Description   string                 `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PreconditionViolation) Reset() {
+	*x = PreconditionViolation{}
+	mi := &file_proto_mindclade_common_v1_error_detail_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PreconditionViolation) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PreconditionViolation) ProtoMessage() {}
+
+func (x *PreconditionViolation) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_mindclade_common_v1_error_detail_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PreconditionViolation.ProtoReflect.Descriptor instead.
+func (*PreconditionViolation) Descriptor() ([]byte, []int) {
+	return file_proto_mindclade_common_v1_error_detail_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *PreconditionViolation) GetType() string {
+	if x != nil {
+		return x.Type
+	}
+	return ""
+}
+
+func (x *PreconditionViolation) GetSubject() string {
+	if x != nil {
+		return x.Subject
+	}
+	return ""
+}
+
+func (x *PreconditionViolation) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
+// Structured, non-secret failure detail for durable command results.
+type ErrorDetail struct {
+	state                  protoimpl.MessageState   `protogen:"open.v1"`
+	Code                   ErrorCode                `protobuf:"varint,1,opt,name=code,proto3,enum=mindclade.common.v1.ErrorCode" json:"code,omitempty"`
+	Message                string                   `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
+	RetryClass             RetryClass               `protobuf:"varint,3,opt,name=retry_class,json=retryClass,proto3,enum=mindclade.common.v1.RetryClass" json:"retry_class,omitempty"`
+	Subject                *ResourceRef             `protobuf:"bytes,4,opt,name=subject,proto3" json:"subject,omitempty"`
+	FieldViolations        []*FieldViolation        `protobuf:"bytes,5,rep,name=field_violations,json=fieldViolations,proto3" json:"field_violations,omitempty"`
+	PreconditionViolations []*PreconditionViolation `protobuf:"bytes,6,rep,name=precondition_violations,json=preconditionViolations,proto3" json:"precondition_violations,omitempty"`
+	RetryAfter             *durationpb.Duration     `protobuf:"bytes,7,opt,name=retry_after,json=retryAfter,proto3" json:"retry_after,omitempty"`
+	ErrorId                string                   `protobuf:"bytes,8,opt,name=error_id,json=errorId,proto3" json:"error_id,omitempty"`
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
+}
+
 func (x *ErrorDetail) Reset() {
 	*x = ErrorDetail{}
-	mi := &file_proto_mindclade_common_v1_error_detail_proto_msgTypes[0]
+	mi := &file_proto_mindclade_common_v1_error_detail_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -46,7 +306,7 @@ func (x *ErrorDetail) String() string {
 func (*ErrorDetail) ProtoMessage() {}
 
 func (x *ErrorDetail) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_mindclade_common_v1_error_detail_proto_msgTypes[0]
+	mi := &file_proto_mindclade_common_v1_error_detail_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -59,14 +319,14 @@ func (x *ErrorDetail) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ErrorDetail.ProtoReflect.Descriptor instead.
 func (*ErrorDetail) Descriptor() ([]byte, []int) {
-	return file_proto_mindclade_common_v1_error_detail_proto_rawDescGZIP(), []int{0}
+	return file_proto_mindclade_common_v1_error_detail_proto_rawDescGZIP(), []int{2}
 }
 
-func (x *ErrorDetail) GetCode() string {
+func (x *ErrorDetail) GetCode() ErrorCode {
 	if x != nil {
 		return x.Code
 	}
-	return ""
+	return ErrorCode_ERROR_CODE_UNSPECIFIED
 }
 
 func (x *ErrorDetail) GetMessage() string {
@@ -76,16 +336,44 @@ func (x *ErrorDetail) GetMessage() string {
 	return ""
 }
 
-func (x *ErrorDetail) GetRetryClass() string {
+func (x *ErrorDetail) GetRetryClass() RetryClass {
 	if x != nil {
 		return x.RetryClass
 	}
-	return ""
+	return RetryClass_RETRY_CLASS_UNSPECIFIED
 }
 
-func (x *ErrorDetail) GetSubjectRef() string {
+func (x *ErrorDetail) GetSubject() *ResourceRef {
 	if x != nil {
-		return x.SubjectRef
+		return x.Subject
+	}
+	return nil
+}
+
+func (x *ErrorDetail) GetFieldViolations() []*FieldViolation {
+	if x != nil {
+		return x.FieldViolations
+	}
+	return nil
+}
+
+func (x *ErrorDetail) GetPreconditionViolations() []*PreconditionViolation {
+	if x != nil {
+		return x.PreconditionViolations
+	}
+	return nil
+}
+
+func (x *ErrorDetail) GetRetryAfter() *durationpb.Duration {
+	if x != nil {
+		return x.RetryAfter
+	}
+	return nil
+}
+
+func (x *ErrorDetail) GetErrorId() string {
+	if x != nil {
+		return x.ErrorId
 	}
 	return ""
 }
@@ -94,14 +382,50 @@ var File_proto_mindclade_common_v1_error_detail_proto protoreflect.FileDescripto
 
 const file_proto_mindclade_common_v1_error_detail_proto_rawDesc = "" +
 	"\n" +
-	",proto/mindclade/common/v1/error_detail.proto\x12\x13mindclade.common.v1\"}\n" +
-	"\vErrorDetail\x12\x12\n" +
-	"\x04code\x18\x01 \x01(\tR\x04code\x12\x18\n" +
-	"\amessage\x18\x02 \x01(\tR\amessage\x12\x1f\n" +
-	"\vretry_class\x18\x03 \x01(\tR\n" +
-	"retryClass\x12\x1f\n" +
-	"\vsubject_ref\x18\x04 \x01(\tR\n" +
-	"subjectRefBJZHgithub.com/mindclade/mindclade/protocols/generated/go/common/v1;commonv1b\x06proto3"
+	",proto/mindclade/common/v1/error_detail.proto\x12\x13mindclade.common.v1\x1a\x1egoogle/protobuf/duration.proto\x1a2proto/mindclade/common/v1/resource_reference.proto\"H\n" +
+	"\x0eFieldViolation\x12\x14\n" +
+	"\x05field\x18\x01 \x01(\tR\x05field\x12 \n" +
+	"\vdescription\x18\x02 \x01(\tR\vdescription\"g\n" +
+	"\x15PreconditionViolation\x12\x12\n" +
+	"\x04type\x18\x01 \x01(\tR\x04type\x12\x18\n" +
+	"\asubject\x18\x02 \x01(\tR\asubject\x12 \n" +
+	"\vdescription\x18\x03 \x01(\tR\vdescription\"\xe5\x03\n" +
+	"\vErrorDetail\x122\n" +
+	"\x04code\x18\x01 \x01(\x0e2\x1e.mindclade.common.v1.ErrorCodeR\x04code\x12\x18\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage\x12@\n" +
+	"\vretry_class\x18\x03 \x01(\x0e2\x1f.mindclade.common.v1.RetryClassR\n" +
+	"retryClass\x12:\n" +
+	"\asubject\x18\x04 \x01(\v2 .mindclade.common.v1.ResourceRefR\asubject\x12N\n" +
+	"\x10field_violations\x18\x05 \x03(\v2#.mindclade.common.v1.FieldViolationR\x0ffieldViolations\x12c\n" +
+	"\x17precondition_violations\x18\x06 \x03(\v2*.mindclade.common.v1.PreconditionViolationR\x16preconditionViolations\x12:\n" +
+	"\vretry_after\x18\a \x01(\v2\x19.google.protobuf.DurationR\n" +
+	"retryAfter\x12\x19\n" +
+	"\berror_id\x18\b \x01(\tR\aerrorId*\x80\x04\n" +
+	"\tErrorCode\x12\x1a\n" +
+	"\x16ERROR_CODE_UNSPECIFIED\x10\x00\x12\x1f\n" +
+	"\x1bERROR_CODE_INVALID_ARGUMENT\x10\x01\x12\"\n" +
+	"\x1eERROR_CODE_FAILED_PRECONDITION\x10\x02\x12\x18\n" +
+	"\x14ERROR_CODE_NOT_FOUND\x10\x03\x12\x1d\n" +
+	"\x19ERROR_CODE_ALREADY_EXISTS\x10\x04\x12 \n" +
+	"\x1cERROR_CODE_PERMISSION_DENIED\x10\x05\x12\x1e\n" +
+	"\x1aERROR_CODE_UNAUTHENTICATED\x10\x06\x12!\n" +
+	"\x1dERROR_CODE_RESOURCE_EXHAUSTED\x10\a\x12\x16\n" +
+	"\x12ERROR_CODE_ABORTED\x10\b\x12\x17\n" +
+	"\x13ERROR_CODE_CONFLICT\x10\t\x12\x1a\n" +
+	"\x16ERROR_CODE_UNAVAILABLE\x10\n" +
+	"\x12 \n" +
+	"\x1cERROR_CODE_DEADLINE_EXCEEDED\x10\v\x12\x18\n" +
+	"\x14ERROR_CODE_CANCELLED\x10\f\x12\x17\n" +
+	"\x13ERROR_CODE_INTERNAL\x10\r\x12\x18\n" +
+	"\x14ERROR_CODE_DATA_LOSS\x10\x0e\x12\x1a\n" +
+	"\x16ERROR_CODE_UNSUPPORTED\x10\x0f\x12\x1c\n" +
+	"\x18ERROR_CODE_POLICY_DENIED\x10\x10*|\n" +
+	"\n" +
+	"RetryClass\x12\x1b\n" +
+	"\x17RETRY_CLASS_UNSPECIFIED\x10\x00\x12\x15\n" +
+	"\x11RETRY_CLASS_NEVER\x10\x01\x12\x14\n" +
+	"\x10RETRY_CLASS_SAFE\x10\x02\x12$\n" +
+	" RETRY_CLASS_AFTER_RECONCILIATION\x10\x03BJZHgithub.com/mindclade/mindclade/protocols/generated/go/common/v1;commonv1b\x06proto3"
 
 var (
 	file_proto_mindclade_common_v1_error_detail_proto_rawDescOnce sync.Once
@@ -115,16 +439,29 @@ func file_proto_mindclade_common_v1_error_detail_proto_rawDescGZIP() []byte {
 	return file_proto_mindclade_common_v1_error_detail_proto_rawDescData
 }
 
-var file_proto_mindclade_common_v1_error_detail_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_proto_mindclade_common_v1_error_detail_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
+var file_proto_mindclade_common_v1_error_detail_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
 var file_proto_mindclade_common_v1_error_detail_proto_goTypes = []any{
-	(*ErrorDetail)(nil), // 0: mindclade.common.v1.ErrorDetail
+	(ErrorCode)(0),                // 0: mindclade.common.v1.ErrorCode
+	(RetryClass)(0),               // 1: mindclade.common.v1.RetryClass
+	(*FieldViolation)(nil),        // 2: mindclade.common.v1.FieldViolation
+	(*PreconditionViolation)(nil), // 3: mindclade.common.v1.PreconditionViolation
+	(*ErrorDetail)(nil),           // 4: mindclade.common.v1.ErrorDetail
+	(*ResourceRef)(nil),           // 5: mindclade.common.v1.ResourceRef
+	(*durationpb.Duration)(nil),   // 6: google.protobuf.Duration
 }
 var file_proto_mindclade_common_v1_error_detail_proto_depIdxs = []int32{
-	0, // [0:0] is the sub-list for method output_type
-	0, // [0:0] is the sub-list for method input_type
-	0, // [0:0] is the sub-list for extension type_name
-	0, // [0:0] is the sub-list for extension extendee
-	0, // [0:0] is the sub-list for field type_name
+	0, // 0: mindclade.common.v1.ErrorDetail.code:type_name -> mindclade.common.v1.ErrorCode
+	1, // 1: mindclade.common.v1.ErrorDetail.retry_class:type_name -> mindclade.common.v1.RetryClass
+	5, // 2: mindclade.common.v1.ErrorDetail.subject:type_name -> mindclade.common.v1.ResourceRef
+	2, // 3: mindclade.common.v1.ErrorDetail.field_violations:type_name -> mindclade.common.v1.FieldViolation
+	3, // 4: mindclade.common.v1.ErrorDetail.precondition_violations:type_name -> mindclade.common.v1.PreconditionViolation
+	6, // 5: mindclade.common.v1.ErrorDetail.retry_after:type_name -> google.protobuf.Duration
+	6, // [6:6] is the sub-list for method output_type
+	6, // [6:6] is the sub-list for method input_type
+	6, // [6:6] is the sub-list for extension type_name
+	6, // [6:6] is the sub-list for extension extendee
+	0, // [0:6] is the sub-list for field type_name
 }
 
 func init() { file_proto_mindclade_common_v1_error_detail_proto_init() }
@@ -132,18 +469,20 @@ func file_proto_mindclade_common_v1_error_detail_proto_init() {
 	if File_proto_mindclade_common_v1_error_detail_proto != nil {
 		return
 	}
+	file_proto_mindclade_common_v1_resource_reference_proto_init()
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_mindclade_common_v1_error_detail_proto_rawDesc), len(file_proto_mindclade_common_v1_error_detail_proto_rawDesc)),
-			NumEnums:      0,
-			NumMessages:   1,
+			NumEnums:      2,
+			NumMessages:   3,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
 		GoTypes:           file_proto_mindclade_common_v1_error_detail_proto_goTypes,
 		DependencyIndexes: file_proto_mindclade_common_v1_error_detail_proto_depIdxs,
+		EnumInfos:         file_proto_mindclade_common_v1_error_detail_proto_enumTypes,
 		MessageInfos:      file_proto_mindclade_common_v1_error_detail_proto_msgTypes,
 	}.Build()
 	File_proto_mindclade_common_v1_error_detail_proto = out.File

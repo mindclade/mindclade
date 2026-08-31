@@ -4,15 +4,13 @@
 
 import type { GenFile, GenMessage } from "@bufbuild/protobuf/codegenv2";
 import { fileDesc, messageDesc } from "@bufbuild/protobuf/codegenv2";
-import type { EventEnvelope } from "../../common/v1/event_envelope_pb.js";
-import { file_proto_mindclade_common_v1_event_envelope } from "../../common/v1/event_envelope_pb.js";
 import type { Message } from "@bufbuild/protobuf";
 
 /**
  * Describes the file events/mindclade/audit/v1/audit_event.proto.
  */
 export const file_events_mindclade_audit_v1_audit_event: GenFile = /*@__PURE__*/
-  fileDesc("CitldmVudHMvbWluZGNsYWRlL2F1ZGl0L3YxL2F1ZGl0X2V2ZW50LnByb3RvEhltaW5kY2xhZGUuZXZlbnRzLmF1ZGl0LnYxIpcBCgpBdWRpdEV2ZW50EjQKCGVudmVsb3BlGAEgASgLMiIubWluZGNsYWRlLmNvbW1vbi52MS5FdmVudEVudmVsb3BlEhoKEmFjdG9yX3ByaW5jaXBhbF9pZBgCIAEoCRIOCgZhY3Rpb24YAyABKAkSEAoIZGVjaXNpb24YBCABKAkSFQoNcG9saWN5X2RpZ2VzdBgFIAEoCUJIWkZnaXRodWIuY29tL21pbmRjbGFkZS9taW5kY2xhZGUvcHJvdG9jb2xzL2dlbmVyYXRlZC9nby9hdWRpdC92MTthdWRpdHYxYgZwcm90bzM", [file_proto_mindclade_common_v1_event_envelope]);
+  fileDesc("CitldmVudHMvbWluZGNsYWRlL2F1ZGl0L3YxL2F1ZGl0X2V2ZW50LnByb3RvEhltaW5kY2xhZGUuZXZlbnRzLmF1ZGl0LnYxImEKCkF1ZGl0RXZlbnQSGgoSYWN0b3JfcHJpbmNpcGFsX2lkGAEgASgJEg4KBmFjdGlvbhgCIAEoCRIQCghkZWNpc2lvbhgDIAEoCRIVCg1wb2xpY3lfZGlnZXN0GAQgASgJQkhaRmdpdGh1Yi5jb20vbWluZGNsYWRlL21pbmRjbGFkZS9wcm90b2NvbHMvZ2VuZXJhdGVkL2dvL2F1ZGl0L3YxO2F1ZGl0djFiBnByb3RvMw");
 
 /**
  * Immutable audit record for accepted or rejected durable intent.
@@ -21,27 +19,22 @@ export const file_events_mindclade_audit_v1_audit_event: GenFile = /*@__PURE__*/
  */
 export type AuditEvent = Message<"mindclade.events.audit.v1.AuditEvent"> & {
   /**
-   * @generated from field: mindclade.common.v1.EventEnvelope envelope = 1;
-   */
-  envelope?: EventEnvelope;
-
-  /**
-   * @generated from field: string actor_principal_id = 2;
+   * @generated from field: string actor_principal_id = 1;
    */
   actorPrincipalId: string;
 
   /**
-   * @generated from field: string action = 3;
+   * @generated from field: string action = 2;
    */
   action: string;
 
   /**
-   * @generated from field: string decision = 4;
+   * @generated from field: string decision = 3;
    */
   decision: string;
 
   /**
-   * @generated from field: string policy_digest = 5;
+   * @generated from field: string policy_digest = 4;
    */
   policyDigest: string;
 };

@@ -1,0 +1,17 @@
+from google.protobuf import descriptor as _descriptor
+from google.protobuf import message as _message
+from typing import ClassVar as _ClassVar, Optional as _Optional
+
+DESCRIPTOR: _descriptor.FileDescriptor
+
+class EvidenceRef(_message.Message):
+    __slots__ = ("digest", "subject_digest", "evidence_kind", "policy_digest")
+    DIGEST_FIELD_NUMBER: _ClassVar[int]
+    SUBJECT_DIGEST_FIELD_NUMBER: _ClassVar[int]
+    EVIDENCE_KIND_FIELD_NUMBER: _ClassVar[int]
+    POLICY_DIGEST_FIELD_NUMBER: _ClassVar[int]
+    digest: str
+    subject_digest: str
+    evidence_kind: str
+    policy_digest: str
+    def __init__(self, digest: _Optional[str] = ..., subject_digest: _Optional[str] = ..., evidence_kind: _Optional[str] = ..., policy_digest: _Optional[str] = ...) -> None: ...

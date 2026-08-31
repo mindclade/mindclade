@@ -9,6 +9,7 @@ package commonv1
 import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
@@ -21,15 +22,21 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// Context required for every durable mutating command.
+// Context required for every durable mutating command. The canonical request
+// digest covers the command with this context omitted so retries are stable.
 type CommandContext struct {
 	state                  protoimpl.MessageState `protogen:"open.v1"`
 	RequestId              string                 `protobuf:"bytes,1,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
 	IdempotencyKey         string                 `protobuf:"bytes,2,opt,name=idempotency_key,json=idempotencyKey,proto3" json:"idempotency_key,omitempty"`
 	PrincipalId            string                 `protobuf:"bytes,3,opt,name=principal_id,json=principalId,proto3" json:"principal_id,omitempty"`
 	TraceId                string                 `protobuf:"bytes,4,opt,name=trace_id,json=traceId,proto3" json:"trace_id,omitempty"`
-	DeadlineUtc            string                 `protobuf:"bytes,5,opt,name=deadline_utc,json=deadlineUtc,proto3" json:"deadline_utc,omitempty"`
+	Deadline               *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=deadline,proto3" json:"deadline,omitempty"`
 	CanonicalRequestDigest string                 `protobuf:"bytes,6,opt,name=canonical_request_digest,json=canonicalRequestDigest,proto3" json:"canonical_request_digest,omitempty"`
+	TenantId               string                 `protobuf:"bytes,7,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
+	ProjectId              string                 `protobuf:"bytes,8,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
+	CorrelationId          string                 `protobuf:"bytes,9,opt,name=correlation_id,json=correlationId,proto3" json:"correlation_id,omitempty"`
+	CausationId            string                 `protobuf:"bytes,10,opt,name=causation_id,json=causationId,proto3" json:"causation_id,omitempty"`
+	CancellationTokenId    string                 `protobuf:"bytes,11,opt,name=cancellation_token_id,json=cancellationTokenId,proto3" json:"cancellation_token_id,omitempty"`
 	unknownFields          protoimpl.UnknownFields
 	sizeCache              protoimpl.SizeCache
 }
@@ -92,11 +99,11 @@ func (x *CommandContext) GetTraceId() string {
 	return ""
 }
 
-func (x *CommandContext) GetDeadlineUtc() string {
+func (x *CommandContext) GetDeadline() *timestamppb.Timestamp {
 	if x != nil {
-		return x.DeadlineUtc
+		return x.Deadline
 	}
-	return ""
+	return nil
 }
 
 func (x *CommandContext) GetCanonicalRequestDigest() string {
@@ -106,19 +113,61 @@ func (x *CommandContext) GetCanonicalRequestDigest() string {
 	return ""
 }
 
+func (x *CommandContext) GetTenantId() string {
+	if x != nil {
+		return x.TenantId
+	}
+	return ""
+}
+
+func (x *CommandContext) GetProjectId() string {
+	if x != nil {
+		return x.ProjectId
+	}
+	return ""
+}
+
+func (x *CommandContext) GetCorrelationId() string {
+	if x != nil {
+		return x.CorrelationId
+	}
+	return ""
+}
+
+func (x *CommandContext) GetCausationId() string {
+	if x != nil {
+		return x.CausationId
+	}
+	return ""
+}
+
+func (x *CommandContext) GetCancellationTokenId() string {
+	if x != nil {
+		return x.CancellationTokenId
+	}
+	return ""
+}
+
 var File_proto_mindclade_common_v1_command_context_proto protoreflect.FileDescriptor
 
 const file_proto_mindclade_common_v1_command_context_proto_rawDesc = "" +
 	"\n" +
-	"/proto/mindclade/common/v1/command_context.proto\x12\x13mindclade.common.v1\"\xf3\x01\n" +
+	"/proto/mindclade/common/v1/command_context.proto\x12\x13mindclade.common.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xc2\x03\n" +
 	"\x0eCommandContext\x12\x1d\n" +
 	"\n" +
 	"request_id\x18\x01 \x01(\tR\trequestId\x12'\n" +
 	"\x0fidempotency_key\x18\x02 \x01(\tR\x0eidempotencyKey\x12!\n" +
 	"\fprincipal_id\x18\x03 \x01(\tR\vprincipalId\x12\x19\n" +
-	"\btrace_id\x18\x04 \x01(\tR\atraceId\x12!\n" +
-	"\fdeadline_utc\x18\x05 \x01(\tR\vdeadlineUtc\x128\n" +
-	"\x18canonical_request_digest\x18\x06 \x01(\tR\x16canonicalRequestDigestBJZHgithub.com/mindclade/mindclade/protocols/generated/go/common/v1;commonv1b\x06proto3"
+	"\btrace_id\x18\x04 \x01(\tR\atraceId\x126\n" +
+	"\bdeadline\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\bdeadline\x128\n" +
+	"\x18canonical_request_digest\x18\x06 \x01(\tR\x16canonicalRequestDigest\x12\x1b\n" +
+	"\ttenant_id\x18\a \x01(\tR\btenantId\x12\x1d\n" +
+	"\n" +
+	"project_id\x18\b \x01(\tR\tprojectId\x12%\n" +
+	"\x0ecorrelation_id\x18\t \x01(\tR\rcorrelationId\x12!\n" +
+	"\fcausation_id\x18\n" +
+	" \x01(\tR\vcausationId\x122\n" +
+	"\x15cancellation_token_id\x18\v \x01(\tR\x13cancellationTokenIdBJZHgithub.com/mindclade/mindclade/protocols/generated/go/common/v1;commonv1b\x06proto3"
 
 var (
 	file_proto_mindclade_common_v1_command_context_proto_rawDescOnce sync.Once
@@ -134,14 +183,16 @@ func file_proto_mindclade_common_v1_command_context_proto_rawDescGZIP() []byte {
 
 var file_proto_mindclade_common_v1_command_context_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
 var file_proto_mindclade_common_v1_command_context_proto_goTypes = []any{
-	(*CommandContext)(nil), // 0: mindclade.common.v1.CommandContext
+	(*CommandContext)(nil),        // 0: mindclade.common.v1.CommandContext
+	(*timestamppb.Timestamp)(nil), // 1: google.protobuf.Timestamp
 }
 var file_proto_mindclade_common_v1_command_context_proto_depIdxs = []int32{
-	0, // [0:0] is the sub-list for method output_type
-	0, // [0:0] is the sub-list for method input_type
-	0, // [0:0] is the sub-list for extension type_name
-	0, // [0:0] is the sub-list for extension extendee
-	0, // [0:0] is the sub-list for field type_name
+	1, // 0: mindclade.common.v1.CommandContext.deadline:type_name -> google.protobuf.Timestamp
+	1, // [1:1] is the sub-list for method output_type
+	1, // [1:1] is the sub-list for method input_type
+	1, // [1:1] is the sub-list for extension type_name
+	1, // [1:1] is the sub-list for extension extendee
+	0, // [0:1] is the sub-list for field type_name
 }
 
 func init() { file_proto_mindclade_common_v1_command_context_proto_init() }

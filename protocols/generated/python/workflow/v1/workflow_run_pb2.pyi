@@ -1,0 +1,104 @@
+import datetime
+
+from google.protobuf import timestamp_pb2 as _timestamp_pb2
+from artifact.v1 import artifact_reference_pb2 as _artifact_reference_pb2
+from common.v1 import error_detail_pb2 as _error_detail_pb2
+from common.v1 import resource_reference_pb2 as _resource_reference_pb2
+from policy.v1 import authorization_decision_pb2 as _authorization_decision_pb2
+from google.protobuf.internal import containers as _containers
+from google.protobuf.internal import enum_type_wrapper as _enum_type_wrapper
+from google.protobuf import descriptor as _descriptor
+from google.protobuf import message as _message
+from collections.abc import Iterable as _Iterable, Mapping as _Mapping
+from typing import ClassVar as _ClassVar, Optional as _Optional, Union as _Union
+
+DESCRIPTOR: _descriptor.FileDescriptor
+
+class WorkflowRunState(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
+    __slots__ = ()
+    WORKFLOW_RUN_STATE_UNSPECIFIED: _ClassVar[WorkflowRunState]
+    WORKFLOW_RUN_STATE_CREATED: _ClassVar[WorkflowRunState]
+    WORKFLOW_RUN_STATE_VALIDATING: _ClassVar[WorkflowRunState]
+    WORKFLOW_RUN_STATE_ADMITTED: _ClassVar[WorkflowRunState]
+    WORKFLOW_RUN_STATE_READY: _ClassVar[WorkflowRunState]
+    WORKFLOW_RUN_STATE_RUNNING: _ClassVar[WorkflowRunState]
+    WORKFLOW_RUN_STATE_WAITING: _ClassVar[WorkflowRunState]
+    WORKFLOW_RUN_STATE_WAITING_FOR_JOB: _ClassVar[WorkflowRunState]
+    WORKFLOW_RUN_STATE_WAITING_FOR_APPROVAL: _ClassVar[WorkflowRunState]
+    WORKFLOW_RUN_STATE_RECONCILING: _ClassVar[WorkflowRunState]
+    WORKFLOW_RUN_STATE_PAUSED: _ClassVar[WorkflowRunState]
+    WORKFLOW_RUN_STATE_SUCCEEDED: _ClassVar[WorkflowRunState]
+    WORKFLOW_RUN_STATE_FAILED: _ClassVar[WorkflowRunState]
+    WORKFLOW_RUN_STATE_CANCELLING: _ClassVar[WorkflowRunState]
+    WORKFLOW_RUN_STATE_CANCELLED: _ClassVar[WorkflowRunState]
+    WORKFLOW_RUN_STATE_EXPIRED: _ClassVar[WorkflowRunState]
+WORKFLOW_RUN_STATE_UNSPECIFIED: WorkflowRunState
+WORKFLOW_RUN_STATE_CREATED: WorkflowRunState
+WORKFLOW_RUN_STATE_VALIDATING: WorkflowRunState
+WORKFLOW_RUN_STATE_ADMITTED: WorkflowRunState
+WORKFLOW_RUN_STATE_READY: WorkflowRunState
+WORKFLOW_RUN_STATE_RUNNING: WorkflowRunState
+WORKFLOW_RUN_STATE_WAITING: WorkflowRunState
+WORKFLOW_RUN_STATE_WAITING_FOR_JOB: WorkflowRunState
+WORKFLOW_RUN_STATE_WAITING_FOR_APPROVAL: WorkflowRunState
+WORKFLOW_RUN_STATE_RECONCILING: WorkflowRunState
+WORKFLOW_RUN_STATE_PAUSED: WorkflowRunState
+WORKFLOW_RUN_STATE_SUCCEEDED: WorkflowRunState
+WORKFLOW_RUN_STATE_FAILED: WorkflowRunState
+WORKFLOW_RUN_STATE_CANCELLING: WorkflowRunState
+WORKFLOW_RUN_STATE_CANCELLED: WorkflowRunState
+WORKFLOW_RUN_STATE_EXPIRED: WorkflowRunState
+
+class WorkflowRun(_message.Message):
+    __slots__ = ("name", "uid", "revision", "etag", "tenant_id", "project_id", "definition", "definition_digest", "agent_run", "state", "active_node_ids", "completed_node_count", "iteration_count", "transition_sequence", "attempt_id", "lease_epoch", "input", "output", "replay_state", "admission_decision", "decision_log", "failure", "create_time", "update_time", "end_time")
+    NAME_FIELD_NUMBER: _ClassVar[int]
+    UID_FIELD_NUMBER: _ClassVar[int]
+    REVISION_FIELD_NUMBER: _ClassVar[int]
+    ETAG_FIELD_NUMBER: _ClassVar[int]
+    TENANT_ID_FIELD_NUMBER: _ClassVar[int]
+    PROJECT_ID_FIELD_NUMBER: _ClassVar[int]
+    DEFINITION_FIELD_NUMBER: _ClassVar[int]
+    DEFINITION_DIGEST_FIELD_NUMBER: _ClassVar[int]
+    AGENT_RUN_FIELD_NUMBER: _ClassVar[int]
+    STATE_FIELD_NUMBER: _ClassVar[int]
+    ACTIVE_NODE_IDS_FIELD_NUMBER: _ClassVar[int]
+    COMPLETED_NODE_COUNT_FIELD_NUMBER: _ClassVar[int]
+    ITERATION_COUNT_FIELD_NUMBER: _ClassVar[int]
+    TRANSITION_SEQUENCE_FIELD_NUMBER: _ClassVar[int]
+    ATTEMPT_ID_FIELD_NUMBER: _ClassVar[int]
+    LEASE_EPOCH_FIELD_NUMBER: _ClassVar[int]
+    INPUT_FIELD_NUMBER: _ClassVar[int]
+    OUTPUT_FIELD_NUMBER: _ClassVar[int]
+    REPLAY_STATE_FIELD_NUMBER: _ClassVar[int]
+    ADMISSION_DECISION_FIELD_NUMBER: _ClassVar[int]
+    DECISION_LOG_FIELD_NUMBER: _ClassVar[int]
+    FAILURE_FIELD_NUMBER: _ClassVar[int]
+    CREATE_TIME_FIELD_NUMBER: _ClassVar[int]
+    UPDATE_TIME_FIELD_NUMBER: _ClassVar[int]
+    END_TIME_FIELD_NUMBER: _ClassVar[int]
+    name: str
+    uid: str
+    revision: int
+    etag: str
+    tenant_id: str
+    project_id: str
+    definition: _resource_reference_pb2.ResourceRef
+    definition_digest: str
+    agent_run: _resource_reference_pb2.ResourceRef
+    state: WorkflowRunState
+    active_node_ids: _containers.RepeatedScalarFieldContainer[str]
+    completed_node_count: int
+    iteration_count: int
+    transition_sequence: int
+    attempt_id: str
+    lease_epoch: int
+    input: _artifact_reference_pb2.ArtifactRef
+    output: _artifact_reference_pb2.ArtifactRef
+    replay_state: _artifact_reference_pb2.ArtifactRef
+    admission_decision: _authorization_decision_pb2.AuthorizationDecision
+    decision_log: _artifact_reference_pb2.ArtifactRef
+    failure: _error_detail_pb2.ErrorDetail
+    create_time: _timestamp_pb2.Timestamp
+    update_time: _timestamp_pb2.Timestamp
+    end_time: _timestamp_pb2.Timestamp
+    def __init__(self, name: _Optional[str] = ..., uid: _Optional[str] = ..., revision: _Optional[int] = ..., etag: _Optional[str] = ..., tenant_id: _Optional[str] = ..., project_id: _Optional[str] = ..., definition: _Optional[_Union[_resource_reference_pb2.ResourceRef, _Mapping]] = ..., definition_digest: _Optional[str] = ..., agent_run: _Optional[_Union[_resource_reference_pb2.ResourceRef, _Mapping]] = ..., state: _Optional[_Union[WorkflowRunState, str]] = ..., active_node_ids: _Optional[_Iterable[str]] = ..., completed_node_count: _Optional[int] = ..., iteration_count: _Optional[int] = ..., transition_sequence: _Optional[int] = ..., attempt_id: _Optional[str] = ..., lease_epoch: _Optional[int] = ..., input: _Optional[_Union[_artifact_reference_pb2.ArtifactRef, _Mapping]] = ..., output: _Optional[_Union[_artifact_reference_pb2.ArtifactRef, _Mapping]] = ..., replay_state: _Optional[_Union[_artifact_reference_pb2.ArtifactRef, _Mapping]] = ..., admission_decision: _Optional[_Union[_authorization_decision_pb2.AuthorizationDecision, _Mapping]] = ..., decision_log: _Optional[_Union[_artifact_reference_pb2.ArtifactRef, _Mapping]] = ..., failure: _Optional[_Union[_error_detail_pb2.ErrorDetail, _Mapping]] = ..., create_time: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., update_time: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., end_time: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ...) -> None: ...

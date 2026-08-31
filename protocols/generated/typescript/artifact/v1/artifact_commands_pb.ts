@@ -4,17 +4,17 @@
 
 import type { GenFile, GenMessage } from "@bufbuild/protobuf/codegenv2";
 import { fileDesc, messageDesc } from "@bufbuild/protobuf/codegenv2";
-import type { CommandContext } from "../../common/v1/command_context_pb.js";
-import { file_proto_mindclade_common_v1_command_context } from "../../common/v1/command_context_pb.js";
 import type { ArtifactRef } from "./artifact_reference_pb.js";
 import { file_proto_mindclade_artifact_v1_artifact_reference } from "./artifact_reference_pb.js";
+import type { CommandContext } from "../../common/v1/command_context_pb.js";
+import { file_proto_mindclade_common_v1_command_context } from "../../common/v1/command_context_pb.js";
 import type { Message } from "@bufbuild/protobuf";
 
 /**
  * Describes the file proto/mindclade/artifact/v1/artifact_commands.proto.
  */
 export const file_proto_mindclade_artifact_v1_artifact_commands: GenFile = /*@__PURE__*/
-  fileDesc("CjNwcm90by9taW5kY2xhZGUvYXJ0aWZhY3QvdjEvYXJ0aWZhY3RfY29tbWFuZHMucHJvdG8SFW1pbmRjbGFkZS5hcnRpZmFjdC52MSKjAQoVQ29tbWl0QXJ0aWZhY3RDb21tYW5kEjQKB2NvbnRleHQYASABKAsyIy5taW5kY2xhZGUuY29tbW9uLnYxLkNvbW1hbmRDb250ZXh0EjQKCGFydGlmYWN0GAIgASgLMiIubWluZGNsYWRlLmFydGlmYWN0LnYxLkFydGlmYWN0UmVmEh4KFnN0YWdpbmdfcmVjZWlwdF9kaWdlc3QYAyABKAlCTlpMZ2l0aHViLmNvbS9taW5kY2xhZGUvbWluZGNsYWRlL3Byb3RvY29scy9nZW5lcmF0ZWQvZ28vYXJ0aWZhY3QvdjE7YXJ0aWZhY3R2MWIGcHJvdG8z", [file_proto_mindclade_common_v1_command_context, file_proto_mindclade_artifact_v1_artifact_reference]);
+  fileDesc("CjNwcm90by9taW5kY2xhZGUvYXJ0aWZhY3QvdjEvYXJ0aWZhY3RfY29tbWFuZHMucHJvdG8SFW1pbmRjbGFkZS5hcnRpZmFjdC52MSKjAQoVQ29tbWl0QXJ0aWZhY3RDb21tYW5kEjQKB2NvbnRleHQYASABKAsyIy5taW5kY2xhZGUuY29tbW9uLnYxLkNvbW1hbmRDb250ZXh0EjQKCGFydGlmYWN0GAIgASgLMiIubWluZGNsYWRlLmFydGlmYWN0LnYxLkFydGlmYWN0UmVmEh4KFnN0YWdpbmdfcmVjZWlwdF9kaWdlc3QYAyABKAlCTlpMZ2l0aHViLmNvbS9taW5kY2xhZGUvbWluZGNsYWRlL3Byb3RvY29scy9nZW5lcmF0ZWQvZ28vYXJ0aWZhY3QvdjE7YXJ0aWZhY3R2MWIGcHJvdG8z", [file_proto_mindclade_artifact_v1_artifact_reference, file_proto_mindclade_common_v1_command_context]);
 
 /**
  * Request to atomically publish verified immutable artifact metadata.

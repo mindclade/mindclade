@@ -1,0 +1,72 @@
+import datetime
+
+from google.protobuf import timestamp_pb2 as _timestamp_pb2
+from google.protobuf.internal import containers as _containers
+from google.protobuf.internal import enum_type_wrapper as _enum_type_wrapper
+from google.protobuf import descriptor as _descriptor
+from google.protobuf import message as _message
+from collections.abc import Mapping as _Mapping
+from typing import ClassVar as _ClassVar, Optional as _Optional, Union as _Union
+
+DESCRIPTOR: _descriptor.FileDescriptor
+
+class DatasetState(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
+    __slots__ = ()
+    DATASET_STATE_UNSPECIFIED: _ClassVar[DatasetState]
+    DATASET_STATE_DRAFT: _ClassVar[DatasetState]
+    DATASET_STATE_ACTIVE: _ClassVar[DatasetState]
+    DATASET_STATE_DEPRECATED: _ClassVar[DatasetState]
+    DATASET_STATE_REVOKED: _ClassVar[DatasetState]
+DATASET_STATE_UNSPECIFIED: DatasetState
+DATASET_STATE_DRAFT: DatasetState
+DATASET_STATE_ACTIVE: DatasetState
+DATASET_STATE_DEPRECATED: DatasetState
+DATASET_STATE_REVOKED: DatasetState
+
+class Dataset(_message.Message):
+    __slots__ = ("name", "uid", "revision", "etag", "tenant_name", "project_name", "display_name", "labels", "annotations", "state", "policy_classification", "create_time", "update_time", "delete_time", "current_release_name")
+    class LabelsEntry(_message.Message):
+        __slots__ = ("key", "value")
+        KEY_FIELD_NUMBER: _ClassVar[int]
+        VALUE_FIELD_NUMBER: _ClassVar[int]
+        key: str
+        value: str
+        def __init__(self, key: _Optional[str] = ..., value: _Optional[str] = ...) -> None: ...
+    class AnnotationsEntry(_message.Message):
+        __slots__ = ("key", "value")
+        KEY_FIELD_NUMBER: _ClassVar[int]
+        VALUE_FIELD_NUMBER: _ClassVar[int]
+        key: str
+        value: str
+        def __init__(self, key: _Optional[str] = ..., value: _Optional[str] = ...) -> None: ...
+    NAME_FIELD_NUMBER: _ClassVar[int]
+    UID_FIELD_NUMBER: _ClassVar[int]
+    REVISION_FIELD_NUMBER: _ClassVar[int]
+    ETAG_FIELD_NUMBER: _ClassVar[int]
+    TENANT_NAME_FIELD_NUMBER: _ClassVar[int]
+    PROJECT_NAME_FIELD_NUMBER: _ClassVar[int]
+    DISPLAY_NAME_FIELD_NUMBER: _ClassVar[int]
+    LABELS_FIELD_NUMBER: _ClassVar[int]
+    ANNOTATIONS_FIELD_NUMBER: _ClassVar[int]
+    STATE_FIELD_NUMBER: _ClassVar[int]
+    POLICY_CLASSIFICATION_FIELD_NUMBER: _ClassVar[int]
+    CREATE_TIME_FIELD_NUMBER: _ClassVar[int]
+    UPDATE_TIME_FIELD_NUMBER: _ClassVar[int]
+    DELETE_TIME_FIELD_NUMBER: _ClassVar[int]
+    CURRENT_RELEASE_NAME_FIELD_NUMBER: _ClassVar[int]
+    name: str
+    uid: str
+    revision: int
+    etag: str
+    tenant_name: str
+    project_name: str
+    display_name: str
+    labels: _containers.ScalarMap[str, str]
+    annotations: _containers.ScalarMap[str, str]
+    state: DatasetState
+    policy_classification: str
+    create_time: _timestamp_pb2.Timestamp
+    update_time: _timestamp_pb2.Timestamp
+    delete_time: _timestamp_pb2.Timestamp
+    current_release_name: str
+    def __init__(self, name: _Optional[str] = ..., uid: _Optional[str] = ..., revision: _Optional[int] = ..., etag: _Optional[str] = ..., tenant_name: _Optional[str] = ..., project_name: _Optional[str] = ..., display_name: _Optional[str] = ..., labels: _Optional[_Mapping[str, str]] = ..., annotations: _Optional[_Mapping[str, str]] = ..., state: _Optional[_Union[DatasetState, str]] = ..., policy_classification: _Optional[str] = ..., create_time: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., update_time: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., delete_time: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., current_release_name: _Optional[str] = ...) -> None: ...

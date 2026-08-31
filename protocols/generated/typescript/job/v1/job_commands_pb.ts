@@ -4,6 +4,8 @@
 
 import type { GenFile, GenMessage } from "@bufbuild/protobuf/codegenv2";
 import { fileDesc, messageDesc } from "@bufbuild/protobuf/codegenv2";
+import type { ArtifactRef } from "../../artifact/v1/artifact_reference_pb.js";
+import { file_proto_mindclade_artifact_v1_artifact_reference } from "../../artifact/v1/artifact_reference_pb.js";
 import type { CommandContext } from "../../common/v1/command_context_pb.js";
 import { file_proto_mindclade_common_v1_command_context } from "../../common/v1/command_context_pb.js";
 import type { Message } from "@bufbuild/protobuf";
@@ -12,7 +14,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file proto/mindclade/job/v1/job_commands.proto.
  */
 export const file_proto_mindclade_job_v1_job_commands: GenFile = /*@__PURE__*/
-  fileDesc("Cilwcm90by9taW5kY2xhZGUvam9iL3YxL2pvYl9jb21tYW5kcy5wcm90bxIQbWluZGNsYWRlLmpvYi52MSKPAQoRUmVxdWVzdEpvYkNvbW1hbmQSNAoHY29udGV4dBgBIAEoCzIjLm1pbmRjbGFkZS5jb21tb24udjEuQ29tbWFuZENvbnRleHQSEAoIam9iX2tpbmQYAiABKAkSFAoMaW5wdXRfZGlnZXN0GAMgASgJEhwKFGNvbmZpZ3VyYXRpb25fZGlnZXN0GAQgASgJQkRaQmdpdGh1Yi5jb20vbWluZGNsYWRlL21pbmRjbGFkZS9wcm90b2NvbHMvZ2VuZXJhdGVkL2dvL2pvYi92MTtqb2J2MWIGcHJvdG8z", [file_proto_mindclade_common_v1_command_context]);
+  fileDesc("Cilwcm90by9taW5kY2xhZGUvam9iL3YxL2pvYl9jb21tYW5kcy5wcm90bxIQbWluZGNsYWRlLmpvYi52MSLjAQoRUmVxdWVzdEpvYkNvbW1hbmQSNAoHY29udGV4dBgBIAEoCzIjLm1pbmRjbGFkZS5jb21tb24udjEuQ29tbWFuZENvbnRleHQSEAoIam9iX2tpbmQYAiABKAkSMQoFaW5wdXQYAyABKAsyIi5taW5kY2xhZGUuYXJ0aWZhY3QudjEuQXJ0aWZhY3RSZWYSOQoNY29uZmlndXJhdGlvbhgEIAEoCzIiLm1pbmRjbGFkZS5hcnRpZmFjdC52MS5BcnRpZmFjdFJlZhIYChByZXF1ZXN0ZWRfam9iX2lkGAUgASgJQkRaQmdpdGh1Yi5jb20vbWluZGNsYWRlL21pbmRjbGFkZS9wcm90b2NvbHMvZ2VuZXJhdGVkL2dvL2pvYi92MTtqb2J2MWIGcHJvdG8z", [file_proto_mindclade_artifact_v1_artifact_reference, file_proto_mindclade_common_v1_command_context]);
 
 /**
  * Idempotent command to request durable work.
@@ -31,14 +33,19 @@ export type RequestJobCommand = Message<"mindclade.job.v1.RequestJobCommand"> & 
   jobKind: string;
 
   /**
-   * @generated from field: string input_digest = 3;
+   * @generated from field: mindclade.artifact.v1.ArtifactRef input = 3;
    */
-  inputDigest: string;
+  input?: ArtifactRef;
 
   /**
-   * @generated from field: string configuration_digest = 4;
+   * @generated from field: mindclade.artifact.v1.ArtifactRef configuration = 4;
    */
-  configurationDigest: string;
+  configuration?: ArtifactRef;
+
+  /**
+   * @generated from field: string requested_job_id = 5;
+   */
+  requestedJobId: string;
 };
 
 /**

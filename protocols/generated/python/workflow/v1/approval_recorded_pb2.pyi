@@ -1,0 +1,23 @@
+import datetime
+
+from google.protobuf import timestamp_pb2 as _timestamp_pb2
+from common.v1 import resource_reference_pb2 as _resource_reference_pb2
+from workflow.v1 import approval_pb2 as _approval_pb2
+from google.protobuf import descriptor as _descriptor
+from google.protobuf import message as _message
+from collections.abc import Mapping as _Mapping
+from typing import ClassVar as _ClassVar, Optional as _Optional, Union as _Union
+
+DESCRIPTOR: _descriptor.FileDescriptor
+
+class ApprovalRecorded(_message.Message):
+    __slots__ = ("approval_request", "receipt", "resulting_state", "recorded_at")
+    APPROVAL_REQUEST_FIELD_NUMBER: _ClassVar[int]
+    RECEIPT_FIELD_NUMBER: _ClassVar[int]
+    RESULTING_STATE_FIELD_NUMBER: _ClassVar[int]
+    RECORDED_AT_FIELD_NUMBER: _ClassVar[int]
+    approval_request: _resource_reference_pb2.ResourceRef
+    receipt: _approval_pb2.ApprovalReceipt
+    resulting_state: _approval_pb2.ApprovalState
+    recorded_at: _timestamp_pb2.Timestamp
+    def __init__(self, approval_request: _Optional[_Union[_resource_reference_pb2.ResourceRef, _Mapping]] = ..., receipt: _Optional[_Union[_approval_pb2.ApprovalReceipt, _Mapping]] = ..., resulting_state: _Optional[_Union[_approval_pb2.ApprovalState, str]] = ..., recorded_at: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ...) -> None: ...

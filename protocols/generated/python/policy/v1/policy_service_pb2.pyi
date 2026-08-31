@@ -1,0 +1,164 @@
+import datetime
+
+from google.protobuf import field_mask_pb2 as _field_mask_pb2
+from google.protobuf import timestamp_pb2 as _timestamp_pb2
+from common.v1 import command_context_pb2 as _command_context_pb2
+from common.v1 import pagination_pb2 as _pagination_pb2
+from common.v1 import resource_reference_pb2 as _resource_reference_pb2
+from job.v1 import operation_pb2 as _operation_pb2
+from policy.v1 import authorization_decision_pb2 as _authorization_decision_pb2
+from policy.v1 import policy_reference_pb2 as _policy_reference_pb2
+from policy.v1 import use_policy_pb2 as _use_policy_pb2
+from google.protobuf.internal import containers as _containers
+from google.protobuf import descriptor as _descriptor
+from google.protobuf import message as _message
+from collections.abc import Iterable as _Iterable, Mapping as _Mapping
+from typing import ClassVar as _ClassVar, Optional as _Optional, Union as _Union
+
+DESCRIPTOR: _descriptor.FileDescriptor
+
+class EvaluateAuthorizationRequest(_message.Message):
+    __slots__ = ("tenant_id", "project_id", "principal_ref", "action", "resource", "intent_digest", "policy_snapshots", "deadline")
+    TENANT_ID_FIELD_NUMBER: _ClassVar[int]
+    PROJECT_ID_FIELD_NUMBER: _ClassVar[int]
+    PRINCIPAL_REF_FIELD_NUMBER: _ClassVar[int]
+    ACTION_FIELD_NUMBER: _ClassVar[int]
+    RESOURCE_FIELD_NUMBER: _ClassVar[int]
+    INTENT_DIGEST_FIELD_NUMBER: _ClassVar[int]
+    POLICY_SNAPSHOTS_FIELD_NUMBER: _ClassVar[int]
+    DEADLINE_FIELD_NUMBER: _ClassVar[int]
+    tenant_id: str
+    project_id: str
+    principal_ref: str
+    action: str
+    resource: _resource_reference_pb2.ResourceRef
+    intent_digest: str
+    policy_snapshots: _containers.RepeatedCompositeFieldContainer[_policy_reference_pb2.PolicyReference]
+    deadline: _timestamp_pb2.Timestamp
+    def __init__(self, tenant_id: _Optional[str] = ..., project_id: _Optional[str] = ..., principal_ref: _Optional[str] = ..., action: _Optional[str] = ..., resource: _Optional[_Union[_resource_reference_pb2.ResourceRef, _Mapping]] = ..., intent_digest: _Optional[str] = ..., policy_snapshots: _Optional[_Iterable[_Union[_policy_reference_pb2.PolicyReference, _Mapping]]] = ..., deadline: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ...) -> None: ...
+
+class EvaluateAuthorizationResponse(_message.Message):
+    __slots__ = ("decision",)
+    DECISION_FIELD_NUMBER: _ClassVar[int]
+    decision: _authorization_decision_pb2.AuthorizationDecision
+    def __init__(self, decision: _Optional[_Union[_authorization_decision_pb2.AuthorizationDecision, _Mapping]] = ...) -> None: ...
+
+class CreateUsePolicyRequest(_message.Message):
+    __slots__ = ("context", "parent", "use_policy_id", "use_policy")
+    CONTEXT_FIELD_NUMBER: _ClassVar[int]
+    PARENT_FIELD_NUMBER: _ClassVar[int]
+    USE_POLICY_ID_FIELD_NUMBER: _ClassVar[int]
+    USE_POLICY_FIELD_NUMBER: _ClassVar[int]
+    context: _command_context_pb2.CommandContext
+    parent: str
+    use_policy_id: str
+    use_policy: _use_policy_pb2.UsePolicy
+    def __init__(self, context: _Optional[_Union[_command_context_pb2.CommandContext, _Mapping]] = ..., parent: _Optional[str] = ..., use_policy_id: _Optional[str] = ..., use_policy: _Optional[_Union[_use_policy_pb2.UsePolicy, _Mapping]] = ...) -> None: ...
+
+class CreateUsePolicyResponse(_message.Message):
+    __slots__ = ("operation",)
+    OPERATION_FIELD_NUMBER: _ClassVar[int]
+    operation: _operation_pb2.Operation
+    def __init__(self, operation: _Optional[_Union[_operation_pb2.Operation, _Mapping]] = ...) -> None: ...
+
+class UpdateUsePolicyRequest(_message.Message):
+    __slots__ = ("context", "use_policy", "update_mask", "etag")
+    CONTEXT_FIELD_NUMBER: _ClassVar[int]
+    USE_POLICY_FIELD_NUMBER: _ClassVar[int]
+    UPDATE_MASK_FIELD_NUMBER: _ClassVar[int]
+    ETAG_FIELD_NUMBER: _ClassVar[int]
+    context: _command_context_pb2.CommandContext
+    use_policy: _use_policy_pb2.UsePolicy
+    update_mask: _field_mask_pb2.FieldMask
+    etag: str
+    def __init__(self, context: _Optional[_Union[_command_context_pb2.CommandContext, _Mapping]] = ..., use_policy: _Optional[_Union[_use_policy_pb2.UsePolicy, _Mapping]] = ..., update_mask: _Optional[_Union[_field_mask_pb2.FieldMask, _Mapping]] = ..., etag: _Optional[str] = ...) -> None: ...
+
+class UpdateUsePolicyResponse(_message.Message):
+    __slots__ = ("operation",)
+    OPERATION_FIELD_NUMBER: _ClassVar[int]
+    operation: _operation_pb2.Operation
+    def __init__(self, operation: _Optional[_Union[_operation_pb2.Operation, _Mapping]] = ...) -> None: ...
+
+class GetUsePolicyRequest(_message.Message):
+    __slots__ = ("name", "if_none_match")
+    NAME_FIELD_NUMBER: _ClassVar[int]
+    IF_NONE_MATCH_FIELD_NUMBER: _ClassVar[int]
+    name: str
+    if_none_match: str
+    def __init__(self, name: _Optional[str] = ..., if_none_match: _Optional[str] = ...) -> None: ...
+
+class GetUsePolicyResponse(_message.Message):
+    __slots__ = ("use_policy",)
+    USE_POLICY_FIELD_NUMBER: _ClassVar[int]
+    use_policy: _use_policy_pb2.UsePolicy
+    def __init__(self, use_policy: _Optional[_Union[_use_policy_pb2.UsePolicy, _Mapping]] = ...) -> None: ...
+
+class ListUsePoliciesRequest(_message.Message):
+    __slots__ = ("parent", "page", "filter", "order_by")
+    PARENT_FIELD_NUMBER: _ClassVar[int]
+    PAGE_FIELD_NUMBER: _ClassVar[int]
+    FILTER_FIELD_NUMBER: _ClassVar[int]
+    ORDER_BY_FIELD_NUMBER: _ClassVar[int]
+    parent: str
+    page: _pagination_pb2.PageRequest
+    filter: str
+    order_by: str
+    def __init__(self, parent: _Optional[str] = ..., page: _Optional[_Union[_pagination_pb2.PageRequest, _Mapping]] = ..., filter: _Optional[str] = ..., order_by: _Optional[str] = ...) -> None: ...
+
+class ListUsePoliciesResponse(_message.Message):
+    __slots__ = ("use_policies", "page", "read_time")
+    USE_POLICIES_FIELD_NUMBER: _ClassVar[int]
+    PAGE_FIELD_NUMBER: _ClassVar[int]
+    READ_TIME_FIELD_NUMBER: _ClassVar[int]
+    use_policies: _containers.RepeatedCompositeFieldContainer[_use_policy_pb2.UsePolicy]
+    page: _pagination_pb2.PageResponse
+    read_time: _timestamp_pb2.Timestamp
+    def __init__(self, use_policies: _Optional[_Iterable[_Union[_use_policy_pb2.UsePolicy, _Mapping]]] = ..., page: _Optional[_Union[_pagination_pb2.PageResponse, _Mapping]] = ..., read_time: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ...) -> None: ...
+
+class ActivateUsePolicyRequest(_message.Message):
+    __slots__ = ("context", "name", "etag")
+    CONTEXT_FIELD_NUMBER: _ClassVar[int]
+    NAME_FIELD_NUMBER: _ClassVar[int]
+    ETAG_FIELD_NUMBER: _ClassVar[int]
+    context: _command_context_pb2.CommandContext
+    name: str
+    etag: str
+    def __init__(self, context: _Optional[_Union[_command_context_pb2.CommandContext, _Mapping]] = ..., name: _Optional[str] = ..., etag: _Optional[str] = ...) -> None: ...
+
+class ActivateUsePolicyResponse(_message.Message):
+    __slots__ = ("operation",)
+    OPERATION_FIELD_NUMBER: _ClassVar[int]
+    operation: _operation_pb2.Operation
+    def __init__(self, operation: _Optional[_Union[_operation_pb2.Operation, _Mapping]] = ...) -> None: ...
+
+class RevokeUsePolicyRequest(_message.Message):
+    __slots__ = ("context", "name", "etag", "reason_code")
+    CONTEXT_FIELD_NUMBER: _ClassVar[int]
+    NAME_FIELD_NUMBER: _ClassVar[int]
+    ETAG_FIELD_NUMBER: _ClassVar[int]
+    REASON_CODE_FIELD_NUMBER: _ClassVar[int]
+    context: _command_context_pb2.CommandContext
+    name: str
+    etag: str
+    reason_code: str
+    def __init__(self, context: _Optional[_Union[_command_context_pb2.CommandContext, _Mapping]] = ..., name: _Optional[str] = ..., etag: _Optional[str] = ..., reason_code: _Optional[str] = ...) -> None: ...
+
+class RevokeUsePolicyResponse(_message.Message):
+    __slots__ = ("operation",)
+    OPERATION_FIELD_NUMBER: _ClassVar[int]
+    operation: _operation_pb2.Operation
+    def __init__(self, operation: _Optional[_Union[_operation_pb2.Operation, _Mapping]] = ...) -> None: ...
+
+class ResolvePolicySnapshotRequest(_message.Message):
+    __slots__ = ("name", "effective_time")
+    NAME_FIELD_NUMBER: _ClassVar[int]
+    EFFECTIVE_TIME_FIELD_NUMBER: _ClassVar[int]
+    name: str
+    effective_time: _timestamp_pb2.Timestamp
+    def __init__(self, name: _Optional[str] = ..., effective_time: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ...) -> None: ...
+
+class ResolvePolicySnapshotResponse(_message.Message):
+    __slots__ = ("policy_snapshot",)
+    POLICY_SNAPSHOT_FIELD_NUMBER: _ClassVar[int]
+    policy_snapshot: _policy_reference_pb2.PolicyReference
+    def __init__(self, policy_snapshot: _Optional[_Union[_policy_reference_pb2.PolicyReference, _Mapping]] = ...) -> None: ...

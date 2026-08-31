@@ -1,0 +1,15 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "bindings",
+    srcs = ["mindclade_service.pb.go", "mindclade_service_grpc.pb.go"],
+    importpath = "github.com/mindclade/mindclade/protocols/generated/go/api/v1",
+    deps = ["@org_golang_google_protobuf//reflect/protoreflect", "@org_golang_google_protobuf//runtime/protoimpl", "@org_golang_google_protobuf//types/known/fieldmaskpb", "@org_golang_google_protobuf//types/known/timestamppb", "@org_golang_google_grpc//:grpc", "@org_golang_google_grpc//codes", "@org_golang_google_grpc//status", "//protocols/generated/go/admin/v1:bindings", "//protocols/generated/go/agent/v1:bindings", "//protocols/generated/go/artifact/v1:bindings", "//protocols/generated/go/common/v1:bindings", "//protocols/generated/go/dataset/v1:bindings", "//protocols/generated/go/evaluation/v1:bindings", "//protocols/generated/go/inference/v1:bindings", "//protocols/generated/go/job/v1:bindings", "//protocols/generated/go/model/v1:bindings", "//protocols/generated/go/training/v1:bindings", "//protocols/generated/go/workflow/v1:bindings"],
+    visibility = ["//visibility:public"],
+)
+
+filegroup(
+    name = "generated_sources",
+    srcs = ["BUILD.bazel", "mindclade_service.pb.go", "mindclade_service_grpc.pb.go"],
+    visibility = ["//visibility:public"],
+)

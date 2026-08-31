@@ -1,0 +1,15 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "bindings",
+    srcs = ["experiment.pb.go", "study.pb.go", "trial.pb.go"],
+    importpath = "github.com/mindclade/mindclade/protocols/generated/go/experiment/v1",
+    deps = ["@org_golang_google_protobuf//reflect/protoreflect", "@org_golang_google_protobuf//runtime/protoimpl", "@org_golang_google_protobuf//types/known/durationpb", "@org_golang_google_protobuf//types/known/timestamppb", "//protocols/generated/go/artifact/v1:bindings", "//protocols/generated/go/common/v1:bindings"],
+    visibility = ["//visibility:public"],
+)
+
+filegroup(
+    name = "generated_sources",
+    srcs = ["BUILD.bazel", "experiment.pb.go", "study.pb.go", "trial.pb.go"],
+    visibility = ["//visibility:public"],
+)

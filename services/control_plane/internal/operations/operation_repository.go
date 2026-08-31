@@ -223,6 +223,7 @@ func newJobRequestedEnvelope(operation *jobv1.Operation, at time.Time) (*commonv
 		PayloadDigest:      "sha256:" + hex.EncodeToString(digest[:]),
 		Payload:            payload,
 		Producer:           "services/control_plane",
+		AggregateSequence:  1,
 		JobId:              operation.GetJobId(),
 		DeduplicationKey:   "job-requested:" + operation.GetOperationId(),
 		PayloadContentType: "application/x-protobuf",

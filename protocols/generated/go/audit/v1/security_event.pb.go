@@ -7,7 +7,6 @@
 package auditv1
 
 import (
-	v1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -24,10 +23,9 @@ const (
 
 type SecurityEvent struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
-	Envelope       *v1.EventEnvelope      `protobuf:"bytes,1,opt,name=envelope,proto3" json:"envelope,omitempty"`
-	Severity       string                 `protobuf:"bytes,2,opt,name=severity,proto3" json:"severity,omitempty"`
-	Control        string                 `protobuf:"bytes,3,opt,name=control,proto3" json:"control,omitempty"`
-	EvidenceDigest string                 `protobuf:"bytes,4,opt,name=evidence_digest,json=evidenceDigest,proto3" json:"evidence_digest,omitempty"`
+	Severity       string                 `protobuf:"bytes,1,opt,name=severity,proto3" json:"severity,omitempty"`
+	Control        string                 `protobuf:"bytes,2,opt,name=control,proto3" json:"control,omitempty"`
+	EvidenceDigest string                 `protobuf:"bytes,3,opt,name=evidence_digest,json=evidenceDigest,proto3" json:"evidence_digest,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -62,13 +60,6 @@ func (*SecurityEvent) Descriptor() ([]byte, []int) {
 	return file_events_mindclade_audit_v1_security_event_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *SecurityEvent) GetEnvelope() *v1.EventEnvelope {
-	if x != nil {
-		return x.Envelope
-	}
-	return nil
-}
-
 func (x *SecurityEvent) GetSeverity() string {
 	if x != nil {
 		return x.Severity
@@ -94,12 +85,11 @@ var File_events_mindclade_audit_v1_security_event_proto protoreflect.FileDescrip
 
 const file_events_mindclade_audit_v1_security_event_proto_rawDesc = "" +
 	"\n" +
-	".events/mindclade/audit/v1/security_event.proto\x12\x19mindclade.events.audit.v1\x1a.proto/mindclade/common/v1/event_envelope.proto\"\xae\x01\n" +
-	"\rSecurityEvent\x12>\n" +
-	"\benvelope\x18\x01 \x01(\v2\".mindclade.common.v1.EventEnvelopeR\benvelope\x12\x1a\n" +
-	"\bseverity\x18\x02 \x01(\tR\bseverity\x12\x18\n" +
-	"\acontrol\x18\x03 \x01(\tR\acontrol\x12'\n" +
-	"\x0fevidence_digest\x18\x04 \x01(\tR\x0eevidenceDigestBHZFgithub.com/mindclade/mindclade/protocols/generated/go/audit/v1;auditv1b\x06proto3"
+	".events/mindclade/audit/v1/security_event.proto\x12\x19mindclade.events.audit.v1\"n\n" +
+	"\rSecurityEvent\x12\x1a\n" +
+	"\bseverity\x18\x01 \x01(\tR\bseverity\x12\x18\n" +
+	"\acontrol\x18\x02 \x01(\tR\acontrol\x12'\n" +
+	"\x0fevidence_digest\x18\x03 \x01(\tR\x0eevidenceDigestBHZFgithub.com/mindclade/mindclade/protocols/generated/go/audit/v1;auditv1b\x06proto3"
 
 var (
 	file_events_mindclade_audit_v1_security_event_proto_rawDescOnce sync.Once
@@ -115,16 +105,14 @@ func file_events_mindclade_audit_v1_security_event_proto_rawDescGZIP() []byte {
 
 var file_events_mindclade_audit_v1_security_event_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
 var file_events_mindclade_audit_v1_security_event_proto_goTypes = []any{
-	(*SecurityEvent)(nil),    // 0: mindclade.events.audit.v1.SecurityEvent
-	(*v1.EventEnvelope)(nil), // 1: mindclade.common.v1.EventEnvelope
+	(*SecurityEvent)(nil), // 0: mindclade.events.audit.v1.SecurityEvent
 }
 var file_events_mindclade_audit_v1_security_event_proto_depIdxs = []int32{
-	1, // 0: mindclade.events.audit.v1.SecurityEvent.envelope:type_name -> mindclade.common.v1.EventEnvelope
-	1, // [1:1] is the sub-list for method output_type
-	1, // [1:1] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	0, // [0:0] is the sub-list for method output_type
+	0, // [0:0] is the sub-list for method input_type
+	0, // [0:0] is the sub-list for extension type_name
+	0, // [0:0] is the sub-list for extension extendee
+	0, // [0:0] is the sub-list for field type_name
 }
 
 func init() { file_events_mindclade_audit_v1_security_event_proto_init() }

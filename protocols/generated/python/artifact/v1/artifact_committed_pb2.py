@@ -23,10 +23,9 @@ _sym_db = _symbol_database.Default()
 
 
 from artifact.v1 import artifact_reference_pb2 as proto_dot_mindclade_dot_artifact_dot_v1_dot_artifact__reference__pb2
-from common.v1 import event_envelope_pb2 as proto_dot_mindclade_dot_common_dot_v1_dot_event__envelope__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n5events/mindclade/artifact/v1/artifact_committed.proto\x12\x1cmindclade.events.artifact.v1\x1a\x34proto/mindclade/artifact/v1/artifact_reference.proto\x1a.proto/mindclade/common/v1/event_envelope.proto\"\xc3\x01\n\x11\x41rtifactCommitted\x12>\n\x08\x65nvelope\x18\x01 \x01(\x0b\x32\".mindclade.common.v1.EventEnvelopeR\x08\x65nvelope\x12>\n\x08\x61rtifact\x18\x02 \x01(\x0b\x32\".mindclade.artifact.v1.ArtifactRefR\x08\x61rtifact\x12.\n\x13producer_attempt_id\x18\x03 \x01(\tR\x11producerAttemptIdBNZLgithub.com/mindclade/mindclade/protocols/generated/go/artifact/v1;artifactv1b\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n5events/mindclade/artifact/v1/artifact_committed.proto\x12\x1cmindclade.events.artifact.v1\x1a\x34proto/mindclade/artifact/v1/artifact_reference.proto\"\x83\x01\n\x11\x41rtifactCommitted\x12>\n\x08\x61rtifact\x18\x01 \x01(\x0b\x32\".mindclade.artifact.v1.ArtifactRefR\x08\x61rtifact\x12.\n\x13producer_attempt_id\x18\x02 \x01(\tR\x11producerAttemptIdBNZLgithub.com/mindclade/mindclade/protocols/generated/go/artifact/v1;artifactv1b\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -34,6 +33,6 @@ _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'artifact.v1.artifact_commit
 if not _descriptor._USE_C_DESCRIPTORS:
   _globals['DESCRIPTOR']._loaded_options = None
   _globals['DESCRIPTOR']._serialized_options = b'ZLgithub.com/mindclade/mindclade/protocols/generated/go/artifact/v1;artifactv1'
-  _globals['_ARTIFACTCOMMITTED']._serialized_start=190
-  _globals['_ARTIFACTCOMMITTED']._serialized_end=385
+  _globals['_ARTIFACTCOMMITTED']._serialized_start=142
+  _globals['_ARTIFACTCOMMITTED']._serialized_end=273
 # @@protoc_insertion_point(module_scope)

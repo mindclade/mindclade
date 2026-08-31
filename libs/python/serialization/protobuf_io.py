@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import hashlib
-from datetime import datetime, timezone
-from typing import Protocol, TypeVar
+from datetime import UTC, datetime
+from typing import Protocol
 
 from common.v1.event_envelope_pb2 import EventEnvelope
 from common.v1.resource_reference_pb2 import ResourceRef
@@ -19,13 +19,10 @@ def encode_deterministic(message: SerializableMessage) -> bytes:
     return message.SerializeToString(deterministic=True)
 
 
-MessageT = TypeVar("MessageT", bound=Message)
-
-
 def _utc(value: datetime) -> datetime:
     if value.tzinfo is None:
         raise ValueError("event timestamps must be timezone-aware")
-    return value.astimezone(timezone.utc)
+    return value.astimezone(UTC)
 
 
 def make_event_envelope(
@@ -79,7 +76,9 @@ def make_event_envelope(
     return envelope
 
 
-def parse_event_payload(envelope: EventEnvelope, message_type: type[MessageT]) -> MessageT:
+def parse_event_payload[MessageT: Message](
+    envelope: EventEnvelope, message_type: type[MessageT]
+) -> MessageT:
     """Verify and decode an envelope as the expected generated event message."""
     expected_type = message_type.DESCRIPTOR.full_name
     if envelope.event_type != expected_type:

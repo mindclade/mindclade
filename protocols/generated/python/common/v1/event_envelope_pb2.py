@@ -22,9 +22,11 @@ _runtime_version.ValidateProtobufRuntimeVersion(
 _sym_db = _symbol_database.Default()
 
 
+from google.protobuf import timestamp_pb2 as google_dot_protobuf_dot_timestamp__pb2
+from common.v1 import resource_reference_pb2 as proto_dot_mindclade_dot_common_dot_v1_dot_resource__reference__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n.proto/mindclade/common/v1/event_envelope.proto\x12\x13mindclade.common.v1\"\x96\x02\n\rEventEnvelope\x12\x19\n\x08\x65vent_id\x18\x01 \x01(\tR\x07\x65ventId\x12\x1d\n\nevent_type\x18\x02 \x01(\tR\teventType\x12#\n\revent_version\x18\x03 \x01(\rR\x0c\x65ventVersion\x12&\n\x0foccurred_at_utc\x18\x04 \x01(\tR\roccurredAtUtc\x12\x1b\n\ttenant_id\x18\x05 \x01(\tR\x08tenantId\x12\x19\n\x08trace_id\x18\x06 \x01(\tR\x07traceId\x12\x1f\n\x0bsubject_ref\x18\x07 \x01(\tR\nsubjectRef\x12%\n\x0epayload_digest\x18\x08 \x01(\tR\rpayloadDigestBJZHgithub.com/mindclade/mindclade/protocols/generated/go/common/v1;commonv1b\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n.proto/mindclade/common/v1/event_envelope.proto\x12\x13mindclade.common.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x32proto/mindclade/common/v1/resource_reference.proto\"\xce\x06\n\rEventEnvelope\x12\x19\n\x08\x65vent_id\x18\x01 \x01(\tR\x07\x65ventId\x12\x1d\n\nevent_type\x18\x02 \x01(\tR\teventType\x12#\n\revent_version\x18\x03 \x01(\rR\x0c\x65ventVersion\x12;\n\x0boccurred_at\x18\x04 \x01(\x0b\x32\x1a.google.protobuf.TimestampR\noccurredAt\x12\x1b\n\ttenant_id\x18\x05 \x01(\tR\x08tenantId\x12\x19\n\x08trace_id\x18\x06 \x01(\tR\x07traceId\x12:\n\x07subject\x18\x07 \x01(\x0b\x32 .mindclade.common.v1.ResourceRefR\x07subject\x12%\n\x0epayload_digest\x18\x08 \x01(\tR\rpayloadDigest\x12\x18\n\x07payload\x18\t \x01(\x0cR\x07payload\x12;\n\x0brecorded_at\x18\n \x01(\x0b\x32\x1a.google.protobuf.TimestampR\nrecordedAt\x12\x1a\n\x08producer\x18\x0b \x01(\tR\x08producer\x12\x1d\n\nproject_id\x18\x0c \x01(\tR\tprojectId\x12-\n\x12\x61ggregate_sequence\x18\r \x01(\x04R\x11\x61ggregateSequence\x12\x1d\n\nrequest_id\x18\x0e \x01(\tR\trequestId\x12%\n\x0e\x63orrelation_id\x18\x0f \x01(\tR\rcorrelationId\x12!\n\x0c\x63\x61usation_id\x18\x10 \x01(\tR\x0b\x63\x61usationId\x12\x15\n\x06job_id\x18\x11 \x01(\tR\x05jobId\x12\x15\n\x06run_id\x18\x12 \x01(\tR\x05runId\x12+\n\x11\x64\x65\x64uplication_key\x18\x13 \x01(\tR\x10\x64\x65\x64uplicationKey\x12\x30\n\x14payload_content_type\x18\x14 \x01(\tR\x12payloadContentType\x12O\n\x0e\x63lassification\x18\x15 \x01(\x0e\x32\'.mindclade.common.v1.DataClassificationR\x0e\x63lassification*\x9f\x01\n\x12\x44\x61taClassification\x12#\n\x1f\x44\x41TA_CLASSIFICATION_UNSPECIFIED\x10\x00\x12\x1e\n\x1a\x44\x41TA_CLASSIFICATION_PUBLIC\x10\x01\x12 \n\x1c\x44\x41TA_CLASSIFICATION_INTERNAL\x10\x02\x12\"\n\x1e\x44\x41TA_CLASSIFICATION_RESTRICTED\x10\x03\x42JZHgithub.com/mindclade/mindclade/protocols/generated/go/common/v1;commonv1b\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -32,6 +34,8 @@ _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'common.v1.event_envelope_pb
 if not _descriptor._USE_C_DESCRIPTORS:
   _globals['DESCRIPTOR']._loaded_options = None
   _globals['DESCRIPTOR']._serialized_options = b'ZHgithub.com/mindclade/mindclade/protocols/generated/go/common/v1;commonv1'
-  _globals['_EVENTENVELOPE']._serialized_start=72
-  _globals['_EVENTENVELOPE']._serialized_end=350
+  _globals['_DATACLASSIFICATION']._serialized_start=1006
+  _globals['_DATACLASSIFICATION']._serialized_end=1165
+  _globals['_EVENTENVELOPE']._serialized_start=157
+  _globals['_EVENTENVELOPE']._serialized_end=1003
 # @@protoc_insertion_point(module_scope)

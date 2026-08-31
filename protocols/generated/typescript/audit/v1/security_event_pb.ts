@@ -4,37 +4,30 @@
 
 import type { GenFile, GenMessage } from "@bufbuild/protobuf/codegenv2";
 import { fileDesc, messageDesc } from "@bufbuild/protobuf/codegenv2";
-import type { EventEnvelope } from "../../common/v1/event_envelope_pb.js";
-import { file_proto_mindclade_common_v1_event_envelope } from "../../common/v1/event_envelope_pb.js";
 import type { Message } from "@bufbuild/protobuf";
 
 /**
  * Describes the file events/mindclade/audit/v1/security_event.proto.
  */
 export const file_events_mindclade_audit_v1_security_event: GenFile = /*@__PURE__*/
-  fileDesc("Ci5ldmVudHMvbWluZGNsYWRlL2F1ZGl0L3YxL3NlY3VyaXR5X2V2ZW50LnByb3RvEhltaW5kY2xhZGUuZXZlbnRzLmF1ZGl0LnYxIoEBCg1TZWN1cml0eUV2ZW50EjQKCGVudmVsb3BlGAEgASgLMiIubWluZGNsYWRlLmNvbW1vbi52MS5FdmVudEVudmVsb3BlEhAKCHNldmVyaXR5GAIgASgJEg8KB2NvbnRyb2wYAyABKAkSFwoPZXZpZGVuY2VfZGlnZXN0GAQgASgJQkhaRmdpdGh1Yi5jb20vbWluZGNsYWRlL21pbmRjbGFkZS9wcm90b2NvbHMvZ2VuZXJhdGVkL2dvL2F1ZGl0L3YxO2F1ZGl0djFiBnByb3RvMw", [file_proto_mindclade_common_v1_event_envelope]);
+  fileDesc("Ci5ldmVudHMvbWluZGNsYWRlL2F1ZGl0L3YxL3NlY3VyaXR5X2V2ZW50LnByb3RvEhltaW5kY2xhZGUuZXZlbnRzLmF1ZGl0LnYxIksKDVNlY3VyaXR5RXZlbnQSEAoIc2V2ZXJpdHkYASABKAkSDwoHY29udHJvbBgCIAEoCRIXCg9ldmlkZW5jZV9kaWdlc3QYAyABKAlCSFpGZ2l0aHViLmNvbS9taW5kY2xhZGUvbWluZGNsYWRlL3Byb3RvY29scy9nZW5lcmF0ZWQvZ28vYXVkaXQvdjE7YXVkaXR2MWIGcHJvdG8z");
 
 /**
  * @generated from message mindclade.events.audit.v1.SecurityEvent
  */
 export type SecurityEvent = Message<"mindclade.events.audit.v1.SecurityEvent"> & {
   /**
-   * @generated from field: mindclade.common.v1.EventEnvelope envelope = 1;
-   */
-  envelope?: EventEnvelope;
-
-  /**
-   * @generated from field: string severity = 2;
+   * @generated from field: string severity = 1;
    */
   severity: string;
 
   /**
-   * @generated from field: string control = 3;
+   * @generated from field: string control = 2;
    */
   control: string;
 
   /**
-   * @generated from field: string evidence_digest = 4;
+   * @generated from field: string evidence_digest = 3;
    */
   evidenceDigest: string;
 };

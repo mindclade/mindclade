@@ -7,8 +7,11 @@
 package jobv1
 
 import (
+	v1 "github.com/mindclade/mindclade/protocols/generated/go/artifact/v1"
+	v11 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
@@ -21,16 +24,90 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+type AttemptState int32
+
+const (
+	AttemptState_ATTEMPT_STATE_UNSPECIFIED AttemptState = 0
+	AttemptState_ATTEMPT_STATE_LEASED      AttemptState = 1
+	AttemptState_ATTEMPT_STATE_RUNNING     AttemptState = 2
+	AttemptState_ATTEMPT_STATE_SUCCEEDED   AttemptState = 3
+	AttemptState_ATTEMPT_STATE_FAILED      AttemptState = 4
+	AttemptState_ATTEMPT_STATE_CANCELLED   AttemptState = 5
+	AttemptState_ATTEMPT_STATE_FENCED      AttemptState = 6
+	AttemptState_ATTEMPT_STATE_TIMED_OUT   AttemptState = 7
+)
+
+// Enum value maps for AttemptState.
+var (
+	AttemptState_name = map[int32]string{
+		0: "ATTEMPT_STATE_UNSPECIFIED",
+		1: "ATTEMPT_STATE_LEASED",
+		2: "ATTEMPT_STATE_RUNNING",
+		3: "ATTEMPT_STATE_SUCCEEDED",
+		4: "ATTEMPT_STATE_FAILED",
+		5: "ATTEMPT_STATE_CANCELLED",
+		6: "ATTEMPT_STATE_FENCED",
+		7: "ATTEMPT_STATE_TIMED_OUT",
+	}
+	AttemptState_value = map[string]int32{
+		"ATTEMPT_STATE_UNSPECIFIED": 0,
+		"ATTEMPT_STATE_LEASED":      1,
+		"ATTEMPT_STATE_RUNNING":     2,
+		"ATTEMPT_STATE_SUCCEEDED":   3,
+		"ATTEMPT_STATE_FAILED":      4,
+		"ATTEMPT_STATE_CANCELLED":   5,
+		"ATTEMPT_STATE_FENCED":      6,
+		"ATTEMPT_STATE_TIMED_OUT":   7,
+	}
+)
+
+func (x AttemptState) Enum() *AttemptState {
+	p := new(AttemptState)
+	*p = x
+	return p
+}
+
+func (x AttemptState) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AttemptState) Descriptor() protoreflect.EnumDescriptor {
+	return file_proto_mindclade_job_v1_attempt_proto_enumTypes[0].Descriptor()
+}
+
+func (AttemptState) Type() protoreflect.EnumType {
+	return &file_proto_mindclade_job_v1_attempt_proto_enumTypes[0]
+}
+
+func (x AttemptState) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AttemptState.Descriptor instead.
+func (AttemptState) EnumDescriptor() ([]byte, []int) {
+	return file_proto_mindclade_job_v1_attempt_proto_rawDescGZIP(), []int{0}
+}
+
 // Fenced lease-bound execution try. Only the current epoch may commit.
 type Attempt struct {
-	state             protoimpl.MessageState `protogen:"open.v1"`
-	AttemptId         string                 `protobuf:"bytes,1,opt,name=attempt_id,json=attemptId,proto3" json:"attempt_id,omitempty"`
-	RunId             string                 `protobuf:"bytes,2,opt,name=run_id,json=runId,proto3" json:"run_id,omitempty"`
-	LeaseEpoch        uint64                 `protobuf:"varint,3,opt,name=lease_epoch,json=leaseEpoch,proto3" json:"lease_epoch,omitempty"`
-	State             string                 `protobuf:"bytes,4,opt,name=state,proto3" json:"state,omitempty"`
-	LeaseExpiresAtUtc string                 `protobuf:"bytes,5,opt,name=lease_expires_at_utc,json=leaseExpiresAtUtc,proto3" json:"lease_expires_at_utc,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	AttemptId       string                 `protobuf:"bytes,1,opt,name=attempt_id,json=attemptId,proto3" json:"attempt_id,omitempty"`
+	RunId           string                 `protobuf:"bytes,2,opt,name=run_id,json=runId,proto3" json:"run_id,omitempty"`
+	LeaseEpoch      uint64                 `protobuf:"varint,3,opt,name=lease_epoch,json=leaseEpoch,proto3" json:"lease_epoch,omitempty"`
+	State           AttemptState           `protobuf:"varint,4,opt,name=state,proto3,enum=mindclade.job.v1.AttemptState" json:"state,omitempty"`
+	LeaseExpiresAt  *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=lease_expires_at,json=leaseExpiresAt,proto3" json:"lease_expires_at,omitempty"`
+	TenantId        string                 `protobuf:"bytes,6,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
+	ProjectId       string                 `protobuf:"bytes,7,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
+	JobId           string                 `protobuf:"bytes,8,opt,name=job_id,json=jobId,proto3" json:"job_id,omitempty"`
+	WorkerId        string                 `protobuf:"bytes,9,opt,name=worker_id,json=workerId,proto3" json:"worker_id,omitempty"`
+	LeasedAt        *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=leased_at,json=leasedAt,proto3" json:"leased_at,omitempty"`
+	StartedAt       *timestamppb.Timestamp `protobuf:"bytes,11,opt,name=started_at,json=startedAt,proto3" json:"started_at,omitempty"`
+	CompletedAt     *timestamppb.Timestamp `protobuf:"bytes,12,opt,name=completed_at,json=completedAt,proto3" json:"completed_at,omitempty"`
+	Outputs         []*v1.ArtifactRef      `protobuf:"bytes,13,rep,name=outputs,proto3" json:"outputs,omitempty"`
+	Error           *v11.ErrorDetail       `protobuf:"bytes,14,opt,name=error,proto3" json:"error,omitempty"`
+	ResourceVersion int64                  `protobuf:"varint,15,opt,name=resource_version,json=resourceVersion,proto3" json:"resource_version,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *Attempt) Reset() {
@@ -84,33 +161,125 @@ func (x *Attempt) GetLeaseEpoch() uint64 {
 	return 0
 }
 
-func (x *Attempt) GetState() string {
+func (x *Attempt) GetState() AttemptState {
 	if x != nil {
 		return x.State
+	}
+	return AttemptState_ATTEMPT_STATE_UNSPECIFIED
+}
+
+func (x *Attempt) GetLeaseExpiresAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.LeaseExpiresAt
+	}
+	return nil
+}
+
+func (x *Attempt) GetTenantId() string {
+	if x != nil {
+		return x.TenantId
 	}
 	return ""
 }
 
-func (x *Attempt) GetLeaseExpiresAtUtc() string {
+func (x *Attempt) GetProjectId() string {
 	if x != nil {
-		return x.LeaseExpiresAtUtc
+		return x.ProjectId
 	}
 	return ""
+}
+
+func (x *Attempt) GetJobId() string {
+	if x != nil {
+		return x.JobId
+	}
+	return ""
+}
+
+func (x *Attempt) GetWorkerId() string {
+	if x != nil {
+		return x.WorkerId
+	}
+	return ""
+}
+
+func (x *Attempt) GetLeasedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.LeasedAt
+	}
+	return nil
+}
+
+func (x *Attempt) GetStartedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.StartedAt
+	}
+	return nil
+}
+
+func (x *Attempt) GetCompletedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.CompletedAt
+	}
+	return nil
+}
+
+func (x *Attempt) GetOutputs() []*v1.ArtifactRef {
+	if x != nil {
+		return x.Outputs
+	}
+	return nil
+}
+
+func (x *Attempt) GetError() *v11.ErrorDetail {
+	if x != nil {
+		return x.Error
+	}
+	return nil
+}
+
+func (x *Attempt) GetResourceVersion() int64 {
+	if x != nil {
+		return x.ResourceVersion
+	}
+	return 0
 }
 
 var File_proto_mindclade_job_v1_attempt_proto protoreflect.FileDescriptor
 
 const file_proto_mindclade_job_v1_attempt_proto_rawDesc = "" +
 	"\n" +
-	"$proto/mindclade/job/v1/attempt.proto\x12\x10mindclade.job.v1\"\xa7\x01\n" +
+	"$proto/mindclade/job/v1/attempt.proto\x12\x10mindclade.job.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a4proto/mindclade/artifact/v1/artifact_reference.proto\x1a,proto/mindclade/common/v1/error_detail.proto\"\xa0\x05\n" +
 	"\aAttempt\x12\x1d\n" +
 	"\n" +
 	"attempt_id\x18\x01 \x01(\tR\tattemptId\x12\x15\n" +
 	"\x06run_id\x18\x02 \x01(\tR\x05runId\x12\x1f\n" +
 	"\vlease_epoch\x18\x03 \x01(\x04R\n" +
-	"leaseEpoch\x12\x14\n" +
-	"\x05state\x18\x04 \x01(\tR\x05state\x12/\n" +
-	"\x14lease_expires_at_utc\x18\x05 \x01(\tR\x11leaseExpiresAtUtcBDZBgithub.com/mindclade/mindclade/protocols/generated/go/job/v1;jobv1b\x06proto3"
+	"leaseEpoch\x124\n" +
+	"\x05state\x18\x04 \x01(\x0e2\x1e.mindclade.job.v1.AttemptStateR\x05state\x12D\n" +
+	"\x10lease_expires_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\x0eleaseExpiresAt\x12\x1b\n" +
+	"\ttenant_id\x18\x06 \x01(\tR\btenantId\x12\x1d\n" +
+	"\n" +
+	"project_id\x18\a \x01(\tR\tprojectId\x12\x15\n" +
+	"\x06job_id\x18\b \x01(\tR\x05jobId\x12\x1b\n" +
+	"\tworker_id\x18\t \x01(\tR\bworkerId\x127\n" +
+	"\tleased_at\x18\n" +
+	" \x01(\v2\x1a.google.protobuf.TimestampR\bleasedAt\x129\n" +
+	"\n" +
+	"started_at\x18\v \x01(\v2\x1a.google.protobuf.TimestampR\tstartedAt\x12=\n" +
+	"\fcompleted_at\x18\f \x01(\v2\x1a.google.protobuf.TimestampR\vcompletedAt\x12<\n" +
+	"\aoutputs\x18\r \x03(\v2\".mindclade.artifact.v1.ArtifactRefR\aoutputs\x126\n" +
+	"\x05error\x18\x0e \x01(\v2 .mindclade.common.v1.ErrorDetailR\x05error\x12)\n" +
+	"\x10resource_version\x18\x0f \x01(\x03R\x0fresourceVersion*\xed\x01\n" +
+	"\fAttemptState\x12\x1d\n" +
+	"\x19ATTEMPT_STATE_UNSPECIFIED\x10\x00\x12\x18\n" +
+	"\x14ATTEMPT_STATE_LEASED\x10\x01\x12\x19\n" +
+	"\x15ATTEMPT_STATE_RUNNING\x10\x02\x12\x1b\n" +
+	"\x17ATTEMPT_STATE_SUCCEEDED\x10\x03\x12\x18\n" +
+	"\x14ATTEMPT_STATE_FAILED\x10\x04\x12\x1b\n" +
+	"\x17ATTEMPT_STATE_CANCELLED\x10\x05\x12\x18\n" +
+	"\x14ATTEMPT_STATE_FENCED\x10\x06\x12\x1b\n" +
+	"\x17ATTEMPT_STATE_TIMED_OUT\x10\aBDZBgithub.com/mindclade/mindclade/protocols/generated/go/job/v1;jobv1b\x06proto3"
 
 var (
 	file_proto_mindclade_job_v1_attempt_proto_rawDescOnce sync.Once
@@ -124,16 +293,28 @@ func file_proto_mindclade_job_v1_attempt_proto_rawDescGZIP() []byte {
 	return file_proto_mindclade_job_v1_attempt_proto_rawDescData
 }
 
+var file_proto_mindclade_job_v1_attempt_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
 var file_proto_mindclade_job_v1_attempt_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
 var file_proto_mindclade_job_v1_attempt_proto_goTypes = []any{
-	(*Attempt)(nil), // 0: mindclade.job.v1.Attempt
+	(AttemptState)(0),             // 0: mindclade.job.v1.AttemptState
+	(*Attempt)(nil),               // 1: mindclade.job.v1.Attempt
+	(*timestamppb.Timestamp)(nil), // 2: google.protobuf.Timestamp
+	(*v1.ArtifactRef)(nil),        // 3: mindclade.artifact.v1.ArtifactRef
+	(*v11.ErrorDetail)(nil),       // 4: mindclade.common.v1.ErrorDetail
 }
 var file_proto_mindclade_job_v1_attempt_proto_depIdxs = []int32{
-	0, // [0:0] is the sub-list for method output_type
-	0, // [0:0] is the sub-list for method input_type
-	0, // [0:0] is the sub-list for extension type_name
-	0, // [0:0] is the sub-list for extension extendee
-	0, // [0:0] is the sub-list for field type_name
+	0, // 0: mindclade.job.v1.Attempt.state:type_name -> mindclade.job.v1.AttemptState
+	2, // 1: mindclade.job.v1.Attempt.lease_expires_at:type_name -> google.protobuf.Timestamp
+	2, // 2: mindclade.job.v1.Attempt.leased_at:type_name -> google.protobuf.Timestamp
+	2, // 3: mindclade.job.v1.Attempt.started_at:type_name -> google.protobuf.Timestamp
+	2, // 4: mindclade.job.v1.Attempt.completed_at:type_name -> google.protobuf.Timestamp
+	3, // 5: mindclade.job.v1.Attempt.outputs:type_name -> mindclade.artifact.v1.ArtifactRef
+	4, // 6: mindclade.job.v1.Attempt.error:type_name -> mindclade.common.v1.ErrorDetail
+	7, // [7:7] is the sub-list for method output_type
+	7, // [7:7] is the sub-list for method input_type
+	7, // [7:7] is the sub-list for extension type_name
+	7, // [7:7] is the sub-list for extension extendee
+	0, // [0:7] is the sub-list for field type_name
 }
 
 func init() { file_proto_mindclade_job_v1_attempt_proto_init() }
@@ -146,13 +327,14 @@ func file_proto_mindclade_job_v1_attempt_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_mindclade_job_v1_attempt_proto_rawDesc), len(file_proto_mindclade_job_v1_attempt_proto_rawDesc)),
-			NumEnums:      0,
+			NumEnums:      1,
 			NumMessages:   1,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
 		GoTypes:           file_proto_mindclade_job_v1_attempt_proto_goTypes,
 		DependencyIndexes: file_proto_mindclade_job_v1_attempt_proto_depIdxs,
+		EnumInfos:         file_proto_mindclade_job_v1_attempt_proto_enumTypes,
 		MessageInfos:      file_proto_mindclade_job_v1_attempt_proto_msgTypes,
 	}.Build()
 	File_proto_mindclade_job_v1_attempt_proto = out.File

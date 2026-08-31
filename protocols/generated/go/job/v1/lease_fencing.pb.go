@@ -9,6 +9,7 @@ package jobv1
 import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
@@ -23,14 +24,17 @@ const (
 
 // Lease fencing receipt required for worker completion acceptance.
 type LeaseFence struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	JobId         string                 `protobuf:"bytes,1,opt,name=job_id,json=jobId,proto3" json:"job_id,omitempty"`
-	RunId         string                 `protobuf:"bytes,2,opt,name=run_id,json=runId,proto3" json:"run_id,omitempty"`
-	AttemptId     string                 `protobuf:"bytes,3,opt,name=attempt_id,json=attemptId,proto3" json:"attempt_id,omitempty"`
-	LeaseEpoch    uint64                 `protobuf:"varint,4,opt,name=lease_epoch,json=leaseEpoch,proto3" json:"lease_epoch,omitempty"`
-	DeadlineUtc   string                 `protobuf:"bytes,5,opt,name=deadline_utc,json=deadlineUtc,proto3" json:"deadline_utc,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	JobId            string                 `protobuf:"bytes,1,opt,name=job_id,json=jobId,proto3" json:"job_id,omitempty"`
+	RunId            string                 `protobuf:"bytes,2,opt,name=run_id,json=runId,proto3" json:"run_id,omitempty"`
+	AttemptId        string                 `protobuf:"bytes,3,opt,name=attempt_id,json=attemptId,proto3" json:"attempt_id,omitempty"`
+	LeaseEpoch       uint64                 `protobuf:"varint,4,opt,name=lease_epoch,json=leaseEpoch,proto3" json:"lease_epoch,omitempty"`
+	Deadline         *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=deadline,proto3" json:"deadline,omitempty"`
+	TenantId         string                 `protobuf:"bytes,6,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
+	ProjectId        string                 `protobuf:"bytes,7,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
+	LeaseTokenDigest string                 `protobuf:"bytes,8,opt,name=lease_token_digest,json=leaseTokenDigest,proto3" json:"lease_token_digest,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *LeaseFence) Reset() {
@@ -91,9 +95,30 @@ func (x *LeaseFence) GetLeaseEpoch() uint64 {
 	return 0
 }
 
-func (x *LeaseFence) GetDeadlineUtc() string {
+func (x *LeaseFence) GetDeadline() *timestamppb.Timestamp {
 	if x != nil {
-		return x.DeadlineUtc
+		return x.Deadline
+	}
+	return nil
+}
+
+func (x *LeaseFence) GetTenantId() string {
+	if x != nil {
+		return x.TenantId
+	}
+	return ""
+}
+
+func (x *LeaseFence) GetProjectId() string {
+	if x != nil {
+		return x.ProjectId
+	}
+	return ""
+}
+
+func (x *LeaseFence) GetLeaseTokenDigest() string {
+	if x != nil {
+		return x.LeaseTokenDigest
 	}
 	return ""
 }
@@ -102,7 +127,7 @@ var File_proto_mindclade_job_v1_lease_fencing_proto protoreflect.FileDescriptor
 
 const file_proto_mindclade_job_v1_lease_fencing_proto_rawDesc = "" +
 	"\n" +
-	"*proto/mindclade/job/v1/lease_fencing.proto\x12\x10mindclade.job.v1\"\x9d\x01\n" +
+	"*proto/mindclade/job/v1/lease_fencing.proto\x12\x10mindclade.job.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\x9c\x02\n" +
 	"\n" +
 	"LeaseFence\x12\x15\n" +
 	"\x06job_id\x18\x01 \x01(\tR\x05jobId\x12\x15\n" +
@@ -110,8 +135,12 @@ const file_proto_mindclade_job_v1_lease_fencing_proto_rawDesc = "" +
 	"\n" +
 	"attempt_id\x18\x03 \x01(\tR\tattemptId\x12\x1f\n" +
 	"\vlease_epoch\x18\x04 \x01(\x04R\n" +
-	"leaseEpoch\x12!\n" +
-	"\fdeadline_utc\x18\x05 \x01(\tR\vdeadlineUtcBDZBgithub.com/mindclade/mindclade/protocols/generated/go/job/v1;jobv1b\x06proto3"
+	"leaseEpoch\x126\n" +
+	"\bdeadline\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\bdeadline\x12\x1b\n" +
+	"\ttenant_id\x18\x06 \x01(\tR\btenantId\x12\x1d\n" +
+	"\n" +
+	"project_id\x18\a \x01(\tR\tprojectId\x12,\n" +
+	"\x12lease_token_digest\x18\b \x01(\tR\x10leaseTokenDigestBDZBgithub.com/mindclade/mindclade/protocols/generated/go/job/v1;jobv1b\x06proto3"
 
 var (
 	file_proto_mindclade_job_v1_lease_fencing_proto_rawDescOnce sync.Once
@@ -127,14 +156,16 @@ func file_proto_mindclade_job_v1_lease_fencing_proto_rawDescGZIP() []byte {
 
 var file_proto_mindclade_job_v1_lease_fencing_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
 var file_proto_mindclade_job_v1_lease_fencing_proto_goTypes = []any{
-	(*LeaseFence)(nil), // 0: mindclade.job.v1.LeaseFence
+	(*LeaseFence)(nil),            // 0: mindclade.job.v1.LeaseFence
+	(*timestamppb.Timestamp)(nil), // 1: google.protobuf.Timestamp
 }
 var file_proto_mindclade_job_v1_lease_fencing_proto_depIdxs = []int32{
-	0, // [0:0] is the sub-list for method output_type
-	0, // [0:0] is the sub-list for method input_type
-	0, // [0:0] is the sub-list for extension type_name
-	0, // [0:0] is the sub-list for extension extendee
-	0, // [0:0] is the sub-list for field type_name
+	1, // 0: mindclade.job.v1.LeaseFence.deadline:type_name -> google.protobuf.Timestamp
+	1, // [1:1] is the sub-list for method output_type
+	1, // [1:1] is the sub-list for method input_type
+	1, // [1:1] is the sub-list for extension type_name
+	1, // [1:1] is the sub-list for extension extendee
+	0, // [0:1] is the sub-list for field type_name
 }
 
 func init() { file_proto_mindclade_job_v1_lease_fencing_proto_init() }

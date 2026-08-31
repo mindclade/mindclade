@@ -22,10 +22,11 @@ _runtime_version.ValidateProtobufRuntimeVersion(
 _sym_db = _symbol_database.Default()
 
 
+from artifact.v1 import artifact_reference_pb2 as proto_dot_mindclade_dot_artifact_dot_v1_dot_artifact__reference__pb2
 from common.v1 import command_context_pb2 as proto_dot_mindclade_dot_common_dot_v1_dot_command__context__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n)proto/mindclade/job/v1/job_commands.proto\x12\x10mindclade.job.v1\x1a/proto/mindclade/common/v1/command_context.proto\"\xc3\x01\n\x11RequestJobCommand\x12=\n\x07\x63ontext\x18\x01 \x01(\x0b\x32#.mindclade.common.v1.CommandContextR\x07\x63ontext\x12\x19\n\x08job_kind\x18\x02 \x01(\tR\x07jobKind\x12!\n\x0cinput_digest\x18\x03 \x01(\tR\x0binputDigest\x12\x31\n\x14\x63onfiguration_digest\x18\x04 \x01(\tR\x13\x63onfigurationDigestBDZBgithub.com/mindclade/mindclade/protocols/generated/go/job/v1;jobv1b\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n)proto/mindclade/job/v1/job_commands.proto\x12\x10mindclade.job.v1\x1a\x34proto/mindclade/artifact/v1/artifact_reference.proto\x1a/proto/mindclade/common/v1/command_context.proto\"\x9b\x02\n\x11RequestJobCommand\x12=\n\x07\x63ontext\x18\x01 \x01(\x0b\x32#.mindclade.common.v1.CommandContextR\x07\x63ontext\x12\x19\n\x08job_kind\x18\x02 \x01(\tR\x07jobKind\x12\x38\n\x05input\x18\x03 \x01(\x0b\x32\".mindclade.artifact.v1.ArtifactRefR\x05input\x12H\n\rconfiguration\x18\x04 \x01(\x0b\x32\".mindclade.artifact.v1.ArtifactRefR\rconfiguration\x12(\n\x10requested_job_id\x18\x05 \x01(\tR\x0erequestedJobIdBDZBgithub.com/mindclade/mindclade/protocols/generated/go/job/v1;jobv1b\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -33,6 +34,6 @@ _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'job.v1.job_commands_pb2', _
 if not _descriptor._USE_C_DESCRIPTORS:
   _globals['DESCRIPTOR']._loaded_options = None
   _globals['DESCRIPTOR']._serialized_options = b'ZBgithub.com/mindclade/mindclade/protocols/generated/go/job/v1;jobv1'
-  _globals['_REQUESTJOBCOMMAND']._serialized_start=113
-  _globals['_REQUESTJOBCOMMAND']._serialized_end=308
+  _globals['_REQUESTJOBCOMMAND']._serialized_start=167
+  _globals['_REQUESTJOBCOMMAND']._serialized_end=450
 # @@protoc_insertion_point(module_scope)

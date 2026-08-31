@@ -5,7 +5,12 @@ rust_library(
     crate_name = "mindclade_protocols",
     edition = "2024",
     srcs = glob(["**/*.rs"]),
-    deps = ["@crate_index//:protobuf"],
+    deps = [
+        "@crate_index//:prost",
+        "@crate_index//:prost-types",
+        "@crate_index//:tonic",
+        "@crate_index//:tonic-prost",
+    ],
     visibility = ["//visibility:public"],
 )
 

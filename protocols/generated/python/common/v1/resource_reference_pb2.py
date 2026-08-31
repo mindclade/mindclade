@@ -24,7 +24,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n2proto/mindclade/common/v1/resource_reference.proto\x12\x13mindclade.common.v1\"\x9b\x01\n\x0bResourceRef\x12#\n\rresource_type\x18\x01 \x01(\tR\x0cresourceType\x12\x1f\n\x0bresource_id\x18\x02 \x01(\tR\nresourceId\x12\x1b\n\ttenant_id\x18\x03 \x01(\tR\x08tenantId\x12)\n\x10resource_version\x18\x04 \x01(\x03R\x0fresourceVersionBJZHgithub.com/mindclade/mindclade/protocols/generated/go/common/v1;commonv1b\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n2proto/mindclade/common/v1/resource_reference.proto\x12\x13mindclade.common.v1\"\xe2\x01\n\x0bResourceRef\x12#\n\rresource_type\x18\x01 \x01(\tR\x0cresourceType\x12\x1f\n\x0bresource_id\x18\x02 \x01(\tR\nresourceId\x12\x1b\n\ttenant_id\x18\x03 \x01(\tR\x08tenantId\x12\x1d\n\nproject_id\x18\x04 \x01(\tR\tprojectId\x12)\n\x10resource_version\x18\x05 \x01(\x03R\x0fresourceVersion\x12\x12\n\x04name\x18\x06 \x01(\tR\x04name\x12\x12\n\x04\x65tag\x18\x07 \x01(\tR\x04\x65tagBJZHgithub.com/mindclade/mindclade/protocols/generated/go/common/v1;commonv1b\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -33,5 +33,5 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['DESCRIPTOR']._loaded_options = None
   _globals['DESCRIPTOR']._serialized_options = b'ZHgithub.com/mindclade/mindclade/protocols/generated/go/common/v1;commonv1'
   _globals['_RESOURCEREF']._serialized_start=76
-  _globals['_RESOURCEREF']._serialized_end=231
+  _globals['_RESOURCEREF']._serialized_end=302
 # @@protoc_insertion_point(module_scope)

@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file proto/mindclade/common/v1/resource_reference.proto.
  */
 export const file_proto_mindclade_common_v1_resource_reference: GenFile = /*@__PURE__*/
-  fileDesc("CjJwcm90by9taW5kY2xhZGUvY29tbW9uL3YxL3Jlc291cmNlX3JlZmVyZW5jZS5wcm90bxITbWluZGNsYWRlLmNvbW1vbi52MSJmCgtSZXNvdXJjZVJlZhIVCg1yZXNvdXJjZV90eXBlGAEgASgJEhMKC3Jlc291cmNlX2lkGAIgASgJEhEKCXRlbmFudF9pZBgDIAEoCRIYChByZXNvdXJjZV92ZXJzaW9uGAQgASgDQkpaSGdpdGh1Yi5jb20vbWluZGNsYWRlL21pbmRjbGFkZS9wcm90b2NvbHMvZ2VuZXJhdGVkL2dvL2NvbW1vbi92MTtjb21tb252MWIGcHJvdG8z");
+  fileDesc("CjJwcm90by9taW5kY2xhZGUvY29tbW9uL3YxL3Jlc291cmNlX3JlZmVyZW5jZS5wcm90bxITbWluZGNsYWRlLmNvbW1vbi52MSKWAQoLUmVzb3VyY2VSZWYSFQoNcmVzb3VyY2VfdHlwZRgBIAEoCRITCgtyZXNvdXJjZV9pZBgCIAEoCRIRCgl0ZW5hbnRfaWQYAyABKAkSEgoKcHJvamVjdF9pZBgEIAEoCRIYChByZXNvdXJjZV92ZXJzaW9uGAUgASgDEgwKBG5hbWUYBiABKAkSDAoEZXRhZxgHIAEoCUJKWkhnaXRodWIuY29tL21pbmRjbGFkZS9taW5kY2xhZGUvcHJvdG9jb2xzL2dlbmVyYXRlZC9nby9jb21tb24vdjE7Y29tbW9udjFiBnByb3RvMw");
 
 /**
  * ResourceRef separates immutable logical identity from a mutable locator.
@@ -34,9 +34,24 @@ export type ResourceRef = Message<"mindclade.common.v1.ResourceRef"> & {
   tenantId: string;
 
   /**
-   * @generated from field: int64 resource_version = 4;
+   * @generated from field: string project_id = 4;
+   */
+  projectId: string;
+
+  /**
+   * @generated from field: int64 resource_version = 5;
    */
   resourceVersion: bigint;
+
+  /**
+   * @generated from field: string name = 6;
+   */
+  name: string;
+
+  /**
+   * @generated from field: string etag = 7;
+   */
+  etag: string;
 };
 
 /**

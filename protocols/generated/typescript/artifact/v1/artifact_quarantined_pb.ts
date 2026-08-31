@@ -4,15 +4,13 @@
 
 import type { GenFile, GenMessage } from "@bufbuild/protobuf/codegenv2";
 import { fileDesc, messageDesc } from "@bufbuild/protobuf/codegenv2";
-import type { EventEnvelope } from "../../common/v1/event_envelope_pb.js";
-import { file_proto_mindclade_common_v1_event_envelope } from "../../common/v1/event_envelope_pb.js";
 import type { Message } from "@bufbuild/protobuf";
 
 /**
  * Describes the file events/mindclade/artifact/v1/artifact_quarantined.proto.
  */
 export const file_events_mindclade_artifact_v1_artifact_quarantined: GenFile = /*@__PURE__*/
-  fileDesc("CjdldmVudHMvbWluZGNsYWRlL2FydGlmYWN0L3YxL2FydGlmYWN0X3F1YXJhbnRpbmVkLnByb3RvEhxtaW5kY2xhZGUuZXZlbnRzLmFydGlmYWN0LnYxIpEBChNBcnRpZmFjdFF1YXJhbnRpbmVkEjQKCGVudmVsb3BlGAEgASgLMiIubWluZGNsYWRlLmNvbW1vbi52MS5FdmVudEVudmVsb3BlEhYKDnN1YmplY3RfZGlnZXN0GAIgASgJEhMKC3JlYXNvbl9jb2RlGAMgASgJEhcKD2V2aWRlbmNlX2RpZ2VzdBgEIAEoCUJOWkxnaXRodWIuY29tL21pbmRjbGFkZS9taW5kY2xhZGUvcHJvdG9jb2xzL2dlbmVyYXRlZC9nby9hcnRpZmFjdC92MTthcnRpZmFjdHYxYgZwcm90bzM", [file_proto_mindclade_common_v1_event_envelope]);
+  fileDesc("CjdldmVudHMvbWluZGNsYWRlL2FydGlmYWN0L3YxL2FydGlmYWN0X3F1YXJhbnRpbmVkLnByb3RvEhxtaW5kY2xhZGUuZXZlbnRzLmFydGlmYWN0LnYxIlsKE0FydGlmYWN0UXVhcmFudGluZWQSFgoOc3ViamVjdF9kaWdlc3QYASABKAkSEwoLcmVhc29uX2NvZGUYAiABKAkSFwoPZXZpZGVuY2VfZGlnZXN0GAMgASgJQk5aTGdpdGh1Yi5jb20vbWluZGNsYWRlL21pbmRjbGFkZS9wcm90b2NvbHMvZ2VuZXJhdGVkL2dvL2FydGlmYWN0L3YxO2FydGlmYWN0djFiBnByb3RvMw");
 
 /**
  * Immutable record that a subject could not be accepted into the artifact catalog.
@@ -21,22 +19,17 @@ export const file_events_mindclade_artifact_v1_artifact_quarantined: GenFile = /
  */
 export type ArtifactQuarantined = Message<"mindclade.events.artifact.v1.ArtifactQuarantined"> & {
   /**
-   * @generated from field: mindclade.common.v1.EventEnvelope envelope = 1;
-   */
-  envelope?: EventEnvelope;
-
-  /**
-   * @generated from field: string subject_digest = 2;
+   * @generated from field: string subject_digest = 1;
    */
   subjectDigest: string;
 
   /**
-   * @generated from field: string reason_code = 3;
+   * @generated from field: string reason_code = 2;
    */
   reasonCode: string;
 
   /**
-   * @generated from field: string evidence_digest = 4;
+   * @generated from field: string evidence_digest = 3;
    */
   evidenceDigest: string;
 };

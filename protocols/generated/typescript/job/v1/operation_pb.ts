@@ -2,15 +2,21 @@
 // @generated from file proto/mindclade/job/v1/operation.proto (package mindclade.job.v1, syntax proto3)
 /* eslint-disable */
 
-import type { GenFile, GenMessage } from "@bufbuild/protobuf/codegenv2";
-import { fileDesc, messageDesc } from "@bufbuild/protobuf/codegenv2";
+import type { GenEnum, GenFile, GenMessage } from "@bufbuild/protobuf/codegenv2";
+import { enumDesc, fileDesc, messageDesc } from "@bufbuild/protobuf/codegenv2";
+import type { Timestamp } from "@bufbuild/protobuf/wkt";
+import { file_google_protobuf_timestamp } from "@bufbuild/protobuf/wkt";
+import type { ArtifactRef } from "../../artifact/v1/artifact_reference_pb.js";
+import { file_proto_mindclade_artifact_v1_artifact_reference } from "../../artifact/v1/artifact_reference_pb.js";
+import type { ErrorDetail } from "../../common/v1/error_detail_pb.js";
+import { file_proto_mindclade_common_v1_error_detail } from "../../common/v1/error_detail_pb.js";
 import type { Message } from "@bufbuild/protobuf";
 
 /**
  * Describes the file proto/mindclade/job/v1/operation.proto.
  */
 export const file_proto_mindclade_job_v1_operation: GenFile = /*@__PURE__*/
-  fileDesc("CiZwcm90by9taW5kY2xhZGUvam9iL3YxL29wZXJhdGlvbi5wcm90bxIQbWluZGNsYWRlLmpvYi52MSKIAQoJT3BlcmF0aW9uEhQKDG9wZXJhdGlvbl9pZBgBIAEoCRIRCgl0ZW5hbnRfaWQYAiABKAkSDQoFc3RhdGUYAyABKAkSGAoQcmVzb3VyY2VfdmVyc2lvbhgEIAEoAxIVCg1yZXN1bHRfZGlnZXN0GAUgASgJEhIKCmVycm9yX2NvZGUYBiABKAlCRFpCZ2l0aHViLmNvbS9taW5kY2xhZGUvbWluZGNsYWRlL3Byb3RvY29scy9nZW5lcmF0ZWQvZ28vam9iL3YxO2pvYnYxYgZwcm90bzM");
+  fileDesc("CiZwcm90by9taW5kY2xhZGUvam9iL3YxL29wZXJhdGlvbi5wcm90bxIQbWluZGNsYWRlLmpvYi52MSKEAwoJT3BlcmF0aW9uEhQKDG9wZXJhdGlvbl9pZBgBIAEoCRIRCgl0ZW5hbnRfaWQYAiABKAkSLwoFc3RhdGUYAyABKA4yIC5taW5kY2xhZGUuam9iLnYxLk9wZXJhdGlvblN0YXRlEhgKEHJlc291cmNlX3ZlcnNpb24YBCABKAMSMgoGcmVzdWx0GAUgASgLMiIubWluZGNsYWRlLmFydGlmYWN0LnYxLkFydGlmYWN0UmVmEi8KBWVycm9yGAYgASgLMiAubWluZGNsYWRlLmNvbW1vbi52MS5FcnJvckRldGFpbBISCgpwcm9qZWN0X2lkGAcgASgJEg4KBmpvYl9pZBgIIAEoCRIuCgpjcmVhdGVkX2F0GAkgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIuCgp1cGRhdGVkX2F0GAogASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIMCgRkb25lGAsgASgIEgwKBGV0YWcYDCABKAkq5QEKDk9wZXJhdGlvblN0YXRlEh8KG09QRVJBVElPTl9TVEFURV9VTlNQRUNJRklFRBAAEhsKF09QRVJBVElPTl9TVEFURV9QRU5ESU5HEAESGwoXT1BFUkFUSU9OX1NUQVRFX1JVTk5JTkcQAhIdChlPUEVSQVRJT05fU1RBVEVfU1VDQ0VFREVEEAMSGgoWT1BFUkFUSU9OX1NUQVRFX0ZBSUxFRBAEEh4KGk9QRVJBVElPTl9TVEFURV9DQU5DRUxMSU5HEAUSHQoZT1BFUkFUSU9OX1NUQVRFX0NBTkNFTExFRBAGQkRaQmdpdGh1Yi5jb20vbWluZGNsYWRlL21pbmRjbGFkZS9wcm90b2NvbHMvZ2VuZXJhdGVkL2dvL2pvYi92MTtqb2J2MWIGcHJvdG8z", [file_google_protobuf_timestamp, file_proto_mindclade_artifact_v1_artifact_reference, file_proto_mindclade_common_v1_error_detail]);
 
 /**
  * Client-visible long-running command record.
@@ -29,9 +35,9 @@ export type Operation = Message<"mindclade.job.v1.Operation"> & {
   tenantId: string;
 
   /**
-   * @generated from field: string state = 3;
+   * @generated from field: mindclade.job.v1.OperationState state = 3;
    */
-  state: string;
+  state: OperationState;
 
   /**
    * @generated from field: int64 resource_version = 4;
@@ -39,14 +45,44 @@ export type Operation = Message<"mindclade.job.v1.Operation"> & {
   resourceVersion: bigint;
 
   /**
-   * @generated from field: string result_digest = 5;
+   * @generated from field: mindclade.artifact.v1.ArtifactRef result = 5;
    */
-  resultDigest: string;
+  result?: ArtifactRef;
 
   /**
-   * @generated from field: string error_code = 6;
+   * @generated from field: mindclade.common.v1.ErrorDetail error = 6;
    */
-  errorCode: string;
+  error?: ErrorDetail;
+
+  /**
+   * @generated from field: string project_id = 7;
+   */
+  projectId: string;
+
+  /**
+   * @generated from field: string job_id = 8;
+   */
+  jobId: string;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp created_at = 9;
+   */
+  createdAt?: Timestamp;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp updated_at = 10;
+   */
+  updatedAt?: Timestamp;
+
+  /**
+   * @generated from field: bool done = 11;
+   */
+  done: boolean;
+
+  /**
+   * @generated from field: string etag = 12;
+   */
+  etag: string;
 };
 
 /**
@@ -55,3 +91,49 @@ export type Operation = Message<"mindclade.job.v1.Operation"> & {
  */
 export const OperationSchema: GenMessage<Operation> = /*@__PURE__*/
   messageDesc(file_proto_mindclade_job_v1_operation, 0);
+
+/**
+ * @generated from enum mindclade.job.v1.OperationState
+ */
+export enum OperationState {
+  /**
+   * @generated from enum value: OPERATION_STATE_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: OPERATION_STATE_PENDING = 1;
+   */
+  PENDING = 1,
+
+  /**
+   * @generated from enum value: OPERATION_STATE_RUNNING = 2;
+   */
+  RUNNING = 2,
+
+  /**
+   * @generated from enum value: OPERATION_STATE_SUCCEEDED = 3;
+   */
+  SUCCEEDED = 3,
+
+  /**
+   * @generated from enum value: OPERATION_STATE_FAILED = 4;
+   */
+  FAILED = 4,
+
+  /**
+   * @generated from enum value: OPERATION_STATE_CANCELLING = 5;
+   */
+  CANCELLING = 5,
+
+  /**
+   * @generated from enum value: OPERATION_STATE_CANCELLED = 6;
+   */
+  CANCELLED = 6,
+}
+
+/**
+ * Describes the enum mindclade.job.v1.OperationState.
+ */
+export const OperationStateSchema: GenEnum<OperationState> = /*@__PURE__*/
+  enumDesc(file_proto_mindclade_job_v1_operation, 0);

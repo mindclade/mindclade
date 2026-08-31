@@ -22,9 +22,10 @@ _runtime_version.ValidateProtobufRuntimeVersion(
 _sym_db = _symbol_database.Default()
 
 
+from google.protobuf import timestamp_pb2 as google_dot_protobuf_dot_timestamp__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n*proto/mindclade/job/v1/lease_fencing.proto\x12\x10mindclade.job.v1\"\x9d\x01\n\nLeaseFence\x12\x15\n\x06job_id\x18\x01 \x01(\tR\x05jobId\x12\x15\n\x06run_id\x18\x02 \x01(\tR\x05runId\x12\x1d\n\nattempt_id\x18\x03 \x01(\tR\tattemptId\x12\x1f\n\x0blease_epoch\x18\x04 \x01(\x04R\nleaseEpoch\x12!\n\x0c\x64\x65\x61\x64line_utc\x18\x05 \x01(\tR\x0b\x64\x65\x61\x64lineUtcBDZBgithub.com/mindclade/mindclade/protocols/generated/go/job/v1;jobv1b\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n*proto/mindclade/job/v1/lease_fencing.proto\x12\x10mindclade.job.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\x9c\x02\n\nLeaseFence\x12\x15\n\x06job_id\x18\x01 \x01(\tR\x05jobId\x12\x15\n\x06run_id\x18\x02 \x01(\tR\x05runId\x12\x1d\n\nattempt_id\x18\x03 \x01(\tR\tattemptId\x12\x1f\n\x0blease_epoch\x18\x04 \x01(\x04R\nleaseEpoch\x12\x36\n\x08\x64\x65\x61\x64line\x18\x05 \x01(\x0b\x32\x1a.google.protobuf.TimestampR\x08\x64\x65\x61\x64line\x12\x1b\n\ttenant_id\x18\x06 \x01(\tR\x08tenantId\x12\x1d\n\nproject_id\x18\x07 \x01(\tR\tprojectId\x12,\n\x12lease_token_digest\x18\x08 \x01(\tR\x10leaseTokenDigestBDZBgithub.com/mindclade/mindclade/protocols/generated/go/job/v1;jobv1b\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -32,6 +33,6 @@ _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'job.v1.lease_fencing_pb2', 
 if not _descriptor._USE_C_DESCRIPTORS:
   _globals['DESCRIPTOR']._loaded_options = None
   _globals['DESCRIPTOR']._serialized_options = b'ZBgithub.com/mindclade/mindclade/protocols/generated/go/job/v1;jobv1'
-  _globals['_LEASEFENCE']._serialized_start=65
-  _globals['_LEASEFENCE']._serialized_end=222
+  _globals['_LEASEFENCE']._serialized_start=98
+  _globals['_LEASEFENCE']._serialized_end=382
 # @@protoc_insertion_point(module_scope)

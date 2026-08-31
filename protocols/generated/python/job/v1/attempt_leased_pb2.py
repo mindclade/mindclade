@@ -22,10 +22,9 @@ _runtime_version.ValidateProtobufRuntimeVersion(
 _sym_db = _symbol_database.Default()
 
 
-from common.v1 import event_envelope_pb2 as proto_dot_mindclade_dot_common_dot_v1_dot_event__envelope__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n,events/mindclade/job/v1/attempt_leased.proto\x12\x17mindclade.events.job.v1\x1a.proto/mindclade/common/v1/event_envelope.proto\"\xc0\x01\n\rAttemptLeased\x12>\n\x08\x65nvelope\x18\x01 \x01(\x0b\x32\".mindclade.common.v1.EventEnvelopeR\x08\x65nvelope\x12\x1d\n\nattempt_id\x18\x02 \x01(\tR\tattemptId\x12\x1f\n\x0blease_epoch\x18\x03 \x01(\x04R\nleaseEpoch\x12/\n\x14lease_expires_at_utc\x18\x04 \x01(\tR\x11leaseExpiresAtUtcBDZBgithub.com/mindclade/mindclade/protocols/generated/go/job/v1;jobv1b\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n,events/mindclade/job/v1/attempt_leased.proto\x12\x17mindclade.events.job.v1\"\x80\x01\n\rAttemptLeased\x12\x1d\n\nattempt_id\x18\x01 \x01(\tR\tattemptId\x12\x1f\n\x0blease_epoch\x18\x02 \x01(\x04R\nleaseEpoch\x12/\n\x14lease_expires_at_utc\x18\x03 \x01(\tR\x11leaseExpiresAtUtcBDZBgithub.com/mindclade/mindclade/protocols/generated/go/job/v1;jobv1b\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -33,6 +32,6 @@ _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'job.v1.attempt_leased_pb2',
 if not _descriptor._USE_C_DESCRIPTORS:
   _globals['DESCRIPTOR']._loaded_options = None
   _globals['DESCRIPTOR']._serialized_options = b'ZBgithub.com/mindclade/mindclade/protocols/generated/go/job/v1;jobv1'
-  _globals['_ATTEMPTLEASED']._serialized_start=122
-  _globals['_ATTEMPTLEASED']._serialized_end=314
+  _globals['_ATTEMPTLEASED']._serialized_start=74
+  _globals['_ATTEMPTLEASED']._serialized_end=202
 # @@protoc_insertion_point(module_scope)

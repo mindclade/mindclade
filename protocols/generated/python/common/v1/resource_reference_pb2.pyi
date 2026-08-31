@@ -1,0 +1,23 @@
+from google.protobuf import descriptor as _descriptor
+from google.protobuf import message as _message
+from typing import ClassVar as _ClassVar, Optional as _Optional
+
+DESCRIPTOR: _descriptor.FileDescriptor
+
+class ResourceRef(_message.Message):
+    __slots__ = ("resource_type", "resource_id", "tenant_id", "project_id", "resource_version", "name", "etag")
+    RESOURCE_TYPE_FIELD_NUMBER: _ClassVar[int]
+    RESOURCE_ID_FIELD_NUMBER: _ClassVar[int]
+    TENANT_ID_FIELD_NUMBER: _ClassVar[int]
+    PROJECT_ID_FIELD_NUMBER: _ClassVar[int]
+    RESOURCE_VERSION_FIELD_NUMBER: _ClassVar[int]
+    NAME_FIELD_NUMBER: _ClassVar[int]
+    ETAG_FIELD_NUMBER: _ClassVar[int]
+    resource_type: str
+    resource_id: str
+    tenant_id: str
+    project_id: str
+    resource_version: int
+    name: str
+    etag: str
+    def __init__(self, resource_type: _Optional[str] = ..., resource_id: _Optional[str] = ..., tenant_id: _Optional[str] = ..., project_id: _Optional[str] = ..., resource_version: _Optional[int] = ..., name: _Optional[str] = ..., etag: _Optional[str] = ...) -> None: ...

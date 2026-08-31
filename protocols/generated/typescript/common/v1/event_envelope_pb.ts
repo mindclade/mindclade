@@ -2,18 +2,24 @@
 // @generated from file proto/mindclade/common/v1/event_envelope.proto (package mindclade.common.v1, syntax proto3)
 /* eslint-disable */
 
-import type { GenFile, GenMessage } from "@bufbuild/protobuf/codegenv2";
-import { fileDesc, messageDesc } from "@bufbuild/protobuf/codegenv2";
+import type { GenEnum, GenFile, GenMessage } from "@bufbuild/protobuf/codegenv2";
+import { enumDesc, fileDesc, messageDesc } from "@bufbuild/protobuf/codegenv2";
+import type { Timestamp } from "@bufbuild/protobuf/wkt";
+import { file_google_protobuf_timestamp } from "@bufbuild/protobuf/wkt";
+import type { ResourceRef } from "./resource_reference_pb.js";
+import { file_proto_mindclade_common_v1_resource_reference } from "./resource_reference_pb.js";
 import type { Message } from "@bufbuild/protobuf";
 
 /**
  * Describes the file proto/mindclade/common/v1/event_envelope.proto.
  */
 export const file_proto_mindclade_common_v1_event_envelope: GenFile = /*@__PURE__*/
-  fileDesc("Ci5wcm90by9taW5kY2xhZGUvY29tbW9uL3YxL2V2ZW50X2VudmVsb3BlLnByb3RvEhNtaW5kY2xhZGUuY29tbW9uLnYxIrcBCg1FdmVudEVudmVsb3BlEhAKCGV2ZW50X2lkGAEgASgJEhIKCmV2ZW50X3R5cGUYAiABKAkSFQoNZXZlbnRfdmVyc2lvbhgDIAEoDRIXCg9vY2N1cnJlZF9hdF91dGMYBCABKAkSEQoJdGVuYW50X2lkGAUgASgJEhAKCHRyYWNlX2lkGAYgASgJEhMKC3N1YmplY3RfcmVmGAcgASgJEhYKDnBheWxvYWRfZGlnZXN0GAggASgJQkpaSGdpdGh1Yi5jb20vbWluZGNsYWRlL21pbmRjbGFkZS9wcm90b2NvbHMvZ2VuZXJhdGVkL2dvL2NvbW1vbi92MTtjb21tb252MWIGcHJvdG8z");
+  fileDesc("Ci5wcm90by9taW5kY2xhZGUvY29tbW9uL3YxL2V2ZW50X2VudmVsb3BlLnByb3RvEhNtaW5kY2xhZGUuY29tbW9uLnYxIs0ECg1FdmVudEVudmVsb3BlEhAKCGV2ZW50X2lkGAEgASgJEhIKCmV2ZW50X3R5cGUYAiABKAkSFQoNZXZlbnRfdmVyc2lvbhgDIAEoDRIvCgtvY2N1cnJlZF9hdBgEIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASEQoJdGVuYW50X2lkGAUgASgJEhAKCHRyYWNlX2lkGAYgASgJEjEKB3N1YmplY3QYByABKAsyIC5taW5kY2xhZGUuY29tbW9uLnYxLlJlc291cmNlUmVmEhYKDnBheWxvYWRfZGlnZXN0GAggASgJEg8KB3BheWxvYWQYCSABKAwSLwoLcmVjb3JkZWRfYXQYCiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhAKCHByb2R1Y2VyGAsgASgJEhIKCnByb2plY3RfaWQYDCABKAkSGgoSYWdncmVnYXRlX3NlcXVlbmNlGA0gASgEEhIKCnJlcXVlc3RfaWQYDiABKAkSFgoOY29ycmVsYXRpb25faWQYDyABKAkSFAoMY2F1c2F0aW9uX2lkGBAgASgJEg4KBmpvYl9pZBgRIAEoCRIOCgZydW5faWQYEiABKAkSGQoRZGVkdXBsaWNhdGlvbl9rZXkYEyABKAkSHAoUcGF5bG9hZF9jb250ZW50X3R5cGUYFCABKAkSPwoOY2xhc3NpZmljYXRpb24YFSABKA4yJy5taW5kY2xhZGUuY29tbW9uLnYxLkRhdGFDbGFzc2lmaWNhdGlvbiqfAQoSRGF0YUNsYXNzaWZpY2F0aW9uEiMKH0RBVEFfQ0xBU1NJRklDQVRJT05fVU5TUEVDSUZJRUQQABIeChpEQVRBX0NMQVNTSUZJQ0FUSU9OX1BVQkxJQxABEiAKHERBVEFfQ0xBU1NJRklDQVRJT05fSU5URVJOQUwQAhIiCh5EQVRBX0NMQVNTSUZJQ0FUSU9OX1JFU1RSSUNURUQQA0JKWkhnaXRodWIuY29tL21pbmRjbGFkZS9taW5kY2xhZGUvcHJvdG9jb2xzL2dlbmVyYXRlZC9nby9jb21tb24vdjE7Y29tbW9udjFiBnByb3RvMw", [file_google_protobuf_timestamp, file_proto_mindclade_common_v1_resource_reference]);
 
 /**
- * Envelope that makes at-least-once event delivery idempotent and traceable.
+ * Immutable transport envelope for outbox, queue, audit, replay, and DLQ
+ * records. payload is the deterministic serialization of event_type; its
+ * sha256 digest is carried independently so consumers can verify before use.
  *
  * @generated from message mindclade.common.v1.EventEnvelope
  */
@@ -34,9 +40,9 @@ export type EventEnvelope = Message<"mindclade.common.v1.EventEnvelope"> & {
   eventVersion: number;
 
   /**
-   * @generated from field: string occurred_at_utc = 4;
+   * @generated from field: google.protobuf.Timestamp occurred_at = 4;
    */
-  occurredAtUtc: string;
+  occurredAt?: Timestamp;
 
   /**
    * @generated from field: string tenant_id = 5;
@@ -49,14 +55,79 @@ export type EventEnvelope = Message<"mindclade.common.v1.EventEnvelope"> & {
   traceId: string;
 
   /**
-   * @generated from field: string subject_ref = 7;
+   * @generated from field: mindclade.common.v1.ResourceRef subject = 7;
    */
-  subjectRef: string;
+  subject?: ResourceRef;
 
   /**
    * @generated from field: string payload_digest = 8;
    */
   payloadDigest: string;
+
+  /**
+   * @generated from field: bytes payload = 9;
+   */
+  payload: Uint8Array;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp recorded_at = 10;
+   */
+  recordedAt?: Timestamp;
+
+  /**
+   * @generated from field: string producer = 11;
+   */
+  producer: string;
+
+  /**
+   * @generated from field: string project_id = 12;
+   */
+  projectId: string;
+
+  /**
+   * @generated from field: uint64 aggregate_sequence = 13;
+   */
+  aggregateSequence: bigint;
+
+  /**
+   * @generated from field: string request_id = 14;
+   */
+  requestId: string;
+
+  /**
+   * @generated from field: string correlation_id = 15;
+   */
+  correlationId: string;
+
+  /**
+   * @generated from field: string causation_id = 16;
+   */
+  causationId: string;
+
+  /**
+   * @generated from field: string job_id = 17;
+   */
+  jobId: string;
+
+  /**
+   * @generated from field: string run_id = 18;
+   */
+  runId: string;
+
+  /**
+   * @generated from field: string deduplication_key = 19;
+   */
+  deduplicationKey: string;
+
+  /**
+   * @generated from field: string payload_content_type = 20;
+   */
+  payloadContentType: string;
+
+  /**
+   * @generated from field: mindclade.common.v1.DataClassification classification = 21;
+   */
+  classification: DataClassification;
 };
 
 /**
@@ -65,3 +136,34 @@ export type EventEnvelope = Message<"mindclade.common.v1.EventEnvelope"> & {
  */
 export const EventEnvelopeSchema: GenMessage<EventEnvelope> = /*@__PURE__*/
   messageDesc(file_proto_mindclade_common_v1_event_envelope, 0);
+
+/**
+ * @generated from enum mindclade.common.v1.DataClassification
+ */
+export enum DataClassification {
+  /**
+   * @generated from enum value: DATA_CLASSIFICATION_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: DATA_CLASSIFICATION_PUBLIC = 1;
+   */
+  PUBLIC = 1,
+
+  /**
+   * @generated from enum value: DATA_CLASSIFICATION_INTERNAL = 2;
+   */
+  INTERNAL = 2,
+
+  /**
+   * @generated from enum value: DATA_CLASSIFICATION_RESTRICTED = 3;
+   */
+  RESTRICTED = 3,
+}
+
+/**
+ * Describes the enum mindclade.common.v1.DataClassification.
+ */
+export const DataClassificationSchema: GenEnum<DataClassification> = /*@__PURE__*/
+  enumDesc(file_proto_mindclade_common_v1_event_envelope, 0);

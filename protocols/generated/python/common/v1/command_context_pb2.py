@@ -22,9 +22,10 @@ _runtime_version.ValidateProtobufRuntimeVersion(
 _sym_db = _symbol_database.Default()
 
 
+from google.protobuf import timestamp_pb2 as google_dot_protobuf_dot_timestamp__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n/proto/mindclade/common/v1/command_context.proto\x12\x13mindclade.common.v1\"\xf3\x01\n\x0e\x43ommandContext\x12\x1d\n\nrequest_id\x18\x01 \x01(\tR\trequestId\x12\'\n\x0fidempotency_key\x18\x02 \x01(\tR\x0eidempotencyKey\x12!\n\x0cprincipal_id\x18\x03 \x01(\tR\x0bprincipalId\x12\x19\n\x08trace_id\x18\x04 \x01(\tR\x07traceId\x12!\n\x0c\x64\x65\x61\x64line_utc\x18\x05 \x01(\tR\x0b\x64\x65\x61\x64lineUtc\x12\x38\n\x18\x63\x61nonical_request_digest\x18\x06 \x01(\tR\x16\x63\x61nonicalRequestDigestBJZHgithub.com/mindclade/mindclade/protocols/generated/go/common/v1;commonv1b\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n/proto/mindclade/common/v1/command_context.proto\x12\x13mindclade.common.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xc2\x03\n\x0e\x43ommandContext\x12\x1d\n\nrequest_id\x18\x01 \x01(\tR\trequestId\x12\'\n\x0fidempotency_key\x18\x02 \x01(\tR\x0eidempotencyKey\x12!\n\x0cprincipal_id\x18\x03 \x01(\tR\x0bprincipalId\x12\x19\n\x08trace_id\x18\x04 \x01(\tR\x07traceId\x12\x36\n\x08\x64\x65\x61\x64line\x18\x05 \x01(\x0b\x32\x1a.google.protobuf.TimestampR\x08\x64\x65\x61\x64line\x12\x38\n\x18\x63\x61nonical_request_digest\x18\x06 \x01(\tR\x16\x63\x61nonicalRequestDigest\x12\x1b\n\ttenant_id\x18\x07 \x01(\tR\x08tenantId\x12\x1d\n\nproject_id\x18\x08 \x01(\tR\tprojectId\x12%\n\x0e\x63orrelation_id\x18\t \x01(\tR\rcorrelationId\x12!\n\x0c\x63\x61usation_id\x18\n \x01(\tR\x0b\x63\x61usationId\x12\x32\n\x15\x63\x61ncellation_token_id\x18\x0b \x01(\tR\x13\x63\x61ncellationTokenIdBJZHgithub.com/mindclade/mindclade/protocols/generated/go/common/v1;commonv1b\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -32,6 +33,6 @@ _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'common.v1.command_context_p
 if not _descriptor._USE_C_DESCRIPTORS:
   _globals['DESCRIPTOR']._loaded_options = None
   _globals['DESCRIPTOR']._serialized_options = b'ZHgithub.com/mindclade/mindclade/protocols/generated/go/common/v1;commonv1'
-  _globals['_COMMANDCONTEXT']._serialized_start=73
-  _globals['_COMMANDCONTEXT']._serialized_end=316
+  _globals['_COMMANDCONTEXT']._serialized_start=106
+  _globals['_COMMANDCONTEXT']._serialized_end=556
 # @@protoc_insertion_point(module_scope)

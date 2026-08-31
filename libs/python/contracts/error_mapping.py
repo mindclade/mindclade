@@ -22,6 +22,8 @@ from common.v1.error_detail_pb2 import (
     ERROR_CODE_UNSUPPORTED,
     RETRY_CLASS_NEVER,
     RETRY_CLASS_SAFE,
+)
+from common.v1.error_detail_pb2 import (
     ErrorDetail as ErrorDetail,
 )
 from common.v1.resource_reference_pb2 import ResourceRef
@@ -82,9 +84,7 @@ _PROTO_ERROR_CODES = {
 _ERROR_CODES_BY_PROTO = {value: key for key, value in _PROTO_ERROR_CODES.items()}
 
 
-def to_error_detail(
-    error: ContractError, *, subject: ResourceRef | None = None
-) -> ErrorDetail:
+def to_error_detail(error: ContractError, *, subject: ResourceRef | None = None) -> ErrorDetail:
     """Project an in-process exception into the authoritative generated wire type."""
     detail = ErrorDetail(
         code=_PROTO_ERROR_CODES[error.code],

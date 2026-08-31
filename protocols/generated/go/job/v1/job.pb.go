@@ -7,8 +7,10 @@
 package jobv1
 
 import (
+	v1 "github.com/mindclade/mindclade/protocols/generated/go/artifact/v1"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
@@ -21,15 +23,86 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+type JobState int32
+
+const (
+	JobState_JOB_STATE_UNSPECIFIED JobState = 0
+	JobState_JOB_STATE_ACCEPTED    JobState = 1
+	JobState_JOB_STATE_QUEUED      JobState = 2
+	JobState_JOB_STATE_RUNNING     JobState = 3
+	JobState_JOB_STATE_SUCCEEDED   JobState = 4
+	JobState_JOB_STATE_FAILED      JobState = 5
+	JobState_JOB_STATE_CANCELLING  JobState = 6
+	JobState_JOB_STATE_CANCELLED   JobState = 7
+)
+
+// Enum value maps for JobState.
+var (
+	JobState_name = map[int32]string{
+		0: "JOB_STATE_UNSPECIFIED",
+		1: "JOB_STATE_ACCEPTED",
+		2: "JOB_STATE_QUEUED",
+		3: "JOB_STATE_RUNNING",
+		4: "JOB_STATE_SUCCEEDED",
+		5: "JOB_STATE_FAILED",
+		6: "JOB_STATE_CANCELLING",
+		7: "JOB_STATE_CANCELLED",
+	}
+	JobState_value = map[string]int32{
+		"JOB_STATE_UNSPECIFIED": 0,
+		"JOB_STATE_ACCEPTED":    1,
+		"JOB_STATE_QUEUED":      2,
+		"JOB_STATE_RUNNING":     3,
+		"JOB_STATE_SUCCEEDED":   4,
+		"JOB_STATE_FAILED":      5,
+		"JOB_STATE_CANCELLING":  6,
+		"JOB_STATE_CANCELLED":   7,
+	}
+)
+
+func (x JobState) Enum() *JobState {
+	p := new(JobState)
+	*p = x
+	return p
+}
+
+func (x JobState) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (JobState) Descriptor() protoreflect.EnumDescriptor {
+	return file_proto_mindclade_job_v1_job_proto_enumTypes[0].Descriptor()
+}
+
+func (JobState) Type() protoreflect.EnumType {
+	return &file_proto_mindclade_job_v1_job_proto_enumTypes[0]
+}
+
+func (x JobState) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use JobState.Descriptor instead.
+func (JobState) EnumDescriptor() ([]byte, []int) {
+	return file_proto_mindclade_job_v1_job_proto_rawDescGZIP(), []int{0}
+}
+
 // Durable admitted work and policy/accounting boundary.
 type Job struct {
 	state           protoimpl.MessageState `protogen:"open.v1"`
 	JobId           string                 `protobuf:"bytes,1,opt,name=job_id,json=jobId,proto3" json:"job_id,omitempty"`
 	OperationId     string                 `protobuf:"bytes,2,opt,name=operation_id,json=operationId,proto3" json:"operation_id,omitempty"`
 	TenantId        string                 `protobuf:"bytes,3,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
-	State           string                 `protobuf:"bytes,4,opt,name=state,proto3" json:"state,omitempty"`
+	State           JobState               `protobuf:"varint,4,opt,name=state,proto3,enum=mindclade.job.v1.JobState" json:"state,omitempty"`
 	ResourceVersion int64                  `protobuf:"varint,5,opt,name=resource_version,json=resourceVersion,proto3" json:"resource_version,omitempty"`
 	PolicyDigest    string                 `protobuf:"bytes,6,opt,name=policy_digest,json=policyDigest,proto3" json:"policy_digest,omitempty"`
+	ProjectId       string                 `protobuf:"bytes,7,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
+	JobKind         string                 `protobuf:"bytes,8,opt,name=job_kind,json=jobKind,proto3" json:"job_kind,omitempty"`
+	Input           *v1.ArtifactRef        `protobuf:"bytes,9,opt,name=input,proto3" json:"input,omitempty"`
+	Configuration   *v1.ArtifactRef        `protobuf:"bytes,10,opt,name=configuration,proto3" json:"configuration,omitempty"`
+	CreatedAt       *timestamppb.Timestamp `protobuf:"bytes,11,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	UpdatedAt       *timestamppb.Timestamp `protobuf:"bytes,12,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	Etag            string                 `protobuf:"bytes,13,opt,name=etag,proto3" json:"etag,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -85,11 +158,11 @@ func (x *Job) GetTenantId() string {
 	return ""
 }
 
-func (x *Job) GetState() string {
+func (x *Job) GetState() JobState {
 	if x != nil {
 		return x.State
 	}
-	return ""
+	return JobState_JOB_STATE_UNSPECIFIED
 }
 
 func (x *Job) GetResourceVersion() int64 {
@@ -106,18 +179,87 @@ func (x *Job) GetPolicyDigest() string {
 	return ""
 }
 
+func (x *Job) GetProjectId() string {
+	if x != nil {
+		return x.ProjectId
+	}
+	return ""
+}
+
+func (x *Job) GetJobKind() string {
+	if x != nil {
+		return x.JobKind
+	}
+	return ""
+}
+
+func (x *Job) GetInput() *v1.ArtifactRef {
+	if x != nil {
+		return x.Input
+	}
+	return nil
+}
+
+func (x *Job) GetConfiguration() *v1.ArtifactRef {
+	if x != nil {
+		return x.Configuration
+	}
+	return nil
+}
+
+func (x *Job) GetCreatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return nil
+}
+
+func (x *Job) GetUpdatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.UpdatedAt
+	}
+	return nil
+}
+
+func (x *Job) GetEtag() string {
+	if x != nil {
+		return x.Etag
+	}
+	return ""
+}
+
 var File_proto_mindclade_job_v1_job_proto protoreflect.FileDescriptor
 
 const file_proto_mindclade_job_v1_job_proto_rawDesc = "" +
 	"\n" +
-	" proto/mindclade/job/v1/job.proto\x12\x10mindclade.job.v1\"\xc2\x01\n" +
+	" proto/mindclade/job/v1/job.proto\x12\x10mindclade.job.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a4proto/mindclade/artifact/v1/artifact_reference.proto\"\xa6\x04\n" +
 	"\x03Job\x12\x15\n" +
 	"\x06job_id\x18\x01 \x01(\tR\x05jobId\x12!\n" +
 	"\foperation_id\x18\x02 \x01(\tR\voperationId\x12\x1b\n" +
-	"\ttenant_id\x18\x03 \x01(\tR\btenantId\x12\x14\n" +
-	"\x05state\x18\x04 \x01(\tR\x05state\x12)\n" +
+	"\ttenant_id\x18\x03 \x01(\tR\btenantId\x120\n" +
+	"\x05state\x18\x04 \x01(\x0e2\x1a.mindclade.job.v1.JobStateR\x05state\x12)\n" +
 	"\x10resource_version\x18\x05 \x01(\x03R\x0fresourceVersion\x12#\n" +
-	"\rpolicy_digest\x18\x06 \x01(\tR\fpolicyDigestBDZBgithub.com/mindclade/mindclade/protocols/generated/go/job/v1;jobv1b\x06proto3"
+	"\rpolicy_digest\x18\x06 \x01(\tR\fpolicyDigest\x12\x1d\n" +
+	"\n" +
+	"project_id\x18\a \x01(\tR\tprojectId\x12\x19\n" +
+	"\bjob_kind\x18\b \x01(\tR\ajobKind\x128\n" +
+	"\x05input\x18\t \x01(\v2\".mindclade.artifact.v1.ArtifactRefR\x05input\x12H\n" +
+	"\rconfiguration\x18\n" +
+	" \x01(\v2\".mindclade.artifact.v1.ArtifactRefR\rconfiguration\x129\n" +
+	"\n" +
+	"created_at\x18\v \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
+	"\n" +
+	"updated_at\x18\f \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x12\x12\n" +
+	"\x04etag\x18\r \x01(\tR\x04etag*\xcc\x01\n" +
+	"\bJobState\x12\x19\n" +
+	"\x15JOB_STATE_UNSPECIFIED\x10\x00\x12\x16\n" +
+	"\x12JOB_STATE_ACCEPTED\x10\x01\x12\x14\n" +
+	"\x10JOB_STATE_QUEUED\x10\x02\x12\x15\n" +
+	"\x11JOB_STATE_RUNNING\x10\x03\x12\x17\n" +
+	"\x13JOB_STATE_SUCCEEDED\x10\x04\x12\x14\n" +
+	"\x10JOB_STATE_FAILED\x10\x05\x12\x18\n" +
+	"\x14JOB_STATE_CANCELLING\x10\x06\x12\x17\n" +
+	"\x13JOB_STATE_CANCELLED\x10\aBDZBgithub.com/mindclade/mindclade/protocols/generated/go/job/v1;jobv1b\x06proto3"
 
 var (
 	file_proto_mindclade_job_v1_job_proto_rawDescOnce sync.Once
@@ -131,16 +273,25 @@ func file_proto_mindclade_job_v1_job_proto_rawDescGZIP() []byte {
 	return file_proto_mindclade_job_v1_job_proto_rawDescData
 }
 
+var file_proto_mindclade_job_v1_job_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
 var file_proto_mindclade_job_v1_job_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
 var file_proto_mindclade_job_v1_job_proto_goTypes = []any{
-	(*Job)(nil), // 0: mindclade.job.v1.Job
+	(JobState)(0),                 // 0: mindclade.job.v1.JobState
+	(*Job)(nil),                   // 1: mindclade.job.v1.Job
+	(*v1.ArtifactRef)(nil),        // 2: mindclade.artifact.v1.ArtifactRef
+	(*timestamppb.Timestamp)(nil), // 3: google.protobuf.Timestamp
 }
 var file_proto_mindclade_job_v1_job_proto_depIdxs = []int32{
-	0, // [0:0] is the sub-list for method output_type
-	0, // [0:0] is the sub-list for method input_type
-	0, // [0:0] is the sub-list for extension type_name
-	0, // [0:0] is the sub-list for extension extendee
-	0, // [0:0] is the sub-list for field type_name
+	0, // 0: mindclade.job.v1.Job.state:type_name -> mindclade.job.v1.JobState
+	2, // 1: mindclade.job.v1.Job.input:type_name -> mindclade.artifact.v1.ArtifactRef
+	2, // 2: mindclade.job.v1.Job.configuration:type_name -> mindclade.artifact.v1.ArtifactRef
+	3, // 3: mindclade.job.v1.Job.created_at:type_name -> google.protobuf.Timestamp
+	3, // 4: mindclade.job.v1.Job.updated_at:type_name -> google.protobuf.Timestamp
+	5, // [5:5] is the sub-list for method output_type
+	5, // [5:5] is the sub-list for method input_type
+	5, // [5:5] is the sub-list for extension type_name
+	5, // [5:5] is the sub-list for extension extendee
+	0, // [0:5] is the sub-list for field type_name
 }
 
 func init() { file_proto_mindclade_job_v1_job_proto_init() }
@@ -153,13 +304,14 @@ func file_proto_mindclade_job_v1_job_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_mindclade_job_v1_job_proto_rawDesc), len(file_proto_mindclade_job_v1_job_proto_rawDesc)),
-			NumEnums:      0,
+			NumEnums:      1,
 			NumMessages:   1,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
 		GoTypes:           file_proto_mindclade_job_v1_job_proto_goTypes,
 		DependencyIndexes: file_proto_mindclade_job_v1_job_proto_depIdxs,
+		EnumInfos:         file_proto_mindclade_job_v1_job_proto_enumTypes,
 		MessageInfos:      file_proto_mindclade_job_v1_job_proto_msgTypes,
 	}.Build()
 	File_proto_mindclade_job_v1_job_proto = out.File

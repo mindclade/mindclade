@@ -1,0 +1,15 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "bindings",
+    srcs = ["dataset.pb.go", "dataset_commands.pb.go", "dataset_release.pb.go", "dataset_service.pb.go", "dataset_service_grpc.pb.go"],
+    importpath = "github.com/mindclade/mindclade/protocols/generated/go/dataset/v1",
+    deps = ["@org_golang_google_protobuf//reflect/protoreflect", "@org_golang_google_protobuf//runtime/protoimpl", "@org_golang_google_protobuf//types/known/fieldmaskpb", "@org_golang_google_protobuf//types/known/timestamppb", "@org_golang_google_grpc//:grpc", "@org_golang_google_grpc//codes", "@org_golang_google_grpc//status", "//protocols/generated/go/artifact/v1:bindings", "//protocols/generated/go/common/v1:bindings", "//protocols/generated/go/job/v1:bindings"],
+    visibility = ["//visibility:public"],
+)
+
+filegroup(
+    name = "generated_sources",
+    srcs = ["BUILD.bazel", "dataset.pb.go", "dataset_commands.pb.go", "dataset_release.pb.go", "dataset_service.pb.go", "dataset_service_grpc.pb.go"],
+    visibility = ["//visibility:public"],
+)

@@ -7,7 +7,6 @@
 package jobv1
 
 import (
-	v1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -24,11 +23,10 @@ const (
 
 type AttemptCompleted struct {
 	state                   protoimpl.MessageState `protogen:"open.v1"`
-	Envelope                *v1.EventEnvelope      `protobuf:"bytes,1,opt,name=envelope,proto3" json:"envelope,omitempty"`
-	AttemptId               string                 `protobuf:"bytes,2,opt,name=attempt_id,json=attemptId,proto3" json:"attempt_id,omitempty"`
-	LeaseEpoch              uint64                 `protobuf:"varint,3,opt,name=lease_epoch,json=leaseEpoch,proto3" json:"lease_epoch,omitempty"`
-	ResultDigest            string                 `protobuf:"bytes,4,opt,name=result_digest,json=resultDigest,proto3" json:"result_digest,omitempty"`
-	CompletionReceiptDigest string                 `protobuf:"bytes,5,opt,name=completion_receipt_digest,json=completionReceiptDigest,proto3" json:"completion_receipt_digest,omitempty"`
+	AttemptId               string                 `protobuf:"bytes,1,opt,name=attempt_id,json=attemptId,proto3" json:"attempt_id,omitempty"`
+	LeaseEpoch              uint64                 `protobuf:"varint,2,opt,name=lease_epoch,json=leaseEpoch,proto3" json:"lease_epoch,omitempty"`
+	ResultDigest            string                 `protobuf:"bytes,3,opt,name=result_digest,json=resultDigest,proto3" json:"result_digest,omitempty"`
+	CompletionReceiptDigest string                 `protobuf:"bytes,4,opt,name=completion_receipt_digest,json=completionReceiptDigest,proto3" json:"completion_receipt_digest,omitempty"`
 	unknownFields           protoimpl.UnknownFields
 	sizeCache               protoimpl.SizeCache
 }
@@ -63,13 +61,6 @@ func (*AttemptCompleted) Descriptor() ([]byte, []int) {
 	return file_events_mindclade_job_v1_attempt_completed_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *AttemptCompleted) GetEnvelope() *v1.EventEnvelope {
-	if x != nil {
-		return x.Envelope
-	}
-	return nil
-}
-
 func (x *AttemptCompleted) GetAttemptId() string {
 	if x != nil {
 		return x.AttemptId
@@ -102,15 +93,14 @@ var File_events_mindclade_job_v1_attempt_completed_proto protoreflect.FileDescri
 
 const file_events_mindclade_job_v1_attempt_completed_proto_rawDesc = "" +
 	"\n" +
-	"/events/mindclade/job/v1/attempt_completed.proto\x12\x17mindclade.events.job.v1\x1a.proto/mindclade/common/v1/event_envelope.proto\"\xf3\x01\n" +
-	"\x10AttemptCompleted\x12>\n" +
-	"\benvelope\x18\x01 \x01(\v2\".mindclade.common.v1.EventEnvelopeR\benvelope\x12\x1d\n" +
+	"/events/mindclade/job/v1/attempt_completed.proto\x12\x17mindclade.events.job.v1\"\xb3\x01\n" +
+	"\x10AttemptCompleted\x12\x1d\n" +
 	"\n" +
-	"attempt_id\x18\x02 \x01(\tR\tattemptId\x12\x1f\n" +
-	"\vlease_epoch\x18\x03 \x01(\x04R\n" +
+	"attempt_id\x18\x01 \x01(\tR\tattemptId\x12\x1f\n" +
+	"\vlease_epoch\x18\x02 \x01(\x04R\n" +
 	"leaseEpoch\x12#\n" +
-	"\rresult_digest\x18\x04 \x01(\tR\fresultDigest\x12:\n" +
-	"\x19completion_receipt_digest\x18\x05 \x01(\tR\x17completionReceiptDigestBDZBgithub.com/mindclade/mindclade/protocols/generated/go/job/v1;jobv1b\x06proto3"
+	"\rresult_digest\x18\x03 \x01(\tR\fresultDigest\x12:\n" +
+	"\x19completion_receipt_digest\x18\x04 \x01(\tR\x17completionReceiptDigestBDZBgithub.com/mindclade/mindclade/protocols/generated/go/job/v1;jobv1b\x06proto3"
 
 var (
 	file_events_mindclade_job_v1_attempt_completed_proto_rawDescOnce sync.Once
@@ -127,15 +117,13 @@ func file_events_mindclade_job_v1_attempt_completed_proto_rawDescGZIP() []byte {
 var file_events_mindclade_job_v1_attempt_completed_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
 var file_events_mindclade_job_v1_attempt_completed_proto_goTypes = []any{
 	(*AttemptCompleted)(nil), // 0: mindclade.events.job.v1.AttemptCompleted
-	(*v1.EventEnvelope)(nil), // 1: mindclade.common.v1.EventEnvelope
 }
 var file_events_mindclade_job_v1_attempt_completed_proto_depIdxs = []int32{
-	1, // 0: mindclade.events.job.v1.AttemptCompleted.envelope:type_name -> mindclade.common.v1.EventEnvelope
-	1, // [1:1] is the sub-list for method output_type
-	1, // [1:1] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	0, // [0:0] is the sub-list for method output_type
+	0, // [0:0] is the sub-list for method input_type
+	0, // [0:0] is the sub-list for extension type_name
+	0, // [0:0] is the sub-list for extension extendee
+	0, // [0:0] is the sub-list for field type_name
 }
 
 func init() { file_events_mindclade_job_v1_attempt_completed_proto_init() }

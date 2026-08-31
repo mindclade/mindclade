@@ -4,13 +4,15 @@
 
 import type { GenFile, GenMessage } from "@bufbuild/protobuf/codegenv2";
 import { fileDesc, messageDesc } from "@bufbuild/protobuf/codegenv2";
+import type { Timestamp } from "@bufbuild/protobuf/wkt";
+import { file_google_protobuf_timestamp } from "@bufbuild/protobuf/wkt";
 import type { Message } from "@bufbuild/protobuf";
 
 /**
  * Describes the file proto/mindclade/job/v1/lease_fencing.proto.
  */
 export const file_proto_mindclade_job_v1_lease_fencing: GenFile = /*@__PURE__*/
-  fileDesc("Cipwcm90by9taW5kY2xhZGUvam9iL3YxL2xlYXNlX2ZlbmNpbmcucHJvdG8SEG1pbmRjbGFkZS5qb2IudjEiawoKTGVhc2VGZW5jZRIOCgZqb2JfaWQYASABKAkSDgoGcnVuX2lkGAIgASgJEhIKCmF0dGVtcHRfaWQYAyABKAkSEwoLbGVhc2VfZXBvY2gYBCABKAQSFAoMZGVhZGxpbmVfdXRjGAUgASgJQkRaQmdpdGh1Yi5jb20vbWluZGNsYWRlL21pbmRjbGFkZS9wcm90b2NvbHMvZ2VuZXJhdGVkL2dvL2pvYi92MTtqb2J2MWIGcHJvdG8z");
+  fileDesc("Cipwcm90by9taW5kY2xhZGUvam9iL3YxL2xlYXNlX2ZlbmNpbmcucHJvdG8SEG1pbmRjbGFkZS5qb2IudjEixgEKCkxlYXNlRmVuY2USDgoGam9iX2lkGAEgASgJEg4KBnJ1bl9pZBgCIAEoCRISCgphdHRlbXB0X2lkGAMgASgJEhMKC2xlYXNlX2Vwb2NoGAQgASgEEiwKCGRlYWRsaW5lGAUgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIRCgl0ZW5hbnRfaWQYBiABKAkSEgoKcHJvamVjdF9pZBgHIAEoCRIaChJsZWFzZV90b2tlbl9kaWdlc3QYCCABKAlCRFpCZ2l0aHViLmNvbS9taW5kY2xhZGUvbWluZGNsYWRlL3Byb3RvY29scy9nZW5lcmF0ZWQvZ28vam9iL3YxO2pvYnYxYgZwcm90bzM", [file_google_protobuf_timestamp]);
 
 /**
  * Lease fencing receipt required for worker completion acceptance.
@@ -39,9 +41,24 @@ export type LeaseFence = Message<"mindclade.job.v1.LeaseFence"> & {
   leaseEpoch: bigint;
 
   /**
-   * @generated from field: string deadline_utc = 5;
+   * @generated from field: google.protobuf.Timestamp deadline = 5;
    */
-  deadlineUtc: string;
+  deadline?: Timestamp;
+
+  /**
+   * @generated from field: string tenant_id = 6;
+   */
+  tenantId: string;
+
+  /**
+   * @generated from field: string project_id = 7;
+   */
+  projectId: string;
+
+  /**
+   * @generated from field: string lease_token_digest = 8;
+   */
+  leaseTokenDigest: string;
 };
 
 /**

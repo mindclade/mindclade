@@ -9,6 +9,7 @@ package commonv1
 import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
@@ -21,19 +22,86 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// Envelope that makes at-least-once event delivery idempotent and traceable.
+type DataClassification int32
+
+const (
+	DataClassification_DATA_CLASSIFICATION_UNSPECIFIED DataClassification = 0
+	DataClassification_DATA_CLASSIFICATION_PUBLIC      DataClassification = 1
+	DataClassification_DATA_CLASSIFICATION_INTERNAL    DataClassification = 2
+	DataClassification_DATA_CLASSIFICATION_RESTRICTED  DataClassification = 3
+)
+
+// Enum value maps for DataClassification.
+var (
+	DataClassification_name = map[int32]string{
+		0: "DATA_CLASSIFICATION_UNSPECIFIED",
+		1: "DATA_CLASSIFICATION_PUBLIC",
+		2: "DATA_CLASSIFICATION_INTERNAL",
+		3: "DATA_CLASSIFICATION_RESTRICTED",
+	}
+	DataClassification_value = map[string]int32{
+		"DATA_CLASSIFICATION_UNSPECIFIED": 0,
+		"DATA_CLASSIFICATION_PUBLIC":      1,
+		"DATA_CLASSIFICATION_INTERNAL":    2,
+		"DATA_CLASSIFICATION_RESTRICTED":  3,
+	}
+)
+
+func (x DataClassification) Enum() *DataClassification {
+	p := new(DataClassification)
+	*p = x
+	return p
+}
+
+func (x DataClassification) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (DataClassification) Descriptor() protoreflect.EnumDescriptor {
+	return file_proto_mindclade_common_v1_event_envelope_proto_enumTypes[0].Descriptor()
+}
+
+func (DataClassification) Type() protoreflect.EnumType {
+	return &file_proto_mindclade_common_v1_event_envelope_proto_enumTypes[0]
+}
+
+func (x DataClassification) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use DataClassification.Descriptor instead.
+func (DataClassification) EnumDescriptor() ([]byte, []int) {
+	return file_proto_mindclade_common_v1_event_envelope_proto_rawDescGZIP(), []int{0}
+}
+
+// Immutable transport envelope for outbox, queue, audit, replay, and DLQ
+// records. payload is the deterministic serialization of event_type; its
+// sha256 digest is carried independently so consumers can verify before use.
 type EventEnvelope struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	EventId       string                 `protobuf:"bytes,1,opt,name=event_id,json=eventId,proto3" json:"event_id,omitempty"`
-	EventType     string                 `protobuf:"bytes,2,opt,name=event_type,json=eventType,proto3" json:"event_type,omitempty"`
-	EventVersion  uint32                 `protobuf:"varint,3,opt,name=event_version,json=eventVersion,proto3" json:"event_version,omitempty"`
-	OccurredAtUtc string                 `protobuf:"bytes,4,opt,name=occurred_at_utc,json=occurredAtUtc,proto3" json:"occurred_at_utc,omitempty"`
-	TenantId      string                 `protobuf:"bytes,5,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
-	TraceId       string                 `protobuf:"bytes,6,opt,name=trace_id,json=traceId,proto3" json:"trace_id,omitempty"`
-	SubjectRef    string                 `protobuf:"bytes,7,opt,name=subject_ref,json=subjectRef,proto3" json:"subject_ref,omitempty"`
-	PayloadDigest string                 `protobuf:"bytes,8,opt,name=payload_digest,json=payloadDigest,proto3" json:"payload_digest,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state              protoimpl.MessageState `protogen:"open.v1"`
+	EventId            string                 `protobuf:"bytes,1,opt,name=event_id,json=eventId,proto3" json:"event_id,omitempty"`
+	EventType          string                 `protobuf:"bytes,2,opt,name=event_type,json=eventType,proto3" json:"event_type,omitempty"`
+	EventVersion       uint32                 `protobuf:"varint,3,opt,name=event_version,json=eventVersion,proto3" json:"event_version,omitempty"`
+	OccurredAt         *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=occurred_at,json=occurredAt,proto3" json:"occurred_at,omitempty"`
+	TenantId           string                 `protobuf:"bytes,5,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
+	TraceId            string                 `protobuf:"bytes,6,opt,name=trace_id,json=traceId,proto3" json:"trace_id,omitempty"`
+	Subject            *ResourceRef           `protobuf:"bytes,7,opt,name=subject,proto3" json:"subject,omitempty"`
+	PayloadDigest      string                 `protobuf:"bytes,8,opt,name=payload_digest,json=payloadDigest,proto3" json:"payload_digest,omitempty"`
+	Payload            []byte                 `protobuf:"bytes,9,opt,name=payload,proto3" json:"payload,omitempty"`
+	RecordedAt         *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=recorded_at,json=recordedAt,proto3" json:"recorded_at,omitempty"`
+	Producer           string                 `protobuf:"bytes,11,opt,name=producer,proto3" json:"producer,omitempty"`
+	ProjectId          string                 `protobuf:"bytes,12,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
+	AggregateSequence  uint64                 `protobuf:"varint,13,opt,name=aggregate_sequence,json=aggregateSequence,proto3" json:"aggregate_sequence,omitempty"`
+	RequestId          string                 `protobuf:"bytes,14,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
+	CorrelationId      string                 `protobuf:"bytes,15,opt,name=correlation_id,json=correlationId,proto3" json:"correlation_id,omitempty"`
+	CausationId        string                 `protobuf:"bytes,16,opt,name=causation_id,json=causationId,proto3" json:"causation_id,omitempty"`
+	JobId              string                 `protobuf:"bytes,17,opt,name=job_id,json=jobId,proto3" json:"job_id,omitempty"`
+	RunId              string                 `protobuf:"bytes,18,opt,name=run_id,json=runId,proto3" json:"run_id,omitempty"`
+	DeduplicationKey   string                 `protobuf:"bytes,19,opt,name=deduplication_key,json=deduplicationKey,proto3" json:"deduplication_key,omitempty"`
+	PayloadContentType string                 `protobuf:"bytes,20,opt,name=payload_content_type,json=payloadContentType,proto3" json:"payload_content_type,omitempty"`
+	Classification     DataClassification     `protobuf:"varint,21,opt,name=classification,proto3,enum=mindclade.common.v1.DataClassification" json:"classification,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *EventEnvelope) Reset() {
@@ -87,11 +155,11 @@ func (x *EventEnvelope) GetEventVersion() uint32 {
 	return 0
 }
 
-func (x *EventEnvelope) GetOccurredAtUtc() string {
+func (x *EventEnvelope) GetOccurredAt() *timestamppb.Timestamp {
 	if x != nil {
-		return x.OccurredAtUtc
+		return x.OccurredAt
 	}
-	return ""
+	return nil
 }
 
 func (x *EventEnvelope) GetTenantId() string {
@@ -108,11 +176,11 @@ func (x *EventEnvelope) GetTraceId() string {
 	return ""
 }
 
-func (x *EventEnvelope) GetSubjectRef() string {
+func (x *EventEnvelope) GetSubject() *ResourceRef {
 	if x != nil {
-		return x.SubjectRef
+		return x.Subject
 	}
-	return ""
+	return nil
 }
 
 func (x *EventEnvelope) GetPayloadDigest() string {
@@ -122,22 +190,135 @@ func (x *EventEnvelope) GetPayloadDigest() string {
 	return ""
 }
 
+func (x *EventEnvelope) GetPayload() []byte {
+	if x != nil {
+		return x.Payload
+	}
+	return nil
+}
+
+func (x *EventEnvelope) GetRecordedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.RecordedAt
+	}
+	return nil
+}
+
+func (x *EventEnvelope) GetProducer() string {
+	if x != nil {
+		return x.Producer
+	}
+	return ""
+}
+
+func (x *EventEnvelope) GetProjectId() string {
+	if x != nil {
+		return x.ProjectId
+	}
+	return ""
+}
+
+func (x *EventEnvelope) GetAggregateSequence() uint64 {
+	if x != nil {
+		return x.AggregateSequence
+	}
+	return 0
+}
+
+func (x *EventEnvelope) GetRequestId() string {
+	if x != nil {
+		return x.RequestId
+	}
+	return ""
+}
+
+func (x *EventEnvelope) GetCorrelationId() string {
+	if x != nil {
+		return x.CorrelationId
+	}
+	return ""
+}
+
+func (x *EventEnvelope) GetCausationId() string {
+	if x != nil {
+		return x.CausationId
+	}
+	return ""
+}
+
+func (x *EventEnvelope) GetJobId() string {
+	if x != nil {
+		return x.JobId
+	}
+	return ""
+}
+
+func (x *EventEnvelope) GetRunId() string {
+	if x != nil {
+		return x.RunId
+	}
+	return ""
+}
+
+func (x *EventEnvelope) GetDeduplicationKey() string {
+	if x != nil {
+		return x.DeduplicationKey
+	}
+	return ""
+}
+
+func (x *EventEnvelope) GetPayloadContentType() string {
+	if x != nil {
+		return x.PayloadContentType
+	}
+	return ""
+}
+
+func (x *EventEnvelope) GetClassification() DataClassification {
+	if x != nil {
+		return x.Classification
+	}
+	return DataClassification_DATA_CLASSIFICATION_UNSPECIFIED
+}
+
 var File_proto_mindclade_common_v1_event_envelope_proto protoreflect.FileDescriptor
 
 const file_proto_mindclade_common_v1_event_envelope_proto_rawDesc = "" +
 	"\n" +
-	".proto/mindclade/common/v1/event_envelope.proto\x12\x13mindclade.common.v1\"\x96\x02\n" +
+	".proto/mindclade/common/v1/event_envelope.proto\x12\x13mindclade.common.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a2proto/mindclade/common/v1/resource_reference.proto\"\xce\x06\n" +
 	"\rEventEnvelope\x12\x19\n" +
 	"\bevent_id\x18\x01 \x01(\tR\aeventId\x12\x1d\n" +
 	"\n" +
 	"event_type\x18\x02 \x01(\tR\teventType\x12#\n" +
-	"\revent_version\x18\x03 \x01(\rR\feventVersion\x12&\n" +
-	"\x0foccurred_at_utc\x18\x04 \x01(\tR\roccurredAtUtc\x12\x1b\n" +
+	"\revent_version\x18\x03 \x01(\rR\feventVersion\x12;\n" +
+	"\voccurred_at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
+	"occurredAt\x12\x1b\n" +
 	"\ttenant_id\x18\x05 \x01(\tR\btenantId\x12\x19\n" +
-	"\btrace_id\x18\x06 \x01(\tR\atraceId\x12\x1f\n" +
-	"\vsubject_ref\x18\a \x01(\tR\n" +
-	"subjectRef\x12%\n" +
-	"\x0epayload_digest\x18\b \x01(\tR\rpayloadDigestBJZHgithub.com/mindclade/mindclade/protocols/generated/go/common/v1;commonv1b\x06proto3"
+	"\btrace_id\x18\x06 \x01(\tR\atraceId\x12:\n" +
+	"\asubject\x18\a \x01(\v2 .mindclade.common.v1.ResourceRefR\asubject\x12%\n" +
+	"\x0epayload_digest\x18\b \x01(\tR\rpayloadDigest\x12\x18\n" +
+	"\apayload\x18\t \x01(\fR\apayload\x12;\n" +
+	"\vrecorded_at\x18\n" +
+	" \x01(\v2\x1a.google.protobuf.TimestampR\n" +
+	"recordedAt\x12\x1a\n" +
+	"\bproducer\x18\v \x01(\tR\bproducer\x12\x1d\n" +
+	"\n" +
+	"project_id\x18\f \x01(\tR\tprojectId\x12-\n" +
+	"\x12aggregate_sequence\x18\r \x01(\x04R\x11aggregateSequence\x12\x1d\n" +
+	"\n" +
+	"request_id\x18\x0e \x01(\tR\trequestId\x12%\n" +
+	"\x0ecorrelation_id\x18\x0f \x01(\tR\rcorrelationId\x12!\n" +
+	"\fcausation_id\x18\x10 \x01(\tR\vcausationId\x12\x15\n" +
+	"\x06job_id\x18\x11 \x01(\tR\x05jobId\x12\x15\n" +
+	"\x06run_id\x18\x12 \x01(\tR\x05runId\x12+\n" +
+	"\x11deduplication_key\x18\x13 \x01(\tR\x10deduplicationKey\x120\n" +
+	"\x14payload_content_type\x18\x14 \x01(\tR\x12payloadContentType\x12O\n" +
+	"\x0eclassification\x18\x15 \x01(\x0e2'.mindclade.common.v1.DataClassificationR\x0eclassification*\x9f\x01\n" +
+	"\x12DataClassification\x12#\n" +
+	"\x1fDATA_CLASSIFICATION_UNSPECIFIED\x10\x00\x12\x1e\n" +
+	"\x1aDATA_CLASSIFICATION_PUBLIC\x10\x01\x12 \n" +
+	"\x1cDATA_CLASSIFICATION_INTERNAL\x10\x02\x12\"\n" +
+	"\x1eDATA_CLASSIFICATION_RESTRICTED\x10\x03BJZHgithub.com/mindclade/mindclade/protocols/generated/go/common/v1;commonv1b\x06proto3"
 
 var (
 	file_proto_mindclade_common_v1_event_envelope_proto_rawDescOnce sync.Once
@@ -151,16 +332,24 @@ func file_proto_mindclade_common_v1_event_envelope_proto_rawDescGZIP() []byte {
 	return file_proto_mindclade_common_v1_event_envelope_proto_rawDescData
 }
 
+var file_proto_mindclade_common_v1_event_envelope_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
 var file_proto_mindclade_common_v1_event_envelope_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
 var file_proto_mindclade_common_v1_event_envelope_proto_goTypes = []any{
-	(*EventEnvelope)(nil), // 0: mindclade.common.v1.EventEnvelope
+	(DataClassification)(0),       // 0: mindclade.common.v1.DataClassification
+	(*EventEnvelope)(nil),         // 1: mindclade.common.v1.EventEnvelope
+	(*timestamppb.Timestamp)(nil), // 2: google.protobuf.Timestamp
+	(*ResourceRef)(nil),           // 3: mindclade.common.v1.ResourceRef
 }
 var file_proto_mindclade_common_v1_event_envelope_proto_depIdxs = []int32{
-	0, // [0:0] is the sub-list for method output_type
-	0, // [0:0] is the sub-list for method input_type
-	0, // [0:0] is the sub-list for extension type_name
-	0, // [0:0] is the sub-list for extension extendee
-	0, // [0:0] is the sub-list for field type_name
+	2, // 0: mindclade.common.v1.EventEnvelope.occurred_at:type_name -> google.protobuf.Timestamp
+	3, // 1: mindclade.common.v1.EventEnvelope.subject:type_name -> mindclade.common.v1.ResourceRef
+	2, // 2: mindclade.common.v1.EventEnvelope.recorded_at:type_name -> google.protobuf.Timestamp
+	0, // 3: mindclade.common.v1.EventEnvelope.classification:type_name -> mindclade.common.v1.DataClassification
+	4, // [4:4] is the sub-list for method output_type
+	4, // [4:4] is the sub-list for method input_type
+	4, // [4:4] is the sub-list for extension type_name
+	4, // [4:4] is the sub-list for extension extendee
+	0, // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_proto_mindclade_common_v1_event_envelope_proto_init() }
@@ -168,18 +357,20 @@ func file_proto_mindclade_common_v1_event_envelope_proto_init() {
 	if File_proto_mindclade_common_v1_event_envelope_proto != nil {
 		return
 	}
+	file_proto_mindclade_common_v1_resource_reference_proto_init()
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_mindclade_common_v1_event_envelope_proto_rawDesc), len(file_proto_mindclade_common_v1_event_envelope_proto_rawDesc)),
-			NumEnums:      0,
+			NumEnums:      1,
 			NumMessages:   1,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
 		GoTypes:           file_proto_mindclade_common_v1_event_envelope_proto_goTypes,
 		DependencyIndexes: file_proto_mindclade_common_v1_event_envelope_proto_depIdxs,
+		EnumInfos:         file_proto_mindclade_common_v1_event_envelope_proto_enumTypes,
 		MessageInfos:      file_proto_mindclade_common_v1_event_envelope_proto_msgTypes,
 	}.Build()
 	File_proto_mindclade_common_v1_event_envelope_proto = out.File

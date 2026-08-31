@@ -6,32 +6,25 @@ import type { GenFile, GenMessage } from "@bufbuild/protobuf/codegenv2";
 import { fileDesc, messageDesc } from "@bufbuild/protobuf/codegenv2";
 import type { ArtifactRef } from "./artifact_reference_pb.js";
 import { file_proto_mindclade_artifact_v1_artifact_reference } from "./artifact_reference_pb.js";
-import type { EventEnvelope } from "../../common/v1/event_envelope_pb.js";
-import { file_proto_mindclade_common_v1_event_envelope } from "../../common/v1/event_envelope_pb.js";
 import type { Message } from "@bufbuild/protobuf";
 
 /**
  * Describes the file events/mindclade/artifact/v1/artifact_committed.proto.
  */
 export const file_events_mindclade_artifact_v1_artifact_committed: GenFile = /*@__PURE__*/
-  fileDesc("CjVldmVudHMvbWluZGNsYWRlL2FydGlmYWN0L3YxL2FydGlmYWN0X2NvbW1pdHRlZC5wcm90bxIcbWluZGNsYWRlLmV2ZW50cy5hcnRpZmFjdC52MSKcAQoRQXJ0aWZhY3RDb21taXR0ZWQSNAoIZW52ZWxvcGUYASABKAsyIi5taW5kY2xhZGUuY29tbW9uLnYxLkV2ZW50RW52ZWxvcGUSNAoIYXJ0aWZhY3QYAiABKAsyIi5taW5kY2xhZGUuYXJ0aWZhY3QudjEuQXJ0aWZhY3RSZWYSGwoTcHJvZHVjZXJfYXR0ZW1wdF9pZBgDIAEoCUJOWkxnaXRodWIuY29tL21pbmRjbGFkZS9taW5kY2xhZGUvcHJvdG9jb2xzL2dlbmVyYXRlZC9nby9hcnRpZmFjdC92MTthcnRpZmFjdHYxYgZwcm90bzM", [file_proto_mindclade_artifact_v1_artifact_reference, file_proto_mindclade_common_v1_event_envelope]);
+  fileDesc("CjVldmVudHMvbWluZGNsYWRlL2FydGlmYWN0L3YxL2FydGlmYWN0X2NvbW1pdHRlZC5wcm90bxIcbWluZGNsYWRlLmV2ZW50cy5hcnRpZmFjdC52MSJmChFBcnRpZmFjdENvbW1pdHRlZBI0CghhcnRpZmFjdBgBIAEoCzIiLm1pbmRjbGFkZS5hcnRpZmFjdC52MS5BcnRpZmFjdFJlZhIbChNwcm9kdWNlcl9hdHRlbXB0X2lkGAIgASgJQk5aTGdpdGh1Yi5jb20vbWluZGNsYWRlL21pbmRjbGFkZS9wcm90b2NvbHMvZ2VuZXJhdGVkL2dvL2FydGlmYWN0L3YxO2FydGlmYWN0djFiBnByb3RvMw", [file_proto_mindclade_artifact_v1_artifact_reference]);
 
 /**
  * @generated from message mindclade.events.artifact.v1.ArtifactCommitted
  */
 export type ArtifactCommitted = Message<"mindclade.events.artifact.v1.ArtifactCommitted"> & {
   /**
-   * @generated from field: mindclade.common.v1.EventEnvelope envelope = 1;
-   */
-  envelope?: EventEnvelope;
-
-  /**
-   * @generated from field: mindclade.artifact.v1.ArtifactRef artifact = 2;
+   * @generated from field: mindclade.artifact.v1.ArtifactRef artifact = 1;
    */
   artifact?: ArtifactRef;
 
   /**
-   * @generated from field: string producer_attempt_id = 3;
+   * @generated from field: string producer_attempt_id = 2;
    */
   producerAttemptId: string;
 };

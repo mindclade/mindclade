@@ -4,16 +4,19 @@
 
 import type { GenFile, GenMessage } from "@bufbuild/protobuf/codegenv2";
 import { fileDesc, messageDesc } from "@bufbuild/protobuf/codegenv2";
+import type { Timestamp } from "@bufbuild/protobuf/wkt";
+import { file_google_protobuf_timestamp } from "@bufbuild/protobuf/wkt";
 import type { Message } from "@bufbuild/protobuf";
 
 /**
  * Describes the file proto/mindclade/common/v1/command_context.proto.
  */
 export const file_proto_mindclade_common_v1_command_context: GenFile = /*@__PURE__*/
-  fileDesc("Ci9wcm90by9taW5kY2xhZGUvY29tbW9uL3YxL2NvbW1hbmRfY29udGV4dC5wcm90bxITbWluZGNsYWRlLmNvbW1vbi52MSKdAQoOQ29tbWFuZENvbnRleHQSEgoKcmVxdWVzdF9pZBgBIAEoCRIXCg9pZGVtcG90ZW5jeV9rZXkYAiABKAkSFAoMcHJpbmNpcGFsX2lkGAMgASgJEhAKCHRyYWNlX2lkGAQgASgJEhQKDGRlYWRsaW5lX3V0YxgFIAEoCRIgChhjYW5vbmljYWxfcmVxdWVzdF9kaWdlc3QYBiABKAlCSlpIZ2l0aHViLmNvbS9taW5kY2xhZGUvbWluZGNsYWRlL3Byb3RvY29scy9nZW5lcmF0ZWQvZ28vY29tbW9uL3YxO2NvbW1vbnYxYgZwcm90bzM");
+  fileDesc("Ci9wcm90by9taW5kY2xhZGUvY29tbW9uL3YxL2NvbW1hbmRfY29udGV4dC5wcm90bxITbWluZGNsYWRlLmNvbW1vbi52MSKpAgoOQ29tbWFuZENvbnRleHQSEgoKcmVxdWVzdF9pZBgBIAEoCRIXCg9pZGVtcG90ZW5jeV9rZXkYAiABKAkSFAoMcHJpbmNpcGFsX2lkGAMgASgJEhAKCHRyYWNlX2lkGAQgASgJEiwKCGRlYWRsaW5lGAUgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIgChhjYW5vbmljYWxfcmVxdWVzdF9kaWdlc3QYBiABKAkSEQoJdGVuYW50X2lkGAcgASgJEhIKCnByb2plY3RfaWQYCCABKAkSFgoOY29ycmVsYXRpb25faWQYCSABKAkSFAoMY2F1c2F0aW9uX2lkGAogASgJEh0KFWNhbmNlbGxhdGlvbl90b2tlbl9pZBgLIAEoCUJKWkhnaXRodWIuY29tL21pbmRjbGFkZS9taW5kY2xhZGUvcHJvdG9jb2xzL2dlbmVyYXRlZC9nby9jb21tb24vdjE7Y29tbW9udjFiBnByb3RvMw", [file_google_protobuf_timestamp]);
 
 /**
- * Context required for every durable mutating command.
+ * Context required for every durable mutating command. The canonical request
+ * digest covers the command with this context omitted so retries are stable.
  *
  * @generated from message mindclade.common.v1.CommandContext
  */
@@ -39,14 +42,39 @@ export type CommandContext = Message<"mindclade.common.v1.CommandContext"> & {
   traceId: string;
 
   /**
-   * @generated from field: string deadline_utc = 5;
+   * @generated from field: google.protobuf.Timestamp deadline = 5;
    */
-  deadlineUtc: string;
+  deadline?: Timestamp;
 
   /**
    * @generated from field: string canonical_request_digest = 6;
    */
   canonicalRequestDigest: string;
+
+  /**
+   * @generated from field: string tenant_id = 7;
+   */
+  tenantId: string;
+
+  /**
+   * @generated from field: string project_id = 8;
+   */
+  projectId: string;
+
+  /**
+   * @generated from field: string correlation_id = 9;
+   */
+  correlationId: string;
+
+  /**
+   * @generated from field: string causation_id = 10;
+   */
+  causationId: string;
+
+  /**
+   * @generated from field: string cancellation_token_id = 11;
+   */
+  cancellationTokenId: string;
 };
 
 /**

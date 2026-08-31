@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file proto/mindclade/artifact/v1/artifact_reference.proto.
  */
 export const file_proto_mindclade_artifact_v1_artifact_reference: GenFile = /*@__PURE__*/
-  fileDesc("CjRwcm90by9taW5kY2xhZGUvYXJ0aWZhY3QvdjEvYXJ0aWZhY3RfcmVmZXJlbmNlLnByb3RvEhVtaW5kY2xhZGUuYXJ0aWZhY3QudjEiiQEKC0FydGlmYWN0UmVmEg4KBmRpZ2VzdBgBIAEoCRISCgptZWRpYV90eXBlGAIgASgJEhIKCnNpemVfYnl0ZXMYAyABKAMSFQoNYXJ0aWZhY3Rfa2luZBgEIAEoCRIRCglzY2hlbWFfaWQYBSABKAkSGAoQaW50ZWdyaXR5X2RpZ2VzdBgGIAEoCUJOWkxnaXRodWIuY29tL21pbmRjbGFkZS9taW5kY2xhZGUvcHJvdG9jb2xzL2dlbmVyYXRlZC9nby9hcnRpZmFjdC92MTthcnRpZmFjdHYxYgZwcm90bzM");
+  fileDesc("CjRwcm90by9taW5kY2xhZGUvYXJ0aWZhY3QvdjEvYXJ0aWZhY3RfcmVmZXJlbmNlLnByb3RvEhVtaW5kY2xhZGUuYXJ0aWZhY3QudjEirgEKC0FydGlmYWN0UmVmEg4KBmRpZ2VzdBgBIAEoCRISCgptZWRpYV90eXBlGAIgASgJEhIKCnNpemVfYnl0ZXMYAyABKAMSFQoNYXJ0aWZhY3Rfa2luZBgEIAEoCRIRCglzY2hlbWFfaWQYBSABKAkSGAoQaW50ZWdyaXR5X2RpZ2VzdBgGIAEoCRILCgN1cmkYByABKAkSFgoOc2NoZW1hX3ZlcnNpb24YCCABKAlCTlpMZ2l0aHViLmNvbS9taW5kY2xhZGUvbWluZGNsYWRlL3Byb3RvY29scy9nZW5lcmF0ZWQvZ28vYXJ0aWZhY3QvdjE7YXJ0aWZhY3R2MWIGcHJvdG8z");
 
 /**
  * Immutable content-addressed artifact identity. digest uses sha256:<64 lowercase hex>.
@@ -47,6 +47,16 @@ export type ArtifactRef = Message<"mindclade.artifact.v1.ArtifactRef"> & {
    * @generated from field: string integrity_digest = 6;
    */
   integrityDigest: string;
+
+  /**
+   * @generated from field: string uri = 7;
+   */
+  uri: string;
+
+  /**
+   * @generated from field: string schema_version = 8;
+   */
+  schemaVersion: string;
 };
 
 /**

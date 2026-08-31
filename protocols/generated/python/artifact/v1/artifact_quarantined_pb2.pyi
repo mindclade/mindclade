@@ -1,0 +1,15 @@
+from google.protobuf import descriptor as _descriptor
+from google.protobuf import message as _message
+from typing import ClassVar as _ClassVar, Optional as _Optional
+
+DESCRIPTOR: _descriptor.FileDescriptor
+
+class ArtifactQuarantined(_message.Message):
+    __slots__ = ("subject_digest", "reason_code", "evidence_digest")
+    SUBJECT_DIGEST_FIELD_NUMBER: _ClassVar[int]
+    REASON_CODE_FIELD_NUMBER: _ClassVar[int]
+    EVIDENCE_DIGEST_FIELD_NUMBER: _ClassVar[int]
+    subject_digest: str
+    reason_code: str
+    evidence_digest: str
+    def __init__(self, subject_digest: _Optional[str] = ..., reason_code: _Optional[str] = ..., evidence_digest: _Optional[str] = ...) -> None: ...

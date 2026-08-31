@@ -4,42 +4,35 @@
 
 import type { GenFile, GenMessage } from "@bufbuild/protobuf/codegenv2";
 import { fileDesc, messageDesc } from "@bufbuild/protobuf/codegenv2";
-import type { EventEnvelope } from "../../common/v1/event_envelope_pb.js";
-import { file_proto_mindclade_common_v1_event_envelope } from "../../common/v1/event_envelope_pb.js";
 import type { Message } from "@bufbuild/protobuf";
 
 /**
  * Describes the file events/mindclade/job/v1/attempt_completed.proto.
  */
 export const file_events_mindclade_job_v1_attempt_completed: GenFile = /*@__PURE__*/
-  fileDesc("Ci9ldmVudHMvbWluZGNsYWRlL2pvYi92MS9hdHRlbXB0X2NvbXBsZXRlZC5wcm90bxIXbWluZGNsYWRlLmV2ZW50cy5qb2IudjEiqwEKEEF0dGVtcHRDb21wbGV0ZWQSNAoIZW52ZWxvcGUYASABKAsyIi5taW5kY2xhZGUuY29tbW9uLnYxLkV2ZW50RW52ZWxvcGUSEgoKYXR0ZW1wdF9pZBgCIAEoCRITCgtsZWFzZV9lcG9jaBgDIAEoBBIVCg1yZXN1bHRfZGlnZXN0GAQgASgJEiEKGWNvbXBsZXRpb25fcmVjZWlwdF9kaWdlc3QYBSABKAlCRFpCZ2l0aHViLmNvbS9taW5kY2xhZGUvbWluZGNsYWRlL3Byb3RvY29scy9nZW5lcmF0ZWQvZ28vam9iL3YxO2pvYnYxYgZwcm90bzM", [file_proto_mindclade_common_v1_event_envelope]);
+  fileDesc("Ci9ldmVudHMvbWluZGNsYWRlL2pvYi92MS9hdHRlbXB0X2NvbXBsZXRlZC5wcm90bxIXbWluZGNsYWRlLmV2ZW50cy5qb2IudjEidQoQQXR0ZW1wdENvbXBsZXRlZBISCgphdHRlbXB0X2lkGAEgASgJEhMKC2xlYXNlX2Vwb2NoGAIgASgEEhUKDXJlc3VsdF9kaWdlc3QYAyABKAkSIQoZY29tcGxldGlvbl9yZWNlaXB0X2RpZ2VzdBgEIAEoCUJEWkJnaXRodWIuY29tL21pbmRjbGFkZS9taW5kY2xhZGUvcHJvdG9jb2xzL2dlbmVyYXRlZC9nby9qb2IvdjE7am9idjFiBnByb3RvMw");
 
 /**
  * @generated from message mindclade.events.job.v1.AttemptCompleted
  */
 export type AttemptCompleted = Message<"mindclade.events.job.v1.AttemptCompleted"> & {
   /**
-   * @generated from field: mindclade.common.v1.EventEnvelope envelope = 1;
-   */
-  envelope?: EventEnvelope;
-
-  /**
-   * @generated from field: string attempt_id = 2;
+   * @generated from field: string attempt_id = 1;
    */
   attemptId: string;
 
   /**
-   * @generated from field: uint64 lease_epoch = 3;
+   * @generated from field: uint64 lease_epoch = 2;
    */
   leaseEpoch: bigint;
 
   /**
-   * @generated from field: string result_digest = 4;
+   * @generated from field: string result_digest = 3;
    */
   resultDigest: string;
 
   /**
-   * @generated from field: string completion_receipt_digest = 5;
+   * @generated from field: string completion_receipt_digest = 4;
    */
   completionReceiptDigest: string;
 };

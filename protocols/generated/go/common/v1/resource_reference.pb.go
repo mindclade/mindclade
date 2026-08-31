@@ -27,7 +27,10 @@ type ResourceRef struct {
 	ResourceType    string                 `protobuf:"bytes,1,opt,name=resource_type,json=resourceType,proto3" json:"resource_type,omitempty"`
 	ResourceId      string                 `protobuf:"bytes,2,opt,name=resource_id,json=resourceId,proto3" json:"resource_id,omitempty"`
 	TenantId        string                 `protobuf:"bytes,3,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
-	ResourceVersion int64                  `protobuf:"varint,4,opt,name=resource_version,json=resourceVersion,proto3" json:"resource_version,omitempty"`
+	ProjectId       string                 `protobuf:"bytes,4,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
+	ResourceVersion int64                  `protobuf:"varint,5,opt,name=resource_version,json=resourceVersion,proto3" json:"resource_version,omitempty"`
+	Name            string                 `protobuf:"bytes,6,opt,name=name,proto3" json:"name,omitempty"`
+	Etag            string                 `protobuf:"bytes,7,opt,name=etag,proto3" json:"etag,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -83,6 +86,13 @@ func (x *ResourceRef) GetTenantId() string {
 	return ""
 }
 
+func (x *ResourceRef) GetProjectId() string {
+	if x != nil {
+		return x.ProjectId
+	}
+	return ""
+}
+
 func (x *ResourceRef) GetResourceVersion() int64 {
 	if x != nil {
 		return x.ResourceVersion
@@ -90,17 +100,35 @@ func (x *ResourceRef) GetResourceVersion() int64 {
 	return 0
 }
 
+func (x *ResourceRef) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *ResourceRef) GetEtag() string {
+	if x != nil {
+		return x.Etag
+	}
+	return ""
+}
+
 var File_proto_mindclade_common_v1_resource_reference_proto protoreflect.FileDescriptor
 
 const file_proto_mindclade_common_v1_resource_reference_proto_rawDesc = "" +
 	"\n" +
-	"2proto/mindclade/common/v1/resource_reference.proto\x12\x13mindclade.common.v1\"\x9b\x01\n" +
+	"2proto/mindclade/common/v1/resource_reference.proto\x12\x13mindclade.common.v1\"\xe2\x01\n" +
 	"\vResourceRef\x12#\n" +
 	"\rresource_type\x18\x01 \x01(\tR\fresourceType\x12\x1f\n" +
 	"\vresource_id\x18\x02 \x01(\tR\n" +
 	"resourceId\x12\x1b\n" +
-	"\ttenant_id\x18\x03 \x01(\tR\btenantId\x12)\n" +
-	"\x10resource_version\x18\x04 \x01(\x03R\x0fresourceVersionBJZHgithub.com/mindclade/mindclade/protocols/generated/go/common/v1;commonv1b\x06proto3"
+	"\ttenant_id\x18\x03 \x01(\tR\btenantId\x12\x1d\n" +
+	"\n" +
+	"project_id\x18\x04 \x01(\tR\tprojectId\x12)\n" +
+	"\x10resource_version\x18\x05 \x01(\x03R\x0fresourceVersion\x12\x12\n" +
+	"\x04name\x18\x06 \x01(\tR\x04name\x12\x12\n" +
+	"\x04etag\x18\a \x01(\tR\x04etagBJZHgithub.com/mindclade/mindclade/protocols/generated/go/common/v1;commonv1b\x06proto3"
 
 var (
 	file_proto_mindclade_common_v1_resource_reference_proto_rawDescOnce sync.Once

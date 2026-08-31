@@ -1,5 +1,14 @@
-load("@rules_go//go:def.bzl", "go_library", "go_test")
-go_library(name = "storage", srcs = glob(["*.go"], exclude = ["*_test.go"]), importpath = "github.com/mindclade/mindclade/libs/go/storage")
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "storage",
+    srcs = glob(["*.go"], exclude = ["*_test.go"]),
+    importpath = "github.com/mindclade/mindclade/libs/go/storage",
+    deps = [
+        "//protocols/generated/go/common/v1:bindings",
+        "@org_golang_google_protobuf//proto",
+    ],
+)
 
 filegroup(
     name = "governed_sources",

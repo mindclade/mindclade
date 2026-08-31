@@ -2,15 +2,21 @@
 // @generated from file proto/mindclade/job/v1/attempt.proto (package mindclade.job.v1, syntax proto3)
 /* eslint-disable */
 
-import type { GenFile, GenMessage } from "@bufbuild/protobuf/codegenv2";
-import { fileDesc, messageDesc } from "@bufbuild/protobuf/codegenv2";
+import type { GenEnum, GenFile, GenMessage } from "@bufbuild/protobuf/codegenv2";
+import { enumDesc, fileDesc, messageDesc } from "@bufbuild/protobuf/codegenv2";
+import type { Timestamp } from "@bufbuild/protobuf/wkt";
+import { file_google_protobuf_timestamp } from "@bufbuild/protobuf/wkt";
+import type { ArtifactRef } from "../../artifact/v1/artifact_reference_pb.js";
+import { file_proto_mindclade_artifact_v1_artifact_reference } from "../../artifact/v1/artifact_reference_pb.js";
+import type { ErrorDetail } from "../../common/v1/error_detail_pb.js";
+import { file_proto_mindclade_common_v1_error_detail } from "../../common/v1/error_detail_pb.js";
 import type { Message } from "@bufbuild/protobuf";
 
 /**
  * Describes the file proto/mindclade/job/v1/attempt.proto.
  */
 export const file_proto_mindclade_job_v1_attempt: GenFile = /*@__PURE__*/
-  fileDesc("CiRwcm90by9taW5kY2xhZGUvam9iL3YxL2F0dGVtcHQucHJvdG8SEG1pbmRjbGFkZS5qb2IudjEibwoHQXR0ZW1wdBISCgphdHRlbXB0X2lkGAEgASgJEg4KBnJ1bl9pZBgCIAEoCRITCgtsZWFzZV9lcG9jaBgDIAEoBBINCgVzdGF0ZRgEIAEoCRIcChRsZWFzZV9leHBpcmVzX2F0X3V0YxgFIAEoCUJEWkJnaXRodWIuY29tL21pbmRjbGFkZS9taW5kY2xhZGUvcHJvdG9jb2xzL2dlbmVyYXRlZC9nby9qb2IvdjE7am9idjFiBnByb3RvMw");
+  fileDesc("CiRwcm90by9taW5kY2xhZGUvam9iL3YxL2F0dGVtcHQucHJvdG8SEG1pbmRjbGFkZS5qb2IudjEiggQKB0F0dGVtcHQSEgoKYXR0ZW1wdF9pZBgBIAEoCRIOCgZydW5faWQYAiABKAkSEwoLbGVhc2VfZXBvY2gYAyABKAQSLQoFc3RhdGUYBCABKA4yHi5taW5kY2xhZGUuam9iLnYxLkF0dGVtcHRTdGF0ZRI0ChBsZWFzZV9leHBpcmVzX2F0GAUgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIRCgl0ZW5hbnRfaWQYBiABKAkSEgoKcHJvamVjdF9pZBgHIAEoCRIOCgZqb2JfaWQYCCABKAkSEQoJd29ya2VyX2lkGAkgASgJEi0KCWxlYXNlZF9hdBgKIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASLgoKc3RhcnRlZF9hdBgLIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASMAoMY29tcGxldGVkX2F0GAwgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIzCgdvdXRwdXRzGA0gAygLMiIubWluZGNsYWRlLmFydGlmYWN0LnYxLkFydGlmYWN0UmVmEi8KBWVycm9yGA4gASgLMiAubWluZGNsYWRlLmNvbW1vbi52MS5FcnJvckRldGFpbBIYChByZXNvdXJjZV92ZXJzaW9uGA8gASgDKu0BCgxBdHRlbXB0U3RhdGUSHQoZQVRURU1QVF9TVEFURV9VTlNQRUNJRklFRBAAEhgKFEFUVEVNUFRfU1RBVEVfTEVBU0VEEAESGQoVQVRURU1QVF9TVEFURV9SVU5OSU5HEAISGwoXQVRURU1QVF9TVEFURV9TVUNDRUVERUQQAxIYChRBVFRFTVBUX1NUQVRFX0ZBSUxFRBAEEhsKF0FUVEVNUFRfU1RBVEVfQ0FOQ0VMTEVEEAUSGAoUQVRURU1QVF9TVEFURV9GRU5DRUQQBhIbChdBVFRFTVBUX1NUQVRFX1RJTUVEX09VVBAHQkRaQmdpdGh1Yi5jb20vbWluZGNsYWRlL21pbmRjbGFkZS9wcm90b2NvbHMvZ2VuZXJhdGVkL2dvL2pvYi92MTtqb2J2MWIGcHJvdG8z", [file_google_protobuf_timestamp, file_proto_mindclade_artifact_v1_artifact_reference, file_proto_mindclade_common_v1_error_detail]);
 
 /**
  * Fenced lease-bound execution try. Only the current epoch may commit.
@@ -34,14 +40,64 @@ export type Attempt = Message<"mindclade.job.v1.Attempt"> & {
   leaseEpoch: bigint;
 
   /**
-   * @generated from field: string state = 4;
+   * @generated from field: mindclade.job.v1.AttemptState state = 4;
    */
-  state: string;
+  state: AttemptState;
 
   /**
-   * @generated from field: string lease_expires_at_utc = 5;
+   * @generated from field: google.protobuf.Timestamp lease_expires_at = 5;
    */
-  leaseExpiresAtUtc: string;
+  leaseExpiresAt?: Timestamp;
+
+  /**
+   * @generated from field: string tenant_id = 6;
+   */
+  tenantId: string;
+
+  /**
+   * @generated from field: string project_id = 7;
+   */
+  projectId: string;
+
+  /**
+   * @generated from field: string job_id = 8;
+   */
+  jobId: string;
+
+  /**
+   * @generated from field: string worker_id = 9;
+   */
+  workerId: string;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp leased_at = 10;
+   */
+  leasedAt?: Timestamp;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp started_at = 11;
+   */
+  startedAt?: Timestamp;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp completed_at = 12;
+   */
+  completedAt?: Timestamp;
+
+  /**
+   * @generated from field: repeated mindclade.artifact.v1.ArtifactRef outputs = 13;
+   */
+  outputs: ArtifactRef[];
+
+  /**
+   * @generated from field: mindclade.common.v1.ErrorDetail error = 14;
+   */
+  error?: ErrorDetail;
+
+  /**
+   * @generated from field: int64 resource_version = 15;
+   */
+  resourceVersion: bigint;
 };
 
 /**
@@ -50,3 +106,54 @@ export type Attempt = Message<"mindclade.job.v1.Attempt"> & {
  */
 export const AttemptSchema: GenMessage<Attempt> = /*@__PURE__*/
   messageDesc(file_proto_mindclade_job_v1_attempt, 0);
+
+/**
+ * @generated from enum mindclade.job.v1.AttemptState
+ */
+export enum AttemptState {
+  /**
+   * @generated from enum value: ATTEMPT_STATE_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: ATTEMPT_STATE_LEASED = 1;
+   */
+  LEASED = 1,
+
+  /**
+   * @generated from enum value: ATTEMPT_STATE_RUNNING = 2;
+   */
+  RUNNING = 2,
+
+  /**
+   * @generated from enum value: ATTEMPT_STATE_SUCCEEDED = 3;
+   */
+  SUCCEEDED = 3,
+
+  /**
+   * @generated from enum value: ATTEMPT_STATE_FAILED = 4;
+   */
+  FAILED = 4,
+
+  /**
+   * @generated from enum value: ATTEMPT_STATE_CANCELLED = 5;
+   */
+  CANCELLED = 5,
+
+  /**
+   * @generated from enum value: ATTEMPT_STATE_FENCED = 6;
+   */
+  FENCED = 6,
+
+  /**
+   * @generated from enum value: ATTEMPT_STATE_TIMED_OUT = 7;
+   */
+  TIMED_OUT = 7,
+}
+
+/**
+ * Describes the enum mindclade.job.v1.AttemptState.
+ */
+export const AttemptStateSchema: GenEnum<AttemptState> = /*@__PURE__*/
+  enumDesc(file_proto_mindclade_job_v1_attempt, 0);

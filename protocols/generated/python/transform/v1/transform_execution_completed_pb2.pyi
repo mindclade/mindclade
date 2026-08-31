@@ -1,0 +1,36 @@
+import datetime
+
+from google.protobuf import timestamp_pb2 as _timestamp_pb2
+from artifact.v1 import artifact_reference_pb2 as _artifact_reference_pb2
+from common.v1 import error_detail_pb2 as _error_detail_pb2
+from job.v1 import lease_fencing_pb2 as _lease_fencing_pb2
+from transform.v1 import transform_execution_pb2 as _transform_execution_pb2
+from google.protobuf.internal import containers as _containers
+from google.protobuf import descriptor as _descriptor
+from google.protobuf import message as _message
+from collections.abc import Iterable as _Iterable, Mapping as _Mapping
+from typing import ClassVar as _ClassVar, Optional as _Optional, Union as _Union
+
+DESCRIPTOR: _descriptor.FileDescriptor
+
+class TransformExecutionCompleted(_message.Message):
+    __slots__ = ("execution_name", "execution_revision", "fence", "classification", "receipt", "output_refs", "lineage_map", "error", "completed_at")
+    EXECUTION_NAME_FIELD_NUMBER: _ClassVar[int]
+    EXECUTION_REVISION_FIELD_NUMBER: _ClassVar[int]
+    FENCE_FIELD_NUMBER: _ClassVar[int]
+    CLASSIFICATION_FIELD_NUMBER: _ClassVar[int]
+    RECEIPT_FIELD_NUMBER: _ClassVar[int]
+    OUTPUT_REFS_FIELD_NUMBER: _ClassVar[int]
+    LINEAGE_MAP_FIELD_NUMBER: _ClassVar[int]
+    ERROR_FIELD_NUMBER: _ClassVar[int]
+    COMPLETED_AT_FIELD_NUMBER: _ClassVar[int]
+    execution_name: str
+    execution_revision: int
+    fence: _lease_fencing_pb2.LeaseFence
+    classification: _transform_execution_pb2.TransformExecutionTerminalClassification
+    receipt: _artifact_reference_pb2.ArtifactRef
+    output_refs: _containers.RepeatedCompositeFieldContainer[_artifact_reference_pb2.ArtifactRef]
+    lineage_map: _artifact_reference_pb2.ArtifactRef
+    error: _error_detail_pb2.ErrorDetail
+    completed_at: _timestamp_pb2.Timestamp
+    def __init__(self, execution_name: _Optional[str] = ..., execution_revision: _Optional[int] = ..., fence: _Optional[_Union[_lease_fencing_pb2.LeaseFence, _Mapping]] = ..., classification: _Optional[_Union[_transform_execution_pb2.TransformExecutionTerminalClassification, str]] = ..., receipt: _Optional[_Union[_artifact_reference_pb2.ArtifactRef, _Mapping]] = ..., output_refs: _Optional[_Iterable[_Union[_artifact_reference_pb2.ArtifactRef, _Mapping]]] = ..., lineage_map: _Optional[_Union[_artifact_reference_pb2.ArtifactRef, _Mapping]] = ..., error: _Optional[_Union[_error_detail_pb2.ErrorDetail, _Mapping]] = ..., completed_at: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ...) -> None: ...

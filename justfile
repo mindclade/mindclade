@@ -300,6 +300,22 @@ check-schema-drift:
 check-contract-drift:
     {{ uv }} run python tools/codegen/verify_generated_drift.py --root .
     just check-schema-drift
+    just check-sdk-plan
+
+# Emit and verify the deterministic offline Stainless/oagen SDK plan.
+check-sdk-plan:
+    {{ python }} tools/codegen/sdk_generator.py plan \
+      --openapi protocols/openapi/external-api.yaml \
+      --generation protocols/openapi/generation.yaml \
+      --output-root build/sdk \
+      --source-revision working-tree \
+      --output sdk-generation-plan.json
+    {{ python }} tools/codegen/sdk_generator.py verify \
+      --openapi protocols/openapi/external-api.yaml \
+      --generation protocols/openapi/generation.yaml \
+      --output-root build/sdk \
+      --source-revision working-tree \
+      --plan sdk-generation-plan.json
 
 # Execute all local source, lock, policy, and documentation gates.
 check: bootstrap
