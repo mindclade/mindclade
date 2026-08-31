@@ -134,6 +134,8 @@ KERNEL_SPEC = CompositeAutogradSpec(
     runtime_envelope="pytorch-2.10",
     gradients=(GradientSpec(input_name="x", output_name="grad_x"),),
     supports_double_backward=False,
+    setup_context="kernels.testing.noop.reference:setup_context",
+    backward="kernels.testing.noop.reference:backward",
 )
 '''
     )

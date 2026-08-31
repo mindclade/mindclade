@@ -45,6 +45,7 @@ from owner_policy import (  # noqa: E402
 from path_policy import (  # noqa: E402
     ALL_CONTRACT_GRPC_SERVICES,
     CANONICAL_FILE_COUNT,
+    ALL_CONTRACT_RUST_PLUGIN_PATHS,
     PolicyError,
     discover_actual_paths,
     is_all_contract_baseline_path,
@@ -83,7 +84,10 @@ class RepositoryPolicyTest(unittest.TestCase):
                 if status == "target":
                     self.assertEqual(entry["build_targets"], [])
                     self.assertEqual(entry["test_targets"], [])
-                elif is_all_contract_baseline_path(entry["path"]):
+                elif (
+                    is_all_contract_baseline_path(entry["path"])
+                    or entry["path"] in ALL_CONTRACT_RUST_PLUGIN_PATHS
+                ):
                     self.assertEqual(entry["build_targets"], ["//:all_contract_sources"])
                     self.assertEqual(entry["test_targets"], ["//:all_contract_tests"])
                 elif entry["path"].startswith("third_party/packages/deep_ep/"):

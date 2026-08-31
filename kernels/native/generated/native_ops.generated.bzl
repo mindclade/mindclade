@@ -1,5 +1,13 @@
-# GENERATED FILE - DO NOT EDIT. Generator: kernels.native.codegen.generate@3.
+# GENERATED FILE - DO NOT EDIT. Generator: kernels.native.codegen.generate@5.
 """Generated Bazel source inventory for native TileLang kernels."""
+
+MINDCLADE_KERNEL_SPEC_SOURCES = [
+    "//kernels/pairformer/outer_product_mean:spec.py",
+    "//kernels/pairformer/pair_weighted_average:spec.py",
+    "//kernels/pairformer/transition:spec.py",
+    "//kernels/pairformer/triangle_attention:spec.py",
+    "//kernels/pairformer/triangle_multiplication:spec.py",
+]
 
 MINDCLADE_TILELANG_KERNEL_SOURCES = [
     "//kernels/pairformer/outer_product_mean:tilelang.py",

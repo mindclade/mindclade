@@ -16,27 +16,27 @@ EXPECTED_DECLARED_TILELANG_OPERATORS = (
     (
         "outer_product_mean",
         "tilelang",
-        "pairformer/outer_product_mean/tilelang.py",
+        "pairformer/outer_product_mean/spec.py",
     ),
     (
         "pair_weighted_average",
         "tilelang",
-        "pairformer/pair_weighted_average/tilelang.py",
-    ),
-    (
-        "triangle_attention",
-        "tilelang",
-        "pairformer/triangle_attention/tilelang.py",
-    ),
-    (
-        "triangle_multiplication",
-        "tilelang",
-        "pairformer/triangle_multiplication/tilelang.py",
+        "pairformer/pair_weighted_average/spec.py",
     ),
     (
         "transition",
         "tilelang",
-        "pairformer/transition/tilelang.py",
+        "pairformer/transition/spec.py",
+    ),
+    (
+        "triangle_attention",
+        "tilelang",
+        "pairformer/triangle_attention/spec.py",
+    ),
+    (
+        "triangle_multiplication",
+        "tilelang",
+        "pairformer/triangle_multiplication/spec.py",
     ),
 )
 
@@ -50,28 +50,44 @@ def test_target_manifest_declares_exact_unqualified_fake_contracts():
         (operator["name"], operator["backend"], operator["source"])
         for operator in operators
     ) == EXPECTED_DECLARED_TILELANG_OPERATORS
-    assert tuple(operator["fake"]["symbol"] for operator in operators) == (
-        "fake",
-        "fake",
-        "fake",
-        "fake",
+    assert tuple(operator["fake"] for operator in operators) == (
+        None,
+        None,
+        None,
+        "kernels.pairformer.triangle_attention.reference:fake",
+        "kernels.pairformer.triangle_multiplication.reference:fake",
     )
     assert all("qualification" not in operator for operator in operators)
 
 
 def test_declared_operator_requires_meta_registration(monkeypatch):
+    semantic = loader._ManifestRegistration(
+        qualified_name="mindclade::example_op",
+        schema="example_op(Tensor input) -> Tensor output",
+        kind="semantic",
+        implementation_symbol="mindclade_tilelang_example_op_fwd_launch",
+    )
+    forward = loader._ManifestRegistration(
+        qualified_name="mindclade::_example_op_fwd",
+        schema="_example_op_fwd(Tensor input) -> Tensor output",
+        kind="forward",
+        implementation_symbol="mindclade_tilelang_example_op_fwd_launch",
+    )
     operator = loader._ManifestOperator(
         name="example_op",
         qualified_name="mindclade::example_op",
-        schema="example_op(Tensor input) -> Tensor",
         version=1,
         devices=("cuda",),
-        autograd_mode="not_supported",
+        autograd_policy="none",
+        registrations=(semantic, forward),
     )
     monkeypatch.setattr(
         loader,
         "_dispatcher_schema",
-        lambda _name: loader._expected_schema(operator),
+        lambda name: {
+            item.qualified_name: loader._qualified_schema(item.schema)
+            for item in operator.registrations
+        }[name],
     )
     monkeypatch.setattr(
         loader,
@@ -87,5 +103,7 @@ def test_declared_operator_requires_meta_registration(monkeypatch):
         loader.NativeOperatorRegistrationError, match="Meta"
     ):
         loader._reconcile_dispatcher(
-            (operator,), frozenset({operator.qualified_name})
+            (operator,), frozenset(
+                item.qualified_name for item in operator.registrations
+            )
         )

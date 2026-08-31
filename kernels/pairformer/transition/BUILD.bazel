@@ -4,24 +4,14 @@
 load("@rules_python//python:defs.bzl", "py_test")
 
 exports_files(
-    ["tilelang.py"],
+    ["dispatch.py", "reference.py", "spec.py", "tilelang.py"],
     visibility = ["//kernels/native:__pkg__"],
 )
 
 py_test(
     name = "test_transition",
-    srcs = [
-        "__init__.py",
-        "test_transition.py",
-        "tilelang.py",
-    ],
+    srcs = ["__init__.py", "dispatch.py", "reference.py", "spec.py", "tilelang.py", "test_transition.py"],
     main = "test_transition.py",
-    tags = [
-        "manual",
-        "requires-hermetic-torch-2.10",
-    ],
-    deps = [
-        "//kernels/native:tilelang_codegen_lib",
-        "@mindclade_pypi//pytest",
-    ],
+    tags = ["manual", "requires-hermetic-torch-2.10"],
+    deps = ["//kernels/api:api", "//kernels/native:tilelang_codegen_lib", "@mindclade_pypi//pytest"],
 )

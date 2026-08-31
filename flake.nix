@@ -79,6 +79,9 @@
               export JAVA_HOME=${pkgs.jdk21_headless}
               export CC=${pkgs.stdenv.cc}/bin/cc
               export CXX=${pkgs.stdenv.cc}/bin/c++
+              if [[ "''${1:-}" == "--version" ]]; then
+                exec ${pkgs.bazel_9}/bin/bazel --version
+              fi
               startup_flags=(--nosystem_rc --nohome_rc --server_javabase=${pkgs.jdk21_headless})
               if [[ -n "''${BAZEL_OUTPUT_USER_ROOT:-}" ]]; then
                 startup_flags+=(--output_user_root="''${BAZEL_OUTPUT_USER_ROOT}")

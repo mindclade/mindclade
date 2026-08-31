@@ -1,17 +1,9 @@
-"""AF3 Pairformer transition contraction and TileLang source contract."""
+# Copyright (c) 2026 Mindclade, LLC. All Rights Reserved.
+# Mindclade Proprietary and Confidential.
+# SPDX-License-Identifier: LicenseRef-Mindclade-Proprietary
 
-from .tilelang import (
-    backward,
-    build_tilelang_program,
-    fake,
-    setup_context,
-    transition_reference,
-)
-
-__all__ = [
-    "backward",
-    "build_tilelang_program",
-    "fake",
-    "setup_context",
-    "transition_reference",
-]
+"""Pairformer transition semantic facade and independent reference."""
+from .dispatch import transition
+from .reference import transition_reference
+from .spec import KERNEL_SPEC
+__all__ = ["KERNEL_SPEC", "transition", "transition_reference"]

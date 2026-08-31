@@ -2138,6 +2138,9 @@ mindclade/
 │   │   │   ├── cases.yaml
 │   │   │   └── BUILD.bazel
 │   │   └── pair_weighted_average/
+│   │       ├── dispatch.py
+│   │       ├── reference.py
+│   │       ├── spec.py
 │   │       ├── BUILD.bazel
 │   │       ├── __init__.py
 │   │       ├── test_tilelang.py
@@ -2249,6 +2252,7 @@ mindclade/
 │       │   ├── test_parse_literal_ast.py
 │       │   ├── test_policy.py
 │       │   ├── test_qualification.py
+│       │   ├── test_schema.py
 │       │   ├── test_reference_runtime.py
 │       │   ├── test_schema_manifest.py
 │       │   ├── test_tilelang_swizzle.py

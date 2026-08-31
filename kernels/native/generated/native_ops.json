@@ -1,158 +1,703 @@
 {
   "generator": {
     "id": "kernels.native.codegen.generate",
-    "version": 3
+    "version": 5
   },
+  "manifest_digest": "sha256:77d5b14d3b4736616608fc8bf422e3b9d57f5692a583bd07edd6f6c692fb86ed",
   "namespace": "mindclade",
   "operators": [
     {
-      "autograd": {
-        "backward": {
-          "module": "kernels.pairformer.outer_product_mean.tilelang",
-          "symbol": "backward"
-        },
-        "mode": "registered",
-        "setup_context": {
-          "module": "kernels.pairformer.outer_product_mean.tilelang",
-          "symbol": "setup_context"
-        }
-      },
+      "autograd_policy": "composite",
       "backend": "tilelang",
+      "backward": null,
+      "composite": {
+        "backward": "kernels.pairformer.outer_product_mean.reference:composite_backward",
+        "decomposition": "kernels.pairformer.outer_product_mean.reference:outer_product_mean_reference",
+        "gradients": [
+          {
+            "accumulation_dtype": null,
+            "input_name": "left",
+            "optional": false,
+            "output_name": "grad_left",
+            "type": "GradientSpec",
+            "version": 1
+          },
+          {
+            "accumulation_dtype": null,
+            "input_name": "right",
+            "optional": false,
+            "output_name": "grad_right",
+            "type": "GradientSpec",
+            "version": 1
+          },
+          {
+            "accumulation_dtype": null,
+            "input_name": "mask",
+            "optional": false,
+            "output_name": "grad_mask",
+            "type": "GradientSpec",
+            "version": 1
+          }
+        ],
+        "runtime_envelope": "pytorch>=2.10,<2.11",
+        "setup_context": "kernels.pairformer.outer_product_mean.reference:setup_context",
+        "source_digest": "sha256:9f6694db0522ff7437948081c5248c3bdf32da9a7d2d64578bf832485d137b36",
+        "supports_double_backward": false,
+        "type": "CompositeAutogradSpec",
+        "version": 1
+      },
       "devices": [
         "cuda"
       ],
-      "fake": {
-        "module": "kernels.pairformer.outer_product_mean.tilelang",
-        "symbol": "fake"
+      "effects": {
+        "aliases_outputs": [],
+        "mutates_inputs": [],
+        "type": "EffectSpec",
+        "uses_atomics": false,
+        "uses_rng": false,
+        "version": 1
       },
+      "facade_outputs": [
+        "output"
+      ],
+      "fake": null,
       "family": "pairformer",
-      "launch_symbol": "mindclade_tilelang_outer_product_mean_launch",
+      "forward": {
+        "builder": "kernels.pairformer.outer_product_mean.tilelang:build_tilelang_program",
+        "outputs": [
+          {
+            "device": {
+              "argument": "left",
+              "node": "device_ref"
+            },
+            "dtype": {
+              "argument": "left",
+              "node": "dtype_ref"
+            },
+            "initialization": null,
+            "name": "output",
+            "saved_for_backward": false,
+            "semantic_axes": [
+              "batch_prefix",
+              "left_node",
+              "right_node",
+              "left_channel",
+              "right_channel"
+            ],
+            "shape": {
+              "node": "concat_shape",
+              "parts": [
+                {
+                  "argument": "left",
+                  "node": "shape_prefix",
+                  "trailing_rank": 3
+                },
+                {
+                  "dimensions": [
+                    {
+                      "argument": "left",
+                      "axis": -2,
+                      "node": "dim_ref"
+                    },
+                    {
+                      "argument": "left",
+                      "axis": -2,
+                      "node": "dim_ref"
+                    },
+                    {
+                      "argument": "left",
+                      "axis": -1,
+                      "node": "dim_ref"
+                    },
+                    {
+                      "argument": "right",
+                      "axis": -1,
+                      "node": "dim_ref"
+                    }
+                  ],
+                  "node": "shape_tuple"
+                }
+              ]
+            },
+            "type": "OutputSpec",
+            "version": 1,
+            "visible_in_facade": true
+          }
+        ],
+        "program_group": null,
+        "schema": "_outer_product_mean_fwd(Tensor left, Tensor right, Tensor mask, float epsilon) -> Tensor output",
+        "symbol": "mindclade_tilelang_outer_product_mean_fwd_launch",
+        "type": "ForwardSpec",
+        "version": 1
+      },
+      "kernel_spec_digest": "sha256:0438a7c829449e806c297e6e14b716d5c544427c7e4db2e0bbe28782e85d5f4a",
+      "launch": {
+        "current_stream_only": true,
+        "determinism": "conditionally_deterministic",
+        "global_synchronization": false,
+        "graph_capture_safe": false,
+        "hidden_device_allocation": false,
+        "type": "LaunchContract",
+        "version": 1
+      },
       "name": "outer_product_mean",
       "namespace": "mindclade",
+      "operator_schema": "outer_product_mean(Tensor left, Tensor right, Tensor mask, float epsilon) -> Tensor output",
       "qualified_name": "mindclade::outer_product_mean",
-      "schema": "outer_product_mean(Tensor left, Tensor right, Tensor mask, float epsilon) -> Tensor",
-      "source": "pairformer/outer_product_mean/tilelang.py",
-      "source_sha256": "sha256:117dea551cb4a678501e52d3fd57c75dcd6803d4d034b501ab63cf35faa77eee",
+      "registrations": [
+        {
+          "implementation_symbol": "mindclade_tilelang_outer_product_mean_fwd_launch",
+          "kind": "semantic",
+          "qualified_name": "mindclade::outer_product_mean",
+          "schema": "outer_product_mean(Tensor left, Tensor right, Tensor mask, float epsilon) -> Tensor output"
+        },
+        {
+          "implementation_symbol": "mindclade_tilelang_outer_product_mean_fwd_launch",
+          "kind": "forward",
+          "qualified_name": "mindclade::_outer_product_mean_fwd",
+          "schema": "_outer_product_mean_fwd(Tensor left, Tensor right, Tensor mask, float epsilon) -> Tensor output"
+        }
+      ],
+      "source": "pairformer/outer_product_mean/spec.py",
+      "spec_sha256": "sha256:474495a8080f8e68e90e706b1d2ca0aa5708d57f2490387a6868432ae0090f6d",
       "version": 1
     },
     {
-      "autograd": {
-        "backward": {
-          "module": "kernels.pairformer.pair_weighted_average.tilelang",
-          "symbol": "backward"
-        },
-        "mode": "registered",
-        "setup_context": {
-          "module": "kernels.pairformer.pair_weighted_average.tilelang",
-          "symbol": "setup_context"
-        }
-      },
+      "autograd_policy": "composite",
       "backend": "tilelang",
+      "backward": null,
+      "composite": {
+        "backward": "kernels.pairformer.pair_weighted_average.reference:composite_backward",
+        "decomposition": "kernels.pairformer.pair_weighted_average.reference:pair_weighted_average_reference",
+        "gradients": [
+          {
+            "accumulation_dtype": null,
+            "input_name": "value",
+            "optional": false,
+            "output_name": "grad_value",
+            "type": "GradientSpec",
+            "version": 1
+          },
+          {
+            "accumulation_dtype": null,
+            "input_name": "weights",
+            "optional": false,
+            "output_name": "grad_weights",
+            "type": "GradientSpec",
+            "version": 1
+          }
+        ],
+        "runtime_envelope": "pytorch>=2.10,<2.11",
+        "setup_context": "kernels.pairformer.pair_weighted_average.reference:setup_context",
+        "source_digest": "sha256:884570c0f5747956d21e50135045bdc88586764b815ae07b8a11a4196e3ce22e",
+        "supports_double_backward": false,
+        "type": "CompositeAutogradSpec",
+        "version": 1
+      },
       "devices": [
         "cuda"
       ],
-      "fake": {
-        "module": "kernels.pairformer.pair_weighted_average.tilelang",
-        "symbol": "fake"
+      "effects": {
+        "aliases_outputs": [],
+        "mutates_inputs": [],
+        "type": "EffectSpec",
+        "uses_atomics": false,
+        "uses_rng": false,
+        "version": 1
       },
+      "facade_outputs": [
+        "output"
+      ],
+      "fake": null,
       "family": "pairformer",
-      "launch_symbol": "mindclade_tilelang_pair_weighted_average_launch",
+      "forward": {
+        "builder": "kernels.pairformer.pair_weighted_average.tilelang:build_tilelang_program",
+        "outputs": [
+          {
+            "device": {
+              "argument": "value",
+              "node": "device_ref"
+            },
+            "dtype": {
+              "argument": "value",
+              "node": "dtype_ref"
+            },
+            "initialization": null,
+            "name": "output",
+            "saved_for_backward": false,
+            "semantic_axes": [
+              "batch_prefix",
+              "destination",
+              "head",
+              "channel"
+            ],
+            "shape": {
+              "node": "concat_shape",
+              "parts": [
+                {
+                  "argument": "value",
+                  "node": "shape_prefix",
+                  "trailing_rank": 2
+                },
+                {
+                  "dimensions": [
+                    {
+                      "argument": "value",
+                      "axis": -2,
+                      "node": "dim_ref"
+                    },
+                    {
+                      "argument": "weights",
+                      "axis": -1,
+                      "node": "dim_ref"
+                    },
+                    {
+                      "argument": "value",
+                      "axis": -1,
+                      "node": "dim_ref"
+                    }
+                  ],
+                  "node": "shape_tuple"
+                }
+              ]
+            },
+            "type": "OutputSpec",
+            "version": 1,
+            "visible_in_facade": true
+          }
+        ],
+        "program_group": null,
+        "schema": "_pair_weighted_average_fwd(Tensor value, Tensor weights, Tensor mask, float epsilon) -> Tensor output",
+        "symbol": "mindclade_tilelang_pair_weighted_average_fwd_launch",
+        "type": "ForwardSpec",
+        "version": 1
+      },
+      "kernel_spec_digest": "sha256:b915f5c0656857c2f6314d5de3270812593aa293da3c2fd9fe414b85c8bbc322",
+      "launch": {
+        "current_stream_only": true,
+        "determinism": "conditionally_deterministic",
+        "global_synchronization": false,
+        "graph_capture_safe": false,
+        "hidden_device_allocation": false,
+        "type": "LaunchContract",
+        "version": 1
+      },
       "name": "pair_weighted_average",
       "namespace": "mindclade",
+      "operator_schema": "pair_weighted_average(Tensor value, Tensor weights, Tensor mask, float epsilon) -> Tensor output",
       "qualified_name": "mindclade::pair_weighted_average",
-      "schema": "pair_weighted_average(Tensor value, Tensor weights, Tensor mask, float epsilon) -> Tensor",
-      "source": "pairformer/pair_weighted_average/tilelang.py",
-      "source_sha256": "sha256:b2b4512f4e659fbfba5810c5b273c1fe21cfc0a353ebae8e9f9abe252dd0877c",
+      "registrations": [
+        {
+          "implementation_symbol": "mindclade_tilelang_pair_weighted_average_fwd_launch",
+          "kind": "semantic",
+          "qualified_name": "mindclade::pair_weighted_average",
+          "schema": "pair_weighted_average(Tensor value, Tensor weights, Tensor mask, float epsilon) -> Tensor output"
+        },
+        {
+          "implementation_symbol": "mindclade_tilelang_pair_weighted_average_fwd_launch",
+          "kind": "forward",
+          "qualified_name": "mindclade::_pair_weighted_average_fwd",
+          "schema": "_pair_weighted_average_fwd(Tensor value, Tensor weights, Tensor mask, float epsilon) -> Tensor output"
+        }
+      ],
+      "source": "pairformer/pair_weighted_average/spec.py",
+      "spec_sha256": "sha256:437ea30979443483b5f94ae62a90d94bc01c2aadff08897097d764762c323fae",
       "version": 1
     },
     {
-      "autograd": {
-        "backward": {
-          "module": "kernels.pairformer.transition.tilelang",
-          "symbol": "backward"
-        },
-        "mode": "registered",
-        "setup_context": {
-          "module": "kernels.pairformer.transition.tilelang",
-          "symbol": "setup_context"
-        }
-      },
+      "autograd_policy": "composite",
       "backend": "tilelang",
+      "backward": null,
+      "composite": {
+        "backward": "kernels.pairformer.transition.reference:composite_backward",
+        "decomposition": "kernels.pairformer.transition.reference:transition_reference",
+        "gradients": [
+          {
+            "accumulation_dtype": null,
+            "input_name": "gate",
+            "optional": false,
+            "output_name": "grad_gate",
+            "type": "GradientSpec",
+            "version": 1
+          },
+          {
+            "accumulation_dtype": null,
+            "input_name": "value",
+            "optional": false,
+            "output_name": "grad_value",
+            "type": "GradientSpec",
+            "version": 1
+          },
+          {
+            "accumulation_dtype": null,
+            "input_name": "output_weight",
+            "optional": false,
+            "output_name": "grad_output_weight",
+            "type": "GradientSpec",
+            "version": 1
+          },
+          {
+            "accumulation_dtype": null,
+            "input_name": "output_bias",
+            "optional": false,
+            "output_name": "grad_output_bias",
+            "type": "GradientSpec",
+            "version": 1
+          }
+        ],
+        "runtime_envelope": "pytorch>=2.10,<2.11",
+        "setup_context": "kernels.pairformer.transition.reference:setup_context",
+        "source_digest": "sha256:66ee4727de452b204913aea9afedf38efaf7b744c18d7eaa3bc4d723454a49a2",
+        "supports_double_backward": false,
+        "type": "CompositeAutogradSpec",
+        "version": 1
+      },
       "devices": [
         "cuda"
       ],
-      "fake": {
-        "module": "kernels.pairformer.transition.tilelang",
-        "symbol": "fake"
+      "effects": {
+        "aliases_outputs": [],
+        "mutates_inputs": [],
+        "type": "EffectSpec",
+        "uses_atomics": false,
+        "uses_rng": false,
+        "version": 1
       },
+      "facade_outputs": [
+        "output"
+      ],
+      "fake": null,
       "family": "pairformer",
-      "launch_symbol": "mindclade_tilelang_transition_launch",
+      "forward": {
+        "builder": "kernels.pairformer.transition.tilelang:build_tilelang_program",
+        "outputs": [
+          {
+            "device": {
+              "argument": "gate",
+              "node": "device_ref"
+            },
+            "dtype": {
+              "argument": "gate",
+              "node": "dtype_ref"
+            },
+            "initialization": null,
+            "name": "output",
+            "saved_for_backward": false,
+            "semantic_axes": [
+              "batch",
+              "row",
+              "channel"
+            ],
+            "shape": {
+              "dimensions": [
+                {
+                  "argument": "gate",
+                  "axis": 0,
+                  "node": "dim_ref"
+                },
+                {
+                  "argument": "gate",
+                  "axis": 1,
+                  "node": "dim_ref"
+                },
+                {
+                  "argument": "output_weight",
+                  "axis": 1,
+                  "node": "dim_ref"
+                }
+              ],
+              "node": "shape_tuple"
+            },
+            "type": "OutputSpec",
+            "version": 1,
+            "visible_in_facade": true
+          }
+        ],
+        "program_group": null,
+        "schema": "_transition_fwd(Tensor gate, Tensor value, Tensor output_weight, Tensor output_bias, Tensor mask) -> Tensor output",
+        "symbol": "mindclade_tilelang_transition_fwd_launch",
+        "type": "ForwardSpec",
+        "version": 1
+      },
+      "kernel_spec_digest": "sha256:06873d83344d245826ef47467178b5d98b4d22ba37576cf54833d59f36df11c9",
+      "launch": {
+        "current_stream_only": true,
+        "determinism": "conditionally_deterministic",
+        "global_synchronization": false,
+        "graph_capture_safe": false,
+        "hidden_device_allocation": false,
+        "type": "LaunchContract",
+        "version": 1
+      },
       "name": "transition",
       "namespace": "mindclade",
+      "operator_schema": "transition(Tensor gate, Tensor value, Tensor output_weight, Tensor output_bias, Tensor mask) -> Tensor output",
       "qualified_name": "mindclade::transition",
-      "schema": "transition(Tensor gate, Tensor value, Tensor output_weight, Tensor output_bias, Tensor mask) -> Tensor",
-      "source": "pairformer/transition/tilelang.py",
-      "source_sha256": "sha256:9ebd6c03132de14a772c08732c1cc902ac8509e3582e7eeafdab389dba868531",
+      "registrations": [
+        {
+          "implementation_symbol": "mindclade_tilelang_transition_fwd_launch",
+          "kind": "semantic",
+          "qualified_name": "mindclade::transition",
+          "schema": "transition(Tensor gate, Tensor value, Tensor output_weight, Tensor output_bias, Tensor mask) -> Tensor output"
+        },
+        {
+          "implementation_symbol": "mindclade_tilelang_transition_fwd_launch",
+          "kind": "forward",
+          "qualified_name": "mindclade::_transition_fwd",
+          "schema": "_transition_fwd(Tensor gate, Tensor value, Tensor output_weight, Tensor output_bias, Tensor mask) -> Tensor output"
+        }
+      ],
+      "source": "pairformer/transition/spec.py",
+      "spec_sha256": "sha256:dc290189fc1ff46a7f24b2c7fc1147a852f6cfc28d32700720b369baf2fdd408",
       "version": 1
     },
     {
-      "autograd": {
-        "backward": {
-          "module": "kernels.pairformer.triangle_attention.tilelang",
-          "symbol": "backward"
-        },
-        "mode": "registered",
-        "setup_context": {
-          "module": "kernels.pairformer.triangle_attention.tilelang",
-          "symbol": "setup_context"
-        }
-      },
+      "autograd_policy": "composite",
       "backend": "tilelang",
+      "backward": null,
+      "composite": {
+        "backward": "kernels.pairformer.triangle_attention.reference:composite_backward",
+        "decomposition": "kernels.pairformer.triangle_attention.reference:triangle_attention_reference",
+        "gradients": [
+          {
+            "accumulation_dtype": null,
+            "input_name": "q",
+            "optional": false,
+            "output_name": "grad_q",
+            "type": "GradientSpec",
+            "version": 1
+          },
+          {
+            "accumulation_dtype": null,
+            "input_name": "k",
+            "optional": false,
+            "output_name": "grad_k",
+            "type": "GradientSpec",
+            "version": 1
+          },
+          {
+            "accumulation_dtype": null,
+            "input_name": "v",
+            "optional": false,
+            "output_name": "grad_v",
+            "type": "GradientSpec",
+            "version": 1
+          },
+          {
+            "accumulation_dtype": null,
+            "input_name": "bias",
+            "optional": false,
+            "output_name": "grad_bias",
+            "type": "GradientSpec",
+            "version": 1
+          }
+        ],
+        "runtime_envelope": "pytorch-reference;promotion=unpromoted",
+        "setup_context": "kernels.pairformer.triangle_attention.reference:setup_context",
+        "source_digest": "sha256:485361b7d3a06836dfd7b13a24bd41ba2480852b0446a0c2e35e74dc1b9a2854",
+        "supports_double_backward": false,
+        "type": "CompositeAutogradSpec",
+        "version": 1
+      },
       "devices": [
         "cuda"
       ],
-      "fake": {
-        "module": "kernels.pairformer.triangle_attention.tilelang",
-        "symbol": "fake"
+      "effects": {
+        "aliases_outputs": [],
+        "mutates_inputs": [],
+        "type": "EffectSpec",
+        "uses_atomics": false,
+        "uses_rng": false,
+        "version": 1
       },
+      "facade_outputs": [
+        "output"
+      ],
+      "fake": "kernels.pairformer.triangle_attention.reference:fake",
       "family": "pairformer",
-      "launch_symbol": "mindclade_tilelang_triangle_attention_launch",
+      "forward": {
+        "builder": "kernels.pairformer.triangle_attention.tilelang:build_tilelang_program",
+        "outputs": [
+          {
+            "device": {
+              "argument": "q",
+              "node": "same_as_input_device"
+            },
+            "dtype": {
+              "argument": "q",
+              "node": "same_as_input_dtype"
+            },
+            "initialization": null,
+            "name": "output",
+            "saved_for_backward": false,
+            "semantic_axes": [
+              "batch_prefix",
+              "pair_row",
+              "pair_column",
+              "head",
+              "channel"
+            ],
+            "shape": {
+              "argument": "q",
+              "node": "shape_of"
+            },
+            "type": "OutputSpec",
+            "version": 1,
+            "visible_in_facade": true
+          }
+        ],
+        "program_group": null,
+        "schema": "_triangle_attention_fwd(Tensor q, Tensor k, Tensor v, Tensor bias, Tensor mask, float scale) -> Tensor output",
+        "symbol": "mindclade_tilelang_triangle_attention_fwd_launch",
+        "type": "ForwardSpec",
+        "version": 1
+      },
+      "kernel_spec_digest": "sha256:6fc7c90c4a271d1d7ae0e59e22dc893bf8caa6275ab2723fd9a6c0b3cab0fc0f",
+      "launch": {
+        "current_stream_only": true,
+        "determinism": "deterministic",
+        "global_synchronization": false,
+        "graph_capture_safe": false,
+        "hidden_device_allocation": false,
+        "type": "LaunchContract",
+        "version": 1
+      },
       "name": "triangle_attention",
       "namespace": "mindclade",
+      "operator_schema": "triangle_attention(Tensor q, Tensor k, Tensor v, Tensor bias, Tensor mask, float scale) -> Tensor output",
       "qualified_name": "mindclade::triangle_attention",
-      "schema": "triangle_attention(Tensor q, Tensor k, Tensor v, Tensor bias, Tensor mask, float scale) -> Tensor",
-      "source": "pairformer/triangle_attention/tilelang.py",
-      "source_sha256": "sha256:24aeb35002525ee5856334620779811485c7bbe432acacd8cbb33393b82e39a7",
+      "registrations": [
+        {
+          "implementation_symbol": "mindclade_tilelang_triangle_attention_fwd_launch",
+          "kind": "semantic",
+          "qualified_name": "mindclade::triangle_attention",
+          "schema": "triangle_attention(Tensor q, Tensor k, Tensor v, Tensor bias, Tensor mask, float scale) -> Tensor output"
+        },
+        {
+          "implementation_symbol": "mindclade_tilelang_triangle_attention_fwd_launch",
+          "kind": "forward",
+          "qualified_name": "mindclade::_triangle_attention_fwd",
+          "schema": "_triangle_attention_fwd(Tensor q, Tensor k, Tensor v, Tensor bias, Tensor mask, float scale) -> Tensor output"
+        }
+      ],
+      "source": "pairformer/triangle_attention/spec.py",
+      "spec_sha256": "sha256:cd1f8a02be1f6c6fc384b76d9c39e3e94d0fde7625b3a3dfca6da573ddad8725",
       "version": 1
     },
     {
-      "autograd": {
-        "backward": {
-          "module": "kernels.pairformer.triangle_multiplication.tilelang",
-          "symbol": "backward"
-        },
-        "mode": "registered",
-        "setup_context": {
-          "module": "kernels.pairformer.triangle_multiplication.tilelang",
-          "symbol": "setup_context"
-        }
-      },
+      "autograd_policy": "composite",
       "backend": "tilelang",
+      "backward": null,
+      "composite": {
+        "backward": "kernels.pairformer.triangle_multiplication.reference:composite_backward",
+        "decomposition": "kernels.pairformer.triangle_multiplication.reference:triangle_multiplication_reference",
+        "gradients": [
+          {
+            "accumulation_dtype": null,
+            "input_name": "left",
+            "optional": false,
+            "output_name": "grad_left",
+            "type": "GradientSpec",
+            "version": 1
+          },
+          {
+            "accumulation_dtype": null,
+            "input_name": "right",
+            "optional": false,
+            "output_name": "grad_right",
+            "type": "GradientSpec",
+            "version": 1
+          }
+        ],
+        "runtime_envelope": "pytorch-reference;promotion=unpromoted",
+        "setup_context": "kernels.pairformer.triangle_multiplication.reference:setup_context",
+        "source_digest": "sha256:5e72ba2c8e667afeb004bdb6e258045c8bdcdf922ec298c3342b624b75fe0bf3",
+        "supports_double_backward": false,
+        "type": "CompositeAutogradSpec",
+        "version": 1
+      },
       "devices": [
         "cuda"
       ],
-      "fake": {
-        "module": "kernels.pairformer.triangle_multiplication.tilelang",
-        "symbol": "fake"
+      "effects": {
+        "aliases_outputs": [],
+        "mutates_inputs": [],
+        "type": "EffectSpec",
+        "uses_atomics": false,
+        "uses_rng": false,
+        "version": 1
       },
+      "facade_outputs": [
+        "output"
+      ],
+      "fake": "kernels.pairformer.triangle_multiplication.reference:fake",
       "family": "pairformer",
-      "launch_symbol": "mindclade_tilelang_triangle_multiplication_launch",
+      "forward": {
+        "builder": "kernels.pairformer.triangle_multiplication.tilelang:build_tilelang_program",
+        "outputs": [
+          {
+            "device": {
+              "argument": "left",
+              "node": "same_as_input_device"
+            },
+            "dtype": {
+              "argument": "left",
+              "node": "same_as_input_dtype"
+            },
+            "initialization": null,
+            "name": "output",
+            "saved_for_backward": false,
+            "semantic_axes": [
+              "batch_prefix",
+              "pair_row",
+              "pair_column",
+              "channel"
+            ],
+            "shape": {
+              "argument": "left",
+              "node": "shape_of"
+            },
+            "type": "OutputSpec",
+            "version": 1,
+            "visible_in_facade": true
+          }
+        ],
+        "program_group": null,
+        "schema": "_triangle_multiplication_fwd(Tensor left, Tensor right, Tensor mask, bool outgoing) -> Tensor output",
+        "symbol": "mindclade_tilelang_triangle_multiplication_fwd_launch",
+        "type": "ForwardSpec",
+        "version": 1
+      },
+      "kernel_spec_digest": "sha256:cd98d8921213ce46296079f4b584e07e9d44340346ec987394988c30e53b6220",
+      "launch": {
+        "current_stream_only": true,
+        "determinism": "deterministic",
+        "global_synchronization": false,
+        "graph_capture_safe": false,
+        "hidden_device_allocation": false,
+        "type": "LaunchContract",
+        "version": 1
+      },
       "name": "triangle_multiplication",
       "namespace": "mindclade",
+      "operator_schema": "triangle_multiplication(Tensor left, Tensor right, Tensor mask, bool outgoing) -> Tensor output",
       "qualified_name": "mindclade::triangle_multiplication",
-      "schema": "triangle_multiplication(Tensor left, Tensor right, Tensor mask, bool outgoing) -> Tensor",
-      "source": "pairformer/triangle_multiplication/tilelang.py",
-      "source_sha256": "sha256:ae5f79a838a493935182a3031990ea29985458fab848c188c981613357588f23",
+      "registrations": [
+        {
+          "implementation_symbol": "mindclade_tilelang_triangle_multiplication_fwd_launch",
+          "kind": "semantic",
+          "qualified_name": "mindclade::triangle_multiplication",
+          "schema": "triangle_multiplication(Tensor left, Tensor right, Tensor mask, bool outgoing) -> Tensor output"
+        },
+        {
+          "implementation_symbol": "mindclade_tilelang_triangle_multiplication_fwd_launch",
+          "kind": "forward",
+          "qualified_name": "mindclade::_triangle_multiplication_fwd",
+          "schema": "_triangle_multiplication_fwd(Tensor left, Tensor right, Tensor mask, bool outgoing) -> Tensor output"
+        }
+      ],
+      "source": "pairformer/triangle_multiplication/spec.py",
+      "spec_sha256": "sha256:43a5406605f13218f901eebf5680d6621ac4f6d098e67b48ed7e5ffd28703575",
       "version": 1
     }
   ],
@@ -160,7 +705,7 @@
   "registration_mode": "build_time_generated",
   "request_time_compilation": false,
   "runtime_discovery": false,
-  "schema_version": 2,
-  "semantic_digest": "sha256:f7fd96bb3b93d44596780e2e5e2f891276d308e5c0255dbeb96ee08a364bbae3",
-  "source_inventory_sha256": "sha256:cc80b7325af092de47ebb3ef4220cbd86ebd915a677c8ac0d431686d03908788"
+  "schema_version": 3,
+  "semantic_digest": "sha256:ce2bb7651aea3e29a1c26d7cce589095580ad106b193c209f93cd34055a7d979",
+  "source_inventory_sha256": "sha256:f2ade0fba94738ec1e56e958c90b5165a71334cbbcb1350d15e36561974a3b45"
 }

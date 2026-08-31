@@ -4,24 +4,14 @@
 load("@rules_python//python:defs.bzl", "py_test")
 
 exports_files(
-    ["tilelang.py"],
+    ["dispatch.py", "reference.py", "spec.py", "tilelang.py"],
     visibility = ["//kernels/native:__pkg__"],
 )
 
 py_test(
-    name = "test_tilelang",
-    srcs = [
-        "__init__.py",
-        "test_tilelang.py",
-        "tilelang.py",
-    ],
+    name = "test_pair_weighted_average",
+    srcs = ["__init__.py", "dispatch.py", "reference.py", "spec.py", "tilelang.py", "test_tilelang.py"],
     main = "test_tilelang.py",
-    tags = [
-        "manual",
-        "requires-hermetic-torch-2.10",
-    ],
-    deps = [
-        "//kernels/native:tilelang_codegen_lib",
-        "@mindclade_pypi//pytest",
-    ],
+    tags = ["manual", "requires-hermetic-torch-2.10"],
+    deps = ["//kernels/api:api", "@mindclade_pypi//pytest"],
 )
