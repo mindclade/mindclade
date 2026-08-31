@@ -202,6 +202,8 @@ The cache namespace/key contract binds:
 
 ```text
 cache schema version
+public/private classification
+namespace epoch
 trust class
 operating platform
 machine architecture

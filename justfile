@@ -4,10 +4,16 @@ set shell := ["bash", "-euo", "pipefail", "-c"]
 
 uv := env_var_or_default("UV", "uv")
 python := env_var_or_default("PYTHON", "python3.12")
-bazel := env_var_or_default("BAZEL", "bazel") + " --nohome_rc --noworkspace_rc --output_user_root=" + justfile_directory() + "/build/bazel-user-root --bazelrc=" + justfile_directory() + "/.bazelrc"
+bazel_bin := env_var_or_default("BAZEL", "bazel")
+bazel := bazel_bin + " --nohome_rc --nosystem_rc --noworkspace_rc --output_user_root=" + justfile_directory() + "/build/bazel-user-root --bazelrc=" + justfile_directory() + "/.bazelrc"
 manifest := "docs/architecture/repository-path-manifest.yaml"
 component_schema := "tools/repo/component.schema.json"
 evidence_dir := "build/evidence"
+
+# Single cache-disabled Bazel test authority for qualification commands.
+[private]
+_ci-bazel-test output_root *args:
+    {{ bazel_bin }} --nohome_rc --nosystem_rc --noworkspace_rc --output_user_root="{{ output_root }}" --bazelrc="{{ justfile_directory() }}/.bazelrc" test --config=ci --remote_cache= --remote_executor= --disk_cache= --noremote_accept_cached --noremote_upload_local_results {{ args }}
 
 default:
     @just --list
@@ -227,7 +233,7 @@ test-affected:
       echo "No affected targets"
       exit 0
     fi
-    {{ bazel }} test --config=ci "${targets[@]}"
+    just _ci-bazel-test "${PWD}/build/bazel-user-root" "${targets[@]}"
     mkdir -p {{ evidence_dir }}
     printf '%s\n' '{"conclusion":"PASS","schema_version":"bazel-native-agreement.v1"}' > \
       {{ evidence_dir }}/bazel-native-agreement.v1.json
@@ -245,7 +251,7 @@ test-planned:
     if (( ${#targets[@]} == 0 )); then
       echo "Plan contains no Bazel targets"
     else
-      {{ bazel }} test --config=ci "${targets[@]}"
+      just _ci-bazel-test "${PWD}/build/bazel-user-root" "${targets[@]}"
     fi
     printf '%s\n' '{"conclusion":"PASS","schema_version":"bazel-native-agreement.v1"}' > \
       {{ evidence_dir }}/bazel-native-agreement.v1.json
@@ -255,10 +261,10 @@ test-domain domain:
     #!/usr/bin/env bash
     set -euo pipefail
     case "{{ domain }}" in
-      contracts) {{ bazel }} test --config=ci //:wave1_contract_tests ;;
-      foundations) {{ bazel }} test --config=ci //libs:foundation_tests ;;
-      control-plane) {{ bazel }} test --config=ci //services/control_plane:tests ;;
-      local) {{ bazel }} test --config=ci //tests:local_stack_integration_test ;;
+      contracts) just _ci-bazel-test "${PWD}/build/bazel-user-root" //:wave1_contract_tests ;;
+      foundations) just _ci-bazel-test "${PWD}/build/bazel-user-root" //libs:foundation_tests ;;
+      control-plane) just _ci-bazel-test "${PWD}/build/bazel-user-root" //services/control_plane:tests ;;
+      local) just _ci-bazel-test "${PWD}/build/bazel-user-root" //tests:local_stack_integration_test ;;
       *) echo "Unknown Wave 1 domain: {{ domain }}" >&2; exit 64 ;;
     esac
 
@@ -333,7 +339,7 @@ ci-wave1:
     set -euo pipefail
     : "${MINDCLADE_SOURCE_REVISION:?missing source revision}"
     [[ "${MINDCLADE_SOURCE_REVISION}" =~ ^[0-9a-f]{40}$ ]]
-    {{ bazel }} test --config=ci //:wave1_tests
+    just _ci-bazel-test "${PWD}/build/bazel-user-root" //:wave1_tests
     mkdir -p {{ evidence_dir }}
     {{ python }} -c 'import json,sys; print(json.dumps({"conclusion":"PASS","schema_version":"wave1-full.v1","source_revision":sys.argv[1],"target":"//:wave1_tests"},sort_keys=True,separators=(",",":")))' \
       "${MINDCLADE_SOURCE_REVISION}" > {{ evidence_dir }}/wave1-full.v1.json
@@ -344,22 +350,19 @@ ci-cacheless-canary:
     set -euo pipefail
     : "${MINDCLADE_SOURCE_REVISION:?missing source revision}"
     [[ "${MINDCLADE_SOURCE_REVISION}" =~ ^[0-9a-f]{40}$ ]]
-    rm -rf build/bazel-cacheless-user-root
-    bazel \
-      --nohome_rc \
-      --noworkspace_rc \
-      --output_user_root="${PWD}/build/bazel-cacheless-user-root" \
-      --bazelrc="${PWD}/.bazelrc" \
-      test \
-      --config=ci \
-      --remote_cache= \
-      --disk_cache= \
-      --noremote_accept_cached \
-      --noremote_upload_local_results \
-      //:wave1_tests
+    root_a="${PWD}/build/bazel-cacheless-a"
+    root_b="${PWD}/build/bazel-cacheless-b"
+    rm -rf "${root_a}" "${root_b}"
+    just _ci-bazel-test "${root_a}" //:wave1_tests
+    output_a="$({{ bazel_bin }} --nohome_rc --nosystem_rc --noworkspace_rc --output_user_root="${root_a}" --bazelrc="${PWD}/.bazelrc" cquery --config=ci --output=files //services/control_plane:control_plane_test | tail -n 1)"
+    digest_a="$({{ python }} -c 'import hashlib,sys; print("sha256:"+hashlib.sha256(open(sys.argv[1],"rb").read()).hexdigest())' "${output_a}")"
+    just _ci-bazel-test "${root_b}" //:wave1_tests
+    output_b="$({{ bazel_bin }} --nohome_rc --nosystem_rc --noworkspace_rc --output_user_root="${root_b}" --bazelrc="${PWD}/.bazelrc" cquery --config=ci --output=files //services/control_plane:control_plane_test | tail -n 1)"
+    digest_b="$({{ python }} -c 'import hashlib,sys; print("sha256:"+hashlib.sha256(open(sys.argv[1],"rb").read()).hexdigest())' "${output_b}")"
+    [[ "${digest_a}" == "${digest_b}" ]]
     mkdir -p {{ evidence_dir }}
-    {{ python }} -c 'import json,sys; print(json.dumps({"conclusion":"PASS","schema_version":"cacheless-reproducibility.v1","source_revision":sys.argv[1],"target":"//:wave1_tests"},sort_keys=True,separators=(",",":")))' \
-      "${MINDCLADE_SOURCE_REVISION}" > {{ evidence_dir }}/cacheless-reproducibility.v1.json
+    {{ python }} -c 'import json,sys; print(json.dumps({"cache_mode":"disabled","conclusion":"PASS","first_output_digest":sys.argv[2],"independent_output_roots":True,"reproducibility_subject":"//services/control_plane:control_plane_test","schema_version":"cacheless-reproducibility.v1","second_output_digest":sys.argv[3],"source_revision":sys.argv[1],"target":"//:wave1_tests"},sort_keys=True,separators=(",",":")))' \
+      "${MINDCLADE_SOURCE_REVISION}" "${digest_a}" "${digest_b}" > {{ evidence_dir }}/cacheless-reproducibility.v1.json
 
 # Resolve the exact changed set and target/gate plan before Buildkite executes it.
 ci-plan:
@@ -378,6 +381,8 @@ ci-plan:
     : "${MINDCLADE_CACHE_ARCHITECTURE:?missing cache architecture}"
     : "${MINDCLADE_CACHE_TOOLCHAIN_DIGEST:?missing cache toolchain digest}"
     : "${MINDCLADE_CACHE_BUILD_MODE:?missing cache build mode}"
+    : "${MINDCLADE_CACHE_CLASSIFICATION:?missing cache classification}"
+    : "${MINDCLADE_CACHE_NAMESPACE_EPOCH:?missing cache namespace epoch}"
     : "${BUILDKITE_BUILD_ID:?missing Buildkite build ID}"
     base_arguments=()
     if [[ -n "${MINDCLADE_BASE_REVISION:-}" ]]; then
@@ -410,6 +415,8 @@ ci-plan:
       --cache-architecture "${MINDCLADE_CACHE_ARCHITECTURE}" \
       --cache-toolchain-digest "${MINDCLADE_CACHE_TOOLCHAIN_DIGEST}" \
       --cache-build-mode "${MINDCLADE_CACHE_BUILD_MODE}" \
+      --cache-classification "${MINDCLADE_CACHE_CLASSIFICATION}" \
+      --cache-namespace-epoch "${MINDCLADE_CACHE_NAMESPACE_EPOCH}" \
       "${cache_activation_arguments[@]}" \
       --root . \
       "${base_arguments[@]}" \
@@ -487,7 +494,7 @@ integration-test:
     #!/usr/bin/env bash
     set -euo pipefail
     dsn='postgres://mindclade@127.0.0.1:55432/mindclade?sslmode=disable'
-    {{ bazel }} test --config=ci \
+    just _ci-bazel-test "${PWD}/build/bazel-user-root" \
       --test_env="MINDCLADE_TEST_POSTGRES_DSN=${dsn}" \
       --test_env=MINDCLADE_REQUIRE_POSTGRES_INTEGRATION=1 \
       //tests:artifact_commit_integration_test \

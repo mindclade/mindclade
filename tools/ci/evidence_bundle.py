@@ -557,6 +557,8 @@ def _validate_cache_boundary(
         raise ValueError("cache build mode does not match the dispatched pipeline class")
     expected_namespace = {
         "schema_version": "cache-namespace.v1",
+        "classification": context.get("cache_classification"),
+        "namespace_epoch": context.get("cache_namespace_epoch"),
         "trust_class": context.get("source_trust"),
         "platform": context.get("cache_platform"),
         "architecture": context.get("cache_architecture"),
@@ -694,12 +696,21 @@ def validate_check_report(
             target="//:wave1_tests",
         )
     elif name == "cacheless-reproducibility":
-        _validate_source_gate(
-            path,
-            source_revision=source_revision,
-            schema_version="cacheless-reproducibility.v1",
-            target="//:wave1_tests",
-        )
+        report = read_object(path, "cacheless-reproducibility.v1")
+        first = report.get("first_output_digest")
+        second = report.get("second_output_digest")
+        if report != {
+            "cache_mode": "disabled",
+            "conclusion": "PASS",
+            "first_output_digest": first,
+            "independent_output_roots": True,
+            "reproducibility_subject": "//services/control_plane:control_plane_test",
+            "schema_version": "cacheless-reproducibility.v1",
+            "second_output_digest": second,
+            "source_revision": source_revision,
+            "target": "//:wave1_tests",
+        } or not isinstance(first, str) or not DIGEST_PATTERN.fullmatch(first) or first != second:
+            raise ValueError("cacheless canary lacks matching independent output digests")
     else:
         raise ValueError(f"unsupported planned check: {name}")
 
@@ -738,10 +749,12 @@ def validate_trusted_context(
         "cache_architecture",
         "cache_toolchain_digest",
         "cache_build_mode",
+        "pipeline_class",
+        "cache_classification",
+        "cache_namespace_epoch",
     }
-    missing = sorted(required - set(context))
-    if missing:
-        raise ValueError(f"trusted context is missing: {', '.join(missing)}")
+    if set(context) != required:
+        raise ValueError("trusted context contains missing or unknown fields")
     source_revision = _required_string(context, "source_revision")
     workflow_revision = _required_string(context, "workflow_revision")
     correlation_id = _required_string(context, "correlation_id")
@@ -779,6 +792,18 @@ def validate_trusted_context(
         "security",
     }:
         raise ValueError("trusted context cache build mode is not allowlisted")
+    if context.get("pipeline_class") != context.get("cache_build_mode"):
+        raise ValueError("trusted context pipeline and cache build modes differ")
+    expected_tier = {
+        "presubmit": "untrusted", "protected": "trusted", "nightly": "trusted",
+        "gpu": "trusted", "release": "release", "security": "trusted",
+    }[cast(str, context.get("pipeline_class"))]
+    if context.get("execution_tier") != expected_tier:
+        raise ValueError("trusted context pipeline class has the wrong execution tier")
+    if context.get("cache_classification") != "private-internal":
+        raise ValueError("trusted context public cache is not activated")
+    if context.get("cache_namespace_epoch") != "disabled-v1":
+        raise ValueError("trusted context cache namespace epoch is not activated")
     for field in ("cache_platform", "cache_architecture"):
         if not re.fullmatch(r"[a-z0-9][a-z0-9._-]{1,63}", _required_string(context, field)):
             raise ValueError(f"trusted context {field} is not canonical")
@@ -814,6 +839,8 @@ def build_evidence(args: argparse.Namespace) -> dict[str, object]:
     source_revision = _required_string(context, "source_revision")
     plan = read_object(args.plan, "pipeline plan")
     pipeline_class = _required_string(plan, "pipeline_class")
+    if context.get("pipeline_class") != pipeline_class:
+        raise ValueError("trusted context pipeline class does not match the plan")
     plan_id = validate_plan(
         plan,
         source_revision=source_revision,

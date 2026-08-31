@@ -24,19 +24,43 @@ BUILDKITE_UUID_PATTERN = re.compile(
 )
 LAUNCHER_IDENTITY_PATTERN = re.compile(r"^buildkite://[a-z0-9][a-z0-9._/-]{7,255}$")
 PROTECTED_DEFINITION_PATHS = (
+    ".bazelrc",
+    ".bazelversion",
     ".buildkite",
-    ".github/workflows/buildkite-dispatch.yml",
-    ".github/workflows/required-check.yml",
+    ".github",
+    ".gitignore",
+    ".markdownlint-cli2.yaml",
+    ".pre-commit-config.yaml",
+    ".python-version",
+    ".yamllint.yaml",
     "BUILD.bazel",
+    "Cargo.lock",
+    "Cargo.toml",
+    "MODULE.bazel",
+    "MODULE.bazel.lock",
+    "buf.gen.yaml",
+    "buf.yaml",
+    "component.yaml",
+    "docs/adr",
+    "docs/architecture",
+    "flake.lock",
+    "flake.nix",
+    "go.mod",
+    "go.sum",
     "justfile",
-    "tests/BUILD.bazel",
-    "tools/BUILD.bazel",
-    "tools/ci",
-    "tools/qualification",
+    "package.json",
+    "pnpm-lock.yaml",
+    "pnpm-workspace.yaml",
+    "pyproject.toml",
+    "rust-toolchain.toml",
+    "tools",
+    "uv.lock",
 )
 PUBLIC_CACHE_TARGET_ALLOWLIST: tuple[str, ...] = ()
 CACHE_NAMESPACE_FIELDS = (
     "schema_version",
+    "classification",
+    "namespace_epoch",
     "trust_class",
     "platform",
     "architecture",
@@ -52,7 +76,7 @@ CACHE_POISON_RECOVERY = (
 
 
 def canonical_json(value: Any) -> bytes:
-    return (json.dumps(value, sort_keys=True, separators=(",", ":")) + "\n").encode()
+    return json.dumps(value, sort_keys=True, separators=(",", ":")).encode()
 
 
 def build_plan(
@@ -199,6 +223,8 @@ def build_cache_boundary(
     toolchain_digest: str,
     build_mode: str,
     cache_mode: str,
+    classification: str,
+    namespace_epoch: str,
     iam_qualification_digest: str | None,
     write_activation_digest: str | None,
 ) -> dict[str, object]:
@@ -224,8 +250,12 @@ def build_cache_boundary(
         raise ValueError("repository cache use is not activated by source policy")
     if iam_qualification_digest is not None or write_activation_digest is not None:
         raise ValueError("disabled cache mode must not imply connected activation evidence")
+    if classification != "private-internal" or namespace_epoch != "disabled-v1":
+        raise ValueError("disabled cache must use the unactivated private namespace")
     namespace = {
         "schema_version": "cache-namespace.v1",
+        "classification": classification,
+        "namespace_epoch": namespace_epoch,
         "trust_class": trust_class,
         "platform": platform,
         "architecture": architecture,
@@ -275,6 +305,13 @@ def self_test() -> None:
     expected_id = f"sha256:{hashlib.sha256(canonical_json(unsigned)).hexdigest()}"
     if plan["plan_id"] != expected_id:
         raise AssertionError("pipeline plan ID does not bind canonical plan bytes")
+    from evidence_bundle import validate_plan
+
+    validate_plan(
+        plan,
+        source_revision=source_revision,
+        pipeline_definition_revision=pipeline_revision,
+    )
     observation = build_launcher_observation(
         source_revision=source_revision,
         pipeline_definition_revision=pipeline_revision,
@@ -295,6 +332,8 @@ def self_test() -> None:
         toolchain_digest="sha256:" + "f" * 64,
         build_mode="protected",
         cache_mode="disabled",
+        classification="private-internal",
+        namespace_epoch="disabled-v1",
         iam_qualification_digest=None,
         write_activation_digest=None,
     )
@@ -317,6 +356,8 @@ def self_test() -> None:
                 toolchain_digest="sha256:" + "f" * 64,
                 build_mode="protected",
                 cache_mode=mode,
+                classification="private-internal",
+                namespace_epoch="disabled-v1",
                 iam_qualification_digest=iam,
                 write_activation_digest=write,
             )
@@ -347,6 +388,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--cache-architecture")
     parser.add_argument("--cache-toolchain-digest")
     parser.add_argument("--cache-build-mode")
+    parser.add_argument("--cache-classification")
+    parser.add_argument("--cache-namespace-epoch")
     parser.add_argument("--cache-iam-qualification-digest")
     parser.add_argument("--cache-write-activation-digest")
     parser.add_argument("--self-test", action="store_true")
@@ -373,6 +416,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         "cache-architecture": args.cache_architecture,
         "cache-toolchain-digest": args.cache_toolchain_digest,
         "cache-build-mode": args.cache_build_mode,
+        "cache-classification": args.cache_classification,
+        "cache-namespace-epoch": args.cache_namespace_epoch,
     }
     missing_inputs = sorted(name for name, value in required_inputs.items() if not value)
     if missing_inputs:
@@ -416,6 +461,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             toolchain_digest=cast(str, args.cache_toolchain_digest),
             build_mode=cast(str, args.cache_build_mode),
             cache_mode=args.cache_mode,
+            classification=cast(str, args.cache_classification),
+            namespace_epoch=cast(str, args.cache_namespace_epoch),
             iam_qualification_digest=args.cache_iam_qualification_digest,
             write_activation_digest=args.cache_write_activation_digest,
         )

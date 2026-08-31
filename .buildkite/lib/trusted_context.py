@@ -11,6 +11,10 @@ SHA_PATTERN = re.compile(r"^[0-9a-f]{40}$")
 DIGEST_PATTERN = re.compile(r"^sha256:[0-9a-f]{64}$")
 CORRELATION_PATTERN = re.compile(r"^[A-Za-z0-9._:/-]{8,200}$")
 LAUNCHER_IDENTITY_PATTERN = re.compile(r"^buildkite://[a-z0-9][a-z0-9._/-]{7,255}$")
+PIPELINE_EXECUTION_TIER = {
+    "presubmit": "untrusted", "protected": "trusted", "nightly": "trusted",
+    "gpu": "trusted", "release": "release", "security": "trusted",
+}
 
 
 @dataclass(frozen=True)
@@ -30,6 +34,8 @@ class TrustedContext:
     cache_architecture: str
     cache_toolchain_digest: str
     cache_build_mode: str
+    cache_classification: str
+    cache_namespace_epoch: str
 
     @classmethod
     def from_environment(cls, environment: Mapping[str, str] | None = None) -> TrustedContext:
@@ -57,6 +63,8 @@ class TrustedContext:
             cache_architecture=required("MINDCLADE_CACHE_ARCHITECTURE"),
             cache_toolchain_digest=required("MINDCLADE_CACHE_TOOLCHAIN_DIGEST"),
             cache_build_mode=required("MINDCLADE_CACHE_BUILD_MODE"),
+            cache_classification=required("MINDCLADE_CACHE_CLASSIFICATION"),
+            cache_namespace_epoch=required("MINDCLADE_CACHE_NAMESPACE_EPOCH"),
         )
         context.validate()
         return context
@@ -82,6 +90,8 @@ class TrustedContext:
             cache_architecture="x86_64",
             cache_toolchain_digest="sha256:" + "f" * 64,
             cache_build_mode=pipeline_class,
+            cache_classification="private-internal",
+            cache_namespace_epoch="disabled-v1",
         )
 
     def validate(self) -> None:
@@ -109,39 +119,23 @@ class TrustedContext:
             raise ValueError("cache toolchain digest must be canonical")
         if self.cache_build_mode != self.pipeline_class:
             raise ValueError("cache build mode must match the pipeline class")
+        if self.cache_classification != "private-internal":
+            raise ValueError("public cache classification is not activated")
+        if self.cache_namespace_epoch != "disabled-v1":
+            raise ValueError("cache namespace epoch is not activated")
         if not CORRELATION_PATTERN.fullmatch(self.correlation_id):
             raise ValueError("correlation ID has an invalid format")
-        if self.pipeline_class not in {
-            "presubmit",
-            "protected",
-            "nightly",
-            "gpu",
-            "release",
-            "security",
-        }:
+        if self.pipeline_class not in PIPELINE_EXECUTION_TIER:
             raise ValueError("pipeline class is not allowlisted")
-        if self.execution_tier not in {"untrusted", "trusted", "release"}:
-            raise ValueError("execution tier is not allowlisted")
+        if self.execution_tier != PIPELINE_EXECUTION_TIER[self.pipeline_class]:
+            raise ValueError("pipeline class has the wrong execution tier")
         if self.source_trust not in {"untrusted", "trusted", "protected"}:
             raise ValueError("source trust is not allowlisted")
-        if self.pipeline_class == "presubmit":
-            if self.execution_tier != "untrusted":
-                raise ValueError("presubmit must use the isolated untrusted tier")
-            if self.source_trust not in {"untrusted", "trusted", "protected"}:
-                raise ValueError("presubmit source trust is not allowlisted")
-        elif self.pipeline_class == "release":
-            if (
-                self.execution_tier != "release"
-                or self.source_trust != "protected"
-                or self.source_revision != self.pipeline_definition_revision
-            ):
-                raise ValueError("release requires a revision-identical release tier")
-        elif self.execution_tier not in {"trusted", "release"}:
-            raise ValueError("protected pipeline class requires a protected execution tier")
-        elif self.source_trust != "protected":
-            raise ValueError("protected pipeline class requires protected source trust")
-        elif self.source_revision != self.pipeline_definition_revision:
-            raise ValueError("protected pipeline must execute its own exact definition revision")
+        if self.pipeline_class != "presubmit" and (
+            self.source_trust != "protected"
+            or self.source_revision != self.pipeline_definition_revision
+        ):
+            raise ValueError("protected pipeline requires revision-identical protected source")
 
     def pipeline_environment(self) -> dict[str, str]:
         return {
@@ -160,4 +154,6 @@ class TrustedContext:
             "MINDCLADE_CACHE_ARCHITECTURE": self.cache_architecture,
             "MINDCLADE_CACHE_TOOLCHAIN_DIGEST": self.cache_toolchain_digest,
             "MINDCLADE_CACHE_BUILD_MODE": self.cache_build_mode,
+            "MINDCLADE_CACHE_CLASSIFICATION": self.cache_classification,
+            "MINDCLADE_CACHE_NAMESPACE_EPOCH": self.cache_namespace_epoch,
         }

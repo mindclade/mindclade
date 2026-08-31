@@ -1024,6 +1024,7 @@ def _self_test(org_schema: Path | None) -> None:
         "workflow_revision": "c" * 40,
         "source_trust": "untrusted",
         "execution_tier": "untrusted",
+        "pipeline_class": "presubmit",
         "pipeline_definition_revision": pipeline_revision,
         "launcher_revision": "d" * 40,
         "launcher_digest": "sha256:" + "e" * 64,
@@ -1033,6 +1034,8 @@ def _self_test(org_schema: Path | None) -> None:
         "cache_architecture": "x86_64",
         "cache_toolchain_digest": "sha256:" + "f" * 64,
         "cache_build_mode": "presubmit",
+        "cache_classification": "private-internal",
+        "cache_namespace_epoch": "disabled-v1",
     }
     context_digest = sha256_bytes(canonical_json(context))
     unsigned_plan: dict[str, object] = {
@@ -1098,6 +1101,8 @@ def _self_test(org_schema: Path | None) -> None:
                     "public_cache_target_allowlist": [],
                     "namespace": {
                         "schema_version": "cache-namespace.v1",
+                        "classification": "private-internal",
+                        "namespace_epoch": "disabled-v1",
                         "trust_class": "untrusted",
                         "platform": "linux",
                         "architecture": "x86_64",
