@@ -8,7 +8,12 @@ import hashlib
 from pathlib import Path
 import re
 
-from kernels.api import ExprDomain, ImplementationSpec, KernelSpec
+from kernels.api import (
+    ExprDomain,
+    ImplementationSpec,
+    KernelSpec,
+    expression_references,
+)
 from kernels.native.codegen.parse_literal_ast import parse_kernel_declarations_source
 from kernels.native.codegen.schema import parse_schema
 
@@ -181,7 +186,9 @@ def _validate_implementations(
 ) -> tuple[ImplementationSpec, ...]:
     expected_module = f"kernels.{spec.family}.{spec.name}.tilelang"
     semantic = parse_schema(spec.operator_schema)
+    semantic_arguments = {argument.name for argument in semantic.args}
     tensor_arguments = {argument.name for argument in semantic.args if argument.is_tensor}
+    scalar_arguments = semantic_arguments - tensor_arguments
     identities: set[tuple[str, int]] = set()
     for implementation in implementations:
         if implementation.operation != spec.qualified_name:
@@ -207,20 +214,50 @@ def _validate_implementations(
         identities.add(identity)
         envelope = implementation.envelope
         for constraint in envelope.constraints:
+            context = (
+                f"{relative}: operation {spec.qualified_name!r} implementation "
+                f"{implementation.name!r} constraint {constraint.code!r}"
+            )
             if constraint.predicate.domain is not ExprDomain.BOOL:
                 raise ValueError(
-                    f"{relative}: capability constraint {constraint.code!r} must be boolean"
+                    f"{context}: predicate must be boolean"
                 )
-        unknown_arguments = sorted(
-            item.argument
-            for item in envelope.tensor_constraints
-            if item.argument not in tensor_arguments
+            references = expression_references(constraint.predicate)
+            unknown_tensor = sorted(set(references.tensors) - semantic_arguments)
+            if unknown_tensor:
+                raise ValueError(f"{context}: unknown tensor references {unknown_tensor}")
+            unknown_scalar = sorted(set(references.scalars) - semantic_arguments)
+            if unknown_scalar:
+                raise ValueError(f"{context}: unknown scalar references {unknown_scalar}")
+            scalar_as_tensor = sorted(set(references.tensors) & scalar_arguments)
+            if scalar_as_tensor:
+                raise ValueError(
+                    f"{context}: scalar semantic arguments referenced as Tensor: "
+                    f"{scalar_as_tensor}"
+                )
+            tensor_as_scalar = sorted(set(references.scalars) & tensor_arguments)
+            if tensor_as_scalar:
+                raise ValueError(
+                    f"{context}: Tensor semantic arguments referenced as scalar: "
+                    f"{tensor_as_scalar}"
+                )
+
+        implementation_context = (
+            f"{relative}: operation {spec.qualified_name!r} implementation "
+            f"{implementation.name!r}"
         )
-        if unknown_arguments:
-            raise ValueError(
-                f"{relative}: tensor capability constraints reference non-Tensor "
-                f"arguments: {unknown_arguments}"
-            )
+        for tensor_constraint in envelope.tensor_constraints:
+            argument = tensor_constraint.argument
+            if argument not in semantic_arguments:
+                raise ValueError(
+                    f"{implementation_context}: tensor capability constraint has "
+                    f"unknown semantic argument {argument!r}"
+                )
+            if argument not in tensor_arguments:
+                raise ValueError(
+                    f"{implementation_context}: tensor capability constraint argument "
+                    f"{argument!r} names a scalar semantic argument"
+                )
     return tuple(sorted(implementations, key=lambda item: (item.name, item.version)))
 
 

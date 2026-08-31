@@ -83,6 +83,50 @@ def _profiles():
     }
 
 
+def _implementation_source(tmp_path: Path) -> tuple[Path, str]:
+    native_root, source, _builder_source = _fixture_source(tmp_path)
+    spec_file = native_root.parent / source
+    contents = spec_file.read_text(encoding="utf-8")
+    contents = contents.replace(
+        "AutogradPolicy, CompositeAutogradSpec, DeviceRef, DTypeRef, EffectSpec,",
+        "AutogradPolicy, BoolLiteral, CapabilityEnvelope, CompositeAutogradSpec, "
+        "DeviceRef, DimensionConstraint, DTypeRef, EffectSpec,",
+    ).replace(
+        "ForwardSpec, GradientSpec, KernelSpec, LaunchContract, OutputSpec, ShapeOf,",
+        "ForwardSpec, GradientSpec, ImplementationSpec, ImplementationTier, KernelSpec, "
+        "LaunchContract, OutputSpec, ShapeOf,",
+    ).replace(
+        "IMPLEMENTATION_SPECS = ()",
+        '''IMPLEMENTATION_SPECS = (
+    ImplementationSpec(
+        operation="mindclade::fixture_op",
+        name="portable",
+        family="family_a",
+        backend="tilelang",
+        builder="kernels.family_a.fixture_op.tilelang:build_implementation",
+        version=1,
+        tier=ImplementationTier.PORTABLE,
+        requires=("cuda",),
+        envelope=CapabilityEnvelope(
+            architectures=("sm90",),
+            dtypes=("float32",),
+            layouts=("contiguous",),
+            modes=("default",),
+            constraints=(DimensionConstraint(
+                predicate=BoolLiteral(value=True),
+                code="VALID",
+                message="fixture implementation is supported",
+            ),),
+            graph_capture_safe=False,
+            training_capable=False,
+        ),
+    ),
+)''',
+    )
+    spec_file.write_text(contents, encoding="utf-8")
+    return native_root, source
+
+
 def _unsupported_source(
     tmp_path: Path,
     *,
@@ -330,6 +374,36 @@ def test_offline_builder_requires_exact_bounded_profile_inventory(tmp_path: Path
             tmp_path / "compiled",
             source_files=[source],
             profiles={},
+            target="cuda-sm90",
+        )
+
+
+def test_offline_builder_rejects_implementation_before_tilelang_or_builder(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    native_root, source = _implementation_source(tmp_path)
+    monkeypatch.setattr(
+        build.importlib,
+        "import_module",
+        lambda name: (_ for _ in ()).throw(AssertionError(f"unexpected import: {name}")),
+    )
+    monkeypatch.setattr(
+        build,
+        "_resolve_builder",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            AssertionError("unexpected builder resolution")
+        ),
+    )
+
+    with pytest.raises(
+        RuntimeError,
+        match=r"receipt schema v2.*ImplementationSpec.*receipt schema v3 candidate/envelope binding",
+    ):
+        compile_all(
+            native_root,
+            tmp_path / "compiled",
+            source_files=[source],
+            profiles=_profiles(),
             target="cuda-sm90",
         )
 
