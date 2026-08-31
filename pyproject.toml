@@ -42,3 +42,8 @@ extraPaths = [
 [tool.pytest.ini_options]
 addopts = "-ra --strict-config --strict-markers"
 testpaths = ["tools"]
+
+[dependency-groups]
+dev = [
+    "pytest==9.0.3",
+]
