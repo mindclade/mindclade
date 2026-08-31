@@ -8,7 +8,7 @@
 
 ## Fail-closed boundary
 
-The hardware ceiling is fixed by SQP-001, but it is not an allocation or spending approval. No H100 qualification or pre-Wave-5 multi-GPU run may start until ML Systems and Finance/Operations approve the exact software and cost envelope at an immutable revision. A local GPU, available quota, cloud credentials, or successful CPU test does not grant authority.
+The hardware ceiling is fixed by SQP-001, but it is not an allocation or spending approval. Wave 2S implementation, H100 qualification, and any pre-Wave-5 multi-GPU run remain blocked until ML Systems and Finance/Operations approve the exact software and cost envelope at an immutable revision. A local GPU, available quota, cloud credentials, or successful CPU test does not grant authority.
 
 The fixed hardware envelope is one NVIDIA H100 80 GB for functional qualification and at most eight NVIDIA H100 80 GB accelerators in one node for any pre-Wave-5 run. Multi-node execution and a Kubernetes dependency are prohibited. Approval cannot widen this ceiling; a wider or different profile needs a new decision.
 
@@ -30,4 +30,4 @@ Finance/Operations can revoke or expire the envelope. Revocation blocks new allo
 
 ## Approval ceremony
 
-Both owners review the same immutable contract instance through the protected approval path. Their signed receipts are combined into one approval receipt digest. Only then may a reviewer change `status` to `approved`, replace the pending software/cost envelopes with exact values, and add the schema-required approval fields. Merge of this policy or its pending template is source governance only and grants no accelerator, cloud, deployment, or production authority.
+Both owners review the same immutable contract instance through the protected approval path. Version 1 intentionally accepts only the pending template and rejects every self-asserted approved or revoked record. Before any state transition is representable, the repository must add a protected cryptographic verifier that resolves each signed receipt, verifies independent role identity against approved trust roots, and binds the receipt to the protected revision and canonical approval-contract digest. That verifier and its verifier-controlled activation schema must land together. Until then, Wave 2S implementation and accelerator allocation remain blocked. Merge of this policy or its pending template is source governance only and grants no accelerator, cloud, deployment, or production authority.
