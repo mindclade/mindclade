@@ -62,6 +62,14 @@ py_test(
     python_version = "PY3",
 )
 
+py_test(
+    name = "license_scanner_contract_test",
+    srcs = ["licenses/scan_licenses.py"],
+    args = ["--self-test"],
+    main = "licenses/scan_licenses.py",
+    python_version = "PY3",
+)
+
 _REPOSITORY_TEST_DATA = glob(
     ["repo/**"],
     exclude = _IGNORED_SOURCE_PATTERNS,
@@ -133,6 +141,7 @@ test_suite(
     tests = [
         ":blueprint_render_test",
         ":blueprint_source_manifest_test",
+        ":license_scanner_contract_test",
         ":monorepo_tree_authority_test",
         ":pipeline_plan_contract_test",
         ":repository_drift_report_test",
