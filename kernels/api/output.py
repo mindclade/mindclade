@@ -7,7 +7,15 @@ from enum import Enum
 from typing import Any
 
 from .errors import KernelContractError
-from .expressions import DTypeExpr, DeviceExpr, Expr, ShapeExpr, canonical_data, content_digest
+from .expressions import (
+    DTypeExpr,
+    DeviceExpr,
+    Expr,
+    ExprDomain,
+    ShapeExpr,
+    canonical_data,
+    content_digest,
+)
 
 
 def _nonempty(value: str, label: str) -> str:
@@ -96,7 +104,7 @@ class OutputSpec(ContractModel):
         _nonempty(self.name, "output name")
         if self.version != 1:
             raise KernelContractError(f"unsupported OutputSpec version: {self.version}")
-        if not isinstance(self.shape, ShapeExpr):
+        if not isinstance(self.shape, Expr) or self.shape.domain is not ExprDomain.SHAPE:
             raise KernelContractError("output shape must be a typed shape expression")
         if not isinstance(self.dtype, Expr):
             raise KernelContractError("output dtype must be a typed dtype expression")

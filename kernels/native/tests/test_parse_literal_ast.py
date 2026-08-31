@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from kernels.api import IntLiteral, KernelSpec, LaunchContract
+from kernels.api import IntLiteral, KernelSpec, LaunchContract, ShapeTuple
 from kernels.native.codegen.parse_literal_ast import (
     LiteralAstError,
     parse_kernel_spec_source,
@@ -66,7 +66,7 @@ def test_parses_one_complete_kernel_spec_without_importing_operation() -> None:
     spec = parse_kernel_spec_source(_minimal_kernel_source(), filename="testing/noop/spec.py")
     assert isinstance(spec, KernelSpec)
     assert spec.qualified_name == "mindclade::noop"
-    assert spec.forward.outputs[0].shape[0] == spec.forward.outputs[0].shape[0]
+    assert isinstance(spec.forward.outputs[0].shape, ShapeTuple)
 
 
 def test_parses_approved_aliases_literals_containers_and_enum_members() -> None:
@@ -254,7 +254,7 @@ def test_annotated_declaration_requires_imported_kernel_spec_binding() -> None:
 
 
 def test_rejects_repeated_keyword_syntax_and_unsupported_schema_version() -> None:
-    with pytest.raises(LiteralAstError, match="invalid Python syntax"):
+    with pytest.raises(LiteralAstError, match="duplicate constructor field"):
         parse_literal_source(
             "from kernels.api import IntLiteral\n"
             "KERNEL_SPEC = IntLiteral(value=1, value=2)\n"
