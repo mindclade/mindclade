@@ -5,7 +5,7 @@ set shell := ["bash", "-euo", "pipefail", "-c"]
 uv := env_var_or_default("UV", "uv")
 python := env_var_or_default("PYTHON", "python3.12")
 bazel_bin := env_var_or_default("BAZEL", "bazel")
-bazel := bazel_bin + " --nohome_rc --noworkspace_rc --output_user_root=" + justfile_directory() + "/build/bazel-user-root --bazelrc=" + justfile_directory() + "/.bazelrc"
+bazel := bazel_bin
 manifest := "docs/architecture/repository-path-manifest.yaml"
 component_schema := "tools/repo/component.schema.json"
 evidence_dir := "build/evidence"
@@ -13,7 +13,7 @@ evidence_dir := "build/evidence"
 # Single cache-disabled Bazel test authority for qualification commands.
 [private]
 _ci-bazel-test output_root *args:
-    {{ bazel_bin }} --nohome_rc --nosystem_rc --noworkspace_rc --output_user_root="{{ output_root }}" --bazelrc="{{ justfile_directory() }}/.bazelrc" test --config=ci --remote_cache= --remote_executor= --disk_cache= --noremote_accept_cached --noremote_upload_local_results {{ args }}
+    BAZEL_OUTPUT_USER_ROOT="{{ output_root }}" {{ bazel_bin }} test --config=ci {{ args }}
 
 default:
     @just --list
@@ -347,7 +347,7 @@ test-affected:
       echo "No affected targets"
       exit 0
     fi
-    just _ci-bazel-test "${PWD}/build/bazel-user-root" "${targets[@]}"
+    just _ci-bazel-test "${TMPDIR:-/tmp}/mindclade-bazel-user-root" "${targets[@]}"
     mkdir -p {{ evidence_dir }}
     printf '%s\n' '{"conclusion":"PASS","schema_version":"bazel-native-agreement.v1"}' > \
       {{ evidence_dir }}/bazel-native-agreement.v1.json
@@ -365,7 +365,7 @@ test-planned:
     if (( ${#targets[@]} == 0 )); then
       echo "Plan contains no Bazel targets"
     else
-      just _ci-bazel-test "${PWD}/build/bazel-user-root" "${targets[@]}"
+      just _ci-bazel-test "${TMPDIR:-/tmp}/mindclade-bazel-user-root" "${targets[@]}"
     fi
     printf '%s\n' '{"conclusion":"PASS","schema_version":"bazel-native-agreement.v1"}' > \
       {{ evidence_dir }}/bazel-native-agreement.v1.json
@@ -375,10 +375,10 @@ test-domain domain:
     #!/usr/bin/env bash
     set -euo pipefail
     case "{{ domain }}" in
-      contracts) just _ci-bazel-test "${PWD}/build/bazel-user-root" //:wave1_contract_tests ;;
-      foundations) just _ci-bazel-test "${PWD}/build/bazel-user-root" //libs:foundation_tests ;;
-      control-plane) just _ci-bazel-test "${PWD}/build/bazel-user-root" //services/control_plane:tests ;;
-      local) just _ci-bazel-test "${PWD}/build/bazel-user-root" //tests:local_stack_integration_test ;;
+      contracts) just _ci-bazel-test "${TMPDIR:-/tmp}/mindclade-bazel-user-root" //:wave1_contract_tests ;;
+      foundations) just _ci-bazel-test "${TMPDIR:-/tmp}/mindclade-bazel-user-root" //libs:foundation_tests ;;
+      control-plane) just _ci-bazel-test "${TMPDIR:-/tmp}/mindclade-bazel-user-root" //services/control_plane:tests ;;
+      local) just _ci-bazel-test "${TMPDIR:-/tmp}/mindclade-bazel-user-root" //tests:local_stack_integration_test ;;
       *) echo "Unknown Wave 1 domain: {{ domain }}" >&2; exit 64 ;;
     esac
 
@@ -453,7 +453,7 @@ ci-wave1:
     set -euo pipefail
     : "${MINDCLADE_SOURCE_REVISION:?missing source revision}"
     [[ "${MINDCLADE_SOURCE_REVISION}" =~ ^[0-9a-f]{40}$ ]]
-    just _ci-bazel-test "${PWD}/build/bazel-user-root" //:wave1_tests
+    just _ci-bazel-test "${TMPDIR:-/tmp}/mindclade-bazel-user-root" //:wave1_tests
     mkdir -p {{ evidence_dir }}
     {{ python }} -c 'import json,sys; print(json.dumps({"conclusion":"PASS","schema_version":"wave1-full.v1","source_revision":sys.argv[1],"target":"//:wave1_tests"},sort_keys=True,separators=(",",":")))' \
       "${MINDCLADE_SOURCE_REVISION}" > {{ evidence_dir }}/wave1-full.v1.json
@@ -663,7 +663,7 @@ integration-test:
     #!/usr/bin/env bash
     set -euo pipefail
     dsn='postgres://mindclade@127.0.0.1:55432/mindclade?sslmode=disable'
-    just _ci-bazel-test "${PWD}/build/bazel-user-root" \
+    just _ci-bazel-test "${TMPDIR:-/tmp}/mindclade-bazel-user-root" \
       --test_env="MINDCLADE_TEST_POSTGRES_DSN=${dsn}" \
       --test_env=MINDCLADE_REQUIRE_POSTGRES_INTEGRATION=1 \
       //tests:artifact_commit_integration_test \

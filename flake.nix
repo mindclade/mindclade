@@ -193,7 +193,6 @@
             pythonPackages.jsonschema
             pythonPackages.torch
           ]);
-          pnpmNode26 = pkgs.pnpm.override { nodejs-slim = pkgs.nodejs_26; };
           deepEpShell = pkgs.mkShell {
             packages = with pkgs; [
               base.toolchain
@@ -234,6 +233,34 @@
         {
           deepep = deepEpShell;
           gpu = deepEpShell;
+        }
+      );
+      gpuPackages = forGpuSystems (
+        pkgs:
+        let
+          deepEp = deepEpPackageSet pkgs;
+        in
+        {
+          deep-ep = deepEp.runtimeEnvironment;
+          deep-ep-python-package = deepEp.package;
+          deep-ep-runtime-manifest = deepEp.runtimeManifest;
+        }
+        // pkgs.lib.optionalAttrs (deepEp.closureWheel != null) {
+          deep-ep-artifacts = deepEp.artifactBundle;
+          deep-ep-wheel = deepEp.closureWheel;
+          deep-ep-wheel-runtime-manifest = deepEp.wheelRuntimeManifest;
+        }
+      );
+      gpuChecks = forGpuSystems (
+        pkgs:
+        let
+          deepEp = deepEpPackageSet pkgs;
+        in
+        {
+          deep-ep-standalone-import = deepEp.standaloneImportTest;
+        }
+        // pkgs.lib.optionalAttrs (deepEp.artifactBundle != null) {
+          deep-ep-artifact-bundle = deepEp.artifactBundle;
         }
       );
     in
@@ -288,36 +315,6 @@
           '';
         }
       ));
-
-      gpuPackages = forGpuSystems (
-        pkgs:
-        let
-          deepEp = deepEpPackageSet pkgs;
-        in
-        {
-          deep-ep = deepEp.runtimeEnvironment;
-          deep-ep-python-package = deepEp.package;
-          deep-ep-runtime-manifest = deepEp.runtimeManifest;
-        }
-        // pkgs.lib.optionalAttrs (deepEp.closureWheel != null) {
-          deep-ep-artifacts = deepEp.artifactBundle;
-          deep-ep-wheel = deepEp.closureWheel;
-          deep-ep-wheel-runtime-manifest = deepEp.wheelRuntimeManifest;
-        }
-      );
-
-      gpuChecks = forGpuSystems (
-        pkgs:
-        let
-          deepEp = deepEpPackageSet pkgs;
-        in
-        {
-          deep-ep-standalone-import = deepEp.standaloneImportTest;
-        }
-        // pkgs.lib.optionalAttrs (deepEp.artifactBundle != null) {
-          deep-ep-artifact-bundle = deepEp.artifactBundle;
-        }
-      );
 
       formatter = forAllSystems (pkgs: pkgs.nixfmt);
     };

@@ -433,6 +433,7 @@ ALL_CONTRACT_RUST_PLUGIN_PATHS = (
 )
 
 WAVE_ZERO_REQUIRED_ADDITIONS = (
+    ".bazelignore",
     ".golangci.yml",
     ".github/actionlint.yaml",
     "biome.json",
@@ -732,6 +733,7 @@ def reconcile_authority_paths(source_paths: Sequence[str]) -> list[str]:
         path
         for path in REQUIRED_ADDITIONS
         if path != "MODULE.bazel.lock"
+        and path != ".bazelignore"
         and path not in provenance_additions
         and path not in repository_additions
     )
@@ -740,6 +742,8 @@ def reconcile_authority_paths(source_paths: Sequence[str]) -> list[str]:
         result.append(ADR_REPLACEMENTS.get(path, path))
         if path == "MODULE.bazel":
             result.append("MODULE.bazel.lock")
+        if path == ".bazelversion":
+            result.append(".bazelignore")
         if path == "docs/architecture/blueprint/manifest.yaml":
             result.extend(provenance_additions)
         if path == "tools/repo/verify_repository_path_manifest.py":

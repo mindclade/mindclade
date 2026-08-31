@@ -4996,6 +4996,22 @@
       "public_surface": false
     },
     {
+      "path": ".bazelignore",
+      "kind": "configuration",
+      "owner": "developer-platform",
+      "component": "repository-governance",
+      "status": "active",
+      "activation_wave": "0",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:wave0_governance_sources"
+      ],
+      "test_targets": [
+        "//:wave0_tests"
+      ],
+      "public_surface": false
+    },
+    {
       "path": "flake.nix",
       "kind": "source",
       "owner": "developer-platform",

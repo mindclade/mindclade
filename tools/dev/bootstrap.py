@@ -35,6 +35,8 @@ TOOLS = (
     Tool("uv", "uv", ("--version",), r"\buv 0\.12\.5\b"),
     Tool("Go", "go", ("version",), r"\bgo1\.26(?:\.[0-9]+)?\b"),
     Tool("Rust", "rustc", ("--version",), r"\brustc 1\.97\.1\b"),
+    Tool("Clippy", "cargo-clippy", ("--version",), r"^clippy 0\.1\.97$"),
+    Tool("rustfmt", "rustfmt", ("--version",), r"^rustfmt 1\.9\.0$"),
     Tool("Node", "node", ("--version",), r"^v26\.[0-9]+\.[0-9]+$"),
     Tool("pnpm", "pnpm", ("--version",), r"^11\.22\.0$"),
     Tool("Buf", "buf", ("--version",), r"^1\.72\.0$"),
@@ -65,9 +67,8 @@ def inspect(tool: Tool, root: Path) -> Result:
         command = [
             path,
             "--nohome_rc",
+            "--nosystem_rc",
             "--noworkspace_rc",
-            f"--output_user_root={root.resolve() / 'build/bazel-user-root'}",
-            f"--bazelrc={root.resolve() / '.bazelrc'}",
             *tool.arguments,
         ]
     try:

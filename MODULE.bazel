@@ -1,6 +1,10 @@
 module(
     name = "mindclade",
     version = "0.0.0",
+    bazel_compatibility = [
+        ">=9.1.1",
+        "<=9.1.1",
+    ],
 )
 
 bazel_dep(name = "rules_shell", version = "0.8.0")

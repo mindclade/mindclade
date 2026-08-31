@@ -20,6 +20,7 @@ exports_files([
 filegroup(
     name = "wave0_governance_sources",
     srcs = [
+        ".bazelignore",
         ".bazelrc",
         ".bazelversion",
         ".editorconfig",
