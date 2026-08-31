@@ -31,6 +31,9 @@ py_test(
         "//protocols/generated/typescript:bindings",
     ],
     deps = [
+        "//libs/python/artifacts:artifacts",
+        "//libs/python/contracts:contracts",
+        "//libs/python/identifiers:identifiers",
         "//protocols/generated/python:bindings",
         "@mindclade_pypi//protobuf",
         "@mindclade_pypi//pyyaml",
@@ -46,6 +49,9 @@ py_test(
     srcs = ["conformance/test_generated_clients.py"],
     data = _WAVE1_DATA,
     deps = [
+        "//libs/python/artifacts:artifacts",
+        "//libs/python/contracts:contracts",
+        "//libs/python/identifiers:identifiers",
         "//protocols/generated/python:bindings",
         "@mindclade_pypi//protobuf",
         "@mindclade_pypi//pyyaml",

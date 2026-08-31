@@ -1,0 +1,21 @@
+[package]
+name = "mindclade-protoc-plugins"
+version = "0.1.0"
+edition.workspace = true
+publish = false
+
+[dependencies]
+prost.workspace = true
+protoc-gen-prost.workspace = true
+protoc-gen-tonic.workspace = true
+
+[lints]
+workspace = true
+
+[[bin]]
+name = "protoc-gen-prost"
+path = "src/bin/protoc-gen-prost.rs"
+
+[[bin]]
+name = "protoc-gen-tonic"
+path = "src/bin/protoc-gen-tonic.rs"

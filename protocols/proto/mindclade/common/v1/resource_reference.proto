@@ -9,5 +9,8 @@ message ResourceRef {
   string resource_type = 1;
   string resource_id = 2;
   string tenant_id = 3;
-  int64 resource_version = 4;
+  string project_id = 4;
+  int64 resource_version = 5;
+  string name = 6;
+  string etag = 7;
 }

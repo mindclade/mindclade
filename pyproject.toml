@@ -38,6 +38,7 @@ include = [".buildkite", "tools"]
 exclude = ["docs/architecture/blueprint/generated"]
 extraPaths = [
   "libs/python",
+  "protocols/generated/python",
   "tools/ci",
   ".buildkite/lib",
   ".buildkite/steps",

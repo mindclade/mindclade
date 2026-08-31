@@ -1591,6 +1591,8 @@ def build_kernel_platform_source_entry(path: str) -> dict[str, Any]:
 def is_all_contract_baseline_path(path: str) -> bool:
     """Return whether ADR-0015 activates this predeclared v1 projection."""
 
+    if path in ALL_CONTRACT_RUST_PLUGIN_PATHS:
+        return True
     parts = PurePosixPath(path).parts
     if len(parts) >= 3 and parts[:2] in {
         ("protocols", "openapi"),

@@ -1,5 +1,6 @@
 [workspace]
 members = [
+    "tools/codegen/rust_plugins",
     "protocols/generated/rust",
     "libs/rust/artifact",
     "libs/rust/bytes",

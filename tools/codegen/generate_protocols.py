@@ -6,10 +6,13 @@ from __future__ import annotations
 import argparse
 import base64
 import hashlib
+import importlib.metadata
 import json
 import os
 import re
+import shutil
 import subprocess
+import sys
 import tempfile
 import tomllib
 from collections import defaultdict
@@ -19,9 +22,14 @@ from typing import Any, cast
 
 import yaml
 
-GENERATOR = "mindclade-contract-codegen 2.0.0"
+GENERATOR = "mindclade-contract-codegen 3.0.0"
 LANGUAGES = ("go", "python", "rust", "typescript")
 PROTO_SUFFIX = {"go": ".pb.go", "python": "_pb2.py", "rust": ".rs", "typescript": "_pb.ts"}
+GENERATED_SUFFIXES = {
+    "go": (".pb.go", "_grpc.pb.go"),
+    "python": ("_pb2.py", "_pb2.pyi", "_pb2_grpc.py", "_pb2_grpc.pyi"),
+    "typescript": ("_pb.ts",),
+}
 TS_IMPORT = re.compile(r'from "(?P<path>[^"]+_pb)\.js"')
 
 
@@ -44,6 +52,7 @@ def run(
     merged_env.update(
         {
             "CARGO_NET_OFFLINE": "true",
+            "GOCACHE": str(cwd / "build" / "go-cache"),
             "GOTOOLCHAIN": "local",
             "LANG": "C.UTF-8",
             "LC_ALL": "C.UTF-8",
@@ -78,7 +87,7 @@ def load_json(path: Path) -> dict[str, Any]:
 
 def toolchain(root: Path) -> dict[str, Any]:
     lock = load_json(root / "tools/codegen/toolchain.lock.json")
-    if lock.get("schema_version") != "mindclade.codegen-toolchain/v2":
+    if lock.get("schema_version") != "mindclade.codegen-toolchain/v3":
         raise ValueError("unsupported code-generation toolchain lock")
     return lock
 
@@ -94,46 +103,71 @@ def ensure_toolchain(root: Path, staging: Path, lock: Mapping[str, Any]) -> Path
         "buf": command_version(["buf", "--version"], root),
         "protoc": command_version(["protoc", "--version"], root),
         "protoc-gen-go": command_version(["go", "tool", "protoc-gen-go", "--version"], root),
-        "protoc-gen-es": command_version(["pnpm", "exec", "protoc-gen-es", "--version"], root),
+        "protoc-gen-go-grpc": command_version(
+            ["go", "tool", "protoc-gen-go-grpc", "--version"], root
+        ),
+        "protoc-gen-es": command_version(
+            ["node_modules/.bin/protoc-gen-es", "--version"], root
+        ),
     }
     for name, actual in actual_versions.items():
         wanted = tools[name]["version_output"]
         if actual != wanted:
             raise RuntimeError(f"{name} version mismatch: expected {wanted!r}, got {actual!r}")
 
-    rust = tools["protoc-gen-rs"]
     cargo_lock = tomllib.loads((root / "Cargo.lock").read_text(encoding="utf-8"))
     raw_packages = cargo_lock.get("package")
     if not isinstance(raw_packages, list):
         raise ValueError("Cargo.lock does not contain a package closure")
-    matches: list[dict[str, Any]] = []
-    for raw_package in cast(list[object], raw_packages):
-        if not isinstance(raw_package, dict):
-            continue
-        package = cast(dict[str, Any], raw_package)
-        if package.get("name") == rust["package"] and package.get("version") == rust["version"]:
-            matches.append(package)
-    if len(matches) != 1 or matches[0].get("checksum") != rust["checksum"]:
-        raise RuntimeError("protoc-gen-rs is not bound to the recorded Cargo.lock checksum")
-    install_root = staging / "toolchain" / f"protobuf-codegen-{rust['version']}"
-    binary = install_root / "bin" / "protoc-gen-rs"
+    packages = [cast(dict[str, Any], value) for value in raw_packages if isinstance(value, dict)]
+    for tool_name in ("protoc-gen-prost", "protoc-gen-tonic"):
+        rust = tools[tool_name]
+        matches = [
+            package
+            for package in packages
+            if package.get("name") == rust["package"]
+            and package.get("version") == rust["version"]
+        ]
+        if len(matches) != 1 or matches[0].get("checksum") != rust["checksum"]:
+            raise RuntimeError(f"{tool_name} is not bound to the recorded Cargo.lock checksum")
+
+    python_versions = {
+        "grpcio-tools": importlib.metadata.version("grpcio-tools"),
+        "mypy-protobuf": importlib.metadata.version("mypy-protobuf"),
+    }
+    for name, actual in python_versions.items():
+        if actual != tools[name]["version"]:
+            raise RuntimeError(
+                f"{name} version mismatch: expected {tools[name]['version']!r}, got {actual!r}"
+            )
+
+    target = staging / "toolchain" / "rust-target"
     run(
         [
             "cargo",
-            "install",
+            "build",
             "--locked",
             "--offline",
-            "--root",
-            str(install_root),
-            "--version",
-            rust["version"],
-            rust["package"],
+            "--release",
+            "--package",
+            "mindclade-protoc-plugins",
+            "--bins",
         ],
         cwd=root,
+        env={"CARGO_TARGET_DIR": str(target)},
     )
-    if not binary.is_file():
-        raise RuntimeError("cargo did not install the locked protoc-gen-rs binary")
-    return binary.parent
+    binary_root = target / "release"
+    for name in ("protoc-gen-prost", "protoc-gen-tonic"):
+        binary = binary_root / name
+        if not binary.is_file():
+            raise RuntimeError(f"cargo did not build the locked {name} binary")
+        actual = command_version([str(binary), "--version"], root)
+        if actual != tools[name]["version_output"]:
+            raise RuntimeError(
+                f"{name} version mismatch: expected {tools[name]['version_output']!r}, "
+                f"got {actual!r}"
+            )
+    return binary_root
 
 
 def build_descriptors(root: Path, staging: Path) -> tuple[bytes, list[dict[str, Any]]]:
@@ -150,10 +184,16 @@ def build_descriptors(root: Path, staging: Path) -> tuple[bytes, list[dict[str, 
     if not isinstance(files, list):
         raise ValueError("Buf descriptor set does not contain a file list")
     raw_files = cast(list[object], files)
-    typed_files = [cast(dict[str, Any], item) for item in raw_files if isinstance(item, dict)]
-    if len(typed_files) != len(raw_files):
+    all_files = [cast(dict[str, Any], item) for item in raw_files if isinstance(item, dict)]
+    if len(all_files) != len(raw_files):
         raise ValueError("Buf descriptor set contains a non-object file descriptor")
-    return binary_path.read_bytes(), typed_files
+    managed = [
+        descriptor
+        for descriptor in all_files
+        if isinstance(descriptor.get("name"), str)
+        and cast(str, descriptor["name"]).startswith(("proto/mindclade/", "events/mindclade/"))
+    ]
+    return binary_path.read_bytes(), managed
 
 
 def domain_for(package: str) -> str:
@@ -172,9 +212,12 @@ def source_path(root: Path, descriptor: Mapping[str, Any]) -> Path:
 
 def declared_languages(lock: Mapping[str, Any], package: str) -> frozenset[str]:
     matrix = cast(dict[str, list[str]], lock["domain_language_matrix"])
-    values = matrix.get(package)
-    if values is None:
-        raise ValueError(f"Protobuf package is absent from the domain/language matrix: {package}")
+    raw_default = lock.get("default_languages")
+    if not isinstance(raw_default, list) or not all(
+        isinstance(value, str) for value in raw_default
+    ):
+        raise ValueError("toolchain lock has no default language policy")
+    values = matrix.get(package, cast(list[str], raw_default))
     unknown = set(values).difference(LANGUAGES)
     if unknown:
         raise ValueError(f"unsupported languages for {package}: {sorted(unknown)}")
@@ -247,6 +290,7 @@ def plugin_config(root: Path, language: str, output: Path) -> dict[str, Any]:
     plugins = config.get("plugins")
     if not isinstance(plugins, list):
         raise ValueError("buf.gen.yaml must declare plugins")
+    selected_plugins: list[dict[str, Any]] = []
     for raw_plugin in cast(list[object], plugins):
         if not isinstance(raw_plugin, dict):
             continue
@@ -255,8 +299,10 @@ def plugin_config(root: Path, language: str, output: Path) -> dict[str, Any]:
         if isinstance(out, str) and Path(out).name == language:
             selected = cast(dict[str, Any], dict(plugin))
             selected["out"] = str(output)
-            return {"version": "v2", "clean": True, "plugins": [selected]}
-    raise ValueError(f"buf.gen.yaml has no {language} plugin")
+            selected_plugins.append(selected)
+    if not selected_plugins:
+        raise ValueError(f"buf.gen.yaml has no {language} plugin")
+    return {"version": "v2", "clean": True, "plugins": selected_plugins}
 
 
 def generate_language(
@@ -277,14 +323,24 @@ def generate_language(
 
     groups: dict[str, list[Mapping[str, Any]]]
     if language == "rust":
-        groups = defaultdict(list)
+        groups = {}
         for descriptor in selected:
-            groups[domain_for(cast(str, descriptor["package"]))].append(descriptor)
+            domain = domain_for(cast(str, descriptor["package"]))
+            stem = Path(cast(str, descriptor["name"])).stem
+            groups[f"{domain}-{stem}"] = [descriptor]
     else:
         groups = {language: selected}
 
     for group, group_descriptors in sorted(groups.items()):
-        output = raw_root / group if language == "rust" else raw_root
+        if language == "rust":
+            descriptor = group_descriptors[0]
+            output = (
+                raw_root
+                / domain_for(cast(str, descriptor["package"]))
+                / Path(cast(str, descriptor["name"])).stem
+            )
+        else:
+            output = raw_root
         template = staging / f"buf.{language}.{group}.json"
         template.write_text(
             json.dumps(plugin_config(root, language, output), sort_keys=True), encoding="utf-8"
@@ -293,22 +349,77 @@ def generate_language(
         for descriptor in group_descriptors:
             command.extend(["--path", f"protocols/{cast(str, descriptor['name'])}"])
         run(command, cwd=root, env={"PATH": path_env})
+
+    if language == "python":
+        grpc_sources = [
+            f"protocols/{cast(str, descriptor['name'])}"
+            for descriptor in selected
+            if descriptor.get("service")
+        ]
+        if grpc_sources:
+            python_bin = Path(sys.executable).parent
+            mypy_grpc = shutil.which("protoc-gen-mypy_grpc", path=str(python_bin))
+            if mypy_grpc is None:
+                raise RuntimeError("locked protoc-gen-mypy_grpc is not available")
+            run(
+                [
+                    sys.executable,
+                    "-m",
+                    "grpc_tools.protoc",
+                    "-Iprotocols",
+                    f"--grpc_python_out={raw_root}",
+                    f"--mypy_grpc_out={raw_root}",
+                    f"--plugin=protoc-gen-mypy_grpc={mypy_grpc}",
+                    *grpc_sources,
+                ],
+                cwd=root,
+            )
     return raw_root
 
 
-def target_path(root: Path, language: str, descriptor: Mapping[str, Any]) -> Path:
+def target_path(
+    root: Path,
+    language: str,
+    descriptor: Mapping[str, Any],
+    suffix: str | None = None,
+) -> Path:
     domain = domain_for(cast(str, descriptor["package"]))
     stem = Path(cast(str, descriptor["name"])).stem
+    resolved_suffix = PROTO_SUFFIX[language] if suffix is None else suffix
     return (
-        root / "protocols/generated" / language / domain / "v1" / f"{stem}{PROTO_SUFFIX[language]}"
+        root / "protocols/generated" / language / domain / "v1" / f"{stem}{resolved_suffix}"
     )
 
 
 def raw_path(raw_root: Path, language: str, descriptor: Mapping[str, Any]) -> Path:
     source = Path(cast(str, descriptor["name"]))
     if language == "rust":
-        return raw_root / domain_for(cast(str, descriptor["package"])) / f"{source.stem}.rs"
+        generated_root = raw_root / domain_for(cast(str, descriptor["package"])) / source.stem
+        candidates = sorted(
+            path for path in generated_root.rglob("*.rs") if not path.name.endswith(".tonic.rs")
+        )
+        if len(candidates) != 1:
+            raise ValueError(
+                f"expected one Prost output for {descriptor['name']}, found {len(candidates)}"
+            )
+        return candidates[0]
     return raw_root / source.parent / f"{source.stem}{PROTO_SUFFIX[language]}"
+
+
+def raw_variant_path(
+    raw_root: Path,
+    language: str,
+    descriptor: Mapping[str, Any],
+    suffix: str,
+) -> Path:
+    source = Path(cast(str, descriptor["name"]))
+    if language == "rust":
+        generated_root = raw_root / domain_for(cast(str, descriptor["package"])) / source.stem
+        candidates = sorted(generated_root.rglob("*.tonic.rs"))
+        if len(candidates) != 1:
+            return generated_root / "missing.tonic.rs"
+        return candidates[0]
+    return raw_root / source.parent / f"{source.stem}{suffix}"
 
 
 def python_module(source: str) -> str:
@@ -347,18 +458,29 @@ def normalize_python(content: str, descriptors: Sequence[Mapping[str, Any]]) -> 
 def normalize_rust(
     content: str, descriptor: Mapping[str, Any], by_name: Mapping[str, Mapping[str, Any]]
 ) -> str:
-    current_domain = domain_for(cast(str, descriptor["package"]))
+    current_package = cast(str, descriptor["package"]).split(".")
     dependencies = descriptor.get("dependency", [])
     if not isinstance(dependencies, list):
         raise ValueError("descriptor dependency list is invalid")
     for dependency in cast(list[object], dependencies):
         if not isinstance(dependency, str) or dependency not in by_name:
             continue
-        dependency_domain = domain_for(cast(str, by_name[dependency]["package"]))
-        if dependency_domain != current_domain:
-            stem = Path(dependency).stem
-            content = content.replace(f"super::{stem}", f"crate::{dependency_domain}::v1::{stem}")
-    return content
+        dependency_package_name = cast(str, by_name[dependency]["package"])
+        dependency_package = dependency_package_name.split(".")
+        if dependency_package == current_package:
+            continue
+        common = 0
+        for current_part, dependency_part in zip(
+            current_package, dependency_package, strict=False
+        ):
+            if current_part != dependency_part:
+                break
+            common += 1
+        relative = "super::" * (len(current_package) - common)
+        relative += "::".join(dependency_package[common:]) + "::"
+        dependency_domain = domain_for(dependency_package_name)
+        content = content.replace(relative, f"crate::{dependency_domain}::v1::")
+    return content.rstrip() + "\n"
 
 
 def normalize_typescript(
@@ -406,23 +528,28 @@ def language_metadata(
         by_domain[domain_for(cast(str, descriptor["package"]))].append(descriptor)
 
     for domain in domains:
-        rust_stems = sorted(
-            Path(cast(str, item["name"])).stem
-            for item in by_domain[domain]
-            if "rust" in declared_languages(lock, cast(str, item["package"]))
+        rust_sources = sorted(
+            path.name
+            for path in outputs
+            if path.parent == generated / "rust" / domain / "v1"
+            and path.suffix == ".rs"
+            and path.name != "mod.rs"
         )
-        if rust_stems:
-            modules = "\n".join(f"pub mod {stem};" for stem in rust_stems)
+        if rust_sources:
+            modules = "\n".join(f'include!("{source}");' for source in rust_sources)
             outputs[generated / "rust" / domain / "v1" / "mod.rs"] = (
                 f"// Code generated by {GENERATOR}; DO NOT EDIT.\n\n{modules}\n"
             ).encode()
-        ts_stems = sorted(
-            Path(cast(str, item["name"])).stem
-            for item in by_domain[domain]
-            if "typescript" in declared_languages(lock, cast(str, item["package"]))
+        ts_sources = sorted(
+            path.name
+            for path in outputs
+            if path.parent == generated / "typescript" / domain / "v1"
+            and path.name.endswith("_pb.ts")
         )
-        if ts_stems:
-            exports = "\n".join(f"export * from './{stem}_pb.js';" for stem in ts_stems)
+        if ts_sources:
+            exports = "\n".join(
+                f"export * from './{Path(source).stem}.js';" for source in ts_sources
+            )
             outputs[generated / "typescript" / domain / "v1" / "index.ts"] = (
                 f"// Code generated by {GENERATOR}; DO NOT EDIT.\n\n{exports}\n"
             ).encode()
@@ -441,7 +568,10 @@ def language_metadata(
         ]
         if go_descriptors:
             go_sources = sorted(
-                f"{Path(cast(str, item['name'])).stem}.pb.go" for item in go_descriptors
+                path.name
+                for path in outputs
+                if path.parent == generated / "go" / domain / "v1"
+                and path.name.endswith(".go")
             )
             dependency_domains = sorted(
                 {
@@ -456,6 +586,37 @@ def language_metadata(
                 '"@org_golang_google_protobuf//reflect/protoreflect"',
                 '"@org_golang_google_protobuf//runtime/protoimpl"',
             ]
+            well_known_deps = {
+                "google/protobuf/duration.proto": (
+                    "@org_golang_google_protobuf//types/known/durationpb"
+                ),
+                "google/protobuf/empty.proto": "@org_golang_google_protobuf//types/known/emptypb",
+                "google/protobuf/field_mask.proto": (
+                    "@org_golang_google_protobuf//types/known/fieldmaskpb"
+                ),
+                "google/protobuf/timestamp.proto": (
+                    "@org_golang_google_protobuf//types/known/timestamppb"
+                ),
+            }
+            direct_well_known_deps = {
+                label
+                for item in go_descriptors
+                for dependency in cast(list[str], item.get("dependency", []))
+                for label in [well_known_deps.get(dependency)]
+                if label is not None
+            }
+            deps.extend(
+                f'"{label}"'
+                for label in sorted(direct_well_known_deps)
+            )
+            if any(source.endswith("_grpc.pb.go") for source in go_sources):
+                deps.extend(
+                    [
+                        '"@org_golang_google_grpc//:grpc"',
+                        '"@org_golang_google_grpc//codes"',
+                        '"@org_golang_google_grpc//status"',
+                    ]
+                )
             deps.extend(
                 f'"//protocols/generated/go/{value}/v1:bindings"' for value in dependency_domains
             )
@@ -492,7 +653,7 @@ def language_metadata(
         b'    name = "bindings",\n'
         b'    srcs = glob(["**/*.py"]),\n'
         b'    imports = ["."],\n'
-        b'    deps = ["@mindclade_pypi//protobuf"],\n'
+        b'    deps = ["@mindclade_pypi//grpcio", "@mindclade_pypi//protobuf"],\n'
         b'    visibility = ["//visibility:public"],\n'
         b")\n\n"
         b"filegroup(\n"
@@ -515,7 +676,12 @@ def language_metadata(
         b'    crate_name = "mindclade_protocols",\n'
         b'    edition = "2024",\n'
         b'    srcs = glob(["**/*.rs"]),\n'
-        b'    deps = ["@crate_index//:protobuf"],\n'
+        b'    deps = [\n'
+        b'        "@crate_index//:prost",\n'
+        b'        "@crate_index//:prost-types",\n'
+        b'        "@crate_index//:tonic",\n'
+        b'        "@crate_index//:tonic-prost",\n'
+        b'    ],\n'
         b'    visibility = ["//visibility:public"],\n'
         b")\n\n"
         b"filegroup(\n"
@@ -537,7 +703,10 @@ def language_metadata(
         b"    declaration = True,\n"
         b'    tsconfig = "tsconfig.json",\n'
         b'    transpiler = "tsc",\n'
-        b'    deps = [":node_modules/@bufbuild/protobuf"],\n'
+        b'    deps = [\n'
+        b'        ":node_modules/@bufbuild/protobuf",\n'
+        b'        ":node_modules/@connectrpc/connect",\n'
+        b'    ],\n'
         b'    visibility = ["//visibility:public"],\n'
         b")\n\n"
         b"filegroup(\n"
@@ -640,18 +809,39 @@ def generated_outputs(root: Path) -> tuple[dict[Path, bytes], bytes, list[dict[s
         for descriptor in descriptors:
             package = cast(str, descriptor["package"])
             for language in declared_languages(lock, package):
-                source = raw_path(raw_roots[language], language, descriptor)
-                target = target_path(root, language, descriptor)
-                content = source.read_text(encoding="utf-8")
-                if language == "python":
-                    content = normalize_python(content, descriptors)
-                elif language == "rust":
-                    content = normalize_rust(content, descriptor, by_name)
-                elif language == "typescript":
-                    content = normalize_typescript(
-                        content, source.resolve(), target, ts_raw_to_target
-                    )
-                outputs[target] = content.encode()
+                if language == "rust":
+                    variants = [(raw_path(raw_roots[language], language, descriptor), ".rs")]
+                    if descriptor.get("service"):
+                        variants.append(
+                            (
+                                raw_variant_path(
+                                    raw_roots[language], language, descriptor, "_grpc.rs"
+                                ),
+                                "_grpc.rs",
+                            )
+                        )
+                else:
+                    variants = [
+                        (
+                            raw_variant_path(raw_roots[language], language, descriptor, suffix),
+                            suffix,
+                        )
+                        for suffix in GENERATED_SUFFIXES[language]
+                    ]
+                for source, suffix in variants:
+                    if not source.is_file():
+                        continue
+                    target = target_path(root, language, descriptor, suffix)
+                    content = source.read_text(encoding="utf-8")
+                    if language == "python":
+                        content = normalize_python(content, descriptors)
+                    elif language == "rust":
+                        content = normalize_rust(content, descriptor, by_name)
+                    elif language == "typescript":
+                        content = normalize_typescript(
+                            content, source.resolve(), target, ts_raw_to_target
+                        )
+                    outputs[target] = content.encode()
         language_metadata(root, descriptors, lock, outputs)
         generated = root / "protocols/generated"
         manifest_files = {

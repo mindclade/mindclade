@@ -1,0 +1,92 @@
+apiVersion: mindclade.dev/v1
+kind: OpenApiCompatibilityPolicy
+metadata:
+  name: public-api-v1
+  owner: contract-governance
+  status: active-clean-v1-baseline
+spec:
+  authority:
+    source: protocols/openapi/external-api.yaml
+    baseline: protocols/compatibility/baselines/openapi.lock.json
+    generation: protocols/openapi/generation.yaml
+  versioning:
+    profile: v1
+    sdkMajor: 1
+    baselineRule: One clean-v1 reset is allowed before the first supported external release.
+    postBaselineRule: Additive compatibility is mandatory after this baseline is committed.
+    deprecation:
+      documentationRequired: true
+      replacementRequired: true
+      sunsetDateRequired: true
+      minimumNoticeDays: 180
+  compatibility:
+    additive:
+      - add-optional-request-field
+      - add-response-field
+      - add-path-or-operation
+      - add-documented-error-detail-kind
+      - add-enum-value-only-when-clients-prove-unknown-value-tolerance
+    breaking:
+      - remove-or-rename-path-operation-schema-property-or-stable-error-code
+      - change-operation-id
+      - add-required-request-field
+      - change-field-type-format-nullability-or-meaning
+      - tighten-validation-without-migration-window
+      - change-canonical-resource-name-semantics
+      - change-idempotency-key-scope-or-reuse-semantics
+      - remove-etag-or-revision-precondition
+      - change-pagination-token-shape-or-consistency-semantics
+      - expose-internal-protobuf-database-queue-provider-or-storage-details
+      - make-long-running-work-synchronous-only
+      - weaken-artifact-digest-or-size-verification
+      - change-authentication-or-authorization-scope-without-migration
+    reviewRequired:
+      - add-required-auth-scope
+      - increase-request-or-response-size-limit
+      - change-retryability-or-default-timeout
+      - add-new-sensitive-data-field
+      - alter-filter-or-ordering-grammar
+  publicInvariants:
+    - authentication-credentials-are-transport-metadata
+    - tenant-and-project-identity-is-verified-not-trusted-from-body
+    - mutations-have-explicit-idempotency-semantics
+    - concurrent-updates-and-cancellation-use-strong-etags
+    - asynchronous-work-returns-durable-operations
+    - polling-supports-if-none-match-and-304
+    - pagination-tokens-are-opaque-bounded-and-authorization-safe
+    - all-errors-use-publicerror-with-stable-code-and-safe-message
+    - bulk-and-sensitive-values-use-artifactref
+    - artifact-downloads-carry-verifiable-content-digest
+    - public-schemas-never-reference-mindclade-internal-packages
+  baselineUpdate:
+    requiredEvidence:
+      - parsed-openapi-3.1-document
+      - resolved-local-references
+      - unique-operation-ids
+      - compatibility-classification
+      - exact-source-digests
+      - generated-sdk-provider-plan-parity
+      - affected-consumer-test-results
+    approvals:
+      - contract-governance
+      - developer-experience
+      - security-for-auth-data-or-admin-changes
+    forbidden:
+      - baseline-update-to-hide-unreviewed-breaking-change
+      - provider-specific-contract-fork
+      - selective-language-baseline
+      - claim-hosted-or-release-evidence-from-source-only-checks
+  sdkSkew:
+    supportedApiProfiles: [v1]
+    supportedSdkMajors: [1]
+    providerSemanticParityRequired: true
+    providers:
+      primary: stainless
+      shadow: oagen
+    generatedSourceIsAuthority: false
+  rollback:
+    preserveReadableTerminalOperations: true
+    preserveImmutableArtifactReferences: true
+    restoreSourceAndAllProviderOutputsTogether: true
+    allowSelectiveLanguageRollback: false
+    publishOrDeployAuthorizedByThisPolicy: false

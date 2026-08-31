@@ -54,6 +54,72 @@ class GeneratedClientsContractTest(unittest.TestCase):
             typescript,
         )
 
+    def test_python_foundations_consume_generated_contract_types(self) -> None:
+        repository = root()
+        sys.path.insert(0, str(repository / "protocols/generated/python"))
+        sys.path.insert(0, str(repository / "libs/python"))
+
+        artifact_module = importlib.import_module("artifact.v1.artifact_reference_pb2")
+        evidence_module = importlib.import_module("artifact.v1.evidence_reference_pb2")
+        resource_module = importlib.import_module("common.v1.resource_reference_pb2")
+        artifacts = importlib.import_module("artifacts")
+        contracts = importlib.import_module("contracts")
+        identifiers = importlib.import_module("identifiers")
+
+        self.assertIs(artifacts.ArtifactRef, artifact_module.ArtifactRef)
+        self.assertIs(artifacts.EvidenceRef, evidence_module.EvidenceRef)
+        self.assertEqual(
+            contracts.ErrorDetail.DESCRIPTOR.full_name,
+            "mindclade.common.v1.ErrorDetail",
+        )
+        self.assertIs(identifiers.ResourceRef, resource_module.ResourceRef)
+
+        digest = "sha256:" + "a" * 64
+        subject_digest = "sha256:" + "b" * 64
+        policy_digest = "sha256:" + "c" * 64
+        artifact = artifacts.make_artifact_ref(
+            digest=digest,
+            media_type="application/octet-stream",
+            size_bytes=7,
+            artifact_kind="fixture",
+        )
+        evidence = artifacts.make_evidence_ref(
+            digest=digest,
+            subject_digest=subject_digest,
+            evidence_kind="qualification",
+            policy_digest=policy_digest,
+        )
+        resource = identifiers.make_resource_ref(
+            tenant_id=identifiers.Identifier("tenant", "tenant_1"),
+            project_id=identifiers.Identifier("project", "project_1"),
+            resource_type="jobs",
+            resource_id=identifiers.Identifier("job", "job_1"),
+            resource_version=identifiers.ResourceVersion(2),
+        )
+
+        self.assertEqual(artifact.digest, digest)
+        self.assertEqual(evidence.subject_digest, subject_digest)
+        error_detail = contracts.to_error_detail(
+            contracts.ContractError(
+                contracts.ErrorCode.UNAVAILABLE,
+                "try again",
+                retryable=True,
+            ),
+            subject_ref=resource.name,
+        )
+        self.assertEqual(error_detail.code, "unavailable")
+        self.assertTrue(contracts.from_error_detail(error_detail).retryable)
+        self.assertEqual(
+            identifiers.resource_key(resource),
+            "tenants/tenant_1/projects/project_1/jobs/job_1@2",
+        )
+        self.assertEqual(
+            resource.SerializeToString(deterministic=True),
+            resource_module.ResourceRef.FromString(
+                resource.SerializeToString(deterministic=True)
+            ).SerializeToString(deterministic=True),
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

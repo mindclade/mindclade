@@ -37,7 +37,7 @@
       "strategy": "all"
     },
     {
-      "local": ["pnpm", "exec", "protoc-gen-es"],
+      "local": "node_modules/.bin/protoc-gen-es",
       "out": ".mindclade-codegen/typescript",
       "opt": ["target=ts", "import_extension=js"],
       "strategy": "all"

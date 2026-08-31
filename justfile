@@ -250,13 +250,13 @@ generate:
       --write
     {{ python }} tools/docs/render_architecture_blueprint.py --manifest docs/architecture/blueprint/manifest.yaml
 
-# Generate committed Wave 1 protocol bindings and compatibility inventories.
+# Generate every committed protocol binding and compatibility inventory.
 generate-contracts:
-    {{ python }} tools/codegen/generate_protocols.py --root .
+    {{ uv }} run python tools/codegen/generate_protocols.py --root .
 
 # Fail when a contract source change has not regenerated every committed binding.
 check-contract-drift:
-    {{ python }} tools/codegen/verify_generated_drift.py --root .
+    {{ uv }} run python tools/codegen/verify_generated_drift.py --root .
 
 # Execute all local source, lock, policy, and documentation gates.
 check: bootstrap

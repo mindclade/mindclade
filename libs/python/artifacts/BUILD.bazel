@@ -1,5 +1,11 @@
 load("@rules_python//python:defs.bzl", "py_library")
-py_library(name = "artifacts", srcs = glob(["*.py"]), imports = [".."])
+py_library(
+    name = "artifacts",
+    srcs = glob(["*.py"]),
+    imports = [".."],
+    deps = ["//protocols/generated/python:bindings"],
+    visibility = ["//visibility:public"],
+)
 
 filegroup(
     name = "governed_sources",

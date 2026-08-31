@@ -1,0 +1,192 @@
+apiVersion: mindclade.dev/v1
+kind: SdkGeneration
+metadata:
+  name: public-api-v1
+  owner: developer-experience
+  contractOwner: contract-governance
+  status: source-configured-unconnected
+  productionAuthority: false
+spec:
+  authority:
+    source: protocols/openapi/external-api.yaml
+    profile: mindclade.api.v1
+    rule: The checked-in curated OpenAPI projection owns public wire behavior.
+    forbiddenAuthorities:
+      - hosted-provider-state
+      - generated-sdk-source
+      - internal-protobuf-layout
+      - database-schema
+  sourceIntegrity:
+    algorithm: sha256
+    canonicalization: raw-checked-in-bytes
+    baseline: protocols/compatibility/baselines/openapi.lock.json
+
+  interface:
+    name: SdkGenerator
+    version: v1
+    description: Provider-neutral boundary for planning, generation, and parity evidence.
+    input:
+      openapiPath: required
+      openapiSha256: required
+      language: [go, python, typescript]
+      outputDirectory: required-build-derived-directory
+      providerConfiguration: provider-specific-ergonomics-only
+    operations:
+      - name: plan
+        network: forbidden
+        output: canonical-generation-plan
+      - name: generate
+        network: provider-declared
+        output: build-derived-sdk-source
+      - name: verify
+        network: forbidden
+        output: conformance-and-parity-report
+    guarantees:
+      - never-mutates-openapi-input
+      - never-makes-provider-state-authoritative
+      - records-source-digest-provider-version-and-configuration-digest
+      - rejects-output-outside-declared-build-directory
+      - redacts-credentials-and-request-payloads
+
+  localContractAdapter:
+    mode: plan-and-verify-only
+    implementation: protocols/compatibility/tests/test_openapi_compatibility.py
+    network: forbidden
+    emitsSdkSource: false
+    deterministicOutputs:
+      - source-digest
+      - operation-id-inventory
+      - public-schema-inventory
+      - provider-language-plan
+      - parity-requirements
+    purpose: |
+      Provide reproducible source evidence before a pinned provider executable is
+      integrated. It deliberately does not pretend to be a generated SDK.
+
+  providers:
+    - id: stainless
+      displayName: Stainless
+      role: primary
+      longTerm: true
+      connection: hosted-not-invoked-by-source-validation
+      readiness: configuration-only
+      languages: [go, python, typescript]
+      source: protocols/openapi/external-api.yaml
+      configuration:
+        apiNamespace: mindclade
+        clientName: Mindclade
+        operationPolling:
+          resource: Operation
+          getOperationId: getOperation
+          cancelOperationId: cancelOperation
+          etagAware: true
+          finiteDeadlineRequired: true
+        pagination:
+          requestTokenField: pageToken
+          responseTokenField: page.nextPageToken
+          requestSizeField: pageSize
+        errors:
+          schema: PublicError
+          stableCodeField: code
+          requestIdField: requestId
+          retryableField: retryable
+        idempotency:
+          header: Idempotency-Key
+        packages:
+          go: github.com/mindclade/mindclade-go
+          python: mindclade
+          typescript: '@mindclade/sdk'
+      release:
+        publish: false
+        connectedQualificationRequired: true
+
+    - id: oagen
+      displayName: Oagen
+      role: shadow-promotable
+      longTerm: true
+      connection: local-or-hosted-adapter-not-yet-pinned
+      readiness: configuration-only
+      languages: [go, python, typescript]
+      source: protocols/openapi/external-api.yaml
+      configuration:
+        emitterPolicy: mindclade-owned-or-pinned-open-source
+        licenseReviewRequired: true
+        preserveOperationIds: true
+        preservePublicSchemaNames: true
+        preserveUnknownResponseFields: where-runtime-permits
+      promotionRequirements:
+        - pinned-implementation-and-dependency-closure
+        - deterministic-clean-generation
+        - all-language-compile-and-package-tests
+        - public-api-fixture-parity-with-primary
+        - security-and-license-review
+        - rollback-evidence
+      release:
+        publish: false
+        connectedQualificationRequired: true
+
+  outputs:
+    committed: false
+    root: bazel-out/sdk
+    languages:
+      go:
+        directory: go
+        package: github.com/mindclade/mindclade-go
+      python:
+        directory: python
+        package: mindclade
+        typing: strict
+        importTimeIo: forbidden
+      typescript:
+        directory: typescript
+        package: '@mindclade/sdk'
+        moduleFormat: esm
+        browserSafeEntryPointRequired: true
+    provenance:
+      requiredFields:
+        - openapiSha256
+        - generationConfigSha256
+        - provider
+        - providerVersion
+        - language
+        - sourceRevision
+
+  parity:
+    authority: protocols/openapi/external-api.yaml
+    primary: stainless
+    shadow: oagen
+    compare:
+      - operation-ids
+      - public-resource-types
+      - required-request-fields
+      - stable-error-codes
+      - idempotency-header-behavior
+      - pagination-token-behavior
+      - operation-polling-and-cancellation
+      - artifact-reference-and-digest-verification
+      - unknown-field-forward-compatibility
+    sharedFixtures:
+      - idempotent-create-and-conflicting-key-reuse
+      - optimistic-concurrency-conflict
+      - finite-operation-wait-and-cancellation
+      - paginated-list-continuation
+      - typed-terminal-failure
+      - artifact-digest-mismatch
+      - authentication-and-authorization-failure
+    failurePolicy: any-semantic-difference-blocks-promotion
+
+  qualification:
+    sourceChecks:
+      - openapi-3.1-parse-and-reference-resolution
+      - compatibility-baseline-drift
+      - provider-language-plan-parity
+      - no-internal-package-exposure
+      - no-hosted-call-during-source-validation
+    connectedChecks:
+      - stainless-clean-generation
+      - oagen-clean-generation
+      - generated-sdk-compile-package-and-conformance
+      - provider-output-parity
+      - signed-release-provenance
+    connectedStatus: not-run
+    publishAuthorized: false

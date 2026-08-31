@@ -482,6 +482,15 @@ name = "mindclade-observability"
 version = "0.1.0"
 
 [[package]]
+name = "mindclade-protoc-plugins"
+version = "0.1.0"
+dependencies = [
+ "prost",
+ "protoc-gen-prost",
+ "protoc-gen-tonic",
+]
+
+[[package]]
 name = "mindclade-protocols"
 version = "0.1.0"
 dependencies = [
