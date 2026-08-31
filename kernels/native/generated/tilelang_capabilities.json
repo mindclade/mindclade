@@ -1,0 +1,102 @@
+{
+  "compiler": {
+    "id": "tilelang",
+    "version": "0.1.13"
+  },
+  "registration_mode": "offline_build",
+  "request_time_compilation": false,
+  "runtime_discovery": false,
+  "schema_version": 1,
+  "semantic_digest": "sha256:1e229c8e8af17e9ff8c9477357b5e9096eec4af01447634484ca9ff7f2924356",
+  "swizzled_buffer_prohibitions": [
+    "all_of",
+    "any_of",
+    "cross_width_view"
+  ],
+  "targets": [
+    {
+      "architecture": null,
+      "capability_digest": "sha256:cac19128bdc63ffa46d0e576a9ad18a2bed522b27fe6bd2bda0c942d580f4abd",
+      "cluster_tma": false,
+      "gather_scatter4": false,
+      "managed_tma": false,
+      "manual_tma": false,
+      "minimum_cuda": null,
+      "name": "cuda-portable",
+      "swizzled_tma_alignment": 128,
+      "tcgen05_layout": false,
+      "tilelang_target": {
+        "kind": "cuda"
+      },
+      "wgmma_layout": false
+    },
+    {
+      "architecture": "sm_90",
+      "capability_digest": "sha256:8e1c17402fbe041513160cfd02baae04a36c807047c6af722e27a960efd9afc8",
+      "cluster_tma": true,
+      "gather_scatter4": false,
+      "managed_tma": true,
+      "manual_tma": true,
+      "minimum_cuda": "12.0",
+      "name": "sm90",
+      "swizzled_tma_alignment": 1024,
+      "tcgen05_layout": false,
+      "tilelang_target": {
+        "arch": "sm_90",
+        "kind": "cuda"
+      },
+      "wgmma_layout": false
+    },
+    {
+      "architecture": "sm_90a",
+      "capability_digest": "sha256:129b6093f286bf1a4579d263e7940e38176e72b97e7e16b1b9ae68889488efd2",
+      "cluster_tma": true,
+      "gather_scatter4": false,
+      "managed_tma": true,
+      "manual_tma": true,
+      "minimum_cuda": "12.0",
+      "name": "sm90a",
+      "swizzled_tma_alignment": 1024,
+      "tcgen05_layout": false,
+      "tilelang_target": {
+        "arch": "sm_90a",
+        "kind": "cuda"
+      },
+      "wgmma_layout": true
+    },
+    {
+      "architecture": "sm_100",
+      "capability_digest": "sha256:41565bbd2e436a3a2bef1b3bacbe12a4906e8aeb959931ad9fc759052260c2bc",
+      "cluster_tma": true,
+      "gather_scatter4": false,
+      "managed_tma": true,
+      "manual_tma": true,
+      "minimum_cuda": "12.8",
+      "name": "sm100",
+      "swizzled_tma_alignment": 1024,
+      "tcgen05_layout": false,
+      "tilelang_target": {
+        "arch": "sm_100",
+        "kind": "cuda"
+      },
+      "wgmma_layout": false
+    },
+    {
+      "architecture": "sm_100a",
+      "capability_digest": "sha256:b0591db58dc0565862d4b9750afc6c4e58015dcfdb308301b9486bdf287ef286",
+      "cluster_tma": true,
+      "gather_scatter4": true,
+      "managed_tma": true,
+      "manual_tma": true,
+      "minimum_cuda": "12.8",
+      "name": "sm100a",
+      "swizzled_tma_alignment": 1024,
+      "tcgen05_layout": true,
+      "tilelang_target": {
+        "arch": "sm_100a",
+        "kind": "cuda"
+      },
+      "wgmma_layout": false
+    }
+  ]
+}

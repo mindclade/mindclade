@@ -1821,14 +1821,16 @@ mindclade/
 │       │   ├── native_ops.json
 │       │   ├── operation_registry.generated.cpp
 │       │   ├── python_registration_generated.py
-│       │   └── registration.generated.cpp
+│       │   ├── registration.generated.cpp
+│       │   └── tilelang_capabilities.json
 │       ├── manifests/
 │       │   ├── benchmark.schema.json
 │       │   ├── native_ops.schema.json
 │       │   ├── performance_policy.json
 │       │   ├── qualification.schema.json
 │       │   ├── tilelang_profiles.sm100.json
-│       │   └── tilelang_profiles.sm90.json
+│       │   ├── tilelang_profiles.sm90.json
+│       │   └── tilelang_capabilities.schema.json
 │       ├── python/
 │       │   ├── __init__.py
 │       │   ├── loader.py
@@ -1858,7 +1860,10 @@ mindclade/
 │       │   ├── test_policy.py
 │       │   ├── test_qualification.py
 │       │   ├── test_reference_runtime.py
-│       │   └── test_schema_manifest.py
+│       │   ├── test_schema_manifest.py
+│       │   ├── test_tilelang_swizzle.py
+│       │   ├── test_tilelang_targets.py
+│       │   └── test_tilelang_tma.py
 │       └── tilelang/
 │           ├── README.md
 │           ├── __init__.py
@@ -1866,7 +1871,10 @@ mindclade/
 │           ├── decorator.py
 │           ├── manifest.py
 │           ├── model.py
-│           └── registry.py
+│           ├── registry.py
+│           ├── swizzle.py
+│           ├── targets.py
+│           └── tma.py
 ├── runtime/
 │   ├── distributed/
 │   │   ├── mesh/

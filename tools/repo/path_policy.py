@@ -28,9 +28,9 @@ BLUEPRINT_SHA256 = "d099074e755168bbdce076d50918bf06aff677f9e5d620fdfe53cb7cef74
 ANCHOR_COMMIT = "292b71f47b1b29cc9ba7cf760a9bd07cd5e0ffa7"
 AUTHORITY_FILE_COUNT = 2461
 AUTHORITY_DIRECTORY_COUNT = 787
-CANONICAL_FILE_COUNT = 2585
+CANONICAL_FILE_COUNT = 2593
 AUTHORITY_PATH_SET_SHA256 = "f2011dd32ccc19649e6abb70ffb4473aea4a224410062d40292222e2e6263692"
-CANONICAL_PATH_SET_SHA256 = "26dba71dc00e13c13baa6d293e315cf5b487a8de1b5d871a3f5911f9ae61d198"
+CANONICAL_PATH_SET_SHA256 = "c0d7fd2264809e3ad653981cbfdd0ff5b8e1dc672128f60dd1aa51887ec4f3b9"
 
 ADR_REPLACEMENTS = {
     "docs/adr/0001-repository-identity.md": "docs/adr/0001-repository-identity-and-ownership.md",
@@ -142,6 +142,14 @@ NATIVE_SOURCE_INCUBATION_PATHS = (
     "kernels/pairformer/transition/__init__.py",
     "kernels/pairformer/transition/test_transition.py",
     "kernels/pairformer/transition/tilelang.py",
+    "kernels/native/generated/tilelang_capabilities.json",
+    "kernels/native/manifests/tilelang_capabilities.schema.json",
+    "kernels/native/tests/test_tilelang_swizzle.py",
+    "kernels/native/tests/test_tilelang_targets.py",
+    "kernels/native/tests/test_tilelang_tma.py",
+    "kernels/native/tilelang/swizzle.py",
+    "kernels/native/tilelang/targets.py",
+    "kernels/native/tilelang/tma.py",
 )
 NATIVE_SOURCE_INCUBATION_ADDITIONS = (
     NATIVE_SOURCE_INCUBATION_ADR,

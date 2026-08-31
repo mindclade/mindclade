@@ -1,0 +1,151 @@
+{
+  "$id": "https://schemas.mindclade.internal/kernels/native/tilelang-capabilities-v1.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "compiler": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "const": "tilelang"
+        },
+        "version": {
+          "const": "0.1.13"
+        }
+      },
+      "required": [
+        "id",
+        "version"
+      ],
+      "type": "object"
+    },
+    "registration_mode": {
+      "const": "offline_build"
+    },
+    "request_time_compilation": {
+      "const": false
+    },
+    "runtime_discovery": {
+      "const": false
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "semantic_digest": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "swizzled_buffer_prohibitions": {
+      "items": {
+        "enum": [
+          "all_of",
+          "any_of",
+          "cross_width_view"
+        ]
+      },
+      "type": "array",
+      "uniqueItems": true
+    },
+    "targets": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "architecture": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "capability_digest": {
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "type": "string"
+          },
+          "cluster_tma": {
+            "type": "boolean"
+          },
+          "gather_scatter4": {
+            "type": "boolean"
+          },
+          "managed_tma": {
+            "type": "boolean"
+          },
+          "manual_tma": {
+            "type": "boolean"
+          },
+          "minimum_cuda": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "enum": [
+              "cuda-portable",
+              "sm90",
+              "sm90a",
+              "sm100",
+              "sm100a"
+            ]
+          },
+          "swizzled_tma_alignment": {
+            "enum": [
+              128,
+              1024
+            ]
+          },
+          "tcgen05_layout": {
+            "type": "boolean"
+          },
+          "tilelang_target": {
+            "additionalProperties": false,
+            "properties": {
+              "arch": {
+                "type": "string"
+              },
+              "kind": {
+                "const": "cuda"
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "type": "object"
+          },
+          "wgmma_layout": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "architecture",
+          "capability_digest",
+          "cluster_tma",
+          "gather_scatter4",
+          "managed_tma",
+          "manual_tma",
+          "minimum_cuda",
+          "name",
+          "swizzled_tma_alignment",
+          "tcgen05_layout",
+          "tilelang_target",
+          "wgmma_layout"
+        ],
+        "type": "object"
+      },
+      "maxItems": 5,
+      "minItems": 5,
+      "type": "array"
+    }
+  },
+  "required": [
+    "schema_version",
+    "compiler",
+    "registration_mode",
+    "request_time_compilation",
+    "runtime_discovery",
+    "semantic_digest",
+    "swizzled_buffer_prohibitions",
+    "targets"
+  ],
+  "title": "Mindclade TileLang capability manifest",
+  "type": "object"
+}

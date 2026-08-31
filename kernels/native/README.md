@@ -176,7 +176,7 @@ linkage fixes symbol names; it is not a language-neutral C ABI.
 | `manifests/benchmark.schema.json` | Contract for benchmark evidence candidates. |
 | `manifests/qualification.schema.json` | Contract for qualification evidence candidates. |
 | `manifests/performance_policy.json` | Unmeasured baseline state and post-promotion regression policy. |
-| `manifests/tilelang_profiles.sm90.json` | Bounded, unqualified SM90 specialization inputs for all four declared operations. |
+| `manifests/tilelang_profiles.sm90.json` | Bounded, unqualified SM90 specialization inputs for all five declared operations. |
 | `manifests/tilelang_profiles.sm100.json` | Separate bounded, unqualified SM100 specialization inputs; separation is not independent tuning evidence. |
 
 ### `stable_abi/`
@@ -213,6 +213,9 @@ own qualification; it is not silently prohibited or silently accepted.
 | `tilelang/model.py` | Defines manifest-v2 `KernelSpec`, `CallableRef`, and current registered/not-supported autograd policy validation. |
 | `tilelang/decorator.py` | Validates and attaches non-authoritative developer metadata when an operation module is deliberately imported. |
 | `tilelang/registry.py` | Deterministically validates a supplied set of specs; it does not discover files. |
+| `tilelang/targets.py` | Defines immutable portable, SM90/SM90a, and SM100/SM100a capability contracts and generates their semantic manifest. |
+| `tilelang/tma.py` | Emits managed/manual TMA, cluster, gather/scatter, and explicit portable-fallback transfer lanes. |
+| `tilelang/swizzle.py` | Selects consumer-driven shared layouts and CTA raster policies without runtime discovery. |
 | `tilelang/manifest.py` | Loads and validates the committed generated manifest and its source/semantic digests. |
 | `tilelang/build.py` | Performs bounded, explicit offline specialization compilation and emits build receipts; it fails if TileLang is unavailable. |
 
@@ -292,3 +295,12 @@ JIT-06 decision, forward/backward and fake/meta coverage, numerical and
 determinism evidence, exact hardware/software qualification, performance
 threshold, provenance/license review, fallback, revocation, and rollback.
 None of that evidence is asserted by this document.
+
+### TMA and swizzle intake
+
+TMA and shared-layout selection is an offline build input. The portable CUDA
+lane never forces TMA; SM90a and SM100a have separate capability contracts,
+toolchain floors, layouts, and qualification evidence. Manual mbarrier, cluster
+multicast, remote shared-memory, and gather/scatter helpers fail closed when
+the selected target cannot preserve their semantics. These source contracts are
+unqualified and do not establish production performance.

@@ -2975,6 +2975,38 @@
           "reason": "ADR-0009 bounded Wave 6 native source-incubation surface; TARGET or reviewed-generated only, with zero active or qualified operations and no production authority."
         },
         {
+          "path": "kernels/native/generated/tilelang_capabilities.json",
+          "reason": "ADR-0009 bounded Wave 6 native source-incubation surface; TARGET or reviewed-generated only, with zero active or qualified operations and no production authority."
+        },
+        {
+          "path": "kernels/native/manifests/tilelang_capabilities.schema.json",
+          "reason": "ADR-0009 bounded Wave 6 native source-incubation surface; TARGET or reviewed-generated only, with zero active or qualified operations and no production authority."
+        },
+        {
+          "path": "kernels/native/tests/test_tilelang_swizzle.py",
+          "reason": "ADR-0009 bounded Wave 6 native source-incubation surface; TARGET or reviewed-generated only, with zero active or qualified operations and no production authority."
+        },
+        {
+          "path": "kernels/native/tests/test_tilelang_targets.py",
+          "reason": "ADR-0009 bounded Wave 6 native source-incubation surface; TARGET or reviewed-generated only, with zero active or qualified operations and no production authority."
+        },
+        {
+          "path": "kernels/native/tests/test_tilelang_tma.py",
+          "reason": "ADR-0009 bounded Wave 6 native source-incubation surface; TARGET or reviewed-generated only, with zero active or qualified operations and no production authority."
+        },
+        {
+          "path": "kernels/native/tilelang/swizzle.py",
+          "reason": "ADR-0009 bounded Wave 6 native source-incubation surface; TARGET or reviewed-generated only, with zero active or qualified operations and no production authority."
+        },
+        {
+          "path": "kernels/native/tilelang/targets.py",
+          "reason": "ADR-0009 bounded Wave 6 native source-incubation surface; TARGET or reviewed-generated only, with zero active or qualified operations and no production authority."
+        },
+        {
+          "path": "kernels/native/tilelang/tma.py",
+          "reason": "ADR-0009 bounded Wave 6 native source-incubation surface; TARGET or reviewed-generated only, with zero active or qualified operations and no production authority."
+        },
+        {
           "path": "third_party/packages/deep_ep/README.md",
           "reason": "Required Wave 1 DeepEP development-intake package definition, documentation, and source-policy test omitted by A6."
         },
@@ -3022,8 +3054,8 @@
           "reason": "Sections 1-18 and Section 14.1 take precedence over the stale A6 short ADR name."
         }
       ],
-      "canonical_file_count": 2585,
-      "canonical_path_set_sha256": "26dba71dc00e13c13baa6d293e315cf5b487a8de1b5d871a3f5911f9ae61d198"
+      "canonical_file_count": 2593,
+      "canonical_path_set_sha256": "c0d7fd2264809e3ad653981cbfdd0ff5b8e1dc672128f60dd1aa51887ec4f3b9"
     },
     "owners": {
       "agent-platform": {
@@ -20423,6 +20455,21 @@
       "activation_criterion": "ADR-0009 permits source incubation only through 2026-11-30; activate only after Wave 5 evidence and an operation-specific JIT-06 decision prove measured need, reference parity, gradients, locked dependencies, immutable artifacts, fallback, and revocation."
     },
     {
+      "path": "kernels/native/generated/tilelang_capabilities.json",
+      "kind": "data",
+      "owner": "ml-systems-performance",
+      "component": "kernels-native",
+      "status": "target",
+      "activation_wave": "6",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//kernels/native:native_policy_inputs"
+      ],
+      "test_targets": [],
+      "public_surface": false,
+      "activation_criterion": "ADR-0009 permits source incubation only through 2026-11-30; activate only after Wave 5 evidence and an operation-specific JIT-06 decision prove measured need, reference parity, gradients, locked dependencies, immutable artifacts, fallback, and revocation."
+    },
+    {
       "path": "kernels/native/manifests/benchmark.schema.json",
       "kind": "schema",
       "owner": "ml-systems-performance",
@@ -20511,6 +20558,21 @@
       "source_authority": "hand-authored",
       "build_targets": [
         "//kernels/native:native_policy_inputs",
+        "//kernels/native:native_codegen_lib"
+      ],
+      "test_targets": [],
+      "public_surface": false,
+      "activation_criterion": "ADR-0009 permits source incubation only through 2026-11-30; activate only after Wave 5 evidence and an operation-specific JIT-06 decision prove measured need, reference parity, gradients, locked dependencies, immutable artifacts, fallback, and revocation."
+    },
+    {
+      "path": "kernels/native/manifests/tilelang_capabilities.schema.json",
+      "kind": "schema",
+      "owner": "ml-systems-performance",
+      "component": "kernels-native",
+      "status": "target",
+      "activation_wave": "6",
+      "source_authority": "hand-authored",
+      "build_targets": [
         "//kernels/native:native_codegen_lib"
       ],
       "test_targets": [],
@@ -20930,6 +20992,51 @@
       "activation_criterion": "ADR-0009 permits source incubation only through 2026-11-30; activate only after Wave 5 evidence and an operation-specific JIT-06 decision prove measured need, reference parity, gradients, locked dependencies, immutable artifacts, fallback, and revocation."
     },
     {
+      "path": "kernels/native/tests/test_tilelang_swizzle.py",
+      "kind": "test",
+      "owner": "ml-systems-performance",
+      "component": "kernels-native",
+      "status": "target",
+      "activation_wave": "6",
+      "source_authority": "hand-authored",
+      "build_targets": [],
+      "test_targets": [
+        "//kernels/native:test_tilelang_swizzle"
+      ],
+      "public_surface": false,
+      "activation_criterion": "ADR-0009 permits source incubation only through 2026-11-30; activate only after Wave 5 evidence and an operation-specific JIT-06 decision prove measured need, reference parity, gradients, locked dependencies, immutable artifacts, fallback, and revocation."
+    },
+    {
+      "path": "kernels/native/tests/test_tilelang_targets.py",
+      "kind": "test",
+      "owner": "ml-systems-performance",
+      "component": "kernels-native",
+      "status": "target",
+      "activation_wave": "6",
+      "source_authority": "hand-authored",
+      "build_targets": [],
+      "test_targets": [
+        "//kernels/native:test_tilelang_targets"
+      ],
+      "public_surface": false,
+      "activation_criterion": "ADR-0009 permits source incubation only through 2026-11-30; activate only after Wave 5 evidence and an operation-specific JIT-06 decision prove measured need, reference parity, gradients, locked dependencies, immutable artifacts, fallback, and revocation."
+    },
+    {
+      "path": "kernels/native/tests/test_tilelang_tma.py",
+      "kind": "test",
+      "owner": "ml-systems-performance",
+      "component": "kernels-native",
+      "status": "target",
+      "activation_wave": "6",
+      "source_authority": "hand-authored",
+      "build_targets": [],
+      "test_targets": [
+        "//kernels/native:test_tilelang_tma"
+      ],
+      "public_surface": false,
+      "activation_criterion": "ADR-0009 permits source incubation only through 2026-11-30; activate only after Wave 5 evidence and an operation-specific JIT-06 decision prove measured need, reference parity, gradients, locked dependencies, immutable artifacts, fallback, and revocation."
+    },
+    {
       "path": "kernels/native/tilelang/README.md",
       "kind": "documentation",
       "owner": "ml-systems-performance",
@@ -21021,6 +21128,51 @@
     },
     {
       "path": "kernels/native/tilelang/registry.py",
+      "kind": "source",
+      "owner": "ml-systems-performance",
+      "component": "kernels-native",
+      "status": "target",
+      "activation_wave": "6",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//kernels/native:tilelang_codegen_lib"
+      ],
+      "test_targets": [],
+      "public_surface": false,
+      "activation_criterion": "ADR-0009 permits source incubation only through 2026-11-30; activate only after Wave 5 evidence and an operation-specific JIT-06 decision prove measured need, reference parity, gradients, locked dependencies, immutable artifacts, fallback, and revocation."
+    },
+    {
+      "path": "kernels/native/tilelang/swizzle.py",
+      "kind": "source",
+      "owner": "ml-systems-performance",
+      "component": "kernels-native",
+      "status": "target",
+      "activation_wave": "6",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//kernels/native:tilelang_codegen_lib"
+      ],
+      "test_targets": [],
+      "public_surface": false,
+      "activation_criterion": "ADR-0009 permits source incubation only through 2026-11-30; activate only after Wave 5 evidence and an operation-specific JIT-06 decision prove measured need, reference parity, gradients, locked dependencies, immutable artifacts, fallback, and revocation."
+    },
+    {
+      "path": "kernels/native/tilelang/targets.py",
+      "kind": "source",
+      "owner": "ml-systems-performance",
+      "component": "kernels-native",
+      "status": "target",
+      "activation_wave": "6",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//kernels/native:tilelang_codegen_lib"
+      ],
+      "test_targets": [],
+      "public_surface": false,
+      "activation_criterion": "ADR-0009 permits source incubation only through 2026-11-30; activate only after Wave 5 evidence and an operation-specific JIT-06 decision prove measured need, reference parity, gradients, locked dependencies, immutable artifacts, fallback, and revocation."
+    },
+    {
+      "path": "kernels/native/tilelang/tma.py",
       "kind": "source",
       "owner": "ml-systems-performance",
       "component": "kernels-native",

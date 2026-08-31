@@ -49,3 +49,8 @@ testpaths = ["tools"]
 dev = [
     "pytest==9.0.3",
 ]
+
+native-kernels = [
+    "tilelang==0.1.13; sys_platform == 'linux' and platform_machine == 'x86_64'",
+    "torch==2.10.0; sys_platform == 'linux' and platform_machine == 'x86_64'",
+]

@@ -22,6 +22,16 @@ its declared hardware/software envelope.
 from typing import Any
 
 from kernels.native.tilelang.decorator import mindclade_kernel
+from kernels.native.tilelang.swizzle import (
+    CtaRasterPolicy,
+    OperandRole,
+    RasterOrder,
+    SharedLayoutKind,
+    SharedLayoutPolicy,
+    apply_cta_raster,
+    shared_layout_for,
+)
+from kernels.native.tilelang.targets import capability_manifest, normalize_target, validate_toolchain
 
 _SUPPORTED_DTYPES = {"float16", "bfloat16", "float32"}
 
@@ -178,6 +188,11 @@ def build_tilelang_program(
     block_k: int = 32,
     num_stages: int = 2,
     threads: int = 128,
+    architecture: str | None = None,
+    shared_layout: str = "auto",
+    raster_panel: int = 0,
+    raster_order: str = "row",
+    capability_digest: str | None = None,
 ) -> Any:
     """Return a lazy, offline-compilable tiled GEMM program."""
 
@@ -202,12 +217,19 @@ def build_tilelang_program(
 
     import tilelang
     import tilelang.language as T
-    from tilelang.layout import make_swizzled_layout
+
+    target_contract = normalize_target(architecture or target)
+    validate_toolchain(target_contract, tilelang_version=str(tilelang.__version__))
+    expected_capability_digest = capability_manifest()["semantic_digest"]
+    if capability_digest is not None and capability_digest != expected_capability_digest:
+        raise ValueError("TileLang capability manifest digest does not match the approved contract")
+    layout_kind = SharedLayoutKind(shared_layout)
+    raster_policy = CtaRasterPolicy(raster_panel, RasterOrder(raster_order))
 
     accumulation_dtype = "float32"
     total_rows = batch_size * rows
 
-    @tilelang.jit(out_idx=[5], target=target)
+    @tilelang.jit(out_idx=[5], target=target_contract.tilelang_target)
     def transition_kernel():
         @T.prim_func
         def main(
@@ -228,10 +250,19 @@ def build_tilelang_program(
                 accumulator = T.alloc_fragment(
                     (block_m, block_n), accumulation_dtype
                 )
+                apply_cta_raster(raster_policy, language=T)
                 T.annotate_layout(
                     {
-                        activation_shared: make_swizzled_layout(activation_shared),
-                        weight_shared: make_swizzled_layout(weight_shared),
+                        activation_shared: shared_layout_for(
+                            activation_shared,
+                            SharedLayoutPolicy(kind=layout_kind, role=OperandRole.GEMM_A, k_major=True),
+                            target_contract,
+                        ),
+                        weight_shared: shared_layout_for(
+                            weight_shared,
+                            SharedLayoutPolicy(kind=layout_kind, role=OperandRole.GEMM_B, k_major=True),
+                            target_contract,
+                        ),
                     }
                 )
                 T.clear(accumulator)

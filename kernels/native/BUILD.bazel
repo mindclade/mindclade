@@ -56,6 +56,9 @@ py_library(
         "tilelang/manifest.py",
         "tilelang/model.py",
         "tilelang/registry.py",
+        "tilelang/tma.py",
+        "tilelang/targets.py",
+        "tilelang/swizzle.py",
     ],
 )
 
@@ -441,4 +444,27 @@ test_suite(
         "manual",
         "requires-hermetic-torch-2.10",
     ],
+)
+
+exports_files([
+    "generated/tilelang_capabilities.json",
+    "manifests/tilelang_capabilities.schema.json",
+])
+
+py_test(
+    name = "tilelang_targets_test",
+    srcs = ["tests/test_tilelang_targets.py"],
+    deps = [":tilelang_codegen_lib", "@mindclade_pypi//jsonschema"],
+)
+
+py_test(
+    name = "tilelang_swizzle_test",
+    srcs = ["tests/test_tilelang_swizzle.py"],
+    deps = [":tilelang_codegen_lib"],
+)
+
+py_test(
+    name = "tilelang_tma_test",
+    srcs = ["tests/test_tilelang_tma.py"],
+    deps = [":tilelang_codegen_lib"],
 )

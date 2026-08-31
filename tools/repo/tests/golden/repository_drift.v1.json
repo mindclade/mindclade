@@ -493,7 +493,7 @@
   "schema_version": "repository_drift.v1",
   "summary": {
     "branch_protection_observations_incomplete": 5,
-    "canonical_target_paths": 2585,
+    "canonical_target_paths": 2593,
     "component_count": 0,
     "default_branch_observations_incomplete": 5,
     "dependency_edge_count": 0,
@@ -508,8 +508,8 @@
   },
   "target_authority": {
     "blueprint_sha256": "d099074e755168bbdce076d50918bf06aff677f9e5d620fdfe53cb7cef745803",
-    "canonical_file_count": 2585,
-    "canonical_path_set_sha256": "26dba71dc00e13c13baa6d293e315cf5b487a8de1b5d871a3f5911f9ae61d198",
+    "canonical_file_count": 2593,
+    "canonical_path_set_sha256": "c0d7fd2264809e3ad653981cbfdd0ff5b8e1dc672128f60dd1aa51887ec4f3b9",
     "original_file_count": 2461,
     "reconciliation_version": "3.4.3",
     "source": "MONOREPO_TREE.md",

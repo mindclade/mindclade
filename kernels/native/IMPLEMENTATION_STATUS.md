@@ -30,7 +30,7 @@ Overall readiness: TARGET
 
 ## Implemented source controls
 
-- Four operation-local TileLang source declarations are discovered from an
+- Five operation-local TileLang source declarations are discovered from an
   explicit Bazel inventory through literal AST parsing.
 - Manifest v2 and six registration/build inventory outputs are generated
   deterministically and checked for drift.
@@ -75,3 +75,11 @@ No production dispatch is permitted until a nonempty immutable qualification
 manifest, exact artifact digest, JIT-06 decision, full kernel evidence,
 fallback, revocation, and rollback are present. Missing or inconclusive evidence
 fails closed.
+
+## TMA and swizzle status
+
+The repository contains build-time capability, transfer, shared-layout, CTA
+raster, barrier, cluster, and SM100a gather/scatter contracts. `transition` is
+the first layout-policy consumer. No generated-instruction inspection, GPU
+parity, deadlock stress, or benchmark evidence has been produced, so every TMA
+and swizzle profile remains `TARGET` and unqualified.
