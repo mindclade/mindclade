@@ -56,6 +56,8 @@ def test_generated_torch_surfaces_are_only_in_mindclade_namespace(tmp_path: Path
     assert "STABLE_TORCH_LIBRARY(mindclade" in definitions
     assert "STABLE_TORCH_LIBRARY_IMPL(mindclade, CUDA" in implementations
     assert "mindclade::fixture_op" in python
+    assert 'extern "C" torch::stable::Tensor mindclade_tilelang_fixture_op_launch' in implementations
+    assert "return mindclade_tilelang_fixture_op_launch(x, width);" in implementations
     assert "importlib" not in python
     assert "TORCH_LIBRARY(" not in definitions.replace("STABLE_TORCH_LIBRARY(", "")
 

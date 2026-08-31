@@ -14,6 +14,29 @@ from kernels.native.python import loader
 
 ROOT = Path(__file__).resolve().parents[1]
 
+EXPECTED_DECLARED_TILELANG_OPERATORS = (
+    (
+        "outer_product_mean",
+        "tilelang",
+        "pairformer/outer_product_mean/tilelang.py",
+    ),
+    (
+        "pair_weighted_average",
+        "tilelang",
+        "pairformer/pair_weighted_average/tilelang.py",
+    ),
+    (
+        "triangle_attention",
+        "tilelang",
+        "pairformer/triangle_attention/tilelang.py",
+    ),
+    (
+        "triangle_multiplication",
+        "tilelang",
+        "pairformer/triangle_multiplication/tilelang.py",
+    ),
+)
+
 
 def _operator() -> loader._ManifestOperator:
     return loader._ManifestOperator(
@@ -26,15 +49,19 @@ def _operator() -> loader._ManifestOperator:
     )
 
 
-def test_target_public_api_contains_no_operator_aliases():
+def test_declared_unqualified_operators_have_no_public_api_aliases():
     manifest = json.loads(
         (ROOT / "generated" / "native_ops.json").read_text(encoding="utf-8")
     )
-    assert manifest["operators"] == []
-    aliases = (
-        "outer_product_mean",
-        "triangle_attention",
-        "triangle_multiplication",
+    operators = manifest["operators"]
+    assert tuple(
+        (operator["name"], operator["backend"], operator["source"])
+        for operator in operators
+    ) == EXPECTED_DECLARED_TILELANG_OPERATORS
+    assert all("qualification" not in operator for operator in operators)
+    aliases = tuple(
+        operator_name
+        for operator_name, _backend, _source in EXPECTED_DECLARED_TILELANG_OPERATORS
     )
     assert not any(name in vars(native) for name in aliases)
     assert not any(name in vars(native_python) for name in aliases)

@@ -22,7 +22,7 @@ spec:
   dependencies: []
   provides:
     - schema-only native integration boundary
-    - "single operator registration contract: torch.ops.mindclade.<name>"
+    - "single operator registration contract is torch.ops.mindclade.<name>"
   release:
     publishable: false
     qualified_operations: 0
@@ -40,5 +40,7 @@ spec:
 status:
   readiness: TARGET
   kernel_k0: not-achieved
+  declared_operations: 4
+  unqualified_operations: 4
   qualified_operations: 0
   active_operations: 0

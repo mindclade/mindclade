@@ -4,6 +4,7 @@
 add_library(
   mindclade_native_schema
   SHARED
+    ../generated/registration.generated.cpp
     registration.cpp
     tensor_bridge.cpp
 )

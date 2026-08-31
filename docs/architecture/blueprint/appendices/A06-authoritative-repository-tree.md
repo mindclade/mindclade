@@ -1769,7 +1769,70 @@ mindclade/
 │   │   └── test_reference_contract.py
 │   ├── BUILD.bazel
 │   ├── component.yaml
-│   └── README.md
+│   ├── README.md
+│   └── native/
+│       ├── BUILD.bazel
+│       ├── CMakeLists.txt
+│       ├── IMPLEMENTATION_STATUS.md
+│       ├── MIGRATION.md
+│       ├── README.md
+│       ├── __init__.py
+│       ├── cmake/
+│       │   └── MindcladeTorchStable.cmake
+│       ├── codegen/
+│       │   ├── __init__.py
+│       │   ├── discover.py
+│       │   ├── generate.py
+│       │   └── schema.py
+│       ├── component.yaml
+│       ├── cuda/
+│       │   ├── CMakeLists.txt
+│       │   ├── README.md
+│       │   └── operation_registry.cpp
+│       ├── generated/
+│       │   ├── __init__.py
+│       │   ├── native_ops.generated.bzl
+│       │   ├── native_ops.generated.cmake
+│       │   ├── native_ops.json
+│       │   ├── operation_registry.generated.cpp
+│       │   ├── python_registration_generated.py
+│       │   └── registration.generated.cpp
+│       ├── manifests/
+│       │   └── native_ops.schema.json
+│       ├── python/
+│       │   ├── __init__.py
+│       │   ├── loader.py
+│       │   └── registration.py
+│       ├── stable_abi/
+│       │   ├── CMakeLists.txt
+│       │   ├── abi_manifest.json
+│       │   ├── registration.cpp
+│       │   └── tensor_bridge.cpp
+│       ├── tests/
+│       │   ├── pytest_runner.py
+│       │   ├── test_abi_compatibility.py
+│       │   ├── test_autograd.py
+│       │   ├── test_build_policy.py
+│       │   ├── test_cmake_policy.py
+│       │   ├── test_codegen.py
+│       │   ├── test_codegen_drift.py
+│       │   ├── test_discovery.py
+│       │   ├── test_export.py
+│       │   ├── test_fake_tensor.py
+│       │   ├── test_loader_policy.py
+│       │   ├── test_manifest.py
+│       │   ├── test_namespace.py
+│       │   ├── test_opcheck.py
+│       │   ├── test_policy.py
+│       │   └── test_schema_manifest.py
+│       └── tilelang/
+│           ├── README.md
+│           ├── __init__.py
+│           ├── build.py
+│           ├── decorator.py
+│           ├── manifest.py
+│           ├── model.py
+│           └── registry.py
 ├── runtime/
 │   ├── distributed/
 │   │   ├── mesh/
@@ -3268,7 +3331,8 @@ mindclade/
 │   │   ├── 0007-training-state-progress-and-checkpoint.md
 │   │   ├── index.yaml
 │   │   ├── 0008-founder-bootstrap-public-estate-transition.md
-│   │   └── connected-ratification.v1.schema.json
+│   │   ├── connected-ratification.v1.schema.json
+│   │   └── 0009-native-kernel-source-incubation.md
 │   ├── domains/
 │   │   ├── bio.md
 │   │   ├── data.md
@@ -3365,7 +3429,12 @@ mindclade/
     │   ├── README.md
     │   └── sources.lock.json
     ├── BUILD.bazel
-    └── README.md
+    ├── README.md
+    └── packages/
+        └── deep_ep/
+            ├── README.md
+            ├── package.nix
+            └── test_package.py
 ```
 <!-- END GENERATED: repository-path-manifest -->
 

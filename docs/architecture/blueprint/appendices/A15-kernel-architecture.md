@@ -1,5 +1,7 @@
 ## Appendix A15 — Kernel architecture
 
+> **ADR-0009 source-incubation exception.** Through 2026-11-30, `kernels/native/` may exist as a populated TARGET/proposed component with an empty native-operator inventory. The exception covers only reviewable schema registration, deterministic build-time projections, offline TileLang intake, fail-closed loading policy, build definitions, tests, and documentation. It does not satisfy Wave 5, JIT-06, kernel K0, numerical or hardware qualification, signed-artifact, fallback, revocation, connected, or production gates. Every eventual operator must register exclusively as `torch.ops.mindclade.<name>` and still requires operation-local semantics, reference parity, gradients, measured need, an operation-specific JIT-06 ADR, immutable qualification evidence, and reference fallback before activation.
+
 ### A15.1 Kernel package contract
 
 Every optimized operation provides:

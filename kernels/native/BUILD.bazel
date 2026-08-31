@@ -1,11 +1,15 @@
 # Copyright (c) 2026 Mindclade. All rights reserved.
 # Proprietary and confidential. Unauthorized use, copying, or distribution is prohibited.
 
+load("@rules_cc//cc:cc_library.bzl", "cc_library")
+load("@rules_python//python:defs.bzl", "py_binary", "py_library", "py_test")
+
 package(default_visibility = ["//visibility:private"])
 
 cc_library(
     name = "native_schema",
     srcs = [
+        "generated/registration.generated.cpp",
         "stable_abi/registration.cpp",
         "stable_abi/tensor_bridge.cpp",
     ],
@@ -17,17 +21,36 @@ cc_library(
     linkstatic = False,
 )
 
-# Operation declarations are explicit build inputs. The Wave 6 TARGET has no
-# authoring sources until a JIT-06-qualified operation is activated.
+# The qualified GPU artifact must export every generated C-linkage launch
+# symbol. Keeping this registry separate prevents schema-only builds from
+# acquiring unresolved GPU launch dependencies.
+cc_library(
+    name = "native_cuda_registry",
+    srcs = ["generated/operation_registry.generated.cpp"],
+    alwayslink = True,
+    defines = [
+        "MINDCLADE_TORCH_STABLE_ABI_MAJOR=2",
+        "MINDCLADE_TORCH_STABLE_ABI_MINOR=10",
+    ],
+)
+
+# Operation declarations are explicit build inputs owned by operation-local
+# packages. Codegen receives no implicit repository discovery inputs.
 filegroup(
     name = "native_operator_authoring_sources",
-    srcs = [],
+    srcs = [
+        "//kernels/pairformer/outer_product_mean:tilelang.py",
+        "//kernels/pairformer/pair_weighted_average:tilelang.py",
+        "//kernels/pairformer/triangle_attention:tilelang.py",
+        "//kernels/pairformer/triangle_multiplication:tilelang.py",
+    ],
 )
 
 py_library(
     name = "tilelang_codegen_lib",
     srcs = [
         "tilelang/__init__.py",
+        "tilelang/build.py",
         "tilelang/decorator.py",
         "tilelang/manifest.py",
         "tilelang/model.py",
@@ -42,7 +65,10 @@ py_library(
         "codegen/discover.py",
         "codegen/schema.py",
     ],
-    data = [":native_operator_authoring_sources"],
+    data = [
+        ":native_operator_authoring_sources",
+        "manifests/native_ops.schema.json",
+    ],
     deps = [":tilelang_codegen_lib"],
 )
 
@@ -51,7 +77,16 @@ py_library(
 py_binary(
     name = "generate_native_ops",
     srcs = ["codegen/generate.py"],
-    data = [":native_operator_authoring_sources"],
+    data = [
+        ":native_operator_authoring_sources",
+        "generated/native_ops.generated.bzl",
+        "generated/native_ops.generated.cmake",
+        "generated/native_ops.json",
+        "generated/operation_registry.generated.cpp",
+        "generated/python_registration_generated.py",
+        "generated/registration.generated.cpp",
+    ],
+    main = "codegen/generate.py",
     deps = [":native_codegen_lib"],
 )
 
@@ -81,17 +116,25 @@ filegroup(
         "cuda/CMakeLists.txt",
         "cuda/README.md",
         "cuda/operation_registry.cpp",
+        "generated/native_ops.generated.bzl",
+        "generated/native_ops.generated.cmake",
+        "generated/native_ops.json",
+        "generated/operation_registry.generated.cpp",
+        "generated/python_registration_generated.py",
+        "generated/registration.generated.cpp",
+        "manifests/native_ops.schema.json",
+        "manifests/tilelang_profiles.sm90.json",
         "stable_abi/CMakeLists.txt",
         "stable_abi/abi_manifest.json",
         "stable_abi/registration.cpp",
         "stable_abi/tensor_bridge.cpp",
         "tilelang/README.md",
         "tilelang/__init__.py",
+        "tilelang/build.py",
         "tilelang/decorator.py",
         "tilelang/manifest.py",
         "tilelang/model.py",
         "tilelang/registry.py",
-        "generated/native_ops.json",
     ],
 )
 
@@ -121,69 +164,253 @@ py_test(
 
 py_test(
     name = "test_autograd",
-    srcs = ["tests/test_autograd.py"],
-    data = [":native_policy_inputs"],
-    main = "tests/test_autograd.py",
+    srcs = ["tests/pytest_runner.py"],
+    args = ["$(location tests/test_autograd.py)"],
+    data = [
+        ":native_policy_inputs",
+        "tests/test_autograd.py",
+    ],
+    main = "tests/pytest_runner.py",
     python_version = "PY3",
-    deps = [":native_python"],
+    tags = [
+        "manual",
+        "requires-hermetic-torch-2.10",
+    ],
+    deps = [
+        ":native_python",
+        "@mindclade_pypi//pytest",
+    ],
 )
 
 py_test(
     name = "test_export",
-    srcs = ["tests/test_export.py"],
-    data = [":native_policy_inputs"],
-    main = "tests/test_export.py",
+    srcs = ["tests/pytest_runner.py"],
+    args = ["$(location tests/test_export.py)"],
+    data = [
+        ":native_policy_inputs",
+        "tests/test_export.py",
+    ],
+    main = "tests/pytest_runner.py",
     python_version = "PY3",
-    deps = [":native_python"],
+    tags = [
+        "manual",
+        "requires-hermetic-torch-2.10",
+    ],
+    deps = [
+        ":native_python",
+        "@mindclade_pypi//pytest",
+    ],
 )
 
 py_test(
     name = "test_fake_tensor",
-    srcs = ["tests/test_fake_tensor.py"],
-    data = [":native_policy_inputs"],
-    main = "tests/test_fake_tensor.py",
+    srcs = ["tests/pytest_runner.py"],
+    args = ["$(location tests/test_fake_tensor.py)"],
+    data = [
+        ":native_policy_inputs",
+        "tests/test_fake_tensor.py",
+    ],
+    main = "tests/pytest_runner.py",
     python_version = "PY3",
-    deps = [":native_python"],
+    tags = [
+        "manual",
+        "requires-hermetic-torch-2.10",
+    ],
+    deps = [
+        ":native_python",
+        "@mindclade_pypi//pytest",
+    ],
 )
 
 py_test(
     name = "test_loader_policy",
-    srcs = ["tests/test_loader_policy.py"],
-    data = [":native_policy_inputs"],
-    main = "tests/test_loader_policy.py",
+    srcs = ["tests/pytest_runner.py"],
+    args = ["$(location tests/test_loader_policy.py)"],
+    data = [
+        ":native_policy_inputs",
+        "tests/test_loader_policy.py",
+    ],
+    main = "tests/pytest_runner.py",
     python_version = "PY3",
-    deps = [":native_python"],
+    tags = [
+        "manual",
+        "requires-hermetic-torch-2.10",
+    ],
+    deps = [
+        ":native_python",
+        "@mindclade_pypi//pytest",
+    ],
 )
 
 py_test(
     name = "test_namespace",
-    srcs = ["tests/test_namespace.py"],
-    data = [":native_policy_inputs"],
-    main = "tests/test_namespace.py",
+    srcs = ["tests/pytest_runner.py"],
+    args = ["$(location tests/test_namespace.py)"],
+    data = [
+        ":native_policy_inputs",
+        "tests/test_namespace.py",
+    ],
+    main = "tests/pytest_runner.py",
     python_version = "PY3",
-    deps = [":native_python"],
+    tags = [
+        "manual",
+        "requires-hermetic-torch-2.10",
+    ],
+    deps = [
+        ":native_python",
+        "@mindclade_pypi//pytest",
+    ],
 )
 
 py_test(
     name = "test_opcheck",
-    srcs = ["tests/test_opcheck.py"],
-    data = [":native_policy_inputs"],
-    main = "tests/test_opcheck.py",
+    srcs = ["tests/pytest_runner.py"],
+    args = ["$(location tests/test_opcheck.py)"],
+    data = [
+        ":native_policy_inputs",
+        "tests/test_opcheck.py",
+    ],
+    main = "tests/pytest_runner.py",
     python_version = "PY3",
-    deps = [":native_python"],
+    tags = [
+        "manual",
+        "requires-hermetic-torch-2.10",
+    ],
+    deps = [
+        ":native_python",
+        "@mindclade_pypi//pytest",
+    ],
+)
+
+py_test(
+    name = "test_build_policy",
+    srcs = ["tests/pytest_runner.py"],
+    args = ["$(location tests/test_build_policy.py)"],
+    data = [
+        ":native_policy_inputs",
+        "tests/test_build_policy.py",
+    ],
+    main = "tests/pytest_runner.py",
+    python_version = "PY3",
+    deps = [
+        ":native_codegen_lib",
+        "@mindclade_pypi//pytest",
+    ],
+)
+
+py_test(
+    name = "test_codegen",
+    srcs = ["tests/pytest_runner.py"],
+    args = ["$(location tests/test_codegen.py)"],
+    data = [
+        ":native_policy_inputs",
+        "tests/test_codegen.py",
+    ],
+    main = "tests/pytest_runner.py",
+    python_version = "PY3",
+    deps = [
+        ":native_codegen_lib",
+        "@mindclade_pypi//pytest",
+    ],
+)
+
+py_test(
+    name = "test_codegen_drift",
+    srcs = ["tests/pytest_runner.py"],
+    args = ["$(location tests/test_codegen_drift.py)"],
+    data = [
+        ":native_policy_inputs",
+        "tests/test_codegen_drift.py",
+    ],
+    main = "tests/pytest_runner.py",
+    python_version = "PY3",
+    deps = [
+        ":native_codegen_lib",
+        "@mindclade_pypi//pytest",
+    ],
+)
+
+py_test(
+    name = "test_discovery",
+    srcs = ["tests/pytest_runner.py"],
+    args = ["$(location tests/test_discovery.py)"],
+    data = [
+        ":native_policy_inputs",
+        "tests/test_discovery.py",
+    ],
+    main = "tests/pytest_runner.py",
+    python_version = "PY3",
+    deps = [
+        ":native_codegen_lib",
+        "@mindclade_pypi//pytest",
+    ],
+)
+
+py_test(
+    name = "test_manifest",
+    srcs = ["tests/pytest_runner.py"],
+    args = ["$(location tests/test_manifest.py)"],
+    data = [
+        ":native_policy_inputs",
+        "tests/test_manifest.py",
+    ],
+    main = "tests/pytest_runner.py",
+    python_version = "PY3",
+    deps = [
+        ":native_codegen_lib",
+        "@mindclade_pypi//pytest",
+    ],
+)
+
+py_test(
+    name = "test_schema_manifest",
+    srcs = ["tests/pytest_runner.py"],
+    args = ["$(location tests/test_schema_manifest.py)"],
+    data = [
+        ":native_policy_inputs",
+        "tests/test_schema_manifest.py",
+    ],
+    main = "tests/pytest_runner.py",
+    python_version = "PY3",
+    deps = [
+        ":native_codegen_lib",
+        "@mindclade_pypi//jsonschema",
+        "@mindclade_pypi//pytest",
+    ],
 )
 
 test_suite(
     name = "policy_tests",
     tests = [
         ":test_abi_compatibility",
-        ":test_autograd",
+        ":test_build_policy",
         ":test_cmake_policy",
+        ":test_codegen",
+        ":test_codegen_drift",
+        ":test_discovery",
+        ":test_manifest",
+        ":test_policy",
+        ":test_schema_manifest",
+    ],
+)
+
+# These CPU-only dispatcher and loader tests import Torch but make no CUDA or
+# production-qualification claim. They remain fail-closed and manual until the
+# repository has an approved, license-reviewed hermetic Torch >=2.10 intake
+# compatible with the 2.10 stable ABI contract. The pinned Nix authority
+# currently resolves Torch 2.12.0 and is not that intake.
+test_suite(
+    name = "torch_runtime_tests",
+    tests = [
+        ":test_autograd",
         ":test_export",
         ":test_fake_tensor",
         ":test_loader_policy",
         ":test_namespace",
         ":test_opcheck",
-        ":test_policy",
+    ],
+    tags = [
+        "manual",
+        "requires-hermetic-torch-2.10",
     ],
 )

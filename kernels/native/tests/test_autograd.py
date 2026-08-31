@@ -12,6 +12,29 @@ from kernels.native.python import loader
 
 ROOT = Path(__file__).resolve().parents[1]
 
+EXPECTED_DECLARED_TILELANG_OPERATORS = (
+    (
+        "outer_product_mean",
+        "tilelang",
+        "pairformer/outer_product_mean/tilelang.py",
+    ),
+    (
+        "pair_weighted_average",
+        "tilelang",
+        "pairformer/pair_weighted_average/tilelang.py",
+    ),
+    (
+        "triangle_attention",
+        "tilelang",
+        "pairformer/triangle_attention/tilelang.py",
+    ),
+    (
+        "triangle_multiplication",
+        "tilelang",
+        "pairformer/triangle_multiplication/tilelang.py",
+    ),
+)
+
 
 def _operator(mode: str) -> loader._ManifestOperator:
     return loader._ManifestOperator(
@@ -24,11 +47,19 @@ def _operator(mode: str) -> loader._ManifestOperator:
     )
 
 
-def test_target_manifest_advertises_no_autograd_contracts():
+def test_target_manifest_declares_exact_unqualified_autograd_contracts():
     manifest = json.loads(
         (ROOT / "generated" / "native_ops.json").read_text(encoding="utf-8")
     )
-    assert manifest["operators"] == []
+    operators = manifest["operators"]
+    assert tuple(
+        (operator["name"], operator["backend"], operator["source"])
+        for operator in operators
+    ) == EXPECTED_DECLARED_TILELANG_OPERATORS
+    assert {operator["autograd"]["mode"] for operator in operators} == {
+        "registered"
+    }
+    assert all("qualification" not in operator for operator in operators)
 
 
 def test_registered_autograd_dispatch_is_required(monkeypatch):

@@ -4,15 +4,15 @@
 |---|---|
 | Document ID | `MC-ARCH-001` |
 | Version | `3.4.3` |
-| Status | Authoritative approved architecture; founder-bootstrap source governance active and connected qualification pending |
+| Status | Authoritative approved architecture; bounded founder-bootstrap and native-source incubation active in source only, connected qualification pending |
 | Scope | Mindclade public product-source monorepo plus platform, biological-agent, data, model, training, evaluation, inference, development-kit, and developer-tooling contracts |
 | Audience | Founding engineers, ML researchers, computational biologists, platform engineers, security, safety, operations, product engineering, and technical leadership |
 | Effective date | 2026-08-30 |
 | Supersedes | MC-ARCH-001 version 3.4.2 |
 | Review cadence | Quarterly and on any constitutional trigger in Appendices A34.16, A34.17, or A35.20 |
-| Repository evidence reviewed | Greenfield canonical repository and five operational source repositories inspected on 2026-08-30; public GitHub Free repository-level founder bootstrap is authorized in source only, while connected-state and implementation qualification remain pending |
+| Repository evidence reviewed | Greenfield canonical repository and five operational source repositories inspected on 2026-08-30; public GitHub Free repository-level founder bootstrap and the bounded kernels/native source-incubation exception are authorized in source only, while connected-state, operator activation, and implementation qualification remain pending |
 
-> **Authority note:** Version 3.4.3 is the single design authority. Sections 1–18 contain the reconciled implementation contract. Appendices A1–A40 provide normative domain detail. ADR-0008 and FBE-0001 authorize a bounded, expiring, single-use founder bootstrap and Wave 1 source work without granting production authority or connected qualification. The editable architecture sources are the ordered files declared by docs/architecture/blueprint/manifest.yaml; the combined blueprint is their deterministic full render. docs/architecture/repository-path-manifest.yaml is the sole machine-readable repository-path authority, and Appendix A6 is its generated, human-reviewable explicit tree. Any source/render/manifest mismatch fails architecture validation. When wording conflicts, the architecture constitution, Sections 1–18, and an explicitly superseding ADR take precedence in that order. A target tree or planned wave is future state until direct repository and qualification evidence proves implementation.
+> **Authority note:** Version 3.4.3 is the single design authority. Sections 1–18 contain the reconciled implementation contract. Appendices A1–A40 provide normative domain detail. ADR-0008 and FBE-0001 authorize a bounded, expiring, single-use founder bootstrap and Wave 1 source work without granting production authority or connected qualification. ADR-0009 narrowly permits an expiring kernels/native TARGET source-incubation surface without satisfying Wave 5, JIT-06, operator activation, dispatch, publication, or qualification gates. The editable architecture sources are the ordered files declared by docs/architecture/blueprint/manifest.yaml; the combined blueprint is their deterministic full render. docs/architecture/repository-path-manifest.yaml is the sole machine-readable repository-path authority, and Appendix A6 is its generated, human-reviewable explicit tree. Any source/render/manifest mismatch fails architecture validation. When wording conflicts, the architecture constitution, Sections 1–18, and an explicitly superseding ADR take precedence in that order. A target tree or planned wave is future state until direct repository and qualification evidence proves implementation.
 
 ## Contents
 
@@ -1401,7 +1401,7 @@ Each supported package has domain-specific README content: purpose/non-purpose, 
 
 ## 14. ADR index and decision log
 
-The blueprint accepts all decisions recorded in this section, but Wave 0 creates only eight standalone ADRs: the seven decisions that are expensive to reverse after implementation begins plus the bounded founder bootstrap required to establish the public estate. Version 3.4.3 binds their canonical filenames below. Repository validation proves file presence and metadata; independent review and protected-branch evidence determine connected acceptance and are never inferred from this index.
+The blueprint accepts all decisions recorded in this section. Wave 0 created eight standalone ADRs: the seven decisions that are expensive to reverse after implementation begins plus the bounded founder bootstrap required to establish the public estate. ADR-0009 adds one expiring source-incubation exception for `kernels/native/`; it is neither an optimized-kernel activation nor JIT-06 ratification. Version 3.4.3 binds their canonical filenames below. Repository validation proves file presence and metadata; independent review and protected-branch evidence determine connected acceptance and are never inferred from this index.
 
 ### 14.1 Wave 0 foundational ADRs
 
@@ -1415,10 +1415,11 @@ The blueprint accepts all decisions recorded in this section, but Wave 0 creates
 | ADR-0006 | `Operation`/`Job`/`Run`/`Attempt` semantics, transactional idempotency/audit/outbox, at-least-once delivery, inbox deduplication, lease fencing, and reconciliation | queue/Kubernetes as business truth, exactly-once claims, worker database mutation | `docs/adr/0006-durable-work-and-fencing.md` |
 | ADR-0007 | Mindclade-owned training logical state, committed update/data progress, snapshot epochs, prepare/write/verify/commit checkpointing, and recovery guarantees | provider-native state/checkpoint authority, best-effort rank saves, ambiguous progress replay | `docs/adr/0007-training-state-progress-and-checkpoint.md` |
 | ADR-0008 | Public GitHub Free repository-level founder bootstrap, `github-config` repo-local protected-apply exception, and `BLOCKED` -> `FOUNDER_BOOTSTRAPPED` -> `CONNECTED_QUALIFIED` lifecycle | self-ratifying founder approval, broad administration, a second monorepo bootstrap workflow, private/enterprise-only bootstrap dependency, connected or production claims without evidence | `docs/adr/0008-founder-bootstrap-public-estate-transition.md` |
+| ADR-0009 | Expiring `kernels/native/` TARGET source incubation with an empty operator inventory, strict `torch.ops.mindclade.*` namespace, generator ownership, and no production authority | speculative operator activation, aliases or alternate namespaces, runtime discovery/compilation, hand-authored projections, or treating source tests as JIT-06 qualification | `docs/adr/0009-native-kernel-source-incubation.md` |
 
-These eight files MAY consolidate several related design consequences, but each MUST remain reviewable as one invariant cluster. Wave 0 does not create empty ADR shells for later systems.
+These nine files MAY consolidate several related design consequences, but each MUST remain reviewable as one invariant cluster. Wave 0 does not create empty ADR shells for later systems.
 
-Version 3.4.3 declares `docs/adr/connected-ratification.v1.schema.json` as the active Wave 0 machine contract for all eight ADR connected-ratification states. It also declares `docs/governance/founder-bootstrap-exception.v1.schema.json` and `docs/governance/exceptions/FBE-0001.yaml` as the closed, expiring source authority for the founder transition. FBE-0001 contains a separate, one-time initial-publication contract for the exact `github-config` workflow artifact: it is bound to `main`, its canonical SHA-256 content digest, actor, immutable pull-request receipt containing the observed merge SHA, and `UNPUBLISHED`/`PUBLISHED` state, prohibits a direct default-branch push or a protection waiver, and cannot claim independent review. These sources establish `FOUNDER_BOOTSTRAPPED`; they do not create a connected ratification receipt or satisfy independent review.
+Version 3.4.3 declares `docs/adr/connected-ratification.v1.schema.json` as the active Wave 0 machine contract for all nine ADR connected-ratification states. It also declares `docs/governance/founder-bootstrap-exception.v1.schema.json` and `docs/governance/exceptions/FBE-0001.yaml` as the closed, expiring source authority for the founder transition. FBE-0001 contains a separate, one-time initial-publication contract for the exact `github-config` workflow artifact: it is bound to `main`, its canonical SHA-256 content digest, actor, immutable pull-request receipt containing the observed merge SHA, and `UNPUBLISHED`/`PUBLISHED` state, prohibits a direct default-branch push or a protection waiver, and cannot claim independent review. These sources establish `FOUNDER_BOOTSTRAPPED`; they do not create a connected ratification receipt or satisfy independent review. ADR-0009 separately authorizes only a populated TARGET source surface through its stated expiry; it creates no connected or production qualification.
 
 ### 14.2 Just-in-time decision register
 
@@ -1437,6 +1438,8 @@ The following decisions remain normative in this blueprint. Their standalone ADR
 | JIT-09 | Build signing, qualification policy, GitOps promotion, rollback, and revocation implementation | first promoted release in Wave 3; production profile in Wave 8 | builder trust, subject/evidence schema, signing and rollback drill |
 | JIT-10 | Additional cloud or on-premises support profile | first non-GCP environment implementation | funded consumer, provider conformance environment, identity/storage/recovery evidence |
 | JIT-11 | Service extraction from the modular monolith | first extraction | measured trust/failure/scaling/release boundary and state/API migration |
+
+ADR-0009 does not satisfy JIT-06. It permits only the reviewable, empty-inventory native integration boundary to exist before Wave 6; every non-empty operator addition and activation still requires its own measured JIT-06 decision and the ordinary Wave 5 evidence.
 
 An implementer cannot use missing ADR ratification to invent a local alternative. The blueprint decision remains controlling; the just-in-time ADR records concrete context, alternatives, migration, and evidence when that decision becomes operationally relevant.
 
@@ -1623,7 +1626,7 @@ Feature/data-transform materialization uses the ordinary `Job`/`Run`/`Attempt`/f
 
 **Prerequisites.** Wave 5 correctness and representative profiling identify bottlenecks.
 
-**Packages/files.** Only the implementation selected by the Wave 6 bottleneck study and JIT-06 ADR; operation-specific dispatch/qualification records; activated provider package if the selected gap cannot be solved natively; conversion/qualification tooling. No candidate receives a package in advance.
+**Packages/files.** Only the implementation selected by the Wave 6 bottleneck study and JIT-06 ADR; operation-specific dispatch/qualification records; activated provider package if the selected gap cannot be solved natively; conversion/qualification tooling. No candidate receives an activatable provider package in advance. ADR-0009 is the sole bounded exception: through 2026-11-30 it permits `kernels/native/` to exist as a TARGET/proposed, empty-operator source-incubation boundary for schema registration, deterministic build-time projections, offline TileLang intake, fail-closed loading policy, build definitions, tests, and documentation. It grants no dispatch, publication, production, connected-qualification, or operator-activation authority and does not satisfy Wave 5 or JIT-06.
 
 **Contracts.** Operation signature/capability, kernel artifact/qualification, provider capability/compatibility, dispatch/autotune record, fallback/revocation.
 
@@ -5715,7 +5718,70 @@ mindclade/
 │   │   └── test_reference_contract.py
 │   ├── BUILD.bazel
 │   ├── component.yaml
-│   └── README.md
+│   ├── README.md
+│   └── native/
+│       ├── BUILD.bazel
+│       ├── CMakeLists.txt
+│       ├── IMPLEMENTATION_STATUS.md
+│       ├── MIGRATION.md
+│       ├── README.md
+│       ├── __init__.py
+│       ├── cmake/
+│       │   └── MindcladeTorchStable.cmake
+│       ├── codegen/
+│       │   ├── __init__.py
+│       │   ├── discover.py
+│       │   ├── generate.py
+│       │   └── schema.py
+│       ├── component.yaml
+│       ├── cuda/
+│       │   ├── CMakeLists.txt
+│       │   ├── README.md
+│       │   └── operation_registry.cpp
+│       ├── generated/
+│       │   ├── __init__.py
+│       │   ├── native_ops.generated.bzl
+│       │   ├── native_ops.generated.cmake
+│       │   ├── native_ops.json
+│       │   ├── operation_registry.generated.cpp
+│       │   ├── python_registration_generated.py
+│       │   └── registration.generated.cpp
+│       ├── manifests/
+│       │   └── native_ops.schema.json
+│       ├── python/
+│       │   ├── __init__.py
+│       │   ├── loader.py
+│       │   └── registration.py
+│       ├── stable_abi/
+│       │   ├── CMakeLists.txt
+│       │   ├── abi_manifest.json
+│       │   ├── registration.cpp
+│       │   └── tensor_bridge.cpp
+│       ├── tests/
+│       │   ├── pytest_runner.py
+│       │   ├── test_abi_compatibility.py
+│       │   ├── test_autograd.py
+│       │   ├── test_build_policy.py
+│       │   ├── test_cmake_policy.py
+│       │   ├── test_codegen.py
+│       │   ├── test_codegen_drift.py
+│       │   ├── test_discovery.py
+│       │   ├── test_export.py
+│       │   ├── test_fake_tensor.py
+│       │   ├── test_loader_policy.py
+│       │   ├── test_manifest.py
+│       │   ├── test_namespace.py
+│       │   ├── test_opcheck.py
+│       │   ├── test_policy.py
+│       │   └── test_schema_manifest.py
+│       └── tilelang/
+│           ├── README.md
+│           ├── __init__.py
+│           ├── build.py
+│           ├── decorator.py
+│           ├── manifest.py
+│           ├── model.py
+│           └── registry.py
 ├── runtime/
 │   ├── distributed/
 │   │   ├── mesh/
@@ -7214,7 +7280,8 @@ mindclade/
 │   │   ├── 0007-training-state-progress-and-checkpoint.md
 │   │   ├── index.yaml
 │   │   ├── 0008-founder-bootstrap-public-estate-transition.md
-│   │   └── connected-ratification.v1.schema.json
+│   │   ├── connected-ratification.v1.schema.json
+│   │   └── 0009-native-kernel-source-incubation.md
 │   ├── domains/
 │   │   ├── bio.md
 │   │   ├── data.md
@@ -7311,7 +7378,12 @@ mindclade/
     │   ├── README.md
     │   └── sources.lock.json
     ├── BUILD.bazel
-    └── README.md
+    ├── README.md
+    └── packages/
+        └── deep_ep/
+            ├── README.md
+            ├── package.nix
+            └── test_package.py
 ```
 <!-- END GENERATED: repository-path-manifest -->
 
@@ -12154,6 +12226,8 @@ The first production release is complete only when all of these hold:
 ---
 
 ## Appendix A15 — Kernel architecture
+
+> **ADR-0009 source-incubation exception.** Through 2026-11-30, `kernels/native/` may exist as a populated TARGET/proposed component with an empty native-operator inventory. The exception covers only reviewable schema registration, deterministic build-time projections, offline TileLang intake, fail-closed loading policy, build definitions, tests, and documentation. It does not satisfy Wave 5, JIT-06, kernel K0, numerical or hardware qualification, signed-artifact, fallback, revocation, connected, or production gates. Every eventual operator must register exclusively as `torch.ops.mindclade.<name>` and still requires operation-local semantics, reference parity, gradients, measured need, an operation-specific JIT-06 ADR, immutable qualification evidence, and reference fallback before activation.
 
 ### A15.1 Kernel package contract
 

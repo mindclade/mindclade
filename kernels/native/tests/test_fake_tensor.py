@@ -12,12 +12,46 @@ from kernels.native.python import loader
 
 ROOT = Path(__file__).resolve().parents[1]
 
+EXPECTED_DECLARED_TILELANG_OPERATORS = (
+    (
+        "outer_product_mean",
+        "tilelang",
+        "pairformer/outer_product_mean/tilelang.py",
+    ),
+    (
+        "pair_weighted_average",
+        "tilelang",
+        "pairformer/pair_weighted_average/tilelang.py",
+    ),
+    (
+        "triangle_attention",
+        "tilelang",
+        "pairformer/triangle_attention/tilelang.py",
+    ),
+    (
+        "triangle_multiplication",
+        "tilelang",
+        "pairformer/triangle_multiplication/tilelang.py",
+    ),
+)
 
-def test_target_manifest_registers_no_fake_production_operations():
+
+def test_target_manifest_declares_exact_unqualified_fake_contracts():
     manifest = json.loads(
         (ROOT / "generated" / "native_ops.json").read_text(encoding="utf-8")
     )
-    assert manifest["operators"] == []
+    operators = manifest["operators"]
+    assert tuple(
+        (operator["name"], operator["backend"], operator["source"])
+        for operator in operators
+    ) == EXPECTED_DECLARED_TILELANG_OPERATORS
+    assert tuple(operator["fake"]["symbol"] for operator in operators) == (
+        "fake",
+        "fake",
+        "fake",
+        "fake",
+    )
+    assert all("qualification" not in operator for operator in operators)
 
 
 def test_declared_operator_requires_meta_registration(monkeypatch):

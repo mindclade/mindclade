@@ -22,6 +22,6 @@ fake/meta and autograd contracts, determinism, performance, provenance/license,
 fallback, revocation, and rollback.
 
 Every future shipped kernel must register only as
-<code>torch.ops.mindclade.&lt;name&gt;</code>. No TileLang-owned Python API,
+`torch.ops.mindclade.{name}`. No TileLang-owned Python API,
 alternate native namespace, or provider-specific public entry point is allowed.
 Operation semantics remain in the owning operation package.

@@ -17,7 +17,12 @@
   "alternate_public_namespaces": [],
   "qualified_operations": [],
   "active_operations": [],
-  "operators": [],
+  "operators": [
+    "mindclade::outer_product_mean",
+    "mindclade::pair_weighted_average",
+    "mindclade::triangle_attention",
+    "mindclade::triangle_multiplication"
+  ],
   "qualification": {
     "kernel_k0": "not-achieved",
     "gpu": "not-qualified",

@@ -98,6 +98,7 @@ ADR_PATHS = (
     "0006-durable-work-and-fencing.md",
     "0007-training-state-progress-and-checkpoint.md",
     "0008-founder-bootstrap-public-estate-transition.md",
+    "0009-native-kernel-source-incubation.md",
 )
 ADR_METADATA_FIELDS = {
     "status",
@@ -425,11 +426,11 @@ def validate_adrs(root: Path) -> list[str]:
     errors.extend(validate_founder_bootstrap_exception(root))
     actual_paths = sorted(path.name for path in adr_root.glob("*.md"))
     if actual_paths != list(ADR_PATHS):
-        errors.append("ADR file set does not match the exact eight Section-14 decisions")
+        errors.append("ADR file set does not match the exact nine Section-14 decisions")
     index_entries = _parse_adr_index(adr_root / "index.yaml")
     index_by_id = {entry.get("id", ""): entry for entry in index_entries}
     if len(index_entries) != len(index_by_id) or len(index_entries) != len(ADR_PATHS):
-        errors.append("ADR index must contain exactly eight unique decision IDs")
+        errors.append("ADR index must contain exactly nine unique decision IDs")
 
     discovered_ids: set[str] = set()
     supersession_edges: dict[str, str] = {}

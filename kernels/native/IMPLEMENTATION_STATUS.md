@@ -27,7 +27,7 @@ no operator and is not evidence that PyTorch, CUDA, TileLang, a GPU artifact, or
 a hardware/software envelope is supported.
 
 Every future shipped kernel must register only as
-<code>torch.ops.mindclade.&lt;name&gt;</code>. There is no alternate public Python
+`torch.ops.mindclade.{name}`. There is no alternate public Python
 or native operator namespace. Operation semantics remain with the owning
 operation package and its readable PyTorch reference.
 

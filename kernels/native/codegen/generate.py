@@ -88,11 +88,26 @@ def _impl_cpp(specs: list[KernelSpec]) -> str:
         "#include <torch/csrc/stable/library.h>",
         "#include <torch/csrc/stable/tensor.h>",
         "",
-        "namespace mindclade::native::tilelang {",
     ]
     for spec in specs:
         parsed = parse_schema(spec.schema)
-        lines.append(f"{parsed.cpp_return_type} {spec.name}({parsed.cpp_parameters});")
+        lines.append(
+            f'extern "C" {parsed.cpp_return_type} {spec.launch_symbol}'
+            f"({parsed.cpp_parameters});"
+        )
+    if specs:
+        lines.append("")
+    lines.append("namespace mindclade::native::tilelang {")
+    for spec in specs:
+        parsed = parse_schema(spec.schema)
+        arguments = ", ".join(argument.name for argument in parsed.args)
+        lines.extend(
+            [
+                f"{parsed.cpp_return_type} {spec.name}({parsed.cpp_parameters}) {{",
+                f"  return {spec.launch_symbol}({arguments});",
+                "}",
+            ]
+        )
     lines.extend(
         [
             "}  // namespace mindclade::native::tilelang",

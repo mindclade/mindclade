@@ -62,6 +62,7 @@
 /deploy/ @mindclade/platform-operations @mindclade/security
 /tests/ @mindclade/developer-platform @mindclade/security
 /third_party/ @mindclade/security @mindclade/developer-platform
+/kernels/native/ @mindclade/ml-systems
 
 # Architecture, security, and foundational domain decisions.
 /docs/architecture/ @mindclade/architecture

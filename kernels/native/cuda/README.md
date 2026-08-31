@@ -19,7 +19,7 @@ boundary and defaults GPU intake off. Enabling it requires all of the following:
 - an externally built immutable shared library;
 - a sha256 digest for that shared library;
 - at least one qualified operation in the manifest;
-- the exact registration contract <code>torch.ops.mindclade.&lt;name&gt;</code>.
+- the exact registration contract `torch.ops.mindclade.{name}`.
 
 CMake verifies both file digests and fails configuration if the qualification
 manifest is missing, empty, malformed, or names another dispatcher namespace.
@@ -27,7 +27,7 @@ The repository's zero-operation ABI manifest therefore cannot enable GPU
 linking.
 
 Every future shipped kernel must be registered only as
-<code>torch.ops.mindclade.&lt;name&gt;</code>. No alternate public Python or
+`torch.ops.mindclade.{name}`. No alternate public Python or
 native operator namespace is permitted. Operation semantics, readable PyTorch
 reference behavior, autograd contract, fake/meta behavior, and qualification
 remain in the owning operation package.

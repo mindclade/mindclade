@@ -102,7 +102,7 @@ if(
   message(
     FATAL_ERROR
     "GPU enablement requires at least one qualified operation; "
-    "the repository manifest currently has zero"
+    "an empty qualification inventory cannot activate CUDA dispatch"
   )
 endif()
 
@@ -118,7 +118,12 @@ if(NOT _gpu_artifact_actual_sha256 STREQUAL _gpu_artifact_expected_sha256)
   message(FATAL_ERROR "GPU artifact digest mismatch")
 endif()
 
-add_library(mindclade_native_cuda_registry OBJECT operation_registry.cpp)
+add_library(
+  mindclade_native_cuda_registry
+  OBJECT
+    ../generated/operation_registry.generated.cpp
+    operation_registry.cpp
+)
 mindclade_apply_native_target_policy(mindclade_native_cuda_registry)
 
 add_library(mindclade_native_gpu_artifact SHARED IMPORTED GLOBAL)

@@ -1,0 +1,7 @@
+# Copyright (c) 2026 Mindclade. All rights reserved.
+# Proprietary and confidential. Unauthorized use, copying, or distribution is prohibited.
+
+exports_files(
+    ["tilelang.py"],
+    visibility = ["//kernels/native:__pkg__"],
+)

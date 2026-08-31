@@ -4,12 +4,133 @@
     "version": 2
   },
   "namespace": "mindclade",
-  "operators": [],
+  "operators": [
+    {
+      "autograd": {
+        "backward": {
+          "module": "kernels.pairformer.outer_product_mean.tilelang",
+          "symbol": "backward"
+        },
+        "mode": "registered",
+        "setup_context": {
+          "module": "kernels.pairformer.outer_product_mean.tilelang",
+          "symbol": "setup_context"
+        }
+      },
+      "backend": "tilelang",
+      "devices": [
+        "cuda"
+      ],
+      "fake": {
+        "module": "kernels.pairformer.outer_product_mean.tilelang",
+        "symbol": "fake"
+      },
+      "family": "pairformer",
+      "launch_symbol": "mindclade_tilelang_outer_product_mean_launch",
+      "name": "outer_product_mean",
+      "namespace": "mindclade",
+      "qualified_name": "mindclade::outer_product_mean",
+      "schema": "outer_product_mean(Tensor left, Tensor right, Tensor mask, float epsilon) -> Tensor",
+      "source": "pairformer/outer_product_mean/tilelang.py",
+      "source_sha256": "sha256:117dea551cb4a678501e52d3fd57c75dcd6803d4d034b501ab63cf35faa77eee",
+      "version": 1
+    },
+    {
+      "autograd": {
+        "backward": {
+          "module": "kernels.pairformer.pair_weighted_average.tilelang",
+          "symbol": "backward"
+        },
+        "mode": "registered",
+        "setup_context": {
+          "module": "kernels.pairformer.pair_weighted_average.tilelang",
+          "symbol": "setup_context"
+        }
+      },
+      "backend": "tilelang",
+      "devices": [
+        "cuda"
+      ],
+      "fake": {
+        "module": "kernels.pairformer.pair_weighted_average.tilelang",
+        "symbol": "fake"
+      },
+      "family": "pairformer",
+      "launch_symbol": "mindclade_tilelang_pair_weighted_average_launch",
+      "name": "pair_weighted_average",
+      "namespace": "mindclade",
+      "qualified_name": "mindclade::pair_weighted_average",
+      "schema": "pair_weighted_average(Tensor value, Tensor weights, Tensor mask, float epsilon) -> Tensor",
+      "source": "pairformer/pair_weighted_average/tilelang.py",
+      "source_sha256": "sha256:b2b4512f4e659fbfba5810c5b273c1fe21cfc0a353ebae8e9f9abe252dd0877c",
+      "version": 1
+    },
+    {
+      "autograd": {
+        "backward": {
+          "module": "kernels.pairformer.triangle_attention.tilelang",
+          "symbol": "backward"
+        },
+        "mode": "registered",
+        "setup_context": {
+          "module": "kernels.pairformer.triangle_attention.tilelang",
+          "symbol": "setup_context"
+        }
+      },
+      "backend": "tilelang",
+      "devices": [
+        "cuda"
+      ],
+      "fake": {
+        "module": "kernels.pairformer.triangle_attention.tilelang",
+        "symbol": "fake"
+      },
+      "family": "pairformer",
+      "launch_symbol": "mindclade_tilelang_triangle_attention_launch",
+      "name": "triangle_attention",
+      "namespace": "mindclade",
+      "qualified_name": "mindclade::triangle_attention",
+      "schema": "triangle_attention(Tensor q, Tensor k, Tensor v, Tensor bias, Tensor mask, float scale) -> Tensor",
+      "source": "pairformer/triangle_attention/tilelang.py",
+      "source_sha256": "sha256:24aeb35002525ee5856334620779811485c7bbe432acacd8cbb33393b82e39a7",
+      "version": 1
+    },
+    {
+      "autograd": {
+        "backward": {
+          "module": "kernels.pairformer.triangle_multiplication.tilelang",
+          "symbol": "backward"
+        },
+        "mode": "registered",
+        "setup_context": {
+          "module": "kernels.pairformer.triangle_multiplication.tilelang",
+          "symbol": "setup_context"
+        }
+      },
+      "backend": "tilelang",
+      "devices": [
+        "cuda"
+      ],
+      "fake": {
+        "module": "kernels.pairformer.triangle_multiplication.tilelang",
+        "symbol": "fake"
+      },
+      "family": "pairformer",
+      "launch_symbol": "mindclade_tilelang_triangle_multiplication_launch",
+      "name": "triangle_multiplication",
+      "namespace": "mindclade",
+      "qualified_name": "mindclade::triangle_multiplication",
+      "schema": "triangle_multiplication(Tensor left, Tensor right, Tensor mask, bool outgoing) -> Tensor",
+      "source": "pairformer/triangle_multiplication/tilelang.py",
+      "source_sha256": "sha256:ae5f79a838a493935182a3031990ea29985458fab848c188c981613357588f23",
+      "version": 1
+    }
+  ],
   "optimized_math_authority": "tilelang",
   "registration_mode": "build_time_generated",
   "request_time_compilation": false,
   "runtime_discovery": false,
   "schema_version": 2,
-  "semantic_digest": "sha256:ce3aac06a3e049be8ecc303ec99446f42965485f355809f18831e62faf697ee8",
-  "source_inventory_sha256": "sha256:4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  "semantic_digest": "sha256:33d2da1e673dd37bb6efe93ab8ae2968fb559724b998b8921318773eb71148cd",
+  "source_inventory_sha256": "sha256:6c362ba546b19a0653c8aae7513b57269e8f4d22634bcdf24060430f054b746e"
 }

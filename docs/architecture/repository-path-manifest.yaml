@@ -2632,10 +2632,238 @@
           "path": "docs/adr/0007-training-state-progress-and-checkpoint.md",
           "replaces": "docs/adr/0007-training-state.md",
           "reason": "Sections 1-18 and Section 14.1 take precedence over the stale A6 short ADR name."
+        },
+        {
+          "path": "docs/adr/0009-native-kernel-source-incubation.md",
+          "reason": "Accepted ADR-0009 authority for the bounded, expiring kernels/native source-incubation exception."
+        },
+        {
+          "path": "kernels/native/BUILD.bazel",
+          "reason": "ADR-0009 bounded Wave 6 native source-incubation surface; TARGET or reviewed-generated only, with zero active or qualified operations and no production authority."
+        },
+        {
+          "path": "kernels/native/CMakeLists.txt",
+          "reason": "ADR-0009 bounded Wave 6 native source-incubation surface; TARGET or reviewed-generated only, with zero active or qualified operations and no production authority."
+        },
+        {
+          "path": "kernels/native/IMPLEMENTATION_STATUS.md",
+          "reason": "ADR-0009 bounded Wave 6 native source-incubation surface; TARGET or reviewed-generated only, with zero active or qualified operations and no production authority."
+        },
+        {
+          "path": "kernels/native/MIGRATION.md",
+          "reason": "ADR-0009 bounded Wave 6 native source-incubation surface; TARGET or reviewed-generated only, with zero active or qualified operations and no production authority."
+        },
+        {
+          "path": "kernels/native/README.md",
+          "reason": "ADR-0009 bounded Wave 6 native source-incubation surface; TARGET or reviewed-generated only, with zero active or qualified operations and no production authority."
+        },
+        {
+          "path": "kernels/native/__init__.py",
+          "reason": "ADR-0009 bounded Wave 6 native source-incubation surface; TARGET or reviewed-generated only, with zero active or qualified operations and no production authority."
+        },
+        {
+          "path": "kernels/native/cmake/MindcladeTorchStable.cmake",
+          "reason": "ADR-0009 bounded Wave 6 native source-incubation surface; TARGET or reviewed-generated only, with zero active or qualified operations and no production authority."
+        },
+        {
+          "path": "kernels/native/codegen/__init__.py",
+          "reason": "ADR-0009 bounded Wave 6 native source-incubation surface; TARGET or reviewed-generated only, with zero active or qualified operations and no production authority."
+        },
+        {
+          "path": "kernels/native/codegen/discover.py",
+          "reason": "ADR-0009 bounded Wave 6 native source-incubation surface; TARGET or reviewed-generated only, with zero active or qualified operations and no production authority."
+        },
+        {
+          "path": "kernels/native/codegen/generate.py",
+          "reason": "ADR-0009 bounded Wave 6 native source-incubation surface; TARGET or reviewed-generated only, with zero active or qualified operations and no production authority."
+        },
+        {
+          "path": "kernels/native/codegen/schema.py",
+          "reason": "ADR-0009 bounded Wave 6 native source-incubation surface; TARGET or reviewed-generated only, with zero active or qualified operations and no production authority."
+        },
+        {
+          "path": "kernels/native/component.yaml",
+          "reason": "ADR-0009 bounded Wave 6 native source-incubation surface; TARGET or reviewed-generated only, with zero active or qualified operations and no production authority."
+        },
+        {
+          "path": "kernels/native/cuda/CMakeLists.txt",
+          "reason": "ADR-0009 bounded Wave 6 native source-incubation surface; TARGET or reviewed-generated only, with zero active or qualified operations and no production authority."
+        },
+        {
+          "path": "kernels/native/cuda/README.md",
+          "reason": "ADR-0009 bounded Wave 6 native source-incubation surface; TARGET or reviewed-generated only, with zero active or qualified operations and no production authority."
+        },
+        {
+          "path": "kernels/native/cuda/operation_registry.cpp",
+          "reason": "ADR-0009 bounded Wave 6 native source-incubation surface; TARGET or reviewed-generated only, with zero active or qualified operations and no production authority."
+        },
+        {
+          "path": "kernels/native/generated/__init__.py",
+          "reason": "ADR-0009 bounded Wave 6 native source-incubation surface; TARGET or reviewed-generated only, with zero active or qualified operations and no production authority."
+        },
+        {
+          "path": "kernels/native/generated/native_ops.generated.bzl",
+          "reason": "ADR-0009 bounded Wave 6 native source-incubation surface; TARGET or reviewed-generated only, with zero active or qualified operations and no production authority."
+        },
+        {
+          "path": "kernels/native/generated/native_ops.generated.cmake",
+          "reason": "ADR-0009 bounded Wave 6 native source-incubation surface; TARGET or reviewed-generated only, with zero active or qualified operations and no production authority."
+        },
+        {
+          "path": "kernels/native/generated/native_ops.json",
+          "reason": "ADR-0009 bounded Wave 6 native source-incubation surface; TARGET or reviewed-generated only, with zero active or qualified operations and no production authority."
+        },
+        {
+          "path": "kernels/native/generated/operation_registry.generated.cpp",
+          "reason": "ADR-0009 bounded Wave 6 native source-incubation surface; TARGET or reviewed-generated only, with zero active or qualified operations and no production authority."
+        },
+        {
+          "path": "kernels/native/generated/python_registration_generated.py",
+          "reason": "ADR-0009 bounded Wave 6 native source-incubation surface; TARGET or reviewed-generated only, with zero active or qualified operations and no production authority."
+        },
+        {
+          "path": "kernels/native/generated/registration.generated.cpp",
+          "reason": "ADR-0009 bounded Wave 6 native source-incubation surface; TARGET or reviewed-generated only, with zero active or qualified operations and no production authority."
+        },
+        {
+          "path": "kernels/native/manifests/native_ops.schema.json",
+          "reason": "ADR-0009 bounded Wave 6 native source-incubation surface; TARGET or reviewed-generated only, with zero active or qualified operations and no production authority."
+        },
+        {
+          "path": "kernels/native/python/__init__.py",
+          "reason": "ADR-0009 bounded Wave 6 native source-incubation surface; TARGET or reviewed-generated only, with zero active or qualified operations and no production authority."
+        },
+        {
+          "path": "kernels/native/python/loader.py",
+          "reason": "ADR-0009 bounded Wave 6 native source-incubation surface; TARGET or reviewed-generated only, with zero active or qualified operations and no production authority."
+        },
+        {
+          "path": "kernels/native/python/registration.py",
+          "reason": "ADR-0009 bounded Wave 6 native source-incubation surface; TARGET or reviewed-generated only, with zero active or qualified operations and no production authority."
+        },
+        {
+          "path": "kernels/native/stable_abi/CMakeLists.txt",
+          "reason": "ADR-0009 bounded Wave 6 native source-incubation surface; TARGET or reviewed-generated only, with zero active or qualified operations and no production authority."
+        },
+        {
+          "path": "kernels/native/stable_abi/abi_manifest.json",
+          "reason": "ADR-0009 bounded Wave 6 native source-incubation surface; TARGET or reviewed-generated only, with zero active or qualified operations and no production authority."
+        },
+        {
+          "path": "kernels/native/stable_abi/registration.cpp",
+          "reason": "ADR-0009 bounded Wave 6 native source-incubation surface; TARGET or reviewed-generated only, with zero active or qualified operations and no production authority."
+        },
+        {
+          "path": "kernels/native/stable_abi/tensor_bridge.cpp",
+          "reason": "ADR-0009 bounded Wave 6 native source-incubation surface; TARGET or reviewed-generated only, with zero active or qualified operations and no production authority."
+        },
+        {
+          "path": "kernels/native/tests/pytest_runner.py",
+          "reason": "ADR-0009 bounded Wave 6 native source-incubation surface; TARGET or reviewed-generated only, with zero active or qualified operations and no production authority."
+        },
+        {
+          "path": "kernels/native/tests/test_abi_compatibility.py",
+          "reason": "ADR-0009 bounded Wave 6 native source-incubation surface; TARGET or reviewed-generated only, with zero active or qualified operations and no production authority."
+        },
+        {
+          "path": "kernels/native/tests/test_autograd.py",
+          "reason": "ADR-0009 bounded Wave 6 native source-incubation surface; TARGET or reviewed-generated only, with zero active or qualified operations and no production authority."
+        },
+        {
+          "path": "kernels/native/tests/test_build_policy.py",
+          "reason": "ADR-0009 bounded Wave 6 native source-incubation surface; TARGET or reviewed-generated only, with zero active or qualified operations and no production authority."
+        },
+        {
+          "path": "kernels/native/tests/test_cmake_policy.py",
+          "reason": "ADR-0009 bounded Wave 6 native source-incubation surface; TARGET or reviewed-generated only, with zero active or qualified operations and no production authority."
+        },
+        {
+          "path": "kernels/native/tests/test_codegen.py",
+          "reason": "ADR-0009 bounded Wave 6 native source-incubation surface; TARGET or reviewed-generated only, with zero active or qualified operations and no production authority."
+        },
+        {
+          "path": "kernels/native/tests/test_codegen_drift.py",
+          "reason": "ADR-0009 bounded Wave 6 native source-incubation surface; TARGET or reviewed-generated only, with zero active or qualified operations and no production authority."
+        },
+        {
+          "path": "kernels/native/tests/test_discovery.py",
+          "reason": "ADR-0009 bounded Wave 6 native source-incubation surface; TARGET or reviewed-generated only, with zero active or qualified operations and no production authority."
+        },
+        {
+          "path": "kernels/native/tests/test_export.py",
+          "reason": "ADR-0009 bounded Wave 6 native source-incubation surface; TARGET or reviewed-generated only, with zero active or qualified operations and no production authority."
+        },
+        {
+          "path": "kernels/native/tests/test_fake_tensor.py",
+          "reason": "ADR-0009 bounded Wave 6 native source-incubation surface; TARGET or reviewed-generated only, with zero active or qualified operations and no production authority."
+        },
+        {
+          "path": "kernels/native/tests/test_loader_policy.py",
+          "reason": "ADR-0009 bounded Wave 6 native source-incubation surface; TARGET or reviewed-generated only, with zero active or qualified operations and no production authority."
+        },
+        {
+          "path": "kernels/native/tests/test_manifest.py",
+          "reason": "ADR-0009 bounded Wave 6 native source-incubation surface; TARGET or reviewed-generated only, with zero active or qualified operations and no production authority."
+        },
+        {
+          "path": "kernels/native/tests/test_namespace.py",
+          "reason": "ADR-0009 bounded Wave 6 native source-incubation surface; TARGET or reviewed-generated only, with zero active or qualified operations and no production authority."
+        },
+        {
+          "path": "kernels/native/tests/test_opcheck.py",
+          "reason": "ADR-0009 bounded Wave 6 native source-incubation surface; TARGET or reviewed-generated only, with zero active or qualified operations and no production authority."
+        },
+        {
+          "path": "kernels/native/tests/test_policy.py",
+          "reason": "ADR-0009 bounded Wave 6 native source-incubation surface; TARGET or reviewed-generated only, with zero active or qualified operations and no production authority."
+        },
+        {
+          "path": "kernels/native/tests/test_schema_manifest.py",
+          "reason": "ADR-0009 bounded Wave 6 native source-incubation surface; TARGET or reviewed-generated only, with zero active or qualified operations and no production authority."
+        },
+        {
+          "path": "kernels/native/tilelang/README.md",
+          "reason": "ADR-0009 bounded Wave 6 native source-incubation surface; TARGET or reviewed-generated only, with zero active or qualified operations and no production authority."
+        },
+        {
+          "path": "kernels/native/tilelang/__init__.py",
+          "reason": "ADR-0009 bounded Wave 6 native source-incubation surface; TARGET or reviewed-generated only, with zero active or qualified operations and no production authority."
+        },
+        {
+          "path": "kernels/native/tilelang/build.py",
+          "reason": "ADR-0009 bounded Wave 6 native source-incubation surface; TARGET or reviewed-generated only, with zero active or qualified operations and no production authority."
+        },
+        {
+          "path": "kernels/native/tilelang/decorator.py",
+          "reason": "ADR-0009 bounded Wave 6 native source-incubation surface; TARGET or reviewed-generated only, with zero active or qualified operations and no production authority."
+        },
+        {
+          "path": "kernels/native/tilelang/manifest.py",
+          "reason": "ADR-0009 bounded Wave 6 native source-incubation surface; TARGET or reviewed-generated only, with zero active or qualified operations and no production authority."
+        },
+        {
+          "path": "kernels/native/tilelang/model.py",
+          "reason": "ADR-0009 bounded Wave 6 native source-incubation surface; TARGET or reviewed-generated only, with zero active or qualified operations and no production authority."
+        },
+        {
+          "path": "kernels/native/tilelang/registry.py",
+          "reason": "ADR-0009 bounded Wave 6 native source-incubation surface; TARGET or reviewed-generated only, with zero active or qualified operations and no production authority."
+        },
+        {
+          "path": "third_party/packages/deep_ep/README.md",
+          "reason": "Required Wave 1 DeepEP development-intake package definition, documentation, and source-policy test omitted by A6."
+        },
+        {
+          "path": "third_party/packages/deep_ep/package.nix",
+          "reason": "Required Wave 1 DeepEP development-intake package definition, documentation, and source-policy test omitted by A6."
+        },
+        {
+          "path": "third_party/packages/deep_ep/test_package.py",
+          "reason": "Required Wave 1 DeepEP development-intake package definition, documentation, and source-policy test omitted by A6."
         }
       ],
-      "canonical_file_count": 2488,
-      "canonical_path_set_sha256": "18ecbf2fb4c9bfecdabbf66b061fc077af7c31ae6d01464bedb0e30d66e200a2"
+      "canonical_file_count": 2545,
+      "canonical_path_set_sha256": "dde4eba7e2fa33692716b4d7f690d72d1fbee182680e5b4cf2f904f3b232e63a"
     },
     "owners": {
       "agent-platform": {
@@ -20598,6 +20826,821 @@
       "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
     },
     {
+      "path": "kernels/native/BUILD.bazel",
+      "kind": "build",
+      "owner": "ml-systems-performance",
+      "component": "kernels-native",
+      "status": "target",
+      "activation_wave": "6",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//kernels/native:native_policy_inputs"
+      ],
+      "test_targets": [],
+      "public_surface": false,
+      "activation_criterion": "ADR-0009 permits source incubation only through 2026-11-30; activate only after Wave 5 evidence and an operation-specific JIT-06 decision prove measured need, reference parity, gradients, locked dependencies, immutable artifacts, fallback, and revocation."
+    },
+    {
+      "path": "kernels/native/CMakeLists.txt",
+      "kind": "build",
+      "owner": "ml-systems-performance",
+      "component": "kernels-native",
+      "status": "target",
+      "activation_wave": "6",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//kernels/native:native_policy_inputs"
+      ],
+      "test_targets": [],
+      "public_surface": false,
+      "activation_criterion": "ADR-0009 permits source incubation only through 2026-11-30; activate only after Wave 5 evidence and an operation-specific JIT-06 decision prove measured need, reference parity, gradients, locked dependencies, immutable artifacts, fallback, and revocation."
+    },
+    {
+      "path": "kernels/native/IMPLEMENTATION_STATUS.md",
+      "kind": "documentation",
+      "owner": "ml-systems-performance",
+      "component": "kernels-native",
+      "status": "target",
+      "activation_wave": "6",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//kernels/native:native_policy_inputs"
+      ],
+      "test_targets": [],
+      "public_surface": false,
+      "activation_criterion": "ADR-0009 permits source incubation only through 2026-11-30; activate only after Wave 5 evidence and an operation-specific JIT-06 decision prove measured need, reference parity, gradients, locked dependencies, immutable artifacts, fallback, and revocation."
+    },
+    {
+      "path": "kernels/native/MIGRATION.md",
+      "kind": "documentation",
+      "owner": "ml-systems-performance",
+      "component": "kernels-native",
+      "status": "target",
+      "activation_wave": "6",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//kernels/native:native_policy_inputs"
+      ],
+      "test_targets": [],
+      "public_surface": false,
+      "activation_criterion": "ADR-0009 permits source incubation only through 2026-11-30; activate only after Wave 5 evidence and an operation-specific JIT-06 decision prove measured need, reference parity, gradients, locked dependencies, immutable artifacts, fallback, and revocation."
+    },
+    {
+      "path": "kernels/native/README.md",
+      "kind": "documentation",
+      "owner": "ml-systems-performance",
+      "component": "kernels-native",
+      "status": "target",
+      "activation_wave": "6",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//kernels/native:native_policy_inputs"
+      ],
+      "test_targets": [],
+      "public_surface": false,
+      "activation_criterion": "ADR-0009 permits source incubation only through 2026-11-30; activate only after Wave 5 evidence and an operation-specific JIT-06 decision prove measured need, reference parity, gradients, locked dependencies, immutable artifacts, fallback, and revocation."
+    },
+    {
+      "path": "kernels/native/__init__.py",
+      "kind": "source",
+      "owner": "ml-systems-performance",
+      "component": "kernels-native",
+      "status": "target",
+      "activation_wave": "6",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//kernels/native:native_python"
+      ],
+      "test_targets": [],
+      "public_surface": false,
+      "activation_criterion": "ADR-0009 permits source incubation only through 2026-11-30; activate only after Wave 5 evidence and an operation-specific JIT-06 decision prove measured need, reference parity, gradients, locked dependencies, immutable artifacts, fallback, and revocation."
+    },
+    {
+      "path": "kernels/native/cmake/MindcladeTorchStable.cmake",
+      "kind": "build",
+      "owner": "ml-systems-performance",
+      "component": "kernels-native",
+      "status": "target",
+      "activation_wave": "6",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//kernels/native:native_policy_inputs"
+      ],
+      "test_targets": [],
+      "public_surface": false,
+      "activation_criterion": "ADR-0009 permits source incubation only through 2026-11-30; activate only after Wave 5 evidence and an operation-specific JIT-06 decision prove measured need, reference parity, gradients, locked dependencies, immutable artifacts, fallback, and revocation."
+    },
+    {
+      "path": "kernels/native/codegen/__init__.py",
+      "kind": "source",
+      "owner": "ml-systems-performance",
+      "component": "kernels-native",
+      "status": "target",
+      "activation_wave": "6",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//kernels/native:native_codegen_lib"
+      ],
+      "test_targets": [],
+      "public_surface": false,
+      "activation_criterion": "ADR-0009 permits source incubation only through 2026-11-30; activate only after Wave 5 evidence and an operation-specific JIT-06 decision prove measured need, reference parity, gradients, locked dependencies, immutable artifacts, fallback, and revocation."
+    },
+    {
+      "path": "kernels/native/codegen/discover.py",
+      "kind": "source",
+      "owner": "ml-systems-performance",
+      "component": "kernels-native",
+      "status": "target",
+      "activation_wave": "6",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//kernels/native:native_codegen_lib"
+      ],
+      "test_targets": [],
+      "public_surface": false,
+      "activation_criterion": "ADR-0009 permits source incubation only through 2026-11-30; activate only after Wave 5 evidence and an operation-specific JIT-06 decision prove measured need, reference parity, gradients, locked dependencies, immutable artifacts, fallback, and revocation."
+    },
+    {
+      "path": "kernels/native/codegen/generate.py",
+      "kind": "source",
+      "owner": "ml-systems-performance",
+      "component": "kernels-native",
+      "status": "target",
+      "activation_wave": "6",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//kernels/native:native_codegen_lib",
+        "//kernels/native:generate_native_ops"
+      ],
+      "test_targets": [],
+      "public_surface": false,
+      "activation_criterion": "ADR-0009 permits source incubation only through 2026-11-30; activate only after Wave 5 evidence and an operation-specific JIT-06 decision prove measured need, reference parity, gradients, locked dependencies, immutable artifacts, fallback, and revocation."
+    },
+    {
+      "path": "kernels/native/codegen/schema.py",
+      "kind": "source",
+      "owner": "ml-systems-performance",
+      "component": "kernels-native",
+      "status": "target",
+      "activation_wave": "6",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//kernels/native:native_codegen_lib"
+      ],
+      "test_targets": [],
+      "public_surface": false,
+      "activation_criterion": "ADR-0009 permits source incubation only through 2026-11-30; activate only after Wave 5 evidence and an operation-specific JIT-06 decision prove measured need, reference parity, gradients, locked dependencies, immutable artifacts, fallback, and revocation."
+    },
+    {
+      "path": "kernels/native/component.yaml",
+      "kind": "configuration",
+      "owner": "ml-systems-performance",
+      "component": "kernels-native",
+      "status": "target",
+      "activation_wave": "6",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//kernels/native:native_policy_inputs"
+      ],
+      "test_targets": [],
+      "public_surface": false,
+      "activation_criterion": "ADR-0009 permits source incubation only through 2026-11-30; activate only after Wave 5 evidence and an operation-specific JIT-06 decision prove measured need, reference parity, gradients, locked dependencies, immutable artifacts, fallback, and revocation."
+    },
+    {
+      "path": "kernels/native/cuda/CMakeLists.txt",
+      "kind": "build",
+      "owner": "ml-systems-performance",
+      "component": "kernels-native",
+      "status": "target",
+      "activation_wave": "6",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//kernels/native:native_policy_inputs"
+      ],
+      "test_targets": [],
+      "public_surface": false,
+      "activation_criterion": "ADR-0009 permits source incubation only through 2026-11-30; activate only after Wave 5 evidence and an operation-specific JIT-06 decision prove measured need, reference parity, gradients, locked dependencies, immutable artifacts, fallback, and revocation."
+    },
+    {
+      "path": "kernels/native/cuda/README.md",
+      "kind": "documentation",
+      "owner": "ml-systems-performance",
+      "component": "kernels-native",
+      "status": "target",
+      "activation_wave": "6",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//kernels/native:native_policy_inputs"
+      ],
+      "test_targets": [],
+      "public_surface": false,
+      "activation_criterion": "ADR-0009 permits source incubation only through 2026-11-30; activate only after Wave 5 evidence and an operation-specific JIT-06 decision prove measured need, reference parity, gradients, locked dependencies, immutable artifacts, fallback, and revocation."
+    },
+    {
+      "path": "kernels/native/cuda/operation_registry.cpp",
+      "kind": "source",
+      "owner": "ml-systems-performance",
+      "component": "kernels-native",
+      "status": "target",
+      "activation_wave": "6",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//kernels/native:native_policy_inputs"
+      ],
+      "test_targets": [],
+      "public_surface": false,
+      "activation_criterion": "ADR-0009 permits source incubation only through 2026-11-30; activate only after Wave 5 evidence and an operation-specific JIT-06 decision prove measured need, reference parity, gradients, locked dependencies, immutable artifacts, fallback, and revocation."
+    },
+    {
+      "path": "kernels/native/generated/__init__.py",
+      "kind": "source",
+      "owner": "ml-systems-performance",
+      "component": "kernels-native",
+      "status": "target",
+      "activation_wave": "6",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//kernels/native:native_python"
+      ],
+      "test_targets": [],
+      "public_surface": false,
+      "activation_criterion": "ADR-0009 permits source incubation only through 2026-11-30; activate only after Wave 5 evidence and an operation-specific JIT-06 decision prove measured need, reference parity, gradients, locked dependencies, immutable artifacts, fallback, and revocation."
+    },
+    {
+      "path": "kernels/native/generated/native_ops.generated.bzl",
+      "kind": "build",
+      "owner": "ml-systems-performance",
+      "component": "kernels-native",
+      "status": "generated",
+      "activation_wave": "6",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//kernels/native:generate_native_ops"
+      ],
+      "test_targets": [
+        "//kernels/native:test_codegen_drift"
+      ],
+      "public_surface": false,
+      "activation_criterion": "ADR-0009 permits source incubation only through 2026-11-30; activate only after Wave 5 evidence and an operation-specific JIT-06 decision prove measured need, reference parity, gradients, locked dependencies, immutable artifacts, fallback, and revocation."
+    },
+    {
+      "path": "kernels/native/generated/native_ops.generated.cmake",
+      "kind": "build",
+      "owner": "ml-systems-performance",
+      "component": "kernels-native",
+      "status": "generated",
+      "activation_wave": "6",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//kernels/native:generate_native_ops"
+      ],
+      "test_targets": [
+        "//kernels/native:test_codegen_drift"
+      ],
+      "public_surface": false,
+      "activation_criterion": "ADR-0009 permits source incubation only through 2026-11-30; activate only after Wave 5 evidence and an operation-specific JIT-06 decision prove measured need, reference parity, gradients, locked dependencies, immutable artifacts, fallback, and revocation."
+    },
+    {
+      "path": "kernels/native/generated/native_ops.json",
+      "kind": "data",
+      "owner": "ml-systems-performance",
+      "component": "kernels-native",
+      "status": "generated",
+      "activation_wave": "6",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//kernels/native:generate_native_ops"
+      ],
+      "test_targets": [
+        "//kernels/native:test_codegen_drift"
+      ],
+      "public_surface": false,
+      "activation_criterion": "ADR-0009 permits source incubation only through 2026-11-30; activate only after Wave 5 evidence and an operation-specific JIT-06 decision prove measured need, reference parity, gradients, locked dependencies, immutable artifacts, fallback, and revocation."
+    },
+    {
+      "path": "kernels/native/generated/operation_registry.generated.cpp",
+      "kind": "source",
+      "owner": "ml-systems-performance",
+      "component": "kernels-native",
+      "status": "generated",
+      "activation_wave": "6",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//kernels/native:generate_native_ops"
+      ],
+      "test_targets": [
+        "//kernels/native:test_codegen_drift"
+      ],
+      "public_surface": false,
+      "activation_criterion": "ADR-0009 permits source incubation only through 2026-11-30; activate only after Wave 5 evidence and an operation-specific JIT-06 decision prove measured need, reference parity, gradients, locked dependencies, immutable artifacts, fallback, and revocation."
+    },
+    {
+      "path": "kernels/native/generated/python_registration_generated.py",
+      "kind": "source",
+      "owner": "ml-systems-performance",
+      "component": "kernels-native",
+      "status": "generated",
+      "activation_wave": "6",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//kernels/native:generate_native_ops"
+      ],
+      "test_targets": [
+        "//kernels/native:test_codegen_drift"
+      ],
+      "public_surface": false,
+      "activation_criterion": "ADR-0009 permits source incubation only through 2026-11-30; activate only after Wave 5 evidence and an operation-specific JIT-06 decision prove measured need, reference parity, gradients, locked dependencies, immutable artifacts, fallback, and revocation."
+    },
+    {
+      "path": "kernels/native/generated/registration.generated.cpp",
+      "kind": "source",
+      "owner": "ml-systems-performance",
+      "component": "kernels-native",
+      "status": "generated",
+      "activation_wave": "6",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//kernels/native:generate_native_ops"
+      ],
+      "test_targets": [
+        "//kernels/native:test_codegen_drift"
+      ],
+      "public_surface": false,
+      "activation_criterion": "ADR-0009 permits source incubation only through 2026-11-30; activate only after Wave 5 evidence and an operation-specific JIT-06 decision prove measured need, reference parity, gradients, locked dependencies, immutable artifacts, fallback, and revocation."
+    },
+    {
+      "path": "kernels/native/manifests/native_ops.schema.json",
+      "kind": "schema",
+      "owner": "ml-systems-performance",
+      "component": "kernels-native",
+      "status": "target",
+      "activation_wave": "6",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//kernels/native:native_codegen_lib"
+      ],
+      "test_targets": [],
+      "public_surface": false,
+      "activation_criterion": "ADR-0009 permits source incubation only through 2026-11-30; activate only after Wave 5 evidence and an operation-specific JIT-06 decision prove measured need, reference parity, gradients, locked dependencies, immutable artifacts, fallback, and revocation."
+    },
+    {
+      "path": "kernels/native/python/__init__.py",
+      "kind": "source",
+      "owner": "ml-systems-performance",
+      "component": "kernels-native",
+      "status": "target",
+      "activation_wave": "6",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//kernels/native:native_python"
+      ],
+      "test_targets": [],
+      "public_surface": false,
+      "activation_criterion": "ADR-0009 permits source incubation only through 2026-11-30; activate only after Wave 5 evidence and an operation-specific JIT-06 decision prove measured need, reference parity, gradients, locked dependencies, immutable artifacts, fallback, and revocation."
+    },
+    {
+      "path": "kernels/native/python/loader.py",
+      "kind": "source",
+      "owner": "ml-systems-performance",
+      "component": "kernels-native",
+      "status": "target",
+      "activation_wave": "6",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//kernels/native:native_python"
+      ],
+      "test_targets": [],
+      "public_surface": false,
+      "activation_criterion": "ADR-0009 permits source incubation only through 2026-11-30; activate only after Wave 5 evidence and an operation-specific JIT-06 decision prove measured need, reference parity, gradients, locked dependencies, immutable artifacts, fallback, and revocation."
+    },
+    {
+      "path": "kernels/native/python/registration.py",
+      "kind": "source",
+      "owner": "ml-systems-performance",
+      "component": "kernels-native",
+      "status": "target",
+      "activation_wave": "6",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//kernels/native:native_python"
+      ],
+      "test_targets": [],
+      "public_surface": false,
+      "activation_criterion": "ADR-0009 permits source incubation only through 2026-11-30; activate only after Wave 5 evidence and an operation-specific JIT-06 decision prove measured need, reference parity, gradients, locked dependencies, immutable artifacts, fallback, and revocation."
+    },
+    {
+      "path": "kernels/native/stable_abi/CMakeLists.txt",
+      "kind": "build",
+      "owner": "ml-systems-performance",
+      "component": "kernels-native",
+      "status": "target",
+      "activation_wave": "6",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//kernels/native:native_policy_inputs"
+      ],
+      "test_targets": [],
+      "public_surface": false,
+      "activation_criterion": "ADR-0009 permits source incubation only through 2026-11-30; activate only after Wave 5 evidence and an operation-specific JIT-06 decision prove measured need, reference parity, gradients, locked dependencies, immutable artifacts, fallback, and revocation."
+    },
+    {
+      "path": "kernels/native/stable_abi/abi_manifest.json",
+      "kind": "data",
+      "owner": "ml-systems-performance",
+      "component": "kernels-native",
+      "status": "target",
+      "activation_wave": "6",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//kernels/native:native_policy_inputs"
+      ],
+      "test_targets": [],
+      "public_surface": false,
+      "activation_criterion": "ADR-0009 permits source incubation only through 2026-11-30; activate only after Wave 5 evidence and an operation-specific JIT-06 decision prove measured need, reference parity, gradients, locked dependencies, immutable artifacts, fallback, and revocation."
+    },
+    {
+      "path": "kernels/native/stable_abi/registration.cpp",
+      "kind": "source",
+      "owner": "ml-systems-performance",
+      "component": "kernels-native",
+      "status": "target",
+      "activation_wave": "6",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//kernels/native:native_policy_inputs",
+        "//kernels/native:native_schema"
+      ],
+      "test_targets": [],
+      "public_surface": false,
+      "activation_criterion": "ADR-0009 permits source incubation only through 2026-11-30; activate only after Wave 5 evidence and an operation-specific JIT-06 decision prove measured need, reference parity, gradients, locked dependencies, immutable artifacts, fallback, and revocation."
+    },
+    {
+      "path": "kernels/native/stable_abi/tensor_bridge.cpp",
+      "kind": "source",
+      "owner": "ml-systems-performance",
+      "component": "kernels-native",
+      "status": "target",
+      "activation_wave": "6",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//kernels/native:native_policy_inputs",
+        "//kernels/native:native_schema"
+      ],
+      "test_targets": [],
+      "public_surface": false,
+      "activation_criterion": "ADR-0009 permits source incubation only through 2026-11-30; activate only after Wave 5 evidence and an operation-specific JIT-06 decision prove measured need, reference parity, gradients, locked dependencies, immutable artifacts, fallback, and revocation."
+    },
+    {
+      "path": "kernels/native/tests/pytest_runner.py",
+      "kind": "test",
+      "owner": "ml-systems-performance",
+      "component": "kernels-native",
+      "status": "target",
+      "activation_wave": "6",
+      "source_authority": "hand-authored",
+      "build_targets": [],
+      "test_targets": [
+        "//kernels/native:test_build_policy",
+        "//kernels/native:test_codegen",
+        "//kernels/native:test_codegen_drift",
+        "//kernels/native:test_discovery",
+        "//kernels/native:test_manifest",
+        "//kernels/native:test_schema_manifest"
+      ],
+      "public_surface": false,
+      "activation_criterion": "ADR-0009 permits source incubation only through 2026-11-30; activate only after Wave 5 evidence and an operation-specific JIT-06 decision prove measured need, reference parity, gradients, locked dependencies, immutable artifacts, fallback, and revocation."
+    },
+    {
+      "path": "kernels/native/tests/test_abi_compatibility.py",
+      "kind": "test",
+      "owner": "ml-systems-performance",
+      "component": "kernels-native",
+      "status": "target",
+      "activation_wave": "6",
+      "source_authority": "hand-authored",
+      "build_targets": [],
+      "test_targets": [
+        "//kernels/native:test_abi_compatibility"
+      ],
+      "public_surface": false,
+      "activation_criterion": "ADR-0009 permits source incubation only through 2026-11-30; activate only after Wave 5 evidence and an operation-specific JIT-06 decision prove measured need, reference parity, gradients, locked dependencies, immutable artifacts, fallback, and revocation."
+    },
+    {
+      "path": "kernels/native/tests/test_autograd.py",
+      "kind": "test",
+      "owner": "ml-systems-performance",
+      "component": "kernels-native",
+      "status": "target",
+      "activation_wave": "6",
+      "source_authority": "hand-authored",
+      "build_targets": [],
+      "test_targets": [
+        "//kernels/native:test_autograd"
+      ],
+      "public_surface": false,
+      "activation_criterion": "ADR-0009 permits source incubation only through 2026-11-30; activate only after Wave 5 evidence and an operation-specific JIT-06 decision prove measured need, reference parity, gradients, locked dependencies, immutable artifacts, fallback, and revocation."
+    },
+    {
+      "path": "kernels/native/tests/test_build_policy.py",
+      "kind": "test",
+      "owner": "ml-systems-performance",
+      "component": "kernels-native",
+      "status": "target",
+      "activation_wave": "6",
+      "source_authority": "hand-authored",
+      "build_targets": [],
+      "test_targets": [
+        "//kernels/native:test_build_policy"
+      ],
+      "public_surface": false,
+      "activation_criterion": "ADR-0009 permits source incubation only through 2026-11-30; activate only after Wave 5 evidence and an operation-specific JIT-06 decision prove measured need, reference parity, gradients, locked dependencies, immutable artifacts, fallback, and revocation."
+    },
+    {
+      "path": "kernels/native/tests/test_cmake_policy.py",
+      "kind": "test",
+      "owner": "ml-systems-performance",
+      "component": "kernels-native",
+      "status": "target",
+      "activation_wave": "6",
+      "source_authority": "hand-authored",
+      "build_targets": [],
+      "test_targets": [
+        "//kernels/native:test_cmake_policy"
+      ],
+      "public_surface": false,
+      "activation_criterion": "ADR-0009 permits source incubation only through 2026-11-30; activate only after Wave 5 evidence and an operation-specific JIT-06 decision prove measured need, reference parity, gradients, locked dependencies, immutable artifacts, fallback, and revocation."
+    },
+    {
+      "path": "kernels/native/tests/test_codegen.py",
+      "kind": "test",
+      "owner": "ml-systems-performance",
+      "component": "kernels-native",
+      "status": "target",
+      "activation_wave": "6",
+      "source_authority": "hand-authored",
+      "build_targets": [],
+      "test_targets": [
+        "//kernels/native:test_codegen"
+      ],
+      "public_surface": false,
+      "activation_criterion": "ADR-0009 permits source incubation only through 2026-11-30; activate only after Wave 5 evidence and an operation-specific JIT-06 decision prove measured need, reference parity, gradients, locked dependencies, immutable artifacts, fallback, and revocation."
+    },
+    {
+      "path": "kernels/native/tests/test_codegen_drift.py",
+      "kind": "test",
+      "owner": "ml-systems-performance",
+      "component": "kernels-native",
+      "status": "target",
+      "activation_wave": "6",
+      "source_authority": "hand-authored",
+      "build_targets": [],
+      "test_targets": [
+        "//kernels/native:test_codegen_drift"
+      ],
+      "public_surface": false,
+      "activation_criterion": "ADR-0009 permits source incubation only through 2026-11-30; activate only after Wave 5 evidence and an operation-specific JIT-06 decision prove measured need, reference parity, gradients, locked dependencies, immutable artifacts, fallback, and revocation."
+    },
+    {
+      "path": "kernels/native/tests/test_discovery.py",
+      "kind": "test",
+      "owner": "ml-systems-performance",
+      "component": "kernels-native",
+      "status": "target",
+      "activation_wave": "6",
+      "source_authority": "hand-authored",
+      "build_targets": [],
+      "test_targets": [
+        "//kernels/native:test_discovery"
+      ],
+      "public_surface": false,
+      "activation_criterion": "ADR-0009 permits source incubation only through 2026-11-30; activate only after Wave 5 evidence and an operation-specific JIT-06 decision prove measured need, reference parity, gradients, locked dependencies, immutable artifacts, fallback, and revocation."
+    },
+    {
+      "path": "kernels/native/tests/test_export.py",
+      "kind": "test",
+      "owner": "ml-systems-performance",
+      "component": "kernels-native",
+      "status": "target",
+      "activation_wave": "6",
+      "source_authority": "hand-authored",
+      "build_targets": [],
+      "test_targets": [
+        "//kernels/native:test_export"
+      ],
+      "public_surface": false,
+      "activation_criterion": "ADR-0009 permits source incubation only through 2026-11-30; activate only after Wave 5 evidence and an operation-specific JIT-06 decision prove measured need, reference parity, gradients, locked dependencies, immutable artifacts, fallback, and revocation."
+    },
+    {
+      "path": "kernels/native/tests/test_fake_tensor.py",
+      "kind": "test",
+      "owner": "ml-systems-performance",
+      "component": "kernels-native",
+      "status": "target",
+      "activation_wave": "6",
+      "source_authority": "hand-authored",
+      "build_targets": [],
+      "test_targets": [
+        "//kernels/native:test_fake_tensor"
+      ],
+      "public_surface": false,
+      "activation_criterion": "ADR-0009 permits source incubation only through 2026-11-30; activate only after Wave 5 evidence and an operation-specific JIT-06 decision prove measured need, reference parity, gradients, locked dependencies, immutable artifacts, fallback, and revocation."
+    },
+    {
+      "path": "kernels/native/tests/test_loader_policy.py",
+      "kind": "test",
+      "owner": "ml-systems-performance",
+      "component": "kernels-native",
+      "status": "target",
+      "activation_wave": "6",
+      "source_authority": "hand-authored",
+      "build_targets": [],
+      "test_targets": [
+        "//kernels/native:test_loader_policy"
+      ],
+      "public_surface": false,
+      "activation_criterion": "ADR-0009 permits source incubation only through 2026-11-30; activate only after Wave 5 evidence and an operation-specific JIT-06 decision prove measured need, reference parity, gradients, locked dependencies, immutable artifacts, fallback, and revocation."
+    },
+    {
+      "path": "kernels/native/tests/test_manifest.py",
+      "kind": "test",
+      "owner": "ml-systems-performance",
+      "component": "kernels-native",
+      "status": "target",
+      "activation_wave": "6",
+      "source_authority": "hand-authored",
+      "build_targets": [],
+      "test_targets": [
+        "//kernels/native:test_manifest"
+      ],
+      "public_surface": false,
+      "activation_criterion": "ADR-0009 permits source incubation only through 2026-11-30; activate only after Wave 5 evidence and an operation-specific JIT-06 decision prove measured need, reference parity, gradients, locked dependencies, immutable artifacts, fallback, and revocation."
+    },
+    {
+      "path": "kernels/native/tests/test_namespace.py",
+      "kind": "test",
+      "owner": "ml-systems-performance",
+      "component": "kernels-native",
+      "status": "target",
+      "activation_wave": "6",
+      "source_authority": "hand-authored",
+      "build_targets": [],
+      "test_targets": [
+        "//kernels/native:test_namespace"
+      ],
+      "public_surface": false,
+      "activation_criterion": "ADR-0009 permits source incubation only through 2026-11-30; activate only after Wave 5 evidence and an operation-specific JIT-06 decision prove measured need, reference parity, gradients, locked dependencies, immutable artifacts, fallback, and revocation."
+    },
+    {
+      "path": "kernels/native/tests/test_opcheck.py",
+      "kind": "test",
+      "owner": "ml-systems-performance",
+      "component": "kernels-native",
+      "status": "target",
+      "activation_wave": "6",
+      "source_authority": "hand-authored",
+      "build_targets": [],
+      "test_targets": [
+        "//kernels/native:test_opcheck"
+      ],
+      "public_surface": false,
+      "activation_criterion": "ADR-0009 permits source incubation only through 2026-11-30; activate only after Wave 5 evidence and an operation-specific JIT-06 decision prove measured need, reference parity, gradients, locked dependencies, immutable artifacts, fallback, and revocation."
+    },
+    {
+      "path": "kernels/native/tests/test_policy.py",
+      "kind": "test",
+      "owner": "ml-systems-performance",
+      "component": "kernels-native",
+      "status": "target",
+      "activation_wave": "6",
+      "source_authority": "hand-authored",
+      "build_targets": [],
+      "test_targets": [
+        "//kernels/native:test_policy"
+      ],
+      "public_surface": false,
+      "activation_criterion": "ADR-0009 permits source incubation only through 2026-11-30; activate only after Wave 5 evidence and an operation-specific JIT-06 decision prove measured need, reference parity, gradients, locked dependencies, immutable artifacts, fallback, and revocation."
+    },
+    {
+      "path": "kernels/native/tests/test_schema_manifest.py",
+      "kind": "test",
+      "owner": "ml-systems-performance",
+      "component": "kernels-native",
+      "status": "target",
+      "activation_wave": "6",
+      "source_authority": "hand-authored",
+      "build_targets": [],
+      "test_targets": [
+        "//kernels/native:test_schema_manifest"
+      ],
+      "public_surface": false,
+      "activation_criterion": "ADR-0009 permits source incubation only through 2026-11-30; activate only after Wave 5 evidence and an operation-specific JIT-06 decision prove measured need, reference parity, gradients, locked dependencies, immutable artifacts, fallback, and revocation."
+    },
+    {
+      "path": "kernels/native/tilelang/README.md",
+      "kind": "documentation",
+      "owner": "ml-systems-performance",
+      "component": "kernels-native",
+      "status": "target",
+      "activation_wave": "6",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//kernels/native:native_policy_inputs"
+      ],
+      "test_targets": [],
+      "public_surface": false,
+      "activation_criterion": "ADR-0009 permits source incubation only through 2026-11-30; activate only after Wave 5 evidence and an operation-specific JIT-06 decision prove measured need, reference parity, gradients, locked dependencies, immutable artifacts, fallback, and revocation."
+    },
+    {
+      "path": "kernels/native/tilelang/__init__.py",
+      "kind": "source",
+      "owner": "ml-systems-performance",
+      "component": "kernels-native",
+      "status": "target",
+      "activation_wave": "6",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//kernels/native:tilelang_codegen_lib"
+      ],
+      "test_targets": [],
+      "public_surface": false,
+      "activation_criterion": "ADR-0009 permits source incubation only through 2026-11-30; activate only after Wave 5 evidence and an operation-specific JIT-06 decision prove measured need, reference parity, gradients, locked dependencies, immutable artifacts, fallback, and revocation."
+    },
+    {
+      "path": "kernels/native/tilelang/build.py",
+      "kind": "source",
+      "owner": "ml-systems-performance",
+      "component": "kernels-native",
+      "status": "target",
+      "activation_wave": "6",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//kernels/native:tilelang_codegen_lib"
+      ],
+      "test_targets": [],
+      "public_surface": false,
+      "activation_criterion": "ADR-0009 permits source incubation only through 2026-11-30; activate only after Wave 5 evidence and an operation-specific JIT-06 decision prove measured need, reference parity, gradients, locked dependencies, immutable artifacts, fallback, and revocation."
+    },
+    {
+      "path": "kernels/native/tilelang/decorator.py",
+      "kind": "source",
+      "owner": "ml-systems-performance",
+      "component": "kernels-native",
+      "status": "target",
+      "activation_wave": "6",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//kernels/native:tilelang_codegen_lib"
+      ],
+      "test_targets": [],
+      "public_surface": false,
+      "activation_criterion": "ADR-0009 permits source incubation only through 2026-11-30; activate only after Wave 5 evidence and an operation-specific JIT-06 decision prove measured need, reference parity, gradients, locked dependencies, immutable artifacts, fallback, and revocation."
+    },
+    {
+      "path": "kernels/native/tilelang/manifest.py",
+      "kind": "source",
+      "owner": "ml-systems-performance",
+      "component": "kernels-native",
+      "status": "target",
+      "activation_wave": "6",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//kernels/native:tilelang_codegen_lib"
+      ],
+      "test_targets": [],
+      "public_surface": false,
+      "activation_criterion": "ADR-0009 permits source incubation only through 2026-11-30; activate only after Wave 5 evidence and an operation-specific JIT-06 decision prove measured need, reference parity, gradients, locked dependencies, immutable artifacts, fallback, and revocation."
+    },
+    {
+      "path": "kernels/native/tilelang/model.py",
+      "kind": "source",
+      "owner": "ml-systems-performance",
+      "component": "kernels-native",
+      "status": "target",
+      "activation_wave": "6",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//kernels/native:tilelang_codegen_lib"
+      ],
+      "test_targets": [],
+      "public_surface": false,
+      "activation_criterion": "ADR-0009 permits source incubation only through 2026-11-30; activate only after Wave 5 evidence and an operation-specific JIT-06 decision prove measured need, reference parity, gradients, locked dependencies, immutable artifacts, fallback, and revocation."
+    },
+    {
+      "path": "kernels/native/tilelang/registry.py",
+      "kind": "source",
+      "owner": "ml-systems-performance",
+      "component": "kernels-native",
+      "status": "target",
+      "activation_wave": "6",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//kernels/native:tilelang_codegen_lib"
+      ],
+      "test_targets": [],
+      "public_surface": false,
+      "activation_criterion": "ADR-0009 permits source incubation only through 2026-11-30; activate only after Wave 5 evidence and an operation-specific JIT-06 decision prove measured need, reference parity, gradients, locked dependencies, immutable artifacts, fallback, and revocation."
+    },
+    {
       "path": "runtime/distributed/mesh/mesh_contract.py",
       "kind": "source",
       "owner": "ml-systems-performance",
@@ -36173,6 +37216,22 @@
       "public_surface": false
     },
     {
+      "path": "docs/adr/0009-native-kernel-source-incubation.md",
+      "kind": "documentation",
+      "owner": "architecture",
+      "component": "docs-adr",
+      "status": "active",
+      "activation_wave": "0",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:wave0_governance_sources"
+      ],
+      "test_targets": [
+        "//:wave0_tests"
+      ],
+      "public_surface": false
+    },
+    {
       "path": "docs/domains/bio.md",
       "kind": "documentation",
       "owner": "developer-platform",
@@ -37194,6 +38253,57 @@
       ],
       "public_surface": false,
       "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
+    },
+    {
+      "path": "third_party/packages/deep_ep/README.md",
+      "kind": "documentation",
+      "owner": "security",
+      "component": "third-party-packages",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//third_party:deep_ep_package"
+      ],
+      "test_targets": [
+        "//third_party:test_deep_ep_package_policy"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Development intake only; production use requires an activated consumer, hardware qualification, artifact SBOM and provenance, and protected review."
+    },
+    {
+      "path": "third_party/packages/deep_ep/package.nix",
+      "kind": "source",
+      "owner": "security",
+      "component": "third-party-packages",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//third_party:deep_ep_package"
+      ],
+      "test_targets": [
+        "//third_party:test_deep_ep_package_policy"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Development intake only; production use requires an activated consumer, hardware qualification, artifact SBOM and provenance, and protected review."
+    },
+    {
+      "path": "third_party/packages/deep_ep/test_package.py",
+      "kind": "test",
+      "owner": "security",
+      "component": "third-party-packages",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//third_party:deep_ep_package"
+      ],
+      "test_targets": [
+        "//third_party:test_deep_ep_package_policy"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Development intake only; production use requires an activated consumer, hardware qualification, artifact SBOM and provenance, and protected review."
     }
   ]
 }

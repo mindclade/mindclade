@@ -4,9 +4,16 @@ from kernels.native.codegen.generate import check_outputs, render_all, write_out
 
 ROOT = Path(__file__).resolve().parents[1]
 
+SOURCE_FILES = (
+    ROOT.parent / "pairformer" / "outer_product_mean" / "tilelang.py",
+    ROOT.parent / "pairformer" / "pair_weighted_average" / "tilelang.py",
+    ROOT.parent / "pairformer" / "triangle_attention" / "tilelang.py",
+    ROOT.parent / "pairformer" / "triangle_multiplication" / "tilelang.py",
+)
+
 
 def test_committed_generated_outputs_have_zero_drift():
-    rendered = render_all(ROOT, source_files=[])
+    rendered = render_all(ROOT, source_files=SOURCE_FILES)
     assert check_outputs(rendered, ROOT / "generated") == ()
 
 

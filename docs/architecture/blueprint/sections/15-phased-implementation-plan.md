@@ -167,7 +167,7 @@ Feature/data-transform materialization uses the ordinary `Job`/`Run`/`Attempt`/f
 
 **Prerequisites.** Wave 5 correctness and representative profiling identify bottlenecks.
 
-**Packages/files.** Only the implementation selected by the Wave 6 bottleneck study and JIT-06 ADR; operation-specific dispatch/qualification records; activated provider package if the selected gap cannot be solved natively; conversion/qualification tooling. No candidate receives a package in advance.
+**Packages/files.** Only the implementation selected by the Wave 6 bottleneck study and JIT-06 ADR; operation-specific dispatch/qualification records; activated provider package if the selected gap cannot be solved natively; conversion/qualification tooling. No candidate receives an activatable provider package in advance. ADR-0009 is the sole bounded exception: through 2026-11-30 it permits `kernels/native/` to exist as a TARGET/proposed, empty-operator source-incubation boundary for schema registration, deterministic build-time projections, offline TileLang intake, fail-closed loading policy, build definitions, tests, and documentation. It grants no dispatch, publication, production, connected-qualification, or operator-activation authority and does not satisfy Wave 5 or JIT-06.
 
 **Contracts.** Operation signature/capability, kernel artifact/qualification, provider capability/compatibility, dispatch/autotune record, fallback/revocation.
 

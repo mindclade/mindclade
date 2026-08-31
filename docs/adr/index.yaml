@@ -2,7 +2,7 @@ apiVersion: mindclade.dev/v1
 kind: ArchitectureDecisionIndex
 metadata:
   name: foundational-decisions
-  description: Wave 0 foundational decisions and the bounded founder-bootstrap authority.
+  description: Foundational decisions plus bounded founder-bootstrap and native-source incubation authorities.
 spec:
   decisions:
     - id: ADR-0001
@@ -60,4 +60,11 @@ spec:
       connectedRatification: pending
       path: docs/adr/0008-founder-bootstrap-public-estate-transition.md
       owners: [architecture, security]
+      specificationAccepted: "2026-08-30"
+    - id: ADR-0009
+      title: Native kernel source incubation boundary
+      status: accepted-in-specification
+      connectedRatification: pending
+      path: docs/adr/0009-native-kernel-source-incubation.md
+      owners: [architecture, ml-systems-performance]
       specificationAccepted: "2026-08-30"

@@ -28,9 +28,9 @@ BLUEPRINT_SHA256 = "d099074e755168bbdce076d50918bf06aff677f9e5d620fdfe53cb7cef74
 ANCHOR_COMMIT = "292b71f47b1b29cc9ba7cf760a9bd07cd5e0ffa7"
 AUTHORITY_FILE_COUNT = 2461
 AUTHORITY_DIRECTORY_COUNT = 787
-CANONICAL_FILE_COUNT = 2488
+CANONICAL_FILE_COUNT = 2545
 AUTHORITY_PATH_SET_SHA256 = "f2011dd32ccc19649e6abb70ffb4473aea4a224410062d40292222e2e6263692"
-CANONICAL_PATH_SET_SHA256 = "18ecbf2fb4c9bfecdabbf66b061fc077af7c31ae6d01464bedb0e30d66e200a2"
+CANONICAL_PATH_SET_SHA256 = "dde4eba7e2fa33692716b4d7f690d72d1fbee182680e5b4cf2f904f3b232e63a"
 
 ADR_REPLACEMENTS = {
     "docs/adr/0001-repository-identity.md": "docs/adr/0001-repository-identity-and-ownership.md",
@@ -54,6 +54,116 @@ FOUNDER_BOOTSTRAP_GOVERNANCE_ADDITIONS = (
     FOUNDER_BOOTSTRAP_ADR,
     FOUNDER_BOOTSTRAP_SCHEMA,
     FOUNDER_BOOTSTRAP_RECORD,
+)
+
+NATIVE_SOURCE_INCUBATION_ADR = "docs/adr/0009-native-kernel-source-incubation.md"
+NATIVE_SOURCE_INCUBATION_PATHS = (
+    "kernels/native/BUILD.bazel",
+    "kernels/native/CMakeLists.txt",
+    "kernels/native/IMPLEMENTATION_STATUS.md",
+    "kernels/native/MIGRATION.md",
+    "kernels/native/README.md",
+    "kernels/native/__init__.py",
+    "kernels/native/cmake/MindcladeTorchStable.cmake",
+    "kernels/native/codegen/__init__.py",
+    "kernels/native/codegen/discover.py",
+    "kernels/native/codegen/generate.py",
+    "kernels/native/codegen/schema.py",
+    "kernels/native/component.yaml",
+    "kernels/native/cuda/CMakeLists.txt",
+    "kernels/native/cuda/README.md",
+    "kernels/native/cuda/operation_registry.cpp",
+    "kernels/native/generated/__init__.py",
+    "kernels/native/generated/native_ops.generated.bzl",
+    "kernels/native/generated/native_ops.generated.cmake",
+    "kernels/native/generated/native_ops.json",
+    "kernels/native/generated/operation_registry.generated.cpp",
+    "kernels/native/generated/python_registration_generated.py",
+    "kernels/native/generated/registration.generated.cpp",
+    "kernels/native/manifests/native_ops.schema.json",
+    "kernels/native/python/__init__.py",
+    "kernels/native/python/loader.py",
+    "kernels/native/python/registration.py",
+    "kernels/native/stable_abi/CMakeLists.txt",
+    "kernels/native/stable_abi/abi_manifest.json",
+    "kernels/native/stable_abi/registration.cpp",
+    "kernels/native/stable_abi/tensor_bridge.cpp",
+    "kernels/native/tests/pytest_runner.py",
+    "kernels/native/tests/test_abi_compatibility.py",
+    "kernels/native/tests/test_autograd.py",
+    "kernels/native/tests/test_build_policy.py",
+    "kernels/native/tests/test_cmake_policy.py",
+    "kernels/native/tests/test_codegen.py",
+    "kernels/native/tests/test_codegen_drift.py",
+    "kernels/native/tests/test_discovery.py",
+    "kernels/native/tests/test_export.py",
+    "kernels/native/tests/test_fake_tensor.py",
+    "kernels/native/tests/test_loader_policy.py",
+    "kernels/native/tests/test_manifest.py",
+    "kernels/native/tests/test_namespace.py",
+    "kernels/native/tests/test_opcheck.py",
+    "kernels/native/tests/test_policy.py",
+    "kernels/native/tests/test_schema_manifest.py",
+    "kernels/native/tilelang/README.md",
+    "kernels/native/tilelang/__init__.py",
+    "kernels/native/tilelang/build.py",
+    "kernels/native/tilelang/decorator.py",
+    "kernels/native/tilelang/manifest.py",
+    "kernels/native/tilelang/model.py",
+    "kernels/native/tilelang/registry.py",
+)
+NATIVE_SOURCE_INCUBATION_ADDITIONS = (
+    NATIVE_SOURCE_INCUBATION_ADR,
+    *NATIVE_SOURCE_INCUBATION_PATHS,
+)
+
+THIRD_PARTY_DEEP_EP_PACKAGE_PATHS = (
+    "third_party/packages/deep_ep/README.md",
+    "third_party/packages/deep_ep/package.nix",
+    "third_party/packages/deep_ep/test_package.py",
+)
+NATIVE_GENERATED_PROJECTIONS = frozenset(
+    {
+        "kernels/native/generated/native_ops.generated.bzl",
+        "kernels/native/generated/native_ops.generated.cmake",
+        "kernels/native/generated/native_ops.json",
+        "kernels/native/generated/operation_registry.generated.cpp",
+        "kernels/native/generated/python_registration_generated.py",
+        "kernels/native/generated/registration.generated.cpp",
+    }
+)
+NATIVE_POLICY_INPUTS = frozenset(
+    {
+        "kernels/native/BUILD.bazel",
+        "kernels/native/CMakeLists.txt",
+        "kernels/native/IMPLEMENTATION_STATUS.md",
+        "kernels/native/MIGRATION.md",
+        "kernels/native/README.md",
+        "kernels/native/cmake/MindcladeTorchStable.cmake",
+        "kernels/native/component.yaml",
+        "kernels/native/cuda/CMakeLists.txt",
+        "kernels/native/cuda/README.md",
+        "kernels/native/cuda/operation_registry.cpp",
+        "kernels/native/stable_abi/CMakeLists.txt",
+        "kernels/native/stable_abi/abi_manifest.json",
+        "kernels/native/stable_abi/registration.cpp",
+        "kernels/native/stable_abi/tensor_bridge.cpp",
+        "kernels/native/tilelang/README.md",
+    }
+)
+NATIVE_CODEGEN_TEST_LABELS = (
+    "//kernels/native:test_build_policy",
+    "//kernels/native:test_codegen",
+    "//kernels/native:test_codegen_drift",
+    "//kernels/native:test_discovery",
+    "//kernels/native:test_manifest",
+    "//kernels/native:test_schema_manifest",
+)
+NATIVE_ACTIVATION_CRITERION = (
+    "ADR-0009 permits source incubation only through 2026-11-30; activate only after "
+    "Wave 5 evidence and an operation-specific JIT-06 decision prove measured need, "
+    "reference parity, gradients, locked dependencies, immutable artifacts, fallback, and "
+    "revocation."
 )
 
 WAVE_ZERO_REQUIRED_ADDITIONS = (
@@ -147,7 +257,12 @@ WAVE_ONE_REQUIRED_ADDITIONS = (
     *GENERATED_PACKAGE_AUTHORITY_ADDITIONS,
 )
 
-REQUIRED_ADDITIONS = (*WAVE_ZERO_REQUIRED_ADDITIONS, *WAVE_ONE_REQUIRED_ADDITIONS)
+REQUIRED_ADDITIONS = (
+    *WAVE_ZERO_REQUIRED_ADDITIONS,
+    *WAVE_ONE_REQUIRED_ADDITIONS,
+    *NATIVE_SOURCE_INCUBATION_ADDITIONS,
+    *THIRD_PARTY_DEEP_EP_PACKAGE_PATHS,
+)
 
 STATUSES = {"target", "active", "generated", "deferred", "retired"}
 SOURCE_AUTHORITIES = {"hand-authored", "immutable-provenance", "reviewed-generated"}
@@ -315,7 +430,7 @@ def extract_authority_paths(markdown: str) -> list[str]:
 
 
 def reconcile_authority_paths(source_paths: Sequence[str]) -> list[str]:
-    """Apply the closed v3.4.3 reconciliation while retaining display order."""
+    """Apply the closed v3.4.3 plus ADR-0009 reconciliation in display order."""
 
     source_set = set(source_paths)
     missing = set(ADR_REPLACEMENTS) - source_set
@@ -1205,7 +1320,99 @@ def infer_source_authority(path: str) -> str:
     )
 
 
+def _native_source_incubation_kind(path: str) -> str:
+    name = PurePosixPath(path).name
+    suffix = PurePosixPath(path).suffix
+    if path.startswith("kernels/native/tests/"):
+        return "test"
+    if name.endswith(".schema.json"):
+        return "schema"
+    if name in {"BUILD.bazel", "CMakeLists.txt"} or suffix in {".bzl", ".cmake"}:
+        return "build"
+    if suffix == ".md":
+        return "documentation"
+    if name == "component.yaml" or suffix in {".yaml", ".yml", ".toml"}:
+        return "configuration"
+    if suffix == ".json":
+        return "data"
+    return "source"
+
+
+def _native_source_incubation_targets(path: str) -> tuple[list[str], list[str]]:
+    name = PurePosixPath(path).name
+    if path == "kernels/native/tests/pytest_runner.py":
+        return [], list(NATIVE_CODEGEN_TEST_LABELS)
+    if path.startswith("kernels/native/tests/") and name.startswith("test_"):
+        return [], [f"//kernels/native:{name.removesuffix('.py')}"]
+    if path in NATIVE_GENERATED_PROJECTIONS:
+        return ["//kernels/native:generate_native_ops"], ["//kernels/native:test_codegen_drift"]
+
+    build_targets: list[str] = []
+    if path in NATIVE_POLICY_INPUTS:
+        build_targets.append("//kernels/native:native_policy_inputs")
+    if path in {
+        "kernels/native/stable_abi/registration.cpp",
+        "kernels/native/stable_abi/tensor_bridge.cpp",
+    }:
+        build_targets.append("//kernels/native:native_schema")
+    if path.startswith("kernels/native/codegen/"):
+        build_targets.append("//kernels/native:native_codegen_lib")
+        if path == "kernels/native/codegen/generate.py":
+            build_targets.append("//kernels/native:generate_native_ops")
+    if path.startswith("kernels/native/tilelang/") and path.endswith(".py"):
+        build_targets.append("//kernels/native:tilelang_codegen_lib")
+    if path.startswith("kernels/native/manifests/"):
+        build_targets.append("//kernels/native:native_codegen_lib")
+    if path in {
+        "kernels/native/__init__.py",
+        "kernels/native/generated/__init__.py",
+    } or path.startswith("kernels/native/python/"):
+        build_targets.append("//kernels/native:native_python")
+    if not build_targets:
+        build_targets.append("//kernels/native:native_policy_inputs")
+    return list(dict.fromkeys(build_targets)), []
+
+
+def build_native_source_incubation_entry(path: str) -> dict[str, Any]:
+    if path not in NATIVE_SOURCE_INCUBATION_PATHS:
+        raise PolicyError(f"unapproved kernels/native path: {path}")
+    generated = path in NATIVE_GENERATED_PROJECTIONS
+    build_targets, test_targets = _native_source_incubation_targets(path)
+    return {
+        "path": path,
+        "kind": _native_source_incubation_kind(path),
+        "owner": "ml-systems-performance",
+        "component": "kernels-native",
+        "status": "generated" if generated else "target",
+        "activation_wave": "6",
+        "source_authority": "reviewed-generated" if generated else "hand-authored",
+        "build_targets": build_targets,
+        "test_targets": test_targets,
+        "public_surface": False,
+        "activation_criterion": NATIVE_ACTIVATION_CRITERION,
+    }
+
+
 def build_path_entry(path: str) -> dict[str, Any]:
+    if path.startswith("kernels/native/"):
+        return build_native_source_incubation_entry(path)
+    if path in THIRD_PARTY_DEEP_EP_PACKAGE_PATHS:
+        return {
+            "path": path,
+            "kind": infer_kind(path),
+            "owner": "security",
+            "component": "third-party-packages",
+            "status": "active",
+            "activation_wave": "1",
+            "source_authority": "hand-authored",
+            "build_targets": ["//third_party:deep_ep_package"],
+            "test_targets": ["//third_party:test_deep_ep_package_policy"],
+            "public_surface": False,
+            "activation_criterion": (
+                "Development intake only; production use requires an activated consumer, "
+                "hardware qualification, artifact SBOM and provenance, and protected review."
+            ),
+        }
     wave = infer_wave(path)
     deferred = any(path.startswith(prefix) for prefix in DEFERRED_PREFIXES)
     generated = infer_source_authority(path) == "reviewed-generated"
@@ -1255,6 +1462,22 @@ def _reconciliation_addition_reason(path: str) -> str:
         return (
             "Required Wave 0 governance source for the bounded founder bootstrap and public-estate "
             "transition authorized by ADR-0008."
+        )
+    if path == NATIVE_SOURCE_INCUBATION_ADR:
+        return (
+            "Accepted ADR-0009 authority for the bounded, expiring kernels/native "
+            "source-incubation exception."
+        )
+    if path in NATIVE_SOURCE_INCUBATION_PATHS:
+        return (
+            "ADR-0009 bounded Wave 6 native source-incubation surface; TARGET or "
+            "reviewed-generated only, with zero active or qualified operations and no "
+            "production authority."
+        )
+    if path in THIRD_PARTY_DEEP_EP_PACKAGE_PATHS:
+        return (
+            "Required Wave 1 DeepEP development-intake package definition, documentation, "
+            "and source-policy test omitted by A6."
         )
     if path in GENERATED_PACKAGE_AUTHORITY_ADDITIONS:
         return (
@@ -1406,7 +1629,7 @@ def validate_manifest(manifest: Mapping[str, Any]) -> list[str]:
     if list(removes) != list(ADR_REPLACEMENTS):
         errors.append("reconciliation removal list is not the closed ADR replacement set")
     if set(addition_paths) != expected_additions or len(addition_paths) != len(expected_additions):
-        errors.append("reconciliation additions are not the closed v3.4.3 set")
+        errors.append("reconciliation additions are not the closed approved set")
     replacement_map = {
         str(item.get("replaces")): str(item.get("path"))
         for item in additions
@@ -1481,7 +1704,7 @@ def validate_manifest(manifest: Mapping[str, Any]) -> list[str]:
     ):
         errors.append("canonical_file_count does not match path entries")
     if reconciliation.get("canonical_path_set_sha256") != CANONICAL_PATH_SET_SHA256:
-        errors.append("canonical path-set digest is not the approved v3.4.3 digest")
+        errors.append("canonical path-set digest is not the approved reconciliation digest")
     if reconciliation.get("canonical_path_set_sha256") != path_set_sha256(entry_paths):
         errors.append("canonical path-set checksum mismatch")
     return errors
@@ -1528,6 +1751,7 @@ def validate_populated_paths(
         path
         for path in actual & approved
         if entries[path].get("status") in {"target", "deferred", "retired"}
+        and path not in NATIVE_SOURCE_INCUBATION_PATHS
     )
     missing = []
     if not allow_missing_active:

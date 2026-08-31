@@ -44,9 +44,9 @@ class RepositoryPolicyTest(unittest.TestCase):
 
     def test_manifest_is_semantically_valid(self) -> None:
         self.assertEqual(validate_manifest(self.manifest), [])
-        self.assertEqual(len(self.manifest["paths"]), 2488)
+        self.assertEqual(len(self.manifest["paths"]), 2545)
         wave_one = [entry for entry in self.manifest["paths"] if entry["activation_wave"] == "1"]
-        self.assertEqual(len(wave_one), 386)
+        self.assertEqual(len(wave_one), 389)
         for entry in wave_one:
             with self.subTest(path=entry["path"]):
                 status = entry["status"]

@@ -29,7 +29,7 @@ and dependency locks are intentionally outside this module-only change.
 6. Enable production dispatch only for the exact non-revoked envelope.
 
 Every future shipped kernel must register only as
-<code>torch.ops.mindclade.&lt;name&gt;</code>. Migration must not introduce a
+`torch.ops.mindclade.{name}`. Migration must not introduce a
 second public Python or native operator namespace, move operation semantics into
 this integration layer, or interpret candidate source as qualification.
 
