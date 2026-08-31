@@ -2971,6 +2971,10 @@
           "reason": "ADR-0009 bounded Wave 6 native source-incubation surface; TARGET or reviewed-generated only, with zero active or qualified operations and no production authority."
         },
         {
+          "path": "kernels/native/tests/test_schema.py",
+          "reason": "ADR-0009 bounded Wave 6 native source-incubation surface; TARGET or reviewed-generated only, with zero active or qualified operations and no production authority."
+        },
+        {
           "path": "kernels/native/tests/test_reference_runtime.py",
           "reason": "ADR-0009 bounded Wave 6 native source-incubation surface; TARGET or reviewed-generated only, with zero active or qualified operations and no production authority."
         },
@@ -3222,8 +3226,8 @@
           "reason": "Sections 1-18 and Section 14.1 take precedence over the stale A6 short ADR name."
         }
       ],
-      "canonical_file_count": 2635,
-      "canonical_path_set_sha256": "ff120059aea6b94d895ef4bf9a67aed0ed83ad47f2c4d1231e71d552d7ab9640"
+      "canonical_file_count": 2636,
+      "canonical_path_set_sha256": "9e474e6a293bc9e367d31d3912000df45595f60761836e27b3f64bcc3689fd98"
     },
     "owners": {
       "agent-platform": {
@@ -24256,6 +24260,7 @@
         "//kernels/native:test_discovery",
         "//kernels/native:test_manifest",
         "//kernels/native:test_parse_literal_ast",
+        "//kernels/native:test_schema",
         "//kernels/native:test_schema_manifest"
       ],
       "public_surface": false,
@@ -24497,6 +24502,21 @@
       "build_targets": [],
       "test_targets": [
         "//kernels/native:test_qualification"
+      ],
+      "public_surface": false,
+      "activation_criterion": "ADR-0009 permits source incubation only through 2026-11-30; activate only after Wave 5 evidence and an operation-specific JIT-06 decision prove measured need, reference parity, gradients, locked dependencies, immutable artifacts, fallback, and revocation."
+    },
+    {
+      "path": "kernels/native/tests/test_schema.py",
+      "kind": "test",
+      "owner": "ml-systems-performance",
+      "component": "kernels-native",
+      "status": "target",
+      "activation_wave": "6",
+      "source_authority": "hand-authored",
+      "build_targets": [],
+      "test_targets": [
+        "//kernels/native:test_schema"
       ],
       "public_surface": false,
       "activation_criterion": "ADR-0009 permits source incubation only through 2026-11-30; activate only after Wave 5 evidence and an operation-specific JIT-06 decision prove measured need, reference parity, gradients, locked dependencies, immutable artifacts, fallback, and revocation."

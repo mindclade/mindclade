@@ -62,6 +62,8 @@ KERNEL_SPEC: KernelSpec = KernelSpec(
             GradientSpec(input_name="right", output_name="grad_right"),
         ),
         supports_double_backward=False,
+        setup_context="kernels.pairformer.triangle_multiplication.reference:setup_context",
+        backward="kernels.pairformer.triangle_multiplication.reference:composite_backward",
     ),
     effects=EffectSpec(),
     launch=LaunchContract(

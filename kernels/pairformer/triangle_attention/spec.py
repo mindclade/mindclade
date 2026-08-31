@@ -67,6 +67,8 @@ KERNEL_SPEC: KernelSpec = KernelSpec(
             GradientSpec(input_name="bias", output_name="grad_bias"),
         ),
         supports_double_backward=False,
+        setup_context="kernels.pairformer.triangle_attention.reference:setup_context",
+        backward="kernels.pairformer.triangle_attention.reference:composite_backward",
     ),
     effects=EffectSpec(),
     launch=LaunchContract(

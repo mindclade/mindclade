@@ -1,78 +1,96 @@
 import json
 from pathlib import Path
 
-from kernels.native.codegen.generate import (
-    GENERATED_FILENAMES,
-    render_all,
-    write_outputs,
-)
+from kernels.api import content_digest
+from kernels.native.codegen.generate import GENERATED_FILENAMES, render_all, write_outputs
 
 
-def _fixture_native_root(tmp_path: Path) -> tuple[Path, Path]:
+def _fixture_native_root(tmp_path: Path, *, fake: bool = True) -> tuple[Path, str]:
     kernels_root = tmp_path / "kernels"
     native_root = kernels_root / "native"
     native_root.mkdir(parents=True)
     operation = kernels_root / "pairformer" / "fixture_op"
     operation.mkdir(parents=True)
-    source = operation / "tilelang.py"
-    source.write_text(
-        '''from kernels.native.tilelang.decorator import mindclade_kernel
-@mindclade_kernel(
-    name="fixture_op",
-    schema="fixture_op(Tensor x, int width) -> Tensor",
-    family="pairformer",
-    fake={"module": "kernels.pairformer.fixture_op.tilelang", "symbol": "fake"},
-    autograd={
-        "mode": "registered",
-        "setup_context": {"module": "kernels.pairformer.fixture_op.tilelang", "symbol": "setup_context"},
-        "backward": {"module": "kernels.pairformer.fixture_op.tilelang", "symbol": "backward"},
-    },
+    fake_value = '"kernels.pairformer.fixture_op.reference:fake"' if fake else "None"
+    (operation / "spec.py").write_text(
+        f'''from kernels.api import (
+    AutogradPolicy, ConstantDType, EffectSpec, ForwardSpec, KernelSpec,
+    LaunchContract, OutputSpec, ShapeOf, SameAsInputDevice,
 )
-def build_tilelang_program(*, target, width):
-    raise NotImplementedError
+KERNEL_SPEC: KernelSpec = KernelSpec(
+    name="fixture_op", namespace="mindclade", family="pairformer",
+    source="pairformer/fixture_op/spec.py",
+    operator_schema="fixture_op(Tensor x, int width) -> Tensor output",
+    facade_outputs=("output",), fake={fake_value},
+    forward=ForwardSpec(
+        schema="_fixture_op_fwd(Tensor x, int width) -> Tensor output",
+        builder="kernels.pairformer.fixture_op.tilelang:build_tilelang_program",
+        symbol="mindclade_tilelang_fixture_op_fwd_launch",
+        outputs=(OutputSpec(
+            name="output", shape=ShapeOf(argument="x"),
+            dtype=ConstantDType(value="float32"),
+            device=SameAsInputDevice(argument="x"), semantic_axes=("element",),
+            visible_in_facade=True, saved_for_backward=False,
+        ),),
+    ), backward=None, autograd_policy=AutogradPolicy.NONE,
+    effects=EffectSpec(), launch=LaunchContract(graph_capture_safe=False),
+)
 ''',
         encoding="utf-8",
     )
-    return native_root, source
+    return native_root, "pairformer/fixture_op/spec.py"
 
 
 def test_render_is_deterministic_and_write_emits_exact_surfaces(tmp_path: Path):
     native_root, source = _fixture_native_root(tmp_path)
     first = render_all(native_root, source_files=[source])
-    second = render_all(native_root, source_files=[source])
-    assert first == second
+    assert first == render_all(native_root, source_files=[source])
     output = tmp_path / "output"
     write_outputs(first, output)
     assert set(GENERATED_FILENAMES) == {path.name for path in output.iterdir()}
     assert all((output / name).read_text(encoding="utf-8") == first[name] for name in first)
 
 
-def test_generated_torch_surfaces_are_only_in_mindclade_namespace(tmp_path: Path):
+def test_generated_schema_registry_and_build_inventories_are_v3(tmp_path: Path):
     native_root, source = _fixture_native_root(tmp_path)
     rendered = render_all(native_root, source_files=[source])
     definitions = rendered["registration.generated.cpp"]
     implementations = rendered["operation_registry.generated.cpp"]
-    python = rendered["python_registration_generated.py"]
-    assert "STABLE_TORCH_LIBRARY(mindclade" in definitions
-    assert "STABLE_TORCH_LIBRARY_IMPL(mindclade, CUDA" in implementations
-    assert "mindclade::fixture_op" in python
-    assert 'extern "C" torch::stable::Tensor mindclade_tilelang_fixture_op_launch' in implementations
-    assert "return mindclade_tilelang_fixture_op_launch(x, width);" in implementations
-    assert "importlib" not in python
-    assert "TORCH_LIBRARY(" not in definitions.replace("STABLE_TORCH_LIBRARY(", "")
+    assert definitions.index('m.def("fixture_op(') < definitions.index('m.def("_fixture_op_fwd(')
+    assert 'm.impl("fixture_op"' in implementations
+    assert 'm.impl("_fixture_op_fwd"' in implementations
+    assert "mindclade_tilelang_fixture_op_fwd_launch" in implementations
+    assert "MINDCLADE_KERNEL_SPEC_SOURCES" in rendered["native_ops.generated.bzl"]
+    assert "//kernels/pairformer/fixture_op:spec.py" in rendered["native_ops.generated.bzl"]
+    assert "MINDCLADE_TILELANG_KERNEL_SOURCES" in rendered["native_ops.generated.cmake"]
 
 
-def test_manifest_carries_strict_source_identity(tmp_path: Path):
+def test_manifest_has_exact_operator_keys_and_recomputable_digests(tmp_path: Path):
     native_root, source = _fixture_native_root(tmp_path)
     manifest = json.loads(render_all(native_root, source_files=[source])["native_ops.json"])
-    assert manifest["schema_version"] == 2
-    assert manifest["generator"] == {
-        "id": "kernels.native.codegen.generate",
-        "version": 2,
+    assert manifest["schema_version"] == 3
+    assert manifest["generator"] == {"id": "kernels.native.codegen.generate", "version": 3}
+    operator = manifest["operators"][0]
+    assert set(operator) == {
+        "name", "qualified_name", "namespace", "family", "source", "spec_sha256",
+        "kernel_spec_digest", "operator_schema", "facade_outputs", "fake", "forward",
+        "backward", "autograd_policy", "composite", "effects", "launch", "backend",
+        "version", "devices", "registrations",
     }
-    assert manifest["operators"][0]["qualified_name"] == "mindclade::fixture_op"
-    assert manifest["operators"][0]["source_sha256"].startswith("sha256:")
-    assert "symbol" not in manifest["operators"][0]
+    assert [entry["kind"] for entry in operator["registrations"]] == ["semantic", "forward"]
+    without_digest = dict(manifest)
+    assert without_digest.pop("manifest_digest") == content_digest(without_digest)
+    assert operator["forward"]["outputs"][0]["shape"]["node"] == "shape_of"
+
+
+def test_declarative_fake_and_explicit_non_differentiability_are_generated(tmp_path: Path):
+    native_root, source = _fixture_native_root(tmp_path, fake=False)
+    python = render_all(native_root, source_files=[source])["python_registration_generated.py"]
+    assert "torch.empty(" in python
+    assert "_mindclade_dtype(" in python
+    assert "float32" in python
+    assert "mindclade::fixture_op is non-differentiable" in python
+    assert "importlib" not in python
 
 
 def test_empty_inventory_emits_no_operation_labels_or_symbols(tmp_path: Path):

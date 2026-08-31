@@ -35,11 +35,32 @@ class CompositeAutogradSpec(ContractModel):
     runtime_envelope: str
     gradients: tuple[GradientSpec, ...]
     supports_double_backward: bool
+    setup_context: str | None = None
+    backward: str | None = None
     version: int = 1
 
     def __post_init__(self) -> None:
         _nonempty(self.decomposition, "composite decomposition")
         _nonempty(self.runtime_envelope, "composite runtime envelope")
+        _nonempty(self.setup_context, "composite setup_context")
+        _nonempty(self.backward, "composite backward")
+        for label, identity in (
+            ("decomposition", self.decomposition),
+            ("setup_context", self.setup_context),
+            ("backward", self.backward),
+        ):
+            assert identity is not None
+            if identity.count(":") != 1:
+                raise KernelContractError(
+                    f"composite {label} must be one module:function identity"
+                )
+            module, function = identity.split(":", 1)
+            if not module or not function or not all(
+                part.isidentifier() for part in module.split(".")
+            ) or not function.isidentifier():
+                raise KernelContractError(
+                    f"composite {label} must be one module:function identity"
+                )
         if self.version != 1:
             raise KernelContractError(f"unsupported CompositeAutogradSpec version: {self.version}")
         if not re.fullmatch(r"sha256:[0-9a-f]{64}", self.source_digest):
@@ -105,6 +126,10 @@ class KernelSpec(ContractModel):
         if forward.name != f"_{self.name}_fwd":
             raise SchemaError(
                 f"forward provider must be named _{self.name}_fwd, got {forward.name!r}"
+            )
+        if forward.arguments != semantic.arguments:
+            raise SchemaError(
+                "semantic and forward provider argument names must match exactly in declaration order"
             )
         output_names = tuple(output.name for output in self.forward.outputs)
         _validate_schema_outputs(semantic, output_names, "semantic")

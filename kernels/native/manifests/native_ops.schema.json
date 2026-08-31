@@ -1,188 +1,317 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.mindclade.dev/kernels/native-ops/v2",
+  "$id": "https://schemas.mindclade.dev/kernels/native-ops/v3",
   "type": "object",
   "additionalProperties": false,
   "required": [
-    "schema_version",
-    "generator",
-    "source_inventory_sha256",
-    "namespace",
-    "registration_mode",
-    "optimized_math_authority",
-    "runtime_discovery",
-    "request_time_compilation",
-    "operators",
-    "semantic_digest"
+    "schema_version", "generator", "source_inventory_sha256", "namespace",
+    "registration_mode", "optimized_math_authority", "runtime_discovery",
+    "request_time_compilation", "operators", "semantic_digest", "manifest_digest"
   ],
   "properties": {
-    "schema_version": {
-      "const": 2
-    },
+    "schema_version": {"const": 3},
     "generator": {
-      "type": "object",
-      "additionalProperties": false,
+      "type": "object", "additionalProperties": false,
       "required": ["id", "version"],
       "properties": {
-        "id": {
-          "const": "kernels.native.codegen.generate"
-        },
-        "version": {
-          "const": 2
-        }
+        "id": {"const": "kernels.native.codegen.generate"},
+        "version": {"const": 3}
       }
     },
-    "source_inventory_sha256": {
-      "$ref": "#/$defs/digest"
-    },
-    "namespace": {
-      "const": "mindclade"
-    },
-    "registration_mode": {
-      "const": "build_time_generated"
-    },
-    "optimized_math_authority": {
-      "const": "tilelang"
-    },
-    "runtime_discovery": {
-      "const": false
-    },
-    "request_time_compilation": {
-      "const": false
-    },
+    "source_inventory_sha256": {"$ref": "#/$defs/digest"},
+    "namespace": {"const": "mindclade"},
+    "registration_mode": {"const": "build_time_generated"},
+    "optimized_math_authority": {"const": "tilelang"},
+    "runtime_discovery": {"const": false},
+    "request_time_compilation": {"const": false},
     "operators": {
-      "type": "array",
-      "maxItems": 4096,
-      "uniqueItems": true,
-      "items": {
-        "$ref": "#/$defs/operator"
-      }
+      "type": "array", "maxItems": 4096, "uniqueItems": true,
+      "items": {"$ref": "#/$defs/operator"}
     },
-    "semantic_digest": {
-      "$ref": "#/$defs/digest"
-    }
+    "semantic_digest": {"$ref": "#/$defs/digest"},
+    "manifest_digest": {"$ref": "#/$defs/digest"}
   },
   "$defs": {
-    "digest": {
-      "type": "string",
-      "pattern": "^sha256:[0-9a-f]{64}$"
+    "digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "name": {"type": "string", "pattern": "^[a-z][a-z0-9_]{0,63}$"},
+    "value_name": {"type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,63}$"},
+    "symbol": {"type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]*$", "maxLength": 256},
+    "schema": {"type": "string", "minLength": 1, "maxLength": 4096},
+    "callable": {
+      "type": "string", "maxLength": 512,
+      "pattern": "^kernels\\.[a-z][a-z0-9_]*\\.[a-z][a-z0-9_]*\\.(?:reference|tilelang):[A-Za-z_][A-Za-z0-9_]*$"
     },
-    "callable_ref": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["module", "symbol"],
+    "scalar": {"type": ["string", "integer", "number", "boolean"]},
+    "expression": {
+      "type": "object", "additionalProperties": false, "required": ["node"],
       "properties": {
-        "module": {
-          "type": "string",
-          "maxLength": 256,
-          "pattern": "^kernels\\.[a-z][a-z0-9_]{0,63}\\.[a-z][a-z0-9_]{0,63}\\.tilelang$"
+        "node": {
+          "enum": [
+            "int_literal", "bool_literal", "float_literal", "string_literal",
+            "dim_ref", "rank_ref", "scalar_ref", "dtype_ref", "device_ref",
+            "same_as_input_dtype", "same_as_input_device", "constant_dtype",
+            "constant_device", "add", "sub", "subtract", "mul", "multiply",
+            "floor_div", "ceil_div", "mod", "modulo", "min", "minimum",
+            "max", "maximum", "round_up", "eq", "not_equal", "less_than",
+            "less_equal", "greater_than", "greater_equal", "and", "or", "not",
+            "in_set", "select", "shape_of", "shape_prefix", "shape_tuple",
+            "concat_shape", "broadcastable", "is_finite"
+          ]
         },
-        "symbol": {
-          "type": "string",
-          "maxLength": 128,
-          "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
-        }
+        "argument": {"$ref": "#/$defs/value_name"},
+        "axis": {"type": "integer"},
+        "trailing_rank": {"type": "integer", "minimum": 0},
+        "value_type": {"enum": ["bool", "int", "float", "string"]},
+        "value": {
+          "oneOf": [
+            {"$ref": "#/$defs/scalar"},
+            {"$ref": "#/$defs/expression"}
+          ]
+        },
+        "lhs": {"$ref": "#/$defs/expression"},
+        "rhs": {"$ref": "#/$defs/expression"},
+        "operand": {"$ref": "#/$defs/expression"},
+        "operands": {"type": "array", "maxItems": 64, "items": {"$ref": "#/$defs/expression"}},
+        "members": {"type": "array", "maxItems": 64, "items": {"$ref": "#/$defs/scalar"}},
+        "condition": {"$ref": "#/$defs/expression"},
+        "when_true": {"$ref": "#/$defs/expression"},
+        "when_false": {"$ref": "#/$defs/expression"},
+        "multiple": {"$ref": "#/$defs/expression"},
+        "dimensions": {"type": "array", "maxItems": 64, "items": {"$ref": "#/$defs/expression"}},
+        "parts": {"type": "array", "maxItems": 64, "items": {"$ref": "#/$defs/expression"}}
       }
     },
-    "autograd": {
+    "initialization": {
+      "type": ["object", "null"],
       "oneOf": [
+        {"type": "null"},
         {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["mode"],
+          "type": "object", "additionalProperties": false,
+          "required": ["type", "mode", "value", "version"],
           "properties": {
-            "mode": {
-              "const": "not_supported"
-            }
-          }
-        },
-        {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["mode", "setup_context", "backward"],
-          "properties": {
-            "mode": {
-              "const": "registered"
-            },
-            "setup_context": {
-              "$ref": "#/$defs/callable_ref"
-            },
-            "backward": {
-              "$ref": "#/$defs/callable_ref"
-            }
+            "type": {"const": "InitializationSpec"},
+            "mode": {"type": "string"},
+            "value": {"type": ["integer", "number", "boolean", "null"]},
+            "version": {"const": 1}
           }
         }
       ]
     },
-    "operator": {
-      "type": "object",
-      "additionalProperties": false,
+    "output": {
+      "type": "object", "additionalProperties": false,
       "required": [
-        "name",
-        "qualified_name",
-        "schema",
-        "family",
-        "source",
-        "source_sha256",
-        "fake",
-        "namespace",
-        "backend",
-        "version",
-        "launch_symbol",
-        "autograd",
-        "devices"
+        "type", "name", "shape", "dtype", "device", "semantic_axes",
+        "visible_in_facade", "saved_for_backward", "initialization", "version"
       ],
       "properties": {
-        "name": {
-          "type": "string",
-          "pattern": "^[a-z][a-z0-9_]{0,63}$"
-        },
-        "qualified_name": {
-          "type": "string",
-          "pattern": "^mindclade::[a-z][a-z0-9_]{0,63}$"
-        },
-        "schema": {
-          "type": "string",
-          "maxLength": 2048,
-          "pattern": "^[a-z][a-z0-9_]{0,63}\\((?:|(?:Tensor|float|int|bool) [A-Za-z_][A-Za-z0-9_]{0,63}(?:, (?:Tensor|float|int|bool) [A-Za-z_][A-Za-z0-9_]{0,63})*)\\) -> Tensor$"
-        },
-        "family": {
-          "type": "string",
-          "pattern": "^[a-z][a-z0-9_]{0,63}$"
-        },
-        "source": {
-          "type": "string",
-          "maxLength": 147,
-          "pattern": "^[a-z][a-z0-9_]{0,63}/[a-z][a-z0-9_]{0,63}/tilelang\\.py$"
-        },
-        "source_sha256": {
-          "$ref": "#/$defs/digest"
-        },
-        "fake": {
-          "$ref": "#/$defs/callable_ref"
-        },
-        "namespace": {
-          "const": "mindclade"
-        },
-        "backend": {
-          "const": "tilelang"
-        },
-        "version": {
-          "type": "integer",
-          "minimum": 1,
-          "maximum": 2147483647
-        },
-        "launch_symbol": {
-          "type": "string",
-          "maxLength": 256,
-          "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
-        },
-        "autograd": {
-          "$ref": "#/$defs/autograd"
-        },
-        "devices": {
-          "const": ["cuda"]
+        "type": {"const": "OutputSpec"},
+        "name": {"$ref": "#/$defs/value_name"},
+        "shape": {"$ref": "#/$defs/expression"},
+        "dtype": {"$ref": "#/$defs/expression"},
+        "device": {"$ref": "#/$defs/expression"},
+        "semantic_axes": {"type": "array", "maxItems": 64, "items": {"type": "string"}, "uniqueItems": true},
+        "visible_in_facade": {"type": "boolean"},
+        "saved_for_backward": {"type": "boolean"},
+        "initialization": {"$ref": "#/$defs/initialization"},
+        "version": {"const": 1}
+      }
+    },
+    "gradient": {
+      "type": "object", "additionalProperties": false,
+      "required": ["type", "input_name", "output_name", "optional", "accumulation_dtype", "version"],
+      "properties": {
+        "type": {"const": "GradientSpec"},
+        "input_name": {"$ref": "#/$defs/value_name"},
+        "output_name": {"$ref": "#/$defs/value_name"},
+        "optional": {"type": "boolean"},
+        "accumulation_dtype": {"type": ["string", "null"]},
+        "version": {"const": 1}
+      }
+    },
+    "workspace": {
+      "type": "object", "additionalProperties": false,
+      "required": ["type", "name", "shape", "dtype", "zero_initialize", "lifetime", "version"],
+      "properties": {
+        "type": {"const": "WorkspaceSpec"},
+        "name": {"$ref": "#/$defs/value_name"},
+        "shape": {"$ref": "#/$defs/expression"},
+        "dtype": {"$ref": "#/$defs/expression"},
+        "zero_initialize": {"type": "boolean"},
+        "lifetime": {"enum": ["node", "program_group"]},
+        "version": {"const": 1}
+      }
+    },
+    "program_node": {
+      "type": "object", "additionalProperties": false,
+      "required": ["type", "name", "builder", "symbol", "depends_on", "workspaces", "version"],
+      "properties": {
+        "type": {"const": "ProgramNodeSpec"},
+        "name": {"$ref": "#/$defs/value_name"},
+        "builder": {"$ref": "#/$defs/callable"},
+        "symbol": {"$ref": "#/$defs/symbol"},
+        "depends_on": {"type": "array", "items": {"$ref": "#/$defs/value_name"}, "uniqueItems": true},
+        "workspaces": {"type": "array", "items": {"$ref": "#/$defs/workspace"}, "uniqueItems": true},
+        "version": {"const": 1}
+      }
+    },
+    "program_group": {
+      "oneOf": [
+        {"type": "null"},
+        {
+          "type": "object", "additionalProperties": false,
+          "required": [
+            "type", "nodes", "current_stream_only", "global_synchronization",
+            "hidden_device_allocation", "graph_capture_safe", "version"
+          ],
+          "properties": {
+            "type": {"const": "ProgramGroupSpec"},
+            "nodes": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/program_node"}, "uniqueItems": true},
+            "current_stream_only": {"type": "boolean"},
+            "global_synchronization": {"type": "boolean"},
+            "hidden_device_allocation": {"type": "boolean"},
+            "graph_capture_safe": {"type": "boolean"},
+            "version": {"const": 1}
+          }
         }
+      ]
+    },
+    "forward": {
+      "type": "object", "additionalProperties": false,
+      "required": ["type", "schema", "builder", "symbol", "outputs", "program_group", "version"],
+      "properties": {
+        "type": {"const": "ForwardSpec"},
+        "schema": {"$ref": "#/$defs/schema"},
+        "builder": {"$ref": "#/$defs/callable"},
+        "symbol": {"$ref": "#/$defs/symbol"},
+        "outputs": {"type": "array", "minItems": 1, "maxItems": 16, "items": {"$ref": "#/$defs/output"}, "uniqueItems": true},
+        "program_group": {"$ref": "#/$defs/program_group"},
+        "version": {"const": 1}
+      }
+    },
+    "backward": {
+      "oneOf": [
+        {"type": "null"},
+        {
+          "type": "object", "additionalProperties": false,
+          "required": ["type", "schema", "builder", "symbol", "gradients", "supports_double_backward", "program_group", "version"],
+          "properties": {
+            "type": {"const": "BackwardSpec"},
+            "schema": {"$ref": "#/$defs/schema"},
+            "builder": {"$ref": "#/$defs/callable"},
+            "symbol": {"$ref": "#/$defs/symbol"},
+            "gradients": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/gradient"}, "uniqueItems": true},
+            "supports_double_backward": {"type": "boolean"},
+            "program_group": {"$ref": "#/$defs/program_group"},
+            "version": {"const": 1}
+          }
+        }
+      ]
+    },
+    "composite": {
+      "oneOf": [
+        {"type": "null"},
+        {
+          "type": "object", "additionalProperties": false,
+          "required": [
+            "type", "decomposition", "source_digest", "runtime_envelope", "gradients",
+            "supports_double_backward", "setup_context", "backward", "version"
+          ],
+          "properties": {
+            "type": {"const": "CompositeAutogradSpec"},
+            "decomposition": {"$ref": "#/$defs/callable"},
+            "source_digest": {"$ref": "#/$defs/digest"},
+            "runtime_envelope": {"type": "string", "minLength": 1, "maxLength": 512},
+            "gradients": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/gradient"}, "uniqueItems": true},
+            "supports_double_backward": {"type": "boolean"},
+            "setup_context": {"$ref": "#/$defs/callable"},
+            "backward": {"$ref": "#/$defs/callable"},
+            "version": {"const": 1}
+          }
+        }
+      ]
+    },
+    "effects": {
+      "type": "object", "additionalProperties": false,
+      "required": ["type", "mutates_inputs", "aliases_outputs", "uses_rng", "uses_atomics", "version"],
+      "properties": {
+        "type": {"const": "EffectSpec"},
+        "mutates_inputs": {"type": "array", "items": {"$ref": "#/$defs/value_name"}, "uniqueItems": true},
+        "aliases_outputs": {
+          "type": "array", "uniqueItems": true,
+          "items": {
+            "type": "array", "prefixItems": [{"$ref": "#/$defs/value_name"}, {"$ref": "#/$defs/value_name"}],
+            "minItems": 2, "maxItems": 2
+          }
+        },
+        "uses_rng": {"type": "boolean"},
+        "uses_atomics": {"type": "boolean"},
+        "version": {"const": 1}
+      }
+    },
+    "launch": {
+      "type": "object", "additionalProperties": false,
+      "required": [
+        "type", "current_stream_only", "global_synchronization", "hidden_device_allocation",
+        "graph_capture_safe", "determinism", "version"
+      ],
+      "properties": {
+        "type": {"const": "LaunchContract"},
+        "current_stream_only": {"type": "boolean"},
+        "global_synchronization": {"type": "boolean"},
+        "hidden_device_allocation": {"type": "boolean"},
+        "graph_capture_safe": {"type": "boolean"},
+        "determinism": {"enum": ["deterministic", "conditionally_deterministic", "nondeterministic"]},
+        "version": {"const": 1}
+      }
+    },
+    "registration": {
+      "type": "object", "additionalProperties": false,
+      "required": ["qualified_name", "schema", "kind", "implementation_symbol"],
+      "properties": {
+        "qualified_name": {"type": "string", "pattern": "^mindclade::_?[a-z][a-z0-9_]{0,63}$"},
+        "schema": {"$ref": "#/$defs/schema"},
+        "kind": {"enum": ["semantic", "forward", "backward"]},
+        "implementation_symbol": {"$ref": "#/$defs/symbol"}
+      }
+    },
+    "registrations": {
+      "type": "array", "minItems": 2, "maxItems": 3,
+      "prefixItems": [
+        {"allOf": [{"$ref": "#/$defs/registration"}, {"properties": {"kind": {"const": "semantic"}}}]},
+        {"allOf": [{"$ref": "#/$defs/registration"}, {"properties": {"kind": {"const": "forward"}}}]},
+        {"allOf": [{"$ref": "#/$defs/registration"}, {"properties": {"kind": {"const": "backward"}}}]}
+      ],
+      "items": false
+    },
+    "operator": {
+      "type": "object", "additionalProperties": false,
+      "required": [
+        "name", "qualified_name", "namespace", "family", "source", "spec_sha256",
+        "kernel_spec_digest", "operator_schema", "facade_outputs", "fake", "forward",
+        "backward", "autograd_policy", "composite", "effects", "launch", "backend",
+        "version", "devices", "registrations"
+      ],
+      "properties": {
+        "name": {"$ref": "#/$defs/name"},
+        "qualified_name": {"type": "string", "pattern": "^mindclade::[a-z][a-z0-9_]{0,63}$"},
+        "namespace": {"const": "mindclade"},
+        "family": {"$ref": "#/$defs/name"},
+        "source": {"type": "string", "pattern": "^[a-z][a-z0-9_]*/[a-z][a-z0-9_]*/spec\\.py$", "maxLength": 160},
+        "spec_sha256": {"$ref": "#/$defs/digest"},
+        "kernel_spec_digest": {"$ref": "#/$defs/digest"},
+        "operator_schema": {"$ref": "#/$defs/schema"},
+        "facade_outputs": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/value_name"}, "uniqueItems": true},
+        "fake": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/callable"}]},
+        "forward": {"$ref": "#/$defs/forward"},
+        "backward": {"$ref": "#/$defs/backward"},
+        "autograd_policy": {"enum": ["required", "none", "composite"]},
+        "composite": {"$ref": "#/$defs/composite"},
+        "effects": {"$ref": "#/$defs/effects"},
+        "launch": {"$ref": "#/$defs/launch"},
+        "backend": {"const": "tilelang"},
+        "version": {"type": "integer", "minimum": 1},
+        "devices": {"const": ["cuda"]},
+        "registrations": {"$ref": "#/$defs/registrations"}
       }
     }
   }

@@ -1,26 +1,22 @@
+"""Deterministic v3 native registration generation from canonical ``spec.py`` files."""
+
 from __future__ import annotations
 
 import argparse
-import hashlib
+from dataclasses import fields, is_dataclass
+from enum import Enum
 import json
-import os
 from pathlib import Path
-import sys
-import tempfile
-from typing import Iterable, Mapping
+from typing import Any
 
-from kernels.native.codegen.discover import discover_specs
-from kernels.native.codegen.schema import parse_schema
-from kernels.native.tilelang.model import (
-    GENERATOR_ID,
-    GENERATOR_VERSION,
-    KernelSpec,
-    NAMESPACE,
-    REGISTRATION_MODE,
-)
+from kernels.api import AutogradPolicy, Expr, content_digest
+from kernels.native.codegen.discover import DiscoveredKernelSpec, discover_specs
+from kernels.native.codegen.schema import ParsedSchema, parse_schema
 
-HEADER = f"// GENERATED FILE - DO NOT EDIT. Generator: {GENERATOR_ID}@{GENERATOR_VERSION}.\n"
-PY_HEADER = f"# GENERATED FILE - DO NOT EDIT. Generator: {GENERATOR_ID}@{GENERATOR_VERSION}.\n"
+GENERATOR_ID = "kernels.native.codegen.generate"
+GENERATOR_VERSION = 3
+SCHEMA_VERSION = 3
+
 GENERATED_FILENAMES = (
     "native_ops.json",
     "registration.generated.cpp",
@@ -29,280 +25,412 @@ GENERATED_FILENAMES = (
     "native_ops.generated.cmake",
     "native_ops.generated.bzl",
 )
-LEGACY_FILENAMES = ("python_registration.generated.py",)
-_NON_GENERATED_ENTRIES = {"__init__.py", "__pycache__"}
+
+DEFAULT_SPEC_SOURCES = (
+    "pairformer/outer_product_mean/spec.py",
+    "pairformer/pair_weighted_average/spec.py",
+    "pairformer/transition/spec.py",
+    "pairformer/triangle_attention/spec.py",
+    "pairformer/triangle_multiplication/spec.py",
+)
 
 
-def _canonical_json(value: object) -> str:
-    return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+def _json_value(value: Any) -> Any:
+    """Serialize contracts without losing expression node discriminators."""
+
+    if isinstance(value, Expr):
+        return value.to_data()
+    if isinstance(value, Enum):
+        return value.value
+    if is_dataclass(value):
+        return {
+            "type": type(value).__name__,
+            **{field.name: _json_value(getattr(value, field.name)) for field in fields(value)},
+        }
+    if isinstance(value, tuple):
+        return [_json_value(item) for item in value]
+    if isinstance(value, list):
+        return [_json_value(item) for item in value]
+    if isinstance(value, dict):
+        return {str(key): _json_value(value[key]) for key in sorted(value, key=str)}
+    if value is None or isinstance(value, (str, int, float, bool)):
+        return value
+    raise TypeError(f"unsupported manifest value: {type(value).__name__}")
 
 
-def _sha256(data: bytes) -> str:
-    return "sha256:" + hashlib.sha256(data).hexdigest()
-
-
-def _source_inventory(specs: Iterable[KernelSpec]) -> list[dict[str, str]]:
-    return [
-        {"source": spec.source, "source_sha256": spec.source_sha256}
-        for spec in sorted(specs, key=lambda item: item.source)
-    ]
-
-
-def _manifest(specs: list[KernelSpec]) -> str:
-    for spec in specs:
-        if spec.namespace != NAMESPACE or spec.qualified_name != f"{NAMESPACE}::{spec.name}":
-            raise ValueError("generator accepts only mindclade namespace specifications")
-    inventory = _source_inventory(specs)
-    body = {
-        "generator": {"id": GENERATOR_ID, "version": GENERATOR_VERSION},
-        "namespace": NAMESPACE,
-        "operators": [spec.to_manifest() for spec in specs],
-        "optimized_math_authority": "tilelang",
-        "registration_mode": REGISTRATION_MODE,
-        "request_time_compilation": False,
-        "runtime_discovery": False,
-        "schema_version": 2,
-        "source_inventory_sha256": _sha256(_canonical_json(inventory).encode("utf-8")),
+def _registration(
+    namespace: str,
+    schema: ParsedSchema,
+    kind: str,
+    implementation_symbol: str,
+) -> dict[str, str]:
+    return {
+        "qualified_name": f"{namespace}::{schema.name}",
+        "schema": schema.canonical,
+        "kind": kind,
+        "implementation_symbol": implementation_symbol,
     }
-    result = dict(body)
-    result["semantic_digest"] = _sha256(_canonical_json(body).encode("utf-8"))
-    return json.dumps(result, sort_keys=True, indent=2, ensure_ascii=False) + "\n"
 
 
-def _registration_cpp(specs: list[KernelSpec]) -> str:
+def _operator_record(item: DiscoveredKernelSpec) -> dict[str, Any]:
+    spec = item.spec
+    semantic = parse_schema(spec.operator_schema)
+    forward = parse_schema(spec.forward.schema)
+    registrations = [
+        _registration(spec.namespace, semantic, "semantic", spec.forward.symbol),
+        _registration(spec.namespace, forward, "forward", spec.forward.symbol),
+    ]
+    if spec.backward is not None:
+        registrations.append(
+            _registration(
+                spec.namespace,
+                parse_schema(spec.backward.schema),
+                "backward",
+                spec.backward.symbol,
+            )
+        )
+    return {
+        "name": spec.name,
+        "qualified_name": spec.qualified_name,
+        "namespace": spec.namespace,
+        "family": spec.family,
+        "source": spec.source,
+        "spec_sha256": item.declaration_sha256,
+        "kernel_spec_digest": spec.digest,
+        "operator_schema": semantic.canonical,
+        "facade_outputs": list(spec.facade_outputs),
+        "fake": spec.fake,
+        "forward": _json_value(spec.forward),
+        "backward": _json_value(spec.backward),
+        "autograd_policy": spec.autograd_policy.value,
+        "composite": _json_value(spec.composite),
+        "effects": _json_value(spec.effects),
+        "launch": _json_value(spec.launch),
+        "backend": spec.backend,
+        "version": spec.version,
+        "devices": list(spec.devices),
+        "registrations": registrations,
+    }
+
+
+def _manifest(discovered: list[DiscoveredKernelSpec]) -> dict[str, Any]:
+    operators = [_operator_record(item) for item in discovered]
+    source_inventory = [
+        {
+            "source": record["source"],
+            "spec_sha256": record["spec_sha256"],
+            "kernel_spec_digest": record["kernel_spec_digest"],
+        }
+        for record in operators
+    ]
+    semantic_inventory = [
+        {
+            "qualified_name": record["qualified_name"],
+            "kernel_spec_digest": record["kernel_spec_digest"],
+        }
+        for record in operators
+    ]
+    manifest: dict[str, Any] = {
+        "schema_version": SCHEMA_VERSION,
+        "generator": {"id": GENERATOR_ID, "version": GENERATOR_VERSION},
+        "source_inventory_sha256": content_digest(source_inventory),
+        "namespace": "mindclade",
+        "registration_mode": "build_time_generated",
+        "optimized_math_authority": "tilelang",
+        "runtime_discovery": False,
+        "request_time_compilation": False,
+        "operators": operators,
+        "semantic_digest": content_digest(semantic_inventory),
+    }
+    manifest["manifest_digest"] = content_digest(manifest)
+    return manifest
+
+
+def _render_manifest(discovered: list[DiscoveredKernelSpec]) -> str:
+    return json.dumps(_manifest(discovered), indent=2, sort_keys=True, ensure_ascii=True) + "\n"
+
+
+def _render_schema_registration(discovered: list[DiscoveredKernelSpec]) -> str:
+    schemas: list[str] = []
+    for item in discovered:
+        spec = item.spec
+        schemas.extend((spec.operator_schema, spec.forward.schema))
+        if spec.backward is not None:
+            schemas.append(spec.backward.schema)
     lines = [
-        HEADER.rstrip(),
+        f"// GENERATED FILE - DO NOT EDIT. Generator: {GENERATOR_ID}@{GENERATOR_VERSION}.",
         "#include <torch/csrc/stable/library.h>",
         "",
         "STABLE_TORCH_LIBRARY(mindclade, m) {",
     ]
-    lines.extend(f'  m.def("{spec.schema}");' for spec in specs)
-    lines.append("}")
-    return "\n".join(lines) + "\n"
+    lines.extend(f"  m.def({json.dumps(parse_schema(schema).canonical)});" for schema in schemas)
+    lines.extend(("}", ""))
+    return "\n".join(lines)
 
 
-def _impl_cpp(specs: list[KernelSpec]) -> str:
+def _cpp_invocation(schema: ParsedSchema, symbol: str) -> str:
+    return f"{symbol}({', '.join(schema.argument_names)})"
+
+
+def _cpp_wrapper(name: str, schema: ParsedSchema, symbol: str) -> list[str]:
+    return [
+        f"{schema.cpp_return_type} {name}({schema.cpp_parameters}) {{",
+        f"  return {_cpp_invocation(schema, symbol)};",
+        "}",
+    ]
+
+
+def _render_operation_registry(discovered: list[DiscoveredKernelSpec]) -> str:
     lines = [
-        HEADER.rstrip(),
+        f"// GENERATED FILE - DO NOT EDIT. Generator: {GENERATOR_ID}@{GENERATOR_VERSION}.",
         "#include <cstdint>",
         "#include <torch/csrc/stable/library.h>",
         "#include <torch/csrc/stable/tensor.h>",
         "",
     ]
-    for spec in specs:
-        parsed = parse_schema(spec.schema)
-        lines.append(
-            f'extern "C" {parsed.cpp_return_type} {spec.launch_symbol}'
-            f"({parsed.cpp_parameters});"
-        )
-    if specs:
-        lines.append("")
-    lines.append("namespace mindclade::native::tilelang {")
-    for spec in specs:
-        parsed = parse_schema(spec.schema)
-        arguments = ", ".join(argument.name for argument in parsed.args)
-        lines.extend(
-            [
-                f"{parsed.cpp_return_type} {spec.name}({parsed.cpp_parameters}) {{",
-                f"  return {spec.launch_symbol}({arguments});",
-                "}",
-            ]
-        )
+    declarations: dict[str, ParsedSchema] = {}
+    for item in discovered:
+        spec = item.spec
+        declarations.setdefault(spec.forward.symbol, parse_schema(spec.forward.schema))
+        if spec.backward is not None:
+            declarations.setdefault(spec.backward.symbol, parse_schema(spec.backward.schema))
+    for symbol, schema in declarations.items():
+        lines.append(f'extern "C" {schema.cpp_return_type} {symbol}({schema.cpp_parameters});')
+
+    lines.extend(("", "namespace mindclade::native::tilelang {"))
+    implementations: list[tuple[str, str]] = []
+    for item in discovered:
+        spec = item.spec
+        semantic = parse_schema(spec.operator_schema)
+        forward = parse_schema(spec.forward.schema)
+        semantic_wrapper = f"{spec.name}_semantic"
+        forward_wrapper = f"{spec.name}_forward"
+        lines.extend(_cpp_wrapper(semantic_wrapper, semantic, spec.forward.symbol))
+        lines.extend(_cpp_wrapper(forward_wrapper, forward, spec.forward.symbol))
+        implementations.extend(((semantic.name, semantic_wrapper), (forward.name, forward_wrapper)))
+        if spec.backward is not None:
+            backward = parse_schema(spec.backward.schema)
+            backward_wrapper = f"{spec.name}_backward"
+            lines.extend(_cpp_wrapper(backward_wrapper, backward, spec.backward.symbol))
+            implementations.append((backward.name, backward_wrapper))
+    lines.extend(("}  // namespace mindclade::native::tilelang", ""))
+    lines.append("STABLE_TORCH_LIBRARY_IMPL(mindclade, CUDA, m) {")
     lines.extend(
-        [
-            "}  // namespace mindclade::native::tilelang",
-            "",
-            "STABLE_TORCH_LIBRARY_IMPL(mindclade, CUDA, m) {",
-        ]
+        f'  m.impl("{operator}", TORCH_BOX(&mindclade::native::tilelang::{wrapper}));'
+        for operator, wrapper in implementations
     )
-    lines.extend(
-        f'  m.impl("{spec.name}", TORCH_BOX(&mindclade::native::tilelang::{spec.name}));'
-        for spec in specs
-    )
-    lines.append("}")
-    return "\n".join(lines) + "\n"
+    lines.extend(("}", ""))
+    return "\n".join(lines)
 
 
-def _python_registration(specs: list[KernelSpec]) -> str:
+def _split_identity(identity: str) -> tuple[str, str]:
+    return tuple(identity.split(":", 1))  # type: ignore[return-value]
+
+
+def _render_declarative_fake(item: DiscoveredKernelSpec, index: int) -> list[str]:
+    spec = item.spec
+    schema = parse_schema(spec.operator_schema)
+    tensor_arguments = [argument.name for argument in schema.args if argument.kind == "Tensor"]
+    scalar_arguments = [argument.name for argument in schema.args if argument.kind != "Tensor"]
+    lines = [f"def _mindclade_fake_{index}({', '.join(schema.argument_names)}):"]
+    lines.append("    metadata = {" + ", ".join(f"{name!r}: {name}" for name in tensor_arguments) + "}")
+    lines.append("    scalars = {" + ", ".join(f"{name!r}: {name}" for name in scalar_arguments) + "}")
+    rendered_outputs = []
+    for output in spec.forward.outputs:
+        rendered_outputs.append(
+            "torch.empty("
+            f"{output.shape.to_python()}, dtype=_mindclade_dtype({output.dtype.to_python()}), "
+            f"device={output.device.to_python()})"
+        )
+    if len(rendered_outputs) == 1:
+        lines.append(f"    return {rendered_outputs[0]}")
+    else:
+        lines.append("    return (" + ", ".join(rendered_outputs) + ")")
+    lines.extend(("", ""))
+    return lines
+
+
+def _render_python_registration(discovered: list[DiscoveredKernelSpec]) -> str:
     lines = [
-        PY_HEADER.rstrip(),
+        f"# GENERATED FILE - DO NOT EDIT. Generator: {GENERATOR_ID}@{GENERATOR_VERSION}.",
         "from __future__ import annotations",
+        "",
+        "import torch",
         "",
         "_REGISTERED = False",
         "",
         "",
-        "def register_python_kernels() -> None:",
-        "    global _REGISTERED",
-        "    if _REGISTERED:",
-        "        return",
+        "def _mindclade_dtype(value):",
+        "    return getattr(torch, value) if isinstance(value, str) else value",
+        "",
+        "",
     ]
-    if specs:
-        lines.append("    import torch")
-    for index, spec in enumerate(specs):
-        lines.append(
-            f"    from {spec.fake.module} import {spec.fake.symbol} as _mindclade_fake_{index}"
-        )
-        lines.append(
-            f"    torch.library.register_fake({spec.qualified_name!r})(_mindclade_fake_{index})"
-        )
-        if spec.autograd.mode == "registered":
-            assert spec.autograd.setup_context is not None
-            assert spec.autograd.backward is not None
-            lines.append(
-                f"    from {spec.autograd.setup_context.module} import "
-                f"{spec.autograd.setup_context.symbol} as _mindclade_setup_context_{index}"
+    fake_names: list[str] = []
+    autograd: list[tuple[str, str] | None] = []
+    none_wrappers: list[tuple[str, str]] = []
+    for index, item in enumerate(discovered):
+        spec = item.spec
+        if spec.fake is None:
+            lines.extend(_render_declarative_fake(item, index))
+        else:
+            module, symbol = _split_identity(spec.fake)
+            lines.append(f"from {module} import {symbol} as _mindclade_fake_{index}")
+        fake_names.append(f"_mindclade_fake_{index}")
+        if spec.autograd_policy is AutogradPolicy.COMPOSITE:
+            assert spec.composite is not None
+            setup_module, setup_symbol = _split_identity(spec.composite.setup_context or "")
+            backward_module, backward_symbol = _split_identity(spec.composite.backward or "")
+            setup_alias = f"_mindclade_setup_context_{index}"
+            raw_backward = f"_mindclade_raw_backward_{index}"
+            wrapper = f"_mindclade_backward_{index}"
+            lines.append(f"from {setup_module} import {setup_symbol} as {setup_alias}")
+            lines.append(f"from {backward_module} import {backward_symbol} as {raw_backward}")
+            lines.extend(
+                (
+                    "",
+                    f"def {wrapper}(ctx, *grad_outputs):",
+                    "    if torch.is_grad_enabled() and any(",
+                    "        gradient is not None and gradient.requires_grad",
+                    "        for gradient in grad_outputs",
+                    "    ):",
+                    f"        raise RuntimeError({('mindclade::' + spec.name + ' does not support double backward')!r})",
+                    f"    return {raw_backward}(ctx, *grad_outputs)",
+                    "",
+                    "",
+                )
             )
-            lines.append(
-                f"    from {spec.autograd.backward.module} import "
-                f"{spec.autograd.backward.symbol} as _mindclade_backward_{index}"
+            autograd.append((setup_alias, wrapper))
+        elif spec.autograd_policy is AutogradPolicy.NONE:
+            wrapper = f"_mindclade_no_autograd_{index}"
+            lines.extend(
+                (
+                    "",
+                    f"def {wrapper}(ctx, *grad_outputs):",
+                    "    del ctx, grad_outputs",
+                    f"    raise RuntimeError({(spec.qualified_name + ' is non-differentiable')!r})",
+                    "",
+                    "",
+                )
             )
+            none_wrappers.append((spec.qualified_name, wrapper))
+            autograd.append(None)
+        else:
+            autograd.append(None)
+
+    lines.extend(("def register_python_kernels() -> None:", "    global _REGISTERED", "    if _REGISTERED:", "        return"))
+    for index, item in enumerate(discovered):
+        spec = item.spec
+        fake_name = fake_names[index]
+        forward_name = parse_schema(spec.forward.schema).name
+        lines.append(f"    torch.library.register_fake({spec.qualified_name!r})({fake_name})")
+        lines.append(f"    torch.library.register_fake({(spec.namespace + '::' + forward_name)!r})({fake_name})")
+        if spec.autograd_policy is AutogradPolicy.COMPOSITE:
+            setup_alias, wrapper = autograd[index] or ("", "")
             lines.append(
-                f"    torch.library.register_autograd({spec.qualified_name!r}, "
-                f"_mindclade_backward_{index}, setup_context=_mindclade_setup_context_{index})"
+                f"    torch.library.register_autograd({spec.qualified_name!r}, {wrapper}, setup_context={setup_alias})"
             )
-    lines.extend(["    _REGISTERED = True", ""])
+        elif spec.autograd_policy is AutogradPolicy.REQUIRED:
+            message = (
+                f"{spec.qualified_name} requires generated named provider-argument roles "
+                "before native autograd registration"
+            )
+            lines.append(f"    raise RuntimeError({message!r})")
+        else:
+            wrapper = next(value for qualified, value in none_wrappers if qualified == spec.qualified_name)
+            lines.append(f"    torch.library.register_autograd({spec.qualified_name!r}, {wrapper})")
+    lines.extend(("    _REGISTERED = True", ""))
     return "\n".join(lines)
 
 
-def _cmake(specs: list[KernelSpec]) -> str:
-    lines = [
-        PY_HEADER.rstrip(),
-        "set(MINDCLADE_TILELANG_KERNEL_SOURCES",
-    ]
-    lines.extend(
-        f'  "${{CMAKE_CURRENT_LIST_DIR}}/../../{spec.source}"' for spec in specs
-    )
-    lines.append(")")
-    return "\n".join(lines) + "\n"
+def _source_rows(discovered: list[DiscoveredKernelSpec]) -> tuple[list[str], list[str]]:
+    specs = [item.spec.source for item in discovered]
+    builders = [source.replace("/spec.py", "/tilelang.py") for source in specs]
+    return specs, builders
 
 
-def _bzl(specs: list[KernelSpec]) -> str:
-    lines = [PY_HEADER.rstrip(), "MINDCLADE_TILELANG_KERNEL_SOURCES = ["]
-    for spec in specs:
-        source = Path(spec.source)
-        lines.append(f'    "//kernels/{source.parent.as_posix()}:{source.name}",')
-    lines.append("]")
-    return "\n".join(lines) + "\n"
+def _render_bzl(discovered: list[DiscoveredKernelSpec]) -> str:
+    specs, builders = _source_rows(discovered)
+    lines = [f"# GENERATED FILE - DO NOT EDIT. Generator: {GENERATOR_ID}@{GENERATOR_VERSION}."]
+    for variable, sources in (("MINDCLADE_KERNEL_SPEC_SOURCES", specs), ("MINDCLADE_TILELANG_KERNEL_SOURCES", builders)):
+        lines.append(f"{variable} = [")
+        for source in sources:
+            package, filename = source.rsplit("/", 1)
+            lines.append(f'    "//kernels/{package}:{filename}",')
+        lines.extend(("]", ""))
+    return "\n".join(lines)
+
+
+def _render_cmake(discovered: list[DiscoveredKernelSpec]) -> str:
+    specs, builders = _source_rows(discovered)
+    lines = [f"# GENERATED FILE - DO NOT EDIT. Generator: {GENERATOR_ID}@{GENERATOR_VERSION}."]
+    for variable, sources in (("MINDCLADE_KERNEL_SPEC_SOURCES", specs), ("MINDCLADE_TILELANG_KERNEL_SOURCES", builders)):
+        lines.append(f"set({variable}")
+        lines.extend(f'  "${{CMAKE_CURRENT_LIST_DIR}}/../../{source}"' for source in sources)
+        lines.append(")")
+    lines.append("")
+    return "\n".join(lines)
 
 
 def render_all(
     native_root: Path,
     *,
-    source_files: Iterable[str | Path],
+    source_files: tuple[str | Path, ...] | list[str | Path],
 ) -> dict[str, str]:
-    """Purely render every projection from the explicit source inventory."""
+    """Render every owned v3 surface from an explicit relative inventory."""
 
-    if native_root.is_symlink():
-        raise ValueError(f"native root must not be a symlink: {native_root}")
-    try:
-        root = native_root.resolve(strict=True)
-    except (FileNotFoundError, RuntimeError) as exc:
-        raise ValueError(f"native root does not exist: {native_root}") from exc
-    specs = discover_specs(root.parent, source_files)
+    native_root = Path(native_root)
+    discovered = discover_specs(native_root.parent, source_files)
     return {
-        "native_ops.json": _manifest(specs),
-        "registration.generated.cpp": _registration_cpp(specs),
-        "operation_registry.generated.cpp": _impl_cpp(specs),
-        "python_registration_generated.py": _python_registration(specs),
-        "native_ops.generated.cmake": _cmake(specs),
-        "native_ops.generated.bzl": _bzl(specs),
+        "native_ops.json": _render_manifest(discovered),
+        "registration.generated.cpp": _render_schema_registration(discovered),
+        "operation_registry.generated.cpp": _render_operation_registry(discovered),
+        "python_registration_generated.py": _render_python_registration(discovered),
+        "native_ops.generated.cmake": _render_cmake(discovered),
+        "native_ops.generated.bzl": _render_bzl(discovered),
     }
 
 
-def _validate_rendered(rendered: Mapping[str, str]) -> None:
-    if set(rendered) != set(GENERATED_FILENAMES):
-        raise ValueError("rendered outputs do not match the exact generated filename contract")
-    if not all(isinstance(value, str) for value in rendered.values()):
-        raise ValueError("all generated outputs must be text")
+def write_outputs(rendered: dict[str, str], output_dir: Path) -> None:
+    """Atomically replace each generated text surface."""
 
-
-def _atomic_write(path: Path, content: str) -> None:
-    encoded = content.encode("utf-8")
-    temporary_name: str | None = None
-    try:
-        with tempfile.NamedTemporaryFile(
-            mode="wb",
-            prefix=f".{path.name}.",
-            suffix=".tmp",
-            dir=path.parent,
-            delete=False,
-        ) as temporary:
-            temporary_name = temporary.name
-            temporary.write(encoded)
-            temporary.flush()
-            os.fsync(temporary.fileno())
-        os.chmod(temporary_name, 0o644)
-        os.replace(temporary_name, path)
-        temporary_name = None
-    finally:
-        if temporary_name is not None:
-            Path(temporary_name).unlink(missing_ok=True)
-
-
-def write_outputs(rendered: Mapping[str, str], output_dir: Path) -> tuple[Path, ...]:
-    """Atomically replace each declared generated output."""
-
-    _validate_rendered(rendered)
     output_dir.mkdir(parents=True, exist_ok=True)
-    paths: list[Path] = []
     for name in GENERATED_FILENAMES:
-        path = output_dir / name
-        _atomic_write(path, rendered[name])
-        paths.append(path)
-    for legacy_name in LEGACY_FILENAMES:
-        (output_dir / legacy_name).unlink(missing_ok=True)
-    return tuple(paths)
+        destination = output_dir / name
+        temporary = output_dir / f".{name}.tmp"
+        temporary.write_text(rendered[name], encoding="utf-8", newline="\n")
+        temporary.replace(destination)
 
 
-def check_outputs(rendered: Mapping[str, str], output_dir: Path) -> tuple[str, ...]:
-    """Return byte-drift diagnostics without mutating the filesystem."""
+def check_outputs(rendered: dict[str, str], output_dir: Path) -> tuple[str, ...]:
+    """Return deterministic drift diagnostics without mutating the tree."""
 
-    _validate_rendered(rendered)
-    if not output_dir.is_dir():
-        return (f"generated output directory is missing: {output_dir}",)
     errors: list[str] = []
-    actual_entries = {entry.name for entry in output_dir.iterdir()}
-    unexpected = sorted(actual_entries - set(GENERATED_FILENAMES) - _NON_GENERATED_ENTRIES)
-    errors.extend(f"unexpected generated entry: {name}" for name in unexpected)
     for name in GENERATED_FILENAMES:
         path = output_dir / name
         if not path.is_file():
             errors.append(f"missing generated output: {name}")
-        elif path.read_bytes() != rendered[name].encode("utf-8"):
+        elif path.read_text(encoding="utf-8") != rendered[name]:
             errors.append(f"generated output drift: {name}")
+    legacy = output_dir / "python_registration.generated.py"
+    if legacy.exists():
+        errors.append(f"legacy generated output must be removed: {legacy.name}")
     return tuple(errors)
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Render deterministic Mindclade native bindings")
-    parser.add_argument(
-        "--native-root",
-        type=Path,
-        default=Path(__file__).resolve().parents[1],
-    )
-    parser.add_argument("--output", type=Path)
-    parser.add_argument(
-        "--source",
-        action="append",
-        default=[],
-        type=Path,
-        help="explicit Bazel-declared source, relative to the kernels root or absolute",
-    )
-    action = parser.add_mutually_exclusive_group(required=True)
-    action.add_argument("--write", action="store_true")
-    action.add_argument("--check", action="store_true")
-    args = parser.parse_args(argv)
-
-    output = args.output or args.native_root / "generated"
-    rendered = render_all(args.native_root, source_files=args.source)
-    if args.write:
-        for path in write_outputs(rendered, output):
-            print(path)
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--check", action="store_true")
+    arguments = parser.parse_args(argv)
+    native_root = Path(__file__).resolve().parents[1]
+    rendered = render_all(native_root, source_files=DEFAULT_SPEC_SOURCES)
+    output = native_root / "generated"
+    if arguments.check:
+        errors = check_outputs(rendered, output)
+        if errors:
+            parser.error("; ".join(errors))
         return 0
-    errors = check_outputs(rendered, output)
-    for error in errors:
-        print(error, file=sys.stderr)
-    return 1 if errors else 0
+    write_outputs(rendered, output)
+    return 0
 
 
 if __name__ == "__main__":

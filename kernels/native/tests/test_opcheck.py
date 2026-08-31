@@ -16,40 +16,63 @@ EXPECTED_DECLARED_TILELANG_OPERATORS = (
     (
         "outer_product_mean",
         "tilelang",
-        "pairformer/outer_product_mean/tilelang.py",
+        "pairformer/outer_product_mean/spec.py",
     ),
     (
         "pair_weighted_average",
         "tilelang",
-        "pairformer/pair_weighted_average/tilelang.py",
-    ),
-    (
-        "triangle_attention",
-        "tilelang",
-        "pairformer/triangle_attention/tilelang.py",
-    ),
-    (
-        "triangle_multiplication",
-        "tilelang",
-        "pairformer/triangle_multiplication/tilelang.py",
+        "pairformer/pair_weighted_average/spec.py",
     ),
     (
         "transition",
         "tilelang",
-        "pairformer/transition/tilelang.py",
+        "pairformer/transition/spec.py",
+    ),
+    (
+        "triangle_attention",
+        "tilelang",
+        "pairformer/triangle_attention/spec.py",
+    ),
+    (
+        "triangle_multiplication",
+        "tilelang",
+        "pairformer/triangle_multiplication/spec.py",
     ),
 )
 
 
 def _operator() -> loader._ManifestOperator:
+    semantic = loader._ManifestRegistration(
+        qualified_name="mindclade::example_op",
+        schema="example_op(Tensor input) -> Tensor output",
+        kind="semantic",
+        implementation_symbol="mindclade_tilelang_example_op_fwd_launch",
+    )
+    forward = loader._ManifestRegistration(
+        qualified_name="mindclade::_example_op_fwd",
+        schema="_example_op_fwd(Tensor input) -> Tensor output",
+        kind="forward",
+        implementation_symbol="mindclade_tilelang_example_op_fwd_launch",
+    )
     return loader._ManifestOperator(
         name="example_op",
         qualified_name="mindclade::example_op",
-        schema="example_op(Tensor input) -> Tensor",
         version=1,
         devices=("cuda",),
-        autograd_mode="not_supported",
+        autograd_policy="none",
+        registrations=(semantic, forward),
     )
+
+
+def _registration_names(operator: loader._ManifestOperator) -> frozenset[str]:
+    return frozenset(item.qualified_name for item in operator.registrations)
+
+
+def _schemas(operator: loader._ManifestOperator) -> dict[str, str]:
+    return {
+        item.qualified_name: loader._qualified_schema(item.schema)
+        for item in operator.registrations
+    }
 
 
 def test_declared_unqualified_inventory_makes_no_opcheck_claim():
@@ -75,12 +98,17 @@ def test_exact_dispatcher_schema_is_required(monkeypatch):
             "Tensor input, bool changed) -> Tensor"
         ),
     )
+    monkeypatch.setattr(
+        loader,
+        "_public_operator_overloads",
+        lambda _name: ("default",),
+    )
     with pytest.raises(
         loader.NativeOperatorRegistrationError,
         match="schema mismatch",
     ):
         loader._reconcile_dispatcher(
-            (operator,), frozenset({operator.qualified_name})
+            (operator,), _registration_names(operator)
         )
 
 
@@ -89,7 +117,7 @@ def test_default_overload_is_the_only_allowed(monkeypatch):
     monkeypatch.setattr(
         loader,
         "_dispatcher_schema",
-        lambda _name: loader._expected_schema(operator),
+        _schemas(operator).__getitem__,
     )
     monkeypatch.setattr(
         loader,
@@ -101,7 +129,7 @@ def test_default_overload_is_the_only_allowed(monkeypatch):
         match="undeclared overloads",
     ):
         loader._reconcile_dispatcher(
-            (operator,), frozenset({operator.qualified_name})
+            (operator,), _registration_names(operator)
         )
 
 
@@ -110,7 +138,7 @@ def test_declared_cuda_dispatch_is_required(monkeypatch):
     monkeypatch.setattr(
         loader,
         "_dispatcher_schema",
-        lambda _name: loader._expected_schema(operator),
+        _schemas(operator).__getitem__,
     )
     monkeypatch.setattr(
         loader,
@@ -126,5 +154,5 @@ def test_declared_cuda_dispatch_is_required(monkeypatch):
         loader.NativeOperatorRegistrationError, match="CUDA"
     ):
         loader._reconcile_dispatcher(
-            (operator,), frozenset({operator.qualified_name})
+            (operator,), _registration_names(operator)
         )

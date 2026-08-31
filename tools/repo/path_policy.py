@@ -28,9 +28,9 @@ BLUEPRINT_SHA256 = "d099074e755168bbdce076d50918bf06aff677f9e5d620fdfe53cb7cef74
 ANCHOR_COMMIT = "292b71f47b1b29cc9ba7cf760a9bd07cd5e0ffa7"
 AUTHORITY_FILE_COUNT = 2461
 AUTHORITY_DIRECTORY_COUNT = 787
-CANONICAL_FILE_COUNT = 2635
+CANONICAL_FILE_COUNT = 2636
 AUTHORITY_PATH_SET_SHA256 = "f2011dd32ccc19649e6abb70ffb4473aea4a224410062d40292222e2e6263692"
-CANONICAL_PATH_SET_SHA256 = "ff120059aea6b94d895ef4bf9a67aed0ed83ad47f2c4d1231e71d552d7ab9640"
+CANONICAL_PATH_SET_SHA256 = "9e474e6a293bc9e367d31d3912000df45595f60761836e27b3f64bcc3689fd98"
 
 ADR_REPLACEMENTS = {
     "docs/adr/0001-repository-identity.md": "docs/adr/0001-repository-identity-and-ownership.md",
@@ -113,6 +113,7 @@ NATIVE_SOURCE_INCUBATION_PATHS = (
     "kernels/native/tests/test_parse_literal_ast.py",
     "kernels/native/tests/test_policy.py",
     "kernels/native/tests/test_qualification.py",
+    "kernels/native/tests/test_schema.py",
     "kernels/native/tests/test_reference_runtime.py",
     "kernels/native/tests/test_schema_manifest.py",
     "kernels/native/tilelang/README.md",
@@ -273,6 +274,7 @@ NATIVE_CODEGEN_TEST_LABELS = (
     "//kernels/native:test_discovery",
     "//kernels/native:test_manifest",
     "//kernels/native:test_parse_literal_ast",
+    "//kernels/native:test_schema",
     "//kernels/native:test_schema_manifest",
 )
 NATIVE_ACTIVATION_CRITERION = (

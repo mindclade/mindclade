@@ -46,29 +46,38 @@ _MANIFEST_KEYS = frozenset(
         "request_time_compilation",
         "operators",
         "semantic_digest",
+        "manifest_digest",
     }
 )
 _OPERATOR_KEYS = frozenset(
     {
         "name",
         "qualified_name",
-        "schema",
+        "namespace",
         "family",
         "source",
-        "source_sha256",
+        "spec_sha256",
+        "kernel_spec_digest",
+        "operator_schema",
+        "facade_outputs",
         "fake",
-        "namespace",
+        "forward",
+        "backward",
+        "autograd_policy",
+        "composite",
+        "effects",
+        "launch",
         "backend",
         "version",
-        "launch_symbol",
-        "autograd",
         "devices",
+        "registrations",
     }
 )
-_CALLABLE_KEYS = frozenset({"module", "symbol"})
-_REGISTERED_AUTOGRAD_KEYS = frozenset(
-    {"mode", "setup_context", "backward"}
+_REGISTRATION_KEYS = frozenset(
+    {"qualified_name", "schema", "kind", "implementation_symbol"}
 )
+_REGISTRATION_KINDS = ("semantic", "forward", "backward")
+_AUTOGRAD_POLICIES = frozenset({"required", "none", "composite"})
 _DEVICE_DISPATCH_KEYS = {"cuda": "CUDA"}
 _CONTROLLED_DISPATCH_KEYS = frozenset(
     {
@@ -235,13 +244,21 @@ SignatureVerifier = Callable[
 
 
 @dataclass(frozen=True, slots=True)
+class _ManifestRegistration:
+    qualified_name: str
+    schema: str
+    kind: str
+    implementation_symbol: str
+
+
+@dataclass(frozen=True, slots=True)
 class _ManifestOperator:
     name: str
     qualified_name: str
-    schema: str
     version: int
     devices: tuple[str, ...]
-    autograd_mode: str
+    autograd_policy: str
+    registrations: tuple[_ManifestRegistration, ...]
 
 
 @dataclass(frozen=True, slots=True)
@@ -398,22 +415,86 @@ def _exact_keys(
         )
 
 
-def _validate_callable(
-    value: object, *, operation: str, label: str
-) -> None:
+def _validate_python_identity(value: object, label: str) -> None:
+    if value is None:
+        return
+    if not isinstance(value, str) or value.count(":") != 1:
+        raise NativeBundleVerificationError(
+            f"{label} must be a module:function identity or null"
+        )
+    module, symbol = value.split(":", 1)
+    if _MODULE_RE.fullmatch(module) is None or _IDENTIFIER_RE.fullmatch(symbol) is None:
+        raise NativeBundleVerificationError(f"{label} is invalid")
+
+
+def _validate_schema(value: object, qualified_name: str, label: str) -> str:
+    if not isinstance(value, str):
+        raise NativeBundleVerificationError(f"{label} must be a string")
+    bare_name = qualified_name.split("::", 1)[1]
+    if not (
+        value.startswith(f"{bare_name}(")
+        or value.startswith(f"mindclade::{bare_name}(")
+    ):
+        raise NativeBundleVerificationError(
+            f"{label} is not the default schema for {qualified_name}"
+        )
+    if " -> " not in value:
+        raise NativeBundleVerificationError(f"{label} has no return contract")
+    return value
+
+
+def _qualified_schema(schema: str) -> str:
+    return schema if schema.startswith("mindclade::") else f"mindclade::{schema}"
+
+
+def _contract_field(
+    value: object, key: str, label: str, *, required: bool = True
+) -> object:
     if not isinstance(value, Mapping):
         raise NativeBundleVerificationError(f"{label} must be an object")
-    _exact_keys(value, _CALLABLE_KEYS, label)
-    module = value["module"]
-    symbol = value["symbol"]
-    if not isinstance(module, str) or _MODULE_RE.fullmatch(module) is None:
-        raise NativeBundleVerificationError(f"{label}.module is invalid")
-    if operation not in module.split("."):
+    if required and key not in value:
+        raise NativeBundleVerificationError(f"{label}.{key} is required")
+    return value.get(key)
+
+
+def _parse_registration(
+    value: object,
+    *,
+    operation: str,
+    index: int,
+) -> _ManifestRegistration:
+    label = f"operators[{operation}].registrations[{index}]"
+    if not isinstance(value, Mapping):
+        raise NativeBundleVerificationError(f"{label} must be an object")
+    _exact_keys(value, _REGISTRATION_KEYS, label)
+    kind = value["kind"]
+    if kind not in _REGISTRATION_KINDS:
+        raise NativeBundleVerificationError(f"{label}.kind is invalid")
+    suffix = {
+        "semantic": operation,
+        "forward": f"_{operation}_fwd",
+        "backward": f"_{operation}_bwd",
+    }[kind]
+    qualified_name = value["qualified_name"]
+    if qualified_name != f"mindclade::{suffix}":
         raise NativeBundleVerificationError(
-            f"{label}.module must be operation-local"
+            f"{label}.qualified_name does not match its kind"
         )
-    if not isinstance(symbol, str) or _IDENTIFIER_RE.fullmatch(symbol) is None:
-        raise NativeBundleVerificationError(f"{label}.symbol is invalid")
+    schema = _validate_schema(value["schema"], qualified_name, f"{label}.schema")
+    implementation_symbol = value["implementation_symbol"]
+    if (
+        not isinstance(implementation_symbol, str)
+        or _IDENTIFIER_RE.fullmatch(implementation_symbol) is None
+    ):
+        raise NativeBundleVerificationError(
+            f"{label}.implementation_symbol is invalid"
+        )
+    return _ManifestRegistration(
+        qualified_name=qualified_name,
+        schema=schema,
+        kind=kind,
+        implementation_symbol=implementation_symbol,
+    )
 
 
 def _parse_operator(value: object, index: int) -> _ManifestOperator:
@@ -431,29 +512,35 @@ def _parse_operator(value: object, index: int) -> _ManifestOperator:
         raise NativeBundleVerificationError(
             f"{label}.qualified_name does not match its namespace and name"
         )
-    schema = value["schema"]
-    if not isinstance(schema, str) or not (
-        schema.startswith(f"{name}(")
-        or schema.startswith(f"mindclade::{name}(")
-    ):
-        raise NativeBundleVerificationError(
-            f"{label}.schema is not the default overload"
-        )
-    if " -> " not in schema:
-        raise NativeBundleVerificationError(f"{label}.schema has no return contract")
+    operator_schema = _validate_schema(
+        value["operator_schema"], qualified_name, f"{label}.operator_schema"
+    )
     family = value["family"]
     if not isinstance(family, str) or _OPERATOR_RE.fullmatch(family) is None:
         raise NativeBundleVerificationError(f"{label}.family is invalid")
     source = _require_relative_path(value["source"], f"{label}.source")
     source_parts = PurePosixPath(source).parts
     if (
-        PurePosixPath(source).suffix != ".py"
-        or family not in source_parts
-        or name not in source_parts
+        len(source_parts) < 3
+        or source_parts[-3:] != (family, name, "spec.py")
     ):
         raise NativeBundleVerificationError(f"{label}.source is not operation-local")
-    _require_digest(value["source_sha256"], f"{label}.source_sha256")
-    _validate_callable(value["fake"], operation=name, label=f"{label}.fake")
+    _require_digest(value["spec_sha256"], f"{label}.spec_sha256")
+    _require_digest(value["kernel_spec_digest"], f"{label}.kernel_spec_digest")
+    facade_outputs = value["facade_outputs"]
+    if (
+        not isinstance(facade_outputs, list)
+        or any(
+            not isinstance(output, str)
+            or _IDENTIFIER_RE.fullmatch(output) is None
+            for output in facade_outputs
+        )
+        or len(facade_outputs) != len(set(facade_outputs))
+    ):
+        raise NativeBundleVerificationError(
+            f"{label}.facade_outputs must be unique identifiers"
+        )
+    _validate_python_identity(value["fake"], f"{label}.fake")
     if value["backend"] != "tilelang":
         raise NativeBundleVerificationError(f"{label}.backend must be tilelang")
     version = value["version"]
@@ -461,12 +548,6 @@ def _parse_operator(value: object, index: int) -> _ManifestOperator:
         raise NativeBundleVerificationError(
             f"{label}.version must be a positive integer"
         )
-    launch_symbol = value["launch_symbol"]
-    if (
-        not isinstance(launch_symbol, str)
-        or _IDENTIFIER_RE.fullmatch(launch_symbol) is None
-    ):
-        raise NativeBundleVerificationError(f"{label}.launch_symbol is invalid")
     devices = value["devices"]
     if not isinstance(devices, list) or not devices:
         raise NativeBundleVerificationError(
@@ -483,35 +564,110 @@ def _parse_operator(value: object, index: int) -> _ManifestOperator:
         raise NativeBundleVerificationError(
             f"{label}.devices is not a positive allowlist"
         )
-    autograd = value["autograd"]
-    if not isinstance(autograd, Mapping):
-        raise NativeBundleVerificationError(f"{label}.autograd must be an object")
-    mode = autograd.get("mode")
-    if mode == "not_supported":
-        _exact_keys(autograd, frozenset({"mode"}), f"{label}.autograd")
-    elif mode == "registered":
-        _exact_keys(
-            autograd, _REGISTERED_AUTOGRAD_KEYS, f"{label}.autograd"
+    autograd_policy = value["autograd_policy"]
+    if autograd_policy not in _AUTOGRAD_POLICIES:
+        raise NativeBundleVerificationError(
+            f"{label}.autograd_policy is invalid"
         )
-        _validate_callable(
-            autograd["setup_context"],
-            operation=name,
-            label=f"{label}.autograd.setup_context",
+    forward = value["forward"]
+    forward_schema = _validate_schema(
+        _contract_field(forward, "schema", f"{label}.forward"),
+        f"mindclade::_{name}_fwd",
+        f"{label}.forward.schema",
+    )
+    forward_symbol = _contract_field(forward, "symbol", f"{label}.forward")
+    if not isinstance(forward_symbol, str) or _IDENTIFIER_RE.fullmatch(forward_symbol) is None:
+        raise NativeBundleVerificationError(f"{label}.forward.symbol is invalid")
+    backward = value["backward"]
+    composite = value["composite"]
+    if autograd_policy == "required":
+        if not isinstance(backward, Mapping) or composite is not None:
+            raise NativeBundleVerificationError(
+                f"{label} REQUIRED autograd needs native backward and no composite"
+            )
+    elif autograd_policy == "composite":
+        if backward is not None or not isinstance(composite, Mapping):
+            raise NativeBundleVerificationError(
+                f"{label} COMPOSITE autograd needs a composite and no native backward"
+            )
+    elif backward is not None or composite is not None:
+        raise NativeBundleVerificationError(
+            f"{label} NONE autograd cannot declare backward or composite"
         )
-        _validate_callable(
-            autograd["backward"],
-            operation=name,
-            label=f"{label}.autograd.backward",
+    backward_schema: str | None = None
+    backward_symbol: str | None = None
+    if isinstance(backward, Mapping):
+        backward_schema = _validate_schema(
+            _contract_field(backward, "schema", f"{label}.backward"),
+            f"mindclade::_{name}_bwd",
+            f"{label}.backward.schema",
         )
-    else:
-        raise NativeBundleVerificationError(f"{label}.autograd.mode is invalid")
+        raw_backward_symbol = _contract_field(
+            backward, "symbol", f"{label}.backward"
+        )
+        if (
+            not isinstance(raw_backward_symbol, str)
+            or _IDENTIFIER_RE.fullmatch(raw_backward_symbol) is None
+        ):
+            raise NativeBundleVerificationError(
+                f"{label}.backward.symbol is invalid"
+            )
+        backward_symbol = raw_backward_symbol
+    if not isinstance(value["effects"], Mapping):
+        raise NativeBundleVerificationError(f"{label}.effects must be an object")
+    if not isinstance(value["launch"], Mapping):
+        raise NativeBundleVerificationError(f"{label}.launch must be an object")
+    registrations_value = value["registrations"]
+    if not isinstance(registrations_value, list):
+        raise NativeBundleVerificationError(
+            f"{label}.registrations must be an array"
+        )
+    registrations = tuple(
+        _parse_registration(item, operation=name, index=registration_index)
+        for registration_index, item in enumerate(registrations_value)
+    )
+    expected_kinds = (
+        ("semantic", "forward", "backward")
+        if autograd_policy == "required"
+        else ("semantic", "forward")
+    )
+    if tuple(registration.kind for registration in registrations) != expected_kinds:
+        raise NativeBundleVerificationError(
+            f"{label}.registrations must be canonically ordered as {expected_kinds}"
+        )
+    by_kind = {registration.kind: registration for registration in registrations}
+    if len(by_kind) != len(registrations):
+        raise NativeBundleVerificationError(
+            f"{label}.registrations contains duplicate kinds"
+        )
+    if _qualified_schema(by_kind["semantic"].schema) != _qualified_schema(operator_schema):
+        raise NativeBundleVerificationError(
+            f"{label} semantic registration schema differs from operator_schema"
+        )
+    if _qualified_schema(by_kind["forward"].schema) != _qualified_schema(forward_schema):
+        raise NativeBundleVerificationError(
+            f"{label} forward registration schema differs from ForwardSpec"
+        )
+    if by_kind["forward"].implementation_symbol != forward_symbol:
+        raise NativeBundleVerificationError(
+            f"{label} forward registration symbol differs from ForwardSpec"
+        )
+    if backward_schema is not None:
+        if _qualified_schema(by_kind["backward"].schema) != _qualified_schema(backward_schema):
+            raise NativeBundleVerificationError(
+                f"{label} backward registration schema differs from BackwardSpec"
+            )
+        if by_kind["backward"].implementation_symbol != backward_symbol:
+            raise NativeBundleVerificationError(
+                f"{label} backward registration symbol differs from BackwardSpec"
+            )
     return _ManifestOperator(
         name=name,
         qualified_name=qualified_name,
-        schema=schema,
         version=version,
         devices=tuple(devices),
-        autograd_mode=mode,
+        autograd_policy=autograd_policy,
+        registrations=registrations,
     )
 
 
@@ -531,13 +687,13 @@ def _parse_manifest(
     if not isinstance(manifest, Mapping):
         raise NativeBundleVerificationError("native manifest must be an object")
     _exact_keys(manifest, _MANIFEST_KEYS, "native manifest")
-    if manifest["schema_version"] != 2:
+    if manifest["schema_version"] != 3:
         raise NativeBundleVerificationError(
-            "native manifest schema_version must be 2"
+            "native manifest schema_version must be 3"
         )
     if manifest["generator"] != {
         "id": "kernels.native.codegen.generate",
-        "version": 2,
+        "version": 3,
     }:
         raise NativeBundleVerificationError(
             "native manifest generator is unsupported"
@@ -563,16 +719,6 @@ def _parse_manifest(
         raise NativeBundleVerificationError(
             "request-time compilation is prohibited"
         )
-    semantic_digest = _require_digest(
-        manifest["semantic_digest"], "semantic_digest"
-    )
-    semantic_input = dict(manifest)
-    del semantic_input["semantic_digest"]
-    calculated = _sha256_bytes(_canonical_json(semantic_input))
-    if not hmac.compare_digest(semantic_digest, calculated):
-        raise NativeBundleVerificationError(
-            "native manifest semantic digest mismatch"
-        )
     raw_operators = manifest["operators"]
     if not isinstance(raw_operators, list):
         raise NativeBundleVerificationError(
@@ -586,6 +732,68 @@ def _parse_manifest(
     if names != sorted(names) or len(names) != len(set(names)):
         raise NativeBundleVerificationError(
             "native manifest operators must be unique and canonically ordered"
+        )
+    sources = [value["source"] for value in raw_operators]
+    if len(sources) != len(set(sources)):
+        raise NativeBundleVerificationError(
+            "native manifest operator sources must be unique"
+        )
+    all_registrations = [
+        registration.qualified_name
+        for operator in operators
+        for registration in operator.registrations
+    ]
+    if len(all_registrations) != len(set(all_registrations)):
+        raise NativeBundleVerificationError(
+            "native manifest registrations must be globally unique"
+        )
+    semantic_input = [
+        {
+            "qualified_name": value["qualified_name"],
+            "kernel_spec_digest": value["kernel_spec_digest"],
+        }
+        for value in raw_operators
+    ]
+    semantic_digest = _require_digest(
+        manifest["semantic_digest"], "semantic_digest"
+    )
+    if not hmac.compare_digest(
+        semantic_digest, _sha256_bytes(_canonical_json(semantic_input))
+    ):
+        raise NativeBundleVerificationError(
+            "native manifest semantic digest mismatch"
+        )
+    source_inventory = sorted(
+        (
+            {
+                "source": value["source"],
+                "spec_sha256": value["spec_sha256"],
+                "kernel_spec_digest": value["kernel_spec_digest"],
+            }
+            for value in raw_operators
+        ),
+        key=lambda item: item["source"],
+    )
+    source_inventory_digest = _require_digest(
+        manifest["source_inventory_sha256"], "source_inventory_sha256"
+    )
+    if not hmac.compare_digest(
+        source_inventory_digest,
+        _sha256_bytes(_canonical_json(source_inventory)),
+    ):
+        raise NativeBundleVerificationError(
+            "native manifest source inventory digest mismatch"
+        )
+    manifest_digest = _require_digest(
+        manifest["manifest_digest"], "manifest_digest"
+    )
+    manifest_input = dict(manifest)
+    del manifest_input["manifest_digest"]
+    if not hmac.compare_digest(
+        manifest_digest, _sha256_bytes(_canonical_json(manifest_input))
+    ):
+        raise NativeBundleVerificationError(
+            "native manifest digest mismatch"
         )
     if activation_policy is BundleActivationPolicy.TARGET_EMPTY and operators:
         raise NativeBundleVerificationError(
@@ -734,19 +942,15 @@ def _public_operator_overloads(name: str) -> tuple[str, ...]:
         ) from exc
 
 
-def _expected_schema(operator: _ManifestOperator) -> str:
-    if operator.schema.startswith("mindclade::"):
-        return operator.schema
-    return f"mindclade::{operator.schema}"
-
-
 def _require_new_operator_set(
     before: frozenset[str],
     after: frozenset[str],
     operators: tuple[_ManifestOperator, ...],
 ) -> None:
     expected = frozenset(
-        operator.qualified_name for operator in operators
+        registration.qualified_name
+        for operator in operators
+        for registration in operator.registrations
     )
     existing_mindclade = frozenset(
         name for name in before if name.startswith("mindclade::")
@@ -771,7 +975,9 @@ def _reconcile_dispatcher(
     snapshot: frozenset[str],
 ) -> None:
     expected_names = frozenset(
-        operator.qualified_name for operator in operators
+        registration.qualified_name
+        for operator in operators
+        for registration in operator.registrations
     )
     actual_names = frozenset(
         name for name in snapshot if name.startswith("mindclade::")
@@ -784,39 +990,43 @@ def _reconcile_dispatcher(
             f"manifest; missing={missing}, unexpected={unexpected}"
         )
     for operator in operators:
-        actual_schema = _dispatcher_schema(operator.qualified_name)
-        expected_schema = _expected_schema(operator)
-        if actual_schema != expected_schema:
-            raise NativeOperatorRegistrationError(
-                f"schema mismatch for {operator.qualified_name}: "
-                f"expected {expected_schema!r}, got {actual_schema!r}"
-            )
         overloads = _public_operator_overloads(operator.name)
         if overloads != ("default",):
             raise NativeOperatorRegistrationError(
                 f"{operator.qualified_name} exposes undeclared overloads: "
                 f"{overloads}"
             )
-        expected_dispatch = {
-            _DEVICE_DISPATCH_KEYS[device] for device in operator.devices
-        }
-        expected_dispatch.add("Meta")
-        if operator.autograd_mode == "registered":
-            expected_dispatch.add("Autograd")
-        for dispatch_key in _CONTROLLED_DISPATCH_KEYS:
-            registered = _dispatcher_has_kernel(
-                operator.qualified_name, dispatch_key
-            )
-            if dispatch_key in expected_dispatch and not registered:
+        for registration in operator.registrations:
+            actual_schema = _dispatcher_schema(registration.qualified_name)
+            expected_schema = _qualified_schema(registration.schema)
+            if actual_schema != expected_schema:
                 raise NativeOperatorRegistrationError(
-                    f"{operator.qualified_name} is missing "
-                    f"{dispatch_key} registration"
+                    f"schema mismatch for {registration.qualified_name}: "
+                    f"expected {expected_schema!r}, got {actual_schema!r}"
                 )
-            if dispatch_key not in expected_dispatch and registered:
-                raise NativeOperatorRegistrationError(
-                    f"{operator.qualified_name} has undeclared "
-                    f"{dispatch_key} registration"
+            expected_dispatch = {
+                _DEVICE_DISPATCH_KEYS[device] for device in operator.devices
+            }
+            expected_dispatch.add("Meta")
+            if (
+                registration.kind == "semantic"
+                and operator.autograd_policy in {"required", "composite"}
+            ):
+                expected_dispatch.add("Autograd")
+            for dispatch_key in _CONTROLLED_DISPATCH_KEYS:
+                registered = _dispatcher_has_kernel(
+                    registration.qualified_name, dispatch_key
                 )
+                if dispatch_key in expected_dispatch and not registered:
+                    raise NativeOperatorRegistrationError(
+                        f"{registration.qualified_name} is missing "
+                        f"{dispatch_key} registration"
+                    )
+                if dispatch_key not in expected_dispatch and registered:
+                    raise NativeOperatorRegistrationError(
+                        f"{registration.qualified_name} has undeclared "
+                        f"{dispatch_key} registration"
+                    )
         for module_name in ("kernels.native", "kernels.native.python"):
             module = sys.modules.get(module_name)
             if module is not None and operator.name in vars(module):

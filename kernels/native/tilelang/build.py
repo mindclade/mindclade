@@ -13,8 +13,8 @@ import re
 import tempfile
 from types import MappingProxyType
 
-from kernels.native.codegen.discover import discover_specs
-from kernels.native.tilelang.model import KernelSpec
+from kernels.api import KernelSpec
+from kernels.native.codegen.discover import DiscoveredKernelSpec, discover_specs
 from kernels.native.tilelang.registry import registry
 
 _PROFILE_NAME = re.compile(r"^[a-z][a-z0-9_]{0,63}$")
@@ -82,8 +82,10 @@ class BuildReceipt:
     qualified_name: str
     profile: str
     specialization: Mapping[str, Scalar]
-    source: str
-    source_sha256: str
+    declaration_source: str
+    spec_sha256: str
+    kernel_spec_digest: str
+    forward_symbol: str
     target: str
     output: str
     artifact_sha256: str
@@ -95,11 +97,13 @@ class BuildReceipt:
             "artifact_sha256": self.artifact_sha256,
             "compiler": self.compiler,
             "compiler_version": self.compiler_version,
+            "declaration_source": self.declaration_source,
+            "forward_symbol": self.forward_symbol,
+            "kernel_spec_digest": self.kernel_spec_digest,
             "output": self.output,
             "profile": self.profile,
             "qualified_name": self.qualified_name,
-            "source": self.source,
-            "source_sha256": self.source_sha256,
+            "spec_sha256": self.spec_sha256,
             "specialization": dict(self.specialization),
             "target": self.target,
         }
@@ -145,15 +149,46 @@ def _normalize_profiles(
 
 
 def _resolve_builder(spec: KernelSpec, kernels_root: Path):
-    module_name = "kernels." + spec.source.removesuffix(".py").replace("/", ".")
+    builder_identity = spec.forward.builder
+    if builder_identity.count(":") != 1:
+        raise RuntimeError(f"{spec.qualified_name}: forward builder is not module:function")
+    module_name, function_name = builder_identity.split(":", 1)
+    expected_module = f"kernels.{spec.family}.{spec.name}.tilelang"
+    if module_name != expected_module:
+        raise RuntimeError(
+            f"{spec.qualified_name}: forward builder module must be {expected_module}"
+        )
+
+    declared_file = kernels_root / spec.family / spec.name / "tilelang.py"
+    current = kernels_root
+    for component in (spec.family, spec.name, "tilelang.py"):
+        current = current / component
+        if current.is_symlink():
+            raise RuntimeError(
+                f"{spec.qualified_name}: operation-local TileLang builder must not be a symlink"
+            )
+    try:
+        declared_file = declared_file.resolve(strict=True)
+    except (FileNotFoundError, RuntimeError) as exc:
+        raise RuntimeError(
+            f"{spec.qualified_name}: operation-local TileLang builder source does not exist"
+        ) from exc
+    if not declared_file.is_file():
+        raise RuntimeError(
+            f"{spec.qualified_name}: operation-local TileLang builder source is not a file"
+        )
+
     module = importlib.import_module(module_name)
     module_file = getattr(module, "__file__", None)
-    declared_file = (kernels_root / spec.source).resolve(strict=True)
     if module_file is None or Path(module_file).resolve(strict=True) != declared_file:
-        raise RuntimeError(f"{spec.qualified_name}: imported builder does not match declared source")
-    builder = getattr(module, "build_tilelang_program", None)
+        raise RuntimeError(
+            f"{spec.qualified_name}: imported builder does not match operation-local tilelang.py"
+        )
+    builder = getattr(module, function_name, None)
     if not callable(builder):
-        raise RuntimeError(f"{spec.qualified_name}: build_tilelang_program is not callable")
+        raise RuntimeError(
+            f"{spec.qualified_name}: declared forward builder {function_name!r} is not callable"
+        )
     return builder
 
 
@@ -223,7 +258,11 @@ def compile_all(
     else:
         raise ValueError("compiled artifacts must be emitted outside the native source tree")
 
-    specs = registry(discover_specs(root.parent, source_files))
+    discovered = discover_specs(root.parent, source_files)
+    specs = registry(discovered)
+    declarations: dict[str, DiscoveredKernelSpec] = {
+        entry.qualified_name: entry for entry in discovered
+    }
     normalized_profiles = _normalize_profiles(specs, profiles)
     compiler_version = "not-invoked"
     compiled_outputs: list[tuple[str, bytes, BuildReceipt]] = []
@@ -258,8 +297,10 @@ def compile_all(
                 qualified_name=spec.qualified_name,
                 profile=profile.name,
                 specialization=profile.arguments,
-                source=spec.source,
-                source_sha256=spec.source_sha256,
+                declaration_source=spec.source,
+                spec_sha256=declarations[spec.qualified_name].declaration_sha256,
+                kernel_spec_digest=spec.digest,
+                forward_symbol=spec.forward.symbol,
                 target=target,
                 output=artifact_name,
                 artifact_sha256=artifact_digest,
@@ -275,7 +316,7 @@ def compile_all(
     receipt_document = {
         "compiler": {"id": "tilelang", "version": compiler_version},
         "receipts": [receipt.to_manifest() for receipt in receipts],
-        "schema_version": 1,
+        "schema_version": 2,
         "target": target,
     }
     _atomic_write(

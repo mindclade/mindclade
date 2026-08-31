@@ -122,6 +122,8 @@ def test_composite_policy_requires_content_addressed_decomposition() -> None:
             "pytorch-2.10",
             (GradientSpec("x", "grad_x"),),
             False,
+            setup_context="pkg:setup_context",
+            backward="pkg:backward",
         ),
     )
     assert spec.composite is not None
@@ -272,6 +274,8 @@ def test_composite_gradient_names_bind_semantic_arguments() -> None:
                 "pytorch-2.10",
                 (GradientSpec("weight", "grad_weight"),),
                 False,
+                setup_context="pkg:setup_context",
+                backward="pkg:backward",
             ),
         )
 
