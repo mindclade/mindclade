@@ -1,0 +1,140 @@
+syntax = "proto3";
+
+package mindclade.internal.policy.v1;
+
+import "google/protobuf/field_mask.proto";
+import "google/protobuf/timestamp.proto";
+import "proto/mindclade/common/v1/command_context.proto";
+import "proto/mindclade/common/v1/pagination.proto";
+import "proto/mindclade/common/v1/resource_reference.proto";
+import "proto/mindclade/job/v1/operation.proto";
+import "proto/mindclade/policy/v1/authorization_decision.proto";
+import "proto/mindclade/policy/v1/policy_reference.proto";
+import "proto/mindclade/policy/v1/use_policy.proto";
+
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/policy/v1;policyv1";
+
+// EvaluateAuthorizationRequest freezes the principal, action, target, and intent evaluated.
+message EvaluateAuthorizationRequest {
+  string tenant_id = 1;
+  string project_id = 2;
+  string principal_ref = 3;
+  string action = 4;
+  mindclade.common.v1.ResourceRef resource = 5;
+  string intent_digest = 6;
+  repeated mindclade.policy.v1.PolicyReference policy_snapshots = 7;
+  google.protobuf.Timestamp deadline = 8;
+}
+
+// EvaluateAuthorizationResponse returns an immutable fail-closed decision.
+message EvaluateAuthorizationResponse {
+  mindclade.policy.v1.AuthorizationDecision decision = 1;
+}
+
+// CreateUsePolicyRequest creates a policy resource whose document is immutable evidence.
+message CreateUsePolicyRequest {
+  mindclade.common.v1.CommandContext context = 1;
+  string parent = 2;
+  string use_policy_id = 3;
+  mindclade.policy.v1.UsePolicy use_policy = 4;
+}
+
+// CreateUsePolicyResponse returns the durable creation operation.
+message CreateUsePolicyResponse {
+  mindclade.job.v1.Operation operation = 1;
+}
+
+// UpdateUsePolicyRequest applies selected mutable metadata under an ETag.
+message UpdateUsePolicyRequest {
+  mindclade.common.v1.CommandContext context = 1;
+  mindclade.policy.v1.UsePolicy use_policy = 2;
+  google.protobuf.FieldMask update_mask = 3;
+  string etag = 4;
+}
+
+// UpdateUsePolicyResponse returns the durable update operation.
+message UpdateUsePolicyResponse {
+  mindclade.job.v1.Operation operation = 1;
+}
+
+// GetUsePolicyRequest identifies one use-policy revision.
+message GetUsePolicyRequest {
+  string name = 1;
+  string if_none_match = 2;
+}
+
+// GetUsePolicyResponse returns the requested policy.
+message GetUsePolicyResponse {
+  mindclade.policy.v1.UsePolicy use_policy = 1;
+}
+
+// ListUsePoliciesRequest defines a bounded project-scoped query.
+message ListUsePoliciesRequest {
+  string parent = 1;
+  mindclade.common.v1.PageRequest page = 2;
+  string filter = 3;
+  string order_by = 4;
+}
+
+// ListUsePoliciesResponse returns one stable policy page.
+message ListUsePoliciesResponse {
+  repeated mindclade.policy.v1.UsePolicy use_policies = 1;
+  mindclade.common.v1.PageResponse page = 2;
+  google.protobuf.Timestamp read_time = 3;
+}
+
+// ActivateUsePolicyRequest resolves and activates one immutable snapshot under an ETag.
+message ActivateUsePolicyRequest {
+  mindclade.common.v1.CommandContext context = 1;
+  string name = 2;
+  string etag = 3;
+}
+
+// ActivateUsePolicyResponse returns the durable activation operation.
+message ActivateUsePolicyResponse {
+  mindclade.job.v1.Operation operation = 1;
+}
+
+// RevokeUsePolicyRequest records a fail-closed revocation under an ETag.
+message RevokeUsePolicyRequest {
+  mindclade.common.v1.CommandContext context = 1;
+  string name = 2;
+  string etag = 3;
+  string reason_code = 4;
+}
+
+// RevokeUsePolicyResponse returns the durable revocation operation.
+message RevokeUsePolicyResponse {
+  mindclade.job.v1.Operation operation = 1;
+}
+
+// ResolvePolicySnapshotRequest resolves an exact effective snapshot at a point in time.
+message ResolvePolicySnapshotRequest {
+  string name = 1;
+  google.protobuf.Timestamp effective_time = 2;
+}
+
+// ResolvePolicySnapshotResponse returns the immutable snapshot reference.
+message ResolvePolicySnapshotResponse {
+  mindclade.policy.v1.PolicyReference policy_snapshot = 1;
+}
+
+// PolicyService owns fail-closed authorization and use-policy lifecycle RPCs.
+service PolicyService {
+  // EvaluateAuthorization returns an evidence-bearing decision for exact intent.
+  rpc EvaluateAuthorization(EvaluateAuthorizationRequest) returns (EvaluateAuthorizationResponse);
+  // CreateUsePolicy validates the referenced interoperable policy document.
+  rpc CreateUsePolicy(CreateUsePolicyRequest) returns (CreateUsePolicyResponse);
+  // UpdateUsePolicy applies only masked metadata under optimistic concurrency.
+  rpc UpdateUsePolicy(UpdateUsePolicyRequest) returns (UpdateUsePolicyResponse);
+  // GetUsePolicy reads one policy revision.
+  rpc GetUsePolicy(GetUsePolicyRequest) returns (GetUsePolicyResponse);
+  // ListUsePolicies returns a bounded authorization-filtered page.
+  rpc ListUsePolicies(ListUsePoliciesRequest) returns (ListUsePoliciesResponse);
+  // ActivateUsePolicy creates the exact immutable snapshot used by decisions.
+  rpc ActivateUsePolicy(ActivateUsePolicyRequest) returns (ActivateUsePolicyResponse);
+  // RevokeUsePolicy makes subsequent evaluations fail closed.
+  rpc RevokeUsePolicy(RevokeUsePolicyRequest) returns (RevokeUsePolicyResponse);
+  // ResolvePolicySnapshot resolves an exact version rather than mutable latest state.
+  rpc ResolvePolicySnapshot(ResolvePolicySnapshotRequest) returns (ResolvePolicySnapshotResponse);
+}

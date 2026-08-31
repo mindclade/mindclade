@@ -1,0 +1,143 @@
+syntax = "proto3";
+
+package mindclade.internal.admin.v1;
+
+import "google/protobuf/field_mask.proto";
+import "google/protobuf/timestamp.proto";
+import "proto/mindclade/admin/v1/audit_query.proto";
+import "proto/mindclade/admin/v1/project.proto";
+import "proto/mindclade/admin/v1/tenant.proto";
+import "proto/mindclade/common/v1/command_context.proto";
+import "proto/mindclade/common/v1/pagination.proto";
+import "proto/mindclade/job/v1/operation.proto";
+
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/admin/v1;adminv1";
+
+// GetTenantRequest identifies one top-level isolation boundary.
+message GetTenantRequest {
+  string name = 1;
+  string if_none_match = 2;
+}
+
+// GetTenantResponse returns the requested tenant revision.
+message GetTenantResponse {
+  mindclade.admin.v1.Tenant tenant = 1;
+}
+
+// UpdateTenantRequest applies selected administrative fields under an ETag.
+message UpdateTenantRequest {
+  mindclade.common.v1.CommandContext context = 1;
+  mindclade.admin.v1.Tenant tenant = 2;
+  google.protobuf.FieldMask update_mask = 3;
+  string etag = 4;
+}
+
+// UpdateTenantResponse returns the durable update operation.
+message UpdateTenantResponse {
+  mindclade.job.v1.Operation operation = 1;
+}
+
+// CreateProjectRequest creates a tenant-scoped policy and workload boundary.
+message CreateProjectRequest {
+  mindclade.common.v1.CommandContext context = 1;
+  string parent = 2;
+  string project_id = 3;
+  mindclade.admin.v1.Project project = 4;
+}
+
+// CreateProjectResponse returns the durable creation operation.
+message CreateProjectResponse {
+  mindclade.job.v1.Operation operation = 1;
+}
+
+// GetProjectRequest identifies one project revision.
+message GetProjectRequest {
+  string name = 1;
+  string if_none_match = 2;
+}
+
+// GetProjectResponse returns the requested project.
+message GetProjectResponse {
+  mindclade.admin.v1.Project project = 1;
+}
+
+// ListProjectsRequest defines a bounded tenant-scoped query.
+message ListProjectsRequest {
+  string parent = 1;
+  mindclade.common.v1.PageRequest page = 2;
+  string filter = 3;
+  string order_by = 4;
+}
+
+// ListProjectsResponse returns one stable project page.
+message ListProjectsResponse {
+  repeated mindclade.admin.v1.Project projects = 1;
+  mindclade.common.v1.PageResponse page = 2;
+  google.protobuf.Timestamp read_time = 3;
+}
+
+// UpdateProjectRequest applies selected fields under an ETag.
+message UpdateProjectRequest {
+  mindclade.common.v1.CommandContext context = 1;
+  mindclade.admin.v1.Project project = 2;
+  google.protobuf.FieldMask update_mask = 3;
+  string etag = 4;
+}
+
+// UpdateProjectResponse returns the durable update operation.
+message UpdateProjectResponse {
+  mindclade.job.v1.Operation operation = 1;
+}
+
+// QueryAuditRecordsRequest wraps a bounded payload-minimized query.
+message QueryAuditRecordsRequest {
+  mindclade.admin.v1.AuditQuery query = 1;
+}
+
+// QueryAuditRecordsResponse returns one authorization-filtered page.
+message QueryAuditRecordsResponse {
+  mindclade.admin.v1.AuditQueryPage result = 1;
+}
+
+// ExportAuditRecordsRequest starts a policy-controlled immutable export.
+message ExportAuditRecordsRequest {
+  mindclade.common.v1.CommandContext context = 1;
+  mindclade.admin.v1.AuditQuery query = 2;
+}
+
+// ExportAuditRecordsResponse returns the durable export operation.
+message ExportAuditRecordsResponse {
+  mindclade.job.v1.Operation operation = 1;
+}
+
+// GetAuditExportRequest identifies one completed immutable export.
+message GetAuditExportRequest {
+  string name = 1;
+}
+
+// GetAuditExportResponse returns the protected export artifact reference.
+message GetAuditExportResponse {
+  mindclade.admin.v1.AuditExport audit_export = 1;
+}
+
+// AdminService owns tenant, project, and payload-minimized audit query RPCs.
+service AdminService {
+  // GetTenant reads one authorized tenant revision.
+  rpc GetTenant(GetTenantRequest) returns (GetTenantResponse);
+  // UpdateTenant applies masked administrative changes under optimistic concurrency.
+  rpc UpdateTenant(UpdateTenantRequest) returns (UpdateTenantResponse);
+  // CreateProject creates a tenant-scoped workload boundary idempotently.
+  rpc CreateProject(CreateProjectRequest) returns (CreateProjectResponse);
+  // GetProject reads one project revision.
+  rpc GetProject(GetProjectRequest) returns (GetProjectResponse);
+  // ListProjects returns a bounded authorization-filtered page.
+  rpc ListProjects(ListProjectsRequest) returns (ListProjectsResponse);
+  // UpdateProject applies masked configuration under optimistic concurrency.
+  rpc UpdateProject(UpdateProjectRequest) returns (UpdateProjectResponse);
+  // QueryAuditRecords returns stable pages without count leakage.
+  rpc QueryAuditRecords(QueryAuditRecordsRequest) returns (QueryAuditRecordsResponse);
+  // ExportAuditRecords creates an expiring immutable artifact for large results.
+  rpc ExportAuditRecords(ExportAuditRecordsRequest) returns (ExportAuditRecordsResponse);
+  // GetAuditExport reads one completed export reference.
+  rpc GetAuditExport(GetAuditExportRequest) returns (GetAuditExportResponse);
+}

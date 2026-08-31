@@ -26,6 +26,43 @@ bootstrap:
 doctor:
     {{ python }} tools/dev/doctor.py --root .
 
+# Apply native formatters to editable source and configuration files.
+format:
+    ruff format .buildkite tools libs/python tests
+    find libs/rust -type f -name '*.rs' -print0 | xargs -0 rustfmt --edition 2024
+    golangci-lint fmt
+    pnpm run format
+    find . -type d \( -name .git -o -name node_modules -o -name build -o -name 'bazel-*' \) -prune -o -type f \( -name BUILD -o -name BUILD.bazel -o -name MODULE.bazel -o -name '*.bzl' \) ! -path './protocols/generated/*' ! -path './kernels/native/generated/*' -print0 | xargs -0 buildifier -mode=fix
+    buildifier -mode=fix -type=bazelrc .bazelrc
+    nixfmt flake.nix third_party/packages/deep_ep/package.nix
+    shfmt -w -i 2 -ci -bn .buildkite/hooks/environment .buildkite/hooks/pre-command
+    just --fmt
+
+# Prove that every editable and generated source matches its owning formatter.
+format-check:
+    ruff format --check .buildkite tools libs/python tests
+    cargo fmt --all --check
+    golangci-lint fmt --diff
+    pnpm run format:check
+    find . -type d \( -name .git -o -name node_modules -o -name build -o -name 'bazel-*' \) -prune -o -type f \( -name BUILD -o -name BUILD.bazel -o -name MODULE.bazel -o -name '*.bzl' \) -print0 | xargs -0 buildifier -mode=check -lint=warn
+    buildifier -mode=check -lint=warn -type=bazelrc .bazelrc
+    nixfmt --check flake.nix third_party/packages/deep_ep/package.nix
+    shfmt -d -i 2 -ci -bn .buildkite/hooks/environment .buildkite/hooks/pre-command
+    just --fmt --check
+
+# Run static analysis for every activated language and repository text surface.
+lint:
+    ruff check .buildkite tools libs/python tests
+    pyright .buildkite tools libs/python tests
+    cargo clippy --workspace --all-targets --locked --no-deps -- -D warnings
+    golangci-lint run ./...
+    pnpm run lint
+    shellcheck .buildkite/hooks/environment .buildkite/hooks/pre-command
+    actionlint -no-color
+    yamllint -c .yamllint.yaml .
+    if [[ -d protocols ]] && [[ -n "$(find protocols -type f -name '*.proto' -print -quit)" ]]; then buf lint; fi
+    just docs
+
 # Validate path, owner, schema, architecture, ADR, and unit-test governance.
 _governance-source:
     #!/usr/bin/env bash
@@ -253,10 +290,16 @@ generate:
 # Generate every committed protocol binding and compatibility inventory.
 generate-contracts:
     {{ uv }} run python tools/codegen/generate_protocols.py --root .
+    {{ uv }} run python tools/codegen/generate_schemas.py --root . --check
+
+# Validate all governed JSON Schemas/fixtures and their committed digest catalog.
+check-schema-drift:
+    {{ uv }} run python tools/codegen/generate_schemas.py --root . --check
 
 # Fail when a contract source change has not regenerated every committed binding.
 check-contract-drift:
     {{ uv }} run python tools/codegen/verify_generated_drift.py --root .
+    just check-schema-drift
 
 # Execute all local source, lock, policy, and documentation gates.
 check: bootstrap
@@ -264,23 +307,18 @@ check: bootstrap
     cargo metadata --locked --no-deps --format-version=1 >/dev/null
     go list -mod=readonly -m >/dev/null
     pnpm install --lockfile-only --frozen-lockfile --offline --ignore-scripts
-    pnpm run check
+    pnpm run check:manifest
     buf config ls-modules >/dev/null
     buf config ls-lint-rules >/dev/null
     buf config ls-breaking-rules >/dev/null
-    if [[ -d protocols ]] && [[ -n "$(find protocols -type f -name '*.proto' -print -quit)" ]]; then buf lint; fi
     just check-contract-drift
+    just format-check
+    just lint
     go test ./libs/go/... ./services/control_plane/...
     cargo test --workspace --locked
     pnpm --recursive --if-present run typecheck
     pnpm --recursive --if-present run test
-    ruff check .buildkite tools libs/python tests
-    ruff format --check .buildkite tools libs/python tests
-    pyright .buildkite tools libs/python tests
-    actionlint -no-color
-    yamllint -c .yamllint.yaml .
     nix flake check path:. --no-build
-    just docs
     just governance
 
 # Resolve and execute the conservative Bazel test closure.

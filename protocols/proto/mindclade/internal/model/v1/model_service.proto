@@ -1,0 +1,123 @@
+syntax = "proto3";
+
+package mindclade.internal.model.v1;
+
+import "google/protobuf/timestamp.proto";
+import "proto/mindclade/common/v1/pagination.proto";
+import "proto/mindclade/job/v1/operation.proto";
+import "proto/mindclade/model/v1/model.proto";
+import "proto/mindclade/model/v1/model_commands.proto";
+import "proto/mindclade/model/v1/model_release.proto";
+
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/model/v1;modelv1";
+
+// RegisterModelRequest wraps the canonical idempotent model command.
+message RegisterModelRequest {
+  mindclade.model.v1.RegisterModelCommand command = 1;
+}
+
+// RegisterModelResponse returns the durable registration operation.
+message RegisterModelResponse {
+  mindclade.job.v1.Operation operation = 1;
+}
+
+// GetModelRequest identifies one model and optional cache validator.
+message GetModelRequest {
+  string name = 1;
+  string if_none_match = 2;
+}
+
+// GetModelResponse returns the current model revision.
+message GetModelResponse {
+  mindclade.model.v1.Model model = 1;
+}
+
+// ListModelsRequest defines a bounded project-scoped model query.
+message ListModelsRequest {
+  string parent = 1;
+  mindclade.common.v1.PageRequest page = 2;
+  string filter = 3;
+  string order_by = 4;
+}
+
+// ListModelsResponse returns one stable model page.
+message ListModelsResponse {
+  repeated mindclade.model.v1.Model models = 1;
+  mindclade.common.v1.PageResponse page = 2;
+  google.protobuf.Timestamp read_time = 3;
+}
+
+// RegisterModelReleaseRequest wraps immutable bundle registration intent.
+message RegisterModelReleaseRequest {
+  mindclade.model.v1.RegisterModelReleaseCommand command = 1;
+}
+
+// RegisterModelReleaseResponse returns the durable release-registration operation.
+message RegisterModelReleaseResponse {
+  mindclade.job.v1.Operation operation = 1;
+}
+
+// GetModelReleaseRequest identifies one immutable model release.
+message GetModelReleaseRequest {
+  string name = 1;
+}
+
+// GetModelReleaseResponse returns the requested release metadata.
+message GetModelReleaseResponse {
+  mindclade.model.v1.ModelRelease model_release = 1;
+}
+
+// ListModelReleasesRequest lists releases under one model.
+message ListModelReleasesRequest {
+  string parent = 1;
+  mindclade.common.v1.PageRequest page = 2;
+  string filter = 3;
+  string order_by = 4;
+}
+
+// ListModelReleasesResponse returns one stable release page.
+message ListModelReleasesResponse {
+  repeated mindclade.model.v1.ModelRelease model_releases = 1;
+  mindclade.common.v1.PageResponse page = 2;
+  google.protobuf.Timestamp read_time = 3;
+}
+
+// PromoteModelReleaseRequest wraps evidence-bound optimistic promotion intent.
+message PromoteModelReleaseRequest {
+  mindclade.model.v1.PromoteModelReleaseCommand command = 1;
+}
+
+// PromoteModelReleaseResponse returns the durable promotion operation.
+message PromoteModelReleaseResponse {
+  mindclade.job.v1.Operation operation = 1;
+}
+
+// RevokeModelReleaseRequest wraps evidence-bound revocation intent.
+message RevokeModelReleaseRequest {
+  mindclade.model.v1.RevokeModelReleaseCommand command = 1;
+}
+
+// RevokeModelReleaseResponse returns the durable revocation operation.
+message RevokeModelReleaseResponse {
+  mindclade.job.v1.Operation operation = 1;
+}
+
+// ModelService owns model registry, release, promotion, and revocation RPCs.
+service ModelService {
+  // RegisterModel performs idempotent model registration.
+  rpc RegisterModel(RegisterModelRequest) returns (RegisterModelResponse);
+  // GetModel reads one model revision.
+  rpc GetModel(GetModelRequest) returns (GetModelResponse);
+  // ListModels returns a bounded project-scoped page.
+  rpc ListModels(ListModelsRequest) returns (ListModelsResponse);
+  // RegisterModelRelease verifies immutable bundles and evidence asynchronously.
+  rpc RegisterModelRelease(RegisterModelReleaseRequest) returns (RegisterModelReleaseResponse);
+  // GetModelRelease reads one model release.
+  rpc GetModelRelease(GetModelReleaseRequest) returns (GetModelReleaseResponse);
+  // ListModelReleases lists releases under one model.
+  rpc ListModelReleases(ListModelReleasesRequest) returns (ListModelReleasesResponse);
+  // PromoteModelRelease enforces the current ETag, stage, policy, and evidence.
+  rpc PromoteModelRelease(PromoteModelReleaseRequest) returns (PromoteModelReleaseResponse);
+  // RevokeModelRelease records a new audited disposition without rewriting history.
+  rpc RevokeModelRelease(RevokeModelReleaseRequest) returns (RevokeModelReleaseResponse);
+}

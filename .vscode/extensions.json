@@ -1,11 +1,15 @@
 {
   "recommendations": [
     "bazelbuild.vscode-bazel",
+    "biomejs.biome",
     "charliermarsh.ruff",
+    "editorconfig.editorconfig",
     "golang.go",
     "jnoortheen.nix-ide",
+    "mkhl.shfmt",
     "redhat.vscode-yaml",
     "rust-lang.rust-analyzer",
-    "tamasfe.even-better-toml"
+    "tamasfe.even-better-toml",
+    "timonwong.shellcheck"
   ]
 }

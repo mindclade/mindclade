@@ -1,4 +1,13 @@
 {
+  "[javascript][javascriptreact][json][jsonc][typescript][typescriptreact]": {
+    "editor.defaultFormatter": "biomejs.biome"
+  },
+  "[python]": {
+    "editor.defaultFormatter": "charliermarsh.ruff"
+  },
+  "[rust]": {
+    "editor.defaultFormatter": "rust-lang.rust-analyzer"
+  },
   "editor.formatOnSave": false,
   "files.eol": "\n",
   "files.insertFinalNewline": true,
@@ -7,6 +16,7 @@
   "python.terminal.activateEnvironment": false,
   "ruff.nativeServer": "on",
   "rust-analyzer.check.command": "clippy",
+  "shellformat.flag": "-i 2 -ci -bn",
   "yaml.schemas": {
     "./tools/repo/component.schema.json": "**/component.yaml",
     "./docs/architecture/repository-path-manifest.schema.json": "docs/architecture/repository-path-manifest.yaml"

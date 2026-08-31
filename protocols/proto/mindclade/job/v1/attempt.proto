@@ -2,13 +2,38 @@ syntax = "proto3";
 
 package mindclade.job.v1;
 
+import "google/protobuf/timestamp.proto";
+import "proto/mindclade/artifact/v1/artifact_reference.proto";
+import "proto/mindclade/common/v1/error_detail.proto";
+
 option go_package = "github.com/mindclade/mindclade/protocols/generated/go/job/v1;jobv1";
+
+enum AttemptState {
+  ATTEMPT_STATE_UNSPECIFIED = 0;
+  ATTEMPT_STATE_LEASED = 1;
+  ATTEMPT_STATE_RUNNING = 2;
+  ATTEMPT_STATE_SUCCEEDED = 3;
+  ATTEMPT_STATE_FAILED = 4;
+  ATTEMPT_STATE_CANCELLED = 5;
+  ATTEMPT_STATE_FENCED = 6;
+  ATTEMPT_STATE_TIMED_OUT = 7;
+}
 
 // Fenced lease-bound execution try. Only the current epoch may commit.
 message Attempt {
   string attempt_id = 1;
   string run_id = 2;
   uint64 lease_epoch = 3;
-  string state = 4;
-  string lease_expires_at_utc = 5;
+  AttemptState state = 4;
+  google.protobuf.Timestamp lease_expires_at = 5;
+  string tenant_id = 6;
+  string project_id = 7;
+  string job_id = 8;
+  string worker_id = 9;
+  google.protobuf.Timestamp leased_at = 10;
+  google.protobuf.Timestamp started_at = 11;
+  google.protobuf.Timestamp completed_at = 12;
+  repeated mindclade.artifact.v1.ArtifactRef outputs = 13;
+  mindclade.common.v1.ErrorDetail error = 14;
+  int64 resource_version = 15;
 }

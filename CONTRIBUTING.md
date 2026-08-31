@@ -11,6 +11,22 @@ identity and must use a protected pull request.
    security, scientific correctness, or release.
 4. Update the repository-path manifest first for any governed path change.
 
+## Formatting and static analysis
+
+Use the root commands rather than ambient editor or language defaults:
+
+```text
+just format
+just format-check
+just lint
+```
+
+Formatting fixes apply only to editable source. Do not directly format generated
+protocol bindings, generated Starlark, architecture renders, or provenance;
+change their source or generator and regenerate the complete output family.
+Lint suppressions must name the exact rule and explain why the exception is
+safe.
+
 ## Pull-request evidence
 
 Describe affected components, compatibility, risk, data classification,

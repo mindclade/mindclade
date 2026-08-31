@@ -10,6 +10,7 @@ filegroup(
         "proto/**/*.proto",
         "events/**/*.proto",
         "schemas/**/*.json",
+        "openapi/**/*.yaml",
         "compatibility/baselines/*.json",
         "compatibility/tests/*.py",
     ]) + ["//protocols/generated:generated_sources"],
@@ -35,12 +36,14 @@ py_test(
     legacy_create_init = 0,
     main = "compatibility/tests/test_schema_compatibility.py",
     python_version = "PY3",
+    deps = ["@mindclade_pypi//jsonschema"],
 )
 
 py_test(
     name = "openapi_compatibility_test",
     srcs = ["compatibility/tests/test_openapi_compatibility.py"],
     data = [":wave1_contract_sources", "//tools:wave1_codegen_sources"],
+    deps = ["@mindclade_pypi//pyyaml"],
     imports = [".."],
     legacy_create_init = 0,
     main = "compatibility/tests/test_openapi_compatibility.py",

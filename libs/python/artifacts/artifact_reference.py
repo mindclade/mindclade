@@ -18,6 +18,8 @@ def make_artifact_ref(
     artifact_kind: str,
     schema_id: str = "",
     integrity_digest: ArtifactDigest | str | None = None,
+    uri: str = "",
+    schema_version: str = "",
 ) -> ArtifactRef:
     """Build the authoritative generated artifact reference with local validation."""
     if not media_type:
@@ -33,6 +35,8 @@ def make_artifact_ref(
         artifact_kind=artifact_kind,
         schema_id=schema_id,
         integrity_digest=("" if integrity_digest is None else _digest_value(integrity_digest)),
+        uri=uri,
+        schema_version=schema_version,
     )
 
 

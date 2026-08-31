@@ -2,16 +2,41 @@ syntax = "proto3";
 
 package mindclade.common.v1;
 
+import "google/protobuf/timestamp.proto";
+import "proto/mindclade/common/v1/resource_reference.proto";
+
 option go_package = "github.com/mindclade/mindclade/protocols/generated/go/common/v1;commonv1";
 
-// Envelope that makes at-least-once event delivery idempotent and traceable.
+enum DataClassification {
+  DATA_CLASSIFICATION_UNSPECIFIED = 0;
+  DATA_CLASSIFICATION_PUBLIC = 1;
+  DATA_CLASSIFICATION_INTERNAL = 2;
+  DATA_CLASSIFICATION_RESTRICTED = 3;
+}
+
+// Immutable transport envelope for outbox, queue, audit, replay, and DLQ
+// records. payload is the deterministic serialization of event_type; its
+// sha256 digest is carried independently so consumers can verify before use.
 message EventEnvelope {
   string event_id = 1;
   string event_type = 2;
   uint32 event_version = 3;
-  string occurred_at_utc = 4;
+  google.protobuf.Timestamp occurred_at = 4;
   string tenant_id = 5;
   string trace_id = 6;
-  string subject_ref = 7;
+  ResourceRef subject = 7;
   string payload_digest = 8;
+  bytes payload = 9;
+  google.protobuf.Timestamp recorded_at = 10;
+  string producer = 11;
+  string project_id = 12;
+  uint64 aggregate_sequence = 13;
+  string request_id = 14;
+  string correlation_id = 15;
+  string causation_id = 16;
+  string job_id = 17;
+  string run_id = 18;
+  string deduplication_key = 19;
+  string payload_content_type = 20;
+  DataClassification classification = 21;
 }

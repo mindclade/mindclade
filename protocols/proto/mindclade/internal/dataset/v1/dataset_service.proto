@@ -1,0 +1,123 @@
+syntax = "proto3";
+
+package mindclade.internal.dataset.v1;
+
+import "google/protobuf/timestamp.proto";
+import "proto/mindclade/common/v1/pagination.proto";
+import "proto/mindclade/dataset/v1/dataset.proto";
+import "proto/mindclade/dataset/v1/dataset_commands.proto";
+import "proto/mindclade/dataset/v1/dataset_release.proto";
+import "proto/mindclade/job/v1/operation.proto";
+
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/dataset/v1;datasetv1";
+
+// CreateDatasetRequest wraps the canonical idempotent create command.
+message CreateDatasetRequest {
+  mindclade.dataset.v1.CreateDatasetCommand command = 1;
+}
+
+// CreateDatasetResponse returns the durable operation for dataset creation.
+message CreateDatasetResponse {
+  mindclade.job.v1.Operation operation = 1;
+}
+
+// GetDatasetRequest identifies a dataset and optional cache validator.
+message GetDatasetRequest {
+  string name = 1;
+  string if_none_match = 2;
+}
+
+// GetDatasetResponse returns the current dataset revision.
+message GetDatasetResponse {
+  mindclade.dataset.v1.Dataset dataset = 1;
+}
+
+// ListDatasetsRequest defines a bounded project-scoped query.
+message ListDatasetsRequest {
+  string parent = 1;
+  mindclade.common.v1.PageRequest page = 2;
+  string filter = 3;
+  string order_by = 4;
+}
+
+// ListDatasetsResponse returns one stable page.
+message ListDatasetsResponse {
+  repeated mindclade.dataset.v1.Dataset datasets = 1;
+  mindclade.common.v1.PageResponse page = 2;
+  google.protobuf.Timestamp read_time = 3;
+}
+
+// UpdateDatasetRequest wraps the canonical field-mask and ETag update command.
+message UpdateDatasetRequest {
+  mindclade.dataset.v1.UpdateDatasetCommand command = 1;
+}
+
+// UpdateDatasetResponse returns the durable update operation.
+message UpdateDatasetResponse {
+  mindclade.job.v1.Operation operation = 1;
+}
+
+// PublishDatasetReleaseRequest wraps immutable-manifest publication intent.
+message PublishDatasetReleaseRequest {
+  mindclade.dataset.v1.PublishDatasetReleaseCommand command = 1;
+}
+
+// PublishDatasetReleaseResponse returns the durable publication operation.
+message PublishDatasetReleaseResponse {
+  mindclade.job.v1.Operation operation = 1;
+}
+
+// RevokeDatasetReleaseRequest wraps an evidence-bound revocation command.
+message RevokeDatasetReleaseRequest {
+  mindclade.dataset.v1.RevokeDatasetReleaseCommand command = 1;
+}
+
+// RevokeDatasetReleaseResponse returns the durable revocation operation.
+message RevokeDatasetReleaseResponse {
+  mindclade.job.v1.Operation operation = 1;
+}
+
+// GetDatasetReleaseRequest identifies one immutable dataset release resource.
+message GetDatasetReleaseRequest {
+  string name = 1;
+}
+
+// GetDatasetReleaseResponse returns the requested release metadata.
+message GetDatasetReleaseResponse {
+  mindclade.dataset.v1.DatasetRelease dataset_release = 1;
+}
+
+// ListDatasetReleasesRequest lists releases under one dataset.
+message ListDatasetReleasesRequest {
+  string parent = 1;
+  mindclade.common.v1.PageRequest page = 2;
+  string filter = 3;
+  string order_by = 4;
+}
+
+// ListDatasetReleasesResponse returns one stable release page.
+message ListDatasetReleasesResponse {
+  repeated mindclade.dataset.v1.DatasetRelease dataset_releases = 1;
+  mindclade.common.v1.PageResponse page = 2;
+  google.protobuf.Timestamp read_time = 3;
+}
+
+// DatasetService owns dataset and immutable release application RPCs.
+service DatasetService {
+  // CreateDataset performs idempotent creation and returns a durable operation.
+  rpc CreateDataset(CreateDatasetRequest) returns (CreateDatasetResponse);
+  // GetDataset reads one dataset revision.
+  rpc GetDataset(GetDatasetRequest) returns (GetDatasetResponse);
+  // ListDatasets returns a bounded project-scoped page.
+  rpc ListDatasets(ListDatasetsRequest) returns (ListDatasetsResponse);
+  // UpdateDataset enforces the command's field mask and ETag.
+  rpc UpdateDataset(UpdateDatasetRequest) returns (UpdateDatasetResponse);
+  // PublishDatasetRelease verifies immutable manifest and policy references asynchronously.
+  rpc PublishDatasetRelease(PublishDatasetReleaseRequest) returns (PublishDatasetReleaseResponse);
+  // RevokeDatasetRelease records evidence without rewriting immutable history.
+  rpc RevokeDatasetRelease(RevokeDatasetReleaseRequest) returns (RevokeDatasetReleaseResponse);
+  // GetDatasetRelease reads one release.
+  rpc GetDatasetRelease(GetDatasetReleaseRequest) returns (GetDatasetReleaseResponse);
+  // ListDatasetReleases lists immutable releases under one dataset.
+  rpc ListDatasetReleases(ListDatasetReleasesRequest) returns (ListDatasetReleasesResponse);
+}

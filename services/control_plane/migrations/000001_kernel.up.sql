@@ -4,7 +4,7 @@ CREATE TABLE operations (
   id text PRIMARY KEY,
   tenant_id text NOT NULL,
   job_id text NOT NULL,
-  status text NOT NULL CHECK (status IN ('PENDING','RUNNING','SUCCEEDED','FAILED','CANCELLED')),
+  status text NOT NULL CHECK (status IN ('PENDING','RUNNING','SUCCEEDED','FAILED','CANCELLING','CANCELLED')),
   version bigint NOT NULL CHECK (version > 0),
   request_hash text NOT NULL,
   created_at timestamptz NOT NULL,
@@ -84,7 +84,9 @@ CREATE TABLE outbox_messages (
   id text PRIMARY KEY,
   tenant_id text NOT NULL,
   event_type text NOT NULL,
+  event_version integer NOT NULL CHECK (event_version > 0),
   payload_digest text NOT NULL CHECK (payload_digest ~ '^sha256:[0-9a-f]{64}$'),
+  envelope_bytes bytea NOT NULL CHECK (octet_length(envelope_bytes) > 0),
   delivery_epoch bigint NOT NULL DEFAULT 0,
   delivered_at timestamptz,
   created_at timestamptz NOT NULL
@@ -102,6 +104,7 @@ CREATE TABLE dead_letter_messages (
   event_id text NOT NULL,
   reason text NOT NULL,
   payload_digest text NOT NULL CHECK (payload_digest ~ '^sha256:[0-9a-f]{64}$'),
+  envelope_bytes bytea NOT NULL CHECK (octet_length(envelope_bytes) > 0),
   created_at timestamptz NOT NULL
 );
 

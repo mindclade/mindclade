@@ -5,7 +5,7 @@
 - Specification date: 2026-08-31
 - Effective date: 2026-08-31 for repository source implementation only
 - Compatibility window: One clean-v1 reset before the first supported external release; additive v1 compatibility applies after the baseline is committed
-- Supersedes: Only the contract-scheduling and deferment portions of ADR-0004, ADR-0011, ADR-0012, and blueprint wave timing
+- Supersedes: The contract-scheduling and deferment portions of ADR-0004, ADR-0011, ADR-0012, blueprint wave timing, and ADR-0012's one-way OpenAPI derivation direction
 - Superseded by: None
 - Owners: Architecture, Contract Governance
 - Reviewers: Developer Platform, Security, Domain Owners, Developer Experience
@@ -48,11 +48,12 @@ The authority split remains unchanged:
 
 - Protobuf owns internal RPC requests/responses, durable commands, events, and lifecycle resources.
 - JSON Schema owns durable manifests, evidence documents, release metadata, and human-authored configuration.
-- A curated `mindclade.api.v1` service facade owns the supported public HTTP behavior from which OpenAPI is derived. Internal Protobuf layout, database rows, queue metadata, and provider objects are not public API authority.
+- A curated `mindclade.api.v1` service facade owns public gRPC behavior. The checked-in curated OpenAPI document owns supported external HTTP/JSON and SDK behavior. Exact operation and model mappings enforce semantic parity without exposing internal packages. Internal Protobuf layout, database rows, queue metadata, and provider objects are not public HTTP authority.
 
 Domain resources and events use `mindclade.<domain>.v1`. Internal gRPC services
-use `mindclade.internal.<domain>.v1`; the public facade uses
-`mindclade.api.v1`. Large scientific data, tensors, models, checkpoints, and
+use `mindclade.internal.<domain>.v1`; the public gRPC facade uses
+`mindclade.api.v1`, and every external OpenAPI operation maps to that facade.
+Large scientific data, tensors, models, checkpoints, and
 other bulk values cross contracts only by immutable `ArtifactRef`. Event
 envelopes carry stable identity, type/version, payload bytes, and digest;
 serialized bytes are durable only where an outbox, audit record, or dead-letter
@@ -114,7 +115,7 @@ language/provider deferments are superseded or supplemented here.
 ## Rejected alternatives
 
 - Retain wave timing as a hard contract-creation gate. This would force active code to define temporary local types and make the eventual migration riskier.
-- Make OpenAPI, database rows, or SDK models independent internal authorities. This would create semantic drift across transports and storage.
+- Make OpenAPI an authority for internal domain state, or make internal Protobuf layout the external HTTP contract. Transport-specific authority with enforced mappings avoids both forms of coupling and drift.
 - Use Protobuf blobs as the primary database model. This would weaken relational constraints, tenant isolation, queries, migrations, and operational repair.
 - Depend on Stainless without a portable OpenAPI input, local evidence, or shadow generator. This would make provider state an unreviewable build authority.
 - Treat oagen parity as permission to publish two independently versioned SDK surfaces. One supported public contract and release policy remains authoritative.

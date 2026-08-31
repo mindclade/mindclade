@@ -1,5 +1,5 @@
 package outbox
 
-func CanAcknowledge(message Message, epoch uint64) bool {
-	return message.DeliveryEpoch == epoch && message.DeliveredAt == nil
+func CanAcknowledge(record DeliveryRecord, epoch uint64) bool {
+	return record.DeliveryEpoch == epoch && record.DeliveredAt == nil
 }

@@ -2,6 +2,7 @@ syntax = "proto3";
 
 package mindclade.job.v1;
 
+import "proto/mindclade/artifact/v1/artifact_reference.proto";
 import "proto/mindclade/common/v1/command_context.proto";
 
 option go_package = "github.com/mindclade/mindclade/protocols/generated/go/job/v1;jobv1";
@@ -10,6 +11,7 @@ option go_package = "github.com/mindclade/mindclade/protocols/generated/go/job/v
 message RequestJobCommand {
   mindclade.common.v1.CommandContext context = 1;
   string job_kind = 2;
-  string input_digest = 3;
-  string configuration_digest = 4;
+  mindclade.artifact.v1.ArtifactRef input = 3;
+  mindclade.artifact.v1.ArtifactRef configuration = 4;
+  string requested_job_id = 5;
 }

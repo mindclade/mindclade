@@ -1,0 +1,143 @@
+syntax = "proto3";
+
+package mindclade.internal.evaluation.v1;
+
+import "google/protobuf/timestamp.proto";
+import "proto/mindclade/artifact/v1/artifact_reference.proto";
+import "proto/mindclade/common/v1/command_context.proto";
+import "proto/mindclade/common/v1/pagination.proto";
+import "proto/mindclade/common/v1/resource_reference.proto";
+import "proto/mindclade/evaluation/v1/evaluation_result.proto";
+import "proto/mindclade/evaluation/v1/evaluation_run.proto";
+import "proto/mindclade/evaluation/v1/promotion_decision.proto";
+import "proto/mindclade/job/v1/lease_fencing.proto";
+import "proto/mindclade/job/v1/operation.proto";
+import "proto/mindclade/policy/v1/policy_reference.proto";
+
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/evaluation/v1;evaluationv1";
+
+// CreateEvaluationRunRequest defines immutable evaluation inputs without server-managed state.
+message CreateEvaluationRunRequest {
+  mindclade.common.v1.CommandContext context = 1;
+  string parent = 2;
+  string evaluation_run_id = 3;
+  mindclade.artifact.v1.ArtifactRef suite = 4;
+  repeated mindclade.artifact.v1.ArtifactRef datasets = 5;
+  mindclade.artifact.v1.ArtifactRef snapshot = 6;
+  mindclade.common.v1.ResourceRef model_release = 7;
+  mindclade.artifact.v1.ArtifactRef inference_protocol = 8;
+  mindclade.artifact.v1.ArtifactRef executable_plan = 9;
+  mindclade.artifact.v1.ArtifactRef provider_manifest = 10;
+  mindclade.artifact.v1.ArtifactRef kernel_qualification = 11;
+  repeated mindclade.policy.v1.PolicyReference policy_snapshots = 12;
+}
+
+// CreateEvaluationRunResponse returns the durable operation for validation and execution.
+message CreateEvaluationRunResponse {
+  mindclade.job.v1.Operation operation = 1;
+}
+
+// GetEvaluationRunRequest identifies one evaluation run and optional cache validator.
+message GetEvaluationRunRequest {
+  string name = 1;
+  string if_none_match = 2;
+}
+
+// GetEvaluationRunResponse returns the current run revision.
+message GetEvaluationRunResponse {
+  mindclade.evaluation.v1.EvaluationRun evaluation_run = 1;
+}
+
+// ListEvaluationRunsRequest defines a bounded project-scoped evaluation query.
+message ListEvaluationRunsRequest {
+  string parent = 1;
+  mindclade.common.v1.PageRequest page = 2;
+  string filter = 3;
+  string order_by = 4;
+}
+
+// ListEvaluationRunsResponse returns one stable evaluation-run page.
+message ListEvaluationRunsResponse {
+  repeated mindclade.evaluation.v1.EvaluationRun evaluation_runs = 1;
+  mindclade.common.v1.PageResponse page = 2;
+  google.protobuf.Timestamp read_time = 3;
+}
+
+// CancelEvaluationRunRequest records monotonic cancellation under an ETag precondition.
+message CancelEvaluationRunRequest {
+  mindclade.common.v1.CommandContext context = 1;
+  string name = 2;
+  string etag = 3;
+  string reason = 4;
+}
+
+// CancelEvaluationRunResponse returns the durable cancellation operation.
+message CancelEvaluationRunResponse {
+  mindclade.job.v1.Operation operation = 1;
+}
+
+// CommitEvaluationResultRequest binds one immutable result to the current fenced attempt.
+message CommitEvaluationResultRequest {
+  mindclade.common.v1.CommandContext context = 1;
+  mindclade.common.v1.ResourceRef evaluation_run = 2;
+  mindclade.job.v1.LeaseFence fence = 3;
+  mindclade.evaluation.v1.EvaluationResult result = 4;
+  string etag = 5;
+}
+
+// CommitEvaluationResultResponse returns accepted result and terminal run state.
+message CommitEvaluationResultResponse {
+  mindclade.evaluation.v1.EvaluationResult result = 1;
+  mindclade.evaluation.v1.EvaluationRun evaluation_run = 2;
+}
+
+// GetEvaluationResultRequest identifies one immutable evaluation result.
+message GetEvaluationResultRequest {
+  string name = 1;
+}
+
+// GetEvaluationResultResponse returns the requested result.
+message GetEvaluationResultResponse {
+  mindclade.evaluation.v1.EvaluationResult result = 1;
+}
+
+// CreatePromotionDecisionRequest records evidence-governed release disposition.
+message CreatePromotionDecisionRequest {
+  mindclade.common.v1.CommandContext context = 1;
+  mindclade.evaluation.v1.PromotionDecision promotion_decision = 2;
+}
+
+// CreatePromotionDecisionResponse returns the durable decision operation.
+message CreatePromotionDecisionResponse {
+  mindclade.job.v1.Operation operation = 1;
+}
+
+// GetPromotionDecisionRequest identifies one immutable promotion decision.
+message GetPromotionDecisionRequest {
+  string name = 1;
+}
+
+// GetPromotionDecisionResponse returns the requested decision.
+message GetPromotionDecisionResponse {
+  mindclade.evaluation.v1.PromotionDecision promotion_decision = 1;
+}
+
+// EvaluationService owns evaluation execution, result commit, and promotion evidence RPCs.
+service EvaluationService {
+  // CreateEvaluationRun validates immutable inputs and returns durable asynchronous state.
+  rpc CreateEvaluationRun(CreateEvaluationRunRequest) returns (CreateEvaluationRunResponse);
+  // GetEvaluationRun reads one durable evaluation run.
+  rpc GetEvaluationRun(GetEvaluationRunRequest) returns (GetEvaluationRunResponse);
+  // ListEvaluationRuns returns a bounded authorization-filtered page.
+  rpc ListEvaluationRuns(ListEvaluationRunsRequest) returns (ListEvaluationRunsResponse);
+  // CancelEvaluationRun records desired cancellation under optimistic concurrency.
+  rpc CancelEvaluationRun(CancelEvaluationRunRequest) returns (CancelEvaluationRunResponse);
+  // CommitEvaluationResult rejects stale attempts and verifies immutable evidence.
+  rpc CommitEvaluationResult(CommitEvaluationResultRequest) returns (CommitEvaluationResultResponse);
+  // GetEvaluationResult reads one immutable result.
+  rpc GetEvaluationResult(GetEvaluationResultRequest) returns (GetEvaluationResultResponse);
+  // CreatePromotionDecision records policy and evaluation evidence without deploying anything.
+  rpc CreatePromotionDecision(CreatePromotionDecisionRequest) returns (CreatePromotionDecisionResponse);
+  // GetPromotionDecision reads one immutable governed decision.
+  rpc GetPromotionDecision(GetPromotionDecisionRequest) returns (GetPromotionDecisionResponse);
+}

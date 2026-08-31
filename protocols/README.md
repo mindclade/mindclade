@@ -7,8 +7,10 @@ baseline; the blueprint waves remain design-sequencing provenance.
 - Protobuf defines internal resources, commands, events, and gRPC services.
 - JSON Schema defines durable manifests, evidence, release metadata, and
   human-authored configuration.
-- The curated public service facade derives OpenAPI without exposing internal
-  Protobuf, persistence, queue, or provider layouts.
+- `mindclade.api.v1` owns the public gRPC facade. The curated OpenAPI document
+  separately owns external HTTP/JSON and SDK behavior without exposing
+  internal Protobuf, persistence, queue, or provider layouts; conformance
+  requires exact operation and model mappings.
 - `generated/{go,python,rust,typescript}` contains deterministic committed
   projections. Product code, including `libs/python`, consumes these types and
   must not hand-define competing wire contracts.

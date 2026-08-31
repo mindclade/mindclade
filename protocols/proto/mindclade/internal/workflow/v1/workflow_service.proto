@@ -1,0 +1,245 @@
+syntax = "proto3";
+
+package mindclade.internal.workflow.v1;
+
+import "google/protobuf/field_mask.proto";
+import "google/protobuf/timestamp.proto";
+import "proto/mindclade/common/v1/command_context.proto";
+import "proto/mindclade/common/v1/pagination.proto";
+import "proto/mindclade/job/v1/operation.proto";
+import "proto/mindclade/workflow/v1/approval.proto";
+import "proto/mindclade/workflow/v1/workflow_definition.proto";
+import "proto/mindclade/workflow/v1/workflow_run.proto";
+
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/workflow/v1;workflowv1";
+
+// CreateWorkflowDefinitionRequest creates a validated immutable graph definition.
+message CreateWorkflowDefinitionRequest {
+  mindclade.common.v1.CommandContext context = 1;
+  string parent = 2;
+  string workflow_definition_id = 3;
+  mindclade.workflow.v1.WorkflowDefinition workflow_definition = 4;
+}
+
+// CreateWorkflowDefinitionResponse returns the durable creation operation.
+message CreateWorkflowDefinitionResponse {
+  mindclade.job.v1.Operation operation = 1;
+}
+
+// UpdateWorkflowDefinitionRequest applies selected mutable metadata under an ETag.
+message UpdateWorkflowDefinitionRequest {
+  mindclade.common.v1.CommandContext context = 1;
+  mindclade.workflow.v1.WorkflowDefinition workflow_definition = 2;
+  google.protobuf.FieldMask update_mask = 3;
+  string etag = 4;
+}
+
+// UpdateWorkflowDefinitionResponse returns the durable update operation.
+message UpdateWorkflowDefinitionResponse {
+  mindclade.job.v1.Operation operation = 1;
+}
+
+// GetWorkflowDefinitionRequest identifies one definition revision.
+message GetWorkflowDefinitionRequest {
+  string name = 1;
+  string if_none_match = 2;
+}
+
+// GetWorkflowDefinitionResponse returns the requested definition.
+message GetWorkflowDefinitionResponse {
+  mindclade.workflow.v1.WorkflowDefinition workflow_definition = 1;
+}
+
+// ListWorkflowDefinitionsRequest defines a bounded project-scoped query.
+message ListWorkflowDefinitionsRequest {
+  string parent = 1;
+  mindclade.common.v1.PageRequest page = 2;
+  string filter = 3;
+  string order_by = 4;
+}
+
+// ListWorkflowDefinitionsResponse returns one stable definition page.
+message ListWorkflowDefinitionsResponse {
+  repeated mindclade.workflow.v1.WorkflowDefinition workflow_definitions = 1;
+  mindclade.common.v1.PageResponse page = 2;
+  google.protobuf.Timestamp read_time = 3;
+}
+
+// StartWorkflowRunRequest admits a run with frozen definition intent.
+message StartWorkflowRunRequest {
+  mindclade.common.v1.CommandContext context = 1;
+  string parent = 2;
+  string workflow_run_id = 3;
+  mindclade.workflow.v1.WorkflowRun workflow_run = 4;
+}
+
+// StartWorkflowRunResponse returns the durable operation tracking the run.
+message StartWorkflowRunResponse {
+  mindclade.job.v1.Operation operation = 1;
+}
+
+// GetWorkflowRunRequest identifies one durable workflow run.
+message GetWorkflowRunRequest {
+  string name = 1;
+  string if_none_match = 2;
+}
+
+// GetWorkflowRunResponse returns the current run revision.
+message GetWorkflowRunResponse {
+  mindclade.workflow.v1.WorkflowRun workflow_run = 1;
+}
+
+// ListWorkflowRunsRequest defines a bounded project-scoped run query.
+message ListWorkflowRunsRequest {
+  string parent = 1;
+  mindclade.common.v1.PageRequest page = 2;
+  string filter = 3;
+  string order_by = 4;
+}
+
+// ListWorkflowRunsResponse returns one stable run page.
+message ListWorkflowRunsResponse {
+  repeated mindclade.workflow.v1.WorkflowRun workflow_runs = 1;
+  mindclade.common.v1.PageResponse page = 2;
+  google.protobuf.Timestamp read_time = 3;
+}
+
+// CancelWorkflowRunRequest records monotonic cancellation under an ETag.
+message CancelWorkflowRunRequest {
+  mindclade.common.v1.CommandContext context = 1;
+  string name = 2;
+  string etag = 3;
+  string reason = 4;
+}
+
+// CancelWorkflowRunResponse returns the durable cancellation operation.
+message CancelWorkflowRunResponse {
+  mindclade.job.v1.Operation operation = 1;
+}
+
+// CommitWorkflowTransitionRequest appends one fenced deterministic transition.
+message CommitWorkflowTransitionRequest {
+  mindclade.common.v1.CommandContext context = 1;
+  mindclade.workflow.v1.WorkflowRun workflow_run = 2;
+  uint64 expected_transition_sequence = 3;
+  string attempt_id = 4;
+  uint64 lease_epoch = 5;
+  string etag = 6;
+}
+
+// CommitWorkflowTransitionResponse returns the reconciled run revision.
+message CommitWorkflowTransitionResponse {
+  mindclade.workflow.v1.WorkflowRun workflow_run = 1;
+}
+
+// WatchWorkflowRunRequest resumes after a durable transition sequence.
+message WatchWorkflowRunRequest {
+  string name = 1;
+  uint64 after_transition_sequence = 2;
+}
+
+// WatchWorkflowRunResponse carries one ordered revision.
+message WatchWorkflowRunResponse {
+  mindclade.workflow.v1.WorkflowRun workflow_run = 1;
+}
+
+// RequestApprovalRequest records exact, digest-bound approval intent.
+message RequestApprovalRequest {
+  mindclade.workflow.v1.ApprovalRequest approval_request = 1;
+}
+
+// RequestApprovalResponse returns the durable approval request.
+message RequestApprovalResponse {
+  mindclade.workflow.v1.ApprovalRequest approval_request = 1;
+}
+
+// GetApprovalRequestRequest identifies one approval request.
+message GetApprovalRequestRequest {
+  string name = 1;
+}
+
+// GetApprovalRequestResponse returns the current approval state.
+message GetApprovalRequestResponse {
+  mindclade.workflow.v1.ApprovalRequest approval_request = 1;
+}
+
+// ListApprovalRequestsRequest defines a bounded authorization-filtered query.
+message ListApprovalRequestsRequest {
+  string parent = 1;
+  mindclade.common.v1.PageRequest page = 2;
+  string filter = 3;
+  string order_by = 4;
+}
+
+// ListApprovalRequestsResponse returns one stable approval page.
+message ListApprovalRequestsResponse {
+  repeated mindclade.workflow.v1.ApprovalRequest approval_requests = 1;
+  mindclade.common.v1.PageResponse page = 2;
+  google.protobuf.Timestamp read_time = 3;
+}
+
+// DecideApprovalRequest records an independently authenticated decision.
+message DecideApprovalRequest {
+  mindclade.common.v1.CommandContext context = 1;
+  string name = 2;
+  string etag = 3;
+  mindclade.workflow.v1.ApprovalDecisionValue decision = 4;
+  string reason_code = 5;
+  string safe_reason = 6;
+}
+
+// DecideApprovalResponse returns immutable signed decision evidence.
+message DecideApprovalResponse {
+  mindclade.workflow.v1.ApprovalReceipt approval_receipt = 1;
+}
+
+// ConsumeApprovalRequest atomically binds a single-use receipt to a call.
+message ConsumeApprovalRequest {
+  mindclade.common.v1.CommandContext context = 1;
+  string receipt_name = 2;
+  string binding_digest = 3;
+  string call_id = 4;
+}
+
+// ConsumeApprovalResponse returns the consumed immutable receipt.
+message ConsumeApprovalResponse {
+  mindclade.workflow.v1.ApprovalReceipt approval_receipt = 1;
+}
+
+// WorkflowService owns graph definitions, durable runs, and fenced transitions.
+service WorkflowService {
+  // CreateWorkflowDefinition validates the referenced graph before persistence.
+  rpc CreateWorkflowDefinition(CreateWorkflowDefinitionRequest) returns (CreateWorkflowDefinitionResponse);
+  // UpdateWorkflowDefinition applies only masked metadata under optimistic concurrency.
+  rpc UpdateWorkflowDefinition(UpdateWorkflowDefinitionRequest) returns (UpdateWorkflowDefinitionResponse);
+  // GetWorkflowDefinition reads one definition revision.
+  rpc GetWorkflowDefinition(GetWorkflowDefinitionRequest) returns (GetWorkflowDefinitionResponse);
+  // ListWorkflowDefinitions returns a bounded project-scoped page.
+  rpc ListWorkflowDefinitions(ListWorkflowDefinitionsRequest) returns (ListWorkflowDefinitionsResponse);
+  // StartWorkflowRun freezes execution intent and returns durable asynchronous state.
+  rpc StartWorkflowRun(StartWorkflowRunRequest) returns (StartWorkflowRunResponse);
+  // GetWorkflowRun reads one durable run.
+  rpc GetWorkflowRun(GetWorkflowRunRequest) returns (GetWorkflowRunResponse);
+  // ListWorkflowRuns returns a bounded authorization-filtered page.
+  rpc ListWorkflowRuns(ListWorkflowRunsRequest) returns (ListWorkflowRunsResponse);
+  // CancelWorkflowRun records monotonic cancellation.
+  rpc CancelWorkflowRun(CancelWorkflowRunRequest) returns (CancelWorkflowRunResponse);
+  // CommitWorkflowTransition rejects stale sequences and lease epochs.
+  rpc CommitWorkflowTransition(CommitWorkflowTransitionRequest) returns (CommitWorkflowTransitionResponse);
+  // WatchWorkflowRun streams ordered revisions from a durable resume cursor.
+  rpc WatchWorkflowRun(WatchWorkflowRunRequest) returns (stream WatchWorkflowRunResponse);
+}
+
+// ApprovalService owns exact-intent human approval and single-use consumption.
+service ApprovalService {
+  // RequestApproval persists the exact consequential action shown to approvers.
+  rpc RequestApproval(RequestApprovalRequest) returns (RequestApprovalResponse);
+  // GetApprovalRequest reads one durable request.
+  rpc GetApprovalRequest(GetApprovalRequestRequest) returns (GetApprovalRequestResponse);
+  // ListApprovalRequests returns a bounded authorization-filtered page.
+  rpc ListApprovalRequests(ListApprovalRequestsRequest) returns (ListApprovalRequestsResponse);
+  // DecideApproval creates immutable evidence from an authenticated human decision.
+  rpc DecideApproval(DecideApprovalRequest) returns (DecideApprovalResponse);
+  // ConsumeApproval atomically enforces binding, expiry, and reuse semantics.
+  rpc ConsumeApproval(ConsumeApprovalRequest) returns (ConsumeApprovalResponse);
+}

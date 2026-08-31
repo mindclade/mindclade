@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-import hashlib
-import json
 import unittest
 from pathlib import Path
+
+from tools.codegen.generate_schemas import baseline_bytes
 
 
 def root() -> Path:
@@ -17,15 +17,7 @@ class SchemaCompatibilityTest(unittest.TestCase):
     def test_committed_baseline_matches_all_schema_sources(self) -> None:
         repository = root()
         baseline = repository / "protocols/compatibility/baselines/json-schema.lock.json"
-        expected = {
-            str(path.relative_to(repository)): "sha256:"
-            + hashlib.sha256(path.read_bytes()).hexdigest()
-            for path in sorted((repository / "protocols/schemas").glob("**/*.schema.json"))
-        }
-        self.assertEqual(
-            json.loads(baseline.read_text()),
-            {"schema_version": "mindclade.json-schema-baseline/v1", "sources": expected},
-        )
+        self.assertEqual(baseline.read_bytes(), baseline_bytes(repository))
 
 
 if __name__ == "__main__":

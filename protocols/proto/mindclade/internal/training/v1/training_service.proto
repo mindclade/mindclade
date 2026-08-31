@@ -1,0 +1,191 @@
+syntax = "proto3";
+
+package mindclade.internal.training.v1;
+
+import "google/protobuf/timestamp.proto";
+import "proto/mindclade/common/v1/pagination.proto";
+import "proto/mindclade/job/v1/operation.proto";
+import "proto/mindclade/training/v1/checkpoint.proto";
+import "proto/mindclade/training/v1/training_commands.proto";
+import "proto/mindclade/training/v1/training_progress.proto";
+import "proto/mindclade/training/v1/training_run.proto";
+
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/training/v1;trainingv1";
+
+// CreateTrainingRunRequest wraps immutable training intent and idempotency context.
+message CreateTrainingRunRequest {
+  mindclade.training.v1.CreateTrainingRunCommand command = 1;
+}
+
+// CreateTrainingRunResponse returns the durable operation tracking validation and admission.
+message CreateTrainingRunResponse {
+  mindclade.job.v1.Operation operation = 1;
+}
+
+// GetTrainingRunRequest identifies one scientific run and optional cache validator.
+message GetTrainingRunRequest {
+  string name = 1;
+  string if_none_match = 2;
+}
+
+// GetTrainingRunResponse returns the current durable training run.
+message GetTrainingRunResponse {
+  mindclade.training.v1.TrainingRun training_run = 1;
+}
+
+// ListTrainingRunsRequest defines a bounded project-scoped query.
+message ListTrainingRunsRequest {
+  string parent = 1;
+  mindclade.common.v1.PageRequest page = 2;
+  string filter = 3;
+  string order_by = 4;
+}
+
+// ListTrainingRunsResponse returns one stable page of training runs.
+message ListTrainingRunsResponse {
+  repeated mindclade.training.v1.TrainingRun training_runs = 1;
+  mindclade.common.v1.PageResponse page = 2;
+  google.protobuf.Timestamp read_time = 3;
+}
+
+// StartTrainingAttemptRequest wraps a fenced worker-start command.
+message StartTrainingAttemptRequest {
+  mindclade.training.v1.StartTrainingAttemptCommand command = 1;
+}
+
+// StartTrainingAttemptResponse returns the reconciled training run.
+message StartTrainingAttemptResponse {
+  mindclade.training.v1.TrainingRun training_run = 1;
+}
+
+// ResumeTrainingAttemptRequest wraps a checkpoint-bound fenced resume command.
+message ResumeTrainingAttemptRequest {
+  mindclade.training.v1.ResumeTrainingAttemptCommand command = 1;
+}
+
+// ResumeTrainingAttemptResponse returns the reconciled training run.
+message ResumeTrainingAttemptResponse {
+  mindclade.training.v1.TrainingRun training_run = 1;
+}
+
+// CommitTrainingProgressRequest wraps one monotonic fenced progress commit.
+message CommitTrainingProgressRequest {
+  mindclade.training.v1.CommitTrainingProgressCommand command = 1;
+}
+
+// CommitTrainingProgressResponse returns accepted progress and current run state.
+message CommitTrainingProgressResponse {
+  mindclade.training.v1.TrainingProgress progress = 1;
+  mindclade.training.v1.TrainingRun training_run = 2;
+}
+
+// PrepareCheckpointRequest wraps an idempotent checkpoint preparation boundary.
+message PrepareCheckpointRequest {
+  mindclade.training.v1.PrepareCheckpointCommand command = 1;
+}
+
+// PrepareCheckpointResponse returns the checkpoint under preparation.
+message PrepareCheckpointResponse {
+  mindclade.training.v1.Checkpoint checkpoint = 1;
+}
+
+// CommitCheckpointRequest wraps an immutable, fenced checkpoint commit.
+message CommitCheckpointRequest {
+  mindclade.training.v1.CommitCheckpointCommand command = 1;
+}
+
+// CommitCheckpointResponse returns the committed checkpoint and reconciled run.
+message CommitCheckpointResponse {
+  mindclade.training.v1.Checkpoint checkpoint = 1;
+  mindclade.training.v1.TrainingRun training_run = 2;
+}
+
+// CompleteTrainingRunRequest wraps one fenced terminal publication command.
+message CompleteTrainingRunRequest {
+  mindclade.training.v1.CompleteTrainingRunCommand command = 1;
+}
+
+// CompleteTrainingRunResponse returns the terminal run revision.
+message CompleteTrainingRunResponse {
+  mindclade.training.v1.TrainingRun training_run = 1;
+}
+
+// CancelTrainingRunRequest wraps optimistic-concurrency protected cancellation intent.
+message CancelTrainingRunRequest {
+  mindclade.training.v1.CancelTrainingRunCommand command = 1;
+}
+
+// CancelTrainingRunResponse returns the current run after recording cancellation.
+message CancelTrainingRunResponse {
+  mindclade.training.v1.TrainingRun training_run = 1;
+}
+
+// GetCheckpointRequest identifies one immutable checkpoint resource.
+message GetCheckpointRequest {
+  string name = 1;
+}
+
+// GetCheckpointResponse returns the requested checkpoint metadata.
+message GetCheckpointResponse {
+  mindclade.training.v1.Checkpoint checkpoint = 1;
+}
+
+// ListCheckpointsRequest lists checkpoints under one training run.
+message ListCheckpointsRequest {
+  string parent = 1;
+  mindclade.common.v1.PageRequest page = 2;
+  string filter = 3;
+  string order_by = 4;
+}
+
+// ListCheckpointsResponse returns one stable checkpoint page.
+message ListCheckpointsResponse {
+  repeated mindclade.training.v1.Checkpoint checkpoints = 1;
+  mindclade.common.v1.PageResponse page = 2;
+  google.protobuf.Timestamp read_time = 3;
+}
+
+// WatchTrainingRunRequest resumes run/progress updates after a known sequence.
+message WatchTrainingRunRequest {
+  string name = 1;
+  uint64 after_sequence = 2;
+  google.protobuf.Timestamp deadline = 3;
+}
+
+// WatchTrainingRunResponse carries a resumable durable snapshot.
+message WatchTrainingRunResponse {
+  mindclade.training.v1.TrainingRun training_run = 1;
+  mindclade.training.v1.TrainingProgress progress = 2;
+  uint64 sequence = 3;
+  google.protobuf.Timestamp observed_at = 4;
+}
+
+// TrainingService owns training-run, progress, attempt, and checkpoint application RPCs.
+service TrainingService {
+  // CreateTrainingRun returns a durable operation for validation and admission.
+  rpc CreateTrainingRun(CreateTrainingRunRequest) returns (CreateTrainingRunResponse);
+  // GetTrainingRun reads one scientific run.
+  rpc GetTrainingRun(GetTrainingRunRequest) returns (GetTrainingRunResponse);
+  // ListTrainingRuns returns a bounded authorization-filtered page.
+  rpc ListTrainingRuns(ListTrainingRunsRequest) returns (ListTrainingRunsResponse);
+  // StartTrainingAttempt rejects stale or mismatched fences.
+  rpc StartTrainingAttempt(StartTrainingAttemptRequest) returns (StartTrainingAttemptResponse);
+  // ResumeTrainingAttempt binds recovery to an immutable checkpoint.
+  rpc ResumeTrainingAttempt(ResumeTrainingAttemptRequest) returns (ResumeTrainingAttemptResponse);
+  // CommitTrainingProgress accepts only monotonic progress from the current fence.
+  rpc CommitTrainingProgress(CommitTrainingProgressRequest) returns (CommitTrainingProgressResponse);
+  // PrepareCheckpoint establishes the atomic snapshot boundary.
+  rpc PrepareCheckpoint(PrepareCheckpointRequest) returns (PrepareCheckpointResponse);
+  // CommitCheckpoint verifies immutable artifacts before publication.
+  rpc CommitCheckpoint(CommitCheckpointRequest) returns (CommitCheckpointResponse);
+  // CompleteTrainingRun accepts one fenced terminal outcome.
+  rpc CompleteTrainingRun(CompleteTrainingRunRequest) returns (CompleteTrainingRunResponse);
+  // CancelTrainingRun records monotonic desired cancellation under an ETag.
+  rpc CancelTrainingRun(CancelTrainingRunRequest) returns (CancelTrainingRunResponse);
+  // GetCheckpoint reads one checkpoint.
+  rpc GetCheckpoint(GetCheckpointRequest) returns (GetCheckpointResponse);
+  // ListCheckpoints lists checkpoints for a training run.
+  rpc ListCheckpoints(ListCheckpointsRequest) returns (ListCheckpointsResponse);
+  // WatchTrainingRun streams resumable revisions; the durable run remains authoritative.
+  rpc WatchTrainingRun(WatchTrainingRunRequest) returns (stream WatchTrainingRunResponse);
+}

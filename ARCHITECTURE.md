@@ -44,8 +44,10 @@ architecture and safety law remains binding while its wave timing is guidance
 under ADR-0015. The repository-path manifest is the file-level authority;
 target-only and deferred paths must not be created early.
 
-Protobuf owns internal resources, commands, events, and gRPC services; JSON
-Schema owns durable documents; a curated public facade generates OpenAPI.
+Protobuf owns resources, commands, events, and gRPC services; JSON Schema owns
+durable documents. `mindclade.api.v1` owns the public gRPC facade, while the
+curated OpenAPI document owns external HTTP/JSON and SDK behavior. Exact
+operation and model mappings keep the two public transports in parity.
 Generated Go, Python, Rust, and TypeScript bindings are authoritative consumers'
 types. PostgreSQL-compatible normalized relations remain durable business-state
 authority; immutable Protobuf bytes are limited to outbox, inbox, audit, and

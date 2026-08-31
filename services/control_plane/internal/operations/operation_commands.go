@@ -1,6 +1,7 @@
 package operations
 
 import (
+	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
 	"github.com/mindclade/mindclade/services/control_plane/internal/policies"
 )
 
@@ -8,13 +9,17 @@ const CreateAction = "operations.create"
 
 type CreateCommand struct {
 	Principal      policies.Principal
-	Operation      Operation
+	Operation      *jobv1.Operation
 	IdempotencyKey string
+	RequestDigest  string
 }
 
-func Create(authorizer policies.Authorizer, repository *Repository, command CreateCommand) (Operation, bool, error) {
-	if err := authorizer.Authorize(command.Principal, CreateAction, command.Operation.TenantID); err != nil {
-		return Operation{}, false, err
+func Create(authorizer policies.Authorizer, repository *Repository, command CreateCommand) (*jobv1.Operation, bool, error) {
+	if command.Operation == nil {
+		return nil, false, ErrNotFound
 	}
-	return repository.CreateAtomically(command.Operation, command.IdempotencyKey, command.Principal.ID)
+	if err := authorizer.Authorize(command.Principal, CreateAction, command.Operation.GetTenantId()); err != nil {
+		return nil, false, err
+	}
+	return repository.CreateAtomically(command.Operation, command.RequestDigest, command.IdempotencyKey, command.Principal.ID)
 }

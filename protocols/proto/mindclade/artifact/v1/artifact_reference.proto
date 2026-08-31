@@ -12,4 +12,6 @@ message ArtifactRef {
   string artifact_kind = 4;
   string schema_id = 5;
   string integrity_digest = 6;
+  string uri = 7;
+  string schema_version = 8;
 }

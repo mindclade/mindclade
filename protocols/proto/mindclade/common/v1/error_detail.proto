@@ -2,12 +2,57 @@ syntax = "proto3";
 
 package mindclade.common.v1;
 
+import "google/protobuf/duration.proto";
+import "proto/mindclade/common/v1/resource_reference.proto";
+
 option go_package = "github.com/mindclade/mindclade/protocols/generated/go/common/v1;commonv1";
+
+enum ErrorCode {
+  ERROR_CODE_UNSPECIFIED = 0;
+  ERROR_CODE_INVALID_ARGUMENT = 1;
+  ERROR_CODE_FAILED_PRECONDITION = 2;
+  ERROR_CODE_NOT_FOUND = 3;
+  ERROR_CODE_ALREADY_EXISTS = 4;
+  ERROR_CODE_PERMISSION_DENIED = 5;
+  ERROR_CODE_UNAUTHENTICATED = 6;
+  ERROR_CODE_RESOURCE_EXHAUSTED = 7;
+  ERROR_CODE_ABORTED = 8;
+  ERROR_CODE_CONFLICT = 9;
+  ERROR_CODE_UNAVAILABLE = 10;
+  ERROR_CODE_DEADLINE_EXCEEDED = 11;
+  ERROR_CODE_CANCELLED = 12;
+  ERROR_CODE_INTERNAL = 13;
+  ERROR_CODE_DATA_LOSS = 14;
+  ERROR_CODE_UNSUPPORTED = 15;
+  ERROR_CODE_POLICY_DENIED = 16;
+}
+
+enum RetryClass {
+  RETRY_CLASS_UNSPECIFIED = 0;
+  RETRY_CLASS_NEVER = 1;
+  RETRY_CLASS_SAFE = 2;
+  RETRY_CLASS_AFTER_RECONCILIATION = 3;
+}
+
+message FieldViolation {
+  string field = 1;
+  string description = 2;
+}
+
+message PreconditionViolation {
+  string type = 1;
+  string subject = 2;
+  string description = 3;
+}
 
 // Structured, non-secret failure detail for durable command results.
 message ErrorDetail {
-  string code = 1;
+  ErrorCode code = 1;
   string message = 2;
-  string retry_class = 3;
-  string subject_ref = 4;
+  RetryClass retry_class = 3;
+  ResourceRef subject = 4;
+  repeated FieldViolation field_violations = 5;
+  repeated PreconditionViolation precondition_violations = 6;
+  google.protobuf.Duration retry_after = 7;
+  string error_id = 8;
 }

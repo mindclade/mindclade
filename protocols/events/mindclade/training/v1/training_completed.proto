@@ -5,7 +5,6 @@ package mindclade.events.training.v1;
 import "google/protobuf/timestamp.proto";
 import "proto/mindclade/artifact/v1/artifact_reference.proto";
 import "proto/mindclade/common/v1/error_detail.proto";
-import "proto/mindclade/common/v1/event_envelope.proto";
 import "proto/mindclade/common/v1/resource_reference.proto";
 import "proto/mindclade/job/v1/lease_fencing.proto";
 import "proto/mindclade/training/v1/training_run.proto";
@@ -14,13 +13,12 @@ option go_package = "github.com/mindclade/mindclade/protocols/generated/go/train
 
 // TrainingCompleted is an immutable fenced terminal fact with artifact-backed results.
 message TrainingCompleted {
-  mindclade.common.v1.EventEnvelope envelope = 1;
-  string training_run_name = 2;
-  int64 training_run_revision = 3;
-  mindclade.job.v1.LeaseFence fence = 4;
-  mindclade.training.v1.TrainingTerminalClassification classification = 5;
-  mindclade.artifact.v1.ArtifactRef result_manifest = 6;
-  mindclade.common.v1.ResourceRef final_checkpoint = 7;
-  mindclade.common.v1.ErrorDetail error = 8;
-  google.protobuf.Timestamp completed_at = 9;
+  string training_run_name = 1;
+  int64 training_run_revision = 2;
+  mindclade.job.v1.LeaseFence fence = 3;
+  mindclade.training.v1.TrainingTerminalClassification classification = 4;
+  mindclade.artifact.v1.ArtifactRef result_manifest = 5;
+  mindclade.common.v1.ResourceRef final_checkpoint = 6;
+  mindclade.common.v1.ErrorDetail error = 7;
+  google.protobuf.Timestamp completed_at = 8;
 }

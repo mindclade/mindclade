@@ -1,3 +1,16 @@
 package identifiers
-import("fmt";"strings")
-type ResourceID struct{Kind,Value string};func ParseResourceID(k,v string)(ResourceID,error){if k==""||len(v)<10||strings.HasPrefix(v,k+"_")==false{return ResourceID{},fmt.Errorf("invalid resource id")};return ResourceID{k,v},nil}
+
+import (
+	"fmt"
+	"strings"
+)
+
+// ParseResourceID validates an opaque generated-contract resource_id without
+// introducing a second Go wire type. The returned string is assigned directly
+// to commonv1.ResourceRef.ResourceId.
+func ParseResourceID(kind, value string) (string, error) {
+	if kind == "" || len(value) < 10 || !strings.HasPrefix(value, kind+"_") {
+		return "", fmt.Errorf("invalid %q resource id", kind)
+	}
+	return value, nil
+}

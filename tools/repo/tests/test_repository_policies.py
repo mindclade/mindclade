@@ -43,6 +43,7 @@ from owner_policy import (  # noqa: E402
     validate_owners,
 )
 from path_policy import (  # noqa: E402
+    CANONICAL_FILE_COUNT,
     PolicyError,
     discover_actual_paths,
     is_all_contract_baseline_path,
@@ -71,9 +72,9 @@ class RepositoryPolicyTest(unittest.TestCase):
 
     def test_manifest_is_semantically_valid(self) -> None:
         self.assertEqual(validate_manifest(self.manifest), [])
-        self.assertEqual(len(self.manifest["paths"]), 2632)
+        self.assertEqual(len(self.manifest["paths"]), CANONICAL_FILE_COUNT)
         wave_one = [entry for entry in self.manifest["paths"] if entry["activation_wave"] == "1"]
-        self.assertEqual(len(wave_one), 401)
+        self.assertEqual(len(wave_one), 444)
         for entry in wave_one:
             with self.subTest(path=entry["path"]):
                 status = entry["status"]

@@ -41,8 +41,18 @@ TOOLS = (
     Tool("Nix", "nix", ("--version",), r"\b2\.35\.[0-9]+\b"),
     Tool("just", "just", ("--version",), r"\bjust 1\.[0-9]+\.[0-9]+\b"),
     Tool("actionlint", "actionlint", ("--version",), r"\b1\.7\.[0-9]+\b"),
+    Tool("Buildifier", "buildifier", ("--version",), r"\b8\.5\.1\b"),
+    Tool(
+        "golangci-lint",
+        "golangci-lint",
+        ("--version",),
+        r"\bgolangci-lint has version 2\.13\.1\b",
+    ),
+    Tool("nixfmt", "nixfmt", ("--version",), r"\b1\.4\.0\b"),
     Tool("ruff", "ruff", ("--version",), r"^ruff 0\.16\.4$"),
     Tool("pyright", "pyright", ("--version",), r"^pyright 1\.1\.412$"),
+    Tool("ShellCheck", "shellcheck", ("--version",), r"\bversion: 0\.11\.0\b"),
+    Tool("shfmt", "shfmt", ("--version",), r"^v3\.13\.1$"),
 )
 
 

@@ -1,0 +1,219 @@
+syntax = "proto3";
+
+package mindclade.internal.job.v1;
+
+import "google/protobuf/field_mask.proto";
+import "google/protobuf/timestamp.proto";
+import "proto/mindclade/common/v1/command_context.proto";
+import "proto/mindclade/common/v1/pagination.proto";
+import "proto/mindclade/job/v1/attempt.proto";
+import "proto/mindclade/job/v1/job.proto";
+import "proto/mindclade/job/v1/job_commands.proto";
+import "proto/mindclade/job/v1/lease_fencing.proto";
+import "proto/mindclade/job/v1/operation.proto";
+import "proto/mindclade/job/v1/run.proto";
+
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/job/v1;jobv1";
+
+// GetOperationRequest identifies a durable operation and optional cache validator.
+message GetOperationRequest {
+  string name = 1;
+  string if_none_match = 2;
+}
+
+// GetOperationResponse returns the latest durable operation representation.
+message GetOperationResponse {
+  mindclade.job.v1.Operation operation = 1;
+}
+
+// ListOperationsRequest defines a bounded project-scoped operation query.
+message ListOperationsRequest {
+  string parent = 1;
+  mindclade.common.v1.PageRequest page = 2;
+  string filter = 3;
+  string order_by = 4;
+}
+
+// ListOperationsResponse returns one revision-consistent page.
+message ListOperationsResponse {
+  repeated mindclade.job.v1.Operation operations = 1;
+  mindclade.common.v1.PageResponse page = 2;
+  google.protobuf.Timestamp read_time = 3;
+}
+
+// CancelOperationRequest makes cancellation durable and concurrency-safe.
+message CancelOperationRequest {
+  mindclade.common.v1.CommandContext context = 1;
+  string name = 2;
+  string etag = 3;
+  string reason = 4;
+}
+
+// CancelOperationResponse returns the current operation after recording intent.
+message CancelOperationResponse {
+  mindclade.job.v1.Operation operation = 1;
+}
+
+// WatchOperationRequest resumes a bounded stream after an acknowledged sequence.
+message WatchOperationRequest {
+  string name = 1;
+  uint64 after_sequence = 2;
+  google.protobuf.Timestamp deadline = 3;
+}
+
+// WatchOperationResponse carries a resumable snapshot or subsequent revision.
+message WatchOperationResponse {
+  mindclade.job.v1.Operation operation = 1;
+  uint64 sequence = 2;
+  google.protobuf.Timestamp observed_at = 3;
+}
+
+// RequestJobRequest wraps the canonical idempotent durable-work command.
+message RequestJobRequest {
+  mindclade.job.v1.RequestJobCommand command = 1;
+}
+
+// RequestJobResponse returns both durable job and client-visible operation identities.
+message RequestJobResponse {
+  mindclade.job.v1.Job job = 1;
+  mindclade.job.v1.Operation operation = 2;
+}
+
+// GetJobRequest identifies a durable job.
+message GetJobRequest {
+  string name = 1;
+  string if_none_match = 2;
+}
+
+// GetJobResponse returns the latest job revision.
+message GetJobResponse {
+  mindclade.job.v1.Job job = 1;
+}
+
+// ListJobsRequest defines a bounded project-scoped job query.
+message ListJobsRequest {
+  string parent = 1;
+  mindclade.common.v1.PageRequest page = 2;
+  string filter = 3;
+  string order_by = 4;
+}
+
+// ListJobsResponse returns one stable page of jobs.
+message ListJobsResponse {
+  repeated mindclade.job.v1.Job jobs = 1;
+  mindclade.common.v1.PageResponse page = 2;
+  google.protobuf.Timestamp read_time = 3;
+}
+
+// CancelJobRequest records monotonic cancellation intent under an ETag precondition.
+message CancelJobRequest {
+  mindclade.common.v1.CommandContext context = 1;
+  string name = 2;
+  string etag = 3;
+  string reason = 4;
+}
+
+// CancelJobResponse returns the operation tracking cancellation.
+message CancelJobResponse {
+  mindclade.job.v1.Operation operation = 1;
+}
+
+// GetRunRequest identifies one frozen logical execution.
+message GetRunRequest {
+  string name = 1;
+}
+
+// GetRunResponse returns the requested run.
+message GetRunResponse {
+  mindclade.job.v1.Run run = 1;
+}
+
+// ListRunsRequest lists runs for a parent job with opaque pagination.
+message ListRunsRequest {
+  string parent = 1;
+  mindclade.common.v1.PageRequest page = 2;
+  string filter = 3;
+}
+
+// ListRunsResponse returns one stable run page.
+message ListRunsResponse {
+  repeated mindclade.job.v1.Run runs = 1;
+  mindclade.common.v1.PageResponse page = 2;
+  google.protobuf.Timestamp read_time = 3;
+}
+
+// GetAttemptRequest identifies one fenced execution attempt.
+message GetAttemptRequest {
+  string name = 1;
+}
+
+// GetAttemptResponse returns the requested attempt.
+message GetAttemptResponse {
+  mindclade.job.v1.Attempt attempt = 1;
+}
+
+// ListAttemptsRequest lists attempts under a run with opaque pagination.
+message ListAttemptsRequest {
+  string parent = 1;
+  mindclade.common.v1.PageRequest page = 2;
+}
+
+// ListAttemptsResponse returns one stable attempt page.
+message ListAttemptsResponse {
+  repeated mindclade.job.v1.Attempt attempts = 1;
+  mindclade.common.v1.PageResponse page = 2;
+  google.protobuf.Timestamp read_time = 3;
+}
+
+// CommitAttemptRequest applies a bounded worker update under both revision and lease fencing.
+message CommitAttemptRequest {
+  mindclade.common.v1.CommandContext context = 1;
+  mindclade.job.v1.Attempt attempt = 2;
+  mindclade.job.v1.LeaseFence fence = 3;
+  google.protobuf.FieldMask update_mask = 4;
+  int64 expected_resource_version = 5;
+}
+
+// CommitAttemptResponse returns the accepted attempt and reconciled run state.
+message CommitAttemptResponse {
+  mindclade.job.v1.Attempt attempt = 1;
+  mindclade.job.v1.Run run = 2;
+}
+
+// OperationService owns durable long-running-operation queries and cancellation.
+service OperationService {
+  // GetOperation reads one operation using revision-aware cache validation.
+  rpc GetOperation(GetOperationRequest) returns (GetOperationResponse);
+  // ListOperations returns an opaque-token page with stable ordering.
+  rpc ListOperations(ListOperationsRequest) returns (ListOperationsResponse);
+  // CancelOperation durably records idempotent cancellation intent.
+  rpc CancelOperation(CancelOperationRequest) returns (CancelOperationResponse);
+  // WatchOperation streams resumable revisions; the durable resource remains authoritative.
+  rpc WatchOperation(WatchOperationRequest) returns (stream WatchOperationResponse);
+}
+
+// JobService owns durable desired work and its client-visible operation.
+service JobService {
+  // RequestJob atomically records idempotency, job state, audit, and outbox intent.
+  rpc RequestJob(RequestJobRequest) returns (RequestJobResponse);
+  // GetJob reads one durable job.
+  rpc GetJob(GetJobRequest) returns (GetJobResponse);
+  // ListJobs returns a bounded authorization-filtered page.
+  rpc ListJobs(ListJobsRequest) returns (ListJobsResponse);
+  // CancelJob records monotonic desired cancellation under optimistic concurrency.
+  rpc CancelJob(CancelJobRequest) returns (CancelJobResponse);
+}
+
+// RunService owns logical runs, fenced attempts, and worker publication boundaries.
+service RunService {
+  // GetRun reads one logical execution.
+  rpc GetRun(GetRunRequest) returns (GetRunResponse);
+  // ListRuns lists logical executions for one durable job.
+  rpc ListRuns(ListRunsRequest) returns (ListRunsResponse);
+  // GetAttempt reads one fenced worker attempt.
+  rpc GetAttempt(GetAttemptRequest) returns (GetAttemptResponse);
+  // ListAttempts lists attempts for one run.
+  rpc ListAttempts(ListAttemptsRequest) returns (ListAttemptsResponse);
+  // CommitAttempt rejects stale resource revisions or lease epochs.
+  rpc CommitAttempt(CommitAttemptRequest) returns (CommitAttemptResponse);
+}

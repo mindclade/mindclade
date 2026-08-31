@@ -1,0 +1,182 @@
+syntax = "proto3";
+
+package mindclade.internal.agent.v1;
+
+import "google/protobuf/field_mask.proto";
+import "google/protobuf/timestamp.proto";
+import "proto/mindclade/agent/v1/agent_definition.proto";
+import "proto/mindclade/agent/v1/agent_run.proto";
+import "proto/mindclade/agent/v1/agent_step.proto";
+import "proto/mindclade/agent/v1/tool_receipt.proto";
+import "proto/mindclade/common/v1/command_context.proto";
+import "proto/mindclade/common/v1/pagination.proto";
+import "proto/mindclade/job/v1/operation.proto";
+
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/agent/v1;agentv1";
+
+// CreateAgentDefinitionRequest creates a definition; server-managed fields must be unset.
+message CreateAgentDefinitionRequest {
+  mindclade.common.v1.CommandContext context = 1;
+  string parent = 2;
+  string agent_definition_id = 3;
+  mindclade.agent.v1.AgentDefinition agent_definition = 4;
+}
+
+// CreateAgentDefinitionResponse returns the durable creation operation.
+message CreateAgentDefinitionResponse {
+  mindclade.job.v1.Operation operation = 1;
+}
+
+// UpdateAgentDefinitionRequest applies a field mask under an ETag precondition.
+message UpdateAgentDefinitionRequest {
+  mindclade.common.v1.CommandContext context = 1;
+  mindclade.agent.v1.AgentDefinition agent_definition = 2;
+  google.protobuf.FieldMask update_mask = 3;
+  string etag = 4;
+}
+
+// UpdateAgentDefinitionResponse returns the durable update operation.
+message UpdateAgentDefinitionResponse {
+  mindclade.job.v1.Operation operation = 1;
+}
+
+// GetAgentDefinitionRequest identifies one versioned agent definition.
+message GetAgentDefinitionRequest {
+  string name = 1;
+  string if_none_match = 2;
+}
+
+// GetAgentDefinitionResponse returns the requested definition revision.
+message GetAgentDefinitionResponse {
+  mindclade.agent.v1.AgentDefinition agent_definition = 1;
+}
+
+// ListAgentDefinitionsRequest defines a bounded project-scoped query.
+message ListAgentDefinitionsRequest {
+  string parent = 1;
+  mindclade.common.v1.PageRequest page = 2;
+  string filter = 3;
+  string order_by = 4;
+}
+
+// ListAgentDefinitionsResponse returns one stable definition page.
+message ListAgentDefinitionsResponse {
+  repeated mindclade.agent.v1.AgentDefinition agent_definitions = 1;
+  mindclade.common.v1.PageResponse page = 2;
+  google.protobuf.Timestamp read_time = 3;
+}
+
+// StartAgentRunRequest admits a run resource whose server-managed fields must be unset.
+message StartAgentRunRequest {
+  mindclade.common.v1.CommandContext context = 1;
+  string parent = 2;
+  string agent_run_id = 3;
+  mindclade.agent.v1.AgentRun agent_run = 4;
+}
+
+// StartAgentRunResponse returns the durable operation tracking the run.
+message StartAgentRunResponse {
+  mindclade.job.v1.Operation operation = 1;
+}
+
+// GetAgentRunRequest identifies one durable agent run.
+message GetAgentRunRequest {
+  string name = 1;
+  string if_none_match = 2;
+}
+
+// GetAgentRunResponse returns the current run revision.
+message GetAgentRunResponse {
+  mindclade.agent.v1.AgentRun agent_run = 1;
+}
+
+// ListAgentRunsRequest defines a bounded project-scoped run query.
+message ListAgentRunsRequest {
+  string parent = 1;
+  mindclade.common.v1.PageRequest page = 2;
+  string filter = 3;
+  string order_by = 4;
+}
+
+// ListAgentRunsResponse returns one stable run page.
+message ListAgentRunsResponse {
+  repeated mindclade.agent.v1.AgentRun agent_runs = 1;
+  mindclade.common.v1.PageResponse page = 2;
+  google.protobuf.Timestamp read_time = 3;
+}
+
+// CancelAgentRunRequest records cancellation under an ETag precondition.
+message CancelAgentRunRequest {
+  mindclade.common.v1.CommandContext context = 1;
+  string name = 2;
+  string etag = 3;
+  string reason = 4;
+}
+
+// CancelAgentRunResponse returns the durable cancellation operation.
+message CancelAgentRunResponse {
+  mindclade.job.v1.Operation operation = 1;
+}
+
+// GetAgentStepRequest identifies one append-only run step.
+message GetAgentStepRequest {
+  string name = 1;
+}
+
+// GetAgentStepResponse returns the requested step.
+message GetAgentStepResponse {
+  mindclade.agent.v1.AgentStep agent_step = 1;
+}
+
+// ListAgentStepsRequest lists steps after a durable sequence cursor.
+message ListAgentStepsRequest {
+  string parent = 1;
+  mindclade.common.v1.PageRequest page = 2;
+  uint64 after_sequence = 3;
+}
+
+// ListAgentStepsResponse returns one ordered step page.
+message ListAgentStepsResponse {
+  repeated mindclade.agent.v1.AgentStep agent_steps = 1;
+  mindclade.common.v1.PageResponse page = 2;
+  google.protobuf.Timestamp read_time = 3;
+}
+
+// CommitToolReceiptRequest appends a fenced receipt under run optimistic concurrency.
+message CommitToolReceiptRequest {
+  mindclade.common.v1.CommandContext context = 1;
+  mindclade.agent.v1.ToolReceipt tool_receipt = 2;
+  string run_etag = 3;
+}
+
+// CommitToolReceiptResponse returns the accepted receipt and reconciled run.
+message CommitToolReceiptResponse {
+  mindclade.agent.v1.ToolReceipt tool_receipt = 1;
+  mindclade.agent.v1.AgentRun agent_run = 2;
+}
+
+// AgentService owns definitions, durable runs, steps, and tool-receipt publication.
+service AgentService {
+  // CreateAgentDefinition verifies artifact, workflow, tool, and policy references.
+  rpc CreateAgentDefinition(CreateAgentDefinitionRequest) returns (CreateAgentDefinitionResponse);
+  // UpdateAgentDefinition applies only masked mutable fields under an ETag.
+  rpc UpdateAgentDefinition(UpdateAgentDefinitionRequest) returns (UpdateAgentDefinitionResponse);
+  // GetAgentDefinition reads one definition revision.
+  rpc GetAgentDefinition(GetAgentDefinitionRequest) returns (GetAgentDefinitionResponse);
+  // ListAgentDefinitions returns a bounded project-scoped page.
+  rpc ListAgentDefinitions(ListAgentDefinitionsRequest) returns (ListAgentDefinitionsResponse);
+  // StartAgentRun admits immutable intent and returns durable asynchronous state.
+  rpc StartAgentRun(StartAgentRunRequest) returns (StartAgentRunResponse);
+  // GetAgentRun reads one durable run.
+  rpc GetAgentRun(GetAgentRunRequest) returns (GetAgentRunResponse);
+  // ListAgentRuns returns a bounded authorization-filtered page.
+  rpc ListAgentRuns(ListAgentRunsRequest) returns (ListAgentRunsResponse);
+  // CancelAgentRun records monotonic cancellation under optimistic concurrency.
+  rpc CancelAgentRun(CancelAgentRunRequest) returns (CancelAgentRunResponse);
+  // GetAgentStep reads one append-only step.
+  rpc GetAgentStep(GetAgentStepRequest) returns (GetAgentStepResponse);
+  // ListAgentSteps returns ordered, resumable run history.
+  rpc ListAgentSteps(ListAgentStepsRequest) returns (ListAgentStepsResponse);
+  // CommitToolReceipt rejects stale attempts and treats receipts as execution evidence.
+  rpc CommitToolReceipt(CommitToolReceiptRequest) returns (CommitToolReceiptResponse);
+}

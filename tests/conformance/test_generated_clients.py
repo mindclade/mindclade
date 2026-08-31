@@ -5,6 +5,7 @@ import os
 import subprocess
 import sys
 import unittest
+from datetime import datetime, timezone
 from pathlib import Path
 
 
@@ -65,6 +66,7 @@ class GeneratedClientsContractTest(unittest.TestCase):
         artifacts = importlib.import_module("artifacts")
         contracts = importlib.import_module("contracts")
         identifiers = importlib.import_module("identifiers")
+        serialization = importlib.import_module("serialization")
 
         self.assertIs(artifacts.ArtifactRef, artifact_module.ArtifactRef)
         self.assertIs(artifacts.EvidenceRef, evidence_module.EvidenceRef)
@@ -105,9 +107,9 @@ class GeneratedClientsContractTest(unittest.TestCase):
                 "try again",
                 retryable=True,
             ),
-            subject_ref=resource.name,
+            subject=resource,
         )
-        self.assertEqual(error_detail.code, "unavailable")
+        self.assertEqual(error_detail.subject.name, resource.name)
         self.assertTrue(contracts.from_error_detail(error_detail).retryable)
         self.assertEqual(
             identifiers.resource_key(resource),
@@ -119,6 +121,28 @@ class GeneratedClientsContractTest(unittest.TestCase):
                 resource.SerializeToString(deterministic=True)
             ).SerializeToString(deterministic=True),
         )
+
+        event_module = importlib.import_module("job.v1.job_requested_pb2")
+        payload = event_module.JobRequested(
+            job_id="job_1",
+            configuration_digest="sha256:" + "d" * 64,
+        )
+        envelope = serialization.make_event_envelope(
+            payload,
+            event_id="event_1",
+            event_version=1,
+            tenant_id="tenant_1",
+            project_id="project_1",
+            producer="control-plane",
+            occurred_at=datetime(2026, 8, 31, tzinfo=timezone.utc),
+            subject=resource,
+            job_id="job_1",
+        )
+        decoded = serialization.parse_event_payload(envelope, event_module.JobRequested)
+        self.assertEqual(decoded, payload)
+        envelope.payload_digest = "sha256:" + "0" * 64
+        with self.assertRaisesRegex(ValueError, "digest mismatch"):
+            serialization.parse_event_payload(envelope, event_module.JobRequested)
 
 
 if __name__ == "__main__":

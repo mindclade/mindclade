@@ -3,7 +3,6 @@ syntax = "proto3";
 package mindclade.events.workflow.v1;
 
 import "google/protobuf/timestamp.proto";
-import "proto/mindclade/common/v1/event_envelope.proto";
 import "proto/mindclade/common/v1/resource_reference.proto";
 import "proto/mindclade/workflow/v1/approval.proto";
 
@@ -11,9 +10,8 @@ option go_package = "github.com/mindclade/mindclade/protocols/generated/go/workf
 
 // ApprovalRecorded is the immutable fact that an approval authority committed a receipt.
 message ApprovalRecorded {
-  mindclade.common.v1.EventEnvelope envelope = 1;
-  mindclade.common.v1.ResourceRef approval_request = 2;
-  mindclade.workflow.v1.ApprovalReceipt receipt = 3;
-  mindclade.workflow.v1.ApprovalState resulting_state = 4;
-  google.protobuf.Timestamp recorded_at = 5;
+  mindclade.common.v1.ResourceRef approval_request = 1;
+  mindclade.workflow.v1.ApprovalReceipt receipt = 2;
+  mindclade.workflow.v1.ApprovalState resulting_state = 3;
+  google.protobuf.Timestamp recorded_at = 4;
 }

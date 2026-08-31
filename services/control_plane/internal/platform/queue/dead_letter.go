@@ -1,9 +1,13 @@
 package queue
 
-import "time"
+import (
+	"time"
+
+	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
+)
 
 type DeadLetter struct {
-	Envelope Envelope
+	Envelope *commonv1.EventEnvelope
 	Reason   string
 	At       time.Time
 }

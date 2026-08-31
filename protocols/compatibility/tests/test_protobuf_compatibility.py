@@ -56,6 +56,10 @@ class ProtobufCompatibilityTest(unittest.TestCase):
                 subprocess.run(
                     ["buf", "breaking", "--against", previous.name],
                     cwd=repository,
+                    env={
+                        **os.environ,
+                        "BUF_CACHE_DIR": str(repository / "build" / "buf-cache"),
+                    },
                     check=True,
                 )
 
@@ -138,7 +142,7 @@ class ProtobufCompatibilityTest(unittest.TestCase):
 
                     [dependencies]
                     mindclade-protocols = {{ path = "{generated}" }}
-                    protobuf = "=3.7.2"
+                    prost = "=0.14.4"
                     """
                 ),
                 encoding="utf-8",
@@ -147,15 +151,14 @@ class ProtobufCompatibilityTest(unittest.TestCase):
             (rust_root / "src/main.rs").write_text(
                 textwrap.dedent(
                     """
-                    use protobuf::Message;
+                    use prost::Message;
                     use std::io::{Read, Write};
                     fn main() {
                         let mut input = Vec::new();
                         std::io::stdin().read_to_end(&mut input).unwrap();
-                        let value =
-                            mindclade_protocols::common::v1::identifiers::Identifiers
-                                ::parse_from_bytes(&input).unwrap();
-                        std::io::stdout().write_all(&value.write_to_bytes().unwrap()).unwrap();
+                        let value = mindclade_protocols::common::v1::Identifiers
+                            ::decode(input.as_slice()).unwrap();
+                        std::io::stdout().write_all(&value.encode_to_vec()).unwrap();
                     }
                     """
                 ),
@@ -164,6 +167,11 @@ class ProtobufCompatibilityTest(unittest.TestCase):
             rust_output = subprocess.run(
                 ["cargo", "run", "--quiet", "--offline"],
                 cwd=rust_root,
+                env={
+                    **os.environ,
+                    "CARGO_HOME": str(repository / "build" / "cargo-home"),
+                    "CARGO_TARGET_DIR": str(repository / "build" / "rust-roundtrip"),
+                },
                 input=fixture,
                 stdout=subprocess.PIPE,
                 check=True,

@@ -1,0 +1,54 @@
+syntax = "proto3";
+
+package mindclade.internal.inference.v1;
+
+import "google/protobuf/timestamp.proto";
+import "proto/mindclade/inference/v1/inference_request.proto";
+import "proto/mindclade/inference/v1/inference_result.proto";
+import "proto/mindclade/inference/v1/inference_stream.proto";
+import "proto/mindclade/job/v1/operation.proto";
+
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/inference/v1;inferencev1";
+
+// SubmitInferenceRequest wraps bounded inference intent after edge validation.
+message SubmitInferenceRequest {
+  mindclade.inference.v1.InferenceRequest inference_request = 1;
+}
+
+// SubmitInferenceResponse returns the durable operation tracking inference work.
+message SubmitInferenceResponse {
+  mindclade.job.v1.Operation operation = 1;
+}
+
+// GetInferenceResultRequest identifies an operation's immutable terminal result.
+message GetInferenceResultRequest {
+  string operation_name = 1;
+}
+
+// GetInferenceResultResponse returns the typed result and durable operation.
+message GetInferenceResultResponse {
+  mindclade.inference.v1.InferenceResult result = 1;
+  mindclade.job.v1.Operation operation = 2;
+}
+
+// WatchInferenceRequest resumes bounded status/candidate updates from a durable cursor.
+message WatchInferenceRequest {
+  string operation_name = 1;
+  mindclade.inference.v1.InferenceStreamCursor cursor = 2;
+  google.protobuf.Timestamp deadline = 3;
+}
+
+// WatchInferenceResponse carries one resumable typed update.
+message WatchInferenceResponse {
+  mindclade.inference.v1.InferenceStreamMessage message = 1;
+}
+
+// InferenceService owns internal submission, terminal-result, and resumable-stream RPCs.
+service InferenceService {
+  // SubmitInference validates idempotency and returns durable asynchronous state.
+  rpc SubmitInference(SubmitInferenceRequest) returns (SubmitInferenceResponse);
+  // GetInferenceResult reads a terminal result without reconstructing it from stream state.
+  rpc GetInferenceResult(GetInferenceResultRequest) returns (GetInferenceResultResponse);
+  // WatchInference streams resumable convenience updates over durable operation state.
+  rpc WatchInference(WatchInferenceRequest) returns (stream WatchInferenceResponse);
+}

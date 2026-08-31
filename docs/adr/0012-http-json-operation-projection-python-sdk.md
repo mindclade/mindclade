@@ -1,5 +1,11 @@
 # ADR-0012: HTTP/JSON Operation Projection and Python SDK
 
+> Partially superseded by ADR-0015: the curated checked-in OpenAPI document is
+> the external HTTP/JSON and SDK authority, with exact parity to the public
+> gRPC facade. Stainless is the primary SDK generator and oagen is the
+> promotable shadow; the original one-way derivation and provider deferral no
+> longer apply.
+
 - Status: Proposed
 - Connected ratification: Pending independent review on protected infrastructure
 - Specification date: Proposed 2026-08-30; not accepted
@@ -63,7 +69,7 @@ cancel_operation(operation, *, etag) -> Operation
 download_artifact(ref, destination, *, deadline) -> verified destination
 ```
 
-The package is strictly typed and ships `py.typed`; construction is explicit; credentials are lazy; import performs no network or credential lookup; public models are SDK-owned rather than generated transport structs; sync and async clients have semantic parity; and model/training/torch packages are not dependencies. OpenAPI is generated from the curated service façade and is never hand-edited.
+The package is strictly typed and ships `py.typed`; construction is explicit; credentials are lazy; import performs no network or credential lookup; public models are SDK-owned rather than generated transport structs; sync and async clients have semantic parity; and model/training/torch packages are not dependencies. Under ADR-0015, the curated checked-in OpenAPI document is the HTTP/JSON source, while exact operation and model mappings prove parity with the public gRPC façade.
 
 Within HTTP v1 and Python SDK 1.x, changes are additive, existing field meaning is stable, unknown response fields are preserved where the runtime permits, and stable error codes are not repurposed. A breaking route, required request field, resource-name rule, error meaning, or public Python signature requires a new major and a tested migration window.
 
@@ -81,7 +87,7 @@ Within HTTP v1 and Python SDK 1.x, changes are additive, existing field meaning 
 - A synchronous inference endpoint was rejected because work and cancellation outlive one transport connection.
 - Unbounded polling was rejected because it leaks resources and makes cancellation/deadline behavior ambiguous.
 - Returning storage paths or mutable URLs as result identity was rejected because ArtifactRef is the durable authority.
-- Independent handwritten OpenAPI was rejected because it would compete with the curated service façade.
+- An OpenAPI surface without exact public-facade mappings was rejected because its semantics could drift across public transports.
 
 ## Qualification and rollback
 

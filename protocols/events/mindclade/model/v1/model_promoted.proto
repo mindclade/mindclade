@@ -4,19 +4,17 @@ package mindclade.events.model.v1;
 
 import "google/protobuf/timestamp.proto";
 import "proto/mindclade/artifact/v1/evidence_reference.proto";
-import "proto/mindclade/common/v1/event_envelope.proto";
 import "proto/mindclade/model/v1/model_release.proto";
 
 option go_package = "github.com/mindclade/mindclade/protocols/generated/go/model/v1;modelv1";
 
 // ModelPromoted is an immutable evidence-backed release-stage transition fact.
 message ModelPromoted {
-  mindclade.common.v1.EventEnvelope envelope = 1;
-  string model_release_name = 2;
-  int64 model_release_revision = 3;
-  mindclade.model.v1.ModelReleaseStage prior_stage = 4;
-  mindclade.model.v1.ModelReleaseStage promoted_stage = 5;
-  repeated mindclade.artifact.v1.EvidenceRef evidence = 6;
-  mindclade.artifact.v1.EvidenceRef promotion_decision = 7;
-  google.protobuf.Timestamp promoted_at = 8;
+  string model_release_name = 1;
+  int64 model_release_revision = 2;
+  mindclade.model.v1.ModelReleaseStage prior_stage = 3;
+  mindclade.model.v1.ModelReleaseStage promoted_stage = 4;
+  repeated mindclade.artifact.v1.EvidenceRef evidence = 5;
+  mindclade.artifact.v1.EvidenceRef promotion_decision = 6;
+  google.protobuf.Timestamp promoted_at = 7;
 }

@@ -3,7 +3,28 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import StrEnum
 
-from common.v1.error_detail_pb2 import ErrorDetail as ErrorDetail
+from common.v1.error_detail_pb2 import (
+    ERROR_CODE_ABORTED,
+    ERROR_CODE_ALREADY_EXISTS,
+    ERROR_CODE_CANCELLED,
+    ERROR_CODE_CONFLICT,
+    ERROR_CODE_DATA_LOSS,
+    ERROR_CODE_DEADLINE_EXCEEDED,
+    ERROR_CODE_FAILED_PRECONDITION,
+    ERROR_CODE_INTERNAL,
+    ERROR_CODE_INVALID_ARGUMENT,
+    ERROR_CODE_NOT_FOUND,
+    ERROR_CODE_PERMISSION_DENIED,
+    ERROR_CODE_POLICY_DENIED,
+    ERROR_CODE_RESOURCE_EXHAUSTED,
+    ERROR_CODE_UNAUTHENTICATED,
+    ERROR_CODE_UNAVAILABLE,
+    ERROR_CODE_UNSUPPORTED,
+    RETRY_CLASS_NEVER,
+    RETRY_CLASS_SAFE,
+    ErrorDetail as ErrorDetail,
+)
+from common.v1.resource_reference_pb2 import ResourceRef
 
 
 class ErrorCode(StrEnum):
@@ -40,26 +61,49 @@ def map_exception(error: Exception) -> ContractError:
     )
 
 
-def to_error_detail(error: ContractError, *, subject_ref: str = "") -> ErrorDetail:
+_PROTO_ERROR_CODES = {
+    ErrorCode.INVALID_ARGUMENT: ERROR_CODE_INVALID_ARGUMENT,
+    ErrorCode.FAILED_PRECONDITION: ERROR_CODE_FAILED_PRECONDITION,
+    ErrorCode.NOT_FOUND: ERROR_CODE_NOT_FOUND,
+    ErrorCode.ALREADY_EXISTS: ERROR_CODE_ALREADY_EXISTS,
+    ErrorCode.PERMISSION_DENIED: ERROR_CODE_PERMISSION_DENIED,
+    ErrorCode.UNAUTHENTICATED: ERROR_CODE_UNAUTHENTICATED,
+    ErrorCode.RESOURCE_EXHAUSTED: ERROR_CODE_RESOURCE_EXHAUSTED,
+    ErrorCode.ABORTED: ERROR_CODE_ABORTED,
+    ErrorCode.CONFLICT: ERROR_CODE_CONFLICT,
+    ErrorCode.UNAVAILABLE: ERROR_CODE_UNAVAILABLE,
+    ErrorCode.DEADLINE_EXCEEDED: ERROR_CODE_DEADLINE_EXCEEDED,
+    ErrorCode.CANCELLED: ERROR_CODE_CANCELLED,
+    ErrorCode.INTERNAL: ERROR_CODE_INTERNAL,
+    ErrorCode.DATA_LOSS: ERROR_CODE_DATA_LOSS,
+    ErrorCode.UNSUPPORTED: ERROR_CODE_UNSUPPORTED,
+    ErrorCode.POLICY_DENIED: ERROR_CODE_POLICY_DENIED,
+}
+_ERROR_CODES_BY_PROTO = {value: key for key, value in _PROTO_ERROR_CODES.items()}
+
+
+def to_error_detail(
+    error: ContractError, *, subject: ResourceRef | None = None
+) -> ErrorDetail:
     """Project an in-process exception into the authoritative generated wire type."""
-    return ErrorDetail(
-        code=error.code.value,
+    detail = ErrorDetail(
+        code=_PROTO_ERROR_CODES[error.code],
         message=error.message,
-        retry_class="retryable" if error.retryable else "non_retryable",
-        subject_ref=subject_ref,
+        retry_class=RETRY_CLASS_SAFE if error.retryable else RETRY_CLASS_NEVER,
     )
+    if subject is not None:
+        detail.subject.CopyFrom(subject)
+    return detail
 
 
 def from_error_detail(detail: ErrorDetail) -> ContractError:
     """Validate and map a generated wire error into the in-process exception type."""
-    if detail.retry_class not in {"", "retryable", "non_retryable"}:
-        raise ValueError("unknown retry class")
     try:
-        code = ErrorCode(detail.code)
-    except ValueError as error:
+        code = _ERROR_CODES_BY_PROTO[detail.code]
+    except KeyError as error:
         raise ValueError("unknown error code") from error
     return ContractError(
         code=code,
         message=detail.message,
-        retryable=detail.retry_class == "retryable",
+        retryable=detail.retry_class == RETRY_CLASS_SAFE,
     )

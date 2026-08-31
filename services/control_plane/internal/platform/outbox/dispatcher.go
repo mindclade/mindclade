@@ -3,11 +3,13 @@ package outbox
 import (
 	"context"
 	"time"
+
+	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 )
 
 // Publisher is called after Claim, never from a command transaction.
 type Publisher interface {
-	Publish(context.Context, Message) error
+	Publish(context.Context, *commonv1.EventEnvelope) error
 }
 
 type Dispatcher struct {
@@ -17,17 +19,17 @@ type Dispatcher struct {
 }
 
 func (d Dispatcher) Deliver(ctx context.Context, id string) error {
-	message, ok := d.Store.Claim(id)
+	record, ok := d.Store.Claim(id)
 	if !ok {
 		return nil
 	}
-	if err := d.Publisher.Publish(ctx, message); err != nil {
+	if err := d.Publisher.Publish(ctx, record.Envelope); err != nil {
 		return err
 	}
 	now := d.Now
 	if now == nil {
 		now = time.Now
 	}
-	d.Store.MarkDelivered(id, message.DeliveryEpoch, now().UTC())
+	d.Store.MarkDelivered(id, record.DeliveryEpoch, now().UTC())
 	return nil
 }

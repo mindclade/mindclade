@@ -7,6 +7,11 @@
 - `bazel/` supplies graph metadata and activation-safe build helpers.
 - `ci/` selects affected tests, binds CI plans, and validates evidence.
 - `dev/` verifies the pinned local environment without connected credentials.
+- `codegen/` validates contract sources and reproduces committed generated
+  bindings and compatibility inventories. `generate_schemas.py --check`
+  validates every active Draft 2020-12 schema plus its positive and negative
+  fixture; baseline promotion additionally requires the exact predecessor
+  digest.
 - `generators/` owns approved component stubs.
 - `licenses/` enforces declared dependency-license policy.
 

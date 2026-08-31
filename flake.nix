@@ -56,13 +56,16 @@
               actionlint
               bazel_9
               buf
+              buildifier
               cargo
               gitleaks
               git
               go_1_26
+              golangci-lint
               jq
               just
               markdownlint-cli2
+              nixfmt
               nodejs_26
               pnpmNode26
               pre-commit
@@ -70,6 +73,8 @@
               pythonEnv
               rustc
               ruff
+              shellcheck
+              shfmt
               uv
               yamllint
             ];
@@ -106,6 +111,7 @@
               actionlint
               bazel_9
               buf
+              buildifier
               cargo
               cmake
               cudaPackages.cuda_cuobjdump
@@ -114,10 +120,12 @@
               gitleaks
               git
               go_1_26
+              golangci-lint
               jq
               just
               markdownlint-cli2
               ninja
+              nixfmt
               nodejs_26
               patchelf
               pnpmNode26
@@ -127,6 +135,8 @@
               rdma-core
               rustc
               ruff
+              shellcheck
+              shfmt
               uv
               yamllint
             ];

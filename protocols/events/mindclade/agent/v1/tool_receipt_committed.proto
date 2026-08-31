@@ -4,14 +4,12 @@ package mindclade.events.agent.v1;
 
 import "google/protobuf/timestamp.proto";
 import "proto/mindclade/agent/v1/tool_receipt.proto";
-import "proto/mindclade/common/v1/event_envelope.proto";
 
 option go_package = "github.com/mindclade/mindclade/protocols/generated/go/agent/v1;agentv1";
 
 // ToolReceiptCommitted is proof that executor-observed tool evidence became durable.
 message ToolReceiptCommitted {
-  mindclade.common.v1.EventEnvelope envelope = 1;
-  mindclade.agent.v1.ToolReceipt receipt = 2;
-  uint64 run_receipt_sequence = 3;
-  google.protobuf.Timestamp committed_at = 4;
+  mindclade.agent.v1.ToolReceipt receipt = 1;
+  uint64 run_receipt_sequence = 2;
+  google.protobuf.Timestamp committed_at = 3;
 }

@@ -1,0 +1,115 @@
+syntax = "proto3";
+
+package mindclade.internal.artifact.v1;
+
+import "google/protobuf/timestamp.proto";
+import "proto/mindclade/artifact/v1/artifact_commands.proto";
+import "proto/mindclade/artifact/v1/artifact_reference.proto";
+import "proto/mindclade/artifact/v1/evidence_reference.proto";
+import "proto/mindclade/common/v1/command_context.proto";
+import "proto/mindclade/common/v1/pagination.proto";
+import "proto/mindclade/common/v1/resource_reference.proto";
+import "proto/mindclade/job/v1/operation.proto";
+
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/artifact/v1;artifactv1";
+
+// GetArtifactRequest identifies immutable artifact metadata by digest or canonical name.
+message GetArtifactRequest {
+  string name = 1;
+  string digest = 2;
+}
+
+// GetArtifactResponse returns the immutable reference and catalog observation time.
+message GetArtifactResponse {
+  mindclade.artifact.v1.ArtifactRef artifact = 1;
+  google.protobuf.Timestamp observed_at = 2;
+}
+
+// ListArtifactsRequest performs a bounded, tenant-scoped catalog query.
+message ListArtifactsRequest {
+  string parent = 1;
+  mindclade.common.v1.PageRequest page = 2;
+  string filter = 3;
+  string order_by = 4;
+}
+
+// ListArtifactsResponse returns one stable page without exposing storage locators.
+message ListArtifactsResponse {
+  repeated mindclade.artifact.v1.ArtifactRef artifacts = 1;
+  mindclade.common.v1.PageResponse page = 2;
+  google.protobuf.Timestamp read_time = 3;
+}
+
+// ResolveArtifactAliasRequest resolves a mutable catalog alias to immutable content.
+message ResolveArtifactAliasRequest {
+  string parent = 1;
+  string alias = 2;
+}
+
+// ResolveArtifactAliasResponse contains only the resolved immutable reference.
+message ResolveArtifactAliasResponse {
+  mindclade.artifact.v1.ArtifactRef artifact = 1;
+}
+
+// CommitArtifactRequest wraps the canonical idempotent artifact command.
+message CommitArtifactRequest {
+  mindclade.artifact.v1.CommitArtifactCommand command = 1;
+}
+
+// CommitArtifactResponse returns the committed immutable reference.
+message CommitArtifactResponse {
+  mindclade.artifact.v1.ArtifactRef artifact = 1;
+}
+
+// QuarantineArtifactRequest records a governed asynchronous quarantine transition.
+message QuarantineArtifactRequest {
+  mindclade.common.v1.CommandContext context = 1;
+  mindclade.artifact.v1.ArtifactRef artifact = 2;
+  string reason_code = 3;
+  repeated mindclade.artifact.v1.EvidenceRef evidence = 4;
+}
+
+// QuarantineArtifactResponse returns the durable operation tracking the transition.
+message QuarantineArtifactResponse {
+  mindclade.job.v1.Operation operation = 1;
+}
+
+// AcquireArtifactLeaseRequest requests bounded retention for immutable content.
+message AcquireArtifactLeaseRequest {
+  mindclade.common.v1.CommandContext context = 1;
+  mindclade.artifact.v1.ArtifactRef artifact = 2;
+  google.protobuf.Timestamp expire_time = 3;
+}
+
+// AcquireArtifactLeaseResponse returns the optimistic-concurrency protected lease resource.
+message AcquireArtifactLeaseResponse {
+  mindclade.common.v1.ResourceRef lease = 1;
+}
+
+// ReleaseArtifactLeaseRequest releases an existing retention lease idempotently.
+message ReleaseArtifactLeaseRequest {
+  mindclade.common.v1.CommandContext context = 1;
+  mindclade.common.v1.ResourceRef lease = 2;
+  string etag = 3;
+}
+
+// ReleaseArtifactLeaseResponse confirms successful idempotent release.
+message ReleaseArtifactLeaseResponse {}
+
+// ArtifactService owns artifact metadata, aliases, commit, quarantine, and retention RPCs.
+service ArtifactService {
+  // GetArtifact reads immutable metadata without returning a provider storage locator.
+  rpc GetArtifact(GetArtifactRequest) returns (GetArtifactResponse);
+  // ListArtifacts returns a bounded, authorization-filtered catalog page.
+  rpc ListArtifacts(ListArtifactsRequest) returns (ListArtifactsResponse);
+  // ResolveArtifactAlias resolves a mutable alias at one observed catalog revision.
+  rpc ResolveArtifactAlias(ResolveArtifactAliasRequest) returns (ResolveArtifactAliasResponse);
+  // CommitArtifact atomically verifies and commits staged immutable content.
+  rpc CommitArtifact(CommitArtifactRequest) returns (CommitArtifactResponse);
+  // QuarantineArtifact returns a durable operation for the governed state transition.
+  rpc QuarantineArtifact(QuarantineArtifactRequest) returns (QuarantineArtifactResponse);
+  // AcquireArtifactLease creates or extends bounded retention idempotently.
+  rpc AcquireArtifactLease(AcquireArtifactLeaseRequest) returns (AcquireArtifactLeaseResponse);
+  // ReleaseArtifactLease enforces the supplied ETag and has no response payload.
+  rpc ReleaseArtifactLease(ReleaseArtifactLeaseRequest) returns (ReleaseArtifactLeaseResponse);
+}

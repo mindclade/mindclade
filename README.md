@@ -41,6 +41,18 @@ just check
 just test-affected
 ```
 
+The root developer-quality commands use each language's pinned native tools:
+
+```text
+just format
+just format-check
+just lint
+```
+
+`just format` edits only handwritten source and configuration. Generated
+bindings, generated Starlark, architecture renders, and provenance remain under
+their owning generators and drift checks.
+
 The opt-in Linux SM90/Hopper GPU intake shell includes pinned modern DeepEP
 2.x, PyTorch, CUDA compiler, NCCL, vanilla NVSHMEM, and RDMA development
 inputs:

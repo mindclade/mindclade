@@ -28,9 +28,9 @@ BLUEPRINT_SHA256 = "d099074e755168bbdce076d50918bf06aff677f9e5d620fdfe53cb7cef74
 ANCHOR_COMMIT = "292b71f47b1b29cc9ba7cf760a9bd07cd5e0ffa7"
 AUTHORITY_FILE_COUNT = 2461
 AUTHORITY_DIRECTORY_COUNT = 787
-CANONICAL_FILE_COUNT = 2632
+CANONICAL_FILE_COUNT = 2829
 AUTHORITY_PATH_SET_SHA256 = "f2011dd32ccc19649e6abb70ffb4473aea4a224410062d40292222e2e6263692"
-CANONICAL_PATH_SET_SHA256 = "c7b3bb14975e394850a2083e5fa5e899352c1b9e4712def7f420f8299c727184"
+CANONICAL_PATH_SET_SHA256 = "662ab17c6b2e87f5c2ab2cbdef662a790b7b971f52844a404a58b8d4d34ac18d"
 
 ADR_REPLACEMENTS = {
     "docs/adr/0001-repository-identity.md": "docs/adr/0001-repository-identity-and-ownership.md",
@@ -273,14 +273,13 @@ WAVE_TWO_PREFLIGHT_GOVERNANCE_ADDITIONS = (
     "docs/policies/sqp-001-h100-qualification-envelope.md",
 )
 
-ALL_CONTRACT_BASELINE_ADR = (
-    "docs/adr/0015-all-contracts-clean-v1-baseline.md"
-)
+ALL_CONTRACT_BASELINE_ADR = "docs/adr/0015-all-contracts-clean-v1-baseline.md"
 
 ALL_CONTRACT_BASELINE_DOMAINS = frozenset(
     {
         "admin",
         "agent",
+        "api",
         "dataset",
         "evaluation",
         "experiment",
@@ -292,6 +291,135 @@ ALL_CONTRACT_BASELINE_DOMAINS = frozenset(
         "transform",
         "workflow",
     }
+)
+
+ALL_CONTRACT_PYTHON_MODULES = (
+    "common/v1/identifiers",
+    "common/v1/resource_reference",
+    "common/v1/command_context",
+    "common/v1/event_envelope",
+    "common/v1/error_detail",
+    "common/v1/pagination",
+    "artifact/v1/artifact_reference",
+    "artifact/v1/evidence_reference",
+    "artifact/v1/artifact_commands",
+    "artifact/v1/artifact_committed",
+    "artifact/v1/artifact_quarantined",
+    "job/v1/operation",
+    "job/v1/job",
+    "job/v1/run",
+    "job/v1/attempt",
+    "job/v1/lease_fencing",
+    "job/v1/job_commands",
+    "job/v1/job_requested",
+    "job/v1/attempt_leased",
+    "job/v1/attempt_completed",
+    "dataset/v1/dataset",
+    "dataset/v1/dataset_release",
+    "dataset/v1/dataset_commands",
+    "feature/v1/feature_materialization",
+    "feature/v1/feature_commands",
+    "feature/v1/feature_materialization_completed",
+    "transform/v1/transform_execution",
+    "transform/v1/transform_commands",
+    "transform/v1/transform_execution_completed",
+    "experiment/v1/experiment",
+    "experiment/v1/study",
+    "experiment/v1/trial",
+    "model/v1/model",
+    "model/v1/model_release",
+    "model/v1/model_commands",
+    "model/v1/model_registered",
+    "model/v1/model_promoted",
+    "model/v1/model_revoked",
+    "training/v1/training_run",
+    "training/v1/training_progress",
+    "training/v1/checkpoint",
+    "training/v1/training_commands",
+    "training/v1/training_started",
+    "training/v1/progress_committed",
+    "training/v1/checkpoint_committed",
+    "training/v1/training_completed",
+    "inference/v1/inference_request",
+    "inference/v1/inference_result",
+    "inference/v1/inference_stream",
+    "evaluation/v1/evaluation_run",
+    "evaluation/v1/evaluation_result",
+    "evaluation/v1/promotion_decision",
+    "agent/v1/agent_definition",
+    "agent/v1/agent_run",
+    "agent/v1/agent_step",
+    "agent/v1/tool_receipt",
+    "agent/v1/agent_step_dispatched",
+    "agent/v1/tool_receipt_committed",
+    "agent/v1/agent_run_completed",
+    "workflow/v1/workflow_definition",
+    "workflow/v1/workflow_run",
+    "workflow/v1/approval",
+    "workflow/v1/workflow_transitioned",
+    "workflow/v1/approval_recorded",
+    "policy/v1/policy_reference",
+    "policy/v1/authorization_decision",
+    "policy/v1/use_policy",
+    "admin/v1/tenant",
+    "admin/v1/project",
+    "admin/v1/audit_query",
+    "audit/v1/audit_event",
+    "audit/v1/security_event",
+)
+
+ALL_CONTRACT_PYTHON_STUB_PATHS = tuple(
+    f"protocols/generated/python/{module}_pb2.pyi" for module in ALL_CONTRACT_PYTHON_MODULES
+)
+
+ALL_CONTRACT_GRPC_SERVICES = (
+    ("artifact", "artifact_service", "internal/artifact"),
+    ("job", "job_service", "internal/job"),
+    ("dataset", "dataset_service", "internal/dataset"),
+    ("training", "training_service", "internal/training"),
+    ("model", "model_service", "internal/model"),
+    ("inference", "inference_service", "internal/inference"),
+    ("evaluation", "evaluation_service", "internal/evaluation"),
+    ("agent", "agent_service", "internal/agent"),
+    ("workflow", "workflow_service", "internal/workflow"),
+    ("policy", "policy_service", "internal/policy"),
+    ("admin", "admin_service", "internal/admin"),
+    ("api", "mindclade_service", "api"),
+)
+
+ALL_CONTRACT_GRPC_SOURCE_PATHS = tuple(
+    f"protocols/proto/mindclade/{source_family}/v1/{stem}.proto"
+    for _, stem, source_family in ALL_CONTRACT_GRPC_SERVICES
+)
+
+ALL_CONTRACT_GRPC_PROJECTION_PATHS = tuple(
+    path
+    for domain, stem, _ in ALL_CONTRACT_GRPC_SERVICES
+    for path in (
+        f"protocols/generated/go/{domain}/v1/{stem}.pb.go",
+        f"protocols/generated/go/{domain}/v1/{stem}_grpc.pb.go",
+        f"protocols/generated/python/{domain}/v1/{stem}_pb2.py",
+        f"protocols/generated/python/{domain}/v1/{stem}_pb2.pyi",
+        f"protocols/generated/python/{domain}/v1/{stem}_pb2_grpc.py",
+        f"protocols/generated/python/{domain}/v1/{stem}_pb2_grpc.pyi",
+        f"protocols/generated/rust/{domain}/v1/{stem}.rs",
+        f"protocols/generated/rust/{domain}/v1/{stem}_grpc.rs",
+        f"protocols/generated/typescript/{domain}/v1/{stem}_pb.ts",
+    )
+)
+
+ALL_CONTRACT_GRPC_API_PACKAGE_PATHS = (
+    "protocols/generated/go/api/v1/BUILD.bazel",
+    "protocols/generated/python/api/v1/__init__.py",
+    "protocols/generated/rust/api/v1/mod.rs",
+    "protocols/generated/typescript/api/v1/index.ts",
+)
+
+ALL_CONTRACT_GRPC_ADDITIONS = (
+    *ALL_CONTRACT_PYTHON_STUB_PATHS,
+    *ALL_CONTRACT_GRPC_SOURCE_PATHS,
+    *ALL_CONTRACT_GRPC_PROJECTION_PATHS,
+    *ALL_CONTRACT_GRPC_API_PACKAGE_PATHS,
 )
 
 ALL_CONTRACT_RUST_PLUGIN_PATHS = (
@@ -330,6 +458,8 @@ WAVE_ONE_DURABILITY_ADDITIONS = (
     "tests/conformance/test_configuration_resolution.py",
     "tests/conformance/test_release_signing.py",
 )
+
+SDK_GENERATOR_ADDITIONS = ("tools/codegen/sdk_generator.py",)
 
 GENERATED_PACKAGE_AUTHORITY_ADDITIONS = (
     "protocols/generated/rust/Cargo.toml",
@@ -392,6 +522,7 @@ WAVE_ONE_REWAVE_PATHS = frozenset(
 WAVE_ONE_REQUIRED_ADDITIONS = (
     *WAVE_ONE_DURABILITY_ADDITIONS,
     *GENERATED_PACKAGE_AUTHORITY_ADDITIONS,
+    *SDK_GENERATOR_ADDITIONS,
 )
 
 REQUIRED_ADDITIONS = (
@@ -402,6 +533,7 @@ REQUIRED_ADDITIONS = (
     *THIRD_PARTY_DEEP_EP_PACKAGE_PATHS,
     *DEEP_EP_PATCH_PATHS,
     *ALL_CONTRACT_RUST_PLUGIN_PATHS,
+    *ALL_CONTRACT_GRPC_ADDITIONS,
 )
 
 STATUSES = {"target", "active", "generated", "deferred", "retired"}
@@ -732,7 +864,11 @@ def infer_component(path: str) -> str:
         return f"repository-{top.lstrip('.')}"
     if top == "protocols" and len(parts) >= 2:
         if parts[1] in {"proto", "events"} and len(parts) >= 5:
-            raw = f"{parts[1]}-{parts[3]}-{parts[4]}"
+            raw = (
+                f"{parts[1]}-internal-{parts[4]}-{parts[5]}"
+                if parts[1] == "proto" and parts[3] == "internal" and len(parts) >= 7
+                else f"{parts[1]}-{parts[3]}-{parts[4]}"
+            )
         elif parts[1] == "generated" and len(parts) >= 5:
             raw = f"generated-{parts[2]}-{parts[3]}-{parts[4]}"
         elif parts[1] == "schemas" and len(parts) >= 3:
@@ -1104,7 +1240,11 @@ def _protocol_wave(parts: tuple[str, ...]) -> str:
     if (family in {"proto", "events"} and len(parts) > 3) or (
         family == "generated" and len(parts) > 3
     ):
-        domain = parts[3]
+        domain = (
+            parts[4]
+            if family == "proto" and parts[3] == "internal" and len(parts) > 4
+            else parts[3]
+        )
     elif family == "schemas" and len(parts) > 2:
         schema = parts[2]
         if schema in {
@@ -1183,6 +1323,8 @@ def _protocol_wave(parts: tuple[str, ...]) -> str:
         return "4"
     if domain in {"agent", "workflow", "policy"}:
         return "7"
+    if domain == "api":
+        return "4"
     return "8"
 
 
@@ -1603,6 +1745,10 @@ def is_all_contract_baseline_path(path: str) -> bool:
         ("protocols", "proto", "mindclade"),
         ("protocols", "events", "mindclade"),
     }:
+        if parts[3] == "internal" and len(parts) >= 7:
+            return parts[4] in {
+                domain for domain, _, _ in ALL_CONTRACT_GRPC_SERVICES if domain != "api"
+            } and parts[-1].endswith(".proto")
         return parts[3] in ALL_CONTRACT_BASELINE_DOMAINS and parts[-1].endswith(".proto")
     if len(parts) >= 5 and parts[:2] == ("protocols", "generated"):
         return parts[3] in ALL_CONTRACT_BASELINE_DOMAINS
@@ -1693,7 +1839,9 @@ def build_path_entry(path: str) -> dict[str, Any]:
         "source_authority": infer_source_authority(path),
         "build_targets": build_targets,
         "test_targets": test_targets,
-        "public_surface": path.startswith(("sdk/", "protocols/")),
+        "public_surface": path.startswith(("sdk/", "protocols/"))
+        and not path.startswith("protocols/proto/mindclade/internal/")
+        and not (path in ALL_CONTRACT_GRPC_PROJECTION_PATHS and "/api/v1/" not in path),
     }
     if all_contract_baseline:
         entry["activation_criterion"] = (
@@ -1777,6 +1925,11 @@ def _reconciliation_addition_reason(path: str) -> str:
             "Required Wave 1 durability, reconciliation, configuration, or release-signing "
             "interface omitted by A6."
         )
+    if path in SDK_GENERATOR_ADDITIONS:
+        return (
+            "ADR-0015 provider-neutral offline SDK planning and verification boundary for the "
+            "curated OpenAPI contract; connected generation and publication remain unqualified."
+        )
     if path == ALL_CONTRACT_BASELINE_ADR:
         return (
             "Required accepted authority for the one-time clean-v1 activation of the complete "
@@ -1787,6 +1940,23 @@ def _reconciliation_addition_reason(path: str) -> str:
             "Required pinned in-workspace Prost/Tonic plugin wrapper eliminating mutable "
             "cargo-install and cache dependencies from protocol generation."
         )
+    if path in ALL_CONTRACT_GRPC_SOURCE_PATHS:
+        return (
+            "ADR-0015 authoritative gRPC service source required to bind the clean-v1 "
+            "resource and command catalog to concrete internal or curated public RPCs."
+        )
+    if path in ALL_CONTRACT_PYTHON_STUB_PATHS:
+        return (
+            "Required authoritative Python type-stub projection from the locked ADR-0015 "
+            "Protobuf generator closure."
+        )
+    if path in ALL_CONTRACT_GRPC_PROJECTION_PATHS:
+        return (
+            "Required Go, Python, Rust, or TypeScript generated message/gRPC projection "
+            "from an authoritative ADR-0015 service contract."
+        )
+    if path in ALL_CONTRACT_GRPC_API_PACKAGE_PATHS:
+        return "Required generated package authority for the curated mindclade.api.v1 facade."
     if path in WAVE_TWO_PREFLIGHT_GOVERNANCE_ADDITIONS:
         return (
             "Required fail-closed Wave 2 decision or approval contract omitted by A6; "

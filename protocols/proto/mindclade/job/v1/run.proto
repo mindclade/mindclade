@@ -2,14 +2,38 @@ syntax = "proto3";
 
 package mindclade.job.v1;
 
+import "google/protobuf/timestamp.proto";
+import "proto/mindclade/artifact/v1/artifact_reference.proto";
+import "proto/mindclade/common/v1/error_detail.proto";
+
 option go_package = "github.com/mindclade/mindclade/protocols/generated/go/job/v1;jobv1";
+
+enum RunState {
+  RUN_STATE_UNSPECIFIED = 0;
+  RUN_STATE_READY = 1;
+  RUN_STATE_EXECUTING = 2;
+  RUN_STATE_SUCCEEDED = 3;
+  RUN_STATE_FAILED = 4;
+  RUN_STATE_CANCELLING = 5;
+  RUN_STATE_CANCELLED = 6;
+}
 
 // Frozen logical execution of a durable job.
 message Run {
   string run_id = 1;
   string job_id = 2;
-  string input_digest = 3;
-  string configuration_digest = 4;
-  string plan_digest = 5;
-  string state = 6;
+  mindclade.artifact.v1.ArtifactRef input = 3;
+  mindclade.artifact.v1.ArtifactRef configuration = 4;
+  mindclade.artifact.v1.ArtifactRef plan = 5;
+  RunState state = 6;
+  string tenant_id = 7;
+  string project_id = 8;
+  int64 resource_version = 9;
+  uint64 lease_epoch = 10;
+  google.protobuf.Timestamp created_at = 11;
+  google.protobuf.Timestamp started_at = 12;
+  google.protobuf.Timestamp completed_at = 13;
+  repeated mindclade.artifact.v1.ArtifactRef outputs = 14;
+  mindclade.common.v1.ErrorDetail error = 15;
+  string etag = 16;
 }

@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
 	"github.com/mindclade/mindclade/services/control_plane/internal/jobs"
 )
 
@@ -16,10 +17,10 @@ func TestStaleCompletionIsRetainedButCannotAdvanceRun(t *testing.T) {
 		}
 	}
 	repository := jobs.NewRepository()
-	if err := repository.CreateJob(jobs.Job{ID: "job-1", TenantID: "tenant-a"}); err != nil {
+	if err := repository.CreateJob(&jobv1.Job{JobId: "job-1", TenantId: "tenant-a"}); err != nil {
 		t.Fatal(err)
 	}
-	if err := repository.CreateRun(jobs.Run{ID: "run-1", TenantID: "tenant-a", JobID: "job-1"}); err != nil {
+	if err := repository.CreateRun(&jobv1.Run{RunId: "run-1", TenantId: "tenant-a", JobId: "job-1"}); err != nil {
 		t.Fatal(err)
 	}
 	first, err := repository.AcquireLease("tenant-a", "run-1", "attempt-1")
@@ -29,11 +30,12 @@ func TestStaleCompletionIsRetainedButCannotAdvanceRun(t *testing.T) {
 	if _, err := repository.AcquireLease("tenant-a", "run-1", "attempt-2"); err != nil {
 		t.Fatal(err)
 	}
-	if err := repository.CompleteAttempt("tenant-a", first.ID, first.LeaseEpoch, "SUCCEEDED", time.Now()); !errors.Is(err, jobs.ErrStaleCompletion) {
+	if err := repository.CompleteAttempt("tenant-a", first.GetAttemptId(), first.GetLeaseEpoch(), jobv1.AttemptState_ATTEMPT_STATE_SUCCEEDED, time.Now()); !errors.Is(err, jobs.ErrStaleCompletion) {
 		t.Fatalf("expected stale completion, got %v", err)
 	}
 	run, err := repository.Run("tenant-a", "run-1")
-	if err != nil || run.State != "EXECUTING" || len(repository.Completions()) != 1 || repository.Completions()[0].Accepted {
+	accepted, ok := repository.CompletionAccepted(0)
+	if err != nil || run.GetState() != jobv1.RunState_RUN_STATE_EXECUTING || repository.CompletionCount() != 1 || !ok || accepted {
 		t.Fatalf("stale completion advanced or disappeared: run=%#v err=%v", run, err)
 	}
 }

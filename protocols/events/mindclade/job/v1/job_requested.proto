@@ -2,12 +2,9 @@ syntax = "proto3";
 
 package mindclade.events.job.v1;
 
-import "proto/mindclade/common/v1/event_envelope.proto";
-
 option go_package = "github.com/mindclade/mindclade/protocols/generated/go/job/v1;jobv1";
 
 message JobRequested {
-  mindclade.common.v1.EventEnvelope envelope = 1;
-  string job_id = 2;
-  string configuration_digest = 3;
+  string job_id = 1;
+  string configuration_digest = 2;
 }

@@ -5,7 +5,6 @@ package mindclade.events.transform.v1;
 import "google/protobuf/timestamp.proto";
 import "proto/mindclade/artifact/v1/artifact_reference.proto";
 import "proto/mindclade/common/v1/error_detail.proto";
-import "proto/mindclade/common/v1/event_envelope.proto";
 import "proto/mindclade/job/v1/lease_fencing.proto";
 import "proto/mindclade/transform/v1/transform_execution.proto";
 
@@ -13,14 +12,13 @@ option go_package = "github.com/mindclade/mindclade/protocols/generated/go/trans
 
 // TransformExecutionCompleted is an immutable fenced completion fact.
 message TransformExecutionCompleted {
-  mindclade.common.v1.EventEnvelope envelope = 1;
-  string execution_name = 2;
-  int64 execution_revision = 3;
-  mindclade.job.v1.LeaseFence fence = 4;
-  mindclade.transform.v1.TransformExecutionTerminalClassification classification = 5;
-  mindclade.artifact.v1.ArtifactRef receipt = 6;
-  repeated mindclade.artifact.v1.ArtifactRef output_refs = 7;
-  mindclade.artifact.v1.ArtifactRef lineage_map = 8;
-  mindclade.common.v1.ErrorDetail error = 9;
-  google.protobuf.Timestamp completed_at = 10;
+  string execution_name = 1;
+  int64 execution_revision = 2;
+  mindclade.job.v1.LeaseFence fence = 3;
+  mindclade.transform.v1.TransformExecutionTerminalClassification classification = 4;
+  mindclade.artifact.v1.ArtifactRef receipt = 5;
+  repeated mindclade.artifact.v1.ArtifactRef output_refs = 6;
+  mindclade.artifact.v1.ArtifactRef lineage_map = 7;
+  mindclade.common.v1.ErrorDetail error = 8;
+  google.protobuf.Timestamp completed_at = 9;
 }

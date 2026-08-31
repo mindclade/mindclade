@@ -1,5 +1,11 @@
-load("@rules_go//go:def.bzl", "go_library", "go_test")
-go_library(name = "identifiers", srcs = glob(["*.go"], exclude = ["*_test.go"]), importpath = "github.com/mindclade/mindclade/libs/go/identifiers")
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "identifiers",
+    srcs = glob(["*.go"], exclude = ["*_test.go"]),
+    importpath = "github.com/mindclade/mindclade/libs/go/identifiers",
+    deps = ["//protocols/generated/go/common/v1:bindings"],
+)
 
 filegroup(
     name = "governed_sources",

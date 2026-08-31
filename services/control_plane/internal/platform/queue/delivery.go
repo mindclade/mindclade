@@ -1,13 +1,17 @@
 package queue
 
-import "context"
+import (
+	"context"
+
+	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
+)
 
 type Handler interface {
-	Handle(context.Context, Envelope) error
+	Handle(context.Context, *commonv1.EventEnvelope) error
 }
 
 type Delivery struct {
-	Envelope Envelope
+	Envelope *commonv1.EventEnvelope
 	Attempts uint32
 }
 

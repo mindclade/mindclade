@@ -4,16 +4,14 @@ package mindclade.events.model.v1;
 
 import "google/protobuf/timestamp.proto";
 import "proto/mindclade/artifact/v1/evidence_reference.proto";
-import "proto/mindclade/common/v1/event_envelope.proto";
 
 option go_package = "github.com/mindclade/mindclade/protocols/generated/go/model/v1;modelv1";
 
 // ModelRevoked is an immutable fact that blocks future use without deleting evidence.
 message ModelRevoked {
-  mindclade.common.v1.EventEnvelope envelope = 1;
-  string model_release_name = 2;
-  int64 model_release_revision = 3;
-  string reason = 4;
-  repeated mindclade.artifact.v1.EvidenceRef evidence = 5;
-  google.protobuf.Timestamp revoked_at = 6;
+  string model_release_name = 1;
+  int64 model_release_revision = 2;
+  string reason = 3;
+  repeated mindclade.artifact.v1.EvidenceRef evidence = 4;
+  google.protobuf.Timestamp revoked_at = 5;
 }

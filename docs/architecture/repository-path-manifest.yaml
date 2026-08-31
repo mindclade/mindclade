@@ -2643,6 +2643,10 @@
           "reason": "Required Wave 1 native generated-binding package authority omitted by A6; keeps native and Bazel compilation authorities explicit."
         },
         {
+          "path": "tools/codegen/sdk_generator.py",
+          "reason": "ADR-0015 provider-neutral offline SDK planning and verification boundary for the curated OpenAPI contract; connected generation and publication remain unqualified."
+        },
+        {
           "path": "docs/adr/0014-tilelang-kernel-platform-source-development.md",
           "reason": "Accepted ADR-0014 authority for bounded, pre-activation development of the typed TileLang kernel-platform contract surface."
         },
@@ -3175,6 +3179,790 @@
           "reason": "Required pinned in-workspace Prost/Tonic plugin wrapper eliminating mutable cargo-install and cache dependencies from protocol generation."
         },
         {
+          "path": "protocols/generated/python/common/v1/identifiers_pb2.pyi",
+          "reason": "Required authoritative Python type-stub projection from the locked ADR-0015 Protobuf generator closure."
+        },
+        {
+          "path": "protocols/generated/python/common/v1/resource_reference_pb2.pyi",
+          "reason": "Required authoritative Python type-stub projection from the locked ADR-0015 Protobuf generator closure."
+        },
+        {
+          "path": "protocols/generated/python/common/v1/command_context_pb2.pyi",
+          "reason": "Required authoritative Python type-stub projection from the locked ADR-0015 Protobuf generator closure."
+        },
+        {
+          "path": "protocols/generated/python/common/v1/event_envelope_pb2.pyi",
+          "reason": "Required authoritative Python type-stub projection from the locked ADR-0015 Protobuf generator closure."
+        },
+        {
+          "path": "protocols/generated/python/common/v1/error_detail_pb2.pyi",
+          "reason": "Required authoritative Python type-stub projection from the locked ADR-0015 Protobuf generator closure."
+        },
+        {
+          "path": "protocols/generated/python/common/v1/pagination_pb2.pyi",
+          "reason": "Required authoritative Python type-stub projection from the locked ADR-0015 Protobuf generator closure."
+        },
+        {
+          "path": "protocols/generated/python/artifact/v1/artifact_reference_pb2.pyi",
+          "reason": "Required authoritative Python type-stub projection from the locked ADR-0015 Protobuf generator closure."
+        },
+        {
+          "path": "protocols/generated/python/artifact/v1/evidence_reference_pb2.pyi",
+          "reason": "Required authoritative Python type-stub projection from the locked ADR-0015 Protobuf generator closure."
+        },
+        {
+          "path": "protocols/generated/python/artifact/v1/artifact_commands_pb2.pyi",
+          "reason": "Required authoritative Python type-stub projection from the locked ADR-0015 Protobuf generator closure."
+        },
+        {
+          "path": "protocols/generated/python/artifact/v1/artifact_committed_pb2.pyi",
+          "reason": "Required authoritative Python type-stub projection from the locked ADR-0015 Protobuf generator closure."
+        },
+        {
+          "path": "protocols/generated/python/artifact/v1/artifact_quarantined_pb2.pyi",
+          "reason": "Required authoritative Python type-stub projection from the locked ADR-0015 Protobuf generator closure."
+        },
+        {
+          "path": "protocols/generated/python/job/v1/operation_pb2.pyi",
+          "reason": "Required authoritative Python type-stub projection from the locked ADR-0015 Protobuf generator closure."
+        },
+        {
+          "path": "protocols/generated/python/job/v1/job_pb2.pyi",
+          "reason": "Required authoritative Python type-stub projection from the locked ADR-0015 Protobuf generator closure."
+        },
+        {
+          "path": "protocols/generated/python/job/v1/run_pb2.pyi",
+          "reason": "Required authoritative Python type-stub projection from the locked ADR-0015 Protobuf generator closure."
+        },
+        {
+          "path": "protocols/generated/python/job/v1/attempt_pb2.pyi",
+          "reason": "Required authoritative Python type-stub projection from the locked ADR-0015 Protobuf generator closure."
+        },
+        {
+          "path": "protocols/generated/python/job/v1/lease_fencing_pb2.pyi",
+          "reason": "Required authoritative Python type-stub projection from the locked ADR-0015 Protobuf generator closure."
+        },
+        {
+          "path": "protocols/generated/python/job/v1/job_commands_pb2.pyi",
+          "reason": "Required authoritative Python type-stub projection from the locked ADR-0015 Protobuf generator closure."
+        },
+        {
+          "path": "protocols/generated/python/job/v1/job_requested_pb2.pyi",
+          "reason": "Required authoritative Python type-stub projection from the locked ADR-0015 Protobuf generator closure."
+        },
+        {
+          "path": "protocols/generated/python/job/v1/attempt_leased_pb2.pyi",
+          "reason": "Required authoritative Python type-stub projection from the locked ADR-0015 Protobuf generator closure."
+        },
+        {
+          "path": "protocols/generated/python/job/v1/attempt_completed_pb2.pyi",
+          "reason": "Required authoritative Python type-stub projection from the locked ADR-0015 Protobuf generator closure."
+        },
+        {
+          "path": "protocols/generated/python/dataset/v1/dataset_pb2.pyi",
+          "reason": "Required authoritative Python type-stub projection from the locked ADR-0015 Protobuf generator closure."
+        },
+        {
+          "path": "protocols/generated/python/dataset/v1/dataset_release_pb2.pyi",
+          "reason": "Required authoritative Python type-stub projection from the locked ADR-0015 Protobuf generator closure."
+        },
+        {
+          "path": "protocols/generated/python/dataset/v1/dataset_commands_pb2.pyi",
+          "reason": "Required authoritative Python type-stub projection from the locked ADR-0015 Protobuf generator closure."
+        },
+        {
+          "path": "protocols/generated/python/feature/v1/feature_materialization_pb2.pyi",
+          "reason": "Required authoritative Python type-stub projection from the locked ADR-0015 Protobuf generator closure."
+        },
+        {
+          "path": "protocols/generated/python/feature/v1/feature_commands_pb2.pyi",
+          "reason": "Required authoritative Python type-stub projection from the locked ADR-0015 Protobuf generator closure."
+        },
+        {
+          "path": "protocols/generated/python/feature/v1/feature_materialization_completed_pb2.pyi",
+          "reason": "Required authoritative Python type-stub projection from the locked ADR-0015 Protobuf generator closure."
+        },
+        {
+          "path": "protocols/generated/python/transform/v1/transform_execution_pb2.pyi",
+          "reason": "Required authoritative Python type-stub projection from the locked ADR-0015 Protobuf generator closure."
+        },
+        {
+          "path": "protocols/generated/python/transform/v1/transform_commands_pb2.pyi",
+          "reason": "Required authoritative Python type-stub projection from the locked ADR-0015 Protobuf generator closure."
+        },
+        {
+          "path": "protocols/generated/python/transform/v1/transform_execution_completed_pb2.pyi",
+          "reason": "Required authoritative Python type-stub projection from the locked ADR-0015 Protobuf generator closure."
+        },
+        {
+          "path": "protocols/generated/python/experiment/v1/experiment_pb2.pyi",
+          "reason": "Required authoritative Python type-stub projection from the locked ADR-0015 Protobuf generator closure."
+        },
+        {
+          "path": "protocols/generated/python/experiment/v1/study_pb2.pyi",
+          "reason": "Required authoritative Python type-stub projection from the locked ADR-0015 Protobuf generator closure."
+        },
+        {
+          "path": "protocols/generated/python/experiment/v1/trial_pb2.pyi",
+          "reason": "Required authoritative Python type-stub projection from the locked ADR-0015 Protobuf generator closure."
+        },
+        {
+          "path": "protocols/generated/python/model/v1/model_pb2.pyi",
+          "reason": "Required authoritative Python type-stub projection from the locked ADR-0015 Protobuf generator closure."
+        },
+        {
+          "path": "protocols/generated/python/model/v1/model_release_pb2.pyi",
+          "reason": "Required authoritative Python type-stub projection from the locked ADR-0015 Protobuf generator closure."
+        },
+        {
+          "path": "protocols/generated/python/model/v1/model_commands_pb2.pyi",
+          "reason": "Required authoritative Python type-stub projection from the locked ADR-0015 Protobuf generator closure."
+        },
+        {
+          "path": "protocols/generated/python/model/v1/model_registered_pb2.pyi",
+          "reason": "Required authoritative Python type-stub projection from the locked ADR-0015 Protobuf generator closure."
+        },
+        {
+          "path": "protocols/generated/python/model/v1/model_promoted_pb2.pyi",
+          "reason": "Required authoritative Python type-stub projection from the locked ADR-0015 Protobuf generator closure."
+        },
+        {
+          "path": "protocols/generated/python/model/v1/model_revoked_pb2.pyi",
+          "reason": "Required authoritative Python type-stub projection from the locked ADR-0015 Protobuf generator closure."
+        },
+        {
+          "path": "protocols/generated/python/training/v1/training_run_pb2.pyi",
+          "reason": "Required authoritative Python type-stub projection from the locked ADR-0015 Protobuf generator closure."
+        },
+        {
+          "path": "protocols/generated/python/training/v1/training_progress_pb2.pyi",
+          "reason": "Required authoritative Python type-stub projection from the locked ADR-0015 Protobuf generator closure."
+        },
+        {
+          "path": "protocols/generated/python/training/v1/checkpoint_pb2.pyi",
+          "reason": "Required authoritative Python type-stub projection from the locked ADR-0015 Protobuf generator closure."
+        },
+        {
+          "path": "protocols/generated/python/training/v1/training_commands_pb2.pyi",
+          "reason": "Required authoritative Python type-stub projection from the locked ADR-0015 Protobuf generator closure."
+        },
+        {
+          "path": "protocols/generated/python/training/v1/training_started_pb2.pyi",
+          "reason": "Required authoritative Python type-stub projection from the locked ADR-0015 Protobuf generator closure."
+        },
+        {
+          "path": "protocols/generated/python/training/v1/progress_committed_pb2.pyi",
+          "reason": "Required authoritative Python type-stub projection from the locked ADR-0015 Protobuf generator closure."
+        },
+        {
+          "path": "protocols/generated/python/training/v1/checkpoint_committed_pb2.pyi",
+          "reason": "Required authoritative Python type-stub projection from the locked ADR-0015 Protobuf generator closure."
+        },
+        {
+          "path": "protocols/generated/python/training/v1/training_completed_pb2.pyi",
+          "reason": "Required authoritative Python type-stub projection from the locked ADR-0015 Protobuf generator closure."
+        },
+        {
+          "path": "protocols/generated/python/inference/v1/inference_request_pb2.pyi",
+          "reason": "Required authoritative Python type-stub projection from the locked ADR-0015 Protobuf generator closure."
+        },
+        {
+          "path": "protocols/generated/python/inference/v1/inference_result_pb2.pyi",
+          "reason": "Required authoritative Python type-stub projection from the locked ADR-0015 Protobuf generator closure."
+        },
+        {
+          "path": "protocols/generated/python/inference/v1/inference_stream_pb2.pyi",
+          "reason": "Required authoritative Python type-stub projection from the locked ADR-0015 Protobuf generator closure."
+        },
+        {
+          "path": "protocols/generated/python/evaluation/v1/evaluation_run_pb2.pyi",
+          "reason": "Required authoritative Python type-stub projection from the locked ADR-0015 Protobuf generator closure."
+        },
+        {
+          "path": "protocols/generated/python/evaluation/v1/evaluation_result_pb2.pyi",
+          "reason": "Required authoritative Python type-stub projection from the locked ADR-0015 Protobuf generator closure."
+        },
+        {
+          "path": "protocols/generated/python/evaluation/v1/promotion_decision_pb2.pyi",
+          "reason": "Required authoritative Python type-stub projection from the locked ADR-0015 Protobuf generator closure."
+        },
+        {
+          "path": "protocols/generated/python/agent/v1/agent_definition_pb2.pyi",
+          "reason": "Required authoritative Python type-stub projection from the locked ADR-0015 Protobuf generator closure."
+        },
+        {
+          "path": "protocols/generated/python/agent/v1/agent_run_pb2.pyi",
+          "reason": "Required authoritative Python type-stub projection from the locked ADR-0015 Protobuf generator closure."
+        },
+        {
+          "path": "protocols/generated/python/agent/v1/agent_step_pb2.pyi",
+          "reason": "Required authoritative Python type-stub projection from the locked ADR-0015 Protobuf generator closure."
+        },
+        {
+          "path": "protocols/generated/python/agent/v1/tool_receipt_pb2.pyi",
+          "reason": "Required authoritative Python type-stub projection from the locked ADR-0015 Protobuf generator closure."
+        },
+        {
+          "path": "protocols/generated/python/agent/v1/agent_step_dispatched_pb2.pyi",
+          "reason": "Required authoritative Python type-stub projection from the locked ADR-0015 Protobuf generator closure."
+        },
+        {
+          "path": "protocols/generated/python/agent/v1/tool_receipt_committed_pb2.pyi",
+          "reason": "Required authoritative Python type-stub projection from the locked ADR-0015 Protobuf generator closure."
+        },
+        {
+          "path": "protocols/generated/python/agent/v1/agent_run_completed_pb2.pyi",
+          "reason": "Required authoritative Python type-stub projection from the locked ADR-0015 Protobuf generator closure."
+        },
+        {
+          "path": "protocols/generated/python/workflow/v1/workflow_definition_pb2.pyi",
+          "reason": "Required authoritative Python type-stub projection from the locked ADR-0015 Protobuf generator closure."
+        },
+        {
+          "path": "protocols/generated/python/workflow/v1/workflow_run_pb2.pyi",
+          "reason": "Required authoritative Python type-stub projection from the locked ADR-0015 Protobuf generator closure."
+        },
+        {
+          "path": "protocols/generated/python/workflow/v1/approval_pb2.pyi",
+          "reason": "Required authoritative Python type-stub projection from the locked ADR-0015 Protobuf generator closure."
+        },
+        {
+          "path": "protocols/generated/python/workflow/v1/workflow_transitioned_pb2.pyi",
+          "reason": "Required authoritative Python type-stub projection from the locked ADR-0015 Protobuf generator closure."
+        },
+        {
+          "path": "protocols/generated/python/workflow/v1/approval_recorded_pb2.pyi",
+          "reason": "Required authoritative Python type-stub projection from the locked ADR-0015 Protobuf generator closure."
+        },
+        {
+          "path": "protocols/generated/python/policy/v1/policy_reference_pb2.pyi",
+          "reason": "Required authoritative Python type-stub projection from the locked ADR-0015 Protobuf generator closure."
+        },
+        {
+          "path": "protocols/generated/python/policy/v1/authorization_decision_pb2.pyi",
+          "reason": "Required authoritative Python type-stub projection from the locked ADR-0015 Protobuf generator closure."
+        },
+        {
+          "path": "protocols/generated/python/policy/v1/use_policy_pb2.pyi",
+          "reason": "Required authoritative Python type-stub projection from the locked ADR-0015 Protobuf generator closure."
+        },
+        {
+          "path": "protocols/generated/python/admin/v1/tenant_pb2.pyi",
+          "reason": "Required authoritative Python type-stub projection from the locked ADR-0015 Protobuf generator closure."
+        },
+        {
+          "path": "protocols/generated/python/admin/v1/project_pb2.pyi",
+          "reason": "Required authoritative Python type-stub projection from the locked ADR-0015 Protobuf generator closure."
+        },
+        {
+          "path": "protocols/generated/python/admin/v1/audit_query_pb2.pyi",
+          "reason": "Required authoritative Python type-stub projection from the locked ADR-0015 Protobuf generator closure."
+        },
+        {
+          "path": "protocols/generated/python/audit/v1/audit_event_pb2.pyi",
+          "reason": "Required authoritative Python type-stub projection from the locked ADR-0015 Protobuf generator closure."
+        },
+        {
+          "path": "protocols/generated/python/audit/v1/security_event_pb2.pyi",
+          "reason": "Required authoritative Python type-stub projection from the locked ADR-0015 Protobuf generator closure."
+        },
+        {
+          "path": "protocols/proto/mindclade/internal/artifact/v1/artifact_service.proto",
+          "reason": "ADR-0015 authoritative gRPC service source required to bind the clean-v1 resource and command catalog to concrete internal or curated public RPCs."
+        },
+        {
+          "path": "protocols/proto/mindclade/internal/job/v1/job_service.proto",
+          "reason": "ADR-0015 authoritative gRPC service source required to bind the clean-v1 resource and command catalog to concrete internal or curated public RPCs."
+        },
+        {
+          "path": "protocols/proto/mindclade/internal/dataset/v1/dataset_service.proto",
+          "reason": "ADR-0015 authoritative gRPC service source required to bind the clean-v1 resource and command catalog to concrete internal or curated public RPCs."
+        },
+        {
+          "path": "protocols/proto/mindclade/internal/training/v1/training_service.proto",
+          "reason": "ADR-0015 authoritative gRPC service source required to bind the clean-v1 resource and command catalog to concrete internal or curated public RPCs."
+        },
+        {
+          "path": "protocols/proto/mindclade/internal/model/v1/model_service.proto",
+          "reason": "ADR-0015 authoritative gRPC service source required to bind the clean-v1 resource and command catalog to concrete internal or curated public RPCs."
+        },
+        {
+          "path": "protocols/proto/mindclade/internal/inference/v1/inference_service.proto",
+          "reason": "ADR-0015 authoritative gRPC service source required to bind the clean-v1 resource and command catalog to concrete internal or curated public RPCs."
+        },
+        {
+          "path": "protocols/proto/mindclade/internal/evaluation/v1/evaluation_service.proto",
+          "reason": "ADR-0015 authoritative gRPC service source required to bind the clean-v1 resource and command catalog to concrete internal or curated public RPCs."
+        },
+        {
+          "path": "protocols/proto/mindclade/internal/agent/v1/agent_service.proto",
+          "reason": "ADR-0015 authoritative gRPC service source required to bind the clean-v1 resource and command catalog to concrete internal or curated public RPCs."
+        },
+        {
+          "path": "protocols/proto/mindclade/internal/workflow/v1/workflow_service.proto",
+          "reason": "ADR-0015 authoritative gRPC service source required to bind the clean-v1 resource and command catalog to concrete internal or curated public RPCs."
+        },
+        {
+          "path": "protocols/proto/mindclade/internal/policy/v1/policy_service.proto",
+          "reason": "ADR-0015 authoritative gRPC service source required to bind the clean-v1 resource and command catalog to concrete internal or curated public RPCs."
+        },
+        {
+          "path": "protocols/proto/mindclade/internal/admin/v1/admin_service.proto",
+          "reason": "ADR-0015 authoritative gRPC service source required to bind the clean-v1 resource and command catalog to concrete internal or curated public RPCs."
+        },
+        {
+          "path": "protocols/proto/mindclade/api/v1/mindclade_service.proto",
+          "reason": "ADR-0015 authoritative gRPC service source required to bind the clean-v1 resource and command catalog to concrete internal or curated public RPCs."
+        },
+        {
+          "path": "protocols/generated/go/artifact/v1/artifact_service.pb.go",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/go/artifact/v1/artifact_service_grpc.pb.go",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/python/artifact/v1/artifact_service_pb2.py",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/python/artifact/v1/artifact_service_pb2.pyi",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/python/artifact/v1/artifact_service_pb2_grpc.py",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/python/artifact/v1/artifact_service_pb2_grpc.pyi",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/rust/artifact/v1/artifact_service.rs",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/rust/artifact/v1/artifact_service_grpc.rs",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/typescript/artifact/v1/artifact_service_pb.ts",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/go/job/v1/job_service.pb.go",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/go/job/v1/job_service_grpc.pb.go",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/python/job/v1/job_service_pb2.py",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/python/job/v1/job_service_pb2.pyi",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/python/job/v1/job_service_pb2_grpc.py",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/python/job/v1/job_service_pb2_grpc.pyi",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/rust/job/v1/job_service.rs",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/rust/job/v1/job_service_grpc.rs",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/typescript/job/v1/job_service_pb.ts",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/go/dataset/v1/dataset_service.pb.go",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/go/dataset/v1/dataset_service_grpc.pb.go",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/python/dataset/v1/dataset_service_pb2.py",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/python/dataset/v1/dataset_service_pb2.pyi",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/python/dataset/v1/dataset_service_pb2_grpc.py",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/python/dataset/v1/dataset_service_pb2_grpc.pyi",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/rust/dataset/v1/dataset_service.rs",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/rust/dataset/v1/dataset_service_grpc.rs",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/typescript/dataset/v1/dataset_service_pb.ts",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/go/training/v1/training_service.pb.go",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/go/training/v1/training_service_grpc.pb.go",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/python/training/v1/training_service_pb2.py",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/python/training/v1/training_service_pb2.pyi",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/python/training/v1/training_service_pb2_grpc.py",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/python/training/v1/training_service_pb2_grpc.pyi",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/rust/training/v1/training_service.rs",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/rust/training/v1/training_service_grpc.rs",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/typescript/training/v1/training_service_pb.ts",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/go/model/v1/model_service.pb.go",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/go/model/v1/model_service_grpc.pb.go",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/python/model/v1/model_service_pb2.py",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/python/model/v1/model_service_pb2.pyi",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/python/model/v1/model_service_pb2_grpc.py",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/python/model/v1/model_service_pb2_grpc.pyi",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/rust/model/v1/model_service.rs",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/rust/model/v1/model_service_grpc.rs",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/typescript/model/v1/model_service_pb.ts",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/go/inference/v1/inference_service.pb.go",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/go/inference/v1/inference_service_grpc.pb.go",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/python/inference/v1/inference_service_pb2.py",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/python/inference/v1/inference_service_pb2.pyi",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/python/inference/v1/inference_service_pb2_grpc.py",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/python/inference/v1/inference_service_pb2_grpc.pyi",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/rust/inference/v1/inference_service.rs",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/rust/inference/v1/inference_service_grpc.rs",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/typescript/inference/v1/inference_service_pb.ts",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/go/evaluation/v1/evaluation_service.pb.go",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/go/evaluation/v1/evaluation_service_grpc.pb.go",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/python/evaluation/v1/evaluation_service_pb2.py",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/python/evaluation/v1/evaluation_service_pb2.pyi",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/python/evaluation/v1/evaluation_service_pb2_grpc.py",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/python/evaluation/v1/evaluation_service_pb2_grpc.pyi",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/rust/evaluation/v1/evaluation_service.rs",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/rust/evaluation/v1/evaluation_service_grpc.rs",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/typescript/evaluation/v1/evaluation_service_pb.ts",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/go/agent/v1/agent_service.pb.go",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/go/agent/v1/agent_service_grpc.pb.go",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/python/agent/v1/agent_service_pb2.py",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/python/agent/v1/agent_service_pb2.pyi",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/python/agent/v1/agent_service_pb2_grpc.py",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/python/agent/v1/agent_service_pb2_grpc.pyi",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/rust/agent/v1/agent_service.rs",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/rust/agent/v1/agent_service_grpc.rs",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/typescript/agent/v1/agent_service_pb.ts",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/go/workflow/v1/workflow_service.pb.go",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/go/workflow/v1/workflow_service_grpc.pb.go",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/python/workflow/v1/workflow_service_pb2.py",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/python/workflow/v1/workflow_service_pb2.pyi",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/python/workflow/v1/workflow_service_pb2_grpc.py",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/python/workflow/v1/workflow_service_pb2_grpc.pyi",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/rust/workflow/v1/workflow_service.rs",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/rust/workflow/v1/workflow_service_grpc.rs",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/typescript/workflow/v1/workflow_service_pb.ts",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/go/policy/v1/policy_service.pb.go",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/go/policy/v1/policy_service_grpc.pb.go",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/python/policy/v1/policy_service_pb2.py",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/python/policy/v1/policy_service_pb2.pyi",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/python/policy/v1/policy_service_pb2_grpc.py",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/python/policy/v1/policy_service_pb2_grpc.pyi",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/rust/policy/v1/policy_service.rs",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/rust/policy/v1/policy_service_grpc.rs",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/typescript/policy/v1/policy_service_pb.ts",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/go/admin/v1/admin_service.pb.go",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/go/admin/v1/admin_service_grpc.pb.go",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/python/admin/v1/admin_service_pb2.py",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/python/admin/v1/admin_service_pb2.pyi",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/python/admin/v1/admin_service_pb2_grpc.py",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/python/admin/v1/admin_service_pb2_grpc.pyi",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/rust/admin/v1/admin_service.rs",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/rust/admin/v1/admin_service_grpc.rs",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/typescript/admin/v1/admin_service_pb.ts",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/go/api/v1/mindclade_service.pb.go",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/go/api/v1/mindclade_service_grpc.pb.go",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/python/api/v1/mindclade_service_pb2.py",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/python/api/v1/mindclade_service_pb2.pyi",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/python/api/v1/mindclade_service_pb2_grpc.py",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/python/api/v1/mindclade_service_pb2_grpc.pyi",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/rust/api/v1/mindclade_service.rs",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/rust/api/v1/mindclade_service_grpc.rs",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/typescript/api/v1/mindclade_service_pb.ts",
+          "reason": "Required Go, Python, Rust, or TypeScript generated message/gRPC projection from an authoritative ADR-0015 service contract."
+        },
+        {
+          "path": "protocols/generated/go/api/v1/BUILD.bazel",
+          "reason": "Required generated package authority for the curated mindclade.api.v1 facade."
+        },
+        {
+          "path": "protocols/generated/python/api/v1/__init__.py",
+          "reason": "Required generated package authority for the curated mindclade.api.v1 facade."
+        },
+        {
+          "path": "protocols/generated/rust/api/v1/mod.rs",
+          "reason": "Required generated package authority for the curated mindclade.api.v1 facade."
+        },
+        {
+          "path": "protocols/generated/typescript/api/v1/index.ts",
+          "reason": "Required generated package authority for the curated mindclade.api.v1 facade."
+        },
+        {
           "path": "docs/adr/0001-repository-identity-and-ownership.md",
           "replaces": "docs/adr/0001-repository-identity.md",
           "reason": "Sections 1-18 and Section 14.1 take precedence over the stale A6 short ADR name."
@@ -3210,8 +3998,8 @@
           "reason": "Sections 1-18 and Section 14.1 take precedence over the stale A6 short ADR name."
         }
       ],
-      "canonical_file_count": 2632,
-      "canonical_path_set_sha256": "c7b3bb14975e394850a2083e5fa5e899352c1b9e4712def7f420f8299c727184"
+      "canonical_file_count": 2829,
+      "canonical_path_set_sha256": "662ab17c6b2e87f5c2ab2cbdef662a790b7b971f52844a404a58b8d4d34ac18d"
     },
     "owners": {
       "agent-platform": {
@@ -5374,6 +6162,210 @@
       "kind": "source",
       "owner": "contract-governance",
       "component": "proto-admin-v1",
+      "status": "active",
+      "activation_wave": "4",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": true,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/proto/mindclade/internal/artifact/v1/artifact_service.proto",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "proto-internal-artifact-v1",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/proto/mindclade/internal/job/v1/job_service.proto",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "proto-internal-job-v1",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/proto/mindclade/internal/dataset/v1/dataset_service.proto",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "proto-internal-dataset-v1",
+      "status": "active",
+      "activation_wave": "3",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/proto/mindclade/internal/training/v1/training_service.proto",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "proto-internal-training-v1",
+      "status": "active",
+      "activation_wave": "3",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/proto/mindclade/internal/model/v1/model_service.proto",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "proto-internal-model-v1",
+      "status": "active",
+      "activation_wave": "3",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/proto/mindclade/internal/inference/v1/inference_service.proto",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "proto-internal-inference-v1",
+      "status": "active",
+      "activation_wave": "2P",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/proto/mindclade/internal/evaluation/v1/evaluation_service.proto",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "proto-internal-evaluation-v1",
+      "status": "active",
+      "activation_wave": "3",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/proto/mindclade/internal/agent/v1/agent_service.proto",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "proto-internal-agent-v1",
+      "status": "active",
+      "activation_wave": "7",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/proto/mindclade/internal/workflow/v1/workflow_service.proto",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "proto-internal-workflow-v1",
+      "status": "active",
+      "activation_wave": "7",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/proto/mindclade/internal/policy/v1/policy_service.proto",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "proto-internal-policy-v1",
+      "status": "active",
+      "activation_wave": "7",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/proto/mindclade/internal/admin/v1/admin_service.proto",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "proto-internal-admin-v1",
+      "status": "active",
+      "activation_wave": "4",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/proto/mindclade/api/v1/mindclade_service.proto",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "proto-api-v1",
       "status": "active",
       "activation_wave": "4",
       "source_authority": "hand-authored",
@@ -8243,6 +9235,40 @@
       "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
     },
     {
+      "path": "protocols/generated/go/artifact/v1/artifact_service.pb.go",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-go-artifact-v1",
+      "status": "generated",
+      "activation_wave": "1",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:wave1_sources"
+      ],
+      "test_targets": [
+        "//:wave1_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
+    },
+    {
+      "path": "protocols/generated/go/artifact/v1/artifact_service_grpc.pb.go",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-go-artifact-v1",
+      "status": "generated",
+      "activation_wave": "1",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:wave1_sources"
+      ],
+      "test_targets": [
+        "//:wave1_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
+    },
+    {
       "path": "protocols/generated/go/job/v1/operation.pb.go",
       "kind": "source",
       "owner": "contract-governance",
@@ -8413,6 +9439,40 @@
       "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
     },
     {
+      "path": "protocols/generated/go/job/v1/job_service.pb.go",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-go-job-v1",
+      "status": "generated",
+      "activation_wave": "1",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:wave1_sources"
+      ],
+      "test_targets": [
+        "//:wave1_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
+    },
+    {
+      "path": "protocols/generated/go/job/v1/job_service_grpc.pb.go",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-go-job-v1",
+      "status": "generated",
+      "activation_wave": "1",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:wave1_sources"
+      ],
+      "test_targets": [
+        "//:wave1_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
+    },
+    {
       "path": "protocols/generated/go/dataset/v1/dataset.pb.go",
       "kind": "source",
       "owner": "contract-governance",
@@ -8478,6 +9538,40 @@
         "//:all_contract_tests"
       ],
       "public_surface": true,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/go/dataset/v1/dataset_service.pb.go",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-go-dataset-v1",
+      "status": "generated",
+      "activation_wave": "3",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/go/dataset/v1/dataset_service_grpc.pb.go",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-go-dataset-v1",
+      "status": "generated",
+      "activation_wave": "3",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
       "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
@@ -8804,6 +9898,40 @@
       "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
+      "path": "protocols/generated/go/model/v1/model_service.pb.go",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-go-model-v1",
+      "status": "generated",
+      "activation_wave": "3",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/go/model/v1/model_service_grpc.pb.go",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-go-model-v1",
+      "status": "generated",
+      "activation_wave": "3",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
       "path": "protocols/generated/go/training/v1/training_run.pb.go",
       "kind": "source",
       "owner": "contract-governance",
@@ -8957,6 +10085,40 @@
       "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
+      "path": "protocols/generated/go/training/v1/training_service.pb.go",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-go-training-v1",
+      "status": "generated",
+      "activation_wave": "3",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/go/training/v1/training_service_grpc.pb.go",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-go-training-v1",
+      "status": "generated",
+      "activation_wave": "3",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
       "path": "protocols/generated/go/inference/v1/inference_request.pb.go",
       "kind": "source",
       "owner": "contract-governance",
@@ -9025,6 +10187,40 @@
       "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
+      "path": "protocols/generated/go/inference/v1/inference_service.pb.go",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-go-inference-v1",
+      "status": "generated",
+      "activation_wave": "2P",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/go/inference/v1/inference_service_grpc.pb.go",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-go-inference-v1",
+      "status": "generated",
+      "activation_wave": "2P",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
       "path": "protocols/generated/go/evaluation/v1/evaluation_run.pb.go",
       "kind": "source",
       "owner": "contract-governance",
@@ -9090,6 +10286,40 @@
         "//:all_contract_tests"
       ],
       "public_surface": true,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/go/evaluation/v1/evaluation_service.pb.go",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-go-evaluation-v1",
+      "status": "generated",
+      "activation_wave": "3",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/go/evaluation/v1/evaluation_service_grpc.pb.go",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-go-evaluation-v1",
+      "status": "generated",
+      "activation_wave": "3",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
       "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
@@ -9229,6 +10459,40 @@
       "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
+      "path": "protocols/generated/go/agent/v1/agent_service.pb.go",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-go-agent-v1",
+      "status": "generated",
+      "activation_wave": "7",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/go/agent/v1/agent_service_grpc.pb.go",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-go-agent-v1",
+      "status": "generated",
+      "activation_wave": "7",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
       "path": "protocols/generated/go/workflow/v1/workflow_definition.pb.go",
       "kind": "source",
       "owner": "contract-governance",
@@ -9331,6 +10595,40 @@
       "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
+      "path": "protocols/generated/go/workflow/v1/workflow_service.pb.go",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-go-workflow-v1",
+      "status": "generated",
+      "activation_wave": "7",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/go/workflow/v1/workflow_service_grpc.pb.go",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-go-workflow-v1",
+      "status": "generated",
+      "activation_wave": "7",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
       "path": "protocols/generated/go/policy/v1/policy_reference.pb.go",
       "kind": "source",
       "owner": "contract-governance",
@@ -9396,6 +10694,40 @@
         "//:all_contract_tests"
       ],
       "public_surface": true,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/go/policy/v1/policy_service.pb.go",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-go-policy-v1",
+      "status": "generated",
+      "activation_wave": "7",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/go/policy/v1/policy_service_grpc.pb.go",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-go-policy-v1",
+      "status": "generated",
+      "activation_wave": "7",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
       "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
@@ -9467,6 +10799,40 @@
       "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
+      "path": "protocols/generated/go/admin/v1/admin_service.pb.go",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-go-admin-v1",
+      "status": "generated",
+      "activation_wave": "4",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/go/admin/v1/admin_service_grpc.pb.go",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-go-admin-v1",
+      "status": "generated",
+      "activation_wave": "4",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
       "path": "protocols/generated/go/audit/v1/audit_event.pb.go",
       "kind": "source",
       "owner": "contract-governance",
@@ -9516,6 +10882,57 @@
       ],
       "public_surface": true,
       "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
+    },
+    {
+      "path": "protocols/generated/go/api/v1/mindclade_service.pb.go",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-go-api-v1",
+      "status": "generated",
+      "activation_wave": "4",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": true,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/go/api/v1/mindclade_service_grpc.pb.go",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-go-api-v1",
+      "status": "generated",
+      "activation_wave": "4",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": true,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/go/api/v1/BUILD.bazel",
+      "kind": "build",
+      "owner": "contract-governance",
+      "component": "generated-go-api-v1",
+      "status": "generated",
+      "activation_wave": "4",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": true,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
       "path": "protocols/generated/python/README.generated.md",
@@ -9671,6 +11088,108 @@
       "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
     },
     {
+      "path": "protocols/generated/python/common/v1/identifiers_pb2.pyi",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-common-v1",
+      "status": "generated",
+      "activation_wave": "1",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:wave1_sources"
+      ],
+      "test_targets": [
+        "//:wave1_tests"
+      ],
+      "public_surface": true,
+      "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
+    },
+    {
+      "path": "protocols/generated/python/common/v1/resource_reference_pb2.pyi",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-common-v1",
+      "status": "generated",
+      "activation_wave": "1",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:wave1_sources"
+      ],
+      "test_targets": [
+        "//:wave1_tests"
+      ],
+      "public_surface": true,
+      "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
+    },
+    {
+      "path": "protocols/generated/python/common/v1/command_context_pb2.pyi",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-common-v1",
+      "status": "generated",
+      "activation_wave": "1",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:wave1_sources"
+      ],
+      "test_targets": [
+        "//:wave1_tests"
+      ],
+      "public_surface": true,
+      "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
+    },
+    {
+      "path": "protocols/generated/python/common/v1/event_envelope_pb2.pyi",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-common-v1",
+      "status": "generated",
+      "activation_wave": "1",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:wave1_sources"
+      ],
+      "test_targets": [
+        "//:wave1_tests"
+      ],
+      "public_surface": true,
+      "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
+    },
+    {
+      "path": "protocols/generated/python/common/v1/error_detail_pb2.pyi",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-common-v1",
+      "status": "generated",
+      "activation_wave": "1",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:wave1_sources"
+      ],
+      "test_targets": [
+        "//:wave1_tests"
+      ],
+      "public_surface": true,
+      "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
+    },
+    {
+      "path": "protocols/generated/python/common/v1/pagination_pb2.pyi",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-common-v1",
+      "status": "generated",
+      "activation_wave": "1",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:wave1_sources"
+      ],
+      "test_targets": [
+        "//:wave1_tests"
+      ],
+      "public_surface": true,
+      "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
+    },
+    {
       "path": "protocols/generated/python/artifact/v1/artifact_reference_pb2.py",
       "kind": "source",
       "owner": "contract-governance",
@@ -9770,6 +11289,159 @@
         "//:wave1_tests"
       ],
       "public_surface": true,
+      "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
+    },
+    {
+      "path": "protocols/generated/python/artifact/v1/artifact_reference_pb2.pyi",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-artifact-v1",
+      "status": "generated",
+      "activation_wave": "1",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:wave1_sources"
+      ],
+      "test_targets": [
+        "//:wave1_tests"
+      ],
+      "public_surface": true,
+      "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
+    },
+    {
+      "path": "protocols/generated/python/artifact/v1/evidence_reference_pb2.pyi",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-artifact-v1",
+      "status": "generated",
+      "activation_wave": "1",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:wave1_sources"
+      ],
+      "test_targets": [
+        "//:wave1_tests"
+      ],
+      "public_surface": true,
+      "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
+    },
+    {
+      "path": "protocols/generated/python/artifact/v1/artifact_commands_pb2.pyi",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-artifact-v1",
+      "status": "generated",
+      "activation_wave": "1",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:wave1_sources"
+      ],
+      "test_targets": [
+        "//:wave1_tests"
+      ],
+      "public_surface": true,
+      "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
+    },
+    {
+      "path": "protocols/generated/python/artifact/v1/artifact_committed_pb2.pyi",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-artifact-v1",
+      "status": "generated",
+      "activation_wave": "1",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:wave1_sources"
+      ],
+      "test_targets": [
+        "//:wave1_tests"
+      ],
+      "public_surface": true,
+      "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
+    },
+    {
+      "path": "protocols/generated/python/artifact/v1/artifact_quarantined_pb2.pyi",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-artifact-v1",
+      "status": "generated",
+      "activation_wave": "1",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:wave1_sources"
+      ],
+      "test_targets": [
+        "//:wave1_tests"
+      ],
+      "public_surface": true,
+      "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
+    },
+    {
+      "path": "protocols/generated/python/artifact/v1/artifact_service_pb2.py",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-artifact-v1",
+      "status": "generated",
+      "activation_wave": "1",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:wave1_sources"
+      ],
+      "test_targets": [
+        "//:wave1_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
+    },
+    {
+      "path": "protocols/generated/python/artifact/v1/artifact_service_pb2.pyi",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-artifact-v1",
+      "status": "generated",
+      "activation_wave": "1",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:wave1_sources"
+      ],
+      "test_targets": [
+        "//:wave1_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
+    },
+    {
+      "path": "protocols/generated/python/artifact/v1/artifact_service_pb2_grpc.py",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-artifact-v1",
+      "status": "generated",
+      "activation_wave": "1",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:wave1_sources"
+      ],
+      "test_targets": [
+        "//:wave1_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
+    },
+    {
+      "path": "protocols/generated/python/artifact/v1/artifact_service_pb2_grpc.pyi",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-artifact-v1",
+      "status": "generated",
+      "activation_wave": "1",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:wave1_sources"
+      ],
+      "test_targets": [
+        "//:wave1_tests"
+      ],
+      "public_surface": false,
       "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
     },
     {
@@ -9943,6 +11615,227 @@
       "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
     },
     {
+      "path": "protocols/generated/python/job/v1/operation_pb2.pyi",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-job-v1",
+      "status": "generated",
+      "activation_wave": "1",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:wave1_sources"
+      ],
+      "test_targets": [
+        "//:wave1_tests"
+      ],
+      "public_surface": true,
+      "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
+    },
+    {
+      "path": "protocols/generated/python/job/v1/job_pb2.pyi",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-job-v1",
+      "status": "generated",
+      "activation_wave": "1",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:wave1_sources"
+      ],
+      "test_targets": [
+        "//:wave1_tests"
+      ],
+      "public_surface": true,
+      "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
+    },
+    {
+      "path": "protocols/generated/python/job/v1/run_pb2.pyi",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-job-v1",
+      "status": "generated",
+      "activation_wave": "1",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:wave1_sources"
+      ],
+      "test_targets": [
+        "//:wave1_tests"
+      ],
+      "public_surface": true,
+      "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
+    },
+    {
+      "path": "protocols/generated/python/job/v1/attempt_pb2.pyi",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-job-v1",
+      "status": "generated",
+      "activation_wave": "1",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:wave1_sources"
+      ],
+      "test_targets": [
+        "//:wave1_tests"
+      ],
+      "public_surface": true,
+      "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
+    },
+    {
+      "path": "protocols/generated/python/job/v1/lease_fencing_pb2.pyi",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-job-v1",
+      "status": "generated",
+      "activation_wave": "1",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:wave1_sources"
+      ],
+      "test_targets": [
+        "//:wave1_tests"
+      ],
+      "public_surface": true,
+      "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
+    },
+    {
+      "path": "protocols/generated/python/job/v1/job_commands_pb2.pyi",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-job-v1",
+      "status": "generated",
+      "activation_wave": "1",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:wave1_sources"
+      ],
+      "test_targets": [
+        "//:wave1_tests"
+      ],
+      "public_surface": true,
+      "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
+    },
+    {
+      "path": "protocols/generated/python/job/v1/job_requested_pb2.pyi",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-job-v1",
+      "status": "generated",
+      "activation_wave": "1",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:wave1_sources"
+      ],
+      "test_targets": [
+        "//:wave1_tests"
+      ],
+      "public_surface": true,
+      "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
+    },
+    {
+      "path": "protocols/generated/python/job/v1/attempt_leased_pb2.pyi",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-job-v1",
+      "status": "generated",
+      "activation_wave": "1",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:wave1_sources"
+      ],
+      "test_targets": [
+        "//:wave1_tests"
+      ],
+      "public_surface": true,
+      "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
+    },
+    {
+      "path": "protocols/generated/python/job/v1/attempt_completed_pb2.pyi",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-job-v1",
+      "status": "generated",
+      "activation_wave": "1",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:wave1_sources"
+      ],
+      "test_targets": [
+        "//:wave1_tests"
+      ],
+      "public_surface": true,
+      "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
+    },
+    {
+      "path": "protocols/generated/python/job/v1/job_service_pb2.py",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-job-v1",
+      "status": "generated",
+      "activation_wave": "1",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:wave1_sources"
+      ],
+      "test_targets": [
+        "//:wave1_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
+    },
+    {
+      "path": "protocols/generated/python/job/v1/job_service_pb2.pyi",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-job-v1",
+      "status": "generated",
+      "activation_wave": "1",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:wave1_sources"
+      ],
+      "test_targets": [
+        "//:wave1_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
+    },
+    {
+      "path": "protocols/generated/python/job/v1/job_service_pb2_grpc.py",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-job-v1",
+      "status": "generated",
+      "activation_wave": "1",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:wave1_sources"
+      ],
+      "test_targets": [
+        "//:wave1_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
+    },
+    {
+      "path": "protocols/generated/python/job/v1/job_service_pb2_grpc.pyi",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-job-v1",
+      "status": "generated",
+      "activation_wave": "1",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:wave1_sources"
+      ],
+      "test_targets": [
+        "//:wave1_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
+    },
+    {
       "path": "protocols/generated/python/dataset/v1/dataset_pb2.py",
       "kind": "source",
       "owner": "contract-governance",
@@ -10011,6 +11904,125 @@
       "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
+      "path": "protocols/generated/python/dataset/v1/dataset_pb2.pyi",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-dataset-v1",
+      "status": "generated",
+      "activation_wave": "3",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": true,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/python/dataset/v1/dataset_release_pb2.pyi",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-dataset-v1",
+      "status": "generated",
+      "activation_wave": "3",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": true,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/python/dataset/v1/dataset_commands_pb2.pyi",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-dataset-v1",
+      "status": "generated",
+      "activation_wave": "3",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": true,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/python/dataset/v1/dataset_service_pb2.py",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-dataset-v1",
+      "status": "generated",
+      "activation_wave": "3",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/python/dataset/v1/dataset_service_pb2.pyi",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-dataset-v1",
+      "status": "generated",
+      "activation_wave": "3",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/python/dataset/v1/dataset_service_pb2_grpc.py",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-dataset-v1",
+      "status": "generated",
+      "activation_wave": "3",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/python/dataset/v1/dataset_service_pb2_grpc.pyi",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-dataset-v1",
+      "status": "generated",
+      "activation_wave": "3",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
       "path": "protocols/generated/python/feature/v1/feature_materialization_pb2.py",
       "kind": "source",
       "owner": "contract-governance",
@@ -10063,6 +12075,57 @@
     },
     {
       "path": "protocols/generated/python/feature/v1/__init__.py",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-feature-v1",
+      "status": "generated",
+      "activation_wave": "4",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": true,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/python/feature/v1/feature_materialization_pb2.pyi",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-feature-v1",
+      "status": "generated",
+      "activation_wave": "4",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": true,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/python/feature/v1/feature_commands_pb2.pyi",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-feature-v1",
+      "status": "generated",
+      "activation_wave": "4",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": true,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/python/feature/v1/feature_materialization_completed_pb2.pyi",
       "kind": "source",
       "owner": "contract-governance",
       "component": "generated-python-feature-v1",
@@ -10147,6 +12210,57 @@
       "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
+      "path": "protocols/generated/python/transform/v1/transform_execution_pb2.pyi",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-transform-v1",
+      "status": "generated",
+      "activation_wave": "4",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": true,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/python/transform/v1/transform_commands_pb2.pyi",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-transform-v1",
+      "status": "generated",
+      "activation_wave": "4",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": true,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/python/transform/v1/transform_execution_completed_pb2.pyi",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-transform-v1",
+      "status": "generated",
+      "activation_wave": "4",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": true,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
       "path": "protocols/generated/python/experiment/v1/experiment_pb2.py",
       "kind": "source",
       "owner": "contract-governance",
@@ -10199,6 +12313,57 @@
     },
     {
       "path": "protocols/generated/python/experiment/v1/__init__.py",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-experiment-v1",
+      "status": "generated",
+      "activation_wave": "8",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": true,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/python/experiment/v1/experiment_pb2.pyi",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-experiment-v1",
+      "status": "generated",
+      "activation_wave": "8",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": true,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/python/experiment/v1/study_pb2.pyi",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-experiment-v1",
+      "status": "generated",
+      "activation_wave": "8",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": true,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/python/experiment/v1/trial_pb2.pyi",
       "kind": "source",
       "owner": "contract-governance",
       "component": "generated-python-experiment-v1",
@@ -10331,6 +12496,176 @@
         "//:all_contract_tests"
       ],
       "public_surface": true,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/python/model/v1/model_pb2.pyi",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-model-v1",
+      "status": "generated",
+      "activation_wave": "3",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": true,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/python/model/v1/model_release_pb2.pyi",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-model-v1",
+      "status": "generated",
+      "activation_wave": "3",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": true,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/python/model/v1/model_commands_pb2.pyi",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-model-v1",
+      "status": "generated",
+      "activation_wave": "3",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": true,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/python/model/v1/model_registered_pb2.pyi",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-model-v1",
+      "status": "generated",
+      "activation_wave": "3",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": true,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/python/model/v1/model_promoted_pb2.pyi",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-model-v1",
+      "status": "generated",
+      "activation_wave": "3",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": true,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/python/model/v1/model_revoked_pb2.pyi",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-model-v1",
+      "status": "generated",
+      "activation_wave": "3",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": true,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/python/model/v1/model_service_pb2.py",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-model-v1",
+      "status": "generated",
+      "activation_wave": "3",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/python/model/v1/model_service_pb2.pyi",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-model-v1",
+      "status": "generated",
+      "activation_wave": "3",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/python/model/v1/model_service_pb2_grpc.py",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-model-v1",
+      "status": "generated",
+      "activation_wave": "3",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/python/model/v1/model_service_pb2_grpc.pyi",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-model-v1",
+      "status": "generated",
+      "activation_wave": "3",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
       "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
@@ -10487,6 +12822,210 @@
       "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
+      "path": "protocols/generated/python/training/v1/training_run_pb2.pyi",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-training-v1",
+      "status": "generated",
+      "activation_wave": "3",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": true,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/python/training/v1/training_progress_pb2.pyi",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-training-v1",
+      "status": "generated",
+      "activation_wave": "3",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": true,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/python/training/v1/checkpoint_pb2.pyi",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-training-v1",
+      "status": "generated",
+      "activation_wave": "3",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": true,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/python/training/v1/training_commands_pb2.pyi",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-training-v1",
+      "status": "generated",
+      "activation_wave": "3",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": true,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/python/training/v1/training_started_pb2.pyi",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-training-v1",
+      "status": "generated",
+      "activation_wave": "3",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": true,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/python/training/v1/progress_committed_pb2.pyi",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-training-v1",
+      "status": "generated",
+      "activation_wave": "3",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": true,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/python/training/v1/checkpoint_committed_pb2.pyi",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-training-v1",
+      "status": "generated",
+      "activation_wave": "3",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": true,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/python/training/v1/training_completed_pb2.pyi",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-training-v1",
+      "status": "generated",
+      "activation_wave": "3",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": true,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/python/training/v1/training_service_pb2.py",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-training-v1",
+      "status": "generated",
+      "activation_wave": "3",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/python/training/v1/training_service_pb2.pyi",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-training-v1",
+      "status": "generated",
+      "activation_wave": "3",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/python/training/v1/training_service_pb2_grpc.py",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-training-v1",
+      "status": "generated",
+      "activation_wave": "3",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/python/training/v1/training_service_pb2_grpc.pyi",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-training-v1",
+      "status": "generated",
+      "activation_wave": "3",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
       "path": "protocols/generated/python/inference/v1/inference_request_pb2.py",
       "kind": "source",
       "owner": "contract-governance",
@@ -10555,6 +13094,125 @@
       "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
+      "path": "protocols/generated/python/inference/v1/inference_request_pb2.pyi",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-inference-v1",
+      "status": "generated",
+      "activation_wave": "2P",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": true,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/python/inference/v1/inference_result_pb2.pyi",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-inference-v1",
+      "status": "generated",
+      "activation_wave": "2P",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": true,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/python/inference/v1/inference_stream_pb2.pyi",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-inference-v1",
+      "status": "generated",
+      "activation_wave": "4",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": true,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/python/inference/v1/inference_service_pb2.py",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-inference-v1",
+      "status": "generated",
+      "activation_wave": "2P",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/python/inference/v1/inference_service_pb2.pyi",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-inference-v1",
+      "status": "generated",
+      "activation_wave": "2P",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/python/inference/v1/inference_service_pb2_grpc.py",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-inference-v1",
+      "status": "generated",
+      "activation_wave": "2P",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/python/inference/v1/inference_service_pb2_grpc.pyi",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-inference-v1",
+      "status": "generated",
+      "activation_wave": "2P",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
       "path": "protocols/generated/python/evaluation/v1/evaluation_run_pb2.py",
       "kind": "source",
       "owner": "contract-governance",
@@ -10620,6 +13278,125 @@
         "//:all_contract_tests"
       ],
       "public_surface": true,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/python/evaluation/v1/evaluation_run_pb2.pyi",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-evaluation-v1",
+      "status": "generated",
+      "activation_wave": "3",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": true,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/python/evaluation/v1/evaluation_result_pb2.pyi",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-evaluation-v1",
+      "status": "generated",
+      "activation_wave": "3",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": true,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/python/evaluation/v1/promotion_decision_pb2.pyi",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-evaluation-v1",
+      "status": "generated",
+      "activation_wave": "3",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": true,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/python/evaluation/v1/evaluation_service_pb2.py",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-evaluation-v1",
+      "status": "generated",
+      "activation_wave": "3",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/python/evaluation/v1/evaluation_service_pb2.pyi",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-evaluation-v1",
+      "status": "generated",
+      "activation_wave": "3",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/python/evaluation/v1/evaluation_service_pb2_grpc.py",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-evaluation-v1",
+      "status": "generated",
+      "activation_wave": "3",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/python/evaluation/v1/evaluation_service_pb2_grpc.pyi",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-evaluation-v1",
+      "status": "generated",
+      "activation_wave": "3",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
       "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
@@ -10759,6 +13536,193 @@
       "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
+      "path": "protocols/generated/python/agent/v1/agent_definition_pb2.pyi",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-agent-v1",
+      "status": "generated",
+      "activation_wave": "7",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": true,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/python/agent/v1/agent_run_pb2.pyi",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-agent-v1",
+      "status": "generated",
+      "activation_wave": "7",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": true,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/python/agent/v1/agent_step_pb2.pyi",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-agent-v1",
+      "status": "generated",
+      "activation_wave": "7",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": true,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/python/agent/v1/tool_receipt_pb2.pyi",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-agent-v1",
+      "status": "generated",
+      "activation_wave": "7",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": true,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/python/agent/v1/agent_step_dispatched_pb2.pyi",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-agent-v1",
+      "status": "generated",
+      "activation_wave": "7",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": true,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/python/agent/v1/tool_receipt_committed_pb2.pyi",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-agent-v1",
+      "status": "generated",
+      "activation_wave": "7",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": true,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/python/agent/v1/agent_run_completed_pb2.pyi",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-agent-v1",
+      "status": "generated",
+      "activation_wave": "7",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": true,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/python/agent/v1/agent_service_pb2.py",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-agent-v1",
+      "status": "generated",
+      "activation_wave": "7",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/python/agent/v1/agent_service_pb2.pyi",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-agent-v1",
+      "status": "generated",
+      "activation_wave": "7",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/python/agent/v1/agent_service_pb2_grpc.py",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-agent-v1",
+      "status": "generated",
+      "activation_wave": "7",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/python/agent/v1/agent_service_pb2_grpc.pyi",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-agent-v1",
+      "status": "generated",
+      "activation_wave": "7",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
       "path": "protocols/generated/python/workflow/v1/workflow_definition_pb2.py",
       "kind": "source",
       "owner": "contract-governance",
@@ -10861,6 +13825,159 @@
       "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
+      "path": "protocols/generated/python/workflow/v1/workflow_definition_pb2.pyi",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-workflow-v1",
+      "status": "generated",
+      "activation_wave": "7",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": true,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/python/workflow/v1/workflow_run_pb2.pyi",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-workflow-v1",
+      "status": "generated",
+      "activation_wave": "7",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": true,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/python/workflow/v1/approval_pb2.pyi",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-workflow-v1",
+      "status": "generated",
+      "activation_wave": "7",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": true,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/python/workflow/v1/workflow_transitioned_pb2.pyi",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-workflow-v1",
+      "status": "generated",
+      "activation_wave": "7",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": true,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/python/workflow/v1/approval_recorded_pb2.pyi",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-workflow-v1",
+      "status": "generated",
+      "activation_wave": "7",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": true,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/python/workflow/v1/workflow_service_pb2.py",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-workflow-v1",
+      "status": "generated",
+      "activation_wave": "7",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/python/workflow/v1/workflow_service_pb2.pyi",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-workflow-v1",
+      "status": "generated",
+      "activation_wave": "7",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/python/workflow/v1/workflow_service_pb2_grpc.py",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-workflow-v1",
+      "status": "generated",
+      "activation_wave": "7",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/python/workflow/v1/workflow_service_pb2_grpc.pyi",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-workflow-v1",
+      "status": "generated",
+      "activation_wave": "7",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
       "path": "protocols/generated/python/policy/v1/policy_reference_pb2.py",
       "kind": "source",
       "owner": "contract-governance",
@@ -10926,6 +14043,125 @@
         "//:all_contract_tests"
       ],
       "public_surface": true,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/python/policy/v1/policy_reference_pb2.pyi",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-policy-v1",
+      "status": "generated",
+      "activation_wave": "7",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": true,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/python/policy/v1/authorization_decision_pb2.pyi",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-policy-v1",
+      "status": "generated",
+      "activation_wave": "7",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": true,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/python/policy/v1/use_policy_pb2.pyi",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-policy-v1",
+      "status": "generated",
+      "activation_wave": "7",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": true,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/python/policy/v1/policy_service_pb2.py",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-policy-v1",
+      "status": "generated",
+      "activation_wave": "7",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/python/policy/v1/policy_service_pb2.pyi",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-policy-v1",
+      "status": "generated",
+      "activation_wave": "7",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/python/policy/v1/policy_service_pb2_grpc.py",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-policy-v1",
+      "status": "generated",
+      "activation_wave": "7",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/python/policy/v1/policy_service_pb2_grpc.pyi",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-policy-v1",
+      "status": "generated",
+      "activation_wave": "7",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
       "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
@@ -10997,6 +14233,125 @@
       "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
+      "path": "protocols/generated/python/admin/v1/tenant_pb2.pyi",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-admin-v1",
+      "status": "generated",
+      "activation_wave": "4",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": true,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/python/admin/v1/project_pb2.pyi",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-admin-v1",
+      "status": "generated",
+      "activation_wave": "4",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": true,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/python/admin/v1/audit_query_pb2.pyi",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-admin-v1",
+      "status": "generated",
+      "activation_wave": "4",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": true,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/python/admin/v1/admin_service_pb2.py",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-admin-v1",
+      "status": "generated",
+      "activation_wave": "4",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/python/admin/v1/admin_service_pb2.pyi",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-admin-v1",
+      "status": "generated",
+      "activation_wave": "4",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/python/admin/v1/admin_service_pb2_grpc.py",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-admin-v1",
+      "status": "generated",
+      "activation_wave": "4",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/python/admin/v1/admin_service_pb2_grpc.pyi",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-admin-v1",
+      "status": "generated",
+      "activation_wave": "4",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
       "path": "protocols/generated/python/audit/v1/audit_event_pb2.py",
       "kind": "source",
       "owner": "contract-governance",
@@ -11048,6 +14403,40 @@
       "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
     },
     {
+      "path": "protocols/generated/python/audit/v1/audit_event_pb2.pyi",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-audit-v1",
+      "status": "generated",
+      "activation_wave": "1",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:wave1_sources"
+      ],
+      "test_targets": [
+        "//:wave1_tests"
+      ],
+      "public_surface": true,
+      "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
+    },
+    {
+      "path": "protocols/generated/python/audit/v1/security_event_pb2.pyi",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-audit-v1",
+      "status": "generated",
+      "activation_wave": "1",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:wave1_sources"
+      ],
+      "test_targets": [
+        "//:wave1_tests"
+      ],
+      "public_surface": true,
+      "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
+    },
+    {
       "path": "protocols/generated/python/pyproject.toml",
       "kind": "configuration",
       "owner": "contract-governance",
@@ -11063,6 +14452,91 @@
       ],
       "public_surface": true,
       "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
+    },
+    {
+      "path": "protocols/generated/python/api/v1/mindclade_service_pb2.py",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-api-v1",
+      "status": "generated",
+      "activation_wave": "4",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": true,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/python/api/v1/mindclade_service_pb2.pyi",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-api-v1",
+      "status": "generated",
+      "activation_wave": "4",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": true,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/python/api/v1/mindclade_service_pb2_grpc.py",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-api-v1",
+      "status": "generated",
+      "activation_wave": "4",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": true,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/python/api/v1/mindclade_service_pb2_grpc.pyi",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-api-v1",
+      "status": "generated",
+      "activation_wave": "4",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": true,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/python/api/v1/__init__.py",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-python-api-v1",
+      "status": "generated",
+      "activation_wave": "4",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": true,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
       "path": "protocols/generated/rust/README.generated.md",
@@ -11320,6 +14794,40 @@
       "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
     },
     {
+      "path": "protocols/generated/rust/artifact/v1/artifact_service.rs",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-rust-artifact-v1",
+      "status": "generated",
+      "activation_wave": "1",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:wave1_sources"
+      ],
+      "test_targets": [
+        "//:wave1_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
+    },
+    {
+      "path": "protocols/generated/rust/artifact/v1/artifact_service_grpc.rs",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-rust-artifact-v1",
+      "status": "generated",
+      "activation_wave": "1",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:wave1_sources"
+      ],
+      "test_targets": [
+        "//:wave1_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
+    },
+    {
       "path": "protocols/generated/rust/job/v1/operation.rs",
       "kind": "source",
       "owner": "contract-governance",
@@ -11490,6 +14998,40 @@
       "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
     },
     {
+      "path": "protocols/generated/rust/job/v1/job_service.rs",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-rust-job-v1",
+      "status": "generated",
+      "activation_wave": "1",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:wave1_sources"
+      ],
+      "test_targets": [
+        "//:wave1_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
+    },
+    {
+      "path": "protocols/generated/rust/job/v1/job_service_grpc.rs",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-rust-job-v1",
+      "status": "generated",
+      "activation_wave": "1",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:wave1_sources"
+      ],
+      "test_targets": [
+        "//:wave1_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
+    },
+    {
       "path": "protocols/generated/rust/dataset/v1/dataset.rs",
       "kind": "source",
       "owner": "contract-governance",
@@ -11555,6 +15097,40 @@
         "//:all_contract_tests"
       ],
       "public_surface": true,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/rust/dataset/v1/dataset_service.rs",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-rust-dataset-v1",
+      "status": "generated",
+      "activation_wave": "3",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/rust/dataset/v1/dataset_service_grpc.rs",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-rust-dataset-v1",
+      "status": "generated",
+      "activation_wave": "3",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
       "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
@@ -11881,6 +15457,40 @@
       "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
+      "path": "protocols/generated/rust/model/v1/model_service.rs",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-rust-model-v1",
+      "status": "generated",
+      "activation_wave": "3",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/rust/model/v1/model_service_grpc.rs",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-rust-model-v1",
+      "status": "generated",
+      "activation_wave": "3",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
       "path": "protocols/generated/rust/training/v1/training_run.rs",
       "kind": "source",
       "owner": "contract-governance",
@@ -12034,6 +15644,40 @@
       "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
+      "path": "protocols/generated/rust/training/v1/training_service.rs",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-rust-training-v1",
+      "status": "generated",
+      "activation_wave": "3",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/rust/training/v1/training_service_grpc.rs",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-rust-training-v1",
+      "status": "generated",
+      "activation_wave": "3",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
       "path": "protocols/generated/rust/inference/v1/inference_request.rs",
       "kind": "source",
       "owner": "contract-governance",
@@ -12102,6 +15746,40 @@
       "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
+      "path": "protocols/generated/rust/inference/v1/inference_service.rs",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-rust-inference-v1",
+      "status": "generated",
+      "activation_wave": "8",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/rust/inference/v1/inference_service_grpc.rs",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-rust-inference-v1",
+      "status": "generated",
+      "activation_wave": "8",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
       "path": "protocols/generated/rust/evaluation/v1/evaluation_run.rs",
       "kind": "source",
       "owner": "contract-governance",
@@ -12167,6 +15845,40 @@
         "//:all_contract_tests"
       ],
       "public_surface": true,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/rust/evaluation/v1/evaluation_service.rs",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-rust-evaluation-v1",
+      "status": "generated",
+      "activation_wave": "3",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/rust/evaluation/v1/evaluation_service_grpc.rs",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-rust-evaluation-v1",
+      "status": "generated",
+      "activation_wave": "3",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
       "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
@@ -12306,6 +16018,40 @@
       "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
+      "path": "protocols/generated/rust/agent/v1/agent_service.rs",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-rust-agent-v1",
+      "status": "generated",
+      "activation_wave": "7",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/rust/agent/v1/agent_service_grpc.rs",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-rust-agent-v1",
+      "status": "generated",
+      "activation_wave": "7",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
       "path": "protocols/generated/rust/workflow/v1/workflow_definition.rs",
       "kind": "source",
       "owner": "contract-governance",
@@ -12408,6 +16154,40 @@
       "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
+      "path": "protocols/generated/rust/workflow/v1/workflow_service.rs",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-rust-workflow-v1",
+      "status": "generated",
+      "activation_wave": "7",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/rust/workflow/v1/workflow_service_grpc.rs",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-rust-workflow-v1",
+      "status": "generated",
+      "activation_wave": "7",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
       "path": "protocols/generated/rust/policy/v1/policy_reference.rs",
       "kind": "source",
       "owner": "contract-governance",
@@ -12476,6 +16256,40 @@
       "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
+      "path": "protocols/generated/rust/policy/v1/policy_service.rs",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-rust-policy-v1",
+      "status": "generated",
+      "activation_wave": "7",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/rust/policy/v1/policy_service_grpc.rs",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-rust-policy-v1",
+      "status": "generated",
+      "activation_wave": "7",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
       "path": "protocols/generated/rust/admin/v1/tenant.rs",
       "kind": "source",
       "owner": "contract-governance",
@@ -12541,6 +16355,40 @@
         "//:all_contract_tests"
       ],
       "public_surface": true,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/rust/admin/v1/admin_service.rs",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-rust-admin-v1",
+      "status": "generated",
+      "activation_wave": "4",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/rust/admin/v1/admin_service_grpc.rs",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-rust-admin-v1",
+      "status": "generated",
+      "activation_wave": "4",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
       "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
@@ -12627,6 +16475,57 @@
       ],
       "public_surface": true,
       "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
+    },
+    {
+      "path": "protocols/generated/rust/api/v1/mindclade_service.rs",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-rust-api-v1",
+      "status": "generated",
+      "activation_wave": "4",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": true,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/rust/api/v1/mindclade_service_grpc.rs",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-rust-api-v1",
+      "status": "generated",
+      "activation_wave": "4",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": true,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/rust/api/v1/mod.rs",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-rust-api-v1",
+      "status": "generated",
+      "activation_wave": "4",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": true,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
       "path": "protocols/generated/typescript/README.generated.md",
@@ -12884,6 +16783,23 @@
       "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
     },
     {
+      "path": "protocols/generated/typescript/artifact/v1/artifact_service_pb.ts",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-typescript-artifact-v1",
+      "status": "generated",
+      "activation_wave": "1",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:wave1_sources"
+      ],
+      "test_targets": [
+        "//:wave1_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
+    },
+    {
       "path": "protocols/generated/typescript/job/v1/operation_pb.ts",
       "kind": "source",
       "owner": "contract-governance",
@@ -13054,6 +16970,23 @@
       "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
     },
     {
+      "path": "protocols/generated/typescript/job/v1/job_service_pb.ts",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-typescript-job-v1",
+      "status": "generated",
+      "activation_wave": "1",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:wave1_sources"
+      ],
+      "test_targets": [
+        "//:wave1_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
+    },
+    {
       "path": "protocols/generated/typescript/dataset/v1/dataset_pb.ts",
       "kind": "source",
       "owner": "contract-governance",
@@ -13119,6 +17052,23 @@
         "//:all_contract_tests"
       ],
       "public_surface": true,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/typescript/dataset/v1/dataset_service_pb.ts",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-typescript-dataset-v1",
+      "status": "generated",
+      "activation_wave": "3",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
       "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
@@ -13445,6 +17395,23 @@
       "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
+      "path": "protocols/generated/typescript/model/v1/model_service_pb.ts",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-typescript-model-v1",
+      "status": "generated",
+      "activation_wave": "3",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
       "path": "protocols/generated/typescript/training/v1/training_run_pb.ts",
       "kind": "source",
       "owner": "contract-governance",
@@ -13598,6 +17565,23 @@
       "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
+      "path": "protocols/generated/typescript/training/v1/training_service_pb.ts",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-typescript-training-v1",
+      "status": "generated",
+      "activation_wave": "3",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
       "path": "protocols/generated/typescript/inference/v1/inference_request_pb.ts",
       "kind": "source",
       "owner": "contract-governance",
@@ -13666,6 +17650,23 @@
       "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
+      "path": "protocols/generated/typescript/inference/v1/inference_service_pb.ts",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-typescript-inference-v1",
+      "status": "generated",
+      "activation_wave": "4",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
       "path": "protocols/generated/typescript/evaluation/v1/evaluation_run_pb.ts",
       "kind": "source",
       "owner": "contract-governance",
@@ -13731,6 +17732,23 @@
         "//:all_contract_tests"
       ],
       "public_surface": true,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/typescript/evaluation/v1/evaluation_service_pb.ts",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-typescript-evaluation-v1",
+      "status": "generated",
+      "activation_wave": "3",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
       "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
@@ -13870,6 +17888,23 @@
       "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
+      "path": "protocols/generated/typescript/agent/v1/agent_service_pb.ts",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-typescript-agent-v1",
+      "status": "generated",
+      "activation_wave": "7",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
       "path": "protocols/generated/typescript/workflow/v1/workflow_definition_pb.ts",
       "kind": "source",
       "owner": "contract-governance",
@@ -13972,6 +18007,23 @@
       "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
+      "path": "protocols/generated/typescript/workflow/v1/workflow_service_pb.ts",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-typescript-workflow-v1",
+      "status": "generated",
+      "activation_wave": "7",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
       "path": "protocols/generated/typescript/policy/v1/policy_reference_pb.ts",
       "kind": "source",
       "owner": "contract-governance",
@@ -14040,6 +18092,23 @@
       "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
+      "path": "protocols/generated/typescript/policy/v1/policy_service_pb.ts",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-typescript-policy-v1",
+      "status": "generated",
+      "activation_wave": "7",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
       "path": "protocols/generated/typescript/admin/v1/tenant_pb.ts",
       "kind": "source",
       "owner": "contract-governance",
@@ -14105,6 +18174,23 @@
         "//:all_contract_tests"
       ],
       "public_surface": true,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/typescript/admin/v1/admin_service_pb.ts",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-typescript-admin-v1",
+      "status": "generated",
+      "activation_wave": "4",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
       "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
@@ -14191,6 +18277,40 @@
       ],
       "public_surface": true,
       "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
+    },
+    {
+      "path": "protocols/generated/typescript/api/v1/mindclade_service_pb.ts",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-typescript-api-v1",
+      "status": "generated",
+      "activation_wave": "4",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": true,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/generated/typescript/api/v1/index.ts",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "generated-typescript-api-v1",
+      "status": "generated",
+      "activation_wave": "4",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": true,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
       "path": "protocols/generated/README.md",
@@ -37664,6 +41784,23 @@
     {
       "path": "tools/codegen/toolchain.lock.json",
       "kind": "data",
+      "owner": "developer-platform",
+      "component": "tools-codegen",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:wave1_sources"
+      ],
+      "test_targets": [
+        "//:wave1_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
+    },
+    {
+      "path": "tools/codegen/sdk_generator.py",
+      "kind": "source",
       "owner": "developer-platform",
       "component": "tools-codegen",
       "status": "active",

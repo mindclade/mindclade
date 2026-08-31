@@ -1,5 +1,9 @@
 # ADR-0004: Contract and Code-Generation Authority
 
+> Clarified by ADR-0015: the curated OpenAPI document owns external HTTP/JSON
+> and SDK behavior, while `mindclade.api.v1` owns the public gRPC facade; exact
+> parity mappings replace one-way OpenAPI derivation.
+
 - Status: Accepted in blueprint specification
 - Connected ratification: Pending independent review on protected infrastructure
 - Specification date: 2026-08-30
