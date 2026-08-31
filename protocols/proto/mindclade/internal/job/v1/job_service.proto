@@ -3,6 +3,7 @@ syntax = "proto3";
 package mindclade.internal.job.v1;
 
 import "google/protobuf/field_mask.proto";
+import "google/protobuf/duration.proto";
 import "google/protobuf/timestamp.proto";
 import "proto/mindclade/common/v1/command_context.proto";
 import "proto/mindclade/common/v1/pagination.proto";
@@ -165,6 +166,78 @@ message ListAttemptsResponse {
   google.protobuf.Timestamp read_time = 3;
 }
 
+// AcquireAttemptLeaseRequest atomically creates a fenced execution attempt.
+// The authenticated worker identity and raw lease token are transport metadata;
+// only the token digest is represented in LeaseFence.
+message AcquireAttemptLeaseRequest {
+  mindclade.common.v1.CommandContext context = 1;
+  string run_name = 2;
+  string attempt_id = 3;
+  google.protobuf.Duration lease_duration = 4;
+}
+
+// AcquireAttemptLeaseResponse returns the durable attempt and non-secret fence.
+message AcquireAttemptLeaseResponse {
+  mindclade.job.v1.Attempt attempt = 1;
+  mindclade.job.v1.LeaseFence fence = 2;
+}
+
+// RenewAttemptLeaseRequest extends the current lease under token and epoch fencing.
+message RenewAttemptLeaseRequest {
+  mindclade.common.v1.CommandContext context = 1;
+  mindclade.job.v1.LeaseFence fence = 2;
+  google.protobuf.Duration lease_duration = 3;
+  int64 expected_resource_version = 4;
+}
+
+// RenewAttemptLeaseResponse returns the renewed attempt and fence deadline.
+message RenewAttemptLeaseResponse {
+  mindclade.job.v1.Attempt attempt = 1;
+  mindclade.job.v1.LeaseFence fence = 2;
+}
+
+// HeartbeatAttemptRequest proves liveness and renews the authenticated lease.
+message HeartbeatAttemptRequest {
+  mindclade.common.v1.CommandContext context = 1;
+  mindclade.job.v1.LeaseFence fence = 2;
+  google.protobuf.Duration lease_duration = 3;
+  int64 expected_resource_version = 4;
+}
+
+// HeartbeatAttemptResponse returns the server-clock lease state.
+message HeartbeatAttemptResponse {
+  mindclade.job.v1.Attempt attempt = 1;
+  mindclade.job.v1.LeaseFence fence = 2;
+  google.protobuf.Timestamp observed_at = 3;
+}
+
+// CancelAttemptRequest cancels the current authenticated attempt lease.
+message CancelAttemptRequest {
+  mindclade.common.v1.CommandContext context = 1;
+  mindclade.job.v1.LeaseFence fence = 2;
+  int64 expected_resource_version = 3;
+  string reason = 4;
+}
+
+// CancelAttemptResponse returns the terminal attempt and reconciled run.
+message CancelAttemptResponse {
+  mindclade.job.v1.Attempt attempt = 1;
+  mindclade.job.v1.Run run = 2;
+}
+
+// ExpireAttemptLeasesRequest is a bounded reconciler command using server time.
+message ExpireAttemptLeasesRequest {
+  mindclade.common.v1.CommandContext context = 1;
+  string parent = 2;
+  uint32 limit = 3;
+}
+
+// ExpireAttemptLeasesResponse returns attempts fenced by this reconciliation.
+message ExpireAttemptLeasesResponse {
+  repeated mindclade.job.v1.Attempt attempts = 1;
+  google.protobuf.Timestamp observed_at = 2;
+}
+
 // CommitAttemptRequest applies a bounded worker update under both revision and lease fencing.
 message CommitAttemptRequest {
   mindclade.common.v1.CommandContext context = 1;
@@ -214,6 +287,16 @@ service RunService {
   rpc GetAttempt(GetAttemptRequest) returns (GetAttemptResponse);
   // ListAttempts lists attempts for one run.
   rpc ListAttempts(ListAttemptsRequest) returns (ListAttemptsResponse);
+  // AcquireAttemptLease atomically issues one expiring, token-bound fence.
+  rpc AcquireAttemptLease(AcquireAttemptLeaseRequest) returns (AcquireAttemptLeaseResponse);
+  // RenewAttemptLease extends only the current authenticated lease.
+  rpc RenewAttemptLease(RenewAttemptLeaseRequest) returns (RenewAttemptLeaseResponse);
+  // HeartbeatAttempt records liveness and renews only the current lease.
+  rpc HeartbeatAttempt(HeartbeatAttemptRequest) returns (HeartbeatAttemptResponse);
+  // CancelAttempt terminates only the current authenticated lease.
+  rpc CancelAttempt(CancelAttemptRequest) returns (CancelAttemptResponse);
+  // ExpireAttemptLeases fences a bounded batch whose deadlines elapsed.
+  rpc ExpireAttemptLeases(ExpireAttemptLeasesRequest) returns (ExpireAttemptLeasesResponse);
   // CommitAttempt rejects stale resource revisions or lease epochs.
   rpc CommitAttempt(CommitAttemptRequest) returns (CommitAttemptResponse);
 }

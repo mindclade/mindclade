@@ -81,8 +81,16 @@ spec:
     supportedSdkMajors: [1]
     providerSemanticParityRequired: true
     providers:
-      primary: stainless
-      shadow: oagen
+      primary: forge
+      implementationFoundation: oagen
+      preferredShadow: fern
+      benchmarks: [speakeasy]
+      legacyComparisons: [stainless]
+    providerRules:
+      mindcladePolicyIsAuthoritative: true
+      providerNativeConfigurationIsDerived: true
+      externalProviderStateIsAuthoritative: false
+      stainlessRequiresExistingLegacyProject: true
     generatedSourceIsAuthority: false
   rollback:
     preserveReadableTerminalOperations: true

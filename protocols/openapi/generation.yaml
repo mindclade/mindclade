@@ -11,9 +11,13 @@ spec:
     source: protocols/openapi/external-api.yaml
     profile: mindclade.api.v1
     rule: The checked-in curated OpenAPI projection owns public wire behavior.
+    sdkPolicyOwner: mindclade
+    sdkPolicyRule: Mindclade-owned policy governs SDK ergonomics and provider configuration.
     forbiddenAuthorities:
       - hosted-provider-state
+      - provider-native-configuration
       - generated-sdk-source
+      - compiler-intermediate-representation
       - internal-protobuf-layout
       - database-schema
   sourceIntegrity:
@@ -21,16 +25,57 @@ spec:
     canonicalization: raw-checked-in-bytes
     baseline: protocols/compatibility/baselines/openapi.lock.json
 
-  interface:
-    name: SdkGenerator
+  sdkPolicy:
+    owner: mindclade
     version: v1
-    description: Provider-neutral boundary for planning, generation, and parity evidence.
+    source: protocols/openapi/generation.yaml#spec.sdkPolicy
+    canonicalization: canonical-json-sorted-keys
+    providerConfigurationRule: derived-only
+    languages: [go, python, typescript]
+    publicModels: generated-from-curated-openapi-without-handwritten-wire-duplicates
+    preserveOperationIds: true
+    preservePublicSchemaNames: true
+    preserveUnknownResponseFields: where-runtime-permits
+    operationPolling:
+      resource: Operation
+      getOperationId: getOperation
+      cancelOperationId: cancelOperation
+      etagAware: true
+      finiteDeadlineRequired: true
+    pagination:
+      requestTokenField: pageToken
+      responseTokenField: page.nextPageToken
+      requestSizeField: pageSize
+    errors:
+      schema: PublicError
+      stableCodeField: code
+      requestIdField: requestId
+      retryableField: retryable
+    idempotency:
+      header: Idempotency-Key
+    packages:
+      go: github.com/mindclade/mindclade-go
+      python: mindclade
+      typescript: '@mindclade/sdk'
+
+  pipeline:
+    version: v1
+    description: Narrow owned boundaries keep generation, verification, packaging, and publication independently testable.
+    interfaces:
+      - OpenApiValidator
+      - SdkPolicyCompiler
+      - SdkEmitter
+      - SdkSurfaceExtractor
+      - SdkBehaviorVerifier
+      - SdkPackager
+      - SdkPublisher
+      - SdkReleaseOrchestrator
     input:
       openapiPath: required
       openapiSha256: required
       language: [go, python, typescript]
       outputDirectory: required-build-derived-directory
-      providerConfiguration: provider-specific-ergonomics-only
+      providerConfiguration: derived-from-mindclade-policy
     operations:
       - name: plan
         network: forbidden
@@ -41,12 +86,34 @@ spec:
       - name: verify
         network: forbidden
         output: conformance-and-parity-report
+      - name: package
+        network: forbidden
+        output: build-derived-package
+      - name: publish
+        network: protected-approval-required
+        output: publication-coordinates
     guarantees:
       - never-mutates-openapi-input
       - never-makes-provider-state-authoritative
-      - records-source-digest-provider-version-and-configuration-digest
+      - records-source-policy-emitter-and-provider-digests
       - rejects-output-outside-declared-build-directory
       - redacts-credentials-and-request-payloads
+    releaseReceipt:
+      emittedBy: SdkReleaseOrchestrator
+      requiredFields:
+        - openapiDigest
+        - policyDigest
+        - generatorName
+        - generatorVersion
+        - emitterDigest
+        - sourceRevision
+        - packageName
+        - packageVersion
+        - artifactDigest
+        - testReceipts
+        - compatibilityReport
+        - publicationCoordinates
+        - provenanceReference
 
   localContractAdapter:
     mode: offline-plan-and-verify
@@ -59,58 +126,54 @@ spec:
       - operation-id-inventory
       - public-schema-inventory
       - provider-language-plan
+      - provider-role-and-foundation-inventory
       - parity-requirements
     purpose: |
-      Provide reproducible source evidence before a pinned provider executable is
-      integrated. It deliberately does not pretend to be a generated SDK.
+      Provide reproducible source evidence before the owned compiler and pinned
+      provider adapters are integrated. It deliberately does not pretend to be
+      a generated SDK or a release orchestrator.
 
   providers:
-    - id: stainless
-      displayName: Stainless
-      role: primary
+    - id: forge
+      displayName: Mindclade SDK Forge
+      role: primary-owned
       longTerm: true
-      connection: hosted-not-invoked-by-source-validation
+      releasePrimaryEligible: true
+      ownership: mindclade
+      connection: local-owned-compiler-not-yet-pinned
       readiness: configuration-only
       languages: [go, python, typescript]
       source: protocols/openapi/external-api.yaml
+      foundation:
+        id: oagen
+        displayName: WorkOS OAGen
+        repository: https://github.com/workos/oagen
+        license: MIT
+        purpose: openapi-parser-and-typed-ir
+        authority: implementation-foundation-only
+        version: unpinned
       adapter:
         contractVersion: v1
         providerVersion: unpinned
         executable: null
         executableSha256: null
       configuration:
-        apiNamespace: mindclade
-        clientName: Mindclade
-        operationPolling:
-          resource: Operation
-          getOperationId: getOperation
-          cancelOperationId: cancelOperation
-          etagAware: true
-          finiteDeadlineRequired: true
-        pagination:
-          requestTokenField: pageToken
-          responseTokenField: page.nextPageToken
-          requestSizeField: pageSize
-        errors:
-          schema: PublicError
-          stableCodeField: code
-          requestIdField: requestId
-          retryableField: retryable
-        idempotency:
-          header: Idempotency-Key
-        packages:
-          go: github.com/mindclade/mindclade-go
-          python: mindclade
-          typescript: '@mindclade/sdk'
+        policySource: protocols/openapi/generation.yaml#spec.sdkPolicy
+        emitters: mindclade-owned
+        runtimes: mindclade-owned-thin-language-native
+        packaging: mindclade-owned
+        conformance: mindclade-owned
+        release: mindclade-owned
       release:
         publish: false
         connectedQualificationRequired: true
 
-    - id: oagen
-      displayName: Oagen
-      role: shadow-promotable
-      longTerm: true
-      connection: local-or-hosted-adapter-not-yet-pinned
+    - id: fern
+      displayName: Fern
+      role: preferred-qualified-shadow
+      longTerm: false
+      releasePrimaryEligible: false
+      connection: hosted-or-enterprise-self-hosted-not-invoked-by-source-validation
       readiness: configuration-only
       languages: [go, python, typescript]
       source: protocols/openapi/external-api.yaml
@@ -119,31 +182,81 @@ spec:
         providerVersion: unpinned
         executable: null
         executableSha256: null
+      qualificationNotes:
+        repository: https://github.com/fern-api/fern
+        publicRepositoryLicense: Apache-2.0
+        selfHostedWorkflow: enterprise-docker-token-and-outbound-verification-required
+        providerStateIsAuthority: false
       configuration:
-        emitterPolicy: mindclade-owned-or-pinned-open-source
-        licenseReviewRequired: true
-        preserveOperationIds: true
-        preservePublicSchemaNames: true
-        preserveUnknownResponseFields: where-runtime-permits
-      promotionRequirements:
-        - pinned-implementation-and-dependency-closure
-        - deterministic-clean-generation
-        - all-language-compile-and-package-tests
-        - public-api-fixture-parity-with-primary
-        - security-and-license-review
-        - rollback-evidence
+        policySource: protocols/openapi/generation.yaml#spec.sdkPolicy
+        mappingStatus: not-yet-implemented
+      release:
+        publish: false
+        connectedQualificationRequired: true
+
+    - id: speakeasy
+      displayName: Speakeasy
+      role: commercial-benchmark-fallback
+      longTerm: false
+      releasePrimaryEligible: false
+      connection: hosted-or-cli-adapter-not-invoked-by-source-validation
+      readiness: configuration-only
+      languages: [go, python, typescript]
+      source: protocols/openapi/external-api.yaml
+      adapter:
+        contractVersion: v1
+        providerVersion: unpinned
+        executable: null
+        executableSha256: null
+      qualificationNotes:
+        documentation: https://www.speakeasy.com/docs/sdks/create-client-sdks
+        cliRepository: https://github.com/speakeasy-api/speakeasy
+        cliLicense: Elastic-2.0
+        providerStateIsAuthority: false
+        licenseAndTermsReviewRequired: true
+      configuration:
+        policySource: protocols/openapi/generation.yaml#spec.sdkPolicy
+        mappingStatus: not-yet-implemented
+      release:
+        publish: false
+        connectedQualificationRequired: true
+
+    - id: stainless
+      displayName: Stainless
+      role: legacy-comparison-only
+      longTerm: false
+      releasePrimaryEligible: false
+      availability: existing-project-only
+      connection: retired-hosted-product-not-invoked-by-source-validation
+      readiness: legacy-configuration-only
+      languages: [go, python, typescript]
+      source: protocols/openapi/external-api.yaml
+      adapter:
+        contractVersion: v1
+        providerVersion: unpinned
+        executable: null
+        executableSha256: null
+      qualificationNotes:
+        announcement: https://www.stainless.com/blog/stainless-is-joining-anthropic/
+        newProjectsAllowed: false
+        providerStateIsAuthority: false
+        runOnlyWhenExistingProjectIsAvailable: true
+      configuration:
+        policySource: protocols/openapi/generation.yaml#spec.sdkPolicy
+        mappingStatus: legacy-existing-project-only
       release:
         publish: false
         connectedQualificationRequired: true
 
   connectedGap:
-    stainlessYmlPresent: false
-    reason: No pinned official Stainless configuration validator or generator is in the hermetic toolchain.
+    ownedCompilerPinned: false
+    reason: Mindclade Forge and its OAGen typed-IR dependency are not yet pinned in the hermetic toolchain.
     portableConfiguration: protocols/openapi/generation.yaml
     closureRequired:
-      - govern-and-pin-provider-executable
-      - record-provider-version-and-executable-sha256
-      - validate-provider-native-configuration-with-that-version
+      - pin-oagen-parser-and-typed-ir-dependency-closure
+      - implement-and-pin-mindclade-owned-emitters-and-thin-runtimes
+      - record-compiler-emitter-runtime-and-dependency-digests
+      - validate-derived-provider-configurations
       - qualify-generated-packages-against-shared-fixtures
 
   outputs:
@@ -167,15 +280,21 @@ spec:
       requiredFields:
         - openapiSha256
         - generationConfigSha256
+        - sdkPolicySha256
         - provider
+        - providerRole
         - providerVersion
+        - foundation
+        - foundationVersion
         - language
         - sourceRevision
 
   parity:
     authority: protocols/openapi/external-api.yaml
-    primary: stainless
-    shadow: oagen
+    primary: forge
+    preferredShadow: fern
+    benchmarks: [speakeasy]
+    legacyComparisons: [stainless]
     compare:
       - operation-ids
       - public-resource-types
@@ -194,18 +313,21 @@ spec:
       - typed-terminal-failure
       - artifact-digest-mismatch
       - authentication-and-authorization-failure
-    failurePolicy: any-semantic-difference-blocks-promotion
+    failurePolicy: any-semantic-difference-blocks-qualification-or-promotion
 
   qualification:
     sourceChecks:
       - openapi-3.1-parse-and-reference-resolution
       - compatibility-baseline-drift
+      - mindclade-policy-to-provider-configuration-determinism
       - provider-language-plan-parity
       - no-internal-package-exposure
       - no-hosted-call-during-source-validation
     connectedChecks:
-      - stainless-clean-generation
-      - oagen-clean-generation
+      - forge-clean-generation
+      - fern-qualified-shadow-generation
+      - speakeasy-benchmark-generation
+      - stainless-legacy-comparison-only-when-an-existing-project-is-available
       - generated-sdk-compile-package-and-conformance
       - provider-output-parity
       - signed-release-provenance

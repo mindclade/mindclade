@@ -3,6 +3,8 @@ modules:
   - path: protocols
     excludes:
       - protocols/generated
+deps:
+  - buf.build/googleapis/googleapis
 lint:
   use:
     - STANDARD

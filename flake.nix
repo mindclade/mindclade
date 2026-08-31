@@ -79,8 +79,13 @@
               export JAVA_HOME=${pkgs.jdk21_headless}
               export CC=${pkgs.stdenv.cc}/bin/cc
               export CXX=${pkgs.stdenv.cc}/bin/c++
+              export LANG=C
+              export LC_ALL=C
+              export TZ=UTC
+              export MINDCLADE_NIX_BIN=${pkgs.nix}/bin/nix
               if [[ "''${1:-}" == "--version" ]]; then
-                exec ${pkgs.bazel_9}/bin/bazel --version
+                printf 'bazel %s\n' '${pkgs.bazel_9.version}'
+                exit 0
               fi
               startup_flags=(--nosystem_rc --nohome_rc --server_javabase=${pkgs.jdk21_headless})
               if [[ -n "''${BAZEL_OUTPUT_USER_ROOT:-}" ]]; then
@@ -167,6 +172,9 @@
           current = basePackageSet pkgs;
           common = {
             packages = [ current.toolchain ];
+            JAVA_HOME = "${pkgs.jdk21_headless}";
+            CC = "${pkgs.stdenv.cc}/bin/cc";
+            CXX = "${pkgs.stdenv.cc}/bin/c++";
             LANG = current.locale;
             LC_ALL = current.locale;
             TZ = "UTC";

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from artifact.v1.artifact_reference_pb2 import ArtifactRef as ArtifactRef
-from artifact.v1.evidence_reference_pb2 import EvidenceRef as EvidenceRef
+from mindclade.artifact.v1.artifact_reference_pb2 import ArtifactRef as ArtifactRef
+from mindclade.artifact.v1.evidence_reference_pb2 import EvidenceRef as EvidenceRef
 
 from .digest import ArtifactDigest
 

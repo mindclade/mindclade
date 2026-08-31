@@ -12,6 +12,7 @@ type CreateCommand struct {
 	Operation      *jobv1.Operation
 	IdempotencyKey string
 	RequestDigest  string
+	ConfigurationDigest string
 }
 
 func Create(authorizer policies.Authorizer, repository *Repository, command CreateCommand) (*jobv1.Operation, bool, error) {
@@ -21,5 +22,5 @@ func Create(authorizer policies.Authorizer, repository *Repository, command Crea
 	if err := authorizer.Authorize(command.Principal, CreateAction, command.Operation.GetTenantId()); err != nil {
 		return nil, false, err
 	}
-	return repository.CreateAtomically(command.Operation, command.RequestDigest, command.IdempotencyKey, command.Principal.ID)
+	return repository.CreateAtomically(command.Operation, command.RequestDigest, command.ConfigurationDigest, command.IdempotencyKey, command.Principal.ID)
 }

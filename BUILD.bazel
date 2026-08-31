@@ -46,6 +46,7 @@ filegroup(
         "SECURITY.md",
         "biome.json",
         "buf.gen.yaml",
+        "buf.lock",
         "buf.yaml",
         "component.yaml",
         "flake.lock",

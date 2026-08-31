@@ -2,18 +2,18 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from common.v1.error_detail_pb2 import (
+from mindclade.common.v1.error_detail_pb2 import (
     ERROR_CODE_UNSPECIFIED,
     RETRY_CLASS_NEVER,
     RETRY_CLASS_SAFE,
 )
-from common.v1.error_detail_pb2 import (
+from mindclade.common.v1.error_detail_pb2 import (
     ErrorCode as ErrorCode,
 )
-from common.v1.error_detail_pb2 import (
+from mindclade.common.v1.error_detail_pb2 import (
     ErrorDetail as ErrorDetail,
 )
-from common.v1.resource_reference_pb2 import ResourceRef
+from mindclade.common.v1.resource_reference_pb2 import ResourceRef
 
 
 @dataclass(frozen=True)

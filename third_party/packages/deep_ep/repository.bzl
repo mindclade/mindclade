@@ -6,13 +6,10 @@ def _quoted(values):
 def _deep_ep_artifact_repository_impl(repository_ctx):
     if repository_ctx.os.name.lower() != "linux":
         fail("DeepEP artifacts require a Linux x86_64 Nix builder")
-    architecture = repository_ctx.execute(["uname", "-m"], quiet = True)
-    if architecture.return_code != 0 or architecture.stdout.strip() != "x86_64":
-        fail("DeepEP wheel artifacts currently require Linux x86_64")
 
-    nix = repository_ctx.which("nix")
-    if nix == None:
-        fail("nix is required; invoke Bazel through nix develop .#deepep")
+    nix = repository_ctx.os.environ.get("MINDCLADE_NIX_BIN")
+    if nix == None or not nix.startswith("/nix/store/"):
+        fail("MINDCLADE_NIX_BIN must identify the Nix-store binary; invoke Bazel through nix develop .#deepep")
 
     # Resolving every declared label makes package, source, patch, Python, and
     # flake lock changes part of the repository rule key.
@@ -24,9 +21,20 @@ def _deep_ep_artifact_repository_impl(repository_ctx):
             nix,
             "--extra-experimental-features",
             "nix-command flakes",
+            "--accept-flake-config",
             "build",
             "--no-link",
+            "--no-update-lock-file",
             "--print-out-paths",
+            "--option",
+            "substituters",
+            "https://cache.nixos.org/",
+            "--option",
+            "trusted-public-keys",
+            "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=",
+            "--option",
+            "require-sigs",
+            "true",
             "path:%s#packages.x86_64-linux.deep-ep-artifacts" % repository_root,
         ],
         quiet = False,
@@ -39,17 +47,6 @@ def _deep_ep_artifact_repository_impl(repository_ctx):
         fail("Nix did not return exactly one immutable DeepEP artifact output")
     artifact_root = output_lines[0]
 
-    inventory = repository_ctx.execute(
-        ["find", artifact_root, "-type", "f", "-print"],
-        quiet = True,
-    )
-    if inventory.return_code != 0:
-        fail("cannot inventory the Nix DeepEP artifact bundle: %s" % inventory.stderr)
-    files = sorted([
-        path[len(artifact_root) + 1:]
-        for path in inventory.stdout.splitlines()
-        if path.startswith(artifact_root + "/")
-    ])
     required = [
         "artifact-manifest.json",
         "elf-dependencies.json",
@@ -60,10 +57,12 @@ def _deep_ep_artifact_repository_impl(repository_ctx):
         "runtime-manifest.json",
         "sbom.spdx.json",
     ]
-    missing = [path for path in required if path not in files]
-    wheels = [path for path in files if path.startswith("wheel/") and path.endswith(".whl")]
-    if missing or len(wheels) != 1:
-        fail("incomplete DeepEP artifact bundle; missing=%s wheels=%s" % (missing, wheels))
+    manifest = json.decode(repository_ctx.read(artifact_root + "/artifact-manifest.json"))
+    wheel_filename = manifest.get("artifacts", {}).get("wheel", {}).get("filename")
+    if type(wheel_filename) != "string" or not wheel_filename.endswith(".whl") or "/" in wheel_filename or "\\" in wheel_filename:
+        fail("DeepEP artifact manifest does not declare one safe wheel filename")
+    wheels = ["wheel/" + wheel_filename]
+    files = required + wheels
     for relative_path in files:
         repository_ctx.symlink(artifact_root + "/" + relative_path, relative_path)
 
@@ -97,7 +96,7 @@ deep_ep_artifact_repository = repository_rule(
         "source_inputs": attr.label_list(allow_files = True),
     },
     configure = True,
-    environ = ["NIX_CONFIG", "PATH"],
+    environ = ["MINDCLADE_NIX_BIN"],
     local = True,
 )
 

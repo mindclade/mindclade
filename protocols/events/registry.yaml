@@ -1,0 +1,86 @@
+schema_version: mindclade.event-registry/v1
+events:
+  - full_name: mindclade.events.agent.v1.AgentRunCompleted
+    version: 1
+    content_type: application/x-protobuf; deterministic=true
+    source: events/mindclade/agent/v1/agent_run_completed.proto
+  - full_name: mindclade.events.agent.v1.AgentStepDispatched
+    version: 1
+    content_type: application/x-protobuf; deterministic=true
+    source: events/mindclade/agent/v1/agent_step_dispatched.proto
+  - full_name: mindclade.events.agent.v1.ToolReceiptCommitted
+    version: 1
+    content_type: application/x-protobuf; deterministic=true
+    source: events/mindclade/agent/v1/tool_receipt_committed.proto
+  - full_name: mindclade.events.artifact.v1.ArtifactCommitted
+    version: 1
+    content_type: application/x-protobuf; deterministic=true
+    source: events/mindclade/artifact/v1/artifact_committed.proto
+  - full_name: mindclade.events.artifact.v1.ArtifactQuarantined
+    version: 1
+    content_type: application/x-protobuf; deterministic=true
+    source: events/mindclade/artifact/v1/artifact_quarantined.proto
+  - full_name: mindclade.events.audit.v1.AuditEvent
+    version: 1
+    content_type: application/x-protobuf; deterministic=true
+    source: events/mindclade/audit/v1/audit_event.proto
+  - full_name: mindclade.events.audit.v1.SecurityEvent
+    version: 1
+    content_type: application/x-protobuf; deterministic=true
+    source: events/mindclade/audit/v1/security_event.proto
+  - full_name: mindclade.events.feature.v1.FeatureMaterializationCompleted
+    version: 1
+    content_type: application/x-protobuf; deterministic=true
+    source: events/mindclade/feature/v1/feature_materialization_completed.proto
+  - full_name: mindclade.events.job.v1.AttemptCompleted
+    version: 1
+    content_type: application/x-protobuf; deterministic=true
+    source: events/mindclade/job/v1/attempt_completed.proto
+  - full_name: mindclade.events.job.v1.AttemptLeased
+    version: 1
+    content_type: application/x-protobuf; deterministic=true
+    source: events/mindclade/job/v1/attempt_leased.proto
+  - full_name: mindclade.events.job.v1.JobRequested
+    version: 1
+    content_type: application/x-protobuf; deterministic=true
+    source: events/mindclade/job/v1/job_requested.proto
+  - full_name: mindclade.events.model.v1.ModelPromoted
+    version: 1
+    content_type: application/x-protobuf; deterministic=true
+    source: events/mindclade/model/v1/model_promoted.proto
+  - full_name: mindclade.events.model.v1.ModelRegistered
+    version: 1
+    content_type: application/x-protobuf; deterministic=true
+    source: events/mindclade/model/v1/model_registered.proto
+  - full_name: mindclade.events.model.v1.ModelRevoked
+    version: 1
+    content_type: application/x-protobuf; deterministic=true
+    source: events/mindclade/model/v1/model_revoked.proto
+  - full_name: mindclade.events.training.v1.CheckpointCommitted
+    version: 1
+    content_type: application/x-protobuf; deterministic=true
+    source: events/mindclade/training/v1/checkpoint_committed.proto
+  - full_name: mindclade.events.training.v1.ProgressCommitted
+    version: 1
+    content_type: application/x-protobuf; deterministic=true
+    source: events/mindclade/training/v1/progress_committed.proto
+  - full_name: mindclade.events.training.v1.TrainingCompleted
+    version: 1
+    content_type: application/x-protobuf; deterministic=true
+    source: events/mindclade/training/v1/training_completed.proto
+  - full_name: mindclade.events.training.v1.TrainingStarted
+    version: 1
+    content_type: application/x-protobuf; deterministic=true
+    source: events/mindclade/training/v1/training_started.proto
+  - full_name: mindclade.events.transform.v1.TransformExecutionCompleted
+    version: 1
+    content_type: application/x-protobuf; deterministic=true
+    source: events/mindclade/transform/v1/transform_execution_completed.proto
+  - full_name: mindclade.events.workflow.v1.ApprovalRecorded
+    version: 1
+    content_type: application/x-protobuf; deterministic=true
+    source: events/mindclade/workflow/v1/approval_recorded.proto
+  - full_name: mindclade.events.workflow.v1.WorkflowTransitioned
+    version: 1
+    content_type: application/x-protobuf; deterministic=true
+    source: events/mindclade/workflow/v1/workflow_transitioned.proto

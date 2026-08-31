@@ -6,8 +6,11 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import keyword
+import re
 import sys
-from collections.abc import Iterator, Mapping
+from dataclasses import dataclass
+from collections.abc import Iterator, Mapping, Sequence
 from pathlib import Path
 from typing import Any, Protocol, cast
 
@@ -18,6 +21,14 @@ BASELINE_PATH = Path("protocols/compatibility/baselines/json-schema.lock.json")
 MANIFEST_PATH = Path("docs/architecture/repository-path-manifest.yaml")
 SCHEMA_ROOT = Path("protocols/schemas")
 BASELINE_VERSION = "mindclade.json-schema-baseline/v2"
+GENERATOR = "mindclade-schema-codegen"
+GENERATED_ROOT = Path("protocols/generated")
+
+GO_BINDING = GENERATED_ROOT / "go/schema/v1/bindings.generated.go"
+PYTHON_BINDING = GENERATED_ROOT / "python/mindclade/schema/v1/bindings.py"
+PYTHON_INIT = GENERATED_ROOT / "python/mindclade/schema/v1/__init__.py"
+RUST_BINDING = GENERATED_ROOT / "rust/schema/v1.rs"
+TYPESCRIPT_BINDING = GENERATED_ROOT / "typescript/schema/v1/bindings.ts"
 
 
 class CatalogError(ValueError):
@@ -178,6 +189,555 @@ def baseline_bytes(root: Path) -> bytes:
         )
         + "\n"
     ).encode("utf-8")
+
+
+@dataclass(frozen=True)
+class ObjectBinding:
+    """A named object discovered in one governed schema."""
+
+    name: str
+    pointer: str
+    value: Mapping[str, object]
+
+
+@dataclass(frozen=True)
+class SchemaBinding:
+    """Language-neutral binding model for one schema family."""
+
+    family: str
+    title: str
+    schema: Mapping[str, object]
+    names: Mapping[str, str]
+    objects: tuple[ObjectBinding, ...]
+
+
+def pascal_case(value: str) -> str:
+    words = re.findall(r"[A-Za-z0-9]+", value)
+    result = "".join(word[:1].upper() + word[1:] for word in words)
+    if not result:
+        return "Value"
+    if result[0].isdigit():
+        return "Value" + result
+    return result
+
+
+def pointer_escape(value: str) -> str:
+    return value.replace("~", "~0").replace("/", "~1")
+
+
+def pointer_value(schema: Mapping[str, object], pointer: str) -> Mapping[str, object]:
+    if pointer == "#":
+        return schema
+    if not pointer.startswith("#/"):
+        raise CatalogError(f"only local JSON Schema references are supported: {pointer}")
+    value: object = schema
+    for encoded in pointer[2:].split("/"):
+        part = encoded.replace("~1", "/").replace("~0", "~")
+        if not isinstance(value, Mapping) or part not in value:
+            raise CatalogError(f"unresolved local JSON Schema reference: {pointer}")
+        value = value[part]
+    if not isinstance(value, Mapping):
+        raise CatalogError(f"JSON Schema reference is not an object: {pointer}")
+    return cast(Mapping[str, object], value)
+
+
+def is_object_schema(value: Mapping[str, object]) -> bool:
+    return value.get("type") == "object" or isinstance(value.get("properties"), Mapping)
+
+
+def build_binding(family: str, raw_schema: Mapping[str, object]) -> SchemaBinding:
+    raw_title = raw_schema.get("title")
+    if not isinstance(raw_title, str) or not raw_title:
+        raise CatalogError(f"{family} has no binding title")
+    title = pascal_case(raw_title)
+    names: dict[str, str] = {}
+    objects: list[ObjectBinding] = []
+    used_names: set[str] = set()
+
+    def unique_name(candidate: str) -> str:
+        value = candidate
+        index = 2
+        while value in used_names:
+            value = f"{candidate}{index}"
+            index += 1
+        used_names.add(value)
+        return value
+
+    def walk(value: Mapping[str, object], pointer: str, hint: str) -> None:
+        reference = value.get("$ref")
+        if isinstance(reference, str):
+            pointer_value(raw_schema, reference)
+            return
+        if is_object_schema(value):
+            properties = value.get("properties")
+            closed_empty = value.get("additionalProperties") is False
+            if isinstance(properties, Mapping) or closed_empty:
+                name = unique_name(title if pointer == "#" else title + pascal_case(hint))
+                names[pointer] = name
+                objects.append(ObjectBinding(name, pointer, value))
+            if isinstance(properties, Mapping):
+                for property_name, child in cast(Mapping[str, object], properties).items():
+                    if isinstance(child, Mapping):
+                        walk(
+                            cast(Mapping[str, object], child),
+                            f"{pointer}/properties/{pointer_escape(property_name)}",
+                            hint + pascal_case(property_name),
+                        )
+            additional = value.get("additionalProperties")
+            if isinstance(additional, Mapping):
+                walk(
+                    cast(Mapping[str, object], additional),
+                    f"{pointer}/additionalProperties",
+                    hint + "Value",
+                )
+        items = value.get("items")
+        if isinstance(items, Mapping):
+            walk(cast(Mapping[str, object], items), f"{pointer}/items", hint + "Item")
+        alternatives = value.get("oneOf")
+        if isinstance(alternatives, list):
+            for index, child in enumerate(cast(list[object], alternatives)):
+                if isinstance(child, Mapping):
+                    walk(
+                        cast(Mapping[str, object], child),
+                        f"{pointer}/oneOf/{index}",
+                        f"{hint}Option{index + 1}",
+                    )
+
+    walk(raw_schema, "#", "")
+    definitions = raw_schema.get("$defs")
+    if isinstance(definitions, Mapping):
+        for definition_name, definition in cast(Mapping[str, object], definitions).items():
+            if not isinstance(definition, Mapping):
+                continue
+            pointer = f"#/$defs/{pointer_escape(definition_name)}"
+            if pointer not in names and is_object_schema(cast(Mapping[str, object], definition)):
+                walk(
+                    cast(Mapping[str, object], definition),
+                    pointer,
+                    pascal_case(definition_name),
+                )
+    return SchemaBinding(family, title, raw_schema, names, tuple(objects))
+
+
+def schema_bindings(root: Path) -> tuple[SchemaBinding, ...]:
+    schema_paths, _ = assert_governed_inventory(root)
+    return tuple(
+        build_binding(path.parent.name, load_object(root / path)) for path in schema_paths
+    )
+
+
+def dereference(binding: SchemaBinding, value: Mapping[str, object]) -> tuple[str | None, Mapping[str, object]]:
+    reference = value.get("$ref")
+    if not isinstance(reference, str):
+        return None, value
+    return reference, pointer_value(binding.schema, reference)
+
+
+def mapping_entries(value: object) -> list[tuple[str, Mapping[str, object]]]:
+    if not isinstance(value, Mapping):
+        return []
+    entries: list[tuple[str, Mapping[str, object]]] = []
+    for name, child in cast(Mapping[str, object], value).items():
+        if isinstance(child, Mapping):
+            entries.append((name, cast(Mapping[str, object], child)))
+    return entries
+
+
+def required_names(value: Mapping[str, object]) -> frozenset[str]:
+    raw = value.get("required")
+    if not isinstance(raw, list) or not all(isinstance(item, str) for item in raw):
+        return frozenset()
+    return frozenset(cast(list[str], raw))
+
+
+def schema_source_map(bindings: Sequence[SchemaBinding]) -> dict[str, str]:
+    return {
+        binding.family: json.dumps(
+            binding.schema,
+            sort_keys=True,
+            separators=(",", ":"),
+            ensure_ascii=True,
+        )
+        for binding in bindings
+    }
+
+
+def fixture_source_map(root: Path, bindings: Sequence[SchemaBinding]) -> dict[str, dict[str, str]]:
+    result: dict[str, dict[str, str]] = {}
+    for binding in bindings:
+        directory = root / SCHEMA_ROOT / binding.family
+        positive = directory / "positive.json"
+        negatives = sorted(directory.glob("negative_*.json"))
+        if len(negatives) != 1:
+            raise CatalogError(f"{binding.family} requires one negative fixture")
+        result[binding.family] = {
+            "positive": positive.read_text(encoding="utf-8").strip(),
+            "negative": negatives[0].read_text(encoding="utf-8").strip(),
+        }
+    return result
+
+
+def python_type(binding: SchemaBinding, value: Mapping[str, object], pointer: str) -> str:
+    reference, resolved = dereference(binding, value)
+    if reference is not None and reference in binding.names:
+        return json.dumps(binding.names[reference])
+    if reference is not None:
+        return python_type(binding, resolved, reference)
+    alternatives = resolved.get("oneOf")
+    if isinstance(alternatives, list):
+        members = [
+            python_type(binding, cast(Mapping[str, object], item), f"{pointer}/oneOf/{index}")
+            for index, item in enumerate(cast(list[object], alternatives))
+            if isinstance(item, Mapping)
+        ]
+        return f"Union[{', '.join(members)}]" if members else "Any"
+    if "const" in resolved:
+        return f"Literal[{json.dumps(resolved['const'], ensure_ascii=True)}]"
+    enum = resolved.get("enum")
+    if isinstance(enum, list) and enum:
+        values = ", ".join(json.dumps(item, ensure_ascii=True) for item in enum)
+        return f"Literal[{values}]"
+    value_type = resolved.get("type")
+    if value_type == "string":
+        return "str"
+    if value_type == "integer":
+        return "int"
+    if value_type == "number":
+        return "float"
+    if value_type == "boolean":
+        return "bool"
+    if value_type == "array":
+        items = resolved.get("items")
+        item_type = (
+            python_type(binding, cast(Mapping[str, object], items), f"{pointer}/items")
+            if isinstance(items, Mapping)
+            else "Any"
+        )
+        return f"list[{item_type}]"
+    if is_object_schema(resolved):
+        if pointer in binding.names:
+            return json.dumps(binding.names[pointer])
+        additional = resolved.get("additionalProperties")
+        value_binding = (
+            python_type(
+                binding,
+                cast(Mapping[str, object], additional),
+                f"{pointer}/additionalProperties",
+            )
+            if isinstance(additional, Mapping)
+            else "Any"
+        )
+        return f"dict[str, {value_binding}]"
+    return "Any"
+
+
+def render_python(bindings: Sequence[SchemaBinding], fixtures: Mapping[str, Mapping[str, str]]) -> bytes:
+    sources = schema_source_map(bindings)
+    lines = [
+        f"# Code generated by {GENERATOR}. DO NOT EDIT.",
+        "from __future__ import annotations",
+        "",
+        "import json",
+        "from functools import lru_cache",
+        "from typing import Any, Final, Literal, NotRequired, TypedDict, Union, cast",
+        "",
+        "from jsonschema import Draft202012Validator, FormatChecker",
+        "",
+    ]
+    for binding in bindings:
+        for obj in binding.objects:
+            fields: list[str] = []
+            required = required_names(obj.value)
+            for property_name, child in mapping_entries(obj.value.get("properties")):
+                pointer = f"{obj.pointer}/properties/{pointer_escape(property_name)}"
+                type_name = python_type(binding, child, pointer)
+                if property_name not in required:
+                    type_name = f"NotRequired[{type_name}]"
+                fields.append(f"    {json.dumps(property_name)}: {type_name},")
+            lines.extend(
+                [
+                    f"{obj.name} = TypedDict(",
+                    f"    {json.dumps(obj.name)},",
+                    "    {",
+                    *fields,
+                    "    },",
+                    ")",
+                    "",
+                ]
+            )
+    lines.extend(
+        [
+            f"_SCHEMA_TEXT: Final[dict[str, str]] = {json.dumps(sources, sort_keys=True, indent=4)}",
+            f"_FIXTURES: Final[dict[str, dict[str, str]]] = {json.dumps(fixtures, sort_keys=True, indent=4)}",
+            "",
+            "",
+            "@lru_cache(maxsize=None)",
+            "def _validator(family: str) -> Draft202012Validator:",
+            "    try:",
+            "        schema = json.loads(_SCHEMA_TEXT[family])",
+            "    except KeyError as error:",
+            '        raise ValueError(f"unknown schema family: {family}") from error',
+            "    Draft202012Validator.check_schema(schema)",
+            "    return Draft202012Validator(schema, format_checker=FormatChecker())",
+            "",
+            "",
+            "def validate_document(family: str, document: object) -> None:",
+            '    """Validate a document against the authoritative Draft 2020-12 schema."""',
+            "    _validator(family).validate(document)",
+            "",
+            "",
+            "def assert_fixture_conformance() -> None:",
+            '    """Execute every positive and negative governed fixture."""',
+            "    for family, fixture in _FIXTURES.items():",
+            '        validate_document(family, json.loads(fixture["positive"]))',
+            "        try:",
+            '            validate_document(family, json.loads(fixture["negative"]))',
+            "        except Exception:",
+            "            continue",
+            '        raise AssertionError(f"negative fixture validated: {family}")',
+            "",
+        ]
+    )
+    for binding in bindings:
+        function_name = f"decode_{binding.family}"
+        lines.extend(
+            [
+                "",
+                f"def {function_name}(document: object) -> {binding.title}:",
+                f'    """Validate and narrow a {binding.title} document."""',
+                f'    validate_document("{binding.family}", document)',
+                f"    return cast({binding.title}, document)",
+            ]
+        )
+    lines.extend(["", "", "__all__ = ["])
+    exports = [
+        "assert_fixture_conformance",
+        *[f"decode_{binding.family}" for binding in bindings],
+        *sorted({obj.name for binding in bindings for obj in binding.objects}),
+        "validate_document",
+    ]
+    lines.extend(f"    {json.dumps(name)}," for name in exports)
+    lines.extend(["]", ""])
+    return "\n".join(lines).encode("utf-8")
+
+
+def go_type(binding: SchemaBinding, value: Mapping[str, object], pointer: str) -> str:
+    reference, resolved = dereference(binding, value)
+    if reference is not None and reference in binding.names:
+        return binding.names[reference]
+    if reference is not None:
+        return go_type(binding, resolved, reference)
+    alternatives = resolved.get("oneOf")
+    if isinstance(alternatives, list):
+        return "any"
+    constant = resolved.get("const")
+    if isinstance(constant, bool):
+        return "bool"
+    if isinstance(constant, int):
+        return "int64"
+    if isinstance(constant, float):
+        return "float64"
+    if isinstance(constant, str) or isinstance(resolved.get("enum"), list):
+        return "string"
+    value_type = resolved.get("type")
+    if value_type == "string":
+        return "string"
+    if value_type == "integer":
+        return "int64"
+    if value_type == "number":
+        return "float64"
+    if value_type == "boolean":
+        return "bool"
+    if value_type == "array":
+        items = resolved.get("items")
+        item_type = (
+            go_type(binding, cast(Mapping[str, object], items), f"{pointer}/items")
+            if isinstance(items, Mapping)
+            else "any"
+        )
+        return f"[]{item_type}"
+    if is_object_schema(resolved):
+        if pointer in binding.names:
+            return binding.names[pointer]
+        additional = resolved.get("additionalProperties")
+        value_binding = (
+            go_type(
+                binding,
+                cast(Mapping[str, object], additional),
+                f"{pointer}/additionalProperties",
+            )
+            if isinstance(additional, Mapping)
+            else "any"
+        )
+        return f"map[string]{value_binding}"
+    return "any"
+
+
+def go_optional(type_name: str) -> str:
+    if type_name.startswith(("[]", "map[")) or type_name == "any":
+        return type_name
+    return "*" + type_name
+
+
+def render_go(bindings: Sequence[SchemaBinding], fixtures: Mapping[str, Mapping[str, str]]) -> bytes:
+    sources = schema_source_map(bindings)
+    lines = [
+        f"// Code generated by {GENERATOR}. DO NOT EDIT.",
+        "",
+        "// Package schemav1 contains typed bindings and Draft 2020-12 validators.",
+        "package schemav1",
+        "",
+        "import (",
+        '    "encoding/json"',
+        '    "fmt"',
+        '    "sync"',
+        "",
+        '    jsonschema "github.com/santhosh-tekuri/jsonschema/v6"',
+        ")",
+        "",
+    ]
+    for binding in bindings:
+        for obj in binding.objects:
+            lines.append(f"// {obj.name} is generated from {binding.family}{obj.pointer[1:]}.")
+            lines.append(f"type {obj.name} struct {{")
+            required = required_names(obj.value)
+            for property_name, child in mapping_entries(obj.value.get("properties")):
+                pointer = f"{obj.pointer}/properties/{pointer_escape(property_name)}"
+                type_name = go_type(binding, child, pointer)
+                tag = property_name
+                if property_name not in required:
+                    type_name = go_optional(type_name)
+                    tag += ",omitempty"
+                lines.append(
+                    f"    {pascal_case(property_name)} {type_name} `json:{json.dumps(tag)}`"
+                )
+            lines.extend(["}", ""])
+    lines.extend(
+        [
+            "var schemaSources = map[string]string{",
+            *[
+                f"    {json.dumps(family)}: `{source}`," for family, source in sources.items()
+            ],
+            "}",
+            "",
+            "var schemaCache = struct {",
+            "    sync.Mutex",
+            "    values map[string]*jsonschema.Schema",
+            "}{values: make(map[string]*jsonschema.Schema)}",
+            "",
+            "func compiledSchema(family string) (*jsonschema.Schema, error) {",
+            "    source, ok := schemaSources[family]",
+            "    if !ok {",
+            '        return nil, fmt.Errorf("unknown schema family %q", family)',
+            "    }",
+            "    schemaCache.Lock()",
+            "    defer schemaCache.Unlock()",
+            "    if cached := schemaCache.values[family]; cached != nil {",
+            "        return cached, nil",
+            "    }",
+            "    var document any",
+            "    if err := json.Unmarshal([]byte(source), &document); err != nil {",
+            '        return nil, fmt.Errorf("decode schema %q: %w", family, err)',
+            "    }",
+            "    identifier := fmt.Sprintf(\"https://mindclade.dev/generated-schemas/%s\", family)",
+            "    compiler := jsonschema.NewCompiler()",
+            "    compiler.DefaultDraft(jsonschema.Draft2020)",
+            "    compiler.AssertFormat()",
+            "    if err := compiler.AddResource(identifier, document); err != nil {",
+            '        return nil, fmt.Errorf("register schema %q: %w", family, err)',
+            "    }",
+            "    compiled, err := compiler.Compile(identifier)",
+            "    if err != nil {",
+            '        return nil, fmt.Errorf("compile schema %q: %w", family, err)',
+            "    }",
+            "    schemaCache.values[family] = compiled",
+            "    return compiled, nil",
+            "}",
+            "",
+            "// ValidateDocument validates canonical JSON against a governed schema family.",
+            "func ValidateDocument(family string, content []byte) error {",
+            "    compiled, err := compiledSchema(family)",
+            "    if err != nil {",
+            "        return err",
+            "    }",
+            "    var document any",
+            "    if err := json.Unmarshal(content, &document); err != nil {",
+            '        return fmt.Errorf("decode %q document: %w", family, err)',
+            "    }",
+            "    if err := compiled.Validate(document); err != nil {",
+            '        return fmt.Errorf("validate %q document: %w", family, err)',
+            "    }",
+            "    return nil",
+            "}",
+            "",
+            "func decodeDocument(family string, content []byte, destination any) error {",
+            "    if err := ValidateDocument(family, content); err != nil {",
+            "        return err",
+            "    }",
+            "    if err := json.Unmarshal(content, destination); err != nil {",
+            '        return fmt.Errorf("decode typed %q document: %w", family, err)',
+            "    }",
+            "    return nil",
+            "}",
+            "",
+        ]
+    )
+    for binding in bindings:
+        lines.extend(
+            [
+                f"// Decode{binding.title} validates and decodes a {binding.title}.",
+                f"func Decode{binding.title}(content []byte) ({binding.title}, error) {{",
+                f"    var result {binding.title}",
+                f'    err := decodeDocument("{binding.family}", content, &result)',
+                "    return result, err",
+                "}",
+                "",
+            ]
+        )
+    lines.extend(
+        [
+            "var fixtureSources = map[string][2]string{",
+            *[
+                f"    {json.dumps(family)}: {{`{value['positive']}`, `{value['negative']}`}},"
+                for family, value in fixtures.items()
+            ],
+            "}",
+            "",
+            "// AssertFixtureConformance executes every governed positive and negative fixture.",
+            "func AssertFixtureConformance() error {",
+            "    for family, fixture := range fixtureSources {",
+            "        if err := ValidateDocument(family, []byte(fixture[0])); err != nil {",
+            '            return fmt.Errorf("positive fixture %q: %w", family, err)',
+            "        }",
+            "        if err := ValidateDocument(family, []byte(fixture[1])); err == nil {",
+            '            return fmt.Errorf("negative fixture unexpectedly validated: %s", family)',
+            "        }",
+            "        var err error",
+            "        switch family {",
+        ]
+    )
+    for binding in bindings:
+        lines.extend(
+            [
+                f'        case "{binding.family}":',
+                f"            _, err = Decode{binding.title}([]byte(fixture[0]))",
+            ]
+        )
+    lines.extend(
+        [
+            "        default:",
+            '            return fmt.Errorf("fixture has no generated binding: %s", family)',
+            "        }",
+            "        if err != nil {",
+            '            return fmt.Errorf("typed fixture %q: %w", family, err)',
+            "        }",
+            "    }",
+            "    return nil",
+            "}",
+            "",
+        ]
+    )
+    return "\n".join(lines).encode("utf-8")
 
 
 def check_baseline(root: Path, expected: bytes) -> bool:

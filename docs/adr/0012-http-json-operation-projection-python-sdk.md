@@ -2,9 +2,11 @@
 
 > Partially superseded by ADR-0015: the curated checked-in OpenAPI document is
 > the external HTTP/JSON and SDK authority, with exact parity to the public
-> gRPC facade. Stainless is the primary SDK generator and oagen is the
-> promotable shadow; the original one-way derivation and provider deferral no
-> longer apply.
+> gRPC facade. Mindclade SDK Forge is the owned primary compiler, using OAGen
+> only as its parser and typed-IR foundation. Fern is the preferred qualified
+> shadow, Speakeasy is a commercial benchmark/fallback, and Stainless is
+> legacy-comparison-only; the original one-way derivation and provider
+> deferral no longer apply.
 
 - Status: Proposed
 - Connected ratification: Pending independent review on protected infrastructure

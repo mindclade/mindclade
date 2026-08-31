@@ -300,7 +300,7 @@ check-contract-drift:
     just check-schema-drift
     just check-sdk-plan
 
-# Emit and verify the deterministic offline Stainless/oagen SDK plan.
+# Emit and verify the deterministic offline Mindclade Forge/provider SDK plan.
 check-sdk-plan:
     {{ python }} tools/codegen/sdk_generator.py plan \
       --openapi protocols/openapi/external-api.yaml \

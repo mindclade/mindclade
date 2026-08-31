@@ -8,6 +8,7 @@ common --repo_env=PATH
 common --repo_env=JAVA_HOME
 common --repo_env=CC
 common --repo_env=CXX
+common --repo_env=MINDCLADE_NIX_BIN
 
 build --incompatible_strict_action_env
 build --action_env=PATH

@@ -18,7 +18,9 @@ The active source boundary provides:
 - pinned Protobuf and gRPC projections for Go, Python, Rust, and TypeScript;
 - durable JSON Schema documents and a curated public OpenAPI facade;
 - generated-code consumption in product libraries and process boundaries;
-- Stainless-primary public SDK generation with an oagen parity shadow;
+- Mindclade-owned SDK Forge planning with OAGen as its typed-IR foundation,
+  Fern as the preferred qualified shadow, Speakeasy as a benchmark/fallback,
+  and Stainless retained only for existing-project legacy comparisons;
 - tenant-scoped idempotency, outbox/inbox, lease fencing, and reconciliation;
 - immutable artifact finalization and offline qualification tooling; and
 - a local CPU-only integration profile with no production authority.

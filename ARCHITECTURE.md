@@ -52,7 +52,11 @@ Generated Go, Python, Rust, and TypeScript bindings are authoritative consumers'
 types. PostgreSQL-compatible normalized relations remain durable business-state
 authority; immutable Protobuf bytes are limited to outbox, inbox, audit, and
 dead-letter evidence boundaries. Public Go/Python/TypeScript SDK generation is
-Stainless-primary with an oagen parity shadow and a provider-neutral boundary.
+owned by Mindclade SDK Forge, using OAGen as a non-authoritative parser and
+typed-IR foundation. Fern is the preferred qualified shadow, Speakeasy is a
+commercial benchmark/fallback, and Stainless is limited to comparison with an
+existing legacy project. Provider configuration is derived from Mindclade
+policy; hosted state never owns the public contract or release decision.
 
 This source activation grants no runtime, public-release, Kubernetes, cloud,
 connected promotion, scientific, or production authority. Workers cannot

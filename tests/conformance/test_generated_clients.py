@@ -28,9 +28,9 @@ class GeneratedClientsContractTest(unittest.TestCase):
         sys.path.insert(0, str(repository / "protocols/generated/python"))
 
         grpc = importlib.import_module("grpc")
-        api = importlib.import_module("api.v1.mindclade_service_pb2")
-        api_grpc = importlib.import_module("api.v1.mindclade_service_pb2_grpc")
-        job = importlib.import_module("job.v1.operation_pb2")
+        api = importlib.import_module("mindclade.api.v1.mindclade_service_pb2")
+        api_grpc = importlib.import_module("mindclade.api.v1.mindclade_service_pb2_grpc")
+        job = importlib.import_module("mindclade.job.v1.operation_pb2")
 
         class Servicer(api_grpc.MindcladeServiceServicer):
             def GetOperation(  # noqa: N802
@@ -80,7 +80,7 @@ class GeneratedClientsContractTest(unittest.TestCase):
         )
         self.assertTrue(modules)
         imported = {name: importlib.import_module(name) for name in modules}
-        module = imported["common.v1.identifiers_pb2"]
+        module = imported["mindclade.common.v1.identifiers_pb2"]
         self.assertEqual(module.Identifiers(tenant_id="tenant").tenant_id, "tenant")
         if "TEST_SRCDIR" not in os.environ:
             subprocess.run(
@@ -108,9 +108,9 @@ class GeneratedClientsContractTest(unittest.TestCase):
         sys.path.insert(0, str(repository / "protocols/generated/python"))
         sys.path.insert(0, str(repository / "libs/python"))
 
-        artifact_module = importlib.import_module("artifact.v1.artifact_reference_pb2")
-        evidence_module = importlib.import_module("artifact.v1.evidence_reference_pb2")
-        resource_module = importlib.import_module("common.v1.resource_reference_pb2")
+        artifact_module = importlib.import_module("mindclade.artifact.v1.artifact_reference_pb2")
+        evidence_module = importlib.import_module("mindclade.artifact.v1.evidence_reference_pb2")
+        resource_module = importlib.import_module("mindclade.common.v1.resource_reference_pb2")
         artifacts = importlib.import_module("artifacts")
         contracts = importlib.import_module("contracts")
         identifiers = importlib.import_module("identifiers")
@@ -122,7 +122,7 @@ class GeneratedClientsContractTest(unittest.TestCase):
             contracts.ErrorDetail.DESCRIPTOR.full_name,
             "mindclade.common.v1.ErrorDetail",
         )
-        error_module = importlib.import_module("common.v1.error_detail_pb2")
+        error_module = importlib.import_module("mindclade.common.v1.error_detail_pb2")
         self.assertIs(contracts.ErrorCode, error_module.ErrorCode)
         self.assertIs(identifiers.ResourceRef, resource_module.ResourceRef)
 
@@ -172,7 +172,7 @@ class GeneratedClientsContractTest(unittest.TestCase):
             ).SerializeToString(deterministic=True),
         )
 
-        event_module = importlib.import_module("job.v1.job_requested_pb2")
+        event_module = importlib.import_module("mindclade.job.v1.job_requested_pb2")
         payload = event_module.JobRequested(
             job_id="job_1",
             configuration_digest="sha256:" + "d" * 64,

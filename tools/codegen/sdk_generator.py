@@ -1,10 +1,12 @@
 #!/usr/bin/env python3.12
-"""Provider-neutral, fail-closed SDK generation boundary.
+"""Mindclade-owned, fail-closed SDK release-pipeline boundary.
 
 ``plan`` and ``verify`` are deterministic and offline. ``generate`` is a guarded
-subprocess boundary for a future pinned provider adapter; the checked-in
-configuration intentionally leaves both providers unpinned, so connected
-generation cannot currently execute.
+subprocess boundary for the future pinned Mindclade Forge or a qualified
+comparison adapter. Forge owns emitters, runtimes, conformance, packaging, and
+release policy while using OAGen only as its parser and typed-IR foundation.
+The checked-in configuration intentionally leaves every executable unpinned,
+so connected generation cannot currently execute.
 """
 
 from __future__ import annotations
@@ -21,10 +23,11 @@ from typing import Any, NoReturn, cast
 
 import yaml
 
-PLAN_SCHEMA_VERSION = "mindclade.sdk-generation-plan/v1"
-PROVENANCE_SCHEMA_VERSION = "mindclade.sdk-generation-provenance/v1"
+PLAN_SCHEMA_VERSION = "mindclade.sdk-generation-plan/v2"
+PROVENANCE_SCHEMA_VERSION = "mindclade.sdk-generation-provenance/v2"
 DEFAULT_OPENAPI = Path("protocols/openapi/external-api.yaml")
 DEFAULT_GENERATION = Path("protocols/openapi/generation.yaml")
+SDK_POLICY_SOURCE = "protocols/openapi/generation.yaml#spec.sdkPolicy"
 DEFAULT_PLAN = Path("sdk-generation-plan.json")
 HTTP_METHODS = frozenset({"delete", "get", "head", "options", "patch", "post", "put", "trace"})
 LANGUAGES = ("go", "python", "typescript")
@@ -50,22 +53,55 @@ class ProviderAdapter:
     role: str
     languages: tuple[str, ...]
     connected: bool
+    long_term: bool
+    release_primary_eligible: bool
 
 
 ADAPTERS: Mapping[str, ProviderAdapter] = {
+    "forge": ProviderAdapter(
+        provider_id="forge",
+        role="primary-owned",
+        languages=LANGUAGES,
+        connected=True,
+        long_term=True,
+        release_primary_eligible=True,
+    ),
+    "fern": ProviderAdapter(
+        provider_id="fern",
+        role="preferred-qualified-shadow",
+        languages=LANGUAGES,
+        connected=True,
+        long_term=False,
+        release_primary_eligible=False,
+    ),
+    "speakeasy": ProviderAdapter(
+        provider_id="speakeasy",
+        role="commercial-benchmark-fallback",
+        languages=LANGUAGES,
+        connected=True,
+        long_term=False,
+        release_primary_eligible=False,
+    ),
     "stainless": ProviderAdapter(
         provider_id="stainless",
-        role="primary",
+        role="legacy-comparison-only",
         languages=LANGUAGES,
         connected=True,
-    ),
-    "oagen": ProviderAdapter(
-        provider_id="oagen",
-        role="shadow-promotable",
-        languages=LANGUAGES,
-        connected=True,
+        long_term=False,
+        release_primary_eligible=False,
     ),
 }
+
+PIPELINE_INTERFACES = (
+    "OpenApiValidator",
+    "SdkPolicyCompiler",
+    "SdkEmitter",
+    "SdkSurfaceExtractor",
+    "SdkBehaviorVerifier",
+    "SdkPackager",
+    "SdkPublisher",
+    "SdkReleaseOrchestrator",
+)
 
 
 def sha256_bytes(value: bytes) -> str:
@@ -78,6 +114,12 @@ def sha256_file(path: Path) -> str:
 
 def canonical_json(value: Mapping[str, Any]) -> bytes:
     return (json.dumps(value, sort_keys=True, separators=(",", ":")) + "\n").encode()
+
+
+def sdk_policy_sha256(generation: Mapping[str, Any]) -> str:
+    spec = require_mapping(generation.get("spec"), "generation.spec")
+    policy = require_mapping(spec.get("sdkPolicy"), "generation.spec.sdkPolicy")
+    return sha256_bytes(canonical_json(policy))
 
 
 def load_yaml_mapping(path: Path) -> dict[str, Any]:
@@ -239,9 +281,35 @@ def validate_contract(
     authority = require_mapping(spec.get("authority"), "generation.spec.authority")
     if authority.get("source") != DEFAULT_OPENAPI.as_posix():
         raise SdkGeneratorError("generation authority must remain the curated external OpenAPI")
-    interface = require_mapping(spec.get("interface"), "generation.spec.interface")
-    if interface.get("name") != "SdkGenerator" or interface.get("version") != "v1":
-        raise SdkGeneratorError("generation interface must be SdkGenerator v1")
+    if authority.get("sdkPolicyOwner") != "mindclade":
+        raise SdkGeneratorError("SDK ergonomics policy must remain Mindclade-owned")
+    sdk_policy = require_mapping(spec.get("sdkPolicy"), "generation.spec.sdkPolicy")
+    if (
+        sdk_policy.get("owner") != "mindclade"
+        or sdk_policy.get("version") != "v1"
+        or sdk_policy.get("source") != SDK_POLICY_SOURCE
+        or sdk_policy.get("canonicalization") != "canonical-json-sorted-keys"
+        or sdk_policy.get("providerConfigurationRule") != "derived-only"
+    ):
+        raise SdkGeneratorError(
+            "SDK policy must remain Mindclade-owned v1 policy with derived-only provider "
+            "configuration"
+        )
+    pipeline = require_mapping(spec.get("pipeline"), "generation.spec.pipeline")
+    if pipeline.get("version") != "v1":
+        raise SdkGeneratorError("SDK release pipeline must be version v1")
+    interfaces = require_sequence(pipeline.get("interfaces"), "generation.spec.pipeline.interfaces")
+    if tuple(interfaces) != PIPELINE_INTERFACES:
+        raise SdkGeneratorError(
+            "SDK release pipeline interfaces must preserve the owned validation, policy, "
+            "emission, extraction, verification, packaging, publication, and orchestration "
+            "boundaries"
+        )
+    receipt = require_mapping(
+        pipeline.get("releaseReceipt"), "generation.spec.pipeline.releaseReceipt"
+    )
+    if receipt.get("emittedBy") != "SdkReleaseOrchestrator":
+        raise SdkGeneratorError("only SdkReleaseOrchestrator may emit a release receipt")
     local_adapter = require_mapping(
         spec.get("localContractAdapter"), "generation.spec.localContractAdapter"
     )
@@ -254,11 +322,22 @@ def validate_contract(
         raise SdkGeneratorError("local plan/verify adapter must be offline and emit no SDK source")
     providers = configured_providers(generation)
     if set(providers) != set(ADAPTERS):
-        raise SdkGeneratorError("configured providers must be exactly stainless and oagen")
+        raise SdkGeneratorError(
+            "configured SDK implementations must be exactly forge, fern, speakeasy, and stainless"
+        )
     for provider_id, adapter in ADAPTERS.items():
         provider = providers[provider_id]
         if provider.get("role") != adapter.role:
             raise SdkGeneratorError(f"{provider_id} role must be {adapter.role}")
+        if provider.get("longTerm") is not adapter.long_term:
+            raise SdkGeneratorError(
+                f"{provider_id} longTerm must be {str(adapter.long_term).lower()}"
+            )
+        if provider.get("releasePrimaryEligible") is not adapter.release_primary_eligible:
+            raise SdkGeneratorError(
+                f"{provider_id} releasePrimaryEligible must be "
+                f"{str(adapter.release_primary_eligible).lower()}"
+            )
         languages = require_sequence(provider.get("languages"), f"{provider_id}.languages")
         if tuple(languages) != adapter.languages:
             raise SdkGeneratorError(
@@ -273,9 +352,59 @@ def validate_contract(
         if adapter_config.get("contractVersion") != "v1":
             raise SdkGeneratorError(f"{provider_id} adapter contract must be v1")
         _ = require_string(adapter_config.get("providerVersion"), f"{provider_id}.providerVersion")
+        provider_configuration = require_mapping(
+            provider.get("configuration"), f"{provider_id}.configuration"
+        )
+        if provider_configuration.get("policySource") != SDK_POLICY_SOURCE:
+            raise SdkGeneratorError(
+                f"{provider_id} configuration must derive from the Mindclade SDK policy"
+            )
+    forge_foundation = require_mapping(providers["forge"].get("foundation"), "forge.foundation")
+    if (
+        forge_foundation.get("id") != "oagen"
+        or forge_foundation.get("purpose") != "openapi-parser-and-typed-ir"
+        or forge_foundation.get("authority") != "implementation-foundation-only"
+    ):
+        raise SdkGeneratorError(
+            "Mindclade Forge must use OAGen only as its OpenAPI parser and typed-IR foundation"
+        )
+    _ = require_string(forge_foundation.get("version"), "forge.foundation.version")
+    if providers["stainless"].get("availability") != "existing-project-only":
+        raise SdkGeneratorError("Stainless must remain an existing-project legacy comparison")
+    fern_notes = require_mapping(
+        providers["fern"].get("qualificationNotes"), "fern.qualificationNotes"
+    )
+    if (
+        fern_notes.get("publicRepositoryLicense") != "Apache-2.0"
+        or fern_notes.get("selfHostedWorkflow")
+        != "enterprise-docker-token-and-outbound-verification-required"
+    ):
+        raise SdkGeneratorError(
+            "Fern qualification must retain its license and self-hosting constraints"
+        )
+    speakeasy_notes = require_mapping(
+        providers["speakeasy"].get("qualificationNotes"),
+        "speakeasy.qualificationNotes",
+    )
+    if (
+        speakeasy_notes.get("cliLicense") != "Elastic-2.0"
+        or speakeasy_notes.get("licenseAndTermsReviewRequired") is not True
+    ):
+        raise SdkGeneratorError(
+            "Speakeasy must remain a license-reviewed commercial benchmark/fallback"
+        )
     parity = require_mapping(spec.get("parity"), "generation.spec.parity")
-    if parity.get("primary") != "stainless" or parity.get("shadow") != "oagen":
-        raise SdkGeneratorError("parity must compare Stainless primary with oagen shadow")
+    if (
+        parity.get("primary") != "forge"
+        or parity.get("preferredShadow") != "fern"
+        or tuple(require_sequence(parity.get("benchmarks"), "parity.benchmarks")) != ("speakeasy",)
+        or tuple(require_sequence(parity.get("legacyComparisons"), "parity.legacyComparisons"))
+        != ("stainless",)
+    ):
+        raise SdkGeneratorError(
+            "SDK parity order must be Forge primary, Fern preferred shadow, Speakeasy "
+            "benchmark/fallback, and Stainless legacy-only"
+        )
     qualification = require_mapping(spec.get("qualification"), "generation.spec.qualification")
     if qualification.get("publishAuthorized") is not False:
         raise SdkGeneratorError("source qualification cannot authorize SDK publication")
@@ -326,11 +455,18 @@ def build_plan(
     provenance: list[dict[str, Any]] = []
     openapi_digest = sha256_file(openapi_path)
     generation_digest = sha256_file(generation_path)
+    policy_digest = sdk_policy_sha256(generation)
     for provider_id in selected_providers:
         adapter = ADAPTERS[provider_id]
         provider = providers[provider_id]
         version = provider_version(provider, provider_version_override)
         adapter_config = require_mapping(provider.get("adapter"), f"{provider_id}.adapter")
+        raw_foundation = provider.get("foundation")
+        foundation = (
+            require_mapping(raw_foundation, f"{provider_id}.foundation")
+            if raw_foundation is not None
+            else None
+        )
         for language in selected_languages:
             if language not in adapter.languages:
                 raise SdkGeneratorError(f"{provider_id} does not declare {language}")
@@ -340,14 +476,20 @@ def build_plan(
                 {
                     "adapterContractVersion": adapter_config["contractVersion"],
                     "connectedGeneration": "not-run",
+                    "foundation": foundation.get("id") if foundation is not None else None,
+                    "foundationVersion": (
+                        foundation.get("version") if foundation is not None else None
+                    ),
                     "generationConfigSha256": generation_digest,
                     "language": language,
                     "openapiSha256": openapi_digest,
                     "outputDirectory": relative_output.as_posix(),
                     "provider": provider_id,
+                    "providerReleasePrimaryEligible": adapter.release_primary_eligible,
                     "providerRole": adapter.role,
                     "providerVersion": version,
                     "readiness": provider.get("readiness"),
+                    "sdkPolicySha256": policy_digest,
                     "sourceRevision": source_revision,
                 }
             )
@@ -363,6 +505,8 @@ def build_plan(
             "generationConfigSha256": generation_digest,
             "openapi": DEFAULT_OPENAPI.as_posix(),
             "openapiSha256": openapi_digest,
+            "sdkPolicy": SDK_POLICY_SOURCE,
+            "sdkPolicySha256": policy_digest,
         },
         "inventory": {
             "operationIds": list(operation_ids(openapi)),
@@ -377,8 +521,17 @@ def build_plan(
                 )
             ),
             "failurePolicy": parity.get("failurePolicy"),
-            "primary": "stainless",
-            "shadow": "oagen",
+            "primary": parity.get("primary"),
+            "preferredShadow": parity.get("preferredShadow"),
+            "benchmarks": list(
+                require_sequence(parity.get("benchmarks"), "generation.spec.parity.benchmarks")
+            ),
+            "legacyComparisons": list(
+                require_sequence(
+                    parity.get("legacyComparisons"),
+                    "generation.spec.parity.legacyComparisons",
+                )
+            ),
         },
         "safety": {
             "emitsSdkSource": False,
@@ -412,6 +565,14 @@ def generate_connected(args: argparse.Namespace) -> int:
         )
     if not 1 <= args.timeout_seconds <= 3600:
         raise ConnectedGenerationError("provider timeout must be between 1 and 3600 seconds")
+    if args.provider == "stainless" and not args.allow_legacy_stainless_comparison:
+        raise ConnectedGenerationError(
+            "Stainless may run only as an explicitly allowed existing-project legacy comparison"
+        )
+    if args.provider != "stainless" and args.allow_legacy_stainless_comparison:
+        raise ConnectedGenerationError(
+            "--allow-legacy-stainless-comparison is valid only with --provider stainless"
+        )
     openapi_path = Path(args.openapi).resolve()
     generation_path = Path(args.generation).resolve()
     generation = load_yaml_mapping(generation_path)
@@ -459,6 +620,13 @@ def generate_connected(args: argparse.Namespace) -> int:
     output_directory.mkdir(parents=True, exist_ok=True)
     openapi_digest = sha256_file(openapi_path)
     generation_digest = sha256_file(generation_path)
+    policy_digest = sdk_policy_sha256(generation)
+    raw_foundation = provider.get("foundation")
+    foundation = (
+        require_mapping(raw_foundation, f"{args.provider}.foundation")
+        if raw_foundation is not None
+        else None
+    )
     process_environment = {
         "LANG": "C",
         "LC_ALL": "C",
@@ -492,12 +660,16 @@ def generate_connected(args: argparse.Namespace) -> int:
         raise ConnectedGenerationError("provider adapter mutated the OpenAPI or generation input")
     provenance = {
         "schemaVersion": PROVENANCE_SCHEMA_VERSION,
+        "foundation": foundation.get("id") if foundation is not None else None,
+        "foundationVersion": foundation.get("version") if foundation is not None else None,
         "generationConfigSha256": generation_digest,
         "language": args.language,
         "openapiSha256": openapi_digest,
         "provider": args.provider,
+        "providerRole": ADAPTERS[args.provider].role,
         "providerExecutableSha256": configured_digest,
         "providerVersion": configured_version,
+        "sdkPolicySha256": policy_digest,
         "sourceRevision": require_string(args.source_revision, "source revision"),
     }
     _ = write_atomic(
@@ -535,6 +707,7 @@ def parser() -> argparse.ArgumentParser:
     )
     add_plan_arguments(generate_parser)
     generate_parser.add_argument("--allow-connected", action="store_true")
+    generate_parser.add_argument("--allow-legacy-stainless-comparison", action="store_true")
     generate_parser.add_argument("--timeout-seconds", type=int, default=900)
     generate_parser.add_argument("--provider-command", nargs=argparse.REMAINDER)
     return root_parser

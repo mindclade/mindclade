@@ -18,6 +18,7 @@ import (
 	artifactv1 "github.com/mindclade/mindclade/protocols/generated/go/artifact/v1"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
+	platformdb "github.com/mindclade/mindclade/services/control_plane/internal/platform/database"
 	"github.com/mindclade/mindclade/services/control_plane/internal/tenants"
 )
 
@@ -29,7 +30,7 @@ func (r SQLRepository) CreateAtomicallySQL(ctx context.Context, operation *jobv1
 	if err := validateCreate(operation, requestDigest); err != nil {
 		return nil, false, err
 	}
-	tx, err := r.DB.BeginTx(ctx, nil)
+	tx, err := platformdb.BeginTenantTx(ctx, r.DB, operation.GetTenantId(), nil)
 	if err != nil {
 		return nil, false, err
 	}
@@ -40,14 +41,18 @@ func (r SQLRepository) CreateAtomicallySQL(ctx context.Context, operation *jobv1
 		if existingDigest != requestDigest {
 			return nil, false, ErrIdempotencyConflict
 		}
-		row, scanErr := scanOperationRow(tx.QueryRowContext(ctx, `SELECT id, tenant_id, job_id, status, version, request_hash, created_at, updated_at FROM operations WHERE tenant_id = $1 AND id = $2`, operation.GetTenantId(), existingID))
+		row, scanErr := scanOperationRow(tx.QueryRowContext(ctx, `SELECT id, tenant_id, project_id, job_id, status, version, done, etag, result_ref_id, error_detail_id, request_hash, created_at, updated_at FROM operations WHERE tenant_id = $1 AND id = $2`, operation.GetTenantId(), existingID))
+		if scanErr != nil {
+			return nil, false, scanErr
+		}
+		existing, scanErr := operationRowToProtoSQL(ctx, tx, row)
 		if scanErr != nil {
 			return nil, false, scanErr
 		}
 		if err = tx.Commit(); err != nil {
 			return nil, false, err
 		}
-		return operationRowToProto(row), true, nil
+		return existing, true, nil
 	}
 	if !errors.Is(err, sql.ErrNoRows) {
 		return nil, false, err
@@ -56,8 +61,13 @@ func (r SQLRepository) CreateAtomicallySQL(ctx context.Context, operation *jobv1
 	row := operationToRow(operation, requestDigest)
 	row.state = jobv1.OperationState_OPERATION_STATE_PENDING
 	row.resourceVersion = 1
+	row.done = false
 	row.createdAt, row.updatedAt = now, now
-	envelope, err := newJobRequestedEnvelope(operationRowToProto(row), now)
+	var configurationDigest string
+	if err = tx.QueryRowContext(ctx, `SELECT configuration_digest FROM jobs WHERE tenant_id = $1 AND id = $2 FOR UPDATE`, row.tenantID, row.jobID).Scan(&configurationDigest); err != nil {
+		return nil, false, err
+	}
+	envelope, err := newJobRequestedEnvelope(operationRowToProto(row), configurationDigest, now)
 	if err != nil {
 		return nil, false, err
 	}
@@ -73,10 +83,19 @@ func (r SQLRepository) CreateAtomicallySQL(ctx context.Context, operation *jobv1
 	if err != nil {
 		return nil, false, fmt.Errorf("marshal audit envelope: %w", err)
 	}
-	if _, err = tx.ExecContext(ctx, `UPDATE jobs SET desired_state = 'QUEUED', version = version + 1, updated_at = $3 WHERE tenant_id = $1 AND id = $2 AND desired_state IN ('ACCEPTED','QUEUED')`, row.tenantID, row.jobID, now); err != nil {
+	resultRefID, err := platformdb.StoreArtifactRef(ctx, tx, row.tenantID, row.result)
+	if err != nil {
 		return nil, false, err
 	}
-	if _, err = tx.ExecContext(ctx, `INSERT INTO operations (id, tenant_id, job_id, status, version, request_hash, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $7)`, row.operationID, row.tenantID, row.jobID, operationStateDatabase(row.state), row.resourceVersion, requestDigest, now); err != nil {
+	errorDetailID, err := platformdb.StoreErrorDetail(ctx, tx, row.tenantID, row.error)
+	if err != nil {
+		return nil, false, err
+	}
+	row.resultRefID, row.errorDetailID = resultRefID, errorDetailID
+	if _, err = tx.ExecContext(ctx, `UPDATE jobs SET operation_id = $3, desired_state = 'QUEUED', version = version + 1, updated_at = $4 WHERE tenant_id = $1 AND id = $2 AND desired_state IN ('ACCEPTED','QUEUED')`, row.tenantID, row.jobID, row.operationID, now); err != nil {
+		return nil, false, err
+	}
+	if _, err = tx.ExecContext(ctx, `INSERT INTO operations (id, tenant_id, project_id, job_id, status, version, done, etag, result_ref_id, error_detail_id, request_hash, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$12)`, row.operationID, row.tenantID, row.projectID, row.jobID, operationStateDatabase(row.state), row.resourceVersion, row.done, row.etag, resultRefID, errorDetailID, requestDigest, now); err != nil {
 		return nil, false, err
 	}
 	if _, err = tx.ExecContext(ctx, `INSERT INTO idempotency_records (tenant_id, command_key, request_hash, operation_id, created_at) VALUES ($1, $2, $3, $4, $5)`, row.tenantID, commandKey, requestDigest, row.operationID, now); err != nil {
@@ -85,13 +104,79 @@ func (r SQLRepository) CreateAtomicallySQL(ctx context.Context, operation *jobv1
 	if _, err = tx.ExecContext(ctx, `INSERT INTO audit_events (id, tenant_id, actor_id, action, subject_id, occurred_at, details_digest, event_version, payload_digest, envelope_bytes) VALUES ($1, $2, $3, 'operations.create', $4, $5, $6, $7, $8, $9)`, auditEnvelope.GetEventId(), row.tenantID, actorID, row.operationID, now, requestDigest, auditEnvelope.GetEventVersion(), auditEnvelope.GetPayloadDigest(), auditEnvelopeBytes); err != nil {
 		return nil, false, err
 	}
-	if _, err = tx.ExecContext(ctx, `INSERT INTO outbox_messages (id, tenant_id, event_type, event_version, payload_digest, envelope_bytes, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7)`, envelope.GetEventId(), row.tenantID, envelope.GetEventType(), envelope.GetEventVersion(), envelope.GetPayloadDigest(), envelopeBytes, now); err != nil {
+	if _, err = tx.ExecContext(ctx, `INSERT INTO outbox_messages (id, tenant_id, event_type, event_version, payload_digest, envelope_bytes, next_attempt_at, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $7)`, envelope.GetEventId(), row.tenantID, envelope.GetEventType(), envelope.GetEventVersion(), envelope.GetPayloadDigest(), envelopeBytes, now); err != nil {
 		return nil, false, err
 	}
 	if err = tx.Commit(); err != nil {
 		return nil, false, err
 	}
 	return operationRowToProto(row), false, nil
+}
+
+func (r SQLRepository) GetSQL(ctx context.Context, tenantID, operationID string) (*jobv1.Operation, error) {
+	tx, err := platformdb.BeginTenantTx(ctx, r.DB, tenantID, &sql.TxOptions{ReadOnly: true})
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = tx.Rollback() }()
+	row, err := scanOperationRow(tx.QueryRowContext(ctx, `SELECT id, tenant_id, project_id, job_id, status, version, done, etag, result_ref_id, error_detail_id, request_hash, created_at, updated_at FROM operations WHERE tenant_id = $1 AND id = $2`, tenantID, operationID))
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, ErrNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	value, err := operationRowToProtoSQL(ctx, tx, row)
+	if err != nil {
+		return nil, err
+	}
+	if err = tx.Commit(); err != nil {
+		return nil, err
+	}
+	return value, nil
+}
+
+func (r SQLRepository) AdvanceSQL(ctx context.Context, tenantID, operationID string, expectedVersion int64, state jobv1.OperationState) (*jobv1.Operation, error) {
+	if !validAdvanceState(state) {
+		return nil, ErrInvalidTransition
+	}
+	tx, err := platformdb.BeginTenantTx(ctx, r.DB, tenantID, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = tx.Rollback() }()
+	now := time.Now().UTC()
+	done := terminalOperationState(state)
+	result, err := tx.ExecContext(ctx, `UPDATE operations SET status = $4, version = version + 1, done = $5, updated_at = $6 WHERE tenant_id = $1 AND id = $2 AND version = $3 AND status NOT IN ('SUCCEEDED','FAILED','CANCELLED')`, tenantID, operationID, expectedVersion, operationStateDatabase(state), done, now)
+	if err != nil {
+		return nil, err
+	}
+	count, err := result.RowsAffected()
+	if err != nil {
+		return nil, err
+	}
+	if count != 1 {
+		var exists bool
+		if scanErr := tx.QueryRowContext(ctx, `SELECT EXISTS (SELECT 1 FROM operations WHERE tenant_id = $1 AND id = $2)`, tenantID, operationID).Scan(&exists); scanErr != nil {
+			return nil, scanErr
+		}
+		if !exists {
+			return nil, ErrNotFound
+		}
+		return nil, ErrVersionConflict
+	}
+	row, err := scanOperationRow(tx.QueryRowContext(ctx, `SELECT id, tenant_id, project_id, job_id, status, version, done, etag, result_ref_id, error_detail_id, request_hash, created_at, updated_at FROM operations WHERE tenant_id = $1 AND id = $2`, tenantID, operationID))
+	if err != nil {
+		return nil, err
+	}
+	value, err := operationRowToProtoSQL(ctx, tx, row)
+	if err != nil {
+		return nil, err
+	}
+	if err = tx.Commit(); err != nil {
+		return nil, err
+	}
+	return value, nil
 }
 
 var (
@@ -110,6 +195,7 @@ type operationRow struct {
 	resourceVersion                         int64
 	done                                    bool
 	etag                                    string
+	resultRefID, errorDetailID               sql.NullInt64
 	result                                  *artifactv1.ArtifactRef
 	error                                   *commonv1.ErrorDetail
 	requestDigest                           string
@@ -130,8 +216,11 @@ func NewRepository() *Repository {
 
 // CreateAtomically records idempotency, operation, audit, and an immutable
 // generated envelope under one lock.
-func (r *Repository) CreateAtomically(operation *jobv1.Operation, requestDigest, commandKey, actorID string) (*jobv1.Operation, bool, error) {
+func (r *Repository) CreateAtomically(operation *jobv1.Operation, requestDigest, configurationDigest, commandKey, actorID string) (*jobv1.Operation, bool, error) {
 	if err := validateCreate(operation, requestDigest); err != nil {
+		return nil, false, err
+	}
+	if err := validateDigest(configurationDigest, "configuration digest"); err != nil {
 		return nil, false, err
 	}
 	r.mu.Lock()
@@ -149,7 +238,7 @@ func (r *Repository) CreateAtomically(operation *jobv1.Operation, requestDigest,
 	row.resourceVersion = 1
 	row.done = false
 	row.createdAt, row.updatedAt = now, now
-	envelope, err := newJobRequestedEnvelope(operationRowToProto(row), now)
+	envelope, err := newJobRequestedEnvelope(operationRowToProto(row), configurationDigest, now)
 	if err != nil {
 		return nil, false, err
 	}
@@ -223,8 +312,11 @@ func (r *Repository) OutboxEnvelopes() []*commonv1.EventEnvelope {
 	return result
 }
 
-func newJobRequestedEnvelope(operation *jobv1.Operation, at time.Time) (*commonv1.EventEnvelope, error) {
-	payloadMessage := &jobv1.JobRequested{JobId: operation.GetJobId()}
+func newJobRequestedEnvelope(operation *jobv1.Operation, configurationDigest string, at time.Time) (*commonv1.EventEnvelope, error) {
+	if err := validateDigest(configurationDigest, "configuration digest"); err != nil {
+		return nil, err
+	}
+	payloadMessage := &jobv1.JobRequested{JobId: operation.GetJobId(), ConfigurationDigest: configurationDigest}
 	payload, err := proto.MarshalOptions{Deterministic: true}.Marshal(payloadMessage)
 	if err != nil {
 		return nil, fmt.Errorf("marshal JobRequested payload: %w", err)
@@ -246,7 +338,7 @@ func newJobRequestedEnvelope(operation *jobv1.Operation, at time.Time) (*commonv
 		AggregateSequence:  1,
 		JobId:              operation.GetJobId(),
 		DeduplicationKey:   "job-requested:" + operation.GetOperationId(),
-		PayloadContentType: "application/x-protobuf",
+		PayloadContentType: "application/x-protobuf; deterministic=true",
 		Classification:     commonv1.DataClassification_DATA_CLASSIFICATION_INTERNAL,
 	}, nil
 }
@@ -267,11 +359,15 @@ func validateCreate(operation *jobv1.Operation, requestDigest string) error {
 	if operation == nil || operation.GetOperationId() == "" || operation.GetTenantId() == "" || operation.GetJobId() == "" {
 		return ErrNotFound
 	}
-	if len(requestDigest) != len("sha256:")+64 || !strings.HasPrefix(requestDigest, "sha256:") || requestDigest != strings.ToLower(requestDigest) {
-		return errors.New("request digest must be sha256:<64 lowercase hex>")
+	return validateDigest(requestDigest, "request digest")
+}
+
+func validateDigest(value, field string) error {
+	if len(value) != len("sha256:")+64 || !strings.HasPrefix(value, "sha256:") || value != strings.ToLower(value) {
+		return fmt.Errorf("%s must be sha256:<64 lowercase hex>", field)
 	}
-	if _, err := hex.DecodeString(strings.TrimPrefix(requestDigest, "sha256:")); err != nil {
-		return fmt.Errorf("invalid request digest: %w", err)
+	if _, err := hex.DecodeString(strings.TrimPrefix(value, "sha256:")); err != nil {
+		return fmt.Errorf("invalid %s: %w", field, err)
 	}
 	return nil
 }
@@ -301,7 +397,7 @@ type rowScanner interface {
 func scanOperationRow(scanner rowScanner) (operationRow, error) {
 	var row operationRow
 	var state string
-	if err := scanner.Scan(&row.operationID, &row.tenantID, &row.jobID, &state, &row.resourceVersion, &row.requestDigest, &row.createdAt, &row.updatedAt); err != nil {
+	if err := scanner.Scan(&row.operationID, &row.tenantID, &row.projectID, &row.jobID, &state, &row.resourceVersion, &row.done, &row.etag, &row.resultRefID, &row.errorDetailID, &row.requestDigest, &row.createdAt, &row.updatedAt); err != nil {
 		return operationRow{}, err
 	}
 	parsed, err := operationStateFromDatabase(state)
@@ -309,8 +405,23 @@ func scanOperationRow(scanner rowScanner) (operationRow, error) {
 		return operationRow{}, err
 	}
 	row.state = parsed
-	row.done = terminalOperationState(parsed)
+	if row.done != terminalOperationState(parsed) {
+		return operationRow{}, errors.New("persisted operation done/state invariant is invalid")
+	}
 	return row, nil
+}
+
+func operationRowToProtoSQL(ctx context.Context, tx *sql.Tx, row operationRow) (*jobv1.Operation, error) {
+	result, err := platformdb.LoadArtifactRef(ctx, tx, row.tenantID, row.resultRefID)
+	if err != nil {
+		return nil, err
+	}
+	detail, err := platformdb.LoadErrorDetail(ctx, tx, row.tenantID, row.errorDetailID)
+	if err != nil {
+		return nil, err
+	}
+	row.result, row.error = result, detail
+	return operationRowToProto(row), nil
 }
 
 func operationStateDatabase(state jobv1.OperationState) string {

@@ -81,18 +81,26 @@ project, operation, job, run, attempt, artifact, policy, and lifecycle columns.
 Workers remain unable to mutate control-plane tables and communicate through
 typed commands, events, and gRPC boundaries.
 
-The public SDK program treats Stainless as the primary long-term generator for
-Go, Python, and TypeScript. The portable generation configuration governs
-shared SDK ergonomics today; a future provider-native `stainless.yml` may govern
-Stainless-specific ergonomics only after its official validator and generator
-are pinned and qualified. Neither configuration becomes contract authority;
-the curated OpenAPI document remains the portable input. A provider-neutral
-`SdkGenerator` boundary and reproducible local artifacts prevent hosted state
-from becoming the only build record. Oagen is a first-class shadow generator
-with parity tests and a documented promotion path.
-Mindclade-owned emitters may be seeded from appropriately licensed open-source
-implementations, but generated SDK release compatibility is proven against the
-same OpenAPI fixtures regardless of provider.
+The public SDK program uses Mindclade SDK Forge as the long-term primary
+compiler for Go, Python, and TypeScript. Forge owns SDK policy, emitters, thin
+language-native runtimes, conformance, packaging, and release orchestration;
+the MIT-licensed WorkOS OAGen parser and typed IR are an implementation
+foundation, not a contract or release authority. Provider-native configuration
+is derived from Mindclade policy. The curated OpenAPI document remains the
+portable wire input, and generated source or hosted provider state cannot
+become authority.
+
+The pipeline uses independently testable `OpenApiValidator`,
+`SdkPolicyCompiler`, `SdkEmitter`, `SdkSurfaceExtractor`,
+`SdkBehaviorVerifier`, `SdkPackager`, `SdkPublisher`, and
+`SdkReleaseOrchestrator` boundaries. Only the release orchestrator emits the
+final receipt. Fern is the preferred qualified shadow but remains
+non-authoritative because its documented self-hosted workflow is an Enterprise
+Docker/token/outbound-verification path. Speakeasy is an additional commercial
+benchmark and fallback. Stainless is retained only for comparison when an
+existing legacy project is available; it is not a long-term dependency or a
+publication path. All implementations prove compatibility against the same
+OpenAPI fixtures and Mindclade release policy.
 
 Compatibility begins from the committed clean-v1 baseline. After that point,
 field numbers and enum values are not reused, semantic meaning is stable,
@@ -112,7 +120,7 @@ language/provider deferments are superseded or supplemented here.
 - Contract work can precede broader runtime qualification without claiming that the runtime is complete or production-ready.
 - Every supported process and language can converge on generated types instead of accumulating handwritten duplicates.
 - Internal gRPC evolution, durable document evolution, and public HTTP/SDK evolution remain distinct but traceable authorities.
-- Stainless is planned as a durable primary dependency while an owned provider boundary and oagen shadow preserve reproducibility and substitution evidence.
+- Mindclade owns the SDK compiler and release policy; OAGen reduces parser/typed-IR reinvention while Fern, Speakeasy, and legacy Stainless comparisons provide independent substitution evidence without becoming authority.
 - The repository path manifest, generators, compatibility baselines, and consumers must advance together; an unconsumed or untested active contract is a governance failure.
 
 ## Rejected alternatives
@@ -120,8 +128,9 @@ language/provider deferments are superseded or supplemented here.
 - Retain wave timing as a hard contract-creation gate. This would force active code to define temporary local types and make the eventual migration riskier.
 - Make OpenAPI an authority for internal domain state, or make internal Protobuf layout the external HTTP contract. Transport-specific authority with enforced mappings avoids both forms of coupling and drift.
 - Use Protobuf blobs as the primary database model. This would weaken relational constraints, tenant isolation, queries, migrations, and operational repair.
-- Depend on Stainless without a portable OpenAPI input, local evidence, or shadow generator. This would make provider state an unreviewable build authority.
-- Treat oagen parity as permission to publish two independently versioned SDK surfaces. One supported public contract and release policy remains authoritative.
+- Make Stainless or any hosted generator the primary path. Stainless has retired new hosted SDK projects, and provider state would be an unavailable or unreviewable build authority.
+- Reimplement OpenAPI parsing before proving that OAGen's typed IR cannot express a required Mindclade semantic. Forge owns the policy and output while reusing a pinned, reviewed parsing foundation.
+- Treat provider parity as permission to publish independently versioned SDK surfaces. One supported public contract and Mindclade release policy remains authoritative.
 
 ## Qualification and rollback
 

@@ -15,7 +15,7 @@ import (
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 )
 
-const auditPayloadContentType = "application/x-protobuf"
+const auditPayloadContentType = "application/x-protobuf; deterministic=true"
 
 // NewEvent returns the generated immutable delivery envelope containing a
 // generated AuditEvent payload. Arbitrary fields are deliberately rejected so

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from common.v1.resource_reference_pb2 import ResourceRef as ResourceRef
+from mindclade.common.v1.resource_reference_pb2 import ResourceRef as ResourceRef
 
 from .resource_id import Identifier, ResourceVersion
 

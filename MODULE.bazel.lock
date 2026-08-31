@@ -279,7 +279,7 @@
   "moduleExtensions": {
     "//third_party/packages/deep_ep:repository.bzl%deepep_nix": {
       "general": {
-        "bzlTransitiveDigest": "mxsJchDu0qac3OFTQnGqGsZF83H9YFgQ7e3Kn0Wp3KY=",
+        "bzlTransitiveDigest": "ieWC1eW3XS13EmNTP7jgVzGwQcHQnnVNafBwXjgZJtw=",
         "usagesDigest": "znJrEoNPNY1OklbremSOYM6iYG9+hPo4TjvtxcWsIyY=",
         "recordedInputs": [],
         "generatedRepoSpecs": {
@@ -577,7 +577,7 @@
     },
     "@@rules_rust+//crate_universe:extensions.bzl%crate": {
       "general": {
-        "bzlTransitiveDigest": "U/KG7/4TgN9Tgn1KfulORe8WQg1t18xkIZDC0MYsCcg=",
+        "bzlTransitiveDigest": "qBRaq2+eWQUzmaAfYSAIf3cHDwnPNUB4h5p9rpigQzE=",
         "usagesDigest": "XJEWRk2CY3K3W2oSDWY6LTBdihAzC+BCkwkgpjNo6tY=",
         "recordedInputs": [
           "ENV:CARGO_BAZEL_DEBUG \\0",

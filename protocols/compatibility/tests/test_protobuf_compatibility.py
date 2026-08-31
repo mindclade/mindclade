@@ -94,7 +94,7 @@ class ProtobufCompatibilityTest(unittest.TestCase):
         fixture = base64.b64decode(cast(dict[str, str], value["wire_fixture"])["base64"])
 
         sys.path.insert(0, str(repository / "protocols/generated/python"))
-        module = importlib.import_module("common.v1.identifiers_pb2")
+        module = importlib.import_module("mindclade.common.v1.identifiers_pb2")
         message = module.Identifiers.FromString(fixture)
         self.assertEqual(message.SerializeToString(deterministic=True), fixture)
 
