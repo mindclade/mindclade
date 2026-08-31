@@ -14,11 +14,24 @@ def steps() -> list[Step]:
             timeout_minutes=10,
         ),
         Step(
-            key="gpu-qualification",
-            label=":gpu: GPU qualification",
+            key="gpu-intranode-probe",
+            label=":gpu: DeepEP intra-node GPU probe",
             command="just ci-gpu",
             timeout_minutes=240,
             depends_on=("gpu-activation-gate",),
-            artifact_paths=("build/evidence/gpu-*",),
+            artifact_paths=("build/evidence/gpu-deepep-intranode.json",),
+        ),
+        Step(
+            key="gpu-multinode-probe",
+            label=":network: DeepEP protected multi-node RDMA probe",
+            command=(
+                "MINDCLADE_DEEPEP_NODE_RANK=${BUILDKITE_PARALLEL_JOB} "
+                "MINDCLADE_DEEPEP_RDZV_ID=${BUILDKITE_BUILD_ID} just ci-gpu-multinode"
+            ),
+            timeout_minutes=240,
+            depends_on=("gpu-activation-gate",),
+            artifact_paths=("build/evidence/gpu-deepep-multinode-node-*.json",),
+            env={"MINDCLADE_DEEPEP_NNODES": "2"},
+            parallelism=2,
         ),
     ]

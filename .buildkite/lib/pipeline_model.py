@@ -19,6 +19,7 @@ class Step:
     depends_on: tuple[str, ...] = ()
     artifact_paths: tuple[str, ...] = ()
     env: dict[str, str] = field(default_factory=lambda: {})
+    parallelism: int | None = None
     soft_fail: bool = False
 
     def validate(self) -> None:
@@ -36,6 +37,8 @@ class Step:
         for key in self.env:
             if not key.startswith("MINDCLADE_"):
                 raise ValueError(f"step {self.key} has an ungoverned environment entry")
+        if self.parallelism is not None and not 2 <= self.parallelism <= 16:
+            raise ValueError(f"step {self.key} has invalid parallelism")
 
     def as_mapping(self) -> dict[str, Any]:
         self.validate()
@@ -52,6 +55,8 @@ class Step:
             value["artifact_paths"] = list(self.artifact_paths)
         if self.env:
             value["env"] = dict(sorted(self.env.items()))
+        if self.parallelism is not None:
+            value["parallelism"] = self.parallelism
         if self.soft_fail:
             value["soft_fail"] = True
         return value

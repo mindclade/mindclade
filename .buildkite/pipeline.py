@@ -56,6 +56,15 @@ def self_test() -> None:
             "mindclade-untrusted-cpu",
         }:
             raise AssertionError(f"pipeline {pipeline_class} has an invalid agent queue")
+        if pipeline_class == "gpu":
+            by_key = {step["key"]: step for step in value["steps"]}
+            multi_node = by_key["gpu-multinode-probe"]
+            if multi_node.get("parallelism") != 2:
+                raise AssertionError("multi-node GPU probe must reserve two protected agents")
+            if multi_node.get("depends_on") != ["gpu-activation-gate"]:
+                raise AssertionError("multi-node GPU probe bypasses the activation gate")
+            if "MINDCLADE_DEEPEP_RDZV_ID=${BUILDKITE_BUILD_ID}" not in multi_node["command"]:
+                raise AssertionError("multi-node GPU probe does not isolate its rendezvous")
     pre_command = (BUILDKITE_ROOT / "hooks/pre-command").read_text(encoding="utf-8")
     protected_fragments = (
         ".buildkite",

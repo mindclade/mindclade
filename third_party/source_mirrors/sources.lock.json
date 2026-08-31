@@ -18,6 +18,7 @@
         "runtime_profile": {
           "cuda": "12.9",
           "nccl": "2.31.2-1",
+          "nvcc": "12.9.86",
           "nvshmem": "3.6.5-0",
           "python": "3.12.14",
           "torch": "2.12.0"

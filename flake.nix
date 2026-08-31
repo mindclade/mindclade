@@ -92,6 +92,18 @@
         let
           deepEp = deepEpPackageSet pkgs;
           deepEpPackage = deepEp.package;
+          deepEpJitFingerprint = builtins.hashString "sha256" (
+            builtins.toJSON {
+              build_variant = "v2";
+              compiler_version = pkgs.cudaPackages.cuda_nvcc.version;
+              cuda_version = deepEp.record.build_authority.runtime_profile.cuda;
+              gpu_architecture = builtins.concatStringsSep "," deepEp.record.build_authority.cuda_capabilities;
+              nccl_version = deepEp.record.build_authority.runtime_profile.nccl;
+              patch_digest = "sha256:${builtins.hashFile "sha256" ./third_party/patches/patches.lock.json}";
+              torch_version = deepEp.record.build_authority.runtime_profile.torch;
+              upstream_commit = deepEp.record.upstream.revision;
+            }
+          );
           pythonEnv = pkgs.python312.withPackages (pythonPackages: [
             pythonPackages.cryptography
             deepEpPackage
@@ -99,9 +111,7 @@
             pythonPackages.torch
           ]);
           pnpmNode26 = pkgs.pnpm.override { nodejs-slim = pkgs.nodejs_26; };
-        in
-        {
-          gpu = pkgs.mkShell {
+          deepEpShell = pkgs.mkShell {
             packages = with pkgs; [
               actionlint
               bazel_9
@@ -118,6 +128,7 @@
               markdownlint-cli2
               ninja
               nodejs_26
+              patchelf
               pnpmNode26
               pre-commit
               pyright
@@ -130,21 +141,30 @@
             ];
 
             CUDA_HOME = deepEp.runtime.cudaHome;
+            CUDA_PATH = deepEp.runtime.cudaHome;
             EP_JIT_NVCC_COMPILER = deepEp.runtime.jitNvcc;
             EP_NCCL_ROOT_DIR = deepEp.runtime.ncclRoot;
+            MINDCLADE_DEEPEP_JIT_FINGERPRINT = deepEpJitFingerprint;
             NVSHMEM_DIR = deepEp.runtime.nvshmemRoot;
             TORCH_CUDA_ARCH_LIST = builtins.concatStringsSep " " deepEp.record.build_authority.cuda_capabilities;
             LANG = "C";
             LC_ALL = "C";
+            PYTHONNOUSERSITE = "1";
+            SOURCE_DATE_EPOCH = "1";
             TZ = "UTC";
             UV_PROJECT_ENVIRONMENT = ".venv";
 
             shellHook = ''
               export PATH="${pythonEnv}/bin:$PATH"
               export MINDCLADE_REPOSITORY_ROOT="$PWD"
+              export EP_JIT_CACHE_DIR="$PWD/.cache/deepep/jit/${deepEpJitFingerprint}"
               echo "Mindclade SM90 GPU intake shell — modern DeepEP 2.x; no production authority"
             '';
           };
+        in
+        {
+          deepep = deepEpShell;
+          gpu = deepEpShell;
         }
       );
     in

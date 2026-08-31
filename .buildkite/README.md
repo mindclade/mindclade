@@ -23,6 +23,13 @@ GPU and release paths are activation-gated and fail while Wave 0 has no real
 target. Successful local commands create unsigned evidence inputs only. The
 qualified trusted CI signer, not this source tree, produces a signature.
 
+The gated GPU graph separates the DeepEP intra-node SM90 probe from the
+multi-node RDMA/IBGDA probe. The latter uses two protected parallel agents and
+requires the protected agent pool to provide one shared
+`MINDCLADE_DEEPEP_RDZV_ENDPOINT`; it never falls back to a local or untrusted
+runner. The Buildkite build ID isolates the rendezvous from concurrent runs.
+Both steps remain unreachable while the `gpu` activation gate is closed.
+
 Validate the source model without a Buildkite credential:
 
 ```text

@@ -379,7 +379,62 @@ require-activation capability:
     @echo "Capability '{{ capability }}' has no active Wave 0 target or qualification policy" >&2
     @exit 78
 
-ci-gpu: (require-activation "gpu")
+# Run an unsigned, non-production DeepEP communication probe on one Linux SM90
+# node. Enter `nix develop .#deepep` first so the locked CUDA closure is active.
+test-deep-ep-gpu-intranode:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    [[ "$(uname -s)" == Linux ]]
+    gpu_count="${MINDCLADE_DEEPEP_GPUS_PER_NODE:-2}"
+    [[ "${gpu_count}" =~ ^[0-9]+$ && "${gpu_count}" -ge 2 ]]
+    mkdir -p {{ evidence_dir }}
+    MINDCLADE_DEEPEP_NNODES=1 torchrun \
+      --standalone \
+      --nnodes=1 \
+      --nproc-per-node="${gpu_count}" \
+      third_party/packages/deep_ep/test_package.py \
+      gpu-smoke \
+      --scope intra-node \
+      --evidence {{ evidence_dir }}/gpu-deepep-intranode.json
+
+# Run only from the protected GPU pipeline. Buildkite parallelism supplies one
+# node rank per agent; the protected agent pool supplies a shared RDZV endpoint.
+test-deep-ep-gpu-multinode:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    [[ "$(uname -s)" == Linux ]]
+    [[ "${MINDCLADE_PIPELINE_CLASS:-}" == gpu ]]
+    [[ "${MINDCLADE_SOURCE_TRUST:-}" == protected ]]
+    : "${MINDCLADE_SOURCE_REVISION:?missing protected source revision}"
+    : "${MINDCLADE_DEEPEP_NNODES:?missing node count}"
+    : "${MINDCLADE_DEEPEP_NODE_RANK:?missing node rank}"
+    : "${MINDCLADE_DEEPEP_RDZV_ENDPOINT:?missing protected rendezvous endpoint}"
+    : "${MINDCLADE_DEEPEP_RDZV_ID:?missing protected rendezvous identity}"
+    gpu_count="${MINDCLADE_DEEPEP_GPUS_PER_NODE:-2}"
+    [[ "${gpu_count}" =~ ^[0-9]+$ && "${gpu_count}" -ge 2 ]]
+    [[ "${MINDCLADE_DEEPEP_NNODES}" =~ ^[0-9]+$ && "${MINDCLADE_DEEPEP_NNODES}" -ge 2 ]]
+    [[ "${MINDCLADE_DEEPEP_NODE_RANK}" =~ ^[0-9]+$ ]]
+    [[ "${MINDCLADE_DEEPEP_RDZV_ID}" =~ ^[A-Za-z0-9._-]+$ ]]
+    mkdir -p {{ evidence_dir }}
+    torchrun \
+      --nnodes="${MINDCLADE_DEEPEP_NNODES}" \
+      --nproc-per-node="${gpu_count}" \
+      --node-rank="${MINDCLADE_DEEPEP_NODE_RANK}" \
+      --rdzv-backend=c10d \
+      --rdzv-endpoint="${MINDCLADE_DEEPEP_RDZV_ENDPOINT}" \
+      --rdzv-id="${MINDCLADE_DEEPEP_RDZV_ID}" \
+      third_party/packages/deep_ep/test_package.py \
+      gpu-smoke \
+      --scope multi-node \
+      --evidence {{ evidence_dir }}/gpu-deepep-multinode-node-${MINDCLADE_DEEPEP_NODE_RANK}.json
+
+ci-gpu:
+    just require-activation gpu
+    just test-deep-ep-gpu-intranode
+
+ci-gpu-multinode:
+    just require-activation gpu
+    just test-deep-ep-gpu-multinode
 
 ci-release: (require-activation "release")
 
