@@ -304,7 +304,8 @@ toolchain floors, layouts, and qualification evidence. Manual mbarrier, cluster
 multicast, remote shared-memory, and gather/scatter helpers fail closed when
 the selected target cannot preserve their semantics. These source contracts are
 unqualified and do not establish production performance.
-# Kernel Platform Constitution
+
+## Kernel Platform Constitution
 
 The approved target architecture is defined by the **Kernel Platform v3
 constitution** in [MIGRATION.md](MIGRATION.md). The current implementation is

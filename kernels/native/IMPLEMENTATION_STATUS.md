@@ -83,7 +83,8 @@ raster, barrier, cluster, and SM100a gather/scatter contracts. `transition` is
 the first layout-policy consumer. No generated-instruction inspection, GPU
 parity, deadlock stress, or benchmark evidence has been produced, so every TMA
 and swizzle profile remains `TARGET` and unqualified.
-# Kernel Platform v3 Status
+
+## Kernel Platform v3 Status
 
 The v3 constitution and implementation plan are recorded in `MIGRATION.md`.
 This is an architecture milestone, not a production-readiness claim.
@@ -91,7 +92,7 @@ This is an architecture milestone, not a production-readiness claim.
 | Area | Readiness | Evidence / gap |
 | --- | --- | --- |
 | v3 terminology and authority | IMPLEMENTED | Native documentation records `spec.py`, `operator_schema`, three API surfaces, and two-plane laws. |
-| Typed expression/core contracts | NOT_IMPLEMENTED | Wave 1 source and tests not yet present. |
+| Typed expression/core contracts | IMPLEMENTED | Wave 1 provides the restricted AST, immutable semantic/integration/environment contracts, 25 passing pytest cases, and two passing Bazel test targets. |
 | `spec.py` restricted discovery | NOT_IMPLEMENTED | Existing manifest-v2 discovery still reads operation-local `tilelang.py`. |
 | Generated semantic/FWD/BWD ABI | NOT_IMPLEMENTED | Existing generated surface registers one CUDA implementation per semantic op. |
 | Program groups/capability validators | NOT_IMPLEMENTED | Contracts and cross-consumer equivalence tests remain. |

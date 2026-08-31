@@ -1,0 +1,119 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.mindclade.dev/third-party/deepep-runtime-manifest.v2.schema.json",
+  "title": "Mindclade DeepEP runtime manifest v2",
+  "type": "object",
+  "required": [
+    "artifact",
+    "build",
+    "distribution",
+    "fingerprint",
+    "fingerprint_inputs",
+    "locks",
+    "production_authority",
+    "runtime_profile",
+    "schema_version",
+    "toolchain"
+  ],
+  "properties": {
+    "schema_version": {"const": "mindclade.deepep-runtime-manifest/v2"},
+    "production_authority": {"const": false},
+    "artifact": {
+      "type": "object",
+      "required": ["archive_sha256", "name", "source_nar_hash", "upstream_commit", "version"],
+      "properties": {
+        "archive_sha256": {"$ref": "#/$defs/digest"},
+        "name": {"const": "deep-ep"},
+        "version": {"type": "string", "pattern": "^2\\.1\\.0\\+[0-9a-f]{7}$"},
+        "upstream_commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+        "source_nar_hash": {"type": "string", "pattern": "^sha256-[A-Za-z0-9+/]{43}=$"}
+      },
+      "additionalProperties": false
+    },
+    "build": {
+      "type": "object",
+      "required": ["cuda_capabilities", "target_system", "variant"],
+      "properties": {
+        "cuda_capabilities": {
+          "type": "array",
+          "items": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+$"},
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "target_system": {"enum": ["aarch64-linux", "x86_64-linux"]},
+        "variant": {"const": "v2-nccl-gin"}
+      },
+      "additionalProperties": false
+    },
+    "distribution": {
+      "type": "object",
+      "required": ["mode", "requirements"],
+      "properties": {
+        "mode": {"enum": ["hermetic-nix", "nix-closure"]},
+        "requirements": {
+          "type": "array",
+          "items": {"type": "string", "pattern": "^[A-Za-z0-9_.-]+==[A-Za-z0-9_.+-]+$"},
+          "maxItems": 0,
+          "uniqueItems": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "fingerprint": {
+      "type": "object",
+      "required": ["algorithm", "value"],
+      "properties": {
+        "algorithm": {"const": "sha256"},
+        "value": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+      },
+      "additionalProperties": false
+    },
+    "fingerprint_inputs": {"type": "object", "minProperties": 1},
+    "locks": {
+      "type": "object",
+      "required": ["flake", "package_definition", "patches", "python", "sources"],
+      "properties": {
+        "flake": {"$ref": "#/$defs/digest"},
+        "package_definition": {"$ref": "#/$defs/digest"},
+        "patches": {"$ref": "#/$defs/digest"},
+        "python": {"$ref": "#/$defs/digest"},
+        "sources": {"$ref": "#/$defs/digest"}
+      },
+      "additionalProperties": false
+    },
+    "runtime_profile": {
+      "type": "object",
+      "required": ["cuda", "nccl", "nvcc", "nvshmem", "python", "torch"],
+      "properties": {
+        "cuda": {"type": "string", "minLength": 1},
+        "nccl": {"type": "string", "minLength": 1},
+        "nvcc": {"type": "string", "minLength": 1},
+        "nvshmem": {"type": "string", "minLength": 1},
+        "python": {"type": "string", "minLength": 1},
+        "torch": {"type": "string", "minLength": 1}
+      },
+      "additionalProperties": false
+    },
+    "toolchain": {
+      "type": "object",
+      "required": ["cuda_home", "nccl_root", "nvcc", "nvshmem_root", "store_outputs"],
+      "properties": {
+        "cuda_home": {"$ref": "#/$defs/storePath"},
+        "nccl_root": {"$ref": "#/$defs/storePath"},
+        "nvcc": {"$ref": "#/$defs/storePath"},
+        "nvshmem_root": {"$ref": "#/$defs/storePath"},
+        "store_outputs": {
+          "type": "object",
+          "minProperties": 5,
+          "additionalProperties": {"$ref": "#/$defs/storePath"}
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "storePath": {"type": "string", "pattern": "^/nix/store/[a-z0-9]{32}-.+$"}
+  },
+  "additionalProperties": false
+}

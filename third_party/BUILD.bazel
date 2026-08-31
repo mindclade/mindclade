@@ -1,26 +1,26 @@
-load("@rules_python//python:defs.bzl", "py_test")
-
 package(default_visibility = ["//visibility:private"])
 
-filegroup(
-    name = "deep_ep_package",
-    srcs = [
-        "packages/deep_ep/README.md",
-        "packages/deep_ep/package.nix",
-        "packages/deep_ep/test_package.py",
+exports_files(
+    [
+        "patches/deep_ep/declared-toolchain-paths.patch",
+        "patches/deep_ep/deterministic-version.patch",
+        "patches/deep_ep/gin-attestation.patch",
+        "patches/deep_ep/runtime-jit-cache.patch",
         "patches/patches.lock.json",
         "source_mirrors/sources.lock.json",
     ],
     visibility = ["//visibility:public"],
 )
 
-py_test(
+alias(
+    name = "deep_ep_package",
+    actual = "//third_party/packages/deep_ep:artifact_bundle",
+    visibility = ["//visibility:public"],
+)
+
+test_suite(
     name = "test_deep_ep_package_policy",
-    srcs = ["packages/deep_ep/test_package.py"],
-    data = [":deep_ep_package"],
-    legacy_create_init = 0,
-    main = "packages/deep_ep/test_package.py",
-    python_version = "PY3",
+    tests = ["//third_party/packages/deep_ep:test_package_policy"],
 )
 
 filegroup(
@@ -31,13 +31,15 @@ filegroup(
         "licenses/README.md",
         "licenses/license_inventory.json",
         "notices/NOTICE.generated.txt",
-        "packages/deep_ep/README.md",
-        "packages/deep_ep/package.nix",
-        "packages/deep_ep/test_package.py",
         "patches/README.md",
+        "patches/deep_ep/declared-toolchain-paths.patch",
+        "patches/deep_ep/deterministic-version.patch",
+        "patches/deep_ep/gin-attestation.patch",
+        "patches/deep_ep/runtime-jit-cache.patch",
         "patches/patches.lock.json",
         "source_mirrors/README.md",
         "source_mirrors/sources.lock.json",
+        "//third_party/packages/deep_ep:policy_inputs",
     ],
     visibility = ["//visibility:public"],
 )

@@ -1,0 +1,17 @@
+diff --git a/setup.py b/setup.py
+index 81a1e26..7c5ac07 100644
+--- a/setup.py
++++ b/setup.py
+@@ -52,6 +52,12 @@ def get_package_version():
+         version_match = re.search(r'^__version__\s*=\s*(.*)$', f.read(), re.MULTILINE)
+     public_version = ast.literal_eval(version_match.group(1))
+ 
++    declared_revision = os.environ.get('MINDCLADE_DEEPEP_SOURCE_REVISION')
++    if declared_revision is not None:
++        if re.fullmatch(r'[0-9a-f]{40}', declared_revision) is None:
++            raise ValueError('MINDCLADE_DEEPEP_SOURCE_REVISION must be a full lowercase Git revision')
++        return f'{public_version}+{declared_revision[:7]}'
++
+     # noinspection PyBroadException
+     try:
+         status_cmd = ['git', 'status', '--porcelain']

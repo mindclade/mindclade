@@ -1,0 +1,120 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.mindclade.dev/third-party/deepep-gpu-evidence.v2.schema.json",
+  "title": "Mindclade DeepEP GPU probe evidence v2",
+  "type": "object",
+  "required": [
+    "claim",
+    "conclusion",
+    "node_count",
+    "physical_hosts",
+    "production_authority",
+    "runtime",
+    "runtime_fingerprint",
+    "runtime_manifest_digest",
+    "ranks",
+    "schema_version",
+    "scope",
+    "source_revision",
+    "tests",
+    "topology_digest",
+    "world_size"
+  ],
+  "properties": {
+    "schema_version": {"const": "mindclade.deepep-gpu-probe/v2"},
+    "claim": {"const": "unsigned-source-probe"},
+    "conclusion": {"const": "PASS"},
+    "production_authority": {"const": false},
+    "scope": {"enum": ["intra-node", "multi-node"]},
+    "node_count": {"type": "integer", "minimum": 1},
+    "source_revision": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "runtime_fingerprint": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "runtime_manifest_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "topology_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "world_size": {"type": "integer", "minimum": 2},
+    "physical_hosts": {
+      "type": "array",
+      "items": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{7,255}$"},
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "runtime": {
+      "type": "object",
+      "required": ["cuda", "deep_ep", "nccl", "nvcc", "nvshmem_info_sha256", "torch"],
+      "properties": {
+        "cuda": {"type": "string", "minLength": 1},
+        "deep_ep": {"type": "string", "pattern": "^2\\.1\\.0\\+[0-9a-f]{7}$"},
+        "nccl": {
+          "type": "array",
+          "items": {"type": "integer", "minimum": 0},
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "nvcc": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
+        "nvshmem_info_sha256": {
+          "type": "array",
+          "items": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "torch": {"type": "string", "minLength": 1}
+      },
+      "additionalProperties": false
+    },
+    "ranks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "capability", "device", "elapsed_seconds", "gpu_sku", "host",
+          "local_rank", "physical_host_id", "rank", "topology_digest"
+        ],
+        "properties": {
+          "capability": {
+            "type": "array",
+            "prefixItems": [{"type": "integer", "minimum": 9}, {"type": "integer", "minimum": 0}],
+            "items": false
+          },
+          "device": {"type": "string", "minLength": 1},
+          "elapsed_seconds": {"type": "number", "exclusiveMinimum": 0},
+          "gpu_sku": {"enum": ["H100", "H200"]},
+          "host": {"type": "string", "minLength": 1},
+          "local_rank": {"type": "integer", "minimum": 0},
+          "physical_host_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{7,255}$"},
+          "rank": {"type": "integer", "minimum": 0},
+          "topology_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+        },
+        "additionalProperties": false
+      },
+      "minItems": 2
+    },
+    "tests": {
+      "type": "array",
+      "items": {"type": "object", "minProperties": 1},
+      "minItems": 1
+    },
+    "network": {
+      "type": "object",
+      "required": ["ibgda_mode", "rdma_device_ids", "transport"],
+      "properties": {
+        "ibgda_mode": {"enum": ["driver-regkeys", "gdrcopy"]},
+        "rdma_device_ids": {
+          "type": "array",
+          "items": {"type": "string", "minLength": 1},
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "transport": {"const": "nccl-gin"}
+      },
+      "additionalProperties": false
+    }
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"scope": {"const": "multi-node"}}},
+      "then": {"required": ["network"], "properties": {"node_count": {"minimum": 2}}},
+      "else": {"not": {"required": ["network"]}, "properties": {"node_count": {"const": 1}}}
+    }
+  ],
+  "additionalProperties": false
+}

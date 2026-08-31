@@ -1,0 +1,91 @@
+load("@rules_python//python:defs.bzl", "py_test")
+
+package(default_visibility = ["//visibility:private"])
+
+exports_files(
+    [
+        "artifact_contract.py",
+        "gpu-evidence.schema.json",
+        "package.nix",
+        "repository.bzl",
+        "runtime-manifest.schema.json",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+filegroup(
+    name = "policy_inputs",
+    srcs = [
+        "BUILD.bazel",
+        "README.md",
+        "artifact_contract.py",
+        "gpu-evidence.schema.json",
+        "package.nix",
+        "repository.bzl",
+        "runtime-manifest.schema.json",
+        "test_package.py",
+    ],
+    visibility = ["//third_party:__pkg__"],
+)
+
+py_test(
+    name = "test_package_policy",
+    srcs = [
+        "artifact_contract.py",
+        "test_package.py",
+    ],
+    data = [
+        "BUILD.bazel",
+        "README.md",
+        "repository.bzl",
+        ":gpu-evidence.schema.json",
+        ":package.nix",
+        ":runtime-manifest.schema.json",
+        "//:pyproject.toml",
+        "//:uv.lock",
+        "//third_party:patches/deep_ep/declared-toolchain-paths.patch",
+        "//third_party:patches/deep_ep/deterministic-version.patch",
+        "//third_party:patches/deep_ep/gin-attestation.patch",
+        "//third_party:patches/deep_ep/runtime-jit-cache.patch",
+        "//third_party:patches/patches.lock.json",
+        "//third_party:source_mirrors/sources.lock.json",
+    ],
+    imports = ["."],
+    legacy_create_init = 0,
+    main = "test_package.py",
+    python_version = "PY3",
+    visibility = ["//third_party:__pkg__"],
+    deps = ["@mindclade_pypi//jsonschema"],
+)
+
+# This target is a repository-owned Bazel gate over the actual Nix build. The
+# external repository is materialized only when an artifact target is requested.
+alias(
+    name = "artifact_bundle",
+    actual = "@mindclade_deepep_nix//:artifact_bundle",
+    target_compatible_with = [
+        "@platforms//cpu:x86_64",
+        "@platforms//os:linux",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+alias(
+    name = "wheel",
+    actual = "@mindclade_deepep_nix//:wheel",
+    target_compatible_with = [
+        "@platforms//cpu:x86_64",
+        "@platforms//os:linux",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+alias(
+    name = "runtime_manifest",
+    actual = "@mindclade_deepep_nix//:runtime_manifest",
+    target_compatible_with = [
+        "@platforms//cpu:x86_64",
+        "@platforms//os:linux",
+    ],
+    visibility = ["//visibility:public"],
+)

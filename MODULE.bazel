@@ -67,3 +67,8 @@ use_repo(npm, "npm")
 typescript = use_extension("@aspect_rules_ts//ts:extensions.bzl", "typescript")
 typescript.deps(version = "5.9.3")
 use_repo(typescript, "npm_typescript")
+
+# Nix is the native package authority; Bazel exposes its wheel, manifests,
+# SBOM, provenance, and closure as ordinary build artifacts.
+deepep_nix = use_extension("//third_party/packages/deep_ep:repository.bzl", "deepep_nix")
+use_repo(deepep_nix, "mindclade_deepep_nix")

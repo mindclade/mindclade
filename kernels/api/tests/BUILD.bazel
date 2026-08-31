@@ -1,0 +1,29 @@
+load("@rules_python//python:defs.bzl", "py_test")
+
+package(default_visibility = ["//visibility:private"])
+
+py_test(
+    name = "test_contracts",
+    srcs = [
+        "__init__.py",
+        "test_contracts.py",
+    ],
+    legacy_create_init = 0,
+    deps = [
+        "//kernels/api",
+        "@mindclade_pypi//pytest",
+    ],
+)
+
+py_test(
+    name = "test_expressions",
+    srcs = [
+        "__init__.py",
+        "test_expressions.py",
+    ],
+    legacy_create_init = 0,
+    deps = [
+        "//kernels/api",
+        "@mindclade_pypi//pytest",
+    ],
+)

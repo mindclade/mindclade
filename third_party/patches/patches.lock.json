@@ -1,5 +1,54 @@
 {
-  "entries": [],
+  "entries": [
+    {
+      "applies_to": {
+        "name": "deep-ep",
+        "revision": "01dc3aaac82068020353dce2c302e38153c0bfaa"
+      },
+      "name": "deepep-declared-toolchain-paths",
+      "owner": "ml-systems-performance",
+      "path": "third_party/patches/deep_ep/declared-toolchain-paths.patch",
+      "rationale": "Persist immutable CUDA, NCCL, NVCC, and NVSHMEM paths only for the hermetic Nix package variant.",
+      "removal_condition": "Upstream supports declared runtime toolchain roots without build-path leakage.",
+      "sha256": "sha256:8c6e43bf619020f46b0356dfb3eb7a36552ff177de89f1aec87d40490f8eb48b"
+    },
+    {
+      "applies_to": {
+        "name": "deep-ep",
+        "revision": "01dc3aaac82068020353dce2c302e38153c0bfaa"
+      },
+      "name": "deepep-deterministic-version",
+      "owner": "ml-systems-performance",
+      "path": "third_party/patches/deep_ep/deterministic-version.patch",
+      "rationale": "Bind wheel metadata to the full declared upstream revision without depending on a mutable Git checkout.",
+      "removal_condition": "Upstream accepts an immutable source revision as a supported PEP 440 local-version input.",
+      "sha256": "sha256:53226c7284bc20420ac2e51ef93e78dc103746fd5603cd549ae1b16cced4dc29"
+    },
+    {
+      "applies_to": {
+        "name": "deep-ep",
+        "revision": "01dc3aaac82068020353dce2c302e38153c0bfaa"
+      },
+      "name": "deepep-gin-attestation",
+      "owner": "ml-systems-performance",
+      "path": "third_party/patches/deep_ep/gin-attestation.patch",
+      "rationale": "Expose whether an ElasticBuffer obtained NCCL Gin resources so qualification can attest the transport positively.",
+      "removal_condition": "Upstream exposes an equivalent stable backend-capability query.",
+      "sha256": "sha256:a3226bd0660c827685313e57cf8e9b9ba4d1f27ba4c645517511867ef720ae13"
+    },
+    {
+      "applies_to": {
+        "name": "deep-ep",
+        "revision": "01dc3aaac82068020353dce2c302e38153c0bfaa"
+      },
+      "name": "deepep-runtime-jit-cache",
+      "owner": "ml-systems-performance",
+      "path": "third_party/patches/deep_ep/runtime-jit-cache.patch",
+      "rationale": "Fail closed on a runtime JIT cache miss when a signed prewarmed cache is mounted read-only.",
+      "removal_condition": "Upstream provides an equivalent read-only or compile-forbidden JIT mode.",
+      "sha256": "sha256:ecf83751537afb3acdb834de5aea7f68aa936f0cb35585547a72c0f709d7d6ad"
+    }
+  ],
   "kind": "ThirdPartyPatchLock",
-  "schema_version": "mindclade.third-party-patches/v1"
+  "schema_version": "mindclade.third-party-patches/v2"
 }

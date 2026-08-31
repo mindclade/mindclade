@@ -1,0 +1,17 @@
+diff --git a/csrc/jit/compiler.hpp b/csrc/jit/compiler.hpp
+index ad01b3c..16ca8ff 100644
+--- a/csrc/jit/compiler.hpp
++++ b/csrc/jit/compiler.hpp
+@@ -116,6 +116,12 @@ public:
+         if (const auto runtime = kernel_runtime_cache->get(dir_path); runtime != nullptr)
+             return runtime;
+ 
++        if (get_env("EP_JIT_READ_ONLY", 0)) {
++            fprintf(stderr, "DeepEP read-only JIT cache miss: %s\n", dir_path.c_str());
++            fflush(stderr);
++            EP_HOST_ASSERT(false and "DeepEP read-only JIT cache miss");
++        }
++
+         // Compile into a temporary directory, then atomically rename the whole directory
+         // NOTES: renaming a directory is atomic on both local and distributed filesystems,
+         // avoiding the stale inode issue that occurs when renaming individual files

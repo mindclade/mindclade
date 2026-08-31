@@ -1,5 +1,5 @@
-load("@rules_python//python:defs.bzl", "py_test")
 load("@npm//:defs.bzl", "npm_link_all_packages")
+load("@rules_python//python:defs.bzl", "py_test")
 
 package(default_visibility = ["//visibility:private"])
 
@@ -7,10 +7,14 @@ npm_link_all_packages(name = "node_modules")
 
 exports_files([
     "ARCHITECTURE.md",
+    "flake.lock",
+    "flake.nix",
     "LICENSE",
     "NOTICE",
     "README.md",
     "component.yaml",
+    "pyproject.toml",
+    "uv.lock",
 ])
 
 filegroup(
@@ -54,17 +58,20 @@ filegroup(
         "uv.lock",
         "//docs:documentation",
         "//tools:repository_governance",
-    ] + glob([
-        ".buildkite/**",
-        ".devcontainer/**",
-        ".github/**",
-        ".vscode/**",
-    ], exclude = [
-        "**/__pycache__/**",
-        "**/*.pyc",
-        "**/*.pyo",
-        "**/.DS_Store",
-    ]),
+    ] + glob(
+        [
+            ".buildkite/**",
+            ".devcontainer/**",
+            ".github/**",
+            ".vscode/**",
+        ],
+        exclude = [
+            "**/__pycache__/**",
+            "**/*.pyc",
+            "**/*.pyo",
+            "**/.DS_Store",
+        ],
+    ),
     visibility = ["//visibility:public"],
 )
 
@@ -74,13 +81,13 @@ py_test(
         ".buildkite/lib/*.py",
         ".buildkite/steps/*.py",
     ]),
-    main = ".buildkite/pipeline.py",
     args = ["--check"],
     imports = [
         ".buildkite/lib",
         ".buildkite/steps",
     ],
     legacy_create_init = 0,
+    main = ".buildkite/pipeline.py",
     python_version = "PY3",
 )
 

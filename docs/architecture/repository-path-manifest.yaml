@@ -2547,6 +2547,10 @@
           "reason": "Required Wave 0 governance source for the bounded founder bootstrap and public-estate transition authorized by ADR-0008."
         },
         {
+          "path": "docs/adr/0013-deepep-package-and-qualification-boundary.md",
+          "reason": "Accepted bounded DeepEP package and qualification authority required to replace the unrelated ADR-0009 review reference."
+        },
+        {
           "path": "docs/adr/0010-modular-go-control-plane-relational-durability-worker-isolation.md",
           "reason": "Required fail-closed Wave 2 decision or approval contract omitted by A6; activation records a proposal or pending approval and grants no production authority."
         },
@@ -2633,6 +2637,98 @@
         {
           "path": "protocols/generated/python/pyproject.toml",
           "reason": "Required Wave 1 native generated-binding package authority omitted by A6; keeps native and Bazel compilation authorities explicit."
+        },
+        {
+          "path": "docs/adr/0014-tilelang-kernel-platform-source-development.md",
+          "reason": "Accepted ADR-0014 authority for bounded, pre-activation development of the typed TileLang kernel-platform contract surface."
+        },
+        {
+          "path": "kernels/api/BUILD.bazel",
+          "reason": "ADR-0014 bounded Wave 2S kernel-platform API source surface with real Bazel ownership and tests; TARGET only, with no runtime or production authority."
+        },
+        {
+          "path": "kernels/api/__init__.py",
+          "reason": "ADR-0014 bounded Wave 2S kernel-platform API source surface with real Bazel ownership and tests; TARGET only, with no runtime or production authority."
+        },
+        {
+          "path": "kernels/api/backward.py",
+          "reason": "ADR-0014 bounded Wave 2S kernel-platform API source surface with real Bazel ownership and tests; TARGET only, with no runtime or production authority."
+        },
+        {
+          "path": "kernels/api/effects.py",
+          "reason": "ADR-0014 bounded Wave 2S kernel-platform API source surface with real Bazel ownership and tests; TARGET only, with no runtime or production authority."
+        },
+        {
+          "path": "kernels/api/environment.py",
+          "reason": "ADR-0014 bounded Wave 2S kernel-platform API source surface with real Bazel ownership and tests; TARGET only, with no runtime or production authority."
+        },
+        {
+          "path": "kernels/api/errors.py",
+          "reason": "ADR-0014 bounded Wave 2S kernel-platform API source surface with real Bazel ownership and tests; TARGET only, with no runtime or production authority."
+        },
+        {
+          "path": "kernels/api/expressions.py",
+          "reason": "ADR-0014 bounded Wave 2S kernel-platform API source surface with real Bazel ownership and tests; TARGET only, with no runtime or production authority."
+        },
+        {
+          "path": "kernels/api/forward.py",
+          "reason": "ADR-0014 bounded Wave 2S kernel-platform API source surface with real Bazel ownership and tests; TARGET only, with no runtime or production authority."
+        },
+        {
+          "path": "kernels/api/gradient.py",
+          "reason": "ADR-0014 bounded Wave 2S kernel-platform API source surface with real Bazel ownership and tests; TARGET only, with no runtime or production authority."
+        },
+        {
+          "path": "kernels/api/implementation.py",
+          "reason": "ADR-0014 bounded Wave 2S kernel-platform API source surface with real Bazel ownership and tests; TARGET only, with no runtime or production authority."
+        },
+        {
+          "path": "kernels/api/kernel.py",
+          "reason": "ADR-0014 bounded Wave 2S kernel-platform API source surface with real Bazel ownership and tests; TARGET only, with no runtime or production authority."
+        },
+        {
+          "path": "kernels/api/launch.py",
+          "reason": "ADR-0014 bounded Wave 2S kernel-platform API source surface with real Bazel ownership and tests; TARGET only, with no runtime or production authority."
+        },
+        {
+          "path": "kernels/api/numerics.py",
+          "reason": "ADR-0014 bounded Wave 2S kernel-platform API source surface with real Bazel ownership and tests; TARGET only, with no runtime or production authority."
+        },
+        {
+          "path": "kernels/api/output.py",
+          "reason": "ADR-0014 bounded Wave 2S kernel-platform API source surface with real Bazel ownership and tests; TARGET only, with no runtime or production authority."
+        },
+        {
+          "path": "kernels/api/program_group.py",
+          "reason": "ADR-0014 bounded Wave 2S kernel-platform API source surface with real Bazel ownership and tests; TARGET only, with no runtime or production authority."
+        },
+        {
+          "path": "kernels/api/qualification.py",
+          "reason": "ADR-0014 bounded Wave 2S kernel-platform API source surface with real Bazel ownership and tests; TARGET only, with no runtime or production authority."
+        },
+        {
+          "path": "kernels/api/schedule.py",
+          "reason": "ADR-0014 bounded Wave 2S kernel-platform API source surface with real Bazel ownership and tests; TARGET only, with no runtime or production authority."
+        },
+        {
+          "path": "kernels/api/workload.py",
+          "reason": "ADR-0014 bounded Wave 2S kernel-platform API source surface with real Bazel ownership and tests; TARGET only, with no runtime or production authority."
+        },
+        {
+          "path": "kernels/api/tests/BUILD.bazel",
+          "reason": "ADR-0014 bounded Wave 2S kernel-platform API source surface with real Bazel ownership and tests; TARGET only, with no runtime or production authority."
+        },
+        {
+          "path": "kernels/api/tests/__init__.py",
+          "reason": "ADR-0014 bounded Wave 2S kernel-platform API source surface with real Bazel ownership and tests; TARGET only, with no runtime or production authority."
+        },
+        {
+          "path": "kernels/api/tests/test_contracts.py",
+          "reason": "ADR-0014 bounded Wave 2S kernel-platform API source surface with real Bazel ownership and tests; TARGET only, with no runtime or production authority."
+        },
+        {
+          "path": "kernels/api/tests/test_expressions.py",
+          "reason": "ADR-0014 bounded Wave 2S kernel-platform API source surface with real Bazel ownership and tests; TARGET only, with no runtime or production authority."
         },
         {
           "path": "docs/adr/0009-native-kernel-source-incubation.md",
@@ -3007,7 +3103,19 @@
           "reason": "ADR-0009 bounded Wave 6 native source-incubation surface; TARGET or reviewed-generated only, with zero active or qualified operations and no production authority."
         },
         {
+          "path": "third_party/packages/deep_ep/BUILD.bazel",
+          "reason": "Required Wave 1 DeepEP development-intake package definition, documentation, and source-policy test omitted by A6."
+        },
+        {
           "path": "third_party/packages/deep_ep/README.md",
+          "reason": "Required Wave 1 DeepEP development-intake package definition, documentation, and source-policy test omitted by A6."
+        },
+        {
+          "path": "third_party/packages/deep_ep/artifact_contract.py",
+          "reason": "Required Wave 1 DeepEP development-intake package definition, documentation, and source-policy test omitted by A6."
+        },
+        {
+          "path": "third_party/packages/deep_ep/gpu-evidence.schema.json",
           "reason": "Required Wave 1 DeepEP development-intake package definition, documentation, and source-policy test omitted by A6."
         },
         {
@@ -3015,8 +3123,32 @@
           "reason": "Required Wave 1 DeepEP development-intake package definition, documentation, and source-policy test omitted by A6."
         },
         {
+          "path": "third_party/packages/deep_ep/repository.bzl",
+          "reason": "Required Wave 1 DeepEP development-intake package definition, documentation, and source-policy test omitted by A6."
+        },
+        {
+          "path": "third_party/packages/deep_ep/runtime-manifest.schema.json",
+          "reason": "Required Wave 1 DeepEP development-intake package definition, documentation, and source-policy test omitted by A6."
+        },
+        {
           "path": "third_party/packages/deep_ep/test_package.py",
           "reason": "Required Wave 1 DeepEP development-intake package definition, documentation, and source-policy test omitted by A6."
+        },
+        {
+          "path": "third_party/patches/deep_ep/declared-toolchain-paths.patch",
+          "reason": "ADR-0013 reviewed DeepEP build and qualification patch required for immutable toolchain discovery, backend attestation, and fail-closed JIT behavior."
+        },
+        {
+          "path": "third_party/patches/deep_ep/deterministic-version.patch",
+          "reason": "ADR-0013 reviewed DeepEP build and qualification patch required for immutable toolchain discovery, backend attestation, and fail-closed JIT behavior."
+        },
+        {
+          "path": "third_party/patches/deep_ep/gin-attestation.patch",
+          "reason": "ADR-0013 reviewed DeepEP build and qualification patch required for immutable toolchain discovery, backend attestation, and fail-closed JIT behavior."
+        },
+        {
+          "path": "third_party/patches/deep_ep/runtime-jit-cache.patch",
+          "reason": "ADR-0013 reviewed DeepEP build and qualification patch required for immutable toolchain discovery, backend attestation, and fail-closed JIT behavior."
         },
         {
           "path": "docs/adr/0001-repository-identity-and-ownership.md",
@@ -3054,8 +3186,8 @@
           "reason": "Sections 1-18 and Section 14.1 take precedence over the stale A6 short ADR name."
         }
       ],
-      "canonical_file_count": 2593,
-      "canonical_path_set_sha256": "c0d7fd2264809e3ad653981cbfdd0ff5b8e1dc672128f60dd1aa51887ec4f3b9"
+      "canonical_file_count": 2626,
+      "canonical_path_set_sha256": "d46246cfa2483aed52b93dc3bd47ac0c4eceab07dc689fbadf549ff8a2c63a62"
     },
     "owners": {
       "agent-platform": {
@@ -19985,10 +20117,12 @@
       "status": "target",
       "activation_wave": "2S",
       "source_authority": "hand-authored",
-      "build_targets": [],
+      "build_targets": [
+        "//kernels/api:api"
+      ],
       "test_targets": [],
       "public_surface": false,
-      "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
+      "activation_criterion": "ADR-0014 permits bounded source development only through 2026-11-30; activate in Wave 2S only with concrete operation consumers, stable typed contracts, real Bazel targets, qualification evidence, and a separately reviewed production decision."
     },
     {
       "path": "kernels/api/result.py",
@@ -20002,6 +20136,338 @@
       "test_targets": [],
       "public_surface": false,
       "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
+    },
+    {
+      "path": "kernels/api/BUILD.bazel",
+      "kind": "build",
+      "owner": "ml-systems-performance",
+      "component": "kernels",
+      "status": "target",
+      "activation_wave": "2S",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//kernels/api:api"
+      ],
+      "test_targets": [],
+      "public_surface": false,
+      "activation_criterion": "ADR-0014 permits bounded source development only through 2026-11-30; activate in Wave 2S only with concrete operation consumers, stable typed contracts, real Bazel targets, qualification evidence, and a separately reviewed production decision."
+    },
+    {
+      "path": "kernels/api/__init__.py",
+      "kind": "source",
+      "owner": "ml-systems-performance",
+      "component": "kernels",
+      "status": "target",
+      "activation_wave": "2S",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//kernels/api:api"
+      ],
+      "test_targets": [],
+      "public_surface": false,
+      "activation_criterion": "ADR-0014 permits bounded source development only through 2026-11-30; activate in Wave 2S only with concrete operation consumers, stable typed contracts, real Bazel targets, qualification evidence, and a separately reviewed production decision."
+    },
+    {
+      "path": "kernels/api/backward.py",
+      "kind": "source",
+      "owner": "ml-systems-performance",
+      "component": "kernels",
+      "status": "target",
+      "activation_wave": "2S",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//kernels/api:api"
+      ],
+      "test_targets": [],
+      "public_surface": false,
+      "activation_criterion": "ADR-0014 permits bounded source development only through 2026-11-30; activate in Wave 2S only with concrete operation consumers, stable typed contracts, real Bazel targets, qualification evidence, and a separately reviewed production decision."
+    },
+    {
+      "path": "kernels/api/effects.py",
+      "kind": "source",
+      "owner": "ml-systems-performance",
+      "component": "kernels",
+      "status": "target",
+      "activation_wave": "2S",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//kernels/api:api"
+      ],
+      "test_targets": [],
+      "public_surface": false,
+      "activation_criterion": "ADR-0014 permits bounded source development only through 2026-11-30; activate in Wave 2S only with concrete operation consumers, stable typed contracts, real Bazel targets, qualification evidence, and a separately reviewed production decision."
+    },
+    {
+      "path": "kernels/api/environment.py",
+      "kind": "source",
+      "owner": "ml-systems-performance",
+      "component": "kernels",
+      "status": "target",
+      "activation_wave": "2S",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//kernels/api:api"
+      ],
+      "test_targets": [],
+      "public_surface": false,
+      "activation_criterion": "ADR-0014 permits bounded source development only through 2026-11-30; activate in Wave 2S only with concrete operation consumers, stable typed contracts, real Bazel targets, qualification evidence, and a separately reviewed production decision."
+    },
+    {
+      "path": "kernels/api/errors.py",
+      "kind": "source",
+      "owner": "ml-systems-performance",
+      "component": "kernels",
+      "status": "target",
+      "activation_wave": "2S",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//kernels/api:api"
+      ],
+      "test_targets": [],
+      "public_surface": false,
+      "activation_criterion": "ADR-0014 permits bounded source development only through 2026-11-30; activate in Wave 2S only with concrete operation consumers, stable typed contracts, real Bazel targets, qualification evidence, and a separately reviewed production decision."
+    },
+    {
+      "path": "kernels/api/expressions.py",
+      "kind": "source",
+      "owner": "ml-systems-performance",
+      "component": "kernels",
+      "status": "target",
+      "activation_wave": "2S",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//kernels/api:api"
+      ],
+      "test_targets": [],
+      "public_surface": false,
+      "activation_criterion": "ADR-0014 permits bounded source development only through 2026-11-30; activate in Wave 2S only with concrete operation consumers, stable typed contracts, real Bazel targets, qualification evidence, and a separately reviewed production decision."
+    },
+    {
+      "path": "kernels/api/forward.py",
+      "kind": "source",
+      "owner": "ml-systems-performance",
+      "component": "kernels",
+      "status": "target",
+      "activation_wave": "2S",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//kernels/api:api"
+      ],
+      "test_targets": [],
+      "public_surface": false,
+      "activation_criterion": "ADR-0014 permits bounded source development only through 2026-11-30; activate in Wave 2S only with concrete operation consumers, stable typed contracts, real Bazel targets, qualification evidence, and a separately reviewed production decision."
+    },
+    {
+      "path": "kernels/api/gradient.py",
+      "kind": "source",
+      "owner": "ml-systems-performance",
+      "component": "kernels",
+      "status": "target",
+      "activation_wave": "2S",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//kernels/api:api"
+      ],
+      "test_targets": [],
+      "public_surface": false,
+      "activation_criterion": "ADR-0014 permits bounded source development only through 2026-11-30; activate in Wave 2S only with concrete operation consumers, stable typed contracts, real Bazel targets, qualification evidence, and a separately reviewed production decision."
+    },
+    {
+      "path": "kernels/api/implementation.py",
+      "kind": "source",
+      "owner": "ml-systems-performance",
+      "component": "kernels",
+      "status": "target",
+      "activation_wave": "2S",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//kernels/api:api"
+      ],
+      "test_targets": [],
+      "public_surface": false,
+      "activation_criterion": "ADR-0014 permits bounded source development only through 2026-11-30; activate in Wave 2S only with concrete operation consumers, stable typed contracts, real Bazel targets, qualification evidence, and a separately reviewed production decision."
+    },
+    {
+      "path": "kernels/api/kernel.py",
+      "kind": "source",
+      "owner": "ml-systems-performance",
+      "component": "kernels",
+      "status": "target",
+      "activation_wave": "2S",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//kernels/api:api"
+      ],
+      "test_targets": [],
+      "public_surface": false,
+      "activation_criterion": "ADR-0014 permits bounded source development only through 2026-11-30; activate in Wave 2S only with concrete operation consumers, stable typed contracts, real Bazel targets, qualification evidence, and a separately reviewed production decision."
+    },
+    {
+      "path": "kernels/api/launch.py",
+      "kind": "source",
+      "owner": "ml-systems-performance",
+      "component": "kernels",
+      "status": "target",
+      "activation_wave": "2S",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//kernels/api:api"
+      ],
+      "test_targets": [],
+      "public_surface": false,
+      "activation_criterion": "ADR-0014 permits bounded source development only through 2026-11-30; activate in Wave 2S only with concrete operation consumers, stable typed contracts, real Bazel targets, qualification evidence, and a separately reviewed production decision."
+    },
+    {
+      "path": "kernels/api/numerics.py",
+      "kind": "source",
+      "owner": "ml-systems-performance",
+      "component": "kernels",
+      "status": "target",
+      "activation_wave": "2S",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//kernels/api:api"
+      ],
+      "test_targets": [],
+      "public_surface": false,
+      "activation_criterion": "ADR-0014 permits bounded source development only through 2026-11-30; activate in Wave 2S only with concrete operation consumers, stable typed contracts, real Bazel targets, qualification evidence, and a separately reviewed production decision."
+    },
+    {
+      "path": "kernels/api/output.py",
+      "kind": "source",
+      "owner": "ml-systems-performance",
+      "component": "kernels",
+      "status": "target",
+      "activation_wave": "2S",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//kernels/api:api"
+      ],
+      "test_targets": [],
+      "public_surface": false,
+      "activation_criterion": "ADR-0014 permits bounded source development only through 2026-11-30; activate in Wave 2S only with concrete operation consumers, stable typed contracts, real Bazel targets, qualification evidence, and a separately reviewed production decision."
+    },
+    {
+      "path": "kernels/api/program_group.py",
+      "kind": "source",
+      "owner": "ml-systems-performance",
+      "component": "kernels",
+      "status": "target",
+      "activation_wave": "2S",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//kernels/api:api"
+      ],
+      "test_targets": [],
+      "public_surface": false,
+      "activation_criterion": "ADR-0014 permits bounded source development only through 2026-11-30; activate in Wave 2S only with concrete operation consumers, stable typed contracts, real Bazel targets, qualification evidence, and a separately reviewed production decision."
+    },
+    {
+      "path": "kernels/api/qualification.py",
+      "kind": "source",
+      "owner": "ml-systems-performance",
+      "component": "kernels",
+      "status": "target",
+      "activation_wave": "2S",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//kernels/api:api"
+      ],
+      "test_targets": [],
+      "public_surface": false,
+      "activation_criterion": "ADR-0014 permits bounded source development only through 2026-11-30; activate in Wave 2S only with concrete operation consumers, stable typed contracts, real Bazel targets, qualification evidence, and a separately reviewed production decision."
+    },
+    {
+      "path": "kernels/api/schedule.py",
+      "kind": "source",
+      "owner": "ml-systems-performance",
+      "component": "kernels",
+      "status": "target",
+      "activation_wave": "2S",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//kernels/api:api"
+      ],
+      "test_targets": [],
+      "public_surface": false,
+      "activation_criterion": "ADR-0014 permits bounded source development only through 2026-11-30; activate in Wave 2S only with concrete operation consumers, stable typed contracts, real Bazel targets, qualification evidence, and a separately reviewed production decision."
+    },
+    {
+      "path": "kernels/api/workload.py",
+      "kind": "source",
+      "owner": "ml-systems-performance",
+      "component": "kernels",
+      "status": "target",
+      "activation_wave": "2S",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//kernels/api:api"
+      ],
+      "test_targets": [],
+      "public_surface": false,
+      "activation_criterion": "ADR-0014 permits bounded source development only through 2026-11-30; activate in Wave 2S only with concrete operation consumers, stable typed contracts, real Bazel targets, qualification evidence, and a separately reviewed production decision."
+    },
+    {
+      "path": "kernels/api/tests/BUILD.bazel",
+      "kind": "build",
+      "owner": "ml-systems-performance",
+      "component": "kernels",
+      "status": "target",
+      "activation_wave": "2S",
+      "source_authority": "hand-authored",
+      "build_targets": [],
+      "test_targets": [
+        "//kernels/api/tests:test_contracts",
+        "//kernels/api/tests:test_expressions"
+      ],
+      "public_surface": false,
+      "activation_criterion": "ADR-0014 permits bounded source development only through 2026-11-30; activate in Wave 2S only with concrete operation consumers, stable typed contracts, real Bazel targets, qualification evidence, and a separately reviewed production decision."
+    },
+    {
+      "path": "kernels/api/tests/__init__.py",
+      "kind": "test",
+      "owner": "ml-systems-performance",
+      "component": "kernels",
+      "status": "target",
+      "activation_wave": "2S",
+      "source_authority": "hand-authored",
+      "build_targets": [],
+      "test_targets": [
+        "//kernels/api/tests:test_contracts",
+        "//kernels/api/tests:test_expressions"
+      ],
+      "public_surface": false,
+      "activation_criterion": "ADR-0014 permits bounded source development only through 2026-11-30; activate in Wave 2S only with concrete operation consumers, stable typed contracts, real Bazel targets, qualification evidence, and a separately reviewed production decision."
+    },
+    {
+      "path": "kernels/api/tests/test_contracts.py",
+      "kind": "test",
+      "owner": "ml-systems-performance",
+      "component": "kernels",
+      "status": "target",
+      "activation_wave": "2S",
+      "source_authority": "hand-authored",
+      "build_targets": [],
+      "test_targets": [
+        "//kernels/api/tests:test_contracts"
+      ],
+      "public_surface": false,
+      "activation_criterion": "ADR-0014 permits bounded source development only through 2026-11-30; activate in Wave 2S only with concrete operation consumers, stable typed contracts, real Bazel targets, qualification evidence, and a separately reviewed production decision."
+    },
+    {
+      "path": "kernels/api/tests/test_expressions.py",
+      "kind": "test",
+      "owner": "ml-systems-performance",
+      "component": "kernels",
+      "status": "target",
+      "activation_wave": "2S",
+      "source_authority": "hand-authored",
+      "build_targets": [],
+      "test_targets": [
+        "//kernels/api/tests:test_expressions"
+      ],
+      "public_surface": false,
+      "activation_criterion": "ADR-0014 permits bounded source development only through 2026-11-30; activate in Wave 2S only with concrete operation consumers, stable typed contracts, real Bazel targets, qualification evidence, and a separately reviewed production decision."
     },
     {
       "path": "kernels/common/layouts/layout.py",
@@ -37998,6 +38464,22 @@
       "public_surface": false
     },
     {
+      "path": "docs/adr/0013-deepep-package-and-qualification-boundary.md",
+      "kind": "documentation",
+      "owner": "architecture",
+      "component": "docs-adr",
+      "status": "active",
+      "activation_wave": "0",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:wave0_governance_sources"
+      ],
+      "test_targets": [
+        "//:wave0_tests"
+      ],
+      "public_surface": false
+    },
+    {
       "path": "docs/adr/0010-modular-go-control-plane-relational-durability-worker-isolation.md",
       "kind": "documentation",
       "owner": "architecture",
@@ -38031,6 +38513,22 @@
     },
     {
       "path": "docs/adr/0012-http-json-operation-projection-python-sdk.md",
+      "kind": "documentation",
+      "owner": "architecture",
+      "component": "docs-adr",
+      "status": "active",
+      "activation_wave": "0",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:wave0_governance_sources"
+      ],
+      "test_targets": [
+        "//:wave0_tests"
+      ],
+      "public_surface": false
+    },
+    {
+      "path": "docs/adr/0014-tilelang-kernel-platform-source-development.md",
       "kind": "documentation",
       "owner": "architecture",
       "component": "docs-adr",
@@ -39062,6 +39560,74 @@
       "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
     },
     {
+      "path": "third_party/patches/deep_ep/declared-toolchain-paths.patch",
+      "kind": "source",
+      "owner": "security",
+      "component": "third-party-patches",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//third_party:wave1_third_party_sources"
+      ],
+      "test_targets": [
+        "//third_party:test_deep_ep_package_policy"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Development intake only; production use requires an activated consumer, hardware qualification, artifact SBOM and provenance, and protected review."
+    },
+    {
+      "path": "third_party/patches/deep_ep/deterministic-version.patch",
+      "kind": "source",
+      "owner": "security",
+      "component": "third-party-patches",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//third_party:wave1_third_party_sources"
+      ],
+      "test_targets": [
+        "//third_party:test_deep_ep_package_policy"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Development intake only; production use requires an activated consumer, hardware qualification, artifact SBOM and provenance, and protected review."
+    },
+    {
+      "path": "third_party/patches/deep_ep/gin-attestation.patch",
+      "kind": "source",
+      "owner": "security",
+      "component": "third-party-patches",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//third_party:wave1_third_party_sources"
+      ],
+      "test_targets": [
+        "//third_party:test_deep_ep_package_policy"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Development intake only; production use requires an activated consumer, hardware qualification, artifact SBOM and provenance, and protected review."
+    },
+    {
+      "path": "third_party/patches/deep_ep/runtime-jit-cache.patch",
+      "kind": "source",
+      "owner": "security",
+      "component": "third-party-patches",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//third_party:wave1_third_party_sources"
+      ],
+      "test_targets": [
+        "//third_party:test_deep_ep_package_policy"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Development intake only; production use requires an activated consumer, hardware qualification, artifact SBOM and provenance, and protected review."
+    },
+    {
       "path": "third_party/licenses/README.md",
       "kind": "documentation",
       "owner": "security",
@@ -39181,6 +39747,23 @@
       "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
     },
     {
+      "path": "third_party/packages/deep_ep/BUILD.bazel",
+      "kind": "build",
+      "owner": "security",
+      "component": "third-party-packages",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//third_party/packages/deep_ep:policy_inputs"
+      ],
+      "test_targets": [
+        "//third_party:test_deep_ep_package_policy"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Development intake only; production use requires an activated consumer, hardware qualification, artifact SBOM and provenance, and protected review."
+    },
+    {
       "path": "third_party/packages/deep_ep/README.md",
       "kind": "documentation",
       "owner": "security",
@@ -39189,7 +39772,41 @@
       "activation_wave": "1",
       "source_authority": "hand-authored",
       "build_targets": [
-        "//third_party:deep_ep_package"
+        "//third_party/packages/deep_ep:policy_inputs"
+      ],
+      "test_targets": [
+        "//third_party:test_deep_ep_package_policy"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Development intake only; production use requires an activated consumer, hardware qualification, artifact SBOM and provenance, and protected review."
+    },
+    {
+      "path": "third_party/packages/deep_ep/artifact_contract.py",
+      "kind": "source",
+      "owner": "security",
+      "component": "third-party-packages",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//third_party/packages/deep_ep:policy_inputs"
+      ],
+      "test_targets": [
+        "//third_party:test_deep_ep_package_policy"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Development intake only; production use requires an activated consumer, hardware qualification, artifact SBOM and provenance, and protected review."
+    },
+    {
+      "path": "third_party/packages/deep_ep/gpu-evidence.schema.json",
+      "kind": "schema",
+      "owner": "security",
+      "component": "third-party-packages",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//third_party/packages/deep_ep:policy_inputs"
       ],
       "test_targets": [
         "//third_party:test_deep_ep_package_policy"
@@ -39206,7 +39823,41 @@
       "activation_wave": "1",
       "source_authority": "hand-authored",
       "build_targets": [
-        "//third_party:deep_ep_package"
+        "//third_party/packages/deep_ep:policy_inputs"
+      ],
+      "test_targets": [
+        "//third_party:test_deep_ep_package_policy"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Development intake only; production use requires an activated consumer, hardware qualification, artifact SBOM and provenance, and protected review."
+    },
+    {
+      "path": "third_party/packages/deep_ep/repository.bzl",
+      "kind": "build",
+      "owner": "security",
+      "component": "third-party-packages",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//third_party/packages/deep_ep:policy_inputs"
+      ],
+      "test_targets": [
+        "//third_party:test_deep_ep_package_policy"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Development intake only; production use requires an activated consumer, hardware qualification, artifact SBOM and provenance, and protected review."
+    },
+    {
+      "path": "third_party/packages/deep_ep/runtime-manifest.schema.json",
+      "kind": "schema",
+      "owner": "security",
+      "component": "third-party-packages",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//third_party/packages/deep_ep:policy_inputs"
       ],
       "test_targets": [
         "//third_party:test_deep_ep_package_policy"
@@ -39223,7 +39874,7 @@
       "activation_wave": "1",
       "source_authority": "hand-authored",
       "build_targets": [
-        "//third_party:deep_ep_package"
+        "//third_party/packages/deep_ep:policy_inputs"
       ],
       "test_targets": [
         "//third_party:test_deep_ep_package_policy"

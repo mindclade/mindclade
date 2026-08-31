@@ -1,0 +1,19 @@
+diff --git a/setup.py b/setup.py
+index 81a1e26..135f811 100644
+--- a/setup.py
++++ b/setup.py
+@@ -11,6 +11,14 @@ from torch.utils.cpp_extension import BuildExtension, CUDAExtension
+ 
+ current_dir = os.path.dirname(os.path.realpath(__file__))
+ persistent_env_names = ('EP_JIT_CACHE_DIR', 'EP_JIT_PRINT_COMPILER_COMMAND', 'EP_NUM_TOPK_IDX_BITS', 'EP_NCCL_ROOT_DIR')
++if os.environ.get('MINDCLADE_DEEPEP_PERSIST_TOOLCHAIN_PATHS') == '1':
++    persistent_env_names += (
++        'CUDA_HOME',
++        'CUDA_PATH',
++        'EP_JIT_NVCC_COMPILER',
++        'EP_NVSHMEM_ROOT_DIR',
++        'NVSHMEM_DIR',
++    )
+ 
+ # Load discover module without triggering `deep_ep.__init__`
+ find_pkgs_spec = importlib.util.spec_from_file_location('find_pkgs', os.path.join(current_dir, 'deep_ep', 'utils', 'find_pkgs.py'))

@@ -92,18 +92,8 @@
         let
           deepEp = deepEpPackageSet pkgs;
           deepEpPackage = deepEp.package;
-          deepEpJitFingerprint = builtins.hashString "sha256" (
-            builtins.toJSON {
-              build_variant = "v2";
-              compiler_version = pkgs.cudaPackages.cuda_nvcc.version;
-              cuda_version = deepEp.record.build_authority.runtime_profile.cuda;
-              gpu_architecture = builtins.concatStringsSep "," deepEp.record.build_authority.cuda_capabilities;
-              nccl_version = deepEp.record.build_authority.runtime_profile.nccl;
-              patch_digest = "sha256:${builtins.hashFile "sha256" ./third_party/patches/patches.lock.json}";
-              torch_version = deepEp.record.build_authority.runtime_profile.torch;
-              upstream_commit = deepEp.record.upstream.revision;
-            }
-          );
+          deepEpJitFingerprint = deepEp.runtime.fingerprint;
+          deepEpJitFingerprintId = pkgs.lib.removePrefix "sha256:" deepEpJitFingerprint;
           pythonEnv = pkgs.python312.withPackages (pythonPackages: [
             pythonPackages.cryptography
             deepEpPackage
@@ -118,6 +108,7 @@
               buf
               cargo
               cmake
+              cudaPackages.cuda_cuobjdump
               cudaPackages.cuda_nvcc
               cudaPackages.libnvshmem
               gitleaks
@@ -145,6 +136,8 @@
             EP_JIT_NVCC_COMPILER = deepEp.runtime.jitNvcc;
             EP_NCCL_ROOT_DIR = deepEp.runtime.ncclRoot;
             MINDCLADE_DEEPEP_JIT_FINGERPRINT = deepEpJitFingerprint;
+            MINDCLADE_DEEPEP_PACKAGE_ROOT = deepEpPackage;
+            MINDCLADE_DEEPEP_RUNTIME_MANIFEST = deepEp.runtimeManifest;
             NVSHMEM_DIR = deepEp.runtime.nvshmemRoot;
             TORCH_CUDA_ARCH_LIST = builtins.concatStringsSep " " deepEp.record.build_authority.cuda_capabilities;
             LANG = "C";
@@ -157,7 +150,7 @@
             shellHook = ''
               export PATH="${pythonEnv}/bin:$PATH"
               export MINDCLADE_REPOSITORY_ROOT="$PWD"
-              export EP_JIT_CACHE_DIR="$PWD/.cache/deepep/jit/${deepEpJitFingerprint}"
+              export EP_JIT_CACHE_DIR="$PWD/.cache/deepep/jit/${deepEpJitFingerprintId}"
               echo "Mindclade SM90 GPU intake shell — modern DeepEP 2.x; no production authority"
             '';
           };
@@ -174,10 +167,30 @@
       packages = forGpuSystems (
         pkgs:
         let
-          deepEpPackage = (deepEpPackageSet pkgs).package;
+          deepEp = deepEpPackageSet pkgs;
         in
         {
-          deep-ep = deepEpPackage;
+          deep-ep = deepEp.runtimeEnvironment;
+          deep-ep-python-package = deepEp.package;
+          deep-ep-runtime-manifest = deepEp.runtimeManifest;
+        }
+        // pkgs.lib.optionalAttrs (deepEp.closureWheel != null) {
+          deep-ep-artifacts = deepEp.artifactBundle;
+          deep-ep-wheel = deepEp.closureWheel;
+          deep-ep-wheel-runtime-manifest = deepEp.wheelRuntimeManifest;
+        }
+      );
+
+      checks = forGpuSystems (
+        pkgs:
+        let
+          deepEp = deepEpPackageSet pkgs;
+        in
+        {
+          deep-ep-standalone-import = deepEp.standaloneImportTest;
+        }
+        // pkgs.lib.optionalAttrs (deepEp.artifactBundle != null) {
+          deep-ep-artifact-bundle = deepEp.artifactBundle;
         }
       );
 

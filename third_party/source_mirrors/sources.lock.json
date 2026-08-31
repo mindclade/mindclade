@@ -14,6 +14,7 @@
         "definition": "third_party/packages/deep_ep/package.nix",
         "flake_input": "nixpkgs",
         "nixpkgs_revision": "83199d0d373dd3ac2b9a1996b1d0263f76ab7a4c",
+        "artifact_bundle": "packages.deep-ep-artifacts",
         "package": "packages.deep-ep",
         "runtime_profile": {
           "cuda": "12.9",
@@ -25,7 +26,7 @@
         },
         "source": "flake.nix+flake.lock",
         "source_nar_hash": "sha256-Y4SOyPbjoLIs86Xi87kSky7BPDSbjRh6Lf0fTO4KHjg=",
-        "version": "2.0.0-unstable-2026-08-04"
+        "version": "2.1.0+01dc3aa"
       },
       "license": {
         "file": "LICENSE",
@@ -34,7 +35,13 @@
       },
       "name": "deep-ep",
       "owner": "ml-systems-performance",
-      "review_reference": "docs/adr/0009-native-kernel-source-incubation.md",
+      "wheel": {
+        "distribution": "nix-closure-bound",
+        "external_install_supported": false,
+        "platform": "linux_x86_64",
+        "python_abi": "cp312"
+      },
+      "review_reference": "docs/adr/0013-deepep-package-and-qualification-boundary.md",
       "status": "intake-only",
       "submodules": [
         {
@@ -61,5 +68,5 @@
     }
   ],
   "kind": "ThirdPartySourceMirrorLock",
-  "schema_version": "mindclade.third-party-source-mirrors/v1"
+  "schema_version": "mindclade.third-party-source-mirrors/v2"
 }

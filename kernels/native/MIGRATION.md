@@ -429,8 +429,8 @@ on a production request path.
 
 Until all gates complete, manifest v2 remains authoritative and production
 authority remains false.
-+
-# Kernel Platform v3 Constitution and Implementation Plan
+
+## Kernel Platform v3 Constitution and Implementation Plan
 
 **Status:** approved target; implementation and accelerator promotion remain
 evidence-gated.

@@ -18,6 +18,18 @@ from owner_policy import discover_components, validate_owners
 from path_policy import load_manifest, validate_manifest, validate_populated_paths
 
 GENERATED_MARKERS = ("generated", "do not edit", "begin generated: repository-path-manifest")
+TARGET_MEMBERSHIP_ATTRIBUTES = (
+    "srcs",
+    "hdrs",
+    "textual_hdrs",
+    "tests",
+    "data",
+    "deps",
+    "runtime_deps",
+    "exports",
+    "actual",
+    "embed",
+)
 
 
 def validate_generated_files(manifest: Mapping[str, Any], root: Path) -> list[str]:
@@ -43,6 +55,59 @@ def validate_generated_files(manifest: Mapping[str, Any], root: Path) -> list[st
         if not any(marker in prefix for marker in GENERATED_MARKERS):
             errors.append(f"generated file lacks a generator marker: {entry['path']}")
     return errors
+
+
+def _repository_target_sources(bazel: str, root: Path, label: str) -> tuple[set[str], str | None]:
+    sources: set[str] = set()
+    visited: set[str] = set()
+    pending: set[str] = {label}
+    while pending:
+        frontier = sorted(pending - visited)
+        if not frontier:
+            break
+        visited.update(frontier)
+        target_set = f"set({' '.join(frontier)})"
+        expression = " union ".join(
+            f"labels({attribute}, {target_set})" for attribute in TARGET_MEMBERSHIP_ATTRIBUTES
+        )
+        result = subprocess.run(
+            [
+                bazel,
+                "--nohome_rc",
+                "--noworkspace_rc",
+                f"--output_user_root={root.resolve() / 'build/bazel-user-root'}",
+                f"--bazelrc={root.resolve() / '.bazelrc'}",
+                "query",
+                "--noshow_progress",
+                expression,
+                "--output=label",
+            ],
+            cwd=root,
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode != 0:
+            detail = [line.strip() for line in result.stderr.splitlines() if line.strip()]
+            return sources, detail[-1] if detail else "unknown Bazel failure"
+        pending = set[str]()
+        for member in result.stdout.splitlines():
+            member = member.strip()
+            if member.startswith("@@//"):
+                member = member[2:]
+            elif member.startswith("@//"):
+                member = member[1:]
+            elif member.startswith("@"):
+                continue
+            if not member.startswith("//") or ":" not in member:
+                continue
+            package, name = member[2:].split(":", 1)
+            path = f"{package}/{name}" if package else name
+            if (root / path).is_file():
+                sources.add(path)
+            elif member not in visited:
+                pending.add(member)
+    return sources, None
 
 
 def validate_declared_targets(manifest: Mapping[str, Any], root: Path) -> list[str]:
@@ -75,39 +140,10 @@ def validate_declared_targets(manifest: Mapping[str, Any], root: Path) -> list[s
                 f"cannot prove target source membership without the pinned direct Bazel: {label}"
             )
             continue
-        result = subprocess.run(
-            [
-                bazel,
-                "--nohome_rc",
-                "--noworkspace_rc",
-                f"--output_user_root={root.resolve() / 'build/bazel-user-root'}",
-                f"--bazelrc={root.resolve() / '.bazelrc'}",
-                "query",
-                "--noshow_progress",
-                f'kind("source file", deps({label}))',
-                "--output=label",
-            ],
-            cwd=root,
-            check=False,
-            capture_output=True,
-            text=True,
-        )
-        if result.returncode != 0:
-            detail = result.stderr.strip().splitlines()
-            errors.append(
-                f"cannot query target source membership for {label}: "
-                + (detail[-1] if detail else "unknown Bazel failure")
-            )
+        sources, detail = _repository_target_sources(bazel, root, label)
+        if detail is not None:
+            errors.append(f"cannot query target source membership for {label}: {detail}")
             continue
-        sources: set[str] = set()
-        for source_label in result.stdout.splitlines():
-            source_label = source_label.removeprefix("@@//").removeprefix("@//")
-            if source_label.startswith("//"):
-                source_label = source_label[2:]
-            if source_label.startswith("@") or ":" not in source_label:
-                continue
-            package, name = source_label.split(":", 1)
-            sources.add(f"{package}/{name}" if package else name)
         target_sources[label] = sources
 
     for entry in manifest["paths"]:

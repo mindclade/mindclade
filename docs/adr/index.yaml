@@ -86,3 +86,17 @@ spec:
       connectedRatification: pending
       path: docs/adr/0012-http-json-operation-projection-python-sdk.md
       owners: [developer-experience, control-plane, architecture]
+    - id: ADR-0013
+      title: DeepEP package and qualification boundary
+      status: accepted-in-specification
+      connectedRatification: pending
+      path: docs/adr/0013-deepep-package-and-qualification-boundary.md
+      owners: [security, developer-platform, ml-systems-performance]
+      specificationAccepted: "2026-08-31"
+    - id: ADR-0014
+      title: TileLang kernel platform source development
+      status: accepted-in-specification
+      connectedRatification: pending
+      path: docs/adr/0014-tilelang-kernel-platform-source-development.md
+      owners: [architecture, ml-systems-performance]
+      specificationAccepted: "2026-08-31"

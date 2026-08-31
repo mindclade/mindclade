@@ -127,6 +127,18 @@ ADR_REGISTRY = (
         "proposed",
         "HTTP/JSON Operation Projection and Python SDK",
     ),
+    AdrContract(
+        "ADR-0013",
+        "0013-deepep-package-and-qualification-boundary.md",
+        "accepted",
+        "DeepEP package and qualification boundary",
+    ),
+    AdrContract(
+        "ADR-0014",
+        "0014-tilelang-kernel-platform-source-development.md",
+        "accepted",
+        "TileLang kernel platform source development",
+    ),
 )
 ADR_PATHS = tuple(contract.filename for contract in ADR_REGISTRY)
 ADR_METADATA_FIELDS = {
@@ -998,9 +1010,12 @@ def _self_test_adr_ratification_contract() -> None:
         "ADR-0006",
         "ADR-0007",
         "ADR-0008",
+        "ADR-0009",
         "ADR-0010",
         "ADR-0011",
         "ADR-0012",
+        "ADR-0013",
+        "ADR-0014",
     ]:
         raise AssertionError("ADR registry order drifted")
     for contract in ADR_REGISTRY:

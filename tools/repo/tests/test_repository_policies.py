@@ -6,7 +6,7 @@ import tempfile
 import unittest
 from pathlib import Path
 from typing import Any
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 from urllib.parse import urlsplit
 
 from jsonschema import Draft202012Validator, FormatChecker
@@ -70,9 +70,9 @@ class RepositoryPolicyTest(unittest.TestCase):
 
     def test_manifest_is_semantically_valid(self) -> None:
         self.assertEqual(validate_manifest(self.manifest), [])
-        self.assertEqual(len(self.manifest["paths"]), 2593)
+        self.assertEqual(len(self.manifest["paths"]), 2626)
         wave_one = [entry for entry in self.manifest["paths"] if entry["activation_wave"] == "1"]
-        self.assertEqual(len(wave_one), 389)
+        self.assertEqual(len(wave_one), 398)
         for entry in wave_one:
             with self.subTest(path=entry["path"]):
                 status = entry["status"]
@@ -81,7 +81,17 @@ class RepositoryPolicyTest(unittest.TestCase):
                     self.assertEqual(entry["build_targets"], [])
                     self.assertEqual(entry["test_targets"], [])
                 elif entry["path"].startswith("third_party/packages/deep_ep/"):
-                    self.assertEqual(entry["build_targets"], ["//third_party:deep_ep_package"])
+                    self.assertEqual(
+                        entry["build_targets"],
+                        ["//third_party/packages/deep_ep:policy_inputs"],
+                    )
+                    self.assertEqual(
+                        entry["test_targets"], ["//third_party:test_deep_ep_package_policy"]
+                    )
+                elif entry["path"].startswith("third_party/patches/deep_ep/"):
+                    self.assertEqual(
+                        entry["build_targets"], ["//third_party:wave1_third_party_sources"]
+                    )
                     self.assertEqual(
                         entry["test_targets"], ["//third_party:test_deep_ep_package_policy"]
                     )
@@ -113,6 +123,41 @@ class RepositoryPolicyTest(unittest.TestCase):
             errors,
             ["cannot prove target source membership without the pinned direct Bazel: //:wave0"],
         )
+
+    def test_target_validation_does_not_follow_external_dependencies(self) -> None:
+        manifest = {
+            "paths": [
+                {
+                    "path": "nested/source.py",
+                    "status": "active",
+                    "build_targets": ["//:aggregate"],
+                    "test_targets": [],
+                }
+            ]
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "BUILD.bazel").write_text('filegroup(name = "aggregate")\n', encoding="utf-8")
+            (root / "nested").mkdir()
+            (root / "nested/source.py").write_text("pass\n", encoding="utf-8")
+            query_results = [
+                Mock(
+                    returncode=0,
+                    stdout="//nested:nested_sources\n@crate//:external\n",
+                    stderr="",
+                ),
+                Mock(returncode=0, stdout="//nested:source.py\n", stderr=""),
+            ]
+            with (
+                patch("verify_repository_path_manifest.shutil.which", return_value="/bin/bazel"),
+                patch(
+                    "verify_repository_path_manifest.subprocess.run",
+                    side_effect=query_results,
+                ) as query,
+            ):
+                errors = validate_declared_targets(manifest, root)
+        self.assertEqual(errors, [])
+        self.assertEqual(query.call_count, 2)
 
     def test_schema_validates_manifest(self) -> None:
         schema = json.loads(

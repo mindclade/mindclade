@@ -91,6 +91,9 @@ def self_test() -> None:
                 raise AssertionError("multi-node GPU probe bypasses the activation gate")
             if "MINDCLADE_DEEPEP_RDZV_ID=${BUILDKITE_BUILD_ID}" not in multi_node["command"]:
                 raise AssertionError("multi-node GPU probe does not isolate its rendezvous")
+            for key in ("gpu-intranode-probe", "gpu-multinode-probe"):
+                if "nix develop .#deepep --command" not in by_key[key]["command"]:
+                    raise AssertionError(f"{key} bypasses the pinned DeepEP Nix environment")
     pre_command = (BUILDKITE_ROOT / "hooks/pre-command").read_text(encoding="utf-8")
     protected_fragments = (
         "PROTECTED_DEFINITION_PATHS",

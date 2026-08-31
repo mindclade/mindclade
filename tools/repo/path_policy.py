@@ -28,9 +28,9 @@ BLUEPRINT_SHA256 = "d099074e755168bbdce076d50918bf06aff677f9e5d620fdfe53cb7cef74
 ANCHOR_COMMIT = "292b71f47b1b29cc9ba7cf760a9bd07cd5e0ffa7"
 AUTHORITY_FILE_COUNT = 2461
 AUTHORITY_DIRECTORY_COUNT = 787
-CANONICAL_FILE_COUNT = 2593
+CANONICAL_FILE_COUNT = 2626
 AUTHORITY_PATH_SET_SHA256 = "f2011dd32ccc19649e6abb70ffb4473aea4a224410062d40292222e2e6263692"
-CANONICAL_PATH_SET_SHA256 = "c0d7fd2264809e3ad653981cbfdd0ff5b8e1dc672128f60dd1aa51887ec4f3b9"
+CANONICAL_PATH_SET_SHA256 = "d46246cfa2483aed52b93dc3bd47ac0c4eceab07dc689fbadf549ff8a2c63a62"
 
 ADR_REPLACEMENTS = {
     "docs/adr/0001-repository-identity.md": "docs/adr/0001-repository-identity-and-ownership.md",
@@ -156,10 +156,58 @@ NATIVE_SOURCE_INCUBATION_ADDITIONS = (
     *NATIVE_SOURCE_INCUBATION_PATHS,
 )
 
+KERNEL_PLATFORM_SOURCE_ADR = "docs/adr/0014-tilelang-kernel-platform-source-development.md"
+KERNEL_PLATFORM_SOURCE_PATHS = (
+    "kernels/api/BUILD.bazel",
+    "kernels/api/__init__.py",
+    "kernels/api/backward.py",
+    "kernels/api/capability.py",
+    "kernels/api/effects.py",
+    "kernels/api/environment.py",
+    "kernels/api/errors.py",
+    "kernels/api/expressions.py",
+    "kernels/api/forward.py",
+    "kernels/api/gradient.py",
+    "kernels/api/implementation.py",
+    "kernels/api/kernel.py",
+    "kernels/api/launch.py",
+    "kernels/api/numerics.py",
+    "kernels/api/output.py",
+    "kernels/api/program_group.py",
+    "kernels/api/qualification.py",
+    "kernels/api/schedule.py",
+    "kernels/api/workload.py",
+    "kernels/api/tests/BUILD.bazel",
+    "kernels/api/tests/__init__.py",
+    "kernels/api/tests/test_contracts.py",
+    "kernels/api/tests/test_expressions.py",
+)
+KERNEL_PLATFORM_SOURCE_ADDITIONS = (
+    KERNEL_PLATFORM_SOURCE_ADR,
+    *(path for path in KERNEL_PLATFORM_SOURCE_PATHS if path != "kernels/api/capability.py"),
+)
+KERNEL_PLATFORM_SOURCE_ACTIVATION_CRITERION = (
+    "ADR-0014 permits bounded source development only through 2026-11-30; activate in "
+    "Wave 2S only with concrete operation consumers, stable typed contracts, real Bazel "
+    "targets, qualification evidence, and a separately reviewed production decision."
+)
+
+DEEP_EP_INTAKE_ADR = "docs/adr/0013-deepep-package-and-qualification-boundary.md"
 THIRD_PARTY_DEEP_EP_PACKAGE_PATHS = (
+    "third_party/packages/deep_ep/BUILD.bazel",
     "third_party/packages/deep_ep/README.md",
+    "third_party/packages/deep_ep/artifact_contract.py",
+    "third_party/packages/deep_ep/gpu-evidence.schema.json",
     "third_party/packages/deep_ep/package.nix",
+    "third_party/packages/deep_ep/repository.bzl",
+    "third_party/packages/deep_ep/runtime-manifest.schema.json",
     "third_party/packages/deep_ep/test_package.py",
+)
+DEEP_EP_PATCH_PATHS = (
+    "third_party/patches/deep_ep/declared-toolchain-paths.patch",
+    "third_party/patches/deep_ep/deterministic-version.patch",
+    "third_party/patches/deep_ep/gin-attestation.patch",
+    "third_party/patches/deep_ep/runtime-jit-cache.patch",
 )
 NATIVE_GENERATED_PROJECTIONS = frozenset(
     {
@@ -237,6 +285,7 @@ WAVE_ZERO_REQUIRED_ADDITIONS = (
     CONNECTED_RATIFICATION_SCHEMA,
     FOUNDER_BOOTSTRAP_SCHEMA,
     FOUNDER_BOOTSTRAP_RECORD,
+    DEEP_EP_INTAKE_ADR,
     *WAVE_TWO_PREFLIGHT_GOVERNANCE_ADDITIONS,
 )
 
@@ -317,12 +366,17 @@ WAVE_ONE_REQUIRED_ADDITIONS = (
 REQUIRED_ADDITIONS = (
     *WAVE_ZERO_REQUIRED_ADDITIONS,
     *WAVE_ONE_REQUIRED_ADDITIONS,
+    *KERNEL_PLATFORM_SOURCE_ADDITIONS,
     *NATIVE_SOURCE_INCUBATION_ADDITIONS,
     *THIRD_PARTY_DEEP_EP_PACKAGE_PATHS,
+    *DEEP_EP_PATCH_PATHS,
 )
 
 STATUSES = {"target", "active", "generated", "deferred", "retired"}
 SOURCE_AUTHORITIES = {"hand-authored", "immutable-provenance", "reviewed-generated"}
+PRE_ACTIVATION_SOURCE_PATHS = frozenset(
+    (*NATIVE_SOURCE_INCUBATION_PATHS, *KERNEL_PLATFORM_SOURCE_PATHS)
+)
 FORBIDDEN_PATH_TOKENS = ("*", "{", "}", "<", ">", "…")
 IGNORED_PARTS = {
     ".git",
@@ -1466,19 +1520,62 @@ def build_native_source_incubation_entry(path: str) -> dict[str, Any]:
     }
 
 
+def _kernel_platform_source_targets(path: str) -> tuple[list[str], list[str]]:
+    if path == "kernels/api/tests/test_contracts.py":
+        return [], ["//kernels/api/tests:test_contracts"]
+    if path == "kernels/api/tests/test_expressions.py":
+        return [], ["//kernels/api/tests:test_expressions"]
+    if path.startswith("kernels/api/tests/"):
+        return [], [
+            "//kernels/api/tests:test_contracts",
+            "//kernels/api/tests:test_expressions",
+        ]
+    return ["//kernels/api:api"], []
+
+
+def build_kernel_platform_source_entry(path: str) -> dict[str, Any]:
+    if path not in KERNEL_PLATFORM_SOURCE_PATHS:
+        raise PolicyError(f"unapproved kernel-platform source path: {path}")
+    build_targets, test_targets = _kernel_platform_source_targets(path)
+    return {
+        "path": path,
+        "kind": (
+            "test"
+            if path.startswith("kernels/api/tests/") and PurePosixPath(path).name != "BUILD.bazel"
+            else infer_kind(path)
+        ),
+        "owner": "ml-systems-performance",
+        "component": "kernels",
+        "status": "target",
+        "activation_wave": "2S",
+        "source_authority": "hand-authored",
+        "build_targets": build_targets,
+        "test_targets": test_targets,
+        "public_surface": False,
+        "activation_criterion": KERNEL_PLATFORM_SOURCE_ACTIVATION_CRITERION,
+    }
+
+
 def build_path_entry(path: str) -> dict[str, Any]:
+    if path in KERNEL_PLATFORM_SOURCE_PATHS:
+        return build_kernel_platform_source_entry(path)
     if path in NATIVE_SOURCE_INCUBATION_PATHS:
         return build_native_source_incubation_entry(path)
-    if path in THIRD_PARTY_DEEP_EP_PACKAGE_PATHS:
+    if path in THIRD_PARTY_DEEP_EP_PACKAGE_PATHS or path in DEEP_EP_PATCH_PATHS:
+        package_input = path in THIRD_PARTY_DEEP_EP_PACKAGE_PATHS
         return {
             "path": path,
             "kind": infer_kind(path),
             "owner": "security",
-            "component": "third-party-packages",
+            "component": ("third-party-packages" if package_input else "third-party-patches"),
             "status": "active",
             "activation_wave": "1",
             "source_authority": "hand-authored",
-            "build_targets": ["//third_party:deep_ep_package"],
+            "build_targets": [
+                "//third_party/packages/deep_ep:policy_inputs"
+                if package_input
+                else "//third_party:wave1_third_party_sources"
+            ],
             "test_targets": ["//third_party:test_deep_ep_package_policy"],
             "public_surface": False,
             "activation_criterion": (
@@ -1544,6 +1641,16 @@ def _reconciliation_addition_reason(path: str) -> str:
             "Required Wave 0 governance source for the bounded founder bootstrap and public-estate "
             "transition authorized by ADR-0008."
         )
+    if path == KERNEL_PLATFORM_SOURCE_ADR:
+        return (
+            "Accepted ADR-0014 authority for bounded, pre-activation development of the typed "
+            "TileLang kernel-platform contract surface."
+        )
+    if path in KERNEL_PLATFORM_SOURCE_PATHS:
+        return (
+            "ADR-0014 bounded Wave 2S kernel-platform API source surface with real Bazel "
+            "ownership and tests; TARGET only, with no runtime or production authority."
+        )
     if path == NATIVE_SOURCE_INCUBATION_ADR:
         return (
             "Accepted ADR-0009 authority for the bounded, expiring kernels/native "
@@ -1559,6 +1666,16 @@ def _reconciliation_addition_reason(path: str) -> str:
         return (
             "Required Wave 1 DeepEP development-intake package definition, documentation, "
             "and source-policy test omitted by A6."
+        )
+    if path in DEEP_EP_PATCH_PATHS:
+        return (
+            "ADR-0013 reviewed DeepEP build and qualification patch required for immutable "
+            "toolchain discovery, backend attestation, and fail-closed JIT behavior."
+        )
+    if path == DEEP_EP_INTAKE_ADR:
+        return (
+            "Accepted bounded DeepEP package and qualification authority required to replace "
+            "the unrelated ADR-0009 review reference."
         )
     if path in GENERATED_PACKAGE_AUTHORITY_ADDITIONS:
         return (
@@ -1837,7 +1954,7 @@ def validate_populated_paths(
         path
         for path in actual & approved
         if entries[path].get("status") in {"target", "deferred", "retired"}
-        and path not in NATIVE_SOURCE_INCUBATION_PATHS
+        and path not in PRE_ACTIVATION_SOURCE_PATHS
     )
     missing = []
     if not allow_missing_active:

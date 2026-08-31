@@ -1,0 +1,48 @@
+diff --git a/csrc/elastic/buffer.hpp b/csrc/elastic/buffer.hpp
+index 0700646..2e09876 100644
+--- a/csrc/elastic/buffer.hpp
++++ b/csrc/elastic/buffer.hpp
+@@ -177,6 +177,10 @@ public:
+         return {nccl_context->num_scaleout_ranks, nccl_context->num_scaleup_ranks};
+     }
+ 
++    bool is_gin_enabled() const {
++        return nccl_context->gin_enabled;
++    }
++
+     // ReSharper disable once CppMemberFunctionMayBeStatic
+     void barrier(const bool& use_comm_stream, const bool& with_cpu_sync, const bool& sequential = true) const {
+         const auto compute_stream = at::cuda::getCurrentCUDAStream();
+@@ -1350,6 +1354,7 @@ static void register_apis(pybind11::module_& m) {
+         .def("get_comm_stream", &ElasticBuffer::get_comm_stream)
+         .def("get_physical_domain_size", &ElasticBuffer::get_physical_domain_size)
+         .def("get_logical_domain_size", &ElasticBuffer::get_logical_domain_size)
++        .def("is_gin_enabled", &ElasticBuffer::is_gin_enabled)
+         .def("barrier", &ElasticBuffer::barrier)
+         .def("engram_write", &ElasticBuffer::engram_write)
+         .def("engram_fetch", &ElasticBuffer::engram_fetch)
+diff --git a/csrc/kernels/backend/api.cuh b/csrc/kernels/backend/api.cuh
+index a36c32c..6acdc9f 100644
+--- a/csrc/kernels/backend/api.cuh
++++ b/csrc/kernels/backend/api.cuh
+@@ -73,6 +73,7 @@ public:
+ 
+     // Configs
+     int num_allocated_qps;
++    bool gin_enabled = false;
+ 
+     // Buffer size
+     int64_t num_gpu_bytes;
+diff --git a/csrc/kernels/backend/nccl.cu b/csrc/kernels/backend/nccl.cu
+index f87a307..1ca385d 100644
+--- a/csrc/kernels/backend/nccl.cu
++++ b/csrc/kernels/backend/nccl.cu
+@@ -84,6 +84,7 @@ NCCLSymmetricMemoryContext::NCCLSymmetricMemoryContext(const int64_t& nccl_comm,
+     ncclCommProperties props = NCCL_COMM_PROPERTIES_INITIALIZER;
+     NCCL_CHECK(ncclCommQueryProperties(comm, &props));
+     ncclDevCommRequirements_t reqs = NCCL_DEV_COMM_REQUIREMENTS_INITIALIZER;
+     if (num_ranks > 1 and get_env("EP_DISABLE_GIN", 0) == 0) {
++        gin_enabled = true;
+         EP_HOST_ASSERT(
+             (allow_hybrid_mode ? props.railedGinType : props.ginType) != NCCL_GIN_TYPE_NONE and
+             "NCCL GIN is unavailable. This is usually due to a network configuration issue, "

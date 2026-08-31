@@ -5623,7 +5623,30 @@ mindclade/
 │   │   ├── operation.py
 │   │   ├── signature.py
 │   │   ├── capability.py
-│   │   └── result.py
+│   │   ├── result.py
+│   │   ├── BUILD.bazel
+│   │   ├── __init__.py
+│   │   ├── backward.py
+│   │   ├── effects.py
+│   │   ├── environment.py
+│   │   ├── errors.py
+│   │   ├── expressions.py
+│   │   ├── forward.py
+│   │   ├── gradient.py
+│   │   ├── implementation.py
+│   │   ├── kernel.py
+│   │   ├── launch.py
+│   │   ├── numerics.py
+│   │   ├── output.py
+│   │   ├── program_group.py
+│   │   ├── qualification.py
+│   │   ├── schedule.py
+│   │   ├── workload.py
+│   │   └── tests/
+│   │       ├── BUILD.bazel
+│   │       ├── __init__.py
+│   │       ├── test_contracts.py
+│   │       └── test_expressions.py
 │   ├── common/
 │   │   ├── layouts/
 │   │   │   ├── layout.py
@@ -7333,9 +7356,11 @@ mindclade/
 │   │   ├── index.yaml
 │   │   ├── 0008-founder-bootstrap-public-estate-transition.md
 │   │   ├── connected-ratification.v1.schema.json
+│   │   ├── 0013-deepep-package-and-qualification-boundary.md
 │   │   ├── 0010-modular-go-control-plane-relational-durability-worker-isolation.md
 │   │   ├── 0011-sqp-001-scientific-qualification-profile.md
 │   │   ├── 0012-http-json-operation-projection-python-sdk.md
+│   │   ├── 0014-tilelang-kernel-platform-source-development.md
 │   │   └── 0009-native-kernel-source-incubation.md
 │   ├── domains/
 │   │   ├── bio.md
@@ -7430,7 +7455,12 @@ mindclade/
 └── third_party/
     ├── patches/
     │   ├── README.md
-    │   └── patches.lock.json
+    │   ├── patches.lock.json
+    │   └── deep_ep/
+    │       ├── declared-toolchain-paths.patch
+    │       ├── deterministic-version.patch
+    │       ├── gin-attestation.patch
+    │       └── runtime-jit-cache.patch
     ├── licenses/
     │   ├── README.md
     │   └── license_inventory.json
@@ -7443,8 +7473,13 @@ mindclade/
     ├── README.md
     └── packages/
         └── deep_ep/
+            ├── BUILD.bazel
             ├── README.md
+            ├── artifact_contract.py
+            ├── gpu-evidence.schema.json
             ├── package.nix
+            ├── repository.bzl
+            ├── runtime-manifest.schema.json
             └── test_package.py
 ```
 <!-- END GENERATED: repository-path-manifest -->

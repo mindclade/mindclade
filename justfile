@@ -5,7 +5,7 @@ set shell := ["bash", "-euo", "pipefail", "-c"]
 uv := env_var_or_default("UV", "uv")
 python := env_var_or_default("PYTHON", "python3.12")
 bazel_bin := env_var_or_default("BAZEL", "bazel")
-bazel := bazel_bin + " --nohome_rc --nosystem_rc --noworkspace_rc --output_user_root=" + justfile_directory() + "/build/bazel-user-root --bazelrc=" + justfile_directory() + "/.bazelrc"
+bazel := bazel_bin + " --nohome_rc --noworkspace_rc --output_user_root=" + justfile_directory() + "/build/bazel-user-root --bazelrc=" + justfile_directory() + "/.bazelrc"
 manifest := "docs/architecture/repository-path-manifest.yaml"
 component_schema := "tools/repo/component.schema.json"
 evidence_dir := "build/evidence"
@@ -179,6 +179,68 @@ docs:
     {{ python }} tools/docs/validate_blueprint_sources.py --manifest docs/architecture/blueprint/manifest.yaml
     {{ python }} tools/docs/render_architecture_blueprint.py --manifest docs/architecture/blueprint/manifest.yaml --check
     markdownlint-cli2
+
+# Local cleanup at different aggressiveness levels.
+[private]
+_clean mode dry_run:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    mode="{{ mode }}"
+    dry_run="{{ dry_run }}"
+
+    if [[ "${dry_run}" == "dry" ]]; then
+      action=("-print")
+    else
+      action=("-exec" "rm" "-rf" "{}" "+")
+    fi
+
+    if [[ "${mode}" == "aggressive" ]]; then
+      find . \
+        \( -path './.git' -o -path './.bazel*' \) -prune -o \
+        \( -type d \( -name "__pycache__" -o -name ".pytest_cache" -o -name ".mypy_cache" -o -name ".ruff_cache" -o -name ".tox" -o -name ".nox" -o -name ".venv" \) -o -type f \( -name '*.pyc' -o -name '*.pyo' \) \) \
+        "${action[@]}"
+
+      for path in build dist target node_modules .coverage .coverage.* .cache; do
+        if [[ -e "${path}" || -L "${path}" ]]; then
+          if [[ "${dry_run}" == "dry" ]]; then
+            printf '%s\n' "${path}"
+          else
+            rm -rf "${path}"
+          fi
+        fi
+      done
+    else
+      find . \
+        \( -path './.git' -o -path './.bazel*' \) -prune -o \
+        \( -type d \( -name "__pycache__" -o -name ".pytest_cache" -o -name ".mypy_cache" -o -name ".ruff_cache" \) -o -type f \( -name '*.pyc' -o -name '*.pyo' \) \) \
+        "${action[@]}"
+    fi
+
+clean-dry-run:
+    just _clean safe dry
+
+# Default (safe): Python and test cache artifacts only.
+clean:
+    just _clean safe clean
+
+# Aggressive cleanup: safe cache cleanup + local env/build roots.
+clean-aggressive:
+    just _clean aggressive clean
+
+# Deep cleanup: aggressive cleanup + local Bazel action cache root.
+clean-deep:
+    just clean-aggressive
+    rm -rf build/bazel-user-root
+
+# Integration-only cleanup.
+clean-integration:
+    just integration-down
+
+# Full cleanup: deep cleanup + integration teardown.
+clean-all:
+    just clean-deep
+    just clean-integration
 
 # Regenerate only declared architecture outputs; review the resulting diff.
 generate:

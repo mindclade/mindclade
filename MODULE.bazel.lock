@@ -277,6 +277,36 @@
   },
   "selectedYankedVersions": {},
   "moduleExtensions": {
+    "//third_party/packages/deep_ep:repository.bzl%deepep_nix": {
+      "general": {
+        "bzlTransitiveDigest": "mxsJchDu0qac3OFTQnGqGsZF83H9YFgQ7e3Kn0Wp3KY=",
+        "usagesDigest": "znJrEoNPNY1OklbremSOYM6iYG9+hPo4TjvtxcWsIyY=",
+        "recordedInputs": [],
+        "generatedRepoSpecs": {
+          "mindclade_deepep_nix": {
+            "repoRuleId": "@@//third_party/packages/deep_ep:repository.bzl%deep_ep_artifact_repository",
+            "attributes": {
+              "flake": "@@//:flake.nix",
+              "source_inputs": [
+                "@@//:flake.lock",
+                "@@//:pyproject.toml",
+                "@@//:uv.lock",
+                "@@//third_party:patches/patches.lock.json",
+                "@@//third_party:patches/deep_ep/declared-toolchain-paths.patch",
+                "@@//third_party:patches/deep_ep/deterministic-version.patch",
+                "@@//third_party:patches/deep_ep/gin-attestation.patch",
+                "@@//third_party:patches/deep_ep/runtime-jit-cache.patch",
+                "@@//third_party:source_mirrors/sources.lock.json",
+                "@@//third_party/packages/deep_ep:artifact_contract.py",
+                "@@//third_party/packages/deep_ep:gpu-evidence.schema.json",
+                "@@//third_party/packages/deep_ep:package.nix",
+                "@@//third_party/packages/deep_ep:runtime-manifest.schema.json"
+              ]
+            }
+          }
+        }
+      }
+    },
     "@@aspect_tools_telemetry+//:extension.bzl%telemetry": {
       "general": {
         "bzlTransitiveDigest": "zFgbaCUuPzH6bIE7CBHBVCqjWSJ78/WNXisdzXaKSnU=",
