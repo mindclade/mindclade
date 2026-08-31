@@ -251,8 +251,12 @@ def _render_declarative_fake(item: DiscoveredKernelSpec, index: int) -> list[str
     tensor_arguments = [argument.name for argument in schema.args if argument.is_tensor]
     scalar_arguments = [argument.name for argument in schema.args if not argument.is_tensor]
     lines = [f"def _mindclade_fake_{index}({', '.join(schema.argument_names)}):"]
-    lines.append("    metadata = {" + ", ".join(f"{name!r}: {name}" for name in tensor_arguments) + "}")
-    lines.append("    scalars = {" + ", ".join(f"{name!r}: {name}" for name in scalar_arguments) + "}")
+    lines.append(
+        "    metadata = {" + ", ".join(f"{name!r}: {name}" for name in tensor_arguments) + "}"
+    )
+    lines.append(
+        "    scalars = {" + ", ".join(f"{name!r}: {name}" for name in scalar_arguments) + "}"
+    )
     rendered_outputs = []
     for output in spec.forward.outputs:
         rendered_outputs.append(
@@ -273,9 +277,7 @@ def _contract_references_argument(value: Any, argument: str) -> bool:
     if isinstance(data, dict):
         if data.get("argument") == argument:
             return True
-        return any(
-            _contract_references_argument(item, argument) for item in data.values()
-        )
+        return any(_contract_references_argument(item, argument) for item in data.values())
     if isinstance(data, list):
         return any(_contract_references_argument(item, argument) for item in data)
     return False
@@ -348,9 +350,7 @@ def _render_backward_fake(item: DiscoveredKernelSpec, index: int) -> list[str]:
     assert spec.backward is not None
     backward = parse_schema(spec.backward.schema)
     bindings = _binding_map(item)
-    gradient_by_output = {
-        gradient.output_name: gradient for gradient in spec.backward.gradients
-    }
+    gradient_by_output = {gradient.output_name: gradient for gradient in spec.backward.gradients}
     rendered: list[str] = []
     for returned in backward.returns:
         gradient = gradient_by_output[returned.name]
@@ -371,9 +371,7 @@ def _render_backward_fake(item: DiscoveredKernelSpec, index: int) -> list[str]:
                 f"{spec.qualified_name} gradient source {gradient.input_name!r} must be a Tensor"
             )
         rendered.append(f"torch.empty_like({provider_argument.name})")
-    lines = [
-        f"def _mindclade_backward_fake_{index}({', '.join(backward.argument_names)}):"
-    ]
+    lines = [f"def _mindclade_backward_fake_{index}({', '.join(backward.argument_names)}):"]
     if len(rendered) == 1:
         lines.append(f"    return {rendered[0]}")
     else:
@@ -393,7 +391,9 @@ def _render_required_autograd(item: DiscoveredKernelSpec, index: int) -> tuple[l
     backward_name = f"_mindclade_required_backward_{index}"
     lines = [
         f"def {setup_name}(ctx, inputs, output):",
-        "    output_values = (output,)" if len(semantic.returns) == 1 else "    output_values = output",
+        "    output_values = (output,)"
+        if len(semantic.returns) == 1
+        else "    output_values = output",
         "    ctx.set_materialize_grads(False)",
     ]
     tensor_expressions = ", ".join(value[2] for value in tensor_values)
@@ -429,7 +429,9 @@ def _render_required_autograd(item: DiscoveredKernelSpec, index: int) -> tuple[l
     for position, (source, source_name, _expression) in enumerate(scalar_values):
         saved[(source, source_name)] = f"saved_scalar_{position}"
 
-    output_positions = {returned.name: position for position, returned in enumerate(semantic.returns)}
+    output_positions = {
+        returned.name: position for position, returned in enumerate(semantic.returns)
+    }
     output_gradients: dict[str, str] = {}
     for binding in spec.backward.argument_bindings:
         if binding.source is not BackwardArgumentSource.OUTPUT_GRADIENT:
@@ -437,9 +439,7 @@ def _render_required_autograd(item: DiscoveredKernelSpec, index: int) -> tuple[l
         variable = f"output_gradient_{binding.source_name}"
         if binding.source_name not in output_gradients:
             output_gradients[binding.source_name] = variable
-            lines.append(
-                f"    {variable} = grad_outputs[{output_positions[binding.source_name]}]"
-            )
+            lines.append(f"    {variable} = grad_outputs[{output_positions[binding.source_name]}]")
         if binding.missing is MissingGradientPolicy.ERROR:
             lines.extend(
                 (
@@ -449,9 +449,7 @@ def _render_required_autograd(item: DiscoveredKernelSpec, index: int) -> tuple[l
             )
         elif binding.missing is MissingGradientPolicy.ZERO:
             template = saved[(BackwardArgumentSource.FORWARD_OUTPUT, binding.source_name)]
-            lines.append(
-                f"    if {variable} is None: {variable} = torch.zeros_like({template})"
-            )
+            lines.append(f"    if {variable} is None: {variable} = torch.zeros_like({template})")
 
     semantic_positions = {
         argument.name: position for position, argument in enumerate(semantic.args)
@@ -462,16 +460,18 @@ def _render_required_autograd(item: DiscoveredKernelSpec, index: int) -> tuple[l
         if binding.source is BackwardArgumentSource.OUTPUT_GRADIENT:
             provider_values.append(output_gradients[binding.source_name])
         elif binding.source is BackwardArgumentSource.NEEDS_INPUT_GRAD:
-            provider_values.append(f"ctx.needs_input_grad[{semantic_positions[binding.source_name]}]")
+            provider_values.append(
+                f"ctx.needs_input_grad[{semantic_positions[binding.source_name]}]"
+            )
         else:
             provider_values.append(saved[(binding.source, binding.source_name)])
     lines.append(f"    raw = torch.ops.{spec.namespace}.{backward.name}(")
     lines.extend(f"        {value}," for value in provider_values)
     lines.append("    )")
-    lines.append("    raw_values = (raw,)" if len(backward.returns) == 1 else "    raw_values = raw")
-    gradient_by_input = {
-        gradient.input_name: gradient for gradient in spec.backward.gradients
-    }
+    lines.append(
+        "    raw_values = (raw,)" if len(backward.returns) == 1 else "    raw_values = raw"
+    )
+    gradient_by_input = {gradient.input_name: gradient for gradient in spec.backward.gradients}
     return_values: list[str] = []
     for position, argument in enumerate(semantic.args):
         gradient = gradient_by_input.get(argument.name)
@@ -559,13 +559,22 @@ def _render_python_registration(discovered: list[DiscoveredKernelSpec]) -> str:
             lines.extend(required_lines)
             autograd.append((setup_name, backward_name))
 
-    lines.extend(("def register_python_kernels() -> None:", "    global _REGISTERED", "    if _REGISTERED:", "        return"))
+    lines.extend(
+        (
+            "def register_python_kernels() -> None:",
+            "    global _REGISTERED",
+            "    if _REGISTERED:",
+            "        return",
+        )
+    )
     for index, item in enumerate(discovered):
         spec = item.spec
         fake_name = fake_names[index]
         forward_name = parse_schema(spec.forward.schema).name
         lines.append(f"    torch.library.register_fake({spec.qualified_name!r})({fake_name})")
-        lines.append(f"    torch.library.register_fake({(spec.namespace + '::' + forward_name)!r})({fake_name})")
+        lines.append(
+            f"    torch.library.register_fake({(spec.namespace + '::' + forward_name)!r})({fake_name})"
+        )
         if spec.backward is not None:
             backward_name = parse_schema(spec.backward.schema).name
             lines.append(
@@ -582,7 +591,9 @@ def _render_python_registration(discovered: list[DiscoveredKernelSpec]) -> str:
                 f"    torch.library.register_autograd({spec.qualified_name!r}, {backward_name}, setup_context={setup_name})"
             )
         else:
-            wrapper = next(value for qualified, value in none_wrappers if qualified == spec.qualified_name)
+            wrapper = next(
+                value for qualified, value in none_wrappers if qualified == spec.qualified_name
+            )
             lines.append(f"    torch.library.register_autograd({spec.qualified_name!r}, {wrapper})")
     lines.extend(("    _REGISTERED = True", ""))
     return "\n".join(lines)
@@ -601,7 +612,10 @@ def _render_bzl(discovered: list[DiscoveredKernelSpec]) -> str:
         '"""Generated Bazel source inventory for native TileLang kernels."""',
         "",
     ]
-    for variable, sources in (("MINDCLADE_KERNEL_SPEC_SOURCES", specs), ("MINDCLADE_TILELANG_KERNEL_SOURCES", builders)):
+    for variable, sources in (
+        ("MINDCLADE_KERNEL_SPEC_SOURCES", specs),
+        ("MINDCLADE_TILELANG_KERNEL_SOURCES", builders),
+    ):
         lines.append(f"{variable} = [")
         for source in sources:
             package, filename = source.rsplit("/", 1)
@@ -613,7 +627,10 @@ def _render_bzl(discovered: list[DiscoveredKernelSpec]) -> str:
 def _render_cmake(discovered: list[DiscoveredKernelSpec]) -> str:
     specs, builders = _source_rows(discovered)
     lines = [f"# GENERATED FILE - DO NOT EDIT. Generator: {GENERATOR_ID}@{GENERATOR_VERSION}."]
-    for variable, sources in (("MINDCLADE_KERNEL_SPEC_SOURCES", specs), ("MINDCLADE_TILELANG_KERNEL_SOURCES", builders)):
+    for variable, sources in (
+        ("MINDCLADE_KERNEL_SPEC_SOURCES", specs),
+        ("MINDCLADE_TILELANG_KERNEL_SOURCES", builders),
+    ):
         lines.append(f"set({variable}")
         lines.extend(f'  "${{CMAKE_CURRENT_LIST_DIR}}/../../{source}"' for source in sources)
         lines.append(")")

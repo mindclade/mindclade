@@ -4,14 +4,32 @@
 load("@rules_python//python:defs.bzl", "py_test")
 
 exports_files(
-    ["dispatch.py", "reference.py", "spec.py", "tilelang.py"],
+    [
+        "dispatch.py",
+        "reference.py",
+        "spec.py",
+        "tilelang.py",
+    ],
     visibility = ["//kernels/native:__pkg__"],
 )
 
 py_test(
     name = "test_pair_weighted_average",
-    srcs = ["__init__.py", "dispatch.py", "reference.py", "spec.py", "tilelang.py", "test_tilelang.py"],
+    srcs = [
+        "__init__.py",
+        "dispatch.py",
+        "reference.py",
+        "spec.py",
+        "test_tilelang.py",
+        "tilelang.py",
+    ],
     main = "test_tilelang.py",
-    tags = ["manual", "requires-hermetic-torch-2.10"],
-    deps = ["//kernels/api:api", "@mindclade_pypi//pytest"],
+    tags = [
+        "manual",
+        "requires-hermetic-torch-2.10",
+    ],
+    deps = [
+        "//kernels/api",
+        "@mindclade_pypi//pytest",
+    ],
 )
