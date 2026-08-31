@@ -81,6 +81,50 @@ def validate_runtime_manifest(manifest: Mapping[str, Any]) -> str:
     )
     if distribution not in allowed_distributions:
         raise ArtifactError("runtime manifest must describe the locked Nix closure")
+    artifact = manifest.get("artifact")
+    build = manifest.get("build")
+    locks = manifest.get("locks")
+    runtime_profile = manifest.get("runtime_profile")
+    projections = {
+        "artifact": artifact,
+        "build": build,
+        "distribution": distribution,
+        "locks": locks,
+        "runtime_profile": runtime_profile,
+    }
+    for name, value in projections.items():
+        if not isinstance(value, Mapping):
+            raise ArtifactError(f"runtime manifest {name} is malformed")
+        fingerprint_value = inputs.get(name)
+        if name == "artifact" and isinstance(fingerprint_value, Mapping):
+            value = {key: item for key, item in value.items() if key != "name"}
+        if fingerprint_value != value:
+            raise ArtifactError(f"runtime manifest {name} is outside its fingerprint")
+    nix_inputs = inputs.get("nix")
+    store_outputs = toolchain.get("store_outputs")
+    if not isinstance(nix_inputs, Mapping) or not isinstance(store_outputs, Mapping):
+        raise ArtifactError("runtime manifest Nix identity is malformed")
+    if nix_inputs.get("store_outputs") != store_outputs:
+        raise ArtifactError("runtime manifest Nix outputs are outside its fingerprint")
+    nixpkgs_revision = nix_inputs.get("nixpkgs_revision")
+    if (
+        not isinstance(nixpkgs_revision, str)
+        or re.fullmatch(r"[0-9a-f]{40}", nixpkgs_revision) is None
+    ):
+        raise ArtifactError("runtime manifest nixpkgs revision is not immutable")
+    derivations = nix_inputs.get("derivations")
+    if not isinstance(derivations, Mapping) or not derivations:
+        raise ArtifactError("runtime manifest Nix derivations are malformed")
+    for name, value in derivations.items():
+        if not isinstance(name, str) or not isinstance(value, str):
+            raise ArtifactError("runtime manifest Nix derivations are malformed")
+        if STORE_PATH_PATTERN.fullmatch(value) is None or not value.endswith(".drv"):
+            raise ArtifactError(f"runtime manifest {name} derivation is not immutable")
+    for name, value in store_outputs.items():
+        if not isinstance(name, str) or not isinstance(value, str):
+            raise ArtifactError("runtime manifest Nix outputs are malformed")
+        if STORE_PATH_PATTERN.fullmatch(value) is None:
+            raise ArtifactError(f"runtime manifest {name} output is not immutable")
     return declared
 
 
@@ -108,7 +152,7 @@ def _run(tool: str, *arguments: str) -> str:
 
 
 def _rewrite_metadata(path: Path, requirements: Sequence[str]) -> None:
-    lines = [line for line in path.read_text(encoding="utf-8").splitlines() if line]
+    lines = path.read_text(encoding="utf-8").splitlines()
     if not any(line == "Name: deep_ep" for line in lines):
         raise ArtifactError("wheel metadata does not identify deep_ep")
     if not any(line.startswith("Version: 2.1.0+") for line in lines):
@@ -172,7 +216,9 @@ def normalize_wheel(
         dist_infos = list(root.glob("deep_ep-*.dist-info"))
         extensions = list(root.glob("deep_ep/_C*.so"))
         if len(dist_infos) != 1 or len(extensions) != 1:
-            raise ArtifactError("wheel must contain one dist-info directory and one DeepEP extension")
+            raise ArtifactError(
+                "wheel must contain one dist-info directory and one DeepEP extension"
+            )
         extension = extensions[0]
         needed = sorted(filter(None, _run(patchelf, "--print-needed", str(extension)).splitlines()))
         if not any(name.startswith("libnccl.so") for name in needed):
@@ -181,15 +227,11 @@ def normalize_wheel(
             raise ArtifactError("DeepEP extension does not declare NVSHMEM host runtime")
         rpath = _run(patchelf, "--print-rpath", str(extension))
         rpath_entries = [entry for entry in rpath.split(":") if entry]
-        if not rpath_entries or any(
-            not entry.startswith("/nix/store/") for entry in rpath_entries
-        ):
+        if not rpath_entries or any(not entry.startswith("/nix/store/") for entry in rpath_entries):
             raise ArtifactError("closure-bound wheel has an undeclared ELF runtime path")
         _run(strip, "--strip-debug", str(extension))
         _rewrite_metadata(dist_infos[0] / "METADATA", cast(list[str], requirements))
-        (root / "deep_ep" / "mindclade-runtime.json").write_bytes(
-            canonical_json(runtime_manifest)
-        )
+        (root / "deep_ep" / "mindclade-runtime.json").write_bytes(canonical_json(runtime_manifest))
         elf_manifest = {
             "extension": extension.relative_to(root).as_posix(),
             "needed": needed,
@@ -216,13 +258,13 @@ def build_bundle(
 ) -> None:
     runtime = load_object(runtime_manifest_path, "runtime manifest")
     fingerprint = validate_runtime_manifest(runtime)
-    elf = load_object(elf_manifest_path, "ELF manifest")
+    load_object(elf_manifest_path, "ELF manifest")
     output.mkdir(parents=True, exist_ok=False)
     wheel_dir = output / "wheel"
     wheel_dir.mkdir()
     installed_wheel = wheel_dir / wheel.name
     shutil.copyfile(wheel, installed_wheel)
-    os.symlink(package_path, output / "package")
+    (output / "package").symlink_to(package_path)
     (output / "package-path").write_text(f"{package_path}\n", encoding="utf-8")
     (output / "package-drv-path").write_text(f"{package_drv}\n", encoding="utf-8")
     shutil.copyfile(runtime_manifest_path, output / "runtime-manifest.json")
@@ -243,11 +285,25 @@ def build_bundle(
         "schema_version": "mindclade.deepep-artifact-bundle/v1",
     }
     (output / "artifact-manifest.json").write_bytes(canonical_json(artifact_manifest))
-    artifact = cast(Mapping[str, str], runtime["artifact"])
+    artifact = cast(Mapping[str, Any], runtime["artifact"])
     profile = cast(Mapping[str, str], runtime["runtime_profile"])
+    component_packages = [
+        (
+            f"SPDXRef-Component-{index}",
+            str(component["name"]),
+            str(component["revision"]),
+            str(component["license"]),
+        )
+        for index, component in enumerate(
+            cast(list[Mapping[str, str]], artifact["components"]), start=1
+        )
+    ]
     packages = [
         ("SPDXRef-DeepEP", "deep-ep", artifact["version"], "MIT"),
+        *component_packages,
         ("SPDXRef-Torch", "torch", profile["torch"], "BSD-3-Clause"),
+        ("SPDXRef-CUDA", "cuda", profile["cuda"], "LicenseRef-NVIDIA-CUDA"),
+        ("SPDXRef-NVCC", "nvcc", profile["nvcc"], "LicenseRef-NVIDIA-CUDA"),
         ("SPDXRef-NCCL", "nccl", profile["nccl"], "LicenseRef-NVIDIA-NCCL"),
         ("SPDXRef-NVSHMEM", "nvshmem", profile["nvshmem"], "LicenseRef-NVIDIA-NVSHMEM"),
     ]
@@ -309,7 +365,12 @@ def build_bundle(
             },
         },
         "predicateType": "https://slsa.dev/provenance/v1",
-        "subject": [{"digest": {"sha256": wheel_digest.removeprefix("sha256:")}, "name": wheel.name}],
+        "subject": [
+            {
+                "digest": {"sha256": wheel_digest.removeprefix("sha256:")},
+                "name": wheel.name,
+            }
+        ],
     }
     (output / "provenance.intoto.jsonl").write_bytes(canonical_json(provenance))
 

@@ -51,7 +51,9 @@ The package policy must:
 - apply only declared, digest-covered patches;
 - discover compiler and CUDA tools through declared paths;
 - emit immutable artifact and runtime manifests;
-- prohibit request-time network access, source mutation, compilation, or tuning;
+- permit JIT cache population only during isolated qualification, and prohibit
+  request-time network access, source mutation, compilation, or tuning by
+  requiring a prewarmed read-only cache for production eligibility;
 - fail closed when an artifact, signer, capability, or environment identity is missing;
 - keep the closure-bound wheel and accelerator-specific runtime outputs distinct; and
 - require separately signed promotion, revocation, and rollback receipts.

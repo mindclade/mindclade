@@ -20,9 +20,24 @@
     "production_authority": {"const": false},
     "artifact": {
       "type": "object",
-      "required": ["archive_sha256", "name", "source_nar_hash", "upstream_commit", "version"],
+      "required": ["archive_sha256", "components", "name", "source_nar_hash", "upstream_commit", "version"],
       "properties": {
         "archive_sha256": {"$ref": "#/$defs/digest"},
+        "components": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["license", "name", "revision"],
+            "properties": {
+              "license": {"type": "string", "minLength": 1},
+              "name": {"type": "string", "minLength": 1},
+              "revision": {"type": "string", "pattern": "^[0-9a-f]{40}$"}
+            },
+            "additionalProperties": false
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
         "name": {"const": "deep-ep"},
         "version": {"type": "string", "pattern": "^2\\.1\\.0\\+[0-9a-f]{7}$"},
         "upstream_commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},

@@ -76,6 +76,11 @@ let
     python = digestFile ../../../uv.lock;
     sources = digestFile sourceLockPath;
   };
+  sourceComponents = map (component: {
+    name = builtins.baseNameOf component.path;
+    inherit (component) revision;
+    license = component.license.spdx;
+  }) record.submodules;
   mkRuntimeManifest =
     mode: requirements:
     let
@@ -86,6 +91,7 @@ let
           source_nar_hash = record.build_authority.source_nar_hash;
           upstream_commit = record.upstream.revision;
           version = record.build_authority.version;
+          components = sourceComponents;
         };
         build = {
           cuda_capabilities = cudaCapabilities;
@@ -123,6 +129,7 @@ let
           source_nar_hash = record.build_authority.source_nar_hash;
           upstream_commit = record.upstream.revision;
           version = record.build_authority.version;
+          components = sourceComponents;
         };
         build = fingerprintInputs.build;
         distribution = fingerprintInputs.distribution;

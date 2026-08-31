@@ -17,8 +17,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, cast
 
-from jsonschema import Draft202012Validator
-
 from artifact_contract import (
     ArtifactError,
     canonical_json,
@@ -27,6 +25,7 @@ from artifact_contract import (
     sha256_file,
     validate_runtime_manifest,
 )
+from jsonschema import Draft202012Validator, ValidationError
 
 PACKAGE_ROOT = Path(__file__).resolve().parent
 REPOSITORY_ROOT = PACKAGE_ROOT.parents[2]
@@ -187,7 +186,9 @@ def _deep_ep_source_record() -> dict[str, Any]:
     entries = source_lock.get("entries")
     if not isinstance(entries, list):
         raise RuntimeError("source lock entries are malformed")
-    records = [entry for entry in entries if isinstance(entry, dict) and entry.get("name") == "deep-ep"]
+    records = [
+        entry for entry in entries if isinstance(entry, dict) and entry.get("name") == "deep-ep"
+    ]
     if len(records) != 1:
         raise RuntimeError("source lock must contain exactly one DeepEP record")
     return cast(dict[str, Any], records[0])
@@ -202,8 +203,10 @@ def _load_locked_runtime_manifest(environment: Mapping[str, str]) -> tuple[dict[
         raise RuntimeError("DeepEP runtime manifest must be an immutable Nix store path")
     try:
         manifest = load_object(manifest_path, "Nix runtime manifest")
+        runtime_schema = load_object(PACKAGE_ROOT / "runtime-manifest.schema.json", "schema")
+        Draft202012Validator(runtime_schema).validate(manifest)
         fingerprint = validate_runtime_manifest(manifest)
-    except ArtifactError as error:
+    except (ArtifactError, ValidationError) as error:
         raise RuntimeError(str(error)) from error
     if manifest.get("distribution") != {"mode": "hermetic-nix", "requirements": []}:
         raise RuntimeError("GPU qualification requires the hermetic Nix distribution")
@@ -287,9 +290,9 @@ def run_gpu_probe(scope: str, evidence_path: Path) -> None:
     if rank >= probe_context.world_size or local_rank >= probe_context.local_world_size:
         raise RuntimeError("RANK or LOCAL_RANK is outside the declared world")
 
+    import deep_ep
     import torch
     import torch.distributed as dist
-    import deep_ep
     from deep_ep import ElasticBuffer
     from deep_ep import __version__ as deep_ep_version
     from deep_ep.utils.math import per_token_cast_back, per_token_cast_to_fp8
@@ -342,7 +345,10 @@ def run_gpu_probe(scope: str, evidence_path: Path) -> None:
             .to(torch.bfloat16)
         )
         topk_idx = torch.full(
-            (tokens, num_topk), destination_expert, dtype=torch.int64, device=device
+            (tokens, num_topk),
+            destination_expert,
+            dtype=deep_ep.topk_idx_t,
+            device=device,
         )
         topk_weights = torch.ones((tokens, num_topk), dtype=torch.float32, device=device)
         buffer = ElasticBuffer(
@@ -351,6 +357,7 @@ def run_gpu_probe(scope: str, evidence_path: Path) -> None:
             hidden=hidden,
             num_topk=num_topk,
             use_fp8_dispatch=False,
+            deterministic=True,
             explicitly_destroy=True,
         )
         if not buffer.runtime.is_gin_enabled():
@@ -365,7 +372,21 @@ def run_gpu_probe(scope: str, evidence_path: Path) -> None:
             num_sms=num_sms,
             async_with_compute_stream=True,
         )
+        overlap_value = x.float().square().sum()
         dispatch_event.current_stream_wait()
+        if not bool(torch.isfinite(overlap_value).item()):
+            raise AssertionError("independent compute during dispatch produced a non-finite value")
+        repeated_recv_x, _, _, _, repeated_event = buffer.dispatch(
+            x,
+            topk_idx=topk_idx,
+            topk_weights=topk_weights,
+            num_experts=num_experts,
+            num_max_tokens_per_rank=tokens,
+            num_sms=num_sms,
+            async_with_compute_stream=True,
+        )
+        repeated_event.current_stream_wait()
+        torch.testing.assert_close(repeated_recv_x, recv_x, rtol=0, atol=0)
         cached_recv_x, _, _, _, cached_event = buffer.dispatch(
             x,
             handle=handle,
@@ -380,7 +401,10 @@ def run_gpu_probe(scope: str, evidence_path: Path) -> None:
             num_sms=num_sms,
             async_with_compute_stream=True,
         )
+        combine_overlap_value = x.float().abs().sum()
         combine_event.current_stream_wait()
+        if not bool(torch.isfinite(combine_overlap_value).item()):
+            raise AssertionError("independent compute during combine produced a non-finite value")
         torch.cuda.synchronize(device)
         torch.testing.assert_close(combined_x, x, rtol=0, atol=0)
         buffer.destroy()
@@ -391,6 +415,7 @@ def run_gpu_probe(scope: str, evidence_path: Path) -> None:
             hidden=hidden,
             num_topk=num_topk,
             use_fp8_dispatch=True,
+            deterministic=True,
             explicitly_destroy=True,
         )
         if not fp8_buffer.runtime.is_gin_enabled():
@@ -405,7 +430,12 @@ def run_gpu_probe(scope: str, evidence_path: Path) -> None:
             num_sms=num_sms,
             async_with_compute_stream=True,
         )
+        fp8_overlap_value = x.float().mean()
         fp8_event.current_stream_wait()
+        if not bool(torch.isfinite(fp8_overlap_value).item()):
+            raise AssertionError(
+                "independent compute during FP8 dispatch produced a non-finite value"
+            )
         source_rank = (rank - 1) % probe_context.world_size
         expected_x = (
             torch.arange(tokens * hidden, dtype=torch.float32, device=device)
@@ -415,9 +445,9 @@ def run_gpu_probe(scope: str, evidence_path: Path) -> None:
         )
         expected_fp8 = per_token_cast_to_fp8(expected_x)
         if not torch.equal(recv_fp8[0][:tokens], expected_fp8[0]):
-            raise AssertionError("FP8 dispatch payload differs from the next-rank reference")
+            raise AssertionError("FP8 dispatch payload differs from the source-rank reference")
         if not torch.equal(recv_fp8[1][:tokens], expected_fp8[1]):
-            raise AssertionError("FP8 dispatch scale differs from the next-rank reference")
+            raise AssertionError("FP8 dispatch scale differs from the source-rank reference")
         cached_fp8, _, _, _, cached_fp8_event = fp8_buffer.dispatch(
             fp8_x,
             handle=fp8_handle,
@@ -493,17 +523,20 @@ def run_gpu_probe(scope: str, evidence_path: Path) -> None:
                 "schema_version": "mindclade.deepep-gpu-probe/v2",
                 "scope": scope,
                 "source_revision": source_revision,
-                "tests": [{
-                    "dtype": "bfloat16+fp8",
-                    "hidden": hidden,
-                    "num_experts": num_experts,
-                    "num_topk": num_topk,
-                    "route": "next-rank",
-                    "tokens_per_rank": tokens,
-                    "cached_handle": True,
-                    "asynchronous_events": True,
-                    "deterministic": True,
-                }],
+                "tests": [
+                    {
+                        "dtype": "bfloat16+fp8",
+                        "hidden": hidden,
+                        "num_experts": num_experts,
+                        "num_topk": num_topk,
+                        "route": "next-rank",
+                        "tokens_per_rank": tokens,
+                        "cached_handle": True,
+                        "communication_compute_overlap": True,
+                        "asynchronous_events": True,
+                        "deterministic": True,
+                    }
+                ],
                 "topology_digest": probe_context.topology_digest,
                 "world_size": probe_context.world_size,
             }
@@ -589,23 +622,75 @@ class DeepEpPackagePolicyTest(unittest.TestCase):
 
     def test_runtime_manifest_recomputes_its_locked_identity(self) -> None:
         store = "/nix/store/" + "a" * 32 + "-deepep-toolchain"
-        inputs = {"schema_version": "mindclade.deepep-runtime-fingerprint/v2"}
+        artifact = {
+            "archive_sha256": "sha256:" + "b" * 64,
+            "components": [{"license": "MIT", "name": "fmt", "revision": "c" * 40}],
+            "name": "deep-ep",
+            "source_nar_hash": "sha256-" + "A" * 43 + "=",
+            "upstream_commit": "d" * 40,
+            "version": "2.1.0+ddddddd",
+        }
+        build = {
+            "cuda_capabilities": ["9.0"],
+            "target_system": "x86_64-linux",
+            "variant": "v2-nccl-gin",
+        }
+        distribution = {"mode": "hermetic-nix", "requirements": []}
+        locks = {
+            name: "sha256:" + character * 64
+            for name, character in zip(
+                ("flake", "package_definition", "patches", "python", "sources"),
+                "ef012",
+                strict=True,
+            )
+        }
+        runtime_profile = {
+            "cuda": "12.9",
+            "nccl": "2.31.2-1",
+            "nvcc": "12.9.86",
+            "nvshmem": "3.6.5-0",
+            "python": "3.12.14",
+            "torch": "2.12.0",
+        }
+        store_outputs = {"cuda_home": store, "nccl": store, "nvcc": store}
+        inputs = {
+            "schema_version": "mindclade.deepep-runtime-fingerprint/v2",
+            "artifact": {key: value for key, value in artifact.items() if key != "name"},
+            "build": build,
+            "distribution": distribution,
+            "locks": locks,
+            "nix": {
+                "derivations": {"cuda": store + ".drv"},
+                "nixpkgs_revision": "3" * 40,
+                "store_outputs": store_outputs,
+            },
+            "runtime_profile": runtime_profile,
+        }
         manifest = {
             "schema_version": "mindclade.deepep-runtime-manifest/v2",
             "production_authority": False,
-            "distribution": {"mode": "hermetic-nix", "requirements": []},
+            "artifact": artifact,
+            "build": build,
+            "distribution": distribution,
             "fingerprint": {"algorithm": "sha256", "value": fingerprint_digest(inputs)},
             "fingerprint_inputs": inputs,
+            "locks": locks,
+            "runtime_profile": runtime_profile,
             "toolchain": {
                 "cuda_home": store,
                 "nccl_root": store,
                 "nvcc": store + "/bin/nvcc",
                 "nvshmem_root": store,
+                "store_outputs": store_outputs,
             },
         }
         self.assertEqual(validate_runtime_manifest(manifest), fingerprint_digest(inputs))
         manifest["fingerprint"]["value"] = "sha256:" + "0" * 64
         with self.assertRaisesRegex(ArtifactError, "canonical inputs"):
+            validate_runtime_manifest(manifest)
+        manifest["fingerprint"]["value"] = fingerprint_digest(inputs)
+        artifact["version"] = "2.1.0+eeeeeee"
+        with self.assertRaisesRegex(ArtifactError, "artifact is outside its fingerprint"):
             validate_runtime_manifest(manifest)
 
     def test_package_uses_nix_closure_without_nvshmem_source_patch(self) -> None:
@@ -653,12 +738,8 @@ class DeepEpPackagePolicyTest(unittest.TestCase):
         evidence_schema = load_object(PACKAGE_ROOT / "gpu-evidence.schema.json", "schema")
         Draft202012Validator.check_schema(runtime_schema)
         Draft202012Validator.check_schema(evidence_schema)
-        self.assertEqual(
-            runtime_schema["properties"]["production_authority"], {"const": False}
-        )
-        self.assertEqual(
-            evidence_schema["properties"]["production_authority"], {"const": False}
-        )
+        self.assertEqual(runtime_schema["properties"]["production_authority"], {"const": False})
+        self.assertEqual(evidence_schema["properties"]["production_authority"], {"const": False})
 
     def test_documentation_preserves_the_privileged_host_boundary(self) -> None:
         for text in (

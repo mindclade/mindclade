@@ -48,7 +48,10 @@ artifacts explicitly carry `production_authority: false`; publication and
 promotion remain outside this repository change.
 
 After entering the GPU shell, an operator with at least two visible SM90 GPUs
-can run the intra-node communication probe:
+can run the intra-node communication probe. The runner must inject the exact
+`MINDCLADE_SOURCE_REVISION`, a trusted `MINDCLADE_PHYSICAL_HOST_ID`, the
+qualified `MINDCLADE_TOPOLOGY_DIGEST`, and `MINDCLADE_GPU_SKU`; the Nix shell
+supplies the package, runtime manifest, compiler, and JIT fingerprint:
 
 ```text
 just test-deep-ep-gpu-intranode
@@ -57,7 +60,8 @@ just test-deep-ep-gpu-intranode
 The probe imports only the Nix package, recomputes its runtime identity, requires
 `nvshmem-info -a` to succeed, attests that the live `ElasticBuffer` obtained NCCL
 Gin resources, and exercises asynchronous BF16 and FP8 next-rank dispatch,
-cached-handle dispatch, and BF16 combine. It writes canonical unsigned evidence to
+cached-handle dispatch, deterministic routing, communication-compute overlap,
+and BF16 combine. It writes canonical unsigned evidence to
 `build/evidence/gpu-deepep-intranode.json`; this remains a development result,
 not production qualification.
 

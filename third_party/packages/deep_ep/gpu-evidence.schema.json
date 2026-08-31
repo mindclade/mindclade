@@ -90,8 +90,29 @@
     },
     "tests": {
       "type": "array",
-      "items": {"type": "object", "minProperties": 1},
-      "minItems": 1
+      "items": {
+        "type": "object",
+        "required": [
+          "asynchronous_events", "cached_handle", "communication_compute_overlap",
+          "deterministic", "dtype", "hidden", "num_experts", "num_topk", "route",
+          "tokens_per_rank"
+        ],
+        "properties": {
+          "asynchronous_events": {"const": true},
+          "cached_handle": {"const": true},
+          "communication_compute_overlap": {"const": true},
+          "deterministic": {"const": true},
+          "dtype": {"const": "bfloat16+fp8"},
+          "hidden": {"type": "integer", "minimum": 1},
+          "num_experts": {"type": "integer", "minimum": 2},
+          "num_topk": {"type": "integer", "minimum": 1},
+          "route": {"const": "next-rank"},
+          "tokens_per_rank": {"type": "integer", "minimum": 1}
+        },
+        "additionalProperties": false
+      },
+      "minItems": 1,
+      "uniqueItems": true
     },
     "network": {
       "type": "object",

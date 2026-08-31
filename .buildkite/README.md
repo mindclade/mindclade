@@ -27,8 +27,12 @@ The gated GPU graph separates the DeepEP intra-node SM90 probe from the
 multi-node RDMA/IBGDA probe. The latter uses two protected parallel agents and
 requires the protected agent pool to provide one shared
 `MINDCLADE_DEEPEP_RDZV_ENDPOINT`; it never falls back to a local or untrusted
-runner. The Buildkite build ID isolates the rendezvous from concurrent runs.
-Both steps remain unreachable while the `gpu` activation gate is closed.
+runner. Both probes require the agent authority to inject the exact source
+revision, physical host identity, qualified topology digest, and H100/H200 SKU;
+the multi-node probe additionally requires canonical RDMA device identities and
+the qualified IBGDA mode. The Buildkite build ID isolates the rendezvous from
+concurrent runs. Both steps remain unreachable while the `gpu` activation gate
+is closed.
 
 Every dynamic pipeline requires the connected launcher to inject a canonical
 `buildkite://` identity, an immutable launcher revision, and a `sha256:`
