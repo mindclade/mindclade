@@ -22,7 +22,34 @@ py_test(
 py_test(
     name = "generated_clients_test",
     srcs = ["conformance/test_generated_clients.py"],
+    data = _WAVE1_DATA + [
+        "//protocols/generated/go/artifact/v1:bindings",
+        "//protocols/generated/go/audit/v1:bindings",
+        "//protocols/generated/go/common/v1:bindings",
+        "//protocols/generated/go/job/v1:bindings",
+        "//protocols/generated/rust:bindings",
+        "//protocols/generated/typescript:bindings",
+    ],
+    deps = [
+        "//protocols/generated/python:bindings",
+        "@mindclade_pypi//protobuf",
+        "@mindclade_pypi//pyyaml",
+    ],
+    imports = [".."],
+    legacy_create_init = 0,
+    main = "conformance/test_generated_clients.py",
+    python_version = "PY3",
+)
+
+py_test(
+    name = "generated_python_clients_test",
+    srcs = ["conformance/test_generated_clients.py"],
     data = _WAVE1_DATA,
+    deps = [
+        "//protocols/generated/python:bindings",
+        "@mindclade_pypi//protobuf",
+        "@mindclade_pypi//pyyaml",
+    ],
     imports = [".."],
     legacy_create_init = 0,
     main = "conformance/test_generated_clients.py",
@@ -108,6 +135,7 @@ test_suite(
     tests = [
         ":artifact_manifests_test",
         ":generated_clients_test",
+        ":generated_python_clients_test",
         "//protocols:openapi_compatibility_test",
         "//protocols:protobuf_compatibility_test",
         "//protocols:schema_compatibility_test",

@@ -69,6 +69,7 @@
 /docs/architecture/ @mindclade/architecture
 /docs/adr/ @mindclade/architecture
 /docs/governance/ @mindclade/architecture @mindclade/security
+/docs/policies/ @mindclade/architecture
 /docs/adr/0005-biological-identity-and-schema-evolution.md @mindclade/computational-biology @mindclade/biological-safety
 /docs/adr/0007-training-state-progress-and-checkpoint.md @mindclade/ml-systems @mindclade/architecture
 /SECURITY.md @mindclade/security

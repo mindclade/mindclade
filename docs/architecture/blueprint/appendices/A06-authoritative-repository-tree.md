@@ -3366,6 +3366,9 @@ mindclade/
 │   │   ├── index.yaml
 │   │   ├── 0008-founder-bootstrap-public-estate-transition.md
 │   │   ├── connected-ratification.v1.schema.json
+│   │   ├── 0010-modular-go-control-plane-relational-durability-worker-isolation.md
+│   │   ├── 0011-sqp-001-scientific-qualification-profile.md
+│   │   ├── 0012-http-json-operation-projection-python-sdk.md
 │   │   └── 0009-native-kernel-source-incubation.md
 │   ├── domains/
 │   │   ├── bio.md
@@ -3420,10 +3423,17 @@ mindclade/
 │   │   └── dataset-card.schema.json
 │   ├── BUILD.bazel
 │   ├── README.md
-│   └── governance/
-│       ├── founder-bootstrap-exception.v1.schema.json
-│       └── exceptions/
-│           └── FBE-0001.yaml
+│   ├── governance/
+│   │   ├── founder-bootstrap-exception.v1.schema.json
+│   │   └── exceptions/
+│   │       └── FBE-0001.yaml
+│   └── policies/
+│       ├── pdb-source-use-approval.template.yaml
+│       ├── pdb-source-use-approval.v1.schema.json
+│       ├── pdb-source-use-data-governance.md
+│       ├── sqp-001-h100-approval.template.yaml
+│       ├── sqp-001-h100-approval.v1.schema.json
+│       └── sqp-001-h100-qualification-envelope.md
 ├── examples/
 │   ├── sdk/
 │   │   ├── submit_operation.py

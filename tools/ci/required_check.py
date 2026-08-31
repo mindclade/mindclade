@@ -89,17 +89,44 @@ ORG_FIELDS = {
     "completed_at",
 }
 REASON_PATTERN = re.compile(r"^[A-Z][A-Z0-9_]{2,127}$")
-ADR_PATHS = (
-    "0001-repository-identity-and-ownership.md",
-    "0002-dependency-and-build-law.md",
-    "0003-artifact-identity-and-cas.md",
-    "0004-contract-and-codegen-authority.md",
-    "0005-biological-identity-and-schema-evolution.md",
-    "0006-durable-work-and-fencing.md",
-    "0007-training-state-progress-and-checkpoint.md",
-    "0008-founder-bootstrap-public-estate-transition.md",
-    "0009-native-kernel-source-incubation.md",
+@dataclass(frozen=True)
+class AdrContract:
+    identifier: str
+    filename: str
+    lifecycle: str
+    expected_title: str | None = None
+
+
+ADR_REGISTRY = (
+    AdrContract("ADR-0001", "0001-repository-identity-and-ownership.md", "accepted"),
+    AdrContract("ADR-0002", "0002-dependency-and-build-law.md", "accepted"),
+    AdrContract("ADR-0003", "0003-artifact-identity-and-cas.md", "accepted"),
+    AdrContract("ADR-0004", "0004-contract-and-codegen-authority.md", "accepted"),
+    AdrContract("ADR-0005", "0005-biological-identity-and-schema-evolution.md", "accepted"),
+    AdrContract("ADR-0006", "0006-durable-work-and-fencing.md", "accepted"),
+    AdrContract("ADR-0007", "0007-training-state-progress-and-checkpoint.md", "accepted"),
+    AdrContract("ADR-0008", "0008-founder-bootstrap-public-estate-transition.md", "accepted"),
+    AdrContract("ADR-0009", "0009-native-kernel-source-incubation.md", "accepted"),
+    AdrContract(
+        "ADR-0010",
+        "0010-modular-go-control-plane-relational-durability-worker-isolation.md",
+        "proposed",
+        "Modular Go Control Plane, Relational Durability, and Worker Isolation",
+    ),
+    AdrContract(
+        "ADR-0011",
+        "0011-sqp-001-scientific-qualification-profile.md",
+        "proposed",
+        "SQP-001 Scientific Qualification Profile",
+    ),
+    AdrContract(
+        "ADR-0012",
+        "0012-http-json-operation-projection-python-sdk.md",
+        "proposed",
+        "HTTP/JSON Operation Projection and Python SDK",
+    ),
 )
+ADR_PATHS = tuple(contract.filename for contract in ADR_REGISTRY)
 ADR_METADATA_FIELDS = {
     "status",
     "connected ratification",
@@ -120,22 +147,23 @@ ADR_IMPACT_FIELDS = {
     "rollback",
     "required evidence",
 }
-ADR_INDEX_REQUIRED_FIELDS = {
+ADR_INDEX_COMMON_REQUIRED_FIELDS = {
     "id",
     "title",
     "status",
     "connectedRatification",
     "path",
     "owners",
-    "specificationAccepted",
 }
+ADR_INDEX_ACCEPTED_REQUIRED_FIELDS = ADR_INDEX_COMMON_REQUIRED_FIELDS | {"specificationAccepted"}
+ADR_INDEX_PROPOSED_REQUIRED_FIELDS = ADR_INDEX_COMMON_REQUIRED_FIELDS
 ADR_RATIFICATION_FIELDS = {
     "ratificationSubjectRevision",
     "ratificationDecisionDigest",
     "ratificationReceiptDigest",
     "ratifiedAt",
 }
-ADR_INDEX_FIELDS = ADR_INDEX_REQUIRED_FIELDS | ADR_RATIFICATION_FIELDS
+ADR_INDEX_FIELDS = ADR_INDEX_ACCEPTED_REQUIRED_FIELDS | ADR_RATIFICATION_FIELDS
 ADR_MUTABLE_METADATA_PREFIXES = (
     "- Connected ratification: ",
     "- Effective date: ",
@@ -254,6 +282,14 @@ def _ratification_projection(entry: Mapping[str, str]) -> dict[str, str]:
         for field, value in entry.items()
         if field == "connectedRatification" or field in ADR_RATIFICATION_FIELDS
     }
+
+
+def _adr_required_index_fields(contract: AdrContract) -> set[str]:
+    if contract.lifecycle == "accepted":
+        return ADR_INDEX_ACCEPTED_REQUIRED_FIELDS
+    if contract.lifecycle == "proposed":
+        return ADR_INDEX_PROPOSED_REQUIRED_FIELDS
+    raise ValueError(f"unsupported ADR lifecycle: {contract.lifecycle}")
 
 
 def validate_founder_bootstrap_exception(root: Path) -> list[str]:
@@ -425,16 +461,21 @@ def validate_adrs(root: Path) -> list[str]:
     ratification_validator = cast(_Validator, Draft202012Validator(ratification_schema))
     errors.extend(validate_founder_bootstrap_exception(root))
     actual_paths = sorted(path.name for path in adr_root.glob("*.md"))
-    if actual_paths != list(ADR_PATHS):
-        errors.append("ADR file set does not match the exact nine Section-14 decisions")
+    if actual_paths != sorted(ADR_PATHS):
+        errors.append("ADR file set does not match the ordered accepted/proposed registry")
     index_entries = _parse_adr_index(adr_root / "index.yaml")
     index_by_id = {entry.get("id", ""): entry for entry in index_entries}
     if len(index_entries) != len(index_by_id) or len(index_entries) != len(ADR_PATHS):
-        errors.append("ADR index must contain exactly nine unique decision IDs")
+        errors.append("ADR index must contain every unique registered decision ID")
+    if [entry.get("id") for entry in index_entries] != [
+        contract.identifier for contract in ADR_REGISTRY
+    ]:
+        errors.append("ADR index order does not match the decision registry")
 
     discovered_ids: set[str] = set()
     supersession_edges: dict[str, str] = {}
-    for filename in ADR_PATHS:
+    for contract in ADR_REGISTRY:
+        filename = contract.filename
         path = adr_root / filename
         if not path.is_file():
             continue
@@ -445,6 +486,10 @@ def validate_adrs(root: Path) -> list[str]:
             errors.append(f"{filename}: heading must contain canonical ADR ID and title")
             continue
         identifier, title = heading.groups()
+        if identifier != contract.identifier:
+            errors.append(f"{filename}: heading ID does not match the decision registry")
+        if contract.expected_title is not None and title != contract.expected_title:
+            errors.append(f"{filename}: heading title does not match the decision registry")
         if identifier in discovered_ids:
             errors.append(f"{filename}: duplicate ADR ID {identifier}")
         discovered_ids.add(identifier)
@@ -458,8 +503,21 @@ def validate_adrs(root: Path) -> list[str]:
         missing_metadata = sorted(ADR_METADATA_FIELDS - set(metadata))
         if missing_metadata:
             errors.append(f"{filename}: missing metadata: {', '.join(missing_metadata)}")
-        if metadata.get("status") != "Accepted in blueprint specification":
-            errors.append(f"{filename}: status must distinguish specification acceptance")
+        expected_metadata_status = (
+            "Accepted in blueprint specification"
+            if contract.lifecycle == "accepted"
+            else "Proposed"
+        )
+        if metadata.get("status") != expected_metadata_status:
+            errors.append(f"{filename}: status does not match its registered lifecycle")
+        if contract.lifecycle == "proposed":
+            if metadata.get("specification date") != "Proposed 2026-08-30; not accepted":
+                errors.append(f"{filename}: proposed specification date drift")
+            if (
+                metadata.get("effective date")
+                != "Pending connected ratification and required owner approvals"
+            ):
+                errors.append(f"{filename}: proposed effective date drift")
         for field in ("supersedes", "superseded by"):
             target = metadata.get(field, "")
             if target and target != "None":
@@ -492,10 +550,17 @@ def validate_adrs(root: Path) -> list[str]:
         expected_path = f"docs/adr/{filename}"
         if index.get("title") != title or index.get("path") != expected_path:
             errors.append(f"{filename}: ADR index title/path drift")
-        if index.get("status") != "accepted-in-specification":
+        expected_index_status = (
+            "accepted-in-specification" if contract.lifecycle == "accepted" else "proposed"
+        )
+        if index.get("status") != expected_index_status:
             errors.append(f"{filename}: ADR index status drift")
-        missing_index_fields = sorted(ADR_INDEX_REQUIRED_FIELDS - set(index))
-        unknown_index_fields = sorted(set(index) - ADR_INDEX_FIELDS)
+        required_index_fields = _adr_required_index_fields(contract)
+        allowed_index_fields = (
+            ADR_INDEX_FIELDS if contract.lifecycle == "accepted" else required_index_fields
+        )
+        missing_index_fields = sorted(required_index_fields - set(index))
+        unknown_index_fields = sorted(set(index) - allowed_index_fields)
         if missing_index_fields:
             errors.append(
                 f"{filename}: ADR index missing fields: {', '.join(missing_index_fields)}"
@@ -511,6 +576,8 @@ def validate_adrs(root: Path) -> list[str]:
         for error in ratification_errors:
             errors.append(f"{filename}: ADR index ratification contract: {error.message}")
         ratification_state = index.get("connectedRatification")
+        if contract.lifecycle == "proposed" and ratification_state != "pending":
+            errors.append(f"{filename}: proposed ADR cannot claim connected ratification")
         if ratification_state == "pending":
             if metadata.get("connected ratification") != ADR_PENDING_RATIFICATION:
                 errors.append(f"{filename}: pending connected ratification metadata drift")
@@ -920,6 +987,27 @@ def _self_test_adr_ratification_contract() -> None:
     ):
         raise AssertionError("ADR decision content did not change the decision digest")
 
+    if [contract.identifier for contract in ADR_REGISTRY] != [
+        "ADR-0001",
+        "ADR-0002",
+        "ADR-0003",
+        "ADR-0004",
+        "ADR-0005",
+        "ADR-0006",
+        "ADR-0007",
+        "ADR-0008",
+        "ADR-0010",
+        "ADR-0011",
+        "ADR-0012",
+    ]:
+        raise AssertionError("ADR registry order drifted")
+    for contract in ADR_REGISTRY:
+        required = _adr_required_index_fields(contract)
+        if contract.lifecycle == "proposed" and (
+            "specificationAccepted" in required or required & ADR_RATIFICATION_FIELDS
+        ):
+            raise AssertionError("proposed ADR registry permits acceptance or receipt claims")
+
 
 def _self_test(org_schema: Path | None) -> None:
     _self_test_adr_ratification_contract()
@@ -935,6 +1023,18 @@ def _self_test(org_schema: Path | None) -> None:
         "workflow_revision": "c" * 40,
         "source_trust": "untrusted",
         "execution_tier": "untrusted",
+        "pipeline_class": "presubmit",
+        "pipeline_definition_revision": pipeline_revision,
+        "launcher_revision": "d" * 40,
+        "launcher_digest": "sha256:" + "e" * 64,
+        "launcher_identity": "buildkite://mindclade/protected-launcher",
+        "cache_mode": "disabled",
+        "cache_platform": "linux",
+        "cache_architecture": "x86_64",
+        "cache_toolchain_digest": "sha256:" + "f" * 64,
+        "cache_build_mode": "presubmit",
+        "cache_classification": "private-internal",
+        "cache_namespace_epoch": "disabled-v1",
     }
     context_digest = sha256_bytes(canonical_json(context))
     unsigned_plan: dict[str, object] = {
@@ -944,7 +1044,7 @@ def _self_test(org_schema: Path | None) -> None:
         "pipeline_class": "presubmit",
         "changed_paths": ["BUILD.bazel"],
         "targets": ["//:wave0_tests"],
-        "gates": ["bazel-native-agreement"],
+        "gates": ["immutable-launcher", "cache-boundary", "bazel-native-agreement"],
     }
     plan = {**unsigned_plan, "plan_id": calculate_plan_id(unsigned_plan)}
     private_key = ed25519.Ed25519PrivateKey.generate()
@@ -967,6 +1067,61 @@ def _self_test(org_schema: Path | None) -> None:
                 {
                     "conclusion": "PASS",
                     "schema_version": "bazel-native-agreement.v1",
+                }
+            )
+        )
+        launcher_receipt_path = root / "immutable-launcher.v1.json"
+        launcher_receipt_path.write_bytes(
+            canonical_json(
+                {
+                    "schema_version": "immutable-launcher-observation.v1",
+                    "qualification": "UNSIGNED_OBSERVATION_INPUT",
+                    "external_signature_required": True,
+                    "source_revision": source_revision,
+                    "pipeline_definition_revision": pipeline_revision,
+                    "launcher_revision": context["launcher_revision"],
+                    "launcher_digest": context["launcher_digest"],
+                    "launcher_identity": context["launcher_identity"],
+                    "definition_tree_digest": "sha256:" + "1" * 64,
+                    "build_id": "01234567-89ab-cdef-8123-456789abcdef",
+                }
+            )
+        )
+        cache_boundary_path = root / "cache-boundary.v1.json"
+        cache_boundary_path.write_bytes(
+            canonical_json(
+                {
+                    "schema_version": "cache-boundary.v1",
+                    "qualification": "UNSIGNED_OBSERVATION_INPUT",
+                    "source_revision": source_revision,
+                    "cache_mode": "disabled",
+                    "cache_used": False,
+                    "cache_outputs_are_evidence": False,
+                    "public_cache_target_allowlist": [],
+                    "namespace": {
+                        "schema_version": "cache-namespace.v1",
+                        "classification": "private-internal",
+                        "namespace_epoch": "disabled-v1",
+                        "trust_class": "untrusted",
+                        "platform": "linux",
+                        "architecture": "x86_64",
+                        "toolchain_digest": "sha256:" + "f" * 64,
+                        "build_mode": "presubmit",
+                    },
+                    "iam_qualification_digest": None,
+                    "write_activation_digest": None,
+                    "cacheless_canary": {
+                        "required": False,
+                        "targets": ["//:wave1_tests"],
+                        "remote_cache_read": False,
+                        "remote_cache_write": False,
+                    },
+                    "poison_recovery": [
+                        "revoke-affected-namespace",
+                        "rebuild-with-cache-disabled",
+                        "compare-clean-output-digests",
+                        "require-reviewed-reactivation-evidence",
+                    ],
                 }
             )
         )
@@ -1165,30 +1320,47 @@ def _self_test(org_schema: Path | None) -> None:
             build_id="01234567-89ab-cdef-8123-456789abcdef",
             started_at=(now - timedelta(minutes=2)).isoformat().replace("+00:00", "Z"),
             completed_at=now.isoformat().replace("+00:00", "Z"),
-            check=[f"bazel-native-agreement={bazel_receipt_path}"],
+            check=[
+                f"immutable-launcher={launcher_receipt_path}",
+                f"cache-boundary={cache_boundary_path}",
+                f"bazel-native-agreement={bazel_receipt_path}",
+            ],
         )
         evidence = build_evidence(arguments)
-        governance_arguments = argparse.Namespace(
-            **{
-                **vars(arguments),
-                "check": [f"repository-governance={report_path}"],
-            }
-        )
-
+        cache_candidate = dict(read_object(cache_boundary_path, "cache boundary self-test"))
+        cache_candidate["cache_used"] = True
+        cache_boundary_path.write_bytes(canonical_json(cache_candidate))
         try:
-            build_evidence(governance_arguments)
-        except ValueError as error:
-            if "cryptographic verifier is unavailable/not qualified" not in str(error):
-                raise AssertionError(
-                    "complete qualified governance fixture did not reach the verifier gate"
-                ) from error
+            build_evidence(arguments)
+        except ValueError:
+            pass
         else:
-            raise AssertionError("synthetic qualified governance fixture produced PASS evidence")
+            raise AssertionError("evidence producer accepted cache use as qualification evidence")
+        cache_candidate["cache_used"] = False
+        cache_boundary_path.write_bytes(canonical_json(cache_candidate))
+
+        launcher_candidate = dict(
+            read_object(launcher_receipt_path, "immutable launcher self-test")
+        )
+        launcher_candidate["qualification"] = "PASS"
+        launcher_receipt_path.write_bytes(canonical_json(launcher_candidate))
+        try:
+            build_evidence(arguments)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("evidence producer accepted a self-qualified launcher")
+        launcher_candidate["qualification"] = "UNSIGNED_OBSERVATION_INPUT"
+        launcher_receipt_path.write_bytes(canonical_json(launcher_candidate))
+
+        from evidence_bundle import validate_repository_governance
+
+        validate_repository_governance(report_path, source_revision)
 
         def assert_governance_rejected(description: str, candidate: dict[str, object]) -> None:
             report_path.write_bytes(canonical_json(candidate))
             try:
-                build_evidence(governance_arguments)
+                validate_repository_governance(report_path, source_revision)
             except ValueError:
                 return
             raise AssertionError(f"evidence producer accepted {description}")

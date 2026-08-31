@@ -2,7 +2,7 @@ apiVersion: mindclade.dev/v1
 kind: ArchitectureDecisionIndex
 metadata:
   name: foundational-decisions
-  description: Foundational decisions plus bounded founder-bootstrap and native-source incubation authorities.
+  description: Foundational decisions, bounded bootstrap and native incubation authorities, and proposed Wave 2 just-in-time decisions.
 spec:
   decisions:
     - id: ADR-0001
@@ -68,3 +68,21 @@ spec:
       path: docs/adr/0009-native-kernel-source-incubation.md
       owners: [architecture, ml-systems-performance]
       specificationAccepted: "2026-08-30"
+    - id: ADR-0010
+      title: Modular Go Control Plane, Relational Durability, and Worker Isolation
+      status: proposed
+      connectedRatification: pending
+      path: docs/adr/0010-modular-go-control-plane-relational-durability-worker-isolation.md
+      owners: [control-plane, architecture]
+    - id: ADR-0011
+      title: SQP-001 Scientific Qualification Profile
+      status: proposed
+      connectedRatification: pending
+      path: docs/adr/0011-sqp-001-scientific-qualification-profile.md
+      owners: [scientific-leadership, data-governance, ml-systems]
+    - id: ADR-0012
+      title: HTTP/JSON Operation Projection and Python SDK
+      status: proposed
+      connectedRatification: pending
+      path: docs/adr/0012-http-json-operation-projection-python-sdk.md
+      owners: [developer-experience, control-plane, architecture]

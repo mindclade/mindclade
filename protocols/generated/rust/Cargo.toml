@@ -6,3 +6,9 @@ publish = false
 
 [lib]
 path = "lib.rs"
+
+[dependencies]
+protobuf.workspace = true
+
+[dev-dependencies]
+protobuf-codegen.workspace = true

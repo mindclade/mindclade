@@ -2,6 +2,9 @@ packages:
   - libs/typescript/config
   - libs/typescript/observability
   - libs/typescript/testing
+  - protocols/generated/typescript
+
+allowBuilds: {}
 
 catalog:
   '@types/node': 24.10.1

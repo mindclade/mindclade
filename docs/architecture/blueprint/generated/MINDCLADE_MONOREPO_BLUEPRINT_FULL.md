@@ -1243,6 +1243,12 @@ Bazel is the cross-repository target, visibility, affected-test, and release-clo
 
 A clean-checkout release build MUST run with network disabled after declared dependency fetch/mirroring, a sanitized environment, fixed locale/timezone, controlled timestamps, no home-directory inputs, and declared hardware/toolchain. Build provenance records source revision, dirty-state prohibition, lock/toolchain digests, Bazel target, builder identity, parameters, dependencies, and outputs. Reproducible byte identity is required where ecosystem formats permit it; otherwise semantic reproducibility and explained nondeterminism are recorded.
 
+Remote cache is acceleration only. Bazel HTTP cache can expose action-cache records, CAS outputs, and captured stdout/stderr; therefore public-readable and private-internal cache data MUST use separate GCP buckets or equivalently IAM- and cryptographically isolated namespaces. Public publication is denied unless the target is on the explicit public-output allowlist, and cache writes are denied until the builder identity, target class, and platform envelope are qualified. Cache keys bind cache-schema version, trust class, platform, architecture, toolchain closure, and build mode. A classification change revokes access to the prior namespace and rotates the namespace; it never relabels existing objects in place. Noncurrent versions receive a short lifecycle, and access logs are exported to a separate destination that cache writers cannot alter.
+
+Trusted qualification runs a periodic cacheless canary. Suspected poisoning revokes or write-denies the affected namespace, performs a clean cacheless rebuild, and compares output digests before reads resume. Release provenance records cache consultation and the compatible cache namespace, but a cache hit is never evidence and cannot replace subject verification, SBOM, qualification, signature, or reproducibility proof.
+
+The monorepo owns cache policy, schemas, allowlists, key contracts, canary behavior, and poison-recovery tests. `bootstrap` owns foundational GCP identities and trust. `infrastructure-live` owns GCP buckets, IAM, access-log destinations, and lifecycle desired state. No policy source in this repository proves that connected resources or controls exist.
+
 ### 11.2 Test and qualification ladder
 
 | Gate | Trigger | Minimum evidence |
@@ -1401,7 +1407,7 @@ Each supported package has domain-specific README content: purpose/non-purpose, 
 
 ## 14. ADR index and decision log
 
-The blueprint accepts all decisions recorded in this section. Wave 0 created eight standalone ADRs: the seven decisions that are expensive to reverse after implementation begins plus the bounded founder bootstrap required to establish the public estate. ADR-0009 adds one expiring source-incubation exception for `kernels/native/`; it is neither an optimized-kernel activation nor JIT-06 ratification. Version 3.4.3 binds their canonical filenames below. Repository validation proves file presence and metadata; independent review and protected-branch evidence determine connected acceptance and are never inferred from this index.
+The blueprint accepts the eight foundational decisions recorded in Section 14.1 and the bounded ADR-0009 native-source incubation exception. ADR-0009 is neither an optimized-kernel activation nor JIT-06 ratification. Later just-in-time records can exist as proposals, but they are not effective and do not satisfy a phase prerequisite until the required owners ratify their immutable decision digest through protected review. Version 3.4.3 binds the canonical filenames below. Repository validation proves file presence and metadata; independent review and protected-branch evidence determine connected acceptance and are never inferred from this index.
 
 ### 14.1 Wave 0 foundational ADRs
 
@@ -1427,9 +1433,9 @@ The following decisions remain normative in this blueprint. Their standalone ADR
 
 | Gate | Decision to ratify | Due before | Required evidence at ratification |
 |---|---|---|---|
-| JIT-01 | Go modular control-plane monolith, relational ownership, tenant/auth/audit enforcement | Wave 2P implementation | minimal contract kernel, threat model, transaction/outbox prototype |
-| JIT-02 | `SQP-001` dataset, biological filters, reduced Pairformer, objective, and hardware qualification profile | Wave 2S implementation | scientific, data-rights, and ML-systems owner approval |
-| JIT-03 | External API projection and Python SDK support contract | Wave 2P supported surface | one resource/LRO shape, versioning test, consumer journey |
+| JIT-01 / proposed ADR-0010 | Go modular control-plane monolith, relational ownership, tenant/auth/audit enforcement | Wave 2P implementation | minimal contract kernel, threat model, transaction/outbox prototype |
+| JIT-02 / proposed ADR-0011 | `SQP-001` dataset, biological filters, reduced Pairformer, objective, and hardware qualification profile | Wave 2S implementation | scientific, data-rights, and ML-systems owner approval |
+| JIT-03 / proposed ADR-0012 | External API projection and Python SDK support contract | Wave 2P supported surface | one resource/LRO shape, versioning test, consumer journey |
 | JIT-04 | Evaluation evidence and dataset/model promotion policy | Wave 3 release graduation | SQP metrics, baseline, uncertainty and rollback evidence |
 | JIT-05 | GCP/GKE topology, Kueue/JobSet authority, `deploy/` versus foundation/GitOps boundary, and workload identity | Wave 5 infrastructure merge | environment capability, security review, capacity and failure tests |
 | JIT-06 | Each optimized kernel or numerical provider activation | each Wave 6 activation | measured bottleneck, reference parity, recovery mapping, performance threshold, rollback |
@@ -1442,6 +1448,10 @@ The following decisions remain normative in this blueprint. Their standalone ADR
 ADR-0009 does not satisfy JIT-06. It permits only the reviewable, empty-inventory native integration boundary to exist before Wave 6; every non-empty operator addition and activation still requires its own measured JIT-06 decision and the ordinary Wave 5 evidence.
 
 An implementer cannot use missing ADR ratification to invent a local alternative. The blueprint decision remains controlling; the just-in-time ADR records concrete context, alternatives, migration, and evidence when that decision becomes operationally relevant.
+
+ADR-0010, ADR-0011, and ADR-0012 are proposed source records only. Their `connectedRatification` state remains `pending`, they grant no production authority, and their presence does not satisfy the Wave 2P or Wave 2S prerequisites. The v1 PDB source-use and SQP-001 H100 approval contracts accept only pending templates and reject self-asserted approved or revoked records. Wave 2S remains blocked until accountable independent owners bind approvals to immutable source, terms, software, hardware, cost, and receipt digests through a protected cryptographic verifier; that verifier and its verifier-controlled activation schema must land together.
+
+Wave 2S may design and exercise internal typed scientific contracts needed to prove the local slice. The public dataset, feature, transform, model, training, checkpoint, evaluation, and scientific inference schemas that graduate in Wave 3 remain absent and manifest status `target` until both Wave 2 slices exit independently and Wave 3 activates them. A proposal, local type, or test fixture cannot create an early compatibility promise.
 
 ### 14.3 Decision-change protocol
 
@@ -7315,6 +7325,9 @@ mindclade/
 │   │   ├── index.yaml
 │   │   ├── 0008-founder-bootstrap-public-estate-transition.md
 │   │   ├── connected-ratification.v1.schema.json
+│   │   ├── 0010-modular-go-control-plane-relational-durability-worker-isolation.md
+│   │   ├── 0011-sqp-001-scientific-qualification-profile.md
+│   │   ├── 0012-http-json-operation-projection-python-sdk.md
 │   │   └── 0009-native-kernel-source-incubation.md
 │   ├── domains/
 │   │   ├── bio.md
@@ -7369,10 +7382,17 @@ mindclade/
 │   │   └── dataset-card.schema.json
 │   ├── BUILD.bazel
 │   ├── README.md
-│   └── governance/
-│       ├── founder-bootstrap-exception.v1.schema.json
-│       └── exceptions/
-│           └── FBE-0001.yaml
+│   ├── governance/
+│   │   ├── founder-bootstrap-exception.v1.schema.json
+│   │   └── exceptions/
+│   │       └── FBE-0001.yaml
+│   └── policies/
+│       ├── pdb-source-use-approval.template.yaml
+│       ├── pdb-source-use-approval.v1.schema.json
+│       ├── pdb-source-use-data-governance.md
+│       ├── sqp-001-h100-approval.template.yaml
+│       ├── sqp-001-h100-approval.v1.schema.json
+│       └── sqp-001-h100-qualification-envelope.md
 ├── examples/
 │   ├── sdk/
 │   │   ├── submit_operation.py
@@ -8358,6 +8378,28 @@ Remote cache keys include all declared action inputs and platform properties. Ca
 - sensitive output classes.
 
 Untrusted builds cannot poison trusted caches. Release jobs may consume only cache entries produced under compatible trusted identities or recompute actions.
+
+Bazel HTTP cache responses can expose action-cache records, CAS outputs, and captured stdout/stderr. Public-readable and private-internal entries therefore use separate GCP buckets or equivalently IAM- and cryptographically isolated namespaces. The default classification is private; only an explicit target allowlist permits public publication. Writer IAM remains denied until the producing builder identity, target class, and platform envelope are qualified.
+
+The cache namespace/key contract binds:
+
+```text
+cache schema version
+public/private classification
+namespace epoch
+trust class
+operating platform
+machine architecture
+complete toolchain identity
+build mode
+ordinary Bazel action identity
+```
+
+A public/private or other classification change revokes existing access and rotates to a new namespace. Existing objects are not relabeled in place. Noncurrent namespace versions have short lifecycle retention. Read/write access logs are exported to a separate destination outside cache-writer mutation authority.
+
+Qualification periodically forces a cacheless canary and compares the resulting digests with compatible cached outputs. Suspected cache poison invokes namespace write denial/revocation, clean cacheless rebuild, and digest comparison before read authority is restored. Release provenance records cache consultation, namespace identity, and hit/miss state, but the cache is never evidence and does not replace provenance, SBOM, qualification, signature, or reproducibility evidence.
+
+Repository authority is deliberately split. The monorepo owns machine-readable cache classification, key-shape, public-target allowlist, canary, and poison-recovery contracts. `bootstrap` owns foundational GCP trust and identity. `infrastructure-live` owns bucket, IAM, log-destination, and lifecycle desired state. Source policy does not claim connected GCP implementation.
 
 Remote execution workers are immutable or regularly rebuilt, have restricted egress, no persistent credentials, bounded local state, and platform labels that accurately describe CPU, OS, accelerator, driver, and toolchain capabilities.
 

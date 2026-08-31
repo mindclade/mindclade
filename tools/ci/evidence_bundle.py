@@ -26,6 +26,7 @@ BUILDKITE_UUID_PATTERN = re.compile(
 )
 CORRELATION_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{7,127}$")
 WORKFLOW_PATTERN = re.compile(r"^\.github/workflows/[A-Za-z0-9._-]+\.ya?ml$")
+LAUNCHER_IDENTITY_PATTERN = re.compile(r"^buildkite://[a-z0-9][a-z0-9._/-]{7,255}$")
 REPOSITORY = "mindclade/mindclade"
 ORG_SCHEMA_VERSION = "1.0.0"
 OPERATIONAL_REFERENCES = {
@@ -397,7 +398,7 @@ def _validate_operational_reference(
             )
 
 
-def _validate_repository_governance(path: Path, source_revision: str) -> None:
+def validate_repository_governance(path: Path, source_revision: str) -> None:
     report = read_object(path, "repository governance report")
     _validate_repository_report_contract(report)
     if report.get("schema_version") != "repository_drift.v1":
@@ -464,10 +465,142 @@ def _validate_repository_governance(path: Path, source_revision: str) -> None:
             github_config_revision=github_config_revision_value,
             source_revision=source_revision,
         )
-    raise ValueError(
-        "repository governance cryptographic verifier is unavailable/not qualified; "
-        "synthetic qualified observations and source checks cannot produce PASS evidence"
-    )
+
+
+def _validate_launcher_observation(
+    path: Path,
+    *,
+    source_revision: str,
+    pipeline_definition_revision: str,
+    build_id: str,
+    context: Mapping[str, object],
+) -> None:
+    report = read_object(path, "immutable launcher observation")
+    expected_fields = {
+        "schema_version",
+        "qualification",
+        "external_signature_required",
+        "source_revision",
+        "pipeline_definition_revision",
+        "launcher_revision",
+        "launcher_digest",
+        "launcher_identity",
+        "definition_tree_digest",
+        "build_id",
+    }
+    if set(report) != expected_fields:
+        raise ValueError("immutable launcher observation contains missing or unknown fields")
+    if (
+        report.get("schema_version") != "immutable-launcher-observation.v1"
+        or report.get("qualification") != "UNSIGNED_OBSERVATION_INPUT"
+        or report.get("external_signature_required") is not True
+    ):
+        raise ValueError("immutable launcher observation falsely claims qualification")
+    expected = {
+        "source_revision": source_revision,
+        "pipeline_definition_revision": pipeline_definition_revision,
+        "build_id": build_id,
+        "launcher_revision": context.get("launcher_revision"),
+        "launcher_digest": context.get("launcher_digest"),
+        "launcher_identity": context.get("launcher_identity"),
+    }
+    for field, value in expected.items():
+        if report.get(field) != value:
+            raise ValueError(f"immutable launcher observation {field} is not caller-bound")
+    if not SHA_PATTERN.fullmatch(_required_string(report, "launcher_revision")):
+        raise ValueError("immutable launcher revision is not a full lowercase Git SHA")
+    for field in ("launcher_digest", "definition_tree_digest"):
+        if not DIGEST_PATTERN.fullmatch(_required_string(report, field)):
+            raise ValueError(f"immutable launcher {field} is not a canonical digest")
+    if not LAUNCHER_IDENTITY_PATTERN.fullmatch(_required_string(report, "launcher_identity")):
+        raise ValueError("immutable launcher identity is not canonical")
+
+
+def _validate_cache_boundary(
+    path: Path,
+    *,
+    source_revision: str,
+    pipeline_class: str,
+    context: Mapping[str, object],
+) -> None:
+    report = read_object(path, "cache boundary")
+    expected_fields = {
+        "schema_version",
+        "qualification",
+        "source_revision",
+        "cache_mode",
+        "cache_used",
+        "cache_outputs_are_evidence",
+        "public_cache_target_allowlist",
+        "namespace",
+        "iam_qualification_digest",
+        "write_activation_digest",
+        "cacheless_canary",
+        "poison_recovery",
+    }
+    if set(report) != expected_fields:
+        raise ValueError("cache boundary contains missing or unknown fields")
+    if (
+        report.get("schema_version") != "cache-boundary.v1"
+        or report.get("qualification") != "UNSIGNED_OBSERVATION_INPUT"
+        or report.get("source_revision") != source_revision
+        or report.get("cache_mode") != "disabled"
+        or report.get("cache_used") is not False
+        or report.get("cache_outputs_are_evidence") is not False
+        or report.get("public_cache_target_allowlist") != []
+        or report.get("iam_qualification_digest") is not None
+        or report.get("write_activation_digest") is not None
+    ):
+        raise ValueError("cache boundary activates or treats cache state as evidence")
+    namespace = _object_field(report, "namespace")
+    if context.get("cache_build_mode") != pipeline_class:
+        raise ValueError("cache build mode does not match the dispatched pipeline class")
+    expected_namespace = {
+        "schema_version": "cache-namespace.v1",
+        "classification": context.get("cache_classification"),
+        "namespace_epoch": context.get("cache_namespace_epoch"),
+        "trust_class": context.get("source_trust"),
+        "platform": context.get("cache_platform"),
+        "architecture": context.get("cache_architecture"),
+        "toolchain_digest": context.get("cache_toolchain_digest"),
+        "build_mode": pipeline_class,
+    }
+    if namespace != expected_namespace:
+        raise ValueError("cache namespace is not bound to the exact trusted context")
+    if not DIGEST_PATTERN.fullmatch(_required_string(namespace, "toolchain_digest")):
+        raise ValueError("cache namespace toolchain digest is not canonical")
+    canary = _object_field(report, "cacheless_canary")
+    if canary != {
+        "required": pipeline_class in {"protected", "nightly"},
+        "targets": ["//:wave1_tests"],
+        "remote_cache_read": False,
+        "remote_cache_write": False,
+    }:
+        raise ValueError("cacheless reproducibility plan is incomplete")
+    if report.get("poison_recovery") != [
+        "revoke-affected-namespace",
+        "rebuild-with-cache-disabled",
+        "compare-clean-output-digests",
+        "require-reviewed-reactivation-evidence",
+    ]:
+        raise ValueError("cache poison-recovery plan is incomplete")
+
+
+def _validate_source_gate(
+    path: Path,
+    *,
+    source_revision: str,
+    schema_version: str,
+    target: str,
+) -> None:
+    report = read_object(path, schema_version)
+    if report != {
+        "schema_version": schema_version,
+        "source_revision": source_revision,
+        "target": target,
+        "conclusion": "PASS",
+    }:
+        raise ValueError(f"{schema_version} is not an exact revision-bound PASS receipt")
 
 
 def _validate_license_inventory(path: Path) -> None:
@@ -515,15 +648,69 @@ def _validate_bazel_receipt(path: Path) -> None:
         raise ValueError("Bazel native agreement report is not a canonical PASS receipt")
 
 
-def validate_check_report(name: str, path: Path, source_revision: str) -> None:
+def validate_check_report(
+    name: str,
+    path: Path,
+    source_revision: str,
+    *,
+    pipeline_definition_revision: str,
+    pipeline_class: str,
+    build_id: str,
+    context: Mapping[str, object],
+) -> None:
     if name == "repository-governance":
-        _validate_repository_governance(path, source_revision)
+        validate_repository_governance(path, source_revision)
     elif name == "dependency-and-license-policy":
         _validate_license_inventory(path)
     elif name == "secret-scan":
         _validate_secret_scan(path)
     elif name == "bazel-native-agreement":
         _validate_bazel_receipt(path)
+    elif name == "immutable-launcher":
+        _validate_launcher_observation(
+            path,
+            source_revision=source_revision,
+            pipeline_definition_revision=pipeline_definition_revision,
+            build_id=build_id,
+            context=context,
+        )
+    elif name == "cache-boundary":
+        _validate_cache_boundary(
+            path,
+            source_revision=source_revision,
+            pipeline_class=pipeline_class,
+            context=context,
+        )
+    elif name == "source-check":
+        _validate_source_gate(
+            path,
+            source_revision=source_revision,
+            schema_version="source-check.v1",
+            target="just check",
+        )
+    elif name == "wave1-full":
+        _validate_source_gate(
+            path,
+            source_revision=source_revision,
+            schema_version="wave1-full.v1",
+            target="//:wave1_tests",
+        )
+    elif name == "cacheless-reproducibility":
+        report = read_object(path, "cacheless-reproducibility.v1")
+        first = report.get("first_output_digest")
+        second = report.get("second_output_digest")
+        if report != {
+            "cache_mode": "disabled",
+            "conclusion": "PASS",
+            "first_output_digest": first,
+            "independent_output_roots": True,
+            "reproducibility_subject": "//services/control_plane:control_plane_test",
+            "schema_version": "cacheless-reproducibility.v1",
+            "second_output_digest": second,
+            "source_revision": source_revision,
+            "target": "//:wave1_tests",
+        } or not isinstance(first, str) or not DIGEST_PATTERN.fullmatch(first) or first != second:
+            raise ValueError("cacheless canary lacks matching independent output digests")
     else:
         raise ValueError(f"unsupported planned check: {name}")
 
@@ -553,10 +740,21 @@ def validate_trusted_context(
         "workflow_revision",
         "source_trust",
         "execution_tier",
+        "pipeline_definition_revision",
+        "launcher_revision",
+        "launcher_digest",
+        "launcher_identity",
+        "cache_mode",
+        "cache_platform",
+        "cache_architecture",
+        "cache_toolchain_digest",
+        "cache_build_mode",
+        "pipeline_class",
+        "cache_classification",
+        "cache_namespace_epoch",
     }
-    missing = sorted(required - set(context))
-    if missing:
-        raise ValueError(f"trusted context is missing: {', '.join(missing)}")
+    if set(context) != required:
+        raise ValueError("trusted context contains missing or unknown fields")
     source_revision = _required_string(context, "source_revision")
     workflow_revision = _required_string(context, "workflow_revision")
     correlation_id = _required_string(context, "correlation_id")
@@ -575,6 +773,42 @@ def validate_trusted_context(
         raise ValueError("trusted context correlation_id is invalid")
     if not SHA_PATTERN.fullmatch(pipeline_definition_revision):
         raise ValueError("pipeline definition revision must be one full lowercase Git SHA")
+    if context.get("pipeline_definition_revision") != pipeline_definition_revision:
+        raise ValueError("trusted context pipeline definition revision does not match dispatch")
+    if not SHA_PATTERN.fullmatch(_required_string(context, "launcher_revision")):
+        raise ValueError("trusted context launcher revision must be a full lowercase Git SHA")
+    if not DIGEST_PATTERN.fullmatch(_required_string(context, "launcher_digest")):
+        raise ValueError("trusted context launcher digest must be canonical")
+    if not LAUNCHER_IDENTITY_PATTERN.fullmatch(_required_string(context, "launcher_identity")):
+        raise ValueError("trusted context launcher identity must be canonical")
+    if context.get("cache_mode") != "disabled":
+        raise ValueError("trusted context cannot activate an unqualified remote cache")
+    if context.get("cache_build_mode") not in {
+        "presubmit",
+        "protected",
+        "nightly",
+        "gpu",
+        "release",
+        "security",
+    }:
+        raise ValueError("trusted context cache build mode is not allowlisted")
+    if context.get("pipeline_class") != context.get("cache_build_mode"):
+        raise ValueError("trusted context pipeline and cache build modes differ")
+    expected_tier = {
+        "presubmit": "untrusted", "protected": "trusted", "nightly": "trusted",
+        "gpu": "trusted", "release": "release", "security": "trusted",
+    }[cast(str, context.get("pipeline_class"))]
+    if context.get("execution_tier") != expected_tier:
+        raise ValueError("trusted context pipeline class has the wrong execution tier")
+    if context.get("cache_classification") != "private-internal":
+        raise ValueError("trusted context public cache is not activated")
+    if context.get("cache_namespace_epoch") != "disabled-v1":
+        raise ValueError("trusted context cache namespace epoch is not activated")
+    for field in ("cache_platform", "cache_architecture"):
+        if not re.fullmatch(r"[a-z0-9][a-z0-9._-]{1,63}", _required_string(context, field)):
+            raise ValueError(f"trusted context {field} is not canonical")
+    if not DIGEST_PATTERN.fullmatch(_required_string(context, "cache_toolchain_digest")):
+        raise ValueError("trusted context cache toolchain digest is not canonical")
     if not DIGEST_PATTERN.fullmatch(context_digest):
         raise ValueError("context digest must be a canonical SHA-256 digest")
     if sha256_bytes(canonical_json(context)) != context_digest:
@@ -604,6 +838,9 @@ def build_evidence(args: argparse.Namespace) -> dict[str, object]:
     )
     source_revision = _required_string(context, "source_revision")
     plan = read_object(args.plan, "pipeline plan")
+    pipeline_class = _required_string(plan, "pipeline_class")
+    if context.get("pipeline_class") != pipeline_class:
+        raise ValueError("trusted context pipeline class does not match the plan")
     plan_id = validate_plan(
         plan,
         source_revision=source_revision,
@@ -641,7 +878,15 @@ def build_evidence(args: argparse.Namespace) -> dict[str, object]:
             raise ValueError(f"duplicate check name: {name}")
         if not path.is_file():
             raise ValueError(f"check report does not exist: {path}")
-        validate_check_report(name, path, source_revision)
+        validate_check_report(
+            name,
+            path,
+            source_revision,
+            pipeline_definition_revision=args.pipeline_definition_revision,
+            pipeline_class=pipeline_class,
+            build_id=args.build_id,
+            context=context,
+        )
         names.add(name)
         checks.append({"name": name, "conclusion": "PASS", "report_digest": sha256_path(path)})
 

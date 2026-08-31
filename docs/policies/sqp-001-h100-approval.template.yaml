@@ -1,0 +1,26 @@
+apiVersion: mindclade.dev/v1
+kind: SQP001H100Approval
+metadata:
+  name: sqp-001-h100-qualification
+spec:
+  profile: SQP-001
+  status: pending
+  productionAuthority: false
+  hardwareEnvelope:
+    accelerator: NVIDIA H100 80 GB
+    functionalAcceleratorCount: 1
+    maximumAcceleratorCount: 8
+    maximumNodeCount: 1
+    multiNodeAllowed: false
+    kubernetesRequired: false
+  softwareEnvelope:
+    status: pending
+  costEnvelope:
+    status: pending
+  requiredApprovers:
+    - ml-systems
+    - finance-operations
+  blockedUntilApproval:
+    - wave-2s-implementation
+    - one-h100-functional-qualification
+    - pre-wave-5-multi-gpu-run

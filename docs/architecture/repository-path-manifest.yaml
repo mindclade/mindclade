@@ -2547,6 +2547,42 @@
           "reason": "Required Wave 0 governance source for the bounded founder bootstrap and public-estate transition authorized by ADR-0008."
         },
         {
+          "path": "docs/adr/0010-modular-go-control-plane-relational-durability-worker-isolation.md",
+          "reason": "Required fail-closed Wave 2 decision or approval contract omitted by A6; activation records a proposal or pending approval and grants no production authority."
+        },
+        {
+          "path": "docs/adr/0011-sqp-001-scientific-qualification-profile.md",
+          "reason": "Required fail-closed Wave 2 decision or approval contract omitted by A6; activation records a proposal or pending approval and grants no production authority."
+        },
+        {
+          "path": "docs/adr/0012-http-json-operation-projection-python-sdk.md",
+          "reason": "Required fail-closed Wave 2 decision or approval contract omitted by A6; activation records a proposal or pending approval and grants no production authority."
+        },
+        {
+          "path": "docs/policies/pdb-source-use-approval.template.yaml",
+          "reason": "Required fail-closed Wave 2 decision or approval contract omitted by A6; activation records a proposal or pending approval and grants no production authority."
+        },
+        {
+          "path": "docs/policies/pdb-source-use-approval.v1.schema.json",
+          "reason": "Required fail-closed Wave 2 decision or approval contract omitted by A6; activation records a proposal or pending approval and grants no production authority."
+        },
+        {
+          "path": "docs/policies/pdb-source-use-data-governance.md",
+          "reason": "Required fail-closed Wave 2 decision or approval contract omitted by A6; activation records a proposal or pending approval and grants no production authority."
+        },
+        {
+          "path": "docs/policies/sqp-001-h100-approval.template.yaml",
+          "reason": "Required fail-closed Wave 2 decision or approval contract omitted by A6; activation records a proposal or pending approval and grants no production authority."
+        },
+        {
+          "path": "docs/policies/sqp-001-h100-approval.v1.schema.json",
+          "reason": "Required fail-closed Wave 2 decision or approval contract omitted by A6; activation records a proposal or pending approval and grants no production authority."
+        },
+        {
+          "path": "docs/policies/sqp-001-h100-qualification-envelope.md",
+          "reason": "Required fail-closed Wave 2 decision or approval contract omitted by A6; activation records a proposal or pending approval and grants no production authority."
+        },
+        {
           "path": "services/control_plane/internal/operations/operation_commands.go",
           "reason": "Required Wave 1 durability, reconciliation, configuration, or release-signing interface omitted by A6."
         },
@@ -2986,8 +3022,8 @@
           "reason": "Sections 1-18 and Section 14.1 take precedence over the stale A6 short ADR name."
         }
       ],
-      "canonical_file_count": 2576,
-      "canonical_path_set_sha256": "0dbec61fc304b1892f86f18ed18f563ddcea5307f2c815b8ffc42db79d80de7b"
+      "canonical_file_count": 2585,
+      "canonical_path_set_sha256": "26dba71dc00e13c13baa6d293e315cf5b487a8de1b5d871a3f5911f9ae61d198"
     },
     "owners": {
       "agent-platform": {
@@ -36302,6 +36338,54 @@
       "public_surface": false
     },
     {
+      "path": "docs/adr/0010-modular-go-control-plane-relational-durability-worker-isolation.md",
+      "kind": "documentation",
+      "owner": "architecture",
+      "component": "docs-adr",
+      "status": "active",
+      "activation_wave": "0",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:wave0_governance_sources"
+      ],
+      "test_targets": [
+        "//:wave0_tests"
+      ],
+      "public_surface": false
+    },
+    {
+      "path": "docs/adr/0011-sqp-001-scientific-qualification-profile.md",
+      "kind": "documentation",
+      "owner": "architecture",
+      "component": "docs-adr",
+      "status": "active",
+      "activation_wave": "0",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:wave0_governance_sources"
+      ],
+      "test_targets": [
+        "//:wave0_tests"
+      ],
+      "public_surface": false
+    },
+    {
+      "path": "docs/adr/0012-http-json-operation-projection-python-sdk.md",
+      "kind": "documentation",
+      "owner": "architecture",
+      "component": "docs-adr",
+      "status": "active",
+      "activation_wave": "0",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:wave0_governance_sources"
+      ],
+      "test_targets": [
+        "//:wave0_tests"
+      ],
+      "public_surface": false
+    },
+    {
       "path": "docs/adr/0009-native-kernel-source-incubation.md",
       "kind": "documentation",
       "owner": "architecture",
@@ -36929,6 +37013,102 @@
       "kind": "configuration",
       "owner": "architecture",
       "component": "docs-governance",
+      "status": "active",
+      "activation_wave": "0",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:wave0_governance_sources"
+      ],
+      "test_targets": [
+        "//:wave0_tests"
+      ],
+      "public_surface": false
+    },
+    {
+      "path": "docs/policies/pdb-source-use-approval.template.yaml",
+      "kind": "configuration",
+      "owner": "architecture",
+      "component": "docs-policies",
+      "status": "active",
+      "activation_wave": "0",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:wave0_governance_sources"
+      ],
+      "test_targets": [
+        "//:wave0_tests"
+      ],
+      "public_surface": false
+    },
+    {
+      "path": "docs/policies/pdb-source-use-approval.v1.schema.json",
+      "kind": "schema",
+      "owner": "architecture",
+      "component": "docs-policies",
+      "status": "active",
+      "activation_wave": "0",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:wave0_governance_sources"
+      ],
+      "test_targets": [
+        "//:wave0_tests"
+      ],
+      "public_surface": false
+    },
+    {
+      "path": "docs/policies/pdb-source-use-data-governance.md",
+      "kind": "documentation",
+      "owner": "architecture",
+      "component": "docs-policies",
+      "status": "active",
+      "activation_wave": "0",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:wave0_governance_sources"
+      ],
+      "test_targets": [
+        "//:wave0_tests"
+      ],
+      "public_surface": false
+    },
+    {
+      "path": "docs/policies/sqp-001-h100-approval.template.yaml",
+      "kind": "configuration",
+      "owner": "architecture",
+      "component": "docs-policies",
+      "status": "active",
+      "activation_wave": "0",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:wave0_governance_sources"
+      ],
+      "test_targets": [
+        "//:wave0_tests"
+      ],
+      "public_surface": false
+    },
+    {
+      "path": "docs/policies/sqp-001-h100-approval.v1.schema.json",
+      "kind": "schema",
+      "owner": "architecture",
+      "component": "docs-policies",
+      "status": "active",
+      "activation_wave": "0",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:wave0_governance_sources"
+      ],
+      "test_targets": [
+        "//:wave0_tests"
+      ],
+      "public_surface": false
+    },
+    {
+      "path": "docs/policies/sqp-001-h100-qualification-envelope.md",
+      "kind": "documentation",
+      "owner": "architecture",
+      "component": "docs-policies",
       "status": "active",
       "activation_wave": "0",
       "source_authority": "hand-authored",

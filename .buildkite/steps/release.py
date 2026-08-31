@@ -6,19 +6,9 @@ from pipeline_model import Step
 
 
 def steps() -> list[Step]:
-    return [
-        Step(
-            key="release-activation-gate",
-            label=":no_entry: Verify release activation evidence",
-            command="just require-activation release",
-            timeout_minutes=10,
-        ),
-        Step(
-            key="release-qualification",
-            label=":package: Build immutable release inputs",
-            command="just ci-release",
-            timeout_minutes=180,
-            depends_on=("release-activation-gate",),
-            artifact_paths=("build/evidence/release-*",),
-        ),
-    ]
+    return [Step(
+        key="release-not-activated",
+        label=":no_entry: Release pipeline is not activated",
+        command="echo 'Release evidence graph is not activated' >&2; exit 78",
+        timeout_minutes=5,
+    )]

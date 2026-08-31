@@ -6,9 +6,28 @@ import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
+from urllib.parse import urlsplit
+
+from jsonschema import Draft202012Validator, FormatChecker
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(REPO_ROOT / "tools/repo"))
+
+
+def strict_uri_format_checker() -> FormatChecker:
+    checker = FormatChecker()
+
+    @checker.checks("uri")
+    def is_absolute_uri(value: object) -> bool:
+        if not isinstance(value, str):
+            return True
+        try:
+            parsed = urlsplit(value)
+        except ValueError:
+            return False
+        return bool(parsed.scheme) and not any(character.isspace() for character in value)
+
+    return checker
 
 from dependency_policy import validate_dependency_graph  # noqa: E402
 from owner_policy import (  # noqa: E402
@@ -44,7 +63,7 @@ class RepositoryPolicyTest(unittest.TestCase):
 
     def test_manifest_is_semantically_valid(self) -> None:
         self.assertEqual(validate_manifest(self.manifest), [])
-        self.assertEqual(len(self.manifest["paths"]), 2572)
+        self.assertEqual(len(self.manifest["paths"]), 2585)
         wave_one = [entry for entry in self.manifest["paths"] if entry["activation_wave"] == "1"]
         self.assertEqual(len(wave_one), 389)
         for entry in wave_one:
@@ -261,6 +280,77 @@ class RepositoryPolicyTest(unittest.TestCase):
             entries["protocols/generated/rust/lib.rs"]["source_authority"],
             "reviewed-generated",
         )
+
+    def test_wave_two_preflight_decisions_and_approval_contracts_fail_closed(self) -> None:
+        entries = {entry["path"]: entry for entry in self.manifest["paths"]}
+        decisions = (
+            "docs/adr/0010-modular-go-control-plane-relational-durability-worker-isolation.md",
+            "docs/adr/0011-sqp-001-scientific-qualification-profile.md",
+            "docs/adr/0012-http-json-operation-projection-python-sdk.md",
+        )
+        contracts = (
+            (
+                "docs/policies/pdb-source-use-approval.v1.schema.json",
+                "docs/policies/pdb-source-use-approval.template.yaml",
+            ),
+            (
+                "docs/policies/sqp-001-h100-approval.v1.schema.json",
+                "docs/policies/sqp-001-h100-approval.template.yaml",
+            ),
+        )
+        for path in decisions:
+            with self.subTest(decision=path):
+                self.assertEqual(entries[path]["status"], "active")
+                self.assertEqual(entries[path]["activation_wave"], "0")
+                text = (REPO_ROOT / path).read_text(encoding="utf-8")
+                self.assertIn("- Status: Proposed", text)
+                self.assertIn(
+                    "- Connected ratification: Pending independent review on protected infrastructure",
+                    text,
+                )
+                self.assertIn("production_authority", text)
+
+        forbidden_pending_fields = {
+            "approvalSubjectRevision",
+            "approvals",
+            "approvalReceiptDigest",
+            "approvedAt",
+            "revokedAt",
+            "revocationReceiptDigest",
+        }
+        for schema_path, template_path in contracts:
+            with self.subTest(contract=schema_path):
+                schema = json.loads((REPO_ROOT / schema_path).read_text(encoding="utf-8"))
+                Draft202012Validator.check_schema(schema)
+                validator = Draft202012Validator(
+                    schema,
+                    format_checker=strict_uri_format_checker(),
+                )
+                pending = load_yaml_or_json(REPO_ROOT / template_path)
+                self.assertEqual(list(validator.iter_errors(pending)), [])
+                self.assertEqual(pending["spec"]["status"], "pending")
+                self.assertIs(pending["spec"]["productionAuthority"], False)
+                self.assertTrue(forbidden_pending_fields.isdisjoint(pending["spec"]))
+                falsely_approved = json.loads(json.dumps(pending))
+                falsely_approved["spec"]["status"] = "approved"
+                self.assertTrue(list(validator.iter_errors(falsely_approved)))
+                falsely_revoked = json.loads(json.dumps(pending))
+                falsely_revoked["spec"]["status"] = "revoked"
+                self.assertTrue(list(validator.iter_errors(falsely_revoked)))
+                self.assertEqual(entries[schema_path]["kind"], "schema")
+                self.assertEqual(entries[template_path]["kind"], "configuration")
+                if "sourceTermsUri" in schema["properties"]["spec"]["properties"]:
+                    uri_schema = schema["properties"]["spec"]["properties"]["sourceTermsUri"]
+                    uri_validator = Draft202012Validator(
+                        uri_schema,
+                        format_checker=strict_uri_format_checker(),
+                    )
+                    self.assertTrue(list(uri_validator.iter_errors("not a URI")))
+
+        h100 = load_yaml_or_json(
+            REPO_ROOT / "docs/policies/sqp-001-h100-approval.template.yaml"
+        )
+        self.assertIn("wave-2s-implementation", h100["spec"]["blockedUntilApproval"])
 
     def test_authority_display_order_round_trips(self) -> None:
         paths = [entry["path"] for entry in self.manifest["paths"]]

@@ -6,46 +6,78 @@ cd "${MINDCLADE_REPOSITORY_ROOT:?environment hook did not bind repository root}"
 source_revision="${MINDCLADE_SOURCE_REVISION:?missing source revision}"
 pipeline_revision="${MINDCLADE_PIPELINE_DEFINITION_REVISION:?missing pipeline definition revision}"
 pipeline_class="${MINDCLADE_PIPELINE_CLASS:?missing pipeline class}"
+launcher_revision="${MINDCLADE_LAUNCHER_REVISION:?missing immutable launcher revision}"
+launcher_digest="${MINDCLADE_LAUNCHER_DIGEST:?missing immutable launcher digest}"
+launcher_identity="${MINDCLADE_LAUNCHER_IDENTITY:?missing immutable launcher identity}"
+cache_mode="${MINDCLADE_CACHE_MODE:?missing explicit cache mode}"
+cache_platform="${MINDCLADE_CACHE_PLATFORM:?missing cache platform}"
+cache_architecture="${MINDCLADE_CACHE_ARCHITECTURE:?missing cache architecture}"
+cache_toolchain_digest="${MINDCLADE_CACHE_TOOLCHAIN_DIGEST:?missing cache toolchain digest}"
+cache_build_mode="${MINDCLADE_CACHE_BUILD_MODE:?missing cache build mode}"
+cache_classification="${MINDCLADE_CACHE_CLASSIFICATION:?missing cache classification}"
+cache_namespace_epoch="${MINDCLADE_CACHE_NAMESPACE_EPOCH:?missing cache namespace epoch}"
+: "${MINDCLADE_CONTEXT_JSON:?missing trusted context JSON}"
+: "${MINDCLADE_CONTEXT_DIGEST:?missing trusted context digest}"
 
 [[ "${source_revision}" =~ ^[0-9a-f]{40}$ ]]
 [[ "${pipeline_revision}" =~ ^[0-9a-f]{40}$ ]]
+[[ "${launcher_revision}" =~ ^[0-9a-f]{40}$ ]]
+[[ "${launcher_digest}" =~ ^sha256:[0-9a-f]{64}$ ]]
+[[ "${launcher_identity}" =~ ^buildkite://[a-z0-9][a-z0-9._/-]{7,255}$ ]]
+[[ "${cache_mode}" == disabled ]]
+[[ "${cache_platform}" =~ ^[a-z0-9][a-z0-9._-]{1,63}$ ]]
+[[ "${cache_architecture}" =~ ^[a-z0-9][a-z0-9._-]{1,63}$ ]]
+[[ "${cache_toolchain_digest}" =~ ^sha256:[0-9a-f]{64}$ ]]
+[[ "${cache_build_mode}" == "${pipeline_class}" ]]
+[[ "${cache_classification}" == private-internal ]]
+[[ "${cache_namespace_epoch}" == disabled-v1 ]]
+[[ -z "${MINDCLADE_CACHE_IAM_QUALIFICATION_DIGEST:-}" ]]
+[[ -z "${MINDCLADE_CACHE_WRITE_ACTIVATION_DIGEST:-}" ]]
 [[ "$(git rev-parse HEAD)" == "${source_revision}" ]]
 git cat-file -e "${pipeline_revision}^{commit}"
 
+python3.12 - <<'PY'
+import hashlib
+import json
+import os
+
+context = json.loads(os.environ["MINDCLADE_CONTEXT_JSON"])
+if not isinstance(context, dict):
+    raise SystemExit("trusted context must be a JSON object")
+encoded = json.dumps(context, ensure_ascii=False, separators=(",", ":"), sort_keys=True).encode()
+actual_digest = "sha256:" + hashlib.sha256(encoded).hexdigest()
+if actual_digest != os.environ["MINDCLADE_CONTEXT_DIGEST"]:
+    raise SystemExit("trusted context digest does not bind the exact JSON")
+bindings = {
+    "correlation_id": "MINDCLADE_CORRELATION_ID",
+    "pipeline_class": "MINDCLADE_PIPELINE_CLASS",
+    "execution_tier": "MINDCLADE_EXECUTION_TIER",
+    "source_trust": "MINDCLADE_SOURCE_TRUST",
+    "source_revision": "MINDCLADE_SOURCE_REVISION",
+    "pipeline_definition_revision": "MINDCLADE_PIPELINE_DEFINITION_REVISION",
+    "launcher_revision": "MINDCLADE_LAUNCHER_REVISION",
+    "launcher_digest": "MINDCLADE_LAUNCHER_DIGEST",
+    "launcher_identity": "MINDCLADE_LAUNCHER_IDENTITY",
+    "cache_mode": "MINDCLADE_CACHE_MODE",
+    "cache_platform": "MINDCLADE_CACHE_PLATFORM",
+    "cache_architecture": "MINDCLADE_CACHE_ARCHITECTURE",
+    "cache_toolchain_digest": "MINDCLADE_CACHE_TOOLCHAIN_DIGEST",
+    "cache_build_mode": "MINDCLADE_CACHE_BUILD_MODE",
+    "cache_classification": "MINDCLADE_CACHE_CLASSIFICATION",
+    "cache_namespace_epoch": "MINDCLADE_CACHE_NAMESPACE_EPOCH",
+}
+for field, environment_name in bindings.items():
+    if context.get(field) != os.environ[environment_name]:
+        raise SystemExit(f"trusted context {field} does not match immutable launcher environment")
+PY
+
 if [[ "${pipeline_class}" == presubmit ]]; then
-  protected_definition_paths=(
-    .bazelrc
-    .bazelversion
-    .buildkite
-    .github
-    .gitignore
-    .markdownlint-cli2.yaml
-    .pre-commit-config.yaml
-    .python-version
-    .yamllint.yaml
-    BUILD.bazel
-    Cargo.lock
-    Cargo.toml
-    MODULE.bazel
-    MODULE.bazel.lock
-    buf.gen.yaml
-    buf.yaml
-    component.yaml
-    docs/adr
-    docs/architecture
-    flake.lock
-    flake.nix
-    go.mod
-    go.sum
-    justfile
-    package.json
-    pnpm-lock.yaml
-    pnpm-workspace.yaml
-    pyproject.toml
-    rust-toolchain.toml
-    tools
-    uv.lock
-  )
+  protected_paths_text="$(git show "${pipeline_revision}:tools/ci/pipeline_plan.py" | python3.12 -c 'import ast,sys; tree=ast.parse(sys.stdin.read()); values=[node.value for node in tree.body if isinstance(node,ast.Assign) and any(isinstance(target,ast.Name) and target.id=="PROTECTED_DEFINITION_PATHS" for target in node.targets)]; assert len(values)==1; paths=ast.literal_eval(values[0]); assert isinstance(paths,tuple) and paths; print(*paths,sep="\n")')"
+  protected_definition_paths=()
+  while IFS= read -r path; do
+    [[ -n "${path}" ]] && protected_definition_paths+=("${path}")
+  done <<<"${protected_paths_text}"
+  (( ${#protected_definition_paths[@]} > 0 ))
   if ! git diff --quiet "${pipeline_revision}" -- "${protected_definition_paths[@]}"; then
     echo "Presubmit source changes the protected Wave 0 enforcement closure:" >&2
     git diff --name-only "${pipeline_revision}" -- "${protected_definition_paths[@]}" >&2
@@ -54,6 +86,19 @@ if [[ "${pipeline_class}" == presubmit ]]; then
   fi
 else
   [[ "${source_revision}" == "${pipeline_revision}" ]]
+  dirty_state="$(git status --porcelain=v1 --untracked-files=all --ignore-submodules=none)"
+  if [[ -n "${dirty_state}" ]]; then
+    echo "Protected pipeline requires a completely clean source checkout" >&2
+    printf '%s\n' "${dirty_state}" >&2
+    exit 78
+  fi
+  if [[ -f .gitmodules ]]; then
+    submodule_state="$(git submodule status --recursive)"
+    if printf '%s\n' "${submodule_state}" | grep -Eq '^[+-U]'; then
+      echo "Protected pipeline rejects uninitialized or drifted submodules" >&2
+      exit 78
+    fi
+  fi
 fi
 
 python3.12 \
