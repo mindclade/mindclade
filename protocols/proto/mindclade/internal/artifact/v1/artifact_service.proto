@@ -11,7 +11,7 @@ import "proto/mindclade/common/v1/pagination.proto";
 import "proto/mindclade/common/v1/resource_reference.proto";
 import "proto/mindclade/job/v1/operation.proto";
 
-option go_package = "github.com/mindclade/mindclade/protocols/generated/go/artifact/v1;artifactv1";
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/internal/artifact/v1;internalartifactv1";
 
 // GetArtifactRequest identifies immutable artifact metadata by digest or canonical name.
 message GetArtifactRequest {

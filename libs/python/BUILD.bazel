@@ -1,5 +1,19 @@
 load("@rules_python//python:defs.bzl", "py_library")
-py_library(name="libs_python",deps=["//libs/python/artifacts","//libs/python/config","//libs/python/contracts","//libs/python/identifiers","//libs/python/observability","//libs/python/retry","//libs/python/serialization","//libs/python/testing","//libs/python/time"])
+
+py_library(
+    name = "libs_python",
+    deps = [
+        "//libs/python/artifacts",
+        "//libs/python/config",
+        "//libs/python/contracts",
+        "//libs/python/identifiers",
+        "//libs/python/observability",
+        "//libs/python/retry",
+        "//libs/python/serialization",
+        "//libs/python/testing",
+        "//libs/python/time",
+    ],
+)
 
 filegroup(
     name = "governed_sources",

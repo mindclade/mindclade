@@ -11,7 +11,7 @@ import "proto/mindclade/common/v1/command_context.proto";
 import "proto/mindclade/common/v1/pagination.proto";
 import "proto/mindclade/job/v1/operation.proto";
 
-option go_package = "github.com/mindclade/mindclade/protocols/generated/go/admin/v1;adminv1";
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/internal/admin/v1;internaladminv1";
 
 // GetTenantRequest identifies one top-level isolation boundary.
 message GetTenantRequest {

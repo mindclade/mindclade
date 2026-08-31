@@ -13,6 +13,8 @@ import (
 	"time"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
+
+	foundationaudit "github.com/mindclade/mindclade/libs/go/audit"
 	artifactv1 "github.com/mindclade/mindclade/protocols/generated/go/artifact/v1"
 	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
 	"github.com/mindclade/mindclade/services/control_plane/internal/artifacts"
@@ -55,6 +57,7 @@ func (c *memoryCatalog) Register(_ context.Context, record storage.ArtifactRecor
 	c.records[record.TenantID+record.Digest] = record
 	return nil
 }
+
 func (c *memoryCatalog) Get(_ context.Context, tenantID, digest string) (storage.ArtifactRecord, error) {
 	return c.records[tenantID+digest], nil
 }
@@ -78,6 +81,14 @@ func TestOperationAcceptanceCommitsAuditAndOutboxAtomically(t *testing.T) {
 	envelopes := repository.OutboxEnvelopes()
 	if repository.AuditCount() != 1 || len(envelopes) != 1 {
 		t.Fatal("accepted operation must include audit and outbox evidence")
+	}
+	auditEnvelopes := repository.AuditEnvelopes()
+	if len(auditEnvelopes) != 1 {
+		t.Fatal("accepted operation must include one generated audit envelope")
+	}
+	auditPayload, err := foundationaudit.ValidateEvent(auditEnvelopes[0])
+	if err != nil || auditPayload.GetAction() != operations.CreateAction {
+		t.Fatalf("validate authoritative audit envelope: payload=%v err=%v", auditPayload, err)
 	}
 	encoded, err := queue.MarshalEnvelope(envelopes[0])
 	if err != nil {
@@ -157,6 +168,17 @@ func TestPostgresKernelJourney(t *testing.T) {
 	operation, replay, err := operationsSQL.CreateAtomicallySQL(context, operationInput, requestHash, "journey-key", "integration-principal")
 	if err != nil || replay || operation.GetState() != jobv1.OperationState_OPERATION_STATE_PENDING {
 		t.Fatalf("PostgreSQL operation acceptance failed: operation=%#v replay=%v err=%v", operation, replay, err)
+	}
+	var auditEnvelopeBytes []byte
+	if queryErr := db.QueryRowContext(context, `SELECT envelope_bytes FROM audit_events WHERE tenant_id = $1 AND subject_id = $2`, tenantID, operationID).Scan(&auditEnvelopeBytes); queryErr != nil {
+		t.Fatalf("read PostgreSQL generated audit envelope: %v", queryErr)
+	}
+	auditEnvelope, err := queue.UnmarshalEnvelope(auditEnvelopeBytes)
+	if err != nil {
+		t.Fatalf("decode PostgreSQL generated audit envelope: %v", err)
+	}
+	if auditPayload, validationErr := foundationaudit.ValidateEvent(auditEnvelope); validationErr != nil || auditPayload.GetAction() != operations.CreateAction {
+		t.Fatalf("validate PostgreSQL generated audit payload: payload=%v err=%v", auditPayload, validationErr)
 	}
 	if _, replay, err = operationsSQL.CreateAtomicallySQL(context, operationInput, requestHash, "journey-key", "integration-principal"); err != nil || !replay {
 		t.Fatalf("PostgreSQL idempotency replay failed: replay=%v err=%v", replay, err)

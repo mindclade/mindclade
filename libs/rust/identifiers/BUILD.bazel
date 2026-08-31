@@ -1,9 +1,18 @@
 load("@rules_rust//rust:defs.bzl", "rust_library")
 
-rust_library(name = "identifiers", crate_name = "mindclade_identifiers", edition = "2024", srcs = glob(["src/**/*.rs"]), visibility = ["//visibility:public"])
+rust_library(
+    name = "identifiers",
+    srcs = glob(["src/**/*.rs"]),
+    crate_name = "mindclade_identifiers",
+    edition = "2024",
+    visibility = ["//visibility:public"],
+)
 
 filegroup(
     name = "governed_sources",
-    srcs = ["BUILD.bazel"] + glob(["**"], exclude = ["BUILD.bazel"]),
+    srcs = ["BUILD.bazel"] + glob(
+        ["**"],
+        exclude = ["BUILD.bazel"],
+    ),
     visibility = ["//visibility:public"],
 )

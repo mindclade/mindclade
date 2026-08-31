@@ -69,13 +69,13 @@ pub mod agent_decision {
         #[prost(message, tag = "5")]
         ToolCall(super::ToolCall),
         #[prost(message, tag = "6")]
-        DomainJob(super::crate::common::v1::ResourceRef),
+        DomainJob(crate::common::v1::ResourceRef),
         #[prost(message, tag = "7")]
-        ApprovalRequest(super::crate::common::v1::ResourceRef),
+        ApprovalRequest(crate::common::v1::ResourceRef),
         #[prost(message, tag = "8")]
         Wait(super::AgentWait),
         #[prost(message, tag = "9")]
-        TerminalResult(super::crate::artifact::v1::ArtifactRef),
+        TerminalResult(crate::artifact::v1::ArtifactRef),
     }
 }
 /// AgentStep is an append-only, revisioned unit of a durable run.

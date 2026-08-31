@@ -101,7 +101,7 @@ deep_ep_artifact_repository = repository_rule(
     local = True,
 )
 
-def _deep_ep_nix_impl(module_ctx):
+def _deep_ep_nix_impl(_module_ctx):
     deep_ep_artifact_repository(
         name = "mindclade_deepep_nix",
         flake = Label("//:flake.nix"),

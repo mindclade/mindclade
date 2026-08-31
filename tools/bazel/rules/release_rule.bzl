@@ -9,7 +9,6 @@ ReleaseInfo = provider(
     },
 )
 
-
 def _release_input_impl(ctx):
     direct = depset(ctx.files.srcs)
     transitive = [direct]
@@ -24,7 +23,6 @@ def _release_input_impl(ctx):
             qualification_targets = tuple(ctx.attr.qualification_targets),
         ),
     ]
-
 
 release_input = rule(
     implementation = _release_input_impl,

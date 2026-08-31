@@ -82,11 +82,14 @@ Workers remain unable to mutate control-plane tables and communicate through
 typed commands, events, and gRPC boundaries.
 
 The public SDK program treats Stainless as the primary long-term generator for
-Go, Python, and TypeScript. `stainless.yml` governs SDK ergonomics and does not
-become contract authority; the curated OpenAPI document remains the portable
-input. A provider-neutral `SdkGenerator` boundary and reproducible local
-artifacts prevent hosted state from becoming the only build record. Oagen is a
-first-class shadow generator with parity tests and a documented promotion path.
+Go, Python, and TypeScript. The portable generation configuration governs
+shared SDK ergonomics today; a future provider-native `stainless.yml` may govern
+Stainless-specific ergonomics only after its official validator and generator
+are pinned and qualified. Neither configuration becomes contract authority;
+the curated OpenAPI document remains the portable input. A provider-neutral
+`SdkGenerator` boundary and reproducible local artifacts prevent hosted state
+from becoming the only build record. Oagen is a first-class shadow generator
+with parity tests and a documented promotion path.
 Mindclade-owned emitters may be seeded from appropriately licensed open-source
 implementations, but generated SDK release compatibility is proven against the
 same OpenAPI fixtures regardless of provider.

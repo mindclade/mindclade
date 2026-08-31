@@ -1,7 +1,7 @@
 {
   "generator": {
     "id": "kernels.native.codegen.generate",
-    "version": 2
+    "version": 3
   },
   "namespace": "mindclade",
   "operators": [
@@ -161,6 +161,6 @@
   "request_time_compilation": false,
   "runtime_discovery": false,
   "schema_version": 2,
-  "semantic_digest": "sha256:9311f217200bfe1d11358ef753b9b863fac881a7f302aedab603b896475b0caf",
+  "semantic_digest": "sha256:f7fd96bb3b93d44596780e2e5e2f891276d308e5c0255dbeb96ee08a364bbae3",
   "source_inventory_sha256": "sha256:cc80b7325af092de47ebb3ef4220cbd86ebd915a677c8ac0d431686d03908788"
 }

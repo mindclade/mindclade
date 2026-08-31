@@ -5,8 +5,9 @@ import (
 	"fmt"
 	"sync"
 
-	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	"google.golang.org/protobuf/proto"
+
+	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 )
 
 type Writer interface {

@@ -8,7 +8,7 @@ import "proto/mindclade/inference/v1/inference_result.proto";
 import "proto/mindclade/inference/v1/inference_stream.proto";
 import "proto/mindclade/job/v1/operation.proto";
 
-option go_package = "github.com/mindclade/mindclade/protocols/generated/go/inference/v1;inferencev1";
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/internal/inference/v1;internalinferencev1";
 
 // SubmitInferenceRequest wraps bounded inference intent after edge validation.
 message SubmitInferenceRequest {

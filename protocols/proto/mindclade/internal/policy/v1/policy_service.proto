@@ -12,7 +12,7 @@ import "proto/mindclade/policy/v1/authorization_decision.proto";
 import "proto/mindclade/policy/v1/policy_reference.proto";
 import "proto/mindclade/policy/v1/use_policy.proto";
 
-option go_package = "github.com/mindclade/mindclade/protocols/generated/go/policy/v1;policyv1";
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/internal/policy/v1;internalpolicyv1";
 
 // EvaluateAuthorizationRequest freezes the principal, action, target, and intent evaluated.
 message EvaluateAuthorizationRequest {

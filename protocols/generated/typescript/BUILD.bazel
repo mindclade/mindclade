@@ -5,15 +5,18 @@ npm_link_all_packages(name = "node_modules")
 
 ts_project(
     name = "bindings",
-    srcs = glob(["**/*.ts"], exclude = ["node_modules/**"]),
+    srcs = glob(
+        ["**/*.ts"],
+        exclude = ["node_modules/**"],
+    ),
     declaration = True,
-    tsconfig = "tsconfig.json",
     transpiler = "tsc",
+    tsconfig = "tsconfig.json",
+    visibility = ["//visibility:public"],
     deps = [
         ":node_modules/@bufbuild/protobuf",
         ":node_modules/@connectrpc/connect",
     ],
-    visibility = ["//visibility:public"],
 )
 
 filegroup(

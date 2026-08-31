@@ -1,16 +1,32 @@
-load("@rules_rust//rust:defs.bzl", "rust_library")
+load("@rules_rust//rust:defs.bzl", "rust_library", "rust_test")
+
+ARTIFACT_DEPS = [
+    "//protocols/generated/rust:bindings",
+    "@crate_index//:sha2",
+]
 
 rust_library(
     name = "artifact",
+    srcs = glob(["src/**/*.rs"]),
     crate_name = "mindclade_artifact",
     edition = "2024",
-    srcs = glob(["src/**/*.rs"]),
-    deps = ["@crate_index//:sha2"],
     visibility = ["//visibility:public"],
+    deps = ARTIFACT_DEPS,
+)
+
+rust_test(
+    name = "artifact_test",
+    srcs = glob(["src/**/*.rs"]),
+    crate_root = "src/lib.rs",
+    edition = "2024",
+    deps = ARTIFACT_DEPS,
 )
 
 filegroup(
     name = "governed_sources",
-    srcs = ["BUILD.bazel"] + glob(["**"], exclude = ["BUILD.bazel"]),
+    srcs = ["BUILD.bazel"] + glob(
+        ["**"],
+        exclude = ["BUILD.bazel"],
+    ),
     visibility = ["//visibility:public"],
 )

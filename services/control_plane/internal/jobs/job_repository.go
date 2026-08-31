@@ -8,12 +8,13 @@ import (
 	"sync"
 	"time"
 
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/timestamppb"
+
 	artifactv1 "github.com/mindclade/mindclade/protocols/generated/go/artifact/v1"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
 	"github.com/mindclade/mindclade/services/control_plane/internal/tenants"
-	"google.golang.org/protobuf/proto"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type SQLRepository struct{ DB *sql.DB }
@@ -30,7 +31,7 @@ func (r SQLRepository) CompleteAttemptSQL(ctx context.Context, tenantID, attempt
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 	var runID string
 	var attemptEpoch, currentEpoch uint64
 	var runStatus string

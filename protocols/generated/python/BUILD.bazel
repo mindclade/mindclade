@@ -4,8 +4,11 @@ py_library(
     name = "bindings",
     srcs = glob(["**/*.py"]),
     imports = ["."],
-    deps = ["@mindclade_pypi//grpcio", "@mindclade_pypi//protobuf"],
     visibility = ["//visibility:public"],
+    deps = [
+        "@mindclade_pypi//grpcio",
+        "@mindclade_pypi//protobuf",
+    ],
 )
 
 filegroup(

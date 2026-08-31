@@ -2,11 +2,12 @@ package storage
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"time"
 
-	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	"google.golang.org/protobuf/proto"
+
+	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 )
 
 // Claim is an adapter around the authoritative generated envelope. Scheduling
@@ -24,7 +25,7 @@ type deliveryMetadata struct {
 
 func NewClaim(envelope *commonv1.EventEnvelope, epoch uint64, availableAt time.Time) (Claim, error) {
 	if envelope == nil || envelope.GetEventId() == "" || epoch == 0 || availableAt.IsZero() {
-		return Claim{}, fmt.Errorf("invalid outbox claim")
+		return Claim{}, errors.New("invalid outbox claim")
 	}
 	return Claim{
 		Envelope: proto.Clone(envelope).(*commonv1.EventEnvelope),

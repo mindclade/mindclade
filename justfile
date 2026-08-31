@@ -30,10 +30,9 @@ doctor:
 format:
     ruff format .buildkite tools libs/python tests
     find libs/rust -type f -name '*.rs' -print0 | xargs -0 rustfmt --edition 2024
-    golangci-lint fmt
+    golangci-lint fmt ./libs/go/... ./services/control_plane/...
     pnpm run format
     find . -type d \( -name .git -o -name node_modules -o -name build -o -name 'bazel-*' \) -prune -o -type f \( -name BUILD -o -name BUILD.bazel -o -name MODULE.bazel -o -name '*.bzl' \) ! -path './protocols/generated/*' ! -path './kernels/native/generated/*' -print0 | xargs -0 buildifier -mode=fix
-    buildifier -mode=fix -type=bazelrc .bazelrc
     nixfmt flake.nix third_party/packages/deep_ep/package.nix
     shfmt -w -i 2 -ci -bn .buildkite/hooks/environment .buildkite/hooks/pre-command
     just --fmt
@@ -42,10 +41,9 @@ format:
 format-check:
     ruff format --check .buildkite tools libs/python tests
     cargo fmt --all --check
-    golangci-lint fmt --diff
+    golangci-lint fmt --diff ./libs/go/... ./services/control_plane/... ./protocols/generated/go/...
     pnpm run format:check
     find . -type d \( -name .git -o -name node_modules -o -name build -o -name 'bazel-*' \) -prune -o -type f \( -name BUILD -o -name BUILD.bazel -o -name MODULE.bazel -o -name '*.bzl' \) -print0 | xargs -0 buildifier -mode=check -lint=warn
-    buildifier -mode=check -lint=warn -type=bazelrc .bazelrc
     nixfmt --check flake.nix third_party/packages/deep_ep/package.nix
     shfmt -d -i 2 -ci -bn .buildkite/hooks/environment .buildkite/hooks/pre-command
     just --fmt --check
@@ -55,7 +53,7 @@ lint:
     ruff check .buildkite tools libs/python tests
     pyright .buildkite tools libs/python tests
     cargo clippy --workspace --all-targets --locked --no-deps -- -D warnings
-    golangci-lint run ./...
+    golangci-lint run ./libs/go/... ./services/control_plane/... ./protocols/generated/go/...
     pnpm run lint
     shellcheck .buildkite/hooks/environment .buildkite/hooks/pre-command
     actionlint -no-color

@@ -2,14 +2,41 @@ load("@rules_go//go:def.bzl", "go_library")
 
 go_library(
     name = "bindings",
-    srcs = ["attempt.pb.go", "attempt_completed.pb.go", "attempt_leased.pb.go", "job.pb.go", "job_commands.pb.go", "job_requested.pb.go", "job_service.pb.go", "job_service_grpc.pb.go", "lease_fencing.pb.go", "operation.pb.go", "run.pb.go"],
+    srcs = [
+        "attempt.pb.go",
+        "attempt_completed.pb.go",
+        "attempt_leased.pb.go",
+        "job.pb.go",
+        "job_commands.pb.go",
+        "job_requested.pb.go",
+        "lease_fencing.pb.go",
+        "operation.pb.go",
+        "run.pb.go",
+    ],
     importpath = "github.com/mindclade/mindclade/protocols/generated/go/job/v1",
-    deps = ["@org_golang_google_protobuf//reflect/protoreflect", "@org_golang_google_protobuf//runtime/protoimpl", "@org_golang_google_protobuf//types/known/fieldmaskpb", "@org_golang_google_protobuf//types/known/timestamppb", "@org_golang_google_grpc//:grpc", "@org_golang_google_grpc//codes", "@org_golang_google_grpc//status", "//protocols/generated/go/artifact/v1:bindings", "//protocols/generated/go/common/v1:bindings"],
     visibility = ["//visibility:public"],
+    deps = [
+        "//protocols/generated/go/artifact/v1:bindings",
+        "//protocols/generated/go/common/v1:bindings",
+        "@org_golang_google_protobuf//reflect/protoreflect",
+        "@org_golang_google_protobuf//runtime/protoimpl",
+        "@org_golang_google_protobuf//types/known/timestamppb",
+    ],
 )
 
 filegroup(
     name = "generated_sources",
-    srcs = ["BUILD.bazel", "attempt.pb.go", "attempt_completed.pb.go", "attempt_leased.pb.go", "job.pb.go", "job_commands.pb.go", "job_requested.pb.go", "job_service.pb.go", "job_service_grpc.pb.go", "lease_fencing.pb.go", "operation.pb.go", "run.pb.go"],
+    srcs = [
+        "BUILD.bazel",
+        "attempt.pb.go",
+        "attempt_completed.pb.go",
+        "attempt_leased.pb.go",
+        "job.pb.go",
+        "job_commands.pb.go",
+        "job_requested.pb.go",
+        "lease_fencing.pb.go",
+        "operation.pb.go",
+        "run.pb.go",
+    ],
     visibility = ["//visibility:public"],
 )

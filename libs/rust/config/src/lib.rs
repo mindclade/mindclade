@@ -3,4 +3,4 @@
 pub mod redaction;
 pub mod resolution;
 
-pub use resolution::{resolve, ConfigLayer, Resolution};
+pub use resolution::{ConfigLayer, Resolution, resolve};

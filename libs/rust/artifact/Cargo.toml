@@ -6,6 +6,7 @@ rust-version.workspace = true
 license.workspace = true
 
 [dependencies]
+mindclade-protocols = { path = "../../../protocols/generated/rust" }
 sha2.workspace = true
 
 [lints]

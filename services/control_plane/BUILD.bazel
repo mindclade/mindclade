@@ -49,6 +49,7 @@ go_library(
     deps = [
         ":policies",
         ":tenants",
+        "//libs/go/audit",
         "//protocols/generated/go/artifact/v1:bindings",
         "//protocols/generated/go/common/v1:bindings",
         "//protocols/generated/go/job/v1:bindings",
@@ -195,6 +196,7 @@ go_test(
         ":policies",
         ":queue",
         ":storage",
+        "//libs/go/audit",
         "//protocols/generated/go/artifact/v1:bindings",
         "//protocols/generated/go/job/v1:bindings",
         "@com_github_jackc_pgx_v5//stdlib",
@@ -211,7 +213,9 @@ filegroup(
     srcs = [
         ":artifacts",
         ":audit",
+        ":control_plane_test_sources",
         ":database",
+        ":governed_inputs",
         ":idempotency",
         ":inbox",
         ":jobs",
@@ -222,8 +226,6 @@ filegroup(
         ":storage",
         ":telemetry",
         ":tenants",
-        ":control_plane_test_sources",
-        ":governed_inputs",
     ],
     visibility = ["//visibility:public"],
 )

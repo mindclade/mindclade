@@ -4,6 +4,10 @@ packages:
   - libs/typescript/testing
   - protocols/generated/typescript
 
+# Dependency lifecycle scripts execute code during installation. None of the
+# reviewed workspace dependencies require one, so keep the allowlist closed.
+allowBuilds: {}
+
 catalog:
   '@connectrpc/connect': 2.1.2
   '@types/node': 24.10.1

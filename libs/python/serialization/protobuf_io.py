@@ -4,7 +4,11 @@ import hashlib
 from datetime import UTC, datetime
 from typing import Protocol
 
-from common.v1.event_envelope_pb2 import EventEnvelope
+from common.v1.event_envelope_pb2 import (
+    DATA_CLASSIFICATION_UNSPECIFIED,
+    DataClassification,
+    EventEnvelope,
+)
 from common.v1.resource_reference_pb2 import ResourceRef
 from google.protobuf.message import Message
 
@@ -43,7 +47,7 @@ def make_event_envelope(
     run_id: str = "",
     aggregate_sequence: int = 0,
     deduplication_key: str = "",
-    classification: int = 0,
+    classification: DataClassification = DATA_CLASSIFICATION_UNSPECIFIED,
     recorded_at: datetime | None = None,
 ) -> EventEnvelope:
     """Wrap one generated event payload in the authoritative transport envelope."""

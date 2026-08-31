@@ -78,7 +78,10 @@ CREATE TABLE audit_events (
   action text NOT NULL,
   subject_id text NOT NULL,
   occurred_at timestamptz NOT NULL,
-  details_digest text NOT NULL
+  details_digest text NOT NULL,
+  event_version integer NOT NULL CHECK (event_version > 0),
+  payload_digest text NOT NULL CHECK (payload_digest ~ '^sha256:[0-9a-f]{64}$'),
+  envelope_bytes bytea NOT NULL CHECK (octet_length(envelope_bytes) > 0)
 );
 CREATE TABLE outbox_messages (
   id text PRIMARY KEY,

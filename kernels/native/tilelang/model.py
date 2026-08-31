@@ -8,7 +8,7 @@ from typing import Any, Mapping
 NAMESPACE = "mindclade"
 BACKEND = "tilelang"
 GENERATOR_ID = "kernels.native.codegen.generate"
-GENERATOR_VERSION = 2
+GENERATOR_VERSION = 3
 REGISTRATION_MODE = "build_time_generated"
 
 _NAME = re.compile(r"^[a-z][a-z0-9_]{0,63}$")

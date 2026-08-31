@@ -27,11 +27,11 @@ func TestStaleCompletionIsRetainedButCannotAdvanceRun(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := repository.AcquireLease("tenant-a", "run-1", "attempt-2"); err != nil {
-		t.Fatal(err)
+	if _, leaseErr := repository.AcquireLease("tenant-a", "run-1", "attempt-2"); leaseErr != nil {
+		t.Fatal(leaseErr)
 	}
-	if err := repository.CompleteAttempt("tenant-a", first.GetAttemptId(), first.GetLeaseEpoch(), jobv1.AttemptState_ATTEMPT_STATE_SUCCEEDED, time.Now()); !errors.Is(err, jobs.ErrStaleCompletion) {
-		t.Fatalf("expected stale completion, got %v", err)
+	if completionErr := repository.CompleteAttempt("tenant-a", first.GetAttemptId(), first.GetLeaseEpoch(), jobv1.AttemptState_ATTEMPT_STATE_SUCCEEDED, time.Now()); !errors.Is(completionErr, jobs.ErrStaleCompletion) {
+		t.Fatalf("expected stale completion, got %v", completionErr)
 	}
 	run, err := repository.Run("tenant-a", "run-1")
 	accepted, ok := repository.CompletionAccepted(0)

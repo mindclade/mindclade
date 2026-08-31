@@ -4,9 +4,10 @@ package(default_visibility = ["//visibility:private"])
 
 filegroup(
     name = "wave1_contract_sources",
-    srcs = glob([
+    srcs = [
         "BUILD.bazel",
         "README.md",
+    ] + glob([
         "proto/**/*.proto",
         "events/**/*.proto",
         "schemas/**/*.json",
@@ -25,17 +26,20 @@ py_test(
         "//tools:sdk_generator",
         "//tools:wave1_codegen_sources",
     ],
-    deps = ["@mindclade_pypi//protobuf"],
     imports = [".."],
     legacy_create_init = 0,
     main = "compatibility/tests/test_protobuf_compatibility.py",
     python_version = "PY3",
+    deps = ["@mindclade_pypi//protobuf"],
 )
 
 py_test(
     name = "schema_compatibility_test",
     srcs = ["compatibility/tests/test_schema_compatibility.py"],
-    data = [":wave1_contract_sources", "//tools:wave1_codegen_sources"],
+    data = [
+        ":wave1_contract_sources",
+        "//tools:wave1_codegen_sources",
+    ],
     imports = [".."],
     legacy_create_init = 0,
     main = "compatibility/tests/test_schema_compatibility.py",
@@ -46,10 +50,13 @@ py_test(
 py_test(
     name = "openapi_compatibility_test",
     srcs = ["compatibility/tests/test_openapi_compatibility.py"],
-    data = [":wave1_contract_sources", "//tools:wave1_codegen_sources"],
-    deps = ["@mindclade_pypi//pyyaml"],
+    data = [
+        ":wave1_contract_sources",
+        "//tools:wave1_codegen_sources",
+    ],
     imports = [".."],
     legacy_create_init = 0,
     main = "compatibility/tests/test_openapi_compatibility.py",
     python_version = "PY3",
+    deps = ["@mindclade_pypi//pyyaml"],
 )

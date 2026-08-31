@@ -2,15 +2,17 @@ package audit
 
 import (
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"strings"
 	"sync"
 	"time"
 
+	"google.golang.org/protobuf/proto"
+
 	auditv1 "github.com/mindclade/mindclade/protocols/generated/go/audit/v1"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	"github.com/mindclade/mindclade/services/control_plane/internal/platform/queue"
-	"google.golang.org/protobuf/proto"
 )
 
 // eventRow represents normalized audit columns plus the immutable protobuf
@@ -41,16 +43,16 @@ func (s *Store) Append(envelope *commonv1.EventEnvelope) error {
 		return fmt.Errorf("unmarshal audit payload: %w", err)
 	}
 	if payload.GetActorPrincipalId() == "" || payload.GetAction() == "" || (payload.GetDecision() != "allowed" && payload.GetDecision() != "denied") {
-		return fmt.Errorf("invalid redacted audit payload")
+		return errors.New("invalid redacted audit payload")
 	}
 	if len(payload.GetActorPrincipalId()) > 512 || len(payload.GetAction()) > 256 || len(envelope.GetSubject().GetResourceId()) > 1024 {
-		return fmt.Errorf("audit identity exceeds safe durable bounds")
+		return errors.New("audit identity exceeds safe durable bounds")
 	}
 	if payload.GetPolicyDigest() != "" && !validDigest(payload.GetPolicyDigest()) {
-		return fmt.Errorf("invalid audit policy digest")
+		return errors.New("invalid audit policy digest")
 	}
 	if envelope.GetClassification() == commonv1.DataClassification_DATA_CLASSIFICATION_PUBLIC {
-		return fmt.Errorf("audit evidence cannot be classified public")
+		return errors.New("audit evidence cannot be classified public")
 	}
 	encoded, err := proto.MarshalOptions{Deterministic: true}.Marshal(envelope)
 	if err != nil {

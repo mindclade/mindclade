@@ -1,14 +1,18 @@
 load("@rules_python//python:defs.bzl", "py_library")
+
 py_library(
     name = "config",
     srcs = glob(["*.py"]),
     imports = [".."],
-    deps = ["//libs/python/serialization:serialization"],
     visibility = ["//visibility:public"],
+    deps = ["//libs/python/serialization"],
 )
 
 filegroup(
     name = "governed_sources",
-    srcs = ["BUILD.bazel"] + glob(["**"], exclude = ["BUILD.bazel"]),
+    srcs = ["BUILD.bazel"] + glob(
+        ["**"],
+        exclude = ["BUILD.bazel"],
+    ),
     visibility = ["//visibility:public"],
 )

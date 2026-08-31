@@ -9,7 +9,6 @@ ComponentInfo = provider(
     },
 )
 
-
 def _component_metadata_impl(ctx):
     metadata = ctx.file.metadata
     return [
@@ -20,7 +19,6 @@ def _component_metadata_impl(ctx):
             owner = ctx.attr.owner,
         ),
     ]
-
 
 component_metadata = rule(
     implementation = _component_metadata_impl,

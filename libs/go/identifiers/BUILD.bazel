@@ -2,13 +2,19 @@ load("@rules_go//go:def.bzl", "go_library")
 
 go_library(
     name = "identifiers",
-    srcs = glob(["*.go"], exclude = ["*_test.go"]),
+    srcs = glob(
+        ["*.go"],
+        exclude = ["*_test.go"],
+    ),
     importpath = "github.com/mindclade/mindclade/libs/go/identifiers",
     deps = ["//protocols/generated/go/common/v1:bindings"],
 )
 
 filegroup(
     name = "governed_sources",
-    srcs = ["BUILD.bazel"] + glob(["**"], exclude = ["BUILD.bazel"]),
+    srcs = ["BUILD.bazel"] + glob(
+        ["**"],
+        exclude = ["BUILD.bazel"],
+    ),
     visibility = ["//visibility:public"],
 )

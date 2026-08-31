@@ -7,6 +7,7 @@
 /.editorconfig @mindclade/developer-platform
 /.gitattributes @mindclade/developer-platform
 /.gitignore @mindclade/developer-platform
+/.golangci.yml @mindclade/developer-platform
 /.markdownlint-cli2.yaml @mindclade/developer-platform
 /.pre-commit-config.yaml @mindclade/developer-platform
 /.python-version @mindclade/developer-platform
@@ -24,6 +25,7 @@
 /NOTICE @mindclade/security
 /README.md @mindclade/developer-platform
 /SECURITY.md @mindclade/security
+/biome.json @mindclade/developer-platform
 /buf.gen.yaml @mindclade/developer-platform
 /buf.yaml @mindclade/developer-platform
 /component.yaml @mindclade/product-engineering
@@ -52,6 +54,7 @@
 /tools/ @mindclade/developer-platform
 /tools/release/ @mindclade/developer-platform @mindclade/security
 /tools/qualification/ @mindclade/developer-platform @mindclade/security
+/tools/codegen/rust_plugins/ @mindclade/architecture
 /docs/BUILD.bazel @mindclade/developer-platform
 /docs/README.md @mindclade/developer-platform
 

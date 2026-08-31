@@ -171,6 +171,9 @@ filegroup(
     srcs = [
         "codegen/generate_protocols.py",
         "codegen/generate_schemas.py",
+        "codegen/rust_plugins/Cargo.toml",
+        "codegen/rust_plugins/src/bin/protoc-gen-prost.rs",
+        "codegen/rust_plugins/src/bin/protoc-gen-tonic.rs",
         "codegen/sdk_generator.py",
         "codegen/toolchain.lock.json",
         "codegen/verify_generated_drift.py",
@@ -181,6 +184,7 @@ filegroup(
 py_binary(
     name = "sdk_generator",
     srcs = ["codegen/sdk_generator.py"],
+    legacy_create_init = 0,
     main = "codegen/sdk_generator.py",
     python_version = "PY3",
     visibility = ["//visibility:public"],

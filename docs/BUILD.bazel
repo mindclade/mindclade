@@ -9,15 +9,21 @@ _IGNORED_SOURCE_PATTERNS = [
 
 filegroup(
     name = "architecture_governance",
-    srcs = glob([
-        "adr/**",
-        "architecture/**",
-    ], exclude = _IGNORED_SOURCE_PATTERNS),
+    srcs = glob(
+        [
+            "adr/**",
+            "architecture/**",
+        ],
+        exclude = _IGNORED_SOURCE_PATTERNS,
+    ),
     visibility = ["//visibility:public"],
 )
 
 filegroup(
     name = "documentation",
-    srcs = glob(["**"], exclude = _IGNORED_SOURCE_PATTERNS),
+    srcs = glob(
+        ["**"],
+        exclude = _IGNORED_SOURCE_PATTERNS,
+    ),
     visibility = ["//visibility:public"],
 )

@@ -107,7 +107,7 @@ pub mod inference_request {
     #[derive(Clone, PartialEq, Eq, Hash, ::prost::Oneof)]
     pub enum Input {
         #[prost(message, tag = "10")]
-        InputArtifact(super::crate::artifact::v1::ArtifactRef),
+        InputArtifact(crate::artifact::v1::ArtifactRef),
         #[prost(message, tag = "11")]
         InlineInput(super::BoundedInlineInput),
     }

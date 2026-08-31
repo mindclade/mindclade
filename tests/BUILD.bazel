@@ -12,11 +12,11 @@ py_test(
     name = "artifact_manifests_test",
     srcs = ["conformance/test_artifact_manifests.py"],
     data = _WAVE1_DATA,
-    deps = ["@mindclade_pypi//jsonschema"],
     imports = [".."],
     legacy_create_init = 0,
     main = "conformance/test_artifact_manifests.py",
     python_version = "PY3",
+    deps = ["@mindclade_pypi//jsonschema"],
 )
 
 py_test(
@@ -30,61 +30,62 @@ py_test(
         "//protocols/generated/rust:bindings",
         "//protocols/generated/typescript:bindings",
     ],
-    deps = [
-        "//libs/python/artifacts:artifacts",
-        "//libs/python/contracts:contracts",
-        "//libs/python/identifiers:identifiers",
-        "//libs/python/serialization:serialization",
-        "//protocols/generated/python:bindings",
-        "@mindclade_pypi//protobuf",
-        "@mindclade_pypi//pyyaml",
-    ],
     imports = [".."],
     legacy_create_init = 0,
     main = "conformance/test_generated_clients.py",
     python_version = "PY3",
+    deps = [
+        "//libs/python/artifacts",
+        "//libs/python/contracts",
+        "//libs/python/identifiers",
+        "//libs/python/serialization",
+        "//protocols/generated/python:bindings",
+        "@mindclade_pypi//grpcio",
+        "@mindclade_pypi//protobuf",
+        "@mindclade_pypi//pyyaml",
+    ],
 )
 
 py_test(
     name = "generated_python_clients_test",
     srcs = ["conformance/test_generated_clients.py"],
     data = _WAVE1_DATA,
-    deps = [
-        "//libs/python/artifacts:artifacts",
-        "//libs/python/contracts:contracts",
-        "//libs/python/identifiers:identifiers",
-        "//libs/python/serialization:serialization",
-        "//protocols/generated/python:bindings",
-        "@mindclade_pypi//protobuf",
-        "@mindclade_pypi//pyyaml",
-    ],
     imports = [".."],
     legacy_create_init = 0,
     main = "conformance/test_generated_clients.py",
     python_version = "PY3",
+    deps = [
+        "//libs/python/artifacts",
+        "//libs/python/contracts",
+        "//libs/python/identifiers",
+        "//libs/python/serialization",
+        "//protocols/generated/python:bindings",
+        "@mindclade_pypi//grpcio",
+        "@mindclade_pypi//protobuf",
+        "@mindclade_pypi//pyyaml",
+    ],
 )
-
 
 py_test(
     name = "configuration_resolution_test",
     srcs = ["conformance/test_configuration_resolution.py"],
     data = _WAVE1_DATA,
-    deps = ["//libs/python/config:config"],
     imports = [".."],
     legacy_create_init = 0,
     main = "conformance/test_configuration_resolution.py",
     python_version = "PY3",
+    deps = ["//libs/python/config"],
 )
 
 py_test(
     name = "release_signing_test",
     srcs = ["conformance/test_release_signing.py"],
     data = _WAVE1_DATA,
-    deps = ["@mindclade_pypi//cryptography"],
     imports = [".."],
     legacy_create_init = 0,
     main = "conformance/test_release_signing.py",
     python_version = "PY3",
+    deps = ["@mindclade_pypi//cryptography"],
 )
 
 py_test(

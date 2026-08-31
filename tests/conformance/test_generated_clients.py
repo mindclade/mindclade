@@ -5,8 +5,14 @@ import os
 import subprocess
 import sys
 import unittest
+from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Protocol
+
+
+class NamedRequest(Protocol):
+    name: str
 
 
 def root() -> Path:
@@ -17,6 +23,48 @@ def root() -> Path:
 
 
 class GeneratedClientsContractTest(unittest.TestCase):
+    def test_public_grpc_facade_executes_a_loopback_rpc(self) -> None:
+        repository = root()
+        sys.path.insert(0, str(repository / "protocols/generated/python"))
+
+        grpc = importlib.import_module("grpc")
+        api = importlib.import_module("api.v1.mindclade_service_pb2")
+        api_grpc = importlib.import_module("api.v1.mindclade_service_pb2_grpc")
+        job = importlib.import_module("job.v1.operation_pb2")
+
+        class Servicer(api_grpc.MindcladeServiceServicer):
+            def GetOperation(  # noqa: N802
+                self, request: NamedRequest, context: object
+            ) -> object:
+                del context
+                return api.GetOperationResponse(
+                    operation=job.Operation(
+                        operation_id=request.name,
+                        tenant_id="tenant_1",
+                        project_id="project_1",
+                        state=job.OPERATION_STATE_RUNNING,
+                        resource_version=3,
+                        etag='"operation-3"',
+                    )
+                )
+
+        server = grpc.server(ThreadPoolExecutor(max_workers=1))
+        api_grpc.add_MindcladeServiceServicer_to_server(Servicer(), server)
+        port = server.add_insecure_port("127.0.0.1:0")
+        self.assertGreater(port, 0)
+        server.start()
+        try:
+            with grpc.insecure_channel(f"127.0.0.1:{port}") as channel:
+                grpc.channel_ready_future(channel).result(timeout=5)
+                response = api_grpc.MindcladeServiceStub(channel).GetOperation(
+                    api.GetOperationRequest(name="operations/op_1"), timeout=5
+                )
+            self.assertEqual(response.operation.operation_id, "operations/op_1")
+            self.assertEqual(response.operation.state, job.OPERATION_STATE_RUNNING)
+            self.assertEqual(response.operation.resource_version, 3)
+        finally:
+            server.stop(grace=None).wait(timeout=5)
+
     def test_generated_bindings_are_current_and_compilable(self) -> None:
         repository = root()
         subprocess.run(
@@ -74,6 +122,8 @@ class GeneratedClientsContractTest(unittest.TestCase):
             contracts.ErrorDetail.DESCRIPTOR.full_name,
             "mindclade.common.v1.ErrorDetail",
         )
+        error_module = importlib.import_module("common.v1.error_detail_pb2")
+        self.assertIs(contracts.ErrorCode, error_module.ErrorCode)
         self.assertIs(identifiers.ResourceRef, resource_module.ResourceRef)
 
         digest = "sha256:" + "a" * 64
@@ -103,7 +153,7 @@ class GeneratedClientsContractTest(unittest.TestCase):
         self.assertEqual(evidence.subject_digest, subject_digest)
         error_detail = contracts.to_error_detail(
             contracts.ContractError(
-                contracts.ErrorCode.UNAVAILABLE,
+                contracts.ErrorCode.ERROR_CODE_UNAVAILABLE,
                 "try again",
                 retryable=True,
             ),

@@ -11,7 +11,7 @@ import "proto/mindclade/workflow/v1/approval.proto";
 import "proto/mindclade/workflow/v1/workflow_definition.proto";
 import "proto/mindclade/workflow/v1/workflow_run.proto";
 
-option go_package = "github.com/mindclade/mindclade/protocols/generated/go/workflow/v1;workflowv1";
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/internal/workflow/v1;internalworkflowv1";
 
 // CreateWorkflowDefinitionRequest creates a validated immutable graph definition.
 message CreateWorkflowDefinitionRequest {

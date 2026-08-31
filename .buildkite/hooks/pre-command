@@ -77,7 +77,7 @@ if [[ "${pipeline_class}" == presubmit ]]; then
   while IFS= read -r path; do
     [[ -n "${path}" ]] && protected_definition_paths+=("${path}")
   done <<<"${protected_paths_text}"
-  (( ${#protected_definition_paths[@]} > 0 ))
+  ((${#protected_definition_paths[@]} > 0))
   if ! git diff --quiet "${pipeline_revision}" -- "${protected_definition_paths[@]}"; then
     echo "Presubmit source changes the protected Wave 0 enforcement closure:" >&2
     git diff --name-only "${pipeline_revision}" -- "${protected_definition_paths[@]}" >&2

@@ -10,7 +10,7 @@ import "proto/mindclade/training/v1/training_commands.proto";
 import "proto/mindclade/training/v1/training_progress.proto";
 import "proto/mindclade/training/v1/training_run.proto";
 
-option go_package = "github.com/mindclade/mindclade/protocols/generated/go/training/v1;trainingv1";
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/internal/training/v1;internaltrainingv1";
 
 // CreateTrainingRunRequest wraps immutable training intent and idempotency context.
 message CreateTrainingRunRequest {

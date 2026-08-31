@@ -1,3 +1,16 @@
 load("@aspect_rules_js//js:defs.bzl", "js_library")
-js_library(name = "testing", srcs = glob(["src/*.ts"]), visibility = ["//visibility:public"])
-filegroup(name = "governed_sources", srcs = ["BUILD.bazel", "package.json"] + glob(["src/*.ts"]), visibility = ["//visibility:public"])
+
+js_library(
+    name = "testing",
+    srcs = glob(["src/*.ts"]),
+    visibility = ["//visibility:public"],
+)
+
+filegroup(
+    name = "governed_sources",
+    srcs = [
+        "BUILD.bazel",
+        "package.json",
+    ] + glob(["src/*.ts"]),
+    visibility = ["//visibility:public"],
+)

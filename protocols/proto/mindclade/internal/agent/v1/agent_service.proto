@@ -12,7 +12,7 @@ import "proto/mindclade/common/v1/command_context.proto";
 import "proto/mindclade/common/v1/pagination.proto";
 import "proto/mindclade/job/v1/operation.proto";
 
-option go_package = "github.com/mindclade/mindclade/protocols/generated/go/agent/v1;agentv1";
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/internal/agent/v1;internalagentv1";
 
 // CreateAgentDefinitionRequest creates a definition; server-managed fields must be unset.
 message CreateAgentDefinitionRequest {

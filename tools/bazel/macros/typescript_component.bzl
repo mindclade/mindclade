@@ -2,7 +2,6 @@
 
 load("//tools:bazel/rules/component_rule.bzl", "component_metadata")
 
-
 def typescript_component(name, component, owner, srcs, visibility = None):
     """Declare TypeScript source closure; pnpm remains dependency authority."""
     native.filegroup(name = name, srcs = srcs, visibility = visibility)

@@ -1,6 +1,5 @@
 """GPU qualification transition for targets activated by reviewed evidence."""
 
-
 def _gpu_profile_impl(_settings, attr):
     if not attr.gpu_envelope:
         fail("gpu_envelope is required for a GPU transition")
@@ -10,7 +9,6 @@ def _gpu_profile_impl(_settings, attr):
             "mindclade_gpu_envelope=%s" % attr.gpu_envelope,
         ],
     }
-
 
 gpu_profile_transition = transition(
     implementation = _gpu_profile_impl,

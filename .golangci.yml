@@ -41,6 +41,11 @@ linters:
   exclusions:
     generated: strict
     warn-unused: true
+    rules:
+      - linters:
+          - errname
+        path: libs/go/faults/classification\.go
+        text: "error type name `Fault`"
 
 formatters:
   enable:

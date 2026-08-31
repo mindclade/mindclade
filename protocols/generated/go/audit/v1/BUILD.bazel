@@ -2,14 +2,24 @@ load("@rules_go//go:def.bzl", "go_library")
 
 go_library(
     name = "bindings",
-    srcs = ["audit_event.pb.go", "security_event.pb.go"],
+    srcs = [
+        "audit_event.pb.go",
+        "security_event.pb.go",
+    ],
     importpath = "github.com/mindclade/mindclade/protocols/generated/go/audit/v1",
-    deps = ["@org_golang_google_protobuf//reflect/protoreflect", "@org_golang_google_protobuf//runtime/protoimpl"],
     visibility = ["//visibility:public"],
+    deps = [
+        "@org_golang_google_protobuf//reflect/protoreflect",
+        "@org_golang_google_protobuf//runtime/protoimpl",
+    ],
 )
 
 filegroup(
     name = "generated_sources",
-    srcs = ["BUILD.bazel", "audit_event.pb.go", "security_event.pb.go"],
+    srcs = [
+        "BUILD.bazel",
+        "audit_event.pb.go",
+        "security_event.pb.go",
+    ],
     visibility = ["//visibility:public"],
 )

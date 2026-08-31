@@ -1,9 +1,29 @@
-load("@rules_rust//rust:defs.bzl", "rust_library")
+load("@rules_rust//rust:defs.bzl", "rust_library", "rust_test")
 
-rust_library(name = "errors", crate_name = "mindclade_errors", edition = "2024", srcs = glob(["src/**/*.rs"]), visibility = ["//visibility:public"])
+ERROR_DEPS = ["//protocols/generated/rust:bindings"]
+
+rust_library(
+    name = "errors",
+    srcs = glob(["src/**/*.rs"]),
+    crate_name = "mindclade_errors",
+    edition = "2024",
+    visibility = ["//visibility:public"],
+    deps = ERROR_DEPS,
+)
+
+rust_test(
+    name = "errors_test",
+    srcs = glob(["src/**/*.rs"]),
+    crate_root = "src/lib.rs",
+    edition = "2024",
+    deps = ERROR_DEPS,
+)
 
 filegroup(
     name = "governed_sources",
-    srcs = ["BUILD.bazel"] + glob(["**"], exclude = ["BUILD.bazel"]),
+    srcs = ["BUILD.bazel"] + glob(
+        ["**"],
+        exclude = ["BUILD.bazel"],
+    ),
     visibility = ["//visibility:public"],
 )

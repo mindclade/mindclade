@@ -6,9 +6,10 @@ import (
 	"sync"
 	"time"
 
+	"google.golang.org/protobuf/proto"
+
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	"github.com/mindclade/mindclade/services/control_plane/internal/platform/queue"
-	"google.golang.org/protobuf/proto"
 )
 
 type SQLStore struct{ DB *sql.DB }
@@ -27,13 +28,13 @@ RETURNING message.envelope_bytes, message.delivery_epoch`, limit)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	var records []DeliveryRecord
 	for rows.Next() {
 		var encoded []byte
 		var record DeliveryRecord
-		if err := rows.Scan(&encoded, &record.DeliveryEpoch); err != nil {
-			return nil, err
+		if scanErr := rows.Scan(&encoded, &record.DeliveryEpoch); scanErr != nil {
+			return nil, scanErr
 		}
 		record.Envelope, err = queue.UnmarshalEnvelope(encoded)
 		if err != nil {

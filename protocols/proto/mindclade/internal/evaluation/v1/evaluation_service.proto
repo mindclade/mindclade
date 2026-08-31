@@ -14,7 +14,7 @@ import "proto/mindclade/job/v1/lease_fencing.proto";
 import "proto/mindclade/job/v1/operation.proto";
 import "proto/mindclade/policy/v1/policy_reference.proto";
 
-option go_package = "github.com/mindclade/mindclade/protocols/generated/go/evaluation/v1;evaluationv1";
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/internal/evaluation/v1;internalevaluationv1";
 
 // CreateEvaluationRunRequest defines immutable evaluation inputs without server-managed state.
 message CreateEvaluationRunRequest {

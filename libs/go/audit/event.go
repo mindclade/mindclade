@@ -3,14 +3,16 @@ package audit
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
 
-	auditv1 "github.com/mindclade/mindclade/protocols/generated/go/audit/v1"
-	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
+
+	auditv1 "github.com/mindclade/mindclade/protocols/generated/go/audit/v1"
+	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 )
 
 const auditPayloadContentType = "application/x-protobuf"
@@ -21,11 +23,11 @@ const auditPayloadContentType = "application/x-protobuf"
 // only supported legacy extension.
 func NewEvent(tenantID, principalID, action, resourceID, decision string, at time.Time, fields map[string]string) (*commonv1.EventEnvelope, error) {
 	if tenantID == "" || principalID == "" || action == "" || resourceID == "" || at.Location() != time.UTC {
-		return nil, fmt.Errorf("invalid audit identity or UTC timestamp")
+		return nil, errors.New("invalid audit identity or UTC timestamp")
 	}
 	decision = strings.ToLower(decision)
 	if decision != "allowed" && decision != "denied" {
-		return nil, fmt.Errorf("audit decision must be allowed or denied")
+		return nil, errors.New("audit decision must be allowed or denied")
 	}
 	policyDigest := ""
 	for key, value := range fields {
@@ -35,7 +37,7 @@ func NewEvent(tenantID, principalID, action, resourceID, decision string, at tim
 		policyDigest = value
 	}
 	if policyDigest != "" && !validSHA256Digest(policyDigest) {
-		return nil, fmt.Errorf("policy_digest must be sha256:<64 lowercase hex>")
+		return nil, errors.New("policy_digest must be sha256:<64 lowercase hex>")
 	}
 	payloadMessage := &auditv1.AuditEvent{
 		ActorPrincipalId: principalID,
@@ -76,10 +78,10 @@ func NewEvent(tenantID, principalID, action, resourceID, decision string, at tim
 // generated audit payload without exposing a second event model.
 func ValidateEvent(envelope *commonv1.EventEnvelope) (*auditv1.AuditEvent, error) {
 	if envelope == nil || envelope.GetEventId() == "" || envelope.GetTenantId() == "" || envelope.GetEventVersion() != 1 {
-		return nil, fmt.Errorf("invalid audit envelope identity")
+		return nil, errors.New("invalid audit envelope identity")
 	}
 	if envelope.GetOccurredAt() == nil || envelope.GetRecordedAt() == nil {
-		return nil, fmt.Errorf("audit timestamps are required")
+		return nil, errors.New("audit timestamps are required")
 	}
 	if err := envelope.GetOccurredAt().CheckValid(); err != nil {
 		return nil, fmt.Errorf("invalid occurred_at: %w", err)
@@ -88,7 +90,7 @@ func ValidateEvent(envelope *commonv1.EventEnvelope) (*auditv1.AuditEvent, error
 		return nil, fmt.Errorf("invalid recorded_at: %w", err)
 	}
 	if envelope.GetSubject() == nil || envelope.GetSubject().GetResourceId() == "" || envelope.GetPayloadContentType() != auditPayloadContentType {
-		return nil, fmt.Errorf("audit subject and protobuf content type are required")
+		return nil, errors.New("audit subject and protobuf content type are required")
 	}
 	payload := new(auditv1.AuditEvent)
 	expectedType := string(payload.ProtoReflect().Descriptor().FullName())
@@ -97,16 +99,16 @@ func ValidateEvent(envelope *commonv1.EventEnvelope) (*auditv1.AuditEvent, error
 	}
 	payloadHash := sha256.Sum256(envelope.GetPayload())
 	if envelope.GetPayloadDigest() != "sha256:"+hex.EncodeToString(payloadHash[:]) {
-		return nil, fmt.Errorf("audit payload digest mismatch")
+		return nil, errors.New("audit payload digest mismatch")
 	}
 	if err := proto.Unmarshal(envelope.GetPayload(), payload); err != nil {
 		return nil, fmt.Errorf("unmarshal audit payload: %w", err)
 	}
 	if payload.GetActorPrincipalId() == "" || payload.GetAction() == "" || (payload.GetDecision() != "allowed" && payload.GetDecision() != "denied") {
-		return nil, fmt.Errorf("invalid audit payload")
+		return nil, errors.New("invalid audit payload")
 	}
 	if payload.GetPolicyDigest() != "" && !validSHA256Digest(payload.GetPolicyDigest()) {
-		return nil, fmt.Errorf("invalid audit policy digest")
+		return nil, errors.New("invalid audit policy digest")
 	}
 	return payload, nil
 }

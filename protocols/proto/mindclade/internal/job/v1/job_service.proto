@@ -13,7 +13,7 @@ import "proto/mindclade/job/v1/lease_fencing.proto";
 import "proto/mindclade/job/v1/operation.proto";
 import "proto/mindclade/job/v1/run.proto";
 
-option go_package = "github.com/mindclade/mindclade/protocols/generated/go/job/v1;jobv1";
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/internal/job/v1;internaljobv1";
 
 // GetOperationRequest identifies a durable operation and optional cache validator.
 message GetOperationRequest {

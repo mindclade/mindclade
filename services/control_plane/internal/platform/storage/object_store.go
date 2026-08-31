@@ -118,6 +118,7 @@ func (s FilesystemCAS) Finalize(staged StagedObject, reservation Reservation) (O
 	if err := os.Rename(staged.Path, finalPath); err != nil {
 		return Object{}, err
 	}
+	// #nosec G304 -- directory is beneath the configured CAS root and keyed by a validated digest.
 	directoryHandle, err := os.Open(directory)
 	if err != nil {
 		return Object{}, err

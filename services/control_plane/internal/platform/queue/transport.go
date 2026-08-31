@@ -7,8 +7,9 @@ import (
 	"errors"
 	"fmt"
 
-	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	"google.golang.org/protobuf/proto"
+
+	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 )
 
 var ErrInvalidEnvelope = errors.New("invalid event envelope")
@@ -54,10 +55,10 @@ func ValidateEnvelope(envelope *commonv1.EventEnvelope) error {
 		return fmt.Errorf("%w: occurred_at and recorded_at are required", ErrInvalidEnvelope)
 	}
 	if err := envelope.GetOccurredAt().CheckValid(); err != nil {
-		return fmt.Errorf("%w: occurred_at: %v", ErrInvalidEnvelope, err)
+		return fmt.Errorf("%w: occurred_at: %w", ErrInvalidEnvelope, err)
 	}
 	if err := envelope.GetRecordedAt().CheckValid(); err != nil {
-		return fmt.Errorf("%w: recorded_at: %v", ErrInvalidEnvelope, err)
+		return fmt.Errorf("%w: recorded_at: %w", ErrInvalidEnvelope, err)
 	}
 	if envelope.GetSubject() == nil || envelope.GetSubject().GetResourceId() == "" || envelope.GetSubject().GetResourceType() == "" {
 		return fmt.Errorf("%w: subject is required", ErrInvalidEnvelope)

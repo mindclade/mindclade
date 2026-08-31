@@ -52,7 +52,7 @@ TOOLS = (
     Tool("ruff", "ruff", ("--version",), r"^ruff 0\.16\.4$"),
     Tool("pyright", "pyright", ("--version",), r"^pyright 1\.1\.412$"),
     Tool("ShellCheck", "shellcheck", ("--version",), r"\bversion: 0\.11\.0\b"),
-    Tool("shfmt", "shfmt", ("--version",), r"^v3\.13\.1$"),
+    Tool("shfmt", "shfmt", ("--version",), r"^3\.13\.1$"),
 )
 
 

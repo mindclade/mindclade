@@ -43,6 +43,7 @@ from owner_policy import (  # noqa: E402
     validate_owners,
 )
 from path_policy import (  # noqa: E402
+    ALL_CONTRACT_GRPC_SERVICES,
     CANONICAL_FILE_COUNT,
     PolicyError,
     discover_actual_paths,
@@ -74,7 +75,7 @@ class RepositoryPolicyTest(unittest.TestCase):
         self.assertEqual(validate_manifest(self.manifest), [])
         self.assertEqual(len(self.manifest["paths"]), CANONICAL_FILE_COUNT)
         wave_one = [entry for entry in self.manifest["paths"] if entry["activation_wave"] == "1"]
-        self.assertEqual(len(wave_one), 444)
+        self.assertEqual(len(wave_one), 452)
         for entry in wave_one:
             with self.subTest(path=entry["path"]):
                 status = entry["status"]
@@ -123,9 +124,7 @@ class RepositoryPolicyTest(unittest.TestCase):
         for entry in baseline:
             with self.subTest(path=entry["path"]):
                 expected_status = (
-                    "generated"
-                    if entry["source_authority"] == "reviewed-generated"
-                    else "active"
+                    "generated" if entry["source_authority"] == "reviewed-generated" else "active"
                 )
                 self.assertEqual(entry["status"], expected_status)
                 self.assertEqual(entry["build_targets"], ["//:all_contract_sources"])
@@ -136,6 +135,34 @@ class RepositoryPolicyTest(unittest.TestCase):
             "active",
         )
         self.assertEqual(entries["protocols/openapi/external-api.yaml"]["status"], "active")
+
+    def test_grpc_services_have_isolated_multilanguage_projections(self) -> None:
+        entries = {entry["path"]: entry for entry in self.manifest["paths"]}
+        for domain, stem, source_family in ALL_CONTRACT_GRPC_SERVICES:
+            generated_family = source_family
+            source = f"protocols/proto/mindclade/{source_family}/v1/{stem}.proto"
+            self.assertEqual(entries[source]["status"], "active")
+            self.assertEqual(entries[source]["public_surface"], domain == "api")
+
+            generated = (
+                f"protocols/generated/go/{generated_family}/v1/{stem}.pb.go",
+                f"protocols/generated/go/{generated_family}/v1/{stem}_grpc.pb.go",
+                f"protocols/generated/python/{generated_family}/v1/{stem}_pb2.py",
+                f"protocols/generated/python/{generated_family}/v1/{stem}_pb2.pyi",
+                f"protocols/generated/python/{generated_family}/v1/{stem}_pb2_grpc.py",
+                f"protocols/generated/python/{generated_family}/v1/{stem}_pb2_grpc.pyi",
+                f"protocols/generated/rust/{generated_family}/v1/{stem}.rs",
+                f"protocols/generated/rust/{generated_family}/v1/{stem}_grpc.rs",
+                f"protocols/generated/typescript/{generated_family}/v1/{stem}_pb.ts",
+            )
+            for path in generated:
+                with self.subTest(path=path):
+                    self.assertEqual(entries[path]["status"], "generated")
+                    self.assertEqual(entries[path]["public_surface"], domain == "api")
+
+            if domain != "api":
+                flattened = f"protocols/generated/go/{domain}/v1/{stem}.pb.go"
+                self.assertNotIn(flattened, entries)
 
     def test_target_validation_never_falls_back_to_bazelisk(self) -> None:
         manifest = {
@@ -487,6 +514,11 @@ class RepositoryPolicyTest(unittest.TestCase):
         self.assertEqual(gaps[0]["type"], "codeowners_path_owner_mismatch")
         self.assertEqual(gaps[0]["path"], "README.md")
 
+    def test_rust_codegen_plugins_have_architecture_codeowner(self) -> None:
+        gaps = validate_owners(self.manifest, [], REPO_ROOT / ".github/CODEOWNERS")
+        plugin_gaps = [gap for gap in gaps if gap["path"].startswith("tools/codegen/rust_plugins/")]
+        self.assertEqual(plugin_gaps, [])
+
     def test_normalization_rejects_tokens_and_parent_escape(self) -> None:
         for path in ("/absolute", "a/../b", "a/{b}.py", "a/<domain>.py", "a\\b"):
             with self.subTest(path=path), self.assertRaises(PolicyError):
@@ -519,6 +551,17 @@ class RepositoryPolicyTest(unittest.TestCase):
             with patch("path_policy.subprocess.run", side_effect=FileNotFoundError):
                 paths = discover_actual_paths(root)
         self.assertEqual(paths, ["known.txt"])
+
+    def test_path_discovery_ignores_tracked_worktree_deletions(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "present.txt").write_text("present", encoding="utf-8")
+            with patch(
+                "path_policy._git_paths",
+                return_value=["deleted.txt", "present.txt"],
+            ):
+                paths = discover_actual_paths(root)
+        self.assertEqual(paths, ["present.txt"])
 
     def test_graph_rejects_cycle_and_backward_compile_edge(self) -> None:
         components = [

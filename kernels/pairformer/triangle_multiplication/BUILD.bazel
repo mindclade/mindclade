@@ -16,7 +16,10 @@ py_test(
         "tilelang.py",
     ],
     main = "test_triangle_multiplication.py",
-    tags = ["manual", "requires-hermetic-torch-2.10"],
+    tags = [
+        "manual",
+        "requires-hermetic-torch-2.10",
+    ],
     deps = [
         "//kernels/native:tilelang_codegen_lib",
         "@mindclade_pypi//pytest",

@@ -28,9 +28,9 @@ BLUEPRINT_SHA256 = "d099074e755168bbdce076d50918bf06aff677f9e5d620fdfe53cb7cef74
 ANCHOR_COMMIT = "292b71f47b1b29cc9ba7cf760a9bd07cd5e0ffa7"
 AUTHORITY_FILE_COUNT = 2461
 AUTHORITY_DIRECTORY_COUNT = 787
-CANONICAL_FILE_COUNT = 2829
+CANONICAL_FILE_COUNT = 2875
 AUTHORITY_PATH_SET_SHA256 = "f2011dd32ccc19649e6abb70ffb4473aea4a224410062d40292222e2e6263692"
-CANONICAL_PATH_SET_SHA256 = "662ab17c6b2e87f5c2ab2cbdef662a790b7b971f52844a404a58b8d4d34ac18d"
+CANONICAL_PATH_SET_SHA256 = "400fa7b50bcca9c1f7f2a4f327c07b69ffca2425578ed80ab5abe741b3b6dbba"
 
 ADR_REPLACEMENTS = {
     "docs/adr/0001-repository-identity.md": "docs/adr/0001-repository-identity-and-ownership.md",
@@ -394,32 +394,36 @@ ALL_CONTRACT_GRPC_SOURCE_PATHS = tuple(
 
 ALL_CONTRACT_GRPC_PROJECTION_PATHS = tuple(
     path
-    for domain, stem, _ in ALL_CONTRACT_GRPC_SERVICES
+    for _, stem, output_family in ALL_CONTRACT_GRPC_SERVICES
     for path in (
-        f"protocols/generated/go/{domain}/v1/{stem}.pb.go",
-        f"protocols/generated/go/{domain}/v1/{stem}_grpc.pb.go",
-        f"protocols/generated/python/{domain}/v1/{stem}_pb2.py",
-        f"protocols/generated/python/{domain}/v1/{stem}_pb2.pyi",
-        f"protocols/generated/python/{domain}/v1/{stem}_pb2_grpc.py",
-        f"protocols/generated/python/{domain}/v1/{stem}_pb2_grpc.pyi",
-        f"protocols/generated/rust/{domain}/v1/{stem}.rs",
-        f"protocols/generated/rust/{domain}/v1/{stem}_grpc.rs",
-        f"protocols/generated/typescript/{domain}/v1/{stem}_pb.ts",
+        f"protocols/generated/go/{output_family}/v1/{stem}.pb.go",
+        f"protocols/generated/go/{output_family}/v1/{stem}_grpc.pb.go",
+        f"protocols/generated/python/{output_family}/v1/{stem}_pb2.py",
+        f"protocols/generated/python/{output_family}/v1/{stem}_pb2.pyi",
+        f"protocols/generated/python/{output_family}/v1/{stem}_pb2_grpc.py",
+        f"protocols/generated/python/{output_family}/v1/{stem}_pb2_grpc.pyi",
+        f"protocols/generated/rust/{output_family}/v1/{stem}.rs",
+        f"protocols/generated/rust/{output_family}/v1/{stem}_grpc.rs",
+        f"protocols/generated/typescript/{output_family}/v1/{stem}_pb.ts",
     )
 )
 
-ALL_CONTRACT_GRPC_API_PACKAGE_PATHS = (
-    "protocols/generated/go/api/v1/BUILD.bazel",
-    "protocols/generated/python/api/v1/__init__.py",
-    "protocols/generated/rust/api/v1/mod.rs",
-    "protocols/generated/typescript/api/v1/index.ts",
+ALL_CONTRACT_GRPC_PACKAGE_PATHS = tuple(
+    path
+    for _, _, output_family in ALL_CONTRACT_GRPC_SERVICES
+    for path in (
+        f"protocols/generated/go/{output_family}/v1/BUILD.bazel",
+        f"protocols/generated/python/{output_family}/v1/__init__.py",
+        f"protocols/generated/rust/{output_family}/v1/mod.rs",
+        f"protocols/generated/typescript/{output_family}/v1/index.ts",
+    )
 )
 
 ALL_CONTRACT_GRPC_ADDITIONS = (
     *ALL_CONTRACT_PYTHON_STUB_PATHS,
     *ALL_CONTRACT_GRPC_SOURCE_PATHS,
     *ALL_CONTRACT_GRPC_PROJECTION_PATHS,
-    *ALL_CONTRACT_GRPC_API_PACKAGE_PATHS,
+    *ALL_CONTRACT_GRPC_PACKAGE_PATHS,
 )
 
 ALL_CONTRACT_RUST_PLUGIN_PATHS = (
@@ -429,7 +433,9 @@ ALL_CONTRACT_RUST_PLUGIN_PATHS = (
 )
 
 WAVE_ZERO_REQUIRED_ADDITIONS = (
+    ".golangci.yml",
     ".github/actionlint.yaml",
+    "biome.json",
     "docs/architecture/blueprint/provenance/MINDCLADE_MONOREPO_BLUEPRINT_v3.4.0_OPTIMIZED.md",
     "docs/architecture/blueprint/provenance/MONOREPO_TREE.md",
     "MODULE.bazel.lock",
@@ -1240,11 +1246,9 @@ def _protocol_wave(parts: tuple[str, ...]) -> str:
     if (family in {"proto", "events"} and len(parts) > 3) or (
         family == "generated" and len(parts) > 3
     ):
-        domain = (
-            parts[4]
-            if family == "proto" and parts[3] == "internal" and len(parts) > 4
-            else parts[3]
-        )
+        domain = parts[3]
+        if family in {"proto", "generated"} and domain == "internal" and len(parts) > 4:
+            domain = parts[4]
     elif family == "schemas" and len(parts) > 2:
         schema = parts[2]
         if schema in {
@@ -1735,6 +1739,8 @@ def is_all_contract_baseline_path(path: str) -> bool:
 
     if path in ALL_CONTRACT_RUST_PLUGIN_PATHS:
         return True
+    if path in ALL_CONTRACT_GRPC_ADDITIONS:
+        return True
     parts = PurePosixPath(path).parts
     if len(parts) >= 3 and parts[:2] in {
         ("protocols", "openapi"),
@@ -1751,7 +1757,8 @@ def is_all_contract_baseline_path(path: str) -> bool:
             } and parts[-1].endswith(".proto")
         return parts[3] in ALL_CONTRACT_BASELINE_DOMAINS and parts[-1].endswith(".proto")
     if len(parts) >= 5 and parts[:2] == ("protocols", "generated"):
-        return parts[3] in ALL_CONTRACT_BASELINE_DOMAINS
+        domain = parts[4] if parts[3] == "internal" and len(parts) >= 6 else parts[3]
+        return domain in ALL_CONTRACT_BASELINE_DOMAINS
     return False
 
 
@@ -1841,7 +1848,10 @@ def build_path_entry(path: str) -> dict[str, Any]:
         "test_targets": test_targets,
         "public_surface": path.startswith(("sdk/", "protocols/"))
         and not path.startswith("protocols/proto/mindclade/internal/")
-        and not (path in ALL_CONTRACT_GRPC_PROJECTION_PATHS and "/api/v1/" not in path),
+        and not (
+            path in ALL_CONTRACT_GRPC_PROJECTION_PATHS + ALL_CONTRACT_GRPC_PACKAGE_PATHS
+            and "/api/v1/" not in path
+        ),
     }
     if all_contract_baseline:
         entry["activation_criterion"] = (
@@ -1860,6 +1870,8 @@ def build_path_entry(path: str) -> dict[str, Any]:
 
 
 def _reconciliation_addition_reason(path: str) -> str:
+    if path in {".golangci.yml", "biome.json"}:
+        return "Required tracked Wave 0 lint configuration omitted by A6."
     if path == ".github/actionlint.yaml":
         return "Required Wave 0 GitHub Actions lint configuration omitted by A6."
     if path == "MODULE.bazel.lock":
@@ -1955,8 +1967,11 @@ def _reconciliation_addition_reason(path: str) -> str:
             "Required Go, Python, Rust, or TypeScript generated message/gRPC projection "
             "from an authoritative ADR-0015 service contract."
         )
-    if path in ALL_CONTRACT_GRPC_API_PACKAGE_PATHS:
-        return "Required generated package authority for the curated mindclade.api.v1 facade."
+    if path in ALL_CONTRACT_GRPC_PACKAGE_PATHS:
+        return (
+            "Required generated package authority for an isolated internal gRPC service "
+            "namespace or the curated mindclade.api.v1 facade."
+        )
     if path in WAVE_TWO_PREFLIGHT_GOVERNANCE_ADDITIONS:
         return (
             "Required fail-closed Wave 2 decision or approval contract omitted by A6; "
@@ -2205,6 +2220,11 @@ def discover_actual_paths(root: Path) -> list[str]:
     paths: list[str] = []
     for candidate in candidates:
         pure = PurePosixPath(candidate)
+        # git ls-files --cached retains index entries for working-tree
+        # deletions. Actual-path validation describes the current checkout,
+        # so a tracked path is present only while its file still exists.
+        if not (root / pure).is_file():
+            continue
         if any(part in IGNORED_PARTS for part in pure.parts):
             continue
         if pure.name in {".DS_Store"} or pure.suffix in {".pyc", ".pyo"}:

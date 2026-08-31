@@ -1,7 +1,7 @@
 package identifiers
 
 import (
-	"fmt"
+	"errors"
 
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 )
@@ -28,10 +28,10 @@ func NewResourceRef(tenantID, projectID, resourceType, resourceID string, versio
 // ValidateResourceRef applies domain validation to the generated message.
 func ValidateResourceRef(ref *commonv1.ResourceRef) error {
 	if ref == nil {
-		return fmt.Errorf("resource reference is required")
+		return errors.New("resource reference is required")
 	}
 	if ref.GetTenantId() == "" || ref.GetProjectId() == "" || ref.GetResourceType() == "" || ref.GetResourceVersion() <= 0 {
-		return fmt.Errorf("resource reference requires tenant, project, type, id, and positive version")
+		return errors.New("resource reference requires tenant, project, type, id, and positive version")
 	}
 	if _, err := ParseResourceID(ref.GetResourceType(), ref.GetResourceId()); err != nil {
 		return err

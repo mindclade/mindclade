@@ -92,8 +92,7 @@ def _impl_cpp(specs: list[KernelSpec]) -> str:
     for spec in specs:
         parsed = parse_schema(spec.schema)
         lines.append(
-            f'extern "C" {parsed.cpp_return_type} {spec.launch_symbol}'
-            f"({parsed.cpp_parameters});"
+            f'extern "C" {parsed.cpp_return_type} {spec.launch_symbol}({parsed.cpp_parameters});'
         )
     if specs:
         lines.append("")
@@ -169,15 +168,18 @@ def _cmake(specs: list[KernelSpec]) -> str:
         PY_HEADER.rstrip(),
         "set(MINDCLADE_TILELANG_KERNEL_SOURCES",
     ]
-    lines.extend(
-        f'  "${{CMAKE_CURRENT_LIST_DIR}}/../../{spec.source}"' for spec in specs
-    )
+    lines.extend(f'  "${{CMAKE_CURRENT_LIST_DIR}}/../../{spec.source}"' for spec in specs)
     lines.append(")")
     return "\n".join(lines) + "\n"
 
 
 def _bzl(specs: list[KernelSpec]) -> str:
-    lines = [PY_HEADER.rstrip(), "MINDCLADE_TILELANG_KERNEL_SOURCES = ["]
+    lines = [
+        PY_HEADER.rstrip(),
+        '"""Generated Bazel source inventory for native TileLang kernels."""',
+        "",
+        "MINDCLADE_TILELANG_KERNEL_SOURCES = [",
+    ]
     for spec in specs:
         source = Path(spec.source)
         lines.append(f'    "//kernels/{source.parent.as_posix()}:{source.name}",')

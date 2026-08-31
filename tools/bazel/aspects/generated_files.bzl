@@ -1,9 +1,11 @@
 """Aspect collecting files declared as generated target output."""
 
-GeneratedFilesInfo = provider(fields = {"files": "Transitive generated files."})
+GeneratedFilesInfo = provider(
+    doc = "Transitive generated files.",
+    fields = {"files": "Transitive generated files."},
+)
 
-
-def _generated_files_impl(target, ctx):
+def _generated_files_impl(_target, ctx):
     direct = []
     if hasattr(ctx.rule.attr, "outs"):
         for output in ctx.rule.attr.outs:
@@ -14,7 +16,6 @@ def _generated_files_impl(target, ctx):
             if GeneratedFilesInfo in dependency:
                 transitive.append(dependency[GeneratedFilesInfo].files)
     return [GeneratedFilesInfo(files = depset(direct = direct, transitive = transitive))]
-
 
 generated_files_aspect = aspect(
     implementation = _generated_files_impl,

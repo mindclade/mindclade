@@ -22,7 +22,7 @@ from typing import Any, cast
 
 import yaml
 
-GENERATOR = "mindclade-contract-codegen 3.0.0"
+GENERATOR = "mindclade-contract-codegen 3.1.0"
 LANGUAGES = ("go", "python", "rust", "typescript")
 PROTO_SUFFIX = {"go": ".pb.go", "python": "_pb2.py", "rust": ".rs", "typescript": "_pb.ts"}
 GENERATED_SUFFIXES = {
@@ -31,6 +31,27 @@ GENERATED_SUFFIXES = {
     "typescript": ("_pb.ts",),
 }
 TS_IMPORT = re.compile(r'from "(?P<path>[^"]+_pb)\.js"')
+RUST_TONIC_INCLUDE = re.compile(r'^include!\("[^"]+\.tonic\.rs"\);\n?', re.MULTILINE)
+HAND_AUTHORED_GENERATED_PATHS = frozenset(
+    {
+        Path("protocols/generated/python/pyproject.toml"),
+        Path("protocols/generated/rust/Cargo.toml"),
+        Path("protocols/generated/typescript/package.json"),
+        Path("protocols/generated/typescript/tsconfig.json"),
+    }
+)
+GENERATED_METADATA_NAMES = frozenset(
+    {
+        "BUILD.bazel",
+        "README.generated.md",
+        "README.md",
+        "generated-files.manifest.json",
+        "__init__.py",
+        "index.ts",
+        "lib.rs",
+        "mod.rs",
+    }
+)
 
 
 def sha256_bytes(content: bytes) -> str:
@@ -101,6 +122,7 @@ def command_version(command: Sequence[str], root: Path) -> str:
 def ensure_toolchain(root: Path, staging: Path, lock: Mapping[str, Any]) -> Path:
     tools = cast(dict[str, dict[str, str]], lock["tools"])
     actual_versions = {
+        "buildifier": command_version(["buildifier", "--version"], root),
         "buf": command_version(["buf", "--version"], root),
         "protoc": command_version(["protoc", "--version"], root),
         "protoc-gen-go": command_version(["go", "tool", "protoc-gen-go", "--version"], root),
@@ -118,7 +140,11 @@ def ensure_toolchain(root: Path, staging: Path, lock: Mapping[str, Any]) -> Path
     raw_packages = cargo_lock.get("package")
     if not isinstance(raw_packages, list):
         raise ValueError("Cargo.lock does not contain a package closure")
-    packages = [cast(dict[str, Any], value) for value in raw_packages if isinstance(value, dict)]
+    packages = [
+        cast(dict[str, Any], value)
+        for value in cast(list[object], raw_packages)
+        if isinstance(value, dict)
+    ]
     for tool_name in ("protoc-gen-prost", "protoc-gen-tonic"):
         rust = tools[tool_name]
         matches = [
@@ -193,11 +219,26 @@ def build_descriptors(root: Path, staging: Path) -> tuple[bytes, list[dict[str, 
     return binary_path.read_bytes(), managed
 
 
-def domain_for(package: str) -> str:
+def projection_parts(package: str) -> tuple[str, ...]:
+    """Return the committed binding namespace for one Protobuf package."""
     parts = package.split(".")
     if len(parts) < 3 or parts[0] != "mindclade" or parts[-1] != "v1":
         raise ValueError(f"unsupported Protobuf package: {package}")
-    return parts[-2]
+    if parts[1] == "internal":
+        if len(parts) != 4:
+            raise ValueError(f"unsupported internal Protobuf package: {package}")
+        return ("internal", parts[2], "v1")
+    if parts[1] == "events":
+        if len(parts) != 4:
+            raise ValueError(f"unsupported event Protobuf package: {package}")
+        return (parts[2], "v1")
+    if len(parts) != 3:
+        raise ValueError(f"unsupported Protobuf package: {package}")
+    return (parts[1], "v1")
+
+
+def projection_path(package: str) -> Path:
+    return Path(*projection_parts(package))
 
 
 def source_path(root: Path, descriptor: Mapping[str, Any]) -> Path:
@@ -210,11 +251,12 @@ def source_path(root: Path, descriptor: Mapping[str, Any]) -> Path:
 def declared_languages(lock: Mapping[str, Any], package: str) -> frozenset[str]:
     matrix = cast(dict[str, list[str]], lock["domain_language_matrix"])
     raw_default = lock.get("default_languages")
-    if not isinstance(raw_default, list) or not all(
-        isinstance(value, str) for value in raw_default
-    ):
+    if not isinstance(raw_default, list):
         raise ValueError("toolchain lock has no default language policy")
-    values = matrix.get(package, cast(list[str], raw_default))
+    default_languages = cast(list[object], raw_default)
+    if not all(isinstance(value, str) for value in default_languages):
+        raise ValueError("toolchain lock has no default language policy")
+    values = matrix.get(package, cast(list[str], default_languages))
     unknown = set(values).difference(LANGUAGES)
     if unknown:
         raise ValueError(f"unsupported languages for {package}: {sorted(unknown)}")
@@ -282,6 +324,44 @@ def governed_generated_paths(root: Path) -> set[Path]:
     return paths
 
 
+def previous_generated_paths(root: Path) -> set[Path]:
+    manifest_path = root / "protocols/generated/generated-files.manifest.json"
+    if not manifest_path.is_file():
+        return set()
+    manifest = load_json(manifest_path)
+    raw_files = manifest.get("files")
+    if not isinstance(raw_files, dict):
+        raise ValueError("generated file manifest has no files object")
+    paths: set[Path] = set()
+    for value in cast(dict[str, object], raw_files):
+        relative = Path(value)
+        if (
+            relative.is_absolute()
+            or ".." in relative.parts
+            or relative.parts[:2] != ("protocols", "generated")
+        ):
+            raise ValueError(f"unsafe prior generated path: {value}")
+        paths.add(root / relative)
+    return paths
+
+
+def discovered_generated_paths(root: Path) -> set[Path]:
+    """Find generator-owned files even when an older manifest no longer lists them."""
+    generated_root = root / "protocols/generated"
+    paths: set[Path] = set()
+    for path in generated_root.rglob("*"):
+        if not path.is_file():
+            continue
+        relative = path.relative_to(root)
+        if relative in HAND_AUTHORED_GENERATED_PATHS:
+            continue
+        if path.name in GENERATED_METADATA_NAMES or path.name.endswith(
+            (".pb.go", ".py", ".pyi", ".rs", ".ts")
+        ):
+            paths.add(path)
+    return paths
+
+
 def plugin_config(root: Path, language: str, output: Path) -> dict[str, Any]:
     config = load_json(root / "buf.gen.yaml")
     plugins = config.get("plugins")
@@ -322,9 +402,9 @@ def generate_language(
     if language == "rust":
         groups = {}
         for descriptor in selected:
-            domain = domain_for(cast(str, descriptor["package"]))
+            package_path = projection_path(cast(str, descriptor["package"]))
             stem = Path(cast(str, descriptor["name"])).stem
-            groups[f"{domain}-{stem}"] = [descriptor]
+            groups[f"{'-'.join(package_path.parts)}-{stem}"] = [descriptor]
     else:
         groups = {language: selected}
 
@@ -333,7 +413,7 @@ def generate_language(
             descriptor = group_descriptors[0]
             output = (
                 raw_root
-                / domain_for(cast(str, descriptor["package"]))
+                / projection_path(cast(str, descriptor["package"]))
                 / Path(cast(str, descriptor["name"])).stem
             )
         else:
@@ -380,16 +460,16 @@ def target_path(
     descriptor: Mapping[str, Any],
     suffix: str | None = None,
 ) -> Path:
-    domain = domain_for(cast(str, descriptor["package"]))
+    package_path = projection_path(cast(str, descriptor["package"]))
     stem = Path(cast(str, descriptor["name"])).stem
     resolved_suffix = PROTO_SUFFIX[language] if suffix is None else suffix
-    return root / "protocols/generated" / language / domain / "v1" / f"{stem}{resolved_suffix}"
+    return root / "protocols/generated" / language / package_path / f"{stem}{resolved_suffix}"
 
 
 def raw_path(raw_root: Path, language: str, descriptor: Mapping[str, Any]) -> Path:
     source = Path(cast(str, descriptor["name"]))
     if language == "rust":
-        generated_root = raw_root / domain_for(cast(str, descriptor["package"])) / source.stem
+        generated_root = raw_root / projection_path(cast(str, descriptor["package"])) / source.stem
         candidates = sorted(
             path for path in generated_root.rglob("*.rs") if not path.name.endswith(".tonic.rs")
         )
@@ -409,7 +489,7 @@ def raw_variant_path(
 ) -> Path:
     source = Path(cast(str, descriptor["name"]))
     if language == "rust":
-        generated_root = raw_root / domain_for(cast(str, descriptor["package"])) / source.stem
+        generated_root = raw_root / projection_path(cast(str, descriptor["package"])) / source.stem
         candidates = sorted(generated_root.rglob("*.tonic.rs"))
         if len(candidates) != 1:
             return generated_root / "missing.tonic.rs"
@@ -425,8 +505,7 @@ def python_module(source: str) -> str:
 def target_python_module(descriptor: Mapping[str, Any]) -> str:
     return ".".join(
         (
-            domain_for(cast(str, descriptor["package"])),
-            "v1",
+            *projection_parts(cast(str, descriptor["package"])),
             f"{Path(cast(str, descriptor['name'])).stem}_pb2",
         )
     )
@@ -443,16 +522,92 @@ def normalize_python(content: str, descriptors: Sequence[Mapping[str, Any]]) -> 
         generated_name = f"{source.stem}_pb2"
         content = content.replace(
             f"from {old_package} import {generated_name}",
-            f"from {domain_for(cast(str, item['package']))}.v1 import {generated_name}",
+            f"from {'.'.join(projection_parts(cast(str, item['package'])))} "
+            f"import {generated_name}",
         )
     for old, new in sorted(replacements, key=lambda pair: len(pair[0]), reverse=True):
         content = content.replace(old, new)
+    prefix = content[:8192].lower()
+    if not any(marker in prefix for marker in ("generated", "do not edit")):
+        content = f"# Code generated by {GENERATOR}; DO NOT EDIT.\n{content}"
     return content
 
 
-def normalize_rust(
-    content: str, descriptor: Mapping[str, Any], by_name: Mapping[str, Mapping[str, Any]]
+def isolate_rust_source(
+    content: str,
+    descriptor: Mapping[str, Any],
+    by_name: Mapping[str, Mapping[str, Any]],
 ) -> str:
+    """Keep only the Prost declarations owned by one source descriptor.
+
+    protoc-gen-prost emits one Rust file per Protobuf package. A Buf request for a
+    single source still contains its imports, so same-package imports are prepended
+    to that file. The committed projection intentionally remains source-relative;
+    strip the prepended declarations while retaining references to the authoritative
+    definitions included by the package module.
+    """
+    package = descriptor.get("package")
+    dependencies = descriptor.get("dependency", [])
+    if not isinstance(package, str) or not isinstance(dependencies, list):
+        raise ValueError("descriptor package or dependency list is invalid")
+    has_same_package_dependency = any(
+        isinstance(dependency, str)
+        and dependency in by_name
+        and by_name[dependency].get("package") == package
+        for dependency in cast(list[object], dependencies)
+    )
+    if not has_same_package_dependency:
+        return content
+
+    declarations = descriptor.get("messageType") or descriptor.get("enumType")
+    if not isinstance(declarations, list) or not declarations:
+        return content
+    first_declaration = cast(list[object], declarations)[0]
+    if not isinstance(first_declaration, dict):
+        raise ValueError(f"descriptor has an invalid Rust declaration: {descriptor.get('name')}")
+    declaration = cast(dict[str, object], first_declaration)
+    name = declaration.get("name")
+    if not isinstance(name, str):
+        raise ValueError(f"descriptor has an invalid Rust declaration: {descriptor.get('name')}")
+    declaration = re.search(
+        rf"^pub (?:struct|enum) {re.escape(name)} \{{",
+        content,
+        flags=re.MULTILINE,
+    )
+    if declaration is None:
+        raise ValueError(
+            f"generated Rust output has no declaration for {name}: {descriptor.get('name')}"
+        )
+
+    lines = content.splitlines(keepends=True)
+    declaration_line = content.count("\n", 0, declaration.start())
+    start_line = declaration_line
+    while start_line > 0:
+        previous = lines[start_line - 1].lstrip()
+        if previous.startswith(("///", "#[")):
+            start_line -= 1
+            continue
+        break
+
+    footer = "// @@protoc_insertion_point(module)\n"
+    footer_position = content.rfind(footer)
+    if footer_position == -1:
+        raise ValueError(f"generated Rust output has no insertion point: {descriptor.get('name')}")
+    header = "// @generated\n// This file is @generated by prost-build.\n"
+    body_start = sum(len(line) for line in lines[:start_line])
+    return header + content[body_start:footer_position] + footer
+
+
+def normalize_rust(
+    content: str,
+    descriptor: Mapping[str, Any],
+    by_name: Mapping[str, Mapping[str, Any]],
+    *,
+    is_prost: bool,
+) -> str:
+    content = RUST_TONIC_INCLUDE.sub("", content)
+    if is_prost:
+        content = isolate_rust_source(content, descriptor, by_name)
     current_package = cast(str, descriptor["package"]).split(".")
     dependencies = descriptor.get("dependency", [])
     if not isinstance(dependencies, list):
@@ -471,8 +626,12 @@ def normalize_rust(
             common += 1
         relative = "super::" * (len(current_package) - common)
         relative += "::".join(dependency_package[common:]) + "::"
-        dependency_domain = domain_for(dependency_package_name)
-        content = content.replace(relative, f"crate::{dependency_domain}::v1::")
+        dependency_projection = "::".join(projection_parts(dependency_package_name))
+        content = re.sub(
+            rf"(?:super::)*{re.escape(relative)}",
+            f"crate::{dependency_projection}::",
+            content,
+        )
     return content.rstrip() + "\n"
 
 
@@ -507,6 +666,42 @@ def generated_build(srcs: Sequence[str]) -> bytes:
     ).encode()
 
 
+def format_generated_build_files(
+    root: Path,
+    staging: Path,
+    outputs: dict[Path, bytes],
+) -> None:
+    formatting_root = staging / "buildifier"
+    build_files = sorted(path for path in outputs if path.name == "BUILD.bazel")
+    for index, path in enumerate(build_files):
+        candidate = formatting_root / str(index) / "BUILD.bazel"
+        candidate.parent.mkdir(parents=True, exist_ok=True)
+        candidate.write_bytes(outputs[path])
+        run(["buildifier", "-mode=fix", str(candidate)], cwd=root)
+        outputs[path] = candidate.read_bytes()
+
+
+def rust_module_declarations(projections: Sequence[tuple[str, ...]]) -> str:
+    tree: dict[str, dict[str, Any]] = {}
+    for projection in projections:
+        branch = tree
+        for part in projection:
+            branch = branch.setdefault(part, {})
+
+    def render(branch: Mapping[str, dict[str, Any]], indent: str = "") -> list[str]:
+        lines: list[str] = []
+        for name, children in sorted(branch.items()):
+            if children:
+                lines.append(f"{indent}pub mod {name} {{")
+                lines.extend(render(children, indent + "    "))
+                lines.append(f"{indent}}}")
+            else:
+                lines.append(f"{indent}pub mod {name};")
+        return lines
+
+    return "\n".join(render(tree))
+
+
 def language_metadata(
     root: Path,
     descriptors: Sequence[Mapping[str, Any]],
@@ -514,64 +709,65 @@ def language_metadata(
     outputs: dict[Path, bytes],
 ) -> None:
     generated = root / "protocols/generated"
-    domains = sorted({domain_for(cast(str, item["package"])) for item in descriptors})
-    by_domain: dict[str, list[Mapping[str, Any]]] = defaultdict(list)
+    projections = sorted({projection_parts(cast(str, item["package"])) for item in descriptors})
+    by_projection: dict[tuple[str, ...], list[Mapping[str, Any]]] = defaultdict(list)
     by_name = {cast(str, item["name"]): item for item in descriptors}
     for descriptor in descriptors:
-        by_domain[domain_for(cast(str, descriptor["package"]))].append(descriptor)
+        by_projection[projection_parts(cast(str, descriptor["package"]))].append(descriptor)
 
-    for domain in domains:
+    for projection in projections:
+        package_path = Path(*projection)
         rust_sources = sorted(
             path.name
             for path in outputs
-            if path.parent == generated / "rust" / domain / "v1"
+            if path.parent == generated / "rust" / package_path
             and path.suffix == ".rs"
             and path.name != "mod.rs"
         )
         if rust_sources:
             modules = "\n".join(f'include!("{source}");' for source in rust_sources)
-            outputs[generated / "rust" / domain / "v1" / "mod.rs"] = (
+            outputs[generated / "rust" / package_path / "mod.rs"] = (
                 f"// Code generated by {GENERATOR}; DO NOT EDIT.\n\n{modules}\n"
             ).encode()
         ts_sources = sorted(
             path.name
             for path in outputs
-            if path.parent == generated / "typescript" / domain / "v1"
+            if path.parent == generated / "typescript" / package_path
             and path.name.endswith("_pb.ts")
         )
         if ts_sources:
             exports = "\n".join(
                 f"export * from './{Path(source).stem}.js';" for source in ts_sources
             )
-            outputs[generated / "typescript" / domain / "v1" / "index.ts"] = (
+            outputs[generated / "typescript" / package_path / "index.ts"] = (
                 f"// Code generated by {GENERATOR}; DO NOT EDIT.\n\n{exports}\n"
             ).encode()
         if any(
             "python" in declared_languages(lock, cast(str, item["package"]))
-            for item in by_domain[domain]
+            for item in by_projection[projection]
         ):
-            outputs[generated / "python" / domain / "v1" / "__init__.py"] = (
+            outputs[generated / "python" / package_path / "__init__.py"] = (
                 f"# Code generated by {GENERATOR}; DO NOT EDIT.\n"
             ).encode()
 
         go_descriptors = [
             item
-            for item in by_domain[domain]
+            for item in by_projection[projection]
             if "go" in declared_languages(lock, cast(str, item["package"]))
         ]
         if go_descriptors:
             go_sources = sorted(
                 path.name
                 for path in outputs
-                if path.parent == generated / "go" / domain / "v1" and path.name.endswith(".go")
+                if path.parent == generated / "go" / package_path and path.name.endswith(".go")
             )
-            dependency_domains = sorted(
+            dependency_projections = sorted(
                 {
-                    domain_for(cast(str, by_name[dependency]["package"]))
+                    projection_parts(cast(str, by_name[dependency]["package"]))
                     for item in go_descriptors
                     for dependency in cast(list[str], item.get("dependency", []))
                     if dependency in by_name
-                    and domain_for(cast(str, by_name[dependency]["package"])) != domain
+                    and projection_parts(cast(str, by_name[dependency]["package"])) != projection
                 }
             )
             deps = [
@@ -607,10 +803,13 @@ def language_metadata(
                     ]
                 )
             deps.extend(
-                f'"//protocols/generated/go/{value}/v1:bindings"' for value in dependency_domains
+                f'"//protocols/generated/go/{Path(*value).as_posix()}:bindings"'
+                for value in dependency_projections
             )
-            import_path = f"github.com/mindclade/mindclade/protocols/generated/go/{domain}/v1"
-            outputs[generated / "go" / domain / "v1" / "BUILD.bazel"] = (
+            import_path = (
+                f"github.com/mindclade/mindclade/protocols/generated/go/{package_path.as_posix()}"
+            )
+            outputs[generated / "go" / package_path / "BUILD.bazel"] = (
                 'load("@rules_go//go:def.bzl", "go_library")\n\n'
                 "go_library(\n"
                 '    name = "bindings",\n'
@@ -631,7 +830,10 @@ def language_metadata(
     )
     outputs[generated / "go" / "BUILD.bazel"] = generated_build(
         ["BUILD.bazel", "README.generated.md"]
-        + [f"//protocols/generated/go/{domain}/v1:generated_sources" for domain in domains]
+        + [
+            f"//protocols/generated/go/{Path(*projection).as_posix()}:generated_sources"
+            for projection in projections
+        ]
     )
     outputs[generated / "python" / "README.generated.md"] = (
         b"# Generated Python bindings\n\n"
@@ -655,9 +857,11 @@ def language_metadata(
     outputs[generated / "rust" / "README.generated.md"] = (
         b"# Generated Rust bindings\n\nGenerated by the locked Prost and Tonic toolchain.\n"
     )
-    rust_modules = "\n".join(f"pub mod {domain} {{ pub mod v1; }}" for domain in domains)
+    rust_modules = rust_module_declarations(projections)
     outputs[generated / "rust" / "lib.rs"] = (
-        f"// Code generated by {GENERATOR}; DO NOT EDIT.\n\n{rust_modules}\n"
+        f"// Code generated by {GENERATOR}; DO NOT EDIT.\n"
+        "#![allow(clippy::large_enum_variant)]\n\n"
+        f"{rust_modules}\n"
     ).encode()
     outputs[generated / "rust" / "BUILD.bazel"] = (
         b'load("@rules_rust//rust:defs.bzl", "rust_library")\n\n'
@@ -837,13 +1041,19 @@ def generated_outputs(root: Path) -> tuple[dict[Path, bytes], bytes, list[dict[s
                     if language == "python":
                         content = normalize_python(content, descriptors)
                     elif language == "rust":
-                        content = normalize_rust(content, descriptor, by_name)
+                        content = normalize_rust(
+                            content,
+                            descriptor,
+                            by_name,
+                            is_prost=suffix == ".rs",
+                        )
                     elif language == "typescript":
                         content = normalize_typescript(
                             content, source.resolve(), target, ts_raw_to_target
                         )
                     outputs[target] = content.encode()
         language_metadata(root, descriptors, lock, outputs)
+        format_generated_build_files(root, staging, outputs)
         generated = root / "protocols/generated"
         manifest_files = {
             path.relative_to(root).as_posix(): sha256_bytes(content)
@@ -910,6 +1120,7 @@ def write_generated(
                 "baseline promotion requires the exact reviewed predecessor digest: "
                 f"expected {expected_baseline_digest!r}, actual {actual_digest!r}"
             )
+        recorded_predecessor_digest = actual_digest
         if promote_baseline:
             previous = load_json(baseline)
             raw_descriptor = previous.get("descriptor_set")
@@ -928,14 +1139,30 @@ def write_generated(
             reset_authority = "docs/adr/0015-all-contracts-clean-v1-baseline.md"
             if not (root / reset_authority).is_file():
                 raise RuntimeError(f"baseline reset authority is missing: {reset_authority}")
+            previous = load_json(baseline)
+            raw_promotion = previous.get("promotion")
+            if isinstance(raw_promotion, dict):
+                promotion = cast(dict[str, object], raw_promotion)
+                original_predecessor = promotion.get("predecessor_digest")
+                if (
+                    promotion.get("mode") == "baseline-reset"
+                    and promotion.get("authority") == reset_authority
+                    and isinstance(original_predecessor, str)
+                ):
+                    recorded_predecessor_digest = original_predecessor
         promoted_baseline = protobuf_baseline(
             root,
             descriptors,
             descriptor_set,
-            predecessor_digest=actual_digest,
+            predecessor_digest=recorded_predecessor_digest,
             reset_authority=reset_authority,
         )
-    for path in sorted(governed_generated_paths(root), reverse=True):
+    stale_candidates = (
+        governed_generated_paths(root)
+        | previous_generated_paths(root)
+        | discovered_generated_paths(root)
+    )
+    for path in sorted(stale_candidates, reverse=True):
         if path.is_file() and path not in outputs:
             path.unlink()
     for path, content in sorted(outputs.items()):

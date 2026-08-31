@@ -7,9 +7,10 @@ import (
 	"strings"
 	"sync"
 
+	"google.golang.org/protobuf/proto"
+
 	artifactv1 "github.com/mindclade/mindclade/protocols/generated/go/artifact/v1"
 	"github.com/mindclade/mindclade/services/control_plane/internal/tenants"
-	"google.golang.org/protobuf/proto"
 )
 
 var ErrNotFound = errors.New("artifact not found")
@@ -99,17 +100,17 @@ func validateArtifactRef(tenantID string, ref *artifactv1.ArtifactRef) error {
 		return ErrNotFound
 	}
 	if !strings.HasPrefix(ref.GetDigest(), "sha256:") || len(ref.GetDigest()) != len("sha256:")+64 {
-		return fmt.Errorf("artifact digest must be sha256:<64 lowercase hex>")
+		return errors.New("artifact digest must be sha256:<64 lowercase hex>")
 	}
 	digestHex := strings.TrimPrefix(ref.GetDigest(), "sha256:")
 	if digestHex != strings.ToLower(digestHex) {
-		return fmt.Errorf("artifact digest must use lowercase hex")
+		return errors.New("artifact digest must use lowercase hex")
 	}
 	if _, err := hex.DecodeString(digestHex); err != nil {
 		return fmt.Errorf("invalid artifact digest: %w", err)
 	}
 	if ref.GetMediaType() == "" || ref.GetSizeBytes() < 0 {
-		return fmt.Errorf("artifact media type and non-negative size are required")
+		return errors.New("artifact media type and non-negative size are required")
 	}
 	return nil
 }

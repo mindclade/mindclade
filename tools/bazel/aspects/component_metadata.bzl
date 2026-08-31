@@ -2,8 +2,10 @@
 
 load("//tools:bazel/rules/component_rule.bzl", "ComponentInfo")
 
-ComponentGraphInfo = provider(fields = {"components": "Transitive component records."})
-
+ComponentGraphInfo = provider(
+    doc = "Transitive component records.",
+    fields = {"components": "Transitive component records."},
+)
 
 def _component_metadata_impl(target, ctx):
     direct = []
@@ -16,7 +18,6 @@ def _component_metadata_impl(target, ctx):
             if ComponentGraphInfo in dependency:
                 transitive.append(dependency[ComponentGraphInfo].components)
     return [ComponentGraphInfo(components = depset(direct = direct, transitive = transitive))]
-
 
 component_metadata_aspect = aspect(
     implementation = _component_metadata_impl,

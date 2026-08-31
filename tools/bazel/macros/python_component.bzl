@@ -2,7 +2,6 @@
 
 load("//tools:bazel/rules/component_rule.bzl", "component_metadata")
 
-
 def python_component(name, component, owner, srcs, data = [], visibility = None):
     """Declare source closure and metadata; native packaging stays in uv."""
     native.filegroup(

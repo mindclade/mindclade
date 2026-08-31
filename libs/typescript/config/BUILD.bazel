@@ -1,4 +1,4 @@
-load("@aspect_rules_js//js:defs.bzl", "js_library", "js_test")
+load("@aspect_rules_js//js:defs.bzl", "js_test")
 load("@aspect_rules_ts//ts:defs.bzl", "ts_project")
 
 ts_project(
@@ -20,11 +20,11 @@ ts_project(
 
 js_test(
     name = "resolution_test",
-    entry_point = "tests/resolution.test.ts",
     data = [
-        ":config",
         "package.json",
+        ":config",
     ],
+    entry_point = "tests/resolution.test.ts",
 )
 
 test_suite(
@@ -37,6 +37,12 @@ test_suite(
 
 filegroup(
     name = "governed_sources",
-    srcs = ["BUILD.bazel", "package.json"] + glob(["src/*.ts", "tests/*.ts"]),
+    srcs = [
+        "BUILD.bazel",
+        "package.json",
+    ] + glob([
+        "src/*.ts",
+        "tests/*.ts",
+    ]),
     visibility = ["//visibility:public"],
 )

@@ -11,18 +11,20 @@ import (
 	"sync"
 	"time"
 
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/timestamppb"
+
+	foundationaudit "github.com/mindclade/mindclade/libs/go/audit"
 	artifactv1 "github.com/mindclade/mindclade/protocols/generated/go/artifact/v1"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
 	"github.com/mindclade/mindclade/services/control_plane/internal/tenants"
-	"google.golang.org/protobuf/proto"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type SQLRepository struct{ DB *sql.DB }
 
 // CreateAtomicallySQL accepts a generated Operation while persisting normalized
-// columns. Only the immutable outbox envelope is stored as protobuf bytes.
+// columns. Immutable outbox and audit envelopes are stored as protobuf bytes.
 func (r SQLRepository) CreateAtomicallySQL(ctx context.Context, operation *jobv1.Operation, requestDigest, commandKey, actorID string) (*jobv1.Operation, bool, error) {
 	if err := validateCreate(operation, requestDigest); err != nil {
 		return nil, false, err
@@ -31,7 +33,7 @@ func (r SQLRepository) CreateAtomicallySQL(ctx context.Context, operation *jobv1
 	if err != nil {
 		return nil, false, err
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 	var existingDigest, existingID string
 	err = tx.QueryRowContext(ctx, `SELECT request_hash, operation_id FROM idempotency_records WHERE tenant_id = $1 AND command_key = $2 FOR UPDATE`, operation.GetTenantId(), commandKey).Scan(&existingDigest, &existingID)
 	if err == nil {
@@ -59,9 +61,17 @@ func (r SQLRepository) CreateAtomicallySQL(ctx context.Context, operation *jobv1
 	if err != nil {
 		return nil, false, err
 	}
+	auditEnvelope, err := newOperationAuditEnvelope(row, actorID, now)
+	if err != nil {
+		return nil, false, err
+	}
 	envelopeBytes, err := proto.MarshalOptions{Deterministic: true}.Marshal(envelope)
 	if err != nil {
 		return nil, false, fmt.Errorf("marshal outbox envelope: %w", err)
+	}
+	auditEnvelopeBytes, err := proto.MarshalOptions{Deterministic: true}.Marshal(auditEnvelope)
+	if err != nil {
+		return nil, false, fmt.Errorf("marshal audit envelope: %w", err)
 	}
 	if _, err = tx.ExecContext(ctx, `UPDATE jobs SET desired_state = 'QUEUED', version = version + 1, updated_at = $3 WHERE tenant_id = $1 AND id = $2 AND desired_state IN ('ACCEPTED','QUEUED')`, row.tenantID, row.jobID, now); err != nil {
 		return nil, false, err
@@ -72,7 +82,7 @@ func (r SQLRepository) CreateAtomicallySQL(ctx context.Context, operation *jobv1
 	if _, err = tx.ExecContext(ctx, `INSERT INTO idempotency_records (tenant_id, command_key, request_hash, operation_id, created_at) VALUES ($1, $2, $3, $4, $5)`, row.tenantID, commandKey, requestDigest, row.operationID, now); err != nil {
 		return nil, false, err
 	}
-	if _, err = tx.ExecContext(ctx, `INSERT INTO audit_events (id, tenant_id, actor_id, action, subject_id, occurred_at, details_digest) VALUES ($1, $2, $3, 'operations.create', $4, $5, $6)`, "audit:"+row.operationID, row.tenantID, actorID, row.operationID, now, requestDigest); err != nil {
+	if _, err = tx.ExecContext(ctx, `INSERT INTO audit_events (id, tenant_id, actor_id, action, subject_id, occurred_at, details_digest, event_version, payload_digest, envelope_bytes) VALUES ($1, $2, $3, 'operations.create', $4, $5, $6, $7, $8, $9)`, auditEnvelope.GetEventId(), row.tenantID, actorID, row.operationID, now, requestDigest, auditEnvelope.GetEventVersion(), auditEnvelope.GetPayloadDigest(), auditEnvelopeBytes); err != nil {
 		return nil, false, err
 	}
 	if _, err = tx.ExecContext(ctx, `INSERT INTO outbox_messages (id, tenant_id, event_type, event_version, payload_digest, envelope_bytes, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7)`, envelope.GetEventId(), row.tenantID, envelope.GetEventType(), envelope.GetEventVersion(), envelope.GetPayloadDigest(), envelopeBytes, now); err != nil {
@@ -92,8 +102,8 @@ var (
 	ErrInvalidTransition   = errors.New("operation transition target is invalid")
 )
 
-// operationRow and auditRow are private relational adapters. The generated
-// Operation and EventEnvelope messages own all service and delivery surfaces.
+// operationRow is a private relational adapter. The generated Operation and
+// EventEnvelope messages own all service and delivery surfaces.
 type operationRow struct {
 	operationID, tenantID, projectID, jobID string
 	state                                   jobv1.OperationState
@@ -106,15 +116,11 @@ type operationRow struct {
 	createdAt, updatedAt                    time.Time
 }
 
-type auditRow struct {
-	tenantID, actorID, action, subject string
-}
-
 type Repository struct {
 	mu          sync.Mutex
 	operations  map[string]operationRow
 	idempotency map[string]operationRow
-	audit       []auditRow
+	audit       []*commonv1.EventEnvelope
 	outbox      []*commonv1.EventEnvelope
 }
 
@@ -147,8 +153,12 @@ func (r *Repository) CreateAtomically(operation *jobv1.Operation, requestDigest,
 	if err != nil {
 		return nil, false, err
 	}
+	auditEnvelope, err := newOperationAuditEnvelope(row, actorID, now)
+	if err != nil {
+		return nil, false, err
+	}
 	r.operations[row.operationID], r.idempotency[key] = row, row
-	r.audit = append(r.audit, auditRow{tenantID: row.tenantID, actorID: actorID, action: CreateAction, subject: row.operationID})
+	r.audit = append(r.audit, auditEnvelope)
 	r.outbox = append(r.outbox, envelope)
 	return operationRowToProto(row), false, nil
 }
@@ -193,6 +203,16 @@ func (r *Repository) AuditCount() int {
 	return len(r.audit)
 }
 
+func (r *Repository) AuditEnvelopes() []*commonv1.EventEnvelope {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	result := make([]*commonv1.EventEnvelope, len(r.audit))
+	for index, envelope := range r.audit {
+		result[index] = proto.Clone(envelope).(*commonv1.EventEnvelope)
+	}
+	return result
+}
+
 func (r *Repository) OutboxEnvelopes() []*commonv1.EventEnvelope {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -231,12 +251,24 @@ func newJobRequestedEnvelope(operation *jobv1.Operation, at time.Time) (*commonv
 	}, nil
 }
 
+func newOperationAuditEnvelope(row operationRow, actorID string, at time.Time) (*commonv1.EventEnvelope, error) {
+	return foundationaudit.NewEvent(
+		row.tenantID,
+		actorID,
+		CreateAction,
+		row.operationID,
+		"allowed",
+		at.UTC(),
+		nil,
+	)
+}
+
 func validateCreate(operation *jobv1.Operation, requestDigest string) error {
 	if operation == nil || operation.GetOperationId() == "" || operation.GetTenantId() == "" || operation.GetJobId() == "" {
 		return ErrNotFound
 	}
 	if len(requestDigest) != len("sha256:")+64 || !strings.HasPrefix(requestDigest, "sha256:") || requestDigest != strings.ToLower(requestDigest) {
-		return fmt.Errorf("request digest must be sha256:<64 lowercase hex>")
+		return errors.New("request digest must be sha256:<64 lowercase hex>")
 	}
 	if _, err := hex.DecodeString(strings.TrimPrefix(requestDigest, "sha256:")); err != nil {
 		return fmt.Errorf("invalid request digest: %w", err)

@@ -9,7 +9,7 @@ import "proto/mindclade/dataset/v1/dataset_commands.proto";
 import "proto/mindclade/dataset/v1/dataset_release.proto";
 import "proto/mindclade/job/v1/operation.proto";
 
-option go_package = "github.com/mindclade/mindclade/protocols/generated/go/dataset/v1;datasetv1";
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/internal/dataset/v1;internaldatasetv1";
 
 // CreateDatasetRequest wraps the canonical idempotent create command.
 message CreateDatasetRequest {

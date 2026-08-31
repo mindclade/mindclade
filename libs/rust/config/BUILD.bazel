@@ -2,15 +2,22 @@ load("@rules_rust//rust:defs.bzl", "rust_library")
 
 rust_library(
     name = "config",
+    srcs = glob(["src/**/*.rs"]),
     crate_name = "mindclade_config",
     edition = "2024",
-    srcs = glob(["src/**/*.rs"]),
-    deps = ["@crate_index//:serde", "@crate_index//:serde_json", "@crate_index//:sha2"],
     visibility = ["//visibility:public"],
+    deps = [
+        "@crate_index//:serde",
+        "@crate_index//:serde_json",
+        "@crate_index//:sha2",
+    ],
 )
 
 filegroup(
     name = "governed_sources",
-    srcs = ["BUILD.bazel"] + glob(["**"], exclude = ["BUILD.bazel"]),
+    srcs = ["BUILD.bazel"] + glob(
+        ["**"],
+        exclude = ["BUILD.bazel"],
+    ),
     visibility = ["//visibility:public"],
 )

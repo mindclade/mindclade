@@ -1,17 +1,21 @@
 load("@rules_python//python:defs.bzl", "py_library")
+
 py_library(
     name = "serialization",
     srcs = glob(["*.py"]),
+    imports = [".."],
+    visibility = ["//visibility:public"],
     deps = [
         "//protocols/generated/python:bindings",
         "@mindclade_pypi//protobuf",
     ],
-    imports = [".."],
-    visibility = ["//visibility:public"],
 )
 
 filegroup(
     name = "governed_sources",
-    srcs = ["BUILD.bazel"] + glob(["**"], exclude = ["BUILD.bazel"]),
+    srcs = ["BUILD.bazel"] + glob(
+        ["**"],
+        exclude = ["BUILD.bazel"],
+    ),
     visibility = ["//visibility:public"],
 )

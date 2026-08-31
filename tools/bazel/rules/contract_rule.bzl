@@ -9,7 +9,6 @@ ContractInfo = provider(
     },
 )
 
-
 def _contract_sources_impl(ctx):
     sources = depset(ctx.files.srcs)
     baselines = depset(ctx.files.compatibility_baselines)
@@ -21,7 +20,6 @@ def _contract_sources_impl(ctx):
             sources = sources,
         ),
     ]
-
 
 contract_sources = rule(
     implementation = _contract_sources_impl,

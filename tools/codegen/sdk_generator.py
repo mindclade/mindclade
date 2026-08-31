@@ -177,6 +177,39 @@ def public_schemas(openapi: Mapping[str, Any]) -> tuple[str, ...]:
     return names
 
 
+def iter_local_refs(value: object) -> Sequence[str]:
+    """Return local references without resolving provider-specific extensions."""
+    found: list[str] = []
+    if isinstance(value, Mapping):
+        for key, child in cast(Mapping[object, object], value).items():
+            if key == "$ref":
+                if not isinstance(child, str) or not child.startswith("#/"):
+                    raise SdkGeneratorError(
+                        f"OpenAPI references must be local JSON pointers: {child!r}"
+                    )
+                found.append(child)
+            else:
+                found.extend(iter_local_refs(child))
+    elif isinstance(value, list):
+        for child in cast(list[object], value):
+            found.extend(iter_local_refs(child))
+    return found
+
+
+def resolve_local_ref(document: Mapping[str, Any], reference: str) -> Any:
+    """Resolve a JSON-pointer reference in the bundled OpenAPI document."""
+    value: object = document
+    for component in reference[2:].split("/"):
+        component = component.replace("~1", "/").replace("~0", "~")
+        if not isinstance(value, Mapping):
+            raise SdkGeneratorError(f"unresolved OpenAPI reference: {reference}")
+        mapping = cast(Mapping[str, object], value)
+        if component not in mapping:
+            raise SdkGeneratorError(f"unresolved OpenAPI reference: {reference}")
+        value = mapping[component]
+    return value
+
+
 def configured_providers(generation: Mapping[str, Any]) -> Mapping[str, Mapping[str, Any]]:
     spec = require_mapping(generation.get("spec"), "generation.spec")
     raw_providers = require_sequence(spec.get("providers"), "generation.spec.providers")
@@ -196,6 +229,8 @@ def validate_contract(
 ) -> Mapping[str, Mapping[str, Any]]:
     if openapi.get("openapi") != "3.1.0":
         raise SdkGeneratorError("SDK generation requires the OpenAPI 3.1.0 public contract")
+    for reference in iter_local_refs(openapi):
+        resolve_local_ref(openapi, reference)
     _ = operation_ids(openapi)
     _ = public_schemas(openapi)
     if generation.get("kind") != "SdkGeneration":
@@ -259,6 +294,15 @@ def provider_version(provider: Mapping[str, Any], override: str | None) -> str:
     return require_string(override, "provider version override")
 
 
+def require_digest(value: Any, location: str) -> str:
+    digest = require_string(value, location)
+    if len(digest) != 71 or not digest.startswith("sha256:"):
+        raise SdkGeneratorError(f"{location} must be a sha256:<64 lowercase hex> digest")
+    if any(character not in "0123456789abcdef" for character in digest[7:]):
+        raise SdkGeneratorError(f"{location} must be a sha256:<64 lowercase hex> digest")
+    return digest
+
+
 def build_plan(
     *,
     openapi_path: Path,
@@ -280,6 +324,8 @@ def build_plan(
         raise SdkGeneratorError("--provider-version requires one explicit provider")
 
     provenance: list[dict[str, Any]] = []
+    openapi_digest = sha256_file(openapi_path)
+    generation_digest = sha256_file(generation_path)
     for provider_id in selected_providers:
         adapter = ADAPTERS[provider_id]
         provider = providers[provider_id]
@@ -294,7 +340,9 @@ def build_plan(
                 {
                     "adapterContractVersion": adapter_config["contractVersion"],
                     "connectedGeneration": "not-run",
+                    "generationConfigSha256": generation_digest,
                     "language": language,
+                    "openapiSha256": openapi_digest,
                     "outputDirectory": relative_output.as_posix(),
                     "provider": provider_id,
                     "providerRole": adapter.role,
@@ -312,9 +360,9 @@ def build_plan(
         "authority": {
             "apiProfile": openapi.get("x-mindclade-api-profile"),
             "generationConfig": DEFAULT_GENERATION.as_posix(),
-            "generationConfigSha256": sha256_file(generation_path),
+            "generationConfigSha256": generation_digest,
             "openapi": DEFAULT_OPENAPI.as_posix(),
-            "openapiSha256": sha256_file(openapi_path),
+            "openapiSha256": openapi_digest,
         },
         "inventory": {
             "operationIds": list(operation_ids(openapi)),
@@ -379,6 +427,12 @@ def generate_connected(args: argparse.Namespace) -> int:
     configured_digest = adapter.get("executableSha256")
     if not isinstance(configured_executable, str) or not isinstance(configured_digest, str):
         raise ConnectedGenerationError("provider executable path and sha256 must be pinned")
+    if not Path(configured_executable).is_absolute():
+        raise ConnectedGenerationError("provider executable must be an absolute pinned path")
+    try:
+        configured_digest = require_digest(configured_digest, "provider.adapter.executableSha256")
+    except SdkGeneratorError as error:
+        raise ConnectedGenerationError(str(error)) from error
     if not args.provider_command:
         raise ConnectedGenerationError("a provider command is required after --provider-command")
     executable = Path(args.provider_command[0])
@@ -391,41 +445,59 @@ def generate_connected(args: argparse.Namespace) -> int:
         raise ConnectedGenerationError(
             "provider executable digest differs from checked-in configuration"
         )
-    if provider_version(provider, args.provider_version) == UNPINNED_VERSION:
+    configured_version = provider_version(provider, None)
+    if configured_version == UNPINNED_VERSION:
         raise ConnectedGenerationError("provider version must be pinned before generation")
+    if args.provider_version is not None and args.provider_version != configured_version:
+        raise ConnectedGenerationError(
+            "provider version override differs from checked-in configuration"
+        )
 
     safe_root = validate_output_root(Path(args.output_root), openapi_path)
     relative_output = Path(args.provider) / args.language
     output_directory = confined_output(safe_root, relative_output, "provider output directory")
     output_directory.mkdir(parents=True, exist_ok=True)
+    openapi_digest = sha256_file(openapi_path)
+    generation_digest = sha256_file(generation_path)
     process_environment = {
         "LANG": "C",
         "LC_ALL": "C",
         "TZ": "UTC",
         "MINDCLADE_OPENAPI_PATH": openapi_path.as_posix(),
+        "MINDCLADE_GENERATION_CONFIG_PATH": generation_path.as_posix(),
         "MINDCLADE_SDK_LANGUAGE": args.language,
         "MINDCLADE_SDK_OUTPUT_DIRECTORY": output_directory.as_posix(),
         "MINDCLADE_SDK_PROVIDER": args.provider,
     }
-    result = subprocess.run(
-        args.provider_command,
-        check=False,
-        cwd=output_directory,
-        env=process_environment,
-        timeout=args.timeout_seconds,
-    )
+    try:
+        result = subprocess.run(
+            args.provider_command,
+            check=False,
+            cwd=output_directory,
+            env=process_environment,
+            timeout=args.timeout_seconds,
+        )
+    except subprocess.TimeoutExpired as error:
+        raise ConnectedGenerationError(
+            f"{args.provider} adapter exceeded {args.timeout_seconds}s timeout"
+        ) from error
     if result.returncode != 0:
         raise ConnectedGenerationError(
             f"{args.provider} adapter exited with status {result.returncode}"
         )
+    if (
+        sha256_file(openapi_path) != openapi_digest
+        or sha256_file(generation_path) != generation_digest
+    ):
+        raise ConnectedGenerationError("provider adapter mutated the OpenAPI or generation input")
     provenance = {
         "schemaVersion": PROVENANCE_SCHEMA_VERSION,
-        "generationConfigSha256": sha256_file(generation_path),
+        "generationConfigSha256": generation_digest,
         "language": args.language,
-        "openapiSha256": sha256_file(openapi_path),
+        "openapiSha256": openapi_digest,
         "provider": args.provider,
         "providerExecutableSha256": configured_digest,
-        "providerVersion": provider_version(provider, args.provider_version),
+        "providerVersion": configured_version,
         "sourceRevision": require_string(args.source_revision, "source revision"),
     }
     _ = write_atomic(
