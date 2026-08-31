@@ -22,7 +22,7 @@ _runtime_version.ValidateProtobufRuntimeVersion(
 _sym_db = _symbol_database.Default()
 
 
-from proto.mindclade.common.v1 import event_envelope_pb2 as proto_dot_mindclade_dot_common_dot_v1_dot_event__envelope__pb2
+from common.v1 import event_envelope_pb2 as proto_dot_mindclade_dot_common_dot_v1_dot_event__envelope__pb2
 
 
 DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n7events/mindclade/artifact/v1/artifact_quarantined.proto\x12\x1cmindclade.events.artifact.v1\x1a.proto/mindclade/common/v1/event_envelope.proto\"\xc6\x01\n\x13\x41rtifactQuarantined\x12>\n\x08\x65nvelope\x18\x01 \x01(\x0b\x32\".mindclade.common.v1.EventEnvelopeR\x08\x65nvelope\x12%\n\x0esubject_digest\x18\x02 \x01(\tR\rsubjectDigest\x12\x1f\n\x0breason_code\x18\x03 \x01(\tR\nreasonCode\x12\'\n\x0f\x65vidence_digest\x18\x04 \x01(\tR\x0e\x65videnceDigestBNZLgithub.com/mindclade/mindclade/protocols/generated/go/artifact/v1;artifactv1b\x06proto3')

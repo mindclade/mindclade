@@ -22,7 +22,7 @@ _runtime_version.ValidateProtobufRuntimeVersion(
 _sym_db = _symbol_database.Default()
 
 
-from proto.mindclade.common.v1 import event_envelope_pb2 as proto_dot_mindclade_dot_common_dot_v1_dot_event__envelope__pb2
+from common.v1 import event_envelope_pb2 as proto_dot_mindclade_dot_common_dot_v1_dot_event__envelope__pb2
 
 
 DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n+events/mindclade/audit/v1/audit_event.proto\x12\x19mindclade.events.audit.v1\x1a.proto/mindclade/common/v1/event_envelope.proto\"\xd3\x01\n\nAuditEvent\x12>\n\x08\x65nvelope\x18\x01 \x01(\x0b\x32\".mindclade.common.v1.EventEnvelopeR\x08\x65nvelope\x12,\n\x12\x61\x63tor_principal_id\x18\x02 \x01(\tR\x10\x61\x63torPrincipalId\x12\x16\n\x06\x61\x63tion\x18\x03 \x01(\tR\x06\x61\x63tion\x12\x1a\n\x08\x64\x65\x63ision\x18\x04 \x01(\tR\x08\x64\x65\x63ision\x12#\n\rpolicy_digest\x18\x05 \x01(\tR\x0cpolicyDigestBHZFgithub.com/mindclade/mindclade/protocols/generated/go/audit/v1;auditv1b\x06proto3')

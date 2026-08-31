@@ -11,6 +11,7 @@ import os
 import re
 import subprocess
 import tempfile
+import tomllib
 from collections import defaultdict
 from collections.abc import Mapping, Sequence
 from pathlib import Path
@@ -40,7 +41,16 @@ def run(
     input_bytes: bytes | None = None,
 ) -> subprocess.CompletedProcess[bytes]:
     merged_env = dict(os.environ)
-    merged_env.update({"LANG": "C.UTF-8", "LC_ALL": "C.UTF-8", "TZ": "UTC"})
+    merged_env.update(
+        {
+            "CARGO_NET_OFFLINE": "true",
+            "GOTOOLCHAIN": "local",
+            "LANG": "C.UTF-8",
+            "LC_ALL": "C.UTF-8",
+            "SOURCE_DATE_EPOCH": "0",
+            "TZ": "UTC",
+        }
+    )
     if env is not None:
         merged_env.update(env)
     completed = subprocess.run(
@@ -78,7 +88,7 @@ def command_version(command: Sequence[str], root: Path) -> str:
     return (completed.stdout + completed.stderr).decode("utf-8").strip().splitlines()[-1]
 
 
-def ensure_toolchain(root: Path, lock: Mapping[str, Any]) -> Path:
+def ensure_toolchain(root: Path, staging: Path, lock: Mapping[str, Any]) -> Path:
     tools = cast(dict[str, dict[str, str]], lock["tools"])
     actual_versions = {
         "buf": command_version(["buf", "--version"], root),
@@ -92,28 +102,35 @@ def ensure_toolchain(root: Path, lock: Mapping[str, Any]) -> Path:
             raise RuntimeError(f"{name} version mismatch: expected {wanted!r}, got {actual!r}")
 
     rust = tools["protoc-gen-rs"]
-    cache_home = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache"))
-    install_root = cache_home / "mindclade" / "codegen" / f"protobuf-codegen-{rust['version']}"
+    cargo_lock = tomllib.loads((root / "Cargo.lock").read_text(encoding="utf-8"))
+    packages = cargo_lock.get("package")
+    if not isinstance(packages, list):
+        raise ValueError("Cargo.lock does not contain a package closure")
+    matches = [
+        package
+        for package in packages
+        if isinstance(package, dict)
+        and package.get("name") == rust["package"]
+        and package.get("version") == rust["version"]
+    ]
+    if len(matches) != 1 or matches[0].get("checksum") != rust["checksum"]:
+        raise RuntimeError("protoc-gen-rs is not bound to the recorded Cargo.lock checksum")
+    install_root = staging / "toolchain" / f"protobuf-codegen-{rust['version']}"
     binary = install_root / "bin" / "protoc-gen-rs"
-    installed = b""
-    if binary.is_file():
-        installed = run(
-            ["cargo", "install", "--list", "--root", str(install_root)], cwd=root
-        ).stdout
-    if f"protobuf-codegen v{rust['version']}:".encode() not in installed:
-        run(
-            [
-                "cargo",
-                "install",
-                "--locked",
-                "--root",
-                str(install_root),
-                "--version",
-                rust["version"],
-                "protobuf-codegen",
-            ],
-            cwd=root,
-        )
+    run(
+        [
+            "cargo",
+            "install",
+            "--locked",
+            "--offline",
+            "--root",
+            str(install_root),
+            "--version",
+            rust["version"],
+            rust["package"],
+        ],
+        cwd=root,
+    )
     if not binary.is_file():
         raise RuntimeError("cargo did not install the locked protoc-gen-rs binary")
     return binary.parent
@@ -123,8 +140,11 @@ def build_descriptors(root: Path, staging: Path) -> tuple[bytes, list[dict[str, 
     binary_path = staging / "descriptor-set.binpb"
     json_path = staging / "descriptor-set.json"
     common = ["buf", "build", "--exclude-source-info", "--as-file-descriptor-set"]
-    run([*common, "-o", str(binary_path)], cwd=root)
     run([*common, "-o", str(json_path)], cwd=root)
+    run(
+        ["buf", "build", str(json_path), "--as-file-descriptor-set", "-o", str(binary_path)],
+        cwd=root,
+    )
     descriptor = load_json(json_path)
     files = descriptor.get("file")
     if not isinstance(files, list):
@@ -307,15 +327,19 @@ def target_python_module(descriptor: Mapping[str, Any]) -> str:
 
 
 def normalize_python(content: str, descriptors: Sequence[Mapping[str, Any]]) -> str:
-    replacements = sorted(
-        (
-            (python_module(cast(str, item["name"])), target_python_module(item))
-            for item in descriptors
-        ),
-        key=lambda pair: len(pair[0]),
-        reverse=True,
-    )
-    for old, new in replacements:
+    replacements = []
+    for item in descriptors:
+        source = Path(cast(str, item["name"]))
+        old_module = python_module(cast(str, item["name"]))
+        new_module = target_python_module(item)
+        replacements.append((old_module, new_module))
+        old_package = ".".join(source.parent.parts)
+        generated_name = f"{source.stem}_pb2"
+        content = content.replace(
+            f"from {old_package} import {generated_name}",
+            f"from {domain_for(cast(str, item['package']))}.v1 import {generated_name}",
+        )
+    for old, new in sorted(replacements, key=lambda pair: len(pair[0]), reverse=True):
         content = content.replace(old, new)
     return content
 
@@ -504,13 +528,16 @@ def language_metadata(
         b"# Generated TypeScript bindings\n\nGenerated by the locked Buf/protoc-gen-es toolchain.\n"
     )
     outputs[generated / "typescript" / "BUILD.bazel"] = (
-        b'load("@aspect_rules_ts//ts:defs.bzl", "ts_project")\n\n'
+        b'load("@aspect_rules_ts//ts:defs.bzl", "ts_project")\n'
+        b'load("@npm//:defs.bzl", "npm_link_all_packages")\n\n'
+        b'npm_link_all_packages(name = "node_modules")\n\n'
         b"ts_project(\n"
         b'    name = "bindings",\n'
-        b'    srcs = glob(["**/*.ts"]),\n'
+        b'    srcs = glob(["**/*.ts"], exclude = ["node_modules/**"]),\n'
         b"    declaration = True,\n"
         b'    tsconfig = "tsconfig.json",\n'
-        b'    deps = ["@npm//:node_modules/@bufbuild/protobuf"],\n'
+        b'    transpiler = "tsc",\n'
+        b'    deps = [":node_modules/@bufbuild/protobuf"],\n'
         b'    visibility = ["//visibility:public"],\n'
         b")\n\n"
         b"filegroup(\n"
@@ -536,7 +563,11 @@ def language_metadata(
 
 
 def protobuf_baseline(
-    root: Path, descriptors: Sequence[Mapping[str, Any]], descriptor_set: bytes
+    root: Path,
+    descriptors: Sequence[Mapping[str, Any]],
+    descriptor_set: bytes,
+    *,
+    predecessor_digest: str | None = None,
 ) -> bytes:
     sources = {
         path.relative_to(root).as_posix(): sha256_file(path)
@@ -576,14 +607,19 @@ def protobuf_baseline(
             },
         },
     }
+    if predecessor_digest is not None:
+        value["promotion"] = {
+            "compatibility_check": "buf-breaking-file",
+            "predecessor_digest": predecessor_digest,
+        }
     return (json.dumps(value, sort_keys=True, separators=(",", ":")) + "\n").encode()
 
 
 def generated_outputs(root: Path) -> tuple[dict[Path, bytes], bytes, list[dict[str, Any]]]:
     lock = toolchain(root)
-    rust_plugin_path = ensure_toolchain(root, lock)
     with tempfile.TemporaryDirectory(prefix="mindclade-codegen-") as temporary:
         staging = Path(temporary)
+        rust_plugin_path = ensure_toolchain(root, staging, lock)
         descriptor_set, descriptors = build_descriptors(root, staging)
         validate_manifest(root, descriptors)
         outputs: dict[Path, bytes] = {}
@@ -628,6 +664,27 @@ def generated_outputs(root: Path) -> tuple[dict[Path, bytes], bytes, list[dict[s
                     "descriptor_digest": sha256_bytes(descriptor_set),
                     "files": manifest_files,
                     "generator": GENERATOR,
+                    "input_digests": {
+                        relative: sha256_file(root / relative)
+                        for relative in (
+                            "Cargo.lock",
+                            "Cargo.toml",
+                            "buf.gen.yaml",
+                            "buf.yaml",
+                            "flake.lock",
+                            "go.mod",
+                            "go.sum",
+                            "package.json",
+                            "pnpm-lock.yaml",
+                            "pnpm-workspace.yaml",
+                            "pyproject.toml",
+                            "protocols/generated/typescript/tsconfig.json",
+                            "tools/codegen/generate_protocols.py",
+                            "tools/codegen/toolchain.lock.json",
+                            "uv.lock",
+                        )
+                    },
+                    "schema_version": "mindclade.generated-files/v2",
                     "toolchain_digest": sha256_file(root / "tools/codegen/toolchain.lock.json"),
                 },
                 sort_keys=True,
@@ -639,29 +696,66 @@ def generated_outputs(root: Path) -> tuple[dict[Path, bytes], bytes, list[dict[s
         return outputs, descriptor_set, descriptors
 
 
-def write_generated(root: Path, *, update_baseline: bool) -> None:
+def write_generated(
+    root: Path,
+    *,
+    promote_baseline: bool,
+    expected_baseline_digest: str | None,
+) -> None:
     outputs, descriptor_set, descriptors = generated_outputs(root)
+    promoted_baseline: bytes | None = None
+    baseline = root / "protocols/compatibility/baselines/protobuf.lock.json"
+    if promote_baseline:
+        actual_digest = sha256_file(baseline)
+        if expected_baseline_digest != actual_digest:
+            raise RuntimeError(
+                "baseline promotion requires the exact reviewed predecessor digest: "
+                f"expected {expected_baseline_digest!r}, actual {actual_digest!r}"
+            )
+        previous = load_json(baseline)
+        descriptor = previous.get("descriptor_set")
+        if not isinstance(descriptor, dict) or not isinstance(descriptor.get("base64"), str):
+            raise ValueError("existing Protobuf baseline has no descriptor set")
+        with tempfile.NamedTemporaryFile(suffix=".binpb") as previous_file:
+            previous_file.write(base64.b64decode(descriptor["base64"], validate=True))
+            previous_file.flush()
+            run(["buf", "breaking", "--against", previous_file.name], cwd=root)
+        promoted_baseline = protobuf_baseline(
+            root,
+            descriptors,
+            descriptor_set,
+            predecessor_digest=actual_digest,
+        )
     for path in sorted(governed_generated_paths(root), reverse=True):
         if path.is_file() and path not in outputs:
             path.unlink()
-    for path, content in outputs.items():
+    for path, content in sorted(outputs.items()):
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(content)
-    if update_baseline:
-        baseline = root / "protocols/compatibility/baselines/protobuf.lock.json"
-        baseline.write_bytes(protobuf_baseline(root, descriptors, descriptor_set))
+    if promoted_baseline is not None:
+        baseline.write_bytes(promoted_baseline)
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", type=Path, default=Path.cwd())
     parser.add_argument(
-        "--update-baseline",
+        "--promote-baseline",
         action="store_true",
-        help="accept the current descriptor set as the compatibility baseline",
+        help="promote a compatible descriptor set from an exact reviewed predecessor",
+    )
+    parser.add_argument(
+        "--expected-baseline-digest",
+        help="sha256 digest of the reviewed baseline being promoted",
     )
     args = parser.parse_args()
-    write_generated(args.root.resolve(), update_baseline=args.update_baseline)
+    if bool(args.promote_baseline) != bool(args.expected_baseline_digest):
+        parser.error("baseline promotion requires --promote-baseline and --expected-baseline-digest")
+    write_generated(
+        args.root.resolve(),
+        promote_baseline=args.promote_baseline,
+        expected_baseline_digest=args.expected_baseline_digest,
+    )
     return 0
 
 

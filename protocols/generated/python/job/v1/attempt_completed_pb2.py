@@ -22,7 +22,7 @@ _runtime_version.ValidateProtobufRuntimeVersion(
 _sym_db = _symbol_database.Default()
 
 
-from proto.mindclade.common.v1 import event_envelope_pb2 as proto_dot_mindclade_dot_common_dot_v1_dot_event__envelope__pb2
+from common.v1 import event_envelope_pb2 as proto_dot_mindclade_dot_common_dot_v1_dot_event__envelope__pb2
 
 
 DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n/events/mindclade/job/v1/attempt_completed.proto\x12\x17mindclade.events.job.v1\x1a.proto/mindclade/common/v1/event_envelope.proto\"\xf3\x01\n\x10\x41ttemptCompleted\x12>\n\x08\x65nvelope\x18\x01 \x01(\x0b\x32\".mindclade.common.v1.EventEnvelopeR\x08\x65nvelope\x12\x1d\n\nattempt_id\x18\x02 \x01(\tR\tattemptId\x12\x1f\n\x0blease_epoch\x18\x03 \x01(\x04R\nleaseEpoch\x12#\n\rresult_digest\x18\x04 \x01(\tR\x0cresultDigest\x12:\n\x19\x63ompletion_receipt_digest\x18\x05 \x01(\tR\x17\x63ompletionReceiptDigestBDZBgithub.com/mindclade/mindclade/protocols/generated/go/job/v1;jobv1b\x06proto3')
