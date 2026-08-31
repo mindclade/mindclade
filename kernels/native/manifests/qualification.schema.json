@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.mindclade.dev/native/qualification.v1.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "benchmark_receipt_digest", "bundle_digest", "operator", "profile", "target", "review", "status"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "benchmark_receipt_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "bundle_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "operator": {"enum": ["mindclade::outer_product_mean", "mindclade::pair_weighted_average", "mindclade::triangle_attention", "mindclade::triangle_multiplication"]},
+    "profile": {"type": "string", "pattern": "^[a-z][a-z0-9_]{0,63}$"},
+    "target": {"enum": ["sm90", "sm100"]},
+    "review": {"type": "object", "additionalProperties": false, "required": ["independent", "revision"], "properties": {"independent": {"const": true}, "revision": {"type": "string", "pattern": "^[0-9a-f]{40}$"}}},
+    "status": {"enum": ["CANDIDATE", "QUALIFIED", "REJECTED", "REVOKED"]}
+  }
+}

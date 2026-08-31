@@ -28,9 +28,9 @@ BLUEPRINT_SHA256 = "d099074e755168bbdce076d50918bf06aff677f9e5d620fdfe53cb7cef74
 ANCHOR_COMMIT = "292b71f47b1b29cc9ba7cf760a9bd07cd5e0ffa7"
 AUTHORITY_FILE_COUNT = 2461
 AUTHORITY_DIRECTORY_COUNT = 787
-CANONICAL_FILE_COUNT = 2545
+CANONICAL_FILE_COUNT = 2572
 AUTHORITY_PATH_SET_SHA256 = "f2011dd32ccc19649e6abb70ffb4473aea4a224410062d40292222e2e6263692"
-CANONICAL_PATH_SET_SHA256 = "dde4eba7e2fa33692716b4d7f690d72d1fbee182680e5b4cf2f904f3b232e63a"
+CANONICAL_PATH_SET_SHA256 = "24f3029f12bc826c2b014c3194a4115ce9bf1026599055f1dd8bc3bf6f1b2031"
 
 ADR_REPLACEMENTS = {
     "docs/adr/0001-repository-identity.md": "docs/adr/0001-repository-identity-and-ownership.md",
@@ -80,9 +80,16 @@ NATIVE_SOURCE_INCUBATION_PATHS = (
     "kernels/native/generated/operation_registry.generated.cpp",
     "kernels/native/generated/python_registration_generated.py",
     "kernels/native/generated/registration.generated.cpp",
+    "kernels/native/manifests/benchmark.schema.json",
     "kernels/native/manifests/native_ops.schema.json",
+    "kernels/native/manifests/performance_policy.json",
+    "kernels/native/manifests/qualification.schema.json",
+    "kernels/native/manifests/tilelang_profiles.sm100.json",
+    "kernels/native/manifests/tilelang_profiles.sm90.json",
     "kernels/native/python/__init__.py",
     "kernels/native/python/loader.py",
+    "kernels/native/python/qualification.py",
+    "kernels/native/python/reference_runtime.py",
     "kernels/native/python/registration.py",
     "kernels/native/stable_abi/CMakeLists.txt",
     "kernels/native/stable_abi/abi_manifest.json",
@@ -103,6 +110,8 @@ NATIVE_SOURCE_INCUBATION_PATHS = (
     "kernels/native/tests/test_namespace.py",
     "kernels/native/tests/test_opcheck.py",
     "kernels/native/tests/test_policy.py",
+    "kernels/native/tests/test_qualification.py",
+    "kernels/native/tests/test_reference_runtime.py",
     "kernels/native/tests/test_schema_manifest.py",
     "kernels/native/tilelang/README.md",
     "kernels/native/tilelang/__init__.py",
@@ -111,6 +120,24 @@ NATIVE_SOURCE_INCUBATION_PATHS = (
     "kernels/native/tilelang/manifest.py",
     "kernels/native/tilelang/model.py",
     "kernels/native/tilelang/registry.py",
+    "kernels/pairformer/outer_product_mean/BUILD.bazel",
+    "kernels/pairformer/outer_product_mean/__init__.py",
+    "kernels/pairformer/outer_product_mean/tests/test_outer_product_mean.py",
+    "kernels/pairformer/outer_product_mean/tilelang.py",
+    "kernels/pairformer/pair_weighted_average/BUILD.bazel",
+    "kernels/pairformer/pair_weighted_average/__init__.py",
+    "kernels/pairformer/pair_weighted_average/test_tilelang.py",
+    "kernels/pairformer/pair_weighted_average/tilelang.py",
+    "kernels/pairformer/triangle_attention/BUILD.bazel",
+    "kernels/pairformer/triangle_attention/__init__.py",
+    "kernels/pairformer/triangle_attention/tests/__init__.py",
+    "kernels/pairformer/triangle_attention/tests/test_triangle_attention.py",
+    "kernels/pairformer/triangle_attention/tilelang.py",
+    "kernels/pairformer/triangle_multiplication/BUILD.bazel",
+    "kernels/pairformer/triangle_multiplication/README.md",
+    "kernels/pairformer/triangle_multiplication/__init__.py",
+    "kernels/pairformer/triangle_multiplication/test_triangle_multiplication.py",
+    "kernels/pairformer/triangle_multiplication/tilelang.py",
 )
 NATIVE_SOURCE_INCUBATION_ADDITIONS = (
     NATIVE_SOURCE_INCUBATION_ADR,
@@ -137,6 +164,11 @@ NATIVE_POLICY_INPUTS = frozenset(
         "kernels/native/BUILD.bazel",
         "kernels/native/CMakeLists.txt",
         "kernels/native/IMPLEMENTATION_STATUS.md",
+        "kernels/native/manifests/benchmark.schema.json",
+        "kernels/native/manifests/performance_policy.json",
+        "kernels/native/manifests/qualification.schema.json",
+        "kernels/native/manifests/tilelang_profiles.sm100.json",
+        "kernels/native/manifests/tilelang_profiles.sm90.json",
         "kernels/native/MIGRATION.md",
         "kernels/native/README.md",
         "kernels/native/cmake/MindcladeTorchStable.cmake",
@@ -1340,6 +1372,21 @@ def _native_source_incubation_kind(path: str) -> str:
 
 def _native_source_incubation_targets(path: str) -> tuple[list[str], list[str]]:
     name = PurePosixPath(path).name
+    if path.startswith("kernels/pairformer/"):
+        operation = PurePosixPath(path).parts[2]
+        package = f"//kernels/pairformer/{operation}"
+        test_names = {
+            "outer_product_mean": "test_outer_product_mean",
+            "pair_weighted_average": "test_tilelang",
+            "triangle_attention": "test_triangle_attention",
+            "triangle_multiplication": "test_triangle_multiplication",
+        }
+        test_target = f"{package}:{test_names[operation]}"
+        if name.startswith("test_") and name.endswith(".py"):
+            return [], [test_target]
+        if path.endswith("tests/__init__.py"):
+            return [], [test_target]
+        return [f"{package}:tilelang.py"], []
     if path == "kernels/native/tests/pytest_runner.py":
         return [], list(NATIVE_CODEGEN_TEST_LABELS)
     if path.startswith("kernels/native/tests/") and name.startswith("test_"):
@@ -1375,7 +1422,7 @@ def _native_source_incubation_targets(path: str) -> tuple[list[str], list[str]]:
 
 def build_native_source_incubation_entry(path: str) -> dict[str, Any]:
     if path not in NATIVE_SOURCE_INCUBATION_PATHS:
-        raise PolicyError(f"unapproved kernels/native path: {path}")
+        raise PolicyError(f"unapproved native source-incubation path: {path}")
     generated = path in NATIVE_GENERATED_PROJECTIONS
     build_targets, test_targets = _native_source_incubation_targets(path)
     return {
@@ -1394,7 +1441,7 @@ def build_native_source_incubation_entry(path: str) -> dict[str, Any]:
 
 
 def build_path_entry(path: str) -> dict[str, Any]:
-    if path.startswith("kernels/native/"):
+    if path in NATIVE_SOURCE_INCUBATION_PATHS:
         return build_native_source_incubation_entry(path)
     if path in THIRD_PARTY_DEEP_EP_PACKAGE_PATHS:
         return {

@@ -95,6 +95,8 @@ py_library(
     srcs = [
         "python/__init__.py",
         "python/loader.py",
+        "python/qualification.py",
+        "python/reference_runtime.py",
         "python/registration.py",
     ],
 )
@@ -123,6 +125,10 @@ filegroup(
         "generated/python_registration_generated.py",
         "generated/registration.generated.cpp",
         "manifests/native_ops.schema.json",
+        "manifests/benchmark.schema.json",
+        "manifests/performance_policy.json",
+        "manifests/qualification.schema.json",
+        "manifests/tilelang_profiles.sm100.json",
         "manifests/tilelang_profiles.sm90.json",
         "stable_abi/CMakeLists.txt",
         "stable_abi/abi_manifest.json",
@@ -135,6 +141,27 @@ filegroup(
         "tilelang/manifest.py",
         "tilelang/model.py",
         "tilelang/registry.py",
+    ],
+)
+
+py_test(
+    name = "test_qualification",
+    srcs = ["tests/test_qualification.py"],
+    tags = ["manual", "requires-hermetic-torch-2.10"],
+    deps = [
+        ":native_python",
+        "@mindclade_pypi//jsonschema",
+        "@mindclade_pypi//pytest",
+    ],
+)
+
+py_test(
+    name = "test_reference_runtime",
+    srcs = ["tests/test_reference_runtime.py"],
+    tags = ["manual", "requires-hermetic-torch-2.10"],
+    deps = [
+        ":native_python",
+        "@mindclade_pypi//pytest",
     ],
 )
 

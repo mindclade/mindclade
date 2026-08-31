@@ -1705,15 +1705,31 @@ mindclade/
 │   │   ├── triangle_attention/
 │   │   │   ├── reference.py
 │   │   │   ├── spec.py
-│   │   │   └── dispatch.py
+│   │   │   ├── dispatch.py
+│   │   │   ├── BUILD.bazel
+│   │   │   ├── __init__.py
+│   │   │   ├── tests/
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── test_triangle_attention.py
+│   │   │   └── tilelang.py
 │   │   ├── triangle_multiplication/
 │   │   │   ├── reference.py
 │   │   │   ├── spec.py
-│   │   │   └── dispatch.py
+│   │   │   ├── dispatch.py
+│   │   │   ├── BUILD.bazel
+│   │   │   ├── README.md
+│   │   │   ├── __init__.py
+│   │   │   ├── test_triangle_multiplication.py
+│   │   │   └── tilelang.py
 │   │   ├── outer_product_mean/
 │   │   │   ├── reference.py
 │   │   │   ├── spec.py
-│   │   │   └── dispatch.py
+│   │   │   ├── dispatch.py
+│   │   │   ├── BUILD.bazel
+│   │   │   ├── __init__.py
+│   │   │   ├── tests/
+│   │   │   │   └── test_outer_product_mean.py
+│   │   │   └── tilelang.py
 │   │   ├── transition/
 │   │   │   ├── reference.py
 │   │   │   ├── spec.py
@@ -1725,10 +1741,15 @@ mindclade/
 │   │   │   ├── test_transition.py
 │   │   │   ├── test_dispatch.py
 │   │   │   └── BUILD.bazel
-│   │   └── benchmarks/
-│   │       ├── benchmark_pairformer.py
-│   │       ├── cases.yaml
-│   │       └── BUILD.bazel
+│   │   ├── benchmarks/
+│   │   │   ├── benchmark_pairformer.py
+│   │   │   ├── cases.yaml
+│   │   │   └── BUILD.bazel
+│   │   └── pair_weighted_average/
+│   │       ├── BUILD.bazel
+│   │       ├── __init__.py
+│   │       ├── test_tilelang.py
+│   │       └── tilelang.py
 │   ├── diffusion/
 │   │   ├── reference.py
 │   │   ├── spec.py
@@ -1798,10 +1819,17 @@ mindclade/
 │       │   ├── python_registration_generated.py
 │       │   └── registration.generated.cpp
 │       ├── manifests/
-│       │   └── native_ops.schema.json
+│       │   ├── benchmark.schema.json
+│       │   ├── native_ops.schema.json
+│       │   ├── performance_policy.json
+│       │   ├── qualification.schema.json
+│       │   ├── tilelang_profiles.sm100.json
+│       │   └── tilelang_profiles.sm90.json
 │       ├── python/
 │       │   ├── __init__.py
 │       │   ├── loader.py
+│       │   ├── qualification.py
+│       │   ├── reference_runtime.py
 │       │   └── registration.py
 │       ├── stable_abi/
 │       │   ├── CMakeLists.txt
@@ -1824,6 +1852,8 @@ mindclade/
 │       │   ├── test_namespace.py
 │       │   ├── test_opcheck.py
 │       │   ├── test_policy.py
+│       │   ├── test_qualification.py
+│       │   ├── test_reference_runtime.py
 │       │   └── test_schema_manifest.py
 │       └── tilelang/
 │           ├── README.md

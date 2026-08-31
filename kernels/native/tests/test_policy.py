@@ -49,6 +49,8 @@ class NativeModulePolicyTest(unittest.TestCase):
                 "test_namespace",
                 "test_opcheck",
                 "test_policy",
+                "test_qualification",
+                "test_reference_runtime",
                 "test_schema_manifest",
             )
         }

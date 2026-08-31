@@ -1,0 +1,103 @@
+{
+  "mindclade::outer_product_mean": [
+    {
+      "arguments": {
+        "batch_size": 1,
+        "dtype": "float16",
+        "left_channels": 64,
+        "nodes": 32,
+        "right_channels": 64,
+        "sequence_length": 64,
+        "threads": 128
+      },
+      "name": "b1_s64_n32_cl64_cr64_fp16"
+    }
+  ],
+  "mindclade::pair_weighted_average": [
+    {
+      "arguments": {
+        "batch_size": 1,
+        "block_sources": 64,
+        "channels": 64,
+        "dtype": "float16",
+        "heads": 8,
+        "mask_dtype": "float32",
+        "num_residues": 64,
+        "threads": 128
+      },
+      "name": "b1_n64_h8_c64_fp16"
+    }
+  ],
+  "mindclade::triangle_attention": [
+    {
+      "arguments": {
+        "batch": 1,
+        "dtype": "float16",
+        "head_dim": 32,
+        "heads": 4,
+        "n": 32,
+        "threads": 64
+      },
+      "name": "b1_n32_h4_d32_fp16"
+    },
+    {
+      "arguments": {
+        "batch": 1,
+        "dtype": "float16",
+        "head_dim": 32,
+        "heads": 8,
+        "n": 64,
+        "threads": 128
+      },
+      "name": "b1_n64_h8_d32_fp16"
+    },
+    {
+      "arguments": {
+        "batch": 1,
+        "dtype": "bfloat16",
+        "head_dim": 64,
+        "heads": 8,
+        "n": 128,
+        "threads": 128
+      },
+      "name": "b1_n128_h8_d64_bf16"
+    },
+    {
+      "arguments": {
+        "batch": 2,
+        "dtype": "float32",
+        "head_dim": 64,
+        "heads": 8,
+        "n": 64,
+        "threads": 128
+      },
+      "name": "b2_n64_h8_d64_fp32"
+    }
+  ],
+  "mindclade::triangle_multiplication": [
+    {
+      "arguments": {
+        "batch": 1,
+        "block_channels": 64,
+        "channels": 64,
+        "dtype": "float16",
+        "outgoing": false,
+        "residues": 64,
+        "threads": 128
+      },
+      "name": "b1_n64_c64_incoming_fp16"
+    },
+    {
+      "arguments": {
+        "batch": 1,
+        "block_channels": 64,
+        "channels": 64,
+        "dtype": "float16",
+        "outgoing": true,
+        "residues": 64,
+        "threads": 128
+      },
+      "name": "b1_n64_c64_outgoing_fp16"
+    }
+  ]
+}

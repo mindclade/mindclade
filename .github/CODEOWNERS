@@ -63,6 +63,7 @@
 /tests/ @mindclade/developer-platform @mindclade/security
 /third_party/ @mindclade/security @mindclade/developer-platform
 /kernels/native/ @mindclade/ml-systems
+/kernels/pairformer/ @mindclade/ml-systems
 
 # Architecture, security, and foundational domain decisions.
 /docs/architecture/ @mindclade/architecture

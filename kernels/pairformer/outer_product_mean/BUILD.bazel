@@ -1,7 +1,24 @@
 # Copyright (c) 2026 Mindclade. All rights reserved.
 # Proprietary and confidential. Unauthorized use, copying, or distribution is prohibited.
 
+load("@rules_python//python:defs.bzl", "py_test")
+
 exports_files(
     ["tilelang.py"],
     visibility = ["//kernels/native:__pkg__"],
+)
+
+py_test(
+    name = "test_outer_product_mean",
+    srcs = [
+        "__init__.py",
+        "tests/test_outer_product_mean.py",
+        "tilelang.py",
+    ],
+    main = "tests/test_outer_product_mean.py",
+    tags = ["manual", "requires-hermetic-torch-2.10"],
+    deps = [
+        "//kernels/native:tilelang_codegen_lib",
+        "@mindclade_pypi//pytest",
+    ],
 )

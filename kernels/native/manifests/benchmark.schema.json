@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.mindclade.dev/native/benchmark.v1.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "operator", "profile", "target", "artifact_digest", "source_digest", "hardware", "toolchain", "measurement", "numerical", "evidence_class"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "operator": {"enum": ["mindclade::outer_product_mean", "mindclade::pair_weighted_average", "mindclade::triangle_attention", "mindclade::triangle_multiplication"]},
+    "profile": {"type": "string", "pattern": "^[a-z][a-z0-9_]{0,63}$"},
+    "target": {"enum": ["sm90", "sm100"]},
+    "artifact_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "source_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "evidence_class": {"const": "UNSIGNED_CANDIDATE"},
+    "hardware": {"type": "object", "additionalProperties": false, "required": ["compute_capability", "device_name"], "properties": {"compute_capability": {"enum": ["9.0", "10.0"]}, "device_name": {"type": "string", "minLength": 1, "maxLength": 256}}},
+    "toolchain": {"type": "object", "additionalProperties": false, "required": ["cuda", "torch"], "properties": {"cuda": {"type": "string", "minLength": 1}, "torch": {"type": "string", "minLength": 1}}},
+    "measurement": {"type": "object", "additionalProperties": false, "required": ["iterations", "latency_us", "warmup"], "properties": {"iterations": {"type": "integer", "minimum": 1}, "latency_us": {"type": "number", "exclusiveMinimum": 0}, "warmup": {"type": "integer", "minimum": 1}}},
+    "numerical": {"type": "object", "additionalProperties": false, "required": ["atol", "rtol"], "properties": {"atol": {"type": "number", "minimum": 0}, "rtol": {"type": "number", "minimum": 0}}},
+    "opcheck": {"type": "object"}
+  }
+}
