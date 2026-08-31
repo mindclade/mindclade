@@ -304,3 +304,24 @@ toolchain floors, layouts, and qualification evidence. Manual mbarrier, cluster
 multicast, remote shared-memory, and gather/scatter helpers fail closed when
 the selected target cannot preserve their semantics. These source contracts are
 unqualified and do not establish production performance.
+# Kernel Platform Constitution
+
+The approved target architecture is defined by the **Kernel Platform v3
+constitution** in [MIGRATION.md](MIGRATION.md). The current implementation is
+still the manifest-v2, operation-local `tilelang.py` system unless a capability
+is explicitly marked otherwise in [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md).
+
+The final terminology is:
+
+| Legacy term | Final term |
+| --- | --- |
+| public schema | operator schema |
+| public operation | semantic operator |
+| raw operations | provider operators |
+| model-facing API | Python facade |
+
+The target declaration authority is
+`kernels/<family>/<operation>/spec.py`. `tilelang.py` owns builders and
+optimized mathematics only. Production runtime code consumes generated compact
+capability data and precompiled launchers; it never discovers source files,
+imports TileLang authoring modules, compiles, tunes, or benchmarks.
