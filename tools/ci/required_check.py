@@ -89,6 +89,8 @@ ORG_FIELDS = {
     "completed_at",
 }
 REASON_PATTERN = re.compile(r"^[A-Z][A-Z0-9_]{2,127}$")
+
+
 @dataclass(frozen=True)
 class AdrContract:
     identifier: str

@@ -12,8 +12,12 @@ DIGEST_PATTERN = re.compile(r"^sha256:[0-9a-f]{64}$")
 CORRELATION_PATTERN = re.compile(r"^[A-Za-z0-9._:/-]{8,200}$")
 LAUNCHER_IDENTITY_PATTERN = re.compile(r"^buildkite://[a-z0-9][a-z0-9._/-]{7,255}$")
 PIPELINE_EXECUTION_TIER = {
-    "presubmit": "untrusted", "protected": "trusted", "nightly": "trusted",
-    "gpu": "trusted", "release": "release", "security": "trusted",
+    "presubmit": "untrusted",
+    "protected": "trusted",
+    "nightly": "trusted",
+    "gpu": "trusted",
+    "release": "release",
+    "security": "trusted",
 }
 
 

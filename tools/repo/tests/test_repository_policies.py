@@ -5,6 +5,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from typing import Any
 from unittest.mock import patch
 from urllib.parse import urlsplit
 
@@ -27,7 +28,13 @@ def strict_uri_format_checker() -> FormatChecker:
             return False
         return bool(parsed.scheme) and not any(character.isspace() for character in value)
 
+    _ = is_absolute_uri
     return checker
+
+
+def validation_errors(validator: Draft202012Validator, instance: Any) -> list[Any]:
+    return list(validator.iter_errors(instance))  # pyright: ignore[reportUnknownMemberType]
+
 
 from dependency_policy import validate_dependency_graph  # noqa: E402
 from owner_policy import (  # noqa: E402
@@ -73,9 +80,14 @@ class RepositoryPolicyTest(unittest.TestCase):
                 if status == "target":
                     self.assertEqual(entry["build_targets"], [])
                     self.assertEqual(entry["test_targets"], [])
+                elif entry["path"].startswith("third_party/packages/deep_ep/"):
+                    self.assertEqual(entry["build_targets"], ["//third_party:deep_ep_package"])
+                    self.assertEqual(
+                        entry["test_targets"], ["//third_party:test_deep_ep_package_policy"]
+                    )
                 else:
-                    self.assertTrue(entry["build_targets"])
-                    self.assertTrue(entry["test_targets"])
+                    self.assertEqual(entry["build_targets"], ["//:wave1_sources"])
+                    self.assertEqual(entry["test_targets"], ["//:wave1_tests"])
                 if entry["source_authority"] == "reviewed-generated":
                     self.assertEqual(status, "generated")
                 if entry["source_authority"] == "hand-authored":
@@ -305,7 +317,8 @@ class RepositoryPolicyTest(unittest.TestCase):
                 text = (REPO_ROOT / path).read_text(encoding="utf-8")
                 self.assertIn("- Status: Proposed", text)
                 self.assertIn(
-                    "- Connected ratification: Pending independent review on protected infrastructure",
+                    "- Connected ratification: Pending independent review on protected "
+                    "infrastructure",
                     text,
                 )
                 self.assertIn("production_authority", text)
@@ -327,16 +340,16 @@ class RepositoryPolicyTest(unittest.TestCase):
                     format_checker=strict_uri_format_checker(),
                 )
                 pending = load_yaml_or_json(REPO_ROOT / template_path)
-                self.assertEqual(list(validator.iter_errors(pending)), [])
+                self.assertEqual(validation_errors(validator, pending), [])
                 self.assertEqual(pending["spec"]["status"], "pending")
                 self.assertIs(pending["spec"]["productionAuthority"], False)
                 self.assertTrue(forbidden_pending_fields.isdisjoint(pending["spec"]))
                 falsely_approved = json.loads(json.dumps(pending))
                 falsely_approved["spec"]["status"] = "approved"
-                self.assertTrue(list(validator.iter_errors(falsely_approved)))
+                self.assertTrue(validation_errors(validator, falsely_approved))
                 falsely_revoked = json.loads(json.dumps(pending))
                 falsely_revoked["spec"]["status"] = "revoked"
-                self.assertTrue(list(validator.iter_errors(falsely_revoked)))
+                self.assertTrue(validation_errors(validator, falsely_revoked))
                 self.assertEqual(entries[schema_path]["kind"], "schema")
                 self.assertEqual(entries[template_path]["kind"], "configuration")
                 if "sourceTermsUri" in schema["properties"]["spec"]["properties"]:
@@ -345,11 +358,9 @@ class RepositoryPolicyTest(unittest.TestCase):
                         uri_schema,
                         format_checker=strict_uri_format_checker(),
                     )
-                    self.assertTrue(list(uri_validator.iter_errors("not a URI")))
+                    self.assertTrue(validation_errors(uri_validator, "not a URI"))
 
-        h100 = load_yaml_or_json(
-            REPO_ROOT / "docs/policies/sqp-001-h100-approval.template.yaml"
-        )
+        h100 = load_yaml_or_json(REPO_ROOT / "docs/policies/sqp-001-h100-approval.template.yaml")
         self.assertIn("wave-2s-implementation", h100["spec"]["blockedUntilApproval"])
 
     def test_authority_display_order_round_trips(self) -> None:

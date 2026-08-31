@@ -699,17 +699,23 @@ def validate_check_report(
         report = read_object(path, "cacheless-reproducibility.v1")
         first = report.get("first_output_digest")
         second = report.get("second_output_digest")
-        if report != {
-            "cache_mode": "disabled",
-            "conclusion": "PASS",
-            "first_output_digest": first,
-            "independent_output_roots": True,
-            "reproducibility_subject": "//services/control_plane:control_plane_test",
-            "schema_version": "cacheless-reproducibility.v1",
-            "second_output_digest": second,
-            "source_revision": source_revision,
-            "target": "//:wave1_tests",
-        } or not isinstance(first, str) or not DIGEST_PATTERN.fullmatch(first) or first != second:
+        if (
+            report
+            != {
+                "cache_mode": "disabled",
+                "conclusion": "PASS",
+                "first_output_digest": first,
+                "independent_output_roots": True,
+                "reproducibility_subject": "//services/control_plane:control_plane_test",
+                "schema_version": "cacheless-reproducibility.v1",
+                "second_output_digest": second,
+                "source_revision": source_revision,
+                "target": "//:wave1_tests",
+            }
+            or not isinstance(first, str)
+            or not DIGEST_PATTERN.fullmatch(first)
+            or first != second
+        ):
             raise ValueError("cacheless canary lacks matching independent output digests")
     else:
         raise ValueError(f"unsupported planned check: {name}")
@@ -795,8 +801,12 @@ def validate_trusted_context(
     if context.get("pipeline_class") != context.get("cache_build_mode"):
         raise ValueError("trusted context pipeline and cache build modes differ")
     expected_tier = {
-        "presubmit": "untrusted", "protected": "trusted", "nightly": "trusted",
-        "gpu": "trusted", "release": "release", "security": "trusted",
+        "presubmit": "untrusted",
+        "protected": "trusted",
+        "nightly": "trusted",
+        "gpu": "trusted",
+        "release": "release",
+        "security": "trusted",
     }[cast(str, context.get("pipeline_class"))]
     if context.get("execution_tier") != expected_tier:
         raise ValueError("trusted context pipeline class has the wrong execution tier")

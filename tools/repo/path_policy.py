@@ -555,9 +555,7 @@ def infer_owner(path: str) -> str:
         return "platform-operations"
     if path == "docs/adr/0005-biological-identity-and-schema-evolution.md":
         return "computational-biology"
-    if path.startswith(
-        ("docs/architecture/", "docs/adr/", "docs/governance/", "docs/policies/")
-    ):
+    if path.startswith(("docs/architecture/", "docs/adr/", "docs/governance/", "docs/policies/")):
         return "architecture"
     if path.startswith("workers/"):
         worker = PurePosixPath(path).parts[1]
@@ -1493,11 +1491,19 @@ def build_path_entry(path: str) -> dict[str, Any]:
     generated = infer_source_authority(path) == "reviewed-generated"
     if deferred:
         status = "deferred"
-    elif is_wave_zero_path(path):
+    elif is_wave_zero_path(path) or wave == "1":
         status = "generated" if generated else "active"
     else:
         status = "target"
-    active = status in {"active", "generated"} and wave == "0"
+    active = status in {"active", "generated"}
+    build_targets: list[str] = []
+    test_targets: list[str] = []
+    if active and wave == "0":
+        build_targets = ["//:wave0_governance_sources"]
+        test_targets = ["//:wave0_tests"]
+    elif active and wave == "1":
+        build_targets = ["//:wave1_sources"]
+        test_targets = ["//:wave1_tests"]
     entry: dict[str, Any] = {
         "path": path,
         "kind": infer_kind(path),
@@ -1506,11 +1512,11 @@ def build_path_entry(path: str) -> dict[str, Any]:
         "status": status,
         "activation_wave": wave,
         "source_authority": infer_source_authority(path),
-        "build_targets": ["//:wave0_governance_sources"] if active else [],
-        "test_targets": ["//:wave0_tests"] if active else [],
+        "build_targets": build_targets,
+        "test_targets": test_targets,
         "public_surface": path.startswith(("sdk/", "protocols/")),
     }
-    if status in {"target", "deferred"}:
+    if status in {"target", "deferred"} or wave == "1":
         entry["activation_criterion"] = (
             "Activate only in the declared wave with a concrete consumer, owner, real target, "
             "tests, and qualification evidence."

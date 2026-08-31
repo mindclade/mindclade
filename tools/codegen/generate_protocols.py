@@ -103,16 +103,16 @@ def ensure_toolchain(root: Path, staging: Path, lock: Mapping[str, Any]) -> Path
 
     rust = tools["protoc-gen-rs"]
     cargo_lock = tomllib.loads((root / "Cargo.lock").read_text(encoding="utf-8"))
-    packages = cargo_lock.get("package")
-    if not isinstance(packages, list):
+    raw_packages = cargo_lock.get("package")
+    if not isinstance(raw_packages, list):
         raise ValueError("Cargo.lock does not contain a package closure")
-    matches = [
-        package
-        for package in packages
-        if isinstance(package, dict)
-        and package.get("name") == rust["package"]
-        and package.get("version") == rust["version"]
-    ]
+    matches: list[dict[str, Any]] = []
+    for raw_package in cast(list[object], raw_packages):
+        if not isinstance(raw_package, dict):
+            continue
+        package = cast(dict[str, Any], raw_package)
+        if package.get("name") == rust["package"] and package.get("version") == rust["version"]:
+            matches.append(package)
     if len(matches) != 1 or matches[0].get("checksum") != rust["checksum"]:
         raise RuntimeError("protoc-gen-rs is not bound to the recorded Cargo.lock checksum")
     install_root = staging / "toolchain" / f"protobuf-codegen-{rust['version']}"
@@ -327,7 +327,7 @@ def target_python_module(descriptor: Mapping[str, Any]) -> str:
 
 
 def normalize_python(content: str, descriptors: Sequence[Mapping[str, Any]]) -> str:
-    replacements = []
+    replacements: list[tuple[str, str]] = []
     for item in descriptors:
         source = Path(cast(str, item["name"]))
         old_module = python_module(cast(str, item["name"]))
@@ -713,11 +713,15 @@ def write_generated(
                 f"expected {expected_baseline_digest!r}, actual {actual_digest!r}"
             )
         previous = load_json(baseline)
-        descriptor = previous.get("descriptor_set")
-        if not isinstance(descriptor, dict) or not isinstance(descriptor.get("base64"), str):
+        raw_descriptor = previous.get("descriptor_set")
+        if not isinstance(raw_descriptor, dict):
+            raise ValueError("existing Protobuf baseline has no descriptor set")
+        descriptor = cast(dict[str, Any], raw_descriptor)
+        encoded_descriptor = descriptor.get("base64")
+        if not isinstance(encoded_descriptor, str):
             raise ValueError("existing Protobuf baseline has no descriptor set")
         with tempfile.NamedTemporaryFile(suffix=".binpb") as previous_file:
-            previous_file.write(base64.b64decode(descriptor["base64"], validate=True))
+            previous_file.write(base64.b64decode(encoded_descriptor, validate=True))
             previous_file.flush()
             run(["buf", "breaking", "--against", previous_file.name], cwd=root)
         promoted_baseline = protobuf_baseline(
@@ -750,7 +754,9 @@ def main() -> int:
     )
     args = parser.parse_args()
     if bool(args.promote_baseline) != bool(args.expected_baseline_digest):
-        parser.error("baseline promotion requires --promote-baseline and --expected-baseline-digest")
+        parser.error(
+            "baseline promotion requires --promote-baseline and --expected-baseline-digest"
+        )
     write_generated(
         args.root.resolve(),
         promote_baseline=args.promote_baseline,

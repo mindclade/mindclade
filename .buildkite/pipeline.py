@@ -4,10 +4,10 @@
 from __future__ import annotations
 
 import argparse
-from dataclasses import replace
 import json
 import sys
 from collections.abc import Sequence
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
