@@ -31,6 +31,7 @@ def _manifest(operators: list[dict] | None = None) -> bytes:
                 "source": operator["source"],
                 "spec_sha256": operator["spec_sha256"],
                 "kernel_spec_digest": operator["kernel_spec_digest"],
+                "implementation_digest": operator["implementation_digest"],
             }
             for operator in operators
         ),
@@ -40,7 +41,7 @@ def _manifest(operators: list[dict] | None = None) -> bytes:
         "schema_version": 3,
         "generator": {
             "id": "kernels.native.codegen.generate",
-            "version": 5,
+            "version": 6,
         },
         "source_inventory_sha256": _digest(
             loader._canonical_json(source_inventory)
@@ -109,6 +110,8 @@ def _operator(*, autograd_policy: str = "none") -> dict:
         "source": "kernels/testing/sample/spec.py",
         "spec_sha256": "sha256:" + "1" * 64,
         "kernel_spec_digest": "sha256:" + "2" * 64,
+        "implementation_digest": "sha256:" + "3" * 64,
+        "implementation_candidates": [],
         "operator_schema": "sample(Tensor x) -> Tensor output",
         "facade_outputs": ["output"],
         "fake": None,
@@ -127,6 +130,50 @@ def _operator(*, autograd_policy: str = "none") -> dict:
         "devices": ["cuda"],
         "registrations": registrations,
         "launcher_plans": {"forward": None, "backward": None},
+    }
+
+
+def _implementation_candidate() -> dict:
+    envelope = {
+        "type": "CapabilityEnvelope",
+        "architectures": ["sm90"],
+        "dtypes": ["float32"],
+        "layouts": ["contiguous"],
+        "modes": ["default"],
+        "constraints": [
+            {
+                "type": "DimensionConstraint",
+                "predicate": {"node": "bool_literal", "value": True},
+                "code": "VALID",
+                "message": "fixture capability",
+                "version": 1,
+            }
+        ],
+        "graph_capture_safe": False,
+        "training_capable": False,
+        "tensor_constraints": [
+            {
+                "type": "TensorCapabilityConstraint",
+                "argument": "x",
+                "dtypes": ["float32"],
+                "layouts": ["contiguous"],
+                "devices": ["cuda"],
+                "ranks": [1],
+                "version": 1,
+            }
+        ],
+        "version": 1,
+    }
+    return {
+        "name": "portable",
+        "version": 1,
+        "tier": "portable",
+        "priority": 0,
+        "requires": ["cuda"],
+        "envelope": envelope,
+        "envelope_digest": _digest(loader._canonical_json(envelope)),
+        "promoted": False,
+        "selectable": False,
     }
 
 
@@ -661,3 +708,41 @@ def test_loader_source_has_no_authoring_or_execution_plane_imports():
     ):
         assert f"import {prohibited}" not in source
         assert f"from {prohibited}" not in source
+
+
+def test_v6_loader_retains_builder_free_unselectable_implementation_projection():
+    operator = _operator()
+    operator["implementation_candidates"] = [_implementation_candidate()]
+    parsed = loader._parse_manifest(
+        _manifest([operator]), loader.BundleActivationPolicy.PRODUCTION
+    )[0]
+    candidate = parsed.implementation_candidates[0]
+    assert candidate.name == "portable"
+    assert candidate.promoted is False
+    assert candidate.selectable is False
+    assert candidate.envelope.architectures == ("sm90",)
+    assert candidate.envelope.constraints[0].predicate_json == b'{"node":"bool_literal","value":true}'
+    assert not hasattr(candidate, "builder")
+
+
+@pytest.mark.parametrize("field", ["promoted", "selectable"])
+def test_v6_loader_rejects_candidate_activation_claims(field: str):
+    operator = _operator()
+    candidate = _implementation_candidate()
+    candidate[field] = True
+    operator["implementation_candidates"] = [candidate]
+    with pytest.raises(loader.NativeBundleVerificationError, match="cannot be promoted or selectable"):
+        loader._parse_manifest(
+            _manifest([operator]), loader.BundleActivationPolicy.PRODUCTION
+        )
+
+
+def test_v6_loader_rejects_candidate_envelope_digest_drift():
+    operator = _operator()
+    candidate = _implementation_candidate()
+    candidate["envelope"]["modes"] = ["changed"]
+    operator["implementation_candidates"] = [candidate]
+    with pytest.raises(loader.NativeBundleVerificationError, match="digest mismatch"):
+        loader._parse_manifest(
+            _manifest([operator]), loader.BundleActivationPolicy.PRODUCTION
+        )

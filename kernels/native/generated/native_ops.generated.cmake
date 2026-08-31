@@ -1,4 +1,4 @@
-# GENERATED FILE - DO NOT EDIT. Generator: kernels.native.codegen.generate@5.
+# GENERATED FILE - DO NOT EDIT. Generator: kernels.native.codegen.generate@6.
 set(MINDCLADE_KERNEL_SPEC_SOURCES
   "${CMAKE_CURRENT_LIST_DIR}/../../pairformer/outer_product_mean/spec.py"
   "${CMAKE_CURRENT_LIST_DIR}/../../pairformer/pair_weighted_average/spec.py"

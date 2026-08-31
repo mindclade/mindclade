@@ -37,6 +37,7 @@ KERNEL_SPEC: KernelSpec = KernelSpec(
     ), backward=None, autograd_policy=AutogradPolicy.NONE,
     effects=EffectSpec(), launch=LaunchContract(graph_capture_safe=False),
 )
+IMPLEMENTATION_SPECS = ()
 ''', encoding="utf-8")
     return json.loads(render_all(native_root, source_files=["family_a/fixture_op/spec.py"])["native_ops.json"])
 
@@ -212,6 +213,57 @@ def _launcher_plan(phase: str) -> dict:
             for workspace in group["workspaces"]
         ],
     }
+
+
+def _implementation_candidate() -> dict:
+    envelope = {
+        "type": "CapabilityEnvelope",
+        "architectures": ["sm90"],
+        "dtypes": ["float32"],
+        "layouts": ["contiguous"],
+        "modes": ["default"],
+        "constraints": [{
+            "type": "DimensionConstraint",
+            "predicate": {"node": "bool_literal", "value": True},
+            "code": "VALID",
+            "message": "fixture capability",
+            "version": 1,
+        }],
+        "graph_capture_safe": False,
+        "training_capable": False,
+        "tensor_constraints": [{
+            "type": "TensorCapabilityConstraint",
+            "argument": "x",
+            "dtypes": ["float32"],
+            "layouts": ["contiguous"],
+            "devices": ["cuda"],
+            "ranks": [1],
+            "version": 1,
+        }],
+        "version": 1,
+    }
+    return {
+        "name": "portable", "version": 1, "tier": "portable", "priority": 0,
+        "requires": ["cuda"], "envelope": envelope,
+        "envelope_digest": "sha256:" + "a" * 64,
+        "promoted": False, "selectable": False,
+    }
+
+
+def test_schema_accepts_builder_free_unselectable_implementation_candidate(tmp_path: Path):
+    manifest = _fixture_manifest(tmp_path)
+    manifest["operators"][0]["implementation_candidates"] = [_implementation_candidate()]
+    _validator().validate(manifest)
+
+
+@pytest.mark.parametrize("field", ["promoted", "selectable"])
+def test_schema_rejects_candidate_activation_claims(tmp_path: Path, field: str):
+    manifest = _fixture_manifest(tmp_path)
+    candidate = _implementation_candidate()
+    candidate[field] = True
+    manifest["operators"][0]["implementation_candidates"] = [candidate]
+    with pytest.raises(jsonschema.ValidationError):
+        _validator().validate(manifest)
 
 
 def test_generated_manifest_validates_against_strict_v3_schema():

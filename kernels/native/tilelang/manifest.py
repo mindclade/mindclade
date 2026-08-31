@@ -13,7 +13,7 @@ import re
 from typing import Any
 
 GENERATOR_ID = "kernels.native.codegen.generate"
-GENERATOR_VERSION = 5
+GENERATOR_VERSION = 6
 NAMESPACE = "mindclade"
 REGISTRATION_MODE = "build_time_generated"
 
@@ -30,15 +30,18 @@ _TOP_LEVEL_KEYS = {
 }
 _OPERATOR_KEYS = {
     "name", "qualified_name", "namespace", "family", "source", "spec_sha256",
-    "kernel_spec_digest", "operator_schema", "facade_outputs", "fake", "forward",
+    "kernel_spec_digest", "implementation_digest", "implementation_candidates", "operator_schema", "facade_outputs", "fake", "forward",
     "backward", "autograd_policy", "composite", "effects", "launch", "backend",
     "version", "devices", "registrations", "launcher_plans",
 }
 _REGISTRATION_KEYS = {"qualified_name", "schema", "kind", "implementation_symbol"}
 _FORWARD_KEYS = {"type", "schema", "builder", "symbol", "outputs", "program_group", "version"}
 _BACKWARD_KEYS = {
-    "type", "schema", "builder", "symbol", "gradients", "supports_double_backward",
-    "program_group", "version",
+    "type", "schema", "builder", "symbol", "argument_bindings", "gradients",
+    "supports_double_backward", "program_group", "version",
+}
+_BACKWARD_ARGUMENT_BINDING_KEYS = {
+    "type", "provider_argument", "source", "source_name", "missing", "version",
 }
 _OUTPUT_KEYS = {
     "type", "name", "shape", "dtype", "device", "semantic_axes",
@@ -73,6 +76,18 @@ _LAUNCHER_PLANS_KEYS = {"forward", "backward"}
 _LAUNCHER_PLAN_KEYS = {
     "phase", "logical_symbol", "bridge_requirement", "execution_order",
     "required_private_symbols", "nodes", "workspaces",
+}
+_IMPLEMENTATION_CANDIDATE_KEYS = {
+    "name", "version", "tier", "priority", "requires", "envelope",
+    "envelope_digest", "promoted", "selectable",
+}
+_CAPABILITY_KEYS = {
+    "type", "architectures", "dtypes", "layouts", "modes", "constraints",
+    "graph_capture_safe", "training_capable", "tensor_constraints", "version",
+}
+_DIMENSION_CONSTRAINT_KEYS = {"type", "predicate", "code", "message", "version"}
+_TENSOR_CAPABILITY_KEYS = {
+    "type", "argument", "dtypes", "layouts", "devices", "ranks", "version",
 }
 
 
@@ -371,6 +386,28 @@ def _validate_backward(value: object, name: str) -> dict[str, Any] | None:
     symbol = _string(backward["symbol"], f"{name} backward symbol")
     if _SYMBOL.fullmatch(symbol) is None:
         raise ValueError(f"native manifest {name} backward symbol is invalid")
+    bindings = backward["argument_bindings"]
+    if not isinstance(bindings, list) or not bindings:
+        raise ValueError(f"native manifest {name} backward argument_bindings must be non-empty")
+    provider_arguments: list[str] = []
+    for index, raw_binding in enumerate(bindings):
+        label = f"{name} backward binding {index}"
+        binding = _exact_mapping(raw_binding, _BACKWARD_ARGUMENT_BINDING_KEYS, label)
+        if binding["type"] != "BackwardArgumentBinding":
+            raise ValueError(f"native manifest {label} has unsupported type")
+        provider_arguments.append(
+            _identifier(binding["provider_argument"], f"{label} provider_argument")
+        )
+        if binding["source"] not in {
+            "output_gradient", "operator_argument", "forward_output", "needs_input_grad",
+        }:
+            raise ValueError(f"native manifest {label} source is unsupported")
+        _identifier(binding["source_name"], f"{label} source_name")
+        if binding["missing"] not in {"error", "zero", "pass_none"}:
+            raise ValueError(f"native manifest {label} missing policy is unsupported")
+        _version(binding["version"], f"{label} version")
+    if len(provider_arguments) != len(set(provider_arguments)):
+        raise ValueError(f"native manifest {name} backward bindings must be unique")
     gradients = backward["gradients"]
     if not isinstance(gradients, list) or not gradients:
         raise ValueError(f"native manifest {name} backward gradients must be non-empty")
@@ -448,6 +485,79 @@ def _validate_launch(value: object, name: str) -> None:
     _version(launch["version"], f"{name} launch version")
 
 
+def _validate_capability(value: object, label: str) -> None:
+    envelope = _exact_mapping(value, _CAPABILITY_KEYS, label)
+    if envelope["type"] != "CapabilityEnvelope":
+        raise ValueError(f"native manifest {label} has unsupported type")
+    for field in ("architectures", "dtypes", "layouts", "modes"):
+        values = _string_list(envelope[field], f"{label} {field}", nonempty=True)
+    constraints = envelope["constraints"]
+    if not isinstance(constraints, list) or len(constraints) > 64:
+        raise ValueError(f"native manifest {label} constraints must be bounded")
+    codes: list[str] = []
+    for index, raw in enumerate(constraints):
+        item = _exact_mapping(raw, _DIMENSION_CONSTRAINT_KEYS, f"{label} constraint {index}")
+        if item["type"] != "DimensionConstraint":
+            raise ValueError(f"native manifest {label} constraint has unsupported type")
+        _expression(item["predicate"], f"{label} constraint predicate")
+        codes.append(_identifier(item["code"], f"{label} constraint code"))
+        _string(item["message"], f"{label} constraint message")
+        _version(item["version"], f"{label} constraint version")
+    if len(codes) != len(set(codes)):
+        raise ValueError(f"native manifest {label} constraint codes must be unique")
+    tensor_constraints = envelope["tensor_constraints"]
+    if not isinstance(tensor_constraints, list) or len(tensor_constraints) > 64:
+        raise ValueError(f"native manifest {label} tensor constraints must be bounded")
+    arguments: list[str] = []
+    for index, raw in enumerate(tensor_constraints):
+        item = _exact_mapping(raw, _TENSOR_CAPABILITY_KEYS, f"{label} tensor constraint {index}")
+        if item["type"] != "TensorCapabilityConstraint":
+            raise ValueError(f"native manifest {label} tensor constraint has unsupported type")
+        arguments.append(_identifier(item["argument"], f"{label} tensor argument"))
+        for field in ("dtypes", "layouts", "devices"):
+            values = _string_list(item[field], f"{label} tensor {field}")
+        ranks = item["ranks"]
+        if not isinstance(ranks, list) or any(type(rank) is not int or rank < 0 for rank in ranks):
+            raise ValueError(f"native manifest {label} tensor ranks are invalid")
+        if ranks != sorted(set(ranks)):
+            raise ValueError(f"native manifest {label} tensor ranks must be unique and sorted")
+        _version(item["version"], f"{label} tensor constraint version")
+    if len(arguments) != len(set(arguments)):
+        raise ValueError(f"native manifest {label} tensor arguments must be unique")
+    _boolean(envelope["graph_capture_safe"], f"{label} graph_capture_safe")
+    _boolean(envelope["training_capable"], f"{label} training_capable")
+    _version(envelope["version"], f"{label} version")
+
+
+def _validate_implementation_candidates(value: object, name: str) -> None:
+    if not isinstance(value, list) or len(value) > 64:
+        raise ValueError(f"native manifest {name} implementation candidates must be bounded")
+    identities: list[tuple[str, int]] = []
+    for index, raw in enumerate(value):
+        label = f"{name} implementation candidate {index}"
+        item = _exact_mapping(raw, _IMPLEMENTATION_CANDIDATE_KEYS, label)
+        identity = (
+            _identifier(item["name"], f"{label} name"),
+            item["version"],
+        )
+        if type(identity[1]) is not int or identity[1] < 1:
+            raise ValueError(f"native manifest {label} version must be positive")
+        if item["tier"] not in {"portable", "optimized", "specialized", "hand_specialized"}:
+            raise ValueError(f"native manifest {label} tier is unsupported")
+        if type(item["priority"]) is not int:
+            raise ValueError(f"native manifest {label} priority must be an integer")
+        requires = _string_list(item["requires"], f"{label} requires")
+        _validate_capability(item["envelope"], f"{label} envelope")
+        digest = _digest(item["envelope_digest"], f"{label} envelope_digest")
+        if digest != _sha256(item["envelope"]):
+            raise ValueError(f"native manifest {label} envelope digest mismatch")
+        if item["promoted"] is not False or item["selectable"] is not False:
+            raise ValueError(f"native manifest {label} cannot be promoted or selectable")
+        identities.append(identity)
+    if identities != sorted(identities) or len(identities) != len(set(identities)):
+        raise ValueError(f"native manifest {name} implementation identities must be unique and sorted")
+
+
 def _validate_operator(value: object, index: int) -> dict[str, Any]:
     operator = _exact_mapping(value, _OPERATOR_KEYS, f"operator {index}")
     name = _identifier(operator["name"], f"operator {index} name")
@@ -460,6 +570,8 @@ def _validate_operator(value: object, index: int) -> dict[str, Any]:
         raise ValueError(f"native manifest {name} source is not canonical")
     _digest(operator["spec_sha256"], f"{name} spec_sha256")
     _digest(operator["kernel_spec_digest"], f"{name} kernel_spec_digest")
+    _digest(operator["implementation_digest"], f"{name} implementation_digest")
+    _validate_implementation_candidates(operator["implementation_candidates"], name)
     schema = _string(operator["operator_schema"], f"{name} operator_schema")
     if not schema.lstrip().startswith(f"{name}("):
         raise ValueError(f"native manifest {name} operator_schema has wrong root")
@@ -546,7 +658,7 @@ def validate_manifest(value: object) -> dict[str, Any]:
         raise ValueError("native manifest provider builders and symbols must be unique")
 
     source_inventory = [
-        {"source": operator["source"], "spec_sha256": operator["spec_sha256"], "kernel_spec_digest": operator["kernel_spec_digest"]}
+        {"source": operator["source"], "spec_sha256": operator["spec_sha256"], "kernel_spec_digest": operator["kernel_spec_digest"], "implementation_digest": operator["implementation_digest"]}
         for operator in sorted(operators, key=lambda item: item["source"])
     ]
     if manifest["source_inventory_sha256"] != _sha256(source_inventory):

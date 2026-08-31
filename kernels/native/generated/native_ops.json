@@ -1,9 +1,9 @@
 {
   "generator": {
     "id": "kernels.native.codegen.generate",
-    "version": 5
+    "version": 6
   },
-  "manifest_digest": "sha256:43a633f350dc4d75cc364b28159505cb3298d4d57a4ea0cd331f02f990c4754d",
+  "manifest_digest": "sha256:5faa543472e82343bdb8e4feaddfc2abf5582f70773f572ec197bcfbfa5746bf",
   "namespace": "mindclade",
   "operators": [
     {
@@ -130,6 +130,326 @@
         "type": "ForwardSpec",
         "version": 1
       },
+      "implementation_candidates": [
+        {
+          "envelope": {
+            "architectures": [
+              "sm90"
+            ],
+            "constraints": [
+              {
+                "code": "EPSILON_FINITE",
+                "message": "epsilon must be finite",
+                "predicate": {
+                  "node": "is_finite",
+                  "value": {
+                    "argument": "epsilon",
+                    "node": "scalar_ref",
+                    "value_type": "float"
+                  }
+                },
+                "type": "DimensionConstraint",
+                "version": 1
+              },
+              {
+                "code": "EPSILON_POSITIVE",
+                "message": "epsilon must be greater than zero",
+                "predicate": {
+                  "lhs": {
+                    "argument": "epsilon",
+                    "node": "scalar_ref",
+                    "value_type": "float"
+                  },
+                  "node": "greater_than",
+                  "rhs": {
+                    "node": "float_literal",
+                    "value": 0.0
+                  }
+                },
+                "type": "DimensionConstraint",
+                "version": 1
+              },
+              {
+                "code": "LEFT_BATCH_EXACT",
+                "message": "left batch dimension must equal 1",
+                "predicate": {
+                  "lhs": {
+                    "argument": "left",
+                    "axis": 0,
+                    "node": "dim_ref"
+                  },
+                  "node": "eq",
+                  "rhs": {
+                    "node": "int_literal",
+                    "value": 1
+                  }
+                },
+                "type": "DimensionConstraint",
+                "version": 1
+              },
+              {
+                "code": "LEFT_CHANNELS_EXACT",
+                "message": "left channel dimension must equal 64",
+                "predicate": {
+                  "lhs": {
+                    "argument": "left",
+                    "axis": 3,
+                    "node": "dim_ref"
+                  },
+                  "node": "eq",
+                  "rhs": {
+                    "node": "int_literal",
+                    "value": 64
+                  }
+                },
+                "type": "DimensionConstraint",
+                "version": 1
+              },
+              {
+                "code": "LEFT_NODES_EXACT",
+                "message": "left node dimension must equal 32",
+                "predicate": {
+                  "lhs": {
+                    "argument": "left",
+                    "axis": 2,
+                    "node": "dim_ref"
+                  },
+                  "node": "eq",
+                  "rhs": {
+                    "node": "int_literal",
+                    "value": 32
+                  }
+                },
+                "type": "DimensionConstraint",
+                "version": 1
+              },
+              {
+                "code": "LEFT_SEQUENCE_EXACT",
+                "message": "left sequence dimension must equal 64",
+                "predicate": {
+                  "lhs": {
+                    "argument": "left",
+                    "axis": 1,
+                    "node": "dim_ref"
+                  },
+                  "node": "eq",
+                  "rhs": {
+                    "node": "int_literal",
+                    "value": 64
+                  }
+                },
+                "type": "DimensionConstraint",
+                "version": 1
+              },
+              {
+                "code": "MASK_BATCH_EXACT",
+                "message": "mask batch dimension must equal 1",
+                "predicate": {
+                  "lhs": {
+                    "argument": "mask",
+                    "axis": 0,
+                    "node": "dim_ref"
+                  },
+                  "node": "eq",
+                  "rhs": {
+                    "node": "int_literal",
+                    "value": 1
+                  }
+                },
+                "type": "DimensionConstraint",
+                "version": 1
+              },
+              {
+                "code": "MASK_NODES_EXACT",
+                "message": "mask node dimension must equal 32",
+                "predicate": {
+                  "lhs": {
+                    "argument": "mask",
+                    "axis": 2,
+                    "node": "dim_ref"
+                  },
+                  "node": "eq",
+                  "rhs": {
+                    "node": "int_literal",
+                    "value": 32
+                  }
+                },
+                "type": "DimensionConstraint",
+                "version": 1
+              },
+              {
+                "code": "MASK_SEQUENCE_EXACT",
+                "message": "mask sequence dimension must equal 64",
+                "predicate": {
+                  "lhs": {
+                    "argument": "mask",
+                    "axis": 1,
+                    "node": "dim_ref"
+                  },
+                  "node": "eq",
+                  "rhs": {
+                    "node": "int_literal",
+                    "value": 64
+                  }
+                },
+                "type": "DimensionConstraint",
+                "version": 1
+              },
+              {
+                "code": "RIGHT_BATCH_EXACT",
+                "message": "right batch dimension must equal 1",
+                "predicate": {
+                  "lhs": {
+                    "argument": "right",
+                    "axis": 0,
+                    "node": "dim_ref"
+                  },
+                  "node": "eq",
+                  "rhs": {
+                    "node": "int_literal",
+                    "value": 1
+                  }
+                },
+                "type": "DimensionConstraint",
+                "version": 1
+              },
+              {
+                "code": "RIGHT_CHANNELS_EXACT",
+                "message": "right channel dimension must equal 64",
+                "predicate": {
+                  "lhs": {
+                    "argument": "right",
+                    "axis": 3,
+                    "node": "dim_ref"
+                  },
+                  "node": "eq",
+                  "rhs": {
+                    "node": "int_literal",
+                    "value": 64
+                  }
+                },
+                "type": "DimensionConstraint",
+                "version": 1
+              },
+              {
+                "code": "RIGHT_NODES_EXACT",
+                "message": "right node dimension must equal 32",
+                "predicate": {
+                  "lhs": {
+                    "argument": "right",
+                    "axis": 2,
+                    "node": "dim_ref"
+                  },
+                  "node": "eq",
+                  "rhs": {
+                    "node": "int_literal",
+                    "value": 32
+                  }
+                },
+                "type": "DimensionConstraint",
+                "version": 1
+              },
+              {
+                "code": "RIGHT_SEQUENCE_EXACT",
+                "message": "right sequence dimension must equal 64",
+                "predicate": {
+                  "lhs": {
+                    "argument": "right",
+                    "axis": 1,
+                    "node": "dim_ref"
+                  },
+                  "node": "eq",
+                  "rhs": {
+                    "node": "int_literal",
+                    "value": 64
+                  }
+                },
+                "type": "DimensionConstraint",
+                "version": 1
+              }
+            ],
+            "dtypes": [
+              "float16"
+            ],
+            "graph_capture_safe": false,
+            "layouts": [
+              "contiguous"
+            ],
+            "modes": [
+              "default"
+            ],
+            "tensor_constraints": [
+              {
+                "argument": "left",
+                "devices": [
+                  "cuda"
+                ],
+                "dtypes": [
+                  "float16"
+                ],
+                "layouts": [
+                  "contiguous"
+                ],
+                "ranks": [
+                  4
+                ],
+                "type": "TensorCapabilityConstraint",
+                "version": 1
+              },
+              {
+                "argument": "mask",
+                "devices": [
+                  "cuda"
+                ],
+                "dtypes": [
+                  "float16"
+                ],
+                "layouts": [
+                  "contiguous"
+                ],
+                "ranks": [
+                  3
+                ],
+                "type": "TensorCapabilityConstraint",
+                "version": 1
+              },
+              {
+                "argument": "right",
+                "devices": [
+                  "cuda"
+                ],
+                "dtypes": [
+                  "float16"
+                ],
+                "layouts": [
+                  "contiguous"
+                ],
+                "ranks": [
+                  4
+                ],
+                "type": "TensorCapabilityConstraint",
+                "version": 1
+              }
+            ],
+            "training_capable": false,
+            "type": "CapabilityEnvelope",
+            "version": 1
+          },
+          "envelope_digest": "sha256:74b6a1669eb5422faed5df2749176394ebe26f53d41b612b9e998050313525f7",
+          "name": "outer_product_mean_sm90_b1_s64_n32_cl64_cr64_fp16",
+          "priority": 0,
+          "promoted": false,
+          "requires": [
+            "cuda",
+            "sm90",
+            "tilelang-0.1.13"
+          ],
+          "selectable": false,
+          "tier": "specialized",
+          "version": 1
+        }
+      ],
+      "implementation_digest": "sha256:d4d131164accf396a88119f5b570db5c40047a167571ed39cd92fd76aeabde46",
       "kernel_spec_digest": "sha256:0438a7c829449e806c297e6e14b716d5c544427c7e4db2e0bbe28782e85d5f4a",
       "launch": {
         "current_stream_only": true,
@@ -163,7 +483,7 @@
         }
       ],
       "source": "pairformer/outer_product_mean/spec.py",
-      "spec_sha256": "sha256:474495a8080f8e68e90e706b1d2ca0aa5708d57f2490387a6868432ae0090f6d",
+      "spec_sha256": "sha256:89c911b65d41a9bfbd263189f4d663baa2befd7e780401621420d3d3df6fc565",
       "version": 1
     },
     {
@@ -276,6 +596,8 @@
         "type": "ForwardSpec",
         "version": 1
       },
+      "implementation_candidates": [],
+      "implementation_digest": "sha256:4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
       "kernel_spec_digest": "sha256:b915f5c0656857c2f6314d5de3270812593aa293da3c2fd9fe414b85c8bbc322",
       "launch": {
         "current_stream_only": true,
@@ -309,7 +631,7 @@
         }
       ],
       "source": "pairformer/pair_weighted_average/spec.py",
-      "spec_sha256": "sha256:437ea30979443483b5f94ae62a90d94bc01c2aadff08897097d764762c323fae",
+      "spec_sha256": "sha256:21ef59a5aa3b6dac58e262a7c092bde8cfddd83d8067dca4d802634d2dd1b7e1",
       "version": 1
     },
     {
@@ -427,6 +749,1317 @@
         "type": "ForwardSpec",
         "version": 1
       },
+      "implementation_candidates": [
+        {
+          "envelope": {
+            "architectures": [
+              "sm100"
+            ],
+            "constraints": [
+              {
+                "code": "BIAS_CHANNELS_MATCH",
+                "message": "output bias channels must match output weight",
+                "predicate": {
+                  "lhs": {
+                    "argument": "output_bias",
+                    "axis": 0,
+                    "node": "dim_ref"
+                  },
+                  "node": "eq",
+                  "rhs": {
+                    "argument": "output_weight",
+                    "axis": 1,
+                    "node": "dim_ref"
+                  }
+                },
+                "type": "DimensionConstraint",
+                "version": 1
+              },
+              {
+                "code": "GATE_BATCH_EXACT",
+                "message": "gate batch dimension must equal 1",
+                "predicate": {
+                  "lhs": {
+                    "argument": "gate",
+                    "axis": 0,
+                    "node": "dim_ref"
+                  },
+                  "node": "eq",
+                  "rhs": {
+                    "node": "int_literal",
+                    "value": 1
+                  }
+                },
+                "type": "DimensionConstraint",
+                "version": 1
+              },
+              {
+                "code": "GATE_HIDDEN_EXACT",
+                "message": "gate hidden dimension must equal 512",
+                "predicate": {
+                  "lhs": {
+                    "argument": "gate",
+                    "axis": 2,
+                    "node": "dim_ref"
+                  },
+                  "node": "eq",
+                  "rhs": {
+                    "node": "int_literal",
+                    "value": 512
+                  }
+                },
+                "type": "DimensionConstraint",
+                "version": 1
+              },
+              {
+                "code": "GATE_ROWS_EXACT",
+                "message": "gate row dimension must equal 147456",
+                "predicate": {
+                  "lhs": {
+                    "argument": "gate",
+                    "axis": 1,
+                    "node": "dim_ref"
+                  },
+                  "node": "eq",
+                  "rhs": {
+                    "node": "int_literal",
+                    "value": 147456
+                  }
+                },
+                "type": "DimensionConstraint",
+                "version": 1
+              },
+              {
+                "code": "MASK_BATCH_MATCH",
+                "message": "mask batch dimension must match gate",
+                "predicate": {
+                  "lhs": {
+                    "argument": "mask",
+                    "axis": 0,
+                    "node": "dim_ref"
+                  },
+                  "node": "eq",
+                  "rhs": {
+                    "argument": "gate",
+                    "axis": 0,
+                    "node": "dim_ref"
+                  }
+                },
+                "type": "DimensionConstraint",
+                "version": 1
+              },
+              {
+                "code": "MASK_ROWS_MATCH",
+                "message": "mask row dimension must match gate",
+                "predicate": {
+                  "lhs": {
+                    "argument": "mask",
+                    "axis": 1,
+                    "node": "dim_ref"
+                  },
+                  "node": "eq",
+                  "rhs": {
+                    "argument": "gate",
+                    "axis": 1,
+                    "node": "dim_ref"
+                  }
+                },
+                "type": "DimensionConstraint",
+                "version": 1
+              },
+              {
+                "code": "VALUE_BATCH_MATCH",
+                "message": "value batch dimension must match gate",
+                "predicate": {
+                  "lhs": {
+                    "argument": "value",
+                    "axis": 0,
+                    "node": "dim_ref"
+                  },
+                  "node": "eq",
+                  "rhs": {
+                    "argument": "gate",
+                    "axis": 0,
+                    "node": "dim_ref"
+                  }
+                },
+                "type": "DimensionConstraint",
+                "version": 1
+              },
+              {
+                "code": "VALUE_HIDDEN_MATCH",
+                "message": "value hidden dimension must match gate",
+                "predicate": {
+                  "lhs": {
+                    "argument": "value",
+                    "axis": 2,
+                    "node": "dim_ref"
+                  },
+                  "node": "eq",
+                  "rhs": {
+                    "argument": "gate",
+                    "axis": 2,
+                    "node": "dim_ref"
+                  }
+                },
+                "type": "DimensionConstraint",
+                "version": 1
+              },
+              {
+                "code": "VALUE_ROWS_MATCH",
+                "message": "value row dimension must match gate",
+                "predicate": {
+                  "lhs": {
+                    "argument": "value",
+                    "axis": 1,
+                    "node": "dim_ref"
+                  },
+                  "node": "eq",
+                  "rhs": {
+                    "argument": "gate",
+                    "axis": 1,
+                    "node": "dim_ref"
+                  }
+                },
+                "type": "DimensionConstraint",
+                "version": 1
+              },
+              {
+                "code": "WEIGHT_CHANNELS_EXACT",
+                "message": "output weight channel dimension must equal 128",
+                "predicate": {
+                  "lhs": {
+                    "argument": "output_weight",
+                    "axis": 1,
+                    "node": "dim_ref"
+                  },
+                  "node": "eq",
+                  "rhs": {
+                    "node": "int_literal",
+                    "value": 128
+                  }
+                },
+                "type": "DimensionConstraint",
+                "version": 1
+              },
+              {
+                "code": "WEIGHT_HIDDEN_MATCH",
+                "message": "output weight hidden dimension must match gate",
+                "predicate": {
+                  "lhs": {
+                    "argument": "output_weight",
+                    "axis": 0,
+                    "node": "dim_ref"
+                  },
+                  "node": "eq",
+                  "rhs": {
+                    "argument": "gate",
+                    "axis": 2,
+                    "node": "dim_ref"
+                  }
+                },
+                "type": "DimensionConstraint",
+                "version": 1
+              }
+            ],
+            "dtypes": [
+              "bfloat16"
+            ],
+            "graph_capture_safe": false,
+            "layouts": [
+              "contiguous"
+            ],
+            "modes": [
+              "pair_b1_r147456_h512_c128_bf16"
+            ],
+            "tensor_constraints": [
+              {
+                "argument": "gate",
+                "devices": [
+                  "cuda"
+                ],
+                "dtypes": [
+                  "bfloat16"
+                ],
+                "layouts": [
+                  "contiguous"
+                ],
+                "ranks": [
+                  3
+                ],
+                "type": "TensorCapabilityConstraint",
+                "version": 1
+              },
+              {
+                "argument": "mask",
+                "devices": [
+                  "cuda"
+                ],
+                "dtypes": [
+                  "float32"
+                ],
+                "layouts": [
+                  "contiguous"
+                ],
+                "ranks": [
+                  2
+                ],
+                "type": "TensorCapabilityConstraint",
+                "version": 1
+              },
+              {
+                "argument": "output_bias",
+                "devices": [
+                  "cuda"
+                ],
+                "dtypes": [
+                  "bfloat16"
+                ],
+                "layouts": [
+                  "contiguous"
+                ],
+                "ranks": [
+                  1
+                ],
+                "type": "TensorCapabilityConstraint",
+                "version": 1
+              },
+              {
+                "argument": "output_weight",
+                "devices": [
+                  "cuda"
+                ],
+                "dtypes": [
+                  "bfloat16"
+                ],
+                "layouts": [
+                  "contiguous"
+                ],
+                "ranks": [
+                  2
+                ],
+                "type": "TensorCapabilityConstraint",
+                "version": 1
+              },
+              {
+                "argument": "value",
+                "devices": [
+                  "cuda"
+                ],
+                "dtypes": [
+                  "bfloat16"
+                ],
+                "layouts": [
+                  "contiguous"
+                ],
+                "ranks": [
+                  3
+                ],
+                "type": "TensorCapabilityConstraint",
+                "version": 1
+              }
+            ],
+            "training_capable": false,
+            "type": "CapabilityEnvelope",
+            "version": 1
+          },
+          "envelope_digest": "sha256:80dad763b7b5c92b5b1369b1b61acb684042e3a315a506f0664832eca0c67574",
+          "name": "transition_sm100_pair_b1_r147456_h512_c128_bf16",
+          "priority": 0,
+          "promoted": false,
+          "requires": [
+            "cuda",
+            "sm100a",
+            "tilelang-0.1.13",
+            "tcgen05"
+          ],
+          "selectable": false,
+          "tier": "specialized",
+          "version": 1
+        },
+        {
+          "envelope": {
+            "architectures": [
+              "sm100"
+            ],
+            "constraints": [
+              {
+                "code": "BIAS_CHANNELS_MATCH",
+                "message": "output bias channels must match output weight",
+                "predicate": {
+                  "lhs": {
+                    "argument": "output_bias",
+                    "axis": 0,
+                    "node": "dim_ref"
+                  },
+                  "node": "eq",
+                  "rhs": {
+                    "argument": "output_weight",
+                    "axis": 1,
+                    "node": "dim_ref"
+                  }
+                },
+                "type": "DimensionConstraint",
+                "version": 1
+              },
+              {
+                "code": "GATE_BATCH_EXACT",
+                "message": "gate batch dimension must equal 1",
+                "predicate": {
+                  "lhs": {
+                    "argument": "gate",
+                    "axis": 0,
+                    "node": "dim_ref"
+                  },
+                  "node": "eq",
+                  "rhs": {
+                    "node": "int_literal",
+                    "value": 1
+                  }
+                },
+                "type": "DimensionConstraint",
+                "version": 1
+              },
+              {
+                "code": "GATE_HIDDEN_EXACT",
+                "message": "gate hidden dimension must equal 1536",
+                "predicate": {
+                  "lhs": {
+                    "argument": "gate",
+                    "axis": 2,
+                    "node": "dim_ref"
+                  },
+                  "node": "eq",
+                  "rhs": {
+                    "node": "int_literal",
+                    "value": 1536
+                  }
+                },
+                "type": "DimensionConstraint",
+                "version": 1
+              },
+              {
+                "code": "GATE_ROWS_EXACT",
+                "message": "gate row dimension must equal 768",
+                "predicate": {
+                  "lhs": {
+                    "argument": "gate",
+                    "axis": 1,
+                    "node": "dim_ref"
+                  },
+                  "node": "eq",
+                  "rhs": {
+                    "node": "int_literal",
+                    "value": 768
+                  }
+                },
+                "type": "DimensionConstraint",
+                "version": 1
+              },
+              {
+                "code": "MASK_BATCH_MATCH",
+                "message": "mask batch dimension must match gate",
+                "predicate": {
+                  "lhs": {
+                    "argument": "mask",
+                    "axis": 0,
+                    "node": "dim_ref"
+                  },
+                  "node": "eq",
+                  "rhs": {
+                    "argument": "gate",
+                    "axis": 0,
+                    "node": "dim_ref"
+                  }
+                },
+                "type": "DimensionConstraint",
+                "version": 1
+              },
+              {
+                "code": "MASK_ROWS_MATCH",
+                "message": "mask row dimension must match gate",
+                "predicate": {
+                  "lhs": {
+                    "argument": "mask",
+                    "axis": 1,
+                    "node": "dim_ref"
+                  },
+                  "node": "eq",
+                  "rhs": {
+                    "argument": "gate",
+                    "axis": 1,
+                    "node": "dim_ref"
+                  }
+                },
+                "type": "DimensionConstraint",
+                "version": 1
+              },
+              {
+                "code": "VALUE_BATCH_MATCH",
+                "message": "value batch dimension must match gate",
+                "predicate": {
+                  "lhs": {
+                    "argument": "value",
+                    "axis": 0,
+                    "node": "dim_ref"
+                  },
+                  "node": "eq",
+                  "rhs": {
+                    "argument": "gate",
+                    "axis": 0,
+                    "node": "dim_ref"
+                  }
+                },
+                "type": "DimensionConstraint",
+                "version": 1
+              },
+              {
+                "code": "VALUE_HIDDEN_MATCH",
+                "message": "value hidden dimension must match gate",
+                "predicate": {
+                  "lhs": {
+                    "argument": "value",
+                    "axis": 2,
+                    "node": "dim_ref"
+                  },
+                  "node": "eq",
+                  "rhs": {
+                    "argument": "gate",
+                    "axis": 2,
+                    "node": "dim_ref"
+                  }
+                },
+                "type": "DimensionConstraint",
+                "version": 1
+              },
+              {
+                "code": "VALUE_ROWS_MATCH",
+                "message": "value row dimension must match gate",
+                "predicate": {
+                  "lhs": {
+                    "argument": "value",
+                    "axis": 1,
+                    "node": "dim_ref"
+                  },
+                  "node": "eq",
+                  "rhs": {
+                    "argument": "gate",
+                    "axis": 1,
+                    "node": "dim_ref"
+                  }
+                },
+                "type": "DimensionConstraint",
+                "version": 1
+              },
+              {
+                "code": "WEIGHT_CHANNELS_EXACT",
+                "message": "output weight channel dimension must equal 384",
+                "predicate": {
+                  "lhs": {
+                    "argument": "output_weight",
+                    "axis": 1,
+                    "node": "dim_ref"
+                  },
+                  "node": "eq",
+                  "rhs": {
+                    "node": "int_literal",
+                    "value": 384
+                  }
+                },
+                "type": "DimensionConstraint",
+                "version": 1
+              },
+              {
+                "code": "WEIGHT_HIDDEN_MATCH",
+                "message": "output weight hidden dimension must match gate",
+                "predicate": {
+                  "lhs": {
+                    "argument": "output_weight",
+                    "axis": 0,
+                    "node": "dim_ref"
+                  },
+                  "node": "eq",
+                  "rhs": {
+                    "argument": "gate",
+                    "axis": 2,
+                    "node": "dim_ref"
+                  }
+                },
+                "type": "DimensionConstraint",
+                "version": 1
+              }
+            ],
+            "dtypes": [
+              "bfloat16"
+            ],
+            "graph_capture_safe": false,
+            "layouts": [
+              "contiguous"
+            ],
+            "modes": [
+              "single_b1_r768_h1536_c384_bf16"
+            ],
+            "tensor_constraints": [
+              {
+                "argument": "gate",
+                "devices": [
+                  "cuda"
+                ],
+                "dtypes": [
+                  "bfloat16"
+                ],
+                "layouts": [
+                  "contiguous"
+                ],
+                "ranks": [
+                  3
+                ],
+                "type": "TensorCapabilityConstraint",
+                "version": 1
+              },
+              {
+                "argument": "mask",
+                "devices": [
+                  "cuda"
+                ],
+                "dtypes": [
+                  "float32"
+                ],
+                "layouts": [
+                  "contiguous"
+                ],
+                "ranks": [
+                  2
+                ],
+                "type": "TensorCapabilityConstraint",
+                "version": 1
+              },
+              {
+                "argument": "output_bias",
+                "devices": [
+                  "cuda"
+                ],
+                "dtypes": [
+                  "bfloat16"
+                ],
+                "layouts": [
+                  "contiguous"
+                ],
+                "ranks": [
+                  1
+                ],
+                "type": "TensorCapabilityConstraint",
+                "version": 1
+              },
+              {
+                "argument": "output_weight",
+                "devices": [
+                  "cuda"
+                ],
+                "dtypes": [
+                  "bfloat16"
+                ],
+                "layouts": [
+                  "contiguous"
+                ],
+                "ranks": [
+                  2
+                ],
+                "type": "TensorCapabilityConstraint",
+                "version": 1
+              },
+              {
+                "argument": "value",
+                "devices": [
+                  "cuda"
+                ],
+                "dtypes": [
+                  "bfloat16"
+                ],
+                "layouts": [
+                  "contiguous"
+                ],
+                "ranks": [
+                  3
+                ],
+                "type": "TensorCapabilityConstraint",
+                "version": 1
+              }
+            ],
+            "training_capable": false,
+            "type": "CapabilityEnvelope",
+            "version": 1
+          },
+          "envelope_digest": "sha256:b9b9c3d8ee5c095c9bdf792f7ebeb39691acae838b06ba403df0e6976de1ca72",
+          "name": "transition_sm100_single_b1_r768_h1536_c384_bf16",
+          "priority": 0,
+          "promoted": false,
+          "requires": [
+            "cuda",
+            "sm100a",
+            "tilelang-0.1.13",
+            "tcgen05"
+          ],
+          "selectable": false,
+          "tier": "specialized",
+          "version": 1
+        },
+        {
+          "envelope": {
+            "architectures": [
+              "sm90"
+            ],
+            "constraints": [
+              {
+                "code": "BIAS_CHANNELS_MATCH",
+                "message": "output bias channels must match output weight",
+                "predicate": {
+                  "lhs": {
+                    "argument": "output_bias",
+                    "axis": 0,
+                    "node": "dim_ref"
+                  },
+                  "node": "eq",
+                  "rhs": {
+                    "argument": "output_weight",
+                    "axis": 1,
+                    "node": "dim_ref"
+                  }
+                },
+                "type": "DimensionConstraint",
+                "version": 1
+              },
+              {
+                "code": "GATE_BATCH_EXACT",
+                "message": "gate batch dimension must equal 1",
+                "predicate": {
+                  "lhs": {
+                    "argument": "gate",
+                    "axis": 0,
+                    "node": "dim_ref"
+                  },
+                  "node": "eq",
+                  "rhs": {
+                    "node": "int_literal",
+                    "value": 1
+                  }
+                },
+                "type": "DimensionConstraint",
+                "version": 1
+              },
+              {
+                "code": "GATE_HIDDEN_EXACT",
+                "message": "gate hidden dimension must equal 512",
+                "predicate": {
+                  "lhs": {
+                    "argument": "gate",
+                    "axis": 2,
+                    "node": "dim_ref"
+                  },
+                  "node": "eq",
+                  "rhs": {
+                    "node": "int_literal",
+                    "value": 512
+                  }
+                },
+                "type": "DimensionConstraint",
+                "version": 1
+              },
+              {
+                "code": "GATE_ROWS_EXACT",
+                "message": "gate row dimension must equal 147456",
+                "predicate": {
+                  "lhs": {
+                    "argument": "gate",
+                    "axis": 1,
+                    "node": "dim_ref"
+                  },
+                  "node": "eq",
+                  "rhs": {
+                    "node": "int_literal",
+                    "value": 147456
+                  }
+                },
+                "type": "DimensionConstraint",
+                "version": 1
+              },
+              {
+                "code": "MASK_BATCH_MATCH",
+                "message": "mask batch dimension must match gate",
+                "predicate": {
+                  "lhs": {
+                    "argument": "mask",
+                    "axis": 0,
+                    "node": "dim_ref"
+                  },
+                  "node": "eq",
+                  "rhs": {
+                    "argument": "gate",
+                    "axis": 0,
+                    "node": "dim_ref"
+                  }
+                },
+                "type": "DimensionConstraint",
+                "version": 1
+              },
+              {
+                "code": "MASK_ROWS_MATCH",
+                "message": "mask row dimension must match gate",
+                "predicate": {
+                  "lhs": {
+                    "argument": "mask",
+                    "axis": 1,
+                    "node": "dim_ref"
+                  },
+                  "node": "eq",
+                  "rhs": {
+                    "argument": "gate",
+                    "axis": 1,
+                    "node": "dim_ref"
+                  }
+                },
+                "type": "DimensionConstraint",
+                "version": 1
+              },
+              {
+                "code": "VALUE_BATCH_MATCH",
+                "message": "value batch dimension must match gate",
+                "predicate": {
+                  "lhs": {
+                    "argument": "value",
+                    "axis": 0,
+                    "node": "dim_ref"
+                  },
+                  "node": "eq",
+                  "rhs": {
+                    "argument": "gate",
+                    "axis": 0,
+                    "node": "dim_ref"
+                  }
+                },
+                "type": "DimensionConstraint",
+                "version": 1
+              },
+              {
+                "code": "VALUE_HIDDEN_MATCH",
+                "message": "value hidden dimension must match gate",
+                "predicate": {
+                  "lhs": {
+                    "argument": "value",
+                    "axis": 2,
+                    "node": "dim_ref"
+                  },
+                  "node": "eq",
+                  "rhs": {
+                    "argument": "gate",
+                    "axis": 2,
+                    "node": "dim_ref"
+                  }
+                },
+                "type": "DimensionConstraint",
+                "version": 1
+              },
+              {
+                "code": "VALUE_ROWS_MATCH",
+                "message": "value row dimension must match gate",
+                "predicate": {
+                  "lhs": {
+                    "argument": "value",
+                    "axis": 1,
+                    "node": "dim_ref"
+                  },
+                  "node": "eq",
+                  "rhs": {
+                    "argument": "gate",
+                    "axis": 1,
+                    "node": "dim_ref"
+                  }
+                },
+                "type": "DimensionConstraint",
+                "version": 1
+              },
+              {
+                "code": "WEIGHT_CHANNELS_EXACT",
+                "message": "output weight channel dimension must equal 128",
+                "predicate": {
+                  "lhs": {
+                    "argument": "output_weight",
+                    "axis": 1,
+                    "node": "dim_ref"
+                  },
+                  "node": "eq",
+                  "rhs": {
+                    "node": "int_literal",
+                    "value": 128
+                  }
+                },
+                "type": "DimensionConstraint",
+                "version": 1
+              },
+              {
+                "code": "WEIGHT_HIDDEN_MATCH",
+                "message": "output weight hidden dimension must match gate",
+                "predicate": {
+                  "lhs": {
+                    "argument": "output_weight",
+                    "axis": 0,
+                    "node": "dim_ref"
+                  },
+                  "node": "eq",
+                  "rhs": {
+                    "argument": "gate",
+                    "axis": 2,
+                    "node": "dim_ref"
+                  }
+                },
+                "type": "DimensionConstraint",
+                "version": 1
+              }
+            ],
+            "dtypes": [
+              "bfloat16"
+            ],
+            "graph_capture_safe": false,
+            "layouts": [
+              "contiguous"
+            ],
+            "modes": [
+              "pair_b1_r147456_h512_c128_bf16"
+            ],
+            "tensor_constraints": [
+              {
+                "argument": "gate",
+                "devices": [
+                  "cuda"
+                ],
+                "dtypes": [
+                  "bfloat16"
+                ],
+                "layouts": [
+                  "contiguous"
+                ],
+                "ranks": [
+                  3
+                ],
+                "type": "TensorCapabilityConstraint",
+                "version": 1
+              },
+              {
+                "argument": "mask",
+                "devices": [
+                  "cuda"
+                ],
+                "dtypes": [
+                  "float32"
+                ],
+                "layouts": [
+                  "contiguous"
+                ],
+                "ranks": [
+                  2
+                ],
+                "type": "TensorCapabilityConstraint",
+                "version": 1
+              },
+              {
+                "argument": "output_bias",
+                "devices": [
+                  "cuda"
+                ],
+                "dtypes": [
+                  "bfloat16"
+                ],
+                "layouts": [
+                  "contiguous"
+                ],
+                "ranks": [
+                  1
+                ],
+                "type": "TensorCapabilityConstraint",
+                "version": 1
+              },
+              {
+                "argument": "output_weight",
+                "devices": [
+                  "cuda"
+                ],
+                "dtypes": [
+                  "bfloat16"
+                ],
+                "layouts": [
+                  "contiguous"
+                ],
+                "ranks": [
+                  2
+                ],
+                "type": "TensorCapabilityConstraint",
+                "version": 1
+              },
+              {
+                "argument": "value",
+                "devices": [
+                  "cuda"
+                ],
+                "dtypes": [
+                  "bfloat16"
+                ],
+                "layouts": [
+                  "contiguous"
+                ],
+                "ranks": [
+                  3
+                ],
+                "type": "TensorCapabilityConstraint",
+                "version": 1
+              }
+            ],
+            "training_capable": false,
+            "type": "CapabilityEnvelope",
+            "version": 1
+          },
+          "envelope_digest": "sha256:bccff3cf753bd41394f5eda4cee7450a8ef6606315ec943f0a2e9477ab79dc6a",
+          "name": "transition_sm90_pair_b1_r147456_h512_c128_bf16",
+          "priority": 0,
+          "promoted": false,
+          "requires": [
+            "cuda",
+            "sm90a",
+            "tilelang-0.1.13",
+            "wgmma"
+          ],
+          "selectable": false,
+          "tier": "specialized",
+          "version": 1
+        },
+        {
+          "envelope": {
+            "architectures": [
+              "sm90"
+            ],
+            "constraints": [
+              {
+                "code": "BIAS_CHANNELS_MATCH",
+                "message": "output bias channels must match output weight",
+                "predicate": {
+                  "lhs": {
+                    "argument": "output_bias",
+                    "axis": 0,
+                    "node": "dim_ref"
+                  },
+                  "node": "eq",
+                  "rhs": {
+                    "argument": "output_weight",
+                    "axis": 1,
+                    "node": "dim_ref"
+                  }
+                },
+                "type": "DimensionConstraint",
+                "version": 1
+              },
+              {
+                "code": "GATE_BATCH_EXACT",
+                "message": "gate batch dimension must equal 1",
+                "predicate": {
+                  "lhs": {
+                    "argument": "gate",
+                    "axis": 0,
+                    "node": "dim_ref"
+                  },
+                  "node": "eq",
+                  "rhs": {
+                    "node": "int_literal",
+                    "value": 1
+                  }
+                },
+                "type": "DimensionConstraint",
+                "version": 1
+              },
+              {
+                "code": "GATE_HIDDEN_EXACT",
+                "message": "gate hidden dimension must equal 1536",
+                "predicate": {
+                  "lhs": {
+                    "argument": "gate",
+                    "axis": 2,
+                    "node": "dim_ref"
+                  },
+                  "node": "eq",
+                  "rhs": {
+                    "node": "int_literal",
+                    "value": 1536
+                  }
+                },
+                "type": "DimensionConstraint",
+                "version": 1
+              },
+              {
+                "code": "GATE_ROWS_EXACT",
+                "message": "gate row dimension must equal 768",
+                "predicate": {
+                  "lhs": {
+                    "argument": "gate",
+                    "axis": 1,
+                    "node": "dim_ref"
+                  },
+                  "node": "eq",
+                  "rhs": {
+                    "node": "int_literal",
+                    "value": 768
+                  }
+                },
+                "type": "DimensionConstraint",
+                "version": 1
+              },
+              {
+                "code": "MASK_BATCH_MATCH",
+                "message": "mask batch dimension must match gate",
+                "predicate": {
+                  "lhs": {
+                    "argument": "mask",
+                    "axis": 0,
+                    "node": "dim_ref"
+                  },
+                  "node": "eq",
+                  "rhs": {
+                    "argument": "gate",
+                    "axis": 0,
+                    "node": "dim_ref"
+                  }
+                },
+                "type": "DimensionConstraint",
+                "version": 1
+              },
+              {
+                "code": "MASK_ROWS_MATCH",
+                "message": "mask row dimension must match gate",
+                "predicate": {
+                  "lhs": {
+                    "argument": "mask",
+                    "axis": 1,
+                    "node": "dim_ref"
+                  },
+                  "node": "eq",
+                  "rhs": {
+                    "argument": "gate",
+                    "axis": 1,
+                    "node": "dim_ref"
+                  }
+                },
+                "type": "DimensionConstraint",
+                "version": 1
+              },
+              {
+                "code": "VALUE_BATCH_MATCH",
+                "message": "value batch dimension must match gate",
+                "predicate": {
+                  "lhs": {
+                    "argument": "value",
+                    "axis": 0,
+                    "node": "dim_ref"
+                  },
+                  "node": "eq",
+                  "rhs": {
+                    "argument": "gate",
+                    "axis": 0,
+                    "node": "dim_ref"
+                  }
+                },
+                "type": "DimensionConstraint",
+                "version": 1
+              },
+              {
+                "code": "VALUE_HIDDEN_MATCH",
+                "message": "value hidden dimension must match gate",
+                "predicate": {
+                  "lhs": {
+                    "argument": "value",
+                    "axis": 2,
+                    "node": "dim_ref"
+                  },
+                  "node": "eq",
+                  "rhs": {
+                    "argument": "gate",
+                    "axis": 2,
+                    "node": "dim_ref"
+                  }
+                },
+                "type": "DimensionConstraint",
+                "version": 1
+              },
+              {
+                "code": "VALUE_ROWS_MATCH",
+                "message": "value row dimension must match gate",
+                "predicate": {
+                  "lhs": {
+                    "argument": "value",
+                    "axis": 1,
+                    "node": "dim_ref"
+                  },
+                  "node": "eq",
+                  "rhs": {
+                    "argument": "gate",
+                    "axis": 1,
+                    "node": "dim_ref"
+                  }
+                },
+                "type": "DimensionConstraint",
+                "version": 1
+              },
+              {
+                "code": "WEIGHT_CHANNELS_EXACT",
+                "message": "output weight channel dimension must equal 384",
+                "predicate": {
+                  "lhs": {
+                    "argument": "output_weight",
+                    "axis": 1,
+                    "node": "dim_ref"
+                  },
+                  "node": "eq",
+                  "rhs": {
+                    "node": "int_literal",
+                    "value": 384
+                  }
+                },
+                "type": "DimensionConstraint",
+                "version": 1
+              },
+              {
+                "code": "WEIGHT_HIDDEN_MATCH",
+                "message": "output weight hidden dimension must match gate",
+                "predicate": {
+                  "lhs": {
+                    "argument": "output_weight",
+                    "axis": 0,
+                    "node": "dim_ref"
+                  },
+                  "node": "eq",
+                  "rhs": {
+                    "argument": "gate",
+                    "axis": 2,
+                    "node": "dim_ref"
+                  }
+                },
+                "type": "DimensionConstraint",
+                "version": 1
+              }
+            ],
+            "dtypes": [
+              "bfloat16"
+            ],
+            "graph_capture_safe": false,
+            "layouts": [
+              "contiguous"
+            ],
+            "modes": [
+              "single_b1_r768_h1536_c384_bf16"
+            ],
+            "tensor_constraints": [
+              {
+                "argument": "gate",
+                "devices": [
+                  "cuda"
+                ],
+                "dtypes": [
+                  "bfloat16"
+                ],
+                "layouts": [
+                  "contiguous"
+                ],
+                "ranks": [
+                  3
+                ],
+                "type": "TensorCapabilityConstraint",
+                "version": 1
+              },
+              {
+                "argument": "mask",
+                "devices": [
+                  "cuda"
+                ],
+                "dtypes": [
+                  "float32"
+                ],
+                "layouts": [
+                  "contiguous"
+                ],
+                "ranks": [
+                  2
+                ],
+                "type": "TensorCapabilityConstraint",
+                "version": 1
+              },
+              {
+                "argument": "output_bias",
+                "devices": [
+                  "cuda"
+                ],
+                "dtypes": [
+                  "bfloat16"
+                ],
+                "layouts": [
+                  "contiguous"
+                ],
+                "ranks": [
+                  1
+                ],
+                "type": "TensorCapabilityConstraint",
+                "version": 1
+              },
+              {
+                "argument": "output_weight",
+                "devices": [
+                  "cuda"
+                ],
+                "dtypes": [
+                  "bfloat16"
+                ],
+                "layouts": [
+                  "contiguous"
+                ],
+                "ranks": [
+                  2
+                ],
+                "type": "TensorCapabilityConstraint",
+                "version": 1
+              },
+              {
+                "argument": "value",
+                "devices": [
+                  "cuda"
+                ],
+                "dtypes": [
+                  "bfloat16"
+                ],
+                "layouts": [
+                  "contiguous"
+                ],
+                "ranks": [
+                  3
+                ],
+                "type": "TensorCapabilityConstraint",
+                "version": 1
+              }
+            ],
+            "training_capable": false,
+            "type": "CapabilityEnvelope",
+            "version": 1
+          },
+          "envelope_digest": "sha256:39f0e29a27ca24575de202eadc040211ceae49f08d4d1af084b2d149a89c483b",
+          "name": "transition_sm90_single_b1_r768_h1536_c384_bf16",
+          "priority": 0,
+          "promoted": false,
+          "requires": [
+            "cuda",
+            "sm90a",
+            "tilelang-0.1.13",
+            "wgmma"
+          ],
+          "selectable": false,
+          "tier": "specialized",
+          "version": 1
+        }
+      ],
+      "implementation_digest": "sha256:104135a43256ef0a4b9e0a3968498232719445c943a0f8e6fb610a72991b70fa",
       "kernel_spec_digest": "sha256:06873d83344d245826ef47467178b5d98b4d22ba37576cf54833d59f36df11c9",
       "launch": {
         "current_stream_only": true,
@@ -460,7 +2093,7 @@
         }
       ],
       "source": "pairformer/transition/spec.py",
-      "spec_sha256": "sha256:dc290189fc1ff46a7f24b2c7fc1147a852f6cfc28d32700720b369baf2fdd408",
+      "spec_sha256": "sha256:0d8fe5f2d480d395196c13e278eea9e2d5010abdac75d921e139b7941b672203",
       "version": 1
     },
     {
@@ -564,6 +2197,8 @@
         "type": "ForwardSpec",
         "version": 1
       },
+      "implementation_candidates": [],
+      "implementation_digest": "sha256:4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
       "kernel_spec_digest": "sha256:6fc7c90c4a271d1d7ae0e59e22dc893bf8caa6275ab2723fd9a6c0b3cab0fc0f",
       "launch": {
         "current_stream_only": true,
@@ -597,7 +2232,7 @@
         }
       ],
       "source": "pairformer/triangle_attention/spec.py",
-      "spec_sha256": "sha256:cd1f8a02be1f6c6fc384b76d9c39e3e94d0fde7625b3a3dfca6da573ddad8725",
+      "spec_sha256": "sha256:4c9fd4e5c0d7b516be926e30df08308fbc786ac864230c9ef1e243cbd09b991b",
       "version": 1
     },
     {
@@ -684,6 +2319,8 @@
         "type": "ForwardSpec",
         "version": 1
       },
+      "implementation_candidates": [],
+      "implementation_digest": "sha256:4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
       "kernel_spec_digest": "sha256:cd98d8921213ce46296079f4b584e07e9d44340346ec987394988c30e53b6220",
       "launch": {
         "current_stream_only": true,
@@ -717,7 +2354,7 @@
         }
       ],
       "source": "pairformer/triangle_multiplication/spec.py",
-      "spec_sha256": "sha256:43a5406605f13218f901eebf5680d6621ac4f6d098e67b48ed7e5ffd28703575",
+      "spec_sha256": "sha256:463d2f59b8f1f09608333ba1da43a90c050db793f93fa8bb2926323b3e1ebd2b",
       "version": 1
     }
   ],
@@ -727,5 +2364,5 @@
   "runtime_discovery": false,
   "schema_version": 3,
   "semantic_digest": "sha256:ce2bb7651aea3e29a1c26d7cce589095580ad106b193c209f93cd34055a7d979",
-  "source_inventory_sha256": "sha256:f2ade0fba94738ec1e56e958c90b5165a71334cbbcb1350d15e36561974a3b45"
+  "source_inventory_sha256": "sha256:72687cc449a09d5abb8712deae413ddda2485a87e7df28ac05f8f740bfa3c869"
 }

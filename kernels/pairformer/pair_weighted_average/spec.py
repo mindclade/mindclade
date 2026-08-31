@@ -49,3 +49,5 @@ KERNEL_SPEC = KernelSpec(
     effects=EffectSpec(),
     launch=LaunchContract(graph_capture_safe=False, determinism=DeterminismClass.CONDITIONALLY_DETERMINISTIC),
 )
+
+IMPLEMENTATION_SPECS = ()

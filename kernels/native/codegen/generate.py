@@ -20,7 +20,7 @@ from kernels.native.codegen.discover import DiscoveredKernelSpec, discover_specs
 from kernels.native.codegen.schema import ParsedSchema, parse_schema
 
 GENERATOR_ID = "kernels.native.codegen.generate"
-GENERATOR_VERSION = 5
+GENERATOR_VERSION = 6
 SCHEMA_VERSION = 3
 
 GENERATED_FILENAMES = (
@@ -130,6 +130,23 @@ def _operator_record(item: DiscoveredKernelSpec) -> dict[str, Any]:
                 spec.backward.symbol,
             )
         )
+    implementation_contracts = [_json_value(value) for value in item.implementations]
+    implementation_candidates = []
+    for implementation in item.implementations:
+        envelope = _json_value(implementation.envelope)
+        implementation_candidates.append(
+            {
+                "name": implementation.name,
+                "version": implementation.version,
+                "tier": implementation.tier.value,
+                "priority": implementation.priority,
+                "requires": list(implementation.requires),
+                "envelope": envelope,
+                "envelope_digest": content_digest(envelope),
+                "promoted": False,
+                "selectable": False,
+            }
+        )
     return {
         "name": spec.name,
         "qualified_name": spec.qualified_name,
@@ -138,6 +155,8 @@ def _operator_record(item: DiscoveredKernelSpec) -> dict[str, Any]:
         "source": spec.source,
         "spec_sha256": item.declaration_sha256,
         "kernel_spec_digest": spec.digest,
+        "implementation_digest": content_digest(implementation_contracts),
+        "implementation_candidates": implementation_candidates,
         "operator_schema": semantic.canonical,
         "facade_outputs": list(spec.facade_outputs),
         "fake": spec.fake,
@@ -169,6 +188,7 @@ def _manifest(discovered: list[DiscoveredKernelSpec]) -> dict[str, Any]:
             "source": record["source"],
             "spec_sha256": record["spec_sha256"],
             "kernel_spec_digest": record["kernel_spec_digest"],
+            "implementation_digest": record["implementation_digest"],
         }
         for record in operators
     ]

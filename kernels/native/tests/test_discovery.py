@@ -70,6 +70,7 @@ KERNEL_SPEC: KernelSpec = KernelSpec(
     effects=EffectSpec(),
     launch=LaunchContract(),
 )
+IMPLEMENTATION_SPECS = ()
 '''
 
 
@@ -107,6 +108,7 @@ def test_discovers_only_explicit_specs_without_parsing_or_importing_tilelang(
     assert isinstance(discovered[0], DiscoveredKernelSpec)
     assert discovered[0].qualified_name == "mindclade::selected"
     assert discovered[0].spec.source == "family_a/selected/spec.py"
+    assert discovered[0].implementations == ()
     assert not sentinel.exists()
 
 
@@ -133,19 +135,19 @@ def test_empty_explicit_inventory_is_valid_for_inactive_target(tmp_path: Path) -
 @pytest.mark.parametrize(
     ("source", "message"),
     (
-        ("import os\nKERNEL_SPEC = os.environ\n", "arbitrary imports are forbidden"),
+        ("import os\nKERNEL_SPEC = os.environ\nIMPLEMENTATION_SPECS = ()\n", "arbitrary imports are forbidden"),
         (
             "from kernels.api import KernelSpec\n"
-            "KERNEL_SPEC = [KernelSpec() for _ in ()]\n",
+            "KERNEL_SPEC = [KernelSpec() for _ in ()]\nIMPLEMENTATION_SPECS = ()\n",
             "unsupported expression node ListComp",
         ),
         (
-            "from kernels.api import KernelSpec\nKERNEL_SPEC = build_spec()\n",
+            "from kernels.api import KernelSpec\nKERNEL_SPEC = build_spec()\nIMPLEMENTATION_SPECS = ()\n",
             "not an approved constructor",
         ),
         (
             "from kernels.api import KernelSpec\n"
-            "if True:\n    KERNEL_SPEC = KernelSpec()\n",
+            "if True:\n    KERNEL_SPEC = KernelSpec()\nIMPLEMENTATION_SPECS = ()\n",
             "unsupported top-level statement If",
         ),
     ),

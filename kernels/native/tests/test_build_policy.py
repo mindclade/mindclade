@@ -60,6 +60,8 @@ KERNEL_SPEC = KernelSpec(
     effects=EffectSpec(),
     launch=LaunchContract(graph_capture_safe=False),
 )
+
+IMPLEMENTATION_SPECS = ()
 ''',
         encoding="utf-8",
     )
@@ -182,6 +184,8 @@ KERNEL_SPEC = KernelSpec(
     effects=EffectSpec(),
     launch=LaunchContract(graph_capture_safe=False),
 )
+
+IMPLEMENTATION_SPECS = ()
 ''',
         encoding="utf-8",
     )

@@ -5,6 +5,7 @@ import pytest
 
 from kernels.api import content_digest
 from kernels.native.codegen.generate import GENERATED_FILENAMES, render_all, write_outputs
+from kernels.native.tilelang.manifest import validate_manifest
 
 
 def _fixture_native_root(tmp_path: Path, *, fake: bool = True) -> tuple[Path, str]:
@@ -16,8 +17,10 @@ def _fixture_native_root(tmp_path: Path, *, fake: bool = True) -> tuple[Path, st
     fake_value = '"kernels.pairformer.fixture_op.reference:fake"' if fake else "None"
     (operation / "spec.py").write_text(
         f'''from kernels.api import (
-    AutogradPolicy, ConstantDType, EffectSpec, ForwardSpec, KernelSpec,
-    LaunchContract, OutputSpec, ShapeOf, SameAsInputDevice,
+    AutogradPolicy, BoolLiteral, CapabilityEnvelope, ConstantDType,
+    DimensionConstraint, EffectSpec, ForwardSpec, ImplementationSpec,
+    ImplementationTier, KernelSpec, LaunchContract, OutputSpec, ShapeOf,
+    SameAsInputDevice, TensorCapabilityConstraint,
 )
 KERNEL_SPEC: KernelSpec = KernelSpec(
     name="fixture_op", namespace="mindclade", family="pairformer",
@@ -36,6 +39,27 @@ KERNEL_SPEC: KernelSpec = KernelSpec(
         ),),
     ), backward=None, autograd_policy=AutogradPolicy.NONE,
     effects=EffectSpec(), launch=LaunchContract(graph_capture_safe=False),
+)
+IMPLEMENTATION_SPECS = (
+    ImplementationSpec(
+        operation="mindclade::fixture_op", name="portable", family="pairformer",
+        backend="tilelang",
+        builder="kernels.pairformer.fixture_op.tilelang:build_implementation",
+        version=1, tier=ImplementationTier.PORTABLE, requires=("cuda",),
+        envelope=CapabilityEnvelope(
+            architectures=("sm90",), dtypes=("float32",),
+            layouts=("contiguous",), modes=("default",),
+            constraints=(DimensionConstraint(
+                predicate=BoolLiteral(value=True), code="VALID",
+                message="fixture capability",
+            ),),
+            graph_capture_safe=False, training_capable=False,
+            tensor_constraints=(TensorCapabilityConstraint(
+                argument="x", dtypes=("float32",), layouts=("contiguous",),
+                devices=("cuda",), ranks=(1,),
+            ),),
+        ),
+    ),
 )
 ''',
         encoding="utf-8",
@@ -123,6 +147,7 @@ KERNEL_SPEC: KernelSpec = KernelSpec(
     autograd_policy=AutogradPolicy.REQUIRED,
     effects=EffectSpec(), launch=LaunchContract(graph_capture_safe=False),
 )
+IMPLEMENTATION_SPECS = ()
 ''',
         encoding="utf-8",
     )
@@ -189,6 +214,7 @@ KERNEL_SPEC: KernelSpec = KernelSpec(
         hidden_device_allocation=True, graph_capture_safe=False,
     ),
 )
+IMPLEMENTATION_SPECS = ()
 ''',
         encoding="utf-8",
     )
@@ -223,16 +249,25 @@ def test_manifest_has_exact_operator_keys_and_recomputable_digests(tmp_path: Pat
     native_root, source = _fixture_native_root(tmp_path)
     manifest = json.loads(render_all(native_root, source_files=[source])["native_ops.json"])
     assert manifest["schema_version"] == 3
-    assert manifest["generator"] == {"id": "kernels.native.codegen.generate", "version": 5}
+    assert manifest["generator"] == {"id": "kernels.native.codegen.generate", "version": 6}
     operator = manifest["operators"][0]
     assert set(operator) == {
         "name", "qualified_name", "namespace", "family", "source", "spec_sha256",
-        "kernel_spec_digest", "operator_schema", "facade_outputs", "fake", "forward",
+        "kernel_spec_digest", "implementation_digest", "implementation_candidates",
+        "operator_schema", "facade_outputs", "fake", "forward",
         "backward", "autograd_policy", "composite", "effects", "launch", "backend",
         "version", "devices", "registrations",
         "launcher_plans",
     }
     assert [entry["kind"] for entry in operator["registrations"]] == ["semantic", "forward"]
+    candidate = operator["implementation_candidates"][0]
+    assert candidate["name"] == "portable"
+    assert candidate["promoted"] is False
+    assert candidate["selectable"] is False
+    assert candidate["envelope"]["constraints"][0]["predicate"] == {
+        "node": "bool_literal", "value": True,
+    }
+    assert candidate["envelope_digest"] == content_digest(candidate["envelope"])
     without_digest = dict(manifest)
     assert without_digest.pop("manifest_digest") == content_digest(without_digest)
     assert operator["forward"]["outputs"][0]["shape"]["node"] == "shape_of"
@@ -278,6 +313,7 @@ def test_required_autograd_is_assembled_from_named_bindings(tmp_path: Path):
     assert "torch.library.register_fake('mindclade::_required_fixture_bwd')" in python
     assert "torch.library.register_autograd('mindclade::required_fixture'" in python
     backward = manifest["operators"][0]["backward"]
+    assert validate_manifest(manifest) is manifest
     assert [binding["provider_argument"] for binding in backward["argument_bindings"]] == [
         "grad_output", "need_x_grad", "need_y_grad", "output", "width", "x", "y",
     ]

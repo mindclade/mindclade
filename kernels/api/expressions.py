@@ -216,6 +216,7 @@ class TensorMetadata:
     shape: tuple[int, ...]
     dtype: str
     device: str
+    layout: str = "contiguous"
 
     def __post_init__(self) -> None:
         if not isinstance(self.shape, tuple):
@@ -224,6 +225,13 @@ class TensorMetadata:
             _validated_int(dimension, field_name=f"shape[{axis}]", nonnegative=True)
         _validated_text(self.dtype, field_name="dtype")
         _validated_text(self.device, field_name="device")
+        _validated_text(self.layout, field_name="layout")
+
+
+@dataclass(frozen=True, slots=True)
+class ExpressionReferences:
+    tensors: tuple[str, ...]
+    scalars: tuple[str, ...]
 
 
 @dataclass(frozen=True, slots=True)
@@ -835,7 +843,7 @@ class _BinaryInt(Expr[int], ABC):
         lhs = self.lhs.evaluate(context)
         rhs = self.rhs.evaluate(context)
         try:
-            return self._apply(lhs, rhs)
+            return _checked_evaluated_int(self._apply(lhs, rhs), node=self._node)
         except ZeroDivisionError as exc:
             raise ExpressionEvaluationError(f"{self._node} divisor must be nonzero") from exc
 
@@ -981,7 +989,10 @@ class RoundUp(Expr[int]):
         multiple = self.multiple.evaluate(context)
         if multiple <= 0:
             raise ExpressionEvaluationError("round_up multiple must be positive")
-        return -(-value // multiple) * multiple
+        return _checked_evaluated_int(
+            -(-value // multiple) * multiple,
+            node="round_up",
+        )
 
     def to_data(self) -> dict[str, JsonValue]:
         return {
@@ -1399,6 +1410,55 @@ def canonical_data(value: object) -> JsonValue:
     raise ExpressionValidationError(
         f"unsupported canonical value type: {type(value).__name__}"
     )
+
+
+def _checked_evaluated_int(value: object, *, node: str) -> int:
+    if (
+        isinstance(value, bool)
+        or not isinstance(value, int)
+        or value < _MIN_INT
+        or value > _MAX_INT
+    ):
+        raise ExpressionEvaluationError(
+            f"{node} result is outside the signed 64-bit integer range"
+        )
+    return value
+
+
+def expression_references(expression: Expr[object]) -> ExpressionReferences:
+    """Return the canonical tensor/scalar argument inventory for one expression."""
+
+    _require_expression(expression, field_name="expression")
+    tensors: set[str] = set()
+    scalars: set[str] = set()
+    tensor_nodes = {
+        "dim_ref",
+        "rank_ref",
+        "shape_of",
+        "shape_prefix",
+        "dtype_ref",
+        "device_ref",
+        "same_as_input_dtype",
+        "same_as_input_device",
+    }
+
+    def visit(value: JsonValue) -> None:
+        if isinstance(value, dict):
+            node = value.get("node")
+            argument = value.get("argument")
+            if isinstance(argument, str):
+                if node == "scalar_ref":
+                    scalars.add(argument)
+                elif node in tensor_nodes:
+                    tensors.add(argument)
+            for child in value.values():
+                visit(child)
+        elif isinstance(value, list):
+            for child in value:
+                visit(child)
+
+    visit(expression.to_data())
+    return ExpressionReferences(tuple(sorted(tensors)), tuple(sorted(scalars)))
 
 
 def canonical_json(value: object) -> str:
