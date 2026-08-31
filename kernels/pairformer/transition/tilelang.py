@@ -2,178 +2,18 @@
 # Mindclade Proprietary and Confidential.
 # SPDX-License-Identifier: LicenseRef-Mindclade-Proprietary
 
-"""AF3 Pairformer SwiGLU transition contraction.
-
-This operation owns the fused activation and down-projection core only. The
-model layer owns layer normalization, the up projection that produces ``gate``
-and ``value``, residual/dropout policy, sharding, and block orchestration.
-
-Logical contract:
-
-    output = mask * (silu(gate) * value) @ output_weight + mask * output_bias
-
-Inputs use explicit three-dimensional layouts so the same primitive can serve
-flattened pair rows and single-representation rows without hidden transposes.
-The TileLang schedule is an unqualified offline candidate until exact generated
-source, numerical behavior, resource use, and performance are established on
-its declared hardware/software envelope.
-"""
+"""Offline TileLang forward builder for the Pairformer transition contraction."""
 
 from typing import Any
 
-from kernels.native.tilelang.decorator import mindclade_kernel
 from kernels.native.tilelang.swizzle import (
-    CtaRasterPolicy,
-    OperandRole,
-    RasterOrder,
-    SharedLayoutKind,
-    SharedLayoutPolicy,
-    apply_cta_raster,
-    shared_layout_for,
+    CtaRasterPolicy, OperandRole, RasterOrder, SharedLayoutKind,
+    SharedLayoutPolicy, apply_cta_raster, shared_layout_for,
 )
 from kernels.native.tilelang.targets import capability_manifest, normalize_target, validate_toolchain
 
 _SUPPORTED_DTYPES = {"float16", "bfloat16", "float32"}
 
-
-def _torch() -> Any:
-    import torch
-
-    return torch
-
-
-def _validate(
-    gate: Any,
-    value: Any,
-    output_weight: Any,
-    output_bias: Any,
-    mask: Any,
-) -> tuple[int, int, int, int]:
-    torch = _torch()
-    tensors = (gate, value, output_weight, output_bias, mask)
-    if any(not isinstance(tensor, torch.Tensor) for tensor in tensors):
-        raise TypeError("transition arguments must be tensors")
-    if gate.ndim != 3 or value.ndim != 3:
-        raise ValueError("gate and value must have shape [batch, rows, hidden]")
-    if gate.shape != value.shape:
-        raise ValueError("gate and value must have identical shapes")
-    if output_weight.ndim != 2:
-        raise ValueError("output_weight must have shape [hidden, channels]")
-    if output_bias.ndim != 1:
-        raise ValueError("output_bias must have shape [channels]")
-    if mask.ndim != 2 or tuple(mask.shape) != tuple(gate.shape[:2]):
-        raise ValueError("mask must have shape [batch, rows]")
-    batch, rows, hidden = (int(size) for size in gate.shape)
-    if int(output_weight.shape[0]) != hidden:
-        raise ValueError("output_weight hidden dimension does not match inputs")
-    channels = int(output_weight.shape[1])
-    if int(output_bias.shape[0]) != channels:
-        raise ValueError("output_bias channel dimension does not match output_weight")
-    if gate.dtype not in (torch.float16, torch.bfloat16, torch.float32, torch.float64):
-        raise TypeError("gate/value must use FP16, BF16, FP32, or FP64")
-    if value.dtype != gate.dtype or output_weight.dtype != gate.dtype or output_bias.dtype != gate.dtype:
-        raise TypeError("gate, value, output_weight, and output_bias must share dtype")
-    if mask.dtype not in (torch.bool, torch.float16, torch.bfloat16, torch.float32, torch.float64):
-        raise TypeError("mask must be boolean or floating point")
-    if any(tensor.device != gate.device for tensor in tensors[1:]):
-        raise ValueError("all transition tensors must share one device")
-    return batch, rows, hidden, channels
-
-
-def transition_reference(
-    gate: Any,
-    value: Any,
-    output_weight: Any,
-    output_bias: Any,
-    mask: Any,
-) -> Any:
-    """Readable semantic authority with FP32 accumulation for low precision."""
-
-    torch = _torch()
-    _validate(gate, value, output_weight, output_bias, mask)
-    accumulation_dtype = torch.float64 if gate.dtype == torch.float64 else torch.float32
-    gate_acc = gate.to(accumulation_dtype)
-    value_acc = value.to(accumulation_dtype)
-    weight_acc = output_weight.to(accumulation_dtype)
-    bias_acc = output_bias.to(accumulation_dtype)
-    activated = torch.nn.functional.silu(gate_acc) * value_acc
-    projected = torch.matmul(activated, weight_acc) + bias_acc
-    masked = projected * mask.to(accumulation_dtype).unsqueeze(-1)
-    return masked.to(gate.dtype)
-
-
-def fake(
-    gate: Any,
-    value: Any,
-    output_weight: Any,
-    output_bias: Any,
-    mask: Any,
-) -> Any:
-    batch, rows, _hidden, channels = _validate(
-        gate, value, output_weight, output_bias, mask
-    )
-    return gate.new_empty((batch, rows, channels))
-
-
-def setup_context(ctx: Any, inputs: tuple[Any, ...], output: Any) -> None:
-    del output
-    gate, value, output_weight, output_bias, mask = inputs
-    ctx.save_for_backward(gate, value, output_weight, output_bias, mask)
-
-
-def backward(ctx: Any, grad_output: Any) -> tuple[Any, Any, Any, Any, None]:
-    torch = _torch()
-    gate, value, output_weight, output_bias, mask = ctx.saved_tensors
-    needs = tuple(bool(item) for item in ctx.needs_input_grad[:4])
-    if not any(needs):
-        return None, None, None, None, None
-
-    originals = (gate, value, output_weight, output_bias)
-    differentiable: list[Any] = []
-    prepared: list[Any] = []
-    for original, required in zip(originals, needs, strict=True):
-        candidate = original.detach().requires_grad_(required)
-        prepared.append(candidate)
-        if required:
-            differentiable.append(candidate)
-
-    with torch.enable_grad():
-        result = transition_reference(*prepared, mask)
-    computed = torch.autograd.grad(
-        result,
-        tuple(differentiable),
-        grad_output,
-        allow_unused=True,
-        create_graph=torch.is_grad_enabled(),
-    )
-    iterator = iter(computed)
-    aligned = tuple(next(iterator) if required else None for required in needs)
-    return aligned[0], aligned[1], aligned[2], aligned[3], None
-
-
-@mindclade_kernel(
-    name="transition",
-    family="pairformer",
-    schema=(
-        "transition(Tensor gate, Tensor value, Tensor output_weight, "
-        "Tensor output_bias, Tensor mask) -> Tensor"
-    ),
-    fake={
-        "module": "kernels.pairformer.transition.tilelang",
-        "symbol": "fake",
-    },
-    autograd={
-        "mode": "registered",
-        "setup_context": {
-            "module": "kernels.pairformer.transition.tilelang",
-            "symbol": "setup_context",
-        },
-        "backward": {
-            "module": "kernels.pairformer.transition.tilelang",
-            "symbol": "backward",
-        },
-    },
-)
 def build_tilelang_program(
     *,
     target: str,

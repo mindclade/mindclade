@@ -4,7 +4,7 @@
 load("@rules_python//python:defs.bzl", "py_test")
 
 exports_files(
-    ["tilelang.py"],
+    ["spec.py", "tilelang.py"],
     visibility = ["//kernels/native:__pkg__"],
 )
 
@@ -12,6 +12,9 @@ py_test(
     name = "test_triangle_attention",
     srcs = [
         "__init__.py",
+        "dispatch.py",
+        "reference.py",
+        "spec.py",
         "tests/__init__.py",
         "tests/test_triangle_attention.py",
         "tilelang.py",
@@ -19,7 +22,7 @@ py_test(
     main = "tests/test_triangle_attention.py",
     tags = ["manual", "requires-hermetic-torch-2.10"],
     deps = [
-        "//kernels/native:tilelang_codegen_lib",
+        "//kernels/api:api",
         "@mindclade_pypi//pytest",
     ],
 )

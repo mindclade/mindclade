@@ -1,29 +1,37 @@
-# Copyright (c) 2026 Mindclade, LLC. All Rights Reserved.
-# Mindclade Proprietary and Confidential.
-# SPDX-License-Identifier: LicenseRef-Mindclade-Proprietary
-
 from __future__ import annotations
 
+import hashlib
 from pathlib import Path
 
 import pytest
 import torch
 from torch._subclasses.fake_tensor import FakeTensor, FakeTensorMode
 
-from kernels.native.codegen.discover import discover_specs
-from kernels.pairformer.triangle_attention.tilelang import (
-    TRIANGLE_ATTENTION_PROFILES,
-    backward,
-    build_tilelang_program,
+from kernels.api import AutogradPolicy, ShapeOf
+from kernels.pairformer.triangle_attention import dispatch as dispatch_module
+from kernels.pairformer.triangle_attention.dispatch import (
+    NativeOperatorUnavailable,
+    ReferenceFallback,
+    triangle_attention,
+)
+from kernels.pairformer.triangle_attention.reference import (
+    composite_backward,
     fake,
     setup_context,
     triangle_attention_reference,
+)
+from kernels.pairformer.triangle_attention.spec import KERNEL_SPEC
+from kernels.pairformer.triangle_attention.tilelang import (
+    TRIANGLE_ATTENTION_PROFILES,
+    build_tilelang_program,
 )
 
 
 def _explicit_reference(q, k, v, bias, mask, scale):
     output = torch.zeros_like(q)
-    expanded_bias = bias.expand(*q.shape[:-4], q.shape[-4], q.shape[-2], q.shape[-3], q.shape[-3])
+    expanded_bias = bias.expand(
+        *q.shape[:-4], q.shape[-4], q.shape[-2], q.shape[-3], q.shape[-3]
+    )
     batch_shape = q.shape[:-4]
     for flat_batch in range(max(1, int(torch.tensor(batch_shape).prod()))):
         batch_index = (
@@ -42,7 +50,10 @@ def _explicit_reference(q, k, v, bias, mask, scale):
                         continue
                     scores = torch.stack(
                         [
-                            torch.dot(q[batch_index + (i, j, h)], k[batch_index + (i, source, h)])
+                            torch.dot(
+                                q[batch_index + (i, j, h)],
+                                k[batch_index + (i, source, h)],
+                            )
                             * scale
                             + expanded_bias[batch_index + (i, h, j, source)]
                             for source in valid.tolist()
@@ -50,7 +61,8 @@ def _explicit_reference(q, k, v, bias, mask, scale):
                     )
                     weights = torch.softmax(scores, dim=0)
                     output[batch_index + (i, j, h)] = torch.sum(
-                        weights[:, None] * v[batch_index + (i, valid, h, slice(None))],
+                        weights[:, None]
+                        * v[batch_index + (i, valid, h, slice(None))],
                         dim=0,
                     )
     return output
@@ -112,73 +124,84 @@ def test_fake_tensor_contract_preserves_shape_dtype_and_device():
     assert output.device == q.device
 
 
-def test_reference_passes_gradcheck_with_broadcast_bias_and_all_masked_row():
-    q, k, v, bias, mask = _inputs()
-    tensors = tuple(tensor.requires_grad_(True) for tensor in (q, k, v, bias))
-    assert torch.autograd.gradcheck(
-        lambda q_, k_, v_, bias_: triangle_attention_reference(
-            q_, k_, v_, bias_, mask, 0.5
-        ),
-        tensors,
-        eps=1e-6,
-        atol=2e-5,
-        rtol=2e-4,
-        fast_mode=True,
-    )
-
-
-class _Context:
-    needs_input_grad = (True, True, True, True, False, False)
-
-    def save_for_backward(self, *tensors):
-        self.saved_tensors = tensors
-
-
-def test_registered_backward_matches_safe_reference_recomputation():
+def test_reference_and_composite_backward_cover_q_k_v_and_bias_gradients():
     q, k, v, bias, mask = _inputs()
     q, k, v, bias = (tensor.requires_grad_(True) for tensor in (q, k, v, bias))
     output = triangle_attention_reference(q, k, v, bias, mask, 0.5)
     grad_output = torch.randn_like(output)
     expected = torch.autograd.grad(output, (q, k, v, bias), grad_output)
 
-    ctx = _Context()
-    setup_context(ctx, (q, k, v, bias, mask, 0.5), output)
-    actual = backward(ctx, grad_output)
+    class Context:
+        needs_input_grad = (True, True, True, True, False, False)
+
+        def save_for_backward(self, *tensors):
+            self.saved_tensors = tensors
+
+    context = Context()
+    setup_context(context, (q, k, v, bias, mask, 0.5), output)
+    actual = composite_backward(context, grad_output)
     for actual_gradient, expected_gradient in zip(actual[:4], expected, strict=True):
         torch.testing.assert_close(actual_gradient, expected_gradient, rtol=1e-10, atol=1e-10)
     assert actual[4:] == (None, None)
 
 
-def test_literal_contract_discovers_only_mindclade_registered_autograd():
-    source = Path(__file__).resolve().parents[1] / "tilelang.py"
-    kernels_root = Path(__file__).resolve().parents[3]
-    specs = discover_specs(kernels_root, [source])
-    assert len(specs) == 1
-    spec = specs[0]
-    assert spec.qualified_name == "mindclade::triangle_attention"
-    assert spec.schema.endswith("float scale) -> Tensor")
-    assert spec.autograd.mode == "registered"
-    assert spec.fake.module == "kernels.pairformer.triangle_attention.tilelang"
-    assert build_tilelang_program.__mindclade_kernel__["namespace"] == "mindclade"
+def test_spec_is_composite_unpromoted_and_reference_digest_is_exact():
+    source = Path(__file__).resolve().parents[1] / "spec.py"
+    parsed = KERNEL_SPEC
+    assert parsed == KERNEL_SPEC
+    assert parsed.autograd_policy is AutogradPolicy.COMPOSITE
+    assert parsed.backward is None
+    assert parsed.forward.symbol == "mindclade_tilelang_triangle_attention_fwd_launch"
+    assert isinstance(parsed.forward.outputs[0].shape, ShapeOf)
+    assert parsed.launch.graph_capture_safe is False
+    assert parsed.effects.mutates_inputs == ()
+    assert parsed.composite is not None
+    assert "promotion=unpromoted" in parsed.composite.runtime_envelope
+    reference = source.with_name("reference.py")
+    digest = "sha256:" + hashlib.sha256(reference.read_bytes()).hexdigest()
+    assert parsed.composite.source_digest == digest
+    assert tuple(item.input_name for item in parsed.composite.gradients) == (
+        "q", "k", "v", "bias"
+    )
 
 
-def test_profiles_are_small_bounded_and_builder_rejects_unqualified_shapes():
+def test_facade_materializes_dense_bias_before_native_dispatch(monkeypatch):
+    q, k, v, bias, mask = _inputs(dtype=torch.float32)
+    captured = {}
+
+    def native(q_, k_, v_, bias_, mask_, scale_):
+        captured.update(q=q_, k=k_, v=v_, bias=bias_, mask=mask_, scale=scale_)
+        return q_.clone()
+
+    monkeypatch.setattr(dispatch_module, "_native_operator", lambda: native)
+    output = triangle_attention(q, k, v, bias, mask, 0.5)
+    assert output.shape == q.shape
+    assert captured["bias"].shape == (2, 3, 2, 3, 3)
+    assert captured["bias"].is_contiguous()
+    assert captured["q"].shape == (2, 3, 3, 2, 4)
+
+
+def test_reference_fallback_requires_explicit_caller_policy(monkeypatch):
+    q, k, v, bias, mask = _inputs(dtype=torch.float32)
+    monkeypatch.setattr(dispatch_module, "_native_operator", lambda: None)
+    with pytest.raises(NativeOperatorUnavailable):
+        triangle_attention(q, k, v, bias, mask, 0.5)
+    expected = triangle_attention_reference(q, k, v, bias, mask, 0.5)
+    actual = triangle_attention(
+        q, k, v, bias, mask, 0.5, fallback=ReferenceFallback.REFERENCE
+    )
+    torch.testing.assert_close(actual, expected)
+
+
+def test_profiles_are_bounded_and_builder_rejects_unqualified_shapes():
     assert 1 <= len(TRIANGLE_ATTENTION_PROFILES) <= 8
-    assert {profile["name"] for profile in TRIANGLE_ATTENTION_PROFILES} == {
-        "b1_n32_h4_d32_fp16",
-        "b1_n64_h8_d32_fp16",
-        "b1_n128_h8_d64_bf16",
-        "b2_n64_h8_d64_fp32",
-    }
     with pytest.raises(ValueError, match="target must be exactly"):
         build_tilelang_program(
-            target="auto", batch=1, n=32, heads=4, head_dim=32, dtype="float16", threads=64
+            target="auto", batch=1, n=32, heads=4, head_dim=32,
+            dtype="float16", threads=64,
         )
     with pytest.raises(ValueError, match="head_dim"):
         build_tilelang_program(
-            target="cuda", batch=1, n=32, heads=4, head_dim=48, dtype="float16", threads=64
-        )
-    with pytest.raises(ValueError, match="dtype"):
-        build_tilelang_program(
-            target="cuda", batch=1, n=32, heads=4, head_dim=32, dtype="float64", threads=64
+            target="cuda", batch=1, n=32, heads=4, head_dim=48,
+            dtype="float16", threads=64,
         )

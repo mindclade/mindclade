@@ -60,6 +60,7 @@ py_library(
         "tilelang/targets.py",
         "tilelang/swizzle.py",
     ],
+    visibility = ["//kernels/pairformer/transition:__pkg__"],
 )
 
 py_library(
@@ -74,7 +75,10 @@ py_library(
         ":native_operator_authoring_sources",
         "manifests/native_ops.schema.json",
     ],
-    deps = [":tilelang_codegen_lib"],
+    deps = [
+        ":tilelang_codegen_lib",
+        "//kernels/api:api",
+    ],
 )
 
 # This is the sole generated-output owner. It runs only as an explicit Bazel

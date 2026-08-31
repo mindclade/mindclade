@@ -5732,6 +5732,9 @@ mindclade/
 │   │   │   ├── cases.yaml
 │   │   │   └── BUILD.bazel
 │   │   └── pair_weighted_average/
+│   │       ├── dispatch.py
+│   │       ├── reference.py
+│   │       ├── spec.py
 │   │       ├── BUILD.bazel
 │   │       ├── __init__.py
 │   │       ├── test_tilelang.py
@@ -5790,6 +5793,7 @@ mindclade/
 │       │   ├── __init__.py
 │       │   ├── discover.py
 │       │   ├── generate.py
+│       │   ├── parse_literal_ast.py
 │       │   └── schema.py
 │       ├── component.yaml
 │       ├── cuda/
@@ -5839,6 +5843,7 @@ mindclade/
 │       │   ├── test_manifest.py
 │       │   ├── test_namespace.py
 │       │   ├── test_opcheck.py
+│       │   ├── test_parse_literal_ast.py
 │       │   ├── test_policy.py
 │       │   ├── test_qualification.py
 │       │   ├── test_reference_runtime.py
@@ -7154,7 +7159,13 @@ mindclade/
 │   │   ├── generate_protocols.py
 │   │   ├── generate_schemas.py
 │   │   ├── verify_generated_drift.py
-│   │   └── toolchain.lock.json
+│   │   ├── toolchain.lock.json
+│   │   └── rust_plugins/
+│   │       ├── Cargo.toml
+│   │       └── src/
+│   │           └── bin/
+│   │               ├── protoc-gen-prost.rs
+│   │               └── protoc-gen-tonic.rs
 │   ├── docs/
 │   │   ├── render_architecture_blueprint.py
 │   │   ├── validate_blueprint_sources.py
@@ -7357,6 +7368,7 @@ mindclade/
 │   │   ├── 0008-founder-bootstrap-public-estate-transition.md
 │   │   ├── connected-ratification.v1.schema.json
 │   │   ├── 0013-deepep-package-and-qualification-boundary.md
+│   │   ├── 0015-all-contracts-clean-v1-baseline.md
 │   │   ├── 0010-modular-go-control-plane-relational-durability-worker-isolation.md
 │   │   ├── 0011-sqp-001-scientific-qualification-profile.md
 │   │   ├── 0012-http-json-operation-projection-python-sdk.md

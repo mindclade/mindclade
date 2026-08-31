@@ -14,10 +14,10 @@
 ## Decision record metadata
 
 - Affected invariants: repository-path manifest authority, activation-gated source, typed and immutable kernel contracts, import-free declarations, build-time code generation, Stable ABI ownership, explicit forward/backward co-promotion, deterministic runtime dispatch, and evidence-gated production authority
-- Affected paths: the exact \`kernels/api/\` source, Bazel, and test paths declared by \`KERNEL_PLATFORM_SOURCE_PATHS\` in \`tools/repo/path_policy.py\`, this ADR, and the generated repository architecture projections
+- Affected paths: the exact \`kernels/api/\` source, Bazel, and test paths plus the exact \`spec.py\`, \`reference.py\`, and \`dispatch.py\` paths for the five existing Pairformer operations declared by \`KERNEL_PLATFORM_AUTHORIZED_PATHS\` in \`tools/repo/path_policy.py\`, this ADR, and the generated repository architecture projections
 - Affected contracts: typed expression AST, semantic operator contract, provider forward/backward contract, output and named-gradient metadata, effect and launch contracts, program-group/workspace contracts, capability and numerical envelopes, implementation/workload/schedule/environment identities, and qualification identities
 - Security and safety impact: permits reviewable, import-safe contract source and tests while prohibiting runtime discovery, request-time compilation or tuning, unverified native loading, artifact promotion, production dispatch, or accelerator qualification claims
-- Migration: establish \`kernels/api/\` as the single typed contract authority before migrating operation declarations from legacy operation-local \`tilelang.py\` metadata to canonical import-free \`spec.py\` declarations
+- Migration: establish \`kernels/api/\` as the single typed contract authority, then migrate the five existing Pairformer declarations from legacy operation-local \`tilelang.py\` metadata to canonical import-free \`spec.py\` declarations with independent \`reference.py\` semantics and explicit \`dispatch.py\` facades
 - Rollback: remove the early source surface and its manifest additions by expiry, or activate only the independently reviewed subset supported by completed Wave 2S evidence
 - Required evidence: closed path-manifest authority, real Bazel ownership, deterministic serialization and digest tests, unsafe-expression rejection, contract consistency tests, import-free discovery, generated-code drift, Stable ABI integration, numerical qualification, immutable artifacts, explicit fallback, revocation, and rollback according to lifecycle stage
 
@@ -25,13 +25,13 @@
 
 The approved TileLang platform constitution separates operation semantics, optimized mathematics, offline compilation and qualification, and runtime selection. \`kernels/api/\` is the dependency root for that architecture: it defines immutable, slotted, versioned, JSON-serializable contracts and a restricted expression language without importing TileLang, Torch, native code generation, tuning, or runtime dispatch.
 
-The blueprint already reserves a smaller \`kernels/api/\` target surface for Wave 2S. The implementation requires a broader, concrete contract set before operation migration, import-free discovery, generated Stable ABI bindings, or qualification machinery can be implemented coherently. Repository law otherwise prohibits populating target paths before activation. Treating source presence as activation would be incorrect because contract tests cannot prove GPU correctness, numerical parity, hardware compatibility, artifact integrity, or production readiness.
+The blueprint already reserves a smaller \`kernels/api/\` target surface for Wave 2S. The implementation requires a broader, concrete contract set and canonical operation-local declarations before import-free discovery, generated Stable ABI bindings, or qualification machinery can be implemented coherently. Repository law otherwise prohibits populating target paths before activation. Treating source presence as activation would be incorrect because contract and reference tests cannot prove GPU correctness, numerical parity, hardware compatibility, artifact integrity, or production readiness.
 
 ADR-0009 remains the bounded authority for the existing \`kernels/native/\` incubation and five operation-local Pairformer packages. It does not authorize this general kernel-platform contract layer. This record deliberately creates a separate closed authority rather than widening ADR-0009.
 
 ## Decision
 
-Permit only the exact files in \`KERNEL_PLATFORM_SOURCE_PATHS\` to exist before Wave 2S as a bounded source-development exception. Every entry remains owned by \`ml-systems-performance\`, belongs to component \`kernels\`, has lifecycle status \`target\`, retains activation wave \`2S\`, and has \`production_authority\` false by implication. The source authority is hand-authored. Physical source, passing tests, generated schemas, or a loadable test library do not constitute activation.
+Permit only the exact files in \`KERNEL_PLATFORM_AUTHORIZED_PATHS\` to exist before Wave 2S as a bounded source-development exception. \`KERNEL_PLATFORM_SOURCE_PATHS\` contains only genuine reconciliation additions, while \`KERNEL_PLATFORM_PREDECLARED_OPERATION_PATHS\` contains operation paths already present in the immutable repository-tree authority; neither set may expand implicitly. Together they include exactly \`spec.py\`, \`reference.py\`, and \`dispatch.py\` for \`outer_product_mean\`, \`pair_weighted_average\`, \`transition\`, \`triangle_attention\`, and \`triangle_multiplication\`; they do not authorize another operation or another operation-local file. Every entry remains owned by \`ml-systems-performance\`, belongs to component \`kernels\`, has lifecycle status \`target\`, retains activation wave \`2S\`, and has \`production_authority\` false by implication. The source authority is hand-authored. Physical source, passing tests, generated schemas, or a loadable test library do not constitute activation.
 
 The authorized API surface contains:
 
@@ -43,6 +43,7 @@ The authorized API surface contains:
 - a narrow package export surface;
 - one Bazel library target, \`//kernels/api:api\`; and
 - focused contract and expression tests, \`//kernels/api/tests:test_contracts\` and \`//kernels/api/tests:test_expressions\`.
+- one canonical declarative \`spec.py\`, independent semantic \`reference.py\`, and explicit Python-facade \`dispatch.py\` for each of the five existing Pairformer operations, owned by that operation's existing Bazel package and focused test target.
 
 The expression AST may evaluate only whitelisted literal, metadata-reference, arithmetic, comparison, Boolean, set-membership, dtype/device, and statically decidable selection nodes. It may not use \`eval\`, \`exec\`, arbitrary attributes, arbitrary calls, filesystem state, environment state, imports with side effects, or runtime-dependent code execution.
 
@@ -69,6 +70,6 @@ The authorized code remains unusable as a production provider. It carries no GPU
 
 ## Qualification and rollback
 
-Source qualification checks the ADR and path-policy authority, exact closed path set, lifecycle metadata, Bazel labels, expression serialization and unsafe-node rejection, contract consistency, deterministic digests, and absence of runtime/compiler dependencies. Later waves add import-free discovery, generated Stable ABI schemas, FakeTensor and named autograd wiring, provider launcher linking, capability validator equivalence, numerical and gradient parity, artifact integrity, accelerator evidence, and release receipts.
+Source qualification checks the ADR and path-policy authority, exact closed path set, lifecycle metadata, Bazel labels, expression serialization and unsafe-node rejection, contract consistency, operation-local declaration/reference/facade ownership, deterministic digests, and absence of runtime/compiler dependencies. Later waves add import-free discovery, generated Stable ABI schemas, FakeTensor and named autograd wiring, provider launcher linking, capability validator equivalence, numerical and gradient parity, artifact integrity, accelerator evidence, and release receipts.
 
 Connected and production qualification remain unavailable under this ADR. Any active status, production dispatch, runtime discovery or compilation, request-time tuning, unqualified artifact load, unsupported hardware claim, silent fallback, incomplete required backward, mutable promotion record, or post-expiry source exception fails closed. Rollback removes the exact source additions and this policy exception, regenerates the architecture projections from their approved authorities, and preserves review evidence.

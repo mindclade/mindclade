@@ -43,6 +43,7 @@ from owner_policy import (  # noqa: E402
     validate_owners,
 )
 from path_policy import (  # noqa: E402
+    ALL_CONTRACT_RUST_PLUGIN_PATHS,
     PolicyError,
     discover_actual_paths,
     is_all_contract_baseline_path,
@@ -71,9 +72,9 @@ class RepositoryPolicyTest(unittest.TestCase):
 
     def test_manifest_is_semantically_valid(self) -> None:
         self.assertEqual(validate_manifest(self.manifest), [])
-        self.assertEqual(len(self.manifest["paths"]), 2632)
+        self.assertEqual(len(self.manifest["paths"]), 2635)
         wave_one = [entry for entry in self.manifest["paths"] if entry["activation_wave"] == "1"]
-        self.assertEqual(len(wave_one), 398)
+        self.assertEqual(len(wave_one), 401)
         for entry in wave_one:
             with self.subTest(path=entry["path"]):
                 status = entry["status"]
@@ -81,7 +82,10 @@ class RepositoryPolicyTest(unittest.TestCase):
                 if status == "target":
                     self.assertEqual(entry["build_targets"], [])
                     self.assertEqual(entry["test_targets"], [])
-                elif is_all_contract_baseline_path(entry["path"]):
+                elif (
+                    is_all_contract_baseline_path(entry["path"])
+                    or entry["path"] in ALL_CONTRACT_RUST_PLUGIN_PATHS
+                ):
                     self.assertEqual(entry["build_targets"], ["//:all_contract_sources"])
                     self.assertEqual(entry["test_targets"], ["//:all_contract_tests"])
                 elif entry["path"].startswith("third_party/packages/deep_ep/"):
