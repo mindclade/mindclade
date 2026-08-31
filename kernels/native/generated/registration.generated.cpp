@@ -1,4 +1,4 @@
-// GENERATED FILE - DO NOT EDIT. Generator: kernels.native.codegen.generate@4.
+// GENERATED FILE - DO NOT EDIT. Generator: kernels.native.codegen.generate@5.
 #include <torch/csrc/stable/library.h>
 
 STABLE_TORCH_LIBRARY(mindclade, m) {

@@ -17,7 +17,7 @@ function(mindclade_assert_torch_stable_abi requested_version)
   endif()
 endfunction()
 
-function(mindclade_apply_native_target_policy target)
+function(_mindclade_apply_native_common_target_policy target)
   if(NOT TARGET "${target}")
     message(FATAL_ERROR "Unknown native target: ${target}")
   endif()
@@ -26,7 +26,6 @@ function(mindclade_apply_native_target_policy target)
   target_compile_definitions(
     "${target}"
     PRIVATE
-      MINDCLADE_NATIVE_SCHEMA_ONLY=1
       MINDCLADE_TORCH_STABLE_ABI_MAJOR=2
       MINDCLADE_TORCH_STABLE_ABI_MINOR=10
   )
@@ -49,4 +48,18 @@ function(mindclade_apply_native_target_policy target)
       POSITION_INDEPENDENT_CODE ON
       VISIBILITY_INLINES_HIDDEN YES
   )
+endfunction()
+
+# Compatibility entry point for the stable/schema target. GPU registry object
+# targets must use mindclade_apply_gpu_registry_target_policy instead.
+function(mindclade_apply_native_target_policy target)
+  _mindclade_apply_native_common_target_policy("${target}")
+  target_compile_definitions(
+    "${target}"
+    PRIVATE MINDCLADE_NATIVE_SCHEMA_ONLY=1
+  )
+endfunction()
+
+function(mindclade_apply_gpu_registry_target_policy target)
+  _mindclade_apply_native_common_target_policy("${target}")
 endfunction()

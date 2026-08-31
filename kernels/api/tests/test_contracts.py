@@ -31,7 +31,14 @@ from kernels.api.kernel import AutogradPolicy, CompositeAutogradSpec, KernelSpec
 from kernels.api.launch import DeterminismClass, LaunchContract
 from kernels.api.numerics import NumericalEnvelope, TensorTolerance
 from kernels.api.output import InitializationSpec, OutputSpec
-from kernels.api.program_group import ProgramGroupSpec, ProgramNodeSpec, WorkspaceSpec
+from kernels.api.program_group import (
+    ProgramGroupSpec,
+    ProgramNodeSpec,
+    WorkspaceAccess,
+    WorkspaceLifetime,
+    WorkspaceSpec,
+    WorkspaceUseSpec,
+)
 from kernels.api.qualification import QualifiedCapability
 from kernels.api.schedule import ScheduleSpec, SpecializationSpec
 from kernels.api.workload import WorkloadSpec
@@ -435,8 +442,33 @@ def test_zero_missing_gradient_requires_and_consumes_saved_forward_output() -> N
         hidden_device_allocation=True,
         graph_capture_safe=False,
     )
+    zero_workspace = WorkspaceSpec(
+        "zero_grad",
+        ShapeTuple((DimRef("x", 0), DimRef("x", 1))),
+        ConstantDType("float32"),
+    )
+    zero_group = ProgramGroupSpec(
+        nodes=(
+            ProgramNodeSpec(
+                "zero_grad",
+                "pkg:zero_grad",
+                "zero_grad_launch",
+                workspace_uses=(
+                    WorkspaceUseSpec("zero_grad", WorkspaceAccess.WRITE),
+                ),
+            ),
+        ),
+        workspaces=(zero_workspace,),
+    )
+    allocated_forward = ForwardSpec(
+        schema="_example_fwd(Tensor x) -> Tensor result",
+        builder="pkg:forward",
+        symbol="example_fwd_launch",
+        outputs=(saved_result,),
+        program_group=zero_group,
+    )
     assert required_kernel(
-        forward=forward,
+        forward=allocated_forward,
         backward=backward,
         launch=allocation_launch,
     ).backward is backward
@@ -569,20 +601,206 @@ def test_program_group_has_deterministic_topology_and_rejects_cycles() -> None:
         zero_initialize=True,
     )
     group = ProgramGroupSpec(
-        (
-            ProgramNodeSpec("dq", "pkg:dq", "dq_launch", depends_on=("delta",)),
-            ProgramNodeSpec("delta", "pkg:delta", "delta_launch", workspaces=(workspace,)),
-            ProgramNodeSpec("dkv", "pkg:dkv", "dkv_launch", depends_on=("delta",)),
-        )
+        nodes=(
+            ProgramNodeSpec(
+                "dq", "pkg:dq", "dq_launch", depends_on=("delta",),
+                workspace_uses=(WorkspaceUseSpec("delta", WorkspaceAccess.READ),),
+            ),
+            ProgramNodeSpec(
+                "delta", "pkg:delta", "delta_launch",
+                workspace_uses=(WorkspaceUseSpec("delta", WorkspaceAccess.WRITE),),
+            ),
+            ProgramNodeSpec(
+                "dkv", "pkg:dkv", "dkv_launch", depends_on=("delta",),
+                workspace_uses=(WorkspaceUseSpec("delta", WorkspaceAccess.READ),),
+            ),
+        ),
+        workspaces=(workspace,),
     )
     assert group.topological_order() == ("delta", "dkv", "dq")
     with pytest.raises(KernelContractError, match="cycle"):
         ProgramGroupSpec(
-            (
+            nodes=(
                 ProgramNodeSpec("a", "pkg:a", "a_launch", depends_on=("b",)),
                 ProgramNodeSpec("b", "pkg:b", "b_launch", depends_on=("a",)),
             )
         )
+
+
+def test_program_group_canonicalizes_dag_and_workspace_identity() -> None:
+    first = WorkspaceSpec(
+        "first", ShapeTuple((DimRef("x", 0),)), ConstantDType("float32")
+    )
+    second = WorkspaceSpec(
+        "second", ShapeTuple((DimRef("x", 1),)), ConstantDType("float32")
+    )
+    producer = ProgramNodeSpec(
+        "producer",
+        "pkg:producer",
+        "producer_launch",
+        workspace_uses=(
+            WorkspaceUseSpec("second", WorkspaceAccess.WRITE),
+            WorkspaceUseSpec("first", WorkspaceAccess.WRITE),
+        ),
+    )
+    consumer = ProgramNodeSpec(
+        "consumer",
+        "pkg:consumer",
+        "consumer_launch",
+        depends_on=("producer",),
+        workspace_uses=(
+            WorkspaceUseSpec("second", WorkspaceAccess.READ),
+            WorkspaceUseSpec("first", WorkspaceAccess.READ),
+        ),
+    )
+    left = ProgramGroupSpec((consumer, producer), (second, first))
+    right = ProgramGroupSpec((producer, consumer), (first, second))
+    assert left.nodes == right.nodes == (producer, consumer)
+    assert tuple(item.name for item in left.workspaces) == ("first", "second")
+    assert left.digest == right.digest
+
+
+def test_program_group_rejects_invalid_workspace_dataflow() -> None:
+    workspace = WorkspaceSpec(
+        "scratch", ShapeTuple((DimRef("x", 0),)), ConstantDType("float32")
+    )
+    with pytest.raises(KernelContractError, match="undeclared workspace"):
+        ProgramGroupSpec(
+            nodes=(ProgramNodeSpec(
+                "node", "pkg:node", "node_launch",
+                workspace_uses=(WorkspaceUseSpec("missing", WorkspaceAccess.WRITE),),
+            ),),
+        )
+    with pytest.raises(KernelContractError, match="multiple writers"):
+        ProgramGroupSpec(
+            nodes=(
+                ProgramNodeSpec(
+                    "a", "pkg:a", "a_launch",
+                    workspace_uses=(WorkspaceUseSpec("scratch", WorkspaceAccess.WRITE),),
+                ),
+                ProgramNodeSpec(
+                    "b", "pkg:b", "b_launch",
+                    workspace_uses=(WorkspaceUseSpec("scratch", WorkspaceAccess.WRITE),),
+                ),
+            ),
+            workspaces=(workspace,),
+        )
+    with pytest.raises(KernelContractError, match="must transitively depend"):
+        ProgramGroupSpec(
+            nodes=(
+                ProgramNodeSpec(
+                    "producer", "pkg:producer", "producer_launch",
+                    workspace_uses=(WorkspaceUseSpec("scratch", WorkspaceAccess.WRITE),),
+                ),
+                ProgramNodeSpec(
+                    "reader", "pkg:reader", "reader_launch",
+                    workspace_uses=(WorkspaceUseSpec("scratch", WorkspaceAccess.READ),),
+                ),
+            ),
+            workspaces=(workspace,),
+        )
+
+
+def test_workspace_lifetime_writer_and_domain_laws() -> None:
+    with pytest.raises(KernelContractError, match="SHAPE-domain"):
+        WorkspaceSpec("bad", ConstantDType("float32"), ConstantDType("float32"))
+    with pytest.raises(KernelContractError, match="typed dtype"):
+        WorkspaceSpec(
+            "bad", ShapeTuple((DimRef("x", 0),)), DimRef("x", 0)  # type: ignore[arg-type]
+        )
+    with pytest.raises(KernelContractError, match="zero_initialize must be a bool"):
+        WorkspaceSpec(
+            "bad", ShapeTuple((DimRef("x", 0),)), ConstantDType("float32"),
+            zero_initialize=1,  # type: ignore[arg-type]
+        )
+    local = WorkspaceSpec(
+        "local", ShapeTuple((DimRef("x", 0),)), ConstantDType("float32"),
+        zero_initialize=True, lifetime=WorkspaceLifetime.NODE,
+    )
+    with pytest.raises(KernelContractError, match="exactly one using node"):
+        ProgramGroupSpec(
+            nodes=(
+                ProgramNodeSpec(
+                    "a", "pkg:a", "a_launch",
+                    workspace_uses=(WorkspaceUseSpec("local", WorkspaceAccess.READ),),
+                ),
+                ProgramNodeSpec(
+                    "b", "pkg:b", "b_launch", depends_on=("a",),
+                    workspace_uses=(WorkspaceUseSpec("local", WorkspaceAccess.READ),),
+                ),
+            ),
+            workspaces=(local,),
+        )
+
+
+def test_output_requires_exact_expression_domains_and_boolean_types() -> None:
+    with pytest.raises(KernelContractError, match="DTYPE-domain"):
+        OutputSpec(
+            "bad", ShapeTuple((DimRef("x", 0),)), DimRef("x", 0),
+            ConstantDevice("cuda"), ("axis",), True, False,
+        )
+    with pytest.raises(KernelContractError, match="DEVICE-domain"):
+        OutputSpec(
+            "bad", ShapeTuple((DimRef("x", 0),)), ConstantDType("float32"),
+            ConstantDType("float32"), ("axis",), True, False,
+        )
+    with pytest.raises(KernelContractError, match="visible_in_facade must be a bool"):
+        OutputSpec(
+            "bad", ShapeTuple((DimRef("x", 0),)), ConstantDType("float32"),
+            ConstantDevice("cuda"), ("axis",), 1, False,  # type: ignore[arg-type]
+        )
+
+
+def test_program_group_symbols_and_logical_launch_contract_fail_closed() -> None:
+    node = ProgramNodeSpec("node", "pkg:node", "private_launch")
+    group = ProgramGroupSpec((node,))
+    forward = ForwardSpec(
+        schema="_example_fwd(Tensor x) -> Tensor result",
+        builder="pkg:forward",
+        symbol="private_launch",
+        outputs=(output(),),
+        program_group=group,
+    )
+    with pytest.raises(KernelContractError, match="collide with logical launchers"):
+        required_kernel(forward=forward)
+
+    non_current = LaunchContract(
+        current_stream_only=False,
+        graph_capture_safe=False,
+    )
+    valid_forward = ForwardSpec(
+        schema="_example_fwd(Tensor x) -> Tensor result",
+        builder="pkg:forward",
+        symbol="forward_launch",
+        outputs=(output(),),
+        program_group=group,
+    )
+    with pytest.raises(KernelContractError, match="current-stream-only"):
+        required_kernel(forward=valid_forward, launch=non_current)
+
+
+def test_workspace_plan_and_hidden_allocation_claim_must_match() -> None:
+    workspace = WorkspaceSpec(
+        "scratch", ShapeTuple((DimRef("x", 0),)), ConstantDType("float32")
+    )
+    group = ProgramGroupSpec(
+        nodes=(ProgramNodeSpec(
+            "node", "pkg:node", "node_launch",
+            workspace_uses=(WorkspaceUseSpec("scratch", WorkspaceAccess.WRITE),),
+        ),),
+        workspaces=(workspace,),
+    )
+    forward = ForwardSpec(
+        schema="_example_fwd(Tensor x) -> Tensor result",
+        builder="pkg:forward",
+        symbol="forward_launch",
+        outputs=(output(),),
+        program_group=group,
+    )
+    with pytest.raises(KernelContractError, match="must equal whether"):
+        required_kernel(forward=forward)
+    with pytest.raises(KernelContractError, match="cannot allocate hidden device memory"):
+        LaunchContract(hidden_device_allocation=True)
 
 
 def test_capability_and_numerical_contract_reject_ambiguity() -> None:

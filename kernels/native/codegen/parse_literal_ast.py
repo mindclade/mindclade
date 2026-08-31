@@ -96,6 +96,7 @@ _CONSTRUCTOR_NAMES = frozenset(
         "TensorCapabilityConstraint",
         "WorkloadSpec",
         "WorkspaceSpec",
+        "WorkspaceUseSpec",
     }
 )
 _ENUM_NAMES = frozenset(
@@ -106,6 +107,8 @@ _ENUM_NAMES = frozenset(
         "ImplementationTier",
         "MissingGradientPolicy",
         "ScalarType",
+        "WorkspaceAccess",
+        "WorkspaceLifetime",
     }
 )
 _APPROVED_NAMES = _CONSTRUCTOR_NAMES | _ENUM_NAMES

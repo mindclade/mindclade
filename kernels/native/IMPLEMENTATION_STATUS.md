@@ -13,7 +13,7 @@ Overall readiness: TARGET
 | Owner | ml-systems-performance |
 | Activation | Wave 6, JIT-06 |
 | Production authority | false |
-| Manifest contract | v3 implemented and source-verified |
+| Manifest contract | v3 / generator v5 implemented and source-verified |
 | Torch Stable ABI metadata | 2.10 target only |
 | Declared operations | 5 |
 | Qualified operations | 0 |
@@ -39,6 +39,16 @@ Overall readiness: TARGET
 - Semantic and provider-forward schemas are generated separately. Provider
   backward schemas and bindings are emitted only when declared by a validated
   `BackwardSpec`.
+- Program groups use group-scoped workspaces, explicit per-node access modes,
+  deterministic topological order, and validated writer/reader dataflow. The
+  generated manifest carries an exact builder-free launcher plan and private
+  symbol inventory for each declared group.
+- The production loader validates launcher plans as immutable data and never
+  imports builders or executes a Python DAG. CMake requires an explicitly
+  supplied, digest-verified bridge artifact whenever private symbols exist.
+- Receipt schema v2 fails before TileLang import when a declaration requires a
+  backward provider or program group; it cannot silently emit a partial
+  forward-only artifact.
 - Declarative FakeTensor implementations and explicit COMPOSITE autograd hooks
   are generated without mutable saved-tensor state or runtime discovery.
 - The loader verifies an explicit bundle descriptor, file digests, external
@@ -56,6 +66,8 @@ The following are target designs, not current capabilities:
 - a REQUIRED-autograd operation with co-built native forward and backward
   TileLang artifacts;
 - optimized TileLang backward launchers;
+- a qualified native program-group bridge that allocates and initializes
+  declared CUDA workspaces and launches private nodes on the current stream;
 - qualified double-backward behavior;
 - a production Stable ABI tensor allocation and stream bridge;
 - a repository-built `libmindclade_ops.so` artifact;
@@ -98,20 +110,20 @@ This is an architecture milestone, not a production-readiness claim.
 | Typed expression/core contracts | IMPLEMENTED | Wave 1 provides the restricted AST, immutable semantic/integration/environment contracts, 25 passing pytest cases, and two passing Bazel test targets. |
 | `spec.py` restricted discovery | IMPLEMENTED | Five canonical declarations are parsed without importing operation packages; unsafe AST forms and legacy locality fail closed. |
 | Generated semantic/FWD/BWD ABI | PARTIAL | v3 emits semantic and provider schemas, Stable-ABI registration, FakeTensor, and explicit autograd surfaces; the five current operations remain COMPOSITE and provide no qualified native BWD artifacts. |
-| Program groups/capability validators | NOT_IMPLEMENTED | Contracts and cross-consumer equivalence tests remain. |
-| Hermetic compilation/artifacts/evidence | NOT_IMPLEMENTED | Existing offline build receipts are not the final transitive evidence DAG. |
+| Program groups/capability validators | PARTIAL | Group/workspace/dataflow contracts, generated builder-free launcher plans, manifest/loader equivalence checks, private-symbol inventories, and fail-closed CMake intake are implemented. The Stable-ABI CUDA workspace/stream bridge and capability-envelope generators remain. |
+| Hermetic compilation/artifacts/evidence | PARTIAL | Receipt schema v2 rejects backward and program-group declarations before TileLang import, preventing incomplete artifacts. Atomic FWD/BWD co-build receipts, sandboxing, transitive evidence DAGs, and signatures remain. |
 | Runtime capability dispatch | NOT_IMPLEMENTED | No promoted compact v3 capability index exists. |
 | GPU qualification/promotion | BLOCKED_BY_ENVIRONMENT | Local host has no CUDA accelerator or TileLang toolchain; K4/K5 cannot be claimed. |
 
 ## Current source verification
 
-- `python -m pytest -q -p no:cacheprovider kernels/native/tests`: 159 passed.
+- `PYTHONPATH=. pytest -q -p no:cacheprovider kernels/native/tests`: 227 passed.
 - `python -m pytest -q -p no:cacheprovider tools/repo/tests/test_repository_policies.py`:
-  18 passed with 908 subtests.
+  18 passed with 1,110 subtests.
 - Selected Bazel API/native/codegen/TMA/swizzle lane: 14 targets passed.
-- Direct Pairformer/API source lane: 76 passed.
+- Direct Pairformer/API source lane: 66 passed.
 - Repository-path manifest and architecture projections regenerate from their
-  declared sources at 2,636 governed paths.
+  declared sources at 2,833 governed paths.
 
 These results establish source, schema, and build-graph conformance only. They
 do not establish CUDA execution, numerical parity, performance, or promotion.

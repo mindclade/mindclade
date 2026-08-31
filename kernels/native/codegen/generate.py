@@ -20,7 +20,7 @@ from kernels.native.codegen.discover import DiscoveredKernelSpec, discover_specs
 from kernels.native.codegen.schema import ParsedSchema, parse_schema
 
 GENERATOR_ID = "kernels.native.codegen.generate"
-GENERATOR_VERSION = 4
+GENERATOR_VERSION = 5
 SCHEMA_VERSION = 3
 
 GENERATED_FILENAMES = (
@@ -78,6 +78,41 @@ def _registration(
     }
 
 
+def _launcher_plan(phase: str, provider: Any) -> dict[str, Any] | None:
+    group = provider.program_group
+    if group is None:
+        return None
+    return {
+        "phase": phase,
+        "logical_symbol": provider.symbol,
+        "bridge_requirement": "mindclade_program_group_bridge_v1",
+        "execution_order": [node.name for node in group.nodes],
+        "required_private_symbols": [node.symbol for node in group.nodes],
+        "nodes": [
+            {
+                "name": node.name,
+                "symbol": node.symbol,
+                "depends_on": list(node.depends_on),
+                "workspace_uses": [
+                    {"workspace": use.workspace, "access": use.access.value}
+                    for use in node.workspace_uses
+                ],
+            }
+            for node in group.nodes
+        ],
+        "workspaces": [
+            {
+                "name": workspace.name,
+                "shape": _json_value(workspace.shape),
+                "dtype": _json_value(workspace.dtype),
+                "zero_initialize": workspace.zero_initialize,
+                "lifetime": workspace.lifetime.value,
+            }
+            for workspace in group.workspaces
+        ],
+    }
+
+
 def _operator_record(item: DiscoveredKernelSpec) -> dict[str, Any]:
     spec = item.spec
     semantic = parse_schema(spec.operator_schema)
@@ -116,6 +151,14 @@ def _operator_record(item: DiscoveredKernelSpec) -> dict[str, Any]:
         "version": spec.version,
         "devices": list(spec.devices),
         "registrations": registrations,
+        "launcher_plans": {
+            "forward": _launcher_plan("forward", spec.forward),
+            "backward": (
+                _launcher_plan("backward", spec.backward)
+                if spec.backward is not None
+                else None
+            ),
+        },
     }
 
 
@@ -194,6 +237,22 @@ def _render_operation_registry(discovered: list[DiscoveredKernelSpec]) -> str:
         "#include <torch/csrc/stable/tensor.h>",
         "",
     ]
+    if any(
+        item.spec.forward.program_group is not None
+        or (
+            item.spec.backward is not None
+            and item.spec.backward.program_group is not None
+        )
+        for item in discovered
+    ):
+        lines.extend(
+            (
+                "#if !defined(MINDCLADE_PROGRAM_GROUP_BRIDGE_V1)",
+                '#error "program-group CUDA registry requires qualified bridge v1"',
+                "#endif",
+                "",
+            )
+        )
     declarations: dict[str, ParsedSchema] = {}
     for item in discovered:
         spec = item.spec
@@ -594,6 +653,18 @@ def _source_rows(discovered: list[DiscoveredKernelSpec]) -> tuple[list[str], lis
     return specs, builders
 
 
+def _private_symbols(discovered: list[DiscoveredKernelSpec]) -> list[str]:
+    symbols: list[str] = []
+    for item in discovered:
+        providers = [item.spec.forward]
+        if item.spec.backward is not None:
+            providers.append(item.spec.backward)
+        for provider in providers:
+            if provider.program_group is not None:
+                symbols.extend(node.symbol for node in provider.program_group.nodes)
+    return sorted(symbols)
+
+
 def _render_bzl(discovered: list[DiscoveredKernelSpec]) -> str:
     specs, builders = _source_rows(discovered)
     lines = [f"# GENERATED FILE - DO NOT EDIT. Generator: {GENERATOR_ID}@{GENERATOR_VERSION}."]
@@ -603,6 +674,9 @@ def _render_bzl(discovered: list[DiscoveredKernelSpec]) -> str:
             package, filename = source.rsplit("/", 1)
             lines.append(f'    "//kernels/{package}:{filename}",')
         lines.extend(("]", ""))
+    lines.append("MINDCLADE_TILELANG_REQUIRED_PRIVATE_SYMBOLS = [")
+    lines.extend(f'    "{symbol}",' for symbol in _private_symbols(discovered))
+    lines.extend(("]", ""))
     return "\n".join(lines)
 
 
@@ -613,6 +687,9 @@ def _render_cmake(discovered: list[DiscoveredKernelSpec]) -> str:
         lines.append(f"set({variable}")
         lines.extend(f'  "${{CMAKE_CURRENT_LIST_DIR}}/../../{source}"' for source in sources)
         lines.append(")")
+    lines.append("set(MINDCLADE_TILELANG_REQUIRED_PRIVATE_SYMBOLS")
+    lines.extend(f'  "{symbol}"' for symbol in _private_symbols(discovered))
+    lines.append(")")
     lines.append("")
     return "\n".join(lines)
 

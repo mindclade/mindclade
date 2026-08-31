@@ -15,7 +15,7 @@
       "required": ["id", "version"],
       "properties": {
         "id": {"const": "kernels.native.codegen.generate"},
-        "version": {"const": 4}
+        "version": {"const": 5}
       }
     },
     "source_inventory_sha256": {"$ref": "#/$defs/digest"},
@@ -152,23 +152,59 @@
       "properties": {
         "type": {"const": "WorkspaceSpec"},
         "name": {"$ref": "#/$defs/value_name"},
-        "shape": {"$ref": "#/$defs/expression"},
-        "dtype": {"$ref": "#/$defs/expression"},
+        "shape": {"$ref": "#/$defs/shape_expression"},
+        "dtype": {"$ref": "#/$defs/dtype_expression"},
         "zero_initialize": {"type": "boolean"},
         "lifetime": {"enum": ["node", "program_group"]},
         "version": {"const": 1}
       }
     },
+    "shape_expression": {
+      "allOf": [
+        {"$ref": "#/$defs/expression"},
+        {
+          "properties": {
+            "node": {"enum": ["shape_of", "shape_prefix", "shape_tuple", "concat_shape"]}
+          }
+        }
+      ]
+    },
+    "dtype_expression": {
+      "allOf": [
+        {"$ref": "#/$defs/expression"},
+        {
+          "properties": {
+            "node": {"enum": ["dtype_ref", "same_as_input_dtype", "constant_dtype", "select"]}
+          }
+        }
+      ]
+    },
+    "workspace_use": {
+      "type": "object", "additionalProperties": false,
+      "required": ["type", "workspace", "access", "version"],
+      "properties": {
+        "type": {"const": "WorkspaceUseSpec"},
+        "workspace": {"$ref": "#/$defs/value_name"},
+        "access": {"enum": ["read", "write", "read_write"]},
+        "version": {"const": 1}
+      }
+    },
     "program_node": {
       "type": "object", "additionalProperties": false,
-      "required": ["type", "name", "builder", "symbol", "depends_on", "workspaces", "version"],
+      "required": ["type", "name", "builder", "symbol", "depends_on", "workspace_uses", "version"],
       "properties": {
         "type": {"const": "ProgramNodeSpec"},
         "name": {"$ref": "#/$defs/value_name"},
         "builder": {"$ref": "#/$defs/callable"},
         "symbol": {"$ref": "#/$defs/symbol"},
-        "depends_on": {"type": "array", "items": {"$ref": "#/$defs/value_name"}, "uniqueItems": true},
-        "workspaces": {"type": "array", "items": {"$ref": "#/$defs/workspace"}, "uniqueItems": true},
+        "depends_on": {
+          "type": "array", "maxItems": 64,
+          "items": {"$ref": "#/$defs/value_name"}, "uniqueItems": true
+        },
+        "workspace_uses": {
+          "type": "array", "maxItems": 64,
+          "items": {"$ref": "#/$defs/workspace_use"}, "uniqueItems": true
+        },
         "version": {"const": 1}
       }
     },
@@ -177,21 +213,112 @@
         {"type": "null"},
         {
           "type": "object", "additionalProperties": false,
-          "required": [
-            "type", "nodes", "current_stream_only", "global_synchronization",
-            "hidden_device_allocation", "graph_capture_safe", "version"
-          ],
+          "required": ["type", "nodes", "workspaces", "version"],
           "properties": {
             "type": {"const": "ProgramGroupSpec"},
-            "nodes": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/program_node"}, "uniqueItems": true},
-            "current_stream_only": {"type": "boolean"},
-            "global_synchronization": {"type": "boolean"},
-            "hidden_device_allocation": {"type": "boolean"},
-            "graph_capture_safe": {"type": "boolean"},
+            "nodes": {
+              "type": "array", "minItems": 1, "maxItems": 64,
+              "items": {"$ref": "#/$defs/program_node"}, "uniqueItems": true
+            },
+            "workspaces": {
+              "type": "array", "maxItems": 64,
+              "items": {"$ref": "#/$defs/workspace"}, "uniqueItems": true
+            },
             "version": {"const": 1}
           }
         }
       ]
+    },
+    "launcher_workspace_use": {
+      "type": "object", "additionalProperties": false,
+      "required": ["workspace", "access"],
+      "properties": {
+        "workspace": {"$ref": "#/$defs/value_name"},
+        "access": {"enum": ["read", "write", "read_write"]}
+      }
+    },
+    "launcher_node": {
+      "type": "object", "additionalProperties": false,
+      "required": ["name", "symbol", "depends_on", "workspace_uses"],
+      "properties": {
+        "name": {"$ref": "#/$defs/value_name"},
+        "symbol": {"$ref": "#/$defs/symbol"},
+        "depends_on": {
+          "type": "array", "maxItems": 64,
+          "items": {"$ref": "#/$defs/value_name"}, "uniqueItems": true
+        },
+        "workspace_uses": {
+          "type": "array", "maxItems": 64,
+          "items": {"$ref": "#/$defs/launcher_workspace_use"}, "uniqueItems": true
+        }
+      }
+    },
+    "launcher_workspace": {
+      "type": "object", "additionalProperties": false,
+      "required": ["name", "shape", "dtype", "zero_initialize", "lifetime"],
+      "properties": {
+        "name": {"$ref": "#/$defs/value_name"},
+        "shape": {"$ref": "#/$defs/shape_expression"},
+        "dtype": {"$ref": "#/$defs/dtype_expression"},
+        "zero_initialize": {"type": "boolean"},
+        "lifetime": {"enum": ["node", "program_group"]}
+      }
+    },
+    "launcher_plan": {
+      "type": "object", "additionalProperties": false,
+      "required": [
+        "phase", "logical_symbol", "bridge_requirement", "execution_order",
+        "required_private_symbols", "nodes", "workspaces"
+      ],
+      "properties": {
+        "phase": {"enum": ["forward", "backward"]},
+        "logical_symbol": {"$ref": "#/$defs/symbol"},
+        "bridge_requirement": {"const": "mindclade_program_group_bridge_v1"},
+        "execution_order": {
+          "type": "array", "minItems": 1, "maxItems": 64,
+          "items": {"$ref": "#/$defs/value_name"}, "uniqueItems": true
+        },
+        "required_private_symbols": {
+          "type": "array", "minItems": 1, "maxItems": 64,
+          "items": {"$ref": "#/$defs/symbol"}, "uniqueItems": true
+        },
+        "nodes": {
+          "type": "array", "minItems": 1, "maxItems": 64,
+          "items": {"$ref": "#/$defs/launcher_node"}, "uniqueItems": true
+        },
+        "workspaces": {
+          "type": "array", "maxItems": 64,
+          "items": {"$ref": "#/$defs/launcher_workspace"}, "uniqueItems": true
+        }
+      }
+    },
+    "launcher_plans": {
+      "type": "object", "additionalProperties": false,
+      "required": ["forward", "backward"],
+      "properties": {
+        "forward": {
+          "oneOf": [
+            {"type": "null"},
+            {
+              "allOf": [
+                {"$ref": "#/$defs/launcher_plan"},
+                {"properties": {"phase": {"const": "forward"}}}
+              ]
+            }
+          ]
+        },
+        "backward": {
+          "oneOf": [
+            {"type": "null"},
+            {
+              "allOf": [
+                {"$ref": "#/$defs/launcher_plan"},
+                {"properties": {"phase": {"const": "backward"}}}
+              ]
+            }
+          ]
+        }
+      }
     },
     "forward": {
       "type": "object", "additionalProperties": false,
@@ -312,7 +439,7 @@
         "name", "qualified_name", "namespace", "family", "source", "spec_sha256",
         "kernel_spec_digest", "operator_schema", "facade_outputs", "fake", "forward",
         "backward", "autograd_policy", "composite", "effects", "launch", "backend",
-        "version", "devices", "registrations"
+        "version", "devices", "registrations", "launcher_plans"
       ],
       "properties": {
         "name": {"$ref": "#/$defs/name"},
@@ -334,7 +461,8 @@
         "backend": {"const": "tilelang"},
         "version": {"type": "integer", "minimum": 1},
         "devices": {"const": ["cuda"]},
-        "registrations": {"$ref": "#/$defs/registrations"}
+        "registrations": {"$ref": "#/$defs/registrations"},
+        "launcher_plans": {"$ref": "#/$defs/launcher_plans"}
       }
     }
   }

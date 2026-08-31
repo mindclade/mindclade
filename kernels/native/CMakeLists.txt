@@ -12,6 +12,11 @@ project(
 
 include(GNUInstallDirs)
 include(cmake/MindcladeTorchStable.cmake)
+include(generated/native_ops.generated.cmake)
+
+if(NOT DEFINED MINDCLADE_TILELANG_REQUIRED_PRIVATE_SYMBOLS)
+  message(FATAL_ERROR "Generated native inventory did not declare private symbols")
+endif()
 
 set(
   MINDCLADE_TORCH_STABLE_ABI_VERSION
@@ -53,6 +58,18 @@ set(
   ""
   CACHE STRING
   "Expected sha256:<hex> digest of the GPU shared library"
+)
+set(
+  MINDCLADE_NATIVE_PROGRAM_GROUP_BRIDGE_LIBRARY
+  ""
+  CACHE FILEPATH
+  "Absolute path to the qualified program-group bridge library"
+)
+set(
+  MINDCLADE_NATIVE_PROGRAM_GROUP_BRIDGE_LIBRARY_SHA256
+  ""
+  CACHE STRING
+  "Expected sha256:<hex> digest of the qualified program-group bridge library"
 )
 
 mindclade_assert_torch_stable_abi(

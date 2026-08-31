@@ -10,7 +10,7 @@ from kernels.api import KernelSpec
 NAMESPACE = "mindclade"
 BACKEND = "tilelang"
 GENERATOR_ID = "kernels.native.codegen.generate"
-GENERATOR_VERSION = 4
+GENERATOR_VERSION = 5
 REGISTRATION_MODE = "build_time_generated"
 
 __all__ = [

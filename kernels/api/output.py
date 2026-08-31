@@ -102,14 +102,18 @@ class OutputSpec(ContractModel):
 
     def __post_init__(self) -> None:
         _nonempty(self.name, "output name")
-        if self.version != 1:
+        if isinstance(self.version, bool) or not isinstance(self.version, int) or self.version != 1:
             raise KernelContractError(f"unsupported OutputSpec version: {self.version}")
         if not isinstance(self.shape, Expr) or self.shape.domain is not ExprDomain.SHAPE:
             raise KernelContractError("output shape must be a typed shape expression")
-        if not isinstance(self.dtype, Expr):
-            raise KernelContractError("output dtype must be a typed dtype expression")
-        if not isinstance(self.device, Expr):
-            raise KernelContractError("output device must be a typed device expression")
+        if not isinstance(self.dtype, Expr) or self.dtype.domain is not ExprDomain.DTYPE:
+            raise KernelContractError("output dtype must be a DTYPE-domain expression")
+        if not isinstance(self.device, Expr) or self.device.domain is not ExprDomain.DEVICE:
+            raise KernelContractError("output device must be a DEVICE-domain expression")
+        if type(self.visible_in_facade) is not bool:
+            raise KernelContractError("output visible_in_facade must be a bool")
+        if type(self.saved_for_backward) is not bool:
+            raise KernelContractError("output saved_for_backward must be a bool")
         if not self.semantic_axes:
             raise KernelContractError("output semantic_axes must not be empty")
         for axis in self.semantic_axes:
