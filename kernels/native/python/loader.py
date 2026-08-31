@@ -58,6 +58,8 @@ _OPERATOR_KEYS = frozenset(
         "source",
         "spec_sha256",
         "kernel_spec_digest",
+        "implementation_digest",
+        "implementation_candidates",
         "operator_schema",
         "facade_outputs",
         "fake",
@@ -108,6 +110,18 @@ _LAUNCHER_WORKSPACE_KEYS = frozenset(
 )
 _WORKSPACE_ACCESSES = frozenset({"read", "write", "read_write"})
 _WORKSPACE_LIFETIMES = frozenset({"node", "program_group"})
+_IMPLEMENTATION_CANDIDATE_KEYS = frozenset(
+    {"name", "version", "tier", "priority", "requires", "envelope", "envelope_digest", "promoted", "selectable"}
+)
+_CAPABILITY_KEYS = frozenset(
+    {"type", "architectures", "dtypes", "layouts", "modes", "constraints", "graph_capture_safe", "training_capable", "tensor_constraints", "version"}
+)
+_DIMENSION_CONSTRAINT_KEYS = frozenset({"type", "predicate", "code", "message", "version"})
+_TENSOR_CAPABILITY_KEYS = frozenset({"type", "argument", "dtypes", "layouts", "devices", "ranks", "version"})
+_IMPLEMENTATION_TIERS = frozenset({"portable", "optimized", "specialized", "hand_specialized"})
+_BOOL_EXPRESSION_NODES = frozenset(
+    {"bool_literal", "broadcastable", "is_finite", "eq", "not_equal", "less_than", "less_equal", "greater_than", "greater_equal", "and", "or", "not", "in_set"}
+)
 _SHAPE_EXPRESSION_NODES = frozenset(
     {"shape_of", "shape_prefix", "shape_tuple", "concat_shape"}
 )
@@ -332,6 +346,47 @@ class _ManifestLauncherPlan:
 
 
 @dataclass(frozen=True, slots=True)
+class _ManifestDimensionConstraint:
+    code: str
+    message: str
+    predicate_json: bytes
+
+
+@dataclass(frozen=True, slots=True)
+class _ManifestTensorCapability:
+    argument: str
+    dtypes: tuple[str, ...]
+    layouts: tuple[str, ...]
+    devices: tuple[str, ...]
+    ranks: tuple[int, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class _ManifestCapabilityEnvelope:
+    architectures: tuple[str, ...]
+    dtypes: tuple[str, ...]
+    layouts: tuple[str, ...]
+    modes: tuple[str, ...]
+    constraints: tuple[_ManifestDimensionConstraint, ...]
+    tensor_constraints: tuple[_ManifestTensorCapability, ...]
+    graph_capture_safe: bool
+    training_capable: bool
+    digest: str
+
+
+@dataclass(frozen=True, slots=True)
+class _ManifestImplementationCandidate:
+    name: str
+    version: int
+    tier: str
+    priority: int
+    requires: tuple[str, ...]
+    envelope: _ManifestCapabilityEnvelope
+    promoted: bool
+    selectable: bool
+
+
+@dataclass(frozen=True, slots=True)
 class _ManifestOperator:
     name: str
     qualified_name: str
@@ -339,6 +394,8 @@ class _ManifestOperator:
     devices: tuple[str, ...]
     autograd_policy: str
     registrations: tuple[_ManifestRegistration, ...]
+    implementation_digest: str = ""
+    implementation_candidates: tuple[_ManifestImplementationCandidate, ...] = ()
     forward_launcher_plan: _ManifestLauncherPlan | None = None
     backward_launcher_plan: _ManifestLauncherPlan | None = None
 
@@ -572,11 +629,13 @@ def _canonical_expression(value: object, domain: str, label: str) -> bytes:
     if not isinstance(value, Mapping):
         raise NativeBundleVerificationError(f"{label} must be an expression object")
     node = value.get("node")
-    allowed = (
-        _SHAPE_EXPRESSION_NODES
-        if domain == "shape"
-        else _DTYPE_EXPRESSION_NODES
-    )
+    allowed = {
+        "shape": _SHAPE_EXPRESSION_NODES,
+        "dtype": _DTYPE_EXPRESSION_NODES,
+        "bool": _BOOL_EXPRESSION_NODES,
+    }.get(domain)
+    if allowed is None:
+        raise NativeBundleVerificationError(f"{label} has unsupported expression domain")
     if node not in allowed:
         raise NativeBundleVerificationError(
             f"{label} must be a {domain}-domain expression"
@@ -1001,6 +1060,107 @@ def _parse_registration(
     )
 
 
+def _canonical_string_tuple(value: object, label: str, *, nonempty: bool = False) -> tuple[str, ...]:
+    if not isinstance(value, list) or (nonempty and not value) or len(value) > _MAX_PLAN_ITEMS:
+        raise NativeBundleVerificationError(f"{label} must be a bounded array")
+    result = tuple(_require_safe_identity(item, f"{label} item") for item in value)
+    if len(result) != len(set(result)):
+        raise NativeBundleVerificationError(f"{label} must contain unique values")
+    return result
+
+
+def _parse_capability(value: object, label: str, expected_digest: object) -> _ManifestCapabilityEnvelope:
+    if not isinstance(value, Mapping):
+        raise NativeBundleVerificationError(f"{label} must be an object")
+    _exact_keys(value, _CAPABILITY_KEYS, label)
+    if value["type"] != "CapabilityEnvelope":
+        raise NativeBundleVerificationError(f"{label}.type is unsupported")
+    constraints_value = value["constraints"]
+    if not isinstance(constraints_value, list) or len(constraints_value) > _MAX_PLAN_ITEMS:
+        raise NativeBundleVerificationError(f"{label}.constraints must be bounded")
+    constraints: list[_ManifestDimensionConstraint] = []
+    for index, raw in enumerate(constraints_value):
+        item_label = f"{label}.constraints[{index}]"
+        if not isinstance(raw, Mapping):
+            raise NativeBundleVerificationError(f"{item_label} must be an object")
+        _exact_keys(raw, _DIMENSION_CONSTRAINT_KEYS, item_label)
+        if raw["type"] != "DimensionConstraint" or raw["version"] != 1:
+            raise NativeBundleVerificationError(f"{item_label} contract is unsupported")
+        code = _require_identifier(raw["code"], f"{item_label}.code")
+        if code != code.upper():
+            raise NativeBundleVerificationError(f"{item_label}.code must be uppercase")
+        message = raw["message"]
+        if not isinstance(message, str) or not message or len(message) > 512:
+            raise NativeBundleVerificationError(f"{item_label}.message is invalid")
+        constraints.append(_ManifestDimensionConstraint(code, message, _canonical_expression(raw["predicate"], "bool", f"{item_label}.predicate")))
+    if len(constraints) != len({item.code for item in constraints}):
+        raise NativeBundleVerificationError(f"{label}.constraints must be unique")
+    tensors_value = value["tensor_constraints"]
+    if not isinstance(tensors_value, list) or len(tensors_value) > _MAX_PLAN_ITEMS:
+        raise NativeBundleVerificationError(f"{label}.tensor_constraints must be bounded")
+    tensors: list[_ManifestTensorCapability] = []
+    for index, raw in enumerate(tensors_value):
+        item_label = f"{label}.tensor_constraints[{index}]"
+        if not isinstance(raw, Mapping):
+            raise NativeBundleVerificationError(f"{item_label} must be an object")
+        _exact_keys(raw, _TENSOR_CAPABILITY_KEYS, item_label)
+        if raw["type"] != "TensorCapabilityConstraint" or raw["version"] != 1:
+            raise NativeBundleVerificationError(f"{item_label} contract is unsupported")
+        ranks = raw["ranks"]
+        if not isinstance(ranks, list) or any(type(rank) is not int or rank < 0 for rank in ranks) or ranks != sorted(set(ranks)):
+            raise NativeBundleVerificationError(f"{item_label}.ranks must be unique and sorted")
+        tensors.append(_ManifestTensorCapability(
+            _require_identifier(raw["argument"], f"{item_label}.argument"),
+            _canonical_string_tuple(raw["dtypes"], f"{item_label}.dtypes"),
+            _canonical_string_tuple(raw["layouts"], f"{item_label}.layouts"),
+            _canonical_string_tuple(raw["devices"], f"{item_label}.devices"),
+            tuple(ranks),
+        ))
+    if len(tensors) != len({item.argument for item in tensors}):
+        raise NativeBundleVerificationError(f"{label}.tensor_constraints must be unique")
+    if type(value["graph_capture_safe"]) is not bool or type(value["training_capable"]) is not bool or value["version"] != 1:
+        raise NativeBundleVerificationError(f"{label} flags or version are invalid")
+    digest = _require_digest(expected_digest, f"{label}.digest")
+    if not hmac.compare_digest(digest, _sha256_bytes(_canonical_json(value))):
+        raise NativeBundleVerificationError(f"{label} digest mismatch")
+    return _ManifestCapabilityEnvelope(
+        _canonical_string_tuple(value["architectures"], f"{label}.architectures", nonempty=True),
+        _canonical_string_tuple(value["dtypes"], f"{label}.dtypes", nonempty=True),
+        _canonical_string_tuple(value["layouts"], f"{label}.layouts", nonempty=True),
+        _canonical_string_tuple(value["modes"], f"{label}.modes", nonempty=True),
+        tuple(constraints), tuple(tensors), value["graph_capture_safe"], value["training_capable"], digest,
+    )
+
+
+def _parse_implementation_candidates(value: object, label: str) -> tuple[_ManifestImplementationCandidate, ...]:
+    if not isinstance(value, list) or len(value) > _MAX_PLAN_ITEMS:
+        raise NativeBundleVerificationError(f"{label} must be a bounded array")
+    candidates: list[_ManifestImplementationCandidate] = []
+    for index, raw in enumerate(value):
+        item_label = f"{label}[{index}]"
+        if not isinstance(raw, Mapping):
+            raise NativeBundleVerificationError(f"{item_label} must be an object")
+        _exact_keys(raw, _IMPLEMENTATION_CANDIDATE_KEYS, item_label)
+        version = raw["version"]
+        priority = raw["priority"]
+        if type(version) is not int or version < 1 or type(priority) is not int:
+            raise NativeBundleVerificationError(f"{item_label} version or priority is invalid")
+        if raw["tier"] not in _IMPLEMENTATION_TIERS:
+            raise NativeBundleVerificationError(f"{item_label}.tier is invalid")
+        if raw["promoted"] is not False or raw["selectable"] is not False:
+            raise NativeBundleVerificationError(f"{item_label} cannot be promoted or selectable")
+        candidates.append(_ManifestImplementationCandidate(
+            _require_identifier(raw["name"], f"{item_label}.name"), version, raw["tier"], priority,
+            _canonical_string_tuple(raw["requires"], f"{item_label}.requires"),
+            _parse_capability(raw["envelope"], f"{item_label}.envelope", raw["envelope_digest"]),
+            False, False,
+        ))
+    identities = tuple((item.name, item.version) for item in candidates)
+    if identities != tuple(sorted(set(identities))):
+        raise NativeBundleVerificationError(f"{label} identities must be unique and sorted")
+    return tuple(candidates)
+
+
 def _parse_operator(value: object, index: int) -> _ManifestOperator:
     label = f"operators[{index}]"
     if not isinstance(value, Mapping):
@@ -1031,6 +1191,12 @@ def _parse_operator(value: object, index: int) -> _ManifestOperator:
         raise NativeBundleVerificationError(f"{label}.source is not operation-local")
     _require_digest(value["spec_sha256"], f"{label}.spec_sha256")
     _require_digest(value["kernel_spec_digest"], f"{label}.kernel_spec_digest")
+    implementation_digest = _require_digest(
+        value["implementation_digest"], f"{label}.implementation_digest"
+    )
+    implementation_candidates = _parse_implementation_candidates(
+        value["implementation_candidates"], f"{label}.implementation_candidates"
+    )
     facade_outputs = value["facade_outputs"]
     if (
         not isinstance(facade_outputs, list)
@@ -1199,6 +1365,8 @@ def _parse_operator(value: object, index: int) -> _ManifestOperator:
         devices=tuple(devices),
         autograd_policy=autograd_policy,
         registrations=registrations,
+        implementation_digest=implementation_digest,
+        implementation_candidates=implementation_candidates,
         forward_launcher_plan=forward_launcher_plan,
         backward_launcher_plan=backward_launcher_plan,
     )
@@ -1226,7 +1394,7 @@ def _parse_manifest(
         )
     if manifest["generator"] != {
         "id": "kernels.native.codegen.generate",
-        "version": 5,
+        "version": 6,
     }:
         raise NativeBundleVerificationError(
             "native manifest generator is unsupported"
@@ -1302,6 +1470,7 @@ def _parse_manifest(
                 "source": value["source"],
                 "spec_sha256": value["spec_sha256"],
                 "kernel_spec_digest": value["kernel_spec_digest"],
+                "implementation_digest": value["implementation_digest"],
             }
             for value in raw_operators
         ),

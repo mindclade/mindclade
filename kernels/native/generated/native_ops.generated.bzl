@@ -1,4 +1,4 @@
-# GENERATED FILE - DO NOT EDIT. Generator: kernels.native.codegen.generate@5.
+# GENERATED FILE - DO NOT EDIT. Generator: kernels.native.codegen.generate@6.
 """Generated Bazel source inventory for native TileLang kernels."""
 
 MINDCLADE_KERNEL_SPEC_SOURCES = [

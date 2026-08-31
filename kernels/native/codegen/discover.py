@@ -8,8 +8,14 @@ import hashlib
 from pathlib import Path
 import re
 
-from kernels.api import KernelSpec
-from kernels.native.codegen.parse_literal_ast import parse_kernel_spec_source
+from kernels.api import (
+    ExprDomain,
+    ImplementationSpec,
+    KernelSpec,
+    expression_references,
+)
+from kernels.native.codegen.parse_literal_ast import parse_kernel_declarations_source
+from kernels.native.codegen.schema import parse_schema
 
 _PATH_SEGMENT = re.compile(r"[a-z][a-z0-9_]*")
 _SCHEMA_ROOT = re.compile(r"\s*([A-Za-z_][A-Za-z0-9_]*)\s*\(")
@@ -22,6 +28,7 @@ class DiscoveredKernelSpec:
     """One validated semantic specification and its declaration-file identity."""
 
     spec: KernelSpec
+    implementations: tuple[ImplementationSpec, ...]
     declaration_sha256: str
 
     @property
@@ -172,6 +179,88 @@ def _validate_builder_locality(spec: KernelSpec, relative: str) -> None:
             raise ValueError(f"{relative}: {label} function is not a Python identifier")
 
 
+def _validate_implementations(
+    spec: KernelSpec,
+    implementations: tuple[ImplementationSpec, ...],
+    relative: str,
+) -> tuple[ImplementationSpec, ...]:
+    expected_module = f"kernels.{spec.family}.{spec.name}.tilelang"
+    semantic = parse_schema(spec.operator_schema)
+    semantic_arguments = {argument.name for argument in semantic.args}
+    tensor_arguments = {argument.name for argument in semantic.args if argument.is_tensor}
+    scalar_arguments = semantic_arguments - tensor_arguments
+    identities: set[tuple[str, int]] = set()
+    for implementation in implementations:
+        if implementation.operation != spec.qualified_name:
+            raise ValueError(
+                f"{relative}: implementation operation must equal {spec.qualified_name!r}"
+            )
+        if implementation.family != spec.family:
+            raise ValueError(
+                f"{relative}: implementation family must equal {spec.family!r}"
+            )
+        if implementation.backend != spec.backend:
+            raise ValueError(
+                f"{relative}: implementation backend must equal {spec.backend!r}"
+            )
+        module, separator, function = implementation.builder.partition(":")
+        if separator != ":" or module != expected_module or _PYTHON_IDENTIFIER.fullmatch(function) is None:
+            raise ValueError(
+                f"{relative}: implementation builder must be operation-local in {expected_module!r}"
+            )
+        identity = (implementation.name, implementation.version)
+        if identity in identities:
+            raise ValueError(f"{relative}: duplicate implementation identity {identity!r}")
+        identities.add(identity)
+        envelope = implementation.envelope
+        for constraint in envelope.constraints:
+            context = (
+                f"{relative}: operation {spec.qualified_name!r} implementation "
+                f"{implementation.name!r} constraint {constraint.code!r}"
+            )
+            if constraint.predicate.domain is not ExprDomain.BOOL:
+                raise ValueError(
+                    f"{context}: predicate must be boolean"
+                )
+            references = expression_references(constraint.predicate)
+            unknown_tensor = sorted(set(references.tensors) - semantic_arguments)
+            if unknown_tensor:
+                raise ValueError(f"{context}: unknown tensor references {unknown_tensor}")
+            unknown_scalar = sorted(set(references.scalars) - semantic_arguments)
+            if unknown_scalar:
+                raise ValueError(f"{context}: unknown scalar references {unknown_scalar}")
+            scalar_as_tensor = sorted(set(references.tensors) & scalar_arguments)
+            if scalar_as_tensor:
+                raise ValueError(
+                    f"{context}: scalar semantic arguments referenced as Tensor: "
+                    f"{scalar_as_tensor}"
+                )
+            tensor_as_scalar = sorted(set(references.scalars) & tensor_arguments)
+            if tensor_as_scalar:
+                raise ValueError(
+                    f"{context}: Tensor semantic arguments referenced as scalar: "
+                    f"{tensor_as_scalar}"
+                )
+
+        implementation_context = (
+            f"{relative}: operation {spec.qualified_name!r} implementation "
+            f"{implementation.name!r}"
+        )
+        for tensor_constraint in envelope.tensor_constraints:
+            argument = tensor_constraint.argument
+            if argument not in semantic_arguments:
+                raise ValueError(
+                    f"{implementation_context}: tensor capability constraint has "
+                    f"unknown semantic argument {argument!r}"
+                )
+            if argument not in tensor_arguments:
+                raise ValueError(
+                    f"{implementation_context}: tensor capability constraint argument "
+                    f"{argument!r} names a scalar semantic argument"
+                )
+    return tuple(sorted(implementations, key=lambda item: (item.name, item.version)))
+
+
 def _claim_unique(
     seen: dict[str, str],
     *,
@@ -219,11 +308,15 @@ def discover_specs(
             source_text = raw.decode("utf-8")
         except UnicodeDecodeError as exc:
             raise ValueError(f"{relative}: declaration source must be UTF-8") from exc
-        spec = parse_kernel_spec_source(source_text, filename=relative)
+        spec, implementations = parse_kernel_declarations_source(
+            source_text, filename=relative
+        )
         _validate_spec_identity(spec, relative)
+        implementations = _validate_implementations(spec, implementations, relative)
         discovered.append(
             DiscoveredKernelSpec(
                 spec=spec,
+                implementations=implementations,
                 declaration_sha256="sha256:" + hashlib.sha256(raw).hexdigest(),
             )
         )

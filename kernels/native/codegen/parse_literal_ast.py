@@ -461,6 +461,93 @@ def parse_kernel_spec_source(
     return value
 
 
+def parse_kernel_declarations_source(
+    source: str,
+    *,
+    filename: str = "<spec.py>",
+    supported_versions: frozenset[int] = _SUPPORTED_SCHEMA_VERSIONS,
+):
+    """Parse the exact semantic and implementation declarations without imports."""
+
+    from kernels.api import ImplementationSpec, KernelSpec
+
+    if not isinstance(source, str):
+        raise TypeError("source must be a UTF-8 decoded string")
+    if len(source.encode("utf-8")) > _MAX_SOURCE_BYTES:
+        raise LiteralAstError(f"{filename}: source exceeds {_MAX_SOURCE_BYTES} bytes")
+    if "\x00" in source:
+        raise LiteralAstError(f"{filename}: source contains a null byte")
+    versions = _validated_versions(supported_versions)
+    try:
+        tree = ast.parse(source, filename=filename, mode="exec", type_comments=False)
+    except SyntaxError as exc:
+        line = exc.lineno or 1
+        column = exc.offset or 1
+        raise LiteralAstError(
+            f"{filename}:{line}:{column}: invalid Python syntax: {exc.msg}"
+        ) from exc
+    bindings, statements = _module_bindings(tree, filename=filename)
+    by_name: dict[str, ast.stmt] = {}
+    for statement in statements:
+        target: ast.Name | None = None
+        if (
+            isinstance(statement, ast.Assign)
+            and len(statement.targets) == 1
+            and isinstance(statement.targets[0], ast.Name)
+        ):
+            target = statement.targets[0]
+        elif isinstance(statement, ast.AnnAssign) and isinstance(statement.target, ast.Name):
+            target = statement.target
+        if target is None:
+            line = getattr(statement, "lineno", 1)
+            column = getattr(statement, "col_offset", 0) + 1
+            raise LiteralAstError(
+                f"{filename}:{line}:{column}: unsupported top-level statement "
+                f"{type(statement).__name__}"
+            )
+        if target.id in by_name:
+            raise LiteralAstError(f"{filename}: duplicate declaration {target.id!r}")
+        by_name[target.id] = statement
+    expected = {"KERNEL_SPEC", "IMPLEMENTATION_SPECS"}
+    if set(by_name) != expected:
+        raise LiteralAstError(
+            f"{filename}: canonical spec.py declarations must be exactly "
+            f"{sorted(expected)}; observed={sorted(by_name)}"
+        )
+    spec_node = _declaration_value(
+        [by_name["KERNEL_SPEC"]],
+        filename=filename,
+        declaration_name="KERNEL_SPEC",
+        bindings=bindings,
+    )
+    implementation_node = _declaration_value(
+        [by_name["IMPLEMENTATION_SPECS"]],
+        filename=filename,
+        declaration_name="IMPLEMENTATION_SPECS",
+        bindings=bindings,
+    )
+    spec = _LiteralEvaluator(
+        filename=filename,
+        bindings=bindings,
+        supported_versions=versions,
+    ).evaluate(spec_node)
+    implementations = _LiteralEvaluator(
+        filename=filename,
+        bindings=bindings,
+        supported_versions=versions,
+    ).evaluate(implementation_node)
+    if not isinstance(spec, KernelSpec):
+        raise LiteralAstError(f"{filename}: KERNEL_SPEC must construct kernels.api.KernelSpec")
+    if not isinstance(implementations, tuple) or any(
+        not isinstance(item, ImplementationSpec) for item in implementations
+    ):
+        raise LiteralAstError(
+            f"{filename}: IMPLEMENTATION_SPECS must be a literal tuple of "
+            "kernels.api.ImplementationSpec values"
+        )
+    return spec, implementations
+
+
 def parse_literal_file(
     path: Path,
     *,

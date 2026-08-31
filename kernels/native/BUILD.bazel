@@ -240,6 +240,7 @@ py_test(
         ":native_policy_inputs",
     ],
     main = "tests/pytest_runner.py",
+    precompile = "disabled",
     python_version = "PY3",
     tags = [
         "manual",
@@ -260,6 +261,7 @@ py_test(
         ":native_policy_inputs",
     ],
     main = "tests/pytest_runner.py",
+    precompile = "disabled",
     python_version = "PY3",
     tags = [
         "manual",
@@ -280,6 +282,7 @@ py_test(
         ":native_policy_inputs",
     ],
     main = "tests/pytest_runner.py",
+    precompile = "disabled",
     python_version = "PY3",
     tags = [
         "manual",
@@ -300,6 +303,7 @@ py_test(
         ":native_policy_inputs",
     ],
     main = "tests/pytest_runner.py",
+    precompile = "disabled",
     python_version = "PY3",
     tags = [
         "manual",
@@ -320,6 +324,7 @@ py_test(
         ":native_policy_inputs",
     ],
     main = "tests/pytest_runner.py",
+    precompile = "disabled",
     python_version = "PY3",
     tags = [
         "manual",
@@ -340,6 +345,7 @@ py_test(
         ":native_policy_inputs",
     ],
     main = "tests/pytest_runner.py",
+    precompile = "disabled",
     python_version = "PY3",
     tags = [
         "manual",
@@ -360,6 +366,7 @@ py_test(
         ":native_policy_inputs",
     ],
     main = "tests/pytest_runner.py",
+    precompile = "disabled",
     python_version = "PY3",
     deps = [
         ":native_codegen_lib",
@@ -373,6 +380,7 @@ py_test(
     args = ["$(location tests/test_parse_literal_ast.py)"],
     data = ["tests/test_parse_literal_ast.py"],
     main = "tests/pytest_runner.py",
+    precompile = "disabled",
     python_version = "PY3",
     deps = [
         ":native_codegen_lib",
@@ -390,6 +398,7 @@ py_test(
         ":native_policy_inputs",
     ],
     main = "tests/pytest_runner.py",
+    precompile = "disabled",
     python_version = "PY3",
     deps = [
         ":native_codegen_lib",
@@ -406,6 +415,7 @@ py_test(
         ":native_policy_inputs",
     ],
     main = "tests/pytest_runner.py",
+    precompile = "disabled",
     python_version = "PY3",
     deps = [
         ":native_codegen_lib",
@@ -422,6 +432,7 @@ py_test(
         ":native_policy_inputs",
     ],
     main = "tests/pytest_runner.py",
+    precompile = "disabled",
     python_version = "PY3",
     deps = [
         ":native_codegen_lib",
@@ -438,6 +449,7 @@ py_test(
         ":native_policy_inputs",
     ],
     main = "tests/pytest_runner.py",
+    precompile = "disabled",
     python_version = "PY3",
     deps = [
         ":native_codegen_lib",
@@ -451,6 +463,7 @@ py_test(
     args = ["$(location tests/test_schema.py)"],
     data = ["tests/test_schema.py"],
     main = "tests/pytest_runner.py",
+    precompile = "disabled",
     python_version = "PY3",
     deps = [
         ":native_codegen_lib",
@@ -467,6 +480,7 @@ py_test(
         ":native_policy_inputs",
     ],
     main = "tests/pytest_runner.py",
+    precompile = "disabled",
     python_version = "PY3",
     deps = [
         ":native_codegen_lib",

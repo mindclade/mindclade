@@ -79,3 +79,5 @@ KERNEL_SPEC: KernelSpec = KernelSpec(
         determinism=DeterminismClass.DETERMINISTIC,
     ),
 )
+
+IMPLEMENTATION_SPECS = ()
