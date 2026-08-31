@@ -11,7 +11,10 @@ from kernels.api.backward import (
     MissingGradientPolicy,
 )
 from kernels.api.capability import (
+    CapabilityDecision,
     CapabilityEnvelope,
+    CapabilityRequest,
+    CapabilityViolation,
     DimensionConstraint,
     TensorCapabilityConstraint,
 )
@@ -23,7 +26,12 @@ from kernels.api.expressions import (
     ConstantDType,
     ConstantDevice,
     DimRef,
+    Eq,
+    EvaluationContext,
+    IntLiteral,
+    Modulo,
     ShapeTuple,
+    TensorMetadata,
 )
 from kernels.api.forward import ForwardSpec
 from kernels.api.gradient import GradientSpec
@@ -840,6 +848,167 @@ def test_capability_and_numerical_contract_reject_ambiguity() -> None:
                 TensorTolerance("result", "bf16", 0.2),
             ),
         )
+
+
+def test_capability_contract_requires_boolean_predicates_and_strict_fields() -> None:
+    with pytest.raises(KernelContractError, match="typed boolean expression"):
+        DimensionConstraint(IntLiteral(1), "POSITIVE", "must be positive")  # type: ignore[arg-type]
+    with pytest.raises(KernelContractError, match="constraint code"):
+        DimensionConstraint(BoolLiteral(True), "lower-case", "invalid code")
+    with pytest.raises(KernelContractError, match="version must be exactly integer 1"):
+        DimensionConstraint(BoolLiteral(True), "VALID", "valid", version=True)
+    with pytest.raises(KernelContractError, match="must be a non-empty tuple"):
+        CapabilityEnvelope(
+            architectures=["sm90"],  # type: ignore[arg-type]
+            dtypes=("float32",),
+            layouts=("contiguous",),
+            modes=("default",),
+            constraints=(),
+            graph_capture_safe=True,
+            training_capable=True,
+        )
+    with pytest.raises(KernelContractError, match="graph_capture_safe must be a bool"):
+        CapabilityEnvelope(
+            architectures=("sm90",),
+            dtypes=("float32",),
+            layouts=("contiguous",),
+            modes=("default",),
+            constraints=(),
+            graph_capture_safe=1,  # type: ignore[arg-type]
+            training_capable=True,
+        )
+
+
+def test_capability_envelope_has_canonical_order_and_digest() -> None:
+    aligned = DimensionConstraint(BoolLiteral(True), "ALIGNED", "aligned")
+    bounded = DimensionConstraint(BoolLiteral(True), "BOUNDED", "bounded")
+    tensor_a = TensorCapabilityConstraint(
+        "x",
+        dtypes=("float32", "bfloat16"),
+        layouts=("strided", "contiguous"),
+        devices=("cuda",),
+        ranks=(4, 2),
+    )
+    tensor_b = TensorCapabilityConstraint(
+        "x",
+        dtypes=("bfloat16", "float32"),
+        layouts=("contiguous", "strided"),
+        devices=("cuda",),
+        ranks=(2, 4),
+    )
+    first = CapabilityEnvelope(
+        architectures=("sm100", "sm90"),
+        dtypes=("float32", "bfloat16"),
+        layouts=("strided", "contiguous"),
+        modes=("training", "default"),
+        constraints=(bounded, aligned),
+        graph_capture_safe=True,
+        training_capable=True,
+        tensor_constraints=(tensor_a,),
+    )
+    second = CapabilityEnvelope(
+        architectures=("sm90", "sm100"),
+        dtypes=("bfloat16", "float32"),
+        layouts=("contiguous", "strided"),
+        modes=("default", "training"),
+        constraints=(aligned, bounded),
+        graph_capture_safe=True,
+        training_capable=True,
+        tensor_constraints=(tensor_b,),
+    )
+    assert first.to_canonical() == second.to_canonical()
+    assert first.digest == second.digest
+
+
+def test_capability_evaluation_and_rendering_are_deterministic_and_fail_closed() -> None:
+    envelope = CapabilityEnvelope(
+        architectures=("sm90",),
+        dtypes=("float32",),
+        layouts=("contiguous",),
+        modes=("default",),
+        constraints=(
+            DimensionConstraint(
+                Eq(Modulo(DimRef("x", 1), IntLiteral(8)), IntLiteral(0)),
+                "ALIGNED",
+                "x channel dimension must be divisible by eight",
+            ),
+        ),
+        graph_capture_safe=False,
+        training_capable=False,
+        tensor_constraints=(
+            TensorCapabilityConstraint(
+                "x",
+                dtypes=("float32",),
+                layouts=("contiguous",),
+                devices=("cuda",),
+                ranks=(2,),
+            ),
+        ),
+    )
+    accepted = CapabilityRequest(
+        "sm90",
+        "float32",
+        "contiguous",
+        "default",
+        False,
+        False,
+        EvaluationContext(
+            tensors={"x": TensorMetadata((2, 8), "float32", "cuda:0")}
+        ),
+    )
+    assert envelope.evaluate(accepted) == CapabilityDecision(True, ())
+
+    rejected = CapabilityRequest(
+        "sm80",
+        "bfloat16",
+        "strided",
+        "decode",
+        True,
+        True,
+        EvaluationContext(
+            tensors={"x": TensorMetadata((2, 7), "bfloat16", "cpu", "strided")}
+        ),
+    )
+    decision = envelope.evaluate(rejected)
+    assert not decision.supported
+    assert tuple(item.code for item in decision.violations) == (
+        "UNSUPPORTED_ARCHITECTURE",
+        "UNSUPPORTED_DTYPE",
+        "UNSUPPORTED_LAYOUT",
+        "UNSUPPORTED_MODE",
+        "GRAPH_CAPTURE_UNSAFE",
+        "TRAINING_UNSUPPORTED",
+        "TENSOR_DTYPE_UNSUPPORTED",
+        "TENSOR_LAYOUT_UNSUPPORTED",
+        "TENSOR_DEVICE_UNSUPPORTED",
+        "ALIGNED",
+    )
+    assert envelope.render() == envelope.render()
+    assert "ALIGNED:" in envelope.render()
+
+    missing = CapabilityRequest(
+        "sm90",
+        "float32",
+        "contiguous",
+        "default",
+        False,
+        False,
+        EvaluationContext(tensors={}),
+    )
+    missing_decision = envelope.evaluate(missing)
+    assert tuple(item.code for item in missing_decision.violations) == (
+        "TENSOR_ARGUMENT_MISSING",
+        "ALIGNED",
+    )
+    assert "evaluation failed" in missing_decision.violations[-1].message
+
+
+def test_capability_decision_consistency_is_validated() -> None:
+    violation = CapabilityViolation("UNSUPPORTED_MODE", "mode is unsupported")
+    with pytest.raises(KernelContractError, match="exactly when violations are empty"):
+        CapabilityDecision(True, (violation,))
+    with pytest.raises(KernelContractError, match="exactly when violations are empty"):
+        CapabilityDecision(False, ())
 
 
 def test_composite_gradient_names_bind_semantic_arguments() -> None:

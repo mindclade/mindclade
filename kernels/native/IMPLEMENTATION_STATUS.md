@@ -13,9 +13,10 @@ Overall readiness: TARGET
 | Owner | ml-systems-performance |
 | Activation | Wave 6, JIT-06 |
 | Production authority | false |
-| Manifest contract | v3 / generator v5 implemented and source-verified |
+| Manifest contract | v3 / generator v6 implemented and source-verified |
 | Torch Stable ABI metadata | 2.10 target only |
 | Declared operations | 5 |
+| Unpromoted implementation candidates | 5 across 2 operations |
 | Qualified operations | 0 |
 | Active operations | 0 |
 | kernel-k0 | not achieved |
@@ -49,6 +50,14 @@ Overall readiness: TARGET
 - Receipt schema v2 fails before TileLang import when a declaration requires a
   backward provider or program group; it cannot silently emit a partial
   forward-only artifact.
+- Every canonical operation declares a separate literal
+  `IMPLEMENTATION_SPECS` tuple. Generator v6 binds these authoring records to
+  the semantic operation and emits independent implementation/envelope
+  digests plus builder-free runtime projections.
+- Capability envelopes now have strict canonical construction, deterministic
+  evaluation/rendering, layout-aware tensor metadata, expression-reference
+  inventories, and checked signed-64-bit arithmetic. Every generated candidate
+  is explicitly `promoted: false` and `selectable: false`.
 - Declarative FakeTensor implementations and explicit COMPOSITE autograd hooks
   are generated without mutable saved-tensor state or runtime discovery.
 - The loader verifies an explicit bundle descriptor, file digests, external
@@ -110,18 +119,18 @@ This is an architecture milestone, not a production-readiness claim.
 | Typed expression/core contracts | IMPLEMENTED | Wave 1 provides the restricted AST, immutable semantic/integration/environment contracts, 25 passing pytest cases, and two passing Bazel test targets. |
 | `spec.py` restricted discovery | IMPLEMENTED | Five canonical declarations are parsed without importing operation packages; unsafe AST forms and legacy locality fail closed. |
 | Generated semantic/FWD/BWD ABI | PARTIAL | v3 emits semantic and provider schemas, Stable-ABI registration, FakeTensor, and explicit autograd surfaces; the five current operations remain COMPOSITE and provide no qualified native BWD artifacts. |
-| Program groups/capability validators | PARTIAL | Group/workspace/dataflow contracts, generated builder-free launcher plans, manifest/loader equivalence checks, private-symbol inventories, and fail-closed CMake intake are implemented. The Stable-ABI CUDA workspace/stream bridge and capability-envelope generators remain. |
+| Program groups/capability validators | PARTIAL | Group/workspace/dataflow contracts, generated builder-free launcher plans, strict capability evaluation, and five immutable non-selectable candidate projections are implemented. FakeTensor/native-host capability guards, generated boundary cases, the Stable-ABI CUDA bridge, qualification, and selection remain. |
 | Hermetic compilation/artifacts/evidence | PARTIAL | Receipt schema v2 rejects backward and program-group declarations before TileLang import, preventing incomplete artifacts. Atomic FWD/BWD co-build receipts, sandboxing, transitive evidence DAGs, and signatures remain. |
 | Runtime capability dispatch | NOT_IMPLEMENTED | No promoted compact v3 capability index exists. |
 | GPU qualification/promotion | BLOCKED_BY_ENVIRONMENT | Local host has no CUDA accelerator or TileLang toolchain; K4/K5 cannot be claimed. |
 
 ## Current source verification
 
-- `PYTHONPATH=. pytest -q -p no:cacheprovider kernels/native/tests`: 227 passed.
+- `TMPDIR=/tmp PYTHONPATH=. python -m pytest -q -p no:cacheprovider kernels/native/tests`: 234 passed.
 - `python -m pytest -q -p no:cacheprovider tools/repo/tests/test_repository_policies.py`:
-  18 passed with 1,110 subtests.
+  21 passed with 1,310 subtests.
 - Selected Bazel API/native/codegen/TMA/swizzle lane: 14 targets passed.
-- Direct Pairformer/API source lane: 66 passed.
+- Direct Pairformer/API source lane: 76 passed.
 - Repository-path manifest and architecture projections regenerate from their
   declared sources at 2,833 governed paths.
 

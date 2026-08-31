@@ -1,4 +1,4 @@
-// GENERATED FILE - DO NOT EDIT. Generator: kernels.native.codegen.generate@5.
+// GENERATED FILE - DO NOT EDIT. Generator: kernels.native.codegen.generate@6.
 #include <cstdint>
 #include <torch/csrc/stable/library.h>
 #include <torch/csrc/stable/tensor.h>

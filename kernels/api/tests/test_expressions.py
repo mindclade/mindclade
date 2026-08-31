@@ -56,6 +56,7 @@ from kernels.api.expressions import (
     evaluate,
     expression_from_data,
     expression_from_json,
+    expression_references,
     generate_native_host_validator,
     generate_python_validator,
     render,
@@ -159,6 +160,7 @@ def test_expression_nodes_and_context_snapshots_are_immutable() -> None:
     assert DimRef("q", 0).evaluate(context) == 1
     with pytest.raises(TypeError):
         context.tensors["x"] = TensorMetadata((1,), "float16", "cuda:0")  # type: ignore[index]
+    assert context.tensors["q"].layout == "contiguous"
 
 
 def test_construction_rejects_cross_domain_and_unsafe_values() -> None:
@@ -212,6 +214,30 @@ def test_evaluation_errors_are_precise(context: EvaluationContext) -> None:
         CeilDiv(IntLiteral(1), IntLiteral(-1)).evaluate(context)
     with pytest.raises(ExpressionEvaluationError, match="must be int"):
         ScalarRef("scale", ScalarType.INT).evaluate(context)
+
+
+@pytest.mark.parametrize(
+    "expression",
+    (
+        Add(IntLiteral(2**63 - 1), IntLiteral(1)),
+        Subtract(IntLiteral(-(2**63)), IntLiteral(1)),
+        Multiply(IntLiteral(2**62), IntLiteral(4)),
+        FloorDiv(IntLiteral(-(2**63)), IntLiteral(-1)),
+        RoundUp(IntLiteral(2**63 - 1), IntLiteral(2)),
+    ),
+)
+def test_integer_evaluation_rejects_signed_64_bit_overflow(expression) -> None:
+    with pytest.raises(ExpressionEvaluationError, match="signed 64-bit"):
+        expression.evaluate(EvaluationContext(tensors={}))
+
+
+def test_expression_reference_inventory_is_canonical_without_reordering_boolean_logic() -> None:
+    first = Eq(DimRef("q", 0), ScalarRef("batch", ScalarType.INT))
+    second = Eq(DTypeRef("k"), ConstantDType("bfloat16"))
+    expression = And((first, second))
+    assert expression_references(expression).tensors == ("k", "q")
+    assert expression_references(expression).scalars == ("batch",)
+    assert expression.to_data()["operands"] == [first.to_data(), second.to_data()]
 
 
 def test_rendering_and_codegen_are_stable_and_inert() -> None:

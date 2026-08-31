@@ -49,6 +49,8 @@ def _operator(source: str) -> dict[str, object]:
         "source": source,
         "spec_sha256": _digest({"source": source}),
         "kernel_spec_digest": "",
+        "implementation_digest": _digest([]),
+        "implementation_candidates": [],
         "operator_schema": f"{name}(Tensor input) -> Tensor output",
         "facade_outputs": ["output"],
         "fake": None,
@@ -147,6 +149,8 @@ def _resign(manifest: dict[str, object]) -> dict[str, object]:
                 "source": operator["source"],
                 "spec_sha256": operator["spec_sha256"],
                 "kernel_spec_digest": operator["kernel_spec_digest"],
+                "implementation_digest": operator["implementation_digest"],
+                "implementation_digest": operator["implementation_digest"],
             }
             for operator in sorted(operators, key=lambda item: item["source"])
         ]
@@ -169,7 +173,7 @@ def _resign(manifest: dict[str, object]) -> dict[str, object]:
 def _manifest() -> dict[str, object]:
     manifest: dict[str, object] = {
         "schema_version": 3,
-        "generator": {"id": "kernels.native.codegen.generate", "version": 5},
+        "generator": {"id": "kernels.native.codegen.generate", "version": 6},
         "source_inventory_sha256": "",
         "namespace": "mindclade",
         "registration_mode": "build_time_generated",
@@ -201,9 +205,10 @@ def test_v3_fixture_digest_roots_match_exact_canonical_inventories():
     source_inventory = [
         {
             "source": operator["source"],
-            "spec_sha256": operator["spec_sha256"],
-            "kernel_spec_digest": operator["kernel_spec_digest"],
-        }
+                "spec_sha256": operator["spec_sha256"],
+                "kernel_spec_digest": operator["kernel_spec_digest"],
+                "implementation_digest": operator["implementation_digest"],
+            }
         for operator in sorted(operators, key=lambda item: item["source"])
     ]
     semantic_inventory = [
