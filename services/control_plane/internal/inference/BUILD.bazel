@@ -16,6 +16,7 @@ go_library(
     importpath = "github.com/mindclade/mindclade/services/control_plane/internal/inference",
     deps = [
         "//libs/go/audit",
+        "//libs/go/numconv",
         "//protocols/generated/go/artifact/v1:bindings",
         "//protocols/generated/go/common/v1:bindings",
         "//protocols/generated/go/inference/v1:bindings",
@@ -48,6 +49,7 @@ go_test(
     pure = "on",
     visibility = ["//tests:__pkg__"],
     deps = [
+        "//libs/go/numconv",
         "//protocols/generated/go/artifact/v1:bindings",
         "//protocols/generated/go/common/v1:bindings",
         "//protocols/generated/go/inference/v1:bindings",

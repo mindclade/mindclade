@@ -6,12 +6,14 @@ from google.protobuf import duration_pb2 as _duration_pb2
 from google.protobuf import timestamp_pb2 as _timestamp_pb2
 from mindclade.common.v1 import command_context_pb2 as _command_context_pb2
 from mindclade.common.v1 import pagination_pb2 as _pagination_pb2
+from mindclade.feature.v1 import feature_commands_pb2 as _feature_commands_pb2
 from mindclade.job.v1 import attempt_pb2 as _attempt_pb2
 from mindclade.job.v1 import job_pb2 as _job_pb2
 from mindclade.job.v1 import job_commands_pb2 as _job_commands_pb2
 from mindclade.job.v1 import lease_fencing_pb2 as _lease_fencing_pb2
 from mindclade.job.v1 import operation_pb2 as _operation_pb2
 from mindclade.job.v1 import run_pb2 as _run_pb2
+from mindclade.transform.v1 import transform_commands_pb2 as _transform_commands_pb2
 from google.protobuf.internal import containers as _containers
 from google.protobuf import descriptor as _descriptor
 from google.protobuf import message as _message
@@ -325,18 +327,22 @@ class ExpireAttemptLeasesResponse(_message.Message):
     def __init__(self, attempts: _Optional[_Iterable[_Union[_attempt_pb2.Attempt, _Mapping]]] = ..., observed_at: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ...) -> None: ...
 
 class CommitAttemptRequest(_message.Message):
-    __slots__ = ("context", "attempt", "fence", "update_mask", "expected_resource_version")
+    __slots__ = ("context", "attempt", "fence", "update_mask", "expected_resource_version", "feature_materialization", "transform_execution")
     CONTEXT_FIELD_NUMBER: _ClassVar[int]
     ATTEMPT_FIELD_NUMBER: _ClassVar[int]
     FENCE_FIELD_NUMBER: _ClassVar[int]
     UPDATE_MASK_FIELD_NUMBER: _ClassVar[int]
     EXPECTED_RESOURCE_VERSION_FIELD_NUMBER: _ClassVar[int]
+    FEATURE_MATERIALIZATION_FIELD_NUMBER: _ClassVar[int]
+    TRANSFORM_EXECUTION_FIELD_NUMBER: _ClassVar[int]
     context: _command_context_pb2.CommandContext
     attempt: _attempt_pb2.Attempt
     fence: _lease_fencing_pb2.LeaseFence
     update_mask: _field_mask_pb2.FieldMask
     expected_resource_version: int
-    def __init__(self, context: _Optional[_Union[_command_context_pb2.CommandContext, _Mapping]] = ..., attempt: _Optional[_Union[_attempt_pb2.Attempt, _Mapping]] = ..., fence: _Optional[_Union[_lease_fencing_pb2.LeaseFence, _Mapping]] = ..., update_mask: _Optional[_Union[_field_mask_pb2.FieldMask, _Mapping]] = ..., expected_resource_version: _Optional[int] = ...) -> None: ...
+    feature_materialization: _feature_commands_pb2.CommitFeatureMaterializationCommand
+    transform_execution: _transform_commands_pb2.CommitTransformExecutionCommand
+    def __init__(self, context: _Optional[_Union[_command_context_pb2.CommandContext, _Mapping]] = ..., attempt: _Optional[_Union[_attempt_pb2.Attempt, _Mapping]] = ..., fence: _Optional[_Union[_lease_fencing_pb2.LeaseFence, _Mapping]] = ..., update_mask: _Optional[_Union[_field_mask_pb2.FieldMask, _Mapping]] = ..., expected_resource_version: _Optional[int] = ..., feature_materialization: _Optional[_Union[_feature_commands_pb2.CommitFeatureMaterializationCommand, _Mapping]] = ..., transform_execution: _Optional[_Union[_transform_commands_pb2.CommitTransformExecutionCommand, _Mapping]] = ...) -> None: ...
 
 class CommitAttemptResponse(_message.Message):
     __slots__ = ("attempt", "run")

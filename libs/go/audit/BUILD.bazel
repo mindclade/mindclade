@@ -9,6 +9,7 @@ go_library(
     importpath = "github.com/mindclade/mindclade/libs/go/audit",
     visibility = ["//visibility:public"],
     deps = [
+        "//libs/go/numconv",
         "//protocols/generated/go/audit/v1:bindings",
         "//protocols/generated/go/common/v1:bindings",
         "@org_golang_google_protobuf//proto",
@@ -21,6 +22,10 @@ go_test(
     srcs = ["writer_test.go"],
     embed = [":audit"],
     pure = "on",
+    deps = [
+        "//protocols/generated/go/common/v1:bindings",
+        "@org_golang_google_protobuf//proto",
+    ],
 )
 
 filegroup(

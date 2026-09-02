@@ -6,15 +6,16 @@ import (
 	"testing"
 	"time"
 
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/test/bufconn"
+
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	datasetv1 "github.com/mindclade/mindclade/protocols/generated/go/dataset/v1"
 	internaldatasetv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/dataset/v1"
 	internalmodelv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/model/v1"
 	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
 	modelv1 "github.com/mindclade/mindclade/protocols/generated/go/model/v1"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
-	"google.golang.org/grpc/test/bufconn"
 )
 
 type datasetLifecycleServer struct {
@@ -25,28 +26,36 @@ type datasetLifecycleServer struct {
 func (*datasetLifecycleServer) operation(id string) *jobv1.Operation {
 	return &jobv1.Operation{OperationId: id}
 }
+
 func (server *datasetLifecycleServer) CreateDataset(_ context.Context, request *internaldatasetv1.CreateDatasetRequest) (*internaldatasetv1.CreateDatasetResponse, error) {
 	server.created = cloneGenerated(request.GetCommand())
 	return &internaldatasetv1.CreateDatasetResponse{Operation: server.operation("operations/dataset-create")}, nil
 }
+
 func (server *datasetLifecycleServer) GetDataset(context.Context, *internaldatasetv1.GetDatasetRequest) (*internaldatasetv1.GetDatasetResponse, error) {
 	return &internaldatasetv1.GetDatasetResponse{Dataset: &datasetv1.Dataset{Name: "tenants/tenant-a/projects/project-a/datasets/dataset-1"}}, nil
 }
+
 func (server *datasetLifecycleServer) ListDatasets(_ context.Context, request *internaldatasetv1.ListDatasetsRequest) (*internaldatasetv1.ListDatasetsResponse, error) {
 	return &internaldatasetv1.ListDatasetsResponse{Page: &commonv1.PageResponse{NextPageToken: request.GetPage().GetPageToken() + "-out"}}, nil
 }
+
 func (server *datasetLifecycleServer) UpdateDataset(context.Context, *internaldatasetv1.UpdateDatasetRequest) (*internaldatasetv1.UpdateDatasetResponse, error) {
 	return &internaldatasetv1.UpdateDatasetResponse{Operation: server.operation("operations/dataset-update")}, nil
 }
+
 func (server *datasetLifecycleServer) PublishDatasetRelease(context.Context, *internaldatasetv1.PublishDatasetReleaseRequest) (*internaldatasetv1.PublishDatasetReleaseResponse, error) {
 	return &internaldatasetv1.PublishDatasetReleaseResponse{Operation: server.operation("operations/dataset-publish")}, nil
 }
+
 func (server *datasetLifecycleServer) RevokeDatasetRelease(context.Context, *internaldatasetv1.RevokeDatasetReleaseRequest) (*internaldatasetv1.RevokeDatasetReleaseResponse, error) {
 	return &internaldatasetv1.RevokeDatasetReleaseResponse{Operation: server.operation("operations/dataset-revoke")}, nil
 }
+
 func (*datasetLifecycleServer) GetDatasetRelease(context.Context, *internaldatasetv1.GetDatasetReleaseRequest) (*internaldatasetv1.GetDatasetReleaseResponse, error) {
 	return &internaldatasetv1.GetDatasetReleaseResponse{DatasetRelease: &datasetv1.DatasetRelease{Name: "tenants/tenant-a/projects/project-a/datasets/dataset-1/releases/v1"}}, nil
 }
+
 func (*datasetLifecycleServer) ListDatasetReleases(context.Context, *internaldatasetv1.ListDatasetReleasesRequest) (*internaldatasetv1.ListDatasetReleasesResponse, error) {
 	return &internaldatasetv1.ListDatasetReleasesResponse{Page: &commonv1.PageResponse{NextPageToken: "release-out"}}, nil
 }
@@ -59,28 +68,36 @@ type modelLifecycleServer struct {
 func (*modelLifecycleServer) operation(id string) *jobv1.Operation {
 	return &jobv1.Operation{OperationId: id}
 }
+
 func (server *modelLifecycleServer) RegisterModel(_ context.Context, request *internalmodelv1.RegisterModelRequest) (*internalmodelv1.RegisterModelResponse, error) {
 	server.registered = cloneGenerated(request.GetCommand())
 	return &internalmodelv1.RegisterModelResponse{Operation: server.operation("operations/model-register")}, nil
 }
+
 func (*modelLifecycleServer) GetModel(context.Context, *internalmodelv1.GetModelRequest) (*internalmodelv1.GetModelResponse, error) {
 	return &internalmodelv1.GetModelResponse{Model: &modelv1.Model{Name: "tenants/tenant-a/projects/project-a/models/model-1"}}, nil
 }
+
 func (*modelLifecycleServer) ListModels(_ context.Context, request *internalmodelv1.ListModelsRequest) (*internalmodelv1.ListModelsResponse, error) {
 	return &internalmodelv1.ListModelsResponse{Page: &commonv1.PageResponse{NextPageToken: request.GetPage().GetPageToken() + "-out"}}, nil
 }
+
 func (server *modelLifecycleServer) RegisterModelRelease(context.Context, *internalmodelv1.RegisterModelReleaseRequest) (*internalmodelv1.RegisterModelReleaseResponse, error) {
 	return &internalmodelv1.RegisterModelReleaseResponse{Operation: server.operation("operations/model-release")}, nil
 }
+
 func (*modelLifecycleServer) GetModelRelease(context.Context, *internalmodelv1.GetModelReleaseRequest) (*internalmodelv1.GetModelReleaseResponse, error) {
 	return &internalmodelv1.GetModelReleaseResponse{ModelRelease: &modelv1.ModelRelease{Name: "tenants/tenant-a/projects/project-a/models/model-1/releases/v1"}}, nil
 }
+
 func (*modelLifecycleServer) ListModelReleases(context.Context, *internalmodelv1.ListModelReleasesRequest) (*internalmodelv1.ListModelReleasesResponse, error) {
 	return &internalmodelv1.ListModelReleasesResponse{Page: &commonv1.PageResponse{NextPageToken: "model-release-out"}}, nil
 }
+
 func (server *modelLifecycleServer) PromoteModelRelease(context.Context, *internalmodelv1.PromoteModelReleaseRequest) (*internalmodelv1.PromoteModelReleaseResponse, error) {
 	return &internalmodelv1.PromoteModelReleaseResponse{Operation: server.operation("operations/model-promote")}, nil
 }
+
 func (server *modelLifecycleServer) RevokeModelRelease(context.Context, *internalmodelv1.RevokeModelReleaseRequest) (*internalmodelv1.RevokeModelReleaseResponse, error) {
 	return &internalmodelv1.RevokeModelReleaseResponse{Operation: server.operation("operations/model-revoke")}, nil
 }
@@ -130,7 +147,7 @@ func TestDatasetAndModelFacadesUseGeneratedContracts(t *testing.T) {
 	if release, getErr := client.Datasets.GetRelease(context.Background(), datasetRelease); getErr != nil || release.GetName() != datasetRelease {
 		t.Fatalf("dataset release=%v err=%v", release, getErr)
 	}
-	if releases, listErr := client.Datasets.ListReleases(context.Background(), &internaldatasetv1.ListDatasetReleasesRequest{Parent: datasetName, Page: &commonv1.PageRequest{PageToken: "opaque-release"}}); listErr != nil || releases.GetPage().GetNextPageToken() != "release-out" {
+	if releases, listErr := client.Datasets.ListReleases(context.Background(), &internaldatasetv1.ListDatasetReleasesRequest{Parent: datasetName, Page: &commonv1.PageRequest{PageToken: "release-cursor"}}); listErr != nil || releases.GetPage().GetNextPageToken() != "release-out" {
 		t.Fatalf("dataset releases=%v err=%v", releases, listErr)
 	}
 	if _, err = client.Models.Register(context.Background(), &modelv1.RegisterModelCommand{ModelId: "model-1", Context: &commonv1.CommandContext{PrincipalId: "forged"}}, WithIdempotencyKey("model-register-1")); err != nil {
@@ -158,7 +175,7 @@ func TestDatasetAndModelFacadesUseGeneratedContracts(t *testing.T) {
 	if release, getErr := client.Models.GetRelease(context.Background(), modelRelease); getErr != nil || release.GetName() != modelRelease {
 		t.Fatalf("model release=%v err=%v", release, getErr)
 	}
-	if releases, listErr := client.Models.ListReleases(context.Background(), &internalmodelv1.ListModelReleasesRequest{Parent: modelName, Page: &commonv1.PageRequest{PageToken: "opaque-release"}}); listErr != nil || releases.GetPage().GetNextPageToken() != "model-release-out" {
+	if releases, listErr := client.Models.ListReleases(context.Background(), &internalmodelv1.ListModelReleasesRequest{Parent: modelName, Page: &commonv1.PageRequest{PageToken: "release-cursor"}}); listErr != nil || releases.GetPage().GetNextPageToken() != "model-release-out" {
 		t.Fatalf("model releases=%v err=%v", releases, listErr)
 	}
 }

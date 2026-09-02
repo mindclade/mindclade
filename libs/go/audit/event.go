@@ -5,12 +5,14 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	"github.com/mindclade/mindclade/libs/go/numconv"
 	auditv1 "github.com/mindclade/mindclade/protocols/generated/go/audit/v1"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 )
@@ -74,6 +76,57 @@ func NewEvent(tenantID, principalID, action, resourceID, decision string, at tim
 	return envelope, nil
 }
 
+// NewSecurityEvent builds a restricted immutable protobuf security fact for a
+// real authorization/audit boundary. Transport-authenticated identity and
+// correlation live in CommandContext; the payload contains only the closed
+// security classification fields and a content-addressed evidence reference.
+func NewSecurityEvent(tenantID, projectID, severity, control, evidenceDigest string, subject *commonv1.ResourceRef, command *commonv1.CommandContext, at time.Time) (*commonv1.EventEnvelope, error) {
+	if tenantID == "" || projectID == "" || subject == nil || command == nil || at.Location() != time.UTC ||
+		subject.GetTenantId() != tenantID || subject.GetProjectId() != projectID || subject.GetResourceVersion() <= 0 ||
+		command.GetTenantId() != tenantID || command.GetProjectId() != projectID || command.GetPrincipalId() == "" ||
+		command.GetRequestId() == "" || command.GetIdempotencyKey() == "" {
+		return nil, errors.New("invalid scoped security event identity")
+	}
+	switch severity {
+	case "low", "medium", "high", "critical":
+	default:
+		return nil, errors.New("security severity must be low, medium, high, or critical")
+	}
+	if control == "" || len(control) > 256 || strings.TrimSpace(control) != control || strings.ContainsAny(control, "\x00\r\n") || !validSHA256Digest(evidenceDigest) {
+		return nil, errors.New("security control and sha256 evidence digest are required")
+	}
+	payloadMessage := &auditv1.SecurityEvent{Severity: severity, Control: control, EvidenceDigest: evidenceDigest}
+	payload, err := proto.MarshalOptions{Deterministic: true}.Marshal(payloadMessage)
+	if err != nil {
+		return nil, fmt.Errorf("marshal security payload: %w", err)
+	}
+	payloadHash := sha256.Sum256(payload)
+	sequence, err := numconv.Int64ToUint64(subject.GetResourceVersion())
+	if err != nil {
+		return nil, fmt.Errorf("security subject revision: %w", err)
+	}
+	// request_id is transport-authenticated command identity. Including it
+	// prevents two distinct denied commands with the same subject and evidence
+	// from collapsing to one immutable security fact. The producer-specific
+	// subject also binds the idempotency key, while keeping that key out of the
+	// durable envelope.
+	eventHash := sha256.Sum256([]byte(tenantID + "\x00" + projectID + "\x00" + subject.GetName() + "\x00" + strconv.FormatUint(sequence, 10) + "\x00" + command.GetRequestId() + "\x00" + hex.EncodeToString(payloadHash[:])))
+	eventID := "security:" + hex.EncodeToString(eventHash[:])
+	envelope := &commonv1.EventEnvelope{
+		EventId: eventID, EventType: string(payloadMessage.ProtoReflect().Descriptor().FullName()), EventVersion: 1,
+		OccurredAt: timestamppb.New(at), RecordedAt: timestamppb.New(at), TenantId: tenantID, ProjectId: projectID,
+		TraceId: command.GetTraceId(), Subject: proto.Clone(subject).(*commonv1.ResourceRef),
+		PayloadDigest: "sha256:" + hex.EncodeToString(payloadHash[:]), Payload: payload,
+		Producer: "libs/go/audit/security", AggregateSequence: sequence, RequestId: command.GetRequestId(),
+		CorrelationId: command.GetCorrelationId(), CausationId: command.GetCausationId(), DeduplicationKey: eventID,
+		PayloadContentType: auditPayloadContentType, Classification: commonv1.DataClassification_DATA_CLASSIFICATION_RESTRICTED,
+	}
+	if _, err = ValidateSecurityEvent(envelope); err != nil {
+		return nil, err
+	}
+	return envelope, nil
+}
+
 // ValidateEvent verifies the envelope digest and decodes the authoritative
 // generated audit payload without exposing a second event model.
 func ValidateEvent(envelope *commonv1.EventEnvelope) (*auditv1.AuditEvent, error) {
@@ -109,6 +162,46 @@ func ValidateEvent(envelope *commonv1.EventEnvelope) (*auditv1.AuditEvent, error
 	}
 	if payload.GetPolicyDigest() != "" && !validSHA256Digest(payload.GetPolicyDigest()) {
 		return nil, errors.New("invalid audit policy digest")
+	}
+	return payload, nil
+}
+
+// ValidateSecurityEvent verifies and decodes the exact generated payload.
+func ValidateSecurityEvent(envelope *commonv1.EventEnvelope) (*auditv1.SecurityEvent, error) {
+	if envelope == nil || envelope.GetEventId() == "" || envelope.GetTenantId() == "" || envelope.GetProjectId() == "" || envelope.GetEventVersion() != 1 ||
+		envelope.GetOccurredAt() == nil || envelope.GetRecordedAt() == nil || envelope.GetOccurredAt().CheckValid() != nil || envelope.GetRecordedAt().CheckValid() != nil ||
+		envelope.GetSubject() == nil || envelope.GetSubject().GetName() == "" || envelope.GetSubject().GetTenantId() != envelope.GetTenantId() || envelope.GetSubject().GetProjectId() != envelope.GetProjectId() ||
+		envelope.GetSubject().GetResourceVersion() <= 0 || envelope.GetRequestId() == "" || envelope.GetProducer() != "libs/go/audit/security" ||
+		envelope.GetDeduplicationKey() != envelope.GetEventId() || envelope.GetPayloadContentType() != auditPayloadContentType || len(envelope.GetPayload()) == 0 ||
+		envelope.GetClassification() != commonv1.DataClassification_DATA_CLASSIFICATION_RESTRICTED || envelope.GetRecordedAt().AsTime().Before(envelope.GetOccurredAt().AsTime()) {
+		return nil, errors.New("invalid security envelope")
+	}
+	sequence, err := numconv.Int64ToUint64(envelope.GetSubject().GetResourceVersion())
+	if err != nil || envelope.GetAggregateSequence() != sequence {
+		return nil, errors.New("security event sequence must equal its positive subject revision")
+	}
+	payload := new(auditv1.SecurityEvent)
+	if envelope.GetEventType() != string(payload.ProtoReflect().Descriptor().FullName()) {
+		return nil, fmt.Errorf("unexpected security event type %q", envelope.GetEventType())
+	}
+	payloadHash := sha256.Sum256(envelope.GetPayload())
+	if envelope.GetPayloadDigest() != "sha256:"+hex.EncodeToString(payloadHash[:]) {
+		return nil, errors.New("security payload digest mismatch")
+	}
+	eventHash := sha256.Sum256([]byte(envelope.GetTenantId() + "\x00" + envelope.GetProjectId() + "\x00" + envelope.GetSubject().GetName() + "\x00" + strconv.FormatUint(sequence, 10) + "\x00" + envelope.GetRequestId() + "\x00" + hex.EncodeToString(payloadHash[:])))
+	if envelope.GetEventId() != "security:"+hex.EncodeToString(eventHash[:]) {
+		return nil, errors.New("security event identity mismatch")
+	}
+	if err = proto.Unmarshal(envelope.GetPayload(), payload); err != nil {
+		return nil, fmt.Errorf("unmarshal security payload: %w", err)
+	}
+	switch payload.GetSeverity() {
+	case "low", "medium", "high", "critical":
+	default:
+		return nil, errors.New("invalid security severity")
+	}
+	if payload.GetControl() == "" || len(payload.GetControl()) > 256 || strings.TrimSpace(payload.GetControl()) != payload.GetControl() || strings.ContainsAny(payload.GetControl(), "\x00\r\n") || !validSHA256Digest(payload.GetEvidenceDigest()) {
+		return nil, errors.New("invalid security payload")
 	}
 	return payload, nil
 }

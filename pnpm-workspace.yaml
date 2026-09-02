@@ -1,4 +1,6 @@
 packages:
+  - apps/console
+  - examples/sdk
   - internal/sdk/typescript
   - libs/typescript/config
   - libs/typescript/observability

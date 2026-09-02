@@ -10,7 +10,8 @@ use std::{
 use mindclade_protocols::{
     internal::job::v1::{
         CancelOperationRequest, CancelOperationResponse, GetOperationRequest, GetOperationResponse,
-        WatchOperationRequest, WatchOperationResponse,
+        ListOperationsRequest, ListOperationsResponse, WatchOperationRequest,
+        WatchOperationResponse,
     },
     job::v1::{Operation, OperationState},
 };
@@ -27,6 +28,8 @@ const DEFAULT_WAIT_TIMEOUT: Duration = Duration::from_mins(30);
 const GET_OPERATION: &str = "/mindclade.internal.job.v1.OperationService/GetOperation";
 const CANCEL_OPERATION: &str = "/mindclade.internal.job.v1.OperationService/CancelOperation";
 const WATCH_OPERATION: &str = "/mindclade.internal.job.v1.OperationService/WatchOperation";
+const LIST_OPERATIONS: &str = "/mindclade.internal.job.v1.OperationService/ListOperations";
+const MAX_OPERATION_PAGE_SIZE: u32 = 200;
 
 /// A remote terminal operation that did not succeed. The generated operation
 /// remains available for programmatic inspection; display/debug output does
@@ -227,6 +230,53 @@ impl Operations {
         Self { core }
     }
 
+    /// Returns one detached, bounded page scoped to the configured project.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error for a cross-project parent, oversized page, RPC
+    /// failure, or invalid returned operation state.
+    pub async fn list(
+        &self,
+        mut request: ListOperationsRequest,
+        options: CallOptions,
+    ) -> Result<ListOperationsResponse, Error> {
+        let parent = project_parent(&self.core.config);
+        if !request.parent.is_empty() && request.parent != parent {
+            return Err(Error::invalid_argument(
+                "operation list parent must match the configured project",
+            ));
+        }
+        if request
+            .page
+            .as_ref()
+            .is_some_and(|page| page.page_size > MAX_OPERATION_PAGE_SIZE)
+        {
+            return Err(Error::invalid_argument(
+                "operation page size cannot exceed 200",
+            ));
+        }
+        request.parent = parent;
+        let prepared = options.prepare(&self.core.config);
+        let response = self
+            .core
+            .unary(
+                request,
+                &prepared,
+                registered_method_safety(LIST_OPERATIONS),
+                None,
+                |transport, request| {
+                    Box::pin(async move { transport.list_operations(request).await })
+                },
+            )
+            .await?
+            .into_inner();
+        for operation in &response.operations {
+            validate_listed_operation(&self.core, operation)?;
+        }
+        Ok(response)
+    }
+
     /// Reads the latest durable operation revision with bounded safe retries.
     ///
     /// # Errors
@@ -323,10 +373,19 @@ impl Operations {
     ) -> Result<Operation, Error> {
         let name = name.into();
         let etag = etag.into();
-        let reason = reason.into();
+        let reason = reason.into().trim().to_owned();
         validate_resource_value("operation name", &name)?;
         validate_resource_value("operation ETag", &etag)?;
-        validate_resource_value("cancellation reason", &reason)?;
+        if reason.is_empty()
+            || reason.len() > 1_024
+            || reason
+                .bytes()
+                .any(|byte| matches!(byte, b'\0' | b'\r' | b'\n'))
+        {
+            return Err(Error::invalid_argument(
+                "cancellation reason must be non-empty bounded text without control delimiters",
+            ));
+        }
         let prepared = options.call.prepare(&self.core.config);
         let context = prepared.command_context(&self.core.config, &options)?;
         let idempotency_key = options.idempotency_key.clone();
@@ -590,6 +649,39 @@ fn validate_wait_duration(name: &str, value: Duration) -> Result<(), Error> {
         return Err(Error::invalid_argument(format!(
             "{name} must be positive and at most twenty-four hours"
         )));
+    }
+    Ok(())
+}
+
+fn project_parent(config: &crate::Config) -> String {
+    let tenant = if config.identity.tenant_id().starts_with("tenants/") {
+        config.identity.tenant_id().to_owned()
+    } else {
+        format!("tenants/{}", config.identity.tenant_id())
+    };
+    let project = config.identity.project_id();
+    if project.starts_with("tenants/") {
+        project.to_owned()
+    } else if project.starts_with("projects/") {
+        format!("{tenant}/{project}")
+    } else {
+        format!("{tenant}/projects/{project}")
+    }
+}
+
+fn validate_listed_operation(core: &ClientCore, operation: &Operation) -> Result<(), Error> {
+    let terminal = operation.state == OperationState::Succeeded as i32
+        || operation.state == OperationState::Failed as i32
+        || operation.state == OperationState::Cancelled as i32;
+    if operation.operation_id.is_empty()
+        || operation.tenant_id != core.config.identity.tenant_id()
+        || operation.project_id != core.config.identity.project_id()
+        || operation.state == OperationState::Unspecified as i32
+        || operation.done != terminal
+    {
+        return Err(Error::protocol(
+            "ListOperations returned invalid or cross-project durable state",
+        ));
     }
     Ok(())
 }

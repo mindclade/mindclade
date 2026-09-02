@@ -184,7 +184,7 @@ spec:
         releasePrimaryEligible: false
         connection: hosted-or-enterprise-self-hosted
         readiness: configuration-only
-        languages: [go, python, typescript]
+        languages: [go, python, rust, typescript]
         source: protocols/openapi/published/mindclade.openapi.yaml
         adapter:
           contractVersion: v1

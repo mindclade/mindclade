@@ -12,6 +12,7 @@ import (
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	"github.com/mindclade/mindclade/libs/go/numconv"
 	agentv1 "github.com/mindclade/mindclade/protocols/generated/go/agent/v1"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
@@ -25,6 +26,7 @@ type EventFactory interface {
 	DefinitionUpdated(Identity, *agentv1.AgentDefinition, int64, []string, *jobv1.Operation, *commonv1.CommandContext, time.Time) (*commonv1.EventEnvelope, error)
 	RunStarted(Identity, *agentv1.AgentRun, *jobv1.Operation, *commonv1.CommandContext, time.Time) (*commonv1.EventEnvelope, error)
 	CancellationRequested(Identity, *agentv1.AgentRun, *jobv1.Operation, string, *commonv1.CommandContext, time.Time) (*commonv1.EventEnvelope, error)
+	AgentStepDispatched(Identity, *agentv1.AgentStep, *jobv1.LeaseFence, *commonv1.CommandContext, time.Time) (*commonv1.EventEnvelope, error)
 	StepCommitted(Identity, *agentv1.AgentStep, *agentv1.AgentRun, *commonv1.CommandContext, time.Time) (*commonv1.EventEnvelope, error)
 	RunCompleted(Identity, *agentv1.AgentRun, *commonv1.CommandContext, time.Time) (*commonv1.EventEnvelope, error)
 	ToolReceiptCommitted(Identity, *agentv1.ToolReceipt, uint64, *commonv1.CommandContext, time.Time) (*commonv1.EventEnvelope, error)
@@ -35,32 +37,56 @@ type GeneratedEventFactory struct{}
 
 func (GeneratedEventFactory) DefinitionCreated(identity Identity, definition *agentv1.AgentDefinition, operation *jobv1.Operation, command *commonv1.CommandContext, at time.Time) (*commonv1.EventEnvelope, error) {
 	payload := &agentv1.AgentDefinitionCreated{AgentDefinition: clone(definition), Operation: operationResource(operation), CreatedAt: timestamppb.New(at.UTC())}
-	return eventEnvelope(identity, definitionResource(definition), payload, uint64(definition.GetRevision()), command, at, "agent") //nolint:gosec // Conversion is bounded by validated protocol invariants or PostgreSQL CHECK constraints.
+	return eventEnvelopeRevision(identity, definitionResource(definition), payload, definition.GetRevision(), command, at, "agent")
 }
 
 func (GeneratedEventFactory) DefinitionUpdated(identity Identity, definition *agentv1.AgentDefinition, previous int64, paths []string, operation *jobv1.Operation, command *commonv1.CommandContext, at time.Time) (*commonv1.EventEnvelope, error) {
 	payload := &agentv1.AgentDefinitionUpdated{AgentDefinition: clone(definition), PreviousRevision: previous, UpdateMask: &fieldmaskpb.FieldMask{Paths: append([]string(nil), paths...)}, Operation: operationResource(operation), UpdatedAt: timestamppb.New(at.UTC())}
-	return eventEnvelope(identity, definitionResource(definition), payload, uint64(definition.GetRevision()), command, at, "agent") //nolint:gosec // Conversion is bounded by validated protocol invariants or PostgreSQL CHECK constraints.
+	return eventEnvelopeRevision(identity, definitionResource(definition), payload, definition.GetRevision(), command, at, "agent")
 }
 
 func (GeneratedEventFactory) RunStarted(identity Identity, run *agentv1.AgentRun, operation *jobv1.Operation, command *commonv1.CommandContext, at time.Time) (*commonv1.EventEnvelope, error) {
 	payload := &agentv1.AgentRunStarted{AgentRun: clone(run), Operation: operationResource(operation), StartedAt: timestamppb.New(at.UTC())}
-	return eventEnvelope(identity, runResource(run), payload, uint64(run.GetRevision()), command, at, "agent") //nolint:gosec // Conversion is bounded by validated protocol invariants or PostgreSQL CHECK constraints.
+	return eventEnvelopeRevision(identity, runResource(run), payload, run.GetRevision(), command, at, "agent")
 }
 
 func (GeneratedEventFactory) CancellationRequested(identity Identity, run *agentv1.AgentRun, operation *jobv1.Operation, reason string, command *commonv1.CommandContext, at time.Time) (*commonv1.EventEnvelope, error) {
 	payload := &agentv1.AgentCancellationRequested{AgentRun: runResource(run), Reason: reason, Operation: operationResource(operation), RequestedAt: timestamppb.New(at.UTC())}
-	return eventEnvelope(identity, runResource(run), payload, uint64(run.GetRevision()), command, at, "agent") //nolint:gosec // Conversion is bounded by validated protocol invariants or PostgreSQL CHECK constraints.
+	return eventEnvelopeRevision(identity, runResource(run), payload, run.GetRevision(), command, at, "agent")
+}
+
+func (GeneratedEventFactory) AgentStepDispatched(identity Identity, step *agentv1.AgentStep, fence *jobv1.LeaseFence, command *commonv1.CommandContext, at time.Time) (*commonv1.EventEnvelope, error) {
+	if step == nil || step.GetState() != agentv1.AgentStepState_AGENT_STEP_STATE_DISPATCHED ||
+		step.GetAttemptId() == "" || step.GetAttemptId() != fence.GetAttemptId() || step.GetLeaseEpoch() == 0 || step.GetLeaseEpoch() != fence.GetLeaseEpoch() ||
+		!validID(identity.WorkerID) || validateFence(identity, fence, at) != nil {
+		return nil, ErrInvalidArgument
+	}
+	workerProfile := &commonv1.ResourceRef{
+		ResourceType:    "worker_profile",
+		ResourceId:      identity.WorkerID,
+		TenantId:        identity.TenantID,
+		ProjectId:       identity.ProjectID,
+		ResourceVersion: 1,
+		Name:            projectParent(identity) + "/workerProfiles/" + identity.WorkerID,
+	}
+	payload := &agentv1.AgentStepDispatched{
+		Step:             clone(step),
+		AttemptId:        fence.GetAttemptId(),
+		LeaseEpoch:       fence.GetLeaseEpoch(),
+		WorkerProfile:    workerProfile,
+		DispatchDeadline: clone(fence.GetDeadline()),
+	}
+	return eventEnvelopeRevision(identity, stepResource(identity, step), payload, step.GetRevision(), command, at, "agent-worker")
 }
 
 func (GeneratedEventFactory) StepCommitted(identity Identity, step *agentv1.AgentStep, run *agentv1.AgentRun, command *commonv1.CommandContext, at time.Time) (*commonv1.EventEnvelope, error) {
 	payload := &agentv1.AgentStepCommitted{AgentStep: clone(step), AgentRun: runResource(run), CommittedAt: timestamppb.New(at.UTC())}
-	return eventEnvelope(identity, stepResource(identity, step), payload, uint64(step.GetRevision()), command, at, "agent-worker") //nolint:gosec // Conversion is bounded by validated protocol invariants or PostgreSQL CHECK constraints.
+	return eventEnvelopeRevision(identity, stepResource(identity, step), payload, step.GetRevision(), command, at, "agent-worker")
 }
 
 func (GeneratedEventFactory) RunCompleted(identity Identity, run *agentv1.AgentRun, command *commonv1.CommandContext, at time.Time) (*commonv1.EventEnvelope, error) {
 	payload := &agentv1.AgentRunCompleted{Run: clone(run), RunManifest: clone(run.GetRunManifest()), AttemptId: run.GetAttemptId(), LeaseEpoch: run.GetLeaseEpoch(), CompletedAt: timestamppb.New(at.UTC())}
-	return eventEnvelope(identity, runResource(run), payload, uint64(run.GetRevision()), command, at, "agent-worker") //nolint:gosec // Conversion is bounded by validated protocol invariants or PostgreSQL CHECK constraints.
+	return eventEnvelopeRevision(identity, runResource(run), payload, run.GetRevision(), command, at, "agent-worker")
 }
 
 func (GeneratedEventFactory) ToolReceiptCommitted(identity Identity, receipt *agentv1.ToolReceipt, sequence uint64, command *commonv1.CommandContext, at time.Time) (*commonv1.EventEnvelope, error) {
@@ -74,6 +100,14 @@ func (GeneratedEventFactory) JobRequested(identity Identity, operation *jobv1.Op
 	}
 	payload := &jobv1.JobRequested{JobId: operation.GetJobId(), ConfigurationDigest: configurationDigest}
 	return eventEnvelope(identity, operationResource(operation), payload, 1, command, at, "agent-scheduler")
+}
+
+func eventEnvelopeRevision(identity Identity, subject *commonv1.ResourceRef, payload proto.Message, revision int64, command *commonv1.CommandContext, at time.Time, producer string) (*commonv1.EventEnvelope, error) {
+	sequence, err := numconv.Int64ToUint64(revision)
+	if err != nil {
+		return nil, err
+	}
+	return eventEnvelope(identity, subject, payload, sequence, command, at, producer)
 }
 
 func eventEnvelope(identity Identity, subject *commonv1.ResourceRef, payloadMessage proto.Message, sequence uint64, command *commonv1.CommandContext, at time.Time, producer string) (*commonv1.EventEnvelope, error) {

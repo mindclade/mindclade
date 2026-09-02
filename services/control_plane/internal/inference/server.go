@@ -11,6 +11,7 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	"github.com/mindclade/mindclade/libs/go/numconv"
 	inferencev1 "github.com/mindclade/mindclade/protocols/generated/go/inference/v1"
 	internalinferencev1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/inference/v1"
 	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
@@ -193,14 +194,18 @@ func (server *Server) WatchInference(request *internalinferencev1.WatchInference
 			if mapErr != nil {
 				return rpcError(mapErr)
 			}
-			message.ResumeToken, mapErr = server.cursors.Encode(identity, request.GetOperationName(), requestName, uint64(revision.GetResourceVersion()), server.clock.Now()) //nolint:gosec // Conversion is bounded by validated protocol invariants or PostgreSQL CHECK constraints.
+			revisionSequence, conversionErr := numconv.Int64ToUint64(revision.GetResourceVersion())
+			if conversionErr != nil {
+				return rpcError(conversionErr)
+			}
+			message.ResumeToken, mapErr = server.cursors.Encode(identity, request.GetOperationName(), requestName, revisionSequence, server.clock.Now())
 			if mapErr != nil {
 				return rpcError(mapErr)
 			}
 			if sendErr := stream.Send(&internalinferencev1.WatchInferenceResponse{Message: message}); sendErr != nil {
 				return sendErr
 			}
-			after = uint64(revision.GetResourceVersion()) //nolint:gosec // Conversion is bounded by validated protocol invariants or PostgreSQL CHECK constraints.
+			after = revisionSequence
 			lastHeartbeat = server.clock.Now()
 		}
 		if terminal {
@@ -247,7 +252,11 @@ func (server *Server) streamMessage(ctx context.Context, identity Identity, requ
 	if operation == nil || operation.GetResourceVersion() <= 0 || operation.GetUpdatedAt() == nil {
 		return nil, ErrHistoryGap
 	}
-	message := &inferencev1.InferenceStreamMessage{RequestName: requestName, Sequence: uint64(operation.GetResourceVersion()), EmittedAt: clone(operation.GetUpdatedAt())} //nolint:gosec // Conversion is bounded by validated protocol invariants or PostgreSQL CHECK constraints.
+	sequence, err := numconv.Int64ToUint64(operation.GetResourceVersion())
+	if err != nil {
+		return nil, err
+	}
+	message := &inferencev1.InferenceStreamMessage{RequestName: requestName, Sequence: sequence, EmittedAt: clone(operation.GetUpdatedAt())}
 	if operation.GetDone() {
 		result, err := server.repository.GetResultByRequest(ctx, identity, requestName)
 		if err != nil {

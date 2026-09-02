@@ -47,10 +47,6 @@ func (s *Server) withClock(clock Clock) *Server {
 	return s
 }
 
-func RegisterService(registrar grpc.ServiceRegistrar, server *Server) {
-	internalartifactv1.RegisterArtifactServiceServer(registrar, server)
-}
-
 func (s *Server) identity(ctx context.Context) (Identity, error) {
 	identity, err := s.identities.Resolve(ctx)
 	if err != nil {

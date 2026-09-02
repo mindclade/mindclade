@@ -12,6 +12,7 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	"github.com/mindclade/mindclade/libs/go/numconv"
 	agentv1 "github.com/mindclade/mindclade/protocols/generated/go/agent/v1"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	internalagentv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/agent/v1"
@@ -761,7 +762,11 @@ func (repository SQLRepository) ListSteps(ctx context.Context, identity Identity
 	token := ""
 	if hasMore {
 		last := stored[len(stored)-1]
-		token, err = repository.Pagination.encode(pageToken{Kind: "agent-steps", Tenant: identity.TenantID, Project: identity.ProjectID, Parent: parent, Filter: page.Filter, Order: page.Order, AfterSequence: uint64(last.sequence)}) //nolint:gosec // Conversion is bounded by validated protocol invariants or PostgreSQL CHECK constraints.
+		afterSequence, conversionErr := numconv.Int64ToUint64(last.sequence)
+		if conversionErr != nil {
+			return nil, "", time.Time{}, conversionErr
+		}
+		token, err = repository.Pagination.encode(pageToken{Kind: "agent-steps", Tenant: identity.TenantID, Project: identity.ProjectID, Parent: parent, Filter: page.Filter, Order: page.Order, AfterSequence: afterSequence})
 		if err != nil {
 			return nil, "", time.Time{}, err
 		}
@@ -905,7 +910,12 @@ func (repository SQLRepository) CommitStep(ctx context.Context, identity Identit
 		return nil, nil, false, err
 	}
 	events := make([]*commonv1.EventEnvelope, 0, 2)
-	stepEvent, err := repository.Events.StepCommitted(identity, step, after, request.GetContext(), at)
+	var stepEvent *commonv1.EventEnvelope
+	if step.GetState() == agentv1.AgentStepState_AGENT_STEP_STATE_DISPATCHED {
+		stepEvent, err = repository.Events.AgentStepDispatched(identity, step, request.GetFence(), request.GetContext(), at)
+	} else {
+		stepEvent, err = repository.Events.StepCommitted(identity, step, after, request.GetContext(), at)
+	}
 	if err != nil {
 		return nil, nil, false, err
 	}

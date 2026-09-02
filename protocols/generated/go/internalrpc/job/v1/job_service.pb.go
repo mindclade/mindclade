@@ -8,7 +8,9 @@ package internaljobv1
 
 import (
 	v11 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
+	v12 "github.com/mindclade/mindclade/protocols/generated/go/feature/v1"
 	v1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
+	v13 "github.com/mindclade/mindclade/protocols/generated/go/transform/v1"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	durationpb "google.golang.org/protobuf/types/known/durationpb"
@@ -1966,8 +1968,18 @@ type CommitAttemptRequest struct {
 	Fence                   *v1.LeaseFence         `protobuf:"bytes,3,opt,name=fence,proto3" json:"fence,omitempty"`
 	UpdateMask              *fieldmaskpb.FieldMask `protobuf:"bytes,4,opt,name=update_mask,json=updateMask,proto3" json:"update_mask,omitempty"`
 	ExpectedResourceVersion int64                  `protobuf:"varint,5,opt,name=expected_resource_version,json=expectedResourceVersion,proto3" json:"expected_resource_version,omitempty"`
-	unknownFields           protoimpl.UnknownFields
-	sizeCache               protoimpl.SizeCache
+	// Domain completion is required for job kinds whose authoritative terminal
+	// fact carries more meaning than the generic Attempt outcome. The server
+	// validates the selected type against the persisted job_kind and commits its
+	// immutable event in the same transaction as Attempt and Run.
+	//
+	// Types that are valid to be assigned to DomainCompletion:
+	//
+	//	*CommitAttemptRequest_FeatureMaterialization
+	//	*CommitAttemptRequest_TransformExecution
+	DomainCompletion isCommitAttemptRequest_DomainCompletion `protobuf_oneof:"domain_completion"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *CommitAttemptRequest) Reset() {
@@ -2035,6 +2047,47 @@ func (x *CommitAttemptRequest) GetExpectedResourceVersion() int64 {
 	return 0
 }
 
+func (x *CommitAttemptRequest) GetDomainCompletion() isCommitAttemptRequest_DomainCompletion {
+	if x != nil {
+		return x.DomainCompletion
+	}
+	return nil
+}
+
+func (x *CommitAttemptRequest) GetFeatureMaterialization() *v12.CommitFeatureMaterializationCommand {
+	if x != nil {
+		if x, ok := x.DomainCompletion.(*CommitAttemptRequest_FeatureMaterialization); ok {
+			return x.FeatureMaterialization
+		}
+	}
+	return nil
+}
+
+func (x *CommitAttemptRequest) GetTransformExecution() *v13.CommitTransformExecutionCommand {
+	if x != nil {
+		if x, ok := x.DomainCompletion.(*CommitAttemptRequest_TransformExecution); ok {
+			return x.TransformExecution
+		}
+	}
+	return nil
+}
+
+type isCommitAttemptRequest_DomainCompletion interface {
+	isCommitAttemptRequest_DomainCompletion()
+}
+
+type CommitAttemptRequest_FeatureMaterialization struct {
+	FeatureMaterialization *v12.CommitFeatureMaterializationCommand `protobuf:"bytes,6,opt,name=feature_materialization,json=featureMaterialization,proto3,oneof"`
+}
+
+type CommitAttemptRequest_TransformExecution struct {
+	TransformExecution *v13.CommitTransformExecutionCommand `protobuf:"bytes,7,opt,name=transform_execution,json=transformExecution,proto3,oneof"`
+}
+
+func (*CommitAttemptRequest_FeatureMaterialization) isCommitAttemptRequest_DomainCompletion() {}
+
+func (*CommitAttemptRequest_TransformExecution) isCommitAttemptRequest_DomainCompletion() {}
+
 // CommitAttemptResponse returns the accepted attempt and reconciled run state.
 type CommitAttemptResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -2092,7 +2145,7 @@ var File_proto_mindclade_internal_job_v1_job_service_proto protoreflect.FileDesc
 
 const file_proto_mindclade_internal_job_v1_job_service_proto_rawDesc = "" +
 	"\n" +
-	"1proto/mindclade/internal/job/v1/job_service.proto\x12\x19mindclade.internal.job.v1\x1a google/protobuf/field_mask.proto\x1a\x1egoogle/protobuf/duration.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a/proto/mindclade/common/v1/command_context.proto\x1a*proto/mindclade/common/v1/pagination.proto\x1a$proto/mindclade/job/v1/attempt.proto\x1a proto/mindclade/job/v1/job.proto\x1a)proto/mindclade/job/v1/job_commands.proto\x1a*proto/mindclade/job/v1/lease_fencing.proto\x1a&proto/mindclade/job/v1/operation.proto\x1a proto/mindclade/job/v1/run.proto\"M\n" +
+	"1proto/mindclade/internal/job/v1/job_service.proto\x12\x19mindclade.internal.job.v1\x1a google/protobuf/field_mask.proto\x1a\x1egoogle/protobuf/duration.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a/proto/mindclade/common/v1/command_context.proto\x1a*proto/mindclade/common/v1/pagination.proto\x1a1proto/mindclade/feature/v1/feature_commands.proto\x1a$proto/mindclade/job/v1/attempt.proto\x1a proto/mindclade/job/v1/job.proto\x1a)proto/mindclade/job/v1/job_commands.proto\x1a*proto/mindclade/job/v1/lease_fencing.proto\x1a&proto/mindclade/job/v1/operation.proto\x1a proto/mindclade/job/v1/run.proto\x1a5proto/mindclade/transform/v1/transform_commands.proto\"M\n" +
 	"\x13GetOperationRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\"\n" +
 	"\rif_none_match\x18\x02 \x01(\tR\vifNoneMatch\"Q\n" +
@@ -2216,14 +2269,17 @@ const file_proto_mindclade_internal_job_v1_job_service_proto_rawDesc = "" +
 	"\x1bExpireAttemptLeasesResponse\x125\n" +
 	"\battempts\x18\x01 \x03(\v2\x19.mindclade.job.v1.AttemptR\battempts\x12;\n" +
 	"\vobserved_at\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
-	"observedAt\"\xb7\x02\n" +
+	"observedAt\"\xae\x04\n" +
 	"\x14CommitAttemptRequest\x12=\n" +
 	"\acontext\x18\x01 \x01(\v2#.mindclade.common.v1.CommandContextR\acontext\x123\n" +
 	"\aattempt\x18\x02 \x01(\v2\x19.mindclade.job.v1.AttemptR\aattempt\x122\n" +
 	"\x05fence\x18\x03 \x01(\v2\x1c.mindclade.job.v1.LeaseFenceR\x05fence\x12;\n" +
 	"\vupdate_mask\x18\x04 \x01(\v2\x1a.google.protobuf.FieldMaskR\n" +
 	"updateMask\x12:\n" +
-	"\x19expected_resource_version\x18\x05 \x01(\x03R\x17expectedResourceVersion\"u\n" +
+	"\x19expected_resource_version\x18\x05 \x01(\x03R\x17expectedResourceVersion\x12t\n" +
+	"\x17feature_materialization\x18\x06 \x01(\v29.mindclade.feature.v1.CommitFeatureMaterializationCommandH\x00R\x16featureMaterialization\x12j\n" +
+	"\x13transform_execution\x18\a \x01(\v27.mindclade.transform.v1.CommitTransformExecutionCommandH\x00R\x12transformExecutionB\x13\n" +
+	"\x11domain_completion\"u\n" +
 	"\x15CommitAttemptResponse\x123\n" +
 	"\aattempt\x18\x01 \x01(\v2\x19.mindclade.job.v1.AttemptR\aattempt\x12'\n" +
 	"\x03run\x18\x02 \x01(\v2\x15.mindclade.job.v1.RunR\x03run2\xed\x03\n" +
@@ -2267,54 +2323,56 @@ func file_proto_mindclade_internal_job_v1_job_service_proto_rawDescGZIP() []byte
 
 var file_proto_mindclade_internal_job_v1_job_service_proto_msgTypes = make([]protoimpl.MessageInfo, 36)
 var file_proto_mindclade_internal_job_v1_job_service_proto_goTypes = []any{
-	(*GetOperationRequest)(nil),         // 0: mindclade.internal.job.v1.GetOperationRequest
-	(*GetOperationResponse)(nil),        // 1: mindclade.internal.job.v1.GetOperationResponse
-	(*ListOperationsRequest)(nil),       // 2: mindclade.internal.job.v1.ListOperationsRequest
-	(*ListOperationsResponse)(nil),      // 3: mindclade.internal.job.v1.ListOperationsResponse
-	(*CancelOperationRequest)(nil),      // 4: mindclade.internal.job.v1.CancelOperationRequest
-	(*CancelOperationResponse)(nil),     // 5: mindclade.internal.job.v1.CancelOperationResponse
-	(*WatchOperationRequest)(nil),       // 6: mindclade.internal.job.v1.WatchOperationRequest
-	(*WatchOperationResponse)(nil),      // 7: mindclade.internal.job.v1.WatchOperationResponse
-	(*RequestJobRequest)(nil),           // 8: mindclade.internal.job.v1.RequestJobRequest
-	(*RequestJobResponse)(nil),          // 9: mindclade.internal.job.v1.RequestJobResponse
-	(*GetJobRequest)(nil),               // 10: mindclade.internal.job.v1.GetJobRequest
-	(*GetJobResponse)(nil),              // 11: mindclade.internal.job.v1.GetJobResponse
-	(*ListJobsRequest)(nil),             // 12: mindclade.internal.job.v1.ListJobsRequest
-	(*ListJobsResponse)(nil),            // 13: mindclade.internal.job.v1.ListJobsResponse
-	(*CancelJobRequest)(nil),            // 14: mindclade.internal.job.v1.CancelJobRequest
-	(*CancelJobResponse)(nil),           // 15: mindclade.internal.job.v1.CancelJobResponse
-	(*GetRunRequest)(nil),               // 16: mindclade.internal.job.v1.GetRunRequest
-	(*GetRunResponse)(nil),              // 17: mindclade.internal.job.v1.GetRunResponse
-	(*ListRunsRequest)(nil),             // 18: mindclade.internal.job.v1.ListRunsRequest
-	(*ListRunsResponse)(nil),            // 19: mindclade.internal.job.v1.ListRunsResponse
-	(*GetAttemptRequest)(nil),           // 20: mindclade.internal.job.v1.GetAttemptRequest
-	(*GetAttemptResponse)(nil),          // 21: mindclade.internal.job.v1.GetAttemptResponse
-	(*ListAttemptsRequest)(nil),         // 22: mindclade.internal.job.v1.ListAttemptsRequest
-	(*ListAttemptsResponse)(nil),        // 23: mindclade.internal.job.v1.ListAttemptsResponse
-	(*AcquireAttemptLeaseRequest)(nil),  // 24: mindclade.internal.job.v1.AcquireAttemptLeaseRequest
-	(*AcquireAttemptLeaseResponse)(nil), // 25: mindclade.internal.job.v1.AcquireAttemptLeaseResponse
-	(*RenewAttemptLeaseRequest)(nil),    // 26: mindclade.internal.job.v1.RenewAttemptLeaseRequest
-	(*RenewAttemptLeaseResponse)(nil),   // 27: mindclade.internal.job.v1.RenewAttemptLeaseResponse
-	(*HeartbeatAttemptRequest)(nil),     // 28: mindclade.internal.job.v1.HeartbeatAttemptRequest
-	(*HeartbeatAttemptResponse)(nil),    // 29: mindclade.internal.job.v1.HeartbeatAttemptResponse
-	(*CancelAttemptRequest)(nil),        // 30: mindclade.internal.job.v1.CancelAttemptRequest
-	(*CancelAttemptResponse)(nil),       // 31: mindclade.internal.job.v1.CancelAttemptResponse
-	(*ExpireAttemptLeasesRequest)(nil),  // 32: mindclade.internal.job.v1.ExpireAttemptLeasesRequest
-	(*ExpireAttemptLeasesResponse)(nil), // 33: mindclade.internal.job.v1.ExpireAttemptLeasesResponse
-	(*CommitAttemptRequest)(nil),        // 34: mindclade.internal.job.v1.CommitAttemptRequest
-	(*CommitAttemptResponse)(nil),       // 35: mindclade.internal.job.v1.CommitAttemptResponse
-	(*v1.Operation)(nil),                // 36: mindclade.job.v1.Operation
-	(*v11.PageRequest)(nil),             // 37: mindclade.common.v1.PageRequest
-	(*v11.PageResponse)(nil),            // 38: mindclade.common.v1.PageResponse
-	(*timestamppb.Timestamp)(nil),       // 39: google.protobuf.Timestamp
-	(*v11.CommandContext)(nil),          // 40: mindclade.common.v1.CommandContext
-	(*v1.RequestJobCommand)(nil),        // 41: mindclade.job.v1.RequestJobCommand
-	(*v1.Job)(nil),                      // 42: mindclade.job.v1.Job
-	(*v1.Run)(nil),                      // 43: mindclade.job.v1.Run
-	(*v1.Attempt)(nil),                  // 44: mindclade.job.v1.Attempt
-	(*durationpb.Duration)(nil),         // 45: google.protobuf.Duration
-	(*v1.LeaseFence)(nil),               // 46: mindclade.job.v1.LeaseFence
-	(*fieldmaskpb.FieldMask)(nil),       // 47: google.protobuf.FieldMask
+	(*GetOperationRequest)(nil),                     // 0: mindclade.internal.job.v1.GetOperationRequest
+	(*GetOperationResponse)(nil),                    // 1: mindclade.internal.job.v1.GetOperationResponse
+	(*ListOperationsRequest)(nil),                   // 2: mindclade.internal.job.v1.ListOperationsRequest
+	(*ListOperationsResponse)(nil),                  // 3: mindclade.internal.job.v1.ListOperationsResponse
+	(*CancelOperationRequest)(nil),                  // 4: mindclade.internal.job.v1.CancelOperationRequest
+	(*CancelOperationResponse)(nil),                 // 5: mindclade.internal.job.v1.CancelOperationResponse
+	(*WatchOperationRequest)(nil),                   // 6: mindclade.internal.job.v1.WatchOperationRequest
+	(*WatchOperationResponse)(nil),                  // 7: mindclade.internal.job.v1.WatchOperationResponse
+	(*RequestJobRequest)(nil),                       // 8: mindclade.internal.job.v1.RequestJobRequest
+	(*RequestJobResponse)(nil),                      // 9: mindclade.internal.job.v1.RequestJobResponse
+	(*GetJobRequest)(nil),                           // 10: mindclade.internal.job.v1.GetJobRequest
+	(*GetJobResponse)(nil),                          // 11: mindclade.internal.job.v1.GetJobResponse
+	(*ListJobsRequest)(nil),                         // 12: mindclade.internal.job.v1.ListJobsRequest
+	(*ListJobsResponse)(nil),                        // 13: mindclade.internal.job.v1.ListJobsResponse
+	(*CancelJobRequest)(nil),                        // 14: mindclade.internal.job.v1.CancelJobRequest
+	(*CancelJobResponse)(nil),                       // 15: mindclade.internal.job.v1.CancelJobResponse
+	(*GetRunRequest)(nil),                           // 16: mindclade.internal.job.v1.GetRunRequest
+	(*GetRunResponse)(nil),                          // 17: mindclade.internal.job.v1.GetRunResponse
+	(*ListRunsRequest)(nil),                         // 18: mindclade.internal.job.v1.ListRunsRequest
+	(*ListRunsResponse)(nil),                        // 19: mindclade.internal.job.v1.ListRunsResponse
+	(*GetAttemptRequest)(nil),                       // 20: mindclade.internal.job.v1.GetAttemptRequest
+	(*GetAttemptResponse)(nil),                      // 21: mindclade.internal.job.v1.GetAttemptResponse
+	(*ListAttemptsRequest)(nil),                     // 22: mindclade.internal.job.v1.ListAttemptsRequest
+	(*ListAttemptsResponse)(nil),                    // 23: mindclade.internal.job.v1.ListAttemptsResponse
+	(*AcquireAttemptLeaseRequest)(nil),              // 24: mindclade.internal.job.v1.AcquireAttemptLeaseRequest
+	(*AcquireAttemptLeaseResponse)(nil),             // 25: mindclade.internal.job.v1.AcquireAttemptLeaseResponse
+	(*RenewAttemptLeaseRequest)(nil),                // 26: mindclade.internal.job.v1.RenewAttemptLeaseRequest
+	(*RenewAttemptLeaseResponse)(nil),               // 27: mindclade.internal.job.v1.RenewAttemptLeaseResponse
+	(*HeartbeatAttemptRequest)(nil),                 // 28: mindclade.internal.job.v1.HeartbeatAttemptRequest
+	(*HeartbeatAttemptResponse)(nil),                // 29: mindclade.internal.job.v1.HeartbeatAttemptResponse
+	(*CancelAttemptRequest)(nil),                    // 30: mindclade.internal.job.v1.CancelAttemptRequest
+	(*CancelAttemptResponse)(nil),                   // 31: mindclade.internal.job.v1.CancelAttemptResponse
+	(*ExpireAttemptLeasesRequest)(nil),              // 32: mindclade.internal.job.v1.ExpireAttemptLeasesRequest
+	(*ExpireAttemptLeasesResponse)(nil),             // 33: mindclade.internal.job.v1.ExpireAttemptLeasesResponse
+	(*CommitAttemptRequest)(nil),                    // 34: mindclade.internal.job.v1.CommitAttemptRequest
+	(*CommitAttemptResponse)(nil),                   // 35: mindclade.internal.job.v1.CommitAttemptResponse
+	(*v1.Operation)(nil),                            // 36: mindclade.job.v1.Operation
+	(*v11.PageRequest)(nil),                         // 37: mindclade.common.v1.PageRequest
+	(*v11.PageResponse)(nil),                        // 38: mindclade.common.v1.PageResponse
+	(*timestamppb.Timestamp)(nil),                   // 39: google.protobuf.Timestamp
+	(*v11.CommandContext)(nil),                      // 40: mindclade.common.v1.CommandContext
+	(*v1.RequestJobCommand)(nil),                    // 41: mindclade.job.v1.RequestJobCommand
+	(*v1.Job)(nil),                                  // 42: mindclade.job.v1.Job
+	(*v1.Run)(nil),                                  // 43: mindclade.job.v1.Run
+	(*v1.Attempt)(nil),                              // 44: mindclade.job.v1.Attempt
+	(*durationpb.Duration)(nil),                     // 45: google.protobuf.Duration
+	(*v1.LeaseFence)(nil),                           // 46: mindclade.job.v1.LeaseFence
+	(*fieldmaskpb.FieldMask)(nil),                   // 47: google.protobuf.FieldMask
+	(*v12.CommitFeatureMaterializationCommand)(nil), // 48: mindclade.feature.v1.CommitFeatureMaterializationCommand
+	(*v13.CommitTransformExecutionCommand)(nil),     // 49: mindclade.transform.v1.CommitTransformExecutionCommand
 }
 var file_proto_mindclade_internal_job_v1_job_service_proto_depIdxs = []int32{
 	36, // 0: mindclade.internal.job.v1.GetOperationResponse.operation:type_name -> mindclade.job.v1.Operation
@@ -2373,55 +2431,61 @@ var file_proto_mindclade_internal_job_v1_job_service_proto_depIdxs = []int32{
 	44, // 53: mindclade.internal.job.v1.CommitAttemptRequest.attempt:type_name -> mindclade.job.v1.Attempt
 	46, // 54: mindclade.internal.job.v1.CommitAttemptRequest.fence:type_name -> mindclade.job.v1.LeaseFence
 	47, // 55: mindclade.internal.job.v1.CommitAttemptRequest.update_mask:type_name -> google.protobuf.FieldMask
-	44, // 56: mindclade.internal.job.v1.CommitAttemptResponse.attempt:type_name -> mindclade.job.v1.Attempt
-	43, // 57: mindclade.internal.job.v1.CommitAttemptResponse.run:type_name -> mindclade.job.v1.Run
-	0,  // 58: mindclade.internal.job.v1.OperationService.GetOperation:input_type -> mindclade.internal.job.v1.GetOperationRequest
-	2,  // 59: mindclade.internal.job.v1.OperationService.ListOperations:input_type -> mindclade.internal.job.v1.ListOperationsRequest
-	4,  // 60: mindclade.internal.job.v1.OperationService.CancelOperation:input_type -> mindclade.internal.job.v1.CancelOperationRequest
-	6,  // 61: mindclade.internal.job.v1.OperationService.WatchOperation:input_type -> mindclade.internal.job.v1.WatchOperationRequest
-	8,  // 62: mindclade.internal.job.v1.JobService.RequestJob:input_type -> mindclade.internal.job.v1.RequestJobRequest
-	10, // 63: mindclade.internal.job.v1.JobService.GetJob:input_type -> mindclade.internal.job.v1.GetJobRequest
-	12, // 64: mindclade.internal.job.v1.JobService.ListJobs:input_type -> mindclade.internal.job.v1.ListJobsRequest
-	14, // 65: mindclade.internal.job.v1.JobService.CancelJob:input_type -> mindclade.internal.job.v1.CancelJobRequest
-	16, // 66: mindclade.internal.job.v1.RunService.GetRun:input_type -> mindclade.internal.job.v1.GetRunRequest
-	18, // 67: mindclade.internal.job.v1.RunService.ListRuns:input_type -> mindclade.internal.job.v1.ListRunsRequest
-	20, // 68: mindclade.internal.job.v1.RunService.GetAttempt:input_type -> mindclade.internal.job.v1.GetAttemptRequest
-	22, // 69: mindclade.internal.job.v1.RunService.ListAttempts:input_type -> mindclade.internal.job.v1.ListAttemptsRequest
-	24, // 70: mindclade.internal.job.v1.RunService.AcquireAttemptLease:input_type -> mindclade.internal.job.v1.AcquireAttemptLeaseRequest
-	26, // 71: mindclade.internal.job.v1.RunService.RenewAttemptLease:input_type -> mindclade.internal.job.v1.RenewAttemptLeaseRequest
-	28, // 72: mindclade.internal.job.v1.RunService.HeartbeatAttempt:input_type -> mindclade.internal.job.v1.HeartbeatAttemptRequest
-	30, // 73: mindclade.internal.job.v1.RunService.CancelAttempt:input_type -> mindclade.internal.job.v1.CancelAttemptRequest
-	32, // 74: mindclade.internal.job.v1.RunService.ExpireAttemptLeases:input_type -> mindclade.internal.job.v1.ExpireAttemptLeasesRequest
-	34, // 75: mindclade.internal.job.v1.RunService.CommitAttempt:input_type -> mindclade.internal.job.v1.CommitAttemptRequest
-	1,  // 76: mindclade.internal.job.v1.OperationService.GetOperation:output_type -> mindclade.internal.job.v1.GetOperationResponse
-	3,  // 77: mindclade.internal.job.v1.OperationService.ListOperations:output_type -> mindclade.internal.job.v1.ListOperationsResponse
-	5,  // 78: mindclade.internal.job.v1.OperationService.CancelOperation:output_type -> mindclade.internal.job.v1.CancelOperationResponse
-	7,  // 79: mindclade.internal.job.v1.OperationService.WatchOperation:output_type -> mindclade.internal.job.v1.WatchOperationResponse
-	9,  // 80: mindclade.internal.job.v1.JobService.RequestJob:output_type -> mindclade.internal.job.v1.RequestJobResponse
-	11, // 81: mindclade.internal.job.v1.JobService.GetJob:output_type -> mindclade.internal.job.v1.GetJobResponse
-	13, // 82: mindclade.internal.job.v1.JobService.ListJobs:output_type -> mindclade.internal.job.v1.ListJobsResponse
-	15, // 83: mindclade.internal.job.v1.JobService.CancelJob:output_type -> mindclade.internal.job.v1.CancelJobResponse
-	17, // 84: mindclade.internal.job.v1.RunService.GetRun:output_type -> mindclade.internal.job.v1.GetRunResponse
-	19, // 85: mindclade.internal.job.v1.RunService.ListRuns:output_type -> mindclade.internal.job.v1.ListRunsResponse
-	21, // 86: mindclade.internal.job.v1.RunService.GetAttempt:output_type -> mindclade.internal.job.v1.GetAttemptResponse
-	23, // 87: mindclade.internal.job.v1.RunService.ListAttempts:output_type -> mindclade.internal.job.v1.ListAttemptsResponse
-	25, // 88: mindclade.internal.job.v1.RunService.AcquireAttemptLease:output_type -> mindclade.internal.job.v1.AcquireAttemptLeaseResponse
-	27, // 89: mindclade.internal.job.v1.RunService.RenewAttemptLease:output_type -> mindclade.internal.job.v1.RenewAttemptLeaseResponse
-	29, // 90: mindclade.internal.job.v1.RunService.HeartbeatAttempt:output_type -> mindclade.internal.job.v1.HeartbeatAttemptResponse
-	31, // 91: mindclade.internal.job.v1.RunService.CancelAttempt:output_type -> mindclade.internal.job.v1.CancelAttemptResponse
-	33, // 92: mindclade.internal.job.v1.RunService.ExpireAttemptLeases:output_type -> mindclade.internal.job.v1.ExpireAttemptLeasesResponse
-	35, // 93: mindclade.internal.job.v1.RunService.CommitAttempt:output_type -> mindclade.internal.job.v1.CommitAttemptResponse
-	76, // [76:94] is the sub-list for method output_type
-	58, // [58:76] is the sub-list for method input_type
-	58, // [58:58] is the sub-list for extension type_name
-	58, // [58:58] is the sub-list for extension extendee
-	0,  // [0:58] is the sub-list for field type_name
+	48, // 56: mindclade.internal.job.v1.CommitAttemptRequest.feature_materialization:type_name -> mindclade.feature.v1.CommitFeatureMaterializationCommand
+	49, // 57: mindclade.internal.job.v1.CommitAttemptRequest.transform_execution:type_name -> mindclade.transform.v1.CommitTransformExecutionCommand
+	44, // 58: mindclade.internal.job.v1.CommitAttemptResponse.attempt:type_name -> mindclade.job.v1.Attempt
+	43, // 59: mindclade.internal.job.v1.CommitAttemptResponse.run:type_name -> mindclade.job.v1.Run
+	0,  // 60: mindclade.internal.job.v1.OperationService.GetOperation:input_type -> mindclade.internal.job.v1.GetOperationRequest
+	2,  // 61: mindclade.internal.job.v1.OperationService.ListOperations:input_type -> mindclade.internal.job.v1.ListOperationsRequest
+	4,  // 62: mindclade.internal.job.v1.OperationService.CancelOperation:input_type -> mindclade.internal.job.v1.CancelOperationRequest
+	6,  // 63: mindclade.internal.job.v1.OperationService.WatchOperation:input_type -> mindclade.internal.job.v1.WatchOperationRequest
+	8,  // 64: mindclade.internal.job.v1.JobService.RequestJob:input_type -> mindclade.internal.job.v1.RequestJobRequest
+	10, // 65: mindclade.internal.job.v1.JobService.GetJob:input_type -> mindclade.internal.job.v1.GetJobRequest
+	12, // 66: mindclade.internal.job.v1.JobService.ListJobs:input_type -> mindclade.internal.job.v1.ListJobsRequest
+	14, // 67: mindclade.internal.job.v1.JobService.CancelJob:input_type -> mindclade.internal.job.v1.CancelJobRequest
+	16, // 68: mindclade.internal.job.v1.RunService.GetRun:input_type -> mindclade.internal.job.v1.GetRunRequest
+	18, // 69: mindclade.internal.job.v1.RunService.ListRuns:input_type -> mindclade.internal.job.v1.ListRunsRequest
+	20, // 70: mindclade.internal.job.v1.RunService.GetAttempt:input_type -> mindclade.internal.job.v1.GetAttemptRequest
+	22, // 71: mindclade.internal.job.v1.RunService.ListAttempts:input_type -> mindclade.internal.job.v1.ListAttemptsRequest
+	24, // 72: mindclade.internal.job.v1.RunService.AcquireAttemptLease:input_type -> mindclade.internal.job.v1.AcquireAttemptLeaseRequest
+	26, // 73: mindclade.internal.job.v1.RunService.RenewAttemptLease:input_type -> mindclade.internal.job.v1.RenewAttemptLeaseRequest
+	28, // 74: mindclade.internal.job.v1.RunService.HeartbeatAttempt:input_type -> mindclade.internal.job.v1.HeartbeatAttemptRequest
+	30, // 75: mindclade.internal.job.v1.RunService.CancelAttempt:input_type -> mindclade.internal.job.v1.CancelAttemptRequest
+	32, // 76: mindclade.internal.job.v1.RunService.ExpireAttemptLeases:input_type -> mindclade.internal.job.v1.ExpireAttemptLeasesRequest
+	34, // 77: mindclade.internal.job.v1.RunService.CommitAttempt:input_type -> mindclade.internal.job.v1.CommitAttemptRequest
+	1,  // 78: mindclade.internal.job.v1.OperationService.GetOperation:output_type -> mindclade.internal.job.v1.GetOperationResponse
+	3,  // 79: mindclade.internal.job.v1.OperationService.ListOperations:output_type -> mindclade.internal.job.v1.ListOperationsResponse
+	5,  // 80: mindclade.internal.job.v1.OperationService.CancelOperation:output_type -> mindclade.internal.job.v1.CancelOperationResponse
+	7,  // 81: mindclade.internal.job.v1.OperationService.WatchOperation:output_type -> mindclade.internal.job.v1.WatchOperationResponse
+	9,  // 82: mindclade.internal.job.v1.JobService.RequestJob:output_type -> mindclade.internal.job.v1.RequestJobResponse
+	11, // 83: mindclade.internal.job.v1.JobService.GetJob:output_type -> mindclade.internal.job.v1.GetJobResponse
+	13, // 84: mindclade.internal.job.v1.JobService.ListJobs:output_type -> mindclade.internal.job.v1.ListJobsResponse
+	15, // 85: mindclade.internal.job.v1.JobService.CancelJob:output_type -> mindclade.internal.job.v1.CancelJobResponse
+	17, // 86: mindclade.internal.job.v1.RunService.GetRun:output_type -> mindclade.internal.job.v1.GetRunResponse
+	19, // 87: mindclade.internal.job.v1.RunService.ListRuns:output_type -> mindclade.internal.job.v1.ListRunsResponse
+	21, // 88: mindclade.internal.job.v1.RunService.GetAttempt:output_type -> mindclade.internal.job.v1.GetAttemptResponse
+	23, // 89: mindclade.internal.job.v1.RunService.ListAttempts:output_type -> mindclade.internal.job.v1.ListAttemptsResponse
+	25, // 90: mindclade.internal.job.v1.RunService.AcquireAttemptLease:output_type -> mindclade.internal.job.v1.AcquireAttemptLeaseResponse
+	27, // 91: mindclade.internal.job.v1.RunService.RenewAttemptLease:output_type -> mindclade.internal.job.v1.RenewAttemptLeaseResponse
+	29, // 92: mindclade.internal.job.v1.RunService.HeartbeatAttempt:output_type -> mindclade.internal.job.v1.HeartbeatAttemptResponse
+	31, // 93: mindclade.internal.job.v1.RunService.CancelAttempt:output_type -> mindclade.internal.job.v1.CancelAttemptResponse
+	33, // 94: mindclade.internal.job.v1.RunService.ExpireAttemptLeases:output_type -> mindclade.internal.job.v1.ExpireAttemptLeasesResponse
+	35, // 95: mindclade.internal.job.v1.RunService.CommitAttempt:output_type -> mindclade.internal.job.v1.CommitAttemptResponse
+	78, // [78:96] is the sub-list for method output_type
+	60, // [60:78] is the sub-list for method input_type
+	60, // [60:60] is the sub-list for extension type_name
+	60, // [60:60] is the sub-list for extension extendee
+	0,  // [0:60] is the sub-list for field type_name
 }
 
 func init() { file_proto_mindclade_internal_job_v1_job_service_proto_init() }
 func file_proto_mindclade_internal_job_v1_job_service_proto_init() {
 	if File_proto_mindclade_internal_job_v1_job_service_proto != nil {
 		return
+	}
+	file_proto_mindclade_internal_job_v1_job_service_proto_msgTypes[34].OneofWrappers = []any{
+		(*CommitAttemptRequest_FeatureMaterialization)(nil),
+		(*CommitAttemptRequest_TransformExecution)(nil),
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{

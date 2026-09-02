@@ -37,16 +37,31 @@ line-ending = "lf"
 [tool.pyright]
 pythonVersion = "3.12"
 typeCheckingMode = "strict"
-include = [".buildkite", "tools"]
+include = [
+  ".buildkite",
+  "tools",
+  "libs/python",
+  "tests",
+  "internal/sdk/python/mindclade_internal_sdk",
+  "internal/sdk/python/tests",
+  "workers/training_worker/python",
+  "workers/training_worker/tests",
+  "examples/sdk",
+  "examples/agent_workflow",
+]
 exclude = ["docs/architecture/blueprint/generated"]
 extraPaths = [
   "libs/python",
+  "internal/sdk/python",
   "protocols/generated/python",
   "tools/ci",
   ".buildkite/lib",
   ".buildkite/steps",
   "tools/docs",
   "tools/repo",
+  "workers/training_worker/python",
+  "examples/sdk",
+  "examples/agent_workflow",
 ]
 
 [tool.pytest.ini_options]

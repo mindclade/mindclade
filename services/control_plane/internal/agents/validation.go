@@ -326,7 +326,8 @@ func validateStep(identity Identity, value *agentv1.AgentStep) error {
 		return err
 	}
 	switch value.GetState() {
-	case agentv1.AgentStepState_AGENT_STEP_STATE_WAITING,
+	case agentv1.AgentStepState_AGENT_STEP_STATE_DISPATCHED,
+		agentv1.AgentStepState_AGENT_STEP_STATE_WAITING,
 		agentv1.AgentStepState_AGENT_STEP_STATE_SUCCEEDED,
 		agentv1.AgentStepState_AGENT_STEP_STATE_FAILED,
 		agentv1.AgentStepState_AGENT_STEP_STATE_CANCELLED,

@@ -319,6 +319,26 @@ pub struct CommitAttemptRequest {
     pub update_mask: ::core::option::Option<::prost_types::FieldMask>,
     #[prost(int64, tag = "5")]
     pub expected_resource_version: i64,
+    /// Domain completion is required for job kinds whose authoritative terminal
+    /// fact carries more meaning than the generic Attempt outcome. The server
+    /// validates the selected type against the persisted job_kind and commits its
+    /// immutable event in the same transaction as Attempt and Run.
+    #[prost(oneof = "commit_attempt_request::DomainCompletion", tags = "6, 7")]
+    pub domain_completion: ::core::option::Option<commit_attempt_request::DomainCompletion>,
+}
+/// Nested message and enum types in `CommitAttemptRequest`.
+pub mod commit_attempt_request {
+    /// Domain completion is required for job kinds whose authoritative terminal
+    /// fact carries more meaning than the generic Attempt outcome. The server
+    /// validates the selected type against the persisted job_kind and commits its
+    /// immutable event in the same transaction as Attempt and Run.
+    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    pub enum DomainCompletion {
+        #[prost(message, tag = "6")]
+        FeatureMaterialization(crate::feature::v1::CommitFeatureMaterializationCommand),
+        #[prost(message, tag = "7")]
+        TransformExecution(crate::transform::v1::CommitTransformExecutionCommand),
+    }
 }
 /// CommitAttemptResponse returns the accepted attempt and reconciled run state.
 #[derive(Clone, PartialEq, ::prost::Message)]

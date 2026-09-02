@@ -7,10 +7,11 @@ import (
 	"strconv"
 	"time"
 
-	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
+
+	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
 )
 
 // Code is a transport-neutral failure classification.

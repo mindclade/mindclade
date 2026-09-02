@@ -22,10 +22,36 @@ var ErrInvalidEnvelope = errors.New("invalid event envelope")
 // type and version are a joint identity; consumers never accept an arbitrary
 // non-zero version.
 type EventRegistration struct {
-	FullName    string
-	Version     uint32
-	ContentType string
-	Source      string
+	FullName            string
+	Version             uint32
+	ContentType         string
+	Source              string
+	Owner               string
+	LifecycleState      string
+	CompatibilityPolicy string
+	Fixture             EventFixtureEvidence
+	Producers           []EventEvidenceEndpoint
+	Consumers           []EventEvidenceEndpoint
+	ActivationGaps      []string
+}
+
+// EventEvidenceEndpoint binds registry claims to reviewed source and build
+// evidence. Producer and consumer entries name behavior, not generic relays.
+type EventEvidenceEndpoint struct {
+	ID     string
+	Source string
+	Target string
+	Mode   string
+}
+
+// EventFixtureEvidence records either a verified populated fixture or the
+// explicit reason a candidate event cannot yet be activated.
+type EventFixtureEvidence struct {
+	Status string
+	Source string
+	Target string
+	Mode   string
+	Reason string
 }
 
 type eventIdentity struct {
@@ -39,8 +65,14 @@ func buildEventRegistry(registrations []EventRegistration) map[eventIdentity]Eve
 	registry := make(map[eventIdentity]EventRegistration, len(registrations))
 	for _, registration := range registrations {
 		identity := eventIdentity{fullName: registration.FullName, version: registration.Version}
-		if registration.FullName == "" || registration.Version == 0 || registration.ContentType == "" {
+		if registration.FullName == "" || registration.Version == 0 || registration.ContentType == "" || registration.Source == "" || registration.Owner == "" || registration.CompatibilityPolicy != "exact-version" {
 			panic("generated event registry contains an incomplete registration")
+		}
+		if registration.LifecycleState != "active" && registration.LifecycleState != "candidate" && registration.LifecycleState != "deprecated" && registration.LifecycleState != "retired" {
+			panic("generated event registry contains an invalid lifecycle state")
+		}
+		if registration.LifecycleState == "active" && (registration.Fixture.Status != "verified" || len(registration.Producers) == 0 || len(registration.Consumers) == 0 || len(registration.ActivationGaps) != 0) {
+			panic("generated active event registration lacks production evidence")
 		}
 		if _, exists := registry[identity]; exists {
 			panic("generated event registry contains a duplicate identity")
@@ -54,7 +86,22 @@ func buildEventRegistry(registrations []EventRegistration) map[eventIdentity]Eve
 // authority shared by producers and consumers.
 func RegisteredEvent(fullName string, version uint32) (EventRegistration, bool) {
 	registration, ok := authoritativeEventRegistry[eventIdentity{fullName: fullName, version: version}]
+	registration.Producers = append([]EventEvidenceEndpoint(nil), registration.Producers...)
+	registration.Consumers = append([]EventEvidenceEndpoint(nil), registration.Consumers...)
+	registration.ActivationGaps = append([]string(nil), registration.ActivationGaps...)
 	return registration, ok
+}
+
+// EventRegistryRatifiable reports whether every descriptor-visible event is
+// production-active. Candidate metadata remains usable for exact decoding but
+// cannot silently satisfy v1 ratification.
+func EventRegistryRatifiable() bool {
+	for _, registration := range authoritativeEventRegistry {
+		if registration.LifecycleState != "active" {
+			return false
+		}
+	}
+	return true
 }
 
 // Transport is an at-least-once envelope transport. It deliberately exposes no database capability.

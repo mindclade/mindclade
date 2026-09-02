@@ -10,10 +10,6 @@ import (
 	"testing"
 	"time"
 
-	agentv1 "github.com/mindclade/mindclade/protocols/generated/go/agent/v1"
-	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
-	internalagentv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/agent/v1"
-	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
@@ -21,6 +17,11 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
+
+	agentv1 "github.com/mindclade/mindclade/protocols/generated/go/agent/v1"
+	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
+	internalagentv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/agent/v1"
+	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
 )
 
 type agentSDKServer struct {

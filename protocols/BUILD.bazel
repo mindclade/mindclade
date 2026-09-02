@@ -24,6 +24,8 @@ py_test(
     srcs = ["compatibility/tests/test_protobuf_compatibility.py"],
     data = [
         ":wave1_contract_sources",
+        "//libs/go/audit:governed_sources",
+        "//services/control_plane:control_plane_sources",
         "//tools:sdk_generator",
         "//tools:wave1_codegen_sources",
     ],
@@ -31,7 +33,10 @@ py_test(
     legacy_create_init = 0,
     main = "compatibility/tests/test_protobuf_compatibility.py",
     python_version = "PY3",
-    deps = ["@mindclade_pypi//protobuf"],
+    deps = [
+        "@mindclade_pypi//protobuf",
+        "@mindclade_pypi//pyyaml",
+    ],
 )
 
 py_test(

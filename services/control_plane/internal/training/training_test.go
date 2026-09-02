@@ -16,6 +16,7 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	"github.com/mindclade/mindclade/libs/go/numconv"
 	artifactv1 "github.com/mindclade/mindclade/protocols/generated/go/artifact/v1"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	internaljobv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/job/v1"
@@ -122,8 +123,12 @@ func (r *fakeRepository) ReadOperationRevisions(_ context.Context, _ Identity, _
 	result := make([]*jobv1.Operation, 0, limit)
 	terminal := false
 	for _, value := range values {
-		if uint64(value.GetResourceVersion()) <= after { //nolint:gosec // Deterministic test fixture values are nonnegative and bounded before conversion.
-			if uint64(value.GetResourceVersion()) == after && value.GetDone() { //nolint:gosec // Deterministic test fixture values are nonnegative and bounded before conversion.
+		revision, err := numconv.Int64ToUint64(value.GetResourceVersion())
+		if err != nil {
+			return nil, false, err
+		}
+		if revision <= after {
+			if revision == after && value.GetDone() {
 				terminal = true
 			}
 			continue
@@ -481,7 +486,11 @@ func TestWatchOperationStreamsEveryDurableRevisionInOrder(t *testing.T) {
 	}
 	for index, response := range stream.sent {
 		want := uint64(index + 2)
-		if response.GetSequence() != want || uint64(response.GetOperation().GetResourceVersion()) != want { //nolint:gosec // Deterministic test fixture values are nonnegative and bounded before conversion.
+		revision, conversionErr := numconv.Int64ToUint64(response.GetOperation().GetResourceVersion())
+		if conversionErr != nil {
+			t.Fatal(conversionErr)
+		}
+		if response.GetSequence() != want || revision != want {
 			t.Fatalf("response %d = %v", index, response)
 		}
 	}

@@ -127,7 +127,11 @@ test_suite(
 # compatibility for that inventory.
 filegroup(
     name = "internal_sdk_root_sources",
-    srcs = ["internal/sdk/README.md"],
+    srcs = [
+        "internal/sdk/README.md",
+        "internal/sdk/rpc-coverage.generated.json",
+        "internal/sdk/rpc-coverage.yaml",
+    ],
     visibility = ["//visibility:public"],
 )
 
@@ -136,6 +140,7 @@ filegroup(
     srcs = [
         ":internal_sdk_root_sources",
         ":wave1_contract_sources",
+        "//examples:governed_sources",
         "//internal/sdk/go/mindclade:governed_sources",
         "//internal/sdk/python:governed_sources",
         "//internal/sdk/rust:governed_sources",

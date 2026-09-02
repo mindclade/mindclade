@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package mindclade.events.experiment.v1;
+
+import "google/protobuf/timestamp.proto";
+import "proto/mindclade/experiment/v1/study.proto";
+
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/experiment/v1;experimentv1";
+
+// StudyStateChanged records one validated study lifecycle transition.
+message StudyStateChanged {
+  mindclade.experiment.v1.Study study = 1;
+  mindclade.experiment.v1.StudyState prior_state = 2;
+  string reason_code = 3;
+  google.protobuf.Timestamp changed_at = 4;
+}

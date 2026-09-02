@@ -5,14 +5,17 @@ use std::{
 
 use mindclade_protocols::{
     artifact::v1::{ArtifactRef, CommitArtifactCommand},
-    common::v1::CommandContext,
+    common::v1::{CommandContext, ResourceRef},
     internal::artifact::v1::{
-        AbortArtifactUploadRequest, AbortArtifactUploadResponse, ArtifactStagingReceipt,
-        ArtifactUploadSession, ArtifactUploadState, BeginArtifactUploadRequest,
-        CommitArtifactRequest, DownloadArtifactRequest, FinalizeArtifactUploadRequest,
-        GetArtifactUploadRequest, QuarantineArtifactUploadRequest, ResolveArtifactAliasRequest,
+        AbortArtifactUploadRequest, AbortArtifactUploadResponse, AcquireArtifactLeaseRequest,
+        ArtifactStagingReceipt, ArtifactUploadSession, ArtifactUploadState,
+        BeginArtifactUploadRequest, CommitArtifactRequest, DownloadArtifactRequest,
+        FinalizeArtifactUploadRequest, GetArtifactRequest, GetArtifactUploadRequest,
+        ListArtifactsRequest, ListArtifactsResponse, QuarantineArtifactRequest,
+        QuarantineArtifactUploadRequest, ReleaseArtifactLeaseRequest, ResolveArtifactAliasRequest,
         UploadArtifactChunkRequest,
     },
+    job::v1::{Operation, OperationState},
 };
 use prost::Message;
 use prost_types::Timestamp;
@@ -41,6 +44,14 @@ const QUARANTINE_ARTIFACT_UPLOAD: &str =
     "/mindclade.internal.artifact.v1.ArtifactService/QuarantineArtifactUpload";
 const COMMIT_ARTIFACT: &str = "/mindclade.internal.artifact.v1.ArtifactService/CommitArtifact";
 const DOWNLOAD_ARTIFACT: &str = "/mindclade.internal.artifact.v1.ArtifactService/DownloadArtifact";
+const GET_ARTIFACT: &str = "/mindclade.internal.artifact.v1.ArtifactService/GetArtifact";
+const LIST_ARTIFACTS: &str = "/mindclade.internal.artifact.v1.ArtifactService/ListArtifacts";
+const QUARANTINE_ARTIFACT: &str =
+    "/mindclade.internal.artifact.v1.ArtifactService/QuarantineArtifact";
+const ACQUIRE_ARTIFACT_LEASE: &str =
+    "/mindclade.internal.artifact.v1.ArtifactService/AcquireArtifactLease";
+const RELEASE_ARTIFACT_LEASE: &str =
+    "/mindclade.internal.artifact.v1.ArtifactService/ReleaseArtifactLease";
 
 const DEFAULT_CHUNK_BYTES: usize = 1 << 20;
 const MAX_CHUNK_BYTES: usize = 4 << 20;
@@ -48,6 +59,8 @@ const DEFAULT_SESSION_TTL: Duration = Duration::from_hours(2);
 const MAX_SESSION_TTL: Duration = Duration::from_hours(24);
 const DEFAULT_RECEIPT_TTL: Duration = Duration::from_hours(24);
 const MAX_RECEIPT_TTL: Duration = Duration::from_hours(24 * 7);
+const MAX_LEASE_TTL: Duration = Duration::from_hours(24 * 30);
+const MAX_ARTIFACT_PAGE_SIZE: u32 = 100;
 
 /// Behavioral policy for one resumable artifact upload. All resource and wire
 /// values remain generated protobuf messages.
@@ -139,6 +152,263 @@ pub struct Artifacts {
 impl Artifacts {
     pub(crate) fn new(core: Arc<ClientCore>) -> Self {
         Self { core }
+    }
+
+    /// Reads immutable metadata by canonical project-scoped name or digest.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error for ambiguous identity, cross-project names, RPC
+    /// failure, or inconsistent response content.
+    pub async fn get(
+        &self,
+        request: GetArtifactRequest,
+        options: CallOptions,
+    ) -> Result<ArtifactRef, Error> {
+        if request.name.is_empty() == request.digest.is_empty() {
+            return Err(Error::invalid_argument(
+                "artifact get requires exactly one canonical name or digest",
+            ));
+        }
+        let expected_digest = if request.name.is_empty() {
+            request.digest.clone()
+        } else {
+            artifact_digest_from_name(&self.core.config, &request.name)?
+        };
+        if !is_sha256_digest(&expected_digest) {
+            return Err(Error::invalid_argument(
+                "artifact digest must be canonical sha256",
+            ));
+        }
+        let prepared = options.prepare(&self.core.config);
+        let response = self
+            .core
+            .unary(
+                request,
+                &prepared,
+                registered_method_safety(GET_ARTIFACT),
+                None,
+                |transport, request| Box::pin(async move { transport.get_artifact(request).await }),
+            )
+            .await?;
+        let artifact = response
+            .into_inner()
+            .artifact
+            .ok_or_else(|| Error::protocol("GetArtifact response omitted its artifact"))?;
+        validate_transfer_artifact(&artifact)
+            .map_err(|_| Error::protocol("GetArtifact returned invalid immutable metadata"))?;
+        if artifact.digest != expected_digest {
+            return Err(Error::protocol(
+                "GetArtifact returned a different immutable identity",
+            ));
+        }
+        Ok(artifact)
+    }
+
+    /// Returns one bounded, project-scoped page while preserving opaque
+    /// pagination state.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error for an invalid parent/page size, RPC failure, or
+    /// malformed artifact metadata.
+    pub async fn list(
+        &self,
+        mut request: ListArtifactsRequest,
+        options: CallOptions,
+    ) -> Result<ListArtifactsResponse, Error> {
+        let parent = project_parent(&self.core.config);
+        if !request.parent.is_empty() && request.parent != parent {
+            return Err(Error::invalid_argument(
+                "artifact list parent must match the configured project",
+            ));
+        }
+        if request
+            .page
+            .as_ref()
+            .is_some_and(|page| page.page_size > MAX_ARTIFACT_PAGE_SIZE)
+        {
+            return Err(Error::invalid_argument(
+                "artifact page size cannot exceed 100",
+            ));
+        }
+        request.parent = parent;
+        let prepared = options.prepare(&self.core.config);
+        let response = self
+            .core
+            .unary(
+                request,
+                &prepared,
+                registered_method_safety(LIST_ARTIFACTS),
+                None,
+                |transport, request| {
+                    Box::pin(async move { transport.list_artifacts(request).await })
+                },
+            )
+            .await?
+            .into_inner();
+        for artifact in &response.artifacts {
+            validate_transfer_artifact(artifact)
+                .map_err(|_| Error::protocol("ListArtifacts returned invalid metadata"))?;
+        }
+        Ok(response)
+    }
+
+    /// Records a governed quarantine transition under deterministic command
+    /// identity and returns its durable operation.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error for malformed evidence, unsafe scope, or RPC failure.
+    pub async fn quarantine(
+        &self,
+        mut request: QuarantineArtifactRequest,
+        options: SubmitOptions,
+    ) -> Result<Operation, Error> {
+        let artifact = request
+            .artifact
+            .as_ref()
+            .ok_or_else(|| Error::invalid_argument("artifact quarantine requires an artifact"))?;
+        validate_transfer_artifact(artifact)?;
+        if !valid_reason_code(&request.reason_code) || request.evidence.len() > 100 {
+            return Err(Error::invalid_argument(
+                "artifact quarantine reason or evidence is invalid",
+            ));
+        }
+        for evidence in &request.evidence {
+            if !is_sha256_digest(&evidence.digest)
+                || evidence.subject_digest != artifact.digest
+                || evidence.evidence_kind.is_empty()
+                || evidence.evidence_kind.len() > 128
+                || (!evidence.policy_digest.is_empty()
+                    && !is_sha256_digest(&evidence.policy_digest))
+            {
+                return Err(Error::invalid_argument(
+                    "artifact quarantine evidence is invalid",
+                ));
+            }
+        }
+        request.context = None;
+        let prepared = options.call.prepare(&self.core.config);
+        request.context = Some(command_context(&self.core, &prepared, &options, &request)?);
+        let key = options.idempotency_key.clone();
+        let response = self
+            .core
+            .unary(
+                request,
+                &prepared,
+                registered_method_safety(QUARANTINE_ARTIFACT),
+                Some(&key),
+                |transport, request| {
+                    Box::pin(async move { transport.quarantine_artifact(request).await })
+                },
+            )
+            .await?;
+        validate_artifact_operation(&self.core, response.into_inner().operation)
+    }
+
+    /// Creates or extends a bounded retention lease for immutable content.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error for invalid content/expiration, RPC failure, or a
+    /// malformed lease resource.
+    pub async fn acquire_lease(
+        &self,
+        mut request: AcquireArtifactLeaseRequest,
+        options: SubmitOptions,
+    ) -> Result<ResourceRef, Error> {
+        validate_transfer_artifact(
+            request
+                .artifact
+                .as_ref()
+                .ok_or_else(|| Error::invalid_argument("artifact lease requires an artifact"))?,
+        )?;
+        let expiry = request
+            .expire_time
+            .as_ref()
+            .ok_or_else(|| Error::invalid_argument("artifact lease expiration is required"))?;
+        let expiry = UNIX_EPOCH
+            .checked_add(
+                timestamp_duration(expiry)
+                    .map_err(|_| Error::invalid_argument("artifact lease expiration is invalid"))?,
+            )
+            .ok_or_else(|| Error::invalid_argument("artifact lease expiration overflowed"))?;
+        let now = SystemTime::now();
+        if expiry <= now
+            || expiry
+                .duration_since(now)
+                .map_or(true, |ttl| ttl > MAX_LEASE_TTL)
+        {
+            return Err(Error::invalid_argument(
+                "artifact lease expiration must be within 30 days",
+            ));
+        }
+        request.context = None;
+        let prepared = options.call.prepare(&self.core.config);
+        request.context = Some(command_context(&self.core, &prepared, &options, &request)?);
+        let key = options.idempotency_key.clone();
+        let response = self
+            .core
+            .unary(
+                request,
+                &prepared,
+                registered_method_safety(ACQUIRE_ARTIFACT_LEASE),
+                Some(&key),
+                |transport, request| {
+                    Box::pin(async move { transport.acquire_artifact_lease(request).await })
+                },
+            )
+            .await?;
+        validate_artifact_lease(
+            &self.core,
+            response
+                .into_inner()
+                .lease
+                .ok_or_else(|| Error::protocol("AcquireArtifactLease omitted its lease"))?,
+        )
+    }
+
+    /// Idempotently releases a scoped retention lease under its `ETag`.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error for invalid scope/ETag or RPC failure.
+    pub async fn release_lease(
+        &self,
+        mut request: ReleaseArtifactLeaseRequest,
+        options: SubmitOptions,
+    ) -> Result<(), Error> {
+        let lease = validate_artifact_lease(
+            &self.core,
+            request
+                .lease
+                .clone()
+                .ok_or_else(|| Error::invalid_argument("artifact lease is required"))?,
+        )
+        .map_err(|_| Error::invalid_argument("artifact lease release resource is invalid"))?;
+        validate_resource_value("artifact lease ETag", &request.etag)?;
+        if !lease.etag.is_empty() && lease.etag != request.etag {
+            return Err(Error::invalid_argument(
+                "artifact lease and release ETags differ",
+            ));
+        }
+        request.context = None;
+        let prepared = options.call.prepare(&self.core.config);
+        request.context = Some(command_context(&self.core, &prepared, &options, &request)?);
+        let key = options.idempotency_key.clone();
+        self.core
+            .unary(
+                request,
+                &prepared,
+                registered_method_safety(RELEASE_ARTIFACT_LEASE),
+                Some(&key),
+                |transport, request| {
+                    Box::pin(async move { transport.release_artifact_lease(request).await })
+                },
+            )
+            .await?;
+        Ok(())
     }
 
     /// Resolves a mutable catalog alias to an authoritative immutable
@@ -862,6 +1132,67 @@ fn project_parent(config: &crate::Config) -> String {
     } else {
         format!("{tenant}/projects/{project}")
     }
+}
+
+fn artifact_digest_from_name(config: &crate::Config, name: &str) -> Result<String, Error> {
+    let prefix = format!("{}/artifacts/", project_parent(config));
+    let digest = name.strip_prefix(&prefix).ok_or_else(|| {
+        Error::invalid_argument("artifact name must be in the configured project")
+    })?;
+    if !is_sha256_digest(digest) {
+        return Err(Error::invalid_argument(
+            "artifact name must end in a canonical sha256 digest",
+        ));
+    }
+    Ok(digest.to_owned())
+}
+
+fn validate_artifact_lease(core: &ClientCore, lease: ResourceRef) -> Result<ResourceRef, Error> {
+    let expected_name = format!(
+        "{}/artifactLeases/{}",
+        project_parent(&core.config),
+        lease.resource_id
+    );
+    if lease.resource_type != "artifact_lease"
+        || lease.resource_id.is_empty()
+        || lease.tenant_id != core.config.identity.tenant_id()
+        || lease.project_id != core.config.identity.project_id()
+        || lease.name != expected_name
+        || lease.resource_version <= 0
+        || lease.etag.is_empty()
+    {
+        return Err(Error::protocol(
+            "artifact lease resource is invalid or outside the configured project",
+        ));
+    }
+    Ok(lease)
+}
+
+fn validate_artifact_operation(
+    core: &ClientCore,
+    operation: Option<Operation>,
+) -> Result<Operation, Error> {
+    let operation = operation
+        .ok_or_else(|| Error::protocol("QuarantineArtifact omitted its durable operation"))?;
+    if operation.operation_id.is_empty()
+        || operation.tenant_id != core.config.identity.tenant_id()
+        || operation.project_id != core.config.identity.project_id()
+        || operation.state == OperationState::Unspecified as i32
+    {
+        return Err(Error::protocol(
+            "QuarantineArtifact returned invalid or cross-project operation state",
+        ));
+    }
+    Ok(operation)
+}
+
+fn valid_reason_code(value: &str) -> bool {
+    let bytes = value.as_bytes();
+    (2..=64).contains(&bytes.len())
+        && bytes[0].is_ascii_uppercase()
+        && bytes[1..]
+            .iter()
+            .all(|byte| byte.is_ascii_uppercase() || byte.is_ascii_digit() || *byte == b'_')
 }
 
 fn phase_key(identity: &str, phase: &str) -> String {

@@ -12,7 +12,11 @@ from mindclade.common.v1 import resource_reference_pb2
 from .errors import ProtocolError
 
 _DIGEST = re.compile(r"sha256:[0-9a-f]{64}")
-_RESOURCE_ID = re.compile(r"[a-z][a-z0-9-]{0,62}")
+# Resource-name leaves follow the control-plane contract: an ASCII
+# alphanumeric first character followed by RFC 3986 unreserved characters,
+# bounded to the durable-store limit.  Keep this shared helper in lockstep
+# with the Go, Rust, and TypeScript training façades.
+_RESOURCE_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9._~-]{0,127}")
 
 
 def required_text(label: str, value: str, *, maximum: int = 1024) -> str:
@@ -23,7 +27,7 @@ def required_text(label: str, value: str, *, maximum: int = 1024) -> str:
 
 
 def resource_id(label: str, value: str) -> str:
-    normalized = required_text(label, value, maximum=63)
+    normalized = required_text(label, value, maximum=128)
     if _RESOURCE_ID.fullmatch(normalized) is None:
         raise ValueError(f"{label} must match {_RESOURCE_ID.pattern!r}")
     return normalized

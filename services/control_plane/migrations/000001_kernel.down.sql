@@ -1,20 +1,33 @@
+BEGIN;
+
 DO $$
+DECLARE
+  table_name text;
+  contains_rows boolean;
 BEGIN
   IF current_setting('app.allow_local_empty_down_migration', true) IS DISTINCT FROM 'true' THEN
     RAISE EXCEPTION 'down migration requires explicit local-empty authorization';
   END IF;
-  IF EXISTS (SELECT 1 FROM operations) OR EXISTS (SELECT 1 FROM operation_revisions) OR EXISTS (SELECT 1 FROM jobs) OR EXISTS (SELECT 1 FROM runs)
-    OR EXISTS (SELECT 1 FROM training_runs) OR EXISTS (SELECT 1 FROM training_checkpoints)
-    OR EXISTS (SELECT 1 FROM attempts) OR EXISTS (SELECT 1 FROM run_command_receipts)
-    OR EXISTS (SELECT 1 FROM artifacts) OR EXISTS (SELECT 1 FROM idempotency_records)
-    OR EXISTS (SELECT 1 FROM audit_events) OR EXISTS (SELECT 1 FROM outbox_messages) OR EXISTS (SELECT 1 FROM inbox_messages)
-    OR EXISTS (SELECT 1 FROM inbox_delivery_failures)
-    OR EXISTS (SELECT 1 FROM dead_letter_messages) THEN
-    RAISE EXCEPTION 'down migration refuses non-empty durable tables';
-  END IF;
+  FOREACH table_name IN ARRAY ARRAY[
+    'artifact_references','resource_references','error_details','error_field_violations',
+    'error_precondition_violations','jobs','operations','operation_revisions',
+    'training_progress_snapshots','training_runs','training_run_labels','training_checkpoints',
+    'runs','run_output_refs','attempts','attempt_output_refs','attempt_completion_history',
+    'run_command_receipts','run_command_receipt_attempts','artifacts','idempotency_records',
+    'audit_events','outbox_messages','inbox_messages','inbox_delivery_failures','dead_letter_messages'
+  ] LOOP
+    EXECUTE format('LOCK TABLE %I IN ACCESS EXCLUSIVE MODE', table_name);
+    -- FORCE RLS applies to a table owner. Disable it only inside this
+    -- transaction so the emptiness proof cannot mistake hidden rows for an
+    -- empty database; any exception rolls this DDL back atomically.
+    EXECUTE format('ALTER TABLE %I NO FORCE ROW LEVEL SECURITY', table_name);
+    EXECUTE format('SELECT EXISTS (SELECT 1 FROM %I)', table_name) INTO contains_rows;
+    IF contains_rows THEN
+      RAISE EXCEPTION 'down migration refuses non-empty durable table %', table_name;
+    END IF;
+  END LOOP;
 END $$;
 
-BEGIN;
 DROP TABLE IF EXISTS dead_letter_messages;
 DROP TABLE IF EXISTS inbox_delivery_failures;
 DROP TABLE IF EXISTS inbox_messages;

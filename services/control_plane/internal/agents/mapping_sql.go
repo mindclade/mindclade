@@ -10,6 +10,7 @@ import (
 	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	"github.com/mindclade/mindclade/libs/go/numconv"
 	agentv1 "github.com/mindclade/mindclade/protocols/generated/go/agent/v1"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	policyv1 "github.com/mindclade/mindclade/protocols/generated/go/policy/v1"
@@ -60,6 +61,46 @@ func scanDefinition(row scanner) (definitionRow, error) {
 }
 
 func definitionProto(ctx context.Context, tx *sql.Tx, row definitionRow) (*agentv1.AgentDefinition, error) {
+	maxModelTokens, err := numconv.Int64ToUint64(row.maxModelTokens)
+	if err != nil {
+		return nil, err
+	}
+	maxIterations, err := numconv.Int64ToUint32(row.maxIterations)
+	if err != nil {
+		return nil, err
+	}
+	maxToolCalls, err := numconv.Int64ToUint32(row.maxToolCalls)
+	if err != nil {
+		return nil, err
+	}
+	maxBranches, err := numconv.Int64ToUint32(row.maxBranches)
+	if err != nil {
+		return nil, err
+	}
+	maxStorageBytes, err := numconv.Int64ToUint64(row.maxStorageBytes)
+	if err != nil {
+		return nil, err
+	}
+	maxSpend, err := numconv.Int64ToUint64(row.maxSpend)
+	if err != nil {
+		return nil, err
+	}
+	maxDepth, err := numconv.Int64ToUint32(row.maxDepth)
+	if err != nil {
+		return nil, err
+	}
+	maxFanOut, err := numconv.Int64ToUint32(row.maxFanOut)
+	if err != nil {
+		return nil, err
+	}
+	maxObservations, err := numconv.Int64ToUint32(row.maxObservations)
+	if err != nil {
+		return nil, err
+	}
+	maxArtifacts, err := numconv.Int64ToUint32(row.maxArtifacts)
+	if err != nil {
+		return nil, err
+	}
 	definition, err := platformdb.LoadArtifactRef(ctx, tx, row.tenant, row.definitionID)
 	if err != nil {
 		return nil, err
@@ -84,8 +125,8 @@ func definitionProto(ctx context.Context, tx *sql.Tx, row definitionRow) (*agent
 		Name: row.name, Uid: row.uid, Revision: row.revision, Etag: row.etag, TenantId: row.tenant, ProjectId: row.project,
 		DisplayName: row.displayName, SemanticVersion: row.semanticVersion, State: agentv1.AgentDefinitionState(row.state), Purpose: row.purpose,
 		Definition: definition, WorkflowDefinition: workflow, InputSchema: input, OutputSchema: output, ModelCapability: row.modelCapability, EvaluationSuite: evaluation,
-		Budget:             &agentv1.AgentBudgetEnvelope{MaximumModelTokens: uint64(row.maxModelTokens), MaximumIterations: uint32(row.maxIterations), MaximumToolCalls: uint32(row.maxToolCalls), MaximumConcurrentBranches: uint32(row.maxBranches), MaximumStorageBytes: uint64(row.maxStorageBytes), MaximumExternalSpendMicros: uint64(row.maxSpend), MaximumWallTime: &durationpb.Duration{Seconds: row.wallSeconds, Nanos: row.wallNanos}, MaximumAcceleratorTime: &durationpb.Duration{Seconds: row.acceleratorSeconds, Nanos: row.acceleratorNanos}, MaximumCpuTime: &durationpb.Duration{Seconds: row.cpuSeconds, Nanos: row.cpuNanos}}, //nolint:gosec // Conversion is bounded by validated protocol invariants or PostgreSQL CHECK constraints.
-		Limits:             &agentv1.AgentExecutionLimits{MaximumDepth: uint32(row.maxDepth), MaximumFanOut: uint32(row.maxFanOut), MaximumObservationsPerStep: uint32(row.maxObservations), MaximumArtifactReferencesPerCall: uint32(row.maxArtifacts)},                                                                                                                                                                                                                                                                                                                                                                                          //nolint:gosec // Conversion is bounded by validated protocol invariants or PostgreSQL CHECK constraints.
+		Budget:             &agentv1.AgentBudgetEnvelope{MaximumModelTokens: maxModelTokens, MaximumIterations: maxIterations, MaximumToolCalls: maxToolCalls, MaximumConcurrentBranches: maxBranches, MaximumStorageBytes: maxStorageBytes, MaximumExternalSpendMicros: maxSpend, MaximumWallTime: &durationpb.Duration{Seconds: row.wallSeconds, Nanos: row.wallNanos}, MaximumAcceleratorTime: &durationpb.Duration{Seconds: row.acceleratorSeconds, Nanos: row.acceleratorNanos}, MaximumCpuTime: &durationpb.Duration{Seconds: row.cpuSeconds, Nanos: row.cpuNanos}},
+		Limits:             &agentv1.AgentExecutionLimits{MaximumDepth: maxDepth, MaximumFanOut: maxFanOut, MaximumObservationsPerStep: maxObservations, MaximumArtifactReferencesPerCall: maxArtifacts},
 		QualificationLevel: row.qualificationLevel, CreateTime: timestamppb.New(row.created.UTC()), UpdateTime: timestamppb.New(row.updated.UTC()),
 	}
 	if row.deleted.Valid {
@@ -217,6 +258,42 @@ func scanRun(row scanner) (runRow, error) {
 }
 
 func runProto(ctx context.Context, tx *sql.Tx, row runRow) (*agentv1.AgentRun, error) {
+	modelTokens, err := numconv.Int64ToUint64(row.modelTokens)
+	if err != nil {
+		return nil, err
+	}
+	iterations, err := numconv.Int64ToUint32(row.iterations)
+	if err != nil {
+		return nil, err
+	}
+	toolCalls, err := numconv.Int64ToUint32(row.toolCalls)
+	if err != nil {
+		return nil, err
+	}
+	storageBytes, err := numconv.Int64ToUint64(row.storageBytes)
+	if err != nil {
+		return nil, err
+	}
+	spend, err := numconv.Int64ToUint64(row.spend)
+	if err != nil {
+		return nil, err
+	}
+	acceleratorMillis, err := numconv.Int64ToUint64(row.acceleratorMillis)
+	if err != nil {
+		return nil, err
+	}
+	cpuMillis, err := numconv.Int64ToUint64(row.cpuMillis)
+	if err != nil {
+		return nil, err
+	}
+	nextSequence, err := numconv.Int64ToUint64(row.nextSequence)
+	if err != nil {
+		return nil, err
+	}
+	leaseEpoch, err := numconv.Int64ToUint64(row.leaseEpoch)
+	if err != nil {
+		return nil, err
+	}
 	definition, err := platformdb.LoadResourceRef(ctx, tx, row.tenant, row.definitionID)
 	if err != nil {
 		return nil, err
@@ -249,7 +326,7 @@ func runProto(ctx context.Context, tx *sql.Tx, row runRow) (*agentv1.AgentRun, e
 	if err != nil {
 		return nil, err
 	}
-	value := &agentv1.AgentRun{Name: row.name, Uid: row.uid, Revision: row.revision, Etag: row.etag, TenantId: row.tenant, ProjectId: row.project, Definition: definition, DefinitionDigest: row.definitionDigest, WorkflowRun: workflow, Input: input, ModelProviderManifest: provider, BudgetReservation: budget, BudgetUsage: &agentv1.AgentBudgetUsage{ModelTokens: uint64(row.modelTokens), Iterations: uint32(row.iterations), ToolCalls: uint32(row.toolCalls), StorageBytes: uint64(row.storageBytes), ExternalSpendMicros: uint64(row.spend), AcceleratorMilliseconds: uint64(row.acceleratorMillis), CpuMilliseconds: uint64(row.cpuMillis)}, State: agentv1.AgentRunState(row.state), ActiveStepName: row.activeStep, NextStepSequence: uint64(row.nextSequence), AttemptId: row.attemptID, LeaseEpoch: uint64(row.leaseEpoch), CancellationRequested: row.cancellation, RunManifest: manifest, Output: output, Failure: failure, CreateTime: timestamppb.New(row.created.UTC()), UpdateTime: timestamppb.New(row.updated.UTC())} //nolint:gosec // Conversion is bounded by validated protocol invariants or PostgreSQL CHECK constraints.
+	value := &agentv1.AgentRun{Name: row.name, Uid: row.uid, Revision: row.revision, Etag: row.etag, TenantId: row.tenant, ProjectId: row.project, Definition: definition, DefinitionDigest: row.definitionDigest, WorkflowRun: workflow, Input: input, ModelProviderManifest: provider, BudgetReservation: budget, BudgetUsage: &agentv1.AgentBudgetUsage{ModelTokens: modelTokens, Iterations: iterations, ToolCalls: toolCalls, StorageBytes: storageBytes, ExternalSpendMicros: spend, AcceleratorMilliseconds: acceleratorMillis, CpuMilliseconds: cpuMillis}, State: agentv1.AgentRunState(row.state), ActiveStepName: row.activeStep, NextStepSequence: nextSequence, AttemptId: row.attemptID, LeaseEpoch: leaseEpoch, CancellationRequested: row.cancellation, RunManifest: manifest, Output: output, Failure: failure, CreateTime: timestamppb.New(row.created.UTC()), UpdateTime: timestamppb.New(row.updated.UTC())}
 	if row.ended.Valid {
 		value.EndTime = timestamppb.New(row.ended.Time.UTC())
 	}
@@ -314,6 +391,14 @@ func scanStep(row scanner) (stepRow, error) {
 }
 
 func stepProto(ctx context.Context, tx *sql.Tx, row stepRow) (*agentv1.AgentStep, error) {
+	sequence, err := numconv.Int64ToUint64(row.sequence)
+	if err != nil {
+		return nil, err
+	}
+	leaseEpoch, err := numconv.Int64ToUint64(row.leaseEpoch)
+	if err != nil {
+		return nil, err
+	}
 	run, err := platformdb.LoadResourceRef(ctx, tx, row.tenant, row.runRefID)
 	if err != nil {
 		return nil, err
@@ -326,7 +411,7 @@ func stepProto(ctx context.Context, tx *sql.Tx, row stepRow) (*agentv1.AgentStep
 	if err != nil {
 		return nil, err
 	}
-	value := &agentv1.AgentStep{Name: row.name, Uid: row.uid, Run: run, Sequence: uint64(row.sequence), Revision: row.revision, Etag: row.etag, Kind: agentv1.AgentStepKind(row.kind), State: agentv1.AgentStepState(row.state), AttemptId: row.attemptID, LeaseEpoch: uint64(row.leaseEpoch), Output: output, Failure: failure, CreateTime: timestamppb.New(row.created.UTC()), UpdateTime: timestamppb.New(row.updated.UTC())} //nolint:gosec // Conversion is bounded by validated protocol invariants or PostgreSQL CHECK constraints.
+	value := &agentv1.AgentStep{Name: row.name, Uid: row.uid, Run: run, Sequence: sequence, Revision: row.revision, Etag: row.etag, Kind: agentv1.AgentStepKind(row.kind), State: agentv1.AgentStepState(row.state), AttemptId: row.attemptID, LeaseEpoch: leaseEpoch, Output: output, Failure: failure, CreateTime: timestamppb.New(row.created.UTC()), UpdateTime: timestamppb.New(row.updated.UTC())}
 	if row.ended.Valid {
 		value.EndTime = timestamppb.New(row.ended.Time.UTC())
 	}
@@ -727,6 +812,30 @@ func scanReceipt(row scanner) (receiptRow, error) {
 }
 
 func receiptProto(ctx context.Context, tx *sql.Tx, row receiptRow) (*agentv1.ToolReceipt, error) {
+	leaseEpoch, err := numconv.Int64ToUint64(row.leaseEpoch)
+	if err != nil {
+		return nil, err
+	}
+	inputBytes, err := numconv.Int64ToUint64(row.inputBytes)
+	if err != nil {
+		return nil, err
+	}
+	outputBytes, err := numconv.Int64ToUint64(row.outputBytes)
+	if err != nil {
+		return nil, err
+	}
+	cpuMillis, err := numconv.Int64ToUint64(row.cpuMillis)
+	if err != nil {
+		return nil, err
+	}
+	acceleratorMillis, err := numconv.Int64ToUint64(row.acceleratorMillis)
+	if err != nil {
+		return nil, err
+	}
+	spend, err := numconv.Int64ToUint64(row.spend)
+	if err != nil {
+		return nil, err
+	}
 	tool, err := platformdb.LoadResourceRef(ctx, tx, row.tenant, row.toolID)
 	if err != nil {
 		return nil, err
@@ -743,7 +852,7 @@ func receiptProto(ctx context.Context, tx *sql.Tx, row receiptRow) (*agentv1.Too
 	if err != nil {
 		return nil, err
 	}
-	value := &agentv1.ToolReceipt{Name: row.name, Uid: row.uid, CallId: row.callID, AgentRunName: row.runName, AgentStepName: row.stepName, Tool: tool, ToolVersion: row.toolVersion, AttemptId: row.attemptID, LeaseEpoch: uint64(row.leaseEpoch), Authorization: auth, IdempotencyKey: row.idempotencyKey, InputDigest: row.inputDigest, ExpectedOutputSchemaDigest: row.schemaDigest, Outcome: agentv1.ToolExecutionOutcome(row.outcome), SideEffectState: agentv1.ToolSideEffectState(row.sideEffect), OutputDigest: row.outputDigest, ReconciliationEvidence: reconciliation, Failure: failure, Usage: &agentv1.ToolResourceUsage{InputBytes: uint64(row.inputBytes), OutputBytes: uint64(row.outputBytes), CpuMilliseconds: uint64(row.cpuMillis), AcceleratorMilliseconds: uint64(row.acceleratorMillis), ExternalSpendMicros: uint64(row.spend)}, StartedAt: timestamppb.New(row.started.UTC()), CompletedAt: timestamppb.New(row.completed.UTC()), ExecutorIdentity: row.executor, SourceRevision: row.sourceRevision, ReceiptDigest: row.receiptDigest} //nolint:gosec // Conversion is bounded by validated protocol invariants or PostgreSQL CHECK constraints.
+	value := &agentv1.ToolReceipt{Name: row.name, Uid: row.uid, CallId: row.callID, AgentRunName: row.runName, AgentStepName: row.stepName, Tool: tool, ToolVersion: row.toolVersion, AttemptId: row.attemptID, LeaseEpoch: leaseEpoch, Authorization: auth, IdempotencyKey: row.idempotencyKey, InputDigest: row.inputDigest, ExpectedOutputSchemaDigest: row.schemaDigest, Outcome: agentv1.ToolExecutionOutcome(row.outcome), SideEffectState: agentv1.ToolSideEffectState(row.sideEffect), OutputDigest: row.outputDigest, ReconciliationEvidence: reconciliation, Failure: failure, Usage: &agentv1.ToolResourceUsage{InputBytes: inputBytes, OutputBytes: outputBytes, CpuMilliseconds: cpuMillis, AcceleratorMilliseconds: acceleratorMillis, ExternalSpendMicros: spend}, StartedAt: timestamppb.New(row.started.UTC()), CompletedAt: timestamppb.New(row.completed.UTC()), ExecutorIdentity: row.executor, SourceRevision: row.sourceRevision, ReceiptDigest: row.receiptDigest}
 	approvalRows, err := tx.QueryContext(ctx, `SELECT resource_ref_id FROM agent_tool_receipt_approvals WHERE tenant_id=$1 AND project_id=$2 AND tool_receipt_name=$3 ORDER BY ordinal`, row.tenant, row.project, row.name)
 	if err != nil {
 		return nil, err

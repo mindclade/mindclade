@@ -21,8 +21,8 @@ use prost_types::Timestamp;
 use tonic::{Request, Response, Status, codegen::async_trait};
 
 use crate::{
-    AccessToken, CallOptions, Client, Config, Environment, Identity, RecordingTransport,
-    RpcTransport, SubmitOptions, TokenProvider,
+    AccessToken, CallOptions, Client, Config, Environment, Evaluations, Identity,
+    RecordingTransport, RpcTransport, SubmitOptions, TokenProvider,
 };
 
 const PARENT: &str = "tenants/t-1/projects/p-1";
@@ -279,11 +279,7 @@ fn fence() -> LeaseFence {
     }
 }
 
-#[tokio::test]
-async fn evaluation_facade_covers_all_rpcs_and_fenced_metadata() {
-    let inner = Arc::new(EvaluationTransport::default());
-    let recording = Arc::new(RecordingTransport::new(Arc::clone(&inner)));
-    let evaluations = client(recording.clone()).evaluations();
+async fn exercise_run_lifecycle(evaluations: &Evaluations) {
     evaluations
         .create_run(
             CreateEvaluationRunRequest {
@@ -338,19 +334,21 @@ async fn evaluation_facade_covers_all_rpcs_and_fenced_metadata() {
         )
         .await
         .unwrap();
-    evaluations
-        .commit_result(
-            CommitEvaluationResultRequest {
-                evaluation_run: Some(reference("evaluation_run", "evaluation-1", RUN)),
-                fence: Some(fence()),
-                result: Some(result()),
-                etag: "etag".to_owned(),
-                ..CommitEvaluationResultRequest::default()
-            },
-            fenced_submit("commit-evaluation"),
-        )
-        .await
-        .unwrap();
+}
+
+async fn exercise_result_and_promotion(evaluations: &Evaluations) {
+    Box::pin(evaluations.commit_result(
+        CommitEvaluationResultRequest {
+            evaluation_run: Some(reference("evaluation_run", "evaluation-1", RUN)),
+            fence: Some(fence()),
+            result: Some(result()),
+            etag: "etag".to_owned(),
+            ..CommitEvaluationResultRequest::default()
+        },
+        fenced_submit("commit-evaluation"),
+    ))
+    .await
+    .unwrap();
     assert_eq!(
         evaluations
             .get_result(RESULT, CallOptions::new())
@@ -377,6 +375,17 @@ async fn evaluation_facade_covers_all_rpcs_and_fenced_metadata() {
             .name,
         DECISION
     );
+}
+
+#[tokio::test]
+async fn evaluation_facade_covers_all_rpcs_and_fenced_metadata() {
+    let inner = Arc::new(EvaluationTransport::default());
+    let recording = Arc::new(RecordingTransport::new(Arc::clone(&inner)));
+    let evaluations = client(recording.clone()).evaluations();
+
+    exercise_run_lifecycle(&evaluations).await;
+    exercise_result_and_promotion(&evaluations).await;
+
     assert_eq!(recording.calls().len(), 8);
     let contexts = inner.contexts.lock().unwrap();
     assert_eq!(contexts.len(), 4);

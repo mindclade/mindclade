@@ -13,6 +13,7 @@ import (
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 
 	artifactv1 "github.com/mindclade/mindclade/protocols/generated/go/artifact/v1"
+	auditv1 "github.com/mindclade/mindclade/protocols/generated/go/audit/v1"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	internalpolicyv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/policy/v1"
 	policyv1 "github.com/mindclade/mindclade/protocols/generated/go/policy/v1"
@@ -167,13 +168,15 @@ func TestPostgresPolicyLifecycleDecisionAndRLS(t *testing.T) {
 	if err = verify.QueryRowContext(ctx, `SELECT (SELECT count(*) FROM use_policies WHERE tenant_id=$1),(SELECT count(*) FROM authorization_decisions WHERE tenant_id=$1),(SELECT count(*) FROM policy_admin_command_receipts WHERE tenant_id=$1),(SELECT count(*) FROM outbox_messages WHERE tenant_id=$1),(SELECT count(*) FROM administrative_audit_records WHERE tenant_id=$1)`, identity.TenantID).Scan(&policies, &decisions, &receipts, &outbox, &audits); err != nil {
 		t.Fatal(err)
 	}
-	if policies != 1 || decisions != 1 || receipts != 5 || outbox != 5 || audits != 5 {
+	if policies != 1 || decisions != 1 || receipts != 5 || outbox != 6 || audits != 5 {
 		t.Fatalf("policies=%d decisions=%d receipts=%d outbox=%d audits=%d", policies, decisions, receipts, outbox, audits)
 	}
 	rows, err := verify.QueryContext(ctx, `SELECT envelope_bytes FROM outbox_messages WHERE tenant_id=$1 ORDER BY created_at`, identity.TenantID)
 	if err != nil {
 		t.Fatal(err)
 	}
+	var securityEvent *auditv1.SecurityEvent
+	var securityEnvelope *commonv1.EventEnvelope
 	for rows.Next() {
 		var encoded []byte
 		if err = rows.Scan(&encoded); err != nil {
@@ -183,14 +186,27 @@ func TestPostgresPolicyLifecycleDecisionAndRLS(t *testing.T) {
 		if decodeErr != nil {
 			t.Fatal(decodeErr)
 		}
-		if _, decodeErr = queue.UnmarshalRegisteredPayload(envelope); decodeErr != nil {
+		payload, decodeErr := queue.UnmarshalRegisteredPayload(envelope)
+		if decodeErr != nil {
 			t.Fatal(decodeErr)
+		}
+		if value, ok := payload.(*auditv1.SecurityEvent); ok {
+			if securityEvent != nil {
+				t.Fatal("authorization denial produced more than one SecurityEvent")
+			}
+			securityEvent, securityEnvelope = value, envelope
 		}
 	}
 	if err = rows.Err(); err != nil {
 		t.Fatal(err)
 	}
 	_ = platformdb.CloseRows(rows)
+	if securityEvent == nil || securityEvent.GetSeverity() != "high" || securityEvent.GetControl() != decision.GetReasonCode() ||
+		securityEvent.GetEvidenceDigest() != decision.GetDecisionDigest() || securityEnvelope.GetClassification() != commonv1.DataClassification_DATA_CLASSIFICATION_RESTRICTED ||
+		securityEnvelope.GetSubject().GetResourceType() != "security_event" || !strings.HasPrefix(securityEnvelope.GetSubject().GetName(), decision.GetName()+"/securityEvents/security-") ||
+		securityEnvelope.GetSubject().GetResourceVersion() != 1 || securityEnvelope.GetSubject().GetEtag() != decision.GetDecisionDigest() {
+		t.Fatalf("transactional policy denial SecurityEvent is incomplete: envelope=%v payload=%v decision=%v", securityEnvelope, securityEvent, decision)
+	}
 	if err = verify.Commit(); err != nil {
 		t.Fatal(err)
 	}
@@ -211,5 +227,73 @@ func TestPostgresPolicyLifecycleDecisionAndRLS(t *testing.T) {
 	}
 	if visible != 0 {
 		t.Fatalf("RLS exposed %d policy rows across tenants", visible)
+	}
+}
+
+func TestPostgresDeniedCommandsProduceDistinctTransactionalSecurityFacts(t *testing.T) {
+	db := integrationDB(t)
+	ctx := context.Background()
+	suffix := strings.ReplaceAll(time.Now().UTC().Format("20060102150405.000000000"), ".", "")
+	identity := Identity{TenantID: "policy-security-" + suffix, ProjectID: "project", Principal: "principal"}
+	subject := &commonv1.ResourceRef{
+		ResourceType: "model", ResourceId: "model-1", TenantId: identity.TenantID, ProjectId: identity.ProjectID,
+		ResourceVersion: 1, Name: projectParent(identity) + "/models/model-1",
+	}
+	decisionDigest := "sha256:" + strings.Repeat("a", 64)
+	detailDigest := "sha256:" + strings.Repeat("b", 64)
+	first := integrationContext(identity, "denied-request-1", "denied-key-1")
+	second := integrationContext(identity, "denied-request-2", "denied-key-2")
+	at := time.Now().UTC()
+
+	tx, err := platformdb.BeginTenantTx(ctx, db, identity.TenantID, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = tx.Rollback() }()
+	if err = insertPolicyAudit(ctx, tx, identity, "model.export", subject, 3, "DEFAULT_DENY", decisionDigest, "1", "1", detailDigest, first, at); err != nil {
+		t.Fatal(err)
+	}
+	if err = insertPolicyAudit(ctx, tx, identity, "model.export", subject, 3, "DEFAULT_DENY", decisionDigest, "1", "1", detailDigest, second, at.Add(time.Nanosecond)); err != nil {
+		t.Fatalf("second independent denial collided transactionally: %v", err)
+	}
+	if err = tx.Commit(); err != nil {
+		t.Fatal(err)
+	}
+
+	verify, err := platformdb.BeginTenantTx(ctx, db, identity.TenantID, &sql.TxOptions{ReadOnly: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = verify.Rollback() }()
+	rows, err := verify.QueryContext(ctx, `SELECT envelope_bytes FROM outbox_messages WHERE tenant_id=$1 AND event_type='mindclade.events.audit.v1.SecurityEvent' ORDER BY created_at,id`, identity.TenantID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = platformdb.CloseRows(rows) }()
+	eventIDs, subjectIDs, requestIDs := map[string]struct{}{}, map[string]struct{}{}, map[string]struct{}{}
+	for rows.Next() {
+		var encoded []byte
+		if err = rows.Scan(&encoded); err != nil {
+			t.Fatal(err)
+		}
+		envelope, decodeErr := queue.UnmarshalEnvelope(encoded)
+		if decodeErr != nil {
+			t.Fatal(decodeErr)
+		}
+		if _, decodeErr = queue.UnmarshalRegisteredPayload(envelope); decodeErr != nil {
+			t.Fatal(decodeErr)
+		}
+		eventIDs[envelope.GetEventId()] = struct{}{}
+		subjectIDs[envelope.GetSubject().GetResourceId()] = struct{}{}
+		requestIDs[envelope.GetRequestId()] = struct{}{}
+	}
+	if err = rows.Err(); err != nil {
+		t.Fatal(err)
+	}
+	if len(eventIDs) != 2 || len(subjectIDs) != 2 || len(requestIDs) != 2 {
+		t.Fatalf("distinct denials were not preserved: events=%v subjects=%v requests=%v", eventIDs, subjectIDs, requestIDs)
+	}
+	if err = verify.Commit(); err != nil {
+		t.Fatal(err)
 	}
 }

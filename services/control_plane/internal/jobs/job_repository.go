@@ -20,7 +20,9 @@ import (
 	foundationaudit "github.com/mindclade/mindclade/libs/go/audit"
 	artifactv1 "github.com/mindclade/mindclade/protocols/generated/go/artifact/v1"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
+	featurev1 "github.com/mindclade/mindclade/protocols/generated/go/feature/v1"
 	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
+	transformv1 "github.com/mindclade/mindclade/protocols/generated/go/transform/v1"
 	operationsapp "github.com/mindclade/mindclade/services/control_plane/internal/operations"
 	platformdb "github.com/mindclade/mindclade/services/control_plane/internal/platform/database"
 	"github.com/mindclade/mindclade/services/control_plane/internal/platform/queue"
@@ -44,12 +46,18 @@ type JobMutationResult struct {
 const (
 	MinimumLeaseDuration = 5 * time.Second
 	MaximumLeaseDuration = 15 * time.Minute
-	actionAcquireLease   = "run.acquire_lease"
-	actionRenewLease     = "run.renew_lease"
-	actionHeartbeat      = "run.heartbeat"
-	actionCancelAttempt  = "run.cancel_attempt"
-	actionExpireLeases   = "run.expire_leases"
-	actionCommitAttempt  = "run.commit_attempt"
+	// FeatureMaterializationJobKind and TransformExecutionJobKind are the
+	// closed scheduler discriminators for the corresponding typed completion
+	// commands. Exact matching prevents one domain payload from being attached
+	// to another job kind.
+	FeatureMaterializationJobKind = "feature.materialization"
+	TransformExecutionJobKind     = "transform.execution"
+	actionAcquireLease            = "run.acquire_lease"
+	actionRenewLease              = "run.renew_lease"
+	actionHeartbeat               = "run.heartbeat"
+	actionCancelAttempt           = "run.cancel_attempt"
+	actionExpireLeases            = "run.expire_leases"
+	actionCommitAttempt           = "run.commit_attempt"
 )
 
 // LeaseCredentials are authenticated behavior inputs, not a competing wire
@@ -111,10 +119,153 @@ type ExpireLeasesCommand struct {
 type CompleteAttemptCommand struct {
 	Credentials             LeaseCredentials
 	Attempt                 *jobv1.Attempt
+	Fence                   *jobv1.LeaseFence
+	FeatureMaterialization  *featurev1.CommitFeatureMaterializationCommand
+	TransformExecution      *transformv1.CommitTransformExecutionCommand
 	UpdateMask              []string
 	ExpectedResourceVersion int64
 	Now                     time.Time
 	Command                 RunCommandMetadata
+}
+
+func validateDomainCompletionContext(value *commonv1.CommandContext, command RunCommandMetadata) bool {
+	return value != nil && value.GetTenantId() == command.TenantID && value.GetProjectId() == command.ProjectID &&
+		value.GetPrincipalId() == command.PrincipalID && value.GetRequestId() == command.RequestID &&
+		value.GetIdempotencyKey() == command.IdempotencyKey && value.GetTraceId() == command.TraceID &&
+		value.GetCorrelationId() == command.CorrelationID && value.GetCausationId() == command.CausationID
+}
+
+func validDomainResourceName(tenantID, projectID, collection, value string) bool {
+	prefix := "tenants/" + tenantID + "/projects/" + projectID + "/" + collection + "/"
+	if !strings.HasPrefix(value, prefix) {
+		return false
+	}
+	leaf := strings.TrimPrefix(value, prefix)
+	if len(leaf) == 0 || len(leaf) > 128 || !asciiAlphaNumeric(leaf[0]) {
+		return false
+	}
+	for index := 1; index < len(leaf); index++ {
+		if !asciiAlphaNumeric(leaf[index]) && !strings.ContainsRune("._~-", rune(leaf[index])) {
+			return false
+		}
+	}
+	return true
+}
+
+func asciiAlphaNumeric(value byte) bool {
+	return value >= '0' && value <= '9' || value >= 'A' && value <= 'Z' || value >= 'a' && value <= 'z'
+}
+
+func validCompletionTimestamp(value *timestamppb.Timestamp, attempt *jobv1.Attempt, recordedAt time.Time) bool {
+	if value == nil || value.CheckValid() != nil || attempt == nil || attempt.GetLeasedAt() == nil {
+		return false
+	}
+	completedAt := value.AsTime().UTC()
+	return !completedAt.Before(attempt.GetLeasedAt().AsTime().UTC()) && !completedAt.After(recordedAt.UTC())
+}
+
+func equalArtifacts(left, right []*artifactv1.ArtifactRef) bool {
+	if len(left) != len(right) {
+		return false
+	}
+	for index := range left {
+		if !proto.Equal(left[index], right[index]) {
+			return false
+		}
+	}
+	return true
+}
+
+func validCompletionArtifacts(receipt *artifactv1.ArtifactRef, outputs []*artifactv1.ArtifactRef, failure *commonv1.ErrorDetail, attempt *jobv1.Attempt) bool {
+	if attempt == nil || !validArtifactReference(receipt, true) || len(outputs) > 256 || !equalArtifacts(outputs, attempt.GetOutputs()) || !proto.Equal(failure, attempt.GetError()) {
+		return false
+	}
+	if attempt.GetState() == jobv1.AttemptState_ATTEMPT_STATE_SUCCEEDED && len(outputs) == 0 {
+		return false
+	}
+	for _, output := range outputs {
+		if !validArtifactReference(output, true) {
+			return false
+		}
+	}
+	return failure == nil || failure.GetCode() != commonv1.ErrorCode_ERROR_CODE_UNSPECIFIED
+}
+
+func featureClassificationMatches(state jobv1.AttemptState, classification featurev1.FeatureMaterializationTerminalClassification) bool {
+	switch classification {
+	case featurev1.FeatureMaterializationTerminalClassification_FEATURE_MATERIALIZATION_TERMINAL_CLASSIFICATION_SUCCEEDED:
+		return state == jobv1.AttemptState_ATTEMPT_STATE_SUCCEEDED
+	case featurev1.FeatureMaterializationTerminalClassification_FEATURE_MATERIALIZATION_TERMINAL_CLASSIFICATION_CANCELLED:
+		return state == jobv1.AttemptState_ATTEMPT_STATE_CANCELLED
+	case featurev1.FeatureMaterializationTerminalClassification_FEATURE_MATERIALIZATION_TERMINAL_CLASSIFICATION_DEADLINE_EXCEEDED:
+		return state == jobv1.AttemptState_ATTEMPT_STATE_TIMED_OUT
+	case featurev1.FeatureMaterializationTerminalClassification_FEATURE_MATERIALIZATION_TERMINAL_CLASSIFICATION_INVALID_PLAN,
+		featurev1.FeatureMaterializationTerminalClassification_FEATURE_MATERIALIZATION_TERMINAL_CLASSIFICATION_POLICY_DENIED,
+		featurev1.FeatureMaterializationTerminalClassification_FEATURE_MATERIALIZATION_TERMINAL_CLASSIFICATION_DETERMINISM_VIOLATION,
+		featurev1.FeatureMaterializationTerminalClassification_FEATURE_MATERIALIZATION_TERMINAL_CLASSIFICATION_EXECUTION_FAILED:
+		return state == jobv1.AttemptState_ATTEMPT_STATE_FAILED
+	case featurev1.FeatureMaterializationTerminalClassification_FEATURE_MATERIALIZATION_TERMINAL_CLASSIFICATION_UNSPECIFIED,
+		featurev1.FeatureMaterializationTerminalClassification_FEATURE_MATERIALIZATION_TERMINAL_CLASSIFICATION_STALE_FENCE:
+		return false
+	default:
+		return false
+	}
+}
+
+func transformClassificationMatches(state jobv1.AttemptState, classification transformv1.TransformExecutionTerminalClassification) bool {
+	switch classification {
+	case transformv1.TransformExecutionTerminalClassification_TRANSFORM_EXECUTION_TERMINAL_CLASSIFICATION_SUCCEEDED:
+		return state == jobv1.AttemptState_ATTEMPT_STATE_SUCCEEDED
+	case transformv1.TransformExecutionTerminalClassification_TRANSFORM_EXECUTION_TERMINAL_CLASSIFICATION_CANCELLED:
+		return state == jobv1.AttemptState_ATTEMPT_STATE_CANCELLED
+	case transformv1.TransformExecutionTerminalClassification_TRANSFORM_EXECUTION_TERMINAL_CLASSIFICATION_DEADLINE_EXCEEDED:
+		return state == jobv1.AttemptState_ATTEMPT_STATE_TIMED_OUT
+	case transformv1.TransformExecutionTerminalClassification_TRANSFORM_EXECUTION_TERMINAL_CLASSIFICATION_INVALID_INPUT,
+		transformv1.TransformExecutionTerminalClassification_TRANSFORM_EXECUTION_TERMINAL_CLASSIFICATION_SCHEMA_MISMATCH,
+		transformv1.TransformExecutionTerminalClassification_TRANSFORM_EXECUTION_TERMINAL_CLASSIFICATION_SEMANTIC_VALIDATION_FAILED,
+		transformv1.TransformExecutionTerminalClassification_TRANSFORM_EXECUTION_TERMINAL_CLASSIFICATION_POLICY_DENIED,
+		transformv1.TransformExecutionTerminalClassification_TRANSFORM_EXECUTION_TERMINAL_CLASSIFICATION_RESOURCE_EXHAUSTED,
+		transformv1.TransformExecutionTerminalClassification_TRANSFORM_EXECUTION_TERMINAL_CLASSIFICATION_TRANSIENT_IO,
+		transformv1.TransformExecutionTerminalClassification_TRANSFORM_EXECUTION_TERMINAL_CLASSIFICATION_IMPLEMENTATION_FAILURE,
+		transformv1.TransformExecutionTerminalClassification_TRANSFORM_EXECUTION_TERMINAL_CLASSIFICATION_DETERMINISM_VIOLATION,
+		transformv1.TransformExecutionTerminalClassification_TRANSFORM_EXECUTION_TERMINAL_CLASSIFICATION_CARDINALITY_VIOLATION,
+		transformv1.TransformExecutionTerminalClassification_TRANSFORM_EXECUTION_TERMINAL_CLASSIFICATION_ORDERING_VIOLATION,
+		transformv1.TransformExecutionTerminalClassification_TRANSFORM_EXECUTION_TERMINAL_CLASSIFICATION_LINEAGE_VIOLATION:
+		return state == jobv1.AttemptState_ATTEMPT_STATE_FAILED
+	case transformv1.TransformExecutionTerminalClassification_TRANSFORM_EXECUTION_TERMINAL_CLASSIFICATION_UNSPECIFIED,
+		transformv1.TransformExecutionTerminalClassification_TRANSFORM_EXECUTION_TERMINAL_CLASSIFICATION_STALE_FENCE:
+		return false
+	default:
+		return false
+	}
+}
+
+func validateDomainCompletion(command CompleteAttemptCommand, jobKind string, attempt *jobv1.Attempt) error {
+	feature, transform := command.FeatureMaterialization, command.TransformExecution
+	if feature != nil && transform != nil {
+		return ErrInvalidOutcome
+	}
+	switch jobKind {
+	case FeatureMaterializationJobKind:
+		if feature == nil || transform != nil || !validateDomainCompletionContext(feature.GetContext(), command.Command) ||
+			!proto.Equal(feature.GetFence(), command.Fence) || !validDomainResourceName(command.Credentials.TenantID, command.Credentials.ProjectID, "featureMaterializations", feature.GetMaterializationName()) ||
+			!validCompletionTimestamp(feature.GetCompletedAt(), attempt, command.Now) || !featureClassificationMatches(attempt.GetState(), feature.GetClassification()) ||
+			!validCompletionArtifacts(feature.GetReceipt(), feature.GetOutputRefs(), feature.GetError(), attempt) {
+			return ErrInvalidOutcome
+		}
+	case TransformExecutionJobKind:
+		if transform == nil || feature != nil || !validateDomainCompletionContext(transform.GetContext(), command.Command) ||
+			!proto.Equal(transform.GetFence(), command.Fence) || !validDomainResourceName(command.Credentials.TenantID, command.Credentials.ProjectID, "transformExecutions", transform.GetExecutionName()) ||
+			!validCompletionTimestamp(transform.GetCompletedAt(), attempt, command.Now) || !transformClassificationMatches(attempt.GetState(), transform.GetClassification()) ||
+			!validCompletionArtifacts(transform.GetReceipt(), transform.GetOutputRefs(), transform.GetError(), attempt) || !validArtifactReference(transform.GetLineageMap(), true) {
+			return ErrInvalidOutcome
+		}
+	default:
+		if feature != nil || transform != nil {
+			return ErrInvalidOutcome
+		}
+	}
+	return nil
 }
 
 type runCommandReceipt struct {
@@ -388,6 +539,15 @@ func (r SQLRepository) CompleteAttemptSQL(
 	if err != nil {
 		return nil, err
 	}
+	var jobKind string
+	if err = tx.QueryRowContext(ctx, `SELECT job_kind FROM jobs WHERE tenant_id=$1 AND project_id=$2 AND id=$3 FOR SHARE`, credentials.TenantID, credentials.ProjectID, attempt.GetJobId()).Scan(&jobKind); errors.Is(err, sql.ErrNoRows) {
+		return nil, ErrNotFound
+	} else if err != nil {
+		return nil, err
+	}
+	if err = validateDomainCompletion(command, jobKind, attempt); err != nil {
+		return nil, err
+	}
 	attemptOutcome, runOutcome, err := terminalOutcome(attempt.GetState())
 	if err != nil {
 		return nil, err
@@ -477,6 +637,21 @@ func (r SQLRepository) CompleteAttemptSQL(
 	}
 	if err = insertAttemptOutbox(ctx, tx, completionEvent, at); err != nil {
 		return nil, err
+	}
+	var domainEvent *commonv1.EventEnvelope
+	switch jobKind {
+	case FeatureMaterializationJobKind:
+		domainEvent, err = newFeatureMaterializationCompletedEvent(command.FeatureMaterialization, acceptedRun, completionFence, command.Command, at)
+	case TransformExecutionJobKind:
+		domainEvent, err = newTransformExecutionCompletedEvent(command.TransformExecution, acceptedRun, completionFence, command.Command, at)
+	}
+	if err != nil {
+		return nil, err
+	}
+	if domainEvent != nil {
+		if err = insertAttemptOutbox(ctx, tx, domainEvent, at); err != nil {
+			return nil, err
+		}
 	}
 	if err = recordRunCommand(ctx, tx, command.Command, runID, credentials.AttemptID, ""); err != nil {
 		return nil, err
@@ -685,6 +860,9 @@ func (r SQLRepository) CancelJobSQL(ctx context.Context, jobID, expectedETag, re
 }
 
 func newJobCancellationAuditEnvelope(job *jobv1.Job, principalID string, at time.Time) (*commonv1.EventEnvelope, error) {
+	if job == nil || job.GetResourceVersion() < 1 {
+		return nil, ErrInvalidJobCommand
+	}
 	envelope, err := foundationaudit.NewEvent(job.GetTenantId(), principalID, "jobs.cancel", job.GetJobId(), "allowed", at.UTC(), nil)
 	if err != nil {
 		return nil, err
@@ -692,12 +870,17 @@ func newJobCancellationAuditEnvelope(job *jobv1.Job, principalID string, at time
 	envelope.ProjectId = job.GetProjectId()
 	envelope.JobId = job.GetJobId()
 	envelope.Producer = "services/control_plane"
-	envelope.AggregateSequence = uint64(job.GetResourceVersion()) //nolint:gosec // Conversion is bounded by validated protocol invariants or PostgreSQL CHECK constraints.
-	envelope.Subject.ResourceType = "job"
-	envelope.Subject.ResourceId = job.GetJobId()
+	// JobRequested is ordered on its Operation aggregate, and there is no
+	// sequence-one event on the Job aggregate. Model this immutable audit fact
+	// as its own semantic aggregate at ordinal one; preserve the authoritative
+	// Job revision on Subject instead of manufacturing a missing predecessor.
+	envelope.AggregateSequence = 1
+	envelope.Subject.ResourceType = "job_cancellation_audit"
+	envelope.Subject.ResourceId = strings.TrimPrefix(envelope.GetEventId(), "audit:")
 	envelope.Subject.ProjectId = job.GetProjectId()
 	envelope.Subject.ResourceVersion = job.GetResourceVersion()
-	envelope.Subject.Name = "tenants/" + job.GetTenantId() + "/projects/" + job.GetProjectId() + "/" + strings.TrimPrefix(job.GetJobId(), "/")
+	envelope.Subject.Name = "tenants/" + job.GetTenantId() + "/projects/" + job.GetProjectId() + "/" + strings.TrimPrefix(job.GetJobId(), "/") + "/auditEvents/" + envelope.Subject.GetResourceId()
+	envelope.Subject.Etag = job.GetEtag()
 	return envelope, queue.ValidateEnvelope(envelope)
 }
 
@@ -1918,7 +2101,7 @@ func (r *Repository) CompletionAccepted(index int) (bool, bool) {
 func terminalOutcome(outcome jobv1.AttemptState) (attemptStatus, runStatus string, err error) {
 	switch outcome {
 	case jobv1.AttemptState_ATTEMPT_STATE_SUCCEEDED:
-		return "COMPLETED", "COMPLETED", nil
+		return "COMPLETED", "SUCCEEDED", nil
 	case jobv1.AttemptState_ATTEMPT_STATE_FAILED:
 		return "FAILED", "FAILED", nil
 	case jobv1.AttemptState_ATTEMPT_STATE_TIMED_OUT:

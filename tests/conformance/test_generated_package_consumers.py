@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import importlib
 import json
 import re
@@ -13,7 +14,7 @@ PACKAGE_PATTERN = re.compile(r"^package\s+(mindclade\.[A-Za-z0-9_.]+)\s*;", re.M
 SERVICE_PATTERN = re.compile(r"^service\s+[A-Za-z][A-Za-z0-9_]*\s*\{", re.MULTILINE)
 MESSAGE_PATTERN = re.compile(r"^message\s+([A-Za-z][A-Za-z0-9_]*)\s*\{", re.MULTILINE)
 LANGUAGES = {"go", "python", "rust", "typescript"}
-CLIENT_SOURCE_ROOTS = ("apps", "services", "tools", "training", "workers")
+CLIENT_SOURCE_ROOTS = ("apps", "examples", "services", "tools", "training", "workers")
 DIRECT_GENERATED_IMPORTS = {
     ".go": re.compile(
         r"(?m)^\s*(?:[A-Za-z_][A-Za-z0-9_]*\s+)?"
@@ -249,6 +250,136 @@ class GeneratedPackageConsumerTest(unittest.TestCase):
                     f"protocols/generated/go/internalrpc/{package}/v1",
                     go_transport,
                 )
+
+    def test_internal_sdk_rpc_coverage_is_descriptor_bound_and_explicit(self) -> None:
+        coverage_path = self.repository / "internal/sdk/rpc-coverage.generated.json"
+        coverage = json.loads(coverage_path.read_text())
+        self.assertEqual(
+            coverage["schema_version"],
+            "mindclade.internal-sdk-rpc-coverage-projection/v2",
+        )
+        self.assertEqual(coverage["languages"], ["go", "python", "rust", "typescript"])
+        summary = coverage["summary"]
+        rpcs = coverage["rpcs"]
+        self.assertEqual(summary["rpc_count"], len(rpcs))
+        self.assertEqual(summary["service_count"], len({entry["service"] for entry in rpcs}))
+        self.assertEqual((summary["service_count"], summary["rpc_count"]), (15, 132))
+        self.assertEqual(
+            summary["classifications"],
+            {"ergonomic": 131, "raw-only": 1, "unsupported": 0},
+        )
+        self.assertTrue(coverage["ratification_ready"])
+        self.assertEqual(coverage["summary"]["temporary_gap_count"], 0)
+
+        identities = [entry["full_name"] for entry in coverage["rpcs"]]
+        self.assertEqual(len(identities), len(set(identities)))
+        self.assertFalse(any(".api.v1." in identity for identity in identities))
+        for entry in coverage["rpcs"]:
+            with self.subTest(rpc=entry["full_name"]):
+                self.assertIn(entry["classification"], {"ergonomic", "raw-only", "unsupported"})
+                self.assertTrue(entry["owner"])
+                self.assertTrue(entry["facade"])
+                self.assertRegex(entry["route"], r"^/mindclade\.internal\.")
+                if entry["classification"] == "ergonomic":
+                    self.assertFalse(entry["reason"])
+                    self.assertFalse(entry["temporary"])
+                else:
+                    self.assertTrue(entry["reason"])
+                self.assertEqual(set(entry["evidence"]), set(coverage["languages"]))
+                for language, evidence in entry["evidence"].items():
+                    self.assertTrue(evidence["library_target"].startswith("//internal/sdk/"))
+                    self.assertTrue(evidence["test_target"].startswith("//internal/sdk/"))
+                    self.assertTrue(evidence["raw_transport"], language)
+                    if entry["classification"] == "ergonomic":
+                        self.assertTrue(evidence["implementation"], language)
+                        self.assertTrue(evidence["behavioral_tests"], language)
+                    else:
+                        self.assertEqual(evidence["implementation"], [], language)
+                        self.assertEqual(evidence["behavioral_tests"], [], language)
+                    for category in ("implementation", "behavioral_tests", "raw_transport"):
+                        for record in evidence[category]:
+                            evidence_path = self.repository / record["path"]
+                            self.assertTrue(evidence_path.is_file(), record["path"])
+                            self.assertEqual(
+                                record["digest"],
+                                "sha256:" + hashlib.sha256(evidence_path.read_bytes()).hexdigest(),
+                            )
+                            self.assertTrue(record["proof"])
+
+        expiry = next(
+            entry
+            for entry in coverage["rpcs"]
+            if entry["full_name"].endswith("RunService.ExpireAttemptLeases")
+        )
+        self.assertEqual(expiry["classification"], "raw-only")
+        self.assertFalse(expiry["temporary"])
+        self.assertEqual(
+            [
+                entry["full_name"]
+                for entry in coverage["rpcs"]
+                if entry["classification"] == "raw-only"
+            ],
+            ["mindclade.internal.job.v1.RunService.ExpireAttemptLeases"],
+        )
+        self.assertEqual(
+            coverage["ratification_ready"],
+            coverage["summary"]["temporary_gap_count"] == 0,
+        )
+
+        from tools.codegen.generate_sdk_coverage import render
+
+        self.assertEqual(coverage_path.read_bytes(), render(self.repository))
+
+    def test_internal_sdk_rpc_coverage_requires_code_and_test_proof(self) -> None:
+        from tools.codegen.generate_sdk_coverage import (
+            behavioral_test_proof,
+            source_evidence_proof,
+        )
+
+        route = "/mindclade.internal.example.v1.ExampleService/CreateExample"
+        self.assertIsNone(
+            source_evidence_proof(
+                "go", "// CreateExample is ergonomic.", "CreateExample", route, set()
+            )
+        )
+        self.assertIsNone(
+            source_evidence_proof(
+                "rust",
+                f'const CREATE: &str = "{route}";',
+                "CreateExample",
+                route,
+                {"CREATE"},
+            )
+        )
+        self.assertEqual(
+            source_evidence_proof(
+                "go",
+                "func invoke() { client.CreateExample(ctx, request) }",
+                "CreateExample",
+                route,
+                set(),
+            ),
+            "typed-generated-call:CreateExample",
+        )
+        self.assertIsNone(
+            behavioral_test_proof(
+                "typescript",
+                'test("unrelated", () => undefined);',
+                "CreateExample",
+                route,
+                set(),
+            )
+        )
+        self.assertEqual(
+            behavioral_test_proof(
+                "typescript",
+                'test("route", async () => raw.createExample(request));',
+                "CreateExample",
+                route,
+                set(),
+            ),
+            "generated-rpc-capture:createExample",
+        )
 
     def test_client_source_roots_do_not_bypass_the_internal_sdk(self) -> None:
         violations: list[str] = []

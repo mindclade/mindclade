@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any
 
 import yaml
+from google.protobuf import descriptor_pb2
 
 from tools.codegen import generate_protocols
 
@@ -245,6 +246,34 @@ class OpenApiCompatibilityTest(unittest.TestCase):
         grpc_source = grpc_path.read_text()
         self.assertNotIn('import "proto/mindclade/internal/', grpc_source)
 
+    def test_public_descriptor_boundary_rejects_trusted_identity_fields(self) -> None:
+        candidate_path = (
+            self.repository / "protocols/compatibility/baselines/protobuf.candidate.json"
+        )
+        candidate = json.loads(candidate_path.read_text())
+        descriptor_set = descriptor_pb2.FileDescriptorSet.FromString(
+            base64.b64decode(candidate["descriptor_set"]["base64"], validate=True)
+        )
+        public_file = next(
+            file
+            for file in descriptor_set.file
+            if file.name == "proto/mindclade/api/v1/mindclade_service.proto"
+        )
+        project_view = next(
+            message for message in public_file.message_type if message.name == "ProjectView"
+        )
+        forbidden = project_view.field.add()
+        forbidden.name = "principal_id"
+        forbidden.json_name = "principalId"
+        forbidden.number = 99
+        forbidden.label = descriptor_pb2.FieldDescriptorProto.LABEL_OPTIONAL
+        forbidden.type = descriptor_pb2.FieldDescriptorProto.TYPE_STRING
+
+        with self.assertRaisesRegex(ValueError, "forbidden field.*principal_id"):
+            generate_protocols.public_openapi_projection(
+                descriptor_set.SerializeToString(deterministic=True)
+            )
+
     def test_historical_openapi_drift_regressions_are_closed(self) -> None:
         schemas = self.openapi["components"]["schemas"]
         training_run_properties, _ = generate_protocols.merged_openapi_object(
@@ -344,10 +373,17 @@ class OpenApiCompatibilityTest(unittest.TestCase):
             providers["speakeasy"]["role"],
             "optional-specialized-rest-benchmark",
         )
+        self.assertEqual(
+            set(providers["fern"]["languages"]),
+            {"go", "python", "rust", "typescript"},
+        )
+        self.assertEqual(
+            set(providers["speakeasy"]["languages"]),
+            {"go", "python", "typescript"},
+        )
         for provider in providers.values():
             self.assertFalse(provider["foundational"])
             self.assertFalse(provider["releasePrimaryEligible"])
-            self.assertEqual(set(provider["languages"]), {"go", "python", "typescript"})
             self.assertEqual(provider["adapter"]["providerVersion"], "unpinned")
             self.assertIsNone(provider["adapter"]["executable"])
             self.assertIsNone(provider["adapter"]["executableSha256"])
@@ -455,9 +491,13 @@ class OpenApiCompatibilityTest(unittest.TestCase):
             self.assertEqual(
                 {(item["provider"], item["language"]) for item in plan["provenance"]},
                 {
-                    (provider, language)
-                    for provider in ("fern", "speakeasy")
-                    for language in ("go", "python", "typescript")
+                    ("fern", "go"),
+                    ("fern", "python"),
+                    ("fern", "rust"),
+                    ("fern", "typescript"),
+                    ("speakeasy", "go"),
+                    ("speakeasy", "python"),
+                    ("speakeasy", "typescript"),
                 },
             )
             self.assertEqual(plan["parity"]["reference"], "native-internal-sdk-behavior")
@@ -530,6 +570,27 @@ class OpenApiCompatibilityTest(unittest.TestCase):
             self.assertEqual(generate.returncode, 3)
             self.assertIn("configuration-only", generate.stderr)
             self.assertFalse((output_root / "fern/python").exists())
+
+            unsupported = subprocess.run(
+                [
+                    sys.executable,
+                    str(self.sdk_generator_path),
+                    "plan",
+                    *common,
+                    "--provider",
+                    "speakeasy",
+                    "--language",
+                    "rust",
+                    "--output",
+                    "unsupported.json",
+                ],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+            self.assertEqual(unsupported.returncode, 2)
+            self.assertIn("does not support configured language rust", unsupported.stderr)
+            self.assertFalse((output_root / "unsupported.json").exists())
 
     def test_sdk_policy_rejects_native_or_provider_authority_inversion(self) -> None:
         def copied_generation() -> dict[str, Any]:

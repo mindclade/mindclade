@@ -42,6 +42,11 @@ impl Evaluations {
     }
 
     /// Creates one immutable evaluation intent and returns its durable operation.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when intent validation, authentication, transport, or
+    /// response validation fails.
     pub async fn create_run(
         &self,
         mut request: CreateEvaluationRunRequest,
@@ -97,6 +102,11 @@ impl Evaluations {
     }
 
     /// Reads one generated evaluation run revision.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the name is out of scope or the transport returns
+    /// missing or inconsistent generated state.
     pub async fn get_run(
         &self,
         name: impl Into<String>,
@@ -133,6 +143,11 @@ impl Evaluations {
     }
 
     /// Lists one bounded project-scoped page and preserves opaque page tokens.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when scope or pagination is invalid or the transport
+    /// call fails.
     pub async fn list_runs(
         &self,
         mut request: ListEvaluationRunsRequest,
@@ -167,6 +182,11 @@ impl Evaluations {
     }
 
     /// Records monotonic cancellation under optimistic concurrency.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the request is invalid, authentication or
+    /// transport fails, or the response omits its durable operation.
     pub async fn cancel_run(
         &self,
         mut request: CancelEvaluationRunRequest,
@@ -202,6 +222,11 @@ impl Evaluations {
     }
 
     /// Commits one immutable result under the scheduler-issued lease capability.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when result identity, digests, fencing, authentication,
+    /// transport, or returned durable state is invalid.
     pub async fn commit_result(
         &self,
         mut request: CommitEvaluationResultRequest,
@@ -278,6 +303,11 @@ impl Evaluations {
     }
 
     /// Reads one immutable generated evaluation result.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the resource is out of scope or returned state is
+    /// missing or inconsistent.
     pub async fn get_result(
         &self,
         name: impl Into<String>,
@@ -310,6 +340,11 @@ impl Evaluations {
     }
 
     /// Records an immutable evidence-governance decision without deploying it.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when evidence, scope, authentication, transport, or the
+    /// returned durable operation is invalid.
     pub async fn create_promotion_decision(
         &self,
         mut request: CreatePromotionDecisionRequest,
@@ -355,10 +390,22 @@ impl Evaluations {
                     "promotion policy evidence conflicts with client scope",
                 ));
             }
-            policy.tenant_id = self.core.config.identity.tenant_id().to_owned();
-            policy.project_id = self.core.config.identity.project_id().to_owned();
+            self.core
+                .config
+                .identity
+                .tenant_id()
+                .clone_into(&mut policy.tenant_id);
+            self.core
+                .config
+                .identity
+                .project_id()
+                .clone_into(&mut policy.project_id);
         }
-        decision.decided_by_principal_ref = self.core.config.identity.principal_id().to_owned();
+        self.core
+            .config
+            .identity
+            .principal_id()
+            .clone_into(&mut decision.decided_by_principal_ref);
         request.context = None;
         let prepared = options.call.prepare(&self.core.config);
         let digest = protobuf_digest(&request);
@@ -383,6 +430,11 @@ impl Evaluations {
     }
 
     /// Reads one immutable generated promotion decision.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the resource is out of scope or returned state is
+    /// missing or inconsistent.
     pub async fn get_promotion_decision(
         &self,
         name: impl Into<String>,
@@ -466,10 +518,16 @@ fn normalize_reference(
             "resource reference conflicts with evaluation intent",
         ));
     }
-    value.resource_type = resource_type.to_owned();
+    resource_type.clone_into(&mut value.resource_type);
     value.resource_id = id.to_owned();
-    value.tenant_id = core.config.identity.tenant_id().to_owned();
-    value.project_id = core.config.identity.project_id().to_owned();
+    core.config
+        .identity
+        .tenant_id()
+        .clone_into(&mut value.tenant_id);
+    core.config
+        .identity
+        .project_id()
+        .clone_into(&mut value.project_id);
     Ok(())
 }
 
@@ -506,8 +564,14 @@ fn normalize_fence(core: &ClientCore, fence: &mut LeaseFence) -> Result<(), Erro
             "evaluation lease fence is invalid or expired",
         ));
     }
-    fence.tenant_id = core.config.identity.tenant_id().to_owned();
-    fence.project_id = core.config.identity.project_id().to_owned();
+    core.config
+        .identity
+        .tenant_id()
+        .clone_into(&mut fence.tenant_id);
+    core.config
+        .identity
+        .project_id()
+        .clone_into(&mut fence.project_id);
     Ok(())
 }
 

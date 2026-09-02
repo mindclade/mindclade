@@ -11,6 +11,7 @@ import (
 	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	"github.com/mindclade/mindclade/libs/go/numconv"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
 	policyv1 "github.com/mindclade/mindclade/protocols/generated/go/policy/v1"
@@ -174,7 +175,11 @@ func usePolicyProto(ctx context.Context, tx *sql.Tx, row usePolicyRow) (*policyv
 			return nil, err
 		}
 		requirement.RiskClass = policyv1.UseRiskClass(risk)
-		requirement.MinimumIndependentApprovers = uint32(approvers) //nolint:gosec // Conversion is bounded by validated protocol invariants or PostgreSQL CHECK constraints.
+		requirement.MinimumIndependentApprovers, err = numconv.Int64ToUint32(approvers)
+		if err != nil {
+			_ = platformdb.CloseRows(rows)
+			return nil, err
+		}
 		if durationSeconds.Valid != durationNanosecond.Valid {
 			_ = platformdb.CloseRows(rows)
 			return nil, errors.New("persisted policy receipt duration presence is inconsistent")

@@ -19,6 +19,7 @@ import (
 	internalartifactv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/artifact/v1"
 	internaldatasetv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/dataset/v1"
 	internalevaluationv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/evaluation/v1"
+	internalexperimentv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/experiment/v1"
 	internalinferencev1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/inference/v1"
 	internaljobv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/job/v1"
 	internalmodelv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/model/v1"
@@ -51,6 +52,7 @@ func TestEveryGeneratedGoPackageRoundTripsRepresentativeMessage(t *testing.T) {
 		{"mindclade.events.agent.v1", &agentv1.AgentRunCompleted{AttemptId: "attempt_1"}},
 		{"mindclade.events.artifact.v1", &artifactv1.ArtifactCommitted{ProducerAttemptId: "attempt_1"}},
 		{"mindclade.events.audit.v1", &auditv1.AuditEvent{ActorPrincipalId: "principal_1"}},
+		{"mindclade.events.experiment.v1", &experimentv1.ExperimentCreated{Experiment: &experimentv1.Experiment{Name: "tenants/tenant_1/projects/project_1/experiments/experiment_1"}}},
 		{"mindclade.events.feature.v1", &featurev1.FeatureMaterializationCompleted{MaterializationName: "materializations/materialization_1"}},
 		{"mindclade.events.job.v1", &jobv1.JobRequested{JobId: "job_1"}},
 		{"mindclade.events.model.v1", &modelv1.ModelRegistered{ModelName: "models/model_1"}},
@@ -65,6 +67,7 @@ func TestEveryGeneratedGoPackageRoundTripsRepresentativeMessage(t *testing.T) {
 		{"mindclade.internal.artifact.v1", &internalartifactv1.GetArtifactRequest{Name: "artifacts/artifact_1"}},
 		{"mindclade.internal.dataset.v1", &internaldatasetv1.GetDatasetRequest{Name: "datasets/dataset_1"}},
 		{"mindclade.internal.evaluation.v1", &internalevaluationv1.GetEvaluationRunRequest{Name: "evaluationRuns/eval_1"}},
+		{"mindclade.internal.experiment.v1", &internalexperimentv1.GetExperimentRequest{Name: "experiments/experiment_1"}},
 		{"mindclade.internal.inference.v1", &internalinferencev1.GetInferenceResultRequest{OperationName: "operations/op_1"}},
 		{"mindclade.internal.job.v1", &internaljobv1.GetJobRequest{Name: "jobs/job_1"}},
 		{"mindclade.internal.model.v1", &internalmodelv1.GetModelRequest{Name: "models/model_1"}},

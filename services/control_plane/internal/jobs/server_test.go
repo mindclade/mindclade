@@ -24,6 +24,7 @@ import (
 
 	artifactv1 "github.com/mindclade/mindclade/protocols/generated/go/artifact/v1"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
+	featurev1 "github.com/mindclade/mindclade/protocols/generated/go/feature/v1"
 	internaljobv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/job/v1"
 	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
 	platformdb "github.com/mindclade/mindclade/services/control_plane/internal/platform/database"
@@ -37,6 +38,34 @@ func (metadataWorkerResolver) ResolveWorker(ctx context.Context) (WorkerIdentity
 		TenantID: "tenant-01", ProjectID: "project-01", Principal: "worker-principal-01", WorkerID: "worker-01",
 		LeaseToken: firstMetadata(values.Get(leaseTokenHeader)),
 	}, nil
+}
+
+func TestBindDomainCompletionUsesGeneratedOneofAndOuterAuthority(t *testing.T) {
+	t.Parallel()
+	fence := &jobv1.LeaseFence{JobId: "jobs/1", RunId: "runs/1", AttemptId: "attempts/1", LeaseEpoch: 1}
+	outer := &commonv1.CommandContext{TenantId: "tenant-1", ProjectId: "project-1", PrincipalId: "principal-1", RequestId: "request-1", IdempotencyKey: "key-1"}
+	nested := &featurev1.CommitFeatureMaterializationCommand{
+		Context: &commonv1.CommandContext{TenantId: "untrusted"}, MaterializationName: "materializations/1", Fence: proto.Clone(fence).(*jobv1.LeaseFence),
+	}
+	request := &internaljobv1.CommitAttemptRequest{
+		Context: outer, Fence: fence,
+		DomainCompletion: &internaljobv1.CommitAttemptRequest_FeatureMaterialization{FeatureMaterialization: nested},
+	}
+	feature, transform, err := bindDomainCompletion(request)
+	if err != nil || feature == nil || transform != nil || !proto.Equal(feature.GetContext(), outer) || feature == nested {
+		t.Fatalf("generated feature oneof binding: feature=%v transform=%v err=%v", feature, transform, err)
+	}
+	outer.RequestId = "caller-mutated"
+	nested.MaterializationName = "caller-mutated"
+	if feature.GetContext().GetRequestId() == "caller-mutated" || feature.GetMaterializationName() == "caller-mutated" {
+		t.Fatal("domain completion binding retained mutable or nested authority aliases")
+	}
+	mismatched := proto.Clone(fence).(*jobv1.LeaseFence)
+	mismatched.LeaseEpoch++
+	request.Fence = mismatched
+	if _, _, err = bindDomainCompletion(request); status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("mismatched nested fence status=%v err=%v", status.Code(err), err)
+	}
 }
 
 type runRepositoryFixture struct {

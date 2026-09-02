@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package mindclade.events.experiment.v1;
+
+import "google/protobuf/timestamp.proto";
+import "proto/mindclade/experiment/v1/trial.proto";
+
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/experiment/v1;experimentv1";
+
+// TrialStateChanged records one validated non-terminal trial transition.
+message TrialStateChanged {
+  mindclade.experiment.v1.Trial trial = 1;
+  mindclade.experiment.v1.TrialState prior_state = 2;
+  string reason_code = 3;
+  google.protobuf.Timestamp changed_at = 4;
+}

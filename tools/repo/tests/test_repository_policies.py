@@ -61,7 +61,7 @@ from render_repository_tree import (  # noqa: E402
     replace_generated_region,
 )
 from verify_repository_path_manifest import (  # noqa: E402
-    _bazel_failure_detail,
+    bazel_failure_detail,
     validate_declared_targets,
 )
 
@@ -79,7 +79,7 @@ class RepositoryPolicyTest(unittest.TestCase):
         self.assertEqual(validate_manifest(self.manifest), [])
         self.assertEqual(len(self.manifest["paths"]), CANONICAL_FILE_COUNT)
         wave_one = [entry for entry in self.manifest["paths"] if entry["activation_wave"] == "1"]
-        self.assertEqual(len(wave_one), 651)
+        self.assertEqual(len(wave_one), 783)
         for entry in wave_one:
             with self.subTest(path=entry["path"]):
                 status = entry["status"]
@@ -194,7 +194,7 @@ class RepositoryPolicyTest(unittest.TestCase):
         )
 
     def test_target_validation_reports_actionable_bazel_lock_error(self) -> None:
-        detail = _bazel_failure_detail(
+        detail = bazel_failure_detail(
             "FATAL: bazel crashed\n"
             "java.lang.IllegalStateException\n"
             "MODULE.bazel.lock is no longer up-to-date; run bazel mod deps\n"

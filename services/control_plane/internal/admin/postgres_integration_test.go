@@ -189,6 +189,7 @@ func TestPostgresAdminLifecycleAuditExportAndRLS(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	var tenantUpdates int
 	for rows.Next() {
 		var encoded []byte
 		if err = rows.Scan(&encoded); err != nil {
@@ -198,14 +199,42 @@ func TestPostgresAdminLifecycleAuditExportAndRLS(t *testing.T) {
 		if decodeErr != nil {
 			t.Fatal(decodeErr)
 		}
-		if _, decodeErr = queue.UnmarshalRegisteredPayload(envelope); decodeErr != nil {
+		payload, decodeErr := queue.UnmarshalRegisteredPayload(envelope)
+		if decodeErr != nil {
 			t.Fatal(decodeErr)
+		}
+		if _, ok := payload.(*adminv1.TenantUpdated); ok {
+			tenantUpdates++
+			if envelope.GetAggregateSequence() != 1 || envelope.GetSubject().GetResourceVersion() != 2 {
+				t.Fatalf("tenant update sequence=%d resource revision=%d", envelope.GetAggregateSequence(), envelope.GetSubject().GetResourceVersion())
+			}
 		}
 	}
 	if err = rows.Err(); err != nil {
 		t.Fatal(err)
 	}
 	_ = platformdb.CloseRows(rows)
+	if tenantUpdates != 1 {
+		t.Fatalf("tenant update event count=%d", tenantUpdates)
+	}
+	var sequenceGaps int
+	if err = verify.QueryRowContext(ctx, `
+SELECT count(*)
+FROM outbox_messages current
+WHERE current.tenant_id=$1
+  AND current.aggregate_sequence > 1
+  AND NOT EXISTS (
+    SELECT 1 FROM outbox_messages predecessor
+    WHERE predecessor.tenant_id=current.tenant_id
+      AND predecessor.aggregate_type=current.aggregate_type
+      AND predecessor.aggregate_id=current.aggregate_id
+      AND predecessor.aggregate_sequence=current.aggregate_sequence-1
+  )`, identity.TenantID).Scan(&sequenceGaps); err != nil {
+		t.Fatal(err)
+	}
+	if sequenceGaps != 0 {
+		t.Fatalf("admin outbox contains %d undeliverable aggregate sequence gaps", sequenceGaps)
+	}
 	if err = verify.Commit(); err != nil {
 		t.Fatal(err)
 	}

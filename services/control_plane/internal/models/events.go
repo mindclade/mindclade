@@ -10,6 +10,7 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	"github.com/mindclade/mindclade/libs/go/numconv"
 	artifactv1 "github.com/mindclade/mindclade/protocols/generated/go/artifact/v1"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
@@ -23,7 +24,7 @@ type GeneratedEventFactory struct{}
 
 func (GeneratedEventFactory) Registered(identity Identity, model *modelv1.Model, context *commonv1.CommandContext, at time.Time) (*commonv1.EventEnvelope, error) {
 	payload := &modelv1.ModelRegistered{ModelName: model.GetName(), ModelUid: model.GetUid(), ModelRevision: model.GetRevision(), Family: model.GetFamily(), DefinitionManifest: clone(model.GetDefinitionManifest()), FeatureRequirementSet: clone(model.GetFeatureRequirementSet()), ModelFeatureView: clone(model.GetModelFeatureView()), RegisteredAt: clone(model.GetCreateTime())}
-	return newEvent(identity, modelResource(model), payload, uint64(model.GetRevision()), context, at) //nolint:gosec // Conversion is bounded by validated protocol invariants or PostgreSQL CHECK constraints.
+	return newEvent(identity, modelResource(model), payload, model.GetRevision(), context, at)
 }
 
 func (GeneratedEventFactory) ReleaseRegistered(identity Identity, release *modelv1.ModelRelease, operation *jobv1.Operation, context *commonv1.CommandContext, at time.Time) (*commonv1.EventEnvelope, error) {
@@ -44,20 +45,24 @@ func (GeneratedEventFactory) ReleaseRegistered(identity Identity, release *model
 		Operation:             operationResource(operation),
 		RegisteredAt:          clone(release.GetCreateTime()),
 	}
-	return newEvent(identity, releaseResource(release), payload, uint64(release.GetRevision()), context, at) //nolint:gosec // Conversion is bounded by validated protocol invariants or PostgreSQL CHECK constraints.
+	return newEvent(identity, releaseResource(release), payload, release.GetRevision(), context, at)
 }
 
 func (GeneratedEventFactory) Promoted(identity Identity, release *modelv1.ModelRelease, prior modelv1.ModelReleaseStage, evidence []*artifactv1.EvidenceRef, decision *artifactv1.EvidenceRef, context *commonv1.CommandContext, at time.Time) (*commonv1.EventEnvelope, error) {
 	payload := &modelv1.ModelPromoted{ModelReleaseName: release.GetName(), ModelReleaseRevision: release.GetRevision(), PriorStage: prior, PromotedStage: release.GetStage(), Evidence: cloneSlice(evidence), PromotionDecision: clone(decision), PromotedAt: timestamppb.New(at.UTC())}
-	return newEvent(identity, releaseResource(release), payload, uint64(release.GetRevision()), context, at) //nolint:gosec // Conversion is bounded by validated protocol invariants or PostgreSQL CHECK constraints.
+	return newEvent(identity, releaseResource(release), payload, release.GetRevision(), context, at)
 }
 
 func (GeneratedEventFactory) Revoked(identity Identity, release *modelv1.ModelRelease, evidence []*artifactv1.EvidenceRef, context *commonv1.CommandContext, at time.Time) (*commonv1.EventEnvelope, error) {
 	payload := &modelv1.ModelRevoked{ModelReleaseName: release.GetName(), ModelReleaseRevision: release.GetRevision(), Reason: release.GetRevocationReason(), Evidence: cloneSlice(evidence), RevokedAt: timestamppb.New(at.UTC())}
-	return newEvent(identity, releaseResource(release), payload, uint64(release.GetRevision()), context, at) //nolint:gosec // Conversion is bounded by validated protocol invariants or PostgreSQL CHECK constraints.
+	return newEvent(identity, releaseResource(release), payload, release.GetRevision(), context, at)
 }
 
-func newEvent(identity Identity, subject *commonv1.ResourceRef, payload proto.Message, sequence uint64, context *commonv1.CommandContext, at time.Time) (*commonv1.EventEnvelope, error) {
+func newEvent(identity Identity, subject *commonv1.ResourceRef, payload proto.Message, revision int64, context *commonv1.CommandContext, at time.Time) (*commonv1.EventEnvelope, error) {
+	sequence, err := numconv.Int64ToUint64(revision)
+	if err != nil {
+		return nil, err
+	}
 	if subject == nil || payload == nil || context == nil || sequence == 0 || at.IsZero() {
 		return nil, errors.New("model event inputs are incomplete")
 	}

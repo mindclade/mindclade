@@ -1,15 +1,22 @@
-import { create } from "@bufbuild/protobuf";
+import { createHash } from "node:crypto";
+
+import { clone, create, toBinary } from "@bufbuild/protobuf";
 import { timestampFromDate } from "@bufbuild/protobuf/wkt";
 import { Code, ConnectError } from "@connectrpc/connect";
 
 import {
 	CancelOperationRequestSchema,
 	GetOperationRequestSchema,
+	type ListOperationsRequest,
+	ListOperationsRequestSchema,
+	type ListOperationsResponse,
+	ListOperationsResponseSchema,
 	WatchOperationRequestSchema,
 	type WatchOperationResponse,
 } from "../../../../protocols/generated/typescript/internal/job/v1/job_service_pb.js";
 import {
 	type Operation,
+	OperationSchema,
 	OperationState,
 } from "../../../../protocols/generated/typescript/job/v1/operation_pb.js";
 import type { ClientCore } from "./core.js";
@@ -31,12 +38,47 @@ import { registeredMethodSafety } from "./safety.js";
 const DEFAULT_WAIT_TIMEOUT_MS = 30 * 60 * 1_000;
 const GET_OPERATION = "/mindclade.internal.job.v1.OperationService/GetOperation";
 const CANCEL_OPERATION = "/mindclade.internal.job.v1.OperationService/CancelOperation";
+const LIST_OPERATIONS = "/mindclade.internal.job.v1.OperationService/ListOperations";
+const MAX_OPERATION_PAGE_SIZE = 200;
 
 export class Operations {
 	readonly #core: ClientCore;
 
 	constructor(core: ClientCore) {
 		this.#core = core;
+	}
+
+	/** Returns one detached, bounded page in the configured tenant/project. */
+	async list(
+		requestValue?: ListOperationsRequest,
+		options: SdkCallOptions = {},
+	): Promise<ListOperationsResponse> {
+		const request =
+			requestValue === undefined
+				? create(ListOperationsRequestSchema)
+				: clone(ListOperationsRequestSchema, requestValue);
+		const parent = projectParent(this.#core);
+		if (request.parent !== "" && request.parent !== parent) {
+			throw MindcladeError.invalidArgument(
+				"operation list parent must match the configured project",
+			);
+		}
+		if ((request.page?.pageSize ?? 0) > MAX_OPERATION_PAGE_SIZE) {
+			throw MindcladeError.invalidArgument("operation page size cannot exceed 200");
+		}
+		request.parent = parent;
+		const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
+		const response = await invokeUnary(
+			this.#core,
+			prepared,
+			registeredMethodSafety(LIST_OPERATIONS),
+			undefined,
+			(call) => this.#core.raw.operations.listOperations(request, call),
+		);
+		for (const operation of response.operations) {
+			validateListedOperation(operation, this.#core);
+		}
+		return clone(ListOperationsResponseSchema, response);
 	}
 
 	async get(name: string, options: SdkCallOptions = {}): Promise<Operation> {
@@ -74,14 +116,27 @@ export class Operations {
 	): Promise<Operation> {
 		validateResource("operation name", name);
 		validateResource("operation ETag", etag);
-		validateResource("cancellation reason", reason);
+		const cancellationReason = reason.trim();
+		if (
+			cancellationReason.length === 0 ||
+			cancellationReason.length > 1_024 ||
+			/[\0\r\n]/.test(cancellationReason)
+		) {
+			throw MindcladeError.invalidArgument(
+				"cancellation reason must be non-empty bounded text without control delimiters",
+			);
+		}
 		const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
 		const request = create(CancelOperationRequestSchema, {
-			context: commandContext(this.#core.config, prepared, options),
 			etag,
 			name,
-			reason,
+			reason: cancellationReason,
 		});
+		const context = commandContext(this.#core.config, prepared, options);
+		context.canonicalRequestDigest = `sha256:${createHash("sha256")
+			.update(toBinary(CancelOperationRequestSchema, request))
+			.digest("hex")}`;
+		request.context = context;
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
@@ -200,4 +255,30 @@ const requireSuccessfulTerminal = (operation: Operation): Operation => {
 		throw MindcladeError.protocol("done operation has a non-terminal-success state");
 	}
 	return operation;
+};
+
+const projectParent = (core: ClientCore): string => {
+	const tenant = core.config.identity.tenantId.startsWith("tenants/")
+		? core.config.identity.tenantId
+		: `tenants/${core.config.identity.tenantId}`;
+	const project = core.config.identity.projectId;
+	if (project.startsWith("tenants/")) return project;
+	return project.startsWith("projects/") ? `${tenant}/${project}` : `${tenant}/projects/${project}`;
+};
+
+const validateListedOperation = (operation: Operation, core: ClientCore): Operation => {
+	const terminal =
+		operation.state === OperationState.SUCCEEDED ||
+		operation.state === OperationState.FAILED ||
+		operation.state === OperationState.CANCELLED;
+	if (
+		operation.operationId === "" ||
+		operation.tenantId !== core.config.identity.tenantId ||
+		operation.projectId !== core.config.identity.projectId ||
+		operation.state === OperationState.UNSPECIFIED ||
+		operation.done !== terminal
+	) {
+		throw MindcladeError.protocol("ListOperations returned invalid or cross-project state");
+	}
+	return clone(OperationSchema, operation);
 };

@@ -115,6 +115,7 @@ def build_plan(
             "source-check",
             "wave1-full",
             "cacheless-reproducibility",
+            "fresh-database-integration",
         ],
         "nightly": [
             "immutable-launcher",
@@ -126,6 +127,16 @@ def build_plan(
             "source-check",
             "wave1-full",
             "cacheless-reproducibility",
+            "fresh-database-integration",
+        ],
+        "presubmit": [
+            "immutable-launcher",
+            "cache-boundary",
+            "repository-governance",
+            "dependency-and-license-policy",
+            "secret-scan",
+            "bazel-native-agreement",
+            "fresh-database-integration",
         ],
     }.get(
         pipeline_class,

@@ -4,12 +4,13 @@ import (
 	"context"
 	"strings"
 
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/timestamppb"
+
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	internalpolicyv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/policy/v1"
 	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
 	policyv1 "github.com/mindclade/mindclade/protocols/generated/go/policy/v1"
-	"google.golang.org/protobuf/proto"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // PolicyService is the private generated-type-only policy lifecycle and
@@ -65,12 +66,12 @@ func (service *PolicyService) Create(ctx context.Context, request *internalpolic
 		return nil, invalidArgument("policy parent must match the configured project")
 	}
 	materialized.Parent = parent
-	callContext, err := service.prepareMutation(ctx, materialized, materialized.GetContext(), func(value *commonv1.CommandContext) { materialized.Context = value }, options...)
+	callContext, cancel, err := service.prepareMutation(ctx, materialized, materialized.GetContext(), func(value *commonv1.CommandContext) { materialized.Context = value }, options...)
 	if err != nil {
 		return nil, err
 	}
-	defer callContext.cancel()
-	response, rpcErr := service.transport.CreateUsePolicy(callContext.ctx, materialized)
+	defer cancel()
+	response, rpcErr := service.transport.CreateUsePolicy(callContext, materialized)
 	return operationResponse(response.GetOperation(), rpcErr, "CreateUsePolicy")
 }
 
@@ -79,12 +80,12 @@ func (service *PolicyService) Update(ctx context.Context, request *internalpolic
 	if materialized == nil || materialized.GetUsePolicy() == nil || !scopedResourceName(service.client.config, materialized.GetUsePolicy().GetName(), "usePolicies") || materialized.GetUpdateMask() == nil || strings.TrimSpace(materialized.GetEtag()) == "" {
 		return nil, invalidArgument("policy update requires a scoped policy, field mask, and etag")
 	}
-	callContext, err := service.prepareMutation(ctx, materialized, materialized.GetContext(), func(value *commonv1.CommandContext) { materialized.Context = value }, options...)
+	callContext, cancel, err := service.prepareMutation(ctx, materialized, materialized.GetContext(), func(value *commonv1.CommandContext) { materialized.Context = value }, options...)
 	if err != nil {
 		return nil, err
 	}
-	defer callContext.cancel()
-	response, rpcErr := service.transport.UpdateUsePolicy(callContext.ctx, materialized)
+	defer cancel()
+	response, rpcErr := service.transport.UpdateUsePolicy(callContext, materialized)
 	return operationResponse(response.GetOperation(), rpcErr, "UpdateUsePolicy")
 }
 
@@ -137,12 +138,12 @@ func (service *PolicyService) Activate(ctx context.Context, name, etag string, o
 		return nil, invalidArgument("policy activation requires a scoped name and etag")
 	}
 	request := &internalpolicyv1.ActivateUsePolicyRequest{Name: name, Etag: strings.TrimSpace(etag)}
-	callContext, err := service.prepareMutation(ctx, request, request.GetContext(), func(value *commonv1.CommandContext) { request.Context = value }, options...)
+	callContext, cancel, err := service.prepareMutation(ctx, request, request.GetContext(), func(value *commonv1.CommandContext) { request.Context = value }, options...)
 	if err != nil {
 		return nil, err
 	}
-	defer callContext.cancel()
-	response, rpcErr := service.transport.ActivateUsePolicy(callContext.ctx, request)
+	defer cancel()
+	response, rpcErr := service.transport.ActivateUsePolicy(callContext, request)
 	return operationResponse(response.GetOperation(), rpcErr, "ActivateUsePolicy")
 }
 
@@ -151,12 +152,12 @@ func (service *PolicyService) Revoke(ctx context.Context, name, etag, reasonCode
 		return nil, invalidArgument("policy revocation requires a scoped name, etag, and reason code")
 	}
 	request := &internalpolicyv1.RevokeUsePolicyRequest{Name: name, Etag: strings.TrimSpace(etag), ReasonCode: strings.TrimSpace(reasonCode)}
-	callContext, err := service.prepareMutation(ctx, request, request.GetContext(), func(value *commonv1.CommandContext) { request.Context = value }, options...)
+	callContext, cancel, err := service.prepareMutation(ctx, request, request.GetContext(), func(value *commonv1.CommandContext) { request.Context = value }, options...)
 	if err != nil {
 		return nil, err
 	}
-	defer callContext.cancel()
-	response, rpcErr := service.transport.RevokeUsePolicy(callContext.ctx, request)
+	defer cancel()
+	response, rpcErr := service.transport.RevokeUsePolicy(callContext, request)
 	return operationResponse(response.GetOperation(), rpcErr, "RevokeUsePolicy")
 }
 
@@ -179,25 +180,20 @@ func (service *PolicyService) ResolveSnapshot(ctx context.Context, name string, 
 	return cloneGenerated(response.GetPolicySnapshot()), nil
 }
 
-type preparedPolicyMutation struct {
-	ctx    context.Context
-	cancel context.CancelFunc
-}
-
-func (service *PolicyService) prepareMutation(ctx context.Context, request proto.Message, existing *commonv1.CommandContext, assign func(*commonv1.CommandContext), options ...RequestOption) (preparedPolicyMutation, error) {
+func (service *PolicyService) prepareMutation(ctx context.Context, request proto.Message, existing *commonv1.CommandContext, assign func(*commonv1.CommandContext), options ...RequestOption) (context.Context, context.CancelFunc, error) {
 	key := existing.GetIdempotencyKey()
 	assign(nil)
 	callContext, metadata, cancel, err := service.client.mutationContext(ctx, key, options...)
 	if err != nil {
-		return preparedPolicyMutation{}, err
+		return nil, nil, err
 	}
 	digest, err := deterministicDigest(request)
 	if err != nil {
 		cancel()
-		return preparedPolicyMutation{}, err
+		return nil, nil, err
 	}
 	assign(commandContext(service.client.config, callContext, metadata, digest))
-	return preparedPolicyMutation{ctx: callContext, cancel: cancel}, nil
+	return callContext, cancel, nil
 }
 
 func normalizePolicyResource(config Config, resource *commonv1.ResourceRef) bool {

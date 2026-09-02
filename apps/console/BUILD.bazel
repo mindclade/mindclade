@@ -1,0 +1,61 @@
+load("@aspect_rules_js//js:defs.bzl", "js_test")
+load("@aspect_rules_ts//ts:defs.bzl", "ts_config", "ts_project")
+load("@npm//:defs.bzl", "npm_link_all_packages")
+
+npm_link_all_packages(name = "node_modules")
+
+ts_config(
+    name = "console_tsconfig",
+    src = "tsconfig.json",
+    deps = [
+        "package.json",
+        "//internal/sdk/typescript:mindclade_internal_sdk",
+    ],
+)
+
+ts_project(
+    name = "console_client",
+    srcs = glob([
+        "features/**/*.ts",
+        "lib/**/*.ts",
+    ]),
+    declaration = True,
+    transpiler = "tsc",
+    tsconfig = ":console_tsconfig",
+    visibility = ["//visibility:public"],
+    deps = [
+        ":node_modules/@mindclade/internal-sdk",
+        "//internal/sdk/typescript:mindclade_internal_sdk",
+    ],
+)
+
+js_test(
+    name = "operation_flow_test",
+    data = [
+        "package.json",
+        ":console_client",
+        ":governed_sources",
+        ":node_modules/@bufbuild/protobuf",
+        ":node_modules/@connectrpc/connect",
+        ":node_modules/@mindclade/internal-sdk",
+        "//internal/sdk/typescript:mindclade_internal_sdk",
+    ],
+    entry_point = "tests/operation-flow.test.ts",
+)
+
+filegroup(
+    name = "governed_sources",
+    srcs = [
+        "BUILD.bazel",
+        "README.md",
+        "biome.json",
+        "component.yaml",
+        "package.json",
+        "tsconfig.json",
+    ] + glob([
+        "features/**/*.ts",
+        "lib/**/*.ts",
+        "tests/**/*.ts",
+    ]),
+    visibility = ["//visibility:public"],
+)

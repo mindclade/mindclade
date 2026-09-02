@@ -193,7 +193,8 @@ mindclade/
 │   │       │   └── v1/
 │   │       │       ├── experiment.proto
 │   │       │       ├── study.proto
-│   │       │       └── trial.proto
+│   │       │       ├── trial.proto
+│   │       │       └── experiment_commands.proto
 │   │       ├── model/
 │   │       │   └── v1/
 │   │       │       ├── model.proto
@@ -267,9 +268,12 @@ mindclade/
 │   │       │   ├── policy/
 │   │       │   │   └── v1/
 │   │       │   │       └── policy_service.proto
-│   │       │   └── admin/
+│   │       │   ├── admin/
+│   │       │   │   └── v1/
+│   │       │   │       └── admin_service.proto
+│   │       │   └── experiment/
 │   │       │       └── v1/
-│   │       │           └── admin_service.proto
+│   │       │           └── experiment_service.proto
 │   │       └── api/
 │   │           └── v1/
 │   │               └── mindclade_service.proto
@@ -351,13 +355,23 @@ mindclade/
 │   │   │   │   └── v1/
 │   │   │   │       ├── inference_requested.proto
 │   │   │   │       └── inference_result_committed.proto
-│   │   │   └── policy/
+│   │   │   ├── policy/
+│   │   │   │   └── v1/
+│   │   │   │       ├── authorization_decision_recorded.proto
+│   │   │   │       ├── use_policy_activated.proto
+│   │   │   │       ├── use_policy_created.proto
+│   │   │   │       ├── use_policy_revoked.proto
+│   │   │   │       └── use_policy_updated.proto
+│   │   │   └── experiment/
 │   │   │       └── v1/
-│   │   │           ├── authorization_decision_recorded.proto
-│   │   │           ├── use_policy_activated.proto
-│   │   │           ├── use_policy_created.proto
-│   │   │           ├── use_policy_revoked.proto
-│   │   │           └── use_policy_updated.proto
+│   │   │           ├── experiment_created.proto
+│   │   │           ├── experiment_updated.proto
+│   │   │           ├── experiment_state_changed.proto
+│   │   │           ├── study_created.proto
+│   │   │           ├── study_state_changed.proto
+│   │   │           ├── trial_created.proto
+│   │   │           ├── trial_state_changed.proto
+│   │   │           └── trial_completed.proto
 │   │   └── registry.yaml
 │   ├── schemas/
 │   │   ├── artifact_manifest/
@@ -602,7 +616,16 @@ mindclade/
 │   │   │   │       ├── experiment.pb.go
 │   │   │   │       ├── study.pb.go
 │   │   │   │       ├── trial.pb.go
-│   │   │   │       └── BUILD.bazel
+│   │   │   │       ├── BUILD.bazel
+│   │   │   │       ├── experiment_commands.pb.go
+│   │   │   │       ├── experiment_created.pb.go
+│   │   │   │       ├── experiment_updated.pb.go
+│   │   │   │       ├── experiment_state_changed.pb.go
+│   │   │   │       ├── study_created.pb.go
+│   │   │   │       ├── study_state_changed.pb.go
+│   │   │   │       ├── trial_created.pb.go
+│   │   │   │       ├── trial_state_changed.pb.go
+│   │   │   │       └── trial_completed.pb.go
 │   │   │   ├── model/
 │   │   │   │   └── v1/
 │   │   │   │       ├── model.pb.go
@@ -751,11 +774,16 @@ mindclade/
 │   │   │   │   │       ├── policy_service.pb.go
 │   │   │   │   │       ├── policy_service_grpc.pb.go
 │   │   │   │   │       └── BUILD.bazel
-│   │   │   │   └── admin/
+│   │   │   │   ├── admin/
+│   │   │   │   │   └── v1/
+│   │   │   │   │       ├── admin_service.pb.go
+│   │   │   │   │       ├── admin_service_grpc.pb.go
+│   │   │   │   │       └── BUILD.bazel
+│   │   │   │   └── experiment/
 │   │   │   │       └── v1/
-│   │   │   │           ├── admin_service.pb.go
-│   │   │   │           ├── admin_service_grpc.pb.go
-│   │   │   │           └── BUILD.bazel
+│   │   │   │           ├── BUILD.bazel
+│   │   │   │           ├── experiment_service.pb.go
+│   │   │   │           └── experiment_service_grpc.pb.go
 │   │   │   ├── api/
 │   │   │   │   └── v1/
 │   │   │   │       ├── mindclade_service.pb.go
@@ -862,7 +890,25 @@ mindclade/
 │   │   │   │   │       ├── __init__.py
 │   │   │   │   │       ├── experiment_pb2.pyi
 │   │   │   │   │       ├── study_pb2.pyi
-│   │   │   │   │       └── trial_pb2.pyi
+│   │   │   │   │       ├── trial_pb2.pyi
+│   │   │   │   │       ├── experiment_commands_pb2.py
+│   │   │   │   │       ├── experiment_commands_pb2.pyi
+│   │   │   │   │       ├── experiment_created_pb2.py
+│   │   │   │   │       ├── experiment_created_pb2.pyi
+│   │   │   │   │       ├── experiment_updated_pb2.py
+│   │   │   │   │       ├── experiment_updated_pb2.pyi
+│   │   │   │   │       ├── experiment_state_changed_pb2.py
+│   │   │   │   │       ├── experiment_state_changed_pb2.pyi
+│   │   │   │   │       ├── study_created_pb2.py
+│   │   │   │   │       ├── study_created_pb2.pyi
+│   │   │   │   │       ├── study_state_changed_pb2.py
+│   │   │   │   │       ├── study_state_changed_pb2.pyi
+│   │   │   │   │       ├── trial_created_pb2.py
+│   │   │   │   │       ├── trial_created_pb2.pyi
+│   │   │   │   │       ├── trial_state_changed_pb2.py
+│   │   │   │   │       ├── trial_state_changed_pb2.pyi
+│   │   │   │   │       ├── trial_completed_pb2.py
+│   │   │   │   │       └── trial_completed_pb2.pyi
 │   │   │   │   ├── model/
 │   │   │   │   │   └── v1/
 │   │   │   │   │       ├── model_pb2.py
@@ -1101,13 +1147,20 @@ mindclade/
 │   │   │   │   │   │       ├── policy_service_pb2_grpc.py
 │   │   │   │   │   │       ├── policy_service_pb2_grpc.pyi
 │   │   │   │   │   │       └── __init__.py
-│   │   │   │   │   └── admin/
+│   │   │   │   │   ├── admin/
+│   │   │   │   │   │   └── v1/
+│   │   │   │   │   │       ├── admin_service_pb2.py
+│   │   │   │   │   │       ├── admin_service_pb2.pyi
+│   │   │   │   │   │       ├── admin_service_pb2_grpc.py
+│   │   │   │   │   │       ├── admin_service_pb2_grpc.pyi
+│   │   │   │   │   │       └── __init__.py
+│   │   │   │   │   └── experiment/
 │   │   │   │   │       └── v1/
-│   │   │   │   │           ├── admin_service_pb2.py
-│   │   │   │   │           ├── admin_service_pb2.pyi
-│   │   │   │   │           ├── admin_service_pb2_grpc.py
-│   │   │   │   │           ├── admin_service_pb2_grpc.pyi
-│   │   │   │   │           └── __init__.py
+│   │   │   │   │           ├── __init__.py
+│   │   │   │   │           ├── experiment_service_pb2.py
+│   │   │   │   │           ├── experiment_service_pb2.pyi
+│   │   │   │   │           ├── experiment_service_pb2_grpc.py
+│   │   │   │   │           └── experiment_service_pb2_grpc.pyi
 │   │   │   │   ├── api/
 │   │   │   │   │   └── v1/
 │   │   │   │   │       ├── mindclade_service_pb2.py
@@ -1181,7 +1234,16 @@ mindclade/
 │   │   │   │       ├── experiment.rs
 │   │   │   │       ├── study.rs
 │   │   │   │       ├── trial.rs
-│   │   │   │       └── mod.rs
+│   │   │   │       ├── mod.rs
+│   │   │   │       ├── experiment_commands.rs
+│   │   │   │       ├── experiment_created.rs
+│   │   │   │       ├── experiment_updated.rs
+│   │   │   │       ├── experiment_state_changed.rs
+│   │   │   │       ├── study_created.rs
+│   │   │   │       ├── study_state_changed.rs
+│   │   │   │       ├── trial_created.rs
+│   │   │   │       ├── trial_state_changed.rs
+│   │   │   │       └── trial_completed.rs
 │   │   │   ├── model/
 │   │   │   │   └── v1/
 │   │   │   │       ├── model.rs
@@ -1332,11 +1394,16 @@ mindclade/
 │   │   │   │   │       ├── policy_service.rs
 │   │   │   │   │       ├── policy_service_grpc.rs
 │   │   │   │   │       └── mod.rs
-│   │   │   │   └── admin/
+│   │   │   │   ├── admin/
+│   │   │   │   │   └── v1/
+│   │   │   │   │       ├── admin_service.rs
+│   │   │   │   │       ├── admin_service_grpc.rs
+│   │   │   │   │       └── mod.rs
+│   │   │   │   └── experiment/
 │   │   │   │       └── v1/
-│   │   │   │           ├── admin_service.rs
-│   │   │   │           ├── admin_service_grpc.rs
-│   │   │   │           └── mod.rs
+│   │   │   │           ├── mod.rs
+│   │   │   │           ├── experiment_service.rs
+│   │   │   │           └── experiment_service_grpc.rs
 │   │   │   ├── api/
 │   │   │   │   └── v1/
 │   │   │   │       ├── mindclade_service.rs
@@ -1403,7 +1470,16 @@ mindclade/
 │   │   │   │       ├── experiment_pb.ts
 │   │   │   │       ├── study_pb.ts
 │   │   │   │       ├── trial_pb.ts
-│   │   │   │       └── index.ts
+│   │   │   │       ├── index.ts
+│   │   │   │       ├── experiment_commands_pb.ts
+│   │   │   │       ├── experiment_created_pb.ts
+│   │   │   │       ├── experiment_updated_pb.ts
+│   │   │   │       ├── experiment_state_changed_pb.ts
+│   │   │   │       ├── study_created_pb.ts
+│   │   │   │       ├── study_state_changed_pb.ts
+│   │   │   │       ├── trial_created_pb.ts
+│   │   │   │       ├── trial_state_changed_pb.ts
+│   │   │   │       └── trial_completed_pb.ts
 │   │   │   ├── model/
 │   │   │   │   └── v1/
 │   │   │   │       ├── model_pb.ts
@@ -1544,10 +1620,14 @@ mindclade/
 │   │   │   │   │   └── v1/
 │   │   │   │   │       ├── policy_service_pb.ts
 │   │   │   │   │       └── index.ts
-│   │   │   │   └── admin/
+│   │   │   │   ├── admin/
+│   │   │   │   │   └── v1/
+│   │   │   │   │       ├── admin_service_pb.ts
+│   │   │   │   │       └── index.ts
+│   │   │   │   └── experiment/
 │   │   │   │       └── v1/
-│   │   │   │           ├── admin_service_pb.ts
-│   │   │   │           └── index.ts
+│   │   │   │           ├── index.ts
+│   │   │   │           └── experiment_service_pb.ts
 │   │   │   ├── api/
 │   │   │   │   └── v1/
 │   │   │   │       ├── mindclade_service_pb.ts
@@ -1774,7 +1854,11 @@ mindclade/
 │   │   │   ├── faults.go
 │   │   │   └── BUILD.bazel
 │   │   ├── component.yaml
-│   │   └── README.md
+│   │   ├── README.md
+│   │   └── numconv/
+│   │       ├── BUILD.bazel
+│   │       ├── conversion.go
+│   │       └── conversion_test.go
 │   ├── typescript/
 │   │   ├── config/
 │   │   │   ├── package.json
@@ -3225,14 +3309,29 @@ mindclade/
 │   │   │   │   └── server.go
 │   │   │   ├── experiments/
 │   │   │   │   ├── experiment_commands.go
-│   │   │   │   └── experiment_repository.go
+│   │   │   │   ├── experiment_repository.go
+│   │   │   │   ├── BUILD.bazel
+│   │   │   │   ├── contracts.go
+│   │   │   │   ├── events.go
+│   │   │   │   ├── mapping_sql.go
+│   │   │   │   ├── pagination.go
+│   │   │   │   ├── postgres_integration_test.go
+│   │   │   │   ├── repository_experiments.go
+│   │   │   │   ├── repository_helpers.go
+│   │   │   │   ├── repository_studies.go
+│   │   │   │   ├── repository_trials.go
+│   │   │   │   ├── server.go
+│   │   │   │   ├── server_test.go
+│   │   │   │   └── validation.go
 │   │   │   ├── jobs/
 │   │   │   │   ├── job_commands.go
 │   │   │   │   ├── job_repository.go
 │   │   │   │   ├── job_reconciler.go
 │   │   │   │   ├── lease_fencing.go
 │   │   │   │   ├── server.go
-│   │   │   │   └── server_test.go
+│   │   │   │   ├── server_test.go
+│   │   │   │   ├── events.go
+│   │   │   │   └── events_test.go
 │   │   │   ├── agents/
 │   │   │   │   ├── agent_commands.go
 │   │   │   │   ├── agent_repository.go
@@ -3392,15 +3491,24 @@ mindclade/
 │   │   │   ├── 000005_workflow_agent.down.sql
 │   │   │   ├── 000005_workflow_agent.up.sql
 │   │   │   ├── 000006_policy_admin.down.sql
-│   │   │   └── 000006_policy_admin.up.sql
+│   │   │   ├── 000006_policy_admin.up.sql
+│   │   │   ├── 000007_numeric_bounds.down.sql
+│   │   │   ├── 000007_numeric_bounds.up.sql
+│   │   │   ├── 000008_dead_letter_replay.down.sql
+│   │   │   ├── 000008_dead_letter_replay.up.sql
+│   │   │   ├── 000010_experiment_vertical.down.sql
+│   │   │   └── 000010_experiment_vertical.up.sql
 │   │   ├── tests/
 │   │   │   ├── transaction_outbox_test.go
 │   │   │   ├── idempotency_test.go
 │   │   │   ├── lease_fencing_test.go
-│   │   │   └── tenant_isolation_test.go
+│   │   │   ├── tenant_isolation_test.go
+│   │   │   └── reliability_harness_test.go
 │   │   ├── BUILD.bazel
 │   │   ├── component.yaml
-│   │   └── README.md
+│   │   ├── README.md
+│   │   ├── grpc-implementation.yaml
+│   │   └── grpc-implementation.generated.json
 │   ├── runtime_gateway/
 │   │   ├── cmd/
 │   │   │   └── runtime-gateway/
@@ -3463,7 +3571,8 @@ mindclade/
 │   │   │       ├── artifact_commit.rs
 │   │   │       ├── receipt_commit.rs
 │   │   │       ├── cancellation.rs
-│   │   │       └── telemetry.rs
+│   │   │       ├── telemetry.rs
+│   │   │       └── lib.rs
 │   │   ├── tests/
 │   │   │   ├── redelivery.rs
 │   │   │   ├── stale_lease.rs
@@ -3512,11 +3621,13 @@ mindclade/
 │   │   │   ├── cancellation.py
 │   │   │   ├── heartbeat.py
 │   │   │   ├── artifacts.py
-│   │   │   └── telemetry.py
+│   │   │   ├── telemetry.py
+│   │   │   └── control_plane.py
 │   │   ├── tests/
 │   │   │   ├── test_redelivery.py
 │   │   │   ├── test_stale_lease.py
-│   │   │   └── test_checkpoint_cancel.py
+│   │   │   ├── test_checkpoint_cancel.py
+│   │   │   └── test_control_plane.py
 │   │   ├── BUILD.bazel
 │   │   ├── component.yaml
 │   │   └── README.md
@@ -3710,7 +3821,8 @@ mindclade/
 │   │   │       ├── operation-detail.tsx
 │   │   │       ├── operation-timeline.tsx
 │   │   │       ├── operation-hooks.ts
-│   │   │       └── operation-types.ts
+│   │   │       ├── operation-types.ts
+│   │   │       └── operation-client.ts
 │   │   ├── tests/
 │   │   │   ├── authorization.test.ts
 │   │   │   ├── operation-flow.test.ts
@@ -3718,7 +3830,11 @@ mindclade/
 │   │   ├── package.json
 │   │   ├── BUILD.bazel
 │   │   ├── component.yaml
-│   │   └── README.md
+│   │   ├── README.md
+│   │   ├── biome.json
+│   │   ├── tsconfig.json
+│   │   └── lib/
+│   │       └── control-plane.ts
 │   ├── admin/
 │   │   ├── app/
 │   │   │   ├── layout.tsx
@@ -3863,6 +3979,7 @@ mindclade/
 │   │   ├── test_artifact_manifests.py
 │   │   ├── test_configuration_resolution.py
 │   │   ├── test_release_signing.py
+│   │   ├── test_internal_sdk_application_consumers.py
 │   │   ├── generated_go_roundtrip_test.go
 │   │   ├── generated_rust_roundtrip_test.rs
 │   │   ├── generated_typescript_roundtrip_test.ts
@@ -3936,12 +4053,14 @@ mindclade/
 │   │   ├── verify_generated_drift.py
 │   │   ├── toolchain.lock.json
 │   │   ├── sdk_generator.py
-│   │   └── rust_plugins/
-│   │       ├── Cargo.toml
-│   │       └── src/
-│   │           └── bin/
-│   │               ├── protoc-gen-prost.rs
-│   │               └── protoc-gen-tonic.rs
+│   │   ├── rust_plugins/
+│   │   │   ├── Cargo.toml
+│   │   │   └── src/
+│   │   │       └── bin/
+│   │   │           ├── protoc-gen-prost.rs
+│   │   │           └── protoc-gen-tonic.rs
+│   │   ├── generate_sdk_coverage.py
+│   │   └── generate_grpc_implementation_coverage.py
 │   ├── docs/
 │   │   ├── render_architecture_blueprint.py
 │   │   ├── validate_blueprint_sources.py
@@ -3963,7 +4082,11 @@ mindclade/
 │   │   ├── verify_repository_path_manifest.py
 │   │   ├── component.schema.json
 │   │   ├── repository_drift.v1.schema.json
+│   │   ├── activation-bundles.schema.json
+│   │   ├── activation-bundles.yaml
+│   │   ├── activation-bundles.generated.json
 │   │   └── tests/
+│   │       ├── test_activation_bundles.py
 │   │       ├── test_build_repository_drift_report.py
 │   │       ├── test_monorepo_tree_authority.py
 │   │       ├── test_repository_policies.py
@@ -4056,7 +4179,16 @@ mindclade/
 │   │   ├── scan_licenses.py
 │   │   └── generate_notices.py
 │   ├── BUILD.bazel
-│   └── README.md
+│   ├── README.md
+│   └── mindcladectl/
+│       ├── BUILD.bazel
+│       ├── README.md
+│       ├── command.go
+│       ├── command_test.go
+│       ├── component.yaml
+│       ├── live.go
+│       └── cmd/
+│           └── main.go
 ├── docs/
 │   ├── architecture/
 │   │   ├── repository-path-manifest.yaml
@@ -4308,7 +4440,14 @@ mindclade/
         │       ├── training.go
         │       ├── transport.go
         │       ├── workflow_test.go
-        │       └── workflows.go
+        │       ├── workflows.go
+        │       ├── artifact_operation_gap_test.go
+        │       ├── job_run_test.go
+        │       ├── jobs.go
+        │       ├── runs.go
+        │       ├── training_lifecycle_test.go
+        │       ├── experiments.go
+        │       └── experiments_test.go
         ├── python/
         │   ├── BUILD.bazel
         │   ├── README.md
@@ -4334,14 +4473,23 @@ mindclade/
         │   │   ├── testing.py
         │   │   ├── training.py
         │   │   ├── transport.py
-        │   │   └── workflows.py
+        │   │   ├── workflows.py
+        │   │   ├── evaluations.py
+        │   │   ├── jobs.py
+        │   │   ├── runs.py
+        │   │   └── experiments.py
         │   ├── pyproject.toml
         │   └── tests/
         │       ├── test_internal_sdk.py
         │       ├── test_agents.py
         │       ├── test_inference.py
         │       ├── test_policy_admin.py
-        │       └── test_workflows.py
+        │       ├── test_workflows.py
+        │       ├── test_artifact_operation_gaps.py
+        │       ├── test_evaluations.py
+        │       ├── test_job_run.py
+        │       ├── test_training_lifecycle.py
+        │       └── test_experiments.py
         ├── rust/
         │   ├── BUILD.bazel
         │   ├── Cargo.toml
@@ -4368,44 +4516,63 @@ mindclade/
         │       ├── training.rs
         │       ├── transport.rs
         │       ├── workflow_tests.rs
-        │       └── workflows.rs
-        └── typescript/
-            ├── BUILD.bazel
-            ├── README.md
-            ├── biome.json
-            ├── package.json
-            ├── src/
-            │   ├── admin.ts
-            │   ├── agents.ts
-            │   ├── approvals.ts
-            │   ├── artifacts.ts
-            │   ├── auth.ts
-            │   ├── client.ts
-            │   ├── config.ts
-            │   ├── core.ts
-            │   ├── datasets.ts
-            │   ├── error.ts
-            │   ├── gcp_auth.ts
-            │   ├── inference.ts
-            │   ├── index.ts
-            │   ├── models.ts
-            │   ├── operations.ts
-            │   ├── policies.ts
-            │   ├── raw.ts
-            │   ├── request.ts
-            │   ├── retry.ts
-            │   ├── runtime.ts
-            │   ├── safety.ts
-            │   ├── testing.ts
-            │   ├── training.ts
-            │   ├── transport.ts
-            │   └── workflows.ts
-            ├── tests/
-            │   ├── sdk.test.ts
-            │   ├── policy_admin.test.ts
-            │   ├── agents.test.ts
-            │   └── workflow_approval.test.ts
-            └── tsconfig.json
+        │       ├── workflows.rs
+        │       ├── artifact_operation_gap_tests.rs
+        │       ├── evaluation_tests.rs
+        │       ├── evaluations.rs
+        │       ├── job_run_tests.rs
+        │       ├── jobs.rs
+        │       ├── runs.rs
+        │       ├── training_tests.rs
+        │       ├── experiments.rs
+        │       └── experiment_tests.rs
+        ├── typescript/
+        │   ├── BUILD.bazel
+        │   ├── README.md
+        │   ├── biome.json
+        │   ├── package.json
+        │   ├── src/
+        │   │   ├── admin.ts
+        │   │   ├── agents.ts
+        │   │   ├── approvals.ts
+        │   │   ├── artifacts.ts
+        │   │   ├── auth.ts
+        │   │   ├── client.ts
+        │   │   ├── config.ts
+        │   │   ├── core.ts
+        │   │   ├── datasets.ts
+        │   │   ├── error.ts
+        │   │   ├── gcp_auth.ts
+        │   │   ├── inference.ts
+        │   │   ├── index.ts
+        │   │   ├── models.ts
+        │   │   ├── operations.ts
+        │   │   ├── policies.ts
+        │   │   ├── raw.ts
+        │   │   ├── request.ts
+        │   │   ├── retry.ts
+        │   │   ├── runtime.ts
+        │   │   ├── safety.ts
+        │   │   ├── testing.ts
+        │   │   ├── training.ts
+        │   │   ├── transport.ts
+        │   │   ├── workflows.ts
+        │   │   ├── evaluations.ts
+        │   │   ├── jobs.ts
+        │   │   ├── runs.ts
+        │   │   └── experiments.ts
+        │   ├── tests/
+        │   │   ├── sdk.test.ts
+        │   │   ├── policy_admin.test.ts
+        │   │   ├── agents.test.ts
+        │   │   ├── workflow_approval.test.ts
+        │   │   ├── evaluations.test.ts
+        │   │   ├── job_run.test.ts
+        │   │   ├── training.test.ts
+        │   │   └── experiments.test.ts
+        │   └── tsconfig.json
+        ├── rpc-coverage.yaml
+        └── rpc-coverage.generated.json
 ```
 <!-- END GENERATED: repository-path-manifest -->
 

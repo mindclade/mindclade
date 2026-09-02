@@ -206,6 +206,7 @@ class ConfigurationTest(unittest.TestCase):
                 "mindclade.internal.artifact.v1.ArtifactService",
                 "mindclade.internal.dataset.v1.DatasetService",
                 "mindclade.internal.evaluation.v1.EvaluationService",
+                "mindclade.internal.experiment.v1.ExperimentService",
                 "mindclade.internal.inference.v1.InferenceService",
                 "mindclade.internal.job.v1.JobService",
                 "mindclade.internal.job.v1.OperationService",

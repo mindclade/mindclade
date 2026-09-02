@@ -15,12 +15,17 @@ mod config;
 mod datasets;
 mod error;
 mod evaluations;
+mod events;
+mod experiments;
 mod inference;
+mod jobs;
 mod models;
 mod operations;
 mod policies;
 mod request;
 mod retry;
+mod runs;
+pub mod testing;
 mod training;
 mod transport;
 mod workflows;
@@ -28,9 +33,17 @@ mod workflows;
 #[cfg(test)]
 mod agent_tests;
 #[cfg(test)]
+mod artifact_operation_gap_tests;
+#[cfg(test)]
 mod evaluation_tests;
 #[cfg(test)]
+mod experiment_tests;
+#[cfg(test)]
+mod job_run_tests;
+#[cfg(test)]
 mod policy_admin_tests;
+#[cfg(test)]
+mod training_tests;
 #[cfg(test)]
 mod workflow_tests;
 
@@ -43,7 +56,10 @@ pub use config::{Config, ConfigBuilder, Environment, Identity, RetryPolicy};
 pub use datasets::Datasets;
 pub use error::{Error, ErrorKind};
 pub use evaluations::Evaluations;
+pub use events::{EventRejectedError, JobRequestedDelivery, decode_job_requested_delivery};
+pub use experiments::Experiments;
 pub use inference::{Inference, InferenceWaitOptions, InferenceWatch};
+pub use jobs::Jobs;
 pub use models::Models;
 pub use operations::{
     CancellationToken, OperationFailure, OperationWaitError, OperationWatch, Operations,
@@ -51,10 +67,11 @@ pub use operations::{
 };
 pub use policies::Policies;
 pub use request::{CallOptions, SubmitOptions};
-pub use training::Training;
+pub use runs::{AttemptLease, LeaseCredential, Runs};
+pub use training::{Training, TrainingWatch, TrainingWatchOptions};
 pub use transport::{
     ArtifactStream, GeneratedClients, InferenceStream, OperationStream, RecordedRpcCall,
-    RecordingTransport, RpcTransport, TonicTransport, WorkflowStream,
+    RecordingTransport, RpcTransport, TonicTransport, TrainingStream, WorkflowStream,
 };
 pub use workflows::{
     WorkflowRunFailure, WorkflowWaitError, WorkflowWatch, WorkflowWatchOptions, Workflows,
@@ -72,20 +89,46 @@ pub use mindclade_protocols::dataset::v1::{
     RevokeDatasetReleaseCommand, UpdateDatasetCommand,
 };
 pub use mindclade_protocols::evaluation::v1::{EvaluationResult, EvaluationRun, PromotionDecision};
+pub use mindclade_protocols::experiment::v1::{
+    CompleteTrialCommand, CreateExperimentCommand, CreateStudyCommand, CreateTrialCommand,
+    Experiment, Study, TransitionExperimentCommand, TransitionStudyCommand, TransitionTrialCommand,
+    Trial, UpdateExperimentCommand,
+};
 pub use mindclade_protocols::inference::v1::{
     InferenceRequest, InferenceResult, InferenceStreamCursor, InferenceStreamMessage,
 };
 pub use mindclade_protocols::internal::artifact::v1::{
-    ArtifactStagingReceipt, ArtifactUploadSession, ArtifactUploadState,
+    AcquireArtifactLeaseRequest, ArtifactStagingReceipt, ArtifactUploadSession,
+    ArtifactUploadState, GetArtifactRequest, ListArtifactsRequest, ListArtifactsResponse,
+    QuarantineArtifactRequest, ReleaseArtifactLeaseRequest,
 };
 pub use mindclade_protocols::internal::inference::v1::CommitInferenceResultRequest;
-pub use mindclade_protocols::job::v1::{Operation, OperationState};
+pub use mindclade_protocols::internal::job::v1::{
+    AcquireAttemptLeaseRequest, CancelAttemptRequest, CancelAttemptResponse, CancelJobRequest,
+    CommitAttemptRequest, CommitAttemptResponse, GetAttemptRequest, GetJobRequest, GetRunRequest,
+    HeartbeatAttemptRequest, HeartbeatAttemptResponse, ListAttemptsRequest, ListAttemptsResponse,
+    ListJobsRequest, ListJobsResponse, ListOperationsRequest, ListOperationsResponse,
+    ListRunsRequest, ListRunsResponse, RenewAttemptLeaseRequest,
+};
+pub use mindclade_protocols::internal::training::v1::{
+    ListCheckpointsRequest, ListCheckpointsResponse, ListTrainingRunsRequest,
+    ListTrainingRunsResponse, WatchTrainingRunResponse,
+};
+pub use mindclade_protocols::job::v1::{
+    Attempt, AttemptState, Job, JobState, LeaseFence, Operation, OperationState, RequestJobCommand,
+    Run, RunState,
+};
 pub use mindclade_protocols::model::v1::{
     Model, ModelRelease, PromoteModelReleaseCommand, RegisterModelCommand,
     RegisterModelReleaseCommand, RevokeModelReleaseCommand,
 };
 pub use mindclade_protocols::policy::v1::{AuthorizationDecision, PolicyReference, UsePolicy};
-pub use mindclade_protocols::training::v1::CreateTrainingRunCommand;
+pub use mindclade_protocols::training::v1::{
+    CancelTrainingRunCommand, Checkpoint, CommitCheckpointCommand, CommitTrainingProgressCommand,
+    CompleteTrainingRunCommand, CreateTrainingRunCommand, PrepareCheckpointCommand,
+    ResumeTrainingAttemptCommand, StartTrainingAttemptCommand, TrainingProgress, TrainingRun,
+    TrainingRunState, TrainingTerminalClassification,
+};
 pub use mindclade_protocols::workflow::v1::{
     ApprovalBinding, ApprovalDecisionValue, ApprovalReceipt, ApprovalRequest, WorkflowDefinition,
     WorkflowRun, WorkflowRunState,
@@ -162,6 +205,18 @@ impl Client {
         Operations::new(Arc::clone(&self.core))
     }
 
+    /// Durable admitted-work helpers backed by generated `JobService` RPCs.
+    #[must_use]
+    pub fn jobs(&self) -> Jobs {
+        Jobs::new(Arc::clone(&self.core))
+    }
+
+    /// Logical-run and fenced-attempt helpers backed by generated `RunService` RPCs.
+    #[must_use]
+    pub fn runs(&self) -> Runs {
+        Runs::new(Arc::clone(&self.core))
+    }
+
     /// Artifact catalog helpers backed by generated artifact RPCs.
     #[must_use]
     pub fn artifacts(&self) -> Artifacts {
@@ -191,6 +246,12 @@ impl Client {
     #[must_use]
     pub fn evaluations(&self) -> Evaluations {
         Evaluations::new(Arc::clone(&self.core))
+    }
+
+    /// Bounded experiment, study, and immutable trial-result lifecycle helpers.
+    #[must_use]
+    pub fn experiments(&self) -> Experiments {
+        Experiments::new(Arc::clone(&self.core))
     }
 
     /// Fail-closed authorization and use-policy lifecycle helpers.

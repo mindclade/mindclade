@@ -1,0 +1,32 @@
+apiVersion: mindclade.dev/v1
+kind: Component
+metadata:
+  name: tools-mindcladectl
+  description: Bounded administrative CLI over the private Mindclade SDK.
+spec:
+  type: internal-cli
+  lifecycle: pre-production
+  maturity: internal
+  owner: developer-experience
+  security_reviewers:
+    - security
+  repository_class: application-source
+  trust_tier: client
+  recovery_tier: tier-2
+  data_classification: internal
+  production_authority: false
+  dependencies:
+    - internal-sdk-go
+  provides:
+    - operation-administration
+    - verified-artifact-download
+  release:
+    strategy: source-only
+    artifact: null
+    immutable: false
+  activation:
+    wave: guide-only
+    connected: false
+status:
+  readiness: IMPLEMENTED
+  source_readiness: SOURCE_IMPLEMENTED

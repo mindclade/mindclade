@@ -1,0 +1,55 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "event_projection",
+    srcs = ["projection.go"],
+    importpath = "github.com/mindclade/mindclade/services/control_plane/internal/platform/eventprojection",
+    visibility = [
+        "//services/control_plane:__pkg__",
+        "//services/control_plane/internal/platform/eventprojection:__pkg__",
+    ],
+    deps = [
+        "//protocols/generated/go/admin/v1:bindings",
+        "//protocols/generated/go/agent/v1:bindings",
+        "//protocols/generated/go/artifact/v1:bindings",
+        "//protocols/generated/go/audit/v1:bindings",
+        "//protocols/generated/go/common/v1:bindings",
+        "//protocols/generated/go/dataset/v1:bindings",
+        "//protocols/generated/go/evaluation/v1:bindings",
+        "//protocols/generated/go/experiment/v1:bindings",
+        "//protocols/generated/go/feature/v1:bindings",
+        "//protocols/generated/go/inference/v1:bindings",
+        "//protocols/generated/go/job/v1:bindings",
+        "//protocols/generated/go/model/v1:bindings",
+        "//protocols/generated/go/policy/v1:bindings",
+        "//protocols/generated/go/training/v1:bindings",
+        "//protocols/generated/go/transform/v1:bindings",
+        "//protocols/generated/go/workflow/v1:bindings",
+        "//services/control_plane:database",
+        "//services/control_plane:queue",
+        "@org_golang_google_protobuf//proto",
+        "@org_golang_google_protobuf//reflect/protoreflect",
+    ],
+)
+
+go_test(
+    name = "event_projection_test",
+    srcs = ["projection_test.go"],
+    data = ["//services/control_plane:governed_inputs"],
+    embed = [":event_projection"],
+    visibility = ["//tests:__pkg__"],
+    deps = [
+        "//libs/go/numconv",
+        "//protocols/generated/go/common/v1:bindings",
+        "//protocols/generated/go/job/v1:bindings",
+        "//services/control_plane:database",
+        "//services/control_plane:inbox",
+        "//services/control_plane:queue",
+        "//services/control_plane/internal/admin",
+        "@com_github_jackc_pgx_v5//stdlib",
+        "@org_golang_google_protobuf//proto",
+        "@org_golang_google_protobuf//reflect/protoreflect",
+        "@org_golang_google_protobuf//reflect/protoregistry",
+        "@org_golang_google_protobuf//types/known/timestamppb",
+    ],
+)

@@ -1,0 +1,50 @@
+load("@rules_python//python:defs.bzl", "py_binary", "py_library", "py_test")
+
+py_library(
+    name = "training_worker",
+    srcs = ["python/control_plane.py"],
+    imports = ["python"],
+    visibility = ["//visibility:public"],
+    deps = [
+        "//internal/sdk/python:mindclade_internal_sdk",
+    ],
+)
+
+py_binary(
+    name = "training_worker_client",
+    srcs = ["python/main.py"],
+    imports = ["python"],
+    main = "python/main.py",
+    deps = [
+        ":training_worker",
+        "//internal/sdk/python:mindclade_internal_sdk",
+    ],
+)
+
+py_test(
+    name = "training_worker_test",
+    size = "small",
+    srcs = ["tests/test_control_plane.py"],
+    imports = ["python"],
+    legacy_create_init = 0,
+    main = "tests/test_control_plane.py",
+    deps = [
+        ":training_worker",
+        "//internal/sdk/python:mindclade_internal_sdk",
+        "@mindclade_pypi//protobuf",
+    ],
+)
+
+filegroup(
+    name = "governed_sources",
+    srcs = [
+        "BUILD.bazel",
+        "README.md",
+        "component.yaml",
+        "pyrightconfig.json",
+        "python/control_plane.py",
+        "python/main.py",
+        "tests/test_control_plane.py",
+    ],
+    visibility = ["//visibility:public"],
+)

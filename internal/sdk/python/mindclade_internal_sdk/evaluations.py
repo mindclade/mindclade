@@ -42,9 +42,7 @@ def _project(invoker: SyncInvoker | AsyncInvoker) -> str:
     return invoker.config.project_parent
 
 
-def _scoped_name(
-    invoker: SyncInvoker | AsyncInvoker, value: str, collection: str
-) -> str:
+def _scoped_name(invoker: SyncInvoker | AsyncInvoker, value: str, collection: str) -> str:
     name = required_text(f"{collection} name", value, maximum=2048)
     prefix = f"{_project(invoker)}/{collection}/"
     suffix = name.removeprefix(prefix)
@@ -58,8 +56,11 @@ def _model_release_name(invoker: SyncInvoker | AsyncInvoker, value: str) -> str:
     prefix = f"{_project(invoker)}/models/"
     suffix = name.removeprefix(prefix)
     parts = suffix.split("/releases/")
-    if not name.startswith(prefix) or len(parts) != 2 or not all(parts) or any(
-        "/" in part for part in parts
+    if (
+        not name.startswith(prefix)
+        or len(parts) != 2
+        or not all(parts)
+        or any("/" in part for part in parts)
     ):
         raise ValueError("model release must be scoped to the configured project")
     return name
@@ -264,9 +265,10 @@ def _validate_commit(
     )
     if result.run.name != request.evaluation_run.name:
         raise ValueError("evaluation result and command must reference the same run")
-    if _DIGEST.fullmatch(result.run_digest) is None or _DIGEST.fullmatch(
-        result.result_digest
-    ) is None:
+    if (
+        _DIGEST.fullmatch(result.run_digest) is None
+        or _DIGEST.fullmatch(result.result_digest) is None
+    ):
         raise ValueError("evaluation result requires canonical run and result digests")
     _normalize_fence(invoker, request.fence)
 
@@ -279,9 +281,10 @@ def _validate_decision(
         raise ValueError("generated promotion decision is required")
     decision = request.promotion_decision
     _scoped_name(invoker, decision.name, "promotionDecisions")
-    if _DIGEST.fullmatch(decision.candidate_digest) is None or _DIGEST.fullmatch(
-        decision.decision_digest
-    ) is None:
+    if (
+        _DIGEST.fullmatch(decision.candidate_digest) is None
+        or _DIGEST.fullmatch(decision.decision_digest) is None
+    ):
         raise ValueError("promotion decision requires canonical evidence digests")
     if not decision.HasField("candidate_release"):
         raise ValueError("promotion candidate release is required")
@@ -323,9 +326,7 @@ class Evaluations:
         materialized, call = _prepare_mutation(self._invoker, materialized, options)
         response = cast(
             evaluation_service_pb2.CreateEvaluationRunResponse,
-            self._invoker.unary(
-                CREATE_EVALUATION_RUN, materialized, call=call, retry_safe=True
-            ),
+            self._invoker.unary(CREATE_EVALUATION_RUN, materialized, call=call, retry_safe=True),
         )
         return _operation(response, "evaluation run creation")
 
@@ -385,9 +386,7 @@ class Evaluations:
         )
         return cast(
             evaluation_service_pb2.ListEvaluationRunsResponse,
-            self._invoker.unary(
-                LIST_EVALUATION_RUNS, materialized, call=call, retry_safe=True
-            ),
+            self._invoker.unary(LIST_EVALUATION_RUNS, materialized, call=call, retry_safe=True),
         )
 
     def cancel_run(
@@ -403,9 +402,7 @@ class Evaluations:
         materialized, call = _prepare_mutation(self._invoker, materialized, options)
         response = cast(
             evaluation_service_pb2.CancelEvaluationRunResponse,
-            self._invoker.unary(
-                CANCEL_EVALUATION_RUN, materialized, call=call, retry_safe=True
-            ),
+            self._invoker.unary(CANCEL_EVALUATION_RUN, materialized, call=call, retry_safe=True),
         )
         return _operation(response, "evaluation cancellation")
 
@@ -422,9 +419,7 @@ class Evaluations:
         )
         response = cast(
             evaluation_service_pb2.CommitEvaluationResultResponse,
-            self._invoker.unary(
-                COMMIT_EVALUATION_RESULT, materialized, call=call, retry_safe=True
-            ),
+            self._invoker.unary(COMMIT_EVALUATION_RESULT, materialized, call=call, retry_safe=True),
         )
         result = required_response_message(
             response,
@@ -439,9 +434,7 @@ class Evaluations:
             label="evaluation result commit",
         )
         if result.name != materialized.result.name or run.name != materialized.evaluation_run.name:
-            raise _identity_violation(
-                "evaluation result commit response changed durable identity"
-            )
+            raise _identity_violation("evaluation result commit response changed durable identity")
         return result, run
 
     def get_result(
@@ -514,9 +507,7 @@ class Evaluations:
             label="promotion decision get",
         )
         if decision.name != scoped:
-            raise _identity_violation(
-                "promotion decision response changed resource identity"
-            )
+            raise _identity_violation("promotion decision response changed resource identity")
         return decision
 
 
@@ -653,9 +644,7 @@ class AsyncEvaluations:
             label="evaluation result commit",
         )
         if result.name != materialized.result.name or run.name != materialized.evaluation_run.name:
-            raise _identity_violation(
-                "evaluation result commit response changed durable identity"
-            )
+            raise _identity_violation("evaluation result commit response changed durable identity")
         return result, run
 
     async def get_result(
@@ -728,7 +717,5 @@ class AsyncEvaluations:
             label="promotion decision get",
         )
         if decision.name != scoped:
-            raise _identity_violation(
-                "promotion decision response changed resource identity"
-            )
+            raise _identity_violation("promotion decision response changed resource identity")
         return decision

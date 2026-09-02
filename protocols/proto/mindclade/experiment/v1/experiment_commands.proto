@@ -1,0 +1,102 @@
+syntax = "proto3";
+
+package mindclade.experiment.v1;
+
+import "google/protobuf/field_mask.proto";
+import "proto/mindclade/artifact/v1/artifact_reference.proto";
+import "proto/mindclade/artifact/v1/evidence_reference.proto";
+import "proto/mindclade/common/v1/command_context.proto";
+import "proto/mindclade/common/v1/error_detail.proto";
+import "proto/mindclade/common/v1/resource_reference.proto";
+import "proto/mindclade/experiment/v1/experiment.proto";
+import "proto/mindclade/experiment/v1/study.proto";
+import "proto/mindclade/experiment/v1/trial.proto";
+
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/experiment/v1;experimentv1";
+
+// CreateExperimentCommand admits immutable scientific intent and governed inputs.
+message CreateExperimentCommand {
+  mindclade.common.v1.CommandContext context = 1;
+  mindclade.common.v1.ResourceRef project = 2;
+  string experiment_id = 3;
+  string display_name = 4;
+  ExperimentKind kind = 5;
+  mindclade.artifact.v1.ArtifactRef intent_manifest = 6;
+  repeated mindclade.common.v1.ResourceRef subjects = 7;
+  mindclade.common.v1.ResourceRef use_policy = 8;
+  string policy_classification = 9;
+  map<string, string> labels = 10;
+  map<string, string> annotations = 11;
+}
+
+// UpdateExperimentCommand changes only mutable presentation and governance metadata.
+message UpdateExperimentCommand {
+  mindclade.common.v1.CommandContext context = 1;
+  Experiment experiment = 2;
+  google.protobuf.FieldMask update_mask = 3;
+  string etag = 4;
+}
+
+// TransitionExperimentCommand performs one optimistic lifecycle transition.
+message TransitionExperimentCommand {
+  mindclade.common.v1.CommandContext context = 1;
+  mindclade.common.v1.ResourceRef experiment = 2;
+  ExperimentState expected_state = 3;
+  ExperimentState target_state = 4;
+  string etag = 5;
+  string reason_code = 6;
+}
+
+// CreateStudyCommand creates bounded immutable study intent under an experiment.
+message CreateStudyCommand {
+  mindclade.common.v1.CommandContext context = 1;
+  mindclade.common.v1.ResourceRef experiment = 2;
+  string study_id = 3;
+  StudyType type = 4;
+  mindclade.artifact.v1.ArtifactRef study_manifest = 5;
+  mindclade.artifact.v1.ArtifactRef base_configuration = 6;
+  mindclade.artifact.v1.ArtifactRef search_space = 7;
+  mindclade.artifact.v1.ArtifactRef objective_specification = 8;
+  StudyBudget budget = 9;
+}
+
+// TransitionStudyCommand performs one optimistic study lifecycle transition.
+message TransitionStudyCommand {
+  mindclade.common.v1.CommandContext context = 1;
+  mindclade.common.v1.ResourceRef study = 2;
+  StudyState expected_state = 3;
+  StudyState target_state = 4;
+  string etag = 5;
+  string reason_code = 6;
+}
+
+// CreateTrialCommand admits one immutable resolved configuration under a study.
+message CreateTrialCommand {
+  mindclade.common.v1.CommandContext context = 1;
+  mindclade.common.v1.ResourceRef study = 2;
+  string trial_id = 3;
+  uint32 trial_number = 4;
+  mindclade.artifact.v1.ArtifactRef resolved_configuration = 5;
+  mindclade.common.v1.ResourceRef execution = 6;
+}
+
+// TransitionTrialCommand performs an optimistic non-terminal trial transition.
+message TransitionTrialCommand {
+  mindclade.common.v1.CommandContext context = 1;
+  mindclade.common.v1.ResourceRef trial = 2;
+  TrialState expected_state = 3;
+  TrialState target_state = 4;
+  string etag = 5;
+  string reason_code = 6;
+}
+
+// CompleteTrialCommand commits immutable result and evidence references exactly once.
+message CompleteTrialCommand {
+  mindclade.common.v1.CommandContext context = 1;
+  mindclade.common.v1.ResourceRef trial = 2;
+  TrialOutcome outcome = 3;
+  mindclade.artifact.v1.ArtifactRef result_manifest = 4;
+  repeated mindclade.artifact.v1.EvidenceRef evidence = 5;
+  mindclade.common.v1.ErrorDetail error = 6;
+  string etag = 7;
+}

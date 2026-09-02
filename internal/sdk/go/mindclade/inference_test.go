@@ -2,6 +2,7 @@ package mindclade
 
 import (
 	"context"
+	"errors"
 	"io"
 	"net"
 	"strings"
@@ -9,15 +10,16 @@ import (
 	"testing"
 	"time"
 
-	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
-	inferencev1 "github.com/mindclade/mindclade/protocols/generated/go/inference/v1"
-	internalinferencev1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/inference/v1"
-	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/test/bufconn"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
+
+	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
+	inferencev1 "github.com/mindclade/mindclade/protocols/generated/go/inference/v1"
+	internalinferencev1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/inference/v1"
+	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
 )
 
 type inferenceSDKServer struct {
@@ -158,7 +160,7 @@ func TestInferenceFacadeUsesGeneratedTypesAndResumableWatch(t *testing.T) {
 	if err != nil || terminal.GetFinalResult() == nil || watcher.Cursor().GetAfterSequence() != 2 {
 		t.Fatalf("terminal=%v cursor=%v err=%v", terminal, watcher.Cursor(), err)
 	}
-	if _, err = watcher.Recv(); err != io.EOF {
+	if _, err = watcher.Recv(); !errors.Is(err, io.EOF) {
 		t.Fatalf("terminal recv err=%v", err)
 	}
 	if err = watcher.Close(); err != nil {

@@ -40,6 +40,18 @@ def steps() -> list[Step]:
             artifact_paths=("build/evidence/bazel-native-agreement.v1.json",),
         ),
         Step(
+            key="fresh-db-integration",
+            label=":postgres: Fresh-database runtime qualification",
+            command="just integration-ci",
+            timeout_minutes=120,
+            depends_on=("affected-tests",),
+            artifact_paths=(
+                "build/evidence/integration-ci.v1.json",
+                "build/evidence/training-vertical-rehearsal.v1.json",
+                "build/evidence/authoritative-integration-readiness.v1.json",
+            ),
+        ),
+        Step(
             key="supply-chain",
             label=":lock: Supply-chain policy",
             command="just security",
@@ -61,10 +73,18 @@ def steps() -> list[Step]:
                 "buildkite-agent artifact download 'build/evidence/*' . "
                 "--step affected-tests && "
                 "buildkite-agent artifact download 'build/evidence/*' . "
+                "--step fresh-db-integration && "
+                "buildkite-agent artifact download 'build/evidence/*' . "
                 "--step supply-chain && just ci-evidence"
             ),
             timeout_minutes=10,
-            depends_on=("pipeline-plan", "governance", "affected-tests", "supply-chain"),
+            depends_on=(
+                "pipeline-plan",
+                "governance",
+                "affected-tests",
+                "fresh-db-integration",
+                "supply-chain",
+            ),
             artifact_paths=("build/evidence/*",),
         ),
     ]

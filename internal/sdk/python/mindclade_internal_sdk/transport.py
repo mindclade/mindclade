@@ -12,6 +12,7 @@ from mindclade.internal.agent.v1 import agent_service_pb2, agent_service_pb2_grp
 from mindclade.internal.artifact.v1 import artifact_service_pb2, artifact_service_pb2_grpc
 from mindclade.internal.dataset.v1 import dataset_service_pb2, dataset_service_pb2_grpc
 from mindclade.internal.evaluation.v1 import evaluation_service_pb2, evaluation_service_pb2_grpc
+from mindclade.internal.experiment.v1 import experiment_service_pb2, experiment_service_pb2_grpc
 from mindclade.internal.inference.v1 import inference_service_pb2, inference_service_pb2_grpc
 from mindclade.internal.job.v1 import job_service_pb2, job_service_pb2_grpc
 from mindclade.internal.model.v1 import model_service_pb2, model_service_pb2_grpc
@@ -24,8 +25,28 @@ from .config import ClientConfig
 Metadata = tuple[tuple[str, str | bytes], ...]
 
 GET_OPERATION = "/mindclade.internal.job.v1.OperationService/GetOperation"
+LIST_OPERATIONS = "/mindclade.internal.job.v1.OperationService/ListOperations"
 CANCEL_OPERATION = "/mindclade.internal.job.v1.OperationService/CancelOperation"
 WATCH_OPERATION = "/mindclade.internal.job.v1.OperationService/WatchOperation"
+REQUEST_JOB = "/mindclade.internal.job.v1.JobService/RequestJob"
+GET_JOB = "/mindclade.internal.job.v1.JobService/GetJob"
+LIST_JOBS = "/mindclade.internal.job.v1.JobService/ListJobs"
+CANCEL_JOB = "/mindclade.internal.job.v1.JobService/CancelJob"
+GET_RUN = "/mindclade.internal.job.v1.RunService/GetRun"
+LIST_RUNS = "/mindclade.internal.job.v1.RunService/ListRuns"
+GET_ATTEMPT = "/mindclade.internal.job.v1.RunService/GetAttempt"
+LIST_ATTEMPTS = "/mindclade.internal.job.v1.RunService/ListAttempts"
+ACQUIRE_ATTEMPT_LEASE = "/mindclade.internal.job.v1.RunService/AcquireAttemptLease"
+RENEW_ATTEMPT_LEASE = "/mindclade.internal.job.v1.RunService/RenewAttemptLease"
+HEARTBEAT_ATTEMPT = "/mindclade.internal.job.v1.RunService/HeartbeatAttempt"
+CANCEL_ATTEMPT = "/mindclade.internal.job.v1.RunService/CancelAttempt"
+COMMIT_ATTEMPT = "/mindclade.internal.job.v1.RunService/CommitAttempt"
+EXPIRE_ATTEMPT_LEASES = "/mindclade.internal.job.v1.RunService/ExpireAttemptLeases"
+GET_ARTIFACT = "/mindclade.internal.artifact.v1.ArtifactService/GetArtifact"
+LIST_ARTIFACTS = "/mindclade.internal.artifact.v1.ArtifactService/ListArtifacts"
+QUARANTINE_ARTIFACT = "/mindclade.internal.artifact.v1.ArtifactService/QuarantineArtifact"
+ACQUIRE_ARTIFACT_LEASE = "/mindclade.internal.artifact.v1.ArtifactService/AcquireArtifactLease"
+RELEASE_ARTIFACT_LEASE = "/mindclade.internal.artifact.v1.ArtifactService/ReleaseArtifactLease"
 RESOLVE_ARTIFACT_ALIAS = "/mindclade.internal.artifact.v1.ArtifactService/ResolveArtifactAlias"
 BEGIN_ARTIFACT_UPLOAD = "/mindclade.internal.artifact.v1.ArtifactService/BeginArtifactUpload"
 UPLOAD_ARTIFACT_CHUNK = "/mindclade.internal.artifact.v1.ArtifactService/UploadArtifactChunk"
@@ -39,6 +60,16 @@ DOWNLOAD_ARTIFACT = "/mindclade.internal.artifact.v1.ArtifactService/DownloadArt
 COMMIT_ARTIFACT = "/mindclade.internal.artifact.v1.ArtifactService/CommitArtifact"
 CREATE_TRAINING_RUN = "/mindclade.internal.training.v1.TrainingService/CreateTrainingRun"
 GET_TRAINING_RUN = "/mindclade.internal.training.v1.TrainingService/GetTrainingRun"
+LIST_TRAINING_RUNS = "/mindclade.internal.training.v1.TrainingService/ListTrainingRuns"
+START_TRAINING_ATTEMPT = "/mindclade.internal.training.v1.TrainingService/StartTrainingAttempt"
+RESUME_TRAINING_ATTEMPT = "/mindclade.internal.training.v1.TrainingService/ResumeTrainingAttempt"
+COMMIT_TRAINING_PROGRESS = "/mindclade.internal.training.v1.TrainingService/CommitTrainingProgress"
+PREPARE_CHECKPOINT = "/mindclade.internal.training.v1.TrainingService/PrepareCheckpoint"
+COMMIT_CHECKPOINT = "/mindclade.internal.training.v1.TrainingService/CommitCheckpoint"
+COMPLETE_TRAINING_RUN = "/mindclade.internal.training.v1.TrainingService/CompleteTrainingRun"
+CANCEL_TRAINING_RUN = "/mindclade.internal.training.v1.TrainingService/CancelTrainingRun"
+GET_CHECKPOINT = "/mindclade.internal.training.v1.TrainingService/GetCheckpoint"
+LIST_CHECKPOINTS = "/mindclade.internal.training.v1.TrainingService/ListCheckpoints"
 WATCH_TRAINING_RUN = "/mindclade.internal.training.v1.TrainingService/WatchTrainingRun"
 CREATE_DATASET = "/mindclade.internal.dataset.v1.DatasetService/CreateDataset"
 GET_DATASET = "/mindclade.internal.dataset.v1.DatasetService/GetDataset"
@@ -61,28 +92,32 @@ GET_INFERENCE_REQUEST = "/mindclade.internal.inference.v1.InferenceService/GetIn
 GET_INFERENCE_RESULT = "/mindclade.internal.inference.v1.InferenceService/GetInferenceResult"
 COMMIT_INFERENCE_RESULT = "/mindclade.internal.inference.v1.InferenceService/CommitInferenceResult"
 WATCH_INFERENCE = "/mindclade.internal.inference.v1.InferenceService/WatchInference"
-CREATE_EVALUATION_RUN = (
-    "/mindclade.internal.evaluation.v1.EvaluationService/CreateEvaluationRun"
-)
+CREATE_EVALUATION_RUN = "/mindclade.internal.evaluation.v1.EvaluationService/CreateEvaluationRun"
 GET_EVALUATION_RUN = "/mindclade.internal.evaluation.v1.EvaluationService/GetEvaluationRun"
-LIST_EVALUATION_RUNS = (
-    "/mindclade.internal.evaluation.v1.EvaluationService/ListEvaluationRuns"
-)
-CANCEL_EVALUATION_RUN = (
-    "/mindclade.internal.evaluation.v1.EvaluationService/CancelEvaluationRun"
-)
+LIST_EVALUATION_RUNS = "/mindclade.internal.evaluation.v1.EvaluationService/ListEvaluationRuns"
+CANCEL_EVALUATION_RUN = "/mindclade.internal.evaluation.v1.EvaluationService/CancelEvaluationRun"
 COMMIT_EVALUATION_RESULT = (
     "/mindclade.internal.evaluation.v1.EvaluationService/CommitEvaluationResult"
 )
-GET_EVALUATION_RESULT = (
-    "/mindclade.internal.evaluation.v1.EvaluationService/GetEvaluationResult"
-)
+GET_EVALUATION_RESULT = "/mindclade.internal.evaluation.v1.EvaluationService/GetEvaluationResult"
 CREATE_PROMOTION_DECISION = (
     "/mindclade.internal.evaluation.v1.EvaluationService/CreatePromotionDecision"
 )
-GET_PROMOTION_DECISION = (
-    "/mindclade.internal.evaluation.v1.EvaluationService/GetPromotionDecision"
-)
+GET_PROMOTION_DECISION = "/mindclade.internal.evaluation.v1.EvaluationService/GetPromotionDecision"
+CREATE_EXPERIMENT = "/mindclade.internal.experiment.v1.ExperimentService/CreateExperiment"
+GET_EXPERIMENT = "/mindclade.internal.experiment.v1.ExperimentService/GetExperiment"
+LIST_EXPERIMENTS = "/mindclade.internal.experiment.v1.ExperimentService/ListExperiments"
+UPDATE_EXPERIMENT = "/mindclade.internal.experiment.v1.ExperimentService/UpdateExperiment"
+TRANSITION_EXPERIMENT = "/mindclade.internal.experiment.v1.ExperimentService/TransitionExperiment"
+CREATE_STUDY = "/mindclade.internal.experiment.v1.ExperimentService/CreateStudy"
+GET_STUDY = "/mindclade.internal.experiment.v1.ExperimentService/GetStudy"
+LIST_STUDIES = "/mindclade.internal.experiment.v1.ExperimentService/ListStudies"
+TRANSITION_STUDY = "/mindclade.internal.experiment.v1.ExperimentService/TransitionStudy"
+CREATE_TRIAL = "/mindclade.internal.experiment.v1.ExperimentService/CreateTrial"
+GET_TRIAL = "/mindclade.internal.experiment.v1.ExperimentService/GetTrial"
+LIST_TRIALS = "/mindclade.internal.experiment.v1.ExperimentService/ListTrials"
+TRANSITION_TRIAL = "/mindclade.internal.experiment.v1.ExperimentService/TransitionTrial"
+COMPLETE_TRIAL = "/mindclade.internal.experiment.v1.ExperimentService/CompleteTrial"
 EVALUATE_AUTHORIZATION = "/mindclade.internal.policy.v1.PolicyService/EvaluateAuthorization"
 CREATE_USE_POLICY = "/mindclade.internal.policy.v1.PolicyService/CreateUsePolicy"
 UPDATE_USE_POLICY = "/mindclade.internal.policy.v1.PolicyService/UpdateUsePolicy"
@@ -130,6 +165,7 @@ _SERVICE_MODULES: tuple[tuple[Any, Any], ...] = (
     (artifact_service_pb2, artifact_service_pb2_grpc),
     (dataset_service_pb2, dataset_service_pb2_grpc),
     (evaluation_service_pb2, evaluation_service_pb2_grpc),
+    (experiment_service_pb2, experiment_service_pb2_grpc),
     (inference_service_pb2, inference_service_pb2_grpc),
     (job_service_pb2, job_service_pb2_grpc),
     (model_service_pb2, model_service_pb2_grpc),
@@ -186,6 +222,15 @@ class SyncTransport(Protocol):
         metadata: Metadata,
     ) -> Message: ...
 
+    def unary_unary_with_metadata(
+        self,
+        method: str,
+        request: Message,
+        *,
+        timeout: float,
+        metadata: Metadata,
+    ) -> tuple[Message, Metadata]: ...
+
     def unary_stream(
         self,
         method: str,
@@ -207,6 +252,15 @@ class AsyncTransport(Protocol):
         timeout: float,
         metadata: Metadata,
     ) -> Message: ...
+
+    async def unary_unary_with_metadata(
+        self,
+        method: str,
+        request: Message,
+        *,
+        timeout: float,
+        metadata: Metadata,
+    ) -> tuple[Message, Metadata]: ...
 
     def unary_stream(
         self,
@@ -262,6 +316,17 @@ class GrpcSyncTransport:
     ) -> Message:
         return self._unary[method](request, timeout=timeout, metadata=metadata)
 
+    def unary_unary_with_metadata(
+        self,
+        method: str,
+        request: Message,
+        *,
+        timeout: float,
+        metadata: Metadata,
+    ) -> tuple[Message, Metadata]:
+        response, call = self._unary[method].with_call(request, timeout=timeout, metadata=metadata)
+        return response, _metadata(call.initial_metadata())
+
     def unary_stream(
         self,
         method: str,
@@ -307,6 +372,18 @@ class GrpcAsyncTransport:
     ) -> Message:
         return await self._unary[method](request, timeout=timeout, metadata=metadata)
 
+    async def unary_unary_with_metadata(
+        self,
+        method: str,
+        request: Message,
+        *,
+        timeout: float,
+        metadata: Metadata,
+    ) -> tuple[Message, Metadata]:
+        call = self._unary[method](request, timeout=timeout, metadata=metadata)
+        response = await call
+        return response, _metadata(await call.initial_metadata())
+
     async def unary_stream(
         self,
         method: str,
@@ -324,3 +401,11 @@ class GrpcAsyncTransport:
 
     async def close(self) -> None:
         await self._channel.close()
+
+
+def _metadata(values: Any) -> Metadata:
+    """Copy gRPC metadata into an immutable, transport-neutral value."""
+
+    if values is None:
+        return ()
+    return tuple((str(key), value) for key, value in values)

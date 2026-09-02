@@ -1,0 +1,25 @@
+[package]
+name = "mindclade-ingestion-worker"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[lib]
+path = "rust/src/lib.rs"
+
+[[bin]]
+name = "mindclade-ingestion-worker-client"
+path = "rust/src/main.rs"
+
+[dependencies]
+mindclade-internal-sdk = { path = "../../internal/sdk/rust" }
+sha2.workspace = true
+tokio = { workspace = true, features = ["fs", "io-util", "macros", "rt-multi-thread", "time"] }
+
+[dev-dependencies]
+tonic.workspace = true
+
+[lints]
+workspace = true

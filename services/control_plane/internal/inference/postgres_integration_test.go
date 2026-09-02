@@ -217,7 +217,7 @@ func TestPostgresInferenceJourneyIsNormalizedFencedResumableAndEventBacked(t *te
 (SELECT count(*) FROM operation_revisions WHERE tenant_id=$1)`, identity.TenantID).Scan(&events, &audits, &receipts, &operationRevisions); err != nil {
 		t.Fatal(err)
 	}
-	if events != 3 || audits != 2 || receipts != 2 || operationRevisions != 2 {
+	if events != 4 || audits != 2 || receipts != 2 || operationRevisions != 2 {
 		t.Fatalf("events=%d audits=%d receipts=%d revisions=%d", events, audits, receipts, operationRevisions)
 	}
 	rows, err := verify.QueryContext(ctx, `SELECT envelope_bytes FROM outbox_messages WHERE tenant_id=$1 ORDER BY created_at,event_type`, identity.TenantID)
@@ -249,7 +249,7 @@ func TestPostgresInferenceJourneyIsNormalizedFencedResumableAndEventBacked(t *te
 	if err = platformdb.CloseRows(rows); err != nil {
 		t.Fatal(err)
 	}
-	for _, eventType := range []string{"mindclade.events.inference.v1.InferenceRequested", "mindclade.events.inference.v1.InferenceResultCommitted", "mindclade.events.job.v1.JobRequested"} {
+	for _, eventType := range []string{"mindclade.events.inference.v1.InferenceRequested", "mindclade.events.inference.v1.InferenceResultCommitted", "mindclade.events.job.v1.JobRequested", "mindclade.events.job.v1.AttemptLeased"} {
 		if types[eventType] != 1 {
 			t.Fatalf("event type %s count=%d all=%v", eventType, types[eventType], types)
 		}

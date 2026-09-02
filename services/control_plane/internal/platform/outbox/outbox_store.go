@@ -37,6 +37,18 @@ WITH candidates AS (
     AND message.quarantined_at IS NULL
     AND message.next_attempt_at <= $2
     AND (message.claim_expires_at IS NULL OR message.claim_expires_at <= $2)
+    AND (
+      message.aggregate_sequence = 1
+      OR EXISTS (
+        SELECT 1
+        FROM outbox_messages AS immediate_predecessor
+        WHERE immediate_predecessor.tenant_id = message.tenant_id
+          AND immediate_predecessor.aggregate_type = message.aggregate_type
+          AND immediate_predecessor.aggregate_id = message.aggregate_id
+          AND immediate_predecessor.aggregate_sequence = message.aggregate_sequence - 1
+          AND immediate_predecessor.delivered_at IS NOT NULL
+      )
+    )
     AND NOT EXISTS (
       SELECT 1
       FROM outbox_messages AS predecessor
@@ -124,6 +136,11 @@ func (s SQLStore) AcknowledgeSQL(ctx context.Context, tenantID, id string, epoch
 	if err != nil {
 		return false, err
 	}
+	if count == 1 {
+		if err = queue.CompleteOutboxReplayTx(ctx, tx, tenantID, id, at.UTC()); err != nil {
+			return false, err
+		}
+	}
 	if err = tx.Commit(); err != nil {
 		return false, err
 	}
@@ -189,7 +206,11 @@ SELECT 'outbox:' || id, tenant_id, id, 'OUTBOX', event_type, event_version,
 FROM quarantined
 ON CONFLICT (tenant_id, id) DO UPDATE
 SET attempts = EXCLUDED.attempts, reason = EXCLUDED.reason,
-    envelope_bytes = EXCLUDED.envelope_bytes, created_at = EXCLUDED.created_at`,
+    payload_digest = EXCLUDED.payload_digest,
+    envelope_bytes = EXCLUDED.envelope_bytes, created_at = EXCLUDED.created_at,
+    replay_state = 'QUARANTINED', replay_claim_expires_at = NULL,
+    replay_next_attempt_at = NULL, replay_published_at = NULL,
+    replayed_at = NULL, replay_last_error = '', updated_at = $4`,
 		tenantID, id, epoch, at.UTC(), detail)
 	if err != nil {
 		return false, err
@@ -316,6 +337,18 @@ func (s *Store) Claim(_ context.Context, tenantID string, limit int, now time.Ti
 			continue
 		}
 		blocked := false
+		if record.AggregateSequence > 1 {
+			immediatePredecessorDelivered := false
+			for _, predecessor := range s.records {
+				if predecessor.TenantID == record.TenantID && predecessor.AggregateType == record.AggregateType && predecessor.AggregateID == record.AggregateID && predecessor.AggregateSequence == record.AggregateSequence-1 && predecessor.DeliveredAt != nil {
+					immediatePredecessorDelivered = true
+					break
+				}
+			}
+			if !immediatePredecessorDelivered {
+				blocked = true
+			}
+		}
 		for _, predecessor := range s.records {
 			if predecessor.TenantID == record.TenantID && predecessor.AggregateType == record.AggregateType && predecessor.AggregateID == record.AggregateID && predecessor.AggregateSequence < record.AggregateSequence && predecessor.DeliveredAt == nil {
 				blocked = true

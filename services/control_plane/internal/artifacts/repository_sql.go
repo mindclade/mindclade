@@ -9,13 +9,13 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"math"
 	"strconv"
 	"time"
 
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	"github.com/mindclade/mindclade/libs/go/numconv"
 	artifactv1 "github.com/mindclade/mindclade/protocols/generated/go/artifact/v1"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	internalartifactv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/artifact/v1"
@@ -29,12 +29,12 @@ const artifactEventContentType = "application/x-protobuf; deterministic=true"
 
 type GeneratedEventFactory struct{}
 
-func (GeneratedEventFactory) Committed(identity Identity, artifact *artifactv1.ArtifactRef, command *commonv1.CommandContext, sequence uint64, at time.Time) (*commonv1.EventEnvelope, error) {
+func (GeneratedEventFactory) Committed(identity Identity, artifact *artifactv1.ArtifactRef, command *commonv1.CommandContext, sequence int64, at time.Time) (*commonv1.EventEnvelope, error) {
 	payload := &artifactv1.ArtifactCommitted{Artifact: sanitizeArtifact(artifact)}
 	return newArtifactEnvelope(identity, artifact, payload, command, sequence, at)
 }
 
-func (GeneratedEventFactory) Quarantined(identity Identity, artifact *artifactv1.ArtifactRef, reason string, evidence []*artifactv1.EvidenceRef, command *commonv1.CommandContext, sequence uint64, at time.Time) (*commonv1.EventEnvelope, error) {
+func (GeneratedEventFactory) Quarantined(identity Identity, artifact *artifactv1.ArtifactRef, reason string, evidence []*artifactv1.EvidenceRef, command *commonv1.CommandContext, sequence int64, at time.Time) (*commonv1.EventEnvelope, error) {
 	evidenceDigest := ""
 	if len(evidence) > 0 && evidence[0] != nil {
 		evidenceDigest = evidence[0].GetDigest()
@@ -43,12 +43,16 @@ func (GeneratedEventFactory) Quarantined(identity Identity, artifact *artifactv1
 	return newArtifactEnvelope(identity, artifact, payload, command, sequence, at)
 }
 
-func (GeneratedEventFactory) StagingFinalized(identity Identity, uploadName string, artifact *artifactv1.ArtifactRef, receipt string, command *commonv1.CommandContext, sequence uint64, verifiedAt, expireAt time.Time) (*commonv1.EventEnvelope, error) {
+func (GeneratedEventFactory) StagingFinalized(identity Identity, uploadName string, artifact *artifactv1.ArtifactRef, receipt string, command *commonv1.CommandContext, sequence int64, verifiedAt, expireAt time.Time) (*commonv1.EventEnvelope, error) {
 	payload := &artifactv1.ArtifactStagingFinalized{
 		UploadName: uploadName, Artifact: sanitizeArtifact(artifact), StagingReceiptDigest: receipt,
 		VerifiedAt: timestamppb.New(verifiedAt.UTC()), ExpireTime: timestamppb.New(expireAt.UTC()),
 	}
-	if command == nil || sequence == 0 || sequence > math.MaxInt64 || !validDigest(receipt) || verifiedAt.IsZero() || !expireAt.After(verifiedAt) {
+	aggregateSequence, err := numconv.Int64ToUint64(sequence)
+	if err != nil {
+		return nil, err
+	}
+	if command == nil || sequence == 0 || !validDigest(receipt) || verifiedAt.IsZero() || !expireAt.After(verifiedAt) {
 		return nil, ErrInvalidArgument
 	}
 	encoded, err := proto.MarshalOptions{Deterministic: true}.Marshal(payload)
@@ -57,15 +61,15 @@ func (GeneratedEventFactory) StagingFinalized(identity Identity, uploadName stri
 	}
 	payloadDigest := sha256.Sum256(encoded)
 	typeName := string(payload.ProtoReflect().Descriptor().FullName())
-	eventIdentity := sha256.Sum256([]byte(identity.TenantID + "\x00" + identity.ProjectID + "\x00" + typeName + "\x00" + uploadName + "\x00" + strconv.FormatUint(sequence, 10) + "\x00" + command.GetRequestId()))
+	eventIdentity := sha256.Sum256([]byte(identity.TenantID + "\x00" + identity.ProjectID + "\x00" + typeName + "\x00" + uploadName + "\x00" + strconv.FormatUint(aggregateSequence, 10) + "\x00" + command.GetRequestId()))
 	identifier := "artifact-upload:" + hex.EncodeToString(eventIdentity[:])
 	envelope := &commonv1.EventEnvelope{
 		EventId: identifier, EventType: typeName, EventVersion: 1,
 		OccurredAt: timestamppb.New(verifiedAt.UTC()), RecordedAt: timestamppb.New(verifiedAt.UTC()),
 		TenantId: identity.TenantID, ProjectId: identity.ProjectID, TraceId: command.GetTraceId(),
-		Subject:       &commonv1.ResourceRef{ResourceType: "artifact_upload", ResourceId: uploadName, TenantId: identity.TenantID, ProjectId: identity.ProjectID, ResourceVersion: int64(sequence), Name: uploadName, Etag: etag("artifact-upload", identity.TenantID, identity.ProjectID, uploadName, int64(sequence))},
+		Subject:       &commonv1.ResourceRef{ResourceType: "artifact_upload", ResourceId: uploadName, TenantId: identity.TenantID, ProjectId: identity.ProjectID, ResourceVersion: sequence, Name: uploadName, Etag: etag("artifact-upload", identity.TenantID, identity.ProjectID, uploadName, sequence)},
 		PayloadDigest: "sha256:" + hex.EncodeToString(payloadDigest[:]), Payload: encoded,
-		Producer: "services/control_plane/internal/artifacts", AggregateSequence: sequence,
+		Producer: "services/control_plane/internal/artifacts", AggregateSequence: aggregateSequence,
 		RequestId: command.GetRequestId(), CorrelationId: command.GetCorrelationId(), CausationId: command.GetCausationId(),
 		DeduplicationKey: identifier, PayloadContentType: artifactEventContentType,
 		Classification: commonv1.DataClassification_DATA_CLASSIFICATION_INTERNAL,
@@ -76,8 +80,12 @@ func (GeneratedEventFactory) StagingFinalized(identity Identity, uploadName stri
 	return envelope, nil
 }
 
-func newArtifactEnvelope(identity Identity, artifact *artifactv1.ArtifactRef, payloadMessage proto.Message, command *commonv1.CommandContext, sequence uint64, at time.Time) (*commonv1.EventEnvelope, error) {
-	if artifact == nil || payloadMessage == nil || command == nil || sequence == 0 || sequence > math.MaxInt64 || at.IsZero() {
+func newArtifactEnvelope(identity Identity, artifact *artifactv1.ArtifactRef, payloadMessage proto.Message, command *commonv1.CommandContext, sequence int64, at time.Time) (*commonv1.EventEnvelope, error) {
+	aggregateSequence, err := numconv.Int64ToUint64(sequence)
+	if err != nil {
+		return nil, err
+	}
+	if artifact == nil || payloadMessage == nil || command == nil || sequence == 0 || at.IsZero() {
 		return nil, ErrInvalidArgument
 	}
 	payload, err := proto.MarshalOptions{Deterministic: true}.Marshal(payloadMessage)
@@ -87,15 +95,15 @@ func newArtifactEnvelope(identity Identity, artifact *artifactv1.ArtifactRef, pa
 	payloadDigest := sha256.Sum256(payload)
 	typeName := string(payloadMessage.ProtoReflect().Descriptor().FullName())
 	name := canonicalArtifactName(identity, artifact.GetDigest())
-	eventIdentity := sha256.Sum256([]byte(identity.TenantID + "\x00" + identity.ProjectID + "\x00" + typeName + "\x00" + name + "\x00" + strconv.FormatUint(sequence, 10) + "\x00" + command.GetRequestId()))
+	eventIdentity := sha256.Sum256([]byte(identity.TenantID + "\x00" + identity.ProjectID + "\x00" + typeName + "\x00" + name + "\x00" + strconv.FormatUint(aggregateSequence, 10) + "\x00" + command.GetRequestId()))
 	identifier := "artifact:" + hex.EncodeToString(eventIdentity[:])
 	envelope := &commonv1.EventEnvelope{
 		EventId: identifier, EventType: typeName, EventVersion: 1,
 		OccurredAt: timestamppb.New(at.UTC()), RecordedAt: timestamppb.New(at.UTC()),
 		TenantId: identity.TenantID, ProjectId: identity.ProjectID, TraceId: command.GetTraceId(),
-		Subject:       &commonv1.ResourceRef{ResourceType: "artifact", ResourceId: artifact.GetDigest(), TenantId: identity.TenantID, ProjectId: identity.ProjectID, ResourceVersion: int64(sequence), Name: name, Etag: etag("artifact", identity.TenantID, identity.ProjectID, artifact.GetDigest(), int64(sequence))},
+		Subject:       &commonv1.ResourceRef{ResourceType: "artifact", ResourceId: artifact.GetDigest(), TenantId: identity.TenantID, ProjectId: identity.ProjectID, ResourceVersion: sequence, Name: name, Etag: etag("artifact", identity.TenantID, identity.ProjectID, artifact.GetDigest(), sequence)},
 		PayloadDigest: "sha256:" + hex.EncodeToString(payloadDigest[:]), Payload: payload,
-		Producer: "services/control_plane/internal/artifacts", AggregateSequence: sequence,
+		Producer: "services/control_plane/internal/artifacts", AggregateSequence: aggregateSequence,
 		RequestId: command.GetRequestId(), CorrelationId: command.GetCorrelationId(), CausationId: command.GetCausationId(),
 		DeduplicationKey: identifier, PayloadContentType: artifactEventContentType,
 		Classification: commonv1.DataClassification_DATA_CLASSIFICATION_INTERNAL,
@@ -350,7 +358,7 @@ func (r SQLRepository) CommitArtifact(ctx context.Context, identity Identity, co
 	if err != nil {
 		return nil, false, err
 	}
-	envelope, err := r.Events.Committed(identity, artifact, command.GetContext(), uint64(revision), at)
+	envelope, err := r.Events.Committed(identity, artifact, command.GetContext(), revision, at)
 	if err != nil {
 		return nil, false, err
 	}
@@ -449,7 +457,7 @@ func (r SQLRepository) QuarantineArtifact(ctx context.Context, identity Identity
 	if err != nil {
 		return nil, false, err
 	}
-	envelope, err := r.Events.Quarantined(identity, row.artifact, request.GetReasonCode(), request.GetEvidence(), commandContext, uint64(revision), at) //nolint:gosec // Conversion is bounded by validated protocol invariants or PostgreSQL CHECK constraints.
+	envelope, err := r.Events.Quarantined(identity, row.artifact, request.GetReasonCode(), request.GetEvidence(), commandContext, revision, at)
 	if err != nil {
 		return nil, false, err
 	}
@@ -1053,7 +1061,7 @@ func (r SQLRepository) FinalizeArtifactUpload(ctx context.Context, identity Iden
 		}
 		return nil, nil, false, ErrRevisionConflict
 	}
-	envelope, err := r.Events.StagingFinalized(identity, canonicalUploadName(identity, uploadID), row.artifact, receiptDigest, request.GetContext(), uint64(row.revision), row.finalizeTime.Time, row.receiptExpireTime.Time) //nolint:gosec // Conversion is bounded by validated protocol invariants or PostgreSQL CHECK constraints.
+	envelope, err := r.Events.StagingFinalized(identity, canonicalUploadName(identity, uploadID), row.artifact, receiptDigest, request.GetContext(), row.revision, row.finalizeTime.Time, row.receiptExpireTime.Time)
 	if err != nil {
 		return nil, nil, false, err
 	}

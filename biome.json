@@ -4,6 +4,9 @@
     "ignoreUnknown": true,
     "includes": [
       ".vscode/*.json",
+      "examples/sdk/*.ts",
+      "examples/sdk/package.json",
+      "examples/sdk/tsconfig.json",
       "libs/typescript/**/*.js",
       "libs/typescript/**/*.jsx",
       "libs/typescript/**/*.ts",

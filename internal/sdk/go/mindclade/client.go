@@ -24,9 +24,12 @@ type Client struct {
 	Artifacts   *ArtifactService
 	Datasets    *DatasetService
 	Evaluations *EvaluationService
+	Experiments *ExperimentService
 	Inference   *InferenceService
+	Jobs        *JobService
 	Models      *ModelService
 	Policies    *PolicyService
+	Runs        *RunService
 	Workflows   *WorkflowService
 	Approvals   *ApprovalService
 
@@ -155,10 +158,13 @@ func newClient(config Config, transport TransportClients, connection *grpc.Clien
 	client.Artifacts = &ArtifactService{client: client, transport: transport.Artifact}
 	client.Datasets = &DatasetService{client: client, transport: transport.Dataset}
 	client.Evaluations = &EvaluationService{client: client, transport: transport.Evaluation}
+	client.Experiments = &ExperimentService{client: client, transport: transport.Experiment}
 	client.Inference = &InferenceService{client: client, transport: transport.Inference}
+	client.Jobs = &JobService{client: client, transport: transport.Job}
 	client.Models = &ModelService{client: client, transport: transport.Model}
 	client.Operations = &OperationService{client: client, transport: transport.Operation}
 	client.Policies = &PolicyService{client: client, transport: transport.Policy}
+	client.Runs = &RunService{client: client, transport: transport.Run}
 	client.Training = &TrainingService{client: client, transport: transport.Training}
 	client.Workflows = &WorkflowService{client: client, transport: transport.Workflow}
 	client.Approvals = &ApprovalService{client: client, transport: transport.Approval}

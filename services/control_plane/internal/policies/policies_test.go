@@ -93,6 +93,41 @@ func artifactFixture(character string) *artifactv1.ArtifactRef {
 	return &artifactv1.ArtifactRef{Digest: "sha256:" + strings.Repeat(character, 64), MediaType: "application/json", SizeBytes: 42}
 }
 
+func TestDeniedSecuritySubjectBindsCommandIdentity(t *testing.T) {
+	t.Parallel()
+	identity := identityFixture()
+	subject := &commonv1.ResourceRef{
+		ResourceType: "model", ResourceId: "model-1", TenantId: identity.TenantID, ProjectId: identity.ProjectID,
+		ResourceVersion: 7, Name: projectParent(identity) + "/models/model-1",
+	}
+	digest := "sha256:" + strings.Repeat("a", 64)
+	firstCommand := &commonv1.CommandContext{
+		RequestId: "request-1", IdempotencyKey: "deny-1", TenantId: identity.TenantID,
+		ProjectId: identity.ProjectID, PrincipalId: identity.Principal,
+	}
+	first, err := deniedSecuritySubject(identity, subject, "DEFAULT_DENY", digest, firstCommand)
+	if err != nil {
+		t.Fatal(err)
+	}
+	replayed, err := deniedSecuritySubject(identity, proto.Clone(subject).(*commonv1.ResourceRef), "DEFAULT_DENY", digest, proto.Clone(firstCommand).(*commonv1.CommandContext))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !proto.Equal(first, replayed) {
+		t.Fatalf("exact idempotent replay changed security subject: first=%v replay=%v", first, replayed)
+	}
+	secondCommand := proto.Clone(firstCommand).(*commonv1.CommandContext)
+	secondCommand.RequestId = "request-2"
+	secondCommand.IdempotencyKey = "deny-2"
+	second, err := deniedSecuritySubject(identity, subject, "DEFAULT_DENY", digest, secondCommand)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first.GetResourceId() == second.GetResourceId() || first.GetName() == second.GetName() {
+		t.Fatalf("distinct denied commands collided: first=%v second=%v", first, second)
+	}
+}
+
 func policyFixture() *policyv1.UsePolicy {
 	identity := identityFixture()
 	name := projectParent(identity) + "/usePolicies/safe"

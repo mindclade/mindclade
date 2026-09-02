@@ -159,7 +159,7 @@ func TestPostgresAgentJourneyIsNormalizedFencedIdempotentAndEventBacked(t *testi
 	stepAt := at.Add(4 * time.Second)
 	stepNameValue := stepName(run.GetName(), 1)
 	toolCall := &agentv1.ToolCall{Context: &commonv1.CommandContext{RequestId: "tool-call-1", IdempotencyKey: "tool-call-key", TenantId: identity.TenantID, ProjectId: identity.ProjectID, PrincipalId: identity.Principal, Deadline: timestamppb.New(stepAt.Add(30 * time.Second)), CanonicalRequestDigest: "sha256:" + strings.Repeat("1", 64)}, CallId: "call-1", AgentRunName: run.GetName(), AgentStepName: stepNameValue, Tool: clone(definition.GetEligibleTools()[0]), ToolVersion: "4", Authorization: authorization, InputDigest: "sha256:" + strings.Repeat("2", 64), Parameters: integrationArtifact("7"), InputArtifacts: []*artifactv1.ArtifactRef{integrationArtifact("8")}, Deadline: timestamppb.New(stepAt.Add(30 * time.Second)), BudgetReservation: clone(run.GetBudgetReservation()), ExpectedOutputSchema: integrationArtifact("9"), SideEffectClass: "read-only", OutputClassification: "internal"}
-	stepInput := &agentv1.AgentStep{Run: &commonv1.ResourceRef{ResourceType: "agent_run", ResourceId: "run-1", TenantId: identity.TenantID, ProjectId: identity.ProjectID, ResourceVersion: run.GetRevision(), Name: run.GetName(), Etag: run.GetEtag()}, Sequence: 1, Kind: agentv1.AgentStepKind_AGENT_STEP_KIND_TOOL, State: agentv1.AgentStepState_AGENT_STEP_STATE_SUCCEEDED, PolicyDecisions: []*policyv1.AuthorizationDecision{authorization}, Observations: []*artifactv1.ArtifactRef{integrationArtifact("a")}, Decision: &agentv1.AgentDecision{DecisionId: "decision-1", DecisionType: "tool", RationaleSummary: "bounded tool call", Evidence: []*artifactv1.ArtifactRef{integrationArtifact("b")}, NextAction: &agentv1.AgentDecision_ToolCall{ToolCall: toolCall}, ReplayDigest: "sha256:" + strings.Repeat("c", 64)}}
+	stepInput := &agentv1.AgentStep{Run: &commonv1.ResourceRef{ResourceType: "agent_run", ResourceId: "run-1", TenantId: identity.TenantID, ProjectId: identity.ProjectID, ResourceVersion: run.GetRevision(), Name: run.GetName(), Etag: run.GetEtag()}, Sequence: 1, Kind: agentv1.AgentStepKind_AGENT_STEP_KIND_TOOL, State: agentv1.AgentStepState_AGENT_STEP_STATE_DISPATCHED, PolicyDecisions: []*policyv1.AuthorizationDecision{authorization}, Observations: []*artifactv1.ArtifactRef{integrationArtifact("a")}, Decision: &agentv1.AgentDecision{DecisionId: "decision-1", DecisionType: "tool", RationaleSummary: "bounded tool call", Evidence: []*artifactv1.ArtifactRef{integrationArtifact("b")}, NextAction: &agentv1.AgentDecision_ToolCall{ToolCall: toolCall}, ReplayDigest: "sha256:" + strings.Repeat("c", 64)}}
 	stepRequest := &internalagentv1.CommitAgentStepRequest{Context: &commonv1.CommandContext{RequestId: "step-commit", IdempotencyKey: "step-commit-key", TenantId: identity.TenantID, ProjectId: identity.ProjectID, PrincipalId: identity.Principal, Deadline: timestamppb.New(stepAt.Add(time.Minute))}, AgentStep: stepInput, Fence: clone(lease.Fence), RunEtag: run.GetEtag(), ExpectedNextStepSequence: 1}
 	stepDigest, err := canonicalDigest(stepRequest)
 	if err != nil {
@@ -271,7 +271,7 @@ func TestPostgresAgentJourneyIsNormalizedFencedIdempotentAndEventBacked(t *testi
 	if err = verify.QueryRowContext(ctx, `SELECT (SELECT count(*) FROM outbox_messages WHERE tenant_id=$1),(SELECT count(*) FROM audit_events WHERE tenant_id=$1),(SELECT count(*) FROM workflow_agent_command_receipts WHERE tenant_id=$1 AND action LIKE 'agent.%')`, identity.TenantID).Scan(&events, &audits, &receipts); err != nil {
 		t.Fatal(err)
 	}
-	if events != 11 || audits != 8 || receipts != 8 {
+	if events != 12 || audits != 8 || receipts != 8 {
 		t.Fatalf("events=%d audits=%d receipts=%d", events, audits, receipts)
 	}
 	rows, err := verify.QueryContext(ctx, `SELECT envelope_bytes FROM outbox_messages WHERE tenant_id=$1 ORDER BY created_at,event_type`, identity.TenantID)
@@ -279,6 +279,7 @@ func TestPostgresAgentJourneyIsNormalizedFencedIdempotentAndEventBacked(t *testi
 		t.Fatal(err)
 	}
 	types := map[string]int{}
+	var dispatched *agentv1.AgentStepDispatched
 	for rows.Next() {
 		var encoded []byte
 		if err = rows.Scan(&encoded); err != nil {
@@ -293,6 +294,9 @@ func TestPostgresAgentJourneyIsNormalizedFencedIdempotentAndEventBacked(t *testi
 			t.Fatal(decodeErr)
 		}
 		types[string(payload.ProtoReflect().Descriptor().FullName())]++
+		if value, ok := payload.(*agentv1.AgentStepDispatched); ok {
+			dispatched = value
+		}
 	}
 	if err = rows.Err(); err != nil {
 		t.Fatal(err)
@@ -300,10 +304,15 @@ func TestPostgresAgentJourneyIsNormalizedFencedIdempotentAndEventBacked(t *testi
 	if err = platformdb.CloseRows(rows); err != nil {
 		t.Fatal(err)
 	}
-	for eventType, count := range map[string]int{"mindclade.events.agent.v1.AgentDefinitionCreated": 1, "mindclade.events.agent.v1.AgentDefinitionUpdated": 1, "mindclade.events.agent.v1.AgentRunStarted": 2, "mindclade.events.agent.v1.AgentCancellationRequested": 1, "mindclade.events.agent.v1.AgentStepCommitted": 2, "mindclade.events.agent.v1.ToolReceiptCommitted": 1, "mindclade.events.agent.v1.AgentRunCompleted": 1, "mindclade.events.job.v1.JobRequested": 2} {
+	for eventType, count := range map[string]int{"mindclade.events.agent.v1.AgentDefinitionCreated": 1, "mindclade.events.agent.v1.AgentDefinitionUpdated": 1, "mindclade.events.agent.v1.AgentRunStarted": 2, "mindclade.events.agent.v1.AgentCancellationRequested": 1, "mindclade.events.agent.v1.AgentStepDispatched": 1, "mindclade.events.agent.v1.AgentStepCommitted": 1, "mindclade.events.agent.v1.ToolReceiptCommitted": 1, "mindclade.events.agent.v1.AgentRunCompleted": 1, "mindclade.events.job.v1.JobRequested": 2, "mindclade.events.job.v1.AttemptLeased": 1} {
 		if types[eventType] != count {
 			t.Fatalf("event %s count=%d want=%d all=%v", eventType, types[eventType], count, types)
 		}
+	}
+	if dispatched == nil || !proto.Equal(dispatched.GetStep(), storedStep) || dispatched.GetAttemptId() != lease.Fence.GetAttemptId() ||
+		dispatched.GetLeaseEpoch() != lease.Fence.GetLeaseEpoch() || dispatched.GetWorkerProfile().GetResourceId() != worker.WorkerID ||
+		dispatched.GetWorkerProfile().GetName() != project+"/workerProfiles/"+worker.WorkerID || !proto.Equal(dispatched.GetDispatchDeadline(), lease.Fence.GetDeadline()) {
+		t.Fatalf("AgentStepDispatched payload is not populated from the accepted fenced step: %v", dispatched)
 	}
 	if err = verify.Commit(); err != nil {
 		t.Fatal(err)

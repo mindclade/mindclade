@@ -87,6 +87,11 @@ impl CallOptions {
         Ok(self)
     }
 
+    pub(crate) fn with_sensitive_lease_token(mut self, value: SensitiveLeaseToken) -> Self {
+        self.lease_token = Some(value);
+        self
+    }
+
     pub(crate) fn prepare(&self, config: &Config) -> PreparedCall {
         let request_id = self.request_id.clone().unwrap_or_else(generate_request_id);
         let trace_id = self.trace_id.clone().unwrap_or_else(|| request_id.clone());
@@ -210,6 +215,18 @@ pub(crate) struct PreparedCall {
 pub(crate) struct SensitiveLeaseToken(String);
 
 impl SensitiveLeaseToken {
+    pub(crate) fn new(value: String) -> Result<Self, Error> {
+        if value.len() < 32
+            || value.len() > 4096
+            || !value.bytes().all(|byte| (0x21..=0x7e).contains(&byte))
+        {
+            return Err(Error::protocol(
+                "lease credential metadata must contain 32 through 4096 visible ASCII characters",
+            ));
+        }
+        Ok(Self(value))
+    }
+
     pub(crate) fn expose(&self) -> &str {
         &self.0
     }

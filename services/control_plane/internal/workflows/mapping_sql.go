@@ -13,6 +13,7 @@ import (
 	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	"github.com/mindclade/mindclade/libs/go/numconv"
 	artifactv1 "github.com/mindclade/mindclade/protocols/generated/go/artifact/v1"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	policyv1 "github.com/mindclade/mindclade/protocols/generated/go/policy/v1"
@@ -281,6 +282,18 @@ func scanDefinition(row scanner) (definitionRow, error) {
 }
 
 func definitionProto(ctx context.Context, tx *sql.Tx, row definitionRow) (*workflowv1.WorkflowDefinition, error) {
+	maximumIterations, err := numconv.Int64ToUint32(row.maximumIterations)
+	if err != nil {
+		return nil, err
+	}
+	maximumFanOut, err := numconv.Int64ToUint32(row.maximumFanOut)
+	if err != nil {
+		return nil, err
+	}
+	maximumParallel, err := numconv.Int64ToUint32(row.maximumParallel)
+	if err != nil {
+		return nil, err
+	}
 	definition, err := platformdb.LoadArtifactRef(ctx, tx, row.tenant, sql.NullInt64{Int64: row.definitionID, Valid: true})
 	if err != nil {
 		return nil, err
@@ -297,7 +310,7 @@ func definitionProto(ctx context.Context, tx *sql.Tx, row definitionRow) (*workf
 		Name: row.name, Uid: row.uid, Revision: row.revision, Etag: row.etag, TenantId: row.tenant, ProjectId: row.project,
 		DisplayName: row.displayName, SemanticVersion: row.semanticVersion, State: workflowv1.WorkflowDefinitionState(row.state),
 		Definition: definition, ResolvedGraphDigest: row.graphDigest,
-		Limits:      &workflowv1.WorkflowLimits{MaximumIterations: uint32(row.maximumIterations), MaximumFanOut: uint32(row.maximumFanOut), MaximumParallelNodes: uint32(row.maximumParallel), MaximumWallTime: &durationpb.Duration{Seconds: row.wallSeconds, Nanos: row.wallNanos}}, //nolint:gosec // Conversion is bounded by validated protocol invariants or PostgreSQL CHECK constraints.
+		Limits:      &workflowv1.WorkflowLimits{MaximumIterations: maximumIterations, MaximumFanOut: maximumFanOut, MaximumParallelNodes: maximumParallel, MaximumWallTime: &durationpb.Duration{Seconds: row.wallSeconds, Nanos: row.wallNanos}},
 		InputSchema: inputSchema, OutputSchema: outputSchema, CreateTime: timestamppb.New(row.created.UTC()), UpdateTime: timestamppb.New(row.updated.UTC()), DeleteTime: timestamp(row.deleted),
 	}
 	rows, err := tx.QueryContext(ctx, `SELECT resource_ref_id FROM workflow_definition_tools WHERE tenant_id=$1 AND project_id=$2 AND definition_name=$3 ORDER BY ordinal`, row.tenant, row.project, row.name) //nolint:sqlclosecheck // Rows are closed eagerly through platformdb.CloseRows on every exit path.
@@ -396,6 +409,22 @@ func scanRun(row scanner) (runRow, error) {
 }
 
 func runProto(ctx context.Context, tx *sql.Tx, row runRow) (*workflowv1.WorkflowRun, error) {
+	completedNodes, err := numconv.Int64ToUint32(row.completedNodes)
+	if err != nil {
+		return nil, err
+	}
+	iterations, err := numconv.Int64ToUint32(row.iterations)
+	if err != nil {
+		return nil, err
+	}
+	transitionSequence, err := numconv.Int64ToUint64(row.transitionSequence)
+	if err != nil {
+		return nil, err
+	}
+	leaseEpoch, err := numconv.Int64ToUint64(row.leaseEpoch)
+	if err != nil {
+		return nil, err
+	}
 	definition, err := platformdb.LoadResourceRef(ctx, tx, row.tenant, sql.NullInt64{Int64: row.definitionID, Valid: true})
 	if err != nil {
 		return nil, err
@@ -434,8 +463,8 @@ func runProto(ctx context.Context, tx *sql.Tx, row runRow) (*workflowv1.Workflow
 			return nil, err
 		}
 	}
-	value := &workflowv1.WorkflowRun{Name: row.name, Uid: row.uid, Revision: row.revision, Etag: row.etag, TenantId: row.tenant, ProjectId: row.project, Definition: definition, DefinitionDigest: row.definitionDigest, AgentRun: agentRun, State: workflowv1.WorkflowRunState(row.state), CompletedNodeCount: uint32(row.completedNodes), IterationCount: uint32(row.iterations), TransitionSequence: uint64(row.transitionSequence), AttemptId: row.attemptID, LeaseEpoch: uint64(row.leaseEpoch), Input: input, Output: output, ReplayState: replay, AdmissionDecision: admission, DecisionLog: decisionLog, Failure: failure, CreateTime: timestamppb.New(row.created.UTC()), UpdateTime: timestamppb.New(row.updated.UTC()), EndTime: timestamp(row.ended)} //nolint:gosec // Conversion is bounded by validated protocol invariants or PostgreSQL CHECK constraints.
-	rows, err := tx.QueryContext(ctx, `SELECT node_id FROM workflow_run_active_nodes WHERE tenant_id=$1 AND project_id=$2 AND workflow_run_name=$3 ORDER BY ordinal`, row.tenant, row.project, row.name)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          //nolint:sqlclosecheck // Rows are closed eagerly through platformdb.CloseRows on every exit path.
+	value := &workflowv1.WorkflowRun{Name: row.name, Uid: row.uid, Revision: row.revision, Etag: row.etag, TenantId: row.tenant, ProjectId: row.project, Definition: definition, DefinitionDigest: row.definitionDigest, AgentRun: agentRun, State: workflowv1.WorkflowRunState(row.state), CompletedNodeCount: completedNodes, IterationCount: iterations, TransitionSequence: transitionSequence, AttemptId: row.attemptID, LeaseEpoch: leaseEpoch, Input: input, Output: output, ReplayState: replay, AdmissionDecision: admission, DecisionLog: decisionLog, Failure: failure, CreateTime: timestamppb.New(row.created.UTC()), UpdateTime: timestamppb.New(row.updated.UTC()), EndTime: timestamp(row.ended)}
+	rows, err := tx.QueryContext(ctx, `SELECT node_id FROM workflow_run_active_nodes WHERE tenant_id=$1 AND project_id=$2 AND workflow_run_name=$3 ORDER BY ordinal`, row.tenant, row.project, row.name) //nolint:sqlclosecheck // Rows are closed eagerly through platformdb.CloseRows on every exit path.
 	if err != nil {
 		return nil, err
 	}
@@ -516,6 +545,10 @@ func scanApproval(row scanner) (approvalRow, error) {
 }
 
 func approvalProto(ctx context.Context, tx *sql.Tx, row approvalRow) (*workflowv1.ApprovalRequest, error) {
+	minimumApprovers, err := numconv.Int64ToUint32(row.minimumApprovers)
+	if err != nil {
+		return nil, err
+	}
 	tool, err := platformdb.LoadResourceRef(ctx, tx, row.tenant, row.bindingToolID)
 	if err != nil {
 		return nil, err
@@ -525,8 +558,8 @@ func approvalProto(ctx context.Context, tx *sql.Tx, row approvalRow) (*workflowv
 		return nil, err
 	}
 	binding := &workflowv1.ApprovalBinding{Action: row.bindingAction, IntentDigest: row.bindingIntentDigest, ParametersDigest: row.bindingParametersDigest, AgentRunName: row.bindingAgentRun, AgentStepName: row.bindingAgentStep, Tool: tool, ToolVersion: row.bindingToolVersion, PolicySnapshot: policy, RiskClass: row.bindingRiskClass, BindingDigest: row.bindingDigest}
-	value := &workflowv1.ApprovalRequest{Context: contextProto(row.context, row.tenant, row.project), Name: row.name, Uid: row.uid, Revision: row.revision, Etag: row.etag, TenantId: row.tenant, ProjectId: row.project, Binding: binding, RequestedByPrincipalRef: row.requestedBy, MinimumIndependentApprovers: uint32(row.minimumApprovers), ReusePolicy: workflowv1.ApprovalReusePolicy(row.reusePolicy), State: workflowv1.ApprovalState(row.state), RequestedAt: timestamppb.New(row.requestedAt.UTC()), ExpireTime: timestamppb.New(row.expireTime.UTC())} //nolint:gosec // Conversion is bounded by validated protocol invariants or PostgreSQL CHECK constraints.
-	rows, err := tx.QueryContext(ctx, `SELECT artifact_ref_id FROM approval_request_input_artifacts WHERE tenant_id=$1 AND project_id=$2 AND approval_request_name=$3 ORDER BY ordinal`, row.tenant, row.project, row.name)                                                                                                                                                                                                                                                                                                                                        //nolint:sqlclosecheck // Rows are closed eagerly through platformdb.CloseRows on every exit path.
+	value := &workflowv1.ApprovalRequest{Context: contextProto(row.context, row.tenant, row.project), Name: row.name, Uid: row.uid, Revision: row.revision, Etag: row.etag, TenantId: row.tenant, ProjectId: row.project, Binding: binding, RequestedByPrincipalRef: row.requestedBy, MinimumIndependentApprovers: minimumApprovers, ReusePolicy: workflowv1.ApprovalReusePolicy(row.reusePolicy), State: workflowv1.ApprovalState(row.state), RequestedAt: timestamppb.New(row.requestedAt.UTC()), ExpireTime: timestamppb.New(row.expireTime.UTC())}
+	rows, err := tx.QueryContext(ctx, `SELECT artifact_ref_id FROM approval_request_input_artifacts WHERE tenant_id=$1 AND project_id=$2 AND approval_request_name=$3 ORDER BY ordinal`, row.tenant, row.project, row.name) //nolint:sqlclosecheck // Rows are closed eagerly through platformdb.CloseRows on every exit path.
 	if err != nil {
 		return nil, err
 	}

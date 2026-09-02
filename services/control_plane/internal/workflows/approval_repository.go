@@ -12,6 +12,7 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	"github.com/mindclade/mindclade/libs/go/numconv"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	internalworkflowv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/workflow/v1"
 	policyv1 "github.com/mindclade/mindclade/protocols/generated/go/policy/v1"
@@ -513,7 +514,11 @@ func (repository SQLRepository) ConsumeApproval(ctx context.Context, identity Id
 			return nil, false, ErrRevisionConflict
 		}
 	}
-	event, err := repository.Events.ApprovalConsumed(identity, receipt, request.GetCallId(), uint64(consumptionCount+1), request.GetContext(), at) //nolint:gosec // Conversion is bounded by validated protocol invariants or PostgreSQL CHECK constraints.
+	sequence, conversionErr := numconv.Int64ToUint64(consumptionCount + 1)
+	if conversionErr != nil {
+		return nil, false, conversionErr
+	}
+	event, err := repository.Events.ApprovalConsumed(identity, receipt, request.GetCallId(), sequence, request.GetContext(), at)
 	if err != nil {
 		return nil, false, err
 	}

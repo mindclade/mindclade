@@ -31,7 +31,7 @@ from .errors import (
     ProtocolError,
     UnavailableError,
 )
-from .transport import CANCEL_OPERATION, GET_OPERATION, WATCH_OPERATION
+from .transport import CANCEL_OPERATION, GET_OPERATION, LIST_OPERATIONS, WATCH_OPERATION
 
 _TERMINAL_STATES = frozenset(
     {
@@ -47,6 +47,7 @@ _FAILED_STATES = frozenset(
     }
 )
 _CANCELLATION_POLL_SECONDS = 0.25
+_MAX_OPERATION_PAGE_SIZE = 200
 
 
 def _operation_from_response(
@@ -84,6 +85,22 @@ def _raise_if_operation_failed(operation: operation_pb2.Operation) -> None:
         raise OperationFailedError(operation)
 
 
+def _validate_listed_operation(
+    operation: operation_pb2.Operation, tenant_id: str, project_id: str
+) -> None:
+    required_text("operation id", operation.operation_id)
+    if (
+        operation.tenant_id != tenant_id
+        or operation.project_id != project_id
+        or operation.state == operation_pb2.OPERATION_STATE_UNSPECIFIED
+        or operation.done != (operation.state in _TERMINAL_STATES)
+    ):
+        raise ProtocolError(
+            "ListOperations returned invalid or cross-project durable state",
+            status=grpc.StatusCode.DATA_LOSS,
+        )
+
+
 def _watch_backoff(invoker: SyncInvoker | AsyncInvoker, failures: int, remaining: float) -> float:
     exponent = min(max(0, failures - 1), 30)
     cap = min(
@@ -97,6 +114,42 @@ def _watch_backoff(invoker: SyncInvoker | AsyncInvoker, failures: int, remaining
 class Operations:
     def __init__(self, invoker: SyncInvoker) -> None:
         self._invoker = invoker
+
+    def list(
+        self,
+        request: job_service_pb2.ListOperationsRequest | None = None,
+        *,
+        options: CallOptions | None = None,
+    ) -> job_service_pb2.ListOperationsResponse:
+        value = job_service_pb2.ListOperationsRequest()
+        if request is not None:
+            value.CopyFrom(request)
+        parent = self._invoker.config.project_parent
+        if value.parent and value.parent != parent:
+            raise ValueError("operation list parent must match the configured project")
+        if value.page.page_size > _MAX_OPERATION_PAGE_SIZE:
+            raise ValueError("operation page size cannot exceed 200")
+        value.parent = parent
+        call = prepare_call(
+            options,
+            default_timeout=self._invoker.config.default_timeout,
+            require_idempotency=False,
+        )
+        raw = self._invoker.unary(LIST_OPERATIONS, value, call=call, retry_safe=True)
+        if not isinstance(raw, job_service_pb2.ListOperationsResponse):
+            raise ProtocolError(
+                "ListOperations response violated its generated contract",
+                status=grpc.StatusCode.DATA_LOSS,
+            )
+        response = job_service_pb2.ListOperationsResponse()
+        response.CopyFrom(raw)
+        for operation in response.operations:
+            _validate_listed_operation(
+                operation,
+                self._invoker.config.tenant_id,
+                self._invoker.config.project_id,
+            )
+        return response
 
     def get(
         self,
@@ -140,7 +193,7 @@ class Operations:
         request = job_service_pb2.CancelOperationRequest(
             name=required_text("operation name", name),
             etag=required_text("operation etag", etag),
-            reason=required_text("cancellation reason", reason, maximum=512),
+            reason=required_text("cancellation reason", reason, maximum=1024),
         )
         request.context.CopyFrom(
             command_context(
@@ -299,6 +352,42 @@ class AsyncOperations:
     def __init__(self, invoker: AsyncInvoker) -> None:
         self._invoker = invoker
 
+    async def list(
+        self,
+        request: job_service_pb2.ListOperationsRequest | None = None,
+        *,
+        options: CallOptions | None = None,
+    ) -> job_service_pb2.ListOperationsResponse:
+        value = job_service_pb2.ListOperationsRequest()
+        if request is not None:
+            value.CopyFrom(request)
+        parent = self._invoker.config.project_parent
+        if value.parent and value.parent != parent:
+            raise ValueError("operation list parent must match the configured project")
+        if value.page.page_size > _MAX_OPERATION_PAGE_SIZE:
+            raise ValueError("operation page size cannot exceed 200")
+        value.parent = parent
+        call = prepare_call(
+            options,
+            default_timeout=self._invoker.config.default_timeout,
+            require_idempotency=False,
+        )
+        raw = await self._invoker.unary(LIST_OPERATIONS, value, call=call, retry_safe=True)
+        if not isinstance(raw, job_service_pb2.ListOperationsResponse):
+            raise ProtocolError(
+                "ListOperations response violated its generated contract",
+                status=grpc.StatusCode.DATA_LOSS,
+            )
+        response = job_service_pb2.ListOperationsResponse()
+        response.CopyFrom(raw)
+        for operation in response.operations:
+            _validate_listed_operation(
+                operation,
+                self._invoker.config.tenant_id,
+                self._invoker.config.project_id,
+            )
+        return response
+
     async def get(
         self,
         name: str,
@@ -341,7 +430,7 @@ class AsyncOperations:
         request = job_service_pb2.CancelOperationRequest(
             name=required_text("operation name", name),
             etag=required_text("operation etag", etag),
-            reason=required_text("cancellation reason", reason, maximum=512),
+            reason=required_text("cancellation reason", reason, maximum=1024),
         )
         request.context.CopyFrom(
             command_context(

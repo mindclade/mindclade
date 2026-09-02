@@ -5,11 +5,12 @@ import (
 	"path"
 	"strings"
 
+	"google.golang.org/protobuf/proto"
+
 	adminv1 "github.com/mindclade/mindclade/protocols/generated/go/admin/v1"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	internaladminv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/admin/v1"
 	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
-	"google.golang.org/protobuf/proto"
 )
 
 // AdminService is the private generated-type-only tenant, project, and audit
@@ -43,12 +44,12 @@ func (service *AdminService) UpdateTenant(ctx context.Context, request *internal
 	if materialized == nil || materialized.GetTenant() == nil || materialized.GetTenant().GetName() != configuredTenantName(service.client.config) || materialized.GetUpdateMask() == nil || strings.TrimSpace(materialized.GetEtag()) == "" {
 		return nil, invalidArgument("tenant update requires the configured tenant, field mask, and etag")
 	}
-	call, err := service.prepareMutation(ctx, materialized, materialized.GetContext(), func(value *commonv1.CommandContext) { materialized.Context = value }, "", options...)
+	callContext, cancel, err := service.prepareMutation(ctx, materialized, materialized.GetContext(), func(value *commonv1.CommandContext) { materialized.Context = value }, "", options...)
 	if err != nil {
 		return nil, err
 	}
-	defer call.cancel()
-	response, rpcErr := service.transport.UpdateTenant(call.ctx, materialized)
+	defer cancel()
+	response, rpcErr := service.transport.UpdateTenant(callContext, materialized)
 	return operationResponse(response.GetOperation(), rpcErr, "UpdateTenant")
 }
 
@@ -69,12 +70,12 @@ func (service *AdminService) CreateProject(ctx context.Context, request *interna
 	} else if !normalizeTenantReference(service.client.config, materialized.Project.Tenant) {
 		return nil, invalidArgument("project tenant reference must match the configured tenant")
 	}
-	call, err := service.prepareMutation(ctx, materialized, materialized.GetContext(), func(value *commonv1.CommandContext) { materialized.Context = value }, service.client.config.ProjectID, options...)
+	callContext, cancel, err := service.prepareMutation(ctx, materialized, materialized.GetContext(), func(value *commonv1.CommandContext) { materialized.Context = value }, service.client.config.ProjectID, options...)
 	if err != nil {
 		return nil, err
 	}
-	defer call.cancel()
-	response, rpcErr := service.transport.CreateProject(call.ctx, materialized)
+	defer cancel()
+	response, rpcErr := service.transport.CreateProject(callContext, materialized)
 	return operationResponse(response.GetOperation(), rpcErr, "CreateProject")
 }
 
@@ -127,12 +128,12 @@ func (service *AdminService) UpdateProject(ctx context.Context, request *interna
 	if materialized == nil || materialized.GetProject() == nil || materialized.GetProject().GetName() != projectName(service.client.config.TenantID, service.client.config.ProjectID) || materialized.GetUpdateMask() == nil || strings.TrimSpace(materialized.GetEtag()) == "" {
 		return nil, invalidArgument("project update requires the configured project, field mask, and etag")
 	}
-	call, err := service.prepareMutation(ctx, materialized, materialized.GetContext(), func(value *commonv1.CommandContext) { materialized.Context = value }, service.client.config.ProjectID, options...)
+	callContext, cancel, err := service.prepareMutation(ctx, materialized, materialized.GetContext(), func(value *commonv1.CommandContext) { materialized.Context = value }, service.client.config.ProjectID, options...)
 	if err != nil {
 		return nil, err
 	}
-	defer call.cancel()
-	response, rpcErr := service.transport.UpdateProject(call.ctx, materialized)
+	defer cancel()
+	response, rpcErr := service.transport.UpdateProject(callContext, materialized)
 	return operationResponse(response.GetOperation(), rpcErr, "UpdateProject")
 }
 
@@ -162,12 +163,12 @@ func (service *AdminService) ExportAudit(ctx context.Context, query *adminv1.Aud
 		return nil, invalidArgument("audit export query must be bounded to the configured tenant or project")
 	}
 	request := &internaladminv1.ExportAuditRecordsRequest{Query: materializedQuery}
-	call, err := service.prepareMutation(ctx, request, request.GetContext(), func(value *commonv1.CommandContext) { request.Context = value }, auditProjectScope(service.client.config, materializedQuery.GetParent()), options...)
+	callContext, cancel, err := service.prepareMutation(ctx, request, request.GetContext(), func(value *commonv1.CommandContext) { request.Context = value }, auditProjectScope(service.client.config, materializedQuery.GetParent()), options...)
 	if err != nil {
 		return nil, err
 	}
-	defer call.cancel()
-	response, rpcErr := service.transport.ExportAuditRecords(call.ctx, request)
+	defer cancel()
+	response, rpcErr := service.transport.ExportAuditRecords(callContext, request)
 	return operationResponse(response.GetOperation(), rpcErr, "ExportAuditRecords")
 }
 
@@ -190,27 +191,22 @@ func (service *AdminService) GetAuditExport(ctx context.Context, name string, op
 	return cloneGenerated(response.GetAuditExport()), nil
 }
 
-type preparedAdminMutation struct {
-	ctx    context.Context
-	cancel context.CancelFunc
-}
-
-func (service *AdminService) prepareMutation(ctx context.Context, request proto.Message, existing *commonv1.CommandContext, assign func(*commonv1.CommandContext), projectID string, options ...RequestOption) (preparedAdminMutation, error) {
+func (service *AdminService) prepareMutation(ctx context.Context, request proto.Message, existing *commonv1.CommandContext, assign func(*commonv1.CommandContext), projectID string, options ...RequestOption) (context.Context, context.CancelFunc, error) {
 	key := existing.GetIdempotencyKey()
 	assign(nil)
 	callContext, metadata, cancel, err := service.client.mutationContext(ctx, key, options...)
 	if err != nil {
-		return preparedAdminMutation{}, err
+		return nil, nil, err
 	}
 	digest, err := deterministicDigest(request)
 	if err != nil {
 		cancel()
-		return preparedAdminMutation{}, err
+		return nil, nil, err
 	}
 	command := commandContext(service.client.config, callContext, metadata, digest)
 	command.ProjectId = projectID
 	assign(command)
-	return preparedAdminMutation{ctx: callContext, cancel: cancel}, nil
+	return callContext, cancel, nil
 }
 
 func configuredTenantName(config Config) string {

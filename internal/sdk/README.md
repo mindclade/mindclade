@@ -28,3 +28,27 @@ the corresponding state transaction commits.
 The public-safe `mindclade.api.v1` descriptor and its derived OpenAPI projection
 remain a separate compatibility boundary. They may be published later without
 making these internal RPCs or this SDK public.
+
+The common Go path keeps orchestration ergonomic while the request and result
+cross the wire as generated protobuf messages:
+
+```go
+client, err := mindclade.New(
+    mindclade.WithEnvironment(mindclade.Development),
+    mindclade.WithWorkloadIdentity(),
+)
+if err != nil {
+    return err
+}
+defer client.Close()
+
+run, err := client.Training.Submit(ctx, mindclade.TrainingJob{
+    Model:   mindclade.Model("nova-1"),
+    Dataset: mindclade.Dataset("datasets/pdb-2026-08"),
+    Recipe:  mindclade.Recipe("pretrain-v4"),
+})
+```
+
+Endpoint, audience, tenant, project, and principal scope are resolved from the
+selected environment and authenticated workload configuration; callers cannot
+override server-authoritative identity in a command body.

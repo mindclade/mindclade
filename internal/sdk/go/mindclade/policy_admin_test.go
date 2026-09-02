@@ -8,18 +8,19 @@ import (
 	"testing"
 	"time"
 
-	adminv1 "github.com/mindclade/mindclade/protocols/generated/go/admin/v1"
-	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
-	internaladminv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/admin/v1"
-	internalpolicyv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/policy/v1"
-	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
-	policyv1 "github.com/mindclade/mindclade/protocols/generated/go/policy/v1"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/test/bufconn"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
+
+	adminv1 "github.com/mindclade/mindclade/protocols/generated/go/admin/v1"
+	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
+	internaladminv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/admin/v1"
+	internalpolicyv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/policy/v1"
+	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
+	policyv1 "github.com/mindclade/mindclade/protocols/generated/go/policy/v1"
 )
 
 type policySDKServer struct {

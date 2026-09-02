@@ -2215,7 +2215,7 @@ x-mindclade-binding-contracts:
   stream: STREAM_PROJECTION_SSE
   successStatus:
   - 200
-x-mindclade-descriptor-digest: sha256:ffe75f1ad43b32058a0949b03ddba70bc5ddacde27d27b1ae2a30f6245d926f0
+x-mindclade-descriptor-digest: sha256:e53ce4489fb3bf19a0f0fe3a417806fa4b7aecf32f58d189994ae09e33baeb61
 x-mindclade-schema-version: mindclade.raw-openapi-projection/v3
 x-mindclade-generator:
   name: mindclade-contract-codegen 3.1.0

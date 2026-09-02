@@ -13,11 +13,6 @@ import (
 	"testing"
 	"time"
 
-	artifactv1 "github.com/mindclade/mindclade/protocols/generated/go/artifact/v1"
-	internalartifactv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/artifact/v1"
-	internaljobv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/job/v1"
-	internaltrainingv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/training/v1"
-	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
@@ -25,6 +20,13 @@ import (
 	"google.golang.org/grpc/test/bufconn"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
+
+	artifactv1 "github.com/mindclade/mindclade/protocols/generated/go/artifact/v1"
+	internalartifactv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/artifact/v1"
+	internaljobv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/job/v1"
+	internaltrainingv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/training/v1"
+	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
+	trainingv1 "github.com/mindclade/mindclade/protocols/generated/go/training/v1"
 )
 
 const fixtureContent = "immutable recipe content"
@@ -147,6 +149,20 @@ type trainingServer struct {
 	request *internaltrainingv1.CreateTrainingRunRequest
 }
 
+type trainingAliasClient struct {
+	internaltrainingv1.TrainingServiceClient
+	operation *jobv1.Operation
+	run       *trainingv1.TrainingRun
+}
+
+func (client *trainingAliasClient) CreateTrainingRun(_ context.Context, _ *internaltrainingv1.CreateTrainingRunRequest, _ ...grpc.CallOption) (*internaltrainingv1.CreateTrainingRunResponse, error) {
+	return &internaltrainingv1.CreateTrainingRunResponse{Operation: client.operation}, nil
+}
+
+func (client *trainingAliasClient) ListTrainingRuns(_ context.Context, _ *internaltrainingv1.ListTrainingRunsRequest, _ ...grpc.CallOption) (*internaltrainingv1.ListTrainingRunsResponse, error) {
+	return &internaltrainingv1.ListTrainingRunsResponse{TrainingRuns: []*trainingv1.TrainingRun{client.run}}, nil
+}
+
 func (server *trainingServer) CreateTrainingRun(_ context.Context, request *internaltrainingv1.CreateTrainingRunRequest) (*internaltrainingv1.CreateTrainingRunResponse, error) {
 	server.mu.Lock()
 	server.request = proto.Clone(request).(*internaltrainingv1.CreateTrainingRunRequest)
@@ -233,6 +249,39 @@ func TestTrainingSubmitUsesGeneratedContracts(t *testing.T) {
 	}
 }
 
+func TestTrainingFacadeDetachesGeneratedTransportValues(t *testing.T) {
+	client, _, _ := testClient(t)
+	parent := projectName(client.config.TenantID, client.config.ProjectID)
+	transport := &trainingAliasClient{
+		operation: &jobv1.Operation{OperationId: parent + "/operations/op-alias", TenantId: client.config.TenantID, ProjectId: client.config.ProjectID, State: jobv1.OperationState_OPERATION_STATE_PENDING},
+		run:       &trainingv1.TrainingRun{Name: parent + "/trainingRuns/run-alias", State: trainingv1.TrainingRunState_TRAINING_RUN_STATE_CREATED},
+	}
+	client.Training.transport = transport
+
+	operation, err := client.Training.Submit(context.Background(), TrainingJob{
+		Model:          Model("nova-1"),
+		Dataset:        Dataset("datasets/pdb-2026-08"),
+		Recipe:         Recipe("pretrain-v4"),
+		IdempotencyKey: "alias-safety",
+	})
+	if err != nil {
+		t.Fatalf("Submit: %v", err)
+	}
+	operation.Etag = "caller-mutated"
+	if transport.operation.GetEtag() == operation.GetEtag() {
+		t.Fatal("Submit exposed transport-owned generated message memory")
+	}
+
+	page, err := client.Training.List(context.Background(), 20, "")
+	if err != nil || len(page.Runs) != 1 {
+		t.Fatalf("List: page=%v err=%v", page, err)
+	}
+	page.Runs[0].Etag = "caller-mutated"
+	if transport.run.GetEtag() == page.Runs[0].GetEtag() {
+		t.Fatal("List exposed transport-owned generated message memory")
+	}
+}
+
 func TestOperationWaitAndWatch(t *testing.T) {
 	client, _, _ := testClient(t)
 	context, cancel := context.WithTimeout(context.Background(), time.Second)
@@ -245,7 +294,7 @@ func TestOperationWaitAndWatch(t *testing.T) {
 	if err != nil {
 		t.Fatalf("watch: %v", err)
 	}
-	defer watcher.Close()
+	defer func() { _ = watcher.Close() }()
 	first, err := watcher.Recv()
 	if err != nil || first.GetSequence() != 1 {
 		t.Fatalf("first watch event: response=%v err=%v", first, err)

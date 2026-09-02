@@ -12,6 +12,7 @@ members = [
     "libs/rust/storage",
     "libs/rust/testing",
     "internal/sdk/rust",
+    "workers/ingestion_worker",
 ]
 resolver = "3"
 

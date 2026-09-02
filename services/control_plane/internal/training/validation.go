@@ -323,7 +323,7 @@ func validResourceID(value string) bool {
 }
 
 func validReason(value string) bool {
-	return value != "" && len(value) <= 1024 && strings.TrimSpace(value) != "" && !strings.ContainsRune(value, '\x00')
+	return value != "" && len(value) <= 1024 && strings.TrimSpace(value) == value && !strings.ContainsAny(value, "\x00\r\n")
 }
 
 func validateTerminalCommand(command *trainingv1.CompleteTrainingRunCommand) error {

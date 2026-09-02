@@ -3,7 +3,12 @@
 	"version": "0.1.0",
 	"private": true,
 	"type": "module",
-	"exports": "./src/index.ts",
+	"exports": {
+		".": {
+			"types": "./src/index.ts",
+			"default": "./dist/native/internal/sdk/typescript/src/index.js"
+		}
+	},
 	"scripts": {
 		"build": "rm -rf dist/native && tsc -p tsconfig.json --noEmit false --rootDir ../../.. --outDir dist/native",
 		"typecheck": "tsc -p tsconfig.json --noEmit",

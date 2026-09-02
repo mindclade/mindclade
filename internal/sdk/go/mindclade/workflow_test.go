@@ -10,10 +10,6 @@ import (
 	"testing"
 	"time"
 
-	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
-	internalworkflowv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/workflow/v1"
-	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
-	workflowv1 "github.com/mindclade/mindclade/protocols/generated/go/workflow/v1"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
@@ -23,6 +19,11 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
+
+	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
+	internalworkflowv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/workflow/v1"
+	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
+	workflowv1 "github.com/mindclade/mindclade/protocols/generated/go/workflow/v1"
 )
 
 type workflowSDKServer struct {
@@ -247,8 +248,8 @@ func TestWorkflowAndApprovalFacadesCoverGeneratedRPCs(t *testing.T) {
 		t.Fatalf("terminal=%v cursor=%d err=%v", terminal, watcher.Cursor(), err)
 	}
 	_ = watcher.Close()
-	if run, err := client.Workflows.Wait(context.Background(), runName, 1); err != nil || run.GetState() != workflowv1.WorkflowRunState_WORKFLOW_RUN_STATE_SUCCEEDED {
-		t.Fatalf("wait run=%v err=%v", run, err)
+	if run, waitErr := client.Workflows.Wait(context.Background(), runName, 1); waitErr != nil || run.GetState() != workflowv1.WorkflowRunState_WORKFLOW_RUN_STATE_SUCCEEDED {
+		t.Fatalf("wait run=%v err=%v", run, waitErr)
 	}
 
 	binding := approvalBinding(t)

@@ -1,0 +1,13 @@
+{
+  "pythonVersion": "3.12",
+  "typeCheckingMode": "strict",
+  "include": ["python", "tests"],
+  "extraPaths": [
+    "python",
+    "../../internal/sdk/python",
+    "../../protocols/generated/python"
+  ],
+  "venvPath": "../..",
+  "venv": ".venv",
+  "reportMissingModuleSource": false
+}

@@ -1,0 +1,8 @@
+{
+  "schema_version": "mindclade.example-bounded-agent-workflow/v1",
+  "workflow_run_name": "tenants/example-tenant/projects/example-project/workflowRuns/bounded-analysis-1",
+  "allowed_actions": ["start", "status", "cancel"],
+  "maximum_status_reads": 20,
+  "approval_required": true,
+  "minimum_independent_approvers": 1
+}

@@ -14,6 +14,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	foundationaudit "github.com/mindclade/mindclade/libs/go/audit"
+	"github.com/mindclade/mindclade/libs/go/numconv"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	inferencev1 "github.com/mindclade/mindclade/protocols/generated/go/inference/v1"
 	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
@@ -49,7 +50,7 @@ func (GeneratedEventFactory) ResultCommitted(identity Identity, request *inferen
 		ResultManifest: clone(result.GetResultManifest()), ResultDigest: result.GetResultDigest(),
 		Operation: operationResource(operation), CommittedAt: timestamppb.New(at.UTC()),
 	}
-	return eventEnvelope(identity, requestResource(identity, request, result.GetRequestDigest()), payload, uint64(operation.GetResourceVersion()), command, at, "inference") //nolint:gosec // Conversion is bounded by validated protocol invariants or PostgreSQL CHECK constraints.
+	return eventEnvelope(identity, requestResource(identity, request, result.GetRequestDigest()), payload, operation.GetResourceVersion(), command, at, "inference")
 }
 
 func (GeneratedEventFactory) JobRequested(identity Identity, operation *jobv1.Operation, configurationDigest string, command *commonv1.CommandContext, at time.Time) (*commonv1.EventEnvelope, error) {
@@ -60,7 +61,11 @@ func (GeneratedEventFactory) JobRequested(identity Identity, operation *jobv1.Op
 	return eventEnvelope(identity, operationResource(operation), payload, 1, command, at, "inference-scheduler")
 }
 
-func eventEnvelope(identity Identity, subject *commonv1.ResourceRef, payload proto.Message, sequence uint64, command *commonv1.CommandContext, at time.Time, producer string) (*commonv1.EventEnvelope, error) {
+func eventEnvelope(identity Identity, subject *commonv1.ResourceRef, payload proto.Message, revision int64, command *commonv1.CommandContext, at time.Time, producer string) (*commonv1.EventEnvelope, error) {
+	sequence, err := numconv.Int64ToUint64(revision)
+	if err != nil {
+		return nil, err
+	}
 	if subject == nil || payload == nil || command == nil || sequence == 0 || at.IsZero() {
 		return nil, errors.New("inference event subject, payload, command, sequence, and time are required")
 	}

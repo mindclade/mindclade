@@ -5,12 +5,13 @@ import (
 	"strings"
 	"time"
 
+	"google.golang.org/protobuf/proto"
+
 	artifactv1 "github.com/mindclade/mindclade/protocols/generated/go/artifact/v1"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	evaluationv1 "github.com/mindclade/mindclade/protocols/generated/go/evaluation/v1"
 	internalevaluationv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/evaluation/v1"
 	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
-	"google.golang.org/protobuf/proto"
 )
 
 // EvaluationService is the private generated-type-only evaluation lifecycle,
@@ -49,12 +50,12 @@ func (service *EvaluationService) CreateRun(ctx context.Context, request *intern
 	if !normalizeScopedReference(service.client.config, value.GetModelRelease(), "model_release", "models") {
 		return nil, invalidArgument("evaluation model release must be in the configured project")
 	}
-	call, err := service.prepareMutation(ctx, value, value.GetContext(), func(context *commonv1.CommandContext) { value.Context = context }, false, options...)
+	callContext, cancel, err := service.prepareMutation(ctx, value, value.GetContext(), func(context *commonv1.CommandContext) { value.Context = context }, false, options...)
 	if err != nil {
 		return nil, err
 	}
-	defer call.cancel()
-	response, rpcErr := service.transport.CreateEvaluationRun(call.ctx, value)
+	defer cancel()
+	response, rpcErr := service.transport.CreateEvaluationRun(callContext, value)
 	if response == nil {
 		return nil, normalizeEvaluationRPCError(rpcErr, "CreateEvaluationRun returned no response")
 	}
@@ -117,12 +118,12 @@ func (service *EvaluationService) CancelRun(ctx context.Context, request *intern
 	if !service.configured() || value == nil || !scopedResourceName(service.client.config, value.GetName(), "evaluationRuns") || strings.TrimSpace(value.GetEtag()) == "" || strings.TrimSpace(value.GetReason()) == "" || len(value.GetReason()) > 1024 {
 		return nil, invalidArgument("evaluation cancellation requires a scoped run, ETag, and bounded reason")
 	}
-	call, err := service.prepareMutation(ctx, value, value.GetContext(), func(context *commonv1.CommandContext) { value.Context = context }, false, options...)
+	callContext, cancel, err := service.prepareMutation(ctx, value, value.GetContext(), func(context *commonv1.CommandContext) { value.Context = context }, false, options...)
 	if err != nil {
 		return nil, err
 	}
-	defer call.cancel()
-	response, rpcErr := service.transport.CancelEvaluationRun(call.ctx, value)
+	defer cancel()
+	response, rpcErr := service.transport.CancelEvaluationRun(callContext, value)
 	if response == nil {
 		return nil, normalizeEvaluationRPCError(rpcErr, "CancelEvaluationRun returned no response")
 	}
@@ -146,12 +147,12 @@ func (service *EvaluationService) CommitResult(ctx context.Context, request *int
 	if err := normalizeEvaluationFence(service.client.config, value.GetFence(), time.Now()); err != nil {
 		return nil, nil, err
 	}
-	call, err := service.prepareMutation(ctx, value, value.GetContext(), func(context *commonv1.CommandContext) { value.Context = context }, true, options...)
+	callContext, cancel, err := service.prepareMutation(ctx, value, value.GetContext(), func(context *commonv1.CommandContext) { value.Context = context }, true, options...)
 	if err != nil {
 		return nil, nil, err
 	}
-	defer call.cancel()
-	response, err := service.transport.CommitEvaluationResult(call.ctx, value)
+	defer cancel()
+	response, err := service.transport.CommitEvaluationResult(callContext, value)
 	if err != nil {
 		return nil, nil, normalizeError(err)
 	}
@@ -205,12 +206,12 @@ func (service *EvaluationService) CreatePromotionDecision(ctx context.Context, r
 		authorization.ProjectId = service.client.config.ProjectID
 	}
 	decision.DecidedByPrincipalRef = service.client.config.PrincipalID
-	call, err := service.prepareMutation(ctx, value, value.GetContext(), func(context *commonv1.CommandContext) { value.Context = context }, false, options...)
+	callContext, cancel, err := service.prepareMutation(ctx, value, value.GetContext(), func(context *commonv1.CommandContext) { value.Context = context }, false, options...)
 	if err != nil {
 		return nil, err
 	}
-	defer call.cancel()
-	response, rpcErr := service.transport.CreatePromotionDecision(call.ctx, value)
+	defer cancel()
+	response, rpcErr := service.transport.CreatePromotionDecision(callContext, value)
 	if response == nil {
 		return nil, normalizeEvaluationRPCError(rpcErr, "CreatePromotionDecision returned no response")
 	}
@@ -237,29 +238,24 @@ func (service *EvaluationService) GetPromotionDecision(ctx context.Context, name
 	return cloneGenerated(response.GetPromotionDecision()), nil
 }
 
-type preparedEvaluationMutation struct {
-	ctx    context.Context
-	cancel context.CancelFunc
-}
-
-func (service *EvaluationService) prepareMutation(ctx context.Context, message proto.Message, existing *commonv1.CommandContext, assign func(*commonv1.CommandContext), requireLease bool, options ...RequestOption) (preparedEvaluationMutation, error) {
+func (service *EvaluationService) prepareMutation(ctx context.Context, message proto.Message, existing *commonv1.CommandContext, assign func(*commonv1.CommandContext), requireLease bool, options ...RequestOption) (context.Context, context.CancelFunc, error) {
 	key := existing.GetIdempotencyKey()
 	assign(nil)
 	callContext, metadata, cancel, err := service.client.mutationContext(ctx, key, options...)
 	if err != nil {
-		return preparedEvaluationMutation{}, err
+		return nil, nil, err
 	}
 	if requireLease && metadata.leaseToken == "" {
 		cancel()
-		return preparedEvaluationMutation{}, invalidArgument("fenced evaluation result commit requires WithLeaseToken transport metadata")
+		return nil, nil, invalidArgument("fenced evaluation result commit requires WithLeaseToken transport metadata")
 	}
 	digest, err := deterministicDigest(message)
 	if err != nil {
 		cancel()
-		return preparedEvaluationMutation{}, err
+		return nil, nil, err
 	}
 	assign(commandContext(service.client.config, callContext, metadata, digest))
-	return preparedEvaluationMutation{ctx: callContext, cancel: cancel}, nil
+	return callContext, cancel, nil
 }
 
 func (service *EvaluationService) configured() bool {

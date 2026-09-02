@@ -9,12 +9,20 @@ import { Code, ConnectError, createRouterTransport, type Transport } from "@conn
 import { ArtifactRefSchema } from "../../../../protocols/generated/typescript/artifact/v1/artifact_reference_pb.js";
 import { InferenceStreamMessageSchema } from "../../../../protocols/generated/typescript/inference/v1/inference_stream_pb.js";
 import {
+	AcquireArtifactLeaseRequestSchema,
 	ArtifactService,
 	ArtifactUploadState,
+	GetArtifactRequestSchema,
+	ListArtifactsRequestSchema,
+	QuarantineArtifactRequestSchema,
+	ReleaseArtifactLeaseRequestSchema,
 } from "../../../../protocols/generated/typescript/internal/artifact/v1/artifact_service_pb.js";
 import { DatasetService } from "../../../../protocols/generated/typescript/internal/dataset/v1/dataset_service_pb.js";
 import { InferenceService } from "../../../../protocols/generated/typescript/internal/inference/v1/inference_service_pb.js";
-import { OperationService } from "../../../../protocols/generated/typescript/internal/job/v1/job_service_pb.js";
+import {
+	ListOperationsRequestSchema,
+	OperationService,
+} from "../../../../protocols/generated/typescript/internal/job/v1/job_service_pb.js";
 import { ModelService } from "../../../../protocols/generated/typescript/internal/model/v1/model_service_pb.js";
 import { TrainingService } from "../../../../protocols/generated/typescript/internal/training/v1/training_service_pb.js";
 import { OperationState } from "../../../../protocols/generated/typescript/job/v1/operation_pb.js";
@@ -288,6 +296,168 @@ describe("configuration and credentials", () => {
 });
 
 describe("ergonomic generated-contract APIs", () => {
+	test("artifact lifecycle and operation listing invoke exact generated RPCs with trusted scope", async () => {
+		const runtime = new FakeRuntime({ now: 1_800_000_000_000 });
+		const setup = config(runtime, { attempts: 1 });
+		const digest = `sha256:${"a".repeat(64)}`;
+		const artifact = create(ArtifactRefSchema, {
+			digest,
+			mediaType: "application/octet-stream",
+			sizeBytes: 7n,
+		});
+		const parent = "tenants/t-1/projects/p-1";
+		const lease = {
+			etag: "lease-etag-1",
+			name: `${parent}/artifactLeases/lease-1`,
+			projectId: "projects/p-1",
+			resourceId: "lease-1",
+			resourceType: "artifact_lease",
+			resourceVersion: 1n,
+			tenantId: "tenants/t-1",
+		};
+		const seen: Array<{ method: string; request: unknown; headers: Headers }> = [];
+		const delegate = testTransport((router) => {
+			router.service(ArtifactService, {
+				getArtifact(request, context) {
+					seen.push({ method: "GetArtifact", request, headers: context.requestHeader });
+					return { artifact };
+				},
+				listArtifacts(request, context) {
+					seen.push({ method: "ListArtifacts", request, headers: context.requestHeader });
+					return { artifacts: [artifact], page: { nextPageToken: "opaque-next" } };
+				},
+				quarantineArtifact(request, context) {
+					seen.push({ method: "QuarantineArtifact", request, headers: context.requestHeader });
+					return {
+						operation: {
+							operationId: `${parent}/operations/quarantine-1`,
+							projectId: "projects/p-1",
+							state: OperationState.PENDING,
+							tenantId: "tenants/t-1",
+						},
+					};
+				},
+				acquireArtifactLease(request, context) {
+					seen.push({ method: "AcquireArtifactLease", request, headers: context.requestHeader });
+					return { lease };
+				},
+				releaseArtifactLease(request, context) {
+					seen.push({ method: "ReleaseArtifactLease", request, headers: context.requestHeader });
+					return {};
+				},
+			});
+			router.service(OperationService, {
+				cancelOperation(request, context) {
+					seen.push({ method: "CancelOperation", request, headers: context.requestHeader });
+					return {
+						operation: {
+							operationId: `${parent}/operations/op-1`,
+							projectId: "projects/p-1",
+							state: OperationState.RUNNING,
+							tenantId: "tenants/t-1",
+						},
+					};
+				},
+				listOperations(request, context) {
+					seen.push({ method: "ListOperations", request, headers: context.requestHeader });
+					return {
+						operations: [
+							{
+								operationId: `${parent}/operations/op-1`,
+								projectId: "projects/p-1",
+								state: OperationState.RUNNING,
+								tenantId: "tenants/t-1",
+							},
+						],
+						page: { nextPageToken: "op-next" },
+					};
+				},
+			});
+		});
+		const recording = new RecordingTransport(delegate);
+		const client = MindcladeClient.withTransport(setup.config, recording, runtime);
+
+		const getRequest = create(GetArtifactRequestSchema, { digest });
+		assert.equal((await client.artifacts.get(getRequest)).digest, digest);
+		const listRequest = create(ListArtifactsRequestSchema, {
+			page: { pageSize: 25, pageToken: "opaque-artifact" },
+		});
+		assert.equal((await client.artifacts.list(listRequest)).page?.nextPageToken, "opaque-next");
+		assert.equal(listRequest.parent, "");
+		const quarantine = create(QuarantineArtifactRequestSchema, {
+			artifact,
+			context: { principalId: "forged", tenantId: "forged" },
+			evidence: [
+				{
+					digest: `sha256:${"b".repeat(64)}`,
+					evidenceKind: "integrity-check",
+					subjectDigest: digest,
+				},
+			],
+			reasonCode: "INTEGRITY_FAILURE",
+		});
+		await client.artifacts.quarantine(quarantine, { idempotencyKey: "quarantine-1" });
+		assert.equal(quarantine.context?.tenantId, "forged");
+		await client.artifacts.acquireLease(
+			create(AcquireArtifactLeaseRequestSchema, {
+				artifact,
+				expireTime: timestampFromDate(new Date(runtime.now + 60_000)),
+			}),
+			{ idempotencyKey: "acquire-1" },
+		);
+		await client.artifacts.releaseLease(
+			create(ReleaseArtifactLeaseRequestSchema, { etag: lease.etag, lease }),
+			{ idempotencyKey: "release-1" },
+		);
+		const operationRequest = create(ListOperationsRequestSchema, {
+			page: { pageSize: 50, pageToken: "opaque-operation" },
+		});
+		assert.equal((await client.operations.list(operationRequest)).page?.nextPageToken, "op-next");
+		assert.equal(operationRequest.parent, "");
+		assert.equal(
+			(
+				await client.operations.cancel(
+					`${parent}/operations/op-1`,
+					"operation-etag-1",
+					"operator-request",
+					{ idempotencyKey: "cancel-operation-1" },
+				)
+			).operationId,
+			`${parent}/operations/op-1`,
+		);
+
+		assert.deepEqual(
+			recording.calls.map((call) => call.method),
+			[
+				"/mindclade.internal.artifact.v1.ArtifactService/GetArtifact",
+				"/mindclade.internal.artifact.v1.ArtifactService/ListArtifacts",
+				"/mindclade.internal.artifact.v1.ArtifactService/QuarantineArtifact",
+				"/mindclade.internal.artifact.v1.ArtifactService/AcquireArtifactLease",
+				"/mindclade.internal.artifact.v1.ArtifactService/ReleaseArtifactLease",
+				"/mindclade.internal.job.v1.OperationService/ListOperations",
+				"/mindclade.internal.job.v1.OperationService/CancelOperation",
+			],
+		);
+		for (const item of seen) {
+			const request = item.request as {
+				parent?: string;
+				context?: {
+					canonicalRequestDigest: string;
+					principalId: string;
+					projectId: string;
+					tenantId: string;
+				};
+			};
+			if (item.method.startsWith("List")) assert.equal(request.parent, parent);
+			if (request.context !== undefined) {
+				assert.match(request.context.canonicalRequestDigest, /^sha256:[0-9a-f]{64}$/);
+				assert.equal(request.context.tenantId, "tenants/t-1");
+				assert.equal(request.context.projectId, "projects/p-1");
+				assert.equal(request.context.principalId, "principals/worker-1");
+				assert.ok(item.headers.has("idempotency-key"));
+			}
+		}
+	});
 	test("training submit binds identity metadata and retries idempotently with jitter", async () => {
 		const runtime = new FakeRuntime({ randomValues: [0.5] });
 		const setup = config(runtime);

@@ -8,17 +8,18 @@ import (
 	"testing"
 	"time"
 
-	artifactv1 "github.com/mindclade/mindclade/protocols/generated/go/artifact/v1"
-	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
-	evaluationv1 "github.com/mindclade/mindclade/protocols/generated/go/evaluation/v1"
-	internalevaluationv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/evaluation/v1"
-	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/test/bufconn"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
+
+	artifactv1 "github.com/mindclade/mindclade/protocols/generated/go/artifact/v1"
+	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
+	evaluationv1 "github.com/mindclade/mindclade/protocols/generated/go/evaluation/v1"
+	internalevaluationv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/evaluation/v1"
+	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
 )
 
 type evaluationSDKServer struct {
@@ -136,8 +137,8 @@ func TestEvaluationFacadeCoversAllGeneratedRPCsAndBindsAuthority(t *testing.T) {
 	if run, err := service.GetRun(ctx, runName, "etag-run"); err != nil || run.GetName() != runName {
 		t.Fatalf("get run=%v err=%v", run, err)
 	}
-	page, err := service.ListRuns(ctx, &internalevaluationv1.ListEvaluationRunsRequest{Page: &commonv1.PageRequest{PageSize: 20, PageToken: "opaque-page"}})
-	if err != nil || page.GetPage().GetNextPageToken() != "opaque-page-next" {
+	page, err := service.ListRuns(ctx, &internalevaluationv1.ListEvaluationRunsRequest{Page: &commonv1.PageRequest{PageSize: 20, PageToken: "page-cursor"}})
+	if err != nil || page.GetPage().GetNextPageToken() != "page-cursor-next" {
 		t.Fatalf("list page=%v err=%v", page, err)
 	}
 	if _, err = service.CancelRun(ctx, &internalevaluationv1.CancelEvaluationRunRequest{Name: runName, Etag: "etag-run", Reason: "operator request"}, WithIdempotencyKey("cancel-evaluation")); err != nil {

@@ -3,6 +3,8 @@ package mindclade
 import (
 	"crypto/subtle"
 
+	"google.golang.org/protobuf/proto"
+
 	artifactv1 "github.com/mindclade/mindclade/protocols/generated/go/artifact/v1"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	datasetv1 "github.com/mindclade/mindclade/protocols/generated/go/dataset/v1"
@@ -16,10 +18,10 @@ import (
 	internalpolicyv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/policy/v1"
 	internaltrainingv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/training/v1"
 	internalworkflowv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/workflow/v1"
+	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
 	modelv1 "github.com/mindclade/mindclade/protocols/generated/go/model/v1"
 	trainingv1 "github.com/mindclade/mindclade/protocols/generated/go/training/v1"
 	workflowv1 "github.com/mindclade/mindclade/protocols/generated/go/workflow/v1"
-	"google.golang.org/protobuf/proto"
 )
 
 // safeUnaryMethods is the fully-qualified transport safety allowlist. Unknown
@@ -49,6 +51,12 @@ var safeUnaryMethods = map[string]struct{}{
 	"/mindclade.internal.evaluation.v1.EvaluationService/ListEvaluationRuns":   {},
 	"/mindclade.internal.evaluation.v1.EvaluationService/GetEvaluationResult":  {},
 	"/mindclade.internal.evaluation.v1.EvaluationService/GetPromotionDecision": {},
+	"/mindclade.internal.experiment.v1.ExperimentService/GetExperiment":        {},
+	"/mindclade.internal.experiment.v1.ExperimentService/ListExperiments":      {},
+	"/mindclade.internal.experiment.v1.ExperimentService/GetStudy":             {},
+	"/mindclade.internal.experiment.v1.ExperimentService/ListStudies":          {},
+	"/mindclade.internal.experiment.v1.ExperimentService/GetTrial":             {},
+	"/mindclade.internal.experiment.v1.ExperimentService/ListTrials":           {},
 	"/mindclade.internal.inference.v1.InferenceService/GetInferenceRequest":    {},
 	"/mindclade.internal.inference.v1.InferenceService/GetInferenceResult":     {},
 	"/mindclade.internal.job.v1.OperationService/GetOperation":                 {},
@@ -85,13 +93,30 @@ type mutationRetryValidator func(any, requestMetadata, Config) bool
 // attaching idempotency metadata can never promote an arbitrary raw mutation.
 var idempotentMutationMethods = map[string]mutationRetryValidator{
 	"/mindclade.internal.job.v1.OperationService/CancelOperation":                 validateCancelOperationRetry,
+	"/mindclade.internal.job.v1.JobService/RequestJob":                            validateJobMutationRetry,
+	"/mindclade.internal.job.v1.JobService/CancelJob":                             validateJobMutationRetry,
+	"/mindclade.internal.job.v1.RunService/AcquireAttemptLease":                   validateRunMutationRetry,
+	"/mindclade.internal.job.v1.RunService/RenewAttemptLease":                     validateRunMutationRetry,
+	"/mindclade.internal.job.v1.RunService/HeartbeatAttempt":                      validateRunMutationRetry,
+	"/mindclade.internal.job.v1.RunService/CancelAttempt":                         validateRunMutationRetry,
+	"/mindclade.internal.job.v1.RunService/CommitAttempt":                         validateRunMutationRetry,
 	"/mindclade.internal.training.v1.TrainingService/CreateTrainingRun":           validateCreateTrainingRunRetry,
+	"/mindclade.internal.training.v1.TrainingService/StartTrainingAttempt":        validateTrainingMutationRetry,
+	"/mindclade.internal.training.v1.TrainingService/ResumeTrainingAttempt":       validateTrainingMutationRetry,
+	"/mindclade.internal.training.v1.TrainingService/CommitTrainingProgress":      validateTrainingMutationRetry,
+	"/mindclade.internal.training.v1.TrainingService/PrepareCheckpoint":           validateTrainingMutationRetry,
+	"/mindclade.internal.training.v1.TrainingService/CommitCheckpoint":            validateTrainingMutationRetry,
+	"/mindclade.internal.training.v1.TrainingService/CompleteTrainingRun":         validateTrainingMutationRetry,
+	"/mindclade.internal.training.v1.TrainingService/CancelTrainingRun":           validateTrainingMutationRetry,
 	"/mindclade.internal.artifact.v1.ArtifactService/BeginArtifactUpload":         validateArtifactMutationRetry,
 	"/mindclade.internal.artifact.v1.ArtifactService/UploadArtifactChunk":         validateArtifactMutationRetry,
 	"/mindclade.internal.artifact.v1.ArtifactService/FinalizeArtifactUpload":      validateArtifactMutationRetry,
 	"/mindclade.internal.artifact.v1.ArtifactService/AbortArtifactUpload":         validateArtifactMutationRetry,
 	"/mindclade.internal.artifact.v1.ArtifactService/QuarantineArtifactUpload":    validateArtifactMutationRetry,
 	"/mindclade.internal.artifact.v1.ArtifactService/CommitArtifact":              validateArtifactMutationRetry,
+	"/mindclade.internal.artifact.v1.ArtifactService/QuarantineArtifact":          validateArtifactMutationRetry,
+	"/mindclade.internal.artifact.v1.ArtifactService/AcquireArtifactLease":        validateArtifactMutationRetry,
+	"/mindclade.internal.artifact.v1.ArtifactService/ReleaseArtifactLease":        validateArtifactMutationRetry,
 	"/mindclade.internal.dataset.v1.DatasetService/CreateDataset":                 validateLifecycleMutationRetry,
 	"/mindclade.internal.dataset.v1.DatasetService/UpdateDataset":                 validateLifecycleMutationRetry,
 	"/mindclade.internal.dataset.v1.DatasetService/PublishDatasetRelease":         validateLifecycleMutationRetry,
@@ -106,6 +131,14 @@ var idempotentMutationMethods = map[string]mutationRetryValidator{
 	"/mindclade.internal.evaluation.v1.EvaluationService/CancelEvaluationRun":     validateEvaluationMutationRetry,
 	"/mindclade.internal.evaluation.v1.EvaluationService/CommitEvaluationResult":  validateEvaluationMutationRetry,
 	"/mindclade.internal.evaluation.v1.EvaluationService/CreatePromotionDecision": validateEvaluationMutationRetry,
+	"/mindclade.internal.experiment.v1.ExperimentService/CreateExperiment":        validateExperimentMutationRetry,
+	"/mindclade.internal.experiment.v1.ExperimentService/UpdateExperiment":        validateExperimentMutationRetry,
+	"/mindclade.internal.experiment.v1.ExperimentService/TransitionExperiment":    validateExperimentMutationRetry,
+	"/mindclade.internal.experiment.v1.ExperimentService/CreateStudy":             validateExperimentMutationRetry,
+	"/mindclade.internal.experiment.v1.ExperimentService/TransitionStudy":         validateExperimentMutationRetry,
+	"/mindclade.internal.experiment.v1.ExperimentService/CreateTrial":             validateExperimentMutationRetry,
+	"/mindclade.internal.experiment.v1.ExperimentService/TransitionTrial":         validateExperimentMutationRetry,
+	"/mindclade.internal.experiment.v1.ExperimentService/CompleteTrial":           validateExperimentMutationRetry,
 	"/mindclade.internal.policy.v1.PolicyService/EvaluateAuthorization":           validatePolicyMutationRetry,
 	"/mindclade.internal.policy.v1.PolicyService/CreateUsePolicy":                 validatePolicyMutationRetry,
 	"/mindclade.internal.policy.v1.PolicyService/UpdateUsePolicy":                 validatePolicyMutationRetry,
@@ -123,6 +156,59 @@ var idempotentMutationMethods = map[string]mutationRetryValidator{
 	"/mindclade.internal.workflow.v1.ApprovalService/RequestApproval":             validateWorkflowMutationRetry,
 	"/mindclade.internal.workflow.v1.ApprovalService/DecideApproval":              validateWorkflowMutationRetry,
 	"/mindclade.internal.workflow.v1.ApprovalService/ConsumeApproval":             validateWorkflowMutationRetry,
+}
+
+func validateJobMutationRetry(request any, metadata requestMetadata, config Config) bool {
+	var command *commonv1.CommandContext
+	var message proto.Message
+	switch typed := request.(type) {
+	case *internaljobv1.RequestJobRequest:
+		if typed.GetCommand() == nil {
+			return false
+		}
+		copyMessage := proto.Clone(typed.GetCommand()).(*jobv1.RequestJobCommand)
+		command, copyMessage.Context = copyMessage.Context, nil
+		message = copyMessage
+	case *internaljobv1.CancelJobRequest:
+		copyMessage := proto.Clone(typed).(*internaljobv1.CancelJobRequest)
+		command, copyMessage.Context = copyMessage.Context, nil
+		message = copyMessage
+	default:
+		return false
+	}
+	digest, err := deterministicDigest(message)
+	return err == nil && validRetryContext(command, metadata, config, digest)
+}
+
+func validateRunMutationRetry(request any, metadata requestMetadata, config Config) bool {
+	var command *commonv1.CommandContext
+	var message proto.Message
+	switch typed := request.(type) {
+	case *internaljobv1.AcquireAttemptLeaseRequest:
+		copyMessage := proto.Clone(typed).(*internaljobv1.AcquireAttemptLeaseRequest)
+		command, copyMessage.Context = copyMessage.Context, nil
+		message = copyMessage
+	case *internaljobv1.RenewAttemptLeaseRequest:
+		copyMessage := proto.Clone(typed).(*internaljobv1.RenewAttemptLeaseRequest)
+		command, copyMessage.Context = copyMessage.Context, nil
+		message = copyMessage
+	case *internaljobv1.HeartbeatAttemptRequest:
+		copyMessage := proto.Clone(typed).(*internaljobv1.HeartbeatAttemptRequest)
+		command, copyMessage.Context = copyMessage.Context, nil
+		message = copyMessage
+	case *internaljobv1.CancelAttemptRequest:
+		copyMessage := proto.Clone(typed).(*internaljobv1.CancelAttemptRequest)
+		command, copyMessage.Context = copyMessage.Context, nil
+		message = copyMessage
+	case *internaljobv1.CommitAttemptRequest:
+		copyMessage := proto.Clone(typed).(*internaljobv1.CommitAttemptRequest)
+		command, copyMessage.Context = copyMessage.Context, nil
+		message = copyMessage
+	default:
+		return false
+	}
+	digest, err := deterministicDigest(message)
+	return err == nil && validRetryContext(command, metadata, config, digest)
 }
 
 func validateWorkflowMutationRetry(request any, metadata requestMetadata, config Config) bool {
@@ -353,6 +439,18 @@ func validateArtifactMutationRetry(request any, metadata requestMetadata, config
 		copyMessage := proto.Clone(typed.GetCommand()).(*artifactv1.CommitArtifactCommand)
 		command, copyMessage.Context = copyMessage.Context, nil
 		message = copyMessage
+	case *internalartifactv1.QuarantineArtifactRequest:
+		copyMessage := proto.Clone(typed).(*internalartifactv1.QuarantineArtifactRequest)
+		command, copyMessage.Context = copyMessage.Context, nil
+		message = copyMessage
+	case *internalartifactv1.AcquireArtifactLeaseRequest:
+		copyMessage := proto.Clone(typed).(*internalartifactv1.AcquireArtifactLeaseRequest)
+		command, copyMessage.Context = copyMessage.Context, nil
+		message = copyMessage
+	case *internalartifactv1.ReleaseArtifactLeaseRequest:
+		copyMessage := proto.Clone(typed).(*internalartifactv1.ReleaseArtifactLeaseRequest)
+		command, copyMessage.Context = copyMessage.Context, nil
+		message = copyMessage
 	default:
 		return false
 	}
@@ -392,6 +490,66 @@ func validateCreateTrainingRunRetry(request any, metadata requestMetadata, confi
 	clone.Context = nil
 	digest, err := deterministicDigest(clone)
 	return err == nil && validRetryContext(commandContext, metadata, config, digest)
+}
+
+func validateTrainingMutationRetry(request any, metadata requestMetadata, config Config) bool {
+	var command *commonv1.CommandContext
+	var message proto.Message
+	switch typed := request.(type) {
+	case *internaltrainingv1.StartTrainingAttemptRequest:
+		if typed.GetCommand() == nil {
+			return false
+		}
+		copyMessage := proto.Clone(typed.GetCommand()).(*trainingv1.StartTrainingAttemptCommand)
+		command, copyMessage.Context = copyMessage.Context, nil
+		message = copyMessage
+	case *internaltrainingv1.ResumeTrainingAttemptRequest:
+		if typed.GetCommand() == nil {
+			return false
+		}
+		copyMessage := proto.Clone(typed.GetCommand()).(*trainingv1.ResumeTrainingAttemptCommand)
+		command, copyMessage.Context = copyMessage.Context, nil
+		message = copyMessage
+	case *internaltrainingv1.CommitTrainingProgressRequest:
+		if typed.GetCommand() == nil {
+			return false
+		}
+		copyMessage := proto.Clone(typed.GetCommand()).(*trainingv1.CommitTrainingProgressCommand)
+		command, copyMessage.Context = copyMessage.Context, nil
+		message = copyMessage
+	case *internaltrainingv1.PrepareCheckpointRequest:
+		if typed.GetCommand() == nil {
+			return false
+		}
+		copyMessage := proto.Clone(typed.GetCommand()).(*trainingv1.PrepareCheckpointCommand)
+		command, copyMessage.Context = copyMessage.Context, nil
+		message = copyMessage
+	case *internaltrainingv1.CommitCheckpointRequest:
+		if typed.GetCommand() == nil {
+			return false
+		}
+		copyMessage := proto.Clone(typed.GetCommand()).(*trainingv1.CommitCheckpointCommand)
+		command, copyMessage.Context = copyMessage.Context, nil
+		message = copyMessage
+	case *internaltrainingv1.CompleteTrainingRunRequest:
+		if typed.GetCommand() == nil {
+			return false
+		}
+		copyMessage := proto.Clone(typed.GetCommand()).(*trainingv1.CompleteTrainingRunCommand)
+		command, copyMessage.Context = copyMessage.Context, nil
+		message = copyMessage
+	case *internaltrainingv1.CancelTrainingRunRequest:
+		if typed.GetCommand() == nil {
+			return false
+		}
+		copyMessage := proto.Clone(typed.GetCommand()).(*trainingv1.CancelTrainingRunCommand)
+		command, copyMessage.Context = copyMessage.Context, nil
+		message = copyMessage
+	default:
+		return false
+	}
+	digest, err := deterministicDigest(message)
+	return err == nil && validRetryContext(command, metadata, config, digest)
 }
 
 func validRetryContext(command *commonv1.CommandContext, metadata requestMetadata, config Config, digest string) bool {

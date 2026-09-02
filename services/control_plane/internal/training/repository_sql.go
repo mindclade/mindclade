@@ -13,6 +13,7 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	foundationaudit "github.com/mindclade/mindclade/libs/go/audit"
+	"github.com/mindclade/mindclade/libs/go/numconv"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
 	trainingv1 "github.com/mindclade/mindclade/protocols/generated/go/training/v1"
@@ -261,15 +262,21 @@ func (r SQLRepository) CreateTrainingRun(ctx context.Context, identity Identity,
 		return nil, false, err
 	}
 	operation := createdOperation
-	envelope, err := r.Events.Created(identity, run, operation, command.GetContext(), at)
+	createdEvent, err := r.Events.Created(identity, run, operation, command.GetContext(), at)
+	if err != nil {
+		return nil, false, err
+	}
+	jobEvent, err := r.Events.JobRequested(identity, operation, digest, command.GetContext(), at)
 	if err != nil {
 		return nil, false, err
 	}
 	if err = insertAudit(ctx, tx, identity, "training.create", runName, digest, at); err != nil {
 		return nil, false, err
 	}
-	if err = insertOutbox(ctx, tx, envelope, at); err != nil {
-		return nil, false, err
+	for _, event := range []*commonv1.EventEnvelope{createdEvent, jobEvent} {
+		if err = insertOutbox(ctx, tx, event, at); err != nil {
+			return nil, false, err
+		}
 	}
 	if err = recordIdempotency(ctx, tx, identity, "training.create", command.GetContext().GetIdempotencyKey(), digest, operationID, at); err != nil {
 		return nil, false, err
@@ -363,10 +370,18 @@ WHERE tenant_id=$1 AND project_id=$2 AND id=$3`, identity.TenantID, identity.Pro
 	if err != nil {
 		return nil, false, err
 	}
-	if afterRevision > uint64(current) { //nolint:gosec // Conversion is bounded by validated protocol invariants or PostgreSQL CHECK constraints.
+	currentRevision, conversionErr := numconv.Int64ToUint64(current)
+	if conversionErr != nil {
+		return nil, false, conversionErr
+	}
+	floorRevision, conversionErr := numconv.Int64ToUint64(floor)
+	if conversionErr != nil {
+		return nil, false, conversionErr
+	}
+	if afterRevision > currentRevision {
 		return nil, false, ErrCursorAhead
 	}
-	if afterRevision+1 < uint64(floor) { //nolint:gosec // Conversion is bounded by validated protocol invariants or PostgreSQL CHECK constraints.
+	if afterRevision+1 < floorRevision {
 		return nil, false, ErrCursorExpired
 	}
 	rows, err := tx.QueryContext(ctx, `SELECT `+operationRevisionColumns+` FROM operation_revisions
@@ -382,7 +397,11 @@ ORDER BY revision LIMIT $5`, identity.TenantID, identity.ProjectID, name, afterR
 		if scanErr != nil {
 			return nil, false, scanErr
 		}
-		if uint64(row.version) != expected { //nolint:gosec // Conversion is bounded by validated protocol invariants or PostgreSQL CHECK constraints.
+		rowVersion, conversionErr := numconv.Int64ToUint64(row.version)
+		if conversionErr != nil {
+			return nil, false, conversionErr
+		}
+		if rowVersion != expected {
 			return nil, false, ErrOperationHistoryGap
 		}
 		stored = append(stored, row)
@@ -403,7 +422,7 @@ ORDER BY revision LIMIT $5`, identity.TenantID, identity.ProjectID, name, afterR
 		}
 		values = append(values, clone(value))
 	}
-	if len(values) == 0 && afterRevision < uint64(current) { //nolint:gosec // Conversion is bounded by validated protocol invariants or PostgreSQL CHECK constraints.
+	if len(values) == 0 && afterRevision < currentRevision {
 		return nil, false, ErrOperationHistoryGap
 	}
 	if err = tx.Commit(); err != nil {

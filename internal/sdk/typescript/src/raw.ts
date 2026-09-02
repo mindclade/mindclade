@@ -6,6 +6,7 @@ import { AgentService } from "../../../../protocols/generated/typescript/interna
 import { ArtifactService } from "../../../../protocols/generated/typescript/internal/artifact/v1/artifact_service_pb.js";
 import { DatasetService } from "../../../../protocols/generated/typescript/internal/dataset/v1/dataset_service_pb.js";
 import { EvaluationService } from "../../../../protocols/generated/typescript/internal/evaluation/v1/evaluation_service_pb.js";
+import { ExperimentService } from "../../../../protocols/generated/typescript/internal/experiment/v1/experiment_service_pb.js";
 import { InferenceService } from "../../../../protocols/generated/typescript/internal/inference/v1/inference_service_pb.js";
 import {
 	JobService,
@@ -27,6 +28,7 @@ export class RawInternalClients {
 	readonly artifacts: Client<typeof ArtifactService>;
 	readonly datasets: Client<typeof DatasetService>;
 	readonly evaluations: Client<typeof EvaluationService>;
+	readonly experiments: Client<typeof ExperimentService>;
 	readonly inference: Client<typeof InferenceService>;
 	readonly jobs: Client<typeof JobService>;
 	readonly operations: Client<typeof OperationService>;
@@ -45,6 +47,7 @@ export class RawInternalClients {
 		this.artifacts = createClient(ArtifactService, transport);
 		this.datasets = createClient(DatasetService, transport);
 		this.evaluations = createClient(EvaluationService, transport);
+		this.experiments = createClient(ExperimentService, transport);
 		this.inference = createClient(InferenceService, transport);
 		this.jobs = createClient(JobService, transport);
 		this.operations = createClient(OperationService, transport);

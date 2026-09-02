@@ -244,11 +244,14 @@ func TestOutboxDoesNotClaimAnAggregateSuccessorBeforeItsPredecessor(t *testing.T
 	if err = store.Insert(outbox.DeliveryRecord{Envelope: second, NextAttemptAt: now}); err != nil {
 		t.Fatal(err)
 	}
+	publisher := &recordingPublisher{}
+	dispatcher := outbox.Dispatcher{Store: store, Publisher: publisher, Now: func() time.Time { return now }, ClaimTTL: time.Minute}
+	if delivered, dispatchErr := dispatcher.DeliverBatch(context.Background(), "tenant-order", 10); dispatchErr != nil || delivered != 0 {
+		t.Fatalf("aggregate sequence gap must remain blocked: delivered=%d err=%v", delivered, dispatchErr)
+	}
 	if err = store.Insert(outbox.DeliveryRecord{Envelope: first, NextAttemptAt: now}); err != nil {
 		t.Fatal(err)
 	}
-	publisher := &recordingPublisher{}
-	dispatcher := outbox.Dispatcher{Store: store, Publisher: publisher, Now: func() time.Time { return now }, ClaimTTL: time.Minute}
 	if delivered, dispatchErr := dispatcher.DeliverBatch(context.Background(), "tenant-order", 10); dispatchErr != nil || delivered != 1 {
 		t.Fatalf("first aggregate dispatch: delivered=%d err=%v", delivered, dispatchErr)
 	}
@@ -530,10 +533,29 @@ func TestPostgresKernelJourney(t *testing.T) {
 		t.Fatal(err)
 	}
 	poisonCalls := 0
-	processor := inbox.Processor{DB: db, Consumer: "bounded-worker", MaxAttempts: 2, QuarantineTenantID: tenantID, Handler: inbox.TransactionalHandlerFunc(func(standardContext, *sql.Tx, *commonv1.EventEnvelope, proto.Message) error {
+	processor := inbox.Processor{DB: db, Consumer: "bounded-worker", AcceptedEvents: map[string]uint32{"mindclade.events.job.v1.JobRequested": 1}, MaxAttempts: 2, QuarantineTenantID: tenantID, Handler: inbox.TransactionalHandlerFunc(func(standardContext, *sql.Tx, *commonv1.EventEnvelope, proto.Message) error {
 		poisonCalls++
 		return errors.New("synthetic permanent worker failure")
 	})}
+	misrouted, err := foundationaudit.NewEvent(tenantID, "integration-principal", "reliability.misroute", "jobs/"+jobID, "allowed", time.Now().UTC(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	misroutedBytes, err := queue.MarshalEnvelope(misrouted)
+	if err != nil {
+		t.Fatal(err)
+	}
+	misroutedAttributes, err := queue.TransportAttributes(misrouted)
+	if err != nil {
+		t.Fatal(err)
+	}
+	misroutedOrderingKey, err := queue.OrderingKey(misrouted)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if disposition, processErr := processor.ProcessDelivery(testContext, misroutedBytes, misroutedAttributes, misroutedOrderingKey); disposition != inbox.DeliveryAck || processErr != nil || poisonCalls != 0 {
+		t.Fatalf("specialized consumer must acknowledge an unrelated registered delivery without invoking its handler: disposition=%v calls=%d err=%v", disposition, poisonCalls, processErr)
+	}
 	if disposition, processErr := processor.ProcessDelivery(testContext, poisonBytes, poisonAttributes, poisonOrderingKey); disposition != inbox.DeliveryNack || processErr == nil {
 		t.Fatalf("first worker failure must nack: disposition=%v err=%v", disposition, processErr)
 	}
@@ -597,6 +619,39 @@ func TestPostgresKernelJourney(t *testing.T) {
 	var corruptDLQCount int
 	if queryErr := db.QueryRowContext(testContext, `SELECT count(*) FROM dead_letter_messages WHERE tenant_id=$1 AND source='OUTBOX' AND event_id=$2 AND attempts=1`, tenantID, corruptID).Scan(&corruptDLQCount); queryErr != nil || !corruptQuarantined || !validDelivered || corruptDLQCount != 1 || len(isolationPublisher.published) != 1 {
 		t.Fatalf("corrupt isolation state: quarantined=%v valid_delivered=%v dlq=%d published=%d err=%v", corruptQuarantined, validDelivered, corruptDLQCount, len(isolationPublisher.published), queryErr)
+	}
+	gapFirst := proto.Clone(outboxEnvelope).(*commonv1.EventEnvelope)
+	gapFirst.EventId = "gap-first:" + unique
+	gapFirst.DeduplicationKey = gapFirst.EventId
+	gapFirst.Subject.ResourceId = "gap-" + operationID
+	gapFirst.Subject.Name = "tenants/" + tenantID + "/projects/project-integration/operations/gap-" + operationID
+	gapFirst.AggregateSequence = 1
+	gapSecond := proto.Clone(gapFirst).(*commonv1.EventEnvelope)
+	gapSecond.EventId = "gap-second:" + unique
+	gapSecond.DeduplicationKey = gapSecond.EventId
+	gapSecond.AggregateSequence = 2
+	insertGapEnvelope := func(envelope *commonv1.EventEnvelope) {
+		t.Helper()
+		encoded, encodeErr := queue.MarshalEnvelope(envelope)
+		if encodeErr != nil {
+			t.Fatal(encodeErr)
+		}
+		if _, insertErr := db.ExecContext(testContext, `INSERT INTO outbox_messages (id,tenant_id,event_type,event_version,aggregate_type,aggregate_id,aggregate_sequence,payload_digest,envelope_bytes,next_attempt_at,created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$10)`, envelope.GetEventId(), tenantID, envelope.GetEventType(), envelope.GetEventVersion(), envelope.GetSubject().GetResourceType(), envelope.GetSubject().GetName(), envelope.GetAggregateSequence(), envelope.GetPayloadDigest(), encoded, isolationTime); insertErr != nil {
+			t.Fatalf("insert aggregate-gap fixture %q: %v", envelope.GetEventId(), insertErr)
+		}
+	}
+	insertGapEnvelope(gapSecond)
+	gapPublisher := &recordingPublisher{}
+	gapDispatcher := outbox.Dispatcher{Store: outbox.SQLStore{DB: db}, Publisher: gapPublisher, Now: func() time.Time { return isolationTime }, ClaimTTL: time.Minute}
+	if delivered, dispatchErr := gapDispatcher.DeliverBatch(testContext, tenantID, 10); delivered != 0 || dispatchErr != nil {
+		t.Fatalf("PostgreSQL aggregate gap must remain blocked: delivered=%d err=%v", delivered, dispatchErr)
+	}
+	insertGapEnvelope(gapFirst)
+	if delivered, dispatchErr := gapDispatcher.DeliverBatch(testContext, tenantID, 10); delivered != 1 || dispatchErr != nil || len(gapPublisher.published) != 1 || gapPublisher.published[0].GetAggregateSequence() != 1 {
+		t.Fatalf("PostgreSQL predecessor dispatch: delivered=%d published=%v err=%v", delivered, gapPublisher.published, dispatchErr)
+	}
+	if delivered, dispatchErr := gapDispatcher.DeliverBatch(testContext, tenantID, 10); delivered != 1 || dispatchErr != nil || len(gapPublisher.published) != 2 || gapPublisher.published[1].GetAggregateSequence() != 2 {
+		t.Fatalf("PostgreSQL successor dispatch: delivered=%d published=%v err=%v", delivered, gapPublisher.published, dispatchErr)
 	}
 	runID := "run-" + unique
 	createdRun, err := jobsSQL.CreateRunSQL(testContext, &jobv1.Run{RunId: runID, TenantId: tenantID, ProjectId: "project-integration", JobId: jobID, Input: configuration, Configuration: configuration, Plan: configuration, Outputs: []*artifactv1.ArtifactRef{configuration}, Error: richError, Etag: "run-etag-1"})

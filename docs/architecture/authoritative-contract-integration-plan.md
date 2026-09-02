@@ -138,6 +138,10 @@ exist only as a future-public escape hatch.
 
 ## Non-negotiable implementation laws
 
+- Every gRPC service and RPC signature is declared in a versioned `.proto`
+  source. Runtime adapters implement and register only the generated server
+  interfaces, and SDK transports invoke only the generated client contracts;
+  handwritten parallel service definitions are forbidden.
 - Generated protobuf resources are repository values only when repositories clone messages,
   validate contract and aggregate invariants, require expected revision/etag, and require the
   current fence for attempt-owned writes. Private SQL rows never escape persistence packages.
@@ -196,3 +200,22 @@ ratified or this program can be committed as production-ready:
    toolchain-lock, generated-manifest, SDK-package, Git-revision, and qualification-result digests.
 10. Cache the Rust protobuf plugins by immutable toolchain digest so deterministic regeneration
     builds them once and reuses the exact output.
+11. Close the experiment vertical before adding contract surface: checked pagination conversions,
+    generated-client network coverage, identical `x-request-id` metadata behavior in all four SDKs,
+    descriptor-current SDK/gRPC projections, and four-language evidence for all 132 internal RPCs.
+12. Make contract generation one atomic transaction. Stage and validate the descriptor, native
+    transports, OpenAPI projection, event-registry projection, SDK coverage, gRPC implementation
+    coverage, and generated-file manifest before replacing any committed output. Use the candidate
+    descriptor digest as the join key in every projection and refuse partial updates.
+13. Make a fresh-database `integration-ci` receipt a mandatory qualification gate. It must apply
+    every migration from empty state, rehearse the complete down/up sequence, exercise every domain
+    repository plus reliability/DLQ/RLS/training-fence behavior, and fail rather than silently skip
+    required PostgreSQL tests.
+14. Produce a deliberately non-ratifying training-evidence rehearsal bound to the exact descriptor,
+    OpenAPI, event registry, migration set, codegen lock, generated manifest, SDK packages, source
+    revision, and cross-language/database/event/gateway/gRPC/SDK results. Protected Stage 5 remains
+    the only path that can turn that rehearsal into ratification evidence.
+15. Finish Stage 8 narrowly with governed SDK examples for submit, operation watch/follow, and
+    verified artifact download plus one bounded analysis application. Generate a readiness report
+    mapping every plan criterion to its Bazel target, test, receipt, and current evidence state;
+    keep connected qualification separate and delay broad refactoring until the candidate is green.

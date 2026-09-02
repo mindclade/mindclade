@@ -14,6 +14,7 @@ from mindclade.internal.admin.v1 import admin_service_pb2
 from mindclade.internal.artifact.v1 import artifact_service_pb2
 from mindclade.internal.dataset.v1 import dataset_service_pb2
 from mindclade.internal.evaluation.v1 import evaluation_service_pb2
+from mindclade.internal.experiment.v1 import experiment_service_pb2
 from mindclade.internal.inference.v1 import inference_service_pb2
 from mindclade.internal.job.v1 import job_service_pb2
 from mindclade.internal.model.v1 import model_service_pb2
@@ -29,39 +30,64 @@ from .calls import PreparedCall
 from .config import ClientConfig
 from .transport import (
     ABORT_ARTIFACT_UPLOAD,
+    ACQUIRE_ARTIFACT_LEASE,
+    ACQUIRE_ATTEMPT_LEASE,
     ACTIVATE_USE_POLICY,
     BEGIN_ARTIFACT_UPLOAD,
-    CANCEL_OPERATION,
+    CANCEL_ATTEMPT,
     CANCEL_EVALUATION_RUN,
+    CANCEL_JOB,
+    CANCEL_OPERATION,
+    CANCEL_TRAINING_RUN,
     CANCEL_WORKFLOW_RUN,
     COMMIT_ARTIFACT,
-    COMMIT_INFERENCE_RESULT,
+    COMMIT_ATTEMPT,
+    COMMIT_CHECKPOINT,
     COMMIT_EVALUATION_RESULT,
+    COMMIT_INFERENCE_RESULT,
+    COMMIT_TRAINING_PROGRESS,
     COMMIT_WORKFLOW_TRANSITION,
+    COMPLETE_TRAINING_RUN,
+    COMPLETE_TRIAL,
     CONSUME_APPROVAL,
     CREATE_DATASET,
     CREATE_EVALUATION_RUN,
+    CREATE_EXPERIMENT,
     CREATE_PROJECT,
     CREATE_PROMOTION_DECISION,
+    CREATE_STUDY,
     CREATE_TRAINING_RUN,
+    CREATE_TRIAL,
     CREATE_USE_POLICY,
     CREATE_WORKFLOW_DEFINITION,
     DECIDE_APPROVAL,
     EVALUATE_AUTHORIZATION,
     EXPORT_AUDIT_RECORDS,
     FINALIZE_ARTIFACT_UPLOAD,
+    HEARTBEAT_ATTEMPT,
+    PREPARE_CHECKPOINT,
     PROMOTE_MODEL_RELEASE,
     PUBLISH_DATASET_RELEASE,
+    QUARANTINE_ARTIFACT,
     QUARANTINE_ARTIFACT_UPLOAD,
     REGISTER_MODEL,
     REGISTER_MODEL_RELEASE,
+    RELEASE_ARTIFACT_LEASE,
+    RENEW_ATTEMPT_LEASE,
     REQUEST_APPROVAL,
+    REQUEST_JOB,
+    RESUME_TRAINING_ATTEMPT,
     REVOKE_DATASET_RELEASE,
     REVOKE_MODEL_RELEASE,
     REVOKE_USE_POLICY,
+    START_TRAINING_ATTEMPT,
     START_WORKFLOW_RUN,
     SUBMIT_INFERENCE,
+    TRANSITION_EXPERIMENT,
+    TRANSITION_STUDY,
+    TRANSITION_TRIAL,
     UPDATE_DATASET,
+    UPDATE_EXPERIMENT,
     UPDATE_PROJECT,
     UPDATE_TENANT,
     UPDATE_USE_POLICY,
@@ -102,6 +128,12 @@ SAFE_UNARY_METHODS = frozenset(
         "/mindclade.internal.evaluation.v1.EvaluationService/ListEvaluationRuns",
         "/mindclade.internal.evaluation.v1.EvaluationService/GetEvaluationResult",
         "/mindclade.internal.evaluation.v1.EvaluationService/GetPromotionDecision",
+        "/mindclade.internal.experiment.v1.ExperimentService/GetExperiment",
+        "/mindclade.internal.experiment.v1.ExperimentService/ListExperiments",
+        "/mindclade.internal.experiment.v1.ExperimentService/GetStudy",
+        "/mindclade.internal.experiment.v1.ExperimentService/ListStudies",
+        "/mindclade.internal.experiment.v1.ExperimentService/GetTrial",
+        "/mindclade.internal.experiment.v1.ExperimentService/ListTrials",
         "/mindclade.internal.inference.v1.InferenceService/GetInferenceResult",
         "/mindclade.internal.inference.v1.InferenceService/GetInferenceRequest",
         "/mindclade.internal.job.v1.OperationService/GetOperation",
@@ -123,6 +155,7 @@ SAFE_UNARY_METHODS = frozenset(
         "/mindclade.internal.training.v1.TrainingService/ListTrainingRuns",
         "/mindclade.internal.training.v1.TrainingService/GetCheckpoint",
         "/mindclade.internal.training.v1.TrainingService/ListCheckpoints",
+        "/mindclade.internal.training.v1.TrainingService/WatchTrainingRun",
         "/mindclade.internal.workflow.v1.WorkflowService/GetWorkflowDefinition",
         "/mindclade.internal.workflow.v1.WorkflowService/ListWorkflowDefinitions",
         "/mindclade.internal.workflow.v1.WorkflowService/GetWorkflowRun",
@@ -234,6 +267,25 @@ def retry_permitted(
     }
     if method in evaluation_mutations and isinstance(request, evaluation_mutations[method]):
         return _request_matches(request, call, config)
+    experiment_mutations: dict[str, type[Message]] = {
+        CREATE_EXPERIMENT: experiment_service_pb2.CreateExperimentRequest,
+        UPDATE_EXPERIMENT: experiment_service_pb2.UpdateExperimentRequest,
+        TRANSITION_EXPERIMENT: experiment_service_pb2.TransitionExperimentRequest,
+        CREATE_STUDY: experiment_service_pb2.CreateStudyRequest,
+        TRANSITION_STUDY: experiment_service_pb2.TransitionStudyRequest,
+        CREATE_TRIAL: experiment_service_pb2.CreateTrialRequest,
+        TRANSITION_TRIAL: experiment_service_pb2.TransitionTrialRequest,
+        COMPLETE_TRIAL: experiment_service_pb2.CompleteTrialRequest,
+    }
+    if method in experiment_mutations and isinstance(request, experiment_mutations[method]):
+        typed_request = cast(Any, request)
+        if not request.HasField("command") or not typed_request.command.HasField("context"):
+            return False
+        command = cast(Message, copy.deepcopy(typed_request.command))
+        context = command_context_pb2.CommandContext()
+        context.CopyFrom(cast(Any, command).context)
+        command.ClearField("context")
+        return _matches(context, call, config, canonical_digest(command))
     if method == CANCEL_OPERATION and isinstance(request, job_service_pb2.CancelOperationRequest):
         if not request.HasField("context"):
             return False
@@ -243,6 +295,24 @@ def retry_permitted(
         context.CopyFrom(clone.context)
         clone.ClearField("context")
         return _matches(context, call, config, canonical_digest(clone))
+    if method == REQUEST_JOB and isinstance(request, job_service_pb2.RequestJobRequest):
+        if not request.HasField("command") or not request.command.HasField("context"):
+            return False
+        command = copy.deepcopy(request.command)
+        context = command_context_pb2.CommandContext()
+        context.CopyFrom(command.context)
+        command.ClearField("context")
+        return _matches(context, call, config, canonical_digest(command))
+    job_run_mutations: dict[str, type[Message]] = {
+        CANCEL_JOB: job_service_pb2.CancelJobRequest,
+        ACQUIRE_ATTEMPT_LEASE: job_service_pb2.AcquireAttemptLeaseRequest,
+        RENEW_ATTEMPT_LEASE: job_service_pb2.RenewAttemptLeaseRequest,
+        HEARTBEAT_ATTEMPT: job_service_pb2.HeartbeatAttemptRequest,
+        CANCEL_ATTEMPT: job_service_pb2.CancelAttemptRequest,
+        COMMIT_ATTEMPT: job_service_pb2.CommitAttemptRequest,
+    }
+    if method in job_run_mutations and isinstance(request, job_run_mutations[method]):
+        return _request_matches(request, call, config)
     if method == CREATE_TRAINING_RUN and isinstance(
         request, training_service_pb2.CreateTrainingRunRequest
     ):
@@ -252,6 +322,24 @@ def retry_permitted(
         command.CopyFrom(request.command)
         context = command_context_pb2.CommandContext()
         context.CopyFrom(command.context)
+        command.ClearField("context")
+        return _matches(context, call, config, canonical_digest(command))
+    training_mutations: dict[str, type[Message]] = {
+        START_TRAINING_ATTEMPT: training_service_pb2.StartTrainingAttemptRequest,
+        RESUME_TRAINING_ATTEMPT: training_service_pb2.ResumeTrainingAttemptRequest,
+        COMMIT_TRAINING_PROGRESS: training_service_pb2.CommitTrainingProgressRequest,
+        PREPARE_CHECKPOINT: training_service_pb2.PrepareCheckpointRequest,
+        COMMIT_CHECKPOINT: training_service_pb2.CommitCheckpointRequest,
+        COMPLETE_TRAINING_RUN: training_service_pb2.CompleteTrainingRunRequest,
+        CANCEL_TRAINING_RUN: training_service_pb2.CancelTrainingRunRequest,
+    }
+    if method in training_mutations and isinstance(request, training_mutations[method]):
+        typed_request = cast(Any, request)
+        if not request.HasField("command") or not typed_request.command.HasField("context"):
+            return False
+        command = cast(Message, copy.deepcopy(typed_request.command))
+        context = command_context_pb2.CommandContext()
+        context.CopyFrom(cast(Any, command).context)
         command.ClearField("context")
         return _matches(context, call, config, canonical_digest(command))
     if method == SUBMIT_INFERENCE and isinstance(
@@ -372,6 +460,15 @@ def retry_permitted(
         context.CopyFrom(command.context)
         command.ClearField("context")
         return _matches(context, call, config, canonical_digest(command))
+    artifact_resource_mutations: dict[str, type[Message]] = {
+        QUARANTINE_ARTIFACT: artifact_service_pb2.QuarantineArtifactRequest,
+        ACQUIRE_ARTIFACT_LEASE: artifact_service_pb2.AcquireArtifactLeaseRequest,
+        RELEASE_ARTIFACT_LEASE: artifact_service_pb2.ReleaseArtifactLeaseRequest,
+    }
+    if method in artifact_resource_mutations and isinstance(
+        request, artifact_resource_mutations[method]
+    ):
+        return _request_matches(request, call, config)
     return False
 
 

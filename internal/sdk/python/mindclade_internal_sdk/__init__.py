@@ -1,7 +1,10 @@
 """Private Mindclade SDK over authoritative generated Protobuf/gRPC clients."""
 
+from mindclade.artifact.v1.artifact_reference_pb2 import ArtifactRef
+
 from .admin import Admin, AsyncAdmin
 from .agents import Agents, AsyncAgents
+from .artifacts import Artifacts, AsyncArtifacts
 from .auth import (
     AccessToken,
     AsyncGoogleWorkloadIdentityProvider,
@@ -13,7 +16,6 @@ from .calls import CallOptions, Observer, RpcObservation
 from .client import AsyncClient, Client
 from .config import ClientConfig, ConfigurationError, Environment, RetryPolicy
 from .datasets import AsyncDatasets, Datasets
-from .evaluations import AsyncEvaluations, Evaluations
 from .errors import (
     AuthenticationError,
     AuthorizationError,
@@ -31,10 +33,21 @@ from .errors import (
     UnavailableError,
     WorkflowRunFailedError,
 )
+from .evaluations import AsyncEvaluations, Evaluations
+from .events import (
+    EventRejectedError,
+    JobRequestedDelivery,
+    decode_job_requested_delivery,
+)
+from .experiments import AsyncExperiments, Experiments
 from .generated import AsyncGeneratedRPCs, GeneratedRPCs
 from .inference import AsyncInference, Inference
+from .jobs import AsyncJobs, Jobs
 from .models import AsyncModels, Models
+from .operations import AsyncOperations, Operations
 from .policies import AsyncPolicies, Policies
+from .runs import AsyncRuns, AttemptLease, LeaseCredential, Runs
+from .training import AsyncTraining, Training
 from .workflows import Approvals, AsyncApprovals, AsyncWorkflows, Workflows
 
 __all__ = [
@@ -42,19 +55,28 @@ __all__ = [
     "Admin",
     "Agents",
     "Approvals",
+    "ArtifactRef",
+    "Artifacts",
     "AsyncAdmin",
     "AsyncAgents",
     "AsyncApprovals",
+    "AsyncArtifacts",
     "AsyncClient",
     "AsyncDatasets",
     "AsyncEvaluations",
+    "AsyncExperiments",
     "AsyncGeneratedRPCs",
     "AsyncGoogleWorkloadIdentityProvider",
     "AsyncInference",
+    "AsyncJobs",
     "AsyncModels",
+    "AsyncOperations",
     "AsyncPolicies",
+    "AsyncRuns",
     "AsyncTokenProvider",
+    "AsyncTraining",
     "AsyncWorkflows",
+    "AttemptLease",
     "AuthenticationError",
     "AuthorizationError",
     "CallOptions",
@@ -64,27 +86,36 @@ __all__ = [
     "ConfigurationError",
     "ConflictError",
     "Datasets",
-    "Evaluations",
     "DeadlineExceededError",
     "Environment",
+    "Evaluations",
+    "EventRejectedError",
+    "Experiments",
     "GeneratedRPCs",
     "GoogleWorkloadIdentityProvider",
     "Inference",
     "InvalidRequestError",
+    "JobRequestedDelivery",
+    "Jobs",
+    "LeaseCredential",
     "MindcladeError",
     "Models",
     "NotFoundError",
     "Observer",
     "OperationFailedError",
     "OperationTimeoutError",
+    "Operations",
     "Policies",
     "ProtocolError",
     "RateLimitError",
     "RetryPolicy",
     "RpcObservation",
+    "Runs",
     "SyncTokenProvider",
+    "Training",
     "TransportError",
     "UnavailableError",
     "WorkflowRunFailedError",
     "Workflows",
+    "decode_job_requested_delivery",
 ]

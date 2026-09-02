@@ -10,6 +10,7 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	"github.com/mindclade/mindclade/libs/go/numconv"
 	artifactv1 "github.com/mindclade/mindclade/protocols/generated/go/artifact/v1"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	datasetv1 "github.com/mindclade/mindclade/protocols/generated/go/dataset/v1"
@@ -23,25 +24,29 @@ type GeneratedEventFactory struct{}
 
 func (GeneratedEventFactory) Created(identity Identity, dataset *datasetv1.Dataset, operation *jobv1.Operation, command *commonv1.CommandContext, at time.Time) (*commonv1.EventEnvelope, error) {
 	payload := &datasetv1.DatasetCreated{DatasetName: dataset.GetName(), DatasetUid: dataset.GetUid(), DatasetRevision: dataset.GetRevision(), DisplayName: dataset.GetDisplayName(), PolicyClassification: dataset.GetPolicyClassification(), Operation: operationResource(operation), CreatedAt: clone(dataset.GetCreateTime())}
-	return newEvent(identity, datasetResource(dataset), payload, uint64(dataset.GetRevision()), command, at) //nolint:gosec // Conversion is bounded by validated protocol invariants or PostgreSQL CHECK constraints.
+	return newEvent(identity, datasetResource(dataset), payload, dataset.GetRevision(), command, at)
 }
 
 func (GeneratedEventFactory) Updated(identity Identity, dataset *datasetv1.Dataset, changedFields []string, operation *jobv1.Operation, command *commonv1.CommandContext, at time.Time) (*commonv1.EventEnvelope, error) {
 	payload := &datasetv1.DatasetUpdated{DatasetName: dataset.GetName(), DatasetRevision: dataset.GetRevision(), DatasetEtag: dataset.GetEtag(), ChangedFields: append([]string(nil), changedFields...), State: dataset.GetState(), Operation: operationResource(operation), UpdatedAt: clone(dataset.GetUpdateTime())}
-	return newEvent(identity, datasetResource(dataset), payload, uint64(dataset.GetRevision()), command, at) //nolint:gosec // Conversion is bounded by validated protocol invariants or PostgreSQL CHECK constraints.
+	return newEvent(identity, datasetResource(dataset), payload, dataset.GetRevision(), command, at)
 }
 
 func (GeneratedEventFactory) Published(identity Identity, release *datasetv1.DatasetRelease, operation *jobv1.Operation, command *commonv1.CommandContext, at time.Time) (*commonv1.EventEnvelope, error) {
 	payload := &datasetv1.DatasetReleasePublished{DatasetReleaseName: release.GetName(), DatasetReleaseUid: release.GetUid(), DatasetReleaseRevision: release.GetRevision(), DatasetName: release.GetDatasetName(), ReleaseId: release.GetReleaseId(), Manifest: clone(release.GetManifest()), QualificationEvidence: cloneSlice(release.GetQualificationEvidence()), ParentRelease: clone(release.GetParentRelease()), UsePolicy: clone(release.GetUsePolicy()), Operation: operationResource(operation), PublishedAt: clone(release.GetPublishTime())}
-	return newEvent(identity, releaseResource(release), payload, uint64(release.GetRevision()), command, at) //nolint:gosec // Conversion is bounded by validated protocol invariants or PostgreSQL CHECK constraints.
+	return newEvent(identity, releaseResource(release), payload, release.GetRevision(), command, at)
 }
 
 func (GeneratedEventFactory) Revoked(identity Identity, release *datasetv1.DatasetRelease, evidence []*artifactv1.EvidenceRef, operation *jobv1.Operation, command *commonv1.CommandContext, at time.Time) (*commonv1.EventEnvelope, error) {
 	payload := &datasetv1.DatasetReleaseRevoked{DatasetReleaseName: release.GetName(), DatasetReleaseRevision: release.GetRevision(), Reason: release.GetRevocationReason(), Evidence: cloneSlice(evidence), Operation: operationResource(operation), RevokedAt: clone(release.GetRevokeTime())}
-	return newEvent(identity, releaseResource(release), payload, uint64(release.GetRevision()), command, at) //nolint:gosec // Conversion is bounded by validated protocol invariants or PostgreSQL CHECK constraints.
+	return newEvent(identity, releaseResource(release), payload, release.GetRevision(), command, at)
 }
 
-func newEvent(identity Identity, subject *commonv1.ResourceRef, payload proto.Message, sequence uint64, command *commonv1.CommandContext, at time.Time) (*commonv1.EventEnvelope, error) {
+func newEvent(identity Identity, subject *commonv1.ResourceRef, payload proto.Message, revision int64, command *commonv1.CommandContext, at time.Time) (*commonv1.EventEnvelope, error) {
+	sequence, err := numconv.Int64ToUint64(revision)
+	if err != nil {
+		return nil, err
+	}
 	if subject == nil || payload == nil || command == nil || sequence == 0 || at.IsZero() {
 		return nil, errors.New("dataset event inputs are incomplete")
 	}

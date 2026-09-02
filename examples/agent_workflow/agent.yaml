@@ -1,0 +1,31 @@
+{
+  "schema_version": "mindclade.example-bounded-agent/v1",
+  "definition_name": "tenants/example-tenant/projects/example-project/agentDefinitions/bounded-analysis-v1",
+  "definition_document_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "budget_reservation_name": "tenants/example-tenant/projects/example-project/budgetReservations/example-budget-1",
+  "approval_request_name": "tenants/example-tenant/projects/example-project/approvalRequests/example-agent-start-1",
+  "approval_binding_digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "allowed_tools": [
+    "tenants/example-tenant/projects/example-project/tools/read-verified-artifact",
+    "tenants/example-tenant/projects/example-project/tools/query-operation-status"
+  ],
+  "limits": {
+    "maximum_model_tokens": 4096,
+    "maximum_iterations": 8,
+    "maximum_tool_calls": 12,
+    "maximum_concurrent_branches": 1,
+    "maximum_storage_bytes": 16777216,
+    "maximum_external_spend_micros": 0,
+    "maximum_wall_seconds": 120,
+    "maximum_depth": 2,
+    "maximum_fan_out": 1,
+    "maximum_observations_per_step": 8,
+    "maximum_artifact_references_per_call": 4
+  },
+  "safety": {
+    "network_access": false,
+    "wet_lab_actions": false,
+    "synthesis_instructions": false,
+    "clinical_use": false
+  }
+}

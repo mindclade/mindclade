@@ -15,7 +15,9 @@ import grpc
 from google.protobuf.message import Message
 from google.protobuf.timestamp_pb2 import Timestamp
 from mindclade.artifact.v1 import artifact_commands_pb2, artifact_reference_pb2
+from mindclade.common.v1 import resource_reference_pb2
 from mindclade.internal.artifact.v1 import artifact_service_pb2
+from mindclade.job.v1 import operation_pb2
 
 from ._invocation import AsyncInvoker, SyncInvoker, canonical_digest, command_context
 from ._validation import artifact_ref, required_response_message, required_text
@@ -23,12 +25,17 @@ from .calls import CallOptions, PreparedCall, prepare_call
 from .errors import ConflictError, NotFoundError, ProtocolError
 from .transport import (
     ABORT_ARTIFACT_UPLOAD,
+    ACQUIRE_ARTIFACT_LEASE,
     BEGIN_ARTIFACT_UPLOAD,
     COMMIT_ARTIFACT,
     DOWNLOAD_ARTIFACT,
     FINALIZE_ARTIFACT_UPLOAD,
+    GET_ARTIFACT,
     GET_ARTIFACT_UPLOAD,
+    LIST_ARTIFACTS,
+    QUARANTINE_ARTIFACT,
     QUARANTINE_ARTIFACT_UPLOAD,
+    RELEASE_ARTIFACT_LEASE,
     RESOLVE_ARTIFACT_ALIAS,
     UPLOAD_ARTIFACT_CHUNK,
 )
@@ -41,6 +48,9 @@ _DEFAULT_SESSION_TTL = timedelta(hours=2)
 _MAX_SESSION_TTL = timedelta(hours=24)
 _DEFAULT_RECEIPT_TTL = timedelta(hours=24)
 _MAX_RECEIPT_TTL = timedelta(days=7)
+_MAX_LEASE_TTL = timedelta(days=30)
+_MAX_ARTIFACT_PAGE_SIZE = 100
+_REASON_CODE = re.compile(r"[A-Z][A-Z0-9_]{1,63}")
 
 
 class BinaryReader(Protocol):
@@ -60,12 +70,71 @@ class _Digest(Protocol):
 
 
 type _MutationRequest = (
-    artifact_service_pb2.BeginArtifactUploadRequest
+    artifact_service_pb2.QuarantineArtifactRequest
+    | artifact_service_pb2.AcquireArtifactLeaseRequest
+    | artifact_service_pb2.ReleaseArtifactLeaseRequest
+    | artifact_service_pb2.BeginArtifactUploadRequest
     | artifact_service_pb2.UploadArtifactChunkRequest
     | artifact_service_pb2.FinalizeArtifactUploadRequest
     | artifact_service_pb2.AbortArtifactUploadRequest
     | artifact_service_pb2.QuarantineArtifactUploadRequest
 )
+
+
+def _artifact_name_digest(parent: str, name: str) -> str:
+    prefix = f"{parent}/artifacts/"
+    if not name.startswith(prefix):
+        raise ValueError("artifact name must be in the configured project")
+    digest = name.removeprefix(prefix)
+    if _CANONICAL_DIGEST.fullmatch(digest) is None:
+        raise ValueError("artifact name must end in a canonical sha256 digest")
+    return digest
+
+
+def _validate_lease(
+    *,
+    tenant_id: str,
+    project_id: str,
+    parent: str,
+    lease: resource_reference_pb2.ResourceRef,
+) -> resource_reference_pb2.ResourceRef:
+    result = _clone(lease, resource_reference_pb2.ResourceRef)
+    expected_name = f"{parent}/artifactLeases/{result.resource_id}"
+    if (
+        result.resource_type != "artifact_lease"
+        or not result.resource_id
+        or result.tenant_id != tenant_id
+        or result.project_id != project_id
+        or result.name != expected_name
+        or result.resource_version <= 0
+        or not result.etag
+    ):
+        raise ProtocolError(
+            "artifact lease resource is invalid or outside the configured project",
+            status=grpc.StatusCode.DATA_LOSS,
+        )
+    return result
+
+
+def _operation(
+    response: Message,
+    *,
+    label: str,
+    tenant_id: str,
+    project_id: str,
+) -> operation_pb2.Operation:
+    value = required_response_message(response, "operation", operation_pb2.Operation, label=label)
+    required_text("operation id", value.operation_id)
+    if (
+        value.tenant_id != tenant_id
+        or value.project_id != project_id
+        or value.state == operation_pb2.OPERATION_STATE_UNSPECIFIED
+    ):
+        raise ProtocolError(
+            f"{label} returned invalid or cross-project operation state",
+            status=grpc.StatusCode.DATA_LOSS,
+        )
+    return value
 
 
 def _clone[MessageT: Message](value: MessageT, expected: type[MessageT]) -> MessageT:
@@ -164,6 +233,20 @@ def _validate_transfer_artifact(
     if bool(result.schema_id) is not bool(result.schema_version):
         raise ValueError("artifact schema id and version must be supplied together")
     return result
+
+
+def _response_artifact(
+    value: artifact_reference_pb2.ArtifactRef,
+    *,
+    label: str,
+) -> artifact_reference_pb2.ArtifactRef:
+    try:
+        return _validate_transfer_artifact(value)
+    except (TypeError, ValueError) as error:
+        raise ProtocolError(
+            f"{label} returned invalid immutable metadata",
+            status=grpc.StatusCode.DATA_LOSS,
+        ) from error
 
 
 def _validate_upload(
@@ -338,6 +421,180 @@ def _verify_download_response(
 class Artifacts:
     def __init__(self, invoker: SyncInvoker) -> None:
         self._invoker = invoker
+
+    def get(
+        self,
+        request: artifact_service_pb2.GetArtifactRequest,
+        *,
+        options: CallOptions | None = None,
+    ) -> artifact_reference_pb2.ArtifactRef:
+        value = _clone(request, artifact_service_pb2.GetArtifactRequest)
+        if bool(value.name) == bool(value.digest):
+            raise ValueError("artifact get requires exactly one canonical name or digest")
+        expected = (
+            _artifact_name_digest(self._invoker.config.project_parent, value.name)
+            if value.name
+            else value.digest
+        )
+        if _CANONICAL_DIGEST.fullmatch(expected) is None:
+            raise ValueError("artifact digest must be canonical sha256")
+        call = prepare_call(
+            options,
+            default_timeout=self._invoker.config.default_timeout,
+            require_idempotency=False,
+        )
+        response = cast(
+            artifact_service_pb2.GetArtifactResponse,
+            self._invoker.unary(GET_ARTIFACT, value, call=call, retry_safe=True),
+        )
+        result = required_response_message(
+            response,
+            "artifact",
+            artifact_reference_pb2.ArtifactRef,
+            label="artifact get",
+        )
+        result = _response_artifact(result, label="GetArtifact")
+        if not hmac.compare_digest(result.digest, expected):
+            raise ProtocolError(
+                "GetArtifact returned a different immutable identity",
+                status=grpc.StatusCode.DATA_LOSS,
+            )
+        return result
+
+    def list(
+        self,
+        request: artifact_service_pb2.ListArtifactsRequest | None = None,
+        *,
+        options: CallOptions | None = None,
+    ) -> artifact_service_pb2.ListArtifactsResponse:
+        value = (
+            artifact_service_pb2.ListArtifactsRequest()
+            if request is None
+            else _clone(request, artifact_service_pb2.ListArtifactsRequest)
+        )
+        parent = self._invoker.config.project_parent
+        if value.parent and value.parent != parent:
+            raise ValueError("artifact list parent must match the configured project")
+        if value.page.page_size > _MAX_ARTIFACT_PAGE_SIZE:
+            raise ValueError("artifact page size cannot exceed 100")
+        value.parent = parent
+        call = prepare_call(
+            options,
+            default_timeout=self._invoker.config.default_timeout,
+            require_idempotency=False,
+        )
+        raw = self._invoker.unary(LIST_ARTIFACTS, value, call=call, retry_safe=True)
+        if not isinstance(raw, artifact_service_pb2.ListArtifactsResponse):
+            raise ProtocolError(
+                "ListArtifacts response violated its generated contract",
+                status=grpc.StatusCode.DATA_LOSS,
+            )
+        result = _clone(raw, artifact_service_pb2.ListArtifactsResponse)
+        for item in result.artifacts:
+            _response_artifact(item, label="ListArtifacts")
+        return result
+
+    def quarantine(
+        self,
+        request: artifact_service_pb2.QuarantineArtifactRequest,
+        *,
+        options: CallOptions | None = None,
+    ) -> operation_pb2.Operation:
+        value = _clone(request, artifact_service_pb2.QuarantineArtifactRequest)
+        artifact = _validate_transfer_artifact(value.artifact)
+        if _REASON_CODE.fullmatch(value.reason_code) is None or len(value.evidence) > 100:
+            raise ValueError("artifact quarantine reason or evidence count is invalid")
+        for evidence in value.evidence:
+            if (
+                _CANONICAL_DIGEST.fullmatch(evidence.digest) is None
+                or not hmac.compare_digest(evidence.subject_digest, artifact.digest)
+                or not evidence.evidence_kind
+                or len(evidence.evidence_kind) > 128
+                or (
+                    evidence.policy_digest
+                    and _CANONICAL_DIGEST.fullmatch(evidence.policy_digest) is None
+                )
+            ):
+                raise ValueError("artifact quarantine evidence is invalid")
+        call = prepare_call(
+            options,
+            default_timeout=self._invoker.config.default_timeout,
+            require_idempotency=True,
+        )
+        _attach_context(value, self._invoker, call)
+        response = self._invoker.unary(QUARANTINE_ARTIFACT, value, call=call, retry_safe=True)
+        return _operation(
+            response,
+            label="artifact quarantine",
+            tenant_id=self._invoker.config.tenant_id,
+            project_id=self._invoker.config.project_id,
+        )
+
+    def acquire_lease(
+        self,
+        request: artifact_service_pb2.AcquireArtifactLeaseRequest,
+        *,
+        options: CallOptions | None = None,
+    ) -> resource_reference_pb2.ResourceRef:
+        value = _clone(request, artifact_service_pb2.AcquireArtifactLeaseRequest)
+        _validate_transfer_artifact(value.artifact)
+        if not value.HasField("expire_time"):
+            raise ValueError("artifact lease expiration is required")
+        now = datetime.now(UTC)
+        expiration = value.expire_time.ToDatetime(tzinfo=UTC)
+        if expiration <= now or expiration > now + _MAX_LEASE_TTL:
+            raise ValueError("artifact lease expiration must be within 30 days")
+        call = prepare_call(
+            options,
+            default_timeout=self._invoker.config.default_timeout,
+            require_idempotency=True,
+        )
+        _attach_context(value, self._invoker, call)
+        response = self._invoker.unary(ACQUIRE_ARTIFACT_LEASE, value, call=call, retry_safe=True)
+        lease = required_response_message(
+            response,
+            "lease",
+            resource_reference_pb2.ResourceRef,
+            label="artifact lease acquisition",
+        )
+        return _validate_lease(
+            tenant_id=self._invoker.config.tenant_id,
+            project_id=self._invoker.config.project_id,
+            parent=self._invoker.config.project_parent,
+            lease=lease,
+        )
+
+    def release_lease(
+        self,
+        request: artifact_service_pb2.ReleaseArtifactLeaseRequest,
+        *,
+        options: CallOptions | None = None,
+    ) -> None:
+        value = _clone(request, artifact_service_pb2.ReleaseArtifactLeaseRequest)
+        try:
+            lease = _validate_lease(
+                tenant_id=self._invoker.config.tenant_id,
+                project_id=self._invoker.config.project_id,
+                parent=self._invoker.config.project_parent,
+                lease=value.lease,
+            )
+        except ProtocolError as error:
+            raise ValueError("artifact lease release resource is invalid") from error
+        required_text("artifact lease etag", value.etag, maximum=256)
+        if lease.etag and not hmac.compare_digest(lease.etag, value.etag):
+            raise ValueError("artifact lease and release ETags differ")
+        call = prepare_call(
+            options,
+            default_timeout=self._invoker.config.default_timeout,
+            require_idempotency=True,
+        )
+        _attach_context(value, self._invoker, call)
+        response = self._invoker.unary(RELEASE_ARTIFACT_LEASE, value, call=call, retry_safe=True)
+        if not isinstance(response, artifact_service_pb2.ReleaseArtifactLeaseResponse):
+            raise ProtocolError(
+                "ReleaseArtifactLease response violated its generated contract",
+                status=grpc.StatusCode.DATA_LOSS,
+            )
 
     def resolve_alias(
         self,
@@ -732,6 +989,184 @@ class Artifacts:
 class AsyncArtifacts:
     def __init__(self, invoker: AsyncInvoker) -> None:
         self._invoker = invoker
+
+    async def get(
+        self,
+        request: artifact_service_pb2.GetArtifactRequest,
+        *,
+        options: CallOptions | None = None,
+    ) -> artifact_reference_pb2.ArtifactRef:
+        value = _clone(request, artifact_service_pb2.GetArtifactRequest)
+        if bool(value.name) == bool(value.digest):
+            raise ValueError("artifact get requires exactly one canonical name or digest")
+        expected = (
+            _artifact_name_digest(self._invoker.config.project_parent, value.name)
+            if value.name
+            else value.digest
+        )
+        if _CANONICAL_DIGEST.fullmatch(expected) is None:
+            raise ValueError("artifact digest must be canonical sha256")
+        call = prepare_call(
+            options,
+            default_timeout=self._invoker.config.default_timeout,
+            require_idempotency=False,
+        )
+        response = cast(
+            artifact_service_pb2.GetArtifactResponse,
+            await self._invoker.unary(GET_ARTIFACT, value, call=call, retry_safe=True),
+        )
+        result = required_response_message(
+            response,
+            "artifact",
+            artifact_reference_pb2.ArtifactRef,
+            label="artifact get",
+        )
+        result = _response_artifact(result, label="GetArtifact")
+        if not hmac.compare_digest(result.digest, expected):
+            raise ProtocolError(
+                "GetArtifact returned a different immutable identity",
+                status=grpc.StatusCode.DATA_LOSS,
+            )
+        return result
+
+    async def list(
+        self,
+        request: artifact_service_pb2.ListArtifactsRequest | None = None,
+        *,
+        options: CallOptions | None = None,
+    ) -> artifact_service_pb2.ListArtifactsResponse:
+        value = (
+            artifact_service_pb2.ListArtifactsRequest()
+            if request is None
+            else _clone(request, artifact_service_pb2.ListArtifactsRequest)
+        )
+        parent = self._invoker.config.project_parent
+        if value.parent and value.parent != parent:
+            raise ValueError("artifact list parent must match the configured project")
+        if value.page.page_size > _MAX_ARTIFACT_PAGE_SIZE:
+            raise ValueError("artifact page size cannot exceed 100")
+        value.parent = parent
+        call = prepare_call(
+            options,
+            default_timeout=self._invoker.config.default_timeout,
+            require_idempotency=False,
+        )
+        raw = await self._invoker.unary(LIST_ARTIFACTS, value, call=call, retry_safe=True)
+        if not isinstance(raw, artifact_service_pb2.ListArtifactsResponse):
+            raise ProtocolError(
+                "ListArtifacts response violated its generated contract",
+                status=grpc.StatusCode.DATA_LOSS,
+            )
+        result = _clone(raw, artifact_service_pb2.ListArtifactsResponse)
+        for item in result.artifacts:
+            _response_artifact(item, label="ListArtifacts")
+        return result
+
+    async def quarantine(
+        self,
+        request: artifact_service_pb2.QuarantineArtifactRequest,
+        *,
+        options: CallOptions | None = None,
+    ) -> operation_pb2.Operation:
+        value = _clone(request, artifact_service_pb2.QuarantineArtifactRequest)
+        artifact = _validate_transfer_artifact(value.artifact)
+        if _REASON_CODE.fullmatch(value.reason_code) is None or len(value.evidence) > 100:
+            raise ValueError("artifact quarantine reason or evidence count is invalid")
+        for evidence in value.evidence:
+            if (
+                _CANONICAL_DIGEST.fullmatch(evidence.digest) is None
+                or not hmac.compare_digest(evidence.subject_digest, artifact.digest)
+                or not evidence.evidence_kind
+                or len(evidence.evidence_kind) > 128
+                or (
+                    evidence.policy_digest
+                    and _CANONICAL_DIGEST.fullmatch(evidence.policy_digest) is None
+                )
+            ):
+                raise ValueError("artifact quarantine evidence is invalid")
+        call = prepare_call(
+            options,
+            default_timeout=self._invoker.config.default_timeout,
+            require_idempotency=True,
+        )
+        _attach_context(value, self._invoker, call)
+        response = await self._invoker.unary(QUARANTINE_ARTIFACT, value, call=call, retry_safe=True)
+        return _operation(
+            response,
+            label="artifact quarantine",
+            tenant_id=self._invoker.config.tenant_id,
+            project_id=self._invoker.config.project_id,
+        )
+
+    async def acquire_lease(
+        self,
+        request: artifact_service_pb2.AcquireArtifactLeaseRequest,
+        *,
+        options: CallOptions | None = None,
+    ) -> resource_reference_pb2.ResourceRef:
+        value = _clone(request, artifact_service_pb2.AcquireArtifactLeaseRequest)
+        _validate_transfer_artifact(value.artifact)
+        if not value.HasField("expire_time"):
+            raise ValueError("artifact lease expiration is required")
+        now = datetime.now(UTC)
+        expiration = value.expire_time.ToDatetime(tzinfo=UTC)
+        if expiration <= now or expiration > now + _MAX_LEASE_TTL:
+            raise ValueError("artifact lease expiration must be within 30 days")
+        call = prepare_call(
+            options,
+            default_timeout=self._invoker.config.default_timeout,
+            require_idempotency=True,
+        )
+        _attach_context(value, self._invoker, call)
+        response = await self._invoker.unary(
+            ACQUIRE_ARTIFACT_LEASE, value, call=call, retry_safe=True
+        )
+        lease = required_response_message(
+            response,
+            "lease",
+            resource_reference_pb2.ResourceRef,
+            label="artifact lease acquisition",
+        )
+        return _validate_lease(
+            tenant_id=self._invoker.config.tenant_id,
+            project_id=self._invoker.config.project_id,
+            parent=self._invoker.config.project_parent,
+            lease=lease,
+        )
+
+    async def release_lease(
+        self,
+        request: artifact_service_pb2.ReleaseArtifactLeaseRequest,
+        *,
+        options: CallOptions | None = None,
+    ) -> None:
+        value = _clone(request, artifact_service_pb2.ReleaseArtifactLeaseRequest)
+        try:
+            lease = _validate_lease(
+                tenant_id=self._invoker.config.tenant_id,
+                project_id=self._invoker.config.project_id,
+                parent=self._invoker.config.project_parent,
+                lease=value.lease,
+            )
+        except ProtocolError as error:
+            raise ValueError("artifact lease release resource is invalid") from error
+        required_text("artifact lease etag", value.etag, maximum=256)
+        if lease.etag and not hmac.compare_digest(lease.etag, value.etag):
+            raise ValueError("artifact lease and release ETags differ")
+        call = prepare_call(
+            options,
+            default_timeout=self._invoker.config.default_timeout,
+            require_idempotency=True,
+        )
+        _attach_context(value, self._invoker, call)
+        response = await self._invoker.unary(
+            RELEASE_ARTIFACT_LEASE, value, call=call, retry_safe=True
+        )
+        if not isinstance(response, artifact_service_pb2.ReleaseArtifactLeaseResponse):
+            raise ProtocolError(
+                "ReleaseArtifactLease response violated its generated contract",
+                status=grpc.StatusCode.DATA_LOSS,
+            )
 
     async def resolve_alias(
         self,

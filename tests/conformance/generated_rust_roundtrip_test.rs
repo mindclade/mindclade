@@ -46,6 +46,10 @@ fn every_generated_rust_package_round_trips_a_representative_message() {
         name: "evaluationRuns/fixture".into(),
         ..Default::default()
     });
+    assert_wire_round_trip(protocols::experiment::v1::ExperimentCreated {
+        experiment_name: "experiments/fixture".into(),
+        ..Default::default()
+    });
     assert_wire_round_trip(protocols::agent::v1::AgentRunCompleted {
         attempt_id: "attempt-fixture".into(),
         ..Default::default()
@@ -116,6 +120,10 @@ fn every_generated_rust_package_round_trips_a_representative_message() {
             ..Default::default()
         },
     );
+    assert_wire_round_trip(protocols::internal::experiment::v1::GetExperimentRequest {
+        name: "experiments/fixture".into(),
+        ..Default::default()
+    });
     assert_wire_round_trip(
         protocols::internal::inference::v1::GetInferenceResultRequest {
             operation_name: "operations/fixture".into(),
@@ -167,4 +175,31 @@ fn every_generated_rust_package_round_trips_a_representative_message() {
         name: "workflowDefinitions/fixture".into(),
         ..Default::default()
     });
+}
+
+#[test]
+fn every_json_schema_fixture_has_native_rust_conformance() {
+    protocols::schema::v1::assert_fixture_conformance()
+        .expect("all generated JSON Schema fixtures must agree in Rust");
+}
+
+#[test]
+fn generated_event_registry_enforces_exact_identity_and_activation_state() {
+    let registration = protocols::event_registry::require_event_registration(
+        "mindclade.events.job.v1.JobRequested",
+        1,
+        "application/x-protobuf; deterministic=true",
+    )
+    .expect("registered JobRequested identity");
+    assert_eq!(registration.lifecycle_state, "active");
+    assert_eq!(registration.compatibility_policy, "exact-version");
+    assert!(!registration.producers.is_empty());
+    assert!(!registration.consumers.is_empty());
+    assert!(!protocols::event_registry::EVENT_REGISTRY_RATIFIABLE);
+    assert!(protocols::event_registry::require_event_registration(
+        "mindclade.events.job.v1.JobRequested",
+        2,
+        "application/x-protobuf; deterministic=true",
+    )
+    .is_err());
 }
