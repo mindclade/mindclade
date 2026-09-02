@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import asyncio
+import threading
 import unittest
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Iterable
+from unittest.mock import patch
 
 from google.protobuf.message import Message
 from mindclade.common.v1 import resource_reference_pb2
@@ -15,6 +18,7 @@ from mindclade.job.v1 import lease_fencing_pb2, operation_pb2
 from mindclade_internal_sdk import (
     AsyncClient,
     CallOptions,
+    CancelledError,
     Client,
     ClientConfig,
     Environment,
@@ -200,6 +204,48 @@ class SyncInferenceTest(unittest.TestCase):
         self.assertEqual(attempts, 2)
         self.assertEqual(messages[-1].sequence, 2)
 
+    def test_watch_resumes_after_partial_eof_and_cancels_during_backoff(self) -> None:
+        transport = FakeSyncTransport()
+        attempts = 0
+
+        def partial_stream(
+            request: Message, timeout: float, metadata: Metadata
+        ) -> Iterable[Message]:
+            del request, timeout, metadata
+            nonlocal attempts
+            attempts += 1
+            messages = stream_messages()
+            return messages[:1] if attempts == 1 else messages[1:]
+
+        transport.stream_handlers[WATCH_INFERENCE] = partial_stream
+        client = Client(config(), transport=transport)
+        messages = list(client.inference.watch(OPERATION_NAME, timeout=1))
+        self.assertEqual(attempts, 2)
+        self.assertEqual([message.sequence for message in messages], [1, 1, 2])
+
+        cancellation = threading.Event()
+
+        def unavailable(request: Message, timeout: float, metadata: Metadata) -> list[Message]:
+            del request, timeout, metadata
+            cancellation.set()
+            raise UnavailableError(
+                "transient inference stream failure",
+                retryable=True,
+                retry_after=1.0,
+            )
+
+        transport.stream_handlers[WATCH_INFERENCE] = unavailable
+        with patch("mindclade_internal_sdk.inference.time.sleep") as sleep:
+            with self.assertRaises(CancelledError):
+                list(
+                    client.inference.watch(
+                        OPERATION_NAME,
+                        timeout=1,
+                        cancellation=cancellation,
+                    )
+                )
+            sleep.assert_not_called()
+
 
 class AsyncInferenceTest(unittest.IsolatedAsyncioTestCase):
     async def test_async_generated_submit_and_wait(self) -> None:
@@ -259,6 +305,54 @@ class AsyncInferenceTest(unittest.IsolatedAsyncioTestCase):
         messages = [message async for message in client.inference.watch(OPERATION_NAME, timeout=1)]
         self.assertEqual(attempts, 2)
         self.assertEqual(messages[-1].sequence, 2)
+
+    async def test_watch_resumes_after_partial_eof_and_cancels_during_backoff(self) -> None:
+        transport = FakeAsyncTransport()
+        attempts = 0
+
+        async def partial_stream(
+            request: Message, timeout: float, metadata: Metadata
+        ) -> AsyncIterator[Message]:
+            del request, timeout, metadata
+            nonlocal attempts
+            attempts += 1
+            messages = stream_messages()
+            selected = messages[:1] if attempts == 1 else messages[1:]
+            for message in selected:
+                yield message
+
+        transport.stream_handlers[WATCH_INFERENCE] = partial_stream
+        client = AsyncClient(config(), transport=transport)
+        messages = [message async for message in client.inference.watch(OPERATION_NAME, timeout=1)]
+        self.assertEqual(attempts, 2)
+        self.assertEqual([message.sequence for message in messages], [1, 1, 2])
+
+        cancellation = asyncio.Event()
+
+        async def unavailable(
+            request: Message, timeout: float, metadata: Metadata
+        ) -> AsyncIterator[Message]:
+            del request, timeout, metadata
+            cancellation.set()
+            raise UnavailableError(
+                "transient inference stream failure",
+                retryable=True,
+                retry_after=1.0,
+            )
+            yield Message()  # pragma: no cover - preserve the async-generator type
+
+        transport.stream_handlers[WATCH_INFERENCE] = unavailable
+        with patch("mindclade_internal_sdk.inference.asyncio.sleep") as sleep:
+            with self.assertRaises(CancelledError):
+                _ = [
+                    message
+                    async for message in client.inference.watch(
+                        OPERATION_NAME,
+                        timeout=1,
+                        cancellation=cancellation,
+                    )
+                ]
+            sleep.assert_not_awaited()
 
 
 if __name__ == "__main__":

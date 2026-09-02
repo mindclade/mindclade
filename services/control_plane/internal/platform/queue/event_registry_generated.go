@@ -3,7 +3,7 @@
 
 package queue
 
-const authoritativeEventDescriptorDigest = "sha256:e53ce4489fb3bf19a0f0fe3a417806fa4b7aecf32f58d189994ae09e33baeb61"
+const authoritativeEventDescriptorDigest = "sha256:46514bdee27df6f41f03b63f050b2cfcb95867fc8f291fe943eaf2019693c0ed"
 
 var authoritativeEventRegistrations = []EventRegistration{
 	{FullName: "mindclade.events.admin.v1.AuditExportCompleted", Version: 1, ContentType: "application/x-protobuf; deterministic=true", Source: "events/mindclade/admin/v1/audit_export_completed.proto", Owner: "control-plane/admin", LifecycleState: "active", CompatibilityPolicy: "exact-version", Fixture: EventFixtureEvidence{Status: "verified", Source: "services/control_plane/internal/admin/admin_test.go", Target: "//services/control_plane/internal/admin:admin_test", Mode: "populated-protobuf-roundtrip", Reason: ""}, Producers: []EventEvidenceEndpoint{{ID: "control-plane/admin", Source: "services/control_plane/internal/admin/events.go", Target: "//services/control_plane/internal/admin:admin", Mode: "transactional-outbox"}}, Consumers: []EventEvidenceEndpoint{{ID: "control-plane/event-audit-projection", Source: "services/control_plane/internal/platform/eventprojection/projection.go", Target: "//services/control_plane/internal/platform/eventprojection:event_projection", Mode: "semantic-inbox"}}, ActivationGaps: nil},

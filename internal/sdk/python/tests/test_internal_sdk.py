@@ -359,6 +359,44 @@ class ConfigurationTest(unittest.TestCase):
                 principal_id="principal-01",
             )
 
+    def test_workload_identity_audience_uses_canonical_https_origin(self) -> None:
+        cases = (
+            ("CONTROL-PLANE.EXAMPLE:443", "https://control-plane.example"),
+            ("control-plane.example:8443", "https://control-plane.example:8443"),
+            ("[2001:db8::1]:443", "https://[2001:db8::1]"),
+        )
+        for endpoint, expected in cases:
+            with self.subTest(endpoint=endpoint):
+                config = ClientConfig(
+                    tenant_id="tenant-01",
+                    project_id="project-01",
+                    principal_id="principal-01",
+                    token_provider=SyncCredentials(),
+                    endpoint=endpoint,
+                )
+                self.assertEqual(config.audience, expected)
+
+        explicit = ClientConfig(
+            tenant_id="tenant-01",
+            project_id="project-01",
+            principal_id="principal-01",
+            token_provider=SyncCredentials(),
+            endpoint="control-plane.example:443",
+            audience="https://verifier.example/custom-audience",
+        )
+        self.assertEqual(explicit.audience, "https://verifier.example/custom-audience")
+
+        provider = GoogleWorkloadIdentityProvider("https://verifier.example/provider")
+        self.assertEqual(provider.audience, "https://verifier.example/provider")
+        with self.assertRaisesRegex(ConfigurationError, "does not match"):
+            ClientConfig(
+                tenant_id="tenant-01",
+                project_id="project-01",
+                principal_id="principal-01",
+                token_provider=provider,
+                endpoint="control-plane.example:443",
+            )
+
     def test_cleartext_is_restricted_to_uncredentialed_local_loopback(self) -> None:
         config = ClientConfig(
             environment=Environment.LOCAL,

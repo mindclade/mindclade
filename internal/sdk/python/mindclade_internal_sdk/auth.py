@@ -140,6 +140,12 @@ class GoogleWorkloadIdentityProvider:
         self._cached: AccessToken | None = None
         self._refreshing = False
 
+    @property
+    def audience(self) -> str:
+        """Return the exact verifier audience bound to every minted token."""
+
+        return self._audience
+
     def get_token(self, *, timeout: float) -> AccessToken:
         if not math.isfinite(timeout) or timeout <= 0:
             raise TimeoutError("credential acquisition deadline expired")
@@ -195,6 +201,12 @@ class AsyncGoogleWorkloadIdentityProvider:
 
     def __init__(self, audience: str) -> None:
         self._provider = GoogleWorkloadIdentityProvider(audience)
+
+    @property
+    def audience(self) -> str:
+        """Return the exact verifier audience bound to every minted token."""
+
+        return self._provider.audience
 
     async def get_token(self, *, timeout: float) -> AccessToken:
         try:

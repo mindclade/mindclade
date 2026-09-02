@@ -25,9 +25,9 @@ uses the fixed GCE/GKE metadata identity endpoint with an audience-bound,
 bounded exchange, refresh skew, per-audience cache, concurrency-safe
 singleflight, caller cancellation, and redacted failures.
 Set `ClientConfigInput.audience` to the verifier's exact configured OIDC
-audience. If omitted, the current fallback is the endpoint URL literally,
-including an explicit `:443`; no cross-language default-port normalization is
-promised.
+audience. If omitted, the SDK derives the endpoint's canonical HTTPS origin:
+the host is lowercase, IPv6 remains bracketed, default `:443` is omitted, and a
+non-default port is retained.
 
 Operation watches retain one total deadline, resume from `last_sequence` after
 bounded consecutive retryable failures, validate generated updates, and stop

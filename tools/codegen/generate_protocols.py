@@ -269,10 +269,15 @@ def buildifier_version_matches_lock(
     if actual != "buildifier scm revision: redacted":
         return False
     resolved = executable.resolve().as_posix()
-    return (
-        f"/Cellar/buildifier/{version}/" in resolved
-        or re.search(rf"/[^/]+-buildifier-{re.escape(version)}/", resolved) is not None
+    nix_path = re.fullmatch(
+        rf"/nix/store/[0-9abcdfghijklmnpqrsvwxyz]{{32}}-buildifier-{re.escape(version)}/bin/buildifier",
+        resolved,
     )
+    homebrew_path = re.fullmatch(
+        rf"/(?:opt/homebrew|usr/local)/Cellar/buildifier/{re.escape(version)}/bin/buildifier",
+        resolved,
+    )
+    return nix_path is not None or homebrew_path is not None
 
 
 def rust_plugin_cache_digest(
@@ -3020,30 +3025,529 @@ PUBLIC_PROTO_DEPENDENCY_ALLOWLIST = frozenset(
         "google/protobuf/timestamp.proto",
     }
 )
-PUBLIC_FORBIDDEN_FIELD_NAMES = frozenset(
-    {
-        "active_fence",
-        "command_context",
-        "delivery_envelope",
-        "executable_plan",
-        "fence",
-        "lease_token",
-        "lease_token_digest",
-        "principal_id",
-        "secret",
-        "storage_locator",
-        "tenant_id",
-        "uri",
-        "worker_id",
-    }
-)
-
-# A caller-selected ``project_id`` is an ordinary public resource identifier,
-# not trusted authorization context.  Authorization and tenant binding are
-# resolved from transport credentials; those security-sensitive fields remain
-# forbidden above.  Keeping this distinction explicit prevents the boundary
-# check from rejecting safe ProjectCreate/ProjectView messages while still
-# failing closed on client-supplied principal or tenant identity.
+PUBLIC_PROTO_FIELD_ALLOWLIST: Mapping[str, frozenset[str]] = {
+    "PublicSseContract": frozenset(
+        [
+            "retry_milliseconds",
+            "heartbeat_interval_seconds",
+            "heartbeat_reuses_last_durable_event_id",
+            "replay_acknowledged_terminal_event",
+        ]
+    ),
+    "PublicHttpContract": frozenset(
+        [
+            "success_status",
+            "bearer_auth",
+            "request_headers",
+            "response_headers",
+            "stream",
+            "non_success_status",
+            "request_body_required",
+            "required_request_headers",
+            "sse",
+        ]
+    ),
+    "PublicStringEnumContract": frozenset(["field", "values"]),
+    "PublicMessageContract": frozenset(["required_fields", "string_enums"]),
+    "ResourceRef": frozenset(["name", "uid", "revision"]),
+    "ArtifactRef": frozenset(
+        ["digest", "media_type", "size_bytes", "artifact_kind", "schema_id", "integrity_digest"]
+    ),
+    "EvidenceRef": frozenset(["digest", "subject_digest", "evidence_kind", "policy_digest"]),
+    "ErrorDetail": frozenset(
+        ["kind", "field", "reason", "resource", "current_revision", "limit_name"]
+    ),
+    "PublicError": frozenset(
+        [
+            "code",
+            "message",
+            "request_id",
+            "trace_id",
+            "retryable",
+            "retry_after",
+            "diagnostic_ref",
+            "details",
+        ]
+    ),
+    "PageMetadata": frozenset(["next_page_token", "snapshot_token"]),
+    "OperationResult": frozenset(["resource", "inference", "manifest", "artifacts"]),
+    "Operation": frozenset(
+        [
+            "name",
+            "uid",
+            "revision",
+            "etag",
+            "state",
+            "done",
+            "create_time",
+            "update_time",
+            "target",
+            "result",
+            "error",
+        ]
+    ),
+    "OperationEvent": frozenset(
+        [
+            "event_id",
+            "operation",
+            "event_type",
+            "schema_version",
+            "operation_revision",
+            "resume_cursor",
+            "heartbeat",
+            "emitted_at",
+            "error",
+        ]
+    ),
+    "CancellationRequest": frozenset(["reason"]),
+    "ArtifactView": frozenset(["name", "uid", "create_time", "policy_classification", "ref"]),
+    "DownloadArtifactChunk": frozenset(
+        ["offset", "data", "total_size_bytes", "content_digest", "complete"]
+    ),
+    "DatasetCreate": frozenset(
+        ["dataset_id", "display_name", "labels", "annotations", "policy_classification"]
+    ),
+    "DatasetUpdate": frozenset(["display_name", "labels", "annotations"]),
+    "DatasetView": frozenset(
+        [
+            "name",
+            "uid",
+            "revision",
+            "etag",
+            "create_time",
+            "update_time",
+            "display_name",
+            "labels",
+            "annotations",
+            "policy_classification",
+            "state",
+            "current_release",
+            "delete_time",
+        ]
+    ),
+    "DatasetList": frozenset(["datasets", "page"]),
+    "DatasetReleaseCreate": frozenset(
+        [
+            "release_id",
+            "manifest",
+            "qualification_evidence",
+            "parent_release",
+            "use_policy",
+            "policy_classification",
+        ]
+    ),
+    "DatasetReleaseView": frozenset(
+        [
+            "name",
+            "uid",
+            "revision",
+            "etag",
+            "create_time",
+            "dataset",
+            "release_id",
+            "state",
+            "manifest",
+            "qualification_evidence",
+            "policy_classification",
+            "update_time",
+            "delete_time",
+        ]
+    ),
+    "DatasetReleaseList": frozenset(["releases", "page"]),
+    "ModelCreate": frozenset(
+        [
+            "model_id",
+            "display_name",
+            "labels",
+            "annotations",
+            "policy_classification",
+            "family",
+            "definition_manifest",
+            "input_contract",
+            "output_contract",
+        ]
+    ),
+    "ModelUpdate": frozenset(["display_name", "labels", "annotations"]),
+    "ModelView": frozenset(
+        [
+            "name",
+            "uid",
+            "revision",
+            "etag",
+            "create_time",
+            "update_time",
+            "display_name",
+            "labels",
+            "annotations",
+            "policy_classification",
+            "family",
+            "state",
+            "definition_manifest",
+            "input_contract",
+            "output_contract",
+            "current_release",
+            "delete_time",
+        ]
+    ),
+    "ModelList": frozenset(["models", "page"]),
+    "ModelReleaseCreate": frozenset(
+        [
+            "release_id",
+            "bundle_manifest",
+            "model_manifest",
+            "checkpoint",
+            "evaluation_evidence",
+            "release_policy",
+            "policy_classification",
+        ]
+    ),
+    "ModelReleaseView": frozenset(
+        [
+            "name",
+            "uid",
+            "revision",
+            "etag",
+            "create_time",
+            "model",
+            "release_id",
+            "stage",
+            "bundle_manifest",
+            "model_manifest",
+            "checkpoint",
+            "evaluation_evidence",
+            "policy_classification",
+            "update_time",
+            "delete_time",
+        ]
+    ),
+    "ModelReleaseList": frozenset(["releases", "page"]),
+    "TrainingRunCreate": frozenset(
+        [
+            "training_run_id",
+            "training_recipe",
+            "dataset_release",
+            "model_release",
+            "hardware_topology",
+            "use_policy",
+            "labels",
+            "policy_classification",
+        ]
+    ),
+    "TrainingRunView": frozenset(
+        [
+            "name",
+            "uid",
+            "revision",
+            "etag",
+            "create_time",
+            "update_time",
+            "state",
+            "training_recipe",
+            "dataset_release",
+            "model_release",
+            "hardware_topology",
+            "latest_checkpoint",
+            "result_manifest",
+            "failure",
+            "delete_time",
+        ]
+    ),
+    "TrainingRunList": frozenset(["training_runs", "page"]),
+    "EvaluationRunCreate": frozenset(
+        [
+            "evaluation_run_id",
+            "suite",
+            "datasets",
+            "snapshot",
+            "model_release",
+            "inference_protocol",
+        ]
+    ),
+    "EvaluationRunView": frozenset(
+        [
+            "name",
+            "uid",
+            "revision",
+            "etag",
+            "create_time",
+            "update_time",
+            "state",
+            "suite",
+            "datasets",
+            "model_release",
+            "completed_samples",
+            "total_samples",
+            "failure",
+            "delete_time",
+        ]
+    ),
+    "EvaluationRunList": frozenset(["evaluation_runs", "page"]),
+    "MetricSummary": frozenset(
+        [
+            "metric_id",
+            "metric_version",
+            "unit",
+            "value",
+            "interval_lower",
+            "interval_upper",
+            "valid_count",
+            "invalid_count",
+        ]
+    ),
+    "EvaluationResultView": frozenset(
+        [
+            "name",
+            "uid",
+            "run",
+            "outcome",
+            "report",
+            "metrics",
+            "safety_evidence",
+            "statistical_evidence",
+            "result_digest",
+        ]
+    ),
+    "InferenceOutput": frozenset(["result_schema_id", "requested_artifact_kinds"]),
+    "InferenceSubmission": frozenset(
+        [
+            "request_id",
+            "capability",
+            "model",
+            "resolved_model_bundle",
+            "input",
+            "sampling_policy",
+            "output",
+            "resource_class",
+            "data_classification",
+        ]
+    ),
+    "InferenceResultView": frozenset(
+        ["name", "uid", "request", "operation", "result_manifest", "outputs", "result_digest"]
+    ),
+    "AgentBudget": frozenset(
+        [
+            "maximum_model_tokens",
+            "maximum_iterations",
+            "maximum_tool_calls",
+            "maximum_external_spend_micros",
+        ]
+    ),
+    "AgentDefinitionCreate": frozenset(
+        [
+            "agent_definition_id",
+            "display_name",
+            "semantic_version",
+            "purpose",
+            "definition",
+            "workflow_definition",
+            "input_schema",
+            "output_schema",
+            "budget",
+        ]
+    ),
+    "AgentDefinitionView": frozenset(
+        [
+            "name",
+            "uid",
+            "revision",
+            "etag",
+            "create_time",
+            "update_time",
+            "display_name",
+            "semantic_version",
+            "purpose",
+            "definition",
+            "workflow_definition",
+            "input_schema",
+            "output_schema",
+            "budget",
+            "state",
+            "agent_definition_id",
+            "delete_time",
+        ]
+    ),
+    "AgentDefinitionList": frozenset(["agent_definitions", "page"]),
+    "AgentRunCreate": frozenset(
+        ["agent_run_id", "definition", "definition_digest", "input", "model_provider_manifest"]
+    ),
+    "AgentRunView": frozenset(
+        [
+            "name",
+            "uid",
+            "revision",
+            "etag",
+            "create_time",
+            "update_time",
+            "definition",
+            "definition_digest",
+            "state",
+            "input",
+            "run_manifest",
+            "output",
+            "failure",
+            "delete_time",
+        ]
+    ),
+    "AgentRunList": frozenset(["agent_runs", "page"]),
+    "WorkflowDefinitionCreate": frozenset(
+        [
+            "workflow_definition_id",
+            "display_name",
+            "semantic_version",
+            "definition",
+            "input_schema",
+            "output_schema",
+        ]
+    ),
+    "WorkflowDefinitionView": frozenset(
+        [
+            "name",
+            "uid",
+            "revision",
+            "etag",
+            "create_time",
+            "update_time",
+            "display_name",
+            "semantic_version",
+            "definition",
+            "input_schema",
+            "output_schema",
+            "state",
+            "resolved_graph_digest",
+            "workflow_definition_id",
+            "delete_time",
+        ]
+    ),
+    "WorkflowDefinitionList": frozenset(["workflow_definitions", "page"]),
+    "WorkflowRunCreate": frozenset(
+        ["workflow_run_id", "definition", "definition_digest", "agent_run", "input"]
+    ),
+    "WorkflowRunView": frozenset(
+        [
+            "name",
+            "uid",
+            "revision",
+            "etag",
+            "create_time",
+            "update_time",
+            "definition",
+            "definition_digest",
+            "state",
+            "input",
+            "output",
+            "replay_state",
+            "failure",
+            "delete_time",
+        ]
+    ),
+    "WorkflowRunList": frozenset(["workflow_runs", "page"]),
+    "ApprovalRequestView": frozenset(
+        [
+            "name",
+            "uid",
+            "revision",
+            "etag",
+            "create_time",
+            "update_time",
+            "state",
+            "action",
+            "intent_digest",
+            "minimum_independent_approvers",
+            "expire_time",
+            "delete_time",
+        ]
+    ),
+    "ApprovalRequestList": frozenset(["approvals", "page"]),
+    "ApprovalDecision": frozenset(["decision", "reason_code", "safe_reason"]),
+    "ApprovalReceiptView": frozenset(
+        [
+            "name",
+            "uid",
+            "request",
+            "decision",
+            "reason_code",
+            "safe_reason",
+            "receipt_digest",
+            "create_time",
+        ]
+    ),
+    "TenantView": frozenset(
+        [
+            "name",
+            "uid",
+            "revision",
+            "etag",
+            "create_time",
+            "update_time",
+            "display_name",
+            "state",
+            "default_classification",
+            "allowed_regions",
+            "labels",
+            "delete_time",
+        ]
+    ),
+    "ProjectCreate": frozenset(
+        ["project_id", "display_name", "purpose", "default_classification", "labels"]
+    ),
+    "ProjectView": frozenset(
+        [
+            "name",
+            "uid",
+            "revision",
+            "etag",
+            "create_time",
+            "update_time",
+            "display_name",
+            "purpose",
+            "default_classification",
+            "labels",
+            "state",
+            "project_id",
+            "delete_time",
+        ]
+    ),
+    "ProjectList": frozenset(["projects", "page"]),
+    "AuditRecordView": frozenset(
+        [
+            "event_id",
+            "event_time",
+            "actor",
+            "action",
+            "resource",
+            "result",
+            "policy_reason_code",
+            "request_id",
+            "trace_id",
+            "detail_digest",
+        ]
+    ),
+    "AuditRecordList": frozenset(["records", "page"]),
+    "GetResourceRequest": frozenset(["name"]),
+    "ListResourcesRequest": frozenset(["parent", "page_size", "page_token", "filter", "order_by"]),
+    "ListChildResourcesRequest": frozenset(["parent", "page_size", "page_token"]),
+    "SubmitInferenceRequest": frozenset(["parent", "submission"]),
+    "CancelOperationRequest": frozenset(["name", "cancellation"]),
+    "DownloadArtifactRequest": frozenset(["name"]),
+    "WatchOperationRequest": frozenset(["name"]),
+    "CreateDatasetRequest": frozenset(["parent", "dataset"]),
+    "UpdateDatasetRequest": frozenset(["name", "dataset"]),
+    "CreateDatasetReleaseRequest": frozenset(["parent", "release"]),
+    "CreateModelRequest": frozenset(["parent", "model"]),
+    "UpdateModelRequest": frozenset(["name", "model"]),
+    "CreateModelReleaseRequest": frozenset(["parent", "release"]),
+    "CreateTrainingRunRequest": frozenset(["parent", "training_run"]),
+    "CreateEvaluationRunRequest": frozenset(["parent", "evaluation_run"]),
+    "CreateAgentDefinitionRequest": frozenset(["parent", "agent_definition"]),
+    "CreateAgentRunRequest": frozenset(["parent", "agent_run"]),
+    "CreateWorkflowDefinitionRequest": frozenset(["parent", "workflow_definition"]),
+    "CreateWorkflowRunRequest": frozenset(["parent", "workflow_run"]),
+    "DecideApprovalRequest": frozenset(["name", "approval"]),
+    "CreateProjectRequest": frozenset(["parent", "project"]),
+    "ListAuditRecordsRequest": frozenset(
+        ["parent", "page_size", "page_token", "actor", "action", "request_id"]
+    ),
+}
 
 
 def validate_public_descriptor_boundary(pool: descriptor_pool.DescriptorPool) -> None:
@@ -3058,14 +3562,40 @@ def validate_public_descriptor_boundary(pool: descriptor_pool.DescriptorPool) ->
         )
 
     pending = list(public_file.message_types_by_name.values())
+    messages: dict[str, protobuf_descriptor.Descriptor] = {}
     while pending:
         message = pending.pop()
         pending.extend(message.nested_types)
+        if message.GetOptions().map_entry:
+            continue
+        local_name = message.full_name.removeprefix("mindclade.api.v1.")
+        messages[local_name] = message
+
+    unexpected_messages = set(messages) - set(PUBLIC_PROTO_FIELD_ALLOWLIST)
+    missing_messages = set(PUBLIC_PROTO_FIELD_ALLOWLIST) - set(messages)
+    if unexpected_messages or missing_messages:
+        raise ValueError(
+            "public API message allowlist drift: "
+            f"unexpected={sorted(unexpected_messages)} missing={sorted(missing_messages)}"
+        )
+
+    for local_name, message in messages.items():
+        expected_fields = PUBLIC_PROTO_FIELD_ALLOWLIST[local_name]
+        actual_fields = {field.name for field in message.fields}
+        unexpected_fields = actual_fields - expected_fields
+        missing_fields = expected_fields - actual_fields
+        if unexpected_fields:
+            field_name = sorted(unexpected_fields)[0]
+            raise ValueError(
+                "public API exposes forbidden field outside its positive allowlist: "
+                f"{message.full_name}.{field_name}"
+            )
+        if missing_fields:
+            raise ValueError(
+                f"public API field allowlist for {message.full_name} references missing fields "
+                f"{sorted(missing_fields)}"
+            )
         for field in message.fields:
-            if field.name in PUBLIC_FORBIDDEN_FIELD_NAMES or field.name.endswith(
-                ("_lease_token", "_storage_uri", "_secret")
-            ):
-                raise ValueError(f"public API exposes forbidden field {field.full_name}")
             if (
                 field.message_type is not None
                 and field.message_type.full_name == "google.protobuf.Any"
@@ -4088,33 +4618,55 @@ def _openapi_schema_compatible(
     if baseline_enum is not None:
         if not isinstance(baseline_enum, list) or not isinstance(current_enum, list):
             raise ValueError(f"OpenAPI compatibility break at {location}: enum changed")
-        if not all(value in current_enum for value in baseline_enum):
-            raise ValueError(f"OpenAPI compatibility break at {location}: enum value removed")
+        incompatible_values = (
+            set(baseline_enum) - set(current_enum)
+            if request
+            else set(current_enum) - set(baseline_enum)
+        )
+        if incompatible_values:
+            direction = "removed from request" if request else "added to response"
+            raise ValueError(
+                f"OpenAPI compatibility break at {location}: enum values {direction} "
+                f"{sorted(incompatible_values)}"
+            )
 
     lower_bounds = ("minimum", "exclusiveMinimum", "minLength", "minItems", "minProperties")
     upper_bounds = ("maximum", "exclusiveMaximum", "maxLength", "maxItems", "maxProperties")
     for field in lower_bounds:
         old = baseline_schema.get(field)
         new = current_schema.get(field)
-        if old is None:
-            if new is not None:
-                raise ValueError(f"OpenAPI compatibility break at {location}: {field} was added")
-        elif new is not None and cast(float, new) > cast(float, old):
-            raise ValueError(f"OpenAPI compatibility break at {location}: {field} was tightened")
+        if request:
+            incompatible = (old is None and new is not None) or (
+                old is not None and new is not None and cast(float, new) > cast(float, old)
+            )
+        else:
+            incompatible = (old is not None and new is None) or (
+                old is not None and new is not None and cast(float, new) < cast(float, old)
+            )
+        if incompatible:
+            direction = "tightened for requests" if request else "loosened for responses"
+            raise ValueError(f"OpenAPI compatibility break at {location}: {field} was {direction}")
     for field in upper_bounds:
         old = baseline_schema.get(field)
         new = current_schema.get(field)
-        if old is None:
-            if new is not None:
-                raise ValueError(f"OpenAPI compatibility break at {location}: {field} was added")
-        elif new is not None and cast(float, new) < cast(float, old):
-            raise ValueError(f"OpenAPI compatibility break at {location}: {field} was tightened")
-    if (
-        baseline_schema.get("additionalProperties", True) is not False
-        and current_schema.get("additionalProperties", True) is False
+        if request:
+            incompatible = (old is None and new is not None) or (
+                old is not None and new is not None and cast(float, new) < cast(float, old)
+            )
+        else:
+            incompatible = (old is not None and new is None) or (
+                old is not None and new is not None and cast(float, new) > cast(float, old)
+            )
+        if incompatible:
+            direction = "tightened for requests" if request else "loosened for responses"
+            raise ValueError(f"OpenAPI compatibility break at {location}: {field} was {direction}")
+    old_additional = baseline_schema.get("additionalProperties", True)
+    new_additional = current_schema.get("additionalProperties", True)
+    if (request and old_additional is not False and new_additional is False) or (
+        not request and old_additional is False and new_additional is not False
     ):
         raise ValueError(
-            f"OpenAPI compatibility break at {location}: additional properties were forbidden"
+            f"OpenAPI compatibility break at {location}: additional-properties variance changed"
         )
 
     baseline_properties = baseline_schema.get("properties", {})
@@ -4136,6 +4688,13 @@ def _openapi_schema_compatible(
             raise ValueError(
                 f"OpenAPI compatibility break at {location}: request fields became required "
                 f"{sorted(newly_required)}"
+            )
+    else:
+        no_longer_required = set(baseline_required) - set(current_required)
+        if no_longer_required:
+            raise ValueError(
+                f"OpenAPI compatibility break at {location}: response fields became optional "
+                f"{sorted(no_longer_required)}"
             )
     for name, old_property in baseline_properties.items():
         _openapi_schema_compatible(

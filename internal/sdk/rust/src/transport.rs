@@ -3420,6 +3420,8 @@ impl RpcTransport for TonicTransport {
 
 #[cfg(test)]
 mod message_size_tests {
+    use std::time::Duration;
+
     use super::*;
     use mindclade_protocols::{
         internal::job::v1::operation_service_server::{OperationService, OperationServiceServer},
@@ -3464,7 +3466,18 @@ mod message_size_tests {
             &self,
             _request: Request<WatchOperationRequest>,
         ) -> Result<Response<Self::WatchOperationStream>, Status> {
-            Ok(Response::new(Box::pin(tokio_stream::empty())))
+            tokio::time::sleep(Duration::from_millis(60)).await;
+            Ok(Response::new(Box::pin(tokio_stream::iter([Ok(
+                WatchOperationResponse {
+                    operation: Some(Operation {
+                        operation_id: "operations/quiet".to_owned(),
+                        done: true,
+                        ..Operation::default()
+                    }),
+                    sequence: 1,
+                    observed_at: None,
+                },
+            )]))))
         }
     }
 
@@ -3498,6 +3511,42 @@ mod message_size_tests {
             .unwrap()
             .into_inner();
         assert!(response.operation.unwrap().operation_id.len() > 4 << 20);
+        let _ = shutdown_sender.send(());
+        server.await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn ergonomic_watch_preserves_total_deadline_beyond_rpc_default() {
+        use tonic::codegen::tokio_stream::StreamExt;
+
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap();
+        let incoming = tokio_stream::wrappers::TcpListenerStream::new(listener);
+        let (shutdown_sender, shutdown_receiver) = tokio::sync::oneshot::channel();
+        let server = tokio::spawn(async move {
+            Server::builder()
+                .add_service(OperationServiceServer::new(LargeOperationService))
+                .serve_with_incoming_shutdown(incoming, async {
+                    let _ = shutdown_receiver.await;
+                })
+                .await
+                .unwrap();
+        });
+        let identity = crate::Identity::new("tenant", "project", "principal").unwrap();
+        let config = crate::Config::local_insecure_builder(identity)
+            .endpoint(format!("http://{address}"))
+            .default_rpc_timeout(Duration::from_millis(20))
+            .build()
+            .unwrap();
+        let transport = TonicTransport::connect(&config).await.unwrap();
+        let mut request = Request::new(WatchOperationRequest {
+            name: "operations/quiet".to_owned(),
+            ..WatchOperationRequest::default()
+        });
+        request.set_timeout(Duration::from_millis(250));
+        let response = transport.watch_operation(request).await.unwrap();
+        let update = response.into_inner().next().await.unwrap().unwrap();
+        assert_eq!(update.operation.unwrap().operation_id, "operations/quiet");
         let _ = shutdown_sender.send(());
         server.await.unwrap();
     }

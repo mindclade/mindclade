@@ -211,6 +211,37 @@ describe("configuration and credentials", () => {
 		);
 	});
 
+	test("workload identity audience uses canonical HTTPS origin", () => {
+		const runtime = new FakeRuntime();
+		const provider = new FakeTokenProvider(runtime);
+		const identity = {
+			principalId: "principal",
+			projectId: "project",
+			tenantId: "tenant",
+		};
+		for (const [endpoint, expected] of [
+			["https://CONTROL-PLANE.EXAMPLE:443", "https://control-plane.example"],
+			["https://control-plane.example:8443", "https://control-plane.example:8443"],
+			["https://[2001:db8::1]:443", "https://[2001:db8::1]"],
+		] as const) {
+			const config = ClientConfig.create({
+				endpoint,
+				environment: Environment.Development,
+				identity,
+				tokenProvider: provider,
+			});
+			assert.equal(config.audience, expected);
+		}
+		const explicit = ClientConfig.create({
+			audience: "https://verifier.example/custom-audience",
+			endpoint: "https://control-plane.example:443",
+			environment: Environment.Development,
+			identity,
+			tokenProvider: provider,
+		});
+		assert.equal(explicit.audience, "https://verifier.example/custom-audience");
+	});
+
 	test("tokens reject unsafe lifetimes and redact secrets", () => {
 		const now = Date.now();
 		const token = new AccessToken("very-sensitive-token", now + 60 * 60 * 1_000);
@@ -588,7 +619,7 @@ describe("ergonomic generated-contract APIs", () => {
 			assert.equal(headers.get("x-mindclade-expected-tenant"), "tenants/t-1");
 			assert.equal(headers.get("x-mindclade-expected-project"), "projects/p-1");
 		}
-		assert.deepEqual(setup.provider.audiences, [setup.config.endpoint, setup.config.endpoint]);
+		assert.deepEqual(setup.provider.audiences, [setup.config.audience, setup.config.audience]);
 	});
 
 	test("raw generated calls are authenticated but never implicitly retried", async () => {

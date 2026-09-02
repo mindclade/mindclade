@@ -81,6 +81,34 @@ def _is_loopback(host: str) -> bool:
         return False
 
 
+def _canonical_https_origin(host: str, port: int) -> str:
+    """Return the workload-identity audience derived from a validated endpoint."""
+
+    canonical_host = host.lower()
+    try:
+        parsed = ipaddress.ip_address(canonical_host)
+    except ValueError:
+        pass
+    else:
+        canonical_host = parsed.compressed
+    if ":" in canonical_host:
+        canonical_host = f"[{canonical_host}]"
+    if port == 443:
+        return f"https://{canonical_host}"
+    return f"https://{canonical_host}:{port}"
+
+
+def _validate_audience(value: str) -> str:
+    if (
+        not value
+        or len(value) > 1024
+        or value != value.strip()
+        or any(not 0x21 <= ord(character) <= 0x7E for character in value)
+    ):
+        raise ConfigurationError("workload-identity audience is invalid")
+    return value
+
+
 def _validate_identity(label: str, value: str) -> str:
     normalized = value.strip()
     if not normalized or len(normalized) > 256:
@@ -107,6 +135,7 @@ class ClientConfig:
     root_certificates: bytes | None = field(default=None, repr=False)
     user_agent: str = "mindclade-internal-python-sdk/0.1"
     insecure_for_testing: bool = False
+    audience: str | None = None
 
     def __post_init__(self) -> None:
         try:
@@ -120,8 +149,19 @@ class ClientConfig:
             self, "principal_id", _validate_identity("principal_id", self.principal_id)
         )
         endpoint = self.endpoint or ENVIRONMENT_ENDPOINTS[environment]
-        host, _ = _validated_endpoint(endpoint)
+        host, port = _validated_endpoint(endpoint)
         object.__setattr__(self, "endpoint", endpoint)
+        audience = _canonical_https_origin(host, port) if self.audience is None else self.audience
+        audience = _validate_audience(audience)
+        object.__setattr__(self, "audience", audience)
+        provider_audience = getattr(self.token_provider, "audience", None)
+        if provider_audience is not None:
+            if not isinstance(provider_audience, str):
+                raise ConfigurationError("token-provider audience must be a string")
+            if _validate_audience(provider_audience) != audience:
+                raise ConfigurationError(
+                    "token-provider audience does not match the client audience"
+                )
         if not 0 < self.default_timeout <= 300:
             raise ConfigurationError("default_timeout must be in (0, 300] seconds")
         if not 0 < self.poll_interval <= 60:

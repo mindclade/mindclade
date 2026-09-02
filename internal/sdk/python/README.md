@@ -65,7 +65,12 @@ Custom synchronous providers implement `get_token(*, timeout: float)` and must
 honor that remaining budget for every external exchange. Never wrap the
 synchronous client in an event loop.
 The Google provider's audience argument is explicit and must exactly match the
-control-plane verifier; `ClientConfig` does not derive or normalize it.
+control-plane verifier. `ClientConfig.audience` preserves an explicit override;
+when omitted it resolves to the endpoint's canonical HTTPS origin (lowercase
+host, bracketed IPv6, default `:443` omitted, non-default port retained). The
+built-in providers expose their bound audience, and configuration fails closed
+if it differs from the client audience. Custom providers remain responsible for
+minting tokens for that exact value.
 
 All declared internal services remain reachable through `client.generated`
 using their generated request and response messages and fully qualified gRPC

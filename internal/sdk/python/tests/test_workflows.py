@@ -14,7 +14,14 @@ from mindclade.common.v1 import command_context_pb2, pagination_pb2, resource_re
 from mindclade.internal.workflow.v1 import workflow_service_pb2
 from mindclade.job.v1 import lease_fencing_pb2, operation_pb2
 from mindclade.workflow.v1 import approval_pb2, workflow_definition_pb2, workflow_run_pb2
-from mindclade_internal_sdk import AsyncClient, CallOptions, Client, ClientConfig, Environment
+from mindclade_internal_sdk import (
+    AsyncClient,
+    CallOptions,
+    Client,
+    ClientConfig,
+    Environment,
+    UnavailableError,
+)
 from mindclade_internal_sdk._invocation import canonical_digest
 from mindclade_internal_sdk.testing import FakeAsyncTransport, FakeSyncTransport
 from mindclade_internal_sdk.transport import (
@@ -375,6 +382,28 @@ class WorkflowApprovalTest(unittest.TestCase):
             client.workflows.commit_transition(transition(), lease_token="unsafe token")
         self.assertEqual(transport.calls, [])
 
+    def test_watch_treats_zero_retry_after_as_immediate_retry(self) -> None:
+        transport = FakeSyncTransport()
+        attempts = 0
+
+        def stream(request: Message, timeout: float, metadata: Metadata) -> Iterable[Message]:
+            del timeout, metadata
+            nonlocal attempts
+            attempts += 1
+            if attempts == 1:
+                raise UnavailableError(
+                    "transient workflow stream failure",
+                    retryable=True,
+                    retry_after=0.0,
+                )
+            return watch_responses(request)
+
+        transport.stream_handlers[WATCH_WORKFLOW_RUN] = stream
+        client = Client(config(), transport=transport)
+        runs = list(client.workflows.watch(RUN_NAME, timeout=1))
+        self.assertEqual(attempts, 3)
+        self.assertEqual(runs[-1].state, workflow_run_pb2.WORKFLOW_RUN_STATE_SUCCEEDED)
+
 
 class AsyncWorkflowApprovalTest(unittest.IsolatedAsyncioTestCase):
     async def test_async_surface_covers_every_generated_rpc_and_watch_resume(self) -> None:
@@ -428,6 +457,31 @@ class AsyncWorkflowApprovalTest(unittest.IsolatedAsyncioTestCase):
         with self.assertRaisesRegex(Exception, "cancelled"):
             async for _ in client.workflows.watch(RUN_NAME, timeout=1, cancellation=cancellation):
                 self.fail("cancelled watch yielded a value")
+
+    async def test_watch_treats_zero_retry_after_as_immediate_retry(self) -> None:
+        transport = FakeAsyncTransport()
+        attempts = 0
+
+        async def stream(
+            request: Message, timeout: float, metadata: Metadata
+        ) -> AsyncIterator[Message]:
+            del timeout, metadata
+            nonlocal attempts
+            attempts += 1
+            if attempts == 1:
+                raise UnavailableError(
+                    "transient workflow stream failure",
+                    retryable=True,
+                    retry_after=0.0,
+                )
+            for response in watch_responses(request):
+                yield response
+
+        transport.stream_handlers[WATCH_WORKFLOW_RUN] = stream
+        client = AsyncClient(config(), transport=transport)
+        runs = [run async for run in client.workflows.watch(RUN_NAME, timeout=1)]
+        self.assertEqual(attempts, 3)
+        self.assertEqual(runs[-1].state, workflow_run_pb2.WORKFLOW_RUN_STATE_SUCCEEDED)
 
 
 if __name__ == "__main__":

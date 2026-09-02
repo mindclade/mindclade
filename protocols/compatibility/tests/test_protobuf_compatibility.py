@@ -316,8 +316,9 @@ class ProtobufCompatibilityTest(unittest.TestCase):
             )
         )
         for executable in (
-            Path("/nix/store/source-hash-buildifier-8.5.1/bin/buildifier"),
+            Path("/nix/store/00000000000000000000000000000000-buildifier-8.5.1/bin/buildifier"),
             Path("/opt/homebrew/Cellar/buildifier/8.5.1/bin/buildifier"),
+            Path("/usr/local/Cellar/buildifier/8.5.1/bin/buildifier"),
         ):
             with self.subTest(executable=executable):
                 self.assertTrue(
@@ -332,7 +333,15 @@ class ProtobufCompatibilityTest(unittest.TestCase):
             ("buildifier scm revision: redacted", Path("/usr/local/bin/buildifier")),
             (
                 "buildifier scm revision: redacted",
-                Path("/nix/store/source-hash-buildifier-8.5.0/bin/buildifier"),
+                Path("/nix/store/00000000000000000000000000000000-buildifier-8.5.0/bin/buildifier"),
+            ),
+            (
+                "buildifier scm revision: redacted",
+                Path("/tmp/attacker-buildifier-8.5.1/bin/buildifier"),
+            ),
+            (
+                "buildifier scm revision: redacted",
+                Path("/nix/store/not-a-valid-hash-buildifier-8.5.1/bin/buildifier"),
             ),
             ("buildifier scm revision: v8.5.0", Path("/usr/local/bin/buildifier")),
         ):
