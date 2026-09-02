@@ -44,6 +44,14 @@ func Int64ToUint32(value int64) (uint32, error) {
 	return uint32(value), nil
 }
 
+// Int64ToInt32 converts value only when it is representable as int32.
+func Int64ToInt32(value int64) (int32, error) {
+	if value < int64(math.MinInt32) || value > int64(math.MaxInt32) {
+		return 0, &RangeError{Source: "int64", Target: "int32", Value: strconv.FormatInt(value, 10)}
+	}
+	return int32(value), nil
+}
+
 // IntToUint32 converts value only when it is representable as uint32.
 func IntToUint32(value int) (uint32, error) {
 	if value < 0 || uint64(value) > math.MaxUint32 {
@@ -76,4 +84,12 @@ func Uint64ToInt64(value uint64) (int64, error) {
 		return 0, &RangeError{Source: "uint64", Target: "int64", Value: strconv.FormatUint(value, 10)}
 	}
 	return int64(value), nil
+}
+
+// Uint64ToUint32 converts value only when it is representable as uint32.
+func Uint64ToUint32(value uint64) (uint32, error) {
+	if value > math.MaxUint32 {
+		return 0, &RangeError{Source: "uint64", Target: "uint32", Value: strconv.FormatUint(value, 10)}
+	}
+	return uint32(value), nil
 }

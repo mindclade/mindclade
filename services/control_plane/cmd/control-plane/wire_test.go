@@ -26,6 +26,7 @@ import (
 	"google.golang.org/protobuf/types/dynamicpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	"github.com/mindclade/mindclade/libs/go/numconv"
 	apiv1 "github.com/mindclade/mindclade/protocols/generated/go/api/v1"
 	artifactv1 "github.com/mindclade/mindclade/protocols/generated/go/artifact/v1"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
@@ -715,14 +716,19 @@ func operationWatchContract(t *testing.T) *apiv1.PublicHttpContract {
 	return contract
 }
 
-func operationSSEEvent(name string, cursor string, revision uint64, terminal bool) *apiv1.OperationEvent {
+func operationSSEEvent(t *testing.T, name string, cursor string, revision uint64, terminal bool) *apiv1.OperationEvent {
+	t.Helper()
 	state := "RUNNING"
 	eventType := "operation.updated"
 	if terminal {
 		state = "SUCCEEDED"
 		eventType = "operation.terminal"
 	}
-	emittedAt := timestamppb.New(time.Unix(int64(revision), 0).UTC())
+	emittedAtSeconds, err := numconv.Uint64ToInt64(revision)
+	if err != nil {
+		t.Fatalf("operation revision %d is out of range: %v", revision, err)
+	}
+	emittedAt := timestamppb.New(time.Unix(emittedAtSeconds, 0).UTC())
 	return &apiv1.OperationEvent{
 		EventId: cursor, EventType: eventType, SchemaVersion: 1,
 		OperationRevision: revision, ResumeCursor: cursor,
@@ -779,7 +785,7 @@ func TestGatewayValidatesDescriptorOwnedSSEContract(t *testing.T) {
 		t.Run(testName, func(t *testing.T) {
 			candidate := proto.Clone(contract).(*apiv1.PublicHttpContract)
 			mutate(candidate)
-			if err := validateHTTPStreamContract(method, httpMethod, template, body, candidate); err == nil {
+			if contractErr := validateHTTPStreamContract(method, httpMethod, template, body, candidate); contractErr == nil {
 				t.Fatal("invalid SSE descriptor metadata was accepted")
 			}
 		})
@@ -808,7 +814,7 @@ func TestGatewayValidatesDescriptorOwnedSSEContract(t *testing.T) {
 func TestOperationSSEValidationRejectsInvalidDurableEvents(t *testing.T) {
 	t.Parallel()
 	name := "tenants/t-1/projects/p-1/operations/op-1"
-	valid := operationSSEEvent(name, "cursor-2", 2, false)
+	valid := operationSSEEvent(t, name, "cursor-2", 2, false)
 	if err := validateOperationSSEEvent(valid, name, 1); err != nil {
 		t.Fatalf("valid operation event: %v", err)
 	}
@@ -906,7 +912,7 @@ func TestPublicProtoJSONEmitsRequiredDefaultsWithoutAbsentOptionals(t *testing.T
 		}
 	}
 
-	event := operationSSEEvent("tenants/t-1/projects/p-1/operations/op-1", "cursor-1", 1, false)
+	event := operationSSEEvent(t, "tenants/t-1/projects/p-1/operations/op-1", "cursor-1", 1, false)
 	payload, err = marshalPublicProtoJSON(event)
 	if err != nil {
 		t.Fatal(err)
@@ -1176,8 +1182,8 @@ func operationWatchInput(name string) *dynamicpb.Message {
 func TestNetworkSSEEmitsSafePost200ErrorAndTerminalReconnectIsExact(t *testing.T) {
 	name := "tenants/t-1/projects/p-1/operations/op-1"
 	terminalCursor := "signed-terminal-cursor"
-	terminal := operationSSEEvent(name, terminalCursor, 4, true)
-	updated := operationSSEEvent(name, "signed-update-cursor", 3, false)
+	terminal := operationSSEEvent(t, name, terminalCursor, 4, true)
+	updated := operationSSEEvent(t, name, "signed-update-cursor", 3, false)
 	failed := operationWatchGateway(t, operationWatchNetworkFixture{
 		event: updated, afterEventError: status.Error(codes.Unavailable, "private backend failure"),
 	})
@@ -1227,16 +1233,16 @@ func TestSSEPreflightErrorsRemainHTTPProblems(t *testing.T) {
 		},
 		{
 			name:       "invalid initial event",
-			fixture:    operationWatchNetworkFixture{event: operationSSEEvent("wrong-operation", "cursor-1", 1, false)},
+			fixture:    operationWatchNetworkFixture{event: operationSSEEvent(t, "wrong-operation", "cursor-1", 1, false)},
 			statusCode: http.StatusInternalServerError,
 			publicCode: `"code":"INTERNAL"`,
 		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			gateway := operationWatchGateway(t, test.fixture)
+			preflightGateway := operationWatchGateway(t, test.fixture)
 			response := httptest.NewRecorder()
-			gateway.serveSSE(context.Background(), response, operationWatchInput(name), operationWatchContract(t).GetSse())
+			preflightGateway.serveSSE(context.Background(), response, operationWatchInput(name), operationWatchContract(t).GetSse())
 			body := response.Body.String()
 			if response.Code != test.statusCode || response.Header().Get("Content-Type") != "application/problem+json" ||
 				!strings.Contains(body, test.publicCode) {
@@ -1252,9 +1258,9 @@ func TestSSEPreflightErrorsRemainHTTPProblems(t *testing.T) {
 
 func TestSSEPreflightEOFStartsAndClosesCleanStream(t *testing.T) {
 	name := "tenants/t-1/projects/p-1/operations/op-1"
-	gateway := operationWatchGateway(t, operationWatchNetworkFixture{})
+	preflightGateway := operationWatchGateway(t, operationWatchNetworkFixture{})
 	response := httptest.NewRecorder()
-	gateway.serveSSE(context.Background(), response, operationWatchInput(name), operationWatchContract(t).GetSse())
+	preflightGateway.serveSSE(context.Background(), response, operationWatchInput(name), operationWatchContract(t).GetSse())
 	if response.Code != http.StatusOK || response.Header().Get("Content-Type") != "text/event-stream" ||
 		response.Header().Get("Cache-Control") != "no-store" ||
 		response.Header().Get("X-Accel-Buffering") != "no" ||
@@ -1265,11 +1271,11 @@ func TestSSEPreflightEOFStartsAndClosesCleanStream(t *testing.T) {
 
 func TestNetworkSSERejectsInvalidEventWithSafePost200Error(t *testing.T) {
 	name := "tenants/t-1/projects/p-1/operations/op-1"
-	valid := operationSSEEvent(name, "durable-cursor-1", 1, false)
-	invalid := operationSSEEvent(name, "cursor\ninjection", 2, false)
-	gateway := operationWatchGateway(t, operationWatchNetworkFixture{events: []*apiv1.OperationEvent{valid, invalid}})
+	valid := operationSSEEvent(t, name, "durable-cursor-1", 1, false)
+	invalid := operationSSEEvent(t, name, "cursor\ninjection", 2, false)
+	watchGateway := operationWatchGateway(t, operationWatchNetworkFixture{events: []*apiv1.OperationEvent{valid, invalid}})
 	response := httptest.NewRecorder()
-	gateway.serveSSE(context.Background(), response, operationWatchInput(name), operationWatchContract(t).GetSse())
+	watchGateway.serveSSE(context.Background(), response, operationWatchInput(name), operationWatchContract(t).GetSse())
 	body := response.Body.String()
 	if response.Code != http.StatusOK || !strings.Contains(body, "event: error\n") ||
 		!strings.Contains(body, "id: durable-cursor-1\nevent: error\n") ||
@@ -1285,7 +1291,7 @@ func TestNetworkSSERejectsInvalidEventWithSafePost200Error(t *testing.T) {
 
 func TestNetworkSSEPreencodesBeforeCommitAndCursorAdvance(t *testing.T) {
 	name := "tenants/t-1/projects/p-1/operations/op-1"
-	invalidFirst := operationSSEEvent(name, "cursor-1", 1, false)
+	invalidFirst := operationSSEEvent(t, name, "cursor-1", 1, false)
 	invalidFirst.Operation.Etag = string([]byte{0xff})
 	preflightGateway := operationWatchGateway(t, operationWatchNetworkFixture{event: invalidFirst})
 	preflightResponse := httptest.NewRecorder()
@@ -1298,14 +1304,14 @@ func TestNetworkSSEPreencodesBeforeCommitAndCursorAdvance(t *testing.T) {
 		t.Fatalf("unencodable preflight event committed SSE: code=%d body=%q", preflightResponse.Code, preflightResponse.Body.String())
 	}
 
-	first := operationSSEEvent(name, "cursor-1", 1, false)
-	invalidSecond := operationSSEEvent(name, "cursor-2", 2, false)
+	first := operationSSEEvent(t, name, "cursor-1", 1, false)
+	invalidSecond := operationSSEEvent(t, name, "cursor-2", 2, false)
 	invalidSecond.Operation.Etag = string([]byte{0xff})
-	gateway := operationWatchGateway(t, operationWatchNetworkFixture{
+	commitGateway := operationWatchGateway(t, operationWatchNetworkFixture{
 		events: []*apiv1.OperationEvent{first, invalidSecond},
 	})
 	response := httptest.NewRecorder()
-	gateway.serveSSE(context.Background(), response, operationWatchInput(name), operationWatchContract(t).GetSse())
+	commitGateway.serveSSE(context.Background(), response, operationWatchInput(name), operationWatchContract(t).GetSse())
 	body := response.Body.String()
 	if response.Code != http.StatusOK ||
 		strings.Count(body, "event: operation.updated\n") != 1 ||
@@ -1462,12 +1468,12 @@ func TestSSEWithoutFlushCapabilityReturnsDocumentedInternalError(t *testing.T) {
 func TestSSEFrameWriteDeadlineHasProductionDefault(t *testing.T) {
 	t.Parallel()
 	var deadline time.Time
-	gateway := gateway{sseWriteDeadlineSetter: func(_ http.ResponseWriter, value time.Time) error {
+	deadlineGateway := gateway{sseWriteDeadlineSetter: func(_ http.ResponseWriter, value time.Time) error {
 		deadline = value
 		return nil
 	}}
 	before := time.Now().UTC()
-	if err := gateway.setSSEFrameWriteDeadline(httptest.NewRecorder()); err != nil {
+	if err := deadlineGateway.setSSEFrameWriteDeadline(httptest.NewRecorder()); err != nil {
 		t.Fatal(err)
 	}
 	after := time.Now().UTC()
@@ -1481,7 +1487,7 @@ func TestSSEFrameWriteDeadlineBoundsSlowClientAndCancelsUpstream(t *testing.T) {
 	name := "tenants/t-1/projects/p-1/operations/op-1"
 	cancelled := make(chan struct{})
 	gateway := operationWatchGateway(t, operationWatchNetworkFixture{
-		event: operationSSEEvent(name, "cursor-1", 1, false), waitForCancel: true, cancelled: cancelled,
+		event: operationSSEEvent(t, name, "cursor-1", 1, false), waitForCancel: true, cancelled: cancelled,
 	})
 	gateway.sseWriteDeadlineSetter = nil
 	gateway.sseFrameWriteTimeout = 25 * time.Millisecond
@@ -1505,7 +1511,7 @@ func TestSSEWriterFailureCancelsPreflightStream(t *testing.T) {
 	name := "tenants/t-1/projects/p-1/operations/op-1"
 	cancelled := make(chan struct{})
 	gateway := operationWatchGateway(t, operationWatchNetworkFixture{
-		event: operationSSEEvent(name, "cursor-1", 1, false), waitForCancel: true, cancelled: cancelled,
+		event: operationSSEEvent(t, name, "cursor-1", 1, false), waitForCancel: true, cancelled: cancelled,
 	})
 	writer := &failingSSEWriter{failOnWrite: 2}
 	gateway.serveSSE(context.Background(), writer, operationWatchInput(name), operationWatchContract(t).GetSse())
@@ -1525,7 +1531,7 @@ func TestSSENeverHeartbeatsBeforeDurableCursor(t *testing.T) {
 	preflightWaiting := make(chan struct{})
 	cancelled := make(chan struct{})
 	gateway := operationWatchGateway(t, operationWatchNetworkFixture{
-		event: operationSSEEvent(name, "cursor-2", 2, false), releaseEvent: releaseEvent,
+		event: operationSSEEvent(t, name, "cursor-2", 2, false), releaseEvent: releaseEvent,
 		preflightWaiting: preflightWaiting, waitForCancel: true, cancelled: cancelled,
 	})
 	ticker := &manualSSETicker{
@@ -1595,7 +1601,7 @@ func TestSSEUsesDescriptorHeartbeatPolicyAndCleansUpOnCancellation(t *testing.T)
 	name := "tenants/t-1/projects/p-1/operations/op-1"
 	cancelled := make(chan struct{})
 	gateway := operationWatchGateway(t, operationWatchNetworkFixture{
-		event: operationSSEEvent(name, "cursor-2", 2, false), waitForCancel: true, cancelled: cancelled,
+		event: operationSSEEvent(t, name, "cursor-2", 2, false), waitForCancel: true, cancelled: cancelled,
 	})
 	ticker := &manualSSETicker{
 		ticks: make(chan time.Time, 1), stopped: make(chan struct{}),
