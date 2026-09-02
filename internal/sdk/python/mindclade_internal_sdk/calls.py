@@ -117,11 +117,9 @@ def paginate[T](
     than silently returning a partial collection.
     """
 
-    if not isinstance(initial_page_token, str):
-        raise TypeError("initial_page_token must be text")
     policy = limits or PaginationLimits()
     token = initial_page_token
-    seen = {token} if token else set()
+    seen: set[str] = {token} if token else set()
     page_count = 0
     item_count = 0
     while True:
@@ -150,11 +148,9 @@ async def apaginate[T](
 ) -> AsyncIterator[T]:
     """Asynchronous counterpart to :func:`paginate` with identical bounds."""
 
-    if not isinstance(initial_page_token, str):
-        raise TypeError("initial_page_token must be text")
     policy = limits or PaginationLimits()
     token = initial_page_token
-    seen = {token} if token else set()
+    seen: set[str] = {token} if token else set()
     page_count = 0
     item_count = 0
     while True:

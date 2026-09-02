@@ -46,6 +46,15 @@ adds explicit per-call behavior when needed. The ergonomic Training,
 Operations, and Artifacts APIs remain preferred because they also own bounded
 retry and response-invariant checks.
 
+The descriptor-bound coverage gate fixes the current surface at 15 services
+and 132 RPCs: 127 unary and five server-streaming, with 131 ergonomic methods
+and one reviewed raw-only method. The lazy `paginate`/`Paginator::try_next`
+surface preserves opaque tokens exactly, rejects cursor loops, and reports
+caller-selectable page or item budget exhaustion as a typed non-retryable
+error. Every generated Tonic client uses an 8 MiB encode/decode ceiling, which
+admits a valid 4 MiB artifact chunk plus protobuf framing while remaining
+bounded.
+
 `RecordingTransport` wraps the generated-type-only `RpcTransport` seam and
 records method names plus metadata keys without retaining payloads or header
 values. Unknown ergonomic methods default to unsafe (one attempt); raw

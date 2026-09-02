@@ -74,9 +74,10 @@ use tonic::{
 use crate::{
     AccessToken, ArtifactStream, ArtifactUploadOptions, CallOptions, CancellationToken, Client,
     Config, Environment, Error, ErrorKind, GcpWorkloadIdentityProvider, Identity, InferenceStream,
-    InferenceWaitOptions, OperationStream, RecordingTransport, RetryPolicy, RpcTransport,
-    SubmitOptions, TokenProvider, WaitOptions,
+    InferenceWaitOptions, OperationStream, PaginationLimits, PaginationPage, RecordingTransport,
+    RetryPolicy, RpcTransport, SubmitOptions, TokenProvider, WaitOptions,
     auth::GcpIdentityTokenExchange,
+    paginate,
     retry::{CallSafety, Sleeper, registered_method_safety},
 };
 
@@ -2244,6 +2245,56 @@ async fn credential_and_transport_futures_share_the_total_call_deadline() {
         .await
         .unwrap_err();
     assert_eq!(error.kind(), ErrorKind::DeadlineExceeded);
+}
+
+#[tokio::test]
+async fn bounded_pagination_preserves_opaque_tokens_and_fails_closed() {
+    let seen = Arc::new(Mutex::new(Vec::new()));
+    let captured = Arc::clone(&seen);
+    let mut paginator = paginate(
+        move |token: String| {
+            let captured = Arc::clone(&captured);
+            async move {
+                captured.lock().unwrap().push(token.clone());
+                if token == " initial token " {
+                    Ok(PaginationPage::new(vec![1, 2], " next token "))
+                } else {
+                    Ok(PaginationPage::new(vec![3], ""))
+                }
+            }
+        },
+        " initial token ",
+        PaginationLimits::default(),
+    );
+    let mut values = Vec::new();
+    while let Some(value) = paginator.try_next().await.unwrap() {
+        values.push(value);
+    }
+    assert_eq!(values, vec![1, 2, 3]);
+    assert_eq!(
+        *seen.lock().unwrap(),
+        vec![" initial token ".to_owned(), " next token ".to_owned()]
+    );
+
+    let mut repeated = paginate(
+        |token: String| async move { Ok(PaginationPage::new(vec![1], token)) },
+        "opaque",
+        PaginationLimits::default(),
+    );
+    let error = repeated.try_next().await.unwrap_err();
+    assert_eq!(error.kind(), ErrorKind::Protocol);
+    assert!(repeated.try_next().await.unwrap().is_none());
+
+    let mut bounded = paginate(
+        |_token: String| async { Ok(PaginationPage::new(vec![1, 2, 3], "more")) },
+        "",
+        PaginationLimits::new(2, 2).unwrap(),
+    );
+    assert_eq!(bounded.try_next().await.unwrap(), Some(1));
+    assert_eq!(bounded.try_next().await.unwrap(), Some(2));
+    let error = bounded.try_next().await.unwrap_err();
+    assert_eq!(error.kind(), ErrorKind::PaginationLimit);
+    assert_eq!(error.code(), Some(Code::ResourceExhausted));
 }
 
 fn base64url(value: &[u8]) -> String {

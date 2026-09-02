@@ -25,7 +25,7 @@
 - Affected invariants: descriptor-derived HTTP projection, explicit SSE operation kind, durable asynchronous operations, finite mutation deadlines, idempotent mutation, resumable watches, immutable artifact verification, and stable errors.
 - Affected paths: the candidate HTTP edge, public-safe protobuf facade, raw/curated/published OpenAPI projections, compatibility candidates, and gateway qualification.
 - Affected contracts: inference submission, Operation, OperationEvent, operation watch/cancellation, ETag/revision, ArtifactRef download, and the public error envelope.
-- Security and safety impact: authentication remains transport metadata; tenant/project identity is verified; credentials and restricted request bodies are not logged; downloads verify digest before atomic replacement.
+- Security and safety impact: authentication remains transport metadata; tenant/project identity is verified; credentials and restricted request bodies are not logged; downloads verify digest before atomic no-clobber publication.
 - Migration: evolve HTTP v1 and Python 1.x additively, preserve unknown fields where possible, serve current and immediately previous compatible projections, and use a new major for breaking changes.
 - Rollback: disable the fixture inference route, keep terminal operations readable, retain the previous compatible SDK/server pair, and never invalidate immutable result artifacts.
 - Required evidence: descriptor/OpenAPI drift, exact HTTP-binding parity, operation-kind projection, idempotency conflict, ETag reads, deadline/cancellation, resumable SSE cursor/heartbeat/terminal behavior, stable error mapping, artifact corruption, and four-language generated-stream conformance.
@@ -92,7 +92,7 @@ body, resume header, media type, response type, or required SSE policy does not
 match. The current candidate permits SSE only for
 `MindcladeService.WatchOperation -> OperationEvent`.
 
-The terminal result contains the result ArtifactRef plus the verified input, model, fixture-profile, AttemptId, and LeaseEpoch identities. Artifact download supports bounded streaming/range behavior where available, writes to an attempt-local temporary destination, verifies size and digest, and atomically replaces the caller destination only after verification. Callers never construct storage paths or receive cloud credentials as durable identity.
+The terminal result contains the result ArtifactRef plus the verified input, model, fixture-profile, AttemptId, and LeaseEpoch identities. Artifact download supports bounded streaming/range behavior where available, writes to a mode-0600 sibling temporary file, verifies size and digest, and atomically publishes without replacing an existing caller destination. The destination-directory durability barrier completes only after successful no-clobber publication. Corruption, cancellation, write failure, or a pre-existing destination removes staging and leaves the destination absent or unchanged. Callers never construct storage paths or receive cloud credentials as durable identity.
 
 All non-success responses use one public error envelope with stable `code`, safe `message`, `requestId`, bounded typed `details`, and optional `retryAfter`. HTTP status is transport classification, not the stable domain code. Internal SDK facades map transport failures to their documented Mindclade error types and preserve safe causes without exposing raw transport or server internals.
 

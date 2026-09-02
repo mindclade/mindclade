@@ -45,6 +45,13 @@ control-plane reconciler primitive. Application code should use the fenced
 run/attempt lifecycle helpers and must not infer an ergonomic compatibility or
 retry promise from `client.raw`.
 
+The descriptor-bound coverage gate fixes the current surface at 15 services
+and 132 RPCs: 127 unary and five server-streaming, with 131 ergonomic methods
+and one reviewed raw-only method. The exported `paginate` async generator works
+with any ergonomic list method, preserves opaque tokens exactly, rejects cursor
+loops, observes cancellation between pages, and raises a typed pagination-limit
+error instead of presenting a bounded partial traversal as complete.
+
 `client.artifacts.downloadFile(artifact, path)` stages a private mode-0600 file
 beside the destination, verifies the complete immutable digest, and atomically
 publishes without overwriting an existing path. Successful link creation is the

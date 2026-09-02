@@ -167,6 +167,15 @@ pub type TrainingStream =
     Pin<Box<dyn Stream<Item = Result<WatchTrainingRunResponse, Status>> + Send + 'static>>;
 
 type AuthorizedChannel = InterceptedService<Channel, GeneratedClientInterceptor>;
+const MAX_WIRE_MESSAGE_BYTES: usize = 8 << 20;
+
+macro_rules! bounded_client {
+    ($client:ty, $channel:expr) => {
+        <$client>::new($channel)
+            .max_decoding_message_size(MAX_WIRE_MESSAGE_BYTES)
+            .max_encoding_message_size(MAX_WIRE_MESSAGE_BYTES)
+    };
+}
 
 /// Complete generated Tonic client estate for uncommon internal workflows.
 /// Every client is backed by a policy-enforcing interceptor, so callers cannot
@@ -220,21 +229,21 @@ impl GeneratedClients {
 
     fn new(channel: AuthorizedChannel) -> Self {
         Self {
-            admin: AdminServiceClient::new(channel.clone()),
-            agent: AgentServiceClient::new(channel.clone()),
-            artifact: ArtifactServiceClient::new(channel.clone()),
-            dataset: DatasetServiceClient::new(channel.clone()),
-            evaluation: EvaluationServiceClient::new(channel.clone()),
-            experiment: ExperimentServiceClient::new(channel.clone()),
-            inference: InferenceServiceClient::new(channel.clone()),
-            job: JobServiceClient::new(channel.clone()),
-            operation: OperationServiceClient::new(channel.clone()),
-            run: RunServiceClient::new(channel.clone()),
-            model: ModelServiceClient::new(channel.clone()),
-            policy: PolicyServiceClient::new(channel.clone()),
-            training: TrainingServiceClient::new(channel.clone()),
-            workflow: WorkflowServiceClient::new(channel.clone()),
-            approval: ApprovalServiceClient::new(channel),
+            admin: bounded_client!(AdminServiceClient<_>, channel.clone()),
+            agent: bounded_client!(AgentServiceClient<_>, channel.clone()),
+            artifact: bounded_client!(ArtifactServiceClient<_>, channel.clone()),
+            dataset: bounded_client!(DatasetServiceClient<_>, channel.clone()),
+            evaluation: bounded_client!(EvaluationServiceClient<_>, channel.clone()),
+            experiment: bounded_client!(ExperimentServiceClient<_>, channel.clone()),
+            inference: bounded_client!(InferenceServiceClient<_>, channel.clone()),
+            job: bounded_client!(JobServiceClient<_>, channel.clone()),
+            operation: bounded_client!(OperationServiceClient<_>, channel.clone()),
+            run: bounded_client!(RunServiceClient<_>, channel.clone()),
+            model: bounded_client!(ModelServiceClient<_>, channel.clone()),
+            policy: bounded_client!(PolicyServiceClient<_>, channel.clone()),
+            training: bounded_client!(TrainingServiceClient<_>, channel.clone()),
+            workflow: bounded_client!(WorkflowServiceClient<_>, channel.clone()),
+            approval: bounded_client!(ApprovalServiceClient<_>, channel),
         }
     }
 }
@@ -2589,21 +2598,21 @@ impl TonicTransport {
         let channel = endpoint.connect().await.map_err(|_| Error::transport())?;
         Ok(Self {
             channel: channel.clone(),
-            agent: AgentServiceClient::new(channel.clone()),
-            training: TrainingServiceClient::new(channel.clone()),
-            job: JobServiceClient::new(channel.clone()),
-            operation: OperationServiceClient::new(channel.clone()),
-            run: RunServiceClient::new(channel.clone()),
-            artifact: ArtifactServiceClient::new(channel.clone()),
-            inference: InferenceServiceClient::new(channel.clone()),
-            dataset: DatasetServiceClient::new(channel.clone()),
-            evaluation: EvaluationServiceClient::new(channel.clone()),
-            experiment: ExperimentServiceClient::new(channel.clone()),
-            model: ModelServiceClient::new(channel.clone()),
-            policy: PolicyServiceClient::new(channel.clone()),
-            admin: AdminServiceClient::new(channel.clone()),
-            workflow: WorkflowServiceClient::new(channel.clone()),
-            approval: ApprovalServiceClient::new(channel),
+            agent: bounded_client!(AgentServiceClient<_>, channel.clone()),
+            training: bounded_client!(TrainingServiceClient<_>, channel.clone()),
+            job: bounded_client!(JobServiceClient<_>, channel.clone()),
+            operation: bounded_client!(OperationServiceClient<_>, channel.clone()),
+            run: bounded_client!(RunServiceClient<_>, channel.clone()),
+            artifact: bounded_client!(ArtifactServiceClient<_>, channel.clone()),
+            inference: bounded_client!(InferenceServiceClient<_>, channel.clone()),
+            dataset: bounded_client!(DatasetServiceClient<_>, channel.clone()),
+            evaluation: bounded_client!(EvaluationServiceClient<_>, channel.clone()),
+            experiment: bounded_client!(ExperimentServiceClient<_>, channel.clone()),
+            model: bounded_client!(ModelServiceClient<_>, channel.clone()),
+            policy: bounded_client!(PolicyServiceClient<_>, channel.clone()),
+            admin: bounded_client!(AdminServiceClient<_>, channel.clone()),
+            workflow: bounded_client!(WorkflowServiceClient<_>, channel.clone()),
+            approval: bounded_client!(ApprovalServiceClient<_>, channel),
         })
     }
 
@@ -3407,6 +3416,91 @@ impl RpcTransport for TonicTransport {
         ConsumeApprovalRequest,
         ConsumeApprovalResponse
     );
+}
+
+#[cfg(test)]
+mod message_size_tests {
+    use super::*;
+    use mindclade_protocols::{
+        internal::job::v1::operation_service_server::{OperationService, OperationServiceServer},
+        job::v1::Operation,
+    };
+    use tonic::codegen::tokio_stream;
+    use tonic::transport::Server;
+
+    struct LargeOperationService;
+
+    #[async_trait]
+    impl OperationService for LargeOperationService {
+        async fn get_operation(
+            &self,
+            _request: Request<GetOperationRequest>,
+        ) -> Result<Response<GetOperationResponse>, Status> {
+            Ok(Response::new(GetOperationResponse {
+                operation: Some(Operation {
+                    operation_id: "x".repeat((4 << 20) + 1_024),
+                    ..Operation::default()
+                }),
+            }))
+        }
+
+        async fn list_operations(
+            &self,
+            _request: Request<ListOperationsRequest>,
+        ) -> Result<Response<ListOperationsResponse>, Status> {
+            Ok(Response::new(ListOperationsResponse::default()))
+        }
+
+        async fn cancel_operation(
+            &self,
+            _request: Request<CancelOperationRequest>,
+        ) -> Result<Response<CancelOperationResponse>, Status> {
+            Ok(Response::new(CancelOperationResponse::default()))
+        }
+
+        type WatchOperationStream = OperationStream;
+
+        async fn watch_operation(
+            &self,
+            _request: Request<WatchOperationRequest>,
+        ) -> Result<Response<Self::WatchOperationStream>, Status> {
+            Ok(Response::new(Box::pin(tokio_stream::empty())))
+        }
+    }
+
+    #[tokio::test]
+    async fn configured_client_decodes_a_valid_above_default_wire_message() {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap();
+        let incoming = tokio_stream::wrappers::TcpListenerStream::new(listener);
+        let (shutdown_sender, shutdown_receiver) = tokio::sync::oneshot::channel();
+        let server = tokio::spawn(async move {
+            Server::builder()
+                .add_service(
+                    OperationServiceServer::new(LargeOperationService)
+                        .max_encoding_message_size(MAX_WIRE_MESSAGE_BYTES),
+                )
+                .serve_with_incoming_shutdown(incoming, async {
+                    let _ = shutdown_receiver.await;
+                })
+                .await
+                .unwrap();
+        });
+        let channel = Endpoint::from_shared(format!("http://{address}"))
+            .unwrap()
+            .connect()
+            .await
+            .unwrap();
+        let mut client = bounded_client!(OperationServiceClient<_>, channel);
+        let response = client
+            .get_operation(GetOperationRequest::default())
+            .await
+            .unwrap()
+            .into_inner();
+        assert!(response.operation.unwrap().operation_id.len() > 4 << 20);
+        let _ = shutdown_sender.send(());
+        server.await.unwrap();
+    }
 }
 
 #[cfg(test)]

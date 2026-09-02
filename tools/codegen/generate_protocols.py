@@ -4319,9 +4319,7 @@ def validate_openapi_compatibility(
                     )
                 old_headers = old_response.get("headers", {})
                 new_headers = new_response.get("headers", {})
-                if not isinstance(old_headers, Mapping) or not isinstance(
-                    new_headers, Mapping
-                ):
+                if not isinstance(old_headers, Mapping) or not isinstance(new_headers, Mapping):
                     raise ValueError(
                         f"OpenAPI compatibility break at {location}: response headers changed"
                     )
@@ -4333,9 +4331,7 @@ def validate_openapi_compatibility(
                         old_header = _openapi_local_ref(baseline, old_header["$ref"])
                     if isinstance(new_header, Mapping) and "$ref" in new_header:
                         new_header = _openapi_local_ref(current, new_header["$ref"])
-                    if not isinstance(old_header, Mapping) or not isinstance(
-                        new_header, Mapping
-                    ):
+                    if not isinstance(old_header, Mapping) or not isinstance(new_header, Mapping):
                         raise ValueError(
                             f"OpenAPI compatibility break at {location}: "
                             f"response header removed {status} {header_name}"

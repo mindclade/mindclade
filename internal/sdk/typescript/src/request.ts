@@ -151,11 +151,7 @@ export async function* paginate<T>(
 ): AsyncGenerator<T, void, undefined> {
 	if (typeof fetchPage !== "function")
 		throw MindcladeError.invalidArgument("pagination fetch function is required");
-	const maxPages = paginationBound(
-		"pagination max pages",
-		options.limits?.maxPages ?? 100,
-		1_000,
-	);
+	const maxPages = paginationBound("pagination max pages", options.limits?.maxPages ?? 100, 1_000);
 	const maxItems = paginationBound(
 		"pagination max items",
 		options.limits?.maxItems ?? 10_000,
@@ -183,9 +179,7 @@ export async function* paginate<T>(
 		if (page.nextPageToken !== "") seen.add(page.nextPageToken);
 		for (const item of page.items) {
 			if (items >= maxItems)
-				throw MindcladeError.paginationLimit(
-					"automatic pagination exceeded its item budget",
-				);
+				throw MindcladeError.paginationLimit("automatic pagination exceeded its item budget");
 			items += 1;
 			yield item;
 		}

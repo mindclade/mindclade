@@ -8,6 +8,7 @@ pub enum ErrorKind {
     Configuration,
     InvalidArgument,
     AlreadyExists,
+    PaginationLimit,
     Authentication,
     Cancelled,
     DeadlineExceeded,
@@ -66,6 +67,17 @@ impl Error {
         Self {
             kind: ErrorKind::AlreadyExists,
             code: Some(Code::AlreadyExists),
+            request_id: None,
+            retryable: false,
+            retry_after: None,
+            safe_message: message.into(),
+        }
+    }
+
+    pub(crate) fn pagination_limit(message: impl Into<String>) -> Self {
+        Self {
+            kind: ErrorKind::PaginationLimit,
+            code: Some(Code::ResourceExhausted),
             request_id: None,
             retryable: false,
             retry_after: None,

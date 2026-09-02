@@ -1231,7 +1231,7 @@ class OpenApiCompatibilityTest(unittest.TestCase):
                                     "application/json": {
                                         "schema": {"$ref": "#/components/schemas/Widget"}
                                     }
-                                }
+                                },
                             }
                         },
                         "security": [{"bearerAuth": []}],
@@ -1289,9 +1289,9 @@ class OpenApiCompatibilityTest(unittest.TestCase):
             "tightened bound": lambda value: value["components"]["schemas"]["Widget"]["properties"][
                 "name"
             ].update(maxLength=32),
-            "removed response header": lambda value: value["paths"]["/v1/widgets/{name}"][
-                "get"
-            ]["responses"]["200"]["headers"].pop("ETag"),
+            "removed response header": lambda value: value["paths"]["/v1/widgets/{name}"]["get"][
+                "responses"
+            ]["200"]["headers"].pop("ETag"),
         }
         for name, mutate in breaking_cases.items():
             with self.subTest(name=name):

@@ -24,7 +24,14 @@
 
 Wave 2P must prove a complete local platform journey without creating premature service boundaries or allowing a worker to bypass the Wave 1 durability kernel. A queue, process, worker, or object-store path cannot become business truth. Splitting the first slice across services would add distributed transactions and operational boundaries before measured scaling or trust evidence exists.
 
-This record is a proposal. It does not authorize Wave 2P implementation, deployment, connected mutation, or production use until protected ratification evidence binds the decision digest and required owners.
+The repository contains a source-only candidate implementation of this shape:
+the modular Go control plane, normalized PostgreSQL repositories, transactional
+outbox/inbox processing, monotonic fencing, and the isolated Python inference
+worker are present behind local build and test authority. This record remains a
+proposal because those sources and local checks are not owner approval or
+connected qualification. It does not authorize deployment, connected mutation,
+or production use until protected ratification evidence binds the decision
+digest and required owners.
 
 ## Decision
 

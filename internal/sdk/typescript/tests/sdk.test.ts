@@ -64,10 +64,13 @@ test("bounded pagination preserves opaque tokens and fails closed", async () => 
 
 	await assert.rejects(
 		async () => {
-			for await (const _ of paginate(async (pageToken) => ({
-				items: [1],
-				nextPageToken: pageToken,
-			}), { initialPageToken: "opaque" })) {
+			for await (const _ of paginate(
+				async (pageToken) => ({
+					items: [1],
+					nextPageToken: pageToken,
+				}),
+				{ initialPageToken: "opaque" },
+			)) {
 				// The repeated token is rejected before page items are exposed.
 			}
 		},
@@ -77,15 +80,17 @@ test("bounded pagination preserves opaque tokens and fails closed", async () => 
 	const bounded: number[] = [];
 	await assert.rejects(
 		async () => {
-			for await (const value of paginate(async () => ({
-				items: [1, 2, 3],
-				nextPageToken: "more",
-			}), { limits: { maxItems: 2 } })) {
+			for await (const value of paginate(
+				async () => ({
+					items: [1, 2, 3],
+					nextPageToken: "more",
+				}),
+				{ limits: { maxItems: 2 } },
+			)) {
 				bounded.push(value);
 			}
 		},
-		(reason: unknown) =>
-			reason instanceof MindcladeError && reason.kind === "pagination_limit",
+		(reason: unknown) => reason instanceof MindcladeError && reason.kind === "pagination_limit",
 	);
 	assert.deepEqual(bounded, [1, 2]);
 });

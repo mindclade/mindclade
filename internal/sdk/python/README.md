@@ -21,14 +21,13 @@ plane and are never accessed directly by this SDK.
 ## Synchronous use
 
 ```python
-from mindclade.artifact.v1.artifact_reference_pb2 import ArtifactRef
-from mindclade.common.v1.resource_reference_pb2 import ResourceRef
 from mindclade_internal_sdk import (
     Client,
     ClientConfig,
     Environment,
     GoogleWorkloadIdentityProvider,
 )
+from mindclade_internal_sdk.resources import artifact_reference, resource_reference
 
 
 config = ClientConfig(
@@ -44,12 +43,17 @@ config = ClientConfig(
 with Client(config) as client:
     operation = client.training.submit(
         "pretrain-v4",
-        training_recipe=ArtifactRef(
+        training_recipe=artifact_reference(
             digest="sha256:" + "1" * 64,
             media_type="application/vnd.mindclade.training-recipe.v1+json",
+            size_bytes=1024,
         ),
-        dataset_release=ResourceRef(name="datasetReleases/pdb-2026-08"),
-        model_release=ResourceRef(name="modelReleases/nova-1"),
+        dataset_release=resource_reference(
+            name="datasetReleases/pdb-2026-08", resource_type="dataset_release"
+        ),
+        model_release=resource_reference(
+            name="modelReleases/nova-1", resource_type="model_release"
+        ),
     )
     terminal = client.operations.wait(operation.operation_id)
 ```
@@ -74,6 +78,14 @@ control-plane reconciler primitive. Application code should use the fenced
 run/attempt lifecycle helpers. Calling this method through `generated` is
 conspicuous and never enables implicit retry or an ergonomic compatibility
 promise.
+
+The descriptor-bound coverage gate fixes the current surface at 15 services
+and 132 RPCs: 127 unary and five server-streaming, with 131 ergonomic methods
+and one reviewed raw-only method. `paginate` and `apaginate` lazily traverse
+any ergonomic list method, preserve opaque tokens exactly, reject cursor loops,
+and raise `PaginationLimitError` instead of implying that a bounded partial
+result is complete. Synchronous and asynchronous artifact facades both expose
+verified iteration, writer download, and atomic file download.
 
 `client.artifacts.download_file(artifact, path)` and its `AsyncClient` peer
 stage mode-0600 content beside the destination, verify the complete immutable
