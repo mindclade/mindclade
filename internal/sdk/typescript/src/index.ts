@@ -10,6 +10,9 @@ export type { ArtifactRef } from "../../../../protocols/generated/typescript/art
 export * from "../../../../protocols/generated/typescript/dataset/v1/dataset_commands_pb.js";
 export * from "../../../../protocols/generated/typescript/dataset/v1/dataset_pb.js";
 export * from "../../../../protocols/generated/typescript/dataset/v1/dataset_release_pb.js";
+export * from "../../../../protocols/generated/typescript/evaluation/v1/evaluation_result_pb.js";
+export * from "../../../../protocols/generated/typescript/evaluation/v1/evaluation_run_pb.js";
+export * from "../../../../protocols/generated/typescript/evaluation/v1/promotion_decision_pb.js";
 export * from "../../../../protocols/generated/typescript/inference/v1/inference_request_pb.js";
 export * from "../../../../protocols/generated/typescript/inference/v1/inference_result_pb.js";
 export * from "../../../../protocols/generated/typescript/inference/v1/inference_stream_pb.js";
@@ -18,6 +21,7 @@ export {
 	type ArtifactUploadSession,
 	ArtifactUploadState,
 } from "../../../../protocols/generated/typescript/internal/artifact/v1/artifact_service_pb.js";
+export type { CommitEvaluationResultRequest } from "../../../../protocols/generated/typescript/internal/evaluation/v1/evaluation_service_pb.js";
 export type { CommitInferenceResultRequest } from "../../../../protocols/generated/typescript/internal/inference/v1/inference_service_pb.js";
 export type { Operation } from "../../../../protocols/generated/typescript/job/v1/operation_pb.js";
 export * from "../../../../protocols/generated/typescript/model/v1/model_commands_pb.js";
@@ -52,6 +56,7 @@ export {
 } from "./config.js";
 export { Datasets } from "./datasets.js";
 export { type ErrorKind, MindcladeError, OperationFailure } from "./error.js";
+export { Evaluations } from "./evaluations.js";
 export {
 	type GcpIdentityTokenExchange,
 	type GcpWorkloadIdentityOptions,

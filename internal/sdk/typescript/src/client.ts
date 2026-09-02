@@ -6,6 +6,7 @@ import { Artifacts } from "./artifacts.js";
 import type { ClientConfig } from "./config.js";
 import type { ClientCore } from "./core.js";
 import { Datasets } from "./datasets.js";
+import { Evaluations } from "./evaluations.js";
 import { Inference } from "./inference.js";
 import { Models } from "./models.js";
 import { Operations } from "./operations.js";
@@ -23,6 +24,7 @@ export class MindcladeClient {
 	readonly operations: Operations;
 	readonly artifacts: Artifacts;
 	readonly datasets: Datasets;
+	readonly evaluations: Evaluations;
 	readonly models: Models;
 	readonly inference: Inference;
 	readonly policies: Policies;
@@ -39,6 +41,7 @@ export class MindcladeClient {
 		this.operations = new Operations(core);
 		this.artifacts = new Artifacts(core);
 		this.datasets = new Datasets(core);
+		this.evaluations = new Evaluations(core);
 		this.models = new Models(core);
 		this.inference = new Inference(core);
 		this.policies = new Policies(core);
