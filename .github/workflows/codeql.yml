@@ -19,7 +19,7 @@ jobs:
     permissions:
       contents: read
       security-events: write
-    uses: mindclade/.github/.github/workflows/reusable-codeql.yml@fc5af9efc19b47078fe446feee750d7f4973195b
+    uses: mindclade/.github/.github/workflows/reusable-codeql.yml@55687ae97dbf6073d61a085c21542637a551ed00
     with:
       source_revision: ${{ github.event.pull_request.head.sha || github.sha }}
       languages: '["python"]'

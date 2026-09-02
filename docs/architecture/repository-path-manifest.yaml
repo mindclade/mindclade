@@ -2488,7 +2488,8 @@
         "docs/adr/0005-biological-identity.md",
         "docs/adr/0006-durable-work.md",
         "docs/adr/0007-training-state.md",
-        ".github/dependabot.yml"
+        ".github/dependabot.yml",
+        ".github/workflows/pr-metadata.yml"
       ],
       "additions": [
         {
@@ -6952,8 +6953,8 @@
           "reason": "Dependabot is retired estate-wide; Renovate configuration extending the organization preset in mindclade/.github replaces it."
         }
       ],
-      "canonical_file_count": 3566,
-      "canonical_path_set_sha256": "edeb8a6ab37f765204a96f27db0026cfb6c0d89e6df25d685c79f835a1af2042"
+      "canonical_file_count": 3565,
+      "canonical_path_set_sha256": "7d39a90b849df78856af43adc5d8ac17017f22ac79b00e65064dfc53d890d613"
     },
     "owners": {
       "agent-platform": {
@@ -7288,22 +7289,6 @@
     {
       "path": ".github/actions/validate-metadata/README.md",
       "kind": "documentation",
-      "owner": "developer-platform",
-      "component": "repository-github",
-      "status": "active",
-      "activation_wave": "0",
-      "source_authority": "hand-authored",
-      "build_targets": [
-        "//:wave0_governance_sources"
-      ],
-      "test_targets": [
-        "//:wave0_tests"
-      ],
-      "public_surface": false
-    },
-    {
-      "path": ".github/workflows/pr-metadata.yml",
-      "kind": "configuration",
       "owner": "developer-platform",
       "component": "repository-github",
       "status": "active",

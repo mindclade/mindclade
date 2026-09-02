@@ -1,11 +1,9 @@
 name: Documentation
 
 on:
-  pull_request:
-    paths:
-      - "**/*.md"
-      - "docs/**"
-      - "tools/docs/**"
+  # Pull requests reach documentation validation through required-check.yml,
+  # which runs it exactly once using the metadata job's documentation_changed
+  # classification. This workflow covers protected main only.
   push:
     branches: [main]
     paths:
@@ -22,7 +20,7 @@ concurrency:
 
 jobs:
   documentation:
-    uses: mindclade/.github/.github/workflows/reusable-documentation-check.yml@fc5af9efc19b47078fe446feee750d7f4973195b
+    uses: mindclade/.github/.github/workflows/reusable-documentation-check.yml@55687ae97dbf6073d61a085c21542637a551ed00
     with:
       source_revision: ${{ github.event.pull_request.head.sha || github.sha }}
       documentation_roots: |-

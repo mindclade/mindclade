@@ -346,6 +346,19 @@ DEFAULT_REPLACEMENT_REASON = (
     "Sections 1-18 and Section 14.1 take precedence over the stale A6 short ADR name."
 )
 
+# Paths retired without a replacement. A rename is expressed in PATH_REPLACEMENTS;
+# a retirement removes a path whose function is absorbed elsewhere, which the
+# replacement map cannot represent because the absorbing path already exists.
+RETIRED_PATHS: tuple[str, ...] = (".github/workflows/pr-metadata.yml",)
+
+RETIREMENT_REASONS = {
+    ".github/workflows/pr-metadata.yml": (
+        "Standalone pull-request metadata validation ran the same reusable workflow as the "
+        "required-check graph on every pull request. The required graph now carries the "
+        "superset of required files, so the duplicate workflow and its job allocation are retired."
+    ),
+}
+
 # Sections 14 and 15 require these machine interfaces even though the supplied A6
 # rendering omitted them. These lists are intentionally closed and machine tested.
 CONNECTED_RATIFICATION_SCHEMA = "docs/adr/connected-ratification.v1.schema.json"
@@ -1181,6 +1194,9 @@ def reconcile_authority_paths(source_paths: Sequence[str]) -> list[str]:
     missing = set(PATH_REPLACEMENTS) - source_set
     if missing:
         raise PolicyError(f"ADR reconciliation sources are absent: {sorted(missing)!r}")
+    missing_retired = set(RETIRED_PATHS) - source_set
+    if missing_retired:
+        raise PolicyError(f"retired paths are absent from source authority: {sorted(missing_retired)!r}")
     if set(REQUIRED_ADDITIONS) & source_set:
         raise PolicyError("required reconciliation addition already exists in source authority")
 
@@ -1201,7 +1217,10 @@ def reconcile_authority_paths(source_paths: Sequence[str]) -> list[str]:
         and path not in repository_additions
     )
     result: list[str] = []
+    retired = set(RETIRED_PATHS)
     for path in source_paths:
+        if path in retired:
+            continue
         reconciled = PATH_REPLACEMENTS.get(path, path)
         python_prefix = "protocols/generated/python/"
         if reconciled.startswith(python_prefix) and reconciled not in {
@@ -2682,7 +2701,7 @@ def build_manifest(authority_path: Path, blueprint_path: Path) -> dict[str, Any]
             },
             "reconciliation": {
                 "version": "3.4.3",
-                "remove_paths": list(PATH_REPLACEMENTS),
+                "remove_paths": list(PATH_REPLACEMENTS) + list(RETIRED_PATHS),
                 "additions": additions,
                 "canonical_file_count": len(canonical_paths),
                 "canonical_path_set_sha256": path_set_sha256(canonical_paths),
@@ -2754,7 +2773,7 @@ def validate_manifest(manifest: Mapping[str, Any]) -> list[str]:
         additions = []
     addition_paths = [str(item.get("path", "")) for item in additions]
     expected_additions = set(REQUIRED_ADDITIONS) | set(PATH_REPLACEMENTS.values())
-    if list(removes) != list(PATH_REPLACEMENTS):
+    if list(removes) != list(PATH_REPLACEMENTS) + list(RETIRED_PATHS):
         errors.append("reconciliation removal list is not the closed replacement set")
     if set(addition_paths) != expected_additions or len(addition_paths) != len(expected_additions):
         errors.append("reconciliation additions are not the closed approved set")
@@ -3266,10 +3285,10 @@ REQUIRED_ADDITIONS = (  # pyright: ignore[reportConstantRedefinition]
     *ESTATE_BUILD_OPTIMIZATION_PATHS,
 )
 CANONICAL_FILE_COUNT = (  # pyright: ignore[reportConstantRedefinition]
-    CANONICAL_FILE_COUNT + len(ESTATE_BUILD_OPTIMIZATION_PATHS) + 1
+    CANONICAL_FILE_COUNT + len(ESTATE_BUILD_OPTIMIZATION_PATHS) + 1 - len(RETIRED_PATHS)
 )
 CANONICAL_PATH_SET_SHA256 = (  # pyright: ignore[reportConstantRedefinition]
-    "edeb8a6ab37f765204a96f27db0026cfb6c0d89e6df25d685c79f835a1af2042"
+    "7d39a90b849df78856af43adc5d8ac17017f22ac79b00e65064dfc53d890d613"
 )
 
 _adr0023_reconciliation_addition_reason = _reconciliation_addition_reason

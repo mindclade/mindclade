@@ -36,3 +36,28 @@ build:rbe-preparation --remote_cache=
 build:rbe-preparation --remote_executor=
 build:rbe-preparation --noremote_accept_cached
 build:rbe-preparation --noremote_upload_local_results
+
+# Bazel HTTP remote cache consumption. The cache itself is
+# infrastructure-live/opentofu/modules/gcp/bazel-cache, which ships disabled;
+# --remote_cache stays empty here until that module is qualified and its
+# endpoint is populated by a separately reviewed change. Declaring the two
+# consumption modes now means activation sets an endpoint rather than
+# introducing new flags, and the read mode can never be turned into a writer by
+# adding one. These are siblings of rbe-preparation, not children of it:
+# rbe-preparation disables accepting cached results, so inheriting it and then
+# re-enabling would leave the two flags fighting.
+#
+# cache-read is the pull-request mode. It may accept a cached result and may
+# never publish one, so an untrusted revision cannot write into a cache a
+# protected build later reads.
+build:cache-read --remote_cache=
+build:cache-read --remote_upload_local_results=false
+build:cache-read --remote_accept_cached=true
+
+# cache-write is the protected-main Buildkite mode. It authenticates with
+# workload identity through application default credentials; only that path may
+# publish. A cache miss or an unavailable cache is never a build failure.
+build:cache-write --remote_cache=
+build:cache-write --remote_upload_local_results=true
+build:cache-write --remote_accept_cached=true
+build:cache-write --google_default_credentials=true

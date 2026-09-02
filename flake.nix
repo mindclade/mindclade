@@ -191,43 +191,45 @@
                 jq -Sc --arg digest "$digest" '. + {toolchain_digest:$digest}' "$unsigned" \
                   > "$out/share/mindclade/toolchain-manifest.json"
               '';
-          toolchainPackages = with pkgs; [
-            actionlint
-            bazel
-            buf
-            buildifier
-            cargo
-            clippy
-            gitleaks
-            git
-            go_1_26
-            golangci-lint
-            jdk21_headless
-            jq
-            just
-            markdownlint-cli2
-            nix
-            nixfmt
-            nodejs_26
-            osv-scanner
-            pnpmNode26
-            pre-commit
-            pyright
-            pythonEnv
-            ruff
-            rustc
-            rustfmt
-            shellcheck
-            shfmt
-            stdenv.cc
-            toolchainManifest
-            uv
-            yamllint
-            zizmor
-          ]
-          ++ lib.optionals stdenv.hostPlatform.isLinux [
-            util-linux
-          ];
+          toolchainPackages =
+            with pkgs;
+            [
+              actionlint
+              bazel
+              buf
+              buildifier
+              cargo
+              clippy
+              gitleaks
+              git
+              go_1_26
+              golangci-lint
+              jdk21_headless
+              jq
+              just
+              markdownlint-cli2
+              nix
+              nixfmt
+              nodejs_26
+              osv-scanner
+              pnpmNode26
+              pre-commit
+              pyright
+              pythonEnv
+              ruff
+              rustc
+              rustfmt
+              shellcheck
+              shfmt
+              stdenv.cc
+              toolchainManifest
+              uv
+              yamllint
+              zizmor
+            ]
+            ++ lib.optionals stdenv.hostPlatform.isLinux [
+              util-linux
+            ];
           toolchain = pkgs.buildEnv {
             name = "mindclade-toolchain";
             paths = toolchainPackages;

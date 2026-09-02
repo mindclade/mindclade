@@ -13,19 +13,28 @@ concurrency:
 
 jobs:
   classify:
-    uses: mindclade/.github/.github/workflows/reusable-metadata-validation.yml@fc5af9efc19b47078fe446feee750d7f4973195b
+    uses: mindclade/.github/.github/workflows/reusable-metadata-validation.yml@55687ae97dbf6073d61a085c21542637a551ed00
     with:
       source_revision: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha || github.sha }}
+      component_path: component.yaml
+      required_files: |-
+        README.md
+        ARCHITECTURE.md
+        SECURITY.md
+        LICENSE
+        component.yaml
 
-  fork_checks:
+  # Documentation validation runs exactly once per pull request, here, driven by
+  # the metadata job's classification. It previously ran from a path-filtered
+  # standalone workflow and again on the untrusted branch of this graph.
+  documentation:
     needs: classify
     if: >-
       needs.classify.result == 'success' &&
-      github.event_name == 'pull_request' &&
-      needs.classify.outputs.trust_classification == 'untrusted'
-    uses: mindclade/.github/.github/workflows/reusable-documentation-check.yml@fc5af9efc19b47078fe446feee750d7f4973195b
+      needs.classify.outputs.documentation_changed == 'true'
+    uses: mindclade/.github/.github/workflows/reusable-documentation-check.yml@55687ae97dbf6073d61a085c21542637a551ed00
     with:
-      source_revision: ${{ github.event.pull_request.head.sha }}
+      source_revision: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha || github.sha }}
       documentation_roots: |-
         README.md
         docs
@@ -38,7 +47,7 @@ jobs:
         github.event_name != 'pull_request' ||
         needs.classify.outputs.trust_classification == 'trusted'
       )
-    uses: mindclade/.github/.github/workflows/reusable-buildkite-dispatch.yml@fc5af9efc19b47078fe446feee750d7f4973195b
+    uses: mindclade/.github/.github/workflows/reusable-buildkite-dispatch.yml@55687ae97dbf6073d61a085c21542637a551ed00
     with:
       source_revision: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha || github.sha }}
       pipeline_class: ${{ (github.event_name == 'pull_request' || github.event_name == 'merge_group') && 'presubmit' || github.event_name == 'release' && 'release' || 'protected' }}
@@ -53,7 +62,7 @@ jobs:
       id-token: write
     needs: [classify, dispatch]
     if: needs.dispatch.result == 'success'
-    uses: mindclade/.github/.github/workflows/reusable-required-check.yml@fc5af9efc19b47078fe446feee750d7f4973195b
+    uses: mindclade/.github/.github/workflows/reusable-required-check.yml@55687ae97dbf6073d61a085c21542637a551ed00
     with:
       source_revision: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha || github.sha }}
       pipeline_definition_revision: ${{ needs.dispatch.outputs.pipeline_definition_revision }}
@@ -69,7 +78,7 @@ jobs:
 
   required:
     name: required
-    needs: [classify, fork_checks, dispatch, buildkite_required]
+    needs: [classify, documentation, dispatch, buildkite_required]
     if: always()
     runs-on: ubuntu-24.04
     timeout-minutes: 5
@@ -79,23 +88,30 @@ jobs:
       CLASSIFY_RESULT: ${{ needs.classify.result }}
       DISPATCH_RESULT: ${{ needs.dispatch.result }}
       EVENT_NAME: ${{ github.event_name }}
-      FORK_CHECKS_RESULT: ${{ needs.fork_checks.result }}
+      DOCUMENTATION_RESULT: ${{ needs.documentation.result }}
       TRUST_CLASSIFICATION: ${{ needs.classify.outputs.trust_classification }}
     steps:
       - name: Enforce the event-specific fail-closed path
         run: |
           set -euo pipefail
           [[ "${CLASSIFY_RESULT}" == success ]]
+          # Documentation is skipped when this revision changes none, so both
+          # success and skipped are acceptable; any other result is a failure.
+          case "${DOCUMENTATION_RESULT}" in
+            success | skipped) ;;
+            *)
+              echo "Documentation validation did not complete: ${DOCUMENTATION_RESULT}" >&2
+              exit 1
+              ;;
+          esac
           case "${EVENT_NAME}:${TRUST_CLASSIFICATION}" in
             pull_request:untrusted)
-              [[ "${FORK_CHECKS_RESULT}" == success ]]
               [[ "${DISPATCH_RESULT}" == skipped ]]
               [[ "${BUILDKITE_REQUIRED_RESULT}" == skipped ]]
               echo "Untrusted code requires maintainer transfer to the isolated Buildkite path" >&2
               exit 1
               ;;
             pull_request:trusted|pull_request:protected|merge_group:protected)
-              [[ "${FORK_CHECKS_RESULT}" == skipped ]]
               [[ "${DISPATCH_RESULT}" == success ]]
               [[ "${BUILDKITE_REQUIRED_RESULT}" == success ]]
               ;;

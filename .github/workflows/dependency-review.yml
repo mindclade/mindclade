@@ -27,7 +27,7 @@ concurrency:
 
 jobs:
   review:
-    uses: mindclade/.github/.github/workflows/reusable-dependency-review.yml@fc5af9efc19b47078fe446feee750d7f4973195b
+    uses: mindclade/.github/.github/workflows/reusable-dependency-review.yml@55687ae97dbf6073d61a085c21542637a551ed00
     with:
       source_revision: ${{ github.event.pull_request.head.sha }}
       base_revision: ${{ github.event.pull_request.base.sha }}
