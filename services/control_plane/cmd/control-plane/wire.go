@@ -1168,7 +1168,7 @@ var errSSEWriteDeadlineUnavailable = errors.New("SSE write deadline unavailable"
 
 func (g *gateway) beginSSE(writer http.ResponseWriter, policy *apiv1.PublicSseContract) error {
 	if err := g.setSSEFrameWriteDeadline(writer); err != nil {
-		return fmt.Errorf("%w: %v", errSSEWriteDeadlineUnavailable, err)
+		return fmt.Errorf("%w: %w", errSSEWriteDeadlineUnavailable, err)
 	}
 	writer.Header().Set("Content-Type", "text/event-stream")
 	writer.Header().Set("Cache-Control", "no-store")
@@ -1870,8 +1870,8 @@ func newRuntimeWithAuthorizer(
 			// The gateway instead applies a fresh bounded ResponseController write
 			// deadline to the retry prelude and every event frame.
 			WriteTimeout:   0,
-			IdleTimeout:       90 * time.Second,
-			MaxHeaderBytes:    64 << 10,
+			IdleTimeout:    90 * time.Second,
+			MaxHeaderBytes: 64 << 10,
 		},
 		conn: conn,
 	}, nil

@@ -21,7 +21,7 @@ spec:
       openapiBaseline: protocols/compatibility/baselines/openapi.lock.json
       rule: Both immutable baseline schemas must be present and co-ratified by one protected transaction; either both absent/candidate or both ratified is valid.
     baselineRule: Before the paired immutable baselines exist, checked descriptor and OpenAPI artifacts are review candidates and establish no supported compatibility promise.
-    postBaselineRule: Additive compatibility is mandatory whenever the paired protected v1 baselines exist; the generator enforces Buf and OpenAPI compatibility before replacement.
+    postBaselineRule: After protected ratification, additive compatibility is mandatory whenever the paired v1 baselines exist; the generator enforces Buf and OpenAPI compatibility before replacement.
     deprecation:
       documentationRequired: true
       replacementRequired: true

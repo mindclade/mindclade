@@ -91,6 +91,55 @@ spec:
         - persistence-protobuf-mapper
         - contract-or-conformance-test
       clientConsumerRule: Services, workers, training code, tools, and internal applications acting as clients import internal/sdk rather than protocols/generated.
+    productionQuality:
+      codegen:
+        - atomic-staged-generation
+        - deterministic-two-pass-regeneration
+        - descriptor-digest-join-key
+        - generated-file-manifest
+        - four-language-compile-and-import
+        - descriptor-derived-rpc-coverage
+        - generated-and-handwritten-boundary
+        - fault-injection-with-rollback
+        - preview-diff-without-publication-authority
+        - package-inventory-and-provenance
+      runtime:
+        - workload-identity-and-credential-refresh
+        - secure-transport-by-default
+        - bounded-deadlines-and-message-sizes
+        - safe-idempotent-retries-with-jitter-and-server-hints
+        - caller-stable-idempotency-and-request-ids
+        - sanitized-typed-errors
+        - opaque-bounded-pagination
+        - long-running-operation-poll-watch-and-cancel
+        - resumable-streaming-with-heartbeats
+        - verified-atomic-artifact-transfer
+        - cancellation-and-shutdown-propagation
+        - observers-fakes-and-hermetic-transports
+      testing:
+        - every-rpc-four-language-behavioral-evidence
+        - populated-wire-and-protojson-roundtrips
+        - auth-timeout-retry-error-and-idempotency-conformance
+        - pagination-operation-and-stream-resume-conformance
+        - artifact-integrity-race-and-no-clobber-conformance
+        - generated-drift-and-layering-enforcement
+      lifecycle:
+        - ergonomic-raw-only-or-unsupported-classification
+        - explicit-deprecation-and-migration-policy
+        - candidate-only-change-policy-before-ratification
+        - immutable-breaking-baseline-after-ratification
+      delivery:
+        - private-package-inventories
+        - source-toolchain-and-contract-digests
+        - qualification-and-release-receipts
+        - no-public-package-publication
+      excludedOrDeferred:
+        - hosted-generator-authority
+        - public-package-marketing-and-portal
+        - terraform-provider-generation
+        - websocket-transport-duplication
+        - webhook-runtime-without-a-signed-contract
+        - unbounded-mcp-surface-export
 
   pipeline:
     version: v2-candidate

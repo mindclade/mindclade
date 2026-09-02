@@ -120,6 +120,7 @@ impl Error {
         let kind = match code {
             Code::Cancelled => ErrorKind::Cancelled,
             Code::DeadlineExceeded => ErrorKind::DeadlineExceeded,
+            Code::AlreadyExists => ErrorKind::AlreadyExists,
             Code::Unauthenticated => ErrorKind::Authentication,
             _ => ErrorKind::Remote,
         };

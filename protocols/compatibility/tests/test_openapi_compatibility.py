@@ -12,7 +12,7 @@ import unittest
 from collections.abc import Iterator, Mapping
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Any
+from typing import Any, cast
 
 import yaml
 from google.protobuf import descriptor_pb2
@@ -197,9 +197,7 @@ class OpenApiCompatibilityTest(unittest.TestCase):
         watch_parameters = {
             parameter.get("name"): parameter
             for parameter in (
-                resolve_local_ref(self.openapi, value["$ref"])
-                if "$ref" in value
-                else value
+                resolve_local_ref(self.openapi, value["$ref"]) if "$ref" in value else value
                 for value in by_id["watchOperation"]["parameters"]
             )
         }
@@ -405,16 +403,12 @@ class OpenApiCompatibilityTest(unittest.TestCase):
             method = SimpleNamespace(
                 client_streaming=False,
                 full_name="mindclade.api.v1.MindcladeService.WatchOperation",
-                input_type=SimpleNamespace(
-                    full_name="mindclade.api.v1.WatchOperationRequest"
-                ),
+                input_type=SimpleNamespace(full_name="mindclade.api.v1.WatchOperationRequest"),
                 output_type=SimpleNamespace(
                     fields_by_name={
                         "error": SimpleNamespace(
                             number=9,
-                            message_type=SimpleNamespace(
-                                full_name="mindclade.api.v1.PublicError"
-                            )
+                            message_type=SimpleNamespace(full_name="mindclade.api.v1.PublicError"),
                         )
                     },
                     full_name="mindclade.api.v1.OperationEvent",
@@ -767,6 +761,16 @@ class OpenApiCompatibilityTest(unittest.TestCase):
             "intentionally-exported-generated-protobuf-types",
         )
         self.assertEqual(spec["internalSdkPolicy"]["handwrittenWireModels"], "forbidden")
+        quality = spec["internalSdkPolicy"]["productionQuality"]
+        self.assertEqual(
+            set(quality),
+            {"codegen", "runtime", "testing", "lifecycle", "delivery", "excludedOrDeferred"},
+        )
+        self.assertIn("atomic-staged-generation", quality["codegen"])
+        self.assertIn("descriptor-derived-rpc-coverage", quality["codegen"])
+        self.assertIn("safe-idempotent-retries-with-jitter-and-server-hints", quality["runtime"])
+        self.assertIn("every-rpc-four-language-behavioral-evidence", quality["testing"])
+        self.assertIn("hosted-generator-authority", quality["excludedOrDeferred"])
         self.assertEqual(
             spec["pipeline"]["interfaces"],
             [
@@ -908,8 +912,7 @@ class OpenApiCompatibilityTest(unittest.TestCase):
                 ["watchOperation"],
             )
             planned_operations = {
-                operation["operationId"]: operation
-                for operation in plan["inventory"]["operations"]
+                operation["operationId"]: operation for operation in plan["inventory"]["operations"]
             }
             self.assertEqual(planned_operations["getOperation"]["kind"], "unary")
             self.assertEqual(
@@ -1044,6 +1047,18 @@ class OpenApiCompatibilityTest(unittest.TestCase):
 
         invalid_cases: list[tuple[str, dict[str, Any], str]] = []
 
+        missing_quality_gate = copied_generation()
+        missing_quality_gate["spec"]["internalSdkPolicy"]["productionQuality"]["codegen"].remove(
+            "descriptor-digest-join-key"
+        )
+        invalid_cases.append(
+            (
+                "missing-quality-gate",
+                missing_quality_gate,
+                "production-quality contract differs for codegen",
+            )
+        )
+
         wrong_native = copied_generation()
         wrong_native["spec"]["nativeGeneration"]["implementation"] = "hosted-provider"
         invalid_cases.append(("wrong-native", wrong_native, "Buf and pinned native generators"))
@@ -1116,7 +1131,7 @@ class OpenApiCompatibilityTest(unittest.TestCase):
                     self.assertEqual(result.returncode, 2, result.stderr)
                     self.assertIn(expected_error, result.stderr)
 
-    def test_compatibility_policy_keeps_v1_unratified_and_internal_sdk_native(
+    def test_compatibility_policy_derives_v1_state_and_keeps_internal_sdk_native(
         self,
     ) -> None:
         spec = self.policy["spec"]
@@ -1127,8 +1142,17 @@ class OpenApiCompatibilityTest(unittest.TestCase):
         self.assertEqual(
             spec["authority"]["curationOverlay"], "protocols/openapi/external-api.yaml"
         )
-        self.assertEqual(self.policy["metadata"]["status"], "candidate-unratified")
-        self.assertFalse(spec["versioning"]["ratified"])
+        self.assertEqual(self.policy["metadata"]["status"], "governed-ratification-gated")
+        state_authority = spec["versioning"]["ratificationStateAuthority"]
+        self.assertEqual(
+            state_authority["protobufBaseline"],
+            "protocols/compatibility/baselines/protobuf.lock.json",
+        )
+        self.assertEqual(
+            state_authority["openapiBaseline"],
+            "protocols/compatibility/baselines/openapi.lock.json",
+        )
+        self.assertIn("co-ratified", state_authority["rule"])
         self.assertIn("ratification", spec["versioning"]["postBaselineRule"])
         self.assertIn("change-operation-id", spec["compatibility"]["breaking"])
         self.assertIn("mutations-have-explicit-idempotency-semantics", spec["publicInvariants"])
@@ -1155,6 +1179,128 @@ class OpenApiCompatibilityTest(unittest.TestCase):
             json.loads(candidate.read_text()),
             {"schema_version": "mindclade.openapi-candidate/v1", "sources": expected},
         )
+
+    def test_ratified_openapi_baseline_round_trips_exact_published_bytes(self) -> None:
+        published = self.openapi_path.read_bytes()
+        digest = "sha256:" + hashlib.sha256(published).hexdigest()
+        bindings = {
+            "source_revision": "a" * 40,
+            "openapi_projection_digest": digest,
+        }
+        baseline = generate_protocols.ratified_openapi_baseline(
+            published,
+            descriptor_digest=cast(str, self.openapi["x-mindclade-descriptor-digest"]),
+            bindings=bindings,
+            evidence={"schema_version": "mindclade.training-vertical-evidence/v2"},
+            evidence_digest="sha256:" + "b" * 64,
+            authorization={"signer_key_id": "sha256:" + "c" * 64},
+        )
+        value = json.loads(baseline)
+        self.assertEqual(value["schema_version"], "mindclade.openapi-baseline/v1")
+        self.assertEqual(value["document"]["digest"], digest)
+        self.assertEqual(generate_protocols.ratified_openapi_document(baseline), published)
+
+        corrupted = copy.deepcopy(value)
+        corrupted["document"]["digest"] = "sha256:" + "d" * 64
+        with self.assertRaisesRegex(ValueError, "digest does not match"):
+            generate_protocols.ratified_openapi_document(
+                json.dumps(corrupted, sort_keys=True, separators=(",", ":")).encode()
+            )
+
+    def test_post_ratification_openapi_policy_allows_additive_and_rejects_breaking(self) -> None:
+        baseline = {
+            "openapi": "3.1.0",
+            "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
+            "security": [{"bearerAuth": []}],
+            "paths": {
+                "/v1/widgets/{name}": {
+                    "get": {
+                        "operationId": "getWidget",
+                        "parameters": [
+                            {
+                                "in": "path",
+                                "name": "name",
+                                "required": True,
+                                "schema": {"maxLength": 64, "type": "string"},
+                            }
+                        ],
+                        "responses": {
+                            "200": {
+                                "headers": {"ETag": {"schema": {"type": "string"}}},
+                                "content": {
+                                    "application/json": {
+                                        "schema": {"$ref": "#/components/schemas/Widget"}
+                                    }
+                                }
+                            }
+                        },
+                        "security": [{"bearerAuth": []}],
+                        "x-mindclade-operation-kind": "unary",
+                    }
+                }
+            },
+            "components": {
+                "schemas": {
+                    "Widget": {
+                        "type": "object",
+                        "required": ["name"],
+                        "properties": {
+                            "name": {"maxLength": 64, "type": "string"},
+                            "state": {"enum": ["READY"], "type": "string"},
+                        },
+                    }
+                }
+            },
+        }
+        additive = copy.deepcopy(baseline)
+        additive["components"]["schemas"]["Widget"]["properties"]["description"] = {
+            "type": "string"
+        }
+        additive["components"]["schemas"]["Widget"]["properties"]["state"]["enum"].append(
+            "ARCHIVED"
+        )
+        additive["paths"]["/v1/widgets"] = {
+            "get": {
+                "operationId": "listWidgets",
+                "responses": {"200": {"description": "OK"}},
+            }
+        }
+        generate_protocols.validate_openapi_compatibility(
+            yaml.safe_dump(baseline).encode(), yaml.safe_dump(additive).encode()
+        )
+
+        breaking_cases = {
+            "operation": lambda value: value["paths"]["/v1/widgets/{name}"]["get"].update(
+                operationId="fetchWidget"
+            ),
+            "required parameter": lambda value: value["paths"]["/v1/widgets/{name}"]["get"][
+                "parameters"
+            ].append(
+                {
+                    "in": "query",
+                    "name": "view",
+                    "required": True,
+                    "schema": {"type": "string"},
+                }
+            ),
+            "removed property": lambda value: value["components"]["schemas"]["Widget"][
+                "properties"
+            ].pop("name"),
+            "tightened bound": lambda value: value["components"]["schemas"]["Widget"]["properties"][
+                "name"
+            ].update(maxLength=32),
+            "removed response header": lambda value: value["paths"]["/v1/widgets/{name}"][
+                "get"
+            ]["responses"]["200"]["headers"].pop("ETag"),
+        }
+        for name, mutate in breaking_cases.items():
+            with self.subTest(name=name):
+                current = copy.deepcopy(baseline)
+                mutate(current)
+                with self.assertRaisesRegex(ValueError, "OpenAPI compatibility break"):
+                    generate_protocols.validate_openapi_compatibility(
+                        yaml.safe_dump(baseline).encode(), yaml.safe_dump(current).encode()
+                    )
 
 
 if __name__ == "__main__":

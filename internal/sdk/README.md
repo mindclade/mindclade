@@ -21,6 +21,16 @@ idempotency, deadlines, normalized errors, observability, operation helpers,
 artifact resolution, verified no-clobber file downloads, and test fakes. It
 does not redefine persisted resources or wire models.
 
+The production-quality contract is provider-neutral and enforced through the
+repository-owned generation policy. It requires atomic deterministic codegen,
+one descriptor digest across generated transports and coverage projections,
+four-language compile and behavioral evidence, bounded retry hints and jitter,
+explicit endpoint lifecycle classifications, previewable source diffs, package
+inventories, and digest-bound qualification receipts. Public package portals,
+hosted-generator authority, Terraform generation, duplicate WebSocket
+transports, unsigned webhook helpers, and an unbounded MCP export are explicitly
+outside this private SDK boundary.
+
 `RunService.ExpireAttemptLeases` is deliberately and permanently classified
 as **raw-only**. Lease expiry is a control-plane reconciler primitive, not an
 application SDK workflow; ordinary callers use the fenced run/attempt helpers.

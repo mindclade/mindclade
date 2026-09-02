@@ -40,9 +40,55 @@ import {
 	MindcladeClient,
 	MindcladeError,
 	OperationFailure,
+	paginate,
 	RecordingTransport,
 	type TokenProvider,
 } from "../src/index.js";
+
+test("bounded pagination preserves opaque tokens and fails closed", async () => {
+	const seen: string[] = [];
+	const values: number[] = [];
+	for await (const value of paginate(
+		async (pageToken) => {
+			seen.push(pageToken);
+			return seen.length === 1
+				? { items: [1, 2], nextPageToken: " next token " }
+				: { items: [3], nextPageToken: "" };
+		},
+		{ initialPageToken: " initial token " },
+	)) {
+		values.push(value);
+	}
+	assert.deepEqual(seen, [" initial token ", " next token "]);
+	assert.deepEqual(values, [1, 2, 3]);
+
+	await assert.rejects(
+		async () => {
+			for await (const _ of paginate(async (pageToken) => ({
+				items: [1],
+				nextPageToken: pageToken,
+			}), { initialPageToken: "opaque" })) {
+				// The repeated token is rejected before page items are exposed.
+			}
+		},
+		(reason: unknown) => reason instanceof MindcladeError && reason.kind === "protocol",
+	);
+
+	const bounded: number[] = [];
+	await assert.rejects(
+		async () => {
+			for await (const value of paginate(async () => ({
+				items: [1, 2, 3],
+				nextPageToken: "more",
+			}), { limits: { maxItems: 2 } })) {
+				bounded.push(value);
+			}
+		},
+		(reason: unknown) =>
+			reason instanceof MindcladeError && reason.kind === "pagination_limit",
+	);
+	assert.deepEqual(bounded, [1, 2]);
+});
 
 class FakeTokenProvider implements TokenProvider {
 	readonly audiences: string[] = [];

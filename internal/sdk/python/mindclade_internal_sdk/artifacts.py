@@ -107,7 +107,13 @@ def _publish_staging_file(staging: Path, destination: Path, directory: Path) -> 
     # Successful link creation is the commit point: after it, cleanup and
     # directory-sync failures are best effort so this helper never reports a
     # failed download while leaving a valid destination behind.
-    os.link(staging, destination)
+    try:
+        os.link(staging, destination)
+    except FileExistsError as error:
+        raise ConflictError(
+            "artifact destination already exists",
+            status=grpc.StatusCode.ALREADY_EXISTS,
+        ) from error
     with suppress(OSError):
         _sync_directory(directory)
     with suppress(OSError):
@@ -1098,7 +1104,7 @@ class Artifacts:
         finally:
             if not temporary.closed:
                 temporary.close()
-            with suppress(FileNotFoundError):
+            with suppress(OSError):
                 staging.unlink()
 
 
@@ -1648,6 +1654,38 @@ class AsyncArtifacts:
                 status=grpc.StatusCode.DATA_LOSS,
             )
 
+    async def download(
+        self,
+        artifact: artifact_reference_pb2.ArtifactRef,
+        destination: BinaryWriter,
+        *,
+        offset: int = 0,
+        max_chunk_bytes: int = _DEFAULT_CHUNK_BYTES,
+        options: CallOptions | None = None,
+    ) -> int:
+        """Stream a verified artifact into a synchronous binary writer.
+
+        Blocking writes run outside the event loop. Cancellation waits for an
+        in-flight write to finish before returning, so the writer is never
+        concurrently mutated after this method exits.
+        """
+
+        written = 0
+        async for data in self.iter_download(
+            artifact,
+            offset=offset,
+            max_chunk_bytes=max_chunk_bytes,
+            options=options,
+        ):
+            count = await _run_file_operation(destination.write, data)
+            if count != len(data):
+                raise ProtocolError(
+                    "artifact download destination accepted a short write",
+                    status=grpc.StatusCode.DATA_LOSS,
+                )
+            written += count
+        return written
+
     async def download_file(
         self,
         artifact: artifact_reference_pb2.ArtifactRef,
@@ -1660,20 +1698,13 @@ class AsyncArtifacts:
 
         target, directory = _atomic_destination(destination)
         temporary, staging = await _run_file_operation(_new_staging_file, directory)
-        written = 0
         try:
-            async for data in self.iter_download(
+            written = await self.download(
                 artifact,
+                temporary,
                 max_chunk_bytes=max_chunk_bytes,
                 options=options,
-            ):
-                count = await _run_file_operation(temporary.write, data)
-                if count != len(data):
-                    raise ProtocolError(
-                        "artifact download destination accepted a short write",
-                        status=grpc.StatusCode.DATA_LOSS,
-                    )
-                written += count
+            )
             await _run_file_operation(_sync_file, temporary)
             temporary.close()
             # Deliver any already-pending cancellation before the atomic
@@ -1684,5 +1715,5 @@ class AsyncArtifacts:
         finally:
             if not temporary.closed:
                 temporary.close()
-            with suppress(FileNotFoundError):
+            with suppress(OSError):
                 staging.unlink()

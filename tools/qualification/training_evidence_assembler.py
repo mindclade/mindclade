@@ -16,6 +16,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
+from types import MappingProxyType
 from typing import cast
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
@@ -39,9 +40,7 @@ UTC_RE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
 SDK_LANGUAGES = frozenset({"go", "python", "rust", "typescript"})
 APPROVED_REVIEWER_IDENTITIES = frozenset({"principal://mindclade/reviewers/contract-governance"})
 PROTECTED_CONTEXT_PRODUCER_IDENTITY = "principal://mindclade/ci/protected-dispatch"
-PROTECTED_CONTEXT_PAYLOAD_TYPE = (
-    "application/vnd.mindclade.protected-trusted-context.v1+json"
-)
+PROTECTED_CONTEXT_PAYLOAD_TYPE = "application/vnd.mindclade.protected-trusted-context.v1+json"
 APPROVAL_PAYLOAD_TYPE = "application/vnd.mindclade.training-evidence-approval.v1+json"
 RATIFICATION_BINDING_FIELDS = frozenset(
     {
@@ -225,9 +224,11 @@ RECEIPT_CONTRACTS = {
 # signing keys. Caller-provided paths and key IDs never extend these allowlists.
 # A future protected source change must add reviewed DER-SPKI SHA-256 key IDs.
 GOVERNED_SIGNER_TRUST_POLICY = SignerTrustPolicy(
-    receipt_signer_key_ids={name: frozenset() for name in RECEIPT_CONTRACTS},
-    approval_signer_key_ids={identity: frozenset() for identity in APPROVED_REVIEWER_IDENTITIES},
-    context_signer_key_ids={PROTECTED_CONTEXT_PRODUCER_IDENTITY: frozenset()},
+    receipt_signer_key_ids=MappingProxyType({name: frozenset() for name in RECEIPT_CONTRACTS}),
+    approval_signer_key_ids=MappingProxyType(
+        {identity: frozenset() for identity in APPROVED_REVIEWER_IDENTITIES}
+    ),
+    context_signer_key_ids=MappingProxyType({PROTECTED_CONTEXT_PRODUCER_IDENTITY: frozenset()}),
 )
 RECEIPT_FIELDS = frozenset(
     {
@@ -351,16 +352,10 @@ def _validate_signer_trust_policy(policy: SignerTrustPolicy) -> None:
 
     all_authorizations: list[tuple[str, str]] = []
     for lane, key_ids in sorted(policy.receipt_signer_key_ids.items()):
-        if not isinstance(key_ids, frozenset):
-            raise ValueError(f"{lane} signer trust policy must be immutable")
         all_authorizations.extend((f"receipt:{lane}", key_id) for key_id in key_ids)
     for identity, key_ids in sorted(policy.approval_signer_key_ids.items()):
-        if not isinstance(key_ids, frozenset):
-            raise ValueError(f"{identity} signer trust policy must be immutable")
         all_authorizations.extend((f"approval:{identity}", key_id) for key_id in key_ids)
     for identity, key_ids in sorted(policy.context_signer_key_ids.items()):
-        if not isinstance(key_ids, frozenset):
-            raise ValueError(f"{identity} signer trust policy must be immutable")
         all_authorizations.extend((f"context:{identity}", key_id) for key_id in key_ids)
 
     key_owners: dict[str, str] = {}
@@ -368,9 +363,7 @@ def _validate_signer_trust_policy(policy: SignerTrustPolicy) -> None:
         _require_string(key_id, f"{owner} signer key ID", DIGEST_RE)
         previous = key_owners.get(key_id)
         if previous is not None:
-            raise ValueError(
-                f"signer key {key_id} is authorized for both {previous} and {owner}"
-            )
+            raise ValueError(f"signer key {key_id} is authorized for both {previous} and {owner}")
         key_owners[key_id] = owner
 
 
@@ -493,8 +486,9 @@ def _result_artifact_path(root: Path, value: JsonValue, name: str) -> Path:
     relative = Path(raw)
     if relative.is_absolute() or ".." in relative.parts:
         raise ValueError(f"{name} receipt result_artifact_path is not canonical")
-    path = (root / relative).resolve()
-    if not path.is_relative_to(root.resolve()) or path.is_symlink() or not path.is_file():
+    candidate = root / relative
+    path = candidate.resolve()
+    if not path.is_relative_to(root.resolve()) or candidate.is_symlink() or not path.is_file():
         raise ValueError(f"{name} receipt result artifact is not a repository-owned file")
     return path
 
@@ -731,9 +725,7 @@ def _protected_context(
         label="protected trusted context",
         payload_type=PROTECTED_CONTEXT_PAYLOAD_TYPE,
         principal_identity=PROTECTED_CONTEXT_PRODUCER_IDENTITY,
-        authorized_key_ids=trust_policy.context_signer_key_ids[
-            PROTECTED_CONTEXT_PRODUCER_IDENTITY
-        ],
+        authorized_key_ids=trust_policy.context_signer_key_ids[PROTECTED_CONTEXT_PRODUCER_IDENTITY],
     )
     context = decode_object(attestation.payload, "protected trusted context")
     if attestation.payload != signed_payload_json(context):
@@ -806,24 +798,24 @@ def _owned_attested_artifact(
     )
 
 
-def assemble_evidence(
+def _assemble_evidence(
     receipt_artifacts: Mapping[str, AttestedArtifact],
     *,
     root: Path,
     approval_artifact: AttestedArtifact,
     trusted_context_artifact: AttestedArtifact,
-    trust_policy: SignerTrustPolicy = GOVERNED_SIGNER_TRUST_POLICY,
+    trust_policy: SignerTrustPolicy,
 ) -> JsonObject:
-    """Validate exact independent receipts and return ratifier-compatible evidence."""
+    """Internal implementation with injectable trust for isolated unit tests."""
 
     root = root.resolve()
-    _validate_signer_trust_policy(trust_policy)
     if set(receipt_artifacts) != set(RECEIPT_CONTRACTS):
         raise ValueError(
             "qualification receipt set differs: "
             f"missing={sorted(set(RECEIPT_CONTRACTS) - set(receipt_artifacts))}, "
             f"unexpected={sorted(set(receipt_artifacts) - set(RECEIPT_CONTRACTS))}"
         )
+    _validate_signer_trust_policy(trust_policy)
     owned_receipts = {
         name: _owned_attested_artifact(root, artifact, f"{name} receipt")
         for name, artifact in receipt_artifacts.items()
@@ -952,6 +944,24 @@ def assemble_evidence(
     return evidence
 
 
+def assemble_evidence(
+    receipt_artifacts: Mapping[str, AttestedArtifact],
+    *,
+    root: Path,
+    approval_artifact: AttestedArtifact,
+    trusted_context_artifact: AttestedArtifact,
+) -> JsonObject:
+    """Use only repository-owned trust to build ratifier-compatible evidence."""
+
+    return _assemble_evidence(
+        receipt_artifacts,
+        root=root,
+        approval_artifact=approval_artifact,
+        trusted_context_artifact=trusted_context_artifact,
+        trust_policy=GOVERNED_SIGNER_TRUST_POLICY,
+    )
+
+
 def validate_assembled_evidence_payload(
     evidence: JsonObject,
     *,
@@ -1075,7 +1085,7 @@ def _repository_evidence_path(root: Path, path: Path, label: str, *, must_exist:
     evidence_root = (root / "build/evidence").resolve()
     if not resolved.is_relative_to(evidence_root) or resolved.suffix != ".json":
         raise ValueError(f"{label} must be a JSON file under build/evidence")
-    if must_exist and (resolved.is_symlink() or not resolved.is_file()):
+    if must_exist and (candidate.is_symlink() or not resolved.is_file()):
         raise ValueError(f"{label} must be an existing regular evidence file")
     if not must_exist and resolved.exists():
         raise ValueError(f"{label} already exists and cannot be overwritten")
@@ -1142,12 +1152,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--trusted-context-signature", type=Path, required=True)
     parser.add_argument("--trusted-context-public-key", type=Path, required=True)
     parser.add_argument("--receipt", action="append", type=parse_receipt, required=True)
-    parser.add_argument(
-        "--receipt-signature", action="append", type=parse_receipt, required=True
-    )
-    parser.add_argument(
-        "--receipt-public-key", action="append", type=parse_receipt, required=True
-    )
+    parser.add_argument("--receipt-signature", action="append", type=parse_receipt, required=True)
+    parser.add_argument("--receipt-public-key", action="append", type=parse_receipt, required=True)
     parser.add_argument("--approval", type=Path, required=True)
     parser.add_argument("--approval-signature", type=Path, required=True)
     parser.add_argument("--approval-public-key", type=Path, required=True)

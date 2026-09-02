@@ -114,10 +114,14 @@ export { Operations } from "./operations.js";
 export { Policies } from "./policies.js";
 export { RawInternalClients } from "./raw.js";
 export type {
+	PaginationLimits,
+	PaginationOptions,
+	PaginationPage,
 	SdkCallOptions,
 	SubmitOptions,
 	WaitOptions,
 } from "./request.js";
+export { paginate } from "./request.js";
 export { AttemptLease, LeaseCredential, Runs } from "./runs.js";
 export type { Runtime } from "./runtime.js";
 export { FakeRuntime, type RecordedTransportCall, RecordingTransport } from "./testing.js";

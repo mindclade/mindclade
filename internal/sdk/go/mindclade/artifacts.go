@@ -362,19 +362,38 @@ func (service *ArtifactService) DownloadFile(ctx context.Context, artifact *arti
 	}
 	// Hard-link publication is same-filesystem and no-clobber: unlike Rename,
 	// it cannot silently replace a destination created by a racing process.
-	if err = os.Link(temporaryName, destination); err != nil {
+	if err = publishArtifactFile(
+		temporaryName,
+		destination,
+		directory,
+		os.Link,
+		os.Remove,
+		syncArtifactDirectory,
+	); err != nil {
 		if errors.Is(err, os.ErrExist) {
 			return &Error{Code: CodeAlreadyExists, Message: "artifact destination already exists"}
 		}
 		return normalizeError(err)
 	}
+	return nil
+}
+
+func publishArtifactFile(
+	staging, destination, directory string,
+	link func(string, string) error,
+	remove func(string) error,
+	syncDirectory func(string) error,
+) error {
+	if err := link(staging, destination); err != nil {
+		return err
+	}
 	// Successful link creation is the commit point. From here the verified
 	// destination is authoritative, and cancellation or best-effort directory
 	// sync/staging cleanup cannot turn the call into an apparent failure while
 	// leaving a valid file behind. The deferred cleanup retries staging removal.
-	_ = syncArtifactDirectory(directory)
-	_ = os.Remove(temporaryName)
-	_ = syncArtifactDirectory(directory)
+	_ = syncDirectory(directory)
+	_ = remove(staging)
+	_ = syncDirectory(directory)
 	return nil
 }
 

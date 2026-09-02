@@ -90,7 +90,10 @@ py_test(
     legacy_create_init = 0,
     main = "qualification/tests/test_training_evidence.py",
     python_version = "PY3",
-    deps = [":ci_evidence_bundle"],
+    deps = [
+        ":ci_evidence_bundle",
+        "@mindclade_pypi//cryptography",
+    ],
 )
 
 py_binary(
@@ -100,7 +103,10 @@ py_binary(
     main = "qualification/training_evidence_assembler.py",
     python_version = "PY3",
     visibility = ["//visibility:public"],
-    deps = [":ci_evidence_bundle"],
+    deps = [
+        ":ci_evidence_bundle",
+        "@mindclade_pypi//cryptography",
+    ],
 )
 
 py_test(

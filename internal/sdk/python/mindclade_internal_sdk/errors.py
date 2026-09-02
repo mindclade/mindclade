@@ -78,6 +78,13 @@ class OperationTimeoutError(MindcladeError):
     pass
 
 
+class PaginationLimitError(MindcladeError):
+    """Automatic pagination stopped before implying a complete result."""
+
+    def __init__(self, message: str) -> None:
+        super().__init__(message, status=grpc.StatusCode.RESOURCE_EXHAUSTED, retryable=False)
+
+
 class OperationFailedError(MindcladeError):
     """A durable failed/cancelled operation with its generated state attached."""
 

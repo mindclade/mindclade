@@ -10,6 +10,7 @@ export type ErrorKind =
 	| "configuration"
 	| "deadline_exceeded"
 	| "invalid_argument"
+	| "pagination_limit"
 	| "protocol"
 	| "remote"
 	| "transport";
@@ -63,6 +64,14 @@ export class MindcladeError extends Error {
 		});
 	}
 
+	static paginationLimit(message: string): MindcladeError {
+		return new MindcladeError({
+			kind: "pagination_limit",
+			safeMessage: message,
+			code: Code.ResourceExhausted,
+		});
+	}
+
 	static transport(message: string): MindcladeError {
 		return new MindcladeError({ kind: "transport", safeMessage: message });
 	}
@@ -105,9 +114,11 @@ export class MindcladeError extends Error {
 				? "cancelled"
 				: error.code === Code.DeadlineExceeded
 					? "deadline_exceeded"
-					: error.code === Code.Unauthenticated
-						? "authentication"
-						: "remote";
+					: error.code === Code.AlreadyExists
+						? "already_exists"
+						: error.code === Code.Unauthenticated
+							? "authentication"
+							: "remote";
 		return new MindcladeError({
 			kind,
 			safeMessage: safeCodeMessage(error.code),

@@ -2,13 +2,17 @@
 
 from __future__ import annotations
 
+import base64
 import json
 import subprocess
 import tempfile
 import unittest
+from dataclasses import dataclass
 from pathlib import Path
 from typing import cast
 
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import ed25519
 from readiness_report import (
     REHEARSAL_CHECK_TARGETS,
     build_report,
@@ -20,12 +24,21 @@ from readiness_report import (
 )
 from readiness_report import canonical_json as readiness_canonical_json
 from training_evidence_assembler import (
+    APPROVAL_PAYLOAD_TYPE,
     EVIDENCE_SCHEMA,
+    PROTECTED_CONTEXT_PAYLOAD_TYPE,
+    PROTECTED_CONTEXT_PRODUCER_IDENTITY,
     RATIFICATION_BINDING_FIELDS,
     RECEIPT_CONTRACTS,
+    AttestedArtifact,
     JsonObject,
+    SignerTrustPolicy,
+    _assemble_evidence,  # pyright: ignore[reportPrivateUsage] - isolated trust fixture seam
     assemble_evidence,
+    dsse_pae,
+    receipt_payload_type,
     signed_payload_json,
+    validate_assembled_evidence_payload,
 )
 from training_evidence_assembler import (
     JsonValue as AssemblerJsonValue,
@@ -45,7 +58,6 @@ from training_rehearsal import (
 )
 
 SOURCE_REVISION = "a" * 40
-TRUSTED_BUILD_IDENTITY = "buildkite://mindclade/mindclade/builds/build-001"
 ALL_BINDINGS: dict[str, object] = {
     "candidate_descriptor_digest": "sha256:" + "1" * 64,
     "codegen_toolchain_digest": "sha256:" + "2" * 64,
@@ -142,6 +154,11 @@ def _context_digest(context: JsonObject) -> str:
     return assembler_sha256_bytes(signed_payload_json(context))
 
 
+def _protected_build_identity(context: JsonObject | None = None) -> str:
+    digest = _context_digest(context or _trusted_context()).removeprefix("sha256:")
+    return f"buildkite://mindclade/mindclade/contexts/{digest}"
+
+
 def _receipt(
     name: str,
     root: Path,
@@ -150,6 +167,7 @@ def _receipt(
     binding_overrides: dict[str, object] | None = None,
 ) -> dict[str, object]:
     contract = RECEIPT_CONTRACTS[name]
+    protected_build_identity = _protected_build_identity()
     bindings: dict[str, object] = {key: ALL_BINDINGS[key] for key in contract.binding_fields}
     bindings.update(binding_overrides or {})
     result_path = root / "build/evidence/results" / f"{name}.json"
@@ -158,7 +176,7 @@ def _receipt(
         "bazel_targets": list(contract.required_targets),
         "completed_at": "2026-09-02T12:01:00Z",
         "failed_tests": [],
-        "protected_build_identity": TRUSTED_BUILD_IDENTITY,
+        "protected_build_identity": protected_build_identity,
         "schema_version": contract.result_schema_version,
         "skipped_tests": [],
         "source_revision": SOURCE_REVISION,
@@ -171,7 +189,7 @@ def _receipt(
         "completed_at": "2026-09-02T12:01:00Z",
         "executed_bazel_targets": list(contract.required_targets),
         "producer_identity": producer_identity or contract.producer_identity,
-        "protected_build_identity": TRUSTED_BUILD_IDENTITY,
+        "protected_build_identity": protected_build_identity,
         "result_artifact_digest": assembler_sha256_bytes(result_path.read_bytes()),
         "result_artifact_path": result_path.relative_to(root).as_posix(),
         "required_bazel_targets": list(contract.required_targets),
@@ -215,7 +233,7 @@ def _write_approval(
         "decision": "approved",
         "gate": "stage-5-contract-ratification",
         "kind": "QualificationApproval",
-        "protected_build_identity": TRUSTED_BUILD_IDENTITY,
+        "protected_build_identity": _protected_build_identity(),
         "receipt_digests": receipt_digests,
         "reviewer_identity": reviewer_identity,
         "schema_version": "mindclade.training-evidence-approval/v1",
@@ -227,15 +245,162 @@ def _write_approval(
     return path
 
 
-def _assemble(root: Path, paths: dict[str, Path], approval: Path) -> JsonObject:
-    context = _trusted_context()
-    return assemble_evidence(
+@dataclass(frozen=True)
+class _AttestedFixture:
+    receipts: dict[str, AttestedArtifact]
+    approval: AttestedArtifact
+    context: AttestedArtifact
+    trust_policy: SignerTrustPolicy
+
+
+def _write_signer(
+    root: Path,
+    name: str,
+) -> tuple[ed25519.Ed25519PrivateKey, Path, str]:
+    private_key = ed25519.Ed25519PrivateKey.generate()
+    public_key = private_key.public_key()
+    encoded_key = public_key.public_bytes(
+        encoding=serialization.Encoding.DER,
+        format=serialization.PublicFormat.SubjectPublicKeyInfo,
+    )
+    key_id = assembler_sha256_bytes(encoded_key)
+    key_path = root / "build/evidence/public-keys" / f"{name}.pem"
+    key_path.parent.mkdir(parents=True, exist_ok=True)
+    key_path.write_bytes(
+        public_key.public_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PublicFormat.SubjectPublicKeyInfo,
+        )
+    )
+    return private_key, key_path, key_id
+
+
+def _write_signature(
+    root: Path,
+    name: str,
+    payload_path: Path,
+    payload_type: str,
+    private_key: ed25519.Ed25519PrivateKey,
+    key_id: str,
+) -> Path:
+    payload = payload_path.read_bytes()
+    envelope = {
+        "payload": base64.b64encode(payload).decode("ascii"),
+        "payloadType": payload_type,
+        "signatures": [
+            {
+                "keyid": key_id,
+                "sig": base64.b64encode(private_key.sign(dsse_pae(payload_type, payload))).decode(
+                    "ascii"
+                ),
+            }
+        ],
+    }
+    path = root / "build/evidence/signatures" / f"{name}.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(assembler_canonical_json(cast(AssemblerJsonValue, envelope)))
+    return path
+
+
+def _attest_fixture(
+    root: Path,
+    paths: dict[str, Path],
+    approval: Path,
+    *,
+    context: JsonObject | None = None,
+    preserve_approval_receipt_digests: bool = False,
+) -> _AttestedFixture:
+    receipt_artifacts: dict[str, AttestedArtifact] = {}
+    receipt_keys: dict[str, frozenset[str]] = {}
+    receipt_attestation_digests: dict[str, str] = {}
+    for name, payload_path in sorted(paths.items()):
+        private_key, public_key_path, key_id = _write_signer(root, f"receipt-{name}")
+        signature_path = _write_signature(
+            root,
+            f"receipt-{name}",
+            payload_path,
+            receipt_payload_type(name),
+            private_key,
+            key_id,
+        )
+        receipt_artifacts[name] = AttestedArtifact(
+            payload_path=payload_path,
+            signature_envelope_path=signature_path,
+            public_key_path=public_key_path,
+        )
+        receipt_keys[name] = frozenset({key_id})
+        receipt_attestation_digests[name] = assembler_sha256_bytes(signature_path.read_bytes())
+
+    if not preserve_approval_receipt_digests:
+        approval_value = json.loads(approval.read_text(encoding="utf-8"))
+        approval_value["receipt_digests"] = receipt_attestation_digests
+        approval.write_bytes(assembler_canonical_json(cast(AssemblerJsonValue, approval_value)))
+    approval_private_key, approval_public_key, approval_key_id = _write_signer(root, "approval")
+    approval_signature = _write_signature(
+        root,
+        "approval",
+        approval,
+        APPROVAL_PAYLOAD_TYPE,
+        approval_private_key,
+        approval_key_id,
+    )
+
+    context_value = context or _trusted_context()
+    context_path = root / "build/evidence/trusted-context.json"
+    context_path.write_bytes(signed_payload_json(context_value))
+    context_private_key, context_public_key, context_key_id = _write_signer(root, "context")
+    context_signature = _write_signature(
+        root,
+        "context",
+        context_path,
+        PROTECTED_CONTEXT_PAYLOAD_TYPE,
+        context_private_key,
+        context_key_id,
+    )
+    reviewer = "principal://mindclade/reviewers/contract-governance"
+    return _AttestedFixture(
+        receipts=receipt_artifacts,
+        approval=AttestedArtifact(approval, approval_signature, approval_public_key),
+        context=AttestedArtifact(context_path, context_signature, context_public_key),
+        trust_policy=SignerTrustPolicy(
+            receipt_signer_key_ids=receipt_keys,
+            approval_signer_key_ids={reviewer: frozenset({approval_key_id})},
+            context_signer_key_ids={
+                PROTECTED_CONTEXT_PRODUCER_IDENTITY: frozenset({context_key_id})
+            },
+        ),
+    )
+
+
+def _assemble(
+    root: Path,
+    paths: dict[str, Path],
+    approval: Path,
+    *,
+    context: JsonObject | None = None,
+    preserve_approval_receipt_digests: bool = False,
+    governed_trust: bool = False,
+) -> JsonObject:
+    fixture = _attest_fixture(
+        root,
         paths,
+        approval,
+        context=context,
+        preserve_approval_receipt_digests=preserve_approval_receipt_digests,
+    )
+    if governed_trust:
+        return assemble_evidence(
+            fixture.receipts,
+            root=root,
+            approval_artifact=fixture.approval,
+            trusted_context_artifact=fixture.context,
+        )
+    return _assemble_evidence(
+        fixture.receipts,
         root=root,
-        approval_path=approval,
-        trusted_context=context,
-        context_digest=_context_digest(context),
-        protected_build_identity=TRUSTED_BUILD_IDENTITY,
+        approval_artifact=fixture.approval,
+        trusted_context_artifact=fixture.context,
+        trust_policy=fixture.trust_policy,
     )
 
 
@@ -422,6 +587,10 @@ class ProtectedEvidenceAssemblerTest(unittest.TestCase):
                 },
             )
             self.assertFalse(signed_payload_json(evidence).endswith(b"\n"))
+            self.assertEqual(
+                cast(dict[str, str], evidence["protected_context"])["protected_build_identity"],
+                _protected_build_identity(),
+            )
             checks = cast(dict[str, dict[str, str]], evidence["checks"])
             self.assertEqual(set(checks), set(RECEIPT_CONTRACTS))
             self.assertTrue(
@@ -435,6 +604,32 @@ class ProtectedEvidenceAssemblerTest(unittest.TestCase):
                     }
                     for check in checks.values()
                 )
+            )
+
+    def test_protected_receipt_target_union_reaches_every_mapped_stage5_target(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            paths = _write_receipts(root)
+            evidence = _assemble(root, paths, _write_approval(root, paths))
+            bound_targets = validate_assembled_evidence_payload(
+                evidence,
+                expected_source_revision=SOURCE_REVISION,
+                encoded=signed_payload_json(evidence),
+            )
+            mapping = json.loads(_repository_data()[2].read_text(encoding="utf-8"))
+            unreachable = {
+                entry["criterion_id"]: sorted(set(entry["bazel_targets"]) - bound_targets)
+                for entry in mapping["criteria"]
+                if entry["receipt_name"] == "training_vertical"
+                and not set(entry["bazel_targets"]).issubset(bound_targets)
+            }
+            self.assertEqual(unreachable, {})
+            self.assertTrue(
+                {
+                    "//:all_contract_tests",
+                    "//tools:repository_governance_tests",
+                    "//tools:training_evidence_test",
+                }.issubset(bound_targets)
             )
 
     def test_protected_database_schema_does_not_collide_with_rehearsal(self) -> None:
@@ -541,20 +736,91 @@ class ProtectedEvidenceAssemblerTest(unittest.TestCase):
                 receipt_digest_overrides={"sdk": "sha256:" + "e" * 64},
             )
             with self.assertRaisesRegex(ValueError, "different qualification receipts"):
-                _assemble(root, paths, approval)
+                _assemble(
+                    root,
+                    paths,
+                    approval,
+                    preserve_approval_receipt_digests=True,
+                )
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             paths = _write_receipts(root)
             approval = _write_approval(root, paths)
             context = _trusted_context(source_trust="trusted")
             with self.assertRaisesRegex(ValueError, "protected source trust"):
-                assemble_evidence(
+                _assemble(
+                    root,
                     paths,
+                    approval,
+                    context=context,
+                )
+
+    def test_requires_authenticated_context_receipts_and_independent_approval(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            paths = _write_receipts(root)
+            approval = _write_approval(root, paths)
+            with self.assertRaisesRegex(ValueError, "signer trust is not activated"):
+                _assemble(root, paths, approval, governed_trust=True)
+
+        for tampered_name in ("context", "receipt", "approval"):
+            with self.subTest(tampered=tampered_name), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                paths = _write_receipts(root)
+                fixture = _attest_fixture(root, paths, _write_approval(root, paths))
+                artifact = {
+                    "context": fixture.context,
+                    "receipt": fixture.receipts["grpc"],
+                    "approval": fixture.approval,
+                }[tampered_name]
+                envelope = json.loads(artifact.signature_envelope_path.read_text(encoding="utf-8"))
+                signature = base64.b64decode(envelope["signatures"][0]["sig"])
+                envelope["signatures"][0]["sig"] = base64.b64encode(
+                    signature[:-1] + bytes([signature[-1] ^ 1])
+                ).decode("ascii")
+                artifact.signature_envelope_path.write_bytes(
+                    assembler_canonical_json(cast(AssemblerJsonValue, envelope))
+                )
+                with self.assertRaisesRegex(ValueError, "signature verification failed"):
+                    _assemble_evidence(
+                        fixture.receipts,
+                        root=root,
+                        approval_artifact=fixture.approval,
+                        trusted_context_artifact=fixture.context,
+                        trust_policy=fixture.trust_policy,
+                    )
+
+    def test_rejects_declarative_reviewer_and_cross_role_signer_key_reuse(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            paths = _write_receipts(root)
+            approval = _write_approval(
+                root,
+                paths,
+                reviewer_identity=RECEIPT_CONTRACTS["grpc"].producer_identity,
+            )
+            with self.assertRaisesRegex(ValueError, "reviewer_identity is not authorized"):
+                _assemble(root, paths, approval)
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            paths = _write_receipts(root)
+            fixture = _attest_fixture(root, paths, _write_approval(root, paths))
+            reused_key = next(iter(fixture.trust_policy.receipt_signer_key_ids["cross_language"]))
+            policy = SignerTrustPolicy(
+                receipt_signer_key_ids=fixture.trust_policy.receipt_signer_key_ids,
+                approval_signer_key_ids={
+                    "principal://mindclade/reviewers/contract-governance": frozenset({reused_key})
+                },
+                context_signer_key_ids=fixture.trust_policy.context_signer_key_ids,
+            )
+            with self.assertRaisesRegex(ValueError, "authorized for both"):
+                _assemble_evidence(
+                    fixture.receipts,
                     root=root,
-                    approval_path=approval,
-                    trusted_context=context,
-                    context_digest=_context_digest(context),
-                    protected_build_identity=TRUSTED_BUILD_IDENTITY,
+                    approval_artifact=fixture.approval,
+                    trusted_context_artifact=fixture.context,
+                    trust_policy=policy,
                 )
 
     def test_rejects_receipt_outside_evidence_directory(self) -> None:

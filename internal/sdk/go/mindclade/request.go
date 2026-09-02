@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"iter"
 	"reflect"
 	"strings"
 
@@ -21,6 +22,130 @@ type requestMetadata struct {
 	traceID        string
 	idempotencyKey string
 	leaseToken     string
+}
+
+const (
+	defaultPaginationMaxPages = 100
+	defaultPaginationMaxItems = 10_000
+	hardPaginationMaxPages    = 1_000
+	hardPaginationMaxItems    = 1_000_000
+)
+
+// PaginationLimits bound automatic traversal so a changing collection or a
+// broken server cursor cannot create unbounded work. Zero fields select the
+// conservative defaults (100 pages and 10,000 items).
+type PaginationLimits struct {
+	MaxPages int
+	MaxItems int
+}
+
+// Page is the transport-neutral result expected by Paginate. Fetchers should
+// call an ergonomic SDK list method and copy its generated repeated field into
+// Items; NextPageToken remains opaque and must not be normalized.
+type Page[T any] struct {
+	Items         []T
+	NextPageToken string
+}
+
+// Paginate lazily traverses opaque-token list pages under explicit hard
+// bounds. The sequence reports at most one terminal error; callers must check
+// the error value yielded with each item. Stopping iteration cancels no work
+// because pages are fetched only on demand.
+func Paginate[T any](
+	ctx context.Context,
+	initialPageToken string,
+	limits PaginationLimits,
+	fetchPage func(context.Context, string) (Page[T], error),
+) iter.Seq2[T, error] {
+	return func(yield func(T, error) bool) {
+		maxPages, maxItems, err := normalizedPaginationLimits(limits)
+		if err != nil {
+			yieldPaginationError(yield, err)
+			return
+		}
+		if ctx == nil {
+			yieldPaginationError(yield, invalidArgument("pagination context is required"))
+			return
+		}
+		if fetchPage == nil {
+			yieldPaginationError(yield, invalidArgument("pagination fetch function is required"))
+			return
+		}
+
+		token := initialPageToken
+		seen := make(map[string]struct{})
+		if token != "" {
+			seen[token] = struct{}{}
+		}
+		pages, items := 0, 0
+		for {
+			if err := ctx.Err(); err != nil {
+				yieldPaginationError(yield, normalizeError(err))
+				return
+			}
+			if pages >= maxPages {
+				yieldPaginationError(yield, paginationLimit("automatic pagination exceeded its page budget"))
+				return
+			}
+			if items >= maxItems {
+				yieldPaginationError(yield, paginationLimit("automatic pagination exceeded its item budget"))
+				return
+			}
+			page, err := fetchPage(ctx, token)
+			if err != nil {
+				yieldPaginationError(yield, normalizeError(err))
+				return
+			}
+			pages++
+			if page.NextPageToken != "" {
+				if _, exists := seen[page.NextPageToken]; exists {
+					yieldPaginationError(yield, protocolDataLoss("list response repeated an opaque page token"))
+					return
+				}
+				seen[page.NextPageToken] = struct{}{}
+			}
+			for _, item := range page.Items {
+				if items >= maxItems {
+					yieldPaginationError(yield, paginationLimit("automatic pagination exceeded its item budget"))
+					return
+				}
+				items++
+				if !yield(item, nil) {
+					return
+				}
+			}
+			if page.NextPageToken == "" {
+				return
+			}
+			token = page.NextPageToken
+		}
+	}
+}
+
+func normalizedPaginationLimits(limits PaginationLimits) (int, int, error) {
+	maxPages, maxItems := limits.MaxPages, limits.MaxItems
+	if maxPages == 0 {
+		maxPages = defaultPaginationMaxPages
+	}
+	if maxItems == 0 {
+		maxItems = defaultPaginationMaxItems
+	}
+	if maxPages < 1 || maxPages > hardPaginationMaxPages {
+		return 0, 0, invalidArgument("pagination max pages must be in [1, 1000]")
+	}
+	if maxItems < 1 || maxItems > hardPaginationMaxItems {
+		return 0, 0, invalidArgument("pagination max items must be in [1, 1000000]")
+	}
+	return maxPages, maxItems, nil
+}
+
+func yieldPaginationError[T any](yield func(T, error) bool, err error) {
+	var zero T
+	yield(zero, err)
+}
+
+func paginationLimit(message string) error {
+	return &Error{Code: CodeResourceExhausted, Message: message}
 }
 
 // RequestOption applies per-call metadata without changing a generated wire

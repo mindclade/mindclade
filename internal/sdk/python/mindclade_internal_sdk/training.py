@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import asyncio
 import copy
-import random
 import threading
 import time
 from collections.abc import AsyncIterator, Iterator, Mapping
@@ -27,7 +26,7 @@ from mindclade.training.v1 import (
     training_run_pb2,
 )
 
-from ._invocation import AsyncInvoker, SyncInvoker, canonical_digest, command_context
+from ._invocation import AsyncInvoker, SyncInvoker, canonical_digest, command_context, retry_delay
 from ._validation import (
     artifact_ref,
     required_response_message,
@@ -80,16 +79,6 @@ def _deadline_timestamp(seconds: float) -> Timestamp:
     value = Timestamp()
     value.FromDatetime(datetime.now(UTC) + timedelta(seconds=seconds))
     return value
-
-
-def _watch_delay(invoker: SyncInvoker | AsyncInvoker, failures: int, remaining: float) -> float:
-    exponent = min(max(0, failures - 1), 30)
-    cap = min(
-        invoker.config.retry.max_delay,
-        invoker.config.retry.base_delay * (2**exponent),
-        max(0.0, remaining),
-    )
-    return random.uniform(0.0, cap) if cap > 0 else 0.0
 
 
 def _labels(values: Mapping[str, str] | None) -> dict[str, str]:
@@ -794,7 +783,12 @@ class Training:
             failures += 1
             if failures >= self._invoker.config.retry.max_attempts:
                 raise stream_error
-            delay = _watch_delay(self._invoker, failures, deadline - time.monotonic())
+            delay = retry_delay(
+                self._invoker.config,
+                failures,
+                deadline - time.monotonic(),
+                retry_after=stream_error.retry_after,
+            )
             if cancellation is not None:
                 if cancellation.wait(delay):
                     raise CancelledError("training watch was cancelled")
@@ -1308,7 +1302,12 @@ class AsyncTraining:
             failures += 1
             if failures >= self._invoker.config.retry.max_attempts:
                 raise stream_error
-            delay = _watch_delay(self._invoker, failures, deadline - loop.time())
+            delay = retry_delay(
+                self._invoker.config,
+                failures,
+                deadline - loop.time(),
+                retry_after=stream_error.retry_after,
+            )
             if cancellation is None:
                 if delay > 0:
                     await asyncio.sleep(delay)

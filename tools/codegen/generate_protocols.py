@@ -2080,9 +2080,7 @@ def _inventory_digest(root: Path, paths: Sequence[Path]) -> str:
 TRAINING_EVIDENCE_SIGNATURE_PAYLOAD_TYPE = (
     "application/vnd.mindclade.training-vertical-evidence.v2+json"
 )
-CONNECTED_ADR_SIGNATURE_PAYLOAD_TYPE = (
-    "application/vnd.mindclade.adr-ratification.v1+json"
-)
+CONNECTED_ADR_SIGNATURE_PAYLOAD_TYPE = "application/vnd.mindclade.adr-ratification.v1+json"
 TRAINING_EVIDENCE_CHECK_FIELDS = frozenset(
     {
         "producer_identity",
@@ -2343,11 +2341,7 @@ def validate_connected_stage5_authority(
         raise ValueError("ADR-0015 source still declares connected ratification pending")
     if f"- Effective date: {ratified_at[:10]}" not in source:
         raise ValueError("ADR-0015 effective date does not match its ratification timestamp")
-    if (
-        signature_envelope_path is None
-        or public_key_path is None
-        or expected_signer_key_id is None
-    ):
+    if signature_envelope_path is None or public_key_path is None or expected_signer_key_id is None:
         raise ValueError(
             "ADR-0015 connected ratification requires its DSSE envelope, public key, "
             "and source-activated signer key ID"
@@ -2606,7 +2600,6 @@ def validate_training_vertical_evidence(
     public_key_path: Path,
     expected_signer_key_id: str,
     trusted_context_path: Path,
-    expected_protected_build_identity: str,
 ) -> tuple[dict[str, Any], str, dict[str, str]]:
     """Validate signed protected evidence for the one-time v1 ratification."""
 
@@ -2742,13 +2735,6 @@ def validate_training_vertical_evidence(
         raise ValueError(
             "training vertical evidence protected_context has missing or unknown fields"
         )
-    protected_build_identity = _ratification_string(
-        expected_protected_build_identity,
-        "expected protected build identity",
-        RATIFICATION_BUILD_IDENTITY,
-    )
-    if protected_context.get("protected_build_identity") != protected_build_identity:
-        raise ValueError("training vertical evidence is bound to a different protected build")
     if protected_context.get("source_revision") != bindings["source_revision"]:
         raise ValueError("training vertical evidence protected context is stale")
     expected_protected_values = {
@@ -2808,6 +2794,16 @@ def validate_training_vertical_evidence(
             )
     if trusted_context.get("repository") != "mindclade/mindclade":
         raise ValueError("ratification trusted context has the wrong repository")
+    protected_build_identity = _ratification_string(
+        "buildkite://mindclade/mindclade/contexts/" + context_digest.removeprefix("sha256:"),
+        "derived protected build identity",
+        RATIFICATION_BUILD_IDENTITY,
+    )
+    if protected_context.get("protected_build_identity") != protected_build_identity:
+        raise ValueError(
+            "training vertical evidence protected build identity is not derived from its "
+            "authenticated context"
+        )
 
     authorization = {
         **signature,
@@ -4053,9 +4049,7 @@ def _openapi_schema_compatible(
         "x-mindclade-authoritative-message",
     ):
         if baseline_schema.get(field) != current_schema.get(field):
-            raise ValueError(
-                f"OpenAPI compatibility break at {location}: {field} changed"
-            )
+            raise ValueError(f"OpenAPI compatibility break at {location}: {field} changed")
     baseline_enum = baseline_schema.get("enum")
     current_enum = current_schema.get("enum")
     if baseline_enum is not None:
@@ -4071,37 +4065,28 @@ def _openapi_schema_compatible(
         new = current_schema.get(field)
         if old is None:
             if new is not None:
-                raise ValueError(
-                    f"OpenAPI compatibility break at {location}: {field} was added"
-                )
+                raise ValueError(f"OpenAPI compatibility break at {location}: {field} was added")
         elif new is not None and cast(float, new) > cast(float, old):
-            raise ValueError(
-                f"OpenAPI compatibility break at {location}: {field} was tightened"
-            )
+            raise ValueError(f"OpenAPI compatibility break at {location}: {field} was tightened")
     for field in upper_bounds:
         old = baseline_schema.get(field)
         new = current_schema.get(field)
         if old is None:
             if new is not None:
-                raise ValueError(
-                    f"OpenAPI compatibility break at {location}: {field} was added"
-                )
+                raise ValueError(f"OpenAPI compatibility break at {location}: {field} was added")
         elif new is not None and cast(float, new) < cast(float, old):
-            raise ValueError(
-                f"OpenAPI compatibility break at {location}: {field} was tightened"
-            )
-    if baseline_schema.get("additionalProperties", True) is not False and current_schema.get(
-        "additionalProperties", True
-    ) is False:
+            raise ValueError(f"OpenAPI compatibility break at {location}: {field} was tightened")
+    if (
+        baseline_schema.get("additionalProperties", True) is not False
+        and current_schema.get("additionalProperties", True) is False
+    ):
         raise ValueError(
             f"OpenAPI compatibility break at {location}: additional properties were forbidden"
         )
 
     baseline_properties = baseline_schema.get("properties", {})
     current_properties = current_schema.get("properties", {})
-    if not isinstance(baseline_properties, Mapping) or not isinstance(
-        current_properties, Mapping
-    ):
+    if not isinstance(baseline_properties, Mapping) or not isinstance(current_properties, Mapping):
         raise ValueError(f"OpenAPI compatibility break at {location}: properties changed")
     removed = set(baseline_properties) - set(current_properties)
     if removed:
@@ -4152,9 +4137,7 @@ def _openapi_schema_compatible(
             or not isinstance(new_shapes, list)
             or len(old_shapes) != len(new_shapes)
         ):
-            raise ValueError(
-                f"OpenAPI compatibility break at {location}: {composition} changed"
-            )
+            raise ValueError(f"OpenAPI compatibility break at {location}: {composition} changed")
         for index, old_shape in enumerate(old_shapes):
             _openapi_schema_compatible(
                 baseline_document,
@@ -4189,9 +4172,7 @@ def validate_openapi_compatibility(
     http_methods = {"delete", "get", "head", "options", "patch", "post", "put", "trace"}
     for path, raw_baseline_path in baseline_paths.items():
         raw_current_path = current_paths.get(path)
-        if not isinstance(raw_baseline_path, Mapping) or not isinstance(
-            raw_current_path, Mapping
-        ):
+        if not isinstance(raw_baseline_path, Mapping) or not isinstance(raw_current_path, Mapping):
             raise ValueError(f"OpenAPI compatibility break: path removed {path}")
         for method, raw_baseline_operation in raw_baseline_path.items():
             if method not in http_methods:
@@ -4211,18 +4192,18 @@ def validate_openapi_compatibility(
                 "x-mindclade-sse",
             ):
                 if old_operation.get(field) != new_operation.get(field):
-                    raise ValueError(
-                        f"OpenAPI compatibility break at {location}: {field} changed"
-                    )
+                    raise ValueError(f"OpenAPI compatibility break at {location}: {field} changed")
 
             def resolved_parameters(
-                document: Mapping[str, Any], operation: Mapping[str, Any]
+                document: Mapping[str, Any],
+                operation: Mapping[str, Any],
+                operation_location: str,
             ) -> dict[tuple[str, str], Mapping[str, Any]]:
                 result: dict[tuple[str, str], Mapping[str, Any]] = {}
                 raw_parameters = operation.get("parameters", [])
                 if not isinstance(raw_parameters, list):
                     raise ValueError(
-                        f"OpenAPI compatibility break at {location}: parameters changed"
+                        f"OpenAPI compatibility break at {operation_location}: parameters changed"
                     )
                 for raw_parameter in raw_parameters:
                     parameter = raw_parameter
@@ -4230,18 +4211,20 @@ def validate_openapi_compatibility(
                         parameter = _openapi_local_ref(document, parameter["$ref"])
                     if not isinstance(parameter, Mapping):
                         raise ValueError(
-                            f"OpenAPI compatibility break at {location}: parameter changed"
+                            "OpenAPI compatibility break at "
+                            f"{operation_location}: parameter changed"
                         )
                     key = (str(parameter.get("in")), str(parameter.get("name")))
                     if key in result:
                         raise ValueError(
-                            f"OpenAPI compatibility break at {location}: duplicate parameter {key}"
+                            "OpenAPI compatibility break at "
+                            f"{operation_location}: duplicate parameter {key}"
                         )
                     result[key] = cast(Mapping[str, Any], parameter)
                 return result
 
-            old_parameters = resolved_parameters(baseline, old_operation)
-            new_parameters = resolved_parameters(current, new_operation)
+            old_parameters = resolved_parameters(baseline, old_operation, location)
+            new_parameters = resolved_parameters(current, new_operation, location)
             for key, old_parameter in old_parameters.items():
                 new_parameter = new_parameters.get(key)
                 if new_parameter is None:
@@ -4252,12 +4235,14 @@ def validate_openapi_compatibility(
                     "required", False
                 ):
                     raise ValueError(
-                        f"OpenAPI compatibility break at {location}: parameter became required {key}"
+                        f"OpenAPI compatibility break at {location}: "
+                        f"parameter became required {key}"
                     )
                 for field in ("style", "explode", "allowReserved"):
                     if old_parameter.get(field) != new_parameter.get(field):
                         raise ValueError(
-                            f"OpenAPI compatibility break at {location}: parameter {key} {field} changed"
+                            f"OpenAPI compatibility break at {location}: "
+                            f"parameter {key} {field} changed"
                         )
                 _openapi_schema_compatible(
                     baseline,
@@ -4295,19 +4280,16 @@ def validate_openapi_compatibility(
                         )
                     old_content = old_body.get("content", {})
                     new_content = new_body.get("content", {})
-                    if not isinstance(old_content, Mapping) or not isinstance(
-                        new_content, Mapping
-                    ):
+                    if not isinstance(old_content, Mapping) or not isinstance(new_content, Mapping):
                         raise ValueError(
                             f"OpenAPI compatibility break at {location}: body content changed"
                         )
                     for media_type, old_media in old_content.items():
                         new_media = new_content.get(media_type)
-                        if not isinstance(old_media, Mapping) or not isinstance(
-                            new_media, Mapping
-                        ):
+                        if not isinstance(old_media, Mapping) or not isinstance(new_media, Mapping):
                             raise ValueError(
-                                f"OpenAPI compatibility break at {location}: request media type removed"
+                                f"OpenAPI compatibility break at {location}: "
+                                "request media type removed"
                             )
                         _openapi_schema_compatible(
                             baseline,
@@ -4331,11 +4313,41 @@ def validate_openapi_compatibility(
                     old_response = _openapi_local_ref(baseline, old_response["$ref"])
                 if isinstance(new_response, Mapping) and "$ref" in new_response:
                     new_response = _openapi_local_ref(current, new_response["$ref"])
-                if not isinstance(old_response, Mapping) or not isinstance(
-                    new_response, Mapping
-                ):
+                if not isinstance(old_response, Mapping) or not isinstance(new_response, Mapping):
                     raise ValueError(
                         f"OpenAPI compatibility break at {location}: response removed {status}"
+                    )
+                old_headers = old_response.get("headers", {})
+                new_headers = new_response.get("headers", {})
+                if not isinstance(old_headers, Mapping) or not isinstance(
+                    new_headers, Mapping
+                ):
+                    raise ValueError(
+                        f"OpenAPI compatibility break at {location}: response headers changed"
+                    )
+                for header_name, old_header_value in old_headers.items():
+                    new_header_value = new_headers.get(header_name)
+                    old_header = old_header_value
+                    new_header = new_header_value
+                    if isinstance(old_header, Mapping) and "$ref" in old_header:
+                        old_header = _openapi_local_ref(baseline, old_header["$ref"])
+                    if isinstance(new_header, Mapping) and "$ref" in new_header:
+                        new_header = _openapi_local_ref(current, new_header["$ref"])
+                    if not isinstance(old_header, Mapping) or not isinstance(
+                        new_header, Mapping
+                    ):
+                        raise ValueError(
+                            f"OpenAPI compatibility break at {location}: "
+                            f"response header removed {status} {header_name}"
+                        )
+                    _openapi_schema_compatible(
+                        baseline,
+                        current,
+                        old_header.get("schema", {}),
+                        new_header.get("schema", {}),
+                        request=False,
+                        location=f"{location} response {status} header {header_name}",
+                        visited=set(),
                     )
                 old_content = old_response.get("content", {})
                 new_content = new_response.get("content", {})
@@ -4347,7 +4359,8 @@ def validate_openapi_compatibility(
                     new_media = new_content.get(media_type)
                     if not isinstance(old_media, Mapping) or not isinstance(new_media, Mapping):
                         raise ValueError(
-                            f"OpenAPI compatibility break at {location}: response media type removed"
+                            f"OpenAPI compatibility break at {location}: "
+                            "response media type removed"
                         )
                     _openapi_schema_compatible(
                         baseline,
@@ -4419,9 +4432,12 @@ def ratified_openapi_document(content: bytes) -> bytes | None:
     artifact = cast(dict[str, Any], value)
     if artifact.get("schema_version") == "mindclade.openapi-candidate/v1":
         return None
-    if artifact.get("schema_version") != "mindclade.openapi-baseline/v1" or set(
-        artifact
-    ) != {"descriptor_digest", "document", "ratification", "schema_version"}:
+    if artifact.get("schema_version") != "mindclade.openapi-baseline/v1" or set(artifact) != {
+        "descriptor_digest",
+        "document",
+        "ratification",
+        "schema_version",
+    }:
         raise ValueError("OpenAPI compatibility artifact has an unsupported baseline format")
     document = artifact.get("document")
     if not isinstance(document, dict) or set(document) != {"base64", "digest"}:
@@ -4713,9 +4729,7 @@ def generated_outputs(root: Path) -> tuple[dict[Path, bytes], bytes, list[dict[s
                     "protected_ratification_artifacts": {
                         OPENAPI_CANDIDATE.as_posix(): {
                             "artifact_schema": "mindclade.openapi-baseline/v1",
-                            "subject_digest": sha256_bytes(
-                                outputs[root / PUBLISHED_OPENAPI]
-                            ),
+                            "subject_digest": sha256_bytes(outputs[root / PUBLISHED_OPENAPI]),
                         },
                         PROTOBUF_RATIFIED_BASELINE.as_posix(): {
                             "artifact_schema": "mindclade.protobuf-baseline/v3",
@@ -4927,7 +4941,6 @@ def write_generated(
     ratification_public_key: Path | None,
     expected_ratification_signer_key_id: str | None,
     ratification_trusted_context: Path | None,
-    expected_protected_build_identity: str | None,
     connected_ratification_signature: Path | None,
     connected_ratification_public_key: Path | None,
     expected_connected_ratification_signer_key_id: str | None,
@@ -4955,9 +4968,7 @@ def write_generated(
         | previous_generated_paths(root)
         | discovered_generated_paths(root)
     )
-    existing_openapi_baseline = ratified_openapi_document(
-        outputs[openapi_baseline_path]
-    )
+    existing_openapi_baseline = ratified_openapi_document(outputs[openapi_baseline_path])
     if baseline_path.is_file() != (existing_openapi_baseline is not None):
         raise RuntimeError(
             "the Protobuf and OpenAPI v1 baselines must be present or absent together"
@@ -4999,7 +5010,6 @@ def write_generated(
             "ratification public key": ratification_public_key,
             "expected ratification signer key ID": expected_ratification_signer_key_id,
             "ratification trusted context": ratification_trusted_context,
-            "expected protected build identity": expected_protected_build_identity,
             "connected ratification signature": connected_ratification_signature,
             "connected ratification public key": connected_ratification_public_key,
             "expected connected ratification signer key ID": (
@@ -5036,9 +5046,7 @@ def write_generated(
             root,
             signature_envelope_path=cast(Path, connected_ratification_signature),
             public_key_path=cast(Path, connected_ratification_public_key),
-            expected_signer_key_id=cast(
-                str, expected_connected_ratification_signer_key_id
-            ),
+            expected_signer_key_id=cast(str, expected_connected_ratification_signer_key_id),
         )
         evidence, evidence_digest, authorization = validate_training_vertical_evidence(
             root,
@@ -5048,13 +5056,9 @@ def write_generated(
             public_key_path=cast(Path, ratification_public_key),
             expected_signer_key_id=cast(str, expected_ratification_signer_key_id),
             trusted_context_path=cast(Path, ratification_trusted_context),
-            expected_protected_build_identity=cast(str, expected_protected_build_identity),
         )
         authorization.update(connected_authority)
-        if (
-            authorization["signer_key_id"]
-            == authorization["connected_ratification_signer_key_id"]
-        ):
+        if authorization["signer_key_id"] == authorization["connected_ratification_signer_key_id"]:
             raise ValueError(
                 "training qualification and connected ADR ratification require independent signers"
             )
@@ -5088,6 +5092,11 @@ def write_generated(
         materialized_outputs[baseline_path] = ratified_baseline
     if ratified_openapi is not None:
         materialized_outputs[openapi_baseline_path] = ratified_openapi
+    if ratified_baseline is not None:
+        # Revalidate the complete protected transition, including the otherwise
+        # absent baseline path, against the generated repository-path authority
+        # before any file is committed.
+        validate_manifest(root, descriptors, materialized_outputs)
     materialized_outputs.update(
         {
             root / "build/openapi/raw/descriptor-projection.yaml": outputs[
@@ -5142,10 +5151,6 @@ def main() -> int:
         help="canonical trusted protected-pipeline context bound by the signed evidence",
     )
     parser.add_argument(
-        "--expected-protected-build-identity",
-        help="protected Buildkite identity expected in every ratification receipt",
-    )
-    parser.add_argument(
         "--connected-ratification-signature",
         type=Path,
         help="canonical DSSE envelope for the independently ratified ADR-0015 decision",
@@ -5174,7 +5179,6 @@ def main() -> int:
         "--ratification-public-key": args.ratification_public_key,
         "--expected-ratification-signer-key-id": args.expected_ratification_signer_key_id,
         "--ratification-trusted-context": args.ratification_trusted_context,
-        "--expected-protected-build-identity": args.expected_protected_build_identity,
         "--connected-ratification-signature": args.connected_ratification_signature,
         "--connected-ratification-public-key": args.connected_ratification_public_key,
         "--expected-connected-ratification-signer-key-id": (
@@ -5223,7 +5227,6 @@ def main() -> int:
                 if args.ratification_trusted_context is not None
                 else None
             ),
-            expected_protected_build_identity=args.expected_protected_build_identity,
             connected_ratification_signature=(
                 args.connected_ratification_signature.resolve()
                 if args.connected_ratification_signature is not None

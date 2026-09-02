@@ -117,20 +117,32 @@ neither is foundational, required, authoritative, or eligible to publish from
 source policy.
 
 Compatibility does not begin merely because the candidate is committed. The
-first `protobuf.lock.json` may be created only by the generator's explicit
-`--ratify-v1-baseline` action, bound to the exact reviewed candidate digest and
-a passed training-vertical evidence receipt. That receipt must independently
-cover cross-language wire behavior, database mappings and tenant boundaries,
-networked gRPC, HTTP gateway binding and ProtoJSON parity, durable event
-delivery, candidate HTTP binding parity, and internal SDK behavior. Until then,
-`protobuf.lock.json` is absent and its
-manifest entry remains a target.
+first `protobuf.lock.json` and the immutable form of `openapi.lock.json` may be
+created only together by the generator's explicit `--ratify-v1-baseline`
+action, bound to the exact reviewed descriptor and published-OpenAPI digests.
+The protected input is assembled from independently DSSE/Ed25519-attested
+cross-language, database, event, gateway, gRPC, and SDK receipts, a separately
+attested approval, and an authenticated trusted context. Producer, reviewer,
+context, aggregate-evidence, and connected-ADR trust remain source-owned and
+fail closed until exact signer key IDs are activated. The connected ADR
+decision is independently signed and its subject revision must be the candidate
+revision or an ancestor.
 
-After ratification, ordinary generation runs Buf breaking enforcement against
-that immutable baseline. Field numbers and enum values are not reused,
-semantic meaning is stable, changes are classified, and breaking changes
-require a versioned migration and consumer evidence. The clean reset does not
-authorize repeated resets or replacement of a ratified baseline.
+Until that action, `protobuf.lock.json` is the sole optional missing generated
+path; the OpenAPI lock remains a deterministic candidate inventory. The
+generated-file manifest inventories both protected artifacts by their exact
+descriptor/OpenAPI subject digests rather than their artifact digests, avoiding
+a cryptographic cycle because both immutable baselines bind that manifest. The
+repository-path manifest governs both paths as generated and the ratifier
+revalidates the complete staged path set before committing either baseline.
+
+After co-ratification, ordinary generation runs Buf breaking enforcement
+against the immutable descriptor and the governed additive-v1 OpenAPI
+comparison against the immutable published document. Field numbers and enum
+values are not reused, HTTP paths/operations/parameters/response headers and
+schemas cannot break in place, semantic meaning is stable, and incompatible
+changes require a versioned migration and consumer evidence. The clean reset
+does not authorize repeated resets or replacement of either ratified baseline.
 
 ADR-0004 continues to govern source authority, deterministic generation, and
 compatibility. ADR-0011's exact SQP-001 profile and all PDB source-use,

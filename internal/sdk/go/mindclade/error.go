@@ -39,12 +39,12 @@ const (
 // Error preserves machine-actionable status and safe request metadata without
 // exposing serialized request/response payloads.
 type Error struct {
-	Code       Code
-	Message    string
-	RequestID  string
-	Retryable  bool
-	RetryAfter time.Duration
-	Cause      error
+	Code          Code
+	Message       string
+	RequestID     string
+	Retryable     bool
+	RetryAfter    time.Duration
+	Cause         error
 	retryAfterSet bool
 }
 

@@ -102,7 +102,6 @@ def write_signed_ratification_fixture(
         format=serialization.PublicFormat.SubjectPublicKeyInfo,
     )
     signer_key_id = generate_protocols.sha256_bytes(encoded_public_key)
-    protected_build_identity = "buildkite://mindclade/mindclade/builds/stage5-001"
     context = {
         "base_revision": "1" * 40,
         "cache_architecture": "x86_64",
@@ -127,6 +126,9 @@ def write_signed_ratification_fixture(
     }
     context_bytes = canonical_ratification_json(context)
     context_digest = generate_protocols.sha256_bytes(context_bytes)
+    protected_build_identity = (
+        "buildkite://mindclade/mindclade/contexts/" + context_digest.removeprefix("sha256:")
+    )
     check_names = sorted(generate_protocols.TRAINING_VERTICAL_EVIDENCE_CHECKS)
     producer_identities = {
         "cross_language": "principal://mindclade/qualification/cross-language",
@@ -206,6 +208,99 @@ def write_signed_ratification_fixture(
         "protected_build_identity": protected_build_identity,
         "public_key_path": public_key_path,
         "signer_key_id": signer_key_id,
+    }
+
+
+def write_connected_adr_fixture(directory: Path) -> dict[str, object]:
+    signer = ed25519.Ed25519PrivateKey.generate()
+    public_key = signer.public_key()
+    encoded_public_key = public_key.public_bytes(
+        encoding=serialization.Encoding.DER,
+        format=serialization.PublicFormat.SubjectPublicKeyInfo,
+    )
+    signer_key_id = generate_protocols.sha256_bytes(encoded_public_key)
+    subject_revision = "1" * 40
+    ratified_at = "2026-09-02T12:00:00Z"
+    adr_source = textwrap.dedent(
+        """\
+        # ADR-0015: All-Contracts Candidate v1 Estate and Ratification Gate
+
+        - Status: Accepted in blueprint specification
+        - Connected ratification: Ratified
+        - Effective date: 2026-09-02
+
+        ## Decision
+
+        Ratify the paired v1 compatibility baselines through the protected gate.
+        """
+    )
+    adr_path = directory / "docs/adr/0015-all-contracts-clean-v1-baseline.md"
+    adr_path.parent.mkdir(parents=True)
+    adr_path.write_text(adr_source, encoding="utf-8")
+    decision_digest = generate_protocols._ratification_adr_decision_digest(adr_source)
+    decision = {
+        "adr_id": "ADR-0015",
+        "decision_digest": decision_digest,
+        "ratified_at": ratified_at,
+        "repository": "mindclade/mindclade",
+        "schema_version": "mindclade.adr-ratification/v1",
+        "status": "ratified",
+        "subject_revision": subject_revision,
+    }
+    payload = canonical_ratification_json(decision)
+    signature = signer.sign(
+        ratification_dsse_pae(
+            generate_protocols.CONNECTED_ADR_SIGNATURE_PAYLOAD_TYPE,
+            payload,
+        )
+    )
+    envelope = {
+        "payload": base64.b64encode(payload).decode(),
+        "payloadType": generate_protocols.CONNECTED_ADR_SIGNATURE_PAYLOAD_TYPE,
+        "signatures": [
+            {
+                "keyid": signer_key_id,
+                "sig": base64.b64encode(signature).decode(),
+            }
+        ],
+    }
+    envelope_bytes = canonical_ratification_json(envelope)
+    envelope_path = directory / "connected-ratification.dsse.json"
+    envelope_path.write_bytes(envelope_bytes)
+    public_key_path = directory / "connected-ratification-public-key.pem"
+    public_key_path.write_bytes(
+        public_key.public_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PublicFormat.SubjectPublicKeyInfo,
+        )
+    )
+    index = {
+        "spec": {
+            "decisions": [
+                {
+                    "connectedRatification": "ratified",
+                    "id": "ADR-0015",
+                    "owners": ["architecture", "contract-governance"],
+                    "path": "docs/adr/0015-all-contracts-clean-v1-baseline.md",
+                    "ratificationDecisionDigest": decision_digest,
+                    "ratificationReceiptDigest": generate_protocols.sha256_bytes(envelope_bytes),
+                    "ratificationSubjectRevision": subject_revision,
+                    "ratifiedAt": ratified_at,
+                    "specificationAccepted": "2026-08-31",
+                    "status": "accepted-in-specification",
+                    "title": "All-Contracts Candidate v1 Estate and Ratification Gate",
+                }
+            ]
+        }
+    }
+    (directory / "docs/adr/index.yaml").write_text(
+        yaml.safe_dump(index, sort_keys=False), encoding="utf-8"
+    )
+    return {
+        "envelope_path": envelope_path,
+        "public_key_path": public_key_path,
+        "signer_key_id": signer_key_id,
+        "subject_revision": subject_revision,
     }
 
 
@@ -430,9 +525,6 @@ class ProtobufCompatibilityTest(unittest.TestCase):
                         public_key_path=cast(Path, paths["public_key_path"]),
                         expected_signer_key_id=key_id,
                         trusted_context_path=cast(Path, paths["context_path"]),
-                        expected_protected_build_identity=cast(
-                            str, paths["protected_build_identity"]
-                        ),
                     )
                 )
             self.assertEqual(validated, paths["evidence"])
@@ -450,6 +542,26 @@ class ProtobufCompatibilityTest(unittest.TestCase):
                 authorization["approval_digest"],
                 cast(dict[str, Any], paths["evidence"])["approval"]["approval_digest"],
             )
+
+            envelope_path = cast(Path, paths["envelope_path"])
+            envelope_path.write_bytes(envelope_path.read_bytes() + b"\n")
+            with (
+                mock.patch.object(
+                    generate_protocols,
+                    "RATIFICATION_TRUSTED_SIGNER_KEY_IDS",
+                    frozenset({key_id}),
+                ),
+                self.assertRaisesRegex(ValueError, "must use canonical JSON bytes"),
+            ):
+                generate_protocols.validate_training_vertical_evidence(
+                    repository,
+                    cast(Path, paths["evidence_path"]),
+                    bindings=bindings,
+                    signature_envelope_path=envelope_path,
+                    public_key_path=cast(Path, paths["public_key_path"]),
+                    expected_signer_key_id=key_id,
+                    trusted_context_path=cast(Path, paths["context_path"]),
+                )
 
             mismatched = copy.deepcopy(bindings)
             mismatched["openapi_projection_digest"] = "sha256:" + "f" * 64
@@ -475,7 +587,6 @@ class ProtobufCompatibilityTest(unittest.TestCase):
                     public_key_path=cast(Path, paths["public_key_path"]),
                     expected_signer_key_id=key_id,
                     trusted_context_path=cast(Path, paths["context_path"]),
-                    expected_protected_build_identity=cast(str, paths["protected_build_identity"]),
                 )
 
     def test_arbitrary_local_signer_cannot_authorize_ratification(self) -> None:
@@ -494,12 +605,72 @@ class ProtobufCompatibilityTest(unittest.TestCase):
                     public_key_path=cast(Path, paths["public_key_path"]),
                     expected_signer_key_id=cast(str, paths["signer_key_id"]),
                     trusted_context_path=cast(Path, paths["context_path"]),
-                    expected_protected_build_identity=cast(str, paths["protected_build_identity"]),
                 )
 
     def test_stage5_remains_disabled_while_connected_ratification_is_pending(self) -> None:
         with self.assertRaisesRegex(ValueError, "independently ratified"):
             generate_protocols.validate_connected_stage5_authority(root())
+
+    def test_connected_ratification_verifies_canonical_independent_dsse(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="mindclade-connected-adr-") as value:
+            repository = Path(value)
+            fixture = write_connected_adr_fixture(repository)
+            key_id = cast(str, fixture["signer_key_id"])
+
+            def fake_run(command: list[str], *, cwd: Path) -> subprocess.CompletedProcess[bytes]:
+                self.assertEqual(cwd, repository)
+                if command == ["git", "rev-parse", "HEAD"]:
+                    return subprocess.CompletedProcess(command, 0, stdout=b"2" * 40 + b"\n")
+                if command == [
+                    "git",
+                    "merge-base",
+                    "--is-ancestor",
+                    cast(str, fixture["subject_revision"]),
+                    "2" * 40,
+                ]:
+                    return subprocess.CompletedProcess(command, 0, stdout=b"")
+                raise AssertionError(f"unexpected command: {command}")
+
+            with self.assertRaisesRegex(ValueError, "signer is not activated"):
+                generate_protocols.validate_connected_stage5_authority(
+                    repository,
+                    signature_envelope_path=cast(Path, fixture["envelope_path"]),
+                    public_key_path=cast(Path, fixture["public_key_path"]),
+                    expected_signer_key_id=key_id,
+                )
+            with (
+                mock.patch.object(
+                    generate_protocols,
+                    "CONNECTED_ADR_TRUSTED_SIGNER_KEY_IDS",
+                    frozenset({key_id}),
+                ),
+                mock.patch.object(generate_protocols, "run", side_effect=fake_run),
+            ):
+                authority = generate_protocols.validate_connected_stage5_authority(
+                    repository,
+                    signature_envelope_path=cast(Path, fixture["envelope_path"]),
+                    public_key_path=cast(Path, fixture["public_key_path"]),
+                    expected_signer_key_id=key_id,
+                )
+            self.assertEqual(authority["connected_ratification_signer_key_id"], key_id)
+
+            envelope_path = cast(Path, fixture["envelope_path"])
+            canonical = envelope_path.read_bytes()
+            envelope_path.write_bytes(canonical + b"\n")
+            with (
+                mock.patch.object(
+                    generate_protocols,
+                    "CONNECTED_ADR_TRUSTED_SIGNER_KEY_IDS",
+                    frozenset({key_id}),
+                ),
+                self.assertRaisesRegex(ValueError, "not canonical JSON"),
+            ):
+                generate_protocols.validate_connected_stage5_authority(
+                    repository,
+                    signature_envelope_path=envelope_path,
+                    public_key_path=cast(Path, fixture["public_key_path"]),
+                    expected_signer_key_id=key_id,
+                )
 
     def test_ratification_cli_requires_every_protected_authorization_input(self) -> None:
         with (
@@ -691,6 +862,33 @@ class ProtobufCompatibilityTest(unittest.TestCase):
                     check=True,
                 )
                 self.assertEqual(descriptor_binary.read_bytes(), descriptor)
+
+    def test_generated_inventory_declares_non_cyclic_protected_baseline_subjects(self) -> None:
+        repository = root()
+        manifest = json.loads(
+            (repository / generate_protocols.GENERATED_MANIFEST).read_text(encoding="utf-8")
+        )
+        candidate_value = candidate(repository)
+        descriptor_digest = cast(dict[str, str], candidate_value["descriptor_set"])["digest"]
+        published = (repository / generate_protocols.PUBLISHED_OPENAPI).read_bytes()
+        artifacts = manifest["protected_ratification_artifacts"]
+        self.assertEqual(
+            artifacts,
+            {
+                generate_protocols.OPENAPI_CANDIDATE.as_posix(): {
+                    "artifact_schema": "mindclade.openapi-baseline/v1",
+                    "subject_digest": generate_protocols.sha256_bytes(published),
+                },
+                generate_protocols.PROTOBUF_RATIFIED_BASELINE.as_posix(): {
+                    "artifact_schema": "mindclade.protobuf-baseline/v3",
+                    "subject_digest": descriptor_digest,
+                },
+            },
+        )
+        self.assertNotIn(generate_protocols.OPENAPI_CANDIDATE.as_posix(), manifest["files"])
+        self.assertNotIn(
+            generate_protocols.PROTOBUF_RATIFIED_BASELINE.as_posix(), manifest["files"]
+        )
 
     def test_exact_22_source_predecessor_is_archived_immutably(self) -> None:
         repository = root()

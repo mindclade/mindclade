@@ -77,6 +77,74 @@ OPTIONAL_PIPELINE_INTERFACES = (
     "SdkEmitter",
     "SdkBehaviorVerifier",
 )
+PRODUCTION_QUALITY: Mapping[str, frozenset[str]] = {
+    "codegen": frozenset(
+        {
+            "atomic-staged-generation",
+            "deterministic-two-pass-regeneration",
+            "descriptor-digest-join-key",
+            "generated-file-manifest",
+            "four-language-compile-and-import",
+            "descriptor-derived-rpc-coverage",
+            "generated-and-handwritten-boundary",
+            "fault-injection-with-rollback",
+            "preview-diff-without-publication-authority",
+            "package-inventory-and-provenance",
+        }
+    ),
+    "runtime": frozenset(
+        {
+            "workload-identity-and-credential-refresh",
+            "secure-transport-by-default",
+            "bounded-deadlines-and-message-sizes",
+            "safe-idempotent-retries-with-jitter-and-server-hints",
+            "caller-stable-idempotency-and-request-ids",
+            "sanitized-typed-errors",
+            "opaque-bounded-pagination",
+            "long-running-operation-poll-watch-and-cancel",
+            "resumable-streaming-with-heartbeats",
+            "verified-atomic-artifact-transfer",
+            "cancellation-and-shutdown-propagation",
+            "observers-fakes-and-hermetic-transports",
+        }
+    ),
+    "testing": frozenset(
+        {
+            "every-rpc-four-language-behavioral-evidence",
+            "populated-wire-and-protojson-roundtrips",
+            "auth-timeout-retry-error-and-idempotency-conformance",
+            "pagination-operation-and-stream-resume-conformance",
+            "artifact-integrity-race-and-no-clobber-conformance",
+            "generated-drift-and-layering-enforcement",
+        }
+    ),
+    "lifecycle": frozenset(
+        {
+            "ergonomic-raw-only-or-unsupported-classification",
+            "explicit-deprecation-and-migration-policy",
+            "candidate-only-change-policy-before-ratification",
+            "immutable-breaking-baseline-after-ratification",
+        }
+    ),
+    "delivery": frozenset(
+        {
+            "private-package-inventories",
+            "source-toolchain-and-contract-digests",
+            "qualification-and-release-receipts",
+            "no-public-package-publication",
+        }
+    ),
+    "excludedOrDeferred": frozenset(
+        {
+            "hosted-generator-authority",
+            "public-package-marketing-and-portal",
+            "terraform-provider-generation",
+            "websocket-transport-duplication",
+            "webhook-runtime-without-a-signed-contract",
+            "unbounded-mcp-surface-export",
+        }
+    ),
+}
 
 
 def sha256_bytes(value: bytes) -> str:
@@ -414,6 +482,23 @@ def validate_contract(
         or policy.get("handwrittenWireModels") != "forbidden"
     ):
         raise SdkGeneratorError("internal SDK policy must reuse generated protobuf wire types")
+    production_quality = require_mapping(
+        policy.get("productionQuality"), "internalSdkPolicy.productionQuality"
+    )
+    if set(production_quality) != set(PRODUCTION_QUALITY):
+        raise SdkGeneratorError("internal SDK production-quality categories changed")
+    for category, expected in PRODUCTION_QUALITY.items():
+        declared = tuple(
+            require_string(value, f"internalSdkPolicy.productionQuality.{category} item")
+            for value in require_sequence(
+                production_quality.get(category),
+                f"internalSdkPolicy.productionQuality.{category}",
+            )
+        )
+        if len(declared) != len(set(declared)) or frozenset(declared) != expected:
+            raise SdkGeneratorError(
+                f"internal SDK production-quality contract differs for {category}"
+            )
 
     optional = require_mapping(spec.get("optionalRestGeneration"), "optionalRestGeneration")
     if (

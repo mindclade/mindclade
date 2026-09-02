@@ -26894,13 +26894,17 @@
       "kind": "data",
       "owner": "contract-governance",
       "component": "protocols-compatibility",
-      "status": "target",
+      "status": "generated",
       "activation_wave": "1",
-      "source_authority": "hand-authored",
-      "build_targets": [],
-      "test_targets": [],
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
       "public_surface": true,
-      "activation_criterion": "Create and activate only through the explicit ADR-0015 ratification action after cross-language, database, gRPC, gateway, event, and SDK training-vertical evidence is passed and bound to the exact candidate descriptor."
+      "activation_criterion": "The explicit ADR-0015 ratification action transitions this protected artifact atomically with its paired Protobuf/OpenAPI baseline after cross-language, database, gRPC, gateway, event, and SDK training-vertical evidence is passed and bound to the exact candidate descriptor; protobuf.lock.json may remain absent until that transition."
     },
     {
       "path": "protocols/compatibility/baselines/json-schema.lock.json",
@@ -26928,13 +26932,13 @@
       "activation_wave": "1",
       "source_authority": "reviewed-generated",
       "build_targets": [
-        "//:wave1_sources"
+        "//:all_contract_sources"
       ],
       "test_targets": [
-        "//:wave1_tests"
+        "//:all_contract_tests"
       ],
       "public_surface": true,
-      "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
+      "activation_criterion": "The explicit ADR-0015 ratification action transitions this protected artifact atomically with its paired Protobuf/OpenAPI baseline after cross-language, database, gRPC, gateway, event, and SDK training-vertical evidence is passed and bound to the exact candidate descriptor; protobuf.lock.json may remain absent until that transition."
     },
     {
       "path": "protocols/compatibility/baselines/protobuf.candidate.json",

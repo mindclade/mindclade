@@ -2234,6 +2234,8 @@ def _build_kernel_platform_source_target_entry(path: str) -> dict[str, Any]:
 def is_all_contract_baseline_path(path: str) -> bool:
     """Return whether ADR-0015 activates this predeclared v1 projection."""
 
+    if path in PROTECTED_RATIFICATION_ARTIFACT_PATHS:
+        return True
     if (
         path in ALL_CONTRACT_CONSUMER_ADDITIONS
         or path in SDK_RUNTIME_CONSUMER_PATHS
@@ -2328,7 +2330,6 @@ def build_path_entry(path: str) -> dict[str, Any]:
     deferred = any(path.startswith(prefix) for prefix in DEFERRED_PREFIXES)
     generated = infer_source_authority(path) == "reviewed-generated"
     all_contract_baseline = is_all_contract_baseline_path(path)
-    pending_ratified_baseline = path == "protocols/compatibility/baselines/protobuf.lock.json"
     if all_contract_baseline:
         status = "generated" if generated else "active"
     elif deferred:
@@ -2366,12 +2367,13 @@ def build_path_entry(path: str) -> dict[str, Any]:
             and "/api/v1/" not in path
         ),
     }
-    if pending_ratified_baseline:
+    if path in PROTECTED_RATIFICATION_ARTIFACT_PATHS:
         entry["activation_criterion"] = (
-            "This generated path may remain absent until the explicit ADR-0015 ratification "
-            "action creates it atomically with the OpenAPI baseline after "
+            "The explicit ADR-0015 ratification action transitions this protected artifact "
+            "atomically with its paired Protobuf/OpenAPI baseline after "
             "cross-language, database, gRPC, gateway, event, and SDK training-vertical evidence "
-            "is passed and bound to the exact candidate descriptor."
+            "is passed and bound to the exact candidate descriptor; protobuf.lock.json may "
+            "remain absent until that transition."
         )
     elif all_contract_baseline:
         entry["activation_criterion"] = (
@@ -2844,7 +2846,8 @@ def validate_populated_paths(
         missing = sorted(
             path
             for path, entry in entries.items()
-            if entry.get("status") in {"active", "generated"} and path not in actual
+            if entry.get("status") in {"active", "generated"}
+            and path not in actual
             and path not in OPTIONAL_PENDING_RATIFICATION_ARTIFACT_PATHS
         )
     restricted = sorted(

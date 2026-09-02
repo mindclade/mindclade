@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"io"
 	"net"
 	"os"
@@ -414,6 +415,40 @@ func TestArtifactDownloadFilePublishesAtomicallyWithoutClobbering(t *testing.T) 
 		t.Fatalf("racing destination content = %q, err=%v", content, err)
 	}
 
+	staging := directory + "/.mindclade-download-commit-point"
+	commitDestination := directory + "/commit-point.bin"
+	if err = os.WriteFile(staging, []byte(fixtureContent), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	removeCalls, syncCalls := 0, 0
+	err = publishArtifactFile(
+		staging,
+		commitDestination,
+		directory,
+		os.Link,
+		func(string) error {
+			removeCalls++
+			return errors.New("simulated staging cleanup failure")
+		},
+		func(string) error {
+			syncCalls++
+			return errors.New("simulated directory sync failure")
+		},
+	)
+	if err != nil {
+		t.Fatalf("post-commit cleanup changed success to error: %v", err)
+	}
+	if removeCalls != 1 || syncCalls != 2 {
+		t.Fatalf("post-commit cleanup calls: remove=%d sync=%d", removeCalls, syncCalls)
+	}
+	content, err = os.ReadFile(commitDestination)
+	if err != nil || string(content) != fixtureContent {
+		t.Fatalf("committed destination content = %q, err=%v", content, err)
+	}
+	if err = os.Remove(staging); err != nil {
+		t.Fatal(err)
+	}
+
 	entries, err := os.ReadDir(directory)
 	if err != nil {
 		t.Fatal(err)
@@ -708,6 +743,73 @@ func TestRawStreamDeadlineIsBoundedBySDKPolicy(t *testing.T) {
 	longContext, cancel := context.WithTimeout(context.Background(), time.Hour)
 	defer cancel()
 	assertDeadline(longContext, time.Second, 900*time.Millisecond)
+}
+
+func TestPaginatePreservesOpaqueTokensAndEnforcesBounds(t *testing.T) {
+	seen := []string{}
+	values := []int{}
+	for value, err := range Paginate(
+		context.Background(),
+		" initial token ",
+		PaginationLimits{},
+		func(_ context.Context, token string) (Page[int], error) {
+			seen = append(seen, token)
+			if len(seen) == 1 {
+				return Page[int]{Items: []int{1, 2}, NextPageToken: " next token "}, nil
+			}
+			return Page[int]{Items: []int{3}}, nil
+		},
+	) {
+		if err != nil {
+			t.Fatal(err)
+		}
+		values = append(values, value)
+	}
+	if got, want := strings.Join(seen, ","), " initial token , next token "; got != want {
+		t.Fatalf("page tokens = %q, want %q", got, want)
+	}
+	if got, want := fmt.Sprint(values), "[1 2 3]"; got != want {
+		t.Fatalf("values = %s, want %s", got, want)
+	}
+
+	var terminal error
+	for _, err := range Paginate(
+		context.Background(),
+		"opaque",
+		PaginationLimits{},
+		func(_ context.Context, token string) (Page[int], error) {
+			return Page[int]{Items: []int{1}, NextPageToken: token}, nil
+		},
+	) {
+		terminal = err
+	}
+	var sdkError *Error
+	if !errors.As(terminal, &sdkError) || sdkError.Code != CodeDataLoss {
+		t.Fatalf("repeated-token error = %#v, want data_loss", terminal)
+	}
+
+	values = values[:0]
+	terminal = nil
+	for value, err := range Paginate(
+		context.Background(),
+		"",
+		PaginationLimits{MaxPages: 2, MaxItems: 2},
+		func(context.Context, string) (Page[int], error) {
+			return Page[int]{Items: []int{1, 2, 3}, NextPageToken: "more"}, nil
+		},
+	) {
+		if err != nil {
+			terminal = err
+			continue
+		}
+		values = append(values, value)
+	}
+	if fmt.Sprint(values) != "[1 2]" {
+		t.Fatalf("bounded values = %v", values)
+	}
+	if !errors.As(terminal, &sdkError) || sdkError.Code != CodeResourceExhausted {
+		t.Fatalf("budget error = %#v, want resource_exhausted", terminal)
+	}
 }
 
 type deadlineClientStream struct {

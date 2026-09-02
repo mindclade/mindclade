@@ -46,6 +46,7 @@ from path_policy import (  # noqa: E402
     ALL_CONTRACT_GRPC_SERVICES,
     ALL_CONTRACT_RUST_PLUGIN_PATHS,
     CANONICAL_FILE_COUNT,
+    OPTIONAL_PENDING_RATIFICATION_ARTIFACT_PATHS,
     PolicyError,
     discover_actual_paths,
     is_all_contract_baseline_path,
@@ -562,6 +563,25 @@ class RepositoryPolicyTest(unittest.TestCase):
             drift = validate_populated_paths(manifest, root, allow_missing_active=True)
         self.assertEqual(drift["premature_paths"], [entry["path"]])
         self.assertEqual(drift["unknown_paths"], ["unknown.txt"])
+
+    def test_pending_protected_baseline_is_the_only_optional_generated_path(self) -> None:
+        optional = "protocols/compatibility/baselines/protobuf.lock.json"
+        self.assertEqual(OPTIONAL_PENDING_RATIFICATION_ARTIFACT_PATHS, {optional})
+        manifest = {
+            "paths": [
+                {
+                    "path": optional,
+                    "status": "generated",
+                },
+                {
+                    "path": "required.generated.json",
+                    "status": "generated",
+                },
+            ]
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            drift = validate_populated_paths(manifest, Path(directory))
+        self.assertEqual(drift["missing_active_paths"], ["required.generated.json"])
 
     def test_path_discovery_falls_back_when_git_is_unavailable(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
