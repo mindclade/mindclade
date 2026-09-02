@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -58,7 +59,15 @@ def _policy_set(spec: Mapping[str, object], field: str) -> set[str]:
     return set(values)
 
 
-def load_policy(path: Path) -> tuple[set[str], set[str], set[str], dict[tuple[str, str, str], str]]:
+def load_policy(
+    path: Path,
+) -> tuple[
+    set[str],
+    set[str],
+    set[str],
+    dict[tuple[str, str, str], str],
+    set[tuple[str, str, str]],
+]:
     value: object = json.loads(path.read_text(encoding="utf-8"))
     root = _object(value, "license policy")
     spec = _object(root.get("spec"), "license policy spec")
@@ -78,7 +87,18 @@ def load_policy(path: Path) -> tuple[set[str], set[str], set[str], dict[tuple[st
         if license_id not in classified:
             raise ValueError(f"package policy entry uses an unclassified license: {key}")
         packages[key] = license_id
-    return allowed, review, prohibited, packages
+    build_only: set[tuple[str, str, str]] = set()
+    for raw_entry in _array(spec, "buildOnlyExceptions"):
+        entry = _object(raw_entry, "build-only exception")
+        key = (_string(entry, "ecosystem"), _string(entry, "name"), _string(entry, "version"))
+        if key in build_only:
+            raise ValueError(f"duplicate build-only exception: {key}")
+        if packages.get(key) not in review:
+            raise ValueError(f"build-only exception must refer to a review-required package: {key}")
+        if entry.get("distribution") != "prohibited":
+            raise ValueError(f"build-only exception must prohibit distribution: {key}")
+        build_only.add(key)
+    return allowed, review, prohibited, packages, build_only
 
 
 def _policy_license(
@@ -273,25 +293,66 @@ def _go_requirements(path: Path) -> dict[tuple[str, str], bool]:
 def _go_packages(
     root: Path,
     policy: Mapping[tuple[str, str, str], str],
+    resolved_modules: Sequence[Mapping[str, object]] | None = None,
 ) -> list[Dependency]:
     requirements = _go_requirements(root / "go.mod")
-    checksums: set[tuple[str, str]] = set()
+    checksums: dict[tuple[str, str], str] = {}
     for raw_line in (root / "go.sum").read_text(encoding="utf-8").splitlines():
         parts = raw_line.split()
         if len(parts) != 3 or not re.fullmatch(r"h1:[A-Za-z0-9+/=]+", parts[2]):
             raise ValueError(f"go.sum entry is malformed: {raw_line}")
-        version = parts[1].removesuffix("/go.mod")
+        version = parts[1]
         if not version.startswith("v"):
             raise ValueError(f"go.sum version is not canonical: {parts[1]}")
-        checksums.add((parts[0], version))
-    missing = sorted(set(requirements) - checksums)
-    if missing:
-        rendered = ", ".join(f"{name}@{version}" for name, version in missing)
-        raise ValueError(f"go.sum omits required go.mod identities: {rendered}")
+        checksums[(parts[0], version)] = parts[2]
     if not checksums:
         raise ValueError("go.sum resolved checksum closure is empty")
+    if resolved_modules is None:
+        go = shutil.which("go")
+        if go is None:
+            raise ValueError("the pinned Go executable is required to resolve the module closure")
+        completed = subprocess.run(
+            [go, "list", "-mod=readonly", "-m", "-json", "all"],
+            cwd=root,
+            check=False,
+            capture_output=True,
+            text=True,
+            env={**dict(os.environ), "GOTOOLCHAIN": "local"},
+            timeout=120,
+        )
+        if completed.returncode != 0:
+            raise ValueError(f"readonly Go module graph failed: {completed.stderr.strip()}")
+        decoder = json.JSONDecoder()
+        position = 0
+        parsed_by_identity: dict[tuple[str, str], Mapping[str, object]] = {}
+        while position < len(completed.stdout):
+            while position < len(completed.stdout) and completed.stdout[position].isspace():
+                position += 1
+            if position == len(completed.stdout):
+                break
+            value, position = decoder.raw_decode(completed.stdout, position)
+            package = _object(value, "go list package")
+            module_value = package.get("Module")
+            if isinstance(module_value, dict):
+                module = cast(dict[str, object], module_value)
+                if module.get("Main") is not True:
+                    identity = (_string(module, "Path"), _string(module, "Version"))
+                    parsed_by_identity[identity] = module
+        resolved_modules = [parsed_by_identity[key] for key in sorted(parsed_by_identity)]
     records: list[Dependency] = []
-    for name, version in sorted(checksums):
+    for module in resolved_modules:
+        if module.get("Main") is True:
+            continue
+        if module.get("Replace") is not None:
+            raise ValueError("resolved Go replacements require explicit license handling")
+        name = _string(module, "Path")
+        version = _string(module, "Version")
+        content_sum = _string(module, "Sum")
+        go_mod_sum = _string(module, "GoModSum")
+        if checksums.get((name, version)) != content_sum:
+            raise ValueError(f"go.sum content checksum mismatch: {name}@{version}")
+        if checksums.get((name, f"{version}/go.mod")) != go_mod_sum:
+            raise ValueError(f"go.sum module checksum mismatch: {name}@{version}")
         records.append(
             Dependency(
                 ecosystem="go",
@@ -553,11 +614,19 @@ snapshots:
             encoding="utf-8",
         )
         cargo = _cargo_packages(root, policy)
-        go = _go_packages(root, policy)
+        resolved_go_modules: list[Mapping[str, object]] = [
+            {
+                "GoModSum": "h1:BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB=",
+                "Path": "example.com/direct",
+                "Sum": "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+                "Version": "v1.2.3",
+            }
+        ]
+        go = _go_packages(root, policy, resolved_modules=resolved_go_modules)
         npm = _pnpm_packages(root, policy)
         if len(cargo) != 1 or not cargo[0].direct:
             raise AssertionError("Cargo.lock direct closure classification failed")
-        if len(go) != 2 or not next(item for item in go if item.name.endswith("direct")).direct:
+        if len(go) != 1 or not go[0].direct:
             raise AssertionError("go.sum/go.mod direct closure classification failed")
         if len(npm) != 2 or not next(item for item in npm if item.name == "typescript").direct:
             raise AssertionError("pnpm direct closure classification failed")
@@ -567,7 +636,10 @@ snapshots:
             raise AssertionError("pnpm inventory is not deterministic")
         for description, operation in (
             ("missing Cargo policy", lambda: _cargo_packages(root, {})),
-            ("missing Go policy", lambda: _go_packages(root, {})),
+            (
+                "missing Go policy",
+                lambda: _go_packages(root, {}, resolved_modules=resolved_go_modules),
+            ),
             ("missing pnpm policy", lambda: _pnpm_packages(root, {})),
         ):
             try:
@@ -585,7 +657,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 0
     root = args.root.resolve()
     try:
-        allowed, review, prohibited, package_policy = load_policy(
+        allowed, review, prohibited, package_policy, build_only = load_policy(
             root / "tools/licenses/allowlist.yaml"
         )
         records = declared_dependencies(root, package_policy)
@@ -598,7 +670,15 @@ def main(argv: Sequence[str] | None = None) -> int:
         reason = ""
         if record.license in prohibited:
             reason = "prohibited"
-        elif record.license in review:
+        elif (
+            record.license in review
+            and (
+                record.ecosystem,
+                record.name,
+                record.version,
+            )
+            not in build_only
+        ):
             reason = "independent review required"
         elif record.license not in allowed:
             reason = "not allowlisted"
