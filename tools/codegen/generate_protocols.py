@@ -2435,10 +2435,16 @@ def validate_connected_stage5_authority(
     if decision != expected_decision:
         raise ValueError("ADR-0015 connected ratification payload differs from the index")
     raw_signatures = envelope.get("signatures")
-    if not isinstance(raw_signatures, list) or len(raw_signatures) != 1:
+    if not isinstance(raw_signatures, list):
         raise ValueError("ADR-0015 connected ratification requires exactly one signature")
-    raw_signature = raw_signatures[0]
-    if not isinstance(raw_signature, dict) or set(raw_signature) != {"keyid", "sig"}:
+    signatures = cast(list[object], raw_signatures)
+    if len(signatures) != 1:
+        raise ValueError("ADR-0015 connected ratification requires exactly one signature")
+    raw_signature_value = signatures[0]
+    if not isinstance(raw_signature_value, dict):
+        raise ValueError("ADR-0015 connected ratification signature fields differ")
+    raw_signature = cast(dict[str, object], raw_signature_value)
+    if set(raw_signature) != {"keyid", "sig"}:
         raise ValueError("ADR-0015 connected ratification signature fields differ")
     if raw_signature.get("keyid") != signer_key_id:
         raise ValueError("ADR-0015 connected ratification signer key ID differs")
@@ -4552,21 +4558,49 @@ def openapi_candidate_lock(root: Path, generated: Mapping[Path, bytes]) -> bytes
     ).encode()
 
 
-def _openapi_local_ref(document: Mapping[str, Any], value: object) -> object:
+def _openapi_mapping(value: object) -> Mapping[str, object] | None:
+    """Narrow a decoded OpenAPI object without leaking an unknown value type."""
+
+    if not isinstance(value, Mapping):
+        return None
+    return cast(Mapping[str, object], value)
+
+
+def _openapi_list(value: object) -> list[object] | None:
+    """Narrow a decoded OpenAPI array without leaking an unknown item type."""
+
+    if not isinstance(value, list):
+        return None
+    return cast(list[object], value)
+
+
+def _openapi_local_ref(document: Mapping[str, object], value: object) -> object:
     if not isinstance(value, str) or not value.startswith("#/"):
         raise ValueError(f"ratified OpenAPI contains an unsupported reference: {value!r}")
     current: object = document
     for raw_part in value[2:].split("/"):
         part = raw_part.replace("~1", "/").replace("~0", "~")
-        if not isinstance(current, Mapping) or part not in current:
+        current_mapping = _openapi_mapping(current)
+        if current_mapping is None or part not in current_mapping:
             raise ValueError(f"ratified OpenAPI contains an unresolved reference: {value}")
-        current = current[part]
+        current = current_mapping[part]
     return current
 
 
+def _openapi_resolved_mapping(
+    document: Mapping[str, object], value: object
+) -> Mapping[str, object] | None:
+    """Return an inline or locally referenced OpenAPI object."""
+
+    mapping = _openapi_mapping(value)
+    if mapping is not None and "$ref" in mapping:
+        return _openapi_mapping(_openapi_local_ref(document, mapping["$ref"]))
+    return mapping
+
+
 def _openapi_schema_compatible(
-    baseline_document: Mapping[str, Any],
-    current_document: Mapping[str, Any],
+    baseline_document: Mapping[str, object],
+    current_document: Mapping[str, object],
     baseline: object,
     current: object,
     *,
@@ -4576,12 +4610,12 @@ def _openapi_schema_compatible(
 ) -> None:
     """Reject schema changes forbidden by the governed additive-v1 policy."""
 
-    if not isinstance(baseline, Mapping) or not isinstance(current, Mapping):
+    baseline_schema = _openapi_mapping(baseline)
+    current_schema = _openapi_mapping(current)
+    if baseline_schema is None or current_schema is None:
         if baseline != current:
             raise ValueError(f"OpenAPI compatibility break at {location}: schema shape changed")
         return
-    baseline_schema = cast(Mapping[str, Any], baseline)
-    current_schema = cast(Mapping[str, Any], current)
     baseline_ref = baseline_schema.get("$ref")
     current_ref = current_schema.get("$ref")
     if baseline_ref is not None or current_ref is not None:
@@ -4616,18 +4650,20 @@ def _openapi_schema_compatible(
     baseline_enum = baseline_schema.get("enum")
     current_enum = current_schema.get("enum")
     if baseline_enum is not None:
-        if not isinstance(baseline_enum, list) or not isinstance(current_enum, list):
+        baseline_enum_values = _openapi_list(baseline_enum)
+        current_enum_values = _openapi_list(current_enum)
+        if baseline_enum_values is None or current_enum_values is None:
             raise ValueError(f"OpenAPI compatibility break at {location}: enum changed")
         incompatible_values = (
-            set(baseline_enum) - set(current_enum)
+            set(baseline_enum_values) - set(current_enum_values)
             if request
-            else set(current_enum) - set(baseline_enum)
+            else set(current_enum_values) - set(baseline_enum_values)
         )
         if incompatible_values:
             direction = "removed from request" if request else "added to response"
             raise ValueError(
                 f"OpenAPI compatibility break at {location}: enum values {direction} "
-                f"{sorted(incompatible_values)}"
+                f"{sorted(incompatible_values, key=repr)}"
             )
 
     lower_bounds = ("minimum", "exclusiveMinimum", "minLength", "minItems", "minProperties")
@@ -4669,32 +4705,32 @@ def _openapi_schema_compatible(
             f"OpenAPI compatibility break at {location}: additional-properties variance changed"
         )
 
-    baseline_properties = baseline_schema.get("properties", {})
-    current_properties = current_schema.get("properties", {})
-    if not isinstance(baseline_properties, Mapping) or not isinstance(current_properties, Mapping):
+    baseline_properties = _openapi_mapping(baseline_schema.get("properties", {}))
+    current_properties = _openapi_mapping(current_schema.get("properties", {}))
+    if baseline_properties is None or current_properties is None:
         raise ValueError(f"OpenAPI compatibility break at {location}: properties changed")
     removed = set(baseline_properties) - set(current_properties)
     if removed:
         raise ValueError(
             f"OpenAPI compatibility break at {location}: properties removed {sorted(removed)}"
         )
-    baseline_required = baseline_schema.get("required", [])
-    current_required = current_schema.get("required", [])
-    if not isinstance(baseline_required, list) or not isinstance(current_required, list):
+    baseline_required = _openapi_list(baseline_schema.get("required", []))
+    current_required = _openapi_list(current_schema.get("required", []))
+    if baseline_required is None or current_required is None:
         raise ValueError(f"OpenAPI compatibility break at {location}: required fields changed")
     if request:
         newly_required = set(current_required) - set(baseline_required)
         if newly_required:
             raise ValueError(
                 f"OpenAPI compatibility break at {location}: request fields became required "
-                f"{sorted(newly_required)}"
+                f"{sorted(newly_required, key=repr)}"
             )
     else:
         no_longer_required = set(baseline_required) - set(current_required)
         if no_longer_required:
             raise ValueError(
                 f"OpenAPI compatibility break at {location}: response fields became optional "
-                f"{sorted(no_longer_required)}"
+                f"{sorted(no_longer_required, key=repr)}"
             )
     for name, old_property in baseline_properties.items():
         _openapi_schema_compatible(
@@ -4720,15 +4756,13 @@ def _openapi_schema_compatible(
             visited=visited,
         )
     for composition in ("allOf", "anyOf", "oneOf"):
-        old_shapes = baseline_schema.get(composition)
-        new_shapes = current_schema.get(composition)
-        if old_shapes is None and new_shapes is None:
+        raw_old_shapes = baseline_schema.get(composition)
+        raw_new_shapes = current_schema.get(composition)
+        if raw_old_shapes is None and raw_new_shapes is None:
             continue
-        if (
-            not isinstance(old_shapes, list)
-            or not isinstance(new_shapes, list)
-            or len(old_shapes) != len(new_shapes)
-        ):
+        old_shapes = _openapi_list(raw_old_shapes)
+        new_shapes = _openapi_list(raw_new_shapes)
+        if old_shapes is None or new_shapes is None or len(old_shapes) != len(new_shapes):
             raise ValueError(f"OpenAPI compatibility break at {location}: {composition} changed")
         for index, old_shape in enumerate(old_shapes):
             _openapi_schema_compatible(
@@ -4752,30 +4786,30 @@ def validate_openapi_compatibility(
     current_value: object = yaml.safe_load(current_bytes)
     if not isinstance(baseline_value, dict) or not isinstance(current_value, dict):
         raise ValueError("ratified and candidate OpenAPI documents must be objects")
-    baseline = cast(dict[str, Any], baseline_value)
-    current = cast(dict[str, Any], current_value)
+    baseline = cast(dict[str, object], baseline_value)
+    current = cast(dict[str, object], current_value)
     for field in ("openapi", "jsonSchemaDialect", "security"):
         if baseline.get(field) != current.get(field):
             raise ValueError(f"OpenAPI compatibility break: top-level {field} changed")
-    baseline_paths = baseline.get("paths")
-    current_paths = current.get("paths")
-    if not isinstance(baseline_paths, Mapping) or not isinstance(current_paths, Mapping):
+    baseline_paths = _openapi_mapping(baseline.get("paths"))
+    current_paths = _openapi_mapping(current.get("paths"))
+    if baseline_paths is None or current_paths is None:
         raise ValueError("ratified and candidate OpenAPI paths must be objects")
     http_methods = {"delete", "get", "head", "options", "patch", "post", "put", "trace"}
     for path, raw_baseline_path in baseline_paths.items():
         raw_current_path = current_paths.get(path)
-        if not isinstance(raw_baseline_path, Mapping) or not isinstance(raw_current_path, Mapping):
+        baseline_path = _openapi_mapping(raw_baseline_path)
+        current_path = _openapi_mapping(raw_current_path)
+        if baseline_path is None or current_path is None:
             raise ValueError(f"OpenAPI compatibility break: path removed {path}")
-        for method, raw_baseline_operation in raw_baseline_path.items():
+        for method, raw_baseline_operation in baseline_path.items():
             if method not in http_methods:
                 continue
-            raw_current_operation = raw_current_path.get(method)
-            if not isinstance(raw_baseline_operation, Mapping) or not isinstance(
-                raw_current_operation, Mapping
-            ):
+            raw_current_operation = current_path.get(method)
+            old_operation = _openapi_mapping(raw_baseline_operation)
+            new_operation = _openapi_mapping(raw_current_operation)
+            if old_operation is None or new_operation is None:
                 raise ValueError(f"OpenAPI compatibility break: operation removed {method} {path}")
-            old_operation = cast(Mapping[str, Any], raw_baseline_operation)
-            new_operation = cast(Mapping[str, Any], raw_current_operation)
             location = f"{method.upper()} {path}"
             for field in (
                 "operationId",
@@ -4787,32 +4821,37 @@ def validate_openapi_compatibility(
                     raise ValueError(f"OpenAPI compatibility break at {location}: {field} changed")
 
             def resolved_parameters(
-                document: Mapping[str, Any],
-                operation: Mapping[str, Any],
+                document: Mapping[str, object],
+                operation: Mapping[str, object],
                 operation_location: str,
-            ) -> dict[tuple[str, str], Mapping[str, Any]]:
-                result: dict[tuple[str, str], Mapping[str, Any]] = {}
-                raw_parameters = operation.get("parameters", [])
-                if not isinstance(raw_parameters, list):
+            ) -> dict[tuple[str, str], Mapping[str, object]]:
+                result: dict[tuple[str, str], Mapping[str, object]] = {}
+                raw_parameters = _openapi_list(operation.get("parameters", []))
+                if raw_parameters is None:
                     raise ValueError(
                         f"OpenAPI compatibility break at {operation_location}: parameters changed"
                     )
                 for raw_parameter in raw_parameters:
                     parameter = raw_parameter
-                    if isinstance(parameter, Mapping) and "$ref" in parameter:
-                        parameter = _openapi_local_ref(document, parameter["$ref"])
-                    if not isinstance(parameter, Mapping):
+                    parameter_mapping = _openapi_mapping(parameter)
+                    if parameter_mapping is not None and "$ref" in parameter_mapping:
+                        parameter = _openapi_local_ref(document, parameter_mapping["$ref"])
+                        parameter_mapping = _openapi_mapping(parameter)
+                    if parameter_mapping is None:
                         raise ValueError(
                             "OpenAPI compatibility break at "
                             f"{operation_location}: parameter changed"
                         )
-                    key = (str(parameter.get("in")), str(parameter.get("name")))
+                    key = (
+                        str(parameter_mapping.get("in")),
+                        str(parameter_mapping.get("name")),
+                    )
                     if key in result:
                         raise ValueError(
                             "OpenAPI compatibility break at "
                             f"{operation_location}: duplicate parameter {key}"
                         )
-                    result[key] = cast(Mapping[str, Any], parameter)
+                    result[key] = parameter_mapping
                 return result
 
             old_parameters = resolved_parameters(baseline, old_operation, location)
@@ -4851,34 +4890,34 @@ def validate_openapi_compatibility(
                         f"OpenAPI compatibility break at {location}: new required parameter {key}"
                     )
 
-            old_body = old_operation.get("requestBody")
-            new_body = new_operation.get("requestBody")
-            if old_body is not None or new_body is not None:
-                if isinstance(old_body, Mapping) and "$ref" in old_body:
-                    old_body = _openapi_local_ref(baseline, old_body["$ref"])
-                if isinstance(new_body, Mapping) and "$ref" in new_body:
-                    new_body = _openapi_local_ref(current, new_body["$ref"])
-                if old_body is None:
-                    if not isinstance(new_body, Mapping) or new_body.get("required", False):
+            raw_old_body = old_operation.get("requestBody")
+            raw_new_body = new_operation.get("requestBody")
+            if raw_old_body is not None or raw_new_body is not None:
+                old_body = _openapi_resolved_mapping(baseline, raw_old_body)
+                new_body = _openapi_resolved_mapping(current, raw_new_body)
+                if raw_old_body is None:
+                    if new_body is None or new_body.get("required", False):
                         raise ValueError(
                             f"OpenAPI compatibility break at {location}: required body added"
                         )
-                elif not isinstance(old_body, Mapping) or not isinstance(new_body, Mapping):
+                elif old_body is None or new_body is None:
                     raise ValueError(f"OpenAPI compatibility break at {location}: body removed")
                 else:
                     if not old_body.get("required", False) and new_body.get("required", False):
                         raise ValueError(
                             f"OpenAPI compatibility break at {location}: body became required"
                         )
-                    old_content = old_body.get("content", {})
-                    new_content = new_body.get("content", {})
-                    if not isinstance(old_content, Mapping) or not isinstance(new_content, Mapping):
+                    old_content = _openapi_mapping(old_body.get("content", {}))
+                    new_content = _openapi_mapping(new_body.get("content", {}))
+                    if old_content is None or new_content is None:
                         raise ValueError(
                             f"OpenAPI compatibility break at {location}: body content changed"
                         )
                     for media_type, old_media in old_content.items():
                         new_media = new_content.get(media_type)
-                        if not isinstance(old_media, Mapping) or not isinstance(new_media, Mapping):
+                        old_media_mapping = _openapi_mapping(old_media)
+                        new_media_mapping = _openapi_mapping(new_media)
+                        if old_media_mapping is None or new_media_mapping is None:
                             raise ValueError(
                                 f"OpenAPI compatibility break at {location}: "
                                 "request media type removed"
@@ -4886,44 +4925,36 @@ def validate_openapi_compatibility(
                         _openapi_schema_compatible(
                             baseline,
                             current,
-                            old_media.get("schema", {}),
-                            new_media.get("schema", {}),
+                            old_media_mapping.get("schema", {}),
+                            new_media_mapping.get("schema", {}),
                             request=True,
                             location=f"{location} request {media_type}",
                             visited=set(),
                         )
 
-            old_responses = old_operation.get("responses")
-            new_responses = new_operation.get("responses")
-            if not isinstance(old_responses, Mapping) or not isinstance(new_responses, Mapping):
+            old_responses = _openapi_mapping(old_operation.get("responses"))
+            new_responses = _openapi_mapping(new_operation.get("responses"))
+            if old_responses is None or new_responses is None:
                 raise ValueError(f"OpenAPI compatibility break at {location}: responses changed")
             for status, old_response_value in old_responses.items():
                 new_response_value = new_responses.get(status)
-                old_response = old_response_value
-                new_response = new_response_value
-                if isinstance(old_response, Mapping) and "$ref" in old_response:
-                    old_response = _openapi_local_ref(baseline, old_response["$ref"])
-                if isinstance(new_response, Mapping) and "$ref" in new_response:
-                    new_response = _openapi_local_ref(current, new_response["$ref"])
-                if not isinstance(old_response, Mapping) or not isinstance(new_response, Mapping):
+                old_response = _openapi_resolved_mapping(baseline, old_response_value)
+                new_response = _openapi_resolved_mapping(current, new_response_value)
+                if old_response is None or new_response is None:
                     raise ValueError(
                         f"OpenAPI compatibility break at {location}: response removed {status}"
                     )
-                old_headers = old_response.get("headers", {})
-                new_headers = new_response.get("headers", {})
-                if not isinstance(old_headers, Mapping) or not isinstance(new_headers, Mapping):
+                old_headers = _openapi_mapping(old_response.get("headers", {}))
+                new_headers = _openapi_mapping(new_response.get("headers", {}))
+                if old_headers is None or new_headers is None:
                     raise ValueError(
                         f"OpenAPI compatibility break at {location}: response headers changed"
                     )
                 for header_name, old_header_value in old_headers.items():
                     new_header_value = new_headers.get(header_name)
-                    old_header = old_header_value
-                    new_header = new_header_value
-                    if isinstance(old_header, Mapping) and "$ref" in old_header:
-                        old_header = _openapi_local_ref(baseline, old_header["$ref"])
-                    if isinstance(new_header, Mapping) and "$ref" in new_header:
-                        new_header = _openapi_local_ref(current, new_header["$ref"])
-                    if not isinstance(old_header, Mapping) or not isinstance(new_header, Mapping):
+                    old_header = _openapi_resolved_mapping(baseline, old_header_value)
+                    new_header = _openapi_resolved_mapping(current, new_header_value)
+                    if old_header is None or new_header is None:
                         raise ValueError(
                             f"OpenAPI compatibility break at {location}: "
                             f"response header removed {status} {header_name}"
@@ -4937,15 +4968,17 @@ def validate_openapi_compatibility(
                         location=f"{location} response {status} header {header_name}",
                         visited=set(),
                     )
-                old_content = old_response.get("content", {})
-                new_content = new_response.get("content", {})
-                if not isinstance(old_content, Mapping) or not isinstance(new_content, Mapping):
+                old_content = _openapi_mapping(old_response.get("content", {}))
+                new_content = _openapi_mapping(new_response.get("content", {}))
+                if old_content is None or new_content is None:
                     raise ValueError(
                         f"OpenAPI compatibility break at {location}: response content changed"
                     )
                 for media_type, old_media in old_content.items():
                     new_media = new_content.get(media_type)
-                    if not isinstance(old_media, Mapping) or not isinstance(new_media, Mapping):
+                    old_media_mapping = _openapi_mapping(old_media)
+                    new_media_mapping = _openapi_mapping(new_media)
+                    if old_media_mapping is None or new_media_mapping is None:
                         raise ValueError(
                             f"OpenAPI compatibility break at {location}: "
                             "response media type removed"
@@ -4953,16 +4986,22 @@ def validate_openapi_compatibility(
                     _openapi_schema_compatible(
                         baseline,
                         current,
-                        old_media.get("schema", {}),
-                        new_media.get("schema", {}),
+                        old_media_mapping.get("schema", {}),
+                        new_media_mapping.get("schema", {}),
                         request=False,
                         location=f"{location} response {status} {media_type}",
                         visited=set(),
                     )
 
-    baseline_schemas = baseline.get("components", {}).get("schemas", {})
-    current_schemas = current.get("components", {}).get("schemas", {})
-    if not isinstance(baseline_schemas, Mapping) or not isinstance(current_schemas, Mapping):
+    baseline_components = _openapi_mapping(baseline.get("components", {}))
+    current_components = _openapi_mapping(current.get("components", {}))
+    baseline_schemas = _openapi_mapping(
+        baseline_components.get("schemas", {}) if baseline_components is not None else None
+    )
+    current_schemas = _openapi_mapping(
+        current_components.get("schemas", {}) if current_components is not None else None
+    )
+    if baseline_schemas is None or current_schemas is None:
         raise ValueError("OpenAPI compatibility break: component schemas changed")
     for name, baseline_schema in baseline_schemas.items():
         if name not in current_schemas:
@@ -5017,7 +5056,7 @@ def ratified_openapi_document(content: bytes) -> bytes | None:
         raise ValueError("OpenAPI compatibility artifact is not valid JSON") from error
     if not isinstance(value, dict):
         raise ValueError("OpenAPI compatibility artifact must be an object")
-    artifact = cast(dict[str, Any], value)
+    artifact = cast(dict[str, object], value)
     if artifact.get("schema_version") == "mindclade.openapi-candidate/v1":
         return None
     if artifact.get("schema_version") != "mindclade.openapi-baseline/v1" or set(artifact) != {
@@ -5027,8 +5066,8 @@ def ratified_openapi_document(content: bytes) -> bytes | None:
         "schema_version",
     }:
         raise ValueError("OpenAPI compatibility artifact has an unsupported baseline format")
-    document = artifact.get("document")
-    if not isinstance(document, dict) or set(document) != {"base64", "digest"}:
+    document = _openapi_mapping(artifact.get("document"))
+    if document is None or set(document) != {"base64", "digest"}:
         raise ValueError("OpenAPI baseline document binding is malformed")
     encoded = document.get("base64")
     if not isinstance(encoded, str):
