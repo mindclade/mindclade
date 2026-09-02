@@ -8064,9 +8064,11 @@ mindclade/
 │   │   ├── render_architecture_blueprint.py
 │   │   ├── validate_blueprint_sources.py
 │   │   ├── blueprint_manifest.schema.json
-│   │   └── tests/
-│   │       ├── test_render_architecture_blueprint.py
-│   │       └── test_blueprint_source_manifest.py
+│   │   ├── tests/
+│   │   │   ├── test_render_architecture_blueprint.py
+│   │   │   ├── test_blueprint_source_manifest.py
+│   │   │   └── test_render_sdk_api_reference.py
+│   │   └── render_sdk_api_reference.py
 │   ├── dev/
 │   │   ├── bootstrap.py
 │   │   ├── doctor.py
@@ -8437,48 +8439,50 @@ mindclade/
 │   └── sdk/
 │       ├── README.md
 │       ├── go/
-│       │   └── mindclade/
-│       │       ├── BUILD.bazel
-│       │       ├── README.md
-│       │       ├── admin.go
-│       │       ├── agent_test.go
-│       │       ├── agents.go
-│       │       ├── approvals.go
-│       │       ├── artifacts.go
-│       │       ├── auth.go
-│       │       ├── auth_test.go
-│       │       ├── client.go
-│       │       ├── client_test.go
-│       │       ├── config.go
-│       │       ├── datasets.go
-│       │       ├── error.go
-│       │       ├── evaluations.go
-│       │       ├── evaluations_test.go
-│       │       ├── interceptors.go
-│       │       ├── inference.go
-│       │       ├── inference_test.go
-│       │       ├── lifecycle_test.go
-│       │       ├── method_policy.go
-│       │       ├── models.go
-│       │       ├── operations.go
-│       │       ├── policy_test.go
-│       │       ├── policies.go
-│       │       ├── policy_admin_test.go
-│       │       ├── request.go
-│       │       ├── training.go
-│       │       ├── transport.go
-│       │       ├── workflow_test.go
-│       │       ├── workflows.go
-│       │       ├── artifact_operation_gap_test.go
-│       │       ├── job_run_test.go
-│       │       ├── jobs.go
-│       │       ├── runs.go
-│       │       ├── training_lifecycle_test.go
-│       │       ├── experiments.go
-│       │       └── experiments_test.go
+│       │   ├── mindclade/
+│       │   │   ├── BUILD.bazel
+│       │   │   ├── README.md
+│       │   │   ├── admin.go
+│       │   │   ├── agent_test.go
+│       │   │   ├── agents.go
+│       │   │   ├── approvals.go
+│       │   │   ├── artifacts.go
+│       │   │   ├── auth.go
+│       │   │   ├── auth_test.go
+│       │   │   ├── client.go
+│       │   │   ├── client_test.go
+│       │   │   ├── config.go
+│       │   │   ├── datasets.go
+│       │   │   ├── error.go
+│       │   │   ├── evaluations.go
+│       │   │   ├── evaluations_test.go
+│       │   │   ├── interceptors.go
+│       │   │   ├── inference.go
+│       │   │   ├── inference_test.go
+│       │   │   ├── lifecycle_test.go
+│       │   │   ├── method_policy.go
+│       │   │   ├── models.go
+│       │   │   ├── operations.go
+│       │   │   ├── policy_test.go
+│       │   │   ├── policies.go
+│       │   │   ├── policy_admin_test.go
+│       │   │   ├── request.go
+│       │   │   ├── training.go
+│       │   │   ├── transport.go
+│       │   │   ├── workflow_test.go
+│       │   │   ├── workflows.go
+│       │   │   ├── artifact_operation_gap_test.go
+│       │   │   ├── job_run_test.go
+│       │   │   ├── jobs.go
+│       │   │   ├── runs.go
+│       │   │   ├── training_lifecycle_test.go
+│       │   │   ├── experiments.go
+│       │   │   └── experiments_test.go
+│       │   └── api.md
 │       ├── python/
 │       │   ├── BUILD.bazel
 │       │   ├── README.md
+│       │   ├── api.md
 │       │   ├── mindclade_internal_sdk/
 │       │   │   ├── __init__.py
 │       │   │   ├── _invocation.py
@@ -8524,6 +8528,7 @@ mindclade/
 │       │   ├── BUILD.bazel
 │       │   ├── Cargo.toml
 │       │   ├── README.md
+│       │   ├── api.md
 │       │   └── src/
 │       │       ├── admin.rs
 │       │       ├── agent_tests.rs
@@ -8561,6 +8566,7 @@ mindclade/
 │       ├── typescript/
 │       │   ├── BUILD.bazel
 │       │   ├── README.md
+│       │   ├── api.md
 │       │   ├── bazel/
 │       │   │   └── package.json
 │       │   ├── biome.json
