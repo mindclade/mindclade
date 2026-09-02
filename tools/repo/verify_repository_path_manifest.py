@@ -11,7 +11,7 @@ import subprocess
 import sys
 from collections.abc import Mapping, Sequence
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from dependency_policy import validate_dependency_graph
 from owner_policy import discover_components, validate_owners
@@ -32,7 +32,7 @@ TARGET_MEMBERSHIP_ATTRIBUTES = (
 )
 
 
-def _bazel_failure_detail(stderr: str) -> str:
+def bazel_failure_detail(stderr: str) -> str:
     details = [line.strip() for line in stderr.splitlines() if line.strip()]
     for marker in ("MODULE.bazel.lock", "ERROR:", "FATAL:"):
         for detail in details:
@@ -66,18 +66,19 @@ def validate_generated_files(manifest: Mapping[str, Any], root: Path) -> list[st
             except json.JSONDecodeError:
                 value = None
             if isinstance(value, Mapping):
-                structured_generator = isinstance(value.get("generator"), Mapping) or isinstance(
-                    value.get("x-mindclade-generator"), Mapping
-                )
+                value_object = cast(Mapping[str, object], value)
+                structured_generator = isinstance(
+                    value_object.get("generator"), Mapping
+                ) or isinstance(value_object.get("x-mindclade-generator"), Mapping)
                 candidate_descriptor = (
                     entry["path"] == "protocols/compatibility/baselines/protobuf.candidate.json"
-                    and value.get("schema_version") == "mindclade.protobuf-candidate/v1"
-                    and isinstance(value.get("lifecycle"), Mapping)
+                    and value_object.get("schema_version") == "mindclade.protobuf-candidate/v1"
+                    and isinstance(value_object.get("lifecycle"), Mapping)
                 )
                 candidate_openapi = (
                     entry["path"] == "protocols/compatibility/baselines/openapi.lock.json"
-                    and value.get("schema_version") == "mindclade.openapi-candidate/v1"
-                    and isinstance(value.get("sources"), Mapping)
+                    and value_object.get("schema_version") == "mindclade.openapi-candidate/v1"
+                    and isinstance(value_object.get("sources"), Mapping)
                 )
                 if structured_generator or candidate_descriptor or candidate_openapi:
                     continue
@@ -119,7 +120,7 @@ def _repository_target_sources(bazel: str, root: Path, label: str) -> tuple[set[
             text=True,
         )
         if result.returncode != 0:
-            return sources, _bazel_failure_detail(result.stderr)
+            return sources, bazel_failure_detail(result.stderr)
         pending = set[str]()
         for member in result.stdout.splitlines():
             member = member.strip()

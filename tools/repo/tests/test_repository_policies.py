@@ -61,7 +61,7 @@ from render_repository_tree import (  # noqa: E402
     replace_generated_region,
 )
 from verify_repository_path_manifest import (  # noqa: E402
-    _bazel_failure_detail,
+    bazel_failure_detail,
     validate_declared_targets,
 )
 
@@ -194,7 +194,7 @@ class RepositoryPolicyTest(unittest.TestCase):
         )
 
     def test_target_validation_reports_actionable_bazel_lock_error(self) -> None:
-        detail = _bazel_failure_detail(
+        detail = bazel_failure_detail(
             "FATAL: bazel crashed\n"
             "java.lang.IllegalStateException\n"
             "MODULE.bazel.lock is no longer up-to-date; run bazel mod deps\n"

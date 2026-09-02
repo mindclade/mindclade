@@ -2687,7 +2687,7 @@ def validate_manifest(manifest: Mapping[str, Any]) -> list[str]:
     if replacement_map != ADR_REPLACEMENTS:
         errors.append("ADR replacement mapping differs from authoritative Section 14 filenames")
     try:
-        expected = set(reconcile_authority_paths(normalized_original))
+        expected: set[str] = set(reconcile_authority_paths(normalized_original))
     except PolicyError as error:
         errors.append(str(error))
         expected = set()
@@ -2936,7 +2936,9 @@ def _activate_pairformer_wave6_entry(entry: dict[str, object], path: str) -> dic
     return activated
 
 
-def build_native_source_incubation_entry(path: str) -> dict[str, object]:
+def build_native_source_incubation_entry(  # pyright: ignore[reportRedeclaration]
+    path: str,
+) -> dict[str, object]:
     return _activate_pairformer_wave6_entry(
         _build_native_source_incubation_target_entry(path), path
     )
@@ -2946,7 +2948,9 @@ def build_kernel_platform_source_entry(path: str) -> dict[str, object]:
     return _activate_pairformer_wave6_entry(_build_kernel_platform_source_target_entry(path), path)
 
 
-def _reconciliation_addition_reason(path: str) -> str:
+def _reconciliation_addition_reason(  # pyright: ignore[reportRedeclaration]
+    path: str,
+) -> str:
     if path == PAIRFORMER_WAVE6_PLATFORM_ACTIVATION_ADR:
         return (
             "ADR-0016 records the governed source activation boundary for the five "
@@ -2968,22 +2972,26 @@ def _reconciliation_addition_reason(path: str) -> str:
 
 
 NATIVE_STABLE_ABI_TENSOR_BRIDGE_HEADER = "kernels/native/stable_abi/tensor_bridge.h"
-NATIVE_SOURCE_INCUBATION_PATHS = (
+NATIVE_SOURCE_INCUBATION_PATHS = (  # pyright: ignore[reportConstantRedefinition]
     *NATIVE_SOURCE_INCUBATION_PATHS,
     NATIVE_STABLE_ABI_TENSOR_BRIDGE_HEADER,
 )
-NATIVE_SOURCE_INCUBATION_ADDITIONS = (
+NATIVE_SOURCE_INCUBATION_ADDITIONS = (  # pyright: ignore[reportConstantRedefinition]
     *NATIVE_SOURCE_INCUBATION_ADDITIONS,
     NATIVE_STABLE_ABI_TENSOR_BRIDGE_HEADER,
 )
-REQUIRED_ADDITIONS = (
+REQUIRED_ADDITIONS = (  # pyright: ignore[reportConstantRedefinition]
     *REQUIRED_ADDITIONS,
     NATIVE_STABLE_ABI_TENSOR_BRIDGE_HEADER,
     *PAIRFORMER_WAVE6_ADRS,
 )
-CANONICAL_FILE_COUNT = CANONICAL_FILE_COUNT + len(PAIRFORMER_WAVE6_ADRS) + 1
-CANONICAL_PATH_SET_SHA256 = "f8e20536225b44168f47d6b5f6843563c79b90cf1b36f150a952562c77369658"
-PRE_ACTIVATION_SOURCE_PATHS = frozenset(
+CANONICAL_FILE_COUNT = (  # pyright: ignore[reportConstantRedefinition]
+    CANONICAL_FILE_COUNT + len(PAIRFORMER_WAVE6_ADRS) + 1
+)
+CANONICAL_PATH_SET_SHA256 = (  # pyright: ignore[reportConstantRedefinition]
+    "f8e20536225b44168f47d6b5f6843563c79b90cf1b36f150a952562c77369658"
+)
+PRE_ACTIVATION_SOURCE_PATHS = frozenset(  # pyright: ignore[reportConstantRedefinition]
     path
     for path in (*PRE_ACTIVATION_SOURCE_PATHS, NATIVE_STABLE_ABI_TENSOR_BRIDGE_HEADER)
     if path not in PAIRFORMER_WAVE6_OPERATION_PATHS
@@ -3021,7 +3029,7 @@ NATIVE_ADR0022_GENERATED_PROJECTIONS: tuple[str, ...] = (
     "kernels/native/generated/qualified_capabilities.generated.cpp",
     "kernels/native/generated/qualified_capabilities.generated.json",
 )
-NATIVE_GENERATED_PROJECTIONS = (
+NATIVE_GENERATED_PROJECTIONS = (  # pyright: ignore[reportConstantRedefinition]
     *NATIVE_GENERATED_PROJECTIONS,
     *NATIVE_ADR0022_GENERATED_PROJECTIONS,
 )
@@ -3104,21 +3112,23 @@ _NATIVE_ADR0022_NEW_PATHS = (
     *NATIVE_SIGNED_QUALIFICATION_NEW_PATHS,
     *NATIVE_CALLABLE_ABI_NEW_PATHS,
 )
-NATIVE_SOURCE_INCUBATION_PATHS = (
+NATIVE_SOURCE_INCUBATION_PATHS = (  # pyright: ignore[reportConstantRedefinition]
     *NATIVE_SOURCE_INCUBATION_PATHS,
     *_NATIVE_ADR0022_NEW_PATHS,
 )
-NATIVE_SOURCE_INCUBATION_ADDITIONS = (
+NATIVE_SOURCE_INCUBATION_ADDITIONS = (  # pyright: ignore[reportConstantRedefinition]
     *NATIVE_SOURCE_INCUBATION_ADDITIONS,
     *_NATIVE_ADR0022_NEW_PATHS,
 )
-REQUIRED_ADDITIONS = (
+REQUIRED_ADDITIONS = (  # pyright: ignore[reportConstantRedefinition]
     *REQUIRED_ADDITIONS,
     *_NATIVE_ADR0022_NEW_PATHS,
     NATIVE_SIGNED_QUALIFICATION_ADR,
 )
-CANONICAL_FILE_COUNT = CANONICAL_FILE_COUNT + len(_NATIVE_ADR0022_NEW_PATHS) + 1
-PRE_ACTIVATION_SOURCE_PATHS = frozenset(
+CANONICAL_FILE_COUNT = (  # pyright: ignore[reportConstantRedefinition]
+    CANONICAL_FILE_COUNT + len(_NATIVE_ADR0022_NEW_PATHS) + 1
+)
+PRE_ACTIVATION_SOURCE_PATHS = frozenset(  # pyright: ignore[reportConstantRedefinition]
     path
     for path in (*PRE_ACTIVATION_SOURCE_PATHS, *_NATIVE_ADR0022_NEW_PATHS)
     if path not in NATIVE_SIGNED_QUALIFICATION_ACTIVE_PATHS

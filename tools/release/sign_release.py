@@ -12,6 +12,7 @@ import os
 import re
 from collections.abc import Mapping, Sequence
 from pathlib import Path
+from typing import cast
 
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes, serialization
@@ -74,8 +75,10 @@ def manifest_bindings(manifest: JsonObject) -> tuple[str, str, str]:
     subject_digest = subject.get("digest")
     source_revision = source.get("revision")
     policy_digest = qualification.get("policy_digest")
-    if not all(
-        isinstance(value, str) for value in (subject_digest, source_revision, policy_digest)
+    if (
+        not isinstance(subject_digest, str)
+        or not isinstance(source_revision, str)
+        or not isinstance(policy_digest, str)
     ):
         raise ValueError("manifest release bindings must be strings")
     return subject_digest, source_revision, policy_digest
@@ -254,9 +257,11 @@ def _parse_transparency_bytes(data: bytes) -> list[JsonObject]:
             value = json.loads(raw_line.decode("utf-8"))
         except (UnicodeDecodeError, json.JSONDecodeError) as error:
             raise ValueError("transparency log contains invalid JSON") from error
-        if not isinstance(value, dict) or canonical_json(value) != raw_line:
+        if not isinstance(value, dict):
             raise ValueError("transparency records must be canonical JSON objects")
-        entry: JsonObject = value
+        entry = cast(JsonObject, value)
+        if canonical_json(entry) != raw_line:
+            raise ValueError("transparency records must be canonical JSON objects")
         _require_exact_keys(
             entry,
             {
