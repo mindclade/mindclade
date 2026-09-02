@@ -6047,6 +6047,18 @@
           "reason": "ADR-0022 governs immutable K4/K5 evidence, explicit Ed25519 trust, revocation/rollback, and fail-closed qualified-index inspection."
         },
         {
+          "path": "kernels/native/python/gpu_qualification.py",
+          "reason": "ADR-0022 governs immutable K4/K5 evidence, explicit Ed25519 trust, revocation/rollback, and fail-closed qualified-index inspection."
+        },
+        {
+          "path": "kernels/native/manifests/pairformer_gpu_qualification.json",
+          "reason": "ADR-0022 governs immutable K4/K5 evidence, explicit Ed25519 trust, revocation/rollback, and fail-closed qualified-index inspection."
+        },
+        {
+          "path": "kernels/native/manifests/pairformer_gpu_qualification.schema.json",
+          "reason": "ADR-0022 governs immutable K4/K5 evidence, explicit Ed25519 trust, revocation/rollback, and fail-closed qualified-index inspection."
+        },
+        {
           "path": "kernels/native/manifests/qualification_release.schema.json",
           "reason": "ADR-0022 governs immutable K4/K5 evidence, explicit Ed25519 trust, revocation/rollback, and fail-closed qualified-index inspection."
         },
@@ -6060,6 +6072,10 @@
         },
         {
           "path": "kernels/native/tests/test_capability_index.py",
+          "reason": "ADR-0022 governs immutable K4/K5 evidence, explicit Ed25519 trust, revocation/rollback, and fail-closed qualified-index inspection."
+        },
+        {
+          "path": "kernels/native/tests/test_gpu_qualification.py",
           "reason": "ADR-0022 governs immutable K4/K5 evidence, explicit Ed25519 trust, revocation/rollback, and fail-closed qualified-index inspection."
         },
         {
@@ -6091,7 +6107,15 @@
           "reason": "ADR-0022 governs the callable-node ABI and compact native-table source/generated boundary without granting production execution."
         },
         {
+          "path": "kernels/native/stable_abi/qualified_capability_selector.cpp",
+          "reason": "ADR-0022 governs the callable-node ABI and compact native-table source/generated boundary without granting production execution."
+        },
+        {
           "path": "kernels/native/stable_abi/qualified_capability_table.h",
+          "reason": "ADR-0022 governs the callable-node ABI and compact native-table source/generated boundary without granting production execution."
+        },
+        {
+          "path": "kernels/native/tests/test_qualified_capability_selector.py",
           "reason": "ADR-0022 governs the callable-node ABI and compact native-table source/generated boundary without granting production execution."
         },
         {
@@ -6134,8 +6158,8 @@
           "reason": "Sections 1-18 and Section 14.1 take precedence over the stale A6 short ADR name."
         }
       ],
-      "canonical_file_count": 3363,
-      "canonical_path_set_sha256": "0af4fae6f3886e0da298718ea14e4ec31d7675c2829711ab5a8e229b4cc3e39c"
+      "canonical_file_count": 3369,
+      "canonical_path_set_sha256": "978e5706369c7372cff6730558adea2a4af5d7b9c766fb5bbedd02196bd31b54"
     },
     "owners": {
       "agent-platform": {
@@ -34421,6 +34445,7 @@
       ],
       "test_targets": [
         "//kernels/native:test_capability_index",
+        "//kernels/native:test_gpu_qualification",
         "//kernels/native:test_loader_policy",
         "//kernels/native:test_qualification"
       ],
@@ -34455,6 +34480,7 @@
       ],
       "test_targets": [
         "//kernels/native:test_capability_index",
+        "//kernels/native:test_gpu_qualification",
         "//kernels/native:test_loader_policy",
         "//kernels/native:test_qualification"
       ],
@@ -34489,6 +34515,7 @@
       ],
       "test_targets": [
         "//kernels/native:test_capability_index",
+        "//kernels/native:test_gpu_qualification",
         "//kernels/native:test_loader_policy",
         "//kernels/native:test_qualification"
       ],
@@ -34508,6 +34535,7 @@
       ],
       "test_targets": [
         "//kernels/native:test_capability_index",
+        "//kernels/native:test_gpu_qualification",
         "//kernels/native:test_loader_policy",
         "//kernels/native:test_qualification"
       ],
@@ -34633,6 +34661,7 @@
       ],
       "test_targets": [
         "//kernels/native:test_capability_index",
+        "//kernels/native:test_gpu_qualification",
         "//kernels/native:test_loader_policy",
         "//kernels/native:test_qualification"
       ],
@@ -34978,6 +35007,46 @@
       "activation_criterion": "ADR-0009 permits source incubation only through 2026-11-30; activate only after Wave 5 evidence and an operation-specific JIT-06 decision prove measured need, reference parity, gradients, locked dependencies, immutable artifacts, fallback, and revocation."
     },
     {
+      "path": "kernels/native/manifests/pairformer_gpu_qualification.json",
+      "kind": "data",
+      "owner": "ml-systems-performance",
+      "component": "kernels-native",
+      "status": "active",
+      "activation_wave": "6",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//kernels/native:native_policy_inputs"
+      ],
+      "test_targets": [
+        "//kernels/native:test_capability_index",
+        "//kernels/native:test_gpu_qualification",
+        "//kernels/native:test_loader_policy",
+        "//kernels/native:test_qualification"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0022 as signed-qualification, exact capability-inspection, and fail-closed loader source. CPU/test-only evidence grants no K4, K5, promotion, or production authority. Nonempty native execution remains denied until signed K5 and generated native-table projections reconcile."
+    },
+    {
+      "path": "kernels/native/manifests/pairformer_gpu_qualification.schema.json",
+      "kind": "schema",
+      "owner": "ml-systems-performance",
+      "component": "kernels-native",
+      "status": "active",
+      "activation_wave": "6",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//kernels/native:native_policy_inputs"
+      ],
+      "test_targets": [
+        "//kernels/native:test_capability_index",
+        "//kernels/native:test_gpu_qualification",
+        "//kernels/native:test_loader_policy",
+        "//kernels/native:test_qualification"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0022 as signed-qualification, exact capability-inspection, and fail-closed loader source. CPU/test-only evidence grants no K4, K5, promotion, or production authority. Nonempty native execution remains denied until signed K5 and generated native-table projections reconcile."
+    },
+    {
       "path": "kernels/native/manifests/qualification_release.schema.json",
       "kind": "schema",
       "owner": "ml-systems-performance",
@@ -34990,6 +35059,7 @@
       ],
       "test_targets": [
         "//kernels/native:test_capability_index",
+        "//kernels/native:test_gpu_qualification",
         "//kernels/native:test_loader_policy",
         "//kernels/native:test_qualification"
       ],
@@ -35009,6 +35079,7 @@
       ],
       "test_targets": [
         "//kernels/native:test_capability_index",
+        "//kernels/native:test_gpu_qualification",
         "//kernels/native:test_loader_policy",
         "//kernels/native:test_qualification"
       ],
@@ -35028,6 +35099,7 @@
       ],
       "test_targets": [
         "//kernels/native:test_capability_index",
+        "//kernels/native:test_gpu_qualification",
         "//kernels/native:test_loader_policy",
         "//kernels/native:test_qualification"
       ],
@@ -35047,6 +35119,7 @@
       ],
       "test_targets": [
         "//kernels/native:test_capability_index",
+        "//kernels/native:test_gpu_qualification",
         "//kernels/native:test_loader_policy",
         "//kernels/native:test_qualification"
       ],
@@ -35066,6 +35139,7 @@
       ],
       "test_targets": [
         "//kernels/native:test_capability_index",
+        "//kernels/native:test_gpu_qualification",
         "//kernels/native:test_loader_policy",
         "//kernels/native:test_qualification"
       ],
@@ -35085,6 +35159,7 @@
       ],
       "test_targets": [
         "//kernels/native:test_capability_index",
+        "//kernels/native:test_gpu_qualification",
         "//kernels/native:test_loader_policy",
         "//kernels/native:test_qualification"
       ],
@@ -35134,6 +35209,27 @@
       ],
       "test_targets": [
         "//kernels/native:test_capability_index",
+        "//kernels/native:test_gpu_qualification",
+        "//kernels/native:test_loader_policy",
+        "//kernels/native:test_qualification"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0022 as signed-qualification, exact capability-inspection, and fail-closed loader source. CPU/test-only evidence grants no K4, K5, promotion, or production authority. Nonempty native execution remains denied until signed K5 and generated native-table projections reconcile."
+    },
+    {
+      "path": "kernels/native/python/gpu_qualification.py",
+      "kind": "source",
+      "owner": "ml-systems-performance",
+      "component": "kernels-native",
+      "status": "active",
+      "activation_wave": "6",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//kernels/native:native_policy_inputs"
+      ],
+      "test_targets": [
+        "//kernels/native:test_capability_index",
+        "//kernels/native:test_gpu_qualification",
         "//kernels/native:test_loader_policy",
         "//kernels/native:test_qualification"
       ],
@@ -35249,6 +35345,21 @@
     },
     {
       "path": "kernels/native/stable_abi/node_launch_bridge.h",
+      "kind": "source",
+      "owner": "ml-systems-performance",
+      "component": "kernels-native",
+      "status": "target",
+      "activation_wave": "6",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//kernels/native:native_policy_inputs"
+      ],
+      "test_targets": [],
+      "public_surface": false,
+      "activation_criterion": "ADR-0009 permits source incubation only through 2026-11-30; activate only after Wave 5 evidence and an operation-specific JIT-06 decision prove measured need, reference parity, gradients, locked dependencies, immutable artifacts, fallback, and revocation."
+    },
+    {
+      "path": "kernels/native/stable_abi/qualified_capability_selector.cpp",
       "kind": "source",
       "owner": "ml-systems-performance",
       "component": "kernels-native",
@@ -35447,6 +35558,7 @@
       ],
       "test_targets": [
         "//kernels/native:test_capability_index",
+        "//kernels/native:test_gpu_qualification",
         "//kernels/native:test_loader_policy",
         "//kernels/native:test_qualification"
       ],
@@ -35541,6 +35653,7 @@
       ],
       "test_targets": [
         "//kernels/native:test_capability_index",
+        "//kernels/native:test_gpu_qualification",
         "//kernels/native:test_loader_policy",
         "//kernels/native:test_qualification"
       ],
@@ -35650,11 +35763,47 @@
       ],
       "test_targets": [
         "//kernels/native:test_capability_index",
+        "//kernels/native:test_gpu_qualification",
         "//kernels/native:test_loader_policy",
         "//kernels/native:test_qualification"
       ],
       "public_surface": false,
       "activation_criterion": "Activated by ADR-0022 as signed-qualification, exact capability-inspection, and fail-closed loader source. CPU/test-only evidence grants no K4, K5, promotion, or production authority. Nonempty native execution remains denied until signed K5 and generated native-table projections reconcile."
+    },
+    {
+      "path": "kernels/native/tests/test_gpu_qualification.py",
+      "kind": "test",
+      "owner": "ml-systems-performance",
+      "component": "kernels-native",
+      "status": "active",
+      "activation_wave": "6",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//kernels/native:native_policy_inputs"
+      ],
+      "test_targets": [
+        "//kernels/native:test_capability_index",
+        "//kernels/native:test_gpu_qualification",
+        "//kernels/native:test_loader_policy",
+        "//kernels/native:test_qualification"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0022 as signed-qualification, exact capability-inspection, and fail-closed loader source. CPU/test-only evidence grants no K4, K5, promotion, or production authority. Nonempty native execution remains denied until signed K5 and generated native-table projections reconcile."
+    },
+    {
+      "path": "kernels/native/tests/test_qualified_capability_selector.py",
+      "kind": "test",
+      "owner": "ml-systems-performance",
+      "component": "kernels-native",
+      "status": "target",
+      "activation_wave": "6",
+      "source_authority": "hand-authored",
+      "build_targets": [],
+      "test_targets": [
+        "//kernels/native:test_qualified_capability_selector"
+      ],
+      "public_surface": false,
+      "activation_criterion": "ADR-0009 permits source incubation only through 2026-11-30; activate only after Wave 5 evidence and an operation-specific JIT-06 decision prove measured need, reference parity, gradients, locked dependencies, immutable artifacts, fallback, and revocation."
     },
     {
       "path": "kernels/native/tilelang/README.md",

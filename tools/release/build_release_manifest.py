@@ -137,6 +137,13 @@ def _named_digest(raw: str, field: str) -> dict[str, str]:
     return {"name": name, "digest": validate_digest(digest, field)}
 
 
+def _approval_ref(raw: str) -> dict[str, str]:
+    gate, separator, digest = raw.partition("=")
+    if not separator or gate not in {"K4", "K5"}:
+        raise ValueError("approval must be K4=sha256:<64 lowercase hex> or K5=...")
+    return {"gate": gate, "record_digest": validate_digest(digest, "approval")}
+
+
 def build_manifest(args: argparse.Namespace) -> dict[str, Any]:
     if not RESOURCE_RE.fullmatch(args.release_id):
         raise ValueError("release-id must be a lowercase opaque resource identifier")
@@ -156,6 +163,11 @@ def build_manifest(args: argparse.Namespace) -> dict[str, Any]:
     lockfile_names = [item["name"] for item in lockfile_digests]
     if len(lockfile_names) != len(set(lockfile_names)):
         raise ValueError("lockfile names must be unique")
+
+    approval_refs = [_approval_ref(value) for value in args.approval]
+    approval_gates = [item["gate"] for item in approval_refs]
+    if sorted(approval_gates) != ["K4", "K5"]:
+        raise ValueError("exactly one K4 and one K5 approval reference are required")
 
     manifest: dict[str, Any] = {
         "schema_version": "mindclade.release-manifest/v1",
@@ -189,6 +201,7 @@ def build_manifest(args: argparse.Namespace) -> dict[str, Any]:
                 "evidence_refs": sorted(
                     validate_digest(value, "evidence") for value in args.evidence
                 ),
+                "approval_refs": sorted(approval_refs, key=lambda item: item["gate"]),
             },
             "environment_constraints": sorted(set(args.environment_constraint)),
         },
@@ -216,6 +229,7 @@ def parser() -> argparse.ArgumentParser:
     result.add_argument("--compatibility", action="append", default=[])
     result.add_argument("--qualification-policy", required=True)
     result.add_argument("--evidence", action="append", default=[])
+    result.add_argument("--approval", action="append", default=[])
     result.add_argument("--environment-constraint", action="append", default=[])
     result.add_argument("--output", type=Path, required=True)
     return result

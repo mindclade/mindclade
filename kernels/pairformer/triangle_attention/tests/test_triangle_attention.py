@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import inspect
+
 import pytest
 import torch
 
@@ -18,6 +20,7 @@ from kernels.pairformer.triangle_attention.spec import IMPLEMENTATION_SPECS, KER
 from kernels.pairformer.triangle_attention.tilelang import (
     TRIANGLE_ATTENTION_PROFILES,
     build_backward_program_group,
+    build_forward_program,
     build_forward_program_group,
     build_tilelang_program,
 )
@@ -171,6 +174,14 @@ def test_profiles_are_bounded_and_builder_rejects_unqualified_target():
             target="auto", architecture="sm90a", batch=1, n=32,
             heads=4, head_dim=32, dtype="float16", threads=64,
         )
+
+
+def test_forward_builder_uses_one_pass_online_softmax_without_materialization():
+    source = inspect.getsource(build_forward_program)
+    assert source.count("for key_index in T.serial(n)") == 1
+    assert "old_scale = T.exp(row_max[0] - next_max)" in source
+    assert "new_scale = T.exp(score[0] - next_max)" in source
+    assert "probability_numerator" not in source
 
 
 def test_callable_nodes_use_artifact_scoped_host_call_abi():

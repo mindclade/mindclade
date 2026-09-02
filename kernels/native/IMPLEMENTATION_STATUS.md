@@ -58,6 +58,12 @@ Overall readiness: TARGET
 - Immutable Ed25519-signed K4/K5, revocation, rollback, and qualified-index
   mechanisms fail closed on obsolete receipts, untrusted signers, non-atomic
   REQUIRED FWD/BWD artifacts, or native-table identity drift.
+- A source-only Pairformer qualification plan runs SM90a first and treats
+  SM100a as an independent evidence lane. It pins TileLang 0.1.13, CUDA 12.9,
+  nvcc 12.9.86, and PyTorch 2.10.0; bounds per-operation TMA/WGMMA/TCGEN05 and
+  cluster candidates; and defines numerical, non-default-stream, CUDA graph,
+  workspace, determinism, and interleaved benchmark protocols. Its receipts
+  are always unsigned and unqualified and cannot promote a capability.
 - Every canonical operation declares a separate literal
   `IMPLEMENTATION_SPECS` tuple. Generator v8 binds these authoring records to
   the semantic operation and emits independent implementation/envelope

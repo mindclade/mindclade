@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import inspect
+
 import pytest
 
 torch = pytest.importorskip("torch")
@@ -16,7 +18,10 @@ from kernels.pairformer.outer_product_mean.reference import (
     outer_product_mean_with_normalizer,
 )
 from kernels.pairformer.outer_product_mean.spec import IMPLEMENTATION_SPECS, KERNEL_SPEC
-from kernels.pairformer.outer_product_mean.tilelang import build_normalizer_program
+from kernels.pairformer.outer_product_mean.tilelang import (
+    build_normalizer_program,
+    build_numerator_program,
+)
 
 
 def _inputs(*, requires_grad: bool = False):
@@ -115,6 +120,15 @@ def test_fallback_is_explicit_and_native_saved_state_stays_private(monkeypatch) 
 def test_builder_rejects_unqualified_architecture_before_tilelang_import() -> None:
     with pytest.raises(ValueError, match="sm90a or sm100a"):
         build_normalizer_program(architecture="sm80")
+
+
+def test_numerator_builder_is_masked_tiled_gemm_with_denominator_epilogue() -> None:
+    source = inspect.getsource(build_numerator_program)
+    assert "T.alloc_shared" in source
+    assert "T.Pipelined" in source
+    assert "T.gemm(" in source
+    assert "transpose_B=True" in source
+    assert "normalizer[batch, left_node, right_node]" in source
 
 
 def test_callable_nodes_use_artifact_scoped_host_call_abi():

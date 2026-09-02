@@ -249,6 +249,8 @@ NATIVE_POLICY_INPUTS = frozenset(
         "kernels/native/CMakeLists.txt",
         "kernels/native/IMPLEMENTATION_STATUS.md",
         "kernels/native/manifests/benchmark.schema.json",
+        "kernels/native/manifests/pairformer_gpu_qualification.json",
+        "kernels/native/manifests/pairformer_gpu_qualification.schema.json",
         "kernels/native/manifests/performance_policy.json",
         "kernels/native/manifests/qualification.schema.json",
         "kernels/native/manifests/tilelang_profiles.sm100.json",
@@ -260,10 +262,12 @@ NATIVE_POLICY_INPUTS = frozenset(
         "kernels/native/cuda/CMakeLists.txt",
         "kernels/native/cuda/README.md",
         "kernels/native/cuda/operation_registry.cpp",
+        "kernels/native/python/gpu_qualification.py",
         "kernels/native/stable_abi/CMakeLists.txt",
         "kernels/native/stable_abi/abi_manifest.json",
         "kernels/native/stable_abi/registration.cpp",
         "kernels/native/stable_abi/tensor_bridge.cpp",
+        "kernels/native/tests/test_gpu_qualification.py",
         "kernels/native/tilelang/README.md",
     }
 )
@@ -2988,7 +2992,7 @@ REQUIRED_ADDITIONS = (
 )
 CANONICAL_FILE_COUNT = CANONICAL_FILE_COUNT + len(PAIRFORMER_WAVE6_ADRS) + 1
 CANONICAL_PATH_SET_SHA256 = (
-    "6bd206a5aa53ee40c117c1e7fa8f42645ae5dd366fc93c33935840b794bd86cb"
+    "978e5706369c7372cff6730558adea2a4af5d7b9c766fb5bbedd02196bd31b54"
 )
 PRE_ACTIVATION_SOURCE_PATHS = frozenset(
     path
@@ -3002,10 +3006,14 @@ NATIVE_SIGNED_QUALIFICATION_ADR = (
 )
 NATIVE_SIGNED_QUALIFICATION_NEW_PATHS: tuple[str, ...] = (
     "kernels/native/python/capability_index.py",
+    "kernels/native/python/gpu_qualification.py",
+    "kernels/native/manifests/pairformer_gpu_qualification.json",
+    "kernels/native/manifests/pairformer_gpu_qualification.schema.json",
     "kernels/native/manifests/qualification_release.schema.json",
     "kernels/native/manifests/qualified_capability_index.json",
     "kernels/native/manifests/qualified_capability_index.schema.json",
     "kernels/native/tests/test_capability_index.py",
+    "kernels/native/tests/test_gpu_qualification.py",
 )
 NATIVE_CALLABLE_ABI_NEW_PATHS: tuple[str, ...] = (
     "kernels/native/codegen/callable_abi.py",
@@ -3015,7 +3023,9 @@ NATIVE_CALLABLE_ABI_NEW_PATHS: tuple[str, ...] = (
     "kernels/native/stable_abi/node_launch_abi.h",
     "kernels/native/stable_abi/node_launch_bridge.cpp",
     "kernels/native/stable_abi/node_launch_bridge.h",
+    "kernels/native/stable_abi/qualified_capability_selector.cpp",
     "kernels/native/stable_abi/qualified_capability_table.h",
+    "kernels/native/tests/test_qualified_capability_selector.py",
 )
 NATIVE_ADR0022_GENERATED_PROJECTIONS: tuple[str, ...] = (
     "kernels/native/generated/launcher_plans.generated.cpp",
@@ -3032,14 +3042,18 @@ NATIVE_SIGNED_QUALIFICATION_ACTIVE_PATHS: tuple[str, ...] = (
     "kernels/native/README.md",
     "kernels/native/__init__.py",
     "kernels/native/component.yaml",
+    "kernels/native/manifests/pairformer_gpu_qualification.json",
+    "kernels/native/manifests/pairformer_gpu_qualification.schema.json",
     "kernels/native/manifests/qualification_release.schema.json",
     "kernels/native/manifests/qualified_capability_index.json",
     "kernels/native/manifests/qualified_capability_index.schema.json",
     "kernels/native/python/__init__.py",
     "kernels/native/python/capability_index.py",
+    "kernels/native/python/gpu_qualification.py",
     "kernels/native/python/loader.py",
     "kernels/native/python/qualification.py",
     "kernels/native/tests/test_capability_index.py",
+    "kernels/native/tests/test_gpu_qualification.py",
     "kernels/native/tests/test_loader_policy.py",
     "kernels/native/tests/test_qualification.py",
 )
@@ -3065,6 +3079,7 @@ def build_native_source_incubation_entry(path: str) -> dict[str, object]:
             "build_targets": ["//kernels/native:native_policy_inputs"],
             "test_targets": [
                 "//kernels/native:test_capability_index",
+                "//kernels/native:test_gpu_qualification",
                 "//kernels/native:test_loader_policy",
                 "//kernels/native:test_qualification",
             ],

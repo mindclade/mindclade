@@ -97,6 +97,33 @@ def self_test() -> None:
                     ".#deepep --command" not in by_key[key]["command"]
                 ):
                     raise AssertionError(f"{key} bypasses the pinned DeepEP Nix environment")
+            for architecture in ("sm90a", "sm100a"):
+                key = f"pairformer-{architecture}-qualification-preflight"
+                step = by_key[key]
+                if step.get("depends_on") != ["gpu-activation-gate"]:
+                    raise AssertionError(f"{key} bypasses the GPU activation gate")
+                if step.get("agents", {}).get("gpu_arch") != architecture:
+                    raise AssertionError(f"{key} is not bound to exact GPU architecture")
+                if f"--lane {architecture} --verify-environment" not in step["command"]:
+                    raise AssertionError(f"{key} does not assert its pinned environment")
+        if pipeline_class == "release":
+            by_key = {step["key"]: step for step in value["steps"]}
+            source_contract = by_key["release-signing-source-contract"]
+            expected_policy = {
+                "MINDCLADE_REQUIRED_APPROVAL_GATES": "K4,K5",
+                "MINDCLADE_SIGNING_KEY_CUSTODY": "external-only",
+                "MINDCLADE_SIGNING_KEY_PROVIDERS": "gcp-kms,pkcs11-hsm",
+                "MINDCLADE_TRANSPARENCY_MODE": "append-only-hash-chain",
+            }
+            if source_contract.get("env") != expected_policy:
+                raise AssertionError("release source contract omits protected signing policy")
+            if source_contract.get("command") != "bazel test //tests:release_signing_test":
+                raise AssertionError("release source contract does not exercise the signing drill")
+            connected_gate = by_key["release-connected-not-qualified"]
+            if connected_gate.get("depends_on") != ["release-signing-source-contract"]:
+                raise AssertionError("connected release gate bypasses source signing checks")
+            if "exit 78" not in connected_gate.get("command", ""):
+                raise AssertionError("connected release signing is not fail-closed")
     environment_hook = (BUILDKITE_ROOT / "hooks/environment").read_text(encoding="utf-8")
     if "accept-flake-config = false" not in environment_hook:
         raise AssertionError("environment hook permits repository-controlled Nix settings")

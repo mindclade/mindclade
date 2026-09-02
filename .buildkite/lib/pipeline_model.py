@@ -19,6 +19,7 @@ class Step:
     depends_on: tuple[str, ...] = ()
     artifact_paths: tuple[str, ...] = ()
     env: dict[str, str] = field(default_factory=lambda: {})
+    agent_tags: dict[str, str] = field(default_factory=lambda: {})
     parallelism: int | None = None
     soft_fail: bool = False
 
@@ -37,6 +38,9 @@ class Step:
         for key in self.env:
             if not key.startswith("MINDCLADE_"):
                 raise ValueError(f"step {self.key} has an ungoverned environment entry")
+        for key, value in self.agent_tags.items():
+            if key not in {"gpu_arch"} or value not in {"sm90a", "sm100a"}:
+                raise ValueError(f"step {self.key} has an ungoverned agent tag")
         if self.parallelism is not None and not 2 <= self.parallelism <= 16:
             raise ValueError(f"step {self.key} has invalid parallelism")
 
@@ -104,7 +108,7 @@ def render_pipeline(steps: Iterable[Step], environment: dict[str, str]) -> dict[
     rendered_steps: list[dict[str, Any]] = []
     for step in materialized:
         rendered = step.as_mapping()
-        rendered["agents"] = {"queue": queue}
+        rendered["agents"] = {"queue": queue, **step.agent_tags}
         rendered_steps.append(rendered)
     return {
         "env": dict(sorted(environment.items())),

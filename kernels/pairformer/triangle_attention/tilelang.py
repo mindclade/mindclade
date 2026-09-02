@@ -187,13 +187,16 @@ def build_forward_program(
                     row_max = T.alloc_local((1,), "float32")
                     row_sum = T.alloc_local((1,), "float32")
                     numerator = T.alloc_local((1,), "float32")
+                    has_source = T.alloc_local((1,), "int32")
                     row_max[0] = -T.infinity("float32")
                     row_sum[0] = 0.0
                     numerator[0] = 0.0
+                    has_source[0] = 0
 
-                    # Pass one computes the stable row maximum.  Each output
-                    # lane deliberately recomputes the scalar statistic; this
-                    # avoids synchronization and retains fixed reduction order.
+                    # One-pass online softmax.  Rescale both normalization and
+                    # value state whenever the running maximum changes.  This
+                    # retains fixed reduction order without materializing
+                    # logits/probabilities or making a second key pass.
                     for key_index in T.serial(n):
                         score = T.alloc_local((1,), "float32")
                         score[0] = 0.0
@@ -206,35 +209,36 @@ def build_forward_program(
                             "float32", bias[batch_index, head, query_index, key_index]
                         )
                         if mask[batch_index, query_index, key_index]:
-                            row_max[0] = T.max(row_max[0], score[0])
+                            if has_source[0] == 0:
+                                row_max[0] = score[0]
+                                row_sum[0] = 1.0
+                                numerator[0] = T.Cast(
+                                    "float32", v[batch_index, key_index, head, out_d]
+                                )
+                                has_source[0] = 1
+                            else:
+                                next_max = T.max(row_max[0], score[0])
+                                old_scale = T.exp(row_max[0] - next_max)
+                                new_scale = T.exp(score[0] - next_max)
+                                row_sum[0] = row_sum[0] * old_scale + new_scale
+                                numerator[0] = (
+                                    numerator[0] * old_scale
+                                    + new_scale
+                                    * T.Cast(
+                                        "float32",
+                                        v[batch_index, key_index, head, out_d],
+                                    )
+                                )
+                                row_max[0] = next_max
 
-                    # Pass two performs online-normalized value accumulation.
-                    for key_index in T.serial(n):
-                        score = T.alloc_local((1,), "float32")
-                        score[0] = 0.0
-                        for reduce_d in T.serial(head_dim):
-                            score[0] += T.Cast("float32", q[batch_index, query_index, head, reduce_d]) * T.Cast(
-                                "float32", k[batch_index, key_index, head, reduce_d]
-                            )
-                        score[0] = score[0] * scale
-                        score[0] += T.Cast(
-                            "float32", bias[batch_index, head, query_index, key_index]
-                        )
-                        if mask[batch_index, query_index, key_index]:
-                            probability_numerator = T.exp(score[0] - row_max[0])
-                            row_sum[0] += probability_numerator
-                            numerator[0] += probability_numerator * T.Cast(
-                                "float32", v[batch_index, key_index, head, out_d]
-                            )
-
-                    if row_sum[0] > 0.0:
+                    if has_source[0] != 0:
                         output[batch_index, query_index, head, out_d] = T.Cast(
                             dtype, numerator[0] / row_sum[0]
                         )
                     else:
                         output[batch_index, query_index, head, out_d] = T.Cast(dtype, 0.0)
                     if out_d == 0:
-                        if row_sum[0] > 0.0:
+                        if has_source[0] != 0:
                             lse[batch_index, head, query_index] = row_max[0] + T.log(row_sum[0])
                         else:
                             lse[batch_index, head, query_index] = -T.infinity("float32")

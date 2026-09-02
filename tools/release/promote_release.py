@@ -10,10 +10,10 @@ from pathlib import Path
 
 try:
     from .build_release_manifest import atomic_write_json, load_object, validate_payload_digest
-    from .verify_release import load_public_key, verify
+    from .verify_release import verify_paths
 except ImportError:
     from build_release_manifest import atomic_write_json, load_object, validate_payload_digest
-    from verify_release import load_public_key, verify
+    from verify_release import verify_paths
 
 UTC_RE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
 CHANNELS = {"experimental", "candidate", "internal", "staging"}
@@ -24,6 +24,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--manifest", type=Path, required=True)
     parser.add_argument("--public-key", type=Path, required=True)
     parser.add_argument("--key-id", required=True)
+    parser.add_argument("--k4-approval", type=Path, required=True)
+    parser.add_argument("--k5-approval", type=Path, required=True)
+    parser.add_argument("--transparency-log", type=Path, required=True)
     parser.add_argument("--target-channel", choices=sorted(CHANNELS), required=True)
     parser.add_argument("--actor", required=True)
     parser.add_argument("--created-at", required=True)
@@ -34,7 +37,14 @@ def main(argv: Sequence[str] | None = None) -> int:
             raise ValueError("created-at must be a whole-second UTC timestamp")
         manifest = load_object(args.manifest)
         release_digest = validate_payload_digest(manifest)
-        verify(manifest, load_public_key(args.public_key), args.key_id)
+        verify_paths(
+            manifest,
+            args.public_key,
+            args.key_id,
+            args.k4_approval,
+            args.k5_approval,
+            args.transparency_log,
+        )
         intent = {
             "schema_version": "mindclade.release-transition/v1",
             "kind": "PromotionIntent",

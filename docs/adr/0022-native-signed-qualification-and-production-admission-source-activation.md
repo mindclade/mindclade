@@ -50,6 +50,24 @@ rows. Deterministic CPU test keys are confined to test code, are named
 `test-only`, and cannot sign or verify production evidence. Production trust
 roots must be supplied explicitly through protected runtime configuration.
 
+The protected release source lane cannot read a private key. It accepts only a
+detached ECDSA P-256 signature from an allowlisted `gcp-kms://` or
+`pkcs11-hsm://` key identity declaring HSM protection, verifies that signature
+against an explicitly supplied public key, and binds canonical K4 and K5
+approval-record digests into the release payload. K4 and K5 require different
+reviewer identities and approval IDs; the external signer must be a third
+identity. Signature attachment appends a canonical hash-chained transparency
+record. Verification requires that record and rejects any later revocation.
+
+The protected Buildkite release definition exercises external-signature,
+independent-approval, verification, transparency-chain, revocation, and
+rollback-selection behavior before stopping with a connected-not-qualified
+gate. The drill revokes one immutable release digest and selects a distinct
+previously signed digest without rebuilding it or mutating history. This is
+source evidence only: no connected KMS/HSM, protected approval system,
+append-only service, signing identity, promotion, or production capability is
+asserted, and the checked-in capability tables remain empty.
+
 ## Consequences
 
 The repository can validate the source contracts and exercise test-only
@@ -88,4 +106,4 @@ a signed prior K5 capability and matching native projection exist.
 - Security and safety impact: explicit trust roots, exact digest and revocation checks, and native-table reconciliation fail closed before load; no production authority is granted
 - Migration: activate only the declared source/test closure; retain zero capability rows; require exact schema-4/generator-8/BuildReceipt-v4 evidence for future admission
 - Rollback: supersede this ADR and return activated source paths to target; runtime records remain immutable and require a separately signed rollback receipt
-- Required evidence: repository manifest validation; CODEOWNERS coverage; focused source tests; clean generated-table parity; target-GPU K0-K5 evidence before any promotion
+- Required evidence: repository manifest validation; CODEOWNERS coverage; focused source tests; external KMS/HSM signature verification; independent K4/K5 approval binding; append-only transparency-chain validation; exercised source revocation/rollback drill; clean generated-table parity; connected signer, approval, transparency, and target-GPU K0-K5 evidence before any promotion

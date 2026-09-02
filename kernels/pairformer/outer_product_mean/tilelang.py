@@ -66,7 +66,17 @@ def build_normalizer_program(
     right_channels: int = 64,
     threads: int = 256,
 ) -> object:
-    target_config = _configuration(**locals())
+    target_config = _configuration(
+        target=target,
+        architecture=architecture,
+        dtype=dtype,
+        batch_size=batch_size,
+        source_count=source_count,
+        node_count=node_count,
+        left_channels=left_channels,
+        right_channels=right_channels,
+        threads=threads,
+    )
     tilelang, T = _tilelang()
     total = batch_size * node_count * node_count
     blocks = (total + threads - 1) // threads
@@ -107,11 +117,34 @@ def build_numerator_program(
     left_channels: int = 64,
     right_channels: int = 64,
     threads: int = 256,
+    block_left_channels: int = 64,
+    block_right_channels: int = 64,
+    block_source: int = 32,
+    num_stages: int = 3,
+    enable_rasterization: bool = True,
 ) -> object:
-    target_config = _configuration(**locals())
+    target_config = _configuration(
+        target=target,
+        architecture=architecture,
+        dtype=dtype,
+        batch_size=batch_size,
+        source_count=source_count,
+        node_count=node_count,
+        left_channels=left_channels,
+        right_channels=right_channels,
+        threads=threads,
+    )
+    if block_left_channels not in {32, 64, 128}:
+        raise ValueError("block_left_channels must be one of 32, 64, or 128")
+    if block_right_channels not in {32, 64, 128}:
+        raise ValueError("block_right_channels must be one of 32, 64, or 128")
+    if block_source not in {16, 32, 64}:
+        raise ValueError("block_source must be one of 16, 32, or 64")
+    if num_stages not in {2, 3, 4}:
+        raise ValueError("num_stages must be one of 2, 3, or 4")
+    if not isinstance(enable_rasterization, bool):
+        raise TypeError("enable_rasterization must be a bool")
     tilelang, T = _tilelang()
-    total = batch_size * node_count * node_count * left_channels * right_channels
-    blocks = (total + threads - 1) // threads
 
     @tilelang.jit(out_idx=[5], target=target_config)
     @T.prim_func
@@ -127,31 +160,99 @@ def build_numerator_program(
         ),
     ):
         T.func_attr({"global_symbol": "mindclade_tilelang_outer_product_mean_numerator_raw"})
-        with T.Kernel(blocks, threads=threads) as block:
-            accumulation = T.alloc_local((1,), "float32")
-            for lane in T.Parallel(threads):
-                flat = block * threads + lane
-                if flat < total:
-                    right_channel = flat % right_channels
-                    left_channel = (flat // right_channels) % left_channels
-                    right_node = (flat // (right_channels * left_channels)) % node_count
-                    left_node = (
-                        flat // (right_channels * left_channels * node_count)
-                    ) % node_count
-                    batch = flat // (
-                        right_channels * left_channels * node_count * node_count
+        with T.Kernel(
+            T.ceildiv(right_channels, block_right_channels),
+            T.ceildiv(left_channels, block_left_channels),
+            batch_size * node_count * node_count,
+            threads=threads,
+        ) as (right_channel_block, left_channel_block, node_pair):
+            batch = node_pair // (node_count * node_count)
+            pair = node_pair % (node_count * node_count)
+            left_node = pair // node_count
+            right_node = pair % node_count
+            left_shared = T.alloc_shared(
+                (block_left_channels, block_source), dtype
+            )
+            right_shared = T.alloc_shared(
+                (block_right_channels, block_source), dtype
+            )
+            accumulation = T.alloc_fragment(
+                (block_left_channels, block_right_channels), "float32"
+            )
+            T.use_swizzle(panel_size=10, enable=enable_rasterization)
+            T.clear(accumulation)
+            for source_block in T.Pipelined(
+                T.ceildiv(source_count, block_source),
+                num_stages=num_stages,
+            ):
+                for local_channel, local_source in T.Parallel(
+                    block_left_channels, block_source
+                ):
+                    left_channel = (
+                        left_channel_block * block_left_channels + local_channel
                     )
-                    accumulation[0] = T.float32(0)
-                    for source in T.serial(source_count):
-                        accumulation[0] += (
-                            T.Cast("float32", left[batch, source, left_node, left_channel])
-                            * T.Cast("float32", right[batch, source, right_node, right_channel])
-                            * T.Cast("float32", mask[batch, source, left_node])
-                            * T.Cast("float32", mask[batch, source, right_node])
+                    source = source_block * block_source + local_source
+                    if left_channel < left_channels and source < source_count:
+                        left_shared[local_channel, local_source] = T.Cast(
+                            dtype,
+                            T.Cast(
+                                "float32",
+                                left[batch, source, left_node, left_channel],
+                            )
+                            * T.Cast(
+                                "float32", mask[batch, source, left_node]
+                            ),
                         )
-                    denominator = T.max(normalizer[batch, left_node, right_node], epsilon)
-                    output[batch, left_node, right_node, left_channel, right_channel] = T.Cast(
-                        dtype, accumulation[0] / denominator
+                    else:
+                        left_shared[local_channel, local_source] = T.Cast(dtype, 0)
+                for local_channel, local_source in T.Parallel(
+                    block_right_channels, block_source
+                ):
+                    right_channel = (
+                        right_channel_block * block_right_channels + local_channel
+                    )
+                    source = source_block * block_source + local_source
+                    if right_channel < right_channels and source < source_count:
+                        right_shared[local_channel, local_source] = T.Cast(
+                            dtype,
+                            T.Cast(
+                                "float32",
+                                right[batch, source, right_node, right_channel],
+                            )
+                            * T.Cast(
+                                "float32", mask[batch, source, right_node]
+                            ),
+                        )
+                    else:
+                        right_shared[local_channel, local_source] = T.Cast(dtype, 0)
+                T.gemm(
+                    left_shared,
+                    right_shared,
+                    accumulation,
+                    transpose_B=True,
+                )
+            denominator = T.max(
+                normalizer[batch, left_node, right_node], epsilon
+            )
+            for local_left, local_right in T.Parallel(
+                block_left_channels, block_right_channels
+            ):
+                left_channel = (
+                    left_channel_block * block_left_channels + local_left
+                )
+                right_channel = (
+                    right_channel_block * block_right_channels + local_right
+                )
+                if left_channel < left_channels and right_channel < right_channels:
+                    output[
+                        batch,
+                        left_node,
+                        right_node,
+                        left_channel,
+                        right_channel,
+                    ] = T.Cast(
+                        dtype,
+                        accumulation[local_left, local_right] / denominator,
                     )
 
     return mindclade_tilelang_outer_product_mean_numerator_raw

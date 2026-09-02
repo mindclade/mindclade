@@ -12,6 +12,7 @@ extern "C" {
 #endif
 
 #define MINDCLADE_NODE_LAUNCH_ABI_VERSION UINT32_C(1)
+#define MINDCLADE_NODE_ANY_RANK_V1 INT32_C(-1)
 
 #if defined(_MSC_VER)
 #define MINDCLADE_NODE_ALIGN_8 __declspec(align(8))
@@ -57,6 +58,11 @@ enum {
   MINDCLADE_NODE_TENSOR_OPTIONAL_V1 = 1u << 1
 };
 
+enum {
+  MINDCLADE_NODE_CONTRACT_OPTIONAL_V1 = 1u << 0,
+  MINDCLADE_NODE_CONTRACT_WORKSPACE_V1 = 1u << 1
+};
+
 typedef struct MINDCLADE_NODE_ALIGN_8 MindcladeNodeTensorV1 {
   void* data;
   const int64_t* sizes;
@@ -88,8 +94,29 @@ typedef struct MINDCLADE_NODE_ALIGN_8 MindcladeNodeLaunchV1 {
   const MindcladeNodeValueV1* parameters;
 } MindcladeNodeLaunchV1;
 
+typedef struct MINDCLADE_NODE_ALIGN_8 MindcladeNodeParameterContractV1 {
+  uint32_t kind;
+  uint32_t access;
+  int32_t rank;
+  uint32_t flags;
+} MindcladeNodeParameterContractV1;
+
+typedef struct MINDCLADE_NODE_ALIGN_8 MindcladeNodeLaunchContractV1 {
+  uint32_t parameter_count;
+  uint32_t reserved;
+  uint8_t specialization_digest[32];
+  const MindcladeNodeParameterContractV1* parameters;
+} MindcladeNodeLaunchContractV1;
+
 typedef int32_t (*MindcladeNodeAdapterV1)(
     const MindcladeNodeLaunchV1* launch);
+
+int32_t mindclade_validate_node_launch_v1(
+    const MindcladeNodeLaunchV1* launch);
+
+int32_t mindclade_validate_node_launch_contract_v1(
+    const MindcladeNodeLaunchV1* launch,
+    const MindcladeNodeLaunchContractV1* contract);
 
 #ifdef __cplusplus
 }  // extern "C"
@@ -98,6 +125,10 @@ static_assert(sizeof(void*) == 8, "Mindclade node ABI requires 64-bit pointers")
 static_assert(sizeof(MindcladeNodeTensorV1) == 40, "unexpected tensor ABI layout");
 static_assert(sizeof(MindcladeNodeValueV1) == 48, "unexpected value ABI layout");
 static_assert(sizeof(MindcladeNodeLaunchV1) == 48, "unexpected launch ABI layout");
+static_assert(sizeof(MindcladeNodeParameterContractV1) == 16,
+              "unexpected parameter contract ABI layout");
+static_assert(sizeof(MindcladeNodeLaunchContractV1) == 48,
+              "unexpected launch contract ABI layout");
 static_assert(offsetof(MindcladeNodeLaunchV1, specialization_digest) == 8,
               "unexpected specialization digest offset");
 static_assert(offsetof(MindcladeNodeLaunchV1, parameters) == 40,
@@ -105,11 +136,19 @@ static_assert(offsetof(MindcladeNodeLaunchV1, parameters) == 40,
 static_assert(alignof(MindcladeNodeTensorV1) == 8, "unexpected tensor ABI alignment");
 static_assert(alignof(MindcladeNodeValueV1) == 8, "unexpected value ABI alignment");
 static_assert(alignof(MindcladeNodeLaunchV1) == 8, "unexpected launch ABI alignment");
+static_assert(alignof(MindcladeNodeParameterContractV1) == 8,
+              "unexpected parameter contract ABI alignment");
+static_assert(alignof(MindcladeNodeLaunchContractV1) == 8,
+              "unexpected launch contract ABI alignment");
 #elif defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
 _Static_assert(sizeof(void*) == 8, "Mindclade node ABI requires 64-bit pointers");
 _Static_assert(sizeof(MindcladeNodeTensorV1) == 40, "unexpected tensor ABI layout");
 _Static_assert(sizeof(MindcladeNodeValueV1) == 48, "unexpected value ABI layout");
 _Static_assert(sizeof(MindcladeNodeLaunchV1) == 48, "unexpected launch ABI layout");
+_Static_assert(sizeof(MindcladeNodeParameterContractV1) == 16,
+               "unexpected parameter contract ABI layout");
+_Static_assert(sizeof(MindcladeNodeLaunchContractV1) == 48,
+               "unexpected launch contract ABI layout");
 _Static_assert(offsetof(MindcladeNodeLaunchV1, specialization_digest) == 8,
                "unexpected specialization digest offset");
 _Static_assert(offsetof(MindcladeNodeLaunchV1, parameters) == 40,
@@ -117,6 +156,10 @@ _Static_assert(offsetof(MindcladeNodeLaunchV1, parameters) == 40,
 _Static_assert(_Alignof(MindcladeNodeTensorV1) == 8, "unexpected tensor ABI alignment");
 _Static_assert(_Alignof(MindcladeNodeValueV1) == 8, "unexpected value ABI alignment");
 _Static_assert(_Alignof(MindcladeNodeLaunchV1) == 8, "unexpected launch ABI alignment");
+_Static_assert(_Alignof(MindcladeNodeParameterContractV1) == 8,
+               "unexpected parameter contract ABI alignment");
+_Static_assert(_Alignof(MindcladeNodeLaunchContractV1) == 8,
+               "unexpected launch contract ABI alignment");
 #endif
 
 #undef MINDCLADE_NODE_ALIGN_8
