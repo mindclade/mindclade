@@ -1253,9 +1253,9 @@ def _self_test(org_schema: Path | None) -> None:
                 }
             )
         )
-        readiness_path = root / "authoritative-integration-readiness.v2.json"
+        readiness_path = root / "authoritative-integration-readiness.v3.json"
         readiness_report: dict[str, object] = {
-            "schema_version": "mindclade.authoritative-integration-readiness/v2",
+            "schema_version": "mindclade.authoritative-integration-readiness/v3",
             "criteria": [
                 {"criterion_id": "stages-and-exit-criteria-01", "status": "completion-verified"},
                 {
