@@ -16,6 +16,7 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec
 
 from tools.release.build_release_manifest import (
+    JsonObject,
     build_manifest,
     canonical_json,
     sha256_digest,
@@ -50,7 +51,7 @@ class ReleaseSigningTest(unittest.TestCase):
     def tearDown(self) -> None:
         self.temporary.cleanup()
 
-    def _approval(self, gate: str, subject_digest: str, reviewer: str) -> dict[str, object]:
+    def _approval(self, gate: str, subject_digest: str, reviewer: str) -> JsonObject:
         return {
             "schema_version": "mindclade.release-approval/v1",
             "kind": "QualificationApproval",
@@ -102,7 +103,7 @@ class ReleaseSigningTest(unittest.TestCase):
         signature_path = self.root / f"{name}.external-signature.json"
         unsigned_path.write_bytes(canonical_json(manifest) + b"\n")
         payload = canonical_json(unsigned_payload(manifest))
-        external_signature = {
+        external_signature: JsonObject = {
             "schema_version": "mindclade.external-signature/v1",
             "kind": "ExternalSignature",
             "algorithm": "ecdsa-p256-sha256",
