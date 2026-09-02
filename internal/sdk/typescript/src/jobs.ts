@@ -32,7 +32,6 @@ import {
 	type SubmitOptions,
 } from "./request.js";
 import { invokeUnary } from "./retry.js";
-import { registeredMethodSafety } from "./safety.js";
 
 const REQUEST = "/mindclade.internal.job.v1.JobService/RequestJob";
 const GET = "/mindclade.internal.job.v1.JobService/GetJob";
@@ -68,7 +67,7 @@ export class Jobs {
 		const response = await invokeUnary(
 			this.#core,
 			call,
-			registeredMethodSafety(REQUEST),
+			REQUEST,
 			options.idempotencyKey,
 			(callOptions) =>
 				this.#core.raw.jobs.requestJob(create(RequestJobRequestSchema, { command }), callOptions),
@@ -94,7 +93,7 @@ export class Jobs {
 		const response = await invokeUnary(
 			this.#core,
 			call,
-			registeredMethodSafety(GET),
+			GET,
 			undefined,
 			(callOptions) =>
 				this.#core.raw.jobs.getJob(
@@ -137,7 +136,7 @@ export class Jobs {
 				const response = await invokeUnary(
 					this.#core,
 					call,
-					registeredMethodSafety(LIST),
+					LIST,
 					undefined,
 					(callOptions) => this.#core.raw.jobs.listJobs(paged, callOptions),
 				);
@@ -175,7 +174,7 @@ export class Jobs {
 		const response = await invokeUnary(
 			this.#core,
 			call,
-			registeredMethodSafety(CANCEL),
+			CANCEL,
 			options.idempotencyKey,
 			(callOptions) => this.#core.raw.jobs.cancelJob(request, callOptions),
 		);

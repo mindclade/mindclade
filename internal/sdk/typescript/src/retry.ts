@@ -2,7 +2,9 @@ import type { CallOptions as ConnectCallOptions } from "@connectrpc/connect";
 
 import type { ClientCore } from "./core.js";
 import { MindcladeError, type RetryState } from "./error.js";
+import { metadataKeyNames, observeCall } from "./observability.js";
 import { callHeaders, type PreparedCall, type RetryAttemptState } from "./request.js";
+import { registeredMethodSafety } from "./safety.js";
 
 /**
  * Retry eligibility of a single route.
@@ -39,6 +41,10 @@ export const retryableAttempts = (
 /**
  * Issues one unary RPC under the SDK's single retry policy.
  *
+ * The route is the authority for retry eligibility: the safety class is looked
+ * up here, in one place, so no facade can classify its own RPC and drift from
+ * the table.
+ *
  * When the core carries a response capture, the headers and trailers of
  * the attempt that finally answers are recorded there, which is the plumbing
  * `withResponse()` and the lease-token facades read.
@@ -51,10 +57,14 @@ export const retryableAttempts = (
 export const invokeUnary = async <Result>(
 	core: ClientCore,
 	prepared: PreparedCall,
-	safety: RetrySafety,
+	route: string,
 	idempotencyKey: string | undefined,
 	invoke: (options: ConnectCallOptions) => Promise<Result>,
 ): Promise<Result> => {
+	if (!route.startsWith("/")) {
+		throw MindcladeError.configuration("retry policy requires a fully-qualified RPC route");
+	}
+	const safety = registeredMethodSafety(route);
 	if (safety === "idempotent" && idempotencyKey === undefined) {
 		throw MindcladeError.invalidArgument("idempotent commands require an idempotency key");
 	}
@@ -67,10 +77,12 @@ export const invokeUnary = async <Result>(
 		const position: RetryAttemptState = { attempt: issued, remainingMs };
 		const trailers = new Headers();
 		const capture = core.capture;
+		const headers = callHeaders(core.config, prepared, position, idempotencyKey);
+		const startedAt = core.runtime.nowMs();
 		issued += 1;
 		try {
-			return await invoke({
-				headers: callHeaders(core.config, prepared, position, idempotencyKey),
+			const result = await invoke({
+				headers,
 				timeoutMs: remainingMs,
 				onHeader: (received) => {
 					if (capture !== undefined) capture.headers = received;
@@ -81,6 +93,16 @@ export const invokeUnary = async <Result>(
 				},
 				...(prepared.signal === undefined ? {} : { signal: prepared.signal }),
 			});
+			observeCall(core.config, {
+				attempt: issued - 1,
+				code: undefined,
+				elapsedMs: core.runtime.nowMs() - startedAt,
+				metadataKeys: metadataKeyNames(headers, trailers),
+				method: route,
+				requestId: prepared.requestId,
+				status: "ok",
+			});
+			return result;
 		} catch (reason) {
 			const error = MindcladeError.from(
 				reason,
@@ -88,6 +110,15 @@ export const invokeUnary = async <Result>(
 				core.runtime.nowMs() >= prepared.deadlineMs,
 				{ clampMs: core.config.retry.maxBackoffMs, trailers },
 			);
+			observeCall(core.config, {
+				attempt: issued - 1,
+				code: error.code,
+				elapsedMs: core.runtime.nowMs() - startedAt,
+				metadataKeys: metadataKeyNames(headers, trailers),
+				method: route,
+				requestId: error.requestId ?? prepared.requestId,
+				status: error.kind,
+			});
 			const state = (cause: MindcladeError): RetryState => ({
 				attempts: issued,
 				cause: cause.kind,

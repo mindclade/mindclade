@@ -73,10 +73,10 @@ use tonic::{
 
 use crate::{
     AccessToken, ArtifactStream, ArtifactUploadOptions, CallOptions, CancellationToken, Client,
-    Config, Environment, Error, ErrorKind, GcpWorkloadIdentityProvider, Identity, InferenceStream,
-    InferenceWaitOptions, OperationStream, PaginationLimits, PaginationPage, RecordingTransport,
-    FenceState, FinalCause, JitterSource, QuotaState, RetryPolicy, RpcTransport, SubmitOptions,
-    SystemJitter, TokenProvider, WaitOptions,
+    Config, Environment, Error, ErrorKind, FenceState, FinalCause, GcpWorkloadIdentityProvider,
+    Identity, InferenceStream, InferenceWaitOptions, JitterSource, OperationStream,
+    PaginationLimits, PaginationPage, QuotaState, RecordingTransport, RetryAttemptSummary,
+    RetryPolicy, RpcTransport, SubmitOptions, SystemJitter, TokenProvider, WaitOptions,
     auth::GcpIdentityTokenExchange,
     error::{
         FENCE_PRECONDITION_TYPE, QUOTA_PRECONDITION_TYPE, REVISION_PRECONDITION_TYPE,
@@ -2527,7 +2527,11 @@ fn system_jitter_stays_inside_the_window_and_varies_between_draws() {
     let draws: Vec<u64> = (0..64).map(|_| jitter.jitter_micros(4_000)).collect();
     assert!(draws.iter().all(|value| *value <= 4_000));
     assert!(draws.windows(2).any(|pair| pair[0] != pair[1]));
-    assert!(jitter.jitter_micros(u64::MAX) <= u64::MAX);
+    // The widest possible window must not overflow the inclusive bound, and
+    // must still draw a fresh value on each call.
+    let first = jitter.jitter_micros(u64::MAX);
+    let second = jitter.jitter_micros(u64::MAX);
+    assert_ne!(first, second);
 }
 
 #[tokio::test]
@@ -2734,7 +2738,10 @@ async fn named_unsafe_override_is_required_to_retry_a_non_idempotent_rpc() {
         core.attempt_budget(&acknowledged, CallSafety::NeverRetry)
             .is_err()
     );
-    let widened = CallOptions::new().with_max_attempts(4).unwrap().prepare(&config);
+    let widened = CallOptions::new()
+        .with_max_attempts(4)
+        .unwrap()
+        .prepare(&config);
     assert!(
         core.attempt_budget(&widened, CallSafety::NeverRetry)
             .is_err()
@@ -2847,109 +2854,123 @@ async fn errors_report_attempt_count_cumulative_delay_and_final_cause() {
     );
 
     let terminal = Error::from_status(&status_with(Code::NotFound, &[]));
-    assert_eq!(terminal.retry_attempts(), Default::default());
+    assert_eq!(terminal.retry_attempts(), RetryAttemptSummary::default());
     assert_eq!(
         terminal.retry_attempts().final_cause(),
         FinalCause::NotRetried
     );
 }
 
+/// Every documented gRPC status class, its distinct `ErrorKind`, its stable
+/// code, and its retry eligibility under the one SDK-wide predicate.
+const DOCUMENTED_STATUS_CLASSES: &[(Code, ErrorKind, &str, bool)] = &[
+    (
+        Code::Ok,
+        ErrorKind::Remote,
+        "mindclade.remote_failure",
+        false,
+    ),
+    (
+        Code::Cancelled,
+        ErrorKind::Cancelled,
+        "mindclade.cancelled",
+        false,
+    ),
+    (
+        Code::Unknown,
+        ErrorKind::Remote,
+        "mindclade.remote_failure",
+        false,
+    ),
+    (
+        Code::InvalidArgument,
+        ErrorKind::Validation,
+        "mindclade.validation_failed",
+        false,
+    ),
+    (
+        Code::DeadlineExceeded,
+        ErrorKind::DeadlineExceeded,
+        "mindclade.deadline_exceeded",
+        true,
+    ),
+    (
+        Code::NotFound,
+        ErrorKind::NotFound,
+        "mindclade.not_found",
+        false,
+    ),
+    (
+        Code::AlreadyExists,
+        ErrorKind::AlreadyExists,
+        "mindclade.already_exists",
+        false,
+    ),
+    (
+        Code::PermissionDenied,
+        ErrorKind::Authorization,
+        "mindclade.authorization_denied",
+        false,
+    ),
+    (
+        Code::ResourceExhausted,
+        ErrorKind::RateLimit,
+        "mindclade.rate_limited",
+        true,
+    ),
+    (
+        Code::FailedPrecondition,
+        ErrorKind::Conflict,
+        "mindclade.conflict",
+        false,
+    ),
+    (
+        Code::Aborted,
+        ErrorKind::Conflict,
+        "mindclade.conflict",
+        true,
+    ),
+    (
+        Code::OutOfRange,
+        ErrorKind::Validation,
+        "mindclade.validation_failed",
+        false,
+    ),
+    (
+        Code::Unimplemented,
+        ErrorKind::Remote,
+        "mindclade.remote_failure",
+        false,
+    ),
+    (
+        Code::Internal,
+        ErrorKind::Remote,
+        "mindclade.remote_failure",
+        false,
+    ),
+    (
+        Code::Unavailable,
+        ErrorKind::RetryableService,
+        "mindclade.service_unavailable",
+        true,
+    ),
+    (
+        Code::DataLoss,
+        ErrorKind::Remote,
+        "mindclade.remote_failure",
+        false,
+    ),
+    (
+        Code::Unauthenticated,
+        ErrorKind::Authentication,
+        "mindclade.authentication_failed",
+        false,
+    ),
+];
+
 #[test]
 fn error_kind_maps_every_documented_status_class() {
-    for (code, kind, stable, retryable) in [
-        (Code::Ok, ErrorKind::Remote, "mindclade.remote_failure", false),
-        (
-            Code::Cancelled,
-            ErrorKind::Cancelled,
-            "mindclade.cancelled",
-            false,
-        ),
-        (
-            Code::Unknown,
-            ErrorKind::Remote,
-            "mindclade.remote_failure",
-            false,
-        ),
-        (
-            Code::InvalidArgument,
-            ErrorKind::Validation,
-            "mindclade.validation_failed",
-            false,
-        ),
-        (
-            Code::DeadlineExceeded,
-            ErrorKind::DeadlineExceeded,
-            "mindclade.deadline_exceeded",
-            true,
-        ),
-        (
-            Code::NotFound,
-            ErrorKind::NotFound,
-            "mindclade.not_found",
-            false,
-        ),
-        (
-            Code::AlreadyExists,
-            ErrorKind::AlreadyExists,
-            "mindclade.already_exists",
-            false,
-        ),
-        (
-            Code::PermissionDenied,
-            ErrorKind::Authorization,
-            "mindclade.authorization_denied",
-            false,
-        ),
-        (
-            Code::ResourceExhausted,
-            ErrorKind::RateLimit,
-            "mindclade.rate_limited",
-            true,
-        ),
-        (
-            Code::FailedPrecondition,
-            ErrorKind::Conflict,
-            "mindclade.conflict",
-            false,
-        ),
-        (Code::Aborted, ErrorKind::Conflict, "mindclade.conflict", true),
-        (
-            Code::OutOfRange,
-            ErrorKind::Validation,
-            "mindclade.validation_failed",
-            false,
-        ),
-        (
-            Code::Unimplemented,
-            ErrorKind::Remote,
-            "mindclade.remote_failure",
-            false,
-        ),
-        (
-            Code::Internal,
-            ErrorKind::Remote,
-            "mindclade.remote_failure",
-            false,
-        ),
-        (
-            Code::Unavailable,
-            ErrorKind::RetryableService,
-            "mindclade.service_unavailable",
-            true,
-        ),
-        (
-            Code::DataLoss,
-            ErrorKind::Remote,
-            "mindclade.remote_failure",
-            false,
-        ),
-        (
-            Code::Unauthenticated,
-            ErrorKind::Authentication,
-            "mindclade.authentication_failed",
-            false,
-        ),
-    ] {
+    for (code, kind, stable, retryable) in DOCUMENTED_STATUS_CLASSES.iter().copied() {
         let error = Error::from_status(&status_with(code, &[]));
         assert_eq!(error.kind(), kind, "kind for {code:?}");
         assert_eq!(error.stable_code(), stable, "stable code for {code:?}");

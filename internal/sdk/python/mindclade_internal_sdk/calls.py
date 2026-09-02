@@ -78,6 +78,13 @@ class RpcObservation:
     elapsed_seconds: float
     status: str
     request_id: str
+    trace_id: str = ""
+    retry_count: int = 0
+    """0-based retry counter, matching the ``x-mindclade-retry-count`` header."""
+    cumulative_delay_seconds: float = 0.0
+    """Total time already spent in retry backoff for this call."""
+    metadata_keys: tuple[str, ...] = ()
+    """Request metadata KEY NAMES only. Values are never observable."""
 
 
 class Observer(Protocol):

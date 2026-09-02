@@ -5,7 +5,6 @@ from __future__ import annotations
 import asyncio
 import threading
 import time
-from collections.abc import AsyncIterator, Iterator
 from typing import cast
 
 import grpc
@@ -13,20 +12,13 @@ from google.protobuf.message import Message
 from mindclade.internal.job.v1 import job_service_pb2
 from mindclade.job.v1 import operation_pb2
 
-from ._invocation import (
-    AsyncInvoker,
-    SyncInvoker,
-    canonical_digest,
-    command_context,
-    retry_delay,
-)
-from ._raw import AsyncWithRawResponse, WithRawResponse
+from ._invocation import AsyncInvoker, SyncInvoker, canonical_digest, command_context
+from ._raw import AsyncWithRawResponse, WithRawResponse, streaming_method
 from ._validation import required_response_message, required_text
-from .calls import CallOptions, PreparedCall, prepare_call
+from ._watch import AsyncWatchStream, WatchSpec, WatchStream, watch_budget
+from .calls import CallOptions, prepare_call
 from .errors import (
     CancelledError,
-    DeadlineExceededError,
-    MindcladeError,
     OperationFailedError,
     OperationTimeoutError,
     ProtocolError,
@@ -114,6 +106,59 @@ def _validate_listed_operation(
             "ListOperations returned invalid or cross-project durable state",
             status=grpc.StatusCode.DATA_LOSS,
         )
+
+
+type OperationWatchSpec = WatchSpec[job_service_pb2.WatchOperationResponse, int]
+
+
+def _operation_watch_spec(name: str) -> OperationWatchSpec:
+    """Describe the operation watch to the shared resumable watcher.
+
+    Every check the per-domain loop used to perform lives in ``accept`` and so
+    still runs on every event, including the first event after a reconnect.
+    """
+
+    operation_name = required_text("operation name", name)
+
+    def build(cursor: int, remaining: float) -> Message:
+        del remaining
+        return job_service_pb2.WatchOperationRequest(
+            name=operation_name,
+            after_sequence=cursor,
+        )
+
+    def accept(
+        raw: Message,
+        cursor: int,
+    ) -> tuple[job_service_pb2.WatchOperationResponse, int, bool]:
+        response = cast(job_service_pb2.WatchOperationResponse, raw)
+        if response.sequence <= cursor:
+            raise ProtocolError(
+                "operation watch sequence did not advance",
+                status=grpc.StatusCode.DATA_LOSS,
+            )
+        operation = _operation_from_response(response, label="operation watch")
+        if operation.operation_id != operation_name:
+            raise ProtocolError(
+                "operation watch returned a different operation",
+                status=grpc.StatusCode.DATA_LOSS,
+            )
+        _raise_if_operation_failed(operation)
+        return response, response.sequence, operation.done
+
+    return WatchSpec(
+        method=WATCH_OPERATION,
+        build_request=build,
+        accept=accept,
+        closed_error=lambda: UnavailableError(
+            "operation watch closed before a terminal event",
+            retryable=True,
+        ),
+        timeout_error=lambda: OperationTimeoutError(
+            "operation watch exceeded its total deadline"
+        ),
+        cancelled_error=lambda: CancelledError("operation watch was cancelled"),
+    )
 
 
 class Operations(WithRawResponse):
@@ -258,6 +303,7 @@ class Operations(WithRawResponse):
             else:
                 time.sleep(sleep_for)
 
+    @streaming_method
     def watch(
         self,
         name: str,
@@ -266,92 +312,63 @@ class Operations(WithRawResponse):
         timeout: float = 300.0,
         cancellation: threading.Event | None = None,
         options: CallOptions | None = None,
-    ) -> Iterator[job_service_pb2.WatchOperationResponse]:
+    ) -> WatchStream[job_service_pb2.WatchOperationResponse, int]:
+        """Follow one operation's durable events, reconnecting inside the deadline."""
+
+        return self._watch(
+            name,
+            after_sequence=after_sequence,
+            timeout=timeout,
+            cancellation=cancellation,
+            options=options,
+        )
+
+    @streaming_method
+    def resume_watch(
+        self,
+        name: str,
+        *,
+        after_sequence: int,
+        timeout: float = 300.0,
+        cancellation: threading.Event | None = None,
+        options: CallOptions | None = None,
+    ) -> WatchStream[job_service_pb2.WatchOperationResponse, int]:
+        """Re-attach to a watch from a cursor the caller durably recorded.
+
+        ``after_sequence`` is required rather than defaulted, so a resume can
+        never silently replay an operation from its first event.
+        """
+
+        return self._watch(
+            name,
+            after_sequence=after_sequence,
+            timeout=timeout,
+            cancellation=cancellation,
+            options=options,
+        )
+
+    def _watch(
+        self,
+        name: str,
+        *,
+        after_sequence: int,
+        timeout: float,
+        cancellation: threading.Event | None,
+        options: CallOptions | None,
+    ) -> WatchStream[job_service_pb2.WatchOperationResponse, int]:
         if after_sequence < 0:
             raise ValueError("after_sequence cannot be negative")
-        if timeout <= 0:
-            raise ValueError("watch timeout must be positive")
         if cancellation is not None and cancellation.is_set():
             raise CancelledError("operation watch was cancelled")
-        merged = options or CallOptions(timeout=timeout)
-        base_call = prepare_call(
-            merged,
-            default_timeout=timeout,
-            require_idempotency=False,
+        base, total = watch_budget(timeout, options)
+        return WatchStream(
+            self._invoker,
+            _operation_watch_spec(name),
+            cursor=after_sequence,
+            call=base,
+            total=total,
+            cancellation=cancellation,
         )
-        operation_name = required_text("operation name", name)
-        deadline = time.monotonic() + base_call.timeout
-        sequence = after_sequence
-        failures = 0
-        while True:
-            if cancellation is not None and cancellation.is_set():
-                raise CancelledError("operation watch was cancelled")
-            remaining = deadline - time.monotonic()
-            if remaining <= 0:
-                raise OperationTimeoutError("operation watch exceeded its total deadline")
-            call = PreparedCall(
-                timeout=remaining,
-                request_id=base_call.request_id,
-                trace_id=base_call.trace_id,
-                idempotency_key=None,
-            )
-            request = job_service_pb2.WatchOperationRequest(
-                name=operation_name,
-                after_sequence=sequence,
-            )
-            received = False
-            try:
-                for raw_response in self._invoker.stream(
-                    WATCH_OPERATION,
-                    request,
-                    call=call,
-                    cancellation=cancellation,
-                ):
-                    received = True
-                    response = cast(job_service_pb2.WatchOperationResponse, raw_response)
-                    if response.sequence <= sequence:
-                        raise ProtocolError(
-                            "operation watch sequence did not advance",
-                            status=grpc.StatusCode.DATA_LOSS,
-                        )
-                    operation = _operation_from_response(response, label="operation watch")
-                    if operation.operation_id != operation_name:
-                        raise ProtocolError(
-                            "operation watch returned a different operation",
-                            status=grpc.StatusCode.DATA_LOSS,
-                        )
-                    sequence = response.sequence
-                    failures = 0
-                    _raise_if_operation_failed(operation)
-                    yield response
-                    if operation.done:
-                        return
-                stream_error: MindcladeError = UnavailableError(
-                    "operation watch closed before a terminal event",
-                    retryable=True,
-                )
-            except DeadlineExceededError:
-                raise OperationTimeoutError("operation watch exceeded its total deadline") from None
-            except MindcladeError as error:
-                if not error.retryable:
-                    raise
-                stream_error = error
-            if received:
-                failures = 0
-            failures += 1
-            if failures >= self._invoker.config.retry.max_attempts:
-                raise stream_error
-            delay = retry_delay(
-                self._invoker.config,
-                failures,
-                deadline - time.monotonic(),
-                retry_after=stream_error.retry_after,
-            )
-            if cancellation is not None:
-                if cancellation.wait(delay):
-                    raise CancelledError("operation watch was cancelled")
-            elif delay > 0:
-                time.sleep(delay)
 
 
 class AsyncOperations(AsyncWithRawResponse):
@@ -501,7 +518,8 @@ class AsyncOperations(AsyncWithRawResponse):
                 else:
                     raise CancelledError("operation wait was cancelled")
 
-    async def watch(
+    @streaming_method
+    def watch(
         self,
         name: str,
         *,
@@ -509,101 +527,56 @@ class AsyncOperations(AsyncWithRawResponse):
         timeout: float = 300.0,
         cancellation: asyncio.Event | None = None,
         options: CallOptions | None = None,
-    ) -> AsyncIterator[job_service_pb2.WatchOperationResponse]:
+    ) -> AsyncWatchStream[job_service_pb2.WatchOperationResponse, int]:
+        """Follow one operation's durable events, reconnecting inside the deadline."""
+
+        return self._watch(
+            name,
+            after_sequence=after_sequence,
+            timeout=timeout,
+            cancellation=cancellation,
+            options=options,
+        )
+
+    @streaming_method
+    def resume_watch(
+        self,
+        name: str,
+        *,
+        after_sequence: int,
+        timeout: float = 300.0,
+        cancellation: asyncio.Event | None = None,
+        options: CallOptions | None = None,
+    ) -> AsyncWatchStream[job_service_pb2.WatchOperationResponse, int]:
+        """Re-attach to a watch from a cursor the caller durably recorded."""
+
+        return self._watch(
+            name,
+            after_sequence=after_sequence,
+            timeout=timeout,
+            cancellation=cancellation,
+            options=options,
+        )
+
+    def _watch(
+        self,
+        name: str,
+        *,
+        after_sequence: int,
+        timeout: float,
+        cancellation: asyncio.Event | None,
+        options: CallOptions | None,
+    ) -> AsyncWatchStream[job_service_pb2.WatchOperationResponse, int]:
         if after_sequence < 0:
             raise ValueError("after_sequence cannot be negative")
-        if timeout <= 0:
-            raise ValueError("watch timeout must be positive")
         if cancellation is not None and cancellation.is_set():
             raise CancelledError("operation watch was cancelled")
-        merged = options or CallOptions(timeout=timeout)
-        base_call = prepare_call(
-            merged,
-            default_timeout=timeout,
-            require_idempotency=False,
+        base, total = watch_budget(timeout, options)
+        return AsyncWatchStream(
+            self._invoker,
+            _operation_watch_spec(name),
+            cursor=after_sequence,
+            call=base,
+            total=total,
+            cancellation=cancellation,
         )
-        operation_name = required_text("operation name", name)
-        loop = asyncio.get_running_loop()
-        deadline = loop.time() + base_call.timeout
-        sequence = after_sequence
-        failures = 0
-        while True:
-            if cancellation is not None and cancellation.is_set():
-                raise CancelledError("operation watch was cancelled")
-            remaining = deadline - loop.time()
-            if remaining <= 0:
-                raise OperationTimeoutError("operation watch exceeded its total deadline")
-            call = PreparedCall(
-                timeout=remaining,
-                request_id=base_call.request_id,
-                trace_id=base_call.trace_id,
-                idempotency_key=None,
-            )
-            request = job_service_pb2.WatchOperationRequest(
-                name=operation_name,
-                after_sequence=sequence,
-            )
-            received = False
-            try:
-                async with asyncio.timeout(remaining):
-                    async for raw_response in self._invoker.stream(
-                        WATCH_OPERATION,
-                        request,
-                        call=call,
-                        cancellation=cancellation,
-                    ):
-                        received = True
-                        response = cast(job_service_pb2.WatchOperationResponse, raw_response)
-                        if response.sequence <= sequence:
-                            raise ProtocolError(
-                                "operation watch sequence did not advance",
-                                status=grpc.StatusCode.DATA_LOSS,
-                            )
-                        operation = _operation_from_response(
-                            response,
-                            label="operation watch",
-                        )
-                        if operation.operation_id != operation_name:
-                            raise ProtocolError(
-                                "operation watch returned a different operation",
-                                status=grpc.StatusCode.DATA_LOSS,
-                            )
-                        sequence = response.sequence
-                        failures = 0
-                        _raise_if_operation_failed(operation)
-                        yield response
-                        if operation.done:
-                            return
-                stream_error: MindcladeError = UnavailableError(
-                    "operation watch closed before a terminal event",
-                    retryable=True,
-                )
-            except TimeoutError:
-                raise OperationTimeoutError("operation watch exceeded its total deadline") from None
-            except DeadlineExceededError:
-                raise OperationTimeoutError("operation watch exceeded its total deadline") from None
-            except MindcladeError as error:
-                if not error.retryable:
-                    raise
-                stream_error = error
-            if received:
-                failures = 0
-            failures += 1
-            if failures >= self._invoker.config.retry.max_attempts:
-                raise stream_error
-            delay = retry_delay(
-                self._invoker.config,
-                failures,
-                deadline - loop.time(),
-                retry_after=stream_error.retry_after,
-            )
-            if cancellation is None:
-                if delay > 0:
-                    await asyncio.sleep(delay)
-            else:
-                try:
-                    await asyncio.wait_for(cancellation.wait(), timeout=delay)
-                except TimeoutError:
-                    pass
-                else:
-                    raise CancelledError("operation watch was cancelled")

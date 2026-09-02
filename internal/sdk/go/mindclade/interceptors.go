@@ -58,7 +58,12 @@ func unaryInterceptor(config Config) grpc.UnaryClientInterceptor {
 			started := time.Now()
 			observeStarted(config.Observer, method, attempt)
 			invokeErr := invoke(attemptCtx, method, request, response, connection, callOptions...)
-			observeFinished(config.Observer, method, attempt, time.Since(started), errorCode(invokeErr))
+			elapsed := time.Since(started)
+			var normalized error
+			if invokeErr != nil {
+				normalized = enrichError(invokeErr, trailers)
+			}
+			observeFinished(config.Observer, attemptEvent(requestValue, method, attempt, elapsed, invokeErr, normalized, headers, trailers))
 			if invokeErr == nil {
 				// A successful call surfaces its request id only here: there is
 				// no error to carry it, so the raw-response capture is the one
@@ -67,7 +72,6 @@ func unaryInterceptor(config Config) grpc.UnaryClientInterceptor {
 				captureResponseMetadata(requestValue, headers, trailers, "ok", "ok")
 				return nil
 			}
-			normalized := enrichError(invokeErr, trailers)
 			if attempt >= attempts || !shouldRetry(normalized) {
 				captureResponseMetadata(requestValue, headers, trailers, errorCode(invokeErr), safeStatusMessage(status.Code(invokeErr)))
 				return withRetryOutcome(normalized, attempt, cumulativeDelay)
@@ -172,7 +176,7 @@ func streamInterceptor(config Config) grpc.StreamClientInterceptor {
 		started := time.Now()
 		observeStarted(config.Observer, method, 1)
 		stream, err := streamer(ctx, description, connection, method, options...)
-		observeFinished(config.Observer, method, 1, time.Since(started), errorCode(err))
+		observeFinished(config.Observer, attemptEvent(requestValue, method, 1, time.Since(started), err, nil, nil, nil))
 		if err != nil {
 			cancel()
 			// A stream that never opened has no headers or trailers to read, so
@@ -232,9 +236,44 @@ func observeStarted(observer Observer, method string, attempt int) {
 	observer.RPCStarted(method, attempt)
 }
 
-func observeFinished(observer Observer, method string, attempt int, elapsed time.Duration, code Code) {
+// observeFinished reports one completed attempt. An Observer that also
+// implements RequestObserver additionally receives the complete bounded event;
+// both callbacks share one panic guard, so a hostile or broken observer still
+// cannot change an RPC outcome.
+func observeFinished(observer Observer, event RPCEvent) {
 	defer func() { _ = recover() }()
-	observer.RPCFinished(method, attempt, elapsed, code)
+	observer.RPCFinished(event.Method, event.Attempt, event.Elapsed, event.Status)
+	if rich, ok := observer.(RequestObserver); ok {
+		rich.RPCAttempt(event)
+	}
+}
+
+// attemptEvent assembles the bounded telemetry for one attempt. It reads
+// metadata KEY NAMES only and takes request identity from the SDK's own record
+// rather than from server-controlled values, so nothing a server sends can
+// enlarge or poison what an observer receives.
+func attemptEvent(
+	request requestMetadata,
+	method string,
+	attempt int,
+	elapsed time.Duration,
+	invokeErr, normalized error,
+	headers, trailers metadata.MD,
+) RPCEvent {
+	event := RPCEvent{
+		Method:       method,
+		Attempt:      attempt,
+		Elapsed:      elapsed,
+		Status:       errorCode(invokeErr),
+		RequestID:    request.requestID,
+		TraceID:      request.traceID,
+		MetadataKeys: metadataKeyNames(headers, trailers),
+	}
+	var sdkError *Error
+	if errors.As(normalized, &sdkError) {
+		event.RetryAfter = sdkError.RetryAfter
+	}
+	return event
 }
 
 func errorCode(err error) Code {
@@ -304,8 +343,3 @@ func waitContext(ctx context.Context, delay time.Duration) error {
 		return nil
 	}
 }
-
-// isRetryable is the stream-side spelling of the single SDK-wide predicate. It
-// keeps the per-domain watchers on one call shape while they are consolidated,
-// and must never grow a rule of its own.
-func isRetryable(err error) bool { return retryableStatus(err) }

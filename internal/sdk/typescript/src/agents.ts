@@ -55,7 +55,6 @@ import {
 	type SubmitOptions,
 } from "./request.js";
 import { invokeUnary } from "./retry.js";
-import { registeredMethodSafety } from "./safety.js";
 
 const CREATE_DEFINITION = "/mindclade.internal.agent.v1.AgentService/CreateAgentDefinition";
 const UPDATE_DEFINITION = "/mindclade.internal.agent.v1.AgentService/UpdateAgentDefinition";
@@ -104,7 +103,7 @@ export class Agents {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			registeredMethodSafety(CREATE_DEFINITION),
+			CREATE_DEFINITION,
 			options.idempotencyKey,
 			(call) => this.#core.raw.agents.createAgentDefinition(request, call),
 		);
@@ -139,7 +138,7 @@ export class Agents {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			registeredMethodSafety(UPDATE_DEFINITION),
+			UPDATE_DEFINITION,
 			options.idempotencyKey,
 			(call) => this.#core.raw.agents.updateAgentDefinition(request, call),
 		);
@@ -160,7 +159,7 @@ export class Agents {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			registeredMethodSafety(GET_DEFINITION),
+			GET_DEFINITION,
 			undefined,
 			(call) => this.#core.raw.agents.getAgentDefinition(request, call),
 		);
@@ -186,7 +185,7 @@ export class Agents {
 				const response = await invokeUnary(
 					this.#core,
 					prepared,
-					registeredMethodSafety(LIST_DEFINITIONS),
+					LIST_DEFINITIONS,
 					undefined,
 					(call) => this.#core.raw.agents.listAgentDefinitions(paged, call),
 				);
@@ -239,7 +238,7 @@ export class Agents {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			registeredMethodSafety(START_RUN),
+			START_RUN,
 			options.idempotencyKey,
 			(call) => this.#core.raw.agents.startAgentRun(request, call),
 		);
@@ -256,7 +255,7 @@ export class Agents {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			registeredMethodSafety(GET_RUN),
+			GET_RUN,
 			undefined,
 			(call) => this.#core.raw.agents.getAgentRun(request, call),
 		);
@@ -279,7 +278,7 @@ export class Agents {
 				const response = await invokeUnary(
 					this.#core,
 					prepared,
-					registeredMethodSafety(LIST_RUNS),
+					LIST_RUNS,
 					undefined,
 					(call) => this.#core.raw.agents.listAgentRuns(paged, call),
 				);
@@ -315,7 +314,7 @@ export class Agents {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			registeredMethodSafety(CANCEL_RUN),
+			CANCEL_RUN,
 			options.idempotencyKey,
 			(call) => this.#core.raw.agents.cancelAgentRun(request, call),
 		);
@@ -329,7 +328,7 @@ export class Agents {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			registeredMethodSafety(GET_STEP),
+			GET_STEP,
 			undefined,
 			(call) => this.#core.raw.agents.getAgentStep(request, call),
 		);
@@ -355,7 +354,7 @@ export class Agents {
 				const response = await invokeUnary(
 					this.#core,
 					prepared,
-					registeredMethodSafety(LIST_STEPS),
+					LIST_STEPS,
 					undefined,
 					(call) => this.#core.raw.agents.listAgentSteps(paged, call),
 				);
@@ -403,7 +402,7 @@ export class Agents {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			registeredMethodSafety(COMMIT_STEP),
+			COMMIT_STEP,
 			options.idempotencyKey,
 			(call) => this.#core.raw.agents.commitAgentStep(request, call),
 		);
@@ -450,7 +449,7 @@ export class Agents {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			registeredMethodSafety(COMMIT_RECEIPT),
+			COMMIT_RECEIPT,
 			options.idempotencyKey,
 			(call) => this.#core.raw.agents.commitToolReceipt(request, call),
 		);

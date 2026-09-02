@@ -29,7 +29,6 @@ import {
 	type SubmitOptions,
 } from "./request.js";
 import { invokeUnary } from "./retry.js";
-import { registeredMethodSafety } from "./safety.js";
 
 const REQUEST = "/mindclade.internal.workflow.v1.ApprovalService/RequestApproval";
 const GET = "/mindclade.internal.workflow.v1.ApprovalService/GetApprovalRequest";
@@ -75,7 +74,7 @@ export class Approvals {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			registeredMethodSafety(REQUEST),
+			REQUEST,
 			options.idempotencyKey,
 			(call) =>
 				this.#core.raw.approvals.requestApproval(
@@ -106,7 +105,7 @@ export class Approvals {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			registeredMethodSafety(GET),
+			GET,
 			undefined,
 			(call) => this.#core.raw.approvals.getApprovalRequest(request, call),
 		);
@@ -142,7 +141,7 @@ export class Approvals {
 				const response = await invokeUnary(
 					this.#core,
 					prepared,
-					registeredMethodSafety(LIST),
+					LIST,
 					undefined,
 					(call) => this.#core.raw.approvals.listApprovalRequests(paged, call),
 				);
@@ -182,7 +181,7 @@ export class Approvals {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			registeredMethodSafety(DECIDE),
+			DECIDE,
 			options.idempotencyKey,
 			(call) => this.#core.raw.approvals.decideApproval(request, call),
 		);
@@ -214,7 +213,7 @@ export class Approvals {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			registeredMethodSafety(CONSUME),
+			CONSUME,
 			options.idempotencyKey,
 			(call) => this.#core.raw.approvals.consumeApproval(request, call),
 		);

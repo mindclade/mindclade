@@ -42,7 +42,6 @@ import {
 	type SubmitOptions,
 } from "./request.js";
 import { invokeUnary } from "./retry.js";
-import { registeredMethodSafety } from "./safety.js";
 
 const CREATE = "/mindclade.internal.evaluation.v1.EvaluationService/CreateEvaluationRun";
 const GET_RUN = "/mindclade.internal.evaluation.v1.EvaluationService/GetEvaluationRun";
@@ -98,7 +97,7 @@ export class Evaluations {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			registeredMethodSafety(CREATE),
+			CREATE,
 			options.idempotencyKey,
 			(call) => this.#core.raw.evaluations.createEvaluationRun(request, call),
 		);
@@ -115,7 +114,7 @@ export class Evaluations {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			registeredMethodSafety(GET_RUN),
+			GET_RUN,
 			undefined,
 			(call) =>
 				this.#core.raw.evaluations.getEvaluationRun(
@@ -152,7 +151,7 @@ export class Evaluations {
 				const response = await invokeUnary(
 					this.#core,
 					prepared,
-					registeredMethodSafety(LIST),
+					LIST,
 					undefined,
 					(call) => this.#core.raw.evaluations.listEvaluationRuns(paged, call),
 				);
@@ -185,7 +184,7 @@ export class Evaluations {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			registeredMethodSafety(CANCEL),
+			CANCEL,
 			options.idempotencyKey,
 			(call) => this.#core.raw.evaluations.cancelEvaluationRun(request, call),
 		);
@@ -234,7 +233,7 @@ export class Evaluations {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			registeredMethodSafety(COMMIT),
+			COMMIT,
 			options.idempotencyKey,
 			(call) => this.#core.raw.evaluations.commitEvaluationResult(request, call),
 		);
@@ -258,7 +257,7 @@ export class Evaluations {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			registeredMethodSafety(GET_RESULT),
+			GET_RESULT,
 			undefined,
 			(call) =>
 				this.#core.raw.evaluations.getEvaluationResult(
@@ -314,7 +313,7 @@ export class Evaluations {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			registeredMethodSafety(CREATE_DECISION),
+			CREATE_DECISION,
 			options.idempotencyKey,
 			(call) => this.#core.raw.evaluations.createPromotionDecision(request, call),
 		);
@@ -330,7 +329,7 @@ export class Evaluations {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			registeredMethodSafety(GET_DECISION),
+			GET_DECISION,
 			undefined,
 			(call) =>
 				this.#core.raw.evaluations.getPromotionDecision(

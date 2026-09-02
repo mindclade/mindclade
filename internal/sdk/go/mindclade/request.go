@@ -5,7 +5,9 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"iter"
+	"maps"
 	"reflect"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -29,6 +31,7 @@ type requestMetadata struct {
 	maxAttempts    int
 	unsafeRetry    bool
 	pagination     PaginationLimits
+	metadata       map[string][]string
 	responseTarget *ResponseMetadata
 	responseSink   *responseSink
 }
@@ -282,6 +285,123 @@ func credentialBearingKey(key string) bool {
 	}
 	return false
 }
+
+// reservedMetadataKeys are the metadata keys the SDK itself owns. Caller
+// metadata pass-through may not set, shadow, or forge one of them, so a caller
+// can never present a second request identity or a second scope claim.
+var reservedMetadataKeys = map[string]bool{
+	"x-mindclade-sdk":                true,
+	"x-request-id":                   true,
+	"x-mindclade-request-id":         true,
+	"x-trace-id":                     true,
+	"x-mindclade-expected-tenant":    true,
+	"x-mindclade-expected-project":   true,
+	"x-mindclade-expected-principal": true,
+	"x-mindclade-retry-count":        true,
+	"x-mindclade-timeout-ms":         true,
+	"x-mindclade-should-retry":       true,
+	"retry-after-ms":                 true,
+}
+
+// maxCustomMetadataKeys bounds how many caller keys one call may attach.
+const maxCustomMetadataKeys = 16
+
+// validateCustomMetadata enforces the escape hatch's boundaries: bounded
+// lowercase gRPC keys, bounded printable values, no reserved or grpc-owned key,
+// and no credential-bearing key under the shared denylist. A rejected key is an
+// error, never a silent drop, so a caller always learns their metadata did not
+// travel.
+func validateCustomMetadata(pairs map[string][]string) error {
+	if len(pairs) > maxCustomMetadataKeys {
+		return invalidArgument("custom metadata carries too many keys")
+	}
+	for key, values := range pairs {
+		normalized := strings.ToLower(strings.TrimSpace(key))
+		if normalized == "" || len(normalized) > 128 || !validMetadataKey(normalized) {
+			return invalidArgument("custom metadata key must be a bounded lowercase gRPC key")
+		}
+		if strings.HasSuffix(normalized, "-bin") || strings.HasPrefix(normalized, "grpc-") || reservedMetadataKeys[normalized] {
+			return invalidArgument("custom metadata cannot set a reserved or SDK-authoritative key")
+		}
+		if credentialBearingKey(normalized) {
+			return invalidArgument("custom metadata cannot carry a credential-bearing key")
+		}
+		if len(values) == 0 || len(values) > maxResponseMetadataValues {
+			return invalidArgument("custom metadata values must be a bounded non-empty list")
+		}
+		for _, value := range values {
+			if !safeMetadataValue(value) {
+				return invalidArgument("custom metadata value must be bounded printable ASCII")
+			}
+		}
+	}
+	return nil
+}
+
+// validMetadataKey reports whether a key is spelled with the characters gRPC
+// permits in an ASCII metadata key.
+func validMetadataKey(key string) bool {
+	for index := 0; index < len(key); index++ {
+		character := key[index]
+		switch {
+		case character >= 'a' && character <= 'z',
+			character >= '0' && character <= '9',
+			character == '-', character == '_', character == '.':
+			continue
+		default:
+			return false
+		}
+	}
+	return true
+}
+
+// WithMetadata attaches caller metadata to one call. Keys are validated when the
+// call is prepared: a credential-bearing key, a reserved SDK key, or an
+// unbounded value fails the call with an invalid-argument error rather than
+// being dropped quietly.
+func WithMetadata(pairs map[string][]string) RequestOption {
+	return func(value *requestMetadata) {
+		if len(pairs) == 0 {
+			return
+		}
+		merged := map[string][]string{}
+		for key, values := range value.metadata {
+			merged[key] = values
+		}
+		for key, values := range pairs {
+			merged[strings.ToLower(strings.TrimSpace(key))] = append([]string(nil), values...)
+		}
+		value.metadata = merged
+	}
+}
+
+// metadataKeyNames returns the sorted, de-duplicated KEY NAMES of one call's
+// transport metadata. Values are never read: an observer learns which metadata
+// was present, never what it contained.
+func metadataKeyNames(headers, trailers metadata.MD) []string {
+	unique := map[string]struct{}{}
+	for _, source := range []metadata.MD{headers, trailers} {
+		for key := range source {
+			normalized := strings.ToLower(strings.TrimSpace(key))
+			if normalized == "" {
+				continue
+			}
+			unique[normalized] = struct{}{}
+		}
+	}
+	names := make([]string, 0, len(unique))
+	for name := range unique {
+		names = append(names, name)
+	}
+	slices.Sort(names)
+	if len(names) > maxObservedMetadataKeys {
+		names = names[:maxObservedMetadataKeys]
+	}
+	return names
+}
+
+// maxObservedMetadataKeys bounds how many key names one observed event carries.
+const maxObservedMetadataKeys = 32
 
 // maxResponseMetadataValues bounds how many values one surfaced key may carry
 // so a hostile server cannot make one captured response unbounded.
@@ -570,6 +690,9 @@ func withRequestOptions(ctx context.Context, options ...RequestOption) (context.
 	if value.maxAttempts < 0 || value.maxAttempts > 8 {
 		return nil, requestMetadata{}, invalidArgument("request max attempts must be between 1 and 8")
 	}
+	if err := validateCustomMetadata(value.metadata); err != nil {
+		return nil, requestMetadata{}, err
+	}
 	return context.WithValue(ctx, requestContextKey{}, value), value, nil
 }
 
@@ -645,10 +768,18 @@ func attachRequestMetadata(ctx context.Context, config Config, method string) co
 	} {
 		sanitized.Delete(key)
 	}
-	ctx = metadata.NewOutgoingContext(ctx, sanitized)
 	value, _ := ctx.Value(requestContextKey{}).(requestMetadata)
+	// Caller pass-through metadata is authoritative for its own keys, so drop
+	// any same-named key the outgoing context already carried. Validation has
+	// already rejected every reserved and credential-bearing key, so this can
+	// never displace SDK identity.
+	custom := mergedCustomMetadata(config.defaultMetadata, value.metadata)
+	for key := range custom {
+		sanitized.Delete(key)
+	}
+	ctx = metadata.NewOutgoingContext(ctx, sanitized)
 	pairs := []string{
-		"x-mindclade-sdk", config.UserAgent,
+		"x-mindclade-sdk", platformMetadata(config),
 		"x-request-id", value.requestID,
 		"x-trace-id", value.traceID,
 	}
@@ -667,7 +798,29 @@ func attachRequestMetadata(ctx context.Context, config Config, method string) co
 	if config.PrincipalID != "" {
 		pairs = append(pairs, "x-mindclade-expected-principal", config.PrincipalID)
 	}
+	for _, key := range slices.Sorted(maps.Keys(custom)) {
+		for _, item := range custom[key] {
+			pairs = append(pairs, key, item)
+		}
+	}
 	return metadata.AppendToOutgoingContext(ctx, pairs...)
+}
+
+// mergedCustomMetadata combines the client-wide and per-request pass-through
+// metadata. A per-request key replaces the client-wide key of the same name
+// outright, so one call never emits two conflicting values for one key.
+func mergedCustomMetadata(defaults, request map[string][]string) map[string][]string {
+	if len(defaults) == 0 && len(request) == 0 {
+		return nil
+	}
+	merged := make(map[string][]string, len(defaults)+len(request))
+	for key, values := range defaults {
+		merged[strings.ToLower(strings.TrimSpace(key))] = values
+	}
+	for key, values := range request {
+		merged[strings.ToLower(strings.TrimSpace(key))] = values
+	}
+	return merged
 }
 
 // attachAttemptMetadata stamps the per-attempt retry counter and the remaining
@@ -745,6 +898,14 @@ func projectName(tenantID, projectID string) string {
 		return tenant + "/" + projectID
 	}
 	return tenant + "/projects/" + projectID
+}
+
+// nilGenerated reports whether a generated message value is absent. A typed nil
+// pointer is not equal to a nil interface, so a generic message parameter needs
+// this check rather than a bare comparison.
+func nilGenerated[T proto.Message](value T) bool {
+	reflected := reflect.ValueOf(value)
+	return !reflected.IsValid() || (reflected.Kind() == reflect.Pointer && reflected.IsNil())
 }
 
 func cloneGenerated[T proto.Message](value T) T {

@@ -89,10 +89,10 @@ pub use mindclade_protocols::admin::v1::{
     AuditExport, AuditQuery, AuditQueryPage, Project, Tenant,
 };
 pub use mindclade_protocols::agent::v1::{AgentDefinition, AgentRun, AgentStep, ToolReceipt};
+pub use mindclade_protocols::artifact::v1::ArtifactRef;
 pub use mindclade_protocols::common::v1::{
     ErrorCode, ErrorDetail, FieldViolation, PreconditionViolation, RetryClass,
 };
-pub use mindclade_protocols::artifact::v1::ArtifactRef;
 pub use mindclade_protocols::dataset::v1::{
     CreateDatasetCommand, Dataset, DatasetRelease, PublishDatasetReleaseCommand,
     RevokeDatasetReleaseCommand, UpdateDatasetCommand,

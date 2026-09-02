@@ -36,7 +36,6 @@ import {
 	type SubmitOptions,
 } from "./request.js";
 import { invokeUnary } from "./retry.js";
-import { registeredMethodSafety } from "./safety.js";
 
 const REGISTER = "/mindclade.internal.model.v1.ModelService/RegisterModel";
 const GET = "/mindclade.internal.model.v1.ModelService/GetModel";
@@ -73,7 +72,7 @@ export class Models {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			registeredMethodSafety(REGISTER),
+			REGISTER,
 			options.idempotencyKey,
 			(call) =>
 				this.#core.raw.models.registerModel(
@@ -94,7 +93,7 @@ export class Models {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			registeredMethodSafety(GET),
+			GET,
 			undefined,
 			(call) => this.#core.raw.models.getModel(generated, call),
 		);
@@ -122,7 +121,7 @@ export class Models {
 				const response = await invokeUnary(
 					this.#core,
 					prepared,
-					registeredMethodSafety(LIST),
+					LIST,
 					undefined,
 					(call) => this.#core.raw.models.listModels(paged, call),
 				);
@@ -153,7 +152,7 @@ export class Models {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			registeredMethodSafety(REGISTER_RELEASE),
+			REGISTER_RELEASE,
 			options.idempotencyKey,
 			(call) =>
 				this.#core.raw.models.registerModelRelease(
@@ -174,7 +173,7 @@ export class Models {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			registeredMethodSafety(GET_RELEASE),
+			GET_RELEASE,
 			undefined,
 			(call) => this.#core.raw.models.getModelRelease(generated, call),
 		);
@@ -199,7 +198,7 @@ export class Models {
 				const response = await invokeUnary(
 					this.#core,
 					prepared,
-					registeredMethodSafety(LIST_RELEASES),
+					LIST_RELEASES,
 					undefined,
 					(call) => this.#core.raw.models.listModelReleases(paged, call),
 				);
@@ -234,7 +233,7 @@ export class Models {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			registeredMethodSafety(PROMOTE),
+			PROMOTE,
 			options.idempotencyKey,
 			(call) =>
 				this.#core.raw.models.promoteModelRelease(
@@ -266,7 +265,7 @@ export class Models {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			registeredMethodSafety(REVOKE),
+			REVOKE,
 			options.idempotencyKey,
 			(call) =>
 				this.#core.raw.models.revokeModelRelease(

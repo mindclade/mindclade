@@ -62,7 +62,6 @@ import {
 	type SubmitOptions,
 } from "./request.js";
 import { invokeUnary } from "./retry.js";
-import { registeredMethodSafety } from "./safety.js";
 
 const CREATE = "/mindclade.internal.experiment.v1.ExperimentService/CreateExperiment";
 const GET = "/mindclade.internal.experiment.v1.ExperimentService/GetExperiment";
@@ -123,7 +122,7 @@ export class Experiments {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			registeredMethodSafety(CREATE),
+			CREATE,
 			options.idempotencyKey,
 			(call) =>
 				this.#core.raw.experiments.createExperiment(
@@ -140,7 +139,7 @@ export class Experiments {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			registeredMethodSafety(GET),
+			GET,
 			undefined,
 			(call) =>
 				this.#core.raw.experiments.getExperiment(
@@ -175,7 +174,7 @@ export class Experiments {
 				const response = await invokeUnary(
 					this.#core,
 					prepared,
-					registeredMethodSafety(LIST),
+					LIST,
 					undefined,
 					(call) => this.#core.raw.experiments.listExperiments(paged, call),
 				);
@@ -218,7 +217,7 @@ export class Experiments {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			registeredMethodSafety(UPDATE),
+			UPDATE,
 			options.idempotencyKey,
 			(call) =>
 				this.#core.raw.experiments.updateExperiment(
@@ -252,7 +251,7 @@ export class Experiments {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			registeredMethodSafety(TRANSITION),
+			TRANSITION,
 			options.idempotencyKey,
 			(call) =>
 				this.#core.raw.experiments.transitionExperiment(
@@ -301,7 +300,7 @@ export class Experiments {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			registeredMethodSafety(CREATE_STUDY),
+			CREATE_STUDY,
 			options.idempotencyKey,
 			(call) =>
 				this.#core.raw.experiments.createStudy(create(CreateStudyRequestSchema, { command }), call),
@@ -315,7 +314,7 @@ export class Experiments {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			registeredMethodSafety(GET_STUDY),
+			GET_STUDY,
 			undefined,
 			(call) =>
 				this.#core.raw.experiments.getStudy(
@@ -342,7 +341,7 @@ export class Experiments {
 				const response = await invokeUnary(
 					this.#core,
 					prepared,
-					registeredMethodSafety(LIST_STUDIES),
+					LIST_STUDIES,
 					undefined,
 					(call) => this.#core.raw.experiments.listStudies(paged, call),
 				);
@@ -380,7 +379,7 @@ export class Experiments {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			registeredMethodSafety(TRANSITION_STUDY),
+			TRANSITION_STUDY,
 			options.idempotencyKey,
 			(call) =>
 				this.#core.raw.experiments.transitionStudy(
@@ -413,7 +412,7 @@ export class Experiments {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			registeredMethodSafety(CREATE_TRIAL),
+			CREATE_TRIAL,
 			options.idempotencyKey,
 			(call) =>
 				this.#core.raw.experiments.createTrial(create(CreateTrialRequestSchema, { command }), call),
@@ -427,7 +426,7 @@ export class Experiments {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			registeredMethodSafety(GET_TRIAL),
+			GET_TRIAL,
 			undefined,
 			(call) =>
 				this.#core.raw.experiments.getTrial(
@@ -454,7 +453,7 @@ export class Experiments {
 				const response = await invokeUnary(
 					this.#core,
 					prepared,
-					registeredMethodSafety(LIST_TRIALS),
+					LIST_TRIALS,
 					undefined,
 					(call) => this.#core.raw.experiments.listTrials(paged, call),
 				);
@@ -492,7 +491,7 @@ export class Experiments {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			registeredMethodSafety(TRANSITION_TRIAL),
+			TRANSITION_TRIAL,
 			options.idempotencyKey,
 			(call) =>
 				this.#core.raw.experiments.transitionTrial(
@@ -547,7 +546,7 @@ export class Experiments {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			registeredMethodSafety(COMPLETE_TRIAL),
+			COMPLETE_TRIAL,
 			options.idempotencyKey,
 			(call) =>
 				this.#core.raw.experiments.completeTrial(

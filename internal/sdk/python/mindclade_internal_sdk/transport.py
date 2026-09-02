@@ -20,6 +20,7 @@ from mindclade.internal.policy.v1 import policy_service_pb2, policy_service_pb2_
 from mindclade.internal.training.v1 import training_service_pb2, training_service_pb2_grpc
 from mindclade.internal.workflow.v1 import workflow_service_pb2, workflow_service_pb2_grpc
 
+from ._middleware import async_shielded, shielded
 from .config import ClientConfig
 
 Metadata = tuple[tuple[str, str | bytes], ...]
@@ -316,6 +317,11 @@ class GrpcSyncTransport:
                 _credentials(config),
                 options=_channel_options(config),
             )
+        # Caller middleware runs behind a credential shield, so an interceptor
+        # can observe and reshape a call without ever seeing, stripping, or
+        # forging the SDK's own credential metadata.
+        if config.middleware:
+            channel = grpc.intercept_channel(channel, *shielded(config.middleware))
         self._channel = channel
         self._unary, self._streams = _bind_generated_services(channel)
 
@@ -363,15 +369,21 @@ class GrpcAsyncTransport:
     """Asyncio adapter over the same generated service stubs."""
 
     def __init__(self, config: ClientConfig) -> None:
+        # ``grpc.aio`` installs interceptors at channel construction rather than
+        # by wrapping, but the credential shield is identical.
+        interceptors = async_shielded(config.middleware)
         if config.insecure_for_testing:
             channel = grpc.aio.insecure_channel(
-                config.resolved_endpoint, options=_channel_options(config)
+                config.resolved_endpoint,
+                options=_channel_options(config),
+                interceptors=interceptors,
             )
         else:
             channel = grpc.aio.secure_channel(
                 config.resolved_endpoint,
                 _credentials(config),
                 options=_channel_options(config),
+                interceptors=interceptors,
             )
         self._channel = channel
         self._unary, self._streams = _bind_generated_services(channel)

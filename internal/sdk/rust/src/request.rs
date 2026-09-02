@@ -266,10 +266,7 @@ impl CallOptions {
     /// # Errors
     ///
     /// Returns an error unless the count is between one and eight.
-    pub fn with_unsafe_retry_of_non_idempotent_rpc(
-        mut self,
-        attempts: u8,
-    ) -> Result<Self, Error> {
+    pub fn with_unsafe_retry_of_non_idempotent_rpc(mut self, attempts: u8) -> Result<Self, Error> {
         self = self.with_max_attempts(attempts)?;
         self.unsafe_retry_acknowledged = true;
         Ok(self)

@@ -126,8 +126,7 @@ func TestKnownMutationRequiresMatchingGeneratedCommandContext(t *testing.T) {
 
 func TestLongRunningDefaultsAndTerminalFailuresAreBounded(t *testing.T) {
 	client := &Client{config: defaultConfig()}
-	service := &OperationService{client: client}
-	ctx, cancel, err := service.longRunningContext(context.Background())
+	ctx, cancel, err := client.longRunningContext(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -326,9 +325,6 @@ func TestOneRetryablePredicateGovernsEveryCallSite(t *testing.T) {
 		failure := status.Error(code, "scripted failure")
 		if got := retryableStatus(failure); got != want {
 			t.Fatalf("retryableStatus(%s) = %t, want %t", code, got, want)
-		}
-		if got := isRetryable(failure); got != want {
-			t.Fatalf("isRetryable(%s) = %t, want %t; the stream path diverged from the unary path", code, got, want)
 		}
 		if got := retryableStatus(normalizeError(failure)); got != want {
 			t.Fatalf("retryableStatus of the normalized %s = %t, want %t", code, got, want)

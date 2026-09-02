@@ -24,6 +24,21 @@ use crate::{
 /// favour of a negligibly biased one. The loop can therefore never hang.
 const MAX_JITTER_DRAWS: u8 = 8;
 
+/// Retry accounting carried alongside the attempt loop so every terminal
+/// failure reports the same observable outcome.
+#[derive(Clone, Copy, Debug, Default)]
+struct RetryProgress {
+    attempts: u32,
+    cumulative_delay: Duration,
+    cause: FinalCause,
+}
+
+impl RetryProgress {
+    fn summary(self) -> RetryAttemptSummary {
+        RetryAttemptSummary::new(self.attempts, self.cumulative_delay, self.cause)
+    }
+}
+
 pub(crate) type RpcFuture<R> =
     Pin<Box<dyn Future<Output = Result<Response<R>, Status>> + Send + 'static>>;
 
@@ -321,89 +336,81 @@ impl ClientCore {
             ));
         }
         let attempts = self.attempt_budget(prepared, safety)?;
+        let mut progress = RetryProgress::default();
         let mut attempt: u8 = 1;
-        let mut cumulative_delay = Duration::ZERO;
         loop {
-            let attempt_index = attempt - 1;
-            let issued = u32::from(attempt_index);
-            let request = self
-                .request(message.clone(), prepared, idempotency_key, attempt_index)
+            let request = match self
+                .request(message.clone(), prepared, idempotency_key, attempt - 1)
                 .await
-                .map_err(|error| {
-                    let cause = if matches!(error.kind(), ErrorKind::DeadlineExceeded) {
+            {
+                Ok(request) => request,
+                Err(error) => {
+                    progress.cause = if matches!(error.kind(), ErrorKind::DeadlineExceeded) {
                         FinalCause::DeadlineExceeded
                     } else {
                         FinalCause::CredentialFailure
                     };
-                    error.with_attempts(RetryAttemptSummary::new(issued, cumulative_delay, cause))
-                })?;
-            let remaining = prepared.remaining().map_err(|error| {
-                error.with_attempts(RetryAttemptSummary::new(
-                    issued,
-                    cumulative_delay,
-                    FinalCause::DeadlineExceeded,
-                ))
-            })?;
-            let invocation =
-                tokio::time::timeout(remaining, invoke(Arc::clone(&self.transport), request)).await;
-            let made = u32::from(attempt);
-            let status = match invocation {
-                Err(_elapsed) => {
-                    return Err(Error::deadline_exceeded().with_attempts(
-                        RetryAttemptSummary::new(
-                            made,
-                            cumulative_delay,
-                            FinalCause::DeadlineExceeded,
-                        ),
-                    ));
+                    return Err(error.with_attempts(progress.summary()));
                 }
-                Ok(Ok(response)) => return Ok(response),
-                Ok(Err(status)) => status,
             };
-            let error = Error::from_status(&status);
-            if !error.is_retryable() {
-                let cause = if error.server_retry_override() == Some(false) {
-                    FinalCause::ServerRetryOptOut
-                } else {
-                    FinalCause::NonRetryableStatus
+            let remaining = match prepared.remaining() {
+                Ok(remaining) => remaining,
+                Err(error) => {
+                    progress.cause = FinalCause::DeadlineExceeded;
+                    return Err(error.with_attempts(progress.summary()));
+                }
+            };
+            progress.attempts = u32::from(attempt);
+            let invocation =
+                match tokio::time::timeout(remaining, invoke(Arc::clone(&self.transport), request))
+                    .await
+                {
+                    Ok(invocation) => invocation,
+                    Err(_elapsed) => {
+                        progress.cause = FinalCause::DeadlineExceeded;
+                        return Err(Error::deadline_exceeded().with_attempts(progress.summary()));
+                    }
                 };
-                return Err(
-                    error.with_attempts(RetryAttemptSummary::new(made, cumulative_delay, cause))
-                );
+            match invocation {
+                Ok(response) => return Ok(response),
+                Err(status) => {
+                    let error = Error::from_status(&status);
+                    if !error.is_retryable() {
+                        progress.cause = if error.server_retry_override() == Some(false) {
+                            FinalCause::ServerRetryOptOut
+                        } else {
+                            FinalCause::NonRetryableStatus
+                        };
+                        return Err(error.with_attempts(progress.summary()));
+                    }
+                    if attempt >= attempts {
+                        progress.cause = FinalCause::AttemptsExhausted;
+                        return Err(error.with_attempts(progress.summary()));
+                    }
+                    let remaining = match prepared.remaining() {
+                        Ok(remaining) => remaining,
+                        Err(error) => {
+                            progress.cause = FinalCause::DeadlineExceeded;
+                            return Err(error.with_attempts(progress.summary()));
+                        }
+                    };
+                    // A server-pinned `retry-after-ms` is authoritative but
+                    // is clamped to the configured maximum backoff, so a
+                    // remote value can never stall the caller past its own
+                    // policy.
+                    let delay = error.retry_after().map_or_else(
+                        || self.backoff(attempt),
+                        |hint| hint.min(self.config.retry.max_backoff),
+                    );
+                    if delay >= remaining {
+                        progress.cause = FinalCause::DeadlineExceeded;
+                        return Err(Error::deadline_exceeded().with_attempts(progress.summary()));
+                    }
+                    self.sleeper.sleep(delay).await;
+                    progress.cumulative_delay = progress.cumulative_delay.saturating_add(delay);
+                    attempt += 1;
+                }
             }
-            if attempt >= attempts {
-                return Err(error.with_attempts(RetryAttemptSummary::new(
-                    made,
-                    cumulative_delay,
-                    FinalCause::AttemptsExhausted,
-                )));
-            }
-            let remaining = prepared.remaining().map_err(|deadline| {
-                deadline.with_attempts(RetryAttemptSummary::new(
-                    made,
-                    cumulative_delay,
-                    FinalCause::DeadlineExceeded,
-                ))
-            })?;
-            // A server-pinned `retry-after-ms` is authoritative but is clamped
-            // to the configured maximum backoff so a remote value can never
-            // stall the caller past its own policy.
-            let delay = error.retry_after().map_or_else(
-                || self.backoff(attempt),
-                |hint| hint.min(self.config.retry.max_backoff),
-            );
-            if delay >= remaining {
-                return Err(
-                    Error::deadline_exceeded().with_attempts(RetryAttemptSummary::new(
-                        made,
-                        cumulative_delay,
-                        FinalCause::DeadlineExceeded,
-                    )),
-                );
-            }
-            self.sleeper.sleep(delay).await;
-            cumulative_delay = cumulative_delay.saturating_add(delay);
-            attempt += 1;
         }
     }
 
@@ -429,7 +436,9 @@ impl ClientCore {
             if !prepared.unsafe_retry_acknowledged {
                 return Ok(1);
             }
-            return Ok(prepared.max_attempts.unwrap_or(self.config.retry.max_attempts));
+            return Ok(prepared
+                .max_attempts
+                .unwrap_or(self.config.retry.max_attempts));
         }
         if prepared.unsafe_retry_acknowledged {
             return Err(Error::invalid_argument(
@@ -470,7 +479,11 @@ impl ClientCore {
         )?;
         insert_metadata(&mut request, "x-request-id", &prepared.request_id)?;
         insert_metadata(&mut request, "x-trace-id", &prepared.trace_id)?;
-        insert_metadata(&mut request, RETRY_COUNT_METADATA, &attempt_index.to_string())?;
+        insert_metadata(
+            &mut request,
+            RETRY_COUNT_METADATA,
+            &attempt_index.to_string(),
+        )?;
         insert_metadata(
             &mut request,
             TIMEOUT_MS_METADATA,

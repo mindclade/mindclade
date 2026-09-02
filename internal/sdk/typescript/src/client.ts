@@ -6,6 +6,7 @@ import { Artifacts } from "./artifacts.js";
 import type { ClientConfig } from "./config.js";
 import type { ClientCore } from "./core.js";
 import { Datasets } from "./datasets.js";
+import { clientConfigFromEnvironment, type EnvironmentOverrides } from "./environment.js";
 import { MindcladeError } from "./error.js";
 import { Evaluations } from "./evaluations.js";
 import { Experiments } from "./experiments.js";
@@ -136,6 +137,18 @@ export class MindcladeClient {
 	/** Creates a production Connect-Node client with secure transport defaults. */
 	static connect(config: ClientConfig): MindcladeClient {
 		return new MindcladeClient(config, createNodeTransport(config), defaultRuntime);
+	}
+
+	/**
+	 * Creates a client from the process environment.
+	 *
+	 * This is the only environment-reading entry point in the SDK: the ordinary
+	 * constructor never consults an ambient variable, and no credential is ever
+	 * read from the environment — a token provider is supplied in code through
+	 * `overrides`.
+	 */
+	static fromEnvironment(overrides: EnvironmentOverrides = {}): MindcladeClient {
+		return MindcladeClient.connect(clientConfigFromEnvironment(overrides));
 	}
 
 	/** Injects a transport and deterministic runtime for hermetic tests or

@@ -62,7 +62,6 @@ import {
 	validateResource,
 } from "./request.js";
 import { ensureActive, invokeUnary } from "./retry.js";
-import { registeredMethodSafety } from "./safety.js";
 
 const ARTIFACT_SERVICE = "/mindclade.internal.artifact.v1.ArtifactService";
 const GET_ARTIFACT = `${ARTIFACT_SERVICE}/GetArtifact`;
@@ -130,7 +129,7 @@ export class Artifacts {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			registeredMethodSafety(GET_ARTIFACT),
+			GET_ARTIFACT,
 			undefined,
 			(call) => this.#core.raw.artifacts.getArtifact(request, call),
 		);
@@ -174,7 +173,7 @@ export class Artifacts {
 				const response = await invokeUnary(
 					this.#core,
 					prepared,
-					registeredMethodSafety(LIST_ARTIFACTS),
+					LIST_ARTIFACTS,
 					undefined,
 					(call) => this.#core.raw.artifacts.listArtifacts(paged, call),
 				);
@@ -226,7 +225,7 @@ export class Artifacts {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			registeredMethodSafety(QUARANTINE_ARTIFACT),
+			QUARANTINE_ARTIFACT,
 			options.idempotencyKey,
 			(call) => this.#core.raw.artifacts.quarantineArtifact(request, call),
 		);
@@ -258,7 +257,7 @@ export class Artifacts {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			registeredMethodSafety(ACQUIRE_ARTIFACT_LEASE),
+			ACQUIRE_ARTIFACT_LEASE,
 			options.idempotencyKey,
 			(call) => this.#core.raw.artifacts.acquireArtifactLease(request, call),
 		);
@@ -287,7 +286,7 @@ export class Artifacts {
 		await invokeUnary(
 			this.#core,
 			prepared,
-			registeredMethodSafety(RELEASE_ARTIFACT_LEASE),
+			RELEASE_ARTIFACT_LEASE,
 			options.idempotencyKey,
 			(call) => this.#core.raw.artifacts.releaseArtifactLease(request, call),
 		);
@@ -306,7 +305,7 @@ export class Artifacts {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			registeredMethodSafety(RESOLVE_ARTIFACT_ALIAS),
+			RESOLVE_ARTIFACT_ALIAS,
 			undefined,
 			(call) => this.#core.raw.artifacts.resolveArtifactAlias(request, call),
 		);
@@ -324,7 +323,7 @@ export class Artifacts {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			registeredMethodSafety(GET_ARTIFACT_UPLOAD),
+			GET_ARTIFACT_UPLOAD,
 			undefined,
 			(call) => this.#core.raw.artifacts.getArtifactUpload(request, call),
 		);
@@ -411,7 +410,7 @@ export class Artifacts {
 			const response = await invokeUnary(
 				this.#core,
 				prepared,
-				registeredMethodSafety(UPLOAD_ARTIFACT_CHUNK),
+				UPLOAD_ARTIFACT_CHUNK,
 				submit.idempotencyKey,
 				(rpcOptions) => this.#core.raw.artifacts.uploadArtifactChunk(request, rpcOptions),
 			);
@@ -492,7 +491,7 @@ export class Artifacts {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			registeredMethodSafety(COMMIT_ARTIFACT),
+			COMMIT_ARTIFACT,
 			options.idempotencyKey,
 			(rpcOptions) => this.#core.raw.artifacts.commitArtifact(request, rpcOptions),
 		);
@@ -669,7 +668,7 @@ export class Artifacts {
 			const response = await invokeUnary(
 				this.#core,
 				prepared,
-				registeredMethodSafety(BEGIN_ARTIFACT_UPLOAD),
+				BEGIN_ARTIFACT_UPLOAD,
 				submit.idempotencyKey,
 				(rpcOptions) => this.#core.raw.artifacts.beginArtifactUpload(request, rpcOptions),
 			);
@@ -706,7 +705,7 @@ export class Artifacts {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			registeredMethodSafety(FINALIZE_ARTIFACT_UPLOAD),
+			FINALIZE_ARTIFACT_UPLOAD,
 			submit.idempotencyKey,
 			(rpcOptions) => this.#core.raw.artifacts.finalizeArtifactUpload(request, rpcOptions),
 		);
@@ -740,7 +739,7 @@ export class Artifacts {
 			const response = await invokeUnary(
 				this.#core,
 				prepared,
-				registeredMethodSafety(ABORT_ARTIFACT_UPLOAD),
+				ABORT_ARTIFACT_UPLOAD,
 				options.idempotencyKey,
 				(rpcOptions) => this.#core.raw.artifacts.abortArtifactUpload(request, rpcOptions),
 			);
@@ -756,7 +755,7 @@ export class Artifacts {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			registeredMethodSafety(QUARANTINE_ARTIFACT_UPLOAD),
+			QUARANTINE_ARTIFACT_UPLOAD,
 			options.idempotencyKey,
 			(rpcOptions) => this.#core.raw.artifacts.quarantineArtifactUpload(request, rpcOptions),
 		);

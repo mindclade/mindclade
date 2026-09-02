@@ -56,10 +56,7 @@ impl OperationFailure {
     /// message text is never used.
     #[must_use]
     pub fn as_error(&self) -> Error {
-        Error::operation_failed(
-            &self.operation.operation_id,
-            self.operation.error.as_ref(),
-        )
+        Error::operation_failed(&self.operation.operation_id, self.operation.error.as_ref())
     }
 }
 

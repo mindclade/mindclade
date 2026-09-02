@@ -17,6 +17,7 @@ from google.protobuf.message import Message
 from google.protobuf.timestamp_pb2 import Timestamp
 from mindclade.common.v1 import command_context_pb2
 
+from ._metadata import is_credential_metadata_key
 from ._raw import active_capture
 from ._retry import retry_delay as _policy_retry_delay
 from ._retry import should_retry
@@ -95,6 +96,16 @@ def _base_metadata(
         values.append(("idempotency-key", call.idempotency_key))
     if call.lease_token:
         values.append(("x-mindclade-lease-token", call.lease_token))
+    # Caller metadata is appended last and re-checked here: ``ClientConfig``
+    # already rejected reserved and credential-bearing keys, and this second
+    # pass means a mapping mutated after validation still cannot shadow an SDK
+    # key or smuggle a credential onto the wire.
+    if config.custom_metadata:
+        reserved = {key for key, _ in values}
+        for key, value in config.custom_metadata.items():
+            if key in reserved or is_credential_metadata_key(key):
+                continue
+            values.append((key, value))
     return values
 
 
@@ -201,9 +212,17 @@ def _observe(
     attempt: int,
     started: float,
     status: str,
-    request_id: str,
+    call: PreparedCall,
+    metadata: Metadata = (),
+    cumulative_delay: float = 0.0,
 ) -> None:
-    # Telemetry is deliberately isolated from application correctness.
+    """Publish one bounded attempt record.
+
+    Only metadata KEY NAMES travel to the observer; no value, payload, access
+    token, or lease token can reach it. Telemetry is also deliberately isolated
+    from application correctness, so an observer that raises cannot fail a call.
+    """
+
     with contextlib.suppress(Exception):
         observer.observe(
             RpcObservation(
@@ -211,7 +230,11 @@ def _observe(
                 attempt=attempt,
                 elapsed_seconds=max(0.0, time.monotonic() - started),
                 status=status,
-                request_id=request_id,
+                request_id=call.request_id,
+                trace_id=call.trace_id,
+                retry_count=max(0, attempt - 1),
+                cumulative_delay_seconds=max(0.0, cumulative_delay),
+                metadata_keys=tuple(sorted({str(key) for key, _ in metadata})),
             )
         )
 
@@ -372,6 +395,7 @@ class SyncInvoker:
                     raise _with_trace(last_error, attempts_used, cumulative_delay)
                 remaining = 0.001
             started = time.monotonic()
+            metadata: Metadata = ()
             try:
                 token = self._token(call, timeout=remaining)
                 remaining = deadline - time.monotonic()
@@ -407,7 +431,9 @@ class SyncInvoker:
                     attempt=attempt,
                     started=started,
                     status=normalized.status.name if normalized.status else "UNKNOWN",
-                    request_id=call.request_id,
+                    call=call,
+                    metadata=metadata,
+                    cumulative_delay=cumulative_delay,
                 )
                 last_error = normalized
                 remaining = deadline - time.monotonic()
@@ -434,7 +460,9 @@ class SyncInvoker:
                 attempt=attempt,
                 started=started,
                 status="OK",
-                request_id=call.request_id,
+                call=call,
+                metadata=metadata,
+                cumulative_delay=cumulative_delay,
             )
             if capture is not None:
                 capture.record(
@@ -614,6 +642,7 @@ class AsyncInvoker:
                     raise _with_trace(last_error, attempts_used, cumulative_delay)
                 remaining = 0.001
             started = time.monotonic()
+            metadata: Metadata = ()
             try:
                 token = await self._token(call, timeout=remaining)
                 remaining = deadline - loop.time()
@@ -649,7 +678,9 @@ class AsyncInvoker:
                     attempt=attempt,
                     started=started,
                     status=normalized.status.name if normalized.status else "UNKNOWN",
-                    request_id=call.request_id,
+                    call=call,
+                    metadata=metadata,
+                    cumulative_delay=cumulative_delay,
                 )
                 last_error = normalized
                 remaining = deadline - loop.time()
@@ -676,7 +707,9 @@ class AsyncInvoker:
                 attempt=attempt,
                 started=started,
                 status="OK",
-                request_id=call.request_id,
+                call=call,
+                metadata=metadata,
+                cumulative_delay=cumulative_delay,
             )
             if capture is not None:
                 capture.record(

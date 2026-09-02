@@ -322,10 +322,11 @@ impl Error {
     /// Unmet server preconditions, copied from structured detail.
     #[must_use]
     pub fn precondition_violations(&self) -> &[PreconditionViolation] {
-        self.details.as_ref().map_or(
-            EMPTY_PRECONDITION_VIOLATIONS,
-            |details| &details.precondition_violations,
-        )
+        self.details
+            .as_ref()
+            .map_or(EMPTY_PRECONDITION_VIOLATIONS, |details| {
+                &details.precondition_violations
+            })
     }
 
     /// Durable quota facts attached to an exhausted-resource failure.
@@ -421,8 +422,7 @@ impl Error {
             retry_after: detail.and_then(detail_retry_after),
             attempts: RetryAttemptSummary::default(),
             trace_id: None,
-            operation_id: sanitize_optional(operation_id)
-                .or_else(|| operation_subject(subject)),
+            operation_id: sanitize_optional(operation_id).or_else(|| operation_subject(subject)),
             quota: quota_state(exhausted, subject, &precondition_violations),
             fence: fence_state(subject, &precondition_violations),
             conflict_revision: conflict_revision(
@@ -471,7 +471,8 @@ impl Error {
         let subject = detail.and_then(|value| value.subject.as_ref());
         let never = detail.is_some_and(|value| value.retry_class == RetryClass::Never as i32);
         let kind = classify(code, detail, &precondition_violations, never);
-        let retry_after = retry_after_hint(metadata).or_else(|| detail.and_then(detail_retry_after));
+        let retry_after =
+            retry_after_hint(metadata).or_else(|| detail.and_then(detail_retry_after));
         let details = ErrorDetails {
             retry_after,
             attempts: RetryAttemptSummary::default(),
@@ -479,7 +480,8 @@ impl Error {
             operation_id: operation_subject(subject),
             quota: quota_state(
                 code == Code::ResourceExhausted
-                    || detail.is_some_and(|value| value.code == ErrorCode::ResourceExhausted as i32),
+                    || detail
+                        .is_some_and(|value| value.code == ErrorCode::ResourceExhausted as i32),
                 subject,
                 &precondition_violations,
             ),
@@ -711,9 +713,8 @@ fn conflict_revision(
         return None;
     }
     let subject = subject?;
-    sanitize_optional(&subject.etag).or_else(|| {
-        (subject.resource_version > 0).then(|| subject.resource_version.to_string())
-    })
+    sanitize_optional(&subject.etag)
+        .or_else(|| (subject.resource_version > 0).then(|| subject.resource_version.to_string()))
 }
 
 fn subject_name(subject: Option<&ResourceRef>) -> String {

@@ -28,7 +28,6 @@ import {
 	type SubmitOptions,
 } from "./request.js";
 import { invokeUnary } from "./retry.js";
-import { registeredMethodSafety } from "./safety.js";
 
 const EVALUATE = "/mindclade.internal.policy.v1.PolicyService/EvaluateAuthorization";
 const CREATE = "/mindclade.internal.policy.v1.PolicyService/CreateUsePolicy";
@@ -72,7 +71,7 @@ export class Policies {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			registeredMethodSafety(EVALUATE),
+			EVALUATE,
 			options.idempotencyKey,
 			(call) => this.#core.raw.policy.evaluateAuthorization(generated, call),
 		);
@@ -103,7 +102,7 @@ export class Policies {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			registeredMethodSafety(CREATE),
+			CREATE,
 			options.idempotencyKey,
 			(call) => this.#core.raw.policy.createUsePolicy(generated, call),
 		);
@@ -129,7 +128,7 @@ export class Policies {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			registeredMethodSafety(UPDATE),
+			UPDATE,
 			options.idempotencyKey,
 			(call) => this.#core.raw.policy.updateUsePolicy(generated, call),
 		);
@@ -146,7 +145,7 @@ export class Policies {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			registeredMethodSafety(GET),
+			GET,
 			undefined,
 			(call) => this.#core.raw.policy.getUsePolicy(generated, call),
 		);
@@ -174,7 +173,7 @@ export class Policies {
 				const response = await invokeUnary(
 					this.#core,
 					prepared,
-					registeredMethodSafety(LIST),
+					LIST,
 					undefined,
 					(call) => this.#core.raw.policy.listUsePolicies(paged, call),
 				);
@@ -202,7 +201,7 @@ export class Policies {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			registeredMethodSafety(ACTIVATE),
+			ACTIVATE,
 			options.idempotencyKey,
 			(call) => this.#core.raw.policy.activateUsePolicy(generated, call),
 		);
@@ -223,7 +222,7 @@ export class Policies {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			registeredMethodSafety(REVOKE),
+			REVOKE,
 			options.idempotencyKey,
 			(call) => this.#core.raw.policy.revokeUsePolicy(generated, call),
 		);
@@ -242,7 +241,7 @@ export class Policies {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			registeredMethodSafety(RESOLVE),
+			RESOLVE,
 			undefined,
 			(call) => this.#core.raw.policy.resolvePolicySnapshot(generated, call),
 		);

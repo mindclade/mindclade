@@ -47,7 +47,6 @@ import {
 } from "./request.js";
 import { captureFor } from "./response.js";
 import { invokeUnary } from "./retry.js";
-import { registeredMethodSafety } from "./safety.js";
 
 const routes = {
 	getRun: "/mindclade.internal.job.v1.RunService/GetRun",
@@ -110,7 +109,7 @@ export class Runs {
 		const response = await invokeUnary(
 			this.#core,
 			call,
-			registeredMethodSafety(routes.getRun),
+			routes.getRun,
 			undefined,
 			(o) => this.#core.raw.runs.getRun(create(GetRunRequestSchema, { name: canonical }), o),
 		);
@@ -146,7 +145,7 @@ export class Runs {
 				const response = await invokeUnary(
 					this.#core,
 					call,
-					registeredMethodSafety(routes.listRuns),
+					routes.listRuns,
 					undefined,
 					(o) => this.#core.raw.runs.listRuns(paged, o),
 				);
@@ -172,7 +171,7 @@ export class Runs {
 		const response = await invokeUnary(
 			this.#core,
 			call,
-			registeredMethodSafety(routes.getAttempt),
+			routes.getAttempt,
 			undefined,
 			(o) =>
 				this.#core.raw.runs.getAttempt(create(GetAttemptRequestSchema, { name: canonical }), o),
@@ -206,7 +205,7 @@ export class Runs {
 				const response = await invokeUnary(
 					this.#core,
 					call,
-					registeredMethodSafety(routes.listAttempts),
+					routes.listAttempts,
 					undefined,
 					(o) => this.#core.raw.runs.listAttempts(paged, o),
 				);
@@ -257,7 +256,7 @@ export class Runs {
 		const response = await invokeUnary(
 			core,
 			call,
-			registeredMethodSafety(routes.acquire),
+			routes.acquire,
 			options.idempotencyKey,
 			(o) => this.#core.raw.runs.acquireAttemptLease(request, o),
 		);
@@ -288,7 +287,7 @@ export class Runs {
 		const response = await invokeUnary(
 			this.#core,
 			call,
-			registeredMethodSafety(routes.renew),
+			routes.renew,
 			options.idempotencyKey,
 			(o) => this.#core.raw.runs.renewAttemptLease(request, o),
 		);
@@ -317,7 +316,7 @@ export class Runs {
 		const response = await invokeUnary(
 			this.#core,
 			call,
-			registeredMethodSafety(routes.heartbeat),
+			routes.heartbeat,
 			options.idempotencyKey,
 			(o) => this.#core.raw.runs.heartbeatAttempt(request, o),
 		);
@@ -349,7 +348,7 @@ export class Runs {
 		const response = await invokeUnary(
 			this.#core,
 			call,
-			registeredMethodSafety(routes.cancel),
+			routes.cancel,
 			options.idempotencyKey,
 			(o) => this.#core.raw.runs.cancelAttempt(request, o),
 		);
@@ -392,7 +391,7 @@ export class Runs {
 		const response = await invokeUnary(
 			this.#core,
 			call,
-			registeredMethodSafety(routes.commit),
+			routes.commit,
 			options.idempotencyKey,
 			(o) => this.#core.raw.runs.commitAttempt(request, o),
 		);

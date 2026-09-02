@@ -100,10 +100,18 @@ export {
 	type ClientConfigInput,
 	Environment,
 	type Identity,
+	isReservedMetadata,
+	RESERVED_REQUEST_METADATA,
 	type RetryPolicy,
 	validateAttempts,
 } from "./config.js";
 export { Datasets } from "./datasets.js";
+export {
+	clientConfigFromEnvironment,
+	type EnvironmentOverrides,
+	type EnvironmentSource,
+	RECOGNISED_ENVIRONMENT_VARIABLES,
+} from "./environment.js";
 export {
 	AuthenticationError,
 	AuthorizationError,
@@ -141,6 +149,19 @@ export {
 export { Inference, inferenceRequest } from "./inference.js";
 export { Jobs } from "./jobs.js";
 export { Models } from "./models.js";
+export {
+	consoleLogger,
+	levelFromEnvironment,
+	LOG_LEVELS,
+	type LogFields,
+	type Logger,
+	type LogLevel,
+	metadataKeyNames,
+	type ObservabilityPolicy,
+	type ObservedCall,
+	type Observer,
+	observeCall,
+} from "./observability.js";
 export { Operations } from "./operations.js";
 export {
 	listPage,
@@ -151,6 +172,7 @@ export {
 	type PageSource,
 	withPageToken,
 } from "./pagination.js";
+export { platformMetadata, SDK_NAME, SDK_VERSION } from "./platform.js";
 export { Policies } from "./policies.js";
 export { RawInternalClients } from "./raw.js";
 export type {
@@ -177,5 +199,17 @@ export { AttemptLease, LeaseCredential, Runs } from "./runs.js";
 export type { Runtime } from "./runtime.js";
 export { isNeverRetryable, registeredMethodSafety } from "./safety.js";
 export { FakeRuntime, type RecordedTransportCall, RecordingTransport } from "./testing.js";
-export { Training, type TrainingUpdate } from "./training.js";
+export { Training, TrainingRunFailure, type TrainingUpdate } from "./training.js";
+export {
+	AuthenticatedTransport,
+	createNodeTransport,
+	MAX_MESSAGE_BYTES,
+} from "./transport.js";
+export {
+	DEFAULT_WAIT_TIMEOUT_MS,
+	type WatchCall,
+	type WatchDecision,
+	type WatchSource,
+	watchStream,
+} from "./watch.js";
 export { WorkflowRunFailure, Workflows } from "./workflows.js";

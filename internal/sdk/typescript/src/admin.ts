@@ -37,7 +37,6 @@ import {
 	type SubmitOptions,
 } from "./request.js";
 import { invokeUnary } from "./retry.js";
-import { registeredMethodSafety } from "./safety.js";
 
 const GET_TENANT = "/mindclade.internal.admin.v1.AdminService/GetTenant";
 const UPDATE_TENANT = "/mindclade.internal.admin.v1.AdminService/UpdateTenant";
@@ -68,7 +67,7 @@ export class Admin {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			registeredMethodSafety(GET_TENANT),
+			GET_TENANT,
 			undefined,
 			(call) => this.#core.raw.admin.getTenant(generated, call),
 		);
@@ -99,7 +98,7 @@ export class Admin {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			registeredMethodSafety(UPDATE_TENANT),
+			UPDATE_TENANT,
 			options.idempotencyKey,
 			(call) => this.#core.raw.admin.updateTenant(generated, call),
 		);
@@ -135,7 +134,7 @@ export class Admin {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			registeredMethodSafety(CREATE_PROJECT),
+			CREATE_PROJECT,
 			options.idempotencyKey,
 			(call) => this.#core.raw.admin.createProject(generated, call),
 		);
@@ -153,7 +152,7 @@ export class Admin {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			registeredMethodSafety(GET_PROJECT),
+			GET_PROJECT,
 			undefined,
 			(call) => this.#core.raw.admin.getProject(generated, call),
 		);
@@ -181,7 +180,7 @@ export class Admin {
 				const response = await invokeUnary(
 					this.#core,
 					prepared,
-					registeredMethodSafety(LIST_PROJECTS),
+					LIST_PROJECTS,
 					undefined,
 					(call) => this.#core.raw.admin.listProjects(paged, call),
 				);
@@ -215,7 +214,7 @@ export class Admin {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			registeredMethodSafety(UPDATE_PROJECT),
+			UPDATE_PROJECT,
 			options.idempotencyKey,
 			(call) => this.#core.raw.admin.updateProject(generated, call),
 		);
@@ -237,7 +236,7 @@ export class Admin {
 				const response = await invokeUnary(
 					this.#core,
 					prepared,
-					registeredMethodSafety(QUERY_AUDIT),
+					QUERY_AUDIT,
 					undefined,
 					(call) =>
 						this.#core.raw.admin.queryAuditRecords(
@@ -271,7 +270,7 @@ export class Admin {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			registeredMethodSafety(EXPORT_AUDIT),
+			EXPORT_AUDIT,
 			options.idempotencyKey,
 			(call) => this.#core.raw.admin.exportAuditRecords(request, call),
 		);
@@ -288,7 +287,7 @@ export class Admin {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			registeredMethodSafety(GET_EXPORT),
+			GET_EXPORT,
 			undefined,
 			(call) => this.#core.raw.admin.getAuditExport(generated, call),
 		);

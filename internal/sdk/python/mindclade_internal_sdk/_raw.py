@@ -93,13 +93,33 @@ def active_capture() -> _RawCapture | None:
     return _CAPTURE.get()
 
 
+_STREAMING_MARKER = "__mindclade_streaming__"
+
+
+def streaming_method[FunctionT: Callable[..., Any]](function: FunctionT) -> FunctionT:
+    """Mark a method that returns a live stream rather than a single response.
+
+    A watcher builds its stream eagerly and hands back an iterator, so it is not
+    a generator function and cannot be recognised by inspection. The marker
+    keeps ``with_raw_response`` rejecting it: a stream has many responses and no
+    single set of transport facts to report.
+    """
+
+    setattr(function, _STREAMING_MARKER, True)
+    return function
+
+
 def _bound(namespace: object, name: str) -> Callable[..., Any]:
     if name.startswith("_"):
         raise AttributeError(name)
     method = getattr(namespace, name, None)
     if method is None or not callable(method):
         raise AttributeError(name)
-    if inspect.isgeneratorfunction(method) or inspect.isasyncgenfunction(method):
+    if (
+        inspect.isgeneratorfunction(method)
+        or inspect.isasyncgenfunction(method)
+        or getattr(method, _STREAMING_MARKER, False)
+    ):
         raise ValueError(_STREAMING_REJECTION)
     return cast(Callable[..., Any], method)
 

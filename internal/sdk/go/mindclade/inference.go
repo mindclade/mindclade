@@ -2,12 +2,8 @@ package mindclade
 
 import (
 	"context"
-	"errors"
-	"io"
 	"strings"
-	"sync"
 
-	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	inferencev1 "github.com/mindclade/mindclade/protocols/generated/go/inference/v1"
@@ -134,135 +130,88 @@ func (service *InferenceService) CommitResult(ctx context.Context, command *inte
 	return cloneGenerated(response.GetResult()), cloneGenerated(response.GetOperation()), nil
 }
 
-// InferenceWatcher resumes generated streaming updates from the last durable
-// server-issued cursor. Recv is serialized; Close is idempotent.
-type InferenceWatcher struct {
-	service       *InferenceService
-	ctx           context.Context //nolint:containedctx // A stream watcher owns its cancellable lifecycle context.
-	cancel        context.CancelFunc
-	operationName string
-	cursor        *inferencev1.InferenceStreamCursor
-	stream        grpc.ServerStreamingClient[internalinferencev1.WatchInferenceResponse]
-	terminal      bool
-	mu            sync.Mutex
-}
+// InferenceWatcher is the inference spelling of the shared resumable watcher.
+// It yields the generated stream message; its resume cursor is the generated
+// InferenceStreamCursor the server issued with the last accepted message.
+type InferenceWatcher = StreamWatcher[*inferencev1.InferenceStreamMessage, *inferencev1.InferenceStreamCursor]
 
-func (service *InferenceService) Watch(ctx context.Context, operationName string, cursor *inferencev1.InferenceStreamCursor) (*InferenceWatcher, error) {
+// Watch streams generated inference updates, resuming from cursor. Passing the
+// cursor a previous watcher reported through Cursor resumes exactly where that
+// watcher stopped.
+func (service *InferenceService) Watch(ctx context.Context, operationName string, cursor *inferencev1.InferenceStreamCursor, options ...RequestOption) (*InferenceWatcher, error) {
 	if service == nil || service.client == nil || service.transport == nil || ctx == nil || !validResourceIdentifier(operationName) {
 		return nil, &Error{Code: CodeInvalidArgument, Message: "context and valid inference operation name are required"}
 	}
-	watchContext, cancel, err := service.longRunningContext(ctx)
+	watchContext, cancel, err := service.client.longRunningContext(ctx, options...)
 	if err != nil {
 		return nil, err
 	}
-	watcher := &InferenceWatcher{service: service, ctx: watchContext, cancel: cancel, operationName: operationName, cursor: cloneGenerated(cursor)}
-	if err = watcher.connect(); err != nil {
+	watcher, err := newStreamWatcher(watchContext, cancel, service.client.config, cloneGenerated(cursor), service.watchPolicy(operationName))
+	if err != nil {
 		cancel()
 		return nil, err
 	}
 	return watcher, nil
 }
 
-func (service *InferenceService) longRunningContext(ctx context.Context) (context.Context, context.CancelFunc, error) {
-	if ctx == nil {
-		return nil, nil, &Error{Code: CodeInvalidArgument, Message: "context is required"}
-	}
-	if _, ok := ctx.Deadline(); ok {
-		return longRunningStreamContext(ctx), func() {}, nil
-	}
-	bounded, cancel := context.WithTimeout(ctx, service.client.config.DefaultOperationTimeout)
-	return longRunningStreamContext(bounded), cancel, nil
+// ResumeWatch continues a stream from a cursor a previous process persisted.
+func (service *InferenceService) ResumeWatch(ctx context.Context, operationName string, cursor *inferencev1.InferenceStreamCursor, options ...RequestOption) (*InferenceWatcher, error) {
+	return service.Watch(ctx, operationName, cursor, options...)
 }
 
-func (watcher *InferenceWatcher) connect() error {
-	request := &internalinferencev1.WatchInferenceRequest{OperationName: watcher.operationName, Cursor: cloneGenerated(watcher.cursor)}
-	if deadline, ok := watcher.ctx.Deadline(); ok {
-		request.Deadline = timestamppb.New(deadline)
-	}
-	stream, err := watcher.service.transport.WatchInference(watcher.ctx, request)
-	if err != nil {
-		return normalizeError(err)
-	}
-	watcher.stream = stream
-	return nil
-}
-
-func (watcher *InferenceWatcher) Recv() (*inferencev1.InferenceStreamMessage, error) {
-	watcher.mu.Lock()
-	defer watcher.mu.Unlock()
-	if watcher.terminal {
-		return nil, io.EOF
-	}
-	failures := 0
-	for {
-		response, err := watcher.stream.Recv()
-		if err == nil {
-			message := response.GetMessage()
+// watchPolicy keeps every inference-specific rule the previous hand-written
+// watcher enforced: a complete message, a heartbeat bound to the last durable
+// cursor, stable request identity, and a strictly contiguous sequence.
+func (service *InferenceService) watchPolicy(operationName string) watchPolicy[*inferencev1.InferenceStreamMessage, *inferencev1.InferenceStreamCursor] {
+	return watchPolicy[*inferencev1.InferenceStreamMessage, *inferencev1.InferenceStreamCursor]{
+		open: func(ctx context.Context, cursor *inferencev1.InferenceStreamCursor) (func() (*inferencev1.InferenceStreamMessage, error), error) {
+			request := &internalinferencev1.WatchInferenceRequest{OperationName: operationName, Cursor: cloneGenerated(cursor)}
+			if deadline, ok := ctx.Deadline(); ok {
+				request.Deadline = timestamppb.New(deadline)
+			}
+			stream, err := service.transport.WatchInference(ctx, request)
+			if err != nil {
+				return nil, normalizeError(err)
+			}
+			return func() (*inferencev1.InferenceStreamMessage, error) {
+				response, receiveErr := stream.Recv()
+				if receiveErr != nil {
+					return nil, receiveErr
+				}
+				return response.GetMessage(), nil
+			}, nil
+		},
+		accept: func(cursor *inferencev1.InferenceStreamCursor, message *inferencev1.InferenceStreamMessage) (*inferencev1.InferenceStreamCursor, bool, error) {
 			if message == nil || message.GetRequestName() == "" || message.GetResumeToken() == "" || message.GetSequence() == 0 {
-				return nil, &Error{Code: CodeDataLoss, Message: "inference watch returned an incomplete message"}
+				return cursor, false, &Error{Code: CodeDataLoss, Message: "inference watch returned an incomplete message"}
 			}
 			if message.GetHeartbeat() != nil {
-				if watcher.cursor == nil || message.GetRequestName() != watcher.cursor.GetRequestName() || message.GetSequence() != watcher.cursor.GetAfterSequence() || message.GetResumeToken() != watcher.cursor.GetResumeToken() {
-					return nil, &Error{Code: CodeDataLoss, Message: "inference heartbeat was not bound to the last durable cursor"}
+				if cursor == nil || message.GetRequestName() != cursor.GetRequestName() || message.GetSequence() != cursor.GetAfterSequence() || message.GetResumeToken() != cursor.GetResumeToken() {
+					return cursor, false, &Error{Code: CodeDataLoss, Message: "inference heartbeat was not bound to the last durable cursor"}
 				}
-				return cloneGenerated(message), nil
+				return cursor, false, nil
 			}
 			after := uint64(0)
-			if watcher.cursor != nil {
-				after = watcher.cursor.GetAfterSequence()
-				if watcher.cursor.GetRequestName() != message.GetRequestName() {
-					return nil, &Error{Code: CodeDataLoss, Message: "inference watch changed request identity"}
+			if cursor != nil {
+				after = cursor.GetAfterSequence()
+				if cursor.GetRequestName() != message.GetRequestName() {
+					return cursor, false, &Error{Code: CodeDataLoss, Message: "inference watch changed request identity"}
 				}
 			}
 			if message.GetSequence() != after+1 {
-				return nil, &Error{Code: CodeDataLoss, Message: "inference watch sequence is not contiguous"}
+				return cursor, false, &Error{Code: CodeDataLoss, Message: "inference watch sequence is not contiguous"}
 			}
-			watcher.cursor = &inferencev1.InferenceStreamCursor{RequestName: message.GetRequestName(), AfterSequence: message.GetSequence(), ResumeToken: message.GetResumeToken()}
-			watcher.terminal = message.GetFinalResult() != nil || message.GetFailure() != nil
-			return cloneGenerated(message), nil
-		}
-		if errors.Is(err, io.EOF) && watcher.terminal {
-			return nil, io.EOF
-		}
-		if watcher.ctx.Err() != nil {
-			return nil, normalizeError(watcher.ctx.Err())
-		}
-		if !errors.Is(err, io.EOF) && !isRetryable(err) {
-			return nil, normalizeError(err)
-		}
-		failures++
-		if failures >= watcher.service.client.config.MaxAttempts {
-			return nil, normalizeError(err)
-		}
-		if waitErr := waitContext(watcher.ctx, retryDelay(watcher.service.client.config, failures)); waitErr != nil {
-			return nil, normalizeError(waitErr)
-		}
-		if connectErr := watcher.connect(); connectErr != nil {
-			return nil, connectErr
-		}
+			next := &inferencev1.InferenceStreamCursor{RequestName: message.GetRequestName(), AfterSequence: message.GetSequence(), ResumeToken: message.GetResumeToken()}
+			return next, message.GetFinalResult() != nil || message.GetFailure() != nil, nil
+		},
+		snapshot: cloneGenerated[*inferencev1.InferenceStreamCursor],
 	}
-}
-
-func (watcher *InferenceWatcher) Cursor() *inferencev1.InferenceStreamCursor {
-	if watcher == nil {
-		return nil
-	}
-	watcher.mu.Lock()
-	defer watcher.mu.Unlock()
-	return cloneGenerated(watcher.cursor)
-}
-
-func (watcher *InferenceWatcher) Close() error {
-	if watcher != nil && watcher.cancel != nil {
-		watcher.cancel()
-	}
-	return nil
 }
 
 // Wait consumes resumable typed updates until terminal truth is durable, then
 // returns the authoritative generated result and operation.
-func (service *InferenceService) Wait(ctx context.Context, operationName string, cursor *inferencev1.InferenceStreamCursor) (*inferencev1.InferenceResult, *jobv1.Operation, error) {
-	watcher, err := service.Watch(ctx, operationName, cursor)
+func (service *InferenceService) Wait(ctx context.Context, operationName string, cursor *inferencev1.InferenceStreamCursor, options ...RequestOption) (*inferencev1.InferenceResult, *jobv1.Operation, error) {
+	watcher, err := service.Watch(ctx, operationName, cursor, options...)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -276,7 +225,7 @@ func (service *InferenceService) Wait(ctx context.Context, operationName string,
 			return nil, nil, &Error{Code: CodeFailedPrecondition, Message: "inference watch reported durable failure"}
 		}
 		if message.GetFinalResult() != nil {
-			return service.GetResult(ctx, operationName)
+			return service.GetResult(ctx, operationName, options...)
 		}
 	}
 }

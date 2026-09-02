@@ -8,7 +8,6 @@ import {
 	toBinary,
 } from "@bufbuild/protobuf";
 import { timestampDate, timestampFromDate } from "@bufbuild/protobuf/wkt";
-import { Code, ConnectError } from "@connectrpc/connect";
 import {
 	CancelTrainingRunRequestSchema,
 	CommitCheckpointRequestSchema,
@@ -64,7 +63,6 @@ import type { ClientCore } from "./core.js";
 import { MindcladeError } from "./error.js";
 import { listPage, type Page, withPageToken } from "./pagination.js";
 import {
-	callHeaders,
 	commandContext,
 	type ListOptions,
 	type PreparedCall,
@@ -73,8 +71,8 @@ import {
 	type SubmitOptions,
 	type WaitOptions,
 } from "./request.js";
-import { ensureActive, invokeUnary, retryableAttempts, retryDelay } from "./retry.js";
-import { registeredMethodSafety } from "./safety.js";
+import { invokeUnary } from "./retry.js";
+import { DEFAULT_WAIT_TIMEOUT_MS, watchStream, type WatchSource } from "./watch.js";
 
 const SERVICE = "/mindclade.internal.training.v1.TrainingService";
 const CREATE = `${SERVICE}/CreateTrainingRun`;
@@ -90,7 +88,7 @@ const CANCEL = `${SERVICE}/CancelTrainingRun`;
 const GET_CHECKPOINT = `${SERVICE}/GetCheckpoint`;
 const LIST_CHECKPOINTS = `${SERVICE}/ListCheckpoints`;
 const MAXIMUM_PAGE_SIZE = 200;
-const DEFAULT_WAIT_TIMEOUT_MS = 30 * 60 * 1_000;
+const WATCH = `${SERVICE}/WatchTrainingRun`;
 const SHA256 = /^sha256:[0-9a-f]{64}$/;
 const RESOURCE_ID = /^[A-Za-z0-9][A-Za-z0-9._~-]{0,127}$/;
 const TERMINAL = new Set<TrainingRunState>([
@@ -105,6 +103,31 @@ export interface TrainingUpdate {
 	readonly progress?: TrainingProgress;
 	readonly sequence: bigint;
 	readonly observedAt?: WatchTrainingRunResponse["observedAt"];
+}
+
+/**
+ * A durable training failure retaining the generated run without exposing its
+ * structured failure payload through `Error.message` or JSON serialization.
+ *
+ * The mirror of `WorkflowRunFailure`, so the two long-running domains fail the
+ * same way and a caller can handle both with one `catch`.
+ */
+export class TrainingRunFailure extends MindcladeError {
+	readonly run!: TrainingRun;
+
+	constructor(run: TrainingRun) {
+		super({
+			kind: run.state === TrainingRunState.CANCELLED ? "cancelled" : "remote",
+			safeMessage: "training run reached a non-success terminal state",
+		});
+		this.name = "TrainingRunFailure";
+		Object.defineProperty(this, "run", {
+			configurable: false,
+			enumerable: false,
+			value: clone(TrainingRunSchema, run),
+			writable: false,
+		});
+	}
 }
 
 /** Generated-type-only durable training facade. */
@@ -133,7 +156,7 @@ export class Training {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			registeredMethodSafety(CREATE),
+			CREATE,
 			options.idempotencyKey,
 			(call) =>
 				this.#core.raw.training.createTrainingRun(
@@ -150,7 +173,7 @@ export class Training {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			registeredMethodSafety(GET),
+			GET,
 			undefined,
 			(call) =>
 				this.#core.raw.training.getTrainingRun(
@@ -181,7 +204,7 @@ export class Training {
 				const response = await invokeUnary(
 					this.#core,
 					prepared,
-					registeredMethodSafety(LIST),
+					LIST,
 					undefined,
 					(call) => this.#core.raw.training.listTrainingRuns(paged, call),
 				);
@@ -260,7 +283,7 @@ export class Training {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			registeredMethodSafety(COMMIT_PROGRESS),
+			COMMIT_PROGRESS,
 			options.idempotencyKey,
 			(call) =>
 				this.#core.raw.training.commitTrainingProgress(
@@ -351,7 +374,7 @@ export class Training {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			registeredMethodSafety(COMMIT_CHECKPOINT),
+			COMMIT_CHECKPOINT,
 			options.idempotencyKey,
 			(call) =>
 				this.#core.raw.training.commitCheckpoint(
@@ -432,7 +455,7 @@ export class Training {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			registeredMethodSafety(GET_CHECKPOINT),
+			GET_CHECKPOINT,
 			undefined,
 			(call) =>
 				this.#core.raw.training.getCheckpoint(
@@ -462,7 +485,7 @@ export class Training {
 				const response = await invokeUnary(
 					this.#core,
 					prepared,
-					registeredMethodSafety(LIST_CHECKPOINTS),
+					LIST_CHECKPOINTS,
 					undefined,
 					(call) => this.#core.raw.training.listCheckpoints(paged, call),
 				);
@@ -484,70 +507,94 @@ export class Training {
 	): AsyncGenerator<TrainingUpdate> {
 		ensureUnfenced(options);
 		const runName = scopedRunName(this.#core, name);
-		if (afterSequence < 0n)
+		if (afterSequence < 0n) {
 			throw MindcladeError.invalidArgument("training watch cursor cannot be negative");
+		}
 		const total = options.waitTimeoutMs ?? DEFAULT_WAIT_TIMEOUT_MS;
 		const prepared = prepareCall(
 			this.#core.config,
 			this.#core.runtime,
 			callOptions(options, total),
 		);
-		let cursor = afterSequence;
-		let failures = 0;
-		while (true) {
-			ensureActive(this.#core, prepared);
-			const request = create(WatchTrainingRunRequestSchema, {
-				afterSequence: cursor,
-				deadline: timestampFromDate(new Date(prepared.deadlineMs)),
-				name: runName,
-			});
-			try {
-				const stream = this.#core.raw.training.watchTrainingRun(request, {
-					headers: callHeaders(this.#core.config, prepared, {
-						attempt: failures,
-						remainingMs: prepared.deadlineMs - this.#core.runtime.nowMs(),
-					}),
-					timeoutMs: Math.max(1, prepared.deadlineMs - this.#core.runtime.nowMs()),
-					...(prepared.signal === undefined ? {} : { signal: prepared.signal }),
-				});
-				for await (const response of stream) {
-					ensureActive(this.#core, prepared);
-					const run = requiredRun(response.trainingRun, "WatchTrainingRun");
-					if (run.name !== runName || response.sequence !== cursor + 1n) {
-						throw MindcladeError.protocol(
-							"training watch returned an invalid identity or non-contiguous sequence",
-						);
-					}
-					cursor = response.sequence;
-					failures = 0;
-					yield {
+		yield* watchStream(
+			this.#core,
+			prepared,
+			this.#watchSource(runName, prepared),
+			afterSequence,
+		);
+	}
+
+	/** Resumes a watch from a sequence the caller already accepted. */
+	async *resumeWatch(
+		name: string,
+		afterSequence: bigint,
+		options: WaitOptions = {},
+	): AsyncGenerator<TrainingUpdate> {
+		if (afterSequence <= 0n) {
+			throw MindcladeError.invalidArgument(
+				"resuming a training watch requires a positive accepted sequence",
+			);
+		}
+		yield* this.watch(name, afterSequence, options);
+	}
+
+	/**
+	 * Waits for durable terminal training truth.
+	 *
+	 * The counterpart of `Workflows.wait` and `Operations.wait`: a successful
+	 * terminal run is returned, and a failed or cancelled one is raised as a
+	 * {@link TrainingRunFailure} rather than handed back for the caller to
+	 * re-inspect.
+	 */
+	async wait(name: string, afterSequence = 0n, options: WaitOptions = {}): Promise<TrainingRun> {
+		for await (const update of this.watch(name, afterSequence, options)) {
+			if (!TERMINAL.has(update.run.state)) continue;
+			if (update.run.state !== TrainingRunState.COMPLETED) {
+				throw new TrainingRunFailure(update.run);
+			}
+			return update.run;
+		}
+		throw MindcladeError.protocol("training watch ended before terminal durable state");
+	}
+
+	#watchSource(
+		runName: string,
+		prepared: PreparedCall,
+	): WatchSource<TrainingUpdate, bigint, WatchTrainingRunResponse> {
+		return {
+			accept: (response, cursor) => {
+				const run = requiredRun(response.trainingRun, "WatchTrainingRun");
+				if (run.name !== runName || response.sequence !== cursor + 1n) {
+					throw MindcladeError.protocol(
+						"training watch returned an invalid identity or non-contiguous sequence",
+					);
+				}
+				return {
+					cursor: response.sequence,
+					delivery: "yield",
+					value: {
 						run,
 						...(response.progress === undefined
 							? {}
 							: { progress: clone(TrainingProgressSchema, response.progress) }),
 						sequence: response.sequence,
 						...(response.observedAt === undefined ? {} : { observedAt: response.observedAt }),
-					};
-					if (TERMINAL.has(run.state)) return;
-				}
-				throw new ConnectError("training stream ended before terminal state", Code.Unavailable);
-			} catch (reason) {
-				const error = MindcladeError.from(
-					reason,
-					prepared.signal,
-					this.#core.runtime.nowMs() >= prepared.deadlineMs,
-					{ clampMs: this.#core.config.retry.maxBackoffMs },
-				);
-				failures += 1;
-				if (!error.retryable || failures >= retryableAttempts(this.#core, prepared, "safe")) {
-					throw error;
-				}
-				const delay = retryDelay(this.#core, failures, error.retryAfterMs);
-				if (delay >= prepared.deadlineMs - this.#core.runtime.nowMs())
-					throw MindcladeError.deadlineExceeded();
-				await this.#core.runtime.sleep(delay, prepared.signal);
-			}
-		}
+					},
+				};
+			},
+			incomplete: "training stream ended before terminal state",
+			open: (cursor, call) =>
+				this.#core.raw.training.watchTrainingRun(
+					create(WatchTrainingRunRequestSchema, {
+						afterSequence: cursor,
+						deadline: timestampFromDate(new Date(prepared.deadlineMs)),
+						name: runName,
+					}),
+					call,
+				),
+			route: WATCH,
+			terminal: (update) => TERMINAL.has(update.run.state),
+		};
 	}
 
 	async #trainingMutation<CommandDesc extends DescMessage>(
@@ -572,7 +619,7 @@ export class Training {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			registeredMethodSafety(route),
+			route,
 			options.idempotencyKey,
 			invoke,
 		);
@@ -601,7 +648,7 @@ export class Training {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			registeredMethodSafety(route),
+			route,
 			options.idempotencyKey,
 			invoke,
 		);

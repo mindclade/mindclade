@@ -36,7 +36,6 @@ import {
 	type SubmitOptions,
 } from "./request.js";
 import { invokeUnary } from "./retry.js";
-import { registeredMethodSafety } from "./safety.js";
 
 const CREATE = "/mindclade.internal.dataset.v1.DatasetService/CreateDataset";
 const GET = "/mindclade.internal.dataset.v1.DatasetService/GetDataset";
@@ -74,7 +73,7 @@ export class Datasets {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			registeredMethodSafety(CREATE),
+			CREATE,
 			options.idempotencyKey,
 			(call) =>
 				this.#core.raw.datasets.createDataset(
@@ -95,7 +94,7 @@ export class Datasets {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			registeredMethodSafety(GET),
+			GET,
 			undefined,
 			(call) => this.#core.raw.datasets.getDataset(generated, call),
 		);
@@ -123,7 +122,7 @@ export class Datasets {
 				const response = await invokeUnary(
 					this.#core,
 					prepared,
-					registeredMethodSafety(LIST),
+					LIST,
 					undefined,
 					(call) => this.#core.raw.datasets.listDatasets(paged, call),
 				);
@@ -151,7 +150,7 @@ export class Datasets {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			registeredMethodSafety(UPDATE),
+			UPDATE,
 			options.idempotencyKey,
 			(call) =>
 				this.#core.raw.datasets.updateDataset(
@@ -179,7 +178,7 @@ export class Datasets {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			registeredMethodSafety(PUBLISH),
+			PUBLISH,
 			options.idempotencyKey,
 			(call) =>
 				this.#core.raw.datasets.publishDatasetRelease(
@@ -211,7 +210,7 @@ export class Datasets {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			registeredMethodSafety(REVOKE),
+			REVOKE,
 			options.idempotencyKey,
 			(call) =>
 				this.#core.raw.datasets.revokeDatasetRelease(
@@ -232,7 +231,7 @@ export class Datasets {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			registeredMethodSafety(GET_RELEASE),
+			GET_RELEASE,
 			undefined,
 			(call) => this.#core.raw.datasets.getDatasetRelease(generated, call),
 		);
@@ -257,7 +256,7 @@ export class Datasets {
 				const response = await invokeUnary(
 					this.#core,
 					prepared,
-					registeredMethodSafety(LIST_RELEASES),
+					LIST_RELEASES,
 					undefined,
 					(call) => this.#core.raw.datasets.listDatasetReleases(paged, call),
 				);
