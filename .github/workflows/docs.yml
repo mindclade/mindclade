@@ -22,7 +22,7 @@ concurrency:
 
 jobs:
   documentation:
-    uses: mindclade/.github/.github/workflows/reusable-documentation-check.yml@6399abc50c4678d0dff7f33bbd7f6868043ef736
+    uses: mindclade/.github/.github/workflows/reusable-documentation-check.yml@c097ef86c25991a400050c13e78574e8d3d8c071
     with:
       source_revision: ${{ github.event.pull_request.head.sha || github.sha }}
       documentation_roots: |-

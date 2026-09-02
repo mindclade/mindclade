@@ -15,6 +15,6 @@ concurrency:
 
 jobs:
   scorecard:
-    uses: mindclade/.github/.github/workflows/reusable-scorecard.yml@6399abc50c4678d0dff7f33bbd7f6868043ef736
+    uses: mindclade/.github/.github/workflows/reusable-scorecard.yml@c097ef86c25991a400050c13e78574e8d3d8c071
     with:
       source_revision: ${{ github.sha }}

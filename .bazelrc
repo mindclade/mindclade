@@ -3,11 +3,13 @@ common --color=yes
 common --curses=yes
 common --show_timestamps
 common --enable_bzlmod
+common --enable_platform_specific_config
 common --lockfile_mode=error
 common --repo_env=PATH
 common --repo_env=JAVA_HOME
 common --repo_env=CC
 common --repo_env=CXX
+common --repo_env=BAZEL_LINKOPTS
 common --repo_env=MINDCLADE_NIX_BIN
 
 build --incompatible_strict_action_env
@@ -19,6 +21,14 @@ build --action_env=LANG
 build --action_env=LC_ALL
 build --action_env=TZ
 build --stamp=no
+
+# The Nix-provided Apple SDK exposes system headers through a module map that
+# upstream Protobuf/Abseil exec tools do not declare. Keep target layering
+# checks enabled, but disable the incompatible host-tool feature. Match both
+# host and target deployment to the pinned Nix Darwin toolchain closure.
+build:macos --host_features=-layering_check
+build:macos --macos_minimum_os=14.0
+build:macos --host_macos_minimum_os=14.0
 
 test --test_output=errors
 test --test_env=LANG=C
