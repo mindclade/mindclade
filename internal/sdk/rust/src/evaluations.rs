@@ -45,8 +45,9 @@ impl Evaluations {
     ///
     /// # Errors
     ///
-    /// Returns an error when intent validation, authentication, transport, or
-    /// response validation fails.
+    /// Returns an error when the requested scope, identifier, artifact set,
+    /// model reference, or command metadata is invalid; authentication or
+    /// transport fails; or the response omits a valid operation.
     pub async fn create_run(
         &self,
         mut request: CreateEvaluationRunRequest,
@@ -105,8 +106,9 @@ impl Evaluations {
     ///
     /// # Errors
     ///
-    /// Returns an error when the name is out of scope or the transport returns
-    /// missing or inconsistent generated state.
+    /// Returns an error when the run name is outside the configured project,
+    /// authentication or transport fails, or the response omits the run or
+    /// changes its identity.
     pub async fn get_run(
         &self,
         name: impl Into<String>,
@@ -146,8 +148,8 @@ impl Evaluations {
     ///
     /// # Errors
     ///
-    /// Returns an error when scope or pagination is invalid or the transport
-    /// call fails.
+    /// Returns an error when the requested scope or page size is invalid, or
+    /// when authentication or transport fails.
     pub async fn list_runs(
         &self,
         mut request: ListEvaluationRunsRequest,
@@ -185,8 +187,9 @@ impl Evaluations {
     ///
     /// # Errors
     ///
-    /// Returns an error when the request is invalid, authentication or
-    /// transport fails, or the response omits its durable operation.
+    /// Returns an error when the run name, etag, reason, or command metadata is
+    /// invalid; authentication or transport fails; or the response omits a
+    /// valid operation.
     pub async fn cancel_run(
         &self,
         mut request: CancelEvaluationRunRequest,
@@ -225,8 +228,9 @@ impl Evaluations {
     ///
     /// # Errors
     ///
-    /// Returns an error when result identity, digests, fencing, authentication,
-    /// transport, or returned durable state is invalid.
+    /// Returns an error when the run, result, digest, etag, lease fence, or
+    /// command metadata is invalid; fenced authentication or transport fails;
+    /// or the response omits a result or changes a durable identity.
     pub async fn commit_result(
         &self,
         mut request: CommitEvaluationResultRequest,
@@ -306,8 +310,9 @@ impl Evaluations {
     ///
     /// # Errors
     ///
-    /// Returns an error when the resource is out of scope or returned state is
-    /// missing or inconsistent.
+    /// Returns an error when the result name is outside the configured project,
+    /// authentication or transport fails, or the response omits the result or
+    /// changes its identity.
     pub async fn get_result(
         &self,
         name: impl Into<String>,
@@ -343,8 +348,9 @@ impl Evaluations {
     ///
     /// # Errors
     ///
-    /// Returns an error when evidence, scope, authentication, transport, or the
-    /// returned durable operation is invalid.
+    /// Returns an error when decision identity, evidence, digests, policy
+    /// scope, or command metadata is invalid; authentication or transport
+    /// fails; or the response omits a valid operation.
     pub async fn create_promotion_decision(
         &self,
         mut request: CreatePromotionDecisionRequest,
@@ -433,8 +439,9 @@ impl Evaluations {
     ///
     /// # Errors
     ///
-    /// Returns an error when the resource is out of scope or returned state is
-    /// missing or inconsistent.
+    /// Returns an error when the decision name is outside the configured
+    /// project, authentication or transport fails, or the response omits the
+    /// decision or changes its identity.
     pub async fn get_promotion_decision(
         &self,
         name: impl Into<String>,

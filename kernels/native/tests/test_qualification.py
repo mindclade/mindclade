@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import replace
 import json
 from pathlib import Path
 
@@ -7,12 +8,19 @@ import pytest
 from jsonschema import Draft202012Validator
 
 from kernels.native.python.qualification import (
+    K4QualificationReceipt,
+    K5ReleaseReceipt,
+    PRODUCTION_EVIDENCE,
+    TEST_ONLY_EVIDENCE,
     QualificationConfig,
     canonical_receipt,
     receipt_digest,
     select_compiled_artifact,
     select_specialization,
+    sign_receipt,
+    verify_signed_receipt,
 )
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 
 _DIGEST = "sha256:" + "0" * 64
@@ -133,3 +141,123 @@ def test_benchmark_and_qualification_schemas_accept_bounded_evidence():
             "status": "CANDIDATE",
         }
     )
+
+
+def test_signed_k4_receipt_is_content_addressed_and_test_only():
+    key = Ed25519PrivateKey.from_private_bytes(bytes(range(1, 33)))
+    receipt = K4QualificationReceipt(
+        operation="mindclade::outer_product_mean",
+        architecture="sm90a",
+        workload_digest=_DIGEST,
+        specialization_digest=_DIGEST,
+        dimensions=(("residues", 64),),
+        attributes=(),
+        hardware_fingerprint_digest=_DIGEST,
+        compile_environment_digest=_DIGEST,
+        runtime_compatibility_digest=_DIGEST,
+        numerical_receipt_digest=_DIGEST,
+        performance_receipt_digest=_DIGEST,
+        benchmark_protocol_digest=_DIGEST,
+        raw_samples_digest=_DIGEST,
+        forward_artifact_digest=_DIGEST,
+        backward_artifact_digest=_DIGEST,
+        native_manifest_schema_version=4,
+        native_manifest_generator_version=8,
+        build_receipt_schema_version=4,
+        autograd_policy="required",
+        status="TEST_ONLY",
+        evidence_class=TEST_ONLY_EVIDENCE,
+    )
+    signed = sign_receipt(
+        receipt, private_key=key, key_id="test-only.qualifier"
+    )
+    payload = verify_signed_receipt(
+        signed,
+        trust_roots={"test-only.qualifier": key.public_key()},
+        expected_evidence_class=TEST_ONLY_EVIDENCE,
+    )
+    assert signed.receipt_digest == signed.signature.subject_digest
+    assert payload["status"] == "TEST_ONLY"
+    for field, obsolete in (
+        ("native_manifest_schema_version", 3),
+        ("native_manifest_generator_version", 7),
+        ("build_receipt_schema_version", 3),
+    ):
+        with pytest.raises(ValueError, match="obsolete executable ABI receipt"):
+            replace(receipt, **{field: obsolete})
+
+
+def test_test_key_cannot_sign_production_and_required_bwd_is_atomic():
+    key = Ed25519PrivateKey.from_private_bytes(bytes(range(1, 33)))
+    with pytest.raises(ValueError, match="atomic FWD\\+BWD"):
+        K5ReleaseReceipt(
+            release_id="release.test",
+            operation="mindclade::outer_product_mean",
+            operation_version=1,
+            implementation="outer_product_mean_tiled",
+            implementation_version=1,
+            tier="specialized",
+            priority=1,
+            architecture="sm90a",
+            dtype="bfloat16",
+            layout="contiguous",
+            mode="training",
+            workload_digest=_DIGEST,
+            specialization_digest=_DIGEST,
+            dimensions=(("residues", 64),),
+            attributes=(),
+            schedule_digest=_DIGEST,
+            numerical_envelope_digest=_DIGEST,
+            k0_receipt_digest=_DIGEST,
+            k1_receipt_digest=_DIGEST,
+            k2_receipt_digest=_DIGEST,
+            k3_receipt_digest=_DIGEST,
+            k4_receipt_digest=_DIGEST,
+            bundle_digest=_DIGEST,
+            native_manifest_digest=_DIGEST,
+            library_digest=_DIGEST,
+            executable_plan_digest=_DIGEST,
+            forward_artifact_digest=_DIGEST,
+            backward_artifact_digest=None,
+            runtime_compatibility_digest=_DIGEST,
+            compile_environment_digest=_DIGEST,
+            sbom_digest=_DIGEST,
+            provenance_digest=_DIGEST,
+            qualification_identity="qualification.test",
+            repository_revision="a" * 40,
+            native_manifest_schema_version=4,
+            native_manifest_generator_version=8,
+            build_receipt_schema_version=4,
+            autograd_policy="required",
+            status="PASS",
+            evidence_class=PRODUCTION_EVIDENCE,
+        )
+    production_k4 = K4QualificationReceipt(
+        operation="mindclade::outer_product_mean",
+        architecture="sm90a",
+        workload_digest=_DIGEST,
+        specialization_digest=_DIGEST,
+        dimensions=(("residues", 64),),
+        attributes=(),
+        hardware_fingerprint_digest=_DIGEST,
+        compile_environment_digest=_DIGEST,
+        runtime_compatibility_digest=_DIGEST,
+        numerical_receipt_digest=_DIGEST,
+        performance_receipt_digest=_DIGEST,
+        benchmark_protocol_digest=_DIGEST,
+        raw_samples_digest=_DIGEST,
+        forward_artifact_digest=_DIGEST,
+        backward_artifact_digest=_DIGEST,
+        native_manifest_schema_version=4,
+        native_manifest_generator_version=8,
+        build_receipt_schema_version=4,
+        autograd_policy="required",
+        status="PASS",
+        evidence_class=PRODUCTION_EVIDENCE,
+    )
+    with pytest.raises(ValueError, match="test-only key"):
+        sign_receipt(
+            production_k4,
+            private_key=key,
+            key_id="test-only.qualifier",
+        )

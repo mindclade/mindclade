@@ -62,6 +62,54 @@ class AbiCompatibilityPolicyTest(unittest.TestCase):
             for namespace in macro.findall(text):
                 self.assertEqual(namespace, "mindclade", path)
 
+    def test_tensor_bridge_uses_only_approved_stable_headers(self) -> None:
+        header = (ROOT / "stable_abi" / "tensor_bridge.h").read_text(encoding="utf-8")
+        source = (ROOT / "stable_abi" / "tensor_bridge.cpp").read_text(encoding="utf-8")
+        combined = header + source
+        self.assertIn("torch/csrc/stable/tensor.h", combined)
+        self.assertIn("torch/csrc/stable/ops.h", combined)
+        self.assertIn("torch/csrc/inductor/aoti_torch/c/shim.h", combined)
+        for forbidden in ("<ATen/", "<torch/extension.h>", "c10::cuda", "cudaDeviceSynchronize"):
+            self.assertNotIn(forbidden, combined)
+        for required in (
+            "require_cuda_contiguous_tensor",
+            "current_cuda_stream",
+            "allocate_cuda_tensor",
+            "allocate_workspace",
+            "kNegativeInfinity",
+        ):
+            self.assertIn(required, combined)
+
+    def test_callable_node_abi_is_c_compatible_and_stable_only(self) -> None:
+        abi = (ROOT / "stable_abi" / "node_launch_abi.h").read_text(
+            encoding="utf-8"
+        )
+        bridge = "\n".join(
+            (ROOT / "stable_abi" / name).read_text(encoding="utf-8")
+            for name in ("node_launch_bridge.h", "node_launch_bridge.cpp")
+        )
+        for token in (
+            "MINDCLADE_NODE_LAUNCH_ABI_VERSION",
+            "MindcladeNodeTensorV1",
+            "MindcladeNodeValueV1",
+            "MindcladeNodeLaunchV1",
+            "MindcladeNodeAdapterV1",
+            "STATUS_SUCCESS_V1",
+            "specialization_digest[32]",
+            "static_assert(sizeof(MindcladeNodeLaunchV1) == 48",
+            "alignof(MindcladeNodeLaunchV1) == 8",
+        ):
+            self.assertIn(token, abi)
+        self.assertNotIn("torch::", abi)
+        self.assertNotIn("ATen", abi)
+        self.assertIn("torch/csrc/stable/tensor.h", bridge)
+        self.assertNotIn("<ATen/", bridge)
+        self.assertNotIn("cudaDeviceSynchronize", bridge)
+        capability = (ROOT / "stable_abi" / "qualified_capability_table.h").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("uint8_t specialization_digest[32]", capability)
+
 
 if __name__ == "__main__":
     unittest.main()

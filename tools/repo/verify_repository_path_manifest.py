@@ -66,19 +66,19 @@ def validate_generated_files(manifest: Mapping[str, Any], root: Path) -> list[st
             except json.JSONDecodeError:
                 value = None
             if isinstance(value, Mapping):
-                typed_value = cast(Mapping[str, object], value)
+                value_object = cast(Mapping[str, object], value)
                 structured_generator = isinstance(
-                    typed_value.get("generator"), Mapping
-                ) or isinstance(typed_value.get("x-mindclade-generator"), Mapping)
+                    value_object.get("generator"), Mapping
+                ) or isinstance(value_object.get("x-mindclade-generator"), Mapping)
                 candidate_descriptor = (
                     entry["path"] == "protocols/compatibility/baselines/protobuf.candidate.json"
-                    and typed_value.get("schema_version") == "mindclade.protobuf-candidate/v1"
-                    and isinstance(typed_value.get("lifecycle"), Mapping)
+                    and value_object.get("schema_version") == "mindclade.protobuf-candidate/v1"
+                    and isinstance(value_object.get("lifecycle"), Mapping)
                 )
                 candidate_openapi = (
                     entry["path"] == "protocols/compatibility/baselines/openapi.lock.json"
-                    and typed_value.get("schema_version") == "mindclade.openapi-candidate/v1"
-                    and isinstance(typed_value.get("sources"), Mapping)
+                    and value_object.get("schema_version") == "mindclade.openapi-candidate/v1"
+                    and isinstance(value_object.get("sources"), Mapping)
                 )
                 if structured_generator or candidate_descriptor or candidate_openapi:
                     continue

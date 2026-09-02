@@ -23,37 +23,37 @@ info:
     name: Proprietary
 jsonSchemaDialect: https://json-schema.org/draft/2020-12/schema
 servers:
-- url: /
-  description: Endpoint selected explicitly by the SDK/application profile.
+  - url: /
+    description: Endpoint selected explicitly by the SDK/application profile.
 security:
-- bearerAuth: []
+  - bearerAuth: []
 x-mindclade-api-profile: v1
 x-mindclade-authority:
   facade: mindclade.api.v1
   projection: curated-http-json
   compatibility: additive-after-clean-v1-baseline
   forbidden-public-authorities:
-  - mindclade.internal
-  - database-row
-  - queue-envelope
-  - provider-session
+    - mindclade.internal
+    - database-row
+    - queue-envelope
+    - provider-session
 tags:
-- name: Operations
-  description: Durable status, polling, and cancellation.
-- name: Training
-  description: Durable training runs and checkpoints.
+  - name: Operations
+    description: Durable status, polling, and cancellation.
+  - name: Training
+    description: Durable training runs and checkpoints.
 paths:
   /v1/tenants/{tenant}/projects/{project}/operations/{operation}:
     get:
       tags:
-      - Operations
+        - Operations
       operationId: getOperation
       summary: Get durable operation state
       parameters:
-      - $ref: '#/components/parameters/TenantId'
-      - $ref: '#/components/parameters/ProjectId'
-      - $ref: '#/components/parameters/OperationId'
-      - $ref: '#/components/parameters/IfNoneMatch'
+        - $ref: '#/components/parameters/TenantId'
+        - $ref: '#/components/parameters/ProjectId'
+        - $ref: '#/components/parameters/OperationId'
+        - $ref: '#/components/parameters/IfNoneMatch'
       responses:
         '200':
           description: Current operation state.
@@ -75,18 +75,18 @@ paths:
   /v1/tenants/{tenant}/projects/{project}/operations/{operation}:cancel:
     post:
       tags:
-      - Operations
+        - Operations
       operationId: cancelOperation
       summary: Request durable cancellation
       description: Cancellation is idempotent and does not claim immediate worker
         termination.
       parameters:
-      - $ref: '#/components/parameters/TenantId'
-      - $ref: '#/components/parameters/ProjectId'
-      - $ref: '#/components/parameters/OperationId'
-      - $ref: '#/components/parameters/IdempotencyKey'
-      - $ref: '#/components/parameters/AbsoluteDeadline'
-      - $ref: '#/components/parameters/IfMatch'
+        - $ref: '#/components/parameters/TenantId'
+        - $ref: '#/components/parameters/ProjectId'
+        - $ref: '#/components/parameters/OperationId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/AbsoluteDeadline'
+        - $ref: '#/components/parameters/IfMatch'
       requestBody:
         required: true
         content:
@@ -116,22 +116,22 @@ paths:
   /v1/tenants/{tenant}/projects/{project}/operations/{operation}:watch:
     get:
       tags:
-      - Operations
+        - Operations
       operationId: watchOperation
       summary: Watch durable operation revisions
       description: Resumable server-sent events; each data field is one OperationEvent
         encoded with ProtoJSON.
       parameters:
-      - $ref: '#/components/parameters/TenantId'
-      - $ref: '#/components/parameters/ProjectId'
-      - $ref: '#/components/parameters/OperationId'
-      - name: Last-Event-ID
-        in: header
-        required: false
-        description: Last fully processed opaque event identifier.
-        schema:
-          type: string
-          maxLength: 256
+        - $ref: '#/components/parameters/TenantId'
+        - $ref: '#/components/parameters/ProjectId'
+        - $ref: '#/components/parameters/OperationId'
+        - name: Last-Event-ID
+          in: header
+          required: false
+          description: Last fully processed opaque event identifier.
+          schema:
+            type: string
+            maxLength: 256
       responses:
         '200':
           description: Ordered operation revisions until the operation is terminal
@@ -158,16 +158,16 @@ paths:
   /v1/tenants/{tenant}/projects/{project}/trainingRuns:
     get:
       tags:
-      - Training
+        - Training
       operationId: listTrainingRuns
       summary: List training runs
       parameters:
-      - $ref: '#/components/parameters/TenantId'
-      - $ref: '#/components/parameters/ProjectId'
-      - $ref: '#/components/parameters/PageSize'
-      - $ref: '#/components/parameters/PageToken'
-      - $ref: '#/components/parameters/Filter'
-      - $ref: '#/components/parameters/OrderBy'
+        - $ref: '#/components/parameters/TenantId'
+        - $ref: '#/components/parameters/ProjectId'
+        - $ref: '#/components/parameters/PageSize'
+        - $ref: '#/components/parameters/PageToken'
+        - $ref: '#/components/parameters/Filter'
+        - $ref: '#/components/parameters/OrderBy'
       responses:
         '200':
           description: Stable page of training runs.
@@ -183,14 +183,14 @@ paths:
           $ref: '#/components/responses/Forbidden'
     post:
       tags:
-      - Training
+        - Training
       operationId: createTrainingRun
       summary: Create durable training work
       parameters:
-      - $ref: '#/components/parameters/TenantId'
-      - $ref: '#/components/parameters/ProjectId'
-      - $ref: '#/components/parameters/IdempotencyKey'
-      - $ref: '#/components/parameters/AbsoluteDeadline'
+        - $ref: '#/components/parameters/TenantId'
+        - $ref: '#/components/parameters/ProjectId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/AbsoluteDeadline'
       requestBody:
         required: true
         content:
@@ -213,14 +213,14 @@ paths:
   /v1/tenants/{tenant}/projects/{project}/trainingRuns/{trainingRun}:
     get:
       tags:
-      - Training
+        - Training
       operationId: getTrainingRun
       summary: Get a training run
       parameters:
-      - $ref: '#/components/parameters/TenantId'
-      - $ref: '#/components/parameters/ProjectId'
-      - $ref: '#/components/parameters/TrainingRunId'
-      - $ref: '#/components/parameters/IfNoneMatch'
+        - $ref: '#/components/parameters/TenantId'
+        - $ref: '#/components/parameters/ProjectId'
+        - $ref: '#/components/parameters/TrainingRunId'
+        - $ref: '#/components/parameters/IfNoneMatch'
       responses:
         '200':
           description: Durable training run state.
@@ -426,10 +426,10 @@ components:
       additionalProperties: false
       x-mindclade-authoritative-message: mindclade.api.v1.ArtifactRef
       required:
-      - digest
-      - mediaType
-      - sizeBytes
-      - artifactKind
+        - digest
+        - mediaType
+        - sizeBytes
+        - artifactKind
       properties:
         digest:
           $ref: '#/components/schemas/Digest'
@@ -453,9 +453,9 @@ components:
       type: object
       additionalProperties: false
       required:
-      - name
-      - uid
-      - revision
+        - name
+        - uid
+        - revision
       properties:
         name:
           $ref: '#/components/schemas/ResourceName'
@@ -470,17 +470,17 @@ components:
       type: object
       additionalProperties: false
       required:
-      - kind
+        - kind
       properties:
         kind:
           type: string
           enum:
-          - fieldViolation
-          - resource
-          - precondition
-          - policy
-          - quota
-          - conflict
+            - fieldViolation
+            - resource
+            - precondition
+            - policy
+            - quota
+            - conflict
         field:
           type: string
           maxLength: 256
@@ -499,26 +499,26 @@ components:
       type: object
       additionalProperties: false
       required:
-      - code
-      - message
-      - requestId
-      - retryable
+        - code
+        - message
+        - requestId
+        - retryable
       properties:
         code:
           type: string
           enum:
-          - AUTHENTICATION_REQUIRED
-          - PERMISSION_DENIED
-          - INVALID_ARGUMENT
-          - FAILED_PRECONDITION
-          - NOT_FOUND
-          - CONFLICT
-          - RATE_LIMITED
-          - QUOTA_EXCEEDED
-          - UNAVAILABLE
-          - DEADLINE_EXCEEDED
-          - CANCELLED
-          - INTERNAL
+            - AUTHENTICATION_REQUIRED
+            - PERMISSION_DENIED
+            - INVALID_ARGUMENT
+            - FAILED_PRECONDITION
+            - NOT_FOUND
+            - CONFLICT
+            - RATE_LIMITED
+            - QUOTA_EXCEEDED
+            - UNAVAILABLE
+            - DEADLINE_EXCEEDED
+            - CANCELLED
+            - INTERNAL
         message:
           type: string
           minLength: 1
@@ -560,14 +560,14 @@ components:
       additionalProperties: false
       x-mindclade-authoritative-message: mindclade.api.v1.Operation
       required:
-      - name
-      - uid
-      - revision
-      - etag
-      - state
-      - done
-      - createTime
-      - updateTime
+        - name
+        - uid
+        - revision
+        - etag
+        - state
+        - done
+        - createTime
+        - updateTime
       properties:
         name:
           $ref: '#/components/schemas/ResourceName'
@@ -585,12 +585,12 @@ components:
         state:
           type: string
           enum:
-          - PENDING
-          - RUNNING
-          - SUCCEEDED
-          - FAILED
-          - CANCELLING
-          - CANCELLED
+            - PENDING
+            - RUNNING
+            - SUCCEEDED
+            - FAILED
+            - CANCELLING
+            - CANCELLED
         done:
           type: boolean
         createTime:
@@ -624,11 +624,11 @@ components:
       additionalProperties: false
       x-mindclade-authoritative-message: mindclade.api.v1.OperationEvent
       required:
-      - eventId
-      - eventType
-      - schemaVersion
-      - resumeCursor
-      - emittedAt
+        - eventId
+        - eventType
+        - schemaVersion
+        - resumeCursor
+        - emittedAt
       properties:
         eventId:
           type: string
@@ -639,14 +639,14 @@ components:
         eventType:
           type: string
           enum:
-          - operation.updated
-          - operation.terminal
-          - heartbeat
+            - operation.updated
+            - operation.terminal
+            - heartbeat
         schemaVersion:
           type: integer
           format: uint32
           enum:
-          - 1
+            - 1
         operationRevision:
           type: string
           pattern: ^[0-9]+$
@@ -662,7 +662,7 @@ components:
       type: object
       additionalProperties: false
       required:
-      - reason
+        - reason
       properties:
         reason:
           type: string
@@ -671,12 +671,12 @@ components:
     ResourceMetadata:
       type: object
       required:
-      - name
-      - uid
-      - revision
-      - etag
-      - createTime
-      - updateTime
+        - name
+        - uid
+        - revision
+        - etag
+        - createTime
+        - updateTime
       properties:
         name:
           $ref: '#/components/schemas/ResourceName'
@@ -701,10 +701,10 @@ components:
       type: object
       additionalProperties: false
       required:
-      - trainingRunId
-      - trainingRecipe
-      - datasetRelease
-      - modelRelease
+        - trainingRunId
+        - trainingRecipe
+        - datasetRelease
+        - modelRelease
       properties:
         trainingRunId:
           $ref: '#/components/schemas/ResourceId'
@@ -725,47 +725,47 @@ components:
           maxLength: 128
     TrainingRun:
       allOf:
-      - $ref: '#/components/schemas/ResourceMetadata'
-      - type: object
-        x-mindclade-authoritative-message: mindclade.api.v1.TrainingRunView
-        required:
-        - state
-        - trainingRecipe
-        - datasetRelease
-        - modelRelease
-        properties:
-          state:
-            type: string
-            enum:
-            - CREATED
-            - VALIDATING
-            - ADMITTED
-            - RUNNING
-            - CHECKPOINTING
-            - RECOVERING
-            - DRAINING
-            - COMPLETED
-            - FAILED
-            - CANCELLED
-          trainingRecipe:
-            $ref: '#/components/schemas/ArtifactRef'
-          datasetRelease:
-            $ref: '#/components/schemas/ResourceRef'
-          modelRelease:
-            $ref: '#/components/schemas/ResourceRef'
-          hardwareTopology:
-            $ref: '#/components/schemas/ArtifactRef'
-          latestCheckpoint:
-            $ref: '#/components/schemas/ResourceRef'
-          resultManifest:
-            $ref: '#/components/schemas/ArtifactRef'
-          failure:
-            $ref: '#/components/schemas/PublicError'
+        - $ref: '#/components/schemas/ResourceMetadata'
+        - type: object
+          x-mindclade-authoritative-message: mindclade.api.v1.TrainingRunView
+          required:
+            - state
+            - trainingRecipe
+            - datasetRelease
+            - modelRelease
+          properties:
+            state:
+              type: string
+              enum:
+                - CREATED
+                - VALIDATING
+                - ADMITTED
+                - RUNNING
+                - CHECKPOINTING
+                - RECOVERING
+                - DRAINING
+                - COMPLETED
+                - FAILED
+                - CANCELLED
+            trainingRecipe:
+              $ref: '#/components/schemas/ArtifactRef'
+            datasetRelease:
+              $ref: '#/components/schemas/ResourceRef'
+            modelRelease:
+              $ref: '#/components/schemas/ResourceRef'
+            hardwareTopology:
+              $ref: '#/components/schemas/ArtifactRef'
+            latestCheckpoint:
+              $ref: '#/components/schemas/ResourceRef'
+            resultManifest:
+              $ref: '#/components/schemas/ArtifactRef'
+            failure:
+              $ref: '#/components/schemas/PublicError'
     TrainingRunList:
       type: object
       required:
-      - trainingRuns
-      - page
+        - trainingRuns
+        - page
       properties:
         trainingRuns:
           type: array
@@ -779,12 +779,12 @@ components:
       additionalProperties: false
       x-mindclade-authoritative-message: mindclade.api.v1.InferenceResultView
       required:
-      - name
-      - uid
-      - request
-      - operation
-      - resultManifest
-      - resultDigest
+        - name
+        - uid
+        - request
+        - operation
+        - resultManifest
+        - resultDigest
       properties:
         name:
           $ref: '#/components/schemas/ResourceName'

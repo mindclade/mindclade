@@ -13,7 +13,7 @@ concurrency:
 
 jobs:
   classify:
-    uses: mindclade/.github/.github/workflows/reusable-metadata-validation.yml@c097ef86c25991a400050c13e78574e8d3d8c071
+    uses: mindclade/.github/.github/workflows/reusable-metadata-validation.yml@f9b6ebcecd197157d9466eeacf8e2864e32c9a79
     with:
       source_revision: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha || github.sha }}
 
@@ -23,7 +23,7 @@ jobs:
       needs.classify.result == 'success' &&
       github.event_name == 'pull_request' &&
       needs.classify.outputs.trust_classification == 'untrusted'
-    uses: mindclade/.github/.github/workflows/reusable-documentation-check.yml@c097ef86c25991a400050c13e78574e8d3d8c071
+    uses: mindclade/.github/.github/workflows/reusable-documentation-check.yml@f9b6ebcecd197157d9466eeacf8e2864e32c9a79
     with:
       source_revision: ${{ github.event.pull_request.head.sha }}
       documentation_roots: |-
@@ -38,7 +38,7 @@ jobs:
         github.event_name != 'pull_request' ||
         needs.classify.outputs.trust_classification == 'trusted'
       )
-    uses: mindclade/.github/.github/workflows/reusable-buildkite-dispatch.yml@c097ef86c25991a400050c13e78574e8d3d8c071
+    uses: mindclade/.github/.github/workflows/reusable-buildkite-dispatch.yml@f9b6ebcecd197157d9466eeacf8e2864e32c9a79
     with:
       source_revision: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha || github.sha }}
       pipeline_class: ${{ (github.event_name == 'pull_request' || github.event_name == 'merge_group') && 'presubmit' || github.event_name == 'release' && 'release' || 'protected' }}
@@ -53,7 +53,7 @@ jobs:
       id-token: write
     needs: [classify, dispatch]
     if: needs.dispatch.result == 'success'
-    uses: mindclade/.github/.github/workflows/reusable-required-check.yml@c097ef86c25991a400050c13e78574e8d3d8c071
+    uses: mindclade/.github/.github/workflows/reusable-required-check.yml@f9b6ebcecd197157d9466eeacf8e2864e32c9a79
     with:
       source_revision: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha || github.sha }}
       pipeline_definition_revision: ${{ needs.dispatch.outputs.pipeline_definition_revision }}

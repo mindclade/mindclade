@@ -25,6 +25,36 @@ def steps() -> list[Step]:
             artifact_paths=("build/evidence/gpu-deepep-intranode.json",),
         ),
         Step(
+            key="pairformer-sm90a-qualification-preflight",
+            label=":gpu: Pairformer SM90a qualification preflight",
+            command=(
+                "nix develop --command python3.12 -m "
+                "kernels.native.python.gpu_qualification "
+                "--plan kernels/native/manifests/pairformer_gpu_qualification.json "
+                "--lane sm90a --verify-environment "
+                "--output build/evidence/pairformer-sm90a-preflight.json"
+            ),
+            timeout_minutes=30,
+            depends_on=("gpu-activation-gate",),
+            artifact_paths=("build/evidence/pairformer-sm90a-preflight.json",),
+            agent_tags={"gpu_arch": "sm90a"},
+        ),
+        Step(
+            key="pairformer-sm100a-qualification-preflight",
+            label=":gpu: Pairformer SM100a independent qualification preflight",
+            command=(
+                "nix develop --command python3.12 -m "
+                "kernels.native.python.gpu_qualification "
+                "--plan kernels/native/manifests/pairformer_gpu_qualification.json "
+                "--lane sm100a --verify-environment "
+                "--output build/evidence/pairformer-sm100a-preflight.json"
+            ),
+            timeout_minutes=30,
+            depends_on=("gpu-activation-gate",),
+            artifact_paths=("build/evidence/pairformer-sm100a-preflight.json",),
+            agent_tags={"gpu_arch": "sm100a"},
+        ),
+        Step(
             key="gpu-multinode-probe",
             label=":network: DeepEP protected multi-node RDMA probe",
             command=(

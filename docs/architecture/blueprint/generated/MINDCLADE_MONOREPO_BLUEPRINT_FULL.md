@@ -1296,6 +1296,8 @@ There is no repository-wide version. Coordinated releases use a manifest that pi
 
 Third-party sources are pinned by digest and license metadata. Builds produce SPDX or CycloneDX SBOMs and in-toto/SLSA-compatible provenance. Release artifacts are signed using short-lived federated builder identity and KMS-backed keys or keyless identity with transparency evidence as policy permits. Deployment verifies signature, provenance builder, source repository, qualification policy, vulnerability/license status, and revocation. Exceptions are scoped to a subject digest and expiry; wildcard or mutable-tag exceptions are prohibited.
 
+Production release signing never imports private key material into the source checkout or CI workspace. The protected release lane accepts only a detached signature from an allowlisted KMS/HSM key URI, verifies it against an explicitly supplied public trust root, and binds exact immutable K4 and K5 approval-record digests into the signed payload. K4 and K5 reviewers are distinct identities, and neither reviewer may be the signer. Every signature, revocation, and rollback selection is appended to a canonical hash-chained transparency record; verification rejects missing, malformed, truncated, unchained, mismatched, or revoked history. Rollback selects a different previously signed and qualified digest and does not rebuild or mutate historical evidence. Repository pipeline policy and source drills do not prove that protected CI, KMS/HSM custody, independent approvals, or a connected append-only service exist.
+
 Critical vulnerability response identifies affected release closures from SBOMs, blocks new promotion, publishes revocation, rebuilds from patched locks, requalifies, and rolls forward or back. Re-signing unchanged vulnerable bytes is prohibited.
 
 ---
@@ -6488,12 +6490,15 @@ mindclade/
 │       │   ├── discover.py
 │       │   ├── generate.py
 │       │   ├── parse_literal_ast.py
-│       │   └── schema.py
+│       │   ├── schema.py
+│       │   └── callable_abi.py
 │       ├── component.yaml
 │       ├── cuda/
 │       │   ├── CMakeLists.txt
 │       │   ├── README.md
-│       │   └── operation_registry.cpp
+│       │   ├── operation_registry.cpp
+│       │   ├── device_architecture.cpp
+│       │   └── device_architecture.h
 │       ├── generated/
 │       │   ├── __init__.py
 │       │   ├── native_ops.generated.bzl
@@ -6502,7 +6507,10 @@ mindclade/
 │       │   ├── operation_registry.generated.cpp
 │       │   ├── python_registration_generated.py
 │       │   ├── registration.generated.cpp
-│       │   └── tilelang_capabilities.json
+│       │   ├── tilelang_capabilities.json
+│       │   ├── launcher_plans.generated.cpp
+│       │   ├── qualified_capabilities.generated.cpp
+│       │   └── qualified_capabilities.generated.json
 │       ├── manifests/
 │       │   ├── benchmark.schema.json
 │       │   ├── native_ops.schema.json
@@ -6510,18 +6518,31 @@ mindclade/
 │       │   ├── qualification.schema.json
 │       │   ├── tilelang_profiles.sm100.json
 │       │   ├── tilelang_profiles.sm90.json
-│       │   └── tilelang_capabilities.schema.json
+│       │   ├── tilelang_capabilities.schema.json
+│       │   ├── pairformer_gpu_qualification.json
+│       │   ├── pairformer_gpu_qualification.schema.json
+│       │   ├── qualification_release.schema.json
+│       │   ├── qualified_capability_index.json
+│       │   └── qualified_capability_index.schema.json
 │       ├── python/
 │       │   ├── __init__.py
 │       │   ├── loader.py
 │       │   ├── qualification.py
 │       │   ├── reference_runtime.py
-│       │   └── registration.py
+│       │   ├── registration.py
+│       │   ├── capability_index.py
+│       │   └── gpu_qualification.py
 │       ├── stable_abi/
 │       │   ├── CMakeLists.txt
 │       │   ├── abi_manifest.json
 │       │   ├── registration.cpp
-│       │   └── tensor_bridge.cpp
+│       │   ├── tensor_bridge.cpp
+│       │   ├── tensor_bridge.h
+│       │   ├── node_launch_abi.h
+│       │   ├── node_launch_bridge.cpp
+│       │   ├── node_launch_bridge.h
+│       │   ├── qualified_capability_selector.cpp
+│       │   └── qualified_capability_table.h
 │       ├── tests/
 │       │   ├── pytest_runner.py
 │       │   ├── test_abi_compatibility.py
@@ -6545,7 +6566,10 @@ mindclade/
 │       │   ├── test_schema_manifest.py
 │       │   ├── test_tilelang_swizzle.py
 │       │   ├── test_tilelang_targets.py
-│       │   └── test_tilelang_tma.py
+│       │   ├── test_tilelang_tma.py
+│       │   ├── test_capability_index.py
+│       │   ├── test_gpu_qualification.py
+│       │   └── test_qualified_capability_selector.py
 │       └── tilelang/
 │           ├── README.md
 │           ├── __init__.py
@@ -8241,7 +8265,14 @@ mindclade/
 │   │   ├── 0011-sqp-001-scientific-qualification-profile.md
 │   │   ├── 0012-http-json-operation-projection-python-sdk.md
 │   │   ├── 0014-tilelang-kernel-platform-source-development.md
-│   │   └── 0009-native-kernel-source-incubation.md
+│   │   ├── 0009-native-kernel-source-incubation.md
+│   │   ├── 0016-pairformer-native-kernel-platform-wave6-source-activation.md
+│   │   ├── 0017-jit-06-outer-product-mean-sm90a-sm100a.md
+│   │   ├── 0018-jit-06-pair-weighted-average-sm90a-sm100a.md
+│   │   ├── 0019-jit-06-transition-sm90a-sm100a.md
+│   │   ├── 0020-jit-06-triangle-attention-sm90a-sm100a.md
+│   │   ├── 0021-jit-06-triangle-multiplication-sm90a-sm100a.md
+│   │   └── 0022-native-signed-qualification-and-production-admission-source-activation.md
 │   ├── domains/
 │   │   ├── bio.md
 │   │   ├── data.md
@@ -8296,6 +8327,10 @@ mindclade/
 │   ├── BUILD.bazel
 │   ├── README.md
 │   ├── governance/
+│   │   ├── reports/
+│   │   │   ├── wave2-preflight-ci.md
+│   │   │   ├── wave2-preflight-codegen.md
+│   │   │   └── wave2-preflight-decisions.md
 │   │   ├── founder-bootstrap-exception.v1.schema.json
 │   │   └── exceptions/
 │   │       └── FBE-0001.yaml
@@ -8310,7 +8345,14 @@ mindclade/
 │   ├── sdk/
 │   │   ├── submit_operation.py
 │   │   ├── follow_operation.ts
-│   │   └── download_artifact.py
+│   │   ├── download_artifact.py
+│   │   ├── __init__.py
+│   │   ├── README.md
+│   │   ├── biome.json
+│   │   ├── package.json
+│   │   ├── tsconfig.json
+│   │   ├── follow_operation.test.ts
+│   │   └── test_sdk_examples.py
 │   ├── data_connector/
 │   │   ├── connector.py
 │   │   ├── connector_contract_test.py
@@ -8327,11 +8369,14 @@ mindclade/
 │   │   ├── request.json
 │   │   ├── run_local.py
 │   │   └── README.md
-│   └── agent_workflow/
-│       ├── agent.yaml
-│       ├── workflow.yaml
-│       ├── simulate.py
-│       └── README.md
+│   ├── agent_workflow/
+│   │   ├── agent.yaml
+│   │   ├── workflow.yaml
+│   │   ├── simulate.py
+│   │   ├── README.md
+│   │   ├── __init__.py
+│   │   └── test_simulate.py
+│   └── BUILD.bazel
 ├── third_party/
 │   ├── patches/
 │   │   ├── README.md
@@ -8436,7 +8481,8 @@ mindclade/
         │   │   ├── evaluations.py
         │   │   ├── jobs.py
         │   │   ├── runs.py
-        │   │   └── experiments.py
+        │   │   ├── experiments.py
+        │   │   └── resources.py
         │   ├── pyproject.toml
         │   └── tests/
         │       ├── test_internal_sdk.py

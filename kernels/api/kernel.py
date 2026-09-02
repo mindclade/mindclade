@@ -16,9 +16,11 @@ from .effects import EffectSpec
 from .errors import KernelContractError, SchemaError
 from .forward import ForwardSpec
 from .gradient import GradientSpec
+from .expressions import expression_references
 from .launch import DeterminismClass, LaunchContract
 from .output import ContractModel, _nonempty, _unique
 from .program_group import ProgramGroupSpec
+from .workload import RuntimeWorkloadSpec
 
 _SCHEMA_RE = re.compile(
     r"^\s*(?P<name>[A-Za-z_][A-Za-z0-9_]*)\s*\((?P<args>.*)\)\s*->\s*(?P<returns>.+?)\s*$",
@@ -114,6 +116,7 @@ class KernelSpec(ContractModel):
     autograd_policy: AutogradPolicy
     effects: EffectSpec
     launch: LaunchContract
+    runtime_workload: RuntimeWorkloadSpec
     backend: str = "tilelang"
     version: int = 1
     devices: tuple[str, ...] = ("cuda",)
@@ -135,6 +138,7 @@ class KernelSpec(ContractModel):
 
         semantic = _parse_schema(self.operator_schema)
         forward = _parse_schema(self.forward.schema)
+        self._validate_runtime_workload(semantic)
         if semantic.name != self.name:
             raise SchemaError(
                 f"semantic operator name {semantic.name!r} must equal KernelSpec name {self.name!r}"
@@ -246,6 +250,68 @@ class KernelSpec(ContractModel):
                 "workspace-bearing v1 program groups cannot claim graph capture safety"
             )
 
+    def _validate_runtime_workload(self, semantic: _Schema) -> None:
+        if not isinstance(self.runtime_workload, RuntimeWorkloadSpec):
+            raise KernelContractError("runtime_workload must be RuntimeWorkloadSpec")
+        semantic_kinds = dict(semantic.argument_signature)
+        expressions = [
+            *(binding.value for binding in self.runtime_workload.dimensions),
+            self.runtime_workload.input_dtype,
+            *(binding.value for binding in self.runtime_workload.attributes),
+        ]
+        tensor_references: set[str] = set()
+        scalar_references: set[str] = set()
+        for expression in expressions:
+            references = expression_references(expression)
+            tensor_references.update(references.tensors)
+            scalar_references.update(references.scalars)
+        unknown = (tensor_references | scalar_references) - set(semantic.arguments)
+        if unknown:
+            raise KernelContractError(
+                f"runtime workload references unknown semantic arguments: {sorted(unknown)}"
+            )
+        invalid_tensors = {
+            name
+            for name in tensor_references
+            if semantic_kinds.get(name) not in {"Tensor", "Tensor?"}
+        }
+        invalid_scalars = {
+            name
+            for name in scalar_references
+            if semantic_kinds.get(name) not in {"bool", "int", "float"}
+        }
+        if invalid_tensors or invalid_scalars:
+            raise KernelContractError(
+                "runtime workload expression reference kinds do not match semantic arguments; "
+                f"tensors={sorted(invalid_tensors)}, scalars={sorted(invalid_scalars)}"
+            )
+        selectors = tuple(
+            selector
+            for provider in (self.forward, self.backward)
+            if provider is not None and provider.program_group is not None
+            for selector in provider.program_group.selector_bindings
+        )
+        selector_keys = {selector.selector_key for selector in selectors}
+        if self.runtime_workload.mode_selector is None:
+            if selector_keys:
+                raise KernelContractError(
+                    "runtime workload mode_selector is required for program selector bindings"
+                )
+            return
+        if selector_keys != {self.runtime_workload.mode_selector}:
+            raise KernelContractError(
+                "runtime workload mode_selector must exactly match program selector keys"
+            )
+        cases_by_key = {
+            tuple(selector.cases)
+            for selector in selectors
+            if selector.selector_key == self.runtime_workload.mode_selector
+        }
+        if len(cases_by_key) != 1:
+            raise KernelContractError(
+                "runtime workload mode selector cases must be identical across provider phases"
+            )
+
     def _validate_backward(self, semantic: _Schema, forward: _Schema) -> None:
         assert self.backward is not None
         backward_schema = _parse_schema(self.backward.schema)
@@ -280,7 +346,6 @@ class KernelSpec(ContractModel):
         gradient_inputs = {gradient.input_name for gradient in self.backward.gradients}
         forward_outputs = {output.name: output for output in self.forward.outputs}
         consumed_forward_outputs: set[str] = set()
-        operator_argument_sources: set[str] = set()
         needs_input_grad_counts: dict[str, int] = {}
         output_gradient_policies: dict[str, MissingGradientPolicy] = {}
         for provider_argument in backward_schema.arguments:
@@ -336,7 +401,6 @@ class KernelSpec(ContractModel):
                         f"operator-argument provider kind {provider_kind!r} does not match "
                         f"semantic kind {semantic_kinds[binding.source_name]!r}"
                     )
-                operator_argument_sources.add(binding.source_name)
             elif binding.source is BackwardArgumentSource.FORWARD_OUTPUT:
                 output = forward_outputs.get(binding.source_name)
                 if output is None:
@@ -372,6 +436,11 @@ class KernelSpec(ContractModel):
                 needs_input_grad_counts[binding.source_name] = count
 
         semantic_arguments = set(semantic.arguments)
+        metadata_sources = {
+            binding.source_name
+            for binding in self.backward.argument_bindings
+            if binding.source is BackwardArgumentSource.OPERATOR_ARGUMENT
+        }
         for gradient in self.backward.gradients:
             if gradient.input_name not in semantic_arguments:
                 raise KernelContractError(
@@ -393,6 +462,45 @@ class KernelSpec(ContractModel):
                     f"gradient output {gradient.output_name!r} kind {output_kind!r} "
                     f"must be {expected_kind!r}"
                 )
+            references = tuple(
+                expression_references(expression)
+                for expression in (gradient.shape, gradient.dtype, gradient.device)
+            )
+            tensor_references = {
+                name for inventory in references for name in inventory.tensors
+            }
+            scalar_references = {
+                name for inventory in references for name in inventory.scalars
+            }
+            all_references = tensor_references | scalar_references
+            unknown_references = all_references - semantic_arguments
+            if unknown_references:
+                raise KernelContractError(
+                    f"gradient {gradient.output_name!r} metadata references unknown semantic "
+                    f"arguments: {sorted(unknown_references)}"
+                )
+            invalid_tensor_references = {
+                name
+                for name in tensor_references
+                if semantic_kinds.get(name) not in {"Tensor", "Tensor?"}
+            }
+            invalid_scalar_references = {
+                name
+                for name in scalar_references
+                if semantic_kinds.get(name) not in {"bool", "int", "float"}
+            }
+            if invalid_tensor_references or invalid_scalar_references:
+                raise KernelContractError(
+                    f"gradient {gradient.output_name!r} metadata reference kinds do not "
+                    f"match semantic arguments; tensors={sorted(invalid_tensor_references)}, "
+                    f"scalars={sorted(invalid_scalar_references)}"
+                )
+            unavailable_references = all_references - metadata_sources
+            if unavailable_references:
+                raise KernelContractError(
+                    f"gradient {gradient.output_name!r} metadata requires named backward "
+                    f"OPERATOR_ARGUMENT sources: {sorted(unavailable_references)}"
+                )
         mapped_outputs = {gradient.output_name for gradient in self.backward.gradients}
         if mapped_outputs != set(backward_outputs):
             missing = sorted(set(backward_outputs) - mapped_outputs)
@@ -400,13 +508,6 @@ class KernelSpec(ContractModel):
             raise KernelContractError(
                 "gradient mappings must exactly cover backward outputs; "
                 f"missing={missing}, extra={extra}"
-            )
-        missing_metadata_sources = gradient_inputs - operator_argument_sources
-        if missing_metadata_sources:
-            raise KernelContractError(
-                "every gradient input requires an OPERATOR_ARGUMENT binding for "
-                "declarative backward metadata; "
-                f"missing={sorted(missing_metadata_sources)}"
             )
         missing_optional_requests = sorted(
             gradient.input_name

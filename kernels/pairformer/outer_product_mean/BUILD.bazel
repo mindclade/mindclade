@@ -23,6 +23,7 @@ py_test(
         "tests/test_outer_product_mean.py",
         "tilelang.py",
     ],
+    data = [":policy_inputs"],
     main = "tests/test_outer_product_mean.py",
     tags = [
         "manual",
@@ -32,4 +33,18 @@ py_test(
         "//kernels/api",
         "@mindclade_pypi//pytest",
     ],
+)
+
+filegroup(
+    name = "policy_inputs",
+    srcs = [
+        "BUILD.bazel",
+        "__init__.py",
+        "dispatch.py",
+        "reference.py",
+        "spec.py",
+        "tests/test_outer_product_mean.py",
+        "tilelang.py",
+    ],
+    visibility = ["//visibility:public"],
 )

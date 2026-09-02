@@ -356,6 +356,7 @@
                   set -euo pipefail
                   export HOME="$TMPDIR/home"
                   mkdir -p "$HOME" "$out"
+                  cd ${self}
                   python3 ${self}/tools/docs/validate_blueprint_sources.py \
                     --manifest ${self}/docs/architecture/blueprint/manifest.yaml
                   python3 ${self}/tools/docs/render_architecture_blueprint.py \

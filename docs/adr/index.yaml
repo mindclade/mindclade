@@ -107,3 +107,52 @@ spec:
       path: docs/adr/0015-all-contracts-clean-v1-baseline.md
       owners: [architecture, contract-governance]
       specificationAccepted: "2026-08-31"
+    - id: ADR-0016
+      title: Pairformer native kernel platform Wave 6 source activation
+      status: accepted-in-specification
+      connectedRatification: pending
+      path: docs/adr/0016-pairformer-native-kernel-platform-wave6-source-activation.md
+      owners: [architecture, contract-governance]
+      specificationAccepted: "2026-09-01"
+    - id: ADR-0017
+      title: JIT-06 outer-product-mean qualification on SM90a and SM100a
+      status: accepted-in-specification
+      connectedRatification: pending
+      path: docs/adr/0017-jit-06-outer-product-mean-sm90a-sm100a.md
+      owners: [architecture, contract-governance]
+      specificationAccepted: "2026-09-01"
+    - id: ADR-0018
+      title: JIT-06 pair-weighted-average qualification on SM90a and SM100a
+      status: accepted-in-specification
+      connectedRatification: pending
+      path: docs/adr/0018-jit-06-pair-weighted-average-sm90a-sm100a.md
+      owners: [architecture, contract-governance]
+      specificationAccepted: "2026-09-01"
+    - id: ADR-0019
+      title: JIT-06 transition qualification on SM90a and SM100a
+      status: accepted-in-specification
+      connectedRatification: pending
+      path: docs/adr/0019-jit-06-transition-sm90a-sm100a.md
+      owners: [architecture, contract-governance]
+      specificationAccepted: "2026-09-01"
+    - id: ADR-0020
+      title: JIT-06 triangle-attention qualification on SM90a and SM100a
+      status: accepted-in-specification
+      connectedRatification: pending
+      path: docs/adr/0020-jit-06-triangle-attention-sm90a-sm100a.md
+      owners: [architecture, contract-governance]
+      specificationAccepted: "2026-09-01"
+    - id: ADR-0021
+      title: JIT-06 triangle-multiplication qualification on SM90a and SM100a
+      status: accepted-in-specification
+      connectedRatification: pending
+      path: docs/adr/0021-jit-06-triangle-multiplication-sm90a-sm100a.md
+      owners: [architecture, contract-governance]
+      specificationAccepted: "2026-09-01"
+    - id: ADR-0022
+      title: Native signed qualification and production admission source activation
+      status: accepted-in-specification
+      connectedRatification: pending
+      path: docs/adr/0022-native-signed-qualification-and-production-admission-source-activation.md
+      owners: [architecture, contract-governance]
+      specificationAccepted: "2026-09-02"

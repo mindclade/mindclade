@@ -4,18 +4,18 @@
   "minimum_iterations": 100,
   "targets": {
     "sm90": {
-      "mindclade::outer_product_mean": ["b1_s64_n32_cl64_cr64_fp16"],
-      "mindclade::pair_weighted_average": ["b1_n64_h8_c64_fp16"],
-      "mindclade::transition": ["pair_b1_r147456_h512_c128_bf16", "single_b1_r768_h1536_c384_bf16"],
-      "mindclade::triangle_attention": ["b1_n128_h8_d64_bf16", "b1_n32_h4_d32_fp16", "b1_n64_h8_d32_fp16", "b2_n64_h8_d64_fp32"],
-      "mindclade::triangle_multiplication": ["b1_n64_c64_incoming_fp16", "b1_n64_c64_outgoing_fp16"]
+      "mindclade::outer_product_mean": ["b1_s64_n32_cl64_cr64_bf16", "b1_s64_n32_cl64_cr64_fp16"],
+      "mindclade::pair_weighted_average": ["b1_n64_h8_c64_bf16", "b1_n64_h8_c64_fp16"],
+      "mindclade::transition": ["pair_b1_r147456_h512_c128_bf16", "pair_b1_r147456_h512_c128_fp16", "single_b1_r768_h1536_c384_bf16", "single_b1_r768_h1536_c384_fp16"],
+      "mindclade::triangle_attention": ["b1_n128_h8_d64_bf16", "b1_n128_h8_d64_fp16", "b1_n32_h4_d32_bf16", "b1_n32_h4_d32_fp16", "b1_n64_h8_d32_bf16", "b1_n64_h8_d32_fp16", "b2_n64_h8_d64_bf16", "b2_n64_h8_d64_fp16"],
+      "mindclade::triangle_multiplication": ["b1_n64_c64_incoming_bf16", "b1_n64_c64_incoming_fp16", "b1_n64_c64_outgoing_bf16", "b1_n64_c64_outgoing_fp16"]
     },
     "sm100": {
-      "mindclade::outer_product_mean": ["b1_s64_n32_cl64_cr64_fp16"],
-      "mindclade::pair_weighted_average": ["b1_n64_h8_c64_fp16"],
-      "mindclade::transition": ["pair_b1_r147456_h512_c128_bf16", "single_b1_r768_h1536_c384_bf16"],
-      "mindclade::triangle_attention": ["b1_n128_h8_d64_bf16", "b1_n32_h4_d32_fp16", "b1_n64_h8_d32_fp16", "b2_n64_h8_d64_fp32"],
-      "mindclade::triangle_multiplication": ["b1_n64_c64_incoming_fp16", "b1_n64_c64_outgoing_fp16"]
+      "mindclade::outer_product_mean": ["b1_s64_n32_cl64_cr64_bf16", "b1_s64_n32_cl64_cr64_fp16"],
+      "mindclade::pair_weighted_average": ["b1_n64_h8_c64_bf16", "b1_n64_h8_c64_fp16"],
+      "mindclade::transition": ["pair_b1_r147456_h512_c128_bf16", "pair_b1_r147456_h512_c128_fp16", "single_b1_r768_h1536_c384_bf16", "single_b1_r768_h1536_c384_fp16"],
+      "mindclade::triangle_attention": ["b1_n128_h8_d64_bf16", "b1_n128_h8_d64_fp16", "b1_n32_h4_d32_bf16", "b1_n32_h4_d32_fp16", "b1_n64_h8_d32_bf16", "b1_n64_h8_d32_fp16", "b2_n64_h8_d64_bf16", "b2_n64_h8_d64_fp16"],
+      "mindclade::triangle_multiplication": ["b1_n64_c64_incoming_bf16", "b1_n64_c64_incoming_fp16", "b1_n64_c64_outgoing_bf16", "b1_n64_c64_outgoing_fp16"]
     }
   },
   "baselines": {

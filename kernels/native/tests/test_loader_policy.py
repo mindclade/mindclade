@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: LicenseRef-Mindclade-Proprietary
 
 from dataclasses import replace
+import ctypes
 import hashlib
 import json
 from pathlib import Path
@@ -10,6 +11,13 @@ from pathlib import Path
 import pytest
 
 from kernels.native.python import loader
+from kernels.native.python.capability_index import (
+    CapabilityRequest,
+    DispatchReceipt,
+    NativeCapabilityTable,
+    NativeCapabilityTableIdentity,
+    VerifiedCapabilityIndex,
+)
 
 
 def _digest(contents: bytes) -> str:
@@ -38,10 +46,10 @@ def _manifest(operators: list[dict] | None = None) -> bytes:
         key=lambda item: item["source"],
     )
     value = {
-        "schema_version": 3,
+        "schema_version": 4,
         "generator": {
             "id": "kernels.native.codegen.generate",
-            "version": 6,
+            "version": 8,
         },
         "source_inventory_sha256": _digest(
             loader._canonical_json(source_inventory)
@@ -177,6 +185,48 @@ def _implementation_candidate() -> dict:
     }
 
 
+def _tensor_parameter(position: int, name: str, access: str) -> dict:
+    return {
+        "type": "ProgramParameterSpec",
+        "position": position,
+        "name": name,
+        "kind": "tensor",
+        "access": access,
+        "shape": {"node": "shape_of", "argument": "x"},
+        "dtype": {"node": "dtype_ref", "argument": "x"},
+        "device": {"node": "constant_device", "value": "cuda"},
+        "scalar_type": None,
+        "optional": False,
+        "version": 1,
+    }
+
+
+def _stream_parameter(position: int) -> dict:
+    return {
+        "type": "ProgramParameterSpec",
+        "position": position,
+        "name": "stream",
+        "kind": "stream",
+        "access": "read",
+        "shape": None,
+        "dtype": None,
+        "device": None,
+        "scalar_type": None,
+        "optional": False,
+        "version": 1,
+    }
+
+
+def _binding(parameter: str, source: str, source_name: str | None) -> dict:
+    return {
+        "type": "ProgramBindingSpec",
+        "parameter": parameter,
+        "source": source,
+        "source_name": source_name,
+        "version": 1,
+    }
+
+
 def _program_group() -> dict:
     return {
         "type": "ProgramGroupSpec",
@@ -186,15 +236,21 @@ def _program_group() -> dict:
                 "name": "produce",
                 "builder": "kernels.testing.sample.tilelang:build_produce",
                 "symbol": "mindclade_tilelang_sample_produce_launch",
-                "depends_on": [],
-                "workspace_uses": [
-                    {
-                        "type": "WorkspaceUseSpec",
-                        "workspace": "scratch",
-                        "access": "write",
-                        "version": 1,
-                    }
+                "entry_symbol": "call",
+                "entry_abi": "tilelang_0_1_13_host_call",
+                "parameters": [
+                    _tensor_parameter(0, "x", "read"),
+                    _tensor_parameter(1, "scratch", "write"),
+                    _stream_parameter(2),
                 ],
+                "bindings": [
+                    _binding("scratch", "workspace", "scratch"),
+                    _binding("stream", "current_stream", None),
+                    _binding("x", "operator_argument", "x"),
+                ],
+                "depends_on": [],
+                "return_abi": "status_i32_zero_success",
+                "artifact_boundary": "node_content_addressed_dso",
                 "version": 1,
             },
             {
@@ -202,15 +258,21 @@ def _program_group() -> dict:
                 "name": "consume",
                 "builder": "kernels.testing.sample.tilelang:build_consume",
                 "symbol": "mindclade_tilelang_sample_consume_launch",
-                "depends_on": ["produce"],
-                "workspace_uses": [
-                    {
-                        "type": "WorkspaceUseSpec",
-                        "workspace": "scratch",
-                        "access": "read",
-                        "version": 1,
-                    }
+                "entry_symbol": "call",
+                "entry_abi": "tilelang_0_1_13_host_call",
+                "parameters": [
+                    _tensor_parameter(0, "scratch", "read"),
+                    _tensor_parameter(1, "y", "write"),
+                    _stream_parameter(2),
                 ],
+                "bindings": [
+                    _binding("scratch", "workspace", "scratch"),
+                    _binding("stream", "current_stream", None),
+                    _binding("y", "provider_output", "output"),
+                ],
+                "depends_on": ["produce"],
+                "return_abi": "status_i32_zero_success",
+                "artifact_boundary": "node_content_addressed_dso",
                 "version": 1,
             },
         ],
@@ -230,6 +292,7 @@ def _program_group() -> dict:
                 "version": 1,
             }
         ],
+        "selector_bindings": [],
         "version": 1,
     }
 
@@ -239,18 +302,18 @@ def _launcher_plan() -> dict:
     return {
         "phase": "forward",
         "logical_symbol": "mindclade_tilelang_sample_fwd_launch",
-        "bridge_requirement": "mindclade_program_group_bridge_v1",
+        "bridge_requirement": "mindclade_node_launch_v1",
         "execution_order": [node["name"] for node in group["nodes"]],
-        "required_private_symbols": [node["symbol"] for node in group["nodes"]],
+        "adapter_symbol_prefixes": [node["symbol"] for node in group["nodes"]],
+        "selector_bindings": group["selector_bindings"],
         "nodes": [
             {
-                "name": node["name"],
-                "symbol": node["symbol"],
-                "depends_on": node["depends_on"],
-                "workspace_uses": [
-                    {"workspace": use["workspace"], "access": use["access"]}
-                    for use in node["workspace_uses"]
-                ],
+                key: node[key]
+                for key in (
+                    "name", "symbol", "entry_symbol", "entry_abi",
+                    "return_abi", "artifact_boundary", "depends_on",
+                    "parameters", "bindings",
+                )
             }
             for node in group["nodes"]
         ],
@@ -301,6 +364,39 @@ def _bundle(
         activation_policy=loader.BundleActivationPolicy.TARGET_EMPTY,
     )
     return descriptor, library
+
+
+def _program_bundle(
+    tmp_path: Path,
+) -> tuple[loader.NativeBundleDescriptor, Path]:
+    descriptor, library = _bundle(tmp_path)
+    manifest_contents = _manifest([_operator_with_launcher_plan()])
+    (Path(descriptor.bundle_root) / descriptor.manifest_path).write_bytes(
+        manifest_contents
+    )
+    program_root = Path(descriptor.bundle_root) / "programs"
+    program_root.mkdir()
+    programs: list[loader.NativeProgramLibrary] = []
+    for name in ("produce", "consume"):
+        contents = f"test-only-{name}-dso".encode()
+        relative = f"programs/{name}.so"
+        (Path(descriptor.bundle_root) / relative).write_bytes(contents)
+        programs.append(
+            loader.NativeProgramLibrary(
+                library_path=relative,
+                library_sha256=_digest(contents),
+                adapter_symbol=f"mindclade_tilelang_sample_{name}_launch",
+            )
+        )
+    return (
+        replace(
+            descriptor,
+            native_manifest_sha256=_digest(manifest_contents),
+            activation_policy=loader.BundleActivationPolicy.PRODUCTION,
+            program_libraries=tuple(programs),
+        ),
+        library,
+    )
 
 
 def _trust(
@@ -389,6 +485,52 @@ def test_production_policy_rejects_empty_manifest_before_dlopen(
         loader.load_native_library(
             descriptor,
             signature_verifier=lambda value, _payload: _trust(value),
+        )
+    assert called is False
+
+
+def test_nonempty_python_index_requires_verified_native_table(
+    monkeypatch, tmp_path
+):
+    descriptor, _ = _bundle(tmp_path)
+    descriptor = replace(
+        descriptor,
+        activation_policy=loader.BundleActivationPolicy.PRODUCTION,
+    )
+    index = VerifiedCapabilityIndex(
+        capabilities=(object(),),
+        revoked_capability_digests=frozenset(),
+        rollbacks=(),
+        evidence_class="PRODUCTION_K4_K5",
+        signer_key_id="protected.release",
+        subject_digest="sha256:" + "1" * 64,
+        production_eligible=True,
+    )
+    request = CapabilityRequest(
+        operation="mindclade::triangle_attention",
+        architecture="sm90a",
+        dtype="bfloat16",
+        layout="contiguous",
+        mode="starting_node",
+        workload_digest="sha256:" + "2" * 64,
+        training=True,
+    )
+    called = False
+
+    def load(_path):
+        nonlocal called
+        called = True
+
+    monkeypatch.setattr(loader, "_load_torch_library", load)
+    with pytest.raises(
+        loader.NativeBundleVerificationError,
+        match="verified generated native capability table",
+    ):
+        loader.load_native_library(
+            descriptor,
+            signature_verifier=lambda value, _payload: _trust(value),
+            capability_index=index,
+            capability_request=request,
         )
     assert called is False
 
@@ -507,6 +649,176 @@ def test_second_bundle_is_rejected(monkeypatch, tmp_path):
         )
 
 
+def test_program_group_dsos_are_verified_resolved_and_cached_once(
+    monkeypatch, tmp_path
+):
+    descriptor, bridge_library = _program_bundle(tmp_path)
+    events: list[str] = []
+    callbacks: dict[str, object] = {}
+    callback_type = ctypes.CFUNCTYPE(ctypes.c_int32, ctypes.c_void_p)
+
+    class FakeProgramLibrary:
+        def __init__(self, path: Path):
+            self.path = path
+
+        def __getattr__(self, symbol: str):
+            events.append(f"dlsym:{symbol}")
+            callback = callback_type(lambda _launch: 0)
+            callbacks[symbol] = callback
+            return callback
+
+    def open_program(path: Path):
+        events.append(f"open:{path.name}")
+        return FakeProgramLibrary(path)
+
+    monkeypatch.setattr(loader, "_open_program_library", open_program)
+    monkeypatch.setattr(
+        loader,
+        "_load_torch_library",
+        lambda path: events.append(f"bridge:{path.name}"),
+    )
+    expected_names = frozenset(
+        registration["qualified_name"]
+        for registration in _operator_with_launcher_plan()["registrations"]
+    )
+    baseline = frozenset({"aten::existing"})
+    snapshots = iter(
+        (baseline, baseline | expected_names, baseline | expected_names)
+    )
+    monkeypatch.setattr(loader, "_dispatcher_snapshot", lambda: next(snapshots))
+    monkeypatch.setattr(
+        loader,
+        "register_packaged_python_kernels",
+        lambda: events.append("register"),
+    )
+    monkeypatch.setattr(
+        loader,
+        "_reconcile_dispatcher",
+        lambda _operators, _snapshot: events.append("reconcile"),
+    )
+    monkeypatch.setattr(
+        loader, "reconcile_signed_native_capability_table", lambda *_args: None
+    )
+    monkeypatch.setattr(
+        loader,
+        "reconcile_exported_native_capability_identity",
+        lambda *_args, **_kwargs: None,
+    )
+    identity = NativeCapabilityTableIdentity(
+        row_count=0,
+        rows_digest="sha256:" + "0" * 64,
+        table_digest="sha256:" + "1" * 64,
+    )
+    monkeypatch.setattr(
+        loader, "_exported_native_capability_identity", lambda _path: identity
+    )
+    receipt = DispatchReceipt(
+        operation="mindclade::sample",
+        implementation="portable",
+        workload_digest="sha256:" + "2" * 64,
+        capability_digest="sha256:" + "3" * 64,
+        artifact_digest="sha256:" + "4" * 64,
+        release_receipt_digest="sha256:" + "5" * 64,
+        selection_reason="test-only exact selection",
+    )
+    monkeypatch.setattr(
+        loader, "select_capability", lambda *_args, **_kwargs: receipt
+    )
+    original_parse = loader._parse_manifest
+
+    def parse_once(contents, activation):
+        events.append("parse")
+        return original_parse(contents, activation)
+
+    monkeypatch.setattr(loader, "_parse_manifest", parse_once)
+    index = VerifiedCapabilityIndex(
+        capabilities=(),
+        revoked_capability_digests=frozenset(),
+        rollbacks=(),
+        evidence_class="PRODUCTION_K4_K5",
+        signer_key_id="protected.release",
+        subject_digest="sha256:" + "6" * 64,
+        production_eligible=True,
+    )
+    request = CapabilityRequest(
+        operation="mindclade::sample",
+        architecture="sm90a",
+        dtype="float32",
+        layout="contiguous",
+        mode="default",
+        workload_digest="sha256:" + "2" * 64,
+        training=False,
+    )
+    table = NativeCapabilityTable(rows=(), identity=identity)
+
+    def verifier(value, _payload):
+        events.append("verify")
+        return _trust(value)
+
+    loaded = loader.load_native_library(
+        descriptor,
+        signature_verifier=verifier,
+        capability_index=index,
+        capability_request=request,
+        native_capability_table=table,
+    )
+    assert loaded == bridge_library
+    assert events == [
+        "parse",
+        "verify",
+        "open:produce.so",
+        "dlsym:mindclade_tilelang_sample_produce_launch",
+        "open:consume.so",
+        "dlsym:mindclade_tilelang_sample_consume_launch",
+        "bridge:libmindclade_ops.so",
+        "register",
+        "reconcile",
+    ]
+    assert loader._LOADED_BUNDLE is not None
+    assert tuple(
+        item.descriptor.adapter_symbol
+        for item in loader._LOADED_BUNDLE.program_libraries
+    ) == (
+        "mindclade_tilelang_sample_produce_launch",
+        "mindclade_tilelang_sample_consume_launch",
+    )
+    assert all(
+        item.function_address != 0
+        for item in loader._LOADED_BUNDLE.program_libraries
+    )
+
+    assert loader.load_native_library(
+        descriptor,
+        signature_verifier=verifier,
+        capability_index=index,
+        capability_request=request,
+        native_capability_table=table,
+    ) == bridge_library
+    assert events.count("parse") == 1
+    assert sum(event.startswith("open:") for event in events) == 2
+    assert sum(event.startswith("dlsym:") for event in events) == 2
+
+
+def test_program_group_dso_projection_mismatch_fails_before_trust(tmp_path):
+    descriptor, _ = _program_bundle(tmp_path)
+    descriptor = replace(
+        descriptor, program_libraries=descriptor.program_libraries[:-1]
+    )
+    verified = False
+
+    def verifier(value, _payload):
+        nonlocal verified
+        verified = True
+        return _trust(value)
+
+    with pytest.raises(
+        loader.NativeBundleVerificationError,
+        match="per-node program libraries",
+    ):
+        loader._verify_bundle(descriptor, verifier)
+    assert verified is False
+
+
 @pytest.mark.parametrize("autograd_policy", ["none", "composite", "required"])
 def test_v3_manifest_parses_each_autograd_policy(autograd_policy):
     operators = loader._parse_manifest(
@@ -592,12 +904,51 @@ def test_v3_loader_retains_only_immutable_launcher_projection():
     assert plan is not None
     assert plan.phase == "forward"
     assert plan.execution_order == ("produce", "consume")
-    assert plan.required_private_symbols == tuple(node.symbol for node in plan.nodes)
+    assert plan.adapter_symbol_prefixes == tuple(node.symbol for node in plan.nodes)
     assert plan.workspaces[0].shape_json == loader._canonical_json(
         _program_group()["workspaces"][0]["shape"]
     )
     assert not hasattr(plan.nodes[0], "builder")
     assert operator.backward_launcher_plan is None
+
+
+def test_v4_loader_retains_selector_only_provider_arguments_exactly():
+    selector = {
+        "type": "ProgramSelectorBinding",
+        "provider_argument": "outgoing",
+        "selector_key": "mode",
+        "scalar_type": "bool",
+        "cases": [[False, "incoming"], [True, "outgoing"]],
+        "version": 1,
+    }
+    operator = _operator_with_launcher_plan()
+    operator["forward"]["schema"] = (
+        "_sample_fwd(Tensor x, bool outgoing) -> Tensor"
+    )
+    for registration in operator["registrations"]:
+        if registration["kind"] == "forward":
+            registration["schema"] = operator["forward"]["schema"]
+    operator["forward"]["program_group"]["selector_bindings"] = [selector]
+    operator["launcher_plans"]["forward"]["selector_bindings"] = [selector]
+    parsed = loader._parse_manifest(
+        _manifest([operator]), loader.BundleActivationPolicy.PRODUCTION
+    )[0]
+    assert parsed.forward_launcher_plan is not None
+    assert parsed.forward_launcher_plan.selector_bindings[0].cases == (
+        (False, "incoming"),
+        (True, "outgoing"),
+    )
+
+    invalid = _operator_with_launcher_plan()
+    invalid["forward"]["program_group"]["selector_bindings"] = [selector]
+    invalid["launcher_plans"]["forward"]["selector_bindings"] = [selector]
+    with pytest.raises(
+        loader.NativeBundleVerificationError,
+        match="not a bool provider argument",
+    ):
+        loader._parse_manifest(
+            _manifest([invalid]), loader.BundleActivationPolicy.PRODUCTION
+        )
 
 
 @pytest.mark.parametrize(
@@ -628,11 +979,11 @@ def test_v3_loader_rejects_invalid_launcher_topology_and_workspace_dataflow(
     elif case == "duplicate":
         group["nodes"][1]["name"] = "produce"
     elif case == "undeclared":
-        group["nodes"][0]["workspace_uses"][0]["workspace"] = "missing"
+        group["nodes"][0]["bindings"][0]["source_name"] = "missing"
     elif case == "multiple_writers":
-        group["nodes"][1]["workspace_uses"][0]["access"] = "write"
+        group["nodes"][1]["parameters"][0]["access"] = "write"
     elif case == "no_writer":
-        group["nodes"][0]["workspace_uses"][0]["access"] = "read"
+        group["nodes"][0]["parameters"][1]["access"] = "read"
     elif case == "node_lifetime":
         group["workspaces"][0]["lifetime"] = "node"
     elif case == "plan_mismatch":
@@ -660,9 +1011,9 @@ def test_v3_loader_rejects_invalid_launcher_topology_and_workspace_dataflow(
         ("phase", "backward", "phase"),
         ("logical_symbol", "other_launch", "logical_symbol"),
         (
-            "required_private_symbols",
+            "adapter_symbol_prefixes",
             ["mindclade_tilelang_sample_consume_launch"],
-            "required_private_symbols",
+            "adapter_symbol_prefixes",
         ),
     ),
 )

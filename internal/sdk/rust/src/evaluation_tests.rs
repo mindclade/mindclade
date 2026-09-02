@@ -295,6 +295,7 @@ async fn exercise_run_lifecycle(evaluations: &Evaluations) {
         )
         .await
         .unwrap();
+
     assert_eq!(
         evaluations
             .get_run(RUN, "", CallOptions::new())
@@ -336,7 +337,7 @@ async fn exercise_run_lifecycle(evaluations: &Evaluations) {
         .unwrap();
 }
 
-async fn exercise_result_and_promotion(evaluations: &Evaluations) {
+async fn exercise_result_and_decision_lifecycle(evaluations: &Evaluations) {
     Box::pin(evaluations.commit_result(
         CommitEvaluationResultRequest {
             evaluation_run: Some(reference("evaluation_run", "evaluation-1", RUN)),
@@ -384,7 +385,7 @@ async fn evaluation_facade_covers_all_rpcs_and_fenced_metadata() {
     let evaluations = client(recording.clone()).evaluations();
 
     exercise_run_lifecycle(&evaluations).await;
-    exercise_result_and_promotion(&evaluations).await;
+    exercise_result_and_decision_lifecycle(&evaluations).await;
 
     assert_eq!(recording.calls().len(), 8);
     let contexts = inner.contexts.lock().unwrap();
