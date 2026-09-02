@@ -8373,6 +8373,7 @@ mindclade/
             │   ├── core.ts
             │   ├── datasets.ts
             │   ├── error.ts
+            │   ├── evaluations.ts
             │   ├── gcp_auth.ts
             │   ├── inference.ts
             │   ├── index.ts
@@ -8392,6 +8393,7 @@ mindclade/
             │   ├── sdk.test.ts
             │   ├── policy_admin.test.ts
             │   ├── agents.test.ts
+            │   ├── evaluations.test.ts
             │   └── workflow_approval.test.ts
             └── tsconfig.json
 ```
