@@ -3438,5 +3438,43 @@ CANONICAL_PATH_SET_SHA256 = (  # pyright: ignore[reportConstantRedefinition]
 )
 
 
+# The contract build's only third-party import closure, vendored so the
+# descriptor resolves entirely from the working tree. Before this, `buf build`
+# reached a schema registry for exactly one import -- google/api/annotations.proto,
+# used by seven google.api.http annotations on the public API service -- which
+# made a "hermetic" pipeline depend on a live network service. Vendoring these two
+# files produces a byte-identical descriptor, so the contract is provably unchanged.
+CONTRACT_VENDORED_IMPORT_PATHS: tuple[str, ...] = (
+    "protocols/google/api/annotations.proto",
+    "protocols/google/api/http.proto",
+)
+CONTRACT_VENDORED_IMPORT_ADR = "docs/adr/0024-vendored-contract-import-closure.md"
+REQUIRED_ADDITIONS = (  # pyright: ignore[reportConstantRedefinition]
+    *REQUIRED_ADDITIONS,
+    *CONTRACT_VENDORED_IMPORT_PATHS,
+    CONTRACT_VENDORED_IMPORT_ADR,
+)
+CANONICAL_FILE_COUNT = (  # pyright: ignore[reportConstantRedefinition]
+    CANONICAL_FILE_COUNT + len(CONTRACT_VENDORED_IMPORT_PATHS) + 1
+)
+CANONICAL_PATH_SET_SHA256 = (  # pyright: ignore[reportConstantRedefinition]
+    "4ea057c0574249516036099dceaff5b0ea4e03e25c2a43215c1caf422c50de17"
+)
+
+_contract_vendored_import_addition_reason = _reconciliation_addition_reason
+
+
+def _reconciliation_addition_reason(path: str) -> str:
+    if path == CONTRACT_VENDORED_IMPORT_ADR:
+        return "ADR-0024 records why the contract build vendors its third-party import closure."
+    if path in CONTRACT_VENDORED_IMPORT_PATHS:
+        return (
+            "Apache-2.0 upstream proto vendored so the contract descriptor resolves "
+            "every import from the working tree; it removes the contract build's only "
+            "schema-registry dependency without changing the descriptor digest."
+        )
+    return _contract_vendored_import_addition_reason(path)
+
+
 if __name__ == "__main__":
     raise SystemExit(main())

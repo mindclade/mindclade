@@ -7235,10 +7235,22 @@
         {
           "path": "internal/sdk/rust/scripts/test",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "protocols/google/api/annotations.proto",
+          "reason": "Apache-2.0 upstream proto vendored so the contract descriptor resolves every import from the working tree; it removes the contract build's only schema-registry dependency without changing the descriptor digest."
+        },
+        {
+          "path": "protocols/google/api/http.proto",
+          "reason": "Apache-2.0 upstream proto vendored so the contract descriptor resolves every import from the working tree; it removes the contract build's only schema-registry dependency without changing the descriptor digest."
+        },
+        {
+          "path": "docs/adr/0024-vendored-contract-import-closure.md",
+          "reason": "ADR-0024 records why the contract build vendors its third-party import closure."
         }
       ],
-      "canonical_file_count": 3636,
-      "canonical_path_set_sha256": "66f3677b01d1f7c6c0d9143d15c56abcdb24aa4bb589f0fc12200326478b83e0"
+      "canonical_file_count": 3639,
+      "canonical_path_set_sha256": "4ea057c0574249516036099dceaff5b0ea4e03e25c2a43215c1caf422c50de17"
     },
     "owners": {
       "agent-platform": {
@@ -27381,6 +27393,40 @@
       ],
       "public_surface": true,
       "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
+    },
+    {
+      "path": "protocols/google/api/annotations.proto",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "protocols-google",
+      "status": "active",
+      "activation_wave": "4",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Apache-2.0 upstream import vendored verbatim so the contract descriptor resolves without a schema registry; fidelity is proven by the descriptor digest being unchanged, and it grants no Mindclade public surface."
+    },
+    {
+      "path": "protocols/google/api/http.proto",
+      "kind": "source",
+      "owner": "contract-governance",
+      "component": "protocols-google",
+      "status": "active",
+      "activation_wave": "4",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Apache-2.0 upstream import vendored verbatim so the contract descriptor resolves without a schema registry; fidelity is proven by the descriptor digest being unchanged, and it grants no Mindclade public surface."
     },
     {
       "path": "libs/python/artifacts/__init__.py",
@@ -57407,6 +57453,22 @@
     },
     {
       "path": "docs/adr/0023-estate-nix-bazel-hermeticity-and-cache-preparation.md",
+      "kind": "documentation",
+      "owner": "architecture",
+      "component": "docs-adr",
+      "status": "active",
+      "activation_wave": "0",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:wave0_governance_sources"
+      ],
+      "test_targets": [
+        "//:wave0_tests"
+      ],
+      "public_surface": false
+    },
+    {
+      "path": "docs/adr/0024-vendored-contract-import-closure.md",
       "kind": "documentation",
       "owner": "architecture",
       "component": "docs-adr",
