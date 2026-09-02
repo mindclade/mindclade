@@ -9,8 +9,8 @@ use mindclade_protocols::{
         CancelTrainingRunRequest, CommitCheckpointRequest, CommitTrainingProgressRequest,
         CompleteTrainingRunRequest, CreateTrainingRunRequest, CreateTrainingRunResponse,
         GetCheckpointRequest, GetTrainingRunRequest, ListCheckpointsRequest,
-        ListCheckpointsResponse, ListTrainingRunsRequest, ListTrainingRunsResponse,
-        PrepareCheckpointRequest, ResumeTrainingAttemptRequest, StartTrainingAttemptRequest,
+        ListTrainingRunsRequest, PrepareCheckpointRequest, ResumeTrainingAttemptRequest,
+        StartTrainingAttemptRequest,
         WatchTrainingRunRequest, WatchTrainingRunResponse,
     },
     job::v1::{LeaseFence, Operation},
@@ -24,8 +24,8 @@ use mindclade_protocols::{
 use tonic::codegen::tokio_stream::StreamExt;
 
 use crate::{
-    CallOptions, CancellationToken, ClientCore, Error, SubmitOptions, TrainingStream,
-    request::PreparedCall,
+    CallOptions, CancellationToken, ClientCore, Error, Page, Pages, SubmitOptions, TrainingStream,
+    request::{PreparedCall, initial_page_token, page_request},
     retry::{CallSafety, registered_method_safety},
     workflows::{command_context, normalize_parent, project_name, valid_sha256, validate_page},
 };
@@ -170,27 +170,46 @@ impl Training {
     /// # Errors
     ///
     /// Returns an error for invalid pagination, transport failure, or an invalid project scope.
-    pub async fn list_runs(
+    pub fn list_runs(
         &self,
         mut request: ListTrainingRunsRequest,
         options: CallOptions,
-    ) -> Result<ListTrainingRunsResponse, Error> {
+    ) -> Result<Pages<TrainingRun>, Error> {
         normalize_parent(&self.core, &mut request.parent)?;
         validate_page(request.page.as_ref())?;
-        let prepared = options.prepare(&self.core.config);
-        Ok(self
-            .core
-            .unary(
-                request,
-                &prepared,
-                registered_method_safety(LIST),
-                None,
-                |transport, request| {
-                    Box::pin(async move { transport.list_training_runs(request).await })
-                },
-            )
-            .await?
-            .into_inner())
+        let core = Arc::clone(&self.core);
+        let token = initial_page_token(request.page.as_ref());
+        Ok(Pages::new(
+            move |page_token| {
+                let core = Arc::clone(&core);
+                let options = options.clone();
+                let mut request = request.clone();
+                async move {
+                    request.page = Some(page_request(request.page.as_ref(), page_token));
+                    let prepared = options.prepare(&core.config);
+                    let response = core
+                        .unary(
+                            request,
+                            &prepared,
+                            registered_method_safety(LIST),
+                            None,
+                            |transport, request| {
+                                Box::pin(async move { transport.list_training_runs(request).await })
+                            },
+                        )
+                        .await?;
+                    let request_id = response.request_id().map(str::to_owned);
+                    let response = response.into_inner();
+                    Ok(Page::new(
+                        response.training_runs,
+                        response.page,
+                        response.read_time,
+                        request_id,
+                    ))
+                }
+            },
+            token,
+        ))
     }
 
     /// Starts a fresh worker attempt under the current scheduler fence.
@@ -529,27 +548,46 @@ impl Training {
     /// # Errors
     ///
     /// Returns an error for invalid pagination or parent scope, or for transport failure.
-    pub async fn list_checkpoints(
+    pub fn list_checkpoints(
         &self,
         mut request: ListCheckpointsRequest,
         options: CallOptions,
-    ) -> Result<ListCheckpointsResponse, Error> {
+    ) -> Result<Pages<Checkpoint>, Error> {
         request.parent = training_run_name(&self.core, &request.parent)?;
         validate_page(request.page.as_ref())?;
-        let prepared = options.prepare(&self.core.config);
-        Ok(self
-            .core
-            .unary(
-                request,
-                &prepared,
-                registered_method_safety(LIST_CHECKPOINTS),
-                None,
-                |transport, request| {
-                    Box::pin(async move { transport.list_checkpoints(request).await })
-                },
-            )
-            .await?
-            .into_inner())
+        let core = Arc::clone(&self.core);
+        let token = initial_page_token(request.page.as_ref());
+        Ok(Pages::new(
+            move |page_token| {
+                let core = Arc::clone(&core);
+                let options = options.clone();
+                let mut request = request.clone();
+                async move {
+                    request.page = Some(page_request(request.page.as_ref(), page_token));
+                    let prepared = options.prepare(&core.config);
+                    let response = core
+                        .unary(
+                            request,
+                            &prepared,
+                            registered_method_safety(LIST_CHECKPOINTS),
+                            None,
+                            |transport, request| {
+                                Box::pin(async move { transport.list_checkpoints(request).await })
+                            },
+                        )
+                        .await?;
+                    let request_id = response.request_id().map(str::to_owned);
+                    let response = response.into_inner();
+                    Ok(Page::new(
+                        response.checkpoints,
+                        response.page,
+                        response.read_time,
+                        request_id,
+                    ))
+                }
+            },
+            token,
+        ))
     }
 
     /// Opens a cancellation-aware, reconnecting generated update stream.

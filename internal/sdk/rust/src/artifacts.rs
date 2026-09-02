@@ -16,7 +16,7 @@ use mindclade_protocols::{
         ArtifactStagingReceipt, ArtifactUploadSession, ArtifactUploadState,
         BeginArtifactUploadRequest, CommitArtifactRequest, DownloadArtifactRequest,
         FinalizeArtifactUploadRequest, GetArtifactRequest, GetArtifactUploadRequest,
-        ListArtifactsRequest, ListArtifactsResponse, QuarantineArtifactRequest,
+        ListArtifactsRequest, QuarantineArtifactRequest,
         QuarantineArtifactUploadRequest, ReleaseArtifactLeaseRequest, ResolveArtifactAliasRequest,
         UploadArtifactChunkRequest,
     },
@@ -29,8 +29,8 @@ use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 use tonic::{Code, codegen::tokio_stream::StreamExt};
 
 use crate::{
-    CallOptions, ClientCore, Error, SubmitOptions,
-    request::{generate_request_id, validate_resource_value},
+    CallOptions, ClientCore, Error, Page, Pages, SubmitOptions,
+    request::{generate_request_id, initial_page_token, page_request, validate_resource_value},
     retry::registered_method_safety,
 };
 
@@ -218,11 +218,11 @@ impl Artifacts {
     ///
     /// Returns an error for an invalid parent/page size, RPC failure, or
     /// malformed artifact metadata.
-    pub async fn list(
+    pub fn list(
         &self,
         mut request: ListArtifactsRequest,
         options: CallOptions,
-    ) -> Result<ListArtifactsResponse, Error> {
+    ) -> Result<Pages<ArtifactRef>, Error> {
         let parent = project_parent(&self.core.config);
         if !request.parent.is_empty() && request.parent != parent {
             return Err(Error::invalid_argument(
@@ -239,25 +239,44 @@ impl Artifacts {
             ));
         }
         request.parent = parent;
-        let prepared = options.prepare(&self.core.config);
-        let response = self
-            .core
-            .unary(
-                request,
-                &prepared,
-                registered_method_safety(LIST_ARTIFACTS),
-                None,
-                |transport, request| {
-                    Box::pin(async move { transport.list_artifacts(request).await })
-                },
-            )
-            .await?
-            .into_inner();
-        for artifact in &response.artifacts {
-            validate_transfer_artifact(artifact)
-                .map_err(|_| Error::protocol("ListArtifacts returned invalid metadata"))?;
-        }
-        Ok(response)
+        let core = Arc::clone(&self.core);
+        let token = initial_page_token(request.page.as_ref());
+        Ok(Pages::new(
+            move |page_token| {
+                let core = Arc::clone(&core);
+                let options = options.clone();
+                let mut request = request.clone();
+                async move {
+                    request.page = Some(page_request(request.page.as_ref(), page_token));
+                    let prepared = options.prepare(&core.config);
+                    let response = core
+                        .unary(
+                            request,
+                            &prepared,
+                            registered_method_safety(LIST_ARTIFACTS),
+                            None,
+                            |transport, request| {
+                                Box::pin(async move { transport.list_artifacts(request).await })
+                            },
+                        )
+                        .await?;
+                    let request_id = response.request_id().map(str::to_owned);
+                    let response = response.into_inner();
+                    for artifact in &response.artifacts {
+                        validate_transfer_artifact(artifact).map_err(|_| {
+                            Error::protocol("ListArtifacts returned invalid metadata")
+                        })?;
+                    }
+                    Ok(Page::new(
+                        response.artifacts,
+                        response.page,
+                        response.read_time,
+                        request_id,
+                    ))
+                }
+            },
+            token,
+        ))
     }
 
     /// Records a governed quarantine transition under deterministic command

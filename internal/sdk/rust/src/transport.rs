@@ -1,4 +1,5 @@
 use std::{
+    future::Future,
     pin::Pin,
     sync::{Arc, Mutex},
     time::SystemTime,
@@ -1583,6 +1584,176 @@ pub trait RpcTransport: Send + Sync {
         ))
     }
 }
+
+
+/// Boxed future produced by a raw dispatch of one generated unary request.
+pub type RawDispatch<R> =
+    Pin<Box<dyn Future<Output = Result<Response<R>, Status>> + Send + 'static>>;
+
+/// A generated unary request the SDK can dispatch without an ergonomic facade.
+///
+/// Implementations exist for every generated unary request that has an
+/// [`RpcTransport`] seam method. They carry the authoritative route so
+/// [`crate::Client::send_with_metadata`] applies the same identity, deadline,
+/// retry, and sanitization policy as the ergonomic services. The five
+/// server-streaming RPCs are deliberately excluded: their responses are
+/// streams, and streaming stays on the native watcher surface.
+pub trait RawRequest: Clone + Send + Sync + 'static {
+    /// The generated response message for this request.
+    type Response: Send + 'static;
+
+    /// The fully qualified gRPC route, used for the SDK's retry-safety policy.
+    const METHOD: &'static str;
+
+    /// Dispatches the prepared request through the transport seam.
+    fn dispatch(
+        transport: Arc<dyn RpcTransport>,
+        request: Request<Self>,
+    ) -> RawDispatch<Self::Response>;
+}
+
+macro_rules! raw_request {
+    ($request:ty, $response:ty, $route:literal, $method:ident) => {
+        impl RawRequest for $request {
+            type Response = $response;
+            const METHOD: &'static str = $route;
+
+            fn dispatch(
+                transport: Arc<dyn RpcTransport>,
+                request: Request<Self>,
+            ) -> RawDispatch<Self::Response> {
+                Box::pin(async move { transport.$method(request).await })
+            }
+        }
+    };
+}
+
+raw_request!(CreateAgentDefinitionRequest, CreateAgentDefinitionResponse, "/mindclade.internal.agent.v1.AgentService/CreateAgentDefinition", create_agent_definition);
+raw_request!(UpdateAgentDefinitionRequest, UpdateAgentDefinitionResponse, "/mindclade.internal.agent.v1.AgentService/UpdateAgentDefinition", update_agent_definition);
+raw_request!(GetAgentDefinitionRequest, GetAgentDefinitionResponse, "/mindclade.internal.agent.v1.AgentService/GetAgentDefinition", get_agent_definition);
+raw_request!(ListAgentDefinitionsRequest, ListAgentDefinitionsResponse, "/mindclade.internal.agent.v1.AgentService/ListAgentDefinitions", list_agent_definitions);
+raw_request!(StartAgentRunRequest, StartAgentRunResponse, "/mindclade.internal.agent.v1.AgentService/StartAgentRun", start_agent_run);
+raw_request!(GetAgentRunRequest, GetAgentRunResponse, "/mindclade.internal.agent.v1.AgentService/GetAgentRun", get_agent_run);
+raw_request!(ListAgentRunsRequest, ListAgentRunsResponse, "/mindclade.internal.agent.v1.AgentService/ListAgentRuns", list_agent_runs);
+raw_request!(CancelAgentRunRequest, CancelAgentRunResponse, "/mindclade.internal.agent.v1.AgentService/CancelAgentRun", cancel_agent_run);
+raw_request!(GetAgentStepRequest, GetAgentStepResponse, "/mindclade.internal.agent.v1.AgentService/GetAgentStep", get_agent_step);
+raw_request!(ListAgentStepsRequest, ListAgentStepsResponse, "/mindclade.internal.agent.v1.AgentService/ListAgentSteps", list_agent_steps);
+raw_request!(CommitAgentStepRequest, CommitAgentStepResponse, "/mindclade.internal.agent.v1.AgentService/CommitAgentStep", commit_agent_step);
+raw_request!(CommitToolReceiptRequest, CommitToolReceiptResponse, "/mindclade.internal.agent.v1.AgentService/CommitToolReceipt", commit_tool_receipt);
+raw_request!(CreateTrainingRunRequest, CreateTrainingRunResponse, "/mindclade.internal.training.v1.TrainingService/CreateTrainingRun", create_training_run);
+raw_request!(GetTrainingRunRequest, GetTrainingRunResponse, "/mindclade.internal.training.v1.TrainingService/GetTrainingRun", get_training_run);
+raw_request!(ListTrainingRunsRequest, ListTrainingRunsResponse, "/mindclade.internal.training.v1.TrainingService/ListTrainingRuns", list_training_runs);
+raw_request!(StartTrainingAttemptRequest, StartTrainingAttemptResponse, "/mindclade.internal.training.v1.TrainingService/StartTrainingAttempt", start_training_attempt);
+raw_request!(ResumeTrainingAttemptRequest, ResumeTrainingAttemptResponse, "/mindclade.internal.training.v1.TrainingService/ResumeTrainingAttempt", resume_training_attempt);
+raw_request!(CommitTrainingProgressRequest, CommitTrainingProgressResponse, "/mindclade.internal.training.v1.TrainingService/CommitTrainingProgress", commit_training_progress);
+raw_request!(PrepareCheckpointRequest, PrepareCheckpointResponse, "/mindclade.internal.training.v1.TrainingService/PrepareCheckpoint", prepare_checkpoint);
+raw_request!(CommitCheckpointRequest, CommitCheckpointResponse, "/mindclade.internal.training.v1.TrainingService/CommitCheckpoint", commit_checkpoint);
+raw_request!(CompleteTrainingRunRequest, CompleteTrainingRunResponse, "/mindclade.internal.training.v1.TrainingService/CompleteTrainingRun", complete_training_run);
+raw_request!(CancelTrainingRunRequest, CancelTrainingRunResponse, "/mindclade.internal.training.v1.TrainingService/CancelTrainingRun", cancel_training_run);
+raw_request!(GetCheckpointRequest, GetCheckpointResponse, "/mindclade.internal.training.v1.TrainingService/GetCheckpoint", get_checkpoint);
+raw_request!(ListCheckpointsRequest, ListCheckpointsResponse, "/mindclade.internal.training.v1.TrainingService/ListCheckpoints", list_checkpoints);
+raw_request!(GetOperationRequest, GetOperationResponse, "/mindclade.internal.job.v1.OperationService/GetOperation", get_operation);
+raw_request!(ListOperationsRequest, ListOperationsResponse, "/mindclade.internal.job.v1.OperationService/ListOperations", list_operations);
+raw_request!(CancelOperationRequest, CancelOperationResponse, "/mindclade.internal.job.v1.OperationService/CancelOperation", cancel_operation);
+raw_request!(RequestJobRequest, RequestJobResponse, "/mindclade.internal.job.v1.JobService/RequestJob", request_job);
+raw_request!(GetJobRequest, GetJobResponse, "/mindclade.internal.job.v1.JobService/GetJob", get_job);
+raw_request!(ListJobsRequest, ListJobsResponse, "/mindclade.internal.job.v1.JobService/ListJobs", list_jobs);
+raw_request!(CancelJobRequest, CancelJobResponse, "/mindclade.internal.job.v1.JobService/CancelJob", cancel_job);
+raw_request!(GetRunRequest, GetRunResponse, "/mindclade.internal.job.v1.RunService/GetRun", get_run);
+raw_request!(ListRunsRequest, ListRunsResponse, "/mindclade.internal.job.v1.RunService/ListRuns", list_runs);
+raw_request!(GetAttemptRequest, GetAttemptResponse, "/mindclade.internal.job.v1.RunService/GetAttempt", get_attempt);
+raw_request!(ListAttemptsRequest, ListAttemptsResponse, "/mindclade.internal.job.v1.RunService/ListAttempts", list_attempts);
+raw_request!(AcquireAttemptLeaseRequest, AcquireAttemptLeaseResponse, "/mindclade.internal.job.v1.RunService/AcquireAttemptLease", acquire_attempt_lease);
+raw_request!(RenewAttemptLeaseRequest, RenewAttemptLeaseResponse, "/mindclade.internal.job.v1.RunService/RenewAttemptLease", renew_attempt_lease);
+raw_request!(HeartbeatAttemptRequest, HeartbeatAttemptResponse, "/mindclade.internal.job.v1.RunService/HeartbeatAttempt", heartbeat_attempt);
+raw_request!(CancelAttemptRequest, CancelAttemptResponse, "/mindclade.internal.job.v1.RunService/CancelAttempt", cancel_attempt);
+raw_request!(CommitAttemptRequest, CommitAttemptResponse, "/mindclade.internal.job.v1.RunService/CommitAttempt", commit_attempt);
+raw_request!(ResolveArtifactAliasRequest, ResolveArtifactAliasResponse, "/mindclade.internal.artifact.v1.ArtifactService/ResolveArtifactAlias", resolve_artifact_alias);
+raw_request!(GetArtifactRequest, GetArtifactResponse, "/mindclade.internal.artifact.v1.ArtifactService/GetArtifact", get_artifact);
+raw_request!(ListArtifactsRequest, ListArtifactsResponse, "/mindclade.internal.artifact.v1.ArtifactService/ListArtifacts", list_artifacts);
+raw_request!(QuarantineArtifactRequest, QuarantineArtifactResponse, "/mindclade.internal.artifact.v1.ArtifactService/QuarantineArtifact", quarantine_artifact);
+raw_request!(AcquireArtifactLeaseRequest, AcquireArtifactLeaseResponse, "/mindclade.internal.artifact.v1.ArtifactService/AcquireArtifactLease", acquire_artifact_lease);
+raw_request!(ReleaseArtifactLeaseRequest, ReleaseArtifactLeaseResponse, "/mindclade.internal.artifact.v1.ArtifactService/ReleaseArtifactLease", release_artifact_lease);
+raw_request!(BeginArtifactUploadRequest, BeginArtifactUploadResponse, "/mindclade.internal.artifact.v1.ArtifactService/BeginArtifactUpload", begin_artifact_upload);
+raw_request!(UploadArtifactChunkRequest, UploadArtifactChunkResponse, "/mindclade.internal.artifact.v1.ArtifactService/UploadArtifactChunk", upload_artifact_chunk);
+raw_request!(GetArtifactUploadRequest, GetArtifactUploadResponse, "/mindclade.internal.artifact.v1.ArtifactService/GetArtifactUpload", get_artifact_upload);
+raw_request!(FinalizeArtifactUploadRequest, FinalizeArtifactUploadResponse, "/mindclade.internal.artifact.v1.ArtifactService/FinalizeArtifactUpload", finalize_artifact_upload);
+raw_request!(AbortArtifactUploadRequest, AbortArtifactUploadResponse, "/mindclade.internal.artifact.v1.ArtifactService/AbortArtifactUpload", abort_artifact_upload);
+raw_request!(QuarantineArtifactUploadRequest, QuarantineArtifactUploadResponse, "/mindclade.internal.artifact.v1.ArtifactService/QuarantineArtifactUpload", quarantine_artifact_upload);
+raw_request!(CommitArtifactRequest, CommitArtifactResponse, "/mindclade.internal.artifact.v1.ArtifactService/CommitArtifact", commit_artifact);
+raw_request!(SubmitInferenceRequest, SubmitInferenceResponse, "/mindclade.internal.inference.v1.InferenceService/SubmitInference", submit_inference);
+raw_request!(GetInferenceRequestRequest, GetInferenceRequestResponse, "/mindclade.internal.inference.v1.InferenceService/GetInferenceRequest", get_inference_request);
+raw_request!(GetInferenceResultRequest, GetInferenceResultResponse, "/mindclade.internal.inference.v1.InferenceService/GetInferenceResult", get_inference_result);
+raw_request!(CommitInferenceResultRequest, CommitInferenceResultResponse, "/mindclade.internal.inference.v1.InferenceService/CommitInferenceResult", commit_inference_result);
+raw_request!(CreateDatasetRequest, CreateDatasetResponse, "/mindclade.internal.dataset.v1.DatasetService/CreateDataset", create_dataset);
+raw_request!(GetDatasetRequest, GetDatasetResponse, "/mindclade.internal.dataset.v1.DatasetService/GetDataset", get_dataset);
+raw_request!(ListDatasetsRequest, ListDatasetsResponse, "/mindclade.internal.dataset.v1.DatasetService/ListDatasets", list_datasets);
+raw_request!(UpdateDatasetRequest, UpdateDatasetResponse, "/mindclade.internal.dataset.v1.DatasetService/UpdateDataset", update_dataset);
+raw_request!(PublishDatasetReleaseRequest, PublishDatasetReleaseResponse, "/mindclade.internal.dataset.v1.DatasetService/PublishDatasetRelease", publish_dataset_release);
+raw_request!(RevokeDatasetReleaseRequest, RevokeDatasetReleaseResponse, "/mindclade.internal.dataset.v1.DatasetService/RevokeDatasetRelease", revoke_dataset_release);
+raw_request!(GetDatasetReleaseRequest, GetDatasetReleaseResponse, "/mindclade.internal.dataset.v1.DatasetService/GetDatasetRelease", get_dataset_release);
+raw_request!(ListDatasetReleasesRequest, ListDatasetReleasesResponse, "/mindclade.internal.dataset.v1.DatasetService/ListDatasetReleases", list_dataset_releases);
+raw_request!(CreateEvaluationRunRequest, CreateEvaluationRunResponse, "/mindclade.internal.evaluation.v1.EvaluationService/CreateEvaluationRun", create_evaluation_run);
+raw_request!(GetEvaluationRunRequest, GetEvaluationRunResponse, "/mindclade.internal.evaluation.v1.EvaluationService/GetEvaluationRun", get_evaluation_run);
+raw_request!(ListEvaluationRunsRequest, ListEvaluationRunsResponse, "/mindclade.internal.evaluation.v1.EvaluationService/ListEvaluationRuns", list_evaluation_runs);
+raw_request!(CancelEvaluationRunRequest, CancelEvaluationRunResponse, "/mindclade.internal.evaluation.v1.EvaluationService/CancelEvaluationRun", cancel_evaluation_run);
+raw_request!(CommitEvaluationResultRequest, CommitEvaluationResultResponse, "/mindclade.internal.evaluation.v1.EvaluationService/CommitEvaluationResult", commit_evaluation_result);
+raw_request!(GetEvaluationResultRequest, GetEvaluationResultResponse, "/mindclade.internal.evaluation.v1.EvaluationService/GetEvaluationResult", get_evaluation_result);
+raw_request!(CreatePromotionDecisionRequest, CreatePromotionDecisionResponse, "/mindclade.internal.evaluation.v1.EvaluationService/CreatePromotionDecision", create_promotion_decision);
+raw_request!(GetPromotionDecisionRequest, GetPromotionDecisionResponse, "/mindclade.internal.evaluation.v1.EvaluationService/GetPromotionDecision", get_promotion_decision);
+raw_request!(CreateExperimentRequest, CreateExperimentResponse, "/mindclade.internal.experiment.v1.ExperimentService/CreateExperiment", create_experiment);
+raw_request!(GetExperimentRequest, GetExperimentResponse, "/mindclade.internal.experiment.v1.ExperimentService/GetExperiment", get_experiment);
+raw_request!(ListExperimentsRequest, ListExperimentsResponse, "/mindclade.internal.experiment.v1.ExperimentService/ListExperiments", list_experiments);
+raw_request!(UpdateExperimentRequest, UpdateExperimentResponse, "/mindclade.internal.experiment.v1.ExperimentService/UpdateExperiment", update_experiment);
+raw_request!(TransitionExperimentRequest, TransitionExperimentResponse, "/mindclade.internal.experiment.v1.ExperimentService/TransitionExperiment", transition_experiment);
+raw_request!(CreateStudyRequest, CreateStudyResponse, "/mindclade.internal.experiment.v1.ExperimentService/CreateStudy", create_study);
+raw_request!(GetStudyRequest, GetStudyResponse, "/mindclade.internal.experiment.v1.ExperimentService/GetStudy", get_study);
+raw_request!(ListStudiesRequest, ListStudiesResponse, "/mindclade.internal.experiment.v1.ExperimentService/ListStudies", list_studies);
+raw_request!(TransitionStudyRequest, TransitionStudyResponse, "/mindclade.internal.experiment.v1.ExperimentService/TransitionStudy", transition_study);
+raw_request!(CreateTrialRequest, CreateTrialResponse, "/mindclade.internal.experiment.v1.ExperimentService/CreateTrial", create_trial);
+raw_request!(GetTrialRequest, GetTrialResponse, "/mindclade.internal.experiment.v1.ExperimentService/GetTrial", get_trial);
+raw_request!(ListTrialsRequest, ListTrialsResponse, "/mindclade.internal.experiment.v1.ExperimentService/ListTrials", list_trials);
+raw_request!(TransitionTrialRequest, TransitionTrialResponse, "/mindclade.internal.experiment.v1.ExperimentService/TransitionTrial", transition_trial);
+raw_request!(CompleteTrialRequest, CompleteTrialResponse, "/mindclade.internal.experiment.v1.ExperimentService/CompleteTrial", complete_trial);
+raw_request!(RegisterModelRequest, RegisterModelResponse, "/mindclade.internal.model.v1.ModelService/RegisterModel", register_model);
+raw_request!(GetModelRequest, GetModelResponse, "/mindclade.internal.model.v1.ModelService/GetModel", get_model);
+raw_request!(ListModelsRequest, ListModelsResponse, "/mindclade.internal.model.v1.ModelService/ListModels", list_models);
+raw_request!(RegisterModelReleaseRequest, RegisterModelReleaseResponse, "/mindclade.internal.model.v1.ModelService/RegisterModelRelease", register_model_release);
+raw_request!(GetModelReleaseRequest, GetModelReleaseResponse, "/mindclade.internal.model.v1.ModelService/GetModelRelease", get_model_release);
+raw_request!(ListModelReleasesRequest, ListModelReleasesResponse, "/mindclade.internal.model.v1.ModelService/ListModelReleases", list_model_releases);
+raw_request!(PromoteModelReleaseRequest, PromoteModelReleaseResponse, "/mindclade.internal.model.v1.ModelService/PromoteModelRelease", promote_model_release);
+raw_request!(RevokeModelReleaseRequest, RevokeModelReleaseResponse, "/mindclade.internal.model.v1.ModelService/RevokeModelRelease", revoke_model_release);
+raw_request!(EvaluateAuthorizationRequest, EvaluateAuthorizationResponse, "/mindclade.internal.policy.v1.PolicyService/EvaluateAuthorization", evaluate_authorization);
+raw_request!(CreateUsePolicyRequest, CreateUsePolicyResponse, "/mindclade.internal.policy.v1.PolicyService/CreateUsePolicy", create_use_policy);
+raw_request!(UpdateUsePolicyRequest, UpdateUsePolicyResponse, "/mindclade.internal.policy.v1.PolicyService/UpdateUsePolicy", update_use_policy);
+raw_request!(GetUsePolicyRequest, GetUsePolicyResponse, "/mindclade.internal.policy.v1.PolicyService/GetUsePolicy", get_use_policy);
+raw_request!(ListUsePoliciesRequest, ListUsePoliciesResponse, "/mindclade.internal.policy.v1.PolicyService/ListUsePolicies", list_use_policies);
+raw_request!(ActivateUsePolicyRequest, ActivateUsePolicyResponse, "/mindclade.internal.policy.v1.PolicyService/ActivateUsePolicy", activate_use_policy);
+raw_request!(RevokeUsePolicyRequest, RevokeUsePolicyResponse, "/mindclade.internal.policy.v1.PolicyService/RevokeUsePolicy", revoke_use_policy);
+raw_request!(ResolvePolicySnapshotRequest, ResolvePolicySnapshotResponse, "/mindclade.internal.policy.v1.PolicyService/ResolvePolicySnapshot", resolve_policy_snapshot);
+raw_request!(GetTenantRequest, GetTenantResponse, "/mindclade.internal.admin.v1.AdminService/GetTenant", get_tenant);
+raw_request!(UpdateTenantRequest, UpdateTenantResponse, "/mindclade.internal.admin.v1.AdminService/UpdateTenant", update_tenant);
+raw_request!(CreateProjectRequest, CreateProjectResponse, "/mindclade.internal.admin.v1.AdminService/CreateProject", create_project);
+raw_request!(GetProjectRequest, GetProjectResponse, "/mindclade.internal.admin.v1.AdminService/GetProject", get_project);
+raw_request!(ListProjectsRequest, ListProjectsResponse, "/mindclade.internal.admin.v1.AdminService/ListProjects", list_projects);
+raw_request!(UpdateProjectRequest, UpdateProjectResponse, "/mindclade.internal.admin.v1.AdminService/UpdateProject", update_project);
+raw_request!(QueryAuditRecordsRequest, QueryAuditRecordsResponse, "/mindclade.internal.admin.v1.AdminService/QueryAuditRecords", query_audit_records);
+raw_request!(ExportAuditRecordsRequest, ExportAuditRecordsResponse, "/mindclade.internal.admin.v1.AdminService/ExportAuditRecords", export_audit_records);
+raw_request!(GetAuditExportRequest, GetAuditExportResponse, "/mindclade.internal.admin.v1.AdminService/GetAuditExport", get_audit_export);
+raw_request!(CreateWorkflowDefinitionRequest, CreateWorkflowDefinitionResponse, "/mindclade.internal.workflow.v1.WorkflowService/CreateWorkflowDefinition", create_workflow_definition);
+raw_request!(UpdateWorkflowDefinitionRequest, UpdateWorkflowDefinitionResponse, "/mindclade.internal.workflow.v1.WorkflowService/UpdateWorkflowDefinition", update_workflow_definition);
+raw_request!(GetWorkflowDefinitionRequest, GetWorkflowDefinitionResponse, "/mindclade.internal.workflow.v1.WorkflowService/GetWorkflowDefinition", get_workflow_definition);
+raw_request!(ListWorkflowDefinitionsRequest, ListWorkflowDefinitionsResponse, "/mindclade.internal.workflow.v1.WorkflowService/ListWorkflowDefinitions", list_workflow_definitions);
+raw_request!(StartWorkflowRunRequest, StartWorkflowRunResponse, "/mindclade.internal.workflow.v1.WorkflowService/StartWorkflowRun", start_workflow_run);
+raw_request!(GetWorkflowRunRequest, GetWorkflowRunResponse, "/mindclade.internal.workflow.v1.WorkflowService/GetWorkflowRun", get_workflow_run);
+raw_request!(ListWorkflowRunsRequest, ListWorkflowRunsResponse, "/mindclade.internal.workflow.v1.WorkflowService/ListWorkflowRuns", list_workflow_runs);
+raw_request!(CancelWorkflowRunRequest, CancelWorkflowRunResponse, "/mindclade.internal.workflow.v1.WorkflowService/CancelWorkflowRun", cancel_workflow_run);
+raw_request!(CommitWorkflowTransitionRequest, CommitWorkflowTransitionResponse, "/mindclade.internal.workflow.v1.WorkflowService/CommitWorkflowTransition", commit_workflow_transition);
+raw_request!(RequestApprovalRequest, RequestApprovalResponse, "/mindclade.internal.workflow.v1.ApprovalService/RequestApproval", request_approval);
+raw_request!(GetApprovalRequestRequest, GetApprovalRequestResponse, "/mindclade.internal.workflow.v1.ApprovalService/GetApprovalRequest", get_approval_request);
+raw_request!(ListApprovalRequestsRequest, ListApprovalRequestsResponse, "/mindclade.internal.workflow.v1.ApprovalService/ListApprovalRequests", list_approval_requests);
+raw_request!(DecideApprovalRequest, DecideApprovalResponse, "/mindclade.internal.workflow.v1.ApprovalService/DecideApproval", decide_approval);
+raw_request!(ConsumeApprovalRequest, ConsumeApprovalResponse, "/mindclade.internal.workflow.v1.ApprovalService/ConsumeApproval", consume_approval);
 
 /// Payload-free invocation record produced by [`RecordingTransport`].
 #[derive(Clone, Debug, Eq, PartialEq)]

@@ -5,13 +5,17 @@ use mindclade_protocols::{
     common::v1::{CommandContext, PageRequest, ResourceRef},
     internal::admin::v1::{
         CreateProjectRequest, ExportAuditRecordsRequest, GetAuditExportRequest, GetProjectRequest,
-        GetTenantRequest, ListProjectsRequest, ListProjectsResponse, QueryAuditRecordsRequest,
+        GetTenantRequest, ListProjectsRequest, QueryAuditRecordsRequest,
         UpdateProjectRequest, UpdateTenantRequest,
     },
     job::v1::Operation,
 };
 
-use crate::{CallOptions, ClientCore, Error, SubmitOptions, retry::registered_method_safety};
+use crate::{
+    CallOptions, ClientCore, Error, Page, Pages, SubmitOptions,
+    request::{initial_page_token, page_request},
+    retry::registered_method_safety,
+};
 
 const GET_TENANT: &str = "/mindclade.internal.admin.v1.AdminService/GetTenant";
 const UPDATE_TENANT: &str = "/mindclade.internal.admin.v1.AdminService/UpdateTenant";
@@ -186,16 +190,17 @@ impl Admin {
             .ok_or_else(|| Error::protocol("GetProject response omitted its project"))
     }
 
-    /// Lists one bounded tenant-scoped project page.
+    /// Returns a lazy, bounded cursor over tenant-scoped projects.
     ///
     /// # Errors
     ///
-    /// Returns an error for invalid scope or pagination and for transport failures.
-    pub async fn list_projects(
+    /// Returns an error for invalid scope or pagination. Transport failures
+    /// surface while advancing the cursor.
+    pub fn list_projects(
         &self,
         mut request: ListProjectsRequest,
         options: CallOptions,
-    ) -> Result<ListProjectsResponse, Error> {
+    ) -> Result<Pages<Project>, Error> {
         let parent = tenant_name(&self.core);
         if !request.parent.is_empty() && request.parent != parent {
             return Err(Error::invalid_argument(
@@ -204,20 +209,39 @@ impl Admin {
         }
         validate_page(request.page.as_ref())?;
         request.parent = parent;
-        let prepared = options.prepare(&self.core.config);
-        Ok(self
-            .core
-            .unary(
-                request,
-                &prepared,
-                registered_method_safety(LIST_PROJECTS),
-                None,
-                |transport, request| {
-                    Box::pin(async move { transport.list_projects(request).await })
-                },
-            )
-            .await?
-            .into_inner())
+        let core = Arc::clone(&self.core);
+        let token = initial_page_token(request.page.as_ref());
+        Ok(Pages::new(
+            move |page_token| {
+                let core = Arc::clone(&core);
+                let options = options.clone();
+                let mut request = request.clone();
+                async move {
+                    request.page = Some(page_request(request.page.as_ref(), page_token));
+                    let prepared = options.prepare(&core.config);
+                    let response = core
+                        .unary(
+                            request,
+                            &prepared,
+                            registered_method_safety(LIST_PROJECTS),
+                            None,
+                            |transport, request| {
+                                Box::pin(async move { transport.list_projects(request).await })
+                            },
+                        )
+                        .await?;
+                    let request_id = response.request_id().map(str::to_owned);
+                    let response = response.into_inner();
+                    Ok(Page::new(
+                        response.projects,
+                        response.page,
+                        response.read_time,
+                        request_id,
+                    ))
+                }
+            },
+            token,
+        ))
     }
 
     /// Applies a generated optimistic project update.

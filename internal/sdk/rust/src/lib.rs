@@ -70,14 +70,17 @@ pub use operations::{
 };
 pub use policies::Policies;
 pub use request::{
-    CallOptions, PaginationLimits, PaginationPage, Paginator, SubmitOptions, paginate,
+    CallOptions, DEFAULT_PAGE_SIZE, HARD_PAGE_SIZE_CEILING, Page, PaginationLimits, PaginationPage,
+    Paginator, Pages, Response, SAFE_RESPONSE_METADATA, SafeMetadata, SubmitOptions,
+    is_credential_bearing, paginate,
 };
 pub use retry::{JitterSource, SystemJitter};
 pub use runs::{AttemptLease, LeaseCredential, Runs};
 pub use training::{Training, TrainingWatch, TrainingWatchOptions};
 pub use transport::{
-    ArtifactStream, GeneratedClients, InferenceStream, OperationStream, RecordedRpcCall,
-    RecordingTransport, RpcTransport, TonicTransport, TrainingStream, WorkflowStream,
+    ArtifactStream, GeneratedClients, InferenceStream, OperationStream, RawDispatch, RawRequest,
+    RecordedRpcCall, RecordingTransport, RpcTransport, TonicTransport, TrainingStream,
+    WorkflowStream,
 };
 pub use workflows::{
     WorkflowRunFailure, WorkflowWaitError, WorkflowWatch, WorkflowWatchOptions, Workflows,
@@ -145,7 +148,7 @@ pub use mindclade_protocols::workflow::v1::{
 
 use std::sync::Arc;
 
-use retry::{Sleeper, TokioSleeper};
+use retry::{Sleeper, TokioSleeper, registered_method_safety};
 
 /// The internal SDK client. Cloning it is cheap and shares the channel,
 /// credential provider, and immutable runtime policy.
@@ -335,6 +338,39 @@ impl Client {
         let prepared = options.prepare(&self.core.config);
         self.core
             .request(message, &prepared, idempotency_key, 0)
+            .await
+    }
+
+    /// Sends a generated request through the same identity, deadline, retry,
+    /// and sanitization policy as the ergonomic facades, returning the raw
+    /// response alongside its correlation identity and allowlisted metadata.
+    ///
+    /// This is the escape hatch for the handful of internal RPCs that have no
+    /// ergonomic facade. It does not weaken policy: the route's registered
+    /// safety class still decides retry eligibility, an idempotent command
+    /// still requires an idempotency key, and a never-retry route is still
+    /// pinned to a single attempt.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error for a missing idempotency key on an idempotent route,
+    /// credential acquisition failure, deadline exhaustion, or a remote
+    /// status.
+    pub async fn send_with_metadata<T: RawRequest>(
+        &self,
+        message: T,
+        options: &CallOptions,
+        idempotency_key: Option<&str>,
+    ) -> Result<Response<T::Response>, Error> {
+        let prepared = options.prepare(&self.core.config);
+        self.core
+            .unary(
+                message,
+                &prepared,
+                registered_method_safety(T::METHOD),
+                idempotency_key,
+                T::dispatch,
+            )
             .await
     }
 

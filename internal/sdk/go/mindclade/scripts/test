@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+# Run this package's tests.
+#
+# The default run mirrors the Go half of `just _governance-source`, narrowed to
+# the SDK, with the build cache bypassed so a green result always reflects the
+# current tree. Arguments are forwarded to `go test`, so a contributor can run
+# `scripts/test -run TestRetryBudget -v` without leaving the wrapper.
+
+set -euo pipefail
+
+# shellcheck source=internal/sdk/go/mindclade/scripts/common.sh
+source "$(dirname -- "${BASH_SOURCE[0]}")/common.sh"
+cd -- "$(repository_root)"
+
+require_tool go "install the pinned Go toolchain; see docs/development or run 'nix develop'."
+
+announce "go test -count=1 ${SDK_GO_PATTERN}" "$@"
+go test -count=1 "${SDK_GO_PATTERN}" "$@"
+
+if bazel_requested; then
+  require_tool bazel "install Bazelisk, or unset MINDCLADE_BAZEL to use the native toolchain."
+  announce "bazel test ${SDK_BAZEL_TEST}"
+  bazel test "${SDK_BAZEL_TEST}"
+fi

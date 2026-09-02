@@ -8,14 +8,18 @@ use mindclade_protocols::{
     },
     internal::dataset::v1::{
         CreateDatasetRequest, GetDatasetReleaseRequest, GetDatasetRequest,
-        ListDatasetReleasesRequest, ListDatasetReleasesResponse, ListDatasetsRequest,
-        ListDatasetsResponse, PublishDatasetReleaseRequest, RevokeDatasetReleaseRequest,
+        ListDatasetReleasesRequest, ListDatasetsRequest, PublishDatasetReleaseRequest,
+        RevokeDatasetReleaseRequest,
         UpdateDatasetRequest,
     },
     job::v1::Operation,
 };
 
-use crate::{CallOptions, ClientCore, Error, SubmitOptions, retry::registered_method_safety};
+use crate::{
+    CallOptions, ClientCore, Error, Page, Pages, SubmitOptions,
+    request::{initial_page_token, page_request},
+    retry::registered_method_safety,
+};
 
 const CREATE: &str = "/mindclade.internal.dataset.v1.DatasetService/CreateDataset";
 const GET: &str = "/mindclade.internal.dataset.v1.DatasetService/GetDataset";
@@ -116,11 +120,11 @@ impl Datasets {
     /// # Errors
     ///
     /// Returns an error for invalid scope or pagination, credentials, or transport failure.
-    pub async fn list(
+    pub fn list(
         &self,
         mut request: ListDatasetsRequest,
         options: CallOptions,
-    ) -> Result<ListDatasetsResponse, Error> {
+    ) -> Result<Pages<Dataset>, Error> {
         let parent = project_name(&self.core);
         if !request.parent.is_empty() && request.parent != parent {
             return Err(Error::invalid_argument(
@@ -129,20 +133,39 @@ impl Datasets {
         }
         request.parent = parent;
         validate_page(request.page.as_ref())?;
-        let prepared = options.prepare(&self.core.config);
-        Ok(self
-            .core
-            .unary(
-                request,
-                &prepared,
-                registered_method_safety(LIST),
-                None,
-                |transport, request| {
-                    Box::pin(async move { transport.list_datasets(request).await })
-                },
-            )
-            .await?
-            .into_inner())
+        let core = Arc::clone(&self.core);
+        let token = initial_page_token(request.page.as_ref());
+        Ok(Pages::new(
+            move |page_token| {
+                let core = Arc::clone(&core);
+                let options = options.clone();
+                let mut request = request.clone();
+                async move {
+                    request.page = Some(page_request(request.page.as_ref(), page_token));
+                    let prepared = options.prepare(&core.config);
+                    let response = core
+                        .unary(
+                            request,
+                            &prepared,
+                            registered_method_safety(LIST),
+                            None,
+                            |transport, request| {
+                                Box::pin(async move { transport.list_datasets(request).await })
+                            },
+                        )
+                        .await?;
+                    let request_id = response.request_id().map(str::to_owned);
+                    let response = response.into_inner();
+                    Ok(Page::new(
+                        response.datasets,
+                        response.page,
+                        response.read_time,
+                        request_id,
+                    ))
+                }
+            },
+            token,
+        ))
     }
 
     /// Applies a generated optimistic dataset update command.
@@ -300,27 +323,46 @@ impl Datasets {
     /// # Errors
     ///
     /// Returns an error for invalid scope or pagination, credentials, or transport failure.
-    pub async fn list_releases(
+    pub fn list_releases(
         &self,
         request: ListDatasetReleasesRequest,
         options: CallOptions,
-    ) -> Result<ListDatasetReleasesResponse, Error> {
+    ) -> Result<Pages<DatasetRelease>, Error> {
         dataset_name(&self.core, &request.parent)?;
         validate_page(request.page.as_ref())?;
-        let prepared = options.prepare(&self.core.config);
-        Ok(self
-            .core
-            .unary(
-                request,
-                &prepared,
-                registered_method_safety(LIST_RELEASES),
-                None,
-                |transport, request| {
-                    Box::pin(async move { transport.list_dataset_releases(request).await })
-                },
-            )
-            .await?
-            .into_inner())
+        let core = Arc::clone(&self.core);
+        let token = initial_page_token(request.page.as_ref());
+        Ok(Pages::new(
+            move |page_token| {
+                let core = Arc::clone(&core);
+                let options = options.clone();
+                let mut request = request.clone();
+                async move {
+                    request.page = Some(page_request(request.page.as_ref(), page_token));
+                    let prepared = options.prepare(&core.config);
+                    let response = core
+                        .unary(
+                            request,
+                            &prepared,
+                            registered_method_safety(LIST_RELEASES),
+                            None,
+                            |transport, request| {
+                                Box::pin(async move { transport.list_dataset_releases(request).await })
+                            },
+                        )
+                        .await?;
+                    let request_id = response.request_id().map(str::to_owned);
+                    let response = response.into_inner();
+                    Ok(Page::new(
+                        response.dataset_releases,
+                        response.page,
+                        response.read_time,
+                        request_id,
+                    ))
+                }
+            },
+            token,
+        ))
     }
 }
 

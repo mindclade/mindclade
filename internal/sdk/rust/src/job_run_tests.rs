@@ -443,7 +443,10 @@ async fn job_and_run_facades_cover_every_ergonomic_rpc_and_hide_lease_tokens() {
             },
             CallOptions::new(),
         )
+        .unwrap()
+        .next_page()
         .await
+        .unwrap()
         .unwrap();
     sdk.jobs()
         .cancel(
@@ -470,7 +473,10 @@ async fn job_and_run_facades_cover_every_ergonomic_rpc_and_hide_lease_tokens() {
             },
             CallOptions::new(),
         )
+        .unwrap()
+        .next_page()
         .await
+        .unwrap()
         .unwrap();
     sdk.runs()
         .get_attempt("attempt-1", CallOptions::new())
@@ -484,7 +490,10 @@ async fn job_and_run_facades_cover_every_ergonomic_rpc_and_hide_lease_tokens() {
             },
             CallOptions::new(),
         )
+        .unwrap()
+        .next_page()
         .await
+        .unwrap()
         .unwrap();
 
     let acquired = sdk

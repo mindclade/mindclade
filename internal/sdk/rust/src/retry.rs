@@ -12,12 +12,12 @@ use std::{
 };
 
 use sha2::{Digest, Sha256};
-use tonic::{Request, Response, Status, codegen::async_trait, metadata::MetadataValue};
+use tonic::{Request, Response as TonicResponse, Status, codegen::async_trait, metadata::MetadataValue};
 
 use crate::{
     ClientCore, Error, ErrorKind, RpcTransport,
     error::{FinalCause, RETRY_COUNT_METADATA, RetryAttemptSummary, TIMEOUT_MS_METADATA},
-    request::PreparedCall,
+    request::{PreparedCall, Response},
 };
 
 /// Bounded rejection-sampling attempts before an unbiased draw is abandoned in
@@ -40,7 +40,7 @@ impl RetryProgress {
 }
 
 pub(crate) type RpcFuture<R> =
-    Pin<Box<dyn Future<Output = Result<Response<R>, Status>> + Send + 'static>>;
+    Pin<Box<dyn Future<Output = Result<TonicResponse<R>, Status>> + Send + 'static>>;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum CallSafety {
@@ -372,7 +372,7 @@ impl ClientCore {
                     }
                 };
             match invocation {
-                Ok(response) => return Ok(response),
+                Ok(response) => return Ok(Response::from_tonic(response)),
                 Err(status) => {
                     let error = Error::from_status(&status);
                     if !error.is_retryable() {

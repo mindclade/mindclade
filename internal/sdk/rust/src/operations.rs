@@ -10,8 +10,7 @@ use std::{
 use mindclade_protocols::{
     internal::job::v1::{
         CancelOperationRequest, CancelOperationResponse, GetOperationRequest, GetOperationResponse,
-        ListOperationsRequest, ListOperationsResponse, WatchOperationRequest,
-        WatchOperationResponse,
+        ListOperationsRequest, WatchOperationRequest, WatchOperationResponse,
     },
     job::v1::{Operation, OperationState},
 };
@@ -19,8 +18,8 @@ use tokio::sync::Notify;
 use tonic::codegen::tokio_stream::StreamExt;
 
 use crate::{
-    CallOptions, ClientCore, Error, OperationStream, SubmitOptions,
-    request::{PreparedCall, validate_resource_value},
+    CallOptions, ClientCore, Error, OperationStream, Page, Pages, SubmitOptions,
+    request::{PreparedCall, initial_page_token, page_request, validate_resource_value},
     retry::registered_method_safety,
 };
 
@@ -240,17 +239,21 @@ impl Operations {
         Self { core }
     }
 
-    /// Returns one detached, bounded page scoped to the configured project.
+    /// Returns a lazy, bounded cursor over project-scoped operations.
+    ///
+    /// The cursor iterates items transparently across pages and keeps
+    /// page-level access. Every page is validated, not only the first.
     ///
     /// # Errors
     ///
-    /// Returns an error for a cross-project parent, oversized page, RPC
-    /// failure, or invalid returned operation state.
-    pub async fn list(
+    /// Returns an error for a cross-project parent or an oversized page. RPC
+    /// failures and invalid returned operation state surface while advancing
+    /// the cursor.
+    pub fn list(
         &self,
         mut request: ListOperationsRequest,
         options: CallOptions,
-    ) -> Result<ListOperationsResponse, Error> {
+    ) -> Result<Pages<Operation>, Error> {
         let parent = project_parent(&self.core.config);
         if !request.parent.is_empty() && request.parent != parent {
             return Err(Error::invalid_argument(
@@ -267,24 +270,42 @@ impl Operations {
             ));
         }
         request.parent = parent;
-        let prepared = options.prepare(&self.core.config);
-        let response = self
-            .core
-            .unary(
-                request,
-                &prepared,
-                registered_method_safety(LIST_OPERATIONS),
-                None,
-                |transport, request| {
-                    Box::pin(async move { transport.list_operations(request).await })
-                },
-            )
-            .await?
-            .into_inner();
-        for operation in &response.operations {
-            validate_listed_operation(&self.core, operation)?;
-        }
-        Ok(response)
+        let core = Arc::clone(&self.core);
+        let token = initial_page_token(request.page.as_ref());
+        Ok(Pages::new(
+            move |page_token| {
+                let core = Arc::clone(&core);
+                let options = options.clone();
+                let mut request = request.clone();
+                async move {
+                    request.page = Some(page_request(request.page.as_ref(), page_token));
+                    let prepared = options.prepare(&core.config);
+                    let response = core
+                        .unary(
+                            request,
+                            &prepared,
+                            registered_method_safety(LIST_OPERATIONS),
+                            None,
+                            |transport, request| {
+                                Box::pin(async move { transport.list_operations(request).await })
+                            },
+                        )
+                        .await?;
+                    let request_id = response.request_id().map(str::to_owned);
+                    let response = response.into_inner();
+                    for operation in &response.operations {
+                        validate_listed_operation(&core, operation)?;
+                    }
+                    Ok(Page::new(
+                        response.operations,
+                        response.page,
+                        response.read_time,
+                        request_id,
+                    ))
+                }
+            },
+            token,
+        ))
     }
 
     /// Reads the latest durable operation revision with bounded safe retries.

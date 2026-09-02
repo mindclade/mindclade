@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+# Prepare a working tree for internal Go SDK development.
+#
+# Wraps `just bootstrap` (tools/dev/bootstrap.py), which verifies the exact
+# pinned local toolchain and the generated dependency locks for the whole
+# repository, and then resolves this package's Go module dependencies so the
+# first build is not also the first download.
+
+set -euo pipefail
+
+# shellcheck source=internal/sdk/go/mindclade/scripts/common.sh
+source "$(dirname -- "${BASH_SOURCE[0]}")/common.sh"
+cd -- "$(repository_root)"
+
+require_tool go "install the pinned Go toolchain; see docs/development or run 'nix develop'."
+
+if command -v just >/dev/null 2>&1; then
+  announce "just bootstrap"
+  just bootstrap
+else
+  announce "python3 tools/dev/bootstrap.py --root ."
+  require_tool python3 "install Python 3.12; see docs/development or run 'nix develop'."
+  python3 tools/dev/bootstrap.py --root .
+fi
+
+announce "go mod download"
+go mod download
+
+announce "go mod verify"
+go mod verify
+
+if bazel_requested; then
+  require_tool bazel "install Bazelisk, or unset MINDCLADE_BAZEL to use the native toolchain."
+  announce "bazel fetch ${SDK_BAZEL_LIBRARY}"
+  bazel fetch "${SDK_BAZEL_LIBRARY}"
+fi
+
+printf 'bootstrap: ready for %s\n' "${SDK_GO_PACKAGE}" >&2

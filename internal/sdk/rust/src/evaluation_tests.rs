@@ -316,11 +316,12 @@ async fn exercise_run_lifecycle(evaluations: &Evaluations) {
                 },
                 CallOptions::new()
             )
+            .unwrap()
+            .next_page()
             .await
             .unwrap()
-            .page
             .unwrap()
-            .next_page_token,
+            .next_page_token(),
         "next"
     );
     evaluations

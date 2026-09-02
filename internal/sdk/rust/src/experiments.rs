@@ -11,16 +11,16 @@ use mindclade_protocols::{
     internal::experiment::v1::{
         CompleteTrialRequest, CreateExperimentRequest, CreateStudyRequest, CreateTrialRequest,
         GetExperimentRequest, GetStudyRequest, GetTrialRequest, ListExperimentsRequest,
-        ListExperimentsResponse, ListStudiesRequest, ListStudiesResponse, ListTrialsRequest,
-        ListTrialsResponse, TransitionExperimentRequest, TransitionStudyRequest,
-        TransitionTrialRequest, UpdateExperimentRequest,
+        ListStudiesRequest, ListTrialsRequest, TransitionExperimentRequest,
+        TransitionStudyRequest, TransitionTrialRequest, UpdateExperimentRequest,
     },
 };
 use prost::Message;
 use sha2::{Digest, Sha256};
 
 use crate::{
-    CallOptions, ClientCore, Error, SubmitOptions, request::PreparedCall,
+    CallOptions, ClientCore, Error, Page, Pages, SubmitOptions,
+    request::{PreparedCall, initial_page_token, page_request},
     retry::registered_method_safety,
 };
 
@@ -144,11 +144,11 @@ impl Experiments {
     /// # Errors
     ///
     /// Returns an error for an invalid page/scope or when the authenticated RPC fails.
-    pub async fn list(
+    pub fn list(
         &self,
         mut request: ListExperimentsRequest,
         options: CallOptions,
-    ) -> Result<ListExperimentsResponse, Error> {
+    ) -> Result<Pages<Experiment>, Error> {
         let parent = project_name(&self.core);
         if (!request.parent.is_empty() && request.parent != parent)
             || oversized_page(request.page.as_ref())
@@ -158,24 +158,42 @@ impl Experiments {
             ));
         }
         request.parent = parent;
-        let prepared = options.prepare(&self.core.config);
-        let response = self
-            .core
-            .unary(
-                request,
-                &prepared,
-                registered_method_safety(LIST),
-                None,
-                |transport, request| {
-                    Box::pin(async move { transport.list_experiments(request).await })
-                },
-            )
-            .await?
-            .into_inner();
-        for value in &response.experiments {
-            experiment_name(&self.core, &value.name)?;
-        }
-        Ok(response)
+        let core = Arc::clone(&self.core);
+        let token = initial_page_token(request.page.as_ref());
+        Ok(Pages::new(
+            move |page_token| {
+                let core = Arc::clone(&core);
+                let options = options.clone();
+                let mut request = request.clone();
+                async move {
+                    request.page = Some(page_request(request.page.as_ref(), page_token));
+                    let prepared = options.prepare(&core.config);
+                    let response = core
+                        .unary(
+                            request,
+                            &prepared,
+                            registered_method_safety(LIST),
+                            None,
+                            |transport, request| {
+                                Box::pin(async move { transport.list_experiments(request).await })
+                            },
+                        )
+                        .await?;
+                    let request_id = response.request_id().map(str::to_owned);
+                    let response = response.into_inner();
+                    for value in &response.experiments {
+                        experiment_name(&core, &value.name)?;
+                    }
+                    Ok(Page::new(
+                        response.experiments,
+                        response.page,
+                        response.read_time,
+                        request_id,
+                    ))
+                }
+            },
+            token,
+        ))
     }
 
     /// Applies an allowlisted field-mask update under revision and entity-tag control.
@@ -383,31 +401,51 @@ impl Experiments {
     /// # Errors
     ///
     /// Returns an error for an invalid page/parent or when the authenticated RPC fails.
-    pub async fn list_studies(
+    pub fn list_studies(
         &self,
         mut request: ListStudiesRequest,
         options: CallOptions,
-    ) -> Result<ListStudiesResponse, Error> {
+    ) -> Result<Pages<Study>, Error> {
         request.parent = experiment_name(&self.core, &request.parent)?;
         if oversized_page(request.page.as_ref()) {
             return Err(Error::invalid_argument("study page size cannot exceed 200"));
         }
-        let prepared = options.prepare(&self.core.config);
-        let response = self
-            .core
-            .unary(
-                request,
-                &prepared,
-                registered_method_safety(LIST_STUDIES),
-                None,
-                |transport, request| Box::pin(async move { transport.list_studies(request).await }),
-            )
-            .await?
-            .into_inner();
-        for value in &response.studies {
-            study_name(&self.core, &value.name)?;
-        }
-        Ok(response)
+        let core = Arc::clone(&self.core);
+        let token = initial_page_token(request.page.as_ref());
+        Ok(Pages::new(
+            move |page_token| {
+                let core = Arc::clone(&core);
+                let options = options.clone();
+                let mut request = request.clone();
+                async move {
+                    request.page = Some(page_request(request.page.as_ref(), page_token));
+                    let prepared = options.prepare(&core.config);
+                    let response = core
+                        .unary(
+                            request,
+                            &prepared,
+                            registered_method_safety(LIST_STUDIES),
+                            None,
+                            |transport, request| {
+                                Box::pin(async move { transport.list_studies(request).await })
+                            },
+                        )
+                        .await?;
+                    let request_id = response.request_id().map(str::to_owned);
+                    let response = response.into_inner();
+                    for value in &response.studies {
+                        study_name(&core, &value.name)?;
+                    }
+                    Ok(Page::new(
+                        response.studies,
+                        response.page,
+                        response.read_time,
+                        request_id,
+                    ))
+                }
+            },
+            token,
+        ))
     }
 
     /// Performs an idempotent, validated study lifecycle transition.
@@ -525,31 +563,51 @@ impl Experiments {
     /// # Errors
     ///
     /// Returns an error for an invalid page/parent or when the authenticated RPC fails.
-    pub async fn list_trials(
+    pub fn list_trials(
         &self,
         mut request: ListTrialsRequest,
         options: CallOptions,
-    ) -> Result<ListTrialsResponse, Error> {
+    ) -> Result<Pages<Trial>, Error> {
         request.parent = study_name(&self.core, &request.parent)?;
         if oversized_page(request.page.as_ref()) {
             return Err(Error::invalid_argument("trial page size cannot exceed 200"));
         }
-        let prepared = options.prepare(&self.core.config);
-        let response = self
-            .core
-            .unary(
-                request,
-                &prepared,
-                registered_method_safety(LIST_TRIALS),
-                None,
-                |transport, request| Box::pin(async move { transport.list_trials(request).await }),
-            )
-            .await?
-            .into_inner();
-        for value in &response.trials {
-            trial_name(&self.core, &value.name)?;
-        }
-        Ok(response)
+        let core = Arc::clone(&self.core);
+        let token = initial_page_token(request.page.as_ref());
+        Ok(Pages::new(
+            move |page_token| {
+                let core = Arc::clone(&core);
+                let options = options.clone();
+                let mut request = request.clone();
+                async move {
+                    request.page = Some(page_request(request.page.as_ref(), page_token));
+                    let prepared = options.prepare(&core.config);
+                    let response = core
+                        .unary(
+                            request,
+                            &prepared,
+                            registered_method_safety(LIST_TRIALS),
+                            None,
+                            |transport, request| {
+                                Box::pin(async move { transport.list_trials(request).await })
+                            },
+                        )
+                        .await?;
+                    let request_id = response.request_id().map(str::to_owned);
+                    let response = response.into_inner();
+                    for value in &response.trials {
+                        trial_name(&core, &value.name)?;
+                    }
+                    Ok(Page::new(
+                        response.trials,
+                        response.page,
+                        response.read_time,
+                        request_id,
+                    ))
+                }
+            },
+            token,
+        ))
     }
 
     /// Performs an idempotent, validated trial lifecycle transition.

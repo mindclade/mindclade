@@ -10,14 +10,18 @@ use mindclade_protocols::{
     internal::evaluation::v1::{
         CancelEvaluationRunRequest, CommitEvaluationResultRequest, CreateEvaluationRunRequest,
         CreatePromotionDecisionRequest, GetEvaluationResultRequest, GetEvaluationRunRequest,
-        GetPromotionDecisionRequest, ListEvaluationRunsRequest, ListEvaluationRunsResponse,
+        GetPromotionDecisionRequest, ListEvaluationRunsRequest,
     },
     job::v1::{LeaseFence, Operation},
 };
 use prost::Message;
 use sha2::{Digest, Sha256};
 
-use crate::{CallOptions, ClientCore, Error, SubmitOptions, retry::registered_method_safety};
+use crate::{
+    CallOptions, ClientCore, Error, Page, Pages, SubmitOptions,
+    request::{initial_page_token, page_request},
+    retry::registered_method_safety,
+};
 
 const CREATE: &str = "/mindclade.internal.evaluation.v1.EvaluationService/CreateEvaluationRun";
 const GET_RUN: &str = "/mindclade.internal.evaluation.v1.EvaluationService/GetEvaluationRun";
@@ -150,11 +154,11 @@ impl Evaluations {
     ///
     /// Returns an error when the requested scope or page size is invalid, or
     /// when authentication or transport fails.
-    pub async fn list_runs(
+    pub fn list_runs(
         &self,
         mut request: ListEvaluationRunsRequest,
         options: CallOptions,
-    ) -> Result<ListEvaluationRunsResponse, Error> {
+    ) -> Result<Pages<EvaluationRun>, Error> {
         let parent = project_name(&self.core);
         if (!request.parent.is_empty() && request.parent != parent)
             || request
@@ -167,20 +171,39 @@ impl Evaluations {
             ));
         }
         request.parent = parent;
-        let prepared = options.prepare(&self.core.config);
-        Ok(self
-            .core
-            .unary(
-                request,
-                &prepared,
-                registered_method_safety(LIST),
-                None,
-                |transport, request| {
-                    Box::pin(async move { transport.list_evaluation_runs(request).await })
-                },
-            )
-            .await?
-            .into_inner())
+        let core = Arc::clone(&self.core);
+        let token = initial_page_token(request.page.as_ref());
+        Ok(Pages::new(
+            move |page_token| {
+                let core = Arc::clone(&core);
+                let options = options.clone();
+                let mut request = request.clone();
+                async move {
+                    request.page = Some(page_request(request.page.as_ref(), page_token));
+                    let prepared = options.prepare(&core.config);
+                    let response = core
+                        .unary(
+                            request,
+                            &prepared,
+                            registered_method_safety(LIST),
+                            None,
+                            |transport, request| {
+                                Box::pin(async move { transport.list_evaluation_runs(request).await })
+                            },
+                        )
+                        .await?;
+                    let request_id = response.request_id().map(str::to_owned);
+                    let response = response.into_inner();
+                    Ok(Page::new(
+                        response.evaluation_runs,
+                        response.page,
+                        response.read_time,
+                        request_id,
+                    ))
+                }
+            },
+            token,
+        ))
     }
 
     /// Records monotonic cancellation under optimistic concurrency.

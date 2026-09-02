@@ -8,17 +8,17 @@ use mindclade_protocols::{
     internal::job::v1::{
         AcquireAttemptLeaseRequest, CancelAttemptRequest, CancelAttemptResponse,
         CommitAttemptRequest, CommitAttemptResponse, GetAttemptRequest, GetRunRequest,
-        HeartbeatAttemptRequest, HeartbeatAttemptResponse, ListAttemptsRequest,
-        ListAttemptsResponse, ListRunsRequest, ListRunsResponse, RenewAttemptLeaseRequest,
+        HeartbeatAttemptRequest, HeartbeatAttemptResponse, ListAttemptsRequest, ListRunsRequest,
+        RenewAttemptLeaseRequest,
     },
     job::v1::{Attempt, LeaseFence, Run},
 };
 use sha2::{Digest, Sha256};
 
 use crate::{
-    CallOptions, ClientCore, Error, SubmitOptions,
+    CallOptions, ClientCore, Error, Page, Pages, SubmitOptions,
     jobs::{canonical_resource, protobuf_digest, valid_compact_resource, valid_leaf},
-    request::{PreparedCall, SensitiveLeaseToken},
+    request::{PreparedCall, SensitiveLeaseToken, initial_page_token, page_request},
     retry::registered_method_safety,
 };
 
@@ -138,11 +138,11 @@ impl Runs {
     ///
     /// Returns an error for invalid scope or pagination, credentials,
     /// transport failure, or an inconsistent response.
-    pub async fn list_runs(
+    pub fn list_runs(
         &self,
         mut request: ListRunsRequest,
         options: CallOptions,
-    ) -> Result<ListRunsResponse, Error> {
+    ) -> Result<Pages<Run>, Error> {
         request.parent = canonical_resource(&self.core, &request.parent, "jobs")?;
         if request
             .page
@@ -155,28 +155,49 @@ impl Runs {
             ));
         }
         let parent = request.parent.clone();
-        let prepared = options.prepare(&self.core.config);
-        let response = self
-            .core
-            .unary(
-                request,
-                &prepared,
-                registered_method_safety(LIST_RUNS),
-                None,
-                |transport, request| Box::pin(async move { transport.list_runs(request).await }),
-            )
-            .await?
-            .into_inner();
-        if response
-            .runs
-            .iter()
-            .any(|run| !valid_run(&self.core, run) || run.job_id != parent)
-        {
-            return Err(Error::protocol(
-                "ListRuns response changed durable identity",
-            ));
-        }
-        Ok(response)
+        let core = Arc::clone(&self.core);
+        let token = initial_page_token(request.page.as_ref());
+        Ok(Pages::new(
+            move |page_token| {
+                let core = Arc::clone(&core);
+                let options = options.clone();
+                let mut request = request.clone();
+                let parent = parent.clone();
+                async move {
+                    request.page = Some(page_request(request.page.as_ref(), page_token));
+                    let prepared = options.prepare(&core.config);
+                    let response = core
+                        .unary(
+                            request,
+                            &prepared,
+                            registered_method_safety(LIST_RUNS),
+                            None,
+                            |transport, request| {
+                                Box::pin(async move { transport.list_runs(request).await })
+                            },
+                        )
+                        .await?;
+                    let request_id = response.request_id().map(str::to_owned);
+                    let response = response.into_inner();
+                    if response
+                        .runs
+                        .iter()
+                        .any(|run| !valid_run(&core, run) || run.job_id != parent)
+                    {
+                        return Err(Error::protocol(
+                            "ListRuns response changed durable identity",
+                        ));
+                    }
+                    Ok(Page::new(
+                        response.runs,
+                        response.page,
+                        response.read_time,
+                        request_id,
+                    ))
+                }
+            },
+            token,
+        ))
     }
 
     /// Reads one fenced execution attempt.
@@ -220,11 +241,11 @@ impl Runs {
     ///
     /// Returns an error for invalid scope or pagination, credentials,
     /// transport failure, or an inconsistent response.
-    pub async fn list_attempts(
+    pub fn list_attempts(
         &self,
         mut request: ListAttemptsRequest,
         options: CallOptions,
-    ) -> Result<ListAttemptsResponse, Error> {
+    ) -> Result<Pages<Attempt>, Error> {
         request.parent = canonical_resource(&self.core, &request.parent, "runs")?;
         if request
             .page
@@ -234,30 +255,49 @@ impl Runs {
             return Err(Error::invalid_argument("attempt page size exceeds 200"));
         }
         let parent = request.parent.clone();
-        let prepared = options.prepare(&self.core.config);
-        let response = self
-            .core
-            .unary(
-                request,
-                &prepared,
-                registered_method_safety(LIST_ATTEMPTS),
-                None,
-                |transport, request| {
-                    Box::pin(async move { transport.list_attempts(request).await })
-                },
-            )
-            .await?
-            .into_inner();
-        if response
-            .attempts
-            .iter()
-            .any(|attempt| !valid_attempt(&self.core, attempt) || attempt.run_id != parent)
-        {
-            return Err(Error::protocol(
-                "ListAttempts response changed durable identity",
-            ));
-        }
-        Ok(response)
+        let core = Arc::clone(&self.core);
+        let token = initial_page_token(request.page.as_ref());
+        Ok(Pages::new(
+            move |page_token| {
+                let core = Arc::clone(&core);
+                let options = options.clone();
+                let mut request = request.clone();
+                let parent = parent.clone();
+                async move {
+                    request.page = Some(page_request(request.page.as_ref(), page_token));
+                    let prepared = options.prepare(&core.config);
+                    let response = core
+                        .unary(
+                            request,
+                            &prepared,
+                            registered_method_safety(LIST_ATTEMPTS),
+                            None,
+                            |transport, request| {
+                                Box::pin(async move { transport.list_attempts(request).await })
+                            },
+                        )
+                        .await?;
+                    let request_id = response.request_id().map(str::to_owned);
+                    let response = response.into_inner();
+                    if response
+                        .attempts
+                        .iter()
+                        .any(|attempt| !valid_attempt(&core, attempt) || attempt.run_id != parent)
+                    {
+                        return Err(Error::protocol(
+                            "ListAttempts response changed durable identity",
+                        ));
+                    }
+                    Ok(Page::new(
+                        response.attempts,
+                        response.page,
+                        response.read_time,
+                        request_id,
+                    ))
+                }
+            },
+            token,
+        ))
     }
 
     /// Atomically acquires a scheduler lease and captures its secret response
@@ -297,7 +337,7 @@ impl Runs {
                 },
             )
             .await?;
-        let token = response_lease_token(response.metadata())?;
+        let token = response_lease_token(response.raw_metadata())?;
         let credential = LeaseCredential {
             token: SensitiveLeaseToken::new(token)?,
         };

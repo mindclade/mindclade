@@ -406,7 +406,10 @@ async fn policy_facade_covers_every_rpc_and_replaces_caller_identity() {
             },
             CallOptions::new(),
         )
+        .unwrap()
+        .next_page()
         .await
+        .unwrap()
         .unwrap();
     client
         .policies()
@@ -497,7 +500,10 @@ async fn admin_facade_covers_every_rpc_and_preserves_opaque_pagination() {
             },
             CallOptions::new(),
         )
+        .unwrap()
+        .next_page()
         .await
+        .unwrap()
         .unwrap();
     client
         .admin()

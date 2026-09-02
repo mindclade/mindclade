@@ -417,11 +417,12 @@ async fn training_facade_covers_all_generated_routes_and_authority_metadata() {
                 },
                 CallOptions::new(),
             )
+            .unwrap()
+            .next_page()
             .await
             .unwrap()
-            .page
             .unwrap()
-            .next_page_token,
+            .next_page_token(),
         "next"
     );
     training
@@ -532,7 +533,10 @@ async fn training_facade_covers_all_generated_routes_and_authority_metadata() {
             },
             CallOptions::new(),
         )
+        .unwrap()
+        .next_page()
         .await
+        .unwrap()
         .unwrap();
     let mut watch = training
         .watch(

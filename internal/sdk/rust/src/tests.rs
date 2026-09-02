@@ -1447,13 +1447,13 @@ async fn dataset_and_model_facades_cover_every_generated_rpc_and_bind_sdk_identi
             },
             CallOptions::new(),
         )
+        .unwrap()
+        .next_page()
         .await
+        .unwrap()
         .unwrap();
-    assert_eq!(datasets.datasets.len(), 1);
-    assert_eq!(
-        datasets.page.unwrap().next_page_token,
-        "opaque-dataset-next"
-    );
+    assert_eq!(datasets.items().len(), 1);
+    assert_eq!(datasets.next_page_token(), "opaque-dataset-next");
     client
         .datasets()
         .update(
@@ -1522,9 +1522,12 @@ async fn dataset_and_model_facades_cover_every_generated_rpc_and_bind_sdk_identi
             },
             CallOptions::new(),
         )
+        .unwrap()
+        .next_page()
         .await
+        .unwrap()
         .unwrap();
-    assert_eq!(releases.dataset_releases.len(), 1);
+    assert_eq!(releases.items().len(), 1);
 
     client
         .models()
@@ -1562,9 +1565,12 @@ async fn dataset_and_model_facades_cover_every_generated_rpc_and_bind_sdk_identi
             },
             CallOptions::new(),
         )
+        .unwrap()
+        .next_page()
         .await
+        .unwrap()
         .unwrap();
-    assert_eq!(models.models.len(), 1);
+    assert_eq!(models.items().len(), 1);
     client
         .models()
         .register_release(
@@ -1602,9 +1608,12 @@ async fn dataset_and_model_facades_cover_every_generated_rpc_and_bind_sdk_identi
             },
             CallOptions::new(),
         )
+        .unwrap()
+        .next_page()
         .await
+        .unwrap()
         .unwrap();
-    assert_eq!(model_releases.model_releases.len(), 1);
+    assert_eq!(model_releases.items().len(), 1);
     client
         .models()
         .promote_release(

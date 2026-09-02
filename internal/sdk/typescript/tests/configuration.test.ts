@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
+import { existsSync } from "node:fs";
+import { readFile, stat } from "node:fs/promises";
+import { dirname, join } from "node:path";
 import process from "node:process";
 import { describe, test } from "node:test";
+import { fileURLToPath } from "node:url";
 
 import {
 	Code,
@@ -20,6 +24,7 @@ import {
 	Environment,
 	type EnvironmentSource,
 	FakeRuntime,
+	isNeverRetryable,
 	isReservedMetadata,
 	type LogFields,
 	type Logger,
@@ -32,7 +37,10 @@ import {
 	type Observer,
 	platformMetadata,
 	RECOGNISED_ENVIRONMENT_VARIABLES,
+	REGISTERED_ROUTES,
 	RESERVED_REQUEST_METADATA,
+	registeredMethodSafety,
+	SDK_NAME,
 	SDK_VERSION,
 	type TokenProvider,
 } from "../src/index.js";
@@ -380,5 +388,226 @@ describe("configuration, escape hatches, and observability", () => {
 
 	test("the message-size ceiling matches every other mindclade SDK", () => {
 		assert.equal(MAX_MESSAGE_BYTES, 8 * 1_024 * 1_024);
+	});
+});
+
+/**
+ * Every route the generated service descriptor publishes, inlined on purpose.
+ *
+ * `src/safety.ts` is a deliberately hand-maintained table, so a test that read
+ * its coverage back out of itself would prove nothing. This literal is the
+ * independent copy: an RPC added upstream and forgotten in the table surfaces
+ * here as a coverage gap instead of silently falling back to the unknown-route
+ * default, which retries nothing.
+ */
+const DESCRIPTOR_ROUTES: readonly string[] = [
+	"/mindclade.internal.admin.v1.AdminService/CreateProject",
+	"/mindclade.internal.admin.v1.AdminService/ExportAuditRecords",
+	"/mindclade.internal.admin.v1.AdminService/GetAuditExport",
+	"/mindclade.internal.admin.v1.AdminService/GetProject",
+	"/mindclade.internal.admin.v1.AdminService/GetTenant",
+	"/mindclade.internal.admin.v1.AdminService/ListProjects",
+	"/mindclade.internal.admin.v1.AdminService/QueryAuditRecords",
+	"/mindclade.internal.admin.v1.AdminService/UpdateProject",
+	"/mindclade.internal.admin.v1.AdminService/UpdateTenant",
+	"/mindclade.internal.agent.v1.AgentService/CancelAgentRun",
+	"/mindclade.internal.agent.v1.AgentService/CommitAgentStep",
+	"/mindclade.internal.agent.v1.AgentService/CommitToolReceipt",
+	"/mindclade.internal.agent.v1.AgentService/CreateAgentDefinition",
+	"/mindclade.internal.agent.v1.AgentService/GetAgentDefinition",
+	"/mindclade.internal.agent.v1.AgentService/GetAgentRun",
+	"/mindclade.internal.agent.v1.AgentService/GetAgentStep",
+	"/mindclade.internal.agent.v1.AgentService/ListAgentDefinitions",
+	"/mindclade.internal.agent.v1.AgentService/ListAgentRuns",
+	"/mindclade.internal.agent.v1.AgentService/ListAgentSteps",
+	"/mindclade.internal.agent.v1.AgentService/StartAgentRun",
+	"/mindclade.internal.agent.v1.AgentService/UpdateAgentDefinition",
+	"/mindclade.internal.artifact.v1.ArtifactService/AbortArtifactUpload",
+	"/mindclade.internal.artifact.v1.ArtifactService/AcquireArtifactLease",
+	"/mindclade.internal.artifact.v1.ArtifactService/BeginArtifactUpload",
+	"/mindclade.internal.artifact.v1.ArtifactService/CommitArtifact",
+	"/mindclade.internal.artifact.v1.ArtifactService/DownloadArtifact",
+	"/mindclade.internal.artifact.v1.ArtifactService/FinalizeArtifactUpload",
+	"/mindclade.internal.artifact.v1.ArtifactService/GetArtifact",
+	"/mindclade.internal.artifact.v1.ArtifactService/GetArtifactUpload",
+	"/mindclade.internal.artifact.v1.ArtifactService/ListArtifacts",
+	"/mindclade.internal.artifact.v1.ArtifactService/QuarantineArtifact",
+	"/mindclade.internal.artifact.v1.ArtifactService/QuarantineArtifactUpload",
+	"/mindclade.internal.artifact.v1.ArtifactService/ReleaseArtifactLease",
+	"/mindclade.internal.artifact.v1.ArtifactService/ResolveArtifactAlias",
+	"/mindclade.internal.artifact.v1.ArtifactService/UploadArtifactChunk",
+	"/mindclade.internal.dataset.v1.DatasetService/CreateDataset",
+	"/mindclade.internal.dataset.v1.DatasetService/GetDataset",
+	"/mindclade.internal.dataset.v1.DatasetService/GetDatasetRelease",
+	"/mindclade.internal.dataset.v1.DatasetService/ListDatasetReleases",
+	"/mindclade.internal.dataset.v1.DatasetService/ListDatasets",
+	"/mindclade.internal.dataset.v1.DatasetService/PublishDatasetRelease",
+	"/mindclade.internal.dataset.v1.DatasetService/RevokeDatasetRelease",
+	"/mindclade.internal.dataset.v1.DatasetService/UpdateDataset",
+	"/mindclade.internal.evaluation.v1.EvaluationService/CancelEvaluationRun",
+	"/mindclade.internal.evaluation.v1.EvaluationService/CommitEvaluationResult",
+	"/mindclade.internal.evaluation.v1.EvaluationService/CreateEvaluationRun",
+	"/mindclade.internal.evaluation.v1.EvaluationService/CreatePromotionDecision",
+	"/mindclade.internal.evaluation.v1.EvaluationService/GetEvaluationResult",
+	"/mindclade.internal.evaluation.v1.EvaluationService/GetEvaluationRun",
+	"/mindclade.internal.evaluation.v1.EvaluationService/GetPromotionDecision",
+	"/mindclade.internal.evaluation.v1.EvaluationService/ListEvaluationRuns",
+	"/mindclade.internal.experiment.v1.ExperimentService/CompleteTrial",
+	"/mindclade.internal.experiment.v1.ExperimentService/CreateExperiment",
+	"/mindclade.internal.experiment.v1.ExperimentService/CreateStudy",
+	"/mindclade.internal.experiment.v1.ExperimentService/CreateTrial",
+	"/mindclade.internal.experiment.v1.ExperimentService/GetExperiment",
+	"/mindclade.internal.experiment.v1.ExperimentService/GetStudy",
+	"/mindclade.internal.experiment.v1.ExperimentService/GetTrial",
+	"/mindclade.internal.experiment.v1.ExperimentService/ListExperiments",
+	"/mindclade.internal.experiment.v1.ExperimentService/ListStudies",
+	"/mindclade.internal.experiment.v1.ExperimentService/ListTrials",
+	"/mindclade.internal.experiment.v1.ExperimentService/TransitionExperiment",
+	"/mindclade.internal.experiment.v1.ExperimentService/TransitionStudy",
+	"/mindclade.internal.experiment.v1.ExperimentService/TransitionTrial",
+	"/mindclade.internal.experiment.v1.ExperimentService/UpdateExperiment",
+	"/mindclade.internal.inference.v1.InferenceService/CommitInferenceResult",
+	"/mindclade.internal.inference.v1.InferenceService/GetInferenceRequest",
+	"/mindclade.internal.inference.v1.InferenceService/GetInferenceResult",
+	"/mindclade.internal.inference.v1.InferenceService/SubmitInference",
+	"/mindclade.internal.inference.v1.InferenceService/WatchInference",
+	"/mindclade.internal.job.v1.JobService/CancelJob",
+	"/mindclade.internal.job.v1.JobService/GetJob",
+	"/mindclade.internal.job.v1.JobService/ListJobs",
+	"/mindclade.internal.job.v1.JobService/RequestJob",
+	"/mindclade.internal.job.v1.OperationService/CancelOperation",
+	"/mindclade.internal.job.v1.OperationService/GetOperation",
+	"/mindclade.internal.job.v1.OperationService/ListOperations",
+	"/mindclade.internal.job.v1.OperationService/WatchOperation",
+	"/mindclade.internal.job.v1.RunService/AcquireAttemptLease",
+	"/mindclade.internal.job.v1.RunService/CancelAttempt",
+	"/mindclade.internal.job.v1.RunService/CommitAttempt",
+	"/mindclade.internal.job.v1.RunService/ExpireAttemptLeases",
+	"/mindclade.internal.job.v1.RunService/GetAttempt",
+	"/mindclade.internal.job.v1.RunService/GetRun",
+	"/mindclade.internal.job.v1.RunService/HeartbeatAttempt",
+	"/mindclade.internal.job.v1.RunService/ListAttempts",
+	"/mindclade.internal.job.v1.RunService/ListRuns",
+	"/mindclade.internal.job.v1.RunService/RenewAttemptLease",
+	"/mindclade.internal.model.v1.ModelService/GetModel",
+	"/mindclade.internal.model.v1.ModelService/GetModelRelease",
+	"/mindclade.internal.model.v1.ModelService/ListModelReleases",
+	"/mindclade.internal.model.v1.ModelService/ListModels",
+	"/mindclade.internal.model.v1.ModelService/PromoteModelRelease",
+	"/mindclade.internal.model.v1.ModelService/RegisterModel",
+	"/mindclade.internal.model.v1.ModelService/RegisterModelRelease",
+	"/mindclade.internal.model.v1.ModelService/RevokeModelRelease",
+	"/mindclade.internal.policy.v1.PolicyService/ActivateUsePolicy",
+	"/mindclade.internal.policy.v1.PolicyService/CreateUsePolicy",
+	"/mindclade.internal.policy.v1.PolicyService/EvaluateAuthorization",
+	"/mindclade.internal.policy.v1.PolicyService/GetUsePolicy",
+	"/mindclade.internal.policy.v1.PolicyService/ListUsePolicies",
+	"/mindclade.internal.policy.v1.PolicyService/ResolvePolicySnapshot",
+	"/mindclade.internal.policy.v1.PolicyService/RevokeUsePolicy",
+	"/mindclade.internal.policy.v1.PolicyService/UpdateUsePolicy",
+	"/mindclade.internal.training.v1.TrainingService/CancelTrainingRun",
+	"/mindclade.internal.training.v1.TrainingService/CommitCheckpoint",
+	"/mindclade.internal.training.v1.TrainingService/CommitTrainingProgress",
+	"/mindclade.internal.training.v1.TrainingService/CompleteTrainingRun",
+	"/mindclade.internal.training.v1.TrainingService/CreateTrainingRun",
+	"/mindclade.internal.training.v1.TrainingService/GetCheckpoint",
+	"/mindclade.internal.training.v1.TrainingService/GetTrainingRun",
+	"/mindclade.internal.training.v1.TrainingService/ListCheckpoints",
+	"/mindclade.internal.training.v1.TrainingService/ListTrainingRuns",
+	"/mindclade.internal.training.v1.TrainingService/PrepareCheckpoint",
+	"/mindclade.internal.training.v1.TrainingService/ResumeTrainingAttempt",
+	"/mindclade.internal.training.v1.TrainingService/StartTrainingAttempt",
+	"/mindclade.internal.training.v1.TrainingService/WatchTrainingRun",
+	"/mindclade.internal.workflow.v1.ApprovalService/ConsumeApproval",
+	"/mindclade.internal.workflow.v1.ApprovalService/DecideApproval",
+	"/mindclade.internal.workflow.v1.ApprovalService/GetApprovalRequest",
+	"/mindclade.internal.workflow.v1.ApprovalService/ListApprovalRequests",
+	"/mindclade.internal.workflow.v1.ApprovalService/RequestApproval",
+	"/mindclade.internal.workflow.v1.WorkflowService/CancelWorkflowRun",
+	"/mindclade.internal.workflow.v1.WorkflowService/CommitWorkflowTransition",
+	"/mindclade.internal.workflow.v1.WorkflowService/CreateWorkflowDefinition",
+	"/mindclade.internal.workflow.v1.WorkflowService/GetWorkflowDefinition",
+	"/mindclade.internal.workflow.v1.WorkflowService/GetWorkflowRun",
+	"/mindclade.internal.workflow.v1.WorkflowService/ListWorkflowDefinitions",
+	"/mindclade.internal.workflow.v1.WorkflowService/ListWorkflowRuns",
+	"/mindclade.internal.workflow.v1.WorkflowService/StartWorkflowRun",
+	"/mindclade.internal.workflow.v1.WorkflowService/UpdateWorkflowDefinition",
+	"/mindclade.internal.workflow.v1.WorkflowService/WatchWorkflowRun",
+];
+
+/** Locates this package's root from the built test file. */
+const packageRoot = (): string => {
+	let directory = dirname(fileURLToPath(import.meta.url));
+	for (;;) {
+		if (existsSync(join(directory, "src", "platform.ts"))) return directory;
+		const parent = dirname(directory);
+		if (parent === directory) throw new Error("package root not found");
+		directory = parent;
+	}
+};
+
+describe("packaging", () => {
+	test("the SDK version has exactly one source", async () => {
+		const manifest = JSON.parse(await readFile(join(packageRoot(), "package.json"), "utf8")) as {
+			readonly name: string;
+			readonly version: string;
+		};
+		assert.equal(manifest.name, "@mindclade/internal-sdk");
+		assert.equal(manifest.version, SDK_VERSION);
+		assert.equal(platformMetadata(true), `${SDK_NAME}/${manifest.version};lang=typescript`);
+		assert.equal(platformMetadata(false).startsWith(`${SDK_NAME}/${manifest.version};`), true);
+	});
+
+	test("the hand-maintained safety table covers every descriptor route", () => {
+		assert.equal(DESCRIPTOR_ROUTES.length, 132);
+		assert.deepEqual([...REGISTERED_ROUTES], [...DESCRIPTOR_ROUTES].sort());
+		for (const route of DESCRIPTOR_ROUTES) {
+			assert.notEqual(
+				registeredMethodSafety(route),
+				"unsafe",
+				`${route} falls back to the unknown-route default`,
+			);
+		}
+	});
+
+	test("the lease-expiry sweep is the only pinned never-retryable route", () => {
+		const pinned = DESCRIPTOR_ROUTES.filter((route) => isNeverRetryable(route));
+		assert.deepEqual(pinned, ["/mindclade.internal.job.v1.RunService/ExpireAttemptLeases"]);
+		assert.equal(registeredMethodSafety(pinned[0] ?? ""), "never");
+	});
+
+	test("an unregistered route still falls back to a single unsafe attempt", () => {
+		const invented = "/mindclade.internal.job.v1.RunService/Invented";
+		assert.equal(registeredMethodSafety(invented), "unsafe");
+		assert.equal(isNeverRetryable(invented), false);
+	});
+
+	test("every packaging script wraps the native commands the same way", async () => {
+		const root = packageRoot();
+		for (const name of ["bootstrap", "build", "format", "lint", "test"]) {
+			const path = join(root, "scripts", name);
+			const stats = await stat(path);
+			assert.equal(stats.isFile(), true, `${name} is missing`);
+			assert.equal((stats.mode & 0o111) !== 0, true, `${name} is not executable`);
+			const body = await readFile(path, "utf8");
+			assert.equal(body.startsWith("#!/usr/bin/env bash\n"), true, `${name} lacks a bash shebang`);
+			assert.equal(body.includes("\nset -euo pipefail\n"), true, `${name} is not strict`);
+			assert.equal(
+				body.includes('cd "$(dirname "$0")/../../../.."'),
+				true,
+				`${name} does not run from the repository root`,
+			);
+		}
+	});
+
+	test("the package declares its component identity and a revision changelog", async () => {
+		const root = packageRoot();
+		const component = await readFile(join(root, "component.yaml"), "utf8");
+		assert.equal(component.includes("\nkind: Component\n"), true);
+		assert.equal(component.includes("\n  name: internal-sdk-typescript\n"), true);
+		assert.equal(component.includes("\n  owner: developer-experience\n"), true);
+		const changelog = await readFile(join(root, "CHANGELOG.md"), "utf8");
+		assert.equal(changelog.includes("no SemVer"), true);
+		assert.equal(changelog.includes("keyed by **source revision**"), true);
 	});
 });

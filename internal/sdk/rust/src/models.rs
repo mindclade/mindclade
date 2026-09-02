@@ -3,8 +3,7 @@ use std::sync::Arc;
 use mindclade_protocols::{
     common::v1::ResourceRef,
     internal::model::v1::{
-        GetModelReleaseRequest, GetModelRequest, ListModelReleasesRequest,
-        ListModelReleasesResponse, ListModelsRequest, ListModelsResponse,
+        GetModelReleaseRequest, GetModelRequest, ListModelReleasesRequest, ListModelsRequest,
         PromoteModelReleaseRequest, RegisterModelReleaseRequest, RegisterModelRequest,
         RevokeModelReleaseRequest,
     },
@@ -15,7 +14,11 @@ use mindclade_protocols::{
     },
 };
 
-use crate::{CallOptions, ClientCore, Error, SubmitOptions, retry::registered_method_safety};
+use crate::{
+    CallOptions, ClientCore, Error, Page, Pages, SubmitOptions,
+    request::{initial_page_token, page_request},
+    retry::registered_method_safety,
+};
 
 const REGISTER: &str = "/mindclade.internal.model.v1.ModelService/RegisterModel";
 const GET: &str = "/mindclade.internal.model.v1.ModelService/GetModel";
@@ -116,11 +119,11 @@ impl Models {
     /// # Errors
     ///
     /// Returns an error for invalid scope or pagination, credentials, or transport failure.
-    pub async fn list(
+    pub fn list(
         &self,
         mut request: ListModelsRequest,
         options: CallOptions,
-    ) -> Result<ListModelsResponse, Error> {
+    ) -> Result<Pages<Model>, Error> {
         let parent = project_name(&self.core);
         if !request.parent.is_empty() && request.parent != parent {
             return Err(Error::invalid_argument(
@@ -129,18 +132,39 @@ impl Models {
         }
         request.parent = parent;
         validate_page(request.page.as_ref())?;
-        let prepared = options.prepare(&self.core.config);
-        Ok(self
-            .core
-            .unary(
-                request,
-                &prepared,
-                registered_method_safety(LIST),
-                None,
-                |transport, request| Box::pin(async move { transport.list_models(request).await }),
-            )
-            .await?
-            .into_inner())
+        let core = Arc::clone(&self.core);
+        let token = initial_page_token(request.page.as_ref());
+        Ok(Pages::new(
+            move |page_token| {
+                let core = Arc::clone(&core);
+                let options = options.clone();
+                let mut request = request.clone();
+                async move {
+                    request.page = Some(page_request(request.page.as_ref(), page_token));
+                    let prepared = options.prepare(&core.config);
+                    let response = core
+                        .unary(
+                            request,
+                            &prepared,
+                            registered_method_safety(LIST),
+                            None,
+                            |transport, request| {
+                                Box::pin(async move { transport.list_models(request).await })
+                            },
+                        )
+                        .await?;
+                    let request_id = response.request_id().map(str::to_owned);
+                    let response = response.into_inner();
+                    Ok(Page::new(
+                        response.models,
+                        response.page,
+                        response.read_time,
+                        request_id,
+                    ))
+                }
+            },
+            token,
+        ))
     }
 
     /// Registers an immutable generated model release.
@@ -219,27 +243,46 @@ impl Models {
     /// # Errors
     ///
     /// Returns an error for invalid scope or pagination, credentials, or transport failure.
-    pub async fn list_releases(
+    pub fn list_releases(
         &self,
         request: ListModelReleasesRequest,
         options: CallOptions,
-    ) -> Result<ListModelReleasesResponse, Error> {
+    ) -> Result<Pages<ModelRelease>, Error> {
         model_name(&self.core, &request.parent)?;
         validate_page(request.page.as_ref())?;
-        let prepared = options.prepare(&self.core.config);
-        Ok(self
-            .core
-            .unary(
-                request,
-                &prepared,
-                registered_method_safety(LIST_RELEASES),
-                None,
-                |transport, request| {
-                    Box::pin(async move { transport.list_model_releases(request).await })
-                },
-            )
-            .await?
-            .into_inner())
+        let core = Arc::clone(&self.core);
+        let token = initial_page_token(request.page.as_ref());
+        Ok(Pages::new(
+            move |page_token| {
+                let core = Arc::clone(&core);
+                let options = options.clone();
+                let mut request = request.clone();
+                async move {
+                    request.page = Some(page_request(request.page.as_ref(), page_token));
+                    let prepared = options.prepare(&core.config);
+                    let response = core
+                        .unary(
+                            request,
+                            &prepared,
+                            registered_method_safety(LIST_RELEASES),
+                            None,
+                            |transport, request| {
+                                Box::pin(async move { transport.list_model_releases(request).await })
+                            },
+                        )
+                        .await?;
+                    let request_id = response.request_id().map(str::to_owned);
+                    let response = response.into_inner();
+                    Ok(Page::new(
+                        response.model_releases,
+                        response.page,
+                        response.read_time,
+                        request_id,
+                    ))
+                }
+            },
+            token,
+        ))
     }
 
     /// Promotes a generated model release using optimistic evidence-bound intent.

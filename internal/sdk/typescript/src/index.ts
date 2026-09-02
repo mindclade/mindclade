@@ -168,8 +168,8 @@ export {
 	Page,
 	type PageFetch,
 	type PageInit,
-	type SdkPageInfo,
 	type PageSource,
+	type SdkPageInfo,
 	withPageToken,
 } from "./pagination.js";
 export { platformMetadata, SDK_NAME, SDK_VERSION } from "./platform.js";

@@ -386,7 +386,10 @@ async fn workflow_and_approval_facades_cover_all_generated_rpcs() {
             },
             CallOptions::new(),
         )
+        .unwrap()
+        .next_page()
         .await
+        .unwrap()
         .unwrap();
     let workflow_run = run(0, WorkflowRunState::Created);
     let mut workflow_run = WorkflowRun {
@@ -419,7 +422,10 @@ async fn workflow_and_approval_facades_cover_all_generated_rpcs() {
     client
         .workflows()
         .list_runs(ListWorkflowRunsRequest::default(), CallOptions::new())
+        .unwrap()
+        .next_page()
         .await
+        .unwrap()
         .unwrap();
     client
         .workflows()
@@ -487,7 +493,10 @@ async fn workflow_and_approval_facades_cover_all_generated_rpcs() {
     client
         .approvals()
         .list(ListApprovalRequestsRequest::default(), CallOptions::new())
+        .unwrap()
+        .next_page()
         .await
+        .unwrap()
         .unwrap();
     client
         .approvals()

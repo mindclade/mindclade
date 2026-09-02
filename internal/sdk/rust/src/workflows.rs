@@ -9,8 +9,8 @@ use mindclade_protocols::{
     internal::workflow::v1::{
         CancelWorkflowRunRequest, CommitWorkflowTransitionRequest, CreateWorkflowDefinitionRequest,
         GetWorkflowDefinitionRequest, GetWorkflowRunRequest, ListWorkflowDefinitionsRequest,
-        ListWorkflowDefinitionsResponse, ListWorkflowRunsRequest, ListWorkflowRunsResponse,
-        StartWorkflowRunRequest, UpdateWorkflowDefinitionRequest, WatchWorkflowRunRequest,
+        ListWorkflowRunsRequest, StartWorkflowRunRequest, UpdateWorkflowDefinitionRequest,
+        WatchWorkflowRunRequest,
     },
     job::v1::{LeaseFence, Operation},
     workflow::v1::{WorkflowDefinition, WorkflowRun, WorkflowRunState},
@@ -20,8 +20,9 @@ use sha2::{Digest, Sha256};
 use tonic::codegen::tokio_stream::StreamExt;
 
 use crate::{
-    CallOptions, CancellationToken, ClientCore, Error, SubmitOptions, WorkflowStream,
-    request::PreparedCall, retry::registered_method_safety,
+    CallOptions, CancellationToken, ClientCore, Error, Page, Pages, SubmitOptions, WorkflowStream,
+    request::{PreparedCall, initial_page_token, page_request},
+    retry::registered_method_safety,
 };
 
 const CREATE: &str = "/mindclade.internal.workflow.v1.WorkflowService/CreateWorkflowDefinition";
@@ -295,27 +296,46 @@ impl Workflows {
     /// # Errors
     ///
     /// Returns an error for invalid scope/pagination or RPC failure.
-    pub async fn list_definitions(
+    pub fn list_definitions(
         &self,
         mut request: ListWorkflowDefinitionsRequest,
         options: CallOptions,
-    ) -> Result<ListWorkflowDefinitionsResponse, Error> {
+    ) -> Result<Pages<WorkflowDefinition>, Error> {
         normalize_parent(&self.core, &mut request.parent)?;
         validate_page(request.page.as_ref())?;
-        let prepared = options.prepare(&self.core.config);
-        Ok(self
-            .core
-            .unary(
-                request,
-                &prepared,
-                registered_method_safety(LIST_DEFINITIONS),
-                None,
-                |transport, request| {
-                    Box::pin(async move { transport.list_workflow_definitions(request).await })
-                },
-            )
-            .await?
-            .into_inner())
+        let core = Arc::clone(&self.core);
+        let token = initial_page_token(request.page.as_ref());
+        Ok(Pages::new(
+            move |page_token| {
+                let core = Arc::clone(&core);
+                let options = options.clone();
+                let mut request = request.clone();
+                async move {
+                    request.page = Some(page_request(request.page.as_ref(), page_token));
+                    let prepared = options.prepare(&core.config);
+                    let response = core
+                        .unary(
+                            request,
+                            &prepared,
+                            registered_method_safety(LIST_DEFINITIONS),
+                            None,
+                            |transport, request| {
+                                Box::pin(async move { transport.list_workflow_definitions(request).await })
+                            },
+                        )
+                        .await?;
+                    let request_id = response.request_id().map(str::to_owned);
+                    let response = response.into_inner();
+                    Ok(Page::new(
+                        response.workflow_definitions,
+                        response.page,
+                        response.read_time,
+                        request_id,
+                    ))
+                }
+            },
+            token,
+        ))
     }
 
     /// Starts a generated durable workflow run.
@@ -397,27 +417,46 @@ impl Workflows {
     /// # Errors
     ///
     /// Returns an error for invalid scope/pagination or RPC failure.
-    pub async fn list_runs(
+    pub fn list_runs(
         &self,
         mut request: ListWorkflowRunsRequest,
         options: CallOptions,
-    ) -> Result<ListWorkflowRunsResponse, Error> {
+    ) -> Result<Pages<WorkflowRun>, Error> {
         normalize_parent(&self.core, &mut request.parent)?;
         validate_page(request.page.as_ref())?;
-        let prepared = options.prepare(&self.core.config);
-        Ok(self
-            .core
-            .unary(
-                request,
-                &prepared,
-                registered_method_safety(LIST_RUNS),
-                None,
-                |transport, request| {
-                    Box::pin(async move { transport.list_workflow_runs(request).await })
-                },
-            )
-            .await?
-            .into_inner())
+        let core = Arc::clone(&self.core);
+        let token = initial_page_token(request.page.as_ref());
+        Ok(Pages::new(
+            move |page_token| {
+                let core = Arc::clone(&core);
+                let options = options.clone();
+                let mut request = request.clone();
+                async move {
+                    request.page = Some(page_request(request.page.as_ref(), page_token));
+                    let prepared = options.prepare(&core.config);
+                    let response = core
+                        .unary(
+                            request,
+                            &prepared,
+                            registered_method_safety(LIST_RUNS),
+                            None,
+                            |transport, request| {
+                                Box::pin(async move { transport.list_workflow_runs(request).await })
+                            },
+                        )
+                        .await?;
+                    let request_id = response.request_id().map(str::to_owned);
+                    let response = response.into_inner();
+                    Ok(Page::new(
+                        response.workflow_runs,
+                        response.page,
+                        response.read_time,
+                        request_id,
+                    ))
+                }
+            },
+            token,
+        ))
     }
 
     /// Records monotonic cancellation under an explicit `ETag`.

@@ -6,8 +6,8 @@ use mindclade_protocols::{
     internal::agent::v1::{
         CancelAgentRunRequest, CommitAgentStepRequest, CommitToolReceiptRequest,
         CreateAgentDefinitionRequest, GetAgentDefinitionRequest, GetAgentRunRequest,
-        GetAgentStepRequest, ListAgentDefinitionsRequest, ListAgentDefinitionsResponse,
-        ListAgentRunsRequest, ListAgentRunsResponse, ListAgentStepsRequest, ListAgentStepsResponse,
+        GetAgentStepRequest, ListAgentDefinitionsRequest, ListAgentRunsRequest,
+        ListAgentStepsRequest,
         StartAgentRunRequest, UpdateAgentDefinitionRequest,
     },
     job::v1::{LeaseFence, Operation},
@@ -15,7 +15,11 @@ use mindclade_protocols::{
 use prost::Message;
 use sha2::{Digest, Sha256};
 
-use crate::{CallOptions, ClientCore, Error, SubmitOptions, retry::registered_method_safety};
+use crate::{
+    CallOptions, ClientCore, Error, Page, Pages, SubmitOptions,
+    request::{initial_page_token, page_request},
+    retry::registered_method_safety,
+};
 
 const MAXIMUM_PAGE_SIZE: u32 = 200;
 const CREATE_DEFINITION: &str = "/mindclade.internal.agent.v1.AgentService/CreateAgentDefinition";
@@ -175,27 +179,46 @@ impl Agents {
     /// # Errors
     ///
     /// Returns an error for invalid scope/page policy or transport failure.
-    pub async fn list_definitions(
+    pub fn list_definitions(
         &self,
         mut request: ListAgentDefinitionsRequest,
         options: CallOptions,
-    ) -> Result<ListAgentDefinitionsResponse, Error> {
+    ) -> Result<Pages<AgentDefinition>, Error> {
         request.parent = self.parent(&request.parent, "agent definition list")?;
         validate_page(request.page.as_ref())?;
-        let prepared = options.prepare(&self.core.config);
-        Ok(self
-            .core
-            .unary(
-                request,
-                &prepared,
-                registered_method_safety(LIST_DEFINITIONS),
-                None,
-                |transport, request| {
-                    Box::pin(async move { transport.list_agent_definitions(request).await })
-                },
-            )
-            .await?
-            .into_inner())
+        let core = Arc::clone(&self.core);
+        let token = initial_page_token(request.page.as_ref());
+        Ok(Pages::new(
+            move |page_token| {
+                let core = Arc::clone(&core);
+                let options = options.clone();
+                let mut request = request.clone();
+                async move {
+                    request.page = Some(page_request(request.page.as_ref(), page_token));
+                    let prepared = options.prepare(&core.config);
+                    let response = core
+                        .unary(
+                            request,
+                            &prepared,
+                            registered_method_safety(LIST_DEFINITIONS),
+                            None,
+                            |transport, request| {
+                                Box::pin(async move { transport.list_agent_definitions(request).await })
+                            },
+                        )
+                        .await?;
+                    let request_id = response.request_id().map(str::to_owned);
+                    let response = response.into_inner();
+                    Ok(Page::new(
+                        response.agent_definitions,
+                        response.page,
+                        response.read_time,
+                        request_id,
+                    ))
+                }
+            },
+            token,
+        ))
     }
 
     /// Starts a generated durable agent run and returns its operation.
@@ -290,27 +313,46 @@ impl Agents {
     /// # Errors
     ///
     /// Returns an error for invalid scope/page policy or transport failure.
-    pub async fn list_runs(
+    pub fn list_runs(
         &self,
         mut request: ListAgentRunsRequest,
         options: CallOptions,
-    ) -> Result<ListAgentRunsResponse, Error> {
+    ) -> Result<Pages<AgentRun>, Error> {
         request.parent = self.parent(&request.parent, "agent run list")?;
         validate_page(request.page.as_ref())?;
-        let prepared = options.prepare(&self.core.config);
-        Ok(self
-            .core
-            .unary(
-                request,
-                &prepared,
-                registered_method_safety(LIST_RUNS),
-                None,
-                |transport, request| {
-                    Box::pin(async move { transport.list_agent_runs(request).await })
-                },
-            )
-            .await?
-            .into_inner())
+        let core = Arc::clone(&self.core);
+        let token = initial_page_token(request.page.as_ref());
+        Ok(Pages::new(
+            move |page_token| {
+                let core = Arc::clone(&core);
+                let options = options.clone();
+                let mut request = request.clone();
+                async move {
+                    request.page = Some(page_request(request.page.as_ref(), page_token));
+                    let prepared = options.prepare(&core.config);
+                    let response = core
+                        .unary(
+                            request,
+                            &prepared,
+                            registered_method_safety(LIST_RUNS),
+                            None,
+                            |transport, request| {
+                                Box::pin(async move { transport.list_agent_runs(request).await })
+                            },
+                        )
+                        .await?;
+                    let request_id = response.request_id().map(str::to_owned);
+                    let response = response.into_inner();
+                    Ok(Page::new(
+                        response.agent_runs,
+                        response.page,
+                        response.read_time,
+                        request_id,
+                    ))
+                }
+            },
+            token,
+        ))
     }
 
     /// Records monotonic cancellation under an explicit `ETag`.
@@ -395,27 +437,46 @@ impl Agents {
     /// # Errors
     ///
     /// Returns an error for invalid scope/page policy or transport failure.
-    pub async fn list_steps(
+    pub fn list_steps(
         &self,
         request: ListAgentStepsRequest,
         options: CallOptions,
-    ) -> Result<ListAgentStepsResponse, Error> {
+    ) -> Result<Pages<AgentStep>, Error> {
         self.scoped_name(request.parent.clone(), "agentRuns")?;
         validate_page(request.page.as_ref())?;
-        let prepared = options.prepare(&self.core.config);
-        Ok(self
-            .core
-            .unary(
-                request,
-                &prepared,
-                registered_method_safety(LIST_STEPS),
-                None,
-                |transport, request| {
-                    Box::pin(async move { transport.list_agent_steps(request).await })
-                },
-            )
-            .await?
-            .into_inner())
+        let core = Arc::clone(&self.core);
+        let token = initial_page_token(request.page.as_ref());
+        Ok(Pages::new(
+            move |page_token| {
+                let core = Arc::clone(&core);
+                let options = options.clone();
+                let mut request = request.clone();
+                async move {
+                    request.page = Some(page_request(request.page.as_ref(), page_token));
+                    let prepared = options.prepare(&core.config);
+                    let response = core
+                        .unary(
+                            request,
+                            &prepared,
+                            registered_method_safety(LIST_STEPS),
+                            None,
+                            |transport, request| {
+                                Box::pin(async move { transport.list_agent_steps(request).await })
+                            },
+                        )
+                        .await?;
+                    let request_id = response.request_id().map(str::to_owned);
+                    let response = response.into_inner();
+                    Ok(Page::new(
+                        response.agent_steps,
+                        response.page,
+                        response.read_time,
+                        request_id,
+                    ))
+                }
+            },
+            token,
+        ))
     }
 
     /// Appends one generated step under an authenticated raw lease credential
