@@ -216,6 +216,7 @@ governance-ci: _governance-source
 docs:
     {{ python }} tools/docs/validate_blueprint_sources.py --manifest docs/architecture/blueprint/manifest.yaml
     {{ python }} tools/docs/render_architecture_blueprint.py --manifest docs/architecture/blueprint/manifest.yaml --check
+    {{ python }} tools/docs/render_sdk_api_reference.py --root . --check
     markdownlint-cli2
 
 # Local cleanup at different aggressiveness levels.
@@ -287,6 +288,7 @@ generate:
       --appendix-a6 docs/architecture/blueprint/appendices/A06-authoritative-repository-tree.md \
       --write
     {{ python }} tools/docs/render_architecture_blueprint.py --manifest docs/architecture/blueprint/manifest.yaml
+    {{ python }} tools/docs/render_sdk_api_reference.py --root .
 
 # Atomically generate descriptor, transports, OpenAPI, registries, coverage, and manifest.
 generate-contracts:
