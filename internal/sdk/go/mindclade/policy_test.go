@@ -8,8 +8,10 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 
+	internaljobv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/job/v1"
 	internaltrainingv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/training/v1"
 	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
 	trainingv1 "github.com/mindclade/mindclade/protocols/generated/go/training/v1"
@@ -124,8 +126,7 @@ func TestKnownMutationRequiresMatchingGeneratedCommandContext(t *testing.T) {
 
 func TestLongRunningDefaultsAndTerminalFailuresAreBounded(t *testing.T) {
 	client := &Client{config: defaultConfig()}
-	service := &OperationService{client: client}
-	ctx, cancel, err := service.longRunningContext(context.Background())
+	ctx, cancel, err := client.longRunningContext(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -157,4 +158,179 @@ func contextWithDeadline(t *testing.T) context.Context {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	t.Cleanup(cancel)
 	return ctx
+}
+
+func TestExpireAttemptLeasesIsNeverRetried(t *testing.T) {
+	const method = "/mindclade.internal.job.v1.RunService/ExpireAttemptLeases"
+	config := defaultConfig()
+	config.TenantID = "tenant-a"
+	config.ProjectID = "project-a"
+	config.PrincipalID = "principal-a"
+	config.MaxAttempts = 4
+	config.jitter = func(int64) int64 { return 0 }
+	request := &internaljobv1.ExpireAttemptLeasesRequest{}
+
+	for name, options := range map[string][]RequestOption{
+		"default policy":  nil,
+		"caller override": {WithUnsafeRetryOfNonIdempotentRPC(), WithMaxAttempts(8)},
+	} {
+		ctx, requestValue, err := withRequestOptions(context.Background(), options...)
+		if err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+		if retryPermitted(method, request, requestValue, config) {
+			t.Fatalf("%s: denylisted method was classified retryable", name)
+		}
+		if retryEligible(config, requestValue, method, request) {
+			t.Fatalf("%s: denylisted method was eligible for retry", name)
+		}
+		attempts := 0
+		_ = unaryInterceptor(config)(ctx, method, request, nil, nil,
+			func(_ context.Context, _ string, _, _ any, _ *grpc.ClientConn, callOptions ...grpc.CallOption) error {
+				attempts++
+				for _, option := range callOptions {
+					if trailer, ok := option.(grpc.TrailerCallOption); ok && trailer.TrailerAddr != nil {
+						*trailer.TrailerAddr = metadata.Pairs("x-mindclade-should-retry", "true")
+					}
+				}
+				return status.Error(codes.Unavailable, "reconciler transport failure")
+			},
+		)
+		if attempts != 1 {
+			t.Fatalf("%s: lease expiry was retried %d times", name, attempts)
+		}
+	}
+}
+
+func TestPerRequestAttemptsAndTimeoutOnlyNarrow(t *testing.T) {
+	config := defaultConfig()
+	config.TenantID = "tenant-a"
+	config.ProjectID = "project-a"
+	config.PrincipalID = "principal-a"
+	config.MaxAttempts = 4
+	config.RetryBaseDelay = time.Millisecond
+	config.RetryMaxDelay = time.Millisecond
+	config.jitter = func(int64) int64 { return 0 }
+
+	countAttempts := func(ctx context.Context, method string, request any) int {
+		t.Helper()
+		attempts := 0
+		_ = unaryInterceptor(config)(ctx, method, request, nil, nil,
+			func(context.Context, string, any, any, *grpc.ClientConn, ...grpc.CallOption) error {
+				attempts++
+				return status.Error(codes.Unavailable, "transport failure")
+			},
+		)
+		return attempts
+	}
+
+	unbounded, _, err := withRequestOptions(context.Background(), WithMaxAttempts(8))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if attempts := countAttempts(unbounded, "/mindclade.internal.job.v1.RunService/CommitAttempt", &internaljobv1.CommitAttemptRequest{}); attempts != 1 {
+		t.Fatalf("a per-request maximum promoted an ineligible mutation: attempts=%d", attempts)
+	}
+	if attempts := countAttempts(unbounded, "/mindclade.internal.job.v1.OperationService/GetOperation", nil); attempts != config.MaxAttempts {
+		t.Fatalf("a per-request maximum widened the configured policy: attempts=%d, want %d", attempts, config.MaxAttempts)
+	}
+	narrowed, _, err := withRequestOptions(context.Background(), WithMaxAttempts(2))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if attempts := countAttempts(narrowed, "/mindclade.internal.job.v1.OperationService/GetOperation", nil); attempts != 2 {
+		t.Fatalf("a per-request maximum did not narrow the policy: attempts=%d", attempts)
+	}
+
+	callerDeadline, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	extended, _, err := withRequestOptions(callerDeadline, WithTimeout(4*time.Minute))
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = unaryInterceptor(config)(extended, "/mindclade.internal.job.v1.OperationService/GetOperation", nil, nil, nil,
+		func(callContext context.Context, _ string, _, _ any, _ *grpc.ClientConn, _ ...grpc.CallOption) error {
+			deadline, ok := callContext.Deadline()
+			if !ok || time.Until(deadline) > time.Second {
+				t.Fatalf("per-request timeout extended a caller deadline: %v", deadline)
+			}
+			return nil
+		},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for name, option := range map[string]RequestOption{
+		"timeout above the policy ceiling":  WithTimeout(6 * time.Minute),
+		"negative timeout":                  WithTimeout(-time.Second),
+		"attempts above the policy ceiling": WithMaxAttempts(9),
+	} {
+		if _, _, err := withRequestOptions(context.Background(), option); err == nil {
+			t.Fatalf("%s was accepted", name)
+		}
+	}
+}
+
+func TestUnsafeRetryOverrideIsExplicitAndBounded(t *testing.T) {
+	config := defaultConfig()
+	config.TenantID = "tenant-a"
+	config.ProjectID = "project-a"
+	config.PrincipalID = "principal-a"
+	config.MaxAttempts = 3
+	config.RetryBaseDelay = time.Millisecond
+	config.RetryMaxDelay = time.Millisecond
+	config.jitter = func(int64) int64 { return 0 }
+	const method = "/mindclade.internal.job.v1.RunService/CommitAttempt"
+	request := &internaljobv1.CommitAttemptRequest{}
+
+	attemptsWith := func(options ...RequestOption) int {
+		t.Helper()
+		ctx, _, err := withRequestOptions(context.Background(), options...)
+		if err != nil {
+			t.Fatal(err)
+		}
+		attempts := 0
+		_ = unaryInterceptor(config)(ctx, method, request, nil, nil,
+			func(context.Context, string, any, any, *grpc.ClientConn, ...grpc.CallOption) error {
+				attempts++
+				return status.Error(codes.Unavailable, "transport failure")
+			},
+		)
+		return attempts
+	}
+	if attempts := attemptsWith(); attempts != 1 {
+		t.Fatalf("a mutation without a validated command context was retried: attempts=%d", attempts)
+	}
+	if attempts := attemptsWith(WithUnsafeRetryOfNonIdempotentRPC()); attempts != config.MaxAttempts {
+		t.Fatalf("the explicit unsafe override did not take effect: attempts=%d, want %d", attempts, config.MaxAttempts)
+	}
+	if attempts := attemptsWith(WithUnsafeRetryOfNonIdempotentRPC(), WithMaxAttempts(2)); attempts != 2 {
+		t.Fatalf("the unsafe override escaped the per-request bound: attempts=%d", attempts)
+	}
+}
+
+func TestOneRetryablePredicateGovernsEveryCallSite(t *testing.T) {
+	for code, want := range map[codes.Code]bool{
+		codes.Unavailable:        true,
+		codes.ResourceExhausted:  true,
+		codes.Aborted:            true,
+		codes.DeadlineExceeded:   true,
+		codes.NotFound:           false,
+		codes.InvalidArgument:    false,
+		codes.PermissionDenied:   false,
+		codes.FailedPrecondition: false,
+		codes.Canceled:           false,
+	} {
+		failure := status.Error(code, "scripted failure")
+		if got := retryableStatus(failure); got != want {
+			t.Fatalf("retryableStatus(%s) = %t, want %t", code, got, want)
+		}
+		if got := retryableStatus(normalizeError(failure)); got != want {
+			t.Fatalf("retryableStatus of the normalized %s = %t, want %t", code, got, want)
+		}
+	}
+	if !retryableStatus(context.DeadlineExceeded) || retryableStatus(context.Canceled) || retryableStatus(nil) {
+		t.Fatal("context failures were not classified consistently")
+	}
 }

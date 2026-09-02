@@ -78,8 +78,19 @@ func (service *ApprovalService) Get(ctx context.Context, name string, options ..
 	return cloneGenerated(response.GetApprovalRequest()), nil
 }
 
+// ApprovalPage is one bounded list response plus cursor-scheme traversal. The
+// embedded generated response remains the authoritative model; the wrapper
+// adds only the opaque-cursor mechanics.
+type ApprovalPage struct {
+	*internalworkflowv1.ListApprovalRequestsResponse
+	pageBase[*workflowv1.ApprovalRequest, *ApprovalPage]
+}
+
+// Items returns this page's approval requests without traversing any further page.
+func (page *ApprovalPage) Items() []*workflowv1.ApprovalRequest { return page.GetApprovalRequests() }
+
 // List returns one bounded generated page while preserving its opaque token.
-func (service *ApprovalService) List(ctx context.Context, request *internalworkflowv1.ListApprovalRequestsRequest, options ...RequestOption) (*internalworkflowv1.ListApprovalRequestsResponse, error) {
+func (service *ApprovalService) List(ctx context.Context, request *internalworkflowv1.ListApprovalRequestsRequest, options ...RequestOption) (*ApprovalPage, error) {
 	if !service.configured() {
 		return nil, invalidArgument("approval service is not configured")
 	}
@@ -105,7 +116,14 @@ func (service *ApprovalService) List(ctx context.Context, request *internalworkf
 	if err != nil {
 		return nil, normalizeError(err)
 	}
-	return cloneGenerated(response), nil
+	detached := cloneGenerated(response)
+	page := &ApprovalPage{ListApprovalRequestsResponse: detached}
+	page.pageBase = newPage[*workflowv1.ApprovalRequest](page, detached.GetPage(), paginationLimitsFrom(options), func(ctx context.Context, token string) (*ApprovalPage, error) {
+		successor := cloneGenerated(value)
+		successor.Page = pageRequestWithToken(value.GetPage(), token)
+		return service.List(ctx, successor, options...)
+	})
+	return page, nil
 }
 
 // Decide records one independently authenticated decision under an ETag and

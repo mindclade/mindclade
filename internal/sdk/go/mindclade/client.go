@@ -65,11 +65,18 @@ func New(options ...Option) (*Client, error) {
 		config.ownedTokenProvider = true
 	}
 
+	// The SDK's own policy interceptor is outermost, so caller interceptors run
+	// inside it and cannot bypass retry policy, identity metadata, or error
+	// sanitization. Credentials are supplied by WithPerRPCCredentials, which
+	// gRPC applies beneath the whole chain, so no caller interceptor can observe
+	// or forge an authorization header.
+	unaryChain := append([]grpc.UnaryClientInterceptor{unaryInterceptor(config)}, config.unaryInterceptors...)
+	streamChain := append([]grpc.StreamClientInterceptor{streamInterceptor(config)}, config.streamInterceptors...)
 	dialOptions := []grpc.DialOption{
 		grpc.WithDisableRetry(),
 		grpc.WithUserAgent(config.UserAgent),
-		grpc.WithUnaryInterceptor(unaryInterceptor(config)),
-		grpc.WithStreamInterceptor(streamInterceptor(config)),
+		grpc.WithChainUnaryInterceptor(unaryChain...),
+		grpc.WithChainStreamInterceptor(streamChain...),
 		grpc.WithDefaultCallOptions(
 			grpc.MaxCallRecvMsgSize(maxWireMessageBytes),
 			grpc.MaxCallSendMsgSize(maxWireMessageBytes),
@@ -207,6 +214,32 @@ func (client *Client) context(ctx context.Context, options ...RequestOption) (co
 	}
 	decorated, metadata, err := withRequestOptions(ctx, options...)
 	return decorated, metadata, func() {}, err
+}
+
+// longRunningContext is the one place a long-running verb bounds its own
+// lifetime. It applies the caller's per-request options once, so every poll and
+// every reconnect of one logical wait or watch shares a single request
+// identity, and it bounds an otherwise unbounded caller context by the
+// configured operation timeout. The result is marked as a long-running stream
+// context so the stream interceptor does not clamp it back to the per-RPC
+// budget.
+func (client *Client) longRunningContext(ctx context.Context, options ...RequestOption) (context.Context, context.CancelFunc, error) {
+	if client == nil {
+		return nil, nil, &Error{Code: CodeFailedPrecondition, Message: "client is not configured"}
+	}
+	if ctx == nil {
+		return nil, nil, &Error{Code: CodeInvalidArgument, Message: "context is required"}
+	}
+	base, cancel := ctx, context.CancelFunc(func() {})
+	if _, ok := ctx.Deadline(); !ok {
+		base, cancel = context.WithTimeout(ctx, client.config.DefaultOperationTimeout)
+	}
+	decorated, _, err := withRequestOptions(base, options...)
+	if err != nil {
+		cancel()
+		return nil, nil, err
+	}
+	return longRunningStreamContext(decorated), cancel, nil
 }
 
 func (client *Client) workflowMutationContext(ctx context.Context, commandKey string, requireLease bool, options ...RequestOption) (context.Context, requestMetadata, context.CancelFunc, error) {

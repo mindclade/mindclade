@@ -146,8 +146,8 @@ describe("Experiment generated-contract facade", () => {
 		);
 		assert.equal((await sdk.experiments.get(EXPERIMENT)).name, EXPERIMENT);
 		assert.equal(
-			(await sdk.experiments.list({ page: { pageSize: 10, pageToken: "opaque" } })).page
-				?.nextPageToken,
+			(await sdk.experiments.list({ page: { pageSize: 10, pageToken: "opaque" } })).metadata
+				.nextPageToken,
 			"next",
 		);
 		await sdk.experiments.update(
@@ -187,8 +187,8 @@ describe("Experiment generated-contract facade", () => {
 		);
 		assert.equal((await sdk.experiments.getStudy(STUDY)).name, STUDY);
 		assert.equal(
-			(await sdk.experiments.listStudies({ parent: EXPERIMENT, page: { pageSize: 10 } })).page
-				?.nextPageToken,
+			(await sdk.experiments.listStudies({ parent: EXPERIMENT, page: { pageSize: 10 } })).metadata
+				.nextPageToken,
 			"next",
 		);
 		await sdk.experiments.transitionStudy(
@@ -212,8 +212,8 @@ describe("Experiment generated-contract facade", () => {
 		);
 		assert.equal((await sdk.experiments.getTrial(TRIAL)).name, TRIAL);
 		assert.equal(
-			(await sdk.experiments.listTrials({ parent: STUDY, page: { pageSize: 10 } })).page
-				?.nextPageToken,
+			(await sdk.experiments.listTrials({ parent: STUDY, page: { pageSize: 10 } })).metadata
+				.nextPageToken,
 			"next",
 		);
 		await sdk.experiments.transitionTrial(

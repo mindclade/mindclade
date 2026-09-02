@@ -1,5 +1,9 @@
+import type { Interceptor } from "@connectrpc/connect";
+
 import type { TokenProvider } from "./auth.js";
 import { MindcladeError } from "./error.js";
+import { LOG_LEVELS, type Logger, type LogLevel, type Observer } from "./observability.js";
+import { isCredentialBearing } from "./response.js";
 
 export const Environment = {
 	Development: "development",
@@ -43,7 +47,87 @@ export interface ClientConfigInput {
 		readonly serverName?: string;
 	};
 	readonly insecureLoopbackForTesting?: boolean;
+	/**
+	 * Caller-supplied request metadata applied to every call. Credential-bearing
+	 * and SDK-owned names are rejected: this seam adds context, it never
+	 * re-authenticates a request nor rewrites its identity.
+	 */
+	readonly metadata?: Readonly<Record<string, string>>;
+	/**
+	 * Connect interceptors wrapped around every call. They observe and may
+	 * decorate requests, but they run *above* credential injection, so they can
+	 * neither read nor forge the `authorization` header.
+	 */
+	readonly interceptors?: readonly Interceptor[];
+	/** Receives one event per RPC attempt and per stream reconnect. */
+	readonly observer?: Observer;
+	/** Receives structured records at or below {@link ClientConfigInput.logLevel}. */
+	readonly logger?: Logger;
+	/** Verbosity ceiling for {@link ClientConfigInput.logger}. Defaults to `warn`. */
+	readonly logLevel?: LogLevel;
+	/** Withholds operating system, architecture, and runtime facts from `x-mindclade-sdk`. */
+	readonly omitPlatformMetadata?: boolean;
 }
+
+/**
+ * Request metadata the SDK owns.
+ *
+ * Custom metadata may not set these: correlation, tenancy expectations, retry
+ * position, and SDK identity are computed per call and must not be forgeable
+ * through configuration.
+ */
+export const RESERVED_REQUEST_METADATA: readonly string[] = Object.freeze([
+	"idempotency-key",
+	"x-mindclade-expected-principal",
+	"x-mindclade-expected-project",
+	"x-mindclade-expected-tenant",
+	"x-mindclade-retry-count",
+	"x-mindclade-sdk",
+	"x-mindclade-timeout-ms",
+	"x-mindclade-worker-id",
+	"x-request-id",
+	"x-trace-id",
+]);
+
+const reserved: ReadonlySet<string> = new Set(RESERVED_REQUEST_METADATA);
+
+/** True when the SDK computes this metadata name itself. */
+export const isReservedMetadata = (name: string): boolean =>
+	reserved.has(name.trim().toLowerCase());
+
+const METADATA_NAME = /^[a-z0-9][a-z0-9._-]*$/;
+
+/**
+ * Validates and normalizes caller-supplied request metadata.
+ *
+ * Names are lowercased so the denylist cannot be bypassed by casing, and the
+ * same credential denylist that screens response metadata screens this
+ * direction too.
+ */
+const normalizeMetadata = (
+	input: Readonly<Record<string, string>> | undefined,
+): Readonly<Record<string, string>> => {
+	const metadata: Record<string, string> = {};
+	for (const [rawName, value] of Object.entries(input ?? {})) {
+		const name = rawName.trim().toLowerCase();
+		if (!METADATA_NAME.test(name) || name.length > 128) {
+			throw MindcladeError.configuration(
+				"custom metadata names must be lowercase ASCII tokens of at most 128 characters",
+			);
+		}
+		if (isCredentialBearing(name)) {
+			throw MindcladeError.configuration(
+				`custom metadata may not carry credentials: ${name} is credential-bearing`,
+			);
+		}
+		if (isReservedMetadata(name)) {
+			throw MindcladeError.configuration(`custom metadata may not set the SDK-owned ${name}`);
+		}
+		validateMetadata(`custom metadata ${name}`, value, true);
+		metadata[name] = value;
+	}
+	return Object.freeze(metadata);
+};
 
 const defaultRetry: RetryPolicy = {
 	maxAttempts: 4,
@@ -64,6 +148,12 @@ export class ClientConfig {
 	readonly caPem: string | undefined;
 	readonly serverName: string | undefined;
 	readonly insecureLoopback: boolean;
+	readonly metadata: Readonly<Record<string, string>>;
+	readonly interceptors: readonly Interceptor[];
+	readonly observer: Observer | undefined;
+	readonly logger: Logger | undefined;
+	readonly logLevel: LogLevel;
+	readonly omitPlatformMetadata: boolean;
 
 	private constructor(input: ClientConfigInput, endpoint: string, audience: string) {
 		this.environment = input.environment;
@@ -77,6 +167,12 @@ export class ClientConfig {
 		this.caPem = input.tls?.caPem;
 		this.serverName = input.tls?.serverName;
 		this.insecureLoopback = input.insecureLoopbackForTesting ?? false;
+		this.metadata = normalizeMetadata(input.metadata);
+		this.interceptors = Object.freeze([...(input.interceptors ?? [])]);
+		this.observer = input.observer;
+		this.logger = input.logger;
+		this.logLevel = input.logLevel ?? "warn";
+		this.omitPlatformMetadata = input.omitPlatformMetadata ?? false;
 		Object.freeze(this);
 	}
 
@@ -90,6 +186,10 @@ export class ClientConfig {
 		validateDuration("default timeout", input.defaultTimeoutMs ?? 20_000);
 		validateDuration("poll interval", input.pollIntervalMs ?? 500);
 		validateRetry(input.retry ?? defaultRetry);
+		normalizeMetadata(input.metadata);
+		if (input.logLevel !== undefined && !LOG_LEVELS.includes(input.logLevel)) {
+			throw MindcladeError.configuration("log level must be error, warn, info, or debug");
+		}
 
 		const endpoint = input.endpoint ?? endpoints[input.environment];
 		validateEndpoint(endpoint, input.environment, input.insecureLoopbackForTesting ?? false);
@@ -157,6 +257,17 @@ const validateEndpoint = (value: string, environment: Environment, insecure: boo
 		throw MindcladeError.configuration(
 			"plaintext transport is restricted to explicit Local loopback tests",
 		);
+	}
+};
+
+/**
+ * One attempt ceiling for the whole SDK. Client policy and per-request
+ * overrides are validated against the identical bound so a caller cannot widen
+ * the retry budget past what the configuration layer would accept.
+ */
+export const validateAttempts = (name: string, value: number): void => {
+	if (!Number.isInteger(value) || value < 1 || value > 8) {
+		throw MindcladeError.invalidArgument(`${name} must be an integer between one and eight`);
 	}
 };
 

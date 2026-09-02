@@ -20,9 +20,15 @@ import {
 } from "../../../../protocols/generated/typescript/workflow/v1/approval_pb.js";
 import type { ClientCore } from "./core.js";
 import { MindcladeError } from "./error.js";
-import { commandContext, prepareCall, type SdkCallOptions, type SubmitOptions } from "./request.js";
+import { listPage, type Page, withPageToken } from "./pagination.js";
+import {
+	commandContext,
+	type ListOptions,
+	prepareCall,
+	type SdkCallOptions,
+	type SubmitOptions,
+} from "./request.js";
 import { invokeUnary } from "./retry.js";
-import { registeredMethodSafety } from "./safety.js";
 
 const REQUEST = "/mindclade.internal.workflow.v1.ApprovalService/RequestApproval";
 const GET = "/mindclade.internal.workflow.v1.ApprovalService/GetApprovalRequest";
@@ -68,7 +74,7 @@ export class Approvals {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			registeredMethodSafety(REQUEST),
+			REQUEST,
 			options.idempotencyKey,
 			(call) =>
 				this.#core.raw.approvals.requestApproval(
@@ -96,12 +102,8 @@ export class Approvals {
 			name: scopedName(this.#core, name, "approvalRequests"),
 		});
 		const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
-		const response = await invokeUnary(
-			this.#core,
-			prepared,
-			registeredMethodSafety(GET),
-			undefined,
-			(call) => this.#core.raw.approvals.getApprovalRequest(request, call),
+		const response = await invokeUnary(this.#core, prepared, GET, undefined, (call) =>
+			this.#core.raw.approvals.getApprovalRequest(request, call),
 		);
 		if (response.approvalRequest === undefined) {
 			throw MindcladeError.protocol("GetApprovalRequest response omitted its request");
@@ -109,10 +111,11 @@ export class Approvals {
 		return clone(ApprovalRequestSchema, response.approvalRequest);
 	}
 
+	/** Returns the first page, which also iterates the whole cursor. */
 	async list(
 		input: MessageInitShape<typeof ListApprovalRequestsRequestSchema> = {},
-		options: SdkCallOptions = {},
-	): Promise<ListApprovalRequestsResponse> {
+		options: ListOptions = {},
+	): Promise<Page<ApprovalRequest, ListApprovalRequestsResponse>> {
 		ensureUnfenced(options);
 		const request = create(ListApprovalRequestsRequestSchema, input);
 		request.parent = normalizeParent(this.#core, request.parent);
@@ -126,14 +129,22 @@ export class Approvals {
 				"approval page size must be an integer between zero and 200",
 			);
 		}
-		const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
-		return await invokeUnary(
-			this.#core,
-			prepared,
-			registeredMethodSafety(LIST),
-			undefined,
-			(call) => this.#core.raw.approvals.listApprovalRequests(request, call),
-		);
+		return await listPage({
+			cursor: (response) => response.page?.nextPageToken ?? "",
+			fetch: async (pageToken) => {
+				const paged = withPageToken(ListApprovalRequestsRequestSchema, request, pageToken);
+				const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
+				const response = await invokeUnary(this.#core, prepared, LIST, undefined, (call) =>
+					this.#core.raw.approvals.listApprovalRequests(paged, call),
+				);
+				return { requestId: prepared.requestId, response };
+			},
+			items: (response) => response.approvalRequests,
+			limits: options.limits,
+			pageSize: request.page?.pageSize ?? 0,
+			pageToken: request.page?.pageToken ?? "",
+			signal: options.signal,
+		});
 	}
 
 	async decide(
@@ -162,7 +173,7 @@ export class Approvals {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			registeredMethodSafety(DECIDE),
+			DECIDE,
 			options.idempotencyKey,
 			(call) => this.#core.raw.approvals.decideApproval(request, call),
 		);
@@ -194,7 +205,7 @@ export class Approvals {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			registeredMethodSafety(CONSUME),
+			CONSUME,
 			options.idempotencyKey,
 			(call) => this.#core.raw.approvals.consumeApproval(request, call),
 		);

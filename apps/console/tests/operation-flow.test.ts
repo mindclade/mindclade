@@ -9,6 +9,9 @@ import {
 	type DescMethodUnary,
 	type MessageInitShape,
 } from "@bufbuild/protobuf";
+// `Transport` is the injection seam `MindcladeClient.withTransport` accepts, and
+// `ConnectError`/`Code` are how a fake *server* reports a status. Both configure
+// a fake below the SDK; no console source parses a status code or a wire type.
 import {
 	Code,
 	ConnectError,
@@ -19,13 +22,18 @@ import {
 } from "@connectrpc/connect";
 import {
 	AccessToken,
+	AuthorizationError,
+	CancelledError,
 	Environment,
 	FakeRuntime,
+	MAX_MESSAGE_BYTES,
 	MindcladeClient,
 	MindcladeError,
 	OperationState,
 	RecordingTransport,
 	type TokenProvider,
+	TransportError,
+	ValidationError,
 } from "@mindclade/internal-sdk";
 
 import { OperationController } from "../features/operations/operation-client.js";
@@ -45,6 +53,7 @@ class ScenarioTransport implements Transport {
 	readonly inputs: Array<{ readonly method: string; readonly value: unknown }> = [];
 	failGet = false;
 	blockGet = false;
+	oversizedArtifact = false;
 
 	async unary<I extends DescMessage, O extends DescMessage>(
 		method: DescMethodUnary<I, O>,
@@ -62,17 +71,28 @@ class ScenarioTransport implements Transport {
 		}
 		const response = (() => {
 			switch (method.name) {
-				case "ListOperations":
-					return {
-						operations: [operation(OperationState.RUNNING, false)],
-						page: { nextPageToken: "next-1" },
-					};
+				case "ListOperations": {
+					const paging = request.page as { readonly pageToken?: string } | undefined;
+					return (paging?.pageToken ?? "") === ""
+						? {
+								operations: [operation("operations/op-1", OperationState.RUNNING, false)],
+								page: { nextPageToken: "next-1" },
+							}
+						: {
+								operations: [operation("operations/op-2", OperationState.SUCCEEDED, true)],
+								page: { nextPageToken: "" },
+							};
+				}
 				case "GetOperation":
-					return { operation: operation(OperationState.RUNNING, false) };
+					return { operation: operation("operations/op-1", OperationState.RUNNING, false) };
 				case "CancelOperation":
-					return { operation: operation(OperationState.CANCELLING, false) };
+					return { operation: operation("operations/op-1", OperationState.CANCELLING, false) };
 				case "ResolveArtifactAlias":
-					return { artifact: artifact() };
+					return {
+						artifact: this.oversizedArtifact
+							? { ...artifact(), sizeBytes: BigInt(MAX_MESSAGE_BYTES + 1) }
+							: artifact(),
+					};
 				default:
 					throw new ConnectError("unconfigured fake method", Code.Unimplemented);
 			}
@@ -91,7 +111,12 @@ class ScenarioTransport implements Transport {
 		this.inputs.push({ method: method.name, value: undefined });
 		const values =
 			method.name === "WatchOperation"
-				? [{ operation: operation(OperationState.SUCCEEDED, true), sequence: 1n }]
+				? [
+						{
+							operation: operation("operations/op-1", OperationState.SUCCEEDED, true),
+							sequence: 1n,
+						},
+					]
 				: method.name === "DownloadArtifact"
 					? [
 							{
@@ -107,11 +132,11 @@ class ScenarioTransport implements Transport {
 	}
 }
 
-const operation = (state: OperationState, done: boolean) => ({
+const operation = (operationId: string, state: OperationState, done: boolean) => ({
 	done,
 	etag: "operation-etag-1",
 	jobId: "jobs/job-1",
-	operationId: "operations/op-1",
+	operationId,
 	projectId: "project-1",
 	resourceVersion: 7n,
 	state,
@@ -180,10 +205,13 @@ const setup = (): {
 	const client = MindcladeClient.withTransport(
 		config,
 		recorder,
-		new FakeRuntime({ now: Date.now() }),
+		new FakeRuntime({ now: Date.now(), requestIds: ["console-request-1", "console-request-2"] }),
 	);
 	return { controller: new OperationController(client), delegate, recorder };
 };
+
+const listCalls = (recorder: RecordingTransport): number =>
+	recorder.calls.filter((call) => call.method.endsWith("/ListOperations")).length;
 
 describe("internal console SDK integration", () => {
 	test("routes list, get, cancel, watch, and verified artifact workflows", async () => {
@@ -191,6 +219,10 @@ describe("internal console SDK integration", () => {
 		const page = await controller.firstPage({ timeoutMs: 1_000 });
 		assert.equal(page.items[0]?.phase, "running");
 		assert.equal(page.nextPageToken, "next-1");
+		// Request ID is available on success, not only on failure.
+		assert.equal(page.requestId, "console-request-1");
+		// One page fetched: the SDK page traverses lazily, on demand.
+		assert.equal(listCalls(recorder), 1);
 		assert.equal((await controller.get("operations/op-1")).revision, "7");
 		assert.equal(
 			(
@@ -226,13 +258,76 @@ describe("internal console SDK integration", () => {
 		assert.equal(cancellation.context?.idempotencyKey, "cancel-operation-1");
 	});
 
+	test("traverses the whole cursor through the SDK page instead of a hand-rolled loop", async () => {
+		const walked = setup();
+		const seen: Array<readonly [string | undefined, string]> = [];
+		for await (const view of walked.controller.pages()) {
+			seen.push([view.nextPageToken, view.items[0]?.id ?? ""]);
+		}
+		assert.deepEqual(seen, [
+			["next-1", "operations/op-1"],
+			[undefined, "operations/op-2"],
+		]);
+		assert.equal(listCalls(walked.recorder), 2);
+		const listed = walked.delegate.inputs
+			.filter((input) => input.method === "ListOperations")
+			.map((input) => (input.value as { page?: { pageToken?: string } }).page?.pageToken ?? "");
+		// The opaque cursor is threaded by the SDK and reaches the server verbatim.
+		assert.deepEqual(listed, ["", "next-1"]);
+
+		const collected = setup();
+		assert.deepEqual(
+			(await collected.controller.listAll()).map((view) => view.id),
+			["operations/op-1", "operations/op-2"],
+		);
+		assert.equal(listCalls(collected.recorder), 2);
+	});
+
+	test("forwards traversal budgets to the SDK rather than counting pages", async () => {
+		const { controller } = setup();
+		// The SDK owns the budget and fails the traversal loudly; the console
+		// never truncates a list silently.
+		await assert.rejects(
+			controller.listAll({ limits: { maxPages: 1 } }),
+			(reason: unknown) => reason instanceof MindcladeError && reason.kind === "pagination_limit",
+		);
+		await assert.rejects(
+			controller.firstPage({ limits: { maxItems: 0 } }),
+			(reason: unknown) => reason instanceof ValidationError,
+		);
+	});
+
+	test("bounds an in-memory artifact by the SDK's published message ceiling", async () => {
+		const rejected = setup();
+		rejected.delegate.oversizedArtifact = true;
+		await assert.rejects(
+			rejected.controller.resolveAndDownload("projects/project-1", "latest"),
+			(reason: unknown) =>
+				reason instanceof ValidationError && /console byte limit/.test(reason.message),
+		);
+		// The bound is checked before any transfer is started.
+		assert.ok(!rejected.recorder.calls.some((call) => call.method.endsWith("/DownloadArtifact")));
+
+		const overridden = setup();
+		overridden.delegate.oversizedArtifact = true;
+		await assert.rejects(
+			overridden.controller.resolveAndDownload("projects/project-1", "latest", {
+				maximumBytes: MAX_MESSAGE_BYTES + 1,
+			}),
+			// An explicit override gets past the console bound; the SDK then
+			// rejects the short stream against the declared size.
+			(reason: unknown) => reason instanceof TransportError,
+		);
+		assert.ok(overridden.recorder.calls.some((call) => call.method.endsWith("/DownloadArtifact")));
+	});
+
 	test("preserves cancellation, deadlines, and sanitized SDK errors", async () => {
 		const cancelled = setup();
 		const controller = new AbortController();
 		controller.abort();
 		await assert.rejects(
 			cancelled.controller.get("operations/op-1", { signal: controller.signal }),
-			(reason: unknown) => reason instanceof MindcladeError && reason.kind === "cancelled",
+			(reason: unknown) => reason instanceof CancelledError && reason.stableCode === "cancelled",
 		);
 
 		const deadline = setup();
@@ -243,6 +338,9 @@ describe("internal console SDK integration", () => {
 		try {
 			await assert.rejects(
 				deadline.controller.get("operations/op-1", { timeoutMs: 5 }),
+				// The TypeScript hierarchy has no deadline class: a client-side
+				// deadline is the base MindcladeError, so `kind` is the only
+				// discriminator the SDK offers for it.
 				(reason: unknown) =>
 					reason instanceof MindcladeError && reason.kind === "deadline_exceeded",
 			);
@@ -253,8 +351,11 @@ describe("internal console SDK integration", () => {
 		const failed = setup();
 		failed.delegate.failGet = true;
 		await assert.rejects(failed.controller.get("operations/op-1"), (reason: unknown) => {
-			assert.ok(reason instanceof MindcladeError);
-			assert.equal(reason.kind, "remote");
+			// Discriminated by the SDK error class and its stable code, never by a
+			// gRPC status number or a message string.
+			assert.ok(reason instanceof AuthorizationError);
+			assert.equal(reason.stableCode, "authorization");
+			assert.equal(reason.retryable, false);
 			assert.doesNotMatch(reason.message, /sensitive remote detail/);
 			return true;
 		});

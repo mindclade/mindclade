@@ -4,15 +4,11 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
-	"errors"
-	"io"
 	"path"
 	"strings"
-	"sync"
 	"time"
 	"unicode"
 
-	"google.golang.org/grpc"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
@@ -155,18 +151,26 @@ func (service *TrainingService) Get(ctx context.Context, name string, options ..
 	return cloneGenerated(response.GetTrainingRun()), nil
 }
 
+// TrainingPage is one bounded training-run listing plus cursor-scheme
+// traversal. Runs and NextPageToken remain for existing callers; the embedded
+// generated response is the authoritative model.
 type TrainingPage struct {
+	*internaltrainingv1.ListTrainingRunsResponse
+	pageBase[*trainingv1.TrainingRun, *TrainingPage]
 	Runs          []*trainingv1.TrainingRun
 	NextPageToken string
 }
 
+// Items returns this page's training runs without traversing any further page.
+func (page *TrainingPage) Items() []*trainingv1.TrainingRun { return page.Runs }
+
 const maximumTrainingPageSize = 200
 
-func (service *TrainingService) List(ctx context.Context, pageSize uint32, pageToken string) (*TrainingPage, error) {
+func (service *TrainingService) List(ctx context.Context, pageSize uint32, pageToken string, options ...RequestOption) (*TrainingPage, error) {
 	if pageSize > maximumTrainingPageSize {
 		return nil, &Error{Code: CodeInvalidArgument, Message: "training page size cannot exceed 200"}
 	}
-	callContext, _, cancel, err := service.client.context(ctx)
+	callContext, _, cancel, err := service.client.context(ctx, options...)
 	if err != nil {
 		return nil, err
 	}
@@ -188,16 +192,30 @@ func (service *TrainingService) List(ctx context.Context, pageSize uint32, pageT
 			return nil, protocolDataLoss("ListTrainingRuns returned a run outside configured scope")
 		}
 	}
-	page := &TrainingPage{Runs: detached.GetTrainingRuns()}
+	page := &TrainingPage{ListTrainingRunsResponse: detached, Runs: detached.GetTrainingRuns()}
 	if detached.GetPage() != nil {
 		page.NextPageToken = detached.GetPage().GetNextPageToken()
 	}
+	page.pageBase = newPage[*trainingv1.TrainingRun](page, detached.GetPage(), paginationLimitsFrom(options), func(ctx context.Context, token string) (*TrainingPage, error) {
+		return service.List(ctx, pageSize, token, options...)
+	})
 	return page, nil
 }
 
+// TrainingRunPage is one bounded list response plus cursor-scheme traversal. The
+// embedded generated response remains the authoritative model; the wrapper
+// adds only the opaque-cursor mechanics.
+type TrainingRunPage struct {
+	*internaltrainingv1.ListTrainingRunsResponse
+	pageBase[*trainingv1.TrainingRun, *TrainingRunPage]
+}
+
+// Items returns this page's training runs without traversing any further page.
+func (page *TrainingRunPage) Items() []*trainingv1.TrainingRun { return page.GetTrainingRuns() }
+
 // ListRuns sends an authoritative generated list request while binding an
 // omitted parent to the configured project and preserving opaque page tokens.
-func (service *TrainingService) ListRuns(ctx context.Context, request *internaltrainingv1.ListTrainingRunsRequest, options ...RequestOption) (*internaltrainingv1.ListTrainingRunsResponse, error) {
+func (service *TrainingService) ListRuns(ctx context.Context, request *internaltrainingv1.ListTrainingRunsRequest, options ...RequestOption) (*TrainingRunPage, error) {
 	if !service.configured() {
 		return nil, &Error{Code: CodeFailedPrecondition, Message: "training service is not configured"}
 	}
@@ -231,7 +249,14 @@ func (service *TrainingService) ListRuns(ctx context.Context, request *internalt
 			return nil, protocolDataLoss("ListTrainingRuns returned a run outside configured scope")
 		}
 	}
-	return cloneGenerated(response), nil
+	detached := cloneGenerated(response)
+	page := &TrainingRunPage{ListTrainingRunsResponse: detached}
+	page.pageBase = newPage[*trainingv1.TrainingRun](page, detached.GetPage(), paginationLimitsFrom(options), func(ctx context.Context, token string) (*TrainingRunPage, error) {
+		successor := cloneGenerated(value)
+		successor.Page = pageRequestWithToken(value.GetPage(), token)
+		return service.ListRuns(ctx, successor, options...)
+	})
+	return page, nil
 }
 
 // StartAttempt binds a generated training attempt to the current scheduler
@@ -430,8 +455,19 @@ func (service *TrainingService) GetCheckpoint(ctx context.Context, name string, 
 	return cloneGenerated(response.GetCheckpoint()), nil
 }
 
+// CheckpointPage is one bounded list response plus cursor-scheme traversal. The
+// embedded generated response remains the authoritative model; the wrapper
+// adds only the opaque-cursor mechanics.
+type CheckpointPage struct {
+	*internaltrainingv1.ListCheckpointsResponse
+	pageBase[*trainingv1.Checkpoint, *CheckpointPage]
+}
+
+// Items returns this page's checkpoints without traversing any further page.
+func (page *CheckpointPage) Items() []*trainingv1.Checkpoint { return page.GetCheckpoints() }
+
 // ListCheckpoints returns one generated bounded page beneath a training run.
-func (service *TrainingService) ListCheckpoints(ctx context.Context, request *internaltrainingv1.ListCheckpointsRequest, options ...RequestOption) (*internaltrainingv1.ListCheckpointsResponse, error) {
+func (service *TrainingService) ListCheckpoints(ctx context.Context, request *internaltrainingv1.ListCheckpointsRequest, options ...RequestOption) (*CheckpointPage, error) {
 	value := cloneGenerated(request)
 	parent, parentErr := canonicalTrainingRunNameSDK(service.client, value.GetParent())
 	if !service.configured() || value == nil || parentErr != nil || value.GetPage().GetPageSize() > maximumTrainingPageSize {
@@ -455,7 +491,14 @@ func (service *TrainingService) ListCheckpoints(ctx context.Context, request *in
 			return nil, protocolDataLoss("ListCheckpoints returned a checkpoint under another run")
 		}
 	}
-	return cloneGenerated(response), nil
+	detached := cloneGenerated(response)
+	page := &CheckpointPage{ListCheckpointsResponse: detached}
+	page.pageBase = newPage[*trainingv1.Checkpoint](page, detached.GetPage(), paginationLimitsFrom(options), func(ctx context.Context, token string) (*CheckpointPage, error) {
+		successor := cloneGenerated(value)
+		successor.Page = pageRequestWithToken(value.GetPage(), token)
+		return service.ListCheckpoints(ctx, successor, options...)
+	})
+	return page, nil
 }
 
 func (service *TrainingService) prepareMutation(ctx context.Context, command proto.Message, requireLease bool, options ...RequestOption) (context.Context, context.CancelFunc, error) {
@@ -539,34 +582,59 @@ func (service *TrainingService) trainingRunResponse(run *trainingv1.TrainingRun,
 	return cloneGenerated(run), nil
 }
 
-// TrainingWatcher resumes the generated stream from the last accepted durable
-// sequence. Recv is serialized and Close is idempotent.
-type TrainingWatcher struct {
-	service  *TrainingService
-	ctx      context.Context //nolint:containedctx // A stream watcher owns its cancellable lifecycle context.
-	cancel   context.CancelFunc
-	name     string
-	after    uint64
-	stream   grpc.ServerStreamingClient[internaltrainingv1.WatchTrainingRunResponse]
-	terminal bool
-	mu       sync.Mutex
-}
+// TrainingWatcher is the training spelling of the shared resumable watcher. It
+// yields the generated watch response, whose sequence is the resume cursor.
+type TrainingWatcher = StreamWatcher[*internaltrainingv1.WatchTrainingRunResponse, uint64]
 
-func (service *TrainingService) Watch(ctx context.Context, name string, afterSequence uint64) (*TrainingWatcher, error) {
+// Watch streams durable training-run revisions from afterSequence, reconnecting
+// within the caller's deadline and resuming from the last accepted sequence.
+func (service *TrainingService) Watch(ctx context.Context, name string, afterSequence uint64, options ...RequestOption) (*TrainingWatcher, error) {
 	name, nameErr := canonicalTrainingRunNameSDK(service.client, name)
 	if !service.configured() || ctx == nil || nameErr != nil {
 		return nil, invalidArgument("context and valid training run name are required")
 	}
-	watchContext, cancel, err := service.client.Operations.longRunningContext(ctx)
+	watchContext, cancel, err := service.client.longRunningContext(ctx, options...)
 	if err != nil {
 		return nil, err
 	}
-	watcher := &TrainingWatcher{service: service, ctx: watchContext, cancel: cancel, name: name, after: afterSequence}
-	if err = watcher.connect(); err != nil {
+	watcher, err := newStreamWatcher(watchContext, cancel, service.client.config, afterSequence, service.watchPolicy(name))
+	if err != nil {
 		cancel()
 		return nil, err
 	}
 	return watcher, nil
+}
+
+// ResumeWatch continues a training watch from a sequence a previous process
+// persisted.
+func (service *TrainingService) ResumeWatch(ctx context.Context, name string, afterSequence uint64, options ...RequestOption) (*TrainingWatcher, error) {
+	return service.Watch(ctx, name, afterSequence, options...)
+}
+
+// watchPolicy keeps every training-specific rule the previous hand-written
+// watcher enforced: canonical run identity, a strictly contiguous sequence, and
+// a classified run state.
+func (service *TrainingService) watchPolicy(name string) watchPolicy[*internaltrainingv1.WatchTrainingRunResponse, uint64] {
+	return watchPolicy[*internaltrainingv1.WatchTrainingRunResponse, uint64]{
+		open: func(ctx context.Context, cursor uint64) (func() (*internaltrainingv1.WatchTrainingRunResponse, error), error) {
+			request := &internaltrainingv1.WatchTrainingRunRequest{Name: name, AfterSequence: cursor}
+			if deadline, ok := ctx.Deadline(); ok {
+				request.Deadline = timestamppb.New(deadline)
+			}
+			stream, err := service.transport.WatchTrainingRun(ctx, request)
+			if err != nil {
+				return nil, normalizeError(err)
+			}
+			return stream.Recv, nil
+		},
+		accept: func(cursor uint64, response *internaltrainingv1.WatchTrainingRunResponse) (uint64, bool, error) {
+			run := response.GetTrainingRun()
+			if run == nil || run.GetName() != name || response.GetSequence() != cursor+1 || run.GetState() == trainingv1.TrainingRunState_TRAINING_RUN_STATE_UNSPECIFIED {
+				return cursor, false, protocolDataLoss("training watch returned invalid identity, state, or sequence")
+			}
+			return response.GetSequence(), terminalTrainingState(run.GetState()), nil
+		},
+	}
 }
 
 func canonicalTrainingRunNameSDK(client *Client, value string) (string, error) {
@@ -608,66 +676,6 @@ func canonicalTrainingCheckpointNameSDK(client *Client, value string) (string, e
 		return "", invalidArgument("checkpoint name is invalid")
 	}
 	return prefix + strings.Join(parts, "/"), nil
-}
-
-func (watcher *TrainingWatcher) connect() error {
-	request := &internaltrainingv1.WatchTrainingRunRequest{Name: watcher.name, AfterSequence: watcher.after}
-	if deadline, ok := watcher.ctx.Deadline(); ok {
-		request.Deadline = timestamppb.New(deadline)
-	}
-	stream, err := watcher.service.transport.WatchTrainingRun(watcher.ctx, request)
-	if err != nil {
-		return normalizeError(err)
-	}
-	watcher.stream = stream
-	return nil
-}
-
-func (watcher *TrainingWatcher) Recv() (*internaltrainingv1.WatchTrainingRunResponse, error) {
-	watcher.mu.Lock()
-	defer watcher.mu.Unlock()
-	if watcher.terminal {
-		return nil, io.EOF
-	}
-	failures := 0
-	for {
-		response, err := watcher.stream.Recv()
-		if err == nil {
-			run := response.GetTrainingRun()
-			if run == nil || run.GetName() != watcher.name || response.GetSequence() != watcher.after+1 || run.GetState() == trainingv1.TrainingRunState_TRAINING_RUN_STATE_UNSPECIFIED {
-				return nil, protocolDataLoss("training watch returned invalid identity, state, or sequence")
-			}
-			watcher.after = response.GetSequence()
-			watcher.terminal = terminalTrainingState(run.GetState())
-			return cloneGenerated(response), nil
-		}
-		if errors.Is(err, io.EOF) && watcher.terminal {
-			return nil, io.EOF
-		}
-		if watcher.ctx.Err() != nil {
-			return nil, normalizeError(watcher.ctx.Err())
-		}
-		if !errors.Is(err, io.EOF) && !isRetryable(err) {
-			return nil, normalizeError(err)
-		}
-		failures++
-		if failures >= watcher.service.client.config.MaxAttempts {
-			return nil, normalizeError(err)
-		}
-		if waitErr := waitContext(watcher.ctx, retryDelay(watcher.service.client.config, failures)); waitErr != nil {
-			return nil, normalizeError(waitErr)
-		}
-		if connectErr := watcher.connect(); connectErr != nil {
-			return nil, connectErr
-		}
-	}
-}
-
-func (watcher *TrainingWatcher) Close() error {
-	if watcher != nil && watcher.cancel != nil {
-		watcher.cancel()
-	}
-	return nil
 }
 
 func terminalTrainingState(state trainingv1.TrainingRunState) bool {

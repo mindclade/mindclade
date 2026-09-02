@@ -31,10 +31,16 @@ use prost_types::{FieldMask, Timestamp};
 use tonic::{Request, Response, Status, codegen::async_trait};
 
 use crate::{
-    AccessToken, CallOptions, Client, Config, Environment, Identity, RpcTransport, SubmitOptions,
-    TokenProvider,
-    retry::{CallSafety, registered_method_safety},
+    AccessToken, CallOptions, Client, Config, Environment, Error, Identity, Pages, RpcTransport,
+    SubmitOptions, TokenProvider,
+    retry::{CallSafety, registered_method_policy},
 };
+
+/// Drains one page from a list cursor. These coverage tests only need the
+/// RPC to have been issued under the facade's scope rules.
+async fn first_page<T>(pages: Result<Pages<T>, Error>) {
+    pages.unwrap().next_page().await.unwrap().unwrap();
+}
 
 #[derive(Default)]
 struct PolicyAdminTransport {
@@ -394,20 +400,17 @@ async fn policy_facade_covers_every_rpc_and_replaces_caller_identity() {
         .get(policy_name, "", CallOptions::new())
         .await
         .unwrap();
-    client
-        .policies()
-        .list(
-            ListUsePoliciesRequest {
-                page: Some(PageRequest {
-                    page_size: 20,
-                    page_token: "opaque-policy".to_owned(),
-                }),
-                ..ListUsePoliciesRequest::default()
-            },
-            CallOptions::new(),
-        )
-        .await
-        .unwrap();
+    first_page(client.policies().list(
+        ListUsePoliciesRequest {
+            page: Some(PageRequest {
+                page_size: 20,
+                page_token: "opaque-policy".to_owned(),
+            }),
+            ..ListUsePoliciesRequest::default()
+        },
+        CallOptions::new(),
+    ))
+    .await;
     client
         .policies()
         .activate(policy_name, "etag-2", submit("activate-policy-1"))
@@ -485,20 +488,17 @@ async fn admin_facade_covers_every_rpc_and_preserves_opaque_pagination() {
         .get_project(project, "", CallOptions::new())
         .await
         .unwrap();
-    client
-        .admin()
-        .list_projects(
-            ListProjectsRequest {
-                page: Some(PageRequest {
-                    page_size: 20,
-                    page_token: "opaque-project".to_owned(),
-                }),
-                ..ListProjectsRequest::default()
-            },
-            CallOptions::new(),
-        )
-        .await
-        .unwrap();
+    first_page(client.admin().list_projects(
+        ListProjectsRequest {
+            page: Some(PageRequest {
+                page_size: 20,
+                page_token: "opaque-project".to_owned(),
+            }),
+            ..ListProjectsRequest::default()
+        },
+        CallOptions::new(),
+    ))
+    .await;
     client
         .admin()
         .update_project(
@@ -565,14 +565,14 @@ fn policy_admin_retry_registry_is_complete_and_unknowns_fail_closed() {
     assert!(
         idempotent
             .iter()
-            .all(|method| registered_method_safety(method) == CallSafety::Idempotent)
+            .all(|method| registered_method_policy(method).safety() == CallSafety::Idempotent)
     );
     assert!(
         safe.iter()
-            .all(|method| registered_method_safety(method) == CallSafety::Safe)
+            .all(|method| registered_method_policy(method).safety() == CallSafety::Safe)
     );
     assert_eq!(
-        registered_method_safety("/mindclade.internal.admin.v1.AdminService/Unknown"),
+        registered_method_policy("/mindclade.internal.admin.v1.AdminService/Unknown").safety(),
         CallSafety::Unsafe
     );
 }

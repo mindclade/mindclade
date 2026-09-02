@@ -6951,10 +6951,294 @@
           "path": ".github/renovate.json",
           "replaces": ".github/dependabot.yml",
           "reason": "Dependabot is retired estate-wide; Renovate configuration extending the organization preset in mindclade/.github replaces it."
+        },
+        {
+          "path": "internal/sdk/go/api.md",
+          "reason": "Committed per-language API reference derived from the candidate descriptor and drift-checked by `just docs`."
+        },
+        {
+          "path": "internal/sdk/python/api.md",
+          "reason": "Committed per-language API reference derived from the candidate descriptor and drift-checked by `just docs`."
+        },
+        {
+          "path": "internal/sdk/rust/api.md",
+          "reason": "Committed per-language API reference derived from the candidate descriptor and drift-checked by `just docs`."
+        },
+        {
+          "path": "internal/sdk/typescript/api.md",
+          "reason": "Committed per-language API reference derived from the candidate descriptor and drift-checked by `just docs`."
+        },
+        {
+          "path": "tools/docs/render_sdk_api_reference.py",
+          "reason": "The internal SDK API reference is rendered from the governed RPC-coverage projection so a facade cannot document a method the descriptor never declared."
+        },
+        {
+          "path": "tools/docs/tests/test_render_sdk_api_reference.py",
+          "reason": "The internal SDK API reference is rendered from the governed RPC-coverage projection so a facade cannot document a method the descriptor never declared."
+        },
+        {
+          "path": "examples/sdk/configure_client.ts",
+          "reason": "Stage 7 four-language SDK parity and its Stage 8 worked consumers: packaging scripts, revision-keyed changelogs, and the conformance gate binding every SDK retry-safety table to the descriptor."
+        },
+        {
+          "path": "examples/sdk/handle_errors.py",
+          "reason": "Stage 7 four-language SDK parity and its Stage 8 worked consumers: packaging scripts, revision-keyed changelogs, and the conformance gate binding every SDK retry-safety table to the descriptor."
+        },
+        {
+          "path": "examples/sdk/list_operations.py",
+          "reason": "Stage 7 four-language SDK parity and its Stage 8 worked consumers: packaging scripts, revision-keyed changelogs, and the conformance gate binding every SDK retry-safety table to the descriptor."
+        },
+        {
+          "path": "examples/sdk/read_request_id.ts",
+          "reason": "Stage 7 four-language SDK parity and its Stage 8 worked consumers: packaging scripts, revision-keyed changelogs, and the conformance gate binding every SDK retry-safety table to the descriptor."
+        },
+        {
+          "path": "examples/sdk/sdk_examples.test.ts",
+          "reason": "Stage 7 four-language SDK parity and its Stage 8 worked consumers: packaging scripts, revision-keyed changelogs, and the conformance gate binding every SDK retry-safety table to the descriptor."
+        },
+        {
+          "path": "internal/sdk/go/mindclade/CHANGELOG.md",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/go/mindclade/component.yaml",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/go/mindclade/scripts/bootstrap",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/go/mindclade/scripts/build",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/go/mindclade/scripts/common.sh",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/go/mindclade/scripts/format",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/go/mindclade/scripts/lint",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/go/mindclade/scripts/test",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/python/CHANGELOG.md",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/python/component.yaml",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/python/mindclade_internal_sdk/_env.py",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/python/mindclade_internal_sdk/_logging.py",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/python/mindclade_internal_sdk/_metadata.py",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/python/mindclade_internal_sdk/_middleware.py",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/python/mindclade_internal_sdk/_platform.py",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/python/mindclade_internal_sdk/_raw.py",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/python/mindclade_internal_sdk/_retry.py",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/python/mindclade_internal_sdk/_version.py",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/python/mindclade_internal_sdk/_watch.py",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/python/mindclade_internal_sdk/pagination.py",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/python/scripts/bootstrap",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/python/scripts/build",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/python/scripts/common.sh",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/python/scripts/format",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/python/scripts/lint",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/python/scripts/test",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/python/tests/test_configuration_env.py",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/python/tests/test_error_hierarchy.py",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/python/tests/test_observability.py",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/python/tests/test_packaging.py",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/python/tests/test_pagination.py",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/python/tests/test_raw_response.py",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/python/tests/test_retry_policy.py",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/python/tests/test_watchers.py",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/typescript/CHANGELOG.md",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/typescript/component.yaml",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/typescript/scripts/bootstrap",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/typescript/scripts/build",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/typescript/scripts/format",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/typescript/scripts/lint",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/typescript/scripts/test",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/typescript/src/environment.ts",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/typescript/src/observability.ts",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/typescript/src/pagination.ts",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/typescript/src/platform.ts",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/typescript/src/response.ts",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/typescript/src/watch.ts",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/typescript/tests/configuration.test.ts",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/typescript/tests/errors.test.ts",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/typescript/tests/pagination_response.test.ts",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/typescript/tests/retry_policy.test.ts",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/typescript/tests/watch_lro.test.ts",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "tests/conformance/test_sdk_retry_safety_parity.py",
+          "reason": "Stage 7 four-language SDK parity and its Stage 8 worked consumers: packaging scripts, revision-keyed changelogs, and the conformance gate binding every SDK retry-safety table to the descriptor."
+        },
+        {
+          "path": "docs/architecture/internal-sdk-conformance-contract.md",
+          "reason": "The behaviour contract the four internal SDK facades are held to, naming the gate that proves each property so a claim cannot outlive its check."
+        },
+        {
+          "path": "internal/sdk/rust/scripts/bootstrap",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/rust/scripts/build",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/rust/scripts/common.sh",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/rust/scripts/format",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/rust/scripts/lint",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/rust/scripts/test",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         }
       ],
-      "canonical_file_count": 3565,
-      "canonical_path_set_sha256": "7d39a90b849df78856af43adc5d8ac17017f22ac79b00e65064dfc53d890d613"
+      "canonical_file_count": 3636,
+      "canonical_path_set_sha256": "66f3677b01d1f7c6c0d9143d15c56abcdb24aa4bb589f0fc12200326478b83e0"
     },
     "owners": {
       "agent-platform": {
@@ -53062,6 +53346,23 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
+      "path": "tests/conformance/test_sdk_retry_safety_parity.py",
+      "kind": "test",
+      "owner": "contract-governance",
+      "component": "mindclade",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:wave1_sources"
+      ],
+      "test_targets": [
+        "//:wave1_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
       "path": "tests/integration/local_stack_test.py",
       "kind": "test",
       "owner": "developer-platform",
@@ -54102,6 +54403,38 @@
     {
       "path": "tools/docs/tests/test_blueprint_source_manifest.py",
       "kind": "test",
+      "owner": "developer-platform",
+      "component": "tools-docs",
+      "status": "active",
+      "activation_wave": "0",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:wave0_governance_sources"
+      ],
+      "test_targets": [
+        "//:wave0_tests"
+      ],
+      "public_surface": false
+    },
+    {
+      "path": "tools/docs/tests/test_render_sdk_api_reference.py",
+      "kind": "test",
+      "owner": "developer-platform",
+      "component": "tools-docs",
+      "status": "active",
+      "activation_wave": "0",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:wave0_governance_sources"
+      ],
+      "test_targets": [
+        "//:wave0_tests"
+      ],
+      "public_surface": false
+    },
+    {
+      "path": "tools/docs/render_sdk_api_reference.py",
+      "kind": "source",
       "owner": "developer-platform",
       "component": "tools-docs",
       "status": "active",
@@ -56672,6 +57005,23 @@
       "public_surface": false
     },
     {
+      "path": "docs/architecture/internal-sdk-conformance-contract.md",
+      "kind": "documentation",
+      "owner": "architecture",
+      "component": "docs-architecture",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:wave1_sources"
+      ],
+      "test_targets": [
+        "//:wave1_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Records the behaviour contract the four activated internal SDK facades already satisfy and names the gate proving each property; it grants no new surface."
+    },
+    {
       "path": "docs/adr/0001-repository-identity-and-ownership.md",
       "kind": "documentation",
       "owner": "architecture",
@@ -58026,6 +58376,91 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
+      "path": "examples/sdk/configure_client.ts",
+      "kind": "source",
+      "owner": "developer-experience",
+      "component": "mindclade",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:wave1_sources"
+      ],
+      "test_targets": [
+        "//:wave1_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "examples/sdk/handle_errors.py",
+      "kind": "source",
+      "owner": "developer-experience",
+      "component": "mindclade",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:wave1_sources"
+      ],
+      "test_targets": [
+        "//:wave1_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "examples/sdk/list_operations.py",
+      "kind": "source",
+      "owner": "developer-experience",
+      "component": "mindclade",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:wave1_sources"
+      ],
+      "test_targets": [
+        "//:wave1_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "examples/sdk/read_request_id.ts",
+      "kind": "source",
+      "owner": "developer-experience",
+      "component": "mindclade",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:wave1_sources"
+      ],
+      "test_targets": [
+        "//:wave1_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "examples/sdk/sdk_examples.test.ts",
+      "kind": "test",
+      "owner": "developer-experience",
+      "component": "mindclade",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:wave1_sources"
+      ],
+      "test_targets": [
+        "//:wave1_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
       "path": "examples/data_connector/connector.py",
       "kind": "source",
       "owner": "developer-platform",
@@ -58740,6 +59175,23 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
+      "path": "internal/sdk/go/mindclade/CHANGELOG.md",
+      "kind": "documentation",
+      "owner": "developer-experience",
+      "component": "internal-sdk-go",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
       "path": "internal/sdk/go/mindclade/README.md",
       "kind": "documentation",
       "owner": "developer-experience",
@@ -58895,6 +59347,23 @@
     {
       "path": "internal/sdk/go/mindclade/client_test.go",
       "kind": "test",
+      "owner": "developer-experience",
+      "component": "internal-sdk-go",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "internal/sdk/go/mindclade/component.yaml",
+      "kind": "configuration",
       "owner": "developer-experience",
       "component": "internal-sdk-go",
       "status": "active",
@@ -59182,6 +59651,108 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
+      "path": "internal/sdk/go/mindclade/scripts/bootstrap",
+      "kind": "source",
+      "owner": "developer-experience",
+      "component": "internal-sdk-go",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "internal/sdk/go/mindclade/scripts/build",
+      "kind": "source",
+      "owner": "developer-experience",
+      "component": "internal-sdk-go",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "internal/sdk/go/mindclade/scripts/common.sh",
+      "kind": "source",
+      "owner": "developer-experience",
+      "component": "internal-sdk-go",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "internal/sdk/go/mindclade/scripts/format",
+      "kind": "source",
+      "owner": "developer-experience",
+      "component": "internal-sdk-go",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "internal/sdk/go/mindclade/scripts/lint",
+      "kind": "source",
+      "owner": "developer-experience",
+      "component": "internal-sdk-go",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "internal/sdk/go/mindclade/scripts/test",
+      "kind": "source",
+      "owner": "developer-experience",
+      "component": "internal-sdk-go",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
       "path": "internal/sdk/go/mindclade/training.go",
       "kind": "source",
       "owner": "developer-experience",
@@ -59369,8 +59940,42 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
+      "path": "internal/sdk/go/api.md",
+      "kind": "documentation",
+      "owner": "developer-experience",
+      "component": "internal-sdk-go",
+      "status": "generated",
+      "activation_wave": "1",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
       "path": "internal/sdk/python/BUILD.bazel",
       "kind": "build",
+      "owner": "developer-experience",
+      "component": "internal-sdk-python",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "internal/sdk/python/CHANGELOG.md",
+      "kind": "documentation",
       "owner": "developer-experience",
       "component": "internal-sdk-python",
       "status": "active",
@@ -59403,7 +60008,58 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
+      "path": "internal/sdk/python/api.md",
+      "kind": "documentation",
+      "owner": "developer-experience",
+      "component": "internal-sdk-python",
+      "status": "generated",
+      "activation_wave": "1",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "internal/sdk/python/component.yaml",
+      "kind": "configuration",
+      "owner": "developer-experience",
+      "component": "internal-sdk-python",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
       "path": "internal/sdk/python/mindclade_internal_sdk/__init__.py",
+      "kind": "source",
+      "owner": "developer-experience",
+      "component": "internal-sdk-python",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "internal/sdk/python/mindclade_internal_sdk/_env.py",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-python",
@@ -59437,7 +60093,143 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
+      "path": "internal/sdk/python/mindclade_internal_sdk/_logging.py",
+      "kind": "source",
+      "owner": "developer-experience",
+      "component": "internal-sdk-python",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "internal/sdk/python/mindclade_internal_sdk/_metadata.py",
+      "kind": "source",
+      "owner": "developer-experience",
+      "component": "internal-sdk-python",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "internal/sdk/python/mindclade_internal_sdk/_middleware.py",
+      "kind": "source",
+      "owner": "developer-experience",
+      "component": "internal-sdk-python",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "internal/sdk/python/mindclade_internal_sdk/_platform.py",
+      "kind": "source",
+      "owner": "developer-experience",
+      "component": "internal-sdk-python",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "internal/sdk/python/mindclade_internal_sdk/_raw.py",
+      "kind": "source",
+      "owner": "developer-experience",
+      "component": "internal-sdk-python",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "internal/sdk/python/mindclade_internal_sdk/_retry.py",
+      "kind": "source",
+      "owner": "developer-experience",
+      "component": "internal-sdk-python",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
       "path": "internal/sdk/python/mindclade_internal_sdk/_validation.py",
+      "kind": "source",
+      "owner": "developer-experience",
+      "component": "internal-sdk-python",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "internal/sdk/python/mindclade_internal_sdk/_version.py",
+      "kind": "source",
+      "owner": "developer-experience",
+      "component": "internal-sdk-python",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "internal/sdk/python/mindclade_internal_sdk/_watch.py",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-python",
@@ -59709,6 +60501,23 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
+      "path": "internal/sdk/python/mindclade_internal_sdk/pagination.py",
+      "kind": "source",
+      "owner": "developer-experience",
+      "component": "internal-sdk-python",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
       "path": "internal/sdk/python/mindclade_internal_sdk/policies.py",
       "kind": "source",
       "owner": "developer-experience",
@@ -59896,6 +60705,142 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
+      "path": "internal/sdk/python/scripts/bootstrap",
+      "kind": "source",
+      "owner": "developer-experience",
+      "component": "internal-sdk-python",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "internal/sdk/python/scripts/build",
+      "kind": "source",
+      "owner": "developer-experience",
+      "component": "internal-sdk-python",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "internal/sdk/python/scripts/common.sh",
+      "kind": "source",
+      "owner": "developer-experience",
+      "component": "internal-sdk-python",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "internal/sdk/python/scripts/format",
+      "kind": "source",
+      "owner": "developer-experience",
+      "component": "internal-sdk-python",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "internal/sdk/python/scripts/lint",
+      "kind": "source",
+      "owner": "developer-experience",
+      "component": "internal-sdk-python",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "internal/sdk/python/scripts/test",
+      "kind": "source",
+      "owner": "developer-experience",
+      "component": "internal-sdk-python",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "internal/sdk/python/tests/test_configuration_env.py",
+      "kind": "test",
+      "owner": "developer-experience",
+      "component": "internal-sdk-python",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "internal/sdk/python/tests/test_error_hierarchy.py",
+      "kind": "test",
+      "owner": "developer-experience",
+      "component": "internal-sdk-python",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
       "path": "internal/sdk/python/tests/test_internal_sdk.py",
       "kind": "test",
       "owner": "developer-experience",
@@ -59947,7 +60892,109 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
+      "path": "internal/sdk/python/tests/test_observability.py",
+      "kind": "test",
+      "owner": "developer-experience",
+      "component": "internal-sdk-python",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "internal/sdk/python/tests/test_packaging.py",
+      "kind": "test",
+      "owner": "developer-experience",
+      "component": "internal-sdk-python",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "internal/sdk/python/tests/test_pagination.py",
+      "kind": "test",
+      "owner": "developer-experience",
+      "component": "internal-sdk-python",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
       "path": "internal/sdk/python/tests/test_policy_admin.py",
+      "kind": "test",
+      "owner": "developer-experience",
+      "component": "internal-sdk-python",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "internal/sdk/python/tests/test_raw_response.py",
+      "kind": "test",
+      "owner": "developer-experience",
+      "component": "internal-sdk-python",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "internal/sdk/python/tests/test_retry_policy.py",
+      "kind": "test",
+      "owner": "developer-experience",
+      "component": "internal-sdk-python",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "internal/sdk/python/tests/test_watchers.py",
       "kind": "test",
       "owner": "developer-experience",
       "component": "internal-sdk-python",
@@ -60102,6 +61149,125 @@
     {
       "path": "internal/sdk/rust/README.md",
       "kind": "documentation",
+      "owner": "developer-experience",
+      "component": "internal-sdk-rust",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "internal/sdk/rust/api.md",
+      "kind": "documentation",
+      "owner": "developer-experience",
+      "component": "internal-sdk-rust",
+      "status": "generated",
+      "activation_wave": "1",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "internal/sdk/rust/scripts/bootstrap",
+      "kind": "source",
+      "owner": "developer-experience",
+      "component": "internal-sdk-rust",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "internal/sdk/rust/scripts/build",
+      "kind": "source",
+      "owner": "developer-experience",
+      "component": "internal-sdk-rust",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "internal/sdk/rust/scripts/common.sh",
+      "kind": "source",
+      "owner": "developer-experience",
+      "component": "internal-sdk-rust",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "internal/sdk/rust/scripts/format",
+      "kind": "source",
+      "owner": "developer-experience",
+      "component": "internal-sdk-rust",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "internal/sdk/rust/scripts/lint",
+      "kind": "source",
+      "owner": "developer-experience",
+      "component": "internal-sdk-rust",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "internal/sdk/rust/scripts/test",
+      "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-rust",
       "status": "active",
@@ -60695,6 +61861,23 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
+      "path": "internal/sdk/typescript/CHANGELOG.md",
+      "kind": "documentation",
+      "owner": "developer-experience",
+      "component": "internal-sdk-typescript",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
       "path": "internal/sdk/typescript/README.md",
       "kind": "documentation",
       "owner": "developer-experience",
@@ -60702,6 +61885,23 @@
       "status": "active",
       "activation_wave": "1",
       "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "internal/sdk/typescript/api.md",
+      "kind": "documentation",
+      "owner": "developer-experience",
+      "component": "internal-sdk-typescript",
+      "status": "generated",
+      "activation_wave": "1",
+      "source_authority": "reviewed-generated",
       "build_targets": [
         "//:all_contract_sources"
       ],
@@ -60746,8 +61946,110 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
+      "path": "internal/sdk/typescript/component.yaml",
+      "kind": "configuration",
+      "owner": "developer-experience",
+      "component": "internal-sdk-typescript",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
       "path": "internal/sdk/typescript/package.json",
       "kind": "data",
+      "owner": "developer-experience",
+      "component": "internal-sdk-typescript",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "internal/sdk/typescript/scripts/bootstrap",
+      "kind": "source",
+      "owner": "developer-experience",
+      "component": "internal-sdk-typescript",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "internal/sdk/typescript/scripts/build",
+      "kind": "source",
+      "owner": "developer-experience",
+      "component": "internal-sdk-typescript",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "internal/sdk/typescript/scripts/format",
+      "kind": "source",
+      "owner": "developer-experience",
+      "component": "internal-sdk-typescript",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "internal/sdk/typescript/scripts/lint",
+      "kind": "source",
+      "owner": "developer-experience",
+      "component": "internal-sdk-typescript",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "internal/sdk/typescript/scripts/test",
+      "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-typescript",
       "status": "active",
@@ -60916,6 +62218,23 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
+      "path": "internal/sdk/typescript/src/environment.ts",
+      "kind": "source",
+      "owner": "developer-experience",
+      "component": "internal-sdk-typescript",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
       "path": "internal/sdk/typescript/src/error.ts",
       "kind": "source",
       "owner": "developer-experience",
@@ -61001,7 +62320,58 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
+      "path": "internal/sdk/typescript/src/observability.ts",
+      "kind": "source",
+      "owner": "developer-experience",
+      "component": "internal-sdk-typescript",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
       "path": "internal/sdk/typescript/src/operations.ts",
+      "kind": "source",
+      "owner": "developer-experience",
+      "component": "internal-sdk-typescript",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "internal/sdk/typescript/src/pagination.ts",
+      "kind": "source",
+      "owner": "developer-experience",
+      "component": "internal-sdk-typescript",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "internal/sdk/typescript/src/platform.ts",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-typescript",
@@ -61053,6 +62423,23 @@
     },
     {
       "path": "internal/sdk/typescript/src/request.ts",
+      "kind": "source",
+      "owner": "developer-experience",
+      "component": "internal-sdk-typescript",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "internal/sdk/typescript/src/response.ts",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-typescript",
@@ -61171,6 +62558,23 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
+      "path": "internal/sdk/typescript/src/watch.ts",
+      "kind": "source",
+      "owner": "developer-experience",
+      "component": "internal-sdk-typescript",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
       "path": "internal/sdk/typescript/src/workflows.ts",
       "kind": "source",
       "owner": "developer-experience",
@@ -61256,6 +62660,74 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
+      "path": "internal/sdk/typescript/tests/configuration.test.ts",
+      "kind": "test",
+      "owner": "developer-experience",
+      "component": "internal-sdk-typescript",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "internal/sdk/typescript/tests/errors.test.ts",
+      "kind": "test",
+      "owner": "developer-experience",
+      "component": "internal-sdk-typescript",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "internal/sdk/typescript/tests/pagination_response.test.ts",
+      "kind": "test",
+      "owner": "developer-experience",
+      "component": "internal-sdk-typescript",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "internal/sdk/typescript/tests/retry_policy.test.ts",
+      "kind": "test",
+      "owner": "developer-experience",
+      "component": "internal-sdk-typescript",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
       "path": "internal/sdk/typescript/tests/sdk.test.ts",
       "kind": "test",
       "owner": "developer-experience",
@@ -61291,6 +62763,23 @@
     },
     {
       "path": "internal/sdk/typescript/tests/agents.test.ts",
+      "kind": "test",
+      "owner": "developer-experience",
+      "component": "internal-sdk-typescript",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "internal/sdk/typescript/tests/watch_lro.test.ts",
       "kind": "test",
       "owner": "developer-experience",
       "component": "internal-sdk-typescript",

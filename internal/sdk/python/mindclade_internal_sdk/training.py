@@ -5,8 +5,7 @@ from __future__ import annotations
 import asyncio
 import copy
 import threading
-import time
-from collections.abc import AsyncIterator, Iterator, Mapping
+from collections.abc import Mapping
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from typing import Protocol, cast
@@ -26,7 +25,8 @@ from mindclade.training.v1 import (
     training_run_pb2,
 )
 
-from ._invocation import AsyncInvoker, SyncInvoker, canonical_digest, command_context, retry_delay
+from ._invocation import AsyncInvoker, SyncInvoker, canonical_digest, command_context
+from ._raw import AsyncWithRawResponse, WithRawResponse, streaming_method
 from ._validation import (
     artifact_ref,
     required_response_message,
@@ -34,15 +34,23 @@ from ._validation import (
     resource_id,
     resource_ref,
 )
+from ._watch import AsyncWatchStream, WatchSpec, WatchStream, watch_budget
 from .calls import CallOptions, PreparedCall, prepare_call
 from .config import ClientConfig
 from .errors import (
     CancelledError,
-    DeadlineExceededError,
-    MindcladeError,
     OperationTimeoutError,
     ProtocolError,
     UnavailableError,
+)
+from .pagination import (
+    AsyncPage,
+    Page,
+    PaginationLimits,
+    apply_default_page_size,
+    async_page,
+    next_request,
+    sync_page,
 )
 from .transport import (
     CANCEL_TRAINING_RUN,
@@ -283,7 +291,62 @@ def _validated_run_page(
     return response
 
 
-class Training:
+type TrainingWatchSpec = WatchSpec[training_service_pb2.WatchTrainingRunResponse, int]
+
+
+def _training_watch_spec(run_name: str) -> TrainingWatchSpec:
+    """Describe the training-run watch to the shared resumable watcher."""
+
+    def build(cursor: int, remaining: float) -> Message:
+        return training_service_pb2.WatchTrainingRunRequest(
+            name=run_name,
+            after_sequence=cursor,
+            deadline=_deadline_timestamp(remaining),
+        )
+
+    def accept(
+        raw: Message,
+        cursor: int,
+    ) -> tuple[training_service_pb2.WatchTrainingRunResponse, int, bool]:
+        response = cast(training_service_pb2.WatchTrainingRunResponse, raw)
+        if response.sequence != cursor + 1:
+            raise ProtocolError(
+                "training watch sequence was not contiguous",
+                status=grpc.StatusCode.DATA_LOSS,
+            )
+        training_run = required_response_message(
+            response,
+            "training_run",
+            training_run_pb2.TrainingRun,
+            label="training watch",
+        )
+        if training_run.name != run_name:
+            raise ProtocolError(
+                "training watch returned a different run",
+                status=grpc.StatusCode.DATA_LOSS,
+            )
+        if training_run.state == training_run_pb2.TRAINING_RUN_STATE_UNSPECIFIED:
+            raise ProtocolError(
+                "training watch returned an unspecified state",
+                status=grpc.StatusCode.DATA_LOSS,
+            )
+        terminal = training_run.state in _TERMINAL_TRAINING_STATES
+        return response, response.sequence, terminal
+
+    return WatchSpec(
+        method=WATCH_TRAINING_RUN,
+        build_request=build,
+        accept=accept,
+        closed_error=lambda: UnavailableError(
+            "training watch closed before a terminal event",
+            retryable=True,
+        ),
+        timeout_error=lambda: OperationTimeoutError("training watch exceeded its total deadline"),
+        cancelled_error=lambda: CancelledError("training watch was cancelled"),
+    )
+
+
+class Training(WithRawResponse):
     def __init__(self, invoker: SyncInvoker) -> None:
         self._invoker = invoker
 
@@ -390,7 +453,8 @@ class Training:
         request: training_service_pb2.ListTrainingRunsRequest | None = None,
         *,
         options: CallOptions | None = None,
-    ) -> training_service_pb2.ListTrainingRunsResponse:
+        limits: PaginationLimits | None = None,
+    ) -> Page[training_run_pb2.TrainingRun]:
         materialized = training_service_pb2.ListTrainingRunsRequest()
         if request is not None:
             materialized.CopyFrom(request)
@@ -400,16 +464,26 @@ class Training:
         if materialized.HasField("page") and materialized.page.page_size > _MAXIMUM_PAGE_SIZE:
             raise ValueError("training page size cannot exceed 200")
         materialized.parent = parent
+        apply_default_page_size(materialized, limits)
         call = prepare_call(
             options,
             default_timeout=self._invoker.config.default_timeout,
             require_idempotency=False,
         )
-        response = cast(
-            training_service_pb2.ListTrainingRunsResponse,
-            self._invoker.unary(LIST_TRAINING_RUNS, materialized, call=call, retry_safe=True),
+        response = _validated_run_page(
+            self._invoker,
+            cast(
+                training_service_pb2.ListTrainingRunsResponse,
+                self._invoker.unary(LIST_TRAINING_RUNS, materialized, call=call, retry_safe=True),
+            ),
         )
-        return _validated_run_page(self._invoker, response)
+
+        def follow(page_token: str) -> Page[training_run_pb2.TrainingRun]:
+            return self.list_runs(
+                next_request(materialized, page_token), options=options, limits=limits
+            )
+
+        return sync_page(response, items_field="training_runs", fetch=follow, limits=limits)
 
     def start_attempt(
         self,
@@ -670,11 +744,13 @@ class Training:
         request: training_service_pb2.ListCheckpointsRequest,
         *,
         options: CallOptions | None = None,
-    ) -> training_service_pb2.ListCheckpointsResponse:
+        limits: PaginationLimits | None = None,
+    ) -> Page[checkpoint_pb2.Checkpoint]:
         materialized = copy.deepcopy(request)
         materialized.parent = _run_name(self._invoker, materialized.parent)
         if materialized.HasField("page") and materialized.page.page_size > _MAXIMUM_PAGE_SIZE:
             raise ValueError("checkpoint page size cannot exceed 200")
+        apply_default_page_size(materialized, limits)
         call = prepare_call(
             options,
             default_timeout=self._invoker.config.default_timeout,
@@ -686,8 +762,15 @@ class Training:
         )
         if any(item.training_run_name != materialized.parent for item in response.checkpoints):
             raise ProtocolError("checkpoint list crossed training run identity")
-        return response
 
+        def follow(page_token: str) -> Page[checkpoint_pb2.Checkpoint]:
+            return self.list_checkpoints(
+                next_request(materialized, page_token), options=options, limits=limits
+            )
+
+        return sync_page(response, items_field="checkpoints", fetch=follow, limits=limits)
+
+    @streaming_method
     def watch(
         self,
         name: str,
@@ -696,100 +779,25 @@ class Training:
         timeout: float = 300.0,
         cancellation: threading.Event | None = None,
         options: CallOptions | None = None,
-    ) -> Iterator[training_service_pb2.WatchTrainingRunResponse]:
+    ) -> WatchStream[training_service_pb2.WatchTrainingRunResponse, int]:
+        """Follow one training run's durable events, reconnecting inside the deadline."""
+
         if after_sequence < 0:
             raise ValueError("after_sequence cannot be negative")
-        if timeout <= 0:
-            raise ValueError("watch timeout must be positive")
         if cancellation is not None and cancellation.is_set():
             raise CancelledError("training watch was cancelled")
-        base_call = prepare_call(
-            options or CallOptions(timeout=timeout),
-            default_timeout=timeout,
-            require_idempotency=False,
+        base, total = watch_budget(timeout, options)
+        return WatchStream(
+            self._invoker,
+            _training_watch_spec(_run_name(self._invoker, name)),
+            cursor=after_sequence,
+            call=base,
+            total=total,
+            cancellation=cancellation,
         )
-        run_name = _run_name(self._invoker, name)
-        deadline = time.monotonic() + base_call.timeout
-        sequence = after_sequence
-        failures = 0
-        while True:
-            if cancellation is not None and cancellation.is_set():
-                raise CancelledError("training watch was cancelled")
-            remaining = deadline - time.monotonic()
-            if remaining <= 0:
-                raise OperationTimeoutError("training watch exceeded its total deadline")
-            call = PreparedCall(
-                timeout=remaining,
-                request_id=base_call.request_id,
-                trace_id=base_call.trace_id,
-                idempotency_key=None,
-            )
-            request = training_service_pb2.WatchTrainingRunRequest(
-                name=run_name,
-                after_sequence=sequence,
-                deadline=_deadline_timestamp(remaining),
-            )
-            try:
-                for raw_response in self._invoker.stream(
-                    WATCH_TRAINING_RUN,
-                    request,
-                    call=call,
-                    cancellation=cancellation,
-                ):
-                    response = cast(training_service_pb2.WatchTrainingRunResponse, raw_response)
-                    if response.sequence != sequence + 1:
-                        raise ProtocolError(
-                            "training watch sequence was not contiguous",
-                            status=grpc.StatusCode.DATA_LOSS,
-                        )
-                    training_run = required_response_message(
-                        response,
-                        "training_run",
-                        training_run_pb2.TrainingRun,
-                        label="training watch",
-                    )
-                    if training_run.name != run_name:
-                        raise ProtocolError(
-                            "training watch returned a different run",
-                            status=grpc.StatusCode.DATA_LOSS,
-                        )
-                    if training_run.state == training_run_pb2.TRAINING_RUN_STATE_UNSPECIFIED:
-                        raise ProtocolError(
-                            "training watch returned an unspecified state",
-                            status=grpc.StatusCode.DATA_LOSS,
-                        )
-                    sequence = response.sequence
-                    failures = 0
-                    yield response
-                    if training_run.state in _TERMINAL_TRAINING_STATES:
-                        return
-                stream_error: MindcladeError = UnavailableError(
-                    "training watch closed before a terminal event",
-                    retryable=True,
-                )
-            except DeadlineExceededError:
-                raise OperationTimeoutError("training watch exceeded its total deadline") from None
-            except MindcladeError as error:
-                if not error.retryable:
-                    raise
-                stream_error = error
-            failures += 1
-            if failures >= self._invoker.config.retry.max_attempts:
-                raise stream_error
-            delay = retry_delay(
-                self._invoker.config,
-                failures,
-                deadline - time.monotonic(),
-                retry_after=stream_error.retry_after,
-            )
-            if cancellation is not None:
-                if cancellation.wait(delay):
-                    raise CancelledError("training watch was cancelled")
-            elif delay > 0:
-                time.sleep(delay)
 
 
-class AsyncTraining:
+class AsyncTraining(AsyncWithRawResponse):
     def __init__(self, invoker: AsyncInvoker) -> None:
         self._invoker = invoker
 
@@ -896,7 +904,8 @@ class AsyncTraining:
         request: training_service_pb2.ListTrainingRunsRequest | None = None,
         *,
         options: CallOptions | None = None,
-    ) -> training_service_pb2.ListTrainingRunsResponse:
+        limits: PaginationLimits | None = None,
+    ) -> AsyncPage[training_run_pb2.TrainingRun]:
         materialized = training_service_pb2.ListTrainingRunsRequest()
         if request is not None:
             materialized.CopyFrom(request)
@@ -906,16 +915,28 @@ class AsyncTraining:
         if materialized.HasField("page") and materialized.page.page_size > _MAXIMUM_PAGE_SIZE:
             raise ValueError("training page size cannot exceed 200")
         materialized.parent = parent
+        apply_default_page_size(materialized, limits)
         call = prepare_call(
             options,
             default_timeout=self._invoker.config.default_timeout,
             require_idempotency=False,
         )
-        response = cast(
-            training_service_pb2.ListTrainingRunsResponse,
-            await self._invoker.unary(LIST_TRAINING_RUNS, materialized, call=call, retry_safe=True),
+        response = _validated_run_page(
+            self._invoker,
+            cast(
+                training_service_pb2.ListTrainingRunsResponse,
+                await self._invoker.unary(
+                    LIST_TRAINING_RUNS, materialized, call=call, retry_safe=True
+                ),
+            ),
         )
-        return _validated_run_page(self._invoker, response)
+
+        async def follow(page_token: str) -> AsyncPage[training_run_pb2.TrainingRun]:
+            return await self.list_runs(
+                next_request(materialized, page_token), options=options, limits=limits
+            )
+
+        return async_page(response, items_field="training_runs", fetch=follow, limits=limits)
 
     async def start_attempt(
         self,
@@ -1174,11 +1195,13 @@ class AsyncTraining:
         request: training_service_pb2.ListCheckpointsRequest,
         *,
         options: CallOptions | None = None,
-    ) -> training_service_pb2.ListCheckpointsResponse:
+        limits: PaginationLimits | None = None,
+    ) -> AsyncPage[checkpoint_pb2.Checkpoint]:
         materialized = copy.deepcopy(request)
         materialized.parent = _run_name(self._invoker, materialized.parent)
         if materialized.HasField("page") and materialized.page.page_size > _MAXIMUM_PAGE_SIZE:
             raise ValueError("checkpoint page size cannot exceed 200")
+        apply_default_page_size(materialized, limits)
         call = prepare_call(
             options,
             default_timeout=self._invoker.config.default_timeout,
@@ -1190,9 +1213,16 @@ class AsyncTraining:
         )
         if any(item.training_run_name != materialized.parent for item in response.checkpoints):
             raise ProtocolError("checkpoint list crossed training run identity")
-        return response
 
-    async def watch(
+        async def follow(page_token: str) -> AsyncPage[checkpoint_pb2.Checkpoint]:
+            return await self.list_checkpoints(
+                next_request(materialized, page_token), options=options, limits=limits
+            )
+
+        return async_page(response, items_field="checkpoints", fetch=follow, limits=limits)
+
+    @streaming_method
+    def watch(
         self,
         name: str,
         *,
@@ -1200,106 +1230,19 @@ class AsyncTraining:
         timeout: float = 300.0,
         cancellation: asyncio.Event | None = None,
         options: CallOptions | None = None,
-    ) -> AsyncIterator[training_service_pb2.WatchTrainingRunResponse]:
+    ) -> AsyncWatchStream[training_service_pb2.WatchTrainingRunResponse, int]:
+        """Follow one training run's durable events, reconnecting inside the deadline."""
+
         if after_sequence < 0:
             raise ValueError("after_sequence cannot be negative")
-        if timeout <= 0:
-            raise ValueError("watch timeout must be positive")
         if cancellation is not None and cancellation.is_set():
             raise CancelledError("training watch was cancelled")
-        base_call = prepare_call(
-            options or CallOptions(timeout=timeout),
-            default_timeout=timeout,
-            require_idempotency=False,
+        base, total = watch_budget(timeout, options)
+        return AsyncWatchStream(
+            self._invoker,
+            _training_watch_spec(_run_name(self._invoker, name)),
+            cursor=after_sequence,
+            call=base,
+            total=total,
+            cancellation=cancellation,
         )
-        run_name = _run_name(self._invoker, name)
-        loop = asyncio.get_running_loop()
-        deadline = loop.time() + base_call.timeout
-        sequence = after_sequence
-        failures = 0
-        while True:
-            if cancellation is not None and cancellation.is_set():
-                raise CancelledError("training watch was cancelled")
-            remaining = deadline - loop.time()
-            if remaining <= 0:
-                raise OperationTimeoutError("training watch exceeded its total deadline")
-            call = PreparedCall(
-                timeout=remaining,
-                request_id=base_call.request_id,
-                trace_id=base_call.trace_id,
-                idempotency_key=None,
-            )
-            request = training_service_pb2.WatchTrainingRunRequest(
-                name=run_name,
-                after_sequence=sequence,
-                deadline=_deadline_timestamp(remaining),
-            )
-            try:
-                async with asyncio.timeout(remaining):
-                    async for raw_response in self._invoker.stream(
-                        WATCH_TRAINING_RUN,
-                        request,
-                        call=call,
-                        cancellation=cancellation,
-                    ):
-                        response = cast(
-                            training_service_pb2.WatchTrainingRunResponse,
-                            raw_response,
-                        )
-                        if response.sequence != sequence + 1:
-                            raise ProtocolError(
-                                "training watch sequence was not contiguous",
-                                status=grpc.StatusCode.DATA_LOSS,
-                            )
-                        training_run = required_response_message(
-                            response,
-                            "training_run",
-                            training_run_pb2.TrainingRun,
-                            label="training watch",
-                        )
-                        if training_run.name != run_name:
-                            raise ProtocolError(
-                                "training watch returned a different run",
-                                status=grpc.StatusCode.DATA_LOSS,
-                            )
-                        if training_run.state == training_run_pb2.TRAINING_RUN_STATE_UNSPECIFIED:
-                            raise ProtocolError(
-                                "training watch returned an unspecified state",
-                                status=grpc.StatusCode.DATA_LOSS,
-                            )
-                        sequence = response.sequence
-                        failures = 0
-                        yield response
-                        if training_run.state in _TERMINAL_TRAINING_STATES:
-                            return
-                stream_error: MindcladeError = UnavailableError(
-                    "training watch closed before a terminal event",
-                    retryable=True,
-                )
-            except TimeoutError:
-                raise OperationTimeoutError("training watch exceeded its total deadline") from None
-            except DeadlineExceededError:
-                raise OperationTimeoutError("training watch exceeded its total deadline") from None
-            except MindcladeError as error:
-                if not error.retryable:
-                    raise
-                stream_error = error
-            failures += 1
-            if failures >= self._invoker.config.retry.max_attempts:
-                raise stream_error
-            delay = retry_delay(
-                self._invoker.config,
-                failures,
-                deadline - loop.time(),
-                retry_after=stream_error.retry_after,
-            )
-            if cancellation is None:
-                if delay > 0:
-                    await asyncio.sleep(delay)
-            else:
-                try:
-                    await asyncio.wait_for(cancellation.wait(), timeout=delay)
-                except TimeoutError:
-                    pass
-                else:
-                    raise CancelledError("training watch was cancelled")

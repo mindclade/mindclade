@@ -493,7 +493,7 @@ describe("ergonomic generated-contract APIs", () => {
 		const listRequest = create(ListArtifactsRequestSchema, {
 			page: { pageSize: 25, pageToken: "opaque-artifact" },
 		});
-		assert.equal((await client.artifacts.list(listRequest)).page?.nextPageToken, "opaque-next");
+		assert.equal((await client.artifacts.list(listRequest)).metadata.nextPageToken, "opaque-next");
 		assert.equal(listRequest.parent, "");
 		const quarantine = create(QuarantineArtifactRequestSchema, {
 			artifact,
@@ -523,7 +523,10 @@ describe("ergonomic generated-contract APIs", () => {
 		const operationRequest = create(ListOperationsRequestSchema, {
 			page: { pageSize: 50, pageToken: "opaque-operation" },
 		});
-		assert.equal((await client.operations.list(operationRequest)).page?.nextPageToken, "op-next");
+		assert.equal(
+			(await client.operations.list(operationRequest)).metadata.nextPageToken,
+			"op-next",
+		);
 		assert.equal(operationRequest.parent, "");
 		assert.equal(
 			(
@@ -1237,8 +1240,8 @@ test("dataset and model facades bind identity and preserve opaque pagination", a
 	);
 	assert.equal((await client.datasets.get({ name: datasetName })).name, datasetName);
 	assert.equal(
-		(await client.datasets.list({ page: { pageToken: "opaque-dataset-in", pageSize: 25 } })).page
-			?.nextPageToken,
+		(await client.datasets.list({ page: { pageToken: "opaque-dataset-in", pageSize: 25 } }))
+			.metadata.nextPageToken,
 		"opaque-dataset-out",
 	);
 	await client.datasets.update(
@@ -1255,7 +1258,7 @@ test("dataset and model facades bind identity and preserve opaque pagination", a
 	);
 	assert.equal((await client.datasets.getRelease({ name: datasetRelease })).name, datasetRelease);
 	assert.equal(
-		(await client.datasets.listReleases({ parent: datasetName })).page?.nextPageToken,
+		(await client.datasets.listReleases({ parent: datasetName })).metadata.nextPageToken,
 		"opaque-release-out",
 	);
 	assert.equal(
@@ -1269,7 +1272,7 @@ test("dataset and model facades bind identity and preserve opaque pagination", a
 	);
 	assert.equal((await client.models.get({ name: modelName })).name, modelName);
 	assert.equal(
-		(await client.models.list({ page: { pageToken: "opaque-model-in" } })).page?.nextPageToken,
+		(await client.models.list({ page: { pageToken: "opaque-model-in" } })).metadata.nextPageToken,
 		"opaque-model-out",
 	);
 	await client.models.registerRelease(
@@ -1278,7 +1281,7 @@ test("dataset and model facades bind identity and preserve opaque pagination", a
 	);
 	assert.equal((await client.models.getRelease({ name: modelRelease })).name, modelRelease);
 	assert.equal(
-		(await client.models.listReleases({ parent: modelName })).page?.nextPageToken,
+		(await client.models.listReleases({ parent: modelName })).metadata.nextPageToken,
 		"opaque-model-release-out",
 	);
 	await client.models.promoteRelease(

@@ -7,6 +7,10 @@ use mindclade_internal_sdk::{
 
 const MAX_ENVELOPE_BYTES: u64 = 8 << 20;
 
+/// The deadline the SDK enforces for every worker RPC, including its retries.
+/// The worker owns no second timer of its own.
+const RPC_TIMEOUT: Duration = Duration::from_secs(20);
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let arguments = env::args_os().skip(1).collect::<Vec<_>>();
@@ -27,8 +31,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let envelope = tokio::fs::read(envelope_path).await?;
     let (config, identity) = runtime_config()?;
     let client = Client::connect(config).await?;
-    let assignment = SourceFetcher::new(client, identity, Duration::from_secs(20), None)?
-        .materialize(&envelope, &destination, Duration::from_mins(1))
+    let assignment = SourceFetcher::new(client, identity, None)?
+        .materialize(&envelope, &destination)
         .await?;
     println!(
         "event_id={} job_id={} configuration={}",
@@ -61,9 +65,10 @@ fn runtime_config() -> Result<(Config, Identity), Box<dyn std::error::Error>> {
         required_env("MINDCLADE_PROJECT_ID")?,
         required_env("MINDCLADE_PRINCIPAL_ID")?,
     )?;
-    let endpoint = env::var("MINDCLADE_CONTROL_PLANE_ENDPOINT").ok();
+    let endpoint = env::var("MINDCLADE_ENDPOINT").ok();
     if environment == Environment::Local {
-        let mut builder = Config::local_insecure_builder(identity.clone());
+        let mut builder =
+            Config::local_insecure_builder(identity.clone()).default_rpc_timeout(RPC_TIMEOUT);
         if let Some(endpoint) = endpoint {
             builder = builder.endpoint(endpoint);
         }
@@ -71,11 +76,12 @@ fn runtime_config() -> Result<(Config, Identity), Box<dyn std::error::Error>> {
     }
     let provider: Arc<dyn TokenProvider> =
         Arc::new(GcpWorkloadIdentityProvider::new(Duration::from_secs(10))?);
-    let mut builder = Config::builder(environment, identity.clone(), provider);
+    let mut builder =
+        Config::builder(environment, identity.clone(), provider).default_rpc_timeout(RPC_TIMEOUT);
     if let Some(endpoint) = endpoint {
         builder = builder.endpoint(endpoint);
     }
-    if let Ok(audience) = env::var("MINDCLADE_CONTROL_PLANE_AUDIENCE") {
+    if let Ok(audience) = env::var("MINDCLADE_AUDIENCE") {
         builder = builder.audience(audience);
     }
     Ok((builder.build()?, identity))

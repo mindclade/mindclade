@@ -16,9 +16,8 @@ use mindclade_protocols::{
         ArtifactStagingReceipt, ArtifactUploadSession, ArtifactUploadState,
         BeginArtifactUploadRequest, CommitArtifactRequest, DownloadArtifactRequest,
         FinalizeArtifactUploadRequest, GetArtifactRequest, GetArtifactUploadRequest,
-        ListArtifactsRequest, ListArtifactsResponse, QuarantineArtifactRequest,
-        QuarantineArtifactUploadRequest, ReleaseArtifactLeaseRequest, ResolveArtifactAliasRequest,
-        UploadArtifactChunkRequest,
+        ListArtifactsRequest, QuarantineArtifactRequest, QuarantineArtifactUploadRequest,
+        ReleaseArtifactLeaseRequest, ResolveArtifactAliasRequest, UploadArtifactChunkRequest,
     },
     job::v1::{Operation, OperationState},
 };
@@ -29,9 +28,9 @@ use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 use tonic::{Code, codegen::tokio_stream::StreamExt};
 
 use crate::{
-    CallOptions, ClientCore, Error, SubmitOptions,
-    request::{generate_request_id, validate_resource_value},
-    retry::registered_method_safety,
+    CallOptions, ClientCore, Error, Page, Pages, SubmitOptions,
+    request::{generate_request_id, initial_page_token, page_request, validate_resource_value},
+    retry::registered_method_policy,
 };
 
 const RESOLVE_ARTIFACT_ALIAS: &str =
@@ -192,7 +191,7 @@ impl Artifacts {
             .unary(
                 request,
                 &prepared,
-                registered_method_safety(GET_ARTIFACT),
+                registered_method_policy(GET_ARTIFACT),
                 None,
                 |transport, request| Box::pin(async move { transport.get_artifact(request).await }),
             )
@@ -218,11 +217,11 @@ impl Artifacts {
     ///
     /// Returns an error for an invalid parent/page size, RPC failure, or
     /// malformed artifact metadata.
-    pub async fn list(
+    pub fn list(
         &self,
         mut request: ListArtifactsRequest,
         options: CallOptions,
-    ) -> Result<ListArtifactsResponse, Error> {
+    ) -> Result<Pages<ArtifactRef>, Error> {
         let parent = project_parent(&self.core.config);
         if !request.parent.is_empty() && request.parent != parent {
             return Err(Error::invalid_argument(
@@ -239,25 +238,44 @@ impl Artifacts {
             ));
         }
         request.parent = parent;
-        let prepared = options.prepare(&self.core.config);
-        let response = self
-            .core
-            .unary(
-                request,
-                &prepared,
-                registered_method_safety(LIST_ARTIFACTS),
-                None,
-                |transport, request| {
-                    Box::pin(async move { transport.list_artifacts(request).await })
-                },
-            )
-            .await?
-            .into_inner();
-        for artifact in &response.artifacts {
-            validate_transfer_artifact(artifact)
-                .map_err(|_| Error::protocol("ListArtifacts returned invalid metadata"))?;
-        }
-        Ok(response)
+        let core = Arc::clone(&self.core);
+        let token = initial_page_token(request.page.as_ref());
+        Ok(Pages::new(
+            move |page_token| {
+                let core = Arc::clone(&core);
+                let options = options.clone();
+                let mut request = request.clone();
+                async move {
+                    request.page = Some(page_request(request.page.as_ref(), page_token));
+                    let prepared = options.prepare(&core.config);
+                    let response = core
+                        .unary(
+                            request,
+                            &prepared,
+                            registered_method_policy(LIST_ARTIFACTS),
+                            None,
+                            |transport, request| {
+                                Box::pin(async move { transport.list_artifacts(request).await })
+                            },
+                        )
+                        .await?;
+                    let request_id = response.request_id().map(str::to_owned);
+                    let response = response.into_inner();
+                    for artifact in &response.artifacts {
+                        validate_transfer_artifact(artifact).map_err(|_| {
+                            Error::protocol("ListArtifacts returned invalid metadata")
+                        })?;
+                    }
+                    Ok(Page::new(
+                        response.artifacts,
+                        response.page,
+                        response.read_time,
+                        request_id,
+                    ))
+                }
+            },
+            token,
+        ))
     }
 
     /// Records a governed quarantine transition under deterministic command
@@ -303,7 +321,7 @@ impl Artifacts {
             .unary(
                 request,
                 &prepared,
-                registered_method_safety(QUARANTINE_ARTIFACT),
+                registered_method_policy(QUARANTINE_ARTIFACT),
                 Some(&key),
                 |transport, request| {
                     Box::pin(async move { transport.quarantine_artifact(request).await })
@@ -359,7 +377,7 @@ impl Artifacts {
             .unary(
                 request,
                 &prepared,
-                registered_method_safety(ACQUIRE_ARTIFACT_LEASE),
+                registered_method_policy(ACQUIRE_ARTIFACT_LEASE),
                 Some(&key),
                 |transport, request| {
                     Box::pin(async move { transport.acquire_artifact_lease(request).await })
@@ -407,7 +425,7 @@ impl Artifacts {
             .unary(
                 request,
                 &prepared,
-                registered_method_safety(RELEASE_ARTIFACT_LEASE),
+                registered_method_policy(RELEASE_ARTIFACT_LEASE),
                 Some(&key),
                 |transport, request| {
                     Box::pin(async move { transport.release_artifact_lease(request).await })
@@ -440,7 +458,7 @@ impl Artifacts {
             .unary(
                 ResolveArtifactAliasRequest { parent, alias },
                 &prepared,
-                registered_method_safety(RESOLVE_ARTIFACT_ALIAS),
+                registered_method_policy(RESOLVE_ARTIFACT_ALIAS),
                 None,
                 |transport, request| {
                     Box::pin(async move { transport.resolve_artifact_alias(request).await })
@@ -472,7 +490,7 @@ impl Artifacts {
             .unary(
                 GetArtifactUploadRequest { name },
                 &prepared,
-                registered_method_safety(GET_ARTIFACT_UPLOAD),
+                registered_method_policy(GET_ARTIFACT_UPLOAD),
                 None,
                 |transport, request| {
                     Box::pin(async move { transport.get_artifact_upload(request).await })
@@ -561,7 +579,7 @@ impl Artifacts {
                 .unary(
                     request,
                     &prepared,
-                    registered_method_safety(UPLOAD_ARTIFACT_CHUNK),
+                    registered_method_policy(UPLOAD_ARTIFACT_CHUNK),
                     Some(&idempotency_key),
                     |transport, request| {
                         Box::pin(async move { transport.upload_artifact_chunk(request).await })
@@ -644,7 +662,7 @@ impl Artifacts {
             .unary(
                 request,
                 &prepared,
-                registered_method_safety(BEGIN_ARTIFACT_UPLOAD),
+                registered_method_policy(BEGIN_ARTIFACT_UPLOAD),
                 Some(&idempotency_key),
                 |transport, request| {
                     Box::pin(async move { transport.begin_artifact_upload(request).await })
@@ -691,7 +709,7 @@ impl Artifacts {
             .unary(
                 request,
                 &prepared,
-                registered_method_safety(FINALIZE_ARTIFACT_UPLOAD),
+                registered_method_policy(FINALIZE_ARTIFACT_UPLOAD),
                 Some(&idempotency_key),
                 |transport, request| {
                     Box::pin(async move { transport.finalize_artifact_upload(request).await })
@@ -749,7 +767,7 @@ impl Artifacts {
             .unary(
                 request,
                 &prepared,
-                registered_method_safety(ABORT_ARTIFACT_UPLOAD),
+                registered_method_policy(ABORT_ARTIFACT_UPLOAD),
                 Some(&idempotency_key),
                 |transport, request| {
                     Box::pin(async move { transport.abort_artifact_upload(request).await })
@@ -797,7 +815,7 @@ impl Artifacts {
             .unary(
                 request,
                 &prepared,
-                registered_method_safety(QUARANTINE_ARTIFACT_UPLOAD),
+                registered_method_policy(QUARANTINE_ARTIFACT_UPLOAD),
                 Some(&idempotency_key),
                 |transport, request| {
                     Box::pin(async move { transport.quarantine_artifact_upload(request).await })
@@ -848,7 +866,7 @@ impl Artifacts {
                     command: Some(command),
                 },
                 &prepared,
-                registered_method_safety(COMMIT_ARTIFACT),
+                registered_method_policy(COMMIT_ARTIFACT),
                 Some(&idempotency_key),
                 |transport, request| {
                     Box::pin(async move { transport.commit_artifact(request).await })
@@ -898,7 +916,7 @@ impl Artifacts {
                         .map_err(|_| Error::invalid_argument("download chunk size exceeds i32"))?,
                 },
                 &prepared,
-                registered_method_safety(DOWNLOAD_ARTIFACT),
+                registered_method_policy(DOWNLOAD_ARTIFACT),
                 None,
                 |transport, request| {
                     Box::pin(async move { transport.download_artifact(request).await })

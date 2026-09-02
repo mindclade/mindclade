@@ -1,7 +1,7 @@
 use std::{
     fmt,
     sync::Arc,
-    time::{Duration, Instant, SystemTime, UNIX_EPOCH},
+    time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
 use mindclade_protocols::{
@@ -9,19 +9,21 @@ use mindclade_protocols::{
     internal::workflow::v1::{
         CancelWorkflowRunRequest, CommitWorkflowTransitionRequest, CreateWorkflowDefinitionRequest,
         GetWorkflowDefinitionRequest, GetWorkflowRunRequest, ListWorkflowDefinitionsRequest,
-        ListWorkflowDefinitionsResponse, ListWorkflowRunsRequest, ListWorkflowRunsResponse,
-        StartWorkflowRunRequest, UpdateWorkflowDefinitionRequest, WatchWorkflowRunRequest,
+        ListWorkflowRunsRequest, StartWorkflowRunRequest, UpdateWorkflowDefinitionRequest,
+        WatchWorkflowRunRequest, WatchWorkflowRunResponse,
     },
     job::v1::{LeaseFence, Operation},
     workflow::v1::{WorkflowDefinition, WorkflowRun, WorkflowRunState},
 };
 use prost::Message;
 use sha2::{Digest, Sha256};
-use tonic::codegen::tokio_stream::StreamExt;
 
 use crate::{
-    CallOptions, CancellationToken, ClientCore, Error, SubmitOptions, WorkflowStream,
-    request::PreparedCall, retry::registered_method_safety,
+    CallOptions, CancellationToken, ClientCore, Error, Page, Pages, SubmitOptions, WatchNext,
+    WatchOptions, WatchStream,
+    operations::{NextUpdate, OpenFuture, ResumableWatch, WatchAction, Watcher},
+    request::{PreparedCall, initial_page_token, page_request},
+    retry::registered_method_policy,
 };
 
 const CREATE: &str = "/mindclade.internal.workflow.v1.WorkflowService/CreateWorkflowDefinition";
@@ -54,6 +56,21 @@ impl WorkflowRunFailure {
     #[must_use]
     pub fn into_run(self) -> WorkflowRun {
         self.run
+    }
+}
+
+impl WorkflowRunFailure {
+    /// Projects this durable failure onto the sanitized SDK error hierarchy.
+    ///
+    /// The generated workflow run stays authoritative; only bounded,
+    /// non-secret fields of its structured detail are copied out, and the
+    /// server's own message text is never used.
+    #[must_use]
+    pub fn as_error(&self) -> Error {
+        // A workflow run is not an operation, so no operation identity is
+        // asserted here; one is adopted only if the server's structured detail
+        // names an operation subject itself.
+        Error::operation_failed("", self.run.failure.as_ref())
     }
 }
 
@@ -103,7 +120,32 @@ impl fmt::Display for WorkflowWaitError {
     }
 }
 
-impl std::error::Error for WorkflowWaitError {}
+impl WorkflowWaitError {
+    #[must_use]
+    pub fn workflow_failure(&self) -> Option<&WorkflowRunFailure> {
+        match self {
+            Self::Sdk(_) => None,
+            Self::Workflow(failure) => Some(failure),
+        }
+    }
+
+    #[must_use]
+    pub fn sdk_error(&self) -> Option<&Error> {
+        match self {
+            Self::Sdk(error) => Some(error),
+            Self::Workflow(_) => None,
+        }
+    }
+}
+
+impl std::error::Error for WorkflowWaitError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Self::Sdk(error) => Some(error),
+            Self::Workflow(error) => Some(error),
+        }
+    }
+}
 
 /// Runtime policy for a resumable workflow watch.
 #[derive(Clone, Debug)]
@@ -149,6 +191,15 @@ impl Default for WorkflowWatchOptions {
     }
 }
 
+impl From<WorkflowWatchOptions> for WatchOptions {
+    fn from(value: WorkflowWatchOptions) -> Self {
+        Self::new()
+            .with_call_options(value.call)
+            .with_timeout(value.timeout)
+            .unwrap_or_else(|_| Self::new())
+    }
+}
+
 /// Private workflow lifecycle API backed exclusively by generated contracts.
 #[derive(Clone)]
 pub struct Workflows {
@@ -186,7 +237,7 @@ impl Workflows {
             .unary(
                 request,
                 &prepared,
-                registered_method_safety(CREATE),
+                registered_method_policy(CREATE),
                 Some(&key),
                 |transport, request| {
                     Box::pin(async move { transport.create_workflow_definition(request).await })
@@ -232,7 +283,7 @@ impl Workflows {
             .unary(
                 request,
                 &prepared,
-                registered_method_safety(UPDATE),
+                registered_method_policy(UPDATE),
                 Some(&key),
                 |transport, request| {
                     Box::pin(async move { transport.update_workflow_definition(request).await })
@@ -263,7 +314,7 @@ impl Workflows {
                     if_none_match: if_none_match.into(),
                 },
                 &prepared,
-                registered_method_safety(GET_DEFINITION),
+                registered_method_policy(GET_DEFINITION),
                 None,
                 |transport, request| {
                     Box::pin(async move { transport.get_workflow_definition(request).await })
@@ -280,27 +331,48 @@ impl Workflows {
     /// # Errors
     ///
     /// Returns an error for invalid scope/pagination or RPC failure.
-    pub async fn list_definitions(
+    pub fn list_definitions(
         &self,
         mut request: ListWorkflowDefinitionsRequest,
         options: CallOptions,
-    ) -> Result<ListWorkflowDefinitionsResponse, Error> {
+    ) -> Result<Pages<WorkflowDefinition>, Error> {
         normalize_parent(&self.core, &mut request.parent)?;
         validate_page(request.page.as_ref())?;
-        let prepared = options.prepare(&self.core.config);
-        Ok(self
-            .core
-            .unary(
-                request,
-                &prepared,
-                registered_method_safety(LIST_DEFINITIONS),
-                None,
-                |transport, request| {
-                    Box::pin(async move { transport.list_workflow_definitions(request).await })
-                },
-            )
-            .await?
-            .into_inner())
+        let core = Arc::clone(&self.core);
+        let token = initial_page_token(request.page.as_ref());
+        Ok(Pages::new(
+            move |page_token| {
+                let core = Arc::clone(&core);
+                let options = options.clone();
+                let mut request = request.clone();
+                async move {
+                    request.page = Some(page_request(request.page.as_ref(), page_token));
+                    let prepared = options.prepare(&core.config);
+                    let response = core
+                        .unary(
+                            request,
+                            &prepared,
+                            registered_method_policy(LIST_DEFINITIONS),
+                            None,
+                            |transport, request| {
+                                Box::pin(async move {
+                                    transport.list_workflow_definitions(request).await
+                                })
+                            },
+                        )
+                        .await?;
+                    let request_id = response.request_id().map(str::to_owned);
+                    let response = response.into_inner();
+                    Ok(Page::new(
+                        response.workflow_definitions,
+                        response.page,
+                        response.read_time,
+                        request_id,
+                    ))
+                }
+            },
+            token,
+        ))
     }
 
     /// Starts a generated durable workflow run.
@@ -334,7 +406,7 @@ impl Workflows {
             .unary(
                 request,
                 &prepared,
-                registered_method_safety(START),
+                registered_method_policy(START),
                 Some(&key),
                 |transport, request| {
                     Box::pin(async move { transport.start_workflow_run(request).await })
@@ -365,7 +437,7 @@ impl Workflows {
                     if_none_match: if_none_match.into(),
                 },
                 &prepared,
-                registered_method_safety(GET_RUN),
+                registered_method_policy(GET_RUN),
                 None,
                 |transport, request| {
                     Box::pin(async move { transport.get_workflow_run(request).await })
@@ -382,27 +454,46 @@ impl Workflows {
     /// # Errors
     ///
     /// Returns an error for invalid scope/pagination or RPC failure.
-    pub async fn list_runs(
+    pub fn list_runs(
         &self,
         mut request: ListWorkflowRunsRequest,
         options: CallOptions,
-    ) -> Result<ListWorkflowRunsResponse, Error> {
+    ) -> Result<Pages<WorkflowRun>, Error> {
         normalize_parent(&self.core, &mut request.parent)?;
         validate_page(request.page.as_ref())?;
-        let prepared = options.prepare(&self.core.config);
-        Ok(self
-            .core
-            .unary(
-                request,
-                &prepared,
-                registered_method_safety(LIST_RUNS),
-                None,
-                |transport, request| {
-                    Box::pin(async move { transport.list_workflow_runs(request).await })
-                },
-            )
-            .await?
-            .into_inner())
+        let core = Arc::clone(&self.core);
+        let token = initial_page_token(request.page.as_ref());
+        Ok(Pages::new(
+            move |page_token| {
+                let core = Arc::clone(&core);
+                let options = options.clone();
+                let mut request = request.clone();
+                async move {
+                    request.page = Some(page_request(request.page.as_ref(), page_token));
+                    let prepared = options.prepare(&core.config);
+                    let response = core
+                        .unary(
+                            request,
+                            &prepared,
+                            registered_method_policy(LIST_RUNS),
+                            None,
+                            |transport, request| {
+                                Box::pin(async move { transport.list_workflow_runs(request).await })
+                            },
+                        )
+                        .await?;
+                    let request_id = response.request_id().map(str::to_owned);
+                    let response = response.into_inner();
+                    Ok(Page::new(
+                        response.workflow_runs,
+                        response.page,
+                        response.read_time,
+                        request_id,
+                    ))
+                }
+            },
+            token,
+        ))
     }
 
     /// Records monotonic cancellation under an explicit `ETag`.
@@ -433,7 +524,7 @@ impl Workflows {
             .unary(
                 request,
                 &prepared,
-                registered_method_safety(CANCEL),
+                registered_method_policy(CANCEL),
                 Some(&key),
                 |transport, request| {
                     Box::pin(async move { transport.cancel_workflow_run(request).await })
@@ -488,7 +579,7 @@ impl Workflows {
             .unary(
                 request,
                 &prepared,
-                registered_method_safety(COMMIT),
+                registered_method_policy(COMMIT),
                 Some(&key),
                 |transport, request| {
                     Box::pin(async move { transport.commit_workflow_transition(request).await })
@@ -521,15 +612,34 @@ impl Workflows {
         let name = workflow_name(&self.core, &name.into(), "workflowRuns")?;
         let call = options.call.bounded_by(options.timeout);
         Ok(WorkflowWatch {
-            core: Arc::clone(&self.core),
-            name,
-            prepared: call.prepare(&self.core.config),
-            stream: None,
-            cancellation,
-            last_sequence: after_transition_sequence,
-            consecutive_failures: 0,
-            terminal: false,
+            inner: Watcher::new(
+                Arc::clone(&self.core),
+                call.prepare(&self.core.config),
+                cancellation,
+                WorkflowWatchState {
+                    name,
+                    last_sequence: after_transition_sequence,
+                },
+            ),
         })
+    }
+
+    /// Resumes a watch from a previously acknowledged transition sequence.
+    ///
+    /// This is the uniform long-running-operation resume verb: it is exactly
+    /// [`Workflows::watch`] with the caller's durable cursor made explicit.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error for invalid scope or watch policy.
+    pub fn resume_watch(
+        &self,
+        name: impl Into<String>,
+        after_transition_sequence: u64,
+        options: &WorkflowWatchOptions,
+        cancellation: CancellationToken,
+    ) -> Result<WorkflowWatch, Error> {
+        self.watch(name, after_transition_sequence, options, cancellation)
     }
 
     /// Watches until the generated run reaches terminal success or failure.
@@ -556,14 +666,7 @@ impl Workflows {
 
 /// Durable generated workflow watch with strict identity and sequence checks.
 pub struct WorkflowWatch {
-    core: Arc<ClientCore>,
-    name: String,
-    prepared: PreparedCall,
-    stream: Option<WorkflowStream>,
-    cancellation: CancellationToken,
-    last_sequence: u64,
-    consecutive_failures: u8,
-    terminal: bool,
+    inner: Watcher<WorkflowWatchState>,
 }
 
 impl WorkflowWatch {
@@ -574,107 +677,119 @@ impl WorkflowWatch {
     /// Returns an error for cancellation, deadline, retry exhaustion, identity
     /// mismatch, missing payload, or non-contiguous sequence.
     pub async fn next(&mut self) -> Result<Option<WorkflowRun>, Error> {
-        loop {
-            if self.terminal {
-                return Ok(None);
-            }
-            if self.cancellation.is_cancelled() {
-                return Err(Error::cancelled());
-            }
-            if self.stream.is_none() {
-                match self.connect().await {
-                    Ok(stream) => self.stream = Some(stream),
-                    Err(error) => {
-                        self.retry_or_fail(error).await?;
-                        continue;
-                    }
-                }
-            }
-            let stream = self
-                .stream
-                .as_mut()
-                .ok_or_else(|| Error::protocol("workflow watch stream was not established"))?;
-            let update = tokio::select! { biased; () = self.cancellation.cancelled() => return Err(Error::cancelled()), update = stream.next() => update };
-            match update {
-                None => {
-                    self.stream = None;
-                    self.retry_or_fail(Error::from_status(&tonic::Status::unavailable(
-                        "workflow watch ended before terminal state",
-                    )))
-                    .await?;
-                }
-                Some(Err(status)) => {
-                    self.stream = None;
-                    self.retry_or_fail(Error::from_status(&status)).await?;
-                }
-                Some(Ok(response)) => {
-                    let run = response.workflow_run.ok_or_else(|| {
-                        Error::protocol("workflow watch response omitted its run")
-                    })?;
-                    if run.name != self.name {
-                        return Err(Error::protocol("workflow watch returned a different run"));
-                    }
-                    if run.transition_sequence <= self.last_sequence {
-                        continue;
-                    }
-                    if run.transition_sequence != self.last_sequence.saturating_add(1) {
-                        return Err(Error::protocol(
-                            "workflow watch returned a non-contiguous transition sequence",
-                        ));
-                    }
-                    self.last_sequence = run.transition_sequence;
-                    self.consecutive_failures = 0;
-                    self.terminal = terminal(run.state);
-                    return Ok(Some(run));
-                }
-            }
-        }
+        let Some(response) = self.inner.next().await? else {
+            return Ok(None);
+        };
+        response
+            .workflow_run
+            .map(Some)
+            .ok_or_else(|| Error::protocol("workflow watch response omitted its run"))
     }
 
+    /// The last acknowledged transition sequence. A reconnect resumes here.
     #[must_use]
     pub fn last_sequence(&self) -> u64 {
+        self.inner.cursor()
+    }
+
+    /// Consumes the watcher and yields its runs as a `Stream`.
+    #[must_use]
+    pub fn into_stream(self) -> WatchStream<Self> {
+        WatchStream::new(self)
+    }
+}
+
+impl WatchNext for WorkflowWatch {
+    type Update = WorkflowRun;
+
+    fn next_update(&mut self) -> NextUpdate<'_, Self::Update> {
+        Box::pin(self.next())
+    }
+}
+
+/// Workflow-specific watch rules: stable run identity and strictly contiguous
+/// transition sequences.
+struct WorkflowWatchState {
+    name: String,
+    last_sequence: u64,
+}
+
+impl ResumableWatch for WorkflowWatchState {
+    type Update = WatchWorkflowRunResponse;
+    type Cursor = u64;
+
+    fn route(&self) -> &'static str {
+        WATCH
+    }
+
+    fn label(&self) -> &'static str {
+        "workflow"
+    }
+
+    fn stream_ended_message(&self) -> &'static str {
+        "workflow watch ended before terminal state"
+    }
+
+    fn cursor(&self) -> u64 {
         self.last_sequence
     }
 
-    async fn connect(&self) -> Result<WorkflowStream, Error> {
-        if !matches!(
-            registered_method_safety(WATCH),
-            crate::retry::CallSafety::Safe
-        ) {
-            return Err(Error::protocol("workflow watch safety policy is missing"));
-        }
-        let request = WatchWorkflowRunRequest {
-            name: self.name.clone(),
-            after_transition_sequence: self.last_sequence,
-        };
-        let request = tokio::select! { biased; () = self.cancellation.cancelled() => return Err(Error::cancelled()), result = self.core.request(request, &self.prepared, None) => result? };
-        let remaining = self
-            .prepared
-            .deadline
-            .checked_duration_since(Instant::now())
-            .ok_or_else(Error::deadline_exceeded)?;
-        let response = tokio::select! { biased; () = self.cancellation.cancelled() => return Err(Error::cancelled()), result = tokio::time::timeout(remaining, self.core.transport.watch_workflow_run(request)) => result.map_err(|_| Error::deadline_exceeded())?.map_err(|status| Error::from_status(&status))? };
-        Ok(response.into_inner())
+    fn open(
+        &self,
+        core: &Arc<ClientCore>,
+        prepared: &PreparedCall,
+        attempt: u8,
+    ) -> OpenFuture<Self::Update> {
+        let core = Arc::clone(core);
+        let prepared = prepared.clone();
+        let name = self.name.clone();
+        let after_transition_sequence = self.last_sequence;
+        Box::pin(async move {
+            // `WatchWorkflowRunRequest` deliberately carries no deadline
+            // field; the caller's budget is enforced by the SDK alone.
+            let request = WatchWorkflowRunRequest {
+                name,
+                after_transition_sequence,
+            };
+            let request = core
+                .request(request, &prepared, None, attempt, WATCH)
+                .await?;
+            let remaining = prepared.remaining()?;
+            let response =
+                tokio::time::timeout(remaining, core.transport.watch_workflow_run(request))
+                    .await
+                    .map_err(|_| Error::deadline_exceeded())?
+                    .map_err(|status| Error::from_status(&status))?;
+            Ok(response.into_inner())
+        })
     }
 
-    async fn retry_or_fail(&mut self, error: Error) -> Result<(), Error> {
-        self.consecutive_failures = self.consecutive_failures.saturating_add(1);
-        if !error.is_retryable() || self.consecutive_failures >= self.core.config.retry.max_attempts
-        {
-            return Err(error);
+    fn accept(
+        &mut self,
+        response: WatchWorkflowRunResponse,
+    ) -> Result<WatchAction<WatchWorkflowRunResponse>, Error> {
+        let run = response
+            .workflow_run
+            .as_ref()
+            .ok_or_else(|| Error::protocol("workflow watch response omitted its run"))?;
+        if run.name != self.name {
+            return Err(Error::protocol("workflow watch returned a different run"));
         }
-        let remaining = self
-            .prepared
-            .deadline
-            .checked_duration_since(Instant::now())
-            .ok_or_else(Error::deadline_exceeded)?;
-        let delay = error
-            .retry_after()
-            .unwrap_or_else(|| self.core.backoff(self.consecutive_failures));
-        if delay >= remaining {
-            return Err(Error::deadline_exceeded());
+        if run.transition_sequence <= self.last_sequence {
+            return Ok(WatchAction::Skip);
         }
-        tokio::select! { biased; () = self.cancellation.cancelled() => Err(Error::cancelled()), () = self.core.sleeper.sleep(delay) => Ok(()) }
+        if run.transition_sequence != self.last_sequence.saturating_add(1) {
+            return Err(Error::protocol(
+                "workflow watch returned a non-contiguous transition sequence",
+            ));
+        }
+        let terminal = terminal(run.state);
+        self.last_sequence = run.transition_sequence;
+        if terminal {
+            Ok(WatchAction::Terminal(response))
+        } else {
+            Ok(WatchAction::Emit(response))
+        }
     }
 }
 

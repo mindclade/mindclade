@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# Apply this package's owning formatter.
+#
+# Mirrors the Python half of `just format`, narrowed to the SDK. Ruff owns
+# Python formatting in this repository and its configuration lives at the
+# repository root, so this wrapper deliberately passes a path rather than a
+# configuration of its own: a package-local style would silently diverge from
+# the repository-wide `just format-check` gate.
+#
+# Arguments are forwarded to ruff, so `scripts/format --diff` works.
+
+set -euo pipefail
+
+# shellcheck source=internal/sdk/python/scripts/common.sh
+source "$(dirname -- "${BASH_SOURCE[0]}")/common.sh"
+cd -- "$(repository_root)"
+
+require_tool ruff "install the pinned ruff; see docs/development or run 'nix develop'."
+
+announce "ruff format ${SDK_PACKAGE_DIR}" "$@"
+ruff format "${SDK_PACKAGE_DIR}" "$@"

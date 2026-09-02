@@ -5,6 +5,7 @@ import {
 	type AuditQuery,
 	type AuditQueryPage,
 	AuditQuerySchema,
+	type AuditRecord,
 } from "../../../../protocols/generated/typescript/admin/v1/audit_query_pb.js";
 import type { Project } from "../../../../protocols/generated/typescript/admin/v1/project_pb.js";
 import type { Tenant } from "../../../../protocols/generated/typescript/admin/v1/tenant_pb.js";
@@ -27,9 +28,15 @@ import {
 import type { Operation } from "../../../../protocols/generated/typescript/job/v1/operation_pb.js";
 import type { ClientCore } from "./core.js";
 import { MindcladeError } from "./error.js";
-import { commandContext, prepareCall, type SdkCallOptions, type SubmitOptions } from "./request.js";
+import { listPage, type Page, withPageToken } from "./pagination.js";
+import {
+	commandContext,
+	type ListOptions,
+	prepareCall,
+	type SdkCallOptions,
+	type SubmitOptions,
+} from "./request.js";
 import { invokeUnary } from "./retry.js";
-import { registeredMethodSafety } from "./safety.js";
 
 const GET_TENANT = "/mindclade.internal.admin.v1.AdminService/GetTenant";
 const UPDATE_TENANT = "/mindclade.internal.admin.v1.AdminService/UpdateTenant";
@@ -57,12 +64,8 @@ export class Admin {
 		if (generated.name !== tenantName(this.#core))
 			throw MindcladeError.invalidArgument("tenant name does not match client scope");
 		const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
-		const response = await invokeUnary(
-			this.#core,
-			prepared,
-			registeredMethodSafety(GET_TENANT),
-			undefined,
-			(call) => this.#core.raw.admin.getTenant(generated, call),
+		const response = await invokeUnary(this.#core, prepared, GET_TENANT, undefined, (call) =>
+			this.#core.raw.admin.getTenant(generated, call),
 		);
 		if (response.tenant === undefined)
 			throw MindcladeError.protocol("GetTenant response omitted its tenant");
@@ -91,7 +94,7 @@ export class Admin {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			registeredMethodSafety(UPDATE_TENANT),
+			UPDATE_TENANT,
 			options.idempotencyKey,
 			(call) => this.#core.raw.admin.updateTenant(generated, call),
 		);
@@ -127,7 +130,7 @@ export class Admin {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			registeredMethodSafety(CREATE_PROJECT),
+			CREATE_PROJECT,
 			options.idempotencyKey,
 			(call) => this.#core.raw.admin.createProject(generated, call),
 		);
@@ -142,36 +145,41 @@ export class Admin {
 		if (generated.name !== projectName(this.#core))
 			throw MindcladeError.invalidArgument("project name does not match client scope");
 		const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
-		const response = await invokeUnary(
-			this.#core,
-			prepared,
-			registeredMethodSafety(GET_PROJECT),
-			undefined,
-			(call) => this.#core.raw.admin.getProject(generated, call),
+		const response = await invokeUnary(this.#core, prepared, GET_PROJECT, undefined, (call) =>
+			this.#core.raw.admin.getProject(generated, call),
 		);
 		if (response.project === undefined)
 			throw MindcladeError.protocol("GetProject response omitted its project");
 		return response.project;
 	}
 
+	/** Returns the first page, which also iterates the whole cursor. */
 	async listProjects(
 		request: MessageInitShape<typeof ListProjectsRequestSchema> = {},
-		options: SdkCallOptions = {},
-	): Promise<ListProjectsResponse> {
+		options: ListOptions = {},
+	): Promise<Page<Project, ListProjectsResponse>> {
 		const generated = create(ListProjectsRequestSchema, request);
 		const parent = tenantName(this.#core);
 		if (generated.parent !== "" && generated.parent !== parent)
 			throw MindcladeError.invalidArgument("project list parent does not match client scope");
 		validatePage(generated.page?.pageSize);
 		generated.parent = parent;
-		const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
-		return await invokeUnary(
-			this.#core,
-			prepared,
-			registeredMethodSafety(LIST_PROJECTS),
-			undefined,
-			(call) => this.#core.raw.admin.listProjects(generated, call),
-		);
+		return await listPage({
+			cursor: (response) => response.page?.nextPageToken ?? "",
+			fetch: async (pageToken) => {
+				const paged = withPageToken(ListProjectsRequestSchema, generated, pageToken);
+				const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
+				const response = await invokeUnary(this.#core, prepared, LIST_PROJECTS, undefined, (call) =>
+					this.#core.raw.admin.listProjects(paged, call),
+				);
+				return { requestId: prepared.requestId, response };
+			},
+			items: (response) => response.projects,
+			limits: options.limits,
+			pageSize: generated.page?.pageSize ?? 0,
+			pageToken: generated.page?.pageToken ?? "",
+			signal: options.signal,
+		});
 	}
 
 	async updateProject(
@@ -194,34 +202,41 @@ export class Admin {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			registeredMethodSafety(UPDATE_PROJECT),
+			UPDATE_PROJECT,
 			options.idempotencyKey,
 			(call) => this.#core.raw.admin.updateProject(generated, call),
 		);
 		return requiredOperation(response.operation, "UpdateProject");
 	}
 
+	/** Returns the first page, which also iterates the whole cursor. */
 	async queryAudit(
 		query: MessageInitShape<typeof AuditQuerySchema>,
-		options: SdkCallOptions = {},
-	): Promise<AuditQueryPage> {
+		options: ListOptions = {},
+	): Promise<Page<AuditRecord, AuditQueryPage>> {
 		const generated = create(AuditQuerySchema, query);
 		validateAuditQuery(this.#core, generated);
-		const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
-		const response = await invokeUnary(
-			this.#core,
-			prepared,
-			registeredMethodSafety(QUERY_AUDIT),
-			undefined,
-			(call) =>
-				this.#core.raw.admin.queryAuditRecords(
-					create(QueryAuditRecordsRequestSchema, { query: generated }),
-					call,
-				),
-		);
-		if (response.result === undefined)
-			throw MindcladeError.protocol("QueryAuditRecords response omitted its result");
-		return response.result;
+		return await listPage({
+			cursor: (result) => result.page?.nextPageToken ?? "",
+			fetch: async (pageToken) => {
+				const paged = withPageToken(AuditQuerySchema, generated, pageToken);
+				const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
+				const response = await invokeUnary(this.#core, prepared, QUERY_AUDIT, undefined, (call) =>
+					this.#core.raw.admin.queryAuditRecords(
+						create(QueryAuditRecordsRequestSchema, { query: paged }),
+						call,
+					),
+				);
+				if (response.result === undefined)
+					throw MindcladeError.protocol("QueryAuditRecords response omitted its result");
+				return { requestId: prepared.requestId, response: response.result };
+			},
+			items: (result) => result.records,
+			limits: options.limits,
+			pageSize: generated.page?.pageSize ?? 0,
+			pageToken: generated.page?.pageToken ?? "",
+			signal: options.signal,
+		});
 	}
 
 	async exportAudit(
@@ -238,7 +253,7 @@ export class Admin {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			registeredMethodSafety(EXPORT_AUDIT),
+			EXPORT_AUDIT,
 			options.idempotencyKey,
 			(call) => this.#core.raw.admin.exportAuditRecords(request, call),
 		);
@@ -252,12 +267,8 @@ export class Admin {
 		const generated = create(GetAuditExportRequestSchema, request);
 		generated.name = scopedProjectName(this.#core, generated.name, "auditExports");
 		const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
-		const response = await invokeUnary(
-			this.#core,
-			prepared,
-			registeredMethodSafety(GET_EXPORT),
-			undefined,
-			(call) => this.#core.raw.admin.getAuditExport(generated, call),
+		const response = await invokeUnary(this.#core, prepared, GET_EXPORT, undefined, (call) =>
+			this.#core.raw.admin.getAuditExport(generated, call),
 		);
 		if (response.auditExport === undefined)
 			throw MindcladeError.protocol("GetAuditExport response omitted its export");

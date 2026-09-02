@@ -1,48 +1,148 @@
 import type { CallOptions as ConnectCallOptions } from "@connectrpc/connect";
 
 import type { ClientCore } from "./core.js";
-import { MindcladeError } from "./error.js";
-import { callHeaders, type PreparedCall } from "./request.js";
+import { MindcladeError, type RetryState } from "./error.js";
+import { metadataKeyNames, observeCall } from "./observability.js";
+import { callHeaders, type PreparedCall, type RetryAttemptState } from "./request.js";
+import { registeredMethodSafety } from "./safety.js";
 
-export type RetrySafety = "idempotent" | "safe" | "unsafe";
+/**
+ * Retry eligibility of a single route.
+ *
+ * - `safe`: a read that may be repeated freely.
+ * - `idempotent`: a mutation whose request embeds a `CommandContext`, so the
+ *   control plane collapses duplicates.
+ * - `unsafe`: never retried implicitly; retried only under the explicitly named
+ *   `withUnsafeRetryOfNonIdempotent` override.
+ * - `never`: never retried, override or not.
+ */
+export type RetrySafety = "idempotent" | "never" | "safe" | "unsafe";
 
-export const invokeUnary = async <Result>(
+export type { RetryAttemptState } from "./request.js";
+
+/**
+ * Attempt ceiling for one call. The client policy is the default, a per-request
+ * `maxAttempts` narrows or widens it within the validated bound, and the safety
+ * class decides whether more than one attempt is permitted at all.
+ */
+export const retryableAttempts = (
 	core: ClientCore,
 	prepared: PreparedCall,
 	safety: RetrySafety,
+): number => {
+	if (safety === "never") return 1;
+	const configured = prepared.maxAttempts ?? core.config.retry.maxAttempts;
+	if (safety === "unsafe") {
+		return prepared.unsafeRetryOfNonIdempotent === undefined ? 1 : configured;
+	}
+	return configured;
+};
+
+/**
+ * Issues one unary RPC under the SDK's single retry policy.
+ *
+ * The route is the authority for retry eligibility: the safety class is looked
+ * up here, in one place, so no facade can classify its own RPC and drift from
+ * the table.
+ *
+ * When the core carries a response capture, the headers and trailers of
+ * the attempt that finally answers are recorded there, which is the plumbing
+ * `withResponse()` and the lease-token facades read.
+ *
+ * The prepared deadline is a total budget: every attempt, every backoff, and
+ * the credential acquisition performed by the transport are spent from it. Each
+ * attempt advertises its zero-based position and the budget that remains, and
+ * the failure that finally escapes carries the observable retry outcome.
+ */
+export const invokeUnary = async <Result>(
+	core: ClientCore,
+	prepared: PreparedCall,
+	route: string,
 	idempotencyKey: string | undefined,
 	invoke: (options: ConnectCallOptions) => Promise<Result>,
 ): Promise<Result> => {
+	if (!route.startsWith("/")) {
+		throw MindcladeError.configuration("retry policy requires a fully-qualified RPC route");
+	}
+	const safety = registeredMethodSafety(route);
 	if (safety === "idempotent" && idempotencyKey === undefined) {
 		throw MindcladeError.invalidArgument("idempotent commands require an idempotency key");
 	}
-	const attempts = safety === "unsafe" ? 1 : core.config.retry.maxAttempts;
-	for (let attempt = 1; attempt <= attempts; attempt += 1) {
+	const attempts = retryableAttempts(core, prepared, safety);
+	let issued = 0;
+	let cumulativeDelayMs = 0;
+	for (;;) {
 		ensureActive(core, prepared);
-		const remaining = prepared.deadlineMs - core.runtime.nowMs();
+		const remainingMs = prepared.deadlineMs - core.runtime.nowMs();
+		const position: RetryAttemptState = { attempt: issued, remainingMs };
+		const trailers = new Headers();
+		const capture = core.capture;
+		const headers = callHeaders(core.config, prepared, position, idempotencyKey);
+		const startedAt = core.runtime.nowMs();
+		issued += 1;
 		try {
-			return await invoke({
-				headers: callHeaders(core.config, prepared, idempotencyKey),
-				timeoutMs: remaining,
+			const result = await invoke({
+				headers,
+				timeoutMs: remainingMs,
+				onHeader: (received) => {
+					if (capture !== undefined) capture.headers = received;
+				},
+				onTrailer: (received) => {
+					for (const [name, value] of received) trailers.set(name, value);
+					if (capture !== undefined) capture.trailers = received;
+				},
 				...(prepared.signal === undefined ? {} : { signal: prepared.signal }),
 			});
+			observeCall(core.config, {
+				attempt: issued - 1,
+				code: undefined,
+				elapsedMs: core.runtime.nowMs() - startedAt,
+				metadataKeys: metadataKeyNames(headers, trailers),
+				method: route,
+				requestId: prepared.requestId,
+				status: "ok",
+			});
+			return result;
 		} catch (reason) {
 			const error = MindcladeError.from(
 				reason,
 				prepared.signal,
 				core.runtime.nowMs() >= prepared.deadlineMs,
+				{ clampMs: core.config.retry.maxBackoffMs, trailers },
 			);
-			if (!error.retryable || attempt === attempts) throw error;
-			const delay = retryDelay(core, attempt, error.retryAfterMs);
+			observeCall(core.config, {
+				attempt: issued - 1,
+				code: error.code,
+				elapsedMs: core.runtime.nowMs() - startedAt,
+				metadataKeys: metadataKeyNames(headers, trailers),
+				method: route,
+				requestId: error.requestId ?? prepared.requestId,
+				status: error.kind,
+			});
+			const state = (cause: MindcladeError): RetryState => ({
+				attempts: issued,
+				cause: cause.kind,
+				cumulativeDelayMs,
+			});
+			if (!error.retryable || issued >= attempts) throw error.withRetryState(state(error));
+			const delay = retryDelay(core, issued, error.retryAfterMs);
 			if (delay >= prepared.deadlineMs - core.runtime.nowMs()) {
-				throw MindcladeError.deadlineExceeded();
+				const expired = MindcladeError.deadlineExceeded();
+				throw expired.withRetryState(state(expired));
 			}
 			await core.runtime.sleep(delay, prepared.signal);
+			cumulativeDelayMs += delay;
 		}
 	}
-	throw MindcladeError.protocol("retry loop exited unexpectedly");
 };
 
+/**
+ * Full jitter: uniform in `[0, min(cap, base * 2^n)]`.
+ *
+ * A server-pinned `retry-after-ms` is honoured exactly rather than jittered,
+ * because it is an instruction and not an estimate; it is still clamped to the
+ * configured maximum backoff so a hostile or broken server cannot park a caller.
+ */
 export const retryDelay = (core: ClientCore, attempt: number, retryAfterMs?: number): number => {
 	if (retryAfterMs !== undefined) return Math.min(retryAfterMs, core.config.retry.maxBackoffMs);
 	const exponential = Math.min(

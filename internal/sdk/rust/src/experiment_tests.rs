@@ -307,7 +307,10 @@ async fn all_fourteen_generated_experiment_rpcs_are_routed_through_the_facade() 
         },
         CallOptions::new(),
     )
+    .unwrap()
+    .next_page()
     .await
+    .unwrap()
     .unwrap();
     sdk.update(
         UpdateExperimentCommand {
@@ -376,7 +379,10 @@ async fn all_fourteen_generated_experiment_rpcs_are_routed_through_the_facade() 
         },
         CallOptions::new(),
     )
+    .unwrap()
+    .next_page()
     .await
+    .unwrap()
     .unwrap();
     sdk.transition_study(
         TransitionStudyCommand {
@@ -415,7 +421,10 @@ async fn all_fourteen_generated_experiment_rpcs_are_routed_through_the_facade() 
         },
         CallOptions::new(),
     )
+    .unwrap()
+    .next_page()
     .await
+    .unwrap()
     .unwrap();
     sdk.transition_trial(
         TransitionTrialCommand {
@@ -469,7 +478,6 @@ async fn scope_and_bounded_pagination_fail_before_transport() {
             },
             CallOptions::new()
         )
-        .await
         .is_err()
     );
     assert!(transport.calls.lock().unwrap().is_empty());

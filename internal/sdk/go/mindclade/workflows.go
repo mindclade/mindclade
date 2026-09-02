@@ -2,14 +2,10 @@ package mindclade
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"io"
 	"strings"
-	"sync"
 	"time"
 
-	"google.golang.org/grpc"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 
@@ -97,8 +93,21 @@ func (service *WorkflowService) GetDefinition(ctx context.Context, name, ifNoneM
 	return cloneGenerated(response.GetWorkflowDefinition()), nil
 }
 
+// WorkflowDefinitionPage is one bounded list response plus cursor-scheme traversal. The
+// embedded generated response remains the authoritative model; the wrapper
+// adds only the opaque-cursor mechanics.
+type WorkflowDefinitionPage struct {
+	*internalworkflowv1.ListWorkflowDefinitionsResponse
+	pageBase[*workflowv1.WorkflowDefinition, *WorkflowDefinitionPage]
+}
+
+// Items returns this page's workflow definitions without traversing any further page.
+func (page *WorkflowDefinitionPage) Items() []*workflowv1.WorkflowDefinition {
+	return page.GetWorkflowDefinitions()
+}
+
 // ListDefinitions returns one bounded page and preserves the opaque token.
-func (service *WorkflowService) ListDefinitions(ctx context.Context, request *internalworkflowv1.ListWorkflowDefinitionsRequest, options ...RequestOption) (*internalworkflowv1.ListWorkflowDefinitionsResponse, error) {
+func (service *WorkflowService) ListDefinitions(ctx context.Context, request *internalworkflowv1.ListWorkflowDefinitionsRequest, options ...RequestOption) (*WorkflowDefinitionPage, error) {
 	if !service.configured() {
 		return nil, invalidArgument("workflow service is not configured")
 	}
@@ -121,7 +130,14 @@ func (service *WorkflowService) ListDefinitions(ctx context.Context, request *in
 	if err != nil {
 		return nil, normalizeError(err)
 	}
-	return cloneGenerated(response), nil
+	detached := cloneGenerated(response)
+	page := &WorkflowDefinitionPage{ListWorkflowDefinitionsResponse: detached}
+	page.pageBase = newPage[*workflowv1.WorkflowDefinition](page, detached.GetPage(), paginationLimitsFrom(options), func(ctx context.Context, token string) (*WorkflowDefinitionPage, error) {
+		successor := cloneGenerated(value)
+		successor.Page = pageRequestWithToken(value.GetPage(), token)
+		return service.ListDefinitions(ctx, successor, options...)
+	})
+	return page, nil
 }
 
 // StartRun freezes generated workflow intent and returns a durable Operation.
@@ -162,8 +178,19 @@ func (service *WorkflowService) GetRun(ctx context.Context, name, ifNoneMatch st
 	return cloneGenerated(response.GetWorkflowRun()), nil
 }
 
+// WorkflowRunPage is one bounded list response plus cursor-scheme traversal. The
+// embedded generated response remains the authoritative model; the wrapper
+// adds only the opaque-cursor mechanics.
+type WorkflowRunPage struct {
+	*internalworkflowv1.ListWorkflowRunsResponse
+	pageBase[*workflowv1.WorkflowRun, *WorkflowRunPage]
+}
+
+// Items returns this page's workflow runs without traversing any further page.
+func (page *WorkflowRunPage) Items() []*workflowv1.WorkflowRun { return page.GetWorkflowRuns() }
+
 // ListRuns returns one bounded page and preserves the opaque token.
-func (service *WorkflowService) ListRuns(ctx context.Context, request *internalworkflowv1.ListWorkflowRunsRequest, options ...RequestOption) (*internalworkflowv1.ListWorkflowRunsResponse, error) {
+func (service *WorkflowService) ListRuns(ctx context.Context, request *internalworkflowv1.ListWorkflowRunsRequest, options ...RequestOption) (*WorkflowRunPage, error) {
 	if !service.configured() {
 		return nil, invalidArgument("workflow service is not configured")
 	}
@@ -186,7 +213,14 @@ func (service *WorkflowService) ListRuns(ctx context.Context, request *internalw
 	if err != nil {
 		return nil, normalizeError(err)
 	}
-	return cloneGenerated(response), nil
+	detached := cloneGenerated(response)
+	page := &WorkflowRunPage{ListWorkflowRunsResponse: detached}
+	page.pageBase = newPage[*workflowv1.WorkflowRun](page, detached.GetPage(), paginationLimitsFrom(options), func(ctx context.Context, token string) (*WorkflowRunPage, error) {
+		successor := cloneGenerated(value)
+		successor.Page = pageRequestWithToken(value.GetPage(), token)
+		return service.ListRuns(ctx, successor, options...)
+	})
+	return page, nil
 }
 
 // CancelRun records monotonic cancellation under an explicit ETag.
@@ -337,136 +371,63 @@ func terminalWorkflowRun(state workflowv1.WorkflowRunState) bool {
 	return state == workflowv1.WorkflowRunState_WORKFLOW_RUN_STATE_SUCCEEDED || state == workflowv1.WorkflowRunState_WORKFLOW_RUN_STATE_FAILED || state == workflowv1.WorkflowRunState_WORKFLOW_RUN_STATE_CANCELLED || state == workflowv1.WorkflowRunState_WORKFLOW_RUN_STATE_EXPIRED
 }
 
-// WorkflowWatcher resumes from the last accepted durable transition sequence.
-// Recv is serialized and Close is idempotent.
-type WorkflowWatcher struct {
-	service *WorkflowService
-	ctx     context.Context //nolint:containedctx // A stream watcher owns its cancellable lifecycle context.
-	cancel  context.CancelFunc
-	name    string
-	after   uint64
-	stream  grpc.ServerStreamingClient[internalworkflowv1.WatchWorkflowRunResponse]
-	done    bool
-	mu      sync.Mutex
-}
+// WorkflowWatcher is the workflow spelling of the shared resumable watcher. It
+// yields the generated run revision; the transition sequence is its cursor.
+type WorkflowWatcher = StreamWatcher[*workflowv1.WorkflowRun, uint64]
 
-// Watch starts a cancellation-aware, total-deadline-bounded durable watch.
+// Watch starts a cancellation-aware, total-deadline-bounded durable watch. It
+// reconnects only inside the caller's remaining deadline, resuming from the
+// last accepted transition sequence.
 func (service *WorkflowService) Watch(ctx context.Context, name string, afterTransitionSequence uint64, options ...RequestOption) (*WorkflowWatcher, error) {
 	if !service.configured() || ctx == nil || !scopedResourceName(service.client.config, name, "workflowRuns") {
 		return nil, invalidArgument("context and a scoped workflow run name are required")
 	}
-	watchContext, cancel, err := service.longRunningContext(ctx, options...)
+	watchContext, cancel, err := service.client.longRunningContext(ctx, options...)
 	if err != nil {
 		return nil, err
 	}
-	watcher := &WorkflowWatcher{service: service, ctx: watchContext, cancel: cancel, name: name, after: afterTransitionSequence}
-	if err = watcher.open(); err != nil {
+	watcher, err := newStreamWatcher(watchContext, cancel, service.client.config, afterTransitionSequence, service.watchPolicy(name))
+	if err != nil {
 		cancel()
 		return nil, err
 	}
 	return watcher, nil
 }
 
-func (service *WorkflowService) longRunningContext(ctx context.Context, options ...RequestOption) (context.Context, context.CancelFunc, error) {
-	base := ctx
-	cancel := func() {}
-	if _, ok := ctx.Deadline(); !ok {
-		base, cancel = context.WithTimeout(ctx, service.client.config.DefaultOperationTimeout)
-	}
-	decorated, _, err := withRequestOptions(base, options...)
-	if err != nil {
-		cancel()
-		return nil, nil, err
-	}
-	return longRunningStreamContext(decorated), cancel, nil
+// ResumeWatch continues a workflow watch from a transition sequence a previous
+// process persisted.
+func (service *WorkflowService) ResumeWatch(ctx context.Context, name string, afterTransitionSequence uint64, options ...RequestOption) (*WorkflowWatcher, error) {
+	return service.Watch(ctx, name, afterTransitionSequence, options...)
 }
 
-func (watcher *WorkflowWatcher) connect() error {
-	stream, err := watcher.service.transport.WatchWorkflowRun(watcher.ctx, &internalworkflowv1.WatchWorkflowRunRequest{Name: watcher.name, AfterTransitionSequence: watcher.after})
-	if err != nil {
-		return normalizeError(err)
-	}
-	watcher.stream = stream
-	return nil
-}
-
-func (watcher *WorkflowWatcher) open() error {
-	var err error
-	for attempt := 1; attempt <= watcher.service.client.config.MaxAttempts; attempt++ {
-		if err = watcher.connect(); err == nil {
-			return nil
-		}
-		if !retryableFailure(err) || attempt == watcher.service.client.config.MaxAttempts {
-			return err
-		}
-		if waitErr := waitContext(watcher.ctx, retryDelay(watcher.service.client.config, attempt)); waitErr != nil {
-			return normalizeError(waitErr)
-		}
-	}
-	return err
-}
-
-// Recv returns one cloned generated run revision, reconnecting from the last
-// accepted durable sequence on retryable interruption.
-func (watcher *WorkflowWatcher) Recv() (*workflowv1.WorkflowRun, error) {
-	watcher.mu.Lock()
-	defer watcher.mu.Unlock()
-	if watcher.done {
-		return nil, io.EOF
-	}
-	failures := 0
-	for {
-		response, err := watcher.stream.Recv()
-		if err == nil {
-			run := response.GetWorkflowRun()
-			if run == nil || run.GetName() != watcher.name || run.GetTransitionSequence() != watcher.after+1 {
-				return nil, protocolDataLoss("workflow watch returned an invalid identity or non-contiguous sequence")
+// watchPolicy keeps every workflow-specific rule the previous hand-written
+// watcher enforced: stable run identity and a strictly contiguous transition
+// sequence.
+//
+// WatchWorkflowRunRequest carries no deadline field, so the caller's budget is
+// propagated by the watch context alone rather than restated in the request.
+func (service *WorkflowService) watchPolicy(name string) watchPolicy[*workflowv1.WorkflowRun, uint64] {
+	return watchPolicy[*workflowv1.WorkflowRun, uint64]{
+		open: func(ctx context.Context, cursor uint64) (func() (*workflowv1.WorkflowRun, error), error) {
+			stream, err := service.transport.WatchWorkflowRun(ctx, &internalworkflowv1.WatchWorkflowRunRequest{Name: name, AfterTransitionSequence: cursor})
+			if err != nil {
+				return nil, normalizeError(err)
 			}
-			watcher.after = run.GetTransitionSequence()
-			watcher.done = terminalWorkflowRun(run.GetState())
-			return cloneGenerated(run), nil
-		}
-		if errors.Is(err, io.EOF) && watcher.done {
-			return nil, io.EOF
-		}
-		if watcher.ctx.Err() != nil {
-			return nil, normalizeError(watcher.ctx.Err())
-		}
-		if !errors.Is(err, io.EOF) && !retryableFailure(err) {
-			return nil, normalizeError(err)
-		}
-		failures++
-		if failures >= watcher.service.client.config.MaxAttempts {
-			return nil, normalizeError(err)
-		}
-		if waitErr := waitContext(watcher.ctx, retryDelay(watcher.service.client.config, failures)); waitErr != nil {
-			return nil, normalizeError(waitErr)
-		}
-		if connectErr := watcher.connect(); connectErr != nil {
-			if !retryableFailure(connectErr) {
-				return nil, connectErr
+			return func() (*workflowv1.WorkflowRun, error) {
+				response, receiveErr := stream.Recv()
+				if receiveErr != nil {
+					return nil, receiveErr
+				}
+				return response.GetWorkflowRun(), nil
+			}, nil
+		},
+		accept: func(cursor uint64, run *workflowv1.WorkflowRun) (uint64, bool, error) {
+			if run == nil || run.GetName() != name || run.GetTransitionSequence() != cursor+1 {
+				return cursor, false, protocolDataLoss("workflow watch returned an invalid identity or non-contiguous sequence")
 			}
-			continue
-		}
+			return run.GetTransitionSequence(), terminalWorkflowRun(run.GetState()), nil
+		},
 	}
-}
-
-// Cursor returns the last accepted durable transition sequence.
-func (watcher *WorkflowWatcher) Cursor() uint64 {
-	if watcher == nil {
-		return 0
-	}
-	watcher.mu.Lock()
-	defer watcher.mu.Unlock()
-	return watcher.after
-}
-
-// Close cancels the watch and is safe to call repeatedly.
-func (watcher *WorkflowWatcher) Close() error {
-	if watcher != nil && watcher.cancel != nil {
-		watcher.cancel()
-	}
-	return nil
 }
 
 // Wait consumes a durable watch through terminal truth. Failed, cancelled, and
@@ -490,9 +451,4 @@ func (service *WorkflowService) Wait(ctx context.Context, name string, afterTran
 		}
 		return run, nil
 	}
-}
-
-func retryableFailure(err error) bool {
-	var sdkError *Error
-	return errors.As(err, &sdkError) && sdkError.Retryable || isRetryable(err)
 }

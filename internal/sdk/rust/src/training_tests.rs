@@ -417,11 +417,12 @@ async fn training_facade_covers_all_generated_routes_and_authority_metadata() {
                 },
                 CallOptions::new(),
             )
+            .unwrap()
+            .next_page()
             .await
             .unwrap()
-            .page
             .unwrap()
-            .next_page_token,
+            .next_page_token(),
         "next"
     );
     training
@@ -532,7 +533,10 @@ async fn training_facade_covers_all_generated_routes_and_authority_metadata() {
             },
             CallOptions::new(),
         )
+        .unwrap()
+        .next_page()
         .await
+        .unwrap()
         .unwrap();
     let mut watch = training
         .watch(
@@ -570,4 +574,60 @@ async fn training_facade_covers_all_generated_routes_and_authority_metadata() {
             .iter()
             .all(|value| value.as_deref() == Some("opaque-lease"))
     );
+}
+
+/// The uniform resume verb continues from the caller's durable sequence and
+/// the stream adapter yields exactly the same update.
+#[tokio::test]
+async fn training_resume_watch_continues_from_a_supplied_sequence() {
+    use tonic::codegen::tokio_stream::StreamExt as _;
+
+    let transport = Arc::new(TrainingTransport::default());
+    let client = client(Arc::clone(&transport) as Arc<dyn RpcTransport>);
+    let mut watch = client
+        .training()
+        .resume_watch(
+            RUN,
+            41,
+            &TrainingWatchOptions::new(),
+            CancellationToken::new(),
+        )
+        .unwrap();
+    let update = watch.next().await.unwrap().unwrap();
+    assert_eq!(update.sequence, 42);
+    assert_eq!(watch.last_sequence(), 42);
+    assert!(watch.next().await.unwrap().is_none());
+
+    let mut stream = client
+        .training()
+        .resume_watch(
+            RUN,
+            41,
+            &TrainingWatchOptions::new(),
+            CancellationToken::new(),
+        )
+        .unwrap()
+        .into_stream();
+    let streamed = stream.next().await.unwrap().unwrap();
+    assert_eq!(streamed.sequence, 42);
+    assert!(stream.next().await.is_none());
+}
+
+/// The uniform training wait verb returns the terminal generated run.
+#[tokio::test]
+async fn training_wait_returns_the_terminal_run() {
+    let transport = Arc::new(TrainingTransport::default());
+    let client = client(Arc::clone(&transport) as Arc<dyn RpcTransport>);
+    let run = client
+        .training()
+        .wait(
+            RUN,
+            0,
+            &TrainingWatchOptions::new(),
+            CancellationToken::new(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(run.name, RUN);
+    assert_eq!(run.state, TrainingRunState::Completed as i32);
 }

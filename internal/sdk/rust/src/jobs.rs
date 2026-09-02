@@ -2,15 +2,17 @@ use std::sync::Arc;
 
 use mindclade_protocols::{
     artifact::v1::ArtifactRef,
-    internal::job::v1::{
-        CancelJobRequest, GetJobRequest, ListJobsRequest, ListJobsResponse, RequestJobRequest,
-    },
+    internal::job::v1::{CancelJobRequest, GetJobRequest, ListJobsRequest, RequestJobRequest},
     job::v1::{Job, Operation, RequestJobCommand},
 };
 use prost::Message;
 use sha2::{Digest, Sha256};
 
-use crate::{CallOptions, ClientCore, Error, SubmitOptions, retry::registered_method_safety};
+use crate::{
+    CallOptions, ClientCore, Error, Page, Pages, SubmitOptions,
+    request::{initial_page_token, page_request},
+    retry::registered_method_policy,
+};
 
 const REQUEST: &str = "/mindclade.internal.job.v1.JobService/RequestJob";
 const GET: &str = "/mindclade.internal.job.v1.JobService/GetJob";
@@ -62,7 +64,7 @@ impl Jobs {
                     command: Some(command),
                 },
                 &prepared,
-                registered_method_safety(REQUEST),
+                registered_method_policy(REQUEST),
                 Some(&key),
                 |transport, request| Box::pin(async move { transport.request_job(request).await }),
             )
@@ -112,7 +114,7 @@ impl Jobs {
                     if_none_match,
                 },
                 &prepared,
-                registered_method_safety(GET),
+                registered_method_policy(GET),
                 None,
                 |transport, request| Box::pin(async move { transport.get_job(request).await }),
             )
@@ -133,11 +135,11 @@ impl Jobs {
     ///
     /// Returns an error for invalid scope or query bounds, credentials,
     /// transport failure, or a response outside the configured project.
-    pub async fn list(
+    pub fn list(
         &self,
         mut request: ListJobsRequest,
         options: CallOptions,
-    ) -> Result<ListJobsResponse, Error> {
+    ) -> Result<Pages<Job>, Error> {
         let parent = project_name(&self.core);
         if (!request.parent.is_empty() && request.parent != parent)
             || request
@@ -152,24 +154,44 @@ impl Jobs {
             ));
         }
         request.parent = parent;
-        let prepared = options.prepare(&self.core.config);
-        let response = self
-            .core
-            .unary(
-                request,
-                &prepared,
-                registered_method_safety(LIST),
-                None,
-                |transport, request| Box::pin(async move { transport.list_jobs(request).await }),
-            )
-            .await?
-            .into_inner();
-        if response.jobs.iter().any(|job| !valid_job(&self.core, job)) {
-            return Err(Error::protocol(
-                "ListJobs response escaped configured scope",
-            ));
-        }
-        Ok(response)
+        let core = Arc::clone(&self.core);
+        let token = initial_page_token(request.page.as_ref());
+        Ok(Pages::new(
+            move |page_token| {
+                let core = Arc::clone(&core);
+                let options = options.clone();
+                let mut request = request.clone();
+                async move {
+                    request.page = Some(page_request(request.page.as_ref(), page_token));
+                    let prepared = options.prepare(&core.config);
+                    let response = core
+                        .unary(
+                            request,
+                            &prepared,
+                            registered_method_policy(LIST),
+                            None,
+                            |transport, request| {
+                                Box::pin(async move { transport.list_jobs(request).await })
+                            },
+                        )
+                        .await?;
+                    let request_id = response.request_id().map(str::to_owned);
+                    let response = response.into_inner();
+                    if response.jobs.iter().any(|job| !valid_job(&core, job)) {
+                        return Err(Error::protocol(
+                            "ListJobs response escaped configured scope",
+                        ));
+                    }
+                    Ok(Page::new(
+                        response.jobs,
+                        response.page,
+                        response.read_time,
+                        request_id,
+                    ))
+                }
+            },
+            token,
+        ))
     }
 
     /// Records monotonic job cancellation under an `ETag` precondition.
@@ -207,7 +229,7 @@ impl Jobs {
             .unary(
                 request,
                 &prepared,
-                registered_method_safety(CANCEL),
+                registered_method_policy(CANCEL),
                 Some(&key),
                 |transport, request| Box::pin(async move { transport.cancel_job(request).await }),
             )

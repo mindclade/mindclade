@@ -10,14 +10,18 @@ use mindclade_protocols::{
     internal::evaluation::v1::{
         CancelEvaluationRunRequest, CommitEvaluationResultRequest, CreateEvaluationRunRequest,
         CreatePromotionDecisionRequest, GetEvaluationResultRequest, GetEvaluationRunRequest,
-        GetPromotionDecisionRequest, ListEvaluationRunsRequest, ListEvaluationRunsResponse,
+        GetPromotionDecisionRequest, ListEvaluationRunsRequest,
     },
     job::v1::{LeaseFence, Operation},
 };
 use prost::Message;
 use sha2::{Digest, Sha256};
 
-use crate::{CallOptions, ClientCore, Error, SubmitOptions, retry::registered_method_safety};
+use crate::{
+    CallOptions, ClientCore, Error, Page, Pages, SubmitOptions,
+    request::{initial_page_token, page_request},
+    retry::registered_method_policy,
+};
 
 const CREATE: &str = "/mindclade.internal.evaluation.v1.EvaluationService/CreateEvaluationRun";
 const GET_RUN: &str = "/mindclade.internal.evaluation.v1.EvaluationService/GetEvaluationRun";
@@ -91,7 +95,7 @@ impl Evaluations {
             .unary(
                 request,
                 &prepared,
-                registered_method_safety(CREATE),
+                registered_method_policy(CREATE),
                 Some(&key),
                 |transport, request| {
                     Box::pin(async move { transport.create_evaluation_run(request).await })
@@ -125,7 +129,7 @@ impl Evaluations {
                     if_none_match: if_none_match.into(),
                 },
                 &prepared,
-                registered_method_safety(GET_RUN),
+                registered_method_policy(GET_RUN),
                 None,
                 |transport, request| {
                     Box::pin(async move { transport.get_evaluation_run(request).await })
@@ -150,11 +154,11 @@ impl Evaluations {
     ///
     /// Returns an error when the requested scope or page size is invalid, or
     /// when authentication or transport fails.
-    pub async fn list_runs(
+    pub fn list_runs(
         &self,
         mut request: ListEvaluationRunsRequest,
         options: CallOptions,
-    ) -> Result<ListEvaluationRunsResponse, Error> {
+    ) -> Result<Pages<EvaluationRun>, Error> {
         let parent = project_name(&self.core);
         if (!request.parent.is_empty() && request.parent != parent)
             || request
@@ -167,20 +171,41 @@ impl Evaluations {
             ));
         }
         request.parent = parent;
-        let prepared = options.prepare(&self.core.config);
-        Ok(self
-            .core
-            .unary(
-                request,
-                &prepared,
-                registered_method_safety(LIST),
-                None,
-                |transport, request| {
-                    Box::pin(async move { transport.list_evaluation_runs(request).await })
-                },
-            )
-            .await?
-            .into_inner())
+        let core = Arc::clone(&self.core);
+        let token = initial_page_token(request.page.as_ref());
+        Ok(Pages::new(
+            move |page_token| {
+                let core = Arc::clone(&core);
+                let options = options.clone();
+                let mut request = request.clone();
+                async move {
+                    request.page = Some(page_request(request.page.as_ref(), page_token));
+                    let prepared = options.prepare(&core.config);
+                    let response = core
+                        .unary(
+                            request,
+                            &prepared,
+                            registered_method_policy(LIST),
+                            None,
+                            |transport, request| {
+                                Box::pin(
+                                    async move { transport.list_evaluation_runs(request).await },
+                                )
+                            },
+                        )
+                        .await?;
+                    let request_id = response.request_id().map(str::to_owned);
+                    let response = response.into_inner();
+                    Ok(Page::new(
+                        response.evaluation_runs,
+                        response.page,
+                        response.read_time,
+                        request_id,
+                    ))
+                }
+            },
+            token,
+        ))
     }
 
     /// Records monotonic cancellation under optimistic concurrency.
@@ -213,7 +238,7 @@ impl Evaluations {
             .unary(
                 request,
                 &prepared,
-                registered_method_safety(CANCEL),
+                registered_method_policy(CANCEL),
                 Some(&key),
                 |transport, request| {
                     Box::pin(async move { transport.cancel_evaluation_run(request).await })
@@ -284,7 +309,7 @@ impl Evaluations {
             .unary(
                 request,
                 &prepared,
-                registered_method_safety(COMMIT),
+                registered_method_policy(COMMIT),
                 Some(&key),
                 |transport, request| {
                     Box::pin(async move { transport.commit_evaluation_result(request).await })
@@ -325,7 +350,7 @@ impl Evaluations {
             .unary(
                 GetEvaluationResultRequest { name: name.clone() },
                 &prepared,
-                registered_method_safety(GET_RESULT),
+                registered_method_policy(GET_RESULT),
                 None,
                 |transport, request| {
                     Box::pin(async move { transport.get_evaluation_result(request).await })
@@ -424,7 +449,7 @@ impl Evaluations {
             .unary(
                 request,
                 &prepared,
-                registered_method_safety(CREATE_DECISION),
+                registered_method_policy(CREATE_DECISION),
                 Some(&key),
                 |transport, request| {
                     Box::pin(async move { transport.create_promotion_decision(request).await })
@@ -454,7 +479,7 @@ impl Evaluations {
             .unary(
                 GetPromotionDecisionRequest { name: name.clone() },
                 &prepared,
-                registered_method_safety(GET_DECISION),
+                registered_method_policy(GET_DECISION),
                 None,
                 |transport, request| {
                     Box::pin(async move { transport.get_promotion_decision(request).await })

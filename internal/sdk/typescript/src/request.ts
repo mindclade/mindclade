@@ -2,19 +2,63 @@ import { timestampFromDate } from "@bufbuild/protobuf/wkt";
 
 import type { CommandContext } from "../../../../protocols/generated/typescript/common/v1/command_context_pb.js";
 import type { ClientConfig } from "./config.js";
-import { validateMetadata } from "./config.js";
+import { validateAttempts, validateMetadata } from "./config.js";
 import { MindcladeError } from "./error.js";
+import type { PaginationLimits } from "./pagination.js";
+import { platformMetadata } from "./platform.js";
 import type { Runtime } from "./runtime.js";
+
+export type {
+	PaginationLimits,
+	PaginationOptions,
+	PaginationPage,
+} from "./pagination.js";
+export { paginate } from "./pagination.js";
+
+/**
+ * Explicit, named permission to retry an RPC the safety table classifies as
+ * non-idempotent. There is deliberately no bare boolean: the only way to obtain
+ * the token is {@link withUnsafeRetryOfNonIdempotent}, which forces the caller
+ * to record why duplicate execution is acceptable for their call.
+ */
+export interface UnsafeRetryOfNonIdempotent {
+	readonly justification: string;
+	readonly acknowledged: true;
+}
+
+/**
+ * Mints the named override that allows an `unsafe` RPC to be retried.
+ * Routes pinned by `isNeverRetryable` ignore the token entirely.
+ */
+export const withUnsafeRetryOfNonIdempotent = (
+	justification: string,
+): UnsafeRetryOfNonIdempotent => {
+	validateJustification(justification);
+	return Object.freeze({ acknowledged: true as const, justification });
+};
 
 export interface SdkCallOptions {
 	readonly requestId?: string;
 	readonly traceId?: string;
+	/** Total budget across every attempt, backoff, and credential acquisition. */
 	readonly timeoutMs?: number;
 	readonly signal?: AbortSignal;
+	/** Per-request attempt ceiling, one to eight, overriding the client policy. */
+	readonly maxAttempts?: number;
+	/** Named permission to retry a non-idempotent RPC. Never a bare boolean. */
+	readonly unsafeRetryOfNonIdempotent?: UnsafeRetryOfNonIdempotent;
 	/** Raw fenced worker identity carried only as transport metadata. */
 	readonly workerId?: string;
 	/** Sensitive lease capability carried only as transport metadata. */
 	readonly leaseToken?: string;
+}
+
+/** Per-attempt retry position advertised to the server on every attempt. */
+export interface RetryAttemptState {
+	/** Zero-based index of the attempt being issued. */
+	readonly attempt: number;
+	/** Milliseconds left in the caller's total budget when the attempt starts. */
+	readonly remainingMs: number;
 }
 
 export interface SubmitOptions extends SdkCallOptions {
@@ -29,24 +73,10 @@ export interface WaitOptions extends SdkCallOptions {
 	readonly pollIntervalMs?: number;
 }
 
-export interface PaginationLimits {
-	/** Defaults to 100 and may not exceed 1,000. */
-	readonly maxPages?: number;
-	/** Defaults to 10,000 and may not exceed 1,000,000. */
-	readonly maxItems?: number;
-}
-
-export interface PaginationOptions {
-	/** Opaque token passed to the first request without normalization. */
-	readonly initialPageToken?: string;
-	readonly limits?: PaginationLimits;
-	/** Also pass this signal to the facade call made by `fetchPage`. */
-	readonly signal?: AbortSignal;
-}
-
-export interface PaginationPage<T> {
-	readonly items: readonly T[];
-	readonly nextPageToken: string;
+/** Options accepted by every auto-paginating list method. */
+export interface ListOptions extends SdkCallOptions {
+	/** Page and item budgets for the transparent traversal. */
+	readonly limits?: PaginationLimits | undefined;
 }
 
 export interface PreparedCall {
@@ -54,6 +84,8 @@ export interface PreparedCall {
 	readonly traceId: string;
 	readonly deadlineMs: number;
 	readonly signal: AbortSignal | undefined;
+	readonly maxAttempts: number | undefined;
+	readonly unsafeRetryOfNonIdempotent: UnsafeRetryOfNonIdempotent | undefined;
 	readonly workerId: string | undefined;
 	readonly leaseToken: string | undefined;
 }
@@ -71,11 +103,17 @@ export const prepareCall = (
 	validateMetadata("trace ID", traceId, true);
 	if (options.workerId !== undefined) validateMetadata("worker ID", options.workerId, true);
 	if (options.leaseToken !== undefined) validateLeaseToken(options.leaseToken);
+	if (options.maxAttempts !== undefined) validateAttempts("call max attempts", options.maxAttempts);
+	if (options.unsafeRetryOfNonIdempotent !== undefined) {
+		validateUnsafeRetryOverride(options.unsafeRetryOfNonIdempotent);
+	}
 	return {
 		requestId,
 		traceId,
 		deadlineMs: runtime.nowMs() + timeoutMs,
 		signal: options.signal,
+		maxAttempts: options.maxAttempts,
+		unsafeRetryOfNonIdempotent: options.unsafeRetryOfNonIdempotent,
 		workerId: options.workerId,
 		leaseToken: options.leaseToken,
 	};
@@ -84,15 +122,18 @@ export const prepareCall = (
 export const callHeaders = (
 	config: ClientConfig,
 	call: PreparedCall,
+	retry: RetryAttemptState,
 	idempotencyKey?: string,
 ): Headers => {
 	const headers = new Headers({
-		"x-mindclade-sdk": "mindclade-internal-typescript-sdk/0.1",
+		"x-mindclade-sdk": platformMetadata(config.omitPlatformMetadata),
 		"x-mindclade-expected-tenant": config.identity.tenantId,
 		"x-mindclade-expected-project": config.identity.projectId,
 		"x-mindclade-expected-principal": config.identity.principalId,
 		"x-request-id": call.requestId,
 		"x-trace-id": call.traceId,
+		"x-mindclade-retry-count": String(Math.max(0, Math.floor(retry.attempt))),
+		"x-mindclade-timeout-ms": String(Math.max(1, Math.floor(retry.remainingMs))),
 	});
 	if (idempotencyKey !== undefined) {
 		validateMetadata("idempotency key", idempotencyKey, true);
@@ -140,64 +181,35 @@ export const validateDuration = (name: string, value: number): void => {
 	}
 };
 
-/**
- * Lazily traverses facade list calls while preserving opaque page tokens.
- * Repeated cursors and caller budgets fail explicitly, so a partial traversal
- * is never presented as complete.
- */
-export async function* paginate<T>(
-	fetchPage: (pageToken: string) => Promise<PaginationPage<T>>,
-	options: PaginationOptions = {},
-): AsyncGenerator<T, void, undefined> {
-	if (typeof fetchPage !== "function")
-		throw MindcladeError.invalidArgument("pagination fetch function is required");
-	const maxPages = paginationBound("pagination max pages", options.limits?.maxPages ?? 100, 1_000);
-	const maxItems = paginationBound(
-		"pagination max items",
-		options.limits?.maxItems ?? 10_000,
-		1_000_000,
-	);
-	const initialPageToken = options.initialPageToken ?? "";
-	if (typeof initialPageToken !== "string")
-		throw MindcladeError.invalidArgument("initial page token must be text");
-	let token = initialPageToken;
-	const seen = new Set<string>(token === "" ? [] : [token]);
-	let pages = 0;
-	let items = 0;
-	for (;;) {
-		if (options.signal?.aborted === true) throw MindcladeError.cancelled();
-		if (pages >= maxPages)
-			throw MindcladeError.paginationLimit("automatic pagination exceeded its page budget");
-		if (items >= maxItems)
-			throw MindcladeError.paginationLimit("automatic pagination exceeded its item budget");
-		const page = await fetchPage(token);
-		pages += 1;
-		if (!Array.isArray(page.items) || typeof page.nextPageToken !== "string")
-			throw MindcladeError.protocol("list response returned an invalid pagination page");
-		if (page.nextPageToken !== "" && seen.has(page.nextPageToken))
-			throw MindcladeError.protocol("list response repeated an opaque page token");
-		if (page.nextPageToken !== "") seen.add(page.nextPageToken);
-		for (const item of page.items) {
-			if (items >= maxItems)
-				throw MindcladeError.paginationLimit("automatic pagination exceeded its item budget");
-			items += 1;
-			yield item;
-		}
-		if (page.nextPageToken === "") return;
-		token = page.nextPageToken;
-	}
-}
-
-const paginationBound = (name: string, value: number, maximum: number): number => {
-	if (!Number.isInteger(value) || value < 1 || value > maximum)
-		throw MindcladeError.invalidArgument(`${name} must be an integer in [1, ${maximum}]`);
-	return value;
-};
-
 const checkedOptional = (name: string, value: string | undefined): string => {
 	if (value === undefined) return "";
 	validateMetadata(name, value, true);
 	return value;
+};
+
+const validateUnsafeRetryOverride = (override: UnsafeRetryOfNonIdempotent): void => {
+	if (override.acknowledged !== true) {
+		throw MindcladeError.invalidArgument(
+			"unsafe retry of a non-idempotent RPC must be acknowledged explicitly",
+		);
+	}
+	validateJustification(override.justification);
+};
+
+/** Justifications are prose, so a single space is allowed where metadata forbids it. */
+const validateJustification = (value: string): void => {
+	if (
+		value.length === 0 ||
+		value.length > 256 ||
+		[...value].some((character) => {
+			const code = character.charCodeAt(0);
+			return code < 0x20 || code > 0x7e;
+		})
+	) {
+		throw MindcladeError.invalidArgument(
+			"unsafe retry justification must contain one to 256 printable ASCII characters",
+		);
+	}
 };
 
 const validateLeaseToken = (value: string): void => {

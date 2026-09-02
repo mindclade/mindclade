@@ -386,7 +386,10 @@ async fn workflow_and_approval_facades_cover_all_generated_rpcs() {
             },
             CallOptions::new(),
         )
+        .unwrap()
+        .next_page()
         .await
+        .unwrap()
         .unwrap();
     let workflow_run = run(0, WorkflowRunState::Created);
     let mut workflow_run = WorkflowRun {
@@ -419,7 +422,10 @@ async fn workflow_and_approval_facades_cover_all_generated_rpcs() {
     client
         .workflows()
         .list_runs(ListWorkflowRunsRequest::default(), CallOptions::new())
+        .unwrap()
+        .next_page()
         .await
+        .unwrap()
         .unwrap();
     client
         .workflows()
@@ -487,7 +493,10 @@ async fn workflow_and_approval_facades_cover_all_generated_rpcs() {
     client
         .approvals()
         .list(ListApprovalRequestsRequest::default(), CallOptions::new())
+        .unwrap()
+        .next_page()
         .await
+        .unwrap()
         .unwrap();
     client
         .approvals()
@@ -587,5 +596,44 @@ async fn workflow_wait_returns_typed_generated_failure_and_cancellation_wins() {
         .unwrap_err();
     assert!(
         matches!(error, crate::WorkflowWaitError::Sdk(value) if value.kind() == crate::ErrorKind::Cancelled)
+    );
+}
+
+/// The workflow wait error exposes the same accessors and error source as the
+/// operation wait error, so the two long-running domains behave alike.
+#[tokio::test]
+async fn workflow_wait_error_exposes_its_source_and_accessors() {
+    let transport = Arc::new(WorkflowTransport::default());
+    transport
+        .terminal_state
+        .store(WorkflowRunState::Failed as i32, Ordering::SeqCst);
+    let client = client(Arc::clone(&transport));
+    let error = client
+        .workflows()
+        .wait(
+            RUN,
+            0,
+            WorkflowWatchOptions::new(),
+            CancellationToken::new(),
+        )
+        .await
+        .unwrap_err();
+    let failure = error.workflow_failure().unwrap();
+    assert_eq!(failure.run().state, WorkflowRunState::Failed as i32);
+    assert!(error.sdk_error().is_none());
+    assert!(std::error::Error::source(&error).is_some());
+    assert!(!format!("{failure:?}").contains("ErrorDetail"));
+
+    let cancellation = CancellationToken::new();
+    cancellation.cancel();
+    let error = client
+        .workflows()
+        .wait(RUN, 0, WorkflowWatchOptions::new(), cancellation)
+        .await
+        .unwrap_err();
+    assert!(error.workflow_failure().is_none());
+    assert_eq!(
+        error.sdk_error().map(crate::Error::kind),
+        Some(crate::ErrorKind::Cancelled)
     );
 }

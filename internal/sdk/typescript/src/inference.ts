@@ -1,7 +1,6 @@
 import { createHash } from "node:crypto";
 import { clone, create, type MessageInitShape, toBinary } from "@bufbuild/protobuf";
 import { timestampFromDate } from "@bufbuild/protobuf/wkt";
-import { Code, ConnectError } from "@connectrpc/connect";
 
 import {
 	type InferenceRequest,
@@ -31,8 +30,8 @@ import {
 import type { ClientCore } from "./core.js";
 import { MindcladeError } from "./error.js";
 import {
-	callHeaders,
 	commandContext,
+	type PreparedCall,
 	prepareCall,
 	type SdkCallOptions,
 	type SubmitOptions,
@@ -40,14 +39,14 @@ import {
 	validateResource,
 	type WaitOptions,
 } from "./request.js";
-import { ensureActive, invokeUnary, retryDelay } from "./retry.js";
-import { registeredMethodSafety } from "./safety.js";
+import { invokeUnary } from "./retry.js";
+import { DEFAULT_WAIT_TIMEOUT_MS, type WatchSource, watchStream } from "./watch.js";
 
-const DEFAULT_WAIT_TIMEOUT_MS = 30 * 60 * 1_000;
 const SUBMIT = "/mindclade.internal.inference.v1.InferenceService/SubmitInference";
 const GET_REQUEST = "/mindclade.internal.inference.v1.InferenceService/GetInferenceRequest";
 const GET_RESULT = "/mindclade.internal.inference.v1.InferenceService/GetInferenceResult";
 const COMMIT_RESULT = "/mindclade.internal.inference.v1.InferenceService/CommitInferenceResult";
+const WATCH = "/mindclade.internal.inference.v1.InferenceService/WatchInference";
 
 /** Generated-type-only bounded inference façade. */
 export class Inference {
@@ -79,7 +78,7 @@ export class Inference {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			registeredMethodSafety(SUBMIT),
+			SUBMIT,
 			options.idempotencyKey,
 			(call) => this.#core.raw.inference.submitInference(request, call),
 		);
@@ -95,12 +94,8 @@ export class Inference {
 		validateRequired("inference request name", name);
 		const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
 		const request = create(GetInferenceRequestRequestSchema, { name });
-		const response = await invokeUnary(
-			this.#core,
-			prepared,
-			registeredMethodSafety(GET_REQUEST),
-			undefined,
-			(call) => this.#core.raw.inference.getInferenceRequest(request, call),
+		const response = await invokeUnary(this.#core, prepared, GET_REQUEST, undefined, (call) =>
+			this.#core.raw.inference.getInferenceRequest(request, call),
 		);
 		if (response.inferenceRequest === undefined) {
 			throw MindcladeError.protocol("GetInferenceRequest response omitted its request");
@@ -116,12 +111,8 @@ export class Inference {
 		validateRequired("inference operation name", operationName);
 		const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
 		const request = create(GetInferenceResultRequestSchema, { operationName });
-		const response = await invokeUnary(
-			this.#core,
-			prepared,
-			registeredMethodSafety(GET_RESULT),
-			undefined,
-			(call) => this.#core.raw.inference.getInferenceResult(request, call),
+		const response = await invokeUnary(this.#core, prepared, GET_RESULT, undefined, (call) =>
+			this.#core.raw.inference.getInferenceResult(request, call),
 		);
 		if (response.result === undefined || response.operation === undefined) {
 			throw MindcladeError.protocol("GetInferenceResult response omitted its result or operation");
@@ -160,7 +151,7 @@ export class Inference {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			registeredMethodSafety(COMMIT_RESULT),
+			COMMIT_RESULT,
 			options.idempotencyKey,
 			(call) => this.#core.raw.inference.commitInferenceResult(request, call),
 		);
@@ -183,7 +174,7 @@ export class Inference {
 		options: WaitOptions = {},
 	): AsyncGenerator<InferenceStreamMessage> {
 		validateRequired("inference operation name", operationName);
-		let durableCursor =
+		const durableCursor =
 			cursor === undefined ? undefined : clone(InferenceStreamCursorSchema, cursor);
 		validateCursor(durableCursor);
 		const waitTimeoutMs = options.waitTimeoutMs ?? DEFAULT_WAIT_TIMEOUT_MS;
@@ -192,47 +183,58 @@ export class Inference {
 			...options,
 			timeoutMs: waitTimeoutMs,
 		});
-		let failures = 0;
-		while (true) {
-			ensureActive(this.#core, prepared);
-			const request = create(WatchInferenceRequestSchema, {
-				operationName,
-				...(durableCursor === undefined ? {} : { cursor: durableCursor }),
-				deadline: timestampFromDate(new Date(prepared.deadlineMs)),
-			});
-			try {
-				const stream = this.#core.raw.inference.watchInference(request, {
-					headers: callHeaders(this.#core.config, prepared),
-					timeoutMs: prepared.deadlineMs - this.#core.runtime.nowMs(),
-					...(prepared.signal === undefined ? {} : { signal: prepared.signal }),
-				});
-				for await (const response of stream) {
-					ensureActive(this.#core, prepared);
-					if (response.message === undefined) {
-						throw MindcladeError.protocol("inference watch response omitted its message");
-					}
-					const message = clone(InferenceStreamMessageSchema, response.message);
-					durableCursor = acceptMessage(message, durableCursor);
-					failures = 0;
-					yield message;
-					if (message.update.case === "finalResult" || message.update.case === "failure") return;
+		yield* watchStream(
+			this.#core,
+			prepared,
+			this.#watchSource(operationName, prepared),
+			durableCursor,
+		);
+	}
+
+	/**
+	 * Resumes a stream from a durable cursor the server already issued.
+	 *
+	 * The cursor is mandatory here, which is the whole point: a caller that
+	 * holds one wants continuation, not a replay from the beginning.
+	 */
+	async *resumeWatch(
+		operationName: string,
+		cursor: InferenceStreamCursor,
+		options: WaitOptions = {},
+	): AsyncGenerator<InferenceStreamMessage> {
+		yield* this.watch(operationName, cursor, options);
+	}
+
+	#watchSource(
+		operationName: string,
+		prepared: PreparedCall,
+	): WatchSource<
+		InferenceStreamMessage,
+		InferenceStreamCursor | undefined,
+		{ readonly message?: InferenceStreamMessage }
+	> {
+		return {
+			accept: (response, cursor) => {
+				if (response.message === undefined) {
+					throw MindcladeError.protocol("inference watch response omitted its message");
 				}
-				throw new ConnectError("stream ended before terminal inference truth", Code.Unavailable);
-			} catch (reason) {
-				const error = MindcladeError.from(
-					reason,
-					prepared.signal,
-					this.#core.runtime.nowMs() >= prepared.deadlineMs,
-				);
-				failures += 1;
-				if (!error.retryable || failures >= this.#core.config.retry.maxAttempts) throw error;
-				const delay = retryDelay(this.#core, failures, error.retryAfterMs);
-				if (delay >= prepared.deadlineMs - this.#core.runtime.nowMs()) {
-					throw MindcladeError.deadlineExceeded();
-				}
-				await this.#core.runtime.sleep(delay, prepared.signal);
-			}
-		}
+				const message = clone(InferenceStreamMessageSchema, response.message);
+				return { cursor: acceptMessage(message, cursor), delivery: "yield", value: message };
+			},
+			incomplete: "stream ended before terminal inference truth",
+			open: (cursor, call) =>
+				this.#core.raw.inference.watchInference(
+					create(WatchInferenceRequestSchema, {
+						operationName,
+						...(cursor === undefined ? {} : { cursor }),
+						deadline: timestampFromDate(new Date(prepared.deadlineMs)),
+					}),
+					call,
+				),
+			route: WATCH,
+			terminal: (message) =>
+				message.update.case === "finalResult" || message.update.case === "failure",
+		};
 	}
 
 	/** Waits for durable terminal stream truth and then reads the immutable

@@ -9,6 +9,7 @@ import json
 import re
 import subprocess
 import sys
+import tempfile
 from collections.abc import Sequence
 from pathlib import Path
 from typing import Any, cast
@@ -450,6 +451,90 @@ def self_test() -> None:
             raise
         if mode != "write" or write is None:
             raise AssertionError(f"cache mode {mode} activated without complete evidence")
+
+    readiness_self_test()
+
+
+def readiness_self_test() -> None:
+    """Prove the readiness gate accepts an exact report and rejects tampering.
+
+    Every rejection case is re-sealed with a freshly computed self-digest so it
+    isolates exactly one guard; otherwise the digest check masks the others and
+    the gate can silently lose a rule.
+    """
+
+    from evidence_bundle import validate_check_report
+
+    source_revision = "c" * 40
+
+    def seal(payload: dict[str, object]) -> dict[str, object]:
+        body = {key: value for key, value in payload.items() if key != "report_digest"}
+        encoded = (json.dumps(body, sort_keys=True, separators=(",", ":")) + "\n").encode()
+        return {**body, "report_digest": "sha256:" + hashlib.sha256(encoded).hexdigest()}
+
+    criterion: dict[str, object] = {
+        "bazel_targets": ["//protocols:protobuf_compatibility_test"],
+        "criterion": "Preserve user work \u2014 archive predecessor authority.",
+        "criterion_id": "adapted-execution-checklist-01",
+        "owner": "contract-governance",
+        "qualification_class": "source",
+        "stage": "program",
+        "status": "evidence-present-unverified",
+    }
+    report = seal(
+        {
+            "criteria": [criterion],
+            "criterion_map_digest": "sha256:" + "1" * 64,
+            "plan_digest": "sha256:" + "2" * 64,
+            "ratification_authorized": False,
+            "schema_version": "mindclade.authoritative-integration-readiness/v2",
+            "source_revision": source_revision,
+            "summary": {"evidence-present-unverified": 1},
+        }
+    )
+
+    def check(payload: object) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "authoritative-integration-readiness.v2.json"
+            path.write_text(
+                json.dumps(payload, sort_keys=True, separators=(",", ":")) + "\n",
+                encoding="utf-8",
+            )
+            validate_check_report(
+                "authoritative-integration-readiness",
+                path,
+                source_revision,
+                pipeline_definition_revision="d" * 40,
+                pipeline_class="protected",
+                build_id="00000000-0000-4000-8000-000000000000",
+                context={},
+            )
+
+    check(report)
+
+    missing_target = {key: value for key, value in criterion.items() if key != "bazel_targets"}
+    unknown_class = {**criterion, "qualification_class": "protected"}
+    rejections: list[tuple[str, dict[str, object]]] = [
+        ("wrong source revision", seal({**report, "source_revision": "e" * 40})),
+        ("self-asserted ratification", seal({**report, "ratification_authorized": True})),
+        ("empty criteria", seal({**report, "criteria": []})),
+        (
+            "wrong schema version",
+            seal({**report, "schema_version": "mindclade.authoritative-integration-readiness/v1"}),
+        ),
+        ("criterion without target binding", seal({**report, "criteria": [missing_target]})),
+        ("unsupported qualification class", seal({**report, "criteria": [unknown_class]})),
+        ("duplicate criterion", seal({**report, "criteria": [criterion, dict(criterion)]})),
+        ("malformed plan digest", seal({**report, "plan_digest": "not-a-digest"})),
+        # Deliberately NOT re-sealed: proves the self-digest is enforced.
+        ("tampered body with stale digest", {**report, "summary": {"tampered": 1}}),
+    ]
+    for label, payload in rejections:
+        try:
+            check(payload)
+        except ValueError:
+            continue
+        raise AssertionError(f"readiness gate accepted an inexact report: {label}")
 
 
 def build_parser() -> argparse.ArgumentParser:

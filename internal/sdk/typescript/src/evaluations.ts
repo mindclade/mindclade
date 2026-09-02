@@ -33,9 +33,15 @@ import {
 } from "../../../../protocols/generated/typescript/job/v1/operation_pb.js";
 import type { ClientCore } from "./core.js";
 import { MindcladeError } from "./error.js";
-import { commandContext, prepareCall, type SdkCallOptions, type SubmitOptions } from "./request.js";
+import { listPage, type Page, withPageToken } from "./pagination.js";
+import {
+	commandContext,
+	type ListOptions,
+	prepareCall,
+	type SdkCallOptions,
+	type SubmitOptions,
+} from "./request.js";
 import { invokeUnary } from "./retry.js";
-import { registeredMethodSafety } from "./safety.js";
 
 const CREATE = "/mindclade.internal.evaluation.v1.EvaluationService/CreateEvaluationRun";
 const GET_RUN = "/mindclade.internal.evaluation.v1.EvaluationService/GetEvaluationRun";
@@ -91,7 +97,7 @@ export class Evaluations {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			registeredMethodSafety(CREATE),
+			CREATE,
 			options.idempotencyKey,
 			(call) => this.#core.raw.evaluations.createEvaluationRun(request, call),
 		);
@@ -105,26 +111,22 @@ export class Evaluations {
 	): Promise<EvaluationRun> {
 		const scoped = scopedName(this.#core, name, "evaluationRuns");
 		const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
-		const response = await invokeUnary(
-			this.#core,
-			prepared,
-			registeredMethodSafety(GET_RUN),
-			undefined,
-			(call) =>
-				this.#core.raw.evaluations.getEvaluationRun(
-					create(GetEvaluationRunRequestSchema, { name: scoped, ifNoneMatch }),
-					call,
-				),
+		const response = await invokeUnary(this.#core, prepared, GET_RUN, undefined, (call) =>
+			this.#core.raw.evaluations.getEvaluationRun(
+				create(GetEvaluationRunRequestSchema, { name: scoped, ifNoneMatch }),
+				call,
+			),
 		);
 		if (response.evaluationRun === undefined || response.evaluationRun.name !== scoped)
 			throw MindcladeError.protocol("GetEvaluationRun response violated resource identity");
 		return clone(EvaluationRunSchema, response.evaluationRun);
 	}
 
+	/** Returns the first page, which also iterates the whole cursor. */
 	async listRuns(
 		input: MessageInitShape<typeof ListEvaluationRunsRequestSchema> = {},
-		options: SdkCallOptions = {},
-	): Promise<ListEvaluationRunsResponse> {
+		options: ListOptions = {},
+	): Promise<Page<EvaluationRun, ListEvaluationRunsResponse>> {
 		const request = create(ListEvaluationRunsRequestSchema, input);
 		const parent = projectName(this.#core);
 		const pageSize = request.page?.pageSize ?? 0;
@@ -136,14 +138,22 @@ export class Evaluations {
 		)
 			throw MindcladeError.invalidArgument("evaluation list scope or page size is invalid");
 		request.parent = parent;
-		const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
-		return await invokeUnary(
-			this.#core,
-			prepared,
-			registeredMethodSafety(LIST),
-			undefined,
-			(call) => this.#core.raw.evaluations.listEvaluationRuns(request, call),
-		);
+		return await listPage({
+			cursor: (response) => response.page?.nextPageToken ?? "",
+			fetch: async (pageToken) => {
+				const paged = withPageToken(ListEvaluationRunsRequestSchema, request, pageToken);
+				const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
+				const response = await invokeUnary(this.#core, prepared, LIST, undefined, (call) =>
+					this.#core.raw.evaluations.listEvaluationRuns(paged, call),
+				);
+				return { requestId: prepared.requestId, response };
+			},
+			items: (response) => response.evaluationRuns,
+			limits: options.limits,
+			pageSize,
+			pageToken: request.page?.pageToken ?? "",
+			signal: options.signal,
+		});
 	}
 
 	async cancelRun(
@@ -165,7 +175,7 @@ export class Evaluations {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			registeredMethodSafety(CANCEL),
+			CANCEL,
 			options.idempotencyKey,
 			(call) => this.#core.raw.evaluations.cancelEvaluationRun(request, call),
 		);
@@ -214,7 +224,7 @@ export class Evaluations {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			registeredMethodSafety(COMMIT),
+			COMMIT,
 			options.idempotencyKey,
 			(call) => this.#core.raw.evaluations.commitEvaluationResult(request, call),
 		);
@@ -235,16 +245,11 @@ export class Evaluations {
 	async getResult(name: string, options: SdkCallOptions = {}): Promise<EvaluationResult> {
 		const scoped = scopedName(this.#core, name, "evaluationResults");
 		const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
-		const response = await invokeUnary(
-			this.#core,
-			prepared,
-			registeredMethodSafety(GET_RESULT),
-			undefined,
-			(call) =>
-				this.#core.raw.evaluations.getEvaluationResult(
-					create(GetEvaluationResultRequestSchema, { name: scoped }),
-					call,
-				),
+		const response = await invokeUnary(this.#core, prepared, GET_RESULT, undefined, (call) =>
+			this.#core.raw.evaluations.getEvaluationResult(
+				create(GetEvaluationResultRequestSchema, { name: scoped }),
+				call,
+			),
 		);
 		if (response.result === undefined || response.result.name !== scoped)
 			throw MindcladeError.protocol("GetEvaluationResult response violated resource identity");
@@ -294,7 +299,7 @@ export class Evaluations {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			registeredMethodSafety(CREATE_DECISION),
+			CREATE_DECISION,
 			options.idempotencyKey,
 			(call) => this.#core.raw.evaluations.createPromotionDecision(request, call),
 		);
@@ -307,16 +312,11 @@ export class Evaluations {
 	): Promise<PromotionDecision> {
 		const scoped = scopedName(this.#core, name, "promotionDecisions");
 		const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
-		const response = await invokeUnary(
-			this.#core,
-			prepared,
-			registeredMethodSafety(GET_DECISION),
-			undefined,
-			(call) =>
-				this.#core.raw.evaluations.getPromotionDecision(
-					create(GetPromotionDecisionRequestSchema, { name: scoped }),
-					call,
-				),
+		const response = await invokeUnary(this.#core, prepared, GET_DECISION, undefined, (call) =>
+			this.#core.raw.evaluations.getPromotionDecision(
+				create(GetPromotionDecisionRequestSchema, { name: scoped }),
+				call,
+			),
 		);
 		if (response.promotionDecision === undefined || response.promotionDecision.name !== scoped)
 			throw MindcladeError.protocol("GetPromotionDecision response violated resource identity");

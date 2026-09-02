@@ -8,7 +8,6 @@ import {
 	toBinary,
 } from "@bufbuild/protobuf";
 import { timestampDate } from "@bufbuild/protobuf/wkt";
-import { Code, ConnectError } from "@connectrpc/connect";
 import type { ResourceRef } from "../../../../protocols/generated/typescript/common/v1/resource_reference_pb.js";
 import {
 	CancelWorkflowRunRequestSchema,
@@ -39,17 +38,18 @@ import {
 } from "../../../../protocols/generated/typescript/workflow/v1/workflow_run_pb.js";
 import type { ClientCore } from "./core.js";
 import { MindcladeError } from "./error.js";
+import { listPage, type Page, withPageToken } from "./pagination.js";
 import {
-	callHeaders,
 	commandContext,
+	type ListOptions,
 	type PreparedCall,
 	prepareCall,
 	type SdkCallOptions,
 	type SubmitOptions,
 	type WaitOptions,
 } from "./request.js";
-import { ensureActive, invokeUnary, retryDelay } from "./retry.js";
-import { registeredMethodSafety } from "./safety.js";
+import { invokeUnary } from "./retry.js";
+import { DEFAULT_WAIT_TIMEOUT_MS, type WatchSource, watchStream } from "./watch.js";
 
 const CREATE = "/mindclade.internal.workflow.v1.WorkflowService/CreateWorkflowDefinition";
 const UPDATE = "/mindclade.internal.workflow.v1.WorkflowService/UpdateWorkflowDefinition";
@@ -61,7 +61,7 @@ const LIST_RUNS = "/mindclade.internal.workflow.v1.WorkflowService/ListWorkflowR
 const CANCEL = "/mindclade.internal.workflow.v1.WorkflowService/CancelWorkflowRun";
 const COMMIT = "/mindclade.internal.workflow.v1.WorkflowService/CommitWorkflowTransition";
 const MAXIMUM_PAGE_SIZE = 200;
-const DEFAULT_WAIT_TIMEOUT_MS = 30 * 60 * 1_000;
+const WATCH = "/mindclade.internal.workflow.v1.WorkflowService/WatchWorkflowRun";
 const RESOURCE_ID = /^[A-Za-z0-9._-]{1,128}$/;
 const SHA256 = /^sha256:[0-9a-f]{64}$/;
 const TERMINAL = new Set<WorkflowRunState>([
@@ -124,7 +124,7 @@ export class Workflows {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			registeredMethodSafety(CREATE),
+			CREATE,
 			options.idempotencyKey,
 			(call) => this.#core.raw.workflows.createWorkflowDefinition(request, call),
 		);
@@ -160,7 +160,7 @@ export class Workflows {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			registeredMethodSafety(UPDATE),
+			UPDATE,
 			options.idempotencyKey,
 			(call) => this.#core.raw.workflows.updateWorkflowDefinition(request, call),
 		);
@@ -178,12 +178,8 @@ export class Workflows {
 			ifNoneMatch: ifNoneMatch.trim(),
 			name: scopedName(this.#core, name, "workflowDefinitions"),
 		});
-		const response = await invokeUnary(
-			this.#core,
-			prepared,
-			registeredMethodSafety(GET_DEFINITION),
-			undefined,
-			(call) => this.#core.raw.workflows.getWorkflowDefinition(request, call),
+		const response = await invokeUnary(this.#core, prepared, GET_DEFINITION, undefined, (call) =>
+			this.#core.raw.workflows.getWorkflowDefinition(request, call),
 		);
 		if (response.workflowDefinition === undefined) {
 			throw MindcladeError.protocol("GetWorkflowDefinition response omitted its definition");
@@ -191,22 +187,35 @@ export class Workflows {
 		return clone(WorkflowDefinitionSchema, response.workflowDefinition);
 	}
 
+	/** Returns the first page, which also iterates the whole cursor. */
 	async listDefinitions(
 		input: MessageInitShape<typeof ListWorkflowDefinitionsRequestSchema> = {},
-		options: SdkCallOptions = {},
-	): Promise<ListWorkflowDefinitionsResponse> {
+		options: ListOptions = {},
+	): Promise<Page<WorkflowDefinition, ListWorkflowDefinitionsResponse>> {
 		ensureUnfenced(options);
 		const request = create(ListWorkflowDefinitionsRequestSchema, input);
 		request.parent = normalizeParent(this.#core, request.parent);
 		validatePage(request.page?.pageSize);
-		const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
-		return await invokeUnary(
-			this.#core,
-			prepared,
-			registeredMethodSafety(LIST_DEFINITIONS),
-			undefined,
-			(call) => this.#core.raw.workflows.listWorkflowDefinitions(request, call),
-		);
+		return await listPage({
+			cursor: (response) => response.page?.nextPageToken ?? "",
+			fetch: async (pageToken) => {
+				const paged = withPageToken(ListWorkflowDefinitionsRequestSchema, request, pageToken);
+				const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
+				const response = await invokeUnary(
+					this.#core,
+					prepared,
+					LIST_DEFINITIONS,
+					undefined,
+					(call) => this.#core.raw.workflows.listWorkflowDefinitions(paged, call),
+				);
+				return { requestId: prepared.requestId, response };
+			},
+			items: (response) => response.workflowDefinitions,
+			limits: options.limits,
+			pageSize: request.page?.pageSize ?? 0,
+			pageToken: request.page?.pageToken ?? "",
+			signal: options.signal,
+		});
 	}
 
 	async startRun(
@@ -244,7 +253,7 @@ export class Workflows {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			registeredMethodSafety(START),
+			START,
 			options.idempotencyKey,
 			(call) => this.#core.raw.workflows.startWorkflowRun(request, call),
 		);
@@ -258,32 +267,37 @@ export class Workflows {
 			ifNoneMatch: ifNoneMatch.trim(),
 			name: scopedName(this.#core, name, "workflowRuns"),
 		});
-		const response = await invokeUnary(
-			this.#core,
-			prepared,
-			registeredMethodSafety(GET_RUN),
-			undefined,
-			(call) => this.#core.raw.workflows.getWorkflowRun(request, call),
+		const response = await invokeUnary(this.#core, prepared, GET_RUN, undefined, (call) =>
+			this.#core.raw.workflows.getWorkflowRun(request, call),
 		);
 		return requiredRun(response.workflowRun, "GetWorkflowRun");
 	}
 
+	/** Returns the first page, which also iterates the whole cursor. */
 	async listRuns(
 		input: MessageInitShape<typeof ListWorkflowRunsRequestSchema> = {},
-		options: SdkCallOptions = {},
-	): Promise<ListWorkflowRunsResponse> {
+		options: ListOptions = {},
+	): Promise<Page<WorkflowRun, ListWorkflowRunsResponse>> {
 		ensureUnfenced(options);
 		const request = create(ListWorkflowRunsRequestSchema, input);
 		request.parent = normalizeParent(this.#core, request.parent);
 		validatePage(request.page?.pageSize);
-		const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
-		return await invokeUnary(
-			this.#core,
-			prepared,
-			registeredMethodSafety(LIST_RUNS),
-			undefined,
-			(call) => this.#core.raw.workflows.listWorkflowRuns(request, call),
-		);
+		return await listPage({
+			cursor: (response) => response.page?.nextPageToken ?? "",
+			fetch: async (pageToken) => {
+				const paged = withPageToken(ListWorkflowRunsRequestSchema, request, pageToken);
+				const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
+				const response = await invokeUnary(this.#core, prepared, LIST_RUNS, undefined, (call) =>
+					this.#core.raw.workflows.listWorkflowRuns(paged, call),
+				);
+				return { requestId: prepared.requestId, response };
+			},
+			items: (response) => response.workflowRuns,
+			limits: options.limits,
+			pageSize: request.page?.pageSize ?? 0,
+			pageToken: request.page?.pageToken ?? "",
+			signal: options.signal,
+		});
 	}
 
 	async cancelRun(
@@ -314,7 +328,7 @@ export class Workflows {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			registeredMethodSafety(CANCEL),
+			CANCEL,
 			options.idempotencyKey,
 			(call) => this.#core.raw.workflows.cancelWorkflowRun(request, call),
 		);
@@ -355,7 +369,7 @@ export class Workflows {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			registeredMethodSafety(COMMIT),
+			COMMIT,
 			options.idempotencyKey,
 			(call) => this.#core.raw.workflows.commitWorkflowTransition(request, call),
 		);
@@ -384,52 +398,48 @@ export class Workflows {
 			this.#core.runtime,
 			callOptions(options, total),
 		);
-		let cursor = afterTransitionSequence;
-		let failures = 0;
-		while (true) {
-			ensureActive(this.#core, prepared);
-			const request = create(WatchWorkflowRunRequestSchema, {
-				afterTransitionSequence: cursor,
-				name: runName,
-			});
-			try {
-				const stream = this.#core.raw.workflows.watchWorkflowRun(request, {
-					headers: callHeaders(this.#core.config, prepared),
-					timeoutMs: Math.max(1, prepared.deadlineMs - this.#core.runtime.nowMs()),
-					...(prepared.signal === undefined ? {} : { signal: prepared.signal }),
-				});
-				for await (const response of stream) {
-					ensureActive(this.#core, prepared);
-					const run = requiredRun(response.workflowRun, "WatchWorkflowRun");
-					if (run.name !== runName || run.transitionSequence !== cursor + 1n) {
-						throw MindcladeError.protocol(
-							"workflow watch returned an invalid identity or non-contiguous sequence",
-						);
-					}
-					cursor = run.transitionSequence;
-					failures = 0;
-					yield run;
-					if (TERMINAL.has(run.state)) return;
-				}
-				throw new ConnectError(
-					"workflow stream ended before terminal durable state",
-					Code.Unavailable,
-				);
-			} catch (reason) {
-				const error = MindcladeError.from(
-					reason,
-					prepared.signal,
-					this.#core.runtime.nowMs() >= prepared.deadlineMs,
-				);
-				failures += 1;
-				if (!error.retryable || failures >= this.#core.config.retry.maxAttempts) throw error;
-				const delay = retryDelay(this.#core, failures, error.retryAfterMs);
-				if (delay >= prepared.deadlineMs - this.#core.runtime.nowMs()) {
-					throw MindcladeError.deadlineExceeded();
-				}
-				await this.#core.runtime.sleep(delay, prepared.signal);
-			}
+		yield* watchStream(this.#core, prepared, this.#watchSource(runName), afterTransitionSequence);
+	}
+
+	/** Resumes a watch from a transition sequence the caller already accepted. */
+	async *resumeWatch(
+		name: string,
+		afterTransitionSequence: bigint,
+		options: WaitOptions = {},
+	): AsyncGenerator<WorkflowRun> {
+		if (afterTransitionSequence <= 0n) {
+			throw MindcladeError.invalidArgument(
+				"resuming a workflow watch requires a positive accepted transition sequence",
+			);
 		}
+		yield* this.watch(name, afterTransitionSequence, options);
+	}
+
+	#watchSource(
+		runName: string,
+	): WatchSource<WorkflowRun, bigint, { readonly workflowRun?: WorkflowRun }> {
+		return {
+			accept: (response, cursor) => {
+				const run = requiredRun(response.workflowRun, "WatchWorkflowRun");
+				if (run.name !== runName || run.transitionSequence !== cursor + 1n) {
+					throw MindcladeError.protocol(
+						"workflow watch returned an invalid identity or non-contiguous sequence",
+					);
+				}
+				return { cursor: run.transitionSequence, delivery: "yield", value: run };
+			},
+			incomplete: "workflow stream ended before terminal durable state",
+			open: (cursor, call) =>
+				this.#core.raw.workflows.watchWorkflowRun(
+					create(WatchWorkflowRunRequestSchema, {
+						afterTransitionSequence: cursor,
+						name: runName,
+					}),
+					call,
+				),
+			route: WATCH,
+			terminal: (run) => TERMINAL.has(run.state),
+		};
 	}
 
 	async wait(

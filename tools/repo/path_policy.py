@@ -3308,5 +3308,135 @@ def _reconciliation_addition_reason(path: str) -> str:
     return _adr0023_reconciliation_addition_reason(path)
 
 
+# Descriptor-derived internal SDK API reference (completion work-queue item 15).
+SDK_API_REFERENCE_TOOLING_PATHS: tuple[str, ...] = (
+    "tools/docs/render_sdk_api_reference.py",
+    "tools/docs/tests/test_render_sdk_api_reference.py",
+)
+SDK_API_REFERENCE_DOCUMENT_PATHS: tuple[str, ...] = (
+    "internal/sdk/go/api.md",
+    "internal/sdk/python/api.md",
+    "internal/sdk/rust/api.md",
+    "internal/sdk/typescript/api.md",
+)
+SDK_API_REFERENCE_PATHS: tuple[str, ...] = (
+    *SDK_API_REFERENCE_TOOLING_PATHS,
+    *SDK_API_REFERENCE_DOCUMENT_PATHS,
+)
+# The four api.md documents already reach REQUIRED_ADDITIONS through the
+# internal-sdk activation bundle, so only the renderer and its test are added
+# here; the canonical count still grows by every new path.
+REQUIRED_ADDITIONS = (  # pyright: ignore[reportConstantRedefinition]
+    *REQUIRED_ADDITIONS,
+    *SDK_API_REFERENCE_TOOLING_PATHS,
+)
+CANONICAL_FILE_COUNT = (  # pyright: ignore[reportConstantRedefinition]
+    CANONICAL_FILE_COUNT + len(SDK_API_REFERENCE_PATHS)
+)
+CANONICAL_PATH_SET_SHA256 = (  # pyright: ignore[reportConstantRedefinition]
+    "245d569473e5d389a7062c2a299823392c4e9fe8108d211c8480a13e7c96752a"
+)
+
+_sdk_api_reference_addition_reason = _reconciliation_addition_reason
+
+
+def _reconciliation_addition_reason(path: str) -> str:
+    if path in SDK_API_REFERENCE_TOOLING_PATHS:
+        return (
+            "The internal SDK API reference is rendered from the governed RPC-coverage "
+            "projection so a facade cannot document a method the descriptor never declared."
+        )
+    if path in SDK_API_REFERENCE_DOCUMENT_PATHS:
+        return (
+            "Committed per-language API reference derived from the candidate descriptor "
+            "and drift-checked by `just docs`."
+        )
+    return _sdk_api_reference_addition_reason(path)
+
+
+# Four-language SDK parity: packaging, worked examples, and the descriptor-bound
+# retry-safety parity gate (Stage 7 and Stage 8).
+SDK_PARITY_PATHS: tuple[str, ...] = (
+    "examples/sdk/configure_client.ts",
+    "examples/sdk/handle_errors.py",
+    "examples/sdk/list_operations.py",
+    "examples/sdk/read_request_id.ts",
+    "examples/sdk/sdk_examples.test.ts",
+    "tests/conformance/test_sdk_retry_safety_parity.py",
+)
+REQUIRED_ADDITIONS = (  # pyright: ignore[reportConstantRedefinition]
+    *REQUIRED_ADDITIONS,
+    *SDK_PARITY_PATHS,
+)
+CANONICAL_FILE_COUNT = (  # pyright: ignore[reportConstantRedefinition]
+    CANONICAL_FILE_COUNT + 58
+)
+CANONICAL_PATH_SET_SHA256 = (  # pyright: ignore[reportConstantRedefinition]
+    "e4db9ee4ed697d09aa7b3e21174c24e2c3a7aabb59d63281af64202edb65dff4"
+)
+
+_sdk_parity_addition_reason = _reconciliation_addition_reason
+
+
+def _reconciliation_addition_reason(path: str) -> str:
+    if path in SDK_PARITY_PATHS:
+        return (
+            "Stage 7 four-language SDK parity and its Stage 8 worked consumers: "
+            "packaging scripts, revision-keyed changelogs, and the conformance gate "
+            "binding every SDK retry-safety table to the descriptor."
+        )
+    return _sdk_parity_addition_reason(path)
+
+
+# The conformance contract the four handwritten facades are held to: what the
+# SDKs guarantee, which divergences from the reference bar are deliberate, and
+# which gate proves each property.
+SDK_CONFORMANCE_CONTRACT_PATHS: tuple[str, ...] = (
+    "docs/architecture/internal-sdk-conformance-contract.md",
+)
+REQUIRED_ADDITIONS = (  # pyright: ignore[reportConstantRedefinition]
+    *REQUIRED_ADDITIONS,
+    *SDK_CONFORMANCE_CONTRACT_PATHS,
+)
+CANONICAL_FILE_COUNT = (  # pyright: ignore[reportConstantRedefinition]
+    CANONICAL_FILE_COUNT + len(SDK_CONFORMANCE_CONTRACT_PATHS)
+)
+CANONICAL_PATH_SET_SHA256 = (  # pyright: ignore[reportConstantRedefinition]
+    "426d2955d5fe7d8df80b814d275c625ef1399f1d8ae9656ced54a0aac75bd8fc"
+)
+
+_sdk_conformance_contract_addition_reason = _reconciliation_addition_reason
+
+
+def _reconciliation_addition_reason(path: str) -> str:
+    if path in SDK_CONFORMANCE_CONTRACT_PATHS:
+        return (
+            "The behaviour contract the four internal SDK facades are held to, naming "
+            "the gate that proves each property so a claim cannot outlive its check."
+        )
+    return _sdk_conformance_contract_addition_reason(path)
+
+
+# The Rust facade's five packaging entry points and their shared helper, which
+# complete the four-language set: every internal SDK now presents the same
+# bootstrap/build/format/lint/test surface over its own toolchain. These reach
+# REQUIRED_ADDITIONS through the internal-sdk activation bundle, so only the
+# canonical count and digest move here.
+SDK_RUST_PACKAGING_SCRIPT_PATHS: tuple[str, ...] = (
+    "internal/sdk/rust/scripts/bootstrap",
+    "internal/sdk/rust/scripts/build",
+    "internal/sdk/rust/scripts/common.sh",
+    "internal/sdk/rust/scripts/format",
+    "internal/sdk/rust/scripts/lint",
+    "internal/sdk/rust/scripts/test",
+)
+CANONICAL_FILE_COUNT = (  # pyright: ignore[reportConstantRedefinition]
+    CANONICAL_FILE_COUNT + len(SDK_RUST_PACKAGING_SCRIPT_PATHS)
+)
+CANONICAL_PATH_SET_SHA256 = (  # pyright: ignore[reportConstantRedefinition]
+    "66f3677b01d1f7c6c0d9143d15c56abcdb24aa4bb589f0fc12200326478b83e0"
+)
+
+
 if __name__ == "__main__":
     raise SystemExit(main())

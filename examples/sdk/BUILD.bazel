@@ -15,6 +15,8 @@ py_library(
     srcs = [
         "__init__.py",
         "download_artifact.py",
+        "handle_errors.py",
+        "list_operations.py",
         "submit_operation.py",
     ],
     imports = ["../.."],
@@ -44,8 +46,11 @@ ts_config(
 ts_project(
     name = "typescript_examples",
     srcs = [
+        "configure_client.ts",
         "follow_operation.test.ts",
         "follow_operation.ts",
+        "read_request_id.ts",
+        "sdk_examples.test.ts",
     ],
     declaration = True,
     transpiler = "tsc",
@@ -65,6 +70,16 @@ js_test(
         "//internal/sdk/typescript:mindclade_internal_sdk",
     ],
     entry_point = "follow_operation.test.ts",
+)
+
+js_test(
+    name = "typescript_sdk_examples_test",
+    data = [
+        ":node_modules/@mindclade/internal-sdk",
+        ":typescript_examples",
+        "//internal/sdk/typescript:mindclade_internal_sdk",
+    ],
+    entry_point = "sdk_examples.test.ts",
 )
 
 filegroup(
@@ -87,6 +102,7 @@ test_suite(
     tests = [
         ":python_examples_test",
         ":typescript_examples_test",
+        ":typescript_sdk_examples_test",
     ],
     visibility = ["//examples:__pkg__"],
 )

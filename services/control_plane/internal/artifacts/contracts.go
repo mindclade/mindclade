@@ -70,7 +70,10 @@ type Clock interface{ Now() time.Time }
 
 type realClock struct{}
 
-func (realClock) Now() time.Time { return time.Now().UTC() }
+// PostgreSQL timestamptz resolves to microseconds. Truncating here keeps an
+// accepted command and its idempotent replay byte-identical: without it a
+// response built in memory keeps nanosecond digits the database drops.
+func (realClock) Now() time.Time { return time.Now().UTC().Truncate(time.Microsecond) }
 
 // StagingReceiptStore validates an immutable receipt produced by the artifact
 // transfer plane. Implementations must verify content digest and exact size;

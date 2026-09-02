@@ -198,8 +198,8 @@ describe("Training generated-contract facade", () => {
 		);
 		assert.equal((await client.training.get(RUN)).name, RUN);
 		assert.equal(
-			(await client.training.listRuns({ page: { pageSize: 20, pageToken: "opaque" } })).page
-				?.nextPageToken,
+			(await client.training.listRuns({ page: { pageSize: 20, pageToken: "opaque" } })).metadata
+				.nextPageToken,
 			"next",
 		);
 		assert.equal(
@@ -287,7 +287,7 @@ describe("Training generated-contract facade", () => {
 		);
 		assert.equal((await client.training.getCheckpoint(CHECKPOINT)).name, CHECKPOINT);
 		assert.equal(
-			(await client.training.listCheckpoints({ parent: RUN })).checkpoints[0]?.name,
+			(await client.training.listCheckpoints({ parent: RUN })).items[0]?.name,
 			CHECKPOINT,
 		);
 		for await (const update of client.training.watch(RUN)) assert.equal(update.sequence, 1n);

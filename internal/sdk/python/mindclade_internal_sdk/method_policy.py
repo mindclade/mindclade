@@ -11,6 +11,7 @@ from mindclade.common.v1 import command_context_pb2
 from mindclade.dataset.v1 import dataset_commands_pb2
 from mindclade.inference.v1 import inference_request_pb2
 from mindclade.internal.admin.v1 import admin_service_pb2
+from mindclade.internal.agent.v1 import agent_service_pb2
 from mindclade.internal.artifact.v1 import artifact_service_pb2
 from mindclade.internal.dataset.v1 import dataset_service_pb2
 from mindclade.internal.evaluation.v1 import evaluation_service_pb2
@@ -162,8 +163,112 @@ SAFE_UNARY_METHODS = frozenset(
         "/mindclade.internal.workflow.v1.WorkflowService/ListWorkflowRuns",
         "/mindclade.internal.workflow.v1.ApprovalService/GetApprovalRequest",
         "/mindclade.internal.workflow.v1.ApprovalService/ListApprovalRequests",
+        "/mindclade.internal.artifact.v1.ArtifactService/DownloadArtifact",
+        "/mindclade.internal.inference.v1.InferenceService/WatchInference",
+        "/mindclade.internal.job.v1.OperationService/WatchOperation",
+        "/mindclade.internal.workflow.v1.WorkflowService/WatchWorkflowRun",
     }
 )
+
+# Mutations whose request embeds a generated ``CommandContext``. Membership is
+# necessary but never sufficient: ``retry_permitted`` still verifies the
+# embedded context's idempotency key, scope, and canonical request digest
+# against the call the SDK is about to make. The table exists so the estate is
+# declarative and checkable rather than implied by a dispatch chain, and so a
+# route added to that chain without being declared here fails closed.
+IDEMPOTENT_MUTATION_METHODS = frozenset(
+    {
+        "/mindclade.internal.admin.v1.AdminService/CreateProject",
+        "/mindclade.internal.admin.v1.AdminService/ExportAuditRecords",
+        "/mindclade.internal.admin.v1.AdminService/UpdateProject",
+        "/mindclade.internal.admin.v1.AdminService/UpdateTenant",
+        "/mindclade.internal.agent.v1.AgentService/CancelAgentRun",
+        "/mindclade.internal.agent.v1.AgentService/CommitAgentStep",
+        "/mindclade.internal.agent.v1.AgentService/CommitToolReceipt",
+        "/mindclade.internal.agent.v1.AgentService/CreateAgentDefinition",
+        "/mindclade.internal.agent.v1.AgentService/StartAgentRun",
+        "/mindclade.internal.agent.v1.AgentService/UpdateAgentDefinition",
+        "/mindclade.internal.artifact.v1.ArtifactService/AbortArtifactUpload",
+        "/mindclade.internal.artifact.v1.ArtifactService/AcquireArtifactLease",
+        "/mindclade.internal.artifact.v1.ArtifactService/BeginArtifactUpload",
+        "/mindclade.internal.artifact.v1.ArtifactService/CommitArtifact",
+        "/mindclade.internal.artifact.v1.ArtifactService/FinalizeArtifactUpload",
+        "/mindclade.internal.artifact.v1.ArtifactService/QuarantineArtifact",
+        "/mindclade.internal.artifact.v1.ArtifactService/QuarantineArtifactUpload",
+        "/mindclade.internal.artifact.v1.ArtifactService/ReleaseArtifactLease",
+        "/mindclade.internal.artifact.v1.ArtifactService/UploadArtifactChunk",
+        "/mindclade.internal.dataset.v1.DatasetService/CreateDataset",
+        "/mindclade.internal.dataset.v1.DatasetService/PublishDatasetRelease",
+        "/mindclade.internal.dataset.v1.DatasetService/RevokeDatasetRelease",
+        "/mindclade.internal.dataset.v1.DatasetService/UpdateDataset",
+        "/mindclade.internal.evaluation.v1.EvaluationService/CancelEvaluationRun",
+        "/mindclade.internal.evaluation.v1.EvaluationService/CommitEvaluationResult",
+        "/mindclade.internal.evaluation.v1.EvaluationService/CreateEvaluationRun",
+        "/mindclade.internal.evaluation.v1.EvaluationService/CreatePromotionDecision",
+        "/mindclade.internal.experiment.v1.ExperimentService/CompleteTrial",
+        "/mindclade.internal.experiment.v1.ExperimentService/CreateExperiment",
+        "/mindclade.internal.experiment.v1.ExperimentService/CreateStudy",
+        "/mindclade.internal.experiment.v1.ExperimentService/CreateTrial",
+        "/mindclade.internal.experiment.v1.ExperimentService/TransitionExperiment",
+        "/mindclade.internal.experiment.v1.ExperimentService/TransitionStudy",
+        "/mindclade.internal.experiment.v1.ExperimentService/TransitionTrial",
+        "/mindclade.internal.experiment.v1.ExperimentService/UpdateExperiment",
+        "/mindclade.internal.inference.v1.InferenceService/CommitInferenceResult",
+        "/mindclade.internal.inference.v1.InferenceService/SubmitInference",
+        "/mindclade.internal.job.v1.JobService/CancelJob",
+        "/mindclade.internal.job.v1.JobService/RequestJob",
+        "/mindclade.internal.job.v1.OperationService/CancelOperation",
+        "/mindclade.internal.job.v1.RunService/AcquireAttemptLease",
+        "/mindclade.internal.job.v1.RunService/CancelAttempt",
+        "/mindclade.internal.job.v1.RunService/CommitAttempt",
+        "/mindclade.internal.job.v1.RunService/HeartbeatAttempt",
+        "/mindclade.internal.job.v1.RunService/RenewAttemptLease",
+        "/mindclade.internal.model.v1.ModelService/PromoteModelRelease",
+        "/mindclade.internal.model.v1.ModelService/RegisterModel",
+        "/mindclade.internal.model.v1.ModelService/RegisterModelRelease",
+        "/mindclade.internal.model.v1.ModelService/RevokeModelRelease",
+        "/mindclade.internal.policy.v1.PolicyService/ActivateUsePolicy",
+        "/mindclade.internal.policy.v1.PolicyService/CreateUsePolicy",
+        "/mindclade.internal.policy.v1.PolicyService/EvaluateAuthorization",
+        "/mindclade.internal.policy.v1.PolicyService/RevokeUsePolicy",
+        "/mindclade.internal.policy.v1.PolicyService/UpdateUsePolicy",
+        "/mindclade.internal.training.v1.TrainingService/CancelTrainingRun",
+        "/mindclade.internal.training.v1.TrainingService/CommitCheckpoint",
+        "/mindclade.internal.training.v1.TrainingService/CommitTrainingProgress",
+        "/mindclade.internal.training.v1.TrainingService/CompleteTrainingRun",
+        "/mindclade.internal.training.v1.TrainingService/CreateTrainingRun",
+        "/mindclade.internal.training.v1.TrainingService/PrepareCheckpoint",
+        "/mindclade.internal.training.v1.TrainingService/ResumeTrainingAttempt",
+        "/mindclade.internal.training.v1.TrainingService/StartTrainingAttempt",
+        "/mindclade.internal.workflow.v1.ApprovalService/ConsumeApproval",
+        "/mindclade.internal.workflow.v1.ApprovalService/DecideApproval",
+        "/mindclade.internal.workflow.v1.ApprovalService/RequestApproval",
+        "/mindclade.internal.workflow.v1.WorkflowService/CancelWorkflowRun",
+        "/mindclade.internal.workflow.v1.WorkflowService/CommitWorkflowTransition",
+        "/mindclade.internal.workflow.v1.WorkflowService/CreateWorkflowDefinition",
+        "/mindclade.internal.workflow.v1.WorkflowService/StartWorkflowRun",
+        "/mindclade.internal.workflow.v1.WorkflowService/UpdateWorkflowDefinition",
+    }
+)
+
+# The single deliberate never-retry escape hatch. Lease expiry replays a
+# control-plane reconciler primitive, so replaying it is never safe at any
+# attempt count, under any server override, in any language.
+NEVER_RETRY_METHODS = frozenset(
+    {
+        "/mindclade.internal.job.v1.RunService/ExpireAttemptLeases",
+    }
+)
+
+# AgentService route identities. They live here rather than being imported from
+# ``agents`` because that module imports this one's dependencies; the strings are
+# pinned by the descriptor-conformance parity test like every other route above.
+CREATE_AGENT_DEFINITION = "/mindclade.internal.agent.v1.AgentService/CreateAgentDefinition"
+UPDATE_AGENT_DEFINITION = "/mindclade.internal.agent.v1.AgentService/UpdateAgentDefinition"
+START_AGENT_RUN = "/mindclade.internal.agent.v1.AgentService/StartAgentRun"
+CANCEL_AGENT_RUN = "/mindclade.internal.agent.v1.AgentService/CancelAgentRun"
+COMMIT_AGENT_STEP = "/mindclade.internal.agent.v1.AgentService/CommitAgentStep"
+COMMIT_TOOL_RECEIPT = "/mindclade.internal.agent.v1.AgentService/CommitToolReceipt"
 
 
 def _matches(
@@ -229,8 +334,27 @@ def retry_permitted(
 ) -> bool:
     """Return true only for safe reads or verified generated command intent."""
 
+    # The never-retry tier is checked first and unconditionally, so the raw-only
+    # reconciler primitive cannot be promoted by a later branch, by a server
+    # override, or by a future edit that adds its route to a mutation table.
+    if method in NEVER_RETRY_METHODS:
+        return False
     if method in SAFE_UNARY_METHODS:
         return True
+    # A mutation must be declared before its request is even inspected: a route
+    # reachable through the dispatch below but absent from the table fails closed.
+    if method not in IDEMPOTENT_MUTATION_METHODS:
+        return False
+    agent_mutations: dict[str, type[Message]] = {
+        CREATE_AGENT_DEFINITION: agent_service_pb2.CreateAgentDefinitionRequest,
+        UPDATE_AGENT_DEFINITION: agent_service_pb2.UpdateAgentDefinitionRequest,
+        START_AGENT_RUN: agent_service_pb2.StartAgentRunRequest,
+        CANCEL_AGENT_RUN: agent_service_pb2.CancelAgentRunRequest,
+        COMMIT_AGENT_STEP: agent_service_pb2.CommitAgentStepRequest,
+        COMMIT_TOOL_RECEIPT: agent_service_pb2.CommitToolReceiptRequest,
+    }
+    if method in agent_mutations and isinstance(request, agent_mutations[method]):
+        return _request_matches(request, call, config)
     policy_mutations: dict[str, type[Message]] = {
         EVALUATE_AUTHORIZATION: policy_service_pb2.EvaluateAuthorizationRequest,
         CREATE_USE_POLICY: policy_service_pb2.CreateUsePolicyRequest,

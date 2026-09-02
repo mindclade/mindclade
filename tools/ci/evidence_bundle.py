@@ -28,6 +28,9 @@ CORRELATION_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{7,127}$")
 WORKFLOW_PATTERN = re.compile(r"^\.github/workflows/[A-Za-z0-9._-]+\.ya?ml$")
 LAUNCHER_IDENTITY_PATTERN = re.compile(r"^buildkite://[a-z0-9][a-z0-9._/-]{7,255}$")
 REPOSITORY = "mindclade/mindclade"
+# Mirrors QUALIFICATION_CLASSES in tools/qualification/readiness_report.py; a readiness
+# report naming any other class is not the report this gate is contracted to accept.
+READINESS_QUALIFICATION_CLASSES = frozenset({"source", "protected", "connected", "scientific"})
 ORG_SCHEMA_VERSION = "1.0.0"
 OPERATIONAL_REFERENCES = {
     "bootstrap",
@@ -870,6 +873,70 @@ def _validate_fresh_database_integration(path: Path, source_revision: str) -> No
         raise ValueError("fresh-database integration receipt is incomplete or not exact")
 
 
+def _readiness_canonical_json(value: object) -> bytes:
+    """Reproduce tools/qualification/readiness_report.py's canonical encoding.
+
+    That producer escapes non-ASCII and terminates the document with a newline;
+    the plan text it quotes contains em dashes, so the two encodings are not
+    interchangeable and the self-digest only reproduces under this one.
+    """
+
+    return (json.dumps(value, sort_keys=True, separators=(",", ":")) + "\n").encode()
+
+
+def _validate_authoritative_readiness(path: Path, source_revision: str) -> None:
+    report = read_object(path, "authoritative integration readiness report")
+    report_digest = report.pop("report_digest", None)
+    criteria = report.get("criteria")
+    summary = report.get("summary")
+    if (
+        report.get("schema_version") != "mindclade.authoritative-integration-readiness/v2"
+        or report.get("source_revision") != source_revision
+        or report.get("ratification_authorized") is not False
+        or not isinstance(criteria, list)
+        or not criteria
+        or not isinstance(summary, dict)
+        or not isinstance(report.get("plan_digest"), str)
+        or not DIGEST_PATTERN.fullmatch(cast(str, report["plan_digest"]))
+        or not isinstance(report.get("criterion_map_digest"), str)
+        or not DIGEST_PATTERN.fullmatch(cast(str, report["criterion_map_digest"]))
+        or not isinstance(report_digest, str)
+        or report_digest != sha256_bytes(_readiness_canonical_json(report))
+    ):
+        raise ValueError("authoritative integration readiness report is incomplete or not exact")
+
+    # The readiness report states evidence, it does not assert qualification. Require
+    # every criterion to carry its full mapping so an unmapped or truncated report can
+    # never be uploaded as satisfied evidence.
+    seen: set[str] = set()
+    required_fields = (
+        "bazel_targets",
+        "criterion",
+        "criterion_id",
+        "owner",
+        "qualification_class",
+        "stage",
+        "status",
+    )
+    for raw_record in cast(list[object], criteria):
+        if not isinstance(raw_record, dict):
+            raise ValueError("readiness criteria must be objects")
+        record = cast(dict[str, object], raw_record)
+        for field in required_fields:
+            if field not in record:
+                raise ValueError(f"readiness criterion is missing {field}")
+        criterion_id = record["criterion_id"]
+        if not isinstance(criterion_id, str) or not criterion_id:
+            raise ValueError("readiness criterion_id must be a non-empty string")
+        if criterion_id in seen:
+            raise ValueError(f"duplicate readiness criterion: {criterion_id}")
+        seen.add(criterion_id)
+        if record["qualification_class"] not in READINESS_QUALIFICATION_CLASSES:
+            raise ValueError(f"unsupported qualification class for {criterion_id}")
+        if not isinstance(record.get("bazel_targets"), list):
+            raise ValueError(f"readiness criterion {criterion_id} has no target binding")
+
+
 def validate_check_report(
     name: str,
     path: Path,
@@ -890,6 +957,8 @@ def validate_check_report(
         validate_bazel_receipt(path, context)
     elif name == "fresh-database-integration":
         _validate_fresh_database_integration(path, source_revision)
+    elif name == "authoritative-integration-readiness":
+        _validate_authoritative_readiness(path, source_revision)
     elif name == "immutable-launcher":
         _validate_launcher_observation(
             path,

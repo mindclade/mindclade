@@ -13,8 +13,18 @@ from mindclade.job.v1 import operation_pb2
 from mindclade.policy.v1 import authorization_decision_pb2, policy_reference_pb2, use_policy_pb2
 
 from ._invocation import AsyncInvoker, SyncInvoker, canonical_digest, command_context
+from ._raw import AsyncWithRawResponse, WithRawResponse
 from ._validation import required_response_message, required_text
 from .calls import CallOptions, PreparedCall, prepare_call
+from .pagination import (
+    AsyncPage,
+    Page,
+    PaginationLimits,
+    apply_default_page_size,
+    async_page,
+    next_request,
+    sync_page,
+)
 from .transport import (
     ACTIVATE_USE_POLICY,
     CREATE_USE_POLICY,
@@ -124,7 +134,7 @@ def _prepare_evaluation(
     return materialized, call
 
 
-class Policies:
+class Policies(WithRawResponse):
     """Synchronous generated-type-only Policy API."""
 
     def __init__(self, invoker: SyncInvoker) -> None:
@@ -212,7 +222,8 @@ class Policies:
         request: policy_service_pb2.ListUsePoliciesRequest | None = None,
         *,
         options: CallOptions | None = None,
-    ) -> policy_service_pb2.ListUsePoliciesResponse:
+        limits: PaginationLimits | None = None,
+    ) -> Page[use_policy_pb2.UsePolicy]:
         materialized = policy_service_pb2.ListUsePoliciesRequest()
         if request is not None:
             materialized.CopyFrom(request)
@@ -222,13 +233,19 @@ class Policies:
         materialized.parent = parent
         if materialized.HasField("page") and materialized.page.page_size > 1000:
             raise ValueError("policy page size cannot exceed 1000")
+        apply_default_page_size(materialized, limits)
         call = prepare_call(
             options, default_timeout=self._invoker.config.default_timeout, require_idempotency=False
         )
-        return cast(
+        response = cast(
             policy_service_pb2.ListUsePoliciesResponse,
             self._invoker.unary(LIST_USE_POLICIES, materialized, call=call, retry_safe=True),
         )
+
+        def follow(page_token: str) -> Page[use_policy_pb2.UsePolicy]:
+            return self.list(next_request(materialized, page_token), options=options, limits=limits)
+
+        return sync_page(response, items_field="use_policies", fetch=follow, limits=limits)
 
     def activate(
         self, name: str, etag: str, *, options: CallOptions | None = None
@@ -291,7 +308,7 @@ class Policies:
         )
 
 
-class AsyncPolicies:
+class AsyncPolicies(AsyncWithRawResponse):
     """Asyncio variant of the generated-type-only Policy API."""
 
     def __init__(self, invoker: AsyncInvoker) -> None:
@@ -381,7 +398,8 @@ class AsyncPolicies:
         request: policy_service_pb2.ListUsePoliciesRequest | None = None,
         *,
         options: CallOptions | None = None,
-    ) -> policy_service_pb2.ListUsePoliciesResponse:
+        limits: PaginationLimits | None = None,
+    ) -> AsyncPage[use_policy_pb2.UsePolicy]:
         materialized = policy_service_pb2.ListUsePoliciesRequest()
         if request is not None:
             materialized.CopyFrom(request)
@@ -391,13 +409,21 @@ class AsyncPolicies:
         materialized.parent = parent
         if materialized.HasField("page") and materialized.page.page_size > 1000:
             raise ValueError("policy page size cannot exceed 1000")
+        apply_default_page_size(materialized, limits)
         call = prepare_call(
             options, default_timeout=self._invoker.config.default_timeout, require_idempotency=False
         )
-        return cast(
+        response = cast(
             policy_service_pb2.ListUsePoliciesResponse,
             await self._invoker.unary(LIST_USE_POLICIES, materialized, call=call, retry_safe=True),
         )
+
+        async def follow(page_token: str) -> AsyncPage[use_policy_pb2.UsePolicy]:
+            return await self.list(
+                next_request(materialized, page_token), options=options, limits=limits
+            )
+
+        return async_page(response, items_field="use_policies", fetch=follow, limits=limits)
 
     async def activate(
         self, name: str, etag: str, *, options: CallOptions | None = None

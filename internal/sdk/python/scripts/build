@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+# Build the internal Python SDK.
+#
+# This package is never built into a distribution: `pyproject.toml` sets
+# `package = false`, it is not published to a registry, and consumers import it
+# from a source revision of this monorepo. "Build" is therefore the check that
+# the package is importable and internally consistent — every module compiles,
+# the public surface in `__init__` resolves, and the declared version is the
+# one the header will carry.
+#
+# MINDCLADE_BAZEL=1 additionally builds the Bazel library target, which is the
+# authority CI uses.
+
+set -euo pipefail
+
+# shellcheck source=internal/sdk/python/scripts/common.sh
+source "$(dirname -- "${BASH_SOURCE[0]}")/common.sh"
+cd -- "$(repository_root)"
+
+announce "compileall ${SDK_PACKAGE_DIR}"
+PYTHONPATH="${SDK_PYTHONPATH}" uv_run python -m compileall -q "${SDK_PACKAGE_DIR}"
+
+announce "import mindclade_internal_sdk"
+PYTHONPATH="${SDK_PYTHONPATH}" uv_run python -c '
+import mindclade_internal_sdk as sdk
+
+missing = [name for name in sdk.__all__ if not hasattr(sdk, name)]
+if missing:
+    raise SystemExit(f"__all__ names an absent attribute: {missing}")
+print(f"{sdk.__name__} {sdk.__version__}: {len(sdk.__all__)} exported names")
+'
+
+if bazel_requested; then
+  require_tool bazel "install Bazelisk, or unset MINDCLADE_BAZEL to use the native toolchain."
+  announce "bazel build ${SDK_BAZEL_LIBRARY}"
+  bazel build "${SDK_BAZEL_LIBRARY}"
+fi

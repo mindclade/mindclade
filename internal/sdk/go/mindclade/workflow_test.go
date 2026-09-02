@@ -248,6 +248,17 @@ func TestWorkflowAndApprovalFacadesCoverGeneratedRPCs(t *testing.T) {
 		t.Fatalf("terminal=%v cursor=%d err=%v", terminal, watcher.Cursor(), err)
 	}
 	_ = watcher.Close()
+	// ResumeWatch is the uniform resume verb: it re-enters the same stream from
+	// a cursor a previous process persisted, without replaying what was already
+	// acknowledged.
+	resumed, err := client.Workflows.ResumeWatch(context.Background(), runName, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if run, recvErr := resumed.Recv(); recvErr != nil || run.GetTransitionSequence() != 2 || resumed.Cursor() != 2 {
+		t.Fatalf("resumed=%v cursor=%d err=%v", run, resumed.Cursor(), recvErr)
+	}
+	_ = resumed.Close()
 	if run, waitErr := client.Workflows.Wait(context.Background(), runName, 1); waitErr != nil || run.GetState() != workflowv1.WorkflowRunState_WORKFLOW_RUN_STATE_SUCCEEDED {
 		t.Fatalf("wait run=%v err=%v", run, waitErr)
 	}

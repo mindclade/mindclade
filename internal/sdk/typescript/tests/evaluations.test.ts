@@ -141,8 +141,8 @@ describe("Evaluation generated-contract facade", () => {
 		);
 		assert.equal((await client.evaluations.getRun(RUN)).name, RUN);
 		assert.equal(
-			(await client.evaluations.listRuns({ page: { pageSize: 10, pageToken: "opaque" } })).page
-				?.nextPageToken,
+			(await client.evaluations.listRuns({ page: { pageSize: 10, pageToken: "opaque" } })).metadata
+				.nextPageToken,
 			"next",
 		);
 		await client.evaluations.cancelRun(

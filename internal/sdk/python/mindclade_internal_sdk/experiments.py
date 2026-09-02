@@ -21,9 +21,19 @@ from mindclade.experiment.v1 import (
 from mindclade.internal.experiment.v1 import experiment_service_pb2
 
 from ._invocation import AsyncInvoker, SyncInvoker, canonical_digest, command_context
+from ._raw import AsyncWithRawResponse, WithRawResponse
 from ._validation import artifact_ref, required_response_message, required_text
 from .calls import CallOptions, PreparedCall, prepare_call
 from .errors import ProtocolError
+from .pagination import (
+    AsyncPage,
+    Page,
+    PaginationLimits,
+    apply_default_page_size,
+    async_page,
+    next_request,
+    sync_page,
+)
 from .transport import (
     COMPLETE_TRIAL,
     CREATE_EXPERIMENT,
@@ -395,7 +405,7 @@ def _validate_complete(
     return value.trial.name
 
 
-class Experiments:
+class Experiments(WithRawResponse):
     """Synchronous private Experiment, Study, and Trial API."""
 
     def __init__(self, invoker: SyncInvoker) -> None:
@@ -446,7 +456,8 @@ class Experiments:
         request: experiment_service_pb2.ListExperimentsRequest | None = None,
         *,
         options: CallOptions | None = None,
-    ) -> experiment_service_pb2.ListExperimentsResponse:
+        limits: PaginationLimits | None = None,
+    ) -> Page[experiment_pb2.Experiment]:
         value = (
             copy.deepcopy(request)
             if request is not None
@@ -458,13 +469,24 @@ class Experiments:
         ):
             raise ValueError("experiment list scope or page size is invalid")
         value.parent = _project(self._invoker)
-        response = cast(
-            experiment_service_pb2.ListExperimentsResponse,
-            self._invoker.unary(
-                LIST_EXPERIMENTS, value, call=_read_call(self._invoker, options), retry_safe=True
+        apply_default_page_size(value, limits)
+        response = _experiment_page(
+            self._invoker,
+            cast(
+                experiment_service_pb2.ListExperimentsResponse,
+                self._invoker.unary(
+                    LIST_EXPERIMENTS,
+                    value,
+                    call=_read_call(self._invoker, options),
+                    retry_safe=True,
+                ),
             ),
         )
-        return _experiment_page(self._invoker, response)
+
+        def follow(page_token: str) -> Page[experiment_pb2.Experiment]:
+            return self.list(next_request(value, page_token), options=options, limits=limits)
+
+        return sync_page(response, items_field="experiments", fetch=follow, limits=limits)
 
     def update(
         self,
@@ -537,18 +559,30 @@ class Experiments:
         request: experiment_service_pb2.ListStudiesRequest,
         *,
         options: CallOptions | None = None,
-    ) -> experiment_service_pb2.ListStudiesResponse:
+        limits: PaginationLimits | None = None,
+    ) -> Page[study_pb2.Study]:
         value = copy.deepcopy(request)
         _experiment_name(self._invoker, value.parent)
         if value.page.page_size > _MAX_PAGE_SIZE:
             raise ValueError("study page size cannot exceed 200")
-        response = cast(
-            experiment_service_pb2.ListStudiesResponse,
-            self._invoker.unary(
-                LIST_STUDIES, value, call=_read_call(self._invoker, options), retry_safe=True
+        apply_default_page_size(value, limits)
+        response = _study_page(
+            self._invoker,
+            value.parent,
+            cast(
+                experiment_service_pb2.ListStudiesResponse,
+                self._invoker.unary(
+                    LIST_STUDIES, value, call=_read_call(self._invoker, options), retry_safe=True
+                ),
             ),
         )
-        return _study_page(self._invoker, value.parent, response)
+
+        def follow(page_token: str) -> Page[study_pb2.Study]:
+            return self.list_studies(
+                next_request(value, page_token), options=options, limits=limits
+            )
+
+        return sync_page(response, items_field="studies", fetch=follow, limits=limits)
 
     def transition_study(
         self,
@@ -600,18 +634,28 @@ class Experiments:
         request: experiment_service_pb2.ListTrialsRequest,
         *,
         options: CallOptions | None = None,
-    ) -> experiment_service_pb2.ListTrialsResponse:
+        limits: PaginationLimits | None = None,
+    ) -> Page[trial_pb2.Trial]:
         value = copy.deepcopy(request)
         _study_name(self._invoker, value.parent)
         if value.page.page_size > _MAX_PAGE_SIZE:
             raise ValueError("trial page size cannot exceed 200")
-        response = cast(
-            experiment_service_pb2.ListTrialsResponse,
-            self._invoker.unary(
-                LIST_TRIALS, value, call=_read_call(self._invoker, options), retry_safe=True
+        apply_default_page_size(value, limits)
+        response = _trial_page(
+            self._invoker,
+            value.parent,
+            cast(
+                experiment_service_pb2.ListTrialsResponse,
+                self._invoker.unary(
+                    LIST_TRIALS, value, call=_read_call(self._invoker, options), retry_safe=True
+                ),
             ),
         )
-        return _trial_page(self._invoker, value.parent, response)
+
+        def follow(page_token: str) -> Page[trial_pb2.Trial]:
+            return self.list_trials(next_request(value, page_token), options=options, limits=limits)
+
+        return sync_page(response, items_field="trials", fetch=follow, limits=limits)
 
     def transition_trial(
         self,
@@ -645,7 +689,7 @@ class Experiments:
         return _response(response, "trial", trial_pb2.Trial, name, "trial completion")
 
 
-class AsyncExperiments:
+class AsyncExperiments(AsyncWithRawResponse):
     """Asyncio-native private Experiment, Study, and Trial API."""
 
     def __init__(self, invoker: AsyncInvoker) -> None:
@@ -691,7 +735,8 @@ class AsyncExperiments:
         request: experiment_service_pb2.ListExperimentsRequest | None = None,
         *,
         options: CallOptions | None = None,
-    ) -> experiment_service_pb2.ListExperimentsResponse:
+        limits: PaginationLimits | None = None,
+    ) -> AsyncPage[experiment_pb2.Experiment]:
         value = (
             copy.deepcopy(request)
             if request is not None
@@ -703,13 +748,24 @@ class AsyncExperiments:
         ):
             raise ValueError("experiment list scope or page size is invalid")
         value.parent = _project(self._invoker)
-        response = cast(
-            experiment_service_pb2.ListExperimentsResponse,
-            await self._invoker.unary(
-                LIST_EXPERIMENTS, value, call=_read_call(self._invoker, options), retry_safe=True
+        apply_default_page_size(value, limits)
+        response = _experiment_page(
+            self._invoker,
+            cast(
+                experiment_service_pb2.ListExperimentsResponse,
+                await self._invoker.unary(
+                    LIST_EXPERIMENTS,
+                    value,
+                    call=_read_call(self._invoker, options),
+                    retry_safe=True,
+                ),
             ),
         )
-        return _experiment_page(self._invoker, response)
+
+        async def follow(page_token: str) -> AsyncPage[experiment_pb2.Experiment]:
+            return await self.list(next_request(value, page_token), options=options, limits=limits)
+
+        return async_page(response, items_field="experiments", fetch=follow, limits=limits)
 
     async def update(
         self,
@@ -785,18 +841,30 @@ class AsyncExperiments:
         request: experiment_service_pb2.ListStudiesRequest,
         *,
         options: CallOptions | None = None,
-    ) -> experiment_service_pb2.ListStudiesResponse:
+        limits: PaginationLimits | None = None,
+    ) -> AsyncPage[study_pb2.Study]:
         value = copy.deepcopy(request)
         _experiment_name(self._invoker, value.parent)
         if value.page.page_size > _MAX_PAGE_SIZE:
             raise ValueError("study page size cannot exceed 200")
-        response = cast(
-            experiment_service_pb2.ListStudiesResponse,
-            await self._invoker.unary(
-                LIST_STUDIES, value, call=_read_call(self._invoker, options), retry_safe=True
+        apply_default_page_size(value, limits)
+        response = _study_page(
+            self._invoker,
+            value.parent,
+            cast(
+                experiment_service_pb2.ListStudiesResponse,
+                await self._invoker.unary(
+                    LIST_STUDIES, value, call=_read_call(self._invoker, options), retry_safe=True
+                ),
             ),
         )
-        return _study_page(self._invoker, value.parent, response)
+
+        async def follow(page_token: str) -> AsyncPage[study_pb2.Study]:
+            return await self.list_studies(
+                next_request(value, page_token), options=options, limits=limits
+            )
+
+        return async_page(response, items_field="studies", fetch=follow, limits=limits)
 
     async def transition_study(
         self,
@@ -851,18 +919,30 @@ class AsyncExperiments:
         request: experiment_service_pb2.ListTrialsRequest,
         *,
         options: CallOptions | None = None,
-    ) -> experiment_service_pb2.ListTrialsResponse:
+        limits: PaginationLimits | None = None,
+    ) -> AsyncPage[trial_pb2.Trial]:
         value = copy.deepcopy(request)
         _study_name(self._invoker, value.parent)
         if value.page.page_size > _MAX_PAGE_SIZE:
             raise ValueError("trial page size cannot exceed 200")
-        response = cast(
-            experiment_service_pb2.ListTrialsResponse,
-            await self._invoker.unary(
-                LIST_TRIALS, value, call=_read_call(self._invoker, options), retry_safe=True
+        apply_default_page_size(value, limits)
+        response = _trial_page(
+            self._invoker,
+            value.parent,
+            cast(
+                experiment_service_pb2.ListTrialsResponse,
+                await self._invoker.unary(
+                    LIST_TRIALS, value, call=_read_call(self._invoker, options), retry_safe=True
+                ),
             ),
         )
-        return _trial_page(self._invoker, value.parent, response)
+
+        async def follow(page_token: str) -> AsyncPage[trial_pb2.Trial]:
+            return await self.list_trials(
+                next_request(value, page_token), options=options, limits=limits
+            )
+
+        return async_page(response, items_field="trials", fetch=follow, limits=limits)
 
     async def transition_trial(
         self,

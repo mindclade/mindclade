@@ -2,7 +2,6 @@ import { createHash } from "node:crypto";
 
 import { clone, create, toBinary } from "@bufbuild/protobuf";
 import { timestampFromDate } from "@bufbuild/protobuf/wkt";
-import { Code, ConnectError } from "@connectrpc/connect";
 
 import {
 	CancelOperationRequestSchema,
@@ -21,9 +20,10 @@ import {
 } from "../../../../protocols/generated/typescript/job/v1/operation_pb.js";
 import type { ClientCore } from "./core.js";
 import { MindcladeError, OperationFailure } from "./error.js";
+import { listPage, type Page, withPageToken } from "./pagination.js";
 import {
-	callHeaders,
 	commandContext,
+	type ListOptions,
 	type PreparedCall,
 	prepareCall,
 	type SdkCallOptions,
@@ -32,13 +32,13 @@ import {
 	validateResource,
 	type WaitOptions,
 } from "./request.js";
-import { ensureActive, invokeUnary, retryDelay } from "./retry.js";
-import { registeredMethodSafety } from "./safety.js";
+import { ensureActive, invokeUnary } from "./retry.js";
+import { DEFAULT_WAIT_TIMEOUT_MS, type WatchSource, watchStream } from "./watch.js";
 
-const DEFAULT_WAIT_TIMEOUT_MS = 30 * 60 * 1_000;
 const GET_OPERATION = "/mindclade.internal.job.v1.OperationService/GetOperation";
 const CANCEL_OPERATION = "/mindclade.internal.job.v1.OperationService/CancelOperation";
 const LIST_OPERATIONS = "/mindclade.internal.job.v1.OperationService/ListOperations";
+const WATCH_OPERATION = "/mindclade.internal.job.v1.OperationService/WatchOperation";
 const MAX_OPERATION_PAGE_SIZE = 200;
 
 export class Operations {
@@ -48,11 +48,14 @@ export class Operations {
 		this.#core = core;
 	}
 
-	/** Returns one detached, bounded page in the configured tenant/project. */
+	/**
+	 * Returns one detached, bounded page in the configured tenant/project that
+	 * also iterates the whole cursor.
+	 */
 	async list(
 		requestValue?: ListOperationsRequest,
-		options: SdkCallOptions = {},
-	): Promise<ListOperationsResponse> {
+		options: ListOptions = {},
+	): Promise<Page<Operation, ListOperationsResponse>> {
 		const request =
 			requestValue === undefined
 				? create(ListOperationsRequestSchema)
@@ -70,18 +73,32 @@ export class Operations {
 			);
 		}
 		request.parent = parent;
-		const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
-		const response = await invokeUnary(
-			this.#core,
-			prepared,
-			registeredMethodSafety(LIST_OPERATIONS),
-			undefined,
-			(call) => this.#core.raw.operations.listOperations(request, call),
-		);
-		for (const operation of response.operations) {
-			validateListedOperation(operation, this.#core);
-		}
-		return clone(ListOperationsResponseSchema, response);
+		return await listPage({
+			cursor: (response) => response.page?.nextPageToken ?? "",
+			fetch: async (pageToken) => {
+				const paged = withPageToken(ListOperationsRequestSchema, request, pageToken);
+				const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
+				const response = await invokeUnary(
+					this.#core,
+					prepared,
+					LIST_OPERATIONS,
+					undefined,
+					(call) => this.#core.raw.operations.listOperations(paged, call),
+				);
+				for (const operation of response.operations) {
+					validateListedOperation(operation, this.#core);
+				}
+				return {
+					requestId: prepared.requestId,
+					response: clone(ListOperationsResponseSchema, response),
+				};
+			},
+			items: (response) => response.operations,
+			limits: options.limits,
+			pageSize,
+			pageToken: request.page?.pageToken ?? "",
+			signal: options.signal,
+		});
 	}
 
 	async get(name: string, options: SdkCallOptions = {}): Promise<Operation> {
@@ -143,7 +160,7 @@ export class Operations {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			registeredMethodSafety(CANCEL_OPERATION),
+			CANCEL_OPERATION,
 			options.idempotencyKey,
 			(call) => this.#core.raw.operations.cancelOperation(request, call),
 		);
@@ -160,59 +177,69 @@ export class Operations {
 		options: SdkCallOptions = {},
 	): AsyncGenerator<WatchOperationResponse> {
 		validateResource("operation name", name);
-		if (afterSequence < 0n)
+		if (afterSequence < 0n) {
 			throw MindcladeError.invalidArgument("watch sequence cannot be negative");
-		const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
-		let cursor = afterSequence;
-		let failures = 0;
-		while (true) {
-			ensureActive(this.#core, prepared);
-			const request = create(WatchOperationRequestSchema, {
-				afterSequence: cursor,
-				deadline: timestampFromDate(new Date(prepared.deadlineMs)),
-				name,
-			});
-			try {
-				const stream = this.#core.raw.operations.watchOperation(request, {
-					headers: callHeaders(this.#core.config, prepared),
-					timeoutMs: prepared.deadlineMs - this.#core.runtime.nowMs(),
-					...(prepared.signal === undefined ? {} : { signal: prepared.signal }),
-				});
-				for await (const update of stream) {
-					ensureActive(this.#core, prepared);
-					if (update.sequence === 0n) {
-						throw MindcladeError.protocol("operation watch returned an invalid zero sequence");
-					}
-					if (update.sequence <= cursor) continue;
-					if (update.operation === undefined) {
-						throw MindcladeError.protocol("operation watch update omitted its operation");
-					}
-					if (update.operation.operationId !== name) {
-						throw MindcladeError.protocol("operation watch returned a different operation");
-					}
-					failures = 0;
-					cursor = update.sequence;
-					yield update;
-					if (update.operation.done || isTerminalFailure(update.operation)) return;
-				}
-				throw new ConnectError("stream ended before a terminal update", Code.Unavailable);
-			} catch (reason) {
-				const error = MindcladeError.from(
-					reason,
-					prepared.signal,
-					this.#core.runtime.nowMs() >= prepared.deadlineMs,
-				);
-				failures += 1;
-				if (!error.retryable || failures >= this.#core.config.retry.maxAttempts) throw error;
-				const delay = retryDelay(this.#core, failures, error.retryAfterMs);
-				if (delay >= prepared.deadlineMs - this.#core.runtime.nowMs()) {
-					throw MindcladeError.deadlineExceeded();
-				}
-				await this.#core.runtime.sleep(delay, prepared.signal);
-			}
 		}
+		const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
+		yield* watchStream(this.#core, prepared, this.#watchSource(name, prepared), afterSequence);
 	}
 
+	/**
+	 * Resumes a watch from a cursor the caller already acknowledged.
+	 *
+	 * Distinct from `watch` only in that the cursor is mandatory and must be
+	 * positive: resuming from zero would replay the whole stream, which is
+	 * almost never what a caller holding a cursor intends.
+	 */
+	async *resumeWatch(
+		name: string,
+		afterSequence: bigint,
+		options: SdkCallOptions = {},
+	): AsyncGenerator<WatchOperationResponse> {
+		if (afterSequence <= 0n) {
+			throw MindcladeError.invalidArgument(
+				"resuming an operation watch requires a positive acknowledged sequence",
+			);
+		}
+		yield* this.watch(name, afterSequence, options);
+	}
+
+	#watchSource(
+		name: string,
+		prepared: PreparedCall,
+	): WatchSource<WatchOperationResponse, bigint, WatchOperationResponse> {
+		return {
+			accept: (update, cursor) => {
+				if (update.sequence === 0n) {
+					throw MindcladeError.protocol("operation watch returned an invalid zero sequence");
+				}
+				if (update.sequence <= cursor) return { delivery: "skip" };
+				if (update.operation === undefined) {
+					throw MindcladeError.protocol("operation watch update omitted its operation");
+				}
+				if (update.operation.operationId !== name) {
+					throw MindcladeError.protocol("operation watch returned a different operation");
+				}
+				return { cursor: update.sequence, delivery: "yield", value: update };
+			},
+			incomplete: "stream ended before a terminal update",
+			open: (cursor, call) =>
+				this.#core.raw.operations.watchOperation(
+					create(WatchOperationRequestSchema, {
+						afterSequence: cursor,
+						deadline: timestampFromDate(new Date(prepared.deadlineMs)),
+						name,
+					}),
+					call,
+				),
+			route: WATCH_OPERATION,
+			terminal: (update) =>
+				update.operation !== undefined &&
+				(update.operation.done || isTerminalFailure(update.operation)),
+		};
+	}
+
+	/** @deprecated Prefer `wait`, which polls, or `watch` with a terminal check. */
 	async watchUntilDone(
 		name: string,
 		afterSequence = 0n,
@@ -231,12 +258,8 @@ export class Operations {
 
 	async #getPrepared(name: string, prepared: PreparedCall): Promise<Operation> {
 		const request = create(GetOperationRequestSchema, { ifNoneMatch: "", name });
-		const response = await invokeUnary(
-			this.#core,
-			prepared,
-			registeredMethodSafety(GET_OPERATION),
-			undefined,
-			(call) => this.#core.raw.operations.getOperation(request, call),
+		const response = await invokeUnary(this.#core, prepared, GET_OPERATION, undefined, (call) =>
+			this.#core.raw.operations.getOperation(request, call),
 		);
 		if (response.operation === undefined) {
 			throw MindcladeError.protocol("GetOperation response omitted its operation");

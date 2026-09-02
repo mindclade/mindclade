@@ -72,8 +72,19 @@ func (service *JobService) Get(ctx context.Context, name, ifNoneMatch string, op
 	return cloneGenerated(response.GetJob()), nil
 }
 
+// JobPage is one bounded list response plus cursor-scheme traversal. The
+// embedded generated response remains the authoritative model; the wrapper
+// adds only the opaque-cursor mechanics.
+type JobPage struct {
+	*internaljobv1.ListJobsResponse
+	pageBase[*jobv1.Job, *JobPage]
+}
+
+// Items returns this page's jobs without traversing any further page.
+func (page *JobPage) Items() []*jobv1.Job { return page.GetJobs() }
+
 // List returns one bounded project-scoped page and preserves opaque tokens.
-func (service *JobService) List(ctx context.Context, request *internaljobv1.ListJobsRequest, options ...RequestOption) (*internaljobv1.ListJobsResponse, error) {
+func (service *JobService) List(ctx context.Context, request *internaljobv1.ListJobsRequest, options ...RequestOption) (*JobPage, error) {
 	if !service.configured() {
 		return nil, invalidArgument("job service is not configured")
 	}
@@ -104,7 +115,14 @@ func (service *JobService) List(ctx context.Context, request *internaljobv1.List
 			return nil, protocolDataLoss("ListJobs returned a job outside configured scope")
 		}
 	}
-	return cloneGenerated(response), nil
+	detached := cloneGenerated(response)
+	page := &JobPage{ListJobsResponse: detached}
+	page.pageBase = newPage[*jobv1.Job](page, detached.GetPage(), paginationLimitsFrom(options), func(ctx context.Context, token string) (*JobPage, error) {
+		successor := cloneGenerated(value)
+		successor.Page = pageRequestWithToken(value.GetPage(), token)
+		return service.List(ctx, successor, options...)
+	})
+	return page, nil
 }
 
 // Cancel records monotonic cancellation under an ETag precondition.

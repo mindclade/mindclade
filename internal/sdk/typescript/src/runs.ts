@@ -38,9 +38,15 @@ import { RunSchema } from "../../../../protocols/generated/typescript/job/v1/run
 import type { ClientCore } from "./core.js";
 import { MindcladeError } from "./error.js";
 import { digestContext, leaf, resource, resourceId } from "./jobs.js";
-import { prepareCall, type SdkCallOptions, type SubmitOptions } from "./request.js";
+import { listPage, type Page, withPageToken } from "./pagination.js";
+import {
+	type ListOptions,
+	prepareCall,
+	type SdkCallOptions,
+	type SubmitOptions,
+} from "./request.js";
+import { captureFor } from "./response.js";
 import { invokeUnary } from "./retry.js";
-import { registeredMethodSafety } from "./safety.js";
 
 const routes = {
 	getRun: "/mindclade.internal.job.v1.RunService/GetRun",
@@ -100,12 +106,8 @@ export class Runs {
 	async getRun(name: string, options: SdkCallOptions = {}): Promise<Run> {
 		const canonical = resource(this.#core, name, "runs");
 		const call = prepareCall(this.#core.config, this.#core.runtime, options);
-		const response = await invokeUnary(
-			this.#core,
-			call,
-			registeredMethodSafety(routes.getRun),
-			undefined,
-			(o) => this.#core.raw.runs.getRun(create(GetRunRequestSchema, { name: canonical }), o),
+		const response = await invokeUnary(this.#core, call, routes.getRun, undefined, (o) =>
+			this.#core.raw.runs.getRun(create(GetRunRequestSchema, { name: canonical }), o),
 		);
 		if (
 			response.run === undefined ||
@@ -116,10 +118,11 @@ export class Runs {
 		return clone(RunSchema, response.run);
 	}
 
+	/** Returns the first page, which also iterates the whole cursor. */
 	async listRuns(
 		input: MessageInitShape<typeof ListRunsRequestSchema>,
-		options: SdkCallOptions = {},
-	): Promise<ListRunsResponse> {
+		options: ListOptions = {},
+	): Promise<Page<Run, ListRunsResponse>> {
 		const request = clone(ListRunsRequestSchema, create(ListRunsRequestSchema, input));
 		request.parent = resource(this.#core, request.parent, "jobs");
 		const pageSize = request.page?.pageSize ?? 0;
@@ -130,31 +133,35 @@ export class Runs {
 			request.filter.trim() !== ""
 		)
 			throw MindcladeError.invalidArgument("run list page or filter is invalid");
-		const call = prepareCall(this.#core.config, this.#core.runtime, options);
-		const response = await invokeUnary(
-			this.#core,
-			call,
-			registeredMethodSafety(routes.listRuns),
-			undefined,
-			(o) => this.#core.raw.runs.listRuns(request, o),
-		);
-		if (
-			response.runs.some((value) => !validRun(this.#core, value) || value.jobId !== request.parent)
-		)
-			throw MindcladeError.protocol("ListRuns response violated durable identity");
-		return clone(ListRunsResponseSchema, response);
+		return await listPage({
+			cursor: (response) => response.page?.nextPageToken ?? "",
+			fetch: async (pageToken) => {
+				const paged = withPageToken(ListRunsRequestSchema, request, pageToken);
+				const call = prepareCall(this.#core.config, this.#core.runtime, options);
+				const response = await invokeUnary(this.#core, call, routes.listRuns, undefined, (o) =>
+					this.#core.raw.runs.listRuns(paged, o),
+				);
+				if (
+					response.runs.some(
+						(value) => !validRun(this.#core, value) || value.jobId !== request.parent,
+					)
+				)
+					throw MindcladeError.protocol("ListRuns response violated durable identity");
+				return { requestId: call.requestId, response: clone(ListRunsResponseSchema, response) };
+			},
+			items: (response) => response.runs,
+			limits: options.limits,
+			pageSize,
+			pageToken: request.page?.pageToken ?? "",
+			signal: options.signal,
+		});
 	}
 
 	async getAttempt(name: string, options: SdkCallOptions = {}): Promise<Attempt> {
 		const canonical = resource(this.#core, name, "attempts");
 		const call = prepareCall(this.#core.config, this.#core.runtime, options);
-		const response = await invokeUnary(
-			this.#core,
-			call,
-			registeredMethodSafety(routes.getAttempt),
-			undefined,
-			(o) =>
-				this.#core.raw.runs.getAttempt(create(GetAttemptRequestSchema, { name: canonical }), o),
+		const response = await invokeUnary(this.#core, call, routes.getAttempt, undefined, (o) =>
+			this.#core.raw.runs.getAttempt(create(GetAttemptRequestSchema, { name: canonical }), o),
 		);
 		if (
 			response.attempt === undefined ||
@@ -165,10 +172,11 @@ export class Runs {
 		return clone(AttemptSchema, response.attempt);
 	}
 
+	/** Returns the first page, which also iterates the whole cursor. */
 	async listAttempts(
 		input: MessageInitShape<typeof ListAttemptsRequestSchema>,
-		options: SdkCallOptions = {},
-	): Promise<ListAttemptsResponse> {
+		options: ListOptions = {},
+	): Promise<Page<Attempt, ListAttemptsResponse>> {
 		const request = clone(ListAttemptsRequestSchema, create(ListAttemptsRequestSchema, input));
 		request.parent = resource(this.#core, request.parent, "runs");
 		const pageSize = request.page?.pageSize ?? 0;
@@ -176,21 +184,31 @@ export class Runs {
 			throw MindcladeError.invalidArgument(
 				"attempt page size must be an integer between zero and 200",
 			);
-		const call = prepareCall(this.#core.config, this.#core.runtime, options);
-		const response = await invokeUnary(
-			this.#core,
-			call,
-			registeredMethodSafety(routes.listAttempts),
-			undefined,
-			(o) => this.#core.raw.runs.listAttempts(request, o),
-		);
-		if (
-			response.attempts.some(
-				(value) => !validAttempt(this.#core, value) || value.runId !== request.parent,
-			)
-		)
-			throw MindcladeError.protocol("ListAttempts response violated durable identity");
-		return clone(ListAttemptsResponseSchema, response);
+		return await listPage({
+			cursor: (response) => response.page?.nextPageToken ?? "",
+			fetch: async (pageToken) => {
+				const paged = withPageToken(ListAttemptsRequestSchema, request, pageToken);
+				const call = prepareCall(this.#core.config, this.#core.runtime, options);
+				const response = await invokeUnary(this.#core, call, routes.listAttempts, undefined, (o) =>
+					this.#core.raw.runs.listAttempts(paged, o),
+				);
+				if (
+					response.attempts.some(
+						(value) => !validAttempt(this.#core, value) || value.runId !== request.parent,
+					)
+				)
+					throw MindcladeError.protocol("ListAttempts response violated durable identity");
+				return {
+					requestId: call.requestId,
+					response: clone(ListAttemptsResponseSchema, response),
+				};
+			},
+			items: (response) => response.attempts,
+			limits: options.limits,
+			pageSize,
+			pageToken: request.page?.pageToken ?? "",
+			signal: options.signal,
+		});
 	}
 
 	async acquire(
@@ -217,21 +235,11 @@ export class Runs {
 			AcquireAttemptLeaseRequestSchema,
 			request,
 		);
-		let responseHeaders: Headers | undefined;
-		const response = await invokeUnary(
-			this.#core,
-			call,
-			registeredMethodSafety(routes.acquire),
-			options.idempotencyKey,
-			(o) =>
-				this.#core.raw.runs.acquireAttemptLease(request, {
-					...o,
-					onHeader: (headers) => {
-						responseHeaders = headers;
-					},
-				}),
+		const { capture, core } = captureFor(this.#core);
+		const response = await invokeUnary(core, call, routes.acquire, options.idempotencyKey, (o) =>
+			this.#core.raw.runs.acquireAttemptLease(request, o),
 		);
-		const token = responseHeaders?.get("x-mindclade-lease-token") ?? "";
+		const token = capture.headers?.get("x-mindclade-lease-token") ?? "";
 		const credential = captureLeaseCredential(token);
 		if (
 			response.attempt === undefined ||
@@ -258,7 +266,7 @@ export class Runs {
 		const response = await invokeUnary(
 			this.#core,
 			call,
-			registeredMethodSafety(routes.renew),
+			routes.renew,
 			options.idempotencyKey,
 			(o) => this.#core.raw.runs.renewAttemptLease(request, o),
 		);
@@ -287,7 +295,7 @@ export class Runs {
 		const response = await invokeUnary(
 			this.#core,
 			call,
-			registeredMethodSafety(routes.heartbeat),
+			routes.heartbeat,
 			options.idempotencyKey,
 			(o) => this.#core.raw.runs.heartbeatAttempt(request, o),
 		);
@@ -319,7 +327,7 @@ export class Runs {
 		const response = await invokeUnary(
 			this.#core,
 			call,
-			registeredMethodSafety(routes.cancel),
+			routes.cancel,
 			options.idempotencyKey,
 			(o) => this.#core.raw.runs.cancelAttempt(request, o),
 		);
@@ -362,7 +370,7 @@ export class Runs {
 		const response = await invokeUnary(
 			this.#core,
 			call,
-			registeredMethodSafety(routes.commit),
+			routes.commit,
 			options.idempotencyKey,
 			(o) => this.#core.raw.runs.commitAttempt(request, o),
 		);
