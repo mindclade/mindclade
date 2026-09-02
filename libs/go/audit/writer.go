@@ -25,8 +25,17 @@ func (w *MemoryWriter) Append(ctx context.Context, event *commonv1.EventEnvelope
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	if _, err := ValidateEvent(event); err != nil {
-		return err
+	switch event.GetEventType() {
+	case "mindclade.events.audit.v1.AuditEvent":
+		if _, err := ValidateEvent(event); err != nil {
+			return err
+		}
+	case "mindclade.events.audit.v1.SecurityEvent":
+		if _, err := ValidateSecurityEvent(event); err != nil {
+			return err
+		}
+	default:
+		return fmt.Errorf("unsupported audit event type %q", event.GetEventType())
 	}
 	encoded, err := proto.MarshalOptions{Deterministic: true}.Marshal(event)
 	if err != nil {

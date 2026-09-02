@@ -24,8 +24,10 @@ import (
 
 	artifactv1 "github.com/mindclade/mindclade/protocols/generated/go/artifact/v1"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
+	featurev1 "github.com/mindclade/mindclade/protocols/generated/go/feature/v1"
 	internaljobv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/job/v1"
 	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
+	transformv1 "github.com/mindclade/mindclade/protocols/generated/go/transform/v1"
 )
 
 const leaseTokenHeader = "x-mindclade-lease-token" //nolint:gosec // This is a protocol header or deterministic test fixture, not a credential.
@@ -760,7 +762,7 @@ func (s *RunServer) CancelAttempt(ctx context.Context, request *internaljobv1.Ca
 	}
 	result, err := s.repository.CancelAttemptSQL(ctx, CancelAttemptCommand{
 		Credentials: credentials, ExpectedResourceVersion: request.GetExpectedResourceVersion(),
-		Now: now, Command: commandMetadata,
+		Reason: request.GetReason(), Now: now, Command: commandMetadata,
 	})
 	if err != nil {
 		return nil, runRPCError(err)
@@ -819,8 +821,15 @@ func (s *RunServer) CommitAttempt(ctx context.Context, request *internaljobv1.Co
 	if err != nil {
 		return nil, err
 	}
+	featureCompletion, transformCompletion, err := bindDomainCompletion(request)
+	if err != nil {
+		return nil, err
+	}
 	result, err := s.repository.CompleteAttemptSQL(ctx, CompleteAttemptCommand{
 		Credentials: credentials, Attempt: proto.Clone(request.GetAttempt()).(*jobv1.Attempt),
+		Fence:                   cloneFence(request.GetFence()),
+		FeatureMaterialization:  featureCompletion,
+		TransformExecution:      transformCompletion,
 		UpdateMask:              append([]string(nil), request.GetUpdateMask().GetPaths()...),
 		ExpectedResourceVersion: request.GetExpectedResourceVersion(), Now: now, Command: commandMetadata,
 	})
@@ -834,6 +843,32 @@ func (s *RunServer) CommitAttempt(ctx context.Context, request *internaljobv1.Co
 		return nil, err
 	}
 	return &internaljobv1.CommitAttemptResponse{Attempt: cloneAttempt(result.Attempt), Run: cloneRun(result.Run)}, nil
+}
+
+func bindDomainCompletion(request *internaljobv1.CommitAttemptRequest) (*featurev1.CommitFeatureMaterializationCommand, *transformv1.CommitTransformExecutionCommand, error) {
+	if request == nil {
+		return nil, nil, status.Error(codes.InvalidArgument, "attempt completion request is required")
+	}
+	switch completion := request.GetDomainCompletion().(type) {
+	case nil:
+		return nil, nil, nil
+	case *internaljobv1.CommitAttemptRequest_FeatureMaterialization:
+		if completion.FeatureMaterialization == nil || !proto.Equal(completion.FeatureMaterialization.GetFence(), request.GetFence()) {
+			return nil, nil, status.Error(codes.InvalidArgument, "feature completion must carry the current attempt fence")
+		}
+		value := proto.Clone(completion.FeatureMaterialization).(*featurev1.CommitFeatureMaterializationCommand)
+		value.Context = proto.Clone(request.GetContext()).(*commonv1.CommandContext)
+		return value, nil, nil
+	case *internaljobv1.CommitAttemptRequest_TransformExecution:
+		if completion.TransformExecution == nil || !proto.Equal(completion.TransformExecution.GetFence(), request.GetFence()) {
+			return nil, nil, status.Error(codes.InvalidArgument, "transform completion must carry the current attempt fence")
+		}
+		value := proto.Clone(completion.TransformExecution).(*transformv1.CommitTransformExecutionCommand)
+		value.Context = proto.Clone(request.GetContext()).(*commonv1.CommandContext)
+		return nil, value, nil
+	default:
+		return nil, nil, status.Error(codes.InvalidArgument, "unsupported domain completion")
+	}
 }
 
 func (s *RunServer) leaseCredentials(ctx context.Context, commandContext *commonv1.CommandContext, fence *jobv1.LeaseFence, expected int64) (WorkerIdentity, LeaseCredentials, error) {

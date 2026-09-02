@@ -1,0 +1,73 @@
+schema_version: mindclade.internal-sdk-rpc-coverage/v2
+scope: mindclade.internal
+languages:
+  - go
+  - python
+  - rust
+  - typescript
+default_classification: ergonomic
+services:
+  mindclade.internal.admin.v1.AdminService:
+    owner: platform-administration
+    facade: admin
+    overrides: {}
+  mindclade.internal.agent.v1.AgentService:
+    owner: agent-platform
+    facade: agents
+    overrides: {}
+  mindclade.internal.artifact.v1.ArtifactService:
+    owner: artifact-platform
+    facade: artifacts
+    overrides: {}
+  mindclade.internal.dataset.v1.DatasetService:
+    owner: data-platform
+    facade: datasets
+    overrides: {}
+  mindclade.internal.evaluation.v1.EvaluationService:
+    owner: evaluation-platform
+    facade: evaluations
+    overrides: {}
+  mindclade.internal.experiment.v1.ExperimentService:
+    owner: experiment-platform
+    facade: experiments
+    overrides: {}
+  mindclade.internal.inference.v1.InferenceService:
+    owner: inference-platform
+    facade: inference
+    overrides: {}
+  mindclade.internal.job.v1.OperationService:
+    owner: control-plane-runtime
+    facade: operations
+    overrides: {}
+  mindclade.internal.job.v1.JobService:
+    owner: control-plane-runtime
+    facade: jobs
+    overrides: {}
+  mindclade.internal.job.v1.RunService:
+    owner: worker-runtime
+    facade: worker
+    overrides:
+      ExpireAttemptLeases:
+        classification: raw-only
+        temporary: false
+        reason: Lease expiry is a control-plane reconciler primitive; SDK callers use fenced worker lifecycle helpers.
+  mindclade.internal.model.v1.ModelService:
+    owner: model-platform
+    facade: models
+    overrides: {}
+  mindclade.internal.policy.v1.PolicyService:
+    owner: policy-platform
+    facade: policies
+    overrides: {}
+  mindclade.internal.training.v1.TrainingService:
+    owner: training-platform
+    facade: training
+    overrides: {}
+  mindclade.internal.workflow.v1.ApprovalService:
+    owner: workflow-platform
+    facade: approvals
+    overrides: {}
+  mindclade.internal.workflow.v1.WorkflowService:
+    owner: workflow-platform
+    facade: workflows
+    overrides: {}

@@ -170,6 +170,43 @@ func TestGeneratedAdminEventsAreRegisteredAndDecodable(t *testing.T) {
 	}
 }
 
+func TestTenantUpdateEventSeparatesSemanticSequenceFromResourceRevision(t *testing.T) {
+	t.Parallel()
+	identity := identityFixture()
+	command := &commonv1.CommandContext{RequestId: "tenant-update-1", TraceId: "trace-1"}
+	events := GeneratedEventFactory{}
+	tenant := tenantFixture()
+	first, err := events.TenantUpdated(identity, tenant, []string{"state"}, nil, command, fixtureTime)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first.GetAggregateSequence() != 1 || first.GetSubject().GetResourceVersion() != 2 {
+		t.Fatalf("first update sequence=%d resource revision=%d", first.GetAggregateSequence(), first.GetSubject().GetResourceVersion())
+	}
+	if _, err = queue.UnmarshalRegisteredPayload(first); err != nil {
+		t.Fatal(err)
+	}
+
+	secondTenant := clone(tenant)
+	secondTenant.Revision = 3
+	secondTenant.Etag = resourceETag(secondTenant.GetName(), 3)
+	secondCommand := clone(command)
+	secondCommand.RequestId = "tenant-update-2"
+	second, err := events.TenantUpdated(identity, secondTenant, []string{"display_name"}, nil, secondCommand, fixtureTime.Add(time.Second))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if second.GetAggregateSequence() != 2 || second.GetSubject().GetResourceVersion() != 3 {
+		t.Fatalf("second update sequence=%d resource revision=%d", second.GetAggregateSequence(), second.GetSubject().GetResourceVersion())
+	}
+
+	preProvisioning := clone(tenant)
+	preProvisioning.Revision = 1
+	if _, err = events.TenantUpdated(identity, preProvisioning, nil, nil, command, fixtureTime); err == nil {
+		t.Fatal("tenant revision one cannot produce an update event with semantic sequence zero")
+	}
+}
+
 func TestAdminPageTokenIsTamperEvidentAndQueryBound(t *testing.T) {
 	codec, err := NewPageTokenCodec([]byte(strings.Repeat("k", 32)))
 	if err != nil {

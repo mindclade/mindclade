@@ -1,5 +1,7 @@
 .direnv
 build
+apps/console/node_modules
+examples/sdk/node_modules
 node_modules
 result
 target

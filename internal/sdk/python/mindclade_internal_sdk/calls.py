@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Protocol
 
 
@@ -25,7 +25,7 @@ class CallOptions:
     request_id: str | None = None
     trace_id: str | None = None
     idempotency_key: str | None = None
-    lease_token: str | None = None
+    lease_token: str | None = field(default=None, repr=False)
 
     def __post_init__(self) -> None:
         if self.timeout is not None and not 0 < self.timeout <= 300:

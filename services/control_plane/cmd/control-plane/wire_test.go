@@ -28,18 +28,67 @@ import (
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	datasetv1 "github.com/mindclade/mindclade/protocols/generated/go/dataset/v1"
 	evaluationv1 "github.com/mindclade/mindclade/protocols/generated/go/evaluation/v1"
+	internaladminv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/admin/v1"
+	internalagentv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/agent/v1"
 	internalartifactv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/artifact/v1"
 	internaldatasetv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/dataset/v1"
 	internalevaluationv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/evaluation/v1"
+	internalexperimentv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/experiment/v1"
+	internalinferencev1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/inference/v1"
 	internaljobv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/job/v1"
 	internalmodelv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/model/v1"
+	internalpolicyv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/policy/v1"
+	internaltrainingv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/training/v1"
+	internalworkflowv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/workflow/v1"
 	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
 	modelv1 "github.com/mindclade/mindclade/protocols/generated/go/model/v1"
 	trainingv1 "github.com/mindclade/mindclade/protocols/generated/go/training/v1"
 	trainingapp "github.com/mindclade/mindclade/services/control_plane/internal/training"
 )
 
-const generatedServiceCount = 15
+const generatedServiceCount = 16
+
+type unavailableTrainingFoundation struct {
+	apiv1.UnimplementedMindcladeServiceServer
+}
+
+func (unavailableTrainingFoundation) unavailable() error {
+	return status.Error(codes.Unavailable, "durable foundation training backend is not configured")
+}
+
+func (u unavailableTrainingFoundation) Ready(context.Context) error { return u.unavailable() }
+
+func (u unavailableTrainingFoundation) CreateTrainingRun(context.Context, *apiv1.CreateTrainingRunRequest) (*apiv1.Operation, error) {
+	return nil, u.unavailable()
+}
+
+func (u unavailableTrainingFoundation) GetTrainingRun(context.Context, *apiv1.GetResourceRequest) (*apiv1.TrainingRunView, error) {
+	return nil, u.unavailable()
+}
+
+func (u unavailableTrainingFoundation) ListTrainingRuns(context.Context, *apiv1.ListResourcesRequest) (*apiv1.TrainingRunList, error) {
+	return nil, u.unavailable()
+}
+
+func (u unavailableTrainingFoundation) GetOperation(context.Context, *apiv1.GetResourceRequest) (*apiv1.Operation, error) {
+	return nil, u.unavailable()
+}
+
+func (u unavailableTrainingFoundation) CancelOperation(context.Context, *apiv1.CancelOperationRequest) (*apiv1.Operation, error) {
+	return nil, u.unavailable()
+}
+
+func (u unavailableTrainingFoundation) WatchOperation(*apiv1.WatchOperationRequest, grpc.ServerStreamingServer[apiv1.OperationEvent]) error {
+	return u.unavailable()
+}
+
+type activatedAdminServer struct {
+	internaladminv1.UnimplementedAdminServiceServer
+}
+
+type activatedAgentServer struct {
+	internalagentv1.UnimplementedAgentServiceServer
+}
 
 type activatedArtifactServer struct {
 	internalartifactv1.UnimplementedArtifactServiceServer
@@ -59,6 +108,14 @@ type activatedModelServer struct {
 
 type activatedEvaluationServer struct {
 	internalevaluationv1.UnimplementedEvaluationServiceServer
+}
+
+type activatedExperimentServer struct {
+	internalexperimentv1.UnimplementedExperimentServiceServer
+}
+
+type activatedInferenceServer struct {
+	internalinferencev1.UnimplementedInferenceServiceServer
 }
 
 func (activatedEvaluationServer) GetEvaluationRun(context.Context, *internalevaluationv1.GetEvaluationRunRequest) (*internalevaluationv1.GetEvaluationRunResponse, error) {
@@ -81,25 +138,57 @@ type activatedRunServer struct {
 	internaljobv1.UnimplementedRunServiceServer
 }
 
-type activatedSchedulerFoundation struct{ unavailableTrainingFoundation }
-
-func (activatedSchedulerFoundation) InternalJobServer() internaljobv1.JobServiceServer {
-	return activatedJobServer{}
+type activatedOperationServer struct {
+	internaljobv1.UnimplementedOperationServiceServer
 }
 
-func (activatedSchedulerFoundation) InternalRunServer() internaljobv1.RunServiceServer {
-	return activatedRunServer{}
+type activatedPolicyServer struct {
+	internalpolicyv1.UnimplementedPolicyServiceServer
+}
+
+type activatedTrainingServer struct {
+	internaltrainingv1.UnimplementedTrainingServiceServer
+}
+
+type activatedWorkflowServer struct {
+	internalworkflowv1.UnimplementedWorkflowServiceServer
+}
+
+type activatedApprovalServer struct {
+	internalworkflowv1.UnimplementedApprovalServiceServer
 }
 
 func (activatedArtifactServer) GetArtifact(context.Context, *internalartifactv1.GetArtifactRequest) (*internalartifactv1.GetArtifactResponse, error) {
 	return &internalartifactv1.GetArtifactResponse{Artifact: &artifactv1.ArtifactRef{Digest: "sha256:" + strings.Repeat("a", 64), MediaType: "application/octet-stream"}}, nil
 }
 
+func completeRuntimeDependencies() runtimeDependencies {
+	return runtimeDependencies{
+		Public:     unavailableTrainingFoundation{},
+		Ready:      unavailableTrainingFoundation{}.Ready,
+		Admin:      activatedAdminServer{},
+		Agent:      activatedAgentServer{},
+		Artifact:   activatedArtifactServer{},
+		Dataset:    activatedDatasetServer{},
+		Evaluation: activatedEvaluationServer{},
+		Experiment: activatedExperimentServer{},
+		Inference:  activatedInferenceServer{},
+		Operation:  activatedOperationServer{},
+		Job:        activatedJobServer{},
+		Run:        activatedRunServer{},
+		Model:      activatedModelServer{},
+		Policy:     activatedPolicyServer{},
+		Training:   activatedTrainingServer{},
+		Workflow:   activatedWorkflowServer{},
+		Approval:   activatedApprovalServer{},
+	}
+}
+
 func TestRegisterGeneratedServicesCoversDescriptorEstate(t *testing.T) {
 	t.Parallel()
 
 	server := grpc.NewServer()
-	if err := registerGeneratedServices(server, runtimeDependencies{Training: unavailableTrainingFoundation{}}); err != nil {
+	if err := registerGeneratedServices(server, completeRuntimeDependencies()); err != nil {
 		t.Fatalf("register generated services: %v", err)
 	}
 
@@ -124,10 +213,9 @@ func TestRegisterGeneratedServicesRejectsTypedNilDependencies(t *testing.T) {
 	t.Parallel()
 
 	var datasetServer *activatedDatasetServer
-	err := registerGeneratedServices(grpc.NewServer(), runtimeDependencies{
-		Training: unavailableTrainingFoundation{},
-		Dataset:  datasetServer,
-	})
+	dependencies := completeRuntimeDependencies()
+	dependencies.Dataset = datasetServer
+	err := registerGeneratedServices(grpc.NewServer(), dependencies)
 	if err == nil || !strings.Contains(err.Error(), "typed nil") {
 		t.Fatalf("register typed-nil dataset dependency error = %v, want typed-nil rejection", err)
 	}
@@ -136,7 +224,9 @@ func TestRegisterGeneratedServicesRejectsTypedNilDependencies(t *testing.T) {
 func TestRegisterGeneratedServicesActivatesArtifactImplementation(t *testing.T) {
 	t.Parallel()
 	server := grpc.NewServer()
-	if err := registerGeneratedServices(server, runtimeDependencies{Training: unavailableTrainingFoundation{}, Artifact: activatedArtifactServer{}}); err != nil {
+	dependencies := completeRuntimeDependencies()
+	dependencies.Artifact = activatedArtifactServer{}
+	if err := registerGeneratedServices(server, dependencies); err != nil {
 		t.Fatal(err)
 	}
 	listener := bufconn.Listen(1 << 20)
@@ -163,7 +253,9 @@ func TestRegisterGeneratedServicesActivatesArtifactImplementation(t *testing.T) 
 func TestRegisterGeneratedServicesActivatesJobImplementation(t *testing.T) {
 	t.Parallel()
 	server := grpc.NewServer()
-	if err := registerGeneratedServices(server, runtimeDependencies{Training: activatedSchedulerFoundation{}}); err != nil {
+	dependencies := completeRuntimeDependencies()
+	dependencies.Job = activatedJobServer{}
+	if err := registerGeneratedServices(server, dependencies); err != nil {
 		t.Fatal(err)
 	}
 	listener := bufconn.Listen(1 << 20)
@@ -187,95 +279,51 @@ func TestRegisterGeneratedServicesActivatesJobImplementation(t *testing.T) {
 	}
 }
 
-func TestInactiveGeneratedServicesReturnMethodUnimplemented(t *testing.T) {
+func TestRegisterGeneratedServicesRejectsEveryMissingDependency(t *testing.T) {
 	t.Parallel()
 
-	server := grpc.NewServer()
-	if err := registerGeneratedServices(server, runtimeDependencies{
-		Training:   unavailableTrainingFoundation{},
-		Dataset:    activatedDatasetServer{},
-		Evaluation: activatedEvaluationServer{},
-		Model:      activatedModelServer{},
-	}); err != nil {
-		t.Fatalf("register generated services: %v", err)
+	tests := []struct {
+		name   string
+		remove func(*runtimeDependencies)
+	}{
+		{"public", func(value *runtimeDependencies) { value.Public = nil }},
+		{"admin", func(value *runtimeDependencies) { value.Admin = nil }},
+		{"agent", func(value *runtimeDependencies) { value.Agent = nil }},
+		{"artifact", func(value *runtimeDependencies) { value.Artifact = nil }},
+		{"dataset", func(value *runtimeDependencies) { value.Dataset = nil }},
+		{"evaluation", func(value *runtimeDependencies) { value.Evaluation = nil }},
+		{"experiment", func(value *runtimeDependencies) { value.Experiment = nil }},
+		{"inference", func(value *runtimeDependencies) { value.Inference = nil }},
+		{"operation", func(value *runtimeDependencies) { value.Operation = nil }},
+		{"job", func(value *runtimeDependencies) { value.Job = nil }},
+		{"run", func(value *runtimeDependencies) { value.Run = nil }},
+		{"model", func(value *runtimeDependencies) { value.Model = nil }},
+		{"policy", func(value *runtimeDependencies) { value.Policy = nil }},
+		{"training", func(value *runtimeDependencies) { value.Training = nil }},
+		{"workflow", func(value *runtimeDependencies) { value.Workflow = nil }},
+		{"approval", func(value *runtimeDependencies) { value.Approval = nil }},
 	}
-	listener := bufconn.Listen(1 << 20)
-	serveResult := make(chan error, 1)
-	go func() {
-		serveResult <- server.Serve(listener)
-	}()
-	t.Cleanup(func() {
-		server.Stop()
-		_ = listener.Close()
-		if err := <-serveResult; err != nil && !errors.Is(err, grpc.ErrServerStopped) {
-			t.Errorf("serve registered services: %v", err)
-		}
-	})
-
-	dialer := func(context.Context, string) (net.Conn, error) {
-		return listener.Dial()
-	}
-	connection, err := grpc.NewClient(
-		"passthrough:///control-plane-registration-test",
-		grpc.WithContextDialer(dialer),
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
-	)
-	if err != nil {
-		t.Fatalf("create in-memory client: %v", err)
-	}
-	t.Cleanup(func() {
-		if err := connection.Close(); err != nil {
-			t.Errorf("close in-memory client: %v", err)
-		}
-	})
-
-	// The first file is the partially implemented public facade. Every service
-	// in the remaining internal descriptor files is intentionally inactive and
-	// must route to its generated method-specific fail-closed implementation.
-	for _, file := range generatedGRPCFiles[1:] {
-		services := file.Services()
-		for serviceIndex := 0; serviceIndex < services.Len(); serviceIndex++ {
-			service := services.Get(serviceIndex)
-			if service.FullName() == "mindclade.internal.dataset.v1.DatasetService" || service.FullName() == "mindclade.internal.evaluation.v1.EvaluationService" || service.FullName() == "mindclade.internal.model.v1.ModelService" {
-				continue
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			dependencies := completeRuntimeDependencies()
+			test.remove(&dependencies)
+			err := registerGeneratedServices(grpc.NewServer(), dependencies)
+			want := "generated " + test.name + " service dependency is required"
+			if err == nil || !strings.Contains(err.Error(), want) {
+				t.Fatalf("missing %s dependency error = %v, want %q", test.name, err, want)
 			}
-			method := firstUnaryMethod(t, service)
-			t.Run(string(service.FullName()), func(t *testing.T) {
-				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-				defer cancel()
-				fullMethod := "/" + string(service.FullName()) + "/" + string(method.Name())
-				err := connection.Invoke(
-					ctx,
-					fullMethod,
-					dynamicpb.NewMessage(method.Input()),
-					dynamicpb.NewMessage(method.Output()),
-				)
-				grpcStatus := status.Convert(err)
-				if grpcStatus.Code() != codes.Unimplemented {
-					t.Fatalf("%s code = %s, want %s: %v", fullMethod, grpcStatus.Code(), codes.Unimplemented, err)
-				}
-				wantMessage := fmt.Sprintf("method %s not implemented", method.Name())
-				if grpcStatus.Message() != wantMessage {
-					t.Fatalf("%s message = %q, want generated fail-closed message %q", fullMethod, grpcStatus.Message(), wantMessage)
-				}
-				if strings.Contains(grpcStatus.Message(), "unknown service") ||
-					strings.Contains(grpcStatus.Message(), "unknown method") {
-					t.Fatalf("%s reached the gRPC unknown-service fallback: %q", fullMethod, grpcStatus.Message())
-				}
-			})
-		}
+		})
 	}
 }
 
 func TestRegisterGeneratedServicesActivatesDatasetAndModelImplementations(t *testing.T) {
 	t.Parallel()
 	server := grpc.NewServer()
-	if err := registerGeneratedServices(server, runtimeDependencies{
-		Training:   unavailableTrainingFoundation{},
-		Dataset:    activatedDatasetServer{},
-		Evaluation: activatedEvaluationServer{},
-		Model:      activatedModelServer{},
-	}); err != nil {
+	dependencies := completeRuntimeDependencies()
+	dependencies.Dataset = activatedDatasetServer{}
+	dependencies.Evaluation = activatedEvaluationServer{}
+	dependencies.Model = activatedModelServer{}
+	if err := registerGeneratedServices(server, dependencies); err != nil {
 		t.Fatal(err)
 	}
 	listener := bufconn.Listen(1 << 20)
@@ -450,6 +498,18 @@ func TestAuthenticationInterceptorEnforcesMethodRoles(t *testing.T) {
 	if status.Code(err) != codes.PermissionDenied {
 		t.Fatalf("worker model mutation code = %s, want %s: %v", status.Code(err), codes.PermissionDenied, err)
 	}
+	_, err = authorizer.unary(ctx, struct{}{}, &grpc.UnaryServerInfo{
+		FullMethod: "/mindclade.internal.experiment.v1.ExperimentService/GetTrial",
+	}, handler)
+	if err != nil {
+		t.Fatalf("worker experiment read authorization: %v", err)
+	}
+	_, err = authorizer.unary(ctx, struct{}{}, &grpc.UnaryServerInfo{
+		FullMethod: "/mindclade.internal.experiment.v1.ExperimentService/CompleteTrial",
+	}, handler)
+	if status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("worker experiment mutation code = %s, want %s: %v", status.Code(err), codes.PermissionDenied, err)
+	}
 }
 
 func TestPublicTrainingProjectionRedactsPrivateExecutionState(t *testing.T) {
@@ -467,7 +527,10 @@ func TestPublicTrainingProjectionRedactsPrivateExecutionState(t *testing.T) {
 			ProjectId: "project-01", Name: "datasetReleases/data-01", ResourceVersion: 3,
 		},
 	}
-	public := publicTrainingRun(internal)
+	public, err := publicTrainingRun(internal)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if public.GetName() != "tenants/tenant-01/projects/project-01/trainingRuns/run-01" {
 		t.Fatalf("public name = %q", public.GetName())
 	}
@@ -482,6 +545,75 @@ func TestPublicTrainingProjectionRedactsPrivateExecutionState(t *testing.T) {
 	// projection was populated from the richer internal aggregate.
 	if public.GetHardwareTopology() != nil || public.GetLatestCheckpoint() != nil {
 		t.Fatal("absent safe fields acquired internal execution state")
+	}
+}
+
+func TestTrainingProjectionRejectsUnrepresentableNumericValues(t *testing.T) {
+	t.Parallel()
+	for _, test := range []struct {
+		name string
+		call func() error
+		code codes.Code
+	}{
+		{
+			name: "negative operation revision",
+			call: func() error {
+				_, err := publicOperation(&jobv1.Operation{ResourceVersion: -1})
+				return err
+			},
+			code: codes.Internal,
+		},
+		{
+			name: "negative training revision",
+			call: func() error {
+				_, err := publicTrainingRun(&trainingv1.TrainingRun{Revision: -1})
+				return err
+			},
+			code: codes.Internal,
+		},
+		{
+			name: "negative artifact size",
+			call: func() error {
+				_, err := publicArtifact(&artifactv1.ArtifactRef{SizeBytes: -1})
+				return err
+			},
+			code: codes.Internal,
+		},
+		{
+			name: "negative resource revision",
+			call: func() error {
+				_, err := publicResource(&commonv1.ResourceRef{ResourceVersion: -1})
+				return err
+			},
+			code: codes.Internal,
+		},
+		{
+			name: "artifact size above PostgreSQL bigint",
+			call: func() error {
+				_, err := domainArtifact(&apiv1.ArtifactRef{Digest: "sha256:artifact", MediaType: "application/octet-stream", SizeBytes: ^uint64(0)})
+				return err
+			},
+			code: codes.InvalidArgument,
+		},
+		{
+			name: "resource revision above PostgreSQL bigint",
+			call: func() error {
+				_, err := domainResource(
+					trainingapp.Identity{TenantID: "tenant-01", ProjectID: "project-01"},
+					&apiv1.ResourceRef{Name: "tenants/tenant-01/projects/project-01/modelReleases/model-01", Revision: ^uint64(0)},
+					"model_release",
+				)
+				return err
+			},
+			code: codes.InvalidArgument,
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			if got := status.Code(test.call()); got != test.code {
+				t.Fatalf("status code = %s, want %s", got, test.code)
+			}
+		})
 	}
 }
 

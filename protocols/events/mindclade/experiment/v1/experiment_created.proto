@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package mindclade.events.experiment.v1;
+
+import "google/protobuf/timestamp.proto";
+import "proto/mindclade/experiment/v1/experiment.proto";
+
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/experiment/v1;experimentv1";
+
+// ExperimentCreated records admission of immutable experiment intent.
+message ExperimentCreated {
+  mindclade.experiment.v1.Experiment experiment = 1;
+  google.protobuf.Timestamp created_at = 2;
+}

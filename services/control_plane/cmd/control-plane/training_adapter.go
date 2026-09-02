@@ -6,7 +6,6 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
-	"math"
 	"strings"
 	"time"
 
@@ -18,6 +17,7 @@ import (
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	"github.com/mindclade/mindclade/libs/go/numconv"
 	apiv1 "github.com/mindclade/mindclade/protocols/generated/go/api/v1"
 	artifactv1 "github.com/mindclade/mindclade/protocols/generated/go/artifact/v1"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
@@ -86,12 +86,15 @@ func (resolver metadataIdentityResolver) ResolveJob(ctx context.Context) (jobsap
 // service used by native internal gRPC. It never exposes internal executable
 // plans, storage URIs, worker leases, fences, or transport credentials.
 type publicTrainingAdapter struct {
+	apiv1.UnimplementedMindcladeServiceServer
 	application *trainingapp.Server
 	jobs        internaljobv1.JobServiceServer
 	runs        internaljobv1.RunServiceServer
 	identities  trainingapp.IdentityResolver
 	ready       func(context.Context) error
 }
+
+var _ apiv1.MindcladeServiceServer = (*publicTrainingAdapter)(nil)
 
 func newPublicTrainingAdapter(
 	application *trainingapp.Server,
@@ -148,16 +151,24 @@ func (a *publicTrainingAdapter) CreateTrainingRun(ctx context.Context, request *
 	if err != nil {
 		return nil, err
 	}
+	trainingRecipe, err := domainArtifact(intent.GetTrainingRecipe())
+	if err != nil {
+		return nil, err
+	}
+	hardwareTopology, err := domainArtifact(intent.GetHardwareTopology())
+	if err != nil {
+		return nil, err
+	}
 	command := &trainingv1.CreateTrainingRunCommand{
 		Project: &commonv1.ResourceRef{
 			ResourceType: "project", ResourceId: identity.ProjectID, TenantId: identity.TenantID,
 			ProjectId: identity.ProjectID, Name: projectParent(identity),
 		},
 		TrainingRunId:        intent.GetTrainingRunId(),
-		TrainingRecipe:       domainArtifact(intent.GetTrainingRecipe()),
+		TrainingRecipe:       trainingRecipe,
 		DatasetRelease:       datasetRelease,
 		ModelRelease:         modelRelease,
-		HardwareTopology:     domainArtifact(intent.GetHardwareTopology()),
+		HardwareTopology:     hardwareTopology,
 		UsePolicy:            usePolicy,
 		Labels:               cloneStringMap(intent.GetLabels()),
 		PolicyClassification: intent.GetPolicyClassification(),
@@ -173,7 +184,7 @@ func (a *publicTrainingAdapter) CreateTrainingRun(ctx context.Context, request *
 	if err != nil {
 		return nil, err
 	}
-	return publicOperation(response.GetOperation()), nil
+	return publicOperation(response.GetOperation())
 }
 
 func (a *publicTrainingAdapter) GetTrainingRun(ctx context.Context, request *apiv1.GetResourceRequest) (*apiv1.TrainingRunView, error) {
@@ -189,7 +200,7 @@ func (a *publicTrainingAdapter) GetTrainingRun(ctx context.Context, request *api
 	if err != nil {
 		return nil, err
 	}
-	return publicTrainingRun(response.GetTrainingRun()), nil
+	return publicTrainingRun(response.GetTrainingRun())
 }
 
 func (a *publicTrainingAdapter) ListTrainingRuns(ctx context.Context, request *apiv1.ListResourcesRequest) (*apiv1.TrainingRunList, error) {
@@ -210,7 +221,11 @@ func (a *publicTrainingAdapter) ListTrainingRuns(ctx context.Context, request *a
 	}
 	result := &apiv1.TrainingRunList{Page: &apiv1.PageMetadata{NextPageToken: response.GetPage().GetNextPageToken()}}
 	for _, value := range response.GetTrainingRuns() {
-		result.TrainingRuns = append(result.TrainingRuns, publicTrainingRun(value))
+		projected, projectionErr := publicTrainingRun(value)
+		if projectionErr != nil {
+			return nil, projectionErr
+		}
+		result.TrainingRuns = append(result.TrainingRuns, projected)
 	}
 	return result, nil
 }
@@ -228,7 +243,7 @@ func (a *publicTrainingAdapter) GetOperation(ctx context.Context, request *apiv1
 	if err != nil {
 		return nil, err
 	}
-	return publicOperation(response.GetOperation()), nil
+	return publicOperation(response.GetOperation())
 }
 
 func (a *publicTrainingAdapter) CancelOperation(ctx context.Context, request *apiv1.CancelOperationRequest) (*apiv1.Operation, error) {
@@ -251,7 +266,7 @@ func (a *publicTrainingAdapter) CancelOperation(ctx context.Context, request *ap
 	if err != nil {
 		return nil, err
 	}
-	return publicOperation(response.GetOperation()), nil
+	return publicOperation(response.GetOperation())
 }
 
 func (a *publicTrainingAdapter) WatchOperation(request *apiv1.WatchOperationRequest, stream grpc.ServerStreamingServer[apiv1.OperationEvent]) error {
@@ -301,8 +316,12 @@ func (s *publicOperationStream) Send(response *internaljobv1.WatchOperationRespo
 	if response.GetOperation().GetDone() {
 		eventType = "operation.terminal"
 	}
+	operation, err := publicOperation(response.GetOperation())
+	if err != nil {
+		return err
+	}
 	return s.send(&apiv1.OperationEvent{
-		EventId: cursor, Operation: publicOperation(response.GetOperation()), EventType: eventType,
+		EventId: cursor, Operation: operation, EventType: eventType,
 		SchemaVersion: 1, OperationRevision: response.GetSequence(), ResumeCursor: cursor,
 		EmittedAt: cloneTimestamp(response.GetObservedAt()),
 	})
@@ -373,21 +392,33 @@ func randomPublicID(prefix string) (string, error) {
 	return prefix + hex.EncodeToString(value), nil
 }
 
-func publicOperation(value *jobv1.Operation) *apiv1.Operation {
+func publicOperation(value *jobv1.Operation) (*apiv1.Operation, error) {
 	if value == nil {
-		return nil
+		return nil, nil
+	}
+	revision, err := numconv.Int64ToUint64(value.GetResourceVersion())
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "persisted operation revision is out of range: %v", err)
+	}
+	target, err := publicResource(value.GetTarget())
+	if err != nil {
+		return nil, err
 	}
 	result := &apiv1.Operation{
-		Name: publicOperationName(value), Uid: resourceTail(value.GetOperationId()), Revision: uint64(max(value.GetResourceVersion(), 0)),
+		Name: publicOperationName(value), Uid: resourceTail(value.GetOperationId()), Revision: revision,
 		Etag: value.GetEtag(), State: strings.TrimPrefix(value.GetState().String(), "OPERATION_STATE_"),
 		Done: value.GetDone(), CreateTime: cloneTimestamp(value.GetCreatedAt()),
-		UpdateTime: cloneTimestamp(value.GetUpdatedAt()), Target: publicResource(value.GetTarget()),
+		UpdateTime: cloneTimestamp(value.GetUpdatedAt()), Target: target,
 	}
 	if value.GetResult() != nil {
-		result.Result = &apiv1.OperationResult{Manifest: publicArtifact(value.GetResult())}
+		manifest, projectionErr := publicArtifact(value.GetResult())
+		if projectionErr != nil {
+			return nil, projectionErr
+		}
+		result.Result = &apiv1.OperationResult{Manifest: manifest}
 	}
 	result.Error = publicError(value.GetError())
-	return result
+	return result, nil
 }
 
 func publicOperationName(value *jobv1.Operation) string {
@@ -397,9 +428,37 @@ func publicOperationName(value *jobv1.Operation) string {
 	return canonicalName(value.GetTenantId(), value.GetProjectId(), "operations", resourceTail(value.GetOperationId()))
 }
 
-func publicTrainingRun(value *trainingv1.TrainingRun) *apiv1.TrainingRunView {
+func publicTrainingRun(value *trainingv1.TrainingRun) (*apiv1.TrainingRunView, error) {
 	if value == nil {
-		return nil
+		return nil, nil
+	}
+	revision, err := numconv.Int64ToUint64(value.GetRevision())
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "persisted training run revision is out of range: %v", err)
+	}
+	trainingRecipe, err := publicArtifact(value.GetTrainingRecipe())
+	if err != nil {
+		return nil, err
+	}
+	datasetRelease, err := publicResource(value.GetDatasetRelease())
+	if err != nil {
+		return nil, err
+	}
+	modelRelease, err := publicResource(value.GetModelRelease())
+	if err != nil {
+		return nil, err
+	}
+	hardwareTopology, err := publicArtifact(value.GetHardwareTopology())
+	if err != nil {
+		return nil, err
+	}
+	latestCheckpoint, err := publicResource(value.GetLatestCheckpoint())
+	if err != nil {
+		return nil, err
+	}
+	resultManifest, err := publicArtifact(value.GetResultManifest())
+	if err != nil {
+		return nil, err
 	}
 	tenantID := resourceTail(value.GetTenantName())
 	projectID := resourceTail(value.GetProjectName())
@@ -412,49 +471,61 @@ func publicTrainingRun(value *trainingv1.TrainingRun) *apiv1.TrainingRunView {
 	}
 	return &apiv1.TrainingRunView{
 		Name: canonicalName(tenantID, projectID, "trainingRuns", resourceTail(value.GetName())),
-		Uid:  value.GetUid(), Revision: uint64(max(value.GetRevision(), 0)), Etag: value.GetEtag(),
+		Uid:  value.GetUid(), Revision: revision, Etag: value.GetEtag(),
 		CreateTime: cloneTimestamp(value.GetCreateTime()), UpdateTime: cloneTimestamp(updated),
 		State:          strings.TrimPrefix(value.GetState().String(), "TRAINING_RUN_STATE_"),
-		TrainingRecipe: publicArtifact(value.GetTrainingRecipe()), DatasetRelease: publicResource(value.GetDatasetRelease()),
-		ModelRelease: publicResource(value.GetModelRelease()), HardwareTopology: publicArtifact(value.GetHardwareTopology()),
-		LatestCheckpoint: publicResource(value.GetLatestCheckpoint()), ResultManifest: publicArtifact(value.GetResultManifest()),
+		TrainingRecipe: trainingRecipe, DatasetRelease: datasetRelease,
+		ModelRelease: modelRelease, HardwareTopology: hardwareTopology,
+		LatestCheckpoint: latestCheckpoint, ResultManifest: resultManifest,
 		Failure: publicError(value.GetError()),
-	}
+	}, nil
 }
 
-func publicArtifact(value *artifactv1.ArtifactRef) *apiv1.ArtifactRef {
+func publicArtifact(value *artifactv1.ArtifactRef) (*apiv1.ArtifactRef, error) {
 	if value == nil {
-		return nil
+		return nil, nil
+	}
+	sizeBytes, err := numconv.Int64ToUint64(value.GetSizeBytes())
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "persisted artifact size is out of range: %v", err)
 	}
 	return &apiv1.ArtifactRef{
-		Digest: value.GetDigest(), MediaType: value.GetMediaType(), SizeBytes: uint64(max(value.GetSizeBytes(), 0)),
+		Digest: value.GetDigest(), MediaType: value.GetMediaType(), SizeBytes: sizeBytes,
 		ArtifactKind: value.GetArtifactKind(), SchemaId: value.GetSchemaId(), IntegrityDigest: value.GetIntegrityDigest(),
-	}
+	}, nil
 }
 
-func domainArtifact(value *apiv1.ArtifactRef) *artifactv1.ArtifactRef {
+func domainArtifact(value *apiv1.ArtifactRef) (*artifactv1.ArtifactRef, error) {
 	if value == nil {
-		return nil
+		return nil, nil
 	}
-	if value.GetDigest() == "" || value.GetMediaType() == "" || value.GetSizeBytes() > math.MaxInt64 {
-		return nil
+	if value.GetDigest() == "" || value.GetMediaType() == "" {
+		return nil, status.Error(codes.InvalidArgument, "artifact digest and mediaType are required")
+	}
+	sizeBytes, err := numconv.Uint64ToInt64(value.GetSizeBytes())
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "artifact size is out of range: %v", err)
 	}
 	return &artifactv1.ArtifactRef{
-		Digest: value.GetDigest(), MediaType: value.GetMediaType(), SizeBytes: int64(value.GetSizeBytes()), //nolint:gosec // Conversion is bounded by validated protocol invariants or PostgreSQL CHECK constraints.
+		Digest: value.GetDigest(), MediaType: value.GetMediaType(), SizeBytes: sizeBytes,
 		ArtifactKind: value.GetArtifactKind(), SchemaId: value.GetSchemaId(), IntegrityDigest: value.GetIntegrityDigest(),
-	}
+	}, nil
 }
 
-func publicResource(value *commonv1.ResourceRef) *apiv1.ResourceRef {
+func publicResource(value *commonv1.ResourceRef) (*apiv1.ResourceRef, error) {
 	if value == nil {
-		return nil
+		return nil, nil
+	}
+	revision, err := numconv.Int64ToUint64(value.GetResourceVersion())
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "persisted resource revision is out of range: %v", err)
 	}
 	name := value.GetName()
 	if value.GetTenantId() != "" && value.GetProjectId() != "" && !strings.HasPrefix(name, "tenants/") {
 		kind := publicCollection(value.GetResourceType())
 		name = canonicalName(value.GetTenantId(), value.GetProjectId(), kind, resourceTail(name))
 	}
-	return &apiv1.ResourceRef{Name: name, Uid: value.GetResourceId(), Revision: uint64(max(value.GetResourceVersion(), 0))}
+	return &apiv1.ResourceRef{Name: name, Uid: value.GetResourceId(), Revision: revision}, nil
 }
 
 func domainResource(identity trainingapp.Identity, value *apiv1.ResourceRef, resourceType string) (*commonv1.ResourceRef, error) {
@@ -464,8 +535,9 @@ func domainResource(identity trainingapp.Identity, value *apiv1.ResourceRef, res
 	if value.GetName() == "" {
 		return nil, status.Error(codes.InvalidArgument, "resource reference name is required")
 	}
-	if value.GetRevision() > math.MaxInt64 {
-		return nil, status.Error(codes.InvalidArgument, "resource reference revision exceeds PostgreSQL bigint")
+	revision, conversionErr := numconv.Uint64ToInt64(value.GetRevision())
+	if conversionErr != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "resource reference revision exceeds PostgreSQL bigint: %v", conversionErr)
 	}
 	collection := publicCollection(resourceType)
 	internal, err := internalResourceName(identity, value.GetName(), collection)
@@ -478,7 +550,7 @@ func domainResource(identity trainingapp.Identity, value *apiv1.ResourceRef, res
 	}
 	return &commonv1.ResourceRef{
 		ResourceType: resourceType, ResourceId: id, TenantId: identity.TenantID, ProjectId: identity.ProjectID,
-		ResourceVersion: int64(value.GetRevision()), Name: internal, //nolint:gosec // Conversion is bounded by validated protocol invariants or PostgreSQL CHECK constraints.
+		ResourceVersion: revision, Name: internal,
 	}, nil
 }
 

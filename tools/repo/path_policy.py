@@ -1,9 +1,9 @@
 #!/usr/bin/env python3.12
 """Repository path authority parsing, reconciliation, and validation.
 
-The module deliberately uses the Python standard library only.  The path manifest is
-JSON encoded (and therefore valid YAML 1.2). The pinned JSON Schema runtime validates the
-structural contract; this module adds repository-specific semantic invariants.
+Authority documents are JSON encoded (and therefore valid YAML 1.2). The pinned
+JSON Schema runtime validates their structural contracts; the standard library
+implements repository-specific semantic invariants and deterministic projections.
 """
 
 from __future__ import annotations
@@ -15,11 +15,285 @@ import re
 import subprocess
 import sys
 from collections.abc import Iterable, Mapping, Sequence
+from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 from typing import Any, Protocol, TypeGuard, cast
 
 from jsonschema import Draft202012Validator
 from jsonschema.exceptions import SchemaError, ValidationError
+
+
+class PolicyError(ValueError):
+    """A deterministic policy input is invalid."""
+
+
+class _Validator(Protocol):
+    def iter_errors(self, instance: object) -> Iterable[ValidationError]: ...
+
+
+def _json_schema_errors(
+    value: Any,
+    schema: Mapping[str, Any],
+    *,
+    schema_name: str = "repository path manifest",
+) -> list[str]:
+    try:
+        Draft202012Validator.check_schema(schema)
+    except SchemaError as error:
+        return [f"invalid {schema_name} schema: {error.message}"]
+    validator = Draft202012Validator(schema)
+    findings: list[str] = []
+    validation_errors = cast(_Validator, validator).iter_errors(value)
+    for error in validation_errors:
+        location = "/".join(str(part) for part in error.absolute_path) or "$"
+        findings.append(f"schema {location}: {error.message}")
+    return sorted(findings)
+
+
+@dataclass(frozen=True, slots=True)
+class ActivationBundle:
+    """One reviewed, explicit repository-path activation unit."""
+
+    identity: str
+    constant: str
+    authority: str
+    owner: str
+    activation_wave: str
+    status: str
+    reason: str
+    paths: tuple[str, ...]
+    predeclared_paths: tuple[str, ...]
+
+    @property
+    def path_count(self) -> int:
+        return len(self.paths)
+
+    @property
+    def addition_paths(self) -> tuple[str, ...]:
+        """Paths absent from the immutable predecessor authority tree."""
+
+        predeclared = frozenset(self.predeclared_paths)
+        return tuple(path for path in self.paths if path not in predeclared)
+
+    @property
+    def sequence_sha256(self) -> str:
+        return hashlib.sha256(("\n".join(self.paths) + "\n").encode()).hexdigest()
+
+    @property
+    def path_set_sha256(self) -> str:
+        return hashlib.sha256(("\n".join(sorted(self.paths)) + "\n").encode()).hexdigest()
+
+
+REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
+ACTIVATION_BUNDLE_MANIFEST_PATH = REPOSITORY_ROOT / "tools/repo/activation-bundles.yaml"
+ACTIVATION_BUNDLE_SCHEMA_PATH = REPOSITORY_ROOT / "tools/repo/activation-bundles.schema.json"
+ACTIVATION_BUNDLE_PROJECTION_PATH = REPOSITORY_ROOT / "tools/repo/activation-bundles.generated.json"
+ACTIVATION_BUNDLE_SCHEMA_VERSION = "mindclade.activation-bundles/v1"
+ACTIVATION_BUNDLE_PROJECTION_VERSION = "mindclade.activation-bundle-projection/v1"
+_ACTIVATION_FORBIDDEN_PATH_TOKENS = ("*", "{", "}", "<", ">", "…")
+
+
+def _read_json_object(path: Path, *, label: str) -> dict[str, Any]:
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as error:
+        raise PolicyError(f"cannot load {label} {path}: {error}") from error
+    if not isinstance(value, dict):
+        raise PolicyError(f"{label} root must be an object")
+    return cast(dict[str, Any], value)
+
+
+def _validate_explicit_activation_path(value: str) -> str:
+    if not value or value.strip() != value:
+        raise PolicyError("activation bundle paths must be non-empty, trimmed strings")
+    if "\\" in value or value.startswith("/") or value.endswith("/"):
+        raise PolicyError(f"activation bundle path is not a canonical POSIX file path: {value!r}")
+    if any(token in value for token in _ACTIVATION_FORBIDDEN_PATH_TOKENS):
+        raise PolicyError(f"activation bundle path contains a generator token: {value!r}")
+    path = PurePosixPath(value)
+    if str(path) != value or any(part in {"", ".", ".."} for part in path.parts):
+        raise PolicyError(f"activation bundle path is not normalized: {value!r}")
+    return value
+
+
+def load_activation_bundles(
+    manifest_path: Path = ACTIVATION_BUNDLE_MANIFEST_PATH,
+    schema_path: Path = ACTIVATION_BUNDLE_SCHEMA_PATH,
+) -> tuple[ActivationBundle, ...]:
+    """Load and fully validate the declarative activation authority."""
+
+    document = _read_json_object(manifest_path, label="activation bundle manifest")
+    schema = _read_json_object(schema_path, label="activation bundle schema")
+    schema_errors = _json_schema_errors(
+        document,
+        schema,
+        schema_name="activation bundle manifest",
+    )
+    if schema_errors:
+        raise PolicyError("invalid activation bundle manifest: " + "; ".join(schema_errors))
+    if document.get("schema_version") != ACTIVATION_BUNDLE_SCHEMA_VERSION:
+        raise PolicyError(
+            f"activation bundle schema_version must be {ACTIVATION_BUNDLE_SCHEMA_VERSION}"
+        )
+
+    document_authority = _validate_explicit_activation_path(cast(str, document["authority"]))
+    raw_bundles = cast(list[dict[str, Any]], document["bundles"])
+    bundles: list[ActivationBundle] = []
+    identities: set[str] = set()
+    constants: set[str] = set()
+    global_paths: dict[str, str] = {}
+    for raw in raw_bundles:
+        identity = cast(str, raw["id"])
+        constant = cast(str, raw["constant"])
+        if identity in identities:
+            raise PolicyError(f"duplicate activation bundle id: {identity}")
+        if constant in constants:
+            raise PolicyError(f"duplicate activation bundle constant: {constant}")
+        identities.add(identity)
+        constants.add(constant)
+
+        reason = cast(str, raw["reason"])
+        if reason.strip() != reason or not reason.strip():
+            raise PolicyError(f"activation bundle {identity} reason must be non-empty and trimmed")
+        paths = tuple(
+            _validate_explicit_activation_path(path) for path in cast(list[str], raw["paths"])
+        )
+        predeclared_paths = tuple(
+            _validate_explicit_activation_path(path)
+            for path in cast(list[str], raw.get("predeclared_paths", []))
+        )
+        undeclared = sorted(set(predeclared_paths) - set(paths))
+        if undeclared:
+            raise PolicyError(
+                f"activation bundle {identity} predeclared_paths are absent from paths: "
+                f"{undeclared!r}"
+            )
+        for path in paths:
+            previous = global_paths.get(path)
+            if previous is not None:
+                raise PolicyError(
+                    f"activation path {path!r} is declared by both {previous} and {identity}"
+                )
+            global_paths[path] = identity
+        authority = _validate_explicit_activation_path(cast(str, raw["authority"]))
+        if authority != document_authority:
+            raise PolicyError(
+                f"activation bundle {identity} authority must match {document_authority}"
+            )
+        bundles.append(
+            ActivationBundle(
+                identity=identity,
+                constant=constant,
+                authority=authority,
+                owner=cast(str, raw["owner"]),
+                activation_wave=cast(str, raw["activation_wave"]),
+                status=cast(str, raw["status"]),
+                reason=reason,
+                paths=paths,
+                predeclared_paths=predeclared_paths,
+            )
+        )
+    return tuple(bundles)
+
+
+def activation_bundle_projection(
+    bundles: Sequence[ActivationBundle],
+) -> dict[str, Any]:
+    """Return the canonical count and digest projection for review and CI."""
+
+    semantic_source = {
+        "schema_version": ACTIVATION_BUNDLE_SCHEMA_VERSION,
+        "bundles": [
+            {
+                "id": bundle.identity,
+                "constant": bundle.constant,
+                "authority": bundle.authority,
+                "owner": bundle.owner,
+                "activation_wave": bundle.activation_wave,
+                "status": bundle.status,
+                "reason": bundle.reason,
+                "paths": list(bundle.paths),
+                "predeclared_paths": list(bundle.predeclared_paths),
+            }
+            for bundle in bundles
+        ],
+    }
+    source_bytes = json.dumps(
+        semantic_source,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode()
+    all_paths = tuple(path for bundle in bundles for path in bundle.paths)
+    return {
+        "schema_version": ACTIVATION_BUNDLE_PROJECTION_VERSION,
+        "source_digest": f"sha256:{hashlib.sha256(source_bytes).hexdigest()}",
+        "bundle_count": len(bundles),
+        "path_count": len(all_paths),
+        "path_set_digest": (
+            "sha256:" + hashlib.sha256(("\n".join(sorted(all_paths)) + "\n").encode()).hexdigest()
+        ),
+        "bundles": [
+            {
+                "id": bundle.identity,
+                "constant": bundle.constant,
+                "path_count": bundle.path_count,
+                "addition_count": len(bundle.addition_paths),
+                "predeclared_count": len(bundle.predeclared_paths),
+                "sequence_digest": f"sha256:{bundle.sequence_sha256}",
+                "path_set_digest": f"sha256:{bundle.path_set_sha256}",
+            }
+            for bundle in bundles
+        ],
+    }
+
+
+ACTIVATION_BUNDLES = load_activation_bundles()
+ACTIVATION_BUNDLES_BY_CONSTANT = {bundle.constant: bundle for bundle in ACTIVATION_BUNDLES}
+ACTIVATION_BUNDLES_BY_PATH = {
+    path: bundle for bundle in ACTIVATION_BUNDLES for path in bundle.paths
+}
+ACTIVATION_BUNDLE_COUNTS = {bundle.constant: bundle.path_count for bundle in ACTIVATION_BUNDLES}
+ACTIVATION_BUNDLE_SEQUENCE_SHA256 = {
+    bundle.constant: bundle.sequence_sha256 for bundle in ACTIVATION_BUNDLES
+}
+ACTIVATION_BUNDLE_PATH_SET_SHA256 = {
+    bundle.constant: bundle.path_set_sha256 for bundle in ACTIVATION_BUNDLES
+}
+ACTIVATION_BUNDLE_PROJECTION = activation_bundle_projection(ACTIVATION_BUNDLES)
+
+
+def activation_bundle_paths(constant: str) -> tuple[str, ...]:
+    """Resolve reconciliation additions by reviewed compatibility constant."""
+
+    try:
+        return ACTIVATION_BUNDLES_BY_CONSTANT[constant].addition_paths
+    except KeyError as error:
+        raise PolicyError(f"unknown activation bundle constant: {constant}") from error
+
+
+def activation_bundle_all_paths(constant: str) -> tuple[str, ...]:
+    """Resolve the complete activated surface, including predecessor-tree paths."""
+
+    try:
+        return ACTIVATION_BUNDLES_BY_CONSTANT[constant].paths
+    except KeyError as error:
+        raise PolicyError(f"unknown activation bundle constant: {constant}") from error
+
+
+def validate_activation_bundle_projection(
+    projection_path: Path = ACTIVATION_BUNDLE_PROJECTION_PATH,
+) -> list[str]:
+    try:
+        actual = _read_json_object(projection_path, label="activation bundle projection")
+    except PolicyError as error:
+        return [str(error)]
+    if actual != ACTIVATION_BUNDLE_PROJECTION:
+        return [
+            "activation bundle projection is stale; run "
+            "python tools/repo/path_policy.py --write-activation-projection"
+        ]
+    return []
+
 
 API_VERSION = "mindclade.dev/v1"
 MANIFEST_KIND = "RepositoryPathManifest"
@@ -28,9 +302,9 @@ BLUEPRINT_SHA256 = "d099074e755168bbdce076d50918bf06aff677f9e5d620fdfe53cb7cef74
 ANCHOR_COMMIT = "292b71f47b1b29cc9ba7cf760a9bd07cd5e0ffa7"
 AUTHORITY_FILE_COUNT = 2461
 AUTHORITY_DIRECTORY_COUNT = 787
-CANONICAL_FILE_COUNT = 3353
+CANONICAL_FILE_COUNT = 3523
 AUTHORITY_PATH_SET_SHA256 = "f2011dd32ccc19649e6abb70ffb4473aea4a224410062d40292222e2e6263692"
-CANONICAL_PATH_SET_SHA256 = "a53521ed4fb8fd9873ba6fae6fa8c1bb256c40445116df695223a5db19634781"
+CANONICAL_PATH_SET_SHA256 = "cc37578846ef6bddc0d0839ec6fab7f1fc8c52dbae62423f9da543538d79713f"
 
 ESTATE_GENERATED_POLICY_PATHS = (
     "generated/bazelrc.common",
@@ -463,25 +737,9 @@ ALL_CONTRACT_GRPC_PACKAGE_PATHS = tuple(
     )
 )
 
-ALL_CONTRACT_GRPC_ADDITIONS = (
-    *ALL_CONTRACT_PYTHON_STUB_PATHS,
-    *ALL_CONTRACT_GRPC_SOURCE_PATHS,
-    *ALL_CONTRACT_GRPC_PROJECTION_PATHS,
-    *ALL_CONTRACT_GRPC_PACKAGE_PATHS,
-)
+ALL_CONTRACT_GRPC_ADDITIONS = activation_bundle_paths("ALL_CONTRACT_GRPC_ADDITIONS")
 
-TRAINING_EVENT_CONTRACT_ADDITIONS = (
-    "protocols/events/mindclade/training/v1/training_run_created.proto",
-    "protocols/events/mindclade/training/v1/training_cancellation_requested.proto",
-    "protocols/generated/go/training/v1/training_run_created.pb.go",
-    "protocols/generated/go/training/v1/training_cancellation_requested.pb.go",
-    "protocols/generated/python/mindclade/training/v1/training_run_created_pb2.py",
-    "protocols/generated/python/mindclade/training/v1/training_cancellation_requested_pb2.py",
-    "protocols/generated/rust/training/v1/training_run_created.rs",
-    "protocols/generated/rust/training/v1/training_cancellation_requested.rs",
-    "protocols/generated/typescript/training/v1/training_run_created_pb.ts",
-    "protocols/generated/typescript/training/v1/training_cancellation_requested_pb.ts",
-)
+TRAINING_EVENT_CONTRACT_ADDITIONS = activation_bundle_paths("TRAINING_EVENT_CONTRACT_ADDITIONS")
 
 VERTICAL_EVENT_CONTRACTS = (
     ("admin", "audit_export_completed"),
@@ -518,44 +776,16 @@ VERTICAL_EVENT_CONTRACTS = (
     ("workflow", "workflow_run_started"),
 )
 
-VERTICAL_EVENT_CONTRACT_ADDITIONS = tuple(
-    path
-    for domain, stem in VERTICAL_EVENT_CONTRACTS
-    for path in (
-        f"protocols/events/mindclade/{domain}/v1/{stem}.proto",
-        f"protocols/generated/go/{domain}/v1/{stem}.pb.go",
-        f"protocols/generated/python/mindclade/{domain}/v1/{stem}_pb2.py",
-        f"protocols/generated/python/mindclade/{domain}/v1/{stem}_pb2.pyi",
-        f"protocols/generated/rust/{domain}/v1/{stem}.rs",
-        f"protocols/generated/typescript/{domain}/v1/{stem}_pb.ts",
-    )
-)
+VERTICAL_EVENT_CONTRACT_ADDITIONS = activation_bundle_paths("VERTICAL_EVENT_CONTRACT_ADDITIONS")
 
-ALL_CONTRACT_RUST_PLUGIN_PATHS = (
-    "tools/codegen/rust_plugins/Cargo.toml",
-    "tools/codegen/rust_plugins/src/bin/protoc-gen-prost.rs",
-    "tools/codegen/rust_plugins/src/bin/protoc-gen-tonic.rs",
-)
+ALL_CONTRACT_RUST_PLUGIN_PATHS = activation_bundle_paths("ALL_CONTRACT_RUST_PLUGIN_PATHS")
 
-CONTRACT_RUNTIME_ADDITIONS = (
-    "buf.lock",
-    "protocols/events/registry.yaml",
-    "protocols/compatibility/baselines/protobuf.candidate.json",
-    "protocols/compatibility/baselines/protobuf.predecessor.lock.json",
-    "protocols/generated/python/mindclade/events/registry.py",
-    "protocols/generated/typescript/google/api/annotations_pb.ts",
-    "protocols/generated/typescript/google/api/http_pb.ts",
-    "services/control_plane/internal/platform/queue/event_registry_generated.go",
-)
+CONTRACT_RUNTIME_ADDITIONS = activation_bundle_paths("CONTRACT_RUNTIME_ADDITIONS")
 
-SCHEMA_BINDING_ADDITIONS = (
-    "protocols/generated/go/schema/v1/BUILD.bazel",
-    "protocols/generated/go/schema/v1/bindings.generated.go",
-    "protocols/generated/go/schema/v1/bindings_generated_test.go",
-    "protocols/generated/python/mindclade/schema/v1/__init__.py",
-    "protocols/generated/python/mindclade/schema/v1/bindings.py",
-    "protocols/generated/rust/schema/v1.rs",
-    "protocols/generated/typescript/schema/v1/bindings.ts",
+SCHEMA_BINDING_ADDITIONS = activation_bundle_paths("SCHEMA_BINDING_ADDITIONS")
+
+ACTIVATION_BUNDLE_GOVERNANCE_ADDITIONS = activation_bundle_paths(
+    "ACTIVATION_BUNDLE_GOVERNANCE_ADDITIONS"
 )
 
 CODEX_BATCH_REPORT_ADDITIONS = (
@@ -575,6 +805,7 @@ WAVE_ZERO_REQUIRED_ADDITIONS = (
     "MODULE.bazel.lock",
     "tools/repo/component.schema.json",
     "tools/repo/repository_drift.v1.schema.json",
+    *ACTIVATION_BUNDLE_GOVERNANCE_ADDITIONS,
     "tools/repo/tests/test_build_repository_drift_report.py",
     "tools/repo/tests/test_monorepo_tree_authority.py",
     "tools/repo/tests/test_repository_policies.py",
@@ -601,285 +832,59 @@ WAVE_ONE_DURABILITY_ADDITIONS = (
 )
 
 # ADR-0015 couples each newly activated contract family to its first executable
-# producer/consumer.  These additions are intentionally exact rather than
-# prefix based: adding a new SDK or training file still requires an explicit
-# governance review and manifest refresh.
-INTERNAL_SDK_ADDITIONS = (
-    "internal/sdk/README.md",
-    "internal/sdk/go/mindclade/BUILD.bazel",
-    "internal/sdk/go/mindclade/README.md",
-    "internal/sdk/go/mindclade/admin.go",
-    "internal/sdk/go/mindclade/agent_test.go",
-    "internal/sdk/go/mindclade/agents.go",
-    "internal/sdk/go/mindclade/approvals.go",
-    "internal/sdk/go/mindclade/artifacts.go",
-    "internal/sdk/go/mindclade/auth.go",
-    "internal/sdk/go/mindclade/auth_test.go",
-    "internal/sdk/go/mindclade/client.go",
-    "internal/sdk/go/mindclade/client_test.go",
-    "internal/sdk/go/mindclade/config.go",
-    "internal/sdk/go/mindclade/datasets.go",
-    "internal/sdk/go/mindclade/error.go",
-    "internal/sdk/go/mindclade/evaluations.go",
-    "internal/sdk/go/mindclade/evaluations_test.go",
-    "internal/sdk/go/mindclade/interceptors.go",
-    "internal/sdk/go/mindclade/inference.go",
-    "internal/sdk/go/mindclade/inference_test.go",
-    "internal/sdk/go/mindclade/lifecycle_test.go",
-    "internal/sdk/go/mindclade/method_policy.go",
-    "internal/sdk/go/mindclade/models.go",
-    "internal/sdk/go/mindclade/operations.go",
-    "internal/sdk/go/mindclade/policy_test.go",
-    "internal/sdk/go/mindclade/policies.go",
-    "internal/sdk/go/mindclade/policy_admin_test.go",
-    "internal/sdk/go/mindclade/request.go",
-    "internal/sdk/go/mindclade/training.go",
-    "internal/sdk/go/mindclade/transport.go",
-    "internal/sdk/go/mindclade/workflow_test.go",
-    "internal/sdk/go/mindclade/workflows.go",
-    "internal/sdk/python/BUILD.bazel",
-    "internal/sdk/python/README.md",
-    "internal/sdk/python/mindclade_internal_sdk/__init__.py",
-    "internal/sdk/python/mindclade_internal_sdk/_invocation.py",
-    "internal/sdk/python/mindclade_internal_sdk/_validation.py",
-    "internal/sdk/python/mindclade_internal_sdk/admin.py",
-    "internal/sdk/python/mindclade_internal_sdk/agents.py",
-    "internal/sdk/python/mindclade_internal_sdk/artifacts.py",
-    "internal/sdk/python/mindclade_internal_sdk/auth.py",
-    "internal/sdk/python/mindclade_internal_sdk/calls.py",
-    "internal/sdk/python/mindclade_internal_sdk/client.py",
-    "internal/sdk/python/mindclade_internal_sdk/config.py",
-    "internal/sdk/python/mindclade_internal_sdk/datasets.py",
-    "internal/sdk/python/mindclade_internal_sdk/errors.py",
-    "internal/sdk/python/mindclade_internal_sdk/evaluations.py",
-    "internal/sdk/python/mindclade_internal_sdk/generated.py",
-    "internal/sdk/python/mindclade_internal_sdk/inference.py",
-    "internal/sdk/python/mindclade_internal_sdk/method_policy.py",
-    "internal/sdk/python/mindclade_internal_sdk/models.py",
-    "internal/sdk/python/mindclade_internal_sdk/operations.py",
-    "internal/sdk/python/mindclade_internal_sdk/policies.py",
-    "internal/sdk/python/mindclade_internal_sdk/testing.py",
-    "internal/sdk/python/mindclade_internal_sdk/training.py",
-    "internal/sdk/python/mindclade_internal_sdk/transport.py",
-    "internal/sdk/python/mindclade_internal_sdk/workflows.py",
-    "internal/sdk/python/pyproject.toml",
-    "internal/sdk/python/tests/test_internal_sdk.py",
-    "internal/sdk/python/tests/test_agents.py",
-    "internal/sdk/python/tests/test_evaluations.py",
-    "internal/sdk/python/tests/test_inference.py",
-    "internal/sdk/python/tests/test_policy_admin.py",
-    "internal/sdk/python/tests/test_workflows.py",
-    "internal/sdk/rust/BUILD.bazel",
-    "internal/sdk/rust/Cargo.toml",
-    "internal/sdk/rust/README.md",
-    "internal/sdk/rust/src/admin.rs",
-    "internal/sdk/rust/src/agent_tests.rs",
-    "internal/sdk/rust/src/agents.rs",
-    "internal/sdk/rust/src/approvals.rs",
-    "internal/sdk/rust/src/artifacts.rs",
-    "internal/sdk/rust/src/auth.rs",
-    "internal/sdk/rust/src/config.rs",
-    "internal/sdk/rust/src/datasets.rs",
-    "internal/sdk/rust/src/error.rs",
-    "internal/sdk/rust/src/evaluation_tests.rs",
-    "internal/sdk/rust/src/evaluations.rs",
-    "internal/sdk/rust/src/inference.rs",
-    "internal/sdk/rust/src/lib.rs",
-    "internal/sdk/rust/src/models.rs",
-    "internal/sdk/rust/src/operations.rs",
-    "internal/sdk/rust/src/policies.rs",
-    "internal/sdk/rust/src/policy_admin_tests.rs",
-    "internal/sdk/rust/src/request.rs",
-    "internal/sdk/rust/src/retry.rs",
-    "internal/sdk/rust/src/tests.rs",
-    "internal/sdk/rust/src/training.rs",
-    "internal/sdk/rust/src/transport.rs",
-    "internal/sdk/rust/src/workflow_tests.rs",
-    "internal/sdk/rust/src/workflows.rs",
-    "internal/sdk/typescript/BUILD.bazel",
-    "internal/sdk/typescript/README.md",
-    "internal/sdk/typescript/biome.json",
-    "internal/sdk/typescript/package.json",
-    "internal/sdk/typescript/src/admin.ts",
-    "internal/sdk/typescript/src/agents.ts",
-    "internal/sdk/typescript/src/approvals.ts",
-    "internal/sdk/typescript/src/artifacts.ts",
-    "internal/sdk/typescript/src/auth.ts",
-    "internal/sdk/typescript/src/client.ts",
-    "internal/sdk/typescript/src/config.ts",
-    "internal/sdk/typescript/src/core.ts",
-    "internal/sdk/typescript/src/datasets.ts",
-    "internal/sdk/typescript/src/error.ts",
-    "internal/sdk/typescript/src/evaluations.ts",
-    "internal/sdk/typescript/src/gcp_auth.ts",
-    "internal/sdk/typescript/src/inference.ts",
-    "internal/sdk/typescript/src/index.ts",
-    "internal/sdk/typescript/src/models.ts",
-    "internal/sdk/typescript/src/operations.ts",
-    "internal/sdk/typescript/src/policies.ts",
-    "internal/sdk/typescript/src/raw.ts",
-    "internal/sdk/typescript/src/request.ts",
-    "internal/sdk/typescript/src/retry.ts",
-    "internal/sdk/typescript/src/runtime.ts",
-    "internal/sdk/typescript/src/safety.ts",
-    "internal/sdk/typescript/src/testing.ts",
-    "internal/sdk/typescript/src/training.ts",
-    "internal/sdk/typescript/src/transport.ts",
-    "internal/sdk/typescript/src/workflows.ts",
-    "internal/sdk/typescript/tests/sdk.test.ts",
-    "internal/sdk/typescript/tests/policy_admin.test.ts",
-    "internal/sdk/typescript/tests/agents.test.ts",
-    "internal/sdk/typescript/tests/evaluations.test.ts",
-    "internal/sdk/typescript/tests/workflow_approval.test.ts",
-    "internal/sdk/typescript/tsconfig.json",
+# producer/consumer. These compatibility constants are projections of the
+# reviewed activation-bundles manifest; no prefix implicitly authorizes a path.
+INTERNAL_SDK_ADDITIONS = activation_bundle_paths("INTERNAL_SDK_ADDITIONS")
+
+SDK_RUNTIME_CONSUMER_ADDITIONS = activation_bundle_paths("SDK_RUNTIME_CONSUMER_ADDITIONS")
+
+SDK_RUNTIME_CONSUMER_PATHS = activation_bundle_all_paths("SDK_RUNTIME_CONSUMER_ADDITIONS")
+
+TRAINING_VERTICAL_ADDITIONS = activation_bundle_paths("TRAINING_VERTICAL_ADDITIONS")
+
+CONTROL_PLANE_TRANSPORT_ADDITIONS = activation_bundle_paths("CONTROL_PLANE_TRANSPORT_ADDITIONS")
+
+WORKER_COORDINATION_ADDITIONS = activation_bundle_paths("WORKER_COORDINATION_ADDITIONS")
+
+ARTIFACT_VERTICAL_ADDITIONS = activation_bundle_paths("ARTIFACT_VERTICAL_ADDITIONS")
+
+DATA_MODEL_VERTICAL_ADDITIONS = activation_bundle_paths("DATA_MODEL_VERTICAL_ADDITIONS")
+
+EVALUATION_VERTICAL_ADDITIONS = activation_bundle_paths("EVALUATION_VERTICAL_ADDITIONS")
+
+CONTROL_PLANE_DOMAIN_ADDITIONS = activation_bundle_paths("CONTROL_PLANE_DOMAIN_ADDITIONS")
+
+CONTRACT_CONFORMANCE_ADDITIONS = activation_bundle_paths("CONTRACT_CONFORMANCE_ADDITIONS")
+
+SDK_RPC_COVERAGE_ADDITIONS = activation_bundle_paths("SDK_RPC_COVERAGE_ADDITIONS")
+
+GRPC_IMPLEMENTATION_COVERAGE_ADDITIONS = activation_bundle_paths(
+    "GRPC_IMPLEMENTATION_COVERAGE_ADDITIONS"
 )
 
-TRAINING_VERTICAL_ADDITIONS = (
-    "services/control_plane/internal/training/BUILD.bazel",
-    "services/control_plane/internal/training/cancellation_sql.go",
-    "services/control_plane/internal/training/contracts.go",
-    "services/control_plane/internal/training/events.go",
-    "services/control_plane/internal/training/list_sql.go",
-    "services/control_plane/internal/training/mapping_sql.go",
-    "services/control_plane/internal/training/pagination.go",
-    "services/control_plane/internal/training/postgres_integration_test.go",
-    "services/control_plane/internal/training/repository_sql.go",
-    "services/control_plane/internal/training/server.go",
-    "services/control_plane/internal/training/training_test.go",
-    "services/control_plane/internal/training/validation.go",
+NUMERIC_CONVERSION_SAFETY_ADDITIONS = activation_bundle_paths("NUMERIC_CONVERSION_SAFETY_ADDITIONS")
+
+DELIVERY_RELIABILITY_ADDITIONS = activation_bundle_paths("DELIVERY_RELIABILITY_ADDITIONS")
+
+EVENT_AUDIT_SEMANTIC_PROJECTION_ADDITIONS = activation_bundle_paths(
+    "EVENT_AUDIT_SEMANTIC_PROJECTION_ADDITIONS"
 )
 
-CONTROL_PLANE_TRANSPORT_ADDITIONS = (
-    "services/control_plane/cmd/control-plane/auth_google.go",
-    "services/control_plane/cmd/control-plane/training_adapter.go",
-    "services/control_plane/cmd/control-plane/wire_test.go",
+EXPERIMENT_CANDIDATE_VERTICAL_ADDITIONS = activation_bundle_paths(
+    "EXPERIMENT_CANDIDATE_VERTICAL_ADDITIONS"
 )
 
-WORKER_COORDINATION_ADDITIONS = (
-    "services/control_plane/internal/jobs/events.go",
-    "services/control_plane/internal/jobs/events_test.go",
-    "services/control_plane/internal/jobs/server.go",
-    "services/control_plane/internal/jobs/server_test.go",
+STAGE8_PRIVATE_SDK_EXAMPLE_ADDITIONS = activation_bundle_paths(
+    "STAGE8_PRIVATE_SDK_EXAMPLE_ADDITIONS"
 )
 
-ARTIFACT_VERTICAL_ADDITIONS = (
-    "services/control_plane/internal/artifacts/contracts.go",
-    "services/control_plane/internal/artifacts/postgres_integration_test.go",
-    "services/control_plane/internal/artifacts/repository_sql.go",
-    "services/control_plane/internal/artifacts/server.go",
-    "services/control_plane/internal/artifacts/server_test.go",
-    "services/control_plane/internal/artifacts/staging_receipts.go",
-    "services/control_plane/internal/platform/storage/gcs_object_store.go",
-    "services/control_plane/internal/platform/storage/gcs_object_store_test.go",
-    "services/control_plane/migrations/000002_artifacts.down.sql",
-    "services/control_plane/migrations/000002_artifacts.up.sql",
-)
-
-DATA_MODEL_VERTICAL_ADDITIONS = (
-    "services/control_plane/internal/datasets/BUILD.bazel",
-    "services/control_plane/internal/datasets/contracts.go",
-    "services/control_plane/internal/datasets/datasets_test.go",
-    "services/control_plane/internal/datasets/events.go",
-    "services/control_plane/internal/datasets/mutations_sql.go",
-    "services/control_plane/internal/datasets/pagination.go",
-    "services/control_plane/internal/datasets/postgres_integration_test.go",
-    "services/control_plane/internal/datasets/repository_sql.go",
-    "services/control_plane/internal/datasets/server.go",
-    "services/control_plane/internal/models/BUILD.bazel",
-    "services/control_plane/internal/models/contracts.go",
-    "services/control_plane/internal/models/events.go",
-    "services/control_plane/internal/models/list_sql.go",
-    "services/control_plane/internal/models/mapping_sql.go",
-    "services/control_plane/internal/models/models_test.go",
-    "services/control_plane/internal/models/pagination.go",
-    "services/control_plane/internal/models/postgres_integration_test.go",
-    "services/control_plane/internal/models/repository_sql.go",
-    "services/control_plane/internal/models/server.go",
-    "services/control_plane/migrations/000003_data_model.down.sql",
-    "services/control_plane/migrations/000003_data_model.up.sql",
-    "services/control_plane/migrations/000004_evaluation_inference.down.sql",
-    "services/control_plane/migrations/000004_evaluation_inference.up.sql",
-)
-
-EVALUATION_VERTICAL_ADDITIONS = (
-    "services/control_plane/internal/evaluations/BUILD.bazel",
-    "services/control_plane/internal/evaluations/common_sql.go",
-    "services/control_plane/internal/evaluations/contracts.go",
-    "services/control_plane/internal/evaluations/events.go",
-    "services/control_plane/internal/evaluations/mapping_sql.go",
-    "services/control_plane/internal/evaluations/pagination.go",
-    "services/control_plane/internal/evaluations/postgres_integration_test.go",
-    "services/control_plane/internal/evaluations/repository_sql.go",
-    "services/control_plane/internal/evaluations/server.go",
-    "services/control_plane/internal/evaluations/server_test.go",
-    "services/control_plane/internal/evaluations/validation.go",
-)
-
-CONTROL_PLANE_DOMAIN_ADDITIONS = (
-    "services/control_plane/internal/admin/BUILD.bazel",
-    "services/control_plane/internal/admin/admin_test.go",
-    "services/control_plane/internal/admin/contracts.go",
-    "services/control_plane/internal/admin/events.go",
-    "services/control_plane/internal/admin/mapping_sql.go",
-    "services/control_plane/internal/admin/pagination.go",
-    "services/control_plane/internal/admin/postgres_integration_test.go",
-    "services/control_plane/internal/admin/repository_sql.go",
-    "services/control_plane/internal/admin/server.go",
-    "services/control_plane/internal/agents/BUILD.bazel",
-    "services/control_plane/internal/agents/common_sql.go",
-    "services/control_plane/internal/agents/contracts.go",
-    "services/control_plane/internal/agents/events.go",
-    "services/control_plane/internal/agents/mapping_sql.go",
-    "services/control_plane/internal/agents/pagination.go",
-    "services/control_plane/internal/agents/postgres_integration_test.go",
-    "services/control_plane/internal/agents/repository_sql.go",
-    "services/control_plane/internal/agents/server.go",
-    "services/control_plane/internal/agents/server_test.go",
-    "services/control_plane/internal/agents/validation.go",
-    "services/control_plane/internal/inference/BUILD.bazel",
-    "services/control_plane/internal/inference/contracts.go",
-    "services/control_plane/internal/inference/cursor.go",
-    "services/control_plane/internal/inference/events.go",
-    "services/control_plane/internal/inference/mapping_sql.go",
-    "services/control_plane/internal/inference/postgres_integration_test.go",
-    "services/control_plane/internal/inference/repository_sql.go",
-    "services/control_plane/internal/inference/server.go",
-    "services/control_plane/internal/inference/server_test.go",
-    "services/control_plane/internal/inference/validation.go",
-    "services/control_plane/internal/policies/BUILD.bazel",
-    "services/control_plane/internal/policies/contracts.go",
-    "services/control_plane/internal/policies/events.go",
-    "services/control_plane/internal/policies/mapping_sql.go",
-    "services/control_plane/internal/policies/pagination.go",
-    "services/control_plane/internal/policies/policies_test.go",
-    "services/control_plane/internal/policies/postgres_integration_test.go",
-    "services/control_plane/internal/policies/repository_sql.go",
-    "services/control_plane/internal/policies/server.go",
-    "services/control_plane/internal/workflows/BUILD.bazel",
-    "services/control_plane/internal/workflows/approval_repository.go",
-    "services/control_plane/internal/workflows/contracts.go",
-    "services/control_plane/internal/workflows/events.go",
-    "services/control_plane/internal/workflows/mapping_sql.go",
-    "services/control_plane/internal/workflows/pagination.go",
-    "services/control_plane/internal/workflows/postgres_integration_test.go",
-    "services/control_plane/internal/workflows/server.go",
-    "services/control_plane/internal/workflows/server_test.go",
-    "services/control_plane/internal/workflows/validation.go",
-    "services/control_plane/migrations/000005_workflow_agent.down.sql",
-    "services/control_plane/migrations/000005_workflow_agent.up.sql",
-    "services/control_plane/migrations/000006_policy_admin.down.sql",
-    "services/control_plane/migrations/000006_policy_admin.up.sql",
-)
-
-CONTRACT_CONFORMANCE_ADDITIONS = (
-    "tests/conformance/generated_go_roundtrip_test.go",
-    "tests/conformance/generated_rust_roundtrip_test.rs",
-    "tests/conformance/generated_typescript_roundtrip_test.ts",
-    "tests/conformance/test_generated_package_consumers.py",
+STAGE8_PRIVATE_SDK_EXAMPLE_PATHS = activation_bundle_all_paths(
+    "STAGE8_PRIVATE_SDK_EXAMPLE_ADDITIONS"
 )
 
 ALL_CONTRACT_CONSUMER_ADDITIONS = (
     *INTERNAL_SDK_ADDITIONS,
+    *SDK_RUNTIME_CONSUMER_ADDITIONS,
     *TRAINING_VERTICAL_ADDITIONS,
     *CONTROL_PLANE_TRANSPORT_ADDITIONS,
     *WORKER_COORDINATION_ADDITIONS,
@@ -888,22 +893,21 @@ ALL_CONTRACT_CONSUMER_ADDITIONS = (
     *EVALUATION_VERTICAL_ADDITIONS,
     *CONTROL_PLANE_DOMAIN_ADDITIONS,
     *CONTRACT_CONFORMANCE_ADDITIONS,
+    *SDK_RPC_COVERAGE_ADDITIONS,
+    *GRPC_IMPLEMENTATION_COVERAGE_ADDITIONS,
+    *NUMERIC_CONVERSION_SAFETY_ADDITIONS,
+    *DELIVERY_RELIABILITY_ADDITIONS,
+    *EVENT_AUDIT_SEMANTIC_PROJECTION_ADDITIONS,
+    *EXPERIMENT_CANDIDATE_VERTICAL_ADDITIONS,
+    *STAGE8_PRIVATE_SDK_EXAMPLE_ADDITIONS,
 )
 
-SDK_GENERATOR_ADDITIONS = ("tools/codegen/sdk_generator.py",)
+SDK_GENERATOR_ADDITIONS = activation_bundle_paths("SDK_GENERATOR_ADDITIONS")
 
-OPENAPI_STAGE_ARTIFACT_ADDITIONS = (
-    "protocols/openapi/raw/mindclade.openapi.yaml",
-    "protocols/openapi/curated/mindclade.openapi.yaml",
-    "protocols/openapi/published/mindclade.openapi.yaml",
-)
+OPENAPI_STAGE_ARTIFACT_ADDITIONS = activation_bundle_paths("OPENAPI_STAGE_ARTIFACT_ADDITIONS")
 
-GENERATED_PACKAGE_AUTHORITY_ADDITIONS = (
-    "protocols/generated/rust/Cargo.toml",
-    "protocols/generated/rust/lib.rs",
-    "protocols/generated/typescript/package.json",
-    "protocols/generated/typescript/tsconfig.json",
-    "protocols/generated/python/pyproject.toml",
+GENERATED_PACKAGE_AUTHORITY_ADDITIONS = activation_bundle_paths(
+    "GENERATED_PACKAGE_AUTHORITY_ADDITIONS"
 )
 
 HAND_AUTHORED_GENERATED_PACKAGE_AUTHORITIES = frozenset(
@@ -1040,28 +1044,6 @@ OWNER_TEAMS = {
 }
 
 
-class PolicyError(ValueError):
-    """A deterministic policy input is invalid."""
-
-
-class _Validator(Protocol):
-    def iter_errors(self, instance: object) -> Iterable[ValidationError]: ...
-
-
-def _json_schema_errors(value: Any, schema: Mapping[str, Any]) -> list[str]:
-    try:
-        Draft202012Validator.check_schema(schema)
-    except SchemaError as error:
-        return [f"invalid repository path manifest schema: {error.message}"]
-    validator = Draft202012Validator(schema)
-    findings: list[str] = []
-    validation_errors = cast(_Validator, validator).iter_errors(value)
-    for error in validation_errors:
-        location = "/".join(str(part) for part in error.absolute_path) or "$"
-        findings.append(f"schema {location}: {error.message}")
-    return sorted(findings)
-
-
 def validate_manifest_schema(manifest: Mapping[str, Any]) -> list[str]:
     schema_path = (
         Path(__file__).resolve().parents[2]
@@ -1157,6 +1139,15 @@ def reconcile_authority_paths(source_paths: Sequence[str]) -> list[str]:
     """Apply the closed v3.4.3 plus ADR-0009 reconciliation in display order."""
 
     source_set = set(source_paths)
+    expected_predeclared = {
+        path for bundle in ACTIVATION_BUNDLES for path in bundle.predeclared_paths
+    }
+    missing_predeclared = expected_predeclared - source_set
+    if missing_predeclared:
+        raise PolicyError(
+            "activation bundle predeclared paths are absent from source authority: "
+            f"{sorted(missing_predeclared)!r}"
+        )
     missing = set(ADR_REPLACEMENTS) - source_set
     if missing:
         raise PolicyError(f"ADR reconciliation sources are absent: {sorted(missing)!r}")
@@ -1402,6 +1393,9 @@ def infer_kind(path: str) -> str:
 
 
 def infer_wave(path: str) -> str:
+    activation_bundle = ACTIVATION_BUNDLES_BY_PATH.get(path)
+    if activation_bundle is not None and activation_bundle.predeclared_paths:
+        return activation_bundle.activation_wave
     if path == "buf.lock":
         return "0"
     if (
@@ -2076,6 +2070,7 @@ def infer_source_authority(path: str) -> str:
         return "reviewed-generated"
     generated_markers = (
         "/generated/",
+        ".generated.",
         "MINDCLADE_MONOREPO_BLUEPRINT_FULL.md",
         "A06-authoritative-repository-tree.md",
         "repository-drift-baseline.md",
@@ -2236,7 +2231,11 @@ def _build_kernel_platform_source_target_entry(path: str) -> dict[str, Any]:
 def is_all_contract_baseline_path(path: str) -> bool:
     """Return whether ADR-0015 activates this predeclared v1 projection."""
 
-    if path in ALL_CONTRACT_CONSUMER_ADDITIONS:
+    if (
+        path in ALL_CONTRACT_CONSUMER_ADDITIONS
+        or path in SDK_RUNTIME_CONSUMER_PATHS
+        or path in STAGE8_PRIVATE_SDK_EXAMPLE_PATHS
+    ):
         return True
     if path in SCHEMA_BINDING_ADDITIONS:
         return True
@@ -2406,6 +2405,9 @@ def build_path_entry(path: str) -> dict[str, Any]:
 
 
 def _base_reconciliation_addition_reason(path: str) -> str:
+    activation_bundle = ACTIVATION_BUNDLES_BY_PATH.get(path)
+    if activation_bundle is not None:
+        return activation_bundle.reason
     if path in {".golangci.yml", "biome.json"}:
         return "Required tracked Wave 0 lint configuration omitted by A6."
     if path == ".github/actionlint.yaml":
@@ -2729,7 +2731,7 @@ def validate_manifest(manifest: Mapping[str, Any]) -> list[str]:
         expected: set[str] = set(reconcile_authority_paths(normalized_original))
     except PolicyError as error:
         errors.append(str(error))
-        expected = set()
+        expected: set[str] = set()
     entries = manifest.get("paths")
     if not isinstance(entries, list):
         return [*errors, "paths must be an array"]
@@ -2875,10 +2877,38 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--authority", type=Path)
     parser.add_argument("--blueprint", type=Path)
     parser.add_argument("--output", type=Path)
-    parser.add_argument("--build-manifest", action="store_true")
+    action = parser.add_mutually_exclusive_group()
+    action.add_argument("--build-manifest", action="store_true")
+    action.add_argument("--check-activation-bundles", action="store_true")
+    action.add_argument("--write-activation-projection", action="store_true")
     parser.add_argument("--allow-missing-active", action="store_true")
     args = parser.parse_args(argv)
 
+    if args.write_activation_projection:
+        projection_path = args.output or ACTIVATION_BUNDLE_PROJECTION_PATH
+        projection_path.parent.mkdir(parents=True, exist_ok=True)
+        projection_path.write_text(
+            json.dumps(ACTIVATION_BUNDLE_PROJECTION, indent=2) + "\n",
+            encoding="utf-8",
+        )
+        print(
+            "activation bundle projection: WROTE "
+            f"{projection_path} ({ACTIVATION_BUNDLE_PROJECTION['bundle_count']} bundles, "
+            f"{ACTIVATION_BUNDLE_PROJECTION['path_count']} paths)"
+        )
+        return 0
+    if args.check_activation_bundles:
+        errors = validate_activation_bundle_projection()
+        if errors:
+            for error in errors:
+                print(error, file=sys.stderr)
+            return 1
+        print(
+            "activation bundle policy: PASS "
+            f"({ACTIVATION_BUNDLE_PROJECTION['bundle_count']} bundles, "
+            f"{ACTIVATION_BUNDLE_PROJECTION['path_count']} explicit paths)"
+        )
+        return 0
     if args.build_manifest:
         if not args.authority or not args.blueprint or not args.output:
             parser.error("--build-manifest requires --authority, --blueprint, and --output")
@@ -2892,6 +2922,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         parser.error("--manifest is required unless --build-manifest is used")
     manifest = load_manifest(args.manifest)
     errors = validate_manifest(manifest)
+    errors.extend(validate_activation_bundle_projection())
     populated = validate_populated_paths(
         manifest, args.root, allow_missing_active=args.allow_missing_active
     )
@@ -3028,7 +3059,7 @@ CANONICAL_FILE_COUNT = (  # pyright: ignore[reportConstantRedefinition]
     CANONICAL_FILE_COUNT + len(PAIRFORMER_WAVE6_ADRS) + 1
 )
 CANONICAL_PATH_SET_SHA256 = (  # pyright: ignore[reportConstantRedefinition]
-    "c5a4f39183427cfa03c04aab382e8947f966f87f64fd0484a0a717487d91f4b2"
+    "768584f159bdb8a81e09fb24f91a7b5b075bd96924c4d460a223b73d7ab07323"
 )
 PRE_ACTIVATION_SOURCE_PATHS = frozenset(  # pyright: ignore[reportConstantRedefinition]
     path

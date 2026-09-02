@@ -12,6 +12,7 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	"github.com/mindclade/mindclade/libs/go/numconv"
 	artifactv1 "github.com/mindclade/mindclade/protocols/generated/go/artifact/v1"
 	evaluationv1 "github.com/mindclade/mindclade/protocols/generated/go/evaluation/v1"
 	policyv1 "github.com/mindclade/mindclade/protocols/generated/go/policy/v1"
@@ -278,6 +279,14 @@ func scanRun(row scanner) (runRow, error) {
 }
 
 func runProto(ctx context.Context, tx *sql.Tx, row runRow) (*evaluationv1.EvaluationRun, error) {
+	leaseEpoch, err := numconv.Int64ToUint64(row.leaseEpoch)
+	if err != nil {
+		return nil, err
+	}
+	completedSamples, err := numconv.Int64ToUint64(row.completedSamples)
+	if err != nil {
+		return nil, err
+	}
 	loadArtifact := func(id sql.NullInt64) (*artifactv1.ArtifactRef, error) {
 		return platformdb.LoadArtifactRef(ctx, tx, row.tenant, id)
 	}
@@ -313,9 +322,12 @@ func runProto(ctx context.Context, tx *sql.Tx, row runRow) (*evaluationv1.Evalua
 	if err != nil {
 		return nil, err
 	}
-	value := &evaluationv1.EvaluationRun{Name: row.name, Uid: row.uid, Revision: row.revision, Etag: row.etag, TenantId: row.tenant, ProjectId: row.project, Suite: suite, Snapshot: snapshot, ModelRelease: model, InferenceProtocol: inferenceProtocol, ExecutablePlan: executable, ProviderManifest: provider, KernelQualification: kernel, RequestDigest: row.requestDigest, JobId: row.jobID, AttemptId: row.attemptID, LeaseEpoch: uint64(row.leaseEpoch), State: evaluationv1.EvaluationRunState(row.state), CompletedSamples: uint64(row.completedSamples), Failure: failure, CreateTime: timestamppb.New(row.created.UTC()), UpdateTime: timestamppb.New(row.updated.UTC()), EndTime: timestamp(row.ended)} //nolint:gosec // Conversion is bounded by validated protocol invariants or PostgreSQL CHECK constraints.
+	value := &evaluationv1.EvaluationRun{Name: row.name, Uid: row.uid, Revision: row.revision, Etag: row.etag, TenantId: row.tenant, ProjectId: row.project, Suite: suite, Snapshot: snapshot, ModelRelease: model, InferenceProtocol: inferenceProtocol, ExecutablePlan: executable, ProviderManifest: provider, KernelQualification: kernel, RequestDigest: row.requestDigest, JobId: row.jobID, AttemptId: row.attemptID, LeaseEpoch: leaseEpoch, State: evaluationv1.EvaluationRunState(row.state), CompletedSamples: completedSamples, Failure: failure, CreateTime: timestamppb.New(row.created.UTC()), UpdateTime: timestamppb.New(row.updated.UTC()), EndTime: timestamp(row.ended)}
 	if row.totalSamples.Valid {
-		total := uint64(row.totalSamples.Int64) //nolint:gosec // Conversion is bounded by validated protocol invariants or PostgreSQL CHECK constraints.
+		total, conversionErr := numconv.Int64ToUint64(row.totalSamples.Int64)
+		if conversionErr != nil {
+			return nil, conversionErr
+		}
 		value.TotalSamples = &total
 	}
 	rows, err := tx.QueryContext(ctx, `SELECT dataset_ref_id FROM evaluation_run_datasets WHERE tenant_id=$1 AND project_id=$2 AND evaluation_run_name=$3 ORDER BY ordinal`, row.tenant, row.project, row.name) //nolint:sqlclosecheck // Rows are closed eagerly through platformdb.CloseRows on every exit path.

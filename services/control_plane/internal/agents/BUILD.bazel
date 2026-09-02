@@ -17,6 +17,7 @@ go_library(
     importpath = "github.com/mindclade/mindclade/services/control_plane/internal/agents",
     deps = [
         "//libs/go/audit",
+        "//libs/go/numconv",
         "//protocols/generated/go/agent/v1:bindings",
         "//protocols/generated/go/artifact/v1:bindings",
         "//protocols/generated/go/common/v1:bindings",
@@ -43,6 +44,7 @@ go_test(
     name = "agents_test",
     size = "small",
     srcs = [
+        "events_test.go",
         "postgres_integration_test.go",
         "server_test.go",
     ],

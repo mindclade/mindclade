@@ -7,16 +7,27 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"regexp"
 	"strings"
 	"time"
 
-	artifactv1 "github.com/mindclade/mindclade/protocols/generated/go/artifact/v1"
-	internalartifactv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/artifact/v1"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
+
+	artifactv1 "github.com/mindclade/mindclade/protocols/generated/go/artifact/v1"
+	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
+	internalartifactv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/artifact/v1"
+	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
 )
 
 const defaultArtifactUploadChunkBytes = 1 << 20
+
+const (
+	maximumArtifactPageSize = 100
+	maximumArtifactLeaseTTL = 30 * 24 * time.Hour
+)
+
+var artifactReasonCodePattern = regexp.MustCompile(`^[A-Z][A-Z0-9_]{1,63}$`)
 
 // ArtifactUploadOptions controls the ergonomic transfer workflow. Authoritative
 // state and wire values remain generated protobuf messages.
@@ -31,6 +42,179 @@ type ArtifactUploadOptions struct {
 type ArtifactService struct {
 	client    *Client
 	transport internalartifactv1.ArtifactServiceClient
+}
+
+// Get reads immutable catalog metadata by canonical project-scoped name or
+// digest. The returned generated message is detached from transport-owned
+// memory and never exposes a provider URI.
+func (service *ArtifactService) Get(ctx context.Context, request *internalartifactv1.GetArtifactRequest, options ...RequestOption) (*artifactv1.ArtifactRef, error) {
+	value := cloneGenerated(request)
+	if value == nil || (value.GetName() == "") == (value.GetDigest() == "") {
+		return nil, invalidArgument("artifact get requires exactly one canonical name or sha256 digest")
+	}
+	expectedDigest := value.GetDigest()
+	if value.GetName() != "" {
+		prefix := projectName(service.client.config.TenantID, service.client.config.ProjectID) + "/artifacts/"
+		if !strings.HasPrefix(value.GetName(), prefix) {
+			return nil, invalidArgument("artifact name must be in the configured project")
+		}
+		expectedDigest = strings.TrimPrefix(value.GetName(), prefix)
+	}
+	if !validSHA256Digest(expectedDigest) {
+		return nil, invalidArgument("artifact digest must be canonical sha256")
+	}
+	callContext, _, cancel, err := service.client.context(ctx, options...)
+	if err != nil {
+		return nil, err
+	}
+	defer cancel()
+	response, err := service.transport.GetArtifact(callContext, value)
+	if err != nil {
+		return nil, normalizeError(err)
+	}
+	artifact := response.GetArtifact()
+	if validateUploadArtifact(artifact) != nil || artifact.GetDigest() != expectedDigest {
+		return nil, protocolDataLoss("GetArtifact returned inconsistent immutable metadata")
+	}
+	return cloneGenerated(artifact), nil
+}
+
+// List returns one bounded project-scoped page and preserves the opaque page
+// token verbatim. Caller-owned request messages are never mutated.
+func (service *ArtifactService) List(ctx context.Context, request *internalartifactv1.ListArtifactsRequest, options ...RequestOption) (*internalartifactv1.ListArtifactsResponse, error) {
+	value := cloneGenerated(request)
+	if value == nil {
+		value = &internalartifactv1.ListArtifactsRequest{}
+	}
+	parent := projectName(service.client.config.TenantID, service.client.config.ProjectID)
+	if value.GetParent() != "" && value.GetParent() != parent {
+		return nil, invalidArgument("artifact list parent must match the configured project")
+	}
+	if value.GetPage().GetPageSize() > maximumArtifactPageSize {
+		return nil, invalidArgument("artifact page size cannot exceed 100")
+	}
+	value.Parent = parent
+	callContext, _, cancel, err := service.client.context(ctx, options...)
+	if err != nil {
+		return nil, err
+	}
+	defer cancel()
+	response, err := service.transport.ListArtifacts(callContext, value)
+	if err != nil {
+		return nil, normalizeError(err)
+	}
+	if response == nil {
+		return nil, protocolDataLoss("ListArtifacts returned no response")
+	}
+	for _, artifact := range response.GetArtifacts() {
+		if validateUploadArtifact(artifact) != nil {
+			return nil, protocolDataLoss("ListArtifacts returned invalid immutable metadata")
+		}
+	}
+	return cloneGenerated(response), nil
+}
+
+// Quarantine records a governed artifact transition and returns its durable
+// generated operation. Identity and digest fields in CommandContext are
+// rebuilt from authenticated client configuration.
+func (service *ArtifactService) Quarantine(ctx context.Context, request *internalartifactv1.QuarantineArtifactRequest, options ...RequestOption) (*jobv1.Operation, error) {
+	value := cloneGenerated(request)
+	if value == nil || validateUploadArtifact(value.GetArtifact()) != nil || !artifactReasonCodePattern.MatchString(value.GetReasonCode()) || len(value.GetEvidence()) > 100 {
+		return nil, invalidArgument("artifact quarantine requires valid immutable metadata, reason code, and bounded evidence")
+	}
+	for _, evidence := range value.GetEvidence() {
+		if evidence == nil || !validSHA256Digest(evidence.GetDigest()) || evidence.GetSubjectDigest() != value.GetArtifact().GetDigest() || strings.TrimSpace(evidence.GetEvidenceKind()) == "" || len(evidence.GetEvidenceKind()) > 128 || evidence.GetPolicyDigest() != "" && !validSHA256Digest(evidence.GetPolicyDigest()) {
+			return nil, invalidArgument("artifact quarantine evidence is invalid or targets different content")
+		}
+	}
+	callContext, metadata, cancel, err := service.client.mutationContext(ctx, value.GetContext().GetIdempotencyKey(), options...)
+	if err != nil {
+		return nil, err
+	}
+	defer cancel()
+	value.Context = nil
+	digest, err := deterministicDigest(value)
+	if err != nil {
+		return nil, err
+	}
+	value.Context = commandContext(service.client.config, callContext, metadata, digest)
+	response, err := service.transport.QuarantineArtifact(callContext, value)
+	if response == nil {
+		if err != nil {
+			return nil, normalizeError(err)
+		}
+		return nil, protocolDataLoss("QuarantineArtifact returned no response")
+	}
+	return operationResponse(response.GetOperation(), err, "QuarantineArtifact")
+}
+
+// AcquireLease creates or extends a bounded retention lease for immutable
+// content using the generated lease resource contract.
+func (service *ArtifactService) AcquireLease(ctx context.Context, request *internalartifactv1.AcquireArtifactLeaseRequest, options ...RequestOption) (*commonv1.ResourceRef, error) {
+	value := cloneGenerated(request)
+	if value == nil || validateUploadArtifact(value.GetArtifact()) != nil || value.GetExpireTime() == nil || value.GetExpireTime().CheckValid() != nil {
+		return nil, invalidArgument("artifact lease requires immutable metadata and a valid expiration")
+	}
+	now := time.Now()
+	expiry := value.GetExpireTime().AsTime()
+	if !expiry.After(now) || expiry.After(now.Add(maximumArtifactLeaseTTL)) {
+		return nil, invalidArgument("artifact lease expiration must be within 30 days")
+	}
+	callContext, metadata, cancel, err := service.client.mutationContext(ctx, value.GetContext().GetIdempotencyKey(), options...)
+	if err != nil {
+		return nil, err
+	}
+	defer cancel()
+	value.Context = nil
+	digest, err := deterministicDigest(value)
+	if err != nil {
+		return nil, err
+	}
+	value.Context = commandContext(service.client.config, callContext, metadata, digest)
+	response, err := service.transport.AcquireArtifactLease(callContext, value)
+	if err != nil {
+		return nil, normalizeError(err)
+	}
+	lease := response.GetLease()
+	if !validArtifactLease(service.client.config, lease) {
+		return nil, protocolDataLoss("AcquireArtifactLease returned an invalid lease resource")
+	}
+	return cloneGenerated(lease), nil
+}
+
+// ReleaseLease idempotently releases a scoped retention lease under its ETag
+// precondition.
+func (service *ArtifactService) ReleaseLease(ctx context.Context, request *internalartifactv1.ReleaseArtifactLeaseRequest, options ...RequestOption) error {
+	value := cloneGenerated(request)
+	if value == nil || !validArtifactLease(service.client.config, value.GetLease()) || strings.TrimSpace(value.GetEtag()) == "" || value.GetLease().GetEtag() != "" && value.GetLease().GetEtag() != value.GetEtag() {
+		return invalidArgument("artifact lease release requires a scoped lease and matching ETag")
+	}
+	callContext, metadata, cancel, err := service.client.mutationContext(ctx, value.GetContext().GetIdempotencyKey(), options...)
+	if err != nil {
+		return err
+	}
+	defer cancel()
+	value.Context = nil
+	digest, err := deterministicDigest(value)
+	if err != nil {
+		return err
+	}
+	value.Context = commandContext(service.client.config, callContext, metadata, digest)
+	response, err := service.transport.ReleaseArtifactLease(callContext, value)
+	if err != nil {
+		return normalizeError(err)
+	}
+	if response == nil {
+		return protocolDataLoss("ReleaseArtifactLease returned no response")
+	}
+	return nil
+}
+
+func validArtifactLease(config Config, lease *commonv1.ResourceRef) bool {
+	if lease == nil || lease.GetResourceType() != "artifact_lease" || !validResourceIdentifier(lease.GetResourceId()) || lease.GetTenantId() != config.TenantID || lease.GetProjectId() != config.ProjectID || lease.GetResourceVersion() <= 0 || strings.TrimSpace(lease.GetEtag()) == "" {
+		return false
+	}
+	return lease.GetName() == projectName(config.TenantID, config.ProjectID)+"/artifactLeases/"+lease.GetResourceId()
 }
 
 // Resolve converts a mutable alias or digest into the immutable generated
@@ -56,7 +240,7 @@ func (service *ArtifactService) Resolve(ctx context.Context, value string, optio
 		if response.GetArtifact() == nil {
 			return nil, &Error{Code: CodeDataLoss, Message: "artifact catalog returned no artifact"}
 		}
-		return response.GetArtifact(), nil
+		return cloneGenerated(response.GetArtifact()), nil
 	}
 	response, callErr := service.transport.ResolveArtifactAlias(
 		callContext,
@@ -71,7 +255,7 @@ func (service *ArtifactService) Resolve(ctx context.Context, value string, optio
 	if response.GetArtifact() == nil || !isSHA256Digest(response.GetArtifact().GetDigest()) {
 		return nil, &Error{Code: CodeDataLoss, Message: "artifact alias did not resolve to immutable content"}
 	}
-	return response.GetArtifact(), nil
+	return cloneGenerated(response.GetArtifact()), nil
 }
 
 // Download writes verified bytes to destination. Partial or corrupt content is
@@ -227,7 +411,7 @@ func (service *ArtifactService) Upload(
 		if upload.GetStagingReceipt() == nil {
 			return nil, &Error{Code: CodeDataLoss, Message: "finalized artifact upload omitted its receipt"}
 		}
-		return upload.GetStagingReceipt(), nil
+		return cloneGenerated(upload.GetStagingReceipt()), nil
 	}
 	if upload.GetState() != internalartifactv1.ArtifactUploadState_ARTIFACT_UPLOAD_STATE_OPEN || upload.GetCommittedOffset() < 0 || upload.GetCommittedOffset() > artifact.GetSizeBytes() {
 		return nil, &Error{Code: CodeFailedPrecondition, Message: "artifact upload session cannot be resumed"}
@@ -311,7 +495,7 @@ func (service *ArtifactService) Upload(
 	if receipt == nil || receipt.GetArtifact() == nil || !proto.Equal(receipt.GetArtifact(), artifact) || !isSHA256Digest(receipt.GetReceiptDigest()) {
 		return nil, &Error{Code: CodeDataLoss, Message: "artifact finalize returned an invalid staging receipt"}
 	}
-	return receipt, nil
+	return cloneGenerated(receipt), nil
 }
 
 // GetUpload returns clone-safe durable progress for a resumable upload.
@@ -427,7 +611,7 @@ func (service *ArtifactService) Commit(ctx context.Context, receipt *internalart
 	if response.GetArtifact() == nil || !proto.Equal(response.GetArtifact(), receipt.GetArtifact()) {
 		return nil, &Error{Code: CodeDataLoss, Message: "artifact commit returned a different content identity"}
 	}
-	return response.GetArtifact(), nil
+	return cloneGenerated(response.GetArtifact()), nil
 }
 
 func validateUploadArtifact(artifact *artifactv1.ArtifactRef) error {
@@ -442,7 +626,12 @@ func validUploadID(value string) bool {
 		return false
 	}
 	for _, character := range value {
-		if !(character >= 'a' && character <= 'z' || character >= 'A' && character <= 'Z' || character >= '0' && character <= '9' || character == '.' || character == '_' || character == '-') {
+		switch {
+		case character >= 'a' && character <= 'z':
+		case character >= 'A' && character <= 'Z':
+		case character >= '0' && character <= '9':
+		case character == '.', character == '_', character == '-':
+		default:
 			return false
 		}
 	}

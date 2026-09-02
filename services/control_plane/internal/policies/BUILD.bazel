@@ -17,6 +17,7 @@ go_library(
     importpath = "github.com/mindclade/mindclade/services/control_plane/internal/policies",
     deps = [
         "//libs/go/audit",
+        "//libs/go/numconv",
         "//protocols/generated/go/artifact/v1:bindings",
         "//protocols/generated/go/common/v1:bindings",
         "//protocols/generated/go/internalrpc/policy/v1:bindings",
@@ -51,6 +52,7 @@ go_test(
     ],
     deps = [
         "//protocols/generated/go/artifact/v1:bindings",
+        "//protocols/generated/go/audit/v1:bindings",
         "//protocols/generated/go/common/v1:bindings",
         "//protocols/generated/go/internalrpc/policy/v1:bindings",
         "//protocols/generated/go/job/v1:bindings",

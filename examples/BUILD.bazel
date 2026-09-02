@@ -1,0 +1,55 @@
+load("@rules_python//python:defs.bzl", "py_library", "py_test")
+
+package(default_visibility = ["//visibility:private"])
+
+py_library(
+    name = "bounded_agent_workflow",
+    srcs = [
+        "agent_workflow/__init__.py",
+        "agent_workflow/simulate.py",
+    ],
+    data = [
+        "agent_workflow/agent.yaml",
+        "agent_workflow/workflow.yaml",
+    ],
+    imports = [".."],
+    deps = ["//internal/sdk/python:mindclade_internal_sdk"],
+)
+
+py_test(
+    name = "bounded_agent_workflow_test",
+    srcs = ["agent_workflow/test_simulate.py"],
+    data = [
+        "agent_workflow/agent.yaml",
+        "agent_workflow/workflow.yaml",
+    ],
+    legacy_create_init = 0,
+    main = "agent_workflow/test_simulate.py",
+    deps = [
+        ":bounded_agent_workflow",
+        "//internal/sdk/python:mindclade_internal_sdk",
+    ],
+)
+
+filegroup(
+    name = "governed_sources",
+    srcs = [
+        "BUILD.bazel",
+        "agent_workflow/README.md",
+        "agent_workflow/agent.yaml",
+        "agent_workflow/workflow.yaml",
+        "//examples/sdk:governed_sources",
+    ] + glob([
+        "agent_workflow/*.py",
+    ]),
+    visibility = ["//visibility:public"],
+)
+
+test_suite(
+    name = "tests",
+    tests = [
+        ":bounded_agent_workflow_test",
+        "//examples/sdk:tests",
+    ],
+    visibility = ["//tests:__pkg__"],
+)

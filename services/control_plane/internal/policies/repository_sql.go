@@ -85,6 +85,23 @@ func insertOutbox(ctx context.Context, tx *sql.Tx, event *commonv1.EventEnvelope
 	return err
 }
 
+func deniedSecuritySubject(identity Identity, subject *commonv1.ResourceRef, reasonCode, decisionDigest string, command *commonv1.CommandContext) (*commonv1.ResourceRef, error) {
+	if subject == nil || command == nil || subject.GetName() == "" || reasonCode == "" || !validSHA256(decisionDigest) ||
+		command.GetRequestId() == "" || command.GetIdempotencyKey() == "" || command.GetTenantId() != identity.TenantID ||
+		command.GetProjectId() != identity.ProjectID || command.GetPrincipalId() != identity.Principal {
+		return nil, ErrInvalidArgument
+	}
+	// Both request and idempotency identity are trusted command context. Binding
+	// them into the subject makes independent denials distinct while an exact
+	// idempotent replay deterministically addresses the same security fact.
+	securityIdentity := sha256.Sum256([]byte(subject.GetName() + "\x00" + reasonCode + "\x00" + decisionDigest + "\x00" + command.GetRequestId() + "\x00" + command.GetIdempotencyKey()))
+	securityID := "security-" + hex.EncodeToString(securityIdentity[:16])
+	return &commonv1.ResourceRef{
+		ResourceType: "security_event", ResourceId: securityID, TenantId: identity.TenantID, ProjectId: identity.ProjectID,
+		ResourceVersion: 1, Name: subject.GetName() + "/securityEvents/" + securityID, Etag: decisionDigest,
+	}, nil
+}
+
 func insertPolicyAudit(ctx context.Context, tx *sql.Tx, identity Identity, action string, subject *commonv1.ResourceRef, result int32, reasonCode, decisionDigest, beforeRevision, afterRevision, detailDigest string, command *commonv1.CommandContext, at time.Time) error {
 	decision := "allowed"
 	if result == 3 {
@@ -100,6 +117,26 @@ func insertPolicyAudit(ctx context.Context, tx *sql.Tx, identity Identity, actio
 	}
 	if _, err = tx.ExecContext(ctx, `INSERT INTO audit_events(id,tenant_id,actor_id,action,subject_id,occurred_at,details_digest,event_version,payload_digest,envelope_bytes) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`, event.GetEventId(), identity.TenantID, identity.Principal, action, subject.GetName(), at.UTC(), detailDigest, event.GetEventVersion(), event.GetPayloadDigest(), encoded); err != nil {
 		return err
+	}
+	if decision == "denied" {
+		securitySubject, subjectErr := deniedSecuritySubject(identity, subject, reasonCode, decisionDigest, command)
+		if subjectErr != nil {
+			return subjectErr
+		}
+		securityEvent, securityErr := foundationaudit.NewSecurityEvent(identity.TenantID, identity.ProjectID, "high", reasonCode, decisionDigest, securitySubject, command, at.UTC())
+		if securityErr != nil {
+			return securityErr
+		}
+		securityBytes, marshalErr := queue.MarshalEnvelope(securityEvent)
+		if marshalErr != nil {
+			return marshalErr
+		}
+		if _, securityErr = tx.ExecContext(ctx, `INSERT INTO audit_events(id,tenant_id,actor_id,action,subject_id,occurred_at,details_digest,event_version,payload_digest,envelope_bytes) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`, securityEvent.GetEventId(), identity.TenantID, identity.Principal, "security."+action, subject.GetName(), at.UTC(), decisionDigest, securityEvent.GetEventVersion(), securityEvent.GetPayloadDigest(), securityBytes); securityErr != nil {
+			return securityErr
+		}
+		if securityErr = insertOutbox(ctx, tx, securityEvent, at); securityErr != nil {
+			return securityErr
+		}
 	}
 	resourceID, err := platformdb.StoreResourceRef(ctx, tx, identity.TenantID, subject)
 	if err != nil {

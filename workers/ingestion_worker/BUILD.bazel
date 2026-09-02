@@ -1,0 +1,58 @@
+load("@rules_rust//rust:defs.bzl", "rust_binary", "rust_library", "rust_test")
+
+WORKER_DEPS = [
+    "//internal/sdk/rust:mindclade_internal_sdk",
+    "@crate_index//:sha2",
+    "@crate_index//:tokio",
+]
+
+rust_library(
+    name = "ingestion_worker",
+    srcs = [
+        "rust/src/lib.rs",
+        "rust/src/source_fetch.rs",
+    ],
+    crate_name = "mindclade_ingestion_worker",
+    edition = "2024",
+    visibility = ["//visibility:public"],
+    deps = WORKER_DEPS,
+)
+
+rust_binary(
+    name = "ingestion_worker_client",
+    srcs = ["rust/src/main.rs"],
+    crate_name = "mindclade_ingestion_worker_client",
+    edition = "2024",
+    deps = [
+        ":ingestion_worker",
+        "//internal/sdk/rust:mindclade_internal_sdk",
+        "@crate_index//:tokio",
+    ],
+)
+
+rust_test(
+    name = "ingestion_worker_test",
+    srcs = [
+        "rust/src/lib.rs",
+        "rust/src/source_fetch.rs",
+    ],
+    crate_root = "rust/src/lib.rs",
+    edition = "2024",
+    deps = WORKER_DEPS + [
+        "@crate_index//:tonic",
+    ],
+)
+
+filegroup(
+    name = "governed_sources",
+    srcs = [
+        "BUILD.bazel",
+        "Cargo.toml",
+        "README.md",
+        "component.yaml",
+        "rust/src/lib.rs",
+        "rust/src/main.rs",
+        "rust/src/source_fetch.rs",
+    ],
+    visibility = ["//visibility:public"],
+)

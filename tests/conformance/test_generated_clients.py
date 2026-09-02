@@ -7,13 +7,14 @@ import re
 import subprocess
 import sys
 import unittest
+from collections.abc import Iterable, MutableSequence
 from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Protocol, Self, cast
+from typing import Protocol, cast
 
 import yaml
-from google.protobuf.descriptor import FieldDescriptor, FileDescriptor
+from google.protobuf.descriptor import FieldDescriptor, FileDescriptor, MethodDescriptor
 from google.protobuf.message import Message
 
 
@@ -21,38 +22,52 @@ class NamedRequest(Protocol):
     name: str
 
 
-class MutableEventEnvelope(Protocol):
+class EventEnvelopeLike(Protocol):
     event_type: str
     event_version: int
     payload_content_type: str
     payload_digest: str
 
-    @classmethod
-    def FromString(cls, data: bytes) -> Self: ...  # noqa: N802
-
-    def SerializeToString(self, *, deterministic: bool = False) -> bytes: ...  # noqa: N802
-
-
-type JsonScalar = bool | float | int | str | None
-type JsonValue = JsonScalar | list[JsonValue] | dict[str, JsonValue]
-type JsonObject = dict[str, JsonValue]
+    def SerializeToString(  # noqa: N802
+        self, *, deterministic: bool = False
+    ) -> bytes: ...
 
 
-def json_object(value: JsonValue, location: str) -> JsonObject:
+class EventEnvelopeType(Protocol):
+    def FromString(self, data: bytes) -> EventEnvelopeLike: ...  # noqa: N802
+
+
+class HttpRuleLike(Protocol):
+    body: str
+
+    def WhichOneof(self, oneof_group: str) -> str | None: ...  # noqa: N802
+
+
+class PublicHttpContractLike(Protocol):
+    bearer_auth: bool
+    success_status: Iterable[int]
+    request_headers: Iterable[str]
+    stream: int
+
+
+def object_mapping(value: object, context: str) -> dict[str, object]:
     if not isinstance(value, dict):
-        raise AssertionError(f"{location} must be an object")
-    return value
+        raise AssertionError(f"{context} must be an object with string keys")
+    raw_mapping = cast(dict[object, object], value)
+    if not all(isinstance(key, str) for key in raw_mapping):
+        raise AssertionError(f"{context} must be an object with string keys")
+    return cast(dict[str, object], raw_mapping)
 
 
-def json_array(value: JsonValue, location: str) -> list[JsonValue]:
+def object_list(value: object, context: str) -> list[object]:
     if not isinstance(value, list):
-        raise AssertionError(f"{location} must be an array")
-    return value
+        raise AssertionError(f"{context} must be a list")
+    return cast(list[object], value)
 
 
-def json_string(value: JsonValue, location: str) -> str:
+def string_value(value: object, context: str) -> str:
     if not isinstance(value, str):
-        raise AssertionError(f"{location} must be a string")
+        raise AssertionError(f"{context} must be a string")
     return value
 
 
@@ -64,6 +79,12 @@ def root() -> Path:
 
 
 class GeneratedClientsContractTest(unittest.TestCase):
+    def test_every_json_schema_fixture_has_native_python_conformance(self) -> None:
+        repository = root()
+        sys.path.insert(0, str(repository / "protocols/generated/python"))
+        bindings = importlib.import_module("mindclade.schema.v1.bindings")
+        bindings.assert_fixture_conformance()
+
     def test_every_declared_python_package_round_trips_a_populated_message(
         self,
     ) -> None:
@@ -72,7 +93,7 @@ class GeneratedClientsContractTest(unittest.TestCase):
         json_format = importlib.import_module("google.protobuf.json_format")
         matrix = json.loads((repository / "tests/conformance/contract_matrix.yaml").read_text())
 
-        def scalar_value(field: FieldDescriptor) -> bool | bytes | float | int | str:
+        def scalar_value(field: FieldDescriptor) -> object:
             if field.type == FieldDescriptor.TYPE_STRING:
                 return "fixture"
             if field.type == FieldDescriptor.TYPE_BYTES:
@@ -80,12 +101,13 @@ class GeneratedClientsContractTest(unittest.TestCase):
             if field.type == FieldDescriptor.TYPE_BOOL:
                 return True
             if field.type == FieldDescriptor.TYPE_ENUM:
-                enum_type = field.enum_type
-                if enum_type is None:
-                    raise AssertionError(f"enum field {field.full_name} has no enum descriptor")
-                values = enum_type.values
+                assert field.enum_type is not None
+                values = field.enum_type.values
                 return values[1].number if len(values) > 1 else values[0].number
-            if field.type in (FieldDescriptor.TYPE_DOUBLE, FieldDescriptor.TYPE_FLOAT):
+            if field.type in (
+                FieldDescriptor.TYPE_DOUBLE,
+                FieldDescriptor.TYPE_FLOAT,
+            ):
                 return 1.25
             return 7
 
@@ -100,13 +122,14 @@ class GeneratedClientsContractTest(unittest.TestCase):
             for field in message.DESCRIPTOR.fields:
                 if not field.is_repeated or field.type == FieldDescriptor.TYPE_MESSAGE:
                     continue
-                getattr(message, field.name).append(scalar_value(cast(FieldDescriptor, field)))
+                repeated = cast(MutableSequence[object], getattr(message, field.name))
+                repeated.append(scalar_value(cast(FieldDescriptor, field)))
                 return True
             if depth < 8:
                 for field in message.DESCRIPTOR.fields:
                     if field.is_repeated or field.type != FieldDescriptor.TYPE_MESSAGE:
                         continue
-                    child = getattr(message, field.name)
+                    child = cast(Message, getattr(message, field.name))
                     if populate(child, depth + 1):
                         return True
             return False
@@ -287,19 +310,16 @@ class GeneratedClientsContractTest(unittest.TestCase):
             job_id="job_1",
             configuration_digest="sha256:" + "d" * 64,
         )
-        envelope = cast(
-            MutableEventEnvelope,
-            serialization.make_event_envelope(
-                payload,
-                event_id="event_1",
-                event_version=1,
-                tenant_id="tenant_1",
-                project_id="project_1",
-                producer="control-plane",
-                occurred_at=datetime(2026, 8, 31, tzinfo=UTC),
-                subject=resource,
-                job_id="job_1",
-            ),
+        envelope = serialization.make_event_envelope(
+            payload,
+            event_id="event_1",
+            event_version=1,
+            tenant_id="tenant_1",
+            project_id="project_1",
+            producer="control-plane",
+            occurred_at=datetime(2026, 8, 31, tzinfo=UTC),
+            subject=resource,
+            job_id="job_1",
         )
         decoded = serialization.parse_event_payload(envelope, event_module.JobRequested)
         self.assertEqual(decoded, payload)
@@ -325,17 +345,19 @@ class GeneratedClientsContractTest(unittest.TestCase):
                 subject=resource,
             )
 
-        unknown_type = type(envelope).FromString(envelope.SerializeToString())
+        envelope = cast(EventEnvelopeLike, envelope)
+        envelope_type = cast(EventEnvelopeType, type(envelope))
+        unknown_type = envelope_type.FromString(envelope.SerializeToString())
         unknown_type.event_type = "mindclade.events.job.v1.UnknownEvent"
         with self.assertRaisesRegex(ValueError, "unregistered event type/version"):
             serialization.parse_event_payload(unknown_type, event_module.JobRequested)
 
-        unknown_version = type(envelope).FromString(envelope.SerializeToString())
+        unknown_version = envelope_type.FromString(envelope.SerializeToString())
         unknown_version.event_version = 2
         with self.assertRaisesRegex(ValueError, "unregistered event type/version"):
             serialization.parse_event_payload(unknown_version, event_module.JobRequested)
 
-        wrong_content_type = type(envelope).FromString(envelope.SerializeToString())
+        wrong_content_type = envelope_type.FromString(envelope.SerializeToString())
         wrong_content_type.payload_content_type = "application/json"
         with self.assertRaisesRegex(ValueError, "event content type mismatch"):
             serialization.parse_event_payload(wrong_content_type, event_module.JobRequested)
@@ -359,7 +381,7 @@ class GeneratedClientsContractTest(unittest.TestCase):
             for dependency in file_descriptor.dependencies:
                 visit(dependency)
 
-        visit(cast(FileDescriptor, api.DESCRIPTOR))
+        visit(api.DESCRIPTOR)
         self.assertEqual(
             closure,
             {
@@ -398,37 +420,44 @@ class GeneratedClientsContractTest(unittest.TestCase):
         sys.path.insert(0, str(repository / "protocols/generated/python"))
         api = importlib.import_module("mindclade.api.v1.mindclade_service_pb2")
         annotations = importlib.import_module("google.api.annotations_pb2")
-        document = json_object(
+        document = object_mapping(
             yaml.safe_load(
                 (repository / "protocols/openapi/published/mindclade.openapi.yaml").read_text()
             ),
             "OpenAPI document",
         )
 
-        def openapi_operations() -> dict[str, tuple[str, str, JsonObject]]:
-            result: dict[str, tuple[str, str, JsonObject]] = {}
-            paths = json_object(document["paths"], "paths")
-            for path, raw_item in paths.items():
-                item = json_object(raw_item, f"paths.{path}")
-                for method, raw_operation in item.items():
+        def openapi_operations() -> dict[str, tuple[str, str, dict[str, object]]]:
+            result: dict[str, tuple[str, str, dict[str, object]]] = {}
+            paths = object_mapping(document["paths"], "OpenAPI paths")
+            for path, item_value in paths.items():
+                item = object_mapping(item_value, f"OpenAPI path {path}")
+                for method, operation_value in item.items():
                     if method in {"delete", "get", "patch", "post", "put"}:
-                        operation = json_object(raw_operation, f"paths.{path}.{method}")
-                        operation_id = json_string(
-                            operation["operationId"], f"paths.{path}.{method}.operationId"
+                        operation = object_mapping(
+                            operation_value, f"OpenAPI operation {method.upper()} {path}"
+                        )
+                        operation_id = string_value(
+                            operation["operationId"], f"operationId for {method.upper()} {path}"
                         )
                         result[operation_id] = (method.upper(), path, operation)
             return result
 
-        def parameters(operation: JsonObject) -> list[JsonObject]:
-            result: list[JsonObject] = []
-            for raw_parameter in json_array(operation.get("parameters", []), "parameters"):
-                parameter = json_object(raw_parameter, "parameter")
+        def parameters(operation: dict[str, object]) -> list[dict[str, object]]:
+            result: list[dict[str, object]] = []
+            for parameter_value in object_list(
+                operation.get("parameters", []), "operation parameters"
+            ):
+                parameter = object_mapping(parameter_value, "operation parameter")
                 if "$ref" in parameter:
-                    reference = json_string(parameter["$ref"], "parameter.$ref")
-                    components = json_object(document["components"], "components")
-                    declared_parameters = json_object(components["parameters"], "parameters")
-                    parameter = json_object(
-                        declared_parameters[reference.rsplit("/", 1)[1]], reference
+                    reference = string_value(parameter["$ref"], "parameter reference")
+                    components = object_mapping(document["components"], "OpenAPI components")
+                    shared_parameters = object_mapping(
+                        components["parameters"], "OpenAPI shared parameters"
+                    )
+                    parameter = object_mapping(
+                        shared_parameters[reference.rsplit("/", 1)[1]],
+                        f"OpenAPI shared parameter {reference}",
                     )
                 result.append(parameter)
             return result
@@ -439,19 +468,21 @@ class GeneratedClientsContractTest(unittest.TestCase):
                 return path.replace("*", "{}")
             return re.sub(r"\{[^{}]+\}", "{}", path)
 
-        def resolve_schema(schema: JsonObject) -> JsonObject:
+        def resolve_schema(schema: dict[str, object]) -> dict[str, object]:
             if "$ref" in schema:
-                reference = json_string(schema["$ref"], "schema.$ref")
-                components = json_object(document["components"], "components")
-                schemas = json_object(components["schemas"], "schemas")
-                return json_object(schemas[reference.rsplit("/", 1)[1]], reference)
+                reference = string_value(schema["$ref"], "schema reference")
+                components = object_mapping(document["components"], "OpenAPI components")
+                schemas = object_mapping(components["schemas"], "OpenAPI schemas")
+                return object_mapping(
+                    schemas[reference.rsplit("/", 1)[1]], f"OpenAPI schema {reference}"
+                )
             return schema
 
-        def schema_properties(schema: JsonObject) -> set[str]:
+        def schema_properties(schema: dict[str, object]) -> set[str]:
             schema = resolve_schema(schema)
-            result = set(json_object(schema.get("properties", {}), "schema.properties"))
-            for raw_part in json_array(schema.get("allOf", []), "schema.allOf"):
-                result.update(schema_properties(json_object(raw_part, "schema.allOf item")))
+            result = set(object_mapping(schema.get("properties", {}), "schema properties").keys())
+            for part in object_list(schema.get("allOf", []), "schema allOf"):
+                result.update(schema_properties(object_mapping(part, "schema allOf member")))
             return result
 
         operations = openapi_operations()
@@ -460,12 +491,18 @@ class GeneratedClientsContractTest(unittest.TestCase):
             set(operations),
             {method.name[0].lower() + method.name[1:] for method in service.methods},
         )
-        for method in service.methods:
+        for method_value in service.methods:
+            method = cast(MethodDescriptor, method_value)
             operation_id = method.name[0].lower() + method.name[1:]
             expected_method, expected_path, operation = operations[operation_id]
-            rule = method.GetOptions().Extensions[annotations.http]
-            descriptor_method = rule.WhichOneof("pattern").upper()
-            descriptor_path = getattr(rule, rule.WhichOneof("pattern"))
+            rule = cast(HttpRuleLike, method.GetOptions().Extensions[annotations.http])
+            descriptor_pattern = rule.WhichOneof("pattern")
+            self.assertIsNotNone(descriptor_pattern, operation_id)
+            assert descriptor_pattern is not None
+            descriptor_method = descriptor_pattern.upper()
+            descriptor_path = string_value(
+                getattr(rule, descriptor_pattern), f"HTTP binding for {operation_id}"
+            )
             self.assertEqual(descriptor_method, expected_method, operation_id)
             self.assertEqual(
                 skeleton(descriptor_path, descriptor=True),
@@ -473,16 +510,17 @@ class GeneratedClientsContractTest(unittest.TestCase):
                 operation_id,
             )
 
-            contract = method.GetOptions().Extensions[api.public_http]
+            contract = cast(PublicHttpContractLike, method.GetOptions().Extensions[api.public_http])
             self.assertTrue(contract.bearer_auth, operation_id)
             self.assertEqual(document["security"], [{"bearerAuth": []}])
-            responses = json_object(operation["responses"], f"{operation_id}.responses")
+            responses = object_mapping(operation["responses"], f"responses for {operation_id}")
             expected_status = sorted(int(code) for code in responses if code.startswith("2"))
             self.assertEqual(list(contract.success_status), expected_status, operation_id)
             expected_headers = sorted(
-                json_string(parameter["name"], "parameter.name")
+                string_value(parameter["name"], f"parameter name for {operation_id}")
                 for parameter in parameters(operation)
-                if parameter["in"] == "header"
+                if string_value(parameter["in"], f"parameter location for {operation_id}")
+                == "header"
             )
             self.assertEqual(sorted(contract.request_headers), expected_headers, operation_id)
             self.assertEqual(bool(rule.body), "requestBody" in operation, operation_id)
@@ -494,30 +532,47 @@ class GeneratedClientsContractTest(unittest.TestCase):
                 if field.name not in bound_fields and field.name != rule.body
             }
             expected_query = {
-                json_string(parameter["name"], "parameter.name")
+                string_value(parameter["name"], f"query parameter for {operation_id}")
                 for parameter in parameters(operation)
-                if parameter["in"] == "query"
+                if string_value(parameter["in"], f"parameter location for {operation_id}")
+                == "query"
             }
             self.assertEqual(descriptor_query, expected_query, operation_id)
             if rule.body:
                 body_field = method.input_type.fields_by_name[rule.body]
-                request_body = json_object(operation["requestBody"], "requestBody")
-                request_content = json_object(request_body["content"], "requestBody.content")
-                media = json_object(next(iter(request_content.values())), "requestBody media")
+                request_body = object_mapping(
+                    operation["requestBody"], f"request body for {operation_id}"
+                )
+                request_content = object_mapping(
+                    request_body["content"], f"request content for {operation_id}"
+                )
+                media = object_mapping(
+                    next(iter(request_content.values())), f"request media for {operation_id}"
+                )
+                assert body_field.message_type is not None
                 self.assertEqual(
                     {field.json_name for field in body_field.message_type.fields},
-                    schema_properties(json_object(media["schema"], "requestBody schema")),
+                    schema_properties(object_mapping(media["schema"], "request schema")),
                     operation_id,
                 )
 
-            success = json_object(responses[str(expected_status[0])], "success response")
+            success = object_mapping(
+                responses[str(expected_status[0])], f"success response for {operation_id}"
+            )
             if "$ref" in success:
-                reference = json_string(success["$ref"], "response.$ref")
-                components = json_object(document["components"], "components")
-                declared_responses = json_object(components["responses"], "responses")
-                success = json_object(declared_responses[reference.rsplit("/", 1)[1]], reference)
-            content = json_object(success.get("content", {}), "response.content")
-            content_types = set(content)
+                reference = string_value(success["$ref"], "response reference")
+                components = object_mapping(document["components"], "OpenAPI components")
+                shared_responses = object_mapping(
+                    components["responses"], "OpenAPI shared responses"
+                )
+                success = object_mapping(
+                    shared_responses[reference.rsplit("/", 1)[1]],
+                    f"OpenAPI shared response {reference}",
+                )
+            success_content = object_mapping(
+                success.get("content", {}), f"success content for {operation_id}"
+            )
+            content_types = set(success_content)
             if method.server_streaming and operation_id == "watchOperation":
                 self.assertEqual(contract.stream, api.STREAM_PROJECTION_SSE)
                 self.assertEqual(content_types, {"text/event-stream"})
@@ -529,8 +584,10 @@ class GeneratedClientsContractTest(unittest.TestCase):
                 self.assertFalse(method.client_streaming)
             if content_types.intersection({"application/json", "text/event-stream"}):
                 media_type = next(iter(content_types))
-                media = json_object(content[media_type], f"response.content.{media_type}")
-                schema = json_object(media["schema"], "response schema")
+                media = object_mapping(
+                    success_content[media_type], f"success media for {operation_id}"
+                )
+                schema = object_mapping(media["schema"], f"success schema for {operation_id}")
                 self.assertEqual(
                     {field.json_name for field in method.output_type.fields},
                     schema_properties(schema),
@@ -542,7 +599,7 @@ class GeneratedClientsContractTest(unittest.TestCase):
         sys.path.insert(0, str(repository / "protocols/generated/python"))
         api = importlib.import_module("mindclade.api.v1.mindclade_service_pb2")
         json_format = importlib.import_module("google.protobuf.json_format")
-        document = json_object(
+        document = object_mapping(
             yaml.safe_load(
                 (repository / "protocols/openapi/published/mindclade.openapi.yaml").read_text()
             ),
@@ -561,13 +618,16 @@ class GeneratedClientsContractTest(unittest.TestCase):
         )
         self.assertEqual(payload["mediaType"], "application/octet-stream")
         self.assertEqual(payload["sizeBytes"], "9007199254740993")
-        components = json_object(document["components"], "components")
-        schemas = json_object(components["schemas"], "schemas")
-        artifact_schema = json_object(schemas["ArtifactRef"], "ArtifactRef")
-        properties = json_object(artifact_schema["properties"], "ArtifactRef.properties")
-        size_schema = json_object(properties["sizeBytes"], "ArtifactRef.sizeBytes")
+        components = object_mapping(document["components"], "OpenAPI components")
+        schemas = object_mapping(components["schemas"], "OpenAPI schemas")
+        artifact_schema = object_mapping(schemas["ArtifactRef"], "ArtifactRef schema")
+        properties = object_mapping(artifact_schema["properties"], "ArtifactRef properties")
+        size_schema = object_mapping(properties["sizeBytes"], "ArtifactRef.sizeBytes schema")
         self.assertEqual(size_schema["type"], "string")
-        self.assertRegex(payload["sizeBytes"], json_string(size_schema["pattern"], "size pattern"))
+        self.assertRegex(
+            string_value(payload["sizeBytes"], "ProtoJSON sizeBytes"),
+            string_value(size_schema["pattern"], "ArtifactRef.sizeBytes pattern"),
+        )
         with self.assertRaisesRegex(json_format.ParseError, "no field named"):
             json_format.ParseDict({"unknownInternalField": "x"}, api.Operation())
 

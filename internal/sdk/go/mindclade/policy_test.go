@@ -6,12 +6,13 @@ import (
 	"testing"
 	"time"
 
-	internaltrainingv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/training/v1"
-	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
-	trainingv1 "github.com/mindclade/mindclade/protocols/generated/go/training/v1"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+
+	internaltrainingv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/training/v1"
+	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
+	trainingv1 "github.com/mindclade/mindclade/protocols/generated/go/training/v1"
 )
 
 func TestPlaintextAuthorityRequiresExactLoopback(t *testing.T) {

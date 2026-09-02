@@ -803,3 +803,4 @@ components:
             $ref: '#/components/schemas/ArtifactRef'
         resultDigest:
           $ref: '#/components/schemas/Digest'
+x-mindclade-descriptor-digest: sha256:e53ce4489fb3bf19a0f0fe3a417806fa4b7aecf32f58d189994ae09e33baeb61

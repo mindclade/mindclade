@@ -8,15 +8,71 @@ import (
 	"sync"
 	"time"
 
-	internaljobv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/job/v1"
-	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/timestamppb"
+
+	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
+	internaljobv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/job/v1"
+	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
 )
 
 type OperationService struct {
 	client    *Client
 	transport internaljobv1.OperationServiceClient
+}
+
+const maximumOperationPageSize = 200
+
+// List returns one detached, bounded project-scoped page while preserving the
+// server's opaque pagination cursor.
+func (service *OperationService) List(ctx context.Context, request *internaljobv1.ListOperationsRequest, options ...RequestOption) (*internaljobv1.ListOperationsResponse, error) {
+	value := cloneGenerated(request)
+	if value == nil {
+		value = &internaljobv1.ListOperationsRequest{}
+	}
+	parent := projectName(service.client.config.TenantID, service.client.config.ProjectID)
+	if value.GetParent() != "" && value.GetParent() != parent {
+		return nil, invalidArgument("operation list parent must match the configured project")
+	}
+	if value.GetPage().GetPageSize() > maximumOperationPageSize {
+		return nil, invalidArgument("operation page size cannot exceed 200")
+	}
+	value.Parent = parent
+	callContext, _, cancel, err := service.client.context(ctx, options...)
+	if err != nil {
+		return nil, err
+	}
+	defer cancel()
+	response, err := service.transport.ListOperations(callContext, value)
+	if err != nil {
+		return nil, normalizeError(err)
+	}
+	if response == nil {
+		return nil, protocolDataLoss("ListOperations returned no response")
+	}
+	for _, operation := range response.GetOperations() {
+		if !validListedOperation(service.client.config, operation) {
+			return nil, protocolDataLoss("ListOperations returned an invalid or cross-project operation")
+		}
+	}
+	return cloneGenerated(response), nil
+}
+
+func validListedOperation(config Config, operation *jobv1.Operation) bool {
+	if operation == nil || strings.TrimSpace(operation.GetOperationId()) == "" || operation.GetTenantId() != config.TenantID || operation.GetProjectId() != config.ProjectID || operation.GetState() == jobv1.OperationState_OPERATION_STATE_UNSPECIFIED {
+		return false
+	}
+	if operation.GetDone() != terminalOperationState(operation.GetState()) {
+		return false
+	}
+	if target := operation.GetTarget(); target != nil && !operationTargetInProject(config, target) {
+		return false
+	}
+	return true
+}
+
+func operationTargetInProject(config Config, target *commonv1.ResourceRef) bool {
+	return target.GetTenantId() == config.TenantID && target.GetProjectId() == config.ProjectID && strings.HasPrefix(target.GetName(), projectName(config.TenantID, config.ProjectID)+"/")
 }
 
 func (service *OperationService) Get(ctx context.Context, name string, options ...RequestOption) (*jobv1.Operation, error) {
@@ -35,7 +91,7 @@ func (service *OperationService) Get(ctx context.Context, name string, options .
 	if response.GetOperation() == nil {
 		return nil, &Error{Code: CodeDataLoss, Message: "operation service returned no operation"}
 	}
-	return response.GetOperation(), nil
+	return cloneGenerated(response.GetOperation()), nil
 }
 
 type WaitOptions struct {
@@ -82,8 +138,9 @@ func (service *OperationService) Cancel(
 	name, etag, reason string,
 	options ...RequestOption,
 ) (*jobv1.Operation, error) {
-	if strings.TrimSpace(name) == "" || strings.TrimSpace(etag) == "" {
-		return nil, &Error{Code: CodeInvalidArgument, Message: "operation name and etag are required"}
+	reason = strings.TrimSpace(reason)
+	if strings.TrimSpace(name) == "" || strings.TrimSpace(etag) == "" || len(reason) == 0 || len(reason) > 1024 || strings.ContainsAny(reason, "\x00\r\n") {
+		return nil, &Error{Code: CodeInvalidArgument, Message: "operation name, etag, and bounded cancellation reason are required"}
 	}
 	options = append(options, WithIdempotencyKey("cancel:"+name+":"+etag))
 	callContext, request, cancel, err := service.client.context(ctx, options...)
@@ -94,7 +151,7 @@ func (service *OperationService) Cancel(
 	command := &internaljobv1.CancelOperationRequest{
 		Name:   name,
 		Etag:   etag,
-		Reason: strings.TrimSpace(reason),
+		Reason: reason,
 	}
 	digest, err := deterministicDigest(command)
 	if err != nil {
@@ -108,7 +165,7 @@ func (service *OperationService) Cancel(
 	if response.GetOperation() == nil {
 		return nil, &Error{Code: CodeDataLoss, Message: "operation service returned no operation"}
 	}
-	return response.GetOperation(), nil
+	return cloneGenerated(response.GetOperation()), nil
 }
 
 // Watcher automatically resumes a generated gRPC stream from its last durable
@@ -116,7 +173,7 @@ func (service *OperationService) Cancel(
 // concurrently. Close is idempotent.
 type Watcher struct {
 	service  *OperationService
-	ctx      context.Context
+	ctx      context.Context //nolint:containedctx // A stream watcher owns its cancellable lifecycle context.
 	cancel   context.CancelFunc
 	name     string
 	after    uint64
@@ -165,11 +222,11 @@ func (watcher *Watcher) Recv() (*internaljobv1.WatchOperationResponse, error) {
 	for {
 		response, err := watcher.stream.Recv()
 		if err == nil {
-			failures = 0
 			if response.GetSequence() <= watcher.after {
 				return nil, &Error{Code: CodeDataLoss, Message: "operation watch sequence did not advance"}
 			}
-			operation := response.GetOperation()
+			detached := cloneGenerated(response)
+			operation := detached.GetOperation()
 			if operation == nil || strings.TrimSpace(operation.GetOperationId()) == "" {
 				return nil, &Error{Code: CodeDataLoss, Message: "operation watch returned no operation"}
 			}
@@ -179,9 +236,9 @@ func (watcher *Watcher) Recv() (*internaljobv1.WatchOperationResponse, error) {
 			watcher.after = response.GetSequence()
 			watcher.terminal = operation.GetDone()
 			if watcher.terminal && operationFailed(operation) {
-				return response, &OperationError{Operation: operation}
+				return detached, &OperationError{Operation: cloneGenerated(operation)}
 			}
-			return response, nil
+			return detached, nil
 		}
 		if errors.Is(err, io.EOF) && watcher.terminal {
 			return nil, io.EOF

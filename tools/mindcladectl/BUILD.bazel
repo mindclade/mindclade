@@ -1,0 +1,44 @@
+load("@rules_go//go:def.bzl", "go_binary", "go_library", "go_test")
+
+go_library(
+    name = "mindcladectl_lib",
+    srcs = [
+        "command.go",
+        "live.go",
+    ],
+    importpath = "github.com/mindclade/mindclade/tools/mindcladectl",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/sdk/go/mindclade",
+        "//libs/go/numconv",
+        "@org_golang_google_protobuf//encoding/protojson",
+        "@org_golang_google_protobuf//reflect/protoreflect",
+    ],
+)
+
+go_binary(
+    name = "mindcladectl",
+    srcs = ["cmd/main.go"],
+    visibility = ["//visibility:public"],
+    deps = [":mindcladectl_lib"],
+)
+
+go_test(
+    name = "mindcladectl_test",
+    srcs = ["command_test.go"],
+    embed = [":mindcladectl_lib"],
+)
+
+filegroup(
+    name = "governed_sources",
+    srcs = [
+        "BUILD.bazel",
+        "README.md",
+        "cmd/main.go",
+        "command.go",
+        "command_test.go",
+        "component.yaml",
+        "live.go",
+    ],
+    visibility = ["//visibility:public"],
+)

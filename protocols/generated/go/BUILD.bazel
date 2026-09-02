@@ -21,6 +21,7 @@ filegroup(
         "//protocols/generated/go/internalrpc/artifact/v1:generated_sources",
         "//protocols/generated/go/internalrpc/dataset/v1:generated_sources",
         "//protocols/generated/go/internalrpc/evaluation/v1:generated_sources",
+        "//protocols/generated/go/internalrpc/experiment/v1:generated_sources",
         "//protocols/generated/go/internalrpc/inference/v1:generated_sources",
         "//protocols/generated/go/internalrpc/job/v1:generated_sources",
         "//protocols/generated/go/internalrpc/model/v1:generated_sources",

@@ -35,6 +35,7 @@ import (
 	internalartifactv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/artifact/v1"
 	internaldatasetv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/dataset/v1"
 	internalevaluationv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/evaluation/v1"
+	internalexperimentv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/experiment/v1"
 	internalinferencev1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/inference/v1"
 	internaljobv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/job/v1"
 	internalmodelv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/model/v1"
@@ -43,103 +44,6 @@ import (
 	internalworkflowv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/workflow/v1"
 )
 
-type trainingFoundation interface {
-	Ready(context.Context) error
-	CreateTrainingRun(context.Context, *apiv1.CreateTrainingRunRequest) (*apiv1.Operation, error)
-	GetTrainingRun(context.Context, *apiv1.GetResourceRequest) (*apiv1.TrainingRunView, error)
-	ListTrainingRuns(context.Context, *apiv1.ListResourcesRequest) (*apiv1.TrainingRunList, error)
-	GetOperation(context.Context, *apiv1.GetResourceRequest) (*apiv1.Operation, error)
-	CancelOperation(context.Context, *apiv1.CancelOperationRequest) (*apiv1.Operation, error)
-	WatchOperation(*apiv1.WatchOperationRequest, grpc.ServerStreamingServer[apiv1.OperationEvent]) error
-}
-
-// unavailableTrainingFoundation is fail-closed until a durable application
-// implementation is injected. It never acknowledges work that cannot survive restart.
-type unavailableTrainingFoundation struct{}
-
-func (unavailableTrainingFoundation) unavailable() error {
-	return status.Error(codes.Unavailable, "durable foundation training backend is not configured")
-}
-
-func (u unavailableTrainingFoundation) Ready(context.Context) error {
-	return u.unavailable()
-}
-
-func (u unavailableTrainingFoundation) CreateTrainingRun(context.Context, *apiv1.CreateTrainingRunRequest) (*apiv1.Operation, error) {
-	return nil, u.unavailable()
-}
-
-func (u unavailableTrainingFoundation) GetTrainingRun(context.Context, *apiv1.GetResourceRequest) (*apiv1.TrainingRunView, error) {
-	return nil, u.unavailable()
-}
-
-func (u unavailableTrainingFoundation) ListTrainingRuns(context.Context, *apiv1.ListResourcesRequest) (*apiv1.TrainingRunList, error) {
-	return nil, u.unavailable()
-}
-
-func (u unavailableTrainingFoundation) GetOperation(context.Context, *apiv1.GetResourceRequest) (*apiv1.Operation, error) {
-	return nil, u.unavailable()
-}
-
-func (u unavailableTrainingFoundation) CancelOperation(context.Context, *apiv1.CancelOperationRequest) (*apiv1.Operation, error) {
-	return nil, u.unavailable()
-}
-
-func (u unavailableTrainingFoundation) WatchOperation(*apiv1.WatchOperationRequest, grpc.ServerStreamingServer[apiv1.OperationEvent]) error {
-	return u.unavailable()
-}
-
-type publicServer struct {
-	apiv1.UnimplementedMindcladeServiceServer
-	training trainingFoundation
-}
-
-// The generated service interfaces are the only RPC registration authority.
-// Services without an activated application adapter deliberately return
-// codes.Unimplemented through their generated fail-closed implementation.
-type adminRPCServer struct {
-	internaladminv1.UnimplementedAdminServiceServer
-}
-type agentRPCServer struct {
-	internalagentv1.UnimplementedAgentServiceServer
-}
-type artifactRPCServer struct {
-	internalartifactv1.UnimplementedArtifactServiceServer
-}
-type datasetRPCServer struct {
-	internaldatasetv1.UnimplementedDatasetServiceServer
-}
-type evaluationRPCServer struct {
-	internalevaluationv1.UnimplementedEvaluationServiceServer
-}
-type inferenceRPCServer struct {
-	internalinferencev1.UnimplementedInferenceServiceServer
-}
-type operationRPCServer struct {
-	internaljobv1.UnimplementedOperationServiceServer
-}
-type jobRPCServer struct {
-	internaljobv1.UnimplementedJobServiceServer
-}
-type runRPCServer struct {
-	internaljobv1.UnimplementedRunServiceServer
-}
-type modelRPCServer struct {
-	internalmodelv1.UnimplementedModelServiceServer
-}
-type policyRPCServer struct {
-	internalpolicyv1.UnimplementedPolicyServiceServer
-}
-type trainingRPCServer struct {
-	internaltrainingv1.UnimplementedTrainingServiceServer
-}
-type workflowRPCServer struct {
-	internalworkflowv1.UnimplementedWorkflowServiceServer
-}
-type approvalRPCServer struct {
-	internalworkflowv1.UnimplementedApprovalServiceServer
-}
-
 var generatedGRPCFiles = [...]protoreflect.FileDescriptor{
 	apiv1.File_proto_mindclade_api_v1_mindclade_service_proto,
 	internaladminv1.File_proto_mindclade_internal_admin_v1_admin_service_proto,
@@ -147,6 +51,7 @@ var generatedGRPCFiles = [...]protoreflect.FileDescriptor{
 	internalartifactv1.File_proto_mindclade_internal_artifact_v1_artifact_service_proto,
 	internaldatasetv1.File_proto_mindclade_internal_dataset_v1_dataset_service_proto,
 	internalevaluationv1.File_proto_mindclade_internal_evaluation_v1_evaluation_service_proto,
+	internalexperimentv1.File_proto_mindclade_internal_experiment_v1_experiment_service_proto,
 	internalinferencev1.File_proto_mindclade_internal_inference_v1_inference_service_proto,
 	internaljobv1.File_proto_mindclade_internal_job_v1_job_service_proto,
 	internalmodelv1.File_proto_mindclade_internal_model_v1_model_service_proto,
@@ -167,15 +72,21 @@ func generatedGRPCServiceNames() []string {
 }
 
 type runtimeDependencies struct {
+	Public     apiv1.MindcladeServiceServer
+	Ready      func(context.Context) error
 	Admin      internaladminv1.AdminServiceServer
 	Agent      internalagentv1.AgentServiceServer
-	Training   trainingFoundation
 	Artifact   internalartifactv1.ArtifactServiceServer
 	Dataset    internaldatasetv1.DatasetServiceServer
 	Evaluation internalevaluationv1.EvaluationServiceServer
+	Experiment internalexperimentv1.ExperimentServiceServer
 	Inference  internalinferencev1.InferenceServiceServer
+	Operation  internaljobv1.OperationServiceServer
+	Job        internaljobv1.JobServiceServer
+	Run        internaljobv1.RunServiceServer
 	Model      internalmodelv1.ModelServiceServer
 	Policy     internalpolicyv1.PolicyServiceServer
+	Training   internaltrainingv1.TrainingServiceServer
 	Workflow   internalworkflowv1.WorkflowServiceServer
 	Approval   internalworkflowv1.ApprovalServiceServer
 }
@@ -197,92 +108,53 @@ func registerGeneratedServices(server *grpc.Server, dependencies runtimeDependen
 	if server == nil {
 		return errors.New("generated service registrar is required")
 	}
-	if isTypedNil(dependencies.Admin) || isTypedNil(dependencies.Agent) || isTypedNil(dependencies.Training) || isTypedNil(dependencies.Artifact) || isTypedNil(dependencies.Dataset) || isTypedNil(dependencies.Evaluation) || isTypedNil(dependencies.Inference) || isTypedNil(dependencies.Model) || isTypedNil(dependencies.Policy) || isTypedNil(dependencies.Workflow) || isTypedNil(dependencies.Approval) {
-		return errors.New("generated service dependencies must not contain typed nil implementations")
+	required := []struct {
+		name  string
+		value any
+	}{
+		{"public", dependencies.Public},
+		{"readiness", dependencies.Ready},
+		{"admin", dependencies.Admin},
+		{"agent", dependencies.Agent},
+		{"artifact", dependencies.Artifact},
+		{"dataset", dependencies.Dataset},
+		{"evaluation", dependencies.Evaluation},
+		{"experiment", dependencies.Experiment},
+		{"inference", dependencies.Inference},
+		{"operation", dependencies.Operation},
+		{"job", dependencies.Job},
+		{"run", dependencies.Run},
+		{"model", dependencies.Model},
+		{"policy", dependencies.Policy},
+		{"training", dependencies.Training},
+		{"workflow", dependencies.Workflow},
+		{"approval", dependencies.Approval},
 	}
-	training := dependencies.Training
-	if training == nil {
-		training = unavailableTrainingFoundation{}
-	}
-	adminServer := internaladminv1.AdminServiceServer(&adminRPCServer{})
-	if dependencies.Admin != nil {
-		adminServer = dependencies.Admin
-	}
-	agentServer := internalagentv1.AgentServiceServer(&agentRPCServer{})
-	if dependencies.Agent != nil {
-		agentServer = dependencies.Agent
-	}
-	artifactServer := internalartifactv1.ArtifactServiceServer(&artifactRPCServer{})
-	if dependencies.Artifact != nil {
-		artifactServer = dependencies.Artifact
-	}
-	datasetServer := internaldatasetv1.DatasetServiceServer(&datasetRPCServer{})
-	if dependencies.Dataset != nil {
-		datasetServer = dependencies.Dataset
-	}
-	evaluationServer := internalevaluationv1.EvaluationServiceServer(&evaluationRPCServer{})
-	if dependencies.Evaluation != nil {
-		evaluationServer = dependencies.Evaluation
-	}
-	inferenceServer := internalinferencev1.InferenceServiceServer(&inferenceRPCServer{})
-	if dependencies.Inference != nil {
-		inferenceServer = dependencies.Inference
-	}
-	modelServer := internalmodelv1.ModelServiceServer(&modelRPCServer{})
-	if dependencies.Model != nil {
-		modelServer = dependencies.Model
-	}
-	policyServer := internalpolicyv1.PolicyServiceServer(&policyRPCServer{})
-	if dependencies.Policy != nil {
-		policyServer = dependencies.Policy
-	}
-	workflowServer := internalworkflowv1.WorkflowServiceServer(&workflowRPCServer{})
-	if dependencies.Workflow != nil {
-		workflowServer = dependencies.Workflow
-	}
-	approvalServer := internalworkflowv1.ApprovalServiceServer(&approvalRPCServer{})
-	if dependencies.Approval != nil {
-		approvalServer = dependencies.Approval
-	}
-	operationServer := internaljobv1.OperationServiceServer(&operationRPCServer{})
-	jobServer := internaljobv1.JobServiceServer(&jobRPCServer{})
-	runServer := internaljobv1.RunServiceServer(&runRPCServer{})
-	trainingServer := internaltrainingv1.TrainingServiceServer(&trainingRPCServer{})
-	if activated, ok := training.(interface {
-		InternalOperationServer() internaljobv1.OperationServiceServer
-		InternalTrainingServer() internaltrainingv1.TrainingServiceServer
-	}); ok {
-		if activated.InternalOperationServer() == nil || activated.InternalTrainingServer() == nil {
-			return errors.New("activated training foundation returned a nil generated service")
+	for _, dependency := range required {
+		if dependency.value == nil || isTypedNil(dependency.value) {
+			return fmt.Errorf("generated %s service dependency is required and must not be typed nil", dependency.name)
 		}
-		operationServer = activated.InternalOperationServer()
-		trainingServer = activated.InternalTrainingServer()
 	}
-	if activated, ok := training.(interface {
-		InternalJobServer() internaljobv1.JobServiceServer
-		InternalRunServer() internaljobv1.RunServiceServer
-	}); ok {
-		if activated.InternalJobServer() == nil || activated.InternalRunServer() == nil {
-			return errors.New("activated scheduler foundation returned a nil generated service")
-		}
-		jobServer = activated.InternalJobServer()
-		runServer = activated.InternalRunServer()
-	}
-	apiv1.RegisterMindcladeServiceServer(server, &publicServer{training: training})
-	internaladminv1.RegisterAdminServiceServer(server, adminServer)
-	internalagentv1.RegisterAgentServiceServer(server, agentServer)
-	internalartifactv1.RegisterArtifactServiceServer(server, artifactServer)
-	internaldatasetv1.RegisterDatasetServiceServer(server, datasetServer)
-	internalevaluationv1.RegisterEvaluationServiceServer(server, evaluationServer)
-	internalinferencev1.RegisterInferenceServiceServer(server, inferenceServer)
-	internaljobv1.RegisterOperationServiceServer(server, operationServer)
-	internaljobv1.RegisterJobServiceServer(server, jobServer)
-	internaljobv1.RegisterRunServiceServer(server, runServer)
-	internalmodelv1.RegisterModelServiceServer(server, modelServer)
-	internalpolicyv1.RegisterPolicyServiceServer(server, policyServer)
-	internaltrainingv1.RegisterTrainingServiceServer(server, trainingServer)
-	internalworkflowv1.RegisterWorkflowServiceServer(server, workflowServer)
-	internalworkflowv1.RegisterApprovalServiceServer(server, approvalServer)
+
+	// Production registration is deliberately strict: every descriptor-declared
+	// service must have an explicit application adapter. There is no generated
+	// Unimplemented fallback on the production startup path.
+	apiv1.RegisterMindcladeServiceServer(server, dependencies.Public)
+	internaladminv1.RegisterAdminServiceServer(server, dependencies.Admin)
+	internalagentv1.RegisterAgentServiceServer(server, dependencies.Agent)
+	internalartifactv1.RegisterArtifactServiceServer(server, dependencies.Artifact)
+	internaldatasetv1.RegisterDatasetServiceServer(server, dependencies.Dataset)
+	internalevaluationv1.RegisterEvaluationServiceServer(server, dependencies.Evaluation)
+	internalexperimentv1.RegisterExperimentServiceServer(server, dependencies.Experiment)
+	internalinferencev1.RegisterInferenceServiceServer(server, dependencies.Inference)
+	internaljobv1.RegisterOperationServiceServer(server, dependencies.Operation)
+	internaljobv1.RegisterJobServiceServer(server, dependencies.Job)
+	internaljobv1.RegisterRunServiceServer(server, dependencies.Run)
+	internalmodelv1.RegisterModelServiceServer(server, dependencies.Model)
+	internalpolicyv1.RegisterPolicyServiceServer(server, dependencies.Policy)
+	internaltrainingv1.RegisterTrainingServiceServer(server, dependencies.Training)
+	internalworkflowv1.RegisterWorkflowServiceServer(server, dependencies.Workflow)
+	internalworkflowv1.RegisterApprovalServiceServer(server, dependencies.Approval)
 
 	registered := server.GetServiceInfo()
 	for _, service := range generatedGRPCServiceNames() {
@@ -291,33 +163,6 @@ func registerGeneratedServices(server *grpc.Server, dependencies runtimeDependen
 		}
 	}
 	return nil
-}
-
-func (s *publicServer) CreateTrainingRun(ctx context.Context, request *apiv1.CreateTrainingRunRequest) (*apiv1.Operation, error) {
-	if request.GetParent() == "" || request.GetTrainingRun() == nil {
-		return nil, status.Error(codes.InvalidArgument, "parent and trainingRun are required")
-	}
-	return s.training.CreateTrainingRun(ctx, request)
-}
-
-func (s *publicServer) GetTrainingRun(ctx context.Context, request *apiv1.GetResourceRequest) (*apiv1.TrainingRunView, error) {
-	return s.training.GetTrainingRun(ctx, request)
-}
-
-func (s *publicServer) ListTrainingRuns(ctx context.Context, request *apiv1.ListResourcesRequest) (*apiv1.TrainingRunList, error) {
-	return s.training.ListTrainingRuns(ctx, request)
-}
-
-func (s *publicServer) GetOperation(ctx context.Context, request *apiv1.GetResourceRequest) (*apiv1.Operation, error) {
-	return s.training.GetOperation(ctx, request)
-}
-
-func (s *publicServer) CancelOperation(ctx context.Context, request *apiv1.CancelOperationRequest) (*apiv1.Operation, error) {
-	return s.training.CancelOperation(ctx, request)
-}
-
-func (s *publicServer) WatchOperation(request *apiv1.WatchOperationRequest, stream grpc.ServerStreamingServer[apiv1.OperationEvent]) error {
-	return s.training.WatchOperation(request, stream)
 }
 
 type bearerAuthorizer struct {
@@ -529,6 +374,24 @@ func authorizeRPCMethod(claims verifiedIdentityClaims, method string) error {
 		return allowed("platform", "worker", "scheduler", "auditor", "admin")
 	case "/mindclade.internal.evaluation.v1.EvaluationService/CommitEvaluationResult":
 		return allowed("worker", "admin")
+	case "/mindclade.internal.experiment.v1.ExperimentService/GetExperiment",
+		"/mindclade.internal.experiment.v1.ExperimentService/ListExperiments",
+		"/mindclade.internal.experiment.v1.ExperimentService/GetStudy",
+		"/mindclade.internal.experiment.v1.ExperimentService/ListStudies",
+		"/mindclade.internal.experiment.v1.ExperimentService/GetTrial",
+		"/mindclade.internal.experiment.v1.ExperimentService/ListTrials":
+		return allowed("platform", "worker", "scheduler", "auditor", "admin")
+	case "/mindclade.internal.experiment.v1.ExperimentService/CompleteTrial":
+		return allowed("platform", "admin")
+	case "/mindclade.internal.experiment.v1.ExperimentService/CreateTrial",
+		"/mindclade.internal.experiment.v1.ExperimentService/TransitionTrial":
+		return allowed("platform", "scheduler", "admin")
+	case "/mindclade.internal.experiment.v1.ExperimentService/CreateExperiment",
+		"/mindclade.internal.experiment.v1.ExperimentService/UpdateExperiment",
+		"/mindclade.internal.experiment.v1.ExperimentService/TransitionExperiment",
+		"/mindclade.internal.experiment.v1.ExperimentService/CreateStudy",
+		"/mindclade.internal.experiment.v1.ExperimentService/TransitionStudy":
+		return allowed("platform", "admin")
 	case "/mindclade.internal.inference.v1.InferenceService/CommitInferenceResult":
 		return allowed("worker", "automation-worker", "agent-worker", "admin", "platform-admin")
 	case "/mindclade.internal.inference.v1.InferenceService/GetInferenceRequest",
@@ -1124,11 +987,6 @@ func newRuntimeWithAuthorizer(
 	if err := requireLoopback(httpAddress); err != nil {
 		return nil, fmt.Errorf("HTTP address: %w", err)
 	}
-	training := dependencies.Training
-	if training == nil {
-		training = unavailableTrainingFoundation{}
-		dependencies.Training = training
-	}
 	listener, err := (&net.ListenConfig{}).Listen(ctx, "tcp", grpcAddress)
 	if err != nil {
 		return nil, fmt.Errorf("listen for gRPC: %w", err)
@@ -1149,7 +1007,7 @@ func newRuntimeWithAuthorizer(
 		_ = listener.Close()
 		return nil, fmt.Errorf("create loopback gRPC client: %w", err)
 	}
-	httpGateway, err := newGateway(conn, authorizer, training.Ready)
+	httpGateway, err := newGateway(conn, authorizer, dependencies.Ready)
 	if err != nil {
 		_ = conn.Close()
 		_ = listener.Close()

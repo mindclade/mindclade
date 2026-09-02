@@ -7,9 +7,14 @@ import { ArtifactCommittedSchema } from "../../protocols/generated/typescript/ar
 import { ArtifactRefSchema } from "../../protocols/generated/typescript/artifact/v1/artifact_reference_pb.js";
 import { AuditEventSchema } from "../../protocols/generated/typescript/audit/v1/audit_event_pb.js";
 import { IdentifiersSchema } from "../../protocols/generated/typescript/common/v1/identifiers_pb.js";
+import {
+  EVENT_REGISTRY_RATIFIABLE,
+  requireEventRegistration,
+} from "../../protocols/generated/typescript/common/v1/index.js";
 import { DatasetSchema } from "../../protocols/generated/typescript/dataset/v1/dataset_pb.js";
 import { EvaluationRunSchema } from "../../protocols/generated/typescript/evaluation/v1/evaluation_run_pb.js";
 import { ExperimentSchema } from "../../protocols/generated/typescript/experiment/v1/experiment_pb.js";
+import { ExperimentCreatedSchema } from "../../protocols/generated/typescript/experiment/v1/experiment_created_pb.js";
 import { FeatureMaterializationCompletedSchema } from "../../protocols/generated/typescript/feature/v1/feature_materialization_completed_pb.js";
 import { FeatureMaterializationSchema } from "../../protocols/generated/typescript/feature/v1/feature_materialization_pb.js";
 import { InferenceRequestSchema } from "../../protocols/generated/typescript/inference/v1/inference_request_pb.js";
@@ -18,6 +23,8 @@ import { GetAgentDefinitionRequestSchema } from "../../protocols/generated/types
 import { GetArtifactRequestSchema } from "../../protocols/generated/typescript/internal/artifact/v1/artifact_service_pb.js";
 import { GetDatasetRequestSchema } from "../../protocols/generated/typescript/internal/dataset/v1/dataset_service_pb.js";
 import { GetEvaluationRunRequestSchema } from "../../protocols/generated/typescript/internal/evaluation/v1/evaluation_service_pb.js";
+import { GetExperimentRequestSchema } from "../../protocols/generated/typescript/internal/experiment/v1/experiment_service_pb.js";
+import { assertFixtureConformance } from "../../protocols/generated/typescript/schema/v1/bindings.js";
 import { GetInferenceResultRequestSchema } from "../../protocols/generated/typescript/internal/inference/v1/inference_service_pb.js";
 import { GetJobRequestSchema } from "../../protocols/generated/typescript/internal/job/v1/job_service_pb.js";
 import { GetModelRequestSchema } from "../../protocols/generated/typescript/internal/model/v1/model_service_pb.js";
@@ -46,6 +53,7 @@ const cases: ReadonlyArray<readonly [RuntimeSchema, Record<string, unknown>]> = 
   [IdentifiersSchema, { tenantId: "tenant-fixture" }],
   [DatasetSchema, { name: "datasets/fixture" }],
   [EvaluationRunSchema, { name: "evaluationRuns/fixture" }],
+  [ExperimentCreatedSchema, { experiment: { name: "experiments/fixture" } }],
   [AgentRunCompletedSchema, { attemptId: "attempt-fixture" }],
   [ArtifactCommittedSchema, { producerAttemptId: "attempt-fixture" }],
   [AuditEventSchema, { actorPrincipalId: "principal-fixture" }],
@@ -63,6 +71,7 @@ const cases: ReadonlyArray<readonly [RuntimeSchema, Record<string, unknown>]> = 
   [GetArtifactRequestSchema, { name: "artifacts/fixture" }],
   [GetDatasetRequestSchema, { name: "datasets/fixture" }],
   [GetEvaluationRunRequestSchema, { name: "evaluationRuns/fixture" }],
+  [GetExperimentRequestSchema, { name: "experiments/fixture" }],
   [GetInferenceResultRequestSchema, { operationName: "operations/fixture" }],
   [GetJobRequestSchema, { name: "jobs/fixture" }],
   [GetModelRequestSchema, { name: "models/fixture" }],
@@ -77,6 +86,8 @@ const cases: ReadonlyArray<readonly [RuntimeSchema, Record<string, unknown>]> = 
   [WorkflowDefinitionSchema, { name: "workflowDefinitions/fixture" }],
 ];
 
+assertFixtureConformance();
+
 for (const [schema, initializer] of cases) {
   const original = create(schema, initializer);
   const wire = toBinary(schema, original);
@@ -88,5 +99,32 @@ for (const [schema, initializer] of cases) {
   }
   if (!equals(schema, fromJson(schema, toJson(schema, original)), original)) {
     throw new Error(`${schema.typeName} ProtoJSON round trip mismatch`);
+  }
+}
+
+const jobRequestedRegistration = requireEventRegistration(
+  "mindclade.events.job.v1.JobRequested",
+  1,
+  "application/x-protobuf; deterministic=true",
+);
+if (jobRequestedRegistration.lifecycleState !== "active") {
+  throw new Error("JobRequested must be the production-active registry identity");
+}
+if (jobRequestedRegistration.producers.length === 0 || jobRequestedRegistration.consumers.length === 0) {
+  throw new Error("active event registration lacks producer or semantic-consumer evidence");
+}
+if (!EVENT_REGISTRY_RATIFIABLE) {
+  throw new Error("the fully active event registry must be eligible for candidate ratification");
+}
+try {
+  requireEventRegistration(
+    "mindclade.events.job.v1.JobRequested",
+    2,
+    "application/x-protobuf; deterministic=true",
+  );
+  throw new Error("unknown event version was accepted");
+} catch (error) {
+  if (!(error instanceof Error) || !error.message.includes("unregistered event type/version")) {
+    throw error;
   }
 }

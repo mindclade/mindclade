@@ -8,11 +8,13 @@ transactional outbox publishes immutable protobuf event envelopes to Pub/Sub
 only after commit. Object storage, Pub/Sub, and SDK clients never receive a
 database transaction or row type.
 
-The executable currently activates Training, Operation, and worker Run services
-through generated gRPC interfaces, the public-safe candidate façade, explicit
-SSE, and a descriptor-bound HTTP/JSON gateway. Other registered generated
-internal services remain fail-closed until their vertical application adapters
-are activated and therefore are absent from the candidate public service.
+The executable activates all sixteen descriptor-declared gRPC services through
+generated server interfaces backed by their durable application adapters:
+administration, agents, artifacts, datasets, evaluations, experiments,
+inference, jobs, operations, runs, models, policy, training, workflows, and
+approvals, plus the separately bounded candidate HTTP façade. The HTTP/JSON gateway and explicit
+operation SSE adapter expose only methods selected by the public-safe descriptor;
+worker controls and storage locators remain gRPC-internal.
 
 Workers receive queue envelopes and lease capabilities only. They never receive
 a control-plane database interface. A completion must match both attempt ID and
@@ -27,7 +29,9 @@ go test ./services/control_plane/...
 
 Runtime startup is fail-closed and requires applied migrations, a
 `NOSUPERUSER NOBYPASSRLS` PostgreSQL role, Pub/Sub project/topic configuration,
-the required `MINDCLADE_PUBSUB_JOB_SUBSCRIPTION` pull subscription, a bounded
+the required `MINDCLADE_PUBSUB_JOB_SUBSCRIPTION` pull subscription, the
+independent `MINDCLADE_PUBSUB_EVENT_AUDIT_SUBSCRIPTION` projection
+subscription, a bounded
 `MINDCLADE_QUARANTINE_TENANT_ID`, tenant/project authorization mappings, and
 an active `MINDCLADE_LEASE_TOKEN_ACTIVE_KEY_ID` present in the JSON
 `MINDCLADE_LEASE_TOKEN_HMAC_KEYS_JSON` key ring. Every key must be a base64
@@ -37,6 +41,12 @@ authenticated workers and are never stored in PostgreSQL or protobuf payloads.
 The job subscription is dedicated and filtered on
 `attributes.event_type = "mindclade.events.job.v1.JobRequested"`; unrelated
 registered events use their own versioned consumers.
+The job and event-audit subscription names must be distinct. The event-audit
+subscription receives the complete ordered event topic. Its
+exact registry allowlist, inbox receipt, aggregate sequence check, immutable
+semantic projection, and Admin audit-query row commit in one tenant-bound
+PostgreSQL transaction. Candidate event types are not subscribed until their
+registry producer and fixture evidence is complete.
 Startup also requires
 either:
 

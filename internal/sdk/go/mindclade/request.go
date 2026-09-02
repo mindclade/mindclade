@@ -7,10 +7,11 @@ import (
 	"reflect"
 	"strings"
 
-	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
+
+	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 )
 
 type requestContextKey struct{}
@@ -141,10 +142,20 @@ func attachRequestMetadata(ctx context.Context, config Config, method string) co
 }
 
 var leaseCredentialMethods = map[string]bool{
+	"/mindclade.internal.job.v1.RunService/RenewAttemptLease":                    true,
+	"/mindclade.internal.job.v1.RunService/HeartbeatAttempt":                     true,
+	"/mindclade.internal.job.v1.RunService/CancelAttempt":                        true,
+	"/mindclade.internal.job.v1.RunService/CommitAttempt":                        true,
 	"/mindclade.internal.workflow.v1.WorkflowService/CommitWorkflowTransition":   true,
 	"/mindclade.internal.agent.v1.AgentService/CommitAgentStep":                  true,
 	"/mindclade.internal.agent.v1.AgentService/CommitToolReceipt":                true,
 	"/mindclade.internal.evaluation.v1.EvaluationService/CommitEvaluationResult": true,
+	"/mindclade.internal.training.v1.TrainingService/StartTrainingAttempt":       true,
+	"/mindclade.internal.training.v1.TrainingService/ResumeTrainingAttempt":      true,
+	"/mindclade.internal.training.v1.TrainingService/CommitTrainingProgress":     true,
+	"/mindclade.internal.training.v1.TrainingService/PrepareCheckpoint":          true,
+	"/mindclade.internal.training.v1.TrainingService/CommitCheckpoint":           true,
+	"/mindclade.internal.training.v1.TrainingService/CompleteTrainingRun":        true,
 }
 
 func randomID() (string, error) {

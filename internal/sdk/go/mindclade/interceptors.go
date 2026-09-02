@@ -3,7 +3,7 @@ package mindclade
 import (
 	"context"
 	cryptorand "crypto/rand"
-	"encoding/binary"
+	"math/big"
 	"time"
 
 	"google.golang.org/grpc"
@@ -34,7 +34,8 @@ func unaryInterceptor(config Config) grpc.UnaryClientInterceptor {
 			attempts = config.MaxAttempts
 		}
 		var trailers metadata.MD
-		callOptions := append(options, grpc.Trailer(&trailers))
+		callOptions := append([]grpc.CallOption(nil), options...)
+		callOptions = append(callOptions, grpc.Trailer(&trailers))
 		for attempt := 1; attempt <= attempts; attempt++ {
 			started := time.Now()
 			observeStarted(config.Observer, method, attempt)
@@ -104,11 +105,15 @@ func retryDelay(config Config, attempt int) time.Duration {
 		}
 		delay *= 2
 	}
-	var value [8]byte
-	if _, err := cryptorand.Read(value[:]); err != nil {
+	if delay <= 0 {
+		return 0
+	}
+	upperBound := new(big.Int).Add(big.NewInt(int64(delay)), big.NewInt(1))
+	value, err := cryptorand.Int(cryptorand.Reader, upperBound)
+	if err != nil {
 		return delay / 2
 	}
-	return time.Duration(binary.LittleEndian.Uint64(value[:]) % uint64(delay+1))
+	return time.Duration(value.Int64())
 }
 
 func waitContext(ctx context.Context, delay time.Duration) error {

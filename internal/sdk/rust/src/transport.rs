@@ -32,13 +32,17 @@ use mindclade_protocols::internal::{
         UpdateAgentDefinitionResponse, agent_service_client::AgentServiceClient,
     },
     artifact::v1::{
-        AbortArtifactUploadRequest, AbortArtifactUploadResponse, BeginArtifactUploadRequest,
-        BeginArtifactUploadResponse, CommitArtifactRequest, CommitArtifactResponse,
-        DownloadArtifactRequest, DownloadArtifactResponse, FinalizeArtifactUploadRequest,
-        FinalizeArtifactUploadResponse, GetArtifactUploadRequest, GetArtifactUploadResponse,
-        QuarantineArtifactUploadRequest, QuarantineArtifactUploadResponse,
-        ResolveArtifactAliasRequest, ResolveArtifactAliasResponse, UploadArtifactChunkRequest,
-        UploadArtifactChunkResponse, artifact_service_client::ArtifactServiceClient,
+        AbortArtifactUploadRequest, AbortArtifactUploadResponse, AcquireArtifactLeaseRequest,
+        AcquireArtifactLeaseResponse, BeginArtifactUploadRequest, BeginArtifactUploadResponse,
+        CommitArtifactRequest, CommitArtifactResponse, DownloadArtifactRequest,
+        DownloadArtifactResponse, FinalizeArtifactUploadRequest, FinalizeArtifactUploadResponse,
+        GetArtifactRequest, GetArtifactResponse, GetArtifactUploadRequest,
+        GetArtifactUploadResponse, ListArtifactsRequest, ListArtifactsResponse,
+        QuarantineArtifactRequest, QuarantineArtifactResponse, QuarantineArtifactUploadRequest,
+        QuarantineArtifactUploadResponse, ReleaseArtifactLeaseRequest,
+        ReleaseArtifactLeaseResponse, ResolveArtifactAliasRequest, ResolveArtifactAliasResponse,
+        UploadArtifactChunkRequest, UploadArtifactChunkResponse,
+        artifact_service_client::ArtifactServiceClient,
     },
     dataset::v1::{
         CreateDatasetRequest, CreateDatasetResponse, GetDatasetReleaseRequest,
@@ -57,6 +61,17 @@ use mindclade_protocols::internal::{
         ListEvaluationRunsRequest, ListEvaluationRunsResponse,
         evaluation_service_client::EvaluationServiceClient,
     },
+    experiment::v1::{
+        CompleteTrialRequest, CompleteTrialResponse, CreateExperimentRequest,
+        CreateExperimentResponse, CreateStudyRequest, CreateStudyResponse, CreateTrialRequest,
+        CreateTrialResponse, GetExperimentRequest, GetExperimentResponse, GetStudyRequest,
+        GetStudyResponse, GetTrialRequest, GetTrialResponse, ListExperimentsRequest,
+        ListExperimentsResponse, ListStudiesRequest, ListStudiesResponse, ListTrialsRequest,
+        ListTrialsResponse, TransitionExperimentRequest, TransitionExperimentResponse,
+        TransitionStudyRequest, TransitionStudyResponse, TransitionTrialRequest,
+        TransitionTrialResponse, UpdateExperimentRequest, UpdateExperimentResponse,
+        experiment_service_client::ExperimentServiceClient,
+    },
     inference::v1::{
         CommitInferenceResultRequest, CommitInferenceResultResponse, GetInferenceRequestRequest,
         GetInferenceRequestResponse, GetInferenceResultRequest, GetInferenceResultResponse,
@@ -64,9 +79,17 @@ use mindclade_protocols::internal::{
         WatchInferenceResponse, inference_service_client::InferenceServiceClient,
     },
     job::v1::{
-        CancelOperationRequest, CancelOperationResponse, GetOperationRequest, GetOperationResponse,
-        WatchOperationRequest, WatchOperationResponse, job_service_client::JobServiceClient,
-        operation_service_client::OperationServiceClient, run_service_client::RunServiceClient,
+        AcquireAttemptLeaseRequest, AcquireAttemptLeaseResponse, CancelAttemptRequest,
+        CancelAttemptResponse, CancelJobRequest, CancelJobResponse, CancelOperationRequest,
+        CancelOperationResponse, CommitAttemptRequest, CommitAttemptResponse, GetAttemptRequest,
+        GetAttemptResponse, GetJobRequest, GetJobResponse, GetOperationRequest,
+        GetOperationResponse, GetRunRequest, GetRunResponse, HeartbeatAttemptRequest,
+        HeartbeatAttemptResponse, ListAttemptsRequest, ListAttemptsResponse, ListJobsRequest,
+        ListJobsResponse, ListOperationsRequest, ListOperationsResponse, ListRunsRequest,
+        ListRunsResponse, RenewAttemptLeaseRequest, RenewAttemptLeaseResponse, RequestJobRequest,
+        RequestJobResponse, WatchOperationRequest, WatchOperationResponse,
+        job_service_client::JobServiceClient, operation_service_client::OperationServiceClient,
+        run_service_client::RunServiceClient,
     },
     model::v1::{
         GetModelReleaseRequest, GetModelReleaseResponse, GetModelRequest, GetModelResponse,
@@ -85,7 +108,15 @@ use mindclade_protocols::internal::{
         policy_service_client::PolicyServiceClient,
     },
     training::v1::{
-        CreateTrainingRunRequest, CreateTrainingRunResponse,
+        CancelTrainingRunRequest, CancelTrainingRunResponse, CommitCheckpointRequest,
+        CommitCheckpointResponse, CommitTrainingProgressRequest, CommitTrainingProgressResponse,
+        CompleteTrainingRunRequest, CompleteTrainingRunResponse, CreateTrainingRunRequest,
+        CreateTrainingRunResponse, GetCheckpointRequest, GetCheckpointResponse,
+        GetTrainingRunRequest, GetTrainingRunResponse, ListCheckpointsRequest,
+        ListCheckpointsResponse, ListTrainingRunsRequest, ListTrainingRunsResponse,
+        PrepareCheckpointRequest, PrepareCheckpointResponse, ResumeTrainingAttemptRequest,
+        ResumeTrainingAttemptResponse, StartTrainingAttemptRequest, StartTrainingAttemptResponse,
+        WatchTrainingRunRequest, WatchTrainingRunResponse,
         training_service_client::TrainingServiceClient,
     },
     workflow::v1::{
@@ -126,6 +157,11 @@ pub type InferenceStream =
 pub type WorkflowStream =
     Pin<Box<dyn Stream<Item = Result<WatchWorkflowRunResponse, Status>> + Send + 'static>>;
 
+/// Boxed generated training-update stream used by production and fake
+/// transports.
+pub type TrainingStream =
+    Pin<Box<dyn Stream<Item = Result<WatchTrainingRunResponse, Status>> + Send + 'static>>;
+
 type AuthorizedChannel = InterceptedService<Channel, GeneratedClientInterceptor>;
 
 /// Complete generated Tonic client estate for uncommon internal workflows.
@@ -139,6 +175,7 @@ pub struct GeneratedClients {
     pub artifact: ArtifactServiceClient<AuthorizedChannel>,
     pub dataset: DatasetServiceClient<AuthorizedChannel>,
     pub evaluation: EvaluationServiceClient<AuthorizedChannel>,
+    pub experiment: ExperimentServiceClient<AuthorizedChannel>,
     pub inference: InferenceServiceClient<AuthorizedChannel>,
     pub job: JobServiceClient<AuthorizedChannel>,
     pub operation: OperationServiceClient<AuthorizedChannel>,
@@ -184,6 +221,7 @@ impl GeneratedClients {
             artifact: ArtifactServiceClient::new(channel.clone()),
             dataset: DatasetServiceClient::new(channel.clone()),
             evaluation: EvaluationServiceClient::new(channel.clone()),
+            experiment: ExperimentServiceClient::new(channel.clone()),
             inference: InferenceServiceClient::new(channel.clone()),
             job: JobServiceClient::new(channel.clone()),
             operation: OperationServiceClient::new(channel.clone()),
@@ -439,6 +477,126 @@ pub trait RpcTransport: Send + Sync {
         ))
     }
 
+    async fn get_training_run(
+        &self,
+        request: Request<GetTrainingRunRequest>,
+    ) -> Result<Response<GetTrainingRunResponse>, Status> {
+        let _ = request;
+        Err(Status::unimplemented(
+            "get_training_run fake is not configured",
+        ))
+    }
+
+    async fn list_training_runs(
+        &self,
+        request: Request<ListTrainingRunsRequest>,
+    ) -> Result<Response<ListTrainingRunsResponse>, Status> {
+        let _ = request;
+        Err(Status::unimplemented(
+            "list_training_runs fake is not configured",
+        ))
+    }
+
+    async fn start_training_attempt(
+        &self,
+        request: Request<StartTrainingAttemptRequest>,
+    ) -> Result<Response<StartTrainingAttemptResponse>, Status> {
+        let _ = request;
+        Err(Status::unimplemented(
+            "start_training_attempt fake is not configured",
+        ))
+    }
+
+    async fn resume_training_attempt(
+        &self,
+        request: Request<ResumeTrainingAttemptRequest>,
+    ) -> Result<Response<ResumeTrainingAttemptResponse>, Status> {
+        let _ = request;
+        Err(Status::unimplemented(
+            "resume_training_attempt fake is not configured",
+        ))
+    }
+
+    async fn commit_training_progress(
+        &self,
+        request: Request<CommitTrainingProgressRequest>,
+    ) -> Result<Response<CommitTrainingProgressResponse>, Status> {
+        let _ = request;
+        Err(Status::unimplemented(
+            "commit_training_progress fake is not configured",
+        ))
+    }
+
+    async fn prepare_checkpoint(
+        &self,
+        request: Request<PrepareCheckpointRequest>,
+    ) -> Result<Response<PrepareCheckpointResponse>, Status> {
+        let _ = request;
+        Err(Status::unimplemented(
+            "prepare_checkpoint fake is not configured",
+        ))
+    }
+
+    async fn commit_checkpoint(
+        &self,
+        request: Request<CommitCheckpointRequest>,
+    ) -> Result<Response<CommitCheckpointResponse>, Status> {
+        let _ = request;
+        Err(Status::unimplemented(
+            "commit_checkpoint fake is not configured",
+        ))
+    }
+
+    async fn complete_training_run(
+        &self,
+        request: Request<CompleteTrainingRunRequest>,
+    ) -> Result<Response<CompleteTrainingRunResponse>, Status> {
+        let _ = request;
+        Err(Status::unimplemented(
+            "complete_training_run fake is not configured",
+        ))
+    }
+
+    async fn cancel_training_run(
+        &self,
+        request: Request<CancelTrainingRunRequest>,
+    ) -> Result<Response<CancelTrainingRunResponse>, Status> {
+        let _ = request;
+        Err(Status::unimplemented(
+            "cancel_training_run fake is not configured",
+        ))
+    }
+
+    async fn get_checkpoint(
+        &self,
+        request: Request<GetCheckpointRequest>,
+    ) -> Result<Response<GetCheckpointResponse>, Status> {
+        let _ = request;
+        Err(Status::unimplemented(
+            "get_checkpoint fake is not configured",
+        ))
+    }
+
+    async fn list_checkpoints(
+        &self,
+        request: Request<ListCheckpointsRequest>,
+    ) -> Result<Response<ListCheckpointsResponse>, Status> {
+        let _ = request;
+        Err(Status::unimplemented(
+            "list_checkpoints fake is not configured",
+        ))
+    }
+
+    async fn watch_training_run(
+        &self,
+        request: Request<WatchTrainingRunRequest>,
+    ) -> Result<Response<TrainingStream>, Status> {
+        let _ = request;
+        Err(Status::unimplemented(
+            "watch_training_run fake is not configured",
+        ))
+    }
+
     async fn get_operation(
         &self,
         request: Request<GetOperationRequest>,
@@ -446,6 +604,16 @@ pub trait RpcTransport: Send + Sync {
         let _ = request;
         Err(Status::unimplemented(
             "get_operation fake is not configured",
+        ))
+    }
+
+    async fn list_operations(
+        &self,
+        request: Request<ListOperationsRequest>,
+    ) -> Result<Response<ListOperationsResponse>, Status> {
+        let _ = request;
+        Err(Status::unimplemented(
+            "list_operations fake is not configured",
         ))
     }
 
@@ -469,6 +637,122 @@ pub trait RpcTransport: Send + Sync {
         ))
     }
 
+    async fn request_job(
+        &self,
+        request: Request<RequestJobRequest>,
+    ) -> Result<Response<RequestJobResponse>, Status> {
+        let _ = request;
+        Err(Status::unimplemented("request_job fake is not configured"))
+    }
+
+    async fn get_job(
+        &self,
+        request: Request<GetJobRequest>,
+    ) -> Result<Response<GetJobResponse>, Status> {
+        let _ = request;
+        Err(Status::unimplemented("get_job fake is not configured"))
+    }
+
+    async fn list_jobs(
+        &self,
+        request: Request<ListJobsRequest>,
+    ) -> Result<Response<ListJobsResponse>, Status> {
+        let _ = request;
+        Err(Status::unimplemented("list_jobs fake is not configured"))
+    }
+
+    async fn cancel_job(
+        &self,
+        request: Request<CancelJobRequest>,
+    ) -> Result<Response<CancelJobResponse>, Status> {
+        let _ = request;
+        Err(Status::unimplemented("cancel_job fake is not configured"))
+    }
+
+    async fn get_run(
+        &self,
+        request: Request<GetRunRequest>,
+    ) -> Result<Response<GetRunResponse>, Status> {
+        let _ = request;
+        Err(Status::unimplemented("get_run fake is not configured"))
+    }
+
+    async fn list_runs(
+        &self,
+        request: Request<ListRunsRequest>,
+    ) -> Result<Response<ListRunsResponse>, Status> {
+        let _ = request;
+        Err(Status::unimplemented("list_runs fake is not configured"))
+    }
+
+    async fn get_attempt(
+        &self,
+        request: Request<GetAttemptRequest>,
+    ) -> Result<Response<GetAttemptResponse>, Status> {
+        let _ = request;
+        Err(Status::unimplemented("get_attempt fake is not configured"))
+    }
+
+    async fn list_attempts(
+        &self,
+        request: Request<ListAttemptsRequest>,
+    ) -> Result<Response<ListAttemptsResponse>, Status> {
+        let _ = request;
+        Err(Status::unimplemented(
+            "list_attempts fake is not configured",
+        ))
+    }
+
+    async fn acquire_attempt_lease(
+        &self,
+        request: Request<AcquireAttemptLeaseRequest>,
+    ) -> Result<Response<AcquireAttemptLeaseResponse>, Status> {
+        let _ = request;
+        Err(Status::unimplemented(
+            "acquire_attempt_lease fake is not configured",
+        ))
+    }
+
+    async fn renew_attempt_lease(
+        &self,
+        request: Request<RenewAttemptLeaseRequest>,
+    ) -> Result<Response<RenewAttemptLeaseResponse>, Status> {
+        let _ = request;
+        Err(Status::unimplemented(
+            "renew_attempt_lease fake is not configured",
+        ))
+    }
+
+    async fn heartbeat_attempt(
+        &self,
+        request: Request<HeartbeatAttemptRequest>,
+    ) -> Result<Response<HeartbeatAttemptResponse>, Status> {
+        let _ = request;
+        Err(Status::unimplemented(
+            "heartbeat_attempt fake is not configured",
+        ))
+    }
+
+    async fn cancel_attempt(
+        &self,
+        request: Request<CancelAttemptRequest>,
+    ) -> Result<Response<CancelAttemptResponse>, Status> {
+        let _ = request;
+        Err(Status::unimplemented(
+            "cancel_attempt fake is not configured",
+        ))
+    }
+
+    async fn commit_attempt(
+        &self,
+        request: Request<CommitAttemptRequest>,
+    ) -> Result<Response<CommitAttemptResponse>, Status> {
+        let _ = request;
+        Err(Status::unimplemented(
+            "commit_attempt fake is not configured",
+        ))
+    }
+
     async fn resolve_artifact_alias(
         &self,
         request: Request<ResolveArtifactAliasRequest>,
@@ -476,6 +760,54 @@ pub trait RpcTransport: Send + Sync {
         let _ = request;
         Err(Status::unimplemented(
             "resolve_artifact_alias fake is not configured",
+        ))
+    }
+
+    async fn get_artifact(
+        &self,
+        request: Request<GetArtifactRequest>,
+    ) -> Result<Response<GetArtifactResponse>, Status> {
+        let _ = request;
+        Err(Status::unimplemented("get_artifact fake is not configured"))
+    }
+
+    async fn list_artifacts(
+        &self,
+        request: Request<ListArtifactsRequest>,
+    ) -> Result<Response<ListArtifactsResponse>, Status> {
+        let _ = request;
+        Err(Status::unimplemented(
+            "list_artifacts fake is not configured",
+        ))
+    }
+
+    async fn quarantine_artifact(
+        &self,
+        request: Request<QuarantineArtifactRequest>,
+    ) -> Result<Response<QuarantineArtifactResponse>, Status> {
+        let _ = request;
+        Err(Status::unimplemented(
+            "quarantine_artifact fake is not configured",
+        ))
+    }
+
+    async fn acquire_artifact_lease(
+        &self,
+        request: Request<AcquireArtifactLeaseRequest>,
+    ) -> Result<Response<AcquireArtifactLeaseResponse>, Status> {
+        let _ = request;
+        Err(Status::unimplemented(
+            "acquire_artifact_lease fake is not configured",
+        ))
+    }
+
+    async fn release_artifact_lease(
+        &self,
+        request: Request<ReleaseArtifactLeaseRequest>,
+    ) -> Result<Response<ReleaseArtifactLeaseResponse>, Status> {
+        let _ = request;
+        Err(Status::unimplemented(
+            "release_artifact_lease fake is not configured",
         ))
     }
 
@@ -746,6 +1078,121 @@ pub trait RpcTransport: Send + Sync {
         let _ = request;
         Err(Status::unimplemented(
             "get_promotion_decision fake is not configured",
+        ))
+    }
+
+    async fn create_experiment(
+        &self,
+        request: Request<CreateExperimentRequest>,
+    ) -> Result<Response<CreateExperimentResponse>, Status> {
+        let _ = request;
+        Err(Status::unimplemented(
+            "create_experiment fake is not configured",
+        ))
+    }
+    async fn get_experiment(
+        &self,
+        request: Request<GetExperimentRequest>,
+    ) -> Result<Response<GetExperimentResponse>, Status> {
+        let _ = request;
+        Err(Status::unimplemented(
+            "get_experiment fake is not configured",
+        ))
+    }
+    async fn list_experiments(
+        &self,
+        request: Request<ListExperimentsRequest>,
+    ) -> Result<Response<ListExperimentsResponse>, Status> {
+        let _ = request;
+        Err(Status::unimplemented(
+            "list_experiments fake is not configured",
+        ))
+    }
+    async fn update_experiment(
+        &self,
+        request: Request<UpdateExperimentRequest>,
+    ) -> Result<Response<UpdateExperimentResponse>, Status> {
+        let _ = request;
+        Err(Status::unimplemented(
+            "update_experiment fake is not configured",
+        ))
+    }
+    async fn transition_experiment(
+        &self,
+        request: Request<TransitionExperimentRequest>,
+    ) -> Result<Response<TransitionExperimentResponse>, Status> {
+        let _ = request;
+        Err(Status::unimplemented(
+            "transition_experiment fake is not configured",
+        ))
+    }
+    async fn create_study(
+        &self,
+        request: Request<CreateStudyRequest>,
+    ) -> Result<Response<CreateStudyResponse>, Status> {
+        let _ = request;
+        Err(Status::unimplemented("create_study fake is not configured"))
+    }
+    async fn get_study(
+        &self,
+        request: Request<GetStudyRequest>,
+    ) -> Result<Response<GetStudyResponse>, Status> {
+        let _ = request;
+        Err(Status::unimplemented("get_study fake is not configured"))
+    }
+    async fn list_studies(
+        &self,
+        request: Request<ListStudiesRequest>,
+    ) -> Result<Response<ListStudiesResponse>, Status> {
+        let _ = request;
+        Err(Status::unimplemented("list_studies fake is not configured"))
+    }
+    async fn transition_study(
+        &self,
+        request: Request<TransitionStudyRequest>,
+    ) -> Result<Response<TransitionStudyResponse>, Status> {
+        let _ = request;
+        Err(Status::unimplemented(
+            "transition_study fake is not configured",
+        ))
+    }
+    async fn create_trial(
+        &self,
+        request: Request<CreateTrialRequest>,
+    ) -> Result<Response<CreateTrialResponse>, Status> {
+        let _ = request;
+        Err(Status::unimplemented("create_trial fake is not configured"))
+    }
+    async fn get_trial(
+        &self,
+        request: Request<GetTrialRequest>,
+    ) -> Result<Response<GetTrialResponse>, Status> {
+        let _ = request;
+        Err(Status::unimplemented("get_trial fake is not configured"))
+    }
+    async fn list_trials(
+        &self,
+        request: Request<ListTrialsRequest>,
+    ) -> Result<Response<ListTrialsResponse>, Status> {
+        let _ = request;
+        Err(Status::unimplemented("list_trials fake is not configured"))
+    }
+    async fn transition_trial(
+        &self,
+        request: Request<TransitionTrialRequest>,
+    ) -> Result<Response<TransitionTrialResponse>, Status> {
+        let _ = request;
+        Err(Status::unimplemented(
+            "transition_trial fake is not configured",
+        ))
+    }
+    async fn complete_trial(
+        &self,
+        request: Request<CompleteTrialRequest>,
+    ) -> Result<Response<CompleteTrialResponse>, Status> {
+        let _ = request;
+        Err(Status::unimplemented(
+            "complete_trial fake is not configured",
         ))
     }
 
@@ -1278,6 +1725,84 @@ impl<T: RpcTransport + ?Sized + 'static> RpcTransport for RecordingTransport<T> 
         self.inner.create_training_run(request).await
     }
 
+    record_unary!(
+        get_training_run,
+        GetTrainingRunRequest,
+        GetTrainingRunResponse,
+        "/mindclade.internal.training.v1.TrainingService/GetTrainingRun"
+    );
+    record_unary!(
+        list_training_runs,
+        ListTrainingRunsRequest,
+        ListTrainingRunsResponse,
+        "/mindclade.internal.training.v1.TrainingService/ListTrainingRuns"
+    );
+    record_unary!(
+        start_training_attempt,
+        StartTrainingAttemptRequest,
+        StartTrainingAttemptResponse,
+        "/mindclade.internal.training.v1.TrainingService/StartTrainingAttempt"
+    );
+    record_unary!(
+        resume_training_attempt,
+        ResumeTrainingAttemptRequest,
+        ResumeTrainingAttemptResponse,
+        "/mindclade.internal.training.v1.TrainingService/ResumeTrainingAttempt"
+    );
+    record_unary!(
+        commit_training_progress,
+        CommitTrainingProgressRequest,
+        CommitTrainingProgressResponse,
+        "/mindclade.internal.training.v1.TrainingService/CommitTrainingProgress"
+    );
+    record_unary!(
+        prepare_checkpoint,
+        PrepareCheckpointRequest,
+        PrepareCheckpointResponse,
+        "/mindclade.internal.training.v1.TrainingService/PrepareCheckpoint"
+    );
+    record_unary!(
+        commit_checkpoint,
+        CommitCheckpointRequest,
+        CommitCheckpointResponse,
+        "/mindclade.internal.training.v1.TrainingService/CommitCheckpoint"
+    );
+    record_unary!(
+        complete_training_run,
+        CompleteTrainingRunRequest,
+        CompleteTrainingRunResponse,
+        "/mindclade.internal.training.v1.TrainingService/CompleteTrainingRun"
+    );
+    record_unary!(
+        cancel_training_run,
+        CancelTrainingRunRequest,
+        CancelTrainingRunResponse,
+        "/mindclade.internal.training.v1.TrainingService/CancelTrainingRun"
+    );
+    record_unary!(
+        get_checkpoint,
+        GetCheckpointRequest,
+        GetCheckpointResponse,
+        "/mindclade.internal.training.v1.TrainingService/GetCheckpoint"
+    );
+    record_unary!(
+        list_checkpoints,
+        ListCheckpointsRequest,
+        ListCheckpointsResponse,
+        "/mindclade.internal.training.v1.TrainingService/ListCheckpoints"
+    );
+
+    async fn watch_training_run(
+        &self,
+        request: Request<WatchTrainingRunRequest>,
+    ) -> Result<Response<TrainingStream>, Status> {
+        self.record(
+            "/mindclade.internal.training.v1.TrainingService/WatchTrainingRun",
+            &request,
+        );
+        self.inner.watch_training_run(request).await
+    }
+
     async fn get_operation(
         &self,
         request: Request<GetOperationRequest>,
@@ -1288,6 +1813,13 @@ impl<T: RpcTransport + ?Sized + 'static> RpcTransport for RecordingTransport<T> 
         );
         self.inner.get_operation(request).await
     }
+
+    record_unary!(
+        list_operations,
+        ListOperationsRequest,
+        ListOperationsResponse,
+        "/mindclade.internal.job.v1.OperationService/ListOperations"
+    );
 
     async fn cancel_operation(
         &self,
@@ -1311,6 +1843,85 @@ impl<T: RpcTransport + ?Sized + 'static> RpcTransport for RecordingTransport<T> 
         self.inner.watch_operation(request).await
     }
 
+    record_unary!(
+        request_job,
+        RequestJobRequest,
+        RequestJobResponse,
+        "/mindclade.internal.job.v1.JobService/RequestJob"
+    );
+    record_unary!(
+        get_job,
+        GetJobRequest,
+        GetJobResponse,
+        "/mindclade.internal.job.v1.JobService/GetJob"
+    );
+    record_unary!(
+        list_jobs,
+        ListJobsRequest,
+        ListJobsResponse,
+        "/mindclade.internal.job.v1.JobService/ListJobs"
+    );
+    record_unary!(
+        cancel_job,
+        CancelJobRequest,
+        CancelJobResponse,
+        "/mindclade.internal.job.v1.JobService/CancelJob"
+    );
+    record_unary!(
+        get_run,
+        GetRunRequest,
+        GetRunResponse,
+        "/mindclade.internal.job.v1.RunService/GetRun"
+    );
+    record_unary!(
+        list_runs,
+        ListRunsRequest,
+        ListRunsResponse,
+        "/mindclade.internal.job.v1.RunService/ListRuns"
+    );
+    record_unary!(
+        get_attempt,
+        GetAttemptRequest,
+        GetAttemptResponse,
+        "/mindclade.internal.job.v1.RunService/GetAttempt"
+    );
+    record_unary!(
+        list_attempts,
+        ListAttemptsRequest,
+        ListAttemptsResponse,
+        "/mindclade.internal.job.v1.RunService/ListAttempts"
+    );
+    record_unary!(
+        acquire_attempt_lease,
+        AcquireAttemptLeaseRequest,
+        AcquireAttemptLeaseResponse,
+        "/mindclade.internal.job.v1.RunService/AcquireAttemptLease"
+    );
+    record_unary!(
+        renew_attempt_lease,
+        RenewAttemptLeaseRequest,
+        RenewAttemptLeaseResponse,
+        "/mindclade.internal.job.v1.RunService/RenewAttemptLease"
+    );
+    record_unary!(
+        heartbeat_attempt,
+        HeartbeatAttemptRequest,
+        HeartbeatAttemptResponse,
+        "/mindclade.internal.job.v1.RunService/HeartbeatAttempt"
+    );
+    record_unary!(
+        cancel_attempt,
+        CancelAttemptRequest,
+        CancelAttemptResponse,
+        "/mindclade.internal.job.v1.RunService/CancelAttempt"
+    );
+    record_unary!(
+        commit_attempt,
+        CommitAttemptRequest,
+        CommitAttemptResponse,
+        "/mindclade.internal.job.v1.RunService/CommitAttempt"
+    );
+
     async fn resolve_artifact_alias(
         &self,
         request: Request<ResolveArtifactAliasRequest>,
@@ -1321,6 +1932,37 @@ impl<T: RpcTransport + ?Sized + 'static> RpcTransport for RecordingTransport<T> 
         );
         self.inner.resolve_artifact_alias(request).await
     }
+
+    record_unary!(
+        get_artifact,
+        GetArtifactRequest,
+        GetArtifactResponse,
+        "/mindclade.internal.artifact.v1.ArtifactService/GetArtifact"
+    );
+    record_unary!(
+        list_artifacts,
+        ListArtifactsRequest,
+        ListArtifactsResponse,
+        "/mindclade.internal.artifact.v1.ArtifactService/ListArtifacts"
+    );
+    record_unary!(
+        quarantine_artifact,
+        QuarantineArtifactRequest,
+        QuarantineArtifactResponse,
+        "/mindclade.internal.artifact.v1.ArtifactService/QuarantineArtifact"
+    );
+    record_unary!(
+        acquire_artifact_lease,
+        AcquireArtifactLeaseRequest,
+        AcquireArtifactLeaseResponse,
+        "/mindclade.internal.artifact.v1.ArtifactService/AcquireArtifactLease"
+    );
+    record_unary!(
+        release_artifact_lease,
+        ReleaseArtifactLeaseRequest,
+        ReleaseArtifactLeaseResponse,
+        "/mindclade.internal.artifact.v1.ArtifactService/ReleaseArtifactLease"
+    );
 
     async fn begin_artifact_upload(
         &self,
@@ -1541,6 +2183,90 @@ impl<T: RpcTransport + ?Sized + 'static> RpcTransport for RecordingTransport<T> 
         GetPromotionDecisionRequest,
         GetPromotionDecisionResponse,
         "/mindclade.internal.evaluation.v1.EvaluationService/GetPromotionDecision"
+    );
+    record_unary!(
+        create_experiment,
+        CreateExperimentRequest,
+        CreateExperimentResponse,
+        "/mindclade.internal.experiment.v1.ExperimentService/CreateExperiment"
+    );
+    record_unary!(
+        get_experiment,
+        GetExperimentRequest,
+        GetExperimentResponse,
+        "/mindclade.internal.experiment.v1.ExperimentService/GetExperiment"
+    );
+    record_unary!(
+        list_experiments,
+        ListExperimentsRequest,
+        ListExperimentsResponse,
+        "/mindclade.internal.experiment.v1.ExperimentService/ListExperiments"
+    );
+    record_unary!(
+        update_experiment,
+        UpdateExperimentRequest,
+        UpdateExperimentResponse,
+        "/mindclade.internal.experiment.v1.ExperimentService/UpdateExperiment"
+    );
+    record_unary!(
+        transition_experiment,
+        TransitionExperimentRequest,
+        TransitionExperimentResponse,
+        "/mindclade.internal.experiment.v1.ExperimentService/TransitionExperiment"
+    );
+    record_unary!(
+        create_study,
+        CreateStudyRequest,
+        CreateStudyResponse,
+        "/mindclade.internal.experiment.v1.ExperimentService/CreateStudy"
+    );
+    record_unary!(
+        get_study,
+        GetStudyRequest,
+        GetStudyResponse,
+        "/mindclade.internal.experiment.v1.ExperimentService/GetStudy"
+    );
+    record_unary!(
+        list_studies,
+        ListStudiesRequest,
+        ListStudiesResponse,
+        "/mindclade.internal.experiment.v1.ExperimentService/ListStudies"
+    );
+    record_unary!(
+        transition_study,
+        TransitionStudyRequest,
+        TransitionStudyResponse,
+        "/mindclade.internal.experiment.v1.ExperimentService/TransitionStudy"
+    );
+    record_unary!(
+        create_trial,
+        CreateTrialRequest,
+        CreateTrialResponse,
+        "/mindclade.internal.experiment.v1.ExperimentService/CreateTrial"
+    );
+    record_unary!(
+        get_trial,
+        GetTrialRequest,
+        GetTrialResponse,
+        "/mindclade.internal.experiment.v1.ExperimentService/GetTrial"
+    );
+    record_unary!(
+        list_trials,
+        ListTrialsRequest,
+        ListTrialsResponse,
+        "/mindclade.internal.experiment.v1.ExperimentService/ListTrials"
+    );
+    record_unary!(
+        transition_trial,
+        TransitionTrialRequest,
+        TransitionTrialResponse,
+        "/mindclade.internal.experiment.v1.ExperimentService/TransitionTrial"
+    );
+    record_unary!(
+        complete_trial,
+        CompleteTrialRequest,
+        CompleteTrialResponse,
+        "/mindclade.internal.experiment.v1.ExperimentService/CompleteTrial"
     );
     record_unary!(
         register_model,
@@ -1794,11 +2520,14 @@ pub struct TonicTransport {
     channel: Channel,
     agent: AgentServiceClient<Channel>,
     training: TrainingServiceClient<Channel>,
+    job: JobServiceClient<Channel>,
     operation: OperationServiceClient<Channel>,
+    run: RunServiceClient<Channel>,
     artifact: ArtifactServiceClient<Channel>,
     inference: InferenceServiceClient<Channel>,
     dataset: DatasetServiceClient<Channel>,
     evaluation: EvaluationServiceClient<Channel>,
+    experiment: ExperimentServiceClient<Channel>,
     model: ModelServiceClient<Channel>,
     policy: PolicyServiceClient<Channel>,
     admin: AdminServiceClient<Channel>,
@@ -1840,11 +2569,14 @@ impl TonicTransport {
             channel: channel.clone(),
             agent: AgentServiceClient::new(channel.clone()),
             training: TrainingServiceClient::new(channel.clone()),
+            job: JobServiceClient::new(channel.clone()),
             operation: OperationServiceClient::new(channel.clone()),
+            run: RunServiceClient::new(channel.clone()),
             artifact: ArtifactServiceClient::new(channel.clone()),
             inference: InferenceServiceClient::new(channel.clone()),
             dataset: DatasetServiceClient::new(channel.clone()),
             evaluation: EvaluationServiceClient::new(channel.clone()),
+            experiment: ExperimentServiceClient::new(channel.clone()),
             model: ModelServiceClient::new(channel.clone()),
             policy: PolicyServiceClient::new(channel.clone()),
             admin: AdminServiceClient::new(channel.clone()),
@@ -1961,11 +2693,97 @@ impl RpcTransport for TonicTransport {
         self.training.clone().create_training_run(request).await
     }
 
+    tonic_unary!(
+        training,
+        get_training_run,
+        GetTrainingRunRequest,
+        GetTrainingRunResponse
+    );
+    tonic_unary!(
+        training,
+        list_training_runs,
+        ListTrainingRunsRequest,
+        ListTrainingRunsResponse
+    );
+    tonic_unary!(
+        training,
+        start_training_attempt,
+        StartTrainingAttemptRequest,
+        StartTrainingAttemptResponse
+    );
+    tonic_unary!(
+        training,
+        resume_training_attempt,
+        ResumeTrainingAttemptRequest,
+        ResumeTrainingAttemptResponse
+    );
+    tonic_unary!(
+        training,
+        commit_training_progress,
+        CommitTrainingProgressRequest,
+        CommitTrainingProgressResponse
+    );
+    tonic_unary!(
+        training,
+        prepare_checkpoint,
+        PrepareCheckpointRequest,
+        PrepareCheckpointResponse
+    );
+    tonic_unary!(
+        training,
+        commit_checkpoint,
+        CommitCheckpointRequest,
+        CommitCheckpointResponse
+    );
+    tonic_unary!(
+        training,
+        complete_training_run,
+        CompleteTrainingRunRequest,
+        CompleteTrainingRunResponse
+    );
+    tonic_unary!(
+        training,
+        cancel_training_run,
+        CancelTrainingRunRequest,
+        CancelTrainingRunResponse
+    );
+    tonic_unary!(
+        training,
+        get_checkpoint,
+        GetCheckpointRequest,
+        GetCheckpointResponse
+    );
+    tonic_unary!(
+        training,
+        list_checkpoints,
+        ListCheckpointsRequest,
+        ListCheckpointsResponse
+    );
+
+    async fn watch_training_run(
+        &self,
+        request: Request<WatchTrainingRunRequest>,
+    ) -> Result<Response<TrainingStream>, Status> {
+        let response = self.training.clone().watch_training_run(request).await?;
+        let metadata = response.metadata().clone();
+        let stream: TrainingStream = Box::pin(response.into_inner());
+        let mut wrapped = Response::new(stream);
+        *wrapped.metadata_mut() = metadata;
+        Ok(wrapped)
+    }
+
     async fn get_operation(
         &self,
         request: Request<GetOperationRequest>,
     ) -> Result<Response<GetOperationResponse>, Status> {
         self.operation.clone().get_operation(request).await
+    }
+
+    async fn list_operations(
+        &self,
+        request: Request<ListOperationsRequest>,
+    ) -> Result<Response<ListOperationsResponse>, Status> {
+        self.operation.clone().list_operations(request).await
     }
 
     async fn cancel_operation(
@@ -1987,11 +2805,90 @@ impl RpcTransport for TonicTransport {
         Ok(wrapped)
     }
 
+    tonic_unary!(job, request_job, RequestJobRequest, RequestJobResponse);
+    tonic_unary!(job, get_job, GetJobRequest, GetJobResponse);
+    tonic_unary!(job, list_jobs, ListJobsRequest, ListJobsResponse);
+    tonic_unary!(job, cancel_job, CancelJobRequest, CancelJobResponse);
+    tonic_unary!(run, get_run, GetRunRequest, GetRunResponse);
+    tonic_unary!(run, list_runs, ListRunsRequest, ListRunsResponse);
+    tonic_unary!(run, get_attempt, GetAttemptRequest, GetAttemptResponse);
+    tonic_unary!(
+        run,
+        list_attempts,
+        ListAttemptsRequest,
+        ListAttemptsResponse
+    );
+    tonic_unary!(
+        run,
+        acquire_attempt_lease,
+        AcquireAttemptLeaseRequest,
+        AcquireAttemptLeaseResponse
+    );
+    tonic_unary!(
+        run,
+        renew_attempt_lease,
+        RenewAttemptLeaseRequest,
+        RenewAttemptLeaseResponse
+    );
+    tonic_unary!(
+        run,
+        heartbeat_attempt,
+        HeartbeatAttemptRequest,
+        HeartbeatAttemptResponse
+    );
+    tonic_unary!(
+        run,
+        cancel_attempt,
+        CancelAttemptRequest,
+        CancelAttemptResponse
+    );
+    tonic_unary!(
+        run,
+        commit_attempt,
+        CommitAttemptRequest,
+        CommitAttemptResponse
+    );
+
     async fn resolve_artifact_alias(
         &self,
         request: Request<ResolveArtifactAliasRequest>,
     ) -> Result<Response<ResolveArtifactAliasResponse>, Status> {
         self.artifact.clone().resolve_artifact_alias(request).await
+    }
+
+    async fn get_artifact(
+        &self,
+        request: Request<GetArtifactRequest>,
+    ) -> Result<Response<GetArtifactResponse>, Status> {
+        self.artifact.clone().get_artifact(request).await
+    }
+
+    async fn list_artifacts(
+        &self,
+        request: Request<ListArtifactsRequest>,
+    ) -> Result<Response<ListArtifactsResponse>, Status> {
+        self.artifact.clone().list_artifacts(request).await
+    }
+
+    async fn quarantine_artifact(
+        &self,
+        request: Request<QuarantineArtifactRequest>,
+    ) -> Result<Response<QuarantineArtifactResponse>, Status> {
+        self.artifact.clone().quarantine_artifact(request).await
+    }
+
+    async fn acquire_artifact_lease(
+        &self,
+        request: Request<AcquireArtifactLeaseRequest>,
+    ) -> Result<Response<AcquireArtifactLeaseResponse>, Status> {
+        self.artifact.clone().acquire_artifact_lease(request).await
+    }
+
+    async fn release_artifact_lease(
+        &self,
+        request: Request<ReleaseArtifactLeaseRequest>,
+    ) -> Result<Response<ReleaseArtifactLeaseResponse>, Status> {
+        self.artifact.clone().release_artifact_lease(request).await
     }
 
     async fn begin_artifact_upload(
@@ -2188,6 +3085,80 @@ impl RpcTransport for TonicTransport {
         get_promotion_decision,
         GetPromotionDecisionRequest,
         GetPromotionDecisionResponse
+    );
+    tonic_unary!(
+        experiment,
+        create_experiment,
+        CreateExperimentRequest,
+        CreateExperimentResponse
+    );
+    tonic_unary!(
+        experiment,
+        get_experiment,
+        GetExperimentRequest,
+        GetExperimentResponse
+    );
+    tonic_unary!(
+        experiment,
+        list_experiments,
+        ListExperimentsRequest,
+        ListExperimentsResponse
+    );
+    tonic_unary!(
+        experiment,
+        update_experiment,
+        UpdateExperimentRequest,
+        UpdateExperimentResponse
+    );
+    tonic_unary!(
+        experiment,
+        transition_experiment,
+        TransitionExperimentRequest,
+        TransitionExperimentResponse
+    );
+    tonic_unary!(
+        experiment,
+        create_study,
+        CreateStudyRequest,
+        CreateStudyResponse
+    );
+    tonic_unary!(experiment, get_study, GetStudyRequest, GetStudyResponse);
+    tonic_unary!(
+        experiment,
+        list_studies,
+        ListStudiesRequest,
+        ListStudiesResponse
+    );
+    tonic_unary!(
+        experiment,
+        transition_study,
+        TransitionStudyRequest,
+        TransitionStudyResponse
+    );
+    tonic_unary!(
+        experiment,
+        create_trial,
+        CreateTrialRequest,
+        CreateTrialResponse
+    );
+    tonic_unary!(experiment, get_trial, GetTrialRequest, GetTrialResponse);
+    tonic_unary!(
+        experiment,
+        list_trials,
+        ListTrialsRequest,
+        ListTrialsResponse
+    );
+    tonic_unary!(
+        experiment,
+        transition_trial,
+        TransitionTrialRequest,
+        TransitionTrialResponse
+    );
+    tonic_unary!(
+        experiment,
+        complete_trial,
+        CompleteTrialRequest,
+        CompleteTrialResponse
     );
     tonic_unary!(
         model,

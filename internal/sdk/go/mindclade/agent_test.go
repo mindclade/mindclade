@@ -10,10 +10,6 @@ import (
 	"testing"
 	"time"
 
-	agentv1 "github.com/mindclade/mindclade/protocols/generated/go/agent/v1"
-	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
-	internalagentv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/agent/v1"
-	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
@@ -21,6 +17,11 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
+
+	agentv1 "github.com/mindclade/mindclade/protocols/generated/go/agent/v1"
+	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
+	internalagentv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/agent/v1"
+	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
 )
 
 type agentSDKServer struct {
@@ -237,6 +238,45 @@ func TestClientRegistersAgentFacade(t *testing.T) {
 	client, _, _ := testClient(t)
 	if client.Agents == nil || client.Agents.transport == nil {
 		t.Fatal("client did not register the generated AgentService facade")
+	}
+}
+
+func TestAgentMutationRetryRegistryIsCompleteAndFailClosed(t *testing.T) {
+	config := defaultConfig()
+	config.TenantID, config.ProjectID, config.PrincipalID = "tenant-a", "project-a", "principal-a"
+	metadata := requestMetadata{
+		idempotencyKey: "agent-retry-key",
+		requestID:      "agent-request-id",
+		traceID:        "agent-trace-id",
+	}
+	tests := []struct {
+		method  string
+		request proto.Message
+	}{
+		{"/mindclade.internal.agent.v1.AgentService/CreateAgentDefinition", &internalagentv1.CreateAgentDefinitionRequest{}},
+		{"/mindclade.internal.agent.v1.AgentService/UpdateAgentDefinition", &internalagentv1.UpdateAgentDefinitionRequest{}},
+		{"/mindclade.internal.agent.v1.AgentService/StartAgentRun", &internalagentv1.StartAgentRunRequest{}},
+		{"/mindclade.internal.agent.v1.AgentService/CancelAgentRun", &internalagentv1.CancelAgentRunRequest{}},
+		{"/mindclade.internal.agent.v1.AgentService/CommitAgentStep", &internalagentv1.CommitAgentStepRequest{}},
+		{"/mindclade.internal.agent.v1.AgentService/CommitToolReceipt", &internalagentv1.CommitToolReceiptRequest{}},
+	}
+	ctx := contextWithDeadline(t)
+	for _, test := range tests {
+		t.Run(test.method, func(t *testing.T) {
+			digest, err := deterministicDigest(test.request)
+			if err != nil {
+				t.Fatal(err)
+			}
+			setCommandContext(test.request, commandContext(config, ctx, metadata, digest))
+			if !retryPermitted(test.method, test.request, metadata, config) {
+				t.Fatal("fully bound agent mutation was not retry-safe")
+			}
+			mismatched := metadata
+			mismatched.idempotencyKey = "different-key"
+			if retryPermitted(test.method, test.request, mismatched, config) {
+				t.Fatal("mismatched metadata promoted agent mutation retry safety")
+			}
+		})
 	}
 }
 

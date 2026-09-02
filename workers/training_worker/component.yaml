@@ -1,0 +1,32 @@
+apiVersion: mindclade.dev/v1
+kind: Component
+metadata:
+  name: workers-training-worker
+  description: Fenced training-worker process boundary consuming immutable job events and the private SDK.
+spec:
+  type: worker
+  lifecycle: pre-production
+  maturity: internal
+  owner: training-systems
+  security_reviewers:
+    - security
+  repository_class: application-source
+  trust_tier: workload
+  recovery_tier: tier-1
+  data_classification: internal
+  production_authority: false
+  dependencies:
+    - internal-sdk-python
+    - protobuf-job-events
+  provides:
+    - verified-training-assignment-intake
+  release:
+    strategy: source-only
+    artifact: null
+    immutable: false
+  activation:
+    wave: guide-only
+    connected: false
+status:
+  readiness: IMPLEMENTED
+  source_readiness: SOURCE_IMPLEMENTED

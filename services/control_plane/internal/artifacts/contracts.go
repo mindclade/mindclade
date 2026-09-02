@@ -153,9 +153,9 @@ type SQLRepository struct {
 }
 
 type EventFactory interface {
-	Committed(Identity, *artifactv1.ArtifactRef, *commonv1.CommandContext, uint64, time.Time) (*commonv1.EventEnvelope, error)
-	Quarantined(Identity, *artifactv1.ArtifactRef, string, []*artifactv1.EvidenceRef, *commonv1.CommandContext, uint64, time.Time) (*commonv1.EventEnvelope, error)
-	StagingFinalized(Identity, string, *artifactv1.ArtifactRef, string, *commonv1.CommandContext, uint64, time.Time, time.Time) (*commonv1.EventEnvelope, error)
+	Committed(Identity, *artifactv1.ArtifactRef, *commonv1.CommandContext, int64, time.Time) (*commonv1.EventEnvelope, error)
+	Quarantined(Identity, *artifactv1.ArtifactRef, string, []*artifactv1.EvidenceRef, *commonv1.CommandContext, int64, time.Time) (*commonv1.EventEnvelope, error)
+	StagingFinalized(Identity, string, *artifactv1.ArtifactRef, string, *commonv1.CommandContext, int64, time.Time, time.Time) (*commonv1.EventEnvelope, error)
 }
 
 func (r SQLRepository) validate() error {

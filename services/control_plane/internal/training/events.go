@@ -11,6 +11,7 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	"github.com/mindclade/mindclade/libs/go/numconv"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
 	trainingv1 "github.com/mindclade/mindclade/protocols/generated/go/training/v1"
@@ -21,6 +22,7 @@ const protobufEventContentType = "application/x-protobuf; deterministic=true"
 
 type EventFactory interface {
 	Created(Identity, *trainingv1.TrainingRun, *jobv1.Operation, *commonv1.CommandContext, time.Time) (*commonv1.EventEnvelope, error)
+	JobRequested(Identity, *jobv1.Operation, string, *commonv1.CommandContext, time.Time) (*commonv1.EventEnvelope, error)
 	Started(Identity, *trainingv1.TrainingRun, *jobv1.LeaseFence, *commonv1.CommandContext, time.Time) (*commonv1.EventEnvelope, error)
 	Progress(Identity, *trainingv1.TrainingRun, *trainingv1.TrainingProgress, *jobv1.LeaseFence, *commonv1.CommandContext, time.Time) (*commonv1.EventEnvelope, error)
 	Checkpoint(Identity, *trainingv1.TrainingRun, *trainingv1.Checkpoint, *jobv1.LeaseFence, *commonv1.CommandContext, time.Time) (*commonv1.EventEnvelope, error)
@@ -37,7 +39,15 @@ func (GeneratedEventFactory) Created(identity Identity, run *trainingv1.Training
 		ModelRelease: clone(run.GetModelRelease()), HardwareTopology: clone(run.GetHardwareTopology()),
 		Operation: operationResource(operation), CreatedAt: clone(run.GetCreateTime()),
 	}
-	return newEventEnvelope(identity, runResource(run), payload, uint64(run.GetRevision()), command, at) //nolint:gosec // Conversion is bounded by validated protocol invariants or PostgreSQL CHECK constraints.
+	return newEventEnvelope(identity, runResource(run), payload, run.GetRevision(), command, at)
+}
+
+func (GeneratedEventFactory) JobRequested(identity Identity, operation *jobv1.Operation, configurationDigest string, command *commonv1.CommandContext, at time.Time) (*commonv1.EventEnvelope, error) {
+	if operation == nil || !validSHA256Digest(configurationDigest) {
+		return nil, ErrInvalidArgument
+	}
+	payload := &jobv1.JobRequested{JobId: operation.GetJobId(), ConfigurationDigest: configurationDigest}
+	return newEventEnvelope(identity, operationResource(operation), payload, 1, command, at)
 }
 
 func (GeneratedEventFactory) Started(identity Identity, run *trainingv1.TrainingRun, fence *jobv1.LeaseFence, command *commonv1.CommandContext, at time.Time) (*commonv1.EventEnvelope, error) {
@@ -47,7 +57,7 @@ func (GeneratedEventFactory) Started(identity Identity, run *trainingv1.Training
 		DatasetRelease: clone(run.GetDatasetRelease()), ModelRelease: clone(run.GetModelRelease()),
 		ExecutablePlan: clone(run.GetExecutablePlan()), StartedAt: timestamppb.New(at),
 	}
-	return newEventEnvelope(identity, runResource(run), payload, uint64(run.GetRevision()), command, at) //nolint:gosec // Conversion is bounded by validated protocol invariants or PostgreSQL CHECK constraints.
+	return newEventEnvelope(identity, runResource(run), payload, run.GetRevision(), command, at)
 }
 
 func (GeneratedEventFactory) Progress(identity Identity, run *trainingv1.TrainingRun, progress *trainingv1.TrainingProgress, fence *jobv1.LeaseFence, command *commonv1.CommandContext, at time.Time) (*commonv1.EventEnvelope, error) {
@@ -55,7 +65,7 @@ func (GeneratedEventFactory) Progress(identity Identity, run *trainingv1.Trainin
 		TrainingRunName: run.GetName(), TrainingRunRevision: run.GetRevision(),
 		Fence: clone(fence), Progress: clone(progress),
 	}
-	return newEventEnvelope(identity, runResource(run), payload, uint64(run.GetRevision()), command, at) //nolint:gosec // Conversion is bounded by validated protocol invariants or PostgreSQL CHECK constraints.
+	return newEventEnvelope(identity, runResource(run), payload, run.GetRevision(), command, at)
 }
 
 func (GeneratedEventFactory) Checkpoint(identity Identity, run *trainingv1.TrainingRun, checkpoint *trainingv1.Checkpoint, fence *jobv1.LeaseFence, command *commonv1.CommandContext, at time.Time) (*commonv1.EventEnvelope, error) {
@@ -66,7 +76,7 @@ func (GeneratedEventFactory) Checkpoint(identity Identity, run *trainingv1.Train
 		CommittedProgress:    clone(checkpoint.GetCommittedProgress()),
 		VerificationEvidence: clone(checkpoint.GetVerificationEvidence()), CommittedAt: timestamppb.New(at),
 	}
-	return newEventEnvelope(identity, runResource(run), payload, uint64(run.GetRevision()), command, at) //nolint:gosec // Conversion is bounded by validated protocol invariants or PostgreSQL CHECK constraints.
+	return newEventEnvelope(identity, runResource(run), payload, run.GetRevision(), command, at)
 }
 
 func (GeneratedEventFactory) Completed(identity Identity, run *trainingv1.TrainingRun, fence *jobv1.LeaseFence, command *commonv1.CommandContext, at time.Time) (*commonv1.EventEnvelope, error) {
@@ -76,7 +86,7 @@ func (GeneratedEventFactory) Completed(identity Identity, run *trainingv1.Traini
 		FinalCheckpoint: clone(run.GetLatestCheckpoint()), Error: clone(run.GetError()),
 		CompletedAt: clone(run.GetCompleteTime()),
 	}
-	return newEventEnvelope(identity, runResource(run), payload, uint64(run.GetRevision()), command, at) //nolint:gosec // Conversion is bounded by validated protocol invariants or PostgreSQL CHECK constraints.
+	return newEventEnvelope(identity, runResource(run), payload, run.GetRevision(), command, at)
 }
 
 func (GeneratedEventFactory) CancellationRequested(identity Identity, run *trainingv1.TrainingRun, operation *jobv1.Operation, reason string, command *commonv1.CommandContext, at time.Time) (*commonv1.EventEnvelope, error) {
@@ -84,10 +94,14 @@ func (GeneratedEventFactory) CancellationRequested(identity Identity, run *train
 		TrainingRunName: run.GetName(), TrainingRunRevision: run.GetRevision(),
 		Operation: operationResource(operation), Reason: reason, RequestedAt: timestamppb.New(at.UTC()),
 	}
-	return newEventEnvelope(identity, runResource(run), payload, uint64(run.GetRevision()), command, at) //nolint:gosec // Conversion is bounded by validated protocol invariants or PostgreSQL CHECK constraints.
+	return newEventEnvelope(identity, runResource(run), payload, run.GetRevision(), command, at)
 }
 
-func newEventEnvelope(identity Identity, subject *commonv1.ResourceRef, payloadMessage proto.Message, sequence uint64, command *commonv1.CommandContext, at time.Time) (*commonv1.EventEnvelope, error) {
+func newEventEnvelope(identity Identity, subject *commonv1.ResourceRef, payloadMessage proto.Message, revision int64, command *commonv1.CommandContext, at time.Time) (*commonv1.EventEnvelope, error) {
+	sequence, err := numconv.Int64ToUint64(revision)
+	if err != nil {
+		return nil, err
+	}
 	if payloadMessage == nil || subject == nil || command == nil || at.IsZero() || sequence == 0 {
 		return nil, errors.New("event payload, subject, command context, sequence, and time are required")
 	}
@@ -108,6 +122,9 @@ func newEventEnvelope(identity Identity, subject *commonv1.ResourceRef, payloadM
 		DeduplicationKey:   "training:" + hex.EncodeToString(eventIdentity[:]),
 		PayloadContentType: protobufEventContentType,
 		Classification:     commonv1.DataClassification_DATA_CLASSIFICATION_INTERNAL,
+	}
+	if requested, ok := payloadMessage.(*jobv1.JobRequested); ok {
+		envelope.JobId = requested.GetJobId()
 	}
 	if err := queue.ValidateEnvelope(envelope); err != nil {
 		return nil, err

@@ -20,6 +20,7 @@ import (
 	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	"github.com/mindclade/mindclade/libs/go/numconv"
 	artifactv1 "github.com/mindclade/mindclade/protocols/generated/go/artifact/v1"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	inferencev1 "github.com/mindclade/mindclade/protocols/generated/go/inference/v1"
@@ -75,14 +76,22 @@ func (repository *fakeRepository) CommitResult(_ context.Context, _ Identity, _ 
 func (repository *fakeRepository) ReadOperationRevisions(_ context.Context, _ Identity, _ string, after uint64, limit int) (string, []*jobv1.Operation, bool, error) {
 	var values []*jobv1.Operation
 	for _, revision := range repository.revisions {
-		if uint64(revision.GetResourceVersion()) > after { //nolint:gosec // Deterministic test fixture values are nonnegative and bounded before conversion.
+		sequence, err := numconv.Int64ToUint64(revision.GetResourceVersion())
+		if err != nil {
+			return "", nil, false, err
+		}
+		if sequence > after {
 			values = append(values, clone(revision))
 		}
 	}
 	if len(values) > limit {
 		values = values[:limit]
 	}
-	terminal := len(values) == 0 && after == uint64(repository.operation.GetResourceVersion()) || len(values) > 0 && values[len(values)-1].GetDone() //nolint:gosec // Deterministic test fixture values are nonnegative and bounded before conversion.
+	current, err := numconv.Int64ToUint64(repository.operation.GetResourceVersion())
+	if err != nil {
+		return "", nil, false, err
+	}
+	terminal := len(values) == 0 && after == current || len(values) > 0 && values[len(values)-1].GetDone()
 	return repository.requestName, values, terminal, nil
 }
 

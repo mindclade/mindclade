@@ -12,11 +12,14 @@ from .calls import Observer
 from .config import ClientConfig
 from .datasets import AsyncDatasets, Datasets
 from .evaluations import AsyncEvaluations, Evaluations
+from .experiments import AsyncExperiments, Experiments
 from .generated import AsyncGeneratedRPCs, GeneratedRPCs
 from .inference import AsyncInference, Inference
+from .jobs import AsyncJobs, Jobs
 from .models import AsyncModels, Models
 from .operations import AsyncOperations, Operations
 from .policies import AsyncPolicies, Policies
+from .runs import AsyncRuns, Runs
 from .training import AsyncTraining, Training
 from .transport import (
     AsyncTransport,
@@ -50,8 +53,11 @@ class Client:
         self.training = Training(invoker)
         self.datasets = Datasets(invoker)
         self.evaluations = Evaluations(invoker)
+        self.experiments = Experiments(invoker)
         self.models = Models(invoker)
         self.inference = Inference(invoker)
+        self.jobs = Jobs(invoker)
+        self.runs = Runs(invoker)
         self.workflows = Workflows(invoker)
         self.approvals = Approvals(invoker)
         self.generated = GeneratedRPCs(invoker)
@@ -98,8 +104,11 @@ class AsyncClient:
         self.training = AsyncTraining(invoker)
         self.datasets = AsyncDatasets(invoker)
         self.evaluations = AsyncEvaluations(invoker)
+        self.experiments = AsyncExperiments(invoker)
         self.models = AsyncModels(invoker)
         self.inference = AsyncInference(invoker)
+        self.jobs = AsyncJobs(invoker)
+        self.runs = AsyncRuns(invoker)
         self.workflows = AsyncWorkflows(invoker)
         self.approvals = AsyncApprovals(invoker)
         self.generated = AsyncGeneratedRPCs(invoker)

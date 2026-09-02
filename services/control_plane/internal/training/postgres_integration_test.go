@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"os"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -126,7 +127,6 @@ func TestPostgresProjectScopedSchedulerIdentitiesAndOperationHistory(t *testing.
 		t.Fatal(err)
 	}
 	for _, state := range []jobv1.OperationState{
-		jobv1.OperationState_OPERATION_STATE_RUNNING,
 		jobv1.OperationState_OPERATION_STATE_CANCELLING,
 		jobv1.OperationState_OPERATION_STATE_CANCELLED,
 	} {
@@ -446,7 +446,7 @@ WHERE runs.tenant_id=$1 AND runs.project_id=$2 AND runs.id=$3`, identity.TenantI
 	if schedulerState != "CANCELLED" || jobState != "CANCELLED" || attemptState != "CANCELLED" || operationState != "CANCELLED" || !operationDone {
 		t.Fatalf("terminal cancellation did not reconcile: run=%q job=%q attempt=%q operation=%q done=%v", schedulerState, jobState, attemptState, operationState, operationDone)
 	}
-	var types []string
+	typeCounts := map[string]int{}
 	readTx, err := platformdb.BeginTenantTx(ctx, db, identity.TenantID, &sql.TxOptions{ReadOnly: true})
 	if err != nil {
 		t.Fatal(err)
@@ -460,14 +460,22 @@ WHERE runs.tenant_id=$1 AND runs.project_id=$2 AND runs.id=$3`, identity.TenantI
 		if err = rows.Scan(&eventType); err != nil {
 			t.Fatal(err)
 		}
-		types = append(types, eventType)
+		typeCounts[eventType]++
 	}
 	if err = rows.Err(); err != nil {
 		t.Fatal(err)
 	}
 	_ = platformdb.CloseRows(rows)
-	if len(types) != 5 || types[0] != "mindclade.events.training.v1.TrainingRunCreated" || types[1] != "mindclade.events.training.v1.TrainingRunCreated" || types[2] != "mindclade.events.training.v1.TrainingStarted" || types[3] != "mindclade.events.training.v1.TrainingCancellationRequested" || types[4] != "mindclade.events.training.v1.TrainingCompleted" {
-		t.Fatalf("outbox event types=%v", types)
+	wantTypeCounts := map[string]int{
+		"mindclade.events.job.v1.AttemptLeased":                      1,
+		"mindclade.events.job.v1.JobRequested":                       2,
+		"mindclade.events.training.v1.TrainingRunCreated":            2,
+		"mindclade.events.training.v1.TrainingStarted":               1,
+		"mindclade.events.training.v1.TrainingCancellationRequested": 1,
+		"mindclade.events.training.v1.TrainingCompleted":             1,
+	}
+	if !reflect.DeepEqual(typeCounts, wantTypeCounts) {
+		t.Fatalf("outbox event type counts=%v want=%v", typeCounts, wantTypeCounts)
 	}
 	var envelopeBytes []byte
 	if err = readTx.QueryRowContext(ctx, `SELECT envelope_bytes FROM outbox_messages WHERE tenant_id=$1 AND event_type='mindclade.events.training.v1.TrainingCancellationRequested'`, identity.TenantID).Scan(&envelopeBytes); err != nil {
@@ -478,6 +486,30 @@ WHERE runs.tenant_id=$1 AND runs.project_id=$2 AND runs.id=$3`, identity.TenantI
 	}
 	if _, err = queue.UnmarshalEnvelope(envelopeBytes); err != nil {
 		t.Fatalf("invalid durable event: %v", err)
+	}
+	var jobEnvelopeBytes []byte
+	readJobTx, err := platformdb.BeginTenantTx(ctx, db, identity.TenantID, &sql.TxOptions{ReadOnly: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = readJobTx.QueryRowContext(ctx, `SELECT envelope_bytes FROM outbox_messages WHERE tenant_id=$1 AND event_type='mindclade.events.job.v1.JobRequested' AND aggregate_id=$2`, identity.TenantID, operation.GetOperationId()).Scan(&jobEnvelopeBytes); err != nil {
+		_ = readJobTx.Rollback()
+		t.Fatal(err)
+	}
+	if err = readJobTx.Commit(); err != nil {
+		t.Fatal(err)
+	}
+	jobEnvelope, err := queue.UnmarshalEnvelope(jobEnvelopeBytes)
+	if err != nil {
+		t.Fatal(err)
+	}
+	jobPayload, err := queue.UnmarshalRegisteredPayload(jobEnvelope)
+	if err != nil {
+		t.Fatal(err)
+	}
+	requested, ok := jobPayload.(*jobv1.JobRequested)
+	if !ok || requested.GetJobId() != operation.GetJobId() || requested.GetConfigurationDigest() != digest {
+		t.Fatalf("training JobRequested payload=%T %v", jobPayload, jobPayload)
 	}
 	other := identity
 	other.TenantID = "other-" + identity.TenantID

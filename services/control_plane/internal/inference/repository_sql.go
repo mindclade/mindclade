@@ -13,6 +13,7 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	"github.com/mindclade/mindclade/libs/go/numconv"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	inferencev1 "github.com/mindclade/mindclade/protocols/generated/go/inference/v1"
 	internalinferencev1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/inference/v1"
@@ -627,7 +628,11 @@ func (repository SQLRepository) ReadOperationRevisions(ctx context.Context, iden
 	expected := after + 1
 	revisions := make([]*jobv1.Operation, 0, len(stored))
 	for _, row := range stored {
-		if uint64(row.version) != expected { //nolint:gosec // Conversion is bounded by validated protocol invariants or PostgreSQL CHECK constraints.
+		rowVersion, conversionErr := numconv.Int64ToUint64(row.version)
+		if conversionErr != nil {
+			return "", nil, false, conversionErr
+		}
+		if rowVersion != expected {
 			return "", nil, false, ErrHistoryGap
 		}
 		revision, mapErr := operationProto(ctx, tx, row)
@@ -640,7 +645,14 @@ func (repository SQLRepository) ReadOperationRevisions(ctx context.Context, iden
 	if len(revisions) == 0 && after < current {
 		return "", nil, false, ErrHistoryGap
 	}
-	terminal := done && !hasMore && (len(revisions) > 0 && uint64(revisions[len(revisions)-1].GetResourceVersion()) == current || len(revisions) == 0 && after == current) //nolint:gosec // Conversion is bounded by validated protocol invariants or PostgreSQL CHECK constraints.
+	lastRevision := uint64(0)
+	if len(revisions) > 0 {
+		lastRevision, err = numconv.Int64ToUint64(revisions[len(revisions)-1].GetResourceVersion())
+		if err != nil {
+			return "", nil, false, err
+		}
+	}
+	terminal := done && !hasMore && (len(revisions) > 0 && lastRevision == current || len(revisions) == 0 && after == current)
 	if err = tx.Commit(); err != nil {
 		return "", nil, false, err
 	}

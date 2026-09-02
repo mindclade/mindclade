@@ -60,6 +60,55 @@ func workflowAuthorization(identity Identity, fixtureID string, policy *policyv1
 	return &policyv1.AuthorizationDecision{Name: projectParent(identity) + "/authorizationDecisions/approval-" + fixtureID, Uid: "approval-authorization-" + fixtureID, TenantId: identity.TenantID, ProjectId: identity.ProjectID, PrincipalRef: identity.Principal, Action: "agent.tool.execute", Resource: &commonv1.ResourceRef{ResourceType: "mindclade.agent.v1.Tool", ResourceId: "tool", TenantId: identity.TenantID, ProjectId: identity.ProjectID, ResourceVersion: 1, Name: projectParent(identity) + "/tools/tool", Etag: "sha256:" + strings.Repeat("b", 64)}, IntentDigest: "sha256:" + strings.Repeat("c", 64), Policies: []*policyv1.PolicyReference{clone(policy)}, Outcome: policyv1.AuthorizationOutcome_AUTHORIZATION_OUTCOME_ALLOW, ReasonCode: "POLICY_ALLOW", SafeReason: "bounded integration fixture", EvaluatedAt: timestamppb.New(at), ExpireTime: timestamppb.New(at.Add(time.Hour)), ContextDigest: "sha256:" + strings.Repeat("d", 64), DecisionDigest: "sha256:" + strings.Repeat("e", 64)}
 }
 
+func TestPostgresUint32StorageBoundsAreValidated(t *testing.T) {
+	db := workflowIntegrationDB(t)
+	rows, err := db.QueryContext(context.Background(), `
+SELECT conname, convalidated, pg_get_constraintdef(oid)
+FROM pg_constraint
+WHERE conname IN (
+  'chk_workflow_def_max_iterations_u32',
+  'chk_workflow_def_max_fan_out_u32',
+  'chk_workflow_def_max_parallel_nodes_u32',
+  'chk_workflow_run_completed_nodes_u32',
+  'chk_workflow_run_iterations_u32',
+  'chk_workflow_rev_completed_nodes_u32',
+  'chk_workflow_rev_iterations_u32',
+  'chk_approval_request_min_approvers_u32',
+  'chk_agent_def_budget_iterations_u32',
+  'chk_agent_def_budget_tool_calls_u32',
+  'chk_agent_def_budget_branches_u32',
+  'chk_agent_def_limit_depth_u32',
+  'chk_agent_def_limit_fan_out_u32',
+  'chk_agent_def_limit_observations_u32',
+  'chk_agent_def_limit_artifacts_u32',
+  'chk_agent_run_usage_iterations_u32',
+  'chk_agent_run_usage_tool_calls_u32'
+)`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	seen := make(map[string]struct{}, 17)
+	for rows.Next() {
+		var name, definition string
+		var validated bool
+		if err = rows.Scan(&name, &validated, &definition); err != nil {
+			t.Fatal(err)
+		}
+		if !validated || !strings.Contains(definition, "4294967295") {
+			t.Fatalf("constraint %s is not a validated uint32 bound: validated=%t definition=%q", name, validated, definition)
+		}
+		seen[name] = struct{}{}
+	}
+	if err = rows.Err(); err != nil {
+		t.Fatal(err)
+	}
+	if len(seen) != 17 {
+		t.Fatalf("found %d of 17 validated uint32 storage constraints: %v", len(seen), seen)
+	}
+}
+
 func approvalFixture(t *testing.T, identity Identity, reuse workflowv1.ApprovalReusePolicy, requestID, key string, at time.Time) *workflowv1.ApprovalRequest {
 	t.Helper()
 	policy := workflowPolicy(identity, requestID, at)
@@ -371,7 +420,7 @@ func TestPostgresWorkflowRunIsNormalizedFencedResumableAndEventBacked(t *testing
 	if err = verify.QueryRowContext(ctx, `SELECT (SELECT count(*) FROM workflow_definitions WHERE tenant_id=$1),(SELECT count(*) FROM workflow_runs WHERE tenant_id=$1),(SELECT count(*) FROM workflow_transition_revisions WHERE tenant_id=$1),(SELECT count(*) FROM outbox_messages WHERE tenant_id=$1)`, identity.TenantID).Scan(&definitions, &runs, &revisions, &events); err != nil {
 		t.Fatal(err)
 	}
-	if definitions != 1 || runs != 1 || revisions != 3 || events != 6 {
+	if definitions != 1 || runs != 1 || revisions != 3 || events != 7 {
 		t.Fatalf("definitions=%d runs=%d revisions=%d events=%d", definitions, runs, revisions, events)
 	}
 	if err = verify.Commit(); err != nil {

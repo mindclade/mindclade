@@ -213,7 +213,7 @@ func TestPostgresEvaluationJourneyIsNormalizedFencedIdempotentAndEventBacked(t *
 	if err = verify.QueryRowContext(ctx, `SELECT (SELECT count(*) FROM outbox_messages WHERE tenant_id=$1),(SELECT count(*) FROM audit_events WHERE tenant_id=$1),(SELECT count(*) FROM evaluation_inference_command_receipts WHERE tenant_id=$1)`, identity.TenantID).Scan(&events, &audits, &receipts); err != nil {
 		t.Fatal(err)
 	}
-	if events != 7 || audits != 5 || receipts != 5 {
+	if events != 8 || audits != 5 || receipts != 5 {
 		t.Fatalf("events=%d audits=%d receipts=%d", events, audits, receipts)
 	}
 	rows, err := verify.QueryContext(ctx, `SELECT envelope_bytes FROM outbox_messages WHERE tenant_id=$1 ORDER BY created_at,event_type`, identity.TenantID)
@@ -242,7 +242,7 @@ func TestPostgresEvaluationJourneyIsNormalizedFencedIdempotentAndEventBacked(t *
 	if err = platformdb.CloseRows(rows); err != nil {
 		t.Fatal(err)
 	}
-	for eventType, count := range map[string]int{"mindclade.events.evaluation.v1.EvaluationRunCreated": 2, "mindclade.events.evaluation.v1.EvaluationCancellationRequested": 1, "mindclade.events.evaluation.v1.EvaluationResultCommitted": 1, "mindclade.events.evaluation.v1.PromotionDecisionRecorded": 1, "mindclade.events.job.v1.JobRequested": 2} {
+	for eventType, count := range map[string]int{"mindclade.events.evaluation.v1.EvaluationRunCreated": 2, "mindclade.events.evaluation.v1.EvaluationCancellationRequested": 1, "mindclade.events.evaluation.v1.EvaluationResultCommitted": 1, "mindclade.events.evaluation.v1.PromotionDecisionRecorded": 1, "mindclade.events.job.v1.JobRequested": 2, "mindclade.events.job.v1.AttemptLeased": 1} {
 		if types[eventType] != count {
 			t.Fatalf("event type %s count=%d want=%d all=%v", eventType, types[eventType], count, types)
 		}

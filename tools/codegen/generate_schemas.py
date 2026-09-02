@@ -228,9 +228,12 @@ def pointer_escape(value: str) -> str:
     return value.replace("~", "~0").replace("/", "~1")
 
 
-def is_object_mapping(value: object) -> TypeGuard[Mapping[str, object]]:
-    """Narrow JSON objects to the string-keyed mapping used by schema traversal."""
-    return isinstance(value, Mapping)
+def is_string_mapping(value: object) -> TypeGuard[Mapping[str, object]]:
+    """Narrow parsed JSON objects without allowing unknown key/value types."""
+
+    return isinstance(value, Mapping) and all(
+        isinstance(key, str) for key in cast(Mapping[object, object], value)
+    )
 
 
 def pointer_value(schema: Mapping[str, object], pointer: str) -> Mapping[str, object]:
@@ -241,12 +244,10 @@ def pointer_value(schema: Mapping[str, object], pointer: str) -> Mapping[str, ob
     value: object = schema
     for encoded in pointer[2:].split("/"):
         part = encoded.replace("~1", "/").replace("~0", "~")
-        if not is_object_mapping(value):
-            raise CatalogError(f"unresolved local JSON Schema reference: {pointer}")
-        if part not in value:
+        if not is_string_mapping(value) or part not in value:
             raise CatalogError(f"unresolved local JSON Schema reference: {pointer}")
         value = value[part]
-    if not is_object_mapping(value):
+    if not is_string_mapping(value):
         raise CatalogError(f"JSON Schema reference is not an object: {pointer}")
     return value
 
@@ -355,12 +356,11 @@ def mapping_entries(value: object) -> list[tuple[str, Mapping[str, object]]]:
 
 def required_names(value: Mapping[str, object]) -> frozenset[str]:
     raw = value.get("required")
-    if not isinstance(raw, list):
+    if not isinstance(raw, list) or not all(
+        isinstance(item, str) for item in cast(list[object], raw)
+    ):
         return frozenset()
-    raw_items = cast(list[object], raw)
-    if not all(isinstance(item, str) for item in raw_items):
-        return frozenset()
-    return frozenset(cast(list[str], raw_items))
+    return frozenset(cast(list[str], raw))
 
 
 def schema_source_map(bindings: Sequence[SchemaBinding]) -> dict[str, str]:
@@ -1301,8 +1301,8 @@ def generated_binding_outputs(root: Path) -> dict[Path, bytes]:
     rustfmt = cast(Mapping[str, object], tools).get("rustfmt")
     if not isinstance(rustfmt, Mapping):
         raise CatalogError(f"{TOOLCHAIN_LOCK} has no pinned rustfmt")
-    rustfmt_version_output = cast(Mapping[str, object], rustfmt).get("version_output")
-    if not isinstance(rustfmt_version_output, str):
+    rustfmt = cast(Mapping[str, object], rustfmt)
+    if not isinstance(rustfmt.get("version_output"), str):
         raise CatalogError(f"{TOOLCHAIN_LOCK} has no pinned rustfmt")
     rustfmt_version = subprocess.run(
         ["rustfmt", "--version"],
@@ -1310,10 +1310,10 @@ def generated_binding_outputs(root: Path) -> dict[Path, bytes]:
         stdout=subprocess.PIPE,
         text=True,
     ).stdout.strip()
-    if rustfmt_version != rustfmt_version_output:
+    if rustfmt_version != rustfmt["version_output"]:
         raise CatalogError(
             "rustfmt version mismatch: "
-            f"expected {rustfmt_version_output!r}, got {rustfmt_version!r}"
+            f"expected {rustfmt['version_output']!r}, got {rustfmt_version!r}"
         )
 
     bindings = schema_bindings(root)

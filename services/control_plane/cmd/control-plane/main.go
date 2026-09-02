@@ -23,9 +23,11 @@ import (
 	artifactsapp "github.com/mindclade/mindclade/services/control_plane/internal/artifacts"
 	datasetsapp "github.com/mindclade/mindclade/services/control_plane/internal/datasets"
 	evaluationsapp "github.com/mindclade/mindclade/services/control_plane/internal/evaluations"
+	experimentsapp "github.com/mindclade/mindclade/services/control_plane/internal/experiments"
 	inferenceapp "github.com/mindclade/mindclade/services/control_plane/internal/inference"
 	jobsapp "github.com/mindclade/mindclade/services/control_plane/internal/jobs"
 	modelsapp "github.com/mindclade/mindclade/services/control_plane/internal/models"
+	"github.com/mindclade/mindclade/services/control_plane/internal/platform/eventprojection"
 	"github.com/mindclade/mindclade/services/control_plane/internal/platform/inbox"
 	"github.com/mindclade/mindclade/services/control_plane/internal/platform/outbox"
 	objectstorage "github.com/mindclade/mindclade/services/control_plane/internal/platform/storage"
@@ -51,15 +53,21 @@ func main() {
 		httpAddress,
 		resources.authorizer,
 		runtimeDependencies{
+			Public:     resources.training,
+			Ready:      resources.training.Ready,
 			Admin:      resources.admin,
 			Agent:      resources.agents,
-			Training:   resources.training,
 			Artifact:   resources.artifacts,
 			Dataset:    resources.datasets,
 			Evaluation: resources.evaluations,
+			Experiment: resources.experiments,
 			Inference:  resources.inference,
+			Operation:  resources.training.InternalOperationServer(),
+			Job:        resources.training.InternalJobServer(),
+			Run:        resources.training.InternalRunServer(),
 			Model:      resources.models,
 			Policy:     resources.policies,
+			Training:   resources.training.InternalTrainingServer(),
 			Workflow:   resources.workflows,
 			Approval:   resources.approvals,
 		},
@@ -79,12 +87,15 @@ func main() {
 	}
 	runContext, cancelRun := context.WithCancel(signals)
 	defer cancelRun()
-	failed := make(chan runtimeResult, 3)
+	failed := make(chan runtimeResult, 4)
 	go func() { failed <- runtimeResult{component: "grpc/http server", err: server.serve()} }()
 	go func() {
 		failed <- runtimeResult{component: "outbox dispatcher", err: resources.dispatchOutbox(runContext)}
 	}()
 	go func() { failed <- runtimeResult{component: "job subscriber", err: resources.consumeJobs(runContext)} }()
+	go func() {
+		failed <- runtimeResult{component: "event audit projection subscriber", err: resources.consumeEventAudit(runContext)}
+	}()
 	completed := 0
 	select {
 	case <-signals.Done():
@@ -115,25 +126,27 @@ func main() {
 }
 
 type productionResources struct {
-	db           *sql.DB
-	pubsubClient *gcppubsub.Client
-	publisher    *outbox.PubSubPublisher
-	consumer     *inbox.PubSubConsumer
-	dispatcher   outbox.Dispatcher
-	tenantIDs    []string
-	authorizer   bearerAuthorizer
-	admin        *adminapp.Server
-	agents       *agentsapp.Server
-	training     *publicTrainingAdapter
-	artifacts    *artifactsapp.Server
-	datasets     *datasetsapp.Server
-	evaluations  *evaluationsapp.Server
-	inference    *inferenceapp.Server
-	models       *modelsapp.Server
-	policies     *policiesapp.Server
-	workflows    *workflowsapp.Server
-	approvals    *workflowsapp.ApprovalServer
-	objectStore  *objectstorage.GCSObjectStore
+	db            *sql.DB
+	pubsubClient  *gcppubsub.Client
+	publisher     *outbox.PubSubPublisher
+	jobConsumer   *inbox.PubSubConsumer
+	auditConsumer *inbox.PubSubConsumer
+	dispatcher    outbox.Dispatcher
+	tenantIDs     []string
+	authorizer    bearerAuthorizer
+	admin         *adminapp.Server
+	agents        *agentsapp.Server
+	training      *publicTrainingAdapter
+	artifacts     *artifactsapp.Server
+	datasets      *datasetsapp.Server
+	evaluations   *evaluationsapp.Server
+	experiments   *experimentsapp.Server
+	inference     *inferenceapp.Server
+	models        *modelsapp.Server
+	policies      *policiesapp.Server
+	workflows     *workflowsapp.Server
+	approvals     *workflowsapp.ApprovalServer
+	objectStore   *objectstorage.GCSObjectStore
 }
 
 type artifactIdentityResolver struct{}
@@ -200,6 +213,16 @@ func (modelIdentityResolver) Resolve(ctx context.Context) (modelsapp.Identity, e
 }
 
 type evaluationIdentityResolver struct{}
+
+type experimentIdentityResolver struct{}
+
+func (experimentIdentityResolver) Resolve(ctx context.Context) (experimentsapp.Identity, error) {
+	identity, err := (metadataIdentityResolver{}).Resolve(ctx)
+	if err != nil {
+		return experimentsapp.Identity{}, experimentsapp.ErrUnauthenticated
+	}
+	return experimentsapp.Identity{TenantID: identity.TenantID, ProjectID: identity.ProjectID, Principal: identity.Principal}, nil
+}
 
 func (evaluationIdentityResolver) Resolve(ctx context.Context) (evaluationsapp.Identity, error) {
 	identity, err := (metadataIdentityResolver{}).Resolve(ctx)
@@ -376,6 +399,10 @@ func newProductionResources(ctx context.Context) (*productionResources, error) {
 	if err != nil {
 		return nil, err
 	}
+	experimentPages, err := experimentsapp.NewPageTokenCodec(pageKey)
+	if err != nil {
+		return nil, err
+	}
 	policyPages, err := policiesapp.NewPageTokenCodec(pageKey)
 	if err != nil {
 		return nil, err
@@ -441,10 +468,19 @@ func newProductionResources(ctx context.Context) (*productionResources, error) {
 		_ = db.Close()
 		return nil, err
 	}
-	subscription, err := requiredEnvironment("MINDCLADE_PUBSUB_JOB_SUBSCRIPTION")
+	jobSubscription, err := requiredEnvironment("MINDCLADE_PUBSUB_JOB_SUBSCRIPTION")
 	if err != nil {
 		_ = db.Close()
 		return nil, err
+	}
+	auditSubscription, err := requiredEnvironment("MINDCLADE_PUBSUB_EVENT_AUDIT_SUBSCRIPTION")
+	if err != nil {
+		_ = db.Close()
+		return nil, err
+	}
+	if auditSubscription == jobSubscription {
+		_ = db.Close()
+		return nil, errors.New("job and event-audit consumers require distinct Pub/Sub subscriptions")
 	}
 	quarantineTenantID, err := requiredEnvironment("MINDCLADE_QUARANTINE_TENANT_ID")
 	if err != nil || !validConfiguredIdentity(quarantineTenantID) {
@@ -465,8 +501,9 @@ func newProductionResources(ctx context.Context) (*productionResources, error) {
 		_ = db.Close()
 		return nil, err
 	}
-	jobConsumer, err := inbox.NewPubSubConsumer(pubsubClient, subscription, inbox.Processor{
+	jobConsumer, err := inbox.NewPubSubConsumer(pubsubClient, jobSubscription, inbox.Processor{
 		DB: db, Consumer: "control-plane-job-requested-v1", Handler: jobsapp.JobRequestedHandler{},
+		AcceptedEvents:     map[string]uint32{"mindclade.events.job.v1.JobRequested": 1},
 		QuarantineTenantID: quarantineTenantID,
 	})
 	if err != nil {
@@ -477,6 +514,26 @@ func newProductionResources(ctx context.Context) (*productionResources, error) {
 	}
 	jobConsumer.OnError = func(_ context.Context, eventErr error) {
 		slog.Warn("JobRequested delivery was not processed normally", "error", eventErr)
+	}
+	projectedEvents, err := eventprojection.AcceptedEvents()
+	if err != nil {
+		publisher.Close()
+		_ = pubsubClient.Close()
+		_ = db.Close()
+		return nil, fmt.Errorf("configure event audit projection registry: %w", err)
+	}
+	auditConsumer, err := inbox.NewPubSubConsumer(pubsubClient, auditSubscription, inbox.Processor{
+		DB: db, Consumer: eventprojection.ConsumerName, Handler: eventprojection.Handler{},
+		AcceptedEvents: projectedEvents, QuarantineTenantID: quarantineTenantID,
+	})
+	if err != nil {
+		publisher.Close()
+		_ = pubsubClient.Close()
+		_ = db.Close()
+		return nil, fmt.Errorf("configure event audit projection subscriber: %w", err)
+	}
+	auditConsumer.OnError = func(_ context.Context, eventErr error) {
+		slog.Warn("event audit projection delivery was not processed normally", "error", eventErr)
 	}
 	artifactBucket, err := requiredEnvironment("MINDCLADE_GCS_ARTIFACT_BUCKET")
 	if err != nil {
@@ -590,6 +647,17 @@ func newProductionResources(ctx context.Context) (*productionResources, error) {
 		_ = db.Close()
 		return nil, err
 	}
+	experimentServer, err := experimentsapp.NewServer(
+		experimentsapp.SQLRepository{DB: db, Pagination: experimentPages, Events: experimentsapp.GeneratedEventFactory{}},
+		experimentIdentityResolver{}, experimentPages,
+	)
+	if err != nil {
+		_ = objectStore.Close()
+		publisher.Close()
+		_ = pubsubClient.Close()
+		_ = db.Close()
+		return nil, err
+	}
 	inferenceServer, err := inferenceapp.NewServer(
 		inferenceapp.SQLRepository{DB: db, Events: inferenceapp.GeneratedEventFactory{}},
 		inferenceIdentityResolver{}, inferenceCursors, 250*time.Millisecond, 10*time.Second,
@@ -665,12 +733,12 @@ func newProductionResources(ctx context.Context) (*productionResources, error) {
 		}
 	}
 	return &productionResources{
-		db: db, pubsubClient: pubsubClient, publisher: publisher, consumer: jobConsumer,
+		db: db, pubsubClient: pubsubClient, publisher: publisher, jobConsumer: jobConsumer, auditConsumer: auditConsumer,
 		dispatcher: outbox.Dispatcher{
 			Store: outbox.SQLStore{DB: db}, Publisher: publisher, ClaimTTL: 30 * time.Second,
 		},
 		tenantIDs: outboxTenantIDs, authorizer: authorizer, training: publicTraining,
-		agents: agentServer, artifacts: artifactServer, datasets: datasetServer, evaluations: evaluationServer, inference: inferenceServer,
+		agents: agentServer, artifacts: artifactServer, datasets: datasetServer, evaluations: evaluationServer, experiments: experimentServer, inference: inferenceServer,
 		models: modelServer, policies: policyServer, admin: adminServer, workflows: workflowServer, approvals: approvalServer, objectStore: objectStore,
 	}, nil
 }
@@ -684,7 +752,9 @@ func verifyDatabase(ctx context.Context, db *sql.DB) error {
 	var evaluationRunTable, evaluationResultTable, inferenceRequestTable, evaluationInferenceReceiptTable bool
 	var workflowDefinitionTable, approvalRequestTable, agentDefinitionTable, workflowAgentReceiptTable bool
 	var usePolicyTable, administrativeProjectTable, administrativeAuditTable, policyAdminReceiptTable bool
-	var forcedDataModelRLS, forcedEvaluationInferenceRLS, forcedWorkflowAgentRLS, forcedPolicyAdminRLS int
+	var eventAuditProjectionTable, eventAuditProjectionHeadTable bool
+	var experimentTable, experimentStudyTable, experimentTrialTable, experimentReceiptTable bool
+	var forcedFoundationRLS, forcedDataModelRLS, forcedEvaluationInferenceRLS, forcedWorkflowAgentRLS, forcedPolicyAdminRLS, forcedEventProjectionRLS, forcedExperimentRLS int
 	if err := db.QueryRowContext(ctx, `
 SELECT role.rolsuper, role.rolbypassrls,
        to_regclass('public.training_runs') IS NOT NULL,
@@ -707,6 +777,20 @@ SELECT role.rolsuper, role.rolbypassrls,
 	   to_regclass('public.administrative_projects') IS NOT NULL,
 	   to_regclass('public.administrative_audit_records') IS NOT NULL,
 	   to_regclass('public.policy_admin_command_receipts') IS NOT NULL,
+	   to_regclass('public.event_audit_projection') IS NOT NULL,
+	   to_regclass('public.event_audit_projection_heads') IS NOT NULL,
+	   to_regclass('public.experiments') IS NOT NULL,
+	   to_regclass('public.experiment_studies') IS NOT NULL,
+	   to_regclass('public.experiment_trials') IS NOT NULL,
+	   to_regclass('public.experiment_command_receipts') IS NOT NULL,
+	   (SELECT count(*) FROM pg_class AS isolated WHERE isolated.relnamespace = 'public'::regnamespace AND isolated.relname = ANY(ARRAY[
+	     'artifact_references','resource_references','error_details','error_field_violations','error_precondition_violations',
+	     'operations','operation_revisions','training_progress_snapshots','training_runs','training_run_labels','training_checkpoints',
+	     'jobs','runs','run_output_refs','attempts','attempt_output_refs','attempt_completion_history','run_command_receipts',
+	     'run_command_receipt_attempts','artifacts','idempotency_records','audit_events','outbox_messages','inbox_messages',
+	     'inbox_delivery_failures','dead_letter_messages','dead_letter_replay_receipts','artifact_staging_receipts','artifact_upload_sessions','artifact_upload_chunks',
+	     'artifact_catalog_entries','artifact_aliases','artifact_quarantine_evidence','artifact_leases','artifact_operations','artifact_command_receipts'
+	   ]) AND isolated.relrowsecurity AND isolated.relforcerowsecurity),
 	   (SELECT count(*) FROM pg_class AS isolated WHERE isolated.relnamespace = 'public'::regnamespace AND isolated.relname = ANY(ARRAY[
 	     'datasets','dataset_labels','dataset_annotations','dataset_releases',
 	     'dataset_release_qualification_evidence','dataset_release_revocation_evidence',
@@ -739,6 +823,13 @@ SELECT role.rolsuper, role.rolbypassrls,
 	     'administrative_project_labels','administrative_project_annotations','administrative_audit_records','audit_exports',
 	     'audit_export_actor_filters','audit_export_action_filters','audit_export_resource_filters','audit_export_result_filters',
 	     'audit_export_reason_filters','policy_admin_command_receipts'
+	   ]) AND isolated.relrowsecurity AND isolated.relforcerowsecurity),
+	   (SELECT count(*) FROM pg_class AS isolated WHERE isolated.relnamespace = 'public'::regnamespace AND isolated.relname = ANY(ARRAY[
+	     'event_audit_projection','event_audit_projection_heads'
+	   ]) AND isolated.relrowsecurity AND isolated.relforcerowsecurity),
+	   (SELECT count(*) FROM pg_class AS isolated WHERE isolated.relnamespace = 'public'::regnamespace AND isolated.relname = ANY(ARRAY[
+	     'experiments','experiment_labels','experiment_annotations','experiment_subjects',
+	     'experiment_studies','experiment_trials','experiment_trial_evidence','experiment_command_receipts'
 	   ]) AND isolated.relrowsecurity AND isolated.relforcerowsecurity)
 FROM pg_roles AS role WHERE role.rolname = current_user`).Scan(
 		&superuser, &bypassRLS, &trainingTable, &artifactTable, &stagingReceiptTable,
@@ -746,7 +837,9 @@ FROM pg_roles AS role WHERE role.rolname = current_user`).Scan(
 		&evaluationRunTable, &evaluationResultTable, &inferenceRequestTable, &evaluationInferenceReceiptTable,
 		&workflowDefinitionTable, &approvalRequestTable, &agentDefinitionTable, &workflowAgentReceiptTable,
 		&usePolicyTable, &administrativeProjectTable, &administrativeAuditTable, &policyAdminReceiptTable,
-		&forcedDataModelRLS, &forcedEvaluationInferenceRLS, &forcedWorkflowAgentRLS, &forcedPolicyAdminRLS,
+		&eventAuditProjectionTable, &eventAuditProjectionHeadTable,
+		&experimentTable, &experimentStudyTable, &experimentTrialTable, &experimentReceiptTable,
+		&forcedFoundationRLS, &forcedDataModelRLS, &forcedEvaluationInferenceRLS, &forcedWorkflowAgentRLS, &forcedPolicyAdminRLS, &forcedEventProjectionRLS, &forcedExperimentRLS,
 	); err != nil {
 		return fmt.Errorf("verify PostgreSQL runtime role: %w", err)
 	}
@@ -758,6 +851,9 @@ FROM pg_roles AS role WHERE role.rolname = current_user`).Scan(
 	}
 	if !artifactTable || !stagingReceiptTable {
 		return errors.New("PostgreSQL migrations are incomplete: artifact catalog or staging receipts are absent")
+	}
+	if forcedFoundationRLS != 36 {
+		return fmt.Errorf("PostgreSQL foundation tenant isolation is incomplete: %d/36 tables force RLS", forcedFoundationRLS)
 	}
 	if !datasetTable || !datasetReleaseTable || !modelTable || !modelReleaseTable || !dataModelReceiptTable {
 		return errors.New("PostgreSQL migrations are incomplete: dataset/model lifecycle tables are absent")
@@ -782,6 +878,18 @@ FROM pg_roles AS role WHERE role.rolname = current_user`).Scan(
 	}
 	if forcedPolicyAdminRLS != 23 {
 		return fmt.Errorf("PostgreSQL policy/admin tenant isolation is incomplete: %d/23 tables force RLS", forcedPolicyAdminRLS)
+	}
+	if !eventAuditProjectionTable || !eventAuditProjectionHeadTable {
+		return errors.New("PostgreSQL migrations are incomplete: event audit projection tables are absent")
+	}
+	if forcedEventProjectionRLS != 2 {
+		return fmt.Errorf("PostgreSQL event projection tenant isolation is incomplete: %d/2 tables force RLS", forcedEventProjectionRLS)
+	}
+	if !experimentTable || !experimentStudyTable || !experimentTrialTable || !experimentReceiptTable {
+		return errors.New("PostgreSQL migrations are incomplete: experiment lifecycle tables are absent")
+	}
+	if forcedExperimentRLS != 8 {
+		return fmt.Errorf("PostgreSQL experiment tenant isolation is incomplete: %d/8 tables force RLS", forcedExperimentRLS)
 	}
 	return nil
 }
@@ -813,10 +921,24 @@ func (r *productionResources) dispatchOutbox(ctx context.Context) error {
 }
 
 func (r *productionResources) consumeJobs(ctx context.Context) error {
-	if r.consumer == nil {
+	if r.jobConsumer == nil {
 		return errors.New("JobRequested Pub/Sub consumer is not configured")
 	}
-	err := r.consumer.Receive(ctx)
+	err := r.jobConsumer.Receive(ctx)
+	if ctx.Err() != nil {
+		return nil //nolint:nilerr // Consumer cancellation is the expected coordinated shutdown path.
+	}
+	if errors.Is(err, context.Canceled) {
+		return nil
+	}
+	return err
+}
+
+func (r *productionResources) consumeEventAudit(ctx context.Context) error {
+	if r.auditConsumer == nil {
+		return errors.New("event audit projection Pub/Sub consumer is not configured")
+	}
+	err := r.auditConsumer.Receive(ctx)
 	if ctx.Err() != nil {
 		return nil //nolint:nilerr // Consumer cancellation is the expected coordinated shutdown path.
 	}

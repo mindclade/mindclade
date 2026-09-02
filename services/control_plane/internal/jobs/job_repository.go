@@ -20,7 +20,9 @@ import (
 	foundationaudit "github.com/mindclade/mindclade/libs/go/audit"
 	artifactv1 "github.com/mindclade/mindclade/protocols/generated/go/artifact/v1"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
+	featurev1 "github.com/mindclade/mindclade/protocols/generated/go/feature/v1"
 	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
+	transformv1 "github.com/mindclade/mindclade/protocols/generated/go/transform/v1"
 	operationsapp "github.com/mindclade/mindclade/services/control_plane/internal/operations"
 	platformdb "github.com/mindclade/mindclade/services/control_plane/internal/platform/database"
 	"github.com/mindclade/mindclade/services/control_plane/internal/platform/queue"
@@ -44,12 +46,18 @@ type JobMutationResult struct {
 const (
 	MinimumLeaseDuration = 5 * time.Second
 	MaximumLeaseDuration = 15 * time.Minute
-	actionAcquireLease   = "run.acquire_lease"
-	actionRenewLease     = "run.renew_lease"
-	actionHeartbeat      = "run.heartbeat"
-	actionCancelAttempt  = "run.cancel_attempt"
-	actionExpireLeases   = "run.expire_leases"
-	actionCommitAttempt  = "run.commit_attempt"
+	// FeatureMaterializationJobKind and TransformExecutionJobKind are the
+	// closed scheduler discriminators for the corresponding typed completion
+	// commands. Exact matching prevents one domain payload from being attached
+	// to another job kind.
+	FeatureMaterializationJobKind = "feature.materialization"
+	TransformExecutionJobKind     = "transform.execution"
+	actionAcquireLease            = "run.acquire_lease"
+	actionRenewLease              = "run.renew_lease"
+	actionHeartbeat               = "run.heartbeat"
+	actionCancelAttempt           = "run.cancel_attempt"
+	actionExpireLeases            = "run.expire_leases"
+	actionCommitAttempt           = "run.commit_attempt"
 )
 
 // LeaseCredentials are authenticated behavior inputs, not a competing wire
@@ -97,6 +105,7 @@ type RunCommandMetadata struct {
 type CancelAttemptCommand struct {
 	Credentials             LeaseCredentials
 	ExpectedResourceVersion int64
+	Reason                  string
 	Now                     time.Time
 	Command                 RunCommandMetadata
 }
@@ -111,10 +120,153 @@ type ExpireLeasesCommand struct {
 type CompleteAttemptCommand struct {
 	Credentials             LeaseCredentials
 	Attempt                 *jobv1.Attempt
+	Fence                   *jobv1.LeaseFence
+	FeatureMaterialization  *featurev1.CommitFeatureMaterializationCommand
+	TransformExecution      *transformv1.CommitTransformExecutionCommand
 	UpdateMask              []string
 	ExpectedResourceVersion int64
 	Now                     time.Time
 	Command                 RunCommandMetadata
+}
+
+func validateDomainCompletionContext(value *commonv1.CommandContext, command RunCommandMetadata) bool {
+	return value != nil && value.GetTenantId() == command.TenantID && value.GetProjectId() == command.ProjectID &&
+		value.GetPrincipalId() == command.PrincipalID && value.GetRequestId() == command.RequestID &&
+		value.GetIdempotencyKey() == command.IdempotencyKey && value.GetTraceId() == command.TraceID &&
+		value.GetCorrelationId() == command.CorrelationID && value.GetCausationId() == command.CausationID
+}
+
+func validDomainResourceName(tenantID, projectID, collection, value string) bool {
+	prefix := "tenants/" + tenantID + "/projects/" + projectID + "/" + collection + "/"
+	if !strings.HasPrefix(value, prefix) {
+		return false
+	}
+	leaf := strings.TrimPrefix(value, prefix)
+	if len(leaf) == 0 || len(leaf) > 128 || !asciiAlphaNumeric(leaf[0]) {
+		return false
+	}
+	for index := 1; index < len(leaf); index++ {
+		if !asciiAlphaNumeric(leaf[index]) && !strings.ContainsRune("._~-", rune(leaf[index])) {
+			return false
+		}
+	}
+	return true
+}
+
+func asciiAlphaNumeric(value byte) bool {
+	return value >= '0' && value <= '9' || value >= 'A' && value <= 'Z' || value >= 'a' && value <= 'z'
+}
+
+func validCompletionTimestamp(value *timestamppb.Timestamp, attempt *jobv1.Attempt, recordedAt time.Time) bool {
+	if value == nil || value.CheckValid() != nil || attempt == nil || attempt.GetLeasedAt() == nil {
+		return false
+	}
+	completedAt := value.AsTime().UTC()
+	return !completedAt.Before(attempt.GetLeasedAt().AsTime().UTC()) && !completedAt.After(recordedAt.UTC())
+}
+
+func equalArtifacts(left, right []*artifactv1.ArtifactRef) bool {
+	if len(left) != len(right) {
+		return false
+	}
+	for index := range left {
+		if !proto.Equal(left[index], right[index]) {
+			return false
+		}
+	}
+	return true
+}
+
+func validCompletionArtifacts(receipt *artifactv1.ArtifactRef, outputs []*artifactv1.ArtifactRef, failure *commonv1.ErrorDetail, attempt *jobv1.Attempt) bool {
+	if attempt == nil || !validArtifactReference(receipt, true) || len(outputs) > 256 || !equalArtifacts(outputs, attempt.GetOutputs()) || !proto.Equal(failure, attempt.GetError()) {
+		return false
+	}
+	if attempt.GetState() == jobv1.AttemptState_ATTEMPT_STATE_SUCCEEDED && len(outputs) == 0 {
+		return false
+	}
+	for _, output := range outputs {
+		if !validArtifactReference(output, true) {
+			return false
+		}
+	}
+	return failure == nil || failure.GetCode() != commonv1.ErrorCode_ERROR_CODE_UNSPECIFIED
+}
+
+func featureClassificationMatches(state jobv1.AttemptState, classification featurev1.FeatureMaterializationTerminalClassification) bool {
+	switch classification {
+	case featurev1.FeatureMaterializationTerminalClassification_FEATURE_MATERIALIZATION_TERMINAL_CLASSIFICATION_SUCCEEDED:
+		return state == jobv1.AttemptState_ATTEMPT_STATE_SUCCEEDED
+	case featurev1.FeatureMaterializationTerminalClassification_FEATURE_MATERIALIZATION_TERMINAL_CLASSIFICATION_CANCELLED:
+		return state == jobv1.AttemptState_ATTEMPT_STATE_CANCELLED
+	case featurev1.FeatureMaterializationTerminalClassification_FEATURE_MATERIALIZATION_TERMINAL_CLASSIFICATION_DEADLINE_EXCEEDED:
+		return state == jobv1.AttemptState_ATTEMPT_STATE_TIMED_OUT
+	case featurev1.FeatureMaterializationTerminalClassification_FEATURE_MATERIALIZATION_TERMINAL_CLASSIFICATION_INVALID_PLAN,
+		featurev1.FeatureMaterializationTerminalClassification_FEATURE_MATERIALIZATION_TERMINAL_CLASSIFICATION_POLICY_DENIED,
+		featurev1.FeatureMaterializationTerminalClassification_FEATURE_MATERIALIZATION_TERMINAL_CLASSIFICATION_DETERMINISM_VIOLATION,
+		featurev1.FeatureMaterializationTerminalClassification_FEATURE_MATERIALIZATION_TERMINAL_CLASSIFICATION_EXECUTION_FAILED:
+		return state == jobv1.AttemptState_ATTEMPT_STATE_FAILED
+	case featurev1.FeatureMaterializationTerminalClassification_FEATURE_MATERIALIZATION_TERMINAL_CLASSIFICATION_UNSPECIFIED,
+		featurev1.FeatureMaterializationTerminalClassification_FEATURE_MATERIALIZATION_TERMINAL_CLASSIFICATION_STALE_FENCE:
+		return false
+	default:
+		return false
+	}
+}
+
+func transformClassificationMatches(state jobv1.AttemptState, classification transformv1.TransformExecutionTerminalClassification) bool {
+	switch classification {
+	case transformv1.TransformExecutionTerminalClassification_TRANSFORM_EXECUTION_TERMINAL_CLASSIFICATION_SUCCEEDED:
+		return state == jobv1.AttemptState_ATTEMPT_STATE_SUCCEEDED
+	case transformv1.TransformExecutionTerminalClassification_TRANSFORM_EXECUTION_TERMINAL_CLASSIFICATION_CANCELLED:
+		return state == jobv1.AttemptState_ATTEMPT_STATE_CANCELLED
+	case transformv1.TransformExecutionTerminalClassification_TRANSFORM_EXECUTION_TERMINAL_CLASSIFICATION_DEADLINE_EXCEEDED:
+		return state == jobv1.AttemptState_ATTEMPT_STATE_TIMED_OUT
+	case transformv1.TransformExecutionTerminalClassification_TRANSFORM_EXECUTION_TERMINAL_CLASSIFICATION_INVALID_INPUT,
+		transformv1.TransformExecutionTerminalClassification_TRANSFORM_EXECUTION_TERMINAL_CLASSIFICATION_SCHEMA_MISMATCH,
+		transformv1.TransformExecutionTerminalClassification_TRANSFORM_EXECUTION_TERMINAL_CLASSIFICATION_SEMANTIC_VALIDATION_FAILED,
+		transformv1.TransformExecutionTerminalClassification_TRANSFORM_EXECUTION_TERMINAL_CLASSIFICATION_POLICY_DENIED,
+		transformv1.TransformExecutionTerminalClassification_TRANSFORM_EXECUTION_TERMINAL_CLASSIFICATION_RESOURCE_EXHAUSTED,
+		transformv1.TransformExecutionTerminalClassification_TRANSFORM_EXECUTION_TERMINAL_CLASSIFICATION_TRANSIENT_IO,
+		transformv1.TransformExecutionTerminalClassification_TRANSFORM_EXECUTION_TERMINAL_CLASSIFICATION_IMPLEMENTATION_FAILURE,
+		transformv1.TransformExecutionTerminalClassification_TRANSFORM_EXECUTION_TERMINAL_CLASSIFICATION_DETERMINISM_VIOLATION,
+		transformv1.TransformExecutionTerminalClassification_TRANSFORM_EXECUTION_TERMINAL_CLASSIFICATION_CARDINALITY_VIOLATION,
+		transformv1.TransformExecutionTerminalClassification_TRANSFORM_EXECUTION_TERMINAL_CLASSIFICATION_ORDERING_VIOLATION,
+		transformv1.TransformExecutionTerminalClassification_TRANSFORM_EXECUTION_TERMINAL_CLASSIFICATION_LINEAGE_VIOLATION:
+		return state == jobv1.AttemptState_ATTEMPT_STATE_FAILED
+	case transformv1.TransformExecutionTerminalClassification_TRANSFORM_EXECUTION_TERMINAL_CLASSIFICATION_UNSPECIFIED,
+		transformv1.TransformExecutionTerminalClassification_TRANSFORM_EXECUTION_TERMINAL_CLASSIFICATION_STALE_FENCE:
+		return false
+	default:
+		return false
+	}
+}
+
+func validateDomainCompletion(command CompleteAttemptCommand, jobKind string, attempt *jobv1.Attempt) error {
+	feature, transform := command.FeatureMaterialization, command.TransformExecution
+	if feature != nil && transform != nil {
+		return ErrInvalidOutcome
+	}
+	switch jobKind {
+	case FeatureMaterializationJobKind:
+		if feature == nil || transform != nil || !validateDomainCompletionContext(feature.GetContext(), command.Command) ||
+			!proto.Equal(feature.GetFence(), command.Fence) || !validDomainResourceName(command.Credentials.TenantID, command.Credentials.ProjectID, "featureMaterializations", feature.GetMaterializationName()) ||
+			!validCompletionTimestamp(feature.GetCompletedAt(), attempt, command.Now) || !featureClassificationMatches(attempt.GetState(), feature.GetClassification()) ||
+			!validCompletionArtifacts(feature.GetReceipt(), feature.GetOutputRefs(), feature.GetError(), attempt) {
+			return ErrInvalidOutcome
+		}
+	case TransformExecutionJobKind:
+		if transform == nil || feature != nil || !validateDomainCompletionContext(transform.GetContext(), command.Command) ||
+			!proto.Equal(transform.GetFence(), command.Fence) || !validDomainResourceName(command.Credentials.TenantID, command.Credentials.ProjectID, "transformExecutions", transform.GetExecutionName()) ||
+			!validCompletionTimestamp(transform.GetCompletedAt(), attempt, command.Now) || !transformClassificationMatches(attempt.GetState(), transform.GetClassification()) ||
+			!validCompletionArtifacts(transform.GetReceipt(), transform.GetOutputRefs(), transform.GetError(), attempt) || !validArtifactReference(transform.GetLineageMap(), true) {
+			return ErrInvalidOutcome
+		}
+	default:
+		if feature != nil || transform != nil {
+			return ErrInvalidOutcome
+		}
+	}
+	return nil
 }
 
 type runCommandReceipt struct {
@@ -239,6 +391,35 @@ func getAttemptFenceTx(ctx context.Context, tx *sql.Tx, tenantID, projectID, att
 	return attempt, leaseFence(attempt, digest), nil
 }
 
+// recordAttemptCompletedEvent loads the authoritative in-transaction resource
+// snapshots and writes their typed terminal fact before the caller commits.
+// Reading the stored token digest preserves fence evidence without placing the
+// raw lease capability in protobuf or durable event state.
+func recordAttemptCompletedEvent(
+	ctx context.Context,
+	tx *sql.Tx,
+	tenantID, projectID, attemptID, runID string,
+	command RunCommandMetadata,
+	at time.Time,
+) (*jobv1.Attempt, *jobv1.Run, error) {
+	attempt, fence, err := getAttemptFenceTx(ctx, tx, tenantID, projectID, attemptID)
+	if err != nil {
+		return nil, nil, err
+	}
+	run, err := getRunTx(ctx, tx, tenantID, projectID, runID)
+	if err != nil {
+		return nil, nil, err
+	}
+	envelope, err := newAttemptCompletedEvent(attempt, run, fence, command, at)
+	if err != nil {
+		return nil, nil, err
+	}
+	if err = insertAttemptOutbox(ctx, tx, envelope, at); err != nil {
+		return nil, nil, err
+	}
+	return attempt, run, nil
+}
+
 func loadReceiptAttempts(ctx context.Context, tx *sql.Tx, tenantID, projectID, commandKey string) ([]*jobv1.Attempt, error) {
 	rows, err := tx.QueryContext(ctx, `SELECT attempt_id FROM run_command_receipt_attempts WHERE tenant_id=$1 AND project_id=$2 AND command_key=$3 ORDER BY ordinal`, tenantID, projectID, commandKey)
 	if err != nil {
@@ -299,7 +480,11 @@ func applyAttemptCompletionMask(stored, requested *jobv1.Attempt, paths []string
 	if _, _, err := terminalOutcome(result.GetState()); err != nil {
 		return nil, err
 	}
-	if result.GetState() == jobv1.AttemptState_ATTEMPT_STATE_SUCCEEDED && result.GetError() != nil {
+	if result.GetState() == jobv1.AttemptState_ATTEMPT_STATE_SUCCEEDED {
+		if result.GetError() != nil {
+			return nil, ErrInvalidOutcome
+		}
+	} else if result.GetError() == nil || result.GetError().GetCode() == commonv1.ErrorCode_ERROR_CODE_UNSPECIFIED {
 		return nil, ErrInvalidOutcome
 	}
 	return result, nil
@@ -350,27 +535,31 @@ func (r SQLRepository) CompleteAttemptSQL(
 		}
 		return &AttemptMutationResult{Attempt: attempt, Run: run, Replay: true}, nil
 	}
-	var runID string
-	if err = tx.QueryRowContext(ctx, `SELECT run_id FROM attempts WHERE tenant_id=$1 AND project_id=$2 AND id=$3`, credentials.TenantID, credentials.ProjectID, credentials.AttemptID).Scan(&runID); errors.Is(err, sql.ErrNoRows) {
+	var runID, observedJobID string
+	if err = tx.QueryRowContext(ctx, `SELECT run_id,job_id FROM attempts WHERE tenant_id=$1 AND project_id=$2 AND id=$3`, credentials.TenantID, credentials.ProjectID, credentials.AttemptID).Scan(&runID, &observedJobID); errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNotFound
 	} else if err != nil {
+		return nil, err
+	}
+	lifecycle, err := lockSchedulerLifecycleJobTx(ctx, tx, credentials.TenantID, credentials.ProjectID, observedJobID)
+	if err != nil {
 		return nil, err
 	}
 	var (
 		storedWorkerID, storedTokenDigest, attemptStatus, runStatus string
 		attemptEpoch, currentEpoch                                  uint64
-		storedVersion                                               int64
+		storedVersion, runVersion                                   int64
 		leaseExpiresAt                                              time.Time
 	)
-	var projectID string
-	err = tx.QueryRowContext(ctx, `SELECT lease_epoch,status,project_id FROM runs WHERE tenant_id=$1 AND project_id=$2 AND id=$3 FOR UPDATE`, credentials.TenantID, credentials.ProjectID, runID).Scan(&currentEpoch, &runStatus, &projectID)
+	var projectID, runJobID string
+	err = tx.QueryRowContext(ctx, `SELECT job_id,lease_epoch,status,project_id,version FROM runs WHERE tenant_id=$1 AND project_id=$2 AND id=$3 FOR UPDATE`, credentials.TenantID, credentials.ProjectID, runID).Scan(&runJobID, &currentEpoch, &runStatus, &projectID, &runVersion)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNotFound
 	}
 	if err != nil {
 		return nil, err
 	}
-	if projectID != command.Command.ProjectID {
+	if projectID != command.Command.ProjectID || runJobID != observedJobID {
 		return nil, ErrNotFound
 	}
 	err = tx.QueryRowContext(ctx, `SELECT worker_id,lease_token_digest,lease_epoch,version,lease_expires_at,status FROM attempts WHERE tenant_id=$1 AND project_id=$2 AND id=$3 AND run_id=$4 FOR UPDATE`, credentials.TenantID, credentials.ProjectID, credentials.AttemptID, runID).Scan(&storedWorkerID, &storedTokenDigest, &attemptEpoch, &storedVersion, &leaseExpiresAt, &attemptStatus)
@@ -380,6 +569,12 @@ func (r SQLRepository) CompleteAttemptSQL(
 	if err != nil {
 		return nil, err
 	}
+	// A different terminal command may have won after this command passed its
+	// idempotency lookup. Classify that race as a terminal mutation before
+	// applying the caller's mask to the winner's stored ErrorDetail.
+	if attemptStatus == "COMPLETED" || attemptStatus == "FAILED" || attemptStatus == "CANCELLED" {
+		return nil, ErrTerminalMutation
+	}
 	storedAttempt, err := getAttemptTx(ctx, tx, credentials.TenantID, credentials.ProjectID, credentials.AttemptID)
 	if err != nil {
 		return nil, err
@@ -388,10 +583,21 @@ func (r SQLRepository) CompleteAttemptSQL(
 	if err != nil {
 		return nil, err
 	}
+	if attempt.GetJobId() != observedJobID {
+		return nil, ErrNotFound
+	}
+	if err = validateDomainCompletion(command, lifecycle.jobKind, attempt); err != nil {
+		return nil, err
+	}
 	attemptOutcome, runOutcome, err := terminalOutcome(attempt.GetState())
 	if err != nil {
 		return nil, err
 	}
+	jobOutcome, operationOutcome, err := schedulerTerminalLifecycle(attempt.GetState())
+	if err != nil {
+		return nil, err
+	}
+	_, lifecycleErr := schedulerJobTransition(lifecycle.state, jobOutcome)
 	runState, err := runStateFromDatabase(runStatus)
 	if err != nil {
 		return nil, err
@@ -403,7 +609,7 @@ func (r SQLRepository) CompleteAttemptSQL(
 	unexpired := at.UTC().Before(leaseExpiresAt.UTC())
 	active := attemptStatus == "LEASED" || attemptStatus == "ACTIVE"
 	runAccepts := runState == jobv1.RunState_RUN_STATE_EXECUTING || (runState == jobv1.RunState_RUN_STATE_CANCELLING && attempt.GetState() == jobv1.AttemptState_ATTEMPT_STATE_CANCELLED)
-	accepted := tokenMatches && ownerMatches && epochMatches && versionMatches && unexpired && active && runAccepts
+	accepted := tokenMatches && ownerMatches && epochMatches && versionMatches && unexpired && active && runAccepts && lifecycleErr == nil
 	if _, err = tx.ExecContext(ctx, `INSERT INTO attempt_completion_history (tenant_id, project_id, attempt_id, worker_id, lease_epoch, lease_token_digest, accepted, outcome, recorded_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`, credentials.TenantID, credentials.ProjectID, credentials.AttemptID, credentials.WorkerID, credentials.Epoch, presentedDigest, accepted, attemptOutcome, at.UTC()); err != nil {
 		return nil, err
 	}
@@ -420,6 +626,8 @@ func (r SQLRepository) CompleteAttemptSQL(
 			rejection = ErrVersionConflict
 		case !unexpired:
 			rejection = ErrLeaseExpired
+		case lifecycleErr != nil:
+			rejection = lifecycleErr
 		}
 		if tokenMatches && ownerMatches && (!epochMatches || !unexpired) && active {
 			if _, err = tx.ExecContext(ctx, `UPDATE attempts SET status = 'FENCED', version = version + 1, completed_at = $4, updated_at = $4 WHERE tenant_id = $1 AND project_id=$2 AND id = $3`, credentials.TenantID, credentials.ProjectID, credentials.AttemptID, at.UTC()); err != nil {
@@ -441,6 +649,7 @@ func (r SQLRepository) CompleteAttemptSQL(
 	if _, err = tx.ExecContext(ctx, `DELETE FROM run_output_refs WHERE tenant_id = $1 AND project_id=$2 AND run_id = $3`, credentials.TenantID, credentials.ProjectID, runID); err != nil {
 		return nil, err
 	}
+	var operationResultID sql.NullInt64
 	for ordinal, output := range attempt.GetOutputs() {
 		refID, storeErr := platformdb.StoreArtifactRef(ctx, tx, credentials.TenantID, output)
 		if storeErr != nil {
@@ -448,6 +657,9 @@ func (r SQLRepository) CompleteAttemptSQL(
 		}
 		if !refID.Valid {
 			return nil, errors.New("attempt output cannot be nil")
+		}
+		if ordinal == 0 {
+			operationResultID = refID
 		}
 		if _, err = tx.ExecContext(ctx, `INSERT INTO attempt_output_refs (tenant_id, project_id, attempt_id, ordinal, artifact_ref_id) VALUES ($1,$2,$3,$4,$5)`, credentials.TenantID, credentials.ProjectID, credentials.AttemptID, ordinal, refID.Int64); err != nil {
 			return nil, err
@@ -459,7 +671,15 @@ func (r SQLRepository) CompleteAttemptSQL(
 	if _, err = tx.ExecContext(ctx, `UPDATE attempts SET status = $4, version = version + 1, error_detail_id = $5, completed_at = $6, updated_at = $6 WHERE tenant_id = $1 AND project_id=$2 AND id = $3`, credentials.TenantID, credentials.ProjectID, credentials.AttemptID, attemptOutcome, errorID, at.UTC()); err != nil {
 		return nil, err
 	}
-	if _, err = tx.ExecContext(ctx, `UPDATE runs SET status = $4, version = version + 1, error_detail_id = $5, completed_at = $6, updated_at = $6 WHERE tenant_id = $1 AND project_id=$2 AND id = $3 AND lease_epoch = $7`, credentials.TenantID, credentials.ProjectID, runID, runOutcome, errorID, at.UTC(), credentials.Epoch); err != nil {
+	nextRunVersion := runVersion + 1
+	nextRunETag := operationsapp.ResourceETag(credentials.TenantID, credentials.ProjectID, runID, nextRunVersion)
+	if _, err = tx.ExecContext(ctx, `UPDATE runs SET status=$4,version=$5,etag=$6,error_detail_id=$7,completed_at=$8,updated_at=$8 WHERE tenant_id=$1 AND project_id=$2 AND id=$3 AND lease_epoch=$9 AND version=$10`, credentials.TenantID, credentials.ProjectID, runID, runOutcome, nextRunVersion, nextRunETag, errorID, at.UTC(), credentials.Epoch, runVersion); err != nil {
+		return nil, err
+	}
+	if err = bindSchedulerTerminalOperationTx(ctx, tx, credentials.TenantID, credentials.ProjectID, &lifecycle, runID, nextRunVersion, nextRunETag, operationOutcome, operationResultID, errorID); err != nil {
+		return nil, err
+	}
+	if err = advanceSchedulerLifecycleTx(ctx, tx, credentials.TenantID, credentials.ProjectID, &lifecycle, jobOutcome, operationOutcome, at); err != nil {
 		return nil, err
 	}
 	acceptedAttempt, err := getAttemptTx(ctx, tx, credentials.TenantID, credentials.ProjectID, credentials.AttemptID)
@@ -477,6 +697,21 @@ func (r SQLRepository) CompleteAttemptSQL(
 	}
 	if err = insertAttemptOutbox(ctx, tx, completionEvent, at); err != nil {
 		return nil, err
+	}
+	var domainEvent *commonv1.EventEnvelope
+	switch lifecycle.jobKind {
+	case FeatureMaterializationJobKind:
+		domainEvent, err = newFeatureMaterializationCompletedEvent(command.FeatureMaterialization, acceptedRun, completionFence, command.Command, at)
+	case TransformExecutionJobKind:
+		domainEvent, err = newTransformExecutionCompletedEvent(command.TransformExecution, acceptedRun, completionFence, command.Command, at)
+	}
+	if err != nil {
+		return nil, err
+	}
+	if domainEvent != nil {
+		if err = insertAttemptOutbox(ctx, tx, domainEvent, at); err != nil {
+			return nil, err
+		}
 	}
 	if err = recordRunCommand(ctx, tx, command.Command, runID, credentials.AttemptID, ""); err != nil {
 		return nil, err
@@ -685,6 +920,9 @@ func (r SQLRepository) CancelJobSQL(ctx context.Context, jobID, expectedETag, re
 }
 
 func newJobCancellationAuditEnvelope(job *jobv1.Job, principalID string, at time.Time) (*commonv1.EventEnvelope, error) {
+	if job == nil || job.GetResourceVersion() < 1 {
+		return nil, ErrInvalidJobCommand
+	}
 	envelope, err := foundationaudit.NewEvent(job.GetTenantId(), principalID, "jobs.cancel", job.GetJobId(), "allowed", at.UTC(), nil)
 	if err != nil {
 		return nil, err
@@ -692,12 +930,17 @@ func newJobCancellationAuditEnvelope(job *jobv1.Job, principalID string, at time
 	envelope.ProjectId = job.GetProjectId()
 	envelope.JobId = job.GetJobId()
 	envelope.Producer = "services/control_plane"
-	envelope.AggregateSequence = uint64(job.GetResourceVersion()) //nolint:gosec // Conversion is bounded by validated protocol invariants or PostgreSQL CHECK constraints.
-	envelope.Subject.ResourceType = "job"
-	envelope.Subject.ResourceId = job.GetJobId()
+	// JobRequested is ordered on its Operation aggregate, and there is no
+	// sequence-one event on the Job aggregate. Model this immutable audit fact
+	// as its own semantic aggregate at ordinal one; preserve the authoritative
+	// Job revision on Subject instead of manufacturing a missing predecessor.
+	envelope.AggregateSequence = 1
+	envelope.Subject.ResourceType = "job_cancellation_audit"
+	envelope.Subject.ResourceId = strings.TrimPrefix(envelope.GetEventId(), "audit:")
 	envelope.Subject.ProjectId = job.GetProjectId()
 	envelope.Subject.ResourceVersion = job.GetResourceVersion()
-	envelope.Subject.Name = "tenants/" + job.GetTenantId() + "/projects/" + job.GetProjectId() + "/" + strings.TrimPrefix(job.GetJobId(), "/")
+	envelope.Subject.Name = "tenants/" + job.GetTenantId() + "/projects/" + job.GetProjectId() + "/" + strings.TrimPrefix(job.GetJobId(), "/") + "/auditEvents/" + envelope.Subject.GetResourceId()
+	envelope.Subject.Etag = job.GetEtag()
 	return envelope, queue.ValidateEnvelope(envelope)
 }
 
@@ -716,6 +959,226 @@ func mapOperationError(err error) error {
 	default:
 		return err
 	}
+}
+
+type schedulerLifecycleRow struct {
+	jobID, operationID, jobKind, state, etag string
+	version                                  int64
+}
+
+func lockSchedulerLifecycleJobTx(ctx context.Context, tx *sql.Tx, tenantID, projectID, jobID string) (schedulerLifecycleRow, error) {
+	var row schedulerLifecycleRow
+	row.jobID = jobID
+	err := tx.QueryRowContext(ctx, `SELECT operation_id,job_kind,desired_state,version,etag FROM jobs WHERE tenant_id=$1 AND project_id=$2 AND id=$3 FOR UPDATE`, tenantID, projectID, jobID).Scan(&row.operationID, &row.jobKind, &row.state, &row.version, &row.etag)
+	if errors.Is(err, sql.ErrNoRows) {
+		return schedulerLifecycleRow{}, ErrNotFound
+	}
+	if err != nil {
+		return schedulerLifecycleRow{}, err
+	}
+	return row, nil
+}
+
+// schedulerJobTransition validates the scheduler lifecycle without mutating
+// it. Returning false with no error means the requested state is already the
+// durable state and callers must not manufacture another revision.
+func schedulerJobTransition(current, target string) (bool, error) {
+	if current == target {
+		return false, nil
+	}
+	switch target {
+	case "RUNNING":
+		if current == "ACCEPTED" || current == "QUEUED" {
+			return true, nil
+		}
+	case "SUCCEEDED", "FAILED":
+		if current == "ACCEPTED" || current == "QUEUED" || current == "RUNNING" {
+			return true, nil
+		}
+	case "CANCELLED":
+		if current == "ACCEPTED" || current == "QUEUED" || current == "RUNNING" || current == "CANCELLING" {
+			return true, nil
+		}
+	}
+	return false, ErrTerminalMutation
+}
+
+func schedulerOperationState(state jobv1.OperationState) string {
+	switch state {
+	case jobv1.OperationState_OPERATION_STATE_RUNNING:
+		return "RUNNING"
+	case jobv1.OperationState_OPERATION_STATE_SUCCEEDED:
+		return "SUCCEEDED"
+	case jobv1.OperationState_OPERATION_STATE_FAILED:
+		return "FAILED"
+	case jobv1.OperationState_OPERATION_STATE_CANCELLED:
+		return "CANCELLED"
+	default:
+		return ""
+	}
+}
+
+func schedulerOperationTransition(current, target string) (bool, error) {
+	if current == target {
+		return false, nil
+	}
+	switch target {
+	case "RUNNING":
+		if current == "PENDING" {
+			return true, nil
+		}
+	case "SUCCEEDED", "FAILED":
+		if current == "PENDING" || current == "RUNNING" {
+			return true, nil
+		}
+	case "CANCELLED":
+		if current == "PENDING" || current == "RUNNING" || current == "CANCELLING" {
+			return true, nil
+		}
+	}
+	return false, ErrTerminalMutation
+}
+
+// advanceSchedulerLifecycleTx advances the Job and its client-visible
+// Operation in the caller's transaction. Direct repository fixtures created
+// before the production acceptance boundary may not have an Operation; their
+// Job still advances so lease behavior remains backwards-compatible.
+func advanceSchedulerLifecycleTx(
+	ctx context.Context,
+	tx *sql.Tx,
+	tenantID, projectID string,
+	job *schedulerLifecycleRow,
+	jobState string,
+	operationState jobv1.OperationState,
+	at time.Time,
+) error {
+	if job == nil || at.IsZero() {
+		return ErrTerminalMutation
+	}
+	advanceJob, err := schedulerJobTransition(job.state, jobState)
+	if err != nil {
+		return err
+	}
+	targetOperationState := schedulerOperationState(operationState)
+	if targetOperationState == "" {
+		return ErrTerminalMutation
+	}
+
+	var currentOperationState, operationETag, operationJobID string
+	var operationVersion int64
+	advanceOperation := false
+	if job.operationID != "" {
+		err = tx.QueryRowContext(ctx, `SELECT job_id,status,version,etag FROM operations WHERE tenant_id=$1 AND project_id=$2 AND id=$3 FOR UPDATE`, tenantID, projectID, job.operationID).Scan(&operationJobID, &currentOperationState, &operationVersion, &operationETag)
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrNotFound
+		}
+		if err != nil {
+			return err
+		}
+		if operationJobID != job.jobID {
+			return ErrTerminalMutation
+		}
+		advanceOperation, err = schedulerOperationTransition(currentOperationState, targetOperationState)
+		if err != nil {
+			return err
+		}
+	}
+
+	if advanceJob {
+		nextVersion := job.version + 1
+		nextETag := operationsapp.ResourceETag(tenantID, projectID, job.jobID, nextVersion)
+		result, updateErr := tx.ExecContext(ctx, `UPDATE jobs SET desired_state=$4,version=$5,etag=$6,updated_at=$7 WHERE tenant_id=$1 AND project_id=$2 AND id=$3 AND desired_state=$8 AND version=$9 AND etag=$10`, tenantID, projectID, job.jobID, jobState, nextVersion, nextETag, at.UTC(), job.state, job.version, job.etag)
+		if updateErr != nil {
+			return updateErr
+		}
+		changed, rowsErr := result.RowsAffected()
+		if rowsErr != nil {
+			return rowsErr
+		}
+		if changed != 1 {
+			return ErrVersionConflict
+		}
+		job.state, job.version, job.etag = jobState, nextVersion, nextETag
+	}
+	if advanceOperation {
+		_, err = operationsapp.AdvanceTxSQL(ctx, tx, tenantID, projectID, job.operationID, operationVersion, operationETag, operationState, at.UTC())
+		if err != nil {
+			return mapOperationError(err)
+		}
+	}
+	return nil
+}
+
+func schedulerTerminalLifecycle(attemptState jobv1.AttemptState) (string, jobv1.OperationState, error) {
+	switch attemptState {
+	case jobv1.AttemptState_ATTEMPT_STATE_SUCCEEDED:
+		return "SUCCEEDED", jobv1.OperationState_OPERATION_STATE_SUCCEEDED, nil
+	case jobv1.AttemptState_ATTEMPT_STATE_FAILED, jobv1.AttemptState_ATTEMPT_STATE_TIMED_OUT:
+		return "FAILED", jobv1.OperationState_OPERATION_STATE_FAILED, nil
+	case jobv1.AttemptState_ATTEMPT_STATE_CANCELLED:
+		return "CANCELLED", jobv1.OperationState_OPERATION_STATE_CANCELLED, nil
+	default:
+		return "", jobv1.OperationState_OPERATION_STATE_UNSPECIFIED, ErrInvalidOutcome
+	}
+}
+
+func schedulerResourceLeaf(value string) string {
+	if separator := strings.LastIndexByte(value, '/'); separator >= 0 {
+		return value[separator+1:]
+	}
+	return value
+}
+
+// bindSchedulerTerminalOperationTx attaches the terminal scheduler resource
+// (and its authoritative result or error when present) before AdvanceTxSQL
+// records the immutable terminal Operation revision. Existing domain targets
+// remain authoritative; generic operations receive the Run as their target.
+func bindSchedulerTerminalOperationTx(
+	ctx context.Context,
+	tx *sql.Tx,
+	tenantID, projectID string,
+	job *schedulerLifecycleRow,
+	runID string,
+	runVersion int64,
+	runETag string,
+	state jobv1.OperationState,
+	resultRefID, errorDetailID sql.NullInt64,
+) error {
+	if job == nil || job.operationID == "" {
+		return nil
+	}
+	if runID == "" || runVersion < 1 || runETag == "" {
+		return ErrTerminalMutation
+	}
+	if state == jobv1.OperationState_OPERATION_STATE_SUCCEEDED {
+		errorDetailID = sql.NullInt64{}
+	} else {
+		resultRefID = sql.NullInt64{}
+	}
+	targetName := "tenants/" + tenantID + "/projects/" + projectID + "/jobs/" + schedulerResourceLeaf(job.jobID) + "/runs/" + schedulerResourceLeaf(runID)
+	result, err := tx.ExecContext(ctx, `UPDATE operations SET
+target_present=true,
+target_resource_type=CASE WHEN target_present THEN target_resource_type ELSE 'run' END,
+target_resource_id=CASE WHEN target_present THEN target_resource_id ELSE $5 END,
+target_tenant_id=CASE WHEN target_present THEN target_tenant_id ELSE $1 END,
+target_project_id=CASE WHEN target_present THEN target_project_id ELSE $2 END,
+target_resource_version=CASE WHEN target_present THEN target_resource_version ELSE $6 END,
+target_name=CASE WHEN target_present THEN target_name ELSE $7 END,
+target_etag=CASE WHEN target_present THEN target_etag ELSE $8 END,
+result_ref_id=$9,error_detail_id=$10
+WHERE tenant_id=$1 AND project_id=$2 AND id=$3 AND job_id=$4`,
+		tenantID, projectID, job.operationID, job.jobID, schedulerResourceLeaf(runID), runVersion, targetName, runETag, resultRefID, errorDetailID)
+	if err != nil {
+		return err
+	}
+	changed, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if changed != 1 {
+		return ErrNotFound
+	}
+	return nil
 }
 
 func (r SQLRepository) CreateJobSQL(ctx context.Context, job *jobv1.Job) (*jobv1.Job, error) {
@@ -1017,18 +1480,40 @@ func (r SQLRepository) AcquireLeaseSQL(ctx context.Context, command AcquireLease
 		}
 		return &LeaseMutationResult{Attempt: attempt, Fence: fence, TokenKeyID: receipt.tokenKeyID.String, Replay: true}, nil
 	}
-	var (
-		jobID, projectID, status string
-		currentEpoch             uint64
-	)
-	err = tx.QueryRowContext(ctx, `SELECT job_id, project_id, status, lease_epoch FROM runs WHERE tenant_id = $1 AND project_id=$2 AND id = $3 FOR UPDATE`, command.TenantID, command.Command.ProjectID, command.RunID).Scan(&jobID, &projectID, &status, &currentEpoch)
+	// Resolve the immutable parent first, then take the canonical Job -> Run ->
+	// Attempt locks used by the domain schedulers. Re-reading the Run under its
+	// lock closes the gap between the lookup and the authoritative mutation.
+	var observedJobID, observedProjectID string
+	err = tx.QueryRowContext(ctx, `SELECT job_id,project_id FROM runs WHERE tenant_id=$1 AND project_id=$2 AND id=$3`, command.TenantID, command.Command.ProjectID, command.RunID).Scan(&observedJobID, &observedProjectID)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNotFound
 	}
 	if err != nil {
 		return nil, err
 	}
-	if projectID != command.Command.ProjectID {
+	if observedProjectID != command.Command.ProjectID {
+		return nil, ErrNotFound
+	}
+	lifecycle, err := lockSchedulerLifecycleJobTx(ctx, tx, command.TenantID, command.Command.ProjectID, observedJobID)
+	if err != nil {
+		return nil, err
+	}
+	if _, transitionErr := schedulerJobTransition(lifecycle.state, "RUNNING"); transitionErr != nil {
+		return nil, transitionErr
+	}
+	var (
+		jobID, projectID, status string
+		currentEpoch             uint64
+		runVersion               int64
+	)
+	err = tx.QueryRowContext(ctx, `SELECT job_id,project_id,status,lease_epoch,version FROM runs WHERE tenant_id=$1 AND project_id=$2 AND id=$3 FOR UPDATE`, command.TenantID, command.Command.ProjectID, command.RunID).Scan(&jobID, &projectID, &status, &currentEpoch, &runVersion)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, ErrNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	if jobID != observedJobID || projectID != observedProjectID {
 		return nil, ErrNotFound
 	}
 	runState, err := runStateFromDatabase(status)
@@ -1051,6 +1536,12 @@ func (r SQLRepository) AcquireLeaseSQL(ctx context.Context, command AcquireLease
 		if _, err = tx.ExecContext(ctx, `UPDATE attempts SET status = 'TIMED_OUT', version = version + 1, completed_at = $4, updated_at = $4 WHERE tenant_id = $1 AND project_id=$2 AND id = $3 AND status IN ('LEASED','ACTIVE')`, command.TenantID, command.Command.ProjectID, activeAttemptID, command.Now.UTC()); err != nil {
 			return nil, err
 		}
+		// Capture the run at the expired fence before advancing it to the new
+		// lease epoch below. The timeout and replacement remain one atomic
+		// transaction while each attempt retains a closed event stream.
+		if _, _, err = recordAttemptCompletedEvent(ctx, tx, command.TenantID, command.Command.ProjectID, activeAttemptID, command.RunID, command.Command, command.Now); err != nil {
+			return nil, err
+		}
 	}
 	epoch := currentEpoch + 1
 	deadline := command.Now.UTC().Add(command.Duration)
@@ -1064,7 +1555,18 @@ INSERT INTO attempts (
 		command.WorkerID, epoch, tokenDigest, deadline, command.Now.UTC()); err != nil {
 		return nil, err
 	}
-	if _, err = tx.ExecContext(ctx, `UPDATE runs SET status = 'EXECUTING', lease_epoch = $4, version = version + 1, started_at = COALESCE(started_at, $5), updated_at = $5 WHERE tenant_id = $1 AND project_id=$2 AND id = $3`, command.TenantID, command.Command.ProjectID, command.RunID, epoch, command.Now.UTC()); err != nil {
+	nextRunVersion := runVersion + 1
+	runResult, err := tx.ExecContext(ctx, `UPDATE runs SET status='EXECUTING',lease_epoch=$4,version=$5,etag=$6,started_at=COALESCE(started_at,$7),updated_at=$7 WHERE tenant_id=$1 AND project_id=$2 AND id=$3 AND version=$8`, command.TenantID, command.Command.ProjectID, command.RunID, epoch, nextRunVersion, operationsapp.ResourceETag(command.TenantID, command.Command.ProjectID, command.RunID, nextRunVersion), command.Now.UTC(), runVersion)
+	if err != nil {
+		return nil, err
+	}
+	if changed, rowsErr := runResult.RowsAffected(); rowsErr != nil || changed != 1 {
+		if rowsErr != nil {
+			return nil, rowsErr
+		}
+		return nil, ErrVersionConflict
+	}
+	if err = advanceSchedulerLifecycleTx(ctx, tx, command.TenantID, command.Command.ProjectID, &lifecycle, "RUNNING", jobv1.OperationState_OPERATION_STATE_RUNNING, command.Now); err != nil {
 		return nil, err
 	}
 	attempt, err := getAttemptTx(ctx, tx, command.TenantID, command.Command.ProjectID, command.AttemptID)
@@ -1136,20 +1638,27 @@ func (r SQLRepository) renewLeaseSQL(ctx context.Context, command RenewLeaseComm
 		}
 		return &LeaseMutationResult{Attempt: attempt, Fence: fence, Replay: true}, nil
 	}
-	var runID string
-	if err = tx.QueryRowContext(ctx, `SELECT run_id FROM attempts WHERE tenant_id=$1 AND project_id=$2 AND id=$3`, command.Credentials.TenantID, command.Credentials.ProjectID, command.Credentials.AttemptID).Scan(&runID); errors.Is(err, sql.ErrNoRows) {
+	var runID, observedJobID string
+	if err = tx.QueryRowContext(ctx, `SELECT run_id,job_id FROM attempts WHERE tenant_id=$1 AND project_id=$2 AND id=$3`, command.Credentials.TenantID, command.Credentials.ProjectID, command.Credentials.AttemptID).Scan(&runID, &observedJobID); errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNotFound
 	} else if err != nil {
 		return nil, err
+	}
+	lifecycle, err := lockSchedulerLifecycleJobTx(ctx, tx, command.Credentials.TenantID, command.Credentials.ProjectID, observedJobID)
+	if err != nil {
+		return nil, err
+	}
+	if _, transitionErr := schedulerJobTransition(lifecycle.state, "RUNNING"); transitionErr != nil {
+		return nil, transitionErr
 	}
 	var currentEpoch uint64
-	var runStatus, projectID string
-	if err = tx.QueryRowContext(ctx, `SELECT lease_epoch,status,project_id FROM runs WHERE tenant_id=$1 AND project_id=$2 AND id=$3 FOR UPDATE`, command.Credentials.TenantID, command.Credentials.ProjectID, runID).Scan(&currentEpoch, &runStatus, &projectID); errors.Is(err, sql.ErrNoRows) {
+	var runStatus, projectID, runJobID string
+	if err = tx.QueryRowContext(ctx, `SELECT job_id,lease_epoch,status,project_id FROM runs WHERE tenant_id=$1 AND project_id=$2 AND id=$3 FOR UPDATE`, command.Credentials.TenantID, command.Credentials.ProjectID, runID).Scan(&runJobID, &currentEpoch, &runStatus, &projectID); errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNotFound
 	} else if err != nil {
 		return nil, err
 	}
-	if projectID != command.Command.ProjectID || (runStatus != "EXECUTING" && runStatus != "CANCELLING") {
+	if projectID != command.Command.ProjectID || runJobID != observedJobID || runStatus != "EXECUTING" {
 		return nil, ErrTerminalMutation
 	}
 	var storedWorker, storedDigest, status string
@@ -1200,7 +1709,8 @@ func (r SQLRepository) renewLeaseSQL(ctx context.Context, command RenewLeaseComm
 
 func (r SQLRepository) CancelAttemptSQL(ctx context.Context, command CancelAttemptCommand) (*AttemptMutationResult, error) {
 	credentials, expectedVersion, at := command.Credentials, command.ExpectedResourceVersion, command.Now
-	if at.IsZero() || credentials.ProjectID == "" || validateRunCommandMetadata(command.Command, credentials.TenantID, actionCancelAttempt) != nil || command.Command.ProjectID != credentials.ProjectID || command.Command.WorkerID != credentials.WorkerID {
+	if at.IsZero() || credentials.ProjectID == "" || len(command.Reason) > 1024 || strings.ContainsRune(command.Reason, '\x00') ||
+		validateRunCommandMetadata(command.Command, credentials.TenantID, actionCancelAttempt) != nil || command.Command.ProjectID != credentials.ProjectID || command.Command.WorkerID != credentials.WorkerID {
 		return nil, ErrInvalidLease
 	}
 	// Validate ownership, token, epoch, version, and expiry under the same lock
@@ -1235,20 +1745,28 @@ func (r SQLRepository) CancelAttemptSQL(ctx context.Context, command CancelAttem
 		}
 		return &AttemptMutationResult{Attempt: attempt, Run: run, Replay: true}, nil
 	}
-	var runID string
-	if err = tx.QueryRowContext(ctx, `SELECT run_id FROM attempts WHERE tenant_id=$1 AND project_id=$2 AND id=$3`, credentials.TenantID, credentials.ProjectID, credentials.AttemptID).Scan(&runID); errors.Is(err, sql.ErrNoRows) {
+	var runID, observedJobID string
+	if err = tx.QueryRowContext(ctx, `SELECT run_id,job_id FROM attempts WHERE tenant_id=$1 AND project_id=$2 AND id=$3`, credentials.TenantID, credentials.ProjectID, credentials.AttemptID).Scan(&runID, &observedJobID); errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNotFound
 	} else if err != nil {
 		return nil, err
+	}
+	lifecycle, err := lockSchedulerLifecycleJobTx(ctx, tx, credentials.TenantID, credentials.ProjectID, observedJobID)
+	if err != nil {
+		return nil, err
+	}
+	if _, transitionErr := schedulerJobTransition(lifecycle.state, "CANCELLED"); transitionErr != nil {
+		return nil, transitionErr
 	}
 	var currentEpoch uint64
-	var runStatus, projectID string
-	if err = tx.QueryRowContext(ctx, `SELECT lease_epoch,status,project_id FROM runs WHERE tenant_id=$1 AND project_id=$2 AND id=$3 FOR UPDATE`, credentials.TenantID, credentials.ProjectID, runID).Scan(&currentEpoch, &runStatus, &projectID); errors.Is(err, sql.ErrNoRows) {
+	var runVersion int64
+	var runStatus, projectID, runJobID string
+	if err = tx.QueryRowContext(ctx, `SELECT job_id,lease_epoch,status,project_id,version FROM runs WHERE tenant_id=$1 AND project_id=$2 AND id=$3 FOR UPDATE`, credentials.TenantID, credentials.ProjectID, runID).Scan(&runJobID, &currentEpoch, &runStatus, &projectID, &runVersion); errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNotFound
 	} else if err != nil {
 		return nil, err
 	}
-	if projectID != command.Command.ProjectID || (runStatus != "EXECUTING" && runStatus != "CANCELLING") {
+	if projectID != command.Command.ProjectID || runJobID != observedJobID || (runStatus != "EXECUTING" && runStatus != "CANCELLING") {
 		return nil, ErrTerminalMutation
 	}
 	var workerID, tokenDigest, status string
@@ -1276,17 +1794,28 @@ func (r SQLRepository) CancelAttemptSQL(ctx context.Context, command CancelAttem
 	case status != "LEASED" && status != "ACTIVE":
 		return nil, ErrTerminalMutation
 	}
-	if _, err = tx.ExecContext(ctx, `UPDATE attempts SET status = 'CANCELLED', version = version + 1, completed_at = $4, updated_at = $4 WHERE tenant_id = $1 AND project_id=$2 AND id = $3`, credentials.TenantID, credentials.ProjectID, credentials.AttemptID, at.UTC()); err != nil {
-		return nil, err
-	}
-	if _, err = tx.ExecContext(ctx, `UPDATE runs SET status = 'CANCELLED', version = version + 1, completed_at = $4, updated_at = $4 WHERE tenant_id = $1 AND project_id=$2 AND id = $3 AND lease_epoch = $5`, credentials.TenantID, credentials.ProjectID, runID, at.UTC(), credentials.Epoch); err != nil {
-		return nil, err
-	}
-	attempt, err := getAttemptTx(ctx, tx, credentials.TenantID, credentials.ProjectID, credentials.AttemptID)
+	cancellationErrorID, err := platformdb.StoreErrorDetail(ctx, tx, credentials.TenantID, &commonv1.ErrorDetail{
+		Code: commonv1.ErrorCode_ERROR_CODE_CANCELLED, Message: command.Reason,
+		RetryClass: commonv1.RetryClass_RETRY_CLASS_NEVER, ErrorId: command.Command.RequestID,
+	})
 	if err != nil {
 		return nil, err
 	}
-	run, err := getRunTx(ctx, tx, credentials.TenantID, credentials.ProjectID, runID)
+	if _, err = tx.ExecContext(ctx, `UPDATE attempts SET status = 'CANCELLED', version = version + 1, error_detail_id = $4, completed_at = $5, updated_at = $5 WHERE tenant_id = $1 AND project_id=$2 AND id = $3`, credentials.TenantID, credentials.ProjectID, credentials.AttemptID, cancellationErrorID, at.UTC()); err != nil {
+		return nil, err
+	}
+	nextRunVersion := runVersion + 1
+	nextRunETag := operationsapp.ResourceETag(credentials.TenantID, credentials.ProjectID, runID, nextRunVersion)
+	if _, err = tx.ExecContext(ctx, `UPDATE runs SET status='CANCELLED',version=$4,etag=$5,error_detail_id=$6,completed_at=$7,updated_at=$7 WHERE tenant_id=$1 AND project_id=$2 AND id=$3 AND lease_epoch=$8 AND version=$9`, credentials.TenantID, credentials.ProjectID, runID, nextRunVersion, nextRunETag, cancellationErrorID, at.UTC(), credentials.Epoch, runVersion); err != nil {
+		return nil, err
+	}
+	if err = bindSchedulerTerminalOperationTx(ctx, tx, credentials.TenantID, credentials.ProjectID, &lifecycle, runID, nextRunVersion, nextRunETag, jobv1.OperationState_OPERATION_STATE_CANCELLED, sql.NullInt64{}, cancellationErrorID); err != nil {
+		return nil, err
+	}
+	if err = advanceSchedulerLifecycleTx(ctx, tx, credentials.TenantID, credentials.ProjectID, &lifecycle, "CANCELLED", jobv1.OperationState_OPERATION_STATE_CANCELLED, at); err != nil {
+		return nil, err
+	}
+	attempt, run, err := recordAttemptCompletedEvent(ctx, tx, credentials.TenantID, credentials.ProjectID, credentials.AttemptID, runID, command.Command, at)
 	if err != nil {
 		return nil, err
 	}
@@ -1323,18 +1852,18 @@ func (r SQLRepository) ExpireLeasesSQL(ctx context.Context, command ExpireLeases
 		}
 		return &ExpireLeasesResult{Attempts: attempts, ObservedAt: receipt.observedAt, Replay: true}, nil
 	}
-	rows, err := tx.QueryContext(ctx, `SELECT id,run_id,lease_epoch FROM attempts WHERE tenant_id=$1 AND project_id=$2 AND status IN ('LEASED','ACTIVE') AND lease_expires_at <= $3 ORDER BY lease_expires_at,id LIMIT $4`, tenantID, command.Command.ProjectID, at.UTC(), limit)
+	rows, err := tx.QueryContext(ctx, `SELECT id,run_id,job_id,lease_epoch FROM attempts WHERE tenant_id=$1 AND project_id=$2 AND status IN ('LEASED','ACTIVE') AND lease_expires_at <= $3 ORDER BY lease_expires_at,id LIMIT $4`, tenantID, command.Command.ProjectID, at.UTC(), limit)
 	if err != nil {
 		return nil, err
 	}
 	type expired struct {
-		attemptID, runID string
-		epoch            uint64
+		attemptID, runID, jobID string
+		epoch                   uint64
 	}
 	var due []expired
 	for rows.Next() {
 		var value expired
-		if err = rows.Scan(&value.attemptID, &value.runID, &value.epoch); err != nil {
+		if err = rows.Scan(&value.attemptID, &value.runID, &value.jobID, &value.epoch); err != nil {
 			_ = platformdb.CloseRows(rows)
 			return nil, err
 		}
@@ -1349,9 +1878,17 @@ func (r SQLRepository) ExpireLeasesSQL(ctx context.Context, command ExpireLeases
 	}
 	result := make([]*jobv1.Attempt, 0, len(due))
 	for _, value := range due {
+		lifecycle, lockErr := lockSchedulerLifecycleJobTx(ctx, tx, tenantID, command.Command.ProjectID, value.jobID)
+		if errors.Is(lockErr, ErrNotFound) {
+			continue
+		}
+		if lockErr != nil {
+			return nil, lockErr
+		}
 		var currentEpoch uint64
-		var runStatus string
-		runErr := tx.QueryRowContext(ctx, `SELECT lease_epoch,status FROM runs WHERE tenant_id=$1 AND project_id=$2 AND id=$3 FOR UPDATE SKIP LOCKED`, tenantID, command.Command.ProjectID, value.runID).Scan(&currentEpoch, &runStatus)
+		var runVersion int64
+		var runStatus, runJobID string
+		runErr := tx.QueryRowContext(ctx, `SELECT job_id,lease_epoch,status,version FROM runs WHERE tenant_id=$1 AND project_id=$2 AND id=$3 FOR UPDATE SKIP LOCKED`, tenantID, command.Command.ProjectID, value.runID).Scan(&runJobID, &currentEpoch, &runStatus, &runVersion)
 		if errors.Is(runErr, sql.ErrNoRows) {
 			continue
 		}
@@ -1368,18 +1905,43 @@ func (r SQLRepository) ExpireLeasesSQL(ctx context.Context, command ExpireLeases
 		if attemptErr != nil {
 			return nil, attemptErr
 		}
-		if attemptEpoch != value.epoch || currentEpoch != value.epoch || (attemptStatus != "LEASED" && attemptStatus != "ACTIVE") || at.UTC().Before(expiresAt.UTC()) {
+		if runJobID != value.jobID || attemptEpoch != value.epoch || currentEpoch != value.epoch ||
+			(attemptStatus != "LEASED" && attemptStatus != "ACTIVE") || at.UTC().Before(expiresAt.UTC()) ||
+			(runStatus != "EXECUTING" && runStatus != "CANCELLING") {
 			continue
 		}
-		if _, err = tx.ExecContext(ctx, `UPDATE attempts SET status = 'TIMED_OUT', version = version + 1, completed_at = $4, updated_at = $4 WHERE tenant_id = $1 AND project_id=$2 AND id = $3`, tenantID, command.Command.ProjectID, value.attemptID, at.UTC()); err != nil {
-			return nil, err
-		}
-		if runStatus == "EXECUTING" {
-			if _, err = tx.ExecContext(ctx, `UPDATE runs SET status = 'READY', version = version + 1, updated_at = $5 WHERE tenant_id = $1 AND project_id=$2 AND id = $3 AND lease_epoch = $4 AND status = 'EXECUTING'`, tenantID, command.Command.ProjectID, value.runID, value.epoch, at.UTC()); err != nil {
+		cancelling := lifecycle.state == "CANCELLING" || runStatus == "CANCELLING"
+		nextRunVersion := runVersion + 1
+		nextRunETag := operationsapp.ResourceETag(tenantID, command.Command.ProjectID, value.runID, nextRunVersion)
+		if cancelling {
+			cancellationErrorID, storeErr := platformdb.StoreErrorDetail(ctx, tx, tenantID, &commonv1.ErrorDetail{
+				Code: commonv1.ErrorCode_ERROR_CODE_CANCELLED, Message: "attempt lease expired while cancellation was pending",
+				RetryClass: commonv1.RetryClass_RETRY_CLASS_NEVER, ErrorId: command.Command.RequestID,
+			})
+			if storeErr != nil {
+				return nil, storeErr
+			}
+			if _, err = tx.ExecContext(ctx, `UPDATE attempts SET status='CANCELLED',version=version+1,error_detail_id=$4,completed_at=$5,updated_at=$5 WHERE tenant_id=$1 AND project_id=$2 AND id=$3`, tenantID, command.Command.ProjectID, value.attemptID, cancellationErrorID, at.UTC()); err != nil {
+				return nil, err
+			}
+			if _, err = tx.ExecContext(ctx, `UPDATE runs SET status='CANCELLED',version=$4,etag=$5,error_detail_id=$6,completed_at=$7,updated_at=$7 WHERE tenant_id=$1 AND project_id=$2 AND id=$3 AND lease_epoch=$8 AND version=$9`, tenantID, command.Command.ProjectID, value.runID, nextRunVersion, nextRunETag, cancellationErrorID, at.UTC(), value.epoch, runVersion); err != nil {
+				return nil, err
+			}
+			if err = bindSchedulerTerminalOperationTx(ctx, tx, tenantID, command.Command.ProjectID, &lifecycle, value.runID, nextRunVersion, nextRunETag, jobv1.OperationState_OPERATION_STATE_CANCELLED, sql.NullInt64{}, cancellationErrorID); err != nil {
+				return nil, err
+			}
+			if err = advanceSchedulerLifecycleTx(ctx, tx, tenantID, command.Command.ProjectID, &lifecycle, "CANCELLED", jobv1.OperationState_OPERATION_STATE_CANCELLED, at); err != nil {
+				return nil, err
+			}
+		} else {
+			if _, err = tx.ExecContext(ctx, `UPDATE attempts SET status='TIMED_OUT',version=version+1,completed_at=$4,updated_at=$4 WHERE tenant_id=$1 AND project_id=$2 AND id=$3`, tenantID, command.Command.ProjectID, value.attemptID, at.UTC()); err != nil {
+				return nil, err
+			}
+			if _, err = tx.ExecContext(ctx, `UPDATE runs SET status='READY',version=$4,etag=$5,updated_at=$6 WHERE tenant_id=$1 AND project_id=$2 AND id=$3 AND lease_epoch=$7 AND status='EXECUTING' AND version=$8`, tenantID, command.Command.ProjectID, value.runID, nextRunVersion, nextRunETag, at.UTC(), value.epoch, runVersion); err != nil {
 				return nil, err
 			}
 		}
-		attempt, loadErr := getAttemptTx(ctx, tx, tenantID, command.Command.ProjectID, value.attemptID)
+		attempt, _, loadErr := recordAttemptCompletedEvent(ctx, tx, tenantID, command.Command.ProjectID, value.attemptID, value.runID, command.Command, at)
 		if loadErr != nil {
 			return nil, loadErr
 		}
@@ -1918,7 +2480,7 @@ func (r *Repository) CompletionAccepted(index int) (bool, bool) {
 func terminalOutcome(outcome jobv1.AttemptState) (attemptStatus, runStatus string, err error) {
 	switch outcome {
 	case jobv1.AttemptState_ATTEMPT_STATE_SUCCEEDED:
-		return "COMPLETED", "COMPLETED", nil
+		return "COMPLETED", "SUCCEEDED", nil
 	case jobv1.AttemptState_ATTEMPT_STATE_FAILED:
 		return "FAILED", "FAILED", nil
 	case jobv1.AttemptState_ATTEMPT_STATE_TIMED_OUT:

@@ -35,11 +35,53 @@ services:
       - sh
       - -ec
       - >-
-        psql -v ON_ERROR_STOP=1 -f /migrations/000001_kernel.up.sql &&
-        psql -v ON_ERROR_STOP=1 -f /migrations/000002_artifacts.up.sql
+        for migration in /migrations/*.up.sql; do
+          psql -v ON_ERROR_STOP=1 -f "$${migration}";
+        done
     volumes:
-      - ../../services/control_plane/migrations/000001_kernel.up.sql:/migrations/000001_kernel.up.sql:ro
-      - ../../services/control_plane/migrations/000002_artifacts.up.sql:/migrations/000002_artifacts.up.sql:ro
+      - ../../services/control_plane/migrations:/migrations:ro
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    restart: "no"
+
+  rehearse-control-plane-migrations:
+    image: postgres@sha256:4ef4dbc939d61acea57712655ddb4b4ab27419c913f94cca0cd57cb3ea3c2280
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate-control-plane:
+        condition: service_completed_successfully
+    environment:
+      PGHOST: postgres
+      # Every down migration deliberately requires this explicit local or
+      # preproduction acknowledgement. The rehearsal database is freshly
+      # created below and is never the developer database.
+      PGOPTIONS: -c app.allow_local_empty_down_migration=true
+      PGUSER: mindclade
+    command:
+      - sh
+      - -ec
+      - >-
+        dropdb --if-exists mindclade_migration_rehearsal &&
+        createdb mindclade_migration_rehearsal &&
+        for migration in /migrations/*.up.sql; do
+          psql -v ON_ERROR_STOP=1 -d mindclade_migration_rehearsal -f "$${migration}";
+        done &&
+        if env -u PGOPTIONS psql -v ON_ERROR_STOP=1 -d mindclade_migration_rehearsal -f /migrations/000008_dead_letter_replay.down.sql; then
+          echo 'down migration succeeded without explicit local authorization' >&2;
+          exit 1;
+        fi &&
+        test "$$(psql -At -d mindclade_migration_rehearsal -c \"SELECT to_regclass('dead_letter_replay_receipts') IS NOT NULL\")" = t &&
+        for migration in $$(find /migrations -maxdepth 1 -name '*.down.sql' -print | sort -r); do
+          psql -v ON_ERROR_STOP=1 -d mindclade_migration_rehearsal -f "$${migration}";
+        done &&
+        for migration in /migrations/*.up.sql; do
+          psql -v ON_ERROR_STOP=1 -d mindclade_migration_rehearsal -f "$${migration}";
+        done &&
+        dropdb mindclade_migration_rehearsal
+    volumes:
+      - ../../services/control_plane/migrations:/migrations:ro
     read_only: true
     security_opt:
       - no-new-privileges:true

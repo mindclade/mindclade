@@ -72,7 +72,13 @@ py_test(
 py_test(
     name = "generated_package_consumers_test",
     srcs = ["conformance/test_generated_package_consumers.py"],
-    data = _WAVE1_DATA,
+    data = _WAVE1_DATA + [
+        "//:internal_sdk_root_sources",
+        "//internal/sdk/go/mindclade:governed_sources",
+        "//internal/sdk/python:governed_sources",
+        "//internal/sdk/rust:governed_sources",
+        "//internal/sdk/typescript:governed_sources",
+    ],
     imports = [".."],
     legacy_create_init = 0,
     main = "conformance/test_generated_package_consumers.py",
@@ -80,7 +86,24 @@ py_test(
     deps = [
         "//protocols/generated/python:bindings",
         "@mindclade_pypi//protobuf",
+        "@mindclade_pypi//pyyaml",
     ],
+)
+
+py_test(
+    name = "internal_sdk_application_consumers_test",
+    srcs = ["conformance/test_internal_sdk_application_consumers.py"],
+    data = [
+        "//apps/console:governed_sources",
+        "//examples:governed_sources",
+        "//tools/mindcladectl:governed_sources",
+        "//workers/ingestion_worker:governed_sources",
+        "//workers/training_worker:governed_sources",
+    ],
+    imports = [".."],
+    legacy_create_init = 0,
+    main = "conformance/test_internal_sdk_application_consumers.py",
+    python_version = "PY3",
 )
 
 go_test(
@@ -104,6 +127,7 @@ go_test(
         "//protocols/generated/go/internalrpc/artifact/v1:bindings",
         "//protocols/generated/go/internalrpc/dataset/v1:bindings",
         "//protocols/generated/go/internalrpc/evaluation/v1:bindings",
+        "//protocols/generated/go/internalrpc/experiment/v1:bindings",
         "//protocols/generated/go/internalrpc/inference/v1:bindings",
         "//protocols/generated/go/internalrpc/job/v1:bindings",
         "//protocols/generated/go/internalrpc/model/v1:bindings",
@@ -246,6 +270,7 @@ filegroup(
         "conformance/generated_rust_roundtrip_test.rs",
         "conformance/generated_typescript_roundtrip_test.ts",
         "conformance/test_generated_package_consumers.py",
+        "conformance/test_internal_sdk_application_consumers.py",
         ":wave1_contract_sources",
     ],
     visibility = ["//visibility:public"],
@@ -271,9 +296,12 @@ test_suite(
         ":generated_package_consumers_test",
         ":generated_rust_roundtrip_test",
         ":generated_typescript_roundtrip_test",
+        ":internal_sdk_application_consumers_test",
         ":wave1_contract_tests",
+        "//apps/console:operation_flow_test",
+        "//examples:tests",
         "//internal/sdk/go/mindclade:mindclade_test",
-        "//internal/sdk/python:internal_sdk_test",
+        "//internal/sdk/python:tests",
         "//internal/sdk/rust:mindclade_internal_sdk_test",
         "//internal/sdk/typescript:tests",
         "//libs/python/artifacts:schema_binding_test",
@@ -289,11 +317,16 @@ test_suite(
         "//services/control_plane/internal/agents:agents_test",
         "//services/control_plane/internal/datasets:datasets_test",
         "//services/control_plane/internal/evaluations:evaluations_test",
+        "//services/control_plane/internal/experiments:experiments_test",
         "//services/control_plane/internal/inference:inference_test",
         "//services/control_plane/internal/models:models_test",
         "//services/control_plane/internal/policies:policies_test",
         "//services/control_plane/internal/training:training_test",
         "//services/control_plane/internal/workflows:workflows_test",
+        "//tools:training_evidence_test",
+        "//tools/mindcladectl:mindcladectl_test",
+        "//workers/ingestion_worker:ingestion_worker_test",
+        "//workers/training_worker:training_worker_test",
     ],
     visibility = ["//visibility:public"],
 )

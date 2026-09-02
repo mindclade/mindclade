@@ -9,3 +9,7 @@ policy:
   direct_database_edits: prohibited
   external_side_effects_in_transactions: prohibited
   down_migrations: development-and-preproduction-only
+  down_migration_authorization_setting: app.allow_local_empty_down_migration
+  destructive_down_migrations_require_empty_tables: true
+  destructive_down_migrations_require_exclusive_locks: true
+  down_migration_authorization_is_transaction_local: true

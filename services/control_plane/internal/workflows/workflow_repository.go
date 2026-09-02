@@ -14,6 +14,7 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	"github.com/mindclade/mindclade/libs/go/numconv"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	internalworkflowv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/workflow/v1"
 	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
@@ -590,7 +591,11 @@ func verifyFenceTx(ctx context.Context, tx *sql.Tx, identity Identity, request *
 	if err != nil {
 		return err
 	}
-	if workerID != identity.WorkerID || uint64(epoch) != fence.GetLeaseEpoch() || jobID != fence.GetJobId() || runID != fence.GetRunId() || statusValue != "LEASED" && statusValue != "ACTIVE" { //nolint:gosec // Conversion is bounded by validated protocol invariants or PostgreSQL CHECK constraints.
+	leaseEpoch, conversionErr := numconv.Int64ToUint64(epoch)
+	if conversionErr != nil {
+		return conversionErr
+	}
+	if workerID != identity.WorkerID || leaseEpoch != fence.GetLeaseEpoch() || jobID != fence.GetJobId() || runID != fence.GetRunId() || statusValue != "LEASED" && statusValue != "ACTIVE" {
 		return ErrStaleFence
 	}
 	if !at.Before(expires.UTC()) {
@@ -768,6 +773,34 @@ type transitionRow struct {
 	ended                                                      sql.NullTime
 }
 
+func applyTransitionRow(value *workflowv1.WorkflowRun, item transitionRow) error {
+	completedNodes, err := numconv.Int64ToUint32(item.completedNodes)
+	if err != nil {
+		return err
+	}
+	iterations, err := numconv.Int64ToUint32(item.iterations)
+	if err != nil {
+		return err
+	}
+	sequence, err := numconv.Int64ToUint64(item.sequence)
+	if err != nil {
+		return err
+	}
+	leaseEpoch, err := numconv.Int64ToUint64(item.leaseEpoch)
+	if err != nil {
+		return err
+	}
+	value.Revision = item.revision
+	value.Etag = item.etag
+	value.State = workflowv1.WorkflowRunState(item.state)
+	value.CompletedNodeCount = completedNodes
+	value.IterationCount = iterations
+	value.TransitionSequence = sequence
+	value.AttemptId = item.attemptID
+	value.LeaseEpoch = leaseEpoch
+	return nil
+}
+
 func getTransitionTx(ctx context.Context, tx *sql.Tx, identity Identity, name string, sequence uint64) (*workflowv1.WorkflowRun, error) {
 	base, _, err := getRunTx(ctx, tx, identity, name, false)
 	if err != nil {
@@ -782,7 +815,9 @@ func getTransitionTx(ctx context.Context, tx *sql.Tx, identity Identity, name st
 		return nil, err
 	}
 	value := clone(base)
-	value.Revision, value.Etag, value.State, value.CompletedNodeCount, value.IterationCount, value.TransitionSequence, value.AttemptId, value.LeaseEpoch = item.revision, item.etag, workflowv1.WorkflowRunState(item.state), uint32(item.completedNodes), uint32(item.iterations), uint64(item.sequence), item.attemptID, uint64(item.leaseEpoch) //nolint:gosec // Conversion is bounded by validated protocol invariants or PostgreSQL CHECK constraints.
+	if err = applyTransitionRow(value, item); err != nil {
+		return nil, err
+	}
 	value.Output, err = platformdb.LoadArtifactRef(ctx, tx, identity.TenantID, item.outputID)
 	if err != nil {
 		return nil, err
@@ -859,7 +894,9 @@ func (repository SQLRepository) ListTransitions(ctx context.Context, identity Id
 	values := make([]*workflowv1.WorkflowRun, 0, len(stored))
 	for _, item := range stored {
 		value := clone(base)
-		value.Revision, value.Etag, value.State, value.CompletedNodeCount, value.IterationCount, value.TransitionSequence, value.AttemptId, value.LeaseEpoch = item.revision, item.etag, workflowv1.WorkflowRunState(item.state), uint32(item.completedNodes), uint32(item.iterations), uint64(item.sequence), item.attemptID, uint64(item.leaseEpoch) //nolint:gosec // Conversion is bounded by validated protocol invariants or PostgreSQL CHECK constraints.
+		if err = applyTransitionRow(value, item); err != nil {
+			return nil, err
+		}
 		value.Output, err = platformdb.LoadArtifactRef(ctx, tx, identity.TenantID, item.outputID)
 		if err != nil {
 			return nil, err

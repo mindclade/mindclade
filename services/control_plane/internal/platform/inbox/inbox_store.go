@@ -54,6 +54,7 @@ type Processor struct {
 	DB                 *sql.DB
 	Consumer           string
 	Handler            TransactionalHandler
+	AcceptedEvents     map[string]uint32
 	MaxAttempts        uint32
 	QuarantineTenantID string
 }
@@ -74,6 +75,7 @@ func NewPubSubConsumer(client *gcppubsub.Client, subscription string, processor 
 	if err := processor.validate(); err != nil {
 		return nil, err
 	}
+	processor.AcceptedEvents = cloneAcceptedEvents(processor.AcceptedEvents)
 	subscriber := client.Subscriber(subscription)
 	subscriber.ReceiveSettings.MaxExtension = 10 * time.Minute
 	subscriber.ReceiveSettings.MaxDurationPerAckExtension = 60 * time.Second
@@ -108,6 +110,15 @@ func (p Processor) validate() error {
 	if !validConsumer(p.Consumer) {
 		return ErrInvalidConsumer
 	}
+	if len(p.AcceptedEvents) == 0 {
+		return errors.New("inbox processor requires an explicit registered event allowlist")
+	}
+	for fullName, version := range p.AcceptedEvents {
+		registration, ok := queue.RegisteredEvent(fullName, version)
+		if fullName == "" || version == 0 || !ok || registration.LifecycleState != "active" {
+			return fmt.Errorf("inbox processor event allowlist contains inactive or unknown identity %s@%d", fullName, version)
+		}
+	}
 	if p.MaxAttempts > 1000 {
 		return errors.New("inbox maximum attempts must not exceed 1000")
 	}
@@ -140,6 +151,14 @@ func (p Processor) ProcessDelivery(ctx context.Context, encoded []byte, attribut
 			return DeliveryNack, errors.Join(err, quarantineErr)
 		}
 		return DeliveryAck, fmt.Errorf("quarantined transport/envelope mismatch: %w", err)
+	}
+	acceptedVersion, allowlisted := p.AcceptedEvents[envelope.GetEventType()]
+	if !allowlisted || acceptedVersion != envelope.GetEventVersion() {
+		// Pub/Sub subscriptions should filter by the immutable event_type and
+		// event_version attributes. This defense-in-depth acknowledgement keeps
+		// a misconfigured subscription from poisoning a specialized consumer;
+		// other subscriptions retain their independent delivery.
+		return DeliveryAck, nil
 	}
 	payload, err := queue.UnmarshalRegisteredPayload(envelope)
 	if err != nil {
@@ -215,6 +234,9 @@ func AcceptAndHandleSQL(ctx context.Context, db *sql.DB, consumer string, envelo
 		if _, err = tx.ExecContext(ctx, `DELETE FROM inbox_delivery_failures WHERE tenant_id=$1 AND consumer=$2 AND event_id=$3`, envelope.GetTenantId(), consumer, envelope.GetEventId()); err != nil {
 			return false, err
 		}
+		if err = queue.CompleteInboxReplayTx(ctx, tx, envelope.GetTenantId(), consumer, envelope.GetEventId(), time.Now().UTC()); err != nil {
+			return false, err
+		}
 		if err = tx.Commit(); err != nil {
 			return false, err
 		}
@@ -224,6 +246,9 @@ func AcceptAndHandleSQL(ctx context.Context, db *sql.DB, consumer string, envelo
 		if err = handler.HandleEvent(ctx, tx, envelope, authoritativePayload); err != nil {
 			return false, err
 		}
+	}
+	if err = queue.CompleteInboxReplayTx(ctx, tx, envelope.GetTenantId(), consumer, envelope.GetEventId(), time.Now().UTC()); err != nil {
+		return false, err
 	}
 	if _, err = tx.ExecContext(ctx, `DELETE FROM inbox_delivery_failures WHERE tenant_id=$1 AND consumer=$2 AND event_id=$3`, envelope.GetTenantId(), consumer, envelope.GetEventId()); err != nil {
 		return false, err
@@ -248,7 +273,8 @@ SELECT EXISTS (
 ) OR EXISTS (
   SELECT 1 FROM dead_letter_messages
   WHERE tenant_id=$1 AND id=$4
-)`, envelope.GetTenantId(), consumer, envelope.GetEventId(), inboxDeadLetterID(envelope.GetTenantId(), consumer, envelope.GetEventId())).Scan(&alreadyProcessed); err != nil {
+    AND replay_state IN ('QUARANTINED','PENDING','REPLAYED')
+)`, envelope.GetTenantId(), consumer, envelope.GetEventId(), queue.InboxDeadLetterID(envelope.GetTenantId(), consumer, envelope.GetEventId())).Scan(&alreadyProcessed); err != nil {
 		return 0, false, err
 	}
 	if alreadyProcessed {
@@ -312,13 +338,16 @@ func quarantineInboxSQL(ctx context.Context, db *sql.DB, consumer string, envelo
 	}
 	defer func() { _ = tx.Rollback() }()
 	_, err = tx.ExecContext(ctx, `
-INSERT INTO dead_letter_messages (id,tenant_id,event_id,source,event_type,event_version,attempts,reason,payload_digest,envelope_bytes,created_at)
-VALUES ($1,$2,$3,'INBOX',$4,$5,$6,$7,$8,$9,now())
+INSERT INTO dead_letter_messages (id,tenant_id,event_id,source,consumer,event_type,event_version,attempts,reason,payload_digest,envelope_bytes,created_at)
+VALUES ($1,$2,$3,'INBOX',$4,$5,$6,$7,$8,$9,$10,now())
 ON CONFLICT (tenant_id,id) DO UPDATE
 SET attempts=GREATEST(dead_letter_messages.attempts,EXCLUDED.attempts),
     reason=EXCLUDED.reason,payload_digest=EXCLUDED.payload_digest,
-    envelope_bytes=EXCLUDED.envelope_bytes,created_at=EXCLUDED.created_at`,
-		inboxDeadLetterID(tenantID, consumer, eventID), tenantID, eventID, eventType, eventVersion, attempts, boundedReason(cause), payloadDigest, encoded)
+    envelope_bytes=EXCLUDED.envelope_bytes,created_at=EXCLUDED.created_at,
+    consumer=EXCLUDED.consumer,replay_state='QUARANTINED',
+    replay_claim_expires_at=NULL,replay_next_attempt_at=NULL,
+    replay_published_at=NULL,replayed_at=NULL,replay_last_error='',updated_at=now()`,
+		queue.InboxDeadLetterID(tenantID, consumer, eventID), tenantID, eventID, consumer, eventType, eventVersion, attempts, boundedReason(cause), payloadDigest, encoded)
 	if err != nil {
 		return err
 	}
@@ -326,11 +355,6 @@ SET attempts=GREATEST(dead_letter_messages.attempts,EXCLUDED.attempts),
 		return err
 	}
 	return tx.Commit()
-}
-
-func inboxDeadLetterID(tenantID, consumer, eventID string) string {
-	digest := sha256.Sum256([]byte(tenantID + "\x00" + consumer + "\x00" + eventID))
-	return "inbox:" + hex.EncodeToString(digest[:])
 }
 
 func boundedReason(cause error) string {
@@ -343,6 +367,14 @@ func boundedReason(cause error) string {
 
 func validConsumer(value string) bool {
 	return value != "" && len(value) <= 255 && strings.TrimSpace(value) == value && !strings.ContainsRune(value, '\x00')
+}
+
+func cloneAcceptedEvents(source map[string]uint32) map[string]uint32 {
+	result := make(map[string]uint32, len(source))
+	for fullName, version := range source {
+		result[fullName] = version
+	}
+	return result
 }
 
 func NewStore() *Store { return &Store{seen: make(map[string]struct{})} }

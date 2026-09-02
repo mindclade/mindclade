@@ -9,13 +9,14 @@ import (
 	"sync"
 	"time"
 
+	"google.golang.org/grpc"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/reflect/protoreflect"
+
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	internalworkflowv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/workflow/v1"
 	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
 	workflowv1 "github.com/mindclade/mindclade/protocols/generated/go/workflow/v1"
-	"google.golang.org/grpc"
-	"google.golang.org/protobuf/proto"
-	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
 const workflowMaximumPageSize = 200
@@ -340,7 +341,7 @@ func terminalWorkflowRun(state workflowv1.WorkflowRunState) bool {
 // Recv is serialized and Close is idempotent.
 type WorkflowWatcher struct {
 	service *WorkflowService
-	ctx     context.Context
+	ctx     context.Context //nolint:containedctx // A stream watcher owns its cancellable lifecycle context.
 	cancel  context.CancelFunc
 	name    string
 	after   uint64

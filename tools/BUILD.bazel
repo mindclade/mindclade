@@ -95,6 +95,19 @@ py_test(
 )
 
 py_test(
+    name = "training_evidence_test",
+    srcs = [
+        "qualification/readiness_report.py",
+        "qualification/tests/test_training_evidence.py",
+        "qualification/training_rehearsal.py",
+    ],
+    imports = ["qualification"],
+    legacy_create_init = 0,
+    main = "qualification/tests/test_training_evidence.py",
+    python_version = "PY3",
+)
+
+py_test(
     name = "license_scanner_contract_test",
     srcs = ["licenses/scan_licenses.py"],
     args = ["--self-test"],
@@ -111,6 +124,17 @@ _REPOSITORY_TEST_DATA = glob(
     "//:wave1_sources",
     "ci/evidence_bundle.py",
 ]
+
+py_test(
+    name = "activation_bundle_policy_test",
+    srcs = ["repo/tests/test_activation_bundles.py"],
+    data = _REPOSITORY_TEST_DATA,
+    imports = ["repo"],
+    legacy_create_init = 0,
+    main = "repo/tests/test_activation_bundles.py",
+    python_version = "PY3",
+    deps = ["@mindclade_pypi//jsonschema"],
+)
 
 py_test(
     name = "repository_drift_report_test",
@@ -173,6 +197,7 @@ py_test(
 test_suite(
     name = "repository_governance_tests",
     tests = [
+        ":activation_bundle_policy_test",
         ":blueprint_render_test",
         ":blueprint_source_manifest_test",
         ":build_contracts_test",
@@ -182,6 +207,7 @@ test_suite(
         ":repository_drift_report_test",
         ":repository_policies_test",
         ":required_check_contract_test",
+        ":training_evidence_test",
     ],
     visibility = ["//visibility:public"],
 )
@@ -203,8 +229,10 @@ filegroup(
 filegroup(
     name = "wave1_codegen_sources",
     srcs = [
+        "codegen/generate_grpc_implementation_coverage.py",
         "codegen/generate_protocols.py",
         "codegen/generate_schemas.py",
+        "codegen/generate_sdk_coverage.py",
         "codegen/rust_plugins/Cargo.toml",
         "codegen/rust_plugins/src/bin/protoc-gen-prost.rs",
         "codegen/rust_plugins/src/bin/protoc-gen-tonic.rs",
@@ -231,7 +259,10 @@ filegroup(
         "BUILD.bazel",
         "qualification/collect_evidence.py",
         "qualification/hardware_envelope.py",
+        "qualification/readiness_report.py",
         "qualification/resolve_policy.py",
+        "qualification/tests/test_training_evidence.py",
+        "qualification/training_rehearsal.py",
         "qualification/verify_evidence.py",
         "release/build_release_manifest.py",
         "release/promote_release.py",

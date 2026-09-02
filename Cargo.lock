@@ -717,6 +717,16 @@ name = "mindclade-identifiers"
 version = "0.1.0"
 
 [[package]]
+name = "mindclade-ingestion-worker"
+version = "0.1.0"
+dependencies = [
+ "mindclade-internal-sdk",
+ "sha2",
+ "tokio",
+ "tonic",
+]
+
+[[package]]
 name = "mindclade-internal-sdk"
 version = "0.1.0"
 dependencies = [

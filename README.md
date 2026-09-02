@@ -22,15 +22,20 @@ The active source boundary provides:
 - Buf-generated native Protobuf/gRPC/Connect clients wrapped by
   Mindclade-owned internal Go, Python, Rust, and TypeScript facades; Fern and
   Speakeasy remain optional HTTP/JSON comparison tools, never dependencies;
-- tenant-scoped idempotency, outbox/inbox, lease fencing, and reconciliation;
+- generated-interface Go control-plane adapters for every candidate gRPC
+  service, with normalized PostgreSQL repositories for the activated domain
+  verticals;
+- tenant-scoped idempotency, transactional outbox/inbox, exact-version event
+  projection, lease fencing, and reconciliation;
 - immutable artifact finalization and offline qualification tooling; and
 - a local CPU-only integration profile with no production authority.
 
-Contract activation does not by itself implement or qualify dataset, model,
-training, inference, agent, workflow, SDK-release, Kubernetes, cloud, or
-production capabilities. Source implementation does not imply connected
-GitHub, hosted SDK publication, trusted signing, cloud, cluster, release, GPU,
-scientific, or production qualification.
+The checked source implements the candidate control-plane and private-SDK
+verticals, but it does not by itself qualify a live environment. In
+particular, source implementation does not imply connected GitHub, package
+publication, trusted signing, cloud, cluster, release, GPU, scientific, or
+production qualification. Those claims require the separately governed
+receipts and protected promotion gates.
 
 ## Start here
 

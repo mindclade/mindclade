@@ -912,7 +912,16 @@ async fn training_submit_retries_idempotently_and_binds_generated_context() {
     assert_eq!(context.project_id, "projects/p-1");
     assert_eq!(context.principal_id, "principals/worker-1");
     assert_eq!(context.idempotency_key, "idem-1");
-    assert!(context.canonical_request_digest.is_empty());
+    assert!(context.canonical_request_digest.starts_with("sha256:"));
+    assert_eq!(context.canonical_request_digest.len(), 71);
+    assert_eq!(
+        commands[1]
+            .context
+            .as_ref()
+            .unwrap()
+            .canonical_request_digest,
+        context.canonical_request_digest
+    );
     assert_eq!(context.correlation_id, "correlation-1");
     assert!(context.deadline.is_some());
     assert_eq!(

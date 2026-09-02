@@ -10,7 +10,13 @@ import {
 	ArtifactRefSchema,
 } from "../../../../protocols/generated/typescript/artifact/v1/artifact_reference_pb.js";
 import {
+	type ResourceRef,
+	ResourceRefSchema,
+} from "../../../../protocols/generated/typescript/common/v1/resource_reference_pb.js";
+import {
 	AbortArtifactUploadRequestSchema,
+	type AcquireArtifactLeaseRequest,
+	AcquireArtifactLeaseRequestSchema,
 	type ArtifactStagingReceipt,
 	ArtifactStagingReceiptSchema,
 	type ArtifactUploadSession,
@@ -20,11 +26,26 @@ import {
 	CommitArtifactRequestSchema,
 	DownloadArtifactRequestSchema,
 	FinalizeArtifactUploadRequestSchema,
+	type GetArtifactRequest,
+	GetArtifactRequestSchema,
 	GetArtifactUploadRequestSchema,
+	type ListArtifactsRequest,
+	ListArtifactsRequestSchema,
+	type ListArtifactsResponse,
+	ListArtifactsResponseSchema,
+	type QuarantineArtifactRequest,
+	QuarantineArtifactRequestSchema,
 	QuarantineArtifactUploadRequestSchema,
+	type ReleaseArtifactLeaseRequest,
+	ReleaseArtifactLeaseRequestSchema,
 	ResolveArtifactAliasRequestSchema,
 	UploadArtifactChunkRequestSchema,
 } from "../../../../protocols/generated/typescript/internal/artifact/v1/artifact_service_pb.js";
+import {
+	type Operation,
+	OperationSchema,
+	OperationState,
+} from "../../../../protocols/generated/typescript/job/v1/operation_pb.js";
 import type { ClientCore } from "./core.js";
 import { MindcladeError } from "./error.js";
 import {
@@ -46,6 +67,9 @@ const DEFAULT_RECEIPT_TTL_MS = 24 * 60 * 60 * 1_000;
 const MAX_RECEIPT_TTL_MS = 7 * 24 * 60 * 60 * 1_000;
 const SHA256_PATTERN = /^sha256:[0-9a-f]{64}$/;
 const UPLOAD_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
+const REASON_CODE_PATTERN = /^[A-Z][A-Z0-9_]{1,63}$/;
+const MAX_ARTIFACT_PAGE_SIZE = 100;
+const MAX_LEASE_TTL_MS = 30 * 24 * 60 * 60 * 1_000;
 
 export type ArtifactSource = Uint8Array | AsyncIterable<Uint8Array>;
 export type ArtifactChunkSink = (chunk: Uint8Array) => void | Promise<void>;
@@ -67,6 +91,154 @@ export class Artifacts {
 
 	constructor(core: ClientCore) {
 		this.#core = core;
+	}
+
+	/** Reads immutable catalog metadata by a canonical scoped name or digest. */
+	async get(requestValue: GetArtifactRequest, options: SdkCallOptions = {}): Promise<ArtifactRef> {
+		const request = clone(GetArtifactRequestSchema, requestValue);
+		if ((request.name === "") === (request.digest === "")) {
+			throw MindcladeError.invalidArgument(
+				"artifact get requires exactly one canonical name or digest",
+			);
+		}
+		const expectedDigest =
+			request.name === "" ? request.digest : artifactDigestFromName(this.#core, request.name);
+		if (!SHA256_PATTERN.test(expectedDigest)) {
+			throw MindcladeError.invalidArgument("artifact digest must be canonical sha256");
+		}
+		const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
+		const response = await invokeUnary(this.#core, prepared, "safe", undefined, (call) =>
+			this.#core.raw.artifacts.getArtifact(request, call),
+		);
+		const artifact = validateResponseArtifact(response.artifact, "GetArtifact");
+		if (artifact.digest !== expectedDigest) {
+			throw MindcladeError.protocol("GetArtifact returned a different immutable identity");
+		}
+		return artifact;
+	}
+
+	/** Returns one clone-safe, bounded project-scoped catalog page. */
+	async list(
+		requestValue?: ListArtifactsRequest,
+		options: SdkCallOptions = {},
+	): Promise<ListArtifactsResponse> {
+		const request =
+			requestValue === undefined
+				? create(ListArtifactsRequestSchema)
+				: clone(ListArtifactsRequestSchema, requestValue);
+		const parent = projectParent(this.#core);
+		if (request.parent !== "" && request.parent !== parent) {
+			throw MindcladeError.invalidArgument(
+				"artifact list parent must match the configured project",
+			);
+		}
+		if ((request.page?.pageSize ?? 0) > MAX_ARTIFACT_PAGE_SIZE) {
+			throw MindcladeError.invalidArgument("artifact page size cannot exceed 100");
+		}
+		request.parent = parent;
+		const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
+		const response = await invokeUnary(this.#core, prepared, "safe", undefined, (call) =>
+			this.#core.raw.artifacts.listArtifacts(request, call),
+		);
+		for (const artifact of response.artifacts) {
+			validateResponseArtifact(artifact, "ListArtifacts");
+		}
+		return clone(ListArtifactsResponseSchema, response);
+	}
+
+	/** Records a governed quarantine transition using a trusted command context. */
+	async quarantine(
+		requestValue: QuarantineArtifactRequest,
+		options: SubmitOptions,
+	): Promise<Operation> {
+		const request = clone(QuarantineArtifactRequestSchema, requestValue);
+		const artifact = validateArtifact(request.artifact, "artifact quarantine");
+		if (!REASON_CODE_PATTERN.test(request.reasonCode) || request.evidence.length > 100) {
+			throw MindcladeError.invalidArgument("artifact quarantine reason or evidence is invalid");
+		}
+		for (const evidence of request.evidence) {
+			if (
+				!SHA256_PATTERN.test(evidence.digest) ||
+				evidence.subjectDigest !== artifact.digest ||
+				evidence.evidenceKind === "" ||
+				evidence.evidenceKind.length > 128 ||
+				(evidence.policyDigest !== "" && !SHA256_PATTERN.test(evidence.policyDigest))
+			) {
+				throw MindcladeError.invalidArgument("artifact quarantine evidence is invalid");
+			}
+		}
+		delete request.context;
+		const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
+		request.context = contextWithDigest(
+			this.#core,
+			prepared,
+			options,
+			sha256(toBinary(QuarantineArtifactRequestSchema, request)),
+		);
+		const response = await invokeUnary(
+			this.#core,
+			prepared,
+			"idempotent",
+			options.idempotencyKey,
+			(call) => this.#core.raw.artifacts.quarantineArtifact(request, call),
+		);
+		return validateOperation(response.operation, this.#core, "QuarantineArtifact");
+	}
+
+	/** Creates or extends a bounded generated artifact-retention lease. */
+	async acquireLease(
+		requestValue: AcquireArtifactLeaseRequest,
+		options: SubmitOptions,
+	): Promise<ResourceRef> {
+		const request = clone(AcquireArtifactLeaseRequestSchema, requestValue);
+		validateArtifact(request.artifact, "artifact lease");
+		if (request.expireTime === undefined) {
+			throw MindcladeError.invalidArgument("artifact lease expiration is required");
+		}
+		const ttl = timestampMs(request.expireTime) - this.#core.runtime.nowMs();
+		if (ttl <= 0 || ttl > MAX_LEASE_TTL_MS) {
+			throw MindcladeError.invalidArgument("artifact lease expiration must be within 30 days");
+		}
+		delete request.context;
+		const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
+		request.context = contextWithDigest(
+			this.#core,
+			prepared,
+			options,
+			sha256(toBinary(AcquireArtifactLeaseRequestSchema, request)),
+		);
+		const response = await invokeUnary(
+			this.#core,
+			prepared,
+			"idempotent",
+			options.idempotencyKey,
+			(call) => this.#core.raw.artifacts.acquireArtifactLease(request, call),
+		);
+		return validateArtifactLease(response.lease, this.#core);
+	}
+
+	/** Idempotently releases a project-scoped retention lease under its ETag. */
+	async releaseLease(
+		requestValue: ReleaseArtifactLeaseRequest,
+		options: SubmitOptions,
+	): Promise<void> {
+		const request = clone(ReleaseArtifactLeaseRequestSchema, requestValue);
+		const lease = validateArtifactLease(request.lease, this.#core, "request");
+		validateResource("artifact lease ETag", request.etag);
+		if (lease.etag !== "" && lease.etag !== request.etag) {
+			throw MindcladeError.invalidArgument("artifact lease and release ETags differ");
+		}
+		delete request.context;
+		const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
+		request.context = contextWithDigest(
+			this.#core,
+			prepared,
+			options,
+			sha256(toBinary(ReleaseArtifactLeaseRequestSchema, request)),
+		);
+		await invokeUnary(this.#core, prepared, "idempotent", options.idempotencyKey, (call) =>
+			this.#core.raw.artifacts.releaseArtifactLease(request, call),
+		);
 	}
 
 	/** Resolves a mutable catalog alias to a clone of the generated immutable reference. */
@@ -522,6 +694,14 @@ const validateArtifact = (value: ArtifactRef | undefined, label: string): Artifa
 	return clone(ArtifactRefSchema, value);
 };
 
+const validateResponseArtifact = (value: ArtifactRef | undefined, method: string): ArtifactRef => {
+	try {
+		return validateArtifact(value, `${method} response`);
+	} catch {
+		throw MindcladeError.protocol(`${method} returned invalid immutable metadata`);
+	}
+};
+
 const validateUpload = (
 	value: ArtifactUploadSession | undefined,
 	expected: ArtifactRef | undefined,
@@ -627,6 +807,60 @@ const projectParent = (core: ClientCore): string => {
 	const project = core.config.identity.projectId;
 	if (project.startsWith("tenants/")) return project;
 	return project.startsWith("projects/") ? `${tenant}/${project}` : `${tenant}/projects/${project}`;
+};
+
+const artifactDigestFromName = (core: ClientCore, name: string): string => {
+	const prefix = `${projectParent(core)}/artifacts/`;
+	if (!name.startsWith(prefix)) {
+		throw MindcladeError.invalidArgument("artifact name must be in the configured project");
+	}
+	return name.slice(prefix.length);
+};
+
+const validateArtifactLease = (
+	value: ResourceRef | undefined,
+	core: ClientCore,
+	source: "request" | "response" = "response",
+): ResourceRef => {
+	if (value === undefined) {
+		const message = "artifact lease omitted its resource";
+		throw source === "request"
+			? MindcladeError.invalidArgument(message)
+			: MindcladeError.protocol(message);
+	}
+	const expectedName = `${projectParent(core)}/artifactLeases/${value.resourceId}`;
+	if (
+		value.resourceType !== "artifact_lease" ||
+		value.resourceId === "" ||
+		value.tenantId !== core.config.identity.tenantId ||
+		value.projectId !== core.config.identity.projectId ||
+		value.name !== expectedName ||
+		value.resourceVersion <= 0n ||
+		value.etag === ""
+	) {
+		const message = "artifact lease resource is invalid or cross-project";
+		throw source === "request"
+			? MindcladeError.invalidArgument(message)
+			: MindcladeError.protocol(message);
+	}
+	return clone(ResourceRefSchema, value);
+};
+
+const validateOperation = (
+	value: Operation | undefined,
+	core: ClientCore,
+	method: string,
+): Operation => {
+	if (
+		value === undefined ||
+		value.operationId === "" ||
+		value.tenantId !== core.config.identity.tenantId ||
+		value.projectId !== core.config.identity.projectId ||
+		value.state === OperationState.UNSPECIFIED
+	) {
+		throw MindcladeError.protocol(`${method} returned invalid durable operation state`);
+	}
+	return clone(OperationSchema, value);
 };
 
 const safeSize = (value: bigint, name: string): number => {

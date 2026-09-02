@@ -45,6 +45,20 @@ py_test(
 )
 
 py_test(
+    name = "artifact_operation_gap_test",
+    size = "small",
+    srcs = ["tests/test_artifact_operation_gaps.py"],
+    data = [":governed_sources"],
+    legacy_create_init = 0,
+    main = "tests/test_artifact_operation_gaps.py",
+    deps = [
+        ":mindclade_internal_sdk",
+        "//protocols/generated/python:bindings",
+        "@mindclade_pypi//protobuf",
+    ],
+)
+
+py_test(
     name = "inference_test",
     size = "small",
     srcs = ["tests/test_inference.py"],
@@ -59,12 +73,41 @@ py_test(
 )
 
 py_test(
+    name = "job_run_test",
+    size = "small",
+    srcs = ["tests/test_job_run.py"],
+    data = [":governed_sources"],
+    legacy_create_init = 0,
+    main = "tests/test_job_run.py",
+    deps = [
+        ":mindclade_internal_sdk",
+        "//protocols/generated/python:bindings",
+        "@mindclade_pypi//grpcio",
+        "@mindclade_pypi//protobuf",
+    ],
+)
+
+py_test(
     name = "evaluation_test",
     size = "small",
     srcs = ["tests/test_evaluations.py"],
     data = [":governed_sources"],
     legacy_create_init = 0,
     main = "tests/test_evaluations.py",
+    deps = [
+        ":mindclade_internal_sdk",
+        "//protocols/generated/python:bindings",
+        "@mindclade_pypi//protobuf",
+    ],
+)
+
+py_test(
+    name = "experiment_test",
+    size = "small",
+    srcs = ["tests/test_experiments.py"],
+    data = [":governed_sources"],
+    legacy_create_init = 0,
+    main = "tests/test_experiments.py",
     deps = [
         ":mindclade_internal_sdk",
         "//protocols/generated/python:bindings",
@@ -98,6 +141,37 @@ py_test(
         "//protocols/generated/python:bindings",
         "@mindclade_pypi//protobuf",
     ],
+)
+
+py_test(
+    name = "training_lifecycle_test",
+    size = "small",
+    srcs = ["tests/test_training_lifecycle.py"],
+    data = [":governed_sources"],
+    legacy_create_init = 0,
+    main = "tests/test_training_lifecycle.py",
+    deps = [
+        ":mindclade_internal_sdk",
+        "//protocols/generated/python:bindings",
+        "@mindclade_pypi//protobuf",
+    ],
+)
+
+test_suite(
+    name = "tests",
+    tests = [
+        ":agent_test",
+        ":artifact_operation_gap_test",
+        ":evaluation_test",
+        ":experiment_test",
+        ":inference_test",
+        ":internal_sdk_test",
+        ":job_run_test",
+        ":policy_admin_test",
+        ":training_lifecycle_test",
+        ":workflow_test",
+    ],
+    visibility = ["//tests:__pkg__"],
 )
 
 filegroup(

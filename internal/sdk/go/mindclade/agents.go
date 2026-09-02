@@ -5,11 +5,12 @@ import (
 	"strings"
 	"time"
 
+	"google.golang.org/protobuf/proto"
+
 	agentv1 "github.com/mindclade/mindclade/protocols/generated/go/agent/v1"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	internalagentv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/agent/v1"
 	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
-	"google.golang.org/protobuf/proto"
 )
 
 const agentMaximumPageSize = 200

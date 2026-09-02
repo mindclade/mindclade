@@ -51,6 +51,7 @@
             pythonPackages: with pythonPackages; [
               cryptography
               jsonschema
+              pyyaml
             ]
           );
           pnpmNode26 = pkgs.pnpm.override { nodejs-slim = pkgs.nodejs_26; };
@@ -285,6 +286,7 @@
             pythonPackages.cryptography
             deepEpPackage
             pythonPackages.jsonschema
+            pythonPackages.pyyaml
             pythonPackages.torch
           ]);
           deepEpShell = pkgs.mkShell {

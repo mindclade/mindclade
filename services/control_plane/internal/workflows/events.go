@@ -12,6 +12,7 @@ import (
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	"github.com/mindclade/mindclade/libs/go/numconv"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
 	workflowv1 "github.com/mindclade/mindclade/protocols/generated/go/workflow/v1"
@@ -36,12 +37,12 @@ type GeneratedEventFactory struct{}
 
 func (GeneratedEventFactory) DefinitionCreated(identity Identity, value *workflowv1.WorkflowDefinition, operation *jobv1.Operation, command *commonv1.CommandContext, at time.Time) (*commonv1.EventEnvelope, error) {
 	payload := &workflowv1.WorkflowDefinitionCreated{WorkflowDefinition: clone(value), Operation: operationResource(operation), CreatedAt: timestamppb.New(at)}
-	return eventEnvelope(identity, workflowDefinitionResource(value), payload, uint64(value.GetRevision()), command, at, "workflow-control-plane") //nolint:gosec // Conversion is bounded by validated protocol invariants or PostgreSQL CHECK constraints.
+	return eventEnvelopeRevision(identity, workflowDefinitionResource(value), payload, value.GetRevision(), command, at, "workflow-control-plane")
 }
 
 func (GeneratedEventFactory) DefinitionUpdated(identity Identity, value *workflowv1.WorkflowDefinition, previous int64, paths []string, operation *jobv1.Operation, command *commonv1.CommandContext, at time.Time) (*commonv1.EventEnvelope, error) {
 	payload := &workflowv1.WorkflowDefinitionUpdated{WorkflowDefinition: clone(value), PreviousRevision: previous, UpdateMask: &fieldMask{Paths: append([]string(nil), paths...)}, Operation: operationResource(operation), UpdatedAt: timestamppb.New(at)}
-	return eventEnvelope(identity, workflowDefinitionResource(value), payload, uint64(value.GetRevision()), command, at, "workflow-control-plane") //nolint:gosec // Conversion is bounded by validated protocol invariants or PostgreSQL CHECK constraints.
+	return eventEnvelopeRevision(identity, workflowDefinitionResource(value), payload, value.GetRevision(), command, at, "workflow-control-plane")
 }
 
 // fieldMask is converted through the generated alias helper below to keep
@@ -50,12 +51,12 @@ type fieldMask = fieldmaskpb.FieldMask
 
 func (GeneratedEventFactory) RunStarted(identity Identity, value *workflowv1.WorkflowRun, operation *jobv1.Operation, command *commonv1.CommandContext, at time.Time) (*commonv1.EventEnvelope, error) {
 	payload := &workflowv1.WorkflowRunStarted{WorkflowRun: clone(value), Operation: operationResource(operation), StartedAt: timestamppb.New(at)}
-	return eventEnvelope(identity, workflowRunResource(value), payload, uint64(value.GetRevision()), command, at, "workflow-control-plane") //nolint:gosec // Conversion is bounded by validated protocol invariants or PostgreSQL CHECK constraints.
+	return eventEnvelopeRevision(identity, workflowRunResource(value), payload, value.GetRevision(), command, at, "workflow-control-plane")
 }
 
 func (GeneratedEventFactory) RunCancelled(identity Identity, value *workflowv1.WorkflowRun, operation *jobv1.Operation, reason string, command *commonv1.CommandContext, at time.Time) (*commonv1.EventEnvelope, error) {
 	payload := &workflowv1.WorkflowCancellationRequested{WorkflowRun: workflowRunResource(value), Reason: reason, Operation: operationResource(operation), RequestedAt: timestamppb.New(at)}
-	return eventEnvelope(identity, workflowRunResource(value), payload, uint64(value.GetRevision()), command, at, "workflow-control-plane") //nolint:gosec // Conversion is bounded by validated protocol invariants or PostgreSQL CHECK constraints.
+	return eventEnvelopeRevision(identity, workflowRunResource(value), payload, value.GetRevision(), command, at, "workflow-control-plane")
 }
 
 func (GeneratedEventFactory) Transitioned(identity Identity, before, after *workflowv1.WorkflowRun, command *commonv1.CommandContext, at time.Time) (*commonv1.EventEnvelope, error) {
@@ -70,12 +71,12 @@ func (GeneratedEventFactory) Transitioned(identity Identity, before, after *work
 
 func (GeneratedEventFactory) ApprovalRequested(identity Identity, value *workflowv1.ApprovalRequest, at time.Time) (*commonv1.EventEnvelope, error) {
 	payload := &workflowv1.ApprovalRequested{ApprovalRequest: clone(value), RecordedAt: timestamppb.New(at)}
-	return eventEnvelope(identity, approvalRequestResource(value), payload, uint64(value.GetRevision()), value.GetContext(), at, "approval-authority") //nolint:gosec // Conversion is bounded by validated protocol invariants or PostgreSQL CHECK constraints.
+	return eventEnvelopeRevision(identity, approvalRequestResource(value), payload, value.GetRevision(), value.GetContext(), at, "approval-authority")
 }
 
 func (GeneratedEventFactory) ApprovalRecorded(identity Identity, request *workflowv1.ApprovalRequest, receipt *workflowv1.ApprovalReceipt, at time.Time) (*commonv1.EventEnvelope, error) {
 	payload := &workflowv1.ApprovalRecorded{ApprovalRequest: approvalRequestResource(request), Receipt: clone(receipt), ResultingState: request.GetState(), RecordedAt: timestamppb.New(at)}
-	return eventEnvelope(identity, approvalRequestResource(request), payload, uint64(request.GetRevision()), receipt.GetContext(), at, "approval-authority") //nolint:gosec // Conversion is bounded by validated protocol invariants or PostgreSQL CHECK constraints.
+	return eventEnvelopeRevision(identity, approvalRequestResource(request), payload, request.GetRevision(), receipt.GetContext(), at, "approval-authority")
 }
 
 func (GeneratedEventFactory) ApprovalConsumed(identity Identity, receipt *workflowv1.ApprovalReceipt, callID string, sequence uint64, command *commonv1.CommandContext, at time.Time) (*commonv1.EventEnvelope, error) {
@@ -89,6 +90,14 @@ func (GeneratedEventFactory) JobRequested(identity Identity, operation *jobv1.Op
 	}
 	payload := &jobv1.JobRequested{JobId: operation.GetJobId(), ConfigurationDigest: configurationDigest}
 	return eventEnvelope(identity, operationResource(operation), payload, 1, command, at, "workflow-scheduler")
+}
+
+func eventEnvelopeRevision(identity Identity, subject *commonv1.ResourceRef, payload proto.Message, revision int64, command *commonv1.CommandContext, at time.Time, producer string) (*commonv1.EventEnvelope, error) {
+	sequence, err := numconv.Int64ToUint64(revision)
+	if err != nil {
+		return nil, err
+	}
+	return eventEnvelope(identity, subject, payload, sequence, command, at, producer)
 }
 
 func eventEnvelope(identity Identity, subject *commonv1.ResourceRef, payloadMessage proto.Message, sequence uint64, command *commonv1.CommandContext, at time.Time, producer string) (*commonv1.EventEnvelope, error) {

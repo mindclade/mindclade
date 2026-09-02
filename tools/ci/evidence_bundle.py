@@ -821,6 +821,55 @@ def validate_bazel_receipt(path: Path, context: Mapping[str, object]) -> None:
         raise ValueError("Bazel native agreement v2 toolchain set is incomplete or unordered")
 
 
+def _validate_fresh_database_integration(path: Path, source_revision: str) -> None:
+    report = read_object(path, "fresh-database integration receipt")
+    receipt_digest = report.pop("receipt_digest", None)
+    expected_targets = {
+        "//services/control_plane:artifacts_server_test",
+        "//services/control_plane:control_plane_test",
+        "//services/control_plane:jobs_server_test",
+        "//services/control_plane/internal/admin:admin_test",
+        "//services/control_plane/internal/agents:agents_test",
+        "//services/control_plane/internal/datasets:datasets_test",
+        "//services/control_plane/internal/evaluations:evaluations_test",
+        "//services/control_plane/internal/experiments:experiments_test",
+        "//services/control_plane/internal/inference:inference_test",
+        "//services/control_plane/internal/models:models_test",
+        "//services/control_plane/internal/platform/eventprojection:event_projection_test",
+        "//services/control_plane/internal/policies:policies_test",
+        "//services/control_plane/internal/training:training_test",
+        "//services/control_plane/internal/workflows:workflows_test",
+    }
+    targets = report.get("required_bazel_targets")
+    lifecycle = report.get("database_lifecycle")
+    qualification = report.get("qualification")
+    canonical_with_newline = canonical_json(report) + b"\n"
+    if (
+        report.get("schema_version") != "mindclade.fresh-database-integration/v1"
+        or report.get("source_revision") != source_revision
+        or report.get("status") != "passed"
+        or report.get("ratification_authorized") is not False
+        or not isinstance(targets, list)
+        or set(cast(list[object], targets)) != expected_targets
+        or len(cast(list[object], targets)) != len(expected_targets)
+        or lifecycle != {"complete_down_up": "passed", "empty_to_all_up": "passed"}
+        or qualification
+        != {
+            "every_domain_repository": "passed",
+            "reliability_and_dlq": "passed",
+            "required_postgres_mode": True,
+            "rls_tenant_isolation": "passed",
+            "skipped_required_tests": [],
+            "training_ownership_and_fencing": "passed",
+        }
+        or not isinstance(report.get("migration_set_digest"), str)
+        or not DIGEST_PATTERN.fullmatch(cast(str, report["migration_set_digest"]))
+        or not isinstance(receipt_digest, str)
+        or receipt_digest != sha256_bytes(canonical_with_newline)
+    ):
+        raise ValueError("fresh-database integration receipt is incomplete or not exact")
+
+
 def validate_check_report(
     name: str,
     path: Path,
@@ -839,6 +888,8 @@ def validate_check_report(
         _validate_secret_scan(path)
     elif name == "bazel-native-agreement":
         validate_bazel_receipt(path, context)
+    elif name == "fresh-database-integration":
+        _validate_fresh_database_integration(path, source_revision)
     elif name == "immutable-launcher":
         _validate_launcher_observation(
             path,

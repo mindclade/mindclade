@@ -1,0 +1,61 @@
+syntax = "proto3";
+
+package mindclade.internal.experiment.v1;
+
+import "google/protobuf/timestamp.proto";
+import "proto/mindclade/common/v1/pagination.proto";
+import "proto/mindclade/experiment/v1/experiment.proto";
+import "proto/mindclade/experiment/v1/experiment_commands.proto";
+import "proto/mindclade/experiment/v1/study.proto";
+import "proto/mindclade/experiment/v1/trial.proto";
+
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/experiment/v1;internalexperimentv1";
+
+message CreateExperimentRequest { mindclade.experiment.v1.CreateExperimentCommand command = 1; }
+message CreateExperimentResponse { mindclade.experiment.v1.Experiment experiment = 1; }
+message GetExperimentRequest { string name = 1; string if_none_match = 2; }
+message GetExperimentResponse { mindclade.experiment.v1.Experiment experiment = 1; }
+message ListExperimentsRequest { string parent = 1; mindclade.common.v1.PageRequest page = 2; string filter = 3; string order_by = 4; }
+message ListExperimentsResponse { repeated mindclade.experiment.v1.Experiment experiments = 1; mindclade.common.v1.PageResponse page = 2; google.protobuf.Timestamp read_time = 3; }
+message UpdateExperimentRequest { mindclade.experiment.v1.UpdateExperimentCommand command = 1; }
+message UpdateExperimentResponse { mindclade.experiment.v1.Experiment experiment = 1; }
+message TransitionExperimentRequest { mindclade.experiment.v1.TransitionExperimentCommand command = 1; }
+message TransitionExperimentResponse { mindclade.experiment.v1.Experiment experiment = 1; }
+
+message CreateStudyRequest { mindclade.experiment.v1.CreateStudyCommand command = 1; }
+message CreateStudyResponse { mindclade.experiment.v1.Study study = 1; }
+message GetStudyRequest { string name = 1; string if_none_match = 2; }
+message GetStudyResponse { mindclade.experiment.v1.Study study = 1; }
+message ListStudiesRequest { string parent = 1; mindclade.common.v1.PageRequest page = 2; string filter = 3; string order_by = 4; }
+message ListStudiesResponse { repeated mindclade.experiment.v1.Study studies = 1; mindclade.common.v1.PageResponse page = 2; google.protobuf.Timestamp read_time = 3; }
+message TransitionStudyRequest { mindclade.experiment.v1.TransitionStudyCommand command = 1; }
+message TransitionStudyResponse { mindclade.experiment.v1.Study study = 1; }
+
+message CreateTrialRequest { mindclade.experiment.v1.CreateTrialCommand command = 1; }
+message CreateTrialResponse { mindclade.experiment.v1.Trial trial = 1; }
+message GetTrialRequest { string name = 1; string if_none_match = 2; }
+message GetTrialResponse { mindclade.experiment.v1.Trial trial = 1; }
+message ListTrialsRequest { string parent = 1; mindclade.common.v1.PageRequest page = 2; string filter = 3; string order_by = 4; }
+message ListTrialsResponse { repeated mindclade.experiment.v1.Trial trials = 1; mindclade.common.v1.PageResponse page = 2; google.protobuf.Timestamp read_time = 3; }
+message TransitionTrialRequest { mindclade.experiment.v1.TransitionTrialCommand command = 1; }
+message TransitionTrialResponse { mindclade.experiment.v1.Trial trial = 1; }
+message CompleteTrialRequest { mindclade.experiment.v1.CompleteTrialCommand command = 1; }
+message CompleteTrialResponse { mindclade.experiment.v1.Trial trial = 1; }
+
+// ExperimentService owns experiment intent, bounded studies, and immutable trial outcomes.
+service ExperimentService {
+  rpc CreateExperiment(CreateExperimentRequest) returns (CreateExperimentResponse);
+  rpc GetExperiment(GetExperimentRequest) returns (GetExperimentResponse);
+  rpc ListExperiments(ListExperimentsRequest) returns (ListExperimentsResponse);
+  rpc UpdateExperiment(UpdateExperimentRequest) returns (UpdateExperimentResponse);
+  rpc TransitionExperiment(TransitionExperimentRequest) returns (TransitionExperimentResponse);
+  rpc CreateStudy(CreateStudyRequest) returns (CreateStudyResponse);
+  rpc GetStudy(GetStudyRequest) returns (GetStudyResponse);
+  rpc ListStudies(ListStudiesRequest) returns (ListStudiesResponse);
+  rpc TransitionStudy(TransitionStudyRequest) returns (TransitionStudyResponse);
+  rpc CreateTrial(CreateTrialRequest) returns (CreateTrialResponse);
+  rpc GetTrial(GetTrialRequest) returns (GetTrialResponse);
+  rpc ListTrials(ListTrialsRequest) returns (ListTrialsResponse);
+  rpc TransitionTrial(TransitionTrialRequest) returns (TransitionTrialResponse);
+  rpc CompleteTrial(CompleteTrialRequest) returns (CompleteTrialResponse);
+}

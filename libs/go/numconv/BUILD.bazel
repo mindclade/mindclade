@@ -1,0 +1,25 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "numconv",
+    srcs = ["conversion.go"],
+    importpath = "github.com/mindclade/mindclade/libs/go/numconv",
+    visibility = ["//visibility:public"],
+)
+
+go_test(
+    name = "conversion_test",
+    srcs = ["conversion_test.go"],
+    embed = [":numconv"],
+    pure = "on",
+)
+
+filegroup(
+    name = "governed_sources",
+    srcs = [
+        "BUILD.bazel",
+        "conversion.go",
+        "conversion_test.go",
+    ],
+    visibility = ["//visibility:public"],
+)

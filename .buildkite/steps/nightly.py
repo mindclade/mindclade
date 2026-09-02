@@ -28,6 +28,18 @@ def steps() -> list[Step]:
             artifact_paths=("build/evidence/source-check.v1.json",),
         ),
         Step(
+            key="fresh-db-integration",
+            label=":postgres: Fresh-database runtime qualification",
+            command="just integration-ci",
+            timeout_minutes=120,
+            depends_on=("source-check",),
+            artifact_paths=(
+                "build/evidence/integration-ci.v1.json",
+                "build/evidence/training-vertical-rehearsal.v1.json",
+                "build/evidence/authoritative-integration-readiness.v1.json",
+            ),
+        ),
+        Step(
             key="connected-governance",
             label=":classical_building: Connected repository governance",
             command="just governance-ci",
@@ -83,6 +95,8 @@ def steps() -> list[Step]:
                 "buildkite-agent artifact download 'build/evidence/*' . "
                 "--step source-check && "
                 "buildkite-agent artifact download 'build/evidence/*' . "
+                "--step fresh-db-integration && "
+                "buildkite-agent artifact download 'build/evidence/*' . "
                 "--step connected-governance && "
                 "buildkite-agent artifact download 'build/evidence/*' . "
                 "--step affected-tests && "
@@ -97,6 +111,7 @@ def steps() -> list[Step]:
             depends_on=(
                 "pipeline-plan",
                 "source-check",
+                "fresh-db-integration",
                 "connected-governance",
                 "affected-tests",
                 "wave1-full",

@@ -1,0 +1,252 @@
+{
+  "schema_version": "mindclade.activation-bundle-projection/v1",
+  "source_digest": "sha256:9bf2bec3f980719d23e9730ff6dd0f912564ad023e381ea9c754dffd4465a96b",
+  "bundle_count": 27,
+  "path_count": 911,
+  "path_set_digest": "sha256:24e259349e0f667429fb11cb87bf06cd45fa6443378ef3e40589ce2447fdd5ea",
+  "bundles": [
+    {
+      "id": "activation-bundle-governance",
+      "constant": "ACTIVATION_BUNDLE_GOVERNANCE_ADDITIONS",
+      "path_count": 4,
+      "addition_count": 4,
+      "predeclared_count": 0,
+      "sequence_digest": "sha256:0424eb9c6be6bd0acb9db28cf7e09debfed387d1cbe8bb14c98e045acdf80c73",
+      "path_set_digest": "sha256:42041893cbaf940e0e6d3c165701483ee2c828beafcd8bed4805a21b798bbe92"
+    },
+    {
+      "id": "rust-codegen-plugins",
+      "constant": "ALL_CONTRACT_RUST_PLUGIN_PATHS",
+      "path_count": 3,
+      "addition_count": 3,
+      "predeclared_count": 0,
+      "sequence_digest": "sha256:c26194a006cadce635e1eff70d6476752db2120dfc4e3ea13becdbff0649b5e3",
+      "path_set_digest": "sha256:c26194a006cadce635e1eff70d6476752db2120dfc4e3ea13becdbff0649b5e3"
+    },
+    {
+      "id": "grpc-contract-projections",
+      "constant": "ALL_CONTRACT_GRPC_ADDITIONS",
+      "path_count": 242,
+      "addition_count": 242,
+      "predeclared_count": 0,
+      "sequence_digest": "sha256:b178265f274e8f28b3c3422b251b99140a4c0d75ecb04a89beac2474d3b888be",
+      "path_set_digest": "sha256:c5ba3f5dd9d3fc382364ab69f017c90417cf00c024fe397b3ea3fc2c57b6a29f"
+    },
+    {
+      "id": "training-event-contracts",
+      "constant": "TRAINING_EVENT_CONTRACT_ADDITIONS",
+      "path_count": 10,
+      "addition_count": 10,
+      "predeclared_count": 0,
+      "sequence_digest": "sha256:a02804ef876ed84d8857cd19fb0fc89b57f05cd97a3a431a5b91a3008495e664",
+      "path_set_digest": "sha256:5da6702d400b42237cd96c4cf92c035796059554bd321aea93ff8d627cd6bf58"
+    },
+    {
+      "id": "vertical-event-contracts",
+      "constant": "VERTICAL_EVENT_CONTRACT_ADDITIONS",
+      "path_count": 192,
+      "addition_count": 192,
+      "predeclared_count": 0,
+      "sequence_digest": "sha256:a2cb15b1734c3b2444e3b5e20e9184175b5b12b78acee7b017ad2fbe03653656",
+      "path_set_digest": "sha256:c1ef88b4735b75422a30e6598a17f58050193eaa50ac3d4831b37711c4fc2149"
+    },
+    {
+      "id": "contract-runtime",
+      "constant": "CONTRACT_RUNTIME_ADDITIONS",
+      "path_count": 8,
+      "addition_count": 8,
+      "predeclared_count": 0,
+      "sequence_digest": "sha256:31eb58aa3df3f05af81d92d1f11383d4e91adcbd7cc487a9d9e0f94e7185e8f6",
+      "path_set_digest": "sha256:c459a3b7a91f29035480cbb6607b079f717fe35d5aaf559897481a41640d6479"
+    },
+    {
+      "id": "schema-bindings",
+      "constant": "SCHEMA_BINDING_ADDITIONS",
+      "path_count": 7,
+      "addition_count": 7,
+      "predeclared_count": 0,
+      "sequence_digest": "sha256:6c23f5968e6496789f45219e48120f06f561e81989dc4bc738876d76b38fe72b",
+      "path_set_digest": "sha256:6c23f5968e6496789f45219e48120f06f561e81989dc4bc738876d76b38fe72b"
+    },
+    {
+      "id": "internal-sdk",
+      "constant": "INTERNAL_SDK_ADDITIONS",
+      "path_count": 150,
+      "addition_count": 150,
+      "predeclared_count": 0,
+      "sequence_digest": "sha256:63e790cd8be4834792d39646ce8124038dbf9228389bf2e4944b193ba281a3d5",
+      "path_set_digest": "sha256:032df05b19961824ca7ad8848f1c8fc45cbe047e9291bd91b8cc97eb3f9fb2b2"
+    },
+    {
+      "id": "training-control-plane",
+      "constant": "TRAINING_VERTICAL_ADDITIONS",
+      "path_count": 12,
+      "addition_count": 12,
+      "predeclared_count": 0,
+      "sequence_digest": "sha256:519cd95c1d1a3e713de885a5dae8ce5ca950d79d4a5ad8a176d06c21f8670c67",
+      "path_set_digest": "sha256:519cd95c1d1a3e713de885a5dae8ce5ca950d79d4a5ad8a176d06c21f8670c67"
+    },
+    {
+      "id": "control-plane-transport",
+      "constant": "CONTROL_PLANE_TRANSPORT_ADDITIONS",
+      "path_count": 3,
+      "addition_count": 3,
+      "predeclared_count": 0,
+      "sequence_digest": "sha256:7e949ebe7a05bb70348a779e32c9af06da6ed806761d2f4ea6c2b075f596f09c",
+      "path_set_digest": "sha256:7e949ebe7a05bb70348a779e32c9af06da6ed806761d2f4ea6c2b075f596f09c"
+    },
+    {
+      "id": "worker-coordination",
+      "constant": "WORKER_COORDINATION_ADDITIONS",
+      "path_count": 5,
+      "addition_count": 5,
+      "predeclared_count": 0,
+      "sequence_digest": "sha256:d2919819092c248819d810580b3e364beb170d69ad77a21825e2b8bd3cb9f7ba",
+      "path_set_digest": "sha256:de66171cfcfcc22f071c80cadf5ac7faa00020ed4205d50db45c26936f38ef09"
+    },
+    {
+      "id": "artifact-control-plane",
+      "constant": "ARTIFACT_VERTICAL_ADDITIONS",
+      "path_count": 10,
+      "addition_count": 10,
+      "predeclared_count": 0,
+      "sequence_digest": "sha256:cba2c3aeeaf0bb7a5e5aef8a6dce110c2f4bdc06a0f3aa5dbcee78b12eb637e2",
+      "path_set_digest": "sha256:cba2c3aeeaf0bb7a5e5aef8a6dce110c2f4bdc06a0f3aa5dbcee78b12eb637e2"
+    },
+    {
+      "id": "data-model-control-plane",
+      "constant": "DATA_MODEL_VERTICAL_ADDITIONS",
+      "path_count": 23,
+      "addition_count": 23,
+      "predeclared_count": 0,
+      "sequence_digest": "sha256:ae9bdd87df68ca208731cce7b57e46162548effea04ccef8dc14a7960420277d",
+      "path_set_digest": "sha256:ae9bdd87df68ca208731cce7b57e46162548effea04ccef8dc14a7960420277d"
+    },
+    {
+      "id": "evaluation-control-plane",
+      "constant": "EVALUATION_VERTICAL_ADDITIONS",
+      "path_count": 11,
+      "addition_count": 11,
+      "predeclared_count": 0,
+      "sequence_digest": "sha256:6c08ba7347fe4e9173cf5553b3213233cf55b99b03cda0e6439bfc4bdfacbc2d",
+      "path_set_digest": "sha256:6c08ba7347fe4e9173cf5553b3213233cf55b99b03cda0e6439bfc4bdfacbc2d"
+    },
+    {
+      "id": "domain-control-plane",
+      "constant": "CONTROL_PLANE_DOMAIN_ADDITIONS",
+      "path_count": 54,
+      "addition_count": 54,
+      "predeclared_count": 0,
+      "sequence_digest": "sha256:e6ce785c6e066f19dc4e5391d4e54a795a7456fb2342036ed30e71d97611bf67",
+      "path_set_digest": "sha256:e6ce785c6e066f19dc4e5391d4e54a795a7456fb2342036ed30e71d97611bf67"
+    },
+    {
+      "id": "contract-conformance",
+      "constant": "CONTRACT_CONFORMANCE_ADDITIONS",
+      "path_count": 7,
+      "addition_count": 7,
+      "predeclared_count": 0,
+      "sequence_digest": "sha256:35124cbb6beabae00ac7b1351b483ee34500c1061d2439a66efea366fef6a20c",
+      "path_set_digest": "sha256:35124cbb6beabae00ac7b1351b483ee34500c1061d2439a66efea366fef6a20c"
+    },
+    {
+      "id": "sdk-generator",
+      "constant": "SDK_GENERATOR_ADDITIONS",
+      "path_count": 1,
+      "addition_count": 1,
+      "predeclared_count": 0,
+      "sequence_digest": "sha256:7ee4cd8213f1e5e293e5eb3ec18a357d471ff21bf3e09fc5bd009a9cdf750092",
+      "path_set_digest": "sha256:7ee4cd8213f1e5e293e5eb3ec18a357d471ff21bf3e09fc5bd009a9cdf750092"
+    },
+    {
+      "id": "future-public-openapi",
+      "constant": "OPENAPI_STAGE_ARTIFACT_ADDITIONS",
+      "path_count": 3,
+      "addition_count": 3,
+      "predeclared_count": 0,
+      "sequence_digest": "sha256:5e384ac3c588694245e7213094527177f7a2c95bbad05d49546ad3a87ca0830a",
+      "path_set_digest": "sha256:e1990cbf42d8a22c769c298669153e67bcb6f18d7105c3d740069bcd1d5a5b60"
+    },
+    {
+      "id": "generated-package-authority",
+      "constant": "GENERATED_PACKAGE_AUTHORITY_ADDITIONS",
+      "path_count": 5,
+      "addition_count": 5,
+      "predeclared_count": 0,
+      "sequence_digest": "sha256:b7563ce5fe36c28ce6a04d8d1e89de5ae0eba6f6ee7ca4d11b9ad160bb66ad30",
+      "path_set_digest": "sha256:55d4a8d77214f1d5cbfb28dcd3352e6be0f0680e7884a8df16906e90a48f77c0"
+    },
+    {
+      "id": "sdk-rpc-coverage",
+      "constant": "SDK_RPC_COVERAGE_ADDITIONS",
+      "path_count": 3,
+      "addition_count": 3,
+      "predeclared_count": 0,
+      "sequence_digest": "sha256:1266964207a1740a3faa88b15755445972940021ce70098b4cadc89c65207568",
+      "path_set_digest": "sha256:3b5fcc677201061ec0bee87be2321fe129ae398ec33b55bd77517a7986e36d35"
+    },
+    {
+      "id": "grpc-implementation-coverage",
+      "constant": "GRPC_IMPLEMENTATION_COVERAGE_ADDITIONS",
+      "path_count": 3,
+      "addition_count": 3,
+      "predeclared_count": 0,
+      "sequence_digest": "sha256:3dea792cab5d94dbca1f3a93fa3900383c32c2d7d7c195fbb1ba67157b83f471",
+      "path_set_digest": "sha256:9cb6310151418b343442982a54602becf7362ec3148fec0a4dd7ffd0134ac1fe"
+    },
+    {
+      "id": "numeric-conversion-safety",
+      "constant": "NUMERIC_CONVERSION_SAFETY_ADDITIONS",
+      "path_count": 5,
+      "addition_count": 5,
+      "predeclared_count": 0,
+      "sequence_digest": "sha256:3a5bb3b9608d0559c71476fb8419d280e09df1e24e7a932cd612c9bcf6f49358",
+      "path_set_digest": "sha256:3a5bb3b9608d0559c71476fb8419d280e09df1e24e7a932cd612c9bcf6f49358"
+    },
+    {
+      "id": "delivery-reliability",
+      "constant": "DELIVERY_RELIABILITY_ADDITIONS",
+      "path_count": 3,
+      "addition_count": 3,
+      "predeclared_count": 0,
+      "sequence_digest": "sha256:6fe9070861e01b5ddfd5222268a399c438648905725f4d7173d96bdeadea8363",
+      "path_set_digest": "sha256:6fe9070861e01b5ddfd5222268a399c438648905725f4d7173d96bdeadea8363"
+    },
+    {
+      "id": "event-audit-semantic-projection",
+      "constant": "EVENT_AUDIT_SEMANTIC_PROJECTION_ADDITIONS",
+      "path_count": 5,
+      "addition_count": 5,
+      "predeclared_count": 0,
+      "sequence_digest": "sha256:bfd703f517f7cab691e45181eb77d9a7450c99e1eb02b1c3751dbf31da33dda2",
+      "path_set_digest": "sha256:bfd703f517f7cab691e45181eb77d9a7450c99e1eb02b1c3751dbf31da33dda2"
+    },
+    {
+      "id": "sdk-runtime-consumers",
+      "constant": "SDK_RUNTIME_CONSUMER_ADDITIONS",
+      "path_count": 32,
+      "addition_count": 16,
+      "predeclared_count": 16,
+      "sequence_digest": "sha256:468d6239ebb676a9eefefe48d4890488aebdb0f96781dc144a11dc2303a3682a",
+      "path_set_digest": "sha256:c2150d6991a91e09b322c54925be7a08df7703df38f37ed4c728f3f5aac6ec7f"
+    },
+    {
+      "id": "experiment-candidate-vertical",
+      "constant": "EXPERIMENT_CANDIDATE_VERTICAL_ADDITIONS",
+      "path_count": 91,
+      "addition_count": 91,
+      "predeclared_count": 0,
+      "sequence_digest": "sha256:b4cec44bae04e00a76e0a48d43eb89c93ac71fe3970e16b03dc7d4141bebf6be",
+      "path_set_digest": "sha256:151d230b000392387c8d4cc1b98a0448e609ac47f0da9821d245294553ff6406"
+    },
+    {
+      "id": "stage8-private-sdk-examples",
+      "constant": "STAGE8_PRIVATE_SDK_EXAMPLE_ADDITIONS",
+      "path_count": 19,
+      "addition_count": 12,
+      "predeclared_count": 7,
+      "sequence_digest": "sha256:dd89027eff3ecf940d2af69fde7d7a3daffd3ff8c7ff712d8a9618c9df21db12",
+      "path_set_digest": "sha256:d1426c8bb4480bd627882d76d5d3fdc4da476900a21ca36369f0daa085ee1466"
+    }
+  ]
+}

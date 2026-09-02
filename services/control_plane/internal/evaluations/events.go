@@ -11,6 +11,7 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	"github.com/mindclade/mindclade/libs/go/numconv"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	evaluationv1 "github.com/mindclade/mindclade/protocols/generated/go/evaluation/v1"
 	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
@@ -27,7 +28,7 @@ func (GeneratedEventFactory) RunCreated(identity Identity, run *evaluationv1.Eva
 		Suite: clone(run.GetSuite()), Datasets: cloneSlice(run.GetDatasets()), Snapshot: clone(run.GetSnapshot()),
 		ModelRelease: clone(run.GetModelRelease()), Operation: operationResource(operation), CreatedAt: clone(run.GetCreateTime()),
 	}
-	return eventEnvelope(identity, runResource(run), payload, uint64(run.GetRevision()), command, at, "evaluation") //nolint:gosec // Conversion is bounded by validated protocol invariants or PostgreSQL CHECK constraints.
+	return eventEnvelope(identity, runResource(run), payload, run.GetRevision(), command, at, "evaluation")
 }
 
 func (GeneratedEventFactory) CancellationRequested(identity Identity, run *evaluationv1.EvaluationRun, operation *jobv1.Operation, reason string, command *commonv1.CommandContext, at time.Time) (*commonv1.EventEnvelope, error) {
@@ -35,7 +36,7 @@ func (GeneratedEventFactory) CancellationRequested(identity Identity, run *evalu
 		EvaluationRunName: run.GetName(), EvaluationRunRevision: run.GetRevision(), Reason: reason,
 		Operation: operationResource(operation), RequestedAt: timestamppb.New(at.UTC()),
 	}
-	return eventEnvelope(identity, runResource(run), payload, uint64(run.GetRevision()), command, at, "evaluation") //nolint:gosec // Conversion is bounded by validated protocol invariants or PostgreSQL CHECK constraints.
+	return eventEnvelope(identity, runResource(run), payload, run.GetRevision(), command, at, "evaluation")
 }
 
 func (GeneratedEventFactory) ResultCommitted(identity Identity, result *evaluationv1.EvaluationResult, run *evaluationv1.EvaluationRun, operation *jobv1.Operation, command *commonv1.CommandContext, at time.Time) (*commonv1.EventEnvelope, error) {
@@ -44,7 +45,7 @@ func (GeneratedEventFactory) ResultCommitted(identity Identity, result *evaluati
 		Outcome: result.GetOutcome(), Report: clone(result.GetReport()), ResultDigest: result.GetResultDigest(),
 		Operation: operationResource(operation), CommittedAt: timestamppb.New(at.UTC()),
 	}
-	return eventEnvelope(identity, runResource(run), payload, uint64(run.GetRevision()), command, at, "evaluation") //nolint:gosec // Conversion is bounded by validated protocol invariants or PostgreSQL CHECK constraints.
+	return eventEnvelope(identity, runResource(run), payload, run.GetRevision(), command, at, "evaluation")
 }
 
 func (GeneratedEventFactory) PromotionRecorded(identity Identity, decision *evaluationv1.PromotionDecision, operation *jobv1.Operation, command *commonv1.CommandContext, at time.Time) (*commonv1.EventEnvelope, error) {
@@ -64,7 +65,11 @@ func (GeneratedEventFactory) JobRequested(identity Identity, operation *jobv1.Op
 	return eventEnvelope(identity, operationResource(operation), payload, 1, command, at, "evaluation-scheduler")
 }
 
-func eventEnvelope(identity Identity, subject *commonv1.ResourceRef, payloadMessage proto.Message, sequence uint64, command *commonv1.CommandContext, at time.Time, producer string) (*commonv1.EventEnvelope, error) {
+func eventEnvelope(identity Identity, subject *commonv1.ResourceRef, payloadMessage proto.Message, revision int64, command *commonv1.CommandContext, at time.Time, producer string) (*commonv1.EventEnvelope, error) {
+	sequence, err := numconv.Int64ToUint64(revision)
+	if err != nil {
+		return nil, err
+	}
 	if payloadMessage == nil || subject == nil || command == nil || sequence == 0 || at.IsZero() {
 		return nil, errors.New("event payload, subject, command, sequence, and time are required")
 	}

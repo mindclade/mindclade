@@ -13,7 +13,6 @@ from importlib import import_module
 from typing import Protocol, cast, runtime_checkable
 
 import requests
-from google.auth.transport.requests import Request
 
 _REFRESH_SKEW = timedelta(seconds=30)
 _MAX_TOKEN_LIFETIME = timedelta(minutes=65)
@@ -92,13 +91,17 @@ _decode_google_jwt = cast(
     Callable[[str, object | None, bool], Mapping[str, object]],
     vars(import_module("google.auth.jwt"))["decode"],
 )
+_google_auth_request = cast(
+    Callable[..., object],
+    vars(import_module("google.auth.transport.requests"))["Request"],
+)
 
 
 class _DeadlineRequest:
     """google-auth HTTP transport whose individual calls share one deadline."""
 
     def __init__(self, session: requests.Session, *, deadline: float) -> None:
-        self._delegate = cast(Callable[..., object], Request(session=session))
+        self._delegate = cast(Callable[..., object], _google_auth_request(session=session))
         self._deadline = deadline
 
     def __call__(

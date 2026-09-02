@@ -277,7 +277,7 @@ func TestArtifactServiceGeneratedGRPCRegistration(t *testing.T) {
 	server, _, identity := newTestServer(t)
 	listener := bufconn.Listen(1 << 20)
 	grpcServer := grpc.NewServer()
-	RegisterService(grpcServer, server)
+	internalartifactv1.RegisterArtifactServiceServer(grpcServer, server)
 	serveDone := make(chan error, 1)
 	go func() { serveDone <- grpcServer.Serve(listener) }()
 	t.Cleanup(func() {
@@ -315,7 +315,7 @@ func TestArtifactTransferGeneratedGRPCUploadFinalizeDownloadAndCancellation(t *t
 	server.withClock(fixedClock{at: at})
 	listener := bufconn.Listen(1 << 20)
 	grpcServer := grpc.NewServer()
-	RegisterService(grpcServer, server)
+	internalartifactv1.RegisterArtifactServiceServer(grpcServer, server)
 	serveDone := make(chan error, 1)
 	go func() { serveDone <- grpcServer.Serve(listener) }()
 	t.Cleanup(func() {

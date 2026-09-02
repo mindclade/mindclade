@@ -13,6 +13,7 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	"github.com/mindclade/mindclade/libs/go/numconv"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	internaljobv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/job/v1"
 	internaltrainingv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/training/v1"
@@ -472,11 +473,15 @@ func (s *Server) WatchTrainingRun(request *internaltrainingv1.WatchTrainingRunRe
 		if err != nil {
 			return rpcError(err)
 		}
-		if sequence > uint64(value.GetRevision()) { //nolint:gosec // Conversion is bounded by validated protocol invariants or PostgreSQL CHECK constraints.
+		revision, conversionErr := numconv.Int64ToUint64(value.GetRevision())
+		if conversionErr != nil {
+			return rpcError(conversionErr)
+		}
+		if sequence > revision {
 			return rpcError(fmt.Errorf("%w: watch sequence is ahead of the resource", ErrRevisionConflict))
 		}
-		if uint64(value.GetRevision()) > sequence { //nolint:gosec // Conversion is bounded by validated protocol invariants or PostgreSQL CHECK constraints.
-			sequence = uint64(value.GetRevision()) //nolint:gosec // Conversion is bounded by validated protocol invariants or PostgreSQL CHECK constraints.
+		if revision > sequence {
+			sequence = revision
 			if err = stream.Send(&internaltrainingv1.WatchTrainingRunResponse{TrainingRun: clone(value), Progress: clone(value.GetCommittedProgress()), Sequence: sequence, ObservedAt: timestamppb.New(s.clock.Now())}); err != nil {
 				return err
 			}
@@ -533,7 +538,10 @@ func (s *Server) WatchOperation(request *internaljobv1.WatchOperationRequest, st
 			return rpcError(err)
 		}
 		for _, value := range values {
-			revision := uint64(value.GetResourceVersion()) //nolint:gosec // Conversion is bounded by validated protocol invariants or PostgreSQL CHECK constraints.
+			revision, conversionErr := numconv.Int64ToUint64(value.GetResourceVersion())
+			if conversionErr != nil {
+				return rpcError(conversionErr)
+			}
 			if revision != sequence+1 {
 				return rpcError(ErrOperationHistoryGap)
 			}

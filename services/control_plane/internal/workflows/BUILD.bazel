@@ -18,6 +18,7 @@ go_library(
     importpath = "github.com/mindclade/mindclade/services/control_plane/internal/workflows",
     deps = [
         "//libs/go/audit",
+        "//libs/go/numconv",
         "//protocols/generated/go/artifact/v1:bindings",
         "//protocols/generated/go/common/v1:bindings",
         "//protocols/generated/go/internalrpc/workflow/v1:bindings",

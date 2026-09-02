@@ -28,9 +28,9 @@ doctor:
 
 # Apply native formatters to editable source and configuration files.
 format:
-    ruff format .buildkite tools libs/python tests
+    ruff format .buildkite tools libs/python tests internal/sdk/python workers/training_worker examples
     find libs/rust -type f -name '*.rs' -print0 | xargs -0 rustfmt --edition 2024
-    golangci-lint fmt ./libs/go/... ./services/control_plane/...
+    golangci-lint fmt ./libs/go/... ./services/control_plane/... ./internal/sdk/go/... ./tools/mindcladectl/...
     pnpm run format
     find . -type d \( -name .git -o -name node_modules -o -name build -o -name 'bazel-*' -o -path './third_party/bazel_vendor' \) -prune -o -type f \( -name BUILD -o -name BUILD.bazel -o -name MODULE.bazel -o -name '*.bzl' \) ! -path './protocols/generated/*' ! -path './kernels/native/generated/*' -print0 | xargs -0 buildifier -mode=fix
     nixfmt flake.nix third_party/packages/deep_ep/package.nix
@@ -39,9 +39,9 @@ format:
 
 # Prove that every editable and generated source matches its owning formatter.
 format-check:
-    ruff format --check .buildkite tools libs/python tests
+    ruff format --check .buildkite tools libs/python tests internal/sdk/python workers/training_worker examples
     cargo fmt --all --check
-    golangci-lint fmt --diff ./libs/go/... ./services/control_plane/... ./protocols/generated/go/...
+    golangci-lint fmt --diff ./libs/go/... ./services/control_plane/... ./internal/sdk/go/... ./tools/mindcladectl/... ./protocols/generated/go/...
     pnpm run format:check
     find . -type d \( -name .git -o -name node_modules -o -name build -o -name 'bazel-*' -o -path './third_party/bazel_vendor' \) -prune -o -type f \( -name BUILD -o -name BUILD.bazel -o -name MODULE.bazel -o -name '*.bzl' \) -print0 | xargs -0 buildifier -mode=check -lint=warn
     nixfmt --check flake.nix third_party/packages/deep_ep/package.nix
@@ -50,10 +50,12 @@ format-check:
 
 # Run static analysis for every activated language and repository text surface.
 lint:
-    ruff check .buildkite tools libs/python tests
-    pyright .buildkite tools libs/python tests
+    ruff check .buildkite tools libs/python tests internal/sdk/python workers/training_worker examples
+    {{ uv }} run pyright --project pyproject.toml
+    {{ uv }} run pyright --project internal/sdk/python/pyproject.toml
+    {{ uv }} run pyright --project workers/training_worker/pyrightconfig.json
     cargo clippy --workspace --all-targets --locked --no-deps -- -D warnings
-    golangci-lint run ./libs/go/... ./services/control_plane/... ./protocols/generated/go/...
+    golangci-lint run ./libs/go/... ./services/control_plane/... ./internal/sdk/go/... ./tools/mindcladectl/... ./protocols/generated/go/...
     pnpm run lint
     shellcheck .buildkite/hooks/environment .buildkite/hooks/pre-command
     actionlint -no-color
@@ -285,10 +287,9 @@ generate:
       --write
     {{ python }} tools/docs/render_architecture_blueprint.py --manifest docs/architecture/blueprint/manifest.yaml
 
-# Generate every committed protocol binding and compatibility inventory.
+# Atomically generate descriptor, transports, OpenAPI, registries, coverage, and manifest.
 generate-contracts:
     {{ uv }} run python tools/codegen/generate_protocols.py --root .
-    {{ uv }} run python tools/codegen/generate_schemas.py --root . --check
 
 # Validate all governed JSON Schemas/fixtures and their committed digest catalog.
 check-schema-drift:
@@ -296,8 +297,7 @@ check-schema-drift:
 
 # Fail when a contract source change has not regenerated every committed binding.
 check-contract-drift:
-    {{ uv }} run python tools/codegen/verify_generated_drift.py --root .
-    just check-schema-drift
+    {{ uv }} run python tools/codegen/generate_protocols.py --root . --check
     just check-sdk-plan
 
 # Emit and verify the deterministic offline optional REST-provider comparison plan.
@@ -328,7 +328,9 @@ check: bootstrap
     just check-contract-drift
     just format-check
     just lint
-    go test ./libs/go/... ./services/control_plane/...
+    go test ./libs/go/... ./services/control_plane/... ./internal/sdk/go/... ./tools/mindcladectl/...
+    PYTHONPATH=internal/sdk/python:protocols/generated/python {{ uv }} run python -m unittest discover -s internal/sdk/python/tests -v
+    PYTHONPATH=workers/training_worker/python:internal/sdk/python:protocols/generated/python {{ uv }} run python -m unittest discover -s workers/training_worker/tests -v
     cargo test --workspace --locked
     pnpm --recursive --if-present run typecheck
     pnpm --recursive --if-present run test
@@ -456,11 +458,13 @@ security:
 ci-presubmit:
     just governance-ci
     just test-affected
+    just integration-ci
     just security
 
 # Buildkite protected full-CPU entrypoint.
 ci-nightly:
     just ci-source-check
+    just integration-ci
     just governance-ci
     just test-planned
     just ci-wave1
@@ -589,6 +593,7 @@ ci-evidence:
       "dependency-and-license-policy={{ evidence_dir }}/license-inventory.v1.json" \
       "secret-scan={{ evidence_dir }}/secret-scan.v1.json" \
       "bazel-native-agreement={{ evidence_dir }}/bazel-native-agreement.v2.json" \
+      "fresh-database-integration={{ evidence_dir }}/integration-ci.v1.json" \
       "source-check={{ evidence_dir }}/source-check.v1.json" \
       "wave1-full={{ evidence_dir }}/wave1-full.v1.json" \
       "cacheless-reproducibility={{ evidence_dir }}/cacheless-reproducibility.v1.json"; do
@@ -689,17 +694,57 @@ integration-up:
       "${compose[@]}" down --volumes --remove-orphans
       exit 1
     fi
+    if ! "${compose[@]}" run --rm rehearse-control-plane-migrations; then
+      "${compose[@]}" down --volumes --remove-orphans
+      exit 1
+    fi
 
 integration-test:
     #!/usr/bin/env bash
     set -euo pipefail
     dsn='postgres://mindclade@127.0.0.1:55432/mindclade?sslmode=disable'
+    postgres_targets=()
+    while IFS= read -r target; do
+      postgres_targets+=("${target}")
+    done < <({{ uv }} run python tools/qualification/training_rehearsal.py --list-integration-targets)
+    [[ "${#postgres_targets[@]}" -gt 0 ]]
     just _ci-bazel-test "${TMPDIR:-/tmp}/mindclade-bazel-user-root" \
       --test_env="MINDCLADE_TEST_POSTGRES_DSN=${dsn}" \
       --test_env=MINDCLADE_REQUIRE_POSTGRES_INTEGRATION=1 \
+      //:all_contract_tests \
+      "${postgres_targets[@]}" \
       //tests:artifact_commit_integration_test \
       //tests:control_worker_integration_test \
       //tests:local_stack_integration_test
+
+# Recreate an empty database, rehearse every migration down/up, and run the
+# complete contract/runtime suite with PostgreSQL integration made mandatory.
+integration-ci:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    compose=(docker compose -f deploy/local/compose.yaml)
+    "${compose[@]}" down --volumes --remove-orphans
+    trap 'docker compose -f deploy/local/compose.yaml down --volumes --remove-orphans' EXIT
+    just integration-up
+    just integration-test
+    source_revision="${MINDCLADE_SOURCE_REVISION:-$(git rev-parse HEAD)}"
+    [[ "${source_revision}" =~ ^[0-9a-f]{40}$ ]]
+    mkdir -p {{ evidence_dir }}
+    {{ uv }} run python tools/qualification/training_rehearsal.py \
+      --root . \
+      --source-revision "${source_revision}" \
+      --passed-check cross_language=//:all_contract_tests \
+      --passed-check database=//services/control_plane:control_plane_test \
+      --passed-check event=//services/control_plane/internal/platform/eventprojection:event_projection_test \
+      --passed-check gateway=//services/control_plane:control_plane_grpc_registration_test \
+      --passed-check grpc=//services/control_plane:control_plane_grpc_registration_test \
+      --passed-check sdk=//:all_contract_tests \
+      --integration-output {{ evidence_dir }}/integration-ci.v1.json \
+      --output {{ evidence_dir }}/training-vertical-rehearsal.v1.json
+    {{ uv }} run python tools/qualification/readiness_report.py \
+      --plan docs/architecture/authoritative-contract-integration-plan.md \
+      --rehearsal {{ evidence_dir }}/training-vertical-rehearsal.v1.json \
+      --output {{ evidence_dir }}/authoritative-integration-readiness.v1.json
 
 integration-down:
     docker compose -f deploy/local/compose.yaml down --volumes --remove-orphans

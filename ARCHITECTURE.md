@@ -61,6 +61,11 @@ consume those facades. Fern and Speakeasy are optional HTTP/JSON comparison
 tools only; provider state never owns an internal transport, contract, or
 release decision.
 
+This ownership is retroactive across the complete service estate: every gRPC
+service and RPC signature is declared in a versioned `.proto` file. Handwritten
+Go/Python/Rust/TypeScript code may implement or wrap generated interfaces, but
+it may not define a parallel network service contract.
+
 This source activation grants no runtime, public-release, Kubernetes, cloud,
 connected promotion, scientific, or production authority. Workers cannot
 mutate control-plane state, filesystem paths are not durable identity, and

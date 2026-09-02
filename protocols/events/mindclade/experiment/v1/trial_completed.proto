@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package mindclade.events.experiment.v1;
+
+import "google/protobuf/timestamp.proto";
+import "proto/mindclade/experiment/v1/trial.proto";
+
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/experiment/v1;experimentv1";
+
+// TrialCompleted records an immutable outcome, result manifest, and evidence set.
+message TrialCompleted {
+  mindclade.experiment.v1.Trial trial = 1;
+  google.protobuf.Timestamp completed_at = 2;
+}

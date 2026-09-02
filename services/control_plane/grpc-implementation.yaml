@@ -1,0 +1,83 @@
+schema_version: mindclade.grpc-implementation-policy/v1
+scope: mindclade
+services:
+  mindclade.api.v1.MindcladeService:
+    owner: control-plane/public-transport
+    receiver: publicTrainingAdapter
+    sources:
+      - services/control_plane/cmd/control-plane/training_adapter.go
+  mindclade.internal.admin.v1.AdminService:
+    owner: control-plane/admin
+    receiver: Server
+    sources:
+      - services/control_plane/internal/admin/server.go
+  mindclade.internal.agent.v1.AgentService:
+    owner: control-plane/agents
+    receiver: Server
+    sources:
+      - services/control_plane/internal/agents/server.go
+  mindclade.internal.artifact.v1.ArtifactService:
+    owner: control-plane/artifacts
+    receiver: Server
+    sources:
+      - services/control_plane/internal/artifacts/server.go
+  mindclade.internal.dataset.v1.DatasetService:
+    owner: control-plane/datasets
+    receiver: Server
+    sources:
+      - services/control_plane/internal/datasets/server.go
+  mindclade.internal.evaluation.v1.EvaluationService:
+    owner: control-plane/evaluations
+    receiver: Server
+    sources:
+      - services/control_plane/internal/evaluations/server.go
+  mindclade.internal.experiment.v1.ExperimentService:
+    owner: control-plane/experiments
+    receiver: Server
+    sources:
+      - services/control_plane/internal/experiments/server.go
+  mindclade.internal.inference.v1.InferenceService:
+    owner: control-plane/inference
+    receiver: Server
+    sources:
+      - services/control_plane/internal/inference/server.go
+  mindclade.internal.job.v1.JobService:
+    owner: control-plane/jobs
+    receiver: JobServer
+    sources:
+      - services/control_plane/internal/jobs/server.go
+  mindclade.internal.job.v1.OperationService:
+    owner: control-plane/operations
+    receiver: Server
+    sources:
+      - services/control_plane/internal/training/server.go
+  mindclade.internal.job.v1.RunService:
+    owner: control-plane/jobs
+    receiver: RunServer
+    sources:
+      - services/control_plane/internal/jobs/server.go
+  mindclade.internal.model.v1.ModelService:
+    owner: control-plane/models
+    receiver: Server
+    sources:
+      - services/control_plane/internal/models/server.go
+  mindclade.internal.policy.v1.PolicyService:
+    owner: control-plane/policies
+    receiver: Server
+    sources:
+      - services/control_plane/internal/policies/server.go
+  mindclade.internal.training.v1.TrainingService:
+    owner: control-plane/training
+    receiver: Server
+    sources:
+      - services/control_plane/internal/training/server.go
+  mindclade.internal.workflow.v1.ApprovalService:
+    owner: control-plane/workflows
+    receiver: ApprovalServer
+    sources:
+      - services/control_plane/internal/workflows/server.go
+  mindclade.internal.workflow.v1.WorkflowService:
+    owner: control-plane/workflows
+    receiver: Server
+    sources:
+      - services/control_plane/internal/workflows/server.go

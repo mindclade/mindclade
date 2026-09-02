@@ -172,9 +172,7 @@ def response(request: Message) -> Message:
     if isinstance(request, evaluation_service_pb2.ListEvaluationRunsRequest):
         return evaluation_service_pb2.ListEvaluationRunsResponse(
             evaluation_runs=[run()],
-            page=pagination_pb2.PageResponse(
-                next_page_token=request.page.page_token + "-next"
-            ),
+            page=pagination_pb2.PageResponse(next_page_token=request.page.page_token + "-next"),
         )
     if isinstance(request, evaluation_service_pb2.CancelEvaluationRunRequest):
         return evaluation_service_pb2.CancelEvaluationRunResponse(
@@ -191,9 +189,7 @@ def response(request: Message) -> Message:
             operation=operation_pb2.Operation(operation_id="operations/promotion-decision")
         )
     if isinstance(request, evaluation_service_pb2.GetPromotionDecisionRequest):
-        return evaluation_service_pb2.GetPromotionDecisionResponse(
-            promotion_decision=decision()
-        )
+        return evaluation_service_pb2.GetPromotionDecisionResponse(promotion_decision=decision())
     raise AssertionError(type(request))
 
 
@@ -234,9 +230,7 @@ def exercise_sync(
     assert committed.name == RESULT_NAME and completed.name == RUN_NAME
     assert facade.get_result(RESULT_NAME).name == RESULT_NAME
     assert facade.create_promotion_decision(
-        evaluation_service_pb2.CreatePromotionDecisionRequest(
-            promotion_decision=decision()
-        ),
+        evaluation_service_pb2.CreatePromotionDecisionRequest(promotion_decision=decision()),
         options=CallOptions(idempotency_key="promotion-decision"),
     ).operation_id
     assert facade.get_promotion_decision(DECISION_NAME).name == DECISION_NAME
@@ -273,14 +267,10 @@ class EvaluationFacadeTest(unittest.TestCase):
         assert isinstance(commit, evaluation_service_pb2.CommitEvaluationResultRequest)
         self.assertEqual(commit.fence.tenant_id, "tenant-1")
         self.assertEqual(commit.fence.project_id, "project-1")
-        self.assertIn(
-            ("x-mindclade-lease-token", "opaque-lease-capability"), metadata_values[4]
-        )
+        self.assertIn(("x-mindclade-lease-token", "opaque-lease-capability"), metadata_values[4])
         promotion = requests[6]
         assert isinstance(promotion, evaluation_service_pb2.CreatePromotionDecisionRequest)
-        self.assertEqual(
-            promotion.promotion_decision.decided_by_principal_ref, "principal-1"
-        )
+        self.assertEqual(promotion.promotion_decision.decided_by_principal_ref, "principal-1")
 
 
 class AsyncEvaluationFacadeTest(unittest.IsolatedAsyncioTestCase):
@@ -344,9 +334,7 @@ class AsyncEvaluationFacadeTest(unittest.IsolatedAsyncioTestCase):
                 )
             ).operation_id
         )
-        self.assertEqual(
-            (await facade.get_promotion_decision(DECISION_NAME)).name, DECISION_NAME
-        )
+        self.assertEqual((await facade.get_promotion_decision(DECISION_NAME)).name, DECISION_NAME)
         self.assertEqual(len(requests), 8)
 
 

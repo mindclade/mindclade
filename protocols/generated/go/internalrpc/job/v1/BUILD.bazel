@@ -10,7 +10,9 @@ go_library(
     visibility = ["//visibility:public"],
     deps = [
         "//protocols/generated/go/common/v1:bindings",
+        "//protocols/generated/go/feature/v1:bindings",
         "//protocols/generated/go/job/v1:bindings",
+        "//protocols/generated/go/transform/v1:bindings",
         "@org_golang_google_grpc//:grpc",
         "@org_golang_google_grpc//codes",
         "@org_golang_google_grpc//status",

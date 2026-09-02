@@ -1,0 +1,32 @@
+apiVersion: mindclade.dev/v1
+kind: Component
+metadata:
+  name: workers-ingestion-worker
+  description: Bounded ingestion worker consuming immutable job events through the private SDK.
+spec:
+  type: worker
+  lifecycle: pre-production
+  maturity: internal
+  owner: data-platform
+  security_reviewers:
+    - security
+  repository_class: application-source
+  trust_tier: workload
+  recovery_tier: tier-1
+  data_classification: internal
+  production_authority: false
+  dependencies:
+    - internal-sdk-rust
+    - protobuf-job-events
+  provides:
+    - verified-ingestion-assignment-intake
+  release:
+    strategy: source-only
+    artifact: null
+    immutable: false
+  activation:
+    wave: guide-only
+    connected: false
+status:
+  readiness: IMPLEMENTED
+  source_readiness: SOURCE_IMPLEMENTED

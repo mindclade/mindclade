@@ -11,6 +11,7 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	"github.com/mindclade/mindclade/libs/go/numconv"
 	adminv1 "github.com/mindclade/mindclade/protocols/generated/go/admin/v1"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
@@ -279,8 +280,16 @@ func projectProto(ctx context.Context, tx *sql.Tx, row projectRow) (*adminv1.Pro
 		if parseErr != nil {
 			return nil, parseErr
 		}
+		maximumConcurrentJobs, conversionErr := numconv.Int64ToUint32(row.maxJobs)
+		if conversionErr != nil {
+			return nil, conversionErr
+		}
+		maximumConcurrentAcceleratorJobs, conversionErr := numconv.Int64ToUint32(row.maxAcceleratorJobs)
+		if conversionErr != nil {
+			return nil, conversionErr
+		}
 		value.Quota = &adminv1.ProjectQuota{
-			MaximumConcurrentJobs: uint32(row.maxJobs), MaximumConcurrentAcceleratorJobs: uint32(row.maxAcceleratorJobs), //nolint:gosec // Conversion is bounded by validated protocol invariants or PostgreSQL CHECK constraints.
+			MaximumConcurrentJobs: maximumConcurrentJobs, MaximumConcurrentAcceleratorJobs: maximumConcurrentAcceleratorJobs,
 			MaximumStorageBytes: storage, MaximumMonthlySpendMicros: spend, MaximumDailyInferenceWorkUnits: work,
 		}
 	}

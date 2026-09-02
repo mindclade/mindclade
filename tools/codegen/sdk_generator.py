@@ -27,8 +27,8 @@ DEFAULT_GENERATION = Path("protocols/openapi/generation.yaml")
 OPTIONAL_POLICY_SOURCE = "protocols/openapi/generation.yaml#spec.optionalRestGeneration"
 DEFAULT_PLAN = Path("optional-rest-sdk-plan.json")
 HTTP_METHODS = frozenset({"delete", "get", "head", "options", "patch", "post", "put", "trace"})
-LANGUAGES = ("go", "python", "typescript")
 INTERNAL_LANGUAGES = ("go", "python", "rust", "typescript")
+OPTIONAL_LANGUAGES = INTERNAL_LANGUAGES
 UNPINNED_VERSION = "unpinned"
 EXIT_USAGE = 2
 EXIT_CONNECTED_NOT_READY = 3
@@ -47,12 +47,20 @@ class ConnectedGenerationError(RuntimeError):
 class ProviderAdapter:
     provider_id: str
     role: str
-    languages: tuple[str, ...] = LANGUAGES
+    languages: tuple[str, ...]
 
 
 ADAPTERS: Mapping[str, ProviderAdapter] = {
-    "fern": ProviderAdapter("fern", "optional-internal-rest-generator"),
-    "speakeasy": ProviderAdapter("speakeasy", "optional-specialized-rest-benchmark"),
+    "fern": ProviderAdapter(
+        "fern",
+        "optional-internal-rest-generator",
+        ("go", "python", "rust", "typescript"),
+    ),
+    "speakeasy": ProviderAdapter(
+        "speakeasy",
+        "optional-specialized-rest-benchmark",
+        ("go", "python", "typescript"),
+    ),
 }
 
 NATIVE_PIPELINE_INTERFACES = (
@@ -355,6 +363,17 @@ def selected_values(selection: str, available: Sequence[str]) -> tuple[str, ...]
     return tuple(available) if selection == "all" else (selection,)
 
 
+def selected_provider_languages(provider_id: str, language_selection: str) -> tuple[str, ...]:
+    supported = ADAPTERS[provider_id].languages
+    if language_selection == "all":
+        return supported
+    if language_selection not in supported:
+        raise SdkGeneratorError(
+            f"{provider_id} does not support configured language {language_selection}"
+        )
+    return (language_selection,)
+
+
 def provider_version(provider: Mapping[str, Any], override: str | None) -> str:
     adapter = require_mapping(provider.get("adapter"), "provider.adapter")
     configured = require_string(adapter.get("providerVersion"), "provider.adapter.providerVersion")
@@ -377,7 +396,6 @@ def build_plan(
     safe_root = validate_output_root(output_root, openapi_path)
     source_revision = require_string(source_revision, "source revision")
     selected_providers = selected_values(provider_selection, tuple(sorted(ADAPTERS)))
-    selected_languages = selected_values(language_selection, LANGUAGES)
     if provider_version_override is not None and len(selected_providers) != 1:
         raise SdkGeneratorError("--provider-version requires one explicit provider")
 
@@ -388,7 +406,7 @@ def build_plan(
     for provider_id in selected_providers:
         provider = providers[provider_id]
         adapter_config = require_mapping(provider.get("adapter"), f"{provider_id}.adapter")
-        for language in selected_languages:
+        for language in selected_provider_languages(provider_id, language_selection):
             relative_output = Path(provider_id) / language
             confined_output(safe_root, relative_output, "provider output directory")
             provenance.append(
@@ -472,6 +490,10 @@ def generate_connected(args: argparse.Namespace) -> int:
     generation = load_yaml_mapping(generation_path)
     providers = validate_contract(load_yaml_mapping(openapi_path), generation)
     provider = providers[args.provider]
+    if args.language not in ADAPTERS[args.provider].languages:
+        raise ConnectedGenerationError(
+            f"{args.provider} does not support configured language {args.language}"
+        )
     if provider.get("readiness") != "pinned-local-adapter":
         raise ConnectedGenerationError(
             f"{args.provider} is {provider.get('readiness')}; no pinned adapter may execute"
@@ -556,7 +578,7 @@ def add_common_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--output-root", type=Path, required=True)
     parser.add_argument("--source-revision", required=True)
     parser.add_argument("--provider", choices=("all", *sorted(ADAPTERS)), default="all")
-    parser.add_argument("--language", choices=("all", *LANGUAGES), default="all")
+    parser.add_argument("--language", choices=("all", *OPTIONAL_LANGUAGES), default="all")
     parser.add_argument("--provider-version")
 
 

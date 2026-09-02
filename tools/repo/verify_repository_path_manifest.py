@@ -53,7 +53,7 @@ def validate_generated_files(manifest: Mapping[str, Any], root: Path) -> list[st
             continue
         if entry["path"] == "MODULE.bazel.lock":
             try:
-                value = json.loads(path.read_text(encoding="utf-8"))
+                value: object = json.loads(path.read_text(encoding="utf-8"))
             except json.JSONDecodeError:
                 errors.append("generated MODULE.bazel.lock is not valid JSON")
                 continue

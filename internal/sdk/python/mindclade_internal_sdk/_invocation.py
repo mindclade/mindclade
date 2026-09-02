@@ -181,6 +181,42 @@ class SyncInvoker:
         call: PreparedCall,
         retry_safe: bool,
     ) -> Message:
+        response, _ = self._unary(
+            method,
+            request,
+            call=call,
+            retry_safe=retry_safe,
+            include_metadata=False,
+        )
+        return response
+
+    def unary_with_metadata(
+        self,
+        method: str,
+        request: Message,
+        *,
+        call: PreparedCall,
+        retry_safe: bool,
+    ) -> tuple[Message, Metadata]:
+        """Invoke unary RPC and copy its initial response metadata."""
+
+        return self._unary(
+            method,
+            request,
+            call=call,
+            retry_safe=retry_safe,
+            include_metadata=True,
+        )
+
+    def _unary(
+        self,
+        method: str,
+        request: Message,
+        *,
+        call: PreparedCall,
+        retry_safe: bool,
+        include_metadata: bool,
+    ) -> tuple[Message, Metadata]:
         deadline = time.monotonic() + call.timeout
         attempts = self.config.retry.max_attempts if retry_safe else 1
         last_error: MindcladeError | None = None
@@ -196,12 +232,22 @@ class SyncInvoker:
                 remaining = deadline - time.monotonic()
                 if remaining <= 0:
                     raise _credential_deadline_error(call)
-                response = self.transport.unary_unary(
-                    method,
-                    request,
-                    timeout=remaining,
-                    metadata=_authorized_metadata(self.config, call, token),
-                )
+                metadata = _authorized_metadata(self.config, call, token)
+                if include_metadata:
+                    response, response_metadata = self.transport.unary_unary_with_metadata(
+                        method,
+                        request,
+                        timeout=remaining,
+                        metadata=metadata,
+                    )
+                else:
+                    response = self.transport.unary_unary(
+                        method,
+                        request,
+                        timeout=remaining,
+                        metadata=metadata,
+                    )
+                    response_metadata = ()
             except grpc.RpcError as error:
                 normalized = normalize_rpc_error(error, fallback_request_id=call.request_id)
                 _observe(
@@ -232,7 +278,7 @@ class SyncInvoker:
                 status="OK",
                 request_id=call.request_id,
             )
-            return response
+            return response, response_metadata
         assert last_error is not None
         raise last_error
 
@@ -306,6 +352,42 @@ class AsyncInvoker:
         call: PreparedCall,
         retry_safe: bool,
     ) -> Message:
+        response, _ = await self._unary(
+            method,
+            request,
+            call=call,
+            retry_safe=retry_safe,
+            include_metadata=False,
+        )
+        return response
+
+    async def unary_with_metadata(
+        self,
+        method: str,
+        request: Message,
+        *,
+        call: PreparedCall,
+        retry_safe: bool,
+    ) -> tuple[Message, Metadata]:
+        """Invoke unary RPC and copy its initial response metadata."""
+
+        return await self._unary(
+            method,
+            request,
+            call=call,
+            retry_safe=retry_safe,
+            include_metadata=True,
+        )
+
+    async def _unary(
+        self,
+        method: str,
+        request: Message,
+        *,
+        call: PreparedCall,
+        retry_safe: bool,
+        include_metadata: bool,
+    ) -> tuple[Message, Metadata]:
         loop = asyncio.get_running_loop()
         deadline = loop.time() + call.timeout
         attempts = self.config.retry.max_attempts if retry_safe else 1
@@ -322,12 +404,22 @@ class AsyncInvoker:
                 remaining = deadline - loop.time()
                 if remaining <= 0:
                     raise _credential_deadline_error(call)
-                response = await self.transport.unary_unary(
-                    method,
-                    request,
-                    timeout=remaining,
-                    metadata=_authorized_metadata(self.config, call, token),
-                )
+                metadata = _authorized_metadata(self.config, call, token)
+                if include_metadata:
+                    response, response_metadata = await self.transport.unary_unary_with_metadata(
+                        method,
+                        request,
+                        timeout=remaining,
+                        metadata=metadata,
+                    )
+                else:
+                    response = await self.transport.unary_unary(
+                        method,
+                        request,
+                        timeout=remaining,
+                        metadata=metadata,
+                    )
+                    response_metadata = ()
             except grpc.RpcError as error:
                 normalized = normalize_rpc_error(error, fallback_request_id=call.request_id)
                 _observe(
@@ -358,7 +450,7 @@ class AsyncInvoker:
                 status="OK",
                 request_id=call.request_id,
             )
-            return response
+            return response, response_metadata
         assert last_error is not None
         raise last_error
 

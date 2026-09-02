@@ -1,22 +1,27 @@
+BEGIN;
+
 DO $$
+DECLARE
+  table_name text;
+  contains_rows boolean;
 BEGIN
   IF current_setting('app.allow_local_empty_down_migration', true) IS DISTINCT FROM 'true' THEN
     RAISE EXCEPTION 'artifact down migration requires explicit local-empty authorization';
   END IF;
-  IF EXISTS (SELECT 1 FROM artifact_command_receipts)
-    OR EXISTS (SELECT 1 FROM artifact_upload_chunks)
-    OR EXISTS (SELECT 1 FROM artifact_upload_sessions)
-    OR EXISTS (SELECT 1 FROM artifact_operations)
-    OR EXISTS (SELECT 1 FROM artifact_leases)
-    OR EXISTS (SELECT 1 FROM artifact_quarantine_evidence)
-    OR EXISTS (SELECT 1 FROM artifact_aliases)
-    OR EXISTS (SELECT 1 FROM artifact_catalog_entries)
-    OR EXISTS (SELECT 1 FROM artifact_staging_receipts) THEN
-    RAISE EXCEPTION 'artifact down migration refuses non-empty durable tables';
-  END IF;
+  FOREACH table_name IN ARRAY ARRAY[
+    'artifact_staging_receipts','artifact_upload_sessions','artifact_upload_chunks',
+    'artifact_catalog_entries','artifact_aliases','artifact_quarantine_evidence',
+    'artifact_leases','artifact_operations','artifact_command_receipts'
+  ] LOOP
+    EXECUTE format('LOCK TABLE %I IN ACCESS EXCLUSIVE MODE', table_name);
+    EXECUTE format('ALTER TABLE %I NO FORCE ROW LEVEL SECURITY', table_name);
+    EXECUTE format('SELECT EXISTS (SELECT 1 FROM %I)', table_name) INTO contains_rows;
+    IF contains_rows THEN
+      RAISE EXCEPTION 'artifact down migration refuses non-empty durable table %', table_name;
+    END IF;
+  END LOOP;
 END $$;
 
-BEGIN;
 DROP TABLE IF EXISTS artifact_command_receipts;
 DROP TABLE IF EXISTS artifact_operations;
 DROP TABLE IF EXISTS artifact_leases;

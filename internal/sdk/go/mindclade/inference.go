@@ -7,11 +7,12 @@ import (
 	"strings"
 	"sync"
 
+	"google.golang.org/grpc"
+	"google.golang.org/protobuf/types/known/timestamppb"
+
 	inferencev1 "github.com/mindclade/mindclade/protocols/generated/go/inference/v1"
 	internalinferencev1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/inference/v1"
 	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
-	"google.golang.org/grpc"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // InferenceService is a thin ergonomic façade over the generated internal
@@ -137,7 +138,7 @@ func (service *InferenceService) CommitResult(ctx context.Context, command *inte
 // server-issued cursor. Recv is serialized; Close is idempotent.
 type InferenceWatcher struct {
 	service       *InferenceService
-	ctx           context.Context
+	ctx           context.Context //nolint:containedctx // A stream watcher owns its cancellable lifecycle context.
 	cancel        context.CancelFunc
 	operationName string
 	cursor        *inferencev1.InferenceStreamCursor

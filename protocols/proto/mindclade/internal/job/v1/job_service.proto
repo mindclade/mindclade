@@ -7,12 +7,14 @@ import "google/protobuf/duration.proto";
 import "google/protobuf/timestamp.proto";
 import "proto/mindclade/common/v1/command_context.proto";
 import "proto/mindclade/common/v1/pagination.proto";
+import "proto/mindclade/feature/v1/feature_commands.proto";
 import "proto/mindclade/job/v1/attempt.proto";
 import "proto/mindclade/job/v1/job.proto";
 import "proto/mindclade/job/v1/job_commands.proto";
 import "proto/mindclade/job/v1/lease_fencing.proto";
 import "proto/mindclade/job/v1/operation.proto";
 import "proto/mindclade/job/v1/run.proto";
+import "proto/mindclade/transform/v1/transform_commands.proto";
 
 option go_package = "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/job/v1;internaljobv1";
 
@@ -245,6 +247,15 @@ message CommitAttemptRequest {
   mindclade.job.v1.LeaseFence fence = 3;
   google.protobuf.FieldMask update_mask = 4;
   int64 expected_resource_version = 5;
+
+  // Domain completion is required for job kinds whose authoritative terminal
+  // fact carries more meaning than the generic Attempt outcome. The server
+  // validates the selected type against the persisted job_kind and commits its
+  // immutable event in the same transaction as Attempt and Run.
+  oneof domain_completion {
+    mindclade.feature.v1.CommitFeatureMaterializationCommand feature_materialization = 6;
+    mindclade.transform.v1.CommitTransformExecutionCommand transform_execution = 7;
+  }
 }
 
 // CommitAttemptResponse returns the accepted attempt and reconciled run state.

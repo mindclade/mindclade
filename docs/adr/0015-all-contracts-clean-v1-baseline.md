@@ -78,6 +78,11 @@ servers for all four repository languages:
 - Rust: Prost and Tonic projections; and
 - TypeScript: Protobuf-ES and Connect projections.
 
+Every gRPC service and RPC in the existing and future estate is defined in a
+versioned Protobuf source. Runtime implementations register the generated
+server interfaces and clients invoke generated stubs or descriptors; a
+handwritten parallel network-service definition is not permitted.
+
 Generated outputs are committed, deterministic, source-attributed, and never
 hand-edited. Product libraries, including `libs/python`, are consumers of these
 bindings. They may provide validation, ergonomic domain behavior, or transport

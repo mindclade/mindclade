@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package mindclade.events.experiment.v1;
+
+import "google/protobuf/timestamp.proto";
+import "proto/mindclade/experiment/v1/experiment.proto";
+
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/experiment/v1;experimentv1";
+
+// ExperimentUpdated records a field-mask-governed metadata revision.
+message ExperimentUpdated {
+  mindclade.experiment.v1.Experiment experiment = 1;
+  repeated string changed_fields = 2;
+  google.protobuf.Timestamp updated_at = 3;
+}
