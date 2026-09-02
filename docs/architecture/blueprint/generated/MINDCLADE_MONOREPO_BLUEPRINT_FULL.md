@@ -6412,7 +6412,9 @@ mindclade/
 │       ├── cuda/
 │       │   ├── CMakeLists.txt
 │       │   ├── README.md
-│       │   └── operation_registry.cpp
+│       │   ├── operation_registry.cpp
+│       │   ├── device_architecture.cpp
+│       │   └── device_architecture.h
 │       ├── generated/
 │       │   ├── __init__.py
 │       │   ├── native_ops.generated.bzl
@@ -7212,6 +7214,8 @@ mindclade/
 │   │   │   │   ├── job_repository.go
 │   │   │   │   ├── job_reconciler.go
 │   │   │   │   ├── lease_fencing.go
+│   │   │   │   ├── events.go
+│   │   │   │   ├── events_test.go
 │   │   │   │   ├── server.go
 │   │   │   │   └── server_test.go
 │   │   │   ├── agents/
@@ -8193,6 +8197,10 @@ mindclade/
 │   ├── BUILD.bazel
 │   ├── README.md
 │   ├── governance/
+│   │   ├── reports/
+│   │   │   ├── wave2-preflight-ci.md
+│   │   │   ├── wave2-preflight-codegen.md
+│   │   │   └── wave2-preflight-decisions.md
 │   │   ├── founder-bootstrap-exception.v1.schema.json
 │   │   └── exceptions/
 │   │       └── FBE-0001.yaml
@@ -8313,6 +8321,7 @@ mindclade/
         │   │   ├── config.py
         │   │   ├── datasets.py
         │   │   ├── errors.py
+        │   │   ├── evaluations.py
         │   │   ├── generated.py
         │   │   ├── inference.py
         │   │   ├── method_policy.py
@@ -8327,6 +8336,7 @@ mindclade/
         │   └── tests/
         │       ├── test_internal_sdk.py
         │       ├── test_agents.py
+        │       ├── test_evaluations.py
         │       ├── test_inference.py
         │       ├── test_policy_admin.py
         │       └── test_workflows.py
@@ -8344,6 +8354,8 @@ mindclade/
         │       ├── config.rs
         │       ├── datasets.rs
         │       ├── error.rs
+        │       ├── evaluation_tests.rs
+        │       ├── evaluations.rs
         │       ├── inference.rs
         │       ├── lib.rs
         │       ├── models.rs
@@ -8373,6 +8385,7 @@ mindclade/
             │   ├── core.ts
             │   ├── datasets.ts
             │   ├── error.ts
+            │   ├── evaluations.ts
             │   ├── gcp_auth.ts
             │   ├── inference.ts
             │   ├── index.ts
@@ -8392,6 +8405,7 @@ mindclade/
             │   ├── sdk.test.ts
             │   ├── policy_admin.test.ts
             │   ├── agents.test.ts
+            │   ├── evaluations.test.ts
             │   └── workflow_approval.test.ts
             └── tsconfig.json
 ```

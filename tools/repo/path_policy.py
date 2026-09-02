@@ -28,7 +28,7 @@ BLUEPRINT_SHA256 = "d099074e755168bbdce076d50918bf06aff677f9e5d620fdfe53cb7cef74
 ANCHOR_COMMIT = "292b71f47b1b29cc9ba7cf760a9bd07cd5e0ffa7"
 AUTHORITY_FILE_COUNT = 2461
 AUTHORITY_DIRECTORY_COUNT = 787
-CANONICAL_FILE_COUNT = 3344
+CANONICAL_FILE_COUNT = 3353
 AUTHORITY_PATH_SET_SHA256 = "f2011dd32ccc19649e6abb70ffb4473aea4a224410062d40292222e2e6263692"
 CANONICAL_PATH_SET_SHA256 = "a53521ed4fb8fd9873ba6fae6fa8c1bb256c40445116df695223a5db19634781"
 
@@ -551,6 +551,12 @@ SCHEMA_BINDING_ADDITIONS = (
     "protocols/generated/typescript/schema/v1/bindings.ts",
 )
 
+CODEX_BATCH_REPORT_ADDITIONS = (
+    "docs/governance/reports/wave2-preflight-ci.md",
+    "docs/governance/reports/wave2-preflight-codegen.md",
+    "docs/governance/reports/wave2-preflight-decisions.md",
+)
+
 WAVE_ZERO_REQUIRED_ADDITIONS = (
     ".bazelignore",
     ".golangci.yml",
@@ -566,6 +572,7 @@ WAVE_ZERO_REQUIRED_ADDITIONS = (
     "tools/repo/tests/test_monorepo_tree_authority.py",
     "tools/repo/tests/test_repository_policies.py",
     "tools/repo/tests/golden/repository_drift.v1.json",
+    *CODEX_BATCH_REPORT_ADDITIONS,
     FOUNDER_BOOTSTRAP_ADR,
     CONNECTED_RATIFICATION_SCHEMA,
     FOUNDER_BOOTSTRAP_SCHEMA,
@@ -637,6 +644,7 @@ INTERNAL_SDK_ADDITIONS = (
     "internal/sdk/python/mindclade_internal_sdk/config.py",
     "internal/sdk/python/mindclade_internal_sdk/datasets.py",
     "internal/sdk/python/mindclade_internal_sdk/errors.py",
+    "internal/sdk/python/mindclade_internal_sdk/evaluations.py",
     "internal/sdk/python/mindclade_internal_sdk/generated.py",
     "internal/sdk/python/mindclade_internal_sdk/inference.py",
     "internal/sdk/python/mindclade_internal_sdk/method_policy.py",
@@ -650,6 +658,7 @@ INTERNAL_SDK_ADDITIONS = (
     "internal/sdk/python/pyproject.toml",
     "internal/sdk/python/tests/test_internal_sdk.py",
     "internal/sdk/python/tests/test_agents.py",
+    "internal/sdk/python/tests/test_evaluations.py",
     "internal/sdk/python/tests/test_inference.py",
     "internal/sdk/python/tests/test_policy_admin.py",
     "internal/sdk/python/tests/test_workflows.py",
@@ -665,6 +674,8 @@ INTERNAL_SDK_ADDITIONS = (
     "internal/sdk/rust/src/config.rs",
     "internal/sdk/rust/src/datasets.rs",
     "internal/sdk/rust/src/error.rs",
+    "internal/sdk/rust/src/evaluation_tests.rs",
+    "internal/sdk/rust/src/evaluations.rs",
     "internal/sdk/rust/src/inference.rs",
     "internal/sdk/rust/src/lib.rs",
     "internal/sdk/rust/src/models.rs",
@@ -738,6 +749,8 @@ CONTROL_PLANE_TRANSPORT_ADDITIONS = (
 )
 
 WORKER_COORDINATION_ADDITIONS = (
+    "services/control_plane/internal/jobs/events.go",
+    "services/control_plane/internal/jobs/events_test.go",
     "services/control_plane/internal/jobs/server.go",
     "services/control_plane/internal/jobs/server_test.go",
 )
@@ -2373,6 +2386,8 @@ def _base_reconciliation_addition_reason(path: str) -> str:
         return "Required tracked Wave 0 lint configuration omitted by A6."
     if path == ".github/actionlint.yaml":
         return "Required Wave 0 GitHub Actions lint configuration omitted by A6."
+    if path in CODEX_BATCH_REPORT_ADDITIONS:
+        return "Archived Wave 2 agent report retained as governed review provenance."
     if path == "MODULE.bazel.lock":
         return (
             "Required root workspace lock omitted by A6; Bazel 9 Bzlmod resolution is "
@@ -2989,7 +3004,7 @@ CANONICAL_FILE_COUNT = (  # pyright: ignore[reportConstantRedefinition]
     CANONICAL_FILE_COUNT + len(PAIRFORMER_WAVE6_ADRS) + 1
 )
 CANONICAL_PATH_SET_SHA256 = (  # pyright: ignore[reportConstantRedefinition]
-    "f8e20536225b44168f47d6b5f6843563c79b90cf1b36f150a952562c77369658"
+    "c5a4f39183427cfa03c04aab382e8947f966f87f64fd0484a0a717487d91f4b2"
 )
 PRE_ACTIVATION_SOURCE_PATHS = frozenset(  # pyright: ignore[reportConstantRedefinition]
     path
@@ -3013,6 +3028,8 @@ NATIVE_SIGNED_QUALIFICATION_NEW_PATHS: tuple[str, ...] = (
     "kernels/native/tests/test_gpu_qualification.py",
 )
 NATIVE_CALLABLE_ABI_NEW_PATHS: tuple[str, ...] = (
+    "kernels/native/cuda/device_architecture.cpp",
+    "kernels/native/cuda/device_architecture.h",
     "kernels/native/codegen/callable_abi.py",
     "kernels/native/generated/launcher_plans.generated.cpp",
     "kernels/native/generated/qualified_capabilities.generated.cpp",

@@ -2547,6 +2547,18 @@
           "reason": "Required Wave 0 schema, deterministic golden, or executable governance test omitted by A6."
         },
         {
+          "path": "docs/governance/reports/wave2-preflight-ci.md",
+          "reason": "Archived Wave 2 agent report retained as governed review provenance."
+        },
+        {
+          "path": "docs/governance/reports/wave2-preflight-codegen.md",
+          "reason": "Archived Wave 2 agent report retained as governed review provenance."
+        },
+        {
+          "path": "docs/governance/reports/wave2-preflight-decisions.md",
+          "reason": "Archived Wave 2 agent report retained as governed review provenance."
+        },
+        {
           "path": "docs/adr/0008-founder-bootstrap-public-estate-transition.md",
           "reason": "Required Wave 0 governance source for the bounded founder bootstrap and public-estate transition authorized by ADR-0008."
         },
@@ -5231,6 +5243,10 @@
           "reason": "ADR-0015 private Mindclade-owned SDK facade or conformance source that wraps Buf-generated native transport clients without redefining wire models."
         },
         {
+          "path": "internal/sdk/python/mindclade_internal_sdk/evaluations.py",
+          "reason": "ADR-0015 private Mindclade-owned SDK facade or conformance source that wraps Buf-generated native transport clients without redefining wire models."
+        },
+        {
           "path": "internal/sdk/python/mindclade_internal_sdk/generated.py",
           "reason": "ADR-0015 private Mindclade-owned SDK facade or conformance source that wraps Buf-generated native transport clients without redefining wire models."
         },
@@ -5280,6 +5296,10 @@
         },
         {
           "path": "internal/sdk/python/tests/test_agents.py",
+          "reason": "ADR-0015 private Mindclade-owned SDK facade or conformance source that wraps Buf-generated native transport clients without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/python/tests/test_evaluations.py",
           "reason": "ADR-0015 private Mindclade-owned SDK facade or conformance source that wraps Buf-generated native transport clients without redefining wire models."
         },
         {
@@ -5340,6 +5360,14 @@
         },
         {
           "path": "internal/sdk/rust/src/error.rs",
+          "reason": "ADR-0015 private Mindclade-owned SDK facade or conformance source that wraps Buf-generated native transport clients without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/rust/src/evaluation_tests.rs",
+          "reason": "ADR-0015 private Mindclade-owned SDK facade or conformance source that wraps Buf-generated native transport clients without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/rust/src/evaluations.rs",
           "reason": "ADR-0015 private Mindclade-owned SDK facade or conformance source that wraps Buf-generated native transport clients without redefining wire models."
         },
         {
@@ -5597,6 +5625,14 @@
         {
           "path": "services/control_plane/cmd/control-plane/wire_test.go",
           "reason": "ADR-0015 authenticated control-plane transport adapter or registration test required to bind generated gRPC services to the training application service."
+        },
+        {
+          "path": "services/control_plane/internal/jobs/events.go",
+          "reason": "ADR-0015 worker-coordination server required to bind generated lease, renewal, heartbeat, expiry, cancellation, and fencing RPCs to normalized durable state."
+        },
+        {
+          "path": "services/control_plane/internal/jobs/events_test.go",
+          "reason": "ADR-0015 worker-coordination server required to bind generated lease, renewal, heartbeat, expiry, cancellation, and fencing RPCs to normalized durable state."
         },
         {
           "path": "services/control_plane/internal/jobs/server.go",
@@ -6087,6 +6123,14 @@
           "reason": "ADR-0022 governs immutable K4/K5 evidence, explicit Ed25519 trust, revocation/rollback, and fail-closed qualified-index inspection."
         },
         {
+          "path": "kernels/native/cuda/device_architecture.cpp",
+          "reason": "ADR-0022 governs the callable-node ABI and compact native-table source/generated boundary without granting production execution."
+        },
+        {
+          "path": "kernels/native/cuda/device_architecture.h",
+          "reason": "ADR-0022 governs the callable-node ABI and compact native-table source/generated boundary without granting production execution."
+        },
+        {
           "path": "kernels/native/codegen/callable_abi.py",
           "reason": "ADR-0022 governs the callable-node ABI and compact native-table source/generated boundary without granting production execution."
         },
@@ -6166,8 +6210,8 @@
           "reason": "Sections 1-18 and Section 14.1 take precedence over the stale A6 short ADR name."
         }
       ],
-      "canonical_file_count": 3371,
-      "canonical_path_set_sha256": "f8e20536225b44168f47d6b5f6843563c79b90cf1b36f150a952562c77369658"
+      "canonical_file_count": 3382,
+      "canonical_path_set_sha256": "c5a4f39183427cfa03c04aab382e8947f966f87f64fd0484a0a717487d91f4b2"
     },
     "owners": {
       "agent-platform": {
@@ -34722,6 +34766,36 @@
       "activation_criterion": "ADR-0009 permits source incubation only through 2026-11-30; activate only after Wave 5 evidence and an operation-specific JIT-06 decision prove measured need, reference parity, gradients, locked dependencies, immutable artifacts, fallback, and revocation."
     },
     {
+      "path": "kernels/native/cuda/device_architecture.cpp",
+      "kind": "source",
+      "owner": "ml-systems-performance",
+      "component": "kernels-native",
+      "status": "target",
+      "activation_wave": "6",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//kernels/native:native_policy_inputs"
+      ],
+      "test_targets": [],
+      "public_surface": false,
+      "activation_criterion": "ADR-0009 permits source incubation only through 2026-11-30; activate only after Wave 5 evidence and an operation-specific JIT-06 decision prove measured need, reference parity, gradients, locked dependencies, immutable artifacts, fallback, and revocation."
+    },
+    {
+      "path": "kernels/native/cuda/device_architecture.h",
+      "kind": "source",
+      "owner": "ml-systems-performance",
+      "component": "kernels-native",
+      "status": "target",
+      "activation_wave": "6",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//kernels/native:native_policy_inputs"
+      ],
+      "test_targets": [],
+      "public_surface": false,
+      "activation_criterion": "ADR-0009 permits source incubation only through 2026-11-30; activate only after Wave 5 evidence and an operation-specific JIT-06 decision prove measured need, reference parity, gradients, locked dependencies, immutable artifacts, fallback, and revocation."
+    },
+    {
       "path": "kernels/native/generated/__init__.py",
       "kind": "source",
       "owner": "ml-systems-performance",
@@ -43129,6 +43203,40 @@
       ],
       "public_surface": false,
       "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
+    },
+    {
+      "path": "services/control_plane/internal/jobs/events.go",
+      "kind": "source",
+      "owner": "platform-control-plane",
+      "component": "services-control-plane",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "services/control_plane/internal/jobs/events_test.go",
+      "kind": "test",
+      "owner": "platform-control-plane",
+      "component": "services-control-plane",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
       "path": "services/control_plane/internal/jobs/server.go",
@@ -54477,6 +54585,54 @@
       "public_surface": false
     },
     {
+      "path": "docs/governance/reports/wave2-preflight-ci.md",
+      "kind": "documentation",
+      "owner": "architecture",
+      "component": "docs-governance",
+      "status": "active",
+      "activation_wave": "0",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:wave0_governance_sources"
+      ],
+      "test_targets": [
+        "//:wave0_tests"
+      ],
+      "public_surface": false
+    },
+    {
+      "path": "docs/governance/reports/wave2-preflight-codegen.md",
+      "kind": "documentation",
+      "owner": "architecture",
+      "component": "docs-governance",
+      "status": "active",
+      "activation_wave": "0",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:wave0_governance_sources"
+      ],
+      "test_targets": [
+        "//:wave0_tests"
+      ],
+      "public_surface": false
+    },
+    {
+      "path": "docs/governance/reports/wave2-preflight-decisions.md",
+      "kind": "documentation",
+      "owner": "architecture",
+      "component": "docs-governance",
+      "status": "active",
+      "activation_wave": "0",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:wave0_governance_sources"
+      ],
+      "test_targets": [
+        "//:wave0_tests"
+      ],
+      "public_surface": false
+    },
+    {
       "path": "docs/governance/founder-bootstrap-exception.v1.schema.json",
       "kind": "schema",
       "owner": "architecture",
@@ -56039,6 +56195,23 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
+      "path": "internal/sdk/python/mindclade_internal_sdk/evaluations.py",
+      "kind": "source",
+      "owner": "developer-experience",
+      "component": "internal-sdk-python",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
       "path": "internal/sdk/python/mindclade_internal_sdk/generated.py",
       "kind": "source",
       "owner": "developer-experience",
@@ -56244,6 +56417,23 @@
     },
     {
       "path": "internal/sdk/python/tests/test_agents.py",
+      "kind": "test",
+      "owner": "developer-experience",
+      "component": "internal-sdk-python",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "internal/sdk/python/tests/test_evaluations.py",
       "kind": "test",
       "owner": "developer-experience",
       "component": "internal-sdk-python",
@@ -56499,6 +56689,40 @@
     },
     {
       "path": "internal/sdk/rust/src/error.rs",
+      "kind": "source",
+      "owner": "developer-experience",
+      "component": "internal-sdk-rust",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "internal/sdk/rust/src/evaluation_tests.rs",
+      "kind": "source",
+      "owner": "developer-experience",
+      "component": "internal-sdk-rust",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "internal/sdk/rust/src/evaluations.rs",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-rust",
