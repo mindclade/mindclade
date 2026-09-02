@@ -22,6 +22,7 @@ go_test(
     srcs = ["writer_test.go"],
     embed = [":audit"],
     pure = "on",
+    visibility = ["//libs:__pkg__"],
     deps = [
         "//protocols/generated/go/common/v1:bindings",
         "@org_golang_google_protobuf//proto",

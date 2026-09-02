@@ -306,6 +306,13 @@ CANONICAL_FILE_COUNT = 3525
 AUTHORITY_PATH_SET_SHA256 = "f2011dd32ccc19649e6abb70ffb4473aea4a224410062d40292222e2e6263692"
 CANONICAL_PATH_SET_SHA256 = "cc37578846ef6bddc0d0839ec6fab7f1fc8c52dbae62423f9da543538d79713f"
 
+ESTATE_GENERATED_POLICY_PATHS = (
+    "generated/bazelrc.common",
+    "generated/nix-bazel-policy.lock.json",
+    "generated/nix-bazel-policy.nix",
+    "generated/toolchain-manifest.defaults.json",
+)
+
 ADR_REPLACEMENTS = {
     "docs/adr/0001-repository-identity.md": "docs/adr/0001-repository-identity-and-ownership.md",
     "docs/adr/0002-dependency-direction.md": "docs/adr/0002-dependency-and-build-law.md",
@@ -2298,6 +2305,23 @@ def build_all_contract_rust_plugin_entry(path: str) -> dict[str, Any]:
 
 
 def build_path_entry(path: str) -> dict[str, Any]:
+    if path in ESTATE_GENERATED_POLICY_PATHS:
+        return {
+            "path": path,
+            "kind": infer_kind(path),
+            "owner": "developer-platform",
+            "component": "generated-build-policy",
+            "status": "generated",
+            "activation_wave": "0",
+            "source_authority": "reviewed-generated",
+            "build_targets": ["//:wave0_governance_sources"],
+            "test_targets": ["//:wave0_tests"],
+            "public_surface": False,
+            "activation_criterion": (
+                "Generated from the immutable estate build-policy revision and accepted only "
+                "when its committed lock and digest pass drift validation."
+            ),
+        }
     if path in ALL_CONTRACT_RUST_PLUGIN_PATHS:
         return build_all_contract_rust_plugin_entry(path)
     if path in KERNEL_PLATFORM_AUTHORIZED_PATHS:
@@ -2808,7 +2832,7 @@ def _git_paths(root: Path) -> list[str] | None:
     return [item.decode("utf-8") for item in result.stdout.split(b"\0") if item]
 
 
-def discover_actual_paths(root: Path) -> list[str]:
+def discover_actual_paths(root: Path) -> list[str]:  # pyright: ignore[reportRedeclaration]
     candidates = _git_paths(root)
     if candidates is None:
         candidates = [str(path.relative_to(root)) for path in root.rglob("*") if path.is_file()]
@@ -3158,7 +3182,7 @@ def build_native_source_incubation_entry(path: str) -> dict[str, object]:
 _pairformer_wave6_reconciliation_addition_reason = _reconciliation_addition_reason
 
 
-def _reconciliation_addition_reason(path: str) -> str:
+def _reconciliation_addition_reason(path: str) -> str:  # pyright: ignore[reportRedeclaration]
     if path == NATIVE_SIGNED_QUALIFICATION_ADR:
         return (
             "ADR-0022 activates the exact signed-qualification and loader source "
@@ -3202,6 +3226,49 @@ PRE_ACTIVATION_SOURCE_PATHS = frozenset(  # pyright: ignore[reportConstantRedefi
     for path in (*PRE_ACTIVATION_SOURCE_PATHS, *_NATIVE_ADR0022_NEW_PATHS)
     if path not in NATIVE_SIGNED_QUALIFICATION_ACTIVE_PATHS
 )
+
+# Estate-wide hermetic build and offline qualification contracts (ADR-0023).
+ESTATE_BUILD_OPTIMIZATION_ADR = (
+    "docs/adr/0023-estate-nix-bazel-hermeticity-and-cache-preparation.md"
+)
+ESTATE_BUILD_OPTIMIZATION_PATHS: tuple[str, ...] = (
+    *ESTATE_GENERATED_POLICY_PATHS,
+    "tools/bazel/local_cache.py",
+    "tools/bazel/nix_toolchains.bzl",
+    "tools/bazel/rbe_manifest.py",
+    "tools/bazel/toolchain_contract.py",
+    "tools/bazel/toolchain_probe.bzl",
+    "tools/bazel/vendor.py",
+    "tools/bazel/tests/test_build_contracts.py",
+)
+REQUIRED_ADDITIONS = (  # pyright: ignore[reportConstantRedefinition]
+    *REQUIRED_ADDITIONS,
+    ESTATE_BUILD_OPTIMIZATION_ADR,
+    *ESTATE_BUILD_OPTIMIZATION_PATHS,
+)
+CANONICAL_FILE_COUNT = (  # pyright: ignore[reportConstantRedefinition]
+    CANONICAL_FILE_COUNT + len(ESTATE_BUILD_OPTIMIZATION_PATHS) + 1
+)
+CANONICAL_PATH_SET_SHA256 = (  # pyright: ignore[reportConstantRedefinition]
+    "a56bcc77d6845bfb0ebafb453f98918c3370028ea19ffbe1787fec075e752f93"
+)
+
+_adr0023_reconciliation_addition_reason = _reconciliation_addition_reason
+
+
+def _reconciliation_addition_reason(path: str) -> str:
+    if path == ESTATE_BUILD_OPTIMIZATION_ADR:
+        return (
+            "ADR-0023 records the source-only hermetic toolchain, offline vendor, "
+            "local-cache, and remote-execution preparation boundary."
+        )
+    if path in ESTATE_BUILD_OPTIMIZATION_PATHS:
+        return (
+            "ADR-0023 activates deterministic build-contract tooling while keeping "
+            "connected cache writes and remote execution fail closed."
+        )
+    return _adr0023_reconciliation_addition_reason(path)
+
 
 if __name__ == "__main__":
     raise SystemExit(main())

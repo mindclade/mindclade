@@ -25,6 +25,7 @@ js_test(
         ":observability",
     ],
     entry_point = "tests/tracing.test.ts",
+    visibility = ["//libs:__pkg__"],
 )
 
 test_suite(

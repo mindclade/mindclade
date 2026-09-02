@@ -156,3 +156,10 @@ spec:
       path: docs/adr/0022-native-signed-qualification-and-production-admission-source-activation.md
       owners: [architecture, contract-governance]
       specificationAccepted: "2026-09-02"
+    - id: ADR-0023
+      title: Estate Nix and Bazel hermeticity and cache preparation
+      status: accepted-in-specification
+      connectedRatification: pending
+      path: docs/adr/0023-estate-nix-bazel-hermeticity-and-cache-preparation.md
+      owners: [developer-platform, security]
+      specificationAccepted: "2026-09-02"

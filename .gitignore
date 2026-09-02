@@ -22,7 +22,8 @@ __pycache__/
 *.py[cod]
 
 # Native and integration build output
-bazel-*
+/bazel-*
+/third_party/bazel_vendor/bazel-external
 target/
 node_modules/
 dist/

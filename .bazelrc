@@ -1,48 +1,38 @@
-common --announce_rc
-common --color=yes
-common --curses=yes
-common --show_timestamps
-common --enable_bzlmod
-common --enable_platform_specific_config
-common --lockfile_mode=error
-common --repo_env=PATH
-common --repo_env=JAVA_HOME
-common --repo_env=CC
-common --repo_env=CXX
-common --repo_env=BAZEL_LINKOPTS
-common --repo_env=MINDCLADE_NIX_BIN
+import %workspace%/generated/bazelrc.common
 
-build --incompatible_strict_action_env
-build --action_env=PATH
-build --action_env=JAVA_HOME
-build --action_env=CC
-build --action_env=CXX
-build --action_env=LANG
-build --action_env=LC_ALL
-build --action_env=TZ
-build --stamp=no
+common --repo_env=GOROOT
+common --repo_env=MINDCLADE_NIX_BIN
+common --repo_env=MINDCLADE_TOOLCHAIN_MANIFEST
+common --repo_env=SDKROOT
+
+build --action_env=SDKROOT
+build --@rules_python//python/config_settings:python_version=3.12
 
 # The Nix-provided Apple SDK exposes system headers through a module map that
-# upstream Protobuf/Abseil exec tools do not declare. Keep target layering
-# checks enabled, but disable the incompatible host-tool feature. Match both
-# host and target deployment to the pinned Nix Darwin toolchain closure.
+# upstream Protobuf/Abseil exec tools do not declare.
 build:macos --host_features=-layering_check
-build:macos --macos_minimum_os=14.0
-build:macos --host_macos_minimum_os=14.0
 
-test --test_output=errors
-test --test_env=LANG=C
-test --test_env=LC_ALL=C
-test --test_env=TZ=UTC
+build:offline --remote_cache=
+build:offline --remote_executor=
+build:offline --disk_cache=
+build:offline --noremote_accept_cached
+build:offline --noremote_upload_local_results
 
-build:ci --color=no
-build:ci --curses=no
-build:ci --show_result=20
-build:ci --remote_cache=
-build:ci --remote_executor=
-build:ci --disk_cache=
-build:ci --noremote_accept_cached
-build:ci --noremote_upload_local_results
-test:ci --test_output=errors
+build:cacheless --remote_cache=
+build:cacheless --remote_executor=
+build:cacheless --disk_cache=
+build:cacheless --noremote_accept_cached
+build:cacheless --noremote_upload_local_results
 
-common:offline --repository_disable_download
+build:release --remote_cache=
+build:release --remote_executor=
+build:release --disk_cache=
+build:release --noremote_accept_cached
+build:release --noremote_upload_local_results
+
+# RBE properties are source-qualified but deliberately disconnected. A future
+# activation must populate endpoints through a separately reviewed config.
+build:rbe-preparation --remote_cache=
+build:rbe-preparation --remote_executor=
+build:rbe-preparation --noremote_accept_cached
+build:rbe-preparation --noremote_upload_local_results

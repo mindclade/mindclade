@@ -46,7 +46,10 @@ go_test(
     data = [":governed_sources"],
     embed = [":policies"],
     pure = "on",
-    visibility = ["//tests:__pkg__"],
+    visibility = [
+        "//services/control_plane:__pkg__",
+        "//tests:__pkg__",
+    ],
     deps = [
         "//protocols/generated/go/artifact/v1:bindings",
         "//protocols/generated/go/audit/v1:bindings",

@@ -490,6 +490,7 @@ test_suite(
         "//services/control_plane/internal/training:training_test",
         "//services/control_plane/internal/workflows:workflows_test",
     ],
+    visibility = ["//:__pkg__"],
 )
 
 filegroup(

@@ -23,3 +23,4 @@ ignores:
   - "**/node_modules/**"
   - "bazel-*/**"
   - "build/**"
+  - "third_party/bazel_vendor/**"

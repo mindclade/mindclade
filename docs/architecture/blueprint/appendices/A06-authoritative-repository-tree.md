@@ -4070,9 +4070,17 @@ mindclade/
 │   │   │   ├── dependency_graph.bzl
 │   │   │   ├── component_metadata.bzl
 │   │   │   └── generated_files.bzl
-│   │   └── transitions/
-│   │       ├── cpu_profile.bzl
-│   │       └── gpu_profile.bzl
+│   │   ├── transitions/
+│   │   │   ├── cpu_profile.bzl
+│   │   │   └── gpu_profile.bzl
+│   │   ├── local_cache.py
+│   │   ├── nix_toolchains.bzl
+│   │   ├── rbe_manifest.py
+│   │   ├── toolchain_contract.py
+│   │   ├── toolchain_probe.bzl
+│   │   ├── vendor.py
+│   │   └── tests/
+│   │       └── test_build_contracts.py
 │   ├── ci/
 │   │   ├── affected_targets.py
 │   │   ├── pipeline_plan.py
@@ -4326,7 +4334,8 @@ mindclade/
 │   │   ├── 0019-jit-06-transition-sm90a-sm100a.md
 │   │   ├── 0020-jit-06-triangle-attention-sm90a-sm100a.md
 │   │   ├── 0021-jit-06-triangle-multiplication-sm90a-sm100a.md
-│   │   └── 0022-native-signed-qualification-and-production-admission-source-activation.md
+│   │   ├── 0022-native-signed-qualification-and-production-admission-source-activation.md
+│   │   └── 0023-estate-nix-bazel-hermeticity-and-cache-preparation.md
 │   ├── domains/
 │   │   ├── bio.md
 │   │   ├── data.md
@@ -4464,180 +4473,185 @@ mindclade/
 ├── .golangci.yml
 ├── biome.json
 ├── buf.lock
-└── internal/
-    └── sdk/
-        ├── README.md
-        ├── go/
-        │   └── mindclade/
-        │       ├── BUILD.bazel
-        │       ├── README.md
-        │       ├── admin.go
-        │       ├── agent_test.go
-        │       ├── agents.go
-        │       ├── approvals.go
-        │       ├── artifacts.go
-        │       ├── auth.go
-        │       ├── auth_test.go
-        │       ├── client.go
-        │       ├── client_test.go
-        │       ├── config.go
-        │       ├── datasets.go
-        │       ├── error.go
-        │       ├── evaluations.go
-        │       ├── evaluations_test.go
-        │       ├── interceptors.go
-        │       ├── inference.go
-        │       ├── inference_test.go
-        │       ├── lifecycle_test.go
-        │       ├── method_policy.go
-        │       ├── models.go
-        │       ├── operations.go
-        │       ├── policy_test.go
-        │       ├── policies.go
-        │       ├── policy_admin_test.go
-        │       ├── request.go
-        │       ├── training.go
-        │       ├── transport.go
-        │       ├── workflow_test.go
-        │       ├── workflows.go
-        │       ├── artifact_operation_gap_test.go
-        │       ├── job_run_test.go
-        │       ├── jobs.go
-        │       ├── runs.go
-        │       ├── training_lifecycle_test.go
-        │       ├── experiments.go
-        │       └── experiments_test.go
-        ├── python/
-        │   ├── BUILD.bazel
-        │   ├── README.md
-        │   ├── mindclade_internal_sdk/
-        │   │   ├── __init__.py
-        │   │   ├── _invocation.py
-        │   │   ├── _validation.py
-        │   │   ├── admin.py
-        │   │   ├── agents.py
-        │   │   ├── artifacts.py
-        │   │   ├── auth.py
-        │   │   ├── calls.py
-        │   │   ├── client.py
-        │   │   ├── config.py
-        │   │   ├── datasets.py
-        │   │   ├── errors.py
-        │   │   ├── events.py
-        │   │   ├── generated.py
-        │   │   ├── inference.py
-        │   │   ├── method_policy.py
-        │   │   ├── models.py
-        │   │   ├── operations.py
-        │   │   ├── policies.py
-        │   │   ├── testing.py
-        │   │   ├── training.py
-        │   │   ├── transport.py
-        │   │   ├── workflows.py
-        │   │   ├── evaluations.py
-        │   │   ├── jobs.py
-        │   │   ├── runs.py
-        │   │   ├── experiments.py
-        │   │   └── resources.py
-        │   ├── pyproject.toml
-        │   └── tests/
-        │       ├── test_internal_sdk.py
-        │       ├── test_agents.py
-        │       ├── test_inference.py
-        │       ├── test_policy_admin.py
-        │       ├── test_workflows.py
-        │       ├── test_artifact_operation_gaps.py
-        │       ├── test_evaluations.py
-        │       ├── test_job_run.py
-        │       ├── test_training_lifecycle.py
-        │       └── test_experiments.py
-        ├── rust/
-        │   ├── BUILD.bazel
-        │   ├── Cargo.toml
-        │   ├── README.md
-        │   └── src/
-        │       ├── admin.rs
-        │       ├── agent_tests.rs
-        │       ├── agents.rs
-        │       ├── approvals.rs
-        │       ├── artifacts.rs
-        │       ├── auth.rs
-        │       ├── config.rs
-        │       ├── datasets.rs
-        │       ├── error.rs
-        │       ├── events.rs
-        │       ├── inference.rs
-        │       ├── lib.rs
-        │       ├── models.rs
-        │       ├── operations.rs
-        │       ├── policies.rs
-        │       ├── policy_admin_tests.rs
-        │       ├── request.rs
-        │       ├── retry.rs
-        │       ├── tests.rs
-        │       ├── testing.rs
-        │       ├── training.rs
-        │       ├── transport.rs
-        │       ├── workflow_tests.rs
-        │       ├── workflows.rs
-        │       ├── artifact_operation_gap_tests.rs
-        │       ├── evaluation_tests.rs
-        │       ├── evaluations.rs
-        │       ├── job_run_tests.rs
-        │       ├── jobs.rs
-        │       ├── runs.rs
-        │       ├── training_tests.rs
-        │       ├── experiments.rs
-        │       └── experiment_tests.rs
-        ├── typescript/
-        │   ├── BUILD.bazel
-        │   ├── README.md
-        │   ├── bazel/
-        │   │   └── package.json
-        │   ├── biome.json
-        │   ├── package.json
-        │   ├── src/
-        │   │   ├── admin.ts
-        │   │   ├── agents.ts
-        │   │   ├── approvals.ts
-        │   │   ├── artifacts.ts
-        │   │   ├── auth.ts
-        │   │   ├── client.ts
-        │   │   ├── config.ts
-        │   │   ├── core.ts
-        │   │   ├── datasets.ts
-        │   │   ├── error.ts
-        │   │   ├── gcp_auth.ts
-        │   │   ├── inference.ts
-        │   │   ├── index.ts
-        │   │   ├── models.ts
-        │   │   ├── operations.ts
-        │   │   ├── policies.ts
-        │   │   ├── raw.ts
-        │   │   ├── request.ts
-        │   │   ├── retry.ts
-        │   │   ├── runtime.ts
-        │   │   ├── safety.ts
-        │   │   ├── testing.ts
-        │   │   ├── training.ts
-        │   │   ├── transport.ts
-        │   │   ├── workflows.ts
-        │   │   ├── evaluations.ts
-        │   │   ├── jobs.ts
-        │   │   ├── runs.ts
-        │   │   └── experiments.ts
-        │   ├── tests/
-        │   │   ├── sdk.test.ts
-        │   │   ├── policy_admin.test.ts
-        │   │   ├── agents.test.ts
-        │   │   ├── workflow_approval.test.ts
-        │   │   ├── evaluations.test.ts
-        │   │   ├── job_run.test.ts
-        │   │   ├── training.test.ts
-        │   │   └── experiments.test.ts
-        │   └── tsconfig.json
-        ├── rpc-coverage.yaml
-        └── rpc-coverage.generated.json
+├── internal/
+│   └── sdk/
+│       ├── README.md
+│       ├── go/
+│       │   └── mindclade/
+│       │       ├── BUILD.bazel
+│       │       ├── README.md
+│       │       ├── admin.go
+│       │       ├── agent_test.go
+│       │       ├── agents.go
+│       │       ├── approvals.go
+│       │       ├── artifacts.go
+│       │       ├── auth.go
+│       │       ├── auth_test.go
+│       │       ├── client.go
+│       │       ├── client_test.go
+│       │       ├── config.go
+│       │       ├── datasets.go
+│       │       ├── error.go
+│       │       ├── evaluations.go
+│       │       ├── evaluations_test.go
+│       │       ├── interceptors.go
+│       │       ├── inference.go
+│       │       ├── inference_test.go
+│       │       ├── lifecycle_test.go
+│       │       ├── method_policy.go
+│       │       ├── models.go
+│       │       ├── operations.go
+│       │       ├── policy_test.go
+│       │       ├── policies.go
+│       │       ├── policy_admin_test.go
+│       │       ├── request.go
+│       │       ├── training.go
+│       │       ├── transport.go
+│       │       ├── workflow_test.go
+│       │       ├── workflows.go
+│       │       ├── artifact_operation_gap_test.go
+│       │       ├── job_run_test.go
+│       │       ├── jobs.go
+│       │       ├── runs.go
+│       │       ├── training_lifecycle_test.go
+│       │       ├── experiments.go
+│       │       └── experiments_test.go
+│       ├── python/
+│       │   ├── BUILD.bazel
+│       │   ├── README.md
+│       │   ├── mindclade_internal_sdk/
+│       │   │   ├── __init__.py
+│       │   │   ├── _invocation.py
+│       │   │   ├── _validation.py
+│       │   │   ├── admin.py
+│       │   │   ├── agents.py
+│       │   │   ├── artifacts.py
+│       │   │   ├── auth.py
+│       │   │   ├── calls.py
+│       │   │   ├── client.py
+│       │   │   ├── config.py
+│       │   │   ├── datasets.py
+│       │   │   ├── errors.py
+│       │   │   ├── events.py
+│       │   │   ├── generated.py
+│       │   │   ├── inference.py
+│       │   │   ├── method_policy.py
+│       │   │   ├── models.py
+│       │   │   ├── operations.py
+│       │   │   ├── policies.py
+│       │   │   ├── testing.py
+│       │   │   ├── training.py
+│       │   │   ├── transport.py
+│       │   │   ├── workflows.py
+│       │   │   ├── evaluations.py
+│       │   │   ├── jobs.py
+│       │   │   ├── runs.py
+│       │   │   ├── experiments.py
+│       │   │   └── resources.py
+│       │   ├── pyproject.toml
+│       │   └── tests/
+│       │       ├── test_internal_sdk.py
+│       │       ├── test_agents.py
+│       │       ├── test_inference.py
+│       │       ├── test_policy_admin.py
+│       │       ├── test_workflows.py
+│       │       ├── test_artifact_operation_gaps.py
+│       │       ├── test_evaluations.py
+│       │       ├── test_job_run.py
+│       │       ├── test_training_lifecycle.py
+│       │       └── test_experiments.py
+│       ├── rust/
+│       │   ├── BUILD.bazel
+│       │   ├── Cargo.toml
+│       │   ├── README.md
+│       │   └── src/
+│       │       ├── admin.rs
+│       │       ├── agent_tests.rs
+│       │       ├── agents.rs
+│       │       ├── approvals.rs
+│       │       ├── artifacts.rs
+│       │       ├── auth.rs
+│       │       ├── config.rs
+│       │       ├── datasets.rs
+│       │       ├── error.rs
+│       │       ├── events.rs
+│       │       ├── inference.rs
+│       │       ├── lib.rs
+│       │       ├── models.rs
+│       │       ├── operations.rs
+│       │       ├── policies.rs
+│       │       ├── policy_admin_tests.rs
+│       │       ├── request.rs
+│       │       ├── retry.rs
+│       │       ├── tests.rs
+│       │       ├── testing.rs
+│       │       ├── training.rs
+│       │       ├── transport.rs
+│       │       ├── workflow_tests.rs
+│       │       ├── workflows.rs
+│       │       ├── artifact_operation_gap_tests.rs
+│       │       ├── evaluation_tests.rs
+│       │       ├── evaluations.rs
+│       │       ├── job_run_tests.rs
+│       │       ├── jobs.rs
+│       │       ├── runs.rs
+│       │       ├── training_tests.rs
+│       │       ├── experiments.rs
+│       │       └── experiment_tests.rs
+│       ├── typescript/
+│       │   ├── BUILD.bazel
+│       │   ├── README.md
+│       │   ├── bazel/
+│       │   │   └── package.json
+│       │   ├── biome.json
+│       │   ├── package.json
+│       │   ├── src/
+│       │   │   ├── admin.ts
+│       │   │   ├── agents.ts
+│       │   │   ├── approvals.ts
+│       │   │   ├── artifacts.ts
+│       │   │   ├── auth.ts
+│       │   │   ├── client.ts
+│       │   │   ├── config.ts
+│       │   │   ├── core.ts
+│       │   │   ├── datasets.ts
+│       │   │   ├── error.ts
+│       │   │   ├── gcp_auth.ts
+│       │   │   ├── inference.ts
+│       │   │   ├── index.ts
+│       │   │   ├── models.ts
+│       │   │   ├── operations.ts
+│       │   │   ├── policies.ts
+│       │   │   ├── raw.ts
+│       │   │   ├── request.ts
+│       │   │   ├── retry.ts
+│       │   │   ├── runtime.ts
+│       │   │   ├── safety.ts
+│       │   │   ├── testing.ts
+│       │   │   ├── training.ts
+│       │   │   ├── transport.ts
+│       │   │   ├── workflows.ts
+│       │   │   ├── evaluations.ts
+│       │   │   ├── jobs.ts
+│       │   │   ├── runs.ts
+│       │   │   └── experiments.ts
+│       │   ├── tests/
+│       │   │   ├── sdk.test.ts
+│       │   │   ├── policy_admin.test.ts
+│       │   │   ├── agents.test.ts
+│       │   │   ├── workflow_approval.test.ts
+│       │   │   ├── evaluations.test.ts
+│       │   │   ├── job_run.test.ts
+│       │   │   ├── training.test.ts
+│       │   │   └── experiments.test.ts
+│       │   └── tsconfig.json
+│       ├── rpc-coverage.yaml
+│       └── rpc-coverage.generated.json
+└── generated/
+    ├── bazelrc.common
+    ├── nix-bazel-policy.lock.json
+    ├── nix-bazel-policy.nix
+    └── toolchain-manifest.defaults.json
 ```
 <!-- END GENERATED: repository-path-manifest -->
 

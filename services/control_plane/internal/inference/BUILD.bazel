@@ -47,7 +47,10 @@ go_test(
     data = [":governed_sources"],
     embed = [":inference"],
     pure = "on",
-    visibility = ["//tests:__pkg__"],
+    visibility = [
+        "//services/control_plane:__pkg__",
+        "//tests:__pkg__",
+    ],
     deps = [
         "//libs/go/numconv",
         "//protocols/generated/go/artifact/v1:bindings",

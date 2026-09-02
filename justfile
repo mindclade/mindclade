@@ -32,7 +32,7 @@ format:
     find libs/rust -type f -name '*.rs' -print0 | xargs -0 rustfmt --edition 2024
     golangci-lint fmt ./libs/go/... ./services/control_plane/... ./internal/sdk/go/... ./tools/mindcladectl/...
     pnpm run format
-    find . -type d \( -name .git -o -name node_modules -o -name build -o -name 'bazel-*' \) -prune -o -type f \( -name BUILD -o -name BUILD.bazel -o -name MODULE.bazel -o -name '*.bzl' \) ! -path './protocols/generated/*' ! -path './kernels/native/generated/*' -print0 | xargs -0 buildifier -mode=fix
+    find . -type d \( -name .git -o -name node_modules -o -name build -o -name 'bazel-*' -o -path './third_party/bazel_vendor' \) -prune -o -type f \( -name BUILD -o -name BUILD.bazel -o -name MODULE.bazel -o -name '*.bzl' \) ! -path './protocols/generated/*' ! -path './kernels/native/generated/*' -print0 | xargs -0 buildifier -mode=fix
     nixfmt flake.nix third_party/packages/deep_ep/package.nix
     shfmt -w -i 2 -ci -bn .buildkite/hooks/environment .buildkite/hooks/pre-command
     just --fmt
@@ -43,7 +43,7 @@ format-check:
     cargo fmt --all --check
     golangci-lint fmt --diff ./libs/go/... ./services/control_plane/... ./internal/sdk/go/... ./tools/mindcladectl/... ./protocols/generated/go/...
     pnpm run format:check
-    find . -type d \( -name .git -o -name node_modules -o -name build -o -name 'bazel-*' \) -prune -o -type f \( -name BUILD -o -name BUILD.bazel -o -name MODULE.bazel -o -name '*.bzl' \) -print0 | xargs -0 buildifier -mode=check -lint=warn
+    find . -type d \( -name .git -o -name node_modules -o -name build -o -name 'bazel-*' -o -path './third_party/bazel_vendor' \) -prune -o -type f \( -name BUILD -o -name BUILD.bazel -o -name MODULE.bazel -o -name '*.bzl' \) -print0 | xargs -0 buildifier -mode=check -lint=warn
     nixfmt --check flake.nix third_party/packages/deep_ep/package.nix
     shfmt -d -i 2 -ci -bn .buildkite/hooks/environment .buildkite/hooks/pre-command
     just --fmt --check
@@ -123,11 +123,11 @@ _governance-report observation_scope allow_inconclusive:
     bootstrap_reference="${MINDCLADE_BOOTSTRAP_REFERENCE:-../bootstrap}"
     infrastructure_live_reference="${MINDCLADE_INFRASTRUCTURE_LIVE_REFERENCE:-../infrastructure-live}"
     gitops_reference="${MINDCLADE_GITOPS_REFERENCE:-../gitops}"
-    organization_workflows_revision="${MINDCLADE_ORGANIZATION_WORKFLOWS_REFERENCE_REVISION:-e195b71d3657aca32cb325990e5e4ef8789b7eee}"
-    github_config_revision="${MINDCLADE_GITHUB_CONFIG_REFERENCE_REVISION:-0ebe461d003e37321c545e6b56c8f1d7016825ed}"
-    bootstrap_revision="${MINDCLADE_BOOTSTRAP_REFERENCE_REVISION:-9a221078120026167624d5d38b5fcd3f7c93560a}"
-    infrastructure_live_revision="${MINDCLADE_INFRASTRUCTURE_LIVE_REFERENCE_REVISION:-b9de2e33d5d441893b9777bbfa48d6129c339963}"
-    gitops_revision="${MINDCLADE_GITOPS_REFERENCE_REVISION:-7a7ad44c0b0bffc5983ce1040ac7b6bf865efdd1}"
+    organization_workflows_revision="${MINDCLADE_ORGANIZATION_WORKFLOWS_REFERENCE_REVISION:-816955feea11c5c928db6fdd5deedb2d2754c4b8}"
+    github_config_revision="${MINDCLADE_GITHUB_CONFIG_REFERENCE_REVISION:-90d26eba7c9361ec391da004f1b1041e9be2cddd}"
+    bootstrap_revision="${MINDCLADE_BOOTSTRAP_REFERENCE_REVISION:-a63eb85ec5804091c87c9760ce3074704e17bba7}"
+    infrastructure_live_revision="${MINDCLADE_INFRASTRUCTURE_LIVE_REFERENCE_REVISION:-ac559732dd5431aed13994856acf83f82d9c7354}"
+    gitops_revision="${MINDCLADE_GITOPS_REFERENCE_REVISION:-638901a42e8a262c711b1563cfffbfbd786b67f2}"
     organization_workflows_check="${MINDCLADE_ORGANIZATION_WORKFLOWS_REFERENCE_CHECK:-PASS|immutable-head|just ci|Bazel workflow governance tests passed (3/3).}"
     organization_workflows_launcher_check="${MINDCLADE_ORGANIZATION_WORKFLOWS_LAUNCHER_REFERENCE_CHECK:-BLOCKED|immutable-head|Buildkite protected-definition launcher qualification|The dispatcher supplies the definition revision as metadata but no connected immutable launcher proves that the initial loader and hooks came from that revision.}"
     github_config_check="${MINDCLADE_GITHUB_CONFIG_REFERENCE_CHECK:-PASS|immutable-head|just ci|Go, Python, Bazel presubmit, policy, OpenTofu, workflow, buildifier, and whitespace checks passed.}"
@@ -350,9 +350,7 @@ test-affected:
       exit 0
     fi
     just _ci-bazel-test "${TMPDIR:-/tmp}/mindclade-bazel-user-root" "${targets[@]}"
-    mkdir -p {{ evidence_dir }}
-    printf '%s\n' '{"conclusion":"PASS","schema_version":"bazel-native-agreement.v1"}' > \
-      {{ evidence_dir }}/bazel-native-agreement.v1.json
+    just bazel-native-agreement
 
 # Execute the exact target list emitted before a Buildkite pipeline began.
 test-planned:
@@ -369,8 +367,40 @@ test-planned:
     else
       just _ci-bazel-test "${TMPDIR:-/tmp}/mindclade-bazel-user-root" "${targets[@]}"
     fi
-    printf '%s\n' '{"conclusion":"PASS","schema_version":"bazel-native-agreement.v1"}' > \
-      {{ evidence_dir }}/bazel-native-agreement.v1.json
+    just bazel-native-agreement
+
+# Resolve the declared Bazel/Nix executable contract and emit measured v2 evidence.
+bazel-native-agreement:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    : "${MINDCLADE_TOOLCHAIN_MANIFEST:?enter the pinned Nix shell first}"
+    mkdir -p {{ evidence_dir }}
+    {{ python }} tools/bazel/toolchain_contract.py validate \
+      --manifest "${MINDCLADE_TOOLCHAIN_MANIFEST}" --verify-files
+    {{ python }} tools/bazel/toolchain_contract.py resolve \
+      --manifest "${MINDCLADE_TOOLCHAIN_MANIFEST}" \
+      --bazel "$({{ python }} -c 'import json,os; print(json.load(open(os.environ["MINDCLADE_TOOLCHAIN_MANIFEST"]))["executables"]["bazel"]["path"])')" \
+      --output {{ evidence_dir }}/bazel-toolchain-resolution.v1.json
+    {{ python }} tools/bazel/toolchain_contract.py agreement \
+      --manifest "${MINDCLADE_TOOLCHAIN_MANIFEST}" \
+      --resolution {{ evidence_dir }}/bazel-toolchain-resolution.v1.json \
+      --output {{ evidence_dir }}/bazel-native-agreement.v2.json \
+      --verify-files
+
+# Opt-in local-only cache launcher. CI and release profiles are rejected by the launcher.
+bazel-local-cache *args:
+    {{ python }} tools/bazel/local_cache.py \
+      --checkout . --repository mindclade --system "$(nix eval --raw --impure --expr builtins.currentSystem)" \
+      -- {{ args }}
+
+vendor-refresh:
+    {{ python }} tools/bazel/vendor.py refresh --repository .
+
+vendor-drift:
+    {{ python }} tools/bazel/vendor.py verify --repository .
+
+offline-wave1:
+    {{ python }} tools/bazel/vendor.py offline --repository .
 
 # Run a bounded Wave 1 domain suite.
 test-domain domain:
@@ -439,6 +469,7 @@ ci-nightly:
     just test-planned
     just ci-wave1
     just ci-cacheless-canary
+    just vendor-drift
 
 # Produce a revision-bound receipt only after the canonical source gate passes.
 ci-source-check:
@@ -541,7 +572,7 @@ ci-plan:
       --head "${MINDCLADE_SOURCE_REVISION}" \
       --output {{ evidence_dir }}/pipeline-plan.v1.json \
       --launcher-observation-output {{ evidence_dir }}/immutable-launcher.v1.json \
-      --cache-boundary-output {{ evidence_dir }}/cache-boundary.v1.json
+      --cache-boundary-output {{ evidence_dir }}/cache-boundary.v2.json
 
 # Emit the exact flat organization CI evidence contract for artifact upload.
 ci-evidence:
@@ -557,11 +588,11 @@ ci-evidence:
     checks=()
     for item in \
       "immutable-launcher={{ evidence_dir }}/immutable-launcher.v1.json" \
-      "cache-boundary={{ evidence_dir }}/cache-boundary.v1.json" \
+      "cache-boundary={{ evidence_dir }}/cache-boundary.v2.json" \
       "repository-governance={{ evidence_dir }}/repository_drift.v1.json" \
       "dependency-and-license-policy={{ evidence_dir }}/license-inventory.v1.json" \
       "secret-scan={{ evidence_dir }}/secret-scan.v1.json" \
-      "bazel-native-agreement={{ evidence_dir }}/bazel-native-agreement.v1.json" \
+      "bazel-native-agreement={{ evidence_dir }}/bazel-native-agreement.v2.json" \
       "fresh-database-integration={{ evidence_dir }}/integration-ci.v1.json" \
       "source-check={{ evidence_dir }}/source-check.v1.json" \
       "wave1-full={{ evidence_dir }}/wave1-full.v1.json" \

@@ -34,6 +34,7 @@ py_test(
     legacy_create_init = 0,
     main = "compatibility/tests/test_protobuf_compatibility.py",
     python_version = "PY3",
+    visibility = ["//tests:__pkg__"],
     deps = [
         "@mindclade_pypi//cryptography",
         "@mindclade_pypi//jsonschema",
@@ -53,6 +54,7 @@ py_test(
     legacy_create_init = 0,
     main = "compatibility/tests/test_schema_compatibility.py",
     python_version = "PY3",
+    visibility = ["//tests:__pkg__"],
     deps = ["@mindclade_pypi//jsonschema"],
 )
 
@@ -67,6 +69,7 @@ py_test(
     legacy_create_init = 0,
     main = "compatibility/tests/test_openapi_compatibility.py",
     python_version = "PY3",
+    visibility = ["//tests:__pkg__"],
     deps = [
         "@mindclade_pypi//protobuf",
         "@mindclade_pypi//pyyaml",

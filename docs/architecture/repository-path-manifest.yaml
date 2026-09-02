@@ -6863,6 +6863,54 @@
           "reason": "ADR-0022 activates the exact signed-qualification and loader source closure while retaining zero promoted capability rows."
         },
         {
+          "path": "docs/adr/0023-estate-nix-bazel-hermeticity-and-cache-preparation.md",
+          "reason": "ADR-0023 records the source-only hermetic toolchain, offline vendor, local-cache, and remote-execution preparation boundary."
+        },
+        {
+          "path": "generated/bazelrc.common",
+          "reason": "ADR-0023 activates deterministic build-contract tooling while keeping connected cache writes and remote execution fail closed."
+        },
+        {
+          "path": "generated/nix-bazel-policy.lock.json",
+          "reason": "ADR-0023 activates deterministic build-contract tooling while keeping connected cache writes and remote execution fail closed."
+        },
+        {
+          "path": "generated/nix-bazel-policy.nix",
+          "reason": "ADR-0023 activates deterministic build-contract tooling while keeping connected cache writes and remote execution fail closed."
+        },
+        {
+          "path": "generated/toolchain-manifest.defaults.json",
+          "reason": "ADR-0023 activates deterministic build-contract tooling while keeping connected cache writes and remote execution fail closed."
+        },
+        {
+          "path": "tools/bazel/local_cache.py",
+          "reason": "ADR-0023 activates deterministic build-contract tooling while keeping connected cache writes and remote execution fail closed."
+        },
+        {
+          "path": "tools/bazel/nix_toolchains.bzl",
+          "reason": "ADR-0023 activates deterministic build-contract tooling while keeping connected cache writes and remote execution fail closed."
+        },
+        {
+          "path": "tools/bazel/rbe_manifest.py",
+          "reason": "ADR-0023 activates deterministic build-contract tooling while keeping connected cache writes and remote execution fail closed."
+        },
+        {
+          "path": "tools/bazel/toolchain_contract.py",
+          "reason": "ADR-0023 activates deterministic build-contract tooling while keeping connected cache writes and remote execution fail closed."
+        },
+        {
+          "path": "tools/bazel/toolchain_probe.bzl",
+          "reason": "ADR-0023 activates deterministic build-contract tooling while keeping connected cache writes and remote execution fail closed."
+        },
+        {
+          "path": "tools/bazel/vendor.py",
+          "reason": "ADR-0023 activates deterministic build-contract tooling while keeping connected cache writes and remote execution fail closed."
+        },
+        {
+          "path": "tools/bazel/tests/test_build_contracts.py",
+          "reason": "ADR-0023 activates deterministic build-contract tooling while keeping connected cache writes and remote execution fail closed."
+        },
+        {
           "path": "docs/adr/0001-repository-identity-and-ownership.md",
           "replaces": "docs/adr/0001-repository-identity.md",
           "reason": "Sections 1-18 and Section 14.1 take precedence over the stale A6 short ADR name."
@@ -6898,8 +6946,8 @@
           "reason": "Sections 1-18 and Section 14.1 take precedence over the stale A6 short ADR name."
         }
       ],
-      "canonical_file_count": 3554,
-      "canonical_path_set_sha256": "bf3a6fd8d3f0ec98138f4b7ae415b60c39aefb698eae0a34ce6a6711073ed86d"
+      "canonical_file_count": 3566,
+      "canonical_path_set_sha256": "a56bcc77d6845bfb0ebafb453f98918c3370028ea19ffbe1787fec075e752f93"
     },
     "owners": {
       "agent-platform": {
@@ -53651,6 +53699,118 @@
       "public_surface": false
     },
     {
+      "path": "tools/bazel/local_cache.py",
+      "kind": "source",
+      "owner": "developer-platform",
+      "component": "tools-bazel",
+      "status": "active",
+      "activation_wave": "0",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:wave0_governance_sources"
+      ],
+      "test_targets": [
+        "//:wave0_tests"
+      ],
+      "public_surface": false
+    },
+    {
+      "path": "tools/bazel/nix_toolchains.bzl",
+      "kind": "build",
+      "owner": "developer-platform",
+      "component": "tools-bazel",
+      "status": "active",
+      "activation_wave": "0",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:wave0_governance_sources"
+      ],
+      "test_targets": [
+        "//:wave0_tests"
+      ],
+      "public_surface": false
+    },
+    {
+      "path": "tools/bazel/rbe_manifest.py",
+      "kind": "source",
+      "owner": "developer-platform",
+      "component": "tools-bazel",
+      "status": "active",
+      "activation_wave": "0",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:wave0_governance_sources"
+      ],
+      "test_targets": [
+        "//:wave0_tests"
+      ],
+      "public_surface": false
+    },
+    {
+      "path": "tools/bazel/toolchain_contract.py",
+      "kind": "source",
+      "owner": "developer-platform",
+      "component": "tools-bazel",
+      "status": "active",
+      "activation_wave": "0",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:wave0_governance_sources"
+      ],
+      "test_targets": [
+        "//:wave0_tests"
+      ],
+      "public_surface": false
+    },
+    {
+      "path": "tools/bazel/toolchain_probe.bzl",
+      "kind": "build",
+      "owner": "developer-platform",
+      "component": "tools-bazel",
+      "status": "active",
+      "activation_wave": "0",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:wave0_governance_sources"
+      ],
+      "test_targets": [
+        "//:wave0_tests"
+      ],
+      "public_surface": false
+    },
+    {
+      "path": "tools/bazel/vendor.py",
+      "kind": "source",
+      "owner": "developer-platform",
+      "component": "tools-bazel",
+      "status": "active",
+      "activation_wave": "0",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:wave0_governance_sources"
+      ],
+      "test_targets": [
+        "//:wave0_tests"
+      ],
+      "public_surface": false
+    },
+    {
+      "path": "tools/bazel/tests/test_build_contracts.py",
+      "kind": "test",
+      "owner": "developer-platform",
+      "component": "tools-bazel",
+      "status": "active",
+      "activation_wave": "0",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:wave0_governance_sources"
+      ],
+      "test_targets": [
+        "//:wave0_tests"
+      ],
+      "public_surface": false
+    },
+    {
       "path": "tools/ci/affected_targets.py",
       "kind": "source",
       "owner": "developer-platform",
@@ -56890,6 +57050,22 @@
     },
     {
       "path": "docs/adr/0022-native-signed-qualification-and-production-admission-source-activation.md",
+      "kind": "documentation",
+      "owner": "architecture",
+      "component": "docs-adr",
+      "status": "active",
+      "activation_wave": "0",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:wave0_governance_sources"
+      ],
+      "test_targets": [
+        "//:wave0_tests"
+      ],
+      "public_surface": false
+    },
+    {
+      "path": "docs/adr/0023-estate-nix-bazel-hermeticity-and-cache-preparation.md",
       "kind": "documentation",
       "owner": "architecture",
       "component": "docs-adr",
@@ -61274,6 +61450,74 @@
       ],
       "public_surface": false,
       "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "generated/bazelrc.common",
+      "kind": "source",
+      "owner": "developer-platform",
+      "component": "generated-build-policy",
+      "status": "generated",
+      "activation_wave": "0",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:wave0_governance_sources"
+      ],
+      "test_targets": [
+        "//:wave0_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Generated from the immutable estate build-policy revision and accepted only when its committed lock and digest pass drift validation."
+    },
+    {
+      "path": "generated/nix-bazel-policy.lock.json",
+      "kind": "data",
+      "owner": "developer-platform",
+      "component": "generated-build-policy",
+      "status": "generated",
+      "activation_wave": "0",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:wave0_governance_sources"
+      ],
+      "test_targets": [
+        "//:wave0_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Generated from the immutable estate build-policy revision and accepted only when its committed lock and digest pass drift validation."
+    },
+    {
+      "path": "generated/nix-bazel-policy.nix",
+      "kind": "source",
+      "owner": "developer-platform",
+      "component": "generated-build-policy",
+      "status": "generated",
+      "activation_wave": "0",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:wave0_governance_sources"
+      ],
+      "test_targets": [
+        "//:wave0_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Generated from the immutable estate build-policy revision and accepted only when its committed lock and digest pass drift validation."
+    },
+    {
+      "path": "generated/toolchain-manifest.defaults.json",
+      "kind": "data",
+      "owner": "developer-platform",
+      "component": "generated-build-policy",
+      "status": "generated",
+      "activation_wave": "0",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:wave0_governance_sources"
+      ],
+      "test_targets": [
+        "//:wave0_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Generated from the immutable estate build-policy revision and accepted only when its committed lock and digest pass drift validation."
     }
   ]
 }

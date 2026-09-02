@@ -95,7 +95,7 @@ class TrustedContext:
             cache_toolchain_digest="sha256:" + "f" * 64,
             cache_build_mode=pipeline_class,
             cache_classification="private-internal",
-            cache_namespace_epoch="disabled-v1",
+            cache_namespace_epoch="disabled-v2",
         )
 
     def validate(self) -> None:
@@ -125,7 +125,7 @@ class TrustedContext:
             raise ValueError("cache build mode must match the pipeline class")
         if self.cache_classification != "private-internal":
             raise ValueError("public cache classification is not activated")
-        if self.cache_namespace_epoch != "disabled-v1":
+        if self.cache_namespace_epoch not in {"disabled-v1", "disabled-v2"}:
             raise ValueError("cache namespace epoch is not activated")
         if not CORRELATION_PATTERN.fullmatch(self.correlation_id):
             raise ValueError("correlation ID has an invalid format")
