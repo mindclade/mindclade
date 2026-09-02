@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { randomInt, randomUUID } from "node:crypto";
 
 import { MindcladeError } from "./error.js";
 
@@ -9,9 +9,16 @@ export interface Runtime {
 	sleep(milliseconds: number, signal?: AbortSignal): Promise<void>;
 }
 
+/**
+ * Jitter is drawn from the platform CSPRNG rather than `Math.random`, so
+ * co-scheduled clients cannot be nudged into a shared retry phase, and the
+ * source stays injectable through {@link Runtime} for deterministic tests.
+ */
+const CRYPTO_RANDOM_RANGE = 2 ** 47;
+
 export const defaultRuntime: Runtime = {
 	nowMs: Date.now,
-	random: Math.random,
+	random: () => randomInt(0, CRYPTO_RANDOM_RANGE) / CRYPTO_RANDOM_RANGE,
 	requestId: randomUUID,
 	sleep: async (milliseconds, signal) => {
 		if (signal?.aborted === true) throw MindcladeError.cancelled();

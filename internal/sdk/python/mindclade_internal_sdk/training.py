@@ -27,6 +27,7 @@ from mindclade.training.v1 import (
 )
 
 from ._invocation import AsyncInvoker, SyncInvoker, canonical_digest, command_context, retry_delay
+from ._raw import AsyncWithRawResponse, WithRawResponse
 from ._validation import (
     artifact_ref,
     required_response_message,
@@ -43,6 +44,15 @@ from .errors import (
     OperationTimeoutError,
     ProtocolError,
     UnavailableError,
+)
+from .pagination import (
+    AsyncPage,
+    Page,
+    PaginationLimits,
+    apply_default_page_size,
+    async_page,
+    next_request,
+    sync_page,
 )
 from .transport import (
     CANCEL_TRAINING_RUN,
@@ -283,7 +293,7 @@ def _validated_run_page(
     return response
 
 
-class Training:
+class Training(WithRawResponse):
     def __init__(self, invoker: SyncInvoker) -> None:
         self._invoker = invoker
 
@@ -390,7 +400,8 @@ class Training:
         request: training_service_pb2.ListTrainingRunsRequest | None = None,
         *,
         options: CallOptions | None = None,
-    ) -> training_service_pb2.ListTrainingRunsResponse:
+        limits: PaginationLimits | None = None,
+    ) -> Page[training_run_pb2.TrainingRun]:
         materialized = training_service_pb2.ListTrainingRunsRequest()
         if request is not None:
             materialized.CopyFrom(request)
@@ -400,16 +411,26 @@ class Training:
         if materialized.HasField("page") and materialized.page.page_size > _MAXIMUM_PAGE_SIZE:
             raise ValueError("training page size cannot exceed 200")
         materialized.parent = parent
+        apply_default_page_size(materialized, limits)
         call = prepare_call(
             options,
             default_timeout=self._invoker.config.default_timeout,
             require_idempotency=False,
         )
-        response = cast(
-            training_service_pb2.ListTrainingRunsResponse,
-            self._invoker.unary(LIST_TRAINING_RUNS, materialized, call=call, retry_safe=True),
+        response = _validated_run_page(
+            self._invoker,
+            cast(
+                training_service_pb2.ListTrainingRunsResponse,
+                self._invoker.unary(LIST_TRAINING_RUNS, materialized, call=call, retry_safe=True),
+            ),
         )
-        return _validated_run_page(self._invoker, response)
+
+        def follow(page_token: str) -> Page[training_run_pb2.TrainingRun]:
+            return self.list_runs(
+                next_request(materialized, page_token), options=options, limits=limits
+            )
+
+        return sync_page(response, items_field="training_runs", fetch=follow, limits=limits)
 
     def start_attempt(
         self,
@@ -670,11 +691,13 @@ class Training:
         request: training_service_pb2.ListCheckpointsRequest,
         *,
         options: CallOptions | None = None,
-    ) -> training_service_pb2.ListCheckpointsResponse:
+        limits: PaginationLimits | None = None,
+    ) -> Page[checkpoint_pb2.Checkpoint]:
         materialized = copy.deepcopy(request)
         materialized.parent = _run_name(self._invoker, materialized.parent)
         if materialized.HasField("page") and materialized.page.page_size > _MAXIMUM_PAGE_SIZE:
             raise ValueError("checkpoint page size cannot exceed 200")
+        apply_default_page_size(materialized, limits)
         call = prepare_call(
             options,
             default_timeout=self._invoker.config.default_timeout,
@@ -686,7 +709,13 @@ class Training:
         )
         if any(item.training_run_name != materialized.parent for item in response.checkpoints):
             raise ProtocolError("checkpoint list crossed training run identity")
-        return response
+
+        def follow(page_token: str) -> Page[checkpoint_pb2.Checkpoint]:
+            return self.list_checkpoints(
+                next_request(materialized, page_token), options=options, limits=limits
+            )
+
+        return sync_page(response, items_field="checkpoints", fetch=follow, limits=limits)
 
     def watch(
         self,
@@ -789,7 +818,7 @@ class Training:
                 time.sleep(delay)
 
 
-class AsyncTraining:
+class AsyncTraining(AsyncWithRawResponse):
     def __init__(self, invoker: AsyncInvoker) -> None:
         self._invoker = invoker
 
@@ -896,7 +925,8 @@ class AsyncTraining:
         request: training_service_pb2.ListTrainingRunsRequest | None = None,
         *,
         options: CallOptions | None = None,
-    ) -> training_service_pb2.ListTrainingRunsResponse:
+        limits: PaginationLimits | None = None,
+    ) -> AsyncPage[training_run_pb2.TrainingRun]:
         materialized = training_service_pb2.ListTrainingRunsRequest()
         if request is not None:
             materialized.CopyFrom(request)
@@ -906,16 +936,28 @@ class AsyncTraining:
         if materialized.HasField("page") and materialized.page.page_size > _MAXIMUM_PAGE_SIZE:
             raise ValueError("training page size cannot exceed 200")
         materialized.parent = parent
+        apply_default_page_size(materialized, limits)
         call = prepare_call(
             options,
             default_timeout=self._invoker.config.default_timeout,
             require_idempotency=False,
         )
-        response = cast(
-            training_service_pb2.ListTrainingRunsResponse,
-            await self._invoker.unary(LIST_TRAINING_RUNS, materialized, call=call, retry_safe=True),
+        response = _validated_run_page(
+            self._invoker,
+            cast(
+                training_service_pb2.ListTrainingRunsResponse,
+                await self._invoker.unary(
+                    LIST_TRAINING_RUNS, materialized, call=call, retry_safe=True
+                ),
+            ),
         )
-        return _validated_run_page(self._invoker, response)
+
+        async def follow(page_token: str) -> AsyncPage[training_run_pb2.TrainingRun]:
+            return await self.list_runs(
+                next_request(materialized, page_token), options=options, limits=limits
+            )
+
+        return async_page(response, items_field="training_runs", fetch=follow, limits=limits)
 
     async def start_attempt(
         self,
@@ -1174,11 +1216,13 @@ class AsyncTraining:
         request: training_service_pb2.ListCheckpointsRequest,
         *,
         options: CallOptions | None = None,
-    ) -> training_service_pb2.ListCheckpointsResponse:
+        limits: PaginationLimits | None = None,
+    ) -> AsyncPage[checkpoint_pb2.Checkpoint]:
         materialized = copy.deepcopy(request)
         materialized.parent = _run_name(self._invoker, materialized.parent)
         if materialized.HasField("page") and materialized.page.page_size > _MAXIMUM_PAGE_SIZE:
             raise ValueError("checkpoint page size cannot exceed 200")
+        apply_default_page_size(materialized, limits)
         call = prepare_call(
             options,
             default_timeout=self._invoker.config.default_timeout,
@@ -1190,7 +1234,13 @@ class AsyncTraining:
         )
         if any(item.training_run_name != materialized.parent for item in response.checkpoints):
             raise ProtocolError("checkpoint list crossed training run identity")
-        return response
+
+        async def follow(page_token: str) -> AsyncPage[checkpoint_pb2.Checkpoint]:
+            return await self.list_checkpoints(
+                next_request(materialized, page_token), options=options, limits=limits
+            )
+
+        return async_page(response, items_field="checkpoints", fetch=follow, limits=limits)
 
     async def watch(
         self,

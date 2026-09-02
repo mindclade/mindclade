@@ -23,9 +23,21 @@ type OperationService struct {
 
 const maximumOperationPageSize = 200
 
+// OperationPage is one bounded list response plus cursor-scheme traversal.
+// The embedded generated response remains the authoritative model; the wrapper
+// adds only the opaque-cursor mechanics.
+type OperationPage struct {
+	*internaljobv1.ListOperationsResponse
+	pageBase[*jobv1.Operation, *OperationPage]
+}
+
+// Items returns this page's operations without traversing any further page.
+func (page *OperationPage) Items() []*jobv1.Operation { return page.GetOperations() }
+
 // List returns one detached, bounded project-scoped page while preserving the
-// server's opaque pagination cursor.
-func (service *OperationService) List(ctx context.Context, request *internaljobv1.ListOperationsRequest, options ...RequestOption) (*internaljobv1.ListOperationsResponse, error) {
+// server's opaque pagination cursor. The returned page iterates the whole
+// collection through All and walks it a page at a time through NextPage.
+func (service *OperationService) List(ctx context.Context, request *internaljobv1.ListOperationsRequest, options ...RequestOption) (*OperationPage, error) {
 	value := cloneGenerated(request)
 	if value == nil {
 		value = &internaljobv1.ListOperationsRequest{}
@@ -55,7 +67,14 @@ func (service *OperationService) List(ctx context.Context, request *internaljobv
 			return nil, protocolDataLoss("ListOperations returned an invalid or cross-project operation")
 		}
 	}
-	return cloneGenerated(response), nil
+	detached := cloneGenerated(response)
+	page := &OperationPage{ListOperationsResponse: detached}
+	page.pageBase = newPage[*jobv1.Operation](page, detached.GetPage(), paginationLimitsFrom(options), func(ctx context.Context, token string) (*OperationPage, error) {
+		successor := cloneGenerated(value)
+		successor.Page = pageRequestWithToken(value.GetPage(), token)
+		return service.List(ctx, successor, options...)
+	})
+	return page, nil
 }
 
 func validListedOperation(config Config, operation *jobv1.Operation) bool {

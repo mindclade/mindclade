@@ -62,16 +62,18 @@ import {
 } from "../../../../protocols/generated/typescript/training/v1/training_run_pb.js";
 import type { ClientCore } from "./core.js";
 import { MindcladeError } from "./error.js";
+import { listPage, type Page, withPageToken } from "./pagination.js";
 import {
 	callHeaders,
 	commandContext,
+	type ListOptions,
 	type PreparedCall,
 	prepareCall,
 	type SdkCallOptions,
 	type SubmitOptions,
 	type WaitOptions,
 } from "./request.js";
-import { ensureActive, invokeUnary, retryDelay } from "./retry.js";
+import { ensureActive, invokeUnary, retryableAttempts, retryDelay } from "./retry.js";
 import { registeredMethodSafety } from "./safety.js";
 
 const SERVICE = "/mindclade.internal.training.v1.TrainingService";
@@ -162,22 +164,35 @@ export class Training {
 		return requiredRun(response.trainingRun, "GetTrainingRun");
 	}
 
+	/** Returns the first page, which also iterates the whole cursor. */
 	async listRuns(
 		input: MessageInitShape<typeof ListTrainingRunsRequestSchema> = {},
-		options: SdkCallOptions = {},
-	): Promise<ListTrainingRunsResponse> {
+		options: ListOptions = {},
+	): Promise<Page<TrainingRun, ListTrainingRunsResponse>> {
 		ensureUnfenced(options);
 		const request = create(ListTrainingRunsRequestSchema, input);
 		request.parent = normalizedParent(this.#core, request.parent);
 		validatePage(request.page?.pageSize);
-		const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
-		return await invokeUnary(
-			this.#core,
-			prepared,
-			registeredMethodSafety(LIST),
-			undefined,
-			(call) => this.#core.raw.training.listTrainingRuns(request, call),
-		);
+		return await listPage({
+			cursor: (response) => response.page?.nextPageToken ?? "",
+			fetch: async (pageToken) => {
+				const paged = withPageToken(ListTrainingRunsRequestSchema, request, pageToken);
+				const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
+				const response = await invokeUnary(
+					this.#core,
+					prepared,
+					registeredMethodSafety(LIST),
+					undefined,
+					(call) => this.#core.raw.training.listTrainingRuns(paged, call),
+				);
+				return { requestId: prepared.requestId, response };
+			},
+			items: (response) => response.trainingRuns,
+			limits: options.limits,
+			pageSize: request.page?.pageSize ?? 0,
+			pageToken: request.page?.pageToken ?? "",
+			signal: options.signal,
+		});
 	}
 
 	async startAttempt(
@@ -430,22 +445,35 @@ export class Training {
 		return requiredCheckpoint(response.checkpoint, "GetCheckpoint");
 	}
 
+	/** Returns the first page, which also iterates the whole cursor. */
 	async listCheckpoints(
 		input: MessageInitShape<typeof ListCheckpointsRequestSchema>,
-		options: SdkCallOptions = {},
-	): Promise<ListCheckpointsResponse> {
+		options: ListOptions = {},
+	): Promise<Page<Checkpoint, ListCheckpointsResponse>> {
 		ensureUnfenced(options);
 		const request = create(ListCheckpointsRequestSchema, input);
 		request.parent = scopedRunName(this.#core, request.parent);
 		validatePage(request.page?.pageSize);
-		const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
-		return await invokeUnary(
-			this.#core,
-			prepared,
-			registeredMethodSafety(LIST_CHECKPOINTS),
-			undefined,
-			(call) => this.#core.raw.training.listCheckpoints(request, call),
-		);
+		return await listPage({
+			cursor: (response) => response.page?.nextPageToken ?? "",
+			fetch: async (pageToken) => {
+				const paged = withPageToken(ListCheckpointsRequestSchema, request, pageToken);
+				const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
+				const response = await invokeUnary(
+					this.#core,
+					prepared,
+					registeredMethodSafety(LIST_CHECKPOINTS),
+					undefined,
+					(call) => this.#core.raw.training.listCheckpoints(paged, call),
+				);
+				return { requestId: prepared.requestId, response };
+			},
+			items: (response) => response.checkpoints,
+			limits: options.limits,
+			pageSize: request.page?.pageSize ?? 0,
+			pageToken: request.page?.pageToken ?? "",
+			signal: options.signal,
+		});
 	}
 
 	/** Streams strictly contiguous durable updates and resumes after transient failures. */
@@ -475,7 +503,10 @@ export class Training {
 			});
 			try {
 				const stream = this.#core.raw.training.watchTrainingRun(request, {
-					headers: callHeaders(this.#core.config, prepared),
+					headers: callHeaders(this.#core.config, prepared, {
+						attempt: failures,
+						remainingMs: prepared.deadlineMs - this.#core.runtime.nowMs(),
+					}),
 					timeoutMs: Math.max(1, prepared.deadlineMs - this.#core.runtime.nowMs()),
 					...(prepared.signal === undefined ? {} : { signal: prepared.signal }),
 				});
@@ -505,9 +536,12 @@ export class Training {
 					reason,
 					prepared.signal,
 					this.#core.runtime.nowMs() >= prepared.deadlineMs,
+					{ clampMs: this.#core.config.retry.maxBackoffMs },
 				);
 				failures += 1;
-				if (!error.retryable || failures >= this.#core.config.retry.maxAttempts) throw error;
+				if (!error.retryable || failures >= retryableAttempts(this.#core, prepared, "safe")) {
+					throw error;
+				}
 				const delay = retryDelay(this.#core, failures, error.retryAfterMs);
 				if (delay >= prepared.deadlineMs - this.#core.runtime.nowMs())
 					throw MindcladeError.deadlineExceeded();

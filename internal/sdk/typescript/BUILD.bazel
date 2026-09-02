@@ -74,6 +74,16 @@ js_test(
 )
 
 js_test(
+    name = "pagination_response_test",
+    data = [
+        "package.json",
+        ":governed_sources",
+        ":mindclade_internal_sdk",
+    ],
+    entry_point = "tests/pagination_response.test.ts",
+)
+
+js_test(
     name = "policy_admin_test",
     data = [
         "package.json",
@@ -133,14 +143,37 @@ js_test(
     entry_point = "tests/workflow_approval.test.ts",
 )
 
+js_test(
+    name = "errors_test",
+    data = [
+        "package.json",
+        ":governed_sources",
+        ":mindclade_internal_sdk",
+    ],
+    entry_point = "tests/errors.test.ts",
+)
+
+js_test(
+    name = "retry_policy_test",
+    data = [
+        "package.json",
+        ":governed_sources",
+        ":mindclade_internal_sdk",
+    ],
+    entry_point = "tests/retry_policy.test.ts",
+)
+
 test_suite(
     name = "tests",
     tests = [
         ":agent_test",
+        ":errors_test",
         ":evaluation_test",
         ":experiment_test",
         ":job_run_test",
+        ":pagination_response_test",
         ":policy_admin_test",
+        ":retry_policy_test",
         ":sdk_test",
         ":training_test",
         ":workflow_approval_test",

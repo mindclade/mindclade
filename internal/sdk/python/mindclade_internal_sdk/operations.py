@@ -20,6 +20,7 @@ from ._invocation import (
     command_context,
     retry_delay,
 )
+from ._raw import AsyncWithRawResponse, WithRawResponse
 from ._validation import required_response_message, required_text
 from .calls import CallOptions, PreparedCall, prepare_call
 from .errors import (
@@ -30,6 +31,15 @@ from .errors import (
     OperationTimeoutError,
     ProtocolError,
     UnavailableError,
+)
+from .pagination import (
+    AsyncPage,
+    Page,
+    PaginationLimits,
+    apply_default_page_size,
+    async_page,
+    next_request,
+    sync_page,
 )
 from .transport import CANCEL_OPERATION, GET_OPERATION, LIST_OPERATIONS, WATCH_OPERATION
 
@@ -106,7 +116,7 @@ def _validate_listed_operation(
         )
 
 
-class Operations:
+class Operations(WithRawResponse):
     def __init__(self, invoker: SyncInvoker) -> None:
         self._invoker = invoker
 
@@ -115,7 +125,8 @@ class Operations:
         request: job_service_pb2.ListOperationsRequest | None = None,
         *,
         options: CallOptions | None = None,
-    ) -> job_service_pb2.ListOperationsResponse:
+        limits: PaginationLimits | None = None,
+    ) -> Page[operation_pb2.Operation]:
         value = job_service_pb2.ListOperationsRequest()
         if request is not None:
             value.CopyFrom(request)
@@ -125,6 +136,7 @@ class Operations:
         if value.page.page_size > _MAX_OPERATION_PAGE_SIZE:
             raise ValueError("operation page size cannot exceed 200")
         value.parent = parent
+        apply_default_page_size(value, limits)
         call = prepare_call(
             options,
             default_timeout=self._invoker.config.default_timeout,
@@ -144,7 +156,11 @@ class Operations:
                 self._invoker.config.tenant_id,
                 self._invoker.config.project_id,
             )
-        return response
+
+        def follow(page_token: str) -> Page[operation_pb2.Operation]:
+            return self.list(next_request(value, page_token), options=options, limits=limits)
+
+        return sync_page(response, items_field="operations", fetch=follow, limits=limits)
 
     def get(
         self,
@@ -338,7 +354,7 @@ class Operations:
                 time.sleep(delay)
 
 
-class AsyncOperations:
+class AsyncOperations(AsyncWithRawResponse):
     def __init__(self, invoker: AsyncInvoker) -> None:
         self._invoker = invoker
 
@@ -347,7 +363,8 @@ class AsyncOperations:
         request: job_service_pb2.ListOperationsRequest | None = None,
         *,
         options: CallOptions | None = None,
-    ) -> job_service_pb2.ListOperationsResponse:
+        limits: PaginationLimits | None = None,
+    ) -> AsyncPage[operation_pb2.Operation]:
         value = job_service_pb2.ListOperationsRequest()
         if request is not None:
             value.CopyFrom(request)
@@ -357,6 +374,7 @@ class AsyncOperations:
         if value.page.page_size > _MAX_OPERATION_PAGE_SIZE:
             raise ValueError("operation page size cannot exceed 200")
         value.parent = parent
+        apply_default_page_size(value, limits)
         call = prepare_call(
             options,
             default_timeout=self._invoker.config.default_timeout,
@@ -376,7 +394,11 @@ class AsyncOperations:
                 self._invoker.config.tenant_id,
                 self._invoker.config.project_id,
             )
-        return response
+
+        async def follow(page_token: str) -> AsyncPage[operation_pb2.Operation]:
+            return await self.list(next_request(value, page_token), options=options, limits=limits)
+
+        return async_page(response, items_field="operations", fetch=follow, limits=limits)
 
     async def get(
         self,

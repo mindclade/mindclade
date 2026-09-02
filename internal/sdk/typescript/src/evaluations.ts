@@ -33,7 +33,14 @@ import {
 } from "../../../../protocols/generated/typescript/job/v1/operation_pb.js";
 import type { ClientCore } from "./core.js";
 import { MindcladeError } from "./error.js";
-import { commandContext, prepareCall, type SdkCallOptions, type SubmitOptions } from "./request.js";
+import { listPage, type Page, withPageToken } from "./pagination.js";
+import {
+	commandContext,
+	type ListOptions,
+	prepareCall,
+	type SdkCallOptions,
+	type SubmitOptions,
+} from "./request.js";
 import { invokeUnary } from "./retry.js";
 import { registeredMethodSafety } from "./safety.js";
 
@@ -121,10 +128,11 @@ export class Evaluations {
 		return clone(EvaluationRunSchema, response.evaluationRun);
 	}
 
+	/** Returns the first page, which also iterates the whole cursor. */
 	async listRuns(
 		input: MessageInitShape<typeof ListEvaluationRunsRequestSchema> = {},
-		options: SdkCallOptions = {},
-	): Promise<ListEvaluationRunsResponse> {
+		options: ListOptions = {},
+	): Promise<Page<EvaluationRun, ListEvaluationRunsResponse>> {
 		const request = create(ListEvaluationRunsRequestSchema, input);
 		const parent = projectName(this.#core);
 		const pageSize = request.page?.pageSize ?? 0;
@@ -136,14 +144,26 @@ export class Evaluations {
 		)
 			throw MindcladeError.invalidArgument("evaluation list scope or page size is invalid");
 		request.parent = parent;
-		const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
-		return await invokeUnary(
-			this.#core,
-			prepared,
-			registeredMethodSafety(LIST),
-			undefined,
-			(call) => this.#core.raw.evaluations.listEvaluationRuns(request, call),
-		);
+		return await listPage({
+			cursor: (response) => response.page?.nextPageToken ?? "",
+			fetch: async (pageToken) => {
+				const paged = withPageToken(ListEvaluationRunsRequestSchema, request, pageToken);
+				const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
+				const response = await invokeUnary(
+					this.#core,
+					prepared,
+					registeredMethodSafety(LIST),
+					undefined,
+					(call) => this.#core.raw.evaluations.listEvaluationRuns(paged, call),
+				);
+				return { requestId: prepared.requestId, response };
+			},
+			items: (response) => response.evaluationRuns,
+			limits: options.limits,
+			pageSize,
+			pageToken: request.page?.pageToken ?? "",
+			signal: options.signal,
+		});
 	}
 
 	async cancelRun(

@@ -6,7 +6,6 @@ import asyncio
 import contextlib
 import hashlib
 import inspect
-import random
 import threading
 import time
 from collections.abc import AsyncIterable, AsyncIterator, Callable, Iterator
@@ -18,6 +17,9 @@ from google.protobuf.message import Message
 from google.protobuf.timestamp_pb2 import Timestamp
 from mindclade.common.v1 import command_context_pb2
 
+from ._raw import active_capture
+from ._retry import retry_delay as _policy_retry_delay
+from ._retry import should_retry
 from .auth import AccessToken, AsyncTokenProvider, SyncTokenProvider
 from .calls import NullObserver, Observer, PreparedCall, RpcObservation
 from .config import ClientConfig, ConfigurationError
@@ -26,6 +28,8 @@ from .errors import (
     CancelledError,
     DeadlineExceededError,
     MindcladeError,
+    RetryTrace,
+    TransportError,
     normalize_rpc_error,
 )
 from .transport import AsyncTransport, Metadata, SyncTransport
@@ -62,7 +66,21 @@ def command_context(
     )
 
 
-def _base_metadata(config: ClientConfig, call: PreparedCall) -> list[tuple[str, str]]:
+def _base_metadata(
+    config: ClientConfig,
+    call: PreparedCall,
+    *,
+    attempt_index: int = 0,
+    remaining: float | None = None,
+) -> list[tuple[str, str]]:
+    """Build the request metadata every attempt carries.
+
+    ``attempt_index`` is the 0-based retry counter the server sees, and
+    ``remaining`` is what is left of the caller's total budget, published in
+    milliseconds so a server can shed load rather than exhaust the client.
+    """
+
+    budget = call.timeout if remaining is None else remaining
     values = [
         ("x-mindclade-expected-tenant", config.tenant_id),
         ("x-mindclade-expected-project", config.project_id),
@@ -70,6 +88,8 @@ def _base_metadata(config: ClientConfig, call: PreparedCall) -> list[tuple[str, 
         ("x-request-id", call.request_id),
         ("x-trace-id", call.trace_id),
         ("x-mindclade-sdk", config.user_agent),
+        ("x-mindclade-retry-count", str(max(0, attempt_index))),
+        ("x-mindclade-timeout-ms", str(max(0, int(max(0.0, budget) * 1000)))),
     ]
     if call.idempotency_key:
         values.append(("idempotency-key", call.idempotency_key))
@@ -82,8 +102,11 @@ def _authorized_metadata(
     config: ClientConfig,
     call: PreparedCall,
     token: AccessToken | None,
+    *,
+    attempt_index: int = 0,
+    remaining: float | None = None,
 ) -> Metadata:
-    values = _base_metadata(config, call)
+    values = _base_metadata(config, call, attempt_index=attempt_index, remaining=remaining)
     if token is not None:
         try:
             authorization = token.authorization_header()
@@ -200,23 +223,51 @@ def retry_delay(
     *,
     retry_after: float | None = None,
 ) -> float:
-    """Return one bounded retry delay, respecting an explicit server hint.
+    """Compute one backoff delay through the SDK's single retry policy.
 
-    Server hints are used exactly after both the configured maximum and total
-    call budget are applied. Exponential delays use full jitter to prevent a
-    recovering service from receiving synchronized retry waves.
+    This is a thin adapter so callers holding a :class:`ClientConfig` do not
+    need to reach into ``config.retry``; the policy itself lives in
+    :mod:`mindclade_internal_sdk._retry` and is shared by every retry site.
     """
 
-    remaining = max(0.0, remaining)
-    if retry_after is not None:
-        return min(config.retry.max_delay, max(0.0, retry_after), remaining)
-    exponent = min(max(0, failures - 1), 30)
-    cap = min(
-        config.retry.max_delay,
-        config.retry.base_delay * (2**exponent),
-        remaining,
+    return _policy_retry_delay(config.retry, failures, remaining, retry_after=retry_after)
+
+
+def _attempt_budget(config: ClientConfig, call: PreparedCall, *, retry_safe: bool) -> int:
+    """Return the attempt cap, where a per-request limit may only narrow policy."""
+
+    if not retry_safe:
+        return 1
+    attempts = config.retry.max_attempts
+    if call.max_attempts is not None:
+        attempts = min(attempts, call.max_attempts)
+    return max(1, attempts)
+
+
+def _with_trace(
+    error: MindcladeError,
+    attempts: int,
+    cumulative_delay: float,
+) -> MindcladeError:
+    """Stamp observable retry accounting onto the error that leaves the SDK."""
+
+    error.retry_trace = RetryTrace(
+        attempts=max(1, attempts),
+        cumulative_delay_seconds=max(0.0, cumulative_delay),
+        cause=error.status.name if error.status is not None else "UNKNOWN",
     )
-    return random.uniform(0.0, cap) if cap > 0 else 0.0
+    return error
+
+
+def _exhausted_budget(call: PreparedCall) -> TransportError:
+    """Fail closed when a retry loop somehow ends without a transport result."""
+
+    return TransportError(
+        "Mindclade call exhausted its retry budget without a transport result",
+        status=grpc.StatusCode.UNAVAILABLE,
+        request_id=call.request_id,
+        retryable=False,
+    )
 
 
 class SyncInvoker:
@@ -283,7 +334,7 @@ class SyncInvoker:
         call: PreparedCall,
         retry_safe: bool,
     ) -> tuple[Message, Metadata]:
-        """Invoke unary RPC and copy its initial response metadata."""
+        """Invoke a unary RPC and copy its response headers and trailers."""
 
         return self._unary(
             method,
@@ -302,14 +353,23 @@ class SyncInvoker:
         retry_safe: bool,
         include_metadata: bool,
     ) -> tuple[Message, Metadata]:
+        # ``call.timeout`` is one total budget covering credential acquisition,
+        # every attempt, and every backoff delay between them.
         deadline = time.monotonic() + call.timeout
-        attempts = self.config.retry.max_attempts if retry_safe else 1
+        attempts = _attempt_budget(self.config, call, retry_safe=retry_safe)
+        # A raw-response call arms a capture, which needs response metadata even
+        # when the ergonomic caller did not ask for it.
+        capture = active_capture()
+        capturing = include_metadata or capture is not None
         last_error: MindcladeError | None = None
+        attempts_used = 0
+        cumulative_delay = 0.0
         for attempt in range(1, attempts + 1):
+            attempts_used = attempt
             remaining = deadline - time.monotonic()
             if remaining <= 0:
                 if last_error is not None:
-                    raise last_error
+                    raise _with_trace(last_error, attempts_used, cumulative_delay)
                 remaining = 0.001
             started = time.monotonic()
             try:
@@ -317,8 +377,14 @@ class SyncInvoker:
                 remaining = deadline - time.monotonic()
                 if remaining <= 0:
                     raise _credential_deadline_error(call)
-                metadata = _authorized_metadata(self.config, call, token)
-                if include_metadata:
+                metadata = _authorized_metadata(
+                    self.config,
+                    call,
+                    token,
+                    attempt_index=attempt - 1,
+                    remaining=remaining,
+                )
+                if capturing:
                     response, response_metadata = self.transport.unary_unary_with_metadata(
                         method,
                         request,
@@ -344,17 +410,22 @@ class SyncInvoker:
                     request_id=call.request_id,
                 )
                 last_error = normalized
-                if not (retry_safe and normalized.retryable and attempt < attempts):
-                    raise normalized from None
                 remaining = deadline - time.monotonic()
-                if remaining <= 0:
-                    raise normalized from None
+                if not retry_safe or not should_retry(
+                    retryable=normalized.retryable,
+                    server_override=normalized.server_should_retry,
+                    attempt=attempt,
+                    attempts=attempts,
+                    remaining=remaining,
+                ):
+                    raise _with_trace(normalized, attempts_used, cumulative_delay) from None
                 delay = retry_delay(
                     self.config,
                     attempt,
                     remaining,
                     retry_after=normalized.retry_after,
                 )
+                cumulative_delay += delay
                 time.sleep(delay)
                 continue
             _observe(
@@ -365,9 +436,17 @@ class SyncInvoker:
                 status="OK",
                 request_id=call.request_id,
             )
+            if capture is not None:
+                capture.record(
+                    grpc.StatusCode.OK,
+                    response_metadata,
+                    call.request_id,
+                    call.trace_id,
+                )
             return response, response_metadata
-        assert last_error is not None
-        raise last_error
+        if last_error is not None:
+            raise _with_trace(last_error, attempts_used, cumulative_delay)
+        raise _exhausted_budget(call)
 
     def stream(
         self,
@@ -397,7 +476,13 @@ class SyncInvoker:
                 method,
                 request,
                 timeout=remaining,
-                metadata=_authorized_metadata(self.config, call, token),
+                metadata=_authorized_metadata(
+                    self.config,
+                    call,
+                    token,
+                    attempt_index=0,
+                    remaining=remaining,
+                ),
             )
             cancel = getattr(stream, "cancel", None)
             if callable(cancel):
@@ -490,7 +575,7 @@ class AsyncInvoker:
         call: PreparedCall,
         retry_safe: bool,
     ) -> tuple[Message, Metadata]:
-        """Invoke unary RPC and copy its initial response metadata."""
+        """Invoke a unary RPC and copy its response headers and trailers."""
 
         return await self._unary(
             method,
@@ -510,14 +595,23 @@ class AsyncInvoker:
         include_metadata: bool,
     ) -> tuple[Message, Metadata]:
         loop = asyncio.get_running_loop()
+        # ``call.timeout`` is one total budget covering credential acquisition,
+        # every attempt, and every backoff delay between them.
         deadline = loop.time() + call.timeout
-        attempts = self.config.retry.max_attempts if retry_safe else 1
+        attempts = _attempt_budget(self.config, call, retry_safe=retry_safe)
+        # A raw-response call arms a capture, which needs response metadata even
+        # when the ergonomic caller did not ask for it.
+        capture = active_capture()
+        capturing = include_metadata or capture is not None
         last_error: MindcladeError | None = None
+        attempts_used = 0
+        cumulative_delay = 0.0
         for attempt in range(1, attempts + 1):
+            attempts_used = attempt
             remaining = deadline - loop.time()
             if remaining <= 0:
                 if last_error is not None:
-                    raise last_error
+                    raise _with_trace(last_error, attempts_used, cumulative_delay)
                 remaining = 0.001
             started = time.monotonic()
             try:
@@ -525,8 +619,14 @@ class AsyncInvoker:
                 remaining = deadline - loop.time()
                 if remaining <= 0:
                     raise _credential_deadline_error(call)
-                metadata = _authorized_metadata(self.config, call, token)
-                if include_metadata:
+                metadata = _authorized_metadata(
+                    self.config,
+                    call,
+                    token,
+                    attempt_index=attempt - 1,
+                    remaining=remaining,
+                )
+                if capturing:
                     response, response_metadata = await self.transport.unary_unary_with_metadata(
                         method,
                         request,
@@ -552,17 +652,22 @@ class AsyncInvoker:
                     request_id=call.request_id,
                 )
                 last_error = normalized
-                if not (retry_safe and normalized.retryable and attempt < attempts):
-                    raise normalized from None
                 remaining = deadline - loop.time()
-                if remaining <= 0:
-                    raise normalized from None
+                if not retry_safe or not should_retry(
+                    retryable=normalized.retryable,
+                    server_override=normalized.server_should_retry,
+                    attempt=attempt,
+                    attempts=attempts,
+                    remaining=remaining,
+                ):
+                    raise _with_trace(normalized, attempts_used, cumulative_delay) from None
                 delay = retry_delay(
                     self.config,
                     attempt,
                     remaining,
                     retry_after=normalized.retry_after,
                 )
+                cumulative_delay += delay
                 await asyncio.sleep(delay)
                 continue
             _observe(
@@ -573,9 +678,17 @@ class AsyncInvoker:
                 status="OK",
                 request_id=call.request_id,
             )
+            if capture is not None:
+                capture.record(
+                    grpc.StatusCode.OK,
+                    response_metadata,
+                    call.request_id,
+                    call.trace_id,
+                )
             return response, response_metadata
-        assert last_error is not None
-        raise last_error
+        if last_error is not None:
+            raise _with_trace(last_error, attempts_used, cumulative_delay)
+        raise _exhausted_budget(call)
 
     async def stream(
         self,
@@ -605,7 +718,13 @@ class AsyncInvoker:
                 method,
                 request,
                 timeout=remaining,
-                metadata=_authorized_metadata(self.config, call, token),
+                metadata=_authorized_metadata(
+                    self.config,
+                    call,
+                    token,
+                    attempt_index=0,
+                    remaining=remaining,
+                ),
             )
             cancel = getattr(stream, "cancel", None)
             if callable(cancel):

@@ -676,7 +676,7 @@ impl TrainingWatch {
         let request = tokio::select! {
             biased;
             () = self.cancellation.cancelled() => return Err(Error::cancelled()),
-            result = self.core.request(request, &self.prepared, None) => result?,
+            result = self.core.request(request, &self.prepared, None, self.consecutive_failures) => result?,
         };
         let remaining = self
             .prepared
@@ -703,9 +703,12 @@ impl TrainingWatch {
             .deadline
             .checked_duration_since(Instant::now())
             .ok_or_else(Error::deadline_exceeded)?;
-        let delay = error
-            .retry_after()
-            .unwrap_or_else(|| self.core.backoff(self.consecutive_failures));
+        // A server-pinned `retry-after-ms` is clamped to the configured maximum
+        // backoff, exactly as the unary retry loop clamps it.
+        let delay = error.retry_after().map_or_else(
+            || self.core.backoff(self.consecutive_failures),
+            |hint| hint.min(self.core.config.retry.max_backoff),
+        );
         if delay >= remaining {
             return Err(Error::deadline_exceeded());
         }

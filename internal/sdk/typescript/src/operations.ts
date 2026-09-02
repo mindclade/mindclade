@@ -21,9 +21,11 @@ import {
 } from "../../../../protocols/generated/typescript/job/v1/operation_pb.js";
 import type { ClientCore } from "./core.js";
 import { MindcladeError, OperationFailure } from "./error.js";
+import { listPage, type Page, withPageToken } from "./pagination.js";
 import {
 	callHeaders,
 	commandContext,
+	type ListOptions,
 	type PreparedCall,
 	prepareCall,
 	type SdkCallOptions,
@@ -32,7 +34,7 @@ import {
 	validateResource,
 	type WaitOptions,
 } from "./request.js";
-import { ensureActive, invokeUnary, retryDelay } from "./retry.js";
+import { ensureActive, invokeUnary, retryableAttempts, retryDelay } from "./retry.js";
 import { registeredMethodSafety } from "./safety.js";
 
 const DEFAULT_WAIT_TIMEOUT_MS = 30 * 60 * 1_000;
@@ -48,11 +50,14 @@ export class Operations {
 		this.#core = core;
 	}
 
-	/** Returns one detached, bounded page in the configured tenant/project. */
+	/**
+	 * Returns one detached, bounded page in the configured tenant/project that
+	 * also iterates the whole cursor.
+	 */
 	async list(
 		requestValue?: ListOperationsRequest,
-		options: SdkCallOptions = {},
-	): Promise<ListOperationsResponse> {
+		options: ListOptions = {},
+	): Promise<Page<Operation, ListOperationsResponse>> {
 		const request =
 			requestValue === undefined
 				? create(ListOperationsRequestSchema)
@@ -70,18 +75,32 @@ export class Operations {
 			);
 		}
 		request.parent = parent;
-		const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
-		const response = await invokeUnary(
-			this.#core,
-			prepared,
-			registeredMethodSafety(LIST_OPERATIONS),
-			undefined,
-			(call) => this.#core.raw.operations.listOperations(request, call),
-		);
-		for (const operation of response.operations) {
-			validateListedOperation(operation, this.#core);
-		}
-		return clone(ListOperationsResponseSchema, response);
+		return await listPage({
+			cursor: (response) => response.page?.nextPageToken ?? "",
+			fetch: async (pageToken) => {
+				const paged = withPageToken(ListOperationsRequestSchema, request, pageToken);
+				const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
+				const response = await invokeUnary(
+					this.#core,
+					prepared,
+					registeredMethodSafety(LIST_OPERATIONS),
+					undefined,
+					(call) => this.#core.raw.operations.listOperations(paged, call),
+				);
+				for (const operation of response.operations) {
+					validateListedOperation(operation, this.#core);
+				}
+				return {
+					requestId: prepared.requestId,
+					response: clone(ListOperationsResponseSchema, response),
+				};
+			},
+			items: (response) => response.operations,
+			limits: options.limits,
+			pageSize,
+			pageToken: request.page?.pageToken ?? "",
+			signal: options.signal,
+		});
 	}
 
 	async get(name: string, options: SdkCallOptions = {}): Promise<Operation> {
@@ -174,7 +193,10 @@ export class Operations {
 			});
 			try {
 				const stream = this.#core.raw.operations.watchOperation(request, {
-					headers: callHeaders(this.#core.config, prepared),
+					headers: callHeaders(this.#core.config, prepared, {
+						attempt: failures,
+						remainingMs: prepared.deadlineMs - this.#core.runtime.nowMs(),
+					}),
 					timeoutMs: prepared.deadlineMs - this.#core.runtime.nowMs(),
 					...(prepared.signal === undefined ? {} : { signal: prepared.signal }),
 				});
@@ -201,9 +223,12 @@ export class Operations {
 					reason,
 					prepared.signal,
 					this.#core.runtime.nowMs() >= prepared.deadlineMs,
+					{ clampMs: this.#core.config.retry.maxBackoffMs },
 				);
 				failures += 1;
-				if (!error.retryable || failures >= this.#core.config.retry.maxAttempts) throw error;
+				if (!error.retryable || failures >= retryableAttempts(this.#core, prepared, "safe")) {
+					throw error;
+				}
 				const delay = retryDelay(this.#core, failures, error.retryAfterMs);
 				if (delay >= prepared.deadlineMs - this.#core.runtime.nowMs()) {
 					throw MindcladeError.deadlineExceeded();

@@ -62,7 +62,18 @@ func (service *ExperimentService) Get(ctx context.Context, name, ifNoneMatch str
 	return service.experimentResponse(response.GetExperiment(), err, name, "GetExperiment")
 }
 
-func (service *ExperimentService) List(ctx context.Context, request *internalexperimentv1.ListExperimentsRequest, options ...RequestOption) (*internalexperimentv1.ListExperimentsResponse, error) {
+// ExperimentPage is one bounded list response plus cursor-scheme traversal. The
+// embedded generated response remains the authoritative model; the wrapper
+// adds only the opaque-cursor mechanics.
+type ExperimentPage struct {
+	*internalexperimentv1.ListExperimentsResponse
+	pageBase[*experimentv1.Experiment, *ExperimentPage]
+}
+
+// Items returns this page's experiments without traversing any further page.
+func (page *ExperimentPage) Items() []*experimentv1.Experiment { return page.GetExperiments() }
+
+func (service *ExperimentService) List(ctx context.Context, request *internalexperimentv1.ListExperimentsRequest, options ...RequestOption) (*ExperimentPage, error) {
 	if !service.configured() {
 		return nil, invalidArgument("experiment service is not configured")
 	}
@@ -92,12 +103,19 @@ func (service *ExperimentService) List(ctx context.Context, request *internalexp
 			return nil, protocolDataLoss("ListExperiments returned an out-of-scope resource")
 		}
 	}
-	return cloneGenerated(response), nil
+	detached := cloneGenerated(response)
+	page := &ExperimentPage{ListExperimentsResponse: detached}
+	page.pageBase = newPage[*experimentv1.Experiment](page, detached.GetPage(), paginationLimitsFrom(options), func(ctx context.Context, token string) (*ExperimentPage, error) {
+		successor := cloneGenerated(value)
+		successor.Page = pageRequestWithToken(value.GetPage(), token)
+		return service.List(ctx, successor, options...)
+	})
+	return page, nil
 }
 
 // ListPage provides the common bounded project listing without requiring an
 // application to import the low-level generated service request package.
-func (service *ExperimentService) ListPage(ctx context.Context, pageSize int32, pageToken string, options ...RequestOption) (*internalexperimentv1.ListExperimentsResponse, error) {
+func (service *ExperimentService) ListPage(ctx context.Context, pageSize int32, pageToken string, options ...RequestOption) (*ExperimentPage, error) {
 	convertedPageSize, err := numconv.Int64ToUint32(int64(pageSize))
 	if err != nil || convertedPageSize > experimentMaximumPageSize {
 		return nil, invalidArgument("experiment page size must be between zero and 200")
@@ -182,7 +200,18 @@ func (service *ExperimentService) GetStudy(ctx context.Context, name, ifNoneMatc
 	return service.studyResponse(response.GetStudy(), err, name, "GetStudy")
 }
 
-func (service *ExperimentService) ListStudies(ctx context.Context, request *internalexperimentv1.ListStudiesRequest, options ...RequestOption) (*internalexperimentv1.ListStudiesResponse, error) {
+// StudyPage is one bounded list response plus cursor-scheme traversal. The
+// embedded generated response remains the authoritative model; the wrapper
+// adds only the opaque-cursor mechanics.
+type StudyPage struct {
+	*internalexperimentv1.ListStudiesResponse
+	pageBase[*experimentv1.Study, *StudyPage]
+}
+
+// Items returns this page's studies without traversing any further page.
+func (page *StudyPage) Items() []*experimentv1.Study { return page.GetStudies() }
+
+func (service *ExperimentService) ListStudies(ctx context.Context, request *internalexperimentv1.ListStudiesRequest, options ...RequestOption) (*StudyPage, error) {
 	value := cloneGenerated(request)
 	if !service.configured() || value == nil || !validExperimentNameSDK(service.client.config, value.GetParent()) || value.GetPage().GetPageSize() > experimentMaximumPageSize {
 		return nil, invalidArgument("study list requires a scoped experiment parent and page size no greater than 200")
@@ -201,7 +230,14 @@ func (service *ExperimentService) ListStudies(ctx context.Context, request *inte
 			return nil, protocolDataLoss("ListStudies returned an out-of-scope resource")
 		}
 	}
-	return cloneGenerated(response), nil
+	detached := cloneGenerated(response)
+	page := &StudyPage{ListStudiesResponse: detached}
+	page.pageBase = newPage[*experimentv1.Study](page, detached.GetPage(), paginationLimitsFrom(options), func(ctx context.Context, token string) (*StudyPage, error) {
+		successor := cloneGenerated(value)
+		successor.Page = pageRequestWithToken(value.GetPage(), token)
+		return service.ListStudies(ctx, successor, options...)
+	})
+	return page, nil
 }
 
 func (service *ExperimentService) TransitionStudy(ctx context.Context, command *experimentv1.TransitionStudyCommand, options ...RequestOption) (*experimentv1.Study, error) {
@@ -256,7 +292,18 @@ func (service *ExperimentService) GetTrial(ctx context.Context, name, ifNoneMatc
 	return service.trialResponse(response.GetTrial(), err, name, "GetTrial")
 }
 
-func (service *ExperimentService) ListTrials(ctx context.Context, request *internalexperimentv1.ListTrialsRequest, options ...RequestOption) (*internalexperimentv1.ListTrialsResponse, error) {
+// TrialPage is one bounded list response plus cursor-scheme traversal. The
+// embedded generated response remains the authoritative model; the wrapper
+// adds only the opaque-cursor mechanics.
+type TrialPage struct {
+	*internalexperimentv1.ListTrialsResponse
+	pageBase[*experimentv1.Trial, *TrialPage]
+}
+
+// Items returns this page's trials without traversing any further page.
+func (page *TrialPage) Items() []*experimentv1.Trial { return page.GetTrials() }
+
+func (service *ExperimentService) ListTrials(ctx context.Context, request *internalexperimentv1.ListTrialsRequest, options ...RequestOption) (*TrialPage, error) {
 	value := cloneGenerated(request)
 	if !service.configured() || value == nil || !validStudyNameSDK(service.client.config, value.GetParent()) || value.GetPage().GetPageSize() > experimentMaximumPageSize {
 		return nil, invalidArgument("trial list requires a scoped study parent and page size no greater than 200")
@@ -275,7 +322,14 @@ func (service *ExperimentService) ListTrials(ctx context.Context, request *inter
 			return nil, protocolDataLoss("ListTrials returned an out-of-scope resource")
 		}
 	}
-	return cloneGenerated(response), nil
+	detached := cloneGenerated(response)
+	page := &TrialPage{ListTrialsResponse: detached}
+	page.pageBase = newPage[*experimentv1.Trial](page, detached.GetPage(), paginationLimitsFrom(options), func(ctx context.Context, token string) (*TrialPage, error) {
+		successor := cloneGenerated(value)
+		successor.Page = pageRequestWithToken(value.GetPage(), token)
+		return service.ListTrials(ctx, successor, options...)
+	})
+	return page, nil
 }
 
 func (service *ExperimentService) TransitionTrial(ctx context.Context, command *experimentv1.TransitionTrialCommand, options ...RequestOption) (*experimentv1.Trial, error) {

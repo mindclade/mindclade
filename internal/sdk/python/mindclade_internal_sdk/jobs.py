@@ -14,9 +14,19 @@ from mindclade.internal.job.v1 import job_service_pb2
 from mindclade.job.v1 import job_commands_pb2, job_pb2, operation_pb2
 
 from ._invocation import AsyncInvoker, SyncInvoker, canonical_digest, command_context
+from ._raw import AsyncWithRawResponse, WithRawResponse
 from ._validation import artifact_ref, required_response_message, required_text
 from .calls import CallOptions, PreparedCall, prepare_call
 from .errors import ProtocolError
+from .pagination import (
+    AsyncPage,
+    Page,
+    PaginationLimits,
+    apply_default_page_size,
+    async_page,
+    next_request,
+    sync_page,
+)
 from .transport import CANCEL_JOB, GET_JOB, LIST_JOBS, REQUEST_JOB
 
 _LEAF = re.compile(r"[A-Za-z0-9_.-]{1,255}\Z")
@@ -174,7 +184,7 @@ def _list_request(
     return value
 
 
-class Jobs:
+class Jobs(WithRawResponse):
     """Synchronous durable-job API."""
 
     def __init__(self, invoker: SyncInvoker) -> None:
@@ -228,8 +238,10 @@ class Jobs:
         request: job_service_pb2.ListJobsRequest | None = None,
         *,
         options: CallOptions | None = None,
-    ) -> job_service_pb2.ListJobsResponse:
+        limits: PaginationLimits | None = None,
+    ) -> Page[job_pb2.Job]:
         materialized = _list_request(self._invoker, request)
+        apply_default_page_size(materialized, limits)
         call = prepare_call(
             options,
             default_timeout=self._invoker.config.default_timeout,
@@ -245,7 +257,11 @@ class Jobs:
         for value in response.jobs:
             envelope = job_service_pb2.GetJobResponse(job=value)
             _job(self._invoker, envelope, label="job list")
-        return response
+
+        def follow(page_token: str) -> Page[job_pb2.Job]:
+            return self.list(next_request(materialized, page_token), options=options, limits=limits)
+
+        return sync_page(response, items_field="jobs", fetch=follow, limits=limits)
 
     def cancel(
         self,
@@ -267,7 +283,7 @@ class Jobs:
         return operation
 
 
-class AsyncJobs:
+class AsyncJobs(AsyncWithRawResponse):
     """Asyncio-native durable-job API."""
 
     def __init__(self, invoker: AsyncInvoker) -> None:
@@ -321,8 +337,10 @@ class AsyncJobs:
         request: job_service_pb2.ListJobsRequest | None = None,
         *,
         options: CallOptions | None = None,
-    ) -> job_service_pb2.ListJobsResponse:
+        limits: PaginationLimits | None = None,
+    ) -> AsyncPage[job_pb2.Job]:
         materialized = _list_request(self._invoker, request)
+        apply_default_page_size(materialized, limits)
         call = prepare_call(
             options,
             default_timeout=self._invoker.config.default_timeout,
@@ -338,7 +356,13 @@ class AsyncJobs:
         for value in response.jobs:
             envelope = job_service_pb2.GetJobResponse(job=value)
             _job(self._invoker, envelope, label="job list")
-        return response
+
+        async def follow(page_token: str) -> AsyncPage[job_pb2.Job]:
+            return await self.list(
+                next_request(materialized, page_token), options=options, limits=limits
+            )
+
+        return async_page(response, items_field="jobs", fetch=follow, limits=limits)
 
     async def cancel(
         self,

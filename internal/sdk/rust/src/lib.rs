@@ -54,7 +54,10 @@ pub use artifacts::{ArtifactUploadOptions, Artifacts};
 pub use auth::{AccessToken, GcpWorkloadIdentityProvider, TokenProvider};
 pub use config::{Config, ConfigBuilder, Environment, Identity, RetryPolicy};
 pub use datasets::Datasets;
-pub use error::{Error, ErrorKind};
+pub use error::{
+    Error, ErrorKind, FenceState, FinalCause, QuotaState, RetryAttemptSummary,
+    retryable_status_code,
+};
 pub use evaluations::Evaluations;
 pub use events::{EventRejectedError, JobRequestedDelivery, decode_job_requested_delivery};
 pub use experiments::Experiments;
@@ -69,6 +72,7 @@ pub use policies::Policies;
 pub use request::{
     CallOptions, PaginationLimits, PaginationPage, Paginator, SubmitOptions, paginate,
 };
+pub use retry::{JitterSource, SystemJitter};
 pub use runs::{AttemptLease, LeaseCredential, Runs};
 pub use training::{Training, TrainingWatch, TrainingWatchOptions};
 pub use transport::{
@@ -85,6 +89,9 @@ pub use mindclade_protocols::admin::v1::{
     AuditExport, AuditQuery, AuditQueryPage, Project, Tenant,
 };
 pub use mindclade_protocols::agent::v1::{AgentDefinition, AgentRun, AgentStep, ToolReceipt};
+pub use mindclade_protocols::common::v1::{
+    ErrorCode, ErrorDetail, FieldViolation, PreconditionViolation, RetryClass,
+};
 pub use mindclade_protocols::artifact::v1::ArtifactRef;
 pub use mindclade_protocols::dataset::v1::{
     CreateDatasetCommand, Dataset, DatasetRelease, PublishDatasetReleaseCommand,
@@ -326,7 +333,9 @@ impl Client {
         idempotency_key: Option<&str>,
     ) -> Result<tonic::Request<T>, Error> {
         let prepared = options.prepare(&self.core.config);
-        self.core.request(message, &prepared, idempotency_key).await
+        self.core
+            .request(message, &prepared, idempotency_key, 0)
+            .await
     }
 
     #[cfg(test)]

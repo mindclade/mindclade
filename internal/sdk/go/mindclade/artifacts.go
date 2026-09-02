@@ -81,9 +81,20 @@ func (service *ArtifactService) Get(ctx context.Context, request *internalartifa
 	return cloneGenerated(artifact), nil
 }
 
+// ArtifactPage is one bounded list response plus cursor-scheme traversal. The
+// embedded generated response remains the authoritative model; the wrapper
+// adds only the opaque-cursor mechanics.
+type ArtifactPage struct {
+	*internalartifactv1.ListArtifactsResponse
+	pageBase[*artifactv1.ArtifactRef, *ArtifactPage]
+}
+
+// Items returns this page's artifact references without traversing any further page.
+func (page *ArtifactPage) Items() []*artifactv1.ArtifactRef { return page.GetArtifacts() }
+
 // List returns one bounded project-scoped page and preserves the opaque page
 // token verbatim. Caller-owned request messages are never mutated.
-func (service *ArtifactService) List(ctx context.Context, request *internalartifactv1.ListArtifactsRequest, options ...RequestOption) (*internalartifactv1.ListArtifactsResponse, error) {
+func (service *ArtifactService) List(ctx context.Context, request *internalartifactv1.ListArtifactsRequest, options ...RequestOption) (*ArtifactPage, error) {
 	value := cloneGenerated(request)
 	if value == nil {
 		value = &internalartifactv1.ListArtifactsRequest{}
@@ -113,7 +124,14 @@ func (service *ArtifactService) List(ctx context.Context, request *internalartif
 			return nil, protocolDataLoss("ListArtifacts returned invalid immutable metadata")
 		}
 	}
-	return cloneGenerated(response), nil
+	detached := cloneGenerated(response)
+	page := &ArtifactPage{ListArtifactsResponse: detached}
+	page.pageBase = newPage[*artifactv1.ArtifactRef](page, detached.GetPage(), paginationLimitsFrom(options), func(ctx context.Context, token string) (*ArtifactPage, error) {
+		successor := cloneGenerated(value)
+		successor.Page = pageRequestWithToken(value.GetPage(), token)
+		return service.List(ctx, successor, options...)
+	})
+	return page, nil
 }
 
 // Quarantine records a governed artifact transition and returns its durable

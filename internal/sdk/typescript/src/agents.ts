@@ -45,8 +45,10 @@ import {
 } from "../../../../protocols/generated/typescript/job/v1/operation_pb.js";
 import type { ClientCore } from "./core.js";
 import { MindcladeError } from "./error.js";
+import { listPage, type Page, withPageToken } from "./pagination.js";
 import {
 	commandContext,
+	type ListOptions,
 	type PreparedCall,
 	prepareCall,
 	type SdkCallOptions,
@@ -168,22 +170,37 @@ export class Agents {
 		return clone(AgentDefinitionSchema, response.agentDefinition);
 	}
 
+	/** Returns the first page, which also iterates the whole cursor. */
 	async listDefinitions(
 		input: MessageInitShape<typeof ListAgentDefinitionsRequestSchema> = {},
-		options: SdkCallOptions = {},
-	): Promise<ListAgentDefinitionsResponse> {
+		options: ListOptions = {},
+	): Promise<Page<AgentDefinition, ListAgentDefinitionsResponse>> {
 		const request = create(ListAgentDefinitionsRequestSchema, input);
 		request.parent = projectParent(this.#core, request.parent, "agent definition list");
 		validatePage(request.page?.pageSize);
-		const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
-		const response = await invokeUnary(
-			this.#core,
-			prepared,
-			registeredMethodSafety(LIST_DEFINITIONS),
-			undefined,
-			(call) => this.#core.raw.agents.listAgentDefinitions(request, call),
-		);
-		return clone(ListAgentDefinitionsResponseSchema, response);
+		return await listPage({
+			cursor: (response) => response.page?.nextPageToken ?? "",
+			fetch: async (pageToken) => {
+				const paged = withPageToken(ListAgentDefinitionsRequestSchema, request, pageToken);
+				const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
+				const response = await invokeUnary(
+					this.#core,
+					prepared,
+					registeredMethodSafety(LIST_DEFINITIONS),
+					undefined,
+					(call) => this.#core.raw.agents.listAgentDefinitions(paged, call),
+				);
+				return {
+					requestId: prepared.requestId,
+					response: clone(ListAgentDefinitionsResponseSchema, response),
+				};
+			},
+			items: (response) => response.agentDefinitions,
+			limits: options.limits,
+			pageSize: request.page?.pageSize ?? 0,
+			pageToken: request.page?.pageToken ?? "",
+			signal: options.signal,
+		});
 	}
 
 	async startRun(
@@ -246,22 +263,37 @@ export class Agents {
 		return requiredRun(response.agentRun, expected, "GetAgentRun");
 	}
 
+	/** Returns the first page, which also iterates the whole cursor. */
 	async listRuns(
 		input: MessageInitShape<typeof ListAgentRunsRequestSchema> = {},
-		options: SdkCallOptions = {},
-	): Promise<ListAgentRunsResponse> {
+		options: ListOptions = {},
+	): Promise<Page<AgentRun, ListAgentRunsResponse>> {
 		const request = create(ListAgentRunsRequestSchema, input);
 		request.parent = projectParent(this.#core, request.parent, "agent run list");
 		validatePage(request.page?.pageSize);
-		const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
-		const response = await invokeUnary(
-			this.#core,
-			prepared,
-			registeredMethodSafety(LIST_RUNS),
-			undefined,
-			(call) => this.#core.raw.agents.listAgentRuns(request, call),
-		);
-		return clone(ListAgentRunsResponseSchema, response);
+		return await listPage({
+			cursor: (response) => response.page?.nextPageToken ?? "",
+			fetch: async (pageToken) => {
+				const paged = withPageToken(ListAgentRunsRequestSchema, request, pageToken);
+				const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
+				const response = await invokeUnary(
+					this.#core,
+					prepared,
+					registeredMethodSafety(LIST_RUNS),
+					undefined,
+					(call) => this.#core.raw.agents.listAgentRuns(paged, call),
+				);
+				return {
+					requestId: prepared.requestId,
+					response: clone(ListAgentRunsResponseSchema, response),
+				};
+			},
+			items: (response) => response.agentRuns,
+			limits: options.limits,
+			pageSize: request.page?.pageSize ?? 0,
+			pageToken: request.page?.pageToken ?? "",
+			signal: options.signal,
+		});
 	}
 
 	async cancelRun(
@@ -307,22 +339,37 @@ export class Agents {
 		return clone(AgentStepSchema, response.agentStep);
 	}
 
+	/** Returns the first page, which also iterates the whole cursor. */
 	async listSteps(
 		input: MessageInitShape<typeof ListAgentStepsRequestSchema>,
-		options: SdkCallOptions = {},
-	): Promise<ListAgentStepsResponse> {
+		options: ListOptions = {},
+	): Promise<Page<AgentStep, ListAgentStepsResponse>> {
 		const request = create(ListAgentStepsRequestSchema, input);
 		request.parent = scopedName(this.#core, request.parent, "agentRuns");
 		validatePage(request.page?.pageSize);
-		const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
-		const response = await invokeUnary(
-			this.#core,
-			prepared,
-			registeredMethodSafety(LIST_STEPS),
-			undefined,
-			(call) => this.#core.raw.agents.listAgentSteps(request, call),
-		);
-		return clone(ListAgentStepsResponseSchema, response);
+		return await listPage({
+			cursor: (response) => response.page?.nextPageToken ?? "",
+			fetch: async (pageToken) => {
+				const paged = withPageToken(ListAgentStepsRequestSchema, request, pageToken);
+				const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
+				const response = await invokeUnary(
+					this.#core,
+					prepared,
+					registeredMethodSafety(LIST_STEPS),
+					undefined,
+					(call) => this.#core.raw.agents.listAgentSteps(paged, call),
+				);
+				return {
+					requestId: prepared.requestId,
+					response: clone(ListAgentStepsResponseSchema, response),
+				};
+			},
+			items: (response) => response.agentSteps,
+			limits: options.limits,
+			pageSize: request.page?.pageSize ?? 0,
+			pageToken: request.page?.pageToken ?? "",
+			signal: options.signal,
+		});
 	}
 
 	async commitStep(

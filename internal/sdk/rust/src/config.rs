@@ -2,7 +2,10 @@ use std::{fmt, net::IpAddr, sync::Arc, time::Duration};
 
 use tonic::codegen::http::Uri;
 
-use crate::{Error, TokenProvider};
+use crate::{
+    Error, TokenProvider,
+    retry::{JitterSource, SystemJitter},
+};
 
 const DEFAULT_RPC_TIMEOUT: Duration = Duration::from_secs(20);
 const DEFAULT_POLL_INTERVAL: Duration = Duration::from_millis(500);
@@ -158,6 +161,7 @@ pub struct Config {
     pub(crate) server_name: Option<String>,
     pub(crate) trust_roots: TrustRoots,
     pub(crate) insecure_loopback: bool,
+    pub(crate) jitter: Arc<dyn JitterSource>,
 }
 
 impl Config {
@@ -182,6 +186,7 @@ impl Config {
             server_name: None,
             custom_ca: None,
             insecure_loopback: false,
+            jitter: Arc::new(SystemJitter::new()),
         }
     }
 
@@ -202,6 +207,7 @@ impl Config {
             server_name: None,
             custom_ca: None,
             insecure_loopback: true,
+            jitter: Arc::new(SystemJitter::new()),
         }
     }
 
@@ -252,6 +258,7 @@ impl fmt::Debug for Config {
             .field("retry", &self.retry)
             .field("server_name", &self.server_name)
             .field("insecure_loopback", &self.insecure_loopback)
+            .field("jitter", &self.jitter)
             .finish_non_exhaustive()
     }
 }
@@ -270,6 +277,7 @@ pub struct ConfigBuilder {
     server_name: Option<String>,
     custom_ca: Option<Vec<u8>>,
     insecure_loopback: bool,
+    jitter: Arc<dyn JitterSource>,
 }
 
 impl ConfigBuilder {
@@ -306,6 +314,16 @@ impl ConfigBuilder {
     #[must_use]
     pub fn retry_policy(mut self, policy: RetryPolicy) -> Self {
         self.retry = policy;
+        self
+    }
+
+    /// Replaces the source of retry jitter.
+    ///
+    /// The default draws from operating-system entropy. Tests inject
+    /// [`crate::testing::ScriptedJitter`] so every backoff is deterministic.
+    #[must_use]
+    pub fn jitter_source(mut self, source: Arc<dyn JitterSource>) -> Self {
+        self.jitter = source;
         self
     }
 
@@ -398,6 +416,7 @@ impl ConfigBuilder {
             server_name,
             trust_roots,
             insecure_loopback: self.insecure_loopback,
+            jitter: self.jitter,
         })
     }
 }

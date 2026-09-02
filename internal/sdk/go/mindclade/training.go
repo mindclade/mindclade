@@ -155,18 +155,26 @@ func (service *TrainingService) Get(ctx context.Context, name string, options ..
 	return cloneGenerated(response.GetTrainingRun()), nil
 }
 
+// TrainingPage is one bounded training-run listing plus cursor-scheme
+// traversal. Runs and NextPageToken remain for existing callers; the embedded
+// generated response is the authoritative model.
 type TrainingPage struct {
+	*internaltrainingv1.ListTrainingRunsResponse
+	pageBase[*trainingv1.TrainingRun, *TrainingPage]
 	Runs          []*trainingv1.TrainingRun
 	NextPageToken string
 }
 
+// Items returns this page's training runs without traversing any further page.
+func (page *TrainingPage) Items() []*trainingv1.TrainingRun { return page.Runs }
+
 const maximumTrainingPageSize = 200
 
-func (service *TrainingService) List(ctx context.Context, pageSize uint32, pageToken string) (*TrainingPage, error) {
+func (service *TrainingService) List(ctx context.Context, pageSize uint32, pageToken string, options ...RequestOption) (*TrainingPage, error) {
 	if pageSize > maximumTrainingPageSize {
 		return nil, &Error{Code: CodeInvalidArgument, Message: "training page size cannot exceed 200"}
 	}
-	callContext, _, cancel, err := service.client.context(ctx)
+	callContext, _, cancel, err := service.client.context(ctx, options...)
 	if err != nil {
 		return nil, err
 	}
@@ -188,16 +196,30 @@ func (service *TrainingService) List(ctx context.Context, pageSize uint32, pageT
 			return nil, protocolDataLoss("ListTrainingRuns returned a run outside configured scope")
 		}
 	}
-	page := &TrainingPage{Runs: detached.GetTrainingRuns()}
+	page := &TrainingPage{ListTrainingRunsResponse: detached, Runs: detached.GetTrainingRuns()}
 	if detached.GetPage() != nil {
 		page.NextPageToken = detached.GetPage().GetNextPageToken()
 	}
+	page.pageBase = newPage[*trainingv1.TrainingRun](page, detached.GetPage(), paginationLimitsFrom(options), func(ctx context.Context, token string) (*TrainingPage, error) {
+		return service.List(ctx, pageSize, token, options...)
+	})
 	return page, nil
 }
 
+// TrainingRunPage is one bounded list response plus cursor-scheme traversal. The
+// embedded generated response remains the authoritative model; the wrapper
+// adds only the opaque-cursor mechanics.
+type TrainingRunPage struct {
+	*internaltrainingv1.ListTrainingRunsResponse
+	pageBase[*trainingv1.TrainingRun, *TrainingRunPage]
+}
+
+// Items returns this page's training runs without traversing any further page.
+func (page *TrainingRunPage) Items() []*trainingv1.TrainingRun { return page.GetTrainingRuns() }
+
 // ListRuns sends an authoritative generated list request while binding an
 // omitted parent to the configured project and preserving opaque page tokens.
-func (service *TrainingService) ListRuns(ctx context.Context, request *internaltrainingv1.ListTrainingRunsRequest, options ...RequestOption) (*internaltrainingv1.ListTrainingRunsResponse, error) {
+func (service *TrainingService) ListRuns(ctx context.Context, request *internaltrainingv1.ListTrainingRunsRequest, options ...RequestOption) (*TrainingRunPage, error) {
 	if !service.configured() {
 		return nil, &Error{Code: CodeFailedPrecondition, Message: "training service is not configured"}
 	}
@@ -231,7 +253,14 @@ func (service *TrainingService) ListRuns(ctx context.Context, request *internalt
 			return nil, protocolDataLoss("ListTrainingRuns returned a run outside configured scope")
 		}
 	}
-	return cloneGenerated(response), nil
+	detached := cloneGenerated(response)
+	page := &TrainingRunPage{ListTrainingRunsResponse: detached}
+	page.pageBase = newPage[*trainingv1.TrainingRun](page, detached.GetPage(), paginationLimitsFrom(options), func(ctx context.Context, token string) (*TrainingRunPage, error) {
+		successor := cloneGenerated(value)
+		successor.Page = pageRequestWithToken(value.GetPage(), token)
+		return service.ListRuns(ctx, successor, options...)
+	})
+	return page, nil
 }
 
 // StartAttempt binds a generated training attempt to the current scheduler
@@ -430,8 +459,19 @@ func (service *TrainingService) GetCheckpoint(ctx context.Context, name string, 
 	return cloneGenerated(response.GetCheckpoint()), nil
 }
 
+// CheckpointPage is one bounded list response plus cursor-scheme traversal. The
+// embedded generated response remains the authoritative model; the wrapper
+// adds only the opaque-cursor mechanics.
+type CheckpointPage struct {
+	*internaltrainingv1.ListCheckpointsResponse
+	pageBase[*trainingv1.Checkpoint, *CheckpointPage]
+}
+
+// Items returns this page's checkpoints without traversing any further page.
+func (page *CheckpointPage) Items() []*trainingv1.Checkpoint { return page.GetCheckpoints() }
+
 // ListCheckpoints returns one generated bounded page beneath a training run.
-func (service *TrainingService) ListCheckpoints(ctx context.Context, request *internaltrainingv1.ListCheckpointsRequest, options ...RequestOption) (*internaltrainingv1.ListCheckpointsResponse, error) {
+func (service *TrainingService) ListCheckpoints(ctx context.Context, request *internaltrainingv1.ListCheckpointsRequest, options ...RequestOption) (*CheckpointPage, error) {
 	value := cloneGenerated(request)
 	parent, parentErr := canonicalTrainingRunNameSDK(service.client, value.GetParent())
 	if !service.configured() || value == nil || parentErr != nil || value.GetPage().GetPageSize() > maximumTrainingPageSize {
@@ -455,7 +495,14 @@ func (service *TrainingService) ListCheckpoints(ctx context.Context, request *in
 			return nil, protocolDataLoss("ListCheckpoints returned a checkpoint under another run")
 		}
 	}
-	return cloneGenerated(response), nil
+	detached := cloneGenerated(response)
+	page := &CheckpointPage{ListCheckpointsResponse: detached}
+	page.pageBase = newPage[*trainingv1.Checkpoint](page, detached.GetPage(), paginationLimitsFrom(options), func(ctx context.Context, token string) (*CheckpointPage, error) {
+		successor := cloneGenerated(value)
+		successor.Page = pageRequestWithToken(value.GetPage(), token)
+		return service.ListCheckpoints(ctx, successor, options...)
+	})
+	return page, nil
 }
 
 func (service *TrainingService) prepareMutation(ctx context.Context, command proto.Message, requireLease bool, options ...RequestOption) (context.Context, context.CancelFunc, error) {

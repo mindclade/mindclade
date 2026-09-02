@@ -27,7 +27,14 @@ import type { Model } from "../../../../protocols/generated/typescript/model/v1/
 import type { ModelRelease } from "../../../../protocols/generated/typescript/model/v1/model_release_pb.js";
 import type { ClientCore } from "./core.js";
 import { MindcladeError } from "./error.js";
-import { commandContext, prepareCall, type SdkCallOptions, type SubmitOptions } from "./request.js";
+import { listPage, type Page, withPageToken } from "./pagination.js";
+import {
+	commandContext,
+	type ListOptions,
+	prepareCall,
+	type SdkCallOptions,
+	type SubmitOptions,
+} from "./request.js";
 import { invokeUnary } from "./retry.js";
 import { registeredMethodSafety } from "./safety.js";
 
@@ -96,24 +103,37 @@ export class Models {
 		return response.model;
 	}
 
+	/** Returns the first page, which also iterates the whole cursor. */
 	async list(
 		request: MessageInitShape<typeof ListModelsRequestSchema> = {},
-		options: SdkCallOptions = {},
-	): Promise<ListModelsResponse> {
+		options: ListOptions = {},
+	): Promise<Page<Model, ListModelsResponse>> {
 		const generated = create(ListModelsRequestSchema, request);
 		const parent = projectName(this.#core);
 		if (generated.parent !== "" && generated.parent !== parent)
 			throw MindcladeError.invalidArgument("model list parent does not match client scope");
 		generated.parent = parent;
 		validatePage(generated.page?.pageSize);
-		const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
-		return await invokeUnary(
-			this.#core,
-			prepared,
-			registeredMethodSafety(LIST),
-			undefined,
-			(call) => this.#core.raw.models.listModels(generated, call),
-		);
+		return await listPage({
+			cursor: (response) => response.page?.nextPageToken ?? "",
+			fetch: async (pageToken) => {
+				const paged = withPageToken(ListModelsRequestSchema, generated, pageToken);
+				const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
+				const response = await invokeUnary(
+					this.#core,
+					prepared,
+					registeredMethodSafety(LIST),
+					undefined,
+					(call) => this.#core.raw.models.listModels(paged, call),
+				);
+				return { requestId: prepared.requestId, response };
+			},
+			items: (response) => response.models,
+			limits: options.limits,
+			pageSize: generated.page?.pageSize ?? 0,
+			pageToken: generated.page?.pageToken ?? "",
+			signal: options.signal,
+		});
 	}
 
 	async registerRelease(
@@ -163,21 +183,34 @@ export class Models {
 		return response.modelRelease;
 	}
 
+	/** Returns the first page, which also iterates the whole cursor. */
 	async listReleases(
 		request: MessageInitShape<typeof ListModelReleasesRequestSchema>,
-		options: SdkCallOptions = {},
-	): Promise<ListModelReleasesResponse> {
+		options: ListOptions = {},
+	): Promise<Page<ModelRelease, ListModelReleasesResponse>> {
 		const generated = create(ListModelReleasesRequestSchema, request);
 		generated.parent = modelName(this.#core, generated.parent);
 		validatePage(generated.page?.pageSize);
-		const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
-		return await invokeUnary(
-			this.#core,
-			prepared,
-			registeredMethodSafety(LIST_RELEASES),
-			undefined,
-			(call) => this.#core.raw.models.listModelReleases(generated, call),
-		);
+		return await listPage({
+			cursor: (response) => response.page?.nextPageToken ?? "",
+			fetch: async (pageToken) => {
+				const paged = withPageToken(ListModelReleasesRequestSchema, generated, pageToken);
+				const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
+				const response = await invokeUnary(
+					this.#core,
+					prepared,
+					registeredMethodSafety(LIST_RELEASES),
+					undefined,
+					(call) => this.#core.raw.models.listModelReleases(paged, call),
+				);
+				return { requestId: prepared.requestId, response };
+			},
+			items: (response) => response.modelReleases,
+			limits: options.limits,
+			pageSize: generated.page?.pageSize ?? 0,
+			pageToken: generated.page?.pageToken ?? "",
+			signal: options.signal,
+		});
 	}
 
 	async promoteRelease(

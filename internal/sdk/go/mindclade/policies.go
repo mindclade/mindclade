@@ -108,7 +108,18 @@ func (service *PolicyService) Get(ctx context.Context, name, ifNoneMatch string,
 	return cloneGenerated(response.GetUsePolicy()), nil
 }
 
-func (service *PolicyService) List(ctx context.Context, request *internalpolicyv1.ListUsePoliciesRequest, options ...RequestOption) (*internalpolicyv1.ListUsePoliciesResponse, error) {
+// UsePolicyPage is one bounded list response plus cursor-scheme traversal. The
+// embedded generated response remains the authoritative model; the wrapper
+// adds only the opaque-cursor mechanics.
+type UsePolicyPage struct {
+	*internalpolicyv1.ListUsePoliciesResponse
+	pageBase[*policyv1.UsePolicy, *UsePolicyPage]
+}
+
+// Items returns this page's use policies without traversing any further page.
+func (page *UsePolicyPage) Items() []*policyv1.UsePolicy { return page.GetUsePolicies() }
+
+func (service *PolicyService) List(ctx context.Context, request *internalpolicyv1.ListUsePoliciesRequest, options ...RequestOption) (*UsePolicyPage, error) {
 	materialized := cloneGenerated(request)
 	if materialized == nil {
 		materialized = &internalpolicyv1.ListUsePoliciesRequest{}
@@ -130,7 +141,14 @@ func (service *PolicyService) List(ctx context.Context, request *internalpolicyv
 	if err != nil {
 		return nil, normalizeError(err)
 	}
-	return cloneGenerated(response), nil
+	detached := cloneGenerated(response)
+	page := &UsePolicyPage{ListUsePoliciesResponse: detached}
+	page.pageBase = newPage[*policyv1.UsePolicy](page, detached.GetPage(), paginationLimitsFrom(options), func(ctx context.Context, token string) (*UsePolicyPage, error) {
+		successor := cloneGenerated(materialized)
+		successor.Page = pageRequestWithToken(materialized.GetPage(), token)
+		return service.List(ctx, successor, options...)
+	})
+	return page, nil
 }
 
 func (service *PolicyService) Activate(ctx context.Context, name, etag string, options ...RequestOption) (*jobv1.Operation, error) {

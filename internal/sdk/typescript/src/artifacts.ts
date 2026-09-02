@@ -50,9 +50,11 @@ import {
 } from "../../../../protocols/generated/typescript/job/v1/operation_pb.js";
 import type { ClientCore } from "./core.js";
 import { MindcladeError } from "./error.js";
+import { listPage, type Page, withPageToken } from "./pagination.js";
 import {
 	callHeaders,
 	commandContext,
+	type ListOptions,
 	prepareCall,
 	type SdkCallOptions,
 	type SubmitOptions,
@@ -60,6 +62,22 @@ import {
 	validateResource,
 } from "./request.js";
 import { ensureActive, invokeUnary } from "./retry.js";
+import { registeredMethodSafety } from "./safety.js";
+
+const ARTIFACT_SERVICE = "/mindclade.internal.artifact.v1.ArtifactService";
+const GET_ARTIFACT = `${ARTIFACT_SERVICE}/GetArtifact`;
+const LIST_ARTIFACTS = `${ARTIFACT_SERVICE}/ListArtifacts`;
+const QUARANTINE_ARTIFACT = `${ARTIFACT_SERVICE}/QuarantineArtifact`;
+const ACQUIRE_ARTIFACT_LEASE = `${ARTIFACT_SERVICE}/AcquireArtifactLease`;
+const RELEASE_ARTIFACT_LEASE = `${ARTIFACT_SERVICE}/ReleaseArtifactLease`;
+const RESOLVE_ARTIFACT_ALIAS = `${ARTIFACT_SERVICE}/ResolveArtifactAlias`;
+const GET_ARTIFACT_UPLOAD = `${ARTIFACT_SERVICE}/GetArtifactUpload`;
+const UPLOAD_ARTIFACT_CHUNK = `${ARTIFACT_SERVICE}/UploadArtifactChunk`;
+const COMMIT_ARTIFACT = `${ARTIFACT_SERVICE}/CommitArtifact`;
+const BEGIN_ARTIFACT_UPLOAD = `${ARTIFACT_SERVICE}/BeginArtifactUpload`;
+const FINALIZE_ARTIFACT_UPLOAD = `${ARTIFACT_SERVICE}/FinalizeArtifactUpload`;
+const ABORT_ARTIFACT_UPLOAD = `${ARTIFACT_SERVICE}/AbortArtifactUpload`;
+const QUARANTINE_ARTIFACT_UPLOAD = `${ARTIFACT_SERVICE}/QuarantineArtifactUpload`;
 
 const DEFAULT_CHUNK_BYTES = 1 << 20;
 const MAX_CHUNK_BYTES = 4 << 20;
@@ -109,8 +127,12 @@ export class Artifacts {
 			throw MindcladeError.invalidArgument("artifact digest must be canonical sha256");
 		}
 		const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
-		const response = await invokeUnary(this.#core, prepared, "safe", undefined, (call) =>
-			this.#core.raw.artifacts.getArtifact(request, call),
+		const response = await invokeUnary(
+			this.#core,
+			prepared,
+			registeredMethodSafety(GET_ARTIFACT),
+			undefined,
+			(call) => this.#core.raw.artifacts.getArtifact(request, call),
 		);
 		const artifact = validateResponseArtifact(response.artifact, "GetArtifact");
 		if (artifact.digest !== expectedDigest) {
@@ -119,11 +141,14 @@ export class Artifacts {
 		return artifact;
 	}
 
-	/** Returns one clone-safe, bounded project-scoped catalog page. */
+	/**
+	 * Returns one clone-safe, bounded project-scoped catalog page that also
+	 * iterates the whole cursor.
+	 */
 	async list(
 		requestValue?: ListArtifactsRequest,
-		options: SdkCallOptions = {},
-	): Promise<ListArtifactsResponse> {
+		options: ListOptions = {},
+	): Promise<Page<ArtifactRef, ListArtifactsResponse>> {
 		const request =
 			requestValue === undefined
 				? create(ListArtifactsRequestSchema)
@@ -141,14 +166,32 @@ export class Artifacts {
 			);
 		}
 		request.parent = parent;
-		const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
-		const response = await invokeUnary(this.#core, prepared, "safe", undefined, (call) =>
-			this.#core.raw.artifacts.listArtifacts(request, call),
-		);
-		for (const artifact of response.artifacts) {
-			validateResponseArtifact(artifact, "ListArtifacts");
-		}
-		return clone(ListArtifactsResponseSchema, response);
+		return await listPage({
+			cursor: (response) => response.page?.nextPageToken ?? "",
+			fetch: async (pageToken) => {
+				const paged = withPageToken(ListArtifactsRequestSchema, request, pageToken);
+				const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
+				const response = await invokeUnary(
+					this.#core,
+					prepared,
+					registeredMethodSafety(LIST_ARTIFACTS),
+					undefined,
+					(call) => this.#core.raw.artifacts.listArtifacts(paged, call),
+				);
+				for (const artifact of response.artifacts) {
+					validateResponseArtifact(artifact, "ListArtifacts");
+				}
+				return {
+					requestId: prepared.requestId,
+					response: clone(ListArtifactsResponseSchema, response),
+				};
+			},
+			items: (response) => response.artifacts,
+			limits: options.limits,
+			pageSize,
+			pageToken: request.page?.pageToken ?? "",
+			signal: options.signal,
+		});
 	}
 
 	/** Records a governed quarantine transition using a trusted command context. */
@@ -183,7 +226,7 @@ export class Artifacts {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			"idempotent",
+			registeredMethodSafety(QUARANTINE_ARTIFACT),
 			options.idempotencyKey,
 			(call) => this.#core.raw.artifacts.quarantineArtifact(request, call),
 		);
@@ -215,7 +258,7 @@ export class Artifacts {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			"idempotent",
+			registeredMethodSafety(ACQUIRE_ARTIFACT_LEASE),
 			options.idempotencyKey,
 			(call) => this.#core.raw.artifacts.acquireArtifactLease(request, call),
 		);
@@ -241,8 +284,12 @@ export class Artifacts {
 			options,
 			sha256(toBinary(ReleaseArtifactLeaseRequestSchema, request)),
 		);
-		await invokeUnary(this.#core, prepared, "idempotent", options.idempotencyKey, (call) =>
-			this.#core.raw.artifacts.releaseArtifactLease(request, call),
+		await invokeUnary(
+			this.#core,
+			prepared,
+			registeredMethodSafety(RELEASE_ARTIFACT_LEASE),
+			options.idempotencyKey,
+			(call) => this.#core.raw.artifacts.releaseArtifactLease(request, call),
 		);
 	}
 
@@ -256,8 +303,12 @@ export class Artifacts {
 		validateResource("artifact alias", alias);
 		const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
 		const request = create(ResolveArtifactAliasRequestSchema, { alias, parent });
-		const response = await invokeUnary(this.#core, prepared, "safe", undefined, (call) =>
-			this.#core.raw.artifacts.resolveArtifactAlias(request, call),
+		const response = await invokeUnary(
+			this.#core,
+			prepared,
+			registeredMethodSafety(RESOLVE_ARTIFACT_ALIAS),
+			undefined,
+			(call) => this.#core.raw.artifacts.resolveArtifactAlias(request, call),
 		);
 		if (response.artifact === undefined) {
 			throw MindcladeError.protocol("ResolveArtifactAlias response omitted its artifact");
@@ -270,8 +321,12 @@ export class Artifacts {
 		validateResource("artifact upload name", name);
 		const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
 		const request = create(GetArtifactUploadRequestSchema, { name });
-		const response = await invokeUnary(this.#core, prepared, "safe", undefined, (call) =>
-			this.#core.raw.artifacts.getArtifactUpload(request, call),
+		const response = await invokeUnary(
+			this.#core,
+			prepared,
+			registeredMethodSafety(GET_ARTIFACT_UPLOAD),
+			undefined,
+			(call) => this.#core.raw.artifacts.getArtifactUpload(request, call),
 		);
 		return validateUpload(response.upload, undefined, "GetArtifactUpload");
 	}
@@ -356,7 +411,7 @@ export class Artifacts {
 			const response = await invokeUnary(
 				this.#core,
 				prepared,
-				"idempotent",
+				registeredMethodSafety(UPLOAD_ARTIFACT_CHUNK),
 				submit.idempotencyKey,
 				(rpcOptions) => this.#core.raw.artifacts.uploadArtifactChunk(request, rpcOptions),
 			);
@@ -437,7 +492,7 @@ export class Artifacts {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			"idempotent",
+			registeredMethodSafety(COMMIT_ARTIFACT),
 			options.idempotencyKey,
 			(rpcOptions) => this.#core.raw.artifacts.commitArtifact(request, rpcOptions),
 		);
@@ -467,7 +522,10 @@ export class Artifacts {
 		let complete = false;
 		try {
 			const stream = this.#core.raw.artifacts.downloadArtifact(request, {
-				headers: callHeaders(this.#core.config, prepared),
+				headers: callHeaders(this.#core.config, prepared, {
+					attempt: 0,
+					remainingMs: prepared.deadlineMs - this.#core.runtime.nowMs(),
+				}),
 				timeoutMs: prepared.deadlineMs - this.#core.runtime.nowMs(),
 				...(prepared.signal === undefined ? {} : { signal: prepared.signal }),
 			});
@@ -611,7 +669,7 @@ export class Artifacts {
 			const response = await invokeUnary(
 				this.#core,
 				prepared,
-				"idempotent",
+				registeredMethodSafety(BEGIN_ARTIFACT_UPLOAD),
 				submit.idempotencyKey,
 				(rpcOptions) => this.#core.raw.artifacts.beginArtifactUpload(request, rpcOptions),
 			);
@@ -648,7 +706,7 @@ export class Artifacts {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			"idempotent",
+			registeredMethodSafety(FINALIZE_ARTIFACT_UPLOAD),
 			submit.idempotencyKey,
 			(rpcOptions) => this.#core.raw.artifacts.finalizeArtifactUpload(request, rpcOptions),
 		);
@@ -682,7 +740,7 @@ export class Artifacts {
 			const response = await invokeUnary(
 				this.#core,
 				prepared,
-				"idempotent",
+				registeredMethodSafety(ABORT_ARTIFACT_UPLOAD),
 				options.idempotencyKey,
 				(rpcOptions) => this.#core.raw.artifacts.abortArtifactUpload(request, rpcOptions),
 			);
@@ -698,7 +756,7 @@ export class Artifacts {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			"idempotent",
+			registeredMethodSafety(QUARANTINE_ARTIFACT_UPLOAD),
 			options.idempotencyKey,
 			(rpcOptions) => this.#core.raw.artifacts.quarantineArtifactUpload(request, rpcOptions),
 		);

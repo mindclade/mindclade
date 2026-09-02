@@ -338,7 +338,9 @@ class GrpcSyncTransport:
         metadata: Metadata,
     ) -> tuple[Message, Metadata]:
         response, call = self._unary[method].with_call(request, timeout=timeout, metadata=metadata)
-        return response, _metadata(call.initial_metadata())
+        # A server may report ``x-request-id`` in either the headers or the
+        # trailers; a raw response must see both.
+        return response, _metadata(call.initial_metadata()) + _metadata(call.trailing_metadata())
 
     def unary_stream(
         self,
@@ -394,7 +396,10 @@ class GrpcAsyncTransport:
     ) -> tuple[Message, Metadata]:
         call = self._unary[method](request, timeout=timeout, metadata=metadata)
         response = await call
-        return response, _metadata(await call.initial_metadata())
+        # A server may report ``x-request-id`` in either the headers or the
+        # trailers; a raw response must see both.
+        headers = _metadata(await call.initial_metadata())
+        return response, headers + _metadata(await call.trailing_metadata())
 
     def unary_stream(
         self,

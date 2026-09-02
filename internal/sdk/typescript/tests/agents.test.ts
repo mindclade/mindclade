@@ -187,7 +187,7 @@ describe("Agent generated-contract facade", () => {
 				await client.agents.listDefinitions({
 					page: { pageSize: 10, pageToken: "opaque-definition" },
 				})
-			).page?.nextPageToken,
+			).metadata.nextPageToken,
 			"next-definition",
 		);
 		await client.agents.startRun(
@@ -206,7 +206,7 @@ describe("Agent generated-contract facade", () => {
 				await client.agents.listRuns({
 					page: { pageSize: 10, pageToken: "opaque-run" },
 				})
-			).page?.nextPageToken,
+			).metadata.nextPageToken,
 			"next-run",
 		);
 		await client.agents.cancelRun(
@@ -220,7 +220,7 @@ describe("Agent generated-contract facade", () => {
 					page: { pageSize: 10, pageToken: "opaque-step" },
 					parent: RUN,
 				})
-			).page?.nextPageToken,
+			).metadata.nextPageToken,
 			"next-step",
 		);
 

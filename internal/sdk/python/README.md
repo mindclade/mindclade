@@ -88,11 +88,58 @@ promise.
 
 The descriptor-bound coverage gate fixes the current surface at 15 services
 and 132 RPCs: 127 unary and five server-streaming, with 131 ergonomic methods
-and one reviewed raw-only method. `paginate` and `apaginate` lazily traverse
-any ergonomic list method, preserve opaque tokens exactly, reject cursor loops,
-and raise `PaginationLimitError` instead of implying that a bounded partial
-result is complete. Synchronous and asynchronous artifact facades both expose
-verified iteration, writer download, and atomic file download.
+and one reviewed raw-only method. Synchronous and asynchronous artifact facades
+both expose verified iteration, writer download, and atomic file download.
+
+## Pagination
+
+Every ergonomic list method returns a `Page` (or an `AsyncPage` on
+`AsyncClient`) instead of the bare generated `List*Response`:
+
+```python
+for job in client.jobs.list():          # iterates every page transparently
+    handle(job)
+
+page = client.jobs.list()               # page-level access is still available
+page.items                              # this page's items
+page.has_next_page                      # whether a further cursor exists
+page.next_page()                        # the following page, same validations
+page.pages()                            # this page and every following page
+page.page.next_page_token               # the generated response, delegated
+```
+
+A page delegates unknown attribute reads to the generated `List*Response` it
+was built from, so `page.jobs`, `page.page.next_page_token`, and `page.read_time`
+keep working and the generated message stays the only wire model. Traversal
+preserves opaque tokens exactly, forwards them verbatim, rejects cursor loops
+and non-text cursors with `ProtocolError`, and re-runs each page's identity and
+scope checks. Budgets are explicit: `PaginationLimits` defaults to 100 items per
+page, 100 pages, and 10,000 items per traversal, with hard caps of 1,000 and
+1,000,000; passing them is `client.jobs.list(limits=PaginationLimits(max_items=500))`.
+Exceeding a budget raises `PaginationLimitError` rather than implying that a
+bounded partial result is complete. `paginate` and `apaginate` remain for a
+caller driving `client.generated` or a hand-rolled fetch loop.
+
+## Raw responses
+
+Every resource namespace on both clients exposes `with_raw_response`, which
+runs the same ergonomic method — every identity, digest, fence, and protocol
+check still executes — and returns the value beside the RPC's transport facts:
+
+```python
+raw = client.jobs.with_raw_response.get("job-1")
+raw.parse()        # identical to client.jobs.get("job-1")
+raw.status         # grpc.StatusCode.OK
+raw.request_id     # x-request-id, from the headers or trailers
+raw.trace_id       # x-trace-id
+raw.metadata       # allowlisted response metadata only
+```
+
+`raw.metadata` is projected through `SAFE_RESPONSE_METADATA_KEYS`, the
+allowlist shared by all four internal SDKs. Anything unlisted is dropped, and
+nothing credential-bearing — `authorization`, `x-mindclade-lease-token`,
+cookies, or any `*token*`/`*secret*`/`*key*` key — can ever appear. Streaming
+methods have no raw response and reject the call.
 
 `client.artifacts.download_file(artifact, path)` and its `AsyncClient` peer
 stage mode-0600 content beside the destination, verify the complete immutable

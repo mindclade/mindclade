@@ -23,7 +23,14 @@ import type { Operation } from "../../../../protocols/generated/typescript/job/v
 import { OperationSchema } from "../../../../protocols/generated/typescript/job/v1/operation_pb.js";
 import type { ClientCore } from "./core.js";
 import { MindcladeError } from "./error.js";
-import { commandContext, prepareCall, type SdkCallOptions, type SubmitOptions } from "./request.js";
+import { listPage, type Page, withPageToken } from "./pagination.js";
+import {
+	commandContext,
+	type ListOptions,
+	prepareCall,
+	type SdkCallOptions,
+	type SubmitOptions,
+} from "./request.js";
 import { invokeUnary } from "./retry.js";
 import { registeredMethodSafety } from "./safety.js";
 
@@ -104,10 +111,11 @@ export class Jobs {
 		return clone(JobSchema, response.job);
 	}
 
+	/** Returns the first page, which also iterates the whole cursor. */
 	async list(
 		input: MessageInitShape<typeof ListJobsRequestSchema> = {},
-		options: SdkCallOptions = {},
-	): Promise<ListJobsResponse> {
+		options: ListOptions = {},
+	): Promise<Page<Job, ListJobsResponse>> {
 		const request = clone(ListJobsRequestSchema, create(ListJobsRequestSchema, input));
 		const parent = project(this.#core);
 		const pageSize = request.page?.pageSize ?? 0;
@@ -121,17 +129,28 @@ export class Jobs {
 		)
 			throw MindcladeError.invalidArgument("job list scope, page, filter, or order is invalid");
 		request.parent = parent;
-		const call = prepareCall(this.#core.config, this.#core.runtime, options);
-		const response = await invokeUnary(
-			this.#core,
-			call,
-			registeredMethodSafety(LIST),
-			undefined,
-			(callOptions) => this.#core.raw.jobs.listJobs(request, callOptions),
-		);
-		if (response.jobs.some((value) => !validJob(this.#core, value)))
-			throw MindcladeError.protocol("ListJobs response escaped configured scope");
-		return clone(ListJobsResponseSchema, response);
+		return await listPage({
+			cursor: (response) => response.page?.nextPageToken ?? "",
+			fetch: async (pageToken) => {
+				const paged = withPageToken(ListJobsRequestSchema, request, pageToken);
+				const call = prepareCall(this.#core.config, this.#core.runtime, options);
+				const response = await invokeUnary(
+					this.#core,
+					call,
+					registeredMethodSafety(LIST),
+					undefined,
+					(callOptions) => this.#core.raw.jobs.listJobs(paged, callOptions),
+				);
+				if (response.jobs.some((value) => !validJob(this.#core, value)))
+					throw MindcladeError.protocol("ListJobs response escaped configured scope");
+				return { requestId: call.requestId, response: clone(ListJobsResponseSchema, response) };
+			},
+			items: (response) => response.jobs,
+			limits: options.limits,
+			pageSize,
+			pageToken: request.page?.pageToken ?? "",
+			signal: options.signal,
+		});
 	}
 
 	async cancel(

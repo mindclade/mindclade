@@ -40,7 +40,7 @@ import {
 	validateResource,
 	type WaitOptions,
 } from "./request.js";
-import { ensureActive, invokeUnary, retryDelay } from "./retry.js";
+import { ensureActive, invokeUnary, retryableAttempts, retryDelay } from "./retry.js";
 import { registeredMethodSafety } from "./safety.js";
 
 const DEFAULT_WAIT_TIMEOUT_MS = 30 * 60 * 1_000;
@@ -202,7 +202,10 @@ export class Inference {
 			});
 			try {
 				const stream = this.#core.raw.inference.watchInference(request, {
-					headers: callHeaders(this.#core.config, prepared),
+					headers: callHeaders(this.#core.config, prepared, {
+						attempt: failures,
+						remainingMs: prepared.deadlineMs - this.#core.runtime.nowMs(),
+					}),
 					timeoutMs: prepared.deadlineMs - this.#core.runtime.nowMs(),
 					...(prepared.signal === undefined ? {} : { signal: prepared.signal }),
 				});
@@ -223,9 +226,12 @@ export class Inference {
 					reason,
 					prepared.signal,
 					this.#core.runtime.nowMs() >= prepared.deadlineMs,
+					{ clampMs: this.#core.config.retry.maxBackoffMs },
 				);
 				failures += 1;
-				if (!error.retryable || failures >= this.#core.config.retry.maxAttempts) throw error;
+				if (!error.retryable || failures >= retryableAttempts(this.#core, prepared, "safe")) {
+					throw error;
+				}
 				const delay = retryDelay(this.#core, failures, error.retryAfterMs);
 				if (delay >= prepared.deadlineMs - this.#core.runtime.nowMs()) {
 					throw MindcladeError.deadlineExceeded();

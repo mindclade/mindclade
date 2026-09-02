@@ -97,8 +97,21 @@ func (service *WorkflowService) GetDefinition(ctx context.Context, name, ifNoneM
 	return cloneGenerated(response.GetWorkflowDefinition()), nil
 }
 
+// WorkflowDefinitionPage is one bounded list response plus cursor-scheme traversal. The
+// embedded generated response remains the authoritative model; the wrapper
+// adds only the opaque-cursor mechanics.
+type WorkflowDefinitionPage struct {
+	*internalworkflowv1.ListWorkflowDefinitionsResponse
+	pageBase[*workflowv1.WorkflowDefinition, *WorkflowDefinitionPage]
+}
+
+// Items returns this page's workflow definitions without traversing any further page.
+func (page *WorkflowDefinitionPage) Items() []*workflowv1.WorkflowDefinition {
+	return page.GetWorkflowDefinitions()
+}
+
 // ListDefinitions returns one bounded page and preserves the opaque token.
-func (service *WorkflowService) ListDefinitions(ctx context.Context, request *internalworkflowv1.ListWorkflowDefinitionsRequest, options ...RequestOption) (*internalworkflowv1.ListWorkflowDefinitionsResponse, error) {
+func (service *WorkflowService) ListDefinitions(ctx context.Context, request *internalworkflowv1.ListWorkflowDefinitionsRequest, options ...RequestOption) (*WorkflowDefinitionPage, error) {
 	if !service.configured() {
 		return nil, invalidArgument("workflow service is not configured")
 	}
@@ -121,7 +134,14 @@ func (service *WorkflowService) ListDefinitions(ctx context.Context, request *in
 	if err != nil {
 		return nil, normalizeError(err)
 	}
-	return cloneGenerated(response), nil
+	detached := cloneGenerated(response)
+	page := &WorkflowDefinitionPage{ListWorkflowDefinitionsResponse: detached}
+	page.pageBase = newPage[*workflowv1.WorkflowDefinition](page, detached.GetPage(), paginationLimitsFrom(options), func(ctx context.Context, token string) (*WorkflowDefinitionPage, error) {
+		successor := cloneGenerated(value)
+		successor.Page = pageRequestWithToken(value.GetPage(), token)
+		return service.ListDefinitions(ctx, successor, options...)
+	})
+	return page, nil
 }
 
 // StartRun freezes generated workflow intent and returns a durable Operation.
@@ -162,8 +182,19 @@ func (service *WorkflowService) GetRun(ctx context.Context, name, ifNoneMatch st
 	return cloneGenerated(response.GetWorkflowRun()), nil
 }
 
+// WorkflowRunPage is one bounded list response plus cursor-scheme traversal. The
+// embedded generated response remains the authoritative model; the wrapper
+// adds only the opaque-cursor mechanics.
+type WorkflowRunPage struct {
+	*internalworkflowv1.ListWorkflowRunsResponse
+	pageBase[*workflowv1.WorkflowRun, *WorkflowRunPage]
+}
+
+// Items returns this page's workflow runs without traversing any further page.
+func (page *WorkflowRunPage) Items() []*workflowv1.WorkflowRun { return page.GetWorkflowRuns() }
+
 // ListRuns returns one bounded page and preserves the opaque token.
-func (service *WorkflowService) ListRuns(ctx context.Context, request *internalworkflowv1.ListWorkflowRunsRequest, options ...RequestOption) (*internalworkflowv1.ListWorkflowRunsResponse, error) {
+func (service *WorkflowService) ListRuns(ctx context.Context, request *internalworkflowv1.ListWorkflowRunsRequest, options ...RequestOption) (*WorkflowRunPage, error) {
 	if !service.configured() {
 		return nil, invalidArgument("workflow service is not configured")
 	}
@@ -186,7 +217,14 @@ func (service *WorkflowService) ListRuns(ctx context.Context, request *internalw
 	if err != nil {
 		return nil, normalizeError(err)
 	}
-	return cloneGenerated(response), nil
+	detached := cloneGenerated(response)
+	page := &WorkflowRunPage{ListWorkflowRunsResponse: detached}
+	page.pageBase = newPage[*workflowv1.WorkflowRun](page, detached.GetPage(), paginationLimitsFrom(options), func(ctx context.Context, token string) (*WorkflowRunPage, error) {
+		successor := cloneGenerated(value)
+		successor.Page = pageRequestWithToken(value.GetPage(), token)
+		return service.ListRuns(ctx, successor, options...)
+	})
+	return page, nil
 }
 
 // CancelRun records monotonic cancellation under an explicit ETag.

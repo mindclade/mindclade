@@ -98,7 +98,18 @@ func (service *AdminService) GetProject(ctx context.Context, name, ifNoneMatch s
 	return cloneGenerated(response.GetProject()), nil
 }
 
-func (service *AdminService) ListProjects(ctx context.Context, request *internaladminv1.ListProjectsRequest, options ...RequestOption) (*internaladminv1.ListProjectsResponse, error) {
+// ProjectPage is one bounded list response plus cursor-scheme traversal. The
+// embedded generated response remains the authoritative model; the wrapper
+// adds only the opaque-cursor mechanics.
+type ProjectPage struct {
+	*internaladminv1.ListProjectsResponse
+	pageBase[*adminv1.Project, *ProjectPage]
+}
+
+// Items returns this page's projects without traversing any further page.
+func (page *ProjectPage) Items() []*adminv1.Project { return page.GetProjects() }
+
+func (service *AdminService) ListProjects(ctx context.Context, request *internaladminv1.ListProjectsRequest, options ...RequestOption) (*ProjectPage, error) {
 	materialized := cloneGenerated(request)
 	if materialized == nil {
 		materialized = &internaladminv1.ListProjectsRequest{}
@@ -120,7 +131,14 @@ func (service *AdminService) ListProjects(ctx context.Context, request *internal
 	if err != nil {
 		return nil, normalizeError(err)
 	}
-	return cloneGenerated(response), nil
+	detached := cloneGenerated(response)
+	page := &ProjectPage{ListProjectsResponse: detached}
+	page.pageBase = newPage[*adminv1.Project](page, detached.GetPage(), paginationLimitsFrom(options), func(ctx context.Context, token string) (*ProjectPage, error) {
+		successor := cloneGenerated(materialized)
+		successor.Page = pageRequestWithToken(materialized.GetPage(), token)
+		return service.ListProjects(ctx, successor, options...)
+	})
+	return page, nil
 }
 
 func (service *AdminService) UpdateProject(ctx context.Context, request *internaladminv1.UpdateProjectRequest, options ...RequestOption) (*jobv1.Operation, error) {
@@ -137,7 +155,18 @@ func (service *AdminService) UpdateProject(ctx context.Context, request *interna
 	return operationResponse(response.GetOperation(), rpcErr, "UpdateProject")
 }
 
-func (service *AdminService) QueryAudit(ctx context.Context, query *adminv1.AuditQuery, options ...RequestOption) (*adminv1.AuditQueryPage, error) {
+// AuditPage is one bounded audit result page plus cursor-scheme traversal.
+// The embedded generated page remains the authoritative model; the wrapper
+// adds only the opaque-cursor mechanics.
+type AuditPage struct {
+	*adminv1.AuditQueryPage
+	pageBase[*adminv1.AuditRecord, *AuditPage]
+}
+
+// Items returns this page's audit records without traversing any further page.
+func (page *AuditPage) Items() []*adminv1.AuditRecord { return page.GetRecords() }
+
+func (service *AdminService) QueryAudit(ctx context.Context, query *adminv1.AuditQuery, options ...RequestOption) (*AuditPage, error) {
 	materialized := cloneGenerated(query)
 	if !validateAuditQueryScope(service.client.config, materialized) {
 		return nil, invalidArgument("audit query must be bounded to the configured tenant or project")
@@ -154,7 +183,17 @@ func (service *AdminService) QueryAudit(ctx context.Context, query *adminv1.Audi
 	if response.GetResult() == nil {
 		return nil, protocolDataLoss("QueryAuditRecords response omitted its result page")
 	}
-	return cloneGenerated(response.GetResult()), nil
+	detached := cloneGenerated(response.GetResult())
+	page := &AuditPage{AuditQueryPage: detached}
+	page.pageBase = newPage[*adminv1.AuditRecord](page, detached.GetPage(), paginationLimitsFrom(options), func(ctx context.Context, token string) (*AuditPage, error) {
+		successor := cloneGenerated(materialized)
+		if successor == nil {
+			successor = &adminv1.AuditQuery{}
+		}
+		successor.Page = pageRequestWithToken(materialized.GetPage(), token)
+		return service.QueryAudit(ctx, successor, options...)
+	})
+	return page, nil
 }
 
 func (service *AdminService) ExportAudit(ctx context.Context, query *adminv1.AuditQuery, options ...RequestOption) (*jobv1.Operation, error) {

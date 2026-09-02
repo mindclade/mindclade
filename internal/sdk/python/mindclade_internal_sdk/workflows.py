@@ -20,9 +20,19 @@ from mindclade.job.v1 import operation_pb2
 from mindclade.workflow.v1 import approval_pb2, workflow_definition_pb2, workflow_run_pb2
 
 from ._invocation import AsyncInvoker, SyncInvoker, canonical_digest, command_context, retry_delay
+from ._raw import AsyncWithRawResponse, WithRawResponse
 from ._validation import required_response_message, required_text
 from .calls import CallOptions, PreparedCall, prepare_call
 from .errors import CancelledError, MindcladeError, ProtocolError, WorkflowRunFailedError
+from .pagination import (
+    AsyncPage,
+    Page,
+    PaginationLimits,
+    apply_default_page_size,
+    async_page,
+    next_request,
+    sync_page,
+)
 from .transport import (
     CANCEL_WORKFLOW_RUN,
     COMMIT_WORKFLOW_TRANSITION,
@@ -294,7 +304,7 @@ def _watch_budget(
     return base, total
 
 
-class Workflows:
+class Workflows(WithRawResponse):
     """Synchronous generated-type-only Workflow API."""
 
     def __init__(self, invoker: SyncInvoker) -> None:
@@ -377,7 +387,8 @@ class Workflows:
         request: workflow_service_pb2.ListWorkflowDefinitionsRequest | None = None,
         *,
         options: CallOptions | None = None,
-    ) -> workflow_service_pb2.ListWorkflowDefinitionsResponse:
+        limits: PaginationLimits | None = None,
+    ) -> Page[workflow_definition_pb2.WorkflowDefinition]:
         value = (
             copy.deepcopy(request)
             if request
@@ -385,15 +396,23 @@ class Workflows:
         )
         value.parent = _parent(self._invoker, value.parent, "workflow definition list")
         _normalize_page(value)
+        apply_default_page_size(value, limits)
         call = prepare_call(
             options,
             default_timeout=self._invoker.config.default_timeout,
             require_idempotency=False,
         )
-        return cast(
+        response = cast(
             workflow_service_pb2.ListWorkflowDefinitionsResponse,
             self._invoker.unary(LIST_WORKFLOW_DEFINITIONS, value, call=call, retry_safe=True),
         )
+
+        def follow(page_token: str) -> Page[workflow_definition_pb2.WorkflowDefinition]:
+            return self.list_definitions(
+                next_request(value, page_token), options=options, limits=limits
+            )
+
+        return sync_page(response, items_field="workflow_definitions", fetch=follow, limits=limits)
 
     def start_run(
         self,
@@ -440,21 +459,28 @@ class Workflows:
         request: workflow_service_pb2.ListWorkflowRunsRequest | None = None,
         *,
         options: CallOptions | None = None,
-    ) -> workflow_service_pb2.ListWorkflowRunsResponse:
+        limits: PaginationLimits | None = None,
+    ) -> Page[workflow_run_pb2.WorkflowRun]:
         value = (
             copy.deepcopy(request) if request else workflow_service_pb2.ListWorkflowRunsRequest()
         )
         value.parent = _parent(self._invoker, value.parent, "workflow run list")
         _normalize_page(value)
+        apply_default_page_size(value, limits)
         call = prepare_call(
             options,
             default_timeout=self._invoker.config.default_timeout,
             require_idempotency=False,
         )
-        return cast(
+        response = cast(
             workflow_service_pb2.ListWorkflowRunsResponse,
             self._invoker.unary(LIST_WORKFLOW_RUNS, value, call=call, retry_safe=True),
         )
+
+        def follow(page_token: str) -> Page[workflow_run_pb2.WorkflowRun]:
+            return self.list_runs(next_request(value, page_token), options=options, limits=limits)
+
+        return sync_page(response, items_field="workflow_runs", fetch=follow, limits=limits)
 
     def cancel_run(
         self,
@@ -588,7 +614,7 @@ class Workflows:
         raise ProtocolError("workflow watch ended before terminal durable state")
 
 
-class AsyncWorkflows:
+class AsyncWorkflows(AsyncWithRawResponse):
     """Asyncio generated-type-only Workflow API."""
 
     def __init__(self, invoker: AsyncInvoker) -> None:
@@ -675,7 +701,8 @@ class AsyncWorkflows:
         request: workflow_service_pb2.ListWorkflowDefinitionsRequest | None = None,
         *,
         options: CallOptions | None = None,
-    ) -> workflow_service_pb2.ListWorkflowDefinitionsResponse:
+        limits: PaginationLimits | None = None,
+    ) -> AsyncPage[workflow_definition_pb2.WorkflowDefinition]:
         value = (
             copy.deepcopy(request)
             if request
@@ -683,15 +710,23 @@ class AsyncWorkflows:
         )
         value.parent = _parent(self._invoker, value.parent, "workflow definition list")
         _normalize_page(value)
+        apply_default_page_size(value, limits)
         call = prepare_call(
             options,
             default_timeout=self._invoker.config.default_timeout,
             require_idempotency=False,
         )
-        return cast(
+        response = cast(
             workflow_service_pb2.ListWorkflowDefinitionsResponse,
             await self._invoker.unary(LIST_WORKFLOW_DEFINITIONS, value, call=call, retry_safe=True),
         )
+
+        async def follow(page_token: str) -> AsyncPage[workflow_definition_pb2.WorkflowDefinition]:
+            return await self.list_definitions(
+                next_request(value, page_token), options=options, limits=limits
+            )
+
+        return async_page(response, items_field="workflow_definitions", fetch=follow, limits=limits)
 
     async def start_run(
         self,
@@ -738,21 +773,30 @@ class AsyncWorkflows:
         request: workflow_service_pb2.ListWorkflowRunsRequest | None = None,
         *,
         options: CallOptions | None = None,
-    ) -> workflow_service_pb2.ListWorkflowRunsResponse:
+        limits: PaginationLimits | None = None,
+    ) -> AsyncPage[workflow_run_pb2.WorkflowRun]:
         value = (
             copy.deepcopy(request) if request else workflow_service_pb2.ListWorkflowRunsRequest()
         )
         value.parent = _parent(self._invoker, value.parent, "workflow run list")
         _normalize_page(value)
+        apply_default_page_size(value, limits)
         call = prepare_call(
             options,
             default_timeout=self._invoker.config.default_timeout,
             require_idempotency=False,
         )
-        return cast(
+        response = cast(
             workflow_service_pb2.ListWorkflowRunsResponse,
             await self._invoker.unary(LIST_WORKFLOW_RUNS, value, call=call, retry_safe=True),
         )
+
+        async def follow(page_token: str) -> AsyncPage[workflow_run_pb2.WorkflowRun]:
+            return await self.list_runs(
+                next_request(value, page_token), options=options, limits=limits
+            )
+
+        return async_page(response, items_field="workflow_runs", fetch=follow, limits=limits)
 
     async def cancel_run(
         self,
@@ -902,7 +946,7 @@ def _validate_receipt_digest(receipt: approval_pb2.ApprovalReceipt) -> None:
         raise ProtocolError("approval receipt omitted its binding")
 
 
-class Approvals:
+class Approvals(WithRawResponse):
     """Synchronous generated-type-only exact-intent Approval API."""
 
     def __init__(self, invoker: SyncInvoker) -> None:
@@ -976,7 +1020,8 @@ class Approvals:
         request: workflow_service_pb2.ListApprovalRequestsRequest | None = None,
         *,
         options: CallOptions | None = None,
-    ) -> workflow_service_pb2.ListApprovalRequestsResponse:
+        limits: PaginationLimits | None = None,
+    ) -> Page[approval_pb2.ApprovalRequest]:
         value = (
             copy.deepcopy(request)
             if request
@@ -984,15 +1029,21 @@ class Approvals:
         )
         value.parent = _parent(self._invoker, value.parent, "approval list")
         _normalize_page(value)
+        apply_default_page_size(value, limits)
         call = prepare_call(
             options,
             default_timeout=self._invoker.config.default_timeout,
             require_idempotency=False,
         )
-        return cast(
+        response = cast(
             workflow_service_pb2.ListApprovalRequestsResponse,
             self._invoker.unary(LIST_APPROVAL_REQUESTS, value, call=call, retry_safe=True),
         )
+
+        def follow(page_token: str) -> Page[approval_pb2.ApprovalRequest]:
+            return self.list(next_request(value, page_token), options=options, limits=limits)
+
+        return sync_page(response, items_field="approval_requests", fetch=follow, limits=limits)
 
     def decide(
         self,
@@ -1065,7 +1116,7 @@ class Approvals:
         return receipt
 
 
-class AsyncApprovals:
+class AsyncApprovals(AsyncWithRawResponse):
     """Asyncio generated-type-only exact-intent Approval API."""
 
     def __init__(self, invoker: AsyncInvoker) -> None:
@@ -1141,7 +1192,8 @@ class AsyncApprovals:
         request: workflow_service_pb2.ListApprovalRequestsRequest | None = None,
         *,
         options: CallOptions | None = None,
-    ) -> workflow_service_pb2.ListApprovalRequestsResponse:
+        limits: PaginationLimits | None = None,
+    ) -> AsyncPage[approval_pb2.ApprovalRequest]:
         value = (
             copy.deepcopy(request)
             if request
@@ -1149,15 +1201,21 @@ class AsyncApprovals:
         )
         value.parent = _parent(self._invoker, value.parent, "approval list")
         _normalize_page(value)
+        apply_default_page_size(value, limits)
         call = prepare_call(
             options,
             default_timeout=self._invoker.config.default_timeout,
             require_idempotency=False,
         )
-        return cast(
+        response = cast(
             workflow_service_pb2.ListApprovalRequestsResponse,
             await self._invoker.unary(LIST_APPROVAL_REQUESTS, value, call=call, retry_safe=True),
         )
+
+        async def follow(page_token: str) -> AsyncPage[approval_pb2.ApprovalRequest]:
+            return await self.list(next_request(value, page_token), options=options, limits=limits)
+
+        return async_page(response, items_field="approval_requests", fetch=follow, limits=limits)
 
     async def decide(
         self,

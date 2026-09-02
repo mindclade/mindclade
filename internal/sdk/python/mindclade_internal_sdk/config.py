@@ -9,6 +9,7 @@ from enum import StrEnum
 from types import MappingProxyType
 from urllib.parse import urlsplit
 
+from ._retry import JitterSource
 from .auth import AsyncTokenProvider, SyncTokenProvider
 
 
@@ -35,11 +36,18 @@ ENVIRONMENT_ENDPOINTS = MappingProxyType(
 
 @dataclass(frozen=True, slots=True)
 class RetryPolicy:
-    """Bounded exponential retry policy used only for safe/idempotent calls."""
+    """Bounded exponential retry policy used only for safe/idempotent calls.
+
+    ``max_delay`` is the contract's ``max_backoff``: it caps both the
+    exponential window and any server ``retry-after-ms`` hint. ``jitter`` is an
+    injectable randomness seam; leaving it ``None`` uses the SDK's
+    cryptographically seeded default.
+    """
 
     max_attempts: int = 4
     base_delay: float = 0.1
     max_delay: float = 2.0
+    jitter: JitterSource | None = field(default=None, repr=False, compare=False)
 
     def __post_init__(self) -> None:
         if not 1 <= self.max_attempts <= 8:
@@ -48,6 +56,8 @@ class RetryPolicy:
             raise ConfigurationError("retry delays must be positive and monotonically bounded")
         if self.max_delay > 30:
             raise ConfigurationError("retry max_delay cannot exceed 30 seconds")
+        if self.jitter is not None and not callable(getattr(self.jitter, "uniform", None)):
+            raise ConfigurationError("retry jitter must expose a uniform(upper_bound) method")
 
 
 def _validated_endpoint(endpoint: str) -> tuple[str, int]:

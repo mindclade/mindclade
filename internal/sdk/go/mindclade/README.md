@@ -37,9 +37,46 @@ the repository; it does not change Protobuf authority.
 
 The descriptor-bound coverage gate fixes the current surface at 15 services
 and 132 RPCs: 127 unary and five server-streaming, with 131 ergonomic methods
-and one reviewed raw-only method. `Paginate` provides lazy automatic traversal
-for any ergonomic list method, preserves opaque tokens byte-for-byte, rejects
-cursor loops, and stops at caller-selectable hard page and item limits.
+and one reviewed raw-only method.
+
+Every ergonomic list method returns a page object that embeds its generated
+response, so `page.GetPage().GetNextPageToken()` and the generated repeated
+field keep working unchanged, and adds cursor-scheme traversal on top:
+
+```go
+page, err := client.Operations.List(ctx, request)
+if err != nil {
+    return err
+}
+for operation, err := range page.All(ctx) { // every item, across every page
+    if err != nil {
+        return err
+    }
+    use(operation)
+}
+
+for page.HasNextPage() { // or walk one page at a time
+    page, err = page.NextPage(ctx)
+    if err != nil {
+        return err
+    }
+}
+```
+
+`All` traverses lazily, preserves opaque tokens byte-for-byte, rejects cursor
+loops, and re-runs the owning list method's scope validation on every fetched
+page. It stops at the traversal budget: 100 pages and 10,000 items by default,
+`WithPaginationLimits` to change it, and hard caps of 1,000 pages and 1,000,000
+items. `NextPage` returns a nil page and a nil error at the end of a
+collection. The lower-level `Paginate` helper remains available for traversing
+a collection the SDK does not yet model as a list method.
+
+`WithResponseMetadata(&metadata)` captures the transport response of one call —
+status, request id, trace id, and an allowlisted safe metadata subset that
+excludes every credential-bearing key. It is the only way to obtain a request
+id for a call that succeeded. `CaptureResponseMetadata`/
+`ResponseMetadataFromContext` do the same through a context when threading a
+record is impractical.
 
 The sole intentional raw-only RPC is `RunService.ExpireAttemptLeases`, a
 control-plane reconciler primitive. Application code should use the fenced

@@ -8,8 +8,9 @@ import hashlib
 from collections.abc import AsyncIterator, Callable, Iterable, Iterator
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import cast
+from typing import Any, cast
 
+import grpc
 from google.protobuf.message import Message
 from google.protobuf.timestamp_pb2 import Timestamp
 from mindclade.artifact.v1 import artifact_reference_pb2
@@ -49,6 +50,39 @@ class RecordedCall:
     method: str
     timeout: float
     metadata_keys: tuple[str, ...]
+
+
+class FakeRpcError(grpc.RpcError):
+    """A gRPC-faithful failure whose trailers tests can script.
+
+    Retry, error-mapping, and trailer-override tests need a failure that
+    carries real ``x-request-id``, ``x-trace-id``, ``retry-after-ms``, and
+    ``x-mindclade-should-retry`` trailers without standing up a server.
+    """
+
+    def __init__(
+        self,
+        code: grpc.StatusCode,
+        metadata: Metadata = (),
+        *,
+        details: str = "fake transport failure",
+    ) -> None:
+        super().__init__()
+        self._code = code
+        self._metadata = tuple(metadata)
+        self._details = details
+
+    def code(self) -> grpc.StatusCode:
+        return self._code
+
+    def details(self) -> str:
+        return self._details
+
+    def trailing_metadata(self) -> Any:
+        return self._metadata
+
+    def initial_metadata(self) -> Any:
+        return ()
 
 
 class _FakeSyncStreamCall(Iterator[Message]):
@@ -130,6 +164,7 @@ class FakeSyncTransport:
     def __init__(self) -> None:
         self.unary_handlers: dict[str, SyncUnaryHandler] = {}
         self.response_metadata: dict[str, Metadata] = {}
+        self.response_trailers: dict[str, Metadata] = {}
         self.stream_handlers: dict[str, SyncStreamHandler] = {}
         self.calls: list[RecordedCall] = []
         self.closed = False
@@ -154,7 +189,9 @@ class FakeSyncTransport:
         metadata: Metadata,
     ) -> tuple[Message, Metadata]:
         response = self.unary_unary(method, request, timeout=timeout, metadata=metadata)
-        return response, self.response_metadata.get(method, ())
+        return response, self.response_metadata.get(method, ()) + self.response_trailers.get(
+            method, ()
+        )
 
     def unary_stream(
         self,
@@ -178,6 +215,7 @@ class FakeAsyncTransport:
     def __init__(self) -> None:
         self.unary_handlers: dict[str, AsyncUnaryHandler] = {}
         self.response_metadata: dict[str, Metadata] = {}
+        self.response_trailers: dict[str, Metadata] = {}
         self.stream_handlers: dict[str, AsyncStreamHandler] = {}
         self.calls: list[RecordedCall] = []
         self.closed = False
@@ -202,7 +240,9 @@ class FakeAsyncTransport:
         metadata: Metadata,
     ) -> tuple[Message, Metadata]:
         response = await self.unary_unary(method, request, timeout=timeout, metadata=metadata)
-        return response, self.response_metadata.get(method, ())
+        return response, self.response_metadata.get(method, ()) + self.response_trailers.get(
+            method, ()
+        )
 
     def unary_stream(
         self,

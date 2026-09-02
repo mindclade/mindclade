@@ -19,7 +19,14 @@ import type { PolicyReference } from "../../../../protocols/generated/typescript
 import type { UsePolicy } from "../../../../protocols/generated/typescript/policy/v1/use_policy_pb.js";
 import type { ClientCore } from "./core.js";
 import { MindcladeError } from "./error.js";
-import { commandContext, prepareCall, type SdkCallOptions, type SubmitOptions } from "./request.js";
+import { listPage, type Page, withPageToken } from "./pagination.js";
+import {
+	commandContext,
+	type ListOptions,
+	prepareCall,
+	type SdkCallOptions,
+	type SubmitOptions,
+} from "./request.js";
 import { invokeUnary } from "./retry.js";
 import { registeredMethodSafety } from "./safety.js";
 
@@ -148,24 +155,37 @@ export class Policies {
 		return response.usePolicy;
 	}
 
+	/** Returns the first page, which also iterates the whole cursor. */
 	async list(
 		request: MessageInitShape<typeof ListUsePoliciesRequestSchema> = {},
-		options: SdkCallOptions = {},
-	): Promise<ListUsePoliciesResponse> {
+		options: ListOptions = {},
+	): Promise<Page<UsePolicy, ListUsePoliciesResponse>> {
 		const generated = create(ListUsePoliciesRequestSchema, request);
 		const parent = projectName(this.#core);
 		if (generated.parent !== "" && generated.parent !== parent)
 			throw MindcladeError.invalidArgument("policy list parent does not match client scope");
 		validatePage(generated.page?.pageSize);
 		generated.parent = parent;
-		const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
-		return await invokeUnary(
-			this.#core,
-			prepared,
-			registeredMethodSafety(LIST),
-			undefined,
-			(call) => this.#core.raw.policy.listUsePolicies(generated, call),
-		);
+		return await listPage({
+			cursor: (response) => response.page?.nextPageToken ?? "",
+			fetch: async (pageToken) => {
+				const paged = withPageToken(ListUsePoliciesRequestSchema, generated, pageToken);
+				const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
+				const response = await invokeUnary(
+					this.#core,
+					prepared,
+					registeredMethodSafety(LIST),
+					undefined,
+					(call) => this.#core.raw.policy.listUsePolicies(paged, call),
+				);
+				return { requestId: prepared.requestId, response };
+			},
+			items: (response) => response.usePolicies,
+			limits: options.limits,
+			pageSize: generated.page?.pageSize ?? 0,
+			pageToken: generated.page?.pageToken ?? "",
+			signal: options.signal,
+		});
 	}
 
 	async activate(

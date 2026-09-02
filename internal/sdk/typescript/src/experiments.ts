@@ -53,7 +53,14 @@ import {
 } from "../../../../protocols/generated/typescript/internal/experiment/v1/experiment_service_pb.js";
 import type { ClientCore } from "./core.js";
 import { MindcladeError } from "./error.js";
-import { commandContext, prepareCall, type SdkCallOptions, type SubmitOptions } from "./request.js";
+import { listPage, type Page, withPageToken } from "./pagination.js";
+import {
+	commandContext,
+	type ListOptions,
+	prepareCall,
+	type SdkCallOptions,
+	type SubmitOptions,
+} from "./request.js";
 import { invokeUnary } from "./retry.js";
 import { registeredMethodSafety } from "./safety.js";
 
@@ -144,10 +151,11 @@ export class Experiments {
 		return named(response.experiment, ExperimentSchema, scoped, "GetExperiment");
 	}
 
+	/** Returns the first page, which also iterates the whole cursor. */
 	async list(
 		input: MessageInitShape<typeof ListExperimentsRequestSchema> = {},
-		options: SdkCallOptions = {},
-	): Promise<ListExperimentsResponse> {
+		options: ListOptions = {},
+	): Promise<Page<Experiment, ListExperimentsResponse>> {
 		const request = create(ListExperimentsRequestSchema, input);
 		const parent = projectName(this.#core);
 		const pageSize = request.page?.pageSize ?? 0;
@@ -159,16 +167,27 @@ export class Experiments {
 		)
 			throw MindcladeError.invalidArgument("experiment list scope or page size is invalid");
 		request.parent = parent;
-		const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
-		const response = await invokeUnary(
-			this.#core,
-			prepared,
-			registeredMethodSafety(LIST),
-			undefined,
-			(call) => this.#core.raw.experiments.listExperiments(request, call),
-		);
-		for (const value of response.experiments) experimentName(this.#core, value.name);
-		return response;
+		return await listPage({
+			cursor: (response) => response.page?.nextPageToken ?? "",
+			fetch: async (pageToken) => {
+				const paged = withPageToken(ListExperimentsRequestSchema, request, pageToken);
+				const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
+				const response = await invokeUnary(
+					this.#core,
+					prepared,
+					registeredMethodSafety(LIST),
+					undefined,
+					(call) => this.#core.raw.experiments.listExperiments(paged, call),
+				);
+				for (const value of response.experiments) experimentName(this.#core, value.name);
+				return { requestId: prepared.requestId, response };
+			},
+			items: (response) => response.experiments,
+			limits: options.limits,
+			pageSize,
+			pageToken: request.page?.pageToken ?? "",
+			signal: options.signal,
+		});
 	}
 
 	async update(
@@ -307,23 +326,35 @@ export class Experiments {
 		return named(response.study, StudySchema, scoped, "GetStudy");
 	}
 
+	/** Returns the first page, which also iterates the whole cursor. */
 	async listStudies(
 		input: MessageInitShape<typeof ListStudiesRequestSchema>,
-		options: SdkCallOptions = {},
-	): Promise<ListStudiesResponse> {
+		options: ListOptions = {},
+	): Promise<Page<Study, ListStudiesResponse>> {
 		const request = create(ListStudiesRequestSchema, input);
 		request.parent = experimentName(this.#core, request.parent);
 		validatePage(request.page?.pageSize ?? 0);
-		const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
-		const response = await invokeUnary(
-			this.#core,
-			prepared,
-			registeredMethodSafety(LIST_STUDIES),
-			undefined,
-			(call) => this.#core.raw.experiments.listStudies(request, call),
-		);
-		for (const value of response.studies) studyName(this.#core, value.name);
-		return response;
+		return await listPage({
+			cursor: (response) => response.page?.nextPageToken ?? "",
+			fetch: async (pageToken) => {
+				const paged = withPageToken(ListStudiesRequestSchema, request, pageToken);
+				const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
+				const response = await invokeUnary(
+					this.#core,
+					prepared,
+					registeredMethodSafety(LIST_STUDIES),
+					undefined,
+					(call) => this.#core.raw.experiments.listStudies(paged, call),
+				);
+				for (const value of response.studies) studyName(this.#core, value.name);
+				return { requestId: prepared.requestId, response };
+			},
+			items: (response) => response.studies,
+			limits: options.limits,
+			pageSize: request.page?.pageSize ?? 0,
+			pageToken: request.page?.pageToken ?? "",
+			signal: options.signal,
+		});
 	}
 
 	async transitionStudy(
@@ -407,23 +438,35 @@ export class Experiments {
 		return named(response.trial, TrialSchema, scoped, "GetTrial");
 	}
 
+	/** Returns the first page, which also iterates the whole cursor. */
 	async listTrials(
 		input: MessageInitShape<typeof ListTrialsRequestSchema>,
-		options: SdkCallOptions = {},
-	): Promise<ListTrialsResponse> {
+		options: ListOptions = {},
+	): Promise<Page<Trial, ListTrialsResponse>> {
 		const request = create(ListTrialsRequestSchema, input);
 		request.parent = studyName(this.#core, request.parent);
 		validatePage(request.page?.pageSize ?? 0);
-		const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
-		const response = await invokeUnary(
-			this.#core,
-			prepared,
-			registeredMethodSafety(LIST_TRIALS),
-			undefined,
-			(call) => this.#core.raw.experiments.listTrials(request, call),
-		);
-		for (const value of response.trials) trialName(this.#core, value.name);
-		return response;
+		return await listPage({
+			cursor: (response) => response.page?.nextPageToken ?? "",
+			fetch: async (pageToken) => {
+				const paged = withPageToken(ListTrialsRequestSchema, request, pageToken);
+				const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
+				const response = await invokeUnary(
+					this.#core,
+					prepared,
+					registeredMethodSafety(LIST_TRIALS),
+					undefined,
+					(call) => this.#core.raw.experiments.listTrials(paged, call),
+				);
+				for (const value of response.trials) trialName(this.#core, value.name);
+				return { requestId: prepared.requestId, response };
+			},
+			items: (response) => response.trials,
+			limits: options.limits,
+			pageSize: request.page?.pageSize ?? 0,
+			pageToken: request.page?.pageToken ?? "",
+			signal: options.signal,
+		});
 	}
 
 	async transitionTrial(

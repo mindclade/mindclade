@@ -18,6 +18,7 @@ from mindclade.internal.inference.v1 import inference_service_pb2
 from mindclade.job.v1 import operation_pb2
 
 from ._invocation import AsyncInvoker, SyncInvoker, canonical_digest, command_context, retry_delay
+from ._raw import AsyncWithRawResponse, WithRawResponse
 from ._validation import required_response_message, required_text
 from .calls import CallOptions, PreparedCall, prepare_call
 from .errors import CancelledError, MindcladeError, ProtocolError, UnavailableError
@@ -146,7 +147,7 @@ def _accept_message(
     )
 
 
-class Inference:
+class Inference(WithRawResponse):
     def __init__(self, invoker: SyncInvoker) -> None:
         self._invoker = invoker
 
@@ -341,7 +342,7 @@ class Inference:
         raise ProtocolError("inference watch ended before terminal truth")
 
 
-class AsyncInference:
+class AsyncInference(AsyncWithRawResponse):
     def __init__(self, invoker: AsyncInvoker) -> None:
         self._invoker = invoker
 

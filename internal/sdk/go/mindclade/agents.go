@@ -72,9 +72,22 @@ func (service *AgentService) GetDefinition(ctx context.Context, name, ifNoneMatc
 	return cloneGenerated(response.GetAgentDefinition()), nil
 }
 
+// AgentDefinitionPage is one bounded list response plus cursor-scheme traversal. The
+// embedded generated response remains the authoritative model; the wrapper
+// adds only the opaque-cursor mechanics.
+type AgentDefinitionPage struct {
+	*internalagentv1.ListAgentDefinitionsResponse
+	pageBase[*agentv1.AgentDefinition, *AgentDefinitionPage]
+}
+
+// Items returns this page's agent definitions without traversing any further page.
+func (page *AgentDefinitionPage) Items() []*agentv1.AgentDefinition {
+	return page.GetAgentDefinitions()
+}
+
 // ListDefinitions returns one bounded server-issued page. Opaque page tokens
 // are forwarded without inspection or modification.
-func (service *AgentService) ListDefinitions(ctx context.Context, request *internalagentv1.ListAgentDefinitionsRequest, options ...RequestOption) (*internalagentv1.ListAgentDefinitionsResponse, error) {
+func (service *AgentService) ListDefinitions(ctx context.Context, request *internalagentv1.ListAgentDefinitionsRequest, options ...RequestOption) (*AgentDefinitionPage, error) {
 	if !service.configured() {
 		return nil, invalidArgument("agent service is not configured")
 	}
@@ -97,7 +110,14 @@ func (service *AgentService) ListDefinitions(ctx context.Context, request *inter
 	if err != nil {
 		return nil, normalizeError(err)
 	}
-	return cloneGenerated(response), nil
+	detached := cloneGenerated(response)
+	page := &AgentDefinitionPage{ListAgentDefinitionsResponse: detached}
+	page.pageBase = newPage[*agentv1.AgentDefinition](page, detached.GetPage(), paginationLimitsFrom(options), func(ctx context.Context, token string) (*AgentDefinitionPage, error) {
+		successor := cloneGenerated(value)
+		successor.Page = pageRequestWithToken(value.GetPage(), token)
+		return service.ListDefinitions(ctx, successor, options...)
+	})
+	return page, nil
 }
 
 // StartRun admits immutable generated run intent and returns the durable
@@ -142,8 +162,19 @@ func (service *AgentService) GetRun(ctx context.Context, name, ifNoneMatch strin
 	return cloneGenerated(response.GetAgentRun()), nil
 }
 
+// AgentRunPage is one bounded list response plus cursor-scheme traversal. The
+// embedded generated response remains the authoritative model; the wrapper
+// adds only the opaque-cursor mechanics.
+type AgentRunPage struct {
+	*internalagentv1.ListAgentRunsResponse
+	pageBase[*agentv1.AgentRun, *AgentRunPage]
+}
+
+// Items returns this page's agent runs without traversing any further page.
+func (page *AgentRunPage) Items() []*agentv1.AgentRun { return page.GetAgentRuns() }
+
 // ListRuns returns one bounded server-issued page.
-func (service *AgentService) ListRuns(ctx context.Context, request *internalagentv1.ListAgentRunsRequest, options ...RequestOption) (*internalagentv1.ListAgentRunsResponse, error) {
+func (service *AgentService) ListRuns(ctx context.Context, request *internalagentv1.ListAgentRunsRequest, options ...RequestOption) (*AgentRunPage, error) {
 	if !service.configured() {
 		return nil, invalidArgument("agent service is not configured")
 	}
@@ -166,7 +197,14 @@ func (service *AgentService) ListRuns(ctx context.Context, request *internalagen
 	if err != nil {
 		return nil, normalizeError(err)
 	}
-	return cloneGenerated(response), nil
+	detached := cloneGenerated(response)
+	page := &AgentRunPage{ListAgentRunsResponse: detached}
+	page.pageBase = newPage[*agentv1.AgentRun](page, detached.GetPage(), paginationLimitsFrom(options), func(ctx context.Context, token string) (*AgentRunPage, error) {
+		successor := cloneGenerated(value)
+		successor.Page = pageRequestWithToken(value.GetPage(), token)
+		return service.ListRuns(ctx, successor, options...)
+	})
+	return page, nil
 }
 
 // CancelRun records monotonic cancellation under an explicit ETag.
@@ -198,8 +236,19 @@ func (service *AgentService) GetStep(ctx context.Context, name string, options .
 	return cloneGenerated(response.GetAgentStep()), nil
 }
 
+// AgentStepPage is one bounded list response plus cursor-scheme traversal. The
+// embedded generated response remains the authoritative model; the wrapper
+// adds only the opaque-cursor mechanics.
+type AgentStepPage struct {
+	*internalagentv1.ListAgentStepsResponse
+	pageBase[*agentv1.AgentStep, *AgentStepPage]
+}
+
+// Items returns this page's agent steps without traversing any further page.
+func (page *AgentStepPage) Items() []*agentv1.AgentStep { return page.GetAgentSteps() }
+
 // ListSteps returns append-only history after an optional durable sequence.
-func (service *AgentService) ListSteps(ctx context.Context, request *internalagentv1.ListAgentStepsRequest, options ...RequestOption) (*internalagentv1.ListAgentStepsResponse, error) {
+func (service *AgentService) ListSteps(ctx context.Context, request *internalagentv1.ListAgentStepsRequest, options ...RequestOption) (*AgentStepPage, error) {
 	if !service.configured() || request == nil || !scopedResourceName(service.client.config, request.GetParent(), "agentRuns") {
 		return nil, invalidArgument("agent step parent must be a run in the configured project")
 	}
@@ -216,7 +265,14 @@ func (service *AgentService) ListSteps(ctx context.Context, request *internalage
 	if err != nil {
 		return nil, normalizeError(err)
 	}
-	return cloneGenerated(response), nil
+	detached := cloneGenerated(response)
+	page := &AgentStepPage{ListAgentStepsResponse: detached}
+	page.pageBase = newPage[*agentv1.AgentStep](page, detached.GetPage(), paginationLimitsFrom(options), func(ctx context.Context, token string) (*AgentStepPage, error) {
+		successor := cloneGenerated(value)
+		successor.Page = pageRequestWithToken(value.GetPage(), token)
+		return service.ListSteps(ctx, successor, options...)
+	})
+	return page, nil
 }
 
 // CommitStep appends one generated step under the current worker lease. The

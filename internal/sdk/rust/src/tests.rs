@@ -75,10 +75,16 @@ use crate::{
     AccessToken, ArtifactStream, ArtifactUploadOptions, CallOptions, CancellationToken, Client,
     Config, Environment, Error, ErrorKind, GcpWorkloadIdentityProvider, Identity, InferenceStream,
     InferenceWaitOptions, OperationStream, PaginationLimits, PaginationPage, RecordingTransport,
-    RetryPolicy, RpcTransport, SubmitOptions, TokenProvider, WaitOptions,
+    FenceState, FinalCause, JitterSource, QuotaState, RetryPolicy, RpcTransport, SubmitOptions,
+    SystemJitter, TokenProvider, WaitOptions,
     auth::GcpIdentityTokenExchange,
+    error::{
+        FENCE_PRECONDITION_TYPE, QUOTA_PRECONDITION_TYPE, REVISION_PRECONDITION_TYPE,
+        retryable_status_code,
+    },
     paginate,
-    retry::{CallSafety, Sleeper, registered_method_safety},
+    retry::{CallSafety, Sleeper, never_retry_method, registered_method_safety},
+    testing::ScriptedJitter,
 };
 
 struct FakeTokenProvider {
@@ -138,6 +144,10 @@ struct ObservedMetadata {
     idempotency_key: Option<String>,
     expected_tenant: Option<String>,
     expected_project: Option<String>,
+    expected_principal: Option<String>,
+    sdk: Option<String>,
+    retry_count: Option<String>,
+    timeout_ms: Option<String>,
     authorization_present: bool,
     authorization_sensitive: bool,
     deadline_present: bool,
@@ -152,6 +162,10 @@ impl ObservedMetadata {
             idempotency_key: metadata(request, "idempotency-key"),
             expected_tenant: metadata(request, "x-mindclade-expected-tenant"),
             expected_project: metadata(request, "x-mindclade-expected-project"),
+            expected_principal: metadata(request, "x-mindclade-expected-principal"),
+            sdk: metadata(request, "x-mindclade-sdk"),
+            retry_count: metadata(request, "x-mindclade-retry-count"),
+            timeout_ms: metadata(request, "x-mindclade-timeout-ms"),
             authorization_present: authorization.is_some(),
             authorization_sensitive: authorization.is_some_and(MetadataValue::is_sensitive),
             deadline_present: request.metadata().get("grpc-timeout").is_some(),
@@ -645,6 +659,10 @@ fn test_config(provider: Arc<dyn TokenProvider>, attempts: u8, poll_interval: Du
             RetryPolicy::new(attempts, Duration::from_millis(1), Duration::from_millis(8)).unwrap(),
         )
         .poll_interval(poll_interval)
+        // Every delay assertion in this module is exact, so the default
+        // full-jitter window is pinned to its maximum unless a test scripts
+        // its own fractions.
+        .jitter_source(Arc::new(ScriptedJitter::max()))
         .build()
         .unwrap()
 }
@@ -904,6 +922,16 @@ async fn training_submit_retries_idempotently_and_binds_generated_context() {
         assert_eq!(value.idempotency_key.as_deref(), Some("idem-1"));
         assert_eq!(value.expected_tenant.as_deref(), Some("tenants/t-1"));
         assert_eq!(value.expected_project.as_deref(), Some("projects/p-1"));
+        assert_eq!(
+            value.expected_principal.as_deref(),
+            Some("principals/worker-1")
+        );
+        assert!(
+            value
+                .sdk
+                .as_deref()
+                .is_some_and(|sdk| sdk.starts_with("mindclade-internal-rust-sdk/"))
+        );
         assert!(value.authorization_present);
         assert!(value.authorization_sensitive);
         assert!(value.deadline_present);
@@ -956,7 +984,8 @@ async fn normalized_errors_preserve_code_request_id_and_retryability_without_pay
         .get("operations/op-1", CallOptions::new())
         .await
         .unwrap_err();
-    assert_eq!(error.kind(), ErrorKind::Remote);
+    assert_eq!(error.kind(), ErrorKind::RetryableService);
+    assert_eq!(error.stable_code(), "mindclade.service_unavailable");
     assert_eq!(error.code(), Some(Code::Unavailable));
     assert_eq!(error.request_id(), Some("server-request-7"));
     assert!(error.is_retryable());
@@ -2354,4 +2383,850 @@ fn base64url(value: &[u8]) -> String {
         }
     }
     encoded
+}
+
+// ---------------------------------------------------------------------------
+// WS2.1 retry/timeout policy and WS2.2 error hierarchy.
+// ---------------------------------------------------------------------------
+
+fn tuned_config(
+    provider: Arc<dyn TokenProvider>,
+    attempts: u8,
+    initial_backoff: Duration,
+    max_backoff: Duration,
+    jitter: Arc<dyn JitterSource>,
+) -> Config {
+    let identity = Identity::new("tenants/t-1", "projects/p-1", "principals/worker-1").unwrap();
+    Config::builder(Environment::Development, identity, provider)
+        .retry_policy(RetryPolicy::new(attempts, initial_backoff, max_backoff).unwrap())
+        .jitter_source(jitter)
+        .build()
+        .unwrap()
+}
+
+fn test_provider() -> Arc<dyn TokenProvider> {
+    Arc::new(FakeTokenProvider::new(Duration::from_hours(1)))
+}
+
+fn status_with(code: Code, trailers: &[(&'static str, &str)]) -> Status {
+    let mut status = Status::new(code, "server text that must never escape the SDK");
+    for (key, value) in trailers {
+        status
+            .metadata_mut()
+            .insert(*key, MetadataValue::try_from(*value).unwrap());
+    }
+    status
+}
+
+/// Minimal `google.rpc.Status` encoder used only to build a realistic
+/// `grpc-status-details-bin` fixture for the decoder under test.
+#[derive(Clone, PartialEq, ::prost::Message)]
+struct TestRpcStatus {
+    #[prost(int32, tag = "1")]
+    code: i32,
+    #[prost(string, tag = "2")]
+    message: String,
+    #[prost(message, repeated, tag = "3")]
+    details: Vec<prost_types::Any>,
+}
+
+fn error_detail_fixture() -> mindclade_protocols::common::v1::ErrorDetail {
+    use mindclade_protocols::common::v1::{
+        ErrorCode, ErrorDetail, FieldViolation, PreconditionViolation, RetryClass,
+    };
+    ErrorDetail {
+        code: ErrorCode::ResourceExhausted as i32,
+        message: "SQLSTATE 53400 pq: configuration limit exceeded\nstack trace".to_owned(),
+        retry_class: RetryClass::Never as i32,
+        subject: Some(ResourceRef {
+            resource_type: "operation".to_owned(),
+            resource_id: "op-9".to_owned(),
+            name: "operations/op-9".to_owned(),
+            etag: "revision-42".to_owned(),
+            resource_version: 42,
+            ..ResourceRef::default()
+        }),
+        field_violations: vec![
+            FieldViolation {
+                field: "page_size".to_owned(),
+                description: "must be positive".to_owned(),
+            },
+            FieldViolation {
+                field: "parent".to_owned(),
+                // A multi-line provider dump is dropped, never truncated.
+                description: "line one\nline two".to_owned(),
+            },
+        ],
+        precondition_violations: vec![
+            PreconditionViolation {
+                r#type: QUOTA_PRECONDITION_TYPE.to_owned(),
+                subject: "projects/p-1/concurrentRuns".to_owned(),
+                description: "durable ceiling reached".to_owned(),
+            },
+            PreconditionViolation {
+                r#type: FENCE_PRECONDITION_TYPE.to_owned(),
+                subject: "attempts/a-1".to_owned(),
+                description: "lease epoch is stale".to_owned(),
+            },
+            PreconditionViolation {
+                r#type: REVISION_PRECONDITION_TYPE.to_owned(),
+                subject: "operations/op-9".to_owned(),
+                description: "resource version moved".to_owned(),
+            },
+        ],
+        retry_after: Some(prost_types::Duration {
+            seconds: 1,
+            nanos: 500_000_000,
+        }),
+        error_id: "diagnostics/abc-123".to_owned(),
+    }
+}
+
+#[tokio::test]
+async fn full_jitter_draws_uniformly_within_the_capped_exponential_window() {
+    let transport = Arc::new(FakeTransport::default());
+    transport.operations.lock().unwrap().extend([
+        Err(status_with(Code::Unavailable, &[])),
+        Err(status_with(Code::Unavailable, &[])),
+        Err(status_with(Code::Unavailable, &[])),
+        Ok(GetOperationResponse {
+            operation: Some(operation("operations/jitter", true)),
+        }),
+    ]);
+    let sleeper = Arc::new(ImmediateSleeper::default());
+    let config = tuned_config(
+        test_provider(),
+        4,
+        Duration::from_millis(1),
+        Duration::from_millis(8),
+        Arc::new(ScriptedJitter::scripted(vec![0.0, 0.5, 1.0])),
+    );
+    let client = Client::with_test_sleeper(config, transport, sleeper.clone());
+    client
+        .operations()
+        .get("operations/jitter", CallOptions::new())
+        .await
+        .unwrap();
+
+    // Windows are min(cap, base * 2^n) = 1ms, 2ms, 4ms; the scripted
+    // fractions select the bottom, middle, and top of each window.
+    assert_eq!(
+        sleeper.delays.lock().unwrap().as_slice(),
+        [
+            Duration::ZERO,
+            Duration::from_millis(1),
+            Duration::from_millis(4),
+        ]
+    );
+}
+
+#[test]
+fn system_jitter_stays_inside_the_window_and_varies_between_draws() {
+    let jitter = SystemJitter::new();
+    assert_eq!(jitter.jitter_micros(0), 0);
+    let draws: Vec<u64> = (0..64).map(|_| jitter.jitter_micros(4_000)).collect();
+    assert!(draws.iter().all(|value| *value <= 4_000));
+    assert!(draws.windows(2).any(|pair| pair[0] != pair[1]));
+    assert!(jitter.jitter_micros(u64::MAX) <= u64::MAX);
+}
+
+#[tokio::test]
+async fn retry_after_ms_trailer_overrides_backoff_and_is_clamped_to_max_backoff() {
+    let transport = Arc::new(FakeTransport::default());
+    transport.operations.lock().unwrap().extend([
+        Err(status_with(
+            Code::Unavailable,
+            &[("retry-after-ms", "60000")],
+        )),
+        Ok(GetOperationResponse {
+            operation: Some(operation("operations/clamped", true)),
+        }),
+    ]);
+    let sleeper = Arc::new(ImmediateSleeper::default());
+    let config = tuned_config(
+        test_provider(),
+        4,
+        Duration::from_millis(1),
+        Duration::from_millis(8),
+        Arc::new(ScriptedJitter::max()),
+    );
+    let client = Client::with_test_sleeper(config, transport, sleeper.clone());
+    client
+        .operations()
+        .get("operations/clamped", CallOptions::new())
+        .await
+        .unwrap();
+    assert_eq!(
+        sleeper.delays.lock().unwrap().as_slice(),
+        [Duration::from_millis(8)]
+    );
+}
+
+#[tokio::test]
+async fn should_retry_trailer_forces_retry_of_a_terminal_status() {
+    let transport = Arc::new(FakeTransport::default());
+    transport.operations.lock().unwrap().extend([
+        Err(status_with(
+            Code::InvalidArgument,
+            &[("x-mindclade-should-retry", "true")],
+        )),
+        Ok(GetOperationResponse {
+            operation: Some(operation("operations/forced", true)),
+        }),
+    ]);
+    let sleeper = Arc::new(ImmediateSleeper::default());
+    let client = Client::with_test_sleeper(
+        test_config(test_provider(), 4, Duration::from_millis(1)),
+        transport.clone(),
+        sleeper,
+    );
+    client
+        .operations()
+        .get("operations/forced", CallOptions::new())
+        .await
+        .unwrap();
+    assert_eq!(transport.observed.lock().unwrap().len(), 2);
+}
+
+#[tokio::test]
+async fn should_retry_trailer_suppresses_retry_of_a_retryable_status() {
+    let transport = Arc::new(FakeTransport::default());
+    transport
+        .operations
+        .lock()
+        .unwrap()
+        .push_back(Err(status_with(
+            Code::Unavailable,
+            &[("x-mindclade-should-retry", "false")],
+        )));
+    let sleeper = Arc::new(ImmediateSleeper::default());
+    let client = Client::with_test_sleeper(
+        test_config(test_provider(), 4, Duration::from_millis(1)),
+        transport.clone(),
+        sleeper.clone(),
+    );
+    let error = client
+        .operations()
+        .get("operations/opted-out", CallOptions::new())
+        .await
+        .unwrap_err();
+    assert!(!error.is_retryable());
+    assert_eq!(error.server_retry_override(), Some(false));
+    assert_eq!(
+        error.retry_attempts().final_cause(),
+        FinalCause::ServerRetryOptOut
+    );
+    assert_eq!(error.retry_attempts().attempts(), 1);
+    assert_eq!(transport.observed.lock().unwrap().len(), 1);
+    assert!(sleeper.delays.lock().unwrap().is_empty());
+}
+
+#[tokio::test]
+async fn retry_count_and_timeout_ms_are_sent_on_every_attempt() {
+    let transport = Arc::new(FakeTransport::default());
+    transport.operations.lock().unwrap().extend([
+        Err(status_with(Code::Unavailable, &[])),
+        Ok(GetOperationResponse {
+            operation: Some(operation("operations/counted", true)),
+        }),
+    ]);
+    let sleeper = Arc::new(ImmediateSleeper::default());
+    let client = Client::with_test_sleeper(
+        test_config(test_provider(), 4, Duration::from_millis(1)),
+        transport.clone(),
+        sleeper,
+    );
+    let call = CallOptions::new()
+        .with_timeout(Duration::from_secs(5))
+        .unwrap();
+    client
+        .operations()
+        .get("operations/counted", call)
+        .await
+        .unwrap();
+
+    let observed = transport.observed.lock().unwrap();
+    let counts: Vec<Option<&str>> = observed
+        .iter()
+        .map(|value| value.retry_count.as_deref())
+        .collect();
+    assert_eq!(counts, [Some("0"), Some("1")]);
+    let budgets: Vec<u64> = observed
+        .iter()
+        .map(|value| value.timeout_ms.as_deref().unwrap().parse::<u64>().unwrap())
+        .collect();
+    assert_eq!(budgets.len(), 2);
+    assert!(budgets[0] <= 5_000);
+    // The timeout is a total budget, so a later attempt never sees more of it.
+    assert!(budgets[1] <= budgets[0]);
+}
+
+#[tokio::test]
+async fn per_request_max_attempts_overrides_the_configured_policy() {
+    let transport = Arc::new(FakeTransport::default());
+    transport.operations.lock().unwrap().extend([
+        Err(status_with(Code::Unavailable, &[])),
+        Err(status_with(Code::Unavailable, &[])),
+        Err(status_with(Code::Unavailable, &[])),
+    ]);
+    let sleeper = Arc::new(ImmediateSleeper::default());
+    let client = Client::with_test_sleeper(
+        test_config(test_provider(), 4, Duration::from_millis(1)),
+        transport.clone(),
+        sleeper,
+    );
+    let call = CallOptions::new().with_max_attempts(2).unwrap();
+    let error = client
+        .operations()
+        .get("operations/bounded", call)
+        .await
+        .unwrap_err();
+    assert_eq!(error.retry_attempts().attempts(), 2);
+    assert_eq!(
+        error.retry_attempts().final_cause(),
+        FinalCause::AttemptsExhausted
+    );
+    assert_eq!(transport.observed.lock().unwrap().len(), 2);
+    assert!(CallOptions::new().with_max_attempts(0).is_err());
+    assert!(CallOptions::new().with_max_attempts(9).is_err());
+}
+
+#[tokio::test]
+async fn named_unsafe_override_is_required_to_retry_a_non_idempotent_rpc() {
+    let config = test_config(test_provider(), 4, Duration::from_millis(1));
+    let client = Client::with_transport(config.clone(), Arc::new(FakeTransport::default()));
+    let core = &client.core;
+
+    let plain = CallOptions::new().prepare(&config);
+    assert_eq!(
+        core.attempt_budget(&plain, CallSafety::Unsafe).unwrap(),
+        1,
+        "an unregistered mutation must never be retried implicitly"
+    );
+
+    let acknowledged = CallOptions::new()
+        .with_unsafe_retry_of_non_idempotent_rpc(3)
+        .unwrap()
+        .prepare(&config);
+    assert_eq!(
+        core.attempt_budget(&acknowledged, CallSafety::Unsafe)
+            .unwrap(),
+        3
+    );
+
+    // The named override is not a general attempt knob: it is refused on an
+    // RPC the SDK already classifies as retryable.
+    assert!(
+        core.attempt_budget(&acknowledged, CallSafety::Safe)
+            .is_err()
+    );
+    assert!(
+        core.attempt_budget(&acknowledged, CallSafety::Idempotent)
+            .is_err()
+    );
+
+    // Nothing the caller can name makes a never-retry route retryable.
+    assert_eq!(
+        core.attempt_budget(&plain, CallSafety::NeverRetry).unwrap(),
+        1
+    );
+    assert!(
+        core.attempt_budget(&acknowledged, CallSafety::NeverRetry)
+            .is_err()
+    );
+    let widened = CallOptions::new().with_max_attempts(4).unwrap().prepare(&config);
+    assert!(
+        core.attempt_budget(&widened, CallSafety::NeverRetry)
+            .is_err()
+    );
+}
+
+#[test]
+fn expire_attempt_leases_is_never_retryable() {
+    const ROUTE: &str = "/mindclade.internal.job.v1.RunService/ExpireAttemptLeases";
+    assert!(never_retry_method(ROUTE));
+    assert_eq!(registered_method_safety(ROUTE), CallSafety::NeverRetry);
+    assert!(!never_retry_method(
+        "/mindclade.internal.job.v1.RunService/RenewAttemptLease"
+    ));
+}
+
+#[tokio::test]
+async fn total_timeout_budget_spans_credential_acquisition_and_every_retry() {
+    // A backoff that cannot fit inside the remaining budget ends the call
+    // rather than overrunning the caller's total deadline.
+    let transport = Arc::new(FakeTransport::default());
+    transport.operations.lock().unwrap().extend([
+        Err(status_with(Code::Unavailable, &[])),
+        Err(status_with(Code::Unavailable, &[])),
+    ]);
+    let sleeper = Arc::new(ImmediateSleeper::default());
+    let config = tuned_config(
+        test_provider(),
+        4,
+        Duration::from_millis(8),
+        Duration::from_millis(8),
+        Arc::new(ScriptedJitter::max()),
+    );
+    let client = Client::with_test_sleeper(config, transport.clone(), sleeper.clone());
+    let call = CallOptions::new()
+        .with_timeout(Duration::from_millis(5))
+        .unwrap();
+    let error = client
+        .operations()
+        .get("operations/budget", call)
+        .await
+        .unwrap_err();
+    assert_eq!(error.kind(), ErrorKind::DeadlineExceeded);
+    assert_eq!(
+        error.retry_attempts().final_cause(),
+        FinalCause::DeadlineExceeded
+    );
+    assert_eq!(error.retry_attempts().attempts(), 1);
+    assert!(sleeper.delays.lock().unwrap().is_empty());
+    assert_eq!(transport.observed.lock().unwrap().len(), 1);
+
+    // Credential acquisition is inside the same budget, so it is charged to
+    // the call rather than added on top of it.
+    let identity = Identity::new("tenant", "project", "principal").unwrap();
+    let hanging: Arc<dyn TokenProvider> = Arc::new(HangingTokenProvider);
+    let config = Config::builder(Environment::Development, identity, hanging)
+        .build()
+        .unwrap();
+    let client = Client::with_transport(config, Arc::new(FakeTransport::default()));
+    let error = client
+        .operations()
+        .get(
+            "operations/credential-budget",
+            CallOptions::new()
+                .with_timeout(Duration::from_millis(1))
+                .unwrap(),
+        )
+        .await
+        .unwrap_err();
+    assert_eq!(error.kind(), ErrorKind::DeadlineExceeded);
+    assert_eq!(
+        error.retry_attempts().final_cause(),
+        FinalCause::DeadlineExceeded
+    );
+    assert_eq!(error.retry_attempts().attempts(), 0);
+}
+
+#[tokio::test]
+async fn errors_report_attempt_count_cumulative_delay_and_final_cause() {
+    let transport = Arc::new(FakeTransport::default());
+    for _ in 0..4 {
+        transport
+            .operations
+            .lock()
+            .unwrap()
+            .push_back(Err(status_with(Code::Unavailable, &[])));
+    }
+    let sleeper = Arc::new(ImmediateSleeper::default());
+    let client = Client::with_test_sleeper(
+        test_config(test_provider(), 4, Duration::from_millis(1)),
+        transport,
+        sleeper.clone(),
+    );
+    let error = client
+        .operations()
+        .get("operations/exhausted", CallOptions::new())
+        .await
+        .unwrap_err();
+    let summary = error.retry_attempts();
+    assert_eq!(summary.attempts(), 4);
+    assert_eq!(summary.cumulative_delay(), Duration::from_millis(7));
+    assert_eq!(summary.final_cause(), FinalCause::AttemptsExhausted);
+    assert_eq!(
+        sleeper.delays.lock().unwrap().as_slice(),
+        [
+            Duration::from_millis(1),
+            Duration::from_millis(2),
+            Duration::from_millis(4),
+        ]
+    );
+
+    let terminal = Error::from_status(&status_with(Code::NotFound, &[]));
+    assert_eq!(terminal.retry_attempts(), Default::default());
+    assert_eq!(
+        terminal.retry_attempts().final_cause(),
+        FinalCause::NotRetried
+    );
+}
+
+#[test]
+fn error_kind_maps_every_documented_status_class() {
+    for (code, kind, stable, retryable) in [
+        (Code::Ok, ErrorKind::Remote, "mindclade.remote_failure", false),
+        (
+            Code::Cancelled,
+            ErrorKind::Cancelled,
+            "mindclade.cancelled",
+            false,
+        ),
+        (
+            Code::Unknown,
+            ErrorKind::Remote,
+            "mindclade.remote_failure",
+            false,
+        ),
+        (
+            Code::InvalidArgument,
+            ErrorKind::Validation,
+            "mindclade.validation_failed",
+            false,
+        ),
+        (
+            Code::DeadlineExceeded,
+            ErrorKind::DeadlineExceeded,
+            "mindclade.deadline_exceeded",
+            true,
+        ),
+        (
+            Code::NotFound,
+            ErrorKind::NotFound,
+            "mindclade.not_found",
+            false,
+        ),
+        (
+            Code::AlreadyExists,
+            ErrorKind::AlreadyExists,
+            "mindclade.already_exists",
+            false,
+        ),
+        (
+            Code::PermissionDenied,
+            ErrorKind::Authorization,
+            "mindclade.authorization_denied",
+            false,
+        ),
+        (
+            Code::ResourceExhausted,
+            ErrorKind::RateLimit,
+            "mindclade.rate_limited",
+            true,
+        ),
+        (
+            Code::FailedPrecondition,
+            ErrorKind::Conflict,
+            "mindclade.conflict",
+            false,
+        ),
+        (Code::Aborted, ErrorKind::Conflict, "mindclade.conflict", true),
+        (
+            Code::OutOfRange,
+            ErrorKind::Validation,
+            "mindclade.validation_failed",
+            false,
+        ),
+        (
+            Code::Unimplemented,
+            ErrorKind::Remote,
+            "mindclade.remote_failure",
+            false,
+        ),
+        (
+            Code::Internal,
+            ErrorKind::Remote,
+            "mindclade.remote_failure",
+            false,
+        ),
+        (
+            Code::Unavailable,
+            ErrorKind::RetryableService,
+            "mindclade.service_unavailable",
+            true,
+        ),
+        (
+            Code::DataLoss,
+            ErrorKind::Remote,
+            "mindclade.remote_failure",
+            false,
+        ),
+        (
+            Code::Unauthenticated,
+            ErrorKind::Authentication,
+            "mindclade.authentication_failed",
+            false,
+        ),
+    ] {
+        let error = Error::from_status(&status_with(code, &[]));
+        assert_eq!(error.kind(), kind, "kind for {code:?}");
+        assert_eq!(error.stable_code(), stable, "stable code for {code:?}");
+        assert_eq!(error.is_retryable(), retryable, "retryability for {code:?}");
+        assert_eq!(retryable_status_code(code), retryable, "predicate {code:?}");
+        assert!(
+            !error.to_string().contains("server text"),
+            "server text leaked for {code:?}"
+        );
+    }
+}
+
+#[test]
+fn locally_raised_errors_keep_their_stable_classification() {
+    assert_eq!(
+        Error::invalid_argument("bad").stable_code(),
+        "mindclade.validation_failed"
+    );
+    assert_eq!(
+        Error::configuration("bad").stable_code(),
+        "mindclade.configuration_invalid"
+    );
+    assert_eq!(
+        Error::pagination_limit("bounded").kind(),
+        ErrorKind::PaginationLimit
+    );
+    assert_eq!(
+        Error::protocol("bad").stable_code(),
+        "mindclade.protocol_violation"
+    );
+    assert_eq!(Error::transport().kind(), ErrorKind::Transport);
+    assert_eq!(Error::cancelled().stable_code(), "mindclade.cancelled");
+}
+
+#[test]
+fn structured_error_detail_populates_typed_fields_without_server_text() {
+    use prost::Message as _;
+
+    let detail = error_detail_fixture();
+    let envelope = TestRpcStatus {
+        code: Code::ResourceExhausted as i32,
+        message: "SQLSTATE 53400 pq: configuration limit exceeded".to_owned(),
+        details: vec![prost_types::Any {
+            type_url: "type.googleapis.com/mindclade.common.v1.ErrorDetail".to_owned(),
+            value: detail.encode_to_vec(),
+        }],
+    };
+    for bytes in [envelope.encode_to_vec(), detail.encode_to_vec()] {
+        let status = Status::with_details(
+            Code::ResourceExhausted,
+            "server text that must never escape the SDK",
+            tonic::codegen::Bytes::from(bytes),
+        );
+        let error = Error::from_status(&status);
+
+        // RETRY_CLASS_NEVER narrows an otherwise retryable status, and the
+        // exhaustion is durable rather than a rate limit.
+        assert_eq!(error.kind(), ErrorKind::Quota);
+        assert_eq!(error.stable_code(), "mindclade.quota_exhausted");
+        assert!(!error.is_retryable());
+        assert_eq!(error.retry_after(), Some(Duration::from_millis(1_500)));
+        assert_eq!(error.operation_id(), Some("operations/op-9"));
+        assert_eq!(error.conflict_revision(), Some("revision-42"));
+        assert_eq!(error.diagnostic_reference(), Some("diagnostics/abc-123"));
+
+        assert_eq!(error.field_violations().len(), 2);
+        assert_eq!(error.field_violations()[0].field, "page_size");
+        assert_eq!(error.field_violations()[0].description, "must be positive");
+        // A multi-line provider dump is dropped rather than truncated.
+        assert_eq!(error.field_violations()[1].description, "");
+
+        assert_eq!(error.precondition_violations().len(), 3);
+        assert_eq!(
+            error.quota_state().map(QuotaState::subject),
+            Some("projects/p-1/concurrentRuns")
+        );
+        assert_eq!(
+            error.quota_state().map(QuotaState::description),
+            Some("durable ceiling reached")
+        );
+        assert_eq!(
+            error.fence_state().map(FenceState::subject),
+            Some("attempts/a-1")
+        );
+        assert_eq!(
+            error.fence_state().map(FenceState::description),
+            Some("lease epoch is stale")
+        );
+
+        // The server's own message is never copied into the error surface.
+        let rendered = format!("{error} {error:?}");
+        assert!(!rendered.contains("SQLSTATE"));
+        assert!(!rendered.contains("stack trace"));
+        assert!(!rendered.contains("server text"));
+    }
+}
+
+#[test]
+fn unrecognized_or_absent_structured_detail_never_widens_the_failure() {
+    use mindclade_protocols::common::v1::ErrorDetail;
+    use prost::Message as _;
+
+    // An unspecified code carries no typed fields and no retryability.
+    let unspecified = ErrorDetail {
+        code: 0,
+        precondition_violations: vec![mindclade_protocols::common::v1::PreconditionViolation {
+            r#type: QUOTA_PRECONDITION_TYPE.to_owned(),
+            subject: "ignored".to_owned(),
+            description: "ignored".to_owned(),
+        }],
+        ..ErrorDetail::default()
+    };
+    let status = Status::with_details(
+        Code::PermissionDenied,
+        "denied",
+        tonic::codegen::Bytes::from(unspecified.encode_to_vec()),
+    );
+    let error = Error::from_status(&status);
+    assert_eq!(error.kind(), ErrorKind::Authorization);
+    assert!(error.precondition_violations().is_empty());
+    assert!(error.quota_state().is_none());
+    assert!(!error.is_retryable());
+
+    // An unknown enum value is equally inert.
+    let unknown = ErrorDetail {
+        code: 9_999,
+        ..ErrorDetail::default()
+    };
+    let status = Status::with_details(
+        Code::Aborted,
+        "aborted",
+        tonic::codegen::Bytes::from(unknown.encode_to_vec()),
+    );
+    let error = Error::from_status(&status);
+    assert_eq!(error.kind(), ErrorKind::Conflict);
+    assert!(error.diagnostic_reference().is_none());
+    assert!(error.is_retryable());
+
+    // Opaque bytes that are not a detail message are ignored, not guessed at.
+    let status = Status::with_details(
+        Code::Internal,
+        "internal",
+        tonic::codegen::Bytes::from_static(b"\xff\xff not protobuf"),
+    );
+    let error = Error::from_status(&status);
+    assert_eq!(error.kind(), ErrorKind::Remote);
+    assert!(error.field_violations().is_empty());
+}
+
+#[tokio::test]
+async fn operation_failure_projects_structured_detail_onto_the_error_hierarchy() {
+    let transport = Arc::new(FakeTransport::default());
+    transport
+        .operations
+        .lock()
+        .unwrap()
+        .push_back(Ok(GetOperationResponse {
+            operation: Some(Operation {
+                operation_id: "operations/op-9".to_owned(),
+                state: OperationState::Failed as i32,
+                done: true,
+                error: Some(error_detail_fixture()),
+                ..Operation::default()
+            }),
+        }));
+    let client = Client::with_transport(
+        test_config(test_provider(), 1, Duration::from_millis(1)),
+        transport,
+    );
+    let wait_error = client
+        .operations()
+        .wait(
+            "operations/op-9",
+            WaitOptions::new(),
+            CancellationToken::new(),
+        )
+        .await
+        .unwrap_err();
+    let failure = wait_error.operation_failure().unwrap();
+    let error = failure.as_error();
+    assert_eq!(error.kind(), ErrorKind::OperationFailed);
+    assert_eq!(error.stable_code(), "mindclade.operation_failed");
+    assert!(!error.is_retryable());
+    assert_eq!(error.operation_id(), Some("operations/op-9"));
+    assert_eq!(error.diagnostic_reference(), Some("diagnostics/abc-123"));
+    assert_eq!(
+        error.quota_state().map(QuotaState::subject),
+        Some("projects/p-1/concurrentRuns")
+    );
+    let rendered = format!("{error} {error:?}");
+    assert!(!rendered.contains("SQLSTATE"));
+}
+
+#[tokio::test]
+async fn the_unary_loop_and_the_watchers_share_one_retryability_predicate() {
+    // `Aborted` is retryable by status, but a server opt-out trailer must end
+    // both the unary loop and a resumable watch at a single attempt.
+    let transport = Arc::new(FakeTransport::default());
+    transport
+        .operations
+        .lock()
+        .unwrap()
+        .push_back(Err(status_with(
+            Code::Aborted,
+            &[("x-mindclade-should-retry", "false")],
+        )));
+    transport
+        .watches
+        .lock()
+        .unwrap()
+        .push_back(Ok(vec![Err(status_with(
+            Code::Aborted,
+            &[("x-mindclade-should-retry", "false")],
+        ))]));
+    let sleeper = Arc::new(ImmediateSleeper::default());
+    let client = Client::with_test_sleeper(
+        test_config(test_provider(), 4, Duration::from_millis(1)),
+        transport.clone(),
+        sleeper.clone(),
+    );
+
+    let error = client
+        .operations()
+        .get("operations/shared", CallOptions::new())
+        .await
+        .unwrap_err();
+    assert!(!error.is_retryable());
+    assert_eq!(error.retry_attempts().attempts(), 1);
+
+    let mut watch = client
+        .operations()
+        .watch(
+            "operations/shared",
+            0,
+            &CallOptions::new(),
+            CancellationToken::new(),
+        )
+        .unwrap();
+    let error = watch.next().await.unwrap_err();
+    assert!(!error.is_retryable());
+    assert_eq!(transport.watch_after_sequences.lock().unwrap().len(), 1);
+    assert!(sleeper.delays.lock().unwrap().is_empty());
+}
+
+#[tokio::test]
+async fn watch_reconnect_backoff_honours_the_clamped_retry_after_trailer() {
+    let transport = Arc::new(FakeTransport::default());
+    transport.watches.lock().unwrap().extend([
+        Ok(vec![Err(status_with(
+            Code::Unavailable,
+            &[("retry-after-ms", "60000")],
+        ))]),
+        Ok(vec![Ok(WatchOperationResponse {
+            operation: Some(operation("operations/clamped-watch", true)),
+            sequence: 1,
+            observed_at: None,
+        })]),
+    ]);
+    let sleeper = Arc::new(ImmediateSleeper::default());
+    let client = Client::with_test_sleeper(
+        test_config(test_provider(), 4, Duration::from_millis(1)),
+        transport,
+        sleeper.clone(),
+    );
+    let mut watch = client
+        .operations()
+        .watch(
+            "operations/clamped-watch",
+            0,
+            &CallOptions::new(),
+            CancellationToken::new(),
+        )
+        .unwrap();
+    let update = watch.next().await.unwrap().unwrap();
+    assert_eq!(update.sequence, 1);
+    assert_eq!(
+        sleeper.delays.lock().unwrap().as_slice(),
+        [Duration::from_millis(8)]
+    );
 }

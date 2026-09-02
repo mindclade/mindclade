@@ -90,16 +90,47 @@ export type {
 } from "./artifacts.js";
 export { Artifacts } from "./artifacts.js";
 export { AccessToken, type TokenProvider } from "./auth.js";
-export { MindcladeClient } from "./client.js";
+export {
+	type ErgonomicNamespace,
+	MindcladeClient,
+	type RawResponseNamespaces,
+} from "./client.js";
 export {
 	ClientConfig,
 	type ClientConfigInput,
 	Environment,
 	type Identity,
 	type RetryPolicy,
+	validateAttempts,
 } from "./config.js";
 export { Datasets } from "./datasets.js";
-export { type ErrorKind, MindcladeError, OperationFailure } from "./error.js";
+export {
+	AuthenticationError,
+	AuthorizationError,
+	CancelledError,
+	ConflictError,
+	type ErrorContext,
+	type ErrorKind,
+	type FenceState,
+	MindcladeError,
+	type MindcladeErrorOptions,
+	NotFoundError,
+	OperationFailedError,
+	OperationFailure,
+	QuotaError,
+	type QuotaState,
+	RateLimitError,
+	REQUEST_ID_HEADER,
+	RETRY_AFTER_TRAILER,
+	RetryableServiceError,
+	type RetryState,
+	SHOULD_RETRY_TRAILER,
+	type StableErrorCode,
+	shouldRetry,
+	TRACE_ID_HEADER,
+	TransportError,
+	ValidationError,
+} from "./error.js";
 export { Evaluations } from "./evaluations.js";
 export { Experiments } from "./experiments.js";
 export {
@@ -111,19 +142,40 @@ export { Inference, inferenceRequest } from "./inference.js";
 export { Jobs } from "./jobs.js";
 export { Models } from "./models.js";
 export { Operations } from "./operations.js";
+export {
+	listPage,
+	Page,
+	type PageFetch,
+	type PageInit,
+	type PageMetadata,
+	type PageSource,
+	withPageToken,
+} from "./pagination.js";
 export { Policies } from "./policies.js";
 export { RawInternalClients } from "./raw.js";
 export type {
+	ListOptions,
 	PaginationLimits,
 	PaginationOptions,
 	PaginationPage,
+	RetryAttemptState,
 	SdkCallOptions,
 	SubmitOptions,
+	UnsafeRetryOfNonIdempotent,
 	WaitOptions,
 } from "./request.js";
-export { paginate } from "./request.js";
+export { paginate, withUnsafeRetryOfNonIdempotent } from "./request.js";
+export {
+	isCredentialBearing,
+	type RawResponse,
+	type ResponseStatus,
+	SAFE_RESPONSE_METADATA,
+	type WithResponse,
+} from "./response.js";
+export type { RetrySafety } from "./retry.js";
 export { AttemptLease, LeaseCredential, Runs } from "./runs.js";
 export type { Runtime } from "./runtime.js";
+export { isNeverRetryable, registeredMethodSafety } from "./safety.js";
 export { FakeRuntime, type RecordedTransportCall, RecordingTransport } from "./testing.js";
 export { Training, type TrainingUpdate } from "./training.js";
 export { WorkflowRunFailure, Workflows } from "./workflows.js";

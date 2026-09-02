@@ -1,6 +1,10 @@
 //! Hermetic SDK-owned fakes for application-consumer tests.
 
-use std::{collections::HashMap, future::pending, sync::Mutex};
+use std::{
+    collections::{HashMap, VecDeque},
+    future::pending,
+    sync::Mutex,
+};
 
 use mindclade_protocols::{
     artifact::v1::ArtifactRef,
@@ -16,7 +20,7 @@ use prost_types::Timestamp;
 use sha2::{Digest, Sha256};
 use tonic::{Code, Request, Response, Status, codegen::async_trait, codegen::tokio_stream};
 
-use crate::{ArtifactStream, RpcTransport};
+use crate::{ArtifactStream, JitterSource, RpcTransport};
 
 #[must_use]
 /// Builds a digest-consistent artifact reference for hermetic SDK consumer tests.
@@ -198,4 +202,84 @@ impl RpcTransport for ScriptedJobArtifactTransport {
 
 fn sha256(content: &[u8]) -> String {
     format!("sha256:{:x}", Sha256::digest(content))
+}
+
+/// Scripted retry jitter for hermetic tests.
+///
+/// Each entry is a fraction of the caller's full-jitter window, consumed in
+/// order; the queue repeats its final entry once exhausted, so a test never
+/// depends on how many delays the SDK happens to draw.
+#[derive(Debug)]
+pub struct ScriptedJitter {
+    fractions: Mutex<VecDeque<f64>>,
+    last: Mutex<f64>,
+}
+
+impl ScriptedJitter {
+    /// Always returns the full capped exponential window.
+    #[must_use]
+    pub fn max() -> Self {
+        Self::repeating(1.0)
+    }
+
+    /// Always returns a zero delay.
+    #[must_use]
+    pub fn zero() -> Self {
+        Self::repeating(0.0)
+    }
+
+    /// Returns each fraction of the window in turn, then repeats the last one.
+    /// Values outside `[0.0, 1.0]` are clamped rather than rejected so a test
+    /// fixture can never produce a delay outside the SDK's own window.
+    #[must_use]
+    pub fn scripted(fractions: Vec<f64>) -> Self {
+        let last = fractions.last().copied().unwrap_or(1.0);
+        Self {
+            fractions: Mutex::new(fractions.into()),
+            last: Mutex::new(clamp_fraction(last)),
+        }
+    }
+
+    fn repeating(fraction: f64) -> Self {
+        Self {
+            fractions: Mutex::new(VecDeque::new()),
+            last: Mutex::new(clamp_fraction(fraction)),
+        }
+    }
+}
+
+impl JitterSource for ScriptedJitter {
+    // The scripted fraction is clamped to `[0.0, 1.0]` and the product is
+    // clamped to the caller's window, so the conversions below are bounded by
+    // construction and a rounding difference on a very large window is
+    // irrelevant to a test fixture.
+    #[allow(
+        clippy::cast_precision_loss,
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss
+    )]
+    fn jitter_micros(&self, upper_bound_micros: u64) -> u64 {
+        let mut queue = self
+            .fractions
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let mut last = self
+            .last
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        if let Some(next) = queue.pop_front() {
+            *last = clamp_fraction(next);
+        }
+        let scaled = *last * upper_bound_micros as f64;
+        // `scaled` is finite and within `[0, upper_bound_micros]` by
+        // construction, so the cast cannot saturate to an out-of-range value.
+        (scaled.round() as u64).min(upper_bound_micros)
+    }
+}
+
+fn clamp_fraction(value: f64) -> f64 {
+    if value.is_nan() {
+        return 0.0;
+    }
+    value.clamp(0.0, 1.0)
 }

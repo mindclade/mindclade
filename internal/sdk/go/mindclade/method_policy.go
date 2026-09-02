@@ -500,7 +500,19 @@ func validateArtifactMutationRetry(request any, metadata requestMetadata, config
 	return err == nil && validRetryContext(command, metadata, config, digest)
 }
 
+// neverRetryMethods can never be retried implicitly: not by the default
+// policy, not by a server x-mindclade-should-retry trailer, and not by an
+// explicit caller override. ExpireAttemptLeases is a raw-only control-plane
+// reconciler primitive that expires leases in bulk, so a duplicate execution
+// can revoke a lease a worker has already renewed under a new epoch.
+var neverRetryMethods = map[string]bool{
+	"/mindclade.internal.job.v1.RunService/ExpireAttemptLeases": true,
+}
+
 func retryPermitted(method string, request any, metadata requestMetadata, config Config) bool {
+	if neverRetryMethods[method] {
+		return false
+	}
 	if _, ok := safeUnaryMethods[method]; ok {
 		return true
 	}

@@ -52,10 +52,28 @@ retry promise from `client.raw`.
 
 The descriptor-bound coverage gate fixes the current surface at 15 services
 and 132 RPCs: 127 unary and five server-streaming, with 131 ergonomic methods
-and one reviewed raw-only method. The exported `paginate` async generator works
-with any ergonomic list method, preserves opaque tokens exactly, rejects cursor
-loops, observes cancellation between pages, and raises a typed pagination-limit
-error instead of presenting a bounded partial traversal as complete.
+and one reviewed raw-only method.
+
+Every ergonomic list method returns a `Page`. Iterating the page with
+`for await` yields items transparently across page boundaries, while
+`page.items`, `page.response`, `page.metadata`, `page.hasNextPage`,
+`page.nextPage()`, and `page.pages()` keep the page-level view; `page.response`
+is the generated list response for that page, unchanged. Traversal preserves
+opaque tokens exactly, rejects cursor loops as protocol violations, observes
+cancellation between pages, re-runs the per-page response validation for every
+page, and enforces the page and item budgets (defaults 100 pages and 10,000
+items, hard caps 1,000 and 1,000,000) through `options.limits`, raising a typed
+pagination-limit error instead of presenting a bounded partial traversal as
+complete. The exported `paginate` async generator remains available for callers
+that drive a page-fetching closure themselves.
+
+`client.withResponse()` re-projects every ergonomic namespace so each
+promise-returning method resolves to a `RawResponse`: the value it would have
+returned plus `status`, `requestId`, `traceId`, and an allowlisted `metadata`
+map. The allowlist (`SAFE_RESPONSE_METADATA`) is identical in all four internal
+SDKs and is additionally screened by a credential denylist, so `authorization`,
+`x-mindclade-lease-token`, cookies, and any `*token*`/`*secret*`/`*key*`-shaped
+name can never be observed through it. `client.raw` is not projected.
 
 `client.artifacts.downloadFile(artifact, path)` stages a private mode-0600 file
 beside the destination, verifies the complete immutable digest, and atomically

@@ -160,6 +160,17 @@ const validateEndpoint = (value: string, environment: Environment, insecure: boo
 	}
 };
 
+/**
+ * One attempt ceiling for the whole SDK. Client policy and per-request
+ * overrides are validated against the identical bound so a caller cannot widen
+ * the retry budget past what the configuration layer would accept.
+ */
+export const validateAttempts = (name: string, value: number): void => {
+	if (!Number.isInteger(value) || value < 1 || value > 8) {
+		throw MindcladeError.invalidArgument(`${name} must be an integer between one and eight`);
+	}
+};
+
 const validateRetry = (policy: RetryPolicy): void => {
 	if (!Number.isInteger(policy.maxAttempts) || policy.maxAttempts < 1 || policy.maxAttempts > 8) {
 		throw MindcladeError.configuration("retry attempts must be between one and eight");

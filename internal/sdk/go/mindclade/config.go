@@ -84,9 +84,14 @@ type Config struct {
 	TokenProvider           TokenProvider
 	Observer                Observer
 	UserAgent               string
-	insecureForTesting      bool
-	workloadIdentity        bool
-	ownedTokenProvider      bool
+	// jitter supplies the uniform random component of the retry backoff. It is
+	// unexported so the transport policy cannot be widened from outside the
+	// SDK, and injectable so tests can script backoff deterministically. A nil
+	// value selects the cryptographically seeded default.
+	jitter             jitterSource
+	insecureForTesting bool
+	workloadIdentity   bool
+	ownedTokenProvider bool
 }
 
 type Option func(*Config) error
@@ -170,6 +175,11 @@ func WithPollInterval(interval time.Duration) Option {
 	}
 }
 
+// WithRetryPolicy narrows or widens the fixed default transport retry policy:
+// four attempts, 100ms growing to a 2s cap, with full jitter — every wait is
+// drawn uniformly from [0, min(cap, base*2^n)]. The policy governs only RPCs
+// the method policy already classifies as safe or idempotent; it can never
+// make an ineligible RPC retryable.
 func WithRetryPolicy(maxAttempts int, baseDelay, maxDelay time.Duration) Option {
 	return func(config *Config) error {
 		config.MaxAttempts = maxAttempts

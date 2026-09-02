@@ -157,17 +157,80 @@ py_test(
     ],
 )
 
+py_test(
+    name = "retry_policy_test",
+    size = "small",
+    srcs = ["tests/test_retry_policy.py"],
+    data = [":governed_sources"],
+    legacy_create_init = 0,
+    main = "tests/test_retry_policy.py",
+    deps = [
+        ":mindclade_internal_sdk",
+        "//protocols/generated/python:bindings",
+        "@mindclade_pypi//grpcio",
+        "@mindclade_pypi//protobuf",
+    ],
+)
+
+py_test(
+    name = "error_hierarchy_test",
+    size = "small",
+    srcs = ["tests/test_error_hierarchy.py"],
+    data = [":governed_sources"],
+    legacy_create_init = 0,
+    main = "tests/test_error_hierarchy.py",
+    deps = [
+        ":mindclade_internal_sdk",
+        "//protocols/generated/python:bindings",
+        "@mindclade_pypi//grpcio",
+        "@mindclade_pypi//protobuf",
+    ],
+)
+
+py_test(
+    name = "pagination_test",
+    size = "small",
+    srcs = ["tests/test_pagination.py"],
+    data = [":governed_sources"],
+    legacy_create_init = 0,
+    main = "tests/test_pagination.py",
+    deps = [
+        ":mindclade_internal_sdk",
+        "//protocols/generated/python:bindings",
+        "@mindclade_pypi//protobuf",
+    ],
+)
+
+py_test(
+    name = "raw_response_test",
+    size = "small",
+    srcs = ["tests/test_raw_response.py"],
+    data = [":governed_sources"],
+    legacy_create_init = 0,
+    main = "tests/test_raw_response.py",
+    deps = [
+        ":mindclade_internal_sdk",
+        "//protocols/generated/python:bindings",
+        "@mindclade_pypi//grpcio",
+        "@mindclade_pypi//protobuf",
+    ],
+)
+
 test_suite(
     name = "tests",
     tests = [
         ":agent_test",
         ":artifact_operation_gap_test",
+        ":error_hierarchy_test",
         ":evaluation_test",
         ":experiment_test",
         ":inference_test",
         ":internal_sdk_test",
         ":job_run_test",
+        ":pagination_test",
         ":policy_admin_test",
+        ":raw_response_test",
+        ":retry_policy_test",
         ":training_lifecycle_test",
         ":workflow_test",
     ],

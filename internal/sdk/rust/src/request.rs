@@ -187,6 +187,8 @@ pub struct CallOptions {
     trace_id: Option<String>,
     timeout: Option<Duration>,
     lease_token: Option<SensitiveLeaseToken>,
+    max_attempts: Option<u8>,
+    unsafe_retry_acknowledged: bool,
 }
 
 impl CallOptions {
@@ -234,6 +236,45 @@ impl CallOptions {
         Ok(self)
     }
 
+    /// Overrides the configured attempt budget for this call only.
+    ///
+    /// The timeout remains a total budget across every attempt, so a larger
+    /// attempt count never extends the caller's deadline.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error unless the count is between one and eight, matching
+    /// the bound [`crate::RetryPolicy`] enforces.
+    pub fn with_max_attempts(mut self, attempts: u8) -> Result<Self, Error> {
+        if !(1..=8).contains(&attempts) {
+            return Err(Error::invalid_argument(
+                "per-request retry attempts must be between one and eight",
+            ));
+        }
+        self.max_attempts = Some(attempts);
+        Ok(self)
+    }
+
+    /// Retries an RPC this SDK classifies as non-idempotent.
+    ///
+    /// The name is deliberate and there is no bare boolean equivalent: the
+    /// caller asserts that the RPC is externally deduplicated, and accepts
+    /// that a retry may produce a second durable effect. It cannot be applied
+    /// to an RPC that is already retryable, and it can never make a raw-only
+    /// never-retry RPC retryable.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error unless the count is between one and eight.
+    pub fn with_unsafe_retry_of_non_idempotent_rpc(
+        mut self,
+        attempts: u8,
+    ) -> Result<Self, Error> {
+        self = self.with_max_attempts(attempts)?;
+        self.unsafe_retry_acknowledged = true;
+        Ok(self)
+    }
+
     /// Selects the raw scheduler-issued lease credential for a fenced worker
     /// command. Ordinary RPCs deliberately ignore this field; only a fenced
     /// facade can activate it through `prepare_fenced`.
@@ -271,6 +312,8 @@ impl CallOptions {
             deadline: Instant::now() + timeout,
             wall_deadline: SystemTime::now() + timeout,
             lease_token: None,
+            max_attempts: self.max_attempts,
+            unsafe_retry_acknowledged: self.unsafe_retry_acknowledged,
         }
     }
 
@@ -378,6 +421,8 @@ pub(crate) struct PreparedCall {
     pub(crate) deadline: Instant,
     pub(crate) wall_deadline: SystemTime,
     pub(crate) lease_token: Option<SensitiveLeaseToken>,
+    pub(crate) max_attempts: Option<u8>,
+    pub(crate) unsafe_retry_acknowledged: bool,
 }
 
 #[derive(Clone)]
@@ -408,6 +453,16 @@ impl fmt::Debug for SensitiveLeaseToken {
 }
 
 impl PreparedCall {
+    /// Returns the budget still available to this call.
+    ///
+    /// The deadline is a total budget spanning credential acquisition and
+    /// every retry, so each consumer reads it through this one accessor.
+    pub(crate) fn remaining(&self) -> Result<Duration, Error> {
+        self.deadline
+            .checked_duration_since(Instant::now())
+            .ok_or_else(Error::deadline_exceeded)
+    }
+
     pub(crate) fn deadline_timestamp(&self) -> Result<Timestamp, Error> {
         let value = self
             .wall_deadline

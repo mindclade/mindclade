@@ -39,16 +39,18 @@ import {
 } from "../../../../protocols/generated/typescript/workflow/v1/workflow_run_pb.js";
 import type { ClientCore } from "./core.js";
 import { MindcladeError } from "./error.js";
+import { listPage, type Page, withPageToken } from "./pagination.js";
 import {
 	callHeaders,
 	commandContext,
+	type ListOptions,
 	type PreparedCall,
 	prepareCall,
 	type SdkCallOptions,
 	type SubmitOptions,
 	type WaitOptions,
 } from "./request.js";
-import { ensureActive, invokeUnary, retryDelay } from "./retry.js";
+import { ensureActive, invokeUnary, retryableAttempts, retryDelay } from "./retry.js";
 import { registeredMethodSafety } from "./safety.js";
 
 const CREATE = "/mindclade.internal.workflow.v1.WorkflowService/CreateWorkflowDefinition";
@@ -191,22 +193,35 @@ export class Workflows {
 		return clone(WorkflowDefinitionSchema, response.workflowDefinition);
 	}
 
+	/** Returns the first page, which also iterates the whole cursor. */
 	async listDefinitions(
 		input: MessageInitShape<typeof ListWorkflowDefinitionsRequestSchema> = {},
-		options: SdkCallOptions = {},
-	): Promise<ListWorkflowDefinitionsResponse> {
+		options: ListOptions = {},
+	): Promise<Page<WorkflowDefinition, ListWorkflowDefinitionsResponse>> {
 		ensureUnfenced(options);
 		const request = create(ListWorkflowDefinitionsRequestSchema, input);
 		request.parent = normalizeParent(this.#core, request.parent);
 		validatePage(request.page?.pageSize);
-		const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
-		return await invokeUnary(
-			this.#core,
-			prepared,
-			registeredMethodSafety(LIST_DEFINITIONS),
-			undefined,
-			(call) => this.#core.raw.workflows.listWorkflowDefinitions(request, call),
-		);
+		return await listPage({
+			cursor: (response) => response.page?.nextPageToken ?? "",
+			fetch: async (pageToken) => {
+				const paged = withPageToken(ListWorkflowDefinitionsRequestSchema, request, pageToken);
+				const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
+				const response = await invokeUnary(
+					this.#core,
+					prepared,
+					registeredMethodSafety(LIST_DEFINITIONS),
+					undefined,
+					(call) => this.#core.raw.workflows.listWorkflowDefinitions(paged, call),
+				);
+				return { requestId: prepared.requestId, response };
+			},
+			items: (response) => response.workflowDefinitions,
+			limits: options.limits,
+			pageSize: request.page?.pageSize ?? 0,
+			pageToken: request.page?.pageToken ?? "",
+			signal: options.signal,
+		});
 	}
 
 	async startRun(
@@ -268,22 +283,35 @@ export class Workflows {
 		return requiredRun(response.workflowRun, "GetWorkflowRun");
 	}
 
+	/** Returns the first page, which also iterates the whole cursor. */
 	async listRuns(
 		input: MessageInitShape<typeof ListWorkflowRunsRequestSchema> = {},
-		options: SdkCallOptions = {},
-	): Promise<ListWorkflowRunsResponse> {
+		options: ListOptions = {},
+	): Promise<Page<WorkflowRun, ListWorkflowRunsResponse>> {
 		ensureUnfenced(options);
 		const request = create(ListWorkflowRunsRequestSchema, input);
 		request.parent = normalizeParent(this.#core, request.parent);
 		validatePage(request.page?.pageSize);
-		const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
-		return await invokeUnary(
-			this.#core,
-			prepared,
-			registeredMethodSafety(LIST_RUNS),
-			undefined,
-			(call) => this.#core.raw.workflows.listWorkflowRuns(request, call),
-		);
+		return await listPage({
+			cursor: (response) => response.page?.nextPageToken ?? "",
+			fetch: async (pageToken) => {
+				const paged = withPageToken(ListWorkflowRunsRequestSchema, request, pageToken);
+				const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
+				const response = await invokeUnary(
+					this.#core,
+					prepared,
+					registeredMethodSafety(LIST_RUNS),
+					undefined,
+					(call) => this.#core.raw.workflows.listWorkflowRuns(paged, call),
+				);
+				return { requestId: prepared.requestId, response };
+			},
+			items: (response) => response.workflowRuns,
+			limits: options.limits,
+			pageSize: request.page?.pageSize ?? 0,
+			pageToken: request.page?.pageToken ?? "",
+			signal: options.signal,
+		});
 	}
 
 	async cancelRun(
@@ -394,7 +422,10 @@ export class Workflows {
 			});
 			try {
 				const stream = this.#core.raw.workflows.watchWorkflowRun(request, {
-					headers: callHeaders(this.#core.config, prepared),
+					headers: callHeaders(this.#core.config, prepared, {
+						attempt: failures,
+						remainingMs: prepared.deadlineMs - this.#core.runtime.nowMs(),
+					}),
 					timeoutMs: Math.max(1, prepared.deadlineMs - this.#core.runtime.nowMs()),
 					...(prepared.signal === undefined ? {} : { signal: prepared.signal }),
 				});
@@ -420,9 +451,12 @@ export class Workflows {
 					reason,
 					prepared.signal,
 					this.#core.runtime.nowMs() >= prepared.deadlineMs,
+					{ clampMs: this.#core.config.retry.maxBackoffMs },
 				);
 				failures += 1;
-				if (!error.retryable || failures >= this.#core.config.retry.maxAttempts) throw error;
+				if (!error.retryable || failures >= retryableAttempts(this.#core, prepared, "safe")) {
+					throw error;
+				}
 				const delay = retryDelay(this.#core, failures, error.retryAfterMs);
 				if (delay >= prepared.deadlineMs - this.#core.runtime.nowMs()) {
 					throw MindcladeError.deadlineExceeded();
