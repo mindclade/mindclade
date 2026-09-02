@@ -8,6 +8,8 @@ from mindclade.artifact.v1.artifact_reference_pb2 import ArtifactRef as Artifact
 from mindclade.artifact.v1.evidence_reference_pb2 import EvidenceRef as EvidenceRef
 from mindclade.schema.v1.bindings import (
     ArtifactManifest as ArtifactManifest,
+)
+from mindclade.schema.v1.bindings import (
     decode_artifact_manifest,
 )
 
