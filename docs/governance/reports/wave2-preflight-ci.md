@@ -73,16 +73,19 @@ Not run / integration dependent:
 ## Native dependency license closure follow-up
 
 ### Summary
+
 - Commit `ccb85e9` replaces false no-third-party claims with deterministic, fail-closed enumeration of the resolved Cargo.lock, go.sum/go.mod, and pnpm-lock.yaml authorities.
 - The policy now covers 21 Cargo registry packages, 16 Go checksum module/version identities, and 3 pnpm package identities. Workspace/root records remain explicit in the canonical inventory.
 - Parser self-tests cover direct/transitive classification, stable ordering, integrity/hash propagation, go.mod-to-go.sum validation, and rejection of an identity missing from policy.
 
 ### Changed files
+
 - `tools/licenses/scan_licenses.py`
 - `tools/licenses/allowlist.yaml`
 - `tools/BUILD.bazel`
 
 ### Tests/results
+
 - PASS: `python3.12 tools/licenses/scan_licenses.py --self-test`.
 - PASS: Ruff check and Ruff format check for the scanner.
 - PASS: Pyright for the scanner, 0 errors and 0 warnings.
@@ -93,12 +96,15 @@ Not run / integration dependent:
 - EXPECTED INTEGRATION DIFFERENCE: regenerated NOTICE differs at line 54 because the newly enumerated native dependency closures are absent from the committed root NOTICE.
 
 ### Risks/follow-ups
+
 - Go evidence conservatively enumerates every module/version checksum retained in go.sum, including historical versions, while verifying each go.mod requirement is represented. It does not claim the checksum set is the minimal selected module graph.
 - License classifications are pinned repository policy assertions; this source-side shard did not perform connected upstream license-document retrieval or legal review.
 - pnpm parsing is deliberately bound to the pinned v9.0 lockfile shape and fails closed on an authority format change.
 
 ### Connected setup requirements
+
 - None added. This scanner emits source-side inventory only and claims no connected qualification or legal approval.
 
 ### Requested shared changes
+
 - Regenerate and review the root `NOTICE` from the new inventory in an integration change; root NOTICE is outside this shard's allowed paths.
