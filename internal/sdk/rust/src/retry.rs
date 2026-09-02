@@ -3,23 +3,27 @@ use std::{
     fmt,
     future::Future,
     hash::{BuildHasher, Hash, Hasher},
+    io::Write,
     pin::Pin,
     sync::{
         Arc,
         atomic::{AtomicU64, Ordering},
     },
-    time::{Duration, SystemTime, UNIX_EPOCH},
+    time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
 
 use sha2::{Digest, Sha256};
 use tonic::{
-    Request, Response as TonicResponse, Status, codegen::async_trait, metadata::MetadataValue,
+    Code, Request, Response as TonicResponse, Status,
+    codegen::async_trait,
+    metadata::{AsciiMetadataKey, KeyRef, MetadataValue},
 };
 
 use crate::{
     ClientCore, Error, ErrorKind, RpcTransport,
+    config::sdk_metadata_value,
     error::{FinalCause, RETRY_COUNT_METADATA, RetryAttemptSummary, TIMEOUT_MS_METADATA},
-    request::{PreparedCall, Response},
+    request::{InterceptContext, InterceptorMetadata, PreparedCall, Response},
 };
 
 /// Bounded rejection-sampling attempts before an unbiased draw is abandoned in
@@ -344,12 +348,246 @@ impl JitterSource for SystemJitter {
     }
 }
 
+/// Diagnostic verbosity for SDK-emitted telemetry.
+///
+/// The value comes from `MINDCLADE_LOG` through [`crate::Config::from_env`],
+/// or from [`crate::ConfigBuilder::log_level`]. Nothing is emitted at
+/// [`LogLevel::Off`].
+#[derive(Clone, Copy, Debug, Default, Eq, Ord, PartialEq, PartialOrd)]
+pub enum LogLevel {
+    #[default]
+    Off,
+    Error,
+    Warn,
+    Info,
+    Debug,
+    Trace,
+}
+
+impl LogLevel {
+    /// Parses a `MINDCLADE_LOG` value, case-insensitively.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error for an unrecognized level.
+    pub fn parse(value: &str) -> Result<Self, Error> {
+        match value.trim().to_ascii_lowercase().as_str() {
+            "off" | "none" | "" => Ok(Self::Off),
+            "error" => Ok(Self::Error),
+            "warn" | "warning" => Ok(Self::Warn),
+            "info" => Ok(Self::Info),
+            "debug" => Ok(Self::Debug),
+            "trace" => Ok(Self::Trace),
+            _ => Err(Error::configuration(
+                "MINDCLADE_LOG must be off, error, warn, info, debug, or trace",
+            )),
+        }
+    }
+
+    #[must_use]
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Off => "off",
+            Self::Error => "error",
+            Self::Warn => "warn",
+            Self::Info => "info",
+            Self::Debug => "debug",
+            Self::Trace => "trace",
+        }
+    }
+}
+
+/// One issued attempt of a call.
+#[derive(Clone, Copy, Debug)]
+#[non_exhaustive]
+pub struct AttemptEvent<'a> {
+    /// Fully qualified gRPC route.
+    pub method: &'a str,
+    /// One-based attempt number.
+    pub attempt: u8,
+    /// Time spent on this attempt alone.
+    pub elapsed: Duration,
+    /// Terminal status of the attempt; `None` while it is still in flight.
+    pub status: Option<Code>,
+    pub request_id: &'a str,
+    pub trace_id: &'a str,
+    /// Outbound metadata KEY NAMES. Values are never carried.
+    pub metadata_keys: &'a [&'a str],
+}
+
+/// A retry that the SDK decided to take, reported before it sleeps.
+#[derive(Clone, Copy, Debug)]
+#[non_exhaustive]
+pub struct RetryEvent<'a> {
+    pub method: &'a str,
+    /// The attempt number that just failed.
+    pub attempt: u8,
+    /// Delay before the next attempt.
+    pub delay: Duration,
+    pub status: Option<Code>,
+    pub request_id: &'a str,
+}
+
+/// The terminal outcome of a call, success or failure.
+#[derive(Clone, Copy, Debug)]
+#[non_exhaustive]
+pub struct CallEvent<'a> {
+    pub method: &'a str,
+    /// Attempts actually issued.
+    pub attempts: u32,
+    /// Wall time across every attempt and every backoff.
+    pub elapsed: Duration,
+    /// Total time spent sleeping between attempts.
+    pub cumulative_delay: Duration,
+    pub status: Option<Code>,
+    pub final_cause: FinalCause,
+    pub request_id: &'a str,
+    pub trace_id: &'a str,
+}
+
+/// Structured call telemetry.
+///
+/// Events carry method, attempt, elapsed time, status, correlation identity,
+/// and metadata KEY NAMES only. They never carry a request or response
+/// payload, a credential, a lease token, or any metadata value.
+pub trait Observer: Send + Sync + fmt::Debug {
+    /// Called once per issued attempt, after it settles.
+    fn on_attempt(&self, event: &AttemptEvent<'_>) {
+        let _ = event;
+    }
+
+    /// Called once per retry decision, before the backoff sleep.
+    fn on_retry(&self, event: &RetryEvent<'_>) {
+        let _ = event;
+    }
+
+    /// Called exactly once per call, on success or terminal failure.
+    fn on_call_complete(&self, event: &CallEvent<'_>) {
+        let _ = event;
+    }
+}
+
+/// Writes every observer event to standard error as one bounded line.
+///
+/// This is the SDK's built-in `MINDCLADE_LOG` sink. It honours the same
+/// no-payload, no-token, key-names-only contract as any other observer.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct LoggingObserver {
+    level: LogLevel,
+}
+
+impl LoggingObserver {
+    #[must_use]
+    pub fn new(level: LogLevel) -> Self {
+        Self { level }
+    }
+
+    #[must_use]
+    pub fn level(self) -> LogLevel {
+        self.level
+    }
+
+    fn emit(self, level: LogLevel, fields: &str) {
+        if self.level == LogLevel::Off || level > self.level {
+            return;
+        }
+        let mut stderr = std::io::stderr().lock();
+        let _ = writeln!(stderr, "mindclade-sdk {} {fields}", level.label());
+    }
+}
+
+impl Observer for LoggingObserver {
+    fn on_attempt(&self, event: &AttemptEvent<'_>) {
+        self.emit(
+            LogLevel::Debug,
+            &format!(
+                "attempt method={} attempt={} elapsed_ms={} status={} request_id={} trace_id={} metadata_keys=[{}]",
+                event.method,
+                event.attempt,
+                event.elapsed.as_millis(),
+                status_label(event.status),
+                event.request_id,
+                event.trace_id,
+                event.metadata_keys.join(","),
+            ),
+        );
+    }
+
+    fn on_retry(&self, event: &RetryEvent<'_>) {
+        self.emit(
+            LogLevel::Warn,
+            &format!(
+                "retry method={} attempt={} delay_ms={} status={} request_id={}",
+                event.method,
+                event.attempt,
+                event.delay.as_millis(),
+                status_label(event.status),
+                event.request_id,
+            ),
+        );
+    }
+
+    fn on_call_complete(&self, event: &CallEvent<'_>) {
+        let level = if event.status == Some(Code::Ok) {
+            LogLevel::Info
+        } else {
+            LogLevel::Error
+        };
+        self.emit(
+            level,
+            &format!(
+                "call method={} attempts={} elapsed_ms={} cumulative_delay_ms={} status={} final_cause={:?} request_id={} trace_id={}",
+                event.method,
+                event.attempts,
+                event.elapsed.as_millis(),
+                event.cumulative_delay.as_millis(),
+                status_label(event.status),
+                event.final_cause,
+                event.request_id,
+                event.trace_id,
+            ),
+        );
+    }
+}
+
+fn status_label(status: Option<Code>) -> &'static str {
+    status.map_or("none", |code| code.description())
+}
+
+impl ClientCore {
+    /// Fans one attempt event out to every configured observer.
+    pub(crate) fn observe_attempt(&self, event: &AttemptEvent<'_>) {
+        for observer in self.config.observers.iter() {
+            observer.on_attempt(event);
+        }
+    }
+
+    /// Fans one retry decision out to every configured observer.
+    pub(crate) fn observe_retry(&self, event: &RetryEvent<'_>) {
+        for observer in self.config.observers.iter() {
+            observer.on_retry(event);
+        }
+    }
+
+    /// Fans one terminal call outcome out to every configured observer.
+    pub(crate) fn observe_call(&self, event: &CallEvent<'_>) {
+        for observer in self.config.observers.iter() {
+            observer.on_call_complete(event);
+        }
+    }
+
+    /// Reports whether any observer is listening at all.
+    pub(crate) fn observed(&self) -> bool {
+        !self.config.observers.is_empty()
+    }
+}
+
 impl ClientCore {
     pub(crate) async fn unary<T, R, F>(
         &self,
         message: T,
         prepared: &PreparedCall,
-        safety: CallSafety,
+        policy: CallPolicy,
         idempotency_key: Option<&str>,
         invoke: F,
     ) -> Result<Response<R>, Error>
@@ -358,17 +596,19 @@ impl ClientCore {
         R: Send + 'static,
         F: Fn(Arc<dyn RpcTransport>, Request<T>) -> RpcFuture<R>,
     {
-        if matches!(safety, CallSafety::Idempotent) && idempotency_key.is_none() {
+        if matches!(policy.safety(), CallSafety::Idempotent) && idempotency_key.is_none() {
             return Err(Error::invalid_argument(
                 "idempotent commands require an idempotency key",
             ));
         }
-        let attempts = self.attempt_budget(prepared, safety)?;
+        let route = policy.route();
+        let attempts = self.attempt_budget(prepared, policy.safety())?;
+        let started = Instant::now();
         let mut progress = RetryProgress::default();
         let mut attempt: u8 = 1;
         loop {
             let request = match self
-                .request(message.clone(), prepared, idempotency_key, attempt - 1)
+                .request(message.clone(), prepared, idempotency_key, attempt - 1, route)
                 .await
             {
                 Ok(request) => request,
@@ -378,17 +618,19 @@ impl ClientCore {
                     } else {
                         FinalCause::CredentialFailure
                     };
-                    return Err(error.with_attempts(progress.summary()));
+                    return Err(self.finish(route, prepared, started, progress, None, error));
                 }
             };
             let remaining = match prepared.remaining() {
                 Ok(remaining) => remaining,
                 Err(error) => {
                     progress.cause = FinalCause::DeadlineExceeded;
-                    return Err(error.with_attempts(progress.summary()));
+                    return Err(self.finish(route, prepared, started, progress, None, error));
                 }
             };
             progress.attempts = u32::from(attempt);
+            let metadata_keys = self.attempt_metadata_keys(&request);
+            let attempt_started = Instant::now();
             let invocation =
                 match tokio::time::timeout(remaining, invoke(Arc::clone(&self.transport), request))
                     .await
@@ -396,11 +638,50 @@ impl ClientCore {
                     Ok(invocation) => invocation,
                     Err(_elapsed) => {
                         progress.cause = FinalCause::DeadlineExceeded;
-                        return Err(Error::deadline_exceeded().with_attempts(progress.summary()));
+                        self.report_attempt(
+                            route,
+                            prepared,
+                            attempt,
+                            attempt_started,
+                            Some(Code::DeadlineExceeded),
+                            &metadata_keys,
+                        );
+                        return Err(self.finish(
+                            route,
+                            prepared,
+                            started,
+                            progress,
+                            Some(Code::DeadlineExceeded),
+                            Error::deadline_exceeded(),
+                        ));
                     }
                 };
+            let attempt_status = match &invocation {
+                Ok(_) => Code::Ok,
+                Err(status) => status.code(),
+            };
+            self.report_attempt(
+                route,
+                prepared,
+                attempt,
+                attempt_started,
+                Some(attempt_status),
+                &metadata_keys,
+            );
             match invocation {
-                Ok(response) => return Ok(Response::from_tonic(response)),
+                Ok(response) => {
+                    self.observe_call(&CallEvent {
+                        method: route,
+                        attempts: progress.attempts,
+                        elapsed: started.elapsed(),
+                        cumulative_delay: progress.cumulative_delay,
+                        status: Some(Code::Ok),
+                        final_cause: FinalCause::NotRetried,
+                        request_id: &prepared.request_id,
+                        trace_id: &prepared.trace_id,
+                    });
+                    return Ok(Response::from_tonic(response));
+                }
                 Err(status) => {
                     let error = Error::from_status(&status);
                     if !error.is_retryable() {
@@ -409,17 +690,42 @@ impl ClientCore {
                         } else {
                             FinalCause::NonRetryableStatus
                         };
-                        return Err(error.with_attempts(progress.summary()));
+                        return Err(
+                            self.finish(
+                            route,
+                            prepared,
+                            started,
+                            progress,
+                            Some(status.code()),
+                            error,
+                        )
+                        );
                     }
                     if attempt >= attempts {
                         progress.cause = FinalCause::AttemptsExhausted;
-                        return Err(error.with_attempts(progress.summary()));
+                        return Err(
+                            self.finish(
+                            route,
+                            prepared,
+                            started,
+                            progress,
+                            Some(status.code()),
+                            error,
+                        )
+                        );
                     }
                     let remaining = match prepared.remaining() {
                         Ok(remaining) => remaining,
                         Err(error) => {
                             progress.cause = FinalCause::DeadlineExceeded;
-                            return Err(error.with_attempts(progress.summary()));
+                            return Err(self.finish(
+                                route,
+                                prepared,
+                                started,
+                                progress,
+                                Some(status.code()),
+                                error,
+                            ));
                         }
                     };
                     // A server-pinned `retry-after-ms` is authoritative but
@@ -432,14 +738,95 @@ impl ClientCore {
                     );
                     if delay >= remaining {
                         progress.cause = FinalCause::DeadlineExceeded;
-                        return Err(Error::deadline_exceeded().with_attempts(progress.summary()));
+                        return Err(self.finish(
+                            route,
+                            prepared,
+                            started,
+                            progress,
+                            Some(status.code()),
+                            Error::deadline_exceeded(),
+                        ));
                     }
+                    self.observe_retry(&RetryEvent {
+                        method: route,
+                        attempt,
+                        delay,
+                        status: Some(status.code()),
+                        request_id: &prepared.request_id,
+                    });
                     self.sleeper.sleep(delay).await;
                     progress.cumulative_delay = progress.cumulative_delay.saturating_add(delay);
                     attempt += 1;
                 }
             }
         }
+    }
+
+    /// Collects outbound metadata KEY NAMES for observers. Values are never
+    /// read, and nothing is collected when no observer is listening.
+    fn attempt_metadata_keys<T>(&self, request: &Request<T>) -> Vec<String> {
+        if !self.observed() {
+            return Vec::new();
+        }
+        request
+            .metadata()
+            .keys()
+            .filter_map(|key| match key {
+                KeyRef::Ascii(key) => Some(key.as_str().to_owned()),
+                KeyRef::Binary(key) => Some(key.as_str().to_owned()),
+            })
+            .collect()
+    }
+
+    fn report_attempt(
+        &self,
+        route: &str,
+        prepared: &PreparedCall,
+        attempt: u8,
+        started: Instant,
+        status: Option<Code>,
+        metadata_keys: &[String],
+    ) {
+        if !self.observed() {
+            return;
+        }
+        let keys = metadata_keys
+            .iter()
+            .map(String::as_str)
+            .collect::<Vec<&str>>();
+        self.observe_attempt(&AttemptEvent {
+            method: route,
+            attempt,
+            elapsed: started.elapsed(),
+            status,
+            request_id: &prepared.request_id,
+            trace_id: &prepared.trace_id,
+            metadata_keys: &keys,
+        });
+    }
+
+    /// Decorates a terminal failure with its retry accounting and reports the
+    /// completed call exactly once.
+    fn finish(
+        &self,
+        route: &str,
+        prepared: &PreparedCall,
+        started: Instant,
+        progress: RetryProgress,
+        status: Option<Code>,
+        error: Error,
+    ) -> Error {
+        self.observe_call(&CallEvent {
+            method: route,
+            attempts: progress.attempts,
+            elapsed: started.elapsed(),
+            cumulative_delay: progress.cumulative_delay,
+            status,
+            final_cause: progress.cause,
+            request_id: &prepared.request_id,
+            trace_id: &prepared.trace_id,
+        });
+        error.with_attempts(progress.summary())
     }
 
     /// Resolves the attempt budget for one call.
@@ -484,6 +871,7 @@ impl ClientCore {
         prepared: &PreparedCall,
         idempotency_key: Option<&str>,
         attempt_index: u8,
+        route: &str,
     ) -> Result<Request<T>, Error> {
         let remaining = prepared.remaining()?;
         let authorization = if let Some(provider) = &self.config.token_provider {
@@ -500,10 +888,18 @@ impl ClientCore {
 
         let mut request = Request::new(message);
         request.set_timeout(remaining);
+        // Caller metadata is written first so an SDK-owned key always wins,
+        // even though the validators already refuse every reserved key.
+        for (key, value) in self.config.custom_metadata.iter() {
+            insert_dynamic_metadata(&mut request, key, value)?;
+        }
+        for (key, value) in &prepared.metadata {
+            insert_dynamic_metadata(&mut request, key, value)?;
+        }
         insert_metadata(
             &mut request,
             "x-mindclade-sdk",
-            "mindclade-internal-rust-sdk/0.1",
+            sdk_metadata_value(self.config.omit_platform_metadata),
         )?;
         insert_metadata(&mut request, "x-request-id", &prepared.request_id)?;
         insert_metadata(&mut request, "x-trace-id", &prepared.trace_id)?;
@@ -537,6 +933,25 @@ impl ClientCore {
         if let Some(value) = idempotency_key {
             insert_metadata(&mut request, "idempotency-key", value)?;
         }
+
+        // Caller interceptors run after all SDK metadata and before any
+        // credential is attached. `InterceptorMetadata` cannot read values and
+        // refuses reserved and credential-bearing keys, so credential
+        // injection below is not reachable from this seam.
+        if !self.config.interceptors.is_empty() {
+            let context = InterceptContext {
+                method: route,
+                attempt: attempt_index,
+                request_id: &prepared.request_id,
+                trace_id: &prepared.trace_id,
+                remaining,
+            };
+            let mut view = InterceptorMetadata::new(request.metadata_mut());
+            for interceptor in self.config.interceptors.iter() {
+                interceptor.intercept(&context, &mut view)?;
+            }
+        }
+
         if let Some(value) = &prepared.lease_token {
             let mut token = MetadataValue::try_from(value.expose())
                 .map_err(|_| Error::invalid_argument("lease token is not valid metadata"))?;
@@ -575,6 +990,20 @@ fn insert_metadata<T>(
     key: &'static str,
     value: &str,
 ) -> Result<(), Error> {
+    let value = MetadataValue::try_from(value)
+        .map_err(|_| Error::invalid_argument("request metadata is not valid ASCII"))?;
+    request.metadata_mut().insert(key, value);
+    Ok(())
+}
+
+/// Inserts one caller-supplied metadata entry under a runtime key.
+fn insert_dynamic_metadata<T>(
+    request: &mut Request<T>,
+    key: &str,
+    value: &str,
+) -> Result<(), Error> {
+    let key = AsciiMetadataKey::from_bytes(key.as_bytes())
+        .map_err(|_| Error::invalid_argument("request metadata key is not valid"))?;
     let value = MetadataValue::try_from(value)
         .map_err(|_| Error::invalid_argument("request metadata is not valid ASCII"))?;
     request.metadata_mut().insert(key, value);

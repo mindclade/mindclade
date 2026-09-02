@@ -155,6 +155,10 @@ Every streaming reader in the package is the same generic `StreamWatcher`.
 `Watcher`, `InferenceWatcher`, `TrainingWatcher`, and `WorkflowWatcher` are
 aliases of it, so their message and cursor types are unchanged.
 
+`Operations.Watch` opens a stream from a sequence number; `Operations.ResumeWatch`
+opens the same stream from a cursor persisted by an earlier reader. Both return
+the same watcher:
+
 ```go
 watcher, err := client.Operations.ResumeWatch(ctx, name, persistedCursor)
 if err != nil {

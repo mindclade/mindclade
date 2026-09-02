@@ -4,6 +4,7 @@ use std::{
     future::Future,
     pin::Pin,
     sync::atomic::{AtomicU64, Ordering},
+    task::{Context, Poll},
     time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
 
@@ -232,6 +233,177 @@ pub fn is_credential_bearing(key: &str) -> bool {
         || CREDENTIAL_METADATA_PATTERNS
             .iter()
             .any(|pattern| key.contains(pattern))
+}
+
+/// Metadata keys the SDK owns outright. A caller may never set, replace, or
+/// remove one, through configuration, per-request metadata, or an interceptor.
+const RESERVED_METADATA_KEYS: [&str; 3] = ["content-type", "idempotency-key", "te"];
+
+/// Reserved key prefixes. `x-mindclade-` covers every current and future SDK
+/// control key, including the correlation and retry-accounting keys.
+const RESERVED_METADATA_PREFIXES: [&str; 3] = ["grpc-", "x-mindclade-", ":"];
+
+/// Maximum number of caller-supplied metadata entries on one request.
+pub const MAX_CUSTOM_METADATA_ENTRIES: usize = 16;
+
+/// Validates a caller-supplied metadata key.
+///
+/// Keys must be lowercase gRPC-safe tokens that are neither credential
+/// bearing nor reserved by the SDK, so pass-through metadata can never
+/// smuggle a credential or displace SDK identity.
+///
+/// # Errors
+///
+/// Returns an error for an empty, oversized, non-canonical, credential
+/// bearing, or reserved key.
+pub fn validate_custom_metadata_key(key: &str) -> Result<(), Error> {
+    if key.is_empty() || key.len() > 64 {
+        return Err(Error::invalid_argument(
+            "custom metadata key must contain one through sixty-four characters",
+        ));
+    }
+    if !key.bytes().all(|byte| {
+        byte.is_ascii_lowercase() || byte.is_ascii_digit() || matches!(byte, b'-' | b'_' | b'.')
+    }) {
+        return Err(Error::invalid_argument(
+            "custom metadata key must be lowercase ASCII letters, digits, '-', '_', or '.'",
+        ));
+    }
+    if is_credential_bearing(key) {
+        return Err(Error::invalid_argument(
+            "custom metadata key may carry a credential and is refused",
+        ));
+    }
+    if RESERVED_METADATA_KEYS.contains(&key)
+        || key == crate::error::REQUEST_ID_METADATA
+        || key == crate::error::TRACE_ID_METADATA
+        || RESERVED_METADATA_PREFIXES
+            .iter()
+            .any(|prefix| key.starts_with(prefix))
+    {
+        return Err(Error::invalid_argument(
+            "custom metadata key is reserved by the SDK",
+        ));
+    }
+    Ok(())
+}
+
+/// Validates a caller-supplied metadata key and value together.
+///
+/// # Errors
+///
+/// Returns an error for an invalid key or a value that is not bounded
+/// visible ASCII.
+pub fn validate_custom_metadata(key: &str, value: &str) -> Result<(), Error> {
+    validate_custom_metadata_key(key)?;
+    validate_metadata_value("custom metadata value", value, true)
+}
+
+/// Immutable context handed to every [`Interceptor`] on every attempt.
+///
+/// It carries correlation identity and attempt accounting, never the request
+/// payload and never a credential.
+#[derive(Clone, Copy, Debug)]
+#[non_exhaustive]
+pub struct InterceptContext<'a> {
+    /// Fully qualified gRPC route, or an empty string for the raw metadata
+    /// helper that is not bound to one route.
+    pub method: &'a str,
+    /// Zero-based attempt index within the caller's retry budget.
+    pub attempt: u8,
+    /// The correlation identifier the SDK will send.
+    pub request_id: &'a str,
+    /// The distributed trace identifier the SDK will send.
+    pub trace_id: &'a str,
+    /// Budget still available to the whole call, retries included.
+    pub remaining: Duration,
+}
+
+/// A write-only view of outbound request metadata.
+///
+/// Values are deliberately not readable and reserved or credential-bearing
+/// keys are refused, so an interceptor can annotate a request but can never
+/// observe, replace, or strip the SDK's own credential.
+pub struct InterceptorMetadata<'a> {
+    metadata: &'a mut MetadataMap,
+}
+
+impl<'a> InterceptorMetadata<'a> {
+    pub(crate) fn new(metadata: &'a mut MetadataMap) -> Self {
+        Self { metadata }
+    }
+
+    /// Sets one caller metadata entry.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error for a reserved or credential-bearing key, or for a
+    /// value that is not bounded visible ASCII.
+    pub fn insert(&mut self, key: &str, value: &str) -> Result<(), Error> {
+        validate_custom_metadata(key, value)?;
+        let key = AsciiMetadataKey::from_bytes(key.as_bytes())
+            .map_err(|_| Error::invalid_argument("custom metadata key is not valid"))?;
+        let value = tonic::metadata::MetadataValue::try_from(value)
+            .map_err(|_| Error::invalid_argument("custom metadata value is not valid ASCII"))?;
+        self.metadata.insert(key, value);
+        Ok(())
+    }
+
+    /// Removes one caller metadata entry.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error for a reserved or credential-bearing key, so the
+    /// SDK's own metadata cannot be stripped.
+    pub fn remove(&mut self, key: &str) -> Result<(), Error> {
+        validate_custom_metadata_key(key)?;
+        let key = AsciiMetadataKey::from_bytes(key.as_bytes())
+            .map_err(|_| Error::invalid_argument("custom metadata key is not valid"))?;
+        self.metadata.remove(key);
+        Ok(())
+    }
+
+    /// Lists the metadata key names currently on the request.
+    ///
+    /// Key names only: values are never exposed through this seam.
+    #[must_use]
+    pub fn keys(&self) -> Vec<&str> {
+        self.metadata
+            .keys()
+            .filter_map(|key| match key {
+                KeyRef::Ascii(key) => Some(key.as_str()),
+                KeyRef::Binary(_) => None,
+            })
+            .collect()
+    }
+}
+
+impl fmt::Debug for InterceptorMetadata<'_> {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("InterceptorMetadata")
+            .field("keys", &self.keys())
+            .finish()
+    }
+}
+
+/// A caller-supplied hook over outbound request metadata.
+///
+/// Interceptors run after the SDK has installed its own identity, correlation,
+/// and retry-accounting metadata and before the credential is attached.
+/// Credential injection therefore stays inside the SDK and is not reachable
+/// from this seam.
+pub trait Interceptor: Send + Sync + fmt::Debug {
+    /// Inspects and annotates one outbound attempt.
+    ///
+    /// # Errors
+    ///
+    /// Returning an error fails the call without issuing the attempt.
+    fn intercept(
+        &self,
+        context: &InterceptContext<'_>,
+        metadata: &mut InterceptorMetadata<'_>,
+    ) -> Result<(), Error>;
 }
 
 /// Credential-free projection of response metadata.
@@ -613,10 +785,7 @@ impl<T> Pages<T> {
                 return Err(self.exhausted("item"));
             }
             let page = self.fetch_page().await?;
-            self.pending = page.items.into();
-            self.pending_next_token = page.next_page_token;
-            self.pending_request_id = page.request_id;
-            self.pending_read_time = page.read_time;
+            self.buffer(page);
         }
     }
 
@@ -666,10 +835,26 @@ impl<T> Pages<T> {
     }
 
     async fn fetch_page(&mut self) -> Result<Page<T>, Error> {
-        if self.page_hops >= self.limits.max_pages {
-            return Err(self.exhausted("page"));
-        }
-        let page = match (self.fetch)(self.token.clone()).await {
+        // A page already in flight from a `Stream` poll is adopted rather than
+        // re-issued, so the async accessors and the stream adapter can be
+        // mixed without duplicating an RPC.
+        let future = match self.in_flight.take() {
+            Some(future) => future,
+            None => {
+                if self.page_hops >= self.limits.max_pages {
+                    return Err(self.exhausted("page"));
+                }
+                (self.fetch)(self.token.clone())
+            }
+        };
+        let result = future.await;
+        self.accept_page(result)
+    }
+
+    /// Applies the cursor bookkeeping that every fetched page must survive:
+    /// the hop count, the repeated-token guard, and the terminal condition.
+    fn accept_page(&mut self, result: Result<Page<T>, Error>) -> Result<Page<T>, Error> {
+        let page = match result {
             Ok(page) => page,
             Err(error) => {
                 self.failed = true;
@@ -686,6 +871,13 @@ impl<T> Pages<T> {
         self.finished = page.next_page_token.is_empty();
         self.token.clone_from(&page.next_page_token);
         Ok(page)
+    }
+
+    fn buffer(&mut self, page: Page<T>) {
+        self.pending = page.items.into();
+        self.pending_next_token = page.next_page_token;
+        self.pending_request_id = page.request_id;
+        self.pending_read_time = page.read_time;
     }
 
     fn charge_items(&mut self, count: usize) -> Result<(), Error> {
@@ -713,6 +905,54 @@ impl<T> fmt::Debug for Pages<T> {
     }
 }
 
+/// A page cursor is also a `Stream` of items.
+///
+/// The in-flight page future is owned by the cursor rather than borrowed from
+/// it, so the adapter needs no self-referential state and no unsafe code. The
+/// same budgets, repeated-cursor guard, and fail-closed latch apply as when
+/// the cursor is advanced with [`Pages::try_next`].
+impl<T: Send + 'static> Stream for Pages<T> {
+    type Item = Result<T, Error>;
+
+    fn poll_next(self: Pin<&mut Self>, context: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        let cursor = self.get_mut();
+        loop {
+            if cursor.failed {
+                return Poll::Ready(None);
+            }
+            if let Some(item) = cursor.pending.pop_front() {
+                if cursor.items >= cursor.limits.max_items {
+                    return Poll::Ready(Some(Err(cursor.exhausted("item"))));
+                }
+                cursor.items += 1;
+                return Poll::Ready(Some(Ok(item)));
+            }
+            if let Some(future) = cursor.in_flight.as_mut() {
+                let result = match future.as_mut().poll(context) {
+                    Poll::Pending => return Poll::Pending,
+                    Poll::Ready(result) => result,
+                };
+                cursor.in_flight = None;
+                match cursor.accept_page(result) {
+                    Ok(page) => cursor.buffer(page),
+                    Err(error) => return Poll::Ready(Some(Err(error))),
+                }
+                continue;
+            }
+            if cursor.finished {
+                return Poll::Ready(None);
+            }
+            if cursor.items >= cursor.limits.max_items {
+                return Poll::Ready(Some(Err(cursor.exhausted("item"))));
+            }
+            if cursor.page_hops >= cursor.limits.max_pages {
+                return Poll::Ready(Some(Err(cursor.exhausted("page"))));
+            }
+            cursor.in_flight = Some((cursor.fetch)(cursor.token.clone()));
+        }
+    }
+}
+
 /// Per-RPC behavior and correlation metadata. It does not redefine the wire
 /// request.
 #[derive(Clone, Debug, Default)]
@@ -723,12 +963,42 @@ pub struct CallOptions {
     lease_token: Option<SensitiveLeaseToken>,
     max_attempts: Option<u8>,
     unsafe_retry_acknowledged: bool,
+    metadata: Vec<(String, String)>,
 }
 
 impl CallOptions {
     #[must_use]
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// Adds one caller-supplied metadata entry to this call.
+    ///
+    /// Entries are sent ahead of the SDK's own metadata, so an SDK-owned key
+    /// can never be displaced. Credential-bearing and reserved keys are
+    /// refused by the same predicate that filters response metadata.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error for a reserved or credential-bearing key, a value
+    /// that is not bounded visible ASCII, or more than
+    /// [`MAX_CUSTOM_METADATA_ENTRIES`] entries.
+    pub fn with_metadata(
+        mut self,
+        key: impl Into<String>,
+        value: impl Into<String>,
+    ) -> Result<Self, Error> {
+        let key = key.into();
+        let value = value.into();
+        validate_custom_metadata(&key, &value)?;
+        self.metadata.retain(|(existing, _)| existing != &key);
+        if self.metadata.len() >= MAX_CUSTOM_METADATA_ENTRIES {
+            return Err(Error::invalid_argument(
+                "a call may carry at most sixteen custom metadata entries",
+            ));
+        }
+        self.metadata.push((key, value));
+        Ok(self)
     }
 
     /// Sets a caller-provided request identifier.
@@ -845,6 +1115,7 @@ impl CallOptions {
             lease_token: None,
             max_attempts: self.max_attempts,
             unsafe_retry_acknowledged: self.unsafe_retry_acknowledged,
+            metadata: self.metadata.clone(),
         }
     }
 
@@ -954,6 +1225,7 @@ pub(crate) struct PreparedCall {
     pub(crate) lease_token: Option<SensitiveLeaseToken>,
     pub(crate) max_attempts: Option<u8>,
     pub(crate) unsafe_retry_acknowledged: bool,
+    pub(crate) metadata: Vec<(String, String)>,
 }
 
 #[derive(Clone)]

@@ -1,15 +1,85 @@
-use std::{fmt, net::IpAddr, sync::Arc, time::Duration};
+use std::{fmt, net::IpAddr, sync::Arc, sync::OnceLock, time::Duration};
 
 use tonic::codegen::http::Uri;
 
 use crate::{
     Error, TokenProvider,
-    retry::{JitterSource, SystemJitter},
+    request::{Interceptor, validate_custom_metadata},
+    retry::{JitterSource, LogLevel, LoggingObserver, Observer, SystemJitter},
 };
 
 const DEFAULT_RPC_TIMEOUT: Duration = Duration::from_secs(20);
 const DEFAULT_POLL_INTERVAL: Duration = Duration::from_millis(500);
 const DEFAULT_CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
+
+/// Stable product name reported in `x-mindclade-sdk`.
+pub const SDK_NAME: &str = "mindclade-internal-rust-sdk";
+
+/// The single version source for this SDK.
+///
+/// It is stamped into `x-mindclade-sdk` and is asserted against the crate
+/// manifest by a unit test, so the wire value can never drift from the
+/// package version.
+pub const SDK_VERSION: &str = "0.1.0";
+
+/// Upper bound on the `x-mindclade-sdk` value, so platform metadata can never
+/// become an unbounded header.
+const MAX_SDK_METADATA_BYTES: usize = 256;
+
+/// The exhaustive set of environment variables the SDK recognises. No entry
+/// is or may become a credential.
+pub const RECOGNISED_ENVIRONMENT_VARIABLES: [&str; 7] = [
+    "MINDCLADE_AUDIENCE",
+    "MINDCLADE_ENDPOINT",
+    "MINDCLADE_ENVIRONMENT",
+    "MINDCLADE_LOG",
+    "MINDCLADE_PRINCIPAL_ID",
+    "MINDCLADE_PROJECT_ID",
+    "MINDCLADE_TENANT_ID",
+];
+
+static SDK_METADATA_FULL: OnceLock<String> = OnceLock::new();
+static SDK_METADATA_MINIMAL: OnceLock<String> = OnceLock::new();
+
+/// Returns the exact `x-mindclade-sdk` value for this build.
+///
+/// With platform metadata enabled the value carries language, SDK version,
+/// operating system, architecture, async runtime, and runtime version, each
+/// component sanitized to a bounded visible-ASCII token. The compile-time
+/// constants `std::env::consts::{OS, ARCH}` are not environment variables and
+/// are unaffected by the single-env-path rule.
+pub(crate) fn sdk_metadata_value(omit_platform: bool) -> &'static str {
+    if omit_platform {
+        return SDK_METADATA_MINIMAL.get_or_init(|| format!("{SDK_NAME}/{SDK_VERSION}"));
+    }
+    SDK_METADATA_FULL.get_or_init(|| {
+        let value = format!(
+            "{SDK_NAME}/{SDK_VERSION} lang=rust os={} arch={} rt=tokio rtver={}",
+            sdk_metadata_token(std::env::consts::OS),
+            sdk_metadata_token(std::env::consts::ARCH),
+            sdk_metadata_token(option_env!("CARGO_PKG_RUST_VERSION").unwrap_or("unknown")),
+        );
+        if value.len() > MAX_SDK_METADATA_BYTES {
+            format!("{SDK_NAME}/{SDK_VERSION}")
+        } else {
+            value
+        }
+    })
+}
+
+/// Reduces one platform component to a short, bounded, visible-ASCII token.
+fn sdk_metadata_token(value: &str) -> String {
+    let token: String = value
+        .chars()
+        .filter(|character| character.is_ascii_alphanumeric() || matches!(character, '-' | '.' | '_'))
+        .take(32)
+        .collect();
+    if token.is_empty() {
+        "unknown".to_owned()
+    } else {
+        token
+    }
+}
 
 /// A governed Mindclade runtime environment.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -21,6 +91,37 @@ pub enum Environment {
 }
 
 impl Environment {
+    /// Parses a `MINDCLADE_ENVIRONMENT` value.
+    ///
+    /// Recognises `development`, `staging`, and `production`, plus `local`
+    /// for the explicit loopback testing profile.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error for an unrecognized environment name.
+    pub fn parse(value: &str) -> Result<Self, Error> {
+        match value.trim().to_ascii_lowercase().as_str() {
+            "local" => Ok(Self::Local),
+            "development" | "dev" => Ok(Self::Development),
+            "staging" => Ok(Self::Staging),
+            "production" | "prod" => Ok(Self::Production),
+            _ => Err(Error::configuration(
+                "MINDCLADE_ENVIRONMENT must be development, staging, production, or local",
+            )),
+        }
+    }
+
+    /// The canonical lowercase name of this environment.
+    #[must_use]
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Local => "local",
+            Self::Development => "development",
+            Self::Staging => "staging",
+            Self::Production => "production",
+        }
+    }
+
     fn endpoint(self) -> &'static str {
         match self {
             Self::Local => "https://127.0.0.1:9443",

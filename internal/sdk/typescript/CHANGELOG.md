@@ -20,7 +20,23 @@ comments, or formatting are not recorded here.
 
 ## Unmerged — authored against `e99e48d`
 
-Packaging and documentation (WS2.8, WS2.9). No runtime behaviour changes.
+Packaging and documentation (WS2.8, WS2.9), plus two watcher corrections found
+in review.
+
+### Fixed
+
+- `watchStream` looked its reconnect budget up under a hard-coded `safe` safety
+  class instead of the watch route's own classification, which made `safety.ts`
+  no longer the single classifier for the streaming path. It now resolves the
+  class from `source.route`, exactly as the unary path does. No shipped watcher
+  changes behaviour: all four watch routes are `safe`.
+- A watcher failure escaped without the observable retry outcome the unary path
+  attaches. `MindcladeError.retry` is now populated on watcher failures too,
+  reporting the reconnects and cumulative backoff since the last acknowledged
+  update.
+- The README claimed every watcher skips a redelivered prefix. Only `operations`
+  skips; `inference`, `workflows`, and `training` are strictly contiguous and
+  reject a replay as a terminal `protocol` failure. The claim is corrected.
 
 ### Added
 

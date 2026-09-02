@@ -204,8 +204,13 @@ for await (const update of client.operations.watch("operations/op-1041", 0n, {
 
 - Reconnection happens **only** inside the caller's remaining deadline, and
   **only** from the last cursor the caller actually consumed.
-- A redelivered prefix is skipped, never yielded twice.
-- A delivered update resets the consecutive-failure count.
+- A redelivered prefix is never yielded twice. `operations` skips it; the
+  strictly contiguous streams (`inference`, `workflows`, `training`) reject it
+  as a terminal `protocol` failure instead, because for them a replay after a
+  cursor-positioned resume is a server contract violation.
+- A delivered update resets the consecutive-failure count, and the reconnect
+  burst that finally fails is reported on the error as `retry.attempts` /
+  `retry.cumulativeDelayMs` / `retry.cause`, counted since that update.
 - Reconnect eligibility, the attempt ceiling (including a per-request
   `maxAttempts`), and the backoff are exactly the unary path's.
 - Every reconnect advertises `x-mindclade-retry-count` and
