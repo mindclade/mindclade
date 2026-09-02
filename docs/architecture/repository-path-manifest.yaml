@@ -2487,7 +2487,8 @@
         "docs/adr/0004-contract-authority.md",
         "docs/adr/0005-biological-identity.md",
         "docs/adr/0006-durable-work.md",
-        "docs/adr/0007-training-state.md"
+        "docs/adr/0007-training-state.md",
+        ".github/dependabot.yml"
       ],
       "additions": [
         {
@@ -6944,10 +6945,15 @@
           "path": "docs/adr/0007-training-state-progress-and-checkpoint.md",
           "replaces": "docs/adr/0007-training-state.md",
           "reason": "Sections 1-18 and Section 14.1 take precedence over the stale A6 short ADR name."
+        },
+        {
+          "path": ".github/renovate.json",
+          "replaces": ".github/dependabot.yml",
+          "reason": "Dependabot is retired estate-wide; Renovate configuration extending the organization preset in mindclade/.github replaces it."
         }
       ],
       "canonical_file_count": 3566,
-      "canonical_path_set_sha256": "a56bcc77d6845bfb0ebafb453f98918c3370028ea19ffbe1787fec075e752f93"
+      "canonical_path_set_sha256": "edeb8a6ab37f765204a96f27db0026cfb6c0d89e6df25d685c79f835a1af2042"
     },
     "owners": {
       "agent-platform": {
@@ -7520,8 +7526,8 @@
       "public_surface": false
     },
     {
-      "path": ".github/dependabot.yml",
-      "kind": "configuration",
+      "path": ".github/renovate.json",
+      "kind": "data",
       "owner": "developer-platform",
       "component": "repository-github",
       "status": "active",

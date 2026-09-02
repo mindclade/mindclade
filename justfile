@@ -59,6 +59,7 @@ lint:
     pnpm run lint
     shellcheck .buildkite/hooks/environment .buildkite/hooks/pre-command
     actionlint -no-color
+    zizmor --no-progress --offline .github/workflows .github/actions
     yamllint -c .yamllint.yaml .
     if [[ -d protocols ]] && [[ -n "$(find protocols -type f -name '*.proto' -print -quit)" ]]; then buf lint; fi
     just docs
@@ -452,6 +453,11 @@ security:
       --max-target-megabytes 10 \
       --report-format json \
       --report-path {{ evidence_dir }}/secret-scan.v1.json \
+      .
+    osv-scanner scan source \
+      --recursive \
+      --format json \
+      --output {{ evidence_dir }}/vulnerability-scan.v1.json \
       .
 
 # Buildkite fast-presubmit entrypoint.

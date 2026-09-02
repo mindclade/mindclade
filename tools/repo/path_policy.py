@@ -325,6 +325,27 @@ ADR_REPLACEMENTS = {
     "docs/adr/0007-training-state.md": "docs/adr/0007-training-state-progress-and-checkpoint.md",
 }
 
+# Replacements that are not ADR renames. Dependabot was retired estate-wide in favour
+# of a single organization-wide Renovate job; the configuration file is renamed rather
+# than added, so the authority path set and canonical file count are both unchanged.
+ESTATE_REPLACEMENTS = {
+    ".github/dependabot.yml": ".github/renovate.json",
+}
+
+# Every closed replacement, ADR and estate alike. The manifest, the canonical tree and
+# the validator all reason over this union.
+PATH_REPLACEMENTS = {**ADR_REPLACEMENTS, **ESTATE_REPLACEMENTS}
+
+REPLACEMENT_REASONS = {
+    ".github/dependabot.yml": (
+        "Dependabot is retired estate-wide; Renovate configuration extending the "
+        "organization preset in mindclade/.github replaces it."
+    ),
+}
+DEFAULT_REPLACEMENT_REASON = (
+    "Sections 1-18 and Section 14.1 take precedence over the stale A6 short ADR name."
+)
+
 # Sections 14 and 15 require these machine interfaces even though the supplied A6
 # rendering omitted them. These lists are intentionally closed and machine tested.
 CONNECTED_RATIFICATION_SCHEMA = "docs/adr/connected-ratification.v1.schema.json"
@@ -1157,7 +1178,7 @@ def reconcile_authority_paths(source_paths: Sequence[str]) -> list[str]:
             "activation bundle predeclared paths are absent from source authority: "
             f"{sorted(missing_predeclared)!r}"
         )
-    missing = set(ADR_REPLACEMENTS) - source_set
+    missing = set(PATH_REPLACEMENTS) - source_set
     if missing:
         raise PolicyError(f"ADR reconciliation sources are absent: {sorted(missing)!r}")
     if set(REQUIRED_ADDITIONS) & source_set:
@@ -1181,7 +1202,7 @@ def reconcile_authority_paths(source_paths: Sequence[str]) -> list[str]:
     )
     result: list[str] = []
     for path in source_paths:
-        reconciled = ADR_REPLACEMENTS.get(path, path)
+        reconciled = PATH_REPLACEMENTS.get(path, path)
         python_prefix = "protocols/generated/python/"
         if reconciled.startswith(python_prefix) and reconciled not in {
             "protocols/generated/python/BUILD.bazel",
@@ -2039,7 +2060,7 @@ DEFERRED_PREFIXES = (
 
 
 def is_wave_zero_path(path: str) -> bool:
-    if path in WAVE_ZERO_REQUIRED_ADDITIONS or path in ADR_REPLACEMENTS.values():
+    if path in WAVE_ZERO_REQUIRED_ADDITIONS or path in PATH_REPLACEMENTS.values():
         return True
     if "/" not in path:
         return True
@@ -2637,11 +2658,9 @@ def build_manifest(authority_path: Path, blueprint_path: Path) -> dict[str, Any]
         {
             "path": replacement,
             "replaces": original,
-            "reason": (
-                "Sections 1-18 and Section 14.1 take precedence over the stale A6 short ADR name."
-            ),
+            "reason": REPLACEMENT_REASONS.get(original, DEFAULT_REPLACEMENT_REASON),
         }
-        for original, replacement in ADR_REPLACEMENTS.items()
+        for original, replacement in PATH_REPLACEMENTS.items()
     )
     return {
         "$schema": "./repository-path-manifest.schema.json",
@@ -2663,7 +2682,7 @@ def build_manifest(authority_path: Path, blueprint_path: Path) -> dict[str, Any]
             },
             "reconciliation": {
                 "version": "3.4.3",
-                "remove_paths": list(ADR_REPLACEMENTS),
+                "remove_paths": list(PATH_REPLACEMENTS),
                 "additions": additions,
                 "canonical_file_count": len(canonical_paths),
                 "canonical_path_set_sha256": path_set_sha256(canonical_paths),
@@ -2734,9 +2753,9 @@ def validate_manifest(manifest: Mapping[str, Any]) -> list[str]:
         errors.append("reconciliation.additions must be an object array")
         additions = []
     addition_paths = [str(item.get("path", "")) for item in additions]
-    expected_additions = set(REQUIRED_ADDITIONS) | set(ADR_REPLACEMENTS.values())
-    if list(removes) != list(ADR_REPLACEMENTS):
-        errors.append("reconciliation removal list is not the closed ADR replacement set")
+    expected_additions = set(REQUIRED_ADDITIONS) | set(PATH_REPLACEMENTS.values())
+    if list(removes) != list(PATH_REPLACEMENTS):
+        errors.append("reconciliation removal list is not the closed replacement set")
     if set(addition_paths) != expected_additions or len(addition_paths) != len(expected_additions):
         errors.append("reconciliation additions are not the closed approved set")
     replacement_map = {
@@ -2744,8 +2763,8 @@ def validate_manifest(manifest: Mapping[str, Any]) -> list[str]:
         for item in additions
         if item.get("replaces") is not None
     }
-    if replacement_map != ADR_REPLACEMENTS:
-        errors.append("ADR replacement mapping differs from authoritative Section 14 filenames")
+    if replacement_map != PATH_REPLACEMENTS:
+        errors.append("replacement mapping differs from the authoritative closed replacement set")
     try:
         expected: set[str] = set(reconcile_authority_paths(normalized_original))
     except PolicyError as error:
@@ -3250,7 +3269,7 @@ CANONICAL_FILE_COUNT = (  # pyright: ignore[reportConstantRedefinition]
     CANONICAL_FILE_COUNT + len(ESTATE_BUILD_OPTIMIZATION_PATHS) + 1
 )
 CANONICAL_PATH_SET_SHA256 = (  # pyright: ignore[reportConstantRedefinition]
-    "a56bcc77d6845bfb0ebafb453f98918c3370028ea19ffbe1787fec075e752f93"
+    "edeb8a6ab37f765204a96f27db0026cfb6c0d89e6df25d685c79f835a1af2042"
 )
 
 _adr0023_reconciliation_addition_reason = _reconciliation_addition_reason

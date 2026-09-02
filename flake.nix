@@ -209,6 +209,7 @@
             nix
             nixfmt
             nodejs_26
+            osv-scanner
             pnpmNode26
             pre-commit
             pyright
@@ -222,6 +223,7 @@
             toolchainManifest
             uv
             yamllint
+            zizmor
           ]
           ++ lib.optionals stdenv.hostPlatform.isLinux [
             util-linux
@@ -393,7 +395,7 @@
                 }
                 ''
                   set -euo pipefail
-                  command -v bazel buildifier buf cargo cc c++ go java jq just nix nixfmt node pnpm python3 rustc uv >/dev/null
+                  command -v bazel buildifier buf cargo cc c++ go java jq just nix nixfmt node osv-scanner pnpm python3 rustc uv zizmor >/dev/null
                   test "$(bazel --version)" = "bazel 9.1.1"
                   test "$(rustc --version | cut -d' ' -f2)" = '${pkgs.rustc.version}'
                   jq -e '.schema_version == "mindclade-toolchain.v2" and .executables.bazel.version == "9.1.1" and .executables.rustc.version == "${pkgs.rustc.version}" and .executables.go.version == "1.26.7"' \

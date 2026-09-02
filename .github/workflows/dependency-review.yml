@@ -16,7 +16,7 @@ on:
       - "**/pnpm-workspace.yaml"
       - "**/pyproject.toml"
       - "**/uv.lock"
-      - ".github/dependabot.yml"
+      - ".github/renovate.json"
 
 permissions:
   contents: read

@@ -55,6 +55,8 @@ TOOLS = (
     Tool("pyright", "pyright", ("--version",), r"^pyright 1\.1\.412$"),
     Tool("ShellCheck", "shellcheck", ("--version",), r"\bversion: 0\.11\.0\b"),
     Tool("shfmt", "shfmt", ("--version",), r"^3\.13\.1$"),
+    Tool("zizmor", "zizmor", ("--version",), r"^zizmor 1\.29\.0$"),
+    Tool("OSV-Scanner", "osv-scanner", ("--version",), r"\bosv-scanner version: 2\.5\.0\b"),
 )
 
 

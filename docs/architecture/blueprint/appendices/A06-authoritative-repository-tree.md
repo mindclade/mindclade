@@ -103,7 +103,7 @@ mindclade/
 │   │   ├── security-control-gap.yml
 │   │   └── config.yml
 │   ├── CODEOWNERS
-│   ├── dependabot.yml
+│   ├── renovate.json
 │   ├── labeler.yml
 │   ├── pull_request_template.md
 │   └── actionlint.yaml

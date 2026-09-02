@@ -1,0 +1,15 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["github>mindclade/.github"],
+  "enabledManagers": [
+    "bazel-module",
+    "cargo",
+    "dockerfile",
+    "github-actions",
+    "gomod",
+    "nix",
+    "npm",
+    "pep621",
+    "pre-commit"
+  ]
+}

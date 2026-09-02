@@ -2546,8 +2546,8 @@ On a pull request, repo-local metadata validation classifies the event and sourc
 │   │   └── config.yml
 │   ├── actionlint.yaml
 │   ├── CODEOWNERS
-│   ├── dependabot.yml
-│   └── pull_request_template.md
+│   ├── pull_request_template.md
+│   └── renovate.json
 ├── profile/
 │   └── README.md
 ├── workflow-templates/
@@ -2615,8 +2615,8 @@ github-config/
 │   │   └── protected-apply.yml
 │   ├── actionlint.yaml
 │   ├── CODEOWNERS
-│   ├── dependabot.yml
-│   └── pull_request_template.md
+│   ├── pull_request_template.md
+│   └── renovate.json
 ├── config/
 │   ├── organization.yaml
 │   ├── actions-policy.yaml
@@ -2779,8 +2779,8 @@ bootstrap/
 │   │   └── protected-apply.yml
 │   ├── actionlint.yaml
 │   ├── CODEOWNERS
-│   ├── dependabot.yml
-│   └── pull_request_template.md
+│   ├── pull_request_template.md
+│   └── renovate.json
 ├── manifests/
 │   ├── trust-anchors.yaml
 │   ├── state-backends.yaml
@@ -2931,8 +2931,8 @@ infrastructure-live/
 │   │   └── disaster-recovery.yml
 │   ├── actionlint.yaml
 │   ├── CODEOWNERS
-│   ├── dependabot.yml
-│   └── pull_request_template.md
+│   ├── pull_request_template.md
+│   └── renovate.json
 ├── catalog/
 │   ├── environments.yaml
 │   ├── regions.yaml
@@ -3347,8 +3347,8 @@ gitops/
 │   │   └── rollback-verification.yml
 │   ├── actionlint.yaml
 │   ├── CODEOWNERS
-│   ├── dependabot.yml
-│   └── pull_request_template.md
+│   ├── pull_request_template.md
+│   └── renovate.json
 ├── controllers/
 │   ├── argocd/
 │   │   ├── namespace.yaml
@@ -4064,7 +4064,7 @@ mindclade/
 │   │   ├── security-control-gap.yml
 │   │   └── config.yml
 │   ├── CODEOWNERS
-│   ├── dependabot.yml
+│   ├── renovate.json
 │   ├── labeler.yml
 │   ├── pull_request_template.md
 │   └── actionlint.yaml
