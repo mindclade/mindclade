@@ -1,1498 +1,1498 @@
 schema_version: mindclade.event-registry/v2
 events:
-- full_name: mindclade.events.admin.v1.AuditExportCompleted
-  version: 1
-  content_type: application/x-protobuf; deterministic=true
-  source: events/mindclade/admin/v1/audit_export_completed.proto
-  owner: control-plane/admin
-  lifecycle_state: active
-  compatibility_policy: exact-version
-  fixture:
-    status: verified
-    source: services/control_plane/internal/admin/admin_test.go
-    target: //services/control_plane/internal/admin:admin_test
-    mode: populated-protobuf-roundtrip
-  producers:
-  - id: control-plane/admin
-    source: services/control_plane/internal/admin/events.go
-    target: //services/control_plane/internal/admin:admin
-    mode: transactional-outbox
-  consumers:
-  - id: control-plane/event-audit-projection
-    source: services/control_plane/internal/platform/eventprojection/projection.go
-    target: //services/control_plane/internal/platform/eventprojection:event_projection
-    mode: semantic-inbox
-  activation_gaps: []
-- full_name: mindclade.events.admin.v1.AuditExportRequested
-  version: 1
-  content_type: application/x-protobuf; deterministic=true
-  source: events/mindclade/admin/v1/audit_export_requested.proto
-  owner: control-plane/admin
-  lifecycle_state: active
-  compatibility_policy: exact-version
-  fixture:
-    status: verified
-    source: services/control_plane/internal/platform/eventprojection/projection_test.go
-    target: //services/control_plane/internal/platform/eventprojection:event_projection_test
-    mode: populated-protobuf-roundtrip
-  producers:
-  - id: control-plane/admin
-    source: services/control_plane/internal/admin/events.go
-    target: //services/control_plane/internal/admin:admin
-    mode: transactional-outbox
-  consumers:
-  - id: control-plane/event-audit-projection
-    source: services/control_plane/internal/platform/eventprojection/projection.go
-    target: //services/control_plane/internal/platform/eventprojection:event_projection
-    mode: semantic-inbox
-  activation_gaps: []
-- full_name: mindclade.events.admin.v1.ProjectCreated
-  version: 1
-  content_type: application/x-protobuf; deterministic=true
-  source: events/mindclade/admin/v1/project_created.proto
-  owner: control-plane/admin
-  lifecycle_state: active
-  compatibility_policy: exact-version
-  fixture:
-    status: verified
-    source: services/control_plane/internal/admin/admin_test.go
-    target: //services/control_plane/internal/admin:admin_test
-    mode: populated-protobuf-roundtrip
-  producers:
-  - id: control-plane/admin
-    source: services/control_plane/internal/admin/events.go
-    target: //services/control_plane/internal/admin:admin
-    mode: transactional-outbox
-  consumers:
-  - id: control-plane/event-audit-projection
-    source: services/control_plane/internal/platform/eventprojection/projection.go
-    target: //services/control_plane/internal/platform/eventprojection:event_projection
-    mode: semantic-inbox
-  activation_gaps: []
-- full_name: mindclade.events.admin.v1.ProjectUpdated
-  version: 1
-  content_type: application/x-protobuf; deterministic=true
-  source: events/mindclade/admin/v1/project_updated.proto
-  owner: control-plane/admin
-  lifecycle_state: active
-  compatibility_policy: exact-version
-  fixture:
-    status: verified
-    source: services/control_plane/internal/platform/eventprojection/projection_test.go
-    target: //services/control_plane/internal/platform/eventprojection:event_projection_test
-    mode: populated-protobuf-roundtrip
-  producers:
-  - id: control-plane/admin
-    source: services/control_plane/internal/admin/events.go
-    target: //services/control_plane/internal/admin:admin
-    mode: transactional-outbox
-  consumers:
-  - id: control-plane/event-audit-projection
-    source: services/control_plane/internal/platform/eventprojection/projection.go
-    target: //services/control_plane/internal/platform/eventprojection:event_projection
-    mode: semantic-inbox
-  activation_gaps: []
-- full_name: mindclade.events.admin.v1.TenantUpdated
-  version: 1
-  content_type: application/x-protobuf; deterministic=true
-  source: events/mindclade/admin/v1/tenant_updated.proto
-  owner: control-plane/admin
-  lifecycle_state: active
-  compatibility_policy: exact-version
-  fixture:
-    status: verified
-    source: services/control_plane/internal/platform/eventprojection/projection_test.go
-    target: //services/control_plane/internal/platform/eventprojection:event_projection_test
-    mode: populated-protobuf-roundtrip
-  producers:
-  - id: control-plane/admin
-    source: services/control_plane/internal/admin/events.go
-    target: //services/control_plane/internal/admin:admin
-    mode: transactional-outbox
-  consumers:
-  - id: control-plane/event-audit-projection
-    source: services/control_plane/internal/platform/eventprojection/projection.go
-    target: //services/control_plane/internal/platform/eventprojection:event_projection
-    mode: semantic-inbox
-  activation_gaps: []
-- full_name: mindclade.events.agent.v1.AgentCancellationRequested
-  version: 1
-  content_type: application/x-protobuf; deterministic=true
-  source: events/mindclade/agent/v1/agent_cancellation_requested.proto
-  owner: control-plane/agents
-  lifecycle_state: active
-  compatibility_policy: exact-version
-  fixture:
-    status: verified
-    source: services/control_plane/internal/agents/postgres_integration_test.go
-    target: //services/control_plane/internal/agents:agents_test
-    mode: transactional-outbox-roundtrip
-  producers:
-  - id: control-plane/agents
-    source: services/control_plane/internal/agents/events.go
-    target: //services/control_plane/internal/agents:agents
-    mode: transactional-outbox
-  consumers:
-  - id: control-plane/event-audit-projection
-    source: services/control_plane/internal/platform/eventprojection/projection.go
-    target: //services/control_plane/internal/platform/eventprojection:event_projection
-    mode: semantic-inbox
-  activation_gaps: []
-- full_name: mindclade.events.agent.v1.AgentDefinitionCreated
-  version: 1
-  content_type: application/x-protobuf; deterministic=true
-  source: events/mindclade/agent/v1/agent_definition_created.proto
-  owner: control-plane/agents
-  lifecycle_state: active
-  compatibility_policy: exact-version
-  fixture:
-    status: verified
-    source: services/control_plane/internal/agents/postgres_integration_test.go
-    target: //services/control_plane/internal/agents:agents_test
-    mode: transactional-outbox-roundtrip
-  producers:
-  - id: control-plane/agents
-    source: services/control_plane/internal/agents/events.go
-    target: //services/control_plane/internal/agents:agents
-    mode: transactional-outbox
-  consumers:
-  - id: control-plane/event-audit-projection
-    source: services/control_plane/internal/platform/eventprojection/projection.go
-    target: //services/control_plane/internal/platform/eventprojection:event_projection
-    mode: semantic-inbox
-  activation_gaps: []
-- full_name: mindclade.events.agent.v1.AgentDefinitionUpdated
-  version: 1
-  content_type: application/x-protobuf; deterministic=true
-  source: events/mindclade/agent/v1/agent_definition_updated.proto
-  owner: control-plane/agents
-  lifecycle_state: active
-  compatibility_policy: exact-version
-  fixture:
-    status: verified
-    source: services/control_plane/internal/agents/postgres_integration_test.go
-    target: //services/control_plane/internal/agents:agents_test
-    mode: transactional-outbox-roundtrip
-  producers:
-  - id: control-plane/agents
-    source: services/control_plane/internal/agents/events.go
-    target: //services/control_plane/internal/agents:agents
-    mode: transactional-outbox
-  consumers:
-  - id: control-plane/event-audit-projection
-    source: services/control_plane/internal/platform/eventprojection/projection.go
-    target: //services/control_plane/internal/platform/eventprojection:event_projection
-    mode: semantic-inbox
-  activation_gaps: []
-- full_name: mindclade.events.agent.v1.AgentRunCompleted
-  version: 1
-  content_type: application/x-protobuf; deterministic=true
-  source: events/mindclade/agent/v1/agent_run_completed.proto
-  owner: control-plane/agents
-  lifecycle_state: active
-  compatibility_policy: exact-version
-  fixture:
-    status: verified
-    source: services/control_plane/internal/agents/postgres_integration_test.go
-    target: //services/control_plane/internal/agents:agents_test
-    mode: transactional-outbox-roundtrip
-  producers:
-  - id: control-plane/agents
-    source: services/control_plane/internal/agents/events.go
-    target: //services/control_plane/internal/agents:agents
-    mode: transactional-outbox
-  consumers:
-  - id: control-plane/event-audit-projection
-    source: services/control_plane/internal/platform/eventprojection/projection.go
-    target: //services/control_plane/internal/platform/eventprojection:event_projection
-    mode: semantic-inbox
-  activation_gaps: []
-- full_name: mindclade.events.agent.v1.AgentRunStarted
-  version: 1
-  content_type: application/x-protobuf; deterministic=true
-  source: events/mindclade/agent/v1/agent_run_started.proto
-  owner: control-plane/agents
-  lifecycle_state: active
-  compatibility_policy: exact-version
-  fixture:
-    status: verified
-    source: services/control_plane/internal/agents/postgres_integration_test.go
-    target: //services/control_plane/internal/agents:agents_test
-    mode: transactional-outbox-roundtrip
-  producers:
-  - id: control-plane/agents
-    source: services/control_plane/internal/agents/events.go
-    target: //services/control_plane/internal/agents:agents
-    mode: transactional-outbox
-  consumers:
-  - id: control-plane/event-audit-projection
-    source: services/control_plane/internal/platform/eventprojection/projection.go
-    target: //services/control_plane/internal/platform/eventprojection:event_projection
-    mode: semantic-inbox
-  activation_gaps: []
-- full_name: mindclade.events.agent.v1.AgentStepCommitted
-  version: 1
-  content_type: application/x-protobuf; deterministic=true
-  source: events/mindclade/agent/v1/agent_step_committed.proto
-  owner: control-plane/agents
-  lifecycle_state: active
-  compatibility_policy: exact-version
-  fixture:
-    status: verified
-    source: services/control_plane/internal/agents/postgres_integration_test.go
-    target: //services/control_plane/internal/agents:agents_test
-    mode: transactional-outbox-roundtrip
-  producers:
-  - id: control-plane/agents
-    source: services/control_plane/internal/agents/events.go
-    target: //services/control_plane/internal/agents:agents
-    mode: transactional-outbox
-  consumers:
-  - id: control-plane/event-audit-projection
-    source: services/control_plane/internal/platform/eventprojection/projection.go
-    target: //services/control_plane/internal/platform/eventprojection:event_projection
-    mode: semantic-inbox
-  activation_gaps: []
-- full_name: mindclade.events.agent.v1.AgentStepDispatched
-  version: 1
-  content_type: application/x-protobuf; deterministic=true
-  source: events/mindclade/agent/v1/agent_step_dispatched.proto
-  owner: control-plane/agents
-  lifecycle_state: active
-  compatibility_policy: exact-version
-  fixture:
-    status: verified
-    source: services/control_plane/internal/agents/postgres_integration_test.go
-    target: //services/control_plane/internal/agents:agents_test
-    mode: transactional-outbox-roundtrip
-  producers:
-  - id: control-plane/agents
-    source: services/control_plane/internal/agents/repository_sql.go
-    target: //services/control_plane/internal/agents:agents
-    mode: transactional-outbox
-  consumers:
-  - id: control-plane/event-audit-projection
-    source: services/control_plane/internal/platform/eventprojection/projection.go
-    target: //services/control_plane/internal/platform/eventprojection:event_projection
-    mode: semantic-inbox
-  activation_gaps: []
-- full_name: mindclade.events.agent.v1.ToolReceiptCommitted
-  version: 1
-  content_type: application/x-protobuf; deterministic=true
-  source: events/mindclade/agent/v1/tool_receipt_committed.proto
-  owner: control-plane/agents
-  lifecycle_state: active
-  compatibility_policy: exact-version
-  fixture:
-    status: verified
-    source: services/control_plane/internal/agents/postgres_integration_test.go
-    target: //services/control_plane/internal/agents:agents_test
-    mode: transactional-outbox-roundtrip
-  producers:
-  - id: control-plane/agents
-    source: services/control_plane/internal/agents/events.go
-    target: //services/control_plane/internal/agents:agents
-    mode: transactional-outbox
-  consumers:
-  - id: control-plane/event-audit-projection
-    source: services/control_plane/internal/platform/eventprojection/projection.go
-    target: //services/control_plane/internal/platform/eventprojection:event_projection
-    mode: semantic-inbox
-  activation_gaps: []
-- full_name: mindclade.events.artifact.v1.ArtifactCommitted
-  version: 1
-  content_type: application/x-protobuf; deterministic=true
-  source: events/mindclade/artifact/v1/artifact_committed.proto
-  owner: control-plane/artifacts
-  lifecycle_state: active
-  compatibility_policy: exact-version
-  fixture:
-    status: verified
-    source: services/control_plane/internal/artifacts/postgres_integration_test.go
-    target: //services/control_plane:artifacts_server_test
-    mode: transactional-outbox-roundtrip
-  producers:
-  - id: control-plane/artifacts
-    source: services/control_plane/internal/artifacts/repository_sql.go
-    target: //services/control_plane:artifacts
-    mode: transactional-outbox
-  consumers:
-  - id: control-plane/event-audit-projection
-    source: services/control_plane/internal/platform/eventprojection/projection.go
-    target: //services/control_plane/internal/platform/eventprojection:event_projection
-    mode: semantic-inbox
-  activation_gaps: []
-- full_name: mindclade.events.artifact.v1.ArtifactQuarantined
-  version: 1
-  content_type: application/x-protobuf; deterministic=true
-  source: events/mindclade/artifact/v1/artifact_quarantined.proto
-  owner: control-plane/artifacts
-  lifecycle_state: active
-  compatibility_policy: exact-version
-  fixture:
-    status: verified
-    source: services/control_plane/internal/artifacts/postgres_integration_test.go
-    target: //services/control_plane:artifacts_server_test
-    mode: transactional-outbox-roundtrip
-  producers:
-  - id: control-plane/artifacts
-    source: services/control_plane/internal/artifacts/repository_sql.go
-    target: //services/control_plane:artifacts
-    mode: transactional-outbox
-  consumers:
-  - id: control-plane/event-audit-projection
-    source: services/control_plane/internal/platform/eventprojection/projection.go
-    target: //services/control_plane/internal/platform/eventprojection:event_projection
-    mode: semantic-inbox
-  activation_gaps: []
-- full_name: mindclade.events.artifact.v1.ArtifactStagingFinalized
-  version: 1
-  content_type: application/x-protobuf; deterministic=true
-  source: events/mindclade/artifact/v1/artifact_committed.proto
-  owner: control-plane/artifacts
-  lifecycle_state: active
-  compatibility_policy: exact-version
-  fixture:
-    status: verified
-    source: services/control_plane/internal/platform/eventprojection/projection_test.go
-    target: //services/control_plane/internal/platform/eventprojection:event_projection_test
-    mode: populated-protobuf-roundtrip
-  producers:
-  - id: control-plane/artifacts
-    source: services/control_plane/internal/artifacts/repository_sql.go
-    target: //services/control_plane:artifacts
-    mode: transactional-outbox
-  consumers:
-  - id: control-plane/event-audit-projection
-    source: services/control_plane/internal/platform/eventprojection/projection.go
-    target: //services/control_plane/internal/platform/eventprojection:event_projection
-    mode: semantic-inbox
-  activation_gaps: []
-- full_name: mindclade.events.audit.v1.AuditEvent
-  version: 1
-  content_type: application/x-protobuf; deterministic=true
-  source: events/mindclade/audit/v1/audit_event.proto
-  owner: platform/audit
-  lifecycle_state: active
-  compatibility_policy: exact-version
-  fixture:
-    status: verified
-    source: services/control_plane/internal/platform/eventprojection/projection_test.go
-    target: //services/control_plane/internal/platform/eventprojection:event_projection_test
-    mode: populated-protobuf-roundtrip
-  producers:
-  - id: platform/audit
-    source: libs/go/audit/event.go
-    target: //libs/go/audit:audit
-    mode: durable-audit
-  consumers:
-  - id: control-plane/event-audit-projection
-    source: services/control_plane/internal/platform/eventprojection/projection.go
-    target: //services/control_plane/internal/platform/eventprojection:event_projection
-    mode: semantic-inbox
-  activation_gaps: []
-- full_name: mindclade.events.audit.v1.SecurityEvent
-  version: 1
-  content_type: application/x-protobuf; deterministic=true
-  source: events/mindclade/audit/v1/security_event.proto
-  owner: platform/audit
-  lifecycle_state: active
-  compatibility_policy: exact-version
-  fixture:
-    status: verified
-    source: services/control_plane/internal/policies/postgres_integration_test.go
-    target: //services/control_plane/internal/policies:policies_test
-    mode: transactional-outbox-roundtrip
-  producers:
-  - id: control-plane/policies
-    source: services/control_plane/internal/policies/repository_sql.go
-    target: //services/control_plane/internal/policies:policies
-    mode: transactional-outbox
-  consumers:
-  - id: control-plane/event-audit-projection
-    source: services/control_plane/internal/platform/eventprojection/projection.go
-    target: //services/control_plane/internal/platform/eventprojection:event_projection
-    mode: semantic-inbox
-  activation_gaps: []
-- full_name: mindclade.events.dataset.v1.DatasetCreated
-  version: 1
-  content_type: application/x-protobuf; deterministic=true
-  source: events/mindclade/dataset/v1/dataset_created.proto
-  owner: control-plane/datasets
-  lifecycle_state: active
-  compatibility_policy: exact-version
-  fixture:
-    status: verified
-    source: services/control_plane/internal/datasets/postgres_integration_test.go
-    target: //services/control_plane/internal/datasets:datasets_test
-    mode: transactional-outbox-roundtrip
-  producers:
-  - id: control-plane/datasets
-    source: services/control_plane/internal/datasets/events.go
-    target: //services/control_plane/internal/datasets:datasets
-    mode: transactional-outbox
-  consumers:
-  - id: control-plane/event-audit-projection
-    source: services/control_plane/internal/platform/eventprojection/projection.go
-    target: //services/control_plane/internal/platform/eventprojection:event_projection
-    mode: semantic-inbox
-  activation_gaps: []
-- full_name: mindclade.events.dataset.v1.DatasetReleasePublished
-  version: 1
-  content_type: application/x-protobuf; deterministic=true
-  source: events/mindclade/dataset/v1/dataset_release_published.proto
-  owner: control-plane/datasets
-  lifecycle_state: active
-  compatibility_policy: exact-version
-  fixture:
-    status: verified
-    source: services/control_plane/internal/datasets/postgres_integration_test.go
-    target: //services/control_plane/internal/datasets:datasets_test
-    mode: transactional-outbox-roundtrip
-  producers:
-  - id: control-plane/datasets
-    source: services/control_plane/internal/datasets/events.go
-    target: //services/control_plane/internal/datasets:datasets
-    mode: transactional-outbox
-  consumers:
-  - id: control-plane/event-audit-projection
-    source: services/control_plane/internal/platform/eventprojection/projection.go
-    target: //services/control_plane/internal/platform/eventprojection:event_projection
-    mode: semantic-inbox
-  activation_gaps: []
-- full_name: mindclade.events.dataset.v1.DatasetReleaseRevoked
-  version: 1
-  content_type: application/x-protobuf; deterministic=true
-  source: events/mindclade/dataset/v1/dataset_release_revoked.proto
-  owner: control-plane/datasets
-  lifecycle_state: active
-  compatibility_policy: exact-version
-  fixture:
-    status: verified
-    source: services/control_plane/internal/datasets/postgres_integration_test.go
-    target: //services/control_plane/internal/datasets:datasets_test
-    mode: transactional-outbox-roundtrip
-  producers:
-  - id: control-plane/datasets
-    source: services/control_plane/internal/datasets/events.go
-    target: //services/control_plane/internal/datasets:datasets
-    mode: transactional-outbox
-  consumers:
-  - id: control-plane/event-audit-projection
-    source: services/control_plane/internal/platform/eventprojection/projection.go
-    target: //services/control_plane/internal/platform/eventprojection:event_projection
-    mode: semantic-inbox
-  activation_gaps: []
-- full_name: mindclade.events.dataset.v1.DatasetUpdated
-  version: 1
-  content_type: application/x-protobuf; deterministic=true
-  source: events/mindclade/dataset/v1/dataset_updated.proto
-  owner: control-plane/datasets
-  lifecycle_state: active
-  compatibility_policy: exact-version
-  fixture:
-    status: verified
-    source: services/control_plane/internal/datasets/postgres_integration_test.go
-    target: //services/control_plane/internal/datasets:datasets_test
-    mode: transactional-outbox-roundtrip
-  producers:
-  - id: control-plane/datasets
-    source: services/control_plane/internal/datasets/events.go
-    target: //services/control_plane/internal/datasets:datasets
-    mode: transactional-outbox
-  consumers:
-  - id: control-plane/event-audit-projection
-    source: services/control_plane/internal/platform/eventprojection/projection.go
-    target: //services/control_plane/internal/platform/eventprojection:event_projection
-    mode: semantic-inbox
-  activation_gaps: []
-- full_name: mindclade.events.evaluation.v1.EvaluationCancellationRequested
-  version: 1
-  content_type: application/x-protobuf; deterministic=true
-  source: events/mindclade/evaluation/v1/evaluation_cancellation_requested.proto
-  owner: control-plane/evaluations
-  lifecycle_state: active
-  compatibility_policy: exact-version
-  fixture:
-    status: verified
-    source: services/control_plane/internal/evaluations/postgres_integration_test.go
-    target: //services/control_plane/internal/evaluations:evaluations_test
-    mode: transactional-outbox-roundtrip
-  producers:
-  - id: control-plane/evaluations
-    source: services/control_plane/internal/evaluations/events.go
-    target: //services/control_plane/internal/evaluations:evaluations
-    mode: transactional-outbox
-  consumers:
-  - id: control-plane/event-audit-projection
-    source: services/control_plane/internal/platform/eventprojection/projection.go
-    target: //services/control_plane/internal/platform/eventprojection:event_projection
-    mode: semantic-inbox
-  activation_gaps: []
-- full_name: mindclade.events.evaluation.v1.EvaluationResultCommitted
-  version: 1
-  content_type: application/x-protobuf; deterministic=true
-  source: events/mindclade/evaluation/v1/evaluation_result_committed.proto
-  owner: control-plane/evaluations
-  lifecycle_state: active
-  compatibility_policy: exact-version
-  fixture:
-    status: verified
-    source: services/control_plane/internal/evaluations/postgres_integration_test.go
-    target: //services/control_plane/internal/evaluations:evaluations_test
-    mode: transactional-outbox-roundtrip
-  producers:
-  - id: control-plane/evaluations
-    source: services/control_plane/internal/evaluations/events.go
-    target: //services/control_plane/internal/evaluations:evaluations
-    mode: transactional-outbox
-  consumers:
-  - id: control-plane/event-audit-projection
-    source: services/control_plane/internal/platform/eventprojection/projection.go
-    target: //services/control_plane/internal/platform/eventprojection:event_projection
-    mode: semantic-inbox
-  activation_gaps: []
-- full_name: mindclade.events.evaluation.v1.EvaluationRunCreated
-  version: 1
-  content_type: application/x-protobuf; deterministic=true
-  source: events/mindclade/evaluation/v1/evaluation_run_created.proto
-  owner: control-plane/evaluations
-  lifecycle_state: active
-  compatibility_policy: exact-version
-  fixture:
-    status: verified
-    source: services/control_plane/internal/evaluations/postgres_integration_test.go
-    target: //services/control_plane/internal/evaluations:evaluations_test
-    mode: transactional-outbox-roundtrip
-  producers:
-  - id: control-plane/evaluations
-    source: services/control_plane/internal/evaluations/events.go
-    target: //services/control_plane/internal/evaluations:evaluations
-    mode: transactional-outbox
-  consumers:
-  - id: control-plane/event-audit-projection
-    source: services/control_plane/internal/platform/eventprojection/projection.go
-    target: //services/control_plane/internal/platform/eventprojection:event_projection
-    mode: semantic-inbox
-  activation_gaps: []
-- full_name: mindclade.events.evaluation.v1.PromotionDecisionRecorded
-  version: 1
-  content_type: application/x-protobuf; deterministic=true
-  source: events/mindclade/evaluation/v1/promotion_decision_recorded.proto
-  owner: control-plane/evaluations
-  lifecycle_state: active
-  compatibility_policy: exact-version
-  fixture:
-    status: verified
-    source: services/control_plane/internal/evaluations/postgres_integration_test.go
-    target: //services/control_plane/internal/evaluations:evaluations_test
-    mode: transactional-outbox-roundtrip
-  producers:
-  - id: control-plane/evaluations
-    source: services/control_plane/internal/evaluations/events.go
-    target: //services/control_plane/internal/evaluations:evaluations
-    mode: transactional-outbox
-  consumers:
-  - id: control-plane/event-audit-projection
-    source: services/control_plane/internal/platform/eventprojection/projection.go
-    target: //services/control_plane/internal/platform/eventprojection:event_projection
-    mode: semantic-inbox
-  activation_gaps: []
-- full_name: mindclade.events.experiment.v1.ExperimentCreated
-  version: 1
-  content_type: application/x-protobuf; deterministic=true
-  source: events/mindclade/experiment/v1/experiment_created.proto
-  owner: control-plane/experiments
-  lifecycle_state: active
-  compatibility_policy: exact-version
-  fixture:
-    status: verified
-    source: services/control_plane/internal/experiments/postgres_integration_test.go
-    target: //services/control_plane/internal/experiments:experiments_test
-    mode: transactional-outbox-roundtrip
-  producers:
-  - id: control-plane/experiments
-    source: services/control_plane/internal/experiments/events.go
-    target: //services/control_plane/internal/experiments:experiments
-    mode: transactional-outbox
-  consumers:
-  - id: control-plane/event-audit-projection
-    source: services/control_plane/internal/platform/eventprojection/projection.go
-    target: //services/control_plane/internal/platform/eventprojection:event_projection
-    mode: semantic-inbox
-  activation_gaps: []
-- full_name: mindclade.events.experiment.v1.ExperimentStateChanged
-  version: 1
-  content_type: application/x-protobuf; deterministic=true
-  source: events/mindclade/experiment/v1/experiment_state_changed.proto
-  owner: control-plane/experiments
-  lifecycle_state: active
-  compatibility_policy: exact-version
-  fixture:
-    status: verified
-    source: services/control_plane/internal/experiments/postgres_integration_test.go
-    target: //services/control_plane/internal/experiments:experiments_test
-    mode: transactional-outbox-roundtrip
-  producers:
-  - id: control-plane/experiments
-    source: services/control_plane/internal/experiments/events.go
-    target: //services/control_plane/internal/experiments:experiments
-    mode: transactional-outbox
-  consumers:
-  - id: control-plane/event-audit-projection
-    source: services/control_plane/internal/platform/eventprojection/projection.go
-    target: //services/control_plane/internal/platform/eventprojection:event_projection
-    mode: semantic-inbox
-  activation_gaps: []
-- full_name: mindclade.events.experiment.v1.ExperimentUpdated
-  version: 1
-  content_type: application/x-protobuf; deterministic=true
-  source: events/mindclade/experiment/v1/experiment_updated.proto
-  owner: control-plane/experiments
-  lifecycle_state: active
-  compatibility_policy: exact-version
-  fixture:
-    status: verified
-    source: services/control_plane/internal/experiments/postgres_integration_test.go
-    target: //services/control_plane/internal/experiments:experiments_test
-    mode: transactional-outbox-roundtrip
-  producers:
-  - id: control-plane/experiments
-    source: services/control_plane/internal/experiments/events.go
-    target: //services/control_plane/internal/experiments:experiments
-    mode: transactional-outbox
-  consumers:
-  - id: control-plane/event-audit-projection
-    source: services/control_plane/internal/platform/eventprojection/projection.go
-    target: //services/control_plane/internal/platform/eventprojection:event_projection
-    mode: semantic-inbox
-  activation_gaps: []
-- full_name: mindclade.events.experiment.v1.StudyCreated
-  version: 1
-  content_type: application/x-protobuf; deterministic=true
-  source: events/mindclade/experiment/v1/study_created.proto
-  owner: control-plane/experiments
-  lifecycle_state: active
-  compatibility_policy: exact-version
-  fixture:
-    status: verified
-    source: services/control_plane/internal/experiments/postgres_integration_test.go
-    target: //services/control_plane/internal/experiments:experiments_test
-    mode: transactional-outbox-roundtrip
-  producers:
-  - id: control-plane/experiments
-    source: services/control_plane/internal/experiments/events.go
-    target: //services/control_plane/internal/experiments:experiments
-    mode: transactional-outbox
-  consumers:
-  - id: control-plane/event-audit-projection
-    source: services/control_plane/internal/platform/eventprojection/projection.go
-    target: //services/control_plane/internal/platform/eventprojection:event_projection
-    mode: semantic-inbox
-  activation_gaps: []
-- full_name: mindclade.events.experiment.v1.StudyStateChanged
-  version: 1
-  content_type: application/x-protobuf; deterministic=true
-  source: events/mindclade/experiment/v1/study_state_changed.proto
-  owner: control-plane/experiments
-  lifecycle_state: active
-  compatibility_policy: exact-version
-  fixture:
-    status: verified
-    source: services/control_plane/internal/experiments/postgres_integration_test.go
-    target: //services/control_plane/internal/experiments:experiments_test
-    mode: transactional-outbox-roundtrip
-  producers:
-  - id: control-plane/experiments
-    source: services/control_plane/internal/experiments/events.go
-    target: //services/control_plane/internal/experiments:experiments
-    mode: transactional-outbox
-  consumers:
-  - id: control-plane/event-audit-projection
-    source: services/control_plane/internal/platform/eventprojection/projection.go
-    target: //services/control_plane/internal/platform/eventprojection:event_projection
-    mode: semantic-inbox
-  activation_gaps: []
-- full_name: mindclade.events.experiment.v1.TrialCompleted
-  version: 1
-  content_type: application/x-protobuf; deterministic=true
-  source: events/mindclade/experiment/v1/trial_completed.proto
-  owner: control-plane/experiments
-  lifecycle_state: active
-  compatibility_policy: exact-version
-  fixture:
-    status: verified
-    source: services/control_plane/internal/experiments/postgres_integration_test.go
-    target: //services/control_plane/internal/experiments:experiments_test
-    mode: transactional-outbox-roundtrip
-  producers:
-  - id: control-plane/experiments
-    source: services/control_plane/internal/experiments/events.go
-    target: //services/control_plane/internal/experiments:experiments
-    mode: transactional-outbox
-  consumers:
-  - id: control-plane/event-audit-projection
-    source: services/control_plane/internal/platform/eventprojection/projection.go
-    target: //services/control_plane/internal/platform/eventprojection:event_projection
-    mode: semantic-inbox
-  activation_gaps: []
-- full_name: mindclade.events.experiment.v1.TrialCreated
-  version: 1
-  content_type: application/x-protobuf; deterministic=true
-  source: events/mindclade/experiment/v1/trial_created.proto
-  owner: control-plane/experiments
-  lifecycle_state: active
-  compatibility_policy: exact-version
-  fixture:
-    status: verified
-    source: services/control_plane/internal/experiments/postgres_integration_test.go
-    target: //services/control_plane/internal/experiments:experiments_test
-    mode: transactional-outbox-roundtrip
-  producers:
-  - id: control-plane/experiments
-    source: services/control_plane/internal/experiments/events.go
-    target: //services/control_plane/internal/experiments:experiments
-    mode: transactional-outbox
-  consumers:
-  - id: control-plane/event-audit-projection
-    source: services/control_plane/internal/platform/eventprojection/projection.go
-    target: //services/control_plane/internal/platform/eventprojection:event_projection
-    mode: semantic-inbox
-  activation_gaps: []
-- full_name: mindclade.events.experiment.v1.TrialStateChanged
-  version: 1
-  content_type: application/x-protobuf; deterministic=true
-  source: events/mindclade/experiment/v1/trial_state_changed.proto
-  owner: control-plane/experiments
-  lifecycle_state: active
-  compatibility_policy: exact-version
-  fixture:
-    status: verified
-    source: services/control_plane/internal/experiments/postgres_integration_test.go
-    target: //services/control_plane/internal/experiments:experiments_test
-    mode: transactional-outbox-roundtrip
-  producers:
-  - id: control-plane/experiments
-    source: services/control_plane/internal/experiments/events.go
-    target: //services/control_plane/internal/experiments:experiments
-    mode: transactional-outbox
-  consumers:
-  - id: control-plane/event-audit-projection
-    source: services/control_plane/internal/platform/eventprojection/projection.go
-    target: //services/control_plane/internal/platform/eventprojection:event_projection
-    mode: semantic-inbox
-  activation_gaps: []
-- full_name: mindclade.events.feature.v1.FeatureMaterializationCompleted
-  version: 1
-  content_type: application/x-protobuf; deterministic=true
-  source: events/mindclade/feature/v1/feature_materialization_completed.proto
-  owner: data-platform/features
-  lifecycle_state: active
-  compatibility_policy: exact-version
-  fixture:
-    status: verified
-    source: services/control_plane/internal/jobs/domain_completion_postgres_test.go
-    target: //services/control_plane:jobs_server_test
-    mode: transactional-outbox-roundtrip
-  producers:
-  - id: control-plane/jobs
-    source: services/control_plane/internal/jobs/job_repository.go
-    target: //services/control_plane:jobs
-    mode: transactional-outbox
-  consumers:
-  - id: control-plane/event-audit-projection
-    source: services/control_plane/internal/platform/eventprojection/projection.go
-    target: //services/control_plane/internal/platform/eventprojection:event_projection
-    mode: semantic-inbox
-  activation_gaps: []
-- full_name: mindclade.events.inference.v1.InferenceRequested
-  version: 1
-  content_type: application/x-protobuf; deterministic=true
-  source: events/mindclade/inference/v1/inference_requested.proto
-  owner: control-plane/inference
-  lifecycle_state: active
-  compatibility_policy: exact-version
-  fixture:
-    status: verified
-    source: services/control_plane/internal/inference/postgres_integration_test.go
-    target: //services/control_plane/internal/inference:inference_test
-    mode: transactional-outbox-roundtrip
-  producers:
-  - id: control-plane/inference
-    source: services/control_plane/internal/inference/events.go
-    target: //services/control_plane/internal/inference:inference
-    mode: transactional-outbox
-  consumers:
-  - id: control-plane/event-audit-projection
-    source: services/control_plane/internal/platform/eventprojection/projection.go
-    target: //services/control_plane/internal/platform/eventprojection:event_projection
-    mode: semantic-inbox
-  activation_gaps: []
-- full_name: mindclade.events.inference.v1.InferenceResultCommitted
-  version: 1
-  content_type: application/x-protobuf; deterministic=true
-  source: events/mindclade/inference/v1/inference_result_committed.proto
-  owner: control-plane/inference
-  lifecycle_state: active
-  compatibility_policy: exact-version
-  fixture:
-    status: verified
-    source: services/control_plane/internal/inference/postgres_integration_test.go
-    target: //services/control_plane/internal/inference:inference_test
-    mode: transactional-outbox-roundtrip
-  producers:
-  - id: control-plane/inference
-    source: services/control_plane/internal/inference/events.go
-    target: //services/control_plane/internal/inference:inference
-    mode: transactional-outbox
-  consumers:
-  - id: control-plane/event-audit-projection
-    source: services/control_plane/internal/platform/eventprojection/projection.go
-    target: //services/control_plane/internal/platform/eventprojection:event_projection
-    mode: semantic-inbox
-  activation_gaps: []
-- full_name: mindclade.events.job.v1.AttemptCompleted
-  version: 1
-  content_type: application/x-protobuf; deterministic=true
-  source: events/mindclade/job/v1/attempt_completed.proto
-  owner: control-plane/execution
-  lifecycle_state: active
-  compatibility_policy: exact-version
-  fixture:
-    status: verified
-    source: services/control_plane/internal/jobs/events_test.go
-    target: //services/control_plane:jobs_server_test
-    mode: populated-protobuf-roundtrip
-  producers:
-  - id: control-plane/jobs
-    source: services/control_plane/internal/jobs/events.go
-    target: //services/control_plane:jobs
-    mode: transactional-outbox
-  consumers:
-  - id: control-plane/event-audit-projection
-    source: services/control_plane/internal/platform/eventprojection/projection.go
-    target: //services/control_plane/internal/platform/eventprojection:event_projection
-    mode: semantic-inbox
-  activation_gaps: []
-- full_name: mindclade.events.job.v1.AttemptLeased
-  version: 1
-  content_type: application/x-protobuf; deterministic=true
-  source: events/mindclade/job/v1/attempt_leased.proto
-  owner: control-plane/execution
-  lifecycle_state: active
-  compatibility_policy: exact-version
-  fixture:
-    status: verified
-    source: services/control_plane/internal/jobs/events_test.go
-    target: //services/control_plane:jobs_server_test
-    mode: populated-protobuf-roundtrip
-  producers:
-  - id: control-plane/jobs
-    source: services/control_plane/internal/jobs/events.go
-    target: //services/control_plane:jobs
-    mode: transactional-outbox
-  consumers:
-  - id: control-plane/event-audit-projection
-    source: services/control_plane/internal/platform/eventprojection/projection.go
-    target: //services/control_plane/internal/platform/eventprojection:event_projection
-    mode: semantic-inbox
-  activation_gaps: []
-- full_name: mindclade.events.job.v1.JobRequested
-  version: 1
-  content_type: application/x-protobuf; deterministic=true
-  source: events/mindclade/job/v1/job_requested.proto
-  owner: control-plane/execution
-  lifecycle_state: active
-  compatibility_policy: exact-version
-  fixture:
-    status: verified
-    source: services/control_plane/tests/transaction_outbox_test.go
-    target: //services/control_plane:control_plane_test
-    mode: transactional-outbox-roundtrip
-  producers:
-  - id: control-plane/agents
-    source: services/control_plane/internal/agents/events.go
-    target: //services/control_plane/internal/agents:agents
-    mode: transactional-outbox
-  - id: control-plane/evaluations
-    source: services/control_plane/internal/evaluations/events.go
-    target: //services/control_plane/internal/evaluations:evaluations
-    mode: transactional-outbox
-  - id: control-plane/inference
-    source: services/control_plane/internal/inference/events.go
-    target: //services/control_plane/internal/inference:inference
-    mode: transactional-outbox
-  - id: control-plane/operations
-    source: services/control_plane/internal/operations/operation_repository.go
-    target: //services/control_plane:operations
-    mode: transactional-outbox
-  - id: control-plane/training
-    source: services/control_plane/internal/training/events.go
-    target: //services/control_plane/internal/training:training
-    mode: transactional-outbox
-  - id: control-plane/workflows
-    source: services/control_plane/internal/workflows/events.go
-    target: //services/control_plane/internal/workflows:workflows
-    mode: transactional-outbox
-  consumers:
-  - id: control-plane/event-audit-projection
-    source: services/control_plane/internal/platform/eventprojection/projection.go
-    target: //services/control_plane/internal/platform/eventprojection:event_projection
-    mode: semantic-inbox
-  - id: control-plane/job-requested-reconciler
-    source: services/control_plane/internal/jobs/job_reconciler.go
-    target: //services/control_plane:jobs
-    mode: semantic-inbox
-  activation_gaps: []
-- full_name: mindclade.events.model.v1.ModelPromoted
-  version: 1
-  content_type: application/x-protobuf; deterministic=true
-  source: events/mindclade/model/v1/model_promoted.proto
-  owner: control-plane/models
-  lifecycle_state: active
-  compatibility_policy: exact-version
-  fixture:
-    status: verified
-    source: services/control_plane/internal/models/postgres_integration_test.go
-    target: //services/control_plane/internal/models:models_test
-    mode: transactional-outbox-roundtrip
-  producers:
-  - id: control-plane/models
-    source: services/control_plane/internal/models/events.go
-    target: //services/control_plane/internal/models:models
-    mode: transactional-outbox
-  consumers:
-  - id: control-plane/event-audit-projection
-    source: services/control_plane/internal/platform/eventprojection/projection.go
-    target: //services/control_plane/internal/platform/eventprojection:event_projection
-    mode: semantic-inbox
-  activation_gaps: []
-- full_name: mindclade.events.model.v1.ModelRegistered
-  version: 1
-  content_type: application/x-protobuf; deterministic=true
-  source: events/mindclade/model/v1/model_registered.proto
-  owner: control-plane/models
-  lifecycle_state: active
-  compatibility_policy: exact-version
-  fixture:
-    status: verified
-    source: services/control_plane/internal/models/postgres_integration_test.go
-    target: //services/control_plane/internal/models:models_test
-    mode: transactional-outbox-roundtrip
-  producers:
-  - id: control-plane/models
-    source: services/control_plane/internal/models/events.go
-    target: //services/control_plane/internal/models:models
-    mode: transactional-outbox
-  consumers:
-  - id: control-plane/event-audit-projection
-    source: services/control_plane/internal/platform/eventprojection/projection.go
-    target: //services/control_plane/internal/platform/eventprojection:event_projection
-    mode: semantic-inbox
-  activation_gaps: []
-- full_name: mindclade.events.model.v1.ModelReleaseRegistered
-  version: 1
-  content_type: application/x-protobuf; deterministic=true
-  source: events/mindclade/model/v1/model_release_registered.proto
-  owner: control-plane/models
-  lifecycle_state: active
-  compatibility_policy: exact-version
-  fixture:
-    status: verified
-    source: services/control_plane/internal/models/postgres_integration_test.go
-    target: //services/control_plane/internal/models:models_test
-    mode: transactional-outbox-roundtrip
-  producers:
-  - id: control-plane/models
-    source: services/control_plane/internal/models/events.go
-    target: //services/control_plane/internal/models:models
-    mode: transactional-outbox
-  consumers:
-  - id: control-plane/event-audit-projection
-    source: services/control_plane/internal/platform/eventprojection/projection.go
-    target: //services/control_plane/internal/platform/eventprojection:event_projection
-    mode: semantic-inbox
-  activation_gaps: []
-- full_name: mindclade.events.model.v1.ModelRevoked
-  version: 1
-  content_type: application/x-protobuf; deterministic=true
-  source: events/mindclade/model/v1/model_revoked.proto
-  owner: control-plane/models
-  lifecycle_state: active
-  compatibility_policy: exact-version
-  fixture:
-    status: verified
-    source: services/control_plane/internal/models/postgres_integration_test.go
-    target: //services/control_plane/internal/models:models_test
-    mode: transactional-outbox-roundtrip
-  producers:
-  - id: control-plane/models
-    source: services/control_plane/internal/models/events.go
-    target: //services/control_plane/internal/models:models
-    mode: transactional-outbox
-  consumers:
-  - id: control-plane/event-audit-projection
-    source: services/control_plane/internal/platform/eventprojection/projection.go
-    target: //services/control_plane/internal/platform/eventprojection:event_projection
-    mode: semantic-inbox
-  activation_gaps: []
-- full_name: mindclade.events.policy.v1.AuthorizationDecisionRecorded
-  version: 1
-  content_type: application/x-protobuf; deterministic=true
-  source: events/mindclade/policy/v1/authorization_decision_recorded.proto
-  owner: control-plane/policy
-  lifecycle_state: active
-  compatibility_policy: exact-version
-  fixture:
-    status: verified
-    source: services/control_plane/internal/policies/policies_test.go
-    target: //services/control_plane/internal/policies:policies_test
-    mode: populated-protobuf-roundtrip
-  producers:
-  - id: control-plane/policies
-    source: services/control_plane/internal/policies/events.go
-    target: //services/control_plane/internal/policies:policies
-    mode: transactional-outbox
-  consumers:
-  - id: control-plane/event-audit-projection
-    source: services/control_plane/internal/platform/eventprojection/projection.go
-    target: //services/control_plane/internal/platform/eventprojection:event_projection
-    mode: semantic-inbox
-  activation_gaps: []
-- full_name: mindclade.events.policy.v1.UsePolicyActivated
-  version: 1
-  content_type: application/x-protobuf; deterministic=true
-  source: events/mindclade/policy/v1/use_policy_activated.proto
-  owner: control-plane/policy
-  lifecycle_state: active
-  compatibility_policy: exact-version
-  fixture:
-    status: verified
-    source: services/control_plane/internal/platform/eventprojection/projection_test.go
-    target: //services/control_plane/internal/platform/eventprojection:event_projection_test
-    mode: populated-protobuf-roundtrip
-  producers:
-  - id: control-plane/policies
-    source: services/control_plane/internal/policies/events.go
-    target: //services/control_plane/internal/policies:policies
-    mode: transactional-outbox
-  consumers:
-  - id: control-plane/event-audit-projection
-    source: services/control_plane/internal/platform/eventprojection/projection.go
-    target: //services/control_plane/internal/platform/eventprojection:event_projection
-    mode: semantic-inbox
-  activation_gaps: []
-- full_name: mindclade.events.policy.v1.UsePolicyCreated
-  version: 1
-  content_type: application/x-protobuf; deterministic=true
-  source: events/mindclade/policy/v1/use_policy_created.proto
-  owner: control-plane/policy
-  lifecycle_state: active
-  compatibility_policy: exact-version
-  fixture:
-    status: verified
-    source: services/control_plane/internal/policies/policies_test.go
-    target: //services/control_plane/internal/policies:policies_test
-    mode: populated-protobuf-roundtrip
-  producers:
-  - id: control-plane/policies
-    source: services/control_plane/internal/policies/events.go
-    target: //services/control_plane/internal/policies:policies
-    mode: transactional-outbox
-  consumers:
-  - id: control-plane/event-audit-projection
-    source: services/control_plane/internal/platform/eventprojection/projection.go
-    target: //services/control_plane/internal/platform/eventprojection:event_projection
-    mode: semantic-inbox
-  activation_gaps: []
-- full_name: mindclade.events.policy.v1.UsePolicyRevoked
-  version: 1
-  content_type: application/x-protobuf; deterministic=true
-  source: events/mindclade/policy/v1/use_policy_revoked.proto
-  owner: control-plane/policy
-  lifecycle_state: active
-  compatibility_policy: exact-version
-  fixture:
-    status: verified
-    source: services/control_plane/internal/platform/eventprojection/projection_test.go
-    target: //services/control_plane/internal/platform/eventprojection:event_projection_test
-    mode: populated-protobuf-roundtrip
-  producers:
-  - id: control-plane/policies
-    source: services/control_plane/internal/policies/events.go
-    target: //services/control_plane/internal/policies:policies
-    mode: transactional-outbox
-  consumers:
-  - id: control-plane/event-audit-projection
-    source: services/control_plane/internal/platform/eventprojection/projection.go
-    target: //services/control_plane/internal/platform/eventprojection:event_projection
-    mode: semantic-inbox
-  activation_gaps: []
-- full_name: mindclade.events.policy.v1.UsePolicyUpdated
-  version: 1
-  content_type: application/x-protobuf; deterministic=true
-  source: events/mindclade/policy/v1/use_policy_updated.proto
-  owner: control-plane/policy
-  lifecycle_state: active
-  compatibility_policy: exact-version
-  fixture:
-    status: verified
-    source: services/control_plane/internal/platform/eventprojection/projection_test.go
-    target: //services/control_plane/internal/platform/eventprojection:event_projection_test
-    mode: populated-protobuf-roundtrip
-  producers:
-  - id: control-plane/policies
-    source: services/control_plane/internal/policies/events.go
-    target: //services/control_plane/internal/policies:policies
-    mode: transactional-outbox
-  consumers:
-  - id: control-plane/event-audit-projection
-    source: services/control_plane/internal/platform/eventprojection/projection.go
-    target: //services/control_plane/internal/platform/eventprojection:event_projection
-    mode: semantic-inbox
-  activation_gaps: []
-- full_name: mindclade.events.training.v1.CheckpointCommitted
-  version: 1
-  content_type: application/x-protobuf; deterministic=true
-  source: events/mindclade/training/v1/checkpoint_committed.proto
-  owner: control-plane/training
-  lifecycle_state: active
-  compatibility_policy: exact-version
-  fixture:
-    status: verified
-    source: services/control_plane/internal/training/training_test.go
-    target: //services/control_plane/internal/training:training_test
-    mode: populated-protobuf-roundtrip
-  producers:
-  - id: control-plane/training
-    source: services/control_plane/internal/training/events.go
-    target: //services/control_plane/internal/training:training
-    mode: transactional-outbox
-  consumers:
-  - id: control-plane/event-audit-projection
-    source: services/control_plane/internal/platform/eventprojection/projection.go
-    target: //services/control_plane/internal/platform/eventprojection:event_projection
-    mode: semantic-inbox
-  activation_gaps: []
-- full_name: mindclade.events.training.v1.ProgressCommitted
-  version: 1
-  content_type: application/x-protobuf; deterministic=true
-  source: events/mindclade/training/v1/progress_committed.proto
-  owner: control-plane/training
-  lifecycle_state: active
-  compatibility_policy: exact-version
-  fixture:
-    status: verified
-    source: services/control_plane/internal/training/training_test.go
-    target: //services/control_plane/internal/training:training_test
-    mode: populated-protobuf-roundtrip
-  producers:
-  - id: control-plane/training
-    source: services/control_plane/internal/training/events.go
-    target: //services/control_plane/internal/training:training
-    mode: transactional-outbox
-  consumers:
-  - id: control-plane/event-audit-projection
-    source: services/control_plane/internal/platform/eventprojection/projection.go
-    target: //services/control_plane/internal/platform/eventprojection:event_projection
-    mode: semantic-inbox
-  activation_gaps: []
-- full_name: mindclade.events.training.v1.TrainingCancellationRequested
-  version: 1
-  content_type: application/x-protobuf; deterministic=true
-  source: events/mindclade/training/v1/training_cancellation_requested.proto
-  owner: control-plane/training
-  lifecycle_state: active
-  compatibility_policy: exact-version
-  fixture:
-    status: verified
-    source: services/control_plane/internal/training/training_test.go
-    target: //services/control_plane/internal/training:training_test
-    mode: populated-protobuf-roundtrip
-  producers:
-  - id: control-plane/training
-    source: services/control_plane/internal/training/events.go
-    target: //services/control_plane/internal/training:training
-    mode: transactional-outbox
-  consumers:
-  - id: control-plane/event-audit-projection
-    source: services/control_plane/internal/platform/eventprojection/projection.go
-    target: //services/control_plane/internal/platform/eventprojection:event_projection
-    mode: semantic-inbox
-  activation_gaps: []
-- full_name: mindclade.events.training.v1.TrainingCompleted
-  version: 1
-  content_type: application/x-protobuf; deterministic=true
-  source: events/mindclade/training/v1/training_completed.proto
-  owner: control-plane/training
-  lifecycle_state: active
-  compatibility_policy: exact-version
-  fixture:
-    status: verified
-    source: services/control_plane/internal/training/training_test.go
-    target: //services/control_plane/internal/training:training_test
-    mode: populated-protobuf-roundtrip
-  producers:
-  - id: control-plane/training
-    source: services/control_plane/internal/training/events.go
-    target: //services/control_plane/internal/training:training
-    mode: transactional-outbox
-  consumers:
-  - id: control-plane/event-audit-projection
-    source: services/control_plane/internal/platform/eventprojection/projection.go
-    target: //services/control_plane/internal/platform/eventprojection:event_projection
-    mode: semantic-inbox
-  activation_gaps: []
-- full_name: mindclade.events.training.v1.TrainingRunCreated
-  version: 1
-  content_type: application/x-protobuf; deterministic=true
-  source: events/mindclade/training/v1/training_run_created.proto
-  owner: control-plane/training
-  lifecycle_state: active
-  compatibility_policy: exact-version
-  fixture:
-    status: verified
-    source: services/control_plane/internal/training/training_test.go
-    target: //services/control_plane/internal/training:training_test
-    mode: populated-protobuf-roundtrip
-  producers:
-  - id: control-plane/training
-    source: services/control_plane/internal/training/events.go
-    target: //services/control_plane/internal/training:training
-    mode: transactional-outbox
-  consumers:
-  - id: control-plane/event-audit-projection
-    source: services/control_plane/internal/platform/eventprojection/projection.go
-    target: //services/control_plane/internal/platform/eventprojection:event_projection
-    mode: semantic-inbox
-  activation_gaps: []
-- full_name: mindclade.events.training.v1.TrainingStarted
-  version: 1
-  content_type: application/x-protobuf; deterministic=true
-  source: events/mindclade/training/v1/training_started.proto
-  owner: control-plane/training
-  lifecycle_state: active
-  compatibility_policy: exact-version
-  fixture:
-    status: verified
-    source: services/control_plane/internal/training/training_test.go
-    target: //services/control_plane/internal/training:training_test
-    mode: populated-protobuf-roundtrip
-  producers:
-  - id: control-plane/training
-    source: services/control_plane/internal/training/events.go
-    target: //services/control_plane/internal/training:training
-    mode: transactional-outbox
-  consumers:
-  - id: control-plane/event-audit-projection
-    source: services/control_plane/internal/platform/eventprojection/projection.go
-    target: //services/control_plane/internal/platform/eventprojection:event_projection
-    mode: semantic-inbox
-  activation_gaps: []
-- full_name: mindclade.events.transform.v1.TransformExecutionCompleted
-  version: 1
-  content_type: application/x-protobuf; deterministic=true
-  source: events/mindclade/transform/v1/transform_execution_completed.proto
-  owner: data-platform/transforms
-  lifecycle_state: active
-  compatibility_policy: exact-version
-  fixture:
-    status: verified
-    source: services/control_plane/internal/jobs/domain_completion_postgres_test.go
-    target: //services/control_plane:jobs_server_test
-    mode: transactional-outbox-roundtrip
-  producers:
-  - id: control-plane/jobs
-    source: services/control_plane/internal/jobs/job_repository.go
-    target: //services/control_plane:jobs
-    mode: transactional-outbox
-  consumers:
-  - id: control-plane/event-audit-projection
-    source: services/control_plane/internal/platform/eventprojection/projection.go
-    target: //services/control_plane/internal/platform/eventprojection:event_projection
-    mode: semantic-inbox
-  activation_gaps: []
-- full_name: mindclade.events.workflow.v1.ApprovalConsumed
-  version: 1
-  content_type: application/x-protobuf; deterministic=true
-  source: events/mindclade/workflow/v1/approval_consumed.proto
-  owner: control-plane/workflows
-  lifecycle_state: active
-  compatibility_policy: exact-version
-  fixture:
-    status: verified
-    source: services/control_plane/internal/workflows/postgres_integration_test.go
-    target: //services/control_plane/internal/workflows:workflows_test
-    mode: transactional-outbox-roundtrip
-  producers:
-  - id: control-plane/workflows
-    source: services/control_plane/internal/workflows/events.go
-    target: //services/control_plane/internal/workflows:workflows
-    mode: transactional-outbox
-  consumers:
-  - id: control-plane/event-audit-projection
-    source: services/control_plane/internal/platform/eventprojection/projection.go
-    target: //services/control_plane/internal/platform/eventprojection:event_projection
-    mode: semantic-inbox
-  activation_gaps: []
-- full_name: mindclade.events.workflow.v1.ApprovalRecorded
-  version: 1
-  content_type: application/x-protobuf; deterministic=true
-  source: events/mindclade/workflow/v1/approval_recorded.proto
-  owner: control-plane/workflows
-  lifecycle_state: active
-  compatibility_policy: exact-version
-  fixture:
-    status: verified
-    source: services/control_plane/internal/workflows/postgres_integration_test.go
-    target: //services/control_plane/internal/workflows:workflows_test
-    mode: transactional-outbox-roundtrip
-  producers:
-  - id: control-plane/workflows
-    source: services/control_plane/internal/workflows/events.go
-    target: //services/control_plane/internal/workflows:workflows
-    mode: transactional-outbox
-  consumers:
-  - id: control-plane/event-audit-projection
-    source: services/control_plane/internal/platform/eventprojection/projection.go
-    target: //services/control_plane/internal/platform/eventprojection:event_projection
-    mode: semantic-inbox
-  activation_gaps: []
-- full_name: mindclade.events.workflow.v1.ApprovalRequested
-  version: 1
-  content_type: application/x-protobuf; deterministic=true
-  source: events/mindclade/workflow/v1/approval_requested.proto
-  owner: control-plane/workflows
-  lifecycle_state: active
-  compatibility_policy: exact-version
-  fixture:
-    status: verified
-    source: services/control_plane/internal/workflows/postgres_integration_test.go
-    target: //services/control_plane/internal/workflows:workflows_test
-    mode: transactional-outbox-roundtrip
-  producers:
-  - id: control-plane/workflows
-    source: services/control_plane/internal/workflows/events.go
-    target: //services/control_plane/internal/workflows:workflows
-    mode: transactional-outbox
-  consumers:
-  - id: control-plane/event-audit-projection
-    source: services/control_plane/internal/platform/eventprojection/projection.go
-    target: //services/control_plane/internal/platform/eventprojection:event_projection
-    mode: semantic-inbox
-  activation_gaps: []
-- full_name: mindclade.events.workflow.v1.WorkflowCancellationRequested
-  version: 1
-  content_type: application/x-protobuf; deterministic=true
-  source: events/mindclade/workflow/v1/workflow_cancellation_requested.proto
-  owner: control-plane/workflows
-  lifecycle_state: active
-  compatibility_policy: exact-version
-  fixture:
-    status: verified
-    source: services/control_plane/internal/platform/eventprojection/projection_test.go
-    target: //services/control_plane/internal/platform/eventprojection:event_projection_test
-    mode: populated-protobuf-roundtrip
-  producers:
-  - id: control-plane/workflows
-    source: services/control_plane/internal/workflows/events.go
-    target: //services/control_plane/internal/workflows:workflows
-    mode: transactional-outbox
-  consumers:
-  - id: control-plane/event-audit-projection
-    source: services/control_plane/internal/platform/eventprojection/projection.go
-    target: //services/control_plane/internal/platform/eventprojection:event_projection
-    mode: semantic-inbox
-  activation_gaps: []
-- full_name: mindclade.events.workflow.v1.WorkflowDefinitionCreated
-  version: 1
-  content_type: application/x-protobuf; deterministic=true
-  source: events/mindclade/workflow/v1/workflow_definition_created.proto
-  owner: control-plane/workflows
-  lifecycle_state: active
-  compatibility_policy: exact-version
-  fixture:
-    status: verified
-    source: services/control_plane/internal/platform/eventprojection/projection_test.go
-    target: //services/control_plane/internal/platform/eventprojection:event_projection_test
-    mode: populated-protobuf-roundtrip
-  producers:
-  - id: control-plane/workflows
-    source: services/control_plane/internal/workflows/events.go
-    target: //services/control_plane/internal/workflows:workflows
-    mode: transactional-outbox
-  consumers:
-  - id: control-plane/event-audit-projection
-    source: services/control_plane/internal/platform/eventprojection/projection.go
-    target: //services/control_plane/internal/platform/eventprojection:event_projection
-    mode: semantic-inbox
-  activation_gaps: []
-- full_name: mindclade.events.workflow.v1.WorkflowDefinitionUpdated
-  version: 1
-  content_type: application/x-protobuf; deterministic=true
-  source: events/mindclade/workflow/v1/workflow_definition_updated.proto
-  owner: control-plane/workflows
-  lifecycle_state: active
-  compatibility_policy: exact-version
-  fixture:
-    status: verified
-    source: services/control_plane/internal/platform/eventprojection/projection_test.go
-    target: //services/control_plane/internal/platform/eventprojection:event_projection_test
-    mode: populated-protobuf-roundtrip
-  producers:
-  - id: control-plane/workflows
-    source: services/control_plane/internal/workflows/events.go
-    target: //services/control_plane/internal/workflows:workflows
-    mode: transactional-outbox
-  consumers:
-  - id: control-plane/event-audit-projection
-    source: services/control_plane/internal/platform/eventprojection/projection.go
-    target: //services/control_plane/internal/platform/eventprojection:event_projection
-    mode: semantic-inbox
-  activation_gaps: []
-- full_name: mindclade.events.workflow.v1.WorkflowRunStarted
-  version: 1
-  content_type: application/x-protobuf; deterministic=true
-  source: events/mindclade/workflow/v1/workflow_run_started.proto
-  owner: control-plane/workflows
-  lifecycle_state: active
-  compatibility_policy: exact-version
-  fixture:
-    status: verified
-    source: services/control_plane/internal/platform/eventprojection/projection_test.go
-    target: //services/control_plane/internal/platform/eventprojection:event_projection_test
-    mode: populated-protobuf-roundtrip
-  producers:
-  - id: control-plane/workflows
-    source: services/control_plane/internal/workflows/events.go
-    target: //services/control_plane/internal/workflows:workflows
-    mode: transactional-outbox
-  consumers:
-  - id: control-plane/event-audit-projection
-    source: services/control_plane/internal/platform/eventprojection/projection.go
-    target: //services/control_plane/internal/platform/eventprojection:event_projection
-    mode: semantic-inbox
-  activation_gaps: []
-- full_name: mindclade.events.workflow.v1.WorkflowTransitioned
-  version: 1
-  content_type: application/x-protobuf; deterministic=true
-  source: events/mindclade/workflow/v1/workflow_transitioned.proto
-  owner: control-plane/workflows
-  lifecycle_state: active
-  compatibility_policy: exact-version
-  fixture:
-    status: verified
-    source: services/control_plane/internal/platform/eventprojection/projection_test.go
-    target: //services/control_plane/internal/platform/eventprojection:event_projection_test
-    mode: populated-protobuf-roundtrip
-  producers:
-  - id: control-plane/workflows
-    source: services/control_plane/internal/workflows/events.go
-    target: //services/control_plane/internal/workflows:workflows
-    mode: transactional-outbox
-  consumers:
-  - id: control-plane/event-audit-projection
-    source: services/control_plane/internal/platform/eventprojection/projection.go
-    target: //services/control_plane/internal/platform/eventprojection:event_projection
-    mode: semantic-inbox
-  activation_gaps: []
+  - full_name: mindclade.events.admin.v1.AuditExportCompleted
+    version: 1
+    content_type: application/x-protobuf; deterministic=true
+    source: events/mindclade/admin/v1/audit_export_completed.proto
+    owner: control-plane/admin
+    lifecycle_state: active
+    compatibility_policy: exact-version
+    fixture:
+      status: verified
+      source: services/control_plane/internal/admin/admin_test.go
+      target: //services/control_plane/internal/admin:admin_test
+      mode: populated-protobuf-roundtrip
+    producers:
+      - id: control-plane/admin
+        source: services/control_plane/internal/admin/events.go
+        target: //services/control_plane/internal/admin:admin
+        mode: transactional-outbox
+    consumers:
+      - id: control-plane/event-audit-projection
+        source: services/control_plane/internal/platform/eventprojection/projection.go
+        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        mode: semantic-inbox
+    activation_gaps: []
+  - full_name: mindclade.events.admin.v1.AuditExportRequested
+    version: 1
+    content_type: application/x-protobuf; deterministic=true
+    source: events/mindclade/admin/v1/audit_export_requested.proto
+    owner: control-plane/admin
+    lifecycle_state: active
+    compatibility_policy: exact-version
+    fixture:
+      status: verified
+      source: services/control_plane/internal/platform/eventprojection/projection_test.go
+      target: //services/control_plane/internal/platform/eventprojection:event_projection_test
+      mode: populated-protobuf-roundtrip
+    producers:
+      - id: control-plane/admin
+        source: services/control_plane/internal/admin/events.go
+        target: //services/control_plane/internal/admin:admin
+        mode: transactional-outbox
+    consumers:
+      - id: control-plane/event-audit-projection
+        source: services/control_plane/internal/platform/eventprojection/projection.go
+        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        mode: semantic-inbox
+    activation_gaps: []
+  - full_name: mindclade.events.admin.v1.ProjectCreated
+    version: 1
+    content_type: application/x-protobuf; deterministic=true
+    source: events/mindclade/admin/v1/project_created.proto
+    owner: control-plane/admin
+    lifecycle_state: active
+    compatibility_policy: exact-version
+    fixture:
+      status: verified
+      source: services/control_plane/internal/admin/admin_test.go
+      target: //services/control_plane/internal/admin:admin_test
+      mode: populated-protobuf-roundtrip
+    producers:
+      - id: control-plane/admin
+        source: services/control_plane/internal/admin/events.go
+        target: //services/control_plane/internal/admin:admin
+        mode: transactional-outbox
+    consumers:
+      - id: control-plane/event-audit-projection
+        source: services/control_plane/internal/platform/eventprojection/projection.go
+        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        mode: semantic-inbox
+    activation_gaps: []
+  - full_name: mindclade.events.admin.v1.ProjectUpdated
+    version: 1
+    content_type: application/x-protobuf; deterministic=true
+    source: events/mindclade/admin/v1/project_updated.proto
+    owner: control-plane/admin
+    lifecycle_state: active
+    compatibility_policy: exact-version
+    fixture:
+      status: verified
+      source: services/control_plane/internal/platform/eventprojection/projection_test.go
+      target: //services/control_plane/internal/platform/eventprojection:event_projection_test
+      mode: populated-protobuf-roundtrip
+    producers:
+      - id: control-plane/admin
+        source: services/control_plane/internal/admin/events.go
+        target: //services/control_plane/internal/admin:admin
+        mode: transactional-outbox
+    consumers:
+      - id: control-plane/event-audit-projection
+        source: services/control_plane/internal/platform/eventprojection/projection.go
+        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        mode: semantic-inbox
+    activation_gaps: []
+  - full_name: mindclade.events.admin.v1.TenantUpdated
+    version: 1
+    content_type: application/x-protobuf; deterministic=true
+    source: events/mindclade/admin/v1/tenant_updated.proto
+    owner: control-plane/admin
+    lifecycle_state: active
+    compatibility_policy: exact-version
+    fixture:
+      status: verified
+      source: services/control_plane/internal/platform/eventprojection/projection_test.go
+      target: //services/control_plane/internal/platform/eventprojection:event_projection_test
+      mode: populated-protobuf-roundtrip
+    producers:
+      - id: control-plane/admin
+        source: services/control_plane/internal/admin/events.go
+        target: //services/control_plane/internal/admin:admin
+        mode: transactional-outbox
+    consumers:
+      - id: control-plane/event-audit-projection
+        source: services/control_plane/internal/platform/eventprojection/projection.go
+        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        mode: semantic-inbox
+    activation_gaps: []
+  - full_name: mindclade.events.agent.v1.AgentCancellationRequested
+    version: 1
+    content_type: application/x-protobuf; deterministic=true
+    source: events/mindclade/agent/v1/agent_cancellation_requested.proto
+    owner: control-plane/agents
+    lifecycle_state: active
+    compatibility_policy: exact-version
+    fixture:
+      status: verified
+      source: services/control_plane/internal/agents/postgres_integration_test.go
+      target: //services/control_plane/internal/agents:agents_test
+      mode: transactional-outbox-roundtrip
+    producers:
+      - id: control-plane/agents
+        source: services/control_plane/internal/agents/events.go
+        target: //services/control_plane/internal/agents:agents
+        mode: transactional-outbox
+    consumers:
+      - id: control-plane/event-audit-projection
+        source: services/control_plane/internal/platform/eventprojection/projection.go
+        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        mode: semantic-inbox
+    activation_gaps: []
+  - full_name: mindclade.events.agent.v1.AgentDefinitionCreated
+    version: 1
+    content_type: application/x-protobuf; deterministic=true
+    source: events/mindclade/agent/v1/agent_definition_created.proto
+    owner: control-plane/agents
+    lifecycle_state: active
+    compatibility_policy: exact-version
+    fixture:
+      status: verified
+      source: services/control_plane/internal/agents/postgres_integration_test.go
+      target: //services/control_plane/internal/agents:agents_test
+      mode: transactional-outbox-roundtrip
+    producers:
+      - id: control-plane/agents
+        source: services/control_plane/internal/agents/events.go
+        target: //services/control_plane/internal/agents:agents
+        mode: transactional-outbox
+    consumers:
+      - id: control-plane/event-audit-projection
+        source: services/control_plane/internal/platform/eventprojection/projection.go
+        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        mode: semantic-inbox
+    activation_gaps: []
+  - full_name: mindclade.events.agent.v1.AgentDefinitionUpdated
+    version: 1
+    content_type: application/x-protobuf; deterministic=true
+    source: events/mindclade/agent/v1/agent_definition_updated.proto
+    owner: control-plane/agents
+    lifecycle_state: active
+    compatibility_policy: exact-version
+    fixture:
+      status: verified
+      source: services/control_plane/internal/agents/postgres_integration_test.go
+      target: //services/control_plane/internal/agents:agents_test
+      mode: transactional-outbox-roundtrip
+    producers:
+      - id: control-plane/agents
+        source: services/control_plane/internal/agents/events.go
+        target: //services/control_plane/internal/agents:agents
+        mode: transactional-outbox
+    consumers:
+      - id: control-plane/event-audit-projection
+        source: services/control_plane/internal/platform/eventprojection/projection.go
+        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        mode: semantic-inbox
+    activation_gaps: []
+  - full_name: mindclade.events.agent.v1.AgentRunCompleted
+    version: 1
+    content_type: application/x-protobuf; deterministic=true
+    source: events/mindclade/agent/v1/agent_run_completed.proto
+    owner: control-plane/agents
+    lifecycle_state: active
+    compatibility_policy: exact-version
+    fixture:
+      status: verified
+      source: services/control_plane/internal/agents/postgres_integration_test.go
+      target: //services/control_plane/internal/agents:agents_test
+      mode: transactional-outbox-roundtrip
+    producers:
+      - id: control-plane/agents
+        source: services/control_plane/internal/agents/events.go
+        target: //services/control_plane/internal/agents:agents
+        mode: transactional-outbox
+    consumers:
+      - id: control-plane/event-audit-projection
+        source: services/control_plane/internal/platform/eventprojection/projection.go
+        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        mode: semantic-inbox
+    activation_gaps: []
+  - full_name: mindclade.events.agent.v1.AgentRunStarted
+    version: 1
+    content_type: application/x-protobuf; deterministic=true
+    source: events/mindclade/agent/v1/agent_run_started.proto
+    owner: control-plane/agents
+    lifecycle_state: active
+    compatibility_policy: exact-version
+    fixture:
+      status: verified
+      source: services/control_plane/internal/agents/postgres_integration_test.go
+      target: //services/control_plane/internal/agents:agents_test
+      mode: transactional-outbox-roundtrip
+    producers:
+      - id: control-plane/agents
+        source: services/control_plane/internal/agents/events.go
+        target: //services/control_plane/internal/agents:agents
+        mode: transactional-outbox
+    consumers:
+      - id: control-plane/event-audit-projection
+        source: services/control_plane/internal/platform/eventprojection/projection.go
+        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        mode: semantic-inbox
+    activation_gaps: []
+  - full_name: mindclade.events.agent.v1.AgentStepCommitted
+    version: 1
+    content_type: application/x-protobuf; deterministic=true
+    source: events/mindclade/agent/v1/agent_step_committed.proto
+    owner: control-plane/agents
+    lifecycle_state: active
+    compatibility_policy: exact-version
+    fixture:
+      status: verified
+      source: services/control_plane/internal/agents/postgres_integration_test.go
+      target: //services/control_plane/internal/agents:agents_test
+      mode: transactional-outbox-roundtrip
+    producers:
+      - id: control-plane/agents
+        source: services/control_plane/internal/agents/events.go
+        target: //services/control_plane/internal/agents:agents
+        mode: transactional-outbox
+    consumers:
+      - id: control-plane/event-audit-projection
+        source: services/control_plane/internal/platform/eventprojection/projection.go
+        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        mode: semantic-inbox
+    activation_gaps: []
+  - full_name: mindclade.events.agent.v1.AgentStepDispatched
+    version: 1
+    content_type: application/x-protobuf; deterministic=true
+    source: events/mindclade/agent/v1/agent_step_dispatched.proto
+    owner: control-plane/agents
+    lifecycle_state: active
+    compatibility_policy: exact-version
+    fixture:
+      status: verified
+      source: services/control_plane/internal/agents/postgres_integration_test.go
+      target: //services/control_plane/internal/agents:agents_test
+      mode: transactional-outbox-roundtrip
+    producers:
+      - id: control-plane/agents
+        source: services/control_plane/internal/agents/repository_sql.go
+        target: //services/control_plane/internal/agents:agents
+        mode: transactional-outbox
+    consumers:
+      - id: control-plane/event-audit-projection
+        source: services/control_plane/internal/platform/eventprojection/projection.go
+        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        mode: semantic-inbox
+    activation_gaps: []
+  - full_name: mindclade.events.agent.v1.ToolReceiptCommitted
+    version: 1
+    content_type: application/x-protobuf; deterministic=true
+    source: events/mindclade/agent/v1/tool_receipt_committed.proto
+    owner: control-plane/agents
+    lifecycle_state: active
+    compatibility_policy: exact-version
+    fixture:
+      status: verified
+      source: services/control_plane/internal/agents/postgres_integration_test.go
+      target: //services/control_plane/internal/agents:agents_test
+      mode: transactional-outbox-roundtrip
+    producers:
+      - id: control-plane/agents
+        source: services/control_plane/internal/agents/events.go
+        target: //services/control_plane/internal/agents:agents
+        mode: transactional-outbox
+    consumers:
+      - id: control-plane/event-audit-projection
+        source: services/control_plane/internal/platform/eventprojection/projection.go
+        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        mode: semantic-inbox
+    activation_gaps: []
+  - full_name: mindclade.events.artifact.v1.ArtifactCommitted
+    version: 1
+    content_type: application/x-protobuf; deterministic=true
+    source: events/mindclade/artifact/v1/artifact_committed.proto
+    owner: control-plane/artifacts
+    lifecycle_state: active
+    compatibility_policy: exact-version
+    fixture:
+      status: verified
+      source: services/control_plane/internal/artifacts/postgres_integration_test.go
+      target: //services/control_plane:artifacts_server_test
+      mode: transactional-outbox-roundtrip
+    producers:
+      - id: control-plane/artifacts
+        source: services/control_plane/internal/artifacts/repository_sql.go
+        target: //services/control_plane:artifacts
+        mode: transactional-outbox
+    consumers:
+      - id: control-plane/event-audit-projection
+        source: services/control_plane/internal/platform/eventprojection/projection.go
+        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        mode: semantic-inbox
+    activation_gaps: []
+  - full_name: mindclade.events.artifact.v1.ArtifactQuarantined
+    version: 1
+    content_type: application/x-protobuf; deterministic=true
+    source: events/mindclade/artifact/v1/artifact_quarantined.proto
+    owner: control-plane/artifacts
+    lifecycle_state: active
+    compatibility_policy: exact-version
+    fixture:
+      status: verified
+      source: services/control_plane/internal/artifacts/postgres_integration_test.go
+      target: //services/control_plane:artifacts_server_test
+      mode: transactional-outbox-roundtrip
+    producers:
+      - id: control-plane/artifacts
+        source: services/control_plane/internal/artifacts/repository_sql.go
+        target: //services/control_plane:artifacts
+        mode: transactional-outbox
+    consumers:
+      - id: control-plane/event-audit-projection
+        source: services/control_plane/internal/platform/eventprojection/projection.go
+        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        mode: semantic-inbox
+    activation_gaps: []
+  - full_name: mindclade.events.artifact.v1.ArtifactStagingFinalized
+    version: 1
+    content_type: application/x-protobuf; deterministic=true
+    source: events/mindclade/artifact/v1/artifact_committed.proto
+    owner: control-plane/artifacts
+    lifecycle_state: active
+    compatibility_policy: exact-version
+    fixture:
+      status: verified
+      source: services/control_plane/internal/platform/eventprojection/projection_test.go
+      target: //services/control_plane/internal/platform/eventprojection:event_projection_test
+      mode: populated-protobuf-roundtrip
+    producers:
+      - id: control-plane/artifacts
+        source: services/control_plane/internal/artifacts/repository_sql.go
+        target: //services/control_plane:artifacts
+        mode: transactional-outbox
+    consumers:
+      - id: control-plane/event-audit-projection
+        source: services/control_plane/internal/platform/eventprojection/projection.go
+        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        mode: semantic-inbox
+    activation_gaps: []
+  - full_name: mindclade.events.audit.v1.AuditEvent
+    version: 1
+    content_type: application/x-protobuf; deterministic=true
+    source: events/mindclade/audit/v1/audit_event.proto
+    owner: platform/audit
+    lifecycle_state: active
+    compatibility_policy: exact-version
+    fixture:
+      status: verified
+      source: services/control_plane/internal/platform/eventprojection/projection_test.go
+      target: //services/control_plane/internal/platform/eventprojection:event_projection_test
+      mode: populated-protobuf-roundtrip
+    producers:
+      - id: platform/audit
+        source: libs/go/audit/event.go
+        target: //libs/go/audit:audit
+        mode: durable-audit
+    consumers:
+      - id: control-plane/event-audit-projection
+        source: services/control_plane/internal/platform/eventprojection/projection.go
+        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        mode: semantic-inbox
+    activation_gaps: []
+  - full_name: mindclade.events.audit.v1.SecurityEvent
+    version: 1
+    content_type: application/x-protobuf; deterministic=true
+    source: events/mindclade/audit/v1/security_event.proto
+    owner: platform/audit
+    lifecycle_state: active
+    compatibility_policy: exact-version
+    fixture:
+      status: verified
+      source: services/control_plane/internal/policies/postgres_integration_test.go
+      target: //services/control_plane/internal/policies:policies_test
+      mode: transactional-outbox-roundtrip
+    producers:
+      - id: control-plane/policies
+        source: services/control_plane/internal/policies/repository_sql.go
+        target: //services/control_plane/internal/policies:policies
+        mode: transactional-outbox
+    consumers:
+      - id: control-plane/event-audit-projection
+        source: services/control_plane/internal/platform/eventprojection/projection.go
+        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        mode: semantic-inbox
+    activation_gaps: []
+  - full_name: mindclade.events.dataset.v1.DatasetCreated
+    version: 1
+    content_type: application/x-protobuf; deterministic=true
+    source: events/mindclade/dataset/v1/dataset_created.proto
+    owner: control-plane/datasets
+    lifecycle_state: active
+    compatibility_policy: exact-version
+    fixture:
+      status: verified
+      source: services/control_plane/internal/datasets/postgres_integration_test.go
+      target: //services/control_plane/internal/datasets:datasets_test
+      mode: transactional-outbox-roundtrip
+    producers:
+      - id: control-plane/datasets
+        source: services/control_plane/internal/datasets/events.go
+        target: //services/control_plane/internal/datasets:datasets
+        mode: transactional-outbox
+    consumers:
+      - id: control-plane/event-audit-projection
+        source: services/control_plane/internal/platform/eventprojection/projection.go
+        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        mode: semantic-inbox
+    activation_gaps: []
+  - full_name: mindclade.events.dataset.v1.DatasetReleasePublished
+    version: 1
+    content_type: application/x-protobuf; deterministic=true
+    source: events/mindclade/dataset/v1/dataset_release_published.proto
+    owner: control-plane/datasets
+    lifecycle_state: active
+    compatibility_policy: exact-version
+    fixture:
+      status: verified
+      source: services/control_plane/internal/datasets/postgres_integration_test.go
+      target: //services/control_plane/internal/datasets:datasets_test
+      mode: transactional-outbox-roundtrip
+    producers:
+      - id: control-plane/datasets
+        source: services/control_plane/internal/datasets/events.go
+        target: //services/control_plane/internal/datasets:datasets
+        mode: transactional-outbox
+    consumers:
+      - id: control-plane/event-audit-projection
+        source: services/control_plane/internal/platform/eventprojection/projection.go
+        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        mode: semantic-inbox
+    activation_gaps: []
+  - full_name: mindclade.events.dataset.v1.DatasetReleaseRevoked
+    version: 1
+    content_type: application/x-protobuf; deterministic=true
+    source: events/mindclade/dataset/v1/dataset_release_revoked.proto
+    owner: control-plane/datasets
+    lifecycle_state: active
+    compatibility_policy: exact-version
+    fixture:
+      status: verified
+      source: services/control_plane/internal/datasets/postgres_integration_test.go
+      target: //services/control_plane/internal/datasets:datasets_test
+      mode: transactional-outbox-roundtrip
+    producers:
+      - id: control-plane/datasets
+        source: services/control_plane/internal/datasets/events.go
+        target: //services/control_plane/internal/datasets:datasets
+        mode: transactional-outbox
+    consumers:
+      - id: control-plane/event-audit-projection
+        source: services/control_plane/internal/platform/eventprojection/projection.go
+        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        mode: semantic-inbox
+    activation_gaps: []
+  - full_name: mindclade.events.dataset.v1.DatasetUpdated
+    version: 1
+    content_type: application/x-protobuf; deterministic=true
+    source: events/mindclade/dataset/v1/dataset_updated.proto
+    owner: control-plane/datasets
+    lifecycle_state: active
+    compatibility_policy: exact-version
+    fixture:
+      status: verified
+      source: services/control_plane/internal/datasets/postgres_integration_test.go
+      target: //services/control_plane/internal/datasets:datasets_test
+      mode: transactional-outbox-roundtrip
+    producers:
+      - id: control-plane/datasets
+        source: services/control_plane/internal/datasets/events.go
+        target: //services/control_plane/internal/datasets:datasets
+        mode: transactional-outbox
+    consumers:
+      - id: control-plane/event-audit-projection
+        source: services/control_plane/internal/platform/eventprojection/projection.go
+        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        mode: semantic-inbox
+    activation_gaps: []
+  - full_name: mindclade.events.evaluation.v1.EvaluationCancellationRequested
+    version: 1
+    content_type: application/x-protobuf; deterministic=true
+    source: events/mindclade/evaluation/v1/evaluation_cancellation_requested.proto
+    owner: control-plane/evaluations
+    lifecycle_state: active
+    compatibility_policy: exact-version
+    fixture:
+      status: verified
+      source: services/control_plane/internal/evaluations/postgres_integration_test.go
+      target: //services/control_plane/internal/evaluations:evaluations_test
+      mode: transactional-outbox-roundtrip
+    producers:
+      - id: control-plane/evaluations
+        source: services/control_plane/internal/evaluations/events.go
+        target: //services/control_plane/internal/evaluations:evaluations
+        mode: transactional-outbox
+    consumers:
+      - id: control-plane/event-audit-projection
+        source: services/control_plane/internal/platform/eventprojection/projection.go
+        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        mode: semantic-inbox
+    activation_gaps: []
+  - full_name: mindclade.events.evaluation.v1.EvaluationResultCommitted
+    version: 1
+    content_type: application/x-protobuf; deterministic=true
+    source: events/mindclade/evaluation/v1/evaluation_result_committed.proto
+    owner: control-plane/evaluations
+    lifecycle_state: active
+    compatibility_policy: exact-version
+    fixture:
+      status: verified
+      source: services/control_plane/internal/evaluations/postgres_integration_test.go
+      target: //services/control_plane/internal/evaluations:evaluations_test
+      mode: transactional-outbox-roundtrip
+    producers:
+      - id: control-plane/evaluations
+        source: services/control_plane/internal/evaluations/events.go
+        target: //services/control_plane/internal/evaluations:evaluations
+        mode: transactional-outbox
+    consumers:
+      - id: control-plane/event-audit-projection
+        source: services/control_plane/internal/platform/eventprojection/projection.go
+        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        mode: semantic-inbox
+    activation_gaps: []
+  - full_name: mindclade.events.evaluation.v1.EvaluationRunCreated
+    version: 1
+    content_type: application/x-protobuf; deterministic=true
+    source: events/mindclade/evaluation/v1/evaluation_run_created.proto
+    owner: control-plane/evaluations
+    lifecycle_state: active
+    compatibility_policy: exact-version
+    fixture:
+      status: verified
+      source: services/control_plane/internal/evaluations/postgres_integration_test.go
+      target: //services/control_plane/internal/evaluations:evaluations_test
+      mode: transactional-outbox-roundtrip
+    producers:
+      - id: control-plane/evaluations
+        source: services/control_plane/internal/evaluations/events.go
+        target: //services/control_plane/internal/evaluations:evaluations
+        mode: transactional-outbox
+    consumers:
+      - id: control-plane/event-audit-projection
+        source: services/control_plane/internal/platform/eventprojection/projection.go
+        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        mode: semantic-inbox
+    activation_gaps: []
+  - full_name: mindclade.events.evaluation.v1.PromotionDecisionRecorded
+    version: 1
+    content_type: application/x-protobuf; deterministic=true
+    source: events/mindclade/evaluation/v1/promotion_decision_recorded.proto
+    owner: control-plane/evaluations
+    lifecycle_state: active
+    compatibility_policy: exact-version
+    fixture:
+      status: verified
+      source: services/control_plane/internal/evaluations/postgres_integration_test.go
+      target: //services/control_plane/internal/evaluations:evaluations_test
+      mode: transactional-outbox-roundtrip
+    producers:
+      - id: control-plane/evaluations
+        source: services/control_plane/internal/evaluations/events.go
+        target: //services/control_plane/internal/evaluations:evaluations
+        mode: transactional-outbox
+    consumers:
+      - id: control-plane/event-audit-projection
+        source: services/control_plane/internal/platform/eventprojection/projection.go
+        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        mode: semantic-inbox
+    activation_gaps: []
+  - full_name: mindclade.events.experiment.v1.ExperimentCreated
+    version: 1
+    content_type: application/x-protobuf; deterministic=true
+    source: events/mindclade/experiment/v1/experiment_created.proto
+    owner: control-plane/experiments
+    lifecycle_state: active
+    compatibility_policy: exact-version
+    fixture:
+      status: verified
+      source: services/control_plane/internal/experiments/postgres_integration_test.go
+      target: //services/control_plane/internal/experiments:experiments_test
+      mode: transactional-outbox-roundtrip
+    producers:
+      - id: control-plane/experiments
+        source: services/control_plane/internal/experiments/events.go
+        target: //services/control_plane/internal/experiments:experiments
+        mode: transactional-outbox
+    consumers:
+      - id: control-plane/event-audit-projection
+        source: services/control_plane/internal/platform/eventprojection/projection.go
+        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        mode: semantic-inbox
+    activation_gaps: []
+  - full_name: mindclade.events.experiment.v1.ExperimentStateChanged
+    version: 1
+    content_type: application/x-protobuf; deterministic=true
+    source: events/mindclade/experiment/v1/experiment_state_changed.proto
+    owner: control-plane/experiments
+    lifecycle_state: active
+    compatibility_policy: exact-version
+    fixture:
+      status: verified
+      source: services/control_plane/internal/experiments/postgres_integration_test.go
+      target: //services/control_plane/internal/experiments:experiments_test
+      mode: transactional-outbox-roundtrip
+    producers:
+      - id: control-plane/experiments
+        source: services/control_plane/internal/experiments/events.go
+        target: //services/control_plane/internal/experiments:experiments
+        mode: transactional-outbox
+    consumers:
+      - id: control-plane/event-audit-projection
+        source: services/control_plane/internal/platform/eventprojection/projection.go
+        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        mode: semantic-inbox
+    activation_gaps: []
+  - full_name: mindclade.events.experiment.v1.ExperimentUpdated
+    version: 1
+    content_type: application/x-protobuf; deterministic=true
+    source: events/mindclade/experiment/v1/experiment_updated.proto
+    owner: control-plane/experiments
+    lifecycle_state: active
+    compatibility_policy: exact-version
+    fixture:
+      status: verified
+      source: services/control_plane/internal/experiments/postgres_integration_test.go
+      target: //services/control_plane/internal/experiments:experiments_test
+      mode: transactional-outbox-roundtrip
+    producers:
+      - id: control-plane/experiments
+        source: services/control_plane/internal/experiments/events.go
+        target: //services/control_plane/internal/experiments:experiments
+        mode: transactional-outbox
+    consumers:
+      - id: control-plane/event-audit-projection
+        source: services/control_plane/internal/platform/eventprojection/projection.go
+        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        mode: semantic-inbox
+    activation_gaps: []
+  - full_name: mindclade.events.experiment.v1.StudyCreated
+    version: 1
+    content_type: application/x-protobuf; deterministic=true
+    source: events/mindclade/experiment/v1/study_created.proto
+    owner: control-plane/experiments
+    lifecycle_state: active
+    compatibility_policy: exact-version
+    fixture:
+      status: verified
+      source: services/control_plane/internal/experiments/postgres_integration_test.go
+      target: //services/control_plane/internal/experiments:experiments_test
+      mode: transactional-outbox-roundtrip
+    producers:
+      - id: control-plane/experiments
+        source: services/control_plane/internal/experiments/events.go
+        target: //services/control_plane/internal/experiments:experiments
+        mode: transactional-outbox
+    consumers:
+      - id: control-plane/event-audit-projection
+        source: services/control_plane/internal/platform/eventprojection/projection.go
+        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        mode: semantic-inbox
+    activation_gaps: []
+  - full_name: mindclade.events.experiment.v1.StudyStateChanged
+    version: 1
+    content_type: application/x-protobuf; deterministic=true
+    source: events/mindclade/experiment/v1/study_state_changed.proto
+    owner: control-plane/experiments
+    lifecycle_state: active
+    compatibility_policy: exact-version
+    fixture:
+      status: verified
+      source: services/control_plane/internal/experiments/postgres_integration_test.go
+      target: //services/control_plane/internal/experiments:experiments_test
+      mode: transactional-outbox-roundtrip
+    producers:
+      - id: control-plane/experiments
+        source: services/control_plane/internal/experiments/events.go
+        target: //services/control_plane/internal/experiments:experiments
+        mode: transactional-outbox
+    consumers:
+      - id: control-plane/event-audit-projection
+        source: services/control_plane/internal/platform/eventprojection/projection.go
+        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        mode: semantic-inbox
+    activation_gaps: []
+  - full_name: mindclade.events.experiment.v1.TrialCompleted
+    version: 1
+    content_type: application/x-protobuf; deterministic=true
+    source: events/mindclade/experiment/v1/trial_completed.proto
+    owner: control-plane/experiments
+    lifecycle_state: active
+    compatibility_policy: exact-version
+    fixture:
+      status: verified
+      source: services/control_plane/internal/experiments/postgres_integration_test.go
+      target: //services/control_plane/internal/experiments:experiments_test
+      mode: transactional-outbox-roundtrip
+    producers:
+      - id: control-plane/experiments
+        source: services/control_plane/internal/experiments/events.go
+        target: //services/control_plane/internal/experiments:experiments
+        mode: transactional-outbox
+    consumers:
+      - id: control-plane/event-audit-projection
+        source: services/control_plane/internal/platform/eventprojection/projection.go
+        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        mode: semantic-inbox
+    activation_gaps: []
+  - full_name: mindclade.events.experiment.v1.TrialCreated
+    version: 1
+    content_type: application/x-protobuf; deterministic=true
+    source: events/mindclade/experiment/v1/trial_created.proto
+    owner: control-plane/experiments
+    lifecycle_state: active
+    compatibility_policy: exact-version
+    fixture:
+      status: verified
+      source: services/control_plane/internal/experiments/postgres_integration_test.go
+      target: //services/control_plane/internal/experiments:experiments_test
+      mode: transactional-outbox-roundtrip
+    producers:
+      - id: control-plane/experiments
+        source: services/control_plane/internal/experiments/events.go
+        target: //services/control_plane/internal/experiments:experiments
+        mode: transactional-outbox
+    consumers:
+      - id: control-plane/event-audit-projection
+        source: services/control_plane/internal/platform/eventprojection/projection.go
+        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        mode: semantic-inbox
+    activation_gaps: []
+  - full_name: mindclade.events.experiment.v1.TrialStateChanged
+    version: 1
+    content_type: application/x-protobuf; deterministic=true
+    source: events/mindclade/experiment/v1/trial_state_changed.proto
+    owner: control-plane/experiments
+    lifecycle_state: active
+    compatibility_policy: exact-version
+    fixture:
+      status: verified
+      source: services/control_plane/internal/experiments/postgres_integration_test.go
+      target: //services/control_plane/internal/experiments:experiments_test
+      mode: transactional-outbox-roundtrip
+    producers:
+      - id: control-plane/experiments
+        source: services/control_plane/internal/experiments/events.go
+        target: //services/control_plane/internal/experiments:experiments
+        mode: transactional-outbox
+    consumers:
+      - id: control-plane/event-audit-projection
+        source: services/control_plane/internal/platform/eventprojection/projection.go
+        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        mode: semantic-inbox
+    activation_gaps: []
+  - full_name: mindclade.events.feature.v1.FeatureMaterializationCompleted
+    version: 1
+    content_type: application/x-protobuf; deterministic=true
+    source: events/mindclade/feature/v1/feature_materialization_completed.proto
+    owner: data-platform/features
+    lifecycle_state: active
+    compatibility_policy: exact-version
+    fixture:
+      status: verified
+      source: services/control_plane/internal/jobs/domain_completion_postgres_test.go
+      target: //services/control_plane:jobs_server_test
+      mode: transactional-outbox-roundtrip
+    producers:
+      - id: control-plane/jobs
+        source: services/control_plane/internal/jobs/job_repository.go
+        target: //services/control_plane:jobs
+        mode: transactional-outbox
+    consumers:
+      - id: control-plane/event-audit-projection
+        source: services/control_plane/internal/platform/eventprojection/projection.go
+        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        mode: semantic-inbox
+    activation_gaps: []
+  - full_name: mindclade.events.inference.v1.InferenceRequested
+    version: 1
+    content_type: application/x-protobuf; deterministic=true
+    source: events/mindclade/inference/v1/inference_requested.proto
+    owner: control-plane/inference
+    lifecycle_state: active
+    compatibility_policy: exact-version
+    fixture:
+      status: verified
+      source: services/control_plane/internal/inference/postgres_integration_test.go
+      target: //services/control_plane/internal/inference:inference_test
+      mode: transactional-outbox-roundtrip
+    producers:
+      - id: control-plane/inference
+        source: services/control_plane/internal/inference/events.go
+        target: //services/control_plane/internal/inference:inference
+        mode: transactional-outbox
+    consumers:
+      - id: control-plane/event-audit-projection
+        source: services/control_plane/internal/platform/eventprojection/projection.go
+        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        mode: semantic-inbox
+    activation_gaps: []
+  - full_name: mindclade.events.inference.v1.InferenceResultCommitted
+    version: 1
+    content_type: application/x-protobuf; deterministic=true
+    source: events/mindclade/inference/v1/inference_result_committed.proto
+    owner: control-plane/inference
+    lifecycle_state: active
+    compatibility_policy: exact-version
+    fixture:
+      status: verified
+      source: services/control_plane/internal/inference/postgres_integration_test.go
+      target: //services/control_plane/internal/inference:inference_test
+      mode: transactional-outbox-roundtrip
+    producers:
+      - id: control-plane/inference
+        source: services/control_plane/internal/inference/events.go
+        target: //services/control_plane/internal/inference:inference
+        mode: transactional-outbox
+    consumers:
+      - id: control-plane/event-audit-projection
+        source: services/control_plane/internal/platform/eventprojection/projection.go
+        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        mode: semantic-inbox
+    activation_gaps: []
+  - full_name: mindclade.events.job.v1.AttemptCompleted
+    version: 1
+    content_type: application/x-protobuf; deterministic=true
+    source: events/mindclade/job/v1/attempt_completed.proto
+    owner: control-plane/execution
+    lifecycle_state: active
+    compatibility_policy: exact-version
+    fixture:
+      status: verified
+      source: services/control_plane/internal/jobs/events_test.go
+      target: //services/control_plane:jobs_server_test
+      mode: populated-protobuf-roundtrip
+    producers:
+      - id: control-plane/jobs
+        source: services/control_plane/internal/jobs/events.go
+        target: //services/control_plane:jobs
+        mode: transactional-outbox
+    consumers:
+      - id: control-plane/event-audit-projection
+        source: services/control_plane/internal/platform/eventprojection/projection.go
+        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        mode: semantic-inbox
+    activation_gaps: []
+  - full_name: mindclade.events.job.v1.AttemptLeased
+    version: 1
+    content_type: application/x-protobuf; deterministic=true
+    source: events/mindclade/job/v1/attempt_leased.proto
+    owner: control-plane/execution
+    lifecycle_state: active
+    compatibility_policy: exact-version
+    fixture:
+      status: verified
+      source: services/control_plane/internal/jobs/events_test.go
+      target: //services/control_plane:jobs_server_test
+      mode: populated-protobuf-roundtrip
+    producers:
+      - id: control-plane/jobs
+        source: services/control_plane/internal/jobs/events.go
+        target: //services/control_plane:jobs
+        mode: transactional-outbox
+    consumers:
+      - id: control-plane/event-audit-projection
+        source: services/control_plane/internal/platform/eventprojection/projection.go
+        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        mode: semantic-inbox
+    activation_gaps: []
+  - full_name: mindclade.events.job.v1.JobRequested
+    version: 1
+    content_type: application/x-protobuf; deterministic=true
+    source: events/mindclade/job/v1/job_requested.proto
+    owner: control-plane/execution
+    lifecycle_state: active
+    compatibility_policy: exact-version
+    fixture:
+      status: verified
+      source: services/control_plane/tests/transaction_outbox_test.go
+      target: //services/control_plane:control_plane_test
+      mode: transactional-outbox-roundtrip
+    producers:
+      - id: control-plane/agents
+        source: services/control_plane/internal/agents/events.go
+        target: //services/control_plane/internal/agents:agents
+        mode: transactional-outbox
+      - id: control-plane/evaluations
+        source: services/control_plane/internal/evaluations/events.go
+        target: //services/control_plane/internal/evaluations:evaluations
+        mode: transactional-outbox
+      - id: control-plane/inference
+        source: services/control_plane/internal/inference/events.go
+        target: //services/control_plane/internal/inference:inference
+        mode: transactional-outbox
+      - id: control-plane/operations
+        source: services/control_plane/internal/operations/operation_repository.go
+        target: //services/control_plane:operations
+        mode: transactional-outbox
+      - id: control-plane/training
+        source: services/control_plane/internal/training/events.go
+        target: //services/control_plane/internal/training:training
+        mode: transactional-outbox
+      - id: control-plane/workflows
+        source: services/control_plane/internal/workflows/events.go
+        target: //services/control_plane/internal/workflows:workflows
+        mode: transactional-outbox
+    consumers:
+      - id: control-plane/event-audit-projection
+        source: services/control_plane/internal/platform/eventprojection/projection.go
+        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        mode: semantic-inbox
+      - id: control-plane/job-requested-reconciler
+        source: services/control_plane/internal/jobs/job_reconciler.go
+        target: //services/control_plane:jobs
+        mode: semantic-inbox
+    activation_gaps: []
+  - full_name: mindclade.events.model.v1.ModelPromoted
+    version: 1
+    content_type: application/x-protobuf; deterministic=true
+    source: events/mindclade/model/v1/model_promoted.proto
+    owner: control-plane/models
+    lifecycle_state: active
+    compatibility_policy: exact-version
+    fixture:
+      status: verified
+      source: services/control_plane/internal/models/postgres_integration_test.go
+      target: //services/control_plane/internal/models:models_test
+      mode: transactional-outbox-roundtrip
+    producers:
+      - id: control-plane/models
+        source: services/control_plane/internal/models/events.go
+        target: //services/control_plane/internal/models:models
+        mode: transactional-outbox
+    consumers:
+      - id: control-plane/event-audit-projection
+        source: services/control_plane/internal/platform/eventprojection/projection.go
+        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        mode: semantic-inbox
+    activation_gaps: []
+  - full_name: mindclade.events.model.v1.ModelRegistered
+    version: 1
+    content_type: application/x-protobuf; deterministic=true
+    source: events/mindclade/model/v1/model_registered.proto
+    owner: control-plane/models
+    lifecycle_state: active
+    compatibility_policy: exact-version
+    fixture:
+      status: verified
+      source: services/control_plane/internal/models/postgres_integration_test.go
+      target: //services/control_plane/internal/models:models_test
+      mode: transactional-outbox-roundtrip
+    producers:
+      - id: control-plane/models
+        source: services/control_plane/internal/models/events.go
+        target: //services/control_plane/internal/models:models
+        mode: transactional-outbox
+    consumers:
+      - id: control-plane/event-audit-projection
+        source: services/control_plane/internal/platform/eventprojection/projection.go
+        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        mode: semantic-inbox
+    activation_gaps: []
+  - full_name: mindclade.events.model.v1.ModelReleaseRegistered
+    version: 1
+    content_type: application/x-protobuf; deterministic=true
+    source: events/mindclade/model/v1/model_release_registered.proto
+    owner: control-plane/models
+    lifecycle_state: active
+    compatibility_policy: exact-version
+    fixture:
+      status: verified
+      source: services/control_plane/internal/models/postgres_integration_test.go
+      target: //services/control_plane/internal/models:models_test
+      mode: transactional-outbox-roundtrip
+    producers:
+      - id: control-plane/models
+        source: services/control_plane/internal/models/events.go
+        target: //services/control_plane/internal/models:models
+        mode: transactional-outbox
+    consumers:
+      - id: control-plane/event-audit-projection
+        source: services/control_plane/internal/platform/eventprojection/projection.go
+        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        mode: semantic-inbox
+    activation_gaps: []
+  - full_name: mindclade.events.model.v1.ModelRevoked
+    version: 1
+    content_type: application/x-protobuf; deterministic=true
+    source: events/mindclade/model/v1/model_revoked.proto
+    owner: control-plane/models
+    lifecycle_state: active
+    compatibility_policy: exact-version
+    fixture:
+      status: verified
+      source: services/control_plane/internal/models/postgres_integration_test.go
+      target: //services/control_plane/internal/models:models_test
+      mode: transactional-outbox-roundtrip
+    producers:
+      - id: control-plane/models
+        source: services/control_plane/internal/models/events.go
+        target: //services/control_plane/internal/models:models
+        mode: transactional-outbox
+    consumers:
+      - id: control-plane/event-audit-projection
+        source: services/control_plane/internal/platform/eventprojection/projection.go
+        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        mode: semantic-inbox
+    activation_gaps: []
+  - full_name: mindclade.events.policy.v1.AuthorizationDecisionRecorded
+    version: 1
+    content_type: application/x-protobuf; deterministic=true
+    source: events/mindclade/policy/v1/authorization_decision_recorded.proto
+    owner: control-plane/policy
+    lifecycle_state: active
+    compatibility_policy: exact-version
+    fixture:
+      status: verified
+      source: services/control_plane/internal/policies/policies_test.go
+      target: //services/control_plane/internal/policies:policies_test
+      mode: populated-protobuf-roundtrip
+    producers:
+      - id: control-plane/policies
+        source: services/control_plane/internal/policies/events.go
+        target: //services/control_plane/internal/policies:policies
+        mode: transactional-outbox
+    consumers:
+      - id: control-plane/event-audit-projection
+        source: services/control_plane/internal/platform/eventprojection/projection.go
+        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        mode: semantic-inbox
+    activation_gaps: []
+  - full_name: mindclade.events.policy.v1.UsePolicyActivated
+    version: 1
+    content_type: application/x-protobuf; deterministic=true
+    source: events/mindclade/policy/v1/use_policy_activated.proto
+    owner: control-plane/policy
+    lifecycle_state: active
+    compatibility_policy: exact-version
+    fixture:
+      status: verified
+      source: services/control_plane/internal/platform/eventprojection/projection_test.go
+      target: //services/control_plane/internal/platform/eventprojection:event_projection_test
+      mode: populated-protobuf-roundtrip
+    producers:
+      - id: control-plane/policies
+        source: services/control_plane/internal/policies/events.go
+        target: //services/control_plane/internal/policies:policies
+        mode: transactional-outbox
+    consumers:
+      - id: control-plane/event-audit-projection
+        source: services/control_plane/internal/platform/eventprojection/projection.go
+        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        mode: semantic-inbox
+    activation_gaps: []
+  - full_name: mindclade.events.policy.v1.UsePolicyCreated
+    version: 1
+    content_type: application/x-protobuf; deterministic=true
+    source: events/mindclade/policy/v1/use_policy_created.proto
+    owner: control-plane/policy
+    lifecycle_state: active
+    compatibility_policy: exact-version
+    fixture:
+      status: verified
+      source: services/control_plane/internal/policies/policies_test.go
+      target: //services/control_plane/internal/policies:policies_test
+      mode: populated-protobuf-roundtrip
+    producers:
+      - id: control-plane/policies
+        source: services/control_plane/internal/policies/events.go
+        target: //services/control_plane/internal/policies:policies
+        mode: transactional-outbox
+    consumers:
+      - id: control-plane/event-audit-projection
+        source: services/control_plane/internal/platform/eventprojection/projection.go
+        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        mode: semantic-inbox
+    activation_gaps: []
+  - full_name: mindclade.events.policy.v1.UsePolicyRevoked
+    version: 1
+    content_type: application/x-protobuf; deterministic=true
+    source: events/mindclade/policy/v1/use_policy_revoked.proto
+    owner: control-plane/policy
+    lifecycle_state: active
+    compatibility_policy: exact-version
+    fixture:
+      status: verified
+      source: services/control_plane/internal/platform/eventprojection/projection_test.go
+      target: //services/control_plane/internal/platform/eventprojection:event_projection_test
+      mode: populated-protobuf-roundtrip
+    producers:
+      - id: control-plane/policies
+        source: services/control_plane/internal/policies/events.go
+        target: //services/control_plane/internal/policies:policies
+        mode: transactional-outbox
+    consumers:
+      - id: control-plane/event-audit-projection
+        source: services/control_plane/internal/platform/eventprojection/projection.go
+        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        mode: semantic-inbox
+    activation_gaps: []
+  - full_name: mindclade.events.policy.v1.UsePolicyUpdated
+    version: 1
+    content_type: application/x-protobuf; deterministic=true
+    source: events/mindclade/policy/v1/use_policy_updated.proto
+    owner: control-plane/policy
+    lifecycle_state: active
+    compatibility_policy: exact-version
+    fixture:
+      status: verified
+      source: services/control_plane/internal/platform/eventprojection/projection_test.go
+      target: //services/control_plane/internal/platform/eventprojection:event_projection_test
+      mode: populated-protobuf-roundtrip
+    producers:
+      - id: control-plane/policies
+        source: services/control_plane/internal/policies/events.go
+        target: //services/control_plane/internal/policies:policies
+        mode: transactional-outbox
+    consumers:
+      - id: control-plane/event-audit-projection
+        source: services/control_plane/internal/platform/eventprojection/projection.go
+        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        mode: semantic-inbox
+    activation_gaps: []
+  - full_name: mindclade.events.training.v1.CheckpointCommitted
+    version: 1
+    content_type: application/x-protobuf; deterministic=true
+    source: events/mindclade/training/v1/checkpoint_committed.proto
+    owner: control-plane/training
+    lifecycle_state: active
+    compatibility_policy: exact-version
+    fixture:
+      status: verified
+      source: services/control_plane/internal/training/training_test.go
+      target: //services/control_plane/internal/training:training_test
+      mode: populated-protobuf-roundtrip
+    producers:
+      - id: control-plane/training
+        source: services/control_plane/internal/training/events.go
+        target: //services/control_plane/internal/training:training
+        mode: transactional-outbox
+    consumers:
+      - id: control-plane/event-audit-projection
+        source: services/control_plane/internal/platform/eventprojection/projection.go
+        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        mode: semantic-inbox
+    activation_gaps: []
+  - full_name: mindclade.events.training.v1.ProgressCommitted
+    version: 1
+    content_type: application/x-protobuf; deterministic=true
+    source: events/mindclade/training/v1/progress_committed.proto
+    owner: control-plane/training
+    lifecycle_state: active
+    compatibility_policy: exact-version
+    fixture:
+      status: verified
+      source: services/control_plane/internal/training/training_test.go
+      target: //services/control_plane/internal/training:training_test
+      mode: populated-protobuf-roundtrip
+    producers:
+      - id: control-plane/training
+        source: services/control_plane/internal/training/events.go
+        target: //services/control_plane/internal/training:training
+        mode: transactional-outbox
+    consumers:
+      - id: control-plane/event-audit-projection
+        source: services/control_plane/internal/platform/eventprojection/projection.go
+        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        mode: semantic-inbox
+    activation_gaps: []
+  - full_name: mindclade.events.training.v1.TrainingCancellationRequested
+    version: 1
+    content_type: application/x-protobuf; deterministic=true
+    source: events/mindclade/training/v1/training_cancellation_requested.proto
+    owner: control-plane/training
+    lifecycle_state: active
+    compatibility_policy: exact-version
+    fixture:
+      status: verified
+      source: services/control_plane/internal/training/training_test.go
+      target: //services/control_plane/internal/training:training_test
+      mode: populated-protobuf-roundtrip
+    producers:
+      - id: control-plane/training
+        source: services/control_plane/internal/training/events.go
+        target: //services/control_plane/internal/training:training
+        mode: transactional-outbox
+    consumers:
+      - id: control-plane/event-audit-projection
+        source: services/control_plane/internal/platform/eventprojection/projection.go
+        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        mode: semantic-inbox
+    activation_gaps: []
+  - full_name: mindclade.events.training.v1.TrainingCompleted
+    version: 1
+    content_type: application/x-protobuf; deterministic=true
+    source: events/mindclade/training/v1/training_completed.proto
+    owner: control-plane/training
+    lifecycle_state: active
+    compatibility_policy: exact-version
+    fixture:
+      status: verified
+      source: services/control_plane/internal/training/training_test.go
+      target: //services/control_plane/internal/training:training_test
+      mode: populated-protobuf-roundtrip
+    producers:
+      - id: control-plane/training
+        source: services/control_plane/internal/training/events.go
+        target: //services/control_plane/internal/training:training
+        mode: transactional-outbox
+    consumers:
+      - id: control-plane/event-audit-projection
+        source: services/control_plane/internal/platform/eventprojection/projection.go
+        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        mode: semantic-inbox
+    activation_gaps: []
+  - full_name: mindclade.events.training.v1.TrainingRunCreated
+    version: 1
+    content_type: application/x-protobuf; deterministic=true
+    source: events/mindclade/training/v1/training_run_created.proto
+    owner: control-plane/training
+    lifecycle_state: active
+    compatibility_policy: exact-version
+    fixture:
+      status: verified
+      source: services/control_plane/internal/training/training_test.go
+      target: //services/control_plane/internal/training:training_test
+      mode: populated-protobuf-roundtrip
+    producers:
+      - id: control-plane/training
+        source: services/control_plane/internal/training/events.go
+        target: //services/control_plane/internal/training:training
+        mode: transactional-outbox
+    consumers:
+      - id: control-plane/event-audit-projection
+        source: services/control_plane/internal/platform/eventprojection/projection.go
+        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        mode: semantic-inbox
+    activation_gaps: []
+  - full_name: mindclade.events.training.v1.TrainingStarted
+    version: 1
+    content_type: application/x-protobuf; deterministic=true
+    source: events/mindclade/training/v1/training_started.proto
+    owner: control-plane/training
+    lifecycle_state: active
+    compatibility_policy: exact-version
+    fixture:
+      status: verified
+      source: services/control_plane/internal/training/training_test.go
+      target: //services/control_plane/internal/training:training_test
+      mode: populated-protobuf-roundtrip
+    producers:
+      - id: control-plane/training
+        source: services/control_plane/internal/training/events.go
+        target: //services/control_plane/internal/training:training
+        mode: transactional-outbox
+    consumers:
+      - id: control-plane/event-audit-projection
+        source: services/control_plane/internal/platform/eventprojection/projection.go
+        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        mode: semantic-inbox
+    activation_gaps: []
+  - full_name: mindclade.events.transform.v1.TransformExecutionCompleted
+    version: 1
+    content_type: application/x-protobuf; deterministic=true
+    source: events/mindclade/transform/v1/transform_execution_completed.proto
+    owner: data-platform/transforms
+    lifecycle_state: active
+    compatibility_policy: exact-version
+    fixture:
+      status: verified
+      source: services/control_plane/internal/jobs/domain_completion_postgres_test.go
+      target: //services/control_plane:jobs_server_test
+      mode: transactional-outbox-roundtrip
+    producers:
+      - id: control-plane/jobs
+        source: services/control_plane/internal/jobs/job_repository.go
+        target: //services/control_plane:jobs
+        mode: transactional-outbox
+    consumers:
+      - id: control-plane/event-audit-projection
+        source: services/control_plane/internal/platform/eventprojection/projection.go
+        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        mode: semantic-inbox
+    activation_gaps: []
+  - full_name: mindclade.events.workflow.v1.ApprovalConsumed
+    version: 1
+    content_type: application/x-protobuf; deterministic=true
+    source: events/mindclade/workflow/v1/approval_consumed.proto
+    owner: control-plane/workflows
+    lifecycle_state: active
+    compatibility_policy: exact-version
+    fixture:
+      status: verified
+      source: services/control_plane/internal/workflows/postgres_integration_test.go
+      target: //services/control_plane/internal/workflows:workflows_test
+      mode: transactional-outbox-roundtrip
+    producers:
+      - id: control-plane/workflows
+        source: services/control_plane/internal/workflows/events.go
+        target: //services/control_plane/internal/workflows:workflows
+        mode: transactional-outbox
+    consumers:
+      - id: control-plane/event-audit-projection
+        source: services/control_plane/internal/platform/eventprojection/projection.go
+        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        mode: semantic-inbox
+    activation_gaps: []
+  - full_name: mindclade.events.workflow.v1.ApprovalRecorded
+    version: 1
+    content_type: application/x-protobuf; deterministic=true
+    source: events/mindclade/workflow/v1/approval_recorded.proto
+    owner: control-plane/workflows
+    lifecycle_state: active
+    compatibility_policy: exact-version
+    fixture:
+      status: verified
+      source: services/control_plane/internal/workflows/postgres_integration_test.go
+      target: //services/control_plane/internal/workflows:workflows_test
+      mode: transactional-outbox-roundtrip
+    producers:
+      - id: control-plane/workflows
+        source: services/control_plane/internal/workflows/events.go
+        target: //services/control_plane/internal/workflows:workflows
+        mode: transactional-outbox
+    consumers:
+      - id: control-plane/event-audit-projection
+        source: services/control_plane/internal/platform/eventprojection/projection.go
+        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        mode: semantic-inbox
+    activation_gaps: []
+  - full_name: mindclade.events.workflow.v1.ApprovalRequested
+    version: 1
+    content_type: application/x-protobuf; deterministic=true
+    source: events/mindclade/workflow/v1/approval_requested.proto
+    owner: control-plane/workflows
+    lifecycle_state: active
+    compatibility_policy: exact-version
+    fixture:
+      status: verified
+      source: services/control_plane/internal/workflows/postgres_integration_test.go
+      target: //services/control_plane/internal/workflows:workflows_test
+      mode: transactional-outbox-roundtrip
+    producers:
+      - id: control-plane/workflows
+        source: services/control_plane/internal/workflows/events.go
+        target: //services/control_plane/internal/workflows:workflows
+        mode: transactional-outbox
+    consumers:
+      - id: control-plane/event-audit-projection
+        source: services/control_plane/internal/platform/eventprojection/projection.go
+        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        mode: semantic-inbox
+    activation_gaps: []
+  - full_name: mindclade.events.workflow.v1.WorkflowCancellationRequested
+    version: 1
+    content_type: application/x-protobuf; deterministic=true
+    source: events/mindclade/workflow/v1/workflow_cancellation_requested.proto
+    owner: control-plane/workflows
+    lifecycle_state: active
+    compatibility_policy: exact-version
+    fixture:
+      status: verified
+      source: services/control_plane/internal/platform/eventprojection/projection_test.go
+      target: //services/control_plane/internal/platform/eventprojection:event_projection_test
+      mode: populated-protobuf-roundtrip
+    producers:
+      - id: control-plane/workflows
+        source: services/control_plane/internal/workflows/events.go
+        target: //services/control_plane/internal/workflows:workflows
+        mode: transactional-outbox
+    consumers:
+      - id: control-plane/event-audit-projection
+        source: services/control_plane/internal/platform/eventprojection/projection.go
+        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        mode: semantic-inbox
+    activation_gaps: []
+  - full_name: mindclade.events.workflow.v1.WorkflowDefinitionCreated
+    version: 1
+    content_type: application/x-protobuf; deterministic=true
+    source: events/mindclade/workflow/v1/workflow_definition_created.proto
+    owner: control-plane/workflows
+    lifecycle_state: active
+    compatibility_policy: exact-version
+    fixture:
+      status: verified
+      source: services/control_plane/internal/platform/eventprojection/projection_test.go
+      target: //services/control_plane/internal/platform/eventprojection:event_projection_test
+      mode: populated-protobuf-roundtrip
+    producers:
+      - id: control-plane/workflows
+        source: services/control_plane/internal/workflows/events.go
+        target: //services/control_plane/internal/workflows:workflows
+        mode: transactional-outbox
+    consumers:
+      - id: control-plane/event-audit-projection
+        source: services/control_plane/internal/platform/eventprojection/projection.go
+        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        mode: semantic-inbox
+    activation_gaps: []
+  - full_name: mindclade.events.workflow.v1.WorkflowDefinitionUpdated
+    version: 1
+    content_type: application/x-protobuf; deterministic=true
+    source: events/mindclade/workflow/v1/workflow_definition_updated.proto
+    owner: control-plane/workflows
+    lifecycle_state: active
+    compatibility_policy: exact-version
+    fixture:
+      status: verified
+      source: services/control_plane/internal/platform/eventprojection/projection_test.go
+      target: //services/control_plane/internal/platform/eventprojection:event_projection_test
+      mode: populated-protobuf-roundtrip
+    producers:
+      - id: control-plane/workflows
+        source: services/control_plane/internal/workflows/events.go
+        target: //services/control_plane/internal/workflows:workflows
+        mode: transactional-outbox
+    consumers:
+      - id: control-plane/event-audit-projection
+        source: services/control_plane/internal/platform/eventprojection/projection.go
+        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        mode: semantic-inbox
+    activation_gaps: []
+  - full_name: mindclade.events.workflow.v1.WorkflowRunStarted
+    version: 1
+    content_type: application/x-protobuf; deterministic=true
+    source: events/mindclade/workflow/v1/workflow_run_started.proto
+    owner: control-plane/workflows
+    lifecycle_state: active
+    compatibility_policy: exact-version
+    fixture:
+      status: verified
+      source: services/control_plane/internal/platform/eventprojection/projection_test.go
+      target: //services/control_plane/internal/platform/eventprojection:event_projection_test
+      mode: populated-protobuf-roundtrip
+    producers:
+      - id: control-plane/workflows
+        source: services/control_plane/internal/workflows/events.go
+        target: //services/control_plane/internal/workflows:workflows
+        mode: transactional-outbox
+    consumers:
+      - id: control-plane/event-audit-projection
+        source: services/control_plane/internal/platform/eventprojection/projection.go
+        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        mode: semantic-inbox
+    activation_gaps: []
+  - full_name: mindclade.events.workflow.v1.WorkflowTransitioned
+    version: 1
+    content_type: application/x-protobuf; deterministic=true
+    source: events/mindclade/workflow/v1/workflow_transitioned.proto
+    owner: control-plane/workflows
+    lifecycle_state: active
+    compatibility_policy: exact-version
+    fixture:
+      status: verified
+      source: services/control_plane/internal/platform/eventprojection/projection_test.go
+      target: //services/control_plane/internal/platform/eventprojection:event_projection_test
+      mode: populated-protobuf-roundtrip
+    producers:
+      - id: control-plane/workflows
+        source: services/control_plane/internal/workflows/events.go
+        target: //services/control_plane/internal/workflows:workflows
+        mode: transactional-outbox
+    consumers:
+      - id: control-plane/event-audit-projection
+        source: services/control_plane/internal/platform/eventprojection/projection.go
+        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        mode: semantic-inbox
+    activation_gaps: []
