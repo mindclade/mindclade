@@ -13,8 +13,8 @@ catalogs:
       specifier: 2.1.2
       version: 2.1.2
     '@types/node':
-      specifier: 24.10.1
-      version: 24.10.1
+      specifier: 26.4.0
+      version: 26.4.0
     ajv:
       specifier: 8.20.0
       version: 8.20.0
@@ -56,7 +56,7 @@ importers:
     devDependencies:
       '@types/node':
         specifier: 'catalog:'
-        version: 24.10.1
+        version: 26.4.0
       typescript:
         specifier: 'catalog:'
         version: 5.9.3
@@ -72,7 +72,7 @@ importers:
     devDependencies:
       '@types/node':
         specifier: 'catalog:'
-        version: 24.10.1
+        version: 26.4.0
       typescript:
         specifier: 'catalog:'
         version: 5.9.3
@@ -81,7 +81,7 @@ importers:
     devDependencies:
       '@types/node':
         specifier: 'catalog:'
-        version: 24.10.1
+        version: 26.4.0
       typescript:
         specifier: 'catalog:'
         version: 5.9.3
@@ -90,7 +90,7 @@ importers:
     devDependencies:
       '@types/node':
         specifier: 'catalog:'
-        version: 24.10.1
+        version: 26.4.0
       typescript:
         specifier: 'catalog:'
         version: 5.9.3
@@ -201,8 +201,8 @@ packages:
     peerDependencies:
       '@bufbuild/protobuf': ^2.7.0
 
-  '@types/node@24.10.1':
-    resolution: {integrity: sha512-GNWcUTRBgIRJD5zj+Tq0fKOJ5XZajIiBroOF0yvj2bSU1WvNdYS/dn9UxwsujGW4JX06dnHyjV2y9rRaybH0iQ==}
+  '@types/node@26.4.0':
+    resolution: {integrity: sha512-faiGnoIrLH/V8cibOMEAZ8pMw6oXqSukl29ra4mN8GdaB2ZewzeaLj+INpV5N+Z1eKWzY+IzaIZH2EIR6YZRNQ==}
 
   '@typescript/vfs@1.6.4':
     resolution: {integrity: sha512-PJFXFS4ZJKiJ9Qiuix6Dz/OwEIqHD7Dme1UwZhTK11vR+5dqW2ACbdndWQexBzCx+CPuMe5WBYQWCsFyGlQLlQ==}
@@ -255,8 +255,8 @@ packages:
     engines: {node: '>=14.17'}
     hasBin: true
 
-  undici-types@7.16.0:
-    resolution: {integrity: sha512-Zz+aZWSj8LE6zoxD+xrjh4VfkIG8Ya6LvYkZqtUQGJPZjYl53ypCaUwWqo7eI0x66KBGeRo+mlBEkMSeSZ38Nw==}
+  undici-types@8.3.0:
+    resolution: {integrity: sha512-j375ScV60dom+YkPFIfTLcOiPxkN/buHz5GobjLhixFuANaNs3C9l4GmrWqejgXWJ7BbJcFYpTEUkS1Ge8bpZQ==}
 
 snapshots:
 
@@ -322,9 +322,9 @@ snapshots:
     dependencies:
       '@bufbuild/protobuf': 2.11.0
 
-  '@types/node@24.10.1':
+  '@types/node@26.4.0':
     dependencies:
-      undici-types: 7.16.0
+      undici-types: 8.3.0
 
   '@typescript/vfs@1.6.4(typescript@5.4.5)':
     dependencies:
@@ -362,4 +362,4 @@ snapshots:
 
   typescript@5.9.3: {}
 
-  undici-types@7.16.0: {}
+  undici-types@8.3.0: {}
