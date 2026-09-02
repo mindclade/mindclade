@@ -49,3 +49,7 @@ diagnostic-bundle*.json
 
 # Generated local blueprint comparison output
 docs/architecture/blueprint/generated/*.tmp
+
+# Claude Code agent worktrees and local session state. These are live git
+# worktrees, so committing them would add unresolvable gitlinks to the tree.
+.claude/
