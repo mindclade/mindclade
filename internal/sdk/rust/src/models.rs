@@ -267,7 +267,9 @@ impl Models {
                             registered_method_safety(LIST_RELEASES),
                             None,
                             |transport, request| {
-                                Box::pin(async move { transport.list_model_releases(request).await })
+                                Box::pin(
+                                    async move { transport.list_model_releases(request).await },
+                                )
                             },
                         )
                         .await?;

@@ -9,8 +9,7 @@ use mindclade_protocols::{
     internal::dataset::v1::{
         CreateDatasetRequest, GetDatasetReleaseRequest, GetDatasetRequest,
         ListDatasetReleasesRequest, ListDatasetsRequest, PublishDatasetReleaseRequest,
-        RevokeDatasetReleaseRequest,
-        UpdateDatasetRequest,
+        RevokeDatasetReleaseRequest, UpdateDatasetRequest,
     },
     job::v1::Operation,
 };
@@ -347,7 +346,9 @@ impl Datasets {
                             registered_method_safety(LIST_RELEASES),
                             None,
                             |transport, request| {
-                                Box::pin(async move { transport.list_dataset_releases(request).await })
+                                Box::pin(
+                                    async move { transport.list_dataset_releases(request).await },
+                                )
                             },
                         )
                         .await?;

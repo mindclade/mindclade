@@ -7,8 +7,7 @@ use mindclade_protocols::{
         CancelAgentRunRequest, CommitAgentStepRequest, CommitToolReceiptRequest,
         CreateAgentDefinitionRequest, GetAgentDefinitionRequest, GetAgentRunRequest,
         GetAgentStepRequest, ListAgentDefinitionsRequest, ListAgentRunsRequest,
-        ListAgentStepsRequest,
-        StartAgentRunRequest, UpdateAgentDefinitionRequest,
+        ListAgentStepsRequest, StartAgentRunRequest, UpdateAgentDefinitionRequest,
     },
     job::v1::{LeaseFence, Operation},
 };
@@ -203,7 +202,9 @@ impl Agents {
                             registered_method_safety(LIST_DEFINITIONS),
                             None,
                             |transport, request| {
-                                Box::pin(async move { transport.list_agent_definitions(request).await })
+                                Box::pin(
+                                    async move { transport.list_agent_definitions(request).await },
+                                )
                             },
                         )
                         .await?;

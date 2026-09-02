@@ -5,8 +5,8 @@ use mindclade_protocols::{
     common::v1::{CommandContext, PageRequest, ResourceRef},
     internal::admin::v1::{
         CreateProjectRequest, ExportAuditRecordsRequest, GetAuditExportRequest, GetProjectRequest,
-        GetTenantRequest, ListProjectsRequest, QueryAuditRecordsRequest,
-        UpdateProjectRequest, UpdateTenantRequest,
+        GetTenantRequest, ListProjectsRequest, QueryAuditRecordsRequest, UpdateProjectRequest,
+        UpdateTenantRequest,
     },
     job::v1::Operation,
 };

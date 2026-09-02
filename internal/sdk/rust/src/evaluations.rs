@@ -188,7 +188,9 @@ impl Evaluations {
                             registered_method_safety(LIST),
                             None,
                             |transport, request| {
-                                Box::pin(async move { transport.list_evaluation_runs(request).await })
+                                Box::pin(
+                                    async move { transport.list_evaluation_runs(request).await },
+                                )
                             },
                         )
                         .await?;

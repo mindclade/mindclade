@@ -11,8 +11,8 @@ use mindclade_protocols::{
     internal::experiment::v1::{
         CompleteTrialRequest, CreateExperimentRequest, CreateStudyRequest, CreateTrialRequest,
         GetExperimentRequest, GetStudyRequest, GetTrialRequest, ListExperimentsRequest,
-        ListStudiesRequest, ListTrialsRequest, TransitionExperimentRequest,
-        TransitionStudyRequest, TransitionTrialRequest, UpdateExperimentRequest,
+        ListStudiesRequest, ListTrialsRequest, TransitionExperimentRequest, TransitionStudyRequest,
+        TransitionTrialRequest, UpdateExperimentRequest,
     },
 };
 use prost::Message;

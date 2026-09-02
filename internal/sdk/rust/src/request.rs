@@ -214,14 +214,8 @@ const CREDENTIAL_METADATA_KEYS: [&str; 7] = [
     "x-mindclade-lease-token",
 ];
 
-const CREDENTIAL_METADATA_PATTERNS: [&str; 6] = [
-    "auth",
-    "credential",
-    "key",
-    "password",
-    "secret",
-    "token",
-];
+const CREDENTIAL_METADATA_PATTERNS: [&str; 6] =
+    ["auth", "credential", "key", "password", "secret", "token"];
 
 /// Reports whether a metadata key may carry a credential.
 ///
@@ -698,9 +692,7 @@ impl<T> Pages<T> {
 
     fn exhausted(&mut self, budget: &str) -> Error {
         self.failed = true;
-        Error::pagination_limit(format!(
-            "automatic pagination exceeded its {budget} budget"
-        ))
+        Error::pagination_limit(format!("automatic pagination exceeded its {budget} budget"))
     }
 }
 

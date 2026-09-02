@@ -2295,6 +2295,62 @@ func TestPlatformMetadataIsStructuredAndBounded(t *testing.T) {
 	}
 }
 
+// TestSDKVersionIsSingleSourced pins WS2.8's single version source. Version is
+// stamped into two places — the gRPC user agent and the structured
+// x-mindclade-sdk value — and a second hard-coded revision literal in either of
+// them would let the SDK report two different versions of itself. Both are
+// therefore asserted to be derived from Version rather than merely to contain
+// it, and Version itself is asserted to stay inside the bounds that keep the
+// structured metadata value well formed.
+func TestSDKVersionIsSingleSourced(t *testing.T) {
+	if Version == "" {
+		t.Fatal("Version must name this SDK revision")
+	}
+	if len(Version) > maxPlatformComponentBytes {
+		t.Fatalf("Version %q exceeds the %d-byte platform component bound", Version, maxPlatformComponentBytes)
+	}
+	if strings.ContainsAny(Version, ";=") {
+		t.Fatalf("Version %q contains a character that structures x-mindclade-sdk", Version)
+	}
+	if boundedPlatformComponent(Version) != Version {
+		t.Fatalf("Version %q does not survive platform-component bounding", Version)
+	}
+
+	config := defaultConfig()
+	if want := "mindclade-internal-go-sdk/" + Version; config.UserAgent != want {
+		t.Fatalf("default user agent = %q, want %q derived from Version", config.UserAgent, want)
+	}
+	if err := validateMetadataIdentifier("user agent", config.UserAgent); err != nil {
+		t.Fatalf("default user agent is not a safe metadata identifier: %v", err)
+	}
+
+	full := platformMetadata(config)
+	if !strings.Contains(full, "version="+Version) {
+		t.Fatalf("x-mindclade-sdk %q does not carry version=%s", full, Version)
+	}
+
+	omitted := config
+	if err := WithOmitPlatformMetadata()(&omitted); err != nil {
+		t.Fatal(err)
+	}
+	if reduced := platformMetadata(omitted); reduced != "language=go;version="+Version {
+		t.Fatalf("omitted x-mindclade-sdk = %q, want language and version derived from Version", reduced)
+	}
+
+	// A caller-supplied user agent replaces the default outright; the platform
+	// value stays bound to Version, so the two identities cannot be confused.
+	custom := defaultConfig()
+	if err := WithUserAgent("mindcladectl/9.9.9")(&custom); err != nil {
+		t.Fatal(err)
+	}
+	if custom.UserAgent != "mindcladectl/9.9.9" {
+		t.Fatalf("custom user agent = %q, want the caller's value", custom.UserAgent)
+	}
+	if !strings.Contains(platformMetadata(custom), "version="+Version) {
+		t.Fatalf("a custom user agent must not change the SDK version reported in x-mindclade-sdk")
+	}
+}
+
 // metadataRecordingOperationServer records the metadata a real gRPC transport
 // delivered, so a test can compare it with what a caller interceptor observed.
 type metadataRecordingOperationServer struct {

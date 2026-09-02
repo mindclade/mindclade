@@ -16,9 +16,8 @@ use mindclade_protocols::{
         ArtifactStagingReceipt, ArtifactUploadSession, ArtifactUploadState,
         BeginArtifactUploadRequest, CommitArtifactRequest, DownloadArtifactRequest,
         FinalizeArtifactUploadRequest, GetArtifactRequest, GetArtifactUploadRequest,
-        ListArtifactsRequest, QuarantineArtifactRequest,
-        QuarantineArtifactUploadRequest, ReleaseArtifactLeaseRequest, ResolveArtifactAliasRequest,
-        UploadArtifactChunkRequest,
+        ListArtifactsRequest, QuarantineArtifactRequest, QuarantineArtifactUploadRequest,
+        ReleaseArtifactLeaseRequest, ResolveArtifactAliasRequest, UploadArtifactChunkRequest,
     },
     job::v1::{Operation, OperationState},
 };

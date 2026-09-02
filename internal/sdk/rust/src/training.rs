@@ -10,8 +10,7 @@ use mindclade_protocols::{
         CompleteTrainingRunRequest, CreateTrainingRunRequest, CreateTrainingRunResponse,
         GetCheckpointRequest, GetTrainingRunRequest, ListCheckpointsRequest,
         ListTrainingRunsRequest, PrepareCheckpointRequest, ResumeTrainingAttemptRequest,
-        StartTrainingAttemptRequest,
-        WatchTrainingRunRequest, WatchTrainingRunResponse,
+        StartTrainingAttemptRequest, WatchTrainingRunRequest, WatchTrainingRunResponse,
     },
     job::v1::{LeaseFence, Operation},
     training::v1::{

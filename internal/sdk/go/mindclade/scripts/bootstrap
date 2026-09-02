@@ -1,10 +1,15 @@
 #!/usr/bin/env bash
 # Prepare a working tree for internal Go SDK development.
 #
-# Wraps `just bootstrap` (tools/dev/bootstrap.py), which verifies the exact
-# pinned local toolchain and the generated dependency locks for the whole
-# repository, and then resolves this package's Go module dependencies so the
-# first build is not also the first download.
+# Two things have to be true before this package can be worked on, and they fail
+# for different reasons, so they are run and reported separately:
+#
+#   1. this package's Go module dependencies are resolved and verified;
+#   2. the repository's pinned toolchain is present at its exact versions,
+#      which `just bootstrap` (tools/dev/bootstrap.py) is the authority on.
+#
+# The package-local step runs first so that a contributor whose toolchain audit
+# fails still ends up able to build and test this package while they fix it.
 
 set -euo pipefail
 
@@ -13,15 +18,6 @@ source "$(dirname -- "${BASH_SOURCE[0]}")/common.sh"
 cd -- "$(repository_root)"
 
 require_tool go "install the pinned Go toolchain; see docs/development or run 'nix develop'."
-
-if command -v just >/dev/null 2>&1; then
-  announce "just bootstrap"
-  just bootstrap
-else
-  announce "python3 tools/dev/bootstrap.py --root ."
-  require_tool python3 "install Python 3.12; see docs/development or run 'nix develop'."
-  python3 tools/dev/bootstrap.py --root .
-fi
 
 announce "go mod download"
 go mod download
@@ -33,6 +29,23 @@ if bazel_requested; then
   require_tool bazel "install Bazelisk, or unset MINDCLADE_BAZEL to use the native toolchain."
   announce "bazel fetch ${SDK_BAZEL_LIBRARY}"
   bazel fetch "${SDK_BAZEL_LIBRARY}"
+fi
+
+audit=(just bootstrap)
+if ! command -v just >/dev/null 2>&1; then
+  require_tool python3 "install Python 3.12; see docs/development or run 'nix develop'."
+  audit=(python3 tools/dev/bootstrap.py --root .)
+fi
+
+announce "${audit[*]}"
+if ! "${audit[@]}"; then
+  printf '\n' >&2
+  printf 'bootstrap: %s is resolved and buildable, but the repository toolchain\n' \
+    "${SDK_GO_PACKAGE}" >&2
+  printf '           audit above reported a gap. Install or re-pin the tools it\n' >&2
+  printf '           named before running scripts/lint, scripts/format, or the\n' >&2
+  printf '           repository gates.\n' >&2
+  exit 1
 fi
 
 printf 'bootstrap: ready for %s\n' "${SDK_GO_PACKAGE}" >&2

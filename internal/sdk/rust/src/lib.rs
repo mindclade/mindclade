@@ -70,8 +70,8 @@ pub use operations::{
 };
 pub use policies::Policies;
 pub use request::{
-    CallOptions, DEFAULT_PAGE_SIZE, HARD_PAGE_SIZE_CEILING, Page, PaginationLimits, PaginationPage,
-    Paginator, Pages, Response, SAFE_RESPONSE_METADATA, SafeMetadata, SubmitOptions,
+    CallOptions, DEFAULT_PAGE_SIZE, HARD_PAGE_SIZE_CEILING, Page, Pages, PaginationLimits,
+    PaginationPage, Paginator, Response, SAFE_RESPONSE_METADATA, SafeMetadata, SubmitOptions,
     is_credential_bearing, paginate,
 };
 pub use retry::{JitterSource, SystemJitter};

@@ -160,7 +160,9 @@ impl Approvals {
                             registered_method_safety(LIST),
                             None,
                             |transport, request| {
-                                Box::pin(async move { transport.list_approval_requests(request).await })
+                                Box::pin(
+                                    async move { transport.list_approval_requests(request).await },
+                                )
                             },
                         )
                         .await?;

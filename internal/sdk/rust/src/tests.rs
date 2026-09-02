@@ -79,13 +79,12 @@ use crate::{
     InferenceWaitOptions, JitterSource, OperationStream, PaginationLimits, PaginationPage,
     QuotaState, RecordingTransport, RetryAttemptSummary, RetryPolicy, RpcTransport,
     SAFE_RESPONSE_METADATA, SubmitOptions, SystemJitter, TokenProvider, WaitOptions,
-    is_credential_bearing,
     auth::GcpIdentityTokenExchange,
     error::{
         FENCE_PRECONDITION_TYPE, QUOTA_PRECONDITION_TYPE, REVISION_PRECONDITION_TYPE,
         retryable_status_code,
     },
-    paginate,
+    is_credential_bearing, paginate,
     retry::{CallSafety, Sleeper, never_retry_method, registered_method_safety},
     testing::ScriptedJitter,
 };
@@ -3284,5 +3283,486 @@ async fn watch_reconnect_backoff_honours_the_clamped_retry_after_trailer() {
     assert_eq!(
         sleeper.delays.lock().unwrap().as_slice(),
         [Duration::from_millis(8)]
+    );
+}
+
+// ---------------------------------------------------------------------------
+// WS2.3 raw response and request identity, WS2.4 automatic pagination.
+// ---------------------------------------------------------------------------
+
+/// A durable operation that satisfies every listed-page invariant for the
+/// scope `test_config` installs.
+fn listed_operation(id: &str) -> Operation {
+    Operation {
+        tenant_id: "tenants/t-1".to_owned(),
+        project_id: "projects/p-1".to_owned(),
+        ..operation(id, true)
+    }
+}
+
+fn operation_page(ids: &[&str], next_page_token: &str) -> ListOperationsResponse {
+    ListOperationsResponse {
+        operations: ids.iter().copied().map(listed_operation).collect(),
+        page: Some(PageResponse {
+            next_page_token: next_page_token.to_owned(),
+        }),
+        read_time: Some(prost_types::Timestamp {
+            seconds: 1_700_000_000,
+            nanos: 0,
+        }),
+    }
+}
+
+fn paginating_client(
+    pages: Vec<Result<ListOperationsResponse, Status>>,
+) -> (Client, Arc<FakeTransport>) {
+    let transport = Arc::new(FakeTransport::default());
+    transport.list_operations.lock().unwrap().extend(pages);
+    let client = Client::with_transport(
+        test_config(test_provider(), 4, Duration::from_millis(1)),
+        Arc::clone(&transport) as Arc<dyn RpcTransport>,
+    );
+    (client, transport)
+}
+
+#[tokio::test]
+async fn list_methods_iterate_transparently_across_pages() {
+    let (client, transport) = paginating_client(vec![
+        Ok(operation_page(
+            &["operations/a", "operations/b"],
+            "cursor-2",
+        )),
+        Ok(operation_page(&["operations/c"], String::new().as_str())),
+    ]);
+    let mut pages = client
+        .operations()
+        .list(ListOperationsRequest::default(), CallOptions::new())
+        .unwrap();
+
+    let mut identifiers = Vec::new();
+    while let Some(operation) = pages.try_next().await.unwrap() {
+        identifiers.push(operation.operation_id);
+    }
+
+    assert_eq!(
+        identifiers,
+        ["operations/a", "operations/b", "operations/c"]
+    );
+    assert_eq!(pages.page_count(), 2);
+    assert_eq!(pages.item_count(), 3);
+    assert!(!pages.has_next_page());
+    // A finished cursor is idempotent rather than re-fetching the last page.
+    assert!(pages.try_next().await.unwrap().is_none());
+
+    let requested = transport.list_operation_pages.lock().unwrap().clone();
+    assert_eq!(
+        requested
+            .iter()
+            .map(|page| page.page_token.clone())
+            .collect::<Vec<_>>(),
+        ["", "cursor-2"]
+    );
+    // An unset page size is filled with the SDK default on every hop.
+    assert!(
+        requested
+            .iter()
+            .all(|page| page.page_size == DEFAULT_PAGE_SIZE)
+    );
+}
+
+#[tokio::test]
+async fn list_methods_expose_page_level_metadata_and_has_next_page() {
+    let (client, transport) = paginating_client(vec![
+        Ok(operation_page(&["operations/a"], "cursor-2")),
+        Ok(operation_page(&["operations/b"], String::new().as_str())),
+    ]);
+    let mut pages = client
+        .operations()
+        .list(
+            ListOperationsRequest {
+                page: Some(PageRequest {
+                    page_token: "cursor-1".to_owned(),
+                    page_size: 25,
+                }),
+                ..ListOperationsRequest::default()
+            },
+            CallOptions::new(),
+        )
+        .unwrap();
+
+    let first = pages.next_page().await.unwrap().unwrap();
+    assert_eq!(first.items().len(), 1);
+    assert_eq!(first.next_page_token(), "cursor-2");
+    assert!(first.has_next_page());
+    assert_eq!(first.read_time().unwrap().seconds, 1_700_000_000);
+    assert!(pages.has_next_page());
+
+    let observed = transport.observed.lock().unwrap()[0].request_id.clone();
+    assert_eq!(first.request_id().map(str::to_owned), observed);
+
+    let second = pages.next_page().await.unwrap().unwrap();
+    assert!(!second.has_next_page());
+    assert_eq!(second.into_items()[0].operation_id, "operations/b");
+    assert!(!pages.has_next_page());
+    assert!(pages.next_page().await.unwrap().is_none());
+
+    // The caller's opaque cursor and explicit page size are carried verbatim.
+    let requested = transport.list_operation_pages.lock().unwrap().clone();
+    assert_eq!(requested[0].page_token, "cursor-1");
+    assert_eq!(requested[0].page_size, 25);
+    assert!(requested.iter().all(|page| page.page_size == 25));
+}
+
+#[tokio::test]
+async fn automatic_pagination_enforces_item_and_page_budgets_per_list_method() {
+    let (client, _transport) = paginating_client(vec![
+        Ok(operation_page(
+            &["operations/a", "operations/b"],
+            "cursor-2",
+        )),
+        Ok(operation_page(&["operations/c"], "cursor-3")),
+    ]);
+    let mut bounded_pages = client
+        .operations()
+        .list(ListOperationsRequest::default(), CallOptions::new())
+        .unwrap()
+        .with_limits(PaginationLimits::new(1, 10).unwrap());
+    assert!(bounded_pages.try_next().await.unwrap().is_some());
+    assert!(bounded_pages.try_next().await.unwrap().is_some());
+    let error = bounded_pages.try_next().await.unwrap_err();
+    assert_eq!(error.kind(), ErrorKind::PaginationLimit);
+    assert_eq!(error.code(), Some(Code::ResourceExhausted));
+    assert!(error.to_string().contains("page budget"));
+    // A failed cursor latches instead of silently resuming.
+    assert!(bounded_pages.try_next().await.unwrap().is_none());
+
+    let (client, _transport) = paginating_client(vec![Ok(operation_page(
+        &["operations/a", "operations/b", "operations/c"],
+        "cursor-2",
+    ))]);
+    let mut bounded_items = client
+        .operations()
+        .list(ListOperationsRequest::default(), CallOptions::new())
+        .unwrap()
+        .with_limits(PaginationLimits::new(10, 2).unwrap());
+    assert!(bounded_items.try_next().await.unwrap().is_some());
+    assert!(bounded_items.try_next().await.unwrap().is_some());
+    let error = bounded_items.try_next().await.unwrap_err();
+    assert_eq!(error.kind(), ErrorKind::PaginationLimit);
+    assert!(error.to_string().contains("item budget"));
+
+    let (client, _transport) = paginating_client(vec![Ok(operation_page(
+        &["operations/a", "operations/b", "operations/c"],
+        "cursor-2",
+    ))]);
+    let mut whole_page = client
+        .operations()
+        .list(ListOperationsRequest::default(), CallOptions::new())
+        .unwrap()
+        .with_limits(PaginationLimits::new(10, 2).unwrap());
+    let error = whole_page.next_page().await.unwrap_err();
+    assert_eq!(error.kind(), ErrorKind::PaginationLimit);
+}
+
+#[tokio::test]
+async fn automatic_pagination_rejects_a_repeated_opaque_page_token_from_a_list_method() {
+    let (client, _transport) = paginating_client(vec![
+        Ok(operation_page(&["operations/a"], " looping cursor ")),
+        Ok(operation_page(&["operations/b"], " looping cursor ")),
+    ]);
+    let mut pages = client
+        .operations()
+        .list(ListOperationsRequest::default(), CallOptions::new())
+        .unwrap();
+    assert_eq!(
+        pages.try_next().await.unwrap().unwrap().operation_id,
+        "operations/a"
+    );
+    let error = pages.try_next().await.unwrap_err();
+    assert_eq!(error.kind(), ErrorKind::Protocol);
+    assert!(error.to_string().contains("repeated an opaque page token"));
+    assert!(pages.try_next().await.unwrap().is_none());
+}
+
+#[tokio::test]
+async fn listed_operations_are_validated_on_every_page() {
+    let mut second = operation_page(&["operations/b"], String::new().as_str());
+    second.operations[0].project_id = "projects/somebody-else".to_owned();
+    let (client, _transport) = paginating_client(vec![
+        Ok(operation_page(&["operations/a"], "cursor-2")),
+        Ok(second),
+    ]);
+    let mut pages = client
+        .operations()
+        .list(ListOperationsRequest::default(), CallOptions::new())
+        .unwrap();
+    assert_eq!(
+        pages.try_next().await.unwrap().unwrap().operation_id,
+        "operations/a"
+    );
+    let error = pages.try_next().await.unwrap_err();
+    assert_eq!(error.kind(), ErrorKind::Protocol);
+    assert!(error.to_string().contains("cross-project durable state"));
+}
+
+#[tokio::test]
+async fn list_methods_collect_every_item_and_clamp_an_oversized_page_size() {
+    let (client, transport) = paginating_client(vec![
+        Ok(operation_page(&["operations/a"], "cursor-2")),
+        Ok(operation_page(&["operations/b"], String::new().as_str())),
+    ]);
+    // `Admin::list_projects` allows 1000; the SDK-wide ceiling still applies.
+    let mut pages = client
+        .operations()
+        .list(
+            ListOperationsRequest {
+                page: Some(PageRequest {
+                    page_token: String::new(),
+                    page_size: 200,
+                }),
+                ..ListOperationsRequest::default()
+            },
+            CallOptions::new(),
+        )
+        .unwrap();
+    let collected = pages.try_collect().await.unwrap();
+    assert_eq!(collected.len(), 2);
+    assert!(
+        transport
+            .list_operation_pages
+            .lock()
+            .unwrap()
+            .iter()
+            .all(|page| page.page_size <= HARD_PAGE_SIZE_CEILING)
+    );
+}
+
+/// Serves one operation read with a realistic mix of correlation, policy, and
+/// credential-bearing response metadata.
+struct RawMetadataTransport {
+    credentials_only: bool,
+}
+
+const CREDENTIAL_RESPONSE_HEADERS: [(&str, &str); 7] = [
+    ("authorization", "Bearer server-issued-secret"),
+    ("cookie", "session=server-issued-secret"),
+    ("set-cookie", "session=server-issued-secret"),
+    ("x-api-key", "server-issued-secret"),
+    ("x-goog-api-key", "server-issued-secret"),
+    ("x-mindclade-lease-token", "server-issued-lease-secret"),
+    ("x-refresh-token", "server-issued-secret"),
+];
+
+#[async_trait]
+impl RpcTransport for RawMetadataTransport {
+    async fn get_operation(
+        &self,
+        _request: Request<GetOperationRequest>,
+    ) -> Result<Response<GetOperationResponse>, Status> {
+        let mut response = Response::new(GetOperationResponse {
+            operation: Some(listed_operation("operations/raw")),
+        });
+        let metadata = response.metadata_mut();
+        for (key, value) in CREDENTIAL_RESPONSE_HEADERS {
+            metadata.insert(key, MetadataValue::try_from(value).unwrap());
+        }
+        if !self.credentials_only {
+            for (key, value) in [
+                ("x-request-id", "req-raw-1"),
+                ("x-trace-id", "trace-raw-1"),
+                ("x-mindclade-sdk", "mindclade-internal-go-sdk/0.1"),
+                ("retry-after-ms", "25"),
+                ("x-mindclade-should-retry", "false"),
+                ("content-type", "application/grpc"),
+                ("x-internal-planner-note", "not allowlisted"),
+            ] {
+                metadata.insert(key, MetadataValue::try_from(value).unwrap());
+            }
+        }
+        Ok(response)
+    }
+}
+
+#[tokio::test]
+async fn response_wrapper_exposes_status_request_id_trace_id_and_allowlisted_metadata() {
+    let client = Client::with_transport(
+        test_config(test_provider(), 4, Duration::from_millis(1)),
+        Arc::new(RawMetadataTransport {
+            credentials_only: false,
+        }),
+    );
+    let response = client
+        .send_with_metadata(
+            GetOperationRequest {
+                name: "operations/raw".to_owned(),
+                ..GetOperationRequest::default()
+            },
+            &CallOptions::new(),
+            None,
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), Code::Ok);
+    assert_eq!(response.request_id(), Some("req-raw-1"));
+    assert_eq!(response.trace_id(), Some("trace-raw-1"));
+    let safe = response.safe_metadata();
+    assert_eq!(
+        safe.keys().collect::<Vec<_>>(),
+        [
+            "content-type",
+            "retry-after-ms",
+            "x-mindclade-sdk",
+            "x-mindclade-should-retry",
+            "x-request-id",
+            "x-trace-id",
+        ]
+    );
+    assert_eq!(safe.get("retry-after-ms"), Some("25"));
+    assert_eq!(safe.len(), 6);
+    // A key outside the fixed allowlist is dropped even though it is harmless.
+    assert!(safe.get("x-internal-planner-note").is_none());
+    assert_eq!(
+        response.get_ref().operation.as_ref().unwrap().operation_id,
+        "operations/raw"
+    );
+    assert_eq!(
+        response
+            .map(|value| value.operation.unwrap().operation_id)
+            .into_inner(),
+        "operations/raw"
+    );
+}
+
+#[tokio::test]
+async fn safe_metadata_excludes_every_credential_bearing_header() {
+    let client = Client::with_transport(
+        test_config(test_provider(), 4, Duration::from_millis(1)),
+        Arc::new(RawMetadataTransport {
+            credentials_only: true,
+        }),
+    );
+    let response = client
+        .send_with_metadata(GetOperationRequest::default(), &CallOptions::new(), None)
+        .await
+        .unwrap();
+
+    assert!(response.safe_metadata().is_empty());
+    assert_eq!(response.request_id(), None);
+    assert_eq!(response.trace_id(), None);
+    for (key, value) in CREDENTIAL_RESPONSE_HEADERS {
+        assert!(response.safe_metadata().get(key).is_none(), "{key}");
+        assert!(
+            !format!("{:?}", response.safe_metadata()).contains(value),
+            "{key}"
+        );
+    }
+}
+
+#[test]
+fn safe_metadata_allowlist_contains_no_credential_bearing_key() {
+    let mut unique = SAFE_RESPONSE_METADATA.to_vec();
+    unique.sort_unstable();
+    unique.dedup();
+    assert_eq!(unique.len(), SAFE_RESPONSE_METADATA.len());
+    assert_eq!(unique.as_slice(), SAFE_RESPONSE_METADATA.as_slice());
+
+    for key in SAFE_RESPONSE_METADATA {
+        assert!(!is_credential_bearing(key), "{key}");
+        assert_eq!(key, key.to_ascii_lowercase(), "{key}");
+    }
+    for (key, _) in CREDENTIAL_RESPONSE_HEADERS {
+        assert!(is_credential_bearing(key), "{key}");
+        assert!(!SAFE_RESPONSE_METADATA.contains(&key), "{key}");
+    }
+    for key in [
+        "Authorization",
+        " proxy-authorization ",
+        "x-tenant-secret",
+        "session-token",
+        "signing-key",
+        "user-password",
+        "service-credential",
+    ] {
+        assert!(is_credential_bearing(key), "{key}");
+    }
+    for key in ["x-request-id", "x-trace-id", "content-type", "date"] {
+        assert!(!is_credential_bearing(key), "{key}");
+    }
+}
+
+#[tokio::test]
+async fn send_with_metadata_dispatches_a_generated_request_under_sdk_policy() {
+    let transport = Arc::new(FakeTransport::default());
+    transport.operations.lock().unwrap().extend([
+        Err(unavailable_with_request_id()),
+        Ok(GetOperationResponse {
+            operation: Some(listed_operation("operations/raw-retry")),
+        }),
+    ]);
+    let sleeper = Arc::new(ImmediateSleeper::default());
+    let client = Client::with_test_sleeper(
+        test_config(test_provider(), 4, Duration::from_millis(1)),
+        Arc::clone(&transport) as Arc<dyn RpcTransport>,
+        sleeper,
+    );
+
+    // A safe route retries under the same policy the ergonomic facade uses.
+    let response = client
+        .send_with_metadata(
+            GetOperationRequest {
+                name: "operations/raw-retry".to_owned(),
+                ..GetOperationRequest::default()
+            },
+            &CallOptions::new(),
+            None,
+        )
+        .await
+        .unwrap();
+    assert_eq!(
+        response.into_inner().operation.unwrap().operation_id,
+        "operations/raw-retry"
+    );
+
+    let observed = transport.observed.lock().unwrap().clone();
+    assert_eq!(observed.len(), 2);
+    assert_eq!(
+        observed
+            .iter()
+            .map(|entry| entry.retry_count.clone().unwrap())
+            .collect::<Vec<_>>(),
+        ["0", "1"]
+    );
+    assert!(observed.iter().all(
+        |entry| entry.expected_tenant.as_deref() == Some("tenants/t-1")
+            && entry.expected_project.as_deref() == Some("projects/p-1")
+            && entry.expected_principal.as_deref() == Some("principals/worker-1")
+            && entry.authorization_present
+            && entry.authorization_sensitive
+            && entry.deadline_present
+            && entry.sdk.is_some()
+    ));
+
+    // The escape hatch cannot bypass the idempotency requirement.
+    let error = client
+        .send_with_metadata(
+            CancelOperationRequest {
+                name: "operations/raw-retry".to_owned(),
+                ..CancelOperationRequest::default()
+            },
+            &CallOptions::new(),
+            None,
+        )
+        .await
+        .unwrap_err();
+    assert_eq!(error.kind(), ErrorKind::InvalidArgument);
+    assert!(error.to_string().contains("idempotency key"));
+    assert_eq!(
+        registered_method_safety(<CancelOperationRequest as crate::RawRequest>::METHOD),
+        CallSafety::Idempotent
+    );
+    assert_eq!(
+        <ListOperationsRequest as crate::RawRequest>::METHOD,
+        "/mindclade.internal.job.v1.OperationService/ListOperations"
     );
 }

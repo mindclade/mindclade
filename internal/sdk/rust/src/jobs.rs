@@ -2,9 +2,7 @@ use std::sync::Arc;
 
 use mindclade_protocols::{
     artifact::v1::ArtifactRef,
-    internal::job::v1::{
-        CancelJobRequest, GetJobRequest, ListJobsRequest, RequestJobRequest,
-    },
+    internal::job::v1::{CancelJobRequest, GetJobRequest, ListJobsRequest, RequestJobRequest},
     job::v1::{Job, Operation, RequestJobCommand},
 };
 use prost::Message;

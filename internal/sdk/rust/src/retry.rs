@@ -12,7 +12,9 @@ use std::{
 };
 
 use sha2::{Digest, Sha256};
-use tonic::{Request, Response as TonicResponse, Status, codegen::async_trait, metadata::MetadataValue};
+use tonic::{
+    Request, Response as TonicResponse, Status, codegen::async_trait, metadata::MetadataValue,
+};
 
 use crate::{
     ClientCore, Error, ErrorKind, RpcTransport,

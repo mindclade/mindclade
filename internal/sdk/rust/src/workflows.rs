@@ -320,7 +320,9 @@ impl Workflows {
                             registered_method_safety(LIST_DEFINITIONS),
                             None,
                             |transport, request| {
-                                Box::pin(async move { transport.list_workflow_definitions(request).await })
+                                Box::pin(async move {
+                                    transport.list_workflow_definitions(request).await
+                                })
                             },
                         )
                         .await?;
