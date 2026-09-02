@@ -142,3 +142,33 @@ def test_builder_rejects_unqualified_target_before_tilelang_import():
             target="auto", architecture="sm90a", batch=1,
             residues=64, channels=64, outgoing=True,
         )
+
+
+def test_callable_nodes_use_artifact_scoped_host_call_abi():
+    from kernels.api import ProgramArtifactBoundary, ProgramBindingSource, ProgramEntryABI
+
+    groups = (KERNEL_SPEC.forward.program_group, KERNEL_SPEC.backward.program_group)
+    for group in groups:
+        assert group is not None
+        for node in group.nodes:
+            assert node.entry_symbol == "call"
+            assert node.entry_abi is ProgramEntryABI.TILELANG_0_1_13_HOST_CALL
+            assert node.artifact_boundary is ProgramArtifactBoundary.NODE_CONTENT_ADDRESSED_DSO
+            assert sum(binding.source is ProgramBindingSource.CURRENT_STREAM for binding in node.bindings) == 1
+    assert all(
+        sum(binding.source is ProgramBindingSource.GRADIENT_REQUEST for binding in node.bindings) == 1
+        for node in KERNEL_SPEC.backward.program_group.nodes
+    )
+
+def test_runtime_workload_contract_is_exact():
+    from kernels.pairformer.triangle_multiplication.spec import KERNEL_SPEC
+
+    workload = KERNEL_SPEC.runtime_workload
+    assert tuple((binding.name, binding.value.argument, binding.value.axis) for binding in workload.dimensions) == (
+        ("batch", "left", 0), ("channels", "left", 3),
+        ("residues", "left", 1),
+    )
+    assert workload.input_dtype.argument == "left"
+    assert workload.layout == "contiguous"
+    assert workload.mode_selector == "mode"
+    assert workload.attributes == ()

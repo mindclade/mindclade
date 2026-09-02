@@ -82,7 +82,7 @@ def build_online_forward_program(
 
     @tilelang.jit(out_idx=[4, 5], target=target_config)
     @T.prim_func
-    def mindclade_tilelang_pair_weighted_average_online_forward_launch(
+    def mindclade_tilelang_pair_weighted_average_online_forward_raw(
         value: T.Tensor((batch_size, node_count, channels), dtype),
         weights: T.Tensor((batch_size, node_count, node_count, heads), dtype),
         mask: T.Tensor((batch_size, node_count), mask_dtype),
@@ -90,7 +90,7 @@ def build_online_forward_program(
         output: T.Tensor((batch_size, node_count, heads, channels), dtype),
         lse: T.Tensor((batch_size, node_count, heads), "float32"),
     ):
-        T.func_attr({"global_symbol": "mindclade_tilelang_pair_weighted_average_online_forward_launch"})
+        T.func_attr({"global_symbol": "mindclade_tilelang_pair_weighted_average_online_forward_raw"})
         with T.Kernel(blocks, threads=threads) as block:
             row_max = T.alloc_local((1,), "float32")
             denominator = T.alloc_local((1,), "float32")
@@ -137,7 +137,7 @@ def build_online_forward_program(
                         if channel == 0:
                             lse[batch, destination, head] = -T.infinity("float32")
 
-    return mindclade_tilelang_pair_weighted_average_online_forward_launch
+    return mindclade_tilelang_pair_weighted_average_online_forward_raw
 
 
 def build_delta_program(
@@ -152,12 +152,12 @@ def build_delta_program(
 
     @tilelang.jit(out_idx=[2], target=target_config)
     @T.prim_func
-    def mindclade_tilelang_pair_weighted_average_delta_launch(
+    def mindclade_tilelang_pair_weighted_average_delta_raw(
         grad_output: T.Tensor((batch_size, node_count, heads, channels), dtype),
         output: T.Tensor((batch_size, node_count, heads, channels), dtype),
         delta: T.Tensor((batch_size, node_count, heads), "float32"),
     ):
-        T.func_attr({"global_symbol": "mindclade_tilelang_pair_weighted_average_delta_launch"})
+        T.func_attr({"global_symbol": "mindclade_tilelang_pair_weighted_average_delta_raw"})
         with T.Kernel(blocks, threads=threads) as block:
             accumulation = T.alloc_local((1,), "float32")
             for lane in T.Parallel(threads):
@@ -171,7 +171,7 @@ def build_delta_program(
                         accumulation[0] += T.Cast("float32", grad_output[batch, destination, head, channel]) * T.Cast("float32", output[batch, destination, head, channel])
                     delta[batch, destination, head] = accumulation[0]
 
-    return mindclade_tilelang_pair_weighted_average_delta_launch
+    return mindclade_tilelang_pair_weighted_average_delta_raw
 
 
 def build_dvalue_program(
@@ -186,14 +186,14 @@ def build_dvalue_program(
 
     @tilelang.jit(out_idx=[4], target=target_config)
     @T.prim_func
-    def mindclade_tilelang_pair_weighted_average_dvalue_launch(
+    def mindclade_tilelang_pair_weighted_average_dvalue_raw(
         grad_output: T.Tensor((batch_size, node_count, heads, channels), dtype),
         weights: T.Tensor((batch_size, node_count, node_count, heads), dtype),
         mask: T.Tensor((batch_size, node_count), mask_dtype),
         lse: T.Tensor((batch_size, node_count, heads), "float32"),
         grad_value: T.Tensor((batch_size, node_count, channels), dtype),
     ):
-        T.func_attr({"global_symbol": "mindclade_tilelang_pair_weighted_average_dvalue_launch"})
+        T.func_attr({"global_symbol": "mindclade_tilelang_pair_weighted_average_dvalue_raw"})
         with T.Kernel(blocks, threads=threads) as block:
             accumulation = T.alloc_local((1,), "float32")
             for lane in T.Parallel(threads):
@@ -215,7 +215,7 @@ def build_dvalue_program(
                                 )
                     grad_value[batch, source, channel] = T.Cast(dtype, accumulation[0])
 
-    return mindclade_tilelang_pair_weighted_average_dvalue_launch
+    return mindclade_tilelang_pair_weighted_average_dvalue_raw
 
 
 def build_dweights_program(
@@ -230,7 +230,7 @@ def build_dweights_program(
 
     @tilelang.jit(out_idx=[6], target=target_config)
     @T.prim_func
-    def mindclade_tilelang_pair_weighted_average_dweights_launch(
+    def mindclade_tilelang_pair_weighted_average_dweights_raw(
         grad_output: T.Tensor((batch_size, node_count, heads, channels), dtype),
         value: T.Tensor((batch_size, node_count, channels), dtype),
         weights: T.Tensor((batch_size, node_count, node_count, heads), dtype),
@@ -239,7 +239,7 @@ def build_dweights_program(
         delta: T.Tensor((batch_size, node_count, heads), "float32"),
         grad_weights: T.Tensor((batch_size, node_count, node_count, heads), dtype),
     ):
-        T.func_attr({"global_symbol": "mindclade_tilelang_pair_weighted_average_dweights_launch"})
+        T.func_attr({"global_symbol": "mindclade_tilelang_pair_weighted_average_dweights_raw"})
         with T.Kernel(blocks, threads=threads) as block:
             dot = T.alloc_local((1,), "float32")
             for lane in T.Parallel(threads):
@@ -263,7 +263,7 @@ def build_dweights_program(
                     else:
                         grad_weights[batch, destination, source, head] = T.Cast(dtype, 0)
 
-    return mindclade_tilelang_pair_weighted_average_dweights_launch
+    return mindclade_tilelang_pair_weighted_average_dweights_raw
 
 
 def build_forward_program_group(**_: object) -> dict[str, object]:

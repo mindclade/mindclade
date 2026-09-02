@@ -9,6 +9,7 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from enum import Enum
+import ctypes
 import hashlib
 import hmac
 import json
@@ -22,6 +23,18 @@ from typing import Any
 
 import torch
 
+from .capability_index import (
+    BundleBinding,
+    CapabilityIndexError,
+    CapabilityRequest,
+    DispatchReceipt,
+    NativeCapabilityTable,
+    NativeCapabilityTableIdentity,
+    VerifiedCapabilityIndex,
+    reconcile_exported_native_capability_identity,
+    reconcile_signed_native_capability_table,
+    select_capability,
+)
 from .registration import register_packaged_python_kernels
 
 
@@ -81,11 +94,28 @@ _REGISTRATION_KEYS = frozenset(
 )
 _REGISTRATION_KINDS = ("semantic", "forward", "backward")
 _AUTOGRAD_POLICIES = frozenset({"required", "none", "composite"})
-_PROGRAM_GROUP_KEYS = frozenset({"type", "nodes", "workspaces", "version"})
-_PROGRAM_NODE_KEYS = frozenset(
-    {"type", "name", "builder", "symbol", "depends_on", "workspace_uses", "version"}
+_PROGRAM_GROUP_KEYS = frozenset(
+    {"type", "nodes", "workspaces", "selector_bindings", "version"}
 )
-_WORKSPACE_USE_KEYS = frozenset({"type", "workspace", "access", "version"})
+_PROGRAM_NODE_KEYS = frozenset(
+    {
+        "type", "name", "builder", "symbol", "entry_symbol", "entry_abi",
+        "parameters", "bindings", "depends_on", "return_abi",
+        "artifact_boundary", "version",
+    }
+)
+_PROGRAM_PARAMETER_KEYS = frozenset(
+    {
+        "type", "position", "name", "kind", "access", "shape", "dtype",
+        "device", "scalar_type", "optional", "version",
+    }
+)
+_PROGRAM_BINDING_KEYS = frozenset(
+    {"type", "parameter", "source", "source_name", "version"}
+)
+_PROGRAM_SELECTOR_BINDING_KEYS = frozenset(
+    {"type", "provider_argument", "selector_key", "scalar_type", "cases", "version"}
+)
 _WORKSPACE_KEYS = frozenset(
     {"type", "name", "shape", "dtype", "zero_initialize", "lifetime", "version"}
 )
@@ -96,20 +126,31 @@ _LAUNCHER_PLAN_KEYS = frozenset(
         "logical_symbol",
         "bridge_requirement",
         "execution_order",
-        "required_private_symbols",
+        "adapter_symbol_prefixes",
+        "selector_bindings",
         "nodes",
         "workspaces",
     }
 )
 _LAUNCHER_NODE_KEYS = frozenset(
-    {"name", "symbol", "depends_on", "workspace_uses"}
+    {
+        "name", "symbol", "entry_symbol", "entry_abi", "return_abi",
+        "artifact_boundary", "depends_on", "parameters", "bindings",
+    }
 )
-_LAUNCHER_WORKSPACE_USE_KEYS = frozenset({"workspace", "access"})
 _LAUNCHER_WORKSPACE_KEYS = frozenset(
     {"name", "shape", "dtype", "zero_initialize", "lifetime"}
 )
 _WORKSPACE_ACCESSES = frozenset({"read", "write", "read_write"})
 _WORKSPACE_LIFETIMES = frozenset({"node", "program_group"})
+_PROGRAM_PARAMETER_KINDS = frozenset({"tensor", "scalar", "stream"})
+_PROGRAM_BINDING_SOURCES = frozenset(
+    {
+        "operator_argument", "output_gradient", "forward_output",
+        "provider_output", "workspace", "gradient_request", "current_stream",
+    }
+)
+_SCALAR_ABI_TYPES = frozenset({"bool", "int64", "float64"})
 _IMPLEMENTATION_CANDIDATE_KEYS = frozenset(
     {"name", "version", "tier", "priority", "requires", "envelope", "envelope_digest", "promoted", "selectable"}
 )
@@ -127,6 +168,9 @@ _SHAPE_EXPRESSION_NODES = frozenset(
 )
 _DTYPE_EXPRESSION_NODES = frozenset(
     {"dtype_ref", "same_as_input_dtype", "constant_dtype", "select"}
+)
+_DEVICE_EXPRESSION_NODES = frozenset(
+    {"device_ref", "same_as_input_device", "constant_device", "select"}
 )
 _EXPRESSION_KEYS = frozenset(
     {
@@ -319,6 +363,34 @@ class _ManifestWorkspaceUse:
 
 
 @dataclass(frozen=True, slots=True)
+class _ManifestProgramParameter:
+    position: int
+    name: str
+    kind: str
+    access: str
+    shape_json: bytes | None
+    dtype_json: bytes | None
+    device_json: bytes | None
+    scalar_type: str | None
+    optional: bool
+
+
+@dataclass(frozen=True, slots=True)
+class _ManifestProgramBinding:
+    parameter: str
+    source: str
+    source_name: str | None
+
+
+@dataclass(frozen=True, slots=True)
+class _ManifestProgramSelectorBinding:
+    provider_argument: str
+    selector_key: str
+    scalar_type: str
+    cases: tuple[tuple[bool, str], ...]
+
+
+@dataclass(frozen=True, slots=True)
 class _ManifestWorkspace:
     name: str
     shape_json: bytes
@@ -331,8 +403,30 @@ class _ManifestWorkspace:
 class _ManifestProgramNode:
     name: str
     symbol: str
+    entry_symbol: str
+    entry_abi: str
+    return_abi: str
+    artifact_boundary: str
     depends_on: tuple[str, ...]
-    workspace_uses: tuple[_ManifestWorkspaceUse, ...]
+    parameters: tuple[_ManifestProgramParameter, ...]
+    bindings: tuple[_ManifestProgramBinding, ...]
+
+    @property
+    def workspace_uses(self) -> tuple[_ManifestWorkspaceUse, ...]:
+        by_name = {item.name: item for item in self.parameters}
+        return tuple(
+            sorted(
+                (
+                    _ManifestWorkspaceUse(
+                        item.source_name or "",
+                        by_name[item.parameter].access,
+                    )
+                    for item in self.bindings
+                    if item.source == "workspace"
+                ),
+                key=lambda item: item.workspace,
+            )
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -340,7 +434,8 @@ class _ManifestLauncherPlan:
     phase: str
     logical_symbol: str
     execution_order: tuple[str, ...]
-    required_private_symbols: tuple[str, ...]
+    adapter_symbol_prefixes: tuple[str, ...]
+    selector_bindings: tuple[_ManifestProgramSelectorBinding, ...]
     nodes: tuple[_ManifestProgramNode, ...]
     workspaces: tuple[_ManifestWorkspace, ...]
 
@@ -415,6 +510,7 @@ class _LoadedBundle:
     library: Path
     operators: tuple[_ManifestOperator, ...]
     trust: BundleTrustDecision
+    selection: DispatchReceipt | None
 
 
 _LOCK = threading.Lock()
@@ -632,6 +728,7 @@ def _canonical_expression(value: object, domain: str, label: str) -> bytes:
     allowed = {
         "shape": _SHAPE_EXPRESSION_NODES,
         "dtype": _DTYPE_EXPRESSION_NODES,
+        "device": _DEVICE_EXPRESSION_NODES,
         "bool": _BOOL_EXPRESSION_NODES,
     }.get(domain)
     if allowed is None:
@@ -693,25 +790,118 @@ def _canonical_expression(value: object, domain: str, label: str) -> bytes:
     return encoded
 
 
-def _parse_workspace_use(
-    value: object, label: str, *, derived: bool
-) -> _ManifestWorkspaceUse:
+def _parse_program_parameter(
+    value: object, label: str
+) -> _ManifestProgramParameter:
     if not isinstance(value, Mapping):
         raise NativeBundleVerificationError(f"{label} must be an object")
-    _exact_keys(
-        value,
-        _LAUNCHER_WORKSPACE_USE_KEYS if derived else _WORKSPACE_USE_KEYS,
-        label,
-    )
-    if not derived:
-        if value["type"] != "WorkspaceUseSpec":
-            raise NativeBundleVerificationError(f"{label}.type is invalid")
-        _require_v1(value["version"], label)
-    workspace = _require_identifier(value["workspace"], f"{label}.workspace")
+    _exact_keys(value, _PROGRAM_PARAMETER_KEYS, label)
+    if value["type"] != "ProgramParameterSpec":
+        raise NativeBundleVerificationError(f"{label}.type is invalid")
+    _require_v1(value["version"], label)
+    position = value["position"]
+    if type(position) is not int or not 0 <= position < 256:
+        raise NativeBundleVerificationError(f"{label}.position is invalid")
+    name = _require_identifier(value["name"], f"{label}.name")
+    kind = value["kind"]
     access = value["access"]
+    optional = value["optional"]
+    if kind not in _PROGRAM_PARAMETER_KINDS:
+        raise NativeBundleVerificationError(f"{label}.kind is invalid")
     if access not in _WORKSPACE_ACCESSES:
         raise NativeBundleVerificationError(f"{label}.access is invalid")
-    return _ManifestWorkspaceUse(workspace, access)
+    if type(optional) is not bool:
+        raise NativeBundleVerificationError(f"{label}.optional must be boolean")
+    shape = value["shape"]
+    dtype = value["dtype"]
+    device = value["device"]
+    scalar_type = value["scalar_type"]
+    if kind == "tensor":
+        if shape is None or dtype is None or device is None or scalar_type is not None:
+            raise NativeBundleVerificationError(
+                f"{label} tensor metadata is incomplete or contradictory"
+            )
+        shape_json = _canonical_expression(shape, "shape", f"{label}.shape")
+        dtype_json = _canonical_expression(dtype, "dtype", f"{label}.dtype")
+        device_json = _canonical_expression(device, "device", f"{label}.device")
+    else:
+        if shape is not None or dtype is not None or device is not None:
+            raise NativeBundleVerificationError(
+                f"{label} non-tensor parameter carries tensor metadata"
+            )
+        shape_json = dtype_json = device_json = None
+        if kind == "scalar":
+            if scalar_type not in _SCALAR_ABI_TYPES:
+                raise NativeBundleVerificationError(
+                    f"{label}.scalar_type is invalid"
+                )
+        elif scalar_type is not None or access != "read" or optional:
+            raise NativeBundleVerificationError(
+                f"{label} stream parameter must be required read-only"
+            )
+    return _ManifestProgramParameter(
+        position=position,
+        name=name,
+        kind=str(kind),
+        access=str(access),
+        shape_json=shape_json,
+        dtype_json=dtype_json,
+        device_json=device_json,
+        scalar_type=str(scalar_type) if scalar_type is not None else None,
+        optional=optional,
+    )
+
+
+def _parse_program_binding(
+    value: object, label: str
+) -> _ManifestProgramBinding:
+    if not isinstance(value, Mapping):
+        raise NativeBundleVerificationError(f"{label} must be an object")
+    _exact_keys(value, _PROGRAM_BINDING_KEYS, label)
+    if value["type"] != "ProgramBindingSpec":
+        raise NativeBundleVerificationError(f"{label}.type is invalid")
+    _require_v1(value["version"], label)
+    parameter = _require_identifier(value["parameter"], f"{label}.parameter")
+    source = value["source"]
+    if source not in _PROGRAM_BINDING_SOURCES:
+        raise NativeBundleVerificationError(f"{label}.source is invalid")
+    source_name = value["source_name"]
+    if source == "current_stream":
+        if source_name is not None:
+            raise NativeBundleVerificationError(
+                f"{label} current_stream source_name must be null"
+            )
+    else:
+        source_name = _require_identifier(source_name, f"{label}.source_name")
+    return _ManifestProgramBinding(parameter, str(source), source_name)
+
+
+def _parse_program_selector_binding(
+    value: object, label: str
+) -> _ManifestProgramSelectorBinding:
+    if not isinstance(value, Mapping):
+        raise NativeBundleVerificationError(f"{label} must be an object")
+    _exact_keys(value, _PROGRAM_SELECTOR_BINDING_KEYS, label)
+    if value["type"] != "ProgramSelectorBinding":
+        raise NativeBundleVerificationError(f"{label}.type is invalid")
+    _require_v1(value["version"], label)
+    provider_argument = _require_identifier(
+        value["provider_argument"], f"{label}.provider_argument"
+    )
+    if value["selector_key"] != "mode" or value["scalar_type"] != "bool":
+        raise NativeBundleVerificationError(
+            f"{label} supports only the bool mode selector"
+        )
+    if value["cases"] != [[False, "incoming"], [True, "outgoing"]]:
+        raise NativeBundleVerificationError(
+            f"{label}.cases must be canonical and total"
+        )
+    return _ManifestProgramSelectorBinding(
+        provider_argument=provider_argument,
+        selector_key="mode",
+        scalar_type="bool",
+        cases=((False, "incoming"), (True, "outgoing")),
+    )
 
 
 def _parse_workspace(
@@ -762,30 +952,126 @@ def _parse_program_node(
         _validate_python_identity(builder, f"{label}.builder")
     name = _require_identifier(value["name"], f"{label}.name")
     symbol = _require_identifier(value["symbol"], f"{label}.symbol")
+    entry_symbol = _require_identifier(value["entry_symbol"], f"{label}.entry_symbol")
+    if entry_symbol != "call":
+        raise NativeBundleVerificationError(f"{label}.entry_symbol must be call")
+    if value["entry_abi"] != "tilelang_0_1_13_host_call":
+        raise NativeBundleVerificationError(f"{label}.entry_abi is unsupported")
+    if value["return_abi"] != "status_i32_zero_success":
+        raise NativeBundleVerificationError(f"{label}.return_abi is unsupported")
+    if value["artifact_boundary"] != "node_content_addressed_dso":
+        raise NativeBundleVerificationError(
+            f"{label}.artifact_boundary is unsupported"
+        )
     depends_on = _identifier_tuple(value["depends_on"], f"{label}.depends_on")
     if depends_on != tuple(sorted(depends_on)):
         raise NativeBundleVerificationError(
             f"{label}.depends_on is not canonically ordered"
         )
-    raw_uses = value["workspace_uses"]
-    if not isinstance(raw_uses, list) or len(raw_uses) > _MAX_PLAN_ITEMS:
+    raw_parameters = value["parameters"]
+    raw_bindings = value["bindings"]
+    if (
+        not isinstance(raw_parameters, list)
+        or not raw_parameters
+        or len(raw_parameters) > 256
+    ):
         raise NativeBundleVerificationError(
-            f"{label}.workspace_uses must be a bounded array"
+            f"{label}.parameters must be a bounded non-empty array"
         )
-    uses = tuple(
-        _parse_workspace_use(item, f"{label}.workspace_uses[{index}]", derived=derived)
-        for index, item in enumerate(raw_uses)
+    if (
+        not isinstance(raw_bindings, list)
+        or not raw_bindings
+        or len(raw_bindings) > 256
+    ):
+        raise NativeBundleVerificationError(
+            f"{label}.bindings must be a bounded non-empty array"
+        )
+    parameters = tuple(
+        _parse_program_parameter(item, f"{label}.parameters[{index}]")
+        for index, item in enumerate(raw_parameters)
     )
-    use_names = tuple(item.workspace for item in uses)
-    if len(use_names) != len(set(use_names)):
+    positions = tuple(item.position for item in parameters)
+    names = tuple(item.name for item in parameters)
+    if positions != tuple(range(len(parameters))) or len(names) != len(set(names)):
         raise NativeBundleVerificationError(
-            f"{label}.workspace_uses contains duplicate workspaces"
+            f"{label}.parameters are not contiguous and unique"
         )
-    if use_names != tuple(sorted(use_names)):
+    bindings = tuple(
+        _parse_program_binding(item, f"{label}.bindings[{index}]")
+        for index, item in enumerate(raw_bindings)
+    )
+    bound_names = tuple(item.parameter for item in bindings)
+    if bound_names != tuple(sorted(bound_names)):
         raise NativeBundleVerificationError(
-            f"{label}.workspace_uses is not canonically ordered"
+            f"{label}.bindings are not canonically ordered"
         )
-    return _ManifestProgramNode(name, symbol, depends_on, uses)
+    if len(bound_names) != len(set(bound_names)) or set(bound_names) != set(names):
+        raise NativeBundleVerificationError(
+            f"{label}.bindings must cover every parameter exactly once"
+        )
+    by_name = {item.name: item for item in parameters}
+    stream_bindings = 0
+    optional_provider_outputs: list[str] = []
+    gradient_requests: list[str] = []
+    for binding in bindings:
+        parameter = by_name[binding.parameter]
+        if binding.source == "current_stream":
+            stream_bindings += 1
+            if parameter.kind != "stream":
+                raise NativeBundleVerificationError(
+                    f"{label} current_stream binding requires stream parameter"
+                )
+        elif parameter.kind == "stream":
+            raise NativeBundleVerificationError(
+                f"{label} stream parameter must bind current_stream"
+            )
+        elif binding.source == "gradient_request":
+            gradient_requests.append(binding.source_name or "")
+            if (
+                parameter.kind != "scalar"
+                or parameter.scalar_type != "bool"
+                or parameter.access != "read"
+            ):
+                raise NativeBundleVerificationError(
+                    f"{label} gradient_request requires read-only bool scalar"
+                )
+        elif binding.source in {"output_gradient", "forward_output"}:
+            if parameter.kind != "tensor" or parameter.access != "read":
+                raise NativeBundleVerificationError(
+                    f"{label} {binding.source} requires read-only tensor"
+                )
+        elif binding.source == "provider_output":
+            if parameter.kind != "tensor" or parameter.access not in {"write", "read_write"}:
+                raise NativeBundleVerificationError(
+                    f"{label} provider_output requires writable tensor"
+                )
+            if parameter.optional:
+                optional_provider_outputs.append(binding.source_name or "")
+        elif binding.source == "workspace" and parameter.kind != "tensor":
+            raise NativeBundleVerificationError(
+                f"{label} workspace binding requires tensor parameter"
+            )
+    if stream_bindings != 1:
+        raise NativeBundleVerificationError(
+            f"{label} must bind exactly one current stream"
+        )
+    if optional_provider_outputs and (
+        len(gradient_requests) != 1 or len(set(gradient_requests)) != 1
+    ):
+        raise NativeBundleVerificationError(
+            f"{label} optional provider outputs require one gradient request"
+        )
+    return _ManifestProgramNode(
+        name=name,
+        symbol=symbol,
+        entry_symbol=entry_symbol,
+        entry_abi="tilelang_0_1_13_host_call",
+        return_abi="status_i32_zero_success",
+        artifact_boundary="node_content_addressed_dso",
+        depends_on=depends_on,
+        parameters=parameters,
+        bindings=bindings,
+    )
 
 
 def _validated_program_components(
@@ -824,11 +1110,11 @@ def _validated_program_components(
         ready = sorted(name for name, items in pending.items() if not items)
         if not ready:
             raise NativeBundleVerificationError(f"{label} contains a dependency cycle")
-        order.extend(ready)
-        for name in ready:
-            del pending[name]
+        name = ready[0]
+        order.append(name)
+        del pending[name]
         for items in pending.values():
-            items.difference_update(ready)
+            items.discard(name)
     execution_order = tuple(order)
     if names != execution_order:
         raise NativeBundleVerificationError(
@@ -899,6 +1185,7 @@ def _parse_program_group(
     tuple[_ManifestProgramNode, ...],
     tuple[_ManifestWorkspace, ...],
     tuple[str, ...],
+    tuple[_ManifestProgramSelectorBinding, ...],
 ] | None:
     if value is None:
         return None
@@ -910,6 +1197,8 @@ def _parse_program_group(
     _require_v1(value["version"], label)
     raw_nodes = value["nodes"]
     raw_workspaces = value["workspaces"]
+    raw_selectors = value["selector_bindings"]
+    raw_selectors = value["selector_bindings"]
     if (
         not isinstance(raw_nodes, list)
         or not raw_nodes
@@ -918,6 +1207,14 @@ def _parse_program_group(
         raise NativeBundleVerificationError(f"{label}.nodes must be a bounded non-empty array")
     if not isinstance(raw_workspaces, list) or len(raw_workspaces) > _MAX_PLAN_ITEMS:
         raise NativeBundleVerificationError(f"{label}.workspaces must be a bounded array")
+    if not isinstance(raw_selectors, list) or len(raw_selectors) > 8:
+        raise NativeBundleVerificationError(
+            f"{label}.selector_bindings must be a bounded array"
+        )
+    if not isinstance(raw_selectors, list) or len(raw_selectors) > 8:
+        raise NativeBundleVerificationError(
+            f"{label}.selector_bindings must be a bounded array"
+        )
     nodes = tuple(
         _parse_program_node(item, f"{label}.nodes[{index}]", derived=False)
         for index, item in enumerate(raw_nodes)
@@ -926,8 +1223,52 @@ def _parse_program_group(
         _parse_workspace(item, f"{label}.workspaces[{index}]", derived=False)
         for index, item in enumerate(raw_workspaces)
     )
+    selectors = tuple(
+        _parse_program_selector_binding(
+            item, f"{label}.selector_bindings[{index}]"
+        )
+        for index, item in enumerate(raw_selectors)
+    )
+    selectors = tuple(
+        _parse_program_selector_binding(
+            item, f"{label}.selector_bindings[{index}]"
+        )
+        for index, item in enumerate(raw_selectors)
+    )
+    selector_arguments = tuple(item.provider_argument for item in selectors)
+    selector_keys = tuple(item.selector_key for item in selectors)
+    if (
+        selector_arguments != tuple(sorted(set(selector_arguments)))
+        or len(selector_keys) != len(set(selector_keys))
+    ):
+        raise NativeBundleVerificationError(
+            f"{label}.selector_bindings are not canonical and unique"
+        )
     order = _validated_program_components(nodes, workspaces, label)
-    return nodes, workspaces, order
+    return nodes, workspaces, order, selectors
+
+
+def _validate_selector_bindings_against_schema(
+    group: tuple[
+        tuple[_ManifestProgramNode, ...],
+        tuple[_ManifestWorkspace, ...],
+        tuple[str, ...],
+        tuple[_ManifestProgramSelectorBinding, ...],
+    ] | None,
+    schema: str,
+    label: str,
+) -> None:
+    if group is None:
+        return
+    for selector in group[3]:
+        pattern = re.compile(
+            rf"(?:\(|,\s*)bool\s+{re.escape(selector.provider_argument)}"
+            rf"(?:\s*=\s*[^,)]+)?(?=\s*[,\)])"
+        )
+        if pattern.search(schema) is None:
+            raise NativeBundleVerificationError(
+                f"{label} selector argument is not a bool provider argument"
+            )
 
 
 def _parse_launcher_plan(
@@ -939,6 +1280,7 @@ def _parse_launcher_plan(
         tuple[_ManifestProgramNode, ...],
         tuple[_ManifestWorkspace, ...],
         tuple[str, ...],
+        tuple[_ManifestProgramSelectorBinding, ...],
     ] | None,
     label: str,
 ) -> _ManifestLauncherPlan | None:
@@ -961,20 +1303,21 @@ def _parse_launcher_plan(
         raise NativeBundleVerificationError(
             f"{label}.logical_symbol does not match its provider"
         )
-    if value["bridge_requirement"] != "mindclade_program_group_bridge_v1":
+    if value["bridge_requirement"] != "mindclade_node_launch_v1":
         raise NativeBundleVerificationError(
             f"{label}.bridge_requirement is unsupported"
         )
     execution_order = _identifier_tuple(
         value["execution_order"], f"{label}.execution_order", nonempty=True
     )
-    required_symbols = _identifier_tuple(
-        value["required_private_symbols"],
-        f"{label}.required_private_symbols",
+    adapter_prefixes = _identifier_tuple(
+        value["adapter_symbol_prefixes"],
+        f"{label}.adapter_symbol_prefixes",
         nonempty=True,
     )
     raw_nodes = value["nodes"]
     raw_workspaces = value["workspaces"]
+    raw_selectors = value["selector_bindings"]
     if (
         not isinstance(raw_nodes, list)
         or not raw_nodes
@@ -983,6 +1326,10 @@ def _parse_launcher_plan(
         raise NativeBundleVerificationError(f"{label}.nodes must be a bounded non-empty array")
     if not isinstance(raw_workspaces, list) or len(raw_workspaces) > _MAX_PLAN_ITEMS:
         raise NativeBundleVerificationError(f"{label}.workspaces must be a bounded array")
+    if not isinstance(raw_selectors, list) or len(raw_selectors) > 8:
+        raise NativeBundleVerificationError(
+            f"{label}.selector_bindings must be a bounded array"
+        )
     nodes = tuple(
         _parse_program_node(item, f"{label}.nodes[{index}]", derived=True)
         for index, item in enumerate(raw_nodes)
@@ -991,21 +1338,33 @@ def _parse_launcher_plan(
         _parse_workspace(item, f"{label}.workspaces[{index}]", derived=True)
         for index, item in enumerate(raw_workspaces)
     )
+    selectors = tuple(
+        _parse_program_selector_binding(
+            item, f"{label}.selector_bindings[{index}]"
+        )
+        for index, item in enumerate(raw_selectors)
+    )
     calculated_order = _validated_program_components(nodes, workspaces, label)
     if execution_order != calculated_order:
         raise NativeBundleVerificationError(
             f"{label}.execution_order is not the canonical node order"
         )
     node_symbols = tuple(node.symbol for node in nodes)
-    if required_symbols != node_symbols:
+    if adapter_prefixes != node_symbols:
         raise NativeBundleVerificationError(
-            f"{label}.required_private_symbols does not match node symbols"
+            f"{label}.adapter_symbol_prefixes does not match node symbols"
         )
-    raw_nodes_expected, raw_workspaces_expected, raw_order_expected = raw_group
+    (
+        raw_nodes_expected,
+        raw_workspaces_expected,
+        raw_order_expected,
+        raw_selectors_expected,
+    ) = raw_group
     if (
         nodes != raw_nodes_expected
         or workspaces != raw_workspaces_expected
         or execution_order != raw_order_expected
+        or selectors != raw_selectors_expected
     ):
         raise NativeBundleVerificationError(
             f"{label} does not exactly match its raw program group"
@@ -1014,7 +1373,8 @@ def _parse_launcher_plan(
         phase=phase,
         logical_symbol=logical_symbol,
         execution_order=execution_order,
-        required_private_symbols=required_symbols,
+        adapter_symbol_prefixes=adapter_prefixes,
+        selector_bindings=selectors,
         nodes=nodes,
         workspaces=workspaces,
     )
@@ -1252,6 +1612,9 @@ def _parse_operator(value: object, index: int) -> _ManifestOperator:
         _contract_field(forward, "program_group", f"{label}.forward"),
         f"{label}.forward.program_group",
     )
+    _validate_selector_bindings_against_schema(
+        forward_group, forward_schema, f"{label}.forward.program_group"
+    )
     backward = value["backward"]
     composite = value["composite"]
     if autograd_policy == "required":
@@ -1291,6 +1654,9 @@ def _parse_operator(value: object, index: int) -> _ManifestOperator:
         backward_group = _parse_program_group(
             _contract_field(backward, "program_group", f"{label}.backward"),
             f"{label}.backward.program_group",
+        )
+        _validate_selector_bindings_against_schema(
+            backward_group, backward_schema, f"{label}.backward.program_group"
         )
     if not isinstance(value["effects"], Mapping):
         raise NativeBundleVerificationError(f"{label}.effects must be an object")
@@ -1388,13 +1754,13 @@ def _parse_manifest(
     if not isinstance(manifest, Mapping):
         raise NativeBundleVerificationError("native manifest must be an object")
     _exact_keys(manifest, _MANIFEST_KEYS, "native manifest")
-    if manifest["schema_version"] != 3:
+    if manifest["schema_version"] != 4:
         raise NativeBundleVerificationError(
-            "native manifest schema_version must be 3"
+            "native manifest schema_version must be 4"
         )
     if manifest["generator"] != {
         "id": "kernels.native.codegen.generate",
-        "version": 7,
+        "version": 8,
     }:
         raise NativeBundleVerificationError(
             "native manifest generator is unsupported"
@@ -1742,10 +2108,60 @@ def _load_torch_library(path: Path) -> None:
     torch.ops.load_library(str(path))
 
 
+def _exported_native_capability_identity(
+    path: Path,
+) -> NativeCapabilityTableIdentity:
+    try:
+        library = ctypes.CDLL(str(path))
+        row_count = library.mindclade_qualified_capability_row_count_v1
+        rows_digest = library.mindclade_qualified_capability_rows_digest_v1
+        table_digest = library.mindclade_qualified_capability_table_digest_v1
+        row_count.argtypes = []
+        row_count.restype = ctypes.c_size_t
+        rows_digest.argtypes = []
+        rows_digest.restype = ctypes.c_char_p
+        table_digest.argtypes = []
+        table_digest.restype = ctypes.c_char_p
+        raw_rows_digest = rows_digest()
+        raw_table_digest = table_digest()
+        if not isinstance(raw_rows_digest, bytes) or not isinstance(
+            raw_table_digest, bytes
+        ):
+            raise ValueError("native capability digest export returned null")
+        return NativeCapabilityTableIdentity(
+            row_count=int(row_count()),
+            rows_digest=raw_rows_digest.decode("ascii", errors="strict"),
+            table_digest=raw_table_digest.decode("ascii", errors="strict"),
+        )
+    except (AttributeError, OSError, UnicodeError, ValueError) as exc:
+        raise NativeBundleVerificationError(
+            "native capability identity exports are unavailable"
+        ) from exc
+
+
+def _manifest_phase_adapters(
+    operators: tuple[_ManifestOperator, ...],
+) -> dict[tuple[str, str], tuple[str, ...]]:
+    result: dict[tuple[str, str], tuple[str, ...]] = {}
+    for operator in operators:
+        if operator.forward_launcher_plan is not None:
+            result[(operator.qualified_name, "forward")] = (
+                operator.forward_launcher_plan.adapter_symbol_prefixes
+            )
+        if operator.backward_launcher_plan is not None:
+            result[(operator.qualified_name, "backward")] = (
+                operator.backward_launcher_plan.adapter_symbol_prefixes
+            )
+    return result
+
+
 def load_native_library(
     descriptor: NativeBundleDescriptor,
     *,
     signature_verifier: SignatureVerifier,
+    capability_index: VerifiedCapabilityIndex | None = None,
+    capability_request: CapabilityRequest | None = None,
+    native_capability_table: NativeCapabilityTable | None = None,
 ) -> Path:
     """Verify and load one complete, plan-bound operator bundle once.
 
@@ -1757,6 +2173,43 @@ def load_native_library(
     global _LOADED_BUNDLE, _POISONED_REASON
     if not isinstance(descriptor, NativeBundleDescriptor):
         raise TypeError("descriptor must be NativeBundleDescriptor")
+    selection: DispatchReceipt | None = None
+    if descriptor.activation_policy is BundleActivationPolicy.PRODUCTION:
+        if capability_index is None or capability_request is None:
+            raise NativeBundleVerificationError(
+                "production capability admission requires a verified K4/K5 "
+                "index and exact request"
+            )
+        if native_capability_table is None:
+            raise NativeBundleVerificationError(
+                "production capability admission requires the verified "
+                "generated native capability table identity"
+            )
+        try:
+            selection = select_capability(
+                capability_index,
+                capability_request,
+                BundleBinding(
+                    repository_revision=descriptor.repository_revision,
+                    library_digest=descriptor.library_sha256,
+                    native_manifest_digest=descriptor.native_manifest_sha256,
+                    executable_plan_digest=descriptor.executable_plan_sha256,
+                    qualification_identity=descriptor.qualification_identity,
+                ),
+                require_production=True,
+            )
+        except CapabilityIndexError as exc:
+            raise NativeBundleVerificationError(
+                "production capability admission failed"
+            ) from exc
+    elif (
+        capability_index is not None
+        or capability_request is not None
+        or native_capability_table is not None
+    ):
+        raise NativeBundleVerificationError(
+            "TARGET_EMPTY bundles cannot carry production capability admission"
+        )
     with _LOCK:
         if _POISONED_REASON is not None:
             raise NativeBundleStateError(
@@ -1769,8 +2222,25 @@ def load_native_library(
                     "a different native bundle is already loaded "
                     "in this process"
                 )
+            if _LOADED_BUNDLE.selection != selection:
+                raise NativeBundleStateError(
+                    "loaded native bundle capability selection differs"
+                )
             return _LOADED_BUNDLE.library
         verified = _verify_bundle(descriptor, signature_verifier)
+        if descriptor.activation_policy is BundleActivationPolicy.PRODUCTION:
+            assert capability_index is not None
+            assert native_capability_table is not None
+            try:
+                reconcile_signed_native_capability_table(
+                    capability_index,
+                    native_capability_table,
+                    _manifest_phase_adapters(verified.operators),
+                )
+            except CapabilityIndexError as exc:
+                raise NativeBundleVerificationError(
+                    "signed/native capability table reconciliation failed"
+                ) from exc
         before = _dispatcher_snapshot()
         if any(name.startswith("mindclade::") for name in before):
             _POISONED_REASON = (
@@ -1786,6 +2256,22 @@ def load_native_library(
                 raise NativeBundleLoadError(
                     "verified native library failed to load"
                 ) from exc
+            if descriptor.activation_policy is BundleActivationPolicy.PRODUCTION:
+                assert native_capability_table is not None
+                exported_identity = _exported_native_capability_identity(
+                    verified.library
+                )
+                try:
+                    reconcile_exported_native_capability_identity(
+                        native_capability_table.identity,
+                        row_count=exported_identity.row_count,
+                        rows_digest=exported_identity.rows_digest,
+                        table_digest=exported_identity.table_digest,
+                    )
+                except CapabilityIndexError as exc:
+                    raise NativeBundleVerificationError(
+                        "loaded native capability identity reconciliation failed"
+                    ) from exc
             after_native = _dispatcher_snapshot()
             _require_new_operator_set(
                 before, after_native, verified.operators
@@ -1816,5 +2302,6 @@ def load_native_library(
             library=verified.library,
             operators=verified.operators,
             trust=verified.trust,
+            selection=selection,
         )
         return verified.library

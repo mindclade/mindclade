@@ -73,11 +73,11 @@ def build_normalizer_program(
 
     @tilelang.jit(out_idx=[1], target=target_config)
     @T.prim_func
-    def mindclade_tilelang_outer_product_mean_normalizer_launch(
+    def mindclade_tilelang_outer_product_mean_normalizer_raw(
         mask: T.Tensor((batch_size, source_count, node_count), dtype),
         output: T.Tensor((batch_size, node_count, node_count), "float32"),
     ):
-        T.func_attr({"global_symbol": "mindclade_tilelang_outer_product_mean_normalizer_launch"})
+        T.func_attr({"global_symbol": "mindclade_tilelang_outer_product_mean_normalizer_raw"})
         with T.Kernel(blocks, threads=threads) as block:
             accumulation = T.alloc_local((1,), "float32")
             for lane in T.Parallel(threads):
@@ -93,7 +93,7 @@ def build_normalizer_program(
                         ) * T.Cast("float32", mask[batch, source, right_node])
                     output[batch, left_node, right_node] = accumulation[0]
 
-    return mindclade_tilelang_outer_product_mean_normalizer_launch
+    return mindclade_tilelang_outer_product_mean_normalizer_raw
 
 
 def build_numerator_program(
@@ -115,7 +115,7 @@ def build_numerator_program(
 
     @tilelang.jit(out_idx=[5], target=target_config)
     @T.prim_func
-    def mindclade_tilelang_outer_product_mean_numerator_launch(
+    def mindclade_tilelang_outer_product_mean_numerator_raw(
         left: T.Tensor((batch_size, source_count, node_count, left_channels), dtype),
         right: T.Tensor((batch_size, source_count, node_count, right_channels), dtype),
         mask: T.Tensor((batch_size, source_count, node_count), dtype),
@@ -126,7 +126,7 @@ def build_numerator_program(
             dtype,
         ),
     ):
-        T.func_attr({"global_symbol": "mindclade_tilelang_outer_product_mean_numerator_launch"})
+        T.func_attr({"global_symbol": "mindclade_tilelang_outer_product_mean_numerator_raw"})
         with T.Kernel(blocks, threads=threads) as block:
             accumulation = T.alloc_local((1,), "float32")
             for lane in T.Parallel(threads):
@@ -154,7 +154,7 @@ def build_numerator_program(
                         dtype, accumulation[0] / denominator
                     )
 
-    return mindclade_tilelang_outer_product_mean_numerator_launch
+    return mindclade_tilelang_outer_product_mean_numerator_raw
 
 
 def build_dleft_program(
@@ -176,7 +176,7 @@ def build_dleft_program(
 
     @tilelang.jit(out_idx=[5], target=target_config)
     @T.prim_func
-    def mindclade_tilelang_outer_product_mean_dleft_launch(
+    def mindclade_tilelang_outer_product_mean_dleft_raw(
         grad_output: T.Tensor((batch_size, node_count, node_count, left_channels, right_channels), dtype),
         right: T.Tensor((batch_size, source_count, node_count, right_channels), dtype),
         mask: T.Tensor((batch_size, source_count, node_count), dtype),
@@ -184,7 +184,7 @@ def build_dleft_program(
         normalizer: T.Tensor((batch_size, node_count, node_count), "float32"),
         grad_left: T.Tensor((batch_size, source_count, node_count, left_channels), dtype),
     ):
-        T.func_attr({"global_symbol": "mindclade_tilelang_outer_product_mean_dleft_launch"})
+        T.func_attr({"global_symbol": "mindclade_tilelang_outer_product_mean_dleft_raw"})
         with T.Kernel(blocks, threads=threads) as block:
             accumulation = T.alloc_local((1,), "float32")
             for lane in T.Parallel(threads):
@@ -207,7 +207,7 @@ def build_dleft_program(
                             )
                     grad_left[batch, source, node, channel] = T.Cast(dtype, accumulation[0])
 
-    return mindclade_tilelang_outer_product_mean_dleft_launch
+    return mindclade_tilelang_outer_product_mean_dleft_raw
 
 
 def build_dright_program(
@@ -229,7 +229,7 @@ def build_dright_program(
 
     @tilelang.jit(out_idx=[5], target=target_config)
     @T.prim_func
-    def mindclade_tilelang_outer_product_mean_dright_launch(
+    def mindclade_tilelang_outer_product_mean_dright_raw(
         grad_output: T.Tensor((batch_size, node_count, node_count, left_channels, right_channels), dtype),
         left: T.Tensor((batch_size, source_count, node_count, left_channels), dtype),
         mask: T.Tensor((batch_size, source_count, node_count), dtype),
@@ -237,7 +237,7 @@ def build_dright_program(
         normalizer: T.Tensor((batch_size, node_count, node_count), "float32"),
         grad_right: T.Tensor((batch_size, source_count, node_count, right_channels), dtype),
     ):
-        T.func_attr({"global_symbol": "mindclade_tilelang_outer_product_mean_dright_launch"})
+        T.func_attr({"global_symbol": "mindclade_tilelang_outer_product_mean_dright_raw"})
         with T.Kernel(blocks, threads=threads) as block:
             accumulation = T.alloc_local((1,), "float32")
             for lane in T.Parallel(threads):
@@ -260,7 +260,7 @@ def build_dright_program(
                             )
                     grad_right[batch, source, node, channel] = T.Cast(dtype, accumulation[0])
 
-    return mindclade_tilelang_outer_product_mean_dright_launch
+    return mindclade_tilelang_outer_product_mean_dright_raw
 
 
 def build_dmask_program(
@@ -282,7 +282,7 @@ def build_dmask_program(
 
     @tilelang.jit(out_idx=[7], target=target_config)
     @T.prim_func
-    def mindclade_tilelang_outer_product_mean_dmask_launch(
+    def mindclade_tilelang_outer_product_mean_dmask_raw(
         grad_output: T.Tensor((batch_size, node_count, node_count, left_channels, right_channels), dtype),
         left: T.Tensor((batch_size, source_count, node_count, left_channels), dtype),
         right: T.Tensor((batch_size, source_count, node_count, right_channels), dtype),
@@ -292,7 +292,7 @@ def build_dmask_program(
         normalizer: T.Tensor((batch_size, node_count, node_count), "float32"),
         grad_mask: T.Tensor((batch_size, source_count, node_count), dtype),
     ):
-        T.func_attr({"global_symbol": "mindclade_tilelang_outer_product_mean_dmask_launch"})
+        T.func_attr({"global_symbol": "mindclade_tilelang_outer_product_mean_dmask_raw"})
         with T.Kernel(blocks, threads=threads) as block:
             accumulation = T.alloc_local((1,), "float32")
             for lane in T.Parallel(threads):
@@ -339,7 +339,7 @@ def build_dmask_program(
                                     )
                     grad_mask[batch, source, node] = T.Cast(dtype, accumulation[0])
 
-    return mindclade_tilelang_outer_product_mean_dmask_launch
+    return mindclade_tilelang_outer_product_mean_dmask_raw
 
 
 def build_forward_program_group(**_: object) -> dict[str, object]:
@@ -349,7 +349,7 @@ def build_forward_program_group(**_: object) -> dict[str, object]:
         "phase": "forward",
         "logical_symbol": "mindclade_tilelang_outer_product_mean_fwd_launch",
         "execution_order": ("normalizer", "numerator"),
-        "workspaces": ("normalizer",),
+        "workspaces": (),
         "version": 1,
     }
 

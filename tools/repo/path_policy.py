@@ -2481,12 +2481,136 @@ REQUIRED_ADDITIONS = (
 )
 CANONICAL_FILE_COUNT = CANONICAL_FILE_COUNT + len(PAIRFORMER_WAVE6_ADRS) + 1
 CANONICAL_PATH_SET_SHA256 = (
-    "64f4878995932fceaf3f557c12af692ae01a5b0b82863554229d6c997a20398a"
+    "6bd206a5aa53ee40c117c1e7fa8f42645ae5dd366fc93c33935840b794bd86cb"
 )
 PRE_ACTIVATION_SOURCE_PATHS = frozenset(
     path
     for path in (*PRE_ACTIVATION_SOURCE_PATHS, NATIVE_STABLE_ABI_TENSOR_BRIDGE_HEADER)
     if path not in PAIRFORMER_WAVE6_OPERATION_PATHS
+)
+
+# Native signed-qualification and callable-ABI governance (ADR-0022).
+NATIVE_SIGNED_QUALIFICATION_ADR = (
+    "docs/adr/0022-native-signed-qualification-and-production-admission-source-activation.md"
+)
+NATIVE_SIGNED_QUALIFICATION_NEW_PATHS: tuple[str, ...] = (
+    "kernels/native/python/capability_index.py",
+    "kernels/native/manifests/qualification_release.schema.json",
+    "kernels/native/manifests/qualified_capability_index.json",
+    "kernels/native/manifests/qualified_capability_index.schema.json",
+    "kernels/native/tests/test_capability_index.py",
+)
+NATIVE_CALLABLE_ABI_NEW_PATHS: tuple[str, ...] = (
+    "kernels/native/codegen/callable_abi.py",
+    "kernels/native/generated/launcher_plans.generated.cpp",
+    "kernels/native/generated/qualified_capabilities.generated.cpp",
+    "kernels/native/generated/qualified_capabilities.generated.json",
+    "kernels/native/stable_abi/node_launch_abi.h",
+    "kernels/native/stable_abi/node_launch_bridge.cpp",
+    "kernels/native/stable_abi/node_launch_bridge.h",
+    "kernels/native/stable_abi/qualified_capability_table.h",
+)
+NATIVE_ADR0022_GENERATED_PROJECTIONS: tuple[str, ...] = (
+    "kernels/native/generated/launcher_plans.generated.cpp",
+    "kernels/native/generated/qualified_capabilities.generated.cpp",
+    "kernels/native/generated/qualified_capabilities.generated.json",
+)
+NATIVE_GENERATED_PROJECTIONS = (
+    *NATIVE_GENERATED_PROJECTIONS,
+    *NATIVE_ADR0022_GENERATED_PROJECTIONS,
+)
+NATIVE_SIGNED_QUALIFICATION_ACTIVE_PATHS: tuple[str, ...] = (
+    "kernels/native/BUILD.bazel",
+    "kernels/native/IMPLEMENTATION_STATUS.md",
+    "kernels/native/README.md",
+    "kernels/native/__init__.py",
+    "kernels/native/component.yaml",
+    "kernels/native/manifests/qualification_release.schema.json",
+    "kernels/native/manifests/qualified_capability_index.json",
+    "kernels/native/manifests/qualified_capability_index.schema.json",
+    "kernels/native/python/__init__.py",
+    "kernels/native/python/capability_index.py",
+    "kernels/native/python/loader.py",
+    "kernels/native/python/qualification.py",
+    "kernels/native/tests/test_capability_index.py",
+    "kernels/native/tests/test_loader_policy.py",
+    "kernels/native/tests/test_qualification.py",
+)
+NATIVE_SIGNED_QUALIFICATION_ACTIVATION_CRITERION = (
+    "Activated by ADR-0022 as signed-qualification, exact capability-inspection, "
+    "and fail-closed loader source. CPU/test-only evidence grants no K4, K5, "
+    "promotion, or production authority. Nonempty native execution remains "
+    "denied until signed K5 and generated native-table projections reconcile."
+)
+
+_build_pairformer_wave6_native_source_entry = build_native_source_incubation_entry
+
+
+def build_native_source_incubation_entry(path: str) -> dict[str, object]:
+    entry = _build_pairformer_wave6_native_source_entry(path)
+    if path not in NATIVE_SIGNED_QUALIFICATION_ACTIVE_PATHS:
+        return entry
+    activated = dict(entry)
+    activated.update(
+        {
+            "component": "kernels-native",
+            "status": "active",
+            "build_targets": ["//kernels/native:native_policy_inputs"],
+            "test_targets": [
+                "//kernels/native:test_capability_index",
+                "//kernels/native:test_loader_policy",
+                "//kernels/native:test_qualification",
+            ],
+            "activation_criterion": NATIVE_SIGNED_QUALIFICATION_ACTIVATION_CRITERION,
+        }
+    )
+    return activated
+
+
+_pairformer_wave6_reconciliation_addition_reason = _reconciliation_addition_reason
+
+
+def _reconciliation_addition_reason(path: str) -> str:
+    if path == NATIVE_SIGNED_QUALIFICATION_ADR:
+        return (
+            "ADR-0022 activates the exact signed-qualification and loader source "
+            "closure while retaining zero promoted capability rows."
+        )
+    if path in NATIVE_SIGNED_QUALIFICATION_NEW_PATHS:
+        return (
+            "ADR-0022 governs immutable K4/K5 evidence, explicit Ed25519 trust, "
+            "revocation/rollback, and fail-closed qualified-index inspection."
+        )
+    if path in NATIVE_CALLABLE_ABI_NEW_PATHS:
+        return (
+            "ADR-0022 governs the callable-node ABI and compact native-table "
+            "source/generated boundary without granting production execution."
+        )
+    return _pairformer_wave6_reconciliation_addition_reason(path)
+
+
+_NATIVE_ADR0022_NEW_PATHS = (
+    *NATIVE_SIGNED_QUALIFICATION_NEW_PATHS,
+    *NATIVE_CALLABLE_ABI_NEW_PATHS,
+)
+NATIVE_SOURCE_INCUBATION_PATHS = (
+    *NATIVE_SOURCE_INCUBATION_PATHS,
+    *_NATIVE_ADR0022_NEW_PATHS,
+)
+NATIVE_SOURCE_INCUBATION_ADDITIONS = (
+    *NATIVE_SOURCE_INCUBATION_ADDITIONS,
+    *_NATIVE_ADR0022_NEW_PATHS,
+)
+REQUIRED_ADDITIONS = (
+    *REQUIRED_ADDITIONS,
+    *_NATIVE_ADR0022_NEW_PATHS,
+    NATIVE_SIGNED_QUALIFICATION_ADR,
+)
+CANONICAL_FILE_COUNT = CANONICAL_FILE_COUNT + len(_NATIVE_ADR0022_NEW_PATHS) + 1
+PRE_ACTIVATION_SOURCE_PATHS = frozenset(
+    path
+    for path in (*PRE_ACTIVATION_SOURCE_PATHS, *_NATIVE_ADR0022_NEW_PATHS)
+    if path not in NATIVE_SIGNED_QUALIFICATION_ACTIVE_PATHS
 )
 
 if __name__ == "__main__":

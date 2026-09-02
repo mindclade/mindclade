@@ -1,0 +1,8 @@
+{
+  "schema_version": 1,
+  "evidence_class": "SOURCE_EMPTY_UNQUALIFIED",
+  "capabilities": [],
+  "revocations": [],
+  "rollbacks": [],
+  "index_digest": "sha256:d2957d149cadfb610ba09bd3fc9021975165420caafebd9be4896c749ba87501"
+}

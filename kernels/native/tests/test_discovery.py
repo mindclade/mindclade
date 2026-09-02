@@ -36,9 +36,12 @@ from kernels.api import (
     KernelSpec,
     LaunchContract,
     OutputSpec,
+    RankRef,
+    RuntimeWorkloadSpec,
     SameAsInputDType,
     SameAsInputDevice,
     ShapeOf,
+    WorkloadDimensionBinding,
 )
 
 KERNEL_SPEC: KernelSpec = KernelSpec(
@@ -69,6 +72,11 @@ KERNEL_SPEC: KernelSpec = KernelSpec(
     autograd_policy=AutogradPolicy.NONE,
     effects=EffectSpec(),
     launch=LaunchContract(),
+    runtime_workload=RuntimeWorkloadSpec(
+        dimensions=(WorkloadDimensionBinding(name="rank", value=RankRef(argument="x")),),
+        input_dtype=SameAsInputDType(argument="x"),
+        layout="contiguous",
+    ),
 )
 IMPLEMENTATION_SPECS = ()
 '''
@@ -94,12 +102,14 @@ from kernels.api import (
     KernelSpec,
     LaunchContract,
     OutputSpec,
+    RuntimeWorkloadSpec,
     SameAsInputDType,
     SameAsInputDevice,
     ScalarRef,
     ScalarType,
     ShapeOf,
     TensorCapabilityConstraint,
+    WorkloadDimensionBinding,
 )
 
 KERNEL_SPEC = KernelSpec(
@@ -130,6 +140,11 @@ KERNEL_SPEC = KernelSpec(
     autograd_policy=AutogradPolicy.NONE,
     effects=EffectSpec(),
     launch=LaunchContract(),
+    runtime_workload=RuntimeWorkloadSpec(
+        dimensions=(WorkloadDimensionBinding(name="width", value=DimRef(argument="x", axis=0)),),
+        input_dtype=SameAsInputDType(argument="x"),
+        layout="contiguous",
+    ),
 )
 
 IMPLEMENTATION_SPECS = (

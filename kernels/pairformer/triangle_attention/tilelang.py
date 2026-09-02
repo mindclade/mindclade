@@ -134,7 +134,7 @@ def build_backward_program_group(**_: object) -> dict[str, object]:
     return _logical_group(
         phase="backward",
         logical_symbol="mindclade_tilelang_triangle_attention_bwd_launch",
-        execution_order=("delta", "dbias", "dkv", "dq"),
+        execution_order=("delta", "dbias", "dk", "dq", "dv"),
         workspaces=("delta",),
     )
 
@@ -163,6 +163,9 @@ def build_forward_program(
         head_dim=head_dim,
         threads=threads,
     )
+    tilelang = __import__("tilelang")
+
+    @tilelang.jit(out_idx=[6, 7], target=target_arch)
     @T.prim_func
     def mindclade_tilelang_triangle_attention_forward_raw(
         q: T.Tensor((batch, n, heads, head_dim), dtype),
@@ -271,6 +274,9 @@ def build_delta(
         threads=threads,
     )
 
+    tilelang = __import__("tilelang")
+
+    @tilelang.jit(out_idx=[2], target=target_arch)
     @T.prim_func
     def mindclade_tilelang_triangle_attention_delta_raw(
         grad_output: T.Tensor((batch, n, heads, head_dim), dtype),
@@ -323,6 +329,9 @@ def build_dq(
         threads=threads,
     )
 
+    tilelang = __import__("tilelang")
+
+    @tilelang.jit(out_idx=[9], target=target_arch)
     @T.prim_func
     def mindclade_tilelang_triangle_attention_dq_raw(
         grad_output: T.Tensor((batch, n, heads, head_dim), dtype),
@@ -377,7 +386,7 @@ def build_dq(
     )
 
 
-def build_dkv(
+def build_dk(
     *,
     target: str,
     architecture: str,
@@ -389,7 +398,7 @@ def build_dkv(
     threads: int = 128,
     **_: object,
 ) -> Any:
-    """Build atomics-free dK and dV using source-key ownership."""
+    """Build atomics-free dK using source-key ownership."""
 
     T, target_arch, padded_n = _validate(
         target=target,
@@ -402,8 +411,11 @@ def build_dkv(
         threads=threads,
     )
 
+    tilelang = __import__("tilelang")
+
+    @tilelang.jit(out_idx=[9], target=target_arch)
     @T.prim_func
-    def mindclade_tilelang_triangle_attention_dkv_raw(
+    def mindclade_tilelang_triangle_attention_dk_raw(
         grad_output: T.Tensor((batch, n, heads, head_dim), dtype),
         q: T.Tensor((batch, n, heads, head_dim), dtype),
         k: T.Tensor((batch, n, heads, head_dim), dtype),
@@ -414,7 +426,6 @@ def build_dkv(
         lse: T.Tensor((batch, heads, padded_n), "float32"),
         delta: T.Tensor((batch, heads, padded_n), "float32"),
         grad_k: T.Tensor((batch, n, heads, head_dim), dtype),
-        grad_v: T.Tensor((batch, n, heads, head_dim), dtype),
     ):
         with T.Kernel(batch * n * heads * head_dim, threads=threads) as block:
             d = block % head_dim
@@ -422,9 +433,7 @@ def build_dkv(
             key_index = (block // (head_dim * heads)) % n
             batch_index = block // (head_dim * heads * n)
             result_k = T.alloc_local((1,), "float32")
-            result_v = T.alloc_local((1,), "float32")
             result_k[0] = 0.0
-            result_v[0] = 0.0
             for query_index in T.serial(n):
                 if mask[batch_index, query_index, key_index]:
                     score = T.alloc_local((1,), "float32")
@@ -449,17 +458,72 @@ def build_dkv(
                     result_k[0] += grad_score * T.Cast(
                         "float32", q[batch_index, query_index, head, d]
                     ) * scale
-                    result_v[0] += probability * T.Cast(
-                        "float32", grad_output[batch_index, query_index, head, d]
-                    )
             grad_k[batch_index, key_index, head, d] = T.Cast(dtype, result_k[0])
-            grad_v[batch_index, key_index, head, d] = T.Cast(dtype, result_v[0])
 
-    return mindclade_tilelang_triangle_attention_dkv_raw.with_attr(
+    return mindclade_tilelang_triangle_attention_dk_raw.with_attr(
         {
             "target": target_arch,
-            "global_symbol": "mindclade_tilelang_triangle_attention_dkv_raw",
+            "global_symbol": "mindclade_tilelang_triangle_attention_dk_raw",
         }
+    )
+
+
+def build_dv(
+    *, target: str, architecture: str, dtype: str, batch: int, n: int,
+    heads: int, head_dim: int, threads: int = 128, **_: object,
+) -> Any:
+    """Build atomics-free dV using source-key ownership."""
+
+    T, target_arch, padded_n = _validate(
+        target=target, architecture=architecture, dtype=dtype, batch=batch,
+        n=n, heads=heads, head_dim=head_dim, threads=threads,
+    )
+
+    tilelang = __import__("tilelang")
+
+    @tilelang.jit(out_idx=[8], target=target_arch)
+    @T.prim_func
+    def mindclade_tilelang_triangle_attention_dv_raw(
+        grad_output: T.Tensor((batch, n, heads, head_dim), dtype),
+        q: T.Tensor((batch, n, heads, head_dim), dtype),
+        k: T.Tensor((batch, n, heads, head_dim), dtype),
+        v: T.Tensor((batch, n, heads, head_dim), dtype),
+        bias: T.Tensor((batch, heads, n, n), dtype),
+        mask: T.Tensor((batch, n, n), "bool"),
+        scale: T.float32,
+        lse: T.Tensor((batch, heads, padded_n), "float32"),
+        grad_v: T.Tensor((batch, n, heads, head_dim), dtype),
+    ):
+        with T.Kernel(batch * n * heads * head_dim, threads=threads) as block:
+            d = block % head_dim
+            head = (block // head_dim) % heads
+            key_index = (block // (head_dim * heads)) % n
+            batch_index = block // (head_dim * heads * n)
+            result = T.alloc_local((1,), "float32")
+            result[0] = 0.0
+            for query_index in T.serial(n):
+                if mask[batch_index, query_index, key_index]:
+                    score = T.alloc_local((1,), "float32")
+                    score[0] = 0.0
+                    for reduce_d in T.serial(head_dim):
+                        score[0] += T.Cast(
+                            "float32", q[batch_index, query_index, head, reduce_d]
+                        ) * T.Cast(
+                            "float32", k[batch_index, key_index, head, reduce_d]
+                        )
+                    score[0] = score[0] * scale + T.Cast(
+                        "float32", bias[batch_index, head, query_index, key_index]
+                    )
+                    probability = T.exp(
+                        score[0] - lse[batch_index, head, query_index]
+                    )
+                    result[0] += probability * T.Cast(
+                        "float32", grad_output[batch_index, query_index, head, d]
+                    )
+            grad_v[batch_index, key_index, head, d] = T.Cast(dtype, result[0])
+
+    return mindclade_tilelang_triangle_attention_dv_raw.with_attr(
+        {"target": target_arch, "global_symbol": "mindclade_tilelang_triangle_attention_dv_raw"}
     )
 
 
@@ -488,6 +552,9 @@ def build_dbias(
         threads=threads,
     )
 
+    tilelang = __import__("tilelang")
+
+    @tilelang.jit(out_idx=[9], target=target_arch)
     @T.prim_func
     def mindclade_tilelang_triangle_attention_dbias_raw(
         grad_output: T.Tensor((batch, n, heads, head_dim), dtype),

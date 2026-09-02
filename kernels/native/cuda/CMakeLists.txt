@@ -5,6 +5,8 @@ if(NOT MINDCLADE_NATIVE_ENABLE_GPU)
   return()
 endif()
 
+find_package(CUDAToolkit REQUIRED)
+
 if("${MINDCLADE_NATIVE_GPU_QUALIFICATION_MANIFEST}" STREQUAL "")
   message(FATAL_ERROR "GPU enablement requires a qualification manifest")
 endif()
@@ -132,7 +134,6 @@ endif()
 
 set(
   _expected_required_symbols
-  ${MINDCLADE_TILELANG_REQUIRED_LOGICAL_SYMBOLS}
   ${MINDCLADE_TILELANG_REQUIRED_PRIVATE_SYMBOLS}
 )
 list(REMOVE_DUPLICATES _expected_required_symbols)
@@ -172,9 +173,14 @@ add_library(
   OBJECT
     ../generated/operation_registry.generated.cpp
     ../generated/launcher_plans.generated.cpp
+    ../generated/qualified_capabilities.generated.cpp
     operation_registry.cpp
 )
 mindclade_apply_gpu_registry_target_policy(mindclade_native_cuda_registry)
+target_compile_definitions(
+  mindclade_native_cuda_registry
+  PRIVATE MINDCLADE_NODE_LAUNCH_ABI_V1=1
+)
 
 add_library(mindclade_native_gpu_artifact UNKNOWN IMPORTED GLOBAL)
 set_target_properties(
@@ -236,10 +242,6 @@ if(MINDCLADE_TILELANG_REQUIRED_PRIVATE_SYMBOLS)
     PROPERTIES
       IMPORTED_LOCATION "${MINDCLADE_NATIVE_PROGRAM_GROUP_BRIDGE_LIBRARY}"
   )
-  target_compile_definitions(
-    mindclade_native_cuda_registry
-    PRIVATE MINDCLADE_PROGRAM_GROUP_BRIDGE_V1=1
-  )
 endif()
 
 add_library(
@@ -247,15 +249,23 @@ add_library(
   SHARED
     ../generated/registration.generated.cpp
     ../stable_abi/registration.cpp
+    ../stable_abi/node_launch_abi.h
+    ../stable_abi/node_launch_bridge.cpp
+    ../stable_abi/node_launch_bridge.h
+    ../stable_abi/qualified_capability_selector.cpp
+    ../stable_abi/qualified_capability_table.h
     ../stable_abi/tensor_bridge.cpp
     ../stable_abi/tensor_bridge.h
     $<TARGET_OBJECTS:mindclade_native_cuda_registry>
+    device_architecture.cpp
+    device_architecture.h
 )
 add_library(Mindclade::ops ALIAS mindclade_ops)
 mindclade_apply_gpu_registry_target_policy(mindclade_ops)
 mindclade_apply_no_undefined_link_policy(mindclade_ops)
 target_include_directories(mindclade_ops PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../stable_abi")
-target_link_libraries(mindclade_ops PRIVATE mindclade_native_gpu_artifact)
+target_compile_definitions(mindclade_ops PRIVATE USE_CUDA=1)
+target_link_libraries(mindclade_ops PRIVATE mindclade_native_gpu_artifact CUDA::cudart)
 if(MINDCLADE_TILELANG_REQUIRED_PRIVATE_SYMBOLS)
   target_link_libraries(mindclade_ops PRIVATE mindclade_native_program_group_bridge)
 endif()

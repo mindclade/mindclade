@@ -1,6 +1,7 @@
 """Declarative native contract for Pairformer SwiGLU transition."""
 
 from kernels.api import (
+    RuntimeWorkloadSpec, WorkloadDimensionBinding,
     And,
     AutogradPolicy,
     BackwardArgumentBinding,
@@ -26,6 +27,18 @@ from kernels.api import (
     Or,
     OutputSpec,
     ProgramGroupSpec,
+    ProgramArtifactBoundary,
+    ProgramBindingSource,
+    ProgramBindingSpec,
+    ProgramEntryABI,
+    ProgramParameterKind,
+    ProgramParameterSpec,
+    WorkspaceAccess,
+    ShapeOf,
+    WorkspaceLifetime,
+    WorkspaceSpec,
+    ProgramReturnABI,
+    ScalarABIType,
     ProgramNodeSpec,
     RankRef,
     ShapePrefix,
@@ -89,18 +102,47 @@ KERNEL_SPEC: KernelSpec = KernelSpec(
         ),
         program_group=ProgramGroupSpec(
             nodes=(
-                ProgramNodeSpec(
-                    name="transition_forward",
-                    builder="kernels.pairformer.transition.tilelang:build_forward_program",
-                    symbol="mindclade_tilelang_transition_forward_program_launch",
+            ProgramNodeSpec(
+                name='transition_forward',
+                builder='kernels.pairformer.transition.tilelang:build_forward_program',
+                symbol='mindclade_tilelang_transition_transition_forward_launch',
+                entry_symbol="call",
+                entry_abi=ProgramEntryABI.TILELANG_0_1_13_HOST_CALL,
+                parameters=(
+                    ProgramParameterSpec(position=0, name='gate', kind=ProgramParameterKind.TENSOR, access=WorkspaceAccess.READ, shape=ShapeOf(argument='gate'), dtype=DTypeRef(argument='gate'), device=DeviceRef(argument='gate')),
+                    ProgramParameterSpec(position=1, name='value', kind=ProgramParameterKind.TENSOR, access=WorkspaceAccess.READ, shape=ShapeOf(argument='value'), dtype=DTypeRef(argument='value'), device=DeviceRef(argument='value')),
+                    ProgramParameterSpec(position=2, name='output_weight', kind=ProgramParameterKind.TENSOR, access=WorkspaceAccess.READ, shape=ShapeOf(argument='output_weight'), dtype=DTypeRef(argument='output_weight'), device=DeviceRef(argument='output_weight')),
+                    ProgramParameterSpec(position=3, name='output_bias', kind=ProgramParameterKind.TENSOR, access=WorkspaceAccess.READ, shape=ShapeOf(argument='output_bias'), dtype=DTypeRef(argument='output_bias'), device=DeviceRef(argument='output_bias')),
+                    ProgramParameterSpec(position=4, name='mask', kind=ProgramParameterKind.TENSOR, access=WorkspaceAccess.READ, shape=ShapeOf(argument='mask'), dtype=DTypeRef(argument='mask'), device=DeviceRef(argument='mask')),
+                    ProgramParameterSpec(position=5, name='output', kind=ProgramParameterKind.TENSOR, access=WorkspaceAccess.WRITE, shape=ShapeTuple(dimensions=(DimRef(argument="gate", axis=0), DimRef(argument="gate", axis=1), DimRef(argument="output_weight", axis=1))), dtype=DTypeRef(argument='gate'), device=DeviceRef(argument='gate')),
+                    ProgramParameterSpec(position=6, name='pre_mask_output', kind=ProgramParameterKind.TENSOR, access=WorkspaceAccess.WRITE, shape=ShapeTuple(dimensions=(DimRef(argument="gate", axis=0), DimRef(argument="gate", axis=1), DimRef(argument="output_weight", axis=1))), dtype=DTypeRef(argument='gate'), device=DeviceRef(argument='gate')),
+                    ProgramParameterSpec(position=7, name='stream', kind=ProgramParameterKind.STREAM, access=WorkspaceAccess.READ),
                 ),
+                bindings=(
+                    ProgramBindingSpec(parameter='gate', source=ProgramBindingSource.OPERATOR_ARGUMENT, source_name='gate'),
+                    ProgramBindingSpec(parameter='value', source=ProgramBindingSource.OPERATOR_ARGUMENT, source_name='value'),
+                    ProgramBindingSpec(parameter='output_weight', source=ProgramBindingSource.OPERATOR_ARGUMENT, source_name='output_weight'),
+                    ProgramBindingSpec(parameter='output_bias', source=ProgramBindingSource.OPERATOR_ARGUMENT, source_name='output_bias'),
+                    ProgramBindingSpec(parameter='mask', source=ProgramBindingSource.OPERATOR_ARGUMENT, source_name='mask'),
+                    ProgramBindingSpec(parameter='output', source=ProgramBindingSource.PROVIDER_OUTPUT, source_name='output'),
+                    ProgramBindingSpec(parameter='pre_mask_output', source=ProgramBindingSource.PROVIDER_OUTPUT, source_name='pre_mask_output'),
+                    ProgramBindingSpec(parameter='stream', source=ProgramBindingSource.CURRENT_STREAM),
+             
+             
+             
+             
             )
+            ,
+                return_abi=ProgramReturnABI.STATUS_I32_ZERO_SUCCESS,
+                artifact_boundary=ProgramArtifactBoundary.NODE_CONTENT_ADDRESSED_DSO,
+            ),
+            ),
         ),
     ),
     backward=BackwardSpec(
         schema=(
             "_transition_bwd(Tensor grad_output, Tensor gate, Tensor value, "
-            "Tensor output_weight, Tensor output_bias, Tensor mask, "
+            "Tensor output_weight, Tensor mask, "
             "Tensor pre_mask_output, bool need_gate_grad, bool need_value_grad, "
             "bool need_weight_grad, bool need_bias_grad, bool need_mask_grad) -> "
             "(Tensor? grad_gate, Tensor? grad_value, Tensor? grad_weight, "
@@ -113,7 +155,6 @@ KERNEL_SPEC: KernelSpec = KernelSpec(
             BackwardArgumentBinding(provider_argument="gate", source=BackwardArgumentSource.OPERATOR_ARGUMENT, source_name="gate"),
             BackwardArgumentBinding(provider_argument="value", source=BackwardArgumentSource.OPERATOR_ARGUMENT, source_name="value"),
             BackwardArgumentBinding(provider_argument="output_weight", source=BackwardArgumentSource.OPERATOR_ARGUMENT, source_name="output_weight"),
-            BackwardArgumentBinding(provider_argument="output_bias", source=BackwardArgumentSource.OPERATOR_ARGUMENT, source_name="output_bias"),
             BackwardArgumentBinding(provider_argument="mask", source=BackwardArgumentSource.OPERATOR_ARGUMENT, source_name="mask"),
             BackwardArgumentBinding(provider_argument="pre_mask_output", source=BackwardArgumentSource.FORWARD_OUTPUT, source_name="pre_mask_output"),
             BackwardArgumentBinding(provider_argument="need_gate_grad", source=BackwardArgumentSource.NEEDS_INPUT_GRAD, source_name="gate"),
@@ -123,23 +164,187 @@ KERNEL_SPEC: KernelSpec = KernelSpec(
             BackwardArgumentBinding(provider_argument="need_mask_grad", source=BackwardArgumentSource.NEEDS_INPUT_GRAD, source_name="mask"),
         ),
         gradients=(
-            GradientSpec(input_name="gate", output_name="grad_gate", optional=True, accumulation_dtype="float32"),
-            GradientSpec(input_name="value", output_name="grad_value", optional=True, accumulation_dtype="float32"),
-            GradientSpec(input_name="output_weight", output_name="grad_weight", optional=True, accumulation_dtype="float32"),
-            GradientSpec(input_name="output_bias", output_name="grad_bias", optional=True, accumulation_dtype="float32"),
-            GradientSpec(input_name="mask", output_name="grad_mask", optional=True, accumulation_dtype="float32"),
+            GradientSpec(input_name="gate", output_name="grad_gate", shape=ShapeOf(argument="gate"), dtype=DTypeRef(argument="gate"), device=DeviceRef(argument="gate"), optional=True, accumulation_dtype="float32"),
+            GradientSpec(input_name="value", output_name="grad_value", shape=ShapeOf(argument="value"), dtype=DTypeRef(argument="value"), device=DeviceRef(argument="value"), optional=True, accumulation_dtype="float32"),
+            GradientSpec(input_name="output_weight", output_name="grad_weight", shape=ShapeOf(argument="output_weight"), dtype=DTypeRef(argument="output_weight"), device=DeviceRef(argument="output_weight"), optional=True, accumulation_dtype="float32"),
+            GradientSpec(input_name="output_bias", output_name="grad_bias", shape=ShapeTuple(dimensions=(DimRef(argument="output_weight", axis=1),)), dtype=DTypeRef(argument="output_weight"), device=DeviceRef(argument="output_weight"), optional=True, accumulation_dtype="float32"),
+            GradientSpec(input_name="mask", output_name="grad_mask", shape=ShapeOf(argument="mask"), dtype=DTypeRef(argument="mask"), device=DeviceRef(argument="mask"), optional=True, accumulation_dtype="float32"),
         ),
         supports_double_backward=False,
         program_group=ProgramGroupSpec(
             nodes=(
-                ProgramNodeSpec(name="grad_gate_value", builder="kernels.pairformer.transition.tilelang:build_grad_gate_value", symbol="mindclade_tilelang_transition_grad_gate_value_launch"),
-                ProgramNodeSpec(name="grad_weight", builder="kernels.pairformer.transition.tilelang:build_grad_weight", symbol="mindclade_tilelang_transition_grad_weight_launch"),
-                ProgramNodeSpec(name="grad_bias", builder="kernels.pairformer.transition.tilelang:build_grad_bias", symbol="mindclade_tilelang_transition_grad_bias_launch"),
-                ProgramNodeSpec(name="grad_mask", builder="kernels.pairformer.transition.tilelang:build_grad_mask", symbol="mindclade_tilelang_transition_grad_mask_launch"),
+            ProgramNodeSpec(
+                name='grad_gate',
+                builder='kernels.pairformer.transition.tilelang:build_grad_gate',
+                symbol='mindclade_tilelang_transition_grad_gate_launch',
+                entry_symbol="call",
+                entry_abi=ProgramEntryABI.TILELANG_0_1_13_HOST_CALL,
+                parameters=(
+                    ProgramParameterSpec(position=0, name='grad_output', kind=ProgramParameterKind.TENSOR, access=WorkspaceAccess.READ, shape=ShapeTuple(dimensions=(DimRef(argument="gate", axis=0), DimRef(argument="gate", axis=1), DimRef(argument="output_weight", axis=1))), dtype=DTypeRef(argument='gate'), device=DeviceRef(argument='gate')),
+                    ProgramParameterSpec(position=1, name='gate', kind=ProgramParameterKind.TENSOR, access=WorkspaceAccess.READ, shape=ShapeOf(argument='gate'), dtype=DTypeRef(argument='gate'), device=DeviceRef(argument='gate')),
+                    ProgramParameterSpec(position=2, name='value', kind=ProgramParameterKind.TENSOR, access=WorkspaceAccess.READ, shape=ShapeOf(argument='value'), dtype=DTypeRef(argument='value'), device=DeviceRef(argument='value')),
+                    ProgramParameterSpec(position=3, name='output_weight', kind=ProgramParameterKind.TENSOR, access=WorkspaceAccess.READ, shape=ShapeOf(argument='output_weight'), dtype=DTypeRef(argument='output_weight'), device=DeviceRef(argument='output_weight')),
+                    ProgramParameterSpec(position=4, name='mask', kind=ProgramParameterKind.TENSOR, access=WorkspaceAccess.READ, shape=ShapeOf(argument='mask'), dtype=DTypeRef(argument='mask'), device=DeviceRef(argument='mask')),
+                    ProgramParameterSpec(position=5, name='grad_gate', kind=ProgramParameterKind.TENSOR, access=WorkspaceAccess.WRITE, shape=ShapeOf(argument='gate'), dtype=DTypeRef(argument='gate'), device=DeviceRef(argument='gate'), optional=True),
+                    ProgramParameterSpec(position=6, name='need_gate_grad', kind=ProgramParameterKind.SCALAR, access=WorkspaceAccess.READ, scalar_type=ScalarABIType.BOOL),
+                    ProgramParameterSpec(position=7, name='stream', kind=ProgramParameterKind.STREAM, access=WorkspaceAccess.READ),
+                ),
+                bindings=(
+                    ProgramBindingSpec(parameter='grad_output', source=ProgramBindingSource.OUTPUT_GRADIENT, source_name='output'),
+                    ProgramBindingSpec(parameter='gate', source=ProgramBindingSource.OPERATOR_ARGUMENT, source_name='gate'),
+                    ProgramBindingSpec(parameter='value', source=ProgramBindingSource.OPERATOR_ARGUMENT, source_name='value'),
+                    ProgramBindingSpec(parameter='output_weight', source=ProgramBindingSource.OPERATOR_ARGUMENT, source_name='output_weight'),
+                    ProgramBindingSpec(parameter='mask', source=ProgramBindingSource.OPERATOR_ARGUMENT, source_name='mask'),
+                    ProgramBindingSpec(parameter='grad_gate', source=ProgramBindingSource.PROVIDER_OUTPUT, source_name='grad_gate'),
+                    ProgramBindingSpec(parameter='need_gate_grad', source=ProgramBindingSource.GRADIENT_REQUEST, source_name='gate'),
+                    ProgramBindingSpec(parameter='stream', source=ProgramBindingSource.CURRENT_STREAM),
+             
+             
+             
+             
             )
+            ,
+                return_abi=ProgramReturnABI.STATUS_I32_ZERO_SUCCESS,
+                artifact_boundary=ProgramArtifactBoundary.NODE_CONTENT_ADDRESSED_DSO,
+            ),
+            ProgramNodeSpec(
+                name='grad_value',
+                builder='kernels.pairformer.transition.tilelang:build_grad_value',
+                symbol='mindclade_tilelang_transition_grad_value_launch',
+                entry_symbol="call",
+                entry_abi=ProgramEntryABI.TILELANG_0_1_13_HOST_CALL,
+                parameters=(
+                    ProgramParameterSpec(position=0, name='grad_output', kind=ProgramParameterKind.TENSOR, access=WorkspaceAccess.READ, shape=ShapeTuple(dimensions=(DimRef(argument="gate", axis=0), DimRef(argument="gate", axis=1), DimRef(argument="output_weight", axis=1))), dtype=DTypeRef(argument='gate'), device=DeviceRef(argument='gate')),
+                    ProgramParameterSpec(position=1, name='gate', kind=ProgramParameterKind.TENSOR, access=WorkspaceAccess.READ, shape=ShapeOf(argument='gate'), dtype=DTypeRef(argument='gate'), device=DeviceRef(argument='gate')),
+                    ProgramParameterSpec(position=2, name='output_weight', kind=ProgramParameterKind.TENSOR, access=WorkspaceAccess.READ, shape=ShapeOf(argument='output_weight'), dtype=DTypeRef(argument='output_weight'), device=DeviceRef(argument='output_weight')),
+                    ProgramParameterSpec(position=3, name='mask', kind=ProgramParameterKind.TENSOR, access=WorkspaceAccess.READ, shape=ShapeOf(argument='mask'), dtype=DTypeRef(argument='mask'), device=DeviceRef(argument='mask')),
+                    ProgramParameterSpec(position=4, name='grad_value', kind=ProgramParameterKind.TENSOR, access=WorkspaceAccess.WRITE, shape=ShapeOf(argument='value'), dtype=DTypeRef(argument='value'), device=DeviceRef(argument='value'), optional=True),
+                    ProgramParameterSpec(position=5, name='need_value_grad', kind=ProgramParameterKind.SCALAR, access=WorkspaceAccess.READ, scalar_type=ScalarABIType.BOOL),
+                    ProgramParameterSpec(position=6, name='stream', kind=ProgramParameterKind.STREAM, access=WorkspaceAccess.READ),
+                ),
+                bindings=(
+                    ProgramBindingSpec(parameter='grad_output', source=ProgramBindingSource.OUTPUT_GRADIENT, source_name='output'),
+                    ProgramBindingSpec(parameter='gate', source=ProgramBindingSource.OPERATOR_ARGUMENT, source_name='gate'),
+                    ProgramBindingSpec(parameter='output_weight', source=ProgramBindingSource.OPERATOR_ARGUMENT, source_name='output_weight'),
+                    ProgramBindingSpec(parameter='mask', source=ProgramBindingSource.OPERATOR_ARGUMENT, source_name='mask'),
+                    ProgramBindingSpec(parameter='grad_value', source=ProgramBindingSource.PROVIDER_OUTPUT, source_name='grad_value'),
+                    ProgramBindingSpec(parameter='need_value_grad', source=ProgramBindingSource.GRADIENT_REQUEST, source_name='value'),
+                    ProgramBindingSpec(parameter='stream', source=ProgramBindingSource.CURRENT_STREAM),
+             
+             
+             
+             
+            )
+            ,
+                return_abi=ProgramReturnABI.STATUS_I32_ZERO_SUCCESS,
+                artifact_boundary=ProgramArtifactBoundary.NODE_CONTENT_ADDRESSED_DSO,
+            ),
+            ProgramNodeSpec(
+                name='grad_weight',
+                builder='kernels.pairformer.transition.tilelang:build_grad_weight',
+                symbol='mindclade_tilelang_transition_grad_weight_launch',
+                entry_symbol="call",
+                entry_abi=ProgramEntryABI.TILELANG_0_1_13_HOST_CALL,
+                parameters=(
+                    ProgramParameterSpec(position=0, name='grad_output', kind=ProgramParameterKind.TENSOR, access=WorkspaceAccess.READ, shape=ShapeTuple(dimensions=(DimRef(argument="gate", axis=0), DimRef(argument="gate", axis=1), DimRef(argument="output_weight", axis=1))), dtype=DTypeRef(argument='gate'), device=DeviceRef(argument='gate')),
+                    ProgramParameterSpec(position=1, name='gate', kind=ProgramParameterKind.TENSOR, access=WorkspaceAccess.READ, shape=ShapeOf(argument='gate'), dtype=DTypeRef(argument='gate'), device=DeviceRef(argument='gate')),
+                    ProgramParameterSpec(position=2, name='value', kind=ProgramParameterKind.TENSOR, access=WorkspaceAccess.READ, shape=ShapeOf(argument='value'), dtype=DTypeRef(argument='value'), device=DeviceRef(argument='value')),
+                    ProgramParameterSpec(position=3, name='mask', kind=ProgramParameterKind.TENSOR, access=WorkspaceAccess.READ, shape=ShapeOf(argument='mask'), dtype=DTypeRef(argument='mask'), device=DeviceRef(argument='mask')),
+                    ProgramParameterSpec(position=4, name='grad_weight', kind=ProgramParameterKind.TENSOR, access=WorkspaceAccess.WRITE, shape=ShapeOf(argument='output_weight'), dtype=DTypeRef(argument='output_weight'), device=DeviceRef(argument='output_weight'), optional=True),
+                    ProgramParameterSpec(position=5, name='need_output_weight_grad', kind=ProgramParameterKind.SCALAR, access=WorkspaceAccess.READ, scalar_type=ScalarABIType.BOOL),
+                    ProgramParameterSpec(position=6, name='stream', kind=ProgramParameterKind.STREAM, access=WorkspaceAccess.READ),
+                ),
+                bindings=(
+                    ProgramBindingSpec(parameter='grad_output', source=ProgramBindingSource.OUTPUT_GRADIENT, source_name='output'),
+                    ProgramBindingSpec(parameter='gate', source=ProgramBindingSource.OPERATOR_ARGUMENT, source_name='gate'),
+                    ProgramBindingSpec(parameter='value', source=ProgramBindingSource.OPERATOR_ARGUMENT, source_name='value'),
+                    ProgramBindingSpec(parameter='mask', source=ProgramBindingSource.OPERATOR_ARGUMENT, source_name='mask'),
+                    ProgramBindingSpec(parameter='grad_weight', source=ProgramBindingSource.PROVIDER_OUTPUT, source_name='grad_weight'),
+                    ProgramBindingSpec(parameter='need_output_weight_grad', source=ProgramBindingSource.GRADIENT_REQUEST, source_name='output_weight'),
+                    ProgramBindingSpec(parameter='stream', source=ProgramBindingSource.CURRENT_STREAM),
+             
+             
+             
+             
+            )
+            ,
+                return_abi=ProgramReturnABI.STATUS_I32_ZERO_SUCCESS,
+                artifact_boundary=ProgramArtifactBoundary.NODE_CONTENT_ADDRESSED_DSO,
+            ),
+            ProgramNodeSpec(
+                name='grad_bias',
+                builder='kernels.pairformer.transition.tilelang:build_grad_bias',
+                symbol='mindclade_tilelang_transition_grad_bias_launch',
+                entry_symbol="call",
+                entry_abi=ProgramEntryABI.TILELANG_0_1_13_HOST_CALL,
+                parameters=(
+                    ProgramParameterSpec(position=0, name='grad_output', kind=ProgramParameterKind.TENSOR, access=WorkspaceAccess.READ, shape=ShapeTuple(dimensions=(DimRef(argument="gate", axis=0), DimRef(argument="gate", axis=1), DimRef(argument="output_weight", axis=1))), dtype=DTypeRef(argument='gate'), device=DeviceRef(argument='gate')),
+                    ProgramParameterSpec(position=1, name='mask', kind=ProgramParameterKind.TENSOR, access=WorkspaceAccess.READ, shape=ShapeOf(argument='mask'), dtype=DTypeRef(argument='mask'), device=DeviceRef(argument='mask')),
+                    ProgramParameterSpec(position=2, name='grad_bias', kind=ProgramParameterKind.TENSOR, access=WorkspaceAccess.WRITE, shape=ShapeOf(argument='output_bias'), dtype=DTypeRef(argument='output_bias'), device=DeviceRef(argument='output_bias'), optional=True),
+                    ProgramParameterSpec(position=3, name='need_output_bias_grad', kind=ProgramParameterKind.SCALAR, access=WorkspaceAccess.READ, scalar_type=ScalarABIType.BOOL),
+                    ProgramParameterSpec(position=4, name='stream', kind=ProgramParameterKind.STREAM, access=WorkspaceAccess.READ),
+                ),
+                bindings=(
+                    ProgramBindingSpec(parameter='grad_output', source=ProgramBindingSource.OUTPUT_GRADIENT, source_name='output'),
+                    ProgramBindingSpec(parameter='mask', source=ProgramBindingSource.OPERATOR_ARGUMENT, source_name='mask'),
+                    ProgramBindingSpec(parameter='grad_bias', source=ProgramBindingSource.PROVIDER_OUTPUT, source_name='grad_bias'),
+                    ProgramBindingSpec(parameter='need_output_bias_grad', source=ProgramBindingSource.GRADIENT_REQUEST, source_name='output_bias'),
+                    ProgramBindingSpec(parameter='stream', source=ProgramBindingSource.CURRENT_STREAM),
+             
+             
+             
+             
+            )
+            ,
+                return_abi=ProgramReturnABI.STATUS_I32_ZERO_SUCCESS,
+                artifact_boundary=ProgramArtifactBoundary.NODE_CONTENT_ADDRESSED_DSO,
+            ),
+            ProgramNodeSpec(
+                name='grad_mask',
+                builder='kernels.pairformer.transition.tilelang:build_grad_mask',
+                symbol='mindclade_tilelang_transition_grad_mask_launch',
+                entry_symbol="call",
+                entry_abi=ProgramEntryABI.TILELANG_0_1_13_HOST_CALL,
+                parameters=(
+                    ProgramParameterSpec(position=0, name='grad_output', kind=ProgramParameterKind.TENSOR, access=WorkspaceAccess.READ, shape=ShapeTuple(dimensions=(DimRef(argument="gate", axis=0), DimRef(argument="gate", axis=1), DimRef(argument="output_weight", axis=1))), dtype=DTypeRef(argument='gate'), device=DeviceRef(argument='gate')),
+                    ProgramParameterSpec(position=1, name='pre_mask_output', kind=ProgramParameterKind.TENSOR, access=WorkspaceAccess.READ, shape=ShapeTuple(dimensions=(DimRef(argument="gate", axis=0), DimRef(argument="gate", axis=1), DimRef(argument="output_weight", axis=1))), dtype=DTypeRef(argument='gate'), device=DeviceRef(argument='gate')),
+                    ProgramParameterSpec(position=2, name='grad_mask', kind=ProgramParameterKind.TENSOR, access=WorkspaceAccess.WRITE, shape=ShapeOf(argument='mask'), dtype=DTypeRef(argument='mask'), device=DeviceRef(argument='mask'), optional=True),
+                    ProgramParameterSpec(position=3, name='need_mask_grad', kind=ProgramParameterKind.SCALAR, access=WorkspaceAccess.READ, scalar_type=ScalarABIType.BOOL),
+                    ProgramParameterSpec(position=4, name='stream', kind=ProgramParameterKind.STREAM, access=WorkspaceAccess.READ),
+                ),
+                bindings=(
+                    ProgramBindingSpec(parameter='grad_output', source=ProgramBindingSource.OUTPUT_GRADIENT, source_name='output'),
+                    ProgramBindingSpec(parameter='pre_mask_output', source=ProgramBindingSource.FORWARD_OUTPUT, source_name='pre_mask_output'),
+                    ProgramBindingSpec(parameter='grad_mask', source=ProgramBindingSource.PROVIDER_OUTPUT, source_name='grad_mask'),
+                    ProgramBindingSpec(parameter='need_mask_grad', source=ProgramBindingSource.GRADIENT_REQUEST, source_name='mask'),
+                    ProgramBindingSpec(parameter='stream', source=ProgramBindingSource.CURRENT_STREAM),
+             
+             
+             
+             
+            )
+            ,
+                return_abi=ProgramReturnABI.STATUS_I32_ZERO_SUCCESS,
+                artifact_boundary=ProgramArtifactBoundary.NODE_CONTENT_ADDRESSED_DSO,
+            ),
+            ),
         ),
     ),
     autograd_policy=AutogradPolicy.REQUIRED,
+    runtime_workload=RuntimeWorkloadSpec(
+        dimensions=(
+            WorkloadDimensionBinding(name="batch_size", value=DimRef(argument="gate", axis=0)),
+            WorkloadDimensionBinding(name="hidden_channels", value=DimRef(argument="gate", axis=2)),
+            WorkloadDimensionBinding(name="output_channels", value=DimRef(argument="output_weight", axis=1)),
+            WorkloadDimensionBinding(name="rows", value=DimRef(argument="gate", axis=1)),
+        ),
+        input_dtype=DTypeRef(argument="gate"),
+        layout="contiguous",
+        mode_selector=None,
+        attributes=(),
+        canonicalization_version=1,
+        version=1,
+    ),
     effects=EffectSpec(),
     launch=LaunchContract(
         current_stream_only=True,

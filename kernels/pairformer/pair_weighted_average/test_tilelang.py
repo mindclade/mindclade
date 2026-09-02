@@ -95,3 +95,34 @@ def test_fallback_is_explicit_and_lse_stays_private(monkeypatch) -> None:
 def test_builder_rejects_unqualified_architecture_before_tilelang_import() -> None:
     with pytest.raises(ValueError, match="sm90a or sm100a"):
         build_online_forward_program(architecture="sm80")
+
+
+def test_callable_nodes_use_artifact_scoped_host_call_abi():
+    from kernels.api import ProgramArtifactBoundary, ProgramBindingSource, ProgramEntryABI
+
+    groups = (KERNEL_SPEC.forward.program_group, KERNEL_SPEC.backward.program_group)
+    for group in groups:
+        assert group is not None
+        for node in group.nodes:
+            assert node.entry_symbol == "call"
+            assert node.entry_abi is ProgramEntryABI.TILELANG_0_1_13_HOST_CALL
+            assert node.artifact_boundary is ProgramArtifactBoundary.NODE_CONTENT_ADDRESSED_DSO
+            assert sum(binding.source is ProgramBindingSource.CURRENT_STREAM for binding in node.bindings) == 1
+    requests = {
+        node.name: sum(binding.source is ProgramBindingSource.GRADIENT_REQUEST for binding in node.bindings)
+        for node in KERNEL_SPEC.backward.program_group.nodes
+    }
+    assert requests == {"delta": 0, "dvalue": 1, "dweights": 1}
+
+def test_runtime_workload_contract_is_exact():
+    from kernels.pairformer.pair_weighted_average.spec import KERNEL_SPEC
+
+    workload = KERNEL_SPEC.runtime_workload
+    assert tuple((binding.name, binding.value.argument, binding.value.axis) for binding in workload.dimensions) == (
+        ("batch_size", "value", 0), ("channels", "value", 3),
+        ("heads", "weights", 3), ("node_count", "value", 1),
+    )
+    assert workload.input_dtype.argument == "value"
+    assert workload.layout == "contiguous"
+    assert workload.mode_selector is None
+    assert workload.attributes == ()

@@ -115,10 +115,46 @@ TensorView require_cuda_contiguous_tensor(
   };
 }
 
+std::int64_t tensor_dimension(
+    const TensorView& view,
+    std::int64_t axis,
+    std::string_view argument) {
+  const std::int64_t rank = static_cast<std::int64_t>(view.sizes.size());
+  const std::int64_t normalized = axis < 0 ? rank + axis : axis;
+  if (normalized < 0 || normalized >= rank) {
+    fail(argument, "dimension expression axis is outside tensor rank");
+  }
+  return view.sizes[static_cast<std::size_t>(normalized)];
+}
+
+std::uint32_t node_dtype(TensorDType dtype) {
+  switch (dtype) {
+    case TensorDType::kFloat16:
+      return MINDCLADE_NODE_DTYPE_FLOAT16_V1;
+    case TensorDType::kBFloat16:
+      return MINDCLADE_NODE_DTYPE_BFLOAT16_V1;
+    case TensorDType::kFloat32:
+      return MINDCLADE_NODE_DTYPE_FLOAT32_V1;
+    case TensorDType::kBool:
+      return MINDCLADE_NODE_DTYPE_BOOL_V1;
+  }
+  throw std::invalid_argument("unsupported Mindclade node dtype");
+}
+
+void require_same_device(
+    const TensorView& expected,
+    const TensorView& actual,
+    std::string_view argument) {
+  if (expected.device_index != actual.device_index) {
+    fail(argument, "must be on the same CUDA device as every operation tensor");
+  }
+}
+
 void* current_cuda_stream(
     const torch::stable::Tensor& tensor,
     std::string_view argument) {
   const TensorView view = require_cuda_contiguous_tensor(tensor, argument);
+#if defined(USE_CUDA)
   void* stream = nullptr;
   const AOTITorchError error =
       aoti_torch_get_current_cuda_stream(view.device_index, &stream);
@@ -126,6 +162,11 @@ void* current_cuda_stream(
     throw std::runtime_error("could not obtain the current CUDA stream");
   }
   return stream;
+#else
+  (void)view;
+  throw std::runtime_error(
+      "current CUDA stream access requires the qualified GPU build target");
+#endif
 }
 
 torch::stable::Tensor allocate_cuda_tensor(

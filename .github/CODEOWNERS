@@ -84,3 +84,4 @@
 /docs/adr/0019-jit-06-transition-sm90a-sm100a.md @mindclade/architecture @mindclade/ml-systems @mindclade/security
 /docs/adr/0020-jit-06-triangle-attention-sm90a-sm100a.md @mindclade/architecture @mindclade/ml-systems @mindclade/security
 /docs/adr/0021-jit-06-triangle-multiplication-sm90a-sm100a.md @mindclade/architecture @mindclade/ml-systems @mindclade/security
+/docs/adr/0022-native-signed-qualification-and-production-admission-source-activation.md @mindclade/architecture @mindclade/ml-systems @mindclade/security

@@ -670,7 +670,9 @@ class PairformerWave6GovernanceTests(unittest.TestCase):
             self.assertIn("K0-K5", entry["activation_criterion"])
 
     def test_native_and_future_runtime_subsystems_remain_fail_closed(self) -> None:
-        active_operations = set(self.policy.PAIRFORMER_WAVE6_OPERATION_PATHS)
+        active_operations = set(self.policy.PAIRFORMER_WAVE6_OPERATION_PATHS) | set(
+            self.policy.NATIVE_SIGNED_QUALIFICATION_ACTIVE_PATHS
+        )
         generated = set(self.policy.NATIVE_GENERATED_PROJECTIONS)
         for path in self.policy.NATIVE_SOURCE_INCUBATION_PATHS:
             if path in active_operations or path in generated:
@@ -695,3 +697,28 @@ class PairformerWave6GovernanceTests(unittest.TestCase):
             self.assertTrue(matching, prefix)
             self.assertEqual({entry["status"] for entry in matching}, {"target"})
         self.assertFalse(any(path.startswith("kernels/artifacts/") for path in entries))
+
+    def test_native_signed_qualification_has_exact_source_only_closure(self) -> None:
+        adr = self.policy.build_path_entry(
+            self.policy.NATIVE_SIGNED_QUALIFICATION_ADR
+        )
+        self.assertEqual(adr["status"], "active")
+        for path in self.policy.NATIVE_SIGNED_QUALIFICATION_ACTIVE_PATHS:
+            entry = self.policy.build_path_entry(path)
+            self.assertEqual(entry["component"], "kernels-native")
+            self.assertEqual(entry["status"], "active")
+            self.assertEqual(
+                entry["build_targets"],
+                ["//kernels/native:native_policy_inputs"],
+            )
+            self.assertEqual(
+                entry["test_targets"],
+                [
+                    "//kernels/native:test_capability_index",
+                    "//kernels/native:test_loader_policy",
+                    "//kernels/native:test_qualification",
+                ],
+            )
+            self.assertIn("no K4, K5", entry["activation_criterion"])
+        for path in self.policy.NATIVE_ADR0022_GENERATED_PROJECTIONS:
+            self.assertEqual(self.policy.build_path_entry(path)["status"], "generated")

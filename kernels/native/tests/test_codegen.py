@@ -20,7 +20,8 @@ def _fixture_native_root(tmp_path: Path, *, fake: bool = True) -> tuple[Path, st
     AutogradPolicy, BoolLiteral, CapabilityEnvelope, ConstantDType,
     DimensionConstraint, EffectSpec, ForwardSpec, ImplementationSpec,
     ImplementationTier, KernelSpec, LaunchContract, OutputSpec, ShapeOf,
-    SameAsInputDevice, TensorCapabilityConstraint,
+    RankRef, RuntimeWorkloadSpec, SameAsInputDevice, TensorCapabilityConstraint,
+    WorkloadDimensionBinding,
 )
 KERNEL_SPEC: KernelSpec = KernelSpec(
     name="fixture_op", namespace="mindclade", family="pairformer",
@@ -39,6 +40,10 @@ KERNEL_SPEC: KernelSpec = KernelSpec(
         ),),
     ), backward=None, autograd_policy=AutogradPolicy.NONE,
     effects=EffectSpec(), launch=LaunchContract(graph_capture_safe=False),
+    runtime_workload=RuntimeWorkloadSpec(
+        dimensions=(WorkloadDimensionBinding(name="rank", value=RankRef(argument="x")),),
+        input_dtype=ConstantDType(value="float32"), layout="contiguous",
+    ),
 )
 IMPLEMENTATION_SPECS = (
     ImplementationSpec(
@@ -78,7 +83,7 @@ def _required_fixture_native_root(tmp_path: Path) -> tuple[Path, str]:
     AutogradPolicy, BackwardArgumentBinding, BackwardArgumentSource,
     BackwardSpec, ConstantDType, EffectSpec, ForwardSpec, GradientSpec,
     KernelSpec, LaunchContract, MissingGradientPolicy, OutputSpec, ShapeOf,
-    SameAsInputDevice,
+    RankRef, RuntimeWorkloadSpec, SameAsInputDevice, WorkloadDimensionBinding,
 )
 KERNEL_SPEC: KernelSpec = KernelSpec(
     name="required_fixture", namespace="mindclade", family="pairformer",
@@ -139,13 +144,25 @@ KERNEL_SPEC: KernelSpec = KernelSpec(
             ),
         ),
         gradients=(
-            GradientSpec(input_name="x", output_name="grad_x"),
-            GradientSpec(input_name="y", output_name="grad_y"),
+            GradientSpec(
+                input_name="x", output_name="grad_x", shape=ShapeOf(argument="x"),
+                dtype=ConstantDType(value="float32"),
+                device=SameAsInputDevice(argument="x"),
+            ),
+            GradientSpec(
+                input_name="y", output_name="grad_y", shape=ShapeOf(argument="y"),
+                dtype=ConstantDType(value="float32"),
+                device=SameAsInputDevice(argument="y"),
+            ),
         ),
         supports_double_backward=False,
     ),
     autograd_policy=AutogradPolicy.REQUIRED,
     effects=EffectSpec(), launch=LaunchContract(graph_capture_safe=False),
+    runtime_workload=RuntimeWorkloadSpec(
+        dimensions=(WorkloadDimensionBinding(name="rank", value=RankRef(argument="x")),),
+        input_dtype=ConstantDType(value="float32"), layout="contiguous",
+    ),
 )
 IMPLEMENTATION_SPECS = ()
 ''',
@@ -163,9 +180,11 @@ def _program_group_fixture_native_root(tmp_path: Path) -> tuple[Path, str]:
     (operation / "spec.py").write_text(
         '''from kernels.api import (
     AutogradPolicy, ConstantDType, EffectSpec, ForwardSpec, KernelSpec,
-    LaunchContract, OutputSpec, ProgramGroupSpec, ProgramNodeSpec, ShapeOf,
-    SameAsInputDevice, WorkspaceAccess, WorkspaceLifetime, WorkspaceSpec,
-    WorkspaceUseSpec,
+    LaunchContract, OutputSpec, ProgramArtifactBoundary, ProgramBindingSource,
+    ProgramBindingSpec, ProgramEntryABI, ProgramGroupSpec, ProgramNodeSpec,
+    ProgramParameterKind, ProgramParameterSpec, ProgramReturnABI, ShapeOf,
+    RankRef, RuntimeWorkloadSpec, SameAsInputDevice, WorkspaceAccess,
+    WorkspaceLifetime, WorkspaceSpec, WorkloadDimensionBinding,
 )
 KERNEL_SPEC: KernelSpec = KernelSpec(
     name="group_fixture", namespace="mindclade", family="pairformer",
@@ -188,18 +207,78 @@ KERNEL_SPEC: KernelSpec = KernelSpec(
                     name="reduce",
                     builder="kernels.pairformer.group_fixture.tilelang:build_reduce",
                     symbol="mindclade_tilelang_group_fixture_reduce_launch",
+                    entry_symbol="call",
+                    entry_abi=ProgramEntryABI.TILELANG_0_1_13_HOST_CALL,
+                    parameters=(
+                        ProgramParameterSpec(
+                            position=0, name="scratch", kind=ProgramParameterKind.TENSOR,
+                            access=WorkspaceAccess.READ, shape=ShapeOf(argument="x"),
+                            dtype=ConstantDType(value="float32"),
+                            device=SameAsInputDevice(argument="x"),
+                        ),
+                        ProgramParameterSpec(
+                            position=1, name="output", kind=ProgramParameterKind.TENSOR,
+                            access=WorkspaceAccess.WRITE, shape=ShapeOf(argument="x"),
+                            dtype=ConstantDType(value="float32"),
+                            device=SameAsInputDevice(argument="x"),
+                        ),
+                        ProgramParameterSpec(
+                            position=2, name="stream", kind=ProgramParameterKind.STREAM,
+                            access=WorkspaceAccess.READ,
+                        ),
+                    ),
+                    bindings=(
+                        ProgramBindingSpec(
+                            parameter="scratch", source=ProgramBindingSource.WORKSPACE,
+                            source_name="scratch",
+                        ),
+                        ProgramBindingSpec(
+                            parameter="output", source=ProgramBindingSource.PROVIDER_OUTPUT,
+                            source_name="output",
+                        ),
+                        ProgramBindingSpec(
+                            parameter="stream", source=ProgramBindingSource.CURRENT_STREAM,
+                        ),
+                    ),
                     depends_on=("load",),
-                    workspace_uses=(WorkspaceUseSpec(
-                        workspace="scratch", access=WorkspaceAccess.READ,
-                    ),),
                 ),
                 ProgramNodeSpec(
                     name="load",
                     builder="kernels.pairformer.group_fixture.tilelang:build_load",
                     symbol="mindclade_tilelang_group_fixture_load_launch",
-                    workspace_uses=(WorkspaceUseSpec(
-                        workspace="scratch", access=WorkspaceAccess.WRITE,
-                    ),),
+                    entry_symbol="call",
+                    entry_abi=ProgramEntryABI.TILELANG_0_1_13_HOST_CALL,
+                    parameters=(
+                        ProgramParameterSpec(
+                            position=0, name="x", kind=ProgramParameterKind.TENSOR,
+                            access=WorkspaceAccess.READ, shape=ShapeOf(argument="x"),
+                            dtype=ConstantDType(value="float32"),
+                            device=SameAsInputDevice(argument="x"),
+                        ),
+                        ProgramParameterSpec(
+                            position=1, name="scratch", kind=ProgramParameterKind.TENSOR,
+                            access=WorkspaceAccess.WRITE, shape=ShapeOf(argument="x"),
+                            dtype=ConstantDType(value="float32"),
+                            device=SameAsInputDevice(argument="x"),
+                        ),
+                        ProgramParameterSpec(
+                            position=2, name="stream", kind=ProgramParameterKind.STREAM,
+                            access=WorkspaceAccess.READ,
+                        ),
+                    ),
+                    bindings=(
+                        ProgramBindingSpec(
+                            parameter="x", source=ProgramBindingSource.OPERATOR_ARGUMENT,
+                            source_name="x",
+                        ),
+                        ProgramBindingSpec(
+                            parameter="scratch", source=ProgramBindingSource.WORKSPACE,
+                            source_name="scratch",
+                        ),
+                        ProgramBindingSpec(
+                            parameter="stream", source=ProgramBindingSource.CURRENT_STREAM,
+                        ),
+                    ),
                 ),
             ),
             workspaces=(WorkspaceSpec(
@@ -212,6 +291,10 @@ KERNEL_SPEC: KernelSpec = KernelSpec(
     effects=EffectSpec(),
     launch=LaunchContract(
         hidden_device_allocation=True, graph_capture_safe=False,
+    ),
+    runtime_workload=RuntimeWorkloadSpec(
+        dimensions=(WorkloadDimensionBinding(name="rank", value=RankRef(argument="x")),),
+        input_dtype=ConstantDType(value="float32"), layout="contiguous",
     ),
 )
 IMPLEMENTATION_SPECS = ()
@@ -231,7 +314,7 @@ def test_render_is_deterministic_and_write_emits_exact_surfaces(tmp_path: Path):
     assert all((output / name).read_text(encoding="utf-8") == first[name] for name in first)
 
 
-def test_generated_schema_registry_and_build_inventories_are_v3(tmp_path: Path):
+def test_generated_schema_registry_and_build_inventories_are_v4(tmp_path: Path):
     native_root, source = _fixture_native_root(tmp_path)
     rendered = render_all(native_root, source_files=[source])
     definitions = rendered["registration.generated.cpp"]
@@ -250,14 +333,14 @@ def test_generated_schema_registry_and_build_inventories_are_v3(tmp_path: Path):
 def test_manifest_has_exact_operator_keys_and_recomputable_digests(tmp_path: Path):
     native_root, source = _fixture_native_root(tmp_path)
     manifest = json.loads(render_all(native_root, source_files=[source])["native_ops.json"])
-    assert manifest["schema_version"] == 3
-    assert manifest["generator"] == {"id": "kernels.native.codegen.generate", "version": 7}
+    assert manifest["schema_version"] == 4
+    assert manifest["generator"] == {"id": "kernels.native.codegen.generate", "version": 8}
     operator = manifest["operators"][0]
     assert set(operator) == {
         "name", "qualified_name", "namespace", "family", "source", "spec_sha256",
         "kernel_spec_digest", "implementation_digest", "implementation_candidates",
         "operator_schema", "facade_outputs", "fake", "forward",
-        "backward", "autograd_policy", "composite", "effects", "launch", "backend",
+        "backward", "autograd_policy", "composite", "effects", "launch", "runtime_workload", "backend",
         "version", "devices", "registrations",
         "launcher_plans",
     }
@@ -311,7 +394,9 @@ def test_required_autograd_is_assembled_from_named_bindings(tmp_path: Path):
     )''' in python
     assert "raw_values[1] if ctx.needs_input_grad[0] else None" in python
     assert "raw_values[0] if ctx.needs_input_grad[1] else None" in python
-    assert "return (torch.empty_like(y), torch.empty_like(x))" in python
+    assert "metadata = {'x': x, 'y': y}" in python
+    assert 'tuple(metadata["y"].shape)' in python
+    assert 'tuple(metadata["x"].shape)' in python
     assert "torch.library.register_fake('mindclade::_required_fixture_bwd')" in python
     assert "torch.library.register_autograd('mindclade::required_fixture'" in python
     backward = manifest["operators"][0]["backward"]
@@ -373,28 +458,59 @@ def test_program_group_emits_canonical_launcher_plan_and_bridge_guard(tmp_path: 
     plan = operator["launcher_plans"]["forward"]
 
     assert plan["execution_order"] == ["load", "reduce"]
-    assert plan["required_private_symbols"] == [
+    assert plan["adapter_symbol_prefixes"] == [
         "mindclade_tilelang_group_fixture_load_launch",
         "mindclade_tilelang_group_fixture_reduce_launch",
     ]
     assert [node["name"] for node in plan["nodes"]] == ["load", "reduce"]
     assert "builder" not in json.dumps(plan, sort_keys=True)
-    assert plan["bridge_requirement"] == "mindclade_program_group_bridge_v1"
+    assert plan["bridge_requirement"] == "mindclade_node_launch_v1"
+    assert all(node["entry_symbol"] == "call" for node in plan["nodes"])
     assert plan["workspaces"][0]["shape"]["node"] == "shape_of"
     registry = rendered["operation_registry.generated.cpp"]
-    assert "#if !defined(MINDCLADE_PROGRAM_GROUP_BRIDGE_V1)" in registry
-    assert "program-group CUDA registry requires qualified bridge v1" in registry
+    assert "#if !defined(MINDCLADE_NODE_LAUNCH_ABI_V1)" in registry
+    assert "program-group CUDA registry requires callable node ABI v1" in registry
     assert "mindclade_tilelang_group_fixture_load_launch(" not in registry
     assert "mindclade_tilelang_group_fixture_reduce_launch(" not in registry
-    for symbol in plan["required_private_symbols"]:
+    for symbol in plan["adapter_symbol_prefixes"]:
         assert symbol in rendered["native_ops.generated.bzl"]
         assert symbol in rendered["native_ops.generated.cmake"]
-        assert f'extern "C" void {symbol}();' in rendered["launcher_plans.generated.cpp"]
-        assert f"&{symbol}" in rendered["launcher_plans.generated.cpp"]
+        assert f'extern "C" void {symbol}();' not in rendered["launcher_plans.generated.cpp"]
+        assert f"&{symbol}" not in rendered["launcher_plans.generated.cpp"]
     static_plans = rendered["launcher_plans.generated.cpp"]
     assert '\"logical_symbol\":\"mindclade_tilelang_group_fixture_fwd_launch\"' in static_plans
     assert '\"execution_order\":[\"load\",\"reduce\"]' in static_plans
     assert "mindclade_native_required_private_launchers" in static_plans
+    assert "no exact qualified native capability" in static_plans
+    assert "mindclade_select_qualified_capability_v1" in static_plans
+    assert "mindclade_execute_qualified_capability_v1" in static_plans
+    assert "mindclade_qualified_capability_row_count_v1" in static_plans
+    assert "MINDCLADE_TILELANG_REQUIRED_PRIVATE_SYMBOLS = [\n]" in rendered["native_ops.generated.bzl"]
+
+
+def test_checked_in_compact_capability_table_is_empty_and_digest_bound(tmp_path: Path):
+    native_root, source = _program_group_fixture_native_root(tmp_path)
+    rendered = render_all(native_root, source_files=[source])
+    table = json.loads(rendered["qualified_capabilities.generated.json"])
+    assert table["schema_version"] == 1
+    assert table["generator"]["version"] == 8
+    assert table["selection"] == "exact_qualified_only"
+    assert table["row_fields"] == [
+        "operation", "phase", "workload_digest", "specialization_digest",
+        "capability_digest", "artifact_digest", "architecture", "dtype",
+        "layout", "mode", "dimensions", "attributes", "specificity", "priority",
+        "adapter_symbols",
+    ]
+    assert table["rows"] == []
+    assert table["row_count"] == 0
+    assert table["rows_digest"] == content_digest([])
+    without_digest = dict(table)
+    assert without_digest.pop("table_digest") == content_digest(without_digest)
+    cpp = rendered["qualified_capabilities.generated.cpp"]
+    assert "return 0;" in cpp
+    assert "return nullptr;" in cpp
+    assert table["rows_digest"] in cpp
+    assert table["table_digest"] in cpp
 
 
 def test_declarative_fake_rejects_optional_tensor_metadata_dependency(tmp_path: Path):

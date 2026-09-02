@@ -181,6 +181,12 @@ ADR_REGISTRY = (
         "accepted",
         "JIT-06 triangle-multiplication qualification on SM90a and SM100a",
     ),
+    AdrContract(
+        "ADR-0022",
+        "0022-native-signed-qualification-and-production-admission-source-activation.md",
+        "accepted",
+        "Native signed qualification and production admission source activation",
+    ),
 )
 ADR_PATHS = tuple(contract.filename for contract in ADR_REGISTRY)
 ADR_METADATA_FIELDS = {

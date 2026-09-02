@@ -52,7 +52,13 @@ KERNEL_SPEC = KernelSpec(
         decomposition="kernels.family_a.fixture_op.reference:reference",
         source_digest="sha256:0000000000000000000000000000000000000000000000000000000000000000",
         runtime_envelope="pytorch>=2.10,<2.11",
-        gradients=(GradientSpec(input_name="x", output_name="grad_x"),),
+        gradients=(GradientSpec(
+            input_name="x",
+            output_name="grad_x",
+            shape=ShapeOf(argument="x"),
+            dtype=DTypeRef(argument="x"),
+            device=DeviceRef(argument="x"),
+        ),),
         supports_double_backward=False,
         setup_context="kernels.family_a.fixture_op.reference:setup_context",
         backward="kernels.family_a.fixture_op.reference:backward",
@@ -78,7 +84,11 @@ IMPLEMENTATION_SPECS = ()
 def _profiles():
     return {
         "mindclade::fixture_op": [
-            {"name": "m16", "arguments": {"m": 16}},
+            {
+                "name": "m16",
+                "arguments": {"m": 16},
+                "specialization_digest": "sha256:" + "5" * 64,
+            },
         ]
     }
 
@@ -144,6 +154,18 @@ def _unsupported_source(
                 name="forward_stage",
                 builder="kernels.family_a.fixture_op.tilelang:build_forward_stage",
                 symbol="mindclade_tilelang_fixture_op_forward_stage_launch",
+                entry_symbol="call",
+                entry_abi=ProgramEntryABI.TILELANG_0_1_13_HOST_CALL,
+                parameters=(
+                    ProgramParameterSpec(position=0, name="x", kind=ProgramParameterKind.TENSOR, access=WorkspaceAccess.READ, shape=ShapeOf(argument="x"), dtype=DTypeRef(argument="x"), device=DeviceRef(argument="x")),
+                    ProgramParameterSpec(position=1, name="output", kind=ProgramParameterKind.TENSOR, access=WorkspaceAccess.WRITE, shape=ShapeOf(argument="x"), dtype=DTypeRef(argument="x"), device=DeviceRef(argument="x")),
+                    ProgramParameterSpec(position=2, name="stream", kind=ProgramParameterKind.STREAM, access=WorkspaceAccess.READ),
+                ),
+                bindings=(
+                    ProgramBindingSpec(parameter="x", source=ProgramBindingSource.OPERATOR_ARGUMENT, source_name="x"),
+                    ProgramBindingSpec(parameter="output", source=ProgramBindingSource.PROVIDER_OUTPUT, source_name="output"),
+                    ProgramBindingSpec(parameter="stream", source=ProgramBindingSource.CURRENT_STREAM),
+                ),
             ),),
         ),'''
 
@@ -153,7 +175,13 @@ def _unsupported_source(
         decomposition="kernels.family_a.fixture_op.reference:reference",
         source_digest="sha256:0000000000000000000000000000000000000000000000000000000000000000",
         runtime_envelope="pytorch>=2.10,<2.11",
-        gradients=(GradientSpec(input_name="x", output_name="grad_x"),),
+        gradients=(GradientSpec(
+            input_name="x",
+            output_name="grad_x",
+            shape=ShapeOf(argument="x"),
+            dtype=DTypeRef(argument="x"),
+            device=DeviceRef(argument="x"),
+        ),),
         supports_double_backward=False,
         setup_context="kernels.family_a.fixture_op.reference:setup_context",
         backward="kernels.family_a.fixture_op.reference:backward",
@@ -167,6 +195,20 @@ def _unsupported_source(
                 name="backward_stage",
                 builder="kernels.family_a.fixture_op.tilelang:build_backward_stage",
                 symbol="mindclade_tilelang_fixture_op_backward_stage_launch",
+                entry_symbol="call",
+                entry_abi=ProgramEntryABI.TILELANG_0_1_13_HOST_CALL,
+                parameters=(
+                    ProgramParameterSpec(position=0, name="grad_output", kind=ProgramParameterKind.TENSOR, access=WorkspaceAccess.READ, shape=ShapeOf(argument="x"), dtype=DTypeRef(argument="x"), device=DeviceRef(argument="x")),
+                    ProgramParameterSpec(position=1, name="x", kind=ProgramParameterKind.TENSOR, access=WorkspaceAccess.READ, shape=ShapeOf(argument="x"), dtype=DTypeRef(argument="x"), device=DeviceRef(argument="x")),
+                    ProgramParameterSpec(position=2, name="grad_x", kind=ProgramParameterKind.TENSOR, access=WorkspaceAccess.WRITE, shape=ShapeOf(argument="x"), dtype=DTypeRef(argument="x"), device=DeviceRef(argument="x")),
+                    ProgramParameterSpec(position=3, name="stream", kind=ProgramParameterKind.STREAM, access=WorkspaceAccess.READ),
+                ),
+                bindings=(
+                    ProgramBindingSpec(parameter="grad_output", source=ProgramBindingSource.OUTPUT_GRADIENT, source_name="output"),
+                    ProgramBindingSpec(parameter="x", source=ProgramBindingSource.OPERATOR_ARGUMENT, source_name="x"),
+                    ProgramBindingSpec(parameter="grad_x", source=ProgramBindingSource.PROVIDER_OUTPUT, source_name="grad_x"),
+                    ProgramBindingSpec(parameter="stream", source=ProgramBindingSource.CURRENT_STREAM),
+                ),
             ),),
         ),'''
         backward = f'''BackwardSpec(
@@ -185,7 +227,13 @@ def _unsupported_source(
                 source_name="x",
             ),
         ),
-        gradients=(GradientSpec(input_name="x", output_name="grad_x"),),
+        gradients=(GradientSpec(
+            input_name="x",
+            output_name="grad_x",
+            shape=ShapeOf(argument="x"),
+            dtype=DTypeRef(argument="x"),
+            device=DeviceRef(argument="x"),
+        ),),
         supports_double_backward=False,{backward_group}
     )'''
         autograd_policy = "AutogradPolicy.REQUIRED"
@@ -197,7 +245,9 @@ def _unsupported_source(
     AutogradPolicy, BackwardArgumentBinding, BackwardArgumentSource,
     BackwardSpec, CompositeAutogradSpec, DeviceRef, DTypeRef, EffectSpec,
     ForwardSpec, GradientSpec, KernelSpec, LaunchContract, OutputSpec,
-    ProgramGroupSpec, ProgramNodeSpec, ShapeOf,
+    ProgramBindingSource, ProgramBindingSpec, ProgramEntryABI, ProgramGroupSpec,
+    ProgramNodeSpec, ProgramParameterKind, ProgramParameterSpec, ShapeOf,
+    WorkspaceAccess,
 )
 
 KERNEL_SPEC = KernelSpec(
@@ -262,7 +312,7 @@ def _assert_rejected_before_tilelang_or_builder(
             tmp_path / "compiled",
             source_files=[source],
             profiles=_profiles(),
-            target="cuda-sm90",
+            target="cuda-sm90a",
         )
 
 
@@ -313,7 +363,7 @@ def test_builder_resolution_rejects_imported_module_from_spec_file(
 
 
 class _MockPicAdapter:
-    compiler_id = "mock-pic"
+    compiler_id = "mock-node-dso"
     compiler_version = "1"
 
     def __init__(self, *, fail_phase: str | None = None):
@@ -324,10 +374,21 @@ class _MockPicAdapter:
         self.actions.append(action)
         if action.phase == self.fail_phase:
             raise RuntimeError(f"injected {action.phase} compile failure")
+        suffix = "a" * 64
+        adapter_symbol = (
+            f"{action.symbol}_{suffix}" if action.program_node is not None else action.symbol
+        )
         return build.CompiledArtifact(
-            pic_object=("mock-pic:" + action.digest).encode("ascii"),
-            exported_symbols=(action.symbol,),
+            dso=("mock-dso:" + action.digest).encode("ascii"),
+            exported_symbols=(adapter_symbol,),
             source_sha256="sha256:" + "0" * 64,
+            adapter_source_sha256="sha256:" + "1" * 64,
+            call_signature_sha256="sha256:" + "2" * 64,
+            compile_command=("$NVCC", "-c", "$SOURCE"),
+            link_command=("$NVCC", "-shared", "$OBJECT"),
+            toolchain_closure_digest="sha256:" + "3" * 64,
+            adapter_symbol=adapter_symbol,
+            soname="libmindclade_node_" + suffix + ".so",
         )
 
 
@@ -358,7 +419,7 @@ def _mock_builder_resolution(monkeypatch: pytest.MonkeyPatch, spec):
     monkeypatch.setattr(build, "_resolve_builder_identity", resolve)
 
 
-def test_offline_builder_emits_receipt_v3_and_pic_action(
+def test_offline_builder_emits_receipt_v4_and_node_dso_action(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ):
     native_root, source, _builder_source = _fixture_source(tmp_path)
@@ -383,16 +444,22 @@ def test_offline_builder_emits_receipt_v3_and_pic_action(
     assert receipt.backward is None
     assert len(adapter.actions) == 1
     artifact = output / receipt.forward.units[0].artifact
-    assert artifact.read_bytes().startswith(b"mock-pic:sha256:")
+    assert artifact.read_bytes().startswith(b"mock-dso:sha256:")
     document = json.loads((output / "build_receipts.json").read_text(encoding="utf-8"))
-    assert document["schema_version"] == 3
-    assert document["compiler"] == {"id": "mock-pic", "version": "1"}
+    assert document["schema_version"] == 4
+    assert document["qualification_status"] == "unqualified"
+    assert document["compiler"] == {"id": "mock-node-dso", "version": "1"}
     assert document["registry_generator"] == {
         "id": "kernels.native.codegen.generate",
-        "version": 7,
+        "version": 8,
     }
     assert document["document_digest"].startswith("sha256:")
-    assert document["receipts"][0]["forward"]["units"][0]["object_format"] == "pic_object"
+    unit = document["receipts"][0]["forward"]["units"][0]
+    assert unit["object_format"] == "elf_shared_object"
+    assert unit["soname"].startswith("libmindclade_node_")
+    assert unit["specialization_digest"] == "sha256:" + "5" * 64
+    assert document["receipts"][0]["specialization_digest"] == "sha256:" + "5" * 64
+    assert document["receipts"][0]["status"] == "unqualified"
 
 
 def test_offline_builder_requires_exact_bounded_profile_inventory(tmp_path: Path):
@@ -523,7 +590,7 @@ def test_program_group_rejects_incompatible_logical_descriptor_before_nodes(
 def test_compatibility_adapter_rejects_source_only_tilelang_output(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ):
-    native_root, source, _builder_source = _fixture_source(tmp_path)
+    native_root, source = _unsupported_source(tmp_path, phase="forward_group")
     spec = discover_specs(native_root.parent, [source])[0].spec
 
     class SourceOnlyProgram:
@@ -533,23 +600,117 @@ def test_compatibility_adapter_rejects_source_only_tilelang_output(
         def get_kernel_source(self):
             return 'extern "C" __global__ void fixture() {}\n'
 
-    monkeypatch.setattr(
-        build,
-        "_resolve_builder_identity",
-        lambda *_args: (lambda **_kwargs: SourceOnlyProgram()),
+    group = spec.forward.program_group
+    assert group is not None
+
+    def resolve(_spec, identity, _kernels_root):
+        if identity == spec.forward.builder:
+            return lambda **_kwargs: {
+                "execution_order": tuple(node.name for node in group.nodes),
+                "logical_symbol": spec.forward.symbol,
+                "phase": "forward",
+                "version": 1,
+                "workspaces": tuple(workspace.name for workspace in group.workspaces),
+            }
+        return lambda **_kwargs: SourceOnlyProgram()
+
+    monkeypatch.setattr(build, "_resolve_builder_identity", resolve)
+    tool = tmp_path / "tool"
+    tool.write_bytes(b"tool")
+    tool.chmod(0o755)
+    header = tmp_path / "node_launch_abi.h"
+    header.write_text("#pragma once\n", encoding="utf-8")
+    monkeypatch.setattr(build, "_run_checked", lambda *_args: "pinned nvcc 1\n")
+    adapter = build.TileLangCompatibilityAdapter(
+        SimpleNamespace(__version__="0.1.13"),
+        nvcc=tool,
+        nvcc_sha256="sha256:" + hashlib.sha256(tool.read_bytes()).hexdigest(),
+        nvcc_version="pinned nvcc 1",
+        toolchain_closure_digest="sha256:" + "4" * 64,
+        node_abi_header=header,
+        nm=tool,
+        readelf=tool,
     )
-    adapter = build.TileLangCompatibilityAdapter(SimpleNamespace(__version__="0.1.13"))
     output = tmp_path / "compiled"
-    with pytest.raises(RuntimeError, match="produced source only"):
+    with pytest.raises(RuntimeError, match="compiled CUDA object"):
         compile_all(
             native_root,
             output,
             source_files=[source],
             profiles=_profiles(),
-            target="cuda-sm90",
+            target="cuda-sm90a",
             compiler_adapter=adapter,
         )
     assert not output.exists()
+
+
+def test_compatibility_adapter_requires_exact_tilelang_version_before_tools():
+    missing = Path("/definitely/not/a/tool")
+    with pytest.raises(RuntimeError, match=r"TileLang 0\.1\.13 is required"):
+        build.TileLangCompatibilityAdapter(
+            SimpleNamespace(__version__="0.1.14"),
+            nvcc=missing,
+            nvcc_sha256="sha256:" + "0" * 64,
+            nvcc_version="unused",
+            toolchain_closure_digest="sha256:" + "0" * 64,
+            node_abi_header=missing,
+            nm=missing,
+            readelf=missing,
+        )
+
+
+def test_generated_node_adapter_guards_optional_gradient_before_raw_call():
+    from kernels.pairformer.outer_product_mean.spec import KERNEL_SPEC as spec
+
+    assert spec.backward is not None
+    group = spec.backward.program_group
+    assert group is not None
+    node = next(value for value in group.nodes if value.name == "dleft")
+    raw = (
+        build._RawCallParameter("grad_output", "float* __restrict__"),
+        build._RawCallParameter("right", "float* __restrict__"),
+        build._RawCallParameter("mask", "float* __restrict__"),
+        build._RawCallParameter("epsilon", "float"),
+        build._RawCallParameter("normalizer", "float* __restrict__"),
+        build._RawCallParameter("grad_left", "float* __restrict__"),
+        build._RawCallParameter("stream", "cudaStream_t"),
+    )
+    symbol = node.symbol + "_" + "a" * 64
+    specialization_digest = "sha256:" + "5" * 64
+    first = build._render_node_adapter(node, raw, symbol, specialization_digest)
+    second = build._render_node_adapter(node, raw, symbol, specialization_digest)
+    assert first == second
+    assert f'int32_t {symbol}(' in first
+    assert "MINDCLADE_NODE_LAUNCH_ABI_VERSION" in first
+    digest_guard = first.index("specialization_mismatch")
+    parameter_pointer_guard = first.index("launch->parameters == nullptr")
+    assert digest_guard < parameter_pointer_guard
+    assert first.count("UINT8_C(0x55)") == 32
+    request_guard = first.index("payload.boolean_value == UINT64_C(0)")
+    raw_call = first.index("const int entry_status = call(")
+    assert request_guard < raw_call
+    assert "call(" in first
+
+
+def test_specialization_profile_requires_canonical_specialization_spec_digest():
+    with pytest.raises(ValueError, match="specialization_digest"):
+        build.SpecializationProfile.from_value(
+            {"name": "m16", "arguments": {"m": 16}}
+        )
+
+
+def test_host_call_signature_is_canonical_and_exact():
+    source = '''
+extern "C" TL_EXPORT int call(
+    half_t* __restrict__ x, float scale, cudaStream_t stream=cudaStreamDefault) {
+  return 0;
+}
+'''
+    signature, parameters = build._parse_host_call(source, "call")
+    assert signature == (
+        "extern C int call(half_t* __restrict__ x,float scale,cudaStream_t stream)"
+    )
+    assert tuple(parameter.name for parameter in parameters) == ("x", "scale", "stream")
 
 
 def test_compiler_rejects_wrong_exported_symbol_inventory(
@@ -563,9 +724,16 @@ def test_compiler_rejects_wrong_exported_symbol_inventory(
         def compile(self, program, action):
             artifact = super().compile(program, action)
             return build.CompiledArtifact(
-                pic_object=artifact.pic_object,
+                dso=artifact.dso,
                 exported_symbols=("wrong_symbol",),
                 source_sha256=artifact.source_sha256,
+                adapter_source_sha256=artifact.adapter_source_sha256,
+                call_signature_sha256=artifact.call_signature_sha256,
+                compile_command=artifact.compile_command,
+                link_command=artifact.link_command,
+                toolchain_closure_digest=artifact.toolchain_closure_digest,
+                adapter_symbol=artifact.adapter_symbol,
+                soname=artifact.soname,
             )
 
     with pytest.raises(RuntimeError, match="must export exactly"):

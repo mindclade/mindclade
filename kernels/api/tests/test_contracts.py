@@ -30,6 +30,8 @@ from kernels.api.expressions import (
     EvaluationContext,
     IntLiteral,
     Modulo,
+    ScalarRef,
+    ScalarType,
     ShapeTuple,
     TensorMetadata,
 )
@@ -40,16 +42,29 @@ from kernels.api.launch import DeterminismClass, LaunchContract
 from kernels.api.numerics import NumericalEnvelope, TensorTolerance
 from kernels.api.output import InitializationSpec, OutputSpec
 from kernels.api.program_group import (
+    ProgramArtifactBoundary,
+    ProgramBindingSource,
+    ProgramBindingSpec,
+    ProgramEntryABI,
     ProgramGroupSpec,
     ProgramNodeSpec,
+    ProgramParameterKind,
+    ProgramParameterSpec,
+    ProgramReturnABI,
+    ProgramSelectorBinding,
+    ScalarABIType,
     WorkspaceAccess,
     WorkspaceLifetime,
     WorkspaceSpec,
-    WorkspaceUseSpec,
 )
 from kernels.api.qualification import QualifiedCapability
 from kernels.api.schedule import ScheduleSpec, SpecializationSpec
-from kernels.api.workload import WorkloadSpec
+from kernels.api.workload import (
+    RuntimeWorkloadSpec,
+    WorkloadAttributeBinding,
+    WorkloadDimensionBinding,
+    WorkloadSpec,
+)
 
 _SHA = "sha256:" + "a" * 64
 
@@ -75,6 +90,73 @@ def output(name: str = "result", *, visible: bool = True, saved: bool = False) -
         visible_in_facade=visible,
         saved_for_backward=saved,
         initialization=InitializationSpec("zero") if saved else None,
+    )
+
+
+def gradient(
+    input_name: str = "x",
+    output_name: str = "grad_x",
+    *,
+    metadata_source: str = "x",
+    optional: bool = False,
+) -> GradientSpec:
+    return GradientSpec(
+        input_name,
+        output_name,
+        ShapeTuple((DimRef(metadata_source, 0), DimRef(metadata_source, 1))),
+        ConstantDType("float32"),
+        ConstantDevice("cuda"),
+        optional=optional,
+    )
+
+
+def program_node(
+    name: str,
+    *,
+    depends_on: tuple[str, ...] = (),
+    workspace_accesses: tuple[tuple[str, WorkspaceAccess], ...] = (),
+    symbol: str | None = None,
+) -> ProgramNodeSpec:
+    parameters = []
+    bindings = []
+    for position, (workspace, access) in enumerate(workspace_accesses):
+        parameter = f"workspace_{workspace}"
+        parameters.append(
+            ProgramParameterSpec(
+                position,
+                parameter,
+                ProgramParameterKind.TENSOR,
+                access,
+                ShapeTuple((DimRef("x", 0),)),
+                ConstantDType("float32"),
+                ConstantDevice("cuda"),
+            )
+        )
+        bindings.append(
+            ProgramBindingSpec(
+                parameter, ProgramBindingSource.WORKSPACE, workspace
+            )
+        )
+    parameters.append(
+        ProgramParameterSpec(
+            len(parameters),
+            "stream",
+            ProgramParameterKind.STREAM,
+            WorkspaceAccess.READ,
+        )
+    )
+    bindings.append(
+        ProgramBindingSpec("stream", ProgramBindingSource.CURRENT_STREAM)
+    )
+    return ProgramNodeSpec(
+        name=name,
+        builder=f"pkg:{name}",
+        symbol=symbol or f"mindclade_{name}_adapter",
+        entry_symbol="call",
+        entry_abi=ProgramEntryABI.TILELANG_0_1_13_HOST_CALL,
+        parameters=tuple(parameters),
+        bindings=tuple(bindings),
+        depends_on=depends_on,
     )
 
 
@@ -130,7 +212,7 @@ def required_kernel(**changes: object) -> KernelSpec:
         builder="kernels.demo.example.tilelang:build_backward",
         symbol="mindclade_tilelang_example_bwd_launch",
         argument_bindings=required_bindings(),
-        gradients=(GradientSpec("x", "grad_x"),),
+        gradients=(gradient(),),
         supports_double_backward=False,
     )
     values: dict[str, object] = {
@@ -146,9 +228,53 @@ def required_kernel(**changes: object) -> KernelSpec:
         "autograd_policy": AutogradPolicy.REQUIRED,
         "effects": EffectSpec(),
         "launch": LaunchContract(),
+        "runtime_workload": RuntimeWorkloadSpec(
+            dimensions=(WorkloadDimensionBinding("batch_size", DimRef("x", 0)),),
+            input_dtype=ConstantDType("float32"),
+            layout="contiguous",
+        ),
     }
     values.update(changes)
     return KernelSpec(**values)  # type: ignore[arg-type]
+
+
+def test_runtime_workload_is_canonical_and_typed() -> None:
+    workload = RuntimeWorkloadSpec(
+        dimensions=(
+            WorkloadDimensionBinding("width", DimRef("x", 1)),
+            WorkloadDimensionBinding("batch_size", DimRef("x", 0)),
+        ),
+        input_dtype=ConstantDType("float32"),
+        layout="contiguous",
+        attributes=(WorkloadAttributeBinding("training", BoolLiteral(True)),),
+    )
+    assert tuple(value.name for value in workload.dimensions) == ("batch_size", "width")
+    assert tuple(value.name for value in workload.attributes) == ("training",)
+    assert workload.digest == RuntimeWorkloadSpec(
+        dimensions=tuple(reversed(workload.dimensions)),
+        input_dtype=ConstantDType("float32"),
+        layout="contiguous",
+        attributes=workload.attributes,
+    ).digest
+    with pytest.raises(KernelContractError, match="typed integer expression"):
+        WorkloadDimensionBinding("bad", BoolLiteral(True))  # type: ignore[arg-type]
+    with pytest.raises(KernelContractError, match="input_dtype"):
+        RuntimeWorkloadSpec(
+            dimensions=(WorkloadDimensionBinding("batch_size", DimRef("x", 0)),),
+            input_dtype=IntLiteral(1),  # type: ignore[arg-type]
+            layout="contiguous",
+        )
+
+
+def test_runtime_workload_references_semantic_arguments_and_selector() -> None:
+    with pytest.raises(KernelContractError, match="unknown semantic arguments"):
+        required_kernel(
+            runtime_workload=RuntimeWorkloadSpec(
+                dimensions=(WorkloadDimensionBinding("batch_size", DimRef("missing", 0)),),
+                input_dtype=ConstantDType("float32"),
+                layout="contiguous",
+            )
+        )
 
 
 def test_contracts_are_immutable_and_digestible() -> None:
@@ -179,7 +305,7 @@ def test_composite_policy_requires_content_addressed_decomposition() -> None:
             "pkg:backward",
             _SHA,
             "pytorch-2.10",
-            (GradientSpec("x", "grad_x"),),
+            (gradient(),),
             False,
             setup_context="pkg:setup_context",
             backward="pkg:backward",
@@ -210,7 +336,7 @@ def test_named_gradient_must_reference_semantic_input_and_backward_output() -> N
         builder="pkg:builder",
         symbol="mindclade_tilelang_example_bwd_launch",
         argument_bindings=required_bindings(),
-        gradients=(GradientSpec("weight", "grad_x"),),
+        gradients=(gradient("weight", "grad_x"),),
         supports_double_backward=False,
     )
     with pytest.raises(KernelContractError, match="not a semantic operator argument"):
@@ -239,7 +365,7 @@ def test_double_backward_claim_fails_without_second_order_contract() -> None:
         builder="pkg:backward",
         symbol="mindclade_tilelang_example_bwd_launch",
         argument_bindings=required_bindings(),
-        gradients=(GradientSpec("x", "grad_x"),),
+        gradients=(gradient(),),
         supports_double_backward=True,
     )
     with pytest.raises(KernelContractError, match="second-order provider"):
@@ -256,7 +382,7 @@ def test_backward_bindings_are_canonical_and_cover_provider_arguments() -> None:
         builder="pkg:backward",
         symbol="example_bwd_launch",
         argument_bindings=(required_bindings()[0],),
-        gradients=(GradientSpec("x", "grad_x"),),
+        gradients=(gradient(),),
         supports_double_backward=False,
     )
     with pytest.raises(KernelContractError, match="exactly cover"):
@@ -296,7 +422,7 @@ def test_backward_binding_sources_and_kinds_are_validated_by_name() -> None:
             ),
             required_bindings()[0],
         ),
-        gradients=(GradientSpec("x", "grad_x"),),
+        gradients=(gradient(),),
         supports_double_backward=False,
     )
     with pytest.raises(KernelContractError, match="not a forward output"):
@@ -307,7 +433,7 @@ def test_backward_binding_sources_and_kinds_are_validated_by_name() -> None:
         builder="pkg:backward",
         symbol="example_bwd_launch",
         argument_bindings=required_bindings(),
-        gradients=(GradientSpec("x", "grad_x"),),
+        gradients=(gradient(),),
         supports_double_backward=False,
     )
     with pytest.raises(SchemaError, match="does not match semantic kind"):
@@ -336,7 +462,7 @@ def test_saved_forward_outputs_require_named_consumption() -> None:
                 "lse", BackwardArgumentSource.FORWARD_OUTPUT, "lse"
             ),
         ),
-        gradients=(GradientSpec("x", "grad_x"),),
+        gradients=(gradient(),),
         supports_double_backward=False,
     )
     spec = required_kernel(
@@ -376,7 +502,7 @@ def test_needs_input_grad_requires_named_tensor_gradient_and_bool_provider() -> 
                 "need_x_grad", BackwardArgumentSource.NEEDS_INPUT_GRAD, "x"
             ),
         ),
-        gradients=(GradientSpec("x", "grad_x"),),
+        gradients=(gradient(),),
         supports_double_backward=False,
     )
     assert required_kernel(backward=backward).backward is backward
@@ -394,7 +520,7 @@ def test_needs_input_grad_requires_named_tensor_gradient_and_bool_provider() -> 
                 "need_y_grad", BackwardArgumentSource.NEEDS_INPUT_GRAD, "y"
             ),
         ),
-        gradients=(GradientSpec("x", "grad_x"),),
+        gradients=(gradient(),),
         supports_double_backward=False,
     )
     with pytest.raises(KernelContractError, match="not a declared gradient input"):
@@ -410,7 +536,7 @@ def test_gradient_mappings_exactly_cover_named_backward_outputs() -> None:
         builder="pkg:backward",
         symbol="example_bwd_launch",
         argument_bindings=required_bindings(),
-        gradients=(GradientSpec("x", "grad_x"),),
+        gradients=(gradient(),),
         supports_double_backward=False,
     )
     with pytest.raises(KernelContractError, match="exactly cover backward outputs"):
@@ -429,7 +555,7 @@ def test_pass_none_requires_an_optional_provider_parameter() -> None:
         builder="pkg:backward",
         symbol="example_bwd_launch",
         argument_bindings=(binding, required_bindings()[0]),
-        gradients=(GradientSpec("x", "grad_x"),),
+        gradients=(gradient(),),
         supports_double_backward=False,
     )
     with pytest.raises(SchemaError, match="requires an optional provider kind"):
@@ -440,7 +566,7 @@ def test_pass_none_requires_an_optional_provider_parameter() -> None:
         builder="pkg:backward",
         symbol="example_bwd_launch",
         argument_bindings=(binding, required_bindings()[0]),
-        gradients=(GradientSpec("x", "grad_x"),),
+        gradients=(gradient(),),
         supports_double_backward=False,
     )
     assert required_kernel(backward=optional).backward is optional
@@ -458,7 +584,7 @@ def test_zero_missing_gradient_requires_and_consumes_saved_forward_output() -> N
         builder="pkg:backward",
         symbol="example_bwd_launch",
         argument_bindings=(zero_binding, required_bindings()[0]),
-        gradients=(GradientSpec("x", "grad_x"),),
+        gradients=(gradient(),),
         supports_double_backward=False,
     )
     with pytest.raises(KernelContractError, match="ZERO.*saved for backward"):
@@ -484,13 +610,9 @@ def test_zero_missing_gradient_requires_and_consumes_saved_forward_output() -> N
     )
     zero_group = ProgramGroupSpec(
         nodes=(
-            ProgramNodeSpec(
+            program_node(
                 "zero_grad",
-                "pkg:zero_grad",
-                "zero_grad_launch",
-                workspace_uses=(
-                    WorkspaceUseSpec("zero_grad", WorkspaceAccess.WRITE),
-                ),
+                workspace_accesses=(("zero_grad", WorkspaceAccess.WRITE),),
             ),
         ),
         workspaces=(zero_workspace,),
@@ -532,31 +654,90 @@ def test_duplicate_output_gradient_bindings_reject_conflicting_missing_policies(
             ),
             required_bindings()[0],
         ),
-        gradients=(GradientSpec("x", "grad_x"),),
+        gradients=(gradient(),),
         supports_double_backward=False,
     )
     with pytest.raises(KernelContractError, match="conflicting missing-gradient policies"):
         required_kernel(backward=backward)
 
 
-def test_each_gradient_input_requires_operator_argument_metadata_binding() -> None:
+def test_gradient_formula_need_not_consume_original_input_value() -> None:
+    metadata = GradientSpec(
+        "x",
+        "grad_x",
+        ShapeTuple((IntLiteral(1),)),
+        ConstantDType("float32"),
+        ConstantDevice("cuda"),
+    )
     backward = BackwardSpec(
-        schema="_example_bwd(Tensor grad_result, Tensor x) -> Tensor grad_x",
+        schema="_example_bwd(Tensor grad_result) -> Tensor grad_x",
         builder="pkg:backward",
         symbol="example_bwd_launch",
         argument_bindings=(
             BackwardArgumentBinding(
                 "grad_result", BackwardArgumentSource.OUTPUT_GRADIENT, "result"
             ),
-            BackwardArgumentBinding(
-                "x", BackwardArgumentSource.OUTPUT_GRADIENT, "result"
-            ),
         ),
-        gradients=(GradientSpec("x", "grad_x"),),
+        gradients=(metadata,),
         supports_double_backward=False,
     )
-    with pytest.raises(KernelContractError, match="requires an OPERATOR_ARGUMENT"):
-        required_kernel(backward=backward)
+    assert required_kernel(backward=backward).backward is backward
+
+
+def test_gradient_metadata_references_are_typed_and_named() -> None:
+    assert required_kernel().backward.gradients[0].shape.domain.value == "shape"
+    unknown = gradient(metadata_source="missing")
+    with pytest.raises(KernelContractError, match="unknown semantic arguments"):
+        required_kernel(
+            backward=BackwardSpec(
+                schema="_example_bwd(Tensor grad_result, Tensor x) -> Tensor grad_x",
+                builder="pkg:backward",
+                symbol="example_bwd_launch",
+                argument_bindings=required_bindings(),
+                gradients=(unknown,),
+                supports_double_backward=False,
+            )
+        )
+    scalar_as_tensor = GradientSpec(
+        "x",
+        "grad_x",
+        ShapeTuple((ScalarRef("x", ScalarType.INT),)),
+        ConstantDType("float32"),
+        ConstantDevice("cuda"),
+    )
+    with pytest.raises(KernelContractError, match="reference kinds do not match"):
+        required_kernel(
+            backward=BackwardSpec(
+                schema="_example_bwd(Tensor grad_result, Tensor x) -> Tensor grad_x",
+                builder="pkg:backward",
+                symbol="example_bwd_launch",
+                argument_bindings=required_bindings(),
+                gradients=(scalar_as_tensor,),
+                supports_double_backward=False,
+            )
+        )
+
+
+def test_program_selector_binding_is_total_canonical_and_group_scoped() -> None:
+    selector = ProgramSelectorBinding(
+        "outgoing",
+        "mode",
+        ScalarABIType.BOOL,
+        ((False, "incoming"), (True, "outgoing")),
+    )
+    group = ProgramGroupSpec((program_node("node"),), selector_bindings=(selector,))
+    assert group.selector_bindings == (selector,)
+    assert group.to_canonical()["selector_bindings"][0]["cases"] == [
+        [False, "incoming"],
+        [True, "outgoing"],
+    ]
+    with pytest.raises(KernelContractError, match="canonical and total"):
+        ProgramSelectorBinding(
+            "outgoing",
+            "mode",
+            ScalarABIType.BOOL,
+            ((True, "outgoing"), (False, "incoming")),
+        )
 
 
 def test_optional_gradient_requires_exactly_one_needs_input_grad_binding() -> None:
@@ -565,7 +746,7 @@ def test_optional_gradient_requires_exactly_one_needs_input_grad_binding() -> No
         builder="pkg:backward",
         symbol="example_bwd_launch",
         argument_bindings=required_bindings(),
-        gradients=(GradientSpec("x", "grad_x", optional=True),),
+        gradients=(gradient(optional=True),),
         supports_double_backward=False,
     )
     with pytest.raises(KernelContractError, match="exactly one NEEDS_INPUT_GRAD"):
@@ -584,7 +765,7 @@ def test_optional_gradient_requires_exactly_one_needs_input_grad_binding() -> No
                 "need_x_grad", BackwardArgumentSource.NEEDS_INPUT_GRAD, "x"
             ),
         ),
-        gradients=(GradientSpec("x", "grad_x", optional=True),),
+        gradients=(gradient(optional=True),),
         supports_double_backward=False,
     )
     assert required_kernel(backward=represented).backward is represented
@@ -602,7 +783,7 @@ def test_optional_tensor_operator_argument_binding_requires_schema_v2() -> None:
         builder="pkg:backward",
         symbol="example_bwd_launch",
         argument_bindings=required_bindings(),
-        gradients=(GradientSpec("x", "grad_x"),),
+        gradients=(gradient(),),
         supports_double_backward=False,
     )
     with pytest.raises(SchemaError, match="require schema version 2"):
@@ -630,34 +811,32 @@ def test_launch_and_effect_contracts_fail_on_false_safety_claims() -> None:
 
 def test_program_group_has_deterministic_topology_and_rejects_cycles() -> None:
     workspace = WorkspaceSpec(
-        "delta",
-        ShapeTuple((DimRef("x", 0),)),
-        ConstantDType("float32"),
-        zero_initialize=True,
+        "delta", ShapeTuple((DimRef("x", 0),)), ConstantDType("float32")
     )
     group = ProgramGroupSpec(
         nodes=(
-            ProgramNodeSpec(
-                "dq", "pkg:dq", "dq_launch", depends_on=("delta",),
-                workspace_uses=(WorkspaceUseSpec("delta", WorkspaceAccess.READ),),
+            program_node(
+                "dq",
+                depends_on=("delta",),
+                workspace_accesses=(("delta", WorkspaceAccess.READ),),
             ),
-            ProgramNodeSpec(
-                "delta", "pkg:delta", "delta_launch",
-                workspace_uses=(WorkspaceUseSpec("delta", WorkspaceAccess.WRITE),),
+            program_node(
+                "delta", workspace_accesses=(("delta", WorkspaceAccess.WRITE),)
             ),
-            ProgramNodeSpec(
-                "dkv", "pkg:dkv", "dkv_launch", depends_on=("delta",),
-                workspace_uses=(WorkspaceUseSpec("delta", WorkspaceAccess.READ),),
+            program_node(
+                "dkv",
+                depends_on=("delta",),
+                workspace_accesses=(("delta", WorkspaceAccess.READ),),
             ),
         ),
         workspaces=(workspace,),
     )
     assert group.topological_order() == ("delta", "dkv", "dq")
-    with pytest.raises(KernelContractError, match="cycle"):
+    with pytest.raises(KernelContractError, match="acyclic"):
         ProgramGroupSpec(
             nodes=(
-                ProgramNodeSpec("a", "pkg:a", "a_launch", depends_on=("b",)),
-                ProgramNodeSpec("b", "pkg:b", "b_launch", depends_on=("a",)),
+                program_node("a", depends_on=("b",)),
+                program_node("b", depends_on=("a",)),
             )
         )
 
@@ -669,23 +848,19 @@ def test_program_group_canonicalizes_dag_and_workspace_identity() -> None:
     second = WorkspaceSpec(
         "second", ShapeTuple((DimRef("x", 1),)), ConstantDType("float32")
     )
-    producer = ProgramNodeSpec(
+    producer = program_node(
         "producer",
-        "pkg:producer",
-        "producer_launch",
-        workspace_uses=(
-            WorkspaceUseSpec("second", WorkspaceAccess.WRITE),
-            WorkspaceUseSpec("first", WorkspaceAccess.WRITE),
+        workspace_accesses=(
+            ("second", WorkspaceAccess.WRITE),
+            ("first", WorkspaceAccess.WRITE),
         ),
     )
-    consumer = ProgramNodeSpec(
+    consumer = program_node(
         "consumer",
-        "pkg:consumer",
-        "consumer_launch",
         depends_on=("producer",),
-        workspace_uses=(
-            WorkspaceUseSpec("second", WorkspaceAccess.READ),
-            WorkspaceUseSpec("first", WorkspaceAccess.READ),
+        workspace_accesses=(
+            ("second", WorkspaceAccess.READ),
+            ("first", WorkspaceAccess.READ),
         ),
     )
     left = ProgramGroupSpec((consumer, producer), (second, first))
@@ -701,35 +876,26 @@ def test_program_group_rejects_invalid_workspace_dataflow() -> None:
     )
     with pytest.raises(KernelContractError, match="undeclared workspace"):
         ProgramGroupSpec(
-            nodes=(ProgramNodeSpec(
-                "node", "pkg:node", "node_launch",
-                workspace_uses=(WorkspaceUseSpec("missing", WorkspaceAccess.WRITE),),
+            nodes=(program_node(
+                "node", workspace_accesses=(("missing", WorkspaceAccess.WRITE),)
             ),),
         )
     with pytest.raises(KernelContractError, match="multiple writers"):
         ProgramGroupSpec(
             nodes=(
-                ProgramNodeSpec(
-                    "a", "pkg:a", "a_launch",
-                    workspace_uses=(WorkspaceUseSpec("scratch", WorkspaceAccess.WRITE),),
-                ),
-                ProgramNodeSpec(
-                    "b", "pkg:b", "b_launch",
-                    workspace_uses=(WorkspaceUseSpec("scratch", WorkspaceAccess.WRITE),),
-                ),
+                program_node("a", workspace_accesses=(("scratch", WorkspaceAccess.WRITE),)),
+                program_node("b", workspace_accesses=(("scratch", WorkspaceAccess.WRITE),)),
             ),
             workspaces=(workspace,),
         )
-    with pytest.raises(KernelContractError, match="must transitively depend"):
+    with pytest.raises(KernelContractError, match="transitively depend"):
         ProgramGroupSpec(
             nodes=(
-                ProgramNodeSpec(
-                    "producer", "pkg:producer", "producer_launch",
-                    workspace_uses=(WorkspaceUseSpec("scratch", WorkspaceAccess.WRITE),),
+                program_node(
+                    "producer", workspace_accesses=(("scratch", WorkspaceAccess.WRITE),)
                 ),
-                ProgramNodeSpec(
-                    "reader", "pkg:reader", "reader_launch",
-                    workspace_uses=(WorkspaceUseSpec("scratch", WorkspaceAccess.READ),),
+                program_node(
+                    "reader", workspace_accesses=(("scratch", WorkspaceAccess.READ),)
                 ),
             ),
             workspaces=(workspace,),
@@ -737,13 +903,13 @@ def test_program_group_rejects_invalid_workspace_dataflow() -> None:
 
 
 def test_workspace_lifetime_writer_and_domain_laws() -> None:
-    with pytest.raises(KernelContractError, match="SHAPE-domain"):
+    with pytest.raises(KernelContractError, match="shape expression"):
         WorkspaceSpec("bad", ConstantDType("float32"), ConstantDType("float32"))
-    with pytest.raises(KernelContractError, match="typed dtype"):
+    with pytest.raises(KernelContractError, match="dtype expression"):
         WorkspaceSpec(
             "bad", ShapeTuple((DimRef("x", 0),)), DimRef("x", 0)  # type: ignore[arg-type]
         )
-    with pytest.raises(KernelContractError, match="zero_initialize must be a bool"):
+    with pytest.raises(KernelContractError, match="zero_initialize must be bool"):
         WorkspaceSpec(
             "bad", ShapeTuple((DimRef("x", 0),)), ConstantDType("float32"),
             zero_initialize=1,  # type: ignore[arg-type]
@@ -752,19 +918,97 @@ def test_workspace_lifetime_writer_and_domain_laws() -> None:
         "local", ShapeTuple((DimRef("x", 0),)), ConstantDType("float32"),
         zero_initialize=True, lifetime=WorkspaceLifetime.NODE,
     )
-    with pytest.raises(KernelContractError, match="exactly one using node"):
+    with pytest.raises(KernelContractError, match="exactly one user"):
         ProgramGroupSpec(
             nodes=(
-                ProgramNodeSpec(
-                    "a", "pkg:a", "a_launch",
-                    workspace_uses=(WorkspaceUseSpec("local", WorkspaceAccess.READ),),
-                ),
-                ProgramNodeSpec(
-                    "b", "pkg:b", "b_launch", depends_on=("a",),
-                    workspace_uses=(WorkspaceUseSpec("local", WorkspaceAccess.READ),),
+                program_node("a", workspace_accesses=(("local", WorkspaceAccess.READ),)),
+                program_node(
+                    "b", depends_on=("a",),
+                    workspace_accesses=(("local", WorkspaceAccess.READ),),
                 ),
             ),
             workspaces=(local,),
+        )
+
+
+def test_callable_node_abi_is_typed_positional_and_artifact_scoped() -> None:
+    tensor = ProgramParameterSpec(
+        0, "output", ProgramParameterKind.TENSOR, WorkspaceAccess.WRITE,
+        ShapeTuple((DimRef("x", 0),)), ConstantDType("float32"),
+        ConstantDevice("cuda"),
+    )
+    stream = ProgramParameterSpec(
+        1, "stream", ProgramParameterKind.STREAM, WorkspaceAccess.READ,
+    )
+    node_a = ProgramNodeSpec(
+        "a", "pkg:a", "mindclade_a_adapter", "call",
+        ProgramEntryABI.TILELANG_0_1_13_HOST_CALL,
+        (stream, tensor),
+        (
+            ProgramBindingSpec("stream", ProgramBindingSource.CURRENT_STREAM),
+            ProgramBindingSpec("output", ProgramBindingSource.PROVIDER_OUTPUT, "result"),
+        ),
+    )
+    node_b = program_node("b")
+    assert tuple(parameter.position for parameter in node_a.parameters) == (0, 1)
+    assert node_a.entry_symbol == node_b.entry_symbol == "call"
+    assert node_a.return_abi is ProgramReturnABI.STATUS_I32_ZERO_SUCCESS
+    assert node_a.artifact_boundary is ProgramArtifactBoundary.NODE_CONTENT_ADDRESSED_DSO
+    ProgramGroupSpec((node_a, node_b))
+
+    with pytest.raises(KernelContractError, match="contiguous from zero"):
+        ProgramNodeSpec(
+            "bad", "pkg:bad", "mindclade_bad_adapter", "call",
+            ProgramEntryABI.TILELANG_0_1_13_HOST_CALL,
+            (ProgramParameterSpec(
+                1, "stream", ProgramParameterKind.STREAM, WorkspaceAccess.READ,
+            ),),
+            (ProgramBindingSpec("stream", ProgramBindingSource.CURRENT_STREAM),),
+        )
+    with pytest.raises(KernelContractError, match="exactly one CURRENT_STREAM"):
+        ProgramNodeSpec(
+            "bad", "pkg:bad", "mindclade_bad_adapter", "call",
+            ProgramEntryABI.TILELANG_0_1_13_HOST_CALL,
+            (tensor,),
+            (ProgramBindingSpec(
+                "output", ProgramBindingSource.PROVIDER_OUTPUT, "result"
+            ),),
+        )
+    with pytest.raises(KernelContractError, match="read-only bool"):
+        ProgramNodeSpec(
+            "bad", "pkg:bad", "mindclade_bad_adapter", "call",
+            ProgramEntryABI.TILELANG_0_1_13_HOST_CALL,
+            (
+                ProgramParameterSpec(
+                    0, "need_grad", ProgramParameterKind.SCALAR,
+                    WorkspaceAccess.READ, scalar_type=ScalarABIType.INT64,
+                ),
+                stream,
+            ),
+            (
+                ProgramBindingSpec(
+                    "need_grad", ProgramBindingSource.GRADIENT_REQUEST, "x"
+                ),
+                ProgramBindingSpec("stream", ProgramBindingSource.CURRENT_STREAM),
+            ),
+        )
+
+    optional_output = ProgramParameterSpec(
+        0, "grad", ProgramParameterKind.TENSOR, WorkspaceAccess.WRITE,
+        ShapeTuple((DimRef("x", 0),)), ConstantDType("float32"),
+        ConstantDevice("cuda"), optional=True,
+    )
+    with pytest.raises(KernelContractError, match="one shared GRADIENT_REQUEST"):
+        ProgramNodeSpec(
+            "optional", "pkg:optional", "mindclade_optional_adapter", "call",
+            ProgramEntryABI.TILELANG_0_1_13_HOST_CALL,
+            (optional_output, stream),
+            (
+                ProgramBindingSpec(
+                    "grad", ProgramBindingSource.PROVIDER_OUTPUT, "grad_x"
+                ),
+                ProgramBindingSpec("stream", ProgramBindingSource.CURRENT_STREAM),
+            ),
         )
 
 
@@ -782,12 +1026,12 @@ def test_output_requires_exact_expression_domains_and_boolean_types() -> None:
     with pytest.raises(KernelContractError, match="visible_in_facade must be a bool"):
         OutputSpec(
             "bad", ShapeTuple((DimRef("x", 0),)), ConstantDType("float32"),
-            ConstantDevice("cuda"), ("axis",), 1, False,  # type: ignore[arg-type]
+            ConstantDevice("cuda"), ("axis",), 1, False,
         )
 
 
 def test_program_group_symbols_and_logical_launch_contract_fail_closed() -> None:
-    node = ProgramNodeSpec("node", "pkg:node", "private_launch")
+    node = program_node("node", symbol="private_launch")
     group = ProgramGroupSpec((node,))
     forward = ForwardSpec(
         schema="_example_fwd(Tensor x) -> Tensor result",
@@ -819,9 +1063,8 @@ def test_workspace_plan_and_hidden_allocation_claim_must_match() -> None:
         "scratch", ShapeTuple((DimRef("x", 0),)), ConstantDType("float32")
     )
     group = ProgramGroupSpec(
-        nodes=(ProgramNodeSpec(
-            "node", "pkg:node", "node_launch",
-            workspace_uses=(WorkspaceUseSpec("scratch", WorkspaceAccess.WRITE),),
+        nodes=(program_node(
+            "node", workspace_accesses=(("scratch", WorkspaceAccess.WRITE),)
         ),),
         workspaces=(workspace,),
     )
@@ -1047,7 +1290,7 @@ def test_composite_gradient_names_bind_semantic_arguments() -> None:
                 "pkg:backward",
                 _SHA,
                 "pytorch-2.10",
-                (GradientSpec("weight", "grad_weight"),),
+                (gradient("weight", "grad_weight"),),
                 False,
                 setup_context="pkg:setup_context",
                 backward="pkg:backward",

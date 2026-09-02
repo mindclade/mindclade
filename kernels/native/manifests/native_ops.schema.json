@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.mindclade.dev/kernels/native-ops/v3",
+  "$id": "https://schemas.mindclade.dev/kernels/native-ops/v4",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -9,13 +9,13 @@
     "request_time_compilation", "operators", "semantic_digest", "manifest_digest"
   ],
   "properties": {
-    "schema_version": {"const": 3},
+    "schema_version": {"const": 4},
     "generator": {
       "type": "object", "additionalProperties": false,
       "required": ["id", "version"],
       "properties": {
         "id": {"const": "kernels.native.codegen.generate"},
-        "version": {"const": 7}
+        "version": {"const": 8}
       }
     },
     "source_inventory_sha256": {"$ref": "#/$defs/digest"},
@@ -120,13 +120,46 @@
     },
     "gradient": {
       "type": "object", "additionalProperties": false,
-      "required": ["type", "input_name", "output_name", "optional", "accumulation_dtype", "version"],
+      "required": [
+        "type", "input_name", "output_name", "shape", "dtype", "device",
+        "optional", "accumulation_dtype", "version"
+      ],
       "properties": {
         "type": {"const": "GradientSpec"},
         "input_name": {"$ref": "#/$defs/value_name"},
         "output_name": {"$ref": "#/$defs/value_name"},
+        "shape": {"$ref": "#/$defs/shape_expression"},
+        "dtype": {"$ref": "#/$defs/dtype_expression"},
+        "device": {"$ref": "#/$defs/device_expression"},
         "optional": {"type": "boolean"},
         "accumulation_dtype": {"type": ["string", "null"]},
+        "version": {"const": 1}
+      }
+    },
+    "workload_binding": {
+      "type": "object", "additionalProperties": false,
+      "required": ["type", "name", "value", "version"],
+      "properties": {
+        "type": {"enum": ["WorkloadDimensionBinding", "WorkloadAttributeBinding"]},
+        "name": {"$ref": "#/$defs/name"},
+        "value": {"$ref": "#/$defs/expression"},
+        "version": {"const": 1}
+      }
+    },
+    "runtime_workload": {
+      "type": "object", "additionalProperties": false,
+      "required": [
+        "type", "dimensions", "input_dtype", "layout", "mode_selector",
+        "attributes", "canonicalization_version", "version"
+      ],
+      "properties": {
+        "type": {"const": "RuntimeWorkloadSpec"},
+        "dimensions": {"type": "array", "minItems": 1, "maxItems": 64, "items": {"$ref": "#/$defs/workload_binding"}},
+        "input_dtype": {"$ref": "#/$defs/expression"},
+        "layout": {"$ref": "#/$defs/name"},
+        "mode_selector": {"type": ["string", "null"], "pattern": "^[a-z][a-z0-9_]{0,63}$"},
+        "attributes": {"type": "array", "maxItems": 64, "items": {"$ref": "#/$defs/workload_binding"}},
+        "canonicalization_version": {"const": 1},
         "version": {"const": 1}
       }
     },
@@ -181,32 +214,94 @@
         }
       ]
     },
-    "workspace_use": {
+    "device_expression": {
+      "allOf": [
+        {"$ref": "#/$defs/expression"},
+        {
+          "properties": {
+            "node": {"enum": ["device_ref", "same_as_input_device", "constant_device", "select"]}
+          }
+        }
+      ]
+    },
+    "program_parameter": {
       "type": "object", "additionalProperties": false,
-      "required": ["type", "workspace", "access", "version"],
+      "required": [
+        "type", "position", "name", "kind", "access", "shape", "dtype",
+        "device", "scalar_type", "optional", "version"
+      ],
       "properties": {
-        "type": {"const": "WorkspaceUseSpec"},
-        "workspace": {"$ref": "#/$defs/value_name"},
+        "type": {"const": "ProgramParameterSpec"},
+        "position": {"type": "integer", "minimum": 0, "maximum": 255},
+        "name": {"$ref": "#/$defs/value_name"},
+        "kind": {"enum": ["tensor", "scalar", "stream"]},
         "access": {"enum": ["read", "write", "read_write"]},
+        "shape": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/expression"}]},
+        "dtype": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/expression"}]},
+        "device": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/expression"}]},
+        "scalar_type": {"enum": [null, "bool", "int64", "float64"]},
+        "optional": {"type": "boolean"},
+        "version": {"const": 1}
+      }
+    },
+    "program_binding": {
+      "type": "object", "additionalProperties": false,
+      "required": ["type", "parameter", "source", "source_name", "version"],
+      "properties": {
+        "type": {"const": "ProgramBindingSpec"},
+        "parameter": {"$ref": "#/$defs/value_name"},
+        "source": {"enum": [
+          "operator_argument", "output_gradient", "forward_output",
+          "provider_output", "workspace", "gradient_request", "current_stream"
+        ]},
+        "source_name": {
+          "oneOf": [{"type": "null"}, {"$ref": "#/$defs/value_name"}]
+        },
+        "version": {"const": 1}
+      }
+    },
+    "program_selector_binding": {
+      "type": "object", "additionalProperties": false,
+      "required": [
+        "type", "provider_argument", "selector_key", "scalar_type", "cases", "version"
+      ],
+      "properties": {
+        "type": {"const": "ProgramSelectorBinding"},
+        "provider_argument": {"$ref": "#/$defs/value_name"},
+        "selector_key": {"const": "mode"},
+        "scalar_type": {"const": "bool"},
+        "cases": {"const": [[false, "incoming"], [true, "outgoing"]]},
         "version": {"const": 1}
       }
     },
     "program_node": {
       "type": "object", "additionalProperties": false,
-      "required": ["type", "name", "builder", "symbol", "depends_on", "workspace_uses", "version"],
+      "required": [
+        "type", "name", "builder", "symbol", "entry_symbol", "entry_abi",
+        "parameters", "bindings", "depends_on", "return_abi",
+        "artifact_boundary", "version"
+      ],
       "properties": {
         "type": {"const": "ProgramNodeSpec"},
         "name": {"$ref": "#/$defs/value_name"},
         "builder": {"$ref": "#/$defs/callable"},
         "symbol": {"$ref": "#/$defs/symbol"},
+        "entry_symbol": {"$ref": "#/$defs/symbol"},
+        "entry_abi": {"const": "tilelang_0_1_13_host_call"},
+        "parameters": {
+          "type": "array", "minItems": 1, "maxItems": 256,
+          "items": {"$ref": "#/$defs/program_parameter"}
+        },
+        "bindings": {
+          "type": "array", "minItems": 1, "maxItems": 256,
+          "items": {"$ref": "#/$defs/program_binding"}
+        },
         "depends_on": {
           "type": "array", "maxItems": 64,
           "items": {"$ref": "#/$defs/value_name"}, "uniqueItems": true
         },
-        "workspace_uses": {
-          "type": "array", "maxItems": 64,
-          "items": {"$ref": "#/$defs/workspace_use"}, "uniqueItems": true
-        },
+        "return_abi": {"const": "status_i32_zero_success"},
+        "artifact_boundary": {"const": "node_content_addressed_dso"},
         "version": {"const": 1}
       }
     },
@@ -215,7 +310,7 @@
         {"type": "null"},
         {
           "type": "object", "additionalProperties": false,
-          "required": ["type", "nodes", "workspaces", "version"],
+          "required": ["type", "nodes", "workspaces", "selector_bindings", "version"],
           "properties": {
             "type": {"const": "ProgramGroupSpec"},
             "nodes": {
@@ -226,32 +321,40 @@
               "type": "array", "maxItems": 64,
               "items": {"$ref": "#/$defs/workspace"}, "uniqueItems": true
             },
+            "selector_bindings": {
+              "type": "array", "maxItems": 8,
+              "items": {"$ref": "#/$defs/program_selector_binding"},
+              "uniqueItems": true
+            },
             "version": {"const": 1}
           }
         }
       ]
     },
-    "launcher_workspace_use": {
-      "type": "object", "additionalProperties": false,
-      "required": ["workspace", "access"],
-      "properties": {
-        "workspace": {"$ref": "#/$defs/value_name"},
-        "access": {"enum": ["read", "write", "read_write"]}
-      }
-    },
     "launcher_node": {
       "type": "object", "additionalProperties": false,
-      "required": ["name", "symbol", "depends_on", "workspace_uses"],
+      "required": [
+        "name", "symbol", "entry_symbol", "entry_abi", "return_abi",
+        "artifact_boundary", "depends_on", "parameters", "bindings"
+      ],
       "properties": {
         "name": {"$ref": "#/$defs/value_name"},
         "symbol": {"$ref": "#/$defs/symbol"},
+        "entry_symbol": {"$ref": "#/$defs/symbol"},
+        "entry_abi": {"const": "tilelang_0_1_13_host_call"},
+        "return_abi": {"const": "status_i32_zero_success"},
+        "artifact_boundary": {"const": "node_content_addressed_dso"},
         "depends_on": {
           "type": "array", "maxItems": 64,
           "items": {"$ref": "#/$defs/value_name"}, "uniqueItems": true
         },
-        "workspace_uses": {
-          "type": "array", "maxItems": 64,
-          "items": {"$ref": "#/$defs/launcher_workspace_use"}, "uniqueItems": true
+        "parameters": {
+          "type": "array", "minItems": 1, "maxItems": 256,
+          "items": {"$ref": "#/$defs/program_parameter"}
+        },
+        "bindings": {
+          "type": "array", "minItems": 1, "maxItems": 256,
+          "items": {"$ref": "#/$defs/program_binding"}
         }
       }
     },
@@ -270,19 +373,24 @@
       "type": "object", "additionalProperties": false,
       "required": [
         "phase", "logical_symbol", "bridge_requirement", "execution_order",
-        "required_private_symbols", "nodes", "workspaces"
+        "adapter_symbol_prefixes", "nodes", "workspaces", "selector_bindings"
       ],
       "properties": {
         "phase": {"enum": ["forward", "backward"]},
         "logical_symbol": {"$ref": "#/$defs/symbol"},
-        "bridge_requirement": {"const": "mindclade_program_group_bridge_v1"},
+        "bridge_requirement": {"const": "mindclade_node_launch_v1"},
         "execution_order": {
           "type": "array", "minItems": 1, "maxItems": 64,
           "items": {"$ref": "#/$defs/value_name"}, "uniqueItems": true
         },
-        "required_private_symbols": {
+        "adapter_symbol_prefixes": {
           "type": "array", "minItems": 1, "maxItems": 64,
           "items": {"$ref": "#/$defs/symbol"}, "uniqueItems": true
+        },
+        "selector_bindings": {
+          "type": "array", "maxItems": 8,
+          "items": {"$ref": "#/$defs/program_selector_binding"},
+          "uniqueItems": true
         },
         "nodes": {
           "type": "array", "minItems": 1, "maxItems": 64,
@@ -495,7 +603,7 @@
       "required": [
         "name", "qualified_name", "namespace", "family", "source", "spec_sha256",
         "kernel_spec_digest", "implementation_digest", "implementation_candidates", "operator_schema", "facade_outputs", "fake", "forward",
-        "backward", "autograd_policy", "composite", "effects", "launch", "backend",
+        "backward", "autograd_policy", "composite", "effects", "launch", "runtime_workload", "backend",
         "version", "devices", "registrations", "launcher_plans"
       ],
       "properties": {
@@ -517,6 +625,7 @@
         "composite": {"$ref": "#/$defs/composite"},
         "effects": {"$ref": "#/$defs/effects"},
         "launch": {"$ref": "#/$defs/launch"},
+        "runtime_workload": {"$ref": "#/$defs/runtime_workload"},
         "backend": {"const": "tilelang"},
         "version": {"type": "integer", "minimum": 1},
         "devices": {"const": ["cuda"]},

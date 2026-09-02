@@ -77,6 +77,9 @@ def build_forward_program(
         block_channels=block_channels, threads=threads,
     )
 
+    tilelang = __import__("tilelang")
+
+    @tilelang.jit(out_idx=[3], target=target_arch)
     @T.prim_func
     def mindclade_tilelang_triangle_multiplication_forward_raw(
         left: T.Tensor((batch, residues, residues, channels), dtype),
@@ -134,6 +137,9 @@ def build_dleft(
         block_channels=block_channels, threads=threads,
     )
 
+    tilelang = __import__("tilelang")
+
+    @tilelang.jit(out_idx=[4], target=target_arch)
     @T.prim_func
     def mindclade_tilelang_triangle_multiplication_dleft_raw(
         grad_output: T.Tensor((batch, residues, residues, channels), dtype),
@@ -192,6 +198,9 @@ def build_dright(
         block_channels=block_channels, threads=threads,
     )
 
+    tilelang = __import__("tilelang")
+
+    @tilelang.jit(out_idx=[4], target=target_arch)
     @T.prim_func
     def mindclade_tilelang_triangle_multiplication_dright_raw(
         grad_output: T.Tensor((batch, residues, residues, channels), dtype),

@@ -149,3 +149,10 @@ spec:
       path: docs/adr/0021-jit-06-triangle-multiplication-sm90a-sm100a.md
       owners: [architecture, contract-governance]
       specificationAccepted: "2026-09-01"
+    - id: ADR-0022
+      title: Native signed qualification and production admission source activation
+      status: accepted-in-specification
+      connectedRatification: pending
+      path: docs/adr/0022-native-signed-qualification-and-production-admission-source-activation.md
+      owners: [architecture, contract-governance]
+      specificationAccepted: "2026-09-02"

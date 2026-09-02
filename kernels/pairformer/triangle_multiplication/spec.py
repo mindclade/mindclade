@@ -1,6 +1,7 @@
 """Declarative native-training contract for Pairformer triangle multiplication."""
 
 from kernels.api import (
+    RuntimeWorkloadSpec, WorkloadDimensionBinding,
     And,
     AutogradPolicy,
     BackwardArgumentBinding,
@@ -24,6 +25,18 @@ from kernels.api import (
     MissingGradientPolicy,
     OutputSpec,
     ProgramGroupSpec,
+    ProgramArtifactBoundary,
+    ProgramBindingSource,
+    ProgramBindingSpec,
+    ProgramEntryABI,
+    ProgramParameterKind,
+    ProgramParameterSpec,
+    WorkspaceAccess,
+    WorkspaceLifetime,
+    WorkspaceSpec,
+    ProgramReturnABI,
+    ProgramSelectorBinding,
+    ScalarABIType,
     ProgramNodeSpec,
     RankRef,
     ShapeOf,
@@ -56,12 +69,43 @@ KERNEL_SPEC: KernelSpec = KernelSpec(
         ),
         program_group=ProgramGroupSpec(
             nodes=(
-                ProgramNodeSpec(
-                    name="forward",
-                    builder="kernels.pairformer.triangle_multiplication.tilelang:build_forward_program",
-                    symbol="mindclade_tilelang_triangle_multiplication_forward_raw",
+            ProgramNodeSpec(
+                name='forward',
+                builder='kernels.pairformer.triangle_multiplication.tilelang:build_forward_program',
+                symbol='mindclade_tilelang_triangle_multiplication_forward_launch',
+                entry_symbol="call",
+                entry_abi=ProgramEntryABI.TILELANG_0_1_13_HOST_CALL,
+                parameters=(
+                    ProgramParameterSpec(position=0, name='left', kind=ProgramParameterKind.TENSOR, access=WorkspaceAccess.READ, shape=ShapeOf(argument='left'), dtype=DTypeRef(argument='left'), device=DeviceRef(argument='left')),
+                    ProgramParameterSpec(position=1, name='right', kind=ProgramParameterKind.TENSOR, access=WorkspaceAccess.READ, shape=ShapeOf(argument='right'), dtype=DTypeRef(argument='right'), device=DeviceRef(argument='right')),
+                    ProgramParameterSpec(position=2, name='mask', kind=ProgramParameterKind.TENSOR, access=WorkspaceAccess.READ, shape=ShapeOf(argument='mask'), dtype=DTypeRef(argument='mask'), device=DeviceRef(argument='mask')),
+                    ProgramParameterSpec(position=3, name='output', kind=ProgramParameterKind.TENSOR, access=WorkspaceAccess.WRITE, shape=ShapeOf(argument='left'), dtype=DTypeRef(argument='left'), device=DeviceRef(argument='left')),
+                    ProgramParameterSpec(position=4, name='stream', kind=ProgramParameterKind.STREAM, access=WorkspaceAccess.READ),
                 ),
+                bindings=(
+                    ProgramBindingSpec(parameter='left', source=ProgramBindingSource.OPERATOR_ARGUMENT, source_name='left'),
+                    ProgramBindingSpec(parameter='right', source=ProgramBindingSource.OPERATOR_ARGUMENT, source_name='right'),
+                    ProgramBindingSpec(parameter='mask', source=ProgramBindingSource.OPERATOR_ARGUMENT, source_name='mask'),
+                    ProgramBindingSpec(parameter='output', source=ProgramBindingSource.PROVIDER_OUTPUT, source_name='output'),
+                    ProgramBindingSpec(parameter='stream', source=ProgramBindingSource.CURRENT_STREAM),
+             
+             
+             
+             
             )
+            ,
+                return_abi=ProgramReturnABI.STATUS_I32_ZERO_SUCCESS,
+                artifact_boundary=ProgramArtifactBoundary.NODE_CONTENT_ADDRESSED_DSO,
+            ),
+            ),
+            selector_bindings=(
+                ProgramSelectorBinding(
+                    provider_argument="outgoing",
+                    selector_key="mode",
+                    scalar_type=ScalarABIType.BOOL,
+                    cases=((False, "incoming"), (True, "outgoing")),
+                ),
+            ),
         ),
     ),
     backward=BackwardSpec(
@@ -82,26 +126,101 @@ KERNEL_SPEC: KernelSpec = KernelSpec(
             BackwardArgumentBinding(provider_argument="need_right_grad", source=BackwardArgumentSource.NEEDS_INPUT_GRAD, source_name="right"),
         ),
         gradients=(
-            GradientSpec(input_name="left", output_name="grad_left", optional=True, accumulation_dtype="float32"),
-            GradientSpec(input_name="right", output_name="grad_right", optional=True, accumulation_dtype="float32"),
+            GradientSpec(input_name="left", output_name="grad_left", shape=ShapeOf(argument="left"), dtype=DTypeRef(argument="left"), device=DeviceRef(argument="left"), optional=True, accumulation_dtype="float32"),
+            GradientSpec(input_name="right", output_name="grad_right", shape=ShapeOf(argument="right"), dtype=DTypeRef(argument="right"), device=DeviceRef(argument="right"), optional=True, accumulation_dtype="float32"),
         ),
         supports_double_backward=False,
         program_group=ProgramGroupSpec(
             nodes=(
-                ProgramNodeSpec(
-                    name="dleft",
-                    builder="kernels.pairformer.triangle_multiplication.tilelang:build_dleft",
-                    symbol="mindclade_tilelang_triangle_multiplication_dleft_raw",
+            ProgramNodeSpec(
+                name='dleft',
+                builder='kernels.pairformer.triangle_multiplication.tilelang:build_dleft',
+                symbol='mindclade_tilelang_triangle_multiplication_dleft_launch',
+                entry_symbol="call",
+                entry_abi=ProgramEntryABI.TILELANG_0_1_13_HOST_CALL,
+                parameters=(
+                    ProgramParameterSpec(position=0, name='grad_output', kind=ProgramParameterKind.TENSOR, access=WorkspaceAccess.READ, shape=ShapeOf(argument='left'), dtype=DTypeRef(argument='left'), device=DeviceRef(argument='left')),
+                    ProgramParameterSpec(position=1, name='left', kind=ProgramParameterKind.TENSOR, access=WorkspaceAccess.READ, shape=ShapeOf(argument='left'), dtype=DTypeRef(argument='left'), device=DeviceRef(argument='left')),
+                    ProgramParameterSpec(position=2, name='right', kind=ProgramParameterKind.TENSOR, access=WorkspaceAccess.READ, shape=ShapeOf(argument='right'), dtype=DTypeRef(argument='right'), device=DeviceRef(argument='right')),
+                    ProgramParameterSpec(position=3, name='mask', kind=ProgramParameterKind.TENSOR, access=WorkspaceAccess.READ, shape=ShapeOf(argument='mask'), dtype=DTypeRef(argument='mask'), device=DeviceRef(argument='mask')),
+                    ProgramParameterSpec(position=4, name='grad_left', kind=ProgramParameterKind.TENSOR, access=WorkspaceAccess.WRITE, shape=ShapeOf(argument='left'), dtype=DTypeRef(argument='left'), device=DeviceRef(argument='left'), optional=True),
+                    ProgramParameterSpec(position=5, name='need_left_grad', kind=ProgramParameterKind.SCALAR, access=WorkspaceAccess.READ, scalar_type=ScalarABIType.BOOL),
+                    ProgramParameterSpec(position=6, name='stream', kind=ProgramParameterKind.STREAM, access=WorkspaceAccess.READ),
                 ),
-                ProgramNodeSpec(
-                    name="dright",
-                    builder="kernels.pairformer.triangle_multiplication.tilelang:build_dright",
-                    symbol="mindclade_tilelang_triangle_multiplication_dright_raw",
-                ),
+                bindings=(
+                    ProgramBindingSpec(parameter='grad_output', source=ProgramBindingSource.OUTPUT_GRADIENT, source_name='output'),
+                    ProgramBindingSpec(parameter='left', source=ProgramBindingSource.OPERATOR_ARGUMENT, source_name='left'),
+                    ProgramBindingSpec(parameter='right', source=ProgramBindingSource.OPERATOR_ARGUMENT, source_name='right'),
+                    ProgramBindingSpec(parameter='mask', source=ProgramBindingSource.OPERATOR_ARGUMENT, source_name='mask'),
+                    ProgramBindingSpec(parameter='grad_left', source=ProgramBindingSource.PROVIDER_OUTPUT, source_name='grad_left'),
+                    ProgramBindingSpec(parameter='need_left_grad', source=ProgramBindingSource.GRADIENT_REQUEST, source_name='left'),
+                    ProgramBindingSpec(parameter='stream', source=ProgramBindingSource.CURRENT_STREAM),
+             
+             
+             
+             
             )
+            ,
+                return_abi=ProgramReturnABI.STATUS_I32_ZERO_SUCCESS,
+                artifact_boundary=ProgramArtifactBoundary.NODE_CONTENT_ADDRESSED_DSO,
+            ),
+            ProgramNodeSpec(
+                name='dright',
+                builder='kernels.pairformer.triangle_multiplication.tilelang:build_dright',
+                symbol='mindclade_tilelang_triangle_multiplication_dright_launch',
+                entry_symbol="call",
+                entry_abi=ProgramEntryABI.TILELANG_0_1_13_HOST_CALL,
+                parameters=(
+                    ProgramParameterSpec(position=0, name='grad_output', kind=ProgramParameterKind.TENSOR, access=WorkspaceAccess.READ, shape=ShapeOf(argument='left'), dtype=DTypeRef(argument='left'), device=DeviceRef(argument='left')),
+                    ProgramParameterSpec(position=1, name='left', kind=ProgramParameterKind.TENSOR, access=WorkspaceAccess.READ, shape=ShapeOf(argument='left'), dtype=DTypeRef(argument='left'), device=DeviceRef(argument='left')),
+                    ProgramParameterSpec(position=2, name='right', kind=ProgramParameterKind.TENSOR, access=WorkspaceAccess.READ, shape=ShapeOf(argument='right'), dtype=DTypeRef(argument='right'), device=DeviceRef(argument='right')),
+                    ProgramParameterSpec(position=3, name='mask', kind=ProgramParameterKind.TENSOR, access=WorkspaceAccess.READ, shape=ShapeOf(argument='mask'), dtype=DTypeRef(argument='mask'), device=DeviceRef(argument='mask')),
+                    ProgramParameterSpec(position=4, name='grad_right', kind=ProgramParameterKind.TENSOR, access=WorkspaceAccess.WRITE, shape=ShapeOf(argument='right'), dtype=DTypeRef(argument='right'), device=DeviceRef(argument='right'), optional=True),
+                    ProgramParameterSpec(position=5, name='need_right_grad', kind=ProgramParameterKind.SCALAR, access=WorkspaceAccess.READ, scalar_type=ScalarABIType.BOOL),
+                    ProgramParameterSpec(position=6, name='stream', kind=ProgramParameterKind.STREAM, access=WorkspaceAccess.READ),
+                ),
+                bindings=(
+                    ProgramBindingSpec(parameter='grad_output', source=ProgramBindingSource.OUTPUT_GRADIENT, source_name='output'),
+                    ProgramBindingSpec(parameter='left', source=ProgramBindingSource.OPERATOR_ARGUMENT, source_name='left'),
+                    ProgramBindingSpec(parameter='right', source=ProgramBindingSource.OPERATOR_ARGUMENT, source_name='right'),
+                    ProgramBindingSpec(parameter='mask', source=ProgramBindingSource.OPERATOR_ARGUMENT, source_name='mask'),
+                    ProgramBindingSpec(parameter='grad_right', source=ProgramBindingSource.PROVIDER_OUTPUT, source_name='grad_right'),
+                    ProgramBindingSpec(parameter='need_right_grad', source=ProgramBindingSource.GRADIENT_REQUEST, source_name='right'),
+                    ProgramBindingSpec(parameter='stream', source=ProgramBindingSource.CURRENT_STREAM),
+             
+             
+             
+             
+            )
+            ,
+                return_abi=ProgramReturnABI.STATUS_I32_ZERO_SUCCESS,
+                artifact_boundary=ProgramArtifactBoundary.NODE_CONTENT_ADDRESSED_DSO,
+            ),
+            ),
+            selector_bindings=(
+                ProgramSelectorBinding(
+                    provider_argument="outgoing",
+                    selector_key="mode",
+                    scalar_type=ScalarABIType.BOOL,
+                    cases=((False, "incoming"), (True, "outgoing")),
+                ),
+            ),
         ),
     ),
     autograd_policy=AutogradPolicy.REQUIRED,
+    runtime_workload=RuntimeWorkloadSpec(
+        dimensions=(
+            WorkloadDimensionBinding(name="batch", value=DimRef(argument="left", axis=0)),
+            WorkloadDimensionBinding(name="channels", value=DimRef(argument="left", axis=3)),
+            WorkloadDimensionBinding(name="residues", value=DimRef(argument="left", axis=1)),
+        ),
+        input_dtype=DTypeRef(argument="left"),
+        layout="contiguous",
+        mode_selector="mode",
+        attributes=(),
+        canonicalization_version=1,
+        version=1,
+    ),
     effects=EffectSpec(),
     launch=LaunchContract(
         current_stream_only=True,

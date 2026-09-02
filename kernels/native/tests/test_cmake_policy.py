@@ -126,10 +126,10 @@ class CMakePolicyTest(unittest.TestCase):
             "mindclade_native_program_group_bridge UNKNOWN IMPORTED",
             "IMPORTED_LOCATION",
             "PRIVATE mindclade_native_program_group_bridge",
-            "PRIVATE MINDCLADE_PROGRAM_GROUP_BRIDGE_V1=1",
         ):
             self.assertIn(token, branch)
-        self.assertEqual(cuda.count("MINDCLADE_PROGRAM_GROUP_BRIDGE_V1=1"), 1)
+        self.assertEqual(cuda.count("MINDCLADE_NODE_LAUNCH_ABI_V1=1"), 1)
+        self.assertIn("PRIVATE MINDCLADE_NODE_LAUNCH_ABI_V1=1", cuda)
         self.assertNotIn("MINDCLADE_NATIVE_SCHEMA_ONLY", cuda)
 
     def test_production_library_is_separate_and_fails_unresolved_symbols(self) -> None:
@@ -151,7 +151,6 @@ class CMakePolicyTest(unittest.TestCase):
         for token in (
             "artifact_sha256",
             "required_symbols",
-            "MINDCLADE_TILELANG_REQUIRED_LOGICAL_SYMBOLS",
             "MINDCLADE_TILELANG_REQUIRED_PRIVATE_SYMBOLS",
             "do not match generated inventory",
             "must not contain duplicates",

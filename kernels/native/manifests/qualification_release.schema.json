@@ -1,0 +1,229 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mindclade.com/schemas/native/qualification-release-receipt-v1.json",
+  "title": "Mindclade immutable native qualification control receipt",
+  "oneOf": [
+    { "$ref": "#/$defs/k4" },
+    { "$ref": "#/$defs/k5" },
+    { "$ref": "#/$defs/revocation" },
+    { "$ref": "#/$defs/rollback" }
+  ],
+  "$defs": {
+    "digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "identity": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9._:/+\\-]{0,255}$"
+    },
+    "operation": {
+      "type": "string",
+      "pattern": "^mindclade::[a-z][a-z0-9_]{0,63}$"
+    },
+    "evidenceClass": {
+      "enum": ["PRODUCTION_K4_K5", "TEST_ONLY_UNQUALIFIED"]
+    },
+    "artifactDigest": {
+      "oneOf": [{ "$ref": "#/$defs/digest" }, { "type": "null" }]
+    },
+    "dimension": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "value"],
+      "properties": {
+        "name": { "type": "string", "pattern": "^[a-z][a-z0-9_]{0,63}$" },
+        "value": { "type": "integer", "minimum": 0, "maximum": 9223372036854775807 }
+      }
+    },
+    "attribute": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "type", "value"],
+      "properties": {
+        "name": { "type": "string", "pattern": "^[a-z][a-z0-9_]{0,63}$" },
+        "type": { "enum": ["bool", "int64", "float64", "string"] },
+        "value": {}
+      },
+      "allOf": [
+        { "if": { "properties": { "type": { "const": "bool" } } }, "then": { "properties": { "value": { "type": "boolean" } } } },
+        { "if": { "properties": { "type": { "const": "int64" } } }, "then": { "properties": { "value": { "type": "integer", "minimum": -9223372036854775808, "maximum": 9223372036854775807 } } } },
+        { "if": { "properties": { "type": { "const": "float64" } } }, "then": { "properties": { "value": { "type": "number" } } } },
+        { "if": { "properties": { "type": { "const": "string" } } }, "then": { "properties": { "value": { "type": "string", "maxLength": 1024 } } } }
+      ]
+    },
+    "dimensions": {
+      "type": "array", "minItems": 1, "maxItems": 64,
+      "items": { "$ref": "#/$defs/dimension" }
+    },
+    "attributes": {
+      "type": "array", "maxItems": 64,
+      "items": { "$ref": "#/$defs/attribute" }
+    },
+    "k4": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version", "version", "operation", "architecture",
+        "workload_digest", "specialization_digest", "dimensions", "attributes",
+        "hardware_fingerprint_digest", "compile_environment_digest",
+        "runtime_compatibility_digest", "numerical_receipt_digest",
+        "performance_receipt_digest", "benchmark_protocol_digest",
+        "raw_samples_digest", "forward_artifact_digest",
+        "backward_artifact_digest", "native_manifest_schema_version",
+        "native_manifest_generator_version", "build_receipt_schema_version",
+        "autograd_policy", "status", "evidence_class"
+      ],
+      "properties": {
+        "schema_version": { "const": "mindclade.k4-qualification-receipt.v1" },
+        "version": { "const": 1 },
+        "operation": { "$ref": "#/$defs/operation" },
+        "architecture": { "type": "string", "pattern": "^sm[0-9]{2,3}a$" },
+        "workload_digest": { "$ref": "#/$defs/digest" },
+        "specialization_digest": { "$ref": "#/$defs/digest" },
+        "dimensions": { "$ref": "#/$defs/dimensions" },
+        "attributes": { "$ref": "#/$defs/attributes" },
+        "hardware_fingerprint_digest": { "$ref": "#/$defs/digest" },
+        "compile_environment_digest": { "$ref": "#/$defs/digest" },
+        "runtime_compatibility_digest": { "$ref": "#/$defs/digest" },
+        "numerical_receipt_digest": { "$ref": "#/$defs/digest" },
+        "performance_receipt_digest": { "$ref": "#/$defs/digest" },
+        "benchmark_protocol_digest": { "$ref": "#/$defs/digest" },
+        "raw_samples_digest": { "$ref": "#/$defs/digest" },
+        "forward_artifact_digest": { "$ref": "#/$defs/digest" },
+        "backward_artifact_digest": { "$ref": "#/$defs/artifactDigest" },
+        "native_manifest_schema_version": { "const": 4 },
+        "native_manifest_generator_version": { "const": 8 },
+        "build_receipt_schema_version": { "const": 4 },
+        "autograd_policy": { "enum": ["required", "none", "composite"] },
+        "status": { "enum": ["PASS", "TEST_ONLY"] },
+        "evidence_class": { "$ref": "#/$defs/evidenceClass" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "evidence_class": { "const": "PRODUCTION_K4_K5" } } },
+          "then": { "properties": { "status": { "const": "PASS" } } },
+          "else": { "properties": { "status": { "const": "TEST_ONLY" } } }
+        },
+        {
+          "if": { "properties": { "autograd_policy": { "const": "required" } } },
+          "then": { "properties": { "backward_artifact_digest": { "$ref": "#/$defs/digest" } } },
+          "else": { "properties": { "backward_artifact_digest": { "type": "null" } } }
+        }
+      ]
+    },
+    "k5": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version", "version", "release_id", "operation",
+        "operation_version", "implementation", "implementation_version",
+        "tier", "priority", "architecture", "dtype", "layout", "mode",
+        "workload_digest", "specialization_digest", "dimensions", "attributes", "schedule_digest", "numerical_envelope_digest",
+        "k0_receipt_digest", "k1_receipt_digest", "k2_receipt_digest",
+        "k3_receipt_digest", "k4_receipt_digest", "bundle_digest",
+        "native_manifest_digest", "library_digest", "executable_plan_digest",
+        "forward_artifact_digest", "backward_artifact_digest",
+        "runtime_compatibility_digest", "compile_environment_digest",
+        "sbom_digest", "provenance_digest", "qualification_identity",
+        "repository_revision", "native_manifest_schema_version",
+        "native_manifest_generator_version", "build_receipt_schema_version",
+        "autograd_policy", "status", "evidence_class"
+      ],
+      "properties": {
+        "schema_version": { "const": "mindclade.k5-release-receipt.v1" },
+        "version": { "const": 1 },
+        "release_id": { "$ref": "#/$defs/identity" },
+        "operation": { "$ref": "#/$defs/operation" },
+        "operation_version": { "type": "integer", "minimum": 1 },
+        "implementation": { "$ref": "#/$defs/identity" },
+        "implementation_version": { "type": "integer", "minimum": 1 },
+        "tier": { "enum": ["portable", "optimized", "specialized", "hand_specialized"] },
+        "priority": { "type": "integer" },
+        "architecture": { "type": "string", "pattern": "^sm[0-9]{2,3}a$" },
+        "dtype": { "$ref": "#/$defs/identity" },
+        "layout": { "$ref": "#/$defs/identity" },
+        "mode": { "$ref": "#/$defs/identity" },
+        "workload_digest": { "$ref": "#/$defs/digest" },
+        "specialization_digest": { "$ref": "#/$defs/digest" },
+        "dimensions": { "$ref": "#/$defs/dimensions" },
+        "attributes": { "$ref": "#/$defs/attributes" },
+        "schedule_digest": { "$ref": "#/$defs/digest" },
+        "numerical_envelope_digest": { "$ref": "#/$defs/digest" },
+        "k0_receipt_digest": { "$ref": "#/$defs/digest" },
+        "k1_receipt_digest": { "$ref": "#/$defs/digest" },
+        "k2_receipt_digest": { "$ref": "#/$defs/digest" },
+        "k3_receipt_digest": { "$ref": "#/$defs/digest" },
+        "k4_receipt_digest": { "$ref": "#/$defs/digest" },
+        "bundle_digest": { "$ref": "#/$defs/digest" },
+        "native_manifest_digest": { "$ref": "#/$defs/digest" },
+        "library_digest": { "$ref": "#/$defs/digest" },
+        "executable_plan_digest": { "$ref": "#/$defs/digest" },
+        "forward_artifact_digest": { "$ref": "#/$defs/digest" },
+        "backward_artifact_digest": { "$ref": "#/$defs/artifactDigest" },
+        "runtime_compatibility_digest": { "$ref": "#/$defs/digest" },
+        "compile_environment_digest": { "$ref": "#/$defs/digest" },
+        "sbom_digest": { "$ref": "#/$defs/digest" },
+        "provenance_digest": { "$ref": "#/$defs/digest" },
+        "qualification_identity": { "$ref": "#/$defs/identity" },
+        "repository_revision": {
+          "type": "string",
+          "pattern": "^(?:[0-9a-f]{40}|[0-9a-f]{64})$"
+        },
+        "native_manifest_schema_version": { "const": 4 },
+        "native_manifest_generator_version": { "const": 8 },
+        "build_receipt_schema_version": { "const": 4 },
+        "autograd_policy": { "enum": ["required", "none", "composite"] },
+        "status": { "enum": ["PASS", "TEST_ONLY"] },
+        "evidence_class": { "$ref": "#/$defs/evidenceClass" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "evidence_class": { "const": "PRODUCTION_K4_K5" } } },
+          "then": { "properties": { "status": { "const": "PASS" } } },
+          "else": { "properties": { "status": { "const": "TEST_ONLY" } } }
+        },
+        {
+          "if": { "properties": { "autograd_policy": { "const": "required" } } },
+          "then": { "properties": { "backward_artifact_digest": { "$ref": "#/$defs/digest" } } },
+          "else": { "properties": { "backward_artifact_digest": { "type": "null" } } }
+        }
+      ]
+    },
+    "revocation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version", "version", "capability_digest",
+        "release_receipt_digest", "reason_code",
+        "revocation_policy_identity", "sequence", "evidence_class"
+      ],
+      "properties": {
+        "schema_version": { "const": "mindclade.capability-revocation-receipt.v1" },
+        "version": { "const": 1 },
+        "capability_digest": { "$ref": "#/$defs/digest" },
+        "release_receipt_digest": { "$ref": "#/$defs/digest" },
+        "reason_code": { "$ref": "#/$defs/identity" },
+        "revocation_policy_identity": { "$ref": "#/$defs/identity" },
+        "sequence": { "type": "integer", "minimum": 1 },
+        "evidence_class": { "$ref": "#/$defs/evidenceClass" }
+      }
+    },
+    "rollback": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version", "version", "revoked_capability_digest",
+        "replacement_capability_digest", "replacement_release_receipt_digest",
+        "reason_code", "sequence", "evidence_class"
+      ],
+      "properties": {
+        "schema_version": { "const": "mindclade.capability-rollback-receipt.v1" },
+        "version": { "const": 1 },
+        "revoked_capability_digest": { "$ref": "#/$defs/digest" },
+        "replacement_capability_digest": { "$ref": "#/$defs/digest" },
+        "replacement_release_receipt_digest": { "$ref": "#/$defs/digest" },
+        "reason_code": { "$ref": "#/$defs/identity" },
+        "sequence": { "type": "integer", "minimum": 1 },
+        "evidence_class": { "$ref": "#/$defs/evidenceClass" }
+      }
+    }
+  }
+}

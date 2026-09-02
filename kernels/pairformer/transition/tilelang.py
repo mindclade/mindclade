@@ -65,7 +65,7 @@ def build_forward(**_: object) -> dict[str, object]:
 def build_backward(**_: object) -> dict[str, object]:
     return {"phase": "backward",
             "logical_symbol": "mindclade_tilelang_transition_bwd_launch",
-            "execution_order": ("grad_gate_value", "grad_weight", "grad_bias", "grad_mask"),
+            "execution_order": ("grad_bias", "grad_gate", "grad_mask", "grad_value", "grad_weight"),
             "workspaces": (), "version": 1}
 
 
@@ -81,7 +81,7 @@ def build_forward_program(
 
     @tilelang.jit(out_idx=[5, 6], target=target_config)
     @T.prim_func
-    def mindclade_tilelang_transition_forward_program_launch(
+    def mindclade_tilelang_transition_forward_program_raw(
         gate: T.Tensor((batch_size, rows, hidden_channels), dtype),
         value: T.Tensor((batch_size, rows, hidden_channels), dtype),
         output_weight: T.Tensor((hidden_channels, output_channels), dtype),
@@ -107,10 +107,10 @@ def build_forward_program(
                     dtype, acc[0] * T.Cast("float32", mask[batch, row])
                 )
 
-    return mindclade_tilelang_transition_forward_program_launch
+    return mindclade_tilelang_transition_forward_program_raw
 
 
-def build_grad_gate_value(
+def build_grad_gate(
     *, target: str, architecture: str, dtype: str, batch_size: int, rows: int,
     hidden_channels: int, output_channels: int, mask_dtype: str = "float32",
     threads: int = 128, **_: object,
@@ -120,16 +120,15 @@ def build_grad_gate_value(
                        hidden_channels=hidden_channels,
                        output_channels=output_channels, threads=threads)
 
-    @tilelang.jit(out_idx=[5, 6], target=target_config)
+    @tilelang.jit(out_idx=[5], target=target_config)
     @T.prim_func
-    def mindclade_tilelang_transition_grad_gate_value_launch(
+    def mindclade_tilelang_transition_grad_gate_raw(
         grad_output: T.Tensor((batch_size, rows, output_channels), dtype),
         gate: T.Tensor((batch_size, rows, hidden_channels), dtype),
         value: T.Tensor((batch_size, rows, hidden_channels), dtype),
         output_weight: T.Tensor((hidden_channels, output_channels), dtype),
         mask: T.Tensor((batch_size, rows), mask_dtype),
         grad_gate: T.Tensor((batch_size, rows, hidden_channels), dtype),
-        grad_value: T.Tensor((batch_size, rows, hidden_channels), dtype),
     ):
         with T.Kernel(batch_size * rows * hidden_channels, threads=threads) as block:
             hidden = block % hidden_channels
@@ -150,11 +149,48 @@ def build_grad_gate_value(
                 grad_activated[0] * T.Cast("float32", value[batch, row, hidden])
                 * sigmoid * (1.0 + gate_value * (1.0 - sigmoid)),
             )
+    return mindclade_tilelang_transition_grad_gate_raw
+
+
+def build_grad_value(
+    *, target: str, architecture: str, dtype: str, batch_size: int, rows: int,
+    hidden_channels: int, output_channels: int, mask_dtype: str = "float32",
+    threads: int = 128, **_: object,
+) -> Any:
+    tilelang, T, target_config = _prepare(
+        target=target, architecture=architecture, dtype=dtype,
+        mask_dtype=mask_dtype, batch_size=batch_size, rows=rows,
+        hidden_channels=hidden_channels, output_channels=output_channels,
+        threads=threads,
+    )
+
+    @tilelang.jit(out_idx=[4], target=target_config)
+    @T.prim_func
+    def mindclade_tilelang_transition_grad_value_raw(
+        grad_output: T.Tensor((batch_size, rows, output_channels), dtype),
+        gate: T.Tensor((batch_size, rows, hidden_channels), dtype),
+        output_weight: T.Tensor((hidden_channels, output_channels), dtype),
+        mask: T.Tensor((batch_size, rows), mask_dtype),
+        grad_value: T.Tensor((batch_size, rows, hidden_channels), dtype),
+    ):
+        with T.Kernel(batch_size * rows * hidden_channels, threads=threads) as block:
+            hidden = block % hidden_channels
+            row = (block // hidden_channels) % rows
+            batch = block // (hidden_channels * rows)
+            grad_activated = T.alloc_local((1,), "float32")
+            grad_activated[0] = 0.0
+            for channel in T.serial(output_channels):
+                grad_activated[0] += T.Cast(
+                    "float32", grad_output[batch, row, channel]
+                ) * T.Cast("float32", mask[batch, row]) * T.Cast(
+                    "float32", output_weight[hidden, channel]
+                )
+            gate_value = T.Cast("float32", gate[batch, row, hidden])
             grad_value[batch, row, hidden] = T.Cast(
-                dtype, grad_activated[0] * gate_value * sigmoid
+                dtype, grad_activated[0] * gate_value * T.sigmoid(gate_value)
             )
 
-    return mindclade_tilelang_transition_grad_gate_value_launch
+    return mindclade_tilelang_transition_grad_value_raw
 
 
 def build_grad_weight(
@@ -169,7 +205,7 @@ def build_grad_weight(
 
     @tilelang.jit(out_idx=[4], target=target_config)
     @T.prim_func
-    def mindclade_tilelang_transition_grad_weight_launch(
+    def mindclade_tilelang_transition_grad_weight_raw(
         grad_output: T.Tensor((batch_size, rows, output_channels), dtype),
         gate: T.Tensor((batch_size, rows, hidden_channels), dtype),
         value: T.Tensor((batch_size, rows, hidden_channels), dtype),
@@ -189,7 +225,7 @@ def build_grad_weight(
                         "float32", value[batch, row, hidden])
             grad_weight[hidden, channel] = T.Cast(dtype, acc[0])
 
-    return mindclade_tilelang_transition_grad_weight_launch
+    return mindclade_tilelang_transition_grad_weight_raw
 
 
 def build_grad_bias(
@@ -204,7 +240,7 @@ def build_grad_bias(
 
     @tilelang.jit(out_idx=[2], target=target_config)
     @T.prim_func
-    def mindclade_tilelang_transition_grad_bias_launch(
+    def mindclade_tilelang_transition_grad_bias_raw(
         grad_output: T.Tensor((batch_size, rows, output_channels), dtype),
         mask: T.Tensor((batch_size, rows), mask_dtype),
         grad_bias: T.Tensor((output_channels,), dtype),
@@ -218,7 +254,7 @@ def build_grad_bias(
                         "float32", mask[batch, row])
             grad_bias[channel] = T.Cast(dtype, acc[0])
 
-    return mindclade_tilelang_transition_grad_bias_launch
+    return mindclade_tilelang_transition_grad_bias_raw
 
 
 def build_grad_mask(
@@ -233,7 +269,7 @@ def build_grad_mask(
 
     @tilelang.jit(out_idx=[2], target=target_config)
     @T.prim_func
-    def mindclade_tilelang_transition_grad_mask_launch(
+    def mindclade_tilelang_transition_grad_mask_raw(
         grad_output: T.Tensor((batch_size, rows, output_channels), dtype),
         pre_mask_output: T.Tensor((batch_size, rows, output_channels), dtype),
         grad_mask: T.Tensor((batch_size, rows), mask_dtype),
@@ -248,7 +284,7 @@ def build_grad_mask(
                     "float32", pre_mask_output[batch, row, channel])
             grad_mask[batch, row] = T.Cast(mask_dtype, acc[0])
 
-    return mindclade_tilelang_transition_grad_mask_launch
+    return mindclade_tilelang_transition_grad_mask_raw
 
 
 build_tilelang_program = build_forward_program

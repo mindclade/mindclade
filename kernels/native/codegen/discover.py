@@ -15,6 +15,7 @@ from kernels.api import (
     expression_references,
 )
 from kernels.native.codegen.parse_literal_ast import parse_kernel_declarations_source
+from kernels.native.codegen.callable_abi import validate_callable_abi
 from kernels.native.codegen.schema import parse_schema
 
 _PATH_SEGMENT = re.compile(r"[a-z][a-z0-9_]*")
@@ -313,6 +314,7 @@ def discover_specs(
         )
         _validate_spec_identity(spec, relative)
         implementations = _validate_implementations(spec, implementations, relative)
+        validate_callable_abi(spec, implementations)
         discovered.append(
             DiscoveredKernelSpec(
                 spec=spec,

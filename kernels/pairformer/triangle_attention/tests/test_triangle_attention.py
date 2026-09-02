@@ -99,7 +99,9 @@ def test_required_spec_has_saved_lse_delta_workspace_and_named_gradients():
     assert tuple(output.name for output in KERNEL_SPEC.forward.outputs) == ("output", "lse")
     assert all(output.saved_for_backward for output in KERNEL_SPEC.forward.outputs)
     assert tuple(node.name for node in KERNEL_SPEC.forward.program_group.nodes) == ("forward",)
-    assert {node.name for node in KERNEL_SPEC.backward.program_group.nodes} == {"delta", "dbias", "dkv", "dq"}
+    assert {node.name for node in KERNEL_SPEC.backward.program_group.nodes} == {
+        "delta", "dbias", "dk", "dq", "dv"
+    }
     assert tuple(workspace.name for workspace in KERNEL_SPEC.backward.program_group.workspaces) == ("delta",)
     assert {gradient.input_name for gradient in KERNEL_SPEC.backward.gradients} == {"q", "k", "v", "bias"}
     assert all(gradient.optional for gradient in KERNEL_SPEC.backward.gradients)
@@ -117,7 +119,7 @@ def test_logical_descriptors_exactly_match_program_groups():
     assert build_backward_program_group() == {
         "phase": "backward",
         "logical_symbol": "mindclade_tilelang_triangle_attention_bwd_launch",
-        "execution_order": ("delta", "dbias", "dkv", "dq"),
+        "execution_order": ("delta", "dbias", "dk", "dq", "dv"),
         "workspaces": ("delta",),
         "version": 1,
     }
@@ -169,3 +171,34 @@ def test_profiles_are_bounded_and_builder_rejects_unqualified_target():
             target="auto", architecture="sm90a", batch=1, n=32,
             heads=4, head_dim=32, dtype="float16", threads=64,
         )
+
+
+def test_callable_nodes_use_artifact_scoped_host_call_abi():
+    from kernels.api import ProgramArtifactBoundary, ProgramBindingSource, ProgramEntryABI
+
+    groups = (KERNEL_SPEC.forward.program_group, KERNEL_SPEC.backward.program_group)
+    for group in groups:
+        assert group is not None
+        for node in group.nodes:
+            assert node.entry_symbol == "call"
+            assert node.entry_abi is ProgramEntryABI.TILELANG_0_1_13_HOST_CALL
+            assert node.artifact_boundary is ProgramArtifactBoundary.NODE_CONTENT_ADDRESSED_DSO
+            assert sum(binding.source is ProgramBindingSource.CURRENT_STREAM for binding in node.bindings) == 1
+    requests = {
+        node.name: sum(binding.source is ProgramBindingSource.GRADIENT_REQUEST for binding in node.bindings)
+        for node in KERNEL_SPEC.backward.program_group.nodes
+    }
+    assert requests == {"delta": 0, "dbias": 1, "dk": 1, "dq": 1, "dv": 1}
+
+def test_runtime_workload_contract_is_exact():
+    from kernels.pairformer.triangle_attention.spec import KERNEL_SPEC
+
+    workload = KERNEL_SPEC.runtime_workload
+    assert tuple((binding.name, binding.value.argument, binding.value.axis) for binding in workload.dimensions) == (
+        ("batch", "q", 0), ("head_dim", "q", 3),
+        ("heads", "q", 2), ("n", "q", 1),
+    )
+    assert workload.input_dtype.argument == "q"
+    assert workload.layout == "contiguous"
+    assert workload.mode_selector is None
+    assert workload.attributes == ()

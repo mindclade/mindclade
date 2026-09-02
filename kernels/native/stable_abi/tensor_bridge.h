@@ -9,6 +9,8 @@
 
 #include <torch/csrc/stable/tensor.h>
 
+#include "node_launch_abi.h"
+
 namespace mindclade::native::stable_abi {
 
 enum class TensorDType : std::uint8_t {
@@ -37,6 +39,18 @@ struct TensorView final {
     const torch::stable::Tensor& tensor,
     std::string_view argument,
     std::int64_t expected_rank = -1);
+
+[[nodiscard]] std::int64_t tensor_dimension(
+    const TensorView& view,
+    std::int64_t axis,
+    std::string_view argument);
+
+[[nodiscard]] std::uint32_t node_dtype(TensorDType dtype);
+
+void require_same_device(
+    const TensorView& expected,
+    const TensorView& actual,
+    std::string_view argument);
 
 [[nodiscard]] void* current_cuda_stream(
     const torch::stable::Tensor& tensor,

@@ -6,6 +6,11 @@ add_library(
   SHARED
     ../generated/registration.generated.cpp
     registration.cpp
+    node_launch_abi.h
+    node_launch_bridge.cpp
+    node_launch_bridge.h
+    qualified_capability_selector.cpp
+    qualified_capability_table.h
     tensor_bridge.cpp
     tensor_bridge.h
 )
