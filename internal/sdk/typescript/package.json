@@ -11,7 +11,7 @@
 		"lint": "cd ../../.. && biome check --config-path internal/sdk/typescript/biome.json internal/sdk/typescript"
 	},
 	"dependencies": {
-		"@bufbuild/protobuf": "2.11.0",
+		"@bufbuild/protobuf": "2.14.0",
 		"@connectrpc/connect": "catalog:",
 		"@connectrpc/connect-node": "catalog:"
 	},
