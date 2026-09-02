@@ -2866,7 +2866,6 @@ def main(argv: Sequence[str] | None = None) -> int:
     return 0
 
 
-
 # Pairformer Wave 6 governance activation (ADR-0016 through ADR-0021).
 PAIRFORMER_WAVE6_PLATFORM_ACTIVATION_ADR = (
     "docs/adr/0016-pairformer-native-kernel-platform-wave6-source-activation.md"
@@ -2894,9 +2893,7 @@ _PAIRFORMER_WAVE6_OPERATION_PREFIXES: tuple[str, ...] = tuple(
 )
 PAIRFORMER_WAVE6_OPERATION_PATHS: tuple[str, ...] = tuple(
     path
-    for path in dict.fromkeys(
-        (*NATIVE_SOURCE_INCUBATION_PATHS, *KERNEL_PLATFORM_AUTHORIZED_PATHS)
-    )
+    for path in dict.fromkeys((*NATIVE_SOURCE_INCUBATION_PATHS, *KERNEL_PLATFORM_AUTHORIZED_PATHS))
     if path.startswith(_PAIRFORMER_WAVE6_OPERATION_PREFIXES)
 )
 PAIRFORMER_WAVE6_ACTIVATION_CRITERION = (
@@ -2922,9 +2919,7 @@ def _pairformer_wave6_operation(path: str) -> str | None:
     return None
 
 
-def _activate_pairformer_wave6_entry(
-    entry: dict[str, object], path: str
-) -> dict[str, object]:
+def _activate_pairformer_wave6_entry(entry: dict[str, object], path: str) -> dict[str, object]:
     operation = _pairformer_wave6_operation(path)
     if operation is None or path not in PAIRFORMER_WAVE6_OPERATION_PATHS:
         return entry
@@ -2933,9 +2928,7 @@ def _activate_pairformer_wave6_entry(
         {
             "component": "kernels",
             "status": "active",
-            "build_targets": [
-                f"//kernels/pairformer/{operation}:policy_inputs"
-            ],
+            "build_targets": [f"//kernels/pairformer/{operation}:policy_inputs"],
             "test_targets": [_PAIRFORMER_WAVE6_TEST_TARGETS[operation]],
             "activation_criterion": PAIRFORMER_WAVE6_ACTIVATION_CRITERION,
         }
@@ -2950,9 +2943,7 @@ def build_native_source_incubation_entry(path: str) -> dict[str, object]:
 
 
 def build_kernel_platform_source_entry(path: str) -> dict[str, object]:
-    return _activate_pairformer_wave6_entry(
-        _build_kernel_platform_source_target_entry(path), path
-    )
+    return _activate_pairformer_wave6_entry(_build_kernel_platform_source_target_entry(path), path)
 
 
 def _reconciliation_addition_reason(path: str) -> str:
@@ -2976,9 +2967,7 @@ def _reconciliation_addition_reason(path: str) -> str:
     return _base_reconciliation_addition_reason(path)
 
 
-NATIVE_STABLE_ABI_TENSOR_BRIDGE_HEADER = (
-    "kernels/native/stable_abi/tensor_bridge.h"
-)
+NATIVE_STABLE_ABI_TENSOR_BRIDGE_HEADER = "kernels/native/stable_abi/tensor_bridge.h"
 NATIVE_SOURCE_INCUBATION_PATHS = (
     *NATIVE_SOURCE_INCUBATION_PATHS,
     NATIVE_STABLE_ABI_TENSOR_BRIDGE_HEADER,
@@ -2993,9 +2982,7 @@ REQUIRED_ADDITIONS = (
     *PAIRFORMER_WAVE6_ADRS,
 )
 CANONICAL_FILE_COUNT = CANONICAL_FILE_COUNT + len(PAIRFORMER_WAVE6_ADRS) + 1
-CANONICAL_PATH_SET_SHA256 = (
-    "f8e20536225b44168f47d6b5f6843563c79b90cf1b36f150a952562c77369658"
-)
+CANONICAL_PATH_SET_SHA256 = "f8e20536225b44168f47d6b5f6843563c79b90cf1b36f150a952562c77369658"
 PRE_ACTIVATION_SOURCE_PATHS = frozenset(
     path
     for path in (*PRE_ACTIVATION_SOURCE_PATHS, NATIVE_STABLE_ABI_TENSOR_BRIDGE_HEADER)

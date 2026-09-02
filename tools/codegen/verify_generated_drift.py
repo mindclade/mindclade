@@ -65,10 +65,7 @@ def main() -> int:
         if not candidate.is_file() or candidate.read_bytes() != expected_candidate:
             stale.append(PROTOBUF_CANDIDATE.as_posix())
         predecessor = root / PROTOBUF_PREDECESSOR
-        if (
-            not predecessor.is_file()
-            or sha256_file(predecessor) != PREDECESSOR_ARTIFACT_DIGEST
-        ):
+        if not predecessor.is_file() or sha256_file(predecessor) != PREDECESSOR_ARTIFACT_DIGEST:
             stale.append(PROTOBUF_PREDECESSOR.as_posix())
         stale.extend(verify_manifest(root))
     if stale:
