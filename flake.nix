@@ -57,28 +57,49 @@
             ]
           );
           pnpmNode26 = pkgs.pnpm.override { nodejs-slim = pkgs.nodejs_26; };
-          bazel = pkgs.writeShellApplication {
-            name = "bazel";
-            runtimeInputs = with pkgs; [
+          bazelRuntimeInputs =
+            with pkgs;
+            [
               bash
               bazel_9
+              bzip2
               cacert
               coreutils
               curl
+              diffutils
+              file
               findutils
+              gawk
               git
               gnugrep
+              gnumake
               gnused
               gnutar
               gzip
               jdk21_headless
+              jq
+              openssl.bin
+              openssh
+              patch
               stdenv.cc
               unzip
+              which
+              xz
+              zip
+            ]
+            ++ lib.optionals stdenv.hostPlatform.isDarwin [
+              darwin.cctools
+              darwin.cctools.libtool
             ];
+          bazel = pkgs.writeShellApplication {
+            name = "bazel";
+            runtimeInputs = bazelRuntimeInputs;
             text = ''
+              export PATH=${pkgs.lib.makeBinPath bazelRuntimeInputs}
               export JAVA_HOME=${pkgs.jdk21_headless}
               export CC=${pkgs.stdenv.cc}/bin/cc
               export CXX=${pkgs.stdenv.cc}/bin/c++
+              export BAZEL_LINKOPTS=${pkgs.lib.escapeShellArg (pkgs.lib.optionalString pkgs.stdenv.hostPlatform.isDarwin "-L${pkgs.darwin.libresolv}/lib")}
               export LANG=C
               export LC_ALL=C
               export TZ=UTC
@@ -114,6 +135,10 @@
                 store_path = "${pkgs.jdk21_headless}";
               };
               native_cc_store_path = "${pkgs.stdenv.cc}";
+              rust = {
+                version = pkgs.rustc.version;
+                store_path = "${pkgs.rustc}";
+              };
             }
           );
           toolchainPackages = with pkgs; [
@@ -180,7 +205,10 @@
             TZ = "UTC";
             UV_PROJECT_ENVIRONMENT = ".venv";
             shellHook = ''
-              export PATH="${current.pythonEnv}/bin:$PATH"
+              # mkShell preserves parts of the invoking PATH on some hosts.
+              # Reassert the repository closure first so Homebrew/rustup cannot
+              # silently replace a pinned compiler or package manager.
+              export PATH="${current.toolchain}/bin:${current.pythonEnv}/bin:$PATH"
               export MINDCLADE_REPOSITORY_ROOT="$PWD"
               echo "Mindclade Wave 0 shell — run: just bootstrap && just doctor"
             '';
@@ -235,7 +263,7 @@
             UV_PROJECT_ENVIRONMENT = ".venv";
 
             shellHook = ''
-              export PATH="${pythonEnv}/bin:$PATH"
+              export PATH="${base.toolchain}/bin:${pythonEnv}/bin:$PATH"
               export MINDCLADE_REPOSITORY_ROOT="$PWD"
               export EP_JIT_CACHE_DIR="$PWD/.cache/deepep/jit/${deepEpJitFingerprintId}"
               echo "Mindclade SM90 GPU intake shell — modern DeepEP 2.x; no production authority"
@@ -311,7 +339,8 @@
                   set -euo pipefail
                   command -v bazel buildifier buf cargo go jq just nixfmt node pnpm python3 rustc uv >/dev/null
                   test "$(bazel --version)" = "bazel 9.1.1"
-                  jq -e '.schema_version == "mindclade-toolchain.v1" and .bazel.version == "9.1.1"' \
+                  test "$(rustc --version | cut -d' ' -f2)" = '${pkgs.rustc.version}'
+                  jq -e '.schema_version == "mindclade-toolchain.v1" and .bazel.version == "9.1.1" and .rust.version == "${pkgs.rustc.version}"' \
                     ${current.toolchain}/share/mindclade/toolchain-manifest.json >/dev/null
                   mkdir -p "$out"
                   cp ${current.toolchain}/share/mindclade/toolchain-manifest.json "$out/"
@@ -325,6 +354,7 @@
                   set -euo pipefail
                   export HOME="$TMPDIR/home"
                   mkdir -p "$HOME" "$out"
+                  cd ${self}
                   python3 ${self}/tools/docs/validate_blueprint_sources.py \
                     --manifest ${self}/docs/architecture/blueprint/manifest.yaml
                   python3 ${self}/tools/docs/render_architecture_blueprint.py \
