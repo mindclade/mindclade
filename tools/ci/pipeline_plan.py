@@ -115,6 +115,7 @@ def build_plan(
             "wave1-full",
             "cacheless-reproducibility",
             "fresh-database-integration",
+            "authoritative-integration-readiness",
         ],
         "nightly": [
             "immutable-launcher",
@@ -127,6 +128,7 @@ def build_plan(
             "wave1-full",
             "cacheless-reproducibility",
             "fresh-database-integration",
+            "authoritative-integration-readiness",
         ],
         "presubmit": [
             "immutable-launcher",
@@ -136,6 +138,7 @@ def build_plan(
             "secret-scan",
             "bazel-native-agreement",
             "fresh-database-integration",
+            "authoritative-integration-readiness",
         ],
     }.get(
         pipeline_class,
@@ -326,8 +329,44 @@ def build_cache_boundary(
     }
 
 
+def _assert_evidence_gate_sets_are_consistent() -> None:
+    """Gate the readiness report wherever the fresh-database check is gated.
+
+    `just integration-ci` writes both `integration-ci.v1.json` and
+    `authoritative-integration-readiness.v2.json` unconditionally, and
+    `just ci-evidence` passes every report present on disk.
+    `evidence_bundle.build_evidence` then rejects a bundle whose report set
+    differs from the planned gate set. A class planning the fresh-database
+    gate while omitting the readiness gate therefore yields a bundle that can
+    never validate, failing `ci-evidence` on every real build.
+
+    This reads the real gate lists rather than a fixture: the defect it guards
+    against was a production gate list drifting away from a synthetic test
+    list that already agreed with the justfile.
+    """
+    source_revision = "c" * 40
+    pipeline_revision = "d" * 40
+    for pipeline_class in ("presubmit", "protected", "nightly", "gpu", "release", "security"):
+        gates = build_plan(
+            source_revision=source_revision,
+            pipeline_definition_revision=pipeline_revision,
+            pipeline_class=pipeline_class,
+            changed_files=["libs/go/audit/writer.go"],
+        )["gates"]
+        if (
+            "fresh-database-integration" in gates
+            and "authoritative-integration-readiness" not in gates
+        ):
+            raise AssertionError(
+                f"pipeline class {pipeline_class!r} gates fresh-database-integration without "
+                "authoritative-integration-readiness; just integration-ci emits both reports and "
+                "ci-evidence requires the report set to equal the planned gate set exactly"
+            )
+
+
 def self_test() -> None:
     affected_targets_self_test()
+    _assert_evidence_gate_sets_are_consistent()
     source_revision = "a" * 40
     pipeline_revision = "b" * 40
     plan = build_plan(
