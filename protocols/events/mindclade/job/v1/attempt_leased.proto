@@ -2,10 +2,18 @@ syntax = "proto3";
 
 package mindclade.events.job.v1;
 
+import "google/protobuf/timestamp.proto";
+import "proto/mindclade/job/v1/attempt.proto";
+import "proto/mindclade/job/v1/lease_fencing.proto";
+
 option go_package = "github.com/mindclade/mindclade/protocols/generated/go/job/v1;jobv1";
 
+// AttemptLeased is the immutable fact emitted with the transaction that grants
+// one token-bound worker lease. The raw lease token is transport metadata and
+// is deliberately absent.
 message AttemptLeased {
-  string attempt_id = 1;
-  uint64 lease_epoch = 2;
-  string lease_expires_at_utc = 3;
+  mindclade.job.v1.Attempt attempt = 1;
+  mindclade.job.v1.LeaseFence fence = 2;
+  google.protobuf.Timestamp leased_at = 3;
+  google.protobuf.Timestamp lease_expires_at = 4;
 }

@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package mindclade.events.agent.v1;
+
+import "google/protobuf/timestamp.proto";
+import "proto/mindclade/agent/v1/agent_run.proto";
+import "proto/mindclade/common/v1/resource_reference.proto";
+
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/agent/v1;agentv1";
+
+// AgentRunStarted records acceptance of one bounded, immutable run intent.
+message AgentRunStarted {
+  mindclade.agent.v1.AgentRun agent_run = 1;
+  mindclade.common.v1.ResourceRef operation = 2;
+  google.protobuf.Timestamp started_at = 3;
+}

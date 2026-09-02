@@ -62,7 +62,6 @@ pub mod agent_service_client {
             AgentServiceClient::new(InterceptedService::new(inner, interceptor))
         }
         /// Compress requests with the given encoding.
-        ///
         /// This requires the server to support it otherwise it might respond with an
         /// error.
         #[must_use]
@@ -77,7 +76,6 @@ pub mod agent_service_client {
             self
         }
         /// Limits the maximum size of a decoded message.
-        ///
         /// Default: `4MB`
         #[must_use]
         pub fn max_decoding_message_size(mut self, limit: usize) -> Self {
@@ -85,7 +83,6 @@ pub mod agent_service_client {
             self
         }
         /// Limits the maximum size of an encoded message.
-        ///
         /// Default: `usize::MAX`
         #[must_use]
         pub fn max_encoding_message_size(mut self, limit: usize) -> Self {
@@ -402,6 +399,37 @@ pub mod agent_service_client {
                 );
             self.inner.unary(req, path, codec).await
         }
+        /** CommitAgentStep appends a fenced decision/tool/wait/terminal step.
+*/
+        pub async fn commit_agent_step(
+            &mut self,
+            request: impl tonic::IntoRequest<super::CommitAgentStepRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::CommitAgentStepResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::unknown(
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic_prost::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/mindclade.internal.agent.v1.AgentService/CommitAgentStep",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new(
+                        "mindclade.internal.agent.v1.AgentService",
+                        "CommitAgentStep",
+                    ),
+                );
+            self.inner.unary(req, path, codec).await
+        }
         /** CommitToolReceipt rejects stale attempts and treats receipts as execution evidence.
 */
         pub async fn commit_tool_receipt(
@@ -538,6 +566,15 @@ pub mod agent_service_server {
             tonic::Response<super::ListAgentStepsResponse>,
             tonic::Status,
         >;
+        /** CommitAgentStep appends a fenced decision/tool/wait/terminal step.
+*/
+        async fn commit_agent_step(
+            &self,
+            request: tonic::Request<super::CommitAgentStepRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::CommitAgentStepResponse>,
+            tonic::Status,
+        >;
         /** CommitToolReceipt rejects stale attempts and treats receipts as execution evidence.
 */
         async fn commit_tool_receipt(
@@ -593,7 +630,6 @@ pub mod agent_service_server {
             self
         }
         /// Limits the maximum size of a decoded message.
-        ///
         /// Default: `4MB`
         #[must_use]
         pub fn max_decoding_message_size(mut self, limit: usize) -> Self {
@@ -601,7 +637,6 @@ pub mod agent_service_server {
             self
         }
         /// Limits the maximum size of an encoded message.
-        ///
         /// Default: `usize::MAX`
         #[must_use]
         pub fn max_encoding_message_size(mut self, limit: usize) -> Self {
@@ -1071,6 +1106,52 @@ pub mod agent_service_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let method = ListAgentStepsSvc(inner);
+                        let codec = tonic_prost::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/mindclade.internal.agent.v1.AgentService/CommitAgentStep" => {
+                    #[allow(non_camel_case_types)]
+                    struct CommitAgentStepSvc<T: AgentService>(pub Arc<T>);
+                    impl<
+                        T: AgentService,
+                    > tonic::server::UnaryService<super::CommitAgentStepRequest>
+                    for CommitAgentStepSvc<T> {
+                        type Response = super::CommitAgentStepResponse;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::Response>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::CommitAgentStepRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as AgentService>::commit_agent_step(&inner, request)
+                                    .await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = CommitAgentStepSvc(inner);
                         let codec = tonic_prost::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(

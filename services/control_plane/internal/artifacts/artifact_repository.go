@@ -112,5 +112,11 @@ func validateArtifactRef(tenantID string, ref *artifactv1.ArtifactRef) error {
 	if ref.GetMediaType() == "" || ref.GetSizeBytes() < 0 {
 		return errors.New("artifact media type and non-negative size are required")
 	}
+	if ref.GetIntegrityDigest() != "" && ref.GetIntegrityDigest() != ref.GetDigest() {
+		return errors.New("artifact integrity digest must match the verified content digest")
+	}
+	if (ref.GetSchemaId() == "") != (ref.GetSchemaVersion() == "") {
+		return errors.New("artifact schema_id and schema_version must be provided together")
+	}
 	return nil
 }

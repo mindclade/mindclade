@@ -62,7 +62,6 @@ pub mod artifact_service_client {
             ArtifactServiceClient::new(InterceptedService::new(inner, interceptor))
         }
         /// Compress requests with the given encoding.
-        ///
         /// This requires the server to support it otherwise it might respond with an
         /// error.
         #[must_use]
@@ -77,7 +76,6 @@ pub mod artifact_service_client {
             self
         }
         /// Limits the maximum size of a decoded message.
-        ///
         /// Default: `4MB`
         #[must_use]
         pub fn max_decoding_message_size(mut self, limit: usize) -> Self {
@@ -85,7 +83,6 @@ pub mod artifact_service_client {
             self
         }
         /// Limits the maximum size of an encoded message.
-        ///
         /// Default: `usize::MAX`
         #[must_use]
         pub fn max_encoding_message_size(mut self, limit: usize) -> Self {
@@ -309,6 +306,223 @@ pub mod artifact_service_client {
                 );
             self.inner.unary(req, path, codec).await
         }
+        /** BeginArtifactUpload creates a durable resumable transfer session.
+*/
+        pub async fn begin_artifact_upload(
+            &mut self,
+            request: impl tonic::IntoRequest<super::BeginArtifactUploadRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::BeginArtifactUploadResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::unknown(
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic_prost::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/mindclade.internal.artifact.v1.ArtifactService/BeginArtifactUpload",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new(
+                        "mindclade.internal.artifact.v1.ArtifactService",
+                        "BeginArtifactUpload",
+                    ),
+                );
+            self.inner.unary(req, path, codec).await
+        }
+        /** UploadArtifactChunk appends one contiguous, digest-verified chunk.
+*/
+        pub async fn upload_artifact_chunk(
+            &mut self,
+            request: impl tonic::IntoRequest<super::UploadArtifactChunkRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::UploadArtifactChunkResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::unknown(
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic_prost::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/mindclade.internal.artifact.v1.ArtifactService/UploadArtifactChunk",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new(
+                        "mindclade.internal.artifact.v1.ArtifactService",
+                        "UploadArtifactChunk",
+                    ),
+                );
+            self.inner.unary(req, path, codec).await
+        }
+        /** GetArtifactUpload returns authoritative resume offset and lifecycle state.
+*/
+        pub async fn get_artifact_upload(
+            &mut self,
+            request: impl tonic::IntoRequest<super::GetArtifactUploadRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::GetArtifactUploadResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::unknown(
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic_prost::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/mindclade.internal.artifact.v1.ArtifactService/GetArtifactUpload",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new(
+                        "mindclade.internal.artifact.v1.ArtifactService",
+                        "GetArtifactUpload",
+                    ),
+                );
+            self.inner.unary(req, path, codec).await
+        }
+        /** FinalizeArtifactUpload composes, verifies, and issues an opaque staging receipt.
+*/
+        pub async fn finalize_artifact_upload(
+            &mut self,
+            request: impl tonic::IntoRequest<super::FinalizeArtifactUploadRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::FinalizeArtifactUploadResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::unknown(
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic_prost::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/mindclade.internal.artifact.v1.ArtifactService/FinalizeArtifactUpload",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new(
+                        "mindclade.internal.artifact.v1.ArtifactService",
+                        "FinalizeArtifactUpload",
+                    ),
+                );
+            self.inner.unary(req, path, codec).await
+        }
+        /** AbortArtifactUpload makes an incomplete session permanently unusable.
+*/
+        pub async fn abort_artifact_upload(
+            &mut self,
+            request: impl tonic::IntoRequest<super::AbortArtifactUploadRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::AbortArtifactUploadResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::unknown(
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic_prost::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/mindclade.internal.artifact.v1.ArtifactService/AbortArtifactUpload",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new(
+                        "mindclade.internal.artifact.v1.ArtifactService",
+                        "AbortArtifactUpload",
+                    ),
+                );
+            self.inner.unary(req, path, codec).await
+        }
+        /** QuarantineArtifactUpload records a governed integrity failure.
+*/
+        pub async fn quarantine_artifact_upload(
+            &mut self,
+            request: impl tonic::IntoRequest<super::QuarantineArtifactUploadRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::QuarantineArtifactUploadResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::unknown(
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic_prost::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/mindclade.internal.artifact.v1.ArtifactService/QuarantineArtifactUpload",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new(
+                        "mindclade.internal.artifact.v1.ArtifactService",
+                        "QuarantineArtifactUpload",
+                    ),
+                );
+            self.inner.unary(req, path, codec).await
+        }
+        /** DownloadArtifact streams committed content from one generation-pinned object.
+*/
+        pub async fn download_artifact(
+            &mut self,
+            request: impl tonic::IntoRequest<super::DownloadArtifactRequest>,
+        ) -> std::result::Result<
+            tonic::Response<tonic::codec::Streaming<super::DownloadArtifactResponse>>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::unknown(
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic_prost::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/mindclade.internal.artifact.v1.ArtifactService/DownloadArtifact",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new(
+                        "mindclade.internal.artifact.v1.ArtifactService",
+                        "DownloadArtifact",
+                    ),
+                );
+            self.inner.server_streaming(req, path, codec).await
+        }
     }
 }
 /// Generated server implementations.
@@ -387,6 +601,78 @@ pub mod artifact_service_server {
             tonic::Response<super::ReleaseArtifactLeaseResponse>,
             tonic::Status,
         >;
+        /** BeginArtifactUpload creates a durable resumable transfer session.
+*/
+        async fn begin_artifact_upload(
+            &self,
+            request: tonic::Request<super::BeginArtifactUploadRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::BeginArtifactUploadResponse>,
+            tonic::Status,
+        >;
+        /** UploadArtifactChunk appends one contiguous, digest-verified chunk.
+*/
+        async fn upload_artifact_chunk(
+            &self,
+            request: tonic::Request<super::UploadArtifactChunkRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::UploadArtifactChunkResponse>,
+            tonic::Status,
+        >;
+        /** GetArtifactUpload returns authoritative resume offset and lifecycle state.
+*/
+        async fn get_artifact_upload(
+            &self,
+            request: tonic::Request<super::GetArtifactUploadRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::GetArtifactUploadResponse>,
+            tonic::Status,
+        >;
+        /** FinalizeArtifactUpload composes, verifies, and issues an opaque staging receipt.
+*/
+        async fn finalize_artifact_upload(
+            &self,
+            request: tonic::Request<super::FinalizeArtifactUploadRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::FinalizeArtifactUploadResponse>,
+            tonic::Status,
+        >;
+        /** AbortArtifactUpload makes an incomplete session permanently unusable.
+*/
+        async fn abort_artifact_upload(
+            &self,
+            request: tonic::Request<super::AbortArtifactUploadRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::AbortArtifactUploadResponse>,
+            tonic::Status,
+        >;
+        /** QuarantineArtifactUpload records a governed integrity failure.
+*/
+        async fn quarantine_artifact_upload(
+            &self,
+            request: tonic::Request<super::QuarantineArtifactUploadRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::QuarantineArtifactUploadResponse>,
+            tonic::Status,
+        >;
+        /// Server streaming response type for the DownloadArtifact method.
+        type DownloadArtifactStream: tonic::codegen::tokio_stream::Stream<
+                Item = std::result::Result<
+                    super::DownloadArtifactResponse,
+                    tonic::Status,
+                >,
+            >
+            + std::marker::Send
+            + 'static;
+        /** DownloadArtifact streams committed content from one generation-pinned object.
+*/
+        async fn download_artifact(
+            &self,
+            request: tonic::Request<super::DownloadArtifactRequest>,
+        ) -> std::result::Result<
+            tonic::Response<Self::DownloadArtifactStream>,
+            tonic::Status,
+        >;
     }
     /** ArtifactService owns artifact metadata, aliases, commit, quarantine, and retention RPCs.
 */
@@ -433,7 +719,6 @@ pub mod artifact_service_server {
             self
         }
         /// Limits the maximum size of a decoded message.
-        ///
         /// Default: `4MB`
         #[must_use]
         pub fn max_decoding_message_size(mut self, limit: usize) -> Self {
@@ -441,7 +726,6 @@ pub mod artifact_service_server {
             self
         }
         /// Limits the maximum size of an encoded message.
-        ///
         /// Default: `usize::MAX`
         #[must_use]
         pub fn max_encoding_message_size(mut self, limit: usize) -> Self {
@@ -792,6 +1076,347 @@ pub mod artifact_service_server {
                                 max_encoding_message_size,
                             );
                         let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/mindclade.internal.artifact.v1.ArtifactService/BeginArtifactUpload" => {
+                    #[allow(non_camel_case_types)]
+                    struct BeginArtifactUploadSvc<T: ArtifactService>(pub Arc<T>);
+                    impl<
+                        T: ArtifactService,
+                    > tonic::server::UnaryService<super::BeginArtifactUploadRequest>
+                    for BeginArtifactUploadSvc<T> {
+                        type Response = super::BeginArtifactUploadResponse;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::Response>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::BeginArtifactUploadRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as ArtifactService>::begin_artifact_upload(
+                                        &inner,
+                                        request,
+                                    )
+                                    .await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = BeginArtifactUploadSvc(inner);
+                        let codec = tonic_prost::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/mindclade.internal.artifact.v1.ArtifactService/UploadArtifactChunk" => {
+                    #[allow(non_camel_case_types)]
+                    struct UploadArtifactChunkSvc<T: ArtifactService>(pub Arc<T>);
+                    impl<
+                        T: ArtifactService,
+                    > tonic::server::UnaryService<super::UploadArtifactChunkRequest>
+                    for UploadArtifactChunkSvc<T> {
+                        type Response = super::UploadArtifactChunkResponse;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::Response>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::UploadArtifactChunkRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as ArtifactService>::upload_artifact_chunk(
+                                        &inner,
+                                        request,
+                                    )
+                                    .await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = UploadArtifactChunkSvc(inner);
+                        let codec = tonic_prost::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/mindclade.internal.artifact.v1.ArtifactService/GetArtifactUpload" => {
+                    #[allow(non_camel_case_types)]
+                    struct GetArtifactUploadSvc<T: ArtifactService>(pub Arc<T>);
+                    impl<
+                        T: ArtifactService,
+                    > tonic::server::UnaryService<super::GetArtifactUploadRequest>
+                    for GetArtifactUploadSvc<T> {
+                        type Response = super::GetArtifactUploadResponse;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::Response>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::GetArtifactUploadRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as ArtifactService>::get_artifact_upload(&inner, request)
+                                    .await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = GetArtifactUploadSvc(inner);
+                        let codec = tonic_prost::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/mindclade.internal.artifact.v1.ArtifactService/FinalizeArtifactUpload" => {
+                    #[allow(non_camel_case_types)]
+                    struct FinalizeArtifactUploadSvc<T: ArtifactService>(pub Arc<T>);
+                    impl<
+                        T: ArtifactService,
+                    > tonic::server::UnaryService<super::FinalizeArtifactUploadRequest>
+                    for FinalizeArtifactUploadSvc<T> {
+                        type Response = super::FinalizeArtifactUploadResponse;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::Response>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::FinalizeArtifactUploadRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as ArtifactService>::finalize_artifact_upload(
+                                        &inner,
+                                        request,
+                                    )
+                                    .await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = FinalizeArtifactUploadSvc(inner);
+                        let codec = tonic_prost::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/mindclade.internal.artifact.v1.ArtifactService/AbortArtifactUpload" => {
+                    #[allow(non_camel_case_types)]
+                    struct AbortArtifactUploadSvc<T: ArtifactService>(pub Arc<T>);
+                    impl<
+                        T: ArtifactService,
+                    > tonic::server::UnaryService<super::AbortArtifactUploadRequest>
+                    for AbortArtifactUploadSvc<T> {
+                        type Response = super::AbortArtifactUploadResponse;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::Response>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::AbortArtifactUploadRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as ArtifactService>::abort_artifact_upload(
+                                        &inner,
+                                        request,
+                                    )
+                                    .await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = AbortArtifactUploadSvc(inner);
+                        let codec = tonic_prost::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/mindclade.internal.artifact.v1.ArtifactService/QuarantineArtifactUpload" => {
+                    #[allow(non_camel_case_types)]
+                    struct QuarantineArtifactUploadSvc<T: ArtifactService>(pub Arc<T>);
+                    impl<
+                        T: ArtifactService,
+                    > tonic::server::UnaryService<super::QuarantineArtifactUploadRequest>
+                    for QuarantineArtifactUploadSvc<T> {
+                        type Response = super::QuarantineArtifactUploadResponse;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::Response>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<
+                                super::QuarantineArtifactUploadRequest,
+                            >,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as ArtifactService>::quarantine_artifact_upload(
+                                        &inner,
+                                        request,
+                                    )
+                                    .await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = QuarantineArtifactUploadSvc(inner);
+                        let codec = tonic_prost::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/mindclade.internal.artifact.v1.ArtifactService/DownloadArtifact" => {
+                    #[allow(non_camel_case_types)]
+                    struct DownloadArtifactSvc<T: ArtifactService>(pub Arc<T>);
+                    impl<
+                        T: ArtifactService,
+                    > tonic::server::ServerStreamingService<
+                        super::DownloadArtifactRequest,
+                    > for DownloadArtifactSvc<T> {
+                        type Response = super::DownloadArtifactResponse;
+                        type ResponseStream = T::DownloadArtifactStream;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::ResponseStream>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::DownloadArtifactRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as ArtifactService>::download_artifact(&inner, request)
+                                    .await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = DownloadArtifactSvc(inner);
+                        let codec = tonic_prost::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.server_streaming(method, req).await;
                         Ok(res)
                     };
                     Box::pin(fut)

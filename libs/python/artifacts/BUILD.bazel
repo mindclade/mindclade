@@ -1,11 +1,30 @@
-load("@rules_python//python:defs.bzl", "py_library")
+load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
 py_library(
     name = "artifacts",
     srcs = glob(["*.py"]),
     imports = [".."],
     visibility = ["//visibility:public"],
-    deps = ["//protocols/generated/python:bindings"],
+    deps = [
+        "//protocols/generated/python:bindings",
+        "@mindclade_pypi//jsonschema",
+    ],
+)
+
+py_test(
+    name = "schema_binding_test",
+    srcs = [
+        "__init__.py",
+        "artifact_reference.py",
+        "digest.py",
+    ],
+    imports = [".."],
+    legacy_create_init = 0,
+    main = "artifact_reference.py",
+    deps = [
+        "//protocols/generated/python:bindings",
+        "@mindclade_pypi//jsonschema",
+    ],
 )
 
 filegroup(

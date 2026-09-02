@@ -1,4 +1,8 @@
+load("@aspect_rules_js//js:defs.bzl", "js_test")
+load("@aspect_rules_ts//ts:defs.bzl", "ts_project")
+load("@rules_go//go:def.bzl", "go_test")
 load("@rules_python//python:defs.bzl", "py_test")
+load("@rules_rust//rust:defs.bzl", "rust_test")
 
 package(default_visibility = ["//visibility:private"])
 
@@ -28,7 +32,6 @@ py_test(
         "//protocols/generated/go/common/v1:bindings",
         "//protocols/generated/go/job/v1:bindings",
         "//protocols/generated/rust:bindings",
-        "//protocols/generated/typescript:bindings",
     ],
     imports = [".."],
     legacy_create_init = 0,
@@ -64,6 +67,98 @@ py_test(
         "@mindclade_pypi//protobuf",
         "@mindclade_pypi//pyyaml",
     ],
+)
+
+py_test(
+    name = "generated_package_consumers_test",
+    srcs = ["conformance/test_generated_package_consumers.py"],
+    data = _WAVE1_DATA,
+    imports = [".."],
+    legacy_create_init = 0,
+    main = "conformance/test_generated_package_consumers.py",
+    python_version = "PY3",
+    deps = [
+        "//protocols/generated/python:bindings",
+        "@mindclade_pypi//protobuf",
+    ],
+)
+
+go_test(
+    name = "generated_go_roundtrip_test",
+    srcs = ["conformance/generated_go_roundtrip_test.go"],
+    pure = "on",
+    deps = [
+        "//protocols/generated/go/admin/v1:bindings",
+        "//protocols/generated/go/agent/v1:bindings",
+        "//protocols/generated/go/api/v1:bindings",
+        "//protocols/generated/go/artifact/v1:bindings",
+        "//protocols/generated/go/audit/v1:bindings",
+        "//protocols/generated/go/common/v1:bindings",
+        "//protocols/generated/go/dataset/v1:bindings",
+        "//protocols/generated/go/evaluation/v1:bindings",
+        "//protocols/generated/go/experiment/v1:bindings",
+        "//protocols/generated/go/feature/v1:bindings",
+        "//protocols/generated/go/inference/v1:bindings",
+        "//protocols/generated/go/internalrpc/admin/v1:bindings",
+        "//protocols/generated/go/internalrpc/agent/v1:bindings",
+        "//protocols/generated/go/internalrpc/artifact/v1:bindings",
+        "//protocols/generated/go/internalrpc/dataset/v1:bindings",
+        "//protocols/generated/go/internalrpc/evaluation/v1:bindings",
+        "//protocols/generated/go/internalrpc/inference/v1:bindings",
+        "//protocols/generated/go/internalrpc/job/v1:bindings",
+        "//protocols/generated/go/internalrpc/model/v1:bindings",
+        "//protocols/generated/go/internalrpc/policy/v1:bindings",
+        "//protocols/generated/go/internalrpc/training/v1:bindings",
+        "//protocols/generated/go/internalrpc/workflow/v1:bindings",
+        "//protocols/generated/go/job/v1:bindings",
+        "//protocols/generated/go/model/v1:bindings",
+        "//protocols/generated/go/policy/v1:bindings",
+        "//protocols/generated/go/training/v1:bindings",
+        "//protocols/generated/go/transform/v1:bindings",
+        "//protocols/generated/go/workflow/v1:bindings",
+        "@org_golang_google_protobuf//encoding/protojson",
+        "@org_golang_google_protobuf//proto",
+    ],
+)
+
+rust_test(
+    name = "generated_rust_roundtrip_test",
+    srcs = ["conformance/generated_rust_roundtrip_test.rs"],
+    crate_root = "conformance/generated_rust_roundtrip_test.rs",
+    edition = "2024",
+    deps = [
+        "//protocols/generated/rust:bindings",
+        "@crate_index//:prost",
+    ],
+)
+
+ts_project(
+    name = "generated_typescript_roundtrip",
+    srcs = ["conformance/generated_typescript_roundtrip_test.ts"],
+    declaration = True,
+    transpiler = "tsc",
+    tsconfig = {
+        "compilerOptions": {
+            "declaration": True,
+            "module": "ES2022",
+            "moduleResolution": "Bundler",
+            "strict": True,
+            "target": "ES2022",
+        },
+    },
+    deps = [
+        "//:node_modules/@bufbuild/protobuf",
+        "//protocols/generated/typescript:bindings",
+    ],
+)
+
+js_test(
+    name = "generated_typescript_roundtrip_test",
+    data = [
+        ":generated_typescript_roundtrip",
+        "//protocols/generated/typescript:bindings",
+    ],
+    entry_point = "conformance/generated_typescript_roundtrip_test.ts",
 )
 
 py_test(
@@ -139,6 +234,18 @@ filegroup(
     visibility = ["//visibility:public"],
 )
 
+filegroup(
+    name = "all_contract_sources",
+    srcs = [
+        "conformance/generated_go_roundtrip_test.go",
+        "conformance/generated_rust_roundtrip_test.rs",
+        "conformance/generated_typescript_roundtrip_test.ts",
+        "conformance/test_generated_package_consumers.py",
+        ":wave1_contract_sources",
+    ],
+    visibility = ["//visibility:public"],
+)
+
 test_suite(
     name = "wave1_contract_tests",
     tests = [
@@ -148,6 +255,40 @@ test_suite(
         "//protocols:openapi_compatibility_test",
         "//protocols:protobuf_compatibility_test",
         "//protocols:schema_compatibility_test",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+test_suite(
+    name = "all_contract_tests",
+    tests = [
+        ":generated_go_roundtrip_test",
+        ":generated_package_consumers_test",
+        ":generated_rust_roundtrip_test",
+        ":generated_typescript_roundtrip_test",
+        ":wave1_contract_tests",
+        "//internal/sdk/go/mindclade:mindclade_test",
+        "//internal/sdk/python:internal_sdk_test",
+        "//internal/sdk/rust:mindclade_internal_sdk_test",
+        "//internal/sdk/typescript:tests",
+        "//libs/python/artifacts:schema_binding_test",
+        "//libs/rust/artifact:artifact_test",
+        "//libs/typescript/config:tests",
+        "//protocols/generated/go/schema/v1:bindings_test",
+        "//services/control_plane:artifacts_server_test",
+        "//services/control_plane:control_plane_grpc_registration_test",
+        "//services/control_plane:control_plane_test",
+        "//services/control_plane:jobs_server_test",
+        "//services/control_plane:storage_test",
+        "//services/control_plane/internal/admin:admin_test",
+        "//services/control_plane/internal/agents:agents_test",
+        "//services/control_plane/internal/datasets:datasets_test",
+        "//services/control_plane/internal/evaluations:evaluations_test",
+        "//services/control_plane/internal/inference:inference_test",
+        "//services/control_plane/internal/models:models_test",
+        "//services/control_plane/internal/policies:policies_test",
+        "//services/control_plane/internal/training:training_test",
+        "//services/control_plane/internal/workflows:workflows_test",
     ],
     visibility = ["//visibility:public"],
 )

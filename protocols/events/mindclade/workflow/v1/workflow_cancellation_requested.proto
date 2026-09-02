@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package mindclade.events.workflow.v1;
+
+import "google/protobuf/timestamp.proto";
+import "proto/mindclade/common/v1/resource_reference.proto";
+
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/workflow/v1;workflowv1";
+
+// WorkflowCancellationRequested records monotonic cancellation intent.
+message WorkflowCancellationRequested {
+  mindclade.common.v1.ResourceRef workflow_run = 1;
+  string reason = 2;
+  mindclade.common.v1.ResourceRef operation = 3;
+  google.protobuf.Timestamp requested_at = 4;
+}

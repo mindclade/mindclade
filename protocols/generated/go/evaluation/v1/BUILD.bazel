@@ -3,9 +3,13 @@ load("@rules_go//go:def.bzl", "go_library")
 go_library(
     name = "bindings",
     srcs = [
+        "evaluation_cancellation_requested.pb.go",
         "evaluation_result.pb.go",
+        "evaluation_result_committed.pb.go",
         "evaluation_run.pb.go",
+        "evaluation_run_created.pb.go",
         "promotion_decision.pb.go",
+        "promotion_decision_recorded.pb.go",
     ],
     importpath = "github.com/mindclade/mindclade/protocols/generated/go/evaluation/v1",
     visibility = ["//visibility:public"],
@@ -23,9 +27,13 @@ filegroup(
     name = "generated_sources",
     srcs = [
         "BUILD.bazel",
+        "evaluation_cancellation_requested.pb.go",
         "evaluation_result.pb.go",
+        "evaluation_result_committed.pb.go",
         "evaluation_run.pb.go",
+        "evaluation_run_created.pb.go",
         "promotion_decision.pb.go",
+        "promotion_decision_recorded.pb.go",
     ],
     visibility = ["//visibility:public"],
 )

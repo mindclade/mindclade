@@ -70,6 +70,41 @@ class ArtifactServiceStub:
                 request_serializer=proto_dot_mindclade_dot_internal_dot_artifact_dot_v1_dot_artifact__service__pb2.ReleaseArtifactLeaseRequest.SerializeToString,
                 response_deserializer=proto_dot_mindclade_dot_internal_dot_artifact_dot_v1_dot_artifact__service__pb2.ReleaseArtifactLeaseResponse.FromString,
                 _registered_method=True)
+        self.BeginArtifactUpload = channel.unary_unary(
+                '/mindclade.internal.artifact.v1.ArtifactService/BeginArtifactUpload',
+                request_serializer=proto_dot_mindclade_dot_internal_dot_artifact_dot_v1_dot_artifact__service__pb2.BeginArtifactUploadRequest.SerializeToString,
+                response_deserializer=proto_dot_mindclade_dot_internal_dot_artifact_dot_v1_dot_artifact__service__pb2.BeginArtifactUploadResponse.FromString,
+                _registered_method=True)
+        self.UploadArtifactChunk = channel.unary_unary(
+                '/mindclade.internal.artifact.v1.ArtifactService/UploadArtifactChunk',
+                request_serializer=proto_dot_mindclade_dot_internal_dot_artifact_dot_v1_dot_artifact__service__pb2.UploadArtifactChunkRequest.SerializeToString,
+                response_deserializer=proto_dot_mindclade_dot_internal_dot_artifact_dot_v1_dot_artifact__service__pb2.UploadArtifactChunkResponse.FromString,
+                _registered_method=True)
+        self.GetArtifactUpload = channel.unary_unary(
+                '/mindclade.internal.artifact.v1.ArtifactService/GetArtifactUpload',
+                request_serializer=proto_dot_mindclade_dot_internal_dot_artifact_dot_v1_dot_artifact__service__pb2.GetArtifactUploadRequest.SerializeToString,
+                response_deserializer=proto_dot_mindclade_dot_internal_dot_artifact_dot_v1_dot_artifact__service__pb2.GetArtifactUploadResponse.FromString,
+                _registered_method=True)
+        self.FinalizeArtifactUpload = channel.unary_unary(
+                '/mindclade.internal.artifact.v1.ArtifactService/FinalizeArtifactUpload',
+                request_serializer=proto_dot_mindclade_dot_internal_dot_artifact_dot_v1_dot_artifact__service__pb2.FinalizeArtifactUploadRequest.SerializeToString,
+                response_deserializer=proto_dot_mindclade_dot_internal_dot_artifact_dot_v1_dot_artifact__service__pb2.FinalizeArtifactUploadResponse.FromString,
+                _registered_method=True)
+        self.AbortArtifactUpload = channel.unary_unary(
+                '/mindclade.internal.artifact.v1.ArtifactService/AbortArtifactUpload',
+                request_serializer=proto_dot_mindclade_dot_internal_dot_artifact_dot_v1_dot_artifact__service__pb2.AbortArtifactUploadRequest.SerializeToString,
+                response_deserializer=proto_dot_mindclade_dot_internal_dot_artifact_dot_v1_dot_artifact__service__pb2.AbortArtifactUploadResponse.FromString,
+                _registered_method=True)
+        self.QuarantineArtifactUpload = channel.unary_unary(
+                '/mindclade.internal.artifact.v1.ArtifactService/QuarantineArtifactUpload',
+                request_serializer=proto_dot_mindclade_dot_internal_dot_artifact_dot_v1_dot_artifact__service__pb2.QuarantineArtifactUploadRequest.SerializeToString,
+                response_deserializer=proto_dot_mindclade_dot_internal_dot_artifact_dot_v1_dot_artifact__service__pb2.QuarantineArtifactUploadResponse.FromString,
+                _registered_method=True)
+        self.DownloadArtifact = channel.unary_stream(
+                '/mindclade.internal.artifact.v1.ArtifactService/DownloadArtifact',
+                request_serializer=proto_dot_mindclade_dot_internal_dot_artifact_dot_v1_dot_artifact__service__pb2.DownloadArtifactRequest.SerializeToString,
+                response_deserializer=proto_dot_mindclade_dot_internal_dot_artifact_dot_v1_dot_artifact__service__pb2.DownloadArtifactResponse.FromString,
+                _registered_method=True)
 
 
 class ArtifactServiceServicer:
@@ -125,6 +160,55 @@ class ArtifactServiceServicer:
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def BeginArtifactUpload(self, request, context):
+        """BeginArtifactUpload creates a durable resumable transfer session.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def UploadArtifactChunk(self, request, context):
+        """UploadArtifactChunk appends one contiguous, digest-verified chunk.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def GetArtifactUpload(self, request, context):
+        """GetArtifactUpload returns authoritative resume offset and lifecycle state.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def FinalizeArtifactUpload(self, request, context):
+        """FinalizeArtifactUpload composes, verifies, and issues an opaque staging receipt.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def AbortArtifactUpload(self, request, context):
+        """AbortArtifactUpload makes an incomplete session permanently unusable.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def QuarantineArtifactUpload(self, request, context):
+        """QuarantineArtifactUpload records a governed integrity failure.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def DownloadArtifact(self, request, context):
+        """DownloadArtifact streams committed content from one generation-pinned object.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_ArtifactServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -162,6 +246,41 @@ def add_ArtifactServiceServicer_to_server(servicer, server):
                     servicer.ReleaseArtifactLease,
                     request_deserializer=proto_dot_mindclade_dot_internal_dot_artifact_dot_v1_dot_artifact__service__pb2.ReleaseArtifactLeaseRequest.FromString,
                     response_serializer=proto_dot_mindclade_dot_internal_dot_artifact_dot_v1_dot_artifact__service__pb2.ReleaseArtifactLeaseResponse.SerializeToString,
+            ),
+            'BeginArtifactUpload': grpc.unary_unary_rpc_method_handler(
+                    servicer.BeginArtifactUpload,
+                    request_deserializer=proto_dot_mindclade_dot_internal_dot_artifact_dot_v1_dot_artifact__service__pb2.BeginArtifactUploadRequest.FromString,
+                    response_serializer=proto_dot_mindclade_dot_internal_dot_artifact_dot_v1_dot_artifact__service__pb2.BeginArtifactUploadResponse.SerializeToString,
+            ),
+            'UploadArtifactChunk': grpc.unary_unary_rpc_method_handler(
+                    servicer.UploadArtifactChunk,
+                    request_deserializer=proto_dot_mindclade_dot_internal_dot_artifact_dot_v1_dot_artifact__service__pb2.UploadArtifactChunkRequest.FromString,
+                    response_serializer=proto_dot_mindclade_dot_internal_dot_artifact_dot_v1_dot_artifact__service__pb2.UploadArtifactChunkResponse.SerializeToString,
+            ),
+            'GetArtifactUpload': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetArtifactUpload,
+                    request_deserializer=proto_dot_mindclade_dot_internal_dot_artifact_dot_v1_dot_artifact__service__pb2.GetArtifactUploadRequest.FromString,
+                    response_serializer=proto_dot_mindclade_dot_internal_dot_artifact_dot_v1_dot_artifact__service__pb2.GetArtifactUploadResponse.SerializeToString,
+            ),
+            'FinalizeArtifactUpload': grpc.unary_unary_rpc_method_handler(
+                    servicer.FinalizeArtifactUpload,
+                    request_deserializer=proto_dot_mindclade_dot_internal_dot_artifact_dot_v1_dot_artifact__service__pb2.FinalizeArtifactUploadRequest.FromString,
+                    response_serializer=proto_dot_mindclade_dot_internal_dot_artifact_dot_v1_dot_artifact__service__pb2.FinalizeArtifactUploadResponse.SerializeToString,
+            ),
+            'AbortArtifactUpload': grpc.unary_unary_rpc_method_handler(
+                    servicer.AbortArtifactUpload,
+                    request_deserializer=proto_dot_mindclade_dot_internal_dot_artifact_dot_v1_dot_artifact__service__pb2.AbortArtifactUploadRequest.FromString,
+                    response_serializer=proto_dot_mindclade_dot_internal_dot_artifact_dot_v1_dot_artifact__service__pb2.AbortArtifactUploadResponse.SerializeToString,
+            ),
+            'QuarantineArtifactUpload': grpc.unary_unary_rpc_method_handler(
+                    servicer.QuarantineArtifactUpload,
+                    request_deserializer=proto_dot_mindclade_dot_internal_dot_artifact_dot_v1_dot_artifact__service__pb2.QuarantineArtifactUploadRequest.FromString,
+                    response_serializer=proto_dot_mindclade_dot_internal_dot_artifact_dot_v1_dot_artifact__service__pb2.QuarantineArtifactUploadResponse.SerializeToString,
+            ),
+            'DownloadArtifact': grpc.unary_stream_rpc_method_handler(
+                    servicer.DownloadArtifact,
+                    request_deserializer=proto_dot_mindclade_dot_internal_dot_artifact_dot_v1_dot_artifact__service__pb2.DownloadArtifactRequest.FromString,
+                    response_serializer=proto_dot_mindclade_dot_internal_dot_artifact_dot_v1_dot_artifact__service__pb2.DownloadArtifactResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -354,6 +473,195 @@ class ArtifactService:
             '/mindclade.internal.artifact.v1.ArtifactService/ReleaseArtifactLease',
             proto_dot_mindclade_dot_internal_dot_artifact_dot_v1_dot_artifact__service__pb2.ReleaseArtifactLeaseRequest.SerializeToString,
             proto_dot_mindclade_dot_internal_dot_artifact_dot_v1_dot_artifact__service__pb2.ReleaseArtifactLeaseResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def BeginArtifactUpload(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/mindclade.internal.artifact.v1.ArtifactService/BeginArtifactUpload',
+            proto_dot_mindclade_dot_internal_dot_artifact_dot_v1_dot_artifact__service__pb2.BeginArtifactUploadRequest.SerializeToString,
+            proto_dot_mindclade_dot_internal_dot_artifact_dot_v1_dot_artifact__service__pb2.BeginArtifactUploadResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def UploadArtifactChunk(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/mindclade.internal.artifact.v1.ArtifactService/UploadArtifactChunk',
+            proto_dot_mindclade_dot_internal_dot_artifact_dot_v1_dot_artifact__service__pb2.UploadArtifactChunkRequest.SerializeToString,
+            proto_dot_mindclade_dot_internal_dot_artifact_dot_v1_dot_artifact__service__pb2.UploadArtifactChunkResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def GetArtifactUpload(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/mindclade.internal.artifact.v1.ArtifactService/GetArtifactUpload',
+            proto_dot_mindclade_dot_internal_dot_artifact_dot_v1_dot_artifact__service__pb2.GetArtifactUploadRequest.SerializeToString,
+            proto_dot_mindclade_dot_internal_dot_artifact_dot_v1_dot_artifact__service__pb2.GetArtifactUploadResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def FinalizeArtifactUpload(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/mindclade.internal.artifact.v1.ArtifactService/FinalizeArtifactUpload',
+            proto_dot_mindclade_dot_internal_dot_artifact_dot_v1_dot_artifact__service__pb2.FinalizeArtifactUploadRequest.SerializeToString,
+            proto_dot_mindclade_dot_internal_dot_artifact_dot_v1_dot_artifact__service__pb2.FinalizeArtifactUploadResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def AbortArtifactUpload(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/mindclade.internal.artifact.v1.ArtifactService/AbortArtifactUpload',
+            proto_dot_mindclade_dot_internal_dot_artifact_dot_v1_dot_artifact__service__pb2.AbortArtifactUploadRequest.SerializeToString,
+            proto_dot_mindclade_dot_internal_dot_artifact_dot_v1_dot_artifact__service__pb2.AbortArtifactUploadResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def QuarantineArtifactUpload(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/mindclade.internal.artifact.v1.ArtifactService/QuarantineArtifactUpload',
+            proto_dot_mindclade_dot_internal_dot_artifact_dot_v1_dot_artifact__service__pb2.QuarantineArtifactUploadRequest.SerializeToString,
+            proto_dot_mindclade_dot_internal_dot_artifact_dot_v1_dot_artifact__service__pb2.QuarantineArtifactUploadResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def DownloadArtifact(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_stream(
+            request,
+            target,
+            '/mindclade.internal.artifact.v1.ArtifactService/DownloadArtifact',
+            proto_dot_mindclade_dot_internal_dot_artifact_dot_v1_dot_artifact__service__pb2.DownloadArtifactRequest.SerializeToString,
+            proto_dot_mindclade_dot_internal_dot_artifact_dot_v1_dot_artifact__service__pb2.DownloadArtifactResponse.FromString,
             options,
             channel_credentials,
             insecure,

@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package mindclade.events.admin.v1;
+
+import "google/protobuf/timestamp.proto";
+import "proto/mindclade/admin/v1/project.proto";
+import "proto/mindclade/common/v1/resource_reference.proto";
+
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/admin/v1;adminv1";
+
+// ProjectCreated records admission of a tenant-scoped workload boundary.
+message ProjectCreated {
+  mindclade.admin.v1.Project project = 1;
+  mindclade.common.v1.ResourceRef operation = 2;
+  google.protobuf.Timestamp created_at = 3;
+}

@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+package mindclade.events.model.v1;
+
+import "google/protobuf/timestamp.proto";
+import "proto/mindclade/artifact/v1/artifact_reference.proto";
+import "proto/mindclade/artifact/v1/evidence_reference.proto";
+import "proto/mindclade/common/v1/resource_reference.proto";
+import "proto/mindclade/model/v1/model_release.proto";
+
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/model/v1;modelv1";
+
+// ModelReleaseRegistered records admission of an immutable model bundle and its evidence.
+message ModelReleaseRegistered {
+  string model_release_name = 1;
+  string model_release_uid = 2;
+  int64 model_release_revision = 3;
+  string model_name = 4;
+  string release_id = 5;
+  mindclade.model.v1.ModelReleaseStage stage = 6;
+  mindclade.artifact.v1.ArtifactRef bundle_manifest = 7;
+  mindclade.artifact.v1.ArtifactRef model_manifest = 8;
+  mindclade.common.v1.ResourceRef checkpoint = 9;
+  repeated mindclade.artifact.v1.EvidenceRef evaluation_evidence = 10;
+  mindclade.artifact.v1.ArtifactRef feature_requirement_set = 11;
+  mindclade.artifact.v1.ArtifactRef model_feature_view = 12;
+  mindclade.common.v1.ResourceRef release_policy = 13;
+  mindclade.common.v1.ResourceRef operation = 14;
+  google.protobuf.Timestamp registered_at = 15;
+}

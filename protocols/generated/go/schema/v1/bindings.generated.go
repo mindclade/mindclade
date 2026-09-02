@@ -7,7 +7,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"sync"
+	"time"
 
+	"github.com/dlclark/regexp2"
 	jsonschema "github.com/santhosh-tekuri/jsonschema/v6"
 )
 
@@ -1988,6 +1990,26 @@ var schemaCache = struct {
 	values map[string]*jsonschema.Schema
 }{values: make(map[string]*jsonschema.Schema)}
 
+type ecmaRegexp regexp2.Regexp
+
+func (expression *ecmaRegexp) MatchString(value string) bool {
+	matched, err := (*regexp2.Regexp)(expression).MatchString(value)
+	return err == nil && matched
+}
+
+func (expression *ecmaRegexp) String() string {
+	return (*regexp2.Regexp)(expression).String()
+}
+
+func compileECMARegexp(pattern string) (jsonschema.Regexp, error) {
+	expression, err := regexp2.Compile(pattern, regexp2.ECMAScript)
+	if err != nil {
+		return nil, err
+	}
+	expression.MatchTimeout = 250 * time.Millisecond
+	return (*ecmaRegexp)(expression), nil
+}
+
 func compiledSchema(family string) (*jsonschema.Schema, error) {
 	source, ok := schemaSources[family]
 	if !ok {
@@ -2006,6 +2028,7 @@ func compiledSchema(family string) (*jsonschema.Schema, error) {
 	compiler := jsonschema.NewCompiler()
 	compiler.DefaultDraft(jsonschema.Draft2020)
 	compiler.AssertFormat()
+	compiler.UseRegexpEngine(compileECMARegexp)
 	if err := compiler.AddResource(identifier, document); err != nil {
 		return nil, fmt.Errorf("register schema %q: %w", family, err)
 	}

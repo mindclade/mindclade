@@ -4,6 +4,7 @@ import datetime
 from google.protobuf import timestamp_pb2 as _timestamp_pb2
 from mindclade.artifact.v1 import artifact_reference_pb2 as _artifact_reference_pb2
 from mindclade.common.v1 import error_detail_pb2 as _error_detail_pb2
+from mindclade.common.v1 import resource_reference_pb2 as _resource_reference_pb2
 from google.protobuf.internal import enum_type_wrapper as _enum_type_wrapper
 from google.protobuf import descriptor as _descriptor
 from google.protobuf import message as _message
@@ -30,7 +31,7 @@ OPERATION_STATE_CANCELLING: OperationState
 OPERATION_STATE_CANCELLED: OperationState
 
 class Operation(_message.Message):
-    __slots__ = ("operation_id", "tenant_id", "state", "resource_version", "result", "error", "project_id", "job_id", "created_at", "updated_at", "done", "etag")
+    __slots__ = ("operation_id", "tenant_id", "state", "resource_version", "result", "error", "project_id", "job_id", "created_at", "updated_at", "done", "etag", "target")
     OPERATION_ID_FIELD_NUMBER: _ClassVar[int]
     TENANT_ID_FIELD_NUMBER: _ClassVar[int]
     STATE_FIELD_NUMBER: _ClassVar[int]
@@ -43,6 +44,7 @@ class Operation(_message.Message):
     UPDATED_AT_FIELD_NUMBER: _ClassVar[int]
     DONE_FIELD_NUMBER: _ClassVar[int]
     ETAG_FIELD_NUMBER: _ClassVar[int]
+    TARGET_FIELD_NUMBER: _ClassVar[int]
     operation_id: str
     tenant_id: str
     state: OperationState
@@ -55,4 +57,5 @@ class Operation(_message.Message):
     updated_at: _timestamp_pb2.Timestamp
     done: bool
     etag: str
-    def __init__(self, operation_id: _Optional[str] = ..., tenant_id: _Optional[str] = ..., state: _Optional[_Union[OperationState, str]] = ..., resource_version: _Optional[int] = ..., result: _Optional[_Union[_artifact_reference_pb2.ArtifactRef, _Mapping]] = ..., error: _Optional[_Union[_error_detail_pb2.ErrorDetail, _Mapping]] = ..., project_id: _Optional[str] = ..., job_id: _Optional[str] = ..., created_at: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., updated_at: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., done: _Optional[bool] = ..., etag: _Optional[str] = ...) -> None: ...
+    target: _resource_reference_pb2.ResourceRef
+    def __init__(self, operation_id: _Optional[str] = ..., tenant_id: _Optional[str] = ..., state: _Optional[_Union[OperationState, str]] = ..., resource_version: _Optional[int] = ..., result: _Optional[_Union[_artifact_reference_pb2.ArtifactRef, _Mapping]] = ..., error: _Optional[_Union[_error_detail_pb2.ErrorDetail, _Mapping]] = ..., project_id: _Optional[str] = ..., job_id: _Optional[str] = ..., created_at: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., updated_at: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., done: _Optional[bool] = ..., etag: _Optional[str] = ..., target: _Optional[_Union[_resource_reference_pb2.ResourceRef, _Mapping]] = ...) -> None: ...

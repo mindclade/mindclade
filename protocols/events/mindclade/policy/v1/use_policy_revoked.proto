@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package mindclade.events.policy.v1;
+
+import "google/protobuf/timestamp.proto";
+import "proto/mindclade/common/v1/resource_reference.proto";
+import "proto/mindclade/policy/v1/use_policy.proto";
+
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/policy/v1;policyv1";
+
+// UsePolicyRevoked records a terminal fail-closed policy transition.
+message UsePolicyRevoked {
+  mindclade.policy.v1.UsePolicy use_policy = 1;
+  string reason_code = 2;
+  mindclade.common.v1.ResourceRef operation = 3;
+  google.protobuf.Timestamp revoked_at = 4;
+}

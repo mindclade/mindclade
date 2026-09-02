@@ -1,5 +1,5 @@
 #!/usr/bin/env python3.12
-"""Fail closed when committed Protobuf bindings differ from locked generation."""
+"""Fail when committed bindings or the candidate differ from locked generation."""
 
 from __future__ import annotations
 
@@ -12,7 +12,15 @@ from typing import Any, cast
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from generate_protocols import generated_outputs, governed_generated_paths, sha256_file
+from generate_protocols import (
+    PREDECESSOR_ARTIFACT_DIGEST,
+    PROTOBUF_CANDIDATE,
+    PROTOBUF_PREDECESSOR,
+    generated_outputs,
+    governed_generated_paths,
+    protobuf_candidate,
+    sha256_file,
+)
 
 
 def verify_manifest(root: Path) -> list[str]:
@@ -46,12 +54,22 @@ def main() -> int:
     if "TEST_SRCDIR" in os.environ:
         stale = verify_manifest(root)
     else:
-        expected, _, _ = generated_outputs(root)
+        expected, descriptor_set, descriptors = generated_outputs(root)
         stale = [
             str(path.relative_to(root))
             for path, content in expected.items()
             if not path.is_file() or path.read_bytes() != content
         ]
+        candidate = root / PROTOBUF_CANDIDATE
+        expected_candidate = protobuf_candidate(root, descriptors, descriptor_set)
+        if not candidate.is_file() or candidate.read_bytes() != expected_candidate:
+            stale.append(PROTOBUF_CANDIDATE.as_posix())
+        predecessor = root / PROTOBUF_PREDECESSOR
+        if (
+            not predecessor.is_file()
+            or sha256_file(predecessor) != PREDECESSOR_ARTIFACT_DIGEST
+        ):
+            stale.append(PROTOBUF_PREDECESSOR.as_posix())
         stale.extend(verify_manifest(root))
     if stale:
         for path in sorted(set(stale)):

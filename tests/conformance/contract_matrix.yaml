@@ -48,6 +48,95 @@
     {"compatibility": "schema-versioned", "name": "transform_state_artifact"},
     {"compatibility": "schema-versioned", "name": "workflow_definition"}
   ],
+  "consumer_profiles": {
+    "domain-roundtrip": {
+      "go": {
+        "mode": "wire-and-protojson-roundtrip",
+        "source": "tests/conformance/generated_go_roundtrip_test.go",
+        "target": "//tests:generated_go_roundtrip_test"
+      },
+      "python": {
+        "mode": "wire-and-protojson-roundtrip",
+        "source": "tests/conformance/test_generated_clients.py",
+        "target": "//tests:generated_clients_test"
+      },
+      "rust": {
+        "mode": "wire-roundtrip",
+        "source": "tests/conformance/generated_rust_roundtrip_test.rs",
+        "target": "//tests:generated_rust_roundtrip_test"
+      },
+      "typescript": {
+        "mode": "wire-and-protojson-roundtrip",
+        "source": "tests/conformance/generated_typescript_roundtrip_test.ts",
+        "target": "//tests:generated_typescript_roundtrip_test"
+      }
+    },
+    "internal-transport": {
+      "go": {
+        "mode": "wire-and-protojson-roundtrip",
+        "source": "tests/conformance/generated_go_roundtrip_test.go",
+        "target": "//tests:generated_go_roundtrip_test"
+      },
+      "python": {
+        "mode": "wire-and-protojson-roundtrip",
+        "source": "tests/conformance/test_generated_clients.py",
+        "target": "//tests:generated_clients_test"
+      },
+      "rust": {
+        "mode": "wire-roundtrip",
+        "source": "tests/conformance/generated_rust_roundtrip_test.rs",
+        "target": "//tests:generated_rust_roundtrip_test"
+      },
+      "typescript": {
+        "mode": "wire-and-protojson-roundtrip",
+        "source": "tests/conformance/generated_typescript_roundtrip_test.ts",
+        "target": "//tests:generated_typescript_roundtrip_test"
+      }
+    }
+  },
+  "protobuf_packages": [
+    {"compatibility": "additive-only", "consumer_profile": "domain-roundtrip", "message": "Tenant", "module": "mindclade.admin.v1.tenant_pb2", "name": "mindclade.admin.v1"},
+    {"compatibility": "additive-only", "consumer_profile": "domain-roundtrip", "message": "AgentDefinition", "module": "mindclade.agent.v1.agent_definition_pb2", "name": "mindclade.agent.v1"},
+    {"compatibility": "additive-only", "consumer_profile": "domain-roundtrip", "message": "Operation", "module": "mindclade.api.v1.mindclade_service_pb2", "name": "mindclade.api.v1"},
+    {"compatibility": "additive-only", "consumer_profile": "domain-roundtrip", "message": "ArtifactRef", "module": "mindclade.artifact.v1.artifact_reference_pb2", "name": "mindclade.artifact.v1"},
+    {"compatibility": "additive-only", "consumer_profile": "domain-roundtrip", "message": "Identifiers", "module": "mindclade.common.v1.identifiers_pb2", "name": "mindclade.common.v1"},
+    {"compatibility": "additive-only", "consumer_profile": "domain-roundtrip", "message": "Dataset", "module": "mindclade.dataset.v1.dataset_pb2", "name": "mindclade.dataset.v1"},
+    {"compatibility": "additive-only", "consumer_profile": "domain-roundtrip", "message": "EvaluationRun", "module": "mindclade.evaluation.v1.evaluation_run_pb2", "name": "mindclade.evaluation.v1"},
+    {"compatibility": "additive-only", "consumer_profile": "domain-roundtrip", "message": "AuditExportCompleted", "module": "mindclade.admin.v1.audit_export_completed_pb2", "name": "mindclade.events.admin.v1"},
+    {"compatibility": "additive-only", "consumer_profile": "domain-roundtrip", "message": "AgentRunCompleted", "module": "mindclade.agent.v1.agent_run_completed_pb2", "name": "mindclade.events.agent.v1"},
+    {"compatibility": "additive-only", "consumer_profile": "domain-roundtrip", "message": "ArtifactCommitted", "module": "mindclade.artifact.v1.artifact_committed_pb2", "name": "mindclade.events.artifact.v1"},
+    {"compatibility": "additive-only", "consumer_profile": "domain-roundtrip", "message": "AuditEvent", "module": "mindclade.audit.v1.audit_event_pb2", "name": "mindclade.events.audit.v1"},
+    {"compatibility": "additive-only", "consumer_profile": "domain-roundtrip", "message": "DatasetCreated", "module": "mindclade.dataset.v1.dataset_created_pb2", "name": "mindclade.events.dataset.v1"},
+    {"compatibility": "additive-only", "consumer_profile": "domain-roundtrip", "message": "EvaluationRunCreated", "module": "mindclade.evaluation.v1.evaluation_run_created_pb2", "name": "mindclade.events.evaluation.v1"},
+    {"compatibility": "additive-only", "consumer_profile": "domain-roundtrip", "message": "FeatureMaterializationCompleted", "module": "mindclade.feature.v1.feature_materialization_completed_pb2", "name": "mindclade.events.feature.v1"},
+    {"compatibility": "additive-only", "consumer_profile": "domain-roundtrip", "message": "InferenceRequested", "module": "mindclade.inference.v1.inference_requested_pb2", "name": "mindclade.events.inference.v1"},
+    {"compatibility": "additive-only", "consumer_profile": "domain-roundtrip", "message": "JobRequested", "module": "mindclade.job.v1.job_requested_pb2", "name": "mindclade.events.job.v1"},
+    {"compatibility": "additive-only", "consumer_profile": "domain-roundtrip", "message": "ModelRegistered", "module": "mindclade.model.v1.model_registered_pb2", "name": "mindclade.events.model.v1"},
+    {"compatibility": "additive-only", "consumer_profile": "domain-roundtrip", "message": "AuthorizationDecisionRecorded", "module": "mindclade.policy.v1.authorization_decision_recorded_pb2", "name": "mindclade.events.policy.v1"},
+    {"compatibility": "additive-only", "consumer_profile": "domain-roundtrip", "message": "TrainingStarted", "module": "mindclade.training.v1.training_started_pb2", "name": "mindclade.events.training.v1"},
+    {"compatibility": "additive-only", "consumer_profile": "domain-roundtrip", "message": "TransformExecutionCompleted", "module": "mindclade.transform.v1.transform_execution_completed_pb2", "name": "mindclade.events.transform.v1"},
+    {"compatibility": "additive-only", "consumer_profile": "domain-roundtrip", "message": "WorkflowTransitioned", "module": "mindclade.workflow.v1.workflow_transitioned_pb2", "name": "mindclade.events.workflow.v1"},
+    {"compatibility": "additive-only", "consumer_profile": "domain-roundtrip", "message": "Experiment", "module": "mindclade.experiment.v1.experiment_pb2", "name": "mindclade.experiment.v1"},
+    {"compatibility": "additive-only", "consumer_profile": "domain-roundtrip", "message": "FeatureMaterialization", "module": "mindclade.feature.v1.feature_materialization_pb2", "name": "mindclade.feature.v1"},
+    {"compatibility": "additive-only", "consumer_profile": "domain-roundtrip", "message": "InferenceRequest", "module": "mindclade.inference.v1.inference_request_pb2", "name": "mindclade.inference.v1"},
+    {"compatibility": "additive-only", "consumer_profile": "internal-transport", "message": "GetTenantRequest", "module": "mindclade.internal.admin.v1.admin_service_pb2", "name": "mindclade.internal.admin.v1"},
+    {"compatibility": "additive-only", "consumer_profile": "internal-transport", "message": "GetAgentDefinitionRequest", "module": "mindclade.internal.agent.v1.agent_service_pb2", "name": "mindclade.internal.agent.v1"},
+    {"compatibility": "additive-only", "consumer_profile": "internal-transport", "message": "GetArtifactRequest", "module": "mindclade.internal.artifact.v1.artifact_service_pb2", "name": "mindclade.internal.artifact.v1"},
+    {"compatibility": "additive-only", "consumer_profile": "internal-transport", "message": "GetDatasetRequest", "module": "mindclade.internal.dataset.v1.dataset_service_pb2", "name": "mindclade.internal.dataset.v1"},
+    {"compatibility": "additive-only", "consumer_profile": "internal-transport", "message": "GetEvaluationRunRequest", "module": "mindclade.internal.evaluation.v1.evaluation_service_pb2", "name": "mindclade.internal.evaluation.v1"},
+    {"compatibility": "additive-only", "consumer_profile": "internal-transport", "message": "GetInferenceResultRequest", "module": "mindclade.internal.inference.v1.inference_service_pb2", "name": "mindclade.internal.inference.v1"},
+    {"compatibility": "additive-only", "consumer_profile": "internal-transport", "message": "GetJobRequest", "module": "mindclade.internal.job.v1.job_service_pb2", "name": "mindclade.internal.job.v1"},
+    {"compatibility": "additive-only", "consumer_profile": "internal-transport", "message": "GetModelRequest", "module": "mindclade.internal.model.v1.model_service_pb2", "name": "mindclade.internal.model.v1"},
+    {"compatibility": "additive-only", "consumer_profile": "internal-transport", "message": "GetUsePolicyRequest", "module": "mindclade.internal.policy.v1.policy_service_pb2", "name": "mindclade.internal.policy.v1"},
+    {"compatibility": "additive-only", "consumer_profile": "internal-transport", "message": "GetTrainingRunRequest", "module": "mindclade.internal.training.v1.training_service_pb2", "name": "mindclade.internal.training.v1"},
+    {"compatibility": "additive-only", "consumer_profile": "internal-transport", "message": "GetWorkflowDefinitionRequest", "module": "mindclade.internal.workflow.v1.workflow_service_pb2", "name": "mindclade.internal.workflow.v1"},
+    {"compatibility": "additive-only", "consumer_profile": "domain-roundtrip", "message": "Job", "module": "mindclade.job.v1.job_pb2", "name": "mindclade.job.v1"},
+    {"compatibility": "additive-only", "consumer_profile": "domain-roundtrip", "message": "Model", "module": "mindclade.model.v1.model_pb2", "name": "mindclade.model.v1"},
+    {"compatibility": "additive-only", "consumer_profile": "domain-roundtrip", "message": "PolicyReference", "module": "mindclade.policy.v1.policy_reference_pb2", "name": "mindclade.policy.v1"},
+    {"compatibility": "additive-only", "consumer_profile": "domain-roundtrip", "message": "TrainingRun", "module": "mindclade.training.v1.training_run_pb2", "name": "mindclade.training.v1"},
+    {"compatibility": "additive-only", "consumer_profile": "domain-roundtrip", "message": "TransformExecution", "module": "mindclade.transform.v1.transform_execution_pb2", "name": "mindclade.transform.v1"},
+    {"compatibility": "additive-only", "consumer_profile": "domain-roundtrip", "message": "WorkflowDefinition", "module": "mindclade.workflow.v1.workflow_definition_pb2", "name": "mindclade.workflow.v1"}
+  ],
   "generated_languages": ["go", "python", "rust", "typescript"],
   "schema_version": "mindclade.contract-matrix/v1"
 }

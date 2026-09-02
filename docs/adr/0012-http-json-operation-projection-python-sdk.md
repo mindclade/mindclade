@@ -1,12 +1,12 @@
 # ADR-0012: HTTP/JSON Operation Projection and Python SDK
 
-> Partially superseded by ADR-0015: the curated checked-in OpenAPI document is
-> the external HTTP/JSON and SDK authority, with exact parity to the public
-> gRPC facade. Mindclade SDK Forge is the owned primary compiler, using OAGen
-> only as its parser and typed-IR foundation. Fern is the preferred qualified
-> shadow, Speakeasy is a commercial benchmark/fallback, and Stainless is
-> legacy-comparison-only; the original one-way derivation and provider
-> deferral no longer apply.
+> Partially superseded by ADR-0015: Protobuf plus Buf-generated native
+> Protobuf/gRPC/Connect bindings are the internal transport authority.
+> Mindclade-owned facades under `internal/sdk` add ergonomics without
+> redefining wire models. The curated OpenAPI document remains an HTTP/JSON
+> projection; Fern and Speakeasy may be evaluated only as optional internal
+> REST generators and never become foundational dependencies. This proposed
+> public SDK is not adopted by ADR-0015 and has no current release authority.
 
 - Status: Proposed
 - Connected ratification: Pending independent review on protected infrastructure

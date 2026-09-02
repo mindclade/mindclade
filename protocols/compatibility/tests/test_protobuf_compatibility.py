@@ -23,20 +23,43 @@ def root() -> Path:
     raise RuntimeError("cannot locate protocol compatibility baselines")
 
 
-def baseline(repository: Path) -> dict[str, Any]:
+def candidate(repository: Path) -> dict[str, Any]:
     value: Any = json.loads(
-        (repository / "protocols/compatibility/baselines/protobuf.lock.json").read_text()
+        (repository / "protocols/compatibility/baselines/protobuf.candidate.json").read_text()
     )
     if not isinstance(value, dict):
-        raise TypeError("Protobuf baseline must be an object")
+        raise TypeError("Protobuf candidate must be an object")
+    return cast(dict[str, Any], value)
+
+
+def predecessor(repository: Path) -> dict[str, Any]:
+    value: Any = json.loads(
+        (
+            repository
+            / "protocols/compatibility/baselines/protobuf.predecessor.lock.json"
+        ).read_text()
+    )
+    if not isinstance(value, dict):
+        raise TypeError("Protobuf predecessor must be an object")
     return cast(dict[str, Any], value)
 
 
 class ProtobufCompatibilityTest(unittest.TestCase):
-    def test_committed_descriptor_baseline_matches_sources_and_is_non_breaking(self) -> None:
+    def test_committed_descriptor_candidate_matches_sources_but_is_not_a_baseline(self) -> None:
         repository = root()
-        value = baseline(repository)
-        self.assertEqual(value["schema_version"], "mindclade.protobuf-baseline/v2")
+        value = candidate(repository)
+        self.assertEqual(value["schema_version"], "mindclade.protobuf-candidate/v1")
+        lifecycle = cast(dict[str, Any], value["lifecycle"])
+        self.assertEqual(lifecycle["state"], "unratified-candidate")
+        self.assertEqual(lifecycle["breaking_enforcement"], "not-started")
+        self.assertEqual(
+            cast(dict[str, Any], lifecycle["ratification"])["required_evidence"],
+            ["cross_language", "database", "event", "gateway", "grpc", "sdk"],
+        )
+        self.assertFalse(
+            (repository / "protocols/compatibility/baselines/protobuf.lock.json").exists(),
+            "normal v1 breaking enforcement must not begin before training ratification",
+        )
         sources = cast(dict[str, str], value["sources"])
         actual_sources = {
             path.relative_to(repository).as_posix(): "sha256:"
@@ -50,21 +73,68 @@ class ProtobufCompatibilityTest(unittest.TestCase):
             "sha256:" + hashlib.sha256(descriptor).hexdigest(),
         )
         if "TEST_SRCDIR" not in os.environ:
-            with tempfile.NamedTemporaryFile(suffix=".binpb") as previous:
-                previous.write(descriptor)
-                previous.flush()
+            with tempfile.TemporaryDirectory(prefix="mindclade-candidate-descriptor-") as tmp:
+                descriptor_json = Path(tmp) / "descriptor.json"
+                descriptor_binary = Path(tmp) / "descriptor.binpb"
+                environment = {
+                    **os.environ,
+                    "BUF_CACHE_DIR": str(repository / "build" / "buf-cache"),
+                }
                 subprocess.run(
-                    ["buf", "breaking", "--against", previous.name],
+                    [
+                        "buf",
+                        "build",
+                        "--exclude-source-info",
+                        "--as-file-descriptor-set",
+                        "-o",
+                        str(descriptor_json),
+                    ],
                     cwd=repository,
-                    env={
-                        **os.environ,
-                        "BUF_CACHE_DIR": str(repository / "build" / "buf-cache"),
-                    },
+                    env=environment,
                     check=True,
                 )
+                subprocess.run(
+                    [
+                        "buf",
+                        "build",
+                        str(descriptor_json),
+                        "--as-file-descriptor-set",
+                        "-o",
+                        str(descriptor_binary),
+                    ],
+                    cwd=repository,
+                    env=environment,
+                    check=True,
+                )
+                self.assertEqual(descriptor_binary.read_bytes(), descriptor)
+
+    def test_exact_22_source_predecessor_is_archived_immutably(self) -> None:
+        repository = root()
+        path = repository / "protocols/compatibility/baselines/protobuf.predecessor.lock.json"
+        self.assertEqual(
+            "sha256:" + hashlib.sha256(path.read_bytes()).hexdigest(),
+            "sha256:07d7ee37e68211870861b7fc1ec5118c423447319603523bd9589c1c5dea6aaf",
+        )
+        value = predecessor(repository)
+        self.assertEqual(value["schema_version"], "mindclade.protobuf-baseline/v2")
+        self.assertEqual(len(cast(dict[str, str], value["sources"])), 22)
+        self.assertEqual(
+            cast(dict[str, str], value["descriptor_set"])["digest"],
+            "sha256:c817a8313d6378738386f6733337fd54fbeb37c38ddf86ac79859f10afb471d9",
+        )
+        lifecycle = cast(dict[str, Any], candidate(repository)["lifecycle"])
+        predecessor_metadata = cast(dict[str, Any], lifecycle["predecessor"])
+        self.assertEqual(
+            predecessor_metadata["artifact_digest"],
+            "sha256:" + hashlib.sha256(path.read_bytes()).hexdigest(),
+        )
+        self.assertEqual(
+            predecessor_metadata["revision"],
+            "9b5fbea8a44b15c291c6fd6247a57ad350487544",
+        )
 
     def test_descriptor_preserves_wave_one_scalar_wire_types(self) -> None:
-        value = baseline(root())
+        value = candidate(root())
         encoded = base64.b64decode(cast(dict[str, str], value["descriptor_set"])["base64"])
         descriptor_set = descriptor_pb2.FileDescriptorSet.FromString(encoded)
         fields = {
@@ -90,7 +160,7 @@ class ProtobufCompatibilityTest(unittest.TestCase):
         if "TEST_SRCDIR" in os.environ:
             self.skipTest("native language toolchains are qualified outside the Bazel sandbox")
         repository = root()
-        value = baseline(repository)
+        value = candidate(repository)
         fixture = base64.b64decode(cast(dict[str, str], value["wire_fixture"])["base64"])
 
         sys.path.insert(0, str(repository / "protocols/generated/python"))

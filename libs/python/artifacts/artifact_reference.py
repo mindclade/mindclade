@@ -1,9 +1,17 @@
 from __future__ import annotations
 
+from copy import deepcopy
+from typing import Any
+
+from jsonschema.exceptions import ValidationError
 from mindclade.artifact.v1.artifact_reference_pb2 import ArtifactRef as ArtifactRef
 from mindclade.artifact.v1.evidence_reference_pb2 import EvidenceRef as EvidenceRef
+from mindclade.schema.v1.bindings import (
+    ArtifactManifest as ArtifactManifest,
+    decode_artifact_manifest,
+)
 
-from .digest import ArtifactDigest
+from artifacts.digest import ArtifactDigest
 
 
 def _digest_value(value: ArtifactDigest | str) -> str:
@@ -56,3 +64,52 @@ def make_evidence_ref(
         evidence_kind=evidence_kind,
         policy_digest=_digest_value(policy_digest),
     )
+
+
+def validate_artifact_manifest(document: object) -> ArtifactManifest:
+    """Validate and narrow an artifact manifest using the generated schema binding.
+
+    The JSON Schema catalog remains the sole authority for the document shape;
+    this library only provides the stable artifact-facing entry point.
+    """
+    return decode_artifact_manifest(document)
+
+
+def _schema_binding_test() -> None:
+    """Exercise the consumer boundary when this module is used as a Bazel test."""
+    document: dict[str, Any] = {
+        "schema_version": "mindclade.artifact-manifest/v1",
+        "kind": "ArtifactManifest",
+        "metadata": {
+            "uid": "artifact-1",
+            "created_at": "2026-08-30T00:00:00Z",
+            "owner": "data-platform",
+        },
+        "spec": {
+            "artifact": {
+                "digest": "sha256:" + "a" * 64,
+                "media_type": "application/json",
+                "size_bytes": 1,
+                "kind": "fixture",
+            }
+        },
+        "lineage": [],
+        "integrity": {
+            "payload_digest": "sha256:" + "b" * 64,
+            "signatures": [],
+        },
+    }
+    manifest = validate_artifact_manifest(document)
+    assert manifest["spec"]["artifact"]["kind"] == "fixture"
+
+    invalid = deepcopy(document)
+    del invalid["spec"]["artifact"]["digest"]
+    try:
+        validate_artifact_manifest(invalid)
+    except ValidationError:
+        return
+    raise AssertionError("artifact manifest without a digest unexpectedly validated")
+
+
+if __name__ == "__main__":
+    _schema_binding_test()

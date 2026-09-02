@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package mindclade.events.admin.v1;
+
+import "google/protobuf/timestamp.proto";
+import "proto/mindclade/admin/v1/tenant.proto";
+import "proto/mindclade/common/v1/resource_reference.proto";
+
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/admin/v1;adminv1";
+
+// TenantUpdated records a revision-checked administrative boundary update.
+message TenantUpdated {
+  mindclade.admin.v1.Tenant tenant = 1;
+  repeated string changed_fields = 2;
+  mindclade.common.v1.ResourceRef operation = 3;
+  google.protobuf.Timestamp updated_at = 4;
+}

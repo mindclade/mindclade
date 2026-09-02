@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package mindclade.events.dataset.v1;
+
+import "google/protobuf/timestamp.proto";
+import "proto/mindclade/artifact/v1/evidence_reference.proto";
+import "proto/mindclade/common/v1/resource_reference.proto";
+
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/dataset/v1;datasetv1";
+
+// DatasetReleaseRevoked records an evidence-bound disposition without deleting history.
+message DatasetReleaseRevoked {
+  string dataset_release_name = 1;
+  int64 dataset_release_revision = 2;
+  string reason = 3;
+  repeated mindclade.artifact.v1.EvidenceRef evidence = 4;
+  mindclade.common.v1.ResourceRef operation = 5;
+  google.protobuf.Timestamp revoked_at = 6;
+}

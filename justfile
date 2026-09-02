@@ -300,16 +300,16 @@ check-contract-drift:
     just check-schema-drift
     just check-sdk-plan
 
-# Emit and verify the deterministic offline Mindclade Forge/provider SDK plan.
+# Emit and verify the deterministic offline optional REST-provider comparison plan.
 check-sdk-plan:
-    {{ python }} tools/codegen/sdk_generator.py plan \
-      --openapi protocols/openapi/external-api.yaml \
+    {{ uv }} run python tools/codegen/sdk_generator.py plan \
+      --openapi protocols/openapi/published/mindclade.openapi.yaml \
       --generation protocols/openapi/generation.yaml \
       --output-root build/sdk \
       --source-revision working-tree \
       --output sdk-generation-plan.json
-    {{ python }} tools/codegen/sdk_generator.py verify \
-      --openapi protocols/openapi/external-api.yaml \
+    {{ uv }} run python tools/codegen/sdk_generator.py verify \
+      --openapi protocols/openapi/published/mindclade.openapi.yaml \
       --generation protocols/openapi/generation.yaml \
       --output-root build/sdk \
       --source-revision working-tree \

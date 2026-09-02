@@ -78,7 +78,8 @@ pub struct AuditQueryPage {
     #[prost(message, optional, tag = "2")]
     pub page: ::core::option::Option<crate::common::v1::PageResponse>,
 }
-/// AuditExport is an immutable, policy-controlled result for queries too large to page.
+/// AuditExport is a policy-controlled durable request whose succeeded revision
+/// references one immutable export artifact.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct AuditExport {
     #[prost(string, tag = "1")]
@@ -91,6 +92,19 @@ pub struct AuditExport {
     pub create_time: ::core::option::Option<::prost_types::Timestamp>,
     #[prost(message, optional, tag = "5")]
     pub expire_time: ::core::option::Option<::prost_types::Timestamp>,
+    #[prost(enumeration = "AuditExportState", tag = "6")]
+    pub state: i32,
+    /// Stable machine-readable failure code; protected details remain in audit evidence.
+    #[prost(string, tag = "7")]
+    pub failure_code: ::prost::alloc::string::String,
+    #[prost(int64, tag = "8")]
+    pub revision: i64,
+    #[prost(string, tag = "9")]
+    pub etag: ::prost::alloc::string::String,
+    #[prost(message, optional, tag = "10")]
+    pub update_time: ::core::option::Option<::prost_types::Timestamp>,
+    #[prost(string, tag = "11")]
+    pub uid: ::prost::alloc::string::String,
 }
 /// AuditActionResult is the safe result projection of an audited action.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
@@ -104,7 +118,6 @@ pub enum AuditActionResult {
 }
 impl AuditActionResult {
     /// String value of the enum field names used in the ProtoBuf definition.
-    ///
     /// The values are not transformed in any way and thus are considered stable
     /// (if the ProtoBuf definition does not change) and safe for programmatic use.
     pub fn as_str_name(&self) -> &'static str {
@@ -124,6 +137,44 @@ impl AuditActionResult {
             "AUDIT_ACTION_RESULT_FAILED" => Some(Self::Failed),
             "AUDIT_ACTION_RESULT_DENIED" => Some(Self::Denied),
             "AUDIT_ACTION_RESULT_CANCELLED" => Some(Self::Cancelled),
+            _ => None,
+        }
+    }
+}
+/// AuditExportState is the durable lifecycle of an asynchronous audit export.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+pub enum AuditExportState {
+    Unspecified = 0,
+    Requested = 1,
+    Running = 2,
+    Succeeded = 3,
+    Failed = 4,
+    Expired = 5,
+}
+impl AuditExportState {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            Self::Unspecified => "AUDIT_EXPORT_STATE_UNSPECIFIED",
+            Self::Requested => "AUDIT_EXPORT_STATE_REQUESTED",
+            Self::Running => "AUDIT_EXPORT_STATE_RUNNING",
+            Self::Succeeded => "AUDIT_EXPORT_STATE_SUCCEEDED",
+            Self::Failed => "AUDIT_EXPORT_STATE_FAILED",
+            Self::Expired => "AUDIT_EXPORT_STATE_EXPIRED",
+        }
+    }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "AUDIT_EXPORT_STATE_UNSPECIFIED" => Some(Self::Unspecified),
+            "AUDIT_EXPORT_STATE_REQUESTED" => Some(Self::Requested),
+            "AUDIT_EXPORT_STATE_RUNNING" => Some(Self::Running),
+            "AUDIT_EXPORT_STATE_SUCCEEDED" => Some(Self::Succeeded),
+            "AUDIT_EXPORT_STATE_FAILED" => Some(Self::Failed),
+            "AUDIT_EXPORT_STATE_EXPIRED" => Some(Self::Expired),
             _ => None,
         }
     }

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import hashlib
 import json
 import re
@@ -13,39 +14,18 @@ from typing import Any
 
 import yaml
 
+from tools.codegen import generate_protocols
+
 HTTP_METHODS = {"delete", "get", "head", "options", "patch", "post", "put", "trace"}
 ASYNC_CREATE_OPERATIONS = {
-    "createAgentRun",
-    "createEvaluationRun",
     "createTrainingRun",
-    "createWorkflowRun",
-    "submitInference",
 }
 LIST_OPERATIONS = {
-    "listAgentDefinitions",
-    "listAgentRuns",
-    "listApprovalRequests",
-    "listDatasetReleases",
-    "listDatasets",
-    "listEvaluationRuns",
-    "listModelReleases",
-    "listModels",
-    "listProjects",
     "listTrainingRuns",
-    "listWorkflowDefinitions",
-    "listWorkflowRuns",
 }
 EXPECTED_TAGS = {
-    "Administration",
-    "Agents",
-    "Artifacts",
-    "Datasets",
-    "Evaluation",
-    "Inference",
-    "Models",
     "Operations",
     "Training",
-    "Workflows",
 }
 
 
@@ -107,7 +87,8 @@ class OpenApiCompatibilityTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.repository = root()
-        cls.openapi_path = cls.repository / "protocols/openapi/external-api.yaml"
+        cls.openapi_path = cls.repository / "protocols/openapi/published/mindclade.openapi.yaml"
+        cls.openapi_overlay_path = cls.repository / "protocols/openapi/external-api.yaml"
         cls.generation_path = cls.repository / "protocols/openapi/generation.yaml"
         cls.policy_path = cls.repository / "protocols/openapi/compatibility-policy.yaml"
         cls.sdk_generator_path = cls.repository / "tools/codegen/sdk_generator.py"
@@ -121,10 +102,27 @@ class OpenApiCompatibilityTest(unittest.TestCase):
             self.openapi["jsonSchemaDialect"], "https://json-schema.org/draft/2020-12/schema"
         )
         self.assertEqual(self.openapi["x-mindclade-api-profile"], "v1")
-        self.assertGreaterEqual(len(self.openapi["paths"]), 25)
-        self.assertGreaterEqual(len(self.openapi["components"]["schemas"]), 50)
+        self.assertEqual(len(self.openapi["paths"]), 5)
+        self.assertGreaterEqual(len(self.openapi["components"]["schemas"]), 15)
         for ref in iter_refs(self.openapi):
             resolve_local_ref(self.openapi, ref)
+
+    def test_checked_openapi_stages_are_distinct_and_published_is_exact(self) -> None:
+        raw_path = self.repository / "protocols/openapi/raw/mindclade.openapi.yaml"
+        curated_path = self.repository / "protocols/openapi/curated/mindclade.openapi.yaml"
+        published_path = self.repository / "protocols/openapi/published/mindclade.openapi.yaml"
+        raw = load_yaml(raw_path)
+        self.assertEqual(raw["openapi"], "3.1.0")
+        self.assertEqual(raw["x-mindclade-schema-version"], "mindclade.raw-openapi-projection/v3")
+        for ref in iter_refs(raw):
+            resolve_local_ref(raw, ref)
+        self.assertEqual(curated_path.read_bytes(), published_path.read_bytes())
+        overlay = load_yaml(self.openapi_overlay_path)
+        self.assertEqual(overlay["paths"], self.openapi["paths"])
+        self.assertGreater(
+            len(overlay["components"]["schemas"]),
+            len(self.openapi["components"]["schemas"]),
+        )
 
     def test_path_parameters_and_operation_ids_are_complete_and_unique(self) -> None:
         seen: set[str] = set()
@@ -222,99 +220,181 @@ class OpenApiCompatibilityTest(unittest.TestCase):
             for child in schema.get("allOf", []) if isinstance(schema, dict) else []:
                 if isinstance(child, dict) and "x-mindclade-authoritative-message" in child:
                     mappings.append(child["x-mindclade-authoritative-message"])
-        self.assertGreaterEqual(len(mappings), 15)
+        self.assertGreaterEqual(len(mappings), 5)
         for mapping in mappings:
             self.assertFalse(mapping.startswith("mindclade.internal."), mapping)
             package, message = mapping.rsplit(".", 1)
             self.assertIn(f"package {package};", proto_text, mapping)
             self.assertRegex(proto_text, rf"\bmessage {re.escape(message)}\s*\{{", mapping)
 
-    def test_public_grpc_facade_exactly_covers_openapi_operations(self) -> None:
+    def test_public_grpc_descriptor_exactly_matches_openapi_semantics(self) -> None:
+        candidate_path = (
+            self.repository / "protocols/compatibility/baselines/protobuf.candidate.json"
+        )
+        candidate = json.loads(candidate_path.read_text())
+        descriptor_set = base64.b64decode(candidate["descriptor_set"]["base64"], validate=True)
+        raw = generate_protocols.public_openapi_projection(descriptor_set)
+
+        self.assertEqual(raw["openapi"], "3.1.0")
+        self.assertEqual(raw["x-mindclade-schema-version"], "mindclade.raw-openapi-projection/v3")
+        self.assertEqual(len(raw["x-mindclade-binding-contracts"]), 6)
+        generate_protocols.validate_curated_bindings(raw, self.openapi)
+        generate_protocols.validate_curated_protojson(raw, self.openapi)
+
         grpc_path = self.repository / "protocols/proto/mindclade/api/v1/mindclade_service.proto"
         grpc_source = grpc_path.read_text()
-        service = re.search(
-            r"\bservice\s+MindcladeService\s*\{(?P<body>.*?)^\}",
-            grpc_source,
-            flags=re.DOTALL | re.MULTILINE,
-        )
-        self.assertIsNotNone(service, grpc_path)
-        assert service is not None
-        rpc_names = re.findall(r"^\s*rpc\s+(\w+)\s*\(", service.group("body"), re.MULTILINE)
-        grpc_operation_ids = {name[0].lower() + name[1:] for name in rpc_names}
-        openapi_operation_ids = {
-            operation["operationId"] for _, _, operation in operations(self.openapi)
-        }
-        self.assertEqual(len(rpc_names), len(set(rpc_names)), "duplicate public gRPC RPC")
-        self.assertEqual(grpc_operation_ids, openapi_operation_ids)
         self.assertNotIn('import "proto/mindclade/internal/', grpc_source)
 
-    def test_sdk_pipeline_keeps_mindclade_forge_primary_and_policy_owned(self) -> None:
-        spec = self.generation["spec"]
-        self.assertEqual(spec["authority"]["source"], "protocols/openapi/external-api.yaml")
-        self.assertEqual(spec["authority"]["sdkPolicyOwner"], "mindclade")
-        self.assertEqual(spec["sdkPolicy"]["owner"], "mindclade")
-        self.assertEqual(
-            spec["sdkPolicy"]["source"], "protocols/openapi/generation.yaml#spec.sdkPolicy"
+    def test_historical_openapi_drift_regressions_are_closed(self) -> None:
+        schemas = self.openapi["components"]["schemas"]
+        training_run_properties, _ = generate_protocols.merged_openapi_object(
+            self.openapi, schemas["TrainingRun"]
         )
-        self.assertEqual(spec["sdkPolicy"]["canonicalization"], "canonical-json-sorted-keys")
-        self.assertEqual(spec["sdkPolicy"]["providerConfigurationRule"], "derived-only")
+        self.assertEqual(
+            schemas["Operation"]["properties"]["state"]["enum"],
+            ["PENDING", "RUNNING", "SUCCEEDED", "FAILED", "CANCELLING", "CANCELLED"],
+        )
+        self.assertEqual(
+            training_run_properties["state"]["enum"],
+            [
+                "CREATED",
+                "VALIDATING",
+                "ADMITTED",
+                "RUNNING",
+                "CHECKPOINTING",
+                "RECOVERING",
+                "DRAINING",
+                "COMPLETED",
+                "FAILED",
+                "CANCELLED",
+            ],
+        )
+        self.assertEqual(
+            set(schemas["TrainingRunCreate"]["required"]),
+            {"trainingRunId", "trainingRecipe", "datasetRelease", "modelRelease"},
+        )
+        self.assertEqual(
+            set(schemas["OperationEvent"]["properties"]),
+            {
+                "eventId",
+                "eventType",
+                "schemaVersion",
+                "operation",
+                "operationRevision",
+                "resumeCursor",
+                "emittedAt",
+                "heartbeat",
+            },
+        )
+
+    def test_internal_sdk_pipeline_uses_native_generated_transport_and_owned_facades(
+        self,
+    ) -> None:
+        spec = self.generation["spec"]
+        self.assertEqual(self.generation["kind"], "InternalSdkGeneration")
+        self.assertEqual(self.generation["metadata"]["status"], "candidate-unratified")
+        self.assertEqual(spec["authority"]["contracts"], ["protocols/proto", "protocols/events"])
+        self.assertEqual(spec["authority"]["generatedRoot"], "protocols/generated")
+        self.assertEqual(spec["authority"]["generator"], "buf.gen.yaml")
+        self.assertEqual(spec["authority"]["facadeRoot"], "internal/sdk")
+        self.assertEqual(
+            spec["authority"]["dependencyDirection"],
+            [
+                "protocols/proto-and-events",
+                "protocols/generated",
+                "internal/sdk",
+                "services-workers-training-tools-and-internal-apps",
+            ],
+        )
+
+        native = spec["nativeGeneration"]
+        self.assertEqual(native["implementation"], "buf-and-pinned-native-generators")
+        self.assertTrue(native["deterministic"])
+        self.assertTrue(native["committedOutputs"])
+        self.assertEqual(set(native["languages"]), {"go", "python", "rust", "typescript"})
+        for language, configuration in native["languages"].items():
+            self.assertEqual(configuration["output"], f"protocols/generated/{language}")
+            self.assertEqual(configuration["facade"], f"internal/sdk/{language}")
+        self.assertEqual(
+            spec["internalSdkPolicy"]["models"],
+            "intentionally-exported-generated-protobuf-types",
+        )
+        self.assertEqual(spec["internalSdkPolicy"]["handwrittenWireModels"], "forbidden")
         self.assertEqual(
             spec["pipeline"]["interfaces"],
             [
-                "OpenApiValidator",
-                "SdkPolicyCompiler",
-                "SdkEmitter",
-                "SdkSurfaceExtractor",
-                "SdkBehaviorVerifier",
-                "SdkPackager",
-                "SdkPublisher",
-                "SdkReleaseOrchestrator",
+                "ProtoContractValidator",
+                "BufNativeGenerator",
+                "GeneratedBindingCompiler",
+                "InternalFacadeBuilder",
+                "InternalSdkConformanceVerifier",
+                "LayeringPolicyVerifier",
             ],
         )
-        self.assertEqual(spec["pipeline"]["releaseReceipt"]["emittedBy"], "SdkReleaseOrchestrator")
-        self.assertEqual(spec["localContractAdapter"]["mode"], "offline-plan-and-verify")
+
+        optional = spec["optionalRestGeneration"]
+        self.assertFalse(optional["enabledByDefault"])
+        self.assertFalse(optional["authority"])
+        self.assertEqual(optional["policyOwner"], "mindclade")
+        self.assertEqual(optional["providerConfigurationRule"], "derived-only")
+        providers = {provider["id"]: provider for provider in optional["providers"]}
+        self.assertEqual(set(providers), {"fern", "speakeasy"})
+        self.assertEqual(providers["fern"]["role"], "optional-internal-rest-generator")
         self.assertEqual(
-            spec["localContractAdapter"]["implementation"], "tools/codegen/sdk_generator.py"
+            providers["speakeasy"]["role"],
+            "optional-specialized-rest-benchmark",
         )
-        self.assertEqual(spec["localContractAdapter"]["readiness"], "implemented")
-        self.assertFalse(spec["localContractAdapter"]["emitsSdkSource"])
-        providers = {provider["id"]: provider for provider in spec["providers"]}
-        self.assertEqual(set(providers), {"fern", "forge", "speakeasy", "stainless"})
-        self.assertEqual(providers["forge"]["role"], "primary-owned")
-        self.assertTrue(providers["forge"]["longTerm"])
-        self.assertTrue(providers["forge"]["releasePrimaryEligible"])
-        self.assertEqual(providers["forge"]["foundation"]["id"], "oagen")
-        self.assertEqual(providers["forge"]["foundation"]["purpose"], "openapi-parser-and-typed-ir")
-        self.assertEqual(providers["fern"]["role"], "preferred-qualified-shadow")
-        self.assertEqual(
-            providers["fern"]["qualificationNotes"]["selfHostedWorkflow"],
-            "enterprise-docker-token-and-outbound-verification-required",
-        )
-        self.assertEqual(providers["speakeasy"]["role"], "commercial-benchmark-fallback")
-        self.assertEqual(providers["speakeasy"]["qualificationNotes"]["cliLicense"], "Elastic-2.0")
-        self.assertEqual(providers["stainless"]["role"], "legacy-comparison-only")
-        self.assertEqual(providers["stainless"]["availability"], "existing-project-only")
-        self.assertFalse(providers["stainless"]["longTerm"])
         for provider in providers.values():
+            self.assertFalse(provider["foundational"])
+            self.assertFalse(provider["releasePrimaryEligible"])
             self.assertEqual(set(provider["languages"]), {"go", "python", "typescript"})
-            self.assertEqual(provider["adapter"]["contractVersion"], "v1")
             self.assertEqual(provider["adapter"]["providerVersion"], "unpinned")
             self.assertIsNone(provider["adapter"]["executable"])
             self.assertIsNone(provider["adapter"]["executableSha256"])
-            self.assertEqual(
-                provider["configuration"]["policySource"],
-                "protocols/openapi/generation.yaml#spec.sdkPolicy",
-            )
             self.assertFalse(provider["release"]["publish"])
-        self.assertFalse(spec["connectedGap"]["ownedCompilerPinned"])
-        self.assertEqual(spec["parity"]["primary"], "forge")
-        self.assertEqual(spec["parity"]["preferredShadow"], "fern")
-        self.assertEqual(spec["parity"]["benchmarks"], ["speakeasy"])
-        self.assertEqual(spec["parity"]["legacyComparisons"], ["stainless"])
-        self.assertEqual(spec["qualification"]["connectedStatus"], "not-run")
+        generation_source = self.generation_path.read_text().lower()
+        self.assertNotIn("stainless", generation_source)
+        self.assertNotIn("oagen", generation_source)
+        self.assertNotIn("forge", generation_source)
+
+        self.assertEqual(spec["localOptionalRestAdapter"]["mode"], "offline-plan-and-verify")
+        self.assertEqual(
+            spec["localOptionalRestAdapter"]["implementation"],
+            "tools/codegen/sdk_generator.py",
+        )
+        self.assertFalse(spec["localOptionalRestAdapter"]["emitsSdkSource"])
+        self.assertFalse(spec["qualification"]["optionalRestProviderRequired"])
         self.assertFalse(spec["qualification"]["publishAuthorized"])
 
-    def test_local_sdk_plan_is_deterministic_and_provider_neutral(self) -> None:
+        public_http = spec["publicHttpCandidate"]
+        self.assertEqual(public_http["authority"], "public-protobuf-descriptor")
+        self.assertEqual(public_http["descriptorService"], "mindclade.api.v1.MindcladeService")
+        self.assertEqual(
+            set(public_http["activeOperationIds"]),
+            {
+                "getOperation",
+                "cancelOperation",
+                "watchOperation",
+                "listTrainingRuns",
+                "createTrainingRun",
+                "getTrainingRun",
+            },
+        )
+        self.assertIn(
+            "complete-protojson-component-shapes",
+            public_http["stages"]["raw"]["contains"],
+        )
+        self.assertIn(
+            "requiredness-or-protojson-representation",
+            public_http["stages"]["curated"]["forbiddenTransforms"],
+        )
+        self.assertEqual(
+            public_http["stages"]["published"]["rule"],
+            "byte-identical-to-validated-curated-candidate",
+        )
+        self.assertFalse(public_http["publishAuthorized"])
+
+    def test_optional_rest_plan_is_deterministic_and_non_authoritative(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             output_root = Path(directory)
             base = [
@@ -346,50 +426,49 @@ class OpenApiCompatibilityTest(unittest.TestCase):
             first_bytes = (output_root / "first.json").read_bytes()
             self.assertEqual(first_bytes, (output_root / "second.json").read_bytes())
             plan = json.loads(first_bytes)
-            self.assertEqual(plan["schemaVersion"], "mindclade.sdk-generation-plan/v2")
-            self.assertIn("submitInference", plan["inventory"]["operationIds"])
+            self.assertEqual(plan["schemaVersion"], "mindclade.optional-rest-sdk-plan/v3")
+            self.assertEqual(plan["kind"], "OptionalRestSdkPlan")
+            self.assertEqual(
+                plan["inventory"]["operationIds"],
+                [
+                    "cancelOperation",
+                    "createTrainingRun",
+                    "getOperation",
+                    "getTrainingRun",
+                    "listTrainingRuns",
+                    "watchOperation",
+                ],
+            )
             self.assertIn("ArtifactRef", plan["inventory"]["publicSchemas"])
             self.assertEqual(
-                plan["authority"]["sdkPolicy"],
-                "protocols/openapi/generation.yaml#spec.sdkPolicy",
+                plan["authority"]["protobufSources"],
+                ["protocols/proto", "protocols/events"],
             )
-            self.assertRegex(plan["authority"]["sdkPolicySha256"], r"^sha256:[0-9a-f]{64}$")
+            self.assertEqual(plan["authority"]["generatedRoot"], "protocols/generated")
+            self.assertEqual(plan["authority"]["internalSdkRoot"], "internal/sdk")
+            self.assertEqual(plan["authority"]["nativeGenerator"], "buf.gen.yaml")
+            self.assertRegex(plan["authority"]["optionalPolicySha256"], r"^sha256:[0-9a-f]{64}$")
             self.assertNotEqual(
-                plan["authority"]["sdkPolicySha256"],
+                plan["authority"]["optionalPolicySha256"],
                 plan["authority"]["generationConfigSha256"],
             )
             self.assertEqual(
                 {(item["provider"], item["language"]) for item in plan["provenance"]},
                 {
                     (provider, language)
-                    for provider in ("fern", "forge", "speakeasy", "stainless")
+                    for provider in ("fern", "speakeasy")
                     for language in ("go", "python", "typescript")
                 },
             )
-            self.assertEqual(plan["parity"]["primary"], "forge")
-            self.assertEqual(plan["parity"]["preferredShadow"], "fern")
-            self.assertEqual(plan["parity"]["benchmarks"], ["speakeasy"])
-            self.assertEqual(plan["parity"]["legacyComparisons"], ["stainless"])
-            forge_plans = [item for item in plan["provenance"] if item["provider"] == "forge"]
-            self.assertTrue(forge_plans)
-            self.assertTrue(all(item["foundation"] == "oagen" for item in forge_plans))
-            self.assertTrue(all(item["providerReleasePrimaryEligible"] for item in forge_plans))
+            self.assertEqual(plan["parity"]["reference"], "native-internal-sdk-behavior")
             self.assertTrue(
-                all(
-                    not item["providerReleasePrimaryEligible"]
-                    for item in plan["provenance"]
-                    if item["provider"] != "forge"
-                )
+                all(item["providerRole"].startswith("optional-") for item in plan["provenance"])
             )
             self.assertTrue(
                 all(item["providerVersion"] == "unpinned" for item in plan["provenance"])
             )
-            self.assertTrue(
-                all(
-                    item["sdkPolicySha256"] == plan["authority"]["sdkPolicySha256"]
-                    for item in plan["provenance"]
-                )
-            )
+            self.assertFalse(plan["safety"]["authoritative"])
+            self.assertFalse(plan["safety"]["enabledByDefault"])
             verify = subprocess.run(
                 [*base[:2], "verify", *base[2:], "--plan", "first.json"],
                 check=False,
@@ -398,7 +477,7 @@ class OpenApiCompatibilityTest(unittest.TestCase):
             )
             self.assertEqual(verify.returncode, 0, verify.stderr)
 
-    def test_sdk_generator_confines_outputs_and_fails_closed_before_provider_execution(
+    def test_optional_rest_planner_confines_outputs_and_fails_closed_before_execution(
         self,
     ) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -437,7 +516,7 @@ class OpenApiCompatibilityTest(unittest.TestCase):
                     "generate",
                     *common,
                     "--provider",
-                    "forge",
+                    "fern",
                     "--language",
                     "python",
                     "--allow-connected",
@@ -450,61 +529,43 @@ class OpenApiCompatibilityTest(unittest.TestCase):
             )
             self.assertEqual(generate.returncode, 3)
             self.assertIn("configuration-only", generate.stderr)
-            self.assertFalse((output_root / "forge/python").exists())
+            self.assertFalse((output_root / "fern/python").exists())
 
-            legacy_stainless = subprocess.run(
-                [
-                    sys.executable,
-                    str(self.sdk_generator_path),
-                    "generate",
-                    *common,
-                    "--provider",
-                    "stainless",
-                    "--language",
-                    "python",
-                    "--allow-connected",
-                    "--provider-command",
-                    "/definitely/not/a/provider",
-                ],
-                check=False,
-                capture_output=True,
-                text=True,
-            )
-            self.assertEqual(legacy_stainless.returncode, 3)
-            self.assertIn("existing-project legacy comparison", legacy_stainless.stderr)
-            self.assertFalse((output_root / "stainless/python").exists())
-
-    def test_sdk_plan_rejects_provider_or_policy_authority_inversion(self) -> None:
+    def test_sdk_policy_rejects_native_or_provider_authority_inversion(self) -> None:
         def copied_generation() -> dict[str, Any]:
             return json.loads(json.dumps(self.generation))
 
         invalid_cases: list[tuple[str, dict[str, Any], str]] = []
 
-        wrong_primary = copied_generation()
-        next(
-            provider for provider in wrong_primary["spec"]["providers"] if provider["id"] == "forge"
-        )["role"] = "preferred-qualified-shadow"
-        invalid_cases.append(("wrong-primary", wrong_primary, "forge role must be primary-owned"))
+        wrong_native = copied_generation()
+        wrong_native["spec"]["nativeGeneration"]["implementation"] = "hosted-provider"
+        invalid_cases.append(("wrong-native", wrong_native, "Buf and pinned native generators"))
 
-        wrong_foundation = copied_generation()
+        provider_foundational = copied_generation()
         next(
             provider
-            for provider in wrong_foundation["spec"]["providers"]
-            if provider["id"] == "forge"
-        )["foundation"]["id"] = "provider-native"
-        invalid_cases.append(("wrong-foundation", wrong_foundation, "must use OAGen"))
+            for provider in provider_foundational["spec"]["optionalRestGeneration"]["providers"]
+            if provider["id"] == "fern"
+        )["foundational"] = True
+        invalid_cases.append(
+            (
+                "provider-foundational",
+                provider_foundational,
+                "cannot be foundational or primary",
+            )
+        )
 
         provider_owned_policy = copied_generation()
         next(
             provider
-            for provider in provider_owned_policy["spec"]["providers"]
+            for provider in provider_owned_policy["spec"]["optionalRestGeneration"]["providers"]
             if provider["id"] == "fern"
         )["configuration"]["policySource"] = "fern.yml"
         invalid_cases.append(
             (
                 "provider-owned-policy",
                 provider_owned_policy,
-                "must derive from the Mindclade SDK policy",
+                "must derive from Mindclade policy",
             )
         )
 
@@ -536,31 +597,44 @@ class OpenApiCompatibilityTest(unittest.TestCase):
                     self.assertEqual(result.returncode, 2, result.stderr)
                     self.assertIn(expected_error, result.stderr)
 
-    def test_compatibility_policy_freezes_the_clean_v1_baseline(self) -> None:
+    def test_compatibility_policy_keeps_v1_unratified_and_internal_sdk_native(
+        self,
+    ) -> None:
         spec = self.policy["spec"]
-        self.assertEqual(spec["authority"]["source"], "protocols/openapi/external-api.yaml")
-        self.assertIn("Additive", spec["versioning"]["postBaselineRule"])
+        self.assertEqual(
+            spec["authority"]["descriptorSource"],
+            "protocols/proto/mindclade/api/v1/mindclade_service.proto",
+        )
+        self.assertEqual(
+            spec["authority"]["curationOverlay"], "protocols/openapi/external-api.yaml"
+        )
+        self.assertEqual(self.policy["metadata"]["status"], "candidate-unratified")
+        self.assertFalse(spec["versioning"]["ratified"])
+        self.assertIn("ratification", spec["versioning"]["postBaselineRule"])
         self.assertIn("change-operation-id", spec["compatibility"]["breaking"])
         self.assertIn("mutations-have-explicit-idempotency-semantics", spec["publicInvariants"])
-        self.assertTrue(spec["sdkSkew"]["providerSemanticParityRequired"])
-        self.assertEqual(spec["sdkSkew"]["providers"]["primary"], "forge")
-        self.assertEqual(spec["sdkSkew"]["providers"]["implementationFoundation"], "oagen")
-        self.assertEqual(spec["sdkSkew"]["providers"]["preferredShadow"], "fern")
-        self.assertEqual(spec["sdkSkew"]["providers"]["benchmarks"], ["speakeasy"])
-        self.assertEqual(spec["sdkSkew"]["providers"]["legacyComparisons"], ["stainless"])
-        self.assertTrue(spec["sdkSkew"]["providerRules"]["mindcladePolicyIsAuthoritative"])
+        self.assertEqual(spec["internalSdk"]["authority"], "protobuf")
+        self.assertEqual(spec["internalSdk"]["generator"], "buf-and-pinned-native")
+        self.assertEqual(spec["internalSdk"]["facadeRoot"], "internal/sdk")
+        self.assertEqual(
+            set(spec["internalSdk"]["languages"]),
+            {"go", "python", "rust", "typescript"},
+        )
+        self.assertEqual(spec["internalSdk"]["optionalRestProviders"], ["fern", "speakeasy"])
+        self.assertFalse(spec["internalSdk"]["optionalRestProvidersAreAuthority"])
         self.assertFalse(spec["rollback"]["publishOrDeployAuthorizedByThisPolicy"])
 
-    def test_committed_baseline_matches_all_openapi_sources(self) -> None:
-        baseline = self.repository / "protocols/compatibility/baselines/openapi.lock.json"
+    def test_candidate_lock_matches_all_openapi_sources(self) -> None:
+        candidate = self.repository / "protocols/compatibility/baselines/openapi.lock.json"
         expected = {
             str(path.relative_to(self.repository)): "sha256:"
             + hashlib.sha256(path.read_bytes()).hexdigest()
-            for path in sorted((self.repository / "protocols/openapi").glob("*.yaml"))
+            for path in sorted((self.repository / "protocols/openapi").glob("**/*"))
+            if path.is_file() and path.suffix in {".json", ".yaml"}
         }
         self.assertEqual(
-            json.loads(baseline.read_text()),
-            {"schema_version": "mindclade.openapi-baseline/v1", "sources": expected},
+            json.loads(candidate.read_text()),
+            {"schema_version": "mindclade.openapi-candidate/v1", "sources": expected},
         )
 
 

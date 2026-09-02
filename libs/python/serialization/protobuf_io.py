@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import hashlib
 from datetime import UTC, datetime
-from typing import Protocol
+from typing import ClassVar, Protocol
 
 from mindclade.common.v1.event_envelope_pb2 import (
     DATA_CLASSIFICATION_UNSPECIFIED,
@@ -10,13 +10,26 @@ from mindclade.common.v1.event_envelope_pb2 import (
     EventEnvelope,
 )
 from mindclade.common.v1.resource_reference_pb2 import ResourceRef
-from google.protobuf.message import Message
+from mindclade.events.registry import (
+    DETERMINISTIC_PROTOBUF_CONTENT_TYPE,
+    require_event_registration,
+)
+
+
+class MessageDescriptor(Protocol):
+    full_name: str
 
 
 class SerializableMessage(Protocol):
     def SerializeToString(  # noqa: N802
         self, *, deterministic: bool = False
     ) -> bytes: ...
+
+
+class ProtobufMessage(SerializableMessage, Protocol):
+    DESCRIPTOR: ClassVar[MessageDescriptor]
+
+    def ParseFromString(self, serialized: bytes) -> int: ...  # noqa: N802
 
 
 def encode_deterministic(message: SerializableMessage) -> bytes:
@@ -30,7 +43,7 @@ def _utc(value: datetime) -> datetime:
 
 
 def make_event_envelope(
-    payload: Message,
+    payload: ProtobufMessage,
     *,
     event_id: str,
     event_version: int,
@@ -53,10 +66,16 @@ def make_event_envelope(
     """Wrap one generated event payload in the authoritative transport envelope."""
     if not event_id or event_version < 1 or not tenant_id or not producer:
         raise ValueError("event identity, version, tenant, and producer are required")
+    event_type = payload.DESCRIPTOR.full_name
+    registration = require_event_registration(
+        event_type,
+        event_version,
+        DETERMINISTIC_PROTOBUF_CONTENT_TYPE,
+    )
     payload_bytes = encode_deterministic(payload)
     envelope = EventEnvelope(
         event_id=event_id,
-        event_type=payload.DESCRIPTOR.full_name,
+        event_type=registration.full_name,
         event_version=event_version,
         tenant_id=tenant_id,
         project_id=project_id,
@@ -71,7 +90,7 @@ def make_event_envelope(
         job_id=job_id,
         run_id=run_id,
         deduplication_key=deduplication_key or event_id,
-        payload_content_type="application/x-protobuf; deterministic=true",
+        payload_content_type=registration.content_type,
         classification=classification,
     )
     envelope.subject.CopyFrom(subject)
@@ -80,10 +99,15 @@ def make_event_envelope(
     return envelope
 
 
-def parse_event_payload[MessageT: Message](
+def parse_event_payload[MessageT: ProtobufMessage](
     envelope: EventEnvelope, message_type: type[MessageT]
 ) -> MessageT:
     """Verify and decode an envelope as the expected generated event message."""
+    require_event_registration(
+        envelope.event_type,
+        envelope.event_version,
+        envelope.payload_content_type,
+    )
     expected_type = message_type.DESCRIPTOR.full_name
     if envelope.event_type != expected_type:
         raise ValueError(

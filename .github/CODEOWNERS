@@ -2,6 +2,7 @@
 * @mindclade/product-engineering
 
 # Exact active root governance ownership.
+/.bazelignore @mindclade/developer-platform
 /.bazelrc @mindclade/developer-platform
 /.bazelversion @mindclade/developer-platform
 /.editorconfig @mindclade/developer-platform
@@ -27,6 +28,7 @@
 /SECURITY.md @mindclade/security
 /biome.json @mindclade/developer-platform
 /buf.gen.yaml @mindclade/developer-platform
+/buf.lock @mindclade/developer-platform
 /buf.yaml @mindclade/developer-platform
 /component.yaml @mindclade/product-engineering
 /flake.lock @mindclade/developer-platform

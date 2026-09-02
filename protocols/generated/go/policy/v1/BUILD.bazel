@@ -4,8 +4,13 @@ go_library(
     name = "bindings",
     srcs = [
         "authorization_decision.pb.go",
+        "authorization_decision_recorded.pb.go",
         "policy_reference.pb.go",
         "use_policy.pb.go",
+        "use_policy_activated.pb.go",
+        "use_policy_created.pb.go",
+        "use_policy_revoked.pb.go",
+        "use_policy_updated.pb.go",
     ],
     importpath = "github.com/mindclade/mindclade/protocols/generated/go/policy/v1",
     visibility = ["//visibility:public"],
@@ -24,8 +29,13 @@ filegroup(
     srcs = [
         "BUILD.bazel",
         "authorization_decision.pb.go",
+        "authorization_decision_recorded.pb.go",
         "policy_reference.pb.go",
         "use_policy.pb.go",
+        "use_policy_activated.pb.go",
+        "use_policy_created.pb.go",
+        "use_policy_revoked.pb.go",
+        "use_policy_updated.pb.go",
     ],
     visibility = ["//visibility:public"],
 )

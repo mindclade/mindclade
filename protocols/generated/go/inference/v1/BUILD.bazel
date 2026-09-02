@@ -4,7 +4,9 @@ go_library(
     name = "bindings",
     srcs = [
         "inference_request.pb.go",
+        "inference_requested.pb.go",
         "inference_result.pb.go",
+        "inference_result_committed.pb.go",
         "inference_stream.pb.go",
     ],
     importpath = "github.com/mindclade/mindclade/protocols/generated/go/inference/v1",
@@ -25,7 +27,9 @@ filegroup(
     srcs = [
         "BUILD.bazel",
         "inference_request.pb.go",
+        "inference_requested.pb.go",
         "inference_result.pb.go",
+        "inference_result_committed.pb.go",
         "inference_stream.pb.go",
     ],
     visibility = ["//visibility:public"],

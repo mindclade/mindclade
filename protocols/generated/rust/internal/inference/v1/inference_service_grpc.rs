@@ -62,7 +62,6 @@ pub mod inference_service_client {
             InferenceServiceClient::new(InterceptedService::new(inner, interceptor))
         }
         /// Compress requests with the given encoding.
-        ///
         /// This requires the server to support it otherwise it might respond with an
         /// error.
         #[must_use]
@@ -77,7 +76,6 @@ pub mod inference_service_client {
             self
         }
         /// Limits the maximum size of a decoded message.
-        ///
         /// Default: `4MB`
         #[must_use]
         pub fn max_decoding_message_size(mut self, limit: usize) -> Self {
@@ -85,7 +83,6 @@ pub mod inference_service_client {
             self
         }
         /// Limits the maximum size of an encoded message.
-        ///
         /// Default: `usize::MAX`
         #[must_use]
         pub fn max_encoding_message_size(mut self, limit: usize) -> Self {
@@ -123,6 +120,37 @@ pub mod inference_service_client {
                 );
             self.inner.unary(req, path, codec).await
         }
+        /** GetInferenceRequest returns immutable execution intent to authorized workers.
+*/
+        pub async fn get_inference_request(
+            &mut self,
+            request: impl tonic::IntoRequest<super::GetInferenceRequestRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::GetInferenceRequestResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::unknown(
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic_prost::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/mindclade.internal.inference.v1.InferenceService/GetInferenceRequest",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new(
+                        "mindclade.internal.inference.v1.InferenceService",
+                        "GetInferenceRequest",
+                    ),
+                );
+            self.inner.unary(req, path, codec).await
+        }
         /** GetInferenceResult reads a terminal result without reconstructing it from stream state.
 */
         pub async fn get_inference_result(
@@ -150,6 +178,37 @@ pub mod inference_service_client {
                     GrpcMethod::new(
                         "mindclade.internal.inference.v1.InferenceService",
                         "GetInferenceResult",
+                    ),
+                );
+            self.inner.unary(req, path, codec).await
+        }
+        /** CommitInferenceResult rejects stale attempts and atomically publishes terminal truth.
+*/
+        pub async fn commit_inference_result(
+            &mut self,
+            request: impl tonic::IntoRequest<super::CommitInferenceResultRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::CommitInferenceResultResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::unknown(
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic_prost::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/mindclade.internal.inference.v1.InferenceService/CommitInferenceResult",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new(
+                        "mindclade.internal.inference.v1.InferenceService",
+                        "CommitInferenceResult",
                     ),
                 );
             self.inner.unary(req, path, codec).await
@@ -209,6 +268,15 @@ pub mod inference_service_server {
             tonic::Response<super::SubmitInferenceResponse>,
             tonic::Status,
         >;
+        /** GetInferenceRequest returns immutable execution intent to authorized workers.
+*/
+        async fn get_inference_request(
+            &self,
+            request: tonic::Request<super::GetInferenceRequestRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::GetInferenceRequestResponse>,
+            tonic::Status,
+        >;
         /** GetInferenceResult reads a terminal result without reconstructing it from stream state.
 */
         async fn get_inference_result(
@@ -216,6 +284,15 @@ pub mod inference_service_server {
             request: tonic::Request<super::GetInferenceResultRequest>,
         ) -> std::result::Result<
             tonic::Response<super::GetInferenceResultResponse>,
+            tonic::Status,
+        >;
+        /** CommitInferenceResult rejects stale attempts and atomically publishes terminal truth.
+*/
+        async fn commit_inference_result(
+            &self,
+            request: tonic::Request<super::CommitInferenceResultRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::CommitInferenceResultResponse>,
             tonic::Status,
         >;
         /// Server streaming response type for the WatchInference method.
@@ -279,7 +356,6 @@ pub mod inference_service_server {
             self
         }
         /// Limits the maximum size of a decoded message.
-        ///
         /// Default: `4MB`
         #[must_use]
         pub fn max_decoding_message_size(mut self, limit: usize) -> Self {
@@ -287,7 +363,6 @@ pub mod inference_service_server {
             self
         }
         /// Limits the maximum size of an encoded message.
-        ///
         /// Default: `usize::MAX`
         #[must_use]
         pub fn max_encoding_message_size(mut self, limit: usize) -> Self {
@@ -358,6 +433,55 @@ pub mod inference_service_server {
                     };
                     Box::pin(fut)
                 }
+                "/mindclade.internal.inference.v1.InferenceService/GetInferenceRequest" => {
+                    #[allow(non_camel_case_types)]
+                    struct GetInferenceRequestSvc<T: InferenceService>(pub Arc<T>);
+                    impl<
+                        T: InferenceService,
+                    > tonic::server::UnaryService<super::GetInferenceRequestRequest>
+                    for GetInferenceRequestSvc<T> {
+                        type Response = super::GetInferenceRequestResponse;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::Response>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::GetInferenceRequestRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as InferenceService>::get_inference_request(
+                                        &inner,
+                                        request,
+                                    )
+                                    .await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = GetInferenceRequestSvc(inner);
+                        let codec = tonic_prost::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
                 "/mindclade.internal.inference.v1.InferenceService/GetInferenceResult" => {
                     #[allow(non_camel_case_types)]
                     struct GetInferenceResultSvc<T: InferenceService>(pub Arc<T>);
@@ -392,6 +516,55 @@ pub mod inference_service_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let method = GetInferenceResultSvc(inner);
+                        let codec = tonic_prost::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/mindclade.internal.inference.v1.InferenceService/CommitInferenceResult" => {
+                    #[allow(non_camel_case_types)]
+                    struct CommitInferenceResultSvc<T: InferenceService>(pub Arc<T>);
+                    impl<
+                        T: InferenceService,
+                    > tonic::server::UnaryService<super::CommitInferenceResultRequest>
+                    for CommitInferenceResultSvc<T> {
+                        type Response = super::CommitInferenceResultResponse;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::Response>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::CommitInferenceResultRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as InferenceService>::commit_inference_result(
+                                        &inner,
+                                        request,
+                                    )
+                                    .await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = CommitInferenceResultSvc(inner);
                         let codec = tonic_prost::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(

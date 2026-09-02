@@ -1,0 +1,32 @@
+BEGIN;
+
+DROP TABLE IF EXISTS policy_admin_command_receipts;
+DROP TABLE IF EXISTS audit_export_reason_filters;
+DROP TABLE IF EXISTS audit_export_result_filters;
+DROP TABLE IF EXISTS audit_export_resource_filters;
+DROP TABLE IF EXISTS audit_export_action_filters;
+DROP TABLE IF EXISTS audit_export_actor_filters;
+DROP TABLE IF EXISTS audit_exports;
+DROP TABLE IF EXISTS administrative_audit_records;
+DROP TABLE IF EXISTS administrative_project_annotations;
+DROP TABLE IF EXISTS administrative_project_labels;
+DROP TABLE IF EXISTS administrative_project_policy_snapshots;
+DROP TABLE IF EXISTS administrative_projects;
+DROP TABLE IF EXISTS administrative_tenant_annotations;
+DROP TABLE IF EXISTS administrative_tenant_labels;
+DROP TABLE IF EXISTS administrative_tenant_allowed_regions;
+DROP TABLE IF EXISTS administrative_tenant_policy_snapshots;
+DROP TABLE IF EXISTS administrative_tenants;
+DROP TABLE IF EXISTS use_policy_approval_requirements;
+DROP TABLE IF EXISTS use_policy_accepted_classifications;
+DROP TABLE IF EXISTS use_policy_prohibited_capabilities;
+DROP TABLE IF EXISTS use_policy_permitted_capabilities;
+DROP TABLE IF EXISTS use_policy_permitted_purposes;
+DROP TABLE IF EXISTS use_policies;
+DROP FUNCTION IF EXISTS reject_policy_admin_immutable_change();
+DROP FUNCTION IF EXISTS guard_audit_export_update();
+DROP FUNCTION IF EXISTS guard_administrative_project_update();
+DROP FUNCTION IF EXISTS guard_use_policy_update();
+DROP FUNCTION IF EXISTS guard_policy_admin_resource_update();
+
+COMMIT;

@@ -18,7 +18,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file proto/mindclade/admin/v1/audit_query.proto.
  */
 export const file_proto_mindclade_admin_v1_audit_query: GenFile = /*@__PURE__*/
-  fileDesc("Cipwcm90by9taW5kY2xhZGUvYWRtaW4vdjEvYXVkaXRfcXVlcnkucHJvdG8SEm1pbmRjbGFkZS5hZG1pbi52MSKJAwoKQXVkaXRRdWVyeRIOCgZwYXJlbnQYASABKAkSLgoKc3RhcnRfdGltZRgCIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASLAoIZW5kX3RpbWUYAyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhwKFGFjdG9yX3ByaW5jaXBhbF9yZWZzGAQgAygJEg8KB2FjdGlvbnMYBSADKAkSMwoJcmVzb3VyY2VzGAYgAygLMiAubWluZGNsYWRlLmNvbW1vbi52MS5SZXNvdXJjZVJlZhI2CgdyZXN1bHRzGAcgAygOMiUubWluZGNsYWRlLmFkbWluLnYxLkF1ZGl0QWN0aW9uUmVzdWx0EhsKE3BvbGljeV9yZWFzb25fY29kZXMYCCADKAkSEgoKcmVxdWVzdF9pZBgJIAEoCRIQCgh0cmFjZV9pZBgKIAEoCRIuCgRwYWdlGAsgASgLMiAubWluZGNsYWRlLmNvbW1vbi52MS5QYWdlUmVxdWVzdCK9BAoLQXVkaXRSZWNvcmQSEAoIZXZlbnRfaWQYASABKAkSLwoLb2NjdXJyZWRfYXQYAiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhsKE2FjdG9yX3ByaW5jaXBhbF9yZWYYAyABKAkSHwoXZGVsZWdhdGVkX3ByaW5jaXBhbF9yZWYYBCABKAkSJQodYXV0aGVudGljYXRpb25fY29udGV4dF9kaWdlc3QYBSABKAkSHAoUcmVxdWVzdF9vcmlnaW5fY2xhc3MYBiABKAkSEQoJdGVuYW50X2lkGAcgASgJEhIKCnByb2plY3RfaWQYCCABKAkSDgoGYWN0aW9uGAkgASgJEjIKCHJlc291cmNlGAogASgLMiAubWluZGNsYWRlLmNvbW1vbi52MS5SZXNvdXJjZVJlZhIlCh1hdXRob3JpemF0aW9uX2RlY2lzaW9uX2RpZ2VzdBgLIAEoCRIXCg9iZWZvcmVfcmV2aXNpb24YDCABKAkSFgoOYWZ0ZXJfcmV2aXNpb24YDSABKAkSGgoScG9saWN5X3JlYXNvbl9jb2RlGA4gASgJEjUKBnJlc3VsdBgPIAEoDjIlLm1pbmRjbGFkZS5hZG1pbi52MS5BdWRpdEFjdGlvblJlc3VsdBIVCg1mYWlsdXJlX2NsYXNzGBAgASgJEhIKCnJlcXVlc3RfaWQYESABKAkSEAoIdHJhY2VfaWQYEiABKAkSFQoNZGV0YWlsX2RpZ2VzdBgTIAEoCSJzCg5BdWRpdFF1ZXJ5UGFnZRIwCgdyZWNvcmRzGAEgAygLMh8ubWluZGNsYWRlLmFkbWluLnYxLkF1ZGl0UmVjb3JkEi8KBHBhZ2UYAiABKAsyIS5taW5kY2xhZGUuY29tbW9uLnYxLlBhZ2VSZXNwb25zZSLJAQoLQXVkaXRFeHBvcnQSDAoEbmFtZRgBIAEoCRI0CghhcnRpZmFjdBgCIAEoCzIiLm1pbmRjbGFkZS5hcnRpZmFjdC52MS5BcnRpZmFjdFJlZhIUCgxxdWVyeV9kaWdlc3QYAyABKAkSLwoLY3JlYXRlX3RpbWUYBCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEi8KC2V4cGlyZV90aW1lGAUgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCq+AQoRQXVkaXRBY3Rpb25SZXN1bHQSIwofQVVESVRfQUNUSU9OX1JFU1VMVF9VTlNQRUNJRklFRBAAEiEKHUFVRElUX0FDVElPTl9SRVNVTFRfU1VDQ0VFREVEEAESHgoaQVVESVRfQUNUSU9OX1JFU1VMVF9GQUlMRUQQAhIeChpBVURJVF9BQ1RJT05fUkVTVUxUX0RFTklFRBADEiEKHUFVRElUX0FDVElPTl9SRVNVTFRfQ0FOQ0VMTEVEEARCSFpGZ2l0aHViLmNvbS9taW5kY2xhZGUvbWluZGNsYWRlL3Byb3RvY29scy9nZW5lcmF0ZWQvZ28vYWRtaW4vdjE7YWRtaW52MWIGcHJvdG8z", [file_google_protobuf_timestamp, file_proto_mindclade_artifact_v1_artifact_reference, file_proto_mindclade_common_v1_pagination, file_proto_mindclade_common_v1_resource_reference]);
+  fileDesc("Cipwcm90by9taW5kY2xhZGUvYWRtaW4vdjEvYXVkaXRfcXVlcnkucHJvdG8SEm1pbmRjbGFkZS5hZG1pbi52MSKJAwoKQXVkaXRRdWVyeRIOCgZwYXJlbnQYASABKAkSLgoKc3RhcnRfdGltZRgCIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASLAoIZW5kX3RpbWUYAyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhwKFGFjdG9yX3ByaW5jaXBhbF9yZWZzGAQgAygJEg8KB2FjdGlvbnMYBSADKAkSMwoJcmVzb3VyY2VzGAYgAygLMiAubWluZGNsYWRlLmNvbW1vbi52MS5SZXNvdXJjZVJlZhI2CgdyZXN1bHRzGAcgAygOMiUubWluZGNsYWRlLmFkbWluLnYxLkF1ZGl0QWN0aW9uUmVzdWx0EhsKE3BvbGljeV9yZWFzb25fY29kZXMYCCADKAkSEgoKcmVxdWVzdF9pZBgJIAEoCRIQCgh0cmFjZV9pZBgKIAEoCRIuCgRwYWdlGAsgASgLMiAubWluZGNsYWRlLmNvbW1vbi52MS5QYWdlUmVxdWVzdCK9BAoLQXVkaXRSZWNvcmQSEAoIZXZlbnRfaWQYASABKAkSLwoLb2NjdXJyZWRfYXQYAiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhsKE2FjdG9yX3ByaW5jaXBhbF9yZWYYAyABKAkSHwoXZGVsZWdhdGVkX3ByaW5jaXBhbF9yZWYYBCABKAkSJQodYXV0aGVudGljYXRpb25fY29udGV4dF9kaWdlc3QYBSABKAkSHAoUcmVxdWVzdF9vcmlnaW5fY2xhc3MYBiABKAkSEQoJdGVuYW50X2lkGAcgASgJEhIKCnByb2plY3RfaWQYCCABKAkSDgoGYWN0aW9uGAkgASgJEjIKCHJlc291cmNlGAogASgLMiAubWluZGNsYWRlLmNvbW1vbi52MS5SZXNvdXJjZVJlZhIlCh1hdXRob3JpemF0aW9uX2RlY2lzaW9uX2RpZ2VzdBgLIAEoCRIXCg9iZWZvcmVfcmV2aXNpb24YDCABKAkSFgoOYWZ0ZXJfcmV2aXNpb24YDSABKAkSGgoScG9saWN5X3JlYXNvbl9jb2RlGA4gASgJEjUKBnJlc3VsdBgPIAEoDjIlLm1pbmRjbGFkZS5hZG1pbi52MS5BdWRpdEFjdGlvblJlc3VsdBIVCg1mYWlsdXJlX2NsYXNzGBAgASgJEhIKCnJlcXVlc3RfaWQYESABKAkSEAoIdHJhY2VfaWQYEiABKAkSFQoNZGV0YWlsX2RpZ2VzdBgTIAEoCSJzCg5BdWRpdFF1ZXJ5UGFnZRIwCgdyZWNvcmRzGAEgAygLMh8ubWluZGNsYWRlLmFkbWluLnYxLkF1ZGl0UmVjb3JkEi8KBHBhZ2UYAiABKAsyIS5taW5kY2xhZGUuY29tbW9uLnYxLlBhZ2VSZXNwb25zZSLyAgoLQXVkaXRFeHBvcnQSDAoEbmFtZRgBIAEoCRI0CghhcnRpZmFjdBgCIAEoCzIiLm1pbmRjbGFkZS5hcnRpZmFjdC52MS5BcnRpZmFjdFJlZhIUCgxxdWVyeV9kaWdlc3QYAyABKAkSLwoLY3JlYXRlX3RpbWUYBCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEi8KC2V4cGlyZV90aW1lGAUgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIzCgVzdGF0ZRgGIAEoDjIkLm1pbmRjbGFkZS5hZG1pbi52MS5BdWRpdEV4cG9ydFN0YXRlEhQKDGZhaWx1cmVfY29kZRgHIAEoCRIQCghyZXZpc2lvbhgIIAEoAxIMCgRldGFnGAkgASgJEi8KC3VwZGF0ZV90aW1lGAogASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBILCgN1aWQYCyABKAkqvgEKEUF1ZGl0QWN0aW9uUmVzdWx0EiMKH0FVRElUX0FDVElPTl9SRVNVTFRfVU5TUEVDSUZJRUQQABIhCh1BVURJVF9BQ1RJT05fUkVTVUxUX1NVQ0NFRURFRBABEh4KGkFVRElUX0FDVElPTl9SRVNVTFRfRkFJTEVEEAISHgoaQVVESVRfQUNUSU9OX1JFU1VMVF9ERU5JRUQQAxIhCh1BVURJVF9BQ1RJT05fUkVTVUxUX0NBTkNFTExFRBAEKtkBChBBdWRpdEV4cG9ydFN0YXRlEiIKHkFVRElUX0VYUE9SVF9TVEFURV9VTlNQRUNJRklFRBAAEiAKHEFVRElUX0VYUE9SVF9TVEFURV9SRVFVRVNURUQQARIeChpBVURJVF9FWFBPUlRfU1RBVEVfUlVOTklORxACEiAKHEFVRElUX0VYUE9SVF9TVEFURV9TVUNDRUVERUQQAxIdChlBVURJVF9FWFBPUlRfU1RBVEVfRkFJTEVEEAQSHgoaQVVESVRfRVhQT1JUX1NUQVRFX0VYUElSRUQQBUJIWkZnaXRodWIuY29tL21pbmRjbGFkZS9taW5kY2xhZGUvcHJvdG9jb2xzL2dlbmVyYXRlZC9nby9hZG1pbi92MTthZG1pbnYxYgZwcm90bzM", [file_google_protobuf_timestamp, file_proto_mindclade_artifact_v1_artifact_reference, file_proto_mindclade_common_v1_pagination, file_proto_mindclade_common_v1_resource_reference]);
 
 /**
  * AuditQuery is a bounded, side-effect-free tenant/project audit search.
@@ -227,7 +227,8 @@ export const AuditQueryPageSchema: GenMessage<AuditQueryPage> = /*@__PURE__*/
   messageDesc(file_proto_mindclade_admin_v1_audit_query, 2);
 
 /**
- * AuditExport is an immutable, policy-controlled result for queries too large to page.
+ * AuditExport is a policy-controlled durable request whose succeeded revision
+ * references one immutable export artifact.
  *
  * @generated from message mindclade.admin.v1.AuditExport
  */
@@ -256,6 +257,38 @@ export type AuditExport = Message<"mindclade.admin.v1.AuditExport"> & {
    * @generated from field: google.protobuf.Timestamp expire_time = 5;
    */
   expireTime?: Timestamp;
+
+  /**
+   * @generated from field: mindclade.admin.v1.AuditExportState state = 6;
+   */
+  state: AuditExportState;
+
+  /**
+   * Stable machine-readable failure code; protected details remain in audit evidence.
+   *
+   * @generated from field: string failure_code = 7;
+   */
+  failureCode: string;
+
+  /**
+   * @generated from field: int64 revision = 8;
+   */
+  revision: bigint;
+
+  /**
+   * @generated from field: string etag = 9;
+   */
+  etag: string;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp update_time = 10;
+   */
+  updateTime?: Timestamp;
+
+  /**
+   * @generated from field: string uid = 11;
+   */
+  uid: string;
 };
 
 /**
@@ -302,3 +335,46 @@ export enum AuditActionResult {
  */
 export const AuditActionResultSchema: GenEnum<AuditActionResult> = /*@__PURE__*/
   enumDesc(file_proto_mindclade_admin_v1_audit_query, 0);
+
+/**
+ * AuditExportState is the durable lifecycle of an asynchronous audit export.
+ *
+ * @generated from enum mindclade.admin.v1.AuditExportState
+ */
+export enum AuditExportState {
+  /**
+   * @generated from enum value: AUDIT_EXPORT_STATE_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: AUDIT_EXPORT_STATE_REQUESTED = 1;
+   */
+  REQUESTED = 1,
+
+  /**
+   * @generated from enum value: AUDIT_EXPORT_STATE_RUNNING = 2;
+   */
+  RUNNING = 2,
+
+  /**
+   * @generated from enum value: AUDIT_EXPORT_STATE_SUCCEEDED = 3;
+   */
+  SUCCEEDED = 3,
+
+  /**
+   * @generated from enum value: AUDIT_EXPORT_STATE_FAILED = 4;
+   */
+  FAILED = 4,
+
+  /**
+   * @generated from enum value: AUDIT_EXPORT_STATE_EXPIRED = 5;
+   */
+  EXPIRED = 5,
+}
+
+/**
+ * Describes the enum mindclade.admin.v1.AuditExportState.
+ */
+export const AuditExportStateSchema: GenEnum<AuditExportState> = /*@__PURE__*/
+  enumDesc(file_proto_mindclade_admin_v1_audit_query, 1);

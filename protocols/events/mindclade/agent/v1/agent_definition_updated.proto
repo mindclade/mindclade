@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package mindclade.events.agent.v1;
+
+import "google/protobuf/field_mask.proto";
+import "google/protobuf/timestamp.proto";
+import "proto/mindclade/agent/v1/agent_definition.proto";
+import "proto/mindclade/common/v1/resource_reference.proto";
+
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/agent/v1;agentv1";
+
+// AgentDefinitionUpdated records one optimistic, field-masked revision.
+message AgentDefinitionUpdated {
+  mindclade.agent.v1.AgentDefinition agent_definition = 1;
+  int64 previous_revision = 2;
+  google.protobuf.FieldMask update_mask = 3;
+  mindclade.common.v1.ResourceRef operation = 4;
+  google.protobuf.Timestamp updated_at = 5;
+}

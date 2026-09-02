@@ -3,12 +3,15 @@ syntax = "proto3";
 package mindclade.internal.inference.v1;
 
 import "google/protobuf/timestamp.proto";
+import "proto/mindclade/common/v1/command_context.proto";
+import "proto/mindclade/common/v1/resource_reference.proto";
 import "proto/mindclade/inference/v1/inference_request.proto";
 import "proto/mindclade/inference/v1/inference_result.proto";
 import "proto/mindclade/inference/v1/inference_stream.proto";
+import "proto/mindclade/job/v1/lease_fencing.proto";
 import "proto/mindclade/job/v1/operation.proto";
 
-option go_package = "github.com/mindclade/mindclade/protocols/generated/go/internal/inference/v1;internalinferencev1";
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/inference/v1;internalinferencev1";
 
 // SubmitInferenceRequest wraps bounded inference intent after edge validation.
 message SubmitInferenceRequest {
@@ -18,6 +21,16 @@ message SubmitInferenceRequest {
 // SubmitInferenceResponse returns the durable operation tracking inference work.
 message SubmitInferenceResponse {
   mindclade.job.v1.Operation operation = 1;
+}
+
+// GetInferenceRequestRequest identifies one admitted authoritative request.
+message GetInferenceRequestRequest {
+  string name = 1;
+}
+
+// GetInferenceRequestResponse returns the frozen request workers must execute.
+message GetInferenceRequestResponse {
+  mindclade.inference.v1.InferenceRequest inference_request = 1;
 }
 
 // GetInferenceResultRequest identifies an operation's immutable terminal result.
@@ -43,12 +56,31 @@ message WatchInferenceResponse {
   mindclade.inference.v1.InferenceStreamMessage message = 1;
 }
 
+// CommitInferenceResultRequest binds terminal truth to the current fenced attempt.
+message CommitInferenceResultRequest {
+  mindclade.common.v1.CommandContext context = 1;
+  mindclade.common.v1.ResourceRef inference_request = 2;
+  mindclade.job.v1.LeaseFence fence = 3;
+  mindclade.inference.v1.InferenceResult result = 4;
+  string request_digest = 5;
+}
+
+// CommitInferenceResultResponse returns accepted immutable result and operation.
+message CommitInferenceResultResponse {
+  mindclade.inference.v1.InferenceResult result = 1;
+  mindclade.job.v1.Operation operation = 2;
+}
+
 // InferenceService owns internal submission, terminal-result, and resumable-stream RPCs.
 service InferenceService {
   // SubmitInference validates idempotency and returns durable asynchronous state.
   rpc SubmitInference(SubmitInferenceRequest) returns (SubmitInferenceResponse);
+  // GetInferenceRequest returns immutable execution intent to authorized workers.
+  rpc GetInferenceRequest(GetInferenceRequestRequest) returns (GetInferenceRequestResponse);
   // GetInferenceResult reads a terminal result without reconstructing it from stream state.
   rpc GetInferenceResult(GetInferenceResultRequest) returns (GetInferenceResultResponse);
+  // CommitInferenceResult rejects stale attempts and atomically publishes terminal truth.
+  rpc CommitInferenceResult(CommitInferenceResultRequest) returns (CommitInferenceResultResponse);
   // WatchInference streams resumable convenience updates over durable operation state.
   rpc WatchInference(WatchInferenceRequest) returns (stream WatchInferenceResponse);
 }

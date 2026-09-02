@@ -9,6 +9,9 @@ catalogs:
     '@connectrpc/connect':
       specifier: 2.1.2
       version: 2.1.2
+    '@connectrpc/connect-node':
+      specifier: 2.1.2
+      version: 2.1.2
     '@types/node':
       specifier: 24.10.1
       version: 24.10.1
@@ -39,7 +42,33 @@ importers:
         specifier: 5.9.3
         version: 5.9.3
 
+  internal/sdk/typescript:
+    dependencies:
+      '@bufbuild/protobuf':
+        specifier: 2.11.0
+        version: 2.11.0
+      '@connectrpc/connect':
+        specifier: 'catalog:'
+        version: 2.1.2(@bufbuild/protobuf@2.11.0)
+      '@connectrpc/connect-node':
+        specifier: 'catalog:'
+        version: 2.1.2(@bufbuild/protobuf@2.11.0)(@connectrpc/connect@2.1.2(@bufbuild/protobuf@2.11.0))
+    devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 24.10.1
+      typescript:
+        specifier: 'catalog:'
+        version: 5.9.3
+
   libs/typescript/config:
+    dependencies:
+      ajv:
+        specifier: 'catalog:'
+        version: 8.20.0
+      ajv-formats:
+        specifier: 'catalog:'
+        version: 3.0.1(ajv@8.20.0)
     devDependencies:
       '@types/node':
         specifier: 'catalog:'
@@ -160,6 +189,13 @@ packages:
   '@bufbuild/protoplugin@2.11.0':
     resolution: {integrity: sha512-lyZVNFUHArIOt4W0+dwYBe5GBwbKzbOy8ObaloEqsw9Mmiwv2O48TwddDoHN4itylC+BaEGqFdI1W8WQt2vWJQ==}
 
+  '@connectrpc/connect-node@2.1.2':
+    resolution: {integrity: sha512-+i/aAOpsI8sIx1mbYp6d99zvxaUSF6t/jP9Ux9maAmjsZPgmIQ3JuIeYi0zJIP9zlCnBlJjkpPosshCgdRuThQ==}
+    engines: {node: '>=20'}
+    peerDependencies:
+      '@bufbuild/protobuf': ^2.7.0
+      '@connectrpc/connect': 2.1.2
+
   '@connectrpc/connect@2.1.2':
     resolution: {integrity: sha512-MXkBijtcX09R10Eb6sFeIetc6w6746eio6xtfuyVOH7oQAacT1X0GzMIQFux6Qy8cq3W/T5qX5Bei8YbFtmRGA==}
     peerDependencies:
@@ -276,6 +312,11 @@ snapshots:
       typescript: 5.4.5
     transitivePeerDependencies:
       - supports-color
+
+  '@connectrpc/connect-node@2.1.2(@bufbuild/protobuf@2.11.0)(@connectrpc/connect@2.1.2(@bufbuild/protobuf@2.11.0))':
+    dependencies:
+      '@bufbuild/protobuf': 2.11.0
+      '@connectrpc/connect': 2.1.2(@bufbuild/protobuf@2.11.0)
 
   '@connectrpc/connect@2.1.2(@bufbuild/protobuf@2.11.0)':
     dependencies:

@@ -2,7 +2,7 @@ apiVersion: mindclade.dev/v1
 kind: ArchitectureDecisionIndex
 metadata:
   name: foundational-decisions
-  description: Foundational decisions, bounded bootstrap and native incubation authorities, the accepted all-contracts clean-v1 baseline, and proposed connected qualification decisions.
+  description: Foundational decisions, bounded bootstrap and native incubation authorities, the accepted all-contracts candidate-v1 program, and proposed connected qualification decisions.
 spec:
   decisions:
     - id: ADR-0001
@@ -101,7 +101,7 @@ spec:
       owners: [architecture, ml-systems-performance]
       specificationAccepted: "2026-08-31"
     - id: ADR-0015
-      title: All-Contracts Clean-v1 Baseline
+      title: All-Contracts Candidate v1 Estate and Ratification Gate
       status: accepted-in-specification
       connectedRatification: pending
       path: docs/adr/0015-all-contracts-clean-v1-baseline.md

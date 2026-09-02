@@ -44,8 +44,8 @@ from owner_policy import (  # noqa: E402
 )
 from path_policy import (  # noqa: E402
     ALL_CONTRACT_GRPC_SERVICES,
-    CANONICAL_FILE_COUNT,
     ALL_CONTRACT_RUST_PLUGIN_PATHS,
+    CANONICAL_FILE_COUNT,
     PolicyError,
     discover_actual_paths,
     is_all_contract_baseline_path,
@@ -60,7 +60,10 @@ from render_repository_tree import (  # noqa: E402
     render_tree,
     replace_generated_region,
 )
-from verify_repository_path_manifest import validate_declared_targets  # noqa: E402
+from verify_repository_path_manifest import (  # noqa: E402
+    _bazel_failure_detail,
+    validate_declared_targets,
+)
 
 
 class RepositoryPolicyTest(unittest.TestCase):
@@ -76,7 +79,7 @@ class RepositoryPolicyTest(unittest.TestCase):
         self.assertEqual(validate_manifest(self.manifest), [])
         self.assertEqual(len(self.manifest["paths"]), CANONICAL_FILE_COUNT)
         wave_one = [entry for entry in self.manifest["paths"] if entry["activation_wave"] == "1"]
-        self.assertEqual(len(wave_one), 452)
+        self.assertEqual(len(wave_one), 651)
         for entry in wave_one:
             with self.subTest(path=entry["path"]):
                 status = entry["status"]
@@ -108,9 +111,9 @@ class RepositoryPolicyTest(unittest.TestCase):
                 else:
                     self.assertEqual(entry["build_targets"], ["//:wave1_sources"])
                     self.assertEqual(entry["test_targets"], ["//:wave1_tests"])
-                if entry["source_authority"] == "reviewed-generated":
+                if status != "target" and entry["source_authority"] == "reviewed-generated":
                     self.assertEqual(status, "generated")
-                if entry["source_authority"] == "hand-authored":
+                if status != "target" and entry["source_authority"] == "hand-authored":
                     self.assertEqual(status, "active")
 
     def test_all_contract_clean_v1_activation_is_closed_and_authoritative(self) -> None:
@@ -144,17 +147,18 @@ class RepositoryPolicyTest(unittest.TestCase):
         entries = {entry["path"]: entry for entry in self.manifest["paths"]}
         for domain, stem, source_family in ALL_CONTRACT_GRPC_SERVICES:
             generated_family = source_family
+            go_generated_family = generated_family.replace("internal/", "internalrpc/")
             source = f"protocols/proto/mindclade/{source_family}/v1/{stem}.proto"
             self.assertEqual(entries[source]["status"], "active")
             self.assertEqual(entries[source]["public_surface"], domain == "api")
 
             generated = (
-                f"protocols/generated/go/{generated_family}/v1/{stem}.pb.go",
-                f"protocols/generated/go/{generated_family}/v1/{stem}_grpc.pb.go",
-                f"protocols/generated/python/{generated_family}/v1/{stem}_pb2.py",
-                f"protocols/generated/python/{generated_family}/v1/{stem}_pb2.pyi",
-                f"protocols/generated/python/{generated_family}/v1/{stem}_pb2_grpc.py",
-                f"protocols/generated/python/{generated_family}/v1/{stem}_pb2_grpc.pyi",
+                f"protocols/generated/go/{go_generated_family}/v1/{stem}.pb.go",
+                f"protocols/generated/go/{go_generated_family}/v1/{stem}_grpc.pb.go",
+                f"protocols/generated/python/mindclade/{generated_family}/v1/{stem}_pb2.py",
+                f"protocols/generated/python/mindclade/{generated_family}/v1/{stem}_pb2.pyi",
+                f"protocols/generated/python/mindclade/{generated_family}/v1/{stem}_pb2_grpc.py",
+                f"protocols/generated/python/mindclade/{generated_family}/v1/{stem}_pb2_grpc.pyi",
                 f"protocols/generated/rust/{generated_family}/v1/{stem}.rs",
                 f"protocols/generated/rust/{generated_family}/v1/{stem}_grpc.rs",
                 f"protocols/generated/typescript/{generated_family}/v1/{stem}_pb.ts",
@@ -187,6 +191,18 @@ class RepositoryPolicyTest(unittest.TestCase):
         self.assertEqual(
             errors,
             ["cannot prove target source membership without the pinned direct Bazel: //:wave0"],
+        )
+
+    def test_target_validation_reports_actionable_bazel_lock_error(self) -> None:
+        detail = _bazel_failure_detail(
+            "FATAL: bazel crashed\n"
+            "java.lang.IllegalStateException\n"
+            "MODULE.bazel.lock is no longer up-to-date; run bazel mod deps\n"
+            "at java.base/java.util.concurrent.ForkJoinWorkerThread.run\n"
+        )
+        self.assertEqual(
+            detail,
+            "MODULE.bazel.lock is no longer up-to-date; run bazel mod deps",
         )
 
     def test_target_validation_does_not_follow_external_dependencies(self) -> None:
@@ -223,6 +239,8 @@ class RepositoryPolicyTest(unittest.TestCase):
                 errors = validate_declared_targets(manifest, root)
         self.assertEqual(errors, [])
         self.assertEqual(query.call_count, 2)
+        first_query = query.call_args_list[0].args[0]
+        self.assertGreater(first_query.index("--repo_contents_cache="), first_query.index("query"))
 
     def test_schema_validates_manifest(self) -> None:
         schema = json.loads(
@@ -257,7 +275,7 @@ class RepositoryPolicyTest(unittest.TestCase):
         expected_waves = {
             "protocols/proto/mindclade/common/v1/identifiers.proto": "1",
             "data/contracts/source.py": "2S",
-            "services/control_plane/cmd/control-plane/main.go": "2P",
+            "services/control_plane/cmd/control-plane/main.go": "1",
             "protocols/schemas/feature_contract/feature_contract.schema.json": "3",
             "runtime/dispatch/execution_target.py": "4",
             "runtime/distributed/topology/topology_manifest.py": "5",

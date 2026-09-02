@@ -2,9 +2,12 @@
 import datetime
 
 from google.protobuf import timestamp_pb2 as _timestamp_pb2
+from mindclade.common.v1 import command_context_pb2 as _command_context_pb2
+from mindclade.common.v1 import resource_reference_pb2 as _resource_reference_pb2
 from mindclade.inference.v1 import inference_request_pb2 as _inference_request_pb2
 from mindclade.inference.v1 import inference_result_pb2 as _inference_result_pb2
 from mindclade.inference.v1 import inference_stream_pb2 as _inference_stream_pb2
+from mindclade.job.v1 import lease_fencing_pb2 as _lease_fencing_pb2
 from mindclade.job.v1 import operation_pb2 as _operation_pb2
 from google.protobuf import descriptor as _descriptor
 from google.protobuf import message as _message
@@ -24,6 +27,18 @@ class SubmitInferenceResponse(_message.Message):
     OPERATION_FIELD_NUMBER: _ClassVar[int]
     operation: _operation_pb2.Operation
     def __init__(self, operation: _Optional[_Union[_operation_pb2.Operation, _Mapping]] = ...) -> None: ...
+
+class GetInferenceRequestRequest(_message.Message):
+    __slots__ = ("name",)
+    NAME_FIELD_NUMBER: _ClassVar[int]
+    name: str
+    def __init__(self, name: _Optional[str] = ...) -> None: ...
+
+class GetInferenceRequestResponse(_message.Message):
+    __slots__ = ("inference_request",)
+    INFERENCE_REQUEST_FIELD_NUMBER: _ClassVar[int]
+    inference_request: _inference_request_pb2.InferenceRequest
+    def __init__(self, inference_request: _Optional[_Union[_inference_request_pb2.InferenceRequest, _Mapping]] = ...) -> None: ...
 
 class GetInferenceResultRequest(_message.Message):
     __slots__ = ("operation_name",)
@@ -54,3 +69,25 @@ class WatchInferenceResponse(_message.Message):
     MESSAGE_FIELD_NUMBER: _ClassVar[int]
     message: _inference_stream_pb2.InferenceStreamMessage
     def __init__(self, message: _Optional[_Union[_inference_stream_pb2.InferenceStreamMessage, _Mapping]] = ...) -> None: ...
+
+class CommitInferenceResultRequest(_message.Message):
+    __slots__ = ("context", "inference_request", "fence", "result", "request_digest")
+    CONTEXT_FIELD_NUMBER: _ClassVar[int]
+    INFERENCE_REQUEST_FIELD_NUMBER: _ClassVar[int]
+    FENCE_FIELD_NUMBER: _ClassVar[int]
+    RESULT_FIELD_NUMBER: _ClassVar[int]
+    REQUEST_DIGEST_FIELD_NUMBER: _ClassVar[int]
+    context: _command_context_pb2.CommandContext
+    inference_request: _resource_reference_pb2.ResourceRef
+    fence: _lease_fencing_pb2.LeaseFence
+    result: _inference_result_pb2.InferenceResult
+    request_digest: str
+    def __init__(self, context: _Optional[_Union[_command_context_pb2.CommandContext, _Mapping]] = ..., inference_request: _Optional[_Union[_resource_reference_pb2.ResourceRef, _Mapping]] = ..., fence: _Optional[_Union[_lease_fencing_pb2.LeaseFence, _Mapping]] = ..., result: _Optional[_Union[_inference_result_pb2.InferenceResult, _Mapping]] = ..., request_digest: _Optional[str] = ...) -> None: ...
+
+class CommitInferenceResultResponse(_message.Message):
+    __slots__ = ("result", "operation")
+    RESULT_FIELD_NUMBER: _ClassVar[int]
+    OPERATION_FIELD_NUMBER: _ClassVar[int]
+    result: _inference_result_pb2.InferenceResult
+    operation: _operation_pb2.Operation
+    def __init__(self, result: _Optional[_Union[_inference_result_pb2.InferenceResult, _Mapping]] = ..., operation: _Optional[_Union[_operation_pb2.Operation, _Mapping]] = ...) -> None: ...

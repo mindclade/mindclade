@@ -1,0 +1,116 @@
+load("@rules_python//python:defs.bzl", "py_library", "py_test")
+
+package(default_visibility = ["//:__subpackages__"])
+
+py_library(
+    name = "mindclade_internal_sdk",
+    srcs = glob(["mindclade_internal_sdk/*.py"]),
+    imports = ["."],
+    deps = [
+        "//protocols/generated/python:bindings",
+        "@mindclade_pypi//google_auth",
+        "@mindclade_pypi//grpcio",
+        "@mindclade_pypi//protobuf",
+        "@mindclade_pypi//requests",
+    ],
+)
+
+py_test(
+    name = "agent_test",
+    size = "small",
+    srcs = ["tests/test_agents.py"],
+    data = [":governed_sources"],
+    legacy_create_init = 0,
+    main = "tests/test_agents.py",
+    deps = [
+        ":mindclade_internal_sdk",
+        "//protocols/generated/python:bindings",
+        "@mindclade_pypi//protobuf",
+    ],
+)
+
+py_test(
+    name = "internal_sdk_test",
+    size = "small",
+    srcs = ["tests/test_internal_sdk.py"],
+    data = [":governed_sources"],
+    legacy_create_init = 0,
+    main = "tests/test_internal_sdk.py",
+    deps = [
+        ":mindclade_internal_sdk",
+        "//protocols/generated/python:bindings",
+        "@mindclade_pypi//grpcio",
+        "@mindclade_pypi//protobuf",
+    ],
+)
+
+py_test(
+    name = "inference_test",
+    size = "small",
+    srcs = ["tests/test_inference.py"],
+    data = [":governed_sources"],
+    legacy_create_init = 0,
+    main = "tests/test_inference.py",
+    deps = [
+        ":mindclade_internal_sdk",
+        "//protocols/generated/python:bindings",
+        "@mindclade_pypi//protobuf",
+    ],
+)
+
+py_test(
+    name = "evaluation_test",
+    size = "small",
+    srcs = ["tests/test_evaluations.py"],
+    data = [":governed_sources"],
+    legacy_create_init = 0,
+    main = "tests/test_evaluations.py",
+    deps = [
+        ":mindclade_internal_sdk",
+        "//protocols/generated/python:bindings",
+        "@mindclade_pypi//protobuf",
+    ],
+)
+
+py_test(
+    name = "policy_admin_test",
+    size = "small",
+    srcs = ["tests/test_policy_admin.py"],
+    data = [":governed_sources"],
+    legacy_create_init = 0,
+    main = "tests/test_policy_admin.py",
+    deps = [
+        ":mindclade_internal_sdk",
+        "//protocols/generated/python:bindings",
+        "@mindclade_pypi//protobuf",
+    ],
+)
+
+py_test(
+    name = "workflow_test",
+    size = "small",
+    srcs = ["tests/test_workflows.py"],
+    data = [":governed_sources"],
+    legacy_create_init = 0,
+    main = "tests/test_workflows.py",
+    deps = [
+        ":mindclade_internal_sdk",
+        "//protocols/generated/python:bindings",
+        "@mindclade_pypi//protobuf",
+    ],
+)
+
+filegroup(
+    name = "governed_sources",
+    srcs = [
+        "BUILD.bazel",
+        "README.md",
+        "pyproject.toml",
+    ] + glob(
+        [
+            "mindclade_internal_sdk/*.py",
+            "tests/*.py",
+        ],
+    ),
+    visibility = ["//visibility:public"],
+)

@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package mindclade.events.evaluation.v1;
+
+import "google/protobuf/timestamp.proto";
+import "proto/mindclade/common/v1/resource_reference.proto";
+
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/evaluation/v1;evaluationv1";
+
+// EvaluationCancellationRequested records monotonic desired cancellation.
+message EvaluationCancellationRequested {
+  string evaluation_run_name = 1;
+  int64 evaluation_run_revision = 2;
+  string reason = 3;
+  mindclade.common.v1.ResourceRef operation = 4;
+  google.protobuf.Timestamp requested_at = 5;
+}

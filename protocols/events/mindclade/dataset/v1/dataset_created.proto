@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package mindclade.events.dataset.v1;
+
+import "google/protobuf/timestamp.proto";
+import "proto/mindclade/common/v1/resource_reference.proto";
+
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/dataset/v1;datasetv1";
+
+// DatasetCreated records admission of one tenant-scoped logical dataset.
+message DatasetCreated {
+  string dataset_name = 1;
+  string dataset_uid = 2;
+  int64 dataset_revision = 3;
+  string display_name = 4;
+  string policy_classification = 5;
+  mindclade.common.v1.ResourceRef operation = 6;
+  google.protobuf.Timestamp created_at = 7;
+}

@@ -16,6 +16,9 @@ concurrency:
 
 jobs:
   python:
+    permissions:
+      contents: read
+      security-events: write
     uses: mindclade/.github/.github/workflows/reusable-codeql.yml@c097ef86c25991a400050c13e78574e8d3d8c071
     with:
       source_revision: ${{ github.event.pull_request.head.sha || github.sha }}

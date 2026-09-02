@@ -176,6 +176,28 @@ pub struct ListAgentStepsResponse {
     #[prost(message, optional, tag = "3")]
     pub read_time: ::core::option::Option<::prost_types::Timestamp>,
 }
+/// CommitAgentStepRequest appends one deterministic step under the current run fence.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct CommitAgentStepRequest {
+    #[prost(message, optional, tag = "1")]
+    pub context: ::core::option::Option<crate::common::v1::CommandContext>,
+    #[prost(message, optional, tag = "2")]
+    pub agent_step: ::core::option::Option<crate::agent::v1::AgentStep>,
+    #[prost(message, optional, tag = "3")]
+    pub fence: ::core::option::Option<crate::job::v1::LeaseFence>,
+    #[prost(string, tag = "4")]
+    pub run_etag: ::prost::alloc::string::String,
+    #[prost(uint64, tag = "5")]
+    pub expected_next_step_sequence: u64,
+}
+/// CommitAgentStepResponse returns the accepted step and reconciled run revision.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct CommitAgentStepResponse {
+    #[prost(message, optional, tag = "1")]
+    pub agent_step: ::core::option::Option<crate::agent::v1::AgentStep>,
+    #[prost(message, optional, tag = "2")]
+    pub agent_run: ::core::option::Option<crate::agent::v1::AgentRun>,
+}
 /// CommitToolReceiptRequest appends a fenced receipt under run optimistic concurrency.
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CommitToolReceiptRequest {
@@ -185,6 +207,8 @@ pub struct CommitToolReceiptRequest {
     pub tool_receipt: ::core::option::Option<crate::agent::v1::ToolReceipt>,
     #[prost(string, tag = "3")]
     pub run_etag: ::prost::alloc::string::String,
+    #[prost(message, optional, tag = "4")]
+    pub fence: ::core::option::Option<crate::job::v1::LeaseFence>,
 }
 /// CommitToolReceiptResponse returns the accepted receipt and reconciled run.
 #[derive(Clone, PartialEq, ::prost::Message)]

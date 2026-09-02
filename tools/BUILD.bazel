@@ -53,6 +53,7 @@ py_test(
     name = "pipeline_plan_contract_test",
     srcs = [
         "ci/affected_targets.py",
+        "ci/evidence_bundle.py",
         "ci/pipeline_plan.py",
     ],
     args = ["--self-test"],
@@ -60,6 +61,10 @@ py_test(
     legacy_create_init = 0,
     main = "ci/pipeline_plan.py",
     python_version = "PY3",
+    deps = [
+        "@mindclade_pypi//cryptography",
+        "@mindclade_pypi//jsonschema",
+    ],
 )
 
 py_test(

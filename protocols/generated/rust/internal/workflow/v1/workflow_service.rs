@@ -153,10 +153,9 @@ pub struct CommitWorkflowTransitionRequest {
     pub workflow_run: ::core::option::Option<crate::workflow::v1::WorkflowRun>,
     #[prost(uint64, tag = "3")]
     pub expected_transition_sequence: u64,
-    #[prost(string, tag = "4")]
-    pub attempt_id: ::prost::alloc::string::String,
-    #[prost(uint64, tag = "5")]
-    pub lease_epoch: u64,
+    /// Current scheduler-issued fence; the raw lease token remains transport metadata.
+    #[prost(message, optional, tag = "4")]
+    pub fence: ::core::option::Option<crate::job::v1::LeaseFence>,
     #[prost(string, tag = "6")]
     pub etag: ::prost::alloc::string::String,
 }

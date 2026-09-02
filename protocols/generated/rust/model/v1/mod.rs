@@ -5,4 +5,5 @@ include!("model_commands.rs");
 include!("model_promoted.rs");
 include!("model_registered.rs");
 include!("model_release.rs");
+include!("model_release_registered.rs");
 include!("model_revoked.rs");

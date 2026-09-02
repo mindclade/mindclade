@@ -10,12 +10,13 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	"reflect"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
 
-	apiv1 "github.com/mindclade/mindclade/protocols/generated/go/api/v1"
 	annotations "google.golang.org/genproto/googleapis/api/annotations"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -26,9 +27,24 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/types/dynamicpb"
+	"google.golang.org/protobuf/types/known/timestamppb"
+
+	apiv1 "github.com/mindclade/mindclade/protocols/generated/go/api/v1"
+	internaladminv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/admin/v1"
+	internalagentv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/agent/v1"
+	internalartifactv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/artifact/v1"
+	internaldatasetv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/dataset/v1"
+	internalevaluationv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/evaluation/v1"
+	internalinferencev1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/inference/v1"
+	internaljobv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/job/v1"
+	internalmodelv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/model/v1"
+	internalpolicyv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/policy/v1"
+	internaltrainingv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/training/v1"
+	internalworkflowv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/workflow/v1"
 )
 
 type trainingFoundation interface {
+	Ready(context.Context) error
 	CreateTrainingRun(context.Context, *apiv1.CreateTrainingRunRequest) (*apiv1.Operation, error)
 	GetTrainingRun(context.Context, *apiv1.GetResourceRequest) (*apiv1.TrainingRunView, error)
 	ListTrainingRuns(context.Context, *apiv1.ListResourcesRequest) (*apiv1.TrainingRunList, error)
@@ -45,21 +61,30 @@ func (unavailableTrainingFoundation) unavailable() error {
 	return status.Error(codes.Unavailable, "durable foundation training backend is not configured")
 }
 
+func (u unavailableTrainingFoundation) Ready(context.Context) error {
+	return u.unavailable()
+}
+
 func (u unavailableTrainingFoundation) CreateTrainingRun(context.Context, *apiv1.CreateTrainingRunRequest) (*apiv1.Operation, error) {
 	return nil, u.unavailable()
 }
+
 func (u unavailableTrainingFoundation) GetTrainingRun(context.Context, *apiv1.GetResourceRequest) (*apiv1.TrainingRunView, error) {
 	return nil, u.unavailable()
 }
+
 func (u unavailableTrainingFoundation) ListTrainingRuns(context.Context, *apiv1.ListResourcesRequest) (*apiv1.TrainingRunList, error) {
 	return nil, u.unavailable()
 }
+
 func (u unavailableTrainingFoundation) GetOperation(context.Context, *apiv1.GetResourceRequest) (*apiv1.Operation, error) {
 	return nil, u.unavailable()
 }
+
 func (u unavailableTrainingFoundation) CancelOperation(context.Context, *apiv1.CancelOperationRequest) (*apiv1.Operation, error) {
 	return nil, u.unavailable()
 }
+
 func (u unavailableTrainingFoundation) WatchOperation(*apiv1.WatchOperationRequest, grpc.ServerStreamingServer[apiv1.OperationEvent]) error {
 	return u.unavailable()
 }
@@ -69,46 +94,327 @@ type publicServer struct {
 	training trainingFoundation
 }
 
+// The generated service interfaces are the only RPC registration authority.
+// Services without an activated application adapter deliberately return
+// codes.Unimplemented through their generated fail-closed implementation.
+type adminRPCServer struct {
+	internaladminv1.UnimplementedAdminServiceServer
+}
+type agentRPCServer struct {
+	internalagentv1.UnimplementedAgentServiceServer
+}
+type artifactRPCServer struct {
+	internalartifactv1.UnimplementedArtifactServiceServer
+}
+type datasetRPCServer struct {
+	internaldatasetv1.UnimplementedDatasetServiceServer
+}
+type evaluationRPCServer struct {
+	internalevaluationv1.UnimplementedEvaluationServiceServer
+}
+type inferenceRPCServer struct {
+	internalinferencev1.UnimplementedInferenceServiceServer
+}
+type operationRPCServer struct {
+	internaljobv1.UnimplementedOperationServiceServer
+}
+type jobRPCServer struct {
+	internaljobv1.UnimplementedJobServiceServer
+}
+type runRPCServer struct {
+	internaljobv1.UnimplementedRunServiceServer
+}
+type modelRPCServer struct {
+	internalmodelv1.UnimplementedModelServiceServer
+}
+type policyRPCServer struct {
+	internalpolicyv1.UnimplementedPolicyServiceServer
+}
+type trainingRPCServer struct {
+	internaltrainingv1.UnimplementedTrainingServiceServer
+}
+type workflowRPCServer struct {
+	internalworkflowv1.UnimplementedWorkflowServiceServer
+}
+type approvalRPCServer struct {
+	internalworkflowv1.UnimplementedApprovalServiceServer
+}
+
+var generatedGRPCFiles = [...]protoreflect.FileDescriptor{
+	apiv1.File_proto_mindclade_api_v1_mindclade_service_proto,
+	internaladminv1.File_proto_mindclade_internal_admin_v1_admin_service_proto,
+	internalagentv1.File_proto_mindclade_internal_agent_v1_agent_service_proto,
+	internalartifactv1.File_proto_mindclade_internal_artifact_v1_artifact_service_proto,
+	internaldatasetv1.File_proto_mindclade_internal_dataset_v1_dataset_service_proto,
+	internalevaluationv1.File_proto_mindclade_internal_evaluation_v1_evaluation_service_proto,
+	internalinferencev1.File_proto_mindclade_internal_inference_v1_inference_service_proto,
+	internaljobv1.File_proto_mindclade_internal_job_v1_job_service_proto,
+	internalmodelv1.File_proto_mindclade_internal_model_v1_model_service_proto,
+	internalpolicyv1.File_proto_mindclade_internal_policy_v1_policy_service_proto,
+	internaltrainingv1.File_proto_mindclade_internal_training_v1_training_service_proto,
+	internalworkflowv1.File_proto_mindclade_internal_workflow_v1_workflow_service_proto,
+}
+
+func generatedGRPCServiceNames() []string {
+	names := make([]string, 0, len(generatedGRPCFiles))
+	for _, file := range generatedGRPCFiles {
+		services := file.Services()
+		for index := 0; index < services.Len(); index++ {
+			names = append(names, string(services.Get(index).FullName()))
+		}
+	}
+	return names
+}
+
+type runtimeDependencies struct {
+	Admin      internaladminv1.AdminServiceServer
+	Agent      internalagentv1.AgentServiceServer
+	Training   trainingFoundation
+	Artifact   internalartifactv1.ArtifactServiceServer
+	Dataset    internaldatasetv1.DatasetServiceServer
+	Evaluation internalevaluationv1.EvaluationServiceServer
+	Inference  internalinferencev1.InferenceServiceServer
+	Model      internalmodelv1.ModelServiceServer
+	Policy     internalpolicyv1.PolicyServiceServer
+	Workflow   internalworkflowv1.WorkflowServiceServer
+	Approval   internalworkflowv1.ApprovalServiceServer
+}
+
+func isTypedNil(value any) bool {
+	if value == nil {
+		return false
+	}
+	reflected := reflect.ValueOf(value)
+	switch reflected.Kind() {
+	case reflect.Chan, reflect.Func, reflect.Interface, reflect.Map, reflect.Pointer, reflect.Slice:
+		return reflected.IsNil()
+	default:
+		return false
+	}
+}
+
+func registerGeneratedServices(server *grpc.Server, dependencies runtimeDependencies) error {
+	if server == nil {
+		return errors.New("generated service registrar is required")
+	}
+	if isTypedNil(dependencies.Admin) || isTypedNil(dependencies.Agent) || isTypedNil(dependencies.Training) || isTypedNil(dependencies.Artifact) || isTypedNil(dependencies.Dataset) || isTypedNil(dependencies.Evaluation) || isTypedNil(dependencies.Inference) || isTypedNil(dependencies.Model) || isTypedNil(dependencies.Policy) || isTypedNil(dependencies.Workflow) || isTypedNil(dependencies.Approval) {
+		return errors.New("generated service dependencies must not contain typed nil implementations")
+	}
+	training := dependencies.Training
+	if training == nil {
+		training = unavailableTrainingFoundation{}
+	}
+	adminServer := internaladminv1.AdminServiceServer(&adminRPCServer{})
+	if dependencies.Admin != nil {
+		adminServer = dependencies.Admin
+	}
+	agentServer := internalagentv1.AgentServiceServer(&agentRPCServer{})
+	if dependencies.Agent != nil {
+		agentServer = dependencies.Agent
+	}
+	artifactServer := internalartifactv1.ArtifactServiceServer(&artifactRPCServer{})
+	if dependencies.Artifact != nil {
+		artifactServer = dependencies.Artifact
+	}
+	datasetServer := internaldatasetv1.DatasetServiceServer(&datasetRPCServer{})
+	if dependencies.Dataset != nil {
+		datasetServer = dependencies.Dataset
+	}
+	evaluationServer := internalevaluationv1.EvaluationServiceServer(&evaluationRPCServer{})
+	if dependencies.Evaluation != nil {
+		evaluationServer = dependencies.Evaluation
+	}
+	inferenceServer := internalinferencev1.InferenceServiceServer(&inferenceRPCServer{})
+	if dependencies.Inference != nil {
+		inferenceServer = dependencies.Inference
+	}
+	modelServer := internalmodelv1.ModelServiceServer(&modelRPCServer{})
+	if dependencies.Model != nil {
+		modelServer = dependencies.Model
+	}
+	policyServer := internalpolicyv1.PolicyServiceServer(&policyRPCServer{})
+	if dependencies.Policy != nil {
+		policyServer = dependencies.Policy
+	}
+	workflowServer := internalworkflowv1.WorkflowServiceServer(&workflowRPCServer{})
+	if dependencies.Workflow != nil {
+		workflowServer = dependencies.Workflow
+	}
+	approvalServer := internalworkflowv1.ApprovalServiceServer(&approvalRPCServer{})
+	if dependencies.Approval != nil {
+		approvalServer = dependencies.Approval
+	}
+	operationServer := internaljobv1.OperationServiceServer(&operationRPCServer{})
+	jobServer := internaljobv1.JobServiceServer(&jobRPCServer{})
+	runServer := internaljobv1.RunServiceServer(&runRPCServer{})
+	trainingServer := internaltrainingv1.TrainingServiceServer(&trainingRPCServer{})
+	if activated, ok := training.(interface {
+		InternalOperationServer() internaljobv1.OperationServiceServer
+		InternalTrainingServer() internaltrainingv1.TrainingServiceServer
+	}); ok {
+		if activated.InternalOperationServer() == nil || activated.InternalTrainingServer() == nil {
+			return errors.New("activated training foundation returned a nil generated service")
+		}
+		operationServer = activated.InternalOperationServer()
+		trainingServer = activated.InternalTrainingServer()
+	}
+	if activated, ok := training.(interface {
+		InternalJobServer() internaljobv1.JobServiceServer
+		InternalRunServer() internaljobv1.RunServiceServer
+	}); ok {
+		if activated.InternalJobServer() == nil || activated.InternalRunServer() == nil {
+			return errors.New("activated scheduler foundation returned a nil generated service")
+		}
+		jobServer = activated.InternalJobServer()
+		runServer = activated.InternalRunServer()
+	}
+	apiv1.RegisterMindcladeServiceServer(server, &publicServer{training: training})
+	internaladminv1.RegisterAdminServiceServer(server, adminServer)
+	internalagentv1.RegisterAgentServiceServer(server, agentServer)
+	internalartifactv1.RegisterArtifactServiceServer(server, artifactServer)
+	internaldatasetv1.RegisterDatasetServiceServer(server, datasetServer)
+	internalevaluationv1.RegisterEvaluationServiceServer(server, evaluationServer)
+	internalinferencev1.RegisterInferenceServiceServer(server, inferenceServer)
+	internaljobv1.RegisterOperationServiceServer(server, operationServer)
+	internaljobv1.RegisterJobServiceServer(server, jobServer)
+	internaljobv1.RegisterRunServiceServer(server, runServer)
+	internalmodelv1.RegisterModelServiceServer(server, modelServer)
+	internalpolicyv1.RegisterPolicyServiceServer(server, policyServer)
+	internaltrainingv1.RegisterTrainingServiceServer(server, trainingServer)
+	internalworkflowv1.RegisterWorkflowServiceServer(server, workflowServer)
+	internalworkflowv1.RegisterApprovalServiceServer(server, approvalServer)
+
+	registered := server.GetServiceInfo()
+	for _, service := range generatedGRPCServiceNames() {
+		if _, ok := registered[service]; !ok {
+			return fmt.Errorf("generated gRPC service %s was not registered", service)
+		}
+	}
+	return nil
+}
+
 func (s *publicServer) CreateTrainingRun(ctx context.Context, request *apiv1.CreateTrainingRunRequest) (*apiv1.Operation, error) {
 	if request.GetParent() == "" || request.GetTrainingRun() == nil {
 		return nil, status.Error(codes.InvalidArgument, "parent and trainingRun are required")
 	}
 	return s.training.CreateTrainingRun(ctx, request)
 }
+
 func (s *publicServer) GetTrainingRun(ctx context.Context, request *apiv1.GetResourceRequest) (*apiv1.TrainingRunView, error) {
 	return s.training.GetTrainingRun(ctx, request)
 }
+
 func (s *publicServer) ListTrainingRuns(ctx context.Context, request *apiv1.ListResourcesRequest) (*apiv1.TrainingRunList, error) {
 	return s.training.ListTrainingRuns(ctx, request)
 }
+
 func (s *publicServer) GetOperation(ctx context.Context, request *apiv1.GetResourceRequest) (*apiv1.Operation, error) {
 	return s.training.GetOperation(ctx, request)
 }
+
 func (s *publicServer) CancelOperation(ctx context.Context, request *apiv1.CancelOperationRequest) (*apiv1.Operation, error) {
 	return s.training.CancelOperation(ctx, request)
 }
+
 func (s *publicServer) WatchOperation(request *apiv1.WatchOperationRequest, stream grpc.ServerStreamingServer[apiv1.OperationEvent]) error {
 	return s.training.WatchOperation(request, stream)
 }
 
 type bearerAuthorizer struct {
-	token string
+	token  string
+	claims verifiedIdentityClaims
+	verify bearerTokenVerifier
 }
 
-func (a bearerAuthorizer) authorize(value string) error {
-	if a.token == "" {
-		return status.Error(codes.Unavailable, "authentication verifier is not configured")
+type verifiedIdentityClaims struct {
+	tenantID, projectID, principalID string
+	workerID, leaseToken             string
+	roles                            map[string]struct{}
+}
+
+type bearerTokenVerifier interface {
+	Verify(context.Context, string) (verifiedIdentityClaims, error)
+}
+
+func (a bearerAuthorizer) configured() bool {
+	return a.verify != nil || (a.token != "" && a.claims.tenantID != "" && a.claims.projectID != "" && a.claims.principalID != "")
+}
+
+func (a bearerAuthorizer) authorize(ctx context.Context, value string) (verifiedIdentityClaims, error) {
+	if !a.configured() {
+		return verifiedIdentityClaims{}, status.Error(codes.Unavailable, "authentication verifier is not configured")
 	}
 	const prefix = "Bearer "
 	if !strings.HasPrefix(value, prefix) {
-		return status.Error(codes.Unauthenticated, "bearer authentication required")
+		return verifiedIdentityClaims{}, status.Error(codes.Unauthenticated, "bearer authentication required")
 	}
 	provided := strings.TrimPrefix(value, prefix)
+	if len(provided) == 0 || len(provided) > 16*1024 || strings.ContainsAny(provided, " \t\r\n\x00") {
+		return verifiedIdentityClaims{}, status.Error(codes.Unauthenticated, "invalid bearer credential")
+	}
+	if a.verify != nil {
+		claims, err := a.verify.Verify(ctx, provided)
+		if err != nil {
+			return verifiedIdentityClaims{}, status.Error(codes.Unauthenticated, "invalid bearer credential")
+		}
+		return claims, nil
+	}
 	if len(provided) != len(a.token) ||
 		subtle.ConstantTimeCompare([]byte(provided), []byte(a.token)) != 1 {
-		return status.Error(codes.Unauthenticated, "invalid bearer credential")
+		return verifiedIdentityClaims{}, status.Error(codes.Unauthenticated, "invalid bearer credential")
 	}
-	return nil
+	return a.claims, nil
+}
+
+func (a bearerAuthorizer) authenticatedContext(ctx context.Context, claims verifiedIdentityClaims) (context.Context, error) {
+	if claims.tenantID == "" || claims.projectID == "" || claims.principalID == "" {
+		return nil, status.Error(codes.Unavailable, "authentication claims are not configured")
+	}
+	values, _ := metadata.FromIncomingContext(ctx)
+	values = values.Copy()
+	for header, verified := range map[string]string{
+		"x-mindclade-expected-tenant":    claims.tenantID,
+		"x-mindclade-expected-project":   claims.projectID,
+		"x-mindclade-expected-principal": claims.principalID,
+	} {
+		if expected := first(values.Get(header)); expected != "" && expected != verified {
+			return nil, status.Error(codes.PermissionDenied, "configured client scope does not match authenticated identity")
+		}
+		values.Delete(header)
+	}
+	// Delete all claim-shaped input before writing verifier-owned values. This
+	// prevents a caller from smuggling identity through arbitrary metadata.
+	for _, key := range []string{
+		verifiedTenantMetadata, verifiedProjectMetadata, verifiedPrincipalMetadata,
+		verifiedWorkerMetadata, verifiedLeaseMetadata, verifiedRoleMetadata,
+	} {
+		values.Delete(key)
+	}
+	values.Set(verifiedTenantMetadata, claims.tenantID)
+	values.Set(verifiedProjectMetadata, claims.projectID)
+	values.Set(verifiedPrincipalMetadata, claims.principalID)
+	roles := make([]string, 0, len(claims.roles))
+	for role := range claims.roles {
+		roles = append(roles, role)
+	}
+	sort.Strings(roles)
+	if len(roles) != 0 {
+		values.Set(verifiedRoleMetadata, roles...)
+	}
+	if claims.workerID != "" {
+		values.Set(verifiedWorkerMetadata, claims.workerID)
+	}
+	leaseToken := claims.leaseToken
+	if leaseToken == "" {
+		leaseToken = first(values.Get("x-mindclade-lease-token"))
+	}
+	if leaseToken != "" {
+		if len(leaseToken) > 4096 || strings.ContainsAny(leaseToken, " \t\r\n\x00") {
+			return nil, status.Error(codes.Unauthenticated, "invalid lease credential")
+		}
+		values.Set(verifiedLeaseMetadata, leaseToken)
+	}
+	return metadata.NewIncomingContext(ctx, values), nil
 }
 
 func (a bearerAuthorizer) unary(
@@ -118,10 +424,18 @@ func (a bearerAuthorizer) unary(
 	handler grpc.UnaryHandler,
 ) (any, error) {
 	values, _ := metadata.FromIncomingContext(ctx)
-	if err := a.authorize(first(values.Get("authorization"))); err != nil {
+	claims, err := a.authorize(ctx, first(values.Get("authorization")))
+	if err != nil {
 		return nil, err
 	}
-	return handler(ctx, request)
+	if err = authorizeRPCMethod(claims, info.FullMethod); err != nil {
+		return nil, err
+	}
+	authenticated, err := a.authenticatedContext(ctx, claims)
+	if err != nil {
+		return nil, err
+	}
+	return handler(authenticated, request)
 }
 
 func (a bearerAuthorizer) stream(
@@ -131,11 +445,186 @@ func (a bearerAuthorizer) stream(
 	handler grpc.StreamHandler,
 ) error {
 	values, _ := metadata.FromIncomingContext(stream.Context())
-	if err := a.authorize(first(values.Get("authorization"))); err != nil {
+	claims, err := a.authorize(stream.Context(), first(values.Get("authorization")))
+	if err != nil {
 		return err
 	}
-	return handler(server, stream)
+	if err = authorizeRPCMethod(claims, info.FullMethod); err != nil {
+		return err
+	}
+	authenticated, err := a.authenticatedContext(stream.Context(), claims)
+	if err != nil {
+		return err
+	}
+	return handler(server, &authenticatedServerStream{ServerStream: stream, ctx: authenticated})
 }
+
+func authorizeRPCMethod(claims verifiedIdentityClaims, method string) error {
+	// Direct interceptor unit tests may not provide method metadata. Every real
+	// gRPC invocation does; fail closed if a non-test call is unknown.
+	if method == "" {
+		return nil
+	}
+	effectiveRoles := expandAuthorizationRoles(claims.roles)
+	allowed := func(roles ...string) error {
+		for _, role := range roles {
+			if _, ok := effectiveRoles[role]; ok {
+				return nil
+			}
+		}
+		return status.Error(codes.PermissionDenied, "authenticated principal is not authorized for this RPC")
+	}
+	if strings.HasPrefix(method, "/mindclade.api.v1.MindcladeService/") {
+		return allowed("platform", "admin")
+	}
+	switch method {
+	case "/mindclade.internal.job.v1.OperationService/GetOperation",
+		"/mindclade.internal.job.v1.OperationService/ListOperations",
+		"/mindclade.internal.job.v1.OperationService/WatchOperation":
+		return allowed("platform", "worker", "scheduler", "auditor", "admin")
+	case "/mindclade.internal.job.v1.OperationService/CancelOperation":
+		return allowed("platform", "admin")
+	case "/mindclade.internal.job.v1.RunService/AcquireAttemptLease",
+		"/mindclade.internal.job.v1.RunService/RenewAttemptLease",
+		"/mindclade.internal.job.v1.RunService/HeartbeatAttempt",
+		"/mindclade.internal.job.v1.RunService/CancelAttempt",
+		"/mindclade.internal.job.v1.RunService/CommitAttempt":
+		return allowed("worker", "admin")
+	case "/mindclade.internal.job.v1.RunService/ExpireAttemptLeases":
+		return allowed("scheduler", "admin")
+	case "/mindclade.internal.job.v1.RunService/GetRun",
+		"/mindclade.internal.job.v1.RunService/ListRuns",
+		"/mindclade.internal.job.v1.RunService/GetAttempt",
+		"/mindclade.internal.job.v1.RunService/ListAttempts":
+		return allowed("platform", "worker", "scheduler", "admin")
+	case "/mindclade.internal.training.v1.TrainingService/StartTrainingAttempt",
+		"/mindclade.internal.training.v1.TrainingService/ResumeTrainingAttempt",
+		"/mindclade.internal.training.v1.TrainingService/CommitTrainingProgress",
+		"/mindclade.internal.training.v1.TrainingService/PrepareCheckpoint",
+		"/mindclade.internal.training.v1.TrainingService/CommitCheckpoint",
+		"/mindclade.internal.training.v1.TrainingService/CompleteTrainingRun":
+		return allowed("worker", "admin")
+	case "/mindclade.internal.training.v1.TrainingService/GetTrainingRun",
+		"/mindclade.internal.training.v1.TrainingService/ListTrainingRuns",
+		"/mindclade.internal.training.v1.TrainingService/GetCheckpoint",
+		"/mindclade.internal.training.v1.TrainingService/ListCheckpoints",
+		"/mindclade.internal.training.v1.TrainingService/WatchTrainingRun":
+		return allowed("platform", "worker", "scheduler", "auditor", "admin")
+	case "/mindclade.internal.training.v1.TrainingService/CreateTrainingRun",
+		"/mindclade.internal.training.v1.TrainingService/CancelTrainingRun":
+		return allowed("platform", "admin")
+	case "/mindclade.internal.dataset.v1.DatasetService/GetDataset",
+		"/mindclade.internal.dataset.v1.DatasetService/ListDatasets",
+		"/mindclade.internal.dataset.v1.DatasetService/GetDatasetRelease",
+		"/mindclade.internal.dataset.v1.DatasetService/ListDatasetReleases",
+		"/mindclade.internal.model.v1.ModelService/GetModel",
+		"/mindclade.internal.model.v1.ModelService/ListModels",
+		"/mindclade.internal.model.v1.ModelService/GetModelRelease",
+		"/mindclade.internal.model.v1.ModelService/ListModelReleases":
+		return allowed("platform", "worker", "scheduler", "auditor", "admin")
+	case "/mindclade.internal.evaluation.v1.EvaluationService/GetEvaluationRun",
+		"/mindclade.internal.evaluation.v1.EvaluationService/ListEvaluationRuns",
+		"/mindclade.internal.evaluation.v1.EvaluationService/GetEvaluationResult",
+		"/mindclade.internal.evaluation.v1.EvaluationService/GetPromotionDecision":
+		return allowed("platform", "worker", "scheduler", "auditor", "admin")
+	case "/mindclade.internal.evaluation.v1.EvaluationService/CommitEvaluationResult":
+		return allowed("worker", "admin")
+	case "/mindclade.internal.inference.v1.InferenceService/CommitInferenceResult":
+		return allowed("worker", "automation-worker", "agent-worker", "admin", "platform-admin")
+	case "/mindclade.internal.inference.v1.InferenceService/GetInferenceRequest",
+		"/mindclade.internal.inference.v1.InferenceService/GetInferenceResult",
+		"/mindclade.internal.inference.v1.InferenceService/WatchInference":
+		return allowed("platform", "worker", "scheduler", "auditor", "admin", "automation-viewer", "automation-worker", "platform-admin")
+	case "/mindclade.internal.inference.v1.InferenceService/SubmitInference":
+		return allowed("platform", "admin", "automation-operator", "platform-operator", "platform-admin")
+	case "/mindclade.internal.dataset.v1.DatasetService/CreateDataset",
+		"/mindclade.internal.dataset.v1.DatasetService/UpdateDataset",
+		"/mindclade.internal.dataset.v1.DatasetService/PublishDatasetRelease",
+		"/mindclade.internal.dataset.v1.DatasetService/RevokeDatasetRelease",
+		"/mindclade.internal.model.v1.ModelService/RegisterModel",
+		"/mindclade.internal.model.v1.ModelService/RegisterModelRelease",
+		"/mindclade.internal.model.v1.ModelService/PromoteModelRelease",
+		"/mindclade.internal.model.v1.ModelService/RevokeModelRelease",
+		"/mindclade.internal.evaluation.v1.EvaluationService/CreateEvaluationRun",
+		"/mindclade.internal.evaluation.v1.EvaluationService/CancelEvaluationRun",
+		"/mindclade.internal.evaluation.v1.EvaluationService/CreatePromotionDecision":
+		return allowed("platform", "admin")
+	}
+	if strings.HasPrefix(method, "/mindclade.internal.admin.v1.AdminService/QueryAudit") ||
+		strings.HasPrefix(method, "/mindclade.internal.admin.v1.AdminService/GetAudit") {
+		return allowed("auditor", "admin", "platform-admin")
+	}
+	if strings.HasPrefix(method, "/mindclade.internal.admin.v1.AdminService/") {
+		return allowed("admin", "platform-admin")
+	}
+	if method == "/mindclade.internal.policy.v1.PolicyService/EvaluateAuthorization" ||
+		method == "/mindclade.internal.policy.v1.PolicyService/GetUsePolicy" ||
+		method == "/mindclade.internal.policy.v1.PolicyService/ListUsePolicies" ||
+		method == "/mindclade.internal.policy.v1.PolicyService/ResolvePolicySnapshot" {
+		return allowed("platform", "worker", "scheduler", "auditor", "admin", "platform-admin", "automation-operator", "automation-viewer", "automation-worker", "agent-admin", "agent-user", "agent-worker")
+	}
+	if strings.HasPrefix(method, "/mindclade.internal.policy.v1.PolicyService/") {
+		return allowed("admin", "platform-admin")
+	}
+	if strings.HasPrefix(method, "/mindclade.internal.artifact.v1.ArtifactService/") {
+		return allowed("platform", "worker", "admin", "platform-admin", "automation-worker")
+	}
+	if strings.HasPrefix(method, "/mindclade.internal.workflow.v1.WorkflowService/") ||
+		strings.HasPrefix(method, "/mindclade.internal.workflow.v1.ApprovalService/") ||
+		strings.HasPrefix(method, "/mindclade.internal.agent.v1.AgentService/") {
+		return allowed("platform", "worker", "scheduler", "auditor", "admin", "platform-admin", "platform-operator", "automation-operator", "automation-viewer", "automation-worker", "agent-admin", "agent-user", "agent-worker", "approver")
+	}
+	if strings.HasPrefix(method, "/mindclade.internal.") {
+		return allowed("platform", "admin")
+	}
+	return status.Error(codes.PermissionDenied, "RPC is outside the authorized Mindclade service estate")
+}
+
+func expandAuthorizationRoles(source map[string]struct{}) map[string]struct{} {
+	roles := cloneRoles(source)
+	add := func(items ...string) {
+		for _, item := range items {
+			roles[item] = struct{}{}
+		}
+	}
+	for role := range source {
+		switch role {
+		case "admin":
+			add("platform-admin", "platform-operator", "automation-operator", "automation-viewer", "automation-worker", "agent-admin", "agent-user", "agent-worker", "approver", "auditor")
+		case "platform":
+			add("platform-operator", "automation-operator", "automation-viewer", "agent-user")
+		case "worker":
+			add("automation-worker", "agent-worker")
+		case "auditor":
+			add("auditor", "automation-viewer")
+		case "platform-admin":
+			add("admin")
+		case "platform-operator":
+			add("platform")
+		case "automation-worker", "agent-worker":
+			add("worker")
+		}
+	}
+	return roles
+}
+
+// applicationRoles returns only roles projected by the verified authentication
+// chain. Caller-supplied role metadata is removed before this context is built.
+func applicationRoles(ctx context.Context) map[string]struct{} {
+	values, _ := metadata.FromIncomingContext(ctx)
+	raw := make(map[string]struct{})
+	for _, role := range values.Get(verifiedRoleMetadata) {
+		raw[role] = struct{}{}
+	}
+	return expandAuthorizationRoles(raw)
+}
+
+type authenticatedServerStream struct {
+	grpc.ServerStream
+	ctx context.Context //nolint:containedctx // gRPC requires overriding ServerStream.Context with the authenticated request context.
+}
+
+func (s *authenticatedServerStream) Context() context.Context { return s.ctx }
 
 func first(values []string) string {
 	if len(values) == 0 {
@@ -157,6 +646,7 @@ type gateway struct {
 	authorizer bearerAuthorizer
 	client     apiv1.MindcladeServiceClient
 	conn       *grpc.ClientConn
+	ready      func(context.Context) error
 	routes     []route
 }
 
@@ -214,7 +704,11 @@ func httpRule(method protoreflect.MethodDescriptor) (string, string, string, err
 	}
 }
 
-func newGateway(conn *grpc.ClientConn, authorizer bearerAuthorizer) (*gateway, error) {
+func newGateway(
+	conn *grpc.ClientConn,
+	authorizer bearerAuthorizer,
+	ready func(context.Context) error,
+) (*gateway, error) {
 	service := apiv1.File_proto_mindclade_api_v1_mindclade_service_proto.
 		Services().ByName("MindcladeService")
 	routes := make([]route, 0, service.Methods().Len())
@@ -242,13 +736,14 @@ func newGateway(conn *grpc.ClientConn, authorizer bearerAuthorizer) (*gateway, e
 		authorizer: authorizer,
 		client:     apiv1.NewMindcladeServiceClient(conn),
 		conn:       conn,
+		ready:      ready,
 		routes:     routes,
 	}, nil
 }
 
 func (g *gateway) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
 	if request.Method == http.MethodGet && request.URL.Path == "/healthz" {
-		if g.authorizer.token == "" {
+		if !g.authorizer.configured() || g.ready == nil || g.ready(request.Context()) != nil {
 			http.Error(writer, "not ready", http.StatusServiceUnavailable)
 			return
 		}
@@ -271,7 +766,7 @@ func (g *gateway) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
 }
 
 func (g *gateway) serveRoute(writer http.ResponseWriter, request *http.Request, selected route, matches []string) {
-	if err := g.authorizer.authorize(request.Header.Get("Authorization")); err != nil {
+	if _, err := g.authorizer.authorize(request.Context(), request.Header.Get("Authorization")); err != nil {
 		writeHTTPError(writer, err)
 		return
 	}
@@ -317,12 +812,10 @@ func (g *gateway) serveRoute(writer http.ResponseWriter, request *http.Request, 
 			return
 		}
 	}
-	ctx := outgoingContext(request)
+	ctx := outgoingContext(request.Context(), request)
 	switch selected.contract.GetStream() {
 	case apiv1.StreamProjection_STREAM_PROJECTION_SSE:
 		g.serveSSE(ctx, writer, input)
-	case apiv1.StreamProjection_STREAM_PROJECTION_BINARY:
-		g.serveBinary(ctx, writer, input, request.Header.Get("Range"))
 	default:
 		output := dynamicpb.NewMessage(selected.method.Output())
 		fullMethod := "/" + string(selected.method.Parent().FullName()) + "/" + string(selected.method.Name())
@@ -330,13 +823,19 @@ func (g *gateway) serveRoute(writer http.ResponseWriter, request *http.Request, 
 			writeHTTPError(writer, err)
 			return
 		}
+		responseETag := ""
 		for _, header := range selected.contract.GetResponseHeaders() {
 			if strings.EqualFold(header, "ETag") {
 				field := output.Descriptor().Fields().ByName("etag")
 				if field != nil {
-					writer.Header().Set("ETag", output.Get(field).String())
+					responseETag = output.Get(field).String()
+					writer.Header().Set("ETag", responseETag)
 				}
 			}
+		}
+		if requestedETag := request.Header.Get("If-None-Match"); requestedETag != "" && responseETag != "" && requestedETag == responseETag {
+			writer.WriteHeader(http.StatusNotModified)
+			return
 		}
 		content, err := protojson.MarshalOptions{UseProtoNames: false}.Marshal(output)
 		if err != nil {
@@ -394,7 +893,7 @@ func populateQuery(message *dynamicpb.Message, request *http.Request, selected r
 	return nil
 }
 
-func outgoingContext(request *http.Request) context.Context {
+func outgoingContext(ctx context.Context, request *http.Request) context.Context {
 	pairs := []string{"authorization", request.Header.Get("Authorization")}
 	for _, header := range []string{
 		"Idempotency-Key", "X-Mindclade-Deadline", "If-Match",
@@ -404,7 +903,7 @@ func outgoingContext(request *http.Request) context.Context {
 			pairs = append(pairs, strings.ToLower(header), value)
 		}
 	}
-	return metadata.NewOutgoingContext(request.Context(), metadata.Pairs(pairs...))
+	return metadata.NewOutgoingContext(ctx, metadata.Pairs(pairs...))
 }
 
 func requiredHeader(name string) bool {
@@ -424,8 +923,10 @@ func successStatus(contract *apiv1.PublicHttpContract) int {
 }
 
 func (g *gateway) serveSSE(ctx context.Context, writer http.ResponseWriter, input *dynamicpb.Message) {
+	streamContext, cancel := context.WithCancel(ctx)
+	defer cancel()
 	name := input.Get(input.Descriptor().Fields().ByName("name")).String()
-	stream, err := g.client.WatchOperation(ctx, &apiv1.WatchOperationRequest{Name: name})
+	stream, err := g.client.WatchOperation(streamContext, &apiv1.WatchOperationRequest{Name: name})
 	if err != nil {
 		writeHTTPError(writer, err)
 		return
@@ -439,64 +940,132 @@ func (g *gateway) serveSSE(ctx context.Context, writer http.ResponseWriter, inpu
 	writer.Header().Set("Cache-Control", "no-store")
 	writer.Header().Set("X-Accel-Buffering", "no")
 	writer.WriteHeader(http.StatusOK)
+	if _, err = io.WriteString(writer, "retry: 3000\n\n"); err != nil {
+		return
+	}
+	flusher.Flush()
+	type receiveResult struct {
+		event *apiv1.OperationEvent
+		err   error
+	}
+	received := make(chan receiveResult, 1)
+	consumerDone := make(chan struct{})
+	defer close(consumerDone)
+	go func() {
+		for {
+			event, receiveErr := stream.Recv()
+			select {
+			case received <- receiveResult{event: event, err: receiveErr}:
+			case <-consumerDone:
+				return
+			}
+			if receiveErr != nil {
+				return
+			}
+		}
+	}()
+	heartbeats := time.NewTicker(15 * time.Second)
+	defer heartbeats.Stop()
+	// The request cursor is intentionally not trusted here. The application
+	// establishes durability by returning an event; until then no heartbeat may
+	// advance a browser's Last-Event-ID state.
+	lastCursor := ""
 	for {
-		event, receiveErr := stream.Recv()
-		if errors.Is(receiveErr, io.EOF) {
-			return
+		select {
+		case result := <-received:
+			if errors.Is(result.err, io.EOF) {
+				return
+			}
+			if result.err != nil {
+				slog.Warn("operation SSE stream ended", "code", status.Code(result.err))
+				_ = writeSSEError(writer, lastCursor, result.err)
+				flusher.Flush()
+				return
+			}
+			if result.event == nil || result.event.GetSchemaVersion() != 1 || result.event.GetResumeCursor() == "" {
+				slog.Error("operation SSE application stream returned an invalid event")
+				_ = writeSSEError(writer, lastCursor, status.Error(codes.DataLoss, "invalid operation event"))
+				flusher.Flush()
+				return
+			}
+			lastCursor = result.event.GetResumeCursor()
+			if writeSSEEvent(writer, result.event) != nil {
+				return
+			}
+			flusher.Flush()
+		case emittedAt := <-heartbeats.C:
+			// A heartbeat is resumable only after an application event establishes
+			// a validated durable cursor. Emitting an empty or merely presented id
+			// would create an acknowledgement the server cannot honor.
+			if lastCursor == "" {
+				continue
+			}
+			heartbeat := &apiv1.OperationEvent{
+				EventId: lastCursor, EventType: "heartbeat", SchemaVersion: 1,
+				ResumeCursor: lastCursor, Heartbeat: true, EmittedAt: timestamppb.New(emittedAt.UTC()),
+			}
+			if writeSSEEvent(writer, heartbeat) != nil {
+				return
+			}
+			flusher.Flush()
 		}
-		if receiveErr != nil {
-			slog.Warn("operation SSE stream ended", "error", receiveErr)
-			return
-		}
-		payload, marshalErr := protojson.Marshal(event)
-		if marshalErr != nil {
-			slog.Error("operation SSE serialization failed", "error", marshalErr)
-			return
-		}
-		eventID := strings.NewReplacer("\r", "", "\n", "").Replace(event.GetEventId())
-		if _, writeErr := fmt.Fprintf(
-			writer, "id: %s\nevent: operation\ndata: %s\n\n", eventID, payload,
-		); writeErr != nil {
-			return
-		}
-		flusher.Flush()
 	}
 }
 
-func (g *gateway) serveBinary(ctx context.Context, writer http.ResponseWriter, input *dynamicpb.Message, byteRange string) {
-	name := input.Get(input.Descriptor().Fields().ByName("name")).String()
-	stream, err := g.client.DownloadArtifact(ctx, &apiv1.DownloadArtifactRequest{Name: name})
+func writeSSEEvent(writer io.Writer, event *apiv1.OperationEvent) error {
+	payload, err := protojson.Marshal(event)
 	if err != nil {
-		writeHTTPError(writer, err)
-		return
+		return err
 	}
-	firstChunk := true
-	for {
-		chunk, receiveErr := stream.Recv()
-		if errors.Is(receiveErr, io.EOF) {
-			return
-		}
-		if receiveErr != nil {
-			slog.Warn("artifact stream ended", "error", receiveErr)
-			return
-		}
-		if firstChunk {
-			writer.Header().Set("Content-Type", "application/octet-stream")
-			writer.Header().Set("Accept-Ranges", "bytes")
-			if chunk.GetContentDigest() != "" {
-				writer.Header().Set("Content-Digest", chunk.GetContentDigest())
-			}
-			if byteRange != "" {
-				writer.WriteHeader(http.StatusPartialContent)
-			} else {
-				writer.WriteHeader(http.StatusOK)
-			}
-			firstChunk = false
-		}
-		if _, writeErr := writer.Write(chunk.GetData()); writeErr != nil {
-			return
-		}
+	eventID := strings.NewReplacer("\r", "", "\n", "").Replace(event.GetEventId())
+	eventType := strings.NewReplacer("\r", "", "\n", "").Replace(event.GetEventType())
+	if eventType == "" {
+		eventType = "operation.updated"
 	}
+	_, err = fmt.Fprintf(writer, "id: %s\nevent: %s\ndata: %s\n\n", eventID, eventType, payload)
+	return err
+}
+
+type sseErrorPayload struct {
+	Code         string `json:"code"`
+	Message      string `json:"message"`
+	ResumeCursor string `json:"resumeCursor,omitempty"`
+	Retryable    bool   `json:"retryable"`
+}
+
+// writeSSEError is used only after HTTP 200 has committed. It maps transport
+// failures to bounded public data and never serializes internal status text.
+func writeSSEError(writer io.Writer, durableCursor string, err error) error {
+	value := sseErrorPayload{Code: "STREAM_ERROR", Message: "operation stream ended", ResumeCursor: durableCursor}
+	switch status.Code(err) {
+	case codes.InvalidArgument:
+		value.Code, value.Message = "INVALID_CURSOR", "resume cursor is invalid"
+	case codes.PermissionDenied:
+		value.Code, value.Message = "CURSOR_RESOURCE_MISMATCH", "resume cursor belongs to another operation"
+	case codes.FailedPrecondition:
+		value.Code, value.Message = "CURSOR_AHEAD", "resume cursor is ahead of durable state"
+	case codes.OutOfRange:
+		value.Code, value.Message = "CURSOR_EXPIRED", "resume cursor is outside the retention window"
+	case codes.NotFound:
+		value.Code, value.Message = "NOT_FOUND", "operation was not found"
+	case codes.DeadlineExceeded:
+		value.Code, value.Message, value.Retryable = "WATCH_DEADLINE", "operation watch deadline elapsed", true
+	case codes.Unavailable, codes.ResourceExhausted, codes.Aborted:
+		value.Code, value.Message, value.Retryable = "UNAVAILABLE", "operation stream is temporarily unavailable", true
+	case codes.DataLoss:
+		value.Code, value.Message = "HISTORY_UNAVAILABLE", "operation history is unavailable"
+	}
+	payload, marshalErr := json.Marshal(value)
+	if marshalErr != nil {
+		return marshalErr
+	}
+	cursor := strings.NewReplacer("\r", "", "\n", "").Replace(durableCursor)
+	if cursor == "" {
+		_, marshalErr = fmt.Fprintf(writer, "event: error\ndata: %s\n\n", payload)
+		return marshalErr
+	}
+	_, marshalErr = fmt.Fprintf(writer, "id: %s\nevent: error\ndata: %s\n\n", cursor, payload)
+	return marshalErr
 }
 
 func writeHTTPError(writer http.ResponseWriter, err error) {
@@ -525,8 +1094,10 @@ func writeHTTPError(writer http.ResponseWriter, err error) {
 		httpStatus, publicCode, publicMessage = http.StatusGatewayTimeout, "DEADLINE_EXCEEDED", "request deadline exceeded"
 	case codes.Canceled:
 		httpStatus, publicCode, publicMessage = 499, "CANCELLED", "request cancelled"
+	case codes.Unimplemented:
+		httpStatus, publicCode, publicMessage = http.StatusNotImplemented, "NOT_IMPLEMENTED", "method is not implemented"
 	}
-	writer.Header().Set("Content-Type", "application/json")
+	writer.Header().Set("Content-Type", "application/problem+json")
 	writer.WriteHeader(httpStatus)
 	_ = json.NewEncoder(writer).Encode(map[string]any{
 		"code": publicCode, "message": publicMessage, "retryable": grpcStatus.Code() == codes.Unavailable,
@@ -541,18 +1112,24 @@ type runtime struct {
 	conn         *grpc.ClientConn
 }
 
-func newRuntime(grpcAddress, httpAddress, token string, training trainingFoundation) (*runtime, error) {
+func newRuntimeWithAuthorizer(
+	ctx context.Context,
+	grpcAddress, httpAddress string,
+	authorizer bearerAuthorizer,
+	dependencies runtimeDependencies,
+) (*runtime, error) {
 	if err := requireLoopback(grpcAddress); err != nil {
 		return nil, fmt.Errorf("gRPC address: %w", err)
 	}
 	if err := requireLoopback(httpAddress); err != nil {
 		return nil, fmt.Errorf("HTTP address: %w", err)
 	}
+	training := dependencies.Training
 	if training == nil {
 		training = unavailableTrainingFoundation{}
+		dependencies.Training = training
 	}
-	authorizer := bearerAuthorizer{token: token}
-	listener, err := net.Listen("tcp", grpcAddress)
+	listener, err := (&net.ListenConfig{}).Listen(ctx, "tcp", grpcAddress)
 	if err != nil {
 		return nil, fmt.Errorf("listen for gRPC: %w", err)
 	}
@@ -560,7 +1137,10 @@ func newRuntime(grpcAddress, httpAddress, token string, training trainingFoundat
 		grpc.UnaryInterceptor(authorizer.unary),
 		grpc.StreamInterceptor(authorizer.stream),
 	)
-	apiv1.RegisterMindcladeServiceServer(grpcServer, &publicServer{training: training})
+	if registrationErr := registerGeneratedServices(grpcServer, dependencies); registrationErr != nil {
+		_ = listener.Close()
+		return nil, registrationErr
+	}
 	conn, err := grpc.NewClient(
 		listener.Addr().String(),
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
@@ -569,7 +1149,7 @@ func newRuntime(grpcAddress, httpAddress, token string, training trainingFoundat
 		_ = listener.Close()
 		return nil, fmt.Errorf("create loopback gRPC client: %w", err)
 	}
-	httpGateway, err := newGateway(conn, authorizer)
+	httpGateway, err := newGateway(conn, authorizer, training.Ready)
 	if err != nil {
 		_ = conn.Close()
 		_ = listener.Close()
@@ -618,8 +1198,21 @@ func (r *runtime) serve() error {
 }
 
 func (r *runtime) shutdown(ctx context.Context) error {
-	httpErr := r.httpServer.Shutdown(ctx)
-	r.grpcServer.GracefulStop()
+	httpResult := make(chan error, 1)
+	go func() { httpResult <- r.httpServer.Shutdown(ctx) }()
+	grpcStopped := make(chan struct{})
+	go func() {
+		r.grpcServer.GracefulStop()
+		close(grpcStopped)
+	}()
+	select {
+	case <-grpcStopped:
+	case <-ctx.Done():
+		// Streaming clients cannot hold shutdown past the caller's deadline.
+		r.grpcServer.Stop()
+		<-grpcStopped
+	}
+	httpErr := <-httpResult
 	connErr := r.conn.Close()
-	return errors.Join(httpErr, connErr)
+	return errors.Join(httpErr, connErr, ctx.Err())
 }

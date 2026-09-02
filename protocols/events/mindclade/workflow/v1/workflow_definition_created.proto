@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package mindclade.events.workflow.v1;
+
+import "google/protobuf/timestamp.proto";
+import "proto/mindclade/common/v1/resource_reference.proto";
+import "proto/mindclade/workflow/v1/workflow_definition.proto";
+
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/workflow/v1;workflowv1";
+
+// WorkflowDefinitionCreated records admission of one bounded, resolved graph.
+message WorkflowDefinitionCreated {
+  mindclade.workflow.v1.WorkflowDefinition workflow_definition = 1;
+  mindclade.common.v1.ResourceRef operation = 2;
+  google.protobuf.Timestamp created_at = 3;
+}

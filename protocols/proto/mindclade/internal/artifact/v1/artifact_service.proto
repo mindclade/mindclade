@@ -11,7 +11,7 @@ import "proto/mindclade/common/v1/pagination.proto";
 import "proto/mindclade/common/v1/resource_reference.proto";
 import "proto/mindclade/job/v1/operation.proto";
 
-option go_package = "github.com/mindclade/mindclade/protocols/generated/go/internal/artifact/v1;internalartifactv1";
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/artifact/v1;internalartifactv1";
 
 // GetArtifactRequest identifies immutable artifact metadata by digest or canonical name.
 message GetArtifactRequest {
@@ -96,6 +96,136 @@ message ReleaseArtifactLeaseRequest {
 // ReleaseArtifactLeaseResponse confirms successful idempotent release.
 message ReleaseArtifactLeaseResponse {}
 
+// ArtifactUploadState is the durable transfer-plane lifecycle. Terminal states
+// are immutable; expired and quarantined sessions cannot be resumed.
+enum ArtifactUploadState {
+  ARTIFACT_UPLOAD_STATE_UNSPECIFIED = 0;
+  ARTIFACT_UPLOAD_STATE_OPEN = 1;
+  ARTIFACT_UPLOAD_STATE_FINALIZING = 2;
+  ARTIFACT_UPLOAD_STATE_FINALIZED = 3;
+  ARTIFACT_UPLOAD_STATE_ABORTED = 4;
+  ARTIFACT_UPLOAD_STATE_QUARANTINED = 5;
+  ARTIFACT_UPLOAD_STATE_EXPIRED = 6;
+}
+
+// ArtifactStagingReceipt is an opaque, time-bounded proof that the transfer
+// plane verified immutable bytes. Provider object names, generations, and
+// credentials deliberately remain private persistence details.
+message ArtifactStagingReceipt {
+  string receipt_digest = 1;
+  mindclade.artifact.v1.ArtifactRef artifact = 2;
+  google.protobuf.Timestamp verified_at = 3;
+  google.protobuf.Timestamp expire_time = 4;
+}
+
+// ArtifactUploadSession describes resumable progress without returning bytes
+// or provider storage metadata.
+message ArtifactUploadSession {
+  string name = 1;
+  mindclade.artifact.v1.ArtifactRef artifact = 2;
+  ArtifactUploadState state = 3;
+  int64 committed_offset = 4;
+  int64 next_chunk_index = 5;
+  ArtifactStagingReceipt staging_receipt = 6;
+  google.protobuf.Timestamp create_time = 7;
+  google.protobuf.Timestamp update_time = 8;
+  google.protobuf.Timestamp expire_time = 9;
+  int64 revision = 10;
+  string etag = 11;
+}
+
+// BeginArtifactUploadRequest creates an idempotent, bounded upload session for
+// a caller-known immutable content identity.
+message BeginArtifactUploadRequest {
+  mindclade.common.v1.CommandContext context = 1;
+  string parent = 2;
+  mindclade.artifact.v1.ArtifactRef artifact = 3;
+  string upload_id = 4;
+  google.protobuf.Timestamp expire_time = 5;
+}
+
+message BeginArtifactUploadResponse {
+  ArtifactUploadSession upload = 1;
+}
+
+// UploadArtifactChunkRequest appends exactly one contiguous, independently
+// checksummed chunk. Identical offset/digest retries are replay-safe.
+message UploadArtifactChunkRequest {
+  mindclade.common.v1.CommandContext context = 1;
+  string name = 2;
+  int64 chunk_index = 3;
+  int64 offset = 4;
+  bytes data = 5;
+  string chunk_digest = 6;
+  string etag = 7;
+}
+
+message UploadArtifactChunkResponse {
+  ArtifactUploadSession upload = 1;
+}
+
+message GetArtifactUploadRequest {
+  string name = 1;
+}
+
+message GetArtifactUploadResponse {
+  ArtifactUploadSession upload = 1;
+}
+
+// FinalizeArtifactUploadRequest seals a complete session and creates an opaque
+// staging receipt. The receipt lifetime may be shorter than the session's
+// maximum policy but never longer than seven days.
+message FinalizeArtifactUploadRequest {
+  mindclade.common.v1.CommandContext context = 1;
+  string name = 2;
+  string etag = 3;
+  google.protobuf.Timestamp receipt_expire_time = 4;
+}
+
+message FinalizeArtifactUploadResponse {
+  ArtifactUploadSession upload = 1;
+  ArtifactStagingReceipt staging_receipt = 2;
+}
+
+message AbortArtifactUploadRequest {
+  mindclade.common.v1.CommandContext context = 1;
+  string name = 2;
+  string etag = 3;
+  string reason_code = 4;
+}
+
+message AbortArtifactUploadResponse {
+  ArtifactUploadSession upload = 1;
+}
+
+message QuarantineArtifactUploadRequest {
+  mindclade.common.v1.CommandContext context = 1;
+  string name = 2;
+  string etag = 3;
+  string reason_code = 4;
+}
+
+message QuarantineArtifactUploadResponse {
+  ArtifactUploadSession upload = 1;
+}
+
+// DownloadArtifactRequest selects committed immutable content. The server
+// resolves and pins the private provider generation before streaming.
+message DownloadArtifactRequest {
+  string name = 1;
+  string digest = 2;
+  int64 offset = 3;
+  int32 max_chunk_bytes = 4;
+}
+
+message DownloadArtifactResponse {
+  mindclade.artifact.v1.ArtifactRef artifact = 1;
+  int64 offset = 2;
+  bytes data = 3;
+  string chunk_digest = 4;
+  bool complete = 5;
+}
+
 // ArtifactService owns artifact metadata, aliases, commit, quarantine, and retention RPCs.
 service ArtifactService {
   // GetArtifact reads immutable metadata without returning a provider storage locator.
@@ -112,4 +242,18 @@ service ArtifactService {
   rpc AcquireArtifactLease(AcquireArtifactLeaseRequest) returns (AcquireArtifactLeaseResponse);
   // ReleaseArtifactLease enforces the supplied ETag and has no response payload.
   rpc ReleaseArtifactLease(ReleaseArtifactLeaseRequest) returns (ReleaseArtifactLeaseResponse);
+  // BeginArtifactUpload creates a durable resumable transfer session.
+  rpc BeginArtifactUpload(BeginArtifactUploadRequest) returns (BeginArtifactUploadResponse);
+  // UploadArtifactChunk appends one contiguous, digest-verified chunk.
+  rpc UploadArtifactChunk(UploadArtifactChunkRequest) returns (UploadArtifactChunkResponse);
+  // GetArtifactUpload returns authoritative resume offset and lifecycle state.
+  rpc GetArtifactUpload(GetArtifactUploadRequest) returns (GetArtifactUploadResponse);
+  // FinalizeArtifactUpload composes, verifies, and issues an opaque staging receipt.
+  rpc FinalizeArtifactUpload(FinalizeArtifactUploadRequest) returns (FinalizeArtifactUploadResponse);
+  // AbortArtifactUpload makes an incomplete session permanently unusable.
+  rpc AbortArtifactUpload(AbortArtifactUploadRequest) returns (AbortArtifactUploadResponse);
+  // QuarantineArtifactUpload records a governed integrity failure.
+  rpc QuarantineArtifactUpload(QuarantineArtifactUploadRequest) returns (QuarantineArtifactUploadResponse);
+  // DownloadArtifact streams committed content from one generation-pinned object.
+  rpc DownloadArtifact(DownloadArtifactRequest) returns (stream DownloadArtifactResponse);
 }

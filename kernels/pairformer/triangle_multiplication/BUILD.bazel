@@ -4,7 +4,10 @@
 load("@rules_python//python:defs.bzl", "py_test")
 
 exports_files(
-    ["spec.py", "tilelang.py"],
+    [
+        "spec.py",
+        "tilelang.py",
+    ],
     visibility = ["//kernels/native:__pkg__"],
 )
 
@@ -24,7 +27,7 @@ py_test(
         "requires-hermetic-torch-2.10",
     ],
     deps = [
-        "//kernels/api:api",
+        "//kernels/api",
         "@mindclade_pypi//pytest",
     ],
 )

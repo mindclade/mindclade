@@ -2,4 +2,8 @@
 
 include!("dataset.rs");
 include!("dataset_commands.rs");
+include!("dataset_created.rs");
 include!("dataset_release.rs");
+include!("dataset_release_published.rs");
+include!("dataset_release_revoked.rs");
+include!("dataset_updated.rs");

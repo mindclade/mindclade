@@ -9,6 +9,7 @@ package jobv1
 import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
@@ -21,14 +22,17 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// AttemptCompleted is emitted only after the authoritative current fence has
+// accepted a terminal attempt update. Outputs remain immutable artifact
+// references on Attempt and Run.
 type AttemptCompleted struct {
-	state                   protoimpl.MessageState `protogen:"open.v1"`
-	AttemptId               string                 `protobuf:"bytes,1,opt,name=attempt_id,json=attemptId,proto3" json:"attempt_id,omitempty"`
-	LeaseEpoch              uint64                 `protobuf:"varint,2,opt,name=lease_epoch,json=leaseEpoch,proto3" json:"lease_epoch,omitempty"`
-	ResultDigest            string                 `protobuf:"bytes,3,opt,name=result_digest,json=resultDigest,proto3" json:"result_digest,omitempty"`
-	CompletionReceiptDigest string                 `protobuf:"bytes,4,opt,name=completion_receipt_digest,json=completionReceiptDigest,proto3" json:"completion_receipt_digest,omitempty"`
-	unknownFields           protoimpl.UnknownFields
-	sizeCache               protoimpl.SizeCache
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Attempt       *Attempt               `protobuf:"bytes,1,opt,name=attempt,proto3" json:"attempt,omitempty"`
+	Run           *Run                   `protobuf:"bytes,2,opt,name=run,proto3" json:"run,omitempty"`
+	Fence         *LeaseFence            `protobuf:"bytes,3,opt,name=fence,proto3" json:"fence,omitempty"`
+	CompletedAt   *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=completed_at,json=completedAt,proto3" json:"completed_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *AttemptCompleted) Reset() {
@@ -61,46 +65,44 @@ func (*AttemptCompleted) Descriptor() ([]byte, []int) {
 	return file_events_mindclade_job_v1_attempt_completed_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *AttemptCompleted) GetAttemptId() string {
+func (x *AttemptCompleted) GetAttempt() *Attempt {
 	if x != nil {
-		return x.AttemptId
+		return x.Attempt
 	}
-	return ""
+	return nil
 }
 
-func (x *AttemptCompleted) GetLeaseEpoch() uint64 {
+func (x *AttemptCompleted) GetRun() *Run {
 	if x != nil {
-		return x.LeaseEpoch
+		return x.Run
 	}
-	return 0
+	return nil
 }
 
-func (x *AttemptCompleted) GetResultDigest() string {
+func (x *AttemptCompleted) GetFence() *LeaseFence {
 	if x != nil {
-		return x.ResultDigest
+		return x.Fence
 	}
-	return ""
+	return nil
 }
 
-func (x *AttemptCompleted) GetCompletionReceiptDigest() string {
+func (x *AttemptCompleted) GetCompletedAt() *timestamppb.Timestamp {
 	if x != nil {
-		return x.CompletionReceiptDigest
+		return x.CompletedAt
 	}
-	return ""
+	return nil
 }
 
 var File_events_mindclade_job_v1_attempt_completed_proto protoreflect.FileDescriptor
 
 const file_events_mindclade_job_v1_attempt_completed_proto_rawDesc = "" +
 	"\n" +
-	"/events/mindclade/job/v1/attempt_completed.proto\x12\x17mindclade.events.job.v1\"\xb3\x01\n" +
-	"\x10AttemptCompleted\x12\x1d\n" +
-	"\n" +
-	"attempt_id\x18\x01 \x01(\tR\tattemptId\x12\x1f\n" +
-	"\vlease_epoch\x18\x02 \x01(\x04R\n" +
-	"leaseEpoch\x12#\n" +
-	"\rresult_digest\x18\x03 \x01(\tR\fresultDigest\x12:\n" +
-	"\x19completion_receipt_digest\x18\x04 \x01(\tR\x17completionReceiptDigestBDZBgithub.com/mindclade/mindclade/protocols/generated/go/job/v1;jobv1b\x06proto3"
+	"/events/mindclade/job/v1/attempt_completed.proto\x12\x17mindclade.events.job.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a$proto/mindclade/job/v1/attempt.proto\x1a*proto/mindclade/job/v1/lease_fencing.proto\x1a proto/mindclade/job/v1/run.proto\"\xe3\x01\n" +
+	"\x10AttemptCompleted\x123\n" +
+	"\aattempt\x18\x01 \x01(\v2\x19.mindclade.job.v1.AttemptR\aattempt\x12'\n" +
+	"\x03run\x18\x02 \x01(\v2\x15.mindclade.job.v1.RunR\x03run\x122\n" +
+	"\x05fence\x18\x03 \x01(\v2\x1c.mindclade.job.v1.LeaseFenceR\x05fence\x12=\n" +
+	"\fcompleted_at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\vcompletedAtBDZBgithub.com/mindclade/mindclade/protocols/generated/go/job/v1;jobv1b\x06proto3"
 
 var (
 	file_events_mindclade_job_v1_attempt_completed_proto_rawDescOnce sync.Once
@@ -116,14 +118,22 @@ func file_events_mindclade_job_v1_attempt_completed_proto_rawDescGZIP() []byte {
 
 var file_events_mindclade_job_v1_attempt_completed_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
 var file_events_mindclade_job_v1_attempt_completed_proto_goTypes = []any{
-	(*AttemptCompleted)(nil), // 0: mindclade.events.job.v1.AttemptCompleted
+	(*AttemptCompleted)(nil),      // 0: mindclade.events.job.v1.AttemptCompleted
+	(*Attempt)(nil),               // 1: mindclade.job.v1.Attempt
+	(*Run)(nil),                   // 2: mindclade.job.v1.Run
+	(*LeaseFence)(nil),            // 3: mindclade.job.v1.LeaseFence
+	(*timestamppb.Timestamp)(nil), // 4: google.protobuf.Timestamp
 }
 var file_events_mindclade_job_v1_attempt_completed_proto_depIdxs = []int32{
-	0, // [0:0] is the sub-list for method output_type
-	0, // [0:0] is the sub-list for method input_type
-	0, // [0:0] is the sub-list for extension type_name
-	0, // [0:0] is the sub-list for extension extendee
-	0, // [0:0] is the sub-list for field type_name
+	1, // 0: mindclade.events.job.v1.AttemptCompleted.attempt:type_name -> mindclade.job.v1.Attempt
+	2, // 1: mindclade.events.job.v1.AttemptCompleted.run:type_name -> mindclade.job.v1.Run
+	3, // 2: mindclade.events.job.v1.AttemptCompleted.fence:type_name -> mindclade.job.v1.LeaseFence
+	4, // 3: mindclade.events.job.v1.AttemptCompleted.completed_at:type_name -> google.protobuf.Timestamp
+	4, // [4:4] is the sub-list for method output_type
+	4, // [4:4] is the sub-list for method input_type
+	4, // [4:4] is the sub-list for extension type_name
+	4, // [4:4] is the sub-list for extension extendee
+	0, // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_events_mindclade_job_v1_attempt_completed_proto_init() }
@@ -131,6 +141,9 @@ func file_events_mindclade_job_v1_attempt_completed_proto_init() {
 	if File_events_mindclade_job_v1_attempt_completed_proto != nil {
 		return
 	}
+	file_proto_mindclade_job_v1_attempt_proto_init()
+	file_proto_mindclade_job_v1_lease_fencing_proto_init()
+	file_proto_mindclade_job_v1_run_proto_init()
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

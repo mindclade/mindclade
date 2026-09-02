@@ -4233,46 +4233,91 @@ mindclade/
 │   │           └── v1/
 │   │               └── mindclade_service.proto
 │   ├── events/
-│   │   └── mindclade/
-│   │       ├── artifact/
-│   │       │   └── v1/
-│   │       │       ├── artifact_committed.proto
-│   │       │       └── artifact_quarantined.proto
-│   │       ├── job/
-│   │       │   └── v1/
-│   │       │       ├── job_requested.proto
-│   │       │       ├── attempt_leased.proto
-│   │       │       └── attempt_completed.proto
-│   │       ├── feature/
-│   │       │   └── v1/
-│   │       │       └── feature_materialization_completed.proto
-│   │       ├── transform/
-│   │       │   └── v1/
-│   │       │       └── transform_execution_completed.proto
-│   │       ├── model/
-│   │       │   └── v1/
-│   │       │       ├── model_registered.proto
-│   │       │       ├── model_promoted.proto
-│   │       │       └── model_revoked.proto
-│   │       ├── training/
-│   │       │   └── v1/
-│   │       │       ├── training_started.proto
-│   │       │       ├── progress_committed.proto
-│   │       │       ├── checkpoint_committed.proto
-│   │       │       └── training_completed.proto
-│   │       ├── agent/
-│   │       │   └── v1/
-│   │       │       ├── agent_step_dispatched.proto
-│   │       │       ├── tool_receipt_committed.proto
-│   │       │       └── agent_run_completed.proto
-│   │       ├── workflow/
-│   │       │   └── v1/
-│   │       │       ├── workflow_transitioned.proto
-│   │       │       └── approval_recorded.proto
-│   │       └── audit/
-│   │           └── v1/
-│   │               ├── audit_event.proto
-│   │               └── security_event.proto
+│   │   ├── mindclade/
+│   │   │   ├── artifact/
+│   │   │   │   └── v1/
+│   │   │   │       ├── artifact_committed.proto
+│   │   │   │       └── artifact_quarantined.proto
+│   │   │   ├── job/
+│   │   │   │   └── v1/
+│   │   │   │       ├── job_requested.proto
+│   │   │   │       ├── attempt_leased.proto
+│   │   │   │       └── attempt_completed.proto
+│   │   │   ├── feature/
+│   │   │   │   └── v1/
+│   │   │   │       └── feature_materialization_completed.proto
+│   │   │   ├── transform/
+│   │   │   │   └── v1/
+│   │   │   │       └── transform_execution_completed.proto
+│   │   │   ├── model/
+│   │   │   │   └── v1/
+│   │   │   │       ├── model_registered.proto
+│   │   │   │       ├── model_promoted.proto
+│   │   │   │       ├── model_revoked.proto
+│   │   │   │       └── model_release_registered.proto
+│   │   │   ├── training/
+│   │   │   │   └── v1/
+│   │   │   │       ├── training_started.proto
+│   │   │   │       ├── progress_committed.proto
+│   │   │   │       ├── checkpoint_committed.proto
+│   │   │   │       ├── training_completed.proto
+│   │   │   │       ├── training_run_created.proto
+│   │   │   │       └── training_cancellation_requested.proto
+│   │   │   ├── agent/
+│   │   │   │   └── v1/
+│   │   │   │       ├── agent_step_dispatched.proto
+│   │   │   │       ├── tool_receipt_committed.proto
+│   │   │   │       ├── agent_run_completed.proto
+│   │   │   │       ├── agent_cancellation_requested.proto
+│   │   │   │       ├── agent_definition_created.proto
+│   │   │   │       ├── agent_definition_updated.proto
+│   │   │   │       ├── agent_run_started.proto
+│   │   │   │       └── agent_step_committed.proto
+│   │   │   ├── workflow/
+│   │   │   │   └── v1/
+│   │   │   │       ├── workflow_transitioned.proto
+│   │   │   │       ├── approval_recorded.proto
+│   │   │   │       ├── approval_consumed.proto
+│   │   │   │       ├── approval_requested.proto
+│   │   │   │       ├── workflow_cancellation_requested.proto
+│   │   │   │       ├── workflow_definition_created.proto
+│   │   │   │       ├── workflow_definition_updated.proto
+│   │   │   │       └── workflow_run_started.proto
+│   │   │   ├── audit/
+│   │   │   │   └── v1/
+│   │   │   │       ├── audit_event.proto
+│   │   │   │       └── security_event.proto
+│   │   │   ├── admin/
+│   │   │   │   └── v1/
+│   │   │   │       ├── audit_export_completed.proto
+│   │   │   │       ├── audit_export_requested.proto
+│   │   │   │       ├── project_created.proto
+│   │   │   │       ├── project_updated.proto
+│   │   │   │       └── tenant_updated.proto
+│   │   │   ├── dataset/
+│   │   │   │   └── v1/
+│   │   │   │       ├── dataset_created.proto
+│   │   │   │       ├── dataset_release_published.proto
+│   │   │   │       ├── dataset_release_revoked.proto
+│   │   │   │       └── dataset_updated.proto
+│   │   │   ├── evaluation/
+│   │   │   │   └── v1/
+│   │   │   │       ├── evaluation_cancellation_requested.proto
+│   │   │   │       ├── evaluation_result_committed.proto
+│   │   │   │       ├── evaluation_run_created.proto
+│   │   │   │       └── promotion_decision_recorded.proto
+│   │   │   ├── inference/
+│   │   │   │   └── v1/
+│   │   │   │       ├── inference_requested.proto
+│   │   │   │       └── inference_result_committed.proto
+│   │   │   └── policy/
+│   │   │       └── v1/
+│   │   │           ├── authorization_decision_recorded.proto
+│   │   │           ├── use_policy_activated.proto
+│   │   │           ├── use_policy_created.proto
+│   │   │           ├── use_policy_revoked.proto
+│   │   │           └── use_policy_updated.proto
+│   │   └── registry.yaml
 │   ├── schemas/
 │   │   ├── artifact_manifest/
 │   │   │   ├── artifact_manifest.schema.json
@@ -4449,7 +4494,13 @@ mindclade/
 │   ├── openapi/
 │   │   ├── external-api.yaml
 │   │   ├── generation.yaml
-│   │   └── compatibility-policy.yaml
+│   │   ├── compatibility-policy.yaml
+│   │   ├── raw/
+│   │   │   └── mindclade.openapi.yaml
+│   │   ├── curated/
+│   │   │   └── mindclade.openapi.yaml
+│   │   └── published/
+│   │       └── mindclade.openapi.yaml
 │   ├── generated/
 │   │   ├── go/
 │   │   │   ├── README.generated.md
@@ -4488,7 +4539,11 @@ mindclade/
 │   │   │   │       ├── dataset.pb.go
 │   │   │   │       ├── dataset_release.pb.go
 │   │   │   │       ├── dataset_commands.pb.go
-│   │   │   │       └── BUILD.bazel
+│   │   │   │       ├── BUILD.bazel
+│   │   │   │       ├── dataset_created.pb.go
+│   │   │   │       ├── dataset_release_published.pb.go
+│   │   │   │       ├── dataset_release_revoked.pb.go
+│   │   │   │       └── dataset_updated.pb.go
 │   │   │   ├── feature/
 │   │   │   │   └── v1/
 │   │   │   │       ├── feature_materialization.pb.go
@@ -4515,7 +4570,8 @@ mindclade/
 │   │   │   │       ├── model_registered.pb.go
 │   │   │   │       ├── model_promoted.pb.go
 │   │   │   │       ├── model_revoked.pb.go
-│   │   │   │       └── BUILD.bazel
+│   │   │   │       ├── BUILD.bazel
+│   │   │   │       └── model_release_registered.pb.go
 │   │   │   ├── training/
 │   │   │   │   └── v1/
 │   │   │   │       ├── training_run.pb.go
@@ -4526,19 +4582,27 @@ mindclade/
 │   │   │   │       ├── progress_committed.pb.go
 │   │   │   │       ├── checkpoint_committed.pb.go
 │   │   │   │       ├── training_completed.pb.go
-│   │   │   │       └── BUILD.bazel
+│   │   │   │       ├── BUILD.bazel
+│   │   │   │       ├── training_run_created.pb.go
+│   │   │   │       └── training_cancellation_requested.pb.go
 │   │   │   ├── inference/
 │   │   │   │   └── v1/
 │   │   │   │       ├── inference_request.pb.go
 │   │   │   │       ├── inference_result.pb.go
 │   │   │   │       ├── inference_stream.pb.go
-│   │   │   │       └── BUILD.bazel
+│   │   │   │       ├── BUILD.bazel
+│   │   │   │       ├── inference_requested.pb.go
+│   │   │   │       └── inference_result_committed.pb.go
 │   │   │   ├── evaluation/
 │   │   │   │   └── v1/
 │   │   │   │       ├── evaluation_run.pb.go
 │   │   │   │       ├── evaluation_result.pb.go
 │   │   │   │       ├── promotion_decision.pb.go
-│   │   │   │       └── BUILD.bazel
+│   │   │   │       ├── BUILD.bazel
+│   │   │   │       ├── evaluation_cancellation_requested.pb.go
+│   │   │   │       ├── evaluation_result_committed.pb.go
+│   │   │   │       ├── evaluation_run_created.pb.go
+│   │   │   │       └── promotion_decision_recorded.pb.go
 │   │   │   ├── agent/
 │   │   │   │   └── v1/
 │   │   │   │       ├── agent_definition.pb.go
@@ -4548,7 +4612,12 @@ mindclade/
 │   │   │   │       ├── agent_step_dispatched.pb.go
 │   │   │   │       ├── tool_receipt_committed.pb.go
 │   │   │   │       ├── agent_run_completed.pb.go
-│   │   │   │       └── BUILD.bazel
+│   │   │   │       ├── BUILD.bazel
+│   │   │   │       ├── agent_cancellation_requested.pb.go
+│   │   │   │       ├── agent_definition_created.pb.go
+│   │   │   │       ├── agent_definition_updated.pb.go
+│   │   │   │       ├── agent_run_started.pb.go
+│   │   │   │       └── agent_step_committed.pb.go
 │   │   │   ├── workflow/
 │   │   │   │   └── v1/
 │   │   │   │       ├── workflow_definition.pb.go
@@ -4556,25 +4625,41 @@ mindclade/
 │   │   │   │       ├── approval.pb.go
 │   │   │   │       ├── workflow_transitioned.pb.go
 │   │   │   │       ├── approval_recorded.pb.go
-│   │   │   │       └── BUILD.bazel
+│   │   │   │       ├── BUILD.bazel
+│   │   │   │       ├── approval_consumed.pb.go
+│   │   │   │       ├── approval_requested.pb.go
+│   │   │   │       ├── workflow_cancellation_requested.pb.go
+│   │   │   │       ├── workflow_definition_created.pb.go
+│   │   │   │       ├── workflow_definition_updated.pb.go
+│   │   │   │       └── workflow_run_started.pb.go
 │   │   │   ├── policy/
 │   │   │   │   └── v1/
 │   │   │   │       ├── policy_reference.pb.go
 │   │   │   │       ├── authorization_decision.pb.go
 │   │   │   │       ├── use_policy.pb.go
-│   │   │   │       └── BUILD.bazel
+│   │   │   │       ├── BUILD.bazel
+│   │   │   │       ├── authorization_decision_recorded.pb.go
+│   │   │   │       ├── use_policy_activated.pb.go
+│   │   │   │       ├── use_policy_created.pb.go
+│   │   │   │       ├── use_policy_revoked.pb.go
+│   │   │   │       └── use_policy_updated.pb.go
 │   │   │   ├── admin/
 │   │   │   │   └── v1/
 │   │   │   │       ├── tenant.pb.go
 │   │   │   │       ├── project.pb.go
 │   │   │   │       ├── audit_query.pb.go
-│   │   │   │       └── BUILD.bazel
+│   │   │   │       ├── BUILD.bazel
+│   │   │   │       ├── audit_export_completed.pb.go
+│   │   │   │       ├── audit_export_requested.pb.go
+│   │   │   │       ├── project_created.pb.go
+│   │   │   │       ├── project_updated.pb.go
+│   │   │   │       └── tenant_updated.pb.go
 │   │   │   ├── audit/
 │   │   │   │   └── v1/
 │   │   │   │       ├── audit_event.pb.go
 │   │   │   │       ├── security_event.pb.go
 │   │   │   │       └── BUILD.bazel
-│   │   │   ├── internal/
+│   │   │   ├── internalrpc/
 │   │   │   │   ├── artifact/
 │   │   │   │   │   └── v1/
 │   │   │   │   │       ├── artifact_service.pb.go
@@ -4630,292 +4715,372 @@ mindclade/
 │   │   │   │           ├── admin_service.pb.go
 │   │   │   │           ├── admin_service_grpc.pb.go
 │   │   │   │           └── BUILD.bazel
-│   │   │   └── api/
+│   │   │   ├── api/
+│   │   │   │   └── v1/
+│   │   │   │       ├── mindclade_service.pb.go
+│   │   │   │       ├── mindclade_service_grpc.pb.go
+│   │   │   │       └── BUILD.bazel
+│   │   │   └── schema/
 │   │   │       └── v1/
-│   │   │           ├── mindclade_service.pb.go
-│   │   │           ├── mindclade_service_grpc.pb.go
-│   │   │           └── BUILD.bazel
+│   │   │           ├── BUILD.bazel
+│   │   │           ├── bindings.generated.go
+│   │   │           └── bindings_generated_test.go
 │   │   ├── python/
 │   │   │   ├── README.generated.md
 │   │   │   ├── BUILD.bazel
-│   │   │   ├── common/
-│   │   │   │   └── v1/
-│   │   │   │       ├── identifiers_pb2.py
-│   │   │   │       ├── resource_reference_pb2.py
-│   │   │   │       ├── command_context_pb2.py
-│   │   │   │       ├── event_envelope_pb2.py
-│   │   │   │       ├── error_detail_pb2.py
-│   │   │   │       ├── pagination_pb2.py
-│   │   │   │       ├── __init__.py
-│   │   │   │       ├── identifiers_pb2.pyi
-│   │   │   │       ├── resource_reference_pb2.pyi
-│   │   │   │       ├── command_context_pb2.pyi
-│   │   │   │       ├── event_envelope_pb2.pyi
-│   │   │   │       ├── error_detail_pb2.pyi
-│   │   │   │       └── pagination_pb2.pyi
-│   │   │   ├── artifact/
-│   │   │   │   └── v1/
-│   │   │   │       ├── artifact_reference_pb2.py
-│   │   │   │       ├── evidence_reference_pb2.py
-│   │   │   │       ├── artifact_commands_pb2.py
-│   │   │   │       ├── artifact_committed_pb2.py
-│   │   │   │       ├── artifact_quarantined_pb2.py
-│   │   │   │       ├── __init__.py
-│   │   │   │       ├── artifact_reference_pb2.pyi
-│   │   │   │       ├── evidence_reference_pb2.pyi
-│   │   │   │       ├── artifact_commands_pb2.pyi
-│   │   │   │       ├── artifact_committed_pb2.pyi
-│   │   │   │       └── artifact_quarantined_pb2.pyi
-│   │   │   ├── job/
-│   │   │   │   └── v1/
-│   │   │   │       ├── operation_pb2.py
-│   │   │   │       ├── job_pb2.py
-│   │   │   │       ├── run_pb2.py
-│   │   │   │       ├── attempt_pb2.py
-│   │   │   │       ├── lease_fencing_pb2.py
-│   │   │   │       ├── job_commands_pb2.py
-│   │   │   │       ├── job_requested_pb2.py
-│   │   │   │       ├── attempt_leased_pb2.py
-│   │   │   │       ├── attempt_completed_pb2.py
-│   │   │   │       ├── __init__.py
-│   │   │   │       ├── operation_pb2.pyi
-│   │   │   │       ├── job_pb2.pyi
-│   │   │   │       ├── run_pb2.pyi
-│   │   │   │       ├── attempt_pb2.pyi
-│   │   │   │       ├── lease_fencing_pb2.pyi
-│   │   │   │       ├── job_commands_pb2.pyi
-│   │   │   │       ├── job_requested_pb2.pyi
-│   │   │   │       ├── attempt_leased_pb2.pyi
-│   │   │   │       └── attempt_completed_pb2.pyi
-│   │   │   ├── dataset/
-│   │   │   │   └── v1/
-│   │   │   │       ├── dataset_pb2.py
-│   │   │   │       ├── dataset_release_pb2.py
-│   │   │   │       ├── dataset_commands_pb2.py
-│   │   │   │       ├── __init__.py
-│   │   │   │       ├── dataset_pb2.pyi
-│   │   │   │       ├── dataset_release_pb2.pyi
-│   │   │   │       └── dataset_commands_pb2.pyi
-│   │   │   ├── feature/
-│   │   │   │   └── v1/
-│   │   │   │       ├── feature_materialization_pb2.py
-│   │   │   │       ├── feature_commands_pb2.py
-│   │   │   │       ├── feature_materialization_completed_pb2.py
-│   │   │   │       ├── __init__.py
-│   │   │   │       ├── feature_materialization_pb2.pyi
-│   │   │   │       ├── feature_commands_pb2.pyi
-│   │   │   │       └── feature_materialization_completed_pb2.pyi
-│   │   │   ├── transform/
-│   │   │   │   └── v1/
-│   │   │   │       ├── transform_execution_pb2.py
-│   │   │   │       ├── transform_commands_pb2.py
-│   │   │   │       ├── transform_execution_completed_pb2.py
-│   │   │   │       ├── __init__.py
-│   │   │   │       ├── transform_execution_pb2.pyi
-│   │   │   │       ├── transform_commands_pb2.pyi
-│   │   │   │       └── transform_execution_completed_pb2.pyi
-│   │   │   ├── experiment/
-│   │   │   │   └── v1/
-│   │   │   │       ├── experiment_pb2.py
-│   │   │   │       ├── study_pb2.py
-│   │   │   │       ├── trial_pb2.py
-│   │   │   │       ├── __init__.py
-│   │   │   │       ├── experiment_pb2.pyi
-│   │   │   │       ├── study_pb2.pyi
-│   │   │   │       └── trial_pb2.pyi
-│   │   │   ├── model/
-│   │   │   │   └── v1/
-│   │   │   │       ├── model_pb2.py
-│   │   │   │       ├── model_release_pb2.py
-│   │   │   │       ├── model_commands_pb2.py
-│   │   │   │       ├── model_registered_pb2.py
-│   │   │   │       ├── model_promoted_pb2.py
-│   │   │   │       ├── model_revoked_pb2.py
-│   │   │   │       ├── __init__.py
-│   │   │   │       ├── model_pb2.pyi
-│   │   │   │       ├── model_release_pb2.pyi
-│   │   │   │       ├── model_commands_pb2.pyi
-│   │   │   │       ├── model_registered_pb2.pyi
-│   │   │   │       ├── model_promoted_pb2.pyi
-│   │   │   │       └── model_revoked_pb2.pyi
-│   │   │   ├── training/
-│   │   │   │   └── v1/
-│   │   │   │       ├── training_run_pb2.py
-│   │   │   │       ├── training_progress_pb2.py
-│   │   │   │       ├── checkpoint_pb2.py
-│   │   │   │       ├── training_commands_pb2.py
-│   │   │   │       ├── training_started_pb2.py
-│   │   │   │       ├── progress_committed_pb2.py
-│   │   │   │       ├── checkpoint_committed_pb2.py
-│   │   │   │       ├── training_completed_pb2.py
-│   │   │   │       ├── __init__.py
-│   │   │   │       ├── training_run_pb2.pyi
-│   │   │   │       ├── training_progress_pb2.pyi
-│   │   │   │       ├── checkpoint_pb2.pyi
-│   │   │   │       ├── training_commands_pb2.pyi
-│   │   │   │       ├── training_started_pb2.pyi
-│   │   │   │       ├── progress_committed_pb2.pyi
-│   │   │   │       ├── checkpoint_committed_pb2.pyi
-│   │   │   │       └── training_completed_pb2.pyi
-│   │   │   ├── inference/
-│   │   │   │   └── v1/
-│   │   │   │       ├── inference_request_pb2.py
-│   │   │   │       ├── inference_result_pb2.py
-│   │   │   │       ├── inference_stream_pb2.py
-│   │   │   │       ├── __init__.py
-│   │   │   │       ├── inference_request_pb2.pyi
-│   │   │   │       ├── inference_result_pb2.pyi
-│   │   │   │       └── inference_stream_pb2.pyi
-│   │   │   ├── evaluation/
-│   │   │   │   └── v1/
-│   │   │   │       ├── evaluation_run_pb2.py
-│   │   │   │       ├── evaluation_result_pb2.py
-│   │   │   │       ├── promotion_decision_pb2.py
-│   │   │   │       ├── __init__.py
-│   │   │   │       ├── evaluation_run_pb2.pyi
-│   │   │   │       ├── evaluation_result_pb2.pyi
-│   │   │   │       └── promotion_decision_pb2.pyi
-│   │   │   ├── agent/
-│   │   │   │   └── v1/
-│   │   │   │       ├── agent_definition_pb2.py
-│   │   │   │       ├── agent_run_pb2.py
-│   │   │   │       ├── agent_step_pb2.py
-│   │   │   │       ├── tool_receipt_pb2.py
-│   │   │   │       ├── agent_step_dispatched_pb2.py
-│   │   │   │       ├── tool_receipt_committed_pb2.py
-│   │   │   │       ├── agent_run_completed_pb2.py
-│   │   │   │       ├── __init__.py
-│   │   │   │       ├── agent_definition_pb2.pyi
-│   │   │   │       ├── agent_run_pb2.pyi
-│   │   │   │       ├── agent_step_pb2.pyi
-│   │   │   │       ├── tool_receipt_pb2.pyi
-│   │   │   │       ├── agent_step_dispatched_pb2.pyi
-│   │   │   │       ├── tool_receipt_committed_pb2.pyi
-│   │   │   │       └── agent_run_completed_pb2.pyi
-│   │   │   ├── workflow/
-│   │   │   │   └── v1/
-│   │   │   │       ├── workflow_definition_pb2.py
-│   │   │   │       ├── workflow_run_pb2.py
-│   │   │   │       ├── approval_pb2.py
-│   │   │   │       ├── workflow_transitioned_pb2.py
-│   │   │   │       ├── approval_recorded_pb2.py
-│   │   │   │       ├── __init__.py
-│   │   │   │       ├── workflow_definition_pb2.pyi
-│   │   │   │       ├── workflow_run_pb2.pyi
-│   │   │   │       ├── approval_pb2.pyi
-│   │   │   │       ├── workflow_transitioned_pb2.pyi
-│   │   │   │       └── approval_recorded_pb2.pyi
-│   │   │   ├── policy/
-│   │   │   │   └── v1/
-│   │   │   │       ├── policy_reference_pb2.py
-│   │   │   │       ├── authorization_decision_pb2.py
-│   │   │   │       ├── use_policy_pb2.py
-│   │   │   │       ├── __init__.py
-│   │   │   │       ├── policy_reference_pb2.pyi
-│   │   │   │       ├── authorization_decision_pb2.pyi
-│   │   │   │       └── use_policy_pb2.pyi
-│   │   │   ├── admin/
-│   │   │   │   └── v1/
-│   │   │   │       ├── tenant_pb2.py
-│   │   │   │       ├── project_pb2.py
-│   │   │   │       ├── audit_query_pb2.py
-│   │   │   │       ├── __init__.py
-│   │   │   │       ├── tenant_pb2.pyi
-│   │   │   │       ├── project_pb2.pyi
-│   │   │   │       └── audit_query_pb2.pyi
-│   │   │   ├── audit/
-│   │   │   │   └── v1/
-│   │   │   │       ├── audit_event_pb2.py
-│   │   │   │       ├── security_event_pb2.py
-│   │   │   │       ├── __init__.py
-│   │   │   │       ├── audit_event_pb2.pyi
-│   │   │   │       └── security_event_pb2.pyi
-│   │   │   ├── pyproject.toml
-│   │   │   ├── internal/
+│   │   │   ├── mindclade/
+│   │   │   │   ├── common/
+│   │   │   │   │   └── v1/
+│   │   │   │   │       ├── identifiers_pb2.py
+│   │   │   │   │       ├── resource_reference_pb2.py
+│   │   │   │   │       ├── command_context_pb2.py
+│   │   │   │   │       ├── event_envelope_pb2.py
+│   │   │   │   │       ├── error_detail_pb2.py
+│   │   │   │   │       ├── pagination_pb2.py
+│   │   │   │   │       ├── __init__.py
+│   │   │   │   │       ├── identifiers_pb2.pyi
+│   │   │   │   │       ├── resource_reference_pb2.pyi
+│   │   │   │   │       ├── command_context_pb2.pyi
+│   │   │   │   │       ├── event_envelope_pb2.pyi
+│   │   │   │   │       ├── error_detail_pb2.pyi
+│   │   │   │   │       └── pagination_pb2.pyi
 │   │   │   │   ├── artifact/
 │   │   │   │   │   └── v1/
-│   │   │   │   │       ├── artifact_service_pb2.py
-│   │   │   │   │       ├── artifact_service_pb2.pyi
-│   │   │   │   │       ├── artifact_service_pb2_grpc.py
-│   │   │   │   │       ├── artifact_service_pb2_grpc.pyi
-│   │   │   │   │       └── __init__.py
+│   │   │   │   │       ├── artifact_reference_pb2.py
+│   │   │   │   │       ├── evidence_reference_pb2.py
+│   │   │   │   │       ├── artifact_commands_pb2.py
+│   │   │   │   │       ├── artifact_committed_pb2.py
+│   │   │   │   │       ├── artifact_quarantined_pb2.py
+│   │   │   │   │       ├── __init__.py
+│   │   │   │   │       ├── artifact_reference_pb2.pyi
+│   │   │   │   │       ├── evidence_reference_pb2.pyi
+│   │   │   │   │       ├── artifact_commands_pb2.pyi
+│   │   │   │   │       ├── artifact_committed_pb2.pyi
+│   │   │   │   │       └── artifact_quarantined_pb2.pyi
 │   │   │   │   ├── job/
 │   │   │   │   │   └── v1/
-│   │   │   │   │       ├── job_service_pb2.py
-│   │   │   │   │       ├── job_service_pb2.pyi
-│   │   │   │   │       ├── job_service_pb2_grpc.py
-│   │   │   │   │       ├── job_service_pb2_grpc.pyi
-│   │   │   │   │       └── __init__.py
+│   │   │   │   │       ├── operation_pb2.py
+│   │   │   │   │       ├── job_pb2.py
+│   │   │   │   │       ├── run_pb2.py
+│   │   │   │   │       ├── attempt_pb2.py
+│   │   │   │   │       ├── lease_fencing_pb2.py
+│   │   │   │   │       ├── job_commands_pb2.py
+│   │   │   │   │       ├── job_requested_pb2.py
+│   │   │   │   │       ├── attempt_leased_pb2.py
+│   │   │   │   │       ├── attempt_completed_pb2.py
+│   │   │   │   │       ├── __init__.py
+│   │   │   │   │       ├── operation_pb2.pyi
+│   │   │   │   │       ├── job_pb2.pyi
+│   │   │   │   │       ├── run_pb2.pyi
+│   │   │   │   │       ├── attempt_pb2.pyi
+│   │   │   │   │       ├── lease_fencing_pb2.pyi
+│   │   │   │   │       ├── job_commands_pb2.pyi
+│   │   │   │   │       ├── job_requested_pb2.pyi
+│   │   │   │   │       ├── attempt_leased_pb2.pyi
+│   │   │   │   │       └── attempt_completed_pb2.pyi
 │   │   │   │   ├── dataset/
 │   │   │   │   │   └── v1/
-│   │   │   │   │       ├── dataset_service_pb2.py
-│   │   │   │   │       ├── dataset_service_pb2.pyi
-│   │   │   │   │       ├── dataset_service_pb2_grpc.py
-│   │   │   │   │       ├── dataset_service_pb2_grpc.pyi
-│   │   │   │   │       └── __init__.py
-│   │   │   │   ├── training/
+│   │   │   │   │       ├── dataset_pb2.py
+│   │   │   │   │       ├── dataset_release_pb2.py
+│   │   │   │   │       ├── dataset_commands_pb2.py
+│   │   │   │   │       ├── __init__.py
+│   │   │   │   │       ├── dataset_pb2.pyi
+│   │   │   │   │       ├── dataset_release_pb2.pyi
+│   │   │   │   │       ├── dataset_commands_pb2.pyi
+│   │   │   │   │       ├── dataset_created_pb2.py
+│   │   │   │   │       ├── dataset_created_pb2.pyi
+│   │   │   │   │       ├── dataset_release_published_pb2.py
+│   │   │   │   │       ├── dataset_release_published_pb2.pyi
+│   │   │   │   │       ├── dataset_release_revoked_pb2.py
+│   │   │   │   │       ├── dataset_release_revoked_pb2.pyi
+│   │   │   │   │       ├── dataset_updated_pb2.py
+│   │   │   │   │       └── dataset_updated_pb2.pyi
+│   │   │   │   ├── feature/
 │   │   │   │   │   └── v1/
-│   │   │   │   │       ├── training_service_pb2.py
-│   │   │   │   │       ├── training_service_pb2.pyi
-│   │   │   │   │       ├── training_service_pb2_grpc.py
-│   │   │   │   │       ├── training_service_pb2_grpc.pyi
-│   │   │   │   │       └── __init__.py
+│   │   │   │   │       ├── feature_materialization_pb2.py
+│   │   │   │   │       ├── feature_commands_pb2.py
+│   │   │   │   │       ├── feature_materialization_completed_pb2.py
+│   │   │   │   │       ├── __init__.py
+│   │   │   │   │       ├── feature_materialization_pb2.pyi
+│   │   │   │   │       ├── feature_commands_pb2.pyi
+│   │   │   │   │       └── feature_materialization_completed_pb2.pyi
+│   │   │   │   ├── transform/
+│   │   │   │   │   └── v1/
+│   │   │   │   │       ├── transform_execution_pb2.py
+│   │   │   │   │       ├── transform_commands_pb2.py
+│   │   │   │   │       ├── transform_execution_completed_pb2.py
+│   │   │   │   │       ├── __init__.py
+│   │   │   │   │       ├── transform_execution_pb2.pyi
+│   │   │   │   │       ├── transform_commands_pb2.pyi
+│   │   │   │   │       └── transform_execution_completed_pb2.pyi
+│   │   │   │   ├── experiment/
+│   │   │   │   │   └── v1/
+│   │   │   │   │       ├── experiment_pb2.py
+│   │   │   │   │       ├── study_pb2.py
+│   │   │   │   │       ├── trial_pb2.py
+│   │   │   │   │       ├── __init__.py
+│   │   │   │   │       ├── experiment_pb2.pyi
+│   │   │   │   │       ├── study_pb2.pyi
+│   │   │   │   │       └── trial_pb2.pyi
 │   │   │   │   ├── model/
 │   │   │   │   │   └── v1/
-│   │   │   │   │       ├── model_service_pb2.py
-│   │   │   │   │       ├── model_service_pb2.pyi
-│   │   │   │   │       ├── model_service_pb2_grpc.py
-│   │   │   │   │       ├── model_service_pb2_grpc.pyi
-│   │   │   │   │       └── __init__.py
+│   │   │   │   │       ├── model_pb2.py
+│   │   │   │   │       ├── model_release_pb2.py
+│   │   │   │   │       ├── model_commands_pb2.py
+│   │   │   │   │       ├── model_registered_pb2.py
+│   │   │   │   │       ├── model_promoted_pb2.py
+│   │   │   │   │       ├── model_revoked_pb2.py
+│   │   │   │   │       ├── __init__.py
+│   │   │   │   │       ├── model_pb2.pyi
+│   │   │   │   │       ├── model_release_pb2.pyi
+│   │   │   │   │       ├── model_commands_pb2.pyi
+│   │   │   │   │       ├── model_registered_pb2.pyi
+│   │   │   │   │       ├── model_promoted_pb2.pyi
+│   │   │   │   │       ├── model_revoked_pb2.pyi
+│   │   │   │   │       ├── model_release_registered_pb2.py
+│   │   │   │   │       └── model_release_registered_pb2.pyi
+│   │   │   │   ├── training/
+│   │   │   │   │   └── v1/
+│   │   │   │   │       ├── training_run_pb2.py
+│   │   │   │   │       ├── training_progress_pb2.py
+│   │   │   │   │       ├── checkpoint_pb2.py
+│   │   │   │   │       ├── training_commands_pb2.py
+│   │   │   │   │       ├── training_started_pb2.py
+│   │   │   │   │       ├── progress_committed_pb2.py
+│   │   │   │   │       ├── checkpoint_committed_pb2.py
+│   │   │   │   │       ├── training_completed_pb2.py
+│   │   │   │   │       ├── __init__.py
+│   │   │   │   │       ├── training_run_pb2.pyi
+│   │   │   │   │       ├── training_progress_pb2.pyi
+│   │   │   │   │       ├── checkpoint_pb2.pyi
+│   │   │   │   │       ├── training_commands_pb2.pyi
+│   │   │   │   │       ├── training_started_pb2.pyi
+│   │   │   │   │       ├── progress_committed_pb2.pyi
+│   │   │   │   │       ├── checkpoint_committed_pb2.pyi
+│   │   │   │   │       ├── training_completed_pb2.pyi
+│   │   │   │   │       ├── training_run_created_pb2.pyi
+│   │   │   │   │       ├── training_cancellation_requested_pb2.pyi
+│   │   │   │   │       ├── training_run_created_pb2.py
+│   │   │   │   │       └── training_cancellation_requested_pb2.py
 │   │   │   │   ├── inference/
 │   │   │   │   │   └── v1/
-│   │   │   │   │       ├── inference_service_pb2.py
-│   │   │   │   │       ├── inference_service_pb2.pyi
-│   │   │   │   │       ├── inference_service_pb2_grpc.py
-│   │   │   │   │       ├── inference_service_pb2_grpc.pyi
-│   │   │   │   │       └── __init__.py
+│   │   │   │   │       ├── inference_request_pb2.py
+│   │   │   │   │       ├── inference_result_pb2.py
+│   │   │   │   │       ├── inference_stream_pb2.py
+│   │   │   │   │       ├── __init__.py
+│   │   │   │   │       ├── inference_request_pb2.pyi
+│   │   │   │   │       ├── inference_result_pb2.pyi
+│   │   │   │   │       ├── inference_stream_pb2.pyi
+│   │   │   │   │       ├── inference_requested_pb2.py
+│   │   │   │   │       ├── inference_requested_pb2.pyi
+│   │   │   │   │       ├── inference_result_committed_pb2.py
+│   │   │   │   │       └── inference_result_committed_pb2.pyi
 │   │   │   │   ├── evaluation/
 │   │   │   │   │   └── v1/
-│   │   │   │   │       ├── evaluation_service_pb2.py
-│   │   │   │   │       ├── evaluation_service_pb2.pyi
-│   │   │   │   │       ├── evaluation_service_pb2_grpc.py
-│   │   │   │   │       ├── evaluation_service_pb2_grpc.pyi
-│   │   │   │   │       └── __init__.py
+│   │   │   │   │       ├── evaluation_run_pb2.py
+│   │   │   │   │       ├── evaluation_result_pb2.py
+│   │   │   │   │       ├── promotion_decision_pb2.py
+│   │   │   │   │       ├── __init__.py
+│   │   │   │   │       ├── evaluation_run_pb2.pyi
+│   │   │   │   │       ├── evaluation_result_pb2.pyi
+│   │   │   │   │       ├── promotion_decision_pb2.pyi
+│   │   │   │   │       ├── evaluation_cancellation_requested_pb2.py
+│   │   │   │   │       ├── evaluation_cancellation_requested_pb2.pyi
+│   │   │   │   │       ├── evaluation_result_committed_pb2.py
+│   │   │   │   │       ├── evaluation_result_committed_pb2.pyi
+│   │   │   │   │       ├── evaluation_run_created_pb2.py
+│   │   │   │   │       ├── evaluation_run_created_pb2.pyi
+│   │   │   │   │       ├── promotion_decision_recorded_pb2.py
+│   │   │   │   │       └── promotion_decision_recorded_pb2.pyi
 │   │   │   │   ├── agent/
 │   │   │   │   │   └── v1/
-│   │   │   │   │       ├── agent_service_pb2.py
-│   │   │   │   │       ├── agent_service_pb2.pyi
-│   │   │   │   │       ├── agent_service_pb2_grpc.py
-│   │   │   │   │       ├── agent_service_pb2_grpc.pyi
-│   │   │   │   │       └── __init__.py
+│   │   │   │   │       ├── agent_definition_pb2.py
+│   │   │   │   │       ├── agent_run_pb2.py
+│   │   │   │   │       ├── agent_step_pb2.py
+│   │   │   │   │       ├── tool_receipt_pb2.py
+│   │   │   │   │       ├── agent_step_dispatched_pb2.py
+│   │   │   │   │       ├── tool_receipt_committed_pb2.py
+│   │   │   │   │       ├── agent_run_completed_pb2.py
+│   │   │   │   │       ├── __init__.py
+│   │   │   │   │       ├── agent_definition_pb2.pyi
+│   │   │   │   │       ├── agent_run_pb2.pyi
+│   │   │   │   │       ├── agent_step_pb2.pyi
+│   │   │   │   │       ├── tool_receipt_pb2.pyi
+│   │   │   │   │       ├── agent_step_dispatched_pb2.pyi
+│   │   │   │   │       ├── tool_receipt_committed_pb2.pyi
+│   │   │   │   │       ├── agent_run_completed_pb2.pyi
+│   │   │   │   │       ├── agent_cancellation_requested_pb2.py
+│   │   │   │   │       ├── agent_cancellation_requested_pb2.pyi
+│   │   │   │   │       ├── agent_definition_created_pb2.py
+│   │   │   │   │       ├── agent_definition_created_pb2.pyi
+│   │   │   │   │       ├── agent_definition_updated_pb2.py
+│   │   │   │   │       ├── agent_definition_updated_pb2.pyi
+│   │   │   │   │       ├── agent_run_started_pb2.py
+│   │   │   │   │       ├── agent_run_started_pb2.pyi
+│   │   │   │   │       ├── agent_step_committed_pb2.py
+│   │   │   │   │       └── agent_step_committed_pb2.pyi
 │   │   │   │   ├── workflow/
 │   │   │   │   │   └── v1/
-│   │   │   │   │       ├── workflow_service_pb2.py
-│   │   │   │   │       ├── workflow_service_pb2.pyi
-│   │   │   │   │       ├── workflow_service_pb2_grpc.py
-│   │   │   │   │       ├── workflow_service_pb2_grpc.pyi
-│   │   │   │   │       └── __init__.py
+│   │   │   │   │       ├── workflow_definition_pb2.py
+│   │   │   │   │       ├── workflow_run_pb2.py
+│   │   │   │   │       ├── approval_pb2.py
+│   │   │   │   │       ├── workflow_transitioned_pb2.py
+│   │   │   │   │       ├── approval_recorded_pb2.py
+│   │   │   │   │       ├── __init__.py
+│   │   │   │   │       ├── workflow_definition_pb2.pyi
+│   │   │   │   │       ├── workflow_run_pb2.pyi
+│   │   │   │   │       ├── approval_pb2.pyi
+│   │   │   │   │       ├── workflow_transitioned_pb2.pyi
+│   │   │   │   │       ├── approval_recorded_pb2.pyi
+│   │   │   │   │       ├── approval_consumed_pb2.py
+│   │   │   │   │       ├── approval_consumed_pb2.pyi
+│   │   │   │   │       ├── approval_requested_pb2.py
+│   │   │   │   │       ├── approval_requested_pb2.pyi
+│   │   │   │   │       ├── workflow_cancellation_requested_pb2.py
+│   │   │   │   │       ├── workflow_cancellation_requested_pb2.pyi
+│   │   │   │   │       ├── workflow_definition_created_pb2.py
+│   │   │   │   │       ├── workflow_definition_created_pb2.pyi
+│   │   │   │   │       ├── workflow_definition_updated_pb2.py
+│   │   │   │   │       ├── workflow_definition_updated_pb2.pyi
+│   │   │   │   │       ├── workflow_run_started_pb2.py
+│   │   │   │   │       └── workflow_run_started_pb2.pyi
 │   │   │   │   ├── policy/
 │   │   │   │   │   └── v1/
-│   │   │   │   │       ├── policy_service_pb2.py
-│   │   │   │   │       ├── policy_service_pb2.pyi
-│   │   │   │   │       ├── policy_service_pb2_grpc.py
-│   │   │   │   │       ├── policy_service_pb2_grpc.pyi
+│   │   │   │   │       ├── policy_reference_pb2.py
+│   │   │   │   │       ├── authorization_decision_pb2.py
+│   │   │   │   │       ├── use_policy_pb2.py
+│   │   │   │   │       ├── __init__.py
+│   │   │   │   │       ├── policy_reference_pb2.pyi
+│   │   │   │   │       ├── authorization_decision_pb2.pyi
+│   │   │   │   │       ├── use_policy_pb2.pyi
+│   │   │   │   │       ├── authorization_decision_recorded_pb2.py
+│   │   │   │   │       ├── authorization_decision_recorded_pb2.pyi
+│   │   │   │   │       ├── use_policy_activated_pb2.py
+│   │   │   │   │       ├── use_policy_activated_pb2.pyi
+│   │   │   │   │       ├── use_policy_created_pb2.py
+│   │   │   │   │       ├── use_policy_created_pb2.pyi
+│   │   │   │   │       ├── use_policy_revoked_pb2.py
+│   │   │   │   │       ├── use_policy_revoked_pb2.pyi
+│   │   │   │   │       ├── use_policy_updated_pb2.py
+│   │   │   │   │       └── use_policy_updated_pb2.pyi
+│   │   │   │   ├── admin/
+│   │   │   │   │   └── v1/
+│   │   │   │   │       ├── tenant_pb2.py
+│   │   │   │   │       ├── project_pb2.py
+│   │   │   │   │       ├── audit_query_pb2.py
+│   │   │   │   │       ├── __init__.py
+│   │   │   │   │       ├── tenant_pb2.pyi
+│   │   │   │   │       ├── project_pb2.pyi
+│   │   │   │   │       ├── audit_query_pb2.pyi
+│   │   │   │   │       ├── audit_export_completed_pb2.py
+│   │   │   │   │       ├── audit_export_completed_pb2.pyi
+│   │   │   │   │       ├── audit_export_requested_pb2.py
+│   │   │   │   │       ├── audit_export_requested_pb2.pyi
+│   │   │   │   │       ├── project_created_pb2.py
+│   │   │   │   │       ├── project_created_pb2.pyi
+│   │   │   │   │       ├── project_updated_pb2.py
+│   │   │   │   │       ├── project_updated_pb2.pyi
+│   │   │   │   │       ├── tenant_updated_pb2.py
+│   │   │   │   │       └── tenant_updated_pb2.pyi
+│   │   │   │   ├── audit/
+│   │   │   │   │   └── v1/
+│   │   │   │   │       ├── audit_event_pb2.py
+│   │   │   │   │       ├── security_event_pb2.py
+│   │   │   │   │       ├── __init__.py
+│   │   │   │   │       ├── audit_event_pb2.pyi
+│   │   │   │   │       └── security_event_pb2.pyi
+│   │   │   │   ├── internal/
+│   │   │   │   │   ├── artifact/
+│   │   │   │   │   │   └── v1/
+│   │   │   │   │   │       ├── artifact_service_pb2.py
+│   │   │   │   │   │       ├── artifact_service_pb2.pyi
+│   │   │   │   │   │       ├── artifact_service_pb2_grpc.py
+│   │   │   │   │   │       ├── artifact_service_pb2_grpc.pyi
+│   │   │   │   │   │       └── __init__.py
+│   │   │   │   │   ├── job/
+│   │   │   │   │   │   └── v1/
+│   │   │   │   │   │       ├── job_service_pb2.py
+│   │   │   │   │   │       ├── job_service_pb2.pyi
+│   │   │   │   │   │       ├── job_service_pb2_grpc.py
+│   │   │   │   │   │       ├── job_service_pb2_grpc.pyi
+│   │   │   │   │   │       └── __init__.py
+│   │   │   │   │   ├── dataset/
+│   │   │   │   │   │   └── v1/
+│   │   │   │   │   │       ├── dataset_service_pb2.py
+│   │   │   │   │   │       ├── dataset_service_pb2.pyi
+│   │   │   │   │   │       ├── dataset_service_pb2_grpc.py
+│   │   │   │   │   │       ├── dataset_service_pb2_grpc.pyi
+│   │   │   │   │   │       └── __init__.py
+│   │   │   │   │   ├── training/
+│   │   │   │   │   │   └── v1/
+│   │   │   │   │   │       ├── training_service_pb2.py
+│   │   │   │   │   │       ├── training_service_pb2.pyi
+│   │   │   │   │   │       ├── training_service_pb2_grpc.py
+│   │   │   │   │   │       ├── training_service_pb2_grpc.pyi
+│   │   │   │   │   │       └── __init__.py
+│   │   │   │   │   ├── model/
+│   │   │   │   │   │   └── v1/
+│   │   │   │   │   │       ├── model_service_pb2.py
+│   │   │   │   │   │       ├── model_service_pb2.pyi
+│   │   │   │   │   │       ├── model_service_pb2_grpc.py
+│   │   │   │   │   │       ├── model_service_pb2_grpc.pyi
+│   │   │   │   │   │       └── __init__.py
+│   │   │   │   │   ├── inference/
+│   │   │   │   │   │   └── v1/
+│   │   │   │   │   │       ├── inference_service_pb2.py
+│   │   │   │   │   │       ├── inference_service_pb2.pyi
+│   │   │   │   │   │       ├── inference_service_pb2_grpc.py
+│   │   │   │   │   │       ├── inference_service_pb2_grpc.pyi
+│   │   │   │   │   │       └── __init__.py
+│   │   │   │   │   ├── evaluation/
+│   │   │   │   │   │   └── v1/
+│   │   │   │   │   │       ├── evaluation_service_pb2.py
+│   │   │   │   │   │       ├── evaluation_service_pb2.pyi
+│   │   │   │   │   │       ├── evaluation_service_pb2_grpc.py
+│   │   │   │   │   │       ├── evaluation_service_pb2_grpc.pyi
+│   │   │   │   │   │       └── __init__.py
+│   │   │   │   │   ├── agent/
+│   │   │   │   │   │   └── v1/
+│   │   │   │   │   │       ├── agent_service_pb2.py
+│   │   │   │   │   │       ├── agent_service_pb2.pyi
+│   │   │   │   │   │       ├── agent_service_pb2_grpc.py
+│   │   │   │   │   │       ├── agent_service_pb2_grpc.pyi
+│   │   │   │   │   │       └── __init__.py
+│   │   │   │   │   ├── workflow/
+│   │   │   │   │   │   └── v1/
+│   │   │   │   │   │       ├── workflow_service_pb2.py
+│   │   │   │   │   │       ├── workflow_service_pb2.pyi
+│   │   │   │   │   │       ├── workflow_service_pb2_grpc.py
+│   │   │   │   │   │       ├── workflow_service_pb2_grpc.pyi
+│   │   │   │   │   │       └── __init__.py
+│   │   │   │   │   ├── policy/
+│   │   │   │   │   │   └── v1/
+│   │   │   │   │   │       ├── policy_service_pb2.py
+│   │   │   │   │   │       ├── policy_service_pb2.pyi
+│   │   │   │   │   │       ├── policy_service_pb2_grpc.py
+│   │   │   │   │   │       ├── policy_service_pb2_grpc.pyi
+│   │   │   │   │   │       └── __init__.py
+│   │   │   │   │   └── admin/
+│   │   │   │   │       └── v1/
+│   │   │   │   │           ├── admin_service_pb2.py
+│   │   │   │   │           ├── admin_service_pb2.pyi
+│   │   │   │   │           ├── admin_service_pb2_grpc.py
+│   │   │   │   │           ├── admin_service_pb2_grpc.pyi
+│   │   │   │   │           └── __init__.py
+│   │   │   │   ├── api/
+│   │   │   │   │   └── v1/
+│   │   │   │   │       ├── mindclade_service_pb2.py
+│   │   │   │   │       ├── mindclade_service_pb2.pyi
+│   │   │   │   │       ├── mindclade_service_pb2_grpc.py
+│   │   │   │   │       ├── mindclade_service_pb2_grpc.pyi
 │   │   │   │   │       └── __init__.py
-│   │   │   │   └── admin/
+│   │   │   │   ├── events/
+│   │   │   │   │   └── registry.py
+│   │   │   │   └── schema/
 │   │   │   │       └── v1/
-│   │   │   │           ├── admin_service_pb2.py
-│   │   │   │           ├── admin_service_pb2.pyi
-│   │   │   │           ├── admin_service_pb2_grpc.py
-│   │   │   │           ├── admin_service_pb2_grpc.pyi
-│   │   │   │           └── __init__.py
-│   │   │   └── api/
-│   │   │       └── v1/
-│   │   │           ├── mindclade_service_pb2.py
-│   │   │           ├── mindclade_service_pb2.pyi
-│   │   │           ├── mindclade_service_pb2_grpc.py
-│   │   │           ├── mindclade_service_pb2_grpc.pyi
-│   │   │           └── __init__.py
+│   │   │   │           ├── __init__.py
+│   │   │   │           └── bindings.py
+│   │   │   └── pyproject.toml
 │   │   ├── rust/
 │   │   │   ├── README.generated.md
 │   │   │   ├── BUILD.bazel
@@ -4953,7 +5118,11 @@ mindclade/
 │   │   │   │       ├── dataset.rs
 │   │   │   │       ├── dataset_release.rs
 │   │   │   │       ├── dataset_commands.rs
-│   │   │   │       └── mod.rs
+│   │   │   │       ├── mod.rs
+│   │   │   │       ├── dataset_created.rs
+│   │   │   │       ├── dataset_release_published.rs
+│   │   │   │       ├── dataset_release_revoked.rs
+│   │   │   │       └── dataset_updated.rs
 │   │   │   ├── feature/
 │   │   │   │   └── v1/
 │   │   │   │       ├── feature_materialization.rs
@@ -4980,7 +5149,8 @@ mindclade/
 │   │   │   │       ├── model_registered.rs
 │   │   │   │       ├── model_promoted.rs
 │   │   │   │       ├── model_revoked.rs
-│   │   │   │       └── mod.rs
+│   │   │   │       ├── mod.rs
+│   │   │   │       └── model_release_registered.rs
 │   │   │   ├── training/
 │   │   │   │   └── v1/
 │   │   │   │       ├── training_run.rs
@@ -4991,19 +5161,27 @@ mindclade/
 │   │   │   │       ├── progress_committed.rs
 │   │   │   │       ├── checkpoint_committed.rs
 │   │   │   │       ├── training_completed.rs
-│   │   │   │       └── mod.rs
+│   │   │   │       ├── mod.rs
+│   │   │   │       ├── training_run_created.rs
+│   │   │   │       └── training_cancellation_requested.rs
 │   │   │   ├── inference/
 │   │   │   │   └── v1/
 │   │   │   │       ├── inference_request.rs
 │   │   │   │       ├── inference_result.rs
 │   │   │   │       ├── inference_stream.rs
-│   │   │   │       └── mod.rs
+│   │   │   │       ├── mod.rs
+│   │   │   │       ├── inference_requested.rs
+│   │   │   │       └── inference_result_committed.rs
 │   │   │   ├── evaluation/
 │   │   │   │   └── v1/
 │   │   │   │       ├── evaluation_run.rs
 │   │   │   │       ├── evaluation_result.rs
 │   │   │   │       ├── promotion_decision.rs
-│   │   │   │       └── mod.rs
+│   │   │   │       ├── mod.rs
+│   │   │   │       ├── evaluation_cancellation_requested.rs
+│   │   │   │       ├── evaluation_result_committed.rs
+│   │   │   │       ├── evaluation_run_created.rs
+│   │   │   │       └── promotion_decision_recorded.rs
 │   │   │   ├── agent/
 │   │   │   │   └── v1/
 │   │   │   │       ├── agent_definition.rs
@@ -5013,7 +5191,12 @@ mindclade/
 │   │   │   │       ├── agent_step_dispatched.rs
 │   │   │   │       ├── tool_receipt_committed.rs
 │   │   │   │       ├── agent_run_completed.rs
-│   │   │   │       └── mod.rs
+│   │   │   │       ├── mod.rs
+│   │   │   │       ├── agent_cancellation_requested.rs
+│   │   │   │       ├── agent_definition_created.rs
+│   │   │   │       ├── agent_definition_updated.rs
+│   │   │   │       ├── agent_run_started.rs
+│   │   │   │       └── agent_step_committed.rs
 │   │   │   ├── workflow/
 │   │   │   │   └── v1/
 │   │   │   │       ├── workflow_definition.rs
@@ -5021,19 +5204,35 @@ mindclade/
 │   │   │   │       ├── approval.rs
 │   │   │   │       ├── workflow_transitioned.rs
 │   │   │   │       ├── approval_recorded.rs
-│   │   │   │       └── mod.rs
+│   │   │   │       ├── mod.rs
+│   │   │   │       ├── approval_consumed.rs
+│   │   │   │       ├── approval_requested.rs
+│   │   │   │       ├── workflow_cancellation_requested.rs
+│   │   │   │       ├── workflow_definition_created.rs
+│   │   │   │       ├── workflow_definition_updated.rs
+│   │   │   │       └── workflow_run_started.rs
 │   │   │   ├── policy/
 │   │   │   │   └── v1/
 │   │   │   │       ├── policy_reference.rs
 │   │   │   │       ├── authorization_decision.rs
 │   │   │   │       ├── use_policy.rs
-│   │   │   │       └── mod.rs
+│   │   │   │       ├── mod.rs
+│   │   │   │       ├── authorization_decision_recorded.rs
+│   │   │   │       ├── use_policy_activated.rs
+│   │   │   │       ├── use_policy_created.rs
+│   │   │   │       ├── use_policy_revoked.rs
+│   │   │   │       └── use_policy_updated.rs
 │   │   │   ├── admin/
 │   │   │   │   └── v1/
 │   │   │   │       ├── tenant.rs
 │   │   │   │       ├── project.rs
 │   │   │   │       ├── audit_query.rs
-│   │   │   │       └── mod.rs
+│   │   │   │       ├── mod.rs
+│   │   │   │       ├── audit_export_completed.rs
+│   │   │   │       ├── audit_export_requested.rs
+│   │   │   │       ├── project_created.rs
+│   │   │   │       ├── project_updated.rs
+│   │   │   │       └── tenant_updated.rs
 │   │   │   ├── audit/
 │   │   │   │   └── v1/
 │   │   │   │       ├── audit_event.rs
@@ -5097,11 +5296,13 @@ mindclade/
 │   │   │   │           ├── admin_service.rs
 │   │   │   │           ├── admin_service_grpc.rs
 │   │   │   │           └── mod.rs
-│   │   │   └── api/
-│   │   │       └── v1/
-│   │   │           ├── mindclade_service.rs
-│   │   │           ├── mindclade_service_grpc.rs
-│   │   │           └── mod.rs
+│   │   │   ├── api/
+│   │   │   │   └── v1/
+│   │   │   │       ├── mindclade_service.rs
+│   │   │   │       ├── mindclade_service_grpc.rs
+│   │   │   │       └── mod.rs
+│   │   │   └── schema/
+│   │   │       └── v1.rs
 │   │   ├── typescript/
 │   │   │   ├── README.generated.md
 │   │   │   ├── BUILD.bazel
@@ -5139,7 +5340,11 @@ mindclade/
 │   │   │   │       ├── dataset_pb.ts
 │   │   │   │       ├── dataset_release_pb.ts
 │   │   │   │       ├── dataset_commands_pb.ts
-│   │   │   │       └── index.ts
+│   │   │   │       ├── index.ts
+│   │   │   │       ├── dataset_created_pb.ts
+│   │   │   │       ├── dataset_release_published_pb.ts
+│   │   │   │       ├── dataset_release_revoked_pb.ts
+│   │   │   │       └── dataset_updated_pb.ts
 │   │   │   ├── feature/
 │   │   │   │   └── v1/
 │   │   │   │       ├── feature_materialization_pb.ts
@@ -5166,7 +5371,8 @@ mindclade/
 │   │   │   │       ├── model_registered_pb.ts
 │   │   │   │       ├── model_promoted_pb.ts
 │   │   │   │       ├── model_revoked_pb.ts
-│   │   │   │       └── index.ts
+│   │   │   │       ├── index.ts
+│   │   │   │       └── model_release_registered_pb.ts
 │   │   │   ├── training/
 │   │   │   │   └── v1/
 │   │   │   │       ├── training_run_pb.ts
@@ -5177,19 +5383,27 @@ mindclade/
 │   │   │   │       ├── progress_committed_pb.ts
 │   │   │   │       ├── checkpoint_committed_pb.ts
 │   │   │   │       ├── training_completed_pb.ts
-│   │   │   │       └── index.ts
+│   │   │   │       ├── index.ts
+│   │   │   │       ├── training_run_created_pb.ts
+│   │   │   │       └── training_cancellation_requested_pb.ts
 │   │   │   ├── inference/
 │   │   │   │   └── v1/
 │   │   │   │       ├── inference_request_pb.ts
 │   │   │   │       ├── inference_result_pb.ts
 │   │   │   │       ├── inference_stream_pb.ts
-│   │   │   │       └── index.ts
+│   │   │   │       ├── index.ts
+│   │   │   │       ├── inference_requested_pb.ts
+│   │   │   │       └── inference_result_committed_pb.ts
 │   │   │   ├── evaluation/
 │   │   │   │   └── v1/
 │   │   │   │       ├── evaluation_run_pb.ts
 │   │   │   │       ├── evaluation_result_pb.ts
 │   │   │   │       ├── promotion_decision_pb.ts
-│   │   │   │       └── index.ts
+│   │   │   │       ├── index.ts
+│   │   │   │       ├── evaluation_cancellation_requested_pb.ts
+│   │   │   │       ├── evaluation_result_committed_pb.ts
+│   │   │   │       ├── evaluation_run_created_pb.ts
+│   │   │   │       └── promotion_decision_recorded_pb.ts
 │   │   │   ├── agent/
 │   │   │   │   └── v1/
 │   │   │   │       ├── agent_definition_pb.ts
@@ -5199,7 +5413,12 @@ mindclade/
 │   │   │   │       ├── agent_step_dispatched_pb.ts
 │   │   │   │       ├── tool_receipt_committed_pb.ts
 │   │   │   │       ├── agent_run_completed_pb.ts
-│   │   │   │       └── index.ts
+│   │   │   │       ├── index.ts
+│   │   │   │       ├── agent_cancellation_requested_pb.ts
+│   │   │   │       ├── agent_definition_created_pb.ts
+│   │   │   │       ├── agent_definition_updated_pb.ts
+│   │   │   │       ├── agent_run_started_pb.ts
+│   │   │   │       └── agent_step_committed_pb.ts
 │   │   │   ├── workflow/
 │   │   │   │   └── v1/
 │   │   │   │       ├── workflow_definition_pb.ts
@@ -5207,19 +5426,35 @@ mindclade/
 │   │   │   │       ├── approval_pb.ts
 │   │   │   │       ├── workflow_transitioned_pb.ts
 │   │   │   │       ├── approval_recorded_pb.ts
-│   │   │   │       └── index.ts
+│   │   │   │       ├── index.ts
+│   │   │   │       ├── approval_consumed_pb.ts
+│   │   │   │       ├── approval_requested_pb.ts
+│   │   │   │       ├── workflow_cancellation_requested_pb.ts
+│   │   │   │       ├── workflow_definition_created_pb.ts
+│   │   │   │       ├── workflow_definition_updated_pb.ts
+│   │   │   │       └── workflow_run_started_pb.ts
 │   │   │   ├── policy/
 │   │   │   │   └── v1/
 │   │   │   │       ├── policy_reference_pb.ts
 │   │   │   │       ├── authorization_decision_pb.ts
 │   │   │   │       ├── use_policy_pb.ts
-│   │   │   │       └── index.ts
+│   │   │   │       ├── index.ts
+│   │   │   │       ├── authorization_decision_recorded_pb.ts
+│   │   │   │       ├── use_policy_activated_pb.ts
+│   │   │   │       ├── use_policy_created_pb.ts
+│   │   │   │       ├── use_policy_revoked_pb.ts
+│   │   │   │       └── use_policy_updated_pb.ts
 │   │   │   ├── admin/
 │   │   │   │   └── v1/
 │   │   │   │       ├── tenant_pb.ts
 │   │   │   │       ├── project_pb.ts
 │   │   │   │       ├── audit_query_pb.ts
-│   │   │   │       └── index.ts
+│   │   │   │       ├── index.ts
+│   │   │   │       ├── audit_export_completed_pb.ts
+│   │   │   │       ├── audit_export_requested_pb.ts
+│   │   │   │       ├── project_created_pb.ts
+│   │   │   │       ├── project_updated_pb.ts
+│   │   │   │       └── tenant_updated_pb.ts
 │   │   │   ├── audit/
 │   │   │   │   └── v1/
 │   │   │   │       ├── audit_event_pb.ts
@@ -5272,10 +5507,17 @@ mindclade/
 │   │   │   │       └── v1/
 │   │   │   │           ├── admin_service_pb.ts
 │   │   │   │           └── index.ts
-│   │   │   └── api/
+│   │   │   ├── api/
+│   │   │   │   └── v1/
+│   │   │   │       ├── mindclade_service_pb.ts
+│   │   │   │       └── index.ts
+│   │   │   ├── google/
+│   │   │   │   └── api/
+│   │   │   │       ├── annotations_pb.ts
+│   │   │   │       └── http_pb.ts
+│   │   │   └── schema/
 │   │   │       └── v1/
-│   │   │           ├── mindclade_service_pb.ts
-│   │   │           └── index.ts
+│   │   │           └── bindings.ts
 │   │   ├── README.md
 │   │   ├── BUILD.bazel
 │   │   └── generated-files.manifest.json
@@ -5283,7 +5525,9 @@ mindclade/
 │   │   ├── baselines/
 │   │   │   ├── protobuf.lock.json
 │   │   │   ├── json-schema.lock.json
-│   │   │   └── openapi.lock.json
+│   │   │   ├── openapi.lock.json
+│   │   │   ├── protobuf.candidate.json
+│   │   │   └── protobuf.predecessor.lock.json
 │   │   └── tests/
 │   │       ├── test_protobuf_compatibility.py
 │   │       ├── test_schema_compatibility.py
@@ -6910,16 +7154,34 @@ mindclade/
 │   │   ├── cmd/
 │   │   │   └── control-plane/
 │   │   │       ├── main.go
-│   │   │       └── wire.go
+│   │   │       ├── wire.go
+│   │   │       ├── auth_google.go
+│   │   │       ├── training_adapter.go
+│   │   │       └── wire_test.go
 │   │   ├── internal/
 │   │   │   ├── artifacts/
 │   │   │   │   ├── artifact_commands.go
 │   │   │   │   ├── artifact_repository.go
-│   │   │   │   └── artifact_reconciler.go
+│   │   │   │   ├── artifact_reconciler.go
+│   │   │   │   ├── contracts.go
+│   │   │   │   ├── postgres_integration_test.go
+│   │   │   │   ├── repository_sql.go
+│   │   │   │   ├── server.go
+│   │   │   │   ├── server_test.go
+│   │   │   │   └── staging_receipts.go
 │   │   │   ├── datasets/
 │   │   │   │   ├── dataset_commands.go
 │   │   │   │   ├── dataset_repository.go
-│   │   │   │   └── dataset_reconciler.go
+│   │   │   │   ├── dataset_reconciler.go
+│   │   │   │   ├── BUILD.bazel
+│   │   │   │   ├── contracts.go
+│   │   │   │   ├── datasets_test.go
+│   │   │   │   ├── events.go
+│   │   │   │   ├── mutations_sql.go
+│   │   │   │   ├── pagination.go
+│   │   │   │   ├── postgres_integration_test.go
+│   │   │   │   ├── repository_sql.go
+│   │   │   │   └── server.go
 │   │   │   ├── experiments/
 │   │   │   │   ├── experiment_commands.go
 │   │   │   │   └── experiment_repository.go
@@ -6927,23 +7189,65 @@ mindclade/
 │   │   │   │   ├── job_commands.go
 │   │   │   │   ├── job_repository.go
 │   │   │   │   ├── job_reconciler.go
-│   │   │   │   └── lease_fencing.go
+│   │   │   │   ├── lease_fencing.go
+│   │   │   │   ├── server.go
+│   │   │   │   └── server_test.go
 │   │   │   ├── agents/
 │   │   │   │   ├── agent_commands.go
 │   │   │   │   ├── agent_repository.go
-│   │   │   │   └── agent_reconciler.go
+│   │   │   │   ├── agent_reconciler.go
+│   │   │   │   ├── BUILD.bazel
+│   │   │   │   ├── common_sql.go
+│   │   │   │   ├── contracts.go
+│   │   │   │   ├── events.go
+│   │   │   │   ├── mapping_sql.go
+│   │   │   │   ├── pagination.go
+│   │   │   │   ├── postgres_integration_test.go
+│   │   │   │   ├── repository_sql.go
+│   │   │   │   ├── server.go
+│   │   │   │   ├── server_test.go
+│   │   │   │   └── validation.go
 │   │   │   ├── workflows/
 │   │   │   │   ├── workflow_commands.go
 │   │   │   │   ├── workflow_repository.go
-│   │   │   │   └── workflow_reconciler.go
+│   │   │   │   ├── workflow_reconciler.go
+│   │   │   │   ├── BUILD.bazel
+│   │   │   │   ├── approval_repository.go
+│   │   │   │   ├── contracts.go
+│   │   │   │   ├── events.go
+│   │   │   │   ├── mapping_sql.go
+│   │   │   │   ├── pagination.go
+│   │   │   │   ├── postgres_integration_test.go
+│   │   │   │   ├── server.go
+│   │   │   │   ├── server_test.go
+│   │   │   │   └── validation.go
 │   │   │   ├── models/
 │   │   │   │   ├── model_commands.go
 │   │   │   │   ├── model_repository.go
-│   │   │   │   └── promotion_policy.go
+│   │   │   │   ├── promotion_policy.go
+│   │   │   │   ├── BUILD.bazel
+│   │   │   │   ├── contracts.go
+│   │   │   │   ├── events.go
+│   │   │   │   ├── list_sql.go
+│   │   │   │   ├── mapping_sql.go
+│   │   │   │   ├── models_test.go
+│   │   │   │   ├── pagination.go
+│   │   │   │   ├── postgres_integration_test.go
+│   │   │   │   ├── repository_sql.go
+│   │   │   │   └── server.go
 │   │   │   ├── policies/
 │   │   │   │   ├── authorization.go
 │   │   │   │   ├── policy_repository.go
-│   │   │   │   └── decision_audit.go
+│   │   │   │   ├── decision_audit.go
+│   │   │   │   ├── BUILD.bazel
+│   │   │   │   ├── contracts.go
+│   │   │   │   ├── events.go
+│   │   │   │   ├── mapping_sql.go
+│   │   │   │   ├── pagination.go
+│   │   │   │   ├── policies_test.go
+│   │   │   │   ├── postgres_integration_test.go
+│   │   │   │   ├── repository_sql.go
+│   │   │   │   └── server.go
 │   │   │   ├── projects/
 │   │   │   │   ├── project_commands.go
 │   │   │   │   └── project_repository.go
@@ -6969,10 +7273,13 @@ mindclade/
 │   │   │   │   ├── queue/
 │   │   │   │   │   ├── transport.go
 │   │   │   │   │   ├── delivery.go
-│   │   │   │   │   └── dead_letter.go
+│   │   │   │   │   ├── dead_letter.go
+│   │   │   │   │   └── event_registry_generated.go
 │   │   │   │   ├── storage/
 │   │   │   │   │   ├── artifact_catalog.go
-│   │   │   │   │   └── object_store.go
+│   │   │   │   │   ├── object_store.go
+│   │   │   │   │   ├── gcs_object_store.go
+│   │   │   │   │   └── gcs_object_store_test.go
 │   │   │   │   ├── telemetry/
 │   │   │   │   │   ├── metrics.go
 │   │   │   │   │   ├── tracing.go
@@ -6981,14 +7288,70 @@ mindclade/
 │   │   │   │   │   └── audit_store.go
 │   │   │   │   └── inbox/
 │   │   │   │       └── inbox_store.go
-│   │   │   └── operations/
-│   │   │       ├── operation_commands.go
-│   │   │       ├── operation_repository.go
-│   │   │       └── operation_reconciler.go
+│   │   │   ├── operations/
+│   │   │   │   ├── operation_commands.go
+│   │   │   │   ├── operation_repository.go
+│   │   │   │   └── operation_reconciler.go
+│   │   │   ├── training/
+│   │   │   │   ├── BUILD.bazel
+│   │   │   │   ├── cancellation_sql.go
+│   │   │   │   ├── contracts.go
+│   │   │   │   ├── events.go
+│   │   │   │   ├── list_sql.go
+│   │   │   │   ├── mapping_sql.go
+│   │   │   │   ├── pagination.go
+│   │   │   │   ├── postgres_integration_test.go
+│   │   │   │   ├── repository_sql.go
+│   │   │   │   ├── server.go
+│   │   │   │   ├── training_test.go
+│   │   │   │   └── validation.go
+│   │   │   ├── evaluations/
+│   │   │   │   ├── BUILD.bazel
+│   │   │   │   ├── common_sql.go
+│   │   │   │   ├── contracts.go
+│   │   │   │   ├── events.go
+│   │   │   │   ├── mapping_sql.go
+│   │   │   │   ├── pagination.go
+│   │   │   │   ├── postgres_integration_test.go
+│   │   │   │   ├── repository_sql.go
+│   │   │   │   ├── server.go
+│   │   │   │   ├── server_test.go
+│   │   │   │   └── validation.go
+│   │   │   ├── admin/
+│   │   │   │   ├── BUILD.bazel
+│   │   │   │   ├── admin_test.go
+│   │   │   │   ├── contracts.go
+│   │   │   │   ├── events.go
+│   │   │   │   ├── mapping_sql.go
+│   │   │   │   ├── pagination.go
+│   │   │   │   ├── postgres_integration_test.go
+│   │   │   │   ├── repository_sql.go
+│   │   │   │   └── server.go
+│   │   │   └── inference/
+│   │   │       ├── BUILD.bazel
+│   │   │       ├── contracts.go
+│   │   │       ├── cursor.go
+│   │   │       ├── events.go
+│   │   │       ├── mapping_sql.go
+│   │   │       ├── postgres_integration_test.go
+│   │   │       ├── repository_sql.go
+│   │   │       ├── server.go
+│   │   │       ├── server_test.go
+│   │   │       └── validation.go
 │   │   ├── migrations/
 │   │   │   ├── 000001_kernel.up.sql
 │   │   │   ├── 000001_kernel.down.sql
-│   │   │   └── migration_policy.yaml
+│   │   │   ├── migration_policy.yaml
+│   │   │   ├── 000002_artifacts.down.sql
+│   │   │   ├── 000002_artifacts.up.sql
+│   │   │   ├── 000003_data_model.down.sql
+│   │   │   ├── 000003_data_model.up.sql
+│   │   │   ├── 000004_evaluation_inference.down.sql
+│   │   │   ├── 000004_evaluation_inference.up.sql
+│   │   │   ├── 000005_workflow_agent.down.sql
+│   │   │   ├── 000005_workflow_agent.up.sql
+│   │   │   ├── 000006_policy_admin.down.sql
+│   │   │   └── 000006_policy_admin.up.sql
 │   │   ├── tests/
 │   │   │   ├── transaction_outbox_test.go
 │   │   │   ├── idempotency_test.go
@@ -7458,7 +7821,11 @@ mindclade/
 │   │   ├── test_generated_clients.py
 │   │   ├── test_artifact_manifests.py
 │   │   ├── test_configuration_resolution.py
-│   │   └── test_release_signing.py
+│   │   ├── test_release_signing.py
+│   │   ├── generated_go_roundtrip_test.go
+│   │   ├── generated_rust_roundtrip_test.rs
+│   │   ├── generated_typescript_roundtrip_test.ts
+│   │   └── test_generated_package_consumers.py
 │   ├── integration/
 │   │   ├── local_stack_test.py
 │   │   ├── control_worker_test.py
@@ -7656,74 +8023,75 @@ mindclade/
 │   │   ├── repository-drift-baseline.md
 │   │   ├── dependency-law.md
 │   │   ├── trust-boundaries.md
-│   │   └── blueprint/
-│   │       ├── README.md
-│   │       ├── manifest.yaml
-│   │       ├── provenance/
-│   │       │   ├── MINDCLADE_MONOREPO_BLUEPRINT_v3.4.0_OPTIMIZED.md
-│   │       │   └── MONOREPO_TREE.md
-│   │       ├── sections/
-│   │       │   ├── 01-executive-summary.md
-│   │       │   ├── 02-goals-non-goals-principles-invariants.md
-│   │       │   ├── 03-architecture-overview.md
-│   │       │   ├── 04-authoritative-repository-tree.md
-│   │       │   ├── 05-ownership-and-dependency-matrix.md
-│   │       │   ├── 06-contract-and-compatibility-model.md
-│   │       │   ├── 07-detailed-system-designs.md
-│   │       │   ├── 08-end-to-end-execution-flows.md
-│   │       │   ├── 09-security-and-trust-model.md
-│   │       │   ├── 10-reliability-and-operational-model.md
-│   │       │   ├── 11-build-test-cicd-release-architecture.md
-│   │       │   ├── 12-deployment-architecture.md
-│   │       │   ├── 13-developer-workflows.md
-│   │       │   ├── 14-adr-index-and-decision-log.md
-│   │       │   ├── 15-phased-implementation-plan.md
-│   │       │   ├── 16-verification-and-acceptance-matrix.md
-│   │       │   ├── 17-risks-technical-debt-deferred-blockers.md
-│   │       │   └── 18-glossary.md
-│   │       ├── appendices/
-│   │       │   ├── A01-executive-decision.md
-│   │       │   ├── A02-goals.md
-│   │       │   ├── A03-repository-estate-and-trust-boundaries.md
-│   │       │   ├── A04-language-ownership-model.md
-│   │       │   ├── A05-domain-first-language-second.md
-│   │       │   ├── A06-authoritative-repository-tree.md
-│   │       │   ├── A07-dependency-laws.md
-│   │       │   ├── A08-standard-package-shape.md
-│   │       │   ├── A09-build-and-dependency-architecture.md
-│   │       │   ├── A10-protocol-and-schema-architecture.md
-│   │       │   ├── A11-biological-domain-architecture.md
-│   │       │   ├── A12-data-platform-architecture.md
-│   │       │   ├── A13-model-architecture.md
-│   │       │   ├── A14-training-architecture.md
-│   │       │   ├── A15-kernel-architecture.md
-│   │       │   ├── A16-evaluation-architecture.md
-│   │       │   ├── A17-inference-architecture.md
-│   │       │   ├── A18-service-and-worker-architecture.md
-│   │       │   ├── A19-sdk-and-application-architecture.md
-│   │       │   ├── A20-research-graduation-policy.md
-│   │       │   ├── A21-ci-architecture.md
-│   │       │   ├── A22-test-and-qualification-matrix.md
-│   │       │   ├── A23-release-and-artifact-model.md
-│   │       │   ├── A24-kubernetes-and-workload-execution.md
-│   │       │   ├── A25-observability.md
-│   │       │   ├── A26-security-supply-chain-biological-governance.md
-│   │       │   ├── A27-configuration-architecture.md
-│   │       │   ├── A28-database-and-migration-policy.md
-│   │       │   ├── A29-ownership-and-governance.md
-│   │       │   ├── A30-developer-workflow.md
-│   │       │   ├── A31-capability-local-implementation-guidance.md
-│   │       │   ├── A32-what-to-defer.md
-│   │       │   ├── A33-repository-anti-patterns.md
-│   │       │   ├── A34-architecture-constitution.md
-│   │       │   ├── A35-technology-basis.md
-│   │       │   ├── A36-agent-and-development-kit-architecture.md
-│   │       │   ├── A37-google-cloud-reference-deployment-profile.md
-│   │       │   ├── A38-reliability-continuity-first-production-acceptance.md
-│   │       │   ├── A39-feature-derivation-caching-model-specific-features.md
-│   │       │   └── A40-feature-and-data-transform-architecture.md
-│   │       └── generated/
-│   │           └── MINDCLADE_MONOREPO_BLUEPRINT_FULL.md
+│   │   ├── blueprint/
+│   │   │   ├── README.md
+│   │   │   ├── manifest.yaml
+│   │   │   ├── provenance/
+│   │   │   │   ├── MINDCLADE_MONOREPO_BLUEPRINT_v3.4.0_OPTIMIZED.md
+│   │   │   │   └── MONOREPO_TREE.md
+│   │   │   ├── sections/
+│   │   │   │   ├── 01-executive-summary.md
+│   │   │   │   ├── 02-goals-non-goals-principles-invariants.md
+│   │   │   │   ├── 03-architecture-overview.md
+│   │   │   │   ├── 04-authoritative-repository-tree.md
+│   │   │   │   ├── 05-ownership-and-dependency-matrix.md
+│   │   │   │   ├── 06-contract-and-compatibility-model.md
+│   │   │   │   ├── 07-detailed-system-designs.md
+│   │   │   │   ├── 08-end-to-end-execution-flows.md
+│   │   │   │   ├── 09-security-and-trust-model.md
+│   │   │   │   ├── 10-reliability-and-operational-model.md
+│   │   │   │   ├── 11-build-test-cicd-release-architecture.md
+│   │   │   │   ├── 12-deployment-architecture.md
+│   │   │   │   ├── 13-developer-workflows.md
+│   │   │   │   ├── 14-adr-index-and-decision-log.md
+│   │   │   │   ├── 15-phased-implementation-plan.md
+│   │   │   │   ├── 16-verification-and-acceptance-matrix.md
+│   │   │   │   ├── 17-risks-technical-debt-deferred-blockers.md
+│   │   │   │   └── 18-glossary.md
+│   │   │   ├── appendices/
+│   │   │   │   ├── A01-executive-decision.md
+│   │   │   │   ├── A02-goals.md
+│   │   │   │   ├── A03-repository-estate-and-trust-boundaries.md
+│   │   │   │   ├── A04-language-ownership-model.md
+│   │   │   │   ├── A05-domain-first-language-second.md
+│   │   │   │   ├── A06-authoritative-repository-tree.md
+│   │   │   │   ├── A07-dependency-laws.md
+│   │   │   │   ├── A08-standard-package-shape.md
+│   │   │   │   ├── A09-build-and-dependency-architecture.md
+│   │   │   │   ├── A10-protocol-and-schema-architecture.md
+│   │   │   │   ├── A11-biological-domain-architecture.md
+│   │   │   │   ├── A12-data-platform-architecture.md
+│   │   │   │   ├── A13-model-architecture.md
+│   │   │   │   ├── A14-training-architecture.md
+│   │   │   │   ├── A15-kernel-architecture.md
+│   │   │   │   ├── A16-evaluation-architecture.md
+│   │   │   │   ├── A17-inference-architecture.md
+│   │   │   │   ├── A18-service-and-worker-architecture.md
+│   │   │   │   ├── A19-sdk-and-application-architecture.md
+│   │   │   │   ├── A20-research-graduation-policy.md
+│   │   │   │   ├── A21-ci-architecture.md
+│   │   │   │   ├── A22-test-and-qualification-matrix.md
+│   │   │   │   ├── A23-release-and-artifact-model.md
+│   │   │   │   ├── A24-kubernetes-and-workload-execution.md
+│   │   │   │   ├── A25-observability.md
+│   │   │   │   ├── A26-security-supply-chain-biological-governance.md
+│   │   │   │   ├── A27-configuration-architecture.md
+│   │   │   │   ├── A28-database-and-migration-policy.md
+│   │   │   │   ├── A29-ownership-and-governance.md
+│   │   │   │   ├── A30-developer-workflow.md
+│   │   │   │   ├── A31-capability-local-implementation-guidance.md
+│   │   │   │   ├── A32-what-to-defer.md
+│   │   │   │   ├── A33-repository-anti-patterns.md
+│   │   │   │   ├── A34-architecture-constitution.md
+│   │   │   │   ├── A35-technology-basis.md
+│   │   │   │   ├── A36-agent-and-development-kit-architecture.md
+│   │   │   │   ├── A37-google-cloud-reference-deployment-profile.md
+│   │   │   │   ├── A38-reliability-continuity-first-production-acceptance.md
+│   │   │   │   ├── A39-feature-derivation-caching-model-specific-features.md
+│   │   │   │   └── A40-feature-and-data-transform-architecture.md
+│   │   │   └── generated/
+│   │   │       └── MINDCLADE_MONOREPO_BLUEPRINT_FULL.md
+│   │   └── authoritative-contract-integration-plan.md
 │   ├── adr/
 │   │   ├── 0001-repository-identity-and-ownership.md
 │   │   ├── 0002-dependency-and-build-law.md
@@ -7862,7 +8230,141 @@ mindclade/
 │           ├── runtime-manifest.schema.json
 │           └── test_package.py
 ├── .golangci.yml
-└── biome.json
+├── biome.json
+├── buf.lock
+└── internal/
+    └── sdk/
+        ├── README.md
+        ├── go/
+        │   └── mindclade/
+        │       ├── BUILD.bazel
+        │       ├── README.md
+        │       ├── admin.go
+        │       ├── agent_test.go
+        │       ├── agents.go
+        │       ├── approvals.go
+        │       ├── artifacts.go
+        │       ├── auth.go
+        │       ├── auth_test.go
+        │       ├── client.go
+        │       ├── client_test.go
+        │       ├── config.go
+        │       ├── datasets.go
+        │       ├── error.go
+        │       ├── evaluations.go
+        │       ├── evaluations_test.go
+        │       ├── interceptors.go
+        │       ├── inference.go
+        │       ├── inference_test.go
+        │       ├── lifecycle_test.go
+        │       ├── method_policy.go
+        │       ├── models.go
+        │       ├── operations.go
+        │       ├── policy_test.go
+        │       ├── policies.go
+        │       ├── policy_admin_test.go
+        │       ├── request.go
+        │       ├── training.go
+        │       ├── transport.go
+        │       ├── workflow_test.go
+        │       └── workflows.go
+        ├── python/
+        │   ├── BUILD.bazel
+        │   ├── README.md
+        │   ├── mindclade_internal_sdk/
+        │   │   ├── __init__.py
+        │   │   ├── _invocation.py
+        │   │   ├── _validation.py
+        │   │   ├── admin.py
+        │   │   ├── agents.py
+        │   │   ├── artifacts.py
+        │   │   ├── auth.py
+        │   │   ├── calls.py
+        │   │   ├── client.py
+        │   │   ├── config.py
+        │   │   ├── datasets.py
+        │   │   ├── errors.py
+        │   │   ├── generated.py
+        │   │   ├── inference.py
+        │   │   ├── method_policy.py
+        │   │   ├── models.py
+        │   │   ├── operations.py
+        │   │   ├── policies.py
+        │   │   ├── testing.py
+        │   │   ├── training.py
+        │   │   ├── transport.py
+        │   │   └── workflows.py
+        │   ├── pyproject.toml
+        │   └── tests/
+        │       ├── test_internal_sdk.py
+        │       ├── test_agents.py
+        │       ├── test_inference.py
+        │       ├── test_policy_admin.py
+        │       └── test_workflows.py
+        ├── rust/
+        │   ├── BUILD.bazel
+        │   ├── Cargo.toml
+        │   ├── README.md
+        │   └── src/
+        │       ├── admin.rs
+        │       ├── agent_tests.rs
+        │       ├── agents.rs
+        │       ├── approvals.rs
+        │       ├── artifacts.rs
+        │       ├── auth.rs
+        │       ├── config.rs
+        │       ├── datasets.rs
+        │       ├── error.rs
+        │       ├── inference.rs
+        │       ├── lib.rs
+        │       ├── models.rs
+        │       ├── operations.rs
+        │       ├── policies.rs
+        │       ├── policy_admin_tests.rs
+        │       ├── request.rs
+        │       ├── retry.rs
+        │       ├── tests.rs
+        │       ├── training.rs
+        │       ├── transport.rs
+        │       ├── workflow_tests.rs
+        │       └── workflows.rs
+        └── typescript/
+            ├── BUILD.bazel
+            ├── README.md
+            ├── biome.json
+            ├── package.json
+            ├── src/
+            │   ├── admin.ts
+            │   ├── agents.ts
+            │   ├── approvals.ts
+            │   ├── artifacts.ts
+            │   ├── auth.ts
+            │   ├── client.ts
+            │   ├── config.ts
+            │   ├── core.ts
+            │   ├── datasets.ts
+            │   ├── error.ts
+            │   ├── gcp_auth.ts
+            │   ├── inference.ts
+            │   ├── index.ts
+            │   ├── models.ts
+            │   ├── operations.ts
+            │   ├── policies.ts
+            │   ├── raw.ts
+            │   ├── request.ts
+            │   ├── retry.ts
+            │   ├── runtime.ts
+            │   ├── safety.ts
+            │   ├── testing.ts
+            │   ├── training.ts
+            │   ├── transport.ts
+            │   └── workflows.ts
+            ├── tests/
+            │   ├── sdk.test.ts
+            │   ├── policy_admin.test.ts
+            │   ├── agents.test.ts
+            │   └── workflow_approval.test.ts
+            └── tsconfig.json
 ```
 <!-- END GENERATED: repository-path-manifest -->
 
@@ -19015,7 +19517,7 @@ Governance is production-ready when:
 ### First checkout
 
 ```bash
-nix develop
+nix develop --no-accept-flake-config --no-update-lock-file
 just doctor
 just bootstrap
 just test-affected

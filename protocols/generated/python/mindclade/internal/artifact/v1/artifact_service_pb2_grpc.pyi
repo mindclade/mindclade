@@ -47,6 +47,20 @@ class ArtifactServiceStub:
     """AcquireArtifactLease creates or extends bounded retention idempotently."""
     ReleaseArtifactLease: _grpc.UnaryUnaryMultiCallable[_artifact_service_pb2.ReleaseArtifactLeaseRequest, _artifact_service_pb2.ReleaseArtifactLeaseResponse]
     """ReleaseArtifactLease enforces the supplied ETag and has no response payload."""
+    BeginArtifactUpload: _grpc.UnaryUnaryMultiCallable[_artifact_service_pb2.BeginArtifactUploadRequest, _artifact_service_pb2.BeginArtifactUploadResponse]
+    """BeginArtifactUpload creates a durable resumable transfer session."""
+    UploadArtifactChunk: _grpc.UnaryUnaryMultiCallable[_artifact_service_pb2.UploadArtifactChunkRequest, _artifact_service_pb2.UploadArtifactChunkResponse]
+    """UploadArtifactChunk appends one contiguous, digest-verified chunk."""
+    GetArtifactUpload: _grpc.UnaryUnaryMultiCallable[_artifact_service_pb2.GetArtifactUploadRequest, _artifact_service_pb2.GetArtifactUploadResponse]
+    """GetArtifactUpload returns authoritative resume offset and lifecycle state."""
+    FinalizeArtifactUpload: _grpc.UnaryUnaryMultiCallable[_artifact_service_pb2.FinalizeArtifactUploadRequest, _artifact_service_pb2.FinalizeArtifactUploadResponse]
+    """FinalizeArtifactUpload composes, verifies, and issues an opaque staging receipt."""
+    AbortArtifactUpload: _grpc.UnaryUnaryMultiCallable[_artifact_service_pb2.AbortArtifactUploadRequest, _artifact_service_pb2.AbortArtifactUploadResponse]
+    """AbortArtifactUpload makes an incomplete session permanently unusable."""
+    QuarantineArtifactUpload: _grpc.UnaryUnaryMultiCallable[_artifact_service_pb2.QuarantineArtifactUploadRequest, _artifact_service_pb2.QuarantineArtifactUploadResponse]
+    """QuarantineArtifactUpload records a governed integrity failure."""
+    DownloadArtifact: _grpc.UnaryStreamMultiCallable[_artifact_service_pb2.DownloadArtifactRequest, _artifact_service_pb2.DownloadArtifactResponse]
+    """DownloadArtifact streams committed content from one generation-pinned object."""
 
 @_typing.type_check_only
 class ArtifactServiceAsyncStub(ArtifactServiceStub):
@@ -67,6 +81,20 @@ class ArtifactServiceAsyncStub(ArtifactServiceStub):
     """AcquireArtifactLease creates or extends bounded retention idempotently."""
     ReleaseArtifactLease: _aio.UnaryUnaryMultiCallable[_artifact_service_pb2.ReleaseArtifactLeaseRequest, _artifact_service_pb2.ReleaseArtifactLeaseResponse]  # type: ignore[assignment]
     """ReleaseArtifactLease enforces the supplied ETag and has no response payload."""
+    BeginArtifactUpload: _aio.UnaryUnaryMultiCallable[_artifact_service_pb2.BeginArtifactUploadRequest, _artifact_service_pb2.BeginArtifactUploadResponse]  # type: ignore[assignment]
+    """BeginArtifactUpload creates a durable resumable transfer session."""
+    UploadArtifactChunk: _aio.UnaryUnaryMultiCallable[_artifact_service_pb2.UploadArtifactChunkRequest, _artifact_service_pb2.UploadArtifactChunkResponse]  # type: ignore[assignment]
+    """UploadArtifactChunk appends one contiguous, digest-verified chunk."""
+    GetArtifactUpload: _aio.UnaryUnaryMultiCallable[_artifact_service_pb2.GetArtifactUploadRequest, _artifact_service_pb2.GetArtifactUploadResponse]  # type: ignore[assignment]
+    """GetArtifactUpload returns authoritative resume offset and lifecycle state."""
+    FinalizeArtifactUpload: _aio.UnaryUnaryMultiCallable[_artifact_service_pb2.FinalizeArtifactUploadRequest, _artifact_service_pb2.FinalizeArtifactUploadResponse]  # type: ignore[assignment]
+    """FinalizeArtifactUpload composes, verifies, and issues an opaque staging receipt."""
+    AbortArtifactUpload: _aio.UnaryUnaryMultiCallable[_artifact_service_pb2.AbortArtifactUploadRequest, _artifact_service_pb2.AbortArtifactUploadResponse]  # type: ignore[assignment]
+    """AbortArtifactUpload makes an incomplete session permanently unusable."""
+    QuarantineArtifactUpload: _aio.UnaryUnaryMultiCallable[_artifact_service_pb2.QuarantineArtifactUploadRequest, _artifact_service_pb2.QuarantineArtifactUploadResponse]  # type: ignore[assignment]
+    """QuarantineArtifactUpload records a governed integrity failure."""
+    DownloadArtifact: _aio.UnaryStreamMultiCallable[_artifact_service_pb2.DownloadArtifactRequest, _artifact_service_pb2.DownloadArtifactResponse]  # type: ignore[assignment]
+    """DownloadArtifact streams committed content from one generation-pinned object."""
 
 class ArtifactServiceServicer(metaclass=_abc_1.ABCMeta):
     """ArtifactService owns artifact metadata, aliases, commit, quarantine, and retention RPCs."""
@@ -126,5 +154,61 @@ class ArtifactServiceServicer(metaclass=_abc_1.ABCMeta):
         context: _ServicerContext,
     ) -> _typing.Union[_artifact_service_pb2.ReleaseArtifactLeaseResponse, _abc.Awaitable[_artifact_service_pb2.ReleaseArtifactLeaseResponse]]:
         """ReleaseArtifactLease enforces the supplied ETag and has no response payload."""
+
+    @_abc_1.abstractmethod
+    def BeginArtifactUpload(
+        self,
+        request: _artifact_service_pb2.BeginArtifactUploadRequest,
+        context: _ServicerContext,
+    ) -> _typing.Union[_artifact_service_pb2.BeginArtifactUploadResponse, _abc.Awaitable[_artifact_service_pb2.BeginArtifactUploadResponse]]:
+        """BeginArtifactUpload creates a durable resumable transfer session."""
+
+    @_abc_1.abstractmethod
+    def UploadArtifactChunk(
+        self,
+        request: _artifact_service_pb2.UploadArtifactChunkRequest,
+        context: _ServicerContext,
+    ) -> _typing.Union[_artifact_service_pb2.UploadArtifactChunkResponse, _abc.Awaitable[_artifact_service_pb2.UploadArtifactChunkResponse]]:
+        """UploadArtifactChunk appends one contiguous, digest-verified chunk."""
+
+    @_abc_1.abstractmethod
+    def GetArtifactUpload(
+        self,
+        request: _artifact_service_pb2.GetArtifactUploadRequest,
+        context: _ServicerContext,
+    ) -> _typing.Union[_artifact_service_pb2.GetArtifactUploadResponse, _abc.Awaitable[_artifact_service_pb2.GetArtifactUploadResponse]]:
+        """GetArtifactUpload returns authoritative resume offset and lifecycle state."""
+
+    @_abc_1.abstractmethod
+    def FinalizeArtifactUpload(
+        self,
+        request: _artifact_service_pb2.FinalizeArtifactUploadRequest,
+        context: _ServicerContext,
+    ) -> _typing.Union[_artifact_service_pb2.FinalizeArtifactUploadResponse, _abc.Awaitable[_artifact_service_pb2.FinalizeArtifactUploadResponse]]:
+        """FinalizeArtifactUpload composes, verifies, and issues an opaque staging receipt."""
+
+    @_abc_1.abstractmethod
+    def AbortArtifactUpload(
+        self,
+        request: _artifact_service_pb2.AbortArtifactUploadRequest,
+        context: _ServicerContext,
+    ) -> _typing.Union[_artifact_service_pb2.AbortArtifactUploadResponse, _abc.Awaitable[_artifact_service_pb2.AbortArtifactUploadResponse]]:
+        """AbortArtifactUpload makes an incomplete session permanently unusable."""
+
+    @_abc_1.abstractmethod
+    def QuarantineArtifactUpload(
+        self,
+        request: _artifact_service_pb2.QuarantineArtifactUploadRequest,
+        context: _ServicerContext,
+    ) -> _typing.Union[_artifact_service_pb2.QuarantineArtifactUploadResponse, _abc.Awaitable[_artifact_service_pb2.QuarantineArtifactUploadResponse]]:
+        """QuarantineArtifactUpload records a governed integrity failure."""
+
+    @_abc_1.abstractmethod
+    def DownloadArtifact(
+        self,
+        request: _artifact_service_pb2.DownloadArtifactRequest,
+        context: _ServicerContext,
+    ) -> _typing.Union[_abc.Iterator[_artifact_service_pb2.DownloadArtifactResponse], _abc.AsyncIterator[_artifact_service_pb2.DownloadArtifactResponse]]:
+        """DownloadArtifact streams committed content from one generation-pinned object."""
 
 def add_ArtifactServiceServicer_to_server(servicer: ArtifactServiceServicer, server: _typing.Union[_grpc.Server, _aio.Server]) -> None: ...

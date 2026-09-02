@@ -34,9 +34,12 @@ services:
     command:
       - sh
       - -ec
-      - psql -v ON_ERROR_STOP=1 -f /migrations/000001_kernel.up.sql
+      - >-
+        psql -v ON_ERROR_STOP=1 -f /migrations/000001_kernel.up.sql &&
+        psql -v ON_ERROR_STOP=1 -f /migrations/000002_artifacts.up.sql
     volumes:
       - ../../services/control_plane/migrations/000001_kernel.up.sql:/migrations/000001_kernel.up.sql:ro
+      - ../../services/control_plane/migrations/000002_artifacts.up.sql:/migrations/000002_artifacts.up.sql:ro
     read_only: true
     security_opt:
       - no-new-privileges:true

@@ -23,14 +23,39 @@ message PublicHttpContract {
   repeated string request_headers = 3;
   repeated string response_headers = 4;
   StreamProjection stream = 5;
+  repeated uint32 non_success_status = 6;
+  bool request_body_required = 7;
+  repeated string required_request_headers = 8;
+}
+
+// PublicStringEnumContract makes a curated string enumeration descriptor-visible.
+message PublicStringEnumContract {
+  string field = 1;
+  repeated string values = 2;
+}
+
+// PublicMessageContract records requiredness and string enums used by ProtoJSON.
+message PublicMessageContract {
+  repeated string required_fields = 1;
+  repeated PublicStringEnumContract string_enums = 2;
 }
 
 extend google.protobuf.MethodOptions {
   PublicHttpContract public_http = 51001;
 }
 
+extend google.protobuf.MessageOptions {
+  PublicMessageContract public_message = 51002;
+}
+
 // ResourceRef is the only cross-domain identity exposed by the public API.
 message ResourceRef {
+  option (public_message) = {
+    required_fields: "name"
+    required_fields: "uid"
+    required_fields: "revision"
+  };
+
   string name = 1;
   string uid = 2;
   uint64 revision = 3;
@@ -38,6 +63,13 @@ message ResourceRef {
 
 // ArtifactRef identifies immutable content without a provider or storage locator.
 message ArtifactRef {
+  option (public_message) = {
+    required_fields: "digest"
+    required_fields: "media_type"
+    required_fields: "size_bytes"
+    required_fields: "artifact_kind"
+  };
+
   string digest = 1;
   string media_type = 2;
   uint64 size_bytes = 3;
@@ -56,6 +88,19 @@ message EvidenceRef {
 
 // ErrorDetail carries bounded, non-secret error context.
 message ErrorDetail {
+  option (public_message) = {
+    required_fields: "kind"
+    string_enums: {
+      field: "kind"
+      values: "fieldViolation"
+      values: "resource"
+      values: "precondition"
+      values: "policy"
+      values: "quota"
+      values: "conflict"
+    }
+  };
+
   string kind = 1;
   string field = 2;
   string reason = 3;
@@ -66,6 +111,28 @@ message ErrorDetail {
 
 // PublicError is a sanitized error and never contains internal payloads.
 message PublicError {
+  option (public_message) = {
+    required_fields: "code"
+    required_fields: "message"
+    required_fields: "request_id"
+    required_fields: "retryable"
+    string_enums: {
+      field: "code"
+      values: "AUTHENTICATION_REQUIRED"
+      values: "PERMISSION_DENIED"
+      values: "INVALID_ARGUMENT"
+      values: "FAILED_PRECONDITION"
+      values: "NOT_FOUND"
+      values: "CONFLICT"
+      values: "RATE_LIMITED"
+      values: "QUOTA_EXCEEDED"
+      values: "UNAVAILABLE"
+      values: "DEADLINE_EXCEEDED"
+      values: "CANCELLED"
+      values: "INTERNAL"
+    }
+  };
+
   string code = 1;
   string message = 2;
   string request_id = 3;
@@ -92,6 +159,26 @@ message OperationResult {
 
 // Operation is the public long-running-operation view.
 message Operation {
+  option (public_message) = {
+    required_fields: "name"
+    required_fields: "uid"
+    required_fields: "revision"
+    required_fields: "etag"
+    required_fields: "state"
+    required_fields: "done"
+    required_fields: "create_time"
+    required_fields: "update_time"
+    string_enums: {
+      field: "state"
+      values: "PENDING"
+      values: "RUNNING"
+      values: "SUCCEEDED"
+      values: "FAILED"
+      values: "CANCELLING"
+      values: "CANCELLED"
+    }
+  };
+
   string name = 1;
   string uid = 2;
   uint64 revision = 3;
@@ -107,12 +194,34 @@ message Operation {
 
 // OperationEvent is serialized as one server-sent event.
 message OperationEvent {
+  option (public_message) = {
+    required_fields: "event_id"
+    required_fields: "event_type"
+    required_fields: "schema_version"
+    required_fields: "resume_cursor"
+    required_fields: "emitted_at"
+    string_enums: {
+      field: "event_type"
+      values: "operation.updated"
+      values: "operation.terminal"
+      values: "heartbeat"
+    }
+  };
+
   string event_id = 1;
   Operation operation = 2;
+  string event_type = 3;
+  uint32 schema_version = 4;
+  uint64 operation_revision = 5;
+  string resume_cursor = 6;
+  bool heartbeat = 7;
+  google.protobuf.Timestamp emitted_at = 8;
 }
 
 // CancellationRequest is the public cancellation body.
 message CancellationRequest {
+  option (public_message) = {required_fields: "reason"};
+
   string reason = 1;
 }
 
@@ -291,6 +400,13 @@ message ModelReleaseList {
 
 // TrainingRunCreate excludes executable plans; admission resolves them internally.
 message TrainingRunCreate {
+  option (public_message) = {
+    required_fields: "training_run_id"
+    required_fields: "training_recipe"
+    required_fields: "dataset_release"
+    required_fields: "model_release"
+  };
+
   string training_run_id = 1;
   ArtifactRef training_recipe = 2;
   ResourceRef dataset_release = 3;
@@ -303,6 +419,32 @@ message TrainingRunCreate {
 
 // TrainingRunView is a non-executable public training status summary.
 message TrainingRunView {
+  option (public_message) = {
+    required_fields: "name"
+    required_fields: "uid"
+    required_fields: "revision"
+    required_fields: "etag"
+    required_fields: "create_time"
+    required_fields: "update_time"
+    required_fields: "state"
+    required_fields: "training_recipe"
+    required_fields: "dataset_release"
+    required_fields: "model_release"
+    string_enums: {
+      field: "state"
+      values: "CREATED"
+      values: "VALIDATING"
+      values: "ADMITTED"
+      values: "RUNNING"
+      values: "CHECKPOINTING"
+      values: "RECOVERING"
+      values: "DRAINING"
+      values: "COMPLETED"
+      values: "FAILED"
+      values: "CANCELLED"
+    }
+  };
+
   string name = 1;
   string uid = 2;
   uint64 revision = 3;
@@ -322,6 +464,11 @@ message TrainingRunView {
 
 // TrainingRunList is a stable page of public training views.
 message TrainingRunList {
+  option (public_message) = {
+    required_fields: "training_runs"
+    required_fields: "page"
+  };
+
   repeated TrainingRunView training_runs = 1;
   PageMetadata page = 2;
 }
@@ -406,6 +553,15 @@ message InferenceSubmission {
 
 // InferenceResultView is immutable public inference output metadata.
 message InferenceResultView {
+  option (public_message) = {
+    required_fields: "name"
+    required_fields: "uid"
+    required_fields: "request"
+    required_fields: "operation"
+    required_fields: "result_manifest"
+    required_fields: "result_digest"
+  };
+
   string name = 1;
   string uid = 2;
   ResourceRef request = 3;
@@ -708,8 +864,10 @@ message CancelOperationRequest {
 message DownloadArtifactRequest {
   string name = 1;
 }
-// WatchOperationRequest resumes after an optional public revision.
-message WatchOperationRequest { string name = 1; }
+// WatchOperationRequest selects the operation exposed as an SSE stream.
+message WatchOperationRequest {
+  string name = 1;
+}
 // CreateDatasetRequest binds creation intent below a canonical parent.
 message CreateDatasetRequest {
   string parent = 1;
@@ -792,19 +950,6 @@ message ListAuditRecordsRequest {
 
 // MindcladeService is the only public gRPC façade.
 service MindcladeService {
-  rpc SubmitInference(SubmitInferenceRequest) returns (Operation) {
-    option (google.api.http) = {
-      post: "/v1/{parent=tenants/*/projects/*}/inferenceOperations"
-      body: "submission"
-    };
-    option (public_http) = {
-      success_status: 202
-      bearer_auth: true
-      request_headers: "Idempotency-Key"
-      request_headers: "X-Mindclade-Deadline"
-      stream: STREAM_PROJECTION_NONE
-    };
-  }
   rpc GetOperation(GetResourceRequest) returns (Operation) {
     option (google.api.http) = {get: "/v1/{name=tenants/*/projects/*/operations/*}"};
     option (public_http) = {
@@ -812,6 +957,10 @@ service MindcladeService {
       bearer_auth: true
       request_headers: "If-None-Match"
       response_headers: "ETag"
+      non_success_status: 304
+      non_success_status: 401
+      non_success_status: 403
+      non_success_status: 404
       stream: STREAM_PROJECTION_NONE
     };
   }
@@ -826,6 +975,16 @@ service MindcladeService {
       request_headers: "Idempotency-Key"
       request_headers: "X-Mindclade-Deadline"
       request_headers: "If-Match"
+      required_request_headers: "Idempotency-Key"
+      required_request_headers: "X-Mindclade-Deadline"
+      required_request_headers: "If-Match"
+      response_headers: "ETag"
+      non_success_status: 400
+      non_success_status: 401
+      non_success_status: 403
+      non_success_status: 404
+      non_success_status: 409
+      request_body_required: true
       stream: STREAM_PROJECTION_NONE
     };
   }
@@ -835,154 +994,12 @@ service MindcladeService {
       success_status: 200
       bearer_auth: true
       request_headers: "Last-Event-ID"
+      response_headers: "Cache-Control"
+      response_headers: "X-Accel-Buffering"
+      non_success_status: 401
+      non_success_status: 403
+      non_success_status: 404
       stream: STREAM_PROJECTION_SSE
-    };
-  }
-  rpc GetArtifact(GetResourceRequest) returns (ArtifactView) {
-    option (google.api.http) = {get: "/v1/{name=tenants/*/projects/*/artifacts/*}"};
-    option (public_http) = {
-      success_status: 200
-      bearer_auth: true
-      request_headers: "If-None-Match"
-      response_headers: "ETag"
-      stream: STREAM_PROJECTION_NONE
-    };
-  }
-  rpc DownloadArtifact(DownloadArtifactRequest) returns (stream DownloadArtifactChunk) {
-    option (google.api.http) = {get: "/v1/{name=tenants/*/projects/*/artifacts/*}:download"};
-    option (public_http) = {
-      success_status: 200
-      success_status: 206
-      bearer_auth: true
-      request_headers: "Range"
-      response_headers: "Content-Range"
-      stream: STREAM_PROJECTION_BINARY
-    };
-  }
-  rpc ListDatasets(ListResourcesRequest) returns (DatasetList) {
-    option (google.api.http) = {get: "/v1/{parent=tenants/*/projects/*}/datasets"};
-    option (public_http) = {
-      success_status: 200
-      bearer_auth: true
-      stream: STREAM_PROJECTION_NONE
-    };
-  }
-  rpc CreateDataset(CreateDatasetRequest) returns (DatasetView) {
-    option (google.api.http) = {
-      post: "/v1/{parent=tenants/*/projects/*}/datasets"
-      body: "dataset"
-    };
-    option (public_http) = {
-      success_status: 201
-      bearer_auth: true
-      request_headers: "Idempotency-Key"
-      stream: STREAM_PROJECTION_NONE
-    };
-  }
-  rpc GetDataset(GetResourceRequest) returns (DatasetView) {
-    option (google.api.http) = {get: "/v1/{name=tenants/*/projects/*/datasets/*}"};
-    option (public_http) = {
-      success_status: 200
-      bearer_auth: true
-      request_headers: "If-None-Match"
-      response_headers: "ETag"
-      stream: STREAM_PROJECTION_NONE
-    };
-  }
-  rpc UpdateDataset(UpdateDatasetRequest) returns (DatasetView) {
-    option (google.api.http) = {
-      patch: "/v1/{name=tenants/*/projects/*/datasets/*}"
-      body: "dataset"
-    };
-    option (public_http) = {
-      success_status: 200
-      bearer_auth: true
-      request_headers: "Idempotency-Key"
-      request_headers: "If-Match"
-      stream: STREAM_PROJECTION_NONE
-    };
-  }
-  rpc ListDatasetReleases(ListChildResourcesRequest) returns (DatasetReleaseList) {
-    option (google.api.http) = {get: "/v1/{parent=tenants/*/projects/*/datasets/*}/releases"};
-    option (public_http) = {
-      success_status: 200
-      bearer_auth: true
-      stream: STREAM_PROJECTION_NONE
-    };
-  }
-  rpc CreateDatasetRelease(CreateDatasetReleaseRequest) returns (DatasetReleaseView) {
-    option (google.api.http) = {
-      post: "/v1/{parent=tenants/*/projects/*/datasets/*}/releases"
-      body: "release"
-    };
-    option (public_http) = {
-      success_status: 201
-      bearer_auth: true
-      request_headers: "Idempotency-Key"
-      stream: STREAM_PROJECTION_NONE
-    };
-  }
-  rpc ListModels(ListResourcesRequest) returns (ModelList) {
-    option (google.api.http) = {get: "/v1/{parent=tenants/*/projects/*}/models"};
-    option (public_http) = {
-      success_status: 200
-      bearer_auth: true
-      stream: STREAM_PROJECTION_NONE
-    };
-  }
-  rpc CreateModel(CreateModelRequest) returns (ModelView) {
-    option (google.api.http) = {
-      post: "/v1/{parent=tenants/*/projects/*}/models"
-      body: "model"
-    };
-    option (public_http) = {
-      success_status: 201
-      bearer_auth: true
-      request_headers: "Idempotency-Key"
-      stream: STREAM_PROJECTION_NONE
-    };
-  }
-  rpc GetModel(GetResourceRequest) returns (ModelView) {
-    option (google.api.http) = {get: "/v1/{name=tenants/*/projects/*/models/*}"};
-    option (public_http) = {
-      success_status: 200
-      bearer_auth: true
-      request_headers: "If-None-Match"
-      response_headers: "ETag"
-      stream: STREAM_PROJECTION_NONE
-    };
-  }
-  rpc UpdateModel(UpdateModelRequest) returns (ModelView) {
-    option (google.api.http) = {
-      patch: "/v1/{name=tenants/*/projects/*/models/*}"
-      body: "model"
-    };
-    option (public_http) = {
-      success_status: 200
-      bearer_auth: true
-      request_headers: "Idempotency-Key"
-      request_headers: "If-Match"
-      stream: STREAM_PROJECTION_NONE
-    };
-  }
-  rpc ListModelReleases(ListChildResourcesRequest) returns (ModelReleaseList) {
-    option (google.api.http) = {get: "/v1/{parent=tenants/*/projects/*/models/*}/releases"};
-    option (public_http) = {
-      success_status: 200
-      bearer_auth: true
-      stream: STREAM_PROJECTION_NONE
-    };
-  }
-  rpc CreateModelRelease(CreateModelReleaseRequest) returns (ModelReleaseView) {
-    option (google.api.http) = {
-      post: "/v1/{parent=tenants/*/projects/*/models/*}/releases"
-      body: "release"
-    };
-    option (public_http) = {
-      success_status: 201
-      bearer_auth: true
-      request_headers: "Idempotency-Key"
-      stream: STREAM_PROJECTION_NONE
     };
   }
   rpc ListTrainingRuns(ListResourcesRequest) returns (TrainingRunList) {
@@ -990,6 +1007,9 @@ service MindcladeService {
     option (public_http) = {
       success_status: 200
       bearer_auth: true
+      non_success_status: 400
+      non_success_status: 401
+      non_success_status: 403
       stream: STREAM_PROJECTION_NONE
     };
   }
@@ -1003,6 +1023,14 @@ service MindcladeService {
       bearer_auth: true
       request_headers: "Idempotency-Key"
       request_headers: "X-Mindclade-Deadline"
+      required_request_headers: "Idempotency-Key"
+      required_request_headers: "X-Mindclade-Deadline"
+      non_success_status: 400
+      non_success_status: 401
+      non_success_status: 403
+      non_success_status: 409
+      non_success_status: 429
+      request_body_required: true
       stream: STREAM_PROJECTION_NONE
     };
   }
@@ -1013,216 +1041,10 @@ service MindcladeService {
       bearer_auth: true
       request_headers: "If-None-Match"
       response_headers: "ETag"
-      stream: STREAM_PROJECTION_NONE
-    };
-  }
-  rpc ListEvaluationRuns(ListResourcesRequest) returns (EvaluationRunList) {
-    option (google.api.http) = {get: "/v1/{parent=tenants/*/projects/*}/evaluationRuns"};
-    option (public_http) = {
-      success_status: 200
-      bearer_auth: true
-      stream: STREAM_PROJECTION_NONE
-    };
-  }
-  rpc CreateEvaluationRun(CreateEvaluationRunRequest) returns (Operation) {
-    option (google.api.http) = {
-      post: "/v1/{parent=tenants/*/projects/*}/evaluationRuns"
-      body: "evaluation_run"
-    };
-    option (public_http) = {
-      success_status: 202
-      bearer_auth: true
-      request_headers: "Idempotency-Key"
-      request_headers: "X-Mindclade-Deadline"
-      stream: STREAM_PROJECTION_NONE
-    };
-  }
-  rpc GetEvaluationRun(GetResourceRequest) returns (EvaluationRunView) {
-    option (google.api.http) = {get: "/v1/{name=tenants/*/projects/*/evaluationRuns/*}"};
-    option (public_http) = {
-      success_status: 200
-      bearer_auth: true
-      request_headers: "If-None-Match"
-      response_headers: "ETag"
-      stream: STREAM_PROJECTION_NONE
-    };
-  }
-  rpc GetEvaluationResult(GetResourceRequest) returns (EvaluationResultView) {
-    option (google.api.http) = {get: "/v1/{name=tenants/*/projects/*/evaluationResults/*}"};
-    option (public_http) = {
-      success_status: 200
-      bearer_auth: true
-      stream: STREAM_PROJECTION_NONE
-    };
-  }
-  rpc ListAgentDefinitions(ListResourcesRequest) returns (AgentDefinitionList) {
-    option (google.api.http) = {get: "/v1/{parent=tenants/*/projects/*}/agentDefinitions"};
-    option (public_http) = {
-      success_status: 200
-      bearer_auth: true
-      stream: STREAM_PROJECTION_NONE
-    };
-  }
-  rpc CreateAgentDefinition(CreateAgentDefinitionRequest) returns (AgentDefinitionView) {
-    option (google.api.http) = {
-      post: "/v1/{parent=tenants/*/projects/*}/agentDefinitions"
-      body: "agent_definition"
-    };
-    option (public_http) = {
-      success_status: 201
-      bearer_auth: true
-      request_headers: "Idempotency-Key"
-      stream: STREAM_PROJECTION_NONE
-    };
-  }
-  rpc ListAgentRuns(ListResourcesRequest) returns (AgentRunList) {
-    option (google.api.http) = {get: "/v1/{parent=tenants/*/projects/*}/agentRuns"};
-    option (public_http) = {
-      success_status: 200
-      bearer_auth: true
-      stream: STREAM_PROJECTION_NONE
-    };
-  }
-  rpc CreateAgentRun(CreateAgentRunRequest) returns (Operation) {
-    option (google.api.http) = {
-      post: "/v1/{parent=tenants/*/projects/*}/agentRuns"
-      body: "agent_run"
-    };
-    option (public_http) = {
-      success_status: 202
-      bearer_auth: true
-      request_headers: "Idempotency-Key"
-      request_headers: "X-Mindclade-Deadline"
-      stream: STREAM_PROJECTION_NONE
-    };
-  }
-  rpc GetAgentRun(GetResourceRequest) returns (AgentRunView) {
-    option (google.api.http) = {get: "/v1/{name=tenants/*/projects/*/agentRuns/*}"};
-    option (public_http) = {
-      success_status: 200
-      bearer_auth: true
-      request_headers: "If-None-Match"
-      response_headers: "ETag"
-      stream: STREAM_PROJECTION_NONE
-    };
-  }
-  rpc ListWorkflowDefinitions(ListResourcesRequest) returns (WorkflowDefinitionList) {
-    option (google.api.http) = {get: "/v1/{parent=tenants/*/projects/*}/workflowDefinitions"};
-    option (public_http) = {
-      success_status: 200
-      bearer_auth: true
-      stream: STREAM_PROJECTION_NONE
-    };
-  }
-  rpc CreateWorkflowDefinition(CreateWorkflowDefinitionRequest) returns (WorkflowDefinitionView) {
-    option (google.api.http) = {
-      post: "/v1/{parent=tenants/*/projects/*}/workflowDefinitions"
-      body: "workflow_definition"
-    };
-    option (public_http) = {
-      success_status: 201
-      bearer_auth: true
-      request_headers: "Idempotency-Key"
-      stream: STREAM_PROJECTION_NONE
-    };
-  }
-  rpc ListWorkflowRuns(ListResourcesRequest) returns (WorkflowRunList) {
-    option (google.api.http) = {get: "/v1/{parent=tenants/*/projects/*}/workflowRuns"};
-    option (public_http) = {
-      success_status: 200
-      bearer_auth: true
-      stream: STREAM_PROJECTION_NONE
-    };
-  }
-  rpc CreateWorkflowRun(CreateWorkflowRunRequest) returns (Operation) {
-    option (google.api.http) = {
-      post: "/v1/{parent=tenants/*/projects/*}/workflowRuns"
-      body: "workflow_run"
-    };
-    option (public_http) = {
-      success_status: 202
-      bearer_auth: true
-      request_headers: "Idempotency-Key"
-      request_headers: "X-Mindclade-Deadline"
-      stream: STREAM_PROJECTION_NONE
-    };
-  }
-  rpc GetWorkflowRun(GetResourceRequest) returns (WorkflowRunView) {
-    option (google.api.http) = {get: "/v1/{name=tenants/*/projects/*/workflowRuns/*}"};
-    option (public_http) = {
-      success_status: 200
-      bearer_auth: true
-      request_headers: "If-None-Match"
-      response_headers: "ETag"
-      stream: STREAM_PROJECTION_NONE
-    };
-  }
-  rpc ListApprovalRequests(ListResourcesRequest) returns (ApprovalRequestList) {
-    option (google.api.http) = {get: "/v1/{parent=tenants/*/projects/*}/approvals"};
-    option (public_http) = {
-      success_status: 200
-      bearer_auth: true
-      stream: STREAM_PROJECTION_NONE
-    };
-  }
-  rpc DecideApproval(DecideApprovalRequest) returns (ApprovalReceiptView) {
-    option (google.api.http) = {
-      post: "/v1/{name=tenants/*/projects/*/approvals/*}:decide"
-      body: "approval"
-    };
-    option (public_http) = {
-      success_status: 201
-      bearer_auth: true
-      request_headers: "Idempotency-Key"
-      request_headers: "If-Match"
-      stream: STREAM_PROJECTION_NONE
-    };
-  }
-  rpc GetTenant(GetResourceRequest) returns (TenantView) {
-    option (google.api.http) = {get: "/v1/{name=tenants/*}"};
-    option (public_http) = {
-      success_status: 200
-      bearer_auth: true
-      request_headers: "If-None-Match"
-      response_headers: "ETag"
-      stream: STREAM_PROJECTION_NONE
-    };
-  }
-  rpc ListProjects(ListResourcesRequest) returns (ProjectList) {
-    option (google.api.http) = {get: "/v1/{parent=tenants/*}/projects"};
-    option (public_http) = {
-      success_status: 200
-      bearer_auth: true
-      stream: STREAM_PROJECTION_NONE
-    };
-  }
-  rpc CreateProject(CreateProjectRequest) returns (ProjectView) {
-    option (google.api.http) = {
-      post: "/v1/{parent=tenants/*}/projects"
-      body: "project"
-    };
-    option (public_http) = {
-      success_status: 201
-      bearer_auth: true
-      request_headers: "Idempotency-Key"
-      stream: STREAM_PROJECTION_NONE
-    };
-  }
-  rpc GetProject(GetResourceRequest) returns (ProjectView) {
-    option (google.api.http) = {get: "/v1/{name=tenants/*/projects/*}"};
-    option (public_http) = {
-      success_status: 200
-      bearer_auth: true
-      request_headers: "If-None-Match"
-      response_headers: "ETag"
-      stream: STREAM_PROJECTION_NONE
-    };
-  }
-  rpc ListAuditRecords(ListAuditRecordsRequest) returns (AuditRecordList) {
-    option (google.api.http) = {get: "/v1/{parent=tenants/*/projects/*}/auditRecords"};
-    option (public_http) = {
-      success_status: 200
-      bearer_auth: true
+      non_success_status: 304
+      non_success_status: 401
+      non_success_status: 403
+      non_success_status: 404
       stream: STREAM_PROJECTION_NONE
     };
   }

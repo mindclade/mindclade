@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package mindclade.events.training.v1;
+
+import "google/protobuf/timestamp.proto";
+import "proto/mindclade/common/v1/resource_reference.proto";
+
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/training/v1;trainingv1";
+
+// TrainingCancellationRequested is the immutable acceptance fact for a
+// cancellation request. Workers observe it only after the run mutation and
+// outbox record commit in the same transaction.
+message TrainingCancellationRequested {
+  string training_run_name = 1;
+  int64 training_run_revision = 2;
+  mindclade.common.v1.ResourceRef operation = 3;
+  string reason = 4;
+  google.protobuf.Timestamp requested_at = 5;
+}

@@ -3,8 +3,10 @@
 include!("checkpoint.rs");
 include!("checkpoint_committed.rs");
 include!("progress_committed.rs");
+include!("training_cancellation_requested.rs");
 include!("training_commands.rs");
 include!("training_completed.rs");
 include!("training_progress.rs");
 include!("training_run.rs");
+include!("training_run_created.rs");
 include!("training_started.rs");

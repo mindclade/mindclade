@@ -25,20 +25,44 @@ STREAM_PROJECTION_BINARY: StreamProjection
 STREAM_PROJECTION_SSE: StreamProjection
 PUBLIC_HTTP_FIELD_NUMBER: _ClassVar[int]
 public_http: _descriptor.FieldDescriptor
+PUBLIC_MESSAGE_FIELD_NUMBER: _ClassVar[int]
+public_message: _descriptor.FieldDescriptor
 
 class PublicHttpContract(_message.Message):
-    __slots__ = ("success_status", "bearer_auth", "request_headers", "response_headers", "stream")
+    __slots__ = ("success_status", "bearer_auth", "request_headers", "response_headers", "stream", "non_success_status", "request_body_required", "required_request_headers")
     SUCCESS_STATUS_FIELD_NUMBER: _ClassVar[int]
     BEARER_AUTH_FIELD_NUMBER: _ClassVar[int]
     REQUEST_HEADERS_FIELD_NUMBER: _ClassVar[int]
     RESPONSE_HEADERS_FIELD_NUMBER: _ClassVar[int]
     STREAM_FIELD_NUMBER: _ClassVar[int]
+    NON_SUCCESS_STATUS_FIELD_NUMBER: _ClassVar[int]
+    REQUEST_BODY_REQUIRED_FIELD_NUMBER: _ClassVar[int]
+    REQUIRED_REQUEST_HEADERS_FIELD_NUMBER: _ClassVar[int]
     success_status: _containers.RepeatedScalarFieldContainer[int]
     bearer_auth: bool
     request_headers: _containers.RepeatedScalarFieldContainer[str]
     response_headers: _containers.RepeatedScalarFieldContainer[str]
     stream: StreamProjection
-    def __init__(self, success_status: _Optional[_Iterable[int]] = ..., bearer_auth: _Optional[bool] = ..., request_headers: _Optional[_Iterable[str]] = ..., response_headers: _Optional[_Iterable[str]] = ..., stream: _Optional[_Union[StreamProjection, str]] = ...) -> None: ...
+    non_success_status: _containers.RepeatedScalarFieldContainer[int]
+    request_body_required: bool
+    required_request_headers: _containers.RepeatedScalarFieldContainer[str]
+    def __init__(self, success_status: _Optional[_Iterable[int]] = ..., bearer_auth: _Optional[bool] = ..., request_headers: _Optional[_Iterable[str]] = ..., response_headers: _Optional[_Iterable[str]] = ..., stream: _Optional[_Union[StreamProjection, str]] = ..., non_success_status: _Optional[_Iterable[int]] = ..., request_body_required: _Optional[bool] = ..., required_request_headers: _Optional[_Iterable[str]] = ...) -> None: ...
+
+class PublicStringEnumContract(_message.Message):
+    __slots__ = ("field", "values")
+    FIELD_FIELD_NUMBER: _ClassVar[int]
+    VALUES_FIELD_NUMBER: _ClassVar[int]
+    field: str
+    values: _containers.RepeatedScalarFieldContainer[str]
+    def __init__(self, field: _Optional[str] = ..., values: _Optional[_Iterable[str]] = ...) -> None: ...
+
+class PublicMessageContract(_message.Message):
+    __slots__ = ("required_fields", "string_enums")
+    REQUIRED_FIELDS_FIELD_NUMBER: _ClassVar[int]
+    STRING_ENUMS_FIELD_NUMBER: _ClassVar[int]
+    required_fields: _containers.RepeatedScalarFieldContainer[str]
+    string_enums: _containers.RepeatedCompositeFieldContainer[PublicStringEnumContract]
+    def __init__(self, required_fields: _Optional[_Iterable[str]] = ..., string_enums: _Optional[_Iterable[_Union[PublicStringEnumContract, _Mapping]]] = ...) -> None: ...
 
 class ResourceRef(_message.Message):
     __slots__ = ("name", "uid", "revision")
@@ -161,12 +185,24 @@ class Operation(_message.Message):
     def __init__(self, name: _Optional[str] = ..., uid: _Optional[str] = ..., revision: _Optional[int] = ..., etag: _Optional[str] = ..., state: _Optional[str] = ..., done: _Optional[bool] = ..., create_time: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., update_time: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., target: _Optional[_Union[ResourceRef, _Mapping]] = ..., result: _Optional[_Union[OperationResult, _Mapping]] = ..., error: _Optional[_Union[PublicError, _Mapping]] = ...) -> None: ...
 
 class OperationEvent(_message.Message):
-    __slots__ = ("event_id", "operation")
+    __slots__ = ("event_id", "operation", "event_type", "schema_version", "operation_revision", "resume_cursor", "heartbeat", "emitted_at")
     EVENT_ID_FIELD_NUMBER: _ClassVar[int]
     OPERATION_FIELD_NUMBER: _ClassVar[int]
+    EVENT_TYPE_FIELD_NUMBER: _ClassVar[int]
+    SCHEMA_VERSION_FIELD_NUMBER: _ClassVar[int]
+    OPERATION_REVISION_FIELD_NUMBER: _ClassVar[int]
+    RESUME_CURSOR_FIELD_NUMBER: _ClassVar[int]
+    HEARTBEAT_FIELD_NUMBER: _ClassVar[int]
+    EMITTED_AT_FIELD_NUMBER: _ClassVar[int]
     event_id: str
     operation: Operation
-    def __init__(self, event_id: _Optional[str] = ..., operation: _Optional[_Union[Operation, _Mapping]] = ...) -> None: ...
+    event_type: str
+    schema_version: int
+    operation_revision: int
+    resume_cursor: str
+    heartbeat: bool
+    emitted_at: _timestamp_pb2.Timestamp
+    def __init__(self, event_id: _Optional[str] = ..., operation: _Optional[_Union[Operation, _Mapping]] = ..., event_type: _Optional[str] = ..., schema_version: _Optional[int] = ..., operation_revision: _Optional[int] = ..., resume_cursor: _Optional[str] = ..., heartbeat: _Optional[bool] = ..., emitted_at: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ...) -> None: ...
 
 class CancellationRequest(_message.Message):
     __slots__ = ("reason",)
@@ -255,7 +291,7 @@ class DatasetUpdate(_message.Message):
     def __init__(self, display_name: _Optional[str] = ..., labels: _Optional[_Mapping[str, str]] = ..., annotations: _Optional[_Mapping[str, str]] = ...) -> None: ...
 
 class DatasetView(_message.Message):
-    __slots__ = ("name", "uid", "revision", "etag", "create_time", "update_time", "display_name", "labels", "annotations", "policy_classification", "state", "current_release")
+    __slots__ = ("name", "uid", "revision", "etag", "create_time", "update_time", "display_name", "labels", "annotations", "policy_classification", "state", "current_release", "delete_time")
     class LabelsEntry(_message.Message):
         __slots__ = ("key", "value")
         KEY_FIELD_NUMBER: _ClassVar[int]
@@ -282,6 +318,7 @@ class DatasetView(_message.Message):
     POLICY_CLASSIFICATION_FIELD_NUMBER: _ClassVar[int]
     STATE_FIELD_NUMBER: _ClassVar[int]
     CURRENT_RELEASE_FIELD_NUMBER: _ClassVar[int]
+    DELETE_TIME_FIELD_NUMBER: _ClassVar[int]
     name: str
     uid: str
     revision: int
@@ -294,7 +331,8 @@ class DatasetView(_message.Message):
     policy_classification: str
     state: str
     current_release: ResourceRef
-    def __init__(self, name: _Optional[str] = ..., uid: _Optional[str] = ..., revision: _Optional[int] = ..., etag: _Optional[str] = ..., create_time: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., update_time: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., display_name: _Optional[str] = ..., labels: _Optional[_Mapping[str, str]] = ..., annotations: _Optional[_Mapping[str, str]] = ..., policy_classification: _Optional[str] = ..., state: _Optional[str] = ..., current_release: _Optional[_Union[ResourceRef, _Mapping]] = ...) -> None: ...
+    delete_time: _timestamp_pb2.Timestamp
+    def __init__(self, name: _Optional[str] = ..., uid: _Optional[str] = ..., revision: _Optional[int] = ..., etag: _Optional[str] = ..., create_time: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., update_time: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., display_name: _Optional[str] = ..., labels: _Optional[_Mapping[str, str]] = ..., annotations: _Optional[_Mapping[str, str]] = ..., policy_classification: _Optional[str] = ..., state: _Optional[str] = ..., current_release: _Optional[_Union[ResourceRef, _Mapping]] = ..., delete_time: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ...) -> None: ...
 
 class DatasetList(_message.Message):
     __slots__ = ("datasets", "page")
@@ -321,7 +359,7 @@ class DatasetReleaseCreate(_message.Message):
     def __init__(self, release_id: _Optional[str] = ..., manifest: _Optional[_Union[ArtifactRef, _Mapping]] = ..., qualification_evidence: _Optional[_Iterable[_Union[EvidenceRef, _Mapping]]] = ..., parent_release: _Optional[_Union[ResourceRef, _Mapping]] = ..., use_policy: _Optional[_Union[ResourceRef, _Mapping]] = ..., policy_classification: _Optional[str] = ...) -> None: ...
 
 class DatasetReleaseView(_message.Message):
-    __slots__ = ("name", "uid", "revision", "etag", "create_time", "dataset", "release_id", "state", "manifest", "qualification_evidence", "policy_classification")
+    __slots__ = ("name", "uid", "revision", "etag", "create_time", "dataset", "release_id", "state", "manifest", "qualification_evidence", "policy_classification", "update_time", "delete_time")
     NAME_FIELD_NUMBER: _ClassVar[int]
     UID_FIELD_NUMBER: _ClassVar[int]
     REVISION_FIELD_NUMBER: _ClassVar[int]
@@ -333,6 +371,8 @@ class DatasetReleaseView(_message.Message):
     MANIFEST_FIELD_NUMBER: _ClassVar[int]
     QUALIFICATION_EVIDENCE_FIELD_NUMBER: _ClassVar[int]
     POLICY_CLASSIFICATION_FIELD_NUMBER: _ClassVar[int]
+    UPDATE_TIME_FIELD_NUMBER: _ClassVar[int]
+    DELETE_TIME_FIELD_NUMBER: _ClassVar[int]
     name: str
     uid: str
     revision: int
@@ -344,7 +384,9 @@ class DatasetReleaseView(_message.Message):
     manifest: ArtifactRef
     qualification_evidence: _containers.RepeatedCompositeFieldContainer[EvidenceRef]
     policy_classification: str
-    def __init__(self, name: _Optional[str] = ..., uid: _Optional[str] = ..., revision: _Optional[int] = ..., etag: _Optional[str] = ..., create_time: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., dataset: _Optional[_Union[ResourceRef, _Mapping]] = ..., release_id: _Optional[str] = ..., state: _Optional[str] = ..., manifest: _Optional[_Union[ArtifactRef, _Mapping]] = ..., qualification_evidence: _Optional[_Iterable[_Union[EvidenceRef, _Mapping]]] = ..., policy_classification: _Optional[str] = ...) -> None: ...
+    update_time: _timestamp_pb2.Timestamp
+    delete_time: _timestamp_pb2.Timestamp
+    def __init__(self, name: _Optional[str] = ..., uid: _Optional[str] = ..., revision: _Optional[int] = ..., etag: _Optional[str] = ..., create_time: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., dataset: _Optional[_Union[ResourceRef, _Mapping]] = ..., release_id: _Optional[str] = ..., state: _Optional[str] = ..., manifest: _Optional[_Union[ArtifactRef, _Mapping]] = ..., qualification_evidence: _Optional[_Iterable[_Union[EvidenceRef, _Mapping]]] = ..., policy_classification: _Optional[str] = ..., update_time: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., delete_time: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ...) -> None: ...
 
 class DatasetReleaseList(_message.Message):
     __slots__ = ("releases", "page")
@@ -415,7 +457,7 @@ class ModelUpdate(_message.Message):
     def __init__(self, display_name: _Optional[str] = ..., labels: _Optional[_Mapping[str, str]] = ..., annotations: _Optional[_Mapping[str, str]] = ...) -> None: ...
 
 class ModelView(_message.Message):
-    __slots__ = ("name", "uid", "revision", "etag", "create_time", "update_time", "display_name", "labels", "annotations", "policy_classification", "family", "state", "definition_manifest", "input_contract", "output_contract", "current_release")
+    __slots__ = ("name", "uid", "revision", "etag", "create_time", "update_time", "display_name", "labels", "annotations", "policy_classification", "family", "state", "definition_manifest", "input_contract", "output_contract", "current_release", "delete_time")
     class LabelsEntry(_message.Message):
         __slots__ = ("key", "value")
         KEY_FIELD_NUMBER: _ClassVar[int]
@@ -446,6 +488,7 @@ class ModelView(_message.Message):
     INPUT_CONTRACT_FIELD_NUMBER: _ClassVar[int]
     OUTPUT_CONTRACT_FIELD_NUMBER: _ClassVar[int]
     CURRENT_RELEASE_FIELD_NUMBER: _ClassVar[int]
+    DELETE_TIME_FIELD_NUMBER: _ClassVar[int]
     name: str
     uid: str
     revision: int
@@ -462,7 +505,8 @@ class ModelView(_message.Message):
     input_contract: ArtifactRef
     output_contract: ArtifactRef
     current_release: ResourceRef
-    def __init__(self, name: _Optional[str] = ..., uid: _Optional[str] = ..., revision: _Optional[int] = ..., etag: _Optional[str] = ..., create_time: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., update_time: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., display_name: _Optional[str] = ..., labels: _Optional[_Mapping[str, str]] = ..., annotations: _Optional[_Mapping[str, str]] = ..., policy_classification: _Optional[str] = ..., family: _Optional[str] = ..., state: _Optional[str] = ..., definition_manifest: _Optional[_Union[ArtifactRef, _Mapping]] = ..., input_contract: _Optional[_Union[ArtifactRef, _Mapping]] = ..., output_contract: _Optional[_Union[ArtifactRef, _Mapping]] = ..., current_release: _Optional[_Union[ResourceRef, _Mapping]] = ...) -> None: ...
+    delete_time: _timestamp_pb2.Timestamp
+    def __init__(self, name: _Optional[str] = ..., uid: _Optional[str] = ..., revision: _Optional[int] = ..., etag: _Optional[str] = ..., create_time: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., update_time: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., display_name: _Optional[str] = ..., labels: _Optional[_Mapping[str, str]] = ..., annotations: _Optional[_Mapping[str, str]] = ..., policy_classification: _Optional[str] = ..., family: _Optional[str] = ..., state: _Optional[str] = ..., definition_manifest: _Optional[_Union[ArtifactRef, _Mapping]] = ..., input_contract: _Optional[_Union[ArtifactRef, _Mapping]] = ..., output_contract: _Optional[_Union[ArtifactRef, _Mapping]] = ..., current_release: _Optional[_Union[ResourceRef, _Mapping]] = ..., delete_time: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ...) -> None: ...
 
 class ModelList(_message.Message):
     __slots__ = ("models", "page")
@@ -491,7 +535,7 @@ class ModelReleaseCreate(_message.Message):
     def __init__(self, release_id: _Optional[str] = ..., bundle_manifest: _Optional[_Union[ArtifactRef, _Mapping]] = ..., model_manifest: _Optional[_Union[ArtifactRef, _Mapping]] = ..., checkpoint: _Optional[_Union[ResourceRef, _Mapping]] = ..., evaluation_evidence: _Optional[_Iterable[_Union[EvidenceRef, _Mapping]]] = ..., release_policy: _Optional[_Union[ResourceRef, _Mapping]] = ..., policy_classification: _Optional[str] = ...) -> None: ...
 
 class ModelReleaseView(_message.Message):
-    __slots__ = ("name", "uid", "revision", "etag", "create_time", "model", "release_id", "stage", "bundle_manifest", "model_manifest", "checkpoint", "evaluation_evidence", "policy_classification")
+    __slots__ = ("name", "uid", "revision", "etag", "create_time", "model", "release_id", "stage", "bundle_manifest", "model_manifest", "checkpoint", "evaluation_evidence", "policy_classification", "update_time", "delete_time")
     NAME_FIELD_NUMBER: _ClassVar[int]
     UID_FIELD_NUMBER: _ClassVar[int]
     REVISION_FIELD_NUMBER: _ClassVar[int]
@@ -505,6 +549,8 @@ class ModelReleaseView(_message.Message):
     CHECKPOINT_FIELD_NUMBER: _ClassVar[int]
     EVALUATION_EVIDENCE_FIELD_NUMBER: _ClassVar[int]
     POLICY_CLASSIFICATION_FIELD_NUMBER: _ClassVar[int]
+    UPDATE_TIME_FIELD_NUMBER: _ClassVar[int]
+    DELETE_TIME_FIELD_NUMBER: _ClassVar[int]
     name: str
     uid: str
     revision: int
@@ -518,7 +564,9 @@ class ModelReleaseView(_message.Message):
     checkpoint: ResourceRef
     evaluation_evidence: _containers.RepeatedCompositeFieldContainer[EvidenceRef]
     policy_classification: str
-    def __init__(self, name: _Optional[str] = ..., uid: _Optional[str] = ..., revision: _Optional[int] = ..., etag: _Optional[str] = ..., create_time: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., model: _Optional[_Union[ResourceRef, _Mapping]] = ..., release_id: _Optional[str] = ..., stage: _Optional[str] = ..., bundle_manifest: _Optional[_Union[ArtifactRef, _Mapping]] = ..., model_manifest: _Optional[_Union[ArtifactRef, _Mapping]] = ..., checkpoint: _Optional[_Union[ResourceRef, _Mapping]] = ..., evaluation_evidence: _Optional[_Iterable[_Union[EvidenceRef, _Mapping]]] = ..., policy_classification: _Optional[str] = ...) -> None: ...
+    update_time: _timestamp_pb2.Timestamp
+    delete_time: _timestamp_pb2.Timestamp
+    def __init__(self, name: _Optional[str] = ..., uid: _Optional[str] = ..., revision: _Optional[int] = ..., etag: _Optional[str] = ..., create_time: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., model: _Optional[_Union[ResourceRef, _Mapping]] = ..., release_id: _Optional[str] = ..., stage: _Optional[str] = ..., bundle_manifest: _Optional[_Union[ArtifactRef, _Mapping]] = ..., model_manifest: _Optional[_Union[ArtifactRef, _Mapping]] = ..., checkpoint: _Optional[_Union[ResourceRef, _Mapping]] = ..., evaluation_evidence: _Optional[_Iterable[_Union[EvidenceRef, _Mapping]]] = ..., policy_classification: _Optional[str] = ..., update_time: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., delete_time: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ...) -> None: ...
 
 class ModelReleaseList(_message.Message):
     __slots__ = ("releases", "page")
@@ -556,7 +604,7 @@ class TrainingRunCreate(_message.Message):
     def __init__(self, training_run_id: _Optional[str] = ..., training_recipe: _Optional[_Union[ArtifactRef, _Mapping]] = ..., dataset_release: _Optional[_Union[ResourceRef, _Mapping]] = ..., model_release: _Optional[_Union[ResourceRef, _Mapping]] = ..., hardware_topology: _Optional[_Union[ArtifactRef, _Mapping]] = ..., use_policy: _Optional[_Union[ResourceRef, _Mapping]] = ..., labels: _Optional[_Mapping[str, str]] = ..., policy_classification: _Optional[str] = ...) -> None: ...
 
 class TrainingRunView(_message.Message):
-    __slots__ = ("name", "uid", "revision", "etag", "create_time", "update_time", "state", "training_recipe", "dataset_release", "model_release", "hardware_topology", "latest_checkpoint", "result_manifest", "failure")
+    __slots__ = ("name", "uid", "revision", "etag", "create_time", "update_time", "state", "training_recipe", "dataset_release", "model_release", "hardware_topology", "latest_checkpoint", "result_manifest", "failure", "delete_time")
     NAME_FIELD_NUMBER: _ClassVar[int]
     UID_FIELD_NUMBER: _ClassVar[int]
     REVISION_FIELD_NUMBER: _ClassVar[int]
@@ -571,6 +619,7 @@ class TrainingRunView(_message.Message):
     LATEST_CHECKPOINT_FIELD_NUMBER: _ClassVar[int]
     RESULT_MANIFEST_FIELD_NUMBER: _ClassVar[int]
     FAILURE_FIELD_NUMBER: _ClassVar[int]
+    DELETE_TIME_FIELD_NUMBER: _ClassVar[int]
     name: str
     uid: str
     revision: int
@@ -585,7 +634,8 @@ class TrainingRunView(_message.Message):
     latest_checkpoint: ResourceRef
     result_manifest: ArtifactRef
     failure: PublicError
-    def __init__(self, name: _Optional[str] = ..., uid: _Optional[str] = ..., revision: _Optional[int] = ..., etag: _Optional[str] = ..., create_time: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., update_time: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., state: _Optional[str] = ..., training_recipe: _Optional[_Union[ArtifactRef, _Mapping]] = ..., dataset_release: _Optional[_Union[ResourceRef, _Mapping]] = ..., model_release: _Optional[_Union[ResourceRef, _Mapping]] = ..., hardware_topology: _Optional[_Union[ArtifactRef, _Mapping]] = ..., latest_checkpoint: _Optional[_Union[ResourceRef, _Mapping]] = ..., result_manifest: _Optional[_Union[ArtifactRef, _Mapping]] = ..., failure: _Optional[_Union[PublicError, _Mapping]] = ...) -> None: ...
+    delete_time: _timestamp_pb2.Timestamp
+    def __init__(self, name: _Optional[str] = ..., uid: _Optional[str] = ..., revision: _Optional[int] = ..., etag: _Optional[str] = ..., create_time: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., update_time: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., state: _Optional[str] = ..., training_recipe: _Optional[_Union[ArtifactRef, _Mapping]] = ..., dataset_release: _Optional[_Union[ResourceRef, _Mapping]] = ..., model_release: _Optional[_Union[ResourceRef, _Mapping]] = ..., hardware_topology: _Optional[_Union[ArtifactRef, _Mapping]] = ..., latest_checkpoint: _Optional[_Union[ResourceRef, _Mapping]] = ..., result_manifest: _Optional[_Union[ArtifactRef, _Mapping]] = ..., failure: _Optional[_Union[PublicError, _Mapping]] = ..., delete_time: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ...) -> None: ...
 
 class TrainingRunList(_message.Message):
     __slots__ = ("training_runs", "page")
@@ -612,7 +662,7 @@ class EvaluationRunCreate(_message.Message):
     def __init__(self, evaluation_run_id: _Optional[str] = ..., suite: _Optional[_Union[ArtifactRef, _Mapping]] = ..., datasets: _Optional[_Iterable[_Union[ArtifactRef, _Mapping]]] = ..., snapshot: _Optional[_Union[ArtifactRef, _Mapping]] = ..., model_release: _Optional[_Union[ResourceRef, _Mapping]] = ..., inference_protocol: _Optional[_Union[ArtifactRef, _Mapping]] = ...) -> None: ...
 
 class EvaluationRunView(_message.Message):
-    __slots__ = ("name", "uid", "revision", "etag", "create_time", "update_time", "state", "suite", "datasets", "model_release", "completed_samples", "total_samples", "failure")
+    __slots__ = ("name", "uid", "revision", "etag", "create_time", "update_time", "state", "suite", "datasets", "model_release", "completed_samples", "total_samples", "failure", "delete_time")
     NAME_FIELD_NUMBER: _ClassVar[int]
     UID_FIELD_NUMBER: _ClassVar[int]
     REVISION_FIELD_NUMBER: _ClassVar[int]
@@ -626,6 +676,7 @@ class EvaluationRunView(_message.Message):
     COMPLETED_SAMPLES_FIELD_NUMBER: _ClassVar[int]
     TOTAL_SAMPLES_FIELD_NUMBER: _ClassVar[int]
     FAILURE_FIELD_NUMBER: _ClassVar[int]
+    DELETE_TIME_FIELD_NUMBER: _ClassVar[int]
     name: str
     uid: str
     revision: int
@@ -639,7 +690,8 @@ class EvaluationRunView(_message.Message):
     completed_samples: int
     total_samples: int
     failure: PublicError
-    def __init__(self, name: _Optional[str] = ..., uid: _Optional[str] = ..., revision: _Optional[int] = ..., etag: _Optional[str] = ..., create_time: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., update_time: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., state: _Optional[str] = ..., suite: _Optional[_Union[ArtifactRef, _Mapping]] = ..., datasets: _Optional[_Iterable[_Union[ArtifactRef, _Mapping]]] = ..., model_release: _Optional[_Union[ResourceRef, _Mapping]] = ..., completed_samples: _Optional[int] = ..., total_samples: _Optional[int] = ..., failure: _Optional[_Union[PublicError, _Mapping]] = ...) -> None: ...
+    delete_time: _timestamp_pb2.Timestamp
+    def __init__(self, name: _Optional[str] = ..., uid: _Optional[str] = ..., revision: _Optional[int] = ..., etag: _Optional[str] = ..., create_time: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., update_time: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., state: _Optional[str] = ..., suite: _Optional[_Union[ArtifactRef, _Mapping]] = ..., datasets: _Optional[_Iterable[_Union[ArtifactRef, _Mapping]]] = ..., model_release: _Optional[_Union[ResourceRef, _Mapping]] = ..., completed_samples: _Optional[int] = ..., total_samples: _Optional[int] = ..., failure: _Optional[_Union[PublicError, _Mapping]] = ..., delete_time: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ...) -> None: ...
 
 class EvaluationRunList(_message.Message):
     __slots__ = ("evaluation_runs", "page")
@@ -774,7 +826,7 @@ class AgentDefinitionCreate(_message.Message):
     def __init__(self, agent_definition_id: _Optional[str] = ..., display_name: _Optional[str] = ..., semantic_version: _Optional[str] = ..., purpose: _Optional[str] = ..., definition: _Optional[_Union[ArtifactRef, _Mapping]] = ..., workflow_definition: _Optional[_Union[ResourceRef, _Mapping]] = ..., input_schema: _Optional[_Union[ArtifactRef, _Mapping]] = ..., output_schema: _Optional[_Union[ArtifactRef, _Mapping]] = ..., budget: _Optional[_Union[AgentBudget, _Mapping]] = ...) -> None: ...
 
 class AgentDefinitionView(_message.Message):
-    __slots__ = ("name", "uid", "revision", "etag", "create_time", "update_time", "display_name", "semantic_version", "purpose", "definition", "workflow_definition", "input_schema", "output_schema", "budget", "state")
+    __slots__ = ("name", "uid", "revision", "etag", "create_time", "update_time", "display_name", "semantic_version", "purpose", "definition", "workflow_definition", "input_schema", "output_schema", "budget", "state", "agent_definition_id", "delete_time")
     NAME_FIELD_NUMBER: _ClassVar[int]
     UID_FIELD_NUMBER: _ClassVar[int]
     REVISION_FIELD_NUMBER: _ClassVar[int]
@@ -790,6 +842,8 @@ class AgentDefinitionView(_message.Message):
     OUTPUT_SCHEMA_FIELD_NUMBER: _ClassVar[int]
     BUDGET_FIELD_NUMBER: _ClassVar[int]
     STATE_FIELD_NUMBER: _ClassVar[int]
+    AGENT_DEFINITION_ID_FIELD_NUMBER: _ClassVar[int]
+    DELETE_TIME_FIELD_NUMBER: _ClassVar[int]
     name: str
     uid: str
     revision: int
@@ -805,7 +859,9 @@ class AgentDefinitionView(_message.Message):
     output_schema: ArtifactRef
     budget: AgentBudget
     state: str
-    def __init__(self, name: _Optional[str] = ..., uid: _Optional[str] = ..., revision: _Optional[int] = ..., etag: _Optional[str] = ..., create_time: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., update_time: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., display_name: _Optional[str] = ..., semantic_version: _Optional[str] = ..., purpose: _Optional[str] = ..., definition: _Optional[_Union[ArtifactRef, _Mapping]] = ..., workflow_definition: _Optional[_Union[ResourceRef, _Mapping]] = ..., input_schema: _Optional[_Union[ArtifactRef, _Mapping]] = ..., output_schema: _Optional[_Union[ArtifactRef, _Mapping]] = ..., budget: _Optional[_Union[AgentBudget, _Mapping]] = ..., state: _Optional[str] = ...) -> None: ...
+    agent_definition_id: str
+    delete_time: _timestamp_pb2.Timestamp
+    def __init__(self, name: _Optional[str] = ..., uid: _Optional[str] = ..., revision: _Optional[int] = ..., etag: _Optional[str] = ..., create_time: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., update_time: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., display_name: _Optional[str] = ..., semantic_version: _Optional[str] = ..., purpose: _Optional[str] = ..., definition: _Optional[_Union[ArtifactRef, _Mapping]] = ..., workflow_definition: _Optional[_Union[ResourceRef, _Mapping]] = ..., input_schema: _Optional[_Union[ArtifactRef, _Mapping]] = ..., output_schema: _Optional[_Union[ArtifactRef, _Mapping]] = ..., budget: _Optional[_Union[AgentBudget, _Mapping]] = ..., state: _Optional[str] = ..., agent_definition_id: _Optional[str] = ..., delete_time: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ...) -> None: ...
 
 class AgentDefinitionList(_message.Message):
     __slots__ = ("agent_definitions", "page")
@@ -830,7 +886,7 @@ class AgentRunCreate(_message.Message):
     def __init__(self, agent_run_id: _Optional[str] = ..., definition: _Optional[_Union[ResourceRef, _Mapping]] = ..., definition_digest: _Optional[str] = ..., input: _Optional[_Union[ArtifactRef, _Mapping]] = ..., model_provider_manifest: _Optional[_Union[ArtifactRef, _Mapping]] = ...) -> None: ...
 
 class AgentRunView(_message.Message):
-    __slots__ = ("name", "uid", "revision", "etag", "create_time", "update_time", "definition", "definition_digest", "state", "input", "run_manifest", "output", "failure")
+    __slots__ = ("name", "uid", "revision", "etag", "create_time", "update_time", "definition", "definition_digest", "state", "input", "run_manifest", "output", "failure", "delete_time")
     NAME_FIELD_NUMBER: _ClassVar[int]
     UID_FIELD_NUMBER: _ClassVar[int]
     REVISION_FIELD_NUMBER: _ClassVar[int]
@@ -844,6 +900,7 @@ class AgentRunView(_message.Message):
     RUN_MANIFEST_FIELD_NUMBER: _ClassVar[int]
     OUTPUT_FIELD_NUMBER: _ClassVar[int]
     FAILURE_FIELD_NUMBER: _ClassVar[int]
+    DELETE_TIME_FIELD_NUMBER: _ClassVar[int]
     name: str
     uid: str
     revision: int
@@ -857,7 +914,8 @@ class AgentRunView(_message.Message):
     run_manifest: ArtifactRef
     output: ArtifactRef
     failure: PublicError
-    def __init__(self, name: _Optional[str] = ..., uid: _Optional[str] = ..., revision: _Optional[int] = ..., etag: _Optional[str] = ..., create_time: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., update_time: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., definition: _Optional[_Union[ResourceRef, _Mapping]] = ..., definition_digest: _Optional[str] = ..., state: _Optional[str] = ..., input: _Optional[_Union[ArtifactRef, _Mapping]] = ..., run_manifest: _Optional[_Union[ArtifactRef, _Mapping]] = ..., output: _Optional[_Union[ArtifactRef, _Mapping]] = ..., failure: _Optional[_Union[PublicError, _Mapping]] = ...) -> None: ...
+    delete_time: _timestamp_pb2.Timestamp
+    def __init__(self, name: _Optional[str] = ..., uid: _Optional[str] = ..., revision: _Optional[int] = ..., etag: _Optional[str] = ..., create_time: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., update_time: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., definition: _Optional[_Union[ResourceRef, _Mapping]] = ..., definition_digest: _Optional[str] = ..., state: _Optional[str] = ..., input: _Optional[_Union[ArtifactRef, _Mapping]] = ..., run_manifest: _Optional[_Union[ArtifactRef, _Mapping]] = ..., output: _Optional[_Union[ArtifactRef, _Mapping]] = ..., failure: _Optional[_Union[PublicError, _Mapping]] = ..., delete_time: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ...) -> None: ...
 
 class AgentRunList(_message.Message):
     __slots__ = ("agent_runs", "page")
@@ -884,7 +942,7 @@ class WorkflowDefinitionCreate(_message.Message):
     def __init__(self, workflow_definition_id: _Optional[str] = ..., display_name: _Optional[str] = ..., semantic_version: _Optional[str] = ..., definition: _Optional[_Union[ArtifactRef, _Mapping]] = ..., input_schema: _Optional[_Union[ArtifactRef, _Mapping]] = ..., output_schema: _Optional[_Union[ArtifactRef, _Mapping]] = ...) -> None: ...
 
 class WorkflowDefinitionView(_message.Message):
-    __slots__ = ("name", "uid", "revision", "etag", "create_time", "update_time", "display_name", "semantic_version", "definition", "input_schema", "output_schema", "state", "resolved_graph_digest")
+    __slots__ = ("name", "uid", "revision", "etag", "create_time", "update_time", "display_name", "semantic_version", "definition", "input_schema", "output_schema", "state", "resolved_graph_digest", "workflow_definition_id", "delete_time")
     NAME_FIELD_NUMBER: _ClassVar[int]
     UID_FIELD_NUMBER: _ClassVar[int]
     REVISION_FIELD_NUMBER: _ClassVar[int]
@@ -898,6 +956,8 @@ class WorkflowDefinitionView(_message.Message):
     OUTPUT_SCHEMA_FIELD_NUMBER: _ClassVar[int]
     STATE_FIELD_NUMBER: _ClassVar[int]
     RESOLVED_GRAPH_DIGEST_FIELD_NUMBER: _ClassVar[int]
+    WORKFLOW_DEFINITION_ID_FIELD_NUMBER: _ClassVar[int]
+    DELETE_TIME_FIELD_NUMBER: _ClassVar[int]
     name: str
     uid: str
     revision: int
@@ -911,7 +971,9 @@ class WorkflowDefinitionView(_message.Message):
     output_schema: ArtifactRef
     state: str
     resolved_graph_digest: str
-    def __init__(self, name: _Optional[str] = ..., uid: _Optional[str] = ..., revision: _Optional[int] = ..., etag: _Optional[str] = ..., create_time: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., update_time: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., display_name: _Optional[str] = ..., semantic_version: _Optional[str] = ..., definition: _Optional[_Union[ArtifactRef, _Mapping]] = ..., input_schema: _Optional[_Union[ArtifactRef, _Mapping]] = ..., output_schema: _Optional[_Union[ArtifactRef, _Mapping]] = ..., state: _Optional[str] = ..., resolved_graph_digest: _Optional[str] = ...) -> None: ...
+    workflow_definition_id: str
+    delete_time: _timestamp_pb2.Timestamp
+    def __init__(self, name: _Optional[str] = ..., uid: _Optional[str] = ..., revision: _Optional[int] = ..., etag: _Optional[str] = ..., create_time: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., update_time: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., display_name: _Optional[str] = ..., semantic_version: _Optional[str] = ..., definition: _Optional[_Union[ArtifactRef, _Mapping]] = ..., input_schema: _Optional[_Union[ArtifactRef, _Mapping]] = ..., output_schema: _Optional[_Union[ArtifactRef, _Mapping]] = ..., state: _Optional[str] = ..., resolved_graph_digest: _Optional[str] = ..., workflow_definition_id: _Optional[str] = ..., delete_time: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ...) -> None: ...
 
 class WorkflowDefinitionList(_message.Message):
     __slots__ = ("workflow_definitions", "page")
@@ -936,7 +998,7 @@ class WorkflowRunCreate(_message.Message):
     def __init__(self, workflow_run_id: _Optional[str] = ..., definition: _Optional[_Union[ResourceRef, _Mapping]] = ..., definition_digest: _Optional[str] = ..., agent_run: _Optional[_Union[ResourceRef, _Mapping]] = ..., input: _Optional[_Union[ArtifactRef, _Mapping]] = ...) -> None: ...
 
 class WorkflowRunView(_message.Message):
-    __slots__ = ("name", "uid", "revision", "etag", "create_time", "update_time", "definition", "definition_digest", "state", "input", "output", "replay_state", "failure")
+    __slots__ = ("name", "uid", "revision", "etag", "create_time", "update_time", "definition", "definition_digest", "state", "input", "output", "replay_state", "failure", "delete_time")
     NAME_FIELD_NUMBER: _ClassVar[int]
     UID_FIELD_NUMBER: _ClassVar[int]
     REVISION_FIELD_NUMBER: _ClassVar[int]
@@ -950,6 +1012,7 @@ class WorkflowRunView(_message.Message):
     OUTPUT_FIELD_NUMBER: _ClassVar[int]
     REPLAY_STATE_FIELD_NUMBER: _ClassVar[int]
     FAILURE_FIELD_NUMBER: _ClassVar[int]
+    DELETE_TIME_FIELD_NUMBER: _ClassVar[int]
     name: str
     uid: str
     revision: int
@@ -963,7 +1026,8 @@ class WorkflowRunView(_message.Message):
     output: ArtifactRef
     replay_state: ArtifactRef
     failure: PublicError
-    def __init__(self, name: _Optional[str] = ..., uid: _Optional[str] = ..., revision: _Optional[int] = ..., etag: _Optional[str] = ..., create_time: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., update_time: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., definition: _Optional[_Union[ResourceRef, _Mapping]] = ..., definition_digest: _Optional[str] = ..., state: _Optional[str] = ..., input: _Optional[_Union[ArtifactRef, _Mapping]] = ..., output: _Optional[_Union[ArtifactRef, _Mapping]] = ..., replay_state: _Optional[_Union[ArtifactRef, _Mapping]] = ..., failure: _Optional[_Union[PublicError, _Mapping]] = ...) -> None: ...
+    delete_time: _timestamp_pb2.Timestamp
+    def __init__(self, name: _Optional[str] = ..., uid: _Optional[str] = ..., revision: _Optional[int] = ..., etag: _Optional[str] = ..., create_time: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., update_time: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., definition: _Optional[_Union[ResourceRef, _Mapping]] = ..., definition_digest: _Optional[str] = ..., state: _Optional[str] = ..., input: _Optional[_Union[ArtifactRef, _Mapping]] = ..., output: _Optional[_Union[ArtifactRef, _Mapping]] = ..., replay_state: _Optional[_Union[ArtifactRef, _Mapping]] = ..., failure: _Optional[_Union[PublicError, _Mapping]] = ..., delete_time: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ...) -> None: ...
 
 class WorkflowRunList(_message.Message):
     __slots__ = ("workflow_runs", "page")
@@ -974,7 +1038,7 @@ class WorkflowRunList(_message.Message):
     def __init__(self, workflow_runs: _Optional[_Iterable[_Union[WorkflowRunView, _Mapping]]] = ..., page: _Optional[_Union[PageMetadata, _Mapping]] = ...) -> None: ...
 
 class ApprovalRequestView(_message.Message):
-    __slots__ = ("name", "uid", "revision", "etag", "create_time", "update_time", "state", "action", "intent_digest", "minimum_independent_approvers", "expire_time")
+    __slots__ = ("name", "uid", "revision", "etag", "create_time", "update_time", "state", "action", "intent_digest", "minimum_independent_approvers", "expire_time", "delete_time")
     NAME_FIELD_NUMBER: _ClassVar[int]
     UID_FIELD_NUMBER: _ClassVar[int]
     REVISION_FIELD_NUMBER: _ClassVar[int]
@@ -986,6 +1050,7 @@ class ApprovalRequestView(_message.Message):
     INTENT_DIGEST_FIELD_NUMBER: _ClassVar[int]
     MINIMUM_INDEPENDENT_APPROVERS_FIELD_NUMBER: _ClassVar[int]
     EXPIRE_TIME_FIELD_NUMBER: _ClassVar[int]
+    DELETE_TIME_FIELD_NUMBER: _ClassVar[int]
     name: str
     uid: str
     revision: int
@@ -997,7 +1062,8 @@ class ApprovalRequestView(_message.Message):
     intent_digest: str
     minimum_independent_approvers: int
     expire_time: _timestamp_pb2.Timestamp
-    def __init__(self, name: _Optional[str] = ..., uid: _Optional[str] = ..., revision: _Optional[int] = ..., etag: _Optional[str] = ..., create_time: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., update_time: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., state: _Optional[str] = ..., action: _Optional[str] = ..., intent_digest: _Optional[str] = ..., minimum_independent_approvers: _Optional[int] = ..., expire_time: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ...) -> None: ...
+    delete_time: _timestamp_pb2.Timestamp
+    def __init__(self, name: _Optional[str] = ..., uid: _Optional[str] = ..., revision: _Optional[int] = ..., etag: _Optional[str] = ..., create_time: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., update_time: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., state: _Optional[str] = ..., action: _Optional[str] = ..., intent_digest: _Optional[str] = ..., minimum_independent_approvers: _Optional[int] = ..., expire_time: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., delete_time: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ...) -> None: ...
 
 class ApprovalRequestList(_message.Message):
     __slots__ = ("approvals", "page")
@@ -1038,7 +1104,7 @@ class ApprovalReceiptView(_message.Message):
     def __init__(self, name: _Optional[str] = ..., uid: _Optional[str] = ..., request: _Optional[_Union[ResourceRef, _Mapping]] = ..., decision: _Optional[str] = ..., reason_code: _Optional[str] = ..., safe_reason: _Optional[str] = ..., receipt_digest: _Optional[str] = ..., create_time: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ...) -> None: ...
 
 class TenantView(_message.Message):
-    __slots__ = ("name", "uid", "revision", "etag", "create_time", "update_time", "display_name", "state", "default_classification", "allowed_regions", "labels")
+    __slots__ = ("name", "uid", "revision", "etag", "create_time", "update_time", "display_name", "state", "default_classification", "allowed_regions", "labels", "delete_time")
     class LabelsEntry(_message.Message):
         __slots__ = ("key", "value")
         KEY_FIELD_NUMBER: _ClassVar[int]
@@ -1057,6 +1123,7 @@ class TenantView(_message.Message):
     DEFAULT_CLASSIFICATION_FIELD_NUMBER: _ClassVar[int]
     ALLOWED_REGIONS_FIELD_NUMBER: _ClassVar[int]
     LABELS_FIELD_NUMBER: _ClassVar[int]
+    DELETE_TIME_FIELD_NUMBER: _ClassVar[int]
     name: str
     uid: str
     revision: int
@@ -1068,7 +1135,8 @@ class TenantView(_message.Message):
     default_classification: str
     allowed_regions: _containers.RepeatedScalarFieldContainer[str]
     labels: _containers.ScalarMap[str, str]
-    def __init__(self, name: _Optional[str] = ..., uid: _Optional[str] = ..., revision: _Optional[int] = ..., etag: _Optional[str] = ..., create_time: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., update_time: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., display_name: _Optional[str] = ..., state: _Optional[str] = ..., default_classification: _Optional[str] = ..., allowed_regions: _Optional[_Iterable[str]] = ..., labels: _Optional[_Mapping[str, str]] = ...) -> None: ...
+    delete_time: _timestamp_pb2.Timestamp
+    def __init__(self, name: _Optional[str] = ..., uid: _Optional[str] = ..., revision: _Optional[int] = ..., etag: _Optional[str] = ..., create_time: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., update_time: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., display_name: _Optional[str] = ..., state: _Optional[str] = ..., default_classification: _Optional[str] = ..., allowed_regions: _Optional[_Iterable[str]] = ..., labels: _Optional[_Mapping[str, str]] = ..., delete_time: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ...) -> None: ...
 
 class ProjectCreate(_message.Message):
     __slots__ = ("project_id", "display_name", "purpose", "default_classification", "labels")
@@ -1092,7 +1160,7 @@ class ProjectCreate(_message.Message):
     def __init__(self, project_id: _Optional[str] = ..., display_name: _Optional[str] = ..., purpose: _Optional[str] = ..., default_classification: _Optional[str] = ..., labels: _Optional[_Mapping[str, str]] = ...) -> None: ...
 
 class ProjectView(_message.Message):
-    __slots__ = ("name", "uid", "revision", "etag", "create_time", "update_time", "display_name", "purpose", "default_classification", "labels", "state")
+    __slots__ = ("name", "uid", "revision", "etag", "create_time", "update_time", "display_name", "purpose", "default_classification", "labels", "state", "project_id", "delete_time")
     class LabelsEntry(_message.Message):
         __slots__ = ("key", "value")
         KEY_FIELD_NUMBER: _ClassVar[int]
@@ -1111,6 +1179,8 @@ class ProjectView(_message.Message):
     DEFAULT_CLASSIFICATION_FIELD_NUMBER: _ClassVar[int]
     LABELS_FIELD_NUMBER: _ClassVar[int]
     STATE_FIELD_NUMBER: _ClassVar[int]
+    PROJECT_ID_FIELD_NUMBER: _ClassVar[int]
+    DELETE_TIME_FIELD_NUMBER: _ClassVar[int]
     name: str
     uid: str
     revision: int
@@ -1122,7 +1192,9 @@ class ProjectView(_message.Message):
     default_classification: str
     labels: _containers.ScalarMap[str, str]
     state: str
-    def __init__(self, name: _Optional[str] = ..., uid: _Optional[str] = ..., revision: _Optional[int] = ..., etag: _Optional[str] = ..., create_time: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., update_time: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., display_name: _Optional[str] = ..., purpose: _Optional[str] = ..., default_classification: _Optional[str] = ..., labels: _Optional[_Mapping[str, str]] = ..., state: _Optional[str] = ...) -> None: ...
+    project_id: str
+    delete_time: _timestamp_pb2.Timestamp
+    def __init__(self, name: _Optional[str] = ..., uid: _Optional[str] = ..., revision: _Optional[int] = ..., etag: _Optional[str] = ..., create_time: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., update_time: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., display_name: _Optional[str] = ..., purpose: _Optional[str] = ..., default_classification: _Optional[str] = ..., labels: _Optional[_Mapping[str, str]] = ..., state: _Optional[str] = ..., project_id: _Optional[str] = ..., delete_time: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ...) -> None: ...
 
 class ProjectList(_message.Message):
     __slots__ = ("projects", "page")
@@ -1184,6 +1256,16 @@ class ListResourcesRequest(_message.Message):
     order_by: str
     def __init__(self, parent: _Optional[str] = ..., page_size: _Optional[int] = ..., page_token: _Optional[str] = ..., filter: _Optional[str] = ..., order_by: _Optional[str] = ...) -> None: ...
 
+class ListChildResourcesRequest(_message.Message):
+    __slots__ = ("parent", "page_size", "page_token")
+    PARENT_FIELD_NUMBER: _ClassVar[int]
+    PAGE_SIZE_FIELD_NUMBER: _ClassVar[int]
+    PAGE_TOKEN_FIELD_NUMBER: _ClassVar[int]
+    parent: str
+    page_size: int
+    page_token: str
+    def __init__(self, parent: _Optional[str] = ..., page_size: _Optional[int] = ..., page_token: _Optional[str] = ...) -> None: ...
+
 class SubmitInferenceRequest(_message.Message):
     __slots__ = ("parent", "submission")
     PARENT_FIELD_NUMBER: _ClassVar[int]
@@ -1201,22 +1283,16 @@ class CancelOperationRequest(_message.Message):
     def __init__(self, name: _Optional[str] = ..., cancellation: _Optional[_Union[CancellationRequest, _Mapping]] = ...) -> None: ...
 
 class DownloadArtifactRequest(_message.Message):
-    __slots__ = ("name", "range_start", "range_end_exclusive")
+    __slots__ = ("name",)
     NAME_FIELD_NUMBER: _ClassVar[int]
-    RANGE_START_FIELD_NUMBER: _ClassVar[int]
-    RANGE_END_EXCLUSIVE_FIELD_NUMBER: _ClassVar[int]
     name: str
-    range_start: int
-    range_end_exclusive: int
-    def __init__(self, name: _Optional[str] = ..., range_start: _Optional[int] = ..., range_end_exclusive: _Optional[int] = ...) -> None: ...
+    def __init__(self, name: _Optional[str] = ...) -> None: ...
 
 class WatchOperationRequest(_message.Message):
-    __slots__ = ("name", "after_revision")
+    __slots__ = ("name",)
     NAME_FIELD_NUMBER: _ClassVar[int]
-    AFTER_REVISION_FIELD_NUMBER: _ClassVar[int]
     name: str
-    after_revision: int
-    def __init__(self, name: _Optional[str] = ..., after_revision: _Optional[int] = ...) -> None: ...
+    def __init__(self, name: _Optional[str] = ...) -> None: ...
 
 class CreateDatasetRequest(_message.Message):
     __slots__ = ("parent", "dataset")

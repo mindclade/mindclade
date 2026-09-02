@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package mindclade.events.workflow.v1;
+
+import "google/protobuf/timestamp.proto";
+import "proto/mindclade/common/v1/resource_reference.proto";
+import "proto/mindclade/workflow/v1/workflow_run.proto";
+
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/workflow/v1;workflowv1";
+
+// WorkflowRunStarted records acceptance of one frozen workflow intent.
+message WorkflowRunStarted {
+  mindclade.workflow.v1.WorkflowRun workflow_run = 1;
+  mindclade.common.v1.ResourceRef operation = 2;
+  google.protobuf.Timestamp started_at = 3;
+}

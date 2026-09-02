@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package mindclade.events.policy.v1;
+
+import "proto/mindclade/policy/v1/authorization_decision.proto";
+
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/policy/v1;policyv1";
+
+// AuthorizationDecisionRecorded carries the immutable, evidence-bearing result
+// of evaluating one exact principal, action, target, intent, and policy set.
+message AuthorizationDecisionRecorded {
+  mindclade.policy.v1.AuthorizationDecision decision = 1;
+}

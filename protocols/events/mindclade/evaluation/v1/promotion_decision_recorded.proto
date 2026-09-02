@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package mindclade.events.evaluation.v1;
+
+import "google/protobuf/timestamp.proto";
+import "proto/mindclade/common/v1/resource_reference.proto";
+import "proto/mindclade/evaluation/v1/promotion_decision.proto";
+
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/evaluation/v1;evaluationv1";
+
+// PromotionDecisionRecorded records evidence-governed disposition, never deployment.
+message PromotionDecisionRecorded {
+  string promotion_decision_name = 1;
+  string promotion_decision_uid = 2;
+  mindclade.common.v1.ResourceRef candidate_release = 3;
+  string candidate_digest = 4;
+  mindclade.evaluation.v1.PromotionOutcome outcome = 5;
+  string decision_digest = 6;
+  mindclade.common.v1.ResourceRef operation = 7;
+  google.protobuf.Timestamp recorded_at = 8;
+}

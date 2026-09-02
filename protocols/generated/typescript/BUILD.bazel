@@ -1,7 +1,15 @@
-load("@aspect_rules_ts//ts:defs.bzl", "ts_project")
+load("@aspect_rules_ts//ts:defs.bzl", "ts_config", "ts_project")
 load("@npm//:defs.bzl", "npm_link_all_packages")
 
 npm_link_all_packages(name = "node_modules")
+
+# NodeNext classifies generated modules using this package boundary.
+# Keep package.json explicit so sandboxed builds emit the same ESM as pnpm.
+ts_config(
+    name = "generated_tsconfig",
+    src = "tsconfig.json",
+    deps = ["package.json"],
+)
 
 ts_project(
     name = "bindings",
@@ -9,18 +17,24 @@ ts_project(
         ["**/*.ts"],
         exclude = ["node_modules/**"],
     ),
+    assets = ["package.json"],
     declaration = True,
     transpiler = "tsc",
-    tsconfig = "tsconfig.json",
+    tsconfig = ":generated_tsconfig",
     visibility = ["//visibility:public"],
     deps = [
         ":node_modules/@bufbuild/protobuf",
         ":node_modules/@connectrpc/connect",
+        ":node_modules/ajv",
+        ":node_modules/ajv-formats",
     ],
 )
 
 filegroup(
     name = "generated_sources",
-    srcs = glob(["**/*"]),
+    srcs = glob(
+        ["**/*"],
+        exclude = ["node_modules/**"],
+    ),
     visibility = ["//visibility:public"],
 )

@@ -45,18 +45,21 @@ under ADR-0015. The repository-path manifest is the file-level authority;
 target-only and deferred paths must not be created early.
 
 Protobuf owns resources, commands, events, and gRPC services; JSON Schema owns
-durable documents. `mindclade.api.v1` owns the public gRPC facade, while the
-curated OpenAPI document owns external HTTP/JSON and SDK behavior. Exact
-operation and model mappings keep the two public transports in parity.
-Generated Go, Python, Rust, and TypeScript bindings are authoritative consumers'
-types. PostgreSQL-compatible normalized relations remain durable business-state
-authority; immutable Protobuf bytes are limited to outbox, inbox, audit, and
-dead-letter evidence boundaries. Public Go/Python/TypeScript SDK generation is
-owned by Mindclade SDK Forge, using OAGen as a non-authoritative parser and
-typed-IR foundation. Fern is the preferred qualified shadow, Speakeasy is a
-commercial benchmark/fallback, and Stainless is limited to comparison with an
-existing legacy project. Provider configuration is derived from Mindclade
-policy; hosted state never owns the public contract or release decision.
+durable documents. `mindclade.api.v1` and the curated OpenAPI document are an
+unratified, public-safe candidate projection for a possible future HTTP API;
+they do not establish a supported public SDK or release authority. Exact
+descriptor, binding, and ProtoJSON mappings keep that candidate from drifting.
+Generated Go, Python, Rust, and TypeScript bindings are authoritative internal
+transport types. PostgreSQL-compatible normalized relations remain durable
+business-state authority; immutable Protobuf bytes are limited to outbox,
+inbox, audit, and dead-letter evidence boundaries. Buf and pinned native
+plugins generate the internal Go, Python, Rust, and TypeScript
+Protobuf/gRPC/Connect transport. Thin Mindclade-owned facades under
+`internal/sdk` add client ergonomics while reusing generated wire types.
+Client-side services, workers, training code, tools, and internal applications
+consume those facades. Fern and Speakeasy are optional HTTP/JSON comparison
+tools only; provider state never owns an internal transport, contract, or
+release decision.
 
 This source activation grants no runtime, public-release, Kubernetes, cloud,
 connected promotion, scientific, or production authority. Workers cannot

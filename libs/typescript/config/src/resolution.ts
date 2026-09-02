@@ -1,3 +1,8 @@
+import {
+  decodeDocument,
+  type Configuration,
+} from "../../../../protocols/generated/typescript/schema/v1/bindings.js";
+
 export type ConfigValue =
   | boolean
   | number
@@ -52,3 +57,11 @@ export const resolve = (
     redacted: ordered(redacted) as Record<string, ConfigValue>,
   };
 };
+
+/**
+ * Validate and narrow a durable configuration document through the generated
+ * JSON Schema binding. Configuration resolution remains handwritten behavior;
+ * the persisted document shape is not redefined here.
+ */
+export const validateConfigurationDocument = (document: unknown): Configuration =>
+  decodeDocument("configuration", document);

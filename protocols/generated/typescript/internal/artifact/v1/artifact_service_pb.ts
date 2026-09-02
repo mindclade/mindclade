@@ -2,8 +2,8 @@
 // @generated from file proto/mindclade/internal/artifact/v1/artifact_service.proto (package mindclade.internal.artifact.v1, syntax proto3)
 /* eslint-disable */
 
-import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
-import { fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
+import type { GenEnum, GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
+import { enumDesc, fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
 import type { Timestamp } from "@bufbuild/protobuf/wkt";
 import { file_google_protobuf_timestamp } from "@bufbuild/protobuf/wkt";
 import type { CommitArtifactCommand } from "../../../artifact/v1/artifact_commands_pb.js";
@@ -26,7 +26,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file proto/mindclade/internal/artifact/v1/artifact_service.proto.
  */
 export const file_proto_mindclade_internal_artifact_v1_artifact_service: GenFile = /*@__PURE__*/
-  fileDesc("Cjtwcm90by9taW5kY2xhZGUvaW50ZXJuYWwvYXJ0aWZhY3QvdjEvYXJ0aWZhY3Rfc2VydmljZS5wcm90bxIebWluZGNsYWRlLmludGVybmFsLmFydGlmYWN0LnYxIjIKEkdldEFydGlmYWN0UmVxdWVzdBIMCgRuYW1lGAEgASgJEg4KBmRpZ2VzdBgCIAEoCSJ8ChNHZXRBcnRpZmFjdFJlc3BvbnNlEjQKCGFydGlmYWN0GAEgASgLMiIubWluZGNsYWRlLmFydGlmYWN0LnYxLkFydGlmYWN0UmVmEi8KC29ic2VydmVkX2F0GAIgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCJ4ChRMaXN0QXJ0aWZhY3RzUmVxdWVzdBIOCgZwYXJlbnQYASABKAkSLgoEcGFnZRgCIAEoCzIgLm1pbmRjbGFkZS5jb21tb24udjEuUGFnZVJlcXVlc3QSDgoGZmlsdGVyGAMgASgJEhAKCG9yZGVyX2J5GAQgASgJIq4BChVMaXN0QXJ0aWZhY3RzUmVzcG9uc2USNQoJYXJ0aWZhY3RzGAEgAygLMiIubWluZGNsYWRlLmFydGlmYWN0LnYxLkFydGlmYWN0UmVmEi8KBHBhZ2UYAiABKAsyIS5taW5kY2xhZGUuY29tbW9uLnYxLlBhZ2VSZXNwb25zZRItCglyZWFkX3RpbWUYAyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIjwKG1Jlc29sdmVBcnRpZmFjdEFsaWFzUmVxdWVzdBIOCgZwYXJlbnQYASABKAkSDQoFYWxpYXMYAiABKAkiVAocUmVzb2x2ZUFydGlmYWN0QWxpYXNSZXNwb25zZRI0CghhcnRpZmFjdBgBIAEoCzIiLm1pbmRjbGFkZS5hcnRpZmFjdC52MS5BcnRpZmFjdFJlZiJWChVDb21taXRBcnRpZmFjdFJlcXVlc3QSPQoHY29tbWFuZBgBIAEoCzIsLm1pbmRjbGFkZS5hcnRpZmFjdC52MS5Db21taXRBcnRpZmFjdENvbW1hbmQiTgoWQ29tbWl0QXJ0aWZhY3RSZXNwb25zZRI0CghhcnRpZmFjdBgBIAEoCzIiLm1pbmRjbGFkZS5hcnRpZmFjdC52MS5BcnRpZmFjdFJlZiLSAQoZUXVhcmFudGluZUFydGlmYWN0UmVxdWVzdBI0Cgdjb250ZXh0GAEgASgLMiMubWluZGNsYWRlLmNvbW1vbi52MS5Db21tYW5kQ29udGV4dBI0CghhcnRpZmFjdBgCIAEoCzIiLm1pbmRjbGFkZS5hcnRpZmFjdC52MS5BcnRpZmFjdFJlZhITCgtyZWFzb25fY29kZRgDIAEoCRI0CghldmlkZW5jZRgEIAMoCzIiLm1pbmRjbGFkZS5hcnRpZmFjdC52MS5FdmlkZW5jZVJlZiJMChpRdWFyYW50aW5lQXJ0aWZhY3RSZXNwb25zZRIuCglvcGVyYXRpb24YASABKAsyGy5taW5kY2xhZGUuam9iLnYxLk9wZXJhdGlvbiK6AQobQWNxdWlyZUFydGlmYWN0TGVhc2VSZXF1ZXN0EjQKB2NvbnRleHQYASABKAsyIy5taW5kY2xhZGUuY29tbW9uLnYxLkNvbW1hbmRDb250ZXh0EjQKCGFydGlmYWN0GAIgASgLMiIubWluZGNsYWRlLmFydGlmYWN0LnYxLkFydGlmYWN0UmVmEi8KC2V4cGlyZV90aW1lGAMgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCJPChxBY3F1aXJlQXJ0aWZhY3RMZWFzZVJlc3BvbnNlEi8KBWxlYXNlGAEgASgLMiAubWluZGNsYWRlLmNvbW1vbi52MS5SZXNvdXJjZVJlZiKSAQobUmVsZWFzZUFydGlmYWN0TGVhc2VSZXF1ZXN0EjQKB2NvbnRleHQYASABKAsyIy5taW5kY2xhZGUuY29tbW9uLnYxLkNvbW1hbmRDb250ZXh0Ei8KBWxlYXNlGAIgASgLMiAubWluZGNsYWRlLmNvbW1vbi52MS5SZXNvdXJjZVJlZhIMCgRldGFnGAMgASgJIh4KHFJlbGVhc2VBcnRpZmFjdExlYXNlUmVzcG9uc2Uy0gcKD0FydGlmYWN0U2VydmljZRJ2CgtHZXRBcnRpZmFjdBIyLm1pbmRjbGFkZS5pbnRlcm5hbC5hcnRpZmFjdC52MS5HZXRBcnRpZmFjdFJlcXVlc3QaMy5taW5kY2xhZGUuaW50ZXJuYWwuYXJ0aWZhY3QudjEuR2V0QXJ0aWZhY3RSZXNwb25zZRJ8Cg1MaXN0QXJ0aWZhY3RzEjQubWluZGNsYWRlLmludGVybmFsLmFydGlmYWN0LnYxLkxpc3RBcnRpZmFjdHNSZXF1ZXN0GjUubWluZGNsYWRlLmludGVybmFsLmFydGlmYWN0LnYxLkxpc3RBcnRpZmFjdHNSZXNwb25zZRKRAQoUUmVzb2x2ZUFydGlmYWN0QWxpYXMSOy5taW5kY2xhZGUuaW50ZXJuYWwuYXJ0aWZhY3QudjEuUmVzb2x2ZUFydGlmYWN0QWxpYXNSZXF1ZXN0GjwubWluZGNsYWRlLmludGVybmFsLmFydGlmYWN0LnYxLlJlc29sdmVBcnRpZmFjdEFsaWFzUmVzcG9uc2USfwoOQ29tbWl0QXJ0aWZhY3QSNS5taW5kY2xhZGUuaW50ZXJuYWwuYXJ0aWZhY3QudjEuQ29tbWl0QXJ0aWZhY3RSZXF1ZXN0GjYubWluZGNsYWRlLmludGVybmFsLmFydGlmYWN0LnYxLkNvbW1pdEFydGlmYWN0UmVzcG9uc2USiwEKElF1YXJhbnRpbmVBcnRpZmFjdBI5Lm1pbmRjbGFkZS5pbnRlcm5hbC5hcnRpZmFjdC52MS5RdWFyYW50aW5lQXJ0aWZhY3RSZXF1ZXN0GjoubWluZGNsYWRlLmludGVybmFsLmFydGlmYWN0LnYxLlF1YXJhbnRpbmVBcnRpZmFjdFJlc3BvbnNlEpEBChRBY3F1aXJlQXJ0aWZhY3RMZWFzZRI7Lm1pbmRjbGFkZS5pbnRlcm5hbC5hcnRpZmFjdC52MS5BY3F1aXJlQXJ0aWZhY3RMZWFzZVJlcXVlc3QaPC5taW5kY2xhZGUuaW50ZXJuYWwuYXJ0aWZhY3QudjEuQWNxdWlyZUFydGlmYWN0TGVhc2VSZXNwb25zZRKRAQoUUmVsZWFzZUFydGlmYWN0TGVhc2USOy5taW5kY2xhZGUuaW50ZXJuYWwuYXJ0aWZhY3QudjEuUmVsZWFzZUFydGlmYWN0TGVhc2VSZXF1ZXN0GjwubWluZGNsYWRlLmludGVybmFsLmFydGlmYWN0LnYxLlJlbGVhc2VBcnRpZmFjdExlYXNlUmVzcG9uc2VCX1pdZ2l0aHViLmNvbS9taW5kY2xhZGUvbWluZGNsYWRlL3Byb3RvY29scy9nZW5lcmF0ZWQvZ28vaW50ZXJuYWwvYXJ0aWZhY3QvdjE7aW50ZXJuYWxhcnRpZmFjdHYxYgZwcm90bzM", [file_google_protobuf_timestamp, file_proto_mindclade_artifact_v1_artifact_commands, file_proto_mindclade_artifact_v1_artifact_reference, file_proto_mindclade_artifact_v1_evidence_reference, file_proto_mindclade_common_v1_command_context, file_proto_mindclade_common_v1_pagination, file_proto_mindclade_common_v1_resource_reference, file_proto_mindclade_job_v1_operation]);
+  fileDesc("Cjtwcm90by9taW5kY2xhZGUvaW50ZXJuYWwvYXJ0aWZhY3QvdjEvYXJ0aWZhY3Rfc2VydmljZS5wcm90bxIebWluZGNsYWRlLmludGVybmFsLmFydGlmYWN0LnYxIjIKEkdldEFydGlmYWN0UmVxdWVzdBIMCgRuYW1lGAEgASgJEg4KBmRpZ2VzdBgCIAEoCSJ8ChNHZXRBcnRpZmFjdFJlc3BvbnNlEjQKCGFydGlmYWN0GAEgASgLMiIubWluZGNsYWRlLmFydGlmYWN0LnYxLkFydGlmYWN0UmVmEi8KC29ic2VydmVkX2F0GAIgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCJ4ChRMaXN0QXJ0aWZhY3RzUmVxdWVzdBIOCgZwYXJlbnQYASABKAkSLgoEcGFnZRgCIAEoCzIgLm1pbmRjbGFkZS5jb21tb24udjEuUGFnZVJlcXVlc3QSDgoGZmlsdGVyGAMgASgJEhAKCG9yZGVyX2J5GAQgASgJIq4BChVMaXN0QXJ0aWZhY3RzUmVzcG9uc2USNQoJYXJ0aWZhY3RzGAEgAygLMiIubWluZGNsYWRlLmFydGlmYWN0LnYxLkFydGlmYWN0UmVmEi8KBHBhZ2UYAiABKAsyIS5taW5kY2xhZGUuY29tbW9uLnYxLlBhZ2VSZXNwb25zZRItCglyZWFkX3RpbWUYAyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIjwKG1Jlc29sdmVBcnRpZmFjdEFsaWFzUmVxdWVzdBIOCgZwYXJlbnQYASABKAkSDQoFYWxpYXMYAiABKAkiVAocUmVzb2x2ZUFydGlmYWN0QWxpYXNSZXNwb25zZRI0CghhcnRpZmFjdBgBIAEoCzIiLm1pbmRjbGFkZS5hcnRpZmFjdC52MS5BcnRpZmFjdFJlZiJWChVDb21taXRBcnRpZmFjdFJlcXVlc3QSPQoHY29tbWFuZBgBIAEoCzIsLm1pbmRjbGFkZS5hcnRpZmFjdC52MS5Db21taXRBcnRpZmFjdENvbW1hbmQiTgoWQ29tbWl0QXJ0aWZhY3RSZXNwb25zZRI0CghhcnRpZmFjdBgBIAEoCzIiLm1pbmRjbGFkZS5hcnRpZmFjdC52MS5BcnRpZmFjdFJlZiLSAQoZUXVhcmFudGluZUFydGlmYWN0UmVxdWVzdBI0Cgdjb250ZXh0GAEgASgLMiMubWluZGNsYWRlLmNvbW1vbi52MS5Db21tYW5kQ29udGV4dBI0CghhcnRpZmFjdBgCIAEoCzIiLm1pbmRjbGFkZS5hcnRpZmFjdC52MS5BcnRpZmFjdFJlZhITCgtyZWFzb25fY29kZRgDIAEoCRI0CghldmlkZW5jZRgEIAMoCzIiLm1pbmRjbGFkZS5hcnRpZmFjdC52MS5FdmlkZW5jZVJlZiJMChpRdWFyYW50aW5lQXJ0aWZhY3RSZXNwb25zZRIuCglvcGVyYXRpb24YASABKAsyGy5taW5kY2xhZGUuam9iLnYxLk9wZXJhdGlvbiK6AQobQWNxdWlyZUFydGlmYWN0TGVhc2VSZXF1ZXN0EjQKB2NvbnRleHQYASABKAsyIy5taW5kY2xhZGUuY29tbW9uLnYxLkNvbW1hbmRDb250ZXh0EjQKCGFydGlmYWN0GAIgASgLMiIubWluZGNsYWRlLmFydGlmYWN0LnYxLkFydGlmYWN0UmVmEi8KC2V4cGlyZV90aW1lGAMgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCJPChxBY3F1aXJlQXJ0aWZhY3RMZWFzZVJlc3BvbnNlEi8KBWxlYXNlGAEgASgLMiAubWluZGNsYWRlLmNvbW1vbi52MS5SZXNvdXJjZVJlZiKSAQobUmVsZWFzZUFydGlmYWN0TGVhc2VSZXF1ZXN0EjQKB2NvbnRleHQYASABKAsyIy5taW5kY2xhZGUuY29tbW9uLnYxLkNvbW1hbmRDb250ZXh0Ei8KBWxlYXNlGAIgASgLMiAubWluZGNsYWRlLmNvbW1vbi52MS5SZXNvdXJjZVJlZhIMCgRldGFnGAMgASgJIh4KHFJlbGVhc2VBcnRpZmFjdExlYXNlUmVzcG9uc2UiyAEKFkFydGlmYWN0U3RhZ2luZ1JlY2VpcHQSFgoOcmVjZWlwdF9kaWdlc3QYASABKAkSNAoIYXJ0aWZhY3QYAiABKAsyIi5taW5kY2xhZGUuYXJ0aWZhY3QudjEuQXJ0aWZhY3RSZWYSLwoLdmVyaWZpZWRfYXQYAyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEi8KC2V4cGlyZV90aW1lGAQgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCLXAwoVQXJ0aWZhY3RVcGxvYWRTZXNzaW9uEgwKBG5hbWUYASABKAkSNAoIYXJ0aWZhY3QYAiABKAsyIi5taW5kY2xhZGUuYXJ0aWZhY3QudjEuQXJ0aWZhY3RSZWYSQgoFc3RhdGUYAyABKA4yMy5taW5kY2xhZGUuaW50ZXJuYWwuYXJ0aWZhY3QudjEuQXJ0aWZhY3RVcGxvYWRTdGF0ZRIYChBjb21taXR0ZWRfb2Zmc2V0GAQgASgDEhgKEG5leHRfY2h1bmtfaW5kZXgYBSABKAMSTwoPc3RhZ2luZ19yZWNlaXB0GAYgASgLMjYubWluZGNsYWRlLmludGVybmFsLmFydGlmYWN0LnYxLkFydGlmYWN0U3RhZ2luZ1JlY2VpcHQSLwoLY3JlYXRlX3RpbWUYByABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEi8KC3VwZGF0ZV90aW1lGAggASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIvCgtleHBpcmVfdGltZRgJIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASEAoIcmV2aXNpb24YCiABKAMSDAoEZXRhZxgLIAEoCSLcAQoaQmVnaW5BcnRpZmFjdFVwbG9hZFJlcXVlc3QSNAoHY29udGV4dBgBIAEoCzIjLm1pbmRjbGFkZS5jb21tb24udjEuQ29tbWFuZENvbnRleHQSDgoGcGFyZW50GAIgASgJEjQKCGFydGlmYWN0GAMgASgLMiIubWluZGNsYWRlLmFydGlmYWN0LnYxLkFydGlmYWN0UmVmEhEKCXVwbG9hZF9pZBgEIAEoCRIvCgtleHBpcmVfdGltZRgFIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAiZAobQmVnaW5BcnRpZmFjdFVwbG9hZFJlc3BvbnNlEkUKBnVwbG9hZBgBIAEoCzI1Lm1pbmRjbGFkZS5pbnRlcm5hbC5hcnRpZmFjdC52MS5BcnRpZmFjdFVwbG9hZFNlc3Npb24itwEKGlVwbG9hZEFydGlmYWN0Q2h1bmtSZXF1ZXN0EjQKB2NvbnRleHQYASABKAsyIy5taW5kY2xhZGUuY29tbW9uLnYxLkNvbW1hbmRDb250ZXh0EgwKBG5hbWUYAiABKAkSEwoLY2h1bmtfaW5kZXgYAyABKAMSDgoGb2Zmc2V0GAQgASgDEgwKBGRhdGEYBSABKAwSFAoMY2h1bmtfZGlnZXN0GAYgASgJEgwKBGV0YWcYByABKAkiZAobVXBsb2FkQXJ0aWZhY3RDaHVua1Jlc3BvbnNlEkUKBnVwbG9hZBgBIAEoCzI1Lm1pbmRjbGFkZS5pbnRlcm5hbC5hcnRpZmFjdC52MS5BcnRpZmFjdFVwbG9hZFNlc3Npb24iKAoYR2V0QXJ0aWZhY3RVcGxvYWRSZXF1ZXN0EgwKBG5hbWUYASABKAkiYgoZR2V0QXJ0aWZhY3RVcGxvYWRSZXNwb25zZRJFCgZ1cGxvYWQYASABKAsyNS5taW5kY2xhZGUuaW50ZXJuYWwuYXJ0aWZhY3QudjEuQXJ0aWZhY3RVcGxvYWRTZXNzaW9uIqoBCh1GaW5hbGl6ZUFydGlmYWN0VXBsb2FkUmVxdWVzdBI0Cgdjb250ZXh0GAEgASgLMiMubWluZGNsYWRlLmNvbW1vbi52MS5Db21tYW5kQ29udGV4dBIMCgRuYW1lGAIgASgJEgwKBGV0YWcYAyABKAkSNwoTcmVjZWlwdF9leHBpcmVfdGltZRgEIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAiuAEKHkZpbmFsaXplQXJ0aWZhY3RVcGxvYWRSZXNwb25zZRJFCgZ1cGxvYWQYASABKAsyNS5taW5kY2xhZGUuaW50ZXJuYWwuYXJ0aWZhY3QudjEuQXJ0aWZhY3RVcGxvYWRTZXNzaW9uEk8KD3N0YWdpbmdfcmVjZWlwdBgCIAEoCzI2Lm1pbmRjbGFkZS5pbnRlcm5hbC5hcnRpZmFjdC52MS5BcnRpZmFjdFN0YWdpbmdSZWNlaXB0IoMBChpBYm9ydEFydGlmYWN0VXBsb2FkUmVxdWVzdBI0Cgdjb250ZXh0GAEgASgLMiMubWluZGNsYWRlLmNvbW1vbi52MS5Db21tYW5kQ29udGV4dBIMCgRuYW1lGAIgASgJEgwKBGV0YWcYAyABKAkSEwoLcmVhc29uX2NvZGUYBCABKAkiZAobQWJvcnRBcnRpZmFjdFVwbG9hZFJlc3BvbnNlEkUKBnVwbG9hZBgBIAEoCzI1Lm1pbmRjbGFkZS5pbnRlcm5hbC5hcnRpZmFjdC52MS5BcnRpZmFjdFVwbG9hZFNlc3Npb24iiAEKH1F1YXJhbnRpbmVBcnRpZmFjdFVwbG9hZFJlcXVlc3QSNAoHY29udGV4dBgBIAEoCzIjLm1pbmRjbGFkZS5jb21tb24udjEuQ29tbWFuZENvbnRleHQSDAoEbmFtZRgCIAEoCRIMCgRldGFnGAMgASgJEhMKC3JlYXNvbl9jb2RlGAQgASgJImkKIFF1YXJhbnRpbmVBcnRpZmFjdFVwbG9hZFJlc3BvbnNlEkUKBnVwbG9hZBgBIAEoCzI1Lm1pbmRjbGFkZS5pbnRlcm5hbC5hcnRpZmFjdC52MS5BcnRpZmFjdFVwbG9hZFNlc3Npb24iYAoXRG93bmxvYWRBcnRpZmFjdFJlcXVlc3QSDAoEbmFtZRgBIAEoCRIOCgZkaWdlc3QYAiABKAkSDgoGb2Zmc2V0GAMgASgDEhcKD21heF9jaHVua19ieXRlcxgEIAEoBSKWAQoYRG93bmxvYWRBcnRpZmFjdFJlc3BvbnNlEjQKCGFydGlmYWN0GAEgASgLMiIubWluZGNsYWRlLmFydGlmYWN0LnYxLkFydGlmYWN0UmVmEg4KBm9mZnNldBgCIAEoAxIMCgRkYXRhGAMgASgMEhQKDGNodW5rX2RpZ2VzdBgEIAEoCRIQCghjb21wbGV0ZRgFIAEoCCqUAgoTQXJ0aWZhY3RVcGxvYWRTdGF0ZRIlCiFBUlRJRkFDVF9VUExPQURfU1RBVEVfVU5TUEVDSUZJRUQQABIeChpBUlRJRkFDVF9VUExPQURfU1RBVEVfT1BFThABEiQKIEFSVElGQUNUX1VQTE9BRF9TVEFURV9GSU5BTElaSU5HEAISIwofQVJUSUZBQ1RfVVBMT0FEX1NUQVRFX0ZJTkFMSVpFRBADEiEKHUFSVElGQUNUX1VQTE9BRF9TVEFURV9BQk9SVEVEEAQSJQohQVJUSUZBQ1RfVVBMT0FEX1NUQVRFX1FVQVJBTlRJTkVEEAUSIQodQVJUSUZBQ1RfVVBMT0FEX1NUQVRFX0VYUElSRUQQBjLUDwoPQXJ0aWZhY3RTZXJ2aWNlEnYKC0dldEFydGlmYWN0EjIubWluZGNsYWRlLmludGVybmFsLmFydGlmYWN0LnYxLkdldEFydGlmYWN0UmVxdWVzdBozLm1pbmRjbGFkZS5pbnRlcm5hbC5hcnRpZmFjdC52MS5HZXRBcnRpZmFjdFJlc3BvbnNlEnwKDUxpc3RBcnRpZmFjdHMSNC5taW5kY2xhZGUuaW50ZXJuYWwuYXJ0aWZhY3QudjEuTGlzdEFydGlmYWN0c1JlcXVlc3QaNS5taW5kY2xhZGUuaW50ZXJuYWwuYXJ0aWZhY3QudjEuTGlzdEFydGlmYWN0c1Jlc3BvbnNlEpEBChRSZXNvbHZlQXJ0aWZhY3RBbGlhcxI7Lm1pbmRjbGFkZS5pbnRlcm5hbC5hcnRpZmFjdC52MS5SZXNvbHZlQXJ0aWZhY3RBbGlhc1JlcXVlc3QaPC5taW5kY2xhZGUuaW50ZXJuYWwuYXJ0aWZhY3QudjEuUmVzb2x2ZUFydGlmYWN0QWxpYXNSZXNwb25zZRJ/Cg5Db21taXRBcnRpZmFjdBI1Lm1pbmRjbGFkZS5pbnRlcm5hbC5hcnRpZmFjdC52MS5Db21taXRBcnRpZmFjdFJlcXVlc3QaNi5taW5kY2xhZGUuaW50ZXJuYWwuYXJ0aWZhY3QudjEuQ29tbWl0QXJ0aWZhY3RSZXNwb25zZRKLAQoSUXVhcmFudGluZUFydGlmYWN0EjkubWluZGNsYWRlLmludGVybmFsLmFydGlmYWN0LnYxLlF1YXJhbnRpbmVBcnRpZmFjdFJlcXVlc3QaOi5taW5kY2xhZGUuaW50ZXJuYWwuYXJ0aWZhY3QudjEuUXVhcmFudGluZUFydGlmYWN0UmVzcG9uc2USkQEKFEFjcXVpcmVBcnRpZmFjdExlYXNlEjsubWluZGNsYWRlLmludGVybmFsLmFydGlmYWN0LnYxLkFjcXVpcmVBcnRpZmFjdExlYXNlUmVxdWVzdBo8Lm1pbmRjbGFkZS5pbnRlcm5hbC5hcnRpZmFjdC52MS5BY3F1aXJlQXJ0aWZhY3RMZWFzZVJlc3BvbnNlEpEBChRSZWxlYXNlQXJ0aWZhY3RMZWFzZRI7Lm1pbmRjbGFkZS5pbnRlcm5hbC5hcnRpZmFjdC52MS5SZWxlYXNlQXJ0aWZhY3RMZWFzZVJlcXVlc3QaPC5taW5kY2xhZGUuaW50ZXJuYWwuYXJ0aWZhY3QudjEuUmVsZWFzZUFydGlmYWN0TGVhc2VSZXNwb25zZRKOAQoTQmVnaW5BcnRpZmFjdFVwbG9hZBI6Lm1pbmRjbGFkZS5pbnRlcm5hbC5hcnRpZmFjdC52MS5CZWdpbkFydGlmYWN0VXBsb2FkUmVxdWVzdBo7Lm1pbmRjbGFkZS5pbnRlcm5hbC5hcnRpZmFjdC52MS5CZWdpbkFydGlmYWN0VXBsb2FkUmVzcG9uc2USjgEKE1VwbG9hZEFydGlmYWN0Q2h1bmsSOi5taW5kY2xhZGUuaW50ZXJuYWwuYXJ0aWZhY3QudjEuVXBsb2FkQXJ0aWZhY3RDaHVua1JlcXVlc3QaOy5taW5kY2xhZGUuaW50ZXJuYWwuYXJ0aWZhY3QudjEuVXBsb2FkQXJ0aWZhY3RDaHVua1Jlc3BvbnNlEogBChFHZXRBcnRpZmFjdFVwbG9hZBI4Lm1pbmRjbGFkZS5pbnRlcm5hbC5hcnRpZmFjdC52MS5HZXRBcnRpZmFjdFVwbG9hZFJlcXVlc3QaOS5taW5kY2xhZGUuaW50ZXJuYWwuYXJ0aWZhY3QudjEuR2V0QXJ0aWZhY3RVcGxvYWRSZXNwb25zZRKXAQoWRmluYWxpemVBcnRpZmFjdFVwbG9hZBI9Lm1pbmRjbGFkZS5pbnRlcm5hbC5hcnRpZmFjdC52MS5GaW5hbGl6ZUFydGlmYWN0VXBsb2FkUmVxdWVzdBo+Lm1pbmRjbGFkZS5pbnRlcm5hbC5hcnRpZmFjdC52MS5GaW5hbGl6ZUFydGlmYWN0VXBsb2FkUmVzcG9uc2USjgEKE0Fib3J0QXJ0aWZhY3RVcGxvYWQSOi5taW5kY2xhZGUuaW50ZXJuYWwuYXJ0aWZhY3QudjEuQWJvcnRBcnRpZmFjdFVwbG9hZFJlcXVlc3QaOy5taW5kY2xhZGUuaW50ZXJuYWwuYXJ0aWZhY3QudjEuQWJvcnRBcnRpZmFjdFVwbG9hZFJlc3BvbnNlEp0BChhRdWFyYW50aW5lQXJ0aWZhY3RVcGxvYWQSPy5taW5kY2xhZGUuaW50ZXJuYWwuYXJ0aWZhY3QudjEuUXVhcmFudGluZUFydGlmYWN0VXBsb2FkUmVxdWVzdBpALm1pbmRjbGFkZS5pbnRlcm5hbC5hcnRpZmFjdC52MS5RdWFyYW50aW5lQXJ0aWZhY3RVcGxvYWRSZXNwb25zZRKHAQoQRG93bmxvYWRBcnRpZmFjdBI3Lm1pbmRjbGFkZS5pbnRlcm5hbC5hcnRpZmFjdC52MS5Eb3dubG9hZEFydGlmYWN0UmVxdWVzdBo4Lm1pbmRjbGFkZS5pbnRlcm5hbC5hcnRpZmFjdC52MS5Eb3dubG9hZEFydGlmYWN0UmVzcG9uc2UwAUJiWmBnaXRodWIuY29tL21pbmRjbGFkZS9taW5kY2xhZGUvcHJvdG9jb2xzL2dlbmVyYXRlZC9nby9pbnRlcm5hbHJwYy9hcnRpZmFjdC92MTtpbnRlcm5hbGFydGlmYWN0djFiBnByb3RvMw", [file_google_protobuf_timestamp, file_proto_mindclade_artifact_v1_artifact_commands, file_proto_mindclade_artifact_v1_artifact_reference, file_proto_mindclade_artifact_v1_evidence_reference, file_proto_mindclade_common_v1_command_context, file_proto_mindclade_common_v1_pagination, file_proto_mindclade_common_v1_resource_reference, file_proto_mindclade_job_v1_operation]);
 
 /**
  * GetArtifactRequest identifies immutable artifact metadata by digest or canonical name.
@@ -366,6 +366,547 @@ export const ReleaseArtifactLeaseResponseSchema: GenMessage<ReleaseArtifactLease
   messageDesc(file_proto_mindclade_internal_artifact_v1_artifact_service, 13);
 
 /**
+ * ArtifactStagingReceipt is an opaque, time-bounded proof that the transfer
+ * plane verified immutable bytes. Provider object names, generations, and
+ * credentials deliberately remain private persistence details.
+ *
+ * @generated from message mindclade.internal.artifact.v1.ArtifactStagingReceipt
+ */
+export type ArtifactStagingReceipt = Message<"mindclade.internal.artifact.v1.ArtifactStagingReceipt"> & {
+  /**
+   * @generated from field: string receipt_digest = 1;
+   */
+  receiptDigest: string;
+
+  /**
+   * @generated from field: mindclade.artifact.v1.ArtifactRef artifact = 2;
+   */
+  artifact?: ArtifactRef;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp verified_at = 3;
+   */
+  verifiedAt?: Timestamp;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp expire_time = 4;
+   */
+  expireTime?: Timestamp;
+};
+
+/**
+ * Describes the message mindclade.internal.artifact.v1.ArtifactStagingReceipt.
+ * Use `create(ArtifactStagingReceiptSchema)` to create a new message.
+ */
+export const ArtifactStagingReceiptSchema: GenMessage<ArtifactStagingReceipt> = /*@__PURE__*/
+  messageDesc(file_proto_mindclade_internal_artifact_v1_artifact_service, 14);
+
+/**
+ * ArtifactUploadSession describes resumable progress without returning bytes
+ * or provider storage metadata.
+ *
+ * @generated from message mindclade.internal.artifact.v1.ArtifactUploadSession
+ */
+export type ArtifactUploadSession = Message<"mindclade.internal.artifact.v1.ArtifactUploadSession"> & {
+  /**
+   * @generated from field: string name = 1;
+   */
+  name: string;
+
+  /**
+   * @generated from field: mindclade.artifact.v1.ArtifactRef artifact = 2;
+   */
+  artifact?: ArtifactRef;
+
+  /**
+   * @generated from field: mindclade.internal.artifact.v1.ArtifactUploadState state = 3;
+   */
+  state: ArtifactUploadState;
+
+  /**
+   * @generated from field: int64 committed_offset = 4;
+   */
+  committedOffset: bigint;
+
+  /**
+   * @generated from field: int64 next_chunk_index = 5;
+   */
+  nextChunkIndex: bigint;
+
+  /**
+   * @generated from field: mindclade.internal.artifact.v1.ArtifactStagingReceipt staging_receipt = 6;
+   */
+  stagingReceipt?: ArtifactStagingReceipt;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp create_time = 7;
+   */
+  createTime?: Timestamp;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp update_time = 8;
+   */
+  updateTime?: Timestamp;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp expire_time = 9;
+   */
+  expireTime?: Timestamp;
+
+  /**
+   * @generated from field: int64 revision = 10;
+   */
+  revision: bigint;
+
+  /**
+   * @generated from field: string etag = 11;
+   */
+  etag: string;
+};
+
+/**
+ * Describes the message mindclade.internal.artifact.v1.ArtifactUploadSession.
+ * Use `create(ArtifactUploadSessionSchema)` to create a new message.
+ */
+export const ArtifactUploadSessionSchema: GenMessage<ArtifactUploadSession> = /*@__PURE__*/
+  messageDesc(file_proto_mindclade_internal_artifact_v1_artifact_service, 15);
+
+/**
+ * BeginArtifactUploadRequest creates an idempotent, bounded upload session for
+ * a caller-known immutable content identity.
+ *
+ * @generated from message mindclade.internal.artifact.v1.BeginArtifactUploadRequest
+ */
+export type BeginArtifactUploadRequest = Message<"mindclade.internal.artifact.v1.BeginArtifactUploadRequest"> & {
+  /**
+   * @generated from field: mindclade.common.v1.CommandContext context = 1;
+   */
+  context?: CommandContext;
+
+  /**
+   * @generated from field: string parent = 2;
+   */
+  parent: string;
+
+  /**
+   * @generated from field: mindclade.artifact.v1.ArtifactRef artifact = 3;
+   */
+  artifact?: ArtifactRef;
+
+  /**
+   * @generated from field: string upload_id = 4;
+   */
+  uploadId: string;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp expire_time = 5;
+   */
+  expireTime?: Timestamp;
+};
+
+/**
+ * Describes the message mindclade.internal.artifact.v1.BeginArtifactUploadRequest.
+ * Use `create(BeginArtifactUploadRequestSchema)` to create a new message.
+ */
+export const BeginArtifactUploadRequestSchema: GenMessage<BeginArtifactUploadRequest> = /*@__PURE__*/
+  messageDesc(file_proto_mindclade_internal_artifact_v1_artifact_service, 16);
+
+/**
+ * @generated from message mindclade.internal.artifact.v1.BeginArtifactUploadResponse
+ */
+export type BeginArtifactUploadResponse = Message<"mindclade.internal.artifact.v1.BeginArtifactUploadResponse"> & {
+  /**
+   * @generated from field: mindclade.internal.artifact.v1.ArtifactUploadSession upload = 1;
+   */
+  upload?: ArtifactUploadSession;
+};
+
+/**
+ * Describes the message mindclade.internal.artifact.v1.BeginArtifactUploadResponse.
+ * Use `create(BeginArtifactUploadResponseSchema)` to create a new message.
+ */
+export const BeginArtifactUploadResponseSchema: GenMessage<BeginArtifactUploadResponse> = /*@__PURE__*/
+  messageDesc(file_proto_mindclade_internal_artifact_v1_artifact_service, 17);
+
+/**
+ * UploadArtifactChunkRequest appends exactly one contiguous, independently
+ * checksummed chunk. Identical offset/digest retries are replay-safe.
+ *
+ * @generated from message mindclade.internal.artifact.v1.UploadArtifactChunkRequest
+ */
+export type UploadArtifactChunkRequest = Message<"mindclade.internal.artifact.v1.UploadArtifactChunkRequest"> & {
+  /**
+   * @generated from field: mindclade.common.v1.CommandContext context = 1;
+   */
+  context?: CommandContext;
+
+  /**
+   * @generated from field: string name = 2;
+   */
+  name: string;
+
+  /**
+   * @generated from field: int64 chunk_index = 3;
+   */
+  chunkIndex: bigint;
+
+  /**
+   * @generated from field: int64 offset = 4;
+   */
+  offset: bigint;
+
+  /**
+   * @generated from field: bytes data = 5;
+   */
+  data: Uint8Array;
+
+  /**
+   * @generated from field: string chunk_digest = 6;
+   */
+  chunkDigest: string;
+
+  /**
+   * @generated from field: string etag = 7;
+   */
+  etag: string;
+};
+
+/**
+ * Describes the message mindclade.internal.artifact.v1.UploadArtifactChunkRequest.
+ * Use `create(UploadArtifactChunkRequestSchema)` to create a new message.
+ */
+export const UploadArtifactChunkRequestSchema: GenMessage<UploadArtifactChunkRequest> = /*@__PURE__*/
+  messageDesc(file_proto_mindclade_internal_artifact_v1_artifact_service, 18);
+
+/**
+ * @generated from message mindclade.internal.artifact.v1.UploadArtifactChunkResponse
+ */
+export type UploadArtifactChunkResponse = Message<"mindclade.internal.artifact.v1.UploadArtifactChunkResponse"> & {
+  /**
+   * @generated from field: mindclade.internal.artifact.v1.ArtifactUploadSession upload = 1;
+   */
+  upload?: ArtifactUploadSession;
+};
+
+/**
+ * Describes the message mindclade.internal.artifact.v1.UploadArtifactChunkResponse.
+ * Use `create(UploadArtifactChunkResponseSchema)` to create a new message.
+ */
+export const UploadArtifactChunkResponseSchema: GenMessage<UploadArtifactChunkResponse> = /*@__PURE__*/
+  messageDesc(file_proto_mindclade_internal_artifact_v1_artifact_service, 19);
+
+/**
+ * @generated from message mindclade.internal.artifact.v1.GetArtifactUploadRequest
+ */
+export type GetArtifactUploadRequest = Message<"mindclade.internal.artifact.v1.GetArtifactUploadRequest"> & {
+  /**
+   * @generated from field: string name = 1;
+   */
+  name: string;
+};
+
+/**
+ * Describes the message mindclade.internal.artifact.v1.GetArtifactUploadRequest.
+ * Use `create(GetArtifactUploadRequestSchema)` to create a new message.
+ */
+export const GetArtifactUploadRequestSchema: GenMessage<GetArtifactUploadRequest> = /*@__PURE__*/
+  messageDesc(file_proto_mindclade_internal_artifact_v1_artifact_service, 20);
+
+/**
+ * @generated from message mindclade.internal.artifact.v1.GetArtifactUploadResponse
+ */
+export type GetArtifactUploadResponse = Message<"mindclade.internal.artifact.v1.GetArtifactUploadResponse"> & {
+  /**
+   * @generated from field: mindclade.internal.artifact.v1.ArtifactUploadSession upload = 1;
+   */
+  upload?: ArtifactUploadSession;
+};
+
+/**
+ * Describes the message mindclade.internal.artifact.v1.GetArtifactUploadResponse.
+ * Use `create(GetArtifactUploadResponseSchema)` to create a new message.
+ */
+export const GetArtifactUploadResponseSchema: GenMessage<GetArtifactUploadResponse> = /*@__PURE__*/
+  messageDesc(file_proto_mindclade_internal_artifact_v1_artifact_service, 21);
+
+/**
+ * FinalizeArtifactUploadRequest seals a complete session and creates an opaque
+ * staging receipt. The receipt lifetime may be shorter than the session's
+ * maximum policy but never longer than seven days.
+ *
+ * @generated from message mindclade.internal.artifact.v1.FinalizeArtifactUploadRequest
+ */
+export type FinalizeArtifactUploadRequest = Message<"mindclade.internal.artifact.v1.FinalizeArtifactUploadRequest"> & {
+  /**
+   * @generated from field: mindclade.common.v1.CommandContext context = 1;
+   */
+  context?: CommandContext;
+
+  /**
+   * @generated from field: string name = 2;
+   */
+  name: string;
+
+  /**
+   * @generated from field: string etag = 3;
+   */
+  etag: string;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp receipt_expire_time = 4;
+   */
+  receiptExpireTime?: Timestamp;
+};
+
+/**
+ * Describes the message mindclade.internal.artifact.v1.FinalizeArtifactUploadRequest.
+ * Use `create(FinalizeArtifactUploadRequestSchema)` to create a new message.
+ */
+export const FinalizeArtifactUploadRequestSchema: GenMessage<FinalizeArtifactUploadRequest> = /*@__PURE__*/
+  messageDesc(file_proto_mindclade_internal_artifact_v1_artifact_service, 22);
+
+/**
+ * @generated from message mindclade.internal.artifact.v1.FinalizeArtifactUploadResponse
+ */
+export type FinalizeArtifactUploadResponse = Message<"mindclade.internal.artifact.v1.FinalizeArtifactUploadResponse"> & {
+  /**
+   * @generated from field: mindclade.internal.artifact.v1.ArtifactUploadSession upload = 1;
+   */
+  upload?: ArtifactUploadSession;
+
+  /**
+   * @generated from field: mindclade.internal.artifact.v1.ArtifactStagingReceipt staging_receipt = 2;
+   */
+  stagingReceipt?: ArtifactStagingReceipt;
+};
+
+/**
+ * Describes the message mindclade.internal.artifact.v1.FinalizeArtifactUploadResponse.
+ * Use `create(FinalizeArtifactUploadResponseSchema)` to create a new message.
+ */
+export const FinalizeArtifactUploadResponseSchema: GenMessage<FinalizeArtifactUploadResponse> = /*@__PURE__*/
+  messageDesc(file_proto_mindclade_internal_artifact_v1_artifact_service, 23);
+
+/**
+ * @generated from message mindclade.internal.artifact.v1.AbortArtifactUploadRequest
+ */
+export type AbortArtifactUploadRequest = Message<"mindclade.internal.artifact.v1.AbortArtifactUploadRequest"> & {
+  /**
+   * @generated from field: mindclade.common.v1.CommandContext context = 1;
+   */
+  context?: CommandContext;
+
+  /**
+   * @generated from field: string name = 2;
+   */
+  name: string;
+
+  /**
+   * @generated from field: string etag = 3;
+   */
+  etag: string;
+
+  /**
+   * @generated from field: string reason_code = 4;
+   */
+  reasonCode: string;
+};
+
+/**
+ * Describes the message mindclade.internal.artifact.v1.AbortArtifactUploadRequest.
+ * Use `create(AbortArtifactUploadRequestSchema)` to create a new message.
+ */
+export const AbortArtifactUploadRequestSchema: GenMessage<AbortArtifactUploadRequest> = /*@__PURE__*/
+  messageDesc(file_proto_mindclade_internal_artifact_v1_artifact_service, 24);
+
+/**
+ * @generated from message mindclade.internal.artifact.v1.AbortArtifactUploadResponse
+ */
+export type AbortArtifactUploadResponse = Message<"mindclade.internal.artifact.v1.AbortArtifactUploadResponse"> & {
+  /**
+   * @generated from field: mindclade.internal.artifact.v1.ArtifactUploadSession upload = 1;
+   */
+  upload?: ArtifactUploadSession;
+};
+
+/**
+ * Describes the message mindclade.internal.artifact.v1.AbortArtifactUploadResponse.
+ * Use `create(AbortArtifactUploadResponseSchema)` to create a new message.
+ */
+export const AbortArtifactUploadResponseSchema: GenMessage<AbortArtifactUploadResponse> = /*@__PURE__*/
+  messageDesc(file_proto_mindclade_internal_artifact_v1_artifact_service, 25);
+
+/**
+ * @generated from message mindclade.internal.artifact.v1.QuarantineArtifactUploadRequest
+ */
+export type QuarantineArtifactUploadRequest = Message<"mindclade.internal.artifact.v1.QuarantineArtifactUploadRequest"> & {
+  /**
+   * @generated from field: mindclade.common.v1.CommandContext context = 1;
+   */
+  context?: CommandContext;
+
+  /**
+   * @generated from field: string name = 2;
+   */
+  name: string;
+
+  /**
+   * @generated from field: string etag = 3;
+   */
+  etag: string;
+
+  /**
+   * @generated from field: string reason_code = 4;
+   */
+  reasonCode: string;
+};
+
+/**
+ * Describes the message mindclade.internal.artifact.v1.QuarantineArtifactUploadRequest.
+ * Use `create(QuarantineArtifactUploadRequestSchema)` to create a new message.
+ */
+export const QuarantineArtifactUploadRequestSchema: GenMessage<QuarantineArtifactUploadRequest> = /*@__PURE__*/
+  messageDesc(file_proto_mindclade_internal_artifact_v1_artifact_service, 26);
+
+/**
+ * @generated from message mindclade.internal.artifact.v1.QuarantineArtifactUploadResponse
+ */
+export type QuarantineArtifactUploadResponse = Message<"mindclade.internal.artifact.v1.QuarantineArtifactUploadResponse"> & {
+  /**
+   * @generated from field: mindclade.internal.artifact.v1.ArtifactUploadSession upload = 1;
+   */
+  upload?: ArtifactUploadSession;
+};
+
+/**
+ * Describes the message mindclade.internal.artifact.v1.QuarantineArtifactUploadResponse.
+ * Use `create(QuarantineArtifactUploadResponseSchema)` to create a new message.
+ */
+export const QuarantineArtifactUploadResponseSchema: GenMessage<QuarantineArtifactUploadResponse> = /*@__PURE__*/
+  messageDesc(file_proto_mindclade_internal_artifact_v1_artifact_service, 27);
+
+/**
+ * DownloadArtifactRequest selects committed immutable content. The server
+ * resolves and pins the private provider generation before streaming.
+ *
+ * @generated from message mindclade.internal.artifact.v1.DownloadArtifactRequest
+ */
+export type DownloadArtifactRequest = Message<"mindclade.internal.artifact.v1.DownloadArtifactRequest"> & {
+  /**
+   * @generated from field: string name = 1;
+   */
+  name: string;
+
+  /**
+   * @generated from field: string digest = 2;
+   */
+  digest: string;
+
+  /**
+   * @generated from field: int64 offset = 3;
+   */
+  offset: bigint;
+
+  /**
+   * @generated from field: int32 max_chunk_bytes = 4;
+   */
+  maxChunkBytes: number;
+};
+
+/**
+ * Describes the message mindclade.internal.artifact.v1.DownloadArtifactRequest.
+ * Use `create(DownloadArtifactRequestSchema)` to create a new message.
+ */
+export const DownloadArtifactRequestSchema: GenMessage<DownloadArtifactRequest> = /*@__PURE__*/
+  messageDesc(file_proto_mindclade_internal_artifact_v1_artifact_service, 28);
+
+/**
+ * @generated from message mindclade.internal.artifact.v1.DownloadArtifactResponse
+ */
+export type DownloadArtifactResponse = Message<"mindclade.internal.artifact.v1.DownloadArtifactResponse"> & {
+  /**
+   * @generated from field: mindclade.artifact.v1.ArtifactRef artifact = 1;
+   */
+  artifact?: ArtifactRef;
+
+  /**
+   * @generated from field: int64 offset = 2;
+   */
+  offset: bigint;
+
+  /**
+   * @generated from field: bytes data = 3;
+   */
+  data: Uint8Array;
+
+  /**
+   * @generated from field: string chunk_digest = 4;
+   */
+  chunkDigest: string;
+
+  /**
+   * @generated from field: bool complete = 5;
+   */
+  complete: boolean;
+};
+
+/**
+ * Describes the message mindclade.internal.artifact.v1.DownloadArtifactResponse.
+ * Use `create(DownloadArtifactResponseSchema)` to create a new message.
+ */
+export const DownloadArtifactResponseSchema: GenMessage<DownloadArtifactResponse> = /*@__PURE__*/
+  messageDesc(file_proto_mindclade_internal_artifact_v1_artifact_service, 29);
+
+/**
+ * ArtifactUploadState is the durable transfer-plane lifecycle. Terminal states
+ * are immutable; expired and quarantined sessions cannot be resumed.
+ *
+ * @generated from enum mindclade.internal.artifact.v1.ArtifactUploadState
+ */
+export enum ArtifactUploadState {
+  /**
+   * @generated from enum value: ARTIFACT_UPLOAD_STATE_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: ARTIFACT_UPLOAD_STATE_OPEN = 1;
+   */
+  OPEN = 1,
+
+  /**
+   * @generated from enum value: ARTIFACT_UPLOAD_STATE_FINALIZING = 2;
+   */
+  FINALIZING = 2,
+
+  /**
+   * @generated from enum value: ARTIFACT_UPLOAD_STATE_FINALIZED = 3;
+   */
+  FINALIZED = 3,
+
+  /**
+   * @generated from enum value: ARTIFACT_UPLOAD_STATE_ABORTED = 4;
+   */
+  ABORTED = 4,
+
+  /**
+   * @generated from enum value: ARTIFACT_UPLOAD_STATE_QUARANTINED = 5;
+   */
+  QUARANTINED = 5,
+
+  /**
+   * @generated from enum value: ARTIFACT_UPLOAD_STATE_EXPIRED = 6;
+   */
+  EXPIRED = 6,
+}
+
+/**
+ * Describes the enum mindclade.internal.artifact.v1.ArtifactUploadState.
+ */
+export const ArtifactUploadStateSchema: GenEnum<ArtifactUploadState> = /*@__PURE__*/
+  enumDesc(file_proto_mindclade_internal_artifact_v1_artifact_service, 0);
+
+/**
  * ArtifactService owns artifact metadata, aliases, commit, quarantine, and retention RPCs.
  *
  * @generated from service mindclade.internal.artifact.v1.ArtifactService
@@ -440,6 +981,76 @@ export const ArtifactService: GenService<{
     methodKind: "unary";
     input: typeof ReleaseArtifactLeaseRequestSchema;
     output: typeof ReleaseArtifactLeaseResponseSchema;
+  },
+  /**
+   * BeginArtifactUpload creates a durable resumable transfer session.
+   *
+   * @generated from rpc mindclade.internal.artifact.v1.ArtifactService.BeginArtifactUpload
+   */
+  beginArtifactUpload: {
+    methodKind: "unary";
+    input: typeof BeginArtifactUploadRequestSchema;
+    output: typeof BeginArtifactUploadResponseSchema;
+  },
+  /**
+   * UploadArtifactChunk appends one contiguous, digest-verified chunk.
+   *
+   * @generated from rpc mindclade.internal.artifact.v1.ArtifactService.UploadArtifactChunk
+   */
+  uploadArtifactChunk: {
+    methodKind: "unary";
+    input: typeof UploadArtifactChunkRequestSchema;
+    output: typeof UploadArtifactChunkResponseSchema;
+  },
+  /**
+   * GetArtifactUpload returns authoritative resume offset and lifecycle state.
+   *
+   * @generated from rpc mindclade.internal.artifact.v1.ArtifactService.GetArtifactUpload
+   */
+  getArtifactUpload: {
+    methodKind: "unary";
+    input: typeof GetArtifactUploadRequestSchema;
+    output: typeof GetArtifactUploadResponseSchema;
+  },
+  /**
+   * FinalizeArtifactUpload composes, verifies, and issues an opaque staging receipt.
+   *
+   * @generated from rpc mindclade.internal.artifact.v1.ArtifactService.FinalizeArtifactUpload
+   */
+  finalizeArtifactUpload: {
+    methodKind: "unary";
+    input: typeof FinalizeArtifactUploadRequestSchema;
+    output: typeof FinalizeArtifactUploadResponseSchema;
+  },
+  /**
+   * AbortArtifactUpload makes an incomplete session permanently unusable.
+   *
+   * @generated from rpc mindclade.internal.artifact.v1.ArtifactService.AbortArtifactUpload
+   */
+  abortArtifactUpload: {
+    methodKind: "unary";
+    input: typeof AbortArtifactUploadRequestSchema;
+    output: typeof AbortArtifactUploadResponseSchema;
+  },
+  /**
+   * QuarantineArtifactUpload records a governed integrity failure.
+   *
+   * @generated from rpc mindclade.internal.artifact.v1.ArtifactService.QuarantineArtifactUpload
+   */
+  quarantineArtifactUpload: {
+    methodKind: "unary";
+    input: typeof QuarantineArtifactUploadRequestSchema;
+    output: typeof QuarantineArtifactUploadResponseSchema;
+  },
+  /**
+   * DownloadArtifact streams committed content from one generation-pinned object.
+   *
+   * @generated from rpc mindclade.internal.artifact.v1.ArtifactService.DownloadArtifact
+   */
+  downloadArtifact: {
+    methodKind: "server_streaming";
+    input: typeof DownloadArtifactRequestSchema;
+    output: typeof DownloadArtifactResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_proto_mindclade_internal_artifact_v1_artifact_service, 0);

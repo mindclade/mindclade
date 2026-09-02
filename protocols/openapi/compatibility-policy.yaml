@@ -3,17 +3,22 @@ kind: OpenApiCompatibilityPolicy
 metadata:
   name: public-api-v1
   owner: contract-governance
-  status: active-clean-v1-baseline
+  status: candidate-unratified
 spec:
   authority:
-    source: protocols/openapi/external-api.yaml
-    baseline: protocols/compatibility/baselines/openapi.lock.json
+    descriptorSource: protocols/proto/mindclade/api/v1/mindclade_service.proto
+    curationOverlay: protocols/openapi/external-api.yaml
+    rawProjection: protocols/openapi/raw/mindclade.openapi.yaml
+    curatedCandidate: protocols/openapi/curated/mindclade.openapi.yaml
+    publishedCandidate: protocols/openapi/published/mindclade.openapi.yaml
+    candidate: protocols/compatibility/baselines/openapi.lock.json
     generation: protocols/openapi/generation.yaml
+    rule: Public descriptors own runtime semantics; curation may add documentation metadata but cannot change bindings or ProtoJSON shapes.
   versioning:
     profile: v1
-    sdkMajor: 1
-    baselineRule: One clean-v1 reset is allowed before the first supported external release.
-    postBaselineRule: Additive compatibility is mandatory after this baseline is committed.
+    ratified: false
+    baselineRule: The checked descriptor and OpenAPI artifacts are review candidates, not a supported compatibility baseline.
+    postBaselineRule: Additive compatibility becomes mandatory only after training-vertical ratification establishes the v1 baseline.
     deprecation:
       documentationRequired: true
       replacementRequired: true
@@ -58,43 +63,43 @@ spec:
     - bulk-and-sensitive-values-use-artifactref
     - artifact-downloads-carry-verifiable-content-digest
     - public-schemas-never-reference-mindclade-internal-packages
-  baselineUpdate:
+  candidateUpdate:
     requiredEvidence:
       - parsed-openapi-3.1-document
       - resolved-local-references
       - unique-operation-ids
+      - exact-descriptor-gateway-binding-parity
+      - exact-descriptor-protojson-component-parity
+      - curated-published-byte-identity
+      - no-inactive-rpc-advertisement
       - compatibility-classification
       - exact-source-digests
-      - generated-sdk-provider-plan-parity
+      - native-internal-sdk-conformance
+      - optional-rest-provider-plan-if-enabled
       - affected-consumer-test-results
     approvals:
       - contract-governance
       - developer-experience
       - security-for-auth-data-or-admin-changes
     forbidden:
-      - baseline-update-to-hide-unreviewed-breaking-change
+      - candidate-update-to-hide-unreviewed-breaking-change
       - provider-specific-contract-fork
       - selective-language-baseline
       - claim-hosted-or-release-evidence-from-source-only-checks
-  sdkSkew:
-    supportedApiProfiles: [v1]
-    supportedSdkMajors: [1]
-    providerSemanticParityRequired: true
-    providers:
-      primary: forge
-      implementationFoundation: oagen
-      preferredShadow: fern
-      benchmarks: [speakeasy]
-      legacyComparisons: [stainless]
-    providerRules:
-      mindcladePolicyIsAuthoritative: true
-      providerNativeConfigurationIsDerived: true
-      externalProviderStateIsAuthoritative: false
-      stainlessRequiresExistingLegacyProject: true
-    generatedSourceIsAuthority: false
+  internalSdk:
+    authority: protobuf
+    generator: buf-and-pinned-native
+    generatedRoot: protocols/generated
+    facadeRoot: internal/sdk
+    languages: [go, python, rust, typescript]
+    generatedTransportIsAuthoritative: true
+    handwrittenWireModelsAllowed: false
+    optionalRestProviders: [fern, speakeasy]
+    optionalRestProvidersAreAuthority: false
+    providerConfigurationIsDerived: true
   rollback:
     preserveReadableTerminalOperations: true
     preserveImmutableArtifactReferences: true
-    restoreSourceAndAllProviderOutputsTogether: true
+    restoreContractGeneratedTransportAndInternalFacadesTogether: true
     allowSelectiveLanguageRollback: false
     publishOrDeployAuthorizedByThisPolicy: false

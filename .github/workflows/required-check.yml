@@ -47,6 +47,10 @@ jobs:
       buildkite_pipeline: ${{ secrets.MINDCLADE_BUILDKITE_PIPELINE }}
 
   buildkite_required:
+    permissions:
+      actions: read
+      contents: read
+      id-token: write
     needs: [classify, dispatch]
     if: needs.dispatch.result == 'success'
     uses: mindclade/.github/.github/workflows/reusable-required-check.yml@c097ef86c25991a400050c13e78574e8d3d8c071

@@ -40,10 +40,20 @@ class InferenceServiceStub:
                 request_serializer=proto_dot_mindclade_dot_internal_dot_inference_dot_v1_dot_inference__service__pb2.SubmitInferenceRequest.SerializeToString,
                 response_deserializer=proto_dot_mindclade_dot_internal_dot_inference_dot_v1_dot_inference__service__pb2.SubmitInferenceResponse.FromString,
                 _registered_method=True)
+        self.GetInferenceRequest = channel.unary_unary(
+                '/mindclade.internal.inference.v1.InferenceService/GetInferenceRequest',
+                request_serializer=proto_dot_mindclade_dot_internal_dot_inference_dot_v1_dot_inference__service__pb2.GetInferenceRequestRequest.SerializeToString,
+                response_deserializer=proto_dot_mindclade_dot_internal_dot_inference_dot_v1_dot_inference__service__pb2.GetInferenceRequestResponse.FromString,
+                _registered_method=True)
         self.GetInferenceResult = channel.unary_unary(
                 '/mindclade.internal.inference.v1.InferenceService/GetInferenceResult',
                 request_serializer=proto_dot_mindclade_dot_internal_dot_inference_dot_v1_dot_inference__service__pb2.GetInferenceResultRequest.SerializeToString,
                 response_deserializer=proto_dot_mindclade_dot_internal_dot_inference_dot_v1_dot_inference__service__pb2.GetInferenceResultResponse.FromString,
+                _registered_method=True)
+        self.CommitInferenceResult = channel.unary_unary(
+                '/mindclade.internal.inference.v1.InferenceService/CommitInferenceResult',
+                request_serializer=proto_dot_mindclade_dot_internal_dot_inference_dot_v1_dot_inference__service__pb2.CommitInferenceResultRequest.SerializeToString,
+                response_deserializer=proto_dot_mindclade_dot_internal_dot_inference_dot_v1_dot_inference__service__pb2.CommitInferenceResultResponse.FromString,
                 _registered_method=True)
         self.WatchInference = channel.unary_stream(
                 '/mindclade.internal.inference.v1.InferenceService/WatchInference',
@@ -63,8 +73,22 @@ class InferenceServiceServicer:
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def GetInferenceRequest(self, request, context):
+        """GetInferenceRequest returns immutable execution intent to authorized workers.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
     def GetInferenceResult(self, request, context):
         """GetInferenceResult reads a terminal result without reconstructing it from stream state.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def CommitInferenceResult(self, request, context):
+        """CommitInferenceResult rejects stale attempts and atomically publishes terminal truth.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -85,10 +109,20 @@ def add_InferenceServiceServicer_to_server(servicer, server):
                     request_deserializer=proto_dot_mindclade_dot_internal_dot_inference_dot_v1_dot_inference__service__pb2.SubmitInferenceRequest.FromString,
                     response_serializer=proto_dot_mindclade_dot_internal_dot_inference_dot_v1_dot_inference__service__pb2.SubmitInferenceResponse.SerializeToString,
             ),
+            'GetInferenceRequest': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetInferenceRequest,
+                    request_deserializer=proto_dot_mindclade_dot_internal_dot_inference_dot_v1_dot_inference__service__pb2.GetInferenceRequestRequest.FromString,
+                    response_serializer=proto_dot_mindclade_dot_internal_dot_inference_dot_v1_dot_inference__service__pb2.GetInferenceRequestResponse.SerializeToString,
+            ),
             'GetInferenceResult': grpc.unary_unary_rpc_method_handler(
                     servicer.GetInferenceResult,
                     request_deserializer=proto_dot_mindclade_dot_internal_dot_inference_dot_v1_dot_inference__service__pb2.GetInferenceResultRequest.FromString,
                     response_serializer=proto_dot_mindclade_dot_internal_dot_inference_dot_v1_dot_inference__service__pb2.GetInferenceResultResponse.SerializeToString,
+            ),
+            'CommitInferenceResult': grpc.unary_unary_rpc_method_handler(
+                    servicer.CommitInferenceResult,
+                    request_deserializer=proto_dot_mindclade_dot_internal_dot_inference_dot_v1_dot_inference__service__pb2.CommitInferenceResultRequest.FromString,
+                    response_serializer=proto_dot_mindclade_dot_internal_dot_inference_dot_v1_dot_inference__service__pb2.CommitInferenceResultResponse.SerializeToString,
             ),
             'WatchInference': grpc.unary_stream_rpc_method_handler(
                     servicer.WatchInference,
@@ -135,6 +169,33 @@ class InferenceService:
             _registered_method=True)
 
     @staticmethod
+    def GetInferenceRequest(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/mindclade.internal.inference.v1.InferenceService/GetInferenceRequest',
+            proto_dot_mindclade_dot_internal_dot_inference_dot_v1_dot_inference__service__pb2.GetInferenceRequestRequest.SerializeToString,
+            proto_dot_mindclade_dot_internal_dot_inference_dot_v1_dot_inference__service__pb2.GetInferenceRequestResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
     def GetInferenceResult(request,
             target,
             options=(),
@@ -151,6 +212,33 @@ class InferenceService:
             '/mindclade.internal.inference.v1.InferenceService/GetInferenceResult',
             proto_dot_mindclade_dot_internal_dot_inference_dot_v1_dot_inference__service__pb2.GetInferenceResultRequest.SerializeToString,
             proto_dot_mindclade_dot_internal_dot_inference_dot_v1_dot_inference__service__pb2.GetInferenceResultResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def CommitInferenceResult(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/mindclade.internal.inference.v1.InferenceService/CommitInferenceResult',
+            proto_dot_mindclade_dot_internal_dot_inference_dot_v1_dot_inference__service__pb2.CommitInferenceResultRequest.SerializeToString,
+            proto_dot_mindclade_dot_internal_dot_inference_dot_v1_dot_inference__service__pb2.CommitInferenceResultResponse.FromString,
             options,
             channel_credentials,
             insecure,

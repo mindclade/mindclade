@@ -62,7 +62,6 @@ pub mod model_service_client {
             ModelServiceClient::new(InterceptedService::new(inner, interceptor))
         }
         /// Compress requests with the given encoding.
-        ///
         /// This requires the server to support it otherwise it might respond with an
         /// error.
         #[must_use]
@@ -77,7 +76,6 @@ pub mod model_service_client {
             self
         }
         /// Limits the maximum size of a decoded message.
-        ///
         /// Default: `4MB`
         #[must_use]
         pub fn max_decoding_message_size(mut self, limit: usize) -> Self {
@@ -85,7 +83,6 @@ pub mod model_service_client {
             self
         }
         /// Limits the maximum size of an encoded message.
-        ///
         /// Default: `usize::MAX`
         #[must_use]
         pub fn max_encoding_message_size(mut self, limit: usize) -> Self {
@@ -473,7 +470,6 @@ pub mod model_service_server {
             self
         }
         /// Limits the maximum size of a decoded message.
-        ///
         /// Default: `4MB`
         #[must_use]
         pub fn max_decoding_message_size(mut self, limit: usize) -> Self {
@@ -481,7 +477,6 @@ pub mod model_service_server {
             self
         }
         /// Limits the maximum size of an encoded message.
-        ///
         /// Default: `usize::MAX`
         #[must_use]
         pub fn max_encoding_message_size(mut self, limit: usize) -> Self {

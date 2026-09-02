@@ -4,37 +4,49 @@
 
 import type { GenFile, GenMessage } from "@bufbuild/protobuf/codegenv2";
 import { fileDesc, messageDesc } from "@bufbuild/protobuf/codegenv2";
+import type { Timestamp } from "@bufbuild/protobuf/wkt";
+import { file_google_protobuf_timestamp } from "@bufbuild/protobuf/wkt";
+import type { Attempt } from "./attempt_pb.js";
+import { file_proto_mindclade_job_v1_attempt } from "./attempt_pb.js";
+import type { LeaseFence } from "./lease_fencing_pb.js";
+import { file_proto_mindclade_job_v1_lease_fencing } from "./lease_fencing_pb.js";
+import type { Run } from "./run_pb.js";
+import { file_proto_mindclade_job_v1_run } from "./run_pb.js";
 import type { Message } from "@bufbuild/protobuf";
 
 /**
  * Describes the file events/mindclade/job/v1/attempt_completed.proto.
  */
 export const file_events_mindclade_job_v1_attempt_completed: GenFile = /*@__PURE__*/
-  fileDesc("Ci9ldmVudHMvbWluZGNsYWRlL2pvYi92MS9hdHRlbXB0X2NvbXBsZXRlZC5wcm90bxIXbWluZGNsYWRlLmV2ZW50cy5qb2IudjEidQoQQXR0ZW1wdENvbXBsZXRlZBISCgphdHRlbXB0X2lkGAEgASgJEhMKC2xlYXNlX2Vwb2NoGAIgASgEEhUKDXJlc3VsdF9kaWdlc3QYAyABKAkSIQoZY29tcGxldGlvbl9yZWNlaXB0X2RpZ2VzdBgEIAEoCUJEWkJnaXRodWIuY29tL21pbmRjbGFkZS9taW5kY2xhZGUvcHJvdG9jb2xzL2dlbmVyYXRlZC9nby9qb2IvdjE7am9idjFiBnByb3RvMw");
+  fileDesc("Ci9ldmVudHMvbWluZGNsYWRlL2pvYi92MS9hdHRlbXB0X2NvbXBsZXRlZC5wcm90bxIXbWluZGNsYWRlLmV2ZW50cy5qb2IudjEiwQEKEEF0dGVtcHRDb21wbGV0ZWQSKgoHYXR0ZW1wdBgBIAEoCzIZLm1pbmRjbGFkZS5qb2IudjEuQXR0ZW1wdBIiCgNydW4YAiABKAsyFS5taW5kY2xhZGUuam9iLnYxLlJ1bhIrCgVmZW5jZRgDIAEoCzIcLm1pbmRjbGFkZS5qb2IudjEuTGVhc2VGZW5jZRIwCgxjb21wbGV0ZWRfYXQYBCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wQkRaQmdpdGh1Yi5jb20vbWluZGNsYWRlL21pbmRjbGFkZS9wcm90b2NvbHMvZ2VuZXJhdGVkL2dvL2pvYi92MTtqb2J2MWIGcHJvdG8z", [file_google_protobuf_timestamp, file_proto_mindclade_job_v1_attempt, file_proto_mindclade_job_v1_lease_fencing, file_proto_mindclade_job_v1_run]);
 
 /**
+ * AttemptCompleted is emitted only after the authoritative current fence has
+ * accepted a terminal attempt update. Outputs remain immutable artifact
+ * references on Attempt and Run.
+ *
  * @generated from message mindclade.events.job.v1.AttemptCompleted
  */
 export type AttemptCompleted = Message<"mindclade.events.job.v1.AttemptCompleted"> & {
   /**
-   * @generated from field: string attempt_id = 1;
+   * @generated from field: mindclade.job.v1.Attempt attempt = 1;
    */
-  attemptId: string;
+  attempt?: Attempt;
 
   /**
-   * @generated from field: uint64 lease_epoch = 2;
+   * @generated from field: mindclade.job.v1.Run run = 2;
    */
-  leaseEpoch: bigint;
+  run?: Run;
 
   /**
-   * @generated from field: string result_digest = 3;
+   * @generated from field: mindclade.job.v1.LeaseFence fence = 3;
    */
-  resultDigest: string;
+  fence?: LeaseFence;
 
   /**
-   * @generated from field: string completion_receipt_digest = 4;
+   * @generated from field: google.protobuf.Timestamp completed_at = 4;
    */
-  completionReceiptDigest: string;
+  completedAt?: Timestamp;
 };
 
 /**

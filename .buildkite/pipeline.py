@@ -141,6 +141,31 @@ def self_test() -> None:
                     )
     if len(organization_references) != 12:
         raise AssertionError("organization workflow caller inventory is incomplete")
+    permission_boundaries = {
+        ("buildkite-dispatch.yml", "verify"): (
+            "      actions: read\n"
+            "      contents: read\n"
+            "      id-token: write\n"
+        ),
+        ("codeql.yml", "python"): (
+            "      contents: read\n      security-events: write\n"
+        ),
+        ("required-check.yml", "buildkite_required"): (
+            "      actions: read\n"
+            "      contents: read\n"
+            "      id-token: write\n"
+        ),
+        ("scorecard.yml", "scorecard"): (
+            "      contents: read\n      security-events: write\n"
+        ),
+    }
+    for (workflow_name, job_name), permissions in permission_boundaries.items():
+        source = (workflow_root / workflow_name).read_text(encoding="utf-8")
+        required_permissions = f"  {job_name}:\n    permissions:\n{permissions}"
+        if required_permissions not in source:
+            raise AssertionError(
+                f"{workflow_name} does not grant the reviewed reusable-workflow permissions"
+            )
     loader = (BUILDKITE_ROOT / "pipeline.yml").read_text(encoding="utf-8")
     if "reject-invalid-execution-tier" not in loader:
         raise AssertionError("static pipeline can succeed without a valid execution tier")

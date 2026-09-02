@@ -22,12 +22,41 @@ type Object struct {
 	TenantID string
 	Digest   string
 	Size     int64
+	// Generation pins the immutable provider version without exposing a URI.
+	// Local adapters leave it zero.
+	Generation int64
 }
 
 // ObjectStore writes immutable bytes outside control-plane transactions.
 type ObjectStore interface {
-	Put(context.Context, string, io.Reader) (Object, error)
+	// Put verifies the caller-supplied digest and exact size before making bytes
+	// visible at their immutable content-addressed location.
+	Put(context.Context, string, string, int64, io.Reader) (Object, error)
 	Open(context.Context, string, string) (io.ReadCloser, error)
+	// Verify pins the expected immutable generation and revalidates content.
+	Verify(context.Context, Object) error
+}
+
+// UploadChunk is private transfer-plane storage metadata. Generation pins the
+// immutable provider object used during composition and never crosses an RPC
+// boundary.
+type UploadChunk struct {
+	Index      int64
+	Offset     int64
+	Size       int64
+	Digest     string
+	Generation int64
+}
+
+// TransferObjectStore is the private byte plane used by resumable artifact
+// RPCs. SQL owns session state; this interface owns only immutable GCS bytes.
+// Implementations must make PutChunk and Finalize idempotent for identical
+// identities and must pin provider generations for compose and download.
+type TransferObjectStore interface {
+	PutChunk(context.Context, string, string, UploadChunk, []byte) (UploadChunk, error)
+	Finalize(context.Context, string, string, []UploadChunk, string, int64) (Object, error)
+	OpenPinned(context.Context, Object, int64) (io.ReadCloser, error)
+	DeleteChunks(context.Context, string, string, []UploadChunk) error
 }
 
 type Reservation struct {
@@ -157,6 +186,12 @@ func (s FilesystemCAS) CleanupOrphans(before time.Time) (int, error) {
 	return removed, nil
 }
 
+// Quarantine removes a staged object from the finalize path after semantic
+// validation fails. The quarantine remains private implementation state.
+func (s FilesystemCAS) Quarantine(staged StagedObject) {
+	s.quarantine(staged)
+}
+
 func (s FilesystemCAS) quarantine(staged StagedObject) {
 	directory := filepath.Join(s.Root, "quarantine")
 	if os.MkdirAll(directory, 0o700) != nil {
@@ -166,7 +201,7 @@ func (s FilesystemCAS) quarantine(staged StagedObject) {
 }
 
 func validDigest(digest string) bool {
-	if !strings.HasPrefix(digest, "sha256:") || len(digest) != len("sha256:")+64 {
+	if !strings.HasPrefix(digest, "sha256:") || len(digest) != len("sha256:")+64 || digest != strings.ToLower(digest) {
 		return false
 	}
 	_, err := hex.DecodeString(strings.TrimPrefix(digest, "sha256:"))

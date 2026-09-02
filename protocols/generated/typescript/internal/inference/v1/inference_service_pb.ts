@@ -6,12 +6,18 @@ import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegen
 import { fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
 import type { Timestamp } from "@bufbuild/protobuf/wkt";
 import { file_google_protobuf_timestamp } from "@bufbuild/protobuf/wkt";
+import type { CommandContext } from "../../../common/v1/command_context_pb.js";
+import { file_proto_mindclade_common_v1_command_context } from "../../../common/v1/command_context_pb.js";
+import type { ResourceRef } from "../../../common/v1/resource_reference_pb.js";
+import { file_proto_mindclade_common_v1_resource_reference } from "../../../common/v1/resource_reference_pb.js";
 import type { InferenceRequest } from "../../../inference/v1/inference_request_pb.js";
 import { file_proto_mindclade_inference_v1_inference_request } from "../../../inference/v1/inference_request_pb.js";
 import type { InferenceResult } from "../../../inference/v1/inference_result_pb.js";
 import { file_proto_mindclade_inference_v1_inference_result } from "../../../inference/v1/inference_result_pb.js";
 import type { InferenceStreamCursor, InferenceStreamMessage } from "../../../inference/v1/inference_stream_pb.js";
 import { file_proto_mindclade_inference_v1_inference_stream } from "../../../inference/v1/inference_stream_pb.js";
+import type { LeaseFence } from "../../../job/v1/lease_fencing_pb.js";
+import { file_proto_mindclade_job_v1_lease_fencing } from "../../../job/v1/lease_fencing_pb.js";
 import type { Operation } from "../../../job/v1/operation_pb.js";
 import { file_proto_mindclade_job_v1_operation } from "../../../job/v1/operation_pb.js";
 import type { Message } from "@bufbuild/protobuf";
@@ -20,7 +26,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file proto/mindclade/internal/inference/v1/inference_service.proto.
  */
 export const file_proto_mindclade_internal_inference_v1_inference_service: GenFile = /*@__PURE__*/
-  fileDesc("Cj1wcm90by9taW5kY2xhZGUvaW50ZXJuYWwvaW5mZXJlbmNlL3YxL2luZmVyZW5jZV9zZXJ2aWNlLnByb3RvEh9taW5kY2xhZGUuaW50ZXJuYWwuaW5mZXJlbmNlLnYxIl0KFlN1Ym1pdEluZmVyZW5jZVJlcXVlc3QSQwoRaW5mZXJlbmNlX3JlcXVlc3QYASABKAsyKC5taW5kY2xhZGUuaW5mZXJlbmNlLnYxLkluZmVyZW5jZVJlcXVlc3QiSQoXU3VibWl0SW5mZXJlbmNlUmVzcG9uc2USLgoJb3BlcmF0aW9uGAEgASgLMhsubWluZGNsYWRlLmpvYi52MS5PcGVyYXRpb24iMwoZR2V0SW5mZXJlbmNlUmVzdWx0UmVxdWVzdBIWCg5vcGVyYXRpb25fbmFtZRgBIAEoCSKFAQoaR2V0SW5mZXJlbmNlUmVzdWx0UmVzcG9uc2USNwoGcmVzdWx0GAEgASgLMicubWluZGNsYWRlLmluZmVyZW5jZS52MS5JbmZlcmVuY2VSZXN1bHQSLgoJb3BlcmF0aW9uGAIgASgLMhsubWluZGNsYWRlLmpvYi52MS5PcGVyYXRpb24inAEKFVdhdGNoSW5mZXJlbmNlUmVxdWVzdBIWCg5vcGVyYXRpb25fbmFtZRgBIAEoCRI9CgZjdXJzb3IYAiABKAsyLS5taW5kY2xhZGUuaW5mZXJlbmNlLnYxLkluZmVyZW5jZVN0cmVhbUN1cnNvchIsCghkZWFkbGluZRgDIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAiWQoWV2F0Y2hJbmZlcmVuY2VSZXNwb25zZRI/CgdtZXNzYWdlGAEgASgLMi4ubWluZGNsYWRlLmluZmVyZW5jZS52MS5JbmZlcmVuY2VTdHJlYW1NZXNzYWdlMq8DChBJbmZlcmVuY2VTZXJ2aWNlEoQBCg9TdWJtaXRJbmZlcmVuY2USNy5taW5kY2xhZGUuaW50ZXJuYWwuaW5mZXJlbmNlLnYxLlN1Ym1pdEluZmVyZW5jZVJlcXVlc3QaOC5taW5kY2xhZGUuaW50ZXJuYWwuaW5mZXJlbmNlLnYxLlN1Ym1pdEluZmVyZW5jZVJlc3BvbnNlEo0BChJHZXRJbmZlcmVuY2VSZXN1bHQSOi5taW5kY2xhZGUuaW50ZXJuYWwuaW5mZXJlbmNlLnYxLkdldEluZmVyZW5jZVJlc3VsdFJlcXVlc3QaOy5taW5kY2xhZGUuaW50ZXJuYWwuaW5mZXJlbmNlLnYxLkdldEluZmVyZW5jZVJlc3VsdFJlc3BvbnNlEoMBCg5XYXRjaEluZmVyZW5jZRI2Lm1pbmRjbGFkZS5pbnRlcm5hbC5pbmZlcmVuY2UudjEuV2F0Y2hJbmZlcmVuY2VSZXF1ZXN0GjcubWluZGNsYWRlLmludGVybmFsLmluZmVyZW5jZS52MS5XYXRjaEluZmVyZW5jZVJlc3BvbnNlMAFCYVpfZ2l0aHViLmNvbS9taW5kY2xhZGUvbWluZGNsYWRlL3Byb3RvY29scy9nZW5lcmF0ZWQvZ28vaW50ZXJuYWwvaW5mZXJlbmNlL3YxO2ludGVybmFsaW5mZXJlbmNldjFiBnByb3RvMw", [file_google_protobuf_timestamp, file_proto_mindclade_inference_v1_inference_request, file_proto_mindclade_inference_v1_inference_result, file_proto_mindclade_inference_v1_inference_stream, file_proto_mindclade_job_v1_operation]);
+  fileDesc("Cj1wcm90by9taW5kY2xhZGUvaW50ZXJuYWwvaW5mZXJlbmNlL3YxL2luZmVyZW5jZV9zZXJ2aWNlLnByb3RvEh9taW5kY2xhZGUuaW50ZXJuYWwuaW5mZXJlbmNlLnYxIl0KFlN1Ym1pdEluZmVyZW5jZVJlcXVlc3QSQwoRaW5mZXJlbmNlX3JlcXVlc3QYASABKAsyKC5taW5kY2xhZGUuaW5mZXJlbmNlLnYxLkluZmVyZW5jZVJlcXVlc3QiSQoXU3VibWl0SW5mZXJlbmNlUmVzcG9uc2USLgoJb3BlcmF0aW9uGAEgASgLMhsubWluZGNsYWRlLmpvYi52MS5PcGVyYXRpb24iKgoaR2V0SW5mZXJlbmNlUmVxdWVzdFJlcXVlc3QSDAoEbmFtZRgBIAEoCSJiChtHZXRJbmZlcmVuY2VSZXF1ZXN0UmVzcG9uc2USQwoRaW5mZXJlbmNlX3JlcXVlc3QYASABKAsyKC5taW5kY2xhZGUuaW5mZXJlbmNlLnYxLkluZmVyZW5jZVJlcXVlc3QiMwoZR2V0SW5mZXJlbmNlUmVzdWx0UmVxdWVzdBIWCg5vcGVyYXRpb25fbmFtZRgBIAEoCSKFAQoaR2V0SW5mZXJlbmNlUmVzdWx0UmVzcG9uc2USNwoGcmVzdWx0GAEgASgLMicubWluZGNsYWRlLmluZmVyZW5jZS52MS5JbmZlcmVuY2VSZXN1bHQSLgoJb3BlcmF0aW9uGAIgASgLMhsubWluZGNsYWRlLmpvYi52MS5PcGVyYXRpb24inAEKFVdhdGNoSW5mZXJlbmNlUmVxdWVzdBIWCg5vcGVyYXRpb25fbmFtZRgBIAEoCRI9CgZjdXJzb3IYAiABKAsyLS5taW5kY2xhZGUuaW5mZXJlbmNlLnYxLkluZmVyZW5jZVN0cmVhbUN1cnNvchIsCghkZWFkbGluZRgDIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAiWQoWV2F0Y2hJbmZlcmVuY2VSZXNwb25zZRI/CgdtZXNzYWdlGAEgASgLMi4ubWluZGNsYWRlLmluZmVyZW5jZS52MS5JbmZlcmVuY2VTdHJlYW1NZXNzYWdlIo8CChxDb21taXRJbmZlcmVuY2VSZXN1bHRSZXF1ZXN0EjQKB2NvbnRleHQYASABKAsyIy5taW5kY2xhZGUuY29tbW9uLnYxLkNvbW1hbmRDb250ZXh0EjsKEWluZmVyZW5jZV9yZXF1ZXN0GAIgASgLMiAubWluZGNsYWRlLmNvbW1vbi52MS5SZXNvdXJjZVJlZhIrCgVmZW5jZRgDIAEoCzIcLm1pbmRjbGFkZS5qb2IudjEuTGVhc2VGZW5jZRI3CgZyZXN1bHQYBCABKAsyJy5taW5kY2xhZGUuaW5mZXJlbmNlLnYxLkluZmVyZW5jZVJlc3VsdBIWCg5yZXF1ZXN0X2RpZ2VzdBgFIAEoCSKIAQodQ29tbWl0SW5mZXJlbmNlUmVzdWx0UmVzcG9uc2USNwoGcmVzdWx0GAEgASgLMicubWluZGNsYWRlLmluZmVyZW5jZS52MS5JbmZlcmVuY2VSZXN1bHQSLgoJb3BlcmF0aW9uGAIgASgLMhsubWluZGNsYWRlLmpvYi52MS5PcGVyYXRpb24y2wUKEEluZmVyZW5jZVNlcnZpY2UShAEKD1N1Ym1pdEluZmVyZW5jZRI3Lm1pbmRjbGFkZS5pbnRlcm5hbC5pbmZlcmVuY2UudjEuU3VibWl0SW5mZXJlbmNlUmVxdWVzdBo4Lm1pbmRjbGFkZS5pbnRlcm5hbC5pbmZlcmVuY2UudjEuU3VibWl0SW5mZXJlbmNlUmVzcG9uc2USkAEKE0dldEluZmVyZW5jZVJlcXVlc3QSOy5taW5kY2xhZGUuaW50ZXJuYWwuaW5mZXJlbmNlLnYxLkdldEluZmVyZW5jZVJlcXVlc3RSZXF1ZXN0GjwubWluZGNsYWRlLmludGVybmFsLmluZmVyZW5jZS52MS5HZXRJbmZlcmVuY2VSZXF1ZXN0UmVzcG9uc2USjQEKEkdldEluZmVyZW5jZVJlc3VsdBI6Lm1pbmRjbGFkZS5pbnRlcm5hbC5pbmZlcmVuY2UudjEuR2V0SW5mZXJlbmNlUmVzdWx0UmVxdWVzdBo7Lm1pbmRjbGFkZS5pbnRlcm5hbC5pbmZlcmVuY2UudjEuR2V0SW5mZXJlbmNlUmVzdWx0UmVzcG9uc2USlgEKFUNvbW1pdEluZmVyZW5jZVJlc3VsdBI9Lm1pbmRjbGFkZS5pbnRlcm5hbC5pbmZlcmVuY2UudjEuQ29tbWl0SW5mZXJlbmNlUmVzdWx0UmVxdWVzdBo+Lm1pbmRjbGFkZS5pbnRlcm5hbC5pbmZlcmVuY2UudjEuQ29tbWl0SW5mZXJlbmNlUmVzdWx0UmVzcG9uc2USgwEKDldhdGNoSW5mZXJlbmNlEjYubWluZGNsYWRlLmludGVybmFsLmluZmVyZW5jZS52MS5XYXRjaEluZmVyZW5jZVJlcXVlc3QaNy5taW5kY2xhZGUuaW50ZXJuYWwuaW5mZXJlbmNlLnYxLldhdGNoSW5mZXJlbmNlUmVzcG9uc2UwAUJkWmJnaXRodWIuY29tL21pbmRjbGFkZS9taW5kY2xhZGUvcHJvdG9jb2xzL2dlbmVyYXRlZC9nby9pbnRlcm5hbHJwYy9pbmZlcmVuY2UvdjE7aW50ZXJuYWxpbmZlcmVuY2V2MWIGcHJvdG8z", [file_google_protobuf_timestamp, file_proto_mindclade_common_v1_command_context, file_proto_mindclade_common_v1_resource_reference, file_proto_mindclade_inference_v1_inference_request, file_proto_mindclade_inference_v1_inference_result, file_proto_mindclade_inference_v1_inference_stream, file_proto_mindclade_job_v1_lease_fencing, file_proto_mindclade_job_v1_operation]);
 
 /**
  * SubmitInferenceRequest wraps bounded inference intent after edge validation.
@@ -61,6 +67,44 @@ export const SubmitInferenceResponseSchema: GenMessage<SubmitInferenceResponse> 
   messageDesc(file_proto_mindclade_internal_inference_v1_inference_service, 1);
 
 /**
+ * GetInferenceRequestRequest identifies one admitted authoritative request.
+ *
+ * @generated from message mindclade.internal.inference.v1.GetInferenceRequestRequest
+ */
+export type GetInferenceRequestRequest = Message<"mindclade.internal.inference.v1.GetInferenceRequestRequest"> & {
+  /**
+   * @generated from field: string name = 1;
+   */
+  name: string;
+};
+
+/**
+ * Describes the message mindclade.internal.inference.v1.GetInferenceRequestRequest.
+ * Use `create(GetInferenceRequestRequestSchema)` to create a new message.
+ */
+export const GetInferenceRequestRequestSchema: GenMessage<GetInferenceRequestRequest> = /*@__PURE__*/
+  messageDesc(file_proto_mindclade_internal_inference_v1_inference_service, 2);
+
+/**
+ * GetInferenceRequestResponse returns the frozen request workers must execute.
+ *
+ * @generated from message mindclade.internal.inference.v1.GetInferenceRequestResponse
+ */
+export type GetInferenceRequestResponse = Message<"mindclade.internal.inference.v1.GetInferenceRequestResponse"> & {
+  /**
+   * @generated from field: mindclade.inference.v1.InferenceRequest inference_request = 1;
+   */
+  inferenceRequest?: InferenceRequest;
+};
+
+/**
+ * Describes the message mindclade.internal.inference.v1.GetInferenceRequestResponse.
+ * Use `create(GetInferenceRequestResponseSchema)` to create a new message.
+ */
+export const GetInferenceRequestResponseSchema: GenMessage<GetInferenceRequestResponse> = /*@__PURE__*/
+  messageDesc(file_proto_mindclade_internal_inference_v1_inference_service, 3);
+
+/**
  * GetInferenceResultRequest identifies an operation's immutable terminal result.
  *
  * @generated from message mindclade.internal.inference.v1.GetInferenceResultRequest
@@ -77,7 +121,7 @@ export type GetInferenceResultRequest = Message<"mindclade.internal.inference.v1
  * Use `create(GetInferenceResultRequestSchema)` to create a new message.
  */
 export const GetInferenceResultRequestSchema: GenMessage<GetInferenceResultRequest> = /*@__PURE__*/
-  messageDesc(file_proto_mindclade_internal_inference_v1_inference_service, 2);
+  messageDesc(file_proto_mindclade_internal_inference_v1_inference_service, 4);
 
 /**
  * GetInferenceResultResponse returns the typed result and durable operation.
@@ -101,7 +145,7 @@ export type GetInferenceResultResponse = Message<"mindclade.internal.inference.v
  * Use `create(GetInferenceResultResponseSchema)` to create a new message.
  */
 export const GetInferenceResultResponseSchema: GenMessage<GetInferenceResultResponse> = /*@__PURE__*/
-  messageDesc(file_proto_mindclade_internal_inference_v1_inference_service, 3);
+  messageDesc(file_proto_mindclade_internal_inference_v1_inference_service, 5);
 
 /**
  * WatchInferenceRequest resumes bounded status/candidate updates from a durable cursor.
@@ -130,7 +174,7 @@ export type WatchInferenceRequest = Message<"mindclade.internal.inference.v1.Wat
  * Use `create(WatchInferenceRequestSchema)` to create a new message.
  */
 export const WatchInferenceRequestSchema: GenMessage<WatchInferenceRequest> = /*@__PURE__*/
-  messageDesc(file_proto_mindclade_internal_inference_v1_inference_service, 4);
+  messageDesc(file_proto_mindclade_internal_inference_v1_inference_service, 6);
 
 /**
  * WatchInferenceResponse carries one resumable typed update.
@@ -149,7 +193,70 @@ export type WatchInferenceResponse = Message<"mindclade.internal.inference.v1.Wa
  * Use `create(WatchInferenceResponseSchema)` to create a new message.
  */
 export const WatchInferenceResponseSchema: GenMessage<WatchInferenceResponse> = /*@__PURE__*/
-  messageDesc(file_proto_mindclade_internal_inference_v1_inference_service, 5);
+  messageDesc(file_proto_mindclade_internal_inference_v1_inference_service, 7);
+
+/**
+ * CommitInferenceResultRequest binds terminal truth to the current fenced attempt.
+ *
+ * @generated from message mindclade.internal.inference.v1.CommitInferenceResultRequest
+ */
+export type CommitInferenceResultRequest = Message<"mindclade.internal.inference.v1.CommitInferenceResultRequest"> & {
+  /**
+   * @generated from field: mindclade.common.v1.CommandContext context = 1;
+   */
+  context?: CommandContext;
+
+  /**
+   * @generated from field: mindclade.common.v1.ResourceRef inference_request = 2;
+   */
+  inferenceRequest?: ResourceRef;
+
+  /**
+   * @generated from field: mindclade.job.v1.LeaseFence fence = 3;
+   */
+  fence?: LeaseFence;
+
+  /**
+   * @generated from field: mindclade.inference.v1.InferenceResult result = 4;
+   */
+  result?: InferenceResult;
+
+  /**
+   * @generated from field: string request_digest = 5;
+   */
+  requestDigest: string;
+};
+
+/**
+ * Describes the message mindclade.internal.inference.v1.CommitInferenceResultRequest.
+ * Use `create(CommitInferenceResultRequestSchema)` to create a new message.
+ */
+export const CommitInferenceResultRequestSchema: GenMessage<CommitInferenceResultRequest> = /*@__PURE__*/
+  messageDesc(file_proto_mindclade_internal_inference_v1_inference_service, 8);
+
+/**
+ * CommitInferenceResultResponse returns accepted immutable result and operation.
+ *
+ * @generated from message mindclade.internal.inference.v1.CommitInferenceResultResponse
+ */
+export type CommitInferenceResultResponse = Message<"mindclade.internal.inference.v1.CommitInferenceResultResponse"> & {
+  /**
+   * @generated from field: mindclade.inference.v1.InferenceResult result = 1;
+   */
+  result?: InferenceResult;
+
+  /**
+   * @generated from field: mindclade.job.v1.Operation operation = 2;
+   */
+  operation?: Operation;
+};
+
+/**
+ * Describes the message mindclade.internal.inference.v1.CommitInferenceResultResponse.
+ * Use `create(CommitInferenceResultResponseSchema)` to create a new message.
+ */
+export const CommitInferenceResultResponseSchema: GenMessage<CommitInferenceResultResponse> = /*@__PURE__*/
+  messageDesc(file_proto_mindclade_internal_inference_v1_inference_service, 9);
 
 /**
  * InferenceService owns internal submission, terminal-result, and resumable-stream RPCs.
@@ -168,6 +275,16 @@ export const InferenceService: GenService<{
     output: typeof SubmitInferenceResponseSchema;
   },
   /**
+   * GetInferenceRequest returns immutable execution intent to authorized workers.
+   *
+   * @generated from rpc mindclade.internal.inference.v1.InferenceService.GetInferenceRequest
+   */
+  getInferenceRequest: {
+    methodKind: "unary";
+    input: typeof GetInferenceRequestRequestSchema;
+    output: typeof GetInferenceRequestResponseSchema;
+  },
+  /**
    * GetInferenceResult reads a terminal result without reconstructing it from stream state.
    *
    * @generated from rpc mindclade.internal.inference.v1.InferenceService.GetInferenceResult
@@ -176,6 +293,16 @@ export const InferenceService: GenService<{
     methodKind: "unary";
     input: typeof GetInferenceResultRequestSchema;
     output: typeof GetInferenceResultResponseSchema;
+  },
+  /**
+   * CommitInferenceResult rejects stale attempts and atomically publishes terminal truth.
+   *
+   * @generated from rpc mindclade.internal.inference.v1.InferenceService.CommitInferenceResult
+   */
+  commitInferenceResult: {
+    methodKind: "unary";
+    input: typeof CommitInferenceResultRequestSchema;
+    output: typeof CommitInferenceResultResponseSchema;
   },
   /**
    * WatchInference streams resumable convenience updates over durable operation state.

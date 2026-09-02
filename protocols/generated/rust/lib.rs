@@ -78,6 +78,9 @@ pub mod model {
 pub mod policy {
     pub mod v1;
 }
+pub mod schema {
+    pub mod v1;
+}
 pub mod training {
     pub mod v1;
 }

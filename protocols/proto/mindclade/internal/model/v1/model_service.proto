@@ -9,7 +9,7 @@ import "proto/mindclade/model/v1/model.proto";
 import "proto/mindclade/model/v1/model_commands.proto";
 import "proto/mindclade/model/v1/model_release.proto";
 
-option go_package = "github.com/mindclade/mindclade/protocols/generated/go/internal/model/v1;internalmodelv1";
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/model/v1;internalmodelv1";
 
 // RegisterModelRequest wraps the canonical idempotent model command.
 message RegisterModelRequest {

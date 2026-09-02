@@ -1,3 +1,4 @@
+# Curated source for generated candidate stages; semantic edits require matching public descriptors.
 openapi: 3.1.0
 info:
   title: Mindclade Public API
@@ -32,57 +33,10 @@ x-mindclade-authority:
 tags:
   - name: Operations
     description: Durable status, polling, and cancellation.
-  - name: Artifacts
-    description: Immutable artifact metadata and digest-verified transfer.
-  - name: Inference
-    description: Asynchronous inference submission and results.
-  - name: Datasets
-    description: Dataset resources and immutable releases.
-  - name: Models
-    description: Model resources and immutable releases.
   - name: Training
     description: Durable training runs and checkpoints.
-  - name: Evaluation
-    description: Durable evaluation runs and immutable results.
-  - name: Agents
-    description: Versioned agent definitions and durable runs.
-  - name: Workflows
-    description: Versioned workflow definitions, runs, and approvals.
-  - name: Administration
-    description: Explicitly scoped tenant, project, and audit administration.
 
 paths:
-  /v1/tenants/{tenant}/projects/{project}/inferenceOperations:
-    post:
-      tags: [Inference]
-      operationId: submitInference
-      summary: Submit durable inference work
-      description: Returns a pollable Operation and never holds the request open for execution.
-      parameters:
-        - $ref: '#/components/parameters/TenantId'
-        - $ref: '#/components/parameters/ProjectId'
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/AbsoluteDeadline'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/InferenceSubmission'
-      responses:
-        '202':
-          $ref: '#/components/responses/AcceptedOperation'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthenticated'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '409':
-          $ref: '#/components/responses/Conflict'
-        '429':
-          $ref: '#/components/responses/RateLimited'
-
   /v1/tenants/{tenant}/projects/{project}/operations/{operation}:
     get:
       tags: [Operations]
@@ -177,6 +131,10 @@ paths:
               schema:
                 type: string
                 const: no-store
+            X-Accel-Buffering:
+              schema:
+                type: string
+                const: 'no'
           content:
             text/event-stream:
               schema:
@@ -187,459 +145,6 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
-
-  /v1/tenants/{tenant}/projects/{project}/artifacts/{artifact}:
-    get:
-      tags: [Artifacts]
-      operationId: getArtifact
-      summary: Get immutable artifact metadata
-      parameters:
-        - $ref: '#/components/parameters/TenantId'
-        - $ref: '#/components/parameters/ProjectId'
-        - $ref: '#/components/parameters/ArtifactId'
-        - $ref: '#/components/parameters/IfNoneMatch'
-      responses:
-        '200':
-          description: Immutable metadata and reference.
-          headers:
-            ETag:
-              $ref: '#/components/headers/ETag'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Artifact'
-        '304':
-          $ref: '#/components/responses/NotModified'
-        '401':
-          $ref: '#/components/responses/Unauthenticated'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-
-  /v1/tenants/{tenant}/projects/{project}/artifacts/{artifact}:download:
-    get:
-      tags: [Artifacts]
-      operationId: downloadArtifact
-      summary: Download immutable artifact content
-      description: Clients verify Content-Digest and the ArtifactRef size before atomic commit.
-      parameters:
-        - $ref: '#/components/parameters/TenantId'
-        - $ref: '#/components/parameters/ProjectId'
-        - $ref: '#/components/parameters/ArtifactId'
-        - name: Range
-          in: header
-          required: false
-          description: Optional bounded byte range.
-          schema:
-            type: string
-            pattern: '^bytes=[0-9]+-[0-9]*$'
-      responses:
-        '200':
-          description: Complete immutable artifact bytes.
-          headers:
-            Content-Digest:
-              $ref: '#/components/headers/ContentDigest'
-            Accept-Ranges:
-              schema:
-                type: string
-                const: bytes
-          content:
-            application/octet-stream:
-              schema:
-                type: string
-                format: binary
-        '206':
-          description: Requested byte range.
-          headers:
-            Content-Digest:
-              $ref: '#/components/headers/ContentDigest'
-            Content-Range:
-              schema:
-                type: string
-          content:
-            application/octet-stream:
-              schema:
-                type: string
-                format: binary
-        '401':
-          $ref: '#/components/responses/Unauthenticated'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '416':
-          $ref: '#/components/responses/BadRequest'
-
-  /v1/tenants/{tenant}/projects/{project}/datasets:
-    get:
-      tags: [Datasets]
-      operationId: listDatasets
-      summary: List datasets
-      parameters:
-        - $ref: '#/components/parameters/TenantId'
-        - $ref: '#/components/parameters/ProjectId'
-        - $ref: '#/components/parameters/PageSize'
-        - $ref: '#/components/parameters/PageToken'
-        - $ref: '#/components/parameters/Filter'
-        - $ref: '#/components/parameters/OrderBy'
-      responses:
-        '200':
-          description: Stable page of authorized datasets.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DatasetList'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthenticated'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-    post:
-      tags: [Datasets]
-      operationId: createDataset
-      summary: Create a dataset resource
-      parameters:
-        - $ref: '#/components/parameters/TenantId'
-        - $ref: '#/components/parameters/ProjectId'
-        - $ref: '#/components/parameters/IdempotencyKey'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/DatasetCreate'
-      responses:
-        '201':
-          description: Dataset created.
-          headers:
-            ETag:
-              $ref: '#/components/headers/ETag'
-            Location:
-              $ref: '#/components/headers/Location'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Dataset'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthenticated'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '409':
-          $ref: '#/components/responses/Conflict'
-
-  /v1/tenants/{tenant}/projects/{project}/datasets/{dataset}:
-    get:
-      tags: [Datasets]
-      operationId: getDataset
-      summary: Get a dataset
-      parameters:
-        - $ref: '#/components/parameters/TenantId'
-        - $ref: '#/components/parameters/ProjectId'
-        - $ref: '#/components/parameters/DatasetId'
-        - $ref: '#/components/parameters/IfNoneMatch'
-      responses:
-        '200':
-          description: Dataset resource.
-          headers:
-            ETag:
-              $ref: '#/components/headers/ETag'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Dataset'
-        '304':
-          $ref: '#/components/responses/NotModified'
-        '401':
-          $ref: '#/components/responses/Unauthenticated'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-    patch:
-      tags: [Datasets]
-      operationId: updateDataset
-      summary: Update mutable dataset fields
-      parameters:
-        - $ref: '#/components/parameters/TenantId'
-        - $ref: '#/components/parameters/ProjectId'
-        - $ref: '#/components/parameters/DatasetId'
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/IfMatch'
-      requestBody:
-        required: true
-        content:
-          application/merge-patch+json:
-            schema:
-              $ref: '#/components/schemas/DatasetUpdate'
-      responses:
-        '200':
-          description: Updated dataset.
-          headers:
-            ETag:
-              $ref: '#/components/headers/ETag'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Dataset'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthenticated'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '409':
-          $ref: '#/components/responses/Conflict'
-
-  /v1/tenants/{tenant}/projects/{project}/datasets/{dataset}/releases:
-    get:
-      tags: [Datasets]
-      operationId: listDatasetReleases
-      summary: List immutable dataset releases
-      parameters:
-        - $ref: '#/components/parameters/TenantId'
-        - $ref: '#/components/parameters/ProjectId'
-        - $ref: '#/components/parameters/DatasetId'
-        - $ref: '#/components/parameters/PageSize'
-        - $ref: '#/components/parameters/PageToken'
-      responses:
-        '200':
-          description: Stable page of releases.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DatasetReleaseList'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthenticated'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-    post:
-      tags: [Datasets]
-      operationId: createDatasetRelease
-      summary: Publish an immutable dataset release
-      parameters:
-        - $ref: '#/components/parameters/TenantId'
-        - $ref: '#/components/parameters/ProjectId'
-        - $ref: '#/components/parameters/DatasetId'
-        - $ref: '#/components/parameters/IdempotencyKey'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/DatasetReleaseCreate'
-      responses:
-        '201':
-          description: Immutable dataset release created.
-          headers:
-            ETag:
-              $ref: '#/components/headers/ETag'
-            Location:
-              $ref: '#/components/headers/Location'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DatasetRelease'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthenticated'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '409':
-          $ref: '#/components/responses/Conflict'
-
-  /v1/tenants/{tenant}/projects/{project}/models:
-    get:
-      tags: [Models]
-      operationId: listModels
-      summary: List models
-      parameters:
-        - $ref: '#/components/parameters/TenantId'
-        - $ref: '#/components/parameters/ProjectId'
-        - $ref: '#/components/parameters/PageSize'
-        - $ref: '#/components/parameters/PageToken'
-        - $ref: '#/components/parameters/Filter'
-        - $ref: '#/components/parameters/OrderBy'
-      responses:
-        '200':
-          description: Stable page of models.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ModelList'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthenticated'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-    post:
-      tags: [Models]
-      operationId: createModel
-      summary: Register a model resource
-      parameters:
-        - $ref: '#/components/parameters/TenantId'
-        - $ref: '#/components/parameters/ProjectId'
-        - $ref: '#/components/parameters/IdempotencyKey'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ModelCreate'
-      responses:
-        '201':
-          description: Model registered.
-          headers:
-            ETag:
-              $ref: '#/components/headers/ETag'
-            Location:
-              $ref: '#/components/headers/Location'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Model'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthenticated'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '409':
-          $ref: '#/components/responses/Conflict'
-
-  /v1/tenants/{tenant}/projects/{project}/models/{model}:
-    get:
-      tags: [Models]
-      operationId: getModel
-      summary: Get a model
-      parameters:
-        - $ref: '#/components/parameters/TenantId'
-        - $ref: '#/components/parameters/ProjectId'
-        - $ref: '#/components/parameters/ModelId'
-        - $ref: '#/components/parameters/IfNoneMatch'
-      responses:
-        '200':
-          description: Model resource.
-          headers:
-            ETag:
-              $ref: '#/components/headers/ETag'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Model'
-        '304':
-          $ref: '#/components/responses/NotModified'
-        '401':
-          $ref: '#/components/responses/Unauthenticated'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-    patch:
-      tags: [Models]
-      operationId: updateModel
-      summary: Update mutable model metadata
-      parameters:
-        - $ref: '#/components/parameters/TenantId'
-        - $ref: '#/components/parameters/ProjectId'
-        - $ref: '#/components/parameters/ModelId'
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/IfMatch'
-      requestBody:
-        required: true
-        content:
-          application/merge-patch+json:
-            schema:
-              $ref: '#/components/schemas/ModelUpdate'
-      responses:
-        '200':
-          description: Updated model.
-          headers:
-            ETag:
-              $ref: '#/components/headers/ETag'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Model'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthenticated'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '409':
-          $ref: '#/components/responses/Conflict'
-
-  /v1/tenants/{tenant}/projects/{project}/models/{model}/releases:
-    get:
-      tags: [Models]
-      operationId: listModelReleases
-      summary: List immutable model releases
-      parameters:
-        - $ref: '#/components/parameters/TenantId'
-        - $ref: '#/components/parameters/ProjectId'
-        - $ref: '#/components/parameters/ModelId'
-        - $ref: '#/components/parameters/PageSize'
-        - $ref: '#/components/parameters/PageToken'
-      responses:
-        '200':
-          description: Stable page of model releases.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ModelReleaseList'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthenticated'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-    post:
-      tags: [Models]
-      operationId: createModelRelease
-      summary: Register an immutable model release
-      parameters:
-        - $ref: '#/components/parameters/TenantId'
-        - $ref: '#/components/parameters/ProjectId'
-        - $ref: '#/components/parameters/ModelId'
-        - $ref: '#/components/parameters/IdempotencyKey'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ModelReleaseCreate'
-      responses:
-        '201':
-          description: Immutable model release created.
-          headers:
-            ETag:
-              $ref: '#/components/headers/ETag'
-            Location:
-              $ref: '#/components/headers/Location'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ModelRelease'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthenticated'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '409':
-          $ref: '#/components/responses/Conflict'
 
   /v1/tenants/{tenant}/projects/{project}/trainingRuns:
     get:
@@ -723,618 +228,6 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
-
-  /v1/tenants/{tenant}/projects/{project}/evaluationRuns:
-    get:
-      tags: [Evaluation]
-      operationId: listEvaluationRuns
-      summary: List evaluation runs
-      parameters:
-        - $ref: '#/components/parameters/TenantId'
-        - $ref: '#/components/parameters/ProjectId'
-        - $ref: '#/components/parameters/PageSize'
-        - $ref: '#/components/parameters/PageToken'
-        - $ref: '#/components/parameters/Filter'
-        - $ref: '#/components/parameters/OrderBy'
-      responses:
-        '200':
-          description: Stable page of evaluation runs.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/EvaluationRunList'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthenticated'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-    post:
-      tags: [Evaluation]
-      operationId: createEvaluationRun
-      summary: Create durable evaluation work
-      parameters:
-        - $ref: '#/components/parameters/TenantId'
-        - $ref: '#/components/parameters/ProjectId'
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/AbsoluteDeadline'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/EvaluationRunCreate'
-      responses:
-        '202':
-          $ref: '#/components/responses/AcceptedOperation'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthenticated'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '409':
-          $ref: '#/components/responses/Conflict'
-        '429':
-          $ref: '#/components/responses/RateLimited'
-
-  /v1/tenants/{tenant}/projects/{project}/evaluationRuns/{evaluationRun}:
-    get:
-      tags: [Evaluation]
-      operationId: getEvaluationRun
-      summary: Get an evaluation run
-      parameters:
-        - $ref: '#/components/parameters/TenantId'
-        - $ref: '#/components/parameters/ProjectId'
-        - $ref: '#/components/parameters/EvaluationRunId'
-        - $ref: '#/components/parameters/IfNoneMatch'
-      responses:
-        '200':
-          description: Durable evaluation state.
-          headers:
-            ETag:
-              $ref: '#/components/headers/ETag'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/EvaluationRun'
-        '304':
-          $ref: '#/components/responses/NotModified'
-        '401':
-          $ref: '#/components/responses/Unauthenticated'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-
-  /v1/tenants/{tenant}/projects/{project}/evaluationResults/{evaluationResult}:
-    get:
-      tags: [Evaluation]
-      operationId: getEvaluationResult
-      summary: Get an immutable evaluation result
-      parameters:
-        - $ref: '#/components/parameters/TenantId'
-        - $ref: '#/components/parameters/ProjectId'
-        - $ref: '#/components/parameters/EvaluationResultId'
-      responses:
-        '200':
-          description: Immutable evaluation result and evidence references.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/EvaluationResult'
-        '401':
-          $ref: '#/components/responses/Unauthenticated'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-
-  /v1/tenants/{tenant}/projects/{project}/agentDefinitions:
-    get:
-      tags: [Agents]
-      operationId: listAgentDefinitions
-      summary: List agent definitions
-      parameters:
-        - $ref: '#/components/parameters/TenantId'
-        - $ref: '#/components/parameters/ProjectId'
-        - $ref: '#/components/parameters/PageSize'
-        - $ref: '#/components/parameters/PageToken'
-        - $ref: '#/components/parameters/Filter'
-        - $ref: '#/components/parameters/OrderBy'
-      responses:
-        '200':
-          description: Stable page of agent definitions.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AgentDefinitionList'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthenticated'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-    post:
-      tags: [Agents]
-      operationId: createAgentDefinition
-      summary: Create a versioned agent definition
-      parameters:
-        - $ref: '#/components/parameters/TenantId'
-        - $ref: '#/components/parameters/ProjectId'
-        - $ref: '#/components/parameters/IdempotencyKey'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/AgentDefinitionCreate'
-      responses:
-        '201':
-          description: Agent definition created.
-          headers:
-            ETag:
-              $ref: '#/components/headers/ETag'
-            Location:
-              $ref: '#/components/headers/Location'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AgentDefinition'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthenticated'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '409':
-          $ref: '#/components/responses/Conflict'
-
-  /v1/tenants/{tenant}/projects/{project}/agentRuns:
-    get:
-      tags: [Agents]
-      operationId: listAgentRuns
-      summary: List durable agent runs
-      parameters:
-        - $ref: '#/components/parameters/TenantId'
-        - $ref: '#/components/parameters/ProjectId'
-        - $ref: '#/components/parameters/PageSize'
-        - $ref: '#/components/parameters/PageToken'
-        - $ref: '#/components/parameters/Filter'
-        - $ref: '#/components/parameters/OrderBy'
-      responses:
-        '200':
-          description: Stable page of agent runs.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AgentRunList'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthenticated'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-    post:
-      tags: [Agents]
-      operationId: createAgentRun
-      summary: Create durable agent work
-      parameters:
-        - $ref: '#/components/parameters/TenantId'
-        - $ref: '#/components/parameters/ProjectId'
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/AbsoluteDeadline'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/AgentRunCreate'
-      responses:
-        '202':
-          $ref: '#/components/responses/AcceptedOperation'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthenticated'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '409':
-          $ref: '#/components/responses/Conflict'
-        '429':
-          $ref: '#/components/responses/RateLimited'
-
-  /v1/tenants/{tenant}/projects/{project}/agentRuns/{agentRun}:
-    get:
-      tags: [Agents]
-      operationId: getAgentRun
-      summary: Get a durable agent run
-      parameters:
-        - $ref: '#/components/parameters/TenantId'
-        - $ref: '#/components/parameters/ProjectId'
-        - $ref: '#/components/parameters/AgentRunId'
-        - $ref: '#/components/parameters/IfNoneMatch'
-      responses:
-        '200':
-          description: Durable agent run state and artifact references.
-          headers:
-            ETag:
-              $ref: '#/components/headers/ETag'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AgentRun'
-        '304':
-          $ref: '#/components/responses/NotModified'
-        '401':
-          $ref: '#/components/responses/Unauthenticated'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-
-  /v1/tenants/{tenant}/projects/{project}/workflowDefinitions:
-    get:
-      tags: [Workflows]
-      operationId: listWorkflowDefinitions
-      summary: List workflow definitions
-      parameters:
-        - $ref: '#/components/parameters/TenantId'
-        - $ref: '#/components/parameters/ProjectId'
-        - $ref: '#/components/parameters/PageSize'
-        - $ref: '#/components/parameters/PageToken'
-        - $ref: '#/components/parameters/Filter'
-        - $ref: '#/components/parameters/OrderBy'
-      responses:
-        '200':
-          description: Stable page of workflow definitions.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/WorkflowDefinitionList'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthenticated'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-    post:
-      tags: [Workflows]
-      operationId: createWorkflowDefinition
-      summary: Create a versioned workflow definition
-      parameters:
-        - $ref: '#/components/parameters/TenantId'
-        - $ref: '#/components/parameters/ProjectId'
-        - $ref: '#/components/parameters/IdempotencyKey'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/WorkflowDefinitionCreate'
-      responses:
-        '201':
-          description: Workflow definition created.
-          headers:
-            ETag:
-              $ref: '#/components/headers/ETag'
-            Location:
-              $ref: '#/components/headers/Location'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/WorkflowDefinition'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthenticated'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '409':
-          $ref: '#/components/responses/Conflict'
-
-  /v1/tenants/{tenant}/projects/{project}/workflowRuns:
-    get:
-      tags: [Workflows]
-      operationId: listWorkflowRuns
-      summary: List durable workflow runs
-      parameters:
-        - $ref: '#/components/parameters/TenantId'
-        - $ref: '#/components/parameters/ProjectId'
-        - $ref: '#/components/parameters/PageSize'
-        - $ref: '#/components/parameters/PageToken'
-        - $ref: '#/components/parameters/Filter'
-        - $ref: '#/components/parameters/OrderBy'
-      responses:
-        '200':
-          description: Stable page of workflow runs.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/WorkflowRunList'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthenticated'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-    post:
-      tags: [Workflows]
-      operationId: createWorkflowRun
-      summary: Create durable workflow work
-      parameters:
-        - $ref: '#/components/parameters/TenantId'
-        - $ref: '#/components/parameters/ProjectId'
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/AbsoluteDeadline'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/WorkflowRunCreate'
-      responses:
-        '202':
-          $ref: '#/components/responses/AcceptedOperation'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthenticated'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '409':
-          $ref: '#/components/responses/Conflict'
-        '429':
-          $ref: '#/components/responses/RateLimited'
-
-  /v1/tenants/{tenant}/projects/{project}/workflowRuns/{workflowRun}:
-    get:
-      tags: [Workflows]
-      operationId: getWorkflowRun
-      summary: Get a durable workflow run
-      parameters:
-        - $ref: '#/components/parameters/TenantId'
-        - $ref: '#/components/parameters/ProjectId'
-        - $ref: '#/components/parameters/WorkflowRunId'
-        - $ref: '#/components/parameters/IfNoneMatch'
-      responses:
-        '200':
-          description: Durable workflow run state and artifact references.
-          headers:
-            ETag:
-              $ref: '#/components/headers/ETag'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/WorkflowRun'
-        '304':
-          $ref: '#/components/responses/NotModified'
-        '401':
-          $ref: '#/components/responses/Unauthenticated'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-
-  /v1/tenants/{tenant}/projects/{project}/approvals:
-    get:
-      tags: [Workflows]
-      operationId: listApprovalRequests
-      summary: List approval requests visible to the caller
-      parameters:
-        - $ref: '#/components/parameters/TenantId'
-        - $ref: '#/components/parameters/ProjectId'
-        - $ref: '#/components/parameters/PageSize'
-        - $ref: '#/components/parameters/PageToken'
-        - $ref: '#/components/parameters/Filter'
-        - $ref: '#/components/parameters/OrderBy'
-      responses:
-        '200':
-          description: Stable page of approval requests.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApprovalRequestList'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthenticated'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-
-  /v1/tenants/{tenant}/projects/{project}/approvals/{approval}:decide:
-    post:
-      tags: [Workflows]
-      operationId: decideApproval
-      summary: Record an explicit approval decision
-      parameters:
-        - $ref: '#/components/parameters/TenantId'
-        - $ref: '#/components/parameters/ProjectId'
-        - $ref: '#/components/parameters/ApprovalId'
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/IfMatch'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ApprovalDecision'
-      responses:
-        '201':
-          description: Immutable approval receipt.
-          headers:
-            Location:
-              $ref: '#/components/headers/Location'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApprovalReceipt'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthenticated'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '409':
-          $ref: '#/components/responses/Conflict'
-
-  /v1/tenants/{tenant}:
-    get:
-      tags: [Administration]
-      operationId: getTenant
-      summary: Get tenant administration metadata
-      parameters:
-        - $ref: '#/components/parameters/TenantId'
-        - $ref: '#/components/parameters/IfNoneMatch'
-      responses:
-        '200':
-          description: Tenant metadata available to an authorized administrator.
-          headers:
-            ETag:
-              $ref: '#/components/headers/ETag'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Tenant'
-        '304':
-          $ref: '#/components/responses/NotModified'
-        '401':
-          $ref: '#/components/responses/Unauthenticated'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-
-  /v1/tenants/{tenant}/projects:
-    get:
-      tags: [Administration]
-      operationId: listProjects
-      summary: List projects in a tenant
-      parameters:
-        - $ref: '#/components/parameters/TenantId'
-        - $ref: '#/components/parameters/PageSize'
-        - $ref: '#/components/parameters/PageToken'
-        - $ref: '#/components/parameters/Filter'
-        - $ref: '#/components/parameters/OrderBy'
-      responses:
-        '200':
-          description: Stable page of authorized projects.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ProjectList'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthenticated'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-    post:
-      tags: [Administration]
-      operationId: createProject
-      summary: Create a project
-      parameters:
-        - $ref: '#/components/parameters/TenantId'
-        - $ref: '#/components/parameters/IdempotencyKey'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ProjectCreate'
-      responses:
-        '201':
-          description: Project created.
-          headers:
-            ETag:
-              $ref: '#/components/headers/ETag'
-            Location:
-              $ref: '#/components/headers/Location'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Project'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthenticated'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '409':
-          $ref: '#/components/responses/Conflict'
-
-  /v1/tenants/{tenant}/projects/{project}:
-    get:
-      tags: [Administration]
-      operationId: getProject
-      summary: Get a project
-      parameters:
-        - $ref: '#/components/parameters/TenantId'
-        - $ref: '#/components/parameters/ProjectId'
-        - $ref: '#/components/parameters/IfNoneMatch'
-      responses:
-        '200':
-          description: Project metadata.
-          headers:
-            ETag:
-              $ref: '#/components/headers/ETag'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Project'
-        '304':
-          $ref: '#/components/responses/NotModified'
-        '401':
-          $ref: '#/components/responses/Unauthenticated'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-
-  /v1/tenants/{tenant}/projects/{project}/auditRecords:
-    get:
-      tags: [Administration]
-      operationId: listAuditRecords
-      summary: Query redacted audit records
-      description: Administrative access is separately authorized and every query is itself audited.
-      parameters:
-        - $ref: '#/components/parameters/TenantId'
-        - $ref: '#/components/parameters/ProjectId'
-        - $ref: '#/components/parameters/PageSize'
-        - $ref: '#/components/parameters/PageToken'
-        - name: actor
-          in: query
-          required: false
-          schema:
-            type: string
-            maxLength: 256
-        - name: action
-          in: query
-          required: false
-          schema:
-            type: string
-            maxLength: 128
-        - name: requestId
-          in: query
-          required: false
-          schema:
-            type: string
-            maxLength: 128
-      responses:
-        '200':
-          description: Stable page of redacted audit records.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AuditRecordList'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthenticated'
-        '403':
-          $ref: '#/components/responses/Forbidden'
 
 components:
   securitySchemes:
@@ -1460,6 +353,7 @@ components:
       description: Bounded page size; defaults to 50 and never exceeds 200.
       schema:
         type: integer
+        format: uint32
         minimum: 1
         maximum: 200
         default: 50
@@ -1507,11 +401,6 @@ components:
   responses:
     AcceptedOperation:
       description: Durable work admitted.
-      headers:
-        ETag:
-          $ref: '#/components/headers/ETag'
-        Location:
-          $ref: '#/components/headers/Location'
       content:
         application/json:
           schema:
@@ -1548,11 +437,6 @@ components:
             $ref: '#/components/schemas/PublicError'
     RateLimited:
       description: Bounded quota or rate limit reached.
-      headers:
-        Retry-After:
-          schema:
-            type: integer
-            minimum: 0
       content:
         application/problem+json:
           schema:
@@ -1743,7 +627,7 @@ components:
           maxLength: 160
         state:
           type: string
-          enum: [PENDING, ADMITTED, RUNNING, CANCELLATION_REQUESTED, SUCCEEDED, FAILED, CANCELLED]
+          enum: [PENDING, RUNNING, SUCCEEDED, FAILED, CANCELLING, CANCELLED]
         done:
           type: boolean
         createTime:
@@ -1761,7 +645,6 @@ components:
     OperationResult:
       type: object
       additionalProperties: false
-      required: [resource]
       properties:
         resource:
           $ref: '#/components/schemas/ResourceRef'
@@ -1779,7 +662,7 @@ components:
       type: object
       additionalProperties: false
       x-mindclade-authoritative-message: mindclade.api.v1.OperationEvent
-      required: [eventId, operation]
+      required: [eventId, eventType, schemaVersion, resumeCursor, emittedAt]
       properties:
         eventId:
           type: string
@@ -1787,6 +670,24 @@ components:
           maxLength: 256
         operation:
           $ref: '#/components/schemas/Operation'
+        eventType:
+          type: string
+          enum: [operation.updated, operation.terminal, heartbeat]
+        schemaVersion:
+          type: integer
+          format: uint32
+          enum: [1]
+        operationRevision:
+          type: string
+          pattern: '^[0-9]+$'
+        resumeCursor:
+          type: string
+          minLength: 1
+          maxLength: 4096
+        heartbeat:
+          type: boolean
+        emittedAt:
+          $ref: '#/components/schemas/Timestamp'
 
     CancellationRequest:
       type: object
@@ -2088,7 +989,7 @@ components:
     TrainingRunCreate:
       type: object
       additionalProperties: false
-      required: [trainingRunId, trainingRecipe, datasetRelease, hardwareTopology]
+      required: [trainingRunId, trainingRecipe, datasetRelease, modelRelease]
       properties:
         trainingRunId:
           $ref: '#/components/schemas/ResourceId'
@@ -2112,11 +1013,11 @@ components:
         - $ref: '#/components/schemas/ResourceMetadata'
         - type: object
           x-mindclade-authoritative-message: mindclade.api.v1.TrainingRunView
-          required: [state, trainingRecipe, datasetRelease, hardwareTopology]
+          required: [state, trainingRecipe, datasetRelease, modelRelease]
           properties:
             state:
               type: string
-              enum: [PENDING, ADMITTED, RUNNING, CHECKPOINTING, CANCELLATION_REQUESTED, SUCCEEDED, FAILED, CANCELLED]
+              enum: [CREATED, VALIDATING, ADMITTED, RUNNING, CHECKPOINTING, RECOVERING, DRAINING, COMPLETED, FAILED, CANCELLED]
             trainingRecipe:
               $ref: '#/components/schemas/ArtifactRef'
             datasetRelease:

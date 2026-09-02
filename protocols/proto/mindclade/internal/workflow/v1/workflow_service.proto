@@ -7,11 +7,12 @@ import "google/protobuf/timestamp.proto";
 import "proto/mindclade/common/v1/command_context.proto";
 import "proto/mindclade/common/v1/pagination.proto";
 import "proto/mindclade/job/v1/operation.proto";
+import "proto/mindclade/job/v1/lease_fencing.proto";
 import "proto/mindclade/workflow/v1/approval.proto";
 import "proto/mindclade/workflow/v1/workflow_definition.proto";
 import "proto/mindclade/workflow/v1/workflow_run.proto";
 
-option go_package = "github.com/mindclade/mindclade/protocols/generated/go/internal/workflow/v1;internalworkflowv1";
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/workflow/v1;internalworkflowv1";
 
 // CreateWorkflowDefinitionRequest creates a validated immutable graph definition.
 message CreateWorkflowDefinitionRequest {
@@ -122,8 +123,9 @@ message CommitWorkflowTransitionRequest {
   mindclade.common.v1.CommandContext context = 1;
   mindclade.workflow.v1.WorkflowRun workflow_run = 2;
   uint64 expected_transition_sequence = 3;
-  string attempt_id = 4;
-  uint64 lease_epoch = 5;
+  // Current scheduler-issued fence; the raw lease token remains transport metadata.
+  mindclade.job.v1.LeaseFence fence = 4;
+  reserved 5;
   string etag = 6;
 }
 

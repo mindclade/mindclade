@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package mindclade.events.agent.v1;
+
+import "google/protobuf/timestamp.proto";
+import "proto/mindclade/agent/v1/agent_definition.proto";
+import "proto/mindclade/common/v1/resource_reference.proto";
+
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/agent/v1;agentv1";
+
+// AgentDefinitionCreated records admission of one bounded closed-world agent.
+message AgentDefinitionCreated {
+  mindclade.agent.v1.AgentDefinition agent_definition = 1;
+  mindclade.common.v1.ResourceRef operation = 2;
+  google.protobuf.Timestamp created_at = 3;
+}

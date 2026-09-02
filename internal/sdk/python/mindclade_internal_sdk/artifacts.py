@@ -1,0 +1,1098 @@
+"""Artifact catalog and transfer conveniences over generated internal RPCs."""
+
+from __future__ import annotations
+
+import hashlib
+import hmac
+import re
+import uuid
+from collections.abc import AsyncIterable, AsyncIterator, Iterator
+from contextlib import suppress
+from datetime import UTC, datetime, timedelta
+from typing import Protocol, cast
+
+import grpc
+from google.protobuf.message import Message
+from google.protobuf.timestamp_pb2 import Timestamp
+from mindclade.artifact.v1 import artifact_commands_pb2, artifact_reference_pb2
+from mindclade.internal.artifact.v1 import artifact_service_pb2
+
+from ._invocation import AsyncInvoker, SyncInvoker, canonical_digest, command_context
+from ._validation import artifact_ref, required_response_message, required_text
+from .calls import CallOptions, PreparedCall, prepare_call
+from .errors import ConflictError, NotFoundError, ProtocolError
+from .transport import (
+    ABORT_ARTIFACT_UPLOAD,
+    BEGIN_ARTIFACT_UPLOAD,
+    COMMIT_ARTIFACT,
+    DOWNLOAD_ARTIFACT,
+    FINALIZE_ARTIFACT_UPLOAD,
+    GET_ARTIFACT_UPLOAD,
+    QUARANTINE_ARTIFACT_UPLOAD,
+    RESOLVE_ARTIFACT_ALIAS,
+    UPLOAD_ARTIFACT_CHUNK,
+)
+
+_CANONICAL_DIGEST = re.compile(r"sha256:[0-9a-f]{64}")
+_UPLOAD_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,127}")
+_DEFAULT_CHUNK_BYTES = 1 << 20
+_MAX_CHUNK_BYTES = 4 << 20
+_DEFAULT_SESSION_TTL = timedelta(hours=2)
+_MAX_SESSION_TTL = timedelta(hours=24)
+_DEFAULT_RECEIPT_TTL = timedelta(hours=24)
+_MAX_RECEIPT_TTL = timedelta(days=7)
+
+
+class BinaryReader(Protocol):
+    """The bounded portion of a binary file API required by upload."""
+
+    def read(self, size: int | None = -1, /) -> bytes: ...
+
+
+class BinaryWriter(Protocol):
+    """The bounded portion of a binary file API required by download."""
+
+    def write(self, data: bytes, /) -> int: ...
+
+
+class _Digest(Protocol):
+    def update(self, data: bytes, /) -> None: ...
+
+
+type _MutationRequest = (
+    artifact_service_pb2.BeginArtifactUploadRequest
+    | artifact_service_pb2.UploadArtifactChunkRequest
+    | artifact_service_pb2.FinalizeArtifactUploadRequest
+    | artifact_service_pb2.AbortArtifactUploadRequest
+    | artifact_service_pb2.QuarantineArtifactUploadRequest
+)
+
+
+def _clone[MessageT: Message](value: MessageT, expected: type[MessageT]) -> MessageT:
+    if not isinstance(value, expected):
+        raise TypeError(f"value must be the generated {expected.__name__}")
+    result = expected()
+    result.CopyFrom(value)
+    return result
+
+
+def _timestamp_after(lifetime: timedelta) -> Timestamp:
+    value = Timestamp()
+    value.FromDatetime(datetime.now(UTC) + lifetime)
+    return value
+
+
+def _receipt_expiry(
+    upload: artifact_service_pb2.ArtifactUploadSession, lifetime: timedelta
+) -> Timestamp:
+    base = datetime.now(UTC)
+    if upload.HasField("create_time") and upload.create_time.seconds > 0:
+        base = upload.create_time.ToDatetime(tzinfo=UTC)
+    value = Timestamp()
+    value.FromDatetime(base + lifetime)
+    return value
+
+
+def _bounded_lifetime(label: str, value: timedelta, maximum: timedelta) -> timedelta:
+    if value <= timedelta(0) or value > maximum:
+        raise ValueError(f"{label} must be positive and no greater than {maximum}")
+    return value
+
+
+def _upload_id(value: str | None) -> str:
+    result = value.strip() if value is not None else uuid.uuid4().hex
+    if _UPLOAD_ID.fullmatch(result) is None:
+        raise ValueError("artifact upload id is invalid")
+    return result
+
+
+def _chunk_size(value: int) -> int:
+    result = value or _DEFAULT_CHUNK_BYTES
+    if not 1 <= result <= _MAX_CHUNK_BYTES:
+        raise ValueError("artifact chunk size must be between 1 byte and 4 MiB")
+    return result
+
+
+def _phase_options(options: CallOptions | None, identity: str, phase: str) -> CallOptions:
+    base = options or CallOptions()
+    seed = f"{base.idempotency_key or identity}\x00{phase}".encode()
+    key = "artifact-transfer:" + hashlib.sha256(seed).hexdigest()
+    return CallOptions(
+        timeout=base.timeout,
+        request_id=base.request_id,
+        trace_id=base.trace_id,
+        idempotency_key=key,
+    )
+
+
+def _prepared(
+    invoker: SyncInvoker | AsyncInvoker,
+    options: CallOptions | None,
+    identity: str,
+    phase: str,
+) -> PreparedCall:
+    return prepare_call(
+        _phase_options(options, identity, phase),
+        default_timeout=invoker.config.default_timeout,
+        require_idempotency=True,
+    )
+
+
+def _attach_context(
+    request: _MutationRequest,
+    invoker: SyncInvoker | AsyncInvoker,
+    call: PreparedCall,
+) -> None:
+    request.ClearField("context")
+    context = command_context(
+        invoker.config,
+        call,
+        request_digest=canonical_digest(request),
+    )
+    request.context.CopyFrom(context)
+
+
+def _validate_transfer_artifact(
+    value: artifact_reference_pb2.ArtifactRef,
+) -> artifact_reference_pb2.ArtifactRef:
+    result = _clone(value, artifact_reference_pb2.ArtifactRef)
+    artifact_ref("artifact", result)
+    if result.uri:
+        raise ValueError("artifact.uri is private transport metadata and must be empty")
+    if result.integrity_digest and not hmac.compare_digest(result.integrity_digest, result.digest):
+        raise ValueError("artifact.integrity_digest must equal artifact.digest when present")
+    if bool(result.schema_id) is not bool(result.schema_version):
+        raise ValueError("artifact schema id and version must be supplied together")
+    return result
+
+
+def _validate_upload(
+    upload: artifact_service_pb2.ArtifactUploadSession,
+    *,
+    expected_artifact: artifact_reference_pb2.ArtifactRef | None = None,
+) -> artifact_service_pb2.ArtifactUploadSession:
+    required_text("artifact upload name", upload.name)
+    artifact = required_response_message(
+        upload,
+        "artifact",
+        artifact_reference_pb2.ArtifactRef,
+        label="artifact upload",
+    )
+    _validate_transfer_artifact(artifact)
+    if expected_artifact is not None and artifact != expected_artifact:
+        raise ProtocolError(
+            "artifact upload returned a different content identity",
+            status=grpc.StatusCode.DATA_LOSS,
+        )
+    if upload.state == artifact_service_pb2.ARTIFACT_UPLOAD_STATE_UNSPECIFIED:
+        raise ProtocolError(
+            "artifact upload returned an unspecified state",
+            status=grpc.StatusCode.DATA_LOSS,
+        )
+    if upload.committed_offset < 0 or upload.committed_offset > artifact.size_bytes:
+        raise ProtocolError(
+            "artifact upload returned an invalid committed offset",
+            status=grpc.StatusCode.DATA_LOSS,
+        )
+    if upload.next_chunk_index < 0 or upload.revision <= 0:
+        raise ProtocolError(
+            "artifact upload returned invalid progress metadata",
+            status=grpc.StatusCode.DATA_LOSS,
+        )
+    required_text("artifact upload etag", upload.etag)
+    return upload
+
+
+def _upload_from_response(
+    response: Message,
+    *,
+    label: str,
+    expected_artifact: artifact_reference_pb2.ArtifactRef | None = None,
+) -> artifact_service_pb2.ArtifactUploadSession:
+    upload = required_response_message(
+        response,
+        "upload",
+        artifact_service_pb2.ArtifactUploadSession,
+        label=label,
+    )
+    return _validate_upload(upload, expected_artifact=expected_artifact)
+
+
+def _validate_receipt(
+    receipt: artifact_service_pb2.ArtifactStagingReceipt,
+    *,
+    expected_artifact: artifact_reference_pb2.ArtifactRef | None = None,
+) -> artifact_service_pb2.ArtifactStagingReceipt:
+    result = _clone(receipt, artifact_service_pb2.ArtifactStagingReceipt)
+    if _CANONICAL_DIGEST.fullmatch(result.receipt_digest) is None:
+        raise ProtocolError(
+            "artifact staging receipt digest is invalid",
+            status=grpc.StatusCode.DATA_LOSS,
+        )
+    artifact = required_response_message(
+        result,
+        "artifact",
+        artifact_reference_pb2.ArtifactRef,
+        label="artifact staging receipt",
+    )
+    _validate_transfer_artifact(artifact)
+    if expected_artifact is not None and artifact != expected_artifact:
+        raise ProtocolError(
+            "artifact staging receipt returned a different content identity",
+            status=grpc.StatusCode.DATA_LOSS,
+        )
+    if not result.HasField("verified_at") or not result.HasField("expire_time"):
+        raise ProtocolError(
+            "artifact staging receipt omitted its validity interval",
+            status=grpc.StatusCode.DATA_LOSS,
+        )
+    if result.expire_time.ToDatetime(tzinfo=UTC) <= result.verified_at.ToDatetime(tzinfo=UTC):
+        raise ProtocolError(
+            "artifact staging receipt has an invalid validity interval",
+            status=grpc.StatusCode.DATA_LOSS,
+        )
+    return result
+
+
+def _read_exact(source: BinaryReader, size: int) -> bytes:
+    parts: list[bytes] = []
+    remaining = size
+    while remaining:
+        value = source.read(remaining)
+        if not value:
+            break
+        if len(value) > remaining:
+            raise ValueError("artifact upload source returned more bytes than requested")
+        parts.append(value)
+        remaining -= len(value)
+    return b"".join(parts)
+
+
+def _discard_exact(source: BinaryReader, size: int, digest: _Digest) -> None:
+    remaining = size
+    while remaining:
+        value = _read_exact(source, min(remaining, _DEFAULT_CHUNK_BYTES))
+        if not value:
+            raise ValueError("artifact upload source is shorter than its durable resume offset")
+        digest.update(value)
+        remaining -= len(value)
+
+
+class _AsyncSourceReader:
+    def __init__(self, source: AsyncIterable[bytes]) -> None:
+        self._source = source.__aiter__()
+        self._buffer = bytearray()
+        self._done = False
+
+    async def read(self, size: int) -> bytes:
+        while len(self._buffer) < size and not self._done:
+            try:
+                value = await anext(self._source)
+            except StopAsyncIteration:
+                self._done = True
+                break
+            if len(value) > _MAX_CHUNK_BYTES:
+                raise ValueError("async artifact upload source chunks cannot exceed 4 MiB")
+            self._buffer.extend(value)
+        count = min(size, len(self._buffer))
+        result = bytes(self._buffer[:count])
+        del self._buffer[:count]
+        return result
+
+
+async def _async_discard_exact(source: _AsyncSourceReader, size: int, digest: _Digest) -> None:
+    remaining = size
+    while remaining:
+        value = await source.read(min(remaining, _DEFAULT_CHUNK_BYTES))
+        if not value:
+            raise ValueError("artifact upload source is shorter than its durable resume offset")
+        digest.update(value)
+        remaining -= len(value)
+
+
+def _verify_download_response(
+    response: artifact_service_pb2.DownloadArtifactResponse,
+    artifact: artifact_reference_pb2.ArtifactRef,
+    offset: int,
+) -> bytes:
+    streamed_artifact = required_response_message(
+        response,
+        "artifact",
+        artifact_reference_pb2.ArtifactRef,
+        label="artifact download",
+    )
+    if streamed_artifact != artifact or response.offset != offset:
+        raise ProtocolError(
+            "artifact download stream changed identity or offset",
+            status=grpc.StatusCode.DATA_LOSS,
+        )
+    digest = "sha256:" + hashlib.sha256(response.data).hexdigest()
+    if not hmac.compare_digest(response.chunk_digest, digest):
+        raise ProtocolError(
+            "artifact download chunk digest verification failed",
+            status=grpc.StatusCode.DATA_LOSS,
+        )
+    return bytes(response.data)
+
+
+class Artifacts:
+    def __init__(self, invoker: SyncInvoker) -> None:
+        self._invoker = invoker
+
+    def resolve_alias(
+        self,
+        alias: str,
+        *,
+        parent: str | None = None,
+        options: CallOptions | None = None,
+    ) -> artifact_reference_pb2.ArtifactRef:
+        call = prepare_call(
+            options,
+            default_timeout=self._invoker.config.default_timeout,
+            require_idempotency=False,
+        )
+        response = cast(
+            artifact_service_pb2.ResolveArtifactAliasResponse,
+            self._invoker.unary(
+                RESOLVE_ARTIFACT_ALIAS,
+                artifact_service_pb2.ResolveArtifactAliasRequest(
+                    parent=required_text(
+                        "artifact parent", parent or self._invoker.config.project_parent
+                    ),
+                    alias=required_text("artifact alias", alias, maximum=256),
+                ),
+                call=call,
+                retry_safe=True,
+            ),
+        )
+        result = required_response_message(
+            response,
+            "artifact",
+            artifact_reference_pb2.ArtifactRef,
+            label="artifact resolution",
+        )
+        artifact_ref("artifact", result)
+        return result
+
+    def get_upload(
+        self,
+        name: str,
+        *,
+        options: CallOptions | None = None,
+    ) -> artifact_service_pb2.ArtifactUploadSession:
+        call = prepare_call(
+            options,
+            default_timeout=self._invoker.config.default_timeout,
+            require_idempotency=False,
+        )
+        response = self._invoker.unary(
+            GET_ARTIFACT_UPLOAD,
+            artifact_service_pb2.GetArtifactUploadRequest(
+                name=required_text("artifact upload name", name)
+            ),
+            call=call,
+            retry_safe=True,
+        )
+        return _upload_from_response(response, label="artifact upload status")
+
+    def upload(
+        self,
+        artifact: artifact_reference_pb2.ArtifactRef,
+        source: BinaryReader,
+        *,
+        upload_id: str | None = None,
+        chunk_bytes: int = _DEFAULT_CHUNK_BYTES,
+        session_ttl: timedelta = _DEFAULT_SESSION_TTL,
+        receipt_ttl: timedelta = _DEFAULT_RECEIPT_TTL,
+        options: CallOptions | None = None,
+    ) -> artifact_service_pb2.ArtifactStagingReceipt:
+        expected = _validate_transfer_artifact(artifact)
+        identity = _upload_id(upload_id)
+        chunk_bytes = _chunk_size(chunk_bytes)
+        session_ttl = _bounded_lifetime(
+            "artifact upload session lifetime", session_ttl, _MAX_SESSION_TTL
+        )
+        receipt_ttl = _bounded_lifetime(
+            "artifact staging receipt lifetime", receipt_ttl, _MAX_RECEIPT_TTL
+        )
+        upload_name = f"{self._invoker.config.project_parent}/artifactUploads/{identity}"
+        upload: artifact_service_pb2.ArtifactUploadSession | None = None
+        if upload_id is not None:
+            with suppress(NotFoundError):
+                upload = self.get_upload(upload_name, options=options)
+        if upload is None:
+            begin_call = _prepared(self._invoker, options, identity, "begin")
+            begin = artifact_service_pb2.BeginArtifactUploadRequest(
+                parent=self._invoker.config.project_parent,
+                artifact=expected,
+                upload_id=identity,
+                expire_time=_timestamp_after(session_ttl),
+            )
+            _attach_context(begin, self._invoker, begin_call)
+            try:
+                upload = _upload_from_response(
+                    self._invoker.unary(
+                        BEGIN_ARTIFACT_UPLOAD,
+                        begin,
+                        call=begin_call,
+                        retry_safe=True,
+                    ),
+                    label="artifact upload begin",
+                    expected_artifact=expected,
+                )
+            except ConflictError:
+                upload = self.get_upload(upload_name, options=options)
+        upload = _validate_upload(upload, expected_artifact=expected)
+        if upload.state == artifact_service_pb2.ARTIFACT_UPLOAD_STATE_FINALIZED:
+            receipt = required_response_message(
+                upload,
+                "staging_receipt",
+                artifact_service_pb2.ArtifactStagingReceipt,
+                label="finalized artifact upload",
+            )
+            return _validate_receipt(receipt, expected_artifact=expected)
+        if upload.state != artifact_service_pb2.ARTIFACT_UPLOAD_STATE_OPEN:
+            raise ValueError("artifact upload session cannot be resumed")
+        full_digest = hashlib.sha256()
+        _discard_exact(source, upload.committed_offset, full_digest)
+        offset = upload.committed_offset
+        while offset < expected.size_bytes:
+            size = min(chunk_bytes, expected.size_bytes - offset)
+            data = _read_exact(source, size)
+            if len(data) != size:
+                raise ValueError("artifact upload source ended before its declared size")
+            full_digest.update(data)
+            chunk_digest = "sha256:" + hashlib.sha256(data).hexdigest()
+            phase = f"chunk:{upload.next_chunk_index}:{chunk_digest}"
+            chunk_call = _prepared(self._invoker, options, identity, phase)
+            request = artifact_service_pb2.UploadArtifactChunkRequest(
+                name=upload.name,
+                chunk_index=upload.next_chunk_index,
+                offset=offset,
+                data=data,
+                chunk_digest=chunk_digest,
+                etag=upload.etag,
+            )
+            _attach_context(request, self._invoker, chunk_call)
+            expected_index = upload.next_chunk_index + 1
+            expected_offset = offset + len(data)
+            upload = _upload_from_response(
+                self._invoker.unary(
+                    UPLOAD_ARTIFACT_CHUNK,
+                    request,
+                    call=chunk_call,
+                    retry_safe=True,
+                ),
+                label="artifact chunk upload",
+                expected_artifact=expected,
+            )
+            if (
+                upload.committed_offset != expected_offset
+                or upload.next_chunk_index != expected_index
+                or upload.state != artifact_service_pb2.ARTIFACT_UPLOAD_STATE_OPEN
+            ):
+                raise ProtocolError(
+                    "artifact upload progress did not advance contiguously",
+                    status=grpc.StatusCode.DATA_LOSS,
+                )
+            offset = upload.committed_offset
+        extra = source.read(1)
+        if extra:
+            raise ValueError("artifact upload source exceeds its declared size")
+        if not hmac.compare_digest("sha256:" + full_digest.hexdigest(), expected.digest):
+            raise ValueError("artifact upload source digest differs from ArtifactRef")
+        finalize_call = _prepared(self._invoker, options, identity, "finalize")
+        finalize = artifact_service_pb2.FinalizeArtifactUploadRequest(
+            name=upload.name,
+            etag=upload.etag,
+            receipt_expire_time=_receipt_expiry(upload, receipt_ttl),
+        )
+        _attach_context(finalize, self._invoker, finalize_call)
+        response = cast(
+            artifact_service_pb2.FinalizeArtifactUploadResponse,
+            self._invoker.unary(
+                FINALIZE_ARTIFACT_UPLOAD,
+                finalize,
+                call=finalize_call,
+                retry_safe=True,
+            ),
+        )
+        finalized = _upload_from_response(
+            response,
+            label="artifact upload finalize",
+            expected_artifact=expected,
+        )
+        if finalized.state != artifact_service_pb2.ARTIFACT_UPLOAD_STATE_FINALIZED:
+            raise ProtocolError(
+                "artifact finalize did not return a finalized session",
+                status=grpc.StatusCode.DATA_LOSS,
+            )
+        receipt = required_response_message(
+            response,
+            "staging_receipt",
+            artifact_service_pb2.ArtifactStagingReceipt,
+            label="artifact upload finalize",
+        )
+        return _validate_receipt(receipt, expected_artifact=expected)
+
+    def abort_upload(
+        self,
+        name: str,
+        etag: str,
+        *,
+        reason_code: str,
+        options: CallOptions | None = None,
+    ) -> artifact_service_pb2.ArtifactUploadSession:
+        return self._transition_upload(
+            ABORT_ARTIFACT_UPLOAD,
+            artifact_service_pb2.AbortArtifactUploadRequest,
+            name,
+            etag,
+            reason_code,
+            artifact_service_pb2.ARTIFACT_UPLOAD_STATE_ABORTED,
+            options,
+        )
+
+    def quarantine_upload(
+        self,
+        name: str,
+        etag: str,
+        *,
+        reason_code: str,
+        options: CallOptions | None = None,
+    ) -> artifact_service_pb2.ArtifactUploadSession:
+        return self._transition_upload(
+            QUARANTINE_ARTIFACT_UPLOAD,
+            artifact_service_pb2.QuarantineArtifactUploadRequest,
+            name,
+            etag,
+            reason_code,
+            artifact_service_pb2.ARTIFACT_UPLOAD_STATE_QUARANTINED,
+            options,
+        )
+
+    def _transition_upload(
+        self,
+        method: str,
+        request_type: type[
+            artifact_service_pb2.AbortArtifactUploadRequest
+            | artifact_service_pb2.QuarantineArtifactUploadRequest
+        ],
+        name: str,
+        etag: str,
+        reason_code: str,
+        expected_state: int,
+        options: CallOptions | None,
+    ) -> artifact_service_pb2.ArtifactUploadSession:
+        upload_name = required_text("artifact upload name", name)
+        transition = method.rsplit("/", 1)[-1]
+        call = _prepared(self._invoker, options, upload_name, transition)
+        request = request_type(
+            name=upload_name,
+            etag=required_text("artifact upload etag", etag),
+            reason_code=required_text("artifact upload reason code", reason_code, maximum=128),
+        )
+        _attach_context(request, self._invoker, call)
+        upload = _upload_from_response(
+            self._invoker.unary(method, request, call=call, retry_safe=True),
+            label="artifact upload transition",
+        )
+        if upload.state != expected_state:
+            raise ProtocolError(
+                "artifact upload transition returned an unexpected state",
+                status=grpc.StatusCode.DATA_LOSS,
+            )
+        return upload
+
+    def commit(
+        self,
+        receipt: artifact_service_pb2.ArtifactStagingReceipt,
+        *,
+        options: CallOptions | None = None,
+    ) -> artifact_reference_pb2.ArtifactRef:
+        validated = _validate_receipt(receipt)
+        call = _prepared(self._invoker, options, validated.receipt_digest, "commit")
+        command = artifact_commands_pb2.CommitArtifactCommand(
+            artifact=validated.artifact,
+            staging_receipt_digest=validated.receipt_digest,
+        )
+        command.context.CopyFrom(
+            command_context(
+                self._invoker.config,
+                call,
+                request_digest=canonical_digest(command),
+            )
+        )
+        response = cast(
+            artifact_service_pb2.CommitArtifactResponse,
+            self._invoker.unary(
+                COMMIT_ARTIFACT,
+                artifact_service_pb2.CommitArtifactRequest(command=command),
+                call=call,
+                retry_safe=True,
+            ),
+        )
+        committed = required_response_message(
+            response,
+            "artifact",
+            artifact_reference_pb2.ArtifactRef,
+            label="artifact commit",
+        )
+        _validate_transfer_artifact(committed)
+        if committed != validated.artifact:
+            raise ProtocolError(
+                "artifact commit returned a different content identity",
+                status=grpc.StatusCode.DATA_LOSS,
+            )
+        return committed
+
+    def iter_download(
+        self,
+        artifact: artifact_reference_pb2.ArtifactRef,
+        *,
+        offset: int = 0,
+        max_chunk_bytes: int = _DEFAULT_CHUNK_BYTES,
+        options: CallOptions | None = None,
+    ) -> Iterator[bytes]:
+        expected = _validate_transfer_artifact(artifact)
+        if offset < 0 or offset > expected.size_bytes:
+            raise ValueError("artifact download offset is outside the artifact")
+        max_chunk_bytes = _chunk_size(max_chunk_bytes)
+        call = prepare_call(
+            options,
+            default_timeout=self._invoker.config.default_timeout,
+            require_idempotency=False,
+        )
+        cursor = offset
+        digest = hashlib.sha256() if offset == 0 else None
+        complete = False
+        for raw_response in self._invoker.stream(
+            DOWNLOAD_ARTIFACT,
+            artifact_service_pb2.DownloadArtifactRequest(
+                digest=expected.digest,
+                offset=offset,
+                max_chunk_bytes=max_chunk_bytes,
+            ),
+            call=call,
+        ):
+            response = cast(artifact_service_pb2.DownloadArtifactResponse, raw_response)
+            data = _verify_download_response(response, expected, cursor)
+            if complete:
+                raise ProtocolError(
+                    "artifact download yielded data after its terminal response",
+                    status=grpc.StatusCode.DATA_LOSS,
+                )
+            cursor += len(data)
+            if digest is not None:
+                digest.update(data)
+            complete = response.complete
+            if data:
+                yield data
+            if complete:
+                break
+        if not complete or cursor != expected.size_bytes:
+            raise ProtocolError(
+                "artifact download stream ended before the declared size",
+                status=grpc.StatusCode.DATA_LOSS,
+            )
+        if digest is not None and not hmac.compare_digest(
+            "sha256:" + digest.hexdigest(), expected.digest
+        ):
+            raise ProtocolError(
+                "artifact download digest verification failed",
+                status=grpc.StatusCode.DATA_LOSS,
+            )
+
+    def download(
+        self,
+        artifact: artifact_reference_pb2.ArtifactRef,
+        destination: BinaryWriter,
+        *,
+        offset: int = 0,
+        max_chunk_bytes: int = _DEFAULT_CHUNK_BYTES,
+        options: CallOptions | None = None,
+    ) -> int:
+        written = 0
+        for data in self.iter_download(
+            artifact,
+            offset=offset,
+            max_chunk_bytes=max_chunk_bytes,
+            options=options,
+        ):
+            count = destination.write(data)
+            if count != len(data):
+                raise ProtocolError(
+                    "artifact download destination accepted a short write",
+                    status=grpc.StatusCode.DATA_LOSS,
+                )
+            written += count
+        return written
+
+
+class AsyncArtifacts:
+    def __init__(self, invoker: AsyncInvoker) -> None:
+        self._invoker = invoker
+
+    async def resolve_alias(
+        self,
+        alias: str,
+        *,
+        parent: str | None = None,
+        options: CallOptions | None = None,
+    ) -> artifact_reference_pb2.ArtifactRef:
+        call = prepare_call(
+            options,
+            default_timeout=self._invoker.config.default_timeout,
+            require_idempotency=False,
+        )
+        response = cast(
+            artifact_service_pb2.ResolveArtifactAliasResponse,
+            await self._invoker.unary(
+                RESOLVE_ARTIFACT_ALIAS,
+                artifact_service_pb2.ResolveArtifactAliasRequest(
+                    parent=required_text(
+                        "artifact parent", parent or self._invoker.config.project_parent
+                    ),
+                    alias=required_text("artifact alias", alias, maximum=256),
+                ),
+                call=call,
+                retry_safe=True,
+            ),
+        )
+        result = required_response_message(
+            response,
+            "artifact",
+            artifact_reference_pb2.ArtifactRef,
+            label="artifact resolution",
+        )
+        artifact_ref("artifact", result)
+        return result
+
+    async def get_upload(
+        self,
+        name: str,
+        *,
+        options: CallOptions | None = None,
+    ) -> artifact_service_pb2.ArtifactUploadSession:
+        call = prepare_call(
+            options,
+            default_timeout=self._invoker.config.default_timeout,
+            require_idempotency=False,
+        )
+        response = await self._invoker.unary(
+            GET_ARTIFACT_UPLOAD,
+            artifact_service_pb2.GetArtifactUploadRequest(
+                name=required_text("artifact upload name", name)
+            ),
+            call=call,
+            retry_safe=True,
+        )
+        return _upload_from_response(response, label="artifact upload status")
+
+    async def upload(
+        self,
+        artifact: artifact_reference_pb2.ArtifactRef,
+        source: AsyncIterable[bytes],
+        *,
+        upload_id: str | None = None,
+        chunk_bytes: int = _DEFAULT_CHUNK_BYTES,
+        session_ttl: timedelta = _DEFAULT_SESSION_TTL,
+        receipt_ttl: timedelta = _DEFAULT_RECEIPT_TTL,
+        options: CallOptions | None = None,
+    ) -> artifact_service_pb2.ArtifactStagingReceipt:
+        expected = _validate_transfer_artifact(artifact)
+        identity = _upload_id(upload_id)
+        chunk_bytes = _chunk_size(chunk_bytes)
+        session_ttl = _bounded_lifetime(
+            "artifact upload session lifetime", session_ttl, _MAX_SESSION_TTL
+        )
+        receipt_ttl = _bounded_lifetime(
+            "artifact staging receipt lifetime", receipt_ttl, _MAX_RECEIPT_TTL
+        )
+        upload_name = f"{self._invoker.config.project_parent}/artifactUploads/{identity}"
+        upload: artifact_service_pb2.ArtifactUploadSession | None = None
+        if upload_id is not None:
+            with suppress(NotFoundError):
+                upload = await self.get_upload(upload_name, options=options)
+        if upload is None:
+            begin_call = _prepared(self._invoker, options, identity, "begin")
+            begin = artifact_service_pb2.BeginArtifactUploadRequest(
+                parent=self._invoker.config.project_parent,
+                artifact=expected,
+                upload_id=identity,
+                expire_time=_timestamp_after(session_ttl),
+            )
+            _attach_context(begin, self._invoker, begin_call)
+            try:
+                upload = _upload_from_response(
+                    await self._invoker.unary(
+                        BEGIN_ARTIFACT_UPLOAD,
+                        begin,
+                        call=begin_call,
+                        retry_safe=True,
+                    ),
+                    label="artifact upload begin",
+                    expected_artifact=expected,
+                )
+            except ConflictError:
+                upload = await self.get_upload(upload_name, options=options)
+        upload = _validate_upload(upload, expected_artifact=expected)
+        if upload.state == artifact_service_pb2.ARTIFACT_UPLOAD_STATE_FINALIZED:
+            receipt = required_response_message(
+                upload,
+                "staging_receipt",
+                artifact_service_pb2.ArtifactStagingReceipt,
+                label="finalized artifact upload",
+            )
+            return _validate_receipt(receipt, expected_artifact=expected)
+        if upload.state != artifact_service_pb2.ARTIFACT_UPLOAD_STATE_OPEN:
+            raise ValueError("artifact upload session cannot be resumed")
+        reader = _AsyncSourceReader(source)
+        full_digest = hashlib.sha256()
+        await _async_discard_exact(reader, upload.committed_offset, full_digest)
+        offset = upload.committed_offset
+        while offset < expected.size_bytes:
+            size = min(chunk_bytes, expected.size_bytes - offset)
+            data = await reader.read(size)
+            if len(data) != size:
+                raise ValueError("artifact upload source ended before its declared size")
+            full_digest.update(data)
+            chunk_digest = "sha256:" + hashlib.sha256(data).hexdigest()
+            phase = f"chunk:{upload.next_chunk_index}:{chunk_digest}"
+            chunk_call = _prepared(self._invoker, options, identity, phase)
+            request = artifact_service_pb2.UploadArtifactChunkRequest(
+                name=upload.name,
+                chunk_index=upload.next_chunk_index,
+                offset=offset,
+                data=data,
+                chunk_digest=chunk_digest,
+                etag=upload.etag,
+            )
+            _attach_context(request, self._invoker, chunk_call)
+            expected_index = upload.next_chunk_index + 1
+            expected_offset = offset + len(data)
+            upload = _upload_from_response(
+                await self._invoker.unary(
+                    UPLOAD_ARTIFACT_CHUNK,
+                    request,
+                    call=chunk_call,
+                    retry_safe=True,
+                ),
+                label="artifact chunk upload",
+                expected_artifact=expected,
+            )
+            if (
+                upload.committed_offset != expected_offset
+                or upload.next_chunk_index != expected_index
+                or upload.state != artifact_service_pb2.ARTIFACT_UPLOAD_STATE_OPEN
+            ):
+                raise ProtocolError(
+                    "artifact upload progress did not advance contiguously",
+                    status=grpc.StatusCode.DATA_LOSS,
+                )
+            offset = upload.committed_offset
+        if await reader.read(1):
+            raise ValueError("artifact upload source exceeds its declared size")
+        if not hmac.compare_digest("sha256:" + full_digest.hexdigest(), expected.digest):
+            raise ValueError("artifact upload source digest differs from ArtifactRef")
+        finalize_call = _prepared(self._invoker, options, identity, "finalize")
+        finalize = artifact_service_pb2.FinalizeArtifactUploadRequest(
+            name=upload.name,
+            etag=upload.etag,
+            receipt_expire_time=_receipt_expiry(upload, receipt_ttl),
+        )
+        _attach_context(finalize, self._invoker, finalize_call)
+        response = cast(
+            artifact_service_pb2.FinalizeArtifactUploadResponse,
+            await self._invoker.unary(
+                FINALIZE_ARTIFACT_UPLOAD,
+                finalize,
+                call=finalize_call,
+                retry_safe=True,
+            ),
+        )
+        finalized = _upload_from_response(
+            response,
+            label="artifact upload finalize",
+            expected_artifact=expected,
+        )
+        if finalized.state != artifact_service_pb2.ARTIFACT_UPLOAD_STATE_FINALIZED:
+            raise ProtocolError(
+                "artifact finalize did not return a finalized session",
+                status=grpc.StatusCode.DATA_LOSS,
+            )
+        receipt = required_response_message(
+            response,
+            "staging_receipt",
+            artifact_service_pb2.ArtifactStagingReceipt,
+            label="artifact upload finalize",
+        )
+        return _validate_receipt(receipt, expected_artifact=expected)
+
+    async def abort_upload(
+        self,
+        name: str,
+        etag: str,
+        *,
+        reason_code: str,
+        options: CallOptions | None = None,
+    ) -> artifact_service_pb2.ArtifactUploadSession:
+        return await self._transition_upload(
+            ABORT_ARTIFACT_UPLOAD,
+            artifact_service_pb2.AbortArtifactUploadRequest,
+            name,
+            etag,
+            reason_code,
+            artifact_service_pb2.ARTIFACT_UPLOAD_STATE_ABORTED,
+            options,
+        )
+
+    async def quarantine_upload(
+        self,
+        name: str,
+        etag: str,
+        *,
+        reason_code: str,
+        options: CallOptions | None = None,
+    ) -> artifact_service_pb2.ArtifactUploadSession:
+        return await self._transition_upload(
+            QUARANTINE_ARTIFACT_UPLOAD,
+            artifact_service_pb2.QuarantineArtifactUploadRequest,
+            name,
+            etag,
+            reason_code,
+            artifact_service_pb2.ARTIFACT_UPLOAD_STATE_QUARANTINED,
+            options,
+        )
+
+    async def _transition_upload(
+        self,
+        method: str,
+        request_type: type[
+            artifact_service_pb2.AbortArtifactUploadRequest
+            | artifact_service_pb2.QuarantineArtifactUploadRequest
+        ],
+        name: str,
+        etag: str,
+        reason_code: str,
+        expected_state: int,
+        options: CallOptions | None,
+    ) -> artifact_service_pb2.ArtifactUploadSession:
+        upload_name = required_text("artifact upload name", name)
+        transition = method.rsplit("/", 1)[-1]
+        call = _prepared(self._invoker, options, upload_name, transition)
+        request = request_type(
+            name=upload_name,
+            etag=required_text("artifact upload etag", etag),
+            reason_code=required_text("artifact upload reason code", reason_code, maximum=128),
+        )
+        _attach_context(request, self._invoker, call)
+        upload = _upload_from_response(
+            await self._invoker.unary(method, request, call=call, retry_safe=True),
+            label="artifact upload transition",
+        )
+        if upload.state != expected_state:
+            raise ProtocolError(
+                "artifact upload transition returned an unexpected state",
+                status=grpc.StatusCode.DATA_LOSS,
+            )
+        return upload
+
+    async def commit(
+        self,
+        receipt: artifact_service_pb2.ArtifactStagingReceipt,
+        *,
+        options: CallOptions | None = None,
+    ) -> artifact_reference_pb2.ArtifactRef:
+        validated = _validate_receipt(receipt)
+        call = _prepared(self._invoker, options, validated.receipt_digest, "commit")
+        command = artifact_commands_pb2.CommitArtifactCommand(
+            artifact=validated.artifact,
+            staging_receipt_digest=validated.receipt_digest,
+        )
+        command.context.CopyFrom(
+            command_context(
+                self._invoker.config,
+                call,
+                request_digest=canonical_digest(command),
+            )
+        )
+        response = cast(
+            artifact_service_pb2.CommitArtifactResponse,
+            await self._invoker.unary(
+                COMMIT_ARTIFACT,
+                artifact_service_pb2.CommitArtifactRequest(command=command),
+                call=call,
+                retry_safe=True,
+            ),
+        )
+        committed = required_response_message(
+            response,
+            "artifact",
+            artifact_reference_pb2.ArtifactRef,
+            label="artifact commit",
+        )
+        _validate_transfer_artifact(committed)
+        if committed != validated.artifact:
+            raise ProtocolError(
+                "artifact commit returned a different content identity",
+                status=grpc.StatusCode.DATA_LOSS,
+            )
+        return committed
+
+    async def iter_download(
+        self,
+        artifact: artifact_reference_pb2.ArtifactRef,
+        *,
+        offset: int = 0,
+        max_chunk_bytes: int = _DEFAULT_CHUNK_BYTES,
+        options: CallOptions | None = None,
+    ) -> AsyncIterator[bytes]:
+        expected = _validate_transfer_artifact(artifact)
+        if offset < 0 or offset > expected.size_bytes:
+            raise ValueError("artifact download offset is outside the artifact")
+        max_chunk_bytes = _chunk_size(max_chunk_bytes)
+        call = prepare_call(
+            options,
+            default_timeout=self._invoker.config.default_timeout,
+            require_idempotency=False,
+        )
+        cursor = offset
+        digest = hashlib.sha256() if offset == 0 else None
+        complete = False
+        async for raw_response in self._invoker.stream(
+            DOWNLOAD_ARTIFACT,
+            artifact_service_pb2.DownloadArtifactRequest(
+                digest=expected.digest,
+                offset=offset,
+                max_chunk_bytes=max_chunk_bytes,
+            ),
+            call=call,
+        ):
+            response = cast(artifact_service_pb2.DownloadArtifactResponse, raw_response)
+            data = _verify_download_response(response, expected, cursor)
+            if complete:
+                raise ProtocolError(
+                    "artifact download yielded data after its terminal response",
+                    status=grpc.StatusCode.DATA_LOSS,
+                )
+            cursor += len(data)
+            if digest is not None:
+                digest.update(data)
+            complete = response.complete
+            if data:
+                yield data
+            if complete:
+                break
+        if not complete or cursor != expected.size_bytes:
+            raise ProtocolError(
+                "artifact download stream ended before the declared size",
+                status=grpc.StatusCode.DATA_LOSS,
+            )
+        if digest is not None and not hmac.compare_digest(
+            "sha256:" + digest.hexdigest(), expected.digest
+        ):
+            raise ProtocolError(
+                "artifact download digest verification failed",
+                status=grpc.StatusCode.DATA_LOSS,
+            )

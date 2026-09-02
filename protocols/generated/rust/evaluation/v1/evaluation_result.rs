@@ -106,7 +106,6 @@ pub enum EvaluationResultOutcome {
 }
 impl EvaluationResultOutcome {
     /// String value of the enum field names used in the ProtoBuf definition.
-    ///
     /// The values are not transformed in any way and thus are considered stable
     /// (if the ProtoBuf definition does not change) and safe for programmatic use.
     pub fn as_str_name(&self) -> &'static str {
@@ -143,7 +142,6 @@ pub enum MetricDirection {
 }
 impl MetricDirection {
     /// String value of the enum field names used in the ProtoBuf definition.
-    ///
     /// The values are not transformed in any way and thus are considered stable
     /// (if the ProtoBuf definition does not change) and safe for programmatic use.
     pub fn as_str_name(&self) -> &'static str {
@@ -177,7 +175,6 @@ pub enum ThresholdResult {
 }
 impl ThresholdResult {
     /// String value of the enum field names used in the ProtoBuf definition.
-    ///
     /// The values are not transformed in any way and thus are considered stable
     /// (if the ProtoBuf definition does not change) and safe for programmatic use.
     pub fn as_str_name(&self) -> &'static str {

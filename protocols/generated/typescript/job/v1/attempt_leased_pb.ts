@@ -4,32 +4,47 @@
 
 import type { GenFile, GenMessage } from "@bufbuild/protobuf/codegenv2";
 import { fileDesc, messageDesc } from "@bufbuild/protobuf/codegenv2";
+import type { Timestamp } from "@bufbuild/protobuf/wkt";
+import { file_google_protobuf_timestamp } from "@bufbuild/protobuf/wkt";
+import type { Attempt } from "./attempt_pb.js";
+import { file_proto_mindclade_job_v1_attempt } from "./attempt_pb.js";
+import type { LeaseFence } from "./lease_fencing_pb.js";
+import { file_proto_mindclade_job_v1_lease_fencing } from "./lease_fencing_pb.js";
 import type { Message } from "@bufbuild/protobuf";
 
 /**
  * Describes the file events/mindclade/job/v1/attempt_leased.proto.
  */
 export const file_events_mindclade_job_v1_attempt_leased: GenFile = /*@__PURE__*/
-  fileDesc("CixldmVudHMvbWluZGNsYWRlL2pvYi92MS9hdHRlbXB0X2xlYXNlZC5wcm90bxIXbWluZGNsYWRlLmV2ZW50cy5qb2IudjEiVgoNQXR0ZW1wdExlYXNlZBISCgphdHRlbXB0X2lkGAEgASgJEhMKC2xlYXNlX2Vwb2NoGAIgASgEEhwKFGxlYXNlX2V4cGlyZXNfYXRfdXRjGAMgASgJQkRaQmdpdGh1Yi5jb20vbWluZGNsYWRlL21pbmRjbGFkZS9wcm90b2NvbHMvZ2VuZXJhdGVkL2dvL2pvYi92MTtqb2J2MWIGcHJvdG8z");
+  fileDesc("CixldmVudHMvbWluZGNsYWRlL2pvYi92MS9hdHRlbXB0X2xlYXNlZC5wcm90bxIXbWluZGNsYWRlLmV2ZW50cy5qb2IudjEizQEKDUF0dGVtcHRMZWFzZWQSKgoHYXR0ZW1wdBgBIAEoCzIZLm1pbmRjbGFkZS5qb2IudjEuQXR0ZW1wdBIrCgVmZW5jZRgCIAEoCzIcLm1pbmRjbGFkZS5qb2IudjEuTGVhc2VGZW5jZRItCglsZWFzZWRfYXQYAyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEjQKEGxlYXNlX2V4cGlyZXNfYXQYBCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wQkRaQmdpdGh1Yi5jb20vbWluZGNsYWRlL21pbmRjbGFkZS9wcm90b2NvbHMvZ2VuZXJhdGVkL2dvL2pvYi92MTtqb2J2MWIGcHJvdG8z", [file_google_protobuf_timestamp, file_proto_mindclade_job_v1_attempt, file_proto_mindclade_job_v1_lease_fencing]);
 
 /**
+ * AttemptLeased is the immutable fact emitted with the transaction that grants
+ * one token-bound worker lease. The raw lease token is transport metadata and
+ * is deliberately absent.
+ *
  * @generated from message mindclade.events.job.v1.AttemptLeased
  */
 export type AttemptLeased = Message<"mindclade.events.job.v1.AttemptLeased"> & {
   /**
-   * @generated from field: string attempt_id = 1;
+   * @generated from field: mindclade.job.v1.Attempt attempt = 1;
    */
-  attemptId: string;
+  attempt?: Attempt;
 
   /**
-   * @generated from field: uint64 lease_epoch = 2;
+   * @generated from field: mindclade.job.v1.LeaseFence fence = 2;
    */
-  leaseEpoch: bigint;
+  fence?: LeaseFence;
 
   /**
-   * @generated from field: string lease_expires_at_utc = 3;
+   * @generated from field: google.protobuf.Timestamp leased_at = 3;
    */
-  leaseExpiresAtUtc: string;
+  leasedAt?: Timestamp;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp lease_expires_at = 4;
+   */
+  leaseExpiresAt?: Timestamp;
 };
 
 /**

@@ -31,60 +31,65 @@ from mindclade.agent.v1 import tool_receipt_pb2 as proto_dot_mindclade_dot_agent
 from mindclade.common.v1 import command_context_pb2 as proto_dot_mindclade_dot_common_dot_v1_dot_command__context__pb2
 from mindclade.common.v1 import pagination_pb2 as proto_dot_mindclade_dot_common_dot_v1_dot_pagination__pb2
 from mindclade.job.v1 import operation_pb2 as proto_dot_mindclade_dot_job_dot_v1_dot_operation__pb2
+from mindclade.job.v1 import lease_fencing_pb2 as proto_dot_mindclade_dot_job_dot_v1_dot_lease__fencing__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n5proto/mindclade/internal/agent/v1/agent_service.proto\x12\x1bmindclade.internal.agent.v1\x1a google/protobuf/field_mask.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a/proto/mindclade/agent/v1/agent_definition.proto\x1a(proto/mindclade/agent/v1/agent_run.proto\x1a)proto/mindclade/agent/v1/agent_step.proto\x1a+proto/mindclade/agent/v1/tool_receipt.proto\x1a/proto/mindclade/common/v1/command_context.proto\x1a*proto/mindclade/common/v1/pagination.proto\x1a&proto/mindclade/job/v1/operation.proto\"\xf5\x01\n\x1c\x43reateAgentDefinitionRequest\x12=\n\x07\x63ontext\x18\x01 \x01(\x0b\x32#.mindclade.common.v1.CommandContextR\x07\x63ontext\x12\x16\n\x06parent\x18\x02 \x01(\tR\x06parent\x12.\n\x13\x61gent_definition_id\x18\x03 \x01(\tR\x11\x61gentDefinitionId\x12N\n\x10\x61gent_definition\x18\x04 \x01(\x0b\x32#.mindclade.agent.v1.AgentDefinitionR\x0f\x61gentDefinition\"Z\n\x1d\x43reateAgentDefinitionResponse\x12\x39\n\toperation\x18\x01 \x01(\x0b\x32\x1b.mindclade.job.v1.OperationR\toperation\"\xfe\x01\n\x1cUpdateAgentDefinitionRequest\x12=\n\x07\x63ontext\x18\x01 \x01(\x0b\x32#.mindclade.common.v1.CommandContextR\x07\x63ontext\x12N\n\x10\x61gent_definition\x18\x02 \x01(\x0b\x32#.mindclade.agent.v1.AgentDefinitionR\x0f\x61gentDefinition\x12;\n\x0bupdate_mask\x18\x03 \x01(\x0b\x32\x1a.google.protobuf.FieldMaskR\nupdateMask\x12\x12\n\x04\x65tag\x18\x04 \x01(\tR\x04\x65tag\"Z\n\x1dUpdateAgentDefinitionResponse\x12\x39\n\toperation\x18\x01 \x01(\x0b\x32\x1b.mindclade.job.v1.OperationR\toperation\"S\n\x19GetAgentDefinitionRequest\x12\x12\n\x04name\x18\x01 \x01(\tR\x04name\x12\"\n\rif_none_match\x18\x02 \x01(\tR\x0bifNoneMatch\"l\n\x1aGetAgentDefinitionResponse\x12N\n\x10\x61gent_definition\x18\x01 \x01(\x0b\x32#.mindclade.agent.v1.AgentDefinitionR\x0f\x61gentDefinition\"\x9e\x01\n\x1bListAgentDefinitionsRequest\x12\x16\n\x06parent\x18\x01 \x01(\tR\x06parent\x12\x34\n\x04page\x18\x02 \x01(\x0b\x32 .mindclade.common.v1.PageRequestR\x04page\x12\x16\n\x06\x66ilter\x18\x03 \x01(\tR\x06\x66ilter\x12\x19\n\x08order_by\x18\x04 \x01(\tR\x07orderBy\"\xe0\x01\n\x1cListAgentDefinitionsResponse\x12P\n\x11\x61gent_definitions\x18\x01 \x03(\x0b\x32#.mindclade.agent.v1.AgentDefinitionR\x10\x61gentDefinitions\x12\x35\n\x04page\x18\x02 \x01(\x0b\x32!.mindclade.common.v1.PageResponseR\x04page\x12\x37\n\tread_time\x18\x03 \x01(\x0b\x32\x1a.google.protobuf.TimestampR\x08readTime\"\xca\x01\n\x14StartAgentRunRequest\x12=\n\x07\x63ontext\x18\x01 \x01(\x0b\x32#.mindclade.common.v1.CommandContextR\x07\x63ontext\x12\x16\n\x06parent\x18\x02 \x01(\tR\x06parent\x12 \n\x0c\x61gent_run_id\x18\x03 \x01(\tR\nagentRunId\x12\x39\n\tagent_run\x18\x04 \x01(\x0b\x32\x1c.mindclade.agent.v1.AgentRunR\x08\x61gentRun\"R\n\x15StartAgentRunResponse\x12\x39\n\toperation\x18\x01 \x01(\x0b\x32\x1b.mindclade.job.v1.OperationR\toperation\"L\n\x12GetAgentRunRequest\x12\x12\n\x04name\x18\x01 \x01(\tR\x04name\x12\"\n\rif_none_match\x18\x02 \x01(\tR\x0bifNoneMatch\"P\n\x13GetAgentRunResponse\x12\x39\n\tagent_run\x18\x01 \x01(\x0b\x32\x1c.mindclade.agent.v1.AgentRunR\x08\x61gentRun\"\x97\x01\n\x14ListAgentRunsRequest\x12\x16\n\x06parent\x18\x01 \x01(\tR\x06parent\x12\x34\n\x04page\x18\x02 \x01(\x0b\x32 .mindclade.common.v1.PageRequestR\x04page\x12\x16\n\x06\x66ilter\x18\x03 \x01(\tR\x06\x66ilter\x12\x19\n\x08order_by\x18\x04 \x01(\tR\x07orderBy\"\xc4\x01\n\x15ListAgentRunsResponse\x12;\n\nagent_runs\x18\x01 \x03(\x0b\x32\x1c.mindclade.agent.v1.AgentRunR\tagentRuns\x12\x35\n\x04page\x18\x02 \x01(\x0b\x32!.mindclade.common.v1.PageResponseR\x04page\x12\x37\n\tread_time\x18\x03 \x01(\x0b\x32\x1a.google.protobuf.TimestampR\x08readTime\"\x96\x01\n\x15\x43\x61ncelAgentRunRequest\x12=\n\x07\x63ontext\x18\x01 \x01(\x0b\x32#.mindclade.common.v1.CommandContextR\x07\x63ontext\x12\x12\n\x04name\x18\x02 \x01(\tR\x04name\x12\x12\n\x04\x65tag\x18\x03 \x01(\tR\x04\x65tag\x12\x16\n\x06reason\x18\x04 \x01(\tR\x06reason\"S\n\x16\x43\x61ncelAgentRunResponse\x12\x39\n\toperation\x18\x01 \x01(\x0b\x32\x1b.mindclade.job.v1.OperationR\toperation\")\n\x13GetAgentStepRequest\x12\x12\n\x04name\x18\x01 \x01(\tR\x04name\"T\n\x14GetAgentStepResponse\x12<\n\nagent_step\x18\x01 \x01(\x0b\x32\x1d.mindclade.agent.v1.AgentStepR\tagentStep\"\x8c\x01\n\x15ListAgentStepsRequest\x12\x16\n\x06parent\x18\x01 \x01(\tR\x06parent\x12\x34\n\x04page\x18\x02 \x01(\x0b\x32 .mindclade.common.v1.PageRequestR\x04page\x12%\n\x0e\x61\x66ter_sequence\x18\x03 \x01(\x04R\rafterSequence\"\xc8\x01\n\x16ListAgentStepsResponse\x12>\n\x0b\x61gent_steps\x18\x01 \x03(\x0b\x32\x1d.mindclade.agent.v1.AgentStepR\nagentSteps\x12\x35\n\x04page\x18\x02 \x01(\x0b\x32!.mindclade.common.v1.PageResponseR\x04page\x12\x37\n\tread_time\x18\x03 \x01(\x0b\x32\x1a.google.protobuf.TimestampR\x08readTime\"\xb8\x01\n\x18\x43ommitToolReceiptRequest\x12=\n\x07\x63ontext\x18\x01 \x01(\x0b\x32#.mindclade.common.v1.CommandContextR\x07\x63ontext\x12\x42\n\x0ctool_receipt\x18\x02 \x01(\x0b\x32\x1f.mindclade.agent.v1.ToolReceiptR\x0btoolReceipt\x12\x19\n\x08run_etag\x18\x03 \x01(\tR\x07runEtag\"\x9a\x01\n\x19\x43ommitToolReceiptResponse\x12\x42\n\x0ctool_receipt\x18\x01 \x01(\x0b\x32\x1f.mindclade.agent.v1.ToolReceiptR\x0btoolReceipt\x12\x39\n\tagent_run\x18\x02 \x01(\x0b\x32\x1c.mindclade.agent.v1.AgentRunR\x08\x61gentRun2\x98\x0b\n\x0c\x41gentService\x12\x8e\x01\n\x15\x43reateAgentDefinition\x12\x39.mindclade.internal.agent.v1.CreateAgentDefinitionRequest\x1a:.mindclade.internal.agent.v1.CreateAgentDefinitionResponse\x12\x8e\x01\n\x15UpdateAgentDefinition\x12\x39.mindclade.internal.agent.v1.UpdateAgentDefinitionRequest\x1a:.mindclade.internal.agent.v1.UpdateAgentDefinitionResponse\x12\x85\x01\n\x12GetAgentDefinition\x12\x36.mindclade.internal.agent.v1.GetAgentDefinitionRequest\x1a\x37.mindclade.internal.agent.v1.GetAgentDefinitionResponse\x12\x8b\x01\n\x14ListAgentDefinitions\x12\x38.mindclade.internal.agent.v1.ListAgentDefinitionsRequest\x1a\x39.mindclade.internal.agent.v1.ListAgentDefinitionsResponse\x12v\n\rStartAgentRun\x12\x31.mindclade.internal.agent.v1.StartAgentRunRequest\x1a\x32.mindclade.internal.agent.v1.StartAgentRunResponse\x12p\n\x0bGetAgentRun\x12/.mindclade.internal.agent.v1.GetAgentRunRequest\x1a\x30.mindclade.internal.agent.v1.GetAgentRunResponse\x12v\n\rListAgentRuns\x12\x31.mindclade.internal.agent.v1.ListAgentRunsRequest\x1a\x32.mindclade.internal.agent.v1.ListAgentRunsResponse\x12y\n\x0e\x43\x61ncelAgentRun\x12\x32.mindclade.internal.agent.v1.CancelAgentRunRequest\x1a\x33.mindclade.internal.agent.v1.CancelAgentRunResponse\x12s\n\x0cGetAgentStep\x12\x30.mindclade.internal.agent.v1.GetAgentStepRequest\x1a\x31.mindclade.internal.agent.v1.GetAgentStepResponse\x12y\n\x0eListAgentSteps\x12\x32.mindclade.internal.agent.v1.ListAgentStepsRequest\x1a\x33.mindclade.internal.agent.v1.ListAgentStepsResponse\x12\x82\x01\n\x11\x43ommitToolReceipt\x12\x35.mindclade.internal.agent.v1.CommitToolReceiptRequest\x1a\x36.mindclade.internal.agent.v1.CommitToolReceiptResponseBYZWgithub.com/mindclade/mindclade/protocols/generated/go/internal/agent/v1;internalagentv1b\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n5proto/mindclade/internal/agent/v1/agent_service.proto\x12\x1bmindclade.internal.agent.v1\x1a google/protobuf/field_mask.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a/proto/mindclade/agent/v1/agent_definition.proto\x1a(proto/mindclade/agent/v1/agent_run.proto\x1a)proto/mindclade/agent/v1/agent_step.proto\x1a+proto/mindclade/agent/v1/tool_receipt.proto\x1a/proto/mindclade/common/v1/command_context.proto\x1a*proto/mindclade/common/v1/pagination.proto\x1a&proto/mindclade/job/v1/operation.proto\x1a*proto/mindclade/job/v1/lease_fencing.proto\"\xf5\x01\n\x1c\x43reateAgentDefinitionRequest\x12=\n\x07\x63ontext\x18\x01 \x01(\x0b\x32#.mindclade.common.v1.CommandContextR\x07\x63ontext\x12\x16\n\x06parent\x18\x02 \x01(\tR\x06parent\x12.\n\x13\x61gent_definition_id\x18\x03 \x01(\tR\x11\x61gentDefinitionId\x12N\n\x10\x61gent_definition\x18\x04 \x01(\x0b\x32#.mindclade.agent.v1.AgentDefinitionR\x0f\x61gentDefinition\"Z\n\x1d\x43reateAgentDefinitionResponse\x12\x39\n\toperation\x18\x01 \x01(\x0b\x32\x1b.mindclade.job.v1.OperationR\toperation\"\xfe\x01\n\x1cUpdateAgentDefinitionRequest\x12=\n\x07\x63ontext\x18\x01 \x01(\x0b\x32#.mindclade.common.v1.CommandContextR\x07\x63ontext\x12N\n\x10\x61gent_definition\x18\x02 \x01(\x0b\x32#.mindclade.agent.v1.AgentDefinitionR\x0f\x61gentDefinition\x12;\n\x0bupdate_mask\x18\x03 \x01(\x0b\x32\x1a.google.protobuf.FieldMaskR\nupdateMask\x12\x12\n\x04\x65tag\x18\x04 \x01(\tR\x04\x65tag\"Z\n\x1dUpdateAgentDefinitionResponse\x12\x39\n\toperation\x18\x01 \x01(\x0b\x32\x1b.mindclade.job.v1.OperationR\toperation\"S\n\x19GetAgentDefinitionRequest\x12\x12\n\x04name\x18\x01 \x01(\tR\x04name\x12\"\n\rif_none_match\x18\x02 \x01(\tR\x0bifNoneMatch\"l\n\x1aGetAgentDefinitionResponse\x12N\n\x10\x61gent_definition\x18\x01 \x01(\x0b\x32#.mindclade.agent.v1.AgentDefinitionR\x0f\x61gentDefinition\"\x9e\x01\n\x1bListAgentDefinitionsRequest\x12\x16\n\x06parent\x18\x01 \x01(\tR\x06parent\x12\x34\n\x04page\x18\x02 \x01(\x0b\x32 .mindclade.common.v1.PageRequestR\x04page\x12\x16\n\x06\x66ilter\x18\x03 \x01(\tR\x06\x66ilter\x12\x19\n\x08order_by\x18\x04 \x01(\tR\x07orderBy\"\xe0\x01\n\x1cListAgentDefinitionsResponse\x12P\n\x11\x61gent_definitions\x18\x01 \x03(\x0b\x32#.mindclade.agent.v1.AgentDefinitionR\x10\x61gentDefinitions\x12\x35\n\x04page\x18\x02 \x01(\x0b\x32!.mindclade.common.v1.PageResponseR\x04page\x12\x37\n\tread_time\x18\x03 \x01(\x0b\x32\x1a.google.protobuf.TimestampR\x08readTime\"\xca\x01\n\x14StartAgentRunRequest\x12=\n\x07\x63ontext\x18\x01 \x01(\x0b\x32#.mindclade.common.v1.CommandContextR\x07\x63ontext\x12\x16\n\x06parent\x18\x02 \x01(\tR\x06parent\x12 \n\x0c\x61gent_run_id\x18\x03 \x01(\tR\nagentRunId\x12\x39\n\tagent_run\x18\x04 \x01(\x0b\x32\x1c.mindclade.agent.v1.AgentRunR\x08\x61gentRun\"R\n\x15StartAgentRunResponse\x12\x39\n\toperation\x18\x01 \x01(\x0b\x32\x1b.mindclade.job.v1.OperationR\toperation\"L\n\x12GetAgentRunRequest\x12\x12\n\x04name\x18\x01 \x01(\tR\x04name\x12\"\n\rif_none_match\x18\x02 \x01(\tR\x0bifNoneMatch\"P\n\x13GetAgentRunResponse\x12\x39\n\tagent_run\x18\x01 \x01(\x0b\x32\x1c.mindclade.agent.v1.AgentRunR\x08\x61gentRun\"\x97\x01\n\x14ListAgentRunsRequest\x12\x16\n\x06parent\x18\x01 \x01(\tR\x06parent\x12\x34\n\x04page\x18\x02 \x01(\x0b\x32 .mindclade.common.v1.PageRequestR\x04page\x12\x16\n\x06\x66ilter\x18\x03 \x01(\tR\x06\x66ilter\x12\x19\n\x08order_by\x18\x04 \x01(\tR\x07orderBy\"\xc4\x01\n\x15ListAgentRunsResponse\x12;\n\nagent_runs\x18\x01 \x03(\x0b\x32\x1c.mindclade.agent.v1.AgentRunR\tagentRuns\x12\x35\n\x04page\x18\x02 \x01(\x0b\x32!.mindclade.common.v1.PageResponseR\x04page\x12\x37\n\tread_time\x18\x03 \x01(\x0b\x32\x1a.google.protobuf.TimestampR\x08readTime\"\x96\x01\n\x15\x43\x61ncelAgentRunRequest\x12=\n\x07\x63ontext\x18\x01 \x01(\x0b\x32#.mindclade.common.v1.CommandContextR\x07\x63ontext\x12\x12\n\x04name\x18\x02 \x01(\tR\x04name\x12\x12\n\x04\x65tag\x18\x03 \x01(\tR\x04\x65tag\x12\x16\n\x06reason\x18\x04 \x01(\tR\x06reason\"S\n\x16\x43\x61ncelAgentRunResponse\x12\x39\n\toperation\x18\x01 \x01(\x0b\x32\x1b.mindclade.job.v1.OperationR\toperation\")\n\x13GetAgentStepRequest\x12\x12\n\x04name\x18\x01 \x01(\tR\x04name\"T\n\x14GetAgentStepResponse\x12<\n\nagent_step\x18\x01 \x01(\x0b\x32\x1d.mindclade.agent.v1.AgentStepR\tagentStep\"\x8c\x01\n\x15ListAgentStepsRequest\x12\x16\n\x06parent\x18\x01 \x01(\tR\x06parent\x12\x34\n\x04page\x18\x02 \x01(\x0b\x32 .mindclade.common.v1.PageRequestR\x04page\x12%\n\x0e\x61\x66ter_sequence\x18\x03 \x01(\x04R\rafterSequence\"\xc8\x01\n\x16ListAgentStepsResponse\x12>\n\x0b\x61gent_steps\x18\x01 \x03(\x0b\x32\x1d.mindclade.agent.v1.AgentStepR\nagentSteps\x12\x35\n\x04page\x18\x02 \x01(\x0b\x32!.mindclade.common.v1.PageResponseR\x04page\x12\x37\n\tread_time\x18\x03 \x01(\x0b\x32\x1a.google.protobuf.TimestampR\x08readTime\"\xa3\x02\n\x16\x43ommitAgentStepRequest\x12=\n\x07\x63ontext\x18\x01 \x01(\x0b\x32#.mindclade.common.v1.CommandContextR\x07\x63ontext\x12<\n\nagent_step\x18\x02 \x01(\x0b\x32\x1d.mindclade.agent.v1.AgentStepR\tagentStep\x12\x32\n\x05\x66\x65nce\x18\x03 \x01(\x0b\x32\x1c.mindclade.job.v1.LeaseFenceR\x05\x66\x65nce\x12\x19\n\x08run_etag\x18\x04 \x01(\tR\x07runEtag\x12=\n\x1b\x65xpected_next_step_sequence\x18\x05 \x01(\x04R\x18\x65xpectedNextStepSequence\"\x92\x01\n\x17\x43ommitAgentStepResponse\x12<\n\nagent_step\x18\x01 \x01(\x0b\x32\x1d.mindclade.agent.v1.AgentStepR\tagentStep\x12\x39\n\tagent_run\x18\x02 \x01(\x0b\x32\x1c.mindclade.agent.v1.AgentRunR\x08\x61gentRun\"\xec\x01\n\x18\x43ommitToolReceiptRequest\x12=\n\x07\x63ontext\x18\x01 \x01(\x0b\x32#.mindclade.common.v1.CommandContextR\x07\x63ontext\x12\x42\n\x0ctool_receipt\x18\x02 \x01(\x0b\x32\x1f.mindclade.agent.v1.ToolReceiptR\x0btoolReceipt\x12\x19\n\x08run_etag\x18\x03 \x01(\tR\x07runEtag\x12\x32\n\x05\x66\x65nce\x18\x04 \x01(\x0b\x32\x1c.mindclade.job.v1.LeaseFenceR\x05\x66\x65nce\"\x9a\x01\n\x19\x43ommitToolReceiptResponse\x12\x42\n\x0ctool_receipt\x18\x01 \x01(\x0b\x32\x1f.mindclade.agent.v1.ToolReceiptR\x0btoolReceipt\x12\x39\n\tagent_run\x18\x02 \x01(\x0b\x32\x1c.mindclade.agent.v1.AgentRunR\x08\x61gentRun2\x96\x0c\n\x0c\x41gentService\x12\x8e\x01\n\x15\x43reateAgentDefinition\x12\x39.mindclade.internal.agent.v1.CreateAgentDefinitionRequest\x1a:.mindclade.internal.agent.v1.CreateAgentDefinitionResponse\x12\x8e\x01\n\x15UpdateAgentDefinition\x12\x39.mindclade.internal.agent.v1.UpdateAgentDefinitionRequest\x1a:.mindclade.internal.agent.v1.UpdateAgentDefinitionResponse\x12\x85\x01\n\x12GetAgentDefinition\x12\x36.mindclade.internal.agent.v1.GetAgentDefinitionRequest\x1a\x37.mindclade.internal.agent.v1.GetAgentDefinitionResponse\x12\x8b\x01\n\x14ListAgentDefinitions\x12\x38.mindclade.internal.agent.v1.ListAgentDefinitionsRequest\x1a\x39.mindclade.internal.agent.v1.ListAgentDefinitionsResponse\x12v\n\rStartAgentRun\x12\x31.mindclade.internal.agent.v1.StartAgentRunRequest\x1a\x32.mindclade.internal.agent.v1.StartAgentRunResponse\x12p\n\x0bGetAgentRun\x12/.mindclade.internal.agent.v1.GetAgentRunRequest\x1a\x30.mindclade.internal.agent.v1.GetAgentRunResponse\x12v\n\rListAgentRuns\x12\x31.mindclade.internal.agent.v1.ListAgentRunsRequest\x1a\x32.mindclade.internal.agent.v1.ListAgentRunsResponse\x12y\n\x0e\x43\x61ncelAgentRun\x12\x32.mindclade.internal.agent.v1.CancelAgentRunRequest\x1a\x33.mindclade.internal.agent.v1.CancelAgentRunResponse\x12s\n\x0cGetAgentStep\x12\x30.mindclade.internal.agent.v1.GetAgentStepRequest\x1a\x31.mindclade.internal.agent.v1.GetAgentStepResponse\x12y\n\x0eListAgentSteps\x12\x32.mindclade.internal.agent.v1.ListAgentStepsRequest\x1a\x33.mindclade.internal.agent.v1.ListAgentStepsResponse\x12|\n\x0f\x43ommitAgentStep\x12\x33.mindclade.internal.agent.v1.CommitAgentStepRequest\x1a\x34.mindclade.internal.agent.v1.CommitAgentStepResponse\x12\x82\x01\n\x11\x43ommitToolReceipt\x12\x35.mindclade.internal.agent.v1.CommitToolReceiptRequest\x1a\x36.mindclade.internal.agent.v1.CommitToolReceiptResponseB\\ZZgithub.com/mindclade/mindclade/protocols/generated/go/internalrpc/agent/v1;internalagentv1b\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'mindclade.internal.agent.v1.agent_service_pb2', _globals)
 if not _descriptor._USE_C_DESCRIPTORS:
   _globals['DESCRIPTOR']._loaded_options = None
-  _globals['DESCRIPTOR']._serialized_options = b'ZWgithub.com/mindclade/mindclade/protocols/generated/go/internal/agent/v1;internalagentv1'
-  _globals['_CREATEAGENTDEFINITIONREQUEST']._serialized_start=466
-  _globals['_CREATEAGENTDEFINITIONREQUEST']._serialized_end=711
-  _globals['_CREATEAGENTDEFINITIONRESPONSE']._serialized_start=713
-  _globals['_CREATEAGENTDEFINITIONRESPONSE']._serialized_end=803
-  _globals['_UPDATEAGENTDEFINITIONREQUEST']._serialized_start=806
-  _globals['_UPDATEAGENTDEFINITIONREQUEST']._serialized_end=1060
-  _globals['_UPDATEAGENTDEFINITIONRESPONSE']._serialized_start=1062
-  _globals['_UPDATEAGENTDEFINITIONRESPONSE']._serialized_end=1152
-  _globals['_GETAGENTDEFINITIONREQUEST']._serialized_start=1154
-  _globals['_GETAGENTDEFINITIONREQUEST']._serialized_end=1237
-  _globals['_GETAGENTDEFINITIONRESPONSE']._serialized_start=1239
-  _globals['_GETAGENTDEFINITIONRESPONSE']._serialized_end=1347
-  _globals['_LISTAGENTDEFINITIONSREQUEST']._serialized_start=1350
-  _globals['_LISTAGENTDEFINITIONSREQUEST']._serialized_end=1508
-  _globals['_LISTAGENTDEFINITIONSRESPONSE']._serialized_start=1511
-  _globals['_LISTAGENTDEFINITIONSRESPONSE']._serialized_end=1735
-  _globals['_STARTAGENTRUNREQUEST']._serialized_start=1738
-  _globals['_STARTAGENTRUNREQUEST']._serialized_end=1940
-  _globals['_STARTAGENTRUNRESPONSE']._serialized_start=1942
-  _globals['_STARTAGENTRUNRESPONSE']._serialized_end=2024
-  _globals['_GETAGENTRUNREQUEST']._serialized_start=2026
-  _globals['_GETAGENTRUNREQUEST']._serialized_end=2102
-  _globals['_GETAGENTRUNRESPONSE']._serialized_start=2104
-  _globals['_GETAGENTRUNRESPONSE']._serialized_end=2184
-  _globals['_LISTAGENTRUNSREQUEST']._serialized_start=2187
-  _globals['_LISTAGENTRUNSREQUEST']._serialized_end=2338
-  _globals['_LISTAGENTRUNSRESPONSE']._serialized_start=2341
-  _globals['_LISTAGENTRUNSRESPONSE']._serialized_end=2537
-  _globals['_CANCELAGENTRUNREQUEST']._serialized_start=2540
-  _globals['_CANCELAGENTRUNREQUEST']._serialized_end=2690
-  _globals['_CANCELAGENTRUNRESPONSE']._serialized_start=2692
-  _globals['_CANCELAGENTRUNRESPONSE']._serialized_end=2775
-  _globals['_GETAGENTSTEPREQUEST']._serialized_start=2777
-  _globals['_GETAGENTSTEPREQUEST']._serialized_end=2818
-  _globals['_GETAGENTSTEPRESPONSE']._serialized_start=2820
-  _globals['_GETAGENTSTEPRESPONSE']._serialized_end=2904
-  _globals['_LISTAGENTSTEPSREQUEST']._serialized_start=2907
-  _globals['_LISTAGENTSTEPSREQUEST']._serialized_end=3047
-  _globals['_LISTAGENTSTEPSRESPONSE']._serialized_start=3050
-  _globals['_LISTAGENTSTEPSRESPONSE']._serialized_end=3250
-  _globals['_COMMITTOOLRECEIPTREQUEST']._serialized_start=3253
-  _globals['_COMMITTOOLRECEIPTREQUEST']._serialized_end=3437
-  _globals['_COMMITTOOLRECEIPTRESPONSE']._serialized_start=3440
-  _globals['_COMMITTOOLRECEIPTRESPONSE']._serialized_end=3594
-  _globals['_AGENTSERVICE']._serialized_start=3597
-  _globals['_AGENTSERVICE']._serialized_end=5029
+  _globals['DESCRIPTOR']._serialized_options = b'ZZgithub.com/mindclade/mindclade/protocols/generated/go/internalrpc/agent/v1;internalagentv1'
+  _globals['_CREATEAGENTDEFINITIONREQUEST']._serialized_start=510
+  _globals['_CREATEAGENTDEFINITIONREQUEST']._serialized_end=755
+  _globals['_CREATEAGENTDEFINITIONRESPONSE']._serialized_start=757
+  _globals['_CREATEAGENTDEFINITIONRESPONSE']._serialized_end=847
+  _globals['_UPDATEAGENTDEFINITIONREQUEST']._serialized_start=850
+  _globals['_UPDATEAGENTDEFINITIONREQUEST']._serialized_end=1104
+  _globals['_UPDATEAGENTDEFINITIONRESPONSE']._serialized_start=1106
+  _globals['_UPDATEAGENTDEFINITIONRESPONSE']._serialized_end=1196
+  _globals['_GETAGENTDEFINITIONREQUEST']._serialized_start=1198
+  _globals['_GETAGENTDEFINITIONREQUEST']._serialized_end=1281
+  _globals['_GETAGENTDEFINITIONRESPONSE']._serialized_start=1283
+  _globals['_GETAGENTDEFINITIONRESPONSE']._serialized_end=1391
+  _globals['_LISTAGENTDEFINITIONSREQUEST']._serialized_start=1394
+  _globals['_LISTAGENTDEFINITIONSREQUEST']._serialized_end=1552
+  _globals['_LISTAGENTDEFINITIONSRESPONSE']._serialized_start=1555
+  _globals['_LISTAGENTDEFINITIONSRESPONSE']._serialized_end=1779
+  _globals['_STARTAGENTRUNREQUEST']._serialized_start=1782
+  _globals['_STARTAGENTRUNREQUEST']._serialized_end=1984
+  _globals['_STARTAGENTRUNRESPONSE']._serialized_start=1986
+  _globals['_STARTAGENTRUNRESPONSE']._serialized_end=2068
+  _globals['_GETAGENTRUNREQUEST']._serialized_start=2070
+  _globals['_GETAGENTRUNREQUEST']._serialized_end=2146
+  _globals['_GETAGENTRUNRESPONSE']._serialized_start=2148
+  _globals['_GETAGENTRUNRESPONSE']._serialized_end=2228
+  _globals['_LISTAGENTRUNSREQUEST']._serialized_start=2231
+  _globals['_LISTAGENTRUNSREQUEST']._serialized_end=2382
+  _globals['_LISTAGENTRUNSRESPONSE']._serialized_start=2385
+  _globals['_LISTAGENTRUNSRESPONSE']._serialized_end=2581
+  _globals['_CANCELAGENTRUNREQUEST']._serialized_start=2584
+  _globals['_CANCELAGENTRUNREQUEST']._serialized_end=2734
+  _globals['_CANCELAGENTRUNRESPONSE']._serialized_start=2736
+  _globals['_CANCELAGENTRUNRESPONSE']._serialized_end=2819
+  _globals['_GETAGENTSTEPREQUEST']._serialized_start=2821
+  _globals['_GETAGENTSTEPREQUEST']._serialized_end=2862
+  _globals['_GETAGENTSTEPRESPONSE']._serialized_start=2864
+  _globals['_GETAGENTSTEPRESPONSE']._serialized_end=2948
+  _globals['_LISTAGENTSTEPSREQUEST']._serialized_start=2951
+  _globals['_LISTAGENTSTEPSREQUEST']._serialized_end=3091
+  _globals['_LISTAGENTSTEPSRESPONSE']._serialized_start=3094
+  _globals['_LISTAGENTSTEPSRESPONSE']._serialized_end=3294
+  _globals['_COMMITAGENTSTEPREQUEST']._serialized_start=3297
+  _globals['_COMMITAGENTSTEPREQUEST']._serialized_end=3588
+  _globals['_COMMITAGENTSTEPRESPONSE']._serialized_start=3591
+  _globals['_COMMITAGENTSTEPRESPONSE']._serialized_end=3737
+  _globals['_COMMITTOOLRECEIPTREQUEST']._serialized_start=3740
+  _globals['_COMMITTOOLRECEIPTREQUEST']._serialized_end=3976
+  _globals['_COMMITTOOLRECEIPTRESPONSE']._serialized_start=3979
+  _globals['_COMMITTOOLRECEIPTRESPONSE']._serialized_end=4133
+  _globals['_AGENTSERVICE']._serialized_start=4136
+  _globals['_AGENTSERVICE']._serialized_end=5694
 # @@protoc_insertion_point(module_scope)

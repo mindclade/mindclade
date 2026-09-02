@@ -53,6 +53,8 @@ class AgentServiceStub:
     """GetAgentStep reads one append-only step."""
     ListAgentSteps: _grpc.UnaryUnaryMultiCallable[_agent_service_pb2.ListAgentStepsRequest, _agent_service_pb2.ListAgentStepsResponse]
     """ListAgentSteps returns ordered, resumable run history."""
+    CommitAgentStep: _grpc.UnaryUnaryMultiCallable[_agent_service_pb2.CommitAgentStepRequest, _agent_service_pb2.CommitAgentStepResponse]
+    """CommitAgentStep appends a fenced decision/tool/wait/terminal step."""
     CommitToolReceipt: _grpc.UnaryUnaryMultiCallable[_agent_service_pb2.CommitToolReceiptRequest, _agent_service_pb2.CommitToolReceiptResponse]
     """CommitToolReceipt rejects stale attempts and treats receipts as execution evidence."""
 
@@ -81,6 +83,8 @@ class AgentServiceAsyncStub(AgentServiceStub):
     """GetAgentStep reads one append-only step."""
     ListAgentSteps: _aio.UnaryUnaryMultiCallable[_agent_service_pb2.ListAgentStepsRequest, _agent_service_pb2.ListAgentStepsResponse]  # type: ignore[assignment]
     """ListAgentSteps returns ordered, resumable run history."""
+    CommitAgentStep: _aio.UnaryUnaryMultiCallable[_agent_service_pb2.CommitAgentStepRequest, _agent_service_pb2.CommitAgentStepResponse]  # type: ignore[assignment]
+    """CommitAgentStep appends a fenced decision/tool/wait/terminal step."""
     CommitToolReceipt: _aio.UnaryUnaryMultiCallable[_agent_service_pb2.CommitToolReceiptRequest, _agent_service_pb2.CommitToolReceiptResponse]  # type: ignore[assignment]
     """CommitToolReceipt rejects stale attempts and treats receipts as execution evidence."""
 
@@ -166,6 +170,14 @@ class AgentServiceServicer(metaclass=_abc_1.ABCMeta):
         context: _ServicerContext,
     ) -> _typing.Union[_agent_service_pb2.ListAgentStepsResponse, _abc.Awaitable[_agent_service_pb2.ListAgentStepsResponse]]:
         """ListAgentSteps returns ordered, resumable run history."""
+
+    @_abc_1.abstractmethod
+    def CommitAgentStep(
+        self,
+        request: _agent_service_pb2.CommitAgentStepRequest,
+        context: _ServicerContext,
+    ) -> _typing.Union[_agent_service_pb2.CommitAgentStepResponse, _abc.Awaitable[_agent_service_pb2.CommitAgentStepResponse]]:
+        """CommitAgentStep appends a fenced decision/tool/wait/terminal step."""
 
     @_abc_1.abstractmethod
     def CommitToolReceipt(

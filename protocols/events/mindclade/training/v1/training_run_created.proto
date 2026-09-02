@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package mindclade.events.training.v1;
+
+import "google/protobuf/timestamp.proto";
+import "proto/mindclade/artifact/v1/artifact_reference.proto";
+import "proto/mindclade/common/v1/resource_reference.proto";
+
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/training/v1;trainingv1";
+
+// TrainingRunCreated is the immutable acceptance fact for one frozen
+// scientific training intent. Executable plan details stay behind an
+// ArtifactRef and are not copied into the event.
+message TrainingRunCreated {
+  string training_run_name = 1;
+  int64 training_run_revision = 2;
+  mindclade.artifact.v1.ArtifactRef training_recipe = 3;
+  mindclade.common.v1.ResourceRef dataset_release = 4;
+  mindclade.common.v1.ResourceRef model_release = 5;
+  mindclade.artifact.v1.ArtifactRef hardware_topology = 6;
+  mindclade.common.v1.ResourceRef operation = 7;
+  google.protobuf.Timestamp created_at = 8;
+}

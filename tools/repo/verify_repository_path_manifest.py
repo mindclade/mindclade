@@ -32,6 +32,15 @@ TARGET_MEMBERSHIP_ATTRIBUTES = (
 )
 
 
+def _bazel_failure_detail(stderr: str) -> str:
+    details = [line.strip() for line in stderr.splitlines() if line.strip()]
+    for marker in ("MODULE.bazel.lock", "ERROR:", "FATAL:"):
+        for detail in details:
+            if marker in detail:
+                return detail
+    return details[-1] if details else "unknown Bazel failure"
+
+
 def validate_generated_files(manifest: Mapping[str, Any], root: Path) -> list[str]:
     errors: list[str] = []
     for entry in manifest["paths"]:
@@ -51,6 +60,27 @@ def validate_generated_files(manifest: Mapping[str, Any], root: Path) -> list[st
             if not isinstance(value, Mapping):
                 errors.append("generated MODULE.bazel.lock root is not an object")
             continue
+        if path.suffix == ".json":
+            try:
+                value = json.loads(path.read_text(encoding="utf-8"))
+            except json.JSONDecodeError:
+                value = None
+            if isinstance(value, Mapping):
+                structured_generator = isinstance(value.get("generator"), Mapping) or isinstance(
+                    value.get("x-mindclade-generator"), Mapping
+                )
+                candidate_descriptor = (
+                    entry["path"] == "protocols/compatibility/baselines/protobuf.candidate.json"
+                    and value.get("schema_version") == "mindclade.protobuf-candidate/v1"
+                    and isinstance(value.get("lifecycle"), Mapping)
+                )
+                candidate_openapi = (
+                    entry["path"] == "protocols/compatibility/baselines/openapi.lock.json"
+                    and value.get("schema_version") == "mindclade.openapi-candidate/v1"
+                    and isinstance(value.get("sources"), Mapping)
+                )
+                if structured_generator or candidate_descriptor or candidate_openapi:
+                    continue
         prefix = path.read_bytes()[:8192].decode("utf-8", errors="ignore").lower()
         if not any(marker in prefix for marker in GENERATED_MARKERS):
             errors.append(f"generated file lacks a generator marker: {entry['path']}")
@@ -78,6 +108,7 @@ def _repository_target_sources(bazel: str, root: Path, label: str) -> tuple[set[
                 f"--output_user_root={root.resolve() / 'build/bazel-user-root'}",
                 f"--bazelrc={root.resolve() / '.bazelrc'}",
                 "query",
+                "--repo_contents_cache=",
                 "--noshow_progress",
                 expression,
                 "--output=label",
@@ -88,8 +119,7 @@ def _repository_target_sources(bazel: str, root: Path, label: str) -> tuple[set[
             text=True,
         )
         if result.returncode != 0:
-            detail = [line.strip() for line in result.stderr.splitlines() if line.strip()]
-            return sources, detail[-1] if detail else "unknown Bazel failure"
+            return sources, _bazel_failure_detail(result.stderr)
         pending = set[str]()
         for member in result.stdout.splitlines():
             member = member.strip()

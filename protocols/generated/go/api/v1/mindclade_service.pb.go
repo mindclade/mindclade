@@ -79,14 +79,17 @@ func (StreamProjection) EnumDescriptor() ([]byte, []int) {
 
 // PublicHttpContract records HTTP facts not represented by google.api.http.
 type PublicHttpContract struct {
-	state           protoimpl.MessageState `protogen:"open.v1"`
-	SuccessStatus   []uint32               `protobuf:"varint,1,rep,packed,name=success_status,json=successStatus,proto3" json:"success_status,omitempty"`
-	BearerAuth      bool                   `protobuf:"varint,2,opt,name=bearer_auth,json=bearerAuth,proto3" json:"bearer_auth,omitempty"`
-	RequestHeaders  []string               `protobuf:"bytes,3,rep,name=request_headers,json=requestHeaders,proto3" json:"request_headers,omitempty"`
-	ResponseHeaders []string               `protobuf:"bytes,4,rep,name=response_headers,json=responseHeaders,proto3" json:"response_headers,omitempty"`
-	Stream          StreamProjection       `protobuf:"varint,5,opt,name=stream,proto3,enum=mindclade.api.v1.StreamProjection" json:"stream,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	state                  protoimpl.MessageState `protogen:"open.v1"`
+	SuccessStatus          []uint32               `protobuf:"varint,1,rep,packed,name=success_status,json=successStatus,proto3" json:"success_status,omitempty"`
+	BearerAuth             bool                   `protobuf:"varint,2,opt,name=bearer_auth,json=bearerAuth,proto3" json:"bearer_auth,omitempty"`
+	RequestHeaders         []string               `protobuf:"bytes,3,rep,name=request_headers,json=requestHeaders,proto3" json:"request_headers,omitempty"`
+	ResponseHeaders        []string               `protobuf:"bytes,4,rep,name=response_headers,json=responseHeaders,proto3" json:"response_headers,omitempty"`
+	Stream                 StreamProjection       `protobuf:"varint,5,opt,name=stream,proto3,enum=mindclade.api.v1.StreamProjection" json:"stream,omitempty"`
+	NonSuccessStatus       []uint32               `protobuf:"varint,6,rep,packed,name=non_success_status,json=nonSuccessStatus,proto3" json:"non_success_status,omitempty"`
+	RequestBodyRequired    bool                   `protobuf:"varint,7,opt,name=request_body_required,json=requestBodyRequired,proto3" json:"request_body_required,omitempty"`
+	RequiredRequestHeaders []string               `protobuf:"bytes,8,rep,name=required_request_headers,json=requiredRequestHeaders,proto3" json:"required_request_headers,omitempty"`
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
 }
 
 func (x *PublicHttpContract) Reset() {
@@ -154,6 +157,133 @@ func (x *PublicHttpContract) GetStream() StreamProjection {
 	return StreamProjection_STREAM_PROJECTION_UNSPECIFIED
 }
 
+func (x *PublicHttpContract) GetNonSuccessStatus() []uint32 {
+	if x != nil {
+		return x.NonSuccessStatus
+	}
+	return nil
+}
+
+func (x *PublicHttpContract) GetRequestBodyRequired() bool {
+	if x != nil {
+		return x.RequestBodyRequired
+	}
+	return false
+}
+
+func (x *PublicHttpContract) GetRequiredRequestHeaders() []string {
+	if x != nil {
+		return x.RequiredRequestHeaders
+	}
+	return nil
+}
+
+// PublicStringEnumContract makes a curated string enumeration descriptor-visible.
+type PublicStringEnumContract struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Field         string                 `protobuf:"bytes,1,opt,name=field,proto3" json:"field,omitempty"`
+	Values        []string               `protobuf:"bytes,2,rep,name=values,proto3" json:"values,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PublicStringEnumContract) Reset() {
+	*x = PublicStringEnumContract{}
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PublicStringEnumContract) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PublicStringEnumContract) ProtoMessage() {}
+
+func (x *PublicStringEnumContract) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PublicStringEnumContract.ProtoReflect.Descriptor instead.
+func (*PublicStringEnumContract) Descriptor() ([]byte, []int) {
+	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *PublicStringEnumContract) GetField() string {
+	if x != nil {
+		return x.Field
+	}
+	return ""
+}
+
+func (x *PublicStringEnumContract) GetValues() []string {
+	if x != nil {
+		return x.Values
+	}
+	return nil
+}
+
+// PublicMessageContract records requiredness and string enums used by ProtoJSON.
+type PublicMessageContract struct {
+	state          protoimpl.MessageState      `protogen:"open.v1"`
+	RequiredFields []string                    `protobuf:"bytes,1,rep,name=required_fields,json=requiredFields,proto3" json:"required_fields,omitempty"`
+	StringEnums    []*PublicStringEnumContract `protobuf:"bytes,2,rep,name=string_enums,json=stringEnums,proto3" json:"string_enums,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *PublicMessageContract) Reset() {
+	*x = PublicMessageContract{}
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PublicMessageContract) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PublicMessageContract) ProtoMessage() {}
+
+func (x *PublicMessageContract) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PublicMessageContract.ProtoReflect.Descriptor instead.
+func (*PublicMessageContract) Descriptor() ([]byte, []int) {
+	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *PublicMessageContract) GetRequiredFields() []string {
+	if x != nil {
+		return x.RequiredFields
+	}
+	return nil
+}
+
+func (x *PublicMessageContract) GetStringEnums() []*PublicStringEnumContract {
+	if x != nil {
+		return x.StringEnums
+	}
+	return nil
+}
+
 // ResourceRef is the only cross-domain identity exposed by the public API.
 type ResourceRef struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -166,7 +296,7 @@ type ResourceRef struct {
 
 func (x *ResourceRef) Reset() {
 	*x = ResourceRef{}
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[1]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -178,7 +308,7 @@ func (x *ResourceRef) String() string {
 func (*ResourceRef) ProtoMessage() {}
 
 func (x *ResourceRef) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[1]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -191,7 +321,7 @@ func (x *ResourceRef) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResourceRef.ProtoReflect.Descriptor instead.
 func (*ResourceRef) Descriptor() ([]byte, []int) {
-	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{1}
+	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *ResourceRef) GetName() string {
@@ -230,7 +360,7 @@ type ArtifactRef struct {
 
 func (x *ArtifactRef) Reset() {
 	*x = ArtifactRef{}
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[2]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -242,7 +372,7 @@ func (x *ArtifactRef) String() string {
 func (*ArtifactRef) ProtoMessage() {}
 
 func (x *ArtifactRef) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[2]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -255,7 +385,7 @@ func (x *ArtifactRef) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ArtifactRef.ProtoReflect.Descriptor instead.
 func (*ArtifactRef) Descriptor() ([]byte, []int) {
-	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{2}
+	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *ArtifactRef) GetDigest() string {
@@ -313,7 +443,7 @@ type EvidenceRef struct {
 
 func (x *EvidenceRef) Reset() {
 	*x = EvidenceRef{}
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[3]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -325,7 +455,7 @@ func (x *EvidenceRef) String() string {
 func (*EvidenceRef) ProtoMessage() {}
 
 func (x *EvidenceRef) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[3]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -338,7 +468,7 @@ func (x *EvidenceRef) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EvidenceRef.ProtoReflect.Descriptor instead.
 func (*EvidenceRef) Descriptor() ([]byte, []int) {
-	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{3}
+	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *EvidenceRef) GetDigest() string {
@@ -384,7 +514,7 @@ type ErrorDetail struct {
 
 func (x *ErrorDetail) Reset() {
 	*x = ErrorDetail{}
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[4]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -396,7 +526,7 @@ func (x *ErrorDetail) String() string {
 func (*ErrorDetail) ProtoMessage() {}
 
 func (x *ErrorDetail) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[4]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -409,7 +539,7 @@ func (x *ErrorDetail) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ErrorDetail.ProtoReflect.Descriptor instead.
 func (*ErrorDetail) Descriptor() ([]byte, []int) {
-	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{4}
+	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *ErrorDetail) GetKind() string {
@@ -471,7 +601,7 @@ type PublicError struct {
 
 func (x *PublicError) Reset() {
 	*x = PublicError{}
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[5]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -483,7 +613,7 @@ func (x *PublicError) String() string {
 func (*PublicError) ProtoMessage() {}
 
 func (x *PublicError) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[5]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -496,7 +626,7 @@ func (x *PublicError) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PublicError.ProtoReflect.Descriptor instead.
 func (*PublicError) Descriptor() ([]byte, []int) {
-	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{5}
+	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *PublicError) GetCode() string {
@@ -566,7 +696,7 @@ type PageMetadata struct {
 
 func (x *PageMetadata) Reset() {
 	*x = PageMetadata{}
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[6]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -578,7 +708,7 @@ func (x *PageMetadata) String() string {
 func (*PageMetadata) ProtoMessage() {}
 
 func (x *PageMetadata) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[6]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -591,7 +721,7 @@ func (x *PageMetadata) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PageMetadata.ProtoReflect.Descriptor instead.
 func (*PageMetadata) Descriptor() ([]byte, []int) {
-	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{6}
+	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *PageMetadata) GetNextPageToken() string {
@@ -621,7 +751,7 @@ type OperationResult struct {
 
 func (x *OperationResult) Reset() {
 	*x = OperationResult{}
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[7]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -633,7 +763,7 @@ func (x *OperationResult) String() string {
 func (*OperationResult) ProtoMessage() {}
 
 func (x *OperationResult) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[7]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -646,7 +776,7 @@ func (x *OperationResult) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OperationResult.ProtoReflect.Descriptor instead.
 func (*OperationResult) Descriptor() ([]byte, []int) {
-	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{7}
+	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *OperationResult) GetResource() *ResourceRef {
@@ -697,7 +827,7 @@ type Operation struct {
 
 func (x *Operation) Reset() {
 	*x = Operation{}
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[8]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -709,7 +839,7 @@ func (x *Operation) String() string {
 func (*Operation) ProtoMessage() {}
 
 func (x *Operation) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[8]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -722,7 +852,7 @@ func (x *Operation) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Operation.ProtoReflect.Descriptor instead.
 func (*Operation) Descriptor() ([]byte, []int) {
-	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{8}
+	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *Operation) GetName() string {
@@ -804,16 +934,22 @@ func (x *Operation) GetError() *PublicError {
 
 // OperationEvent is serialized as one server-sent event.
 type OperationEvent struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	EventId       string                 `protobuf:"bytes,1,opt,name=event_id,json=eventId,proto3" json:"event_id,omitempty"`
-	Operation     *Operation             `protobuf:"bytes,2,opt,name=operation,proto3" json:"operation,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state             protoimpl.MessageState `protogen:"open.v1"`
+	EventId           string                 `protobuf:"bytes,1,opt,name=event_id,json=eventId,proto3" json:"event_id,omitempty"`
+	Operation         *Operation             `protobuf:"bytes,2,opt,name=operation,proto3" json:"operation,omitempty"`
+	EventType         string                 `protobuf:"bytes,3,opt,name=event_type,json=eventType,proto3" json:"event_type,omitempty"`
+	SchemaVersion     uint32                 `protobuf:"varint,4,opt,name=schema_version,json=schemaVersion,proto3" json:"schema_version,omitempty"`
+	OperationRevision uint64                 `protobuf:"varint,5,opt,name=operation_revision,json=operationRevision,proto3" json:"operation_revision,omitempty"`
+	ResumeCursor      string                 `protobuf:"bytes,6,opt,name=resume_cursor,json=resumeCursor,proto3" json:"resume_cursor,omitempty"`
+	Heartbeat         bool                   `protobuf:"varint,7,opt,name=heartbeat,proto3" json:"heartbeat,omitempty"`
+	EmittedAt         *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=emitted_at,json=emittedAt,proto3" json:"emitted_at,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *OperationEvent) Reset() {
 	*x = OperationEvent{}
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[9]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -825,7 +961,7 @@ func (x *OperationEvent) String() string {
 func (*OperationEvent) ProtoMessage() {}
 
 func (x *OperationEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[9]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -838,7 +974,7 @@ func (x *OperationEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OperationEvent.ProtoReflect.Descriptor instead.
 func (*OperationEvent) Descriptor() ([]byte, []int) {
-	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{9}
+	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *OperationEvent) GetEventId() string {
@@ -855,6 +991,48 @@ func (x *OperationEvent) GetOperation() *Operation {
 	return nil
 }
 
+func (x *OperationEvent) GetEventType() string {
+	if x != nil {
+		return x.EventType
+	}
+	return ""
+}
+
+func (x *OperationEvent) GetSchemaVersion() uint32 {
+	if x != nil {
+		return x.SchemaVersion
+	}
+	return 0
+}
+
+func (x *OperationEvent) GetOperationRevision() uint64 {
+	if x != nil {
+		return x.OperationRevision
+	}
+	return 0
+}
+
+func (x *OperationEvent) GetResumeCursor() string {
+	if x != nil {
+		return x.ResumeCursor
+	}
+	return ""
+}
+
+func (x *OperationEvent) GetHeartbeat() bool {
+	if x != nil {
+		return x.Heartbeat
+	}
+	return false
+}
+
+func (x *OperationEvent) GetEmittedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.EmittedAt
+	}
+	return nil
+}
+
 // CancellationRequest is the public cancellation body.
 type CancellationRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -865,7 +1043,7 @@ type CancellationRequest struct {
 
 func (x *CancellationRequest) Reset() {
 	*x = CancellationRequest{}
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[10]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -877,7 +1055,7 @@ func (x *CancellationRequest) String() string {
 func (*CancellationRequest) ProtoMessage() {}
 
 func (x *CancellationRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[10]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -890,7 +1068,7 @@ func (x *CancellationRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CancellationRequest.ProtoReflect.Descriptor instead.
 func (*CancellationRequest) Descriptor() ([]byte, []int) {
-	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{10}
+	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *CancellationRequest) GetReason() string {
@@ -914,7 +1092,7 @@ type ArtifactView struct {
 
 func (x *ArtifactView) Reset() {
 	*x = ArtifactView{}
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[11]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -926,7 +1104,7 @@ func (x *ArtifactView) String() string {
 func (*ArtifactView) ProtoMessage() {}
 
 func (x *ArtifactView) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[11]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -939,7 +1117,7 @@ func (x *ArtifactView) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ArtifactView.ProtoReflect.Descriptor instead.
 func (*ArtifactView) Descriptor() ([]byte, []int) {
-	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{11}
+	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *ArtifactView) GetName() string {
@@ -991,7 +1169,7 @@ type DownloadArtifactChunk struct {
 
 func (x *DownloadArtifactChunk) Reset() {
 	*x = DownloadArtifactChunk{}
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[12]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1003,7 +1181,7 @@ func (x *DownloadArtifactChunk) String() string {
 func (*DownloadArtifactChunk) ProtoMessage() {}
 
 func (x *DownloadArtifactChunk) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[12]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1016,7 +1194,7 @@ func (x *DownloadArtifactChunk) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DownloadArtifactChunk.ProtoReflect.Descriptor instead.
 func (*DownloadArtifactChunk) Descriptor() ([]byte, []int) {
-	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{12}
+	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *DownloadArtifactChunk) GetOffset() uint64 {
@@ -1068,7 +1246,7 @@ type DatasetCreate struct {
 
 func (x *DatasetCreate) Reset() {
 	*x = DatasetCreate{}
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[13]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1080,7 +1258,7 @@ func (x *DatasetCreate) String() string {
 func (*DatasetCreate) ProtoMessage() {}
 
 func (x *DatasetCreate) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[13]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1093,7 +1271,7 @@ func (x *DatasetCreate) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DatasetCreate.ProtoReflect.Descriptor instead.
 func (*DatasetCreate) Descriptor() ([]byte, []int) {
-	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{13}
+	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *DatasetCreate) GetDatasetId() string {
@@ -1143,7 +1321,7 @@ type DatasetUpdate struct {
 
 func (x *DatasetUpdate) Reset() {
 	*x = DatasetUpdate{}
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[14]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1155,7 +1333,7 @@ func (x *DatasetUpdate) String() string {
 func (*DatasetUpdate) ProtoMessage() {}
 
 func (x *DatasetUpdate) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[14]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1168,7 +1346,7 @@ func (x *DatasetUpdate) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DatasetUpdate.ProtoReflect.Descriptor instead.
 func (*DatasetUpdate) Descriptor() ([]byte, []int) {
-	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{14}
+	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *DatasetUpdate) GetDisplayName() string {
@@ -1207,13 +1385,14 @@ type DatasetView struct {
 	PolicyClassification string                 `protobuf:"bytes,10,opt,name=policy_classification,json=policyClassification,proto3" json:"policy_classification,omitempty"`
 	State                string                 `protobuf:"bytes,11,opt,name=state,proto3" json:"state,omitempty"`
 	CurrentRelease       *ResourceRef           `protobuf:"bytes,12,opt,name=current_release,json=currentRelease,proto3" json:"current_release,omitempty"`
+	DeleteTime           *timestamppb.Timestamp `protobuf:"bytes,13,opt,name=delete_time,json=deleteTime,proto3" json:"delete_time,omitempty"`
 	unknownFields        protoimpl.UnknownFields
 	sizeCache            protoimpl.SizeCache
 }
 
 func (x *DatasetView) Reset() {
 	*x = DatasetView{}
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[15]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1225,7 +1404,7 @@ func (x *DatasetView) String() string {
 func (*DatasetView) ProtoMessage() {}
 
 func (x *DatasetView) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[15]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1238,7 +1417,7 @@ func (x *DatasetView) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DatasetView.ProtoReflect.Descriptor instead.
 func (*DatasetView) Descriptor() ([]byte, []int) {
-	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{15}
+	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *DatasetView) GetName() string {
@@ -1325,6 +1504,13 @@ func (x *DatasetView) GetCurrentRelease() *ResourceRef {
 	return nil
 }
 
+func (x *DatasetView) GetDeleteTime() *timestamppb.Timestamp {
+	if x != nil {
+		return x.DeleteTime
+	}
+	return nil
+}
+
 // DatasetList is a stable page of public dataset views.
 type DatasetList struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -1336,7 +1522,7 @@ type DatasetList struct {
 
 func (x *DatasetList) Reset() {
 	*x = DatasetList{}
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[16]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1348,7 +1534,7 @@ func (x *DatasetList) String() string {
 func (*DatasetList) ProtoMessage() {}
 
 func (x *DatasetList) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[16]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1361,7 +1547,7 @@ func (x *DatasetList) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DatasetList.ProtoReflect.Descriptor instead.
 func (*DatasetList) Descriptor() ([]byte, []int) {
-	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{16}
+	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *DatasetList) GetDatasets() []*DatasetView {
@@ -1393,7 +1579,7 @@ type DatasetReleaseCreate struct {
 
 func (x *DatasetReleaseCreate) Reset() {
 	*x = DatasetReleaseCreate{}
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[17]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1405,7 +1591,7 @@ func (x *DatasetReleaseCreate) String() string {
 func (*DatasetReleaseCreate) ProtoMessage() {}
 
 func (x *DatasetReleaseCreate) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[17]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1418,7 +1604,7 @@ func (x *DatasetReleaseCreate) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DatasetReleaseCreate.ProtoReflect.Descriptor instead.
 func (*DatasetReleaseCreate) Descriptor() ([]byte, []int) {
-	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{17}
+	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *DatasetReleaseCreate) GetReleaseId() string {
@@ -1477,13 +1663,15 @@ type DatasetReleaseView struct {
 	Manifest              *ArtifactRef           `protobuf:"bytes,9,opt,name=manifest,proto3" json:"manifest,omitempty"`
 	QualificationEvidence []*EvidenceRef         `protobuf:"bytes,10,rep,name=qualification_evidence,json=qualificationEvidence,proto3" json:"qualification_evidence,omitempty"`
 	PolicyClassification  string                 `protobuf:"bytes,11,opt,name=policy_classification,json=policyClassification,proto3" json:"policy_classification,omitempty"`
+	UpdateTime            *timestamppb.Timestamp `protobuf:"bytes,12,opt,name=update_time,json=updateTime,proto3" json:"update_time,omitempty"`
+	DeleteTime            *timestamppb.Timestamp `protobuf:"bytes,13,opt,name=delete_time,json=deleteTime,proto3" json:"delete_time,omitempty"`
 	unknownFields         protoimpl.UnknownFields
 	sizeCache             protoimpl.SizeCache
 }
 
 func (x *DatasetReleaseView) Reset() {
 	*x = DatasetReleaseView{}
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[18]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1495,7 +1683,7 @@ func (x *DatasetReleaseView) String() string {
 func (*DatasetReleaseView) ProtoMessage() {}
 
 func (x *DatasetReleaseView) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[18]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1508,7 +1696,7 @@ func (x *DatasetReleaseView) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DatasetReleaseView.ProtoReflect.Descriptor instead.
 func (*DatasetReleaseView) Descriptor() ([]byte, []int) {
-	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{18}
+	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *DatasetReleaseView) GetName() string {
@@ -1588,6 +1776,20 @@ func (x *DatasetReleaseView) GetPolicyClassification() string {
 	return ""
 }
 
+func (x *DatasetReleaseView) GetUpdateTime() *timestamppb.Timestamp {
+	if x != nil {
+		return x.UpdateTime
+	}
+	return nil
+}
+
+func (x *DatasetReleaseView) GetDeleteTime() *timestamppb.Timestamp {
+	if x != nil {
+		return x.DeleteTime
+	}
+	return nil
+}
+
 // DatasetReleaseList is a stable page of public release views.
 type DatasetReleaseList struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -1599,7 +1801,7 @@ type DatasetReleaseList struct {
 
 func (x *DatasetReleaseList) Reset() {
 	*x = DatasetReleaseList{}
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[19]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1611,7 +1813,7 @@ func (x *DatasetReleaseList) String() string {
 func (*DatasetReleaseList) ProtoMessage() {}
 
 func (x *DatasetReleaseList) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[19]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1624,7 +1826,7 @@ func (x *DatasetReleaseList) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DatasetReleaseList.ProtoReflect.Descriptor instead.
 func (*DatasetReleaseList) Descriptor() ([]byte, []int) {
-	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{19}
+	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *DatasetReleaseList) GetReleases() []*DatasetReleaseView {
@@ -1659,7 +1861,7 @@ type ModelCreate struct {
 
 func (x *ModelCreate) Reset() {
 	*x = ModelCreate{}
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[20]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1671,7 +1873,7 @@ func (x *ModelCreate) String() string {
 func (*ModelCreate) ProtoMessage() {}
 
 func (x *ModelCreate) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[20]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1684,7 +1886,7 @@ func (x *ModelCreate) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ModelCreate.ProtoReflect.Descriptor instead.
 func (*ModelCreate) Descriptor() ([]byte, []int) {
-	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{20}
+	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *ModelCreate) GetModelId() string {
@@ -1762,7 +1964,7 @@ type ModelUpdate struct {
 
 func (x *ModelUpdate) Reset() {
 	*x = ModelUpdate{}
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[21]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1774,7 +1976,7 @@ func (x *ModelUpdate) String() string {
 func (*ModelUpdate) ProtoMessage() {}
 
 func (x *ModelUpdate) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[21]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1787,7 +1989,7 @@ func (x *ModelUpdate) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ModelUpdate.ProtoReflect.Descriptor instead.
 func (*ModelUpdate) Descriptor() ([]byte, []int) {
-	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{21}
+	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *ModelUpdate) GetDisplayName() string {
@@ -1830,13 +2032,14 @@ type ModelView struct {
 	InputContract        *ArtifactRef           `protobuf:"bytes,14,opt,name=input_contract,json=inputContract,proto3" json:"input_contract,omitempty"`
 	OutputContract       *ArtifactRef           `protobuf:"bytes,15,opt,name=output_contract,json=outputContract,proto3" json:"output_contract,omitempty"`
 	CurrentRelease       *ResourceRef           `protobuf:"bytes,16,opt,name=current_release,json=currentRelease,proto3" json:"current_release,omitempty"`
+	DeleteTime           *timestamppb.Timestamp `protobuf:"bytes,17,opt,name=delete_time,json=deleteTime,proto3" json:"delete_time,omitempty"`
 	unknownFields        protoimpl.UnknownFields
 	sizeCache            protoimpl.SizeCache
 }
 
 func (x *ModelView) Reset() {
 	*x = ModelView{}
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[22]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1848,7 +2051,7 @@ func (x *ModelView) String() string {
 func (*ModelView) ProtoMessage() {}
 
 func (x *ModelView) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[22]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1861,7 +2064,7 @@ func (x *ModelView) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ModelView.ProtoReflect.Descriptor instead.
 func (*ModelView) Descriptor() ([]byte, []int) {
-	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{22}
+	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *ModelView) GetName() string {
@@ -1976,6 +2179,13 @@ func (x *ModelView) GetCurrentRelease() *ResourceRef {
 	return nil
 }
 
+func (x *ModelView) GetDeleteTime() *timestamppb.Timestamp {
+	if x != nil {
+		return x.DeleteTime
+	}
+	return nil
+}
+
 // ModelList is a stable page of public model views.
 type ModelList struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -1987,7 +2197,7 @@ type ModelList struct {
 
 func (x *ModelList) Reset() {
 	*x = ModelList{}
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[23]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1999,7 +2209,7 @@ func (x *ModelList) String() string {
 func (*ModelList) ProtoMessage() {}
 
 func (x *ModelList) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[23]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2012,7 +2222,7 @@ func (x *ModelList) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ModelList.ProtoReflect.Descriptor instead.
 func (*ModelList) Descriptor() ([]byte, []int) {
-	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{23}
+	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *ModelList) GetModels() []*ModelView {
@@ -2045,7 +2255,7 @@ type ModelReleaseCreate struct {
 
 func (x *ModelReleaseCreate) Reset() {
 	*x = ModelReleaseCreate{}
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[24]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2057,7 +2267,7 @@ func (x *ModelReleaseCreate) String() string {
 func (*ModelReleaseCreate) ProtoMessage() {}
 
 func (x *ModelReleaseCreate) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[24]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2070,7 +2280,7 @@ func (x *ModelReleaseCreate) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ModelReleaseCreate.ProtoReflect.Descriptor instead.
 func (*ModelReleaseCreate) Descriptor() ([]byte, []int) {
-	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{24}
+	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *ModelReleaseCreate) GetReleaseId() string {
@@ -2138,13 +2348,15 @@ type ModelReleaseView struct {
 	Checkpoint           *ResourceRef           `protobuf:"bytes,11,opt,name=checkpoint,proto3" json:"checkpoint,omitempty"`
 	EvaluationEvidence   []*EvidenceRef         `protobuf:"bytes,12,rep,name=evaluation_evidence,json=evaluationEvidence,proto3" json:"evaluation_evidence,omitempty"`
 	PolicyClassification string                 `protobuf:"bytes,13,opt,name=policy_classification,json=policyClassification,proto3" json:"policy_classification,omitempty"`
+	UpdateTime           *timestamppb.Timestamp `protobuf:"bytes,14,opt,name=update_time,json=updateTime,proto3" json:"update_time,omitempty"`
+	DeleteTime           *timestamppb.Timestamp `protobuf:"bytes,15,opt,name=delete_time,json=deleteTime,proto3" json:"delete_time,omitempty"`
 	unknownFields        protoimpl.UnknownFields
 	sizeCache            protoimpl.SizeCache
 }
 
 func (x *ModelReleaseView) Reset() {
 	*x = ModelReleaseView{}
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[25]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2156,7 +2368,7 @@ func (x *ModelReleaseView) String() string {
 func (*ModelReleaseView) ProtoMessage() {}
 
 func (x *ModelReleaseView) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[25]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2169,7 +2381,7 @@ func (x *ModelReleaseView) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ModelReleaseView.ProtoReflect.Descriptor instead.
 func (*ModelReleaseView) Descriptor() ([]byte, []int) {
-	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{25}
+	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *ModelReleaseView) GetName() string {
@@ -2263,6 +2475,20 @@ func (x *ModelReleaseView) GetPolicyClassification() string {
 	return ""
 }
 
+func (x *ModelReleaseView) GetUpdateTime() *timestamppb.Timestamp {
+	if x != nil {
+		return x.UpdateTime
+	}
+	return nil
+}
+
+func (x *ModelReleaseView) GetDeleteTime() *timestamppb.Timestamp {
+	if x != nil {
+		return x.DeleteTime
+	}
+	return nil
+}
+
 // ModelReleaseList is a stable page of public model-release views.
 type ModelReleaseList struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -2274,7 +2500,7 @@ type ModelReleaseList struct {
 
 func (x *ModelReleaseList) Reset() {
 	*x = ModelReleaseList{}
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[26]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2286,7 +2512,7 @@ func (x *ModelReleaseList) String() string {
 func (*ModelReleaseList) ProtoMessage() {}
 
 func (x *ModelReleaseList) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[26]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2299,7 +2525,7 @@ func (x *ModelReleaseList) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ModelReleaseList.ProtoReflect.Descriptor instead.
 func (*ModelReleaseList) Descriptor() ([]byte, []int) {
-	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{26}
+	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *ModelReleaseList) GetReleases() []*ModelReleaseView {
@@ -2333,7 +2559,7 @@ type TrainingRunCreate struct {
 
 func (x *TrainingRunCreate) Reset() {
 	*x = TrainingRunCreate{}
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[27]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2345,7 +2571,7 @@ func (x *TrainingRunCreate) String() string {
 func (*TrainingRunCreate) ProtoMessage() {}
 
 func (x *TrainingRunCreate) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[27]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2358,7 +2584,7 @@ func (x *TrainingRunCreate) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TrainingRunCreate.ProtoReflect.Descriptor instead.
 func (*TrainingRunCreate) Descriptor() ([]byte, []int) {
-	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{27}
+	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *TrainingRunCreate) GetTrainingRunId() string {
@@ -2434,13 +2660,14 @@ type TrainingRunView struct {
 	LatestCheckpoint *ResourceRef           `protobuf:"bytes,12,opt,name=latest_checkpoint,json=latestCheckpoint,proto3" json:"latest_checkpoint,omitempty"`
 	ResultManifest   *ArtifactRef           `protobuf:"bytes,13,opt,name=result_manifest,json=resultManifest,proto3" json:"result_manifest,omitempty"`
 	Failure          *PublicError           `protobuf:"bytes,14,opt,name=failure,proto3" json:"failure,omitempty"`
+	DeleteTime       *timestamppb.Timestamp `protobuf:"bytes,15,opt,name=delete_time,json=deleteTime,proto3" json:"delete_time,omitempty"`
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
 }
 
 func (x *TrainingRunView) Reset() {
 	*x = TrainingRunView{}
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[28]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2452,7 +2679,7 @@ func (x *TrainingRunView) String() string {
 func (*TrainingRunView) ProtoMessage() {}
 
 func (x *TrainingRunView) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[28]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2465,7 +2692,7 @@ func (x *TrainingRunView) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TrainingRunView.ProtoReflect.Descriptor instead.
 func (*TrainingRunView) Descriptor() ([]byte, []int) {
-	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{28}
+	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *TrainingRunView) GetName() string {
@@ -2566,6 +2793,13 @@ func (x *TrainingRunView) GetFailure() *PublicError {
 	return nil
 }
 
+func (x *TrainingRunView) GetDeleteTime() *timestamppb.Timestamp {
+	if x != nil {
+		return x.DeleteTime
+	}
+	return nil
+}
+
 // TrainingRunList is a stable page of public training views.
 type TrainingRunList struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -2577,7 +2811,7 @@ type TrainingRunList struct {
 
 func (x *TrainingRunList) Reset() {
 	*x = TrainingRunList{}
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[29]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2589,7 +2823,7 @@ func (x *TrainingRunList) String() string {
 func (*TrainingRunList) ProtoMessage() {}
 
 func (x *TrainingRunList) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[29]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2602,7 +2836,7 @@ func (x *TrainingRunList) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TrainingRunList.ProtoReflect.Descriptor instead.
 func (*TrainingRunList) Descriptor() ([]byte, []int) {
-	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{29}
+	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *TrainingRunList) GetTrainingRuns() []*TrainingRunView {
@@ -2634,7 +2868,7 @@ type EvaluationRunCreate struct {
 
 func (x *EvaluationRunCreate) Reset() {
 	*x = EvaluationRunCreate{}
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[30]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2646,7 +2880,7 @@ func (x *EvaluationRunCreate) String() string {
 func (*EvaluationRunCreate) ProtoMessage() {}
 
 func (x *EvaluationRunCreate) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[30]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2659,7 +2893,7 @@ func (x *EvaluationRunCreate) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EvaluationRunCreate.ProtoReflect.Descriptor instead.
 func (*EvaluationRunCreate) Descriptor() ([]byte, []int) {
-	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{30}
+	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{32}
 }
 
 func (x *EvaluationRunCreate) GetEvaluationRunId() string {
@@ -2720,13 +2954,14 @@ type EvaluationRunView struct {
 	CompletedSamples uint64                 `protobuf:"varint,11,opt,name=completed_samples,json=completedSamples,proto3" json:"completed_samples,omitempty"`
 	TotalSamples     uint64                 `protobuf:"varint,12,opt,name=total_samples,json=totalSamples,proto3" json:"total_samples,omitempty"`
 	Failure          *PublicError           `protobuf:"bytes,13,opt,name=failure,proto3" json:"failure,omitempty"`
+	DeleteTime       *timestamppb.Timestamp `protobuf:"bytes,14,opt,name=delete_time,json=deleteTime,proto3" json:"delete_time,omitempty"`
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
 }
 
 func (x *EvaluationRunView) Reset() {
 	*x = EvaluationRunView{}
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[31]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[33]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2738,7 +2973,7 @@ func (x *EvaluationRunView) String() string {
 func (*EvaluationRunView) ProtoMessage() {}
 
 func (x *EvaluationRunView) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[31]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[33]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2751,7 +2986,7 @@ func (x *EvaluationRunView) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EvaluationRunView.ProtoReflect.Descriptor instead.
 func (*EvaluationRunView) Descriptor() ([]byte, []int) {
-	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{31}
+	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{33}
 }
 
 func (x *EvaluationRunView) GetName() string {
@@ -2845,6 +3080,13 @@ func (x *EvaluationRunView) GetFailure() *PublicError {
 	return nil
 }
 
+func (x *EvaluationRunView) GetDeleteTime() *timestamppb.Timestamp {
+	if x != nil {
+		return x.DeleteTime
+	}
+	return nil
+}
+
 // EvaluationRunList is a stable page of public evaluation views.
 type EvaluationRunList struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
@@ -2856,7 +3098,7 @@ type EvaluationRunList struct {
 
 func (x *EvaluationRunList) Reset() {
 	*x = EvaluationRunList{}
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[32]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[34]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2868,7 +3110,7 @@ func (x *EvaluationRunList) String() string {
 func (*EvaluationRunList) ProtoMessage() {}
 
 func (x *EvaluationRunList) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[32]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[34]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2881,7 +3123,7 @@ func (x *EvaluationRunList) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EvaluationRunList.ProtoReflect.Descriptor instead.
 func (*EvaluationRunList) Descriptor() ([]byte, []int) {
-	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{32}
+	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{34}
 }
 
 func (x *EvaluationRunList) GetEvaluationRuns() []*EvaluationRunView {
@@ -2915,7 +3157,7 @@ type MetricSummary struct {
 
 func (x *MetricSummary) Reset() {
 	*x = MetricSummary{}
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[33]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[35]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2927,7 +3169,7 @@ func (x *MetricSummary) String() string {
 func (*MetricSummary) ProtoMessage() {}
 
 func (x *MetricSummary) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[33]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[35]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2940,7 +3182,7 @@ func (x *MetricSummary) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MetricSummary.ProtoReflect.Descriptor instead.
 func (*MetricSummary) Descriptor() ([]byte, []int) {
-	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{33}
+	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{35}
 }
 
 func (x *MetricSummary) GetMetricId() string {
@@ -3017,7 +3259,7 @@ type EvaluationResultView struct {
 
 func (x *EvaluationResultView) Reset() {
 	*x = EvaluationResultView{}
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[34]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[36]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3029,7 +3271,7 @@ func (x *EvaluationResultView) String() string {
 func (*EvaluationResultView) ProtoMessage() {}
 
 func (x *EvaluationResultView) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[34]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[36]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3042,7 +3284,7 @@ func (x *EvaluationResultView) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EvaluationResultView.ProtoReflect.Descriptor instead.
 func (*EvaluationResultView) Descriptor() ([]byte, []int) {
-	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{34}
+	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{36}
 }
 
 func (x *EvaluationResultView) GetName() string {
@@ -3119,7 +3361,7 @@ type InferenceOutput struct {
 
 func (x *InferenceOutput) Reset() {
 	*x = InferenceOutput{}
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[35]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[37]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3131,7 +3373,7 @@ func (x *InferenceOutput) String() string {
 func (*InferenceOutput) ProtoMessage() {}
 
 func (x *InferenceOutput) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[35]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[37]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3144,7 +3386,7 @@ func (x *InferenceOutput) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use InferenceOutput.ProtoReflect.Descriptor instead.
 func (*InferenceOutput) Descriptor() ([]byte, []int) {
-	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{35}
+	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{37}
 }
 
 func (x *InferenceOutput) GetResultSchemaId() string {
@@ -3179,7 +3421,7 @@ type InferenceSubmission struct {
 
 func (x *InferenceSubmission) Reset() {
 	*x = InferenceSubmission{}
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[36]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[38]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3191,7 +3433,7 @@ func (x *InferenceSubmission) String() string {
 func (*InferenceSubmission) ProtoMessage() {}
 
 func (x *InferenceSubmission) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[36]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[38]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3204,7 +3446,7 @@ func (x *InferenceSubmission) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use InferenceSubmission.ProtoReflect.Descriptor instead.
 func (*InferenceSubmission) Descriptor() ([]byte, []int) {
-	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{36}
+	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{38}
 }
 
 func (x *InferenceSubmission) GetRequestId() string {
@@ -3286,7 +3528,7 @@ type InferenceResultView struct {
 
 func (x *InferenceResultView) Reset() {
 	*x = InferenceResultView{}
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[37]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[39]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3298,7 +3540,7 @@ func (x *InferenceResultView) String() string {
 func (*InferenceResultView) ProtoMessage() {}
 
 func (x *InferenceResultView) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[37]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[39]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3311,7 +3553,7 @@ func (x *InferenceResultView) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use InferenceResultView.ProtoReflect.Descriptor instead.
 func (*InferenceResultView) Descriptor() ([]byte, []int) {
-	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{37}
+	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{39}
 }
 
 func (x *InferenceResultView) GetName() string {
@@ -3376,7 +3618,7 @@ type AgentBudget struct {
 
 func (x *AgentBudget) Reset() {
 	*x = AgentBudget{}
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[38]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[40]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3388,7 +3630,7 @@ func (x *AgentBudget) String() string {
 func (*AgentBudget) ProtoMessage() {}
 
 func (x *AgentBudget) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[38]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[40]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3401,7 +3643,7 @@ func (x *AgentBudget) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AgentBudget.ProtoReflect.Descriptor instead.
 func (*AgentBudget) Descriptor() ([]byte, []int) {
-	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{38}
+	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{40}
 }
 
 func (x *AgentBudget) GetMaximumModelTokens() uint64 {
@@ -3450,7 +3692,7 @@ type AgentDefinitionCreate struct {
 
 func (x *AgentDefinitionCreate) Reset() {
 	*x = AgentDefinitionCreate{}
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[39]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[41]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3462,7 +3704,7 @@ func (x *AgentDefinitionCreate) String() string {
 func (*AgentDefinitionCreate) ProtoMessage() {}
 
 func (x *AgentDefinitionCreate) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[39]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[41]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3475,7 +3717,7 @@ func (x *AgentDefinitionCreate) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AgentDefinitionCreate.ProtoReflect.Descriptor instead.
 func (*AgentDefinitionCreate) Descriptor() ([]byte, []int) {
-	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{39}
+	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{41}
 }
 
 func (x *AgentDefinitionCreate) GetAgentDefinitionId() string {
@@ -3559,13 +3801,15 @@ type AgentDefinitionView struct {
 	OutputSchema       *ArtifactRef           `protobuf:"bytes,13,opt,name=output_schema,json=outputSchema,proto3" json:"output_schema,omitempty"`
 	Budget             *AgentBudget           `protobuf:"bytes,14,opt,name=budget,proto3" json:"budget,omitempty"`
 	State              string                 `protobuf:"bytes,15,opt,name=state,proto3" json:"state,omitempty"`
+	AgentDefinitionId  string                 `protobuf:"bytes,16,opt,name=agent_definition_id,json=agentDefinitionId,proto3" json:"agent_definition_id,omitempty"`
+	DeleteTime         *timestamppb.Timestamp `protobuf:"bytes,17,opt,name=delete_time,json=deleteTime,proto3" json:"delete_time,omitempty"`
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
 
 func (x *AgentDefinitionView) Reset() {
 	*x = AgentDefinitionView{}
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[40]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[42]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3577,7 +3821,7 @@ func (x *AgentDefinitionView) String() string {
 func (*AgentDefinitionView) ProtoMessage() {}
 
 func (x *AgentDefinitionView) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[40]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[42]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3590,7 +3834,7 @@ func (x *AgentDefinitionView) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AgentDefinitionView.ProtoReflect.Descriptor instead.
 func (*AgentDefinitionView) Descriptor() ([]byte, []int) {
-	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{40}
+	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{42}
 }
 
 func (x *AgentDefinitionView) GetName() string {
@@ -3698,6 +3942,20 @@ func (x *AgentDefinitionView) GetState() string {
 	return ""
 }
 
+func (x *AgentDefinitionView) GetAgentDefinitionId() string {
+	if x != nil {
+		return x.AgentDefinitionId
+	}
+	return ""
+}
+
+func (x *AgentDefinitionView) GetDeleteTime() *timestamppb.Timestamp {
+	if x != nil {
+		return x.DeleteTime
+	}
+	return nil
+}
+
 // AgentDefinitionList is a stable page of public definition views.
 type AgentDefinitionList struct {
 	state            protoimpl.MessageState `protogen:"open.v1"`
@@ -3709,7 +3967,7 @@ type AgentDefinitionList struct {
 
 func (x *AgentDefinitionList) Reset() {
 	*x = AgentDefinitionList{}
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[41]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[43]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3721,7 +3979,7 @@ func (x *AgentDefinitionList) String() string {
 func (*AgentDefinitionList) ProtoMessage() {}
 
 func (x *AgentDefinitionList) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[41]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[43]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3734,7 +3992,7 @@ func (x *AgentDefinitionList) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AgentDefinitionList.ProtoReflect.Descriptor instead.
 func (*AgentDefinitionList) Descriptor() ([]byte, []int) {
-	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{41}
+	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{43}
 }
 
 func (x *AgentDefinitionList) GetAgentDefinitions() []*AgentDefinitionView {
@@ -3765,7 +4023,7 @@ type AgentRunCreate struct {
 
 func (x *AgentRunCreate) Reset() {
 	*x = AgentRunCreate{}
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[42]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[44]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3777,7 +4035,7 @@ func (x *AgentRunCreate) String() string {
 func (*AgentRunCreate) ProtoMessage() {}
 
 func (x *AgentRunCreate) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[42]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[44]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3790,7 +4048,7 @@ func (x *AgentRunCreate) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AgentRunCreate.ProtoReflect.Descriptor instead.
 func (*AgentRunCreate) Descriptor() ([]byte, []int) {
-	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{42}
+	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{44}
 }
 
 func (x *AgentRunCreate) GetAgentRunId() string {
@@ -3844,13 +4102,14 @@ type AgentRunView struct {
 	RunManifest      *ArtifactRef           `protobuf:"bytes,11,opt,name=run_manifest,json=runManifest,proto3" json:"run_manifest,omitempty"`
 	Output           *ArtifactRef           `protobuf:"bytes,12,opt,name=output,proto3" json:"output,omitempty"`
 	Failure          *PublicError           `protobuf:"bytes,13,opt,name=failure,proto3" json:"failure,omitempty"`
+	DeleteTime       *timestamppb.Timestamp `protobuf:"bytes,14,opt,name=delete_time,json=deleteTime,proto3" json:"delete_time,omitempty"`
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
 }
 
 func (x *AgentRunView) Reset() {
 	*x = AgentRunView{}
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[43]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[45]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3862,7 +4121,7 @@ func (x *AgentRunView) String() string {
 func (*AgentRunView) ProtoMessage() {}
 
 func (x *AgentRunView) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[43]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[45]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3875,7 +4134,7 @@ func (x *AgentRunView) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AgentRunView.ProtoReflect.Descriptor instead.
 func (*AgentRunView) Descriptor() ([]byte, []int) {
-	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{43}
+	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{45}
 }
 
 func (x *AgentRunView) GetName() string {
@@ -3969,6 +4228,13 @@ func (x *AgentRunView) GetFailure() *PublicError {
 	return nil
 }
 
+func (x *AgentRunView) GetDeleteTime() *timestamppb.Timestamp {
+	if x != nil {
+		return x.DeleteTime
+	}
+	return nil
+}
+
 // AgentRunList is a stable page of public run views.
 type AgentRunList struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -3980,7 +4246,7 @@ type AgentRunList struct {
 
 func (x *AgentRunList) Reset() {
 	*x = AgentRunList{}
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[44]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[46]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3992,7 +4258,7 @@ func (x *AgentRunList) String() string {
 func (*AgentRunList) ProtoMessage() {}
 
 func (x *AgentRunList) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[44]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[46]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4005,7 +4271,7 @@ func (x *AgentRunList) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AgentRunList.ProtoReflect.Descriptor instead.
 func (*AgentRunList) Descriptor() ([]byte, []int) {
-	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{44}
+	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{46}
 }
 
 func (x *AgentRunList) GetAgentRuns() []*AgentRunView {
@@ -4037,7 +4303,7 @@ type WorkflowDefinitionCreate struct {
 
 func (x *WorkflowDefinitionCreate) Reset() {
 	*x = WorkflowDefinitionCreate{}
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[45]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[47]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4049,7 +4315,7 @@ func (x *WorkflowDefinitionCreate) String() string {
 func (*WorkflowDefinitionCreate) ProtoMessage() {}
 
 func (x *WorkflowDefinitionCreate) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[45]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[47]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4062,7 +4328,7 @@ func (x *WorkflowDefinitionCreate) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WorkflowDefinitionCreate.ProtoReflect.Descriptor instead.
 func (*WorkflowDefinitionCreate) Descriptor() ([]byte, []int) {
-	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{45}
+	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{47}
 }
 
 func (x *WorkflowDefinitionCreate) GetWorkflowDefinitionId() string {
@@ -4109,27 +4375,29 @@ func (x *WorkflowDefinitionCreate) GetOutputSchema() *ArtifactRef {
 
 // WorkflowDefinitionView is a non-executable public workflow summary.
 type WorkflowDefinitionView struct {
-	state               protoimpl.MessageState `protogen:"open.v1"`
-	Name                string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	Uid                 string                 `protobuf:"bytes,2,opt,name=uid,proto3" json:"uid,omitempty"`
-	Revision            uint64                 `protobuf:"varint,3,opt,name=revision,proto3" json:"revision,omitempty"`
-	Etag                string                 `protobuf:"bytes,4,opt,name=etag,proto3" json:"etag,omitempty"`
-	CreateTime          *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty"`
-	UpdateTime          *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=update_time,json=updateTime,proto3" json:"update_time,omitempty"`
-	DisplayName         string                 `protobuf:"bytes,7,opt,name=display_name,json=displayName,proto3" json:"display_name,omitempty"`
-	SemanticVersion     string                 `protobuf:"bytes,8,opt,name=semantic_version,json=semanticVersion,proto3" json:"semantic_version,omitempty"`
-	Definition          *ArtifactRef           `protobuf:"bytes,9,opt,name=definition,proto3" json:"definition,omitempty"`
-	InputSchema         *ArtifactRef           `protobuf:"bytes,10,opt,name=input_schema,json=inputSchema,proto3" json:"input_schema,omitempty"`
-	OutputSchema        *ArtifactRef           `protobuf:"bytes,11,opt,name=output_schema,json=outputSchema,proto3" json:"output_schema,omitempty"`
-	State               string                 `protobuf:"bytes,12,opt,name=state,proto3" json:"state,omitempty"`
-	ResolvedGraphDigest string                 `protobuf:"bytes,13,opt,name=resolved_graph_digest,json=resolvedGraphDigest,proto3" json:"resolved_graph_digest,omitempty"`
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	state                protoimpl.MessageState `protogen:"open.v1"`
+	Name                 string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Uid                  string                 `protobuf:"bytes,2,opt,name=uid,proto3" json:"uid,omitempty"`
+	Revision             uint64                 `protobuf:"varint,3,opt,name=revision,proto3" json:"revision,omitempty"`
+	Etag                 string                 `protobuf:"bytes,4,opt,name=etag,proto3" json:"etag,omitempty"`
+	CreateTime           *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty"`
+	UpdateTime           *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=update_time,json=updateTime,proto3" json:"update_time,omitempty"`
+	DisplayName          string                 `protobuf:"bytes,7,opt,name=display_name,json=displayName,proto3" json:"display_name,omitempty"`
+	SemanticVersion      string                 `protobuf:"bytes,8,opt,name=semantic_version,json=semanticVersion,proto3" json:"semantic_version,omitempty"`
+	Definition           *ArtifactRef           `protobuf:"bytes,9,opt,name=definition,proto3" json:"definition,omitempty"`
+	InputSchema          *ArtifactRef           `protobuf:"bytes,10,opt,name=input_schema,json=inputSchema,proto3" json:"input_schema,omitempty"`
+	OutputSchema         *ArtifactRef           `protobuf:"bytes,11,opt,name=output_schema,json=outputSchema,proto3" json:"output_schema,omitempty"`
+	State                string                 `protobuf:"bytes,12,opt,name=state,proto3" json:"state,omitempty"`
+	ResolvedGraphDigest  string                 `protobuf:"bytes,13,opt,name=resolved_graph_digest,json=resolvedGraphDigest,proto3" json:"resolved_graph_digest,omitempty"`
+	WorkflowDefinitionId string                 `protobuf:"bytes,14,opt,name=workflow_definition_id,json=workflowDefinitionId,proto3" json:"workflow_definition_id,omitempty"`
+	DeleteTime           *timestamppb.Timestamp `protobuf:"bytes,15,opt,name=delete_time,json=deleteTime,proto3" json:"delete_time,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
 }
 
 func (x *WorkflowDefinitionView) Reset() {
 	*x = WorkflowDefinitionView{}
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[46]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[48]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4141,7 +4409,7 @@ func (x *WorkflowDefinitionView) String() string {
 func (*WorkflowDefinitionView) ProtoMessage() {}
 
 func (x *WorkflowDefinitionView) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[46]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[48]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4154,7 +4422,7 @@ func (x *WorkflowDefinitionView) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WorkflowDefinitionView.ProtoReflect.Descriptor instead.
 func (*WorkflowDefinitionView) Descriptor() ([]byte, []int) {
-	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{46}
+	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{48}
 }
 
 func (x *WorkflowDefinitionView) GetName() string {
@@ -4248,6 +4516,20 @@ func (x *WorkflowDefinitionView) GetResolvedGraphDigest() string {
 	return ""
 }
 
+func (x *WorkflowDefinitionView) GetWorkflowDefinitionId() string {
+	if x != nil {
+		return x.WorkflowDefinitionId
+	}
+	return ""
+}
+
+func (x *WorkflowDefinitionView) GetDeleteTime() *timestamppb.Timestamp {
+	if x != nil {
+		return x.DeleteTime
+	}
+	return nil
+}
+
 // WorkflowDefinitionList is a stable page of public definition views.
 type WorkflowDefinitionList struct {
 	state               protoimpl.MessageState    `protogen:"open.v1"`
@@ -4259,7 +4541,7 @@ type WorkflowDefinitionList struct {
 
 func (x *WorkflowDefinitionList) Reset() {
 	*x = WorkflowDefinitionList{}
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[47]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[49]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4271,7 +4553,7 @@ func (x *WorkflowDefinitionList) String() string {
 func (*WorkflowDefinitionList) ProtoMessage() {}
 
 func (x *WorkflowDefinitionList) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[47]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[49]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4284,7 +4566,7 @@ func (x *WorkflowDefinitionList) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WorkflowDefinitionList.ProtoReflect.Descriptor instead.
 func (*WorkflowDefinitionList) Descriptor() ([]byte, []int) {
-	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{47}
+	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{49}
 }
 
 func (x *WorkflowDefinitionList) GetWorkflowDefinitions() []*WorkflowDefinitionView {
@@ -4315,7 +4597,7 @@ type WorkflowRunCreate struct {
 
 func (x *WorkflowRunCreate) Reset() {
 	*x = WorkflowRunCreate{}
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[48]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[50]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4327,7 +4609,7 @@ func (x *WorkflowRunCreate) String() string {
 func (*WorkflowRunCreate) ProtoMessage() {}
 
 func (x *WorkflowRunCreate) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[48]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[50]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4340,7 +4622,7 @@ func (x *WorkflowRunCreate) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WorkflowRunCreate.ProtoReflect.Descriptor instead.
 func (*WorkflowRunCreate) Descriptor() ([]byte, []int) {
-	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{48}
+	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{50}
 }
 
 func (x *WorkflowRunCreate) GetWorkflowRunId() string {
@@ -4394,13 +4676,14 @@ type WorkflowRunView struct {
 	Output           *ArtifactRef           `protobuf:"bytes,11,opt,name=output,proto3" json:"output,omitempty"`
 	ReplayState      *ArtifactRef           `protobuf:"bytes,12,opt,name=replay_state,json=replayState,proto3" json:"replay_state,omitempty"`
 	Failure          *PublicError           `protobuf:"bytes,13,opt,name=failure,proto3" json:"failure,omitempty"`
+	DeleteTime       *timestamppb.Timestamp `protobuf:"bytes,14,opt,name=delete_time,json=deleteTime,proto3" json:"delete_time,omitempty"`
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
 }
 
 func (x *WorkflowRunView) Reset() {
 	*x = WorkflowRunView{}
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[49]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[51]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4412,7 +4695,7 @@ func (x *WorkflowRunView) String() string {
 func (*WorkflowRunView) ProtoMessage() {}
 
 func (x *WorkflowRunView) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[49]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[51]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4425,7 +4708,7 @@ func (x *WorkflowRunView) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WorkflowRunView.ProtoReflect.Descriptor instead.
 func (*WorkflowRunView) Descriptor() ([]byte, []int) {
-	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{49}
+	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{51}
 }
 
 func (x *WorkflowRunView) GetName() string {
@@ -4519,6 +4802,13 @@ func (x *WorkflowRunView) GetFailure() *PublicError {
 	return nil
 }
 
+func (x *WorkflowRunView) GetDeleteTime() *timestamppb.Timestamp {
+	if x != nil {
+		return x.DeleteTime
+	}
+	return nil
+}
+
 // WorkflowRunList is a stable page of public run views.
 type WorkflowRunList struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -4530,7 +4820,7 @@ type WorkflowRunList struct {
 
 func (x *WorkflowRunList) Reset() {
 	*x = WorkflowRunList{}
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[50]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[52]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4542,7 +4832,7 @@ func (x *WorkflowRunList) String() string {
 func (*WorkflowRunList) ProtoMessage() {}
 
 func (x *WorkflowRunList) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[50]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[52]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4555,7 +4845,7 @@ func (x *WorkflowRunList) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WorkflowRunList.ProtoReflect.Descriptor instead.
 func (*WorkflowRunList) Descriptor() ([]byte, []int) {
-	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{50}
+	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{52}
 }
 
 func (x *WorkflowRunList) GetWorkflowRuns() []*WorkflowRunView {
@@ -4586,13 +4876,14 @@ type ApprovalRequestView struct {
 	IntentDigest                string                 `protobuf:"bytes,9,opt,name=intent_digest,json=intentDigest,proto3" json:"intent_digest,omitempty"`
 	MinimumIndependentApprovers uint32                 `protobuf:"varint,10,opt,name=minimum_independent_approvers,json=minimumIndependentApprovers,proto3" json:"minimum_independent_approvers,omitempty"`
 	ExpireTime                  *timestamppb.Timestamp `protobuf:"bytes,11,opt,name=expire_time,json=expireTime,proto3" json:"expire_time,omitempty"`
+	DeleteTime                  *timestamppb.Timestamp `protobuf:"bytes,12,opt,name=delete_time,json=deleteTime,proto3" json:"delete_time,omitempty"`
 	unknownFields               protoimpl.UnknownFields
 	sizeCache                   protoimpl.SizeCache
 }
 
 func (x *ApprovalRequestView) Reset() {
 	*x = ApprovalRequestView{}
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[51]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[53]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4604,7 +4895,7 @@ func (x *ApprovalRequestView) String() string {
 func (*ApprovalRequestView) ProtoMessage() {}
 
 func (x *ApprovalRequestView) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[51]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[53]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4617,7 +4908,7 @@ func (x *ApprovalRequestView) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ApprovalRequestView.ProtoReflect.Descriptor instead.
 func (*ApprovalRequestView) Descriptor() ([]byte, []int) {
-	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{51}
+	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{53}
 }
 
 func (x *ApprovalRequestView) GetName() string {
@@ -4697,6 +4988,13 @@ func (x *ApprovalRequestView) GetExpireTime() *timestamppb.Timestamp {
 	return nil
 }
 
+func (x *ApprovalRequestView) GetDeleteTime() *timestamppb.Timestamp {
+	if x != nil {
+		return x.DeleteTime
+	}
+	return nil
+}
+
 // ApprovalRequestList is a stable page of public approval views.
 type ApprovalRequestList struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -4708,7 +5006,7 @@ type ApprovalRequestList struct {
 
 func (x *ApprovalRequestList) Reset() {
 	*x = ApprovalRequestList{}
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[52]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[54]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4720,7 +5018,7 @@ func (x *ApprovalRequestList) String() string {
 func (*ApprovalRequestList) ProtoMessage() {}
 
 func (x *ApprovalRequestList) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[52]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[54]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4733,7 +5031,7 @@ func (x *ApprovalRequestList) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ApprovalRequestList.ProtoReflect.Descriptor instead.
 func (*ApprovalRequestList) Descriptor() ([]byte, []int) {
-	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{52}
+	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{54}
 }
 
 func (x *ApprovalRequestList) GetApprovals() []*ApprovalRequestView {
@@ -4762,7 +5060,7 @@ type ApprovalDecision struct {
 
 func (x *ApprovalDecision) Reset() {
 	*x = ApprovalDecision{}
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[53]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[55]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4774,7 +5072,7 @@ func (x *ApprovalDecision) String() string {
 func (*ApprovalDecision) ProtoMessage() {}
 
 func (x *ApprovalDecision) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[53]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[55]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4787,7 +5085,7 @@ func (x *ApprovalDecision) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ApprovalDecision.ProtoReflect.Descriptor instead.
 func (*ApprovalDecision) Descriptor() ([]byte, []int) {
-	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{53}
+	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{55}
 }
 
 func (x *ApprovalDecision) GetDecision() string {
@@ -4828,7 +5126,7 @@ type ApprovalReceiptView struct {
 
 func (x *ApprovalReceiptView) Reset() {
 	*x = ApprovalReceiptView{}
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[54]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[56]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4840,7 +5138,7 @@ func (x *ApprovalReceiptView) String() string {
 func (*ApprovalReceiptView) ProtoMessage() {}
 
 func (x *ApprovalReceiptView) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[54]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[56]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4853,7 +5151,7 @@ func (x *ApprovalReceiptView) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ApprovalReceiptView.ProtoReflect.Descriptor instead.
 func (*ApprovalReceiptView) Descriptor() ([]byte, []int) {
-	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{54}
+	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{56}
 }
 
 func (x *ApprovalReceiptView) GetName() string {
@@ -4926,13 +5224,14 @@ type TenantView struct {
 	DefaultClassification string                 `protobuf:"bytes,9,opt,name=default_classification,json=defaultClassification,proto3" json:"default_classification,omitempty"`
 	AllowedRegions        []string               `protobuf:"bytes,10,rep,name=allowed_regions,json=allowedRegions,proto3" json:"allowed_regions,omitempty"`
 	Labels                map[string]string      `protobuf:"bytes,11,rep,name=labels,proto3" json:"labels,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	DeleteTime            *timestamppb.Timestamp `protobuf:"bytes,12,opt,name=delete_time,json=deleteTime,proto3" json:"delete_time,omitempty"`
 	unknownFields         protoimpl.UnknownFields
 	sizeCache             protoimpl.SizeCache
 }
 
 func (x *TenantView) Reset() {
 	*x = TenantView{}
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[55]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[57]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4944,7 +5243,7 @@ func (x *TenantView) String() string {
 func (*TenantView) ProtoMessage() {}
 
 func (x *TenantView) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[55]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[57]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4957,7 +5256,7 @@ func (x *TenantView) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TenantView.ProtoReflect.Descriptor instead.
 func (*TenantView) Descriptor() ([]byte, []int) {
-	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{55}
+	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{57}
 }
 
 func (x *TenantView) GetName() string {
@@ -5037,6 +5336,13 @@ func (x *TenantView) GetLabels() map[string]string {
 	return nil
 }
 
+func (x *TenantView) GetDeleteTime() *timestamppb.Timestamp {
+	if x != nil {
+		return x.DeleteTime
+	}
+	return nil
+}
+
 // ProjectCreate is public project creation intent.
 type ProjectCreate struct {
 	state                 protoimpl.MessageState `protogen:"open.v1"`
@@ -5051,7 +5357,7 @@ type ProjectCreate struct {
 
 func (x *ProjectCreate) Reset() {
 	*x = ProjectCreate{}
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[56]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[58]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5063,7 +5369,7 @@ func (x *ProjectCreate) String() string {
 func (*ProjectCreate) ProtoMessage() {}
 
 func (x *ProjectCreate) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[56]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[58]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5076,7 +5382,7 @@ func (x *ProjectCreate) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProjectCreate.ProtoReflect.Descriptor instead.
 func (*ProjectCreate) Descriptor() ([]byte, []int) {
-	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{56}
+	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{58}
 }
 
 func (x *ProjectCreate) GetProjectId() string {
@@ -5128,13 +5434,15 @@ type ProjectView struct {
 	DefaultClassification string                 `protobuf:"bytes,9,opt,name=default_classification,json=defaultClassification,proto3" json:"default_classification,omitempty"`
 	Labels                map[string]string      `protobuf:"bytes,10,rep,name=labels,proto3" json:"labels,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	State                 string                 `protobuf:"bytes,11,opt,name=state,proto3" json:"state,omitempty"`
+	ProjectId             string                 `protobuf:"bytes,12,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
+	DeleteTime            *timestamppb.Timestamp `protobuf:"bytes,13,opt,name=delete_time,json=deleteTime,proto3" json:"delete_time,omitempty"`
 	unknownFields         protoimpl.UnknownFields
 	sizeCache             protoimpl.SizeCache
 }
 
 func (x *ProjectView) Reset() {
 	*x = ProjectView{}
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[57]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[59]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5146,7 +5454,7 @@ func (x *ProjectView) String() string {
 func (*ProjectView) ProtoMessage() {}
 
 func (x *ProjectView) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[57]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[59]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5159,7 +5467,7 @@ func (x *ProjectView) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProjectView.ProtoReflect.Descriptor instead.
 func (*ProjectView) Descriptor() ([]byte, []int) {
-	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{57}
+	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{59}
 }
 
 func (x *ProjectView) GetName() string {
@@ -5239,6 +5547,20 @@ func (x *ProjectView) GetState() string {
 	return ""
 }
 
+func (x *ProjectView) GetProjectId() string {
+	if x != nil {
+		return x.ProjectId
+	}
+	return ""
+}
+
+func (x *ProjectView) GetDeleteTime() *timestamppb.Timestamp {
+	if x != nil {
+		return x.DeleteTime
+	}
+	return nil
+}
+
 // ProjectList is a stable page of public project views.
 type ProjectList struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -5250,7 +5572,7 @@ type ProjectList struct {
 
 func (x *ProjectList) Reset() {
 	*x = ProjectList{}
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[58]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[60]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5262,7 +5584,7 @@ func (x *ProjectList) String() string {
 func (*ProjectList) ProtoMessage() {}
 
 func (x *ProjectList) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[58]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[60]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5275,7 +5597,7 @@ func (x *ProjectList) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProjectList.ProtoReflect.Descriptor instead.
 func (*ProjectList) Descriptor() ([]byte, []int) {
-	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{58}
+	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{60}
 }
 
 func (x *ProjectList) GetProjects() []*ProjectView {
@@ -5311,7 +5633,7 @@ type AuditRecordView struct {
 
 func (x *AuditRecordView) Reset() {
 	*x = AuditRecordView{}
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[59]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[61]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5323,7 +5645,7 @@ func (x *AuditRecordView) String() string {
 func (*AuditRecordView) ProtoMessage() {}
 
 func (x *AuditRecordView) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[59]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[61]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5336,7 +5658,7 @@ func (x *AuditRecordView) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AuditRecordView.ProtoReflect.Descriptor instead.
 func (*AuditRecordView) Descriptor() ([]byte, []int) {
-	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{59}
+	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{61}
 }
 
 func (x *AuditRecordView) GetEventId() string {
@@ -5420,7 +5742,7 @@ type AuditRecordList struct {
 
 func (x *AuditRecordList) Reset() {
 	*x = AuditRecordList{}
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[60]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[62]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5432,7 +5754,7 @@ func (x *AuditRecordList) String() string {
 func (*AuditRecordList) ProtoMessage() {}
 
 func (x *AuditRecordList) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[60]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[62]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5445,7 +5767,7 @@ func (x *AuditRecordList) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AuditRecordList.ProtoReflect.Descriptor instead.
 func (*AuditRecordList) Descriptor() ([]byte, []int) {
-	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{60}
+	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{62}
 }
 
 func (x *AuditRecordList) GetRecords() []*AuditRecordView {
@@ -5472,7 +5794,7 @@ type GetResourceRequest struct {
 
 func (x *GetResourceRequest) Reset() {
 	*x = GetResourceRequest{}
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[61]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[63]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5484,7 +5806,7 @@ func (x *GetResourceRequest) String() string {
 func (*GetResourceRequest) ProtoMessage() {}
 
 func (x *GetResourceRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[61]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[63]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5497,7 +5819,7 @@ func (x *GetResourceRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetResourceRequest.ProtoReflect.Descriptor instead.
 func (*GetResourceRequest) Descriptor() ([]byte, []int) {
-	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{61}
+	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{63}
 }
 
 func (x *GetResourceRequest) GetName() string {
@@ -5521,7 +5843,7 @@ type ListResourcesRequest struct {
 
 func (x *ListResourcesRequest) Reset() {
 	*x = ListResourcesRequest{}
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[62]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[64]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5533,7 +5855,7 @@ func (x *ListResourcesRequest) String() string {
 func (*ListResourcesRequest) ProtoMessage() {}
 
 func (x *ListResourcesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[62]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[64]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5546,7 +5868,7 @@ func (x *ListResourcesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListResourcesRequest.ProtoReflect.Descriptor instead.
 func (*ListResourcesRequest) Descriptor() ([]byte, []int) {
-	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{62}
+	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{64}
 }
 
 func (x *ListResourcesRequest) GetParent() string {
@@ -5584,6 +5906,67 @@ func (x *ListResourcesRequest) GetOrderBy() string {
 	return ""
 }
 
+// ListChildResourcesRequest carries pagination for immutable child collections.
+type ListChildResourcesRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Parent        string                 `protobuf:"bytes,1,opt,name=parent,proto3" json:"parent,omitempty"`
+	PageSize      uint32                 `protobuf:"varint,2,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
+	PageToken     string                 `protobuf:"bytes,3,opt,name=page_token,json=pageToken,proto3" json:"page_token,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListChildResourcesRequest) Reset() {
+	*x = ListChildResourcesRequest{}
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[65]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListChildResourcesRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListChildResourcesRequest) ProtoMessage() {}
+
+func (x *ListChildResourcesRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[65]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListChildResourcesRequest.ProtoReflect.Descriptor instead.
+func (*ListChildResourcesRequest) Descriptor() ([]byte, []int) {
+	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{65}
+}
+
+func (x *ListChildResourcesRequest) GetParent() string {
+	if x != nil {
+		return x.Parent
+	}
+	return ""
+}
+
+func (x *ListChildResourcesRequest) GetPageSize() uint32 {
+	if x != nil {
+		return x.PageSize
+	}
+	return 0
+}
+
+func (x *ListChildResourcesRequest) GetPageToken() string {
+	if x != nil {
+		return x.PageToken
+	}
+	return ""
+}
+
 // SubmitInferenceRequest binds public inference intent below a canonical parent.
 type SubmitInferenceRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -5595,7 +5978,7 @@ type SubmitInferenceRequest struct {
 
 func (x *SubmitInferenceRequest) Reset() {
 	*x = SubmitInferenceRequest{}
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[63]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[66]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5607,7 +5990,7 @@ func (x *SubmitInferenceRequest) String() string {
 func (*SubmitInferenceRequest) ProtoMessage() {}
 
 func (x *SubmitInferenceRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[63]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[66]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5620,7 +6003,7 @@ func (x *SubmitInferenceRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SubmitInferenceRequest.ProtoReflect.Descriptor instead.
 func (*SubmitInferenceRequest) Descriptor() ([]byte, []int) {
-	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{63}
+	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{66}
 }
 
 func (x *SubmitInferenceRequest) GetParent() string {
@@ -5648,7 +6031,7 @@ type CancelOperationRequest struct {
 
 func (x *CancelOperationRequest) Reset() {
 	*x = CancelOperationRequest{}
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[64]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[67]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5660,7 +6043,7 @@ func (x *CancelOperationRequest) String() string {
 func (*CancelOperationRequest) ProtoMessage() {}
 
 func (x *CancelOperationRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[64]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[67]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5673,7 +6056,7 @@ func (x *CancelOperationRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CancelOperationRequest.ProtoReflect.Descriptor instead.
 func (*CancelOperationRequest) Descriptor() ([]byte, []int) {
-	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{64}
+	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{67}
 }
 
 func (x *CancelOperationRequest) GetName() string {
@@ -5692,17 +6075,15 @@ func (x *CancelOperationRequest) GetCancellation() *CancellationRequest {
 
 // DownloadArtifactRequest selects an optional half-open byte range.
 type DownloadArtifactRequest struct {
-	state             protoimpl.MessageState `protogen:"open.v1"`
-	Name              string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	RangeStart        uint64                 `protobuf:"varint,2,opt,name=range_start,json=rangeStart,proto3" json:"range_start,omitempty"`
-	RangeEndExclusive *uint64                `protobuf:"varint,3,opt,name=range_end_exclusive,json=rangeEndExclusive,proto3,oneof" json:"range_end_exclusive,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *DownloadArtifactRequest) Reset() {
 	*x = DownloadArtifactRequest{}
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[65]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[68]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5714,7 +6095,7 @@ func (x *DownloadArtifactRequest) String() string {
 func (*DownloadArtifactRequest) ProtoMessage() {}
 
 func (x *DownloadArtifactRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[65]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[68]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5727,7 +6108,7 @@ func (x *DownloadArtifactRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DownloadArtifactRequest.ProtoReflect.Descriptor instead.
 func (*DownloadArtifactRequest) Descriptor() ([]byte, []int) {
-	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{65}
+	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{68}
 }
 
 func (x *DownloadArtifactRequest) GetName() string {
@@ -5737,32 +6118,17 @@ func (x *DownloadArtifactRequest) GetName() string {
 	return ""
 }
 
-func (x *DownloadArtifactRequest) GetRangeStart() uint64 {
-	if x != nil {
-		return x.RangeStart
-	}
-	return 0
-}
-
-func (x *DownloadArtifactRequest) GetRangeEndExclusive() uint64 {
-	if x != nil && x.RangeEndExclusive != nil {
-		return *x.RangeEndExclusive
-	}
-	return 0
-}
-
-// WatchOperationRequest resumes after an optional public revision.
+// WatchOperationRequest selects the operation exposed as an SSE stream.
 type WatchOperationRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	AfterRevision uint64                 `protobuf:"varint,2,opt,name=after_revision,json=afterRevision,proto3" json:"after_revision,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *WatchOperationRequest) Reset() {
 	*x = WatchOperationRequest{}
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[66]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[69]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5774,7 +6140,7 @@ func (x *WatchOperationRequest) String() string {
 func (*WatchOperationRequest) ProtoMessage() {}
 
 func (x *WatchOperationRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[66]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[69]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5787,7 +6153,7 @@ func (x *WatchOperationRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WatchOperationRequest.ProtoReflect.Descriptor instead.
 func (*WatchOperationRequest) Descriptor() ([]byte, []int) {
-	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{66}
+	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{69}
 }
 
 func (x *WatchOperationRequest) GetName() string {
@@ -5795,13 +6161,6 @@ func (x *WatchOperationRequest) GetName() string {
 		return x.Name
 	}
 	return ""
-}
-
-func (x *WatchOperationRequest) GetAfterRevision() uint64 {
-	if x != nil {
-		return x.AfterRevision
-	}
-	return 0
 }
 
 // CreateDatasetRequest binds creation intent below a canonical parent.
@@ -5815,7 +6174,7 @@ type CreateDatasetRequest struct {
 
 func (x *CreateDatasetRequest) Reset() {
 	*x = CreateDatasetRequest{}
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[67]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[70]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5827,7 +6186,7 @@ func (x *CreateDatasetRequest) String() string {
 func (*CreateDatasetRequest) ProtoMessage() {}
 
 func (x *CreateDatasetRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[67]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[70]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5840,7 +6199,7 @@ func (x *CreateDatasetRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateDatasetRequest.ProtoReflect.Descriptor instead.
 func (*CreateDatasetRequest) Descriptor() ([]byte, []int) {
-	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{67}
+	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{70}
 }
 
 func (x *CreateDatasetRequest) GetParent() string {
@@ -5868,7 +6227,7 @@ type UpdateDatasetRequest struct {
 
 func (x *UpdateDatasetRequest) Reset() {
 	*x = UpdateDatasetRequest{}
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[68]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[71]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5880,7 +6239,7 @@ func (x *UpdateDatasetRequest) String() string {
 func (*UpdateDatasetRequest) ProtoMessage() {}
 
 func (x *UpdateDatasetRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[68]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[71]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5893,7 +6252,7 @@ func (x *UpdateDatasetRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateDatasetRequest.ProtoReflect.Descriptor instead.
 func (*UpdateDatasetRequest) Descriptor() ([]byte, []int) {
-	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{68}
+	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{71}
 }
 
 func (x *UpdateDatasetRequest) GetName() string {
@@ -5921,7 +6280,7 @@ type CreateDatasetReleaseRequest struct {
 
 func (x *CreateDatasetReleaseRequest) Reset() {
 	*x = CreateDatasetReleaseRequest{}
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[69]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[72]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5933,7 +6292,7 @@ func (x *CreateDatasetReleaseRequest) String() string {
 func (*CreateDatasetReleaseRequest) ProtoMessage() {}
 
 func (x *CreateDatasetReleaseRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[69]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[72]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5946,7 +6305,7 @@ func (x *CreateDatasetReleaseRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateDatasetReleaseRequest.ProtoReflect.Descriptor instead.
 func (*CreateDatasetReleaseRequest) Descriptor() ([]byte, []int) {
-	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{69}
+	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{72}
 }
 
 func (x *CreateDatasetReleaseRequest) GetParent() string {
@@ -5974,7 +6333,7 @@ type CreateModelRequest struct {
 
 func (x *CreateModelRequest) Reset() {
 	*x = CreateModelRequest{}
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[70]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[73]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5986,7 +6345,7 @@ func (x *CreateModelRequest) String() string {
 func (*CreateModelRequest) ProtoMessage() {}
 
 func (x *CreateModelRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[70]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[73]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5999,7 +6358,7 @@ func (x *CreateModelRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateModelRequest.ProtoReflect.Descriptor instead.
 func (*CreateModelRequest) Descriptor() ([]byte, []int) {
-	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{70}
+	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{73}
 }
 
 func (x *CreateModelRequest) GetParent() string {
@@ -6027,7 +6386,7 @@ type UpdateModelRequest struct {
 
 func (x *UpdateModelRequest) Reset() {
 	*x = UpdateModelRequest{}
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[71]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[74]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6039,7 +6398,7 @@ func (x *UpdateModelRequest) String() string {
 func (*UpdateModelRequest) ProtoMessage() {}
 
 func (x *UpdateModelRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[71]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[74]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6052,7 +6411,7 @@ func (x *UpdateModelRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateModelRequest.ProtoReflect.Descriptor instead.
 func (*UpdateModelRequest) Descriptor() ([]byte, []int) {
-	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{71}
+	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{74}
 }
 
 func (x *UpdateModelRequest) GetName() string {
@@ -6080,7 +6439,7 @@ type CreateModelReleaseRequest struct {
 
 func (x *CreateModelReleaseRequest) Reset() {
 	*x = CreateModelReleaseRequest{}
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[72]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[75]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6092,7 +6451,7 @@ func (x *CreateModelReleaseRequest) String() string {
 func (*CreateModelReleaseRequest) ProtoMessage() {}
 
 func (x *CreateModelReleaseRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[72]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[75]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6105,7 +6464,7 @@ func (x *CreateModelReleaseRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateModelReleaseRequest.ProtoReflect.Descriptor instead.
 func (*CreateModelReleaseRequest) Descriptor() ([]byte, []int) {
-	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{72}
+	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{75}
 }
 
 func (x *CreateModelReleaseRequest) GetParent() string {
@@ -6133,7 +6492,7 @@ type CreateTrainingRunRequest struct {
 
 func (x *CreateTrainingRunRequest) Reset() {
 	*x = CreateTrainingRunRequest{}
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[73]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[76]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6145,7 +6504,7 @@ func (x *CreateTrainingRunRequest) String() string {
 func (*CreateTrainingRunRequest) ProtoMessage() {}
 
 func (x *CreateTrainingRunRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[73]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[76]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6158,7 +6517,7 @@ func (x *CreateTrainingRunRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateTrainingRunRequest.ProtoReflect.Descriptor instead.
 func (*CreateTrainingRunRequest) Descriptor() ([]byte, []int) {
-	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{73}
+	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{76}
 }
 
 func (x *CreateTrainingRunRequest) GetParent() string {
@@ -6186,7 +6545,7 @@ type CreateEvaluationRunRequest struct {
 
 func (x *CreateEvaluationRunRequest) Reset() {
 	*x = CreateEvaluationRunRequest{}
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[74]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[77]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6198,7 +6557,7 @@ func (x *CreateEvaluationRunRequest) String() string {
 func (*CreateEvaluationRunRequest) ProtoMessage() {}
 
 func (x *CreateEvaluationRunRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[74]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[77]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6211,7 +6570,7 @@ func (x *CreateEvaluationRunRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateEvaluationRunRequest.ProtoReflect.Descriptor instead.
 func (*CreateEvaluationRunRequest) Descriptor() ([]byte, []int) {
-	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{74}
+	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{77}
 }
 
 func (x *CreateEvaluationRunRequest) GetParent() string {
@@ -6239,7 +6598,7 @@ type CreateAgentDefinitionRequest struct {
 
 func (x *CreateAgentDefinitionRequest) Reset() {
 	*x = CreateAgentDefinitionRequest{}
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[75]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[78]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6251,7 +6610,7 @@ func (x *CreateAgentDefinitionRequest) String() string {
 func (*CreateAgentDefinitionRequest) ProtoMessage() {}
 
 func (x *CreateAgentDefinitionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[75]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[78]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6264,7 +6623,7 @@ func (x *CreateAgentDefinitionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateAgentDefinitionRequest.ProtoReflect.Descriptor instead.
 func (*CreateAgentDefinitionRequest) Descriptor() ([]byte, []int) {
-	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{75}
+	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{78}
 }
 
 func (x *CreateAgentDefinitionRequest) GetParent() string {
@@ -6292,7 +6651,7 @@ type CreateAgentRunRequest struct {
 
 func (x *CreateAgentRunRequest) Reset() {
 	*x = CreateAgentRunRequest{}
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[76]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[79]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6304,7 +6663,7 @@ func (x *CreateAgentRunRequest) String() string {
 func (*CreateAgentRunRequest) ProtoMessage() {}
 
 func (x *CreateAgentRunRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[76]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[79]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6317,7 +6676,7 @@ func (x *CreateAgentRunRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateAgentRunRequest.ProtoReflect.Descriptor instead.
 func (*CreateAgentRunRequest) Descriptor() ([]byte, []int) {
-	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{76}
+	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{79}
 }
 
 func (x *CreateAgentRunRequest) GetParent() string {
@@ -6345,7 +6704,7 @@ type CreateWorkflowDefinitionRequest struct {
 
 func (x *CreateWorkflowDefinitionRequest) Reset() {
 	*x = CreateWorkflowDefinitionRequest{}
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[77]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[80]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6357,7 +6716,7 @@ func (x *CreateWorkflowDefinitionRequest) String() string {
 func (*CreateWorkflowDefinitionRequest) ProtoMessage() {}
 
 func (x *CreateWorkflowDefinitionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[77]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[80]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6370,7 +6729,7 @@ func (x *CreateWorkflowDefinitionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateWorkflowDefinitionRequest.ProtoReflect.Descriptor instead.
 func (*CreateWorkflowDefinitionRequest) Descriptor() ([]byte, []int) {
-	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{77}
+	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{80}
 }
 
 func (x *CreateWorkflowDefinitionRequest) GetParent() string {
@@ -6398,7 +6757,7 @@ type CreateWorkflowRunRequest struct {
 
 func (x *CreateWorkflowRunRequest) Reset() {
 	*x = CreateWorkflowRunRequest{}
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[78]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[81]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6410,7 +6769,7 @@ func (x *CreateWorkflowRunRequest) String() string {
 func (*CreateWorkflowRunRequest) ProtoMessage() {}
 
 func (x *CreateWorkflowRunRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[78]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[81]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6423,7 +6782,7 @@ func (x *CreateWorkflowRunRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateWorkflowRunRequest.ProtoReflect.Descriptor instead.
 func (*CreateWorkflowRunRequest) Descriptor() ([]byte, []int) {
-	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{78}
+	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{81}
 }
 
 func (x *CreateWorkflowRunRequest) GetParent() string {
@@ -6451,7 +6810,7 @@ type DecideApprovalRequest struct {
 
 func (x *DecideApprovalRequest) Reset() {
 	*x = DecideApprovalRequest{}
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[79]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[82]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6463,7 +6822,7 @@ func (x *DecideApprovalRequest) String() string {
 func (*DecideApprovalRequest) ProtoMessage() {}
 
 func (x *DecideApprovalRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[79]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[82]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6476,7 +6835,7 @@ func (x *DecideApprovalRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DecideApprovalRequest.ProtoReflect.Descriptor instead.
 func (*DecideApprovalRequest) Descriptor() ([]byte, []int) {
-	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{79}
+	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{82}
 }
 
 func (x *DecideApprovalRequest) GetName() string {
@@ -6504,7 +6863,7 @@ type CreateProjectRequest struct {
 
 func (x *CreateProjectRequest) Reset() {
 	*x = CreateProjectRequest{}
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[80]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[83]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6516,7 +6875,7 @@ func (x *CreateProjectRequest) String() string {
 func (*CreateProjectRequest) ProtoMessage() {}
 
 func (x *CreateProjectRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[80]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[83]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6529,7 +6888,7 @@ func (x *CreateProjectRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateProjectRequest.ProtoReflect.Descriptor instead.
 func (*CreateProjectRequest) Descriptor() ([]byte, []int) {
-	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{80}
+	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{83}
 }
 
 func (x *CreateProjectRequest) GetParent() string {
@@ -6561,7 +6920,7 @@ type ListAuditRecordsRequest struct {
 
 func (x *ListAuditRecordsRequest) Reset() {
 	*x = ListAuditRecordsRequest{}
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[81]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[84]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6573,7 +6932,7 @@ func (x *ListAuditRecordsRequest) String() string {
 func (*ListAuditRecordsRequest) ProtoMessage() {}
 
 func (x *ListAuditRecordsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[81]
+	mi := &file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[84]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6586,7 +6945,7 @@ func (x *ListAuditRecordsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListAuditRecordsRequest.ProtoReflect.Descriptor instead.
 func (*ListAuditRecordsRequest) Descriptor() ([]byte, []int) {
-	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{81}
+	return file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP(), []int{84}
 }
 
 func (x *ListAuditRecordsRequest) GetParent() string {
@@ -6640,6 +6999,14 @@ var file_proto_mindclade_api_v1_mindclade_service_proto_extTypes = []protoimpl.E
 		Tag:           "bytes,51001,opt,name=public_http",
 		Filename:      "proto/mindclade/api/v1/mindclade_service.proto",
 	},
+	{
+		ExtendedType:  (*descriptorpb.MessageOptions)(nil),
+		ExtensionType: (*PublicMessageContract)(nil),
+		Field:         51002,
+		Name:          "mindclade.api.v1.public_message",
+		Tag:           "bytes,51002,opt,name=public_message",
+		Filename:      "proto/mindclade/api/v1/mindclade_service.proto",
+	},
 }
 
 // Extension fields to descriptorpb.MethodOptions.
@@ -6648,22 +7015,40 @@ var (
 	E_PublicHttp = &file_proto_mindclade_api_v1_mindclade_service_proto_extTypes[0]
 )
 
+// Extension fields to descriptorpb.MessageOptions.
+var (
+	// optional mindclade.api.v1.PublicMessageContract public_message = 51002;
+	E_PublicMessage = &file_proto_mindclade_api_v1_mindclade_service_proto_extTypes[1]
+)
+
 var File_proto_mindclade_api_v1_mindclade_service_proto protoreflect.FileDescriptor
 
 const file_proto_mindclade_api_v1_mindclade_service_proto_rawDesc = "" +
 	"\n" +
-	".proto/mindclade/api/v1/mindclade_service.proto\x12\x10mindclade.api.v1\x1a\x1cgoogle/api/annotations.proto\x1a google/protobuf/descriptor.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xec\x01\n" +
+	".proto/mindclade/api/v1/mindclade_service.proto\x12\x10mindclade.api.v1\x1a\x1cgoogle/api/annotations.proto\x1a google/protobuf/descriptor.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\x88\x03\n" +
 	"\x12PublicHttpContract\x12%\n" +
 	"\x0esuccess_status\x18\x01 \x03(\rR\rsuccessStatus\x12\x1f\n" +
 	"\vbearer_auth\x18\x02 \x01(\bR\n" +
 	"bearerAuth\x12'\n" +
 	"\x0frequest_headers\x18\x03 \x03(\tR\x0erequestHeaders\x12)\n" +
 	"\x10response_headers\x18\x04 \x03(\tR\x0fresponseHeaders\x12:\n" +
-	"\x06stream\x18\x05 \x01(\x0e2\".mindclade.api.v1.StreamProjectionR\x06stream\"O\n" +
+	"\x06stream\x18\x05 \x01(\x0e2\".mindclade.api.v1.StreamProjectionR\x06stream\x12,\n" +
+	"\x12non_success_status\x18\x06 \x03(\rR\x10nonSuccessStatus\x122\n" +
+	"\x15request_body_required\x18\a \x01(\bR\x13requestBodyRequired\x128\n" +
+	"\x18required_request_headers\x18\b \x03(\tR\x16requiredRequestHeaders\"H\n" +
+	"\x18PublicStringEnumContract\x12\x14\n" +
+	"\x05field\x18\x01 \x01(\tR\x05field\x12\x16\n" +
+	"\x06values\x18\x02 \x03(\tR\x06values\"\x8f\x01\n" +
+	"\x15PublicMessageContract\x12'\n" +
+	"\x0frequired_fields\x18\x01 \x03(\tR\x0erequiredFields\x12M\n" +
+	"\fstring_enums\x18\x02 \x03(\v2*.mindclade.api.v1.PublicStringEnumContractR\vstringEnums\"j\n" +
 	"\vResourceRef\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x10\n" +
 	"\x03uid\x18\x02 \x01(\tR\x03uid\x12\x1a\n" +
-	"\brevision\x18\x03 \x01(\x04R\brevision\"\xd0\x01\n" +
+	"\brevision\x18\x03 \x01(\x04R\brevision:\x19\xd2\xf3\x18\x15\n" +
+	"\x04name\n" +
+	"\x03uid\n" +
+	"\brevision\"\x85\x02\n" +
 	"\vArtifactRef\x12\x16\n" +
 	"\x06digest\x18\x01 \x01(\tR\x06digest\x12\x1d\n" +
 	"\n" +
@@ -6672,12 +7057,18 @@ const file_proto_mindclade_api_v1_mindclade_service_proto_rawDesc = "" +
 	"size_bytes\x18\x03 \x01(\x04R\tsizeBytes\x12#\n" +
 	"\rartifact_kind\x18\x04 \x01(\tR\fartifactKind\x12\x1b\n" +
 	"\tschema_id\x18\x05 \x01(\tR\bschemaId\x12)\n" +
-	"\x10integrity_digest\x18\x06 \x01(\tR\x0fintegrityDigest\"\x96\x01\n" +
+	"\x10integrity_digest\x18\x06 \x01(\tR\x0fintegrityDigest:3\xd2\xf3\x18/\n" +
+	"\x06digest\n" +
+	"\n" +
+	"media_type\n" +
+	"\n" +
+	"size_bytes\n" +
+	"\rartifact_kind\"\x96\x01\n" +
 	"\vEvidenceRef\x12\x16\n" +
 	"\x06digest\x18\x01 \x01(\tR\x06digest\x12%\n" +
 	"\x0esubject_digest\x18\x02 \x01(\tR\rsubjectDigest\x12#\n" +
 	"\revidence_kind\x18\x03 \x01(\tR\fevidenceKind\x12#\n" +
-	"\rpolicy_digest\x18\x04 \x01(\tR\fpolicyDigest\"\xd4\x01\n" +
+	"\rpolicy_digest\x18\x04 \x01(\tR\fpolicyDigest\"\xa9\x02\n" +
 	"\vErrorDetail\x12\x12\n" +
 	"\x04kind\x18\x01 \x01(\tR\x04kind\x12\x14\n" +
 	"\x05field\x18\x02 \x01(\tR\x05field\x12\x16\n" +
@@ -6685,7 +7076,9 @@ const file_proto_mindclade_api_v1_mindclade_service_proto_rawDesc = "" +
 	"\bresource\x18\x04 \x01(\v2\x1d.mindclade.api.v1.ResourceRefR\bresource\x12)\n" +
 	"\x10current_revision\x18\x05 \x01(\x04R\x0fcurrentRevision\x12\x1d\n" +
 	"\n" +
-	"limit_name\x18\x06 \x01(\tR\tlimitName\"\x94\x02\n" +
+	"limit_name\x18\x06 \x01(\tR\tlimitName:S\xd2\xf3\x18O\n" +
+	"\x04kind\x12G\n" +
+	"\x04kind\x12\x0efieldViolation\x12\bresource\x12\fprecondition\x12\x06policy\x12\x05quota\x12\bconflict\"\x86\x04\n" +
 	"\vPublicError\x12\x12\n" +
 	"\x04code\x18\x01 \x01(\tR\x04code\x12\x18\n" +
 	"\amessage\x18\x02 \x01(\tR\amessage\x12\x1d\n" +
@@ -6696,7 +7089,13 @@ const file_proto_mindclade_api_v1_mindclade_service_proto_rawDesc = "" +
 	"\vretry_after\x18\x06 \x01(\tR\n" +
 	"retryAfter\x12%\n" +
 	"\x0ediagnostic_ref\x18\a \x01(\tR\rdiagnosticRef\x127\n" +
-	"\adetails\x18\b \x03(\v2\x1d.mindclade.api.v1.ErrorDetailR\adetails\"]\n" +
+	"\adetails\x18\b \x03(\v2\x1d.mindclade.api.v1.ErrorDetailR\adetails:\xef\x01\xd2\xf3\x18\xea\x01\n" +
+	"\x04code\n" +
+	"\amessage\n" +
+	"\n" +
+	"request_id\n" +
+	"\tretryable\x12\xc1\x01\n" +
+	"\x04code\x12\x17AUTHENTICATION_REQUIRED\x12\x11PERMISSION_DENIED\x12\x10INVALID_ARGUMENT\x12\x13FAILED_PRECONDITION\x12\tNOT_FOUND\x12\bCONFLICT\x12\fRATE_LIMITED\x12\x0eQUOTA_EXCEEDED\x12\vUNAVAILABLE\x12\x11DEADLINE_EXCEEDED\x12\tCANCELLED\x12\bINTERNAL\"]\n" +
 	"\fPageMetadata\x12&\n" +
 	"\x0fnext_page_token\x18\x01 \x01(\tR\rnextPageToken\x12%\n" +
 	"\x0esnapshot_token\x18\x02 \x01(\tR\rsnapshotToken\"\x89\x02\n" +
@@ -6704,7 +7103,7 @@ const file_proto_mindclade_api_v1_mindclade_service_proto_rawDesc = "" +
 	"\bresource\x18\x01 \x01(\v2\x1d.mindclade.api.v1.ResourceRefR\bresource\x12C\n" +
 	"\tinference\x18\x02 \x01(\v2%.mindclade.api.v1.InferenceResultViewR\tinference\x129\n" +
 	"\bmanifest\x18\x03 \x01(\v2\x1d.mindclade.api.v1.ArtifactRefR\bmanifest\x12;\n" +
-	"\tartifacts\x18\x04 \x03(\v2\x1d.mindclade.api.v1.ArtifactRefR\tartifacts\"\xac\x03\n" +
+	"\tartifacts\x18\x04 \x03(\v2\x1d.mindclade.api.v1.ArtifactRefR\tartifacts\"\xbb\x04\n" +
 	"\tOperation\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x10\n" +
 	"\x03uid\x18\x02 \x01(\tR\x03uid\x12\x1a\n" +
@@ -6719,12 +7118,40 @@ const file_proto_mindclade_api_v1_mindclade_service_proto_rawDesc = "" +
 	"\x06target\x18\t \x01(\v2\x1d.mindclade.api.v1.ResourceRefR\x06target\x129\n" +
 	"\x06result\x18\n" +
 	" \x01(\v2!.mindclade.api.v1.OperationResultR\x06result\x123\n" +
-	"\x05error\x18\v \x01(\v2\x1d.mindclade.api.v1.PublicErrorR\x05error\"f\n" +
+	"\x05error\x18\v \x01(\v2\x1d.mindclade.api.v1.PublicErrorR\x05error:\x8c\x01\xd2\xf3\x18\x87\x01\n" +
+	"\x04name\n" +
+	"\x03uid\n" +
+	"\brevision\n" +
+	"\x04etag\n" +
+	"\x05state\n" +
+	"\x04done\n" +
+	"\vcreate_time\n" +
+	"\vupdate_time\x12C\n" +
+	"\x05state\x12\aPENDING\x12\aRUNNING\x12\tSUCCEEDED\x12\x06FAILED\x12\n" +
+	"CANCELLING\x12\tCANCELLED\"\xe2\x03\n" +
 	"\x0eOperationEvent\x12\x19\n" +
 	"\bevent_id\x18\x01 \x01(\tR\aeventId\x129\n" +
-	"\toperation\x18\x02 \x01(\v2\x1b.mindclade.api.v1.OperationR\toperation\"-\n" +
+	"\toperation\x18\x02 \x01(\v2\x1b.mindclade.api.v1.OperationR\toperation\x12\x1d\n" +
+	"\n" +
+	"event_type\x18\x03 \x01(\tR\teventType\x12%\n" +
+	"\x0eschema_version\x18\x04 \x01(\rR\rschemaVersion\x12-\n" +
+	"\x12operation_revision\x18\x05 \x01(\x04R\x11operationRevision\x12#\n" +
+	"\rresume_cursor\x18\x06 \x01(\tR\fresumeCursor\x12\x1c\n" +
+	"\theartbeat\x18\a \x01(\bR\theartbeat\x129\n" +
+	"\n" +
+	"emitted_at\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\temittedAt:\x86\x01\xd2\xf3\x18\x81\x01\n" +
+	"\bevent_id\n" +
+	"\n" +
+	"event_type\n" +
+	"\x0eschema_version\n" +
+	"\rresume_cursor\n" +
+	"\n" +
+	"emitted_at\x12>\n" +
+	"\n" +
+	"event_type\x12\x11operation.updated\x12\x12operation.terminal\x12\theartbeat\";\n" +
 	"\x13CancellationRequest\x12\x16\n" +
-	"\x06reason\x18\x01 \x01(\tR\x06reason\"\xd7\x01\n" +
+	"\x06reason\x18\x01 \x01(\tR\x06reason:\f\xd2\xf3\x18\b\n" +
+	"\x06reason\"\xd7\x01\n" +
 	"\fArtifactView\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x10\n" +
 	"\x03uid\x18\x02 \x01(\tR\x03uid\x12;\n" +
@@ -6761,7 +7188,7 @@ const file_proto_mindclade_api_v1_mindclade_service_proto_rawDesc = "" +
 	"\x10AnnotationsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\x0f\n" +
-	"\r_display_name\"\xa3\x05\n" +
+	"\r_display_name\"\xe0\x05\n" +
 	"\vDatasetView\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x10\n" +
 	"\x03uid\x18\x02 \x01(\tR\x03uid\x12\x1a\n" +
@@ -6777,7 +7204,9 @@ const file_proto_mindclade_api_v1_mindclade_service_proto_rawDesc = "" +
 	"\x15policy_classification\x18\n" +
 	" \x01(\tR\x14policyClassification\x12\x14\n" +
 	"\x05state\x18\v \x01(\tR\x05state\x12F\n" +
-	"\x0fcurrent_release\x18\f \x01(\v2\x1d.mindclade.api.v1.ResourceRefR\x0ecurrentRelease\x1a9\n" +
+	"\x0fcurrent_release\x18\f \x01(\v2\x1d.mindclade.api.v1.ResourceRefR\x0ecurrentRelease\x12;\n" +
+	"\vdelete_time\x18\r \x01(\v2\x1a.google.protobuf.TimestampR\n" +
+	"deleteTime\x1a9\n" +
 	"\vLabelsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a>\n" +
@@ -6795,7 +7224,7 @@ const file_proto_mindclade_api_v1_mindclade_service_proto_rawDesc = "" +
 	"\x0eparent_release\x18\x04 \x01(\v2\x1d.mindclade.api.v1.ResourceRefR\rparentRelease\x12<\n" +
 	"\n" +
 	"use_policy\x18\x05 \x01(\v2\x1d.mindclade.api.v1.ResourceRefR\tusePolicy\x123\n" +
-	"\x15policy_classification\x18\x06 \x01(\tR\x14policyClassification\"\xdb\x03\n" +
+	"\x15policy_classification\x18\x06 \x01(\tR\x14policyClassification\"\xd5\x04\n" +
 	"\x12DatasetReleaseView\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x10\n" +
 	"\x03uid\x18\x02 \x01(\tR\x03uid\x12\x1a\n" +
@@ -6810,7 +7239,11 @@ const file_proto_mindclade_api_v1_mindclade_service_proto_rawDesc = "" +
 	"\bmanifest\x18\t \x01(\v2\x1d.mindclade.api.v1.ArtifactRefR\bmanifest\x12T\n" +
 	"\x16qualification_evidence\x18\n" +
 	" \x03(\v2\x1d.mindclade.api.v1.EvidenceRefR\x15qualificationEvidence\x123\n" +
-	"\x15policy_classification\x18\v \x01(\tR\x14policyClassification\"\x8a\x01\n" +
+	"\x15policy_classification\x18\v \x01(\tR\x14policyClassification\x12;\n" +
+	"\vupdate_time\x18\f \x01(\v2\x1a.google.protobuf.TimestampR\n" +
+	"updateTime\x12;\n" +
+	"\vdelete_time\x18\r \x01(\v2\x1a.google.protobuf.TimestampR\n" +
+	"deleteTime\"\x8a\x01\n" +
 	"\x12DatasetReleaseList\x12@\n" +
 	"\breleases\x18\x01 \x03(\v2$.mindclade.api.v1.DatasetReleaseViewR\breleases\x122\n" +
 	"\x04page\x18\x02 \x01(\v2\x1e.mindclade.api.v1.PageMetadataR\x04page\"\x86\x05\n" +
@@ -6840,7 +7273,7 @@ const file_proto_mindclade_api_v1_mindclade_service_proto_rawDesc = "" +
 	"\x10AnnotationsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\x0f\n" +
-	"\r_display_name\"\x93\a\n" +
+	"\r_display_name\"\xd0\a\n" +
 	"\tModelView\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x10\n" +
 	"\x03uid\x18\x02 \x01(\tR\x03uid\x12\x1a\n" +
@@ -6860,7 +7293,9 @@ const file_proto_mindclade_api_v1_mindclade_service_proto_rawDesc = "" +
 	"\x13definition_manifest\x18\r \x01(\v2\x1d.mindclade.api.v1.ArtifactRefR\x12definitionManifest\x12D\n" +
 	"\x0einput_contract\x18\x0e \x01(\v2\x1d.mindclade.api.v1.ArtifactRefR\rinputContract\x12F\n" +
 	"\x0foutput_contract\x18\x0f \x01(\v2\x1d.mindclade.api.v1.ArtifactRefR\x0eoutputContract\x12F\n" +
-	"\x0fcurrent_release\x18\x10 \x01(\v2\x1d.mindclade.api.v1.ResourceRefR\x0ecurrentRelease\x1a9\n" +
+	"\x0fcurrent_release\x18\x10 \x01(\v2\x1d.mindclade.api.v1.ResourceRefR\x0ecurrentRelease\x12;\n" +
+	"\vdelete_time\x18\x11 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
+	"deleteTime\x1a9\n" +
 	"\vLabelsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a>\n" +
@@ -6880,7 +7315,7 @@ const file_proto_mindclade_api_v1_mindclade_service_proto_rawDesc = "" +
 	"checkpoint\x12N\n" +
 	"\x13evaluation_evidence\x18\x05 \x03(\v2\x1d.mindclade.api.v1.EvidenceRefR\x12evaluationEvidence\x12D\n" +
 	"\x0erelease_policy\x18\x06 \x01(\v2\x1d.mindclade.api.v1.ResourceRefR\rreleasePolicy\x123\n" +
-	"\x15policy_classification\x18\a \x01(\tR\x14policyClassification\"\xe1\x04\n" +
+	"\x15policy_classification\x18\a \x01(\tR\x14policyClassification\"\xdb\x05\n" +
 	"\x10ModelReleaseView\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x10\n" +
 	"\x03uid\x18\x02 \x01(\tR\x03uid\x12\x1a\n" +
@@ -6899,10 +7334,14 @@ const file_proto_mindclade_api_v1_mindclade_service_proto_rawDesc = "" +
 	"checkpoint\x18\v \x01(\v2\x1d.mindclade.api.v1.ResourceRefR\n" +
 	"checkpoint\x12N\n" +
 	"\x13evaluation_evidence\x18\f \x03(\v2\x1d.mindclade.api.v1.EvidenceRefR\x12evaluationEvidence\x123\n" +
-	"\x15policy_classification\x18\r \x01(\tR\x14policyClassification\"\x86\x01\n" +
+	"\x15policy_classification\x18\r \x01(\tR\x14policyClassification\x12;\n" +
+	"\vupdate_time\x18\x0e \x01(\v2\x1a.google.protobuf.TimestampR\n" +
+	"updateTime\x12;\n" +
+	"\vdelete_time\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampR\n" +
+	"deleteTime\"\x86\x01\n" +
 	"\x10ModelReleaseList\x12>\n" +
 	"\breleases\x18\x01 \x03(\v2\".mindclade.api.v1.ModelReleaseViewR\breleases\x122\n" +
-	"\x04page\x18\x02 \x01(\v2\x1e.mindclade.api.v1.PageMetadataR\x04page\"\xd2\x04\n" +
+	"\x04page\x18\x02 \x01(\v2\x1e.mindclade.api.v1.PageMetadataR\x04page\"\x9a\x05\n" +
 	"\x11TrainingRunCreate\x12&\n" +
 	"\x0ftraining_run_id\x18\x01 \x01(\tR\rtrainingRunId\x12F\n" +
 	"\x0ftraining_recipe\x18\x02 \x01(\v2\x1d.mindclade.api.v1.ArtifactRefR\x0etrainingRecipe\x12F\n" +
@@ -6915,7 +7354,11 @@ const file_proto_mindclade_api_v1_mindclade_service_proto_rawDesc = "" +
 	"\x15policy_classification\x18\b \x01(\tR\x14policyClassification\x1a9\n" +
 	"\vLabelsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xe4\x05\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:F\xd2\xf3\x18B\n" +
+	"\x0ftraining_run_id\n" +
+	"\x0ftraining_recipe\n" +
+	"\x0fdataset_release\n" +
+	"\rmodel_release\"\x8a\b\n" +
 	"\x0fTrainingRunView\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x10\n" +
 	"\x03uid\x18\x02 \x01(\tR\x03uid\x12\x1a\n" +
@@ -6933,17 +7376,34 @@ const file_proto_mindclade_api_v1_mindclade_service_proto_rawDesc = "" +
 	"\x11hardware_topology\x18\v \x01(\v2\x1d.mindclade.api.v1.ArtifactRefR\x10hardwareTopology\x12J\n" +
 	"\x11latest_checkpoint\x18\f \x01(\v2\x1d.mindclade.api.v1.ResourceRefR\x10latestCheckpoint\x12F\n" +
 	"\x0fresult_manifest\x18\r \x01(\v2\x1d.mindclade.api.v1.ArtifactRefR\x0eresultManifest\x127\n" +
-	"\afailure\x18\x0e \x01(\v2\x1d.mindclade.api.v1.PublicErrorR\afailure\"\x8d\x01\n" +
+	"\afailure\x18\x0e \x01(\v2\x1d.mindclade.api.v1.PublicErrorR\afailure\x12;\n" +
+	"\vdelete_time\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampR\n" +
+	"deleteTime:\xe6\x01\xd2\xf3\x18\xe1\x01\n" +
+	"\x04name\n" +
+	"\x03uid\n" +
+	"\brevision\n" +
+	"\x04etag\n" +
+	"\vcreate_time\n" +
+	"\vupdate_time\n" +
+	"\x05state\n" +
+	"\x0ftraining_recipe\n" +
+	"\x0fdataset_release\n" +
+	"\rmodel_release\x12r\n" +
+	"\x05state\x12\aCREATED\x12\n" +
+	"VALIDATING\x12\bADMITTED\x12\aRUNNING\x12\rCHECKPOINTING\x12\n" +
+	"RECOVERING\x12\bDRAINING\x12\tCOMPLETED\x12\x06FAILED\x12\tCANCELLED\"\xa8\x01\n" +
 	"\x0fTrainingRunList\x12F\n" +
 	"\rtraining_runs\x18\x01 \x03(\v2!.mindclade.api.v1.TrainingRunViewR\ftrainingRuns\x122\n" +
-	"\x04page\x18\x02 \x01(\v2\x1e.mindclade.api.v1.PageMetadataR\x04page\"\xfe\x02\n" +
+	"\x04page\x18\x02 \x01(\v2\x1e.mindclade.api.v1.PageMetadataR\x04page:\x19\xd2\xf3\x18\x15\n" +
+	"\rtraining_runs\n" +
+	"\x04page\"\xfe\x02\n" +
 	"\x13EvaluationRunCreate\x12*\n" +
 	"\x11evaluation_run_id\x18\x01 \x01(\tR\x0fevaluationRunId\x123\n" +
 	"\x05suite\x18\x02 \x01(\v2\x1d.mindclade.api.v1.ArtifactRefR\x05suite\x129\n" +
 	"\bdatasets\x18\x03 \x03(\v2\x1d.mindclade.api.v1.ArtifactRefR\bdatasets\x129\n" +
 	"\bsnapshot\x18\x04 \x01(\v2\x1d.mindclade.api.v1.ArtifactRefR\bsnapshot\x12B\n" +
 	"\rmodel_release\x18\x05 \x01(\v2\x1d.mindclade.api.v1.ResourceRefR\fmodelRelease\x12L\n" +
-	"\x12inference_protocol\x18\x06 \x01(\v2\x1d.mindclade.api.v1.ArtifactRefR\x11inferenceProtocol\"\xb8\x04\n" +
+	"\x12inference_protocol\x18\x06 \x01(\v2\x1d.mindclade.api.v1.ArtifactRefR\x11inferenceProtocol\"\xf5\x04\n" +
 	"\x11EvaluationRunView\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x10\n" +
 	"\x03uid\x18\x02 \x01(\tR\x03uid\x12\x1a\n" +
@@ -6960,7 +7420,9 @@ const file_proto_mindclade_api_v1_mindclade_service_proto_rawDesc = "" +
 	" \x01(\v2\x1d.mindclade.api.v1.ResourceRefR\fmodelRelease\x12+\n" +
 	"\x11completed_samples\x18\v \x01(\x04R\x10completedSamples\x12#\n" +
 	"\rtotal_samples\x18\f \x01(\x04R\ftotalSamples\x127\n" +
-	"\afailure\x18\r \x01(\v2\x1d.mindclade.api.v1.PublicErrorR\afailure\"\x95\x01\n" +
+	"\afailure\x18\r \x01(\v2\x1d.mindclade.api.v1.PublicErrorR\afailure\x12;\n" +
+	"\vdelete_time\x18\x0e \x01(\v2\x1a.google.protobuf.TimestampR\n" +
+	"deleteTime\"\x95\x01\n" +
 	"\x11EvaluationRunList\x12L\n" +
 	"\x0fevaluation_runs\x18\x01 \x03(\v2#.mindclade.api.v1.EvaluationRunViewR\x0eevaluationRuns\x122\n" +
 	"\x04page\x18\x02 \x01(\v2\x1e.mindclade.api.v1.PageMetadataR\x04page\"\xc1\x02\n" +
@@ -7001,7 +7463,7 @@ const file_proto_mindclade_api_v1_mindclade_service_proto_rawDesc = "" +
 	"\x0fsampling_policy\x18\x06 \x01(\v2\x1d.mindclade.api.v1.ArtifactRefR\x0esamplingPolicy\x129\n" +
 	"\x06output\x18\a \x01(\v2!.mindclade.api.v1.InferenceOutputR\x06output\x12%\n" +
 	"\x0eresource_class\x18\b \x01(\tR\rresourceClass\x12/\n" +
-	"\x13data_classification\x18\t \x01(\tR\x12dataClassification\"\xd7\x02\n" +
+	"\x13data_classification\x18\t \x01(\tR\x12dataClassification\"\x9c\x03\n" +
 	"\x13InferenceResultView\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x10\n" +
 	"\x03uid\x18\x02 \x01(\tR\x03uid\x127\n" +
@@ -7009,7 +7471,13 @@ const file_proto_mindclade_api_v1_mindclade_service_proto_rawDesc = "" +
 	"\toperation\x18\x04 \x01(\v2\x1d.mindclade.api.v1.ResourceRefR\toperation\x12F\n" +
 	"\x0fresult_manifest\x18\x05 \x01(\v2\x1d.mindclade.api.v1.ArtifactRefR\x0eresultManifest\x127\n" +
 	"\aoutputs\x18\x06 \x03(\v2\x1d.mindclade.api.v1.ArtifactRefR\aoutputs\x12#\n" +
-	"\rresult_digest\x18\a \x01(\tR\fresultDigest\"\xdf\x01\n" +
+	"\rresult_digest\x18\a \x01(\tR\fresultDigest:C\xd2\xf3\x18?\n" +
+	"\x04name\n" +
+	"\x03uid\n" +
+	"\arequest\n" +
+	"\toperation\n" +
+	"\x0fresult_manifest\n" +
+	"\rresult_digest\"\xdf\x01\n" +
 	"\vAgentBudget\x120\n" +
 	"\x14maximum_model_tokens\x18\x01 \x01(\x04R\x12maximumModelTokens\x12-\n" +
 	"\x12maximum_iterations\x18\x02 \x01(\rR\x11maximumIterations\x12,\n" +
@@ -7026,7 +7494,7 @@ const file_proto_mindclade_api_v1_mindclade_service_proto_rawDesc = "" +
 	"\x13workflow_definition\x18\x06 \x01(\v2\x1d.mindclade.api.v1.ResourceRefR\x12workflowDefinition\x12@\n" +
 	"\finput_schema\x18\a \x01(\v2\x1d.mindclade.api.v1.ArtifactRefR\vinputSchema\x12B\n" +
 	"\routput_schema\x18\b \x01(\v2\x1d.mindclade.api.v1.ArtifactRefR\foutputSchema\x125\n" +
-	"\x06budget\x18\t \x01(\v2\x1d.mindclade.api.v1.AgentBudgetR\x06budget\"\xaf\x05\n" +
+	"\x06budget\x18\t \x01(\v2\x1d.mindclade.api.v1.AgentBudgetR\x06budget\"\x9c\x06\n" +
 	"\x13AgentDefinitionView\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x10\n" +
 	"\x03uid\x18\x02 \x01(\tR\x03uid\x12\x1a\n" +
@@ -7047,7 +7515,10 @@ const file_proto_mindclade_api_v1_mindclade_service_proto_rawDesc = "" +
 	"\finput_schema\x18\f \x01(\v2\x1d.mindclade.api.v1.ArtifactRefR\vinputSchema\x12B\n" +
 	"\routput_schema\x18\r \x01(\v2\x1d.mindclade.api.v1.ArtifactRefR\foutputSchema\x125\n" +
 	"\x06budget\x18\x0e \x01(\v2\x1d.mindclade.api.v1.AgentBudgetR\x06budget\x12\x14\n" +
-	"\x05state\x18\x0f \x01(\tR\x05state\"\x9d\x01\n" +
+	"\x05state\x18\x0f \x01(\tR\x05state\x12.\n" +
+	"\x13agent_definition_id\x18\x10 \x01(\tR\x11agentDefinitionId\x12;\n" +
+	"\vdelete_time\x18\x11 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
+	"deleteTime\"\x9d\x01\n" +
 	"\x13AgentDefinitionList\x12R\n" +
 	"\x11agent_definitions\x18\x01 \x03(\v2%.mindclade.api.v1.AgentDefinitionViewR\x10agentDefinitions\x122\n" +
 	"\x04page\x18\x02 \x01(\v2\x1e.mindclade.api.v1.PageMetadataR\x04page\"\xaa\x02\n" +
@@ -7059,7 +7530,7 @@ const file_proto_mindclade_api_v1_mindclade_service_proto_rawDesc = "" +
 	"definition\x12+\n" +
 	"\x11definition_digest\x18\x03 \x01(\tR\x10definitionDigest\x123\n" +
 	"\x05input\x18\x04 \x01(\v2\x1d.mindclade.api.v1.ArtifactRefR\x05input\x12U\n" +
-	"\x17model_provider_manifest\x18\x05 \x01(\v2\x1d.mindclade.api.v1.ArtifactRefR\x15modelProviderManifest\"\xc7\x04\n" +
+	"\x17model_provider_manifest\x18\x05 \x01(\v2\x1d.mindclade.api.v1.ArtifactRefR\x15modelProviderManifest\"\x84\x05\n" +
 	"\fAgentRunView\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x10\n" +
 	"\x03uid\x18\x02 \x01(\tR\x03uid\x12\x1a\n" +
@@ -7078,7 +7549,9 @@ const file_proto_mindclade_api_v1_mindclade_service_proto_rawDesc = "" +
 	" \x01(\v2\x1d.mindclade.api.v1.ArtifactRefR\x05input\x12@\n" +
 	"\frun_manifest\x18\v \x01(\v2\x1d.mindclade.api.v1.ArtifactRefR\vrunManifest\x125\n" +
 	"\x06output\x18\f \x01(\v2\x1d.mindclade.api.v1.ArtifactRefR\x06output\x127\n" +
-	"\afailure\x18\r \x01(\v2\x1d.mindclade.api.v1.PublicErrorR\afailure\"\x81\x01\n" +
+	"\afailure\x18\r \x01(\v2\x1d.mindclade.api.v1.PublicErrorR\afailure\x12;\n" +
+	"\vdelete_time\x18\x0e \x01(\v2\x1a.google.protobuf.TimestampR\n" +
+	"deleteTime\"\x81\x01\n" +
 	"\fAgentRunList\x12=\n" +
 	"\n" +
 	"agent_runs\x18\x01 \x03(\v2\x1e.mindclade.api.v1.AgentRunViewR\tagentRuns\x122\n" +
@@ -7091,7 +7564,7 @@ const file_proto_mindclade_api_v1_mindclade_service_proto_rawDesc = "" +
 	"definition\x18\x04 \x01(\v2\x1d.mindclade.api.v1.ArtifactRefR\n" +
 	"definition\x12@\n" +
 	"\finput_schema\x18\x05 \x01(\v2\x1d.mindclade.api.v1.ArtifactRefR\vinputSchema\x12B\n" +
-	"\routput_schema\x18\x06 \x01(\v2\x1d.mindclade.api.v1.ArtifactRefR\foutputSchema\"\xc5\x04\n" +
+	"\routput_schema\x18\x06 \x01(\v2\x1d.mindclade.api.v1.ArtifactRefR\foutputSchema\"\xb8\x05\n" +
 	"\x16WorkflowDefinitionView\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x10\n" +
 	"\x03uid\x18\x02 \x01(\tR\x03uid\x12\x1a\n" +
@@ -7110,7 +7583,10 @@ const file_proto_mindclade_api_v1_mindclade_service_proto_rawDesc = "" +
 	" \x01(\v2\x1d.mindclade.api.v1.ArtifactRefR\vinputSchema\x12B\n" +
 	"\routput_schema\x18\v \x01(\v2\x1d.mindclade.api.v1.ArtifactRefR\foutputSchema\x12\x14\n" +
 	"\x05state\x18\f \x01(\tR\x05state\x122\n" +
-	"\x15resolved_graph_digest\x18\r \x01(\tR\x13resolvedGraphDigest\"\xa9\x01\n" +
+	"\x15resolved_graph_digest\x18\r \x01(\tR\x13resolvedGraphDigest\x124\n" +
+	"\x16workflow_definition_id\x18\x0e \x01(\tR\x14workflowDefinitionId\x12;\n" +
+	"\vdelete_time\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampR\n" +
+	"deleteTime\"\xa9\x01\n" +
 	"\x16WorkflowDefinitionList\x12[\n" +
 	"\x14workflow_definitions\x18\x01 \x03(\v2(.mindclade.api.v1.WorkflowDefinitionViewR\x13workflowDefinitions\x122\n" +
 	"\x04page\x18\x02 \x01(\v2\x1e.mindclade.api.v1.PageMetadataR\x04page\"\x98\x02\n" +
@@ -7121,7 +7597,7 @@ const file_proto_mindclade_api_v1_mindclade_service_proto_rawDesc = "" +
 	"definition\x12+\n" +
 	"\x11definition_digest\x18\x03 \x01(\tR\x10definitionDigest\x12:\n" +
 	"\tagent_run\x18\x04 \x01(\v2\x1d.mindclade.api.v1.ResourceRefR\bagentRun\x123\n" +
-	"\x05input\x18\x05 \x01(\v2\x1d.mindclade.api.v1.ArtifactRefR\x05input\"\xca\x04\n" +
+	"\x05input\x18\x05 \x01(\v2\x1d.mindclade.api.v1.ArtifactRefR\x05input\"\x87\x05\n" +
 	"\x0fWorkflowRunView\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x10\n" +
 	"\x03uid\x18\x02 \x01(\tR\x03uid\x12\x1a\n" +
@@ -7140,10 +7616,12 @@ const file_proto_mindclade_api_v1_mindclade_service_proto_rawDesc = "" +
 	" \x01(\v2\x1d.mindclade.api.v1.ArtifactRefR\x05input\x125\n" +
 	"\x06output\x18\v \x01(\v2\x1d.mindclade.api.v1.ArtifactRefR\x06output\x12@\n" +
 	"\freplay_state\x18\f \x01(\v2\x1d.mindclade.api.v1.ArtifactRefR\vreplayState\x127\n" +
-	"\afailure\x18\r \x01(\v2\x1d.mindclade.api.v1.PublicErrorR\afailure\"\x8d\x01\n" +
+	"\afailure\x18\r \x01(\v2\x1d.mindclade.api.v1.PublicErrorR\afailure\x12;\n" +
+	"\vdelete_time\x18\x0e \x01(\v2\x1a.google.protobuf.TimestampR\n" +
+	"deleteTime\"\x8d\x01\n" +
 	"\x0fWorkflowRunList\x12F\n" +
 	"\rworkflow_runs\x18\x01 \x03(\v2!.mindclade.api.v1.WorkflowRunViewR\fworkflowRuns\x122\n" +
-	"\x04page\x18\x02 \x01(\v2\x1e.mindclade.api.v1.PageMetadataR\x04page\"\xb9\x03\n" +
+	"\x04page\x18\x02 \x01(\v2\x1e.mindclade.api.v1.PageMetadataR\x04page\"\xf6\x03\n" +
 	"\x13ApprovalRequestView\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x10\n" +
 	"\x03uid\x18\x02 \x01(\tR\x03uid\x12\x1a\n" +
@@ -7159,7 +7637,9 @@ const file_proto_mindclade_api_v1_mindclade_service_proto_rawDesc = "" +
 	"\x1dminimum_independent_approvers\x18\n" +
 	" \x01(\rR\x1bminimumIndependentApprovers\x12;\n" +
 	"\vexpire_time\x18\v \x01(\v2\x1a.google.protobuf.TimestampR\n" +
-	"expireTime\"\x8e\x01\n" +
+	"expireTime\x12;\n" +
+	"\vdelete_time\x18\f \x01(\v2\x1a.google.protobuf.TimestampR\n" +
+	"deleteTime\"\x8e\x01\n" +
 	"\x13ApprovalRequestList\x12C\n" +
 	"\tapprovals\x18\x01 \x03(\v2%.mindclade.api.v1.ApprovalRequestViewR\tapprovals\x122\n" +
 	"\x04page\x18\x02 \x01(\v2\x1e.mindclade.api.v1.PageMetadataR\x04page\"p\n" +
@@ -7180,7 +7660,7 @@ const file_proto_mindclade_api_v1_mindclade_service_proto_rawDesc = "" +
 	"safeReason\x12%\n" +
 	"\x0ereceipt_digest\x18\a \x01(\tR\rreceiptDigest\x12;\n" +
 	"\vcreate_time\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\n" +
-	"createTime\"\xf2\x03\n" +
+	"createTime\"\xaf\x04\n" +
 	"\n" +
 	"TenantView\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x10\n" +
@@ -7196,7 +7676,9 @@ const file_proto_mindclade_api_v1_mindclade_service_proto_rawDesc = "" +
 	"\x16default_classification\x18\t \x01(\tR\x15defaultClassification\x12'\n" +
 	"\x0fallowed_regions\x18\n" +
 	" \x03(\tR\x0eallowedRegions\x12@\n" +
-	"\x06labels\x18\v \x03(\v2(.mindclade.api.v1.TenantView.LabelsEntryR\x06labels\x1a9\n" +
+	"\x06labels\x18\v \x03(\v2(.mindclade.api.v1.TenantView.LabelsEntryR\x06labels\x12;\n" +
+	"\vdelete_time\x18\f \x01(\v2\x1a.google.protobuf.TimestampR\n" +
+	"deleteTime\x1a9\n" +
 	"\vLabelsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xa2\x02\n" +
@@ -7209,7 +7691,7 @@ const file_proto_mindclade_api_v1_mindclade_service_proto_rawDesc = "" +
 	"\x06labels\x18\x05 \x03(\v2+.mindclade.api.v1.ProjectCreate.LabelsEntryR\x06labels\x1a9\n" +
 	"\vLabelsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xe5\x03\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xc1\x04\n" +
 	"\vProjectView\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x10\n" +
 	"\x03uid\x18\x02 \x01(\tR\x03uid\x12\x1a\n" +
@@ -7224,7 +7706,11 @@ const file_proto_mindclade_api_v1_mindclade_service_proto_rawDesc = "" +
 	"\x16default_classification\x18\t \x01(\tR\x15defaultClassification\x12A\n" +
 	"\x06labels\x18\n" +
 	" \x03(\v2).mindclade.api.v1.ProjectView.LabelsEntryR\x06labels\x12\x14\n" +
-	"\x05state\x18\v \x01(\tR\x05state\x1a9\n" +
+	"\x05state\x18\v \x01(\tR\x05state\x12\x1d\n" +
+	"\n" +
+	"project_id\x18\f \x01(\tR\tprojectId\x12;\n" +
+	"\vdelete_time\x18\r \x01(\v2\x1a.google.protobuf.TimestampR\n" +
+	"deleteTime\x1a9\n" +
 	"\vLabelsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"|\n" +
@@ -7256,7 +7742,12 @@ const file_proto_mindclade_api_v1_mindclade_service_proto_rawDesc = "" +
 	"\n" +
 	"page_token\x18\x03 \x01(\tR\tpageToken\x12\x16\n" +
 	"\x06filter\x18\x04 \x01(\tR\x06filter\x12\x19\n" +
-	"\border_by\x18\x05 \x01(\tR\aorderBy\"w\n" +
+	"\border_by\x18\x05 \x01(\tR\aorderBy\"o\n" +
+	"\x19ListChildResourcesRequest\x12\x16\n" +
+	"\x06parent\x18\x01 \x01(\tR\x06parent\x12\x1b\n" +
+	"\tpage_size\x18\x02 \x01(\rR\bpageSize\x12\x1d\n" +
+	"\n" +
+	"page_token\x18\x03 \x01(\tR\tpageToken\"w\n" +
 	"\x16SubmitInferenceRequest\x12\x16\n" +
 	"\x06parent\x18\x01 \x01(\tR\x06parent\x12E\n" +
 	"\n" +
@@ -7264,16 +7755,11 @@ const file_proto_mindclade_api_v1_mindclade_service_proto_rawDesc = "" +
 	"submission\"w\n" +
 	"\x16CancelOperationRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12I\n" +
-	"\fcancellation\x18\x02 \x01(\v2%.mindclade.api.v1.CancellationRequestR\fcancellation\"\x9b\x01\n" +
+	"\fcancellation\x18\x02 \x01(\v2%.mindclade.api.v1.CancellationRequestR\fcancellation\"-\n" +
 	"\x17DownloadArtifactRequest\x12\x12\n" +
-	"\x04name\x18\x01 \x01(\tR\x04name\x12\x1f\n" +
-	"\vrange_start\x18\x02 \x01(\x04R\n" +
-	"rangeStart\x123\n" +
-	"\x13range_end_exclusive\x18\x03 \x01(\x04H\x00R\x11rangeEndExclusive\x88\x01\x01B\x16\n" +
-	"\x14_range_end_exclusive\"R\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\"+\n" +
 	"\x15WatchOperationRequest\x12\x12\n" +
-	"\x04name\x18\x01 \x01(\tR\x04name\x12%\n" +
-	"\x0eafter_revision\x18\x02 \x01(\x04R\rafterRevision\"i\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\"i\n" +
 	"\x14CreateDatasetRequest\x12\x16\n" +
 	"\x06parent\x18\x01 \x01(\tR\x06parent\x129\n" +
 	"\adataset\x18\x02 \x01(\v2\x1f.mindclade.api.v1.DatasetCreateR\adataset\"e\n" +
@@ -7329,98 +7815,26 @@ const file_proto_mindclade_api_v1_mindclade_service_proto_rawDesc = "" +
 	"\x1dSTREAM_PROJECTION_UNSPECIFIED\x10\x00\x12\x1a\n" +
 	"\x16STREAM_PROJECTION_NONE\x10\x01\x12\x1c\n" +
 	"\x18STREAM_PROJECTION_BINARY\x10\x02\x12\x19\n" +
-	"\x15STREAM_PROJECTION_SSE\x10\x032\x83<\n" +
-	"\x10MindcladeService\x12\xd6\x01\n" +
-	"\x0fSubmitInference\x12(.mindclade.api.v1.SubmitInferenceRequest\x1a\x1b.mindclade.api.v1.Operation\"|\xca\xf3\x18/\n" +
-	"\x02\xca\x01\x10\x01\x1a\x0fIdempotency-Key\x1a\x14X-Mindclade-Deadline(\x01\x82\xd3\xe4\x93\x02C:\n" +
-	"submission\"5/v1/{parent=tenants/*/projects/*}/inferenceOperations\x12\xa8\x01\n" +
-	"\fGetOperation\x12$.mindclade.api.v1.GetResourceRequest\x1a\x1b.mindclade.api.v1.Operation\"U\xca\xf3\x18\x1d\n" +
-	"\x02\xc8\x01\x10\x01\x1a\rIf-None-Match\"\x04ETag(\x01\x82\xd3\xe4\x93\x02.\x12,/v1/{name=tenants/*/projects/*/operations/*}\x12\xe1\x01\n" +
-	"\x0fCancelOperation\x12(.mindclade.api.v1.CancelOperationRequest\x1a\x1b.mindclade.api.v1.Operation\"\x86\x01\xca\xf3\x189\n" +
-	"\x02\xc8\x01\x10\x01\x1a\x0fIdempotency-Key\x1a\x14X-Mindclade-Deadline\x1a\bIf-Match(\x01\x82\xd3\xe4\x93\x02C:\fcancellation\"3/v1/{name=tenants/*/projects/*/operations/*}:cancel\x12\xb4\x01\n" +
-	"\x0eWatchOperation\x12'.mindclade.api.v1.WatchOperationRequest\x1a .mindclade.api.v1.OperationEvent\"U\xca\xf3\x18\x17\n" +
-	"\x02\xc8\x01\x10\x01\x1a\rLast-Event-ID(\x03\x82\xd3\xe4\x93\x024\x122/v1/{name=tenants/*/projects/*/operations/*}:watch0\x01\x12\xa9\x01\n" +
-	"\vGetArtifact\x12$.mindclade.api.v1.GetResourceRequest\x1a\x1e.mindclade.api.v1.ArtifactView\"T\xca\xf3\x18\x1d\n" +
-	"\x02\xc8\x01\x10\x01\x1a\rIf-None-Match\"\x04ETag(\x01\x82\xd3\xe4\x93\x02-\x12+/v1/{name=tenants/*/projects/*/artifacts/*}\x12\xca\x01\n" +
-	"\x10DownloadArtifact\x12).mindclade.api.v1.DownloadArtifactRequest\x1a'.mindclade.api.v1.DownloadArtifactChunk\"`\xca\xf3\x18 \n" +
-	"\x04\xc8\x01\xce\x01\x10\x01\x1a\x05Range\"\rContent-Range(\x02\x82\xd3\xe4\x93\x026\x124/v1/{name=tenants/*/projects/*/artifacts/*}:download0\x01\x12\x95\x01\n" +
-	"\fListDatasets\x12&.mindclade.api.v1.ListResourcesRequest\x1a\x1d.mindclade.api.v1.DatasetList\">\xca\xf3\x18\b\n" +
-	"\x02\xc8\x01\x10\x01(\x01\x82\xd3\xe4\x93\x02,\x12*/v1/{parent=tenants/*/projects/*}/datasets\x12\xb0\x01\n" +
-	"\rCreateDataset\x12&.mindclade.api.v1.CreateDatasetRequest\x1a\x1d.mindclade.api.v1.DatasetView\"X\xca\xf3\x18\x19\n" +
-	"\x02\xc9\x01\x10\x01\x1a\x0fIdempotency-Key(\x01\x82\xd3\xe4\x93\x025:\adataset\"*/v1/{parent=tenants/*/projects/*}/datasets\x12\xa6\x01\n" +
+	"\x15STREAM_PROJECTION_SSE\x10\x032\xca\n" +
 	"\n" +
-	"GetDataset\x12$.mindclade.api.v1.GetResourceRequest\x1a\x1d.mindclade.api.v1.DatasetView\"S\xca\xf3\x18\x1d\n" +
-	"\x02\xc8\x01\x10\x01\x1a\rIf-None-Match\"\x04ETag(\x01\x82\xd3\xe4\x93\x02,\x12*/v1/{name=tenants/*/projects/*/datasets/*}\x12\xba\x01\n" +
-	"\rUpdateDataset\x12&.mindclade.api.v1.UpdateDatasetRequest\x1a\x1d.mindclade.api.v1.DatasetView\"b\xca\xf3\x18#\n" +
-	"\x02\xc8\x01\x10\x01\x1a\x0fIdempotency-Key\x1a\bIf-Match(\x01\x82\xd3\xe4\x93\x025:\adataset2*/v1/{name=tenants/*/projects/*/datasets/*}\x12\xae\x01\n" +
-	"\x13ListDatasetReleases\x12&.mindclade.api.v1.ListResourcesRequest\x1a$.mindclade.api.v1.DatasetReleaseList\"I\xca\xf3\x18\b\n" +
-	"\x02\xc8\x01\x10\x01(\x01\x82\xd3\xe4\x93\x027\x125/v1/{parent=tenants/*/projects/*/datasets/*}/releases\x12\xd0\x01\n" +
-	"\x14CreateDatasetRelease\x12-.mindclade.api.v1.CreateDatasetReleaseRequest\x1a$.mindclade.api.v1.DatasetReleaseView\"c\xca\xf3\x18\x19\n" +
-	"\x02\xc9\x01\x10\x01\x1a\x0fIdempotency-Key(\x01\x82\xd3\xe4\x93\x02@:\arelease\"5/v1/{parent=tenants/*/projects/*/datasets/*}/releases\x12\x8f\x01\n" +
-	"\n" +
-	"ListModels\x12&.mindclade.api.v1.ListResourcesRequest\x1a\x1b.mindclade.api.v1.ModelList\"<\xca\xf3\x18\b\n" +
-	"\x02\xc8\x01\x10\x01(\x01\x82\xd3\xe4\x93\x02*\x12(/v1/{parent=tenants/*/projects/*}/models\x12\xa6\x01\n" +
-	"\vCreateModel\x12$.mindclade.api.v1.CreateModelRequest\x1a\x1b.mindclade.api.v1.ModelView\"T\xca\xf3\x18\x19\n" +
-	"\x02\xc9\x01\x10\x01\x1a\x0fIdempotency-Key(\x01\x82\xd3\xe4\x93\x021:\x05model\"(/v1/{parent=tenants/*/projects/*}/models\x12\xa0\x01\n" +
-	"\bGetModel\x12$.mindclade.api.v1.GetResourceRequest\x1a\x1b.mindclade.api.v1.ModelView\"Q\xca\xf3\x18\x1d\n" +
-	"\x02\xc8\x01\x10\x01\x1a\rIf-None-Match\"\x04ETag(\x01\x82\xd3\xe4\x93\x02*\x12(/v1/{name=tenants/*/projects/*/models/*}\x12\xb0\x01\n" +
-	"\vUpdateModel\x12$.mindclade.api.v1.UpdateModelRequest\x1a\x1b.mindclade.api.v1.ModelView\"^\xca\xf3\x18#\n" +
-	"\x02\xc8\x01\x10\x01\x1a\x0fIdempotency-Key\x1a\bIf-Match(\x01\x82\xd3\xe4\x93\x021:\x05model2(/v1/{name=tenants/*/projects/*/models/*}\x12\xa8\x01\n" +
-	"\x11ListModelReleases\x12&.mindclade.api.v1.ListResourcesRequest\x1a\".mindclade.api.v1.ModelReleaseList\"G\xca\xf3\x18\b\n" +
-	"\x02\xc8\x01\x10\x01(\x01\x82\xd3\xe4\x93\x025\x123/v1/{parent=tenants/*/projects/*/models/*}/releases\x12\xc8\x01\n" +
-	"\x12CreateModelRelease\x12+.mindclade.api.v1.CreateModelReleaseRequest\x1a\".mindclade.api.v1.ModelReleaseView\"a\xca\xf3\x18\x19\n" +
-	"\x02\xc9\x01\x10\x01\x1a\x0fIdempotency-Key(\x01\x82\xd3\xe4\x93\x02>:\arelease\"3/v1/{parent=tenants/*/projects/*/models/*}/releases\x12\xa1\x01\n" +
-	"\x10ListTrainingRuns\x12&.mindclade.api.v1.ListResourcesRequest\x1a!.mindclade.api.v1.TrainingRunList\"B\xca\xf3\x18\b\n" +
-	"\x02\xc8\x01\x10\x01(\x01\x82\xd3\xe4\x93\x020\x12./v1/{parent=tenants/*/projects/*}/trainingRuns\x12\xd5\x01\n" +
-	"\x11CreateTrainingRun\x12*.mindclade.api.v1.CreateTrainingRunRequest\x1a\x1b.mindclade.api.v1.Operation\"w\xca\xf3\x18/\n" +
-	"\x02\xca\x01\x10\x01\x1a\x0fIdempotency-Key\x1a\x14X-Mindclade-Deadline(\x01\x82\xd3\xe4\x93\x02>:\ftraining_run\"./v1/{parent=tenants/*/projects/*}/trainingRuns\x12\xb2\x01\n" +
-	"\x0eGetTrainingRun\x12$.mindclade.api.v1.GetResourceRequest\x1a!.mindclade.api.v1.TrainingRunView\"W\xca\xf3\x18\x1d\n" +
-	"\x02\xc8\x01\x10\x01\x1a\rIf-None-Match\"\x04ETag(\x01\x82\xd3\xe4\x93\x020\x12./v1/{name=tenants/*/projects/*/trainingRuns/*}\x12\xa7\x01\n" +
-	"\x12ListEvaluationRuns\x12&.mindclade.api.v1.ListResourcesRequest\x1a#.mindclade.api.v1.EvaluationRunList\"D\xca\xf3\x18\b\n" +
-	"\x02\xc8\x01\x10\x01(\x01\x82\xd3\xe4\x93\x022\x120/v1/{parent=tenants/*/projects/*}/evaluationRuns\x12\xdd\x01\n" +
-	"\x13CreateEvaluationRun\x12,.mindclade.api.v1.CreateEvaluationRunRequest\x1a\x1b.mindclade.api.v1.Operation\"{\xca\xf3\x18/\n" +
-	"\x02\xca\x01\x10\x01\x1a\x0fIdempotency-Key\x1a\x14X-Mindclade-Deadline(\x01\x82\xd3\xe4\x93\x02B:\x0eevaluation_run\"0/v1/{parent=tenants/*/projects/*}/evaluationRuns\x12\xb8\x01\n" +
-	"\x10GetEvaluationRun\x12$.mindclade.api.v1.GetResourceRequest\x1a#.mindclade.api.v1.EvaluationRunView\"Y\xca\xf3\x18\x1d\n" +
-	"\x02\xc8\x01\x10\x01\x1a\rIf-None-Match\"\x04ETag(\x01\x82\xd3\xe4\x93\x022\x120/v1/{name=tenants/*/projects/*/evaluationRuns/*}\x12\xac\x01\n" +
-	"\x13GetEvaluationResult\x12$.mindclade.api.v1.GetResourceRequest\x1a&.mindclade.api.v1.EvaluationResultView\"G\xca\xf3\x18\b\n" +
-	"\x02\xc8\x01\x10\x01(\x01\x82\xd3\xe4\x93\x025\x123/v1/{name=tenants/*/projects/*/evaluationResults/*}\x12\xad\x01\n" +
-	"\x14ListAgentDefinitions\x12&.mindclade.api.v1.ListResourcesRequest\x1a%.mindclade.api.v1.AgentDefinitionList\"F\xca\xf3\x18\b\n" +
-	"\x02\xc8\x01\x10\x01(\x01\x82\xd3\xe4\x93\x024\x122/v1/{parent=tenants/*/projects/*}/agentDefinitions\x12\xd9\x01\n" +
-	"\x15CreateAgentDefinition\x12..mindclade.api.v1.CreateAgentDefinitionRequest\x1a%.mindclade.api.v1.AgentDefinitionView\"i\xca\xf3\x18\x19\n" +
-	"\x02\xc9\x01\x10\x01\x1a\x0fIdempotency-Key(\x01\x82\xd3\xe4\x93\x02F:\x10agent_definition\"2/v1/{parent=tenants/*/projects/*}/agentDefinitions\x12\x98\x01\n" +
-	"\rListAgentRuns\x12&.mindclade.api.v1.ListResourcesRequest\x1a\x1e.mindclade.api.v1.AgentRunList\"?\xca\xf3\x18\b\n" +
-	"\x02\xc8\x01\x10\x01(\x01\x82\xd3\xe4\x93\x02-\x12+/v1/{parent=tenants/*/projects/*}/agentRuns\x12\xc9\x01\n" +
-	"\x0eCreateAgentRun\x12'.mindclade.api.v1.CreateAgentRunRequest\x1a\x1b.mindclade.api.v1.Operation\"q\xca\xf3\x18/\n" +
-	"\x02\xca\x01\x10\x01\x1a\x0fIdempotency-Key\x1a\x14X-Mindclade-Deadline(\x01\x82\xd3\xe4\x93\x028:\tagent_run\"+/v1/{parent=tenants/*/projects/*}/agentRuns\x12\xa9\x01\n" +
-	"\vGetAgentRun\x12$.mindclade.api.v1.GetResourceRequest\x1a\x1e.mindclade.api.v1.AgentRunView\"T\xca\xf3\x18\x1d\n" +
-	"\x02\xc8\x01\x10\x01\x1a\rIf-None-Match\"\x04ETag(\x01\x82\xd3\xe4\x93\x02-\x12+/v1/{name=tenants/*/projects/*/agentRuns/*}\x12\xb6\x01\n" +
-	"\x17ListWorkflowDefinitions\x12&.mindclade.api.v1.ListResourcesRequest\x1a(.mindclade.api.v1.WorkflowDefinitionList\"I\xca\xf3\x18\b\n" +
-	"\x02\xc8\x01\x10\x01(\x01\x82\xd3\xe4\x93\x027\x125/v1/{parent=tenants/*/projects/*}/workflowDefinitions\x12\xe8\x01\n" +
-	"\x18CreateWorkflowDefinition\x121.mindclade.api.v1.CreateWorkflowDefinitionRequest\x1a(.mindclade.api.v1.WorkflowDefinitionView\"o\xca\xf3\x18\x19\n" +
-	"\x02\xc9\x01\x10\x01\x1a\x0fIdempotency-Key(\x01\x82\xd3\xe4\x93\x02L:\x13workflow_definition\"5/v1/{parent=tenants/*/projects/*}/workflowDefinitions\x12\xa1\x01\n" +
-	"\x10ListWorkflowRuns\x12&.mindclade.api.v1.ListResourcesRequest\x1a!.mindclade.api.v1.WorkflowRunList\"B\xca\xf3\x18\b\n" +
-	"\x02\xc8\x01\x10\x01(\x01\x82\xd3\xe4\x93\x020\x12./v1/{parent=tenants/*/projects/*}/workflowRuns\x12\xd5\x01\n" +
-	"\x11CreateWorkflowRun\x12*.mindclade.api.v1.CreateWorkflowRunRequest\x1a\x1b.mindclade.api.v1.Operation\"w\xca\xf3\x18/\n" +
-	"\x02\xca\x01\x10\x01\x1a\x0fIdempotency-Key\x1a\x14X-Mindclade-Deadline(\x01\x82\xd3\xe4\x93\x02>:\fworkflow_run\"./v1/{parent=tenants/*/projects/*}/workflowRuns\x12\xb2\x01\n" +
-	"\x0eGetWorkflowRun\x12$.mindclade.api.v1.GetResourceRequest\x1a!.mindclade.api.v1.WorkflowRunView\"W\xca\xf3\x18\x1d\n" +
-	"\x02\xc8\x01\x10\x01\x1a\rIf-None-Match\"\x04ETag(\x01\x82\xd3\xe4\x93\x020\x12./v1/{name=tenants/*/projects/*/workflowRuns/*}\x12\xa6\x01\n" +
-	"\x14ListApprovalRequests\x12&.mindclade.api.v1.ListResourcesRequest\x1a%.mindclade.api.v1.ApprovalRequestList\"?\xca\xf3\x18\b\n" +
-	"\x02\xc8\x01\x10\x01(\x01\x82\xd3\xe4\x93\x02-\x12+/v1/{parent=tenants/*/projects/*}/approvals\x12\xcd\x01\n" +
-	"\x0eDecideApproval\x12'.mindclade.api.v1.DecideApprovalRequest\x1a%.mindclade.api.v1.ApprovalReceiptView\"k\xca\xf3\x18#\n" +
-	"\x02\xc9\x01\x10\x01\x1a\x0fIdempotency-Key\x1a\bIf-Match(\x01\x82\xd3\xe4\x93\x02>:\bapproval\"2/v1/{name=tenants/*/projects/*/approvals/*}:decide\x12\x8e\x01\n" +
-	"\tGetTenant\x12$.mindclade.api.v1.GetResourceRequest\x1a\x1c.mindclade.api.v1.TenantView\"=\xca\xf3\x18\x1d\n" +
-	"\x02\xc8\x01\x10\x01\x1a\rIf-None-Match\"\x04ETag(\x01\x82\xd3\xe4\x93\x02\x16\x12\x14/v1/{name=tenants/*}\x12\x8a\x01\n" +
-	"\fListProjects\x12&.mindclade.api.v1.ListResourcesRequest\x1a\x1d.mindclade.api.v1.ProjectList\"3\xca\xf3\x18\b\n" +
-	"\x02\xc8\x01\x10\x01(\x01\x82\xd3\xe4\x93\x02!\x12\x1f/v1/{parent=tenants/*}/projects\x12\xa5\x01\n" +
-	"\rCreateProject\x12&.mindclade.api.v1.CreateProjectRequest\x1a\x1d.mindclade.api.v1.ProjectView\"M\xca\xf3\x18\x19\n" +
-	"\x02\xc9\x01\x10\x01\x1a\x0fIdempotency-Key(\x01\x82\xd3\xe4\x93\x02*:\aproject\"\x1f/v1/{parent=tenants/*}/projects\x12\x9b\x01\n" +
-	"\n" +
-	"GetProject\x12$.mindclade.api.v1.GetResourceRequest\x1a\x1d.mindclade.api.v1.ProjectView\"H\xca\xf3\x18\x1d\n" +
-	"\x02\xc8\x01\x10\x01\x1a\rIf-None-Match\"\x04ETag(\x01\x82\xd3\xe4\x93\x02!\x12\x1f/v1/{name=tenants/*/projects/*}\x12\xa4\x01\n" +
-	"\x10ListAuditRecords\x12).mindclade.api.v1.ListAuditRecordsRequest\x1a!.mindclade.api.v1.AuditRecordList\"B\xca\xf3\x18\b\n" +
-	"\x02\xc8\x01\x10\x01(\x01\x82\xd3\xe4\x93\x020\x12./v1/{parent=tenants/*/projects/*}/auditRecords:g\n" +
+	"\x10MindcladeService\x12\xb2\x01\n" +
+	"\fGetOperation\x12$.mindclade.api.v1.GetResourceRequest\x1a\x1b.mindclade.api.v1.Operation\"_\xca\xf3\x18'\n" +
+	"\x02\xc8\x01\x10\x01\x1a\rIf-None-Match\"\x04ETag(\x012\b\xb0\x02\x91\x03\x93\x03\x94\x03\x82\xd3\xe4\x93\x02.\x12,/v1/{name=tenants/*/projects/*/operations/*}\x12\xa6\x02\n" +
+	"\x0fCancelOperation\x12(.mindclade.api.v1.CancelOperationRequest\x1a\x1b.mindclade.api.v1.Operation\"\xcb\x01\xca\xf3\x18~\n" +
+	"\x02\xc8\x01\x10\x01\x1a\x0fIdempotency-Key\x1a\x14X-Mindclade-Deadline\x1a\bIf-Match\"\x04ETag(\x012\n" +
+	"\x90\x03\x91\x03\x93\x03\x94\x03\x99\x038\x01B\x0fIdempotency-KeyB\x14X-Mindclade-DeadlineB\bIf-Match\x82\xd3\xe4\x93\x02C:\fcancellation\"3/v1/{name=tenants/*/projects/*/operations/*}:cancel\x12\xde\x01\n" +
+	"\x0eWatchOperation\x12'.mindclade.api.v1.WatchOperationRequest\x1a .mindclade.api.v1.OperationEvent\"\x7f\xca\xf3\x18A\n" +
+	"\x02\xc8\x01\x10\x01\x1a\rLast-Event-ID\"\rCache-Control\"\x11X-Accel-Buffering(\x032\x06\x91\x03\x93\x03\x94\x03\x82\xd3\xe4\x93\x024\x122/v1/{name=tenants/*/projects/*/operations/*}:watch0\x01\x12\xa9\x01\n" +
+	"\x10ListTrainingRuns\x12&.mindclade.api.v1.ListResourcesRequest\x1a!.mindclade.api.v1.TrainingRunList\"J\xca\xf3\x18\x10\n" +
+	"\x02\xc8\x01\x10\x01(\x012\x06\x90\x03\x91\x03\x93\x03\x82\xd3\xe4\x93\x020\x12./v1/{parent=tenants/*/projects/*}/trainingRuns\x12\x8b\x02\n" +
+	"\x11CreateTrainingRun\x12*.mindclade.api.v1.CreateTrainingRunRequest\x1a\x1b.mindclade.api.v1.Operation\"\xac\x01\xca\xf3\x18d\n" +
+	"\x02\xca\x01\x10\x01\x1a\x0fIdempotency-Key\x1a\x14X-Mindclade-Deadline(\x012\n" +
+	"\x90\x03\x91\x03\x93\x03\x99\x03\xad\x038\x01B\x0fIdempotency-KeyB\x14X-Mindclade-Deadline\x82\xd3\xe4\x93\x02>:\ftraining_run\"./v1/{parent=tenants/*/projects/*}/trainingRuns\x12\xbc\x01\n" +
+	"\x0eGetTrainingRun\x12$.mindclade.api.v1.GetResourceRequest\x1a!.mindclade.api.v1.TrainingRunView\"a\xca\xf3\x18'\n" +
+	"\x02\xc8\x01\x10\x01\x1a\rIf-None-Match\"\x04ETag(\x012\b\xb0\x02\x91\x03\x93\x03\x94\x03\x82\xd3\xe4\x93\x020\x12./v1/{name=tenants/*/projects/*/trainingRuns/*}:g\n" +
 	"\vpublic_http\x12\x1e.google.protobuf.MethodOptions\x18\xb9\x8e\x03 \x01(\v2$.mindclade.api.v1.PublicHttpContractR\n" +
-	"publicHttpBDZBgithub.com/mindclade/mindclade/protocols/generated/go/api/v1;apiv1b\x06proto3"
+	"publicHttp:q\n" +
+	"\x0epublic_message\x12\x1f.google.protobuf.MessageOptions\x18\xba\x8e\x03 \x01(\v2'.mindclade.api.v1.PublicMessageContractR\rpublicMessageBDZBgithub.com/mindclade/mindclade/protocols/generated/go/api/v1;apiv1b\x06proto3"
 
 var (
 	file_proto_mindclade_api_v1_mindclade_service_proto_rawDescOnce sync.Once
@@ -7435,396 +7849,347 @@ func file_proto_mindclade_api_v1_mindclade_service_proto_rawDescGZIP() []byte {
 }
 
 var file_proto_mindclade_api_v1_mindclade_service_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes = make([]protoimpl.MessageInfo, 98)
+var file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes = make([]protoimpl.MessageInfo, 101)
 var file_proto_mindclade_api_v1_mindclade_service_proto_goTypes = []any{
 	(StreamProjection)(0),                   // 0: mindclade.api.v1.StreamProjection
 	(*PublicHttpContract)(nil),              // 1: mindclade.api.v1.PublicHttpContract
-	(*ResourceRef)(nil),                     // 2: mindclade.api.v1.ResourceRef
-	(*ArtifactRef)(nil),                     // 3: mindclade.api.v1.ArtifactRef
-	(*EvidenceRef)(nil),                     // 4: mindclade.api.v1.EvidenceRef
-	(*ErrorDetail)(nil),                     // 5: mindclade.api.v1.ErrorDetail
-	(*PublicError)(nil),                     // 6: mindclade.api.v1.PublicError
-	(*PageMetadata)(nil),                    // 7: mindclade.api.v1.PageMetadata
-	(*OperationResult)(nil),                 // 8: mindclade.api.v1.OperationResult
-	(*Operation)(nil),                       // 9: mindclade.api.v1.Operation
-	(*OperationEvent)(nil),                  // 10: mindclade.api.v1.OperationEvent
-	(*CancellationRequest)(nil),             // 11: mindclade.api.v1.CancellationRequest
-	(*ArtifactView)(nil),                    // 12: mindclade.api.v1.ArtifactView
-	(*DownloadArtifactChunk)(nil),           // 13: mindclade.api.v1.DownloadArtifactChunk
-	(*DatasetCreate)(nil),                   // 14: mindclade.api.v1.DatasetCreate
-	(*DatasetUpdate)(nil),                   // 15: mindclade.api.v1.DatasetUpdate
-	(*DatasetView)(nil),                     // 16: mindclade.api.v1.DatasetView
-	(*DatasetList)(nil),                     // 17: mindclade.api.v1.DatasetList
-	(*DatasetReleaseCreate)(nil),            // 18: mindclade.api.v1.DatasetReleaseCreate
-	(*DatasetReleaseView)(nil),              // 19: mindclade.api.v1.DatasetReleaseView
-	(*DatasetReleaseList)(nil),              // 20: mindclade.api.v1.DatasetReleaseList
-	(*ModelCreate)(nil),                     // 21: mindclade.api.v1.ModelCreate
-	(*ModelUpdate)(nil),                     // 22: mindclade.api.v1.ModelUpdate
-	(*ModelView)(nil),                       // 23: mindclade.api.v1.ModelView
-	(*ModelList)(nil),                       // 24: mindclade.api.v1.ModelList
-	(*ModelReleaseCreate)(nil),              // 25: mindclade.api.v1.ModelReleaseCreate
-	(*ModelReleaseView)(nil),                // 26: mindclade.api.v1.ModelReleaseView
-	(*ModelReleaseList)(nil),                // 27: mindclade.api.v1.ModelReleaseList
-	(*TrainingRunCreate)(nil),               // 28: mindclade.api.v1.TrainingRunCreate
-	(*TrainingRunView)(nil),                 // 29: mindclade.api.v1.TrainingRunView
-	(*TrainingRunList)(nil),                 // 30: mindclade.api.v1.TrainingRunList
-	(*EvaluationRunCreate)(nil),             // 31: mindclade.api.v1.EvaluationRunCreate
-	(*EvaluationRunView)(nil),               // 32: mindclade.api.v1.EvaluationRunView
-	(*EvaluationRunList)(nil),               // 33: mindclade.api.v1.EvaluationRunList
-	(*MetricSummary)(nil),                   // 34: mindclade.api.v1.MetricSummary
-	(*EvaluationResultView)(nil),            // 35: mindclade.api.v1.EvaluationResultView
-	(*InferenceOutput)(nil),                 // 36: mindclade.api.v1.InferenceOutput
-	(*InferenceSubmission)(nil),             // 37: mindclade.api.v1.InferenceSubmission
-	(*InferenceResultView)(nil),             // 38: mindclade.api.v1.InferenceResultView
-	(*AgentBudget)(nil),                     // 39: mindclade.api.v1.AgentBudget
-	(*AgentDefinitionCreate)(nil),           // 40: mindclade.api.v1.AgentDefinitionCreate
-	(*AgentDefinitionView)(nil),             // 41: mindclade.api.v1.AgentDefinitionView
-	(*AgentDefinitionList)(nil),             // 42: mindclade.api.v1.AgentDefinitionList
-	(*AgentRunCreate)(nil),                  // 43: mindclade.api.v1.AgentRunCreate
-	(*AgentRunView)(nil),                    // 44: mindclade.api.v1.AgentRunView
-	(*AgentRunList)(nil),                    // 45: mindclade.api.v1.AgentRunList
-	(*WorkflowDefinitionCreate)(nil),        // 46: mindclade.api.v1.WorkflowDefinitionCreate
-	(*WorkflowDefinitionView)(nil),          // 47: mindclade.api.v1.WorkflowDefinitionView
-	(*WorkflowDefinitionList)(nil),          // 48: mindclade.api.v1.WorkflowDefinitionList
-	(*WorkflowRunCreate)(nil),               // 49: mindclade.api.v1.WorkflowRunCreate
-	(*WorkflowRunView)(nil),                 // 50: mindclade.api.v1.WorkflowRunView
-	(*WorkflowRunList)(nil),                 // 51: mindclade.api.v1.WorkflowRunList
-	(*ApprovalRequestView)(nil),             // 52: mindclade.api.v1.ApprovalRequestView
-	(*ApprovalRequestList)(nil),             // 53: mindclade.api.v1.ApprovalRequestList
-	(*ApprovalDecision)(nil),                // 54: mindclade.api.v1.ApprovalDecision
-	(*ApprovalReceiptView)(nil),             // 55: mindclade.api.v1.ApprovalReceiptView
-	(*TenantView)(nil),                      // 56: mindclade.api.v1.TenantView
-	(*ProjectCreate)(nil),                   // 57: mindclade.api.v1.ProjectCreate
-	(*ProjectView)(nil),                     // 58: mindclade.api.v1.ProjectView
-	(*ProjectList)(nil),                     // 59: mindclade.api.v1.ProjectList
-	(*AuditRecordView)(nil),                 // 60: mindclade.api.v1.AuditRecordView
-	(*AuditRecordList)(nil),                 // 61: mindclade.api.v1.AuditRecordList
-	(*GetResourceRequest)(nil),              // 62: mindclade.api.v1.GetResourceRequest
-	(*ListResourcesRequest)(nil),            // 63: mindclade.api.v1.ListResourcesRequest
-	(*SubmitInferenceRequest)(nil),          // 64: mindclade.api.v1.SubmitInferenceRequest
-	(*CancelOperationRequest)(nil),          // 65: mindclade.api.v1.CancelOperationRequest
-	(*DownloadArtifactRequest)(nil),         // 66: mindclade.api.v1.DownloadArtifactRequest
-	(*WatchOperationRequest)(nil),           // 67: mindclade.api.v1.WatchOperationRequest
-	(*CreateDatasetRequest)(nil),            // 68: mindclade.api.v1.CreateDatasetRequest
-	(*UpdateDatasetRequest)(nil),            // 69: mindclade.api.v1.UpdateDatasetRequest
-	(*CreateDatasetReleaseRequest)(nil),     // 70: mindclade.api.v1.CreateDatasetReleaseRequest
-	(*CreateModelRequest)(nil),              // 71: mindclade.api.v1.CreateModelRequest
-	(*UpdateModelRequest)(nil),              // 72: mindclade.api.v1.UpdateModelRequest
-	(*CreateModelReleaseRequest)(nil),       // 73: mindclade.api.v1.CreateModelReleaseRequest
-	(*CreateTrainingRunRequest)(nil),        // 74: mindclade.api.v1.CreateTrainingRunRequest
-	(*CreateEvaluationRunRequest)(nil),      // 75: mindclade.api.v1.CreateEvaluationRunRequest
-	(*CreateAgentDefinitionRequest)(nil),    // 76: mindclade.api.v1.CreateAgentDefinitionRequest
-	(*CreateAgentRunRequest)(nil),           // 77: mindclade.api.v1.CreateAgentRunRequest
-	(*CreateWorkflowDefinitionRequest)(nil), // 78: mindclade.api.v1.CreateWorkflowDefinitionRequest
-	(*CreateWorkflowRunRequest)(nil),        // 79: mindclade.api.v1.CreateWorkflowRunRequest
-	(*DecideApprovalRequest)(nil),           // 80: mindclade.api.v1.DecideApprovalRequest
-	(*CreateProjectRequest)(nil),            // 81: mindclade.api.v1.CreateProjectRequest
-	(*ListAuditRecordsRequest)(nil),         // 82: mindclade.api.v1.ListAuditRecordsRequest
-	nil,                                     // 83: mindclade.api.v1.DatasetCreate.LabelsEntry
-	nil,                                     // 84: mindclade.api.v1.DatasetCreate.AnnotationsEntry
-	nil,                                     // 85: mindclade.api.v1.DatasetUpdate.LabelsEntry
-	nil,                                     // 86: mindclade.api.v1.DatasetUpdate.AnnotationsEntry
-	nil,                                     // 87: mindclade.api.v1.DatasetView.LabelsEntry
-	nil,                                     // 88: mindclade.api.v1.DatasetView.AnnotationsEntry
-	nil,                                     // 89: mindclade.api.v1.ModelCreate.LabelsEntry
-	nil,                                     // 90: mindclade.api.v1.ModelCreate.AnnotationsEntry
-	nil,                                     // 91: mindclade.api.v1.ModelUpdate.LabelsEntry
-	nil,                                     // 92: mindclade.api.v1.ModelUpdate.AnnotationsEntry
-	nil,                                     // 93: mindclade.api.v1.ModelView.LabelsEntry
-	nil,                                     // 94: mindclade.api.v1.ModelView.AnnotationsEntry
-	nil,                                     // 95: mindclade.api.v1.TrainingRunCreate.LabelsEntry
-	nil,                                     // 96: mindclade.api.v1.TenantView.LabelsEntry
-	nil,                                     // 97: mindclade.api.v1.ProjectCreate.LabelsEntry
-	nil,                                     // 98: mindclade.api.v1.ProjectView.LabelsEntry
-	(*timestamppb.Timestamp)(nil),           // 99: google.protobuf.Timestamp
-	(*descriptorpb.MethodOptions)(nil),      // 100: google.protobuf.MethodOptions
+	(*PublicStringEnumContract)(nil),        // 2: mindclade.api.v1.PublicStringEnumContract
+	(*PublicMessageContract)(nil),           // 3: mindclade.api.v1.PublicMessageContract
+	(*ResourceRef)(nil),                     // 4: mindclade.api.v1.ResourceRef
+	(*ArtifactRef)(nil),                     // 5: mindclade.api.v1.ArtifactRef
+	(*EvidenceRef)(nil),                     // 6: mindclade.api.v1.EvidenceRef
+	(*ErrorDetail)(nil),                     // 7: mindclade.api.v1.ErrorDetail
+	(*PublicError)(nil),                     // 8: mindclade.api.v1.PublicError
+	(*PageMetadata)(nil),                    // 9: mindclade.api.v1.PageMetadata
+	(*OperationResult)(nil),                 // 10: mindclade.api.v1.OperationResult
+	(*Operation)(nil),                       // 11: mindclade.api.v1.Operation
+	(*OperationEvent)(nil),                  // 12: mindclade.api.v1.OperationEvent
+	(*CancellationRequest)(nil),             // 13: mindclade.api.v1.CancellationRequest
+	(*ArtifactView)(nil),                    // 14: mindclade.api.v1.ArtifactView
+	(*DownloadArtifactChunk)(nil),           // 15: mindclade.api.v1.DownloadArtifactChunk
+	(*DatasetCreate)(nil),                   // 16: mindclade.api.v1.DatasetCreate
+	(*DatasetUpdate)(nil),                   // 17: mindclade.api.v1.DatasetUpdate
+	(*DatasetView)(nil),                     // 18: mindclade.api.v1.DatasetView
+	(*DatasetList)(nil),                     // 19: mindclade.api.v1.DatasetList
+	(*DatasetReleaseCreate)(nil),            // 20: mindclade.api.v1.DatasetReleaseCreate
+	(*DatasetReleaseView)(nil),              // 21: mindclade.api.v1.DatasetReleaseView
+	(*DatasetReleaseList)(nil),              // 22: mindclade.api.v1.DatasetReleaseList
+	(*ModelCreate)(nil),                     // 23: mindclade.api.v1.ModelCreate
+	(*ModelUpdate)(nil),                     // 24: mindclade.api.v1.ModelUpdate
+	(*ModelView)(nil),                       // 25: mindclade.api.v1.ModelView
+	(*ModelList)(nil),                       // 26: mindclade.api.v1.ModelList
+	(*ModelReleaseCreate)(nil),              // 27: mindclade.api.v1.ModelReleaseCreate
+	(*ModelReleaseView)(nil),                // 28: mindclade.api.v1.ModelReleaseView
+	(*ModelReleaseList)(nil),                // 29: mindclade.api.v1.ModelReleaseList
+	(*TrainingRunCreate)(nil),               // 30: mindclade.api.v1.TrainingRunCreate
+	(*TrainingRunView)(nil),                 // 31: mindclade.api.v1.TrainingRunView
+	(*TrainingRunList)(nil),                 // 32: mindclade.api.v1.TrainingRunList
+	(*EvaluationRunCreate)(nil),             // 33: mindclade.api.v1.EvaluationRunCreate
+	(*EvaluationRunView)(nil),               // 34: mindclade.api.v1.EvaluationRunView
+	(*EvaluationRunList)(nil),               // 35: mindclade.api.v1.EvaluationRunList
+	(*MetricSummary)(nil),                   // 36: mindclade.api.v1.MetricSummary
+	(*EvaluationResultView)(nil),            // 37: mindclade.api.v1.EvaluationResultView
+	(*InferenceOutput)(nil),                 // 38: mindclade.api.v1.InferenceOutput
+	(*InferenceSubmission)(nil),             // 39: mindclade.api.v1.InferenceSubmission
+	(*InferenceResultView)(nil),             // 40: mindclade.api.v1.InferenceResultView
+	(*AgentBudget)(nil),                     // 41: mindclade.api.v1.AgentBudget
+	(*AgentDefinitionCreate)(nil),           // 42: mindclade.api.v1.AgentDefinitionCreate
+	(*AgentDefinitionView)(nil),             // 43: mindclade.api.v1.AgentDefinitionView
+	(*AgentDefinitionList)(nil),             // 44: mindclade.api.v1.AgentDefinitionList
+	(*AgentRunCreate)(nil),                  // 45: mindclade.api.v1.AgentRunCreate
+	(*AgentRunView)(nil),                    // 46: mindclade.api.v1.AgentRunView
+	(*AgentRunList)(nil),                    // 47: mindclade.api.v1.AgentRunList
+	(*WorkflowDefinitionCreate)(nil),        // 48: mindclade.api.v1.WorkflowDefinitionCreate
+	(*WorkflowDefinitionView)(nil),          // 49: mindclade.api.v1.WorkflowDefinitionView
+	(*WorkflowDefinitionList)(nil),          // 50: mindclade.api.v1.WorkflowDefinitionList
+	(*WorkflowRunCreate)(nil),               // 51: mindclade.api.v1.WorkflowRunCreate
+	(*WorkflowRunView)(nil),                 // 52: mindclade.api.v1.WorkflowRunView
+	(*WorkflowRunList)(nil),                 // 53: mindclade.api.v1.WorkflowRunList
+	(*ApprovalRequestView)(nil),             // 54: mindclade.api.v1.ApprovalRequestView
+	(*ApprovalRequestList)(nil),             // 55: mindclade.api.v1.ApprovalRequestList
+	(*ApprovalDecision)(nil),                // 56: mindclade.api.v1.ApprovalDecision
+	(*ApprovalReceiptView)(nil),             // 57: mindclade.api.v1.ApprovalReceiptView
+	(*TenantView)(nil),                      // 58: mindclade.api.v1.TenantView
+	(*ProjectCreate)(nil),                   // 59: mindclade.api.v1.ProjectCreate
+	(*ProjectView)(nil),                     // 60: mindclade.api.v1.ProjectView
+	(*ProjectList)(nil),                     // 61: mindclade.api.v1.ProjectList
+	(*AuditRecordView)(nil),                 // 62: mindclade.api.v1.AuditRecordView
+	(*AuditRecordList)(nil),                 // 63: mindclade.api.v1.AuditRecordList
+	(*GetResourceRequest)(nil),              // 64: mindclade.api.v1.GetResourceRequest
+	(*ListResourcesRequest)(nil),            // 65: mindclade.api.v1.ListResourcesRequest
+	(*ListChildResourcesRequest)(nil),       // 66: mindclade.api.v1.ListChildResourcesRequest
+	(*SubmitInferenceRequest)(nil),          // 67: mindclade.api.v1.SubmitInferenceRequest
+	(*CancelOperationRequest)(nil),          // 68: mindclade.api.v1.CancelOperationRequest
+	(*DownloadArtifactRequest)(nil),         // 69: mindclade.api.v1.DownloadArtifactRequest
+	(*WatchOperationRequest)(nil),           // 70: mindclade.api.v1.WatchOperationRequest
+	(*CreateDatasetRequest)(nil),            // 71: mindclade.api.v1.CreateDatasetRequest
+	(*UpdateDatasetRequest)(nil),            // 72: mindclade.api.v1.UpdateDatasetRequest
+	(*CreateDatasetReleaseRequest)(nil),     // 73: mindclade.api.v1.CreateDatasetReleaseRequest
+	(*CreateModelRequest)(nil),              // 74: mindclade.api.v1.CreateModelRequest
+	(*UpdateModelRequest)(nil),              // 75: mindclade.api.v1.UpdateModelRequest
+	(*CreateModelReleaseRequest)(nil),       // 76: mindclade.api.v1.CreateModelReleaseRequest
+	(*CreateTrainingRunRequest)(nil),        // 77: mindclade.api.v1.CreateTrainingRunRequest
+	(*CreateEvaluationRunRequest)(nil),      // 78: mindclade.api.v1.CreateEvaluationRunRequest
+	(*CreateAgentDefinitionRequest)(nil),    // 79: mindclade.api.v1.CreateAgentDefinitionRequest
+	(*CreateAgentRunRequest)(nil),           // 80: mindclade.api.v1.CreateAgentRunRequest
+	(*CreateWorkflowDefinitionRequest)(nil), // 81: mindclade.api.v1.CreateWorkflowDefinitionRequest
+	(*CreateWorkflowRunRequest)(nil),        // 82: mindclade.api.v1.CreateWorkflowRunRequest
+	(*DecideApprovalRequest)(nil),           // 83: mindclade.api.v1.DecideApprovalRequest
+	(*CreateProjectRequest)(nil),            // 84: mindclade.api.v1.CreateProjectRequest
+	(*ListAuditRecordsRequest)(nil),         // 85: mindclade.api.v1.ListAuditRecordsRequest
+	nil,                                     // 86: mindclade.api.v1.DatasetCreate.LabelsEntry
+	nil,                                     // 87: mindclade.api.v1.DatasetCreate.AnnotationsEntry
+	nil,                                     // 88: mindclade.api.v1.DatasetUpdate.LabelsEntry
+	nil,                                     // 89: mindclade.api.v1.DatasetUpdate.AnnotationsEntry
+	nil,                                     // 90: mindclade.api.v1.DatasetView.LabelsEntry
+	nil,                                     // 91: mindclade.api.v1.DatasetView.AnnotationsEntry
+	nil,                                     // 92: mindclade.api.v1.ModelCreate.LabelsEntry
+	nil,                                     // 93: mindclade.api.v1.ModelCreate.AnnotationsEntry
+	nil,                                     // 94: mindclade.api.v1.ModelUpdate.LabelsEntry
+	nil,                                     // 95: mindclade.api.v1.ModelUpdate.AnnotationsEntry
+	nil,                                     // 96: mindclade.api.v1.ModelView.LabelsEntry
+	nil,                                     // 97: mindclade.api.v1.ModelView.AnnotationsEntry
+	nil,                                     // 98: mindclade.api.v1.TrainingRunCreate.LabelsEntry
+	nil,                                     // 99: mindclade.api.v1.TenantView.LabelsEntry
+	nil,                                     // 100: mindclade.api.v1.ProjectCreate.LabelsEntry
+	nil,                                     // 101: mindclade.api.v1.ProjectView.LabelsEntry
+	(*timestamppb.Timestamp)(nil),           // 102: google.protobuf.Timestamp
+	(*descriptorpb.MethodOptions)(nil),      // 103: google.protobuf.MethodOptions
+	(*descriptorpb.MessageOptions)(nil),     // 104: google.protobuf.MessageOptions
 }
 var file_proto_mindclade_api_v1_mindclade_service_proto_depIdxs = []int32{
 	0,   // 0: mindclade.api.v1.PublicHttpContract.stream:type_name -> mindclade.api.v1.StreamProjection
-	2,   // 1: mindclade.api.v1.ErrorDetail.resource:type_name -> mindclade.api.v1.ResourceRef
-	5,   // 2: mindclade.api.v1.PublicError.details:type_name -> mindclade.api.v1.ErrorDetail
-	2,   // 3: mindclade.api.v1.OperationResult.resource:type_name -> mindclade.api.v1.ResourceRef
-	38,  // 4: mindclade.api.v1.OperationResult.inference:type_name -> mindclade.api.v1.InferenceResultView
-	3,   // 5: mindclade.api.v1.OperationResult.manifest:type_name -> mindclade.api.v1.ArtifactRef
-	3,   // 6: mindclade.api.v1.OperationResult.artifacts:type_name -> mindclade.api.v1.ArtifactRef
-	99,  // 7: mindclade.api.v1.Operation.create_time:type_name -> google.protobuf.Timestamp
-	99,  // 8: mindclade.api.v1.Operation.update_time:type_name -> google.protobuf.Timestamp
-	2,   // 9: mindclade.api.v1.Operation.target:type_name -> mindclade.api.v1.ResourceRef
-	8,   // 10: mindclade.api.v1.Operation.result:type_name -> mindclade.api.v1.OperationResult
-	6,   // 11: mindclade.api.v1.Operation.error:type_name -> mindclade.api.v1.PublicError
-	9,   // 12: mindclade.api.v1.OperationEvent.operation:type_name -> mindclade.api.v1.Operation
-	99,  // 13: mindclade.api.v1.ArtifactView.create_time:type_name -> google.protobuf.Timestamp
-	3,   // 14: mindclade.api.v1.ArtifactView.ref:type_name -> mindclade.api.v1.ArtifactRef
-	83,  // 15: mindclade.api.v1.DatasetCreate.labels:type_name -> mindclade.api.v1.DatasetCreate.LabelsEntry
-	84,  // 16: mindclade.api.v1.DatasetCreate.annotations:type_name -> mindclade.api.v1.DatasetCreate.AnnotationsEntry
-	85,  // 17: mindclade.api.v1.DatasetUpdate.labels:type_name -> mindclade.api.v1.DatasetUpdate.LabelsEntry
-	86,  // 18: mindclade.api.v1.DatasetUpdate.annotations:type_name -> mindclade.api.v1.DatasetUpdate.AnnotationsEntry
-	99,  // 19: mindclade.api.v1.DatasetView.create_time:type_name -> google.protobuf.Timestamp
-	99,  // 20: mindclade.api.v1.DatasetView.update_time:type_name -> google.protobuf.Timestamp
-	87,  // 21: mindclade.api.v1.DatasetView.labels:type_name -> mindclade.api.v1.DatasetView.LabelsEntry
-	88,  // 22: mindclade.api.v1.DatasetView.annotations:type_name -> mindclade.api.v1.DatasetView.AnnotationsEntry
-	2,   // 23: mindclade.api.v1.DatasetView.current_release:type_name -> mindclade.api.v1.ResourceRef
-	16,  // 24: mindclade.api.v1.DatasetList.datasets:type_name -> mindclade.api.v1.DatasetView
-	7,   // 25: mindclade.api.v1.DatasetList.page:type_name -> mindclade.api.v1.PageMetadata
-	3,   // 26: mindclade.api.v1.DatasetReleaseCreate.manifest:type_name -> mindclade.api.v1.ArtifactRef
-	4,   // 27: mindclade.api.v1.DatasetReleaseCreate.qualification_evidence:type_name -> mindclade.api.v1.EvidenceRef
-	2,   // 28: mindclade.api.v1.DatasetReleaseCreate.parent_release:type_name -> mindclade.api.v1.ResourceRef
-	2,   // 29: mindclade.api.v1.DatasetReleaseCreate.use_policy:type_name -> mindclade.api.v1.ResourceRef
-	99,  // 30: mindclade.api.v1.DatasetReleaseView.create_time:type_name -> google.protobuf.Timestamp
-	2,   // 31: mindclade.api.v1.DatasetReleaseView.dataset:type_name -> mindclade.api.v1.ResourceRef
-	3,   // 32: mindclade.api.v1.DatasetReleaseView.manifest:type_name -> mindclade.api.v1.ArtifactRef
-	4,   // 33: mindclade.api.v1.DatasetReleaseView.qualification_evidence:type_name -> mindclade.api.v1.EvidenceRef
-	19,  // 34: mindclade.api.v1.DatasetReleaseList.releases:type_name -> mindclade.api.v1.DatasetReleaseView
-	7,   // 35: mindclade.api.v1.DatasetReleaseList.page:type_name -> mindclade.api.v1.PageMetadata
-	89,  // 36: mindclade.api.v1.ModelCreate.labels:type_name -> mindclade.api.v1.ModelCreate.LabelsEntry
-	90,  // 37: mindclade.api.v1.ModelCreate.annotations:type_name -> mindclade.api.v1.ModelCreate.AnnotationsEntry
-	3,   // 38: mindclade.api.v1.ModelCreate.definition_manifest:type_name -> mindclade.api.v1.ArtifactRef
-	3,   // 39: mindclade.api.v1.ModelCreate.input_contract:type_name -> mindclade.api.v1.ArtifactRef
-	3,   // 40: mindclade.api.v1.ModelCreate.output_contract:type_name -> mindclade.api.v1.ArtifactRef
-	91,  // 41: mindclade.api.v1.ModelUpdate.labels:type_name -> mindclade.api.v1.ModelUpdate.LabelsEntry
-	92,  // 42: mindclade.api.v1.ModelUpdate.annotations:type_name -> mindclade.api.v1.ModelUpdate.AnnotationsEntry
-	99,  // 43: mindclade.api.v1.ModelView.create_time:type_name -> google.protobuf.Timestamp
-	99,  // 44: mindclade.api.v1.ModelView.update_time:type_name -> google.protobuf.Timestamp
-	93,  // 45: mindclade.api.v1.ModelView.labels:type_name -> mindclade.api.v1.ModelView.LabelsEntry
-	94,  // 46: mindclade.api.v1.ModelView.annotations:type_name -> mindclade.api.v1.ModelView.AnnotationsEntry
-	3,   // 47: mindclade.api.v1.ModelView.definition_manifest:type_name -> mindclade.api.v1.ArtifactRef
-	3,   // 48: mindclade.api.v1.ModelView.input_contract:type_name -> mindclade.api.v1.ArtifactRef
-	3,   // 49: mindclade.api.v1.ModelView.output_contract:type_name -> mindclade.api.v1.ArtifactRef
-	2,   // 50: mindclade.api.v1.ModelView.current_release:type_name -> mindclade.api.v1.ResourceRef
-	23,  // 51: mindclade.api.v1.ModelList.models:type_name -> mindclade.api.v1.ModelView
-	7,   // 52: mindclade.api.v1.ModelList.page:type_name -> mindclade.api.v1.PageMetadata
-	3,   // 53: mindclade.api.v1.ModelReleaseCreate.bundle_manifest:type_name -> mindclade.api.v1.ArtifactRef
-	3,   // 54: mindclade.api.v1.ModelReleaseCreate.model_manifest:type_name -> mindclade.api.v1.ArtifactRef
-	2,   // 55: mindclade.api.v1.ModelReleaseCreate.checkpoint:type_name -> mindclade.api.v1.ResourceRef
-	4,   // 56: mindclade.api.v1.ModelReleaseCreate.evaluation_evidence:type_name -> mindclade.api.v1.EvidenceRef
-	2,   // 57: mindclade.api.v1.ModelReleaseCreate.release_policy:type_name -> mindclade.api.v1.ResourceRef
-	99,  // 58: mindclade.api.v1.ModelReleaseView.create_time:type_name -> google.protobuf.Timestamp
-	2,   // 59: mindclade.api.v1.ModelReleaseView.model:type_name -> mindclade.api.v1.ResourceRef
-	3,   // 60: mindclade.api.v1.ModelReleaseView.bundle_manifest:type_name -> mindclade.api.v1.ArtifactRef
-	3,   // 61: mindclade.api.v1.ModelReleaseView.model_manifest:type_name -> mindclade.api.v1.ArtifactRef
-	2,   // 62: mindclade.api.v1.ModelReleaseView.checkpoint:type_name -> mindclade.api.v1.ResourceRef
-	4,   // 63: mindclade.api.v1.ModelReleaseView.evaluation_evidence:type_name -> mindclade.api.v1.EvidenceRef
-	26,  // 64: mindclade.api.v1.ModelReleaseList.releases:type_name -> mindclade.api.v1.ModelReleaseView
-	7,   // 65: mindclade.api.v1.ModelReleaseList.page:type_name -> mindclade.api.v1.PageMetadata
-	3,   // 66: mindclade.api.v1.TrainingRunCreate.training_recipe:type_name -> mindclade.api.v1.ArtifactRef
-	2,   // 67: mindclade.api.v1.TrainingRunCreate.dataset_release:type_name -> mindclade.api.v1.ResourceRef
-	2,   // 68: mindclade.api.v1.TrainingRunCreate.model_release:type_name -> mindclade.api.v1.ResourceRef
-	3,   // 69: mindclade.api.v1.TrainingRunCreate.hardware_topology:type_name -> mindclade.api.v1.ArtifactRef
-	2,   // 70: mindclade.api.v1.TrainingRunCreate.use_policy:type_name -> mindclade.api.v1.ResourceRef
-	95,  // 71: mindclade.api.v1.TrainingRunCreate.labels:type_name -> mindclade.api.v1.TrainingRunCreate.LabelsEntry
-	99,  // 72: mindclade.api.v1.TrainingRunView.create_time:type_name -> google.protobuf.Timestamp
-	99,  // 73: mindclade.api.v1.TrainingRunView.update_time:type_name -> google.protobuf.Timestamp
-	3,   // 74: mindclade.api.v1.TrainingRunView.training_recipe:type_name -> mindclade.api.v1.ArtifactRef
-	2,   // 75: mindclade.api.v1.TrainingRunView.dataset_release:type_name -> mindclade.api.v1.ResourceRef
-	2,   // 76: mindclade.api.v1.TrainingRunView.model_release:type_name -> mindclade.api.v1.ResourceRef
-	3,   // 77: mindclade.api.v1.TrainingRunView.hardware_topology:type_name -> mindclade.api.v1.ArtifactRef
-	2,   // 78: mindclade.api.v1.TrainingRunView.latest_checkpoint:type_name -> mindclade.api.v1.ResourceRef
-	3,   // 79: mindclade.api.v1.TrainingRunView.result_manifest:type_name -> mindclade.api.v1.ArtifactRef
-	6,   // 80: mindclade.api.v1.TrainingRunView.failure:type_name -> mindclade.api.v1.PublicError
-	29,  // 81: mindclade.api.v1.TrainingRunList.training_runs:type_name -> mindclade.api.v1.TrainingRunView
-	7,   // 82: mindclade.api.v1.TrainingRunList.page:type_name -> mindclade.api.v1.PageMetadata
-	3,   // 83: mindclade.api.v1.EvaluationRunCreate.suite:type_name -> mindclade.api.v1.ArtifactRef
-	3,   // 84: mindclade.api.v1.EvaluationRunCreate.datasets:type_name -> mindclade.api.v1.ArtifactRef
-	3,   // 85: mindclade.api.v1.EvaluationRunCreate.snapshot:type_name -> mindclade.api.v1.ArtifactRef
-	2,   // 86: mindclade.api.v1.EvaluationRunCreate.model_release:type_name -> mindclade.api.v1.ResourceRef
-	3,   // 87: mindclade.api.v1.EvaluationRunCreate.inference_protocol:type_name -> mindclade.api.v1.ArtifactRef
-	99,  // 88: mindclade.api.v1.EvaluationRunView.create_time:type_name -> google.protobuf.Timestamp
-	99,  // 89: mindclade.api.v1.EvaluationRunView.update_time:type_name -> google.protobuf.Timestamp
-	3,   // 90: mindclade.api.v1.EvaluationRunView.suite:type_name -> mindclade.api.v1.ArtifactRef
-	3,   // 91: mindclade.api.v1.EvaluationRunView.datasets:type_name -> mindclade.api.v1.ArtifactRef
-	2,   // 92: mindclade.api.v1.EvaluationRunView.model_release:type_name -> mindclade.api.v1.ResourceRef
-	6,   // 93: mindclade.api.v1.EvaluationRunView.failure:type_name -> mindclade.api.v1.PublicError
-	32,  // 94: mindclade.api.v1.EvaluationRunList.evaluation_runs:type_name -> mindclade.api.v1.EvaluationRunView
-	7,   // 95: mindclade.api.v1.EvaluationRunList.page:type_name -> mindclade.api.v1.PageMetadata
-	2,   // 96: mindclade.api.v1.EvaluationResultView.run:type_name -> mindclade.api.v1.ResourceRef
-	3,   // 97: mindclade.api.v1.EvaluationResultView.report:type_name -> mindclade.api.v1.ArtifactRef
-	34,  // 98: mindclade.api.v1.EvaluationResultView.metrics:type_name -> mindclade.api.v1.MetricSummary
-	3,   // 99: mindclade.api.v1.EvaluationResultView.safety_evidence:type_name -> mindclade.api.v1.ArtifactRef
-	3,   // 100: mindclade.api.v1.EvaluationResultView.statistical_evidence:type_name -> mindclade.api.v1.ArtifactRef
-	2,   // 101: mindclade.api.v1.InferenceSubmission.model:type_name -> mindclade.api.v1.ResourceRef
-	3,   // 102: mindclade.api.v1.InferenceSubmission.resolved_model_bundle:type_name -> mindclade.api.v1.ArtifactRef
-	3,   // 103: mindclade.api.v1.InferenceSubmission.input:type_name -> mindclade.api.v1.ArtifactRef
-	3,   // 104: mindclade.api.v1.InferenceSubmission.sampling_policy:type_name -> mindclade.api.v1.ArtifactRef
-	36,  // 105: mindclade.api.v1.InferenceSubmission.output:type_name -> mindclade.api.v1.InferenceOutput
-	2,   // 106: mindclade.api.v1.InferenceResultView.request:type_name -> mindclade.api.v1.ResourceRef
-	2,   // 107: mindclade.api.v1.InferenceResultView.operation:type_name -> mindclade.api.v1.ResourceRef
-	3,   // 108: mindclade.api.v1.InferenceResultView.result_manifest:type_name -> mindclade.api.v1.ArtifactRef
-	3,   // 109: mindclade.api.v1.InferenceResultView.outputs:type_name -> mindclade.api.v1.ArtifactRef
-	3,   // 110: mindclade.api.v1.AgentDefinitionCreate.definition:type_name -> mindclade.api.v1.ArtifactRef
-	2,   // 111: mindclade.api.v1.AgentDefinitionCreate.workflow_definition:type_name -> mindclade.api.v1.ResourceRef
-	3,   // 112: mindclade.api.v1.AgentDefinitionCreate.input_schema:type_name -> mindclade.api.v1.ArtifactRef
-	3,   // 113: mindclade.api.v1.AgentDefinitionCreate.output_schema:type_name -> mindclade.api.v1.ArtifactRef
-	39,  // 114: mindclade.api.v1.AgentDefinitionCreate.budget:type_name -> mindclade.api.v1.AgentBudget
-	99,  // 115: mindclade.api.v1.AgentDefinitionView.create_time:type_name -> google.protobuf.Timestamp
-	99,  // 116: mindclade.api.v1.AgentDefinitionView.update_time:type_name -> google.protobuf.Timestamp
-	3,   // 117: mindclade.api.v1.AgentDefinitionView.definition:type_name -> mindclade.api.v1.ArtifactRef
-	2,   // 118: mindclade.api.v1.AgentDefinitionView.workflow_definition:type_name -> mindclade.api.v1.ResourceRef
-	3,   // 119: mindclade.api.v1.AgentDefinitionView.input_schema:type_name -> mindclade.api.v1.ArtifactRef
-	3,   // 120: mindclade.api.v1.AgentDefinitionView.output_schema:type_name -> mindclade.api.v1.ArtifactRef
-	39,  // 121: mindclade.api.v1.AgentDefinitionView.budget:type_name -> mindclade.api.v1.AgentBudget
-	41,  // 122: mindclade.api.v1.AgentDefinitionList.agent_definitions:type_name -> mindclade.api.v1.AgentDefinitionView
-	7,   // 123: mindclade.api.v1.AgentDefinitionList.page:type_name -> mindclade.api.v1.PageMetadata
-	2,   // 124: mindclade.api.v1.AgentRunCreate.definition:type_name -> mindclade.api.v1.ResourceRef
-	3,   // 125: mindclade.api.v1.AgentRunCreate.input:type_name -> mindclade.api.v1.ArtifactRef
-	3,   // 126: mindclade.api.v1.AgentRunCreate.model_provider_manifest:type_name -> mindclade.api.v1.ArtifactRef
-	99,  // 127: mindclade.api.v1.AgentRunView.create_time:type_name -> google.protobuf.Timestamp
-	99,  // 128: mindclade.api.v1.AgentRunView.update_time:type_name -> google.protobuf.Timestamp
-	2,   // 129: mindclade.api.v1.AgentRunView.definition:type_name -> mindclade.api.v1.ResourceRef
-	3,   // 130: mindclade.api.v1.AgentRunView.input:type_name -> mindclade.api.v1.ArtifactRef
-	3,   // 131: mindclade.api.v1.AgentRunView.run_manifest:type_name -> mindclade.api.v1.ArtifactRef
-	3,   // 132: mindclade.api.v1.AgentRunView.output:type_name -> mindclade.api.v1.ArtifactRef
-	6,   // 133: mindclade.api.v1.AgentRunView.failure:type_name -> mindclade.api.v1.PublicError
-	44,  // 134: mindclade.api.v1.AgentRunList.agent_runs:type_name -> mindclade.api.v1.AgentRunView
-	7,   // 135: mindclade.api.v1.AgentRunList.page:type_name -> mindclade.api.v1.PageMetadata
-	3,   // 136: mindclade.api.v1.WorkflowDefinitionCreate.definition:type_name -> mindclade.api.v1.ArtifactRef
-	3,   // 137: mindclade.api.v1.WorkflowDefinitionCreate.input_schema:type_name -> mindclade.api.v1.ArtifactRef
-	3,   // 138: mindclade.api.v1.WorkflowDefinitionCreate.output_schema:type_name -> mindclade.api.v1.ArtifactRef
-	99,  // 139: mindclade.api.v1.WorkflowDefinitionView.create_time:type_name -> google.protobuf.Timestamp
-	99,  // 140: mindclade.api.v1.WorkflowDefinitionView.update_time:type_name -> google.protobuf.Timestamp
-	3,   // 141: mindclade.api.v1.WorkflowDefinitionView.definition:type_name -> mindclade.api.v1.ArtifactRef
-	3,   // 142: mindclade.api.v1.WorkflowDefinitionView.input_schema:type_name -> mindclade.api.v1.ArtifactRef
-	3,   // 143: mindclade.api.v1.WorkflowDefinitionView.output_schema:type_name -> mindclade.api.v1.ArtifactRef
-	47,  // 144: mindclade.api.v1.WorkflowDefinitionList.workflow_definitions:type_name -> mindclade.api.v1.WorkflowDefinitionView
-	7,   // 145: mindclade.api.v1.WorkflowDefinitionList.page:type_name -> mindclade.api.v1.PageMetadata
-	2,   // 146: mindclade.api.v1.WorkflowRunCreate.definition:type_name -> mindclade.api.v1.ResourceRef
-	2,   // 147: mindclade.api.v1.WorkflowRunCreate.agent_run:type_name -> mindclade.api.v1.ResourceRef
-	3,   // 148: mindclade.api.v1.WorkflowRunCreate.input:type_name -> mindclade.api.v1.ArtifactRef
-	99,  // 149: mindclade.api.v1.WorkflowRunView.create_time:type_name -> google.protobuf.Timestamp
-	99,  // 150: mindclade.api.v1.WorkflowRunView.update_time:type_name -> google.protobuf.Timestamp
-	2,   // 151: mindclade.api.v1.WorkflowRunView.definition:type_name -> mindclade.api.v1.ResourceRef
-	3,   // 152: mindclade.api.v1.WorkflowRunView.input:type_name -> mindclade.api.v1.ArtifactRef
-	3,   // 153: mindclade.api.v1.WorkflowRunView.output:type_name -> mindclade.api.v1.ArtifactRef
-	3,   // 154: mindclade.api.v1.WorkflowRunView.replay_state:type_name -> mindclade.api.v1.ArtifactRef
-	6,   // 155: mindclade.api.v1.WorkflowRunView.failure:type_name -> mindclade.api.v1.PublicError
-	50,  // 156: mindclade.api.v1.WorkflowRunList.workflow_runs:type_name -> mindclade.api.v1.WorkflowRunView
-	7,   // 157: mindclade.api.v1.WorkflowRunList.page:type_name -> mindclade.api.v1.PageMetadata
-	99,  // 158: mindclade.api.v1.ApprovalRequestView.create_time:type_name -> google.protobuf.Timestamp
-	99,  // 159: mindclade.api.v1.ApprovalRequestView.update_time:type_name -> google.protobuf.Timestamp
-	99,  // 160: mindclade.api.v1.ApprovalRequestView.expire_time:type_name -> google.protobuf.Timestamp
-	52,  // 161: mindclade.api.v1.ApprovalRequestList.approvals:type_name -> mindclade.api.v1.ApprovalRequestView
-	7,   // 162: mindclade.api.v1.ApprovalRequestList.page:type_name -> mindclade.api.v1.PageMetadata
-	2,   // 163: mindclade.api.v1.ApprovalReceiptView.request:type_name -> mindclade.api.v1.ResourceRef
-	99,  // 164: mindclade.api.v1.ApprovalReceiptView.create_time:type_name -> google.protobuf.Timestamp
-	99,  // 165: mindclade.api.v1.TenantView.create_time:type_name -> google.protobuf.Timestamp
-	99,  // 166: mindclade.api.v1.TenantView.update_time:type_name -> google.protobuf.Timestamp
-	96,  // 167: mindclade.api.v1.TenantView.labels:type_name -> mindclade.api.v1.TenantView.LabelsEntry
-	97,  // 168: mindclade.api.v1.ProjectCreate.labels:type_name -> mindclade.api.v1.ProjectCreate.LabelsEntry
-	99,  // 169: mindclade.api.v1.ProjectView.create_time:type_name -> google.protobuf.Timestamp
-	99,  // 170: mindclade.api.v1.ProjectView.update_time:type_name -> google.protobuf.Timestamp
-	98,  // 171: mindclade.api.v1.ProjectView.labels:type_name -> mindclade.api.v1.ProjectView.LabelsEntry
-	58,  // 172: mindclade.api.v1.ProjectList.projects:type_name -> mindclade.api.v1.ProjectView
-	7,   // 173: mindclade.api.v1.ProjectList.page:type_name -> mindclade.api.v1.PageMetadata
-	99,  // 174: mindclade.api.v1.AuditRecordView.event_time:type_name -> google.protobuf.Timestamp
-	2,   // 175: mindclade.api.v1.AuditRecordView.resource:type_name -> mindclade.api.v1.ResourceRef
-	60,  // 176: mindclade.api.v1.AuditRecordList.records:type_name -> mindclade.api.v1.AuditRecordView
-	7,   // 177: mindclade.api.v1.AuditRecordList.page:type_name -> mindclade.api.v1.PageMetadata
-	37,  // 178: mindclade.api.v1.SubmitInferenceRequest.submission:type_name -> mindclade.api.v1.InferenceSubmission
-	11,  // 179: mindclade.api.v1.CancelOperationRequest.cancellation:type_name -> mindclade.api.v1.CancellationRequest
-	14,  // 180: mindclade.api.v1.CreateDatasetRequest.dataset:type_name -> mindclade.api.v1.DatasetCreate
-	15,  // 181: mindclade.api.v1.UpdateDatasetRequest.dataset:type_name -> mindclade.api.v1.DatasetUpdate
-	18,  // 182: mindclade.api.v1.CreateDatasetReleaseRequest.release:type_name -> mindclade.api.v1.DatasetReleaseCreate
-	21,  // 183: mindclade.api.v1.CreateModelRequest.model:type_name -> mindclade.api.v1.ModelCreate
-	22,  // 184: mindclade.api.v1.UpdateModelRequest.model:type_name -> mindclade.api.v1.ModelUpdate
-	25,  // 185: mindclade.api.v1.CreateModelReleaseRequest.release:type_name -> mindclade.api.v1.ModelReleaseCreate
-	28,  // 186: mindclade.api.v1.CreateTrainingRunRequest.training_run:type_name -> mindclade.api.v1.TrainingRunCreate
-	31,  // 187: mindclade.api.v1.CreateEvaluationRunRequest.evaluation_run:type_name -> mindclade.api.v1.EvaluationRunCreate
-	40,  // 188: mindclade.api.v1.CreateAgentDefinitionRequest.agent_definition:type_name -> mindclade.api.v1.AgentDefinitionCreate
-	43,  // 189: mindclade.api.v1.CreateAgentRunRequest.agent_run:type_name -> mindclade.api.v1.AgentRunCreate
-	46,  // 190: mindclade.api.v1.CreateWorkflowDefinitionRequest.workflow_definition:type_name -> mindclade.api.v1.WorkflowDefinitionCreate
-	49,  // 191: mindclade.api.v1.CreateWorkflowRunRequest.workflow_run:type_name -> mindclade.api.v1.WorkflowRunCreate
-	54,  // 192: mindclade.api.v1.DecideApprovalRequest.approval:type_name -> mindclade.api.v1.ApprovalDecision
-	57,  // 193: mindclade.api.v1.CreateProjectRequest.project:type_name -> mindclade.api.v1.ProjectCreate
-	100, // 194: mindclade.api.v1.public_http:extendee -> google.protobuf.MethodOptions
-	1,   // 195: mindclade.api.v1.public_http:type_name -> mindclade.api.v1.PublicHttpContract
-	64,  // 196: mindclade.api.v1.MindcladeService.SubmitInference:input_type -> mindclade.api.v1.SubmitInferenceRequest
-	62,  // 197: mindclade.api.v1.MindcladeService.GetOperation:input_type -> mindclade.api.v1.GetResourceRequest
-	65,  // 198: mindclade.api.v1.MindcladeService.CancelOperation:input_type -> mindclade.api.v1.CancelOperationRequest
-	67,  // 199: mindclade.api.v1.MindcladeService.WatchOperation:input_type -> mindclade.api.v1.WatchOperationRequest
-	62,  // 200: mindclade.api.v1.MindcladeService.GetArtifact:input_type -> mindclade.api.v1.GetResourceRequest
-	66,  // 201: mindclade.api.v1.MindcladeService.DownloadArtifact:input_type -> mindclade.api.v1.DownloadArtifactRequest
-	63,  // 202: mindclade.api.v1.MindcladeService.ListDatasets:input_type -> mindclade.api.v1.ListResourcesRequest
-	68,  // 203: mindclade.api.v1.MindcladeService.CreateDataset:input_type -> mindclade.api.v1.CreateDatasetRequest
-	62,  // 204: mindclade.api.v1.MindcladeService.GetDataset:input_type -> mindclade.api.v1.GetResourceRequest
-	69,  // 205: mindclade.api.v1.MindcladeService.UpdateDataset:input_type -> mindclade.api.v1.UpdateDatasetRequest
-	63,  // 206: mindclade.api.v1.MindcladeService.ListDatasetReleases:input_type -> mindclade.api.v1.ListResourcesRequest
-	70,  // 207: mindclade.api.v1.MindcladeService.CreateDatasetRelease:input_type -> mindclade.api.v1.CreateDatasetReleaseRequest
-	63,  // 208: mindclade.api.v1.MindcladeService.ListModels:input_type -> mindclade.api.v1.ListResourcesRequest
-	71,  // 209: mindclade.api.v1.MindcladeService.CreateModel:input_type -> mindclade.api.v1.CreateModelRequest
-	62,  // 210: mindclade.api.v1.MindcladeService.GetModel:input_type -> mindclade.api.v1.GetResourceRequest
-	72,  // 211: mindclade.api.v1.MindcladeService.UpdateModel:input_type -> mindclade.api.v1.UpdateModelRequest
-	63,  // 212: mindclade.api.v1.MindcladeService.ListModelReleases:input_type -> mindclade.api.v1.ListResourcesRequest
-	73,  // 213: mindclade.api.v1.MindcladeService.CreateModelRelease:input_type -> mindclade.api.v1.CreateModelReleaseRequest
-	63,  // 214: mindclade.api.v1.MindcladeService.ListTrainingRuns:input_type -> mindclade.api.v1.ListResourcesRequest
-	74,  // 215: mindclade.api.v1.MindcladeService.CreateTrainingRun:input_type -> mindclade.api.v1.CreateTrainingRunRequest
-	62,  // 216: mindclade.api.v1.MindcladeService.GetTrainingRun:input_type -> mindclade.api.v1.GetResourceRequest
-	63,  // 217: mindclade.api.v1.MindcladeService.ListEvaluationRuns:input_type -> mindclade.api.v1.ListResourcesRequest
-	75,  // 218: mindclade.api.v1.MindcladeService.CreateEvaluationRun:input_type -> mindclade.api.v1.CreateEvaluationRunRequest
-	62,  // 219: mindclade.api.v1.MindcladeService.GetEvaluationRun:input_type -> mindclade.api.v1.GetResourceRequest
-	62,  // 220: mindclade.api.v1.MindcladeService.GetEvaluationResult:input_type -> mindclade.api.v1.GetResourceRequest
-	63,  // 221: mindclade.api.v1.MindcladeService.ListAgentDefinitions:input_type -> mindclade.api.v1.ListResourcesRequest
-	76,  // 222: mindclade.api.v1.MindcladeService.CreateAgentDefinition:input_type -> mindclade.api.v1.CreateAgentDefinitionRequest
-	63,  // 223: mindclade.api.v1.MindcladeService.ListAgentRuns:input_type -> mindclade.api.v1.ListResourcesRequest
-	77,  // 224: mindclade.api.v1.MindcladeService.CreateAgentRun:input_type -> mindclade.api.v1.CreateAgentRunRequest
-	62,  // 225: mindclade.api.v1.MindcladeService.GetAgentRun:input_type -> mindclade.api.v1.GetResourceRequest
-	63,  // 226: mindclade.api.v1.MindcladeService.ListWorkflowDefinitions:input_type -> mindclade.api.v1.ListResourcesRequest
-	78,  // 227: mindclade.api.v1.MindcladeService.CreateWorkflowDefinition:input_type -> mindclade.api.v1.CreateWorkflowDefinitionRequest
-	63,  // 228: mindclade.api.v1.MindcladeService.ListWorkflowRuns:input_type -> mindclade.api.v1.ListResourcesRequest
-	79,  // 229: mindclade.api.v1.MindcladeService.CreateWorkflowRun:input_type -> mindclade.api.v1.CreateWorkflowRunRequest
-	62,  // 230: mindclade.api.v1.MindcladeService.GetWorkflowRun:input_type -> mindclade.api.v1.GetResourceRequest
-	63,  // 231: mindclade.api.v1.MindcladeService.ListApprovalRequests:input_type -> mindclade.api.v1.ListResourcesRequest
-	80,  // 232: mindclade.api.v1.MindcladeService.DecideApproval:input_type -> mindclade.api.v1.DecideApprovalRequest
-	62,  // 233: mindclade.api.v1.MindcladeService.GetTenant:input_type -> mindclade.api.v1.GetResourceRequest
-	63,  // 234: mindclade.api.v1.MindcladeService.ListProjects:input_type -> mindclade.api.v1.ListResourcesRequest
-	81,  // 235: mindclade.api.v1.MindcladeService.CreateProject:input_type -> mindclade.api.v1.CreateProjectRequest
-	62,  // 236: mindclade.api.v1.MindcladeService.GetProject:input_type -> mindclade.api.v1.GetResourceRequest
-	82,  // 237: mindclade.api.v1.MindcladeService.ListAuditRecords:input_type -> mindclade.api.v1.ListAuditRecordsRequest
-	9,   // 238: mindclade.api.v1.MindcladeService.SubmitInference:output_type -> mindclade.api.v1.Operation
-	9,   // 239: mindclade.api.v1.MindcladeService.GetOperation:output_type -> mindclade.api.v1.Operation
-	9,   // 240: mindclade.api.v1.MindcladeService.CancelOperation:output_type -> mindclade.api.v1.Operation
-	10,  // 241: mindclade.api.v1.MindcladeService.WatchOperation:output_type -> mindclade.api.v1.OperationEvent
-	12,  // 242: mindclade.api.v1.MindcladeService.GetArtifact:output_type -> mindclade.api.v1.ArtifactView
-	13,  // 243: mindclade.api.v1.MindcladeService.DownloadArtifact:output_type -> mindclade.api.v1.DownloadArtifactChunk
-	17,  // 244: mindclade.api.v1.MindcladeService.ListDatasets:output_type -> mindclade.api.v1.DatasetList
-	16,  // 245: mindclade.api.v1.MindcladeService.CreateDataset:output_type -> mindclade.api.v1.DatasetView
-	16,  // 246: mindclade.api.v1.MindcladeService.GetDataset:output_type -> mindclade.api.v1.DatasetView
-	16,  // 247: mindclade.api.v1.MindcladeService.UpdateDataset:output_type -> mindclade.api.v1.DatasetView
-	20,  // 248: mindclade.api.v1.MindcladeService.ListDatasetReleases:output_type -> mindclade.api.v1.DatasetReleaseList
-	19,  // 249: mindclade.api.v1.MindcladeService.CreateDatasetRelease:output_type -> mindclade.api.v1.DatasetReleaseView
-	24,  // 250: mindclade.api.v1.MindcladeService.ListModels:output_type -> mindclade.api.v1.ModelList
-	23,  // 251: mindclade.api.v1.MindcladeService.CreateModel:output_type -> mindclade.api.v1.ModelView
-	23,  // 252: mindclade.api.v1.MindcladeService.GetModel:output_type -> mindclade.api.v1.ModelView
-	23,  // 253: mindclade.api.v1.MindcladeService.UpdateModel:output_type -> mindclade.api.v1.ModelView
-	27,  // 254: mindclade.api.v1.MindcladeService.ListModelReleases:output_type -> mindclade.api.v1.ModelReleaseList
-	26,  // 255: mindclade.api.v1.MindcladeService.CreateModelRelease:output_type -> mindclade.api.v1.ModelReleaseView
-	30,  // 256: mindclade.api.v1.MindcladeService.ListTrainingRuns:output_type -> mindclade.api.v1.TrainingRunList
-	9,   // 257: mindclade.api.v1.MindcladeService.CreateTrainingRun:output_type -> mindclade.api.v1.Operation
-	29,  // 258: mindclade.api.v1.MindcladeService.GetTrainingRun:output_type -> mindclade.api.v1.TrainingRunView
-	33,  // 259: mindclade.api.v1.MindcladeService.ListEvaluationRuns:output_type -> mindclade.api.v1.EvaluationRunList
-	9,   // 260: mindclade.api.v1.MindcladeService.CreateEvaluationRun:output_type -> mindclade.api.v1.Operation
-	32,  // 261: mindclade.api.v1.MindcladeService.GetEvaluationRun:output_type -> mindclade.api.v1.EvaluationRunView
-	35,  // 262: mindclade.api.v1.MindcladeService.GetEvaluationResult:output_type -> mindclade.api.v1.EvaluationResultView
-	42,  // 263: mindclade.api.v1.MindcladeService.ListAgentDefinitions:output_type -> mindclade.api.v1.AgentDefinitionList
-	41,  // 264: mindclade.api.v1.MindcladeService.CreateAgentDefinition:output_type -> mindclade.api.v1.AgentDefinitionView
-	45,  // 265: mindclade.api.v1.MindcladeService.ListAgentRuns:output_type -> mindclade.api.v1.AgentRunList
-	9,   // 266: mindclade.api.v1.MindcladeService.CreateAgentRun:output_type -> mindclade.api.v1.Operation
-	44,  // 267: mindclade.api.v1.MindcladeService.GetAgentRun:output_type -> mindclade.api.v1.AgentRunView
-	48,  // 268: mindclade.api.v1.MindcladeService.ListWorkflowDefinitions:output_type -> mindclade.api.v1.WorkflowDefinitionList
-	47,  // 269: mindclade.api.v1.MindcladeService.CreateWorkflowDefinition:output_type -> mindclade.api.v1.WorkflowDefinitionView
-	51,  // 270: mindclade.api.v1.MindcladeService.ListWorkflowRuns:output_type -> mindclade.api.v1.WorkflowRunList
-	9,   // 271: mindclade.api.v1.MindcladeService.CreateWorkflowRun:output_type -> mindclade.api.v1.Operation
-	50,  // 272: mindclade.api.v1.MindcladeService.GetWorkflowRun:output_type -> mindclade.api.v1.WorkflowRunView
-	53,  // 273: mindclade.api.v1.MindcladeService.ListApprovalRequests:output_type -> mindclade.api.v1.ApprovalRequestList
-	55,  // 274: mindclade.api.v1.MindcladeService.DecideApproval:output_type -> mindclade.api.v1.ApprovalReceiptView
-	56,  // 275: mindclade.api.v1.MindcladeService.GetTenant:output_type -> mindclade.api.v1.TenantView
-	59,  // 276: mindclade.api.v1.MindcladeService.ListProjects:output_type -> mindclade.api.v1.ProjectList
-	58,  // 277: mindclade.api.v1.MindcladeService.CreateProject:output_type -> mindclade.api.v1.ProjectView
-	58,  // 278: mindclade.api.v1.MindcladeService.GetProject:output_type -> mindclade.api.v1.ProjectView
-	61,  // 279: mindclade.api.v1.MindcladeService.ListAuditRecords:output_type -> mindclade.api.v1.AuditRecordList
-	238, // [238:280] is the sub-list for method output_type
-	196, // [196:238] is the sub-list for method input_type
-	195, // [195:196] is the sub-list for extension type_name
-	194, // [194:195] is the sub-list for extension extendee
-	0,   // [0:194] is the sub-list for field type_name
+	2,   // 1: mindclade.api.v1.PublicMessageContract.string_enums:type_name -> mindclade.api.v1.PublicStringEnumContract
+	4,   // 2: mindclade.api.v1.ErrorDetail.resource:type_name -> mindclade.api.v1.ResourceRef
+	7,   // 3: mindclade.api.v1.PublicError.details:type_name -> mindclade.api.v1.ErrorDetail
+	4,   // 4: mindclade.api.v1.OperationResult.resource:type_name -> mindclade.api.v1.ResourceRef
+	40,  // 5: mindclade.api.v1.OperationResult.inference:type_name -> mindclade.api.v1.InferenceResultView
+	5,   // 6: mindclade.api.v1.OperationResult.manifest:type_name -> mindclade.api.v1.ArtifactRef
+	5,   // 7: mindclade.api.v1.OperationResult.artifacts:type_name -> mindclade.api.v1.ArtifactRef
+	102, // 8: mindclade.api.v1.Operation.create_time:type_name -> google.protobuf.Timestamp
+	102, // 9: mindclade.api.v1.Operation.update_time:type_name -> google.protobuf.Timestamp
+	4,   // 10: mindclade.api.v1.Operation.target:type_name -> mindclade.api.v1.ResourceRef
+	10,  // 11: mindclade.api.v1.Operation.result:type_name -> mindclade.api.v1.OperationResult
+	8,   // 12: mindclade.api.v1.Operation.error:type_name -> mindclade.api.v1.PublicError
+	11,  // 13: mindclade.api.v1.OperationEvent.operation:type_name -> mindclade.api.v1.Operation
+	102, // 14: mindclade.api.v1.OperationEvent.emitted_at:type_name -> google.protobuf.Timestamp
+	102, // 15: mindclade.api.v1.ArtifactView.create_time:type_name -> google.protobuf.Timestamp
+	5,   // 16: mindclade.api.v1.ArtifactView.ref:type_name -> mindclade.api.v1.ArtifactRef
+	86,  // 17: mindclade.api.v1.DatasetCreate.labels:type_name -> mindclade.api.v1.DatasetCreate.LabelsEntry
+	87,  // 18: mindclade.api.v1.DatasetCreate.annotations:type_name -> mindclade.api.v1.DatasetCreate.AnnotationsEntry
+	88,  // 19: mindclade.api.v1.DatasetUpdate.labels:type_name -> mindclade.api.v1.DatasetUpdate.LabelsEntry
+	89,  // 20: mindclade.api.v1.DatasetUpdate.annotations:type_name -> mindclade.api.v1.DatasetUpdate.AnnotationsEntry
+	102, // 21: mindclade.api.v1.DatasetView.create_time:type_name -> google.protobuf.Timestamp
+	102, // 22: mindclade.api.v1.DatasetView.update_time:type_name -> google.protobuf.Timestamp
+	90,  // 23: mindclade.api.v1.DatasetView.labels:type_name -> mindclade.api.v1.DatasetView.LabelsEntry
+	91,  // 24: mindclade.api.v1.DatasetView.annotations:type_name -> mindclade.api.v1.DatasetView.AnnotationsEntry
+	4,   // 25: mindclade.api.v1.DatasetView.current_release:type_name -> mindclade.api.v1.ResourceRef
+	102, // 26: mindclade.api.v1.DatasetView.delete_time:type_name -> google.protobuf.Timestamp
+	18,  // 27: mindclade.api.v1.DatasetList.datasets:type_name -> mindclade.api.v1.DatasetView
+	9,   // 28: mindclade.api.v1.DatasetList.page:type_name -> mindclade.api.v1.PageMetadata
+	5,   // 29: mindclade.api.v1.DatasetReleaseCreate.manifest:type_name -> mindclade.api.v1.ArtifactRef
+	6,   // 30: mindclade.api.v1.DatasetReleaseCreate.qualification_evidence:type_name -> mindclade.api.v1.EvidenceRef
+	4,   // 31: mindclade.api.v1.DatasetReleaseCreate.parent_release:type_name -> mindclade.api.v1.ResourceRef
+	4,   // 32: mindclade.api.v1.DatasetReleaseCreate.use_policy:type_name -> mindclade.api.v1.ResourceRef
+	102, // 33: mindclade.api.v1.DatasetReleaseView.create_time:type_name -> google.protobuf.Timestamp
+	4,   // 34: mindclade.api.v1.DatasetReleaseView.dataset:type_name -> mindclade.api.v1.ResourceRef
+	5,   // 35: mindclade.api.v1.DatasetReleaseView.manifest:type_name -> mindclade.api.v1.ArtifactRef
+	6,   // 36: mindclade.api.v1.DatasetReleaseView.qualification_evidence:type_name -> mindclade.api.v1.EvidenceRef
+	102, // 37: mindclade.api.v1.DatasetReleaseView.update_time:type_name -> google.protobuf.Timestamp
+	102, // 38: mindclade.api.v1.DatasetReleaseView.delete_time:type_name -> google.protobuf.Timestamp
+	21,  // 39: mindclade.api.v1.DatasetReleaseList.releases:type_name -> mindclade.api.v1.DatasetReleaseView
+	9,   // 40: mindclade.api.v1.DatasetReleaseList.page:type_name -> mindclade.api.v1.PageMetadata
+	92,  // 41: mindclade.api.v1.ModelCreate.labels:type_name -> mindclade.api.v1.ModelCreate.LabelsEntry
+	93,  // 42: mindclade.api.v1.ModelCreate.annotations:type_name -> mindclade.api.v1.ModelCreate.AnnotationsEntry
+	5,   // 43: mindclade.api.v1.ModelCreate.definition_manifest:type_name -> mindclade.api.v1.ArtifactRef
+	5,   // 44: mindclade.api.v1.ModelCreate.input_contract:type_name -> mindclade.api.v1.ArtifactRef
+	5,   // 45: mindclade.api.v1.ModelCreate.output_contract:type_name -> mindclade.api.v1.ArtifactRef
+	94,  // 46: mindclade.api.v1.ModelUpdate.labels:type_name -> mindclade.api.v1.ModelUpdate.LabelsEntry
+	95,  // 47: mindclade.api.v1.ModelUpdate.annotations:type_name -> mindclade.api.v1.ModelUpdate.AnnotationsEntry
+	102, // 48: mindclade.api.v1.ModelView.create_time:type_name -> google.protobuf.Timestamp
+	102, // 49: mindclade.api.v1.ModelView.update_time:type_name -> google.protobuf.Timestamp
+	96,  // 50: mindclade.api.v1.ModelView.labels:type_name -> mindclade.api.v1.ModelView.LabelsEntry
+	97,  // 51: mindclade.api.v1.ModelView.annotations:type_name -> mindclade.api.v1.ModelView.AnnotationsEntry
+	5,   // 52: mindclade.api.v1.ModelView.definition_manifest:type_name -> mindclade.api.v1.ArtifactRef
+	5,   // 53: mindclade.api.v1.ModelView.input_contract:type_name -> mindclade.api.v1.ArtifactRef
+	5,   // 54: mindclade.api.v1.ModelView.output_contract:type_name -> mindclade.api.v1.ArtifactRef
+	4,   // 55: mindclade.api.v1.ModelView.current_release:type_name -> mindclade.api.v1.ResourceRef
+	102, // 56: mindclade.api.v1.ModelView.delete_time:type_name -> google.protobuf.Timestamp
+	25,  // 57: mindclade.api.v1.ModelList.models:type_name -> mindclade.api.v1.ModelView
+	9,   // 58: mindclade.api.v1.ModelList.page:type_name -> mindclade.api.v1.PageMetadata
+	5,   // 59: mindclade.api.v1.ModelReleaseCreate.bundle_manifest:type_name -> mindclade.api.v1.ArtifactRef
+	5,   // 60: mindclade.api.v1.ModelReleaseCreate.model_manifest:type_name -> mindclade.api.v1.ArtifactRef
+	4,   // 61: mindclade.api.v1.ModelReleaseCreate.checkpoint:type_name -> mindclade.api.v1.ResourceRef
+	6,   // 62: mindclade.api.v1.ModelReleaseCreate.evaluation_evidence:type_name -> mindclade.api.v1.EvidenceRef
+	4,   // 63: mindclade.api.v1.ModelReleaseCreate.release_policy:type_name -> mindclade.api.v1.ResourceRef
+	102, // 64: mindclade.api.v1.ModelReleaseView.create_time:type_name -> google.protobuf.Timestamp
+	4,   // 65: mindclade.api.v1.ModelReleaseView.model:type_name -> mindclade.api.v1.ResourceRef
+	5,   // 66: mindclade.api.v1.ModelReleaseView.bundle_manifest:type_name -> mindclade.api.v1.ArtifactRef
+	5,   // 67: mindclade.api.v1.ModelReleaseView.model_manifest:type_name -> mindclade.api.v1.ArtifactRef
+	4,   // 68: mindclade.api.v1.ModelReleaseView.checkpoint:type_name -> mindclade.api.v1.ResourceRef
+	6,   // 69: mindclade.api.v1.ModelReleaseView.evaluation_evidence:type_name -> mindclade.api.v1.EvidenceRef
+	102, // 70: mindclade.api.v1.ModelReleaseView.update_time:type_name -> google.protobuf.Timestamp
+	102, // 71: mindclade.api.v1.ModelReleaseView.delete_time:type_name -> google.protobuf.Timestamp
+	28,  // 72: mindclade.api.v1.ModelReleaseList.releases:type_name -> mindclade.api.v1.ModelReleaseView
+	9,   // 73: mindclade.api.v1.ModelReleaseList.page:type_name -> mindclade.api.v1.PageMetadata
+	5,   // 74: mindclade.api.v1.TrainingRunCreate.training_recipe:type_name -> mindclade.api.v1.ArtifactRef
+	4,   // 75: mindclade.api.v1.TrainingRunCreate.dataset_release:type_name -> mindclade.api.v1.ResourceRef
+	4,   // 76: mindclade.api.v1.TrainingRunCreate.model_release:type_name -> mindclade.api.v1.ResourceRef
+	5,   // 77: mindclade.api.v1.TrainingRunCreate.hardware_topology:type_name -> mindclade.api.v1.ArtifactRef
+	4,   // 78: mindclade.api.v1.TrainingRunCreate.use_policy:type_name -> mindclade.api.v1.ResourceRef
+	98,  // 79: mindclade.api.v1.TrainingRunCreate.labels:type_name -> mindclade.api.v1.TrainingRunCreate.LabelsEntry
+	102, // 80: mindclade.api.v1.TrainingRunView.create_time:type_name -> google.protobuf.Timestamp
+	102, // 81: mindclade.api.v1.TrainingRunView.update_time:type_name -> google.protobuf.Timestamp
+	5,   // 82: mindclade.api.v1.TrainingRunView.training_recipe:type_name -> mindclade.api.v1.ArtifactRef
+	4,   // 83: mindclade.api.v1.TrainingRunView.dataset_release:type_name -> mindclade.api.v1.ResourceRef
+	4,   // 84: mindclade.api.v1.TrainingRunView.model_release:type_name -> mindclade.api.v1.ResourceRef
+	5,   // 85: mindclade.api.v1.TrainingRunView.hardware_topology:type_name -> mindclade.api.v1.ArtifactRef
+	4,   // 86: mindclade.api.v1.TrainingRunView.latest_checkpoint:type_name -> mindclade.api.v1.ResourceRef
+	5,   // 87: mindclade.api.v1.TrainingRunView.result_manifest:type_name -> mindclade.api.v1.ArtifactRef
+	8,   // 88: mindclade.api.v1.TrainingRunView.failure:type_name -> mindclade.api.v1.PublicError
+	102, // 89: mindclade.api.v1.TrainingRunView.delete_time:type_name -> google.protobuf.Timestamp
+	31,  // 90: mindclade.api.v1.TrainingRunList.training_runs:type_name -> mindclade.api.v1.TrainingRunView
+	9,   // 91: mindclade.api.v1.TrainingRunList.page:type_name -> mindclade.api.v1.PageMetadata
+	5,   // 92: mindclade.api.v1.EvaluationRunCreate.suite:type_name -> mindclade.api.v1.ArtifactRef
+	5,   // 93: mindclade.api.v1.EvaluationRunCreate.datasets:type_name -> mindclade.api.v1.ArtifactRef
+	5,   // 94: mindclade.api.v1.EvaluationRunCreate.snapshot:type_name -> mindclade.api.v1.ArtifactRef
+	4,   // 95: mindclade.api.v1.EvaluationRunCreate.model_release:type_name -> mindclade.api.v1.ResourceRef
+	5,   // 96: mindclade.api.v1.EvaluationRunCreate.inference_protocol:type_name -> mindclade.api.v1.ArtifactRef
+	102, // 97: mindclade.api.v1.EvaluationRunView.create_time:type_name -> google.protobuf.Timestamp
+	102, // 98: mindclade.api.v1.EvaluationRunView.update_time:type_name -> google.protobuf.Timestamp
+	5,   // 99: mindclade.api.v1.EvaluationRunView.suite:type_name -> mindclade.api.v1.ArtifactRef
+	5,   // 100: mindclade.api.v1.EvaluationRunView.datasets:type_name -> mindclade.api.v1.ArtifactRef
+	4,   // 101: mindclade.api.v1.EvaluationRunView.model_release:type_name -> mindclade.api.v1.ResourceRef
+	8,   // 102: mindclade.api.v1.EvaluationRunView.failure:type_name -> mindclade.api.v1.PublicError
+	102, // 103: mindclade.api.v1.EvaluationRunView.delete_time:type_name -> google.protobuf.Timestamp
+	34,  // 104: mindclade.api.v1.EvaluationRunList.evaluation_runs:type_name -> mindclade.api.v1.EvaluationRunView
+	9,   // 105: mindclade.api.v1.EvaluationRunList.page:type_name -> mindclade.api.v1.PageMetadata
+	4,   // 106: mindclade.api.v1.EvaluationResultView.run:type_name -> mindclade.api.v1.ResourceRef
+	5,   // 107: mindclade.api.v1.EvaluationResultView.report:type_name -> mindclade.api.v1.ArtifactRef
+	36,  // 108: mindclade.api.v1.EvaluationResultView.metrics:type_name -> mindclade.api.v1.MetricSummary
+	5,   // 109: mindclade.api.v1.EvaluationResultView.safety_evidence:type_name -> mindclade.api.v1.ArtifactRef
+	5,   // 110: mindclade.api.v1.EvaluationResultView.statistical_evidence:type_name -> mindclade.api.v1.ArtifactRef
+	4,   // 111: mindclade.api.v1.InferenceSubmission.model:type_name -> mindclade.api.v1.ResourceRef
+	5,   // 112: mindclade.api.v1.InferenceSubmission.resolved_model_bundle:type_name -> mindclade.api.v1.ArtifactRef
+	5,   // 113: mindclade.api.v1.InferenceSubmission.input:type_name -> mindclade.api.v1.ArtifactRef
+	5,   // 114: mindclade.api.v1.InferenceSubmission.sampling_policy:type_name -> mindclade.api.v1.ArtifactRef
+	38,  // 115: mindclade.api.v1.InferenceSubmission.output:type_name -> mindclade.api.v1.InferenceOutput
+	4,   // 116: mindclade.api.v1.InferenceResultView.request:type_name -> mindclade.api.v1.ResourceRef
+	4,   // 117: mindclade.api.v1.InferenceResultView.operation:type_name -> mindclade.api.v1.ResourceRef
+	5,   // 118: mindclade.api.v1.InferenceResultView.result_manifest:type_name -> mindclade.api.v1.ArtifactRef
+	5,   // 119: mindclade.api.v1.InferenceResultView.outputs:type_name -> mindclade.api.v1.ArtifactRef
+	5,   // 120: mindclade.api.v1.AgentDefinitionCreate.definition:type_name -> mindclade.api.v1.ArtifactRef
+	4,   // 121: mindclade.api.v1.AgentDefinitionCreate.workflow_definition:type_name -> mindclade.api.v1.ResourceRef
+	5,   // 122: mindclade.api.v1.AgentDefinitionCreate.input_schema:type_name -> mindclade.api.v1.ArtifactRef
+	5,   // 123: mindclade.api.v1.AgentDefinitionCreate.output_schema:type_name -> mindclade.api.v1.ArtifactRef
+	41,  // 124: mindclade.api.v1.AgentDefinitionCreate.budget:type_name -> mindclade.api.v1.AgentBudget
+	102, // 125: mindclade.api.v1.AgentDefinitionView.create_time:type_name -> google.protobuf.Timestamp
+	102, // 126: mindclade.api.v1.AgentDefinitionView.update_time:type_name -> google.protobuf.Timestamp
+	5,   // 127: mindclade.api.v1.AgentDefinitionView.definition:type_name -> mindclade.api.v1.ArtifactRef
+	4,   // 128: mindclade.api.v1.AgentDefinitionView.workflow_definition:type_name -> mindclade.api.v1.ResourceRef
+	5,   // 129: mindclade.api.v1.AgentDefinitionView.input_schema:type_name -> mindclade.api.v1.ArtifactRef
+	5,   // 130: mindclade.api.v1.AgentDefinitionView.output_schema:type_name -> mindclade.api.v1.ArtifactRef
+	41,  // 131: mindclade.api.v1.AgentDefinitionView.budget:type_name -> mindclade.api.v1.AgentBudget
+	102, // 132: mindclade.api.v1.AgentDefinitionView.delete_time:type_name -> google.protobuf.Timestamp
+	43,  // 133: mindclade.api.v1.AgentDefinitionList.agent_definitions:type_name -> mindclade.api.v1.AgentDefinitionView
+	9,   // 134: mindclade.api.v1.AgentDefinitionList.page:type_name -> mindclade.api.v1.PageMetadata
+	4,   // 135: mindclade.api.v1.AgentRunCreate.definition:type_name -> mindclade.api.v1.ResourceRef
+	5,   // 136: mindclade.api.v1.AgentRunCreate.input:type_name -> mindclade.api.v1.ArtifactRef
+	5,   // 137: mindclade.api.v1.AgentRunCreate.model_provider_manifest:type_name -> mindclade.api.v1.ArtifactRef
+	102, // 138: mindclade.api.v1.AgentRunView.create_time:type_name -> google.protobuf.Timestamp
+	102, // 139: mindclade.api.v1.AgentRunView.update_time:type_name -> google.protobuf.Timestamp
+	4,   // 140: mindclade.api.v1.AgentRunView.definition:type_name -> mindclade.api.v1.ResourceRef
+	5,   // 141: mindclade.api.v1.AgentRunView.input:type_name -> mindclade.api.v1.ArtifactRef
+	5,   // 142: mindclade.api.v1.AgentRunView.run_manifest:type_name -> mindclade.api.v1.ArtifactRef
+	5,   // 143: mindclade.api.v1.AgentRunView.output:type_name -> mindclade.api.v1.ArtifactRef
+	8,   // 144: mindclade.api.v1.AgentRunView.failure:type_name -> mindclade.api.v1.PublicError
+	102, // 145: mindclade.api.v1.AgentRunView.delete_time:type_name -> google.protobuf.Timestamp
+	46,  // 146: mindclade.api.v1.AgentRunList.agent_runs:type_name -> mindclade.api.v1.AgentRunView
+	9,   // 147: mindclade.api.v1.AgentRunList.page:type_name -> mindclade.api.v1.PageMetadata
+	5,   // 148: mindclade.api.v1.WorkflowDefinitionCreate.definition:type_name -> mindclade.api.v1.ArtifactRef
+	5,   // 149: mindclade.api.v1.WorkflowDefinitionCreate.input_schema:type_name -> mindclade.api.v1.ArtifactRef
+	5,   // 150: mindclade.api.v1.WorkflowDefinitionCreate.output_schema:type_name -> mindclade.api.v1.ArtifactRef
+	102, // 151: mindclade.api.v1.WorkflowDefinitionView.create_time:type_name -> google.protobuf.Timestamp
+	102, // 152: mindclade.api.v1.WorkflowDefinitionView.update_time:type_name -> google.protobuf.Timestamp
+	5,   // 153: mindclade.api.v1.WorkflowDefinitionView.definition:type_name -> mindclade.api.v1.ArtifactRef
+	5,   // 154: mindclade.api.v1.WorkflowDefinitionView.input_schema:type_name -> mindclade.api.v1.ArtifactRef
+	5,   // 155: mindclade.api.v1.WorkflowDefinitionView.output_schema:type_name -> mindclade.api.v1.ArtifactRef
+	102, // 156: mindclade.api.v1.WorkflowDefinitionView.delete_time:type_name -> google.protobuf.Timestamp
+	49,  // 157: mindclade.api.v1.WorkflowDefinitionList.workflow_definitions:type_name -> mindclade.api.v1.WorkflowDefinitionView
+	9,   // 158: mindclade.api.v1.WorkflowDefinitionList.page:type_name -> mindclade.api.v1.PageMetadata
+	4,   // 159: mindclade.api.v1.WorkflowRunCreate.definition:type_name -> mindclade.api.v1.ResourceRef
+	4,   // 160: mindclade.api.v1.WorkflowRunCreate.agent_run:type_name -> mindclade.api.v1.ResourceRef
+	5,   // 161: mindclade.api.v1.WorkflowRunCreate.input:type_name -> mindclade.api.v1.ArtifactRef
+	102, // 162: mindclade.api.v1.WorkflowRunView.create_time:type_name -> google.protobuf.Timestamp
+	102, // 163: mindclade.api.v1.WorkflowRunView.update_time:type_name -> google.protobuf.Timestamp
+	4,   // 164: mindclade.api.v1.WorkflowRunView.definition:type_name -> mindclade.api.v1.ResourceRef
+	5,   // 165: mindclade.api.v1.WorkflowRunView.input:type_name -> mindclade.api.v1.ArtifactRef
+	5,   // 166: mindclade.api.v1.WorkflowRunView.output:type_name -> mindclade.api.v1.ArtifactRef
+	5,   // 167: mindclade.api.v1.WorkflowRunView.replay_state:type_name -> mindclade.api.v1.ArtifactRef
+	8,   // 168: mindclade.api.v1.WorkflowRunView.failure:type_name -> mindclade.api.v1.PublicError
+	102, // 169: mindclade.api.v1.WorkflowRunView.delete_time:type_name -> google.protobuf.Timestamp
+	52,  // 170: mindclade.api.v1.WorkflowRunList.workflow_runs:type_name -> mindclade.api.v1.WorkflowRunView
+	9,   // 171: mindclade.api.v1.WorkflowRunList.page:type_name -> mindclade.api.v1.PageMetadata
+	102, // 172: mindclade.api.v1.ApprovalRequestView.create_time:type_name -> google.protobuf.Timestamp
+	102, // 173: mindclade.api.v1.ApprovalRequestView.update_time:type_name -> google.protobuf.Timestamp
+	102, // 174: mindclade.api.v1.ApprovalRequestView.expire_time:type_name -> google.protobuf.Timestamp
+	102, // 175: mindclade.api.v1.ApprovalRequestView.delete_time:type_name -> google.protobuf.Timestamp
+	54,  // 176: mindclade.api.v1.ApprovalRequestList.approvals:type_name -> mindclade.api.v1.ApprovalRequestView
+	9,   // 177: mindclade.api.v1.ApprovalRequestList.page:type_name -> mindclade.api.v1.PageMetadata
+	4,   // 178: mindclade.api.v1.ApprovalReceiptView.request:type_name -> mindclade.api.v1.ResourceRef
+	102, // 179: mindclade.api.v1.ApprovalReceiptView.create_time:type_name -> google.protobuf.Timestamp
+	102, // 180: mindclade.api.v1.TenantView.create_time:type_name -> google.protobuf.Timestamp
+	102, // 181: mindclade.api.v1.TenantView.update_time:type_name -> google.protobuf.Timestamp
+	99,  // 182: mindclade.api.v1.TenantView.labels:type_name -> mindclade.api.v1.TenantView.LabelsEntry
+	102, // 183: mindclade.api.v1.TenantView.delete_time:type_name -> google.protobuf.Timestamp
+	100, // 184: mindclade.api.v1.ProjectCreate.labels:type_name -> mindclade.api.v1.ProjectCreate.LabelsEntry
+	102, // 185: mindclade.api.v1.ProjectView.create_time:type_name -> google.protobuf.Timestamp
+	102, // 186: mindclade.api.v1.ProjectView.update_time:type_name -> google.protobuf.Timestamp
+	101, // 187: mindclade.api.v1.ProjectView.labels:type_name -> mindclade.api.v1.ProjectView.LabelsEntry
+	102, // 188: mindclade.api.v1.ProjectView.delete_time:type_name -> google.protobuf.Timestamp
+	60,  // 189: mindclade.api.v1.ProjectList.projects:type_name -> mindclade.api.v1.ProjectView
+	9,   // 190: mindclade.api.v1.ProjectList.page:type_name -> mindclade.api.v1.PageMetadata
+	102, // 191: mindclade.api.v1.AuditRecordView.event_time:type_name -> google.protobuf.Timestamp
+	4,   // 192: mindclade.api.v1.AuditRecordView.resource:type_name -> mindclade.api.v1.ResourceRef
+	62,  // 193: mindclade.api.v1.AuditRecordList.records:type_name -> mindclade.api.v1.AuditRecordView
+	9,   // 194: mindclade.api.v1.AuditRecordList.page:type_name -> mindclade.api.v1.PageMetadata
+	39,  // 195: mindclade.api.v1.SubmitInferenceRequest.submission:type_name -> mindclade.api.v1.InferenceSubmission
+	13,  // 196: mindclade.api.v1.CancelOperationRequest.cancellation:type_name -> mindclade.api.v1.CancellationRequest
+	16,  // 197: mindclade.api.v1.CreateDatasetRequest.dataset:type_name -> mindclade.api.v1.DatasetCreate
+	17,  // 198: mindclade.api.v1.UpdateDatasetRequest.dataset:type_name -> mindclade.api.v1.DatasetUpdate
+	20,  // 199: mindclade.api.v1.CreateDatasetReleaseRequest.release:type_name -> mindclade.api.v1.DatasetReleaseCreate
+	23,  // 200: mindclade.api.v1.CreateModelRequest.model:type_name -> mindclade.api.v1.ModelCreate
+	24,  // 201: mindclade.api.v1.UpdateModelRequest.model:type_name -> mindclade.api.v1.ModelUpdate
+	27,  // 202: mindclade.api.v1.CreateModelReleaseRequest.release:type_name -> mindclade.api.v1.ModelReleaseCreate
+	30,  // 203: mindclade.api.v1.CreateTrainingRunRequest.training_run:type_name -> mindclade.api.v1.TrainingRunCreate
+	33,  // 204: mindclade.api.v1.CreateEvaluationRunRequest.evaluation_run:type_name -> mindclade.api.v1.EvaluationRunCreate
+	42,  // 205: mindclade.api.v1.CreateAgentDefinitionRequest.agent_definition:type_name -> mindclade.api.v1.AgentDefinitionCreate
+	45,  // 206: mindclade.api.v1.CreateAgentRunRequest.agent_run:type_name -> mindclade.api.v1.AgentRunCreate
+	48,  // 207: mindclade.api.v1.CreateWorkflowDefinitionRequest.workflow_definition:type_name -> mindclade.api.v1.WorkflowDefinitionCreate
+	51,  // 208: mindclade.api.v1.CreateWorkflowRunRequest.workflow_run:type_name -> mindclade.api.v1.WorkflowRunCreate
+	56,  // 209: mindclade.api.v1.DecideApprovalRequest.approval:type_name -> mindclade.api.v1.ApprovalDecision
+	59,  // 210: mindclade.api.v1.CreateProjectRequest.project:type_name -> mindclade.api.v1.ProjectCreate
+	103, // 211: mindclade.api.v1.public_http:extendee -> google.protobuf.MethodOptions
+	104, // 212: mindclade.api.v1.public_message:extendee -> google.protobuf.MessageOptions
+	1,   // 213: mindclade.api.v1.public_http:type_name -> mindclade.api.v1.PublicHttpContract
+	3,   // 214: mindclade.api.v1.public_message:type_name -> mindclade.api.v1.PublicMessageContract
+	64,  // 215: mindclade.api.v1.MindcladeService.GetOperation:input_type -> mindclade.api.v1.GetResourceRequest
+	68,  // 216: mindclade.api.v1.MindcladeService.CancelOperation:input_type -> mindclade.api.v1.CancelOperationRequest
+	70,  // 217: mindclade.api.v1.MindcladeService.WatchOperation:input_type -> mindclade.api.v1.WatchOperationRequest
+	65,  // 218: mindclade.api.v1.MindcladeService.ListTrainingRuns:input_type -> mindclade.api.v1.ListResourcesRequest
+	77,  // 219: mindclade.api.v1.MindcladeService.CreateTrainingRun:input_type -> mindclade.api.v1.CreateTrainingRunRequest
+	64,  // 220: mindclade.api.v1.MindcladeService.GetTrainingRun:input_type -> mindclade.api.v1.GetResourceRequest
+	11,  // 221: mindclade.api.v1.MindcladeService.GetOperation:output_type -> mindclade.api.v1.Operation
+	11,  // 222: mindclade.api.v1.MindcladeService.CancelOperation:output_type -> mindclade.api.v1.Operation
+	12,  // 223: mindclade.api.v1.MindcladeService.WatchOperation:output_type -> mindclade.api.v1.OperationEvent
+	32,  // 224: mindclade.api.v1.MindcladeService.ListTrainingRuns:output_type -> mindclade.api.v1.TrainingRunList
+	11,  // 225: mindclade.api.v1.MindcladeService.CreateTrainingRun:output_type -> mindclade.api.v1.Operation
+	31,  // 226: mindclade.api.v1.MindcladeService.GetTrainingRun:output_type -> mindclade.api.v1.TrainingRunView
+	221, // [221:227] is the sub-list for method output_type
+	215, // [215:221] is the sub-list for method input_type
+	213, // [213:215] is the sub-list for extension type_name
+	211, // [211:213] is the sub-list for extension extendee
+	0,   // [0:211] is the sub-list for field type_name
 }
 
 func init() { file_proto_mindclade_api_v1_mindclade_service_proto_init() }
@@ -7832,18 +8197,17 @@ func file_proto_mindclade_api_v1_mindclade_service_proto_init() {
 	if File_proto_mindclade_api_v1_mindclade_service_proto != nil {
 		return
 	}
-	file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[14].OneofWrappers = []any{}
-	file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[21].OneofWrappers = []any{}
-	file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[33].OneofWrappers = []any{}
-	file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[65].OneofWrappers = []any{}
+	file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[16].OneofWrappers = []any{}
+	file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[23].OneofWrappers = []any{}
+	file_proto_mindclade_api_v1_mindclade_service_proto_msgTypes[35].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_mindclade_api_v1_mindclade_service_proto_rawDesc), len(file_proto_mindclade_api_v1_mindclade_service_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   98,
-			NumExtensions: 1,
+			NumMessages:   101,
+			NumExtensions: 2,
 			NumServices:   1,
 		},
 		GoTypes:           file_proto_mindclade_api_v1_mindclade_service_proto_goTypes,

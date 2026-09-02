@@ -19,7 +19,7 @@ from typing import ClassVar as _ClassVar, Optional as _Optional, Union as _Union
 DESCRIPTOR: _descriptor.FileDescriptor
 
 class EvaluateAuthorizationRequest(_message.Message):
-    __slots__ = ("tenant_id", "project_id", "principal_ref", "action", "resource", "intent_digest", "policy_snapshots", "deadline")
+    __slots__ = ("tenant_id", "project_id", "principal_ref", "action", "resource", "intent_digest", "policy_snapshots", "deadline", "context")
     TENANT_ID_FIELD_NUMBER: _ClassVar[int]
     PROJECT_ID_FIELD_NUMBER: _ClassVar[int]
     PRINCIPAL_REF_FIELD_NUMBER: _ClassVar[int]
@@ -28,6 +28,7 @@ class EvaluateAuthorizationRequest(_message.Message):
     INTENT_DIGEST_FIELD_NUMBER: _ClassVar[int]
     POLICY_SNAPSHOTS_FIELD_NUMBER: _ClassVar[int]
     DEADLINE_FIELD_NUMBER: _ClassVar[int]
+    CONTEXT_FIELD_NUMBER: _ClassVar[int]
     tenant_id: str
     project_id: str
     principal_ref: str
@@ -36,7 +37,8 @@ class EvaluateAuthorizationRequest(_message.Message):
     intent_digest: str
     policy_snapshots: _containers.RepeatedCompositeFieldContainer[_policy_reference_pb2.PolicyReference]
     deadline: _timestamp_pb2.Timestamp
-    def __init__(self, tenant_id: _Optional[str] = ..., project_id: _Optional[str] = ..., principal_ref: _Optional[str] = ..., action: _Optional[str] = ..., resource: _Optional[_Union[_resource_reference_pb2.ResourceRef, _Mapping]] = ..., intent_digest: _Optional[str] = ..., policy_snapshots: _Optional[_Iterable[_Union[_policy_reference_pb2.PolicyReference, _Mapping]]] = ..., deadline: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ...) -> None: ...
+    context: _command_context_pb2.CommandContext
+    def __init__(self, tenant_id: _Optional[str] = ..., project_id: _Optional[str] = ..., principal_ref: _Optional[str] = ..., action: _Optional[str] = ..., resource: _Optional[_Union[_resource_reference_pb2.ResourceRef, _Mapping]] = ..., intent_digest: _Optional[str] = ..., policy_snapshots: _Optional[_Iterable[_Union[_policy_reference_pb2.PolicyReference, _Mapping]]] = ..., deadline: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., context: _Optional[_Union[_command_context_pb2.CommandContext, _Mapping]] = ...) -> None: ...
 
 class EvaluateAuthorizationResponse(_message.Message):
     __slots__ = ("decision",)

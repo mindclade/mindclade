@@ -27,81 +27,82 @@ from google.protobuf import timestamp_pb2 as google_dot_protobuf_dot_timestamp__
 from mindclade.common.v1 import command_context_pb2 as proto_dot_mindclade_dot_common_dot_v1_dot_command__context__pb2
 from mindclade.common.v1 import pagination_pb2 as proto_dot_mindclade_dot_common_dot_v1_dot_pagination__pb2
 from mindclade.job.v1 import operation_pb2 as proto_dot_mindclade_dot_job_dot_v1_dot_operation__pb2
+from mindclade.job.v1 import lease_fencing_pb2 as proto_dot_mindclade_dot_job_dot_v1_dot_lease__fencing__pb2
 from mindclade.workflow.v1 import approval_pb2 as proto_dot_mindclade_dot_workflow_dot_v1_dot_approval__pb2
 from mindclade.workflow.v1 import workflow_definition_pb2 as proto_dot_mindclade_dot_workflow_dot_v1_dot_workflow__definition__pb2
 from mindclade.workflow.v1 import workflow_run_pb2 as proto_dot_mindclade_dot_workflow_dot_v1_dot_workflow__run__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n;proto/mindclade/internal/workflow/v1/workflow_service.proto\x12\x1emindclade.internal.workflow.v1\x1a google/protobuf/field_mask.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a/proto/mindclade/common/v1/command_context.proto\x1a*proto/mindclade/common/v1/pagination.proto\x1a&proto/mindclade/job/v1/operation.proto\x1a*proto/mindclade/workflow/v1/approval.proto\x1a\x35proto/mindclade/workflow/v1/workflow_definition.proto\x1a.proto/mindclade/workflow/v1/workflow_run.proto\"\x8a\x02\n\x1f\x43reateWorkflowDefinitionRequest\x12=\n\x07\x63ontext\x18\x01 \x01(\x0b\x32#.mindclade.common.v1.CommandContextR\x07\x63ontext\x12\x16\n\x06parent\x18\x02 \x01(\tR\x06parent\x12\x34\n\x16workflow_definition_id\x18\x03 \x01(\tR\x14workflowDefinitionId\x12Z\n\x13workflow_definition\x18\x04 \x01(\x0b\x32).mindclade.workflow.v1.WorkflowDefinitionR\x12workflowDefinition\"]\n CreateWorkflowDefinitionResponse\x12\x39\n\toperation\x18\x01 \x01(\x0b\x32\x1b.mindclade.job.v1.OperationR\toperation\"\x8d\x02\n\x1fUpdateWorkflowDefinitionRequest\x12=\n\x07\x63ontext\x18\x01 \x01(\x0b\x32#.mindclade.common.v1.CommandContextR\x07\x63ontext\x12Z\n\x13workflow_definition\x18\x02 \x01(\x0b\x32).mindclade.workflow.v1.WorkflowDefinitionR\x12workflowDefinition\x12;\n\x0bupdate_mask\x18\x03 \x01(\x0b\x32\x1a.google.protobuf.FieldMaskR\nupdateMask\x12\x12\n\x04\x65tag\x18\x04 \x01(\tR\x04\x65tag\"]\n UpdateWorkflowDefinitionResponse\x12\x39\n\toperation\x18\x01 \x01(\x0b\x32\x1b.mindclade.job.v1.OperationR\toperation\"V\n\x1cGetWorkflowDefinitionRequest\x12\x12\n\x04name\x18\x01 \x01(\tR\x04name\x12\"\n\rif_none_match\x18\x02 \x01(\tR\x0bifNoneMatch\"{\n\x1dGetWorkflowDefinitionResponse\x12Z\n\x13workflow_definition\x18\x01 \x01(\x0b\x32).mindclade.workflow.v1.WorkflowDefinitionR\x12workflowDefinition\"\xa1\x01\n\x1eListWorkflowDefinitionsRequest\x12\x16\n\x06parent\x18\x01 \x01(\tR\x06parent\x12\x34\n\x04page\x18\x02 \x01(\x0b\x32 .mindclade.common.v1.PageRequestR\x04page\x12\x16\n\x06\x66ilter\x18\x03 \x01(\tR\x06\x66ilter\x12\x19\n\x08order_by\x18\x04 \x01(\tR\x07orderBy\"\xef\x01\n\x1fListWorkflowDefinitionsResponse\x12\\\n\x14workflow_definitions\x18\x01 \x03(\x0b\x32).mindclade.workflow.v1.WorkflowDefinitionR\x13workflowDefinitions\x12\x35\n\x04page\x18\x02 \x01(\x0b\x32!.mindclade.common.v1.PageResponseR\x04page\x12\x37\n\tread_time\x18\x03 \x01(\x0b\x32\x1a.google.protobuf.TimestampR\x08readTime\"\xdf\x01\n\x17StartWorkflowRunRequest\x12=\n\x07\x63ontext\x18\x01 \x01(\x0b\x32#.mindclade.common.v1.CommandContextR\x07\x63ontext\x12\x16\n\x06parent\x18\x02 \x01(\tR\x06parent\x12&\n\x0fworkflow_run_id\x18\x03 \x01(\tR\rworkflowRunId\x12\x45\n\x0cworkflow_run\x18\x04 \x01(\x0b\x32\".mindclade.workflow.v1.WorkflowRunR\x0bworkflowRun\"U\n\x18StartWorkflowRunResponse\x12\x39\n\toperation\x18\x01 \x01(\x0b\x32\x1b.mindclade.job.v1.OperationR\toperation\"O\n\x15GetWorkflowRunRequest\x12\x12\n\x04name\x18\x01 \x01(\tR\x04name\x12\"\n\rif_none_match\x18\x02 \x01(\tR\x0bifNoneMatch\"_\n\x16GetWorkflowRunResponse\x12\x45\n\x0cworkflow_run\x18\x01 \x01(\x0b\x32\".mindclade.workflow.v1.WorkflowRunR\x0bworkflowRun\"\x9a\x01\n\x17ListWorkflowRunsRequest\x12\x16\n\x06parent\x18\x01 \x01(\tR\x06parent\x12\x34\n\x04page\x18\x02 \x01(\x0b\x32 .mindclade.common.v1.PageRequestR\x04page\x12\x16\n\x06\x66ilter\x18\x03 \x01(\tR\x06\x66ilter\x12\x19\n\x08order_by\x18\x04 \x01(\tR\x07orderBy\"\xd3\x01\n\x18ListWorkflowRunsResponse\x12G\n\rworkflow_runs\x18\x01 \x03(\x0b\x32\".mindclade.workflow.v1.WorkflowRunR\x0cworkflowRuns\x12\x35\n\x04page\x18\x02 \x01(\x0b\x32!.mindclade.common.v1.PageResponseR\x04page\x12\x37\n\tread_time\x18\x03 \x01(\x0b\x32\x1a.google.protobuf.TimestampR\x08readTime\"\x99\x01\n\x18\x43\x61ncelWorkflowRunRequest\x12=\n\x07\x63ontext\x18\x01 \x01(\x0b\x32#.mindclade.common.v1.CommandContextR\x07\x63ontext\x12\x12\n\x04name\x18\x02 \x01(\tR\x04name\x12\x12\n\x04\x65tag\x18\x03 \x01(\tR\x04\x65tag\x12\x16\n\x06reason\x18\x04 \x01(\tR\x06reason\"V\n\x19\x43\x61ncelWorkflowRunResponse\x12\x39\n\toperation\x18\x01 \x01(\x0b\x32\x1b.mindclade.job.v1.OperationR\toperation\"\xbd\x02\n\x1f\x43ommitWorkflowTransitionRequest\x12=\n\x07\x63ontext\x18\x01 \x01(\x0b\x32#.mindclade.common.v1.CommandContextR\x07\x63ontext\x12\x45\n\x0cworkflow_run\x18\x02 \x01(\x0b\x32\".mindclade.workflow.v1.WorkflowRunR\x0bworkflowRun\x12@\n\x1c\x65xpected_transition_sequence\x18\x03 \x01(\x04R\x1a\x65xpectedTransitionSequence\x12\x1d\n\nattempt_id\x18\x04 \x01(\tR\tattemptId\x12\x1f\n\x0blease_epoch\x18\x05 \x01(\x04R\nleaseEpoch\x12\x12\n\x04\x65tag\x18\x06 \x01(\tR\x04\x65tag\"i\n CommitWorkflowTransitionResponse\x12\x45\n\x0cworkflow_run\x18\x01 \x01(\x0b\x32\".mindclade.workflow.v1.WorkflowRunR\x0bworkflowRun\"i\n\x17WatchWorkflowRunRequest\x12\x12\n\x04name\x18\x01 \x01(\tR\x04name\x12:\n\x19\x61\x66ter_transition_sequence\x18\x02 \x01(\x04R\x17\x61\x66terTransitionSequence\"a\n\x18WatchWorkflowRunResponse\x12\x45\n\x0cworkflow_run\x18\x01 \x01(\x0b\x32\".mindclade.workflow.v1.WorkflowRunR\x0bworkflowRun\"k\n\x16RequestApprovalRequest\x12Q\n\x10\x61pproval_request\x18\x01 \x01(\x0b\x32&.mindclade.workflow.v1.ApprovalRequestR\x0f\x61pprovalRequest\"l\n\x17RequestApprovalResponse\x12Q\n\x10\x61pproval_request\x18\x01 \x01(\x0b\x32&.mindclade.workflow.v1.ApprovalRequestR\x0f\x61pprovalRequest\"/\n\x19GetApprovalRequestRequest\x12\x12\n\x04name\x18\x01 \x01(\tR\x04name\"o\n\x1aGetApprovalRequestResponse\x12Q\n\x10\x61pproval_request\x18\x01 \x01(\x0b\x32&.mindclade.workflow.v1.ApprovalRequestR\x0f\x61pprovalRequest\"\x9e\x01\n\x1bListApprovalRequestsRequest\x12\x16\n\x06parent\x18\x01 \x01(\tR\x06parent\x12\x34\n\x04page\x18\x02 \x01(\x0b\x32 .mindclade.common.v1.PageRequestR\x04page\x12\x16\n\x06\x66ilter\x18\x03 \x01(\tR\x06\x66ilter\x12\x19\n\x08order_by\x18\x04 \x01(\tR\x07orderBy\"\xe3\x01\n\x1cListApprovalRequestsResponse\x12S\n\x11\x61pproval_requests\x18\x01 \x03(\x0b\x32&.mindclade.workflow.v1.ApprovalRequestR\x10\x61pprovalRequests\x12\x35\n\x04page\x18\x02 \x01(\x0b\x32!.mindclade.common.v1.PageResponseR\x04page\x12\x37\n\tread_time\x18\x03 \x01(\x0b\x32\x1a.google.protobuf.TimestampR\x08readTime\"\x8a\x02\n\x15\x44\x65\x63ideApprovalRequest\x12=\n\x07\x63ontext\x18\x01 \x01(\x0b\x32#.mindclade.common.v1.CommandContextR\x07\x63ontext\x12\x12\n\x04name\x18\x02 \x01(\tR\x04name\x12\x12\n\x04\x65tag\x18\x03 \x01(\tR\x04\x65tag\x12H\n\x08\x64\x65\x63ision\x18\x04 \x01(\x0e\x32,.mindclade.workflow.v1.ApprovalDecisionValueR\x08\x64\x65\x63ision\x12\x1f\n\x0breason_code\x18\x05 \x01(\tR\nreasonCode\x12\x1f\n\x0bsafe_reason\x18\x06 \x01(\tR\nsafeReason\"k\n\x16\x44\x65\x63ideApprovalResponse\x12Q\n\x10\x61pproval_receipt\x18\x01 \x01(\x0b\x32&.mindclade.workflow.v1.ApprovalReceiptR\x0f\x61pprovalReceipt\"\xba\x01\n\x16\x43onsumeApprovalRequest\x12=\n\x07\x63ontext\x18\x01 \x01(\x0b\x32#.mindclade.common.v1.CommandContextR\x07\x63ontext\x12!\n\x0creceipt_name\x18\x02 \x01(\tR\x0breceiptName\x12%\n\x0e\x62inding_digest\x18\x03 \x01(\tR\rbindingDigest\x12\x17\n\x07\x63\x61ll_id\x18\x04 \x01(\tR\x06\x63\x61llId\"l\n\x17\x43onsumeApprovalResponse\x12Q\n\x10\x61pproval_receipt\x18\x01 \x01(\x0b\x32&.mindclade.workflow.v1.ApprovalReceiptR\x0f\x61pprovalReceipt2\xcb\x0b\n\x0fWorkflowService\x12\x9d\x01\n\x18\x43reateWorkflowDefinition\x12?.mindclade.internal.workflow.v1.CreateWorkflowDefinitionRequest\x1a@.mindclade.internal.workflow.v1.CreateWorkflowDefinitionResponse\x12\x9d\x01\n\x18UpdateWorkflowDefinition\x12?.mindclade.internal.workflow.v1.UpdateWorkflowDefinitionRequest\x1a@.mindclade.internal.workflow.v1.UpdateWorkflowDefinitionResponse\x12\x94\x01\n\x15GetWorkflowDefinition\x12<.mindclade.internal.workflow.v1.GetWorkflowDefinitionRequest\x1a=.mindclade.internal.workflow.v1.GetWorkflowDefinitionResponse\x12\x9a\x01\n\x17ListWorkflowDefinitions\x12>.mindclade.internal.workflow.v1.ListWorkflowDefinitionsRequest\x1a?.mindclade.internal.workflow.v1.ListWorkflowDefinitionsResponse\x12\x85\x01\n\x10StartWorkflowRun\x12\x37.mindclade.internal.workflow.v1.StartWorkflowRunRequest\x1a\x38.mindclade.internal.workflow.v1.StartWorkflowRunResponse\x12\x7f\n\x0eGetWorkflowRun\x12\x35.mindclade.internal.workflow.v1.GetWorkflowRunRequest\x1a\x36.mindclade.internal.workflow.v1.GetWorkflowRunResponse\x12\x85\x01\n\x10ListWorkflowRuns\x12\x37.mindclade.internal.workflow.v1.ListWorkflowRunsRequest\x1a\x38.mindclade.internal.workflow.v1.ListWorkflowRunsResponse\x12\x88\x01\n\x11\x43\x61ncelWorkflowRun\x12\x38.mindclade.internal.workflow.v1.CancelWorkflowRunRequest\x1a\x39.mindclade.internal.workflow.v1.CancelWorkflowRunResponse\x12\x9d\x01\n\x18\x43ommitWorkflowTransition\x12?.mindclade.internal.workflow.v1.CommitWorkflowTransitionRequest\x1a@.mindclade.internal.workflow.v1.CommitWorkflowTransitionResponse\x12\x87\x01\n\x10WatchWorkflowRun\x12\x37.mindclade.internal.workflow.v1.WatchWorkflowRunRequest\x1a\x38.mindclade.internal.workflow.v1.WatchWorkflowRunResponse0\x01\x32\xbe\x05\n\x0f\x41pprovalService\x12\x82\x01\n\x0fRequestApproval\x12\x36.mindclade.internal.workflow.v1.RequestApprovalRequest\x1a\x37.mindclade.internal.workflow.v1.RequestApprovalResponse\x12\x8b\x01\n\x12GetApprovalRequest\x12\x39.mindclade.internal.workflow.v1.GetApprovalRequestRequest\x1a:.mindclade.internal.workflow.v1.GetApprovalRequestResponse\x12\x91\x01\n\x14ListApprovalRequests\x12;.mindclade.internal.workflow.v1.ListApprovalRequestsRequest\x1a<.mindclade.internal.workflow.v1.ListApprovalRequestsResponse\x12\x7f\n\x0e\x44\x65\x63ideApproval\x12\x35.mindclade.internal.workflow.v1.DecideApprovalRequest\x1a\x36.mindclade.internal.workflow.v1.DecideApprovalResponse\x12\x82\x01\n\x0f\x43onsumeApproval\x12\x36.mindclade.internal.workflow.v1.ConsumeApprovalRequest\x1a\x37.mindclade.internal.workflow.v1.ConsumeApprovalResponseB_Z]github.com/mindclade/mindclade/protocols/generated/go/internal/workflow/v1;internalworkflowv1b\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n;proto/mindclade/internal/workflow/v1/workflow_service.proto\x12\x1emindclade.internal.workflow.v1\x1a google/protobuf/field_mask.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a/proto/mindclade/common/v1/command_context.proto\x1a*proto/mindclade/common/v1/pagination.proto\x1a&proto/mindclade/job/v1/operation.proto\x1a*proto/mindclade/job/v1/lease_fencing.proto\x1a*proto/mindclade/workflow/v1/approval.proto\x1a\x35proto/mindclade/workflow/v1/workflow_definition.proto\x1a.proto/mindclade/workflow/v1/workflow_run.proto\"\x8a\x02\n\x1f\x43reateWorkflowDefinitionRequest\x12=\n\x07\x63ontext\x18\x01 \x01(\x0b\x32#.mindclade.common.v1.CommandContextR\x07\x63ontext\x12\x16\n\x06parent\x18\x02 \x01(\tR\x06parent\x12\x34\n\x16workflow_definition_id\x18\x03 \x01(\tR\x14workflowDefinitionId\x12Z\n\x13workflow_definition\x18\x04 \x01(\x0b\x32).mindclade.workflow.v1.WorkflowDefinitionR\x12workflowDefinition\"]\n CreateWorkflowDefinitionResponse\x12\x39\n\toperation\x18\x01 \x01(\x0b\x32\x1b.mindclade.job.v1.OperationR\toperation\"\x8d\x02\n\x1fUpdateWorkflowDefinitionRequest\x12=\n\x07\x63ontext\x18\x01 \x01(\x0b\x32#.mindclade.common.v1.CommandContextR\x07\x63ontext\x12Z\n\x13workflow_definition\x18\x02 \x01(\x0b\x32).mindclade.workflow.v1.WorkflowDefinitionR\x12workflowDefinition\x12;\n\x0bupdate_mask\x18\x03 \x01(\x0b\x32\x1a.google.protobuf.FieldMaskR\nupdateMask\x12\x12\n\x04\x65tag\x18\x04 \x01(\tR\x04\x65tag\"]\n UpdateWorkflowDefinitionResponse\x12\x39\n\toperation\x18\x01 \x01(\x0b\x32\x1b.mindclade.job.v1.OperationR\toperation\"V\n\x1cGetWorkflowDefinitionRequest\x12\x12\n\x04name\x18\x01 \x01(\tR\x04name\x12\"\n\rif_none_match\x18\x02 \x01(\tR\x0bifNoneMatch\"{\n\x1dGetWorkflowDefinitionResponse\x12Z\n\x13workflow_definition\x18\x01 \x01(\x0b\x32).mindclade.workflow.v1.WorkflowDefinitionR\x12workflowDefinition\"\xa1\x01\n\x1eListWorkflowDefinitionsRequest\x12\x16\n\x06parent\x18\x01 \x01(\tR\x06parent\x12\x34\n\x04page\x18\x02 \x01(\x0b\x32 .mindclade.common.v1.PageRequestR\x04page\x12\x16\n\x06\x66ilter\x18\x03 \x01(\tR\x06\x66ilter\x12\x19\n\x08order_by\x18\x04 \x01(\tR\x07orderBy\"\xef\x01\n\x1fListWorkflowDefinitionsResponse\x12\\\n\x14workflow_definitions\x18\x01 \x03(\x0b\x32).mindclade.workflow.v1.WorkflowDefinitionR\x13workflowDefinitions\x12\x35\n\x04page\x18\x02 \x01(\x0b\x32!.mindclade.common.v1.PageResponseR\x04page\x12\x37\n\tread_time\x18\x03 \x01(\x0b\x32\x1a.google.protobuf.TimestampR\x08readTime\"\xdf\x01\n\x17StartWorkflowRunRequest\x12=\n\x07\x63ontext\x18\x01 \x01(\x0b\x32#.mindclade.common.v1.CommandContextR\x07\x63ontext\x12\x16\n\x06parent\x18\x02 \x01(\tR\x06parent\x12&\n\x0fworkflow_run_id\x18\x03 \x01(\tR\rworkflowRunId\x12\x45\n\x0cworkflow_run\x18\x04 \x01(\x0b\x32\".mindclade.workflow.v1.WorkflowRunR\x0bworkflowRun\"U\n\x18StartWorkflowRunResponse\x12\x39\n\toperation\x18\x01 \x01(\x0b\x32\x1b.mindclade.job.v1.OperationR\toperation\"O\n\x15GetWorkflowRunRequest\x12\x12\n\x04name\x18\x01 \x01(\tR\x04name\x12\"\n\rif_none_match\x18\x02 \x01(\tR\x0bifNoneMatch\"_\n\x16GetWorkflowRunResponse\x12\x45\n\x0cworkflow_run\x18\x01 \x01(\x0b\x32\".mindclade.workflow.v1.WorkflowRunR\x0bworkflowRun\"\x9a\x01\n\x17ListWorkflowRunsRequest\x12\x16\n\x06parent\x18\x01 \x01(\tR\x06parent\x12\x34\n\x04page\x18\x02 \x01(\x0b\x32 .mindclade.common.v1.PageRequestR\x04page\x12\x16\n\x06\x66ilter\x18\x03 \x01(\tR\x06\x66ilter\x12\x19\n\x08order_by\x18\x04 \x01(\tR\x07orderBy\"\xd3\x01\n\x18ListWorkflowRunsResponse\x12G\n\rworkflow_runs\x18\x01 \x03(\x0b\x32\".mindclade.workflow.v1.WorkflowRunR\x0cworkflowRuns\x12\x35\n\x04page\x18\x02 \x01(\x0b\x32!.mindclade.common.v1.PageResponseR\x04page\x12\x37\n\tread_time\x18\x03 \x01(\x0b\x32\x1a.google.protobuf.TimestampR\x08readTime\"\x99\x01\n\x18\x43\x61ncelWorkflowRunRequest\x12=\n\x07\x63ontext\x18\x01 \x01(\x0b\x32#.mindclade.common.v1.CommandContextR\x07\x63ontext\x12\x12\n\x04name\x18\x02 \x01(\tR\x04name\x12\x12\n\x04\x65tag\x18\x03 \x01(\tR\x04\x65tag\x12\x16\n\x06reason\x18\x04 \x01(\tR\x06reason\"V\n\x19\x43\x61ncelWorkflowRunResponse\x12\x39\n\toperation\x18\x01 \x01(\x0b\x32\x1b.mindclade.job.v1.OperationR\toperation\"\xb7\x02\n\x1f\x43ommitWorkflowTransitionRequest\x12=\n\x07\x63ontext\x18\x01 \x01(\x0b\x32#.mindclade.common.v1.CommandContextR\x07\x63ontext\x12\x45\n\x0cworkflow_run\x18\x02 \x01(\x0b\x32\".mindclade.workflow.v1.WorkflowRunR\x0bworkflowRun\x12@\n\x1c\x65xpected_transition_sequence\x18\x03 \x01(\x04R\x1a\x65xpectedTransitionSequence\x12\x32\n\x05\x66\x65nce\x18\x04 \x01(\x0b\x32\x1c.mindclade.job.v1.LeaseFenceR\x05\x66\x65nce\x12\x12\n\x04\x65tag\x18\x06 \x01(\tR\x04\x65tagJ\x04\x08\x05\x10\x06\"i\n CommitWorkflowTransitionResponse\x12\x45\n\x0cworkflow_run\x18\x01 \x01(\x0b\x32\".mindclade.workflow.v1.WorkflowRunR\x0bworkflowRun\"i\n\x17WatchWorkflowRunRequest\x12\x12\n\x04name\x18\x01 \x01(\tR\x04name\x12:\n\x19\x61\x66ter_transition_sequence\x18\x02 \x01(\x04R\x17\x61\x66terTransitionSequence\"a\n\x18WatchWorkflowRunResponse\x12\x45\n\x0cworkflow_run\x18\x01 \x01(\x0b\x32\".mindclade.workflow.v1.WorkflowRunR\x0bworkflowRun\"k\n\x16RequestApprovalRequest\x12Q\n\x10\x61pproval_request\x18\x01 \x01(\x0b\x32&.mindclade.workflow.v1.ApprovalRequestR\x0f\x61pprovalRequest\"l\n\x17RequestApprovalResponse\x12Q\n\x10\x61pproval_request\x18\x01 \x01(\x0b\x32&.mindclade.workflow.v1.ApprovalRequestR\x0f\x61pprovalRequest\"/\n\x19GetApprovalRequestRequest\x12\x12\n\x04name\x18\x01 \x01(\tR\x04name\"o\n\x1aGetApprovalRequestResponse\x12Q\n\x10\x61pproval_request\x18\x01 \x01(\x0b\x32&.mindclade.workflow.v1.ApprovalRequestR\x0f\x61pprovalRequest\"\x9e\x01\n\x1bListApprovalRequestsRequest\x12\x16\n\x06parent\x18\x01 \x01(\tR\x06parent\x12\x34\n\x04page\x18\x02 \x01(\x0b\x32 .mindclade.common.v1.PageRequestR\x04page\x12\x16\n\x06\x66ilter\x18\x03 \x01(\tR\x06\x66ilter\x12\x19\n\x08order_by\x18\x04 \x01(\tR\x07orderBy\"\xe3\x01\n\x1cListApprovalRequestsResponse\x12S\n\x11\x61pproval_requests\x18\x01 \x03(\x0b\x32&.mindclade.workflow.v1.ApprovalRequestR\x10\x61pprovalRequests\x12\x35\n\x04page\x18\x02 \x01(\x0b\x32!.mindclade.common.v1.PageResponseR\x04page\x12\x37\n\tread_time\x18\x03 \x01(\x0b\x32\x1a.google.protobuf.TimestampR\x08readTime\"\x8a\x02\n\x15\x44\x65\x63ideApprovalRequest\x12=\n\x07\x63ontext\x18\x01 \x01(\x0b\x32#.mindclade.common.v1.CommandContextR\x07\x63ontext\x12\x12\n\x04name\x18\x02 \x01(\tR\x04name\x12\x12\n\x04\x65tag\x18\x03 \x01(\tR\x04\x65tag\x12H\n\x08\x64\x65\x63ision\x18\x04 \x01(\x0e\x32,.mindclade.workflow.v1.ApprovalDecisionValueR\x08\x64\x65\x63ision\x12\x1f\n\x0breason_code\x18\x05 \x01(\tR\nreasonCode\x12\x1f\n\x0bsafe_reason\x18\x06 \x01(\tR\nsafeReason\"k\n\x16\x44\x65\x63ideApprovalResponse\x12Q\n\x10\x61pproval_receipt\x18\x01 \x01(\x0b\x32&.mindclade.workflow.v1.ApprovalReceiptR\x0f\x61pprovalReceipt\"\xba\x01\n\x16\x43onsumeApprovalRequest\x12=\n\x07\x63ontext\x18\x01 \x01(\x0b\x32#.mindclade.common.v1.CommandContextR\x07\x63ontext\x12!\n\x0creceipt_name\x18\x02 \x01(\tR\x0breceiptName\x12%\n\x0e\x62inding_digest\x18\x03 \x01(\tR\rbindingDigest\x12\x17\n\x07\x63\x61ll_id\x18\x04 \x01(\tR\x06\x63\x61llId\"l\n\x17\x43onsumeApprovalResponse\x12Q\n\x10\x61pproval_receipt\x18\x01 \x01(\x0b\x32&.mindclade.workflow.v1.ApprovalReceiptR\x0f\x61pprovalReceipt2\xcb\x0b\n\x0fWorkflowService\x12\x9d\x01\n\x18\x43reateWorkflowDefinition\x12?.mindclade.internal.workflow.v1.CreateWorkflowDefinitionRequest\x1a@.mindclade.internal.workflow.v1.CreateWorkflowDefinitionResponse\x12\x9d\x01\n\x18UpdateWorkflowDefinition\x12?.mindclade.internal.workflow.v1.UpdateWorkflowDefinitionRequest\x1a@.mindclade.internal.workflow.v1.UpdateWorkflowDefinitionResponse\x12\x94\x01\n\x15GetWorkflowDefinition\x12<.mindclade.internal.workflow.v1.GetWorkflowDefinitionRequest\x1a=.mindclade.internal.workflow.v1.GetWorkflowDefinitionResponse\x12\x9a\x01\n\x17ListWorkflowDefinitions\x12>.mindclade.internal.workflow.v1.ListWorkflowDefinitionsRequest\x1a?.mindclade.internal.workflow.v1.ListWorkflowDefinitionsResponse\x12\x85\x01\n\x10StartWorkflowRun\x12\x37.mindclade.internal.workflow.v1.StartWorkflowRunRequest\x1a\x38.mindclade.internal.workflow.v1.StartWorkflowRunResponse\x12\x7f\n\x0eGetWorkflowRun\x12\x35.mindclade.internal.workflow.v1.GetWorkflowRunRequest\x1a\x36.mindclade.internal.workflow.v1.GetWorkflowRunResponse\x12\x85\x01\n\x10ListWorkflowRuns\x12\x37.mindclade.internal.workflow.v1.ListWorkflowRunsRequest\x1a\x38.mindclade.internal.workflow.v1.ListWorkflowRunsResponse\x12\x88\x01\n\x11\x43\x61ncelWorkflowRun\x12\x38.mindclade.internal.workflow.v1.CancelWorkflowRunRequest\x1a\x39.mindclade.internal.workflow.v1.CancelWorkflowRunResponse\x12\x9d\x01\n\x18\x43ommitWorkflowTransition\x12?.mindclade.internal.workflow.v1.CommitWorkflowTransitionRequest\x1a@.mindclade.internal.workflow.v1.CommitWorkflowTransitionResponse\x12\x87\x01\n\x10WatchWorkflowRun\x12\x37.mindclade.internal.workflow.v1.WatchWorkflowRunRequest\x1a\x38.mindclade.internal.workflow.v1.WatchWorkflowRunResponse0\x01\x32\xbe\x05\n\x0f\x41pprovalService\x12\x82\x01\n\x0fRequestApproval\x12\x36.mindclade.internal.workflow.v1.RequestApprovalRequest\x1a\x37.mindclade.internal.workflow.v1.RequestApprovalResponse\x12\x8b\x01\n\x12GetApprovalRequest\x12\x39.mindclade.internal.workflow.v1.GetApprovalRequestRequest\x1a:.mindclade.internal.workflow.v1.GetApprovalRequestResponse\x12\x91\x01\n\x14ListApprovalRequests\x12;.mindclade.internal.workflow.v1.ListApprovalRequestsRequest\x1a<.mindclade.internal.workflow.v1.ListApprovalRequestsResponse\x12\x7f\n\x0e\x44\x65\x63ideApproval\x12\x35.mindclade.internal.workflow.v1.DecideApprovalRequest\x1a\x36.mindclade.internal.workflow.v1.DecideApprovalResponse\x12\x82\x01\n\x0f\x43onsumeApproval\x12\x36.mindclade.internal.workflow.v1.ConsumeApprovalRequest\x1a\x37.mindclade.internal.workflow.v1.ConsumeApprovalResponseBbZ`github.com/mindclade/mindclade/protocols/generated/go/internalrpc/workflow/v1;internalworkflowv1b\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'mindclade.internal.workflow.v1.workflow_service_pb2', _globals)
 if not _descriptor._USE_C_DESCRIPTORS:
   _globals['DESCRIPTOR']._loaded_options = None
-  _globals['DESCRIPTOR']._serialized_options = b'Z]github.com/mindclade/mindclade/protocols/generated/go/internal/workflow/v1;internalworkflowv1'
-  _globals['_CREATEWORKFLOWDEFINITIONREQUEST']._serialized_start=443
-  _globals['_CREATEWORKFLOWDEFINITIONREQUEST']._serialized_end=709
-  _globals['_CREATEWORKFLOWDEFINITIONRESPONSE']._serialized_start=711
-  _globals['_CREATEWORKFLOWDEFINITIONRESPONSE']._serialized_end=804
-  _globals['_UPDATEWORKFLOWDEFINITIONREQUEST']._serialized_start=807
-  _globals['_UPDATEWORKFLOWDEFINITIONREQUEST']._serialized_end=1076
-  _globals['_UPDATEWORKFLOWDEFINITIONRESPONSE']._serialized_start=1078
-  _globals['_UPDATEWORKFLOWDEFINITIONRESPONSE']._serialized_end=1171
-  _globals['_GETWORKFLOWDEFINITIONREQUEST']._serialized_start=1173
-  _globals['_GETWORKFLOWDEFINITIONREQUEST']._serialized_end=1259
-  _globals['_GETWORKFLOWDEFINITIONRESPONSE']._serialized_start=1261
-  _globals['_GETWORKFLOWDEFINITIONRESPONSE']._serialized_end=1384
-  _globals['_LISTWORKFLOWDEFINITIONSREQUEST']._serialized_start=1387
-  _globals['_LISTWORKFLOWDEFINITIONSREQUEST']._serialized_end=1548
-  _globals['_LISTWORKFLOWDEFINITIONSRESPONSE']._serialized_start=1551
-  _globals['_LISTWORKFLOWDEFINITIONSRESPONSE']._serialized_end=1790
-  _globals['_STARTWORKFLOWRUNREQUEST']._serialized_start=1793
-  _globals['_STARTWORKFLOWRUNREQUEST']._serialized_end=2016
-  _globals['_STARTWORKFLOWRUNRESPONSE']._serialized_start=2018
-  _globals['_STARTWORKFLOWRUNRESPONSE']._serialized_end=2103
-  _globals['_GETWORKFLOWRUNREQUEST']._serialized_start=2105
-  _globals['_GETWORKFLOWRUNREQUEST']._serialized_end=2184
-  _globals['_GETWORKFLOWRUNRESPONSE']._serialized_start=2186
-  _globals['_GETWORKFLOWRUNRESPONSE']._serialized_end=2281
-  _globals['_LISTWORKFLOWRUNSREQUEST']._serialized_start=2284
-  _globals['_LISTWORKFLOWRUNSREQUEST']._serialized_end=2438
-  _globals['_LISTWORKFLOWRUNSRESPONSE']._serialized_start=2441
-  _globals['_LISTWORKFLOWRUNSRESPONSE']._serialized_end=2652
-  _globals['_CANCELWORKFLOWRUNREQUEST']._serialized_start=2655
-  _globals['_CANCELWORKFLOWRUNREQUEST']._serialized_end=2808
-  _globals['_CANCELWORKFLOWRUNRESPONSE']._serialized_start=2810
-  _globals['_CANCELWORKFLOWRUNRESPONSE']._serialized_end=2896
-  _globals['_COMMITWORKFLOWTRANSITIONREQUEST']._serialized_start=2899
-  _globals['_COMMITWORKFLOWTRANSITIONREQUEST']._serialized_end=3216
-  _globals['_COMMITWORKFLOWTRANSITIONRESPONSE']._serialized_start=3218
-  _globals['_COMMITWORKFLOWTRANSITIONRESPONSE']._serialized_end=3323
-  _globals['_WATCHWORKFLOWRUNREQUEST']._serialized_start=3325
-  _globals['_WATCHWORKFLOWRUNREQUEST']._serialized_end=3430
-  _globals['_WATCHWORKFLOWRUNRESPONSE']._serialized_start=3432
-  _globals['_WATCHWORKFLOWRUNRESPONSE']._serialized_end=3529
-  _globals['_REQUESTAPPROVALREQUEST']._serialized_start=3531
-  _globals['_REQUESTAPPROVALREQUEST']._serialized_end=3638
-  _globals['_REQUESTAPPROVALRESPONSE']._serialized_start=3640
-  _globals['_REQUESTAPPROVALRESPONSE']._serialized_end=3748
-  _globals['_GETAPPROVALREQUESTREQUEST']._serialized_start=3750
-  _globals['_GETAPPROVALREQUESTREQUEST']._serialized_end=3797
-  _globals['_GETAPPROVALREQUESTRESPONSE']._serialized_start=3799
-  _globals['_GETAPPROVALREQUESTRESPONSE']._serialized_end=3910
-  _globals['_LISTAPPROVALREQUESTSREQUEST']._serialized_start=3913
-  _globals['_LISTAPPROVALREQUESTSREQUEST']._serialized_end=4071
-  _globals['_LISTAPPROVALREQUESTSRESPONSE']._serialized_start=4074
-  _globals['_LISTAPPROVALREQUESTSRESPONSE']._serialized_end=4301
-  _globals['_DECIDEAPPROVALREQUEST']._serialized_start=4304
-  _globals['_DECIDEAPPROVALREQUEST']._serialized_end=4570
-  _globals['_DECIDEAPPROVALRESPONSE']._serialized_start=4572
-  _globals['_DECIDEAPPROVALRESPONSE']._serialized_end=4679
-  _globals['_CONSUMEAPPROVALREQUEST']._serialized_start=4682
-  _globals['_CONSUMEAPPROVALREQUEST']._serialized_end=4868
-  _globals['_CONSUMEAPPROVALRESPONSE']._serialized_start=4870
-  _globals['_CONSUMEAPPROVALRESPONSE']._serialized_end=4978
-  _globals['_WORKFLOWSERVICE']._serialized_start=4981
-  _globals['_WORKFLOWSERVICE']._serialized_end=6464
-  _globals['_APPROVALSERVICE']._serialized_start=6467
-  _globals['_APPROVALSERVICE']._serialized_end=7169
+  _globals['DESCRIPTOR']._serialized_options = b'Z`github.com/mindclade/mindclade/protocols/generated/go/internalrpc/workflow/v1;internalworkflowv1'
+  _globals['_CREATEWORKFLOWDEFINITIONREQUEST']._serialized_start=487
+  _globals['_CREATEWORKFLOWDEFINITIONREQUEST']._serialized_end=753
+  _globals['_CREATEWORKFLOWDEFINITIONRESPONSE']._serialized_start=755
+  _globals['_CREATEWORKFLOWDEFINITIONRESPONSE']._serialized_end=848
+  _globals['_UPDATEWORKFLOWDEFINITIONREQUEST']._serialized_start=851
+  _globals['_UPDATEWORKFLOWDEFINITIONREQUEST']._serialized_end=1120
+  _globals['_UPDATEWORKFLOWDEFINITIONRESPONSE']._serialized_start=1122
+  _globals['_UPDATEWORKFLOWDEFINITIONRESPONSE']._serialized_end=1215
+  _globals['_GETWORKFLOWDEFINITIONREQUEST']._serialized_start=1217
+  _globals['_GETWORKFLOWDEFINITIONREQUEST']._serialized_end=1303
+  _globals['_GETWORKFLOWDEFINITIONRESPONSE']._serialized_start=1305
+  _globals['_GETWORKFLOWDEFINITIONRESPONSE']._serialized_end=1428
+  _globals['_LISTWORKFLOWDEFINITIONSREQUEST']._serialized_start=1431
+  _globals['_LISTWORKFLOWDEFINITIONSREQUEST']._serialized_end=1592
+  _globals['_LISTWORKFLOWDEFINITIONSRESPONSE']._serialized_start=1595
+  _globals['_LISTWORKFLOWDEFINITIONSRESPONSE']._serialized_end=1834
+  _globals['_STARTWORKFLOWRUNREQUEST']._serialized_start=1837
+  _globals['_STARTWORKFLOWRUNREQUEST']._serialized_end=2060
+  _globals['_STARTWORKFLOWRUNRESPONSE']._serialized_start=2062
+  _globals['_STARTWORKFLOWRUNRESPONSE']._serialized_end=2147
+  _globals['_GETWORKFLOWRUNREQUEST']._serialized_start=2149
+  _globals['_GETWORKFLOWRUNREQUEST']._serialized_end=2228
+  _globals['_GETWORKFLOWRUNRESPONSE']._serialized_start=2230
+  _globals['_GETWORKFLOWRUNRESPONSE']._serialized_end=2325
+  _globals['_LISTWORKFLOWRUNSREQUEST']._serialized_start=2328
+  _globals['_LISTWORKFLOWRUNSREQUEST']._serialized_end=2482
+  _globals['_LISTWORKFLOWRUNSRESPONSE']._serialized_start=2485
+  _globals['_LISTWORKFLOWRUNSRESPONSE']._serialized_end=2696
+  _globals['_CANCELWORKFLOWRUNREQUEST']._serialized_start=2699
+  _globals['_CANCELWORKFLOWRUNREQUEST']._serialized_end=2852
+  _globals['_CANCELWORKFLOWRUNRESPONSE']._serialized_start=2854
+  _globals['_CANCELWORKFLOWRUNRESPONSE']._serialized_end=2940
+  _globals['_COMMITWORKFLOWTRANSITIONREQUEST']._serialized_start=2943
+  _globals['_COMMITWORKFLOWTRANSITIONREQUEST']._serialized_end=3254
+  _globals['_COMMITWORKFLOWTRANSITIONRESPONSE']._serialized_start=3256
+  _globals['_COMMITWORKFLOWTRANSITIONRESPONSE']._serialized_end=3361
+  _globals['_WATCHWORKFLOWRUNREQUEST']._serialized_start=3363
+  _globals['_WATCHWORKFLOWRUNREQUEST']._serialized_end=3468
+  _globals['_WATCHWORKFLOWRUNRESPONSE']._serialized_start=3470
+  _globals['_WATCHWORKFLOWRUNRESPONSE']._serialized_end=3567
+  _globals['_REQUESTAPPROVALREQUEST']._serialized_start=3569
+  _globals['_REQUESTAPPROVALREQUEST']._serialized_end=3676
+  _globals['_REQUESTAPPROVALRESPONSE']._serialized_start=3678
+  _globals['_REQUESTAPPROVALRESPONSE']._serialized_end=3786
+  _globals['_GETAPPROVALREQUESTREQUEST']._serialized_start=3788
+  _globals['_GETAPPROVALREQUESTREQUEST']._serialized_end=3835
+  _globals['_GETAPPROVALREQUESTRESPONSE']._serialized_start=3837
+  _globals['_GETAPPROVALREQUESTRESPONSE']._serialized_end=3948
+  _globals['_LISTAPPROVALREQUESTSREQUEST']._serialized_start=3951
+  _globals['_LISTAPPROVALREQUESTSREQUEST']._serialized_end=4109
+  _globals['_LISTAPPROVALREQUESTSRESPONSE']._serialized_start=4112
+  _globals['_LISTAPPROVALREQUESTSRESPONSE']._serialized_end=4339
+  _globals['_DECIDEAPPROVALREQUEST']._serialized_start=4342
+  _globals['_DECIDEAPPROVALREQUEST']._serialized_end=4608
+  _globals['_DECIDEAPPROVALRESPONSE']._serialized_start=4610
+  _globals['_DECIDEAPPROVALRESPONSE']._serialized_end=4717
+  _globals['_CONSUMEAPPROVALREQUEST']._serialized_start=4720
+  _globals['_CONSUMEAPPROVALREQUEST']._serialized_end=4906
+  _globals['_CONSUMEAPPROVALRESPONSE']._serialized_start=4908
+  _globals['_CONSUMEAPPROVALRESPONSE']._serialized_end=5016
+  _globals['_WORKFLOWSERVICE']._serialized_start=5019
+  _globals['_WORKFLOWSERVICE']._serialized_end=6502
+  _globals['_APPROVALSERVICE']._serialized_start=6505
+  _globals['_APPROVALSERVICE']._serialized_end=7207
 # @@protoc_insertion_point(module_scope)

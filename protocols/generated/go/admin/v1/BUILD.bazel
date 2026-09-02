@@ -3,9 +3,14 @@ load("@rules_go//go:def.bzl", "go_library")
 go_library(
     name = "bindings",
     srcs = [
+        "audit_export_completed.pb.go",
+        "audit_export_requested.pb.go",
         "audit_query.pb.go",
         "project.pb.go",
+        "project_created.pb.go",
+        "project_updated.pb.go",
         "tenant.pb.go",
+        "tenant_updated.pb.go",
     ],
     importpath = "github.com/mindclade/mindclade/protocols/generated/go/admin/v1",
     visibility = ["//visibility:public"],
@@ -23,9 +28,14 @@ filegroup(
     name = "generated_sources",
     srcs = [
         "BUILD.bazel",
+        "audit_export_completed.pb.go",
+        "audit_export_requested.pb.go",
         "audit_query.pb.go",
         "project.pb.go",
+        "project_created.pb.go",
+        "project_updated.pb.go",
         "tenant.pb.go",
+        "tenant_updated.pb.go",
     ],
     visibility = ["//visibility:public"],
 )

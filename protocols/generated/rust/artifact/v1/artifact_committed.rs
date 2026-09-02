@@ -7,4 +7,19 @@ pub struct ArtifactCommitted {
     #[prost(string, tag = "2")]
     pub producer_attempt_id: ::prost::alloc::string::String,
 }
+/// ArtifactStagingFinalized records immutable transfer verification without
+/// leaking the provider generation or storage locator bound by the receipt.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct ArtifactStagingFinalized {
+    #[prost(string, tag = "1")]
+    pub upload_name: ::prost::alloc::string::String,
+    #[prost(message, optional, tag = "2")]
+    pub artifact: ::core::option::Option<crate::artifact::v1::ArtifactRef>,
+    #[prost(string, tag = "3")]
+    pub staging_receipt_digest: ::prost::alloc::string::String,
+    #[prost(message, optional, tag = "4")]
+    pub verified_at: ::core::option::Option<::prost_types::Timestamp>,
+    #[prost(message, optional, tag = "5")]
+    pub expire_time: ::core::option::Option<::prost_types::Timestamp>,
+}
 // @@protoc_insertion_point(module)

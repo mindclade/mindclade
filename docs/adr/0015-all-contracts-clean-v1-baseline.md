@@ -1,10 +1,10 @@
-# ADR-0015: All-Contracts Clean-v1 Baseline
+# ADR-0015: All-Contracts Candidate v1 Estate and Ratification Gate
 
 - Status: Accepted in blueprint specification
 - Connected ratification: Pending independent review on protected infrastructure
 - Specification date: 2026-08-31
-- Effective date: 2026-08-31 for repository source implementation only
-- Compatibility window: One clean-v1 reset before the first supported external release; additive v1 compatibility applies after the baseline is committed
+- Effective date: 2026-08-31 for unratified repository candidate implementation only
+- Compatibility window: The complete descriptor set remains a candidate; additive v1 compatibility begins only after explicit evidence-gated ratification
 - Supersedes: The contract-scheduling and deferment portions of ADR-0004, ADR-0011, ADR-0012, blueprint wave timing, and ADR-0012's one-way OpenAPI derivation direction
 - Superseded by: None
 - Owners: Architecture, Contract Governance
@@ -13,12 +13,12 @@
 ## Decision record metadata
 
 - Affected invariants: one editable authority per contract, generated-code authority, stable resource identity, explicit compatibility, relational business-state authority, worker isolation, and no handwritten/generated dual ownership.
-- Affected paths: versioned Protobuf and event sources, generated Go/Python/Rust/TypeScript projections, durable JSON Schemas and fixtures, the curated public OpenAPI facade, public SDK configuration, compatibility baselines, generators, and their real build/test labels.
+- Affected paths: versioned Protobuf and event sources, generated Go/Python/Rust/TypeScript projections, private internal SDK facades, durable JSON Schemas and fixtures, the curated public-safe OpenAPI projection, compatibility candidates, generators, and their real build/test labels.
 - Affected contracts: all predeclared v1 domain resources, commands, events, internal services, durable documents, and supported public operations.
 - Security and safety impact: contract activation grants no data-use, accelerator-spend, deployment, production, clinical, therapeutic, experimental-validity, or publication authority. Sensitive fields retain classification and redaction requirements.
-- Migration: establish one coherent v1 source baseline, regenerate every projection atomically, replace handwritten wire duplicates with generated types or explicit adapters, then freeze compatibility baselines before any supported release.
+- Migration: establish one coherent candidate v1 estate, regenerate every projection atomically, replace handwritten wire duplicates with generated types or explicit adapters, pass the training vertical end to end, then explicitly ratify and freeze the compatibility baseline before any supported release.
 - Rollback: restore the prior complete source-and-generator closure and regenerate every language together; do not selectively retain hand-edited generated files or a partially migrated consumer.
-- Required evidence: lint, deterministic clean regeneration, generated inventory, cross-language round trips, gRPC conformance, schema positive/negative fixtures, public OpenAPI/SDK parity, persistence/queue consumer tests, and no handwritten duplicate-authority findings.
+- Required evidence: lint, deterministic clean regeneration, generated inventory, cross-language round trips, gRPC conformance, schema positive/negative fixtures, candidate descriptor/HTTP/ProtoJSON parity, internal SDK conformance, persistence/queue consumer tests, and no handwritten duplicate-authority findings.
 
 ## Context
 
@@ -38,21 +38,32 @@ target, active, or generated.
 
 ## Decision
 
-Mindclade establishes the complete contract catalog now as a one-time clean v1
-baseline. The original `activation_wave` values remain design-sequencing
+Mindclade establishes the complete contract catalog now as an unratified v1
+candidate, not as an enforceable compatibility baseline. The original
+`activation_wave` values remain design-sequencing
 provenance; for contract implementation, manifest status and this ADR govern
 whether a path may exist. Blueprint wave timing is guidance, not a prohibition
 on implementing a contract with a concrete generator, test, and consumer.
+
+The exact 22-source predecessor from Git revision
+`9b5fbea8a44b15c291c6fd6247a57ad350487544` (`7e9ebf1^`) is archived as
+`protocols/compatibility/baselines/protobuf.predecessor.lock.json` with artifact
+digest `sha256:07d7ee37e68211870861b7fc1ec5118c423447319603523bd9589c1c5dea6aaf`.
+It is historical evidence, not the compatibility target for the intentional
+one-time reset. Ordinary generation deterministically refreshes
+`protobuf.candidate.json`; compatibility tests verify its sources, descriptor,
+wire fixture, unratified state, and predecessor binding without running normal
+Buf breaking enforcement against the candidate.
 
 The authority split remains unchanged:
 
 - Protobuf owns internal RPC requests/responses, durable commands, events, and lifecycle resources.
 - JSON Schema owns durable manifests, evidence documents, release metadata, and human-authored configuration.
-- A curated `mindclade.api.v1` service facade owns public gRPC behavior. The checked-in curated OpenAPI document owns supported external HTTP/JSON and SDK behavior. Exact operation and model mappings enforce semantic parity without exposing internal packages. Internal Protobuf layout, database rows, queue metadata, and provider objects are not public HTTP authority.
+- `mindclade.api.v1` and the checked-in curated OpenAPI document form an unratified public-safe candidate projection for a possible future HTTP API. They establish no supported public SDK or release authority. Exact operation, binding, and model mappings enforce semantic parity without exposing internal packages. Internal Protobuf layout, database rows, queue metadata, and provider objects are not candidate HTTP authority.
 
 Domain resources and events use `mindclade.<domain>.v1`. Internal gRPC services
-use `mindclade.internal.<domain>.v1`; the public gRPC facade uses
-`mindclade.api.v1`, and every external OpenAPI operation maps to that facade.
+use `mindclade.internal.<domain>.v1`; the candidate public-safe gRPC facade uses
+`mindclade.api.v1`, and every candidate OpenAPI operation maps to that facade.
 Large scientific data, tensors, models, checkpoints, and
 other bulk values cross contracts only by immutable `ArtifactRef`. Event
 envelopes carry stable identity, type/version, payload bytes, and digest;
@@ -81,31 +92,40 @@ project, operation, job, run, attempt, artifact, policy, and lifecycle columns.
 Workers remain unable to mutate control-plane tables and communicate through
 typed commands, events, and gRPC boundaries.
 
-The public SDK program uses Mindclade SDK Forge as the long-term primary
-compiler for Go, Python, and TypeScript. Forge owns SDK policy, emitters, thin
-language-native runtimes, conformance, packaging, and release orchestration;
-the MIT-licensed WorkOS OAGen parser and typed IR are an implementation
-foundation, not a contract or release authority. Provider-native configuration
-is derived from Mindclade policy. The curated OpenAPI document remains the
-portable wire input, and generated source or hosted provider state cannot
-become authority.
+Buf plus pinned language-native plugins generate the internal Go, Python,
+Rust, and TypeScript Protobuf/gRPC/Connect transport. Mindclade-owned facades
+under `internal/sdk` own authentication metadata, deadlines, retries,
+pagination, operation lifecycle helpers, artifact verification, and stable
+error mapping while intentionally exporting generated wire types. Client-side
+services, workers, training code, tools, and internal applications consume the
+facades. Generated bindings remain directly importable only by those facade
+implementations, server transport adapters/registrations, persistence
+protobuf mappers, and contract tests.
 
-The pipeline uses independently testable `OpenApiValidator`,
-`SdkPolicyCompiler`, `SdkEmitter`, `SdkSurfaceExtractor`,
-`SdkBehaviorVerifier`, `SdkPackager`, `SdkPublisher`, and
-`SdkReleaseOrchestrator` boundaries. Only the release orchestrator emits the
-final receipt. Fern is the preferred qualified shadow but remains
-non-authoritative because its documented self-hosted workflow is an Enterprise
-Docker/token/outbound-verification path. Speakeasy is an additional commercial
-benchmark and fallback. Stainless is retained only for comparison when an
-existing legacy project is available; it is not a long-term dependency or a
-publication path. All implementations prove compatibility against the same
-OpenAPI fixtures and Mindclade release policy.
+The native pipeline keeps `ProtoContractValidator`, `BufNativeGenerator`,
+`GeneratedBindingCompiler`, `InternalFacadeBuilder`,
+`InternalSdkConformanceVerifier`, and `LayeringPolicyVerifier` as separate
+testable boundaries. The curated OpenAPI document is an optional HTTP/JSON
+projection, not the internal SDK input. Fern may be evaluated for optional
+internal REST generation and Speakeasy as a specialized comparison, but
+neither is foundational, required, authoritative, or eligible to publish from
+source policy.
 
-Compatibility begins from the committed clean-v1 baseline. After that point,
-field numbers and enum values are not reused, semantic meaning is stable,
-changes are classified, and breaking changes require a versioned migration and
-consumer evidence. The clean reset does not authorize repeated resets.
+Compatibility does not begin merely because the candidate is committed. The
+first `protobuf.lock.json` may be created only by the generator's explicit
+`--ratify-v1-baseline` action, bound to the exact reviewed candidate digest and
+a passed training-vertical evidence receipt. That receipt must independently
+cover cross-language wire behavior, database mappings and tenant boundaries,
+networked gRPC, HTTP gateway binding and ProtoJSON parity, durable event
+delivery, candidate HTTP binding parity, and internal SDK behavior. Until then,
+`protobuf.lock.json` is absent and its
+manifest entry remains a target.
+
+After ratification, ordinary generation runs Buf breaking enforcement against
+that immutable baseline. Field numbers and enum values are not reused,
+semantic meaning is stable, changes are classified, and breaking changes
+require a versioned migration and consumer evidence. The clean reset does not
+authorize repeated resets or replacement of a ratified baseline.
 
 ADR-0004 continues to govern source authority, deterministic generation, and
 compatibility. ADR-0011's exact SQP-001 profile and all PDB source-use,
@@ -117,31 +137,35 @@ language/provider deferments are superseded or supplemented here.
 
 ## Consequences
 
-- Contract work can precede broader runtime qualification without claiming that the runtime is complete or production-ready.
+- Contract work can precede broader runtime qualification without claiming that the candidate is ratified, compatible, complete, or production-ready.
 - Every supported process and language can converge on generated types instead of accumulating handwritten duplicates.
-- Internal gRPC evolution, durable document evolution, and public HTTP/SDK evolution remain distinct but traceable authorities.
-- Mindclade owns the SDK compiler and release policy; OAGen reduces parser/typed-IR reinvention while Fern, Speakeasy, and legacy Stainless comparisons provide independent substitution evidence without becoming authority.
-- The repository path manifest, generators, compatibility baselines, and consumers must advance together; an unconsumed or untested active contract is a governance failure.
+- Internal gRPC evolution, durable document evolution, and any future HTTP projection evolution remain distinct but traceable concerns.
+- Mindclade owns internal SDK behavior over Buf-generated native clients; optional Fern or Speakeasy REST output cannot become authority or block native delivery when unused.
+- The repository path manifest, candidate descriptor, generators, consumers, and eventual compatibility baseline must advance through their explicit lifecycle; an unconsumed or untested active contract is a governance failure.
 
 ## Rejected alternatives
 
 - Retain wave timing as a hard contract-creation gate. This would force active code to define temporary local types and make the eventual migration riskier.
 - Make OpenAPI an authority for internal domain state, or make internal Protobuf layout the external HTTP contract. Transport-specific authority with enforced mappings avoids both forms of coupling and drift.
 - Use Protobuf blobs as the primary database model. This would weaken relational constraints, tenant isolation, queries, migrations, and operational repair.
-- Make Stainless or any hosted generator the primary path. Stainless has retired new hosted SDK projects, and provider state would be an unavailable or unreviewable build authority.
-- Reimplement OpenAPI parsing before proving that OAGen's typed IR cannot express a required Mindclade semantic. Forge owns the policy and output while reusing a pinned, reviewed parsing foundation.
-- Treat provider parity as permission to publish independently versioned SDK surfaces. One supported public contract and Mindclade release policy remains authoritative.
+- Make a hosted or third-party OpenAPI generator foundational. Internal clients require native Protobuf/gRPC/Connect semantics and a hermetic repository-owned facade.
+- Treat optional-provider parity as permission to publish an SDK. Provider comparison is evidence only; a future public API and release policy require separate ratification.
 
 ## Qualification and rollback
 
-Source qualification proves the exact manifest inventory, real Bazel labels,
-locked generator closure, clean regeneration, lint, cross-language and gRPC
-round trips, schema fixtures, public facade/SDK parity, and migrated consumers.
+Candidate source qualification proves the exact manifest inventory, real Bazel
+labels, locked generator closure, clean regeneration, lint, cross-language and
+gRPC round trips, schema fixtures, candidate descriptor/HTTP/ProtoJSON parity,
+internal SDK conformance, and migrated consumers. It does not ratify v1.
+Ratification additionally requires the
+descriptor-bound training-vertical evidence enumerated above and the explicit
+generator action; no ordinary generation or compatibility test can perform it.
 Connected service, hosted SDK publication, cloud, cluster, GPU, data-use, and
 production qualification remain separate protected actions.
 
-If the baseline cannot be made coherent, stop admission of new contract
-consumers, restore the previous complete source/generator closure, regenerate
-all languages, and retain incompatibility evidence for repair. Never roll back
-only one generated language, rewrite durable subjects, or infer production
-authority from passing source tests.
+If the candidate cannot be made coherent, stop admission of new contract
+consumers, retain the immutable 22-source predecessor, restore the previous
+complete source/generator closure if needed, regenerate all languages, and
+retain incompatibility evidence for repair. Never roll back only one generated
+language, rewrite durable subjects, replace a ratified baseline, or infer
+production authority from passing source tests.

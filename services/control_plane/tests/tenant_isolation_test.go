@@ -23,7 +23,7 @@ func TestTenantIsolationAndDefaultDeny(t *testing.T) {
 		Principal:      policies.Principal{ID: "principal-a", TenantID: "tenant-a", Actions: map[string]bool{operations.CreateAction: true}},
 		IdempotencyKey: "key-1",
 		RequestDigest:  "sha256:" + strings.Repeat("a", 64),
-		Operation:      &jobv1.Operation{OperationId: "operation-1", TenantId: "tenant-b", JobId: "job-1"},
+		Operation:      &jobv1.Operation{OperationId: "operation-1", TenantId: "tenant-b", ProjectId: "project-a", JobId: "job-1", Etag: "operation-etag-1"},
 	})
 	if !errors.Is(err, policies.ErrDenied) {
 		t.Fatalf("expected tenant denial, got %v", err)
@@ -32,7 +32,7 @@ func TestTenantIsolationAndDefaultDeny(t *testing.T) {
 		Principal:      policies.Principal{ID: "principal-a", TenantID: "tenant-a"},
 		IdempotencyKey: "key-2",
 		RequestDigest:  "sha256:" + strings.Repeat("a", 64),
-		Operation:      &jobv1.Operation{OperationId: "operation-2", TenantId: "tenant-a", JobId: "job-1"},
+		Operation:      &jobv1.Operation{OperationId: "operation-2", TenantId: "tenant-a", ProjectId: "project-a", JobId: "job-1", Etag: "operation-etag-1"},
 	})
 	if !errors.Is(err, policies.ErrDenied) {
 		t.Fatalf("expected default deny, got %v", err)
@@ -52,8 +52,15 @@ func assertPostgresTenantIsolation(t *testing.T, db *sql.DB) {
 		t.Fatalf("create non-bypass RLS test role: %v", err)
 	}
 	t.Cleanup(func() {
-		_, _ = db.ExecContext(ctx, `DELETE FROM jobs WHERE tenant_id IN ($1,$2); DELETE FROM artifact_references WHERE tenant_id IN ($1,$2)`, tenantA, tenantB)
-		_, _ = db.ExecContext(ctx, fmt.Sprintf(`DROP OWNED BY %s; DROP ROLE %s`, role, role))
+		if _, cleanupErr := db.ExecContext(ctx, `DELETE FROM jobs WHERE tenant_id IN ($1,$2)`, tenantA, tenantB); cleanupErr != nil {
+			t.Errorf("clean tenant-isolation jobs: %v", cleanupErr)
+		}
+		if _, cleanupErr := db.ExecContext(ctx, `DELETE FROM artifact_references WHERE tenant_id IN ($1,$2)`, tenantA, tenantB); cleanupErr != nil {
+			t.Errorf("clean tenant-isolation artifacts: %v", cleanupErr)
+		}
+		if _, cleanupErr := db.ExecContext(ctx, fmt.Sprintf(`DROP OWNED BY %s; DROP ROLE %s`, role, role)); cleanupErr != nil {
+			t.Errorf("drop tenant-isolation role: %v", cleanupErr)
+		}
 	})
 	var refA, refB int64
 	if err := db.QueryRowContext(ctx, `INSERT INTO artifact_references (tenant_id,digest,media_type,size_bytes) VALUES ($1,$2,'application/json',1) RETURNING id`, tenantA, digestA).Scan(&refA); err != nil {
@@ -65,7 +72,7 @@ func assertPostgresTenantIsolation(t *testing.T, db *sql.DB) {
 	if _, err := db.ExecContext(ctx, `INSERT INTO jobs (id,tenant_id,desired_state,version,configuration_ref_id,configuration_digest,created_at,updated_at) VALUES ($1,$2,'ACCEPTED',1,$3,$4,now(),now()),($5,$6,'ACCEPTED',1,$7,$8,now(),now())`, jobA, tenantA, refA, digestA, jobB, tenantB, refB, digestB); err != nil {
 		t.Fatalf("seed tenant isolation rows: %v", err)
 	}
-	if _, err := db.ExecContext(ctx, fmt.Sprintf(`GRANT SELECT ON jobs TO %s`, role)); err != nil {
+	if _, err := db.ExecContext(ctx, `GRANT SELECT ON jobs TO `+role); err != nil { // #nosec G202 -- role is a fixed test-only identifier.
 		t.Fatal(err)
 	}
 	var forced bool
@@ -77,7 +84,7 @@ func assertPostgresTenantIsolation(t *testing.T, db *sql.DB) {
 		t.Fatal(err)
 	}
 	defer func() { _ = tx.Rollback() }()
-	if _, err = tx.ExecContext(ctx, fmt.Sprintf(`SET LOCAL ROLE %s`, role)); err != nil {
+	if _, err = tx.ExecContext(ctx, `SET LOCAL ROLE `+role); err != nil { // #nosec G202 -- role is a fixed test-only identifier.
 		t.Fatal(err)
 	}
 	var count int

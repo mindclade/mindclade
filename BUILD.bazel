@@ -126,14 +126,29 @@ test_suite(
 # source inventory; the conformance suite validates generated projections and
 # compatibility for that inventory.
 filegroup(
+    name = "internal_sdk_root_sources",
+    srcs = ["internal/sdk/README.md"],
+    visibility = ["//visibility:public"],
+)
+
+filegroup(
     name = "all_contract_sources",
-    srcs = [":wave1_contract_sources"],
+    srcs = [
+        ":internal_sdk_root_sources",
+        ":wave1_contract_sources",
+        "//internal/sdk/go/mindclade:governed_sources",
+        "//internal/sdk/python:governed_sources",
+        "//internal/sdk/rust:governed_sources",
+        "//internal/sdk/typescript:governed_sources",
+        "//services/control_plane:control_plane_sources",
+        "//tests:all_contract_sources",
+    ],
     visibility = ["//visibility:public"],
 )
 
 test_suite(
     name = "all_contract_tests",
-    tests = [":wave1_contract_tests"],
+    tests = ["//tests:all_contract_tests"],
     visibility = ["//visibility:public"],
 )
 
@@ -164,5 +179,22 @@ test_suite(
         "//tests:release_signing_test",
         "//tools:repository_policies_test",
     ],
+    visibility = ["//visibility:public"],
+)
+
+# Wave 2S currently exposes only the source-qualified native kernel policy
+# closure. The suite intentionally makes no GPU or production qualification
+# claim; it includes deterministic generator drift through policy_tests.
+test_suite(
+    name = "wave2s_tests",
+    tests = ["//kernels/native:policy_tests"],
+    visibility = ["//visibility:public"],
+)
+
+# Wave 2P protocol and facade changes retain the complete contract baseline as
+# their minimum source-level regression closure until runtime targets activate.
+test_suite(
+    name = "wave2p_tests",
+    tests = [":all_contract_tests"],
     visibility = ["//visibility:public"],
 )

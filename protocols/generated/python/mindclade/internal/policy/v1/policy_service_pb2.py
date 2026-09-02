@@ -33,46 +33,46 @@ from mindclade.policy.v1 import policy_reference_pb2 as proto_dot_mindclade_dot_
 from mindclade.policy.v1 import use_policy_pb2 as proto_dot_mindclade_dot_policy_dot_v1_dot_use__policy__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n7proto/mindclade/internal/policy/v1/policy_service.proto\x12\x1cmindclade.internal.policy.v1\x1a google/protobuf/field_mask.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a/proto/mindclade/common/v1/command_context.proto\x1a*proto/mindclade/common/v1/pagination.proto\x1a\x32proto/mindclade/common/v1/resource_reference.proto\x1a&proto/mindclade/job/v1/operation.proto\x1a\x36proto/mindclade/policy/v1/authorization_decision.proto\x1a\x30proto/mindclade/policy/v1/policy_reference.proto\x1a*proto/mindclade/policy/v1/use_policy.proto\"\x83\x03\n\x1c\x45valuateAuthorizationRequest\x12\x1b\n\ttenant_id\x18\x01 \x01(\tR\x08tenantId\x12\x1d\n\nproject_id\x18\x02 \x01(\tR\tprojectId\x12#\n\rprincipal_ref\x18\x03 \x01(\tR\x0cprincipalRef\x12\x16\n\x06\x61\x63tion\x18\x04 \x01(\tR\x06\x61\x63tion\x12<\n\x08resource\x18\x05 \x01(\x0b\x32 .mindclade.common.v1.ResourceRefR\x08resource\x12#\n\rintent_digest\x18\x06 \x01(\tR\x0cintentDigest\x12O\n\x10policy_snapshots\x18\x07 \x03(\x0b\x32$.mindclade.policy.v1.PolicyReferenceR\x0fpolicySnapshots\x12\x36\n\x08\x64\x65\x61\x64line\x18\x08 \x01(\x0b\x32\x1a.google.protobuf.TimestampR\x08\x64\x65\x61\x64line\"g\n\x1d\x45valuateAuthorizationResponse\x12\x46\n\x08\x64\x65\x63ision\x18\x01 \x01(\x0b\x32*.mindclade.policy.v1.AuthorizationDecisionR\x08\x64\x65\x63ision\"\xd2\x01\n\x16\x43reateUsePolicyRequest\x12=\n\x07\x63ontext\x18\x01 \x01(\x0b\x32#.mindclade.common.v1.CommandContextR\x07\x63ontext\x12\x16\n\x06parent\x18\x02 \x01(\tR\x06parent\x12\"\n\ruse_policy_id\x18\x03 \x01(\tR\x0busePolicyId\x12=\n\nuse_policy\x18\x04 \x01(\x0b\x32\x1e.mindclade.policy.v1.UsePolicyR\tusePolicy\"T\n\x17\x43reateUsePolicyResponse\x12\x39\n\toperation\x18\x01 \x01(\x0b\x32\x1b.mindclade.job.v1.OperationR\toperation\"\xe7\x01\n\x16UpdateUsePolicyRequest\x12=\n\x07\x63ontext\x18\x01 \x01(\x0b\x32#.mindclade.common.v1.CommandContextR\x07\x63ontext\x12=\n\nuse_policy\x18\x02 \x01(\x0b\x32\x1e.mindclade.policy.v1.UsePolicyR\tusePolicy\x12;\n\x0bupdate_mask\x18\x03 \x01(\x0b\x32\x1a.google.protobuf.FieldMaskR\nupdateMask\x12\x12\n\x04\x65tag\x18\x04 \x01(\tR\x04\x65tag\"T\n\x17UpdateUsePolicyResponse\x12\x39\n\toperation\x18\x01 \x01(\x0b\x32\x1b.mindclade.job.v1.OperationR\toperation\"M\n\x13GetUsePolicyRequest\x12\x12\n\x04name\x18\x01 \x01(\tR\x04name\x12\"\n\rif_none_match\x18\x02 \x01(\tR\x0bifNoneMatch\"U\n\x14GetUsePolicyResponse\x12=\n\nuse_policy\x18\x01 \x01(\x0b\x32\x1e.mindclade.policy.v1.UsePolicyR\tusePolicy\"\x99\x01\n\x16ListUsePoliciesRequest\x12\x16\n\x06parent\x18\x01 \x01(\tR\x06parent\x12\x34\n\x04page\x18\x02 \x01(\x0b\x32 .mindclade.common.v1.PageRequestR\x04page\x12\x16\n\x06\x66ilter\x18\x03 \x01(\tR\x06\x66ilter\x12\x19\n\x08order_by\x18\x04 \x01(\tR\x07orderBy\"\xcc\x01\n\x17ListUsePoliciesResponse\x12\x41\n\x0cuse_policies\x18\x01 \x03(\x0b\x32\x1e.mindclade.policy.v1.UsePolicyR\x0busePolicies\x12\x35\n\x04page\x18\x02 \x01(\x0b\x32!.mindclade.common.v1.PageResponseR\x04page\x12\x37\n\tread_time\x18\x03 \x01(\x0b\x32\x1a.google.protobuf.TimestampR\x08readTime\"\x81\x01\n\x18\x41\x63tivateUsePolicyRequest\x12=\n\x07\x63ontext\x18\x01 \x01(\x0b\x32#.mindclade.common.v1.CommandContextR\x07\x63ontext\x12\x12\n\x04name\x18\x02 \x01(\tR\x04name\x12\x12\n\x04\x65tag\x18\x03 \x01(\tR\x04\x65tag\"V\n\x19\x41\x63tivateUsePolicyResponse\x12\x39\n\toperation\x18\x01 \x01(\x0b\x32\x1b.mindclade.job.v1.OperationR\toperation\"\xa0\x01\n\x16RevokeUsePolicyRequest\x12=\n\x07\x63ontext\x18\x01 \x01(\x0b\x32#.mindclade.common.v1.CommandContextR\x07\x63ontext\x12\x12\n\x04name\x18\x02 \x01(\tR\x04name\x12\x12\n\x04\x65tag\x18\x03 \x01(\tR\x04\x65tag\x12\x1f\n\x0breason_code\x18\x04 \x01(\tR\nreasonCode\"T\n\x17RevokeUsePolicyResponse\x12\x39\n\toperation\x18\x01 \x01(\x0b\x32\x1b.mindclade.job.v1.OperationR\toperation\"u\n\x1cResolvePolicySnapshotRequest\x12\x12\n\x04name\x18\x01 \x01(\tR\x04name\x12\x41\n\x0e\x65\x66\x66\x65\x63tive_time\x18\x02 \x01(\x0b\x32\x1a.google.protobuf.TimestampR\reffectiveTime\"n\n\x1dResolvePolicySnapshotResponse\x12M\n\x0fpolicy_snapshot\x18\x01 \x01(\x0b\x32$.mindclade.policy.v1.PolicyReferenceR\x0epolicySnapshot2\xb3\x08\n\rPolicyService\x12\x90\x01\n\x15\x45valuateAuthorization\x12:.mindclade.internal.policy.v1.EvaluateAuthorizationRequest\x1a;.mindclade.internal.policy.v1.EvaluateAuthorizationResponse\x12~\n\x0f\x43reateUsePolicy\x12\x34.mindclade.internal.policy.v1.CreateUsePolicyRequest\x1a\x35.mindclade.internal.policy.v1.CreateUsePolicyResponse\x12~\n\x0fUpdateUsePolicy\x12\x34.mindclade.internal.policy.v1.UpdateUsePolicyRequest\x1a\x35.mindclade.internal.policy.v1.UpdateUsePolicyResponse\x12u\n\x0cGetUsePolicy\x12\x31.mindclade.internal.policy.v1.GetUsePolicyRequest\x1a\x32.mindclade.internal.policy.v1.GetUsePolicyResponse\x12~\n\x0fListUsePolicies\x12\x34.mindclade.internal.policy.v1.ListUsePoliciesRequest\x1a\x35.mindclade.internal.policy.v1.ListUsePoliciesResponse\x12\x84\x01\n\x11\x41\x63tivateUsePolicy\x12\x36.mindclade.internal.policy.v1.ActivateUsePolicyRequest\x1a\x37.mindclade.internal.policy.v1.ActivateUsePolicyResponse\x12~\n\x0fRevokeUsePolicy\x12\x34.mindclade.internal.policy.v1.RevokeUsePolicyRequest\x1a\x35.mindclade.internal.policy.v1.RevokeUsePolicyResponse\x12\x90\x01\n\x15ResolvePolicySnapshot\x12:.mindclade.internal.policy.v1.ResolvePolicySnapshotRequest\x1a;.mindclade.internal.policy.v1.ResolvePolicySnapshotResponseB[ZYgithub.com/mindclade/mindclade/protocols/generated/go/internal/policy/v1;internalpolicyv1b\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n7proto/mindclade/internal/policy/v1/policy_service.proto\x12\x1cmindclade.internal.policy.v1\x1a google/protobuf/field_mask.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a/proto/mindclade/common/v1/command_context.proto\x1a*proto/mindclade/common/v1/pagination.proto\x1a\x32proto/mindclade/common/v1/resource_reference.proto\x1a&proto/mindclade/job/v1/operation.proto\x1a\x36proto/mindclade/policy/v1/authorization_decision.proto\x1a\x30proto/mindclade/policy/v1/policy_reference.proto\x1a*proto/mindclade/policy/v1/use_policy.proto\"\xc2\x03\n\x1c\x45valuateAuthorizationRequest\x12\x1b\n\ttenant_id\x18\x01 \x01(\tR\x08tenantId\x12\x1d\n\nproject_id\x18\x02 \x01(\tR\tprojectId\x12#\n\rprincipal_ref\x18\x03 \x01(\tR\x0cprincipalRef\x12\x16\n\x06\x61\x63tion\x18\x04 \x01(\tR\x06\x61\x63tion\x12<\n\x08resource\x18\x05 \x01(\x0b\x32 .mindclade.common.v1.ResourceRefR\x08resource\x12#\n\rintent_digest\x18\x06 \x01(\tR\x0cintentDigest\x12O\n\x10policy_snapshots\x18\x07 \x03(\x0b\x32$.mindclade.policy.v1.PolicyReferenceR\x0fpolicySnapshots\x12\x36\n\x08\x64\x65\x61\x64line\x18\x08 \x01(\x0b\x32\x1a.google.protobuf.TimestampR\x08\x64\x65\x61\x64line\x12=\n\x07\x63ontext\x18\t \x01(\x0b\x32#.mindclade.common.v1.CommandContextR\x07\x63ontext\"g\n\x1d\x45valuateAuthorizationResponse\x12\x46\n\x08\x64\x65\x63ision\x18\x01 \x01(\x0b\x32*.mindclade.policy.v1.AuthorizationDecisionR\x08\x64\x65\x63ision\"\xd2\x01\n\x16\x43reateUsePolicyRequest\x12=\n\x07\x63ontext\x18\x01 \x01(\x0b\x32#.mindclade.common.v1.CommandContextR\x07\x63ontext\x12\x16\n\x06parent\x18\x02 \x01(\tR\x06parent\x12\"\n\ruse_policy_id\x18\x03 \x01(\tR\x0busePolicyId\x12=\n\nuse_policy\x18\x04 \x01(\x0b\x32\x1e.mindclade.policy.v1.UsePolicyR\tusePolicy\"T\n\x17\x43reateUsePolicyResponse\x12\x39\n\toperation\x18\x01 \x01(\x0b\x32\x1b.mindclade.job.v1.OperationR\toperation\"\xe7\x01\n\x16UpdateUsePolicyRequest\x12=\n\x07\x63ontext\x18\x01 \x01(\x0b\x32#.mindclade.common.v1.CommandContextR\x07\x63ontext\x12=\n\nuse_policy\x18\x02 \x01(\x0b\x32\x1e.mindclade.policy.v1.UsePolicyR\tusePolicy\x12;\n\x0bupdate_mask\x18\x03 \x01(\x0b\x32\x1a.google.protobuf.FieldMaskR\nupdateMask\x12\x12\n\x04\x65tag\x18\x04 \x01(\tR\x04\x65tag\"T\n\x17UpdateUsePolicyResponse\x12\x39\n\toperation\x18\x01 \x01(\x0b\x32\x1b.mindclade.job.v1.OperationR\toperation\"M\n\x13GetUsePolicyRequest\x12\x12\n\x04name\x18\x01 \x01(\tR\x04name\x12\"\n\rif_none_match\x18\x02 \x01(\tR\x0bifNoneMatch\"U\n\x14GetUsePolicyResponse\x12=\n\nuse_policy\x18\x01 \x01(\x0b\x32\x1e.mindclade.policy.v1.UsePolicyR\tusePolicy\"\x99\x01\n\x16ListUsePoliciesRequest\x12\x16\n\x06parent\x18\x01 \x01(\tR\x06parent\x12\x34\n\x04page\x18\x02 \x01(\x0b\x32 .mindclade.common.v1.PageRequestR\x04page\x12\x16\n\x06\x66ilter\x18\x03 \x01(\tR\x06\x66ilter\x12\x19\n\x08order_by\x18\x04 \x01(\tR\x07orderBy\"\xcc\x01\n\x17ListUsePoliciesResponse\x12\x41\n\x0cuse_policies\x18\x01 \x03(\x0b\x32\x1e.mindclade.policy.v1.UsePolicyR\x0busePolicies\x12\x35\n\x04page\x18\x02 \x01(\x0b\x32!.mindclade.common.v1.PageResponseR\x04page\x12\x37\n\tread_time\x18\x03 \x01(\x0b\x32\x1a.google.protobuf.TimestampR\x08readTime\"\x81\x01\n\x18\x41\x63tivateUsePolicyRequest\x12=\n\x07\x63ontext\x18\x01 \x01(\x0b\x32#.mindclade.common.v1.CommandContextR\x07\x63ontext\x12\x12\n\x04name\x18\x02 \x01(\tR\x04name\x12\x12\n\x04\x65tag\x18\x03 \x01(\tR\x04\x65tag\"V\n\x19\x41\x63tivateUsePolicyResponse\x12\x39\n\toperation\x18\x01 \x01(\x0b\x32\x1b.mindclade.job.v1.OperationR\toperation\"\xa0\x01\n\x16RevokeUsePolicyRequest\x12=\n\x07\x63ontext\x18\x01 \x01(\x0b\x32#.mindclade.common.v1.CommandContextR\x07\x63ontext\x12\x12\n\x04name\x18\x02 \x01(\tR\x04name\x12\x12\n\x04\x65tag\x18\x03 \x01(\tR\x04\x65tag\x12\x1f\n\x0breason_code\x18\x04 \x01(\tR\nreasonCode\"T\n\x17RevokeUsePolicyResponse\x12\x39\n\toperation\x18\x01 \x01(\x0b\x32\x1b.mindclade.job.v1.OperationR\toperation\"u\n\x1cResolvePolicySnapshotRequest\x12\x12\n\x04name\x18\x01 \x01(\tR\x04name\x12\x41\n\x0e\x65\x66\x66\x65\x63tive_time\x18\x02 \x01(\x0b\x32\x1a.google.protobuf.TimestampR\reffectiveTime\"n\n\x1dResolvePolicySnapshotResponse\x12M\n\x0fpolicy_snapshot\x18\x01 \x01(\x0b\x32$.mindclade.policy.v1.PolicyReferenceR\x0epolicySnapshot2\xb3\x08\n\rPolicyService\x12\x90\x01\n\x15\x45valuateAuthorization\x12:.mindclade.internal.policy.v1.EvaluateAuthorizationRequest\x1a;.mindclade.internal.policy.v1.EvaluateAuthorizationResponse\x12~\n\x0f\x43reateUsePolicy\x12\x34.mindclade.internal.policy.v1.CreateUsePolicyRequest\x1a\x35.mindclade.internal.policy.v1.CreateUsePolicyResponse\x12~\n\x0fUpdateUsePolicy\x12\x34.mindclade.internal.policy.v1.UpdateUsePolicyRequest\x1a\x35.mindclade.internal.policy.v1.UpdateUsePolicyResponse\x12u\n\x0cGetUsePolicy\x12\x31.mindclade.internal.policy.v1.GetUsePolicyRequest\x1a\x32.mindclade.internal.policy.v1.GetUsePolicyResponse\x12~\n\x0fListUsePolicies\x12\x34.mindclade.internal.policy.v1.ListUsePoliciesRequest\x1a\x35.mindclade.internal.policy.v1.ListUsePoliciesResponse\x12\x84\x01\n\x11\x41\x63tivateUsePolicy\x12\x36.mindclade.internal.policy.v1.ActivateUsePolicyRequest\x1a\x37.mindclade.internal.policy.v1.ActivateUsePolicyResponse\x12~\n\x0fRevokeUsePolicy\x12\x34.mindclade.internal.policy.v1.RevokeUsePolicyRequest\x1a\x35.mindclade.internal.policy.v1.RevokeUsePolicyResponse\x12\x90\x01\n\x15ResolvePolicySnapshot\x12:.mindclade.internal.policy.v1.ResolvePolicySnapshotRequest\x1a;.mindclade.internal.policy.v1.ResolvePolicySnapshotResponseB^Z\\github.com/mindclade/mindclade/protocols/generated/go/internalrpc/policy/v1;internalpolicyv1b\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'mindclade.internal.policy.v1.policy_service_pb2', _globals)
 if not _descriptor._USE_C_DESCRIPTORS:
   _globals['DESCRIPTOR']._loaded_options = None
-  _globals['DESCRIPTOR']._serialized_options = b'ZYgithub.com/mindclade/mindclade/protocols/generated/go/internal/policy/v1;internalpolicyv1'
+  _globals['DESCRIPTOR']._serialized_options = b'Z\\github.com/mindclade/mindclade/protocols/generated/go/internalrpc/policy/v1;internalpolicyv1'
   _globals['_EVALUATEAUTHORIZATIONREQUEST']._serialized_start=492
-  _globals['_EVALUATEAUTHORIZATIONREQUEST']._serialized_end=879
-  _globals['_EVALUATEAUTHORIZATIONRESPONSE']._serialized_start=881
-  _globals['_EVALUATEAUTHORIZATIONRESPONSE']._serialized_end=984
-  _globals['_CREATEUSEPOLICYREQUEST']._serialized_start=987
-  _globals['_CREATEUSEPOLICYREQUEST']._serialized_end=1197
-  _globals['_CREATEUSEPOLICYRESPONSE']._serialized_start=1199
-  _globals['_CREATEUSEPOLICYRESPONSE']._serialized_end=1283
-  _globals['_UPDATEUSEPOLICYREQUEST']._serialized_start=1286
-  _globals['_UPDATEUSEPOLICYREQUEST']._serialized_end=1517
-  _globals['_UPDATEUSEPOLICYRESPONSE']._serialized_start=1519
-  _globals['_UPDATEUSEPOLICYRESPONSE']._serialized_end=1603
-  _globals['_GETUSEPOLICYREQUEST']._serialized_start=1605
-  _globals['_GETUSEPOLICYREQUEST']._serialized_end=1682
-  _globals['_GETUSEPOLICYRESPONSE']._serialized_start=1684
-  _globals['_GETUSEPOLICYRESPONSE']._serialized_end=1769
-  _globals['_LISTUSEPOLICIESREQUEST']._serialized_start=1772
-  _globals['_LISTUSEPOLICIESREQUEST']._serialized_end=1925
-  _globals['_LISTUSEPOLICIESRESPONSE']._serialized_start=1928
-  _globals['_LISTUSEPOLICIESRESPONSE']._serialized_end=2132
-  _globals['_ACTIVATEUSEPOLICYREQUEST']._serialized_start=2135
-  _globals['_ACTIVATEUSEPOLICYREQUEST']._serialized_end=2264
-  _globals['_ACTIVATEUSEPOLICYRESPONSE']._serialized_start=2266
-  _globals['_ACTIVATEUSEPOLICYRESPONSE']._serialized_end=2352
-  _globals['_REVOKEUSEPOLICYREQUEST']._serialized_start=2355
-  _globals['_REVOKEUSEPOLICYREQUEST']._serialized_end=2515
-  _globals['_REVOKEUSEPOLICYRESPONSE']._serialized_start=2517
-  _globals['_REVOKEUSEPOLICYRESPONSE']._serialized_end=2601
-  _globals['_RESOLVEPOLICYSNAPSHOTREQUEST']._serialized_start=2603
-  _globals['_RESOLVEPOLICYSNAPSHOTREQUEST']._serialized_end=2720
-  _globals['_RESOLVEPOLICYSNAPSHOTRESPONSE']._serialized_start=2722
-  _globals['_RESOLVEPOLICYSNAPSHOTRESPONSE']._serialized_end=2832
-  _globals['_POLICYSERVICE']._serialized_start=2835
-  _globals['_POLICYSERVICE']._serialized_end=3910
+  _globals['_EVALUATEAUTHORIZATIONREQUEST']._serialized_end=942
+  _globals['_EVALUATEAUTHORIZATIONRESPONSE']._serialized_start=944
+  _globals['_EVALUATEAUTHORIZATIONRESPONSE']._serialized_end=1047
+  _globals['_CREATEUSEPOLICYREQUEST']._serialized_start=1050
+  _globals['_CREATEUSEPOLICYREQUEST']._serialized_end=1260
+  _globals['_CREATEUSEPOLICYRESPONSE']._serialized_start=1262
+  _globals['_CREATEUSEPOLICYRESPONSE']._serialized_end=1346
+  _globals['_UPDATEUSEPOLICYREQUEST']._serialized_start=1349
+  _globals['_UPDATEUSEPOLICYREQUEST']._serialized_end=1580
+  _globals['_UPDATEUSEPOLICYRESPONSE']._serialized_start=1582
+  _globals['_UPDATEUSEPOLICYRESPONSE']._serialized_end=1666
+  _globals['_GETUSEPOLICYREQUEST']._serialized_start=1668
+  _globals['_GETUSEPOLICYREQUEST']._serialized_end=1745
+  _globals['_GETUSEPOLICYRESPONSE']._serialized_start=1747
+  _globals['_GETUSEPOLICYRESPONSE']._serialized_end=1832
+  _globals['_LISTUSEPOLICIESREQUEST']._serialized_start=1835
+  _globals['_LISTUSEPOLICIESREQUEST']._serialized_end=1988
+  _globals['_LISTUSEPOLICIESRESPONSE']._serialized_start=1991
+  _globals['_LISTUSEPOLICIESRESPONSE']._serialized_end=2195
+  _globals['_ACTIVATEUSEPOLICYREQUEST']._serialized_start=2198
+  _globals['_ACTIVATEUSEPOLICYREQUEST']._serialized_end=2327
+  _globals['_ACTIVATEUSEPOLICYRESPONSE']._serialized_start=2329
+  _globals['_ACTIVATEUSEPOLICYRESPONSE']._serialized_end=2415
+  _globals['_REVOKEUSEPOLICYREQUEST']._serialized_start=2418
+  _globals['_REVOKEUSEPOLICYREQUEST']._serialized_end=2578
+  _globals['_REVOKEUSEPOLICYRESPONSE']._serialized_start=2580
+  _globals['_REVOKEUSEPOLICYRESPONSE']._serialized_end=2664
+  _globals['_RESOLVEPOLICYSNAPSHOTREQUEST']._serialized_start=2666
+  _globals['_RESOLVEPOLICYSNAPSHOTREQUEST']._serialized_end=2783
+  _globals['_RESOLVEPOLICYSNAPSHOTRESPONSE']._serialized_start=2785
+  _globals['_RESOLVEPOLICYSNAPSHOTRESPONSE']._serialized_end=2895
+  _globals['_POLICYSERVICE']._serialized_start=2898
+  _globals['_POLICYSERVICE']._serialized_end=3973
 # @@protoc_insertion_point(module_scope)

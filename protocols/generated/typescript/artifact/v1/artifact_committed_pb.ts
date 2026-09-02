@@ -4,6 +4,8 @@
 
 import type { GenFile, GenMessage } from "@bufbuild/protobuf/codegenv2";
 import { fileDesc, messageDesc } from "@bufbuild/protobuf/codegenv2";
+import type { Timestamp } from "@bufbuild/protobuf/wkt";
+import { file_google_protobuf_timestamp } from "@bufbuild/protobuf/wkt";
 import type { ArtifactRef } from "./artifact_reference_pb.js";
 import { file_proto_mindclade_artifact_v1_artifact_reference } from "./artifact_reference_pb.js";
 import type { Message } from "@bufbuild/protobuf";
@@ -12,7 +14,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file events/mindclade/artifact/v1/artifact_committed.proto.
  */
 export const file_events_mindclade_artifact_v1_artifact_committed: GenFile = /*@__PURE__*/
-  fileDesc("CjVldmVudHMvbWluZGNsYWRlL2FydGlmYWN0L3YxL2FydGlmYWN0X2NvbW1pdHRlZC5wcm90bxIcbWluZGNsYWRlLmV2ZW50cy5hcnRpZmFjdC52MSJmChFBcnRpZmFjdENvbW1pdHRlZBI0CghhcnRpZmFjdBgBIAEoCzIiLm1pbmRjbGFkZS5hcnRpZmFjdC52MS5BcnRpZmFjdFJlZhIbChNwcm9kdWNlcl9hdHRlbXB0X2lkGAIgASgJQk5aTGdpdGh1Yi5jb20vbWluZGNsYWRlL21pbmRjbGFkZS9wcm90b2NvbHMvZ2VuZXJhdGVkL2dvL2FydGlmYWN0L3YxO2FydGlmYWN0djFiBnByb3RvMw", [file_proto_mindclade_artifact_v1_artifact_reference]);
+  fileDesc("CjVldmVudHMvbWluZGNsYWRlL2FydGlmYWN0L3YxL2FydGlmYWN0X2NvbW1pdHRlZC5wcm90bxIcbWluZGNsYWRlLmV2ZW50cy5hcnRpZmFjdC52MSJmChFBcnRpZmFjdENvbW1pdHRlZBI0CghhcnRpZmFjdBgBIAEoCzIiLm1pbmRjbGFkZS5hcnRpZmFjdC52MS5BcnRpZmFjdFJlZhIbChNwcm9kdWNlcl9hdHRlbXB0X2lkGAIgASgJIucBChhBcnRpZmFjdFN0YWdpbmdGaW5hbGl6ZWQSEwoLdXBsb2FkX25hbWUYASABKAkSNAoIYXJ0aWZhY3QYAiABKAsyIi5taW5kY2xhZGUuYXJ0aWZhY3QudjEuQXJ0aWZhY3RSZWYSHgoWc3RhZ2luZ19yZWNlaXB0X2RpZ2VzdBgDIAEoCRIvCgt2ZXJpZmllZF9hdBgEIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASLwoLZXhwaXJlX3RpbWUYBSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wQk5aTGdpdGh1Yi5jb20vbWluZGNsYWRlL21pbmRjbGFkZS9wcm90b2NvbHMvZ2VuZXJhdGVkL2dvL2FydGlmYWN0L3YxO2FydGlmYWN0djFiBnByb3RvMw", [file_google_protobuf_timestamp, file_proto_mindclade_artifact_v1_artifact_reference]);
 
 /**
  * @generated from message mindclade.events.artifact.v1.ArtifactCommitted
@@ -35,3 +37,43 @@ export type ArtifactCommitted = Message<"mindclade.events.artifact.v1.ArtifactCo
  */
 export const ArtifactCommittedSchema: GenMessage<ArtifactCommitted> = /*@__PURE__*/
   messageDesc(file_events_mindclade_artifact_v1_artifact_committed, 0);
+
+/**
+ * ArtifactStagingFinalized records immutable transfer verification without
+ * leaking the provider generation or storage locator bound by the receipt.
+ *
+ * @generated from message mindclade.events.artifact.v1.ArtifactStagingFinalized
+ */
+export type ArtifactStagingFinalized = Message<"mindclade.events.artifact.v1.ArtifactStagingFinalized"> & {
+  /**
+   * @generated from field: string upload_name = 1;
+   */
+  uploadName: string;
+
+  /**
+   * @generated from field: mindclade.artifact.v1.ArtifactRef artifact = 2;
+   */
+  artifact?: ArtifactRef;
+
+  /**
+   * @generated from field: string staging_receipt_digest = 3;
+   */
+  stagingReceiptDigest: string;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp verified_at = 4;
+   */
+  verifiedAt?: Timestamp;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp expire_time = 5;
+   */
+  expireTime?: Timestamp;
+};
+
+/**
+ * Describes the message mindclade.events.artifact.v1.ArtifactStagingFinalized.
+ * Use `create(ArtifactStagingFinalizedSchema)` to create a new message.
+ */
+export const ArtifactStagingFinalizedSchema: GenMessage<ArtifactStagingFinalized> = /*@__PURE__*/
+  messageDesc(file_events_mindclade_artifact_v1_artifact_committed, 1);

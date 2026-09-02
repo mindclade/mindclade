@@ -1,0 +1,74 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+package(default_visibility = ["//services/control_plane:__subpackages__"])
+
+go_library(
+    name = "training",
+    srcs = [
+        "cancellation_sql.go",
+        "contracts.go",
+        "events.go",
+        "list_sql.go",
+        "mapping_sql.go",
+        "pagination.go",
+        "repository_sql.go",
+        "server.go",
+        "validation.go",
+    ],
+    importpath = "github.com/mindclade/mindclade/services/control_plane/internal/training",
+    deps = [
+        "//libs/go/audit",
+        "//protocols/generated/go/artifact/v1:bindings",
+        "//protocols/generated/go/common/v1:bindings",
+        "//protocols/generated/go/internalrpc/job/v1:bindings",
+        "//protocols/generated/go/internalrpc/training/v1:bindings",
+        "//protocols/generated/go/job/v1:bindings",
+        "//protocols/generated/go/training/v1:bindings",
+        "//services/control_plane:database",
+        "//services/control_plane:queue",
+        "@org_golang_google_grpc//:grpc",
+        "@org_golang_google_grpc//codes",
+        "@org_golang_google_grpc//status",
+        "@org_golang_google_protobuf//proto",
+        "@org_golang_google_protobuf//reflect/protoreflect",
+        "@org_golang_google_protobuf//types/known/timestamppb",
+    ],
+)
+
+go_test(
+    name = "training_test",
+    size = "small",
+    srcs = [
+        "postgres_integration_test.go",
+        "training_test.go",
+    ],
+    data = [":governed_sources"],
+    embed = [":training"],
+    pure = "on",
+    visibility = ["//tests:__pkg__"],
+    deps = [
+        "//protocols/generated/go/artifact/v1:bindings",
+        "//protocols/generated/go/common/v1:bindings",
+        "//protocols/generated/go/internalrpc/job/v1:bindings",
+        "//protocols/generated/go/internalrpc/training/v1:bindings",
+        "//protocols/generated/go/job/v1:bindings",
+        "//protocols/generated/go/training/v1:bindings",
+        "//services/control_plane:database",
+        "//services/control_plane:jobs",
+        "//services/control_plane:operations",
+        "//services/control_plane:queue",
+        "@com_github_jackc_pgx_v5//stdlib",
+        "@org_golang_google_grpc//:grpc",
+        "@org_golang_google_grpc//codes",
+        "@org_golang_google_grpc//metadata",
+        "@org_golang_google_grpc//status",
+        "@org_golang_google_protobuf//proto",
+        "@org_golang_google_protobuf//types/known/timestamppb",
+    ],
+)
+
+filegroup(
+    name = "governed_sources",
+    srcs = ["BUILD.bazel"] + glob(["*.go"]),
+    visibility = ["//visibility:public"],
+)

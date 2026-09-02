@@ -5,6 +5,7 @@ package mindclade.job.v1;
 import "google/protobuf/timestamp.proto";
 import "proto/mindclade/artifact/v1/artifact_reference.proto";
 import "proto/mindclade/common/v1/error_detail.proto";
+import "proto/mindclade/common/v1/resource_reference.proto";
 
 option go_package = "github.com/mindclade/mindclade/protocols/generated/go/job/v1;jobv1";
 
@@ -32,4 +33,8 @@ message Operation {
   google.protobuf.Timestamp updated_at = 10;
   bool done = 11;
   string etag = 12;
+  // target is the 1:1 domain resource controlled by this operation. The
+  // operation owns coarse asynchronous control state, never a duplicate of
+  // the target aggregate's scientific or business lifecycle.
+  mindclade.common.v1.ResourceRef target = 13;
 }

@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package mindclade.events.inference.v1;
+
+import "google/protobuf/timestamp.proto";
+import "proto/mindclade/artifact/v1/artifact_reference.proto";
+import "proto/mindclade/common/v1/resource_reference.proto";
+import "proto/mindclade/inference/v1/inference_result.proto";
+
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/inference/v1;inferencev1";
+
+// InferenceResultCommitted records fenced publication of immutable terminal truth.
+message InferenceResultCommitted {
+  string inference_result_name = 1;
+  string inference_request_name = 2;
+  mindclade.inference.v1.InferenceResultOutcome outcome = 3;
+  mindclade.artifact.v1.ArtifactRef result_manifest = 4;
+  string result_digest = 5;
+  mindclade.common.v1.ResourceRef operation = 6;
+  google.protobuf.Timestamp committed_at = 7;
+}

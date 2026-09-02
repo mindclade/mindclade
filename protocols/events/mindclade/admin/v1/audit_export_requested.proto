@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package mindclade.events.admin.v1;
+
+import "google/protobuf/timestamp.proto";
+import "proto/mindclade/admin/v1/audit_query.proto";
+import "proto/mindclade/common/v1/resource_reference.proto";
+
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/admin/v1;adminv1";
+
+// AuditExportRequested gives an exporter the exact bounded query to execute.
+message AuditExportRequested {
+  mindclade.admin.v1.AuditExport audit_export = 1;
+  mindclade.admin.v1.AuditQuery query = 2;
+  mindclade.common.v1.ResourceRef operation = 3;
+  google.protobuf.Timestamp requested_at = 4;
+}

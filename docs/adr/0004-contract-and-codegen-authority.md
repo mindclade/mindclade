@@ -1,8 +1,10 @@
 # ADR-0004: Contract and Code-Generation Authority
 
-> Clarified by ADR-0015: the curated OpenAPI document owns external HTTP/JSON
-> and SDK behavior, while `mindclade.api.v1` owns the public gRPC facade; exact
-> parity mappings replace one-way OpenAPI derivation.
+> Clarified by ADR-0015: Buf-generated native Protobuf/gRPC/Connect bindings
+> and Mindclade-owned `internal/sdk` facades are the internal SDK path. The
+> curated OpenAPI document and `mindclade.api.v1` remain an unratified,
+> public-safe candidate projection; they create no supported public SDK or
+> release authority.
 
 - Status: Accepted in blueprint specification
 - Connected ratification: Pending independent review on protected infrastructure
@@ -70,17 +72,18 @@ Wave 0 freezes only the authority and generation law. Domain protocols are not
 stabilized until their owning wave demonstrates a real end-to-end consumer.
 
 ADR-0015 supersedes only that scheduling rule: the complete domain catalog now
-forms one clean-v1 baseline with generators, tests, and consumers. All source,
-generation, and post-baseline compatibility rules in this record remain in
-force.
+forms an unratified v1 candidate with generators, tests, and consumers. Its
+evidence-gated ratification starts normal compatibility enforcement only after
+the training vertical works end to end. All source, generation, and
+post-ratification compatibility rules in this record remain in force.
 
 ## Consequences
 
 - Each wire or document concept has one editable source.
 - Generated diffs are reviewed through source, toolchain, compatibility, and
   round-trip evidence.
-- Public SDK compatibility can evolve independently from private storage
-  layouts while remaining traceable to supported API contracts.
+- A future, separately ratified public client contract can evolve independently
+  from private storage while remaining traceable to its supported API.
 - Contract packages cannot contain business implementation.
 
 ## Rejected alternatives

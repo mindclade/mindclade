@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package mindclade.events.evaluation.v1;
+
+import "google/protobuf/timestamp.proto";
+import "proto/mindclade/artifact/v1/artifact_reference.proto";
+import "proto/mindclade/common/v1/resource_reference.proto";
+
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/evaluation/v1;evaluationv1";
+
+// EvaluationRunCreated records acceptance of one immutable evaluation intent.
+message EvaluationRunCreated {
+  string evaluation_run_name = 1;
+  int64 evaluation_run_revision = 2;
+  mindclade.artifact.v1.ArtifactRef suite = 3;
+  repeated mindclade.artifact.v1.ArtifactRef datasets = 4;
+  mindclade.artifact.v1.ArtifactRef snapshot = 5;
+  mindclade.common.v1.ResourceRef model_release = 6;
+  mindclade.common.v1.ResourceRef operation = 7;
+  google.protobuf.Timestamp created_at = 8;
+}

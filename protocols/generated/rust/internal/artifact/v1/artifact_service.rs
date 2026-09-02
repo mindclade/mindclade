@@ -112,4 +112,220 @@ pub struct ReleaseArtifactLeaseRequest {
 #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ReleaseArtifactLeaseResponse {
 }
+/// ArtifactStagingReceipt is an opaque, time-bounded proof that the transfer
+/// plane verified immutable bytes. Provider object names, generations, and
+/// credentials deliberately remain private persistence details.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct ArtifactStagingReceipt {
+    #[prost(string, tag = "1")]
+    pub receipt_digest: ::prost::alloc::string::String,
+    #[prost(message, optional, tag = "2")]
+    pub artifact: ::core::option::Option<crate::artifact::v1::ArtifactRef>,
+    #[prost(message, optional, tag = "3")]
+    pub verified_at: ::core::option::Option<::prost_types::Timestamp>,
+    #[prost(message, optional, tag = "4")]
+    pub expire_time: ::core::option::Option<::prost_types::Timestamp>,
+}
+/// ArtifactUploadSession describes resumable progress without returning bytes
+/// or provider storage metadata.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct ArtifactUploadSession {
+    #[prost(string, tag = "1")]
+    pub name: ::prost::alloc::string::String,
+    #[prost(message, optional, tag = "2")]
+    pub artifact: ::core::option::Option<crate::artifact::v1::ArtifactRef>,
+    #[prost(enumeration = "ArtifactUploadState", tag = "3")]
+    pub state: i32,
+    #[prost(int64, tag = "4")]
+    pub committed_offset: i64,
+    #[prost(int64, tag = "5")]
+    pub next_chunk_index: i64,
+    #[prost(message, optional, tag = "6")]
+    pub staging_receipt: ::core::option::Option<ArtifactStagingReceipt>,
+    #[prost(message, optional, tag = "7")]
+    pub create_time: ::core::option::Option<::prost_types::Timestamp>,
+    #[prost(message, optional, tag = "8")]
+    pub update_time: ::core::option::Option<::prost_types::Timestamp>,
+    #[prost(message, optional, tag = "9")]
+    pub expire_time: ::core::option::Option<::prost_types::Timestamp>,
+    #[prost(int64, tag = "10")]
+    pub revision: i64,
+    #[prost(string, tag = "11")]
+    pub etag: ::prost::alloc::string::String,
+}
+/// BeginArtifactUploadRequest creates an idempotent, bounded upload session for
+/// a caller-known immutable content identity.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct BeginArtifactUploadRequest {
+    #[prost(message, optional, tag = "1")]
+    pub context: ::core::option::Option<crate::common::v1::CommandContext>,
+    #[prost(string, tag = "2")]
+    pub parent: ::prost::alloc::string::String,
+    #[prost(message, optional, tag = "3")]
+    pub artifact: ::core::option::Option<crate::artifact::v1::ArtifactRef>,
+    #[prost(string, tag = "4")]
+    pub upload_id: ::prost::alloc::string::String,
+    #[prost(message, optional, tag = "5")]
+    pub expire_time: ::core::option::Option<::prost_types::Timestamp>,
+}
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct BeginArtifactUploadResponse {
+    #[prost(message, optional, tag = "1")]
+    pub upload: ::core::option::Option<ArtifactUploadSession>,
+}
+/// UploadArtifactChunkRequest appends exactly one contiguous, independently
+/// checksummed chunk. Identical offset/digest retries are replay-safe.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct UploadArtifactChunkRequest {
+    #[prost(message, optional, tag = "1")]
+    pub context: ::core::option::Option<crate::common::v1::CommandContext>,
+    #[prost(string, tag = "2")]
+    pub name: ::prost::alloc::string::String,
+    #[prost(int64, tag = "3")]
+    pub chunk_index: i64,
+    #[prost(int64, tag = "4")]
+    pub offset: i64,
+    #[prost(bytes = "vec", tag = "5")]
+    pub data: ::prost::alloc::vec::Vec<u8>,
+    #[prost(string, tag = "6")]
+    pub chunk_digest: ::prost::alloc::string::String,
+    #[prost(string, tag = "7")]
+    pub etag: ::prost::alloc::string::String,
+}
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct UploadArtifactChunkResponse {
+    #[prost(message, optional, tag = "1")]
+    pub upload: ::core::option::Option<ArtifactUploadSession>,
+}
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct GetArtifactUploadRequest {
+    #[prost(string, tag = "1")]
+    pub name: ::prost::alloc::string::String,
+}
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct GetArtifactUploadResponse {
+    #[prost(message, optional, tag = "1")]
+    pub upload: ::core::option::Option<ArtifactUploadSession>,
+}
+/// FinalizeArtifactUploadRequest seals a complete session and creates an opaque
+/// staging receipt. The receipt lifetime may be shorter than the session's
+/// maximum policy but never longer than seven days.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct FinalizeArtifactUploadRequest {
+    #[prost(message, optional, tag = "1")]
+    pub context: ::core::option::Option<crate::common::v1::CommandContext>,
+    #[prost(string, tag = "2")]
+    pub name: ::prost::alloc::string::String,
+    #[prost(string, tag = "3")]
+    pub etag: ::prost::alloc::string::String,
+    #[prost(message, optional, tag = "4")]
+    pub receipt_expire_time: ::core::option::Option<::prost_types::Timestamp>,
+}
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct FinalizeArtifactUploadResponse {
+    #[prost(message, optional, tag = "1")]
+    pub upload: ::core::option::Option<ArtifactUploadSession>,
+    #[prost(message, optional, tag = "2")]
+    pub staging_receipt: ::core::option::Option<ArtifactStagingReceipt>,
+}
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct AbortArtifactUploadRequest {
+    #[prost(message, optional, tag = "1")]
+    pub context: ::core::option::Option<crate::common::v1::CommandContext>,
+    #[prost(string, tag = "2")]
+    pub name: ::prost::alloc::string::String,
+    #[prost(string, tag = "3")]
+    pub etag: ::prost::alloc::string::String,
+    #[prost(string, tag = "4")]
+    pub reason_code: ::prost::alloc::string::String,
+}
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct AbortArtifactUploadResponse {
+    #[prost(message, optional, tag = "1")]
+    pub upload: ::core::option::Option<ArtifactUploadSession>,
+}
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct QuarantineArtifactUploadRequest {
+    #[prost(message, optional, tag = "1")]
+    pub context: ::core::option::Option<crate::common::v1::CommandContext>,
+    #[prost(string, tag = "2")]
+    pub name: ::prost::alloc::string::String,
+    #[prost(string, tag = "3")]
+    pub etag: ::prost::alloc::string::String,
+    #[prost(string, tag = "4")]
+    pub reason_code: ::prost::alloc::string::String,
+}
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct QuarantineArtifactUploadResponse {
+    #[prost(message, optional, tag = "1")]
+    pub upload: ::core::option::Option<ArtifactUploadSession>,
+}
+/// DownloadArtifactRequest selects committed immutable content. The server
+/// resolves and pins the private provider generation before streaming.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct DownloadArtifactRequest {
+    #[prost(string, tag = "1")]
+    pub name: ::prost::alloc::string::String,
+    #[prost(string, tag = "2")]
+    pub digest: ::prost::alloc::string::String,
+    #[prost(int64, tag = "3")]
+    pub offset: i64,
+    #[prost(int32, tag = "4")]
+    pub max_chunk_bytes: i32,
+}
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct DownloadArtifactResponse {
+    #[prost(message, optional, tag = "1")]
+    pub artifact: ::core::option::Option<crate::artifact::v1::ArtifactRef>,
+    #[prost(int64, tag = "2")]
+    pub offset: i64,
+    #[prost(bytes = "vec", tag = "3")]
+    pub data: ::prost::alloc::vec::Vec<u8>,
+    #[prost(string, tag = "4")]
+    pub chunk_digest: ::prost::alloc::string::String,
+    #[prost(bool, tag = "5")]
+    pub complete: bool,
+}
+/// ArtifactUploadState is the durable transfer-plane lifecycle. Terminal states
+/// are immutable; expired and quarantined sessions cannot be resumed.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+pub enum ArtifactUploadState {
+    Unspecified = 0,
+    Open = 1,
+    Finalizing = 2,
+    Finalized = 3,
+    Aborted = 4,
+    Quarantined = 5,
+    Expired = 6,
+}
+impl ArtifactUploadState {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            Self::Unspecified => "ARTIFACT_UPLOAD_STATE_UNSPECIFIED",
+            Self::Open => "ARTIFACT_UPLOAD_STATE_OPEN",
+            Self::Finalizing => "ARTIFACT_UPLOAD_STATE_FINALIZING",
+            Self::Finalized => "ARTIFACT_UPLOAD_STATE_FINALIZED",
+            Self::Aborted => "ARTIFACT_UPLOAD_STATE_ABORTED",
+            Self::Quarantined => "ARTIFACT_UPLOAD_STATE_QUARANTINED",
+            Self::Expired => "ARTIFACT_UPLOAD_STATE_EXPIRED",
+        }
+    }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "ARTIFACT_UPLOAD_STATE_UNSPECIFIED" => Some(Self::Unspecified),
+            "ARTIFACT_UPLOAD_STATE_OPEN" => Some(Self::Open),
+            "ARTIFACT_UPLOAD_STATE_FINALIZING" => Some(Self::Finalizing),
+            "ARTIFACT_UPLOAD_STATE_FINALIZED" => Some(Self::Finalized),
+            "ARTIFACT_UPLOAD_STATE_ABORTED" => Some(Self::Aborted),
+            "ARTIFACT_UPLOAD_STATE_QUARANTINED" => Some(Self::Quarantined),
+            "ARTIFACT_UPLOAD_STATE_EXPIRED" => Some(Self::Expired),
+            _ => None,
+        }
+    }
+}
 // @@protoc_insertion_point(module)

@@ -80,6 +80,65 @@ func (AuditActionResult) EnumDescriptor() ([]byte, []int) {
 	return file_proto_mindclade_admin_v1_audit_query_proto_rawDescGZIP(), []int{0}
 }
 
+// AuditExportState is the durable lifecycle of an asynchronous audit export.
+type AuditExportState int32
+
+const (
+	AuditExportState_AUDIT_EXPORT_STATE_UNSPECIFIED AuditExportState = 0
+	AuditExportState_AUDIT_EXPORT_STATE_REQUESTED   AuditExportState = 1
+	AuditExportState_AUDIT_EXPORT_STATE_RUNNING     AuditExportState = 2
+	AuditExportState_AUDIT_EXPORT_STATE_SUCCEEDED   AuditExportState = 3
+	AuditExportState_AUDIT_EXPORT_STATE_FAILED      AuditExportState = 4
+	AuditExportState_AUDIT_EXPORT_STATE_EXPIRED     AuditExportState = 5
+)
+
+// Enum value maps for AuditExportState.
+var (
+	AuditExportState_name = map[int32]string{
+		0: "AUDIT_EXPORT_STATE_UNSPECIFIED",
+		1: "AUDIT_EXPORT_STATE_REQUESTED",
+		2: "AUDIT_EXPORT_STATE_RUNNING",
+		3: "AUDIT_EXPORT_STATE_SUCCEEDED",
+		4: "AUDIT_EXPORT_STATE_FAILED",
+		5: "AUDIT_EXPORT_STATE_EXPIRED",
+	}
+	AuditExportState_value = map[string]int32{
+		"AUDIT_EXPORT_STATE_UNSPECIFIED": 0,
+		"AUDIT_EXPORT_STATE_REQUESTED":   1,
+		"AUDIT_EXPORT_STATE_RUNNING":     2,
+		"AUDIT_EXPORT_STATE_SUCCEEDED":   3,
+		"AUDIT_EXPORT_STATE_FAILED":      4,
+		"AUDIT_EXPORT_STATE_EXPIRED":     5,
+	}
+)
+
+func (x AuditExportState) Enum() *AuditExportState {
+	p := new(AuditExportState)
+	*p = x
+	return p
+}
+
+func (x AuditExportState) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AuditExportState) Descriptor() protoreflect.EnumDescriptor {
+	return file_proto_mindclade_admin_v1_audit_query_proto_enumTypes[1].Descriptor()
+}
+
+func (AuditExportState) Type() protoreflect.EnumType {
+	return &file_proto_mindclade_admin_v1_audit_query_proto_enumTypes[1]
+}
+
+func (x AuditExportState) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AuditExportState.Descriptor instead.
+func (AuditExportState) EnumDescriptor() ([]byte, []int) {
+	return file_proto_mindclade_admin_v1_audit_query_proto_rawDescGZIP(), []int{1}
+}
+
 // AuditQuery is a bounded, side-effect-free tenant/project audit search.
 type AuditQuery struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -449,14 +508,22 @@ func (x *AuditQueryPage) GetPage() *v1.PageResponse {
 	return nil
 }
 
-// AuditExport is an immutable, policy-controlled result for queries too large to page.
+// AuditExport is a policy-controlled durable request whose succeeded revision
+// references one immutable export artifact.
 type AuditExport struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	Artifact      *v11.ArtifactRef       `protobuf:"bytes,2,opt,name=artifact,proto3" json:"artifact,omitempty"`
-	QueryDigest   string                 `protobuf:"bytes,3,opt,name=query_digest,json=queryDigest,proto3" json:"query_digest,omitempty"`
-	CreateTime    *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty"`
-	ExpireTime    *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=expire_time,json=expireTime,proto3" json:"expire_time,omitempty"`
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	Name        string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Artifact    *v11.ArtifactRef       `protobuf:"bytes,2,opt,name=artifact,proto3" json:"artifact,omitempty"`
+	QueryDigest string                 `protobuf:"bytes,3,opt,name=query_digest,json=queryDigest,proto3" json:"query_digest,omitempty"`
+	CreateTime  *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty"`
+	ExpireTime  *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=expire_time,json=expireTime,proto3" json:"expire_time,omitempty"`
+	State       AuditExportState       `protobuf:"varint,6,opt,name=state,proto3,enum=mindclade.admin.v1.AuditExportState" json:"state,omitempty"`
+	// Stable machine-readable failure code; protected details remain in audit evidence.
+	FailureCode   string                 `protobuf:"bytes,7,opt,name=failure_code,json=failureCode,proto3" json:"failure_code,omitempty"`
+	Revision      int64                  `protobuf:"varint,8,opt,name=revision,proto3" json:"revision,omitempty"`
+	Etag          string                 `protobuf:"bytes,9,opt,name=etag,proto3" json:"etag,omitempty"`
+	UpdateTime    *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=update_time,json=updateTime,proto3" json:"update_time,omitempty"`
+	Uid           string                 `protobuf:"bytes,11,opt,name=uid,proto3" json:"uid,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -526,6 +593,48 @@ func (x *AuditExport) GetExpireTime() *timestamppb.Timestamp {
 	return nil
 }
 
+func (x *AuditExport) GetState() AuditExportState {
+	if x != nil {
+		return x.State
+	}
+	return AuditExportState_AUDIT_EXPORT_STATE_UNSPECIFIED
+}
+
+func (x *AuditExport) GetFailureCode() string {
+	if x != nil {
+		return x.FailureCode
+	}
+	return ""
+}
+
+func (x *AuditExport) GetRevision() int64 {
+	if x != nil {
+		return x.Revision
+	}
+	return 0
+}
+
+func (x *AuditExport) GetEtag() string {
+	if x != nil {
+		return x.Etag
+	}
+	return ""
+}
+
+func (x *AuditExport) GetUpdateTime() *timestamppb.Timestamp {
+	if x != nil {
+		return x.UpdateTime
+	}
+	return nil
+}
+
+func (x *AuditExport) GetUid() string {
+	if x != nil {
+		return x.Uid
+	}
+	return ""
+}
+
 var File_proto_mindclade_admin_v1_audit_query_proto protoreflect.FileDescriptor
 
 const file_proto_mindclade_admin_v1_audit_query_proto_rawDesc = "" +
@@ -573,7 +682,7 @@ const file_proto_mindclade_admin_v1_audit_query_proto_rawDesc = "" +
 	"\rdetail_digest\x18\x13 \x01(\tR\fdetailDigest\"\x82\x01\n" +
 	"\x0eAuditQueryPage\x129\n" +
 	"\arecords\x18\x01 \x03(\v2\x1f.mindclade.admin.v1.AuditRecordR\arecords\x125\n" +
-	"\x04page\x18\x02 \x01(\v2!.mindclade.common.v1.PageResponseR\x04page\"\xfe\x01\n" +
+	"\x04page\x18\x02 \x01(\v2!.mindclade.common.v1.PageResponseR\x04page\"\xdc\x03\n" +
 	"\vAuditExport\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12>\n" +
 	"\bartifact\x18\x02 \x01(\v2\".mindclade.artifact.v1.ArtifactRefR\bartifact\x12!\n" +
@@ -581,13 +690,28 @@ const file_proto_mindclade_admin_v1_audit_query_proto_rawDesc = "" +
 	"\vcreate_time\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
 	"createTime\x12;\n" +
 	"\vexpire_time\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
-	"expireTime*\xbe\x01\n" +
+	"expireTime\x12:\n" +
+	"\x05state\x18\x06 \x01(\x0e2$.mindclade.admin.v1.AuditExportStateR\x05state\x12!\n" +
+	"\ffailure_code\x18\a \x01(\tR\vfailureCode\x12\x1a\n" +
+	"\brevision\x18\b \x01(\x03R\brevision\x12\x12\n" +
+	"\x04etag\x18\t \x01(\tR\x04etag\x12;\n" +
+	"\vupdate_time\x18\n" +
+	" \x01(\v2\x1a.google.protobuf.TimestampR\n" +
+	"updateTime\x12\x10\n" +
+	"\x03uid\x18\v \x01(\tR\x03uid*\xbe\x01\n" +
 	"\x11AuditActionResult\x12#\n" +
 	"\x1fAUDIT_ACTION_RESULT_UNSPECIFIED\x10\x00\x12!\n" +
 	"\x1dAUDIT_ACTION_RESULT_SUCCEEDED\x10\x01\x12\x1e\n" +
 	"\x1aAUDIT_ACTION_RESULT_FAILED\x10\x02\x12\x1e\n" +
 	"\x1aAUDIT_ACTION_RESULT_DENIED\x10\x03\x12!\n" +
-	"\x1dAUDIT_ACTION_RESULT_CANCELLED\x10\x04BHZFgithub.com/mindclade/mindclade/protocols/generated/go/admin/v1;adminv1b\x06proto3"
+	"\x1dAUDIT_ACTION_RESULT_CANCELLED\x10\x04*\xd9\x01\n" +
+	"\x10AuditExportState\x12\"\n" +
+	"\x1eAUDIT_EXPORT_STATE_UNSPECIFIED\x10\x00\x12 \n" +
+	"\x1cAUDIT_EXPORT_STATE_REQUESTED\x10\x01\x12\x1e\n" +
+	"\x1aAUDIT_EXPORT_STATE_RUNNING\x10\x02\x12 \n" +
+	"\x1cAUDIT_EXPORT_STATE_SUCCEEDED\x10\x03\x12\x1d\n" +
+	"\x19AUDIT_EXPORT_STATE_FAILED\x10\x04\x12\x1e\n" +
+	"\x1aAUDIT_EXPORT_STATE_EXPIRED\x10\x05BHZFgithub.com/mindclade/mindclade/protocols/generated/go/admin/v1;adminv1b\x06proto3"
 
 var (
 	file_proto_mindclade_admin_v1_audit_query_proto_rawDescOnce sync.Once
@@ -601,39 +725,42 @@ func file_proto_mindclade_admin_v1_audit_query_proto_rawDescGZIP() []byte {
 	return file_proto_mindclade_admin_v1_audit_query_proto_rawDescData
 }
 
-var file_proto_mindclade_admin_v1_audit_query_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
+var file_proto_mindclade_admin_v1_audit_query_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
 var file_proto_mindclade_admin_v1_audit_query_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_proto_mindclade_admin_v1_audit_query_proto_goTypes = []any{
 	(AuditActionResult)(0),        // 0: mindclade.admin.v1.AuditActionResult
-	(*AuditQuery)(nil),            // 1: mindclade.admin.v1.AuditQuery
-	(*AuditRecord)(nil),           // 2: mindclade.admin.v1.AuditRecord
-	(*AuditQueryPage)(nil),        // 3: mindclade.admin.v1.AuditQueryPage
-	(*AuditExport)(nil),           // 4: mindclade.admin.v1.AuditExport
-	(*timestamppb.Timestamp)(nil), // 5: google.protobuf.Timestamp
-	(*v1.ResourceRef)(nil),        // 6: mindclade.common.v1.ResourceRef
-	(*v1.PageRequest)(nil),        // 7: mindclade.common.v1.PageRequest
-	(*v1.PageResponse)(nil),       // 8: mindclade.common.v1.PageResponse
-	(*v11.ArtifactRef)(nil),       // 9: mindclade.artifact.v1.ArtifactRef
+	(AuditExportState)(0),         // 1: mindclade.admin.v1.AuditExportState
+	(*AuditQuery)(nil),            // 2: mindclade.admin.v1.AuditQuery
+	(*AuditRecord)(nil),           // 3: mindclade.admin.v1.AuditRecord
+	(*AuditQueryPage)(nil),        // 4: mindclade.admin.v1.AuditQueryPage
+	(*AuditExport)(nil),           // 5: mindclade.admin.v1.AuditExport
+	(*timestamppb.Timestamp)(nil), // 6: google.protobuf.Timestamp
+	(*v1.ResourceRef)(nil),        // 7: mindclade.common.v1.ResourceRef
+	(*v1.PageRequest)(nil),        // 8: mindclade.common.v1.PageRequest
+	(*v1.PageResponse)(nil),       // 9: mindclade.common.v1.PageResponse
+	(*v11.ArtifactRef)(nil),       // 10: mindclade.artifact.v1.ArtifactRef
 }
 var file_proto_mindclade_admin_v1_audit_query_proto_depIdxs = []int32{
-	5,  // 0: mindclade.admin.v1.AuditQuery.start_time:type_name -> google.protobuf.Timestamp
-	5,  // 1: mindclade.admin.v1.AuditQuery.end_time:type_name -> google.protobuf.Timestamp
-	6,  // 2: mindclade.admin.v1.AuditQuery.resources:type_name -> mindclade.common.v1.ResourceRef
+	6,  // 0: mindclade.admin.v1.AuditQuery.start_time:type_name -> google.protobuf.Timestamp
+	6,  // 1: mindclade.admin.v1.AuditQuery.end_time:type_name -> google.protobuf.Timestamp
+	7,  // 2: mindclade.admin.v1.AuditQuery.resources:type_name -> mindclade.common.v1.ResourceRef
 	0,  // 3: mindclade.admin.v1.AuditQuery.results:type_name -> mindclade.admin.v1.AuditActionResult
-	7,  // 4: mindclade.admin.v1.AuditQuery.page:type_name -> mindclade.common.v1.PageRequest
-	5,  // 5: mindclade.admin.v1.AuditRecord.occurred_at:type_name -> google.protobuf.Timestamp
-	6,  // 6: mindclade.admin.v1.AuditRecord.resource:type_name -> mindclade.common.v1.ResourceRef
+	8,  // 4: mindclade.admin.v1.AuditQuery.page:type_name -> mindclade.common.v1.PageRequest
+	6,  // 5: mindclade.admin.v1.AuditRecord.occurred_at:type_name -> google.protobuf.Timestamp
+	7,  // 6: mindclade.admin.v1.AuditRecord.resource:type_name -> mindclade.common.v1.ResourceRef
 	0,  // 7: mindclade.admin.v1.AuditRecord.result:type_name -> mindclade.admin.v1.AuditActionResult
-	2,  // 8: mindclade.admin.v1.AuditQueryPage.records:type_name -> mindclade.admin.v1.AuditRecord
-	8,  // 9: mindclade.admin.v1.AuditQueryPage.page:type_name -> mindclade.common.v1.PageResponse
-	9,  // 10: mindclade.admin.v1.AuditExport.artifact:type_name -> mindclade.artifact.v1.ArtifactRef
-	5,  // 11: mindclade.admin.v1.AuditExport.create_time:type_name -> google.protobuf.Timestamp
-	5,  // 12: mindclade.admin.v1.AuditExport.expire_time:type_name -> google.protobuf.Timestamp
-	13, // [13:13] is the sub-list for method output_type
-	13, // [13:13] is the sub-list for method input_type
-	13, // [13:13] is the sub-list for extension type_name
-	13, // [13:13] is the sub-list for extension extendee
-	0,  // [0:13] is the sub-list for field type_name
+	3,  // 8: mindclade.admin.v1.AuditQueryPage.records:type_name -> mindclade.admin.v1.AuditRecord
+	9,  // 9: mindclade.admin.v1.AuditQueryPage.page:type_name -> mindclade.common.v1.PageResponse
+	10, // 10: mindclade.admin.v1.AuditExport.artifact:type_name -> mindclade.artifact.v1.ArtifactRef
+	6,  // 11: mindclade.admin.v1.AuditExport.create_time:type_name -> google.protobuf.Timestamp
+	6,  // 12: mindclade.admin.v1.AuditExport.expire_time:type_name -> google.protobuf.Timestamp
+	1,  // 13: mindclade.admin.v1.AuditExport.state:type_name -> mindclade.admin.v1.AuditExportState
+	6,  // 14: mindclade.admin.v1.AuditExport.update_time:type_name -> google.protobuf.Timestamp
+	15, // [15:15] is the sub-list for method output_type
+	15, // [15:15] is the sub-list for method input_type
+	15, // [15:15] is the sub-list for extension type_name
+	15, // [15:15] is the sub-list for extension extendee
+	0,  // [0:15] is the sub-list for field type_name
 }
 
 func init() { file_proto_mindclade_admin_v1_audit_query_proto_init() }
@@ -646,7 +773,7 @@ func file_proto_mindclade_admin_v1_audit_query_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_mindclade_admin_v1_audit_query_proto_rawDesc), len(file_proto_mindclade_admin_v1_audit_query_proto_rawDesc)),
-			NumEnums:      1,
+			NumEnums:      2,
 			NumMessages:   4,
 			NumExtensions: 0,
 			NumServices:   0,

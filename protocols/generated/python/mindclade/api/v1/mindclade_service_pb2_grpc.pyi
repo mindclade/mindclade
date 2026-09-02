@@ -33,106 +33,27 @@ class MindcladeServiceStub:
     def __new__(cls, channel: _grpc.Channel) -> _Self: ...
     @_typing.overload
     def __new__(cls, channel: _aio.Channel) -> MindcladeServiceAsyncStub: ...
-    SubmitInference: _grpc.UnaryUnaryMultiCallable[_mindclade_service_pb2.SubmitInferenceRequest, _mindclade_service_pb2.Operation]
     GetOperation: _grpc.UnaryUnaryMultiCallable[_mindclade_service_pb2.GetResourceRequest, _mindclade_service_pb2.Operation]
     CancelOperation: _grpc.UnaryUnaryMultiCallable[_mindclade_service_pb2.CancelOperationRequest, _mindclade_service_pb2.Operation]
     WatchOperation: _grpc.UnaryStreamMultiCallable[_mindclade_service_pb2.WatchOperationRequest, _mindclade_service_pb2.OperationEvent]
-    GetArtifact: _grpc.UnaryUnaryMultiCallable[_mindclade_service_pb2.GetResourceRequest, _mindclade_service_pb2.ArtifactView]
-    DownloadArtifact: _grpc.UnaryStreamMultiCallable[_mindclade_service_pb2.DownloadArtifactRequest, _mindclade_service_pb2.DownloadArtifactChunk]
-    ListDatasets: _grpc.UnaryUnaryMultiCallable[_mindclade_service_pb2.ListResourcesRequest, _mindclade_service_pb2.DatasetList]
-    CreateDataset: _grpc.UnaryUnaryMultiCallable[_mindclade_service_pb2.CreateDatasetRequest, _mindclade_service_pb2.DatasetView]
-    GetDataset: _grpc.UnaryUnaryMultiCallable[_mindclade_service_pb2.GetResourceRequest, _mindclade_service_pb2.DatasetView]
-    UpdateDataset: _grpc.UnaryUnaryMultiCallable[_mindclade_service_pb2.UpdateDatasetRequest, _mindclade_service_pb2.DatasetView]
-    ListDatasetReleases: _grpc.UnaryUnaryMultiCallable[_mindclade_service_pb2.ListResourcesRequest, _mindclade_service_pb2.DatasetReleaseList]
-    CreateDatasetRelease: _grpc.UnaryUnaryMultiCallable[_mindclade_service_pb2.CreateDatasetReleaseRequest, _mindclade_service_pb2.DatasetReleaseView]
-    ListModels: _grpc.UnaryUnaryMultiCallable[_mindclade_service_pb2.ListResourcesRequest, _mindclade_service_pb2.ModelList]
-    CreateModel: _grpc.UnaryUnaryMultiCallable[_mindclade_service_pb2.CreateModelRequest, _mindclade_service_pb2.ModelView]
-    GetModel: _grpc.UnaryUnaryMultiCallable[_mindclade_service_pb2.GetResourceRequest, _mindclade_service_pb2.ModelView]
-    UpdateModel: _grpc.UnaryUnaryMultiCallable[_mindclade_service_pb2.UpdateModelRequest, _mindclade_service_pb2.ModelView]
-    ListModelReleases: _grpc.UnaryUnaryMultiCallable[_mindclade_service_pb2.ListResourcesRequest, _mindclade_service_pb2.ModelReleaseList]
-    CreateModelRelease: _grpc.UnaryUnaryMultiCallable[_mindclade_service_pb2.CreateModelReleaseRequest, _mindclade_service_pb2.ModelReleaseView]
     ListTrainingRuns: _grpc.UnaryUnaryMultiCallable[_mindclade_service_pb2.ListResourcesRequest, _mindclade_service_pb2.TrainingRunList]
     CreateTrainingRun: _grpc.UnaryUnaryMultiCallable[_mindclade_service_pb2.CreateTrainingRunRequest, _mindclade_service_pb2.Operation]
     GetTrainingRun: _grpc.UnaryUnaryMultiCallable[_mindclade_service_pb2.GetResourceRequest, _mindclade_service_pb2.TrainingRunView]
-    ListEvaluationRuns: _grpc.UnaryUnaryMultiCallable[_mindclade_service_pb2.ListResourcesRequest, _mindclade_service_pb2.EvaluationRunList]
-    CreateEvaluationRun: _grpc.UnaryUnaryMultiCallable[_mindclade_service_pb2.CreateEvaluationRunRequest, _mindclade_service_pb2.Operation]
-    GetEvaluationRun: _grpc.UnaryUnaryMultiCallable[_mindclade_service_pb2.GetResourceRequest, _mindclade_service_pb2.EvaluationRunView]
-    GetEvaluationResult: _grpc.UnaryUnaryMultiCallable[_mindclade_service_pb2.GetResourceRequest, _mindclade_service_pb2.EvaluationResultView]
-    ListAgentDefinitions: _grpc.UnaryUnaryMultiCallable[_mindclade_service_pb2.ListResourcesRequest, _mindclade_service_pb2.AgentDefinitionList]
-    CreateAgentDefinition: _grpc.UnaryUnaryMultiCallable[_mindclade_service_pb2.CreateAgentDefinitionRequest, _mindclade_service_pb2.AgentDefinitionView]
-    ListAgentRuns: _grpc.UnaryUnaryMultiCallable[_mindclade_service_pb2.ListResourcesRequest, _mindclade_service_pb2.AgentRunList]
-    CreateAgentRun: _grpc.UnaryUnaryMultiCallable[_mindclade_service_pb2.CreateAgentRunRequest, _mindclade_service_pb2.Operation]
-    GetAgentRun: _grpc.UnaryUnaryMultiCallable[_mindclade_service_pb2.GetResourceRequest, _mindclade_service_pb2.AgentRunView]
-    ListWorkflowDefinitions: _grpc.UnaryUnaryMultiCallable[_mindclade_service_pb2.ListResourcesRequest, _mindclade_service_pb2.WorkflowDefinitionList]
-    CreateWorkflowDefinition: _grpc.UnaryUnaryMultiCallable[_mindclade_service_pb2.CreateWorkflowDefinitionRequest, _mindclade_service_pb2.WorkflowDefinitionView]
-    ListWorkflowRuns: _grpc.UnaryUnaryMultiCallable[_mindclade_service_pb2.ListResourcesRequest, _mindclade_service_pb2.WorkflowRunList]
-    CreateWorkflowRun: _grpc.UnaryUnaryMultiCallable[_mindclade_service_pb2.CreateWorkflowRunRequest, _mindclade_service_pb2.Operation]
-    GetWorkflowRun: _grpc.UnaryUnaryMultiCallable[_mindclade_service_pb2.GetResourceRequest, _mindclade_service_pb2.WorkflowRunView]
-    ListApprovalRequests: _grpc.UnaryUnaryMultiCallable[_mindclade_service_pb2.ListResourcesRequest, _mindclade_service_pb2.ApprovalRequestList]
-    DecideApproval: _grpc.UnaryUnaryMultiCallable[_mindclade_service_pb2.DecideApprovalRequest, _mindclade_service_pb2.ApprovalReceiptView]
-    GetTenant: _grpc.UnaryUnaryMultiCallable[_mindclade_service_pb2.GetResourceRequest, _mindclade_service_pb2.TenantView]
-    ListProjects: _grpc.UnaryUnaryMultiCallable[_mindclade_service_pb2.ListResourcesRequest, _mindclade_service_pb2.ProjectList]
-    CreateProject: _grpc.UnaryUnaryMultiCallable[_mindclade_service_pb2.CreateProjectRequest, _mindclade_service_pb2.ProjectView]
-    GetProject: _grpc.UnaryUnaryMultiCallable[_mindclade_service_pb2.GetResourceRequest, _mindclade_service_pb2.ProjectView]
-    ListAuditRecords: _grpc.UnaryUnaryMultiCallable[_mindclade_service_pb2.ListAuditRecordsRequest, _mindclade_service_pb2.AuditRecordList]
 
 @_typing.type_check_only
 class MindcladeServiceAsyncStub(MindcladeServiceStub):
     """MindcladeService is the only public gRPC façade."""
 
     def __init__(self, channel: _aio.Channel) -> None: ...
-    SubmitInference: _aio.UnaryUnaryMultiCallable[_mindclade_service_pb2.SubmitInferenceRequest, _mindclade_service_pb2.Operation]  # type: ignore[assignment]
     GetOperation: _aio.UnaryUnaryMultiCallable[_mindclade_service_pb2.GetResourceRequest, _mindclade_service_pb2.Operation]  # type: ignore[assignment]
     CancelOperation: _aio.UnaryUnaryMultiCallable[_mindclade_service_pb2.CancelOperationRequest, _mindclade_service_pb2.Operation]  # type: ignore[assignment]
     WatchOperation: _aio.UnaryStreamMultiCallable[_mindclade_service_pb2.WatchOperationRequest, _mindclade_service_pb2.OperationEvent]  # type: ignore[assignment]
-    GetArtifact: _aio.UnaryUnaryMultiCallable[_mindclade_service_pb2.GetResourceRequest, _mindclade_service_pb2.ArtifactView]  # type: ignore[assignment]
-    DownloadArtifact: _aio.UnaryStreamMultiCallable[_mindclade_service_pb2.DownloadArtifactRequest, _mindclade_service_pb2.DownloadArtifactChunk]  # type: ignore[assignment]
-    ListDatasets: _aio.UnaryUnaryMultiCallable[_mindclade_service_pb2.ListResourcesRequest, _mindclade_service_pb2.DatasetList]  # type: ignore[assignment]
-    CreateDataset: _aio.UnaryUnaryMultiCallable[_mindclade_service_pb2.CreateDatasetRequest, _mindclade_service_pb2.DatasetView]  # type: ignore[assignment]
-    GetDataset: _aio.UnaryUnaryMultiCallable[_mindclade_service_pb2.GetResourceRequest, _mindclade_service_pb2.DatasetView]  # type: ignore[assignment]
-    UpdateDataset: _aio.UnaryUnaryMultiCallable[_mindclade_service_pb2.UpdateDatasetRequest, _mindclade_service_pb2.DatasetView]  # type: ignore[assignment]
-    ListDatasetReleases: _aio.UnaryUnaryMultiCallable[_mindclade_service_pb2.ListResourcesRequest, _mindclade_service_pb2.DatasetReleaseList]  # type: ignore[assignment]
-    CreateDatasetRelease: _aio.UnaryUnaryMultiCallable[_mindclade_service_pb2.CreateDatasetReleaseRequest, _mindclade_service_pb2.DatasetReleaseView]  # type: ignore[assignment]
-    ListModels: _aio.UnaryUnaryMultiCallable[_mindclade_service_pb2.ListResourcesRequest, _mindclade_service_pb2.ModelList]  # type: ignore[assignment]
-    CreateModel: _aio.UnaryUnaryMultiCallable[_mindclade_service_pb2.CreateModelRequest, _mindclade_service_pb2.ModelView]  # type: ignore[assignment]
-    GetModel: _aio.UnaryUnaryMultiCallable[_mindclade_service_pb2.GetResourceRequest, _mindclade_service_pb2.ModelView]  # type: ignore[assignment]
-    UpdateModel: _aio.UnaryUnaryMultiCallable[_mindclade_service_pb2.UpdateModelRequest, _mindclade_service_pb2.ModelView]  # type: ignore[assignment]
-    ListModelReleases: _aio.UnaryUnaryMultiCallable[_mindclade_service_pb2.ListResourcesRequest, _mindclade_service_pb2.ModelReleaseList]  # type: ignore[assignment]
-    CreateModelRelease: _aio.UnaryUnaryMultiCallable[_mindclade_service_pb2.CreateModelReleaseRequest, _mindclade_service_pb2.ModelReleaseView]  # type: ignore[assignment]
     ListTrainingRuns: _aio.UnaryUnaryMultiCallable[_mindclade_service_pb2.ListResourcesRequest, _mindclade_service_pb2.TrainingRunList]  # type: ignore[assignment]
     CreateTrainingRun: _aio.UnaryUnaryMultiCallable[_mindclade_service_pb2.CreateTrainingRunRequest, _mindclade_service_pb2.Operation]  # type: ignore[assignment]
     GetTrainingRun: _aio.UnaryUnaryMultiCallable[_mindclade_service_pb2.GetResourceRequest, _mindclade_service_pb2.TrainingRunView]  # type: ignore[assignment]
-    ListEvaluationRuns: _aio.UnaryUnaryMultiCallable[_mindclade_service_pb2.ListResourcesRequest, _mindclade_service_pb2.EvaluationRunList]  # type: ignore[assignment]
-    CreateEvaluationRun: _aio.UnaryUnaryMultiCallable[_mindclade_service_pb2.CreateEvaluationRunRequest, _mindclade_service_pb2.Operation]  # type: ignore[assignment]
-    GetEvaluationRun: _aio.UnaryUnaryMultiCallable[_mindclade_service_pb2.GetResourceRequest, _mindclade_service_pb2.EvaluationRunView]  # type: ignore[assignment]
-    GetEvaluationResult: _aio.UnaryUnaryMultiCallable[_mindclade_service_pb2.GetResourceRequest, _mindclade_service_pb2.EvaluationResultView]  # type: ignore[assignment]
-    ListAgentDefinitions: _aio.UnaryUnaryMultiCallable[_mindclade_service_pb2.ListResourcesRequest, _mindclade_service_pb2.AgentDefinitionList]  # type: ignore[assignment]
-    CreateAgentDefinition: _aio.UnaryUnaryMultiCallable[_mindclade_service_pb2.CreateAgentDefinitionRequest, _mindclade_service_pb2.AgentDefinitionView]  # type: ignore[assignment]
-    ListAgentRuns: _aio.UnaryUnaryMultiCallable[_mindclade_service_pb2.ListResourcesRequest, _mindclade_service_pb2.AgentRunList]  # type: ignore[assignment]
-    CreateAgentRun: _aio.UnaryUnaryMultiCallable[_mindclade_service_pb2.CreateAgentRunRequest, _mindclade_service_pb2.Operation]  # type: ignore[assignment]
-    GetAgentRun: _aio.UnaryUnaryMultiCallable[_mindclade_service_pb2.GetResourceRequest, _mindclade_service_pb2.AgentRunView]  # type: ignore[assignment]
-    ListWorkflowDefinitions: _aio.UnaryUnaryMultiCallable[_mindclade_service_pb2.ListResourcesRequest, _mindclade_service_pb2.WorkflowDefinitionList]  # type: ignore[assignment]
-    CreateWorkflowDefinition: _aio.UnaryUnaryMultiCallable[_mindclade_service_pb2.CreateWorkflowDefinitionRequest, _mindclade_service_pb2.WorkflowDefinitionView]  # type: ignore[assignment]
-    ListWorkflowRuns: _aio.UnaryUnaryMultiCallable[_mindclade_service_pb2.ListResourcesRequest, _mindclade_service_pb2.WorkflowRunList]  # type: ignore[assignment]
-    CreateWorkflowRun: _aio.UnaryUnaryMultiCallable[_mindclade_service_pb2.CreateWorkflowRunRequest, _mindclade_service_pb2.Operation]  # type: ignore[assignment]
-    GetWorkflowRun: _aio.UnaryUnaryMultiCallable[_mindclade_service_pb2.GetResourceRequest, _mindclade_service_pb2.WorkflowRunView]  # type: ignore[assignment]
-    ListApprovalRequests: _aio.UnaryUnaryMultiCallable[_mindclade_service_pb2.ListResourcesRequest, _mindclade_service_pb2.ApprovalRequestList]  # type: ignore[assignment]
-    DecideApproval: _aio.UnaryUnaryMultiCallable[_mindclade_service_pb2.DecideApprovalRequest, _mindclade_service_pb2.ApprovalReceiptView]  # type: ignore[assignment]
-    GetTenant: _aio.UnaryUnaryMultiCallable[_mindclade_service_pb2.GetResourceRequest, _mindclade_service_pb2.TenantView]  # type: ignore[assignment]
-    ListProjects: _aio.UnaryUnaryMultiCallable[_mindclade_service_pb2.ListResourcesRequest, _mindclade_service_pb2.ProjectList]  # type: ignore[assignment]
-    CreateProject: _aio.UnaryUnaryMultiCallable[_mindclade_service_pb2.CreateProjectRequest, _mindclade_service_pb2.ProjectView]  # type: ignore[assignment]
-    GetProject: _aio.UnaryUnaryMultiCallable[_mindclade_service_pb2.GetResourceRequest, _mindclade_service_pb2.ProjectView]  # type: ignore[assignment]
-    ListAuditRecords: _aio.UnaryUnaryMultiCallable[_mindclade_service_pb2.ListAuditRecordsRequest, _mindclade_service_pb2.AuditRecordList]  # type: ignore[assignment]
 
 class MindcladeServiceServicer(metaclass=_abc_1.ABCMeta):
     """MindcladeService is the only public gRPC façade."""
-
-    @_abc_1.abstractmethod
-    def SubmitInference(
-        self,
-        request: _mindclade_service_pb2.SubmitInferenceRequest,
-        context: _ServicerContext,
-    ) -> _typing.Union[_mindclade_service_pb2.Operation, _abc.Awaitable[_mindclade_service_pb2.Operation]]: ...
 
     @_abc_1.abstractmethod
     def GetOperation(
@@ -156,104 +77,6 @@ class MindcladeServiceServicer(metaclass=_abc_1.ABCMeta):
     ) -> _typing.Union[_abc.Iterator[_mindclade_service_pb2.OperationEvent], _abc.AsyncIterator[_mindclade_service_pb2.OperationEvent]]: ...
 
     @_abc_1.abstractmethod
-    def GetArtifact(
-        self,
-        request: _mindclade_service_pb2.GetResourceRequest,
-        context: _ServicerContext,
-    ) -> _typing.Union[_mindclade_service_pb2.ArtifactView, _abc.Awaitable[_mindclade_service_pb2.ArtifactView]]: ...
-
-    @_abc_1.abstractmethod
-    def DownloadArtifact(
-        self,
-        request: _mindclade_service_pb2.DownloadArtifactRequest,
-        context: _ServicerContext,
-    ) -> _typing.Union[_abc.Iterator[_mindclade_service_pb2.DownloadArtifactChunk], _abc.AsyncIterator[_mindclade_service_pb2.DownloadArtifactChunk]]: ...
-
-    @_abc_1.abstractmethod
-    def ListDatasets(
-        self,
-        request: _mindclade_service_pb2.ListResourcesRequest,
-        context: _ServicerContext,
-    ) -> _typing.Union[_mindclade_service_pb2.DatasetList, _abc.Awaitable[_mindclade_service_pb2.DatasetList]]: ...
-
-    @_abc_1.abstractmethod
-    def CreateDataset(
-        self,
-        request: _mindclade_service_pb2.CreateDatasetRequest,
-        context: _ServicerContext,
-    ) -> _typing.Union[_mindclade_service_pb2.DatasetView, _abc.Awaitable[_mindclade_service_pb2.DatasetView]]: ...
-
-    @_abc_1.abstractmethod
-    def GetDataset(
-        self,
-        request: _mindclade_service_pb2.GetResourceRequest,
-        context: _ServicerContext,
-    ) -> _typing.Union[_mindclade_service_pb2.DatasetView, _abc.Awaitable[_mindclade_service_pb2.DatasetView]]: ...
-
-    @_abc_1.abstractmethod
-    def UpdateDataset(
-        self,
-        request: _mindclade_service_pb2.UpdateDatasetRequest,
-        context: _ServicerContext,
-    ) -> _typing.Union[_mindclade_service_pb2.DatasetView, _abc.Awaitable[_mindclade_service_pb2.DatasetView]]: ...
-
-    @_abc_1.abstractmethod
-    def ListDatasetReleases(
-        self,
-        request: _mindclade_service_pb2.ListResourcesRequest,
-        context: _ServicerContext,
-    ) -> _typing.Union[_mindclade_service_pb2.DatasetReleaseList, _abc.Awaitable[_mindclade_service_pb2.DatasetReleaseList]]: ...
-
-    @_abc_1.abstractmethod
-    def CreateDatasetRelease(
-        self,
-        request: _mindclade_service_pb2.CreateDatasetReleaseRequest,
-        context: _ServicerContext,
-    ) -> _typing.Union[_mindclade_service_pb2.DatasetReleaseView, _abc.Awaitable[_mindclade_service_pb2.DatasetReleaseView]]: ...
-
-    @_abc_1.abstractmethod
-    def ListModels(
-        self,
-        request: _mindclade_service_pb2.ListResourcesRequest,
-        context: _ServicerContext,
-    ) -> _typing.Union[_mindclade_service_pb2.ModelList, _abc.Awaitable[_mindclade_service_pb2.ModelList]]: ...
-
-    @_abc_1.abstractmethod
-    def CreateModel(
-        self,
-        request: _mindclade_service_pb2.CreateModelRequest,
-        context: _ServicerContext,
-    ) -> _typing.Union[_mindclade_service_pb2.ModelView, _abc.Awaitable[_mindclade_service_pb2.ModelView]]: ...
-
-    @_abc_1.abstractmethod
-    def GetModel(
-        self,
-        request: _mindclade_service_pb2.GetResourceRequest,
-        context: _ServicerContext,
-    ) -> _typing.Union[_mindclade_service_pb2.ModelView, _abc.Awaitable[_mindclade_service_pb2.ModelView]]: ...
-
-    @_abc_1.abstractmethod
-    def UpdateModel(
-        self,
-        request: _mindclade_service_pb2.UpdateModelRequest,
-        context: _ServicerContext,
-    ) -> _typing.Union[_mindclade_service_pb2.ModelView, _abc.Awaitable[_mindclade_service_pb2.ModelView]]: ...
-
-    @_abc_1.abstractmethod
-    def ListModelReleases(
-        self,
-        request: _mindclade_service_pb2.ListResourcesRequest,
-        context: _ServicerContext,
-    ) -> _typing.Union[_mindclade_service_pb2.ModelReleaseList, _abc.Awaitable[_mindclade_service_pb2.ModelReleaseList]]: ...
-
-    @_abc_1.abstractmethod
-    def CreateModelRelease(
-        self,
-        request: _mindclade_service_pb2.CreateModelReleaseRequest,
-        context: _ServicerContext,
-    ) -> _typing.Union[_mindclade_service_pb2.ModelReleaseView, _abc.Awaitable[_mindclade_service_pb2.ModelReleaseView]]: ...
-
-    @_abc_1.abstractmethod
     def ListTrainingRuns(
         self,
         request: _mindclade_service_pb2.ListResourcesRequest,
@@ -273,152 +96,5 @@ class MindcladeServiceServicer(metaclass=_abc_1.ABCMeta):
         request: _mindclade_service_pb2.GetResourceRequest,
         context: _ServicerContext,
     ) -> _typing.Union[_mindclade_service_pb2.TrainingRunView, _abc.Awaitable[_mindclade_service_pb2.TrainingRunView]]: ...
-
-    @_abc_1.abstractmethod
-    def ListEvaluationRuns(
-        self,
-        request: _mindclade_service_pb2.ListResourcesRequest,
-        context: _ServicerContext,
-    ) -> _typing.Union[_mindclade_service_pb2.EvaluationRunList, _abc.Awaitable[_mindclade_service_pb2.EvaluationRunList]]: ...
-
-    @_abc_1.abstractmethod
-    def CreateEvaluationRun(
-        self,
-        request: _mindclade_service_pb2.CreateEvaluationRunRequest,
-        context: _ServicerContext,
-    ) -> _typing.Union[_mindclade_service_pb2.Operation, _abc.Awaitable[_mindclade_service_pb2.Operation]]: ...
-
-    @_abc_1.abstractmethod
-    def GetEvaluationRun(
-        self,
-        request: _mindclade_service_pb2.GetResourceRequest,
-        context: _ServicerContext,
-    ) -> _typing.Union[_mindclade_service_pb2.EvaluationRunView, _abc.Awaitable[_mindclade_service_pb2.EvaluationRunView]]: ...
-
-    @_abc_1.abstractmethod
-    def GetEvaluationResult(
-        self,
-        request: _mindclade_service_pb2.GetResourceRequest,
-        context: _ServicerContext,
-    ) -> _typing.Union[_mindclade_service_pb2.EvaluationResultView, _abc.Awaitable[_mindclade_service_pb2.EvaluationResultView]]: ...
-
-    @_abc_1.abstractmethod
-    def ListAgentDefinitions(
-        self,
-        request: _mindclade_service_pb2.ListResourcesRequest,
-        context: _ServicerContext,
-    ) -> _typing.Union[_mindclade_service_pb2.AgentDefinitionList, _abc.Awaitable[_mindclade_service_pb2.AgentDefinitionList]]: ...
-
-    @_abc_1.abstractmethod
-    def CreateAgentDefinition(
-        self,
-        request: _mindclade_service_pb2.CreateAgentDefinitionRequest,
-        context: _ServicerContext,
-    ) -> _typing.Union[_mindclade_service_pb2.AgentDefinitionView, _abc.Awaitable[_mindclade_service_pb2.AgentDefinitionView]]: ...
-
-    @_abc_1.abstractmethod
-    def ListAgentRuns(
-        self,
-        request: _mindclade_service_pb2.ListResourcesRequest,
-        context: _ServicerContext,
-    ) -> _typing.Union[_mindclade_service_pb2.AgentRunList, _abc.Awaitable[_mindclade_service_pb2.AgentRunList]]: ...
-
-    @_abc_1.abstractmethod
-    def CreateAgentRun(
-        self,
-        request: _mindclade_service_pb2.CreateAgentRunRequest,
-        context: _ServicerContext,
-    ) -> _typing.Union[_mindclade_service_pb2.Operation, _abc.Awaitable[_mindclade_service_pb2.Operation]]: ...
-
-    @_abc_1.abstractmethod
-    def GetAgentRun(
-        self,
-        request: _mindclade_service_pb2.GetResourceRequest,
-        context: _ServicerContext,
-    ) -> _typing.Union[_mindclade_service_pb2.AgentRunView, _abc.Awaitable[_mindclade_service_pb2.AgentRunView]]: ...
-
-    @_abc_1.abstractmethod
-    def ListWorkflowDefinitions(
-        self,
-        request: _mindclade_service_pb2.ListResourcesRequest,
-        context: _ServicerContext,
-    ) -> _typing.Union[_mindclade_service_pb2.WorkflowDefinitionList, _abc.Awaitable[_mindclade_service_pb2.WorkflowDefinitionList]]: ...
-
-    @_abc_1.abstractmethod
-    def CreateWorkflowDefinition(
-        self,
-        request: _mindclade_service_pb2.CreateWorkflowDefinitionRequest,
-        context: _ServicerContext,
-    ) -> _typing.Union[_mindclade_service_pb2.WorkflowDefinitionView, _abc.Awaitable[_mindclade_service_pb2.WorkflowDefinitionView]]: ...
-
-    @_abc_1.abstractmethod
-    def ListWorkflowRuns(
-        self,
-        request: _mindclade_service_pb2.ListResourcesRequest,
-        context: _ServicerContext,
-    ) -> _typing.Union[_mindclade_service_pb2.WorkflowRunList, _abc.Awaitable[_mindclade_service_pb2.WorkflowRunList]]: ...
-
-    @_abc_1.abstractmethod
-    def CreateWorkflowRun(
-        self,
-        request: _mindclade_service_pb2.CreateWorkflowRunRequest,
-        context: _ServicerContext,
-    ) -> _typing.Union[_mindclade_service_pb2.Operation, _abc.Awaitable[_mindclade_service_pb2.Operation]]: ...
-
-    @_abc_1.abstractmethod
-    def GetWorkflowRun(
-        self,
-        request: _mindclade_service_pb2.GetResourceRequest,
-        context: _ServicerContext,
-    ) -> _typing.Union[_mindclade_service_pb2.WorkflowRunView, _abc.Awaitable[_mindclade_service_pb2.WorkflowRunView]]: ...
-
-    @_abc_1.abstractmethod
-    def ListApprovalRequests(
-        self,
-        request: _mindclade_service_pb2.ListResourcesRequest,
-        context: _ServicerContext,
-    ) -> _typing.Union[_mindclade_service_pb2.ApprovalRequestList, _abc.Awaitable[_mindclade_service_pb2.ApprovalRequestList]]: ...
-
-    @_abc_1.abstractmethod
-    def DecideApproval(
-        self,
-        request: _mindclade_service_pb2.DecideApprovalRequest,
-        context: _ServicerContext,
-    ) -> _typing.Union[_mindclade_service_pb2.ApprovalReceiptView, _abc.Awaitable[_mindclade_service_pb2.ApprovalReceiptView]]: ...
-
-    @_abc_1.abstractmethod
-    def GetTenant(
-        self,
-        request: _mindclade_service_pb2.GetResourceRequest,
-        context: _ServicerContext,
-    ) -> _typing.Union[_mindclade_service_pb2.TenantView, _abc.Awaitable[_mindclade_service_pb2.TenantView]]: ...
-
-    @_abc_1.abstractmethod
-    def ListProjects(
-        self,
-        request: _mindclade_service_pb2.ListResourcesRequest,
-        context: _ServicerContext,
-    ) -> _typing.Union[_mindclade_service_pb2.ProjectList, _abc.Awaitable[_mindclade_service_pb2.ProjectList]]: ...
-
-    @_abc_1.abstractmethod
-    def CreateProject(
-        self,
-        request: _mindclade_service_pb2.CreateProjectRequest,
-        context: _ServicerContext,
-    ) -> _typing.Union[_mindclade_service_pb2.ProjectView, _abc.Awaitable[_mindclade_service_pb2.ProjectView]]: ...
-
-    @_abc_1.abstractmethod
-    def GetProject(
-        self,
-        request: _mindclade_service_pb2.GetResourceRequest,
-        context: _ServicerContext,
-    ) -> _typing.Union[_mindclade_service_pb2.ProjectView, _abc.Awaitable[_mindclade_service_pb2.ProjectView]]: ...
-
-    @_abc_1.abstractmethod
-    def ListAuditRecords(
-        self,
-        request: _mindclade_service_pb2.ListAuditRecordsRequest,
-        context: _ServicerContext,
-    ) -> _typing.Union[_mindclade_service_pb2.AuditRecordList, _abc.Awaitable[_mindclade_service_pb2.AuditRecordList]]: ...
 
 def add_MindcladeServiceServicer_to_server(servicer: MindcladeServiceServicer, server: _typing.Union[_grpc.Server, _aio.Server]) -> None: ...

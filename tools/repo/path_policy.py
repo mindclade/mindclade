@@ -28,9 +28,9 @@ BLUEPRINT_SHA256 = "d099074e755168bbdce076d50918bf06aff677f9e5d620fdfe53cb7cef74
 ANCHOR_COMMIT = "292b71f47b1b29cc9ba7cf760a9bd07cd5e0ffa7"
 AUTHORITY_FILE_COUNT = 2461
 AUTHORITY_DIRECTORY_COUNT = 787
-CANONICAL_FILE_COUNT = 2893
+CANONICAL_FILE_COUNT = 3342
 AUTHORITY_PATH_SET_SHA256 = "f2011dd32ccc19649e6abb70ffb4473aea4a224410062d40292222e2e6263692"
-CANONICAL_PATH_SET_SHA256 = "87fc09476cd45c46ae95701cb89b448218d35237367a84b5643df120b409858a"
+CANONICAL_PATH_SET_SHA256 = "a53521ed4fb8fd9873ba6fae6fa8c1bb256c40445116df695223a5db19634781"
 
 ADR_REPLACEMENTS = {
     "docs/adr/0001-repository-identity.md": "docs/adr/0001-repository-identity-and-ownership.md",
@@ -367,6 +367,8 @@ ALL_CONTRACT_PYTHON_MODULES = (
     "training/v1/progress_committed",
     "training/v1/checkpoint_committed",
     "training/v1/training_completed",
+    "training/v1/training_run_created",
+    "training/v1/training_cancellation_requested",
     "inference/v1/inference_request",
     "inference/v1/inference_result",
     "inference/v1/inference_stream",
@@ -424,8 +426,10 @@ ALL_CONTRACT_GRPC_PROJECTION_PATHS = tuple(
     path
     for _, stem, output_family in ALL_CONTRACT_GRPC_SERVICES
     for path in (
-        f"protocols/generated/go/{output_family}/v1/{stem}.pb.go",
-        f"protocols/generated/go/{output_family}/v1/{stem}_grpc.pb.go",
+        "protocols/generated/go/"
+        f"{output_family.replace('internal/', 'internalrpc/')}/v1/{stem}.pb.go",
+        "protocols/generated/go/"
+        f"{output_family.replace('internal/', 'internalrpc/')}/v1/{stem}_grpc.pb.go",
         f"protocols/generated/python/mindclade/{output_family}/v1/{stem}_pb2.py",
         f"protocols/generated/python/mindclade/{output_family}/v1/{stem}_pb2.pyi",
         f"protocols/generated/python/mindclade/{output_family}/v1/{stem}_pb2_grpc.py",
@@ -440,7 +444,8 @@ ALL_CONTRACT_GRPC_PACKAGE_PATHS = tuple(
     path
     for _, _, output_family in ALL_CONTRACT_GRPC_SERVICES
     for path in (
-        f"protocols/generated/go/{output_family}/v1/BUILD.bazel",
+        "protocols/generated/go/"
+        f"{output_family.replace('internal/', 'internalrpc/')}/v1/BUILD.bazel",
         f"protocols/generated/python/mindclade/{output_family}/v1/__init__.py",
         f"protocols/generated/rust/{output_family}/v1/mod.rs",
         f"protocols/generated/typescript/{output_family}/v1/index.ts",
@@ -454,6 +459,67 @@ ALL_CONTRACT_GRPC_ADDITIONS = (
     *ALL_CONTRACT_GRPC_PACKAGE_PATHS,
 )
 
+TRAINING_EVENT_CONTRACT_ADDITIONS = (
+    "protocols/events/mindclade/training/v1/training_run_created.proto",
+    "protocols/events/mindclade/training/v1/training_cancellation_requested.proto",
+    "protocols/generated/go/training/v1/training_run_created.pb.go",
+    "protocols/generated/go/training/v1/training_cancellation_requested.pb.go",
+    "protocols/generated/python/mindclade/training/v1/training_run_created_pb2.py",
+    "protocols/generated/python/mindclade/training/v1/training_cancellation_requested_pb2.py",
+    "protocols/generated/rust/training/v1/training_run_created.rs",
+    "protocols/generated/rust/training/v1/training_cancellation_requested.rs",
+    "protocols/generated/typescript/training/v1/training_run_created_pb.ts",
+    "protocols/generated/typescript/training/v1/training_cancellation_requested_pb.ts",
+)
+
+VERTICAL_EVENT_CONTRACTS = (
+    ("admin", "audit_export_completed"),
+    ("admin", "audit_export_requested"),
+    ("admin", "project_created"),
+    ("admin", "project_updated"),
+    ("admin", "tenant_updated"),
+    ("agent", "agent_cancellation_requested"),
+    ("agent", "agent_definition_created"),
+    ("agent", "agent_definition_updated"),
+    ("agent", "agent_run_started"),
+    ("agent", "agent_step_committed"),
+    ("dataset", "dataset_created"),
+    ("dataset", "dataset_release_published"),
+    ("dataset", "dataset_release_revoked"),
+    ("dataset", "dataset_updated"),
+    ("evaluation", "evaluation_cancellation_requested"),
+    ("evaluation", "evaluation_result_committed"),
+    ("evaluation", "evaluation_run_created"),
+    ("evaluation", "promotion_decision_recorded"),
+    ("inference", "inference_requested"),
+    ("inference", "inference_result_committed"),
+    ("model", "model_release_registered"),
+    ("policy", "authorization_decision_recorded"),
+    ("policy", "use_policy_activated"),
+    ("policy", "use_policy_created"),
+    ("policy", "use_policy_revoked"),
+    ("policy", "use_policy_updated"),
+    ("workflow", "approval_consumed"),
+    ("workflow", "approval_requested"),
+    ("workflow", "workflow_cancellation_requested"),
+    ("workflow", "workflow_definition_created"),
+    ("workflow", "workflow_definition_updated"),
+    ("workflow", "workflow_run_started"),
+)
+
+VERTICAL_EVENT_CONTRACT_ADDITIONS = tuple(
+    path
+    for domain, stem in VERTICAL_EVENT_CONTRACTS
+    for path in (
+        f"protocols/events/mindclade/{domain}/v1/{stem}.proto",
+        f"protocols/generated/go/{domain}/v1/{stem}.pb.go",
+        f"protocols/generated/python/mindclade/{domain}/v1/{stem}_pb2.py",
+        f"protocols/generated/python/mindclade/{domain}/v1/{stem}_pb2.pyi",
+        f"protocols/generated/rust/{domain}/v1/{stem}.rs",
+        f"protocols/generated/typescript/{domain}/v1/{stem}_pb.ts",
+    )
+)
+
 ALL_CONTRACT_RUST_PLUGIN_PATHS = (
     "tools/codegen/rust_plugins/Cargo.toml",
     "tools/codegen/rust_plugins/src/bin/protoc-gen-prost.rs",
@@ -463,6 +529,9 @@ ALL_CONTRACT_RUST_PLUGIN_PATHS = (
 CONTRACT_RUNTIME_ADDITIONS = (
     "buf.lock",
     "protocols/events/registry.yaml",
+    "protocols/compatibility/baselines/protobuf.candidate.json",
+    "protocols/compatibility/baselines/protobuf.predecessor.lock.json",
+    "protocols/generated/python/mindclade/events/registry.py",
     "protocols/generated/typescript/google/api/annotations_pb.ts",
     "protocols/generated/typescript/google/api/http_pb.ts",
     "services/control_plane/internal/platform/queue/event_registry_generated.go",
@@ -513,7 +582,295 @@ WAVE_ONE_DURABILITY_ADDITIONS = (
     "tests/conformance/test_release_signing.py",
 )
 
+# ADR-0015 couples each newly activated contract family to its first executable
+# producer/consumer.  These additions are intentionally exact rather than
+# prefix based: adding a new SDK or training file still requires an explicit
+# governance review and manifest refresh.
+INTERNAL_SDK_ADDITIONS = (
+    "internal/sdk/README.md",
+    "internal/sdk/go/mindclade/BUILD.bazel",
+    "internal/sdk/go/mindclade/README.md",
+    "internal/sdk/go/mindclade/admin.go",
+    "internal/sdk/go/mindclade/agent_test.go",
+    "internal/sdk/go/mindclade/agents.go",
+    "internal/sdk/go/mindclade/approvals.go",
+    "internal/sdk/go/mindclade/artifacts.go",
+    "internal/sdk/go/mindclade/auth.go",
+    "internal/sdk/go/mindclade/auth_test.go",
+    "internal/sdk/go/mindclade/client.go",
+    "internal/sdk/go/mindclade/client_test.go",
+    "internal/sdk/go/mindclade/config.go",
+    "internal/sdk/go/mindclade/datasets.go",
+    "internal/sdk/go/mindclade/error.go",
+    "internal/sdk/go/mindclade/evaluations.go",
+    "internal/sdk/go/mindclade/evaluations_test.go",
+    "internal/sdk/go/mindclade/interceptors.go",
+    "internal/sdk/go/mindclade/inference.go",
+    "internal/sdk/go/mindclade/inference_test.go",
+    "internal/sdk/go/mindclade/lifecycle_test.go",
+    "internal/sdk/go/mindclade/method_policy.go",
+    "internal/sdk/go/mindclade/models.go",
+    "internal/sdk/go/mindclade/operations.go",
+    "internal/sdk/go/mindclade/policy_test.go",
+    "internal/sdk/go/mindclade/policies.go",
+    "internal/sdk/go/mindclade/policy_admin_test.go",
+    "internal/sdk/go/mindclade/request.go",
+    "internal/sdk/go/mindclade/training.go",
+    "internal/sdk/go/mindclade/transport.go",
+    "internal/sdk/go/mindclade/workflow_test.go",
+    "internal/sdk/go/mindclade/workflows.go",
+    "internal/sdk/python/BUILD.bazel",
+    "internal/sdk/python/README.md",
+    "internal/sdk/python/mindclade_internal_sdk/__init__.py",
+    "internal/sdk/python/mindclade_internal_sdk/_invocation.py",
+    "internal/sdk/python/mindclade_internal_sdk/_validation.py",
+    "internal/sdk/python/mindclade_internal_sdk/admin.py",
+    "internal/sdk/python/mindclade_internal_sdk/agents.py",
+    "internal/sdk/python/mindclade_internal_sdk/artifacts.py",
+    "internal/sdk/python/mindclade_internal_sdk/auth.py",
+    "internal/sdk/python/mindclade_internal_sdk/calls.py",
+    "internal/sdk/python/mindclade_internal_sdk/client.py",
+    "internal/sdk/python/mindclade_internal_sdk/config.py",
+    "internal/sdk/python/mindclade_internal_sdk/datasets.py",
+    "internal/sdk/python/mindclade_internal_sdk/errors.py",
+    "internal/sdk/python/mindclade_internal_sdk/generated.py",
+    "internal/sdk/python/mindclade_internal_sdk/inference.py",
+    "internal/sdk/python/mindclade_internal_sdk/method_policy.py",
+    "internal/sdk/python/mindclade_internal_sdk/models.py",
+    "internal/sdk/python/mindclade_internal_sdk/operations.py",
+    "internal/sdk/python/mindclade_internal_sdk/policies.py",
+    "internal/sdk/python/mindclade_internal_sdk/testing.py",
+    "internal/sdk/python/mindclade_internal_sdk/training.py",
+    "internal/sdk/python/mindclade_internal_sdk/transport.py",
+    "internal/sdk/python/mindclade_internal_sdk/workflows.py",
+    "internal/sdk/python/pyproject.toml",
+    "internal/sdk/python/tests/test_internal_sdk.py",
+    "internal/sdk/python/tests/test_agents.py",
+    "internal/sdk/python/tests/test_inference.py",
+    "internal/sdk/python/tests/test_policy_admin.py",
+    "internal/sdk/python/tests/test_workflows.py",
+    "internal/sdk/rust/BUILD.bazel",
+    "internal/sdk/rust/Cargo.toml",
+    "internal/sdk/rust/README.md",
+    "internal/sdk/rust/src/admin.rs",
+    "internal/sdk/rust/src/agent_tests.rs",
+    "internal/sdk/rust/src/agents.rs",
+    "internal/sdk/rust/src/approvals.rs",
+    "internal/sdk/rust/src/artifacts.rs",
+    "internal/sdk/rust/src/auth.rs",
+    "internal/sdk/rust/src/config.rs",
+    "internal/sdk/rust/src/datasets.rs",
+    "internal/sdk/rust/src/error.rs",
+    "internal/sdk/rust/src/inference.rs",
+    "internal/sdk/rust/src/lib.rs",
+    "internal/sdk/rust/src/models.rs",
+    "internal/sdk/rust/src/operations.rs",
+    "internal/sdk/rust/src/policies.rs",
+    "internal/sdk/rust/src/policy_admin_tests.rs",
+    "internal/sdk/rust/src/request.rs",
+    "internal/sdk/rust/src/retry.rs",
+    "internal/sdk/rust/src/tests.rs",
+    "internal/sdk/rust/src/training.rs",
+    "internal/sdk/rust/src/transport.rs",
+    "internal/sdk/rust/src/workflow_tests.rs",
+    "internal/sdk/rust/src/workflows.rs",
+    "internal/sdk/typescript/BUILD.bazel",
+    "internal/sdk/typescript/README.md",
+    "internal/sdk/typescript/biome.json",
+    "internal/sdk/typescript/package.json",
+    "internal/sdk/typescript/src/admin.ts",
+    "internal/sdk/typescript/src/agents.ts",
+    "internal/sdk/typescript/src/approvals.ts",
+    "internal/sdk/typescript/src/artifacts.ts",
+    "internal/sdk/typescript/src/auth.ts",
+    "internal/sdk/typescript/src/client.ts",
+    "internal/sdk/typescript/src/config.ts",
+    "internal/sdk/typescript/src/core.ts",
+    "internal/sdk/typescript/src/datasets.ts",
+    "internal/sdk/typescript/src/error.ts",
+    "internal/sdk/typescript/src/gcp_auth.ts",
+    "internal/sdk/typescript/src/inference.ts",
+    "internal/sdk/typescript/src/index.ts",
+    "internal/sdk/typescript/src/models.ts",
+    "internal/sdk/typescript/src/operations.ts",
+    "internal/sdk/typescript/src/policies.ts",
+    "internal/sdk/typescript/src/raw.ts",
+    "internal/sdk/typescript/src/request.ts",
+    "internal/sdk/typescript/src/retry.ts",
+    "internal/sdk/typescript/src/runtime.ts",
+    "internal/sdk/typescript/src/safety.ts",
+    "internal/sdk/typescript/src/testing.ts",
+    "internal/sdk/typescript/src/training.ts",
+    "internal/sdk/typescript/src/transport.ts",
+    "internal/sdk/typescript/src/workflows.ts",
+    "internal/sdk/typescript/tests/sdk.test.ts",
+    "internal/sdk/typescript/tests/policy_admin.test.ts",
+    "internal/sdk/typescript/tests/agents.test.ts",
+    "internal/sdk/typescript/tests/workflow_approval.test.ts",
+    "internal/sdk/typescript/tsconfig.json",
+)
+
+TRAINING_VERTICAL_ADDITIONS = (
+    "services/control_plane/internal/training/BUILD.bazel",
+    "services/control_plane/internal/training/cancellation_sql.go",
+    "services/control_plane/internal/training/contracts.go",
+    "services/control_plane/internal/training/events.go",
+    "services/control_plane/internal/training/list_sql.go",
+    "services/control_plane/internal/training/mapping_sql.go",
+    "services/control_plane/internal/training/pagination.go",
+    "services/control_plane/internal/training/postgres_integration_test.go",
+    "services/control_plane/internal/training/repository_sql.go",
+    "services/control_plane/internal/training/server.go",
+    "services/control_plane/internal/training/training_test.go",
+    "services/control_plane/internal/training/validation.go",
+)
+
+CONTROL_PLANE_TRANSPORT_ADDITIONS = (
+    "services/control_plane/cmd/control-plane/auth_google.go",
+    "services/control_plane/cmd/control-plane/training_adapter.go",
+    "services/control_plane/cmd/control-plane/wire_test.go",
+)
+
+WORKER_COORDINATION_ADDITIONS = (
+    "services/control_plane/internal/jobs/server.go",
+    "services/control_plane/internal/jobs/server_test.go",
+)
+
+ARTIFACT_VERTICAL_ADDITIONS = (
+    "services/control_plane/internal/artifacts/contracts.go",
+    "services/control_plane/internal/artifacts/postgres_integration_test.go",
+    "services/control_plane/internal/artifacts/repository_sql.go",
+    "services/control_plane/internal/artifacts/server.go",
+    "services/control_plane/internal/artifacts/server_test.go",
+    "services/control_plane/internal/artifacts/staging_receipts.go",
+    "services/control_plane/internal/platform/storage/gcs_object_store.go",
+    "services/control_plane/internal/platform/storage/gcs_object_store_test.go",
+    "services/control_plane/migrations/000002_artifacts.down.sql",
+    "services/control_plane/migrations/000002_artifacts.up.sql",
+)
+
+DATA_MODEL_VERTICAL_ADDITIONS = (
+    "services/control_plane/internal/datasets/BUILD.bazel",
+    "services/control_plane/internal/datasets/contracts.go",
+    "services/control_plane/internal/datasets/datasets_test.go",
+    "services/control_plane/internal/datasets/events.go",
+    "services/control_plane/internal/datasets/mutations_sql.go",
+    "services/control_plane/internal/datasets/pagination.go",
+    "services/control_plane/internal/datasets/postgres_integration_test.go",
+    "services/control_plane/internal/datasets/repository_sql.go",
+    "services/control_plane/internal/datasets/server.go",
+    "services/control_plane/internal/models/BUILD.bazel",
+    "services/control_plane/internal/models/contracts.go",
+    "services/control_plane/internal/models/events.go",
+    "services/control_plane/internal/models/list_sql.go",
+    "services/control_plane/internal/models/mapping_sql.go",
+    "services/control_plane/internal/models/models_test.go",
+    "services/control_plane/internal/models/pagination.go",
+    "services/control_plane/internal/models/postgres_integration_test.go",
+    "services/control_plane/internal/models/repository_sql.go",
+    "services/control_plane/internal/models/server.go",
+    "services/control_plane/migrations/000003_data_model.down.sql",
+    "services/control_plane/migrations/000003_data_model.up.sql",
+    "services/control_plane/migrations/000004_evaluation_inference.down.sql",
+    "services/control_plane/migrations/000004_evaluation_inference.up.sql",
+)
+
+EVALUATION_VERTICAL_ADDITIONS = (
+    "services/control_plane/internal/evaluations/BUILD.bazel",
+    "services/control_plane/internal/evaluations/common_sql.go",
+    "services/control_plane/internal/evaluations/contracts.go",
+    "services/control_plane/internal/evaluations/events.go",
+    "services/control_plane/internal/evaluations/mapping_sql.go",
+    "services/control_plane/internal/evaluations/pagination.go",
+    "services/control_plane/internal/evaluations/postgres_integration_test.go",
+    "services/control_plane/internal/evaluations/repository_sql.go",
+    "services/control_plane/internal/evaluations/server.go",
+    "services/control_plane/internal/evaluations/server_test.go",
+    "services/control_plane/internal/evaluations/validation.go",
+)
+
+CONTROL_PLANE_DOMAIN_ADDITIONS = (
+    "services/control_plane/internal/admin/BUILD.bazel",
+    "services/control_plane/internal/admin/admin_test.go",
+    "services/control_plane/internal/admin/contracts.go",
+    "services/control_plane/internal/admin/events.go",
+    "services/control_plane/internal/admin/mapping_sql.go",
+    "services/control_plane/internal/admin/pagination.go",
+    "services/control_plane/internal/admin/postgres_integration_test.go",
+    "services/control_plane/internal/admin/repository_sql.go",
+    "services/control_plane/internal/admin/server.go",
+    "services/control_plane/internal/agents/BUILD.bazel",
+    "services/control_plane/internal/agents/common_sql.go",
+    "services/control_plane/internal/agents/contracts.go",
+    "services/control_plane/internal/agents/events.go",
+    "services/control_plane/internal/agents/mapping_sql.go",
+    "services/control_plane/internal/agents/pagination.go",
+    "services/control_plane/internal/agents/postgres_integration_test.go",
+    "services/control_plane/internal/agents/repository_sql.go",
+    "services/control_plane/internal/agents/server.go",
+    "services/control_plane/internal/agents/server_test.go",
+    "services/control_plane/internal/agents/validation.go",
+    "services/control_plane/internal/inference/BUILD.bazel",
+    "services/control_plane/internal/inference/contracts.go",
+    "services/control_plane/internal/inference/cursor.go",
+    "services/control_plane/internal/inference/events.go",
+    "services/control_plane/internal/inference/mapping_sql.go",
+    "services/control_plane/internal/inference/postgres_integration_test.go",
+    "services/control_plane/internal/inference/repository_sql.go",
+    "services/control_plane/internal/inference/server.go",
+    "services/control_plane/internal/inference/server_test.go",
+    "services/control_plane/internal/inference/validation.go",
+    "services/control_plane/internal/policies/BUILD.bazel",
+    "services/control_plane/internal/policies/contracts.go",
+    "services/control_plane/internal/policies/events.go",
+    "services/control_plane/internal/policies/mapping_sql.go",
+    "services/control_plane/internal/policies/pagination.go",
+    "services/control_plane/internal/policies/policies_test.go",
+    "services/control_plane/internal/policies/postgres_integration_test.go",
+    "services/control_plane/internal/policies/repository_sql.go",
+    "services/control_plane/internal/policies/server.go",
+    "services/control_plane/internal/workflows/BUILD.bazel",
+    "services/control_plane/internal/workflows/approval_repository.go",
+    "services/control_plane/internal/workflows/contracts.go",
+    "services/control_plane/internal/workflows/events.go",
+    "services/control_plane/internal/workflows/mapping_sql.go",
+    "services/control_plane/internal/workflows/pagination.go",
+    "services/control_plane/internal/workflows/postgres_integration_test.go",
+    "services/control_plane/internal/workflows/server.go",
+    "services/control_plane/internal/workflows/server_test.go",
+    "services/control_plane/internal/workflows/validation.go",
+    "services/control_plane/migrations/000005_workflow_agent.down.sql",
+    "services/control_plane/migrations/000005_workflow_agent.up.sql",
+    "services/control_plane/migrations/000006_policy_admin.down.sql",
+    "services/control_plane/migrations/000006_policy_admin.up.sql",
+)
+
+CONTRACT_CONFORMANCE_ADDITIONS = (
+    "tests/conformance/generated_go_roundtrip_test.go",
+    "tests/conformance/generated_rust_roundtrip_test.rs",
+    "tests/conformance/generated_typescript_roundtrip_test.ts",
+    "tests/conformance/test_generated_package_consumers.py",
+)
+
+ALL_CONTRACT_CONSUMER_ADDITIONS = (
+    *INTERNAL_SDK_ADDITIONS,
+    *TRAINING_VERTICAL_ADDITIONS,
+    *CONTROL_PLANE_TRANSPORT_ADDITIONS,
+    *WORKER_COORDINATION_ADDITIONS,
+    *ARTIFACT_VERTICAL_ADDITIONS,
+    *DATA_MODEL_VERTICAL_ADDITIONS,
+    *EVALUATION_VERTICAL_ADDITIONS,
+    *CONTROL_PLANE_DOMAIN_ADDITIONS,
+    *CONTRACT_CONFORMANCE_ADDITIONS,
+)
+
 SDK_GENERATOR_ADDITIONS = ("tools/codegen/sdk_generator.py",)
+
+OPENAPI_STAGE_ARTIFACT_ADDITIONS = (
+    "protocols/openapi/raw/mindclade.openapi.yaml",
+    "protocols/openapi/curated/mindclade.openapi.yaml",
+    "protocols/openapi/published/mindclade.openapi.yaml",
+)
 
 GENERATED_PACKAGE_AUTHORITY_ADDITIONS = (
     "protocols/generated/rust/Cargo.toml",
@@ -563,6 +920,8 @@ WAVE_ONE_REWAVE_PATHS = frozenset(
         "services/control_plane/internal/policies/authorization.go",
         "services/control_plane/internal/policies/decision_audit.go",
         "services/control_plane/internal/tenants/tenant_isolation.go",
+        "services/control_plane/internal/workflows/workflow_reconciler.go",
+        "services/control_plane/internal/workflows/workflow_repository.go",
         "services/control_plane/migrations/000001_kernel.down.sql",
         "services/control_plane/migrations/000001_kernel.up.sql",
         "services/control_plane/migrations/migration_policy.yaml",
@@ -592,8 +951,12 @@ REQUIRED_ADDITIONS = (
     *DEEP_EP_PATCH_PATHS,
     *ALL_CONTRACT_RUST_PLUGIN_PATHS,
     *ALL_CONTRACT_GRPC_ADDITIONS,
+    *TRAINING_EVENT_CONTRACT_ADDITIONS,
+    *VERTICAL_EVENT_CONTRACT_ADDITIONS,
     *CONTRACT_RUNTIME_ADDITIONS,
     *SCHEMA_BINDING_ADDITIONS,
+    *ALL_CONTRACT_CONSUMER_ADDITIONS,
+    *OPENAPI_STAGE_ARTIFACT_ADDITIONS,
 )
 
 STATUSES = {"target", "active", "generated", "deferred", "retired"}
@@ -846,6 +1209,8 @@ def infer_owner(path: str) -> str:
         return "computational-biology"
     if path.startswith(("docs/architecture/", "docs/adr/", "docs/governance/", "docs/policies/")):
         return "architecture"
+    if path.startswith("internal/sdk/"):
+        return "developer-experience"
     if path.startswith("workers/"):
         worker = PurePosixPath(path).parts[1]
         return {
@@ -893,6 +1258,11 @@ def infer_component(path: str) -> str:
     if path == "component.yaml":
         return "mindclade"
     declared_component_roots = (
+        ("internal/sdk/go", "internal-sdk-go"),
+        ("internal/sdk/python", "internal-sdk-python"),
+        ("internal/sdk/rust", "internal-sdk-rust"),
+        ("internal/sdk/typescript", "internal-sdk-typescript"),
+        ("internal/sdk", "internal-sdk"),
         ("models/families/clade/cladefold", "model-family-clade-cladefold"),
         ("services/control_plane", "services-control-plane"),
         ("services/runtime_gateway", "services-runtime-gateway"),
@@ -1006,11 +1376,14 @@ def infer_kind(path: str) -> str:
 
 
 def infer_wave(path: str) -> str:
+    if path == "buf.lock":
+        return "0"
     if (
         path in WAVE_ONE_REWAVE_PATHS
         or path in WAVE_ONE_REQUIRED_ADDITIONS
         or path in CONTRACT_RUNTIME_ADDITIONS
         or path in SCHEMA_BINDING_ADDITIONS
+        or path in ALL_CONTRACT_CONSUMER_ADDITIONS
     ):
         return "1"
     if is_wave_zero_path(path):
@@ -1317,7 +1690,11 @@ def _protocol_wave(parts: tuple[str, ...]) -> str:
         family == "generated" and len(parts) > 3
     ):
         domain = parts[3]
-        if family in {"proto", "generated"} and domain == "internal" and len(parts) > 4:
+        if (
+            family in {"proto", "generated"}
+            and domain in {"internal", "internalrpc"}
+            and len(parts) > 4
+        ):
             domain = parts[4]
     elif family == "schemas" and len(parts) > 2:
         schema = parts[2]
@@ -1664,6 +2041,13 @@ def infer_source_authority(path: str) -> str:
         return "immutable-provenance"
     if path in HAND_AUTHORED_GENERATED_PACKAGE_AUTHORITIES:
         return "hand-authored"
+    if path in {
+        "protocols/compatibility/baselines/openapi.lock.json",
+        "protocols/compatibility/baselines/protobuf.candidate.json",
+        "services/control_plane/internal/platform/queue/event_registry_generated.go",
+        *OPENAPI_STAGE_ARTIFACT_ADDITIONS,
+    }:
+        return "reviewed-generated"
     generated_markers = (
         "/generated/",
         "MINDCLADE_MONOREPO_BLUEPRINT_FULL.md",
@@ -1826,6 +2210,8 @@ def build_kernel_platform_source_entry(path: str) -> dict[str, Any]:
 def is_all_contract_baseline_path(path: str) -> bool:
     """Return whether ADR-0015 activates this predeclared v1 projection."""
 
+    if path in ALL_CONTRACT_CONSUMER_ADDITIONS:
+        return True
     if path in SCHEMA_BINDING_ADDITIONS:
         return True
     if path in ALL_CONTRACT_RUST_PLUGIN_PATHS:
@@ -1914,7 +2300,10 @@ def build_path_entry(path: str) -> dict[str, Any]:
     deferred = any(path.startswith(prefix) for prefix in DEFERRED_PREFIXES)
     generated = infer_source_authority(path) == "reviewed-generated"
     all_contract_baseline = is_all_contract_baseline_path(path)
-    if all_contract_baseline:
+    pending_ratified_baseline = path == "protocols/compatibility/baselines/protobuf.lock.json"
+    if pending_ratified_baseline:
+        status = "target"
+    elif all_contract_baseline:
         status = "generated" if generated else "active"
     elif deferred:
         status = "deferred"
@@ -1951,7 +2340,13 @@ def build_path_entry(path: str) -> dict[str, Any]:
             and "/api/v1/" not in path
         ),
     }
-    if all_contract_baseline:
+    if pending_ratified_baseline:
+        entry["activation_criterion"] = (
+            "Create and activate only through the explicit ADR-0015 ratification action after "
+            "cross-language, database, gRPC, gateway, event, and SDK training-vertical evidence "
+            "is passed and bound to the exact candidate descriptor."
+        )
+    elif all_contract_baseline:
         entry["activation_criterion"] = (
             "Generated from the ADR-0015 clean-v1 contract baseline; the original wave "
             "remains design-sequencing provenance."
@@ -2070,6 +2465,11 @@ def _reconciliation_addition_reason(path: str) -> str:
             "Required generated package authority for an isolated internal gRPC service "
             "namespace or the curated mindclade.api.v1 facade."
         )
+    if path in VERTICAL_EVENT_CONTRACT_ADDITIONS:
+        return (
+            "Authoritative candidate-v1 domain event contract or generated projection required "
+            "by an activated dataset, model, evaluation, or inference producer/consumer."
+        )
     if path in CONTRACT_RUNTIME_ADDITIONS:
         return (
             "Required contract runtime input or generated dependency for public HTTP annotations, "
@@ -2079,6 +2479,53 @@ def _reconciliation_addition_reason(path: str) -> str:
         return (
             "Required generated typed binding and Draft 2020-12 validator projection from the "
             "authoritative JSON Schema catalog."
+        )
+    if path in INTERNAL_SDK_ADDITIONS:
+        return (
+            "ADR-0015 private Mindclade-owned SDK facade or conformance source that wraps "
+            "Buf-generated native transport clients without redefining wire models."
+        )
+    if path in TRAINING_VERTICAL_ADDITIONS:
+        return (
+            "ADR-0015 training-vertical producer/consumer source required to prove generated "
+            "contracts, normalized PostgreSQL state, and immutable event delivery end to end."
+        )
+    if path in CONTROL_PLANE_TRANSPORT_ADDITIONS:
+        return (
+            "ADR-0015 authenticated control-plane transport adapter or registration test "
+            "required to bind generated gRPC services to the training application service."
+        )
+    if path in WORKER_COORDINATION_ADDITIONS:
+        return (
+            "ADR-0015 worker-coordination server required to bind generated lease, renewal, "
+            "heartbeat, expiry, cancellation, and fencing RPCs to normalized durable state."
+        )
+    if path in ARTIFACT_VERTICAL_ADDITIONS:
+        return (
+            "ADR-0015 artifact-vertical producer/consumer source required to prove generated "
+            "contracts, normalized PostgreSQL state, schema validation, and durable GCS storage "
+            "end to end."
+        )
+    if path in DATA_MODEL_VERTICAL_ADDITIONS:
+        return (
+            "ADR-0015 dataset/model producer-consumer source or migration required to prove "
+            "candidate contracts, normalized PostgreSQL state, and durable event delivery."
+        )
+    if path in EVALUATION_VERTICAL_ADDITIONS:
+        return (
+            "ADR-0015 evaluation producer-consumer source required to prove candidate contracts, "
+            "normalized PostgreSQL state, authorization, and durable event delivery."
+        )
+    if path in CONTROL_PLANE_DOMAIN_ADDITIONS:
+        return (
+            "ADR-0015 admin, agent, inference, policy, or workflow producer-consumer source "
+            "required to prove candidate contracts, normalized PostgreSQL state, fencing, "
+            "authorization, and durable event delivery."
+        )
+    if path in CONTRACT_CONFORMANCE_ADDITIONS:
+        return (
+            "ADR-0015 native cross-language round-trip or consumer-coverage evidence for the "
+            "authoritative generated contract estate."
         )
     if path in WAVE_TWO_PREFLIGHT_GOVERNANCE_ADDITIONS:
         return (

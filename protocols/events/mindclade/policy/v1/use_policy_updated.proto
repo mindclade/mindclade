@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package mindclade.events.policy.v1;
+
+import "google/protobuf/timestamp.proto";
+import "proto/mindclade/common/v1/resource_reference.proto";
+import "proto/mindclade/policy/v1/use_policy.proto";
+
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/policy/v1;policyv1";
+
+// UsePolicyUpdated records an optimistic-concurrency metadata update.
+message UsePolicyUpdated {
+  mindclade.policy.v1.UsePolicy use_policy = 1;
+  repeated string changed_fields = 2;
+  mindclade.common.v1.ResourceRef operation = 3;
+  google.protobuf.Timestamp updated_at = 4;
+}

@@ -9,6 +9,7 @@ package jobv1
 import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
@@ -21,13 +22,17 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// AttemptLeased is the immutable fact emitted with the transaction that grants
+// one token-bound worker lease. The raw lease token is transport metadata and
+// is deliberately absent.
 type AttemptLeased struct {
-	state             protoimpl.MessageState `protogen:"open.v1"`
-	AttemptId         string                 `protobuf:"bytes,1,opt,name=attempt_id,json=attemptId,proto3" json:"attempt_id,omitempty"`
-	LeaseEpoch        uint64                 `protobuf:"varint,2,opt,name=lease_epoch,json=leaseEpoch,proto3" json:"lease_epoch,omitempty"`
-	LeaseExpiresAtUtc string                 `protobuf:"bytes,3,opt,name=lease_expires_at_utc,json=leaseExpiresAtUtc,proto3" json:"lease_expires_at_utc,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	Attempt        *Attempt               `protobuf:"bytes,1,opt,name=attempt,proto3" json:"attempt,omitempty"`
+	Fence          *LeaseFence            `protobuf:"bytes,2,opt,name=fence,proto3" json:"fence,omitempty"`
+	LeasedAt       *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=leased_at,json=leasedAt,proto3" json:"leased_at,omitempty"`
+	LeaseExpiresAt *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=lease_expires_at,json=leaseExpiresAt,proto3" json:"lease_expires_at,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *AttemptLeased) Reset() {
@@ -60,38 +65,44 @@ func (*AttemptLeased) Descriptor() ([]byte, []int) {
 	return file_events_mindclade_job_v1_attempt_leased_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *AttemptLeased) GetAttemptId() string {
+func (x *AttemptLeased) GetAttempt() *Attempt {
 	if x != nil {
-		return x.AttemptId
+		return x.Attempt
 	}
-	return ""
+	return nil
 }
 
-func (x *AttemptLeased) GetLeaseEpoch() uint64 {
+func (x *AttemptLeased) GetFence() *LeaseFence {
 	if x != nil {
-		return x.LeaseEpoch
+		return x.Fence
 	}
-	return 0
+	return nil
 }
 
-func (x *AttemptLeased) GetLeaseExpiresAtUtc() string {
+func (x *AttemptLeased) GetLeasedAt() *timestamppb.Timestamp {
 	if x != nil {
-		return x.LeaseExpiresAtUtc
+		return x.LeasedAt
 	}
-	return ""
+	return nil
+}
+
+func (x *AttemptLeased) GetLeaseExpiresAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.LeaseExpiresAt
+	}
+	return nil
 }
 
 var File_events_mindclade_job_v1_attempt_leased_proto protoreflect.FileDescriptor
 
 const file_events_mindclade_job_v1_attempt_leased_proto_rawDesc = "" +
 	"\n" +
-	",events/mindclade/job/v1/attempt_leased.proto\x12\x17mindclade.events.job.v1\"\x80\x01\n" +
-	"\rAttemptLeased\x12\x1d\n" +
-	"\n" +
-	"attempt_id\x18\x01 \x01(\tR\tattemptId\x12\x1f\n" +
-	"\vlease_epoch\x18\x02 \x01(\x04R\n" +
-	"leaseEpoch\x12/\n" +
-	"\x14lease_expires_at_utc\x18\x03 \x01(\tR\x11leaseExpiresAtUtcBDZBgithub.com/mindclade/mindclade/protocols/generated/go/job/v1;jobv1b\x06proto3"
+	",events/mindclade/job/v1/attempt_leased.proto\x12\x17mindclade.events.job.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a$proto/mindclade/job/v1/attempt.proto\x1a*proto/mindclade/job/v1/lease_fencing.proto\"\xf7\x01\n" +
+	"\rAttemptLeased\x123\n" +
+	"\aattempt\x18\x01 \x01(\v2\x19.mindclade.job.v1.AttemptR\aattempt\x122\n" +
+	"\x05fence\x18\x02 \x01(\v2\x1c.mindclade.job.v1.LeaseFenceR\x05fence\x127\n" +
+	"\tleased_at\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\bleasedAt\x12D\n" +
+	"\x10lease_expires_at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\x0eleaseExpiresAtBDZBgithub.com/mindclade/mindclade/protocols/generated/go/job/v1;jobv1b\x06proto3"
 
 var (
 	file_events_mindclade_job_v1_attempt_leased_proto_rawDescOnce sync.Once
@@ -107,14 +118,21 @@ func file_events_mindclade_job_v1_attempt_leased_proto_rawDescGZIP() []byte {
 
 var file_events_mindclade_job_v1_attempt_leased_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
 var file_events_mindclade_job_v1_attempt_leased_proto_goTypes = []any{
-	(*AttemptLeased)(nil), // 0: mindclade.events.job.v1.AttemptLeased
+	(*AttemptLeased)(nil),         // 0: mindclade.events.job.v1.AttemptLeased
+	(*Attempt)(nil),               // 1: mindclade.job.v1.Attempt
+	(*LeaseFence)(nil),            // 2: mindclade.job.v1.LeaseFence
+	(*timestamppb.Timestamp)(nil), // 3: google.protobuf.Timestamp
 }
 var file_events_mindclade_job_v1_attempt_leased_proto_depIdxs = []int32{
-	0, // [0:0] is the sub-list for method output_type
-	0, // [0:0] is the sub-list for method input_type
-	0, // [0:0] is the sub-list for extension type_name
-	0, // [0:0] is the sub-list for extension extendee
-	0, // [0:0] is the sub-list for field type_name
+	1, // 0: mindclade.events.job.v1.AttemptLeased.attempt:type_name -> mindclade.job.v1.Attempt
+	2, // 1: mindclade.events.job.v1.AttemptLeased.fence:type_name -> mindclade.job.v1.LeaseFence
+	3, // 2: mindclade.events.job.v1.AttemptLeased.leased_at:type_name -> google.protobuf.Timestamp
+	3, // 3: mindclade.events.job.v1.AttemptLeased.lease_expires_at:type_name -> google.protobuf.Timestamp
+	4, // [4:4] is the sub-list for method output_type
+	4, // [4:4] is the sub-list for method input_type
+	4, // [4:4] is the sub-list for extension type_name
+	4, // [4:4] is the sub-list for extension extendee
+	0, // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_events_mindclade_job_v1_attempt_leased_proto_init() }
@@ -122,6 +140,8 @@ func file_events_mindclade_job_v1_attempt_leased_proto_init() {
 	if File_events_mindclade_job_v1_attempt_leased_proto != nil {
 		return
 	}
+	file_proto_mindclade_job_v1_attempt_proto_init()
+	file_proto_mindclade_job_v1_lease_fencing_proto_init()
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

@@ -12,6 +12,18 @@ pub struct SubmitInferenceResponse {
     #[prost(message, optional, tag = "1")]
     pub operation: ::core::option::Option<crate::job::v1::Operation>,
 }
+/// GetInferenceRequestRequest identifies one admitted authoritative request.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct GetInferenceRequestRequest {
+    #[prost(string, tag = "1")]
+    pub name: ::prost::alloc::string::String,
+}
+/// GetInferenceRequestResponse returns the frozen request workers must execute.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetInferenceRequestResponse {
+    #[prost(message, optional, tag = "1")]
+    pub inference_request: ::core::option::Option<crate::inference::v1::InferenceRequest>,
+}
 /// GetInferenceResultRequest identifies an operation's immutable terminal result.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct GetInferenceResultRequest {
@@ -41,5 +53,27 @@ pub struct WatchInferenceRequest {
 pub struct WatchInferenceResponse {
     #[prost(message, optional, tag = "1")]
     pub message: ::core::option::Option<crate::inference::v1::InferenceStreamMessage>,
+}
+/// CommitInferenceResultRequest binds terminal truth to the current fenced attempt.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct CommitInferenceResultRequest {
+    #[prost(message, optional, tag = "1")]
+    pub context: ::core::option::Option<crate::common::v1::CommandContext>,
+    #[prost(message, optional, tag = "2")]
+    pub inference_request: ::core::option::Option<crate::common::v1::ResourceRef>,
+    #[prost(message, optional, tag = "3")]
+    pub fence: ::core::option::Option<crate::job::v1::LeaseFence>,
+    #[prost(message, optional, tag = "4")]
+    pub result: ::core::option::Option<crate::inference::v1::InferenceResult>,
+    #[prost(string, tag = "5")]
+    pub request_digest: ::prost::alloc::string::String,
+}
+/// CommitInferenceResultResponse returns accepted immutable result and operation.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct CommitInferenceResultResponse {
+    #[prost(message, optional, tag = "1")]
+    pub result: ::core::option::Option<crate::inference::v1::InferenceResult>,
+    #[prost(message, optional, tag = "2")]
+    pub operation: ::core::option::Option<crate::job::v1::Operation>,
 }
 // @@protoc_insertion_point(module)

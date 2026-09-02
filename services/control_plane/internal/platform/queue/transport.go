@@ -1,13 +1,17 @@
 package queue
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"strconv"
 
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/reflect/protoreflect"
+	"google.golang.org/protobuf/reflect/protoregistry"
 
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 )
@@ -83,12 +87,113 @@ func UnmarshalEnvelope(encoded []byte) (*commonv1.EventEnvelope, error) {
 	return envelope, nil
 }
 
+// UnmarshalRegisteredPayload resolves the exact generated payload type named
+// by the authoritative event registry. Consumers never decode into a generic
+// map or accept unknown fields under an already registered event version.
+func UnmarshalRegisteredPayload(envelope *commonv1.EventEnvelope) (proto.Message, error) {
+	if err := ValidateEnvelope(envelope); err != nil {
+		return nil, err
+	}
+	messageType, err := protoregistry.GlobalTypes.FindMessageByName(protoreflect.FullName(envelope.GetEventType()))
+	if err != nil {
+		return nil, fmt.Errorf("%w: generated payload type %s is not linked: %w", ErrInvalidEnvelope, envelope.GetEventType(), err)
+	}
+	payload := messageType.New().Interface()
+	if err = (proto.UnmarshalOptions{DiscardUnknown: false, Resolver: protoregistry.GlobalTypes}).Unmarshal(envelope.GetPayload(), payload); err != nil {
+		return nil, fmt.Errorf("%w: decode registered payload %s: %w", ErrInvalidEnvelope, envelope.GetEventType(), err)
+	}
+	if len(payload.ProtoReflect().GetUnknown()) != 0 {
+		return nil, fmt.Errorf("%w: payload %s contains fields unknown to registered version %d", ErrInvalidEnvelope, envelope.GetEventType(), envelope.GetEventVersion())
+	}
+	canonical, err := proto.MarshalOptions{Deterministic: true}.Marshal(payload)
+	if err != nil {
+		return nil, fmt.Errorf("%w: canonicalize registered payload %s: %w", ErrInvalidEnvelope, envelope.GetEventType(), err)
+	}
+	if !bytes.Equal(canonical, envelope.GetPayload()) {
+		return nil, fmt.Errorf("%w: payload %s is not the canonical deterministic protobuf encoding", ErrInvalidEnvelope, envelope.GetEventType())
+	}
+	return payload, nil
+}
+
+// OrderingKey returns the stable, opaque Pub/Sub key for one aggregate. The
+// clear-text tenant and resource identity remain only inside the protobuf
+// envelope and authenticated attributes.
+func OrderingKey(envelope *commonv1.EventEnvelope) (string, error) {
+	aggregateType, aggregateID, err := AggregateIdentity(envelope)
+	if err != nil {
+		return "", err
+	}
+	source := envelope.GetTenantId() + "\x00" + aggregateType + "\x00" + aggregateID
+	digest := sha256.Sum256([]byte(source))
+	return "sha256:" + hex.EncodeToString(digest[:]), nil
+}
+
+// AggregateIdentity returns the canonical durable ordering identity. A fully
+// qualified resource name is project-scoped and therefore takes precedence
+// over a leaf resource ID; contracts without a name retain the resource_id
+// compatibility fallback.
+func AggregateIdentity(envelope *commonv1.EventEnvelope) (string, string, error) {
+	if err := ValidateEnvelope(envelope); err != nil {
+		return "", "", err
+	}
+	aggregateID := envelope.GetSubject().GetName()
+	if aggregateID == "" {
+		aggregateID = envelope.GetSubject().GetResourceId()
+	}
+	return envelope.GetSubject().GetResourceType(), aggregateID, nil
+}
+
+// TransportAttributes duplicates only routing and integrity metadata needed
+// to quarantine an unreadable protobuf envelope. The envelope remains the
+// semantic authority and consumers require exact equality when it is valid.
+func TransportAttributes(envelope *commonv1.EventEnvelope) (map[string]string, error) {
+	aggregateType, aggregateID, err := AggregateIdentity(envelope)
+	if err != nil {
+		return nil, err
+	}
+	return map[string]string{
+		"event_id":             envelope.GetEventId(),
+		"event_type":           envelope.GetEventType(),
+		"event_version":        strconv.FormatUint(uint64(envelope.GetEventVersion()), 10),
+		"tenant_id":            envelope.GetTenantId(),
+		"project_id":           envelope.GetProjectId(),
+		"aggregate_type":       aggregateType,
+		"aggregate_id":         aggregateID,
+		"aggregate_sequence":   strconv.FormatUint(envelope.GetAggregateSequence(), 10),
+		"payload_digest":       envelope.GetPayloadDigest(),
+		"payload_content_type": envelope.GetPayloadContentType(),
+	}, nil
+}
+
+func ValidateTransportAttributes(envelope *commonv1.EventEnvelope, attributes map[string]string, orderingKey string) error {
+	expected, err := TransportAttributes(envelope)
+	if err != nil {
+		return err
+	}
+	for name, value := range expected {
+		if attributes[name] != value {
+			return fmt.Errorf("%w: transport attribute %s does not match envelope", ErrInvalidEnvelope, name)
+		}
+	}
+	expectedOrderingKey, err := OrderingKey(envelope)
+	if err != nil {
+		return err
+	}
+	if orderingKey != expectedOrderingKey {
+		return fmt.Errorf("%w: transport ordering key does not match envelope aggregate", ErrInvalidEnvelope)
+	}
+	return nil
+}
+
 func ValidateEnvelope(envelope *commonv1.EventEnvelope) error {
 	if envelope == nil {
 		return fmt.Errorf("%w: message is required", ErrInvalidEnvelope)
 	}
 	if envelope.GetEventId() == "" || envelope.GetEventType() == "" || envelope.GetEventVersion() == 0 || envelope.GetTenantId() == "" {
 		return fmt.Errorf("%w: identity, type, version, and tenant are required", ErrInvalidEnvelope)
+	}
+	if envelope.GetProducer() == "" || envelope.GetDeduplicationKey() == "" || envelope.GetAggregateSequence() == 0 {
+		return fmt.Errorf("%w: producer, deduplication key, and aggregate sequence are required", ErrInvalidEnvelope)
 	}
 	registration, ok := RegisteredEvent(envelope.GetEventType(), envelope.GetEventVersion())
 	if !ok {
@@ -110,6 +215,9 @@ func ValidateEnvelope(envelope *commonv1.EventEnvelope) error {
 	}
 	if envelope.GetSubject() == nil || envelope.GetSubject().GetResourceId() == "" || envelope.GetSubject().GetResourceType() == "" {
 		return fmt.Errorf("%w: subject is required", ErrInvalidEnvelope)
+	}
+	if envelope.GetSubject().GetTenantId() != envelope.GetTenantId() || envelope.GetSubject().GetProjectId() != envelope.GetProjectId() {
+		return fmt.Errorf("%w: subject tenant/project scope must match the envelope", ErrInvalidEnvelope)
 	}
 	if len(envelope.GetPayload()) == 0 || envelope.GetPayloadContentType() == "" {
 		return fmt.Errorf("%w: payload bytes and content type are required", ErrInvalidEnvelope)

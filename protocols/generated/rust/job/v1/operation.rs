@@ -27,6 +27,11 @@ pub struct Operation {
     pub done: bool,
     #[prost(string, tag = "12")]
     pub etag: ::prost::alloc::string::String,
+    /// target is the 1:1 domain resource controlled by this operation. The
+    /// operation owns coarse asynchronous control state, never a duplicate of
+    /// the target aggregate's scientific or business lifecycle.
+    #[prost(message, optional, tag = "13")]
+    pub target: ::core::option::Option<crate::common::v1::ResourceRef>,
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
@@ -41,7 +46,6 @@ pub enum OperationState {
 }
 impl OperationState {
     /// String value of the enum field names used in the ProtoBuf definition.
-    ///
     /// The values are not transformed in any way and thus are considered stable
     /// (if the ProtoBuf definition does not change) and safe for programmatic use.
     pub fn as_str_name(&self) -> &'static str {

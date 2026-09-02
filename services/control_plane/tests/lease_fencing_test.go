@@ -48,7 +48,7 @@ func TestStaleCompletionIsRetainedButCannotAdvanceRun(t *testing.T) {
 	}
 	completion := proto.Clone(first).(*jobv1.Attempt)
 	completion.State = jobv1.AttemptState_ATTEMPT_STATE_SUCCEEDED
-	credentials := jobs.LeaseCredentials{TenantID: "tenant-a", AttemptID: first.GetAttemptId(), WorkerID: "worker-1", Token: firstToken, Epoch: first.GetLeaseEpoch()}
+	credentials := jobs.LeaseCredentials{TenantID: "tenant-a", ProjectID: "project-a", AttemptID: first.GetAttemptId(), WorkerID: "worker-1", Token: firstToken, Epoch: first.GetLeaseEpoch()}
 	if completionErr := repository.CompleteAttempt(credentials, completion, first.GetResourceVersion(), now.Add(jobs.MinimumLeaseDuration+2*time.Second)); !errors.Is(completionErr, jobs.ErrStaleCompletion) {
 		t.Fatalf("expected stale completion, got %v", completionErr)
 	}

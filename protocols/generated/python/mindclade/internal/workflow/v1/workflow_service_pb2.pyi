@@ -6,6 +6,7 @@ from google.protobuf import timestamp_pb2 as _timestamp_pb2
 from mindclade.common.v1 import command_context_pb2 as _command_context_pb2
 from mindclade.common.v1 import pagination_pb2 as _pagination_pb2
 from mindclade.job.v1 import operation_pb2 as _operation_pb2
+from mindclade.job.v1 import lease_fencing_pb2 as _lease_fencing_pb2
 from mindclade.workflow.v1 import approval_pb2 as _approval_pb2
 from mindclade.workflow.v1 import workflow_definition_pb2 as _workflow_definition_pb2
 from mindclade.workflow.v1 import workflow_run_pb2 as _workflow_run_pb2
@@ -162,20 +163,18 @@ class CancelWorkflowRunResponse(_message.Message):
     def __init__(self, operation: _Optional[_Union[_operation_pb2.Operation, _Mapping]] = ...) -> None: ...
 
 class CommitWorkflowTransitionRequest(_message.Message):
-    __slots__ = ("context", "workflow_run", "expected_transition_sequence", "attempt_id", "lease_epoch", "etag")
+    __slots__ = ("context", "workflow_run", "expected_transition_sequence", "fence", "etag")
     CONTEXT_FIELD_NUMBER: _ClassVar[int]
     WORKFLOW_RUN_FIELD_NUMBER: _ClassVar[int]
     EXPECTED_TRANSITION_SEQUENCE_FIELD_NUMBER: _ClassVar[int]
-    ATTEMPT_ID_FIELD_NUMBER: _ClassVar[int]
-    LEASE_EPOCH_FIELD_NUMBER: _ClassVar[int]
+    FENCE_FIELD_NUMBER: _ClassVar[int]
     ETAG_FIELD_NUMBER: _ClassVar[int]
     context: _command_context_pb2.CommandContext
     workflow_run: _workflow_run_pb2.WorkflowRun
     expected_transition_sequence: int
-    attempt_id: str
-    lease_epoch: int
+    fence: _lease_fencing_pb2.LeaseFence
     etag: str
-    def __init__(self, context: _Optional[_Union[_command_context_pb2.CommandContext, _Mapping]] = ..., workflow_run: _Optional[_Union[_workflow_run_pb2.WorkflowRun, _Mapping]] = ..., expected_transition_sequence: _Optional[int] = ..., attempt_id: _Optional[str] = ..., lease_epoch: _Optional[int] = ..., etag: _Optional[str] = ...) -> None: ...
+    def __init__(self, context: _Optional[_Union[_command_context_pb2.CommandContext, _Mapping]] = ..., workflow_run: _Optional[_Union[_workflow_run_pb2.WorkflowRun, _Mapping]] = ..., expected_transition_sequence: _Optional[int] = ..., fence: _Optional[_Union[_lease_fencing_pb2.LeaseFence, _Mapping]] = ..., etag: _Optional[str] = ...) -> None: ...
 
 class CommitWorkflowTransitionResponse(_message.Message):
     __slots__ = ("workflow_run",)

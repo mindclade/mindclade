@@ -22,10 +22,11 @@ _runtime_version.ValidateProtobufRuntimeVersion(
 _sym_db = _symbol_database.Default()
 
 
+from google.protobuf import timestamp_pb2 as google_dot_protobuf_dot_timestamp__pb2
 from mindclade.artifact.v1 import artifact_reference_pb2 as proto_dot_mindclade_dot_artifact_dot_v1_dot_artifact__reference__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n5events/mindclade/artifact/v1/artifact_committed.proto\x12\x1cmindclade.events.artifact.v1\x1a\x34proto/mindclade/artifact/v1/artifact_reference.proto\"\x83\x01\n\x11\x41rtifactCommitted\x12>\n\x08\x61rtifact\x18\x01 \x01(\x0b\x32\".mindclade.artifact.v1.ArtifactRefR\x08\x61rtifact\x12.\n\x13producer_attempt_id\x18\x02 \x01(\tR\x11producerAttemptIdBNZLgithub.com/mindclade/mindclade/protocols/generated/go/artifact/v1;artifactv1b\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n5events/mindclade/artifact/v1/artifact_committed.proto\x12\x1cmindclade.events.artifact.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x34proto/mindclade/artifact/v1/artifact_reference.proto\"\x83\x01\n\x11\x41rtifactCommitted\x12>\n\x08\x61rtifact\x18\x01 \x01(\x0b\x32\".mindclade.artifact.v1.ArtifactRefR\x08\x61rtifact\x12.\n\x13producer_attempt_id\x18\x02 \x01(\tR\x11producerAttemptId\"\xab\x02\n\x18\x41rtifactStagingFinalized\x12\x1f\n\x0bupload_name\x18\x01 \x01(\tR\nuploadName\x12>\n\x08\x61rtifact\x18\x02 \x01(\x0b\x32\".mindclade.artifact.v1.ArtifactRefR\x08\x61rtifact\x12\x34\n\x16staging_receipt_digest\x18\x03 \x01(\tR\x14stagingReceiptDigest\x12;\n\x0bverified_at\x18\x04 \x01(\x0b\x32\x1a.google.protobuf.TimestampR\nverifiedAt\x12;\n\x0b\x65xpire_time\x18\x05 \x01(\x0b\x32\x1a.google.protobuf.TimestampR\nexpireTimeBNZLgithub.com/mindclade/mindclade/protocols/generated/go/artifact/v1;artifactv1b\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -33,6 +34,8 @@ _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'mindclade.artifact.v1.artif
 if not _descriptor._USE_C_DESCRIPTORS:
   _globals['DESCRIPTOR']._loaded_options = None
   _globals['DESCRIPTOR']._serialized_options = b'ZLgithub.com/mindclade/mindclade/protocols/generated/go/artifact/v1;artifactv1'
-  _globals['_ARTIFACTCOMMITTED']._serialized_start=142
-  _globals['_ARTIFACTCOMMITTED']._serialized_end=273
+  _globals['_ARTIFACTCOMMITTED']._serialized_start=175
+  _globals['_ARTIFACTCOMMITTED']._serialized_end=306
+  _globals['_ARTIFACTSTAGINGFINALIZED']._serialized_start=309
+  _globals['_ARTIFACTSTAGINGFINALIZED']._serialized_end=608
 # @@protoc_insertion_point(module_scope)

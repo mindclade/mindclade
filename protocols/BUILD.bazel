@@ -59,5 +59,8 @@ py_test(
     legacy_create_init = 0,
     main = "compatibility/tests/test_openapi_compatibility.py",
     python_version = "PY3",
-    deps = ["@mindclade_pypi//pyyaml"],
+    deps = [
+        "@mindclade_pypi//protobuf",
+        "@mindclade_pypi//pyyaml",
+    ],
 )

@@ -10,6 +10,7 @@ from mindclade.agent.v1 import tool_receipt_pb2 as _tool_receipt_pb2
 from mindclade.common.v1 import command_context_pb2 as _command_context_pb2
 from mindclade.common.v1 import pagination_pb2 as _pagination_pb2
 from mindclade.job.v1 import operation_pb2 as _operation_pb2
+from mindclade.job.v1 import lease_fencing_pb2 as _lease_fencing_pb2
 from google.protobuf.internal import containers as _containers
 from google.protobuf import descriptor as _descriptor
 from google.protobuf import message as _message
@@ -194,15 +195,39 @@ class ListAgentStepsResponse(_message.Message):
     read_time: _timestamp_pb2.Timestamp
     def __init__(self, agent_steps: _Optional[_Iterable[_Union[_agent_step_pb2.AgentStep, _Mapping]]] = ..., page: _Optional[_Union[_pagination_pb2.PageResponse, _Mapping]] = ..., read_time: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ...) -> None: ...
 
+class CommitAgentStepRequest(_message.Message):
+    __slots__ = ("context", "agent_step", "fence", "run_etag", "expected_next_step_sequence")
+    CONTEXT_FIELD_NUMBER: _ClassVar[int]
+    AGENT_STEP_FIELD_NUMBER: _ClassVar[int]
+    FENCE_FIELD_NUMBER: _ClassVar[int]
+    RUN_ETAG_FIELD_NUMBER: _ClassVar[int]
+    EXPECTED_NEXT_STEP_SEQUENCE_FIELD_NUMBER: _ClassVar[int]
+    context: _command_context_pb2.CommandContext
+    agent_step: _agent_step_pb2.AgentStep
+    fence: _lease_fencing_pb2.LeaseFence
+    run_etag: str
+    expected_next_step_sequence: int
+    def __init__(self, context: _Optional[_Union[_command_context_pb2.CommandContext, _Mapping]] = ..., agent_step: _Optional[_Union[_agent_step_pb2.AgentStep, _Mapping]] = ..., fence: _Optional[_Union[_lease_fencing_pb2.LeaseFence, _Mapping]] = ..., run_etag: _Optional[str] = ..., expected_next_step_sequence: _Optional[int] = ...) -> None: ...
+
+class CommitAgentStepResponse(_message.Message):
+    __slots__ = ("agent_step", "agent_run")
+    AGENT_STEP_FIELD_NUMBER: _ClassVar[int]
+    AGENT_RUN_FIELD_NUMBER: _ClassVar[int]
+    agent_step: _agent_step_pb2.AgentStep
+    agent_run: _agent_run_pb2.AgentRun
+    def __init__(self, agent_step: _Optional[_Union[_agent_step_pb2.AgentStep, _Mapping]] = ..., agent_run: _Optional[_Union[_agent_run_pb2.AgentRun, _Mapping]] = ...) -> None: ...
+
 class CommitToolReceiptRequest(_message.Message):
-    __slots__ = ("context", "tool_receipt", "run_etag")
+    __slots__ = ("context", "tool_receipt", "run_etag", "fence")
     CONTEXT_FIELD_NUMBER: _ClassVar[int]
     TOOL_RECEIPT_FIELD_NUMBER: _ClassVar[int]
     RUN_ETAG_FIELD_NUMBER: _ClassVar[int]
+    FENCE_FIELD_NUMBER: _ClassVar[int]
     context: _command_context_pb2.CommandContext
     tool_receipt: _tool_receipt_pb2.ToolReceipt
     run_etag: str
-    def __init__(self, context: _Optional[_Union[_command_context_pb2.CommandContext, _Mapping]] = ..., tool_receipt: _Optional[_Union[_tool_receipt_pb2.ToolReceipt, _Mapping]] = ..., run_etag: _Optional[str] = ...) -> None: ...
+    fence: _lease_fencing_pb2.LeaseFence
+    def __init__(self, context: _Optional[_Union[_command_context_pb2.CommandContext, _Mapping]] = ..., tool_receipt: _Optional[_Union[_tool_receipt_pb2.ToolReceipt, _Mapping]] = ..., run_etag: _Optional[str] = ..., fence: _Optional[_Union[_lease_fencing_pb2.LeaseFence, _Mapping]] = ...) -> None: ...
 
 class CommitToolReceiptResponse(_message.Message):
     __slots__ = ("tool_receipt", "agent_run")

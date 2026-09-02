@@ -5,4 +5,5 @@ export * from './model_pb.js';
 export * from './model_promoted_pb.js';
 export * from './model_registered_pb.js';
 export * from './model_release_pb.js';
+export * from './model_release_registered_pb.js';
 export * from './model_revoked_pb.js';

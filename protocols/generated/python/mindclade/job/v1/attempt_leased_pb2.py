@@ -22,9 +22,12 @@ _runtime_version.ValidateProtobufRuntimeVersion(
 _sym_db = _symbol_database.Default()
 
 
+from google.protobuf import timestamp_pb2 as google_dot_protobuf_dot_timestamp__pb2
+from mindclade.job.v1 import attempt_pb2 as proto_dot_mindclade_dot_job_dot_v1_dot_attempt__pb2
+from mindclade.job.v1 import lease_fencing_pb2 as proto_dot_mindclade_dot_job_dot_v1_dot_lease__fencing__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n,events/mindclade/job/v1/attempt_leased.proto\x12\x17mindclade.events.job.v1\"\x80\x01\n\rAttemptLeased\x12\x1d\n\nattempt_id\x18\x01 \x01(\tR\tattemptId\x12\x1f\n\x0blease_epoch\x18\x02 \x01(\x04R\nleaseEpoch\x12/\n\x14lease_expires_at_utc\x18\x03 \x01(\tR\x11leaseExpiresAtUtcBDZBgithub.com/mindclade/mindclade/protocols/generated/go/job/v1;jobv1b\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n,events/mindclade/job/v1/attempt_leased.proto\x12\x17mindclade.events.job.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a$proto/mindclade/job/v1/attempt.proto\x1a*proto/mindclade/job/v1/lease_fencing.proto\"\xf7\x01\n\rAttemptLeased\x12\x33\n\x07\x61ttempt\x18\x01 \x01(\x0b\x32\x19.mindclade.job.v1.AttemptR\x07\x61ttempt\x12\x32\n\x05\x66\x65nce\x18\x02 \x01(\x0b\x32\x1c.mindclade.job.v1.LeaseFenceR\x05\x66\x65nce\x12\x37\n\tleased_at\x18\x03 \x01(\x0b\x32\x1a.google.protobuf.TimestampR\x08leasedAt\x12\x44\n\x10lease_expires_at\x18\x04 \x01(\x0b\x32\x1a.google.protobuf.TimestampR\x0eleaseExpiresAtBDZBgithub.com/mindclade/mindclade/protocols/generated/go/job/v1;jobv1b\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -32,6 +35,6 @@ _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'mindclade.job.v1.attempt_le
 if not _descriptor._USE_C_DESCRIPTORS:
   _globals['DESCRIPTOR']._loaded_options = None
   _globals['DESCRIPTOR']._serialized_options = b'ZBgithub.com/mindclade/mindclade/protocols/generated/go/job/v1;jobv1'
-  _globals['_ATTEMPTLEASED']._serialized_start=74
-  _globals['_ATTEMPTLEASED']._serialized_end=202
+  _globals['_ATTEMPTLEASED']._serialized_start=189
+  _globals['_ATTEMPTLEASED']._serialized_end=436
 # @@protoc_insertion_point(module_scope)

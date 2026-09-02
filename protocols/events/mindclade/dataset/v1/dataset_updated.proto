@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package mindclade.events.dataset.v1;
+
+import "google/protobuf/timestamp.proto";
+import "proto/mindclade/common/v1/resource_reference.proto";
+import "proto/mindclade/dataset/v1/dataset.proto";
+
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/dataset/v1;datasetv1";
+
+// DatasetUpdated records one optimistic, field-mask-governed resource update.
+message DatasetUpdated {
+  string dataset_name = 1;
+  int64 dataset_revision = 2;
+  string dataset_etag = 3;
+  repeated string changed_fields = 4;
+  mindclade.dataset.v1.DatasetState state = 5;
+  mindclade.common.v1.ResourceRef operation = 6;
+  google.protobuf.Timestamp updated_at = 7;
+}

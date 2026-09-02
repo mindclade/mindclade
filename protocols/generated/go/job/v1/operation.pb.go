@@ -100,8 +100,12 @@ type Operation struct {
 	UpdatedAt       *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
 	Done            bool                   `protobuf:"varint,11,opt,name=done,proto3" json:"done,omitempty"`
 	Etag            string                 `protobuf:"bytes,12,opt,name=etag,proto3" json:"etag,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// target is the 1:1 domain resource controlled by this operation. The
+	// operation owns coarse asynchronous control state, never a duplicate of
+	// the target aggregate's scientific or business lifecycle.
+	Target        *v11.ResourceRef `protobuf:"bytes,13,opt,name=target,proto3" json:"target,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Operation) Reset() {
@@ -218,11 +222,18 @@ func (x *Operation) GetEtag() string {
 	return ""
 }
 
+func (x *Operation) GetTarget() *v11.ResourceRef {
+	if x != nil {
+		return x.Target
+	}
+	return nil
+}
+
 var File_proto_mindclade_job_v1_operation_proto protoreflect.FileDescriptor
 
 const file_proto_mindclade_job_v1_operation_proto_rawDesc = "" +
 	"\n" +
-	"&proto/mindclade/job/v1/operation.proto\x12\x10mindclade.job.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a4proto/mindclade/artifact/v1/artifact_reference.proto\x1a,proto/mindclade/common/v1/error_detail.proto\"\xf6\x03\n" +
+	"&proto/mindclade/job/v1/operation.proto\x12\x10mindclade.job.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a4proto/mindclade/artifact/v1/artifact_reference.proto\x1a,proto/mindclade/common/v1/error_detail.proto\x1a2proto/mindclade/common/v1/resource_reference.proto\"\xb0\x04\n" +
 	"\tOperation\x12!\n" +
 	"\foperation_id\x18\x01 \x01(\tR\voperationId\x12\x1b\n" +
 	"\ttenant_id\x18\x02 \x01(\tR\btenantId\x126\n" +
@@ -239,7 +250,8 @@ const file_proto_mindclade_job_v1_operation_proto_rawDesc = "" +
 	"updated_at\x18\n" +
 	" \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x12\x12\n" +
 	"\x04done\x18\v \x01(\bR\x04done\x12\x12\n" +
-	"\x04etag\x18\f \x01(\tR\x04etag*\xe5\x01\n" +
+	"\x04etag\x18\f \x01(\tR\x04etag\x128\n" +
+	"\x06target\x18\r \x01(\v2 .mindclade.common.v1.ResourceRefR\x06target*\xe5\x01\n" +
 	"\x0eOperationState\x12\x1f\n" +
 	"\x1bOPERATION_STATE_UNSPECIFIED\x10\x00\x12\x1b\n" +
 	"\x17OPERATION_STATE_PENDING\x10\x01\x12\x1b\n" +
@@ -269,6 +281,7 @@ var file_proto_mindclade_job_v1_operation_proto_goTypes = []any{
 	(*v1.ArtifactRef)(nil),        // 2: mindclade.artifact.v1.ArtifactRef
 	(*v11.ErrorDetail)(nil),       // 3: mindclade.common.v1.ErrorDetail
 	(*timestamppb.Timestamp)(nil), // 4: google.protobuf.Timestamp
+	(*v11.ResourceRef)(nil),       // 5: mindclade.common.v1.ResourceRef
 }
 var file_proto_mindclade_job_v1_operation_proto_depIdxs = []int32{
 	0, // 0: mindclade.job.v1.Operation.state:type_name -> mindclade.job.v1.OperationState
@@ -276,11 +289,12 @@ var file_proto_mindclade_job_v1_operation_proto_depIdxs = []int32{
 	3, // 2: mindclade.job.v1.Operation.error:type_name -> mindclade.common.v1.ErrorDetail
 	4, // 3: mindclade.job.v1.Operation.created_at:type_name -> google.protobuf.Timestamp
 	4, // 4: mindclade.job.v1.Operation.updated_at:type_name -> google.protobuf.Timestamp
-	5, // [5:5] is the sub-list for method output_type
-	5, // [5:5] is the sub-list for method input_type
-	5, // [5:5] is the sub-list for extension type_name
-	5, // [5:5] is the sub-list for extension extendee
-	0, // [0:5] is the sub-list for field type_name
+	5, // 5: mindclade.job.v1.Operation.target:type_name -> mindclade.common.v1.ResourceRef
+	6, // [6:6] is the sub-list for method output_type
+	6, // [6:6] is the sub-list for method input_type
+	6, // [6:6] is the sub-list for extension type_name
+	6, // [6:6] is the sub-list for extension extendee
+	0, // [0:6] is the sub-list for field type_name
 }
 
 func init() { file_proto_mindclade_job_v1_operation_proto_init() }

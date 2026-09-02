@@ -5,7 +5,11 @@ go_library(
     srcs = [
         "dataset.pb.go",
         "dataset_commands.pb.go",
+        "dataset_created.pb.go",
         "dataset_release.pb.go",
+        "dataset_release_published.pb.go",
+        "dataset_release_revoked.pb.go",
+        "dataset_updated.pb.go",
     ],
     importpath = "github.com/mindclade/mindclade/protocols/generated/go/dataset/v1",
     visibility = ["//visibility:public"],
@@ -25,7 +29,11 @@ filegroup(
         "BUILD.bazel",
         "dataset.pb.go",
         "dataset_commands.pb.go",
+        "dataset_created.pb.go",
         "dataset_release.pb.go",
+        "dataset_release_published.pb.go",
+        "dataset_release_revoked.pb.go",
+        "dataset_updated.pb.go",
     ],
     visibility = ["//visibility:public"],
 )

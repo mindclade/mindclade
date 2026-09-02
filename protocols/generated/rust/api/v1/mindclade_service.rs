@@ -13,6 +13,28 @@ pub struct PublicHttpContract {
     pub response_headers: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
     #[prost(enumeration = "StreamProjection", tag = "5")]
     pub stream: i32,
+    #[prost(uint32, repeated, tag = "6")]
+    pub non_success_status: ::prost::alloc::vec::Vec<u32>,
+    #[prost(bool, tag = "7")]
+    pub request_body_required: bool,
+    #[prost(string, repeated, tag = "8")]
+    pub required_request_headers: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+}
+/// PublicStringEnumContract makes a curated string enumeration descriptor-visible.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct PublicStringEnumContract {
+    #[prost(string, tag = "1")]
+    pub field: ::prost::alloc::string::String,
+    #[prost(string, repeated, tag = "2")]
+    pub values: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+}
+/// PublicMessageContract records requiredness and string enums used by ProtoJSON.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct PublicMessageContract {
+    #[prost(string, repeated, tag = "1")]
+    pub required_fields: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+    #[prost(message, repeated, tag = "2")]
+    pub string_enums: ::prost::alloc::vec::Vec<PublicStringEnumContract>,
 }
 /// ResourceRef is the only cross-domain identity exposed by the public API.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
@@ -141,6 +163,18 @@ pub struct OperationEvent {
     pub event_id: ::prost::alloc::string::String,
     #[prost(message, optional, tag = "2")]
     pub operation: ::core::option::Option<Operation>,
+    #[prost(string, tag = "3")]
+    pub event_type: ::prost::alloc::string::String,
+    #[prost(uint32, tag = "4")]
+    pub schema_version: u32,
+    #[prost(uint64, tag = "5")]
+    pub operation_revision: u64,
+    #[prost(string, tag = "6")]
+    pub resume_cursor: ::prost::alloc::string::String,
+    #[prost(bool, tag = "7")]
+    pub heartbeat: bool,
+    #[prost(message, optional, tag = "8")]
+    pub emitted_at: ::core::option::Option<::prost_types::Timestamp>,
 }
 /// CancellationRequest is the public cancellation body.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
@@ -227,6 +261,8 @@ pub struct DatasetView {
     pub state: ::prost::alloc::string::String,
     #[prost(message, optional, tag = "12")]
     pub current_release: ::core::option::Option<ResourceRef>,
+    #[prost(message, optional, tag = "13")]
+    pub delete_time: ::core::option::Option<::prost_types::Timestamp>,
 }
 /// DatasetList is a stable page of public dataset views.
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -277,6 +313,10 @@ pub struct DatasetReleaseView {
     pub qualification_evidence: ::prost::alloc::vec::Vec<EvidenceRef>,
     #[prost(string, tag = "11")]
     pub policy_classification: ::prost::alloc::string::String,
+    #[prost(message, optional, tag = "12")]
+    pub update_time: ::core::option::Option<::prost_types::Timestamp>,
+    #[prost(message, optional, tag = "13")]
+    pub delete_time: ::core::option::Option<::prost_types::Timestamp>,
 }
 /// DatasetReleaseList is a stable page of public release views.
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -353,6 +393,8 @@ pub struct ModelView {
     pub output_contract: ::core::option::Option<ArtifactRef>,
     #[prost(message, optional, tag = "16")]
     pub current_release: ::core::option::Option<ResourceRef>,
+    #[prost(message, optional, tag = "17")]
+    pub delete_time: ::core::option::Option<::prost_types::Timestamp>,
 }
 /// ModelList is a stable page of public model views.
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -409,6 +451,10 @@ pub struct ModelReleaseView {
     pub evaluation_evidence: ::prost::alloc::vec::Vec<EvidenceRef>,
     #[prost(string, tag = "13")]
     pub policy_classification: ::prost::alloc::string::String,
+    #[prost(message, optional, tag = "14")]
+    pub update_time: ::core::option::Option<::prost_types::Timestamp>,
+    #[prost(message, optional, tag = "15")]
+    pub delete_time: ::core::option::Option<::prost_types::Timestamp>,
 }
 /// ModelReleaseList is a stable page of public model-release views.
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -469,6 +515,8 @@ pub struct TrainingRunView {
     pub result_manifest: ::core::option::Option<ArtifactRef>,
     #[prost(message, optional, tag = "14")]
     pub failure: ::core::option::Option<PublicError>,
+    #[prost(message, optional, tag = "15")]
+    pub delete_time: ::core::option::Option<::prost_types::Timestamp>,
 }
 /// TrainingRunList is a stable page of public training views.
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -523,6 +571,8 @@ pub struct EvaluationRunView {
     pub total_samples: u64,
     #[prost(message, optional, tag = "13")]
     pub failure: ::core::option::Option<PublicError>,
+    #[prost(message, optional, tag = "14")]
+    pub delete_time: ::core::option::Option<::prost_types::Timestamp>,
 }
 /// EvaluationRunList is a stable page of public evaluation views.
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -689,6 +739,10 @@ pub struct AgentDefinitionView {
     pub budget: ::core::option::Option<AgentBudget>,
     #[prost(string, tag = "15")]
     pub state: ::prost::alloc::string::String,
+    #[prost(string, tag = "16")]
+    pub agent_definition_id: ::prost::alloc::string::String,
+    #[prost(message, optional, tag = "17")]
+    pub delete_time: ::core::option::Option<::prost_types::Timestamp>,
 }
 /// AgentDefinitionList is a stable page of public definition views.
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -741,6 +795,8 @@ pub struct AgentRunView {
     pub output: ::core::option::Option<ArtifactRef>,
     #[prost(message, optional, tag = "13")]
     pub failure: ::core::option::Option<PublicError>,
+    #[prost(message, optional, tag = "14")]
+    pub delete_time: ::core::option::Option<::prost_types::Timestamp>,
 }
 /// AgentRunList is a stable page of public run views.
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -795,6 +851,10 @@ pub struct WorkflowDefinitionView {
     pub state: ::prost::alloc::string::String,
     #[prost(string, tag = "13")]
     pub resolved_graph_digest: ::prost::alloc::string::String,
+    #[prost(string, tag = "14")]
+    pub workflow_definition_id: ::prost::alloc::string::String,
+    #[prost(message, optional, tag = "15")]
+    pub delete_time: ::core::option::Option<::prost_types::Timestamp>,
 }
 /// WorkflowDefinitionList is a stable page of public definition views.
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -847,6 +907,8 @@ pub struct WorkflowRunView {
     pub replay_state: ::core::option::Option<ArtifactRef>,
     #[prost(message, optional, tag = "13")]
     pub failure: ::core::option::Option<PublicError>,
+    #[prost(message, optional, tag = "14")]
+    pub delete_time: ::core::option::Option<::prost_types::Timestamp>,
 }
 /// WorkflowRunList is a stable page of public run views.
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -881,6 +943,8 @@ pub struct ApprovalRequestView {
     pub minimum_independent_approvers: u32,
     #[prost(message, optional, tag = "11")]
     pub expire_time: ::core::option::Option<::prost_types::Timestamp>,
+    #[prost(message, optional, tag = "12")]
+    pub delete_time: ::core::option::Option<::prost_types::Timestamp>,
 }
 /// ApprovalRequestList is a stable page of public approval views.
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -945,6 +1009,8 @@ pub struct TenantView {
     pub allowed_regions: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
     #[prost(map = "string, string", tag = "11")]
     pub labels: ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
+    #[prost(message, optional, tag = "12")]
+    pub delete_time: ::core::option::Option<::prost_types::Timestamp>,
 }
 /// ProjectCreate is public project creation intent.
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -985,6 +1051,10 @@ pub struct ProjectView {
     pub labels: ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
     #[prost(string, tag = "11")]
     pub state: ::prost::alloc::string::String,
+    #[prost(string, tag = "12")]
+    pub project_id: ::prost::alloc::string::String,
+    #[prost(message, optional, tag = "13")]
+    pub delete_time: ::core::option::Option<::prost_types::Timestamp>,
 }
 /// ProjectList is a stable page of public project views.
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -1046,6 +1116,16 @@ pub struct ListResourcesRequest {
     #[prost(string, tag = "5")]
     pub order_by: ::prost::alloc::string::String,
 }
+/// ListChildResourcesRequest carries pagination for immutable child collections.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct ListChildResourcesRequest {
+    #[prost(string, tag = "1")]
+    pub parent: ::prost::alloc::string::String,
+    #[prost(uint32, tag = "2")]
+    pub page_size: u32,
+    #[prost(string, tag = "3")]
+    pub page_token: ::prost::alloc::string::String,
+}
 /// SubmitInferenceRequest binds public inference intent below a canonical parent.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct SubmitInferenceRequest {
@@ -1067,18 +1147,12 @@ pub struct CancelOperationRequest {
 pub struct DownloadArtifactRequest {
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
-    #[prost(uint64, tag = "2")]
-    pub range_start: u64,
-    #[prost(uint64, optional, tag = "3")]
-    pub range_end_exclusive: ::core::option::Option<u64>,
 }
-/// WatchOperationRequest resumes after an optional public revision.
+/// WatchOperationRequest selects the operation exposed as an SSE stream.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct WatchOperationRequest {
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
-    #[prost(uint64, tag = "2")]
-    pub after_revision: u64,
 }
 /// CreateDatasetRequest binds creation intent below a canonical parent.
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -1219,7 +1293,6 @@ pub enum StreamProjection {
 }
 impl StreamProjection {
     /// String value of the enum field names used in the ProtoBuf definition.
-    ///
     /// The values are not transformed in any way and thus are considered stable
     /// (if the ProtoBuf definition does not change) and safe for programmatic use.
     pub fn as_str_name(&self) -> &'static str {

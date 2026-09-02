@@ -11,8 +11,9 @@ import "proto/mindclade/agent/v1/tool_receipt.proto";
 import "proto/mindclade/common/v1/command_context.proto";
 import "proto/mindclade/common/v1/pagination.proto";
 import "proto/mindclade/job/v1/operation.proto";
+import "proto/mindclade/job/v1/lease_fencing.proto";
 
-option go_package = "github.com/mindclade/mindclade/protocols/generated/go/internal/agent/v1;internalagentv1";
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/agent/v1;internalagentv1";
 
 // CreateAgentDefinitionRequest creates a definition; server-managed fields must be unset.
 message CreateAgentDefinitionRequest {
@@ -142,11 +143,27 @@ message ListAgentStepsResponse {
   google.protobuf.Timestamp read_time = 3;
 }
 
+// CommitAgentStepRequest appends one deterministic step under the current run fence.
+message CommitAgentStepRequest {
+  mindclade.common.v1.CommandContext context = 1;
+  mindclade.agent.v1.AgentStep agent_step = 2;
+  mindclade.job.v1.LeaseFence fence = 3;
+  string run_etag = 4;
+  uint64 expected_next_step_sequence = 5;
+}
+
+// CommitAgentStepResponse returns the accepted step and reconciled run revision.
+message CommitAgentStepResponse {
+  mindclade.agent.v1.AgentStep agent_step = 1;
+  mindclade.agent.v1.AgentRun agent_run = 2;
+}
+
 // CommitToolReceiptRequest appends a fenced receipt under run optimistic concurrency.
 message CommitToolReceiptRequest {
   mindclade.common.v1.CommandContext context = 1;
   mindclade.agent.v1.ToolReceipt tool_receipt = 2;
   string run_etag = 3;
+  mindclade.job.v1.LeaseFence fence = 4;
 }
 
 // CommitToolReceiptResponse returns the accepted receipt and reconciled run.
@@ -177,6 +194,8 @@ service AgentService {
   rpc GetAgentStep(GetAgentStepRequest) returns (GetAgentStepResponse);
   // ListAgentSteps returns ordered, resumable run history.
   rpc ListAgentSteps(ListAgentStepsRequest) returns (ListAgentStepsResponse);
+  // CommitAgentStep appends a fenced decision/tool/wait/terminal step.
+  rpc CommitAgentStep(CommitAgentStepRequest) returns (CommitAgentStepResponse);
   // CommitToolReceipt rejects stale attempts and treats receipts as execution evidence.
   rpc CommitToolReceipt(CommitToolReceiptRequest) returns (CommitToolReceiptResponse);
 }

@@ -22,9 +22,13 @@ _runtime_version.ValidateProtobufRuntimeVersion(
 _sym_db = _symbol_database.Default()
 
 
+from google.protobuf import timestamp_pb2 as google_dot_protobuf_dot_timestamp__pb2
+from mindclade.job.v1 import attempt_pb2 as proto_dot_mindclade_dot_job_dot_v1_dot_attempt__pb2
+from mindclade.job.v1 import lease_fencing_pb2 as proto_dot_mindclade_dot_job_dot_v1_dot_lease__fencing__pb2
+from mindclade.job.v1 import run_pb2 as proto_dot_mindclade_dot_job_dot_v1_dot_run__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n/events/mindclade/job/v1/attempt_completed.proto\x12\x17mindclade.events.job.v1\"\xb3\x01\n\x10\x41ttemptCompleted\x12\x1d\n\nattempt_id\x18\x01 \x01(\tR\tattemptId\x12\x1f\n\x0blease_epoch\x18\x02 \x01(\x04R\nleaseEpoch\x12#\n\rresult_digest\x18\x03 \x01(\tR\x0cresultDigest\x12:\n\x19\x63ompletion_receipt_digest\x18\x04 \x01(\tR\x17\x63ompletionReceiptDigestBDZBgithub.com/mindclade/mindclade/protocols/generated/go/job/v1;jobv1b\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n/events/mindclade/job/v1/attempt_completed.proto\x12\x17mindclade.events.job.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a$proto/mindclade/job/v1/attempt.proto\x1a*proto/mindclade/job/v1/lease_fencing.proto\x1a proto/mindclade/job/v1/run.proto\"\xe3\x01\n\x10\x41ttemptCompleted\x12\x33\n\x07\x61ttempt\x18\x01 \x01(\x0b\x32\x19.mindclade.job.v1.AttemptR\x07\x61ttempt\x12\'\n\x03run\x18\x02 \x01(\x0b\x32\x15.mindclade.job.v1.RunR\x03run\x12\x32\n\x05\x66\x65nce\x18\x03 \x01(\x0b\x32\x1c.mindclade.job.v1.LeaseFenceR\x05\x66\x65nce\x12=\n\x0c\x63ompleted_at\x18\x04 \x01(\x0b\x32\x1a.google.protobuf.TimestampR\x0b\x63ompletedAtBDZBgithub.com/mindclade/mindclade/protocols/generated/go/job/v1;jobv1b\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -32,6 +36,6 @@ _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'mindclade.job.v1.attempt_co
 if not _descriptor._USE_C_DESCRIPTORS:
   _globals['DESCRIPTOR']._loaded_options = None
   _globals['DESCRIPTOR']._serialized_options = b'ZBgithub.com/mindclade/mindclade/protocols/generated/go/job/v1;jobv1'
-  _globals['_ATTEMPTCOMPLETED']._serialized_start=77
-  _globals['_ATTEMPTCOMPLETED']._serialized_end=256
+  _globals['_ATTEMPTCOMPLETED']._serialized_start=226
+  _globals['_ATTEMPTCOMPLETED']._serialized_end=453
 # @@protoc_insertion_point(module_scope)

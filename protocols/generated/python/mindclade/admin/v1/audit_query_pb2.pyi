@@ -21,11 +21,26 @@ class AuditActionResult(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
     AUDIT_ACTION_RESULT_FAILED: _ClassVar[AuditActionResult]
     AUDIT_ACTION_RESULT_DENIED: _ClassVar[AuditActionResult]
     AUDIT_ACTION_RESULT_CANCELLED: _ClassVar[AuditActionResult]
+
+class AuditExportState(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
+    __slots__ = ()
+    AUDIT_EXPORT_STATE_UNSPECIFIED: _ClassVar[AuditExportState]
+    AUDIT_EXPORT_STATE_REQUESTED: _ClassVar[AuditExportState]
+    AUDIT_EXPORT_STATE_RUNNING: _ClassVar[AuditExportState]
+    AUDIT_EXPORT_STATE_SUCCEEDED: _ClassVar[AuditExportState]
+    AUDIT_EXPORT_STATE_FAILED: _ClassVar[AuditExportState]
+    AUDIT_EXPORT_STATE_EXPIRED: _ClassVar[AuditExportState]
 AUDIT_ACTION_RESULT_UNSPECIFIED: AuditActionResult
 AUDIT_ACTION_RESULT_SUCCEEDED: AuditActionResult
 AUDIT_ACTION_RESULT_FAILED: AuditActionResult
 AUDIT_ACTION_RESULT_DENIED: AuditActionResult
 AUDIT_ACTION_RESULT_CANCELLED: AuditActionResult
+AUDIT_EXPORT_STATE_UNSPECIFIED: AuditExportState
+AUDIT_EXPORT_STATE_REQUESTED: AuditExportState
+AUDIT_EXPORT_STATE_RUNNING: AuditExportState
+AUDIT_EXPORT_STATE_SUCCEEDED: AuditExportState
+AUDIT_EXPORT_STATE_FAILED: AuditExportState
+AUDIT_EXPORT_STATE_EXPIRED: AuditExportState
 
 class AuditQuery(_message.Message):
     __slots__ = ("parent", "start_time", "end_time", "actor_principal_refs", "actions", "resources", "results", "policy_reason_codes", "request_id", "trace_id", "page")
@@ -104,15 +119,27 @@ class AuditQueryPage(_message.Message):
     def __init__(self, records: _Optional[_Iterable[_Union[AuditRecord, _Mapping]]] = ..., page: _Optional[_Union[_pagination_pb2.PageResponse, _Mapping]] = ...) -> None: ...
 
 class AuditExport(_message.Message):
-    __slots__ = ("name", "artifact", "query_digest", "create_time", "expire_time")
+    __slots__ = ("name", "artifact", "query_digest", "create_time", "expire_time", "state", "failure_code", "revision", "etag", "update_time", "uid")
     NAME_FIELD_NUMBER: _ClassVar[int]
     ARTIFACT_FIELD_NUMBER: _ClassVar[int]
     QUERY_DIGEST_FIELD_NUMBER: _ClassVar[int]
     CREATE_TIME_FIELD_NUMBER: _ClassVar[int]
     EXPIRE_TIME_FIELD_NUMBER: _ClassVar[int]
+    STATE_FIELD_NUMBER: _ClassVar[int]
+    FAILURE_CODE_FIELD_NUMBER: _ClassVar[int]
+    REVISION_FIELD_NUMBER: _ClassVar[int]
+    ETAG_FIELD_NUMBER: _ClassVar[int]
+    UPDATE_TIME_FIELD_NUMBER: _ClassVar[int]
+    UID_FIELD_NUMBER: _ClassVar[int]
     name: str
     artifact: _artifact_reference_pb2.ArtifactRef
     query_digest: str
     create_time: _timestamp_pb2.Timestamp
     expire_time: _timestamp_pb2.Timestamp
-    def __init__(self, name: _Optional[str] = ..., artifact: _Optional[_Union[_artifact_reference_pb2.ArtifactRef, _Mapping]] = ..., query_digest: _Optional[str] = ..., create_time: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., expire_time: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ...) -> None: ...
+    state: AuditExportState
+    failure_code: str
+    revision: int
+    etag: str
+    update_time: _timestamp_pb2.Timestamp
+    uid: str
+    def __init__(self, name: _Optional[str] = ..., artifact: _Optional[_Union[_artifact_reference_pb2.ArtifactRef, _Mapping]] = ..., query_digest: _Optional[str] = ..., create_time: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., expire_time: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., state: _Optional[_Union[AuditExportState, str]] = ..., failure_code: _Optional[str] = ..., revision: _Optional[int] = ..., etag: _Optional[str] = ..., update_time: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., uid: _Optional[str] = ...) -> None: ...

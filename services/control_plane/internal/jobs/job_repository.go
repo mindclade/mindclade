@@ -17,24 +17,46 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	foundationaudit "github.com/mindclade/mindclade/libs/go/audit"
 	artifactv1 "github.com/mindclade/mindclade/protocols/generated/go/artifact/v1"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
+	operationsapp "github.com/mindclade/mindclade/services/control_plane/internal/operations"
 	platformdb "github.com/mindclade/mindclade/services/control_plane/internal/platform/database"
+	"github.com/mindclade/mindclade/services/control_plane/internal/platform/queue"
 	"github.com/mindclade/mindclade/services/control_plane/internal/tenants"
 )
 
 type SQLRepository struct{ DB *sql.DB }
 
+type JobCommandMetadata struct {
+	TenantID, ProjectID, PrincipalID string
+	IdempotencyKey, RequestDigest    string
+	ObservedAt                       time.Time
+}
+
+type JobMutationResult struct {
+	Job       *jobv1.Job
+	Operation *jobv1.Operation
+	Replay    bool
+}
+
 const (
 	MinimumLeaseDuration = 5 * time.Second
 	MaximumLeaseDuration = 15 * time.Minute
+	actionAcquireLease   = "run.acquire_lease"
+	actionRenewLease     = "run.renew_lease"
+	actionHeartbeat      = "run.heartbeat"
+	actionCancelAttempt  = "run.cancel_attempt"
+	actionExpireLeases   = "run.expire_leases"
+	actionCommitAttempt  = "run.commit_attempt"
 )
 
 // LeaseCredentials are authenticated behavior inputs, not a competing wire
 // model. The raw token is carried in transport metadata and is never persisted.
 type LeaseCredentials struct {
 	TenantID  string
+	ProjectID string
 	AttemptID string
 	WorkerID  string
 	Token     string
@@ -42,13 +64,15 @@ type LeaseCredentials struct {
 }
 
 type AcquireLeaseCommand struct {
-	TenantID  string
-	RunID     string
-	AttemptID string
-	WorkerID  string
-	Token     string
-	Duration  time.Duration
-	Now       time.Time
+	TenantID   string
+	RunID      string
+	AttemptID  string
+	WorkerID   string
+	Token      string
+	Duration   time.Duration
+	Now        time.Time
+	Command    RunCommandMetadata
+	TokenKeyID string
 }
 
 type RenewLeaseCommand struct {
@@ -56,6 +80,66 @@ type RenewLeaseCommand struct {
 	ExpectedResourceVersion int64
 	Duration                time.Duration
 	Now                     time.Time
+	Command                 RunCommandMetadata
+}
+
+// RunCommandMetadata is authenticated behavior state used to serialize and
+// replay successful RunService mutations. It is deliberately not a wire
+// model; the authoritative command remains the generated protobuf request.
+type RunCommandMetadata struct {
+	TenantID, ProjectID, PrincipalID, WorkerID string
+	Action, IdempotencyKey, RequestDigest      string
+	RequestID, TraceID                         string
+	CorrelationID, CausationID                 string
+	ObservedAt                                 time.Time
+}
+
+type CancelAttemptCommand struct {
+	Credentials             LeaseCredentials
+	ExpectedResourceVersion int64
+	Now                     time.Time
+	Command                 RunCommandMetadata
+}
+
+type ExpireLeasesCommand struct {
+	TenantID string
+	Limit    int
+	Now      time.Time
+	Command  RunCommandMetadata
+}
+
+type CompleteAttemptCommand struct {
+	Credentials             LeaseCredentials
+	Attempt                 *jobv1.Attempt
+	UpdateMask              []string
+	ExpectedResourceVersion int64
+	Now                     time.Time
+	Command                 RunCommandMetadata
+}
+
+type runCommandReceipt struct {
+	commandKey, requestDigest, action, projectID, principalID, workerID string
+	runID, attemptID, tokenKeyID                                        sql.NullString
+	observedAt                                                          time.Time
+}
+
+type LeaseMutationResult struct {
+	Attempt    *jobv1.Attempt
+	Fence      *jobv1.LeaseFence
+	TokenKeyID string
+	Replay     bool
+}
+
+type AttemptMutationResult struct {
+	Attempt *jobv1.Attempt
+	Run     *jobv1.Run
+	Replay  bool
+}
+
+type ExpireLeasesResult struct {
+	Attempts   []*jobv1.Attempt
+	ObservedAt time.Time
+	Replay     bool
 }
 
 func NewLeaseToken() (string, error) {
@@ -85,61 +169,232 @@ func validateLeaseDuration(value time.Duration) error {
 	return nil
 }
 
+func renewedLeaseDeadline(now time.Time, duration time.Duration, current time.Time) time.Time {
+	candidate := now.UTC().Add(duration)
+	if candidate.Before(current.UTC()) {
+		return current.UTC()
+	}
+	return candidate
+}
+
+func validateRunCommandMetadata(value RunCommandMetadata, tenantID, action string) error {
+	if value.TenantID != tenantID || value.ProjectID == "" || value.PrincipalID == "" || value.WorkerID == "" ||
+		value.Action != action || value.IdempotencyKey == "" || value.ObservedAt.IsZero() ||
+		len(value.IdempotencyKey) > 255 || strings.TrimSpace(value.IdempotencyKey) != value.IdempotencyKey ||
+		strings.ContainsAny(value.IdempotencyKey, "\x00\r\n") || len(value.RequestDigest) != 71 ||
+		!strings.HasPrefix(value.RequestDigest, "sha256:") {
+		return ErrInvalidLease
+	}
+	if _, err := hex.DecodeString(strings.TrimPrefix(value.RequestDigest, "sha256:")); err != nil {
+		return ErrInvalidLease
+	}
+	return nil
+}
+
+func runCommandKey(action, key string) string { return action + ":" + key }
+
+func checkRunCommand(ctx context.Context, tx *sql.Tx, command RunCommandMetadata) (runCommandReceipt, bool, error) {
+	key := runCommandKey(command.Action, command.IdempotencyKey)
+	lockKey := fmt.Sprintf("%d:%s:%d:%s:%s", len(command.TenantID), command.TenantID, len(command.ProjectID), command.ProjectID, key)
+	if _, err := tx.ExecContext(ctx, `SELECT pg_advisory_xact_lock(hashtextextended($1, 0))`, lockKey); err != nil {
+		return runCommandReceipt{}, false, err
+	}
+	var receipt runCommandReceipt
+	err := tx.QueryRowContext(ctx, `SELECT command_key,request_hash,action,project_id,principal_id,worker_id,run_id,attempt_id,token_key_id,observed_at FROM run_command_receipts WHERE tenant_id=$1 AND project_id=$2 AND command_key=$3`, command.TenantID, command.ProjectID, key).Scan(
+		&receipt.commandKey, &receipt.requestDigest, &receipt.action, &receipt.projectID,
+		&receipt.principalID, &receipt.workerID, &receipt.runID, &receipt.attemptID,
+		&receipt.tokenKeyID, &receipt.observedAt,
+	)
+	if errors.Is(err, sql.ErrNoRows) {
+		return runCommandReceipt{}, false, nil
+	}
+	if err != nil {
+		return runCommandReceipt{}, false, err
+	}
+	if subtle.ConstantTimeCompare([]byte(receipt.requestDigest), []byte(command.RequestDigest)) != 1 ||
+		receipt.action != command.Action || receipt.projectID != command.ProjectID ||
+		receipt.principalID != command.PrincipalID || receipt.workerID != command.WorkerID {
+		return runCommandReceipt{}, false, ErrIdempotencyConflict
+	}
+	return receipt, true, nil
+}
+
+func recordRunCommand(ctx context.Context, tx *sql.Tx, command RunCommandMetadata, runID, attemptID, tokenKeyID string) error {
+	_, err := tx.ExecContext(ctx, `INSERT INTO run_command_receipts (tenant_id,command_key,request_hash,action,project_id,principal_id,worker_id,run_id,attempt_id,token_key_id,observed_at,created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,NULLIF($8,''),NULLIF($9,''),$10,$11,$11)`,
+		command.TenantID, runCommandKey(command.Action, command.IdempotencyKey), command.RequestDigest,
+		command.Action, command.ProjectID, command.PrincipalID, command.WorkerID,
+		runID, attemptID, tokenKeyID, command.ObservedAt.UTC())
+	return err
+}
+
+func getAttemptFenceTx(ctx context.Context, tx *sql.Tx, tenantID, projectID, attemptID string) (*jobv1.Attempt, *jobv1.LeaseFence, error) {
+	attempt, err := getAttemptTx(ctx, tx, tenantID, projectID, attemptID)
+	if err != nil {
+		return nil, nil, err
+	}
+	var digest string
+	if err = tx.QueryRowContext(ctx, `SELECT lease_token_digest FROM attempts WHERE tenant_id=$1 AND project_id=$2 AND id=$3`, tenantID, projectID, attemptID).Scan(&digest); err != nil {
+		return nil, nil, err
+	}
+	return attempt, leaseFence(attempt, digest), nil
+}
+
+func loadReceiptAttempts(ctx context.Context, tx *sql.Tx, tenantID, projectID, commandKey string) ([]*jobv1.Attempt, error) {
+	rows, err := tx.QueryContext(ctx, `SELECT attempt_id FROM run_command_receipt_attempts WHERE tenant_id=$1 AND project_id=$2 AND command_key=$3 ORDER BY ordinal`, tenantID, projectID, commandKey)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = platformdb.CloseRows(rows) }()
+	var ids []string
+	for rows.Next() {
+		var id string
+		if err = rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+	result := make([]*jobv1.Attempt, 0, len(ids))
+	for _, id := range ids {
+		attempt, loadErr := getAttemptTx(ctx, tx, tenantID, projectID, id)
+		if loadErr != nil {
+			return nil, loadErr
+		}
+		result = append(result, attempt)
+	}
+	return result, nil
+}
+
+func applyAttemptCompletionMask(stored, requested *jobv1.Attempt, paths []string, expectedVersion int64) (*jobv1.Attempt, error) {
+	if stored == nil || requested == nil || len(paths) == 0 || expectedVersion < 1 ||
+		requested.GetAttemptId() != stored.GetAttemptId() || requested.GetRunId() != stored.GetRunId() ||
+		requested.GetJobId() != stored.GetJobId() || requested.GetTenantId() != stored.GetTenantId() ||
+		requested.GetProjectId() != stored.GetProjectId() || requested.GetWorkerId() != stored.GetWorkerId() ||
+		requested.GetLeaseEpoch() != stored.GetLeaseEpoch() || requested.GetResourceVersion() != expectedVersion {
+		return nil, ErrInvalidOutcome
+	}
+	result := proto.Clone(stored).(*jobv1.Attempt)
+	seen := make(map[string]struct{}, len(paths))
+	for _, path := range paths {
+		if _, exists := seen[path]; exists {
+			return nil, ErrInvalidOutcome
+		}
+		seen[path] = struct{}{}
+		switch path {
+		case "state":
+			result.State = requested.GetState()
+		case "outputs":
+			result.Outputs = cloneArtifacts(requested.GetOutputs())
+		case "error":
+			result.Error = cloneError(requested.GetError())
+		default:
+			return nil, ErrInvalidOutcome
+		}
+	}
+	if _, ok := seen["state"]; !ok {
+		return nil, ErrInvalidOutcome
+	}
+	if _, _, err := terminalOutcome(result.GetState()); err != nil {
+		return nil, err
+	}
+	if result.GetState() == jobv1.AttemptState_ATTEMPT_STATE_SUCCEEDED && result.GetError() != nil {
+		return nil, ErrInvalidOutcome
+	}
+	return result, nil
+}
+
 // CompleteAttemptSQL locks the attempt and run, records every completion
 // observation, and advances state only for the current unexpired token-bound
 // lease. The generated Attempt remains the authoritative update value.
 func (r SQLRepository) CompleteAttemptSQL(
 	ctx context.Context,
-	credentials LeaseCredentials,
-	attempt *jobv1.Attempt,
-	expectedVersion int64,
-	at time.Time,
-) (*jobv1.Attempt, *jobv1.Run, error) {
-	if attempt == nil || credentials.TenantID == "" || credentials.AttemptID == "" || credentials.WorkerID == "" || at.IsZero() {
-		return nil, nil, ErrInvalidLease
+	command CompleteAttemptCommand,
+) (*AttemptMutationResult, error) {
+	credentials, requested, expectedVersion, at := command.Credentials, command.Attempt, command.ExpectedResourceVersion, command.Now
+	if requested == nil || credentials.TenantID == "" || credentials.ProjectID == "" || credentials.AttemptID == "" || credentials.WorkerID == "" || at.IsZero() {
+		return nil, ErrInvalidLease
 	}
-	if attempt.GetAttemptId() != credentials.AttemptID || attempt.GetTenantId() != credentials.TenantID || attempt.GetLeaseEpoch() != credentials.Epoch {
-		return nil, nil, ErrInvalidLease
-	}
-	attemptOutcome, runOutcome, err := terminalOutcome(attempt.GetState())
-	if err != nil {
-		return nil, nil, err
+	if requested.GetAttemptId() != credentials.AttemptID || requested.GetTenantId() != credentials.TenantID || requested.GetProjectId() != credentials.ProjectID || requested.GetLeaseEpoch() != credentials.Epoch ||
+		validateRunCommandMetadata(command.Command, credentials.TenantID, actionCommitAttempt) != nil || command.Command.ProjectID != credentials.ProjectID || command.Command.WorkerID != credentials.WorkerID {
+		return nil, ErrInvalidLease
 	}
 	presentedDigest, err := LeaseTokenDigest(credentials.Token)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	tx, err := platformdb.BeginTenantTx(ctx, r.DB, credentials.TenantID, nil)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	defer func() { _ = tx.Rollback() }()
+	receipt, replay, err := checkRunCommand(ctx, tx, command.Command)
+	if err != nil {
+		return nil, err
+	}
+	if replay {
+		if !receipt.attemptID.Valid || receipt.attemptID.String != credentials.AttemptID || !receipt.runID.Valid {
+			return nil, ErrIdempotencyConflict
+		}
+		attempt, loadErr := getAttemptTx(ctx, tx, credentials.TenantID, credentials.ProjectID, receipt.attemptID.String)
+		if loadErr != nil {
+			return nil, loadErr
+		}
+		run, loadErr := getRunTx(ctx, tx, credentials.TenantID, credentials.ProjectID, receipt.runID.String)
+		if loadErr != nil {
+			return nil, loadErr
+		}
+		if commitErr := tx.Commit(); commitErr != nil {
+			return nil, commitErr
+		}
+		return &AttemptMutationResult{Attempt: attempt, Run: run, Replay: true}, nil
+	}
+	var runID string
+	if err = tx.QueryRowContext(ctx, `SELECT run_id FROM attempts WHERE tenant_id=$1 AND project_id=$2 AND id=$3`, credentials.TenantID, credentials.ProjectID, credentials.AttemptID).Scan(&runID); errors.Is(err, sql.ErrNoRows) {
+		return nil, ErrNotFound
+	} else if err != nil {
+		return nil, err
+	}
 	var (
-		runID, storedWorkerID, storedTokenDigest, attemptStatus, runStatus string
-		attemptEpoch, currentEpoch                                         uint64
-		storedVersion                                                      int64
-		leaseExpiresAt                                                     time.Time
+		storedWorkerID, storedTokenDigest, attemptStatus, runStatus string
+		attemptEpoch, currentEpoch                                  uint64
+		storedVersion                                               int64
+		leaseExpiresAt                                              time.Time
 	)
-	err = tx.QueryRowContext(ctx, `
-SELECT attempt.run_id, attempt.worker_id, attempt.lease_token_digest,
-       attempt.lease_epoch, attempt.version, attempt.lease_expires_at,
-       attempt.status, run.lease_epoch, run.status
-FROM attempts AS attempt
-JOIN runs AS run ON run.tenant_id = attempt.tenant_id AND run.id = attempt.run_id
-WHERE attempt.tenant_id = $1 AND attempt.id = $2
-FOR UPDATE OF run, attempt`, credentials.TenantID, credentials.AttemptID).Scan(
-		&runID, &storedWorkerID, &storedTokenDigest, &attemptEpoch, &storedVersion,
-		&leaseExpiresAt, &attemptStatus, &currentEpoch, &runStatus,
-	)
+	var projectID string
+	err = tx.QueryRowContext(ctx, `SELECT lease_epoch,status,project_id FROM runs WHERE tenant_id=$1 AND project_id=$2 AND id=$3 FOR UPDATE`, credentials.TenantID, credentials.ProjectID, runID).Scan(&currentEpoch, &runStatus, &projectID)
 	if errors.Is(err, sql.ErrNoRows) {
-		return nil, nil, ErrNotFound
+		return nil, ErrNotFound
 	}
 	if err != nil {
-		return nil, nil, err
+		return nil, err
+	}
+	if projectID != command.Command.ProjectID {
+		return nil, ErrNotFound
+	}
+	err = tx.QueryRowContext(ctx, `SELECT worker_id,lease_token_digest,lease_epoch,version,lease_expires_at,status FROM attempts WHERE tenant_id=$1 AND project_id=$2 AND id=$3 AND run_id=$4 FOR UPDATE`, credentials.TenantID, credentials.ProjectID, credentials.AttemptID, runID).Scan(&storedWorkerID, &storedTokenDigest, &attemptEpoch, &storedVersion, &leaseExpiresAt, &attemptStatus)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, ErrNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	storedAttempt, err := getAttemptTx(ctx, tx, credentials.TenantID, credentials.ProjectID, credentials.AttemptID)
+	if err != nil {
+		return nil, err
+	}
+	attempt, err := applyAttemptCompletionMask(storedAttempt, requested, command.UpdateMask, expectedVersion)
+	if err != nil {
+		return nil, err
+	}
+	attemptOutcome, runOutcome, err := terminalOutcome(attempt.GetState())
+	if err != nil {
+		return nil, err
 	}
 	runState, err := runStateFromDatabase(runStatus)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	tokenMatches := equalLeaseTokenDigest(storedTokenDigest, presentedDigest)
 	ownerMatches := storedWorkerID == credentials.WorkerID
@@ -147,9 +402,10 @@ FOR UPDATE OF run, attempt`, credentials.TenantID, credentials.AttemptID).Scan(
 	versionMatches := storedVersion == expectedVersion
 	unexpired := at.UTC().Before(leaseExpiresAt.UTC())
 	active := attemptStatus == "LEASED" || attemptStatus == "ACTIVE"
-	accepted := tokenMatches && ownerMatches && epochMatches && versionMatches && unexpired && active && runState == jobv1.RunState_RUN_STATE_EXECUTING
-	if _, err = tx.ExecContext(ctx, `INSERT INTO attempt_completion_history (tenant_id, attempt_id, worker_id, lease_epoch, lease_token_digest, accepted, outcome, recorded_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`, credentials.TenantID, credentials.AttemptID, credentials.WorkerID, credentials.Epoch, presentedDigest, accepted, attemptOutcome, at.UTC()); err != nil {
-		return nil, nil, err
+	runAccepts := runState == jobv1.RunState_RUN_STATE_EXECUTING || (runState == jobv1.RunState_RUN_STATE_CANCELLING && attempt.GetState() == jobv1.AttemptState_ATTEMPT_STATE_CANCELLED)
+	accepted := tokenMatches && ownerMatches && epochMatches && versionMatches && unexpired && active && runAccepts
+	if _, err = tx.ExecContext(ctx, `INSERT INTO attempt_completion_history (tenant_id, project_id, attempt_id, worker_id, lease_epoch, lease_token_digest, accepted, outcome, recorded_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`, credentials.TenantID, credentials.ProjectID, credentials.AttemptID, credentials.WorkerID, credentials.Epoch, presentedDigest, accepted, attemptOutcome, at.UTC()); err != nil {
+		return nil, err
 	}
 	if !accepted {
 		rejection := ErrStaleCompletion
@@ -166,62 +422,304 @@ FOR UPDATE OF run, attempt`, credentials.TenantID, credentials.AttemptID).Scan(
 			rejection = ErrLeaseExpired
 		}
 		if tokenMatches && ownerMatches && (!epochMatches || !unexpired) && active {
-			if _, err = tx.ExecContext(ctx, `UPDATE attempts SET status = 'FENCED', version = version + 1, completed_at = $3, updated_at = $3 WHERE tenant_id = $1 AND id = $2`, credentials.TenantID, credentials.AttemptID, at.UTC()); err != nil {
-				return nil, nil, err
+			if _, err = tx.ExecContext(ctx, `UPDATE attempts SET status = 'FENCED', version = version + 1, completed_at = $4, updated_at = $4 WHERE tenant_id = $1 AND project_id=$2 AND id = $3`, credentials.TenantID, credentials.ProjectID, credentials.AttemptID, at.UTC()); err != nil {
+				return nil, err
 			}
 		}
 		if err = tx.Commit(); err != nil {
-			return nil, nil, err
+			return nil, err
 		}
-		return nil, nil, rejection
+		return nil, rejection
 	}
 	errorID, err := platformdb.StoreErrorDetail(ctx, tx, credentials.TenantID, attempt.GetError())
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	if _, err = tx.ExecContext(ctx, `DELETE FROM attempt_output_refs WHERE tenant_id = $1 AND attempt_id = $2`, credentials.TenantID, credentials.AttemptID); err != nil {
-		return nil, nil, err
+	if _, err = tx.ExecContext(ctx, `DELETE FROM attempt_output_refs WHERE tenant_id = $1 AND project_id=$2 AND attempt_id = $3`, credentials.TenantID, credentials.ProjectID, credentials.AttemptID); err != nil {
+		return nil, err
 	}
-	if _, err = tx.ExecContext(ctx, `DELETE FROM run_output_refs WHERE tenant_id = $1 AND run_id = $2`, credentials.TenantID, runID); err != nil {
-		return nil, nil, err
+	if _, err = tx.ExecContext(ctx, `DELETE FROM run_output_refs WHERE tenant_id = $1 AND project_id=$2 AND run_id = $3`, credentials.TenantID, credentials.ProjectID, runID); err != nil {
+		return nil, err
 	}
 	for ordinal, output := range attempt.GetOutputs() {
 		refID, storeErr := platformdb.StoreArtifactRef(ctx, tx, credentials.TenantID, output)
 		if storeErr != nil {
-			return nil, nil, storeErr
+			return nil, storeErr
 		}
 		if !refID.Valid {
-			return nil, nil, errors.New("attempt output cannot be nil")
+			return nil, errors.New("attempt output cannot be nil")
 		}
-		if _, err = tx.ExecContext(ctx, `INSERT INTO attempt_output_refs (tenant_id, attempt_id, ordinal, artifact_ref_id) VALUES ($1,$2,$3,$4)`, credentials.TenantID, credentials.AttemptID, ordinal, refID.Int64); err != nil {
-			return nil, nil, err
+		if _, err = tx.ExecContext(ctx, `INSERT INTO attempt_output_refs (tenant_id, project_id, attempt_id, ordinal, artifact_ref_id) VALUES ($1,$2,$3,$4,$5)`, credentials.TenantID, credentials.ProjectID, credentials.AttemptID, ordinal, refID.Int64); err != nil {
+			return nil, err
 		}
-		if _, err = tx.ExecContext(ctx, `INSERT INTO run_output_refs (tenant_id, run_id, ordinal, artifact_ref_id) VALUES ($1,$2,$3,$4)`, credentials.TenantID, runID, ordinal, refID.Int64); err != nil {
-			return nil, nil, err
+		if _, err = tx.ExecContext(ctx, `INSERT INTO run_output_refs (tenant_id, project_id, run_id, ordinal, artifact_ref_id) VALUES ($1,$2,$3,$4,$5)`, credentials.TenantID, credentials.ProjectID, runID, ordinal, refID.Int64); err != nil {
+			return nil, err
 		}
 	}
-	if _, err = tx.ExecContext(ctx, `UPDATE attempts SET status = $3, version = version + 1, error_detail_id = $4, completed_at = $5, updated_at = $5 WHERE tenant_id = $1 AND id = $2`, credentials.TenantID, credentials.AttemptID, attemptOutcome, errorID, at.UTC()); err != nil {
-		return nil, nil, err
+	if _, err = tx.ExecContext(ctx, `UPDATE attempts SET status = $4, version = version + 1, error_detail_id = $5, completed_at = $6, updated_at = $6 WHERE tenant_id = $1 AND project_id=$2 AND id = $3`, credentials.TenantID, credentials.ProjectID, credentials.AttemptID, attemptOutcome, errorID, at.UTC()); err != nil {
+		return nil, err
 	}
-	if _, err = tx.ExecContext(ctx, `UPDATE runs SET status = $3, version = version + 1, error_detail_id = $4, completed_at = $5, updated_at = $5 WHERE tenant_id = $1 AND id = $2 AND lease_epoch = $6`, credentials.TenantID, runID, runOutcome, errorID, at.UTC(), credentials.Epoch); err != nil {
-		return nil, nil, err
+	if _, err = tx.ExecContext(ctx, `UPDATE runs SET status = $4, version = version + 1, error_detail_id = $5, completed_at = $6, updated_at = $6 WHERE tenant_id = $1 AND project_id=$2 AND id = $3 AND lease_epoch = $7`, credentials.TenantID, credentials.ProjectID, runID, runOutcome, errorID, at.UTC(), credentials.Epoch); err != nil {
+		return nil, err
 	}
-	acceptedAttempt, err := getAttemptTx(ctx, tx, credentials.TenantID, credentials.AttemptID)
+	acceptedAttempt, err := getAttemptTx(ctx, tx, credentials.TenantID, credentials.ProjectID, credentials.AttemptID)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	acceptedRun, err := getRunTx(ctx, tx, credentials.TenantID, runID)
+	acceptedRun, err := getRunTx(ctx, tx, credentials.TenantID, credentials.ProjectID, runID)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
+	}
+	completionFence := leaseFence(acceptedAttempt, presentedDigest)
+	completionEvent, err := newAttemptCompletedEvent(acceptedAttempt, acceptedRun, completionFence, command.Command, at)
+	if err != nil {
+		return nil, err
+	}
+	if err = insertAttemptOutbox(ctx, tx, completionEvent, at); err != nil {
+		return nil, err
+	}
+	if err = recordRunCommand(ctx, tx, command.Command, runID, credentials.AttemptID, ""); err != nil {
+		return nil, err
 	}
 	if err = tx.Commit(); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	return acceptedAttempt, acceptedRun, nil
+	return &AttemptMutationResult{Attempt: acceptedAttempt, Run: acceptedRun}, nil
+}
+
+func validateJobCommand(value JobCommandMetadata) error {
+	if value.TenantID == "" || value.ProjectID == "" || value.PrincipalID == "" || value.IdempotencyKey == "" ||
+		value.ObservedAt.IsZero() || len(value.IdempotencyKey) > 512 || strings.TrimSpace(value.IdempotencyKey) != value.IdempotencyKey ||
+		strings.ContainsAny(value.IdempotencyKey, "\x00\r\n") || len(value.RequestDigest) != 71 ||
+		!strings.HasPrefix(value.RequestDigest, "sha256:") {
+		return ErrInvalidJobCommand
+	}
+	if _, err := hex.DecodeString(strings.TrimPrefix(value.RequestDigest, "sha256:")); err != nil {
+		return ErrInvalidJobCommand
+	}
+	return nil
+}
+
+// RequestJobSQL commits Job, Operation, idempotency, audit, history, and
+// JobRequested outbox state through the shared Operation acceptance boundary.
+func (r SQLRepository) RequestJobSQL(ctx context.Context, job *jobv1.Job, operation *jobv1.Operation, command JobCommandMetadata) (*JobMutationResult, error) {
+	if r.DB == nil || job == nil || operation == nil || validateJobCommand(command) != nil ||
+		job.GetTenantId() != command.TenantID || job.GetProjectId() != command.ProjectID ||
+		operation.GetTenantId() != command.TenantID || operation.GetProjectId() != command.ProjectID || operation.GetJobId() != job.GetJobId() {
+		return nil, ErrInvalidJobCommand
+	}
+	accepted, replay, err := (operationsapp.SQLRepository{DB: r.DB}).CreateJobAndOperationSQL(
+		ctx, cloneJob(job), proto.Clone(operation).(*jobv1.Operation), command.RequestDigest,
+		command.IdempotencyKey, command.PrincipalID, command.ObservedAt.UTC(),
+	)
+	if err != nil {
+		return nil, mapOperationError(err)
+	}
+	persisted, err := r.GetJobSQL(ctx, command.TenantID, command.ProjectID, accepted.GetJobId())
+	if err != nil {
+		return nil, err
+	}
+	return &JobMutationResult{Job: cloneJob(persisted), Operation: proto.Clone(accepted).(*jobv1.Operation), Replay: replay}, nil
+}
+
+// ListJobsSQL returns a stable keyset page from one repeatable-read snapshot.
+func (r SQLRepository) ListJobsSQL(ctx context.Context, tenantID, projectID, after string, limit int) ([]*jobv1.Job, bool, time.Time, error) {
+	if r.DB == nil || tenantID == "" || projectID == "" || limit < 1 || limit > 200 {
+		return nil, false, time.Time{}, ErrInvalidJobCommand
+	}
+	tx, err := platformdb.BeginTenantTx(ctx, r.DB, tenantID, &sql.TxOptions{ReadOnly: true, Isolation: sql.LevelRepeatableRead})
+	if err != nil {
+		return nil, false, time.Time{}, err
+	}
+	defer func() { _ = tx.Rollback() }()
+	var readAt time.Time
+	if err = tx.QueryRowContext(ctx, `SELECT transaction_timestamp()`).Scan(&readAt); err != nil {
+		return nil, false, time.Time{}, err
+	}
+	rows, err := tx.QueryContext(ctx, `SELECT id FROM jobs WHERE tenant_id=$1 AND project_id=$2 AND id>$3 ORDER BY id LIMIT $4`, tenantID, projectID, after, limit+1)
+	if err != nil {
+		return nil, false, time.Time{}, err
+	}
+	ids := make([]string, 0, limit+1)
+	for rows.Next() {
+		var id string
+		if err = rows.Scan(&id); err != nil {
+			_ = platformdb.CloseRows(rows)
+			return nil, false, time.Time{}, err
+		}
+		ids = append(ids, id)
+	}
+	if err = rows.Err(); err != nil {
+		_ = platformdb.CloseRows(rows)
+		return nil, false, time.Time{}, err
+	}
+	if err = platformdb.CloseRows(rows); err != nil {
+		return nil, false, time.Time{}, err
+	}
+	more := len(ids) > limit
+	if more {
+		ids = ids[:limit]
+	}
+	values := make([]*jobv1.Job, 0, len(ids))
+	for _, id := range ids {
+		value, loadErr := getJobTx(ctx, tx, tenantID, projectID, id)
+		if loadErr != nil {
+			return nil, false, time.Time{}, loadErr
+		}
+		values = append(values, cloneJob(value))
+	}
+	if err = tx.Commit(); err != nil {
+		return nil, false, time.Time{}, err
+	}
+	return values, more, readAt.UTC(), nil
+}
+
+// CancelJobSQL records monotonic cancellation plus its Operation revision,
+// idempotency receipt, audit evidence, and immutable audit event delivery.
+func (r SQLRepository) CancelJobSQL(ctx context.Context, jobID, expectedETag, reason string, command JobCommandMetadata) (*JobMutationResult, error) {
+	if r.DB == nil || jobID == "" || expectedETag == "" || len(reason) > 4096 || validateJobCommand(command) != nil {
+		return nil, ErrInvalidJobCommand
+	}
+	tx, err := platformdb.BeginTenantTx(ctx, r.DB, command.TenantID, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = tx.Rollback() }()
+	lockKey := fmt.Sprintf("jobs.cancel:%d:%s:%d:%s:%s", len(command.TenantID), command.TenantID, len(command.ProjectID), command.ProjectID, command.IdempotencyKey)
+	if _, err = tx.ExecContext(ctx, `SELECT pg_advisory_xact_lock(hashtextextended($1, 0))`, lockKey); err != nil {
+		return nil, err
+	}
+	var existingDigest, existingOperationID string
+	err = tx.QueryRowContext(ctx, `SELECT request_hash,operation_id FROM idempotency_records WHERE tenant_id=$1 AND project_id=$2 AND command_key=$3`, command.TenantID, command.ProjectID, command.IdempotencyKey).Scan(&existingDigest, &existingOperationID)
+	if err == nil {
+		if subtle.ConstantTimeCompare([]byte(existingDigest), []byte(command.RequestDigest)) != 1 {
+			return nil, ErrIdempotencyConflict
+		}
+		if err = tx.Commit(); err != nil {
+			return nil, err
+		}
+		operation, loadErr := (operationsapp.SQLRepository{DB: r.DB}).GetSQL(ctx, command.TenantID, command.ProjectID, existingOperationID)
+		if loadErr != nil {
+			return nil, mapOperationError(loadErr)
+		}
+		job, loadErr := r.GetJobSQL(ctx, command.TenantID, command.ProjectID, operation.GetJobId())
+		if loadErr != nil {
+			return nil, loadErr
+		}
+		return &JobMutationResult{Job: cloneJob(job), Operation: proto.Clone(operation).(*jobv1.Operation), Replay: true}, nil
+	}
+	if !errors.Is(err, sql.ErrNoRows) {
+		return nil, err
+	}
+	var operationID, state, persistedETag string
+	var version int64
+	err = tx.QueryRowContext(ctx, `SELECT operation_id,desired_state,version,etag FROM jobs WHERE tenant_id=$1 AND project_id=$2 AND id=$3 FOR UPDATE`, command.TenantID, command.ProjectID, jobID).Scan(&operationID, &state, &version, &persistedETag)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, ErrNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	if subtle.ConstantTimeCompare([]byte(persistedETag), []byte(expectedETag)) != 1 {
+		return nil, ErrVersionConflict
+	}
+	if state != "ACCEPTED" && state != "QUEUED" && state != "RUNNING" {
+		return nil, ErrTerminalMutation
+	}
+	if operationID == "" {
+		return nil, ErrInvalidJobCommand
+	}
+	var operationVersion int64
+	var operationETag string
+	if err = tx.QueryRowContext(ctx, `SELECT version,etag FROM operations WHERE tenant_id=$1 AND project_id=$2 AND id=$3 FOR UPDATE`, command.TenantID, command.ProjectID, operationID).Scan(&operationVersion, &operationETag); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrNotFound
+		}
+		return nil, err
+	}
+	nextVersion := version + 1
+	nextETag := operationsapp.ResourceETag(command.TenantID, command.ProjectID, jobID, nextVersion)
+	result, err := tx.ExecContext(ctx, `UPDATE jobs SET desired_state='CANCELLING',version=$4,etag=$5,updated_at=$6 WHERE tenant_id=$1 AND project_id=$2 AND id=$3 AND version=$7 AND etag=$8`, command.TenantID, command.ProjectID, jobID, nextVersion, nextETag, command.ObservedAt.UTC(), version, persistedETag)
+	if err != nil {
+		return nil, err
+	}
+	if changed, rowsErr := result.RowsAffected(); rowsErr != nil || changed != 1 {
+		if rowsErr != nil {
+			return nil, rowsErr
+		}
+		return nil, ErrVersionConflict
+	}
+	operation, err := operationsapp.AdvanceTxSQL(ctx, tx, command.TenantID, command.ProjectID, operationID, operationVersion, operationETag, jobv1.OperationState_OPERATION_STATE_CANCELLING, command.ObservedAt.UTC())
+	if err != nil {
+		return nil, mapOperationError(err)
+	}
+	job, err := getJobTx(ctx, tx, command.TenantID, command.ProjectID, jobID)
+	if err != nil {
+		return nil, err
+	}
+	auditEnvelope, err := newJobCancellationAuditEnvelope(job, command.PrincipalID, command.ObservedAt.UTC())
+	if err != nil {
+		return nil, err
+	}
+	envelopeBytes, err := queue.MarshalEnvelope(auditEnvelope)
+	if err != nil {
+		return nil, err
+	}
+	aggregateType, aggregateID, err := queue.AggregateIdentity(auditEnvelope)
+	if err != nil {
+		return nil, err
+	}
+	if _, err = tx.ExecContext(ctx, `INSERT INTO idempotency_records (tenant_id,project_id,command_key,request_hash,operation_id,created_at) VALUES ($1,$2,$3,$4,$5,$6)`, command.TenantID, command.ProjectID, command.IdempotencyKey, command.RequestDigest, operationID, command.ObservedAt.UTC()); err != nil {
+		return nil, err
+	}
+	if _, err = tx.ExecContext(ctx, `INSERT INTO audit_events (id,tenant_id,actor_id,action,subject_id,occurred_at,details_digest,event_version,payload_digest,envelope_bytes) VALUES ($1,$2,$3,'jobs.cancel',$4,$5,$6,$7,$8,$9)`, auditEnvelope.GetEventId(), command.TenantID, command.PrincipalID, jobID, command.ObservedAt.UTC(), command.RequestDigest, auditEnvelope.GetEventVersion(), auditEnvelope.GetPayloadDigest(), envelopeBytes); err != nil {
+		return nil, err
+	}
+	if _, err = tx.ExecContext(ctx, `INSERT INTO outbox_messages (id,tenant_id,event_type,event_version,aggregate_type,aggregate_id,aggregate_sequence,payload_digest,envelope_bytes,next_attempt_at,created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$10)`, auditEnvelope.GetEventId(), command.TenantID, auditEnvelope.GetEventType(), auditEnvelope.GetEventVersion(), aggregateType, aggregateID, auditEnvelope.GetAggregateSequence(), auditEnvelope.GetPayloadDigest(), envelopeBytes, command.ObservedAt.UTC()); err != nil {
+		return nil, err
+	}
+	if err = tx.Commit(); err != nil {
+		return nil, err
+	}
+	return &JobMutationResult{Job: cloneJob(job), Operation: proto.Clone(operation).(*jobv1.Operation)}, nil
+}
+
+func newJobCancellationAuditEnvelope(job *jobv1.Job, principalID string, at time.Time) (*commonv1.EventEnvelope, error) {
+	envelope, err := foundationaudit.NewEvent(job.GetTenantId(), principalID, "jobs.cancel", job.GetJobId(), "allowed", at.UTC(), nil)
+	if err != nil {
+		return nil, err
+	}
+	envelope.ProjectId = job.GetProjectId()
+	envelope.JobId = job.GetJobId()
+	envelope.Producer = "services/control_plane"
+	envelope.AggregateSequence = uint64(job.GetResourceVersion()) //nolint:gosec // Conversion is bounded by validated protocol invariants or PostgreSQL CHECK constraints.
+	envelope.Subject.ResourceType = "job"
+	envelope.Subject.ResourceId = job.GetJobId()
+	envelope.Subject.ProjectId = job.GetProjectId()
+	envelope.Subject.ResourceVersion = job.GetResourceVersion()
+	envelope.Subject.Name = "tenants/" + job.GetTenantId() + "/projects/" + job.GetProjectId() + "/" + strings.TrimPrefix(job.GetJobId(), "/")
+	return envelope, queue.ValidateEnvelope(envelope)
+}
+
+func mapOperationError(err error) error {
+	switch {
+	case errors.Is(err, operationsapp.ErrNotFound):
+		return ErrNotFound
+	case errors.Is(err, operationsapp.ErrAlreadyExists):
+		return ErrAlreadyExists
+	case errors.Is(err, operationsapp.ErrIdempotencyConflict):
+		return ErrIdempotencyConflict
+	case errors.Is(err, operationsapp.ErrVersionConflict):
+		return ErrVersionConflict
+	case errors.Is(err, operationsapp.ErrTerminalTransition), errors.Is(err, operationsapp.ErrInvalidTransition):
+		return ErrTerminalMutation
+	default:
+		return err
+	}
 }
 
 func (r SQLRepository) CreateJobSQL(ctx context.Context, job *jobv1.Job) (*jobv1.Job, error) {
-	if job == nil || job.GetJobId() == "" || job.GetTenantId() == "" || job.GetConfiguration() == nil {
+	if job == nil || job.GetJobId() == "" || job.GetTenantId() == "" || job.GetProjectId() == "" || job.GetConfiguration() == nil {
 		return nil, ErrNotFound
 	}
 	tx, err := platformdb.BeginTenantTx(ctx, r.DB, job.GetTenantId(), nil)
@@ -253,7 +751,7 @@ INSERT INTO jobs (
 		job.GetConfiguration().GetDigest(), job.GetEtag(), createdAt, now); err != nil {
 		return nil, err
 	}
-	created, err := getJobTx(ctx, tx, job.GetTenantId(), job.GetJobId())
+	created, err := getJobTx(ctx, tx, job.GetTenantId(), job.GetProjectId(), job.GetJobId())
 	if err != nil {
 		return nil, err
 	}
@@ -263,13 +761,13 @@ INSERT INTO jobs (
 	return created, nil
 }
 
-func (r SQLRepository) GetJobSQL(ctx context.Context, tenantID, jobID string) (*jobv1.Job, error) {
+func (r SQLRepository) GetJobSQL(ctx context.Context, tenantID, projectID, jobID string) (*jobv1.Job, error) {
 	tx, err := platformdb.BeginTenantTx(ctx, r.DB, tenantID, &sql.TxOptions{ReadOnly: true})
 	if err != nil {
 		return nil, err
 	}
 	defer func() { _ = tx.Rollback() }()
-	value, err := getJobTx(ctx, tx, tenantID, jobID)
+	value, err := getJobTx(ctx, tx, tenantID, projectID, jobID)
 	if err != nil {
 		return nil, err
 	}
@@ -280,7 +778,7 @@ func (r SQLRepository) GetJobSQL(ctx context.Context, tenantID, jobID string) (*
 }
 
 func (r SQLRepository) CreateRunSQL(ctx context.Context, run *jobv1.Run) (*jobv1.Run, error) {
-	if run == nil || run.GetRunId() == "" || run.GetJobId() == "" || run.GetTenantId() == "" {
+	if run == nil || run.GetRunId() == "" || run.GetJobId() == "" || run.GetTenantId() == "" || run.GetProjectId() == "" {
 		return nil, ErrNotFound
 	}
 	tx, err := platformdb.BeginTenantTx(ctx, r.DB, run.GetTenantId(), nil)
@@ -288,7 +786,7 @@ func (r SQLRepository) CreateRunSQL(ctx context.Context, run *jobv1.Run) (*jobv1
 		return nil, err
 	}
 	defer func() { _ = tx.Rollback() }()
-	job, err := getJobTx(ctx, tx, run.GetTenantId(), run.GetJobId())
+	job, err := getJobTx(ctx, tx, run.GetTenantId(), run.GetProjectId(), run.GetJobId())
 	if err != nil {
 		return nil, err
 	}
@@ -336,11 +834,11 @@ INSERT INTO runs (
 		if !refID.Valid {
 			return nil, errors.New("run output cannot be nil")
 		}
-		if _, err = tx.ExecContext(ctx, `INSERT INTO run_output_refs (tenant_id, run_id, ordinal, artifact_ref_id) VALUES ($1,$2,$3,$4)`, run.GetTenantId(), run.GetRunId(), ordinal, refID.Int64); err != nil {
+		if _, err = tx.ExecContext(ctx, `INSERT INTO run_output_refs (tenant_id, project_id, run_id, ordinal, artifact_ref_id) VALUES ($1,$2,$3,$4,$5)`, run.GetTenantId(), projectID, run.GetRunId(), ordinal, refID.Int64); err != nil {
 			return nil, err
 		}
 	}
-	created, err := getRunTx(ctx, tx, run.GetTenantId(), run.GetRunId())
+	created, err := getRunTx(ctx, tx, run.GetTenantId(), projectID, run.GetRunId())
 	if err != nil {
 		return nil, err
 	}
@@ -350,13 +848,13 @@ INSERT INTO runs (
 	return created, nil
 }
 
-func (r SQLRepository) GetRunSQL(ctx context.Context, tenantID, runID string) (*jobv1.Run, error) {
+func (r SQLRepository) GetRunSQL(ctx context.Context, tenantID, projectID, runID string) (*jobv1.Run, error) {
 	tx, err := platformdb.BeginTenantTx(ctx, r.DB, tenantID, &sql.TxOptions{ReadOnly: true})
 	if err != nil {
 		return nil, err
 	}
 	defer func() { _ = tx.Rollback() }()
-	value, err := getRunTx(ctx, tx, tenantID, runID)
+	value, err := getRunTx(ctx, tx, tenantID, projectID, runID)
 	if err != nil {
 		return nil, err
 	}
@@ -366,13 +864,64 @@ func (r SQLRepository) GetRunSQL(ctx context.Context, tenantID, runID string) (*
 	return value, nil
 }
 
-func (r SQLRepository) GetAttemptSQL(ctx context.Context, tenantID, attemptID string) (*jobv1.Attempt, error) {
+// ListRunsSQL returns a stable keyset page ordered by immutable run identity.
+// The caller signs and scope-binds the last identity before exposing it as a
+// page token.
+func (r SQLRepository) ListRunsSQL(ctx context.Context, tenantID, projectID, jobID, after string, limit int) ([]*jobv1.Run, bool, time.Time, error) {
+	if tenantID == "" || projectID == "" || jobID == "" || limit < 1 || limit > 200 {
+		return nil, false, time.Time{}, ErrNotFound
+	}
+	tx, err := platformdb.BeginTenantTx(ctx, r.DB, tenantID, &sql.TxOptions{ReadOnly: true, Isolation: sql.LevelRepeatableRead})
+	if err != nil {
+		return nil, false, time.Time{}, err
+	}
+	defer func() { _ = tx.Rollback() }()
+	readAt := time.Now().UTC()
+	rows, err := tx.QueryContext(ctx, `SELECT id FROM runs WHERE tenant_id=$1 AND project_id=$2 AND job_id=$3 AND id>$4 ORDER BY id LIMIT $5`, tenantID, projectID, jobID, after, limit+1)
+	if err != nil {
+		return nil, false, time.Time{}, err
+	}
+	ids := make([]string, 0, limit+1)
+	for rows.Next() {
+		var id string
+		if err = rows.Scan(&id); err != nil {
+			_ = platformdb.CloseRows(rows)
+			return nil, false, time.Time{}, err
+		}
+		ids = append(ids, id)
+	}
+	if err = rows.Err(); err != nil {
+		_ = platformdb.CloseRows(rows)
+		return nil, false, time.Time{}, err
+	}
+	if err = platformdb.CloseRows(rows); err != nil {
+		return nil, false, time.Time{}, err
+	}
+	more := len(ids) > limit
+	if more {
+		ids = ids[:limit]
+	}
+	values := make([]*jobv1.Run, 0, len(ids))
+	for _, id := range ids {
+		value, loadErr := getRunTx(ctx, tx, tenantID, projectID, id)
+		if loadErr != nil {
+			return nil, false, time.Time{}, loadErr
+		}
+		values = append(values, value)
+	}
+	if err = tx.Commit(); err != nil {
+		return nil, false, time.Time{}, err
+	}
+	return values, more, readAt, nil
+}
+
+func (r SQLRepository) GetAttemptSQL(ctx context.Context, tenantID, projectID, attemptID string) (*jobv1.Attempt, error) {
 	tx, err := platformdb.BeginTenantTx(ctx, r.DB, tenantID, &sql.TxOptions{ReadOnly: true})
 	if err != nil {
 		return nil, err
 	}
 	defer func() { _ = tx.Rollback() }()
-	value, err := getAttemptTx(ctx, tx, tenantID, attemptID)
+	value, err := getAttemptTx(ctx, tx, tenantID, projectID, attemptID)
 	if err != nil {
 		return nil, err
 	}
@@ -382,52 +931,125 @@ func (r SQLRepository) GetAttemptSQL(ctx context.Context, tenantID, attemptID st
 	return value, nil
 }
 
-func (r SQLRepository) AcquireLeaseSQL(ctx context.Context, command AcquireLeaseCommand) (*jobv1.Attempt, *jobv1.LeaseFence, error) {
+// ListAttemptsSQL returns a stable keyset page ordered by immutable attempt
+// identity under one run.
+func (r SQLRepository) ListAttemptsSQL(ctx context.Context, tenantID, projectID, runID, after string, limit int) ([]*jobv1.Attempt, bool, time.Time, error) {
+	if tenantID == "" || projectID == "" || runID == "" || limit < 1 || limit > 200 {
+		return nil, false, time.Time{}, ErrNotFound
+	}
+	tx, err := platformdb.BeginTenantTx(ctx, r.DB, tenantID, &sql.TxOptions{ReadOnly: true, Isolation: sql.LevelRepeatableRead})
+	if err != nil {
+		return nil, false, time.Time{}, err
+	}
+	defer func() { _ = tx.Rollback() }()
+	readAt := time.Now().UTC()
+	rows, err := tx.QueryContext(ctx, `SELECT id FROM attempts WHERE tenant_id=$1 AND project_id=$2 AND run_id=$3 AND id>$4 ORDER BY id LIMIT $5`, tenantID, projectID, runID, after, limit+1)
+	if err != nil {
+		return nil, false, time.Time{}, err
+	}
+	ids := make([]string, 0, limit+1)
+	for rows.Next() {
+		var id string
+		if err = rows.Scan(&id); err != nil {
+			_ = platformdb.CloseRows(rows)
+			return nil, false, time.Time{}, err
+		}
+		ids = append(ids, id)
+	}
+	if err = rows.Err(); err != nil {
+		_ = platformdb.CloseRows(rows)
+		return nil, false, time.Time{}, err
+	}
+	if err = platformdb.CloseRows(rows); err != nil {
+		return nil, false, time.Time{}, err
+	}
+	more := len(ids) > limit
+	if more {
+		ids = ids[:limit]
+	}
+	values := make([]*jobv1.Attempt, 0, len(ids))
+	for _, id := range ids {
+		value, loadErr := getAttemptTx(ctx, tx, tenantID, projectID, id)
+		if loadErr != nil {
+			return nil, false, time.Time{}, loadErr
+		}
+		values = append(values, value)
+	}
+	if err = tx.Commit(); err != nil {
+		return nil, false, time.Time{}, err
+	}
+	return values, more, readAt, nil
+}
+
+func (r SQLRepository) AcquireLeaseSQL(ctx context.Context, command AcquireLeaseCommand) (*LeaseMutationResult, error) {
 	if command.TenantID == "" || command.RunID == "" || command.AttemptID == "" || command.WorkerID == "" || command.Now.IsZero() {
-		return nil, nil, ErrInvalidLease
+		return nil, ErrInvalidLease
 	}
 	if err := validateLeaseDuration(command.Duration); err != nil {
-		return nil, nil, err
+		return nil, err
+	}
+	if command.TokenKeyID == "" || validateRunCommandMetadata(command.Command, command.TenantID, actionAcquireLease) != nil || command.Command.WorkerID != command.WorkerID {
+		return nil, ErrInvalidLease
 	}
 	tokenDigest, err := LeaseTokenDigest(command.Token)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	tx, err := platformdb.BeginTenantTx(ctx, r.DB, command.TenantID, nil)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	defer func() { _ = tx.Rollback() }()
+	receipt, replay, err := checkRunCommand(ctx, tx, command.Command)
+	if err != nil {
+		return nil, err
+	}
+	if replay {
+		if !receipt.runID.Valid || !receipt.attemptID.Valid || !receipt.tokenKeyID.Valid || receipt.runID.String != command.RunID || receipt.attemptID.String != command.AttemptID {
+			return nil, ErrIdempotencyConflict
+		}
+		attempt, fence, loadErr := getAttemptFenceTx(ctx, tx, command.TenantID, command.Command.ProjectID, receipt.attemptID.String)
+		if loadErr != nil {
+			return nil, loadErr
+		}
+		if commitErr := tx.Commit(); commitErr != nil {
+			return nil, commitErr
+		}
+		return &LeaseMutationResult{Attempt: attempt, Fence: fence, TokenKeyID: receipt.tokenKeyID.String, Replay: true}, nil
+	}
 	var (
 		jobID, projectID, status string
 		currentEpoch             uint64
 	)
-	err = tx.QueryRowContext(ctx, `SELECT job_id, project_id, status, lease_epoch FROM runs WHERE tenant_id = $1 AND id = $2 FOR UPDATE`, command.TenantID, command.RunID).Scan(&jobID, &projectID, &status, &currentEpoch)
+	err = tx.QueryRowContext(ctx, `SELECT job_id, project_id, status, lease_epoch FROM runs WHERE tenant_id = $1 AND project_id=$2 AND id = $3 FOR UPDATE`, command.TenantID, command.Command.ProjectID, command.RunID).Scan(&jobID, &projectID, &status, &currentEpoch)
 	if errors.Is(err, sql.ErrNoRows) {
-		return nil, nil, ErrNotFound
+		return nil, ErrNotFound
 	}
 	if err != nil {
-		return nil, nil, err
+		return nil, err
+	}
+	if projectID != command.Command.ProjectID {
+		return nil, ErrNotFound
 	}
 	runState, err := runStateFromDatabase(status)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	if terminalRunState(runState) || runState == jobv1.RunState_RUN_STATE_CANCELLING {
-		return nil, nil, ErrTerminalMutation
+		return nil, ErrTerminalMutation
 	}
 	var activeAttemptID string
 	var activeExpiry time.Time
-	activeErr := tx.QueryRowContext(ctx, `SELECT id, lease_expires_at FROM attempts WHERE tenant_id = $1 AND run_id = $2 AND status IN ('LEASED','ACTIVE') ORDER BY lease_epoch DESC LIMIT 1 FOR UPDATE`, command.TenantID, command.RunID).Scan(&activeAttemptID, &activeExpiry)
+	activeErr := tx.QueryRowContext(ctx, `SELECT id, lease_expires_at FROM attempts WHERE tenant_id = $1 AND project_id=$2 AND run_id = $3 AND status IN ('LEASED','ACTIVE') ORDER BY lease_epoch DESC LIMIT 1 FOR UPDATE`, command.TenantID, command.Command.ProjectID, command.RunID).Scan(&activeAttemptID, &activeExpiry)
 	if activeErr == nil && command.Now.UTC().Before(activeExpiry.UTC()) {
-		return nil, nil, ErrLeaseHeld
+		return nil, ErrLeaseHeld
 	}
 	if activeErr != nil && !errors.Is(activeErr, sql.ErrNoRows) {
-		return nil, nil, activeErr
+		return nil, activeErr
 	}
 	if activeAttemptID != "" {
-		if _, err = tx.ExecContext(ctx, `UPDATE attempts SET status = 'TIMED_OUT', version = version + 1, completed_at = $3, updated_at = $3 WHERE tenant_id = $1 AND id = $2 AND status IN ('LEASED','ACTIVE')`, command.TenantID, activeAttemptID, command.Now.UTC()); err != nil {
-			return nil, nil, err
+		if _, err = tx.ExecContext(ctx, `UPDATE attempts SET status = 'TIMED_OUT', version = version + 1, completed_at = $4, updated_at = $4 WHERE tenant_id = $1 AND project_id=$2 AND id = $3 AND status IN ('LEASED','ACTIVE')`, command.TenantID, command.Command.ProjectID, activeAttemptID, command.Now.UTC()); err != nil {
+			return nil, err
 		}
 	}
 	epoch := currentEpoch + 1
@@ -440,153 +1062,246 @@ INSERT INTO attempts (
 ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'LEASED',1,$10,$10,$10)`,
 		command.AttemptID, command.TenantID, projectID, jobID, command.RunID,
 		command.WorkerID, epoch, tokenDigest, deadline, command.Now.UTC()); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	if _, err = tx.ExecContext(ctx, `UPDATE runs SET status = 'EXECUTING', lease_epoch = $3, version = version + 1, started_at = COALESCE(started_at, $4), updated_at = $4 WHERE tenant_id = $1 AND id = $2`, command.TenantID, command.RunID, epoch, command.Now.UTC()); err != nil {
-		return nil, nil, err
+	if _, err = tx.ExecContext(ctx, `UPDATE runs SET status = 'EXECUTING', lease_epoch = $4, version = version + 1, started_at = COALESCE(started_at, $5), updated_at = $5 WHERE tenant_id = $1 AND project_id=$2 AND id = $3`, command.TenantID, command.Command.ProjectID, command.RunID, epoch, command.Now.UTC()); err != nil {
+		return nil, err
 	}
-	attempt, err := getAttemptTx(ctx, tx, command.TenantID, command.AttemptID)
+	attempt, err := getAttemptTx(ctx, tx, command.TenantID, command.Command.ProjectID, command.AttemptID)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	fence := leaseFence(attempt, tokenDigest)
-	if err = tx.Commit(); err != nil {
-		return nil, nil, err
+	leasedEvent, err := newAttemptLeasedEvent(attempt, fence, command.Command, command.Now)
+	if err != nil {
+		return nil, err
 	}
-	return attempt, fence, nil
+	if err = insertAttemptOutbox(ctx, tx, leasedEvent, command.Now); err != nil {
+		return nil, err
+	}
+	if err = recordRunCommand(ctx, tx, command.Command, command.RunID, command.AttemptID, command.TokenKeyID); err != nil {
+		return nil, err
+	}
+	if err = tx.Commit(); err != nil {
+		return nil, err
+	}
+	return &LeaseMutationResult{Attempt: attempt, Fence: fence, TokenKeyID: command.TokenKeyID}, nil
 }
 
-func (r SQLRepository) RenewLeaseSQL(ctx context.Context, command RenewLeaseCommand) (*jobv1.Attempt, *jobv1.LeaseFence, error) {
+func (r SQLRepository) RenewLeaseSQL(ctx context.Context, command RenewLeaseCommand) (*LeaseMutationResult, error) {
 	return r.renewLeaseSQL(ctx, command, false)
 }
 
-func (r SQLRepository) HeartbeatLeaseSQL(ctx context.Context, command RenewLeaseCommand) (*jobv1.Attempt, *jobv1.LeaseFence, error) {
+func (r SQLRepository) HeartbeatLeaseSQL(ctx context.Context, command RenewLeaseCommand) (*LeaseMutationResult, error) {
 	return r.renewLeaseSQL(ctx, command, true)
 }
 
-func (r SQLRepository) renewLeaseSQL(ctx context.Context, command RenewLeaseCommand, heartbeat bool) (*jobv1.Attempt, *jobv1.LeaseFence, error) {
-	if command.Now.IsZero() || command.Credentials.TenantID == "" || command.Credentials.AttemptID == "" || command.Credentials.WorkerID == "" {
-		return nil, nil, ErrInvalidLease
+func (r SQLRepository) renewLeaseSQL(ctx context.Context, command RenewLeaseCommand, heartbeat bool) (*LeaseMutationResult, error) {
+	if command.Now.IsZero() || command.Credentials.TenantID == "" || command.Credentials.ProjectID == "" || command.Credentials.AttemptID == "" || command.Credentials.WorkerID == "" {
+		return nil, ErrInvalidLease
 	}
 	if err := validateLeaseDuration(command.Duration); err != nil {
-		return nil, nil, err
+		return nil, err
+	}
+	action := actionRenewLease
+	if heartbeat {
+		action = actionHeartbeat
+	}
+	if validateRunCommandMetadata(command.Command, command.Credentials.TenantID, action) != nil || command.Command.ProjectID != command.Credentials.ProjectID || command.Command.WorkerID != command.Credentials.WorkerID {
+		return nil, ErrInvalidLease
 	}
 	presentedDigest, err := LeaseTokenDigest(command.Credentials.Token)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	tx, err := platformdb.BeginTenantTx(ctx, r.DB, command.Credentials.TenantID, nil)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	defer func() { _ = tx.Rollback() }()
+	receipt, replay, err := checkRunCommand(ctx, tx, command.Command)
+	if err != nil {
+		return nil, err
+	}
+	if replay {
+		if !receipt.attemptID.Valid || receipt.attemptID.String != command.Credentials.AttemptID {
+			return nil, ErrIdempotencyConflict
+		}
+		attempt, fence, loadErr := getAttemptFenceTx(ctx, tx, command.Credentials.TenantID, command.Credentials.ProjectID, receipt.attemptID.String)
+		if loadErr != nil {
+			return nil, loadErr
+		}
+		if commitErr := tx.Commit(); commitErr != nil {
+			return nil, commitErr
+		}
+		return &LeaseMutationResult{Attempt: attempt, Fence: fence, Replay: true}, nil
+	}
+	var runID string
+	if err = tx.QueryRowContext(ctx, `SELECT run_id FROM attempts WHERE tenant_id=$1 AND project_id=$2 AND id=$3`, command.Credentials.TenantID, command.Credentials.ProjectID, command.Credentials.AttemptID).Scan(&runID); errors.Is(err, sql.ErrNoRows) {
+		return nil, ErrNotFound
+	} else if err != nil {
+		return nil, err
+	}
+	var currentEpoch uint64
+	var runStatus, projectID string
+	if err = tx.QueryRowContext(ctx, `SELECT lease_epoch,status,project_id FROM runs WHERE tenant_id=$1 AND project_id=$2 AND id=$3 FOR UPDATE`, command.Credentials.TenantID, command.Credentials.ProjectID, runID).Scan(&currentEpoch, &runStatus, &projectID); errors.Is(err, sql.ErrNoRows) {
+		return nil, ErrNotFound
+	} else if err != nil {
+		return nil, err
+	}
+	if projectID != command.Command.ProjectID || (runStatus != "EXECUTING" && runStatus != "CANCELLING") {
+		return nil, ErrTerminalMutation
+	}
 	var storedWorker, storedDigest, status string
-	var attemptEpoch, currentEpoch uint64
+	var attemptEpoch uint64
 	var version int64
 	var expiresAt time.Time
-	err = tx.QueryRowContext(ctx, `SELECT attempt.worker_id, attempt.lease_token_digest, attempt.lease_epoch, attempt.version, attempt.lease_expires_at, attempt.status, run.lease_epoch FROM attempts AS attempt JOIN runs AS run ON run.tenant_id = attempt.tenant_id AND run.id = attempt.run_id WHERE attempt.tenant_id = $1 AND attempt.id = $2 FOR UPDATE OF attempt, run`, command.Credentials.TenantID, command.Credentials.AttemptID).Scan(&storedWorker, &storedDigest, &attemptEpoch, &version, &expiresAt, &status, &currentEpoch)
+	err = tx.QueryRowContext(ctx, `SELECT worker_id,lease_token_digest,lease_epoch,version,lease_expires_at,status FROM attempts WHERE tenant_id=$1 AND project_id=$2 AND id=$3 AND run_id=$4 FOR UPDATE`, command.Credentials.TenantID, command.Credentials.ProjectID, command.Credentials.AttemptID, runID).Scan(&storedWorker, &storedDigest, &attemptEpoch, &version, &expiresAt, &status)
 	if errors.Is(err, sql.ErrNoRows) {
-		return nil, nil, ErrNotFound
+		return nil, ErrNotFound
 	}
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	switch {
 	case storedWorker != command.Credentials.WorkerID:
-		return nil, nil, ErrLeaseOwner
+		return nil, ErrLeaseOwner
 	case !equalLeaseTokenDigest(storedDigest, presentedDigest):
-		return nil, nil, ErrInvalidLeaseToken
+		return nil, ErrInvalidLeaseToken
 	case attemptEpoch != command.Credentials.Epoch || currentEpoch != command.Credentials.Epoch:
-		return nil, nil, ErrStaleCompletion
+		return nil, ErrStaleCompletion
 	case version != command.ExpectedResourceVersion:
-		return nil, nil, ErrVersionConflict
+		return nil, ErrVersionConflict
 	case !command.Now.UTC().Before(expiresAt.UTC()):
-		return nil, nil, ErrLeaseExpired
+		return nil, ErrLeaseExpired
 	case status != "LEASED" && status != "ACTIVE":
-		return nil, nil, ErrTerminalMutation
+		return nil, ErrTerminalMutation
 	}
-	deadline := command.Now.UTC().Add(command.Duration)
+	deadline := renewedLeaseDeadline(command.Now, command.Duration, expiresAt)
 	newStatus := status
 	if heartbeat {
 		newStatus = "ACTIVE"
 	}
-	if _, err = tx.ExecContext(ctx, `UPDATE attempts SET lease_expires_at = $3, last_heartbeat_at = $4, status = $5, started_at = CASE WHEN $6 THEN COALESCE(started_at, $4) ELSE started_at END, version = version + 1, updated_at = $4 WHERE tenant_id = $1 AND id = $2`, command.Credentials.TenantID, command.Credentials.AttemptID, deadline, command.Now.UTC(), newStatus, heartbeat); err != nil {
-		return nil, nil, err
+	if _, err = tx.ExecContext(ctx, `UPDATE attempts SET lease_expires_at = $4, last_heartbeat_at = $5, status = $6, started_at = CASE WHEN $7 THEN COALESCE(started_at, $5) ELSE started_at END, version = version + 1, updated_at = $5 WHERE tenant_id = $1 AND project_id=$2 AND id = $3`, command.Credentials.TenantID, command.Credentials.ProjectID, command.Credentials.AttemptID, deadline, command.Now.UTC(), newStatus, heartbeat); err != nil {
+		return nil, err
 	}
-	attempt, err := getAttemptTx(ctx, tx, command.Credentials.TenantID, command.Credentials.AttemptID)
+	attempt, fence, err := getAttemptFenceTx(ctx, tx, command.Credentials.TenantID, command.Credentials.ProjectID, command.Credentials.AttemptID)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	fence := leaseFence(attempt, storedDigest)
+	if err = recordRunCommand(ctx, tx, command.Command, runID, command.Credentials.AttemptID, ""); err != nil {
+		return nil, err
+	}
 	if err = tx.Commit(); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	return attempt, fence, nil
+	return &LeaseMutationResult{Attempt: attempt, Fence: fence}, nil
 }
 
-func (r SQLRepository) CancelAttemptSQL(ctx context.Context, credentials LeaseCredentials, expectedVersion int64, at time.Time) (*jobv1.Attempt, *jobv1.Run, error) {
-	if at.IsZero() {
-		return nil, nil, ErrInvalidLease
+func (r SQLRepository) CancelAttemptSQL(ctx context.Context, command CancelAttemptCommand) (*AttemptMutationResult, error) {
+	credentials, expectedVersion, at := command.Credentials, command.ExpectedResourceVersion, command.Now
+	if at.IsZero() || credentials.ProjectID == "" || validateRunCommandMetadata(command.Command, credentials.TenantID, actionCancelAttempt) != nil || command.Command.ProjectID != credentials.ProjectID || command.Command.WorkerID != credentials.WorkerID {
+		return nil, ErrInvalidLease
 	}
-	command := RenewLeaseCommand{Credentials: credentials, ExpectedResourceVersion: expectedVersion, Duration: MinimumLeaseDuration, Now: at}
 	// Validate ownership, token, epoch, version, and expiry under the same lock
 	// as cancellation; renewal itself is not committed.
-	presentedDigest, err := LeaseTokenDigest(command.Credentials.Token)
+	presentedDigest, err := LeaseTokenDigest(credentials.Token)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	tx, err := platformdb.BeginTenantTx(ctx, r.DB, credentials.TenantID, nil)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	defer func() { _ = tx.Rollback() }()
-	var runID, workerID, tokenDigest, status string
-	var epoch, currentEpoch uint64
+	receipt, replay, err := checkRunCommand(ctx, tx, command.Command)
+	if err != nil {
+		return nil, err
+	}
+	if replay {
+		if !receipt.attemptID.Valid || receipt.attemptID.String != credentials.AttemptID || !receipt.runID.Valid {
+			return nil, ErrIdempotencyConflict
+		}
+		attempt, loadErr := getAttemptTx(ctx, tx, credentials.TenantID, credentials.ProjectID, receipt.attemptID.String)
+		if loadErr != nil {
+			return nil, loadErr
+		}
+		run, loadErr := getRunTx(ctx, tx, credentials.TenantID, credentials.ProjectID, receipt.runID.String)
+		if loadErr != nil {
+			return nil, loadErr
+		}
+		if commitErr := tx.Commit(); commitErr != nil {
+			return nil, commitErr
+		}
+		return &AttemptMutationResult{Attempt: attempt, Run: run, Replay: true}, nil
+	}
+	var runID string
+	if err = tx.QueryRowContext(ctx, `SELECT run_id FROM attempts WHERE tenant_id=$1 AND project_id=$2 AND id=$3`, credentials.TenantID, credentials.ProjectID, credentials.AttemptID).Scan(&runID); errors.Is(err, sql.ErrNoRows) {
+		return nil, ErrNotFound
+	} else if err != nil {
+		return nil, err
+	}
+	var currentEpoch uint64
+	var runStatus, projectID string
+	if err = tx.QueryRowContext(ctx, `SELECT lease_epoch,status,project_id FROM runs WHERE tenant_id=$1 AND project_id=$2 AND id=$3 FOR UPDATE`, credentials.TenantID, credentials.ProjectID, runID).Scan(&currentEpoch, &runStatus, &projectID); errors.Is(err, sql.ErrNoRows) {
+		return nil, ErrNotFound
+	} else if err != nil {
+		return nil, err
+	}
+	if projectID != command.Command.ProjectID || (runStatus != "EXECUTING" && runStatus != "CANCELLING") {
+		return nil, ErrTerminalMutation
+	}
+	var workerID, tokenDigest, status string
+	var epoch uint64
 	var version int64
 	var expiresAt time.Time
-	err = tx.QueryRowContext(ctx, `SELECT attempt.run_id, attempt.worker_id, attempt.lease_token_digest, attempt.lease_epoch, attempt.version, attempt.lease_expires_at, attempt.status, run.lease_epoch FROM attempts AS attempt JOIN runs AS run ON run.tenant_id = attempt.tenant_id AND run.id = attempt.run_id WHERE attempt.tenant_id = $1 AND attempt.id = $2 FOR UPDATE OF attempt, run`, credentials.TenantID, credentials.AttemptID).Scan(&runID, &workerID, &tokenDigest, &epoch, &version, &expiresAt, &status, &currentEpoch)
+	err = tx.QueryRowContext(ctx, `SELECT worker_id,lease_token_digest,lease_epoch,version,lease_expires_at,status FROM attempts WHERE tenant_id=$1 AND project_id=$2 AND id=$3 AND run_id=$4 FOR UPDATE`, credentials.TenantID, credentials.ProjectID, credentials.AttemptID, runID).Scan(&workerID, &tokenDigest, &epoch, &version, &expiresAt, &status)
 	if errors.Is(err, sql.ErrNoRows) {
-		return nil, nil, ErrNotFound
+		return nil, ErrNotFound
 	}
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	switch {
 	case workerID != credentials.WorkerID:
-		return nil, nil, ErrLeaseOwner
+		return nil, ErrLeaseOwner
 	case !equalLeaseTokenDigest(tokenDigest, presentedDigest):
-		return nil, nil, ErrInvalidLeaseToken
+		return nil, ErrInvalidLeaseToken
 	case epoch != credentials.Epoch || currentEpoch != credentials.Epoch:
-		return nil, nil, ErrStaleCompletion
+		return nil, ErrStaleCompletion
 	case version != expectedVersion:
-		return nil, nil, ErrVersionConflict
+		return nil, ErrVersionConflict
 	case !at.UTC().Before(expiresAt.UTC()):
-		return nil, nil, ErrLeaseExpired
+		return nil, ErrLeaseExpired
 	case status != "LEASED" && status != "ACTIVE":
-		return nil, nil, ErrTerminalMutation
+		return nil, ErrTerminalMutation
 	}
-	if _, err = tx.ExecContext(ctx, `UPDATE attempts SET status = 'CANCELLED', version = version + 1, completed_at = $3, updated_at = $3 WHERE tenant_id = $1 AND id = $2`, credentials.TenantID, credentials.AttemptID, at.UTC()); err != nil {
-		return nil, nil, err
+	if _, err = tx.ExecContext(ctx, `UPDATE attempts SET status = 'CANCELLED', version = version + 1, completed_at = $4, updated_at = $4 WHERE tenant_id = $1 AND project_id=$2 AND id = $3`, credentials.TenantID, credentials.ProjectID, credentials.AttemptID, at.UTC()); err != nil {
+		return nil, err
 	}
-	if _, err = tx.ExecContext(ctx, `UPDATE runs SET status = 'CANCELLED', version = version + 1, completed_at = $3, updated_at = $3 WHERE tenant_id = $1 AND id = $2 AND lease_epoch = $4`, credentials.TenantID, runID, at.UTC(), credentials.Epoch); err != nil {
-		return nil, nil, err
+	if _, err = tx.ExecContext(ctx, `UPDATE runs SET status = 'CANCELLED', version = version + 1, completed_at = $4, updated_at = $4 WHERE tenant_id = $1 AND project_id=$2 AND id = $3 AND lease_epoch = $5`, credentials.TenantID, credentials.ProjectID, runID, at.UTC(), credentials.Epoch); err != nil {
+		return nil, err
 	}
-	attempt, err := getAttemptTx(ctx, tx, credentials.TenantID, credentials.AttemptID)
+	attempt, err := getAttemptTx(ctx, tx, credentials.TenantID, credentials.ProjectID, credentials.AttemptID)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	run, err := getRunTx(ctx, tx, credentials.TenantID, runID)
+	run, err := getRunTx(ctx, tx, credentials.TenantID, credentials.ProjectID, runID)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
+	}
+	if err = recordRunCommand(ctx, tx, command.Command, runID, credentials.AttemptID, ""); err != nil {
+		return nil, err
 	}
 	if err = tx.Commit(); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	return attempt, run, nil
+	return &AttemptMutationResult{Attempt: attempt, Run: run}, nil
 }
 
-func (r SQLRepository) ExpireLeasesSQL(ctx context.Context, tenantID string, at time.Time, limit int) ([]*jobv1.Attempt, error) {
-	if at.IsZero() || limit < 1 || limit > 1000 {
+func (r SQLRepository) ExpireLeasesSQL(ctx context.Context, command ExpireLeasesCommand) (*ExpireLeasesResult, error) {
+	tenantID, at, limit := command.TenantID, command.Now, command.Limit
+	if at.IsZero() || limit < 1 || limit > 1000 || validateRunCommandMetadata(command.Command, tenantID, actionExpireLeases) != nil {
 		return nil, ErrInvalidLease
 	}
 	tx, err := platformdb.BeginTenantTx(ctx, r.DB, tenantID, nil)
@@ -594,7 +1309,21 @@ func (r SQLRepository) ExpireLeasesSQL(ctx context.Context, tenantID string, at 
 		return nil, err
 	}
 	defer func() { _ = tx.Rollback() }()
-	rows, err := tx.QueryContext(ctx, `SELECT id, run_id, lease_epoch FROM attempts WHERE tenant_id = $1 AND status IN ('LEASED','ACTIVE') AND lease_expires_at <= $2 ORDER BY lease_expires_at, id FOR UPDATE SKIP LOCKED LIMIT $3`, tenantID, at.UTC(), limit)
+	receipt, replay, err := checkRunCommand(ctx, tx, command.Command)
+	if err != nil {
+		return nil, err
+	}
+	if replay {
+		attempts, loadErr := loadReceiptAttempts(ctx, tx, tenantID, command.Command.ProjectID, receipt.commandKey)
+		if loadErr != nil {
+			return nil, loadErr
+		}
+		if commitErr := tx.Commit(); commitErr != nil {
+			return nil, commitErr
+		}
+		return &ExpireLeasesResult{Attempts: attempts, ObservedAt: receipt.observedAt, Replay: true}, nil
+	}
+	rows, err := tx.QueryContext(ctx, `SELECT id,run_id,lease_epoch FROM attempts WHERE tenant_id=$1 AND project_id=$2 AND status IN ('LEASED','ACTIVE') AND lease_expires_at <= $3 ORDER BY lease_expires_at,id LIMIT $4`, tenantID, command.Command.ProjectID, at.UTC(), limit)
 	if err != nil {
 		return nil, err
 	}
@@ -606,49 +1335,85 @@ func (r SQLRepository) ExpireLeasesSQL(ctx context.Context, tenantID string, at 
 	for rows.Next() {
 		var value expired
 		if err = rows.Scan(&value.attemptID, &value.runID, &value.epoch); err != nil {
-			_ = rows.Close()
+			_ = platformdb.CloseRows(rows)
 			return nil, err
 		}
 		due = append(due, value)
 	}
 	if err = rows.Err(); err != nil {
-		_ = rows.Close()
+		_ = platformdb.CloseRows(rows)
 		return nil, err
 	}
-	if err = rows.Close(); err != nil {
+	if err = platformdb.CloseRows(rows); err != nil {
 		return nil, err
 	}
 	result := make([]*jobv1.Attempt, 0, len(due))
 	for _, value := range due {
-		if _, err = tx.ExecContext(ctx, `UPDATE attempts SET status = 'TIMED_OUT', version = version + 1, completed_at = $3, updated_at = $3 WHERE tenant_id = $1 AND id = $2`, tenantID, value.attemptID, at.UTC()); err != nil {
+		var currentEpoch uint64
+		var runStatus string
+		runErr := tx.QueryRowContext(ctx, `SELECT lease_epoch,status FROM runs WHERE tenant_id=$1 AND project_id=$2 AND id=$3 FOR UPDATE SKIP LOCKED`, tenantID, command.Command.ProjectID, value.runID).Scan(&currentEpoch, &runStatus)
+		if errors.Is(runErr, sql.ErrNoRows) {
+			continue
+		}
+		if runErr != nil {
+			return nil, runErr
+		}
+		var attemptEpoch uint64
+		var attemptStatus string
+		var expiresAt time.Time
+		attemptErr := tx.QueryRowContext(ctx, `SELECT lease_epoch,status,lease_expires_at FROM attempts WHERE tenant_id=$1 AND project_id=$2 AND id=$3 AND run_id=$4 FOR UPDATE SKIP LOCKED`, tenantID, command.Command.ProjectID, value.attemptID, value.runID).Scan(&attemptEpoch, &attemptStatus, &expiresAt)
+		if errors.Is(attemptErr, sql.ErrNoRows) {
+			continue
+		}
+		if attemptErr != nil {
+			return nil, attemptErr
+		}
+		if attemptEpoch != value.epoch || currentEpoch != value.epoch || (attemptStatus != "LEASED" && attemptStatus != "ACTIVE") || at.UTC().Before(expiresAt.UTC()) {
+			continue
+		}
+		if _, err = tx.ExecContext(ctx, `UPDATE attempts SET status = 'TIMED_OUT', version = version + 1, completed_at = $4, updated_at = $4 WHERE tenant_id = $1 AND project_id=$2 AND id = $3`, tenantID, command.Command.ProjectID, value.attemptID, at.UTC()); err != nil {
 			return nil, err
 		}
-		if _, err = tx.ExecContext(ctx, `UPDATE runs SET status = 'READY', version = version + 1, updated_at = $4 WHERE tenant_id = $1 AND id = $2 AND lease_epoch = $3 AND status = 'EXECUTING'`, tenantID, value.runID, value.epoch, at.UTC()); err != nil {
-			return nil, err
+		if runStatus == "EXECUTING" {
+			if _, err = tx.ExecContext(ctx, `UPDATE runs SET status = 'READY', version = version + 1, updated_at = $5 WHERE tenant_id = $1 AND project_id=$2 AND id = $3 AND lease_epoch = $4 AND status = 'EXECUTING'`, tenantID, command.Command.ProjectID, value.runID, value.epoch, at.UTC()); err != nil {
+				return nil, err
+			}
 		}
-		attempt, loadErr := getAttemptTx(ctx, tx, tenantID, value.attemptID)
+		attempt, loadErr := getAttemptTx(ctx, tx, tenantID, command.Command.ProjectID, value.attemptID)
 		if loadErr != nil {
 			return nil, loadErr
 		}
 		result = append(result, attempt)
 	}
+	if err = recordRunCommand(ctx, tx, command.Command, "", "", ""); err != nil {
+		return nil, err
+	}
+	key := runCommandKey(command.Command.Action, command.Command.IdempotencyKey)
+	for ordinal, attempt := range result {
+		if _, err = tx.ExecContext(ctx, `INSERT INTO run_command_receipt_attempts (tenant_id,project_id,command_key,ordinal,attempt_id) VALUES ($1,$2,$3,$4,$5)`, tenantID, command.Command.ProjectID, key, ordinal, attempt.GetAttemptId()); err != nil {
+			return nil, err
+		}
+	}
 	if err = tx.Commit(); err != nil {
 		return nil, err
 	}
-	return result, nil
+	return &ExpireLeasesResult{Attempts: result, ObservedAt: at.UTC()}, nil
 }
 
 var (
-	ErrNotFound          = errors.New("job resource not found")
-	ErrStaleCompletion   = errors.New("stale attempt completion retained")
-	ErrTerminalMutation  = errors.New("terminal resource cannot advance")
-	ErrInvalidOutcome    = errors.New("attempt completion requires a terminal outcome")
-	ErrInvalidLease      = errors.New("invalid attempt lease")
-	ErrInvalidLeaseToken = errors.New("invalid attempt lease token")
-	ErrLeaseHeld         = errors.New("run already has an unexpired lease")
-	ErrLeaseExpired      = errors.New("attempt lease expired")
-	ErrLeaseOwner        = errors.New("attempt lease belongs to another worker")
-	ErrVersionConflict   = errors.New("attempt resource version conflict")
+	ErrAlreadyExists       = errors.New("job resource already exists")
+	ErrInvalidJobCommand   = errors.New("invalid job command")
+	ErrNotFound            = errors.New("job resource not found")
+	ErrStaleCompletion     = errors.New("stale attempt completion retained")
+	ErrTerminalMutation    = errors.New("terminal resource cannot advance")
+	ErrInvalidOutcome      = errors.New("attempt completion requires a terminal outcome")
+	ErrInvalidLease        = errors.New("invalid attempt lease")
+	ErrInvalidLeaseToken   = errors.New("invalid attempt lease token")
+	ErrLeaseHeld           = errors.New("run already has an unexpired lease")
+	ErrLeaseExpired        = errors.New("attempt lease expired")
+	ErrLeaseOwner          = errors.New("attempt lease belongs to another worker")
+	ErrVersionConflict     = errors.New("attempt resource version conflict")
+	ErrIdempotencyConflict = errors.New("run command idempotency key conflict")
 )
 
 // These row types are intentionally private: they model normalized relational
@@ -780,8 +1545,8 @@ func scanAttemptSQL(scanner sqlRowScanner) (attemptSQLRow, error) {
 	return value, err
 }
 
-func getJobTx(ctx context.Context, tx *sql.Tx, tenantID, jobID string) (*jobv1.Job, error) {
-	value, err := scanJobSQL(tx.QueryRowContext(ctx, `SELECT id, operation_id, tenant_id, project_id, desired_state, version, policy_digest, job_kind, input_ref_id, configuration_ref_id, created_at, updated_at, etag FROM jobs WHERE tenant_id = $1 AND id = $2`, tenantID, jobID))
+func getJobTx(ctx context.Context, tx *sql.Tx, tenantID, projectID, jobID string) (*jobv1.Job, error) {
+	value, err := scanJobSQL(tx.QueryRowContext(ctx, `SELECT id, operation_id, tenant_id, project_id, desired_state, version, policy_digest, job_kind, input_ref_id, configuration_ref_id, created_at, updated_at, etag FROM jobs WHERE tenant_id = $1 AND project_id = $2 AND id = $3`, tenantID, projectID, jobID))
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNotFound
 	}
@@ -799,8 +1564,8 @@ func getJobTx(ctx context.Context, tx *sql.Tx, tenantID, jobID string) (*jobv1.J
 	return jobRowToProto(value.row), nil
 }
 
-func getRunTx(ctx context.Context, tx *sql.Tx, tenantID, runID string) (*jobv1.Run, error) {
-	value, err := scanRunSQL(tx.QueryRowContext(ctx, `SELECT id, job_id, tenant_id, project_id, input_ref_id, configuration_ref_id, plan_ref_id, status, version, lease_epoch, error_detail_id, etag, created_at, started_at, completed_at FROM runs WHERE tenant_id = $1 AND id = $2`, tenantID, runID))
+func getRunTx(ctx context.Context, tx *sql.Tx, tenantID, projectID, runID string) (*jobv1.Run, error) {
+	value, err := scanRunSQL(tx.QueryRowContext(ctx, `SELECT id, job_id, tenant_id, project_id, input_ref_id, configuration_ref_id, plan_ref_id, status, version, lease_epoch, error_detail_id, etag, created_at, started_at, completed_at FROM runs WHERE tenant_id = $1 AND project_id = $2 AND id = $3`, tenantID, projectID, runID))
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNotFound
 	}
@@ -823,15 +1588,15 @@ func getRunTx(ctx context.Context, tx *sql.Tx, tenantID, runID string) (*jobv1.R
 	if err != nil {
 		return nil, err
 	}
-	value.row.outputs, err = loadOutputRefs(ctx, tx, tenantID, "run_output_refs", "run_id", runID)
+	value.row.outputs, err = loadOutputRefs(ctx, tx, tenantID, projectID, "run_output_refs", "run_id", runID)
 	if err != nil {
 		return nil, err
 	}
 	return runRowToProto(value.row), nil
 }
 
-func getAttemptTx(ctx context.Context, tx *sql.Tx, tenantID, attemptID string) (*jobv1.Attempt, error) {
-	value, err := scanAttemptSQL(tx.QueryRowContext(ctx, `SELECT id, run_id, tenant_id, project_id, job_id, worker_id, lease_epoch, lease_token_digest, lease_expires_at, last_heartbeat_at, status, version, error_detail_id, leased_at, started_at, completed_at FROM attempts WHERE tenant_id = $1 AND id = $2`, tenantID, attemptID))
+func getAttemptTx(ctx context.Context, tx *sql.Tx, tenantID, projectID, attemptID string) (*jobv1.Attempt, error) {
+	value, err := scanAttemptSQL(tx.QueryRowContext(ctx, `SELECT id, run_id, tenant_id, project_id, job_id, worker_id, lease_epoch, lease_token_digest, lease_expires_at, last_heartbeat_at, status, version, error_detail_id, leased_at, started_at, completed_at FROM attempts WHERE tenant_id = $1 AND project_id = $2 AND id = $3`, tenantID, projectID, attemptID))
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNotFound
 	}
@@ -842,24 +1607,24 @@ func getAttemptTx(ctx context.Context, tx *sql.Tx, tenantID, attemptID string) (
 	if err != nil {
 		return nil, err
 	}
-	value.row.outputs, err = loadOutputRefs(ctx, tx, tenantID, "attempt_output_refs", "attempt_id", attemptID)
+	value.row.outputs, err = loadOutputRefs(ctx, tx, tenantID, projectID, "attempt_output_refs", "attempt_id", attemptID)
 	if err != nil {
 		return nil, err
 	}
 	return attemptRowToProto(value.row), nil
 }
 
-func loadOutputRefs(ctx context.Context, tx *sql.Tx, tenantID, table, ownerColumn, ownerID string) ([]*artifactv1.ArtifactRef, error) {
-	query := ""
+func loadOutputRefs(ctx context.Context, tx *sql.Tx, tenantID, projectID, table, ownerColumn, ownerID string) ([]*artifactv1.ArtifactRef, error) {
+	var query string
 	switch {
 	case table == "run_output_refs" && ownerColumn == "run_id":
-		query = `SELECT artifact_ref_id FROM run_output_refs WHERE tenant_id = $1 AND run_id = $2 ORDER BY ordinal`
+		query = `SELECT artifact_ref_id FROM run_output_refs WHERE tenant_id = $1 AND project_id = $2 AND run_id = $3 ORDER BY ordinal`
 	case table == "attempt_output_refs" && ownerColumn == "attempt_id":
-		query = `SELECT artifact_ref_id FROM attempt_output_refs WHERE tenant_id = $1 AND attempt_id = $2 ORDER BY ordinal`
+		query = `SELECT artifact_ref_id FROM attempt_output_refs WHERE tenant_id = $1 AND project_id = $2 AND attempt_id = $3 ORDER BY ordinal`
 	default:
 		return nil, errors.New("unsupported output reference owner")
 	}
-	rows, err := tx.QueryContext(ctx, query, tenantID, ownerID)
+	rows, err := tx.QueryContext(ctx, query, tenantID, projectID, ownerID)
 	if err != nil {
 		return nil, err
 	}
@@ -867,16 +1632,16 @@ func loadOutputRefs(ctx context.Context, tx *sql.Tx, tenantID, table, ownerColum
 	for rows.Next() {
 		var id int64
 		if err = rows.Scan(&id); err != nil {
-			_ = rows.Close()
+			_ = platformdb.CloseRows(rows)
 			return nil, err
 		}
 		ids = append(ids, id)
 	}
 	if err = rows.Err(); err != nil {
-		_ = rows.Close()
+		_ = platformdb.CloseRows(rows)
 		return nil, err
 	}
-	if err = rows.Close(); err != nil {
+	if err = platformdb.CloseRows(rows); err != nil {
 		return nil, err
 	}
 	result := make([]*artifactv1.ArtifactRef, 0, len(ids))

@@ -35,8 +35,12 @@ class InferenceServiceStub:
     def __new__(cls, channel: _aio.Channel) -> InferenceServiceAsyncStub: ...
     SubmitInference: _grpc.UnaryUnaryMultiCallable[_inference_service_pb2.SubmitInferenceRequest, _inference_service_pb2.SubmitInferenceResponse]
     """SubmitInference validates idempotency and returns durable asynchronous state."""
+    GetInferenceRequest: _grpc.UnaryUnaryMultiCallable[_inference_service_pb2.GetInferenceRequestRequest, _inference_service_pb2.GetInferenceRequestResponse]
+    """GetInferenceRequest returns immutable execution intent to authorized workers."""
     GetInferenceResult: _grpc.UnaryUnaryMultiCallable[_inference_service_pb2.GetInferenceResultRequest, _inference_service_pb2.GetInferenceResultResponse]
     """GetInferenceResult reads a terminal result without reconstructing it from stream state."""
+    CommitInferenceResult: _grpc.UnaryUnaryMultiCallable[_inference_service_pb2.CommitInferenceResultRequest, _inference_service_pb2.CommitInferenceResultResponse]
+    """CommitInferenceResult rejects stale attempts and atomically publishes terminal truth."""
     WatchInference: _grpc.UnaryStreamMultiCallable[_inference_service_pb2.WatchInferenceRequest, _inference_service_pb2.WatchInferenceResponse]
     """WatchInference streams resumable convenience updates over durable operation state."""
 
@@ -47,8 +51,12 @@ class InferenceServiceAsyncStub(InferenceServiceStub):
     def __init__(self, channel: _aio.Channel) -> None: ...
     SubmitInference: _aio.UnaryUnaryMultiCallable[_inference_service_pb2.SubmitInferenceRequest, _inference_service_pb2.SubmitInferenceResponse]  # type: ignore[assignment]
     """SubmitInference validates idempotency and returns durable asynchronous state."""
+    GetInferenceRequest: _aio.UnaryUnaryMultiCallable[_inference_service_pb2.GetInferenceRequestRequest, _inference_service_pb2.GetInferenceRequestResponse]  # type: ignore[assignment]
+    """GetInferenceRequest returns immutable execution intent to authorized workers."""
     GetInferenceResult: _aio.UnaryUnaryMultiCallable[_inference_service_pb2.GetInferenceResultRequest, _inference_service_pb2.GetInferenceResultResponse]  # type: ignore[assignment]
     """GetInferenceResult reads a terminal result without reconstructing it from stream state."""
+    CommitInferenceResult: _aio.UnaryUnaryMultiCallable[_inference_service_pb2.CommitInferenceResultRequest, _inference_service_pb2.CommitInferenceResultResponse]  # type: ignore[assignment]
+    """CommitInferenceResult rejects stale attempts and atomically publishes terminal truth."""
     WatchInference: _aio.UnaryStreamMultiCallable[_inference_service_pb2.WatchInferenceRequest, _inference_service_pb2.WatchInferenceResponse]  # type: ignore[assignment]
     """WatchInference streams resumable convenience updates over durable operation state."""
 
@@ -64,12 +72,28 @@ class InferenceServiceServicer(metaclass=_abc_1.ABCMeta):
         """SubmitInference validates idempotency and returns durable asynchronous state."""
 
     @_abc_1.abstractmethod
+    def GetInferenceRequest(
+        self,
+        request: _inference_service_pb2.GetInferenceRequestRequest,
+        context: _ServicerContext,
+    ) -> _typing.Union[_inference_service_pb2.GetInferenceRequestResponse, _abc.Awaitable[_inference_service_pb2.GetInferenceRequestResponse]]:
+        """GetInferenceRequest returns immutable execution intent to authorized workers."""
+
+    @_abc_1.abstractmethod
     def GetInferenceResult(
         self,
         request: _inference_service_pb2.GetInferenceResultRequest,
         context: _ServicerContext,
     ) -> _typing.Union[_inference_service_pb2.GetInferenceResultResponse, _abc.Awaitable[_inference_service_pb2.GetInferenceResultResponse]]:
         """GetInferenceResult reads a terminal result without reconstructing it from stream state."""
+
+    @_abc_1.abstractmethod
+    def CommitInferenceResult(
+        self,
+        request: _inference_service_pb2.CommitInferenceResultRequest,
+        context: _ServicerContext,
+    ) -> _typing.Union[_inference_service_pb2.CommitInferenceResultResponse, _abc.Awaitable[_inference_service_pb2.CommitInferenceResultResponse]]:
+        """CommitInferenceResult rejects stale attempts and atomically publishes terminal truth."""
 
     @_abc_1.abstractmethod
     def WatchInference(

@@ -8,6 +8,7 @@ py_library(
     deps = [
         "@mindclade_pypi//googleapis_common_protos",
         "@mindclade_pypi//grpcio",
+        "@mindclade_pypi//jsonschema",
         "@mindclade_pypi//protobuf",
     ],
 )

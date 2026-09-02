@@ -90,6 +90,11 @@
       "package": "protoc-gen-tonic",
       "version": "0.5.0",
       "version_output": "0.5.0"
+    },
+    "rustfmt": {
+      "authority": "flake.lock:nixpkgs",
+      "version": "1.9.0",
+      "version_output": "rustfmt 1.9.0"
     }
   },
   "version": "3.1.0"

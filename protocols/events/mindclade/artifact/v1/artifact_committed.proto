@@ -2,6 +2,7 @@ syntax = "proto3";
 
 package mindclade.events.artifact.v1;
 
+import "google/protobuf/timestamp.proto";
 import "proto/mindclade/artifact/v1/artifact_reference.proto";
 
 option go_package = "github.com/mindclade/mindclade/protocols/generated/go/artifact/v1;artifactv1";
@@ -9,4 +10,14 @@ option go_package = "github.com/mindclade/mindclade/protocols/generated/go/artif
 message ArtifactCommitted {
   mindclade.artifact.v1.ArtifactRef artifact = 1;
   string producer_attempt_id = 2;
+}
+
+// ArtifactStagingFinalized records immutable transfer verification without
+// leaking the provider generation or storage locator bound by the receipt.
+message ArtifactStagingFinalized {
+  string upload_name = 1;
+  mindclade.artifact.v1.ArtifactRef artifact = 2;
+  string staging_receipt_digest = 3;
+  google.protobuf.Timestamp verified_at = 4;
+  google.protobuf.Timestamp expire_time = 5;
 }

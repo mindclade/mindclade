@@ -19,6 +19,9 @@ pub struct EvaluateAuthorizationRequest {
     pub policy_snapshots: ::prost::alloc::vec::Vec<crate::policy::v1::PolicyReference>,
     #[prost(message, optional, tag = "8")]
     pub deadline: ::core::option::Option<::prost_types::Timestamp>,
+    /// Durable command identity used to make retries replay the same decision.
+    #[prost(message, optional, tag = "9")]
+    pub context: ::core::option::Option<crate::common::v1::CommandContext>,
 }
 /// EvaluateAuthorizationResponse returns an immutable fail-closed decision.
 #[derive(Clone, PartialEq, ::prost::Message)]

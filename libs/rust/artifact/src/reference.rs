@@ -1,6 +1,7 @@
 use crate::ArtifactDigest;
 
 pub use mindclade_protocols::artifact::v1::ArtifactRef;
+pub use mindclade_protocols::schema::v1::{ArtifactManifest, SchemaError};
 
 /// Compatibility name for the authoritative generated artifact contract.
 pub type ArtifactReference = ArtifactRef;
@@ -55,6 +56,20 @@ pub fn validate_artifact_ref(reference: &ArtifactRef) -> Result<(), &'static str
     Ok(())
 }
 
+/// Validates and decodes an artifact manifest through the generated binding.
+///
+/// The JSON Schema catalog remains authoritative; this function is only the
+/// stable artifact-library entry point used by producers and consumers.
+///
+/// # Errors
+///
+/// Returns the generated [`SchemaError`] when the JSON cannot be decoded, does
+/// not conform to the artifact-manifest schema, or cannot populate the
+/// generated [`ArtifactManifest`] type.
+pub fn decode_artifact_manifest(content: &[u8]) -> Result<ArtifactManifest, SchemaError> {
+    mindclade_protocols::schema::v1::decode_artifact_manifest(content)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -93,5 +108,60 @@ mod tests {
             make_artifact_ref(&digest, "application/octet-stream", u64::MAX, "test-output"),
             Err("size_bytes exceeds int64")
         );
+    }
+
+    #[test]
+    fn artifact_manifest_consumer_accepts_the_authoritative_shape() {
+        let content = br#"{
+            "schema_version":"mindclade.artifact-manifest/v1",
+            "kind":"ArtifactManifest",
+            "metadata":{
+                "uid":"artifact-1",
+                "created_at":"2026-08-30T00:00:00Z",
+                "owner":"data-platform"
+            },
+            "spec":{"artifact":{
+                "digest":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                "media_type":"application/json",
+                "size_bytes":1,
+                "kind":"fixture"
+            }},
+            "lineage":[],
+            "integrity":{
+                "payload_digest":"sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+                "signatures":[]
+            }
+        }"#;
+
+        let manifest = decode_artifact_manifest(content).expect("valid artifact manifest");
+        assert_eq!(manifest.spec.artifact.kind, "fixture");
+    }
+
+    #[test]
+    fn artifact_manifest_consumer_rejects_a_missing_digest() {
+        let content = br#"{
+            "schema_version":"mindclade.artifact-manifest/v1",
+            "kind":"ArtifactManifest",
+            "metadata":{
+                "uid":"artifact-1",
+                "created_at":"2026-08-30T00:00:00Z",
+                "owner":"data-platform"
+            },
+            "spec":{"artifact":{
+                "media_type":"application/json",
+                "size_bytes":1,
+                "kind":"fixture"
+            }},
+            "lineage":[],
+            "integrity":{
+                "payload_digest":"sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+                "signatures":[]
+            }
+        }"#;
+
+        assert!(matches!(
+            decode_artifact_manifest(content),
+            Err(SchemaError::InvalidDocument(_))
+        ));
     }
 }

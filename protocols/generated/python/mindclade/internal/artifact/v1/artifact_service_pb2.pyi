@@ -10,12 +10,30 @@ from mindclade.common.v1 import pagination_pb2 as _pagination_pb2
 from mindclade.common.v1 import resource_reference_pb2 as _resource_reference_pb2
 from mindclade.job.v1 import operation_pb2 as _operation_pb2
 from google.protobuf.internal import containers as _containers
+from google.protobuf.internal import enum_type_wrapper as _enum_type_wrapper
 from google.protobuf import descriptor as _descriptor
 from google.protobuf import message as _message
 from collections.abc import Iterable as _Iterable, Mapping as _Mapping
 from typing import ClassVar as _ClassVar, Optional as _Optional, Union as _Union
 
 DESCRIPTOR: _descriptor.FileDescriptor
+
+class ArtifactUploadState(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
+    __slots__ = ()
+    ARTIFACT_UPLOAD_STATE_UNSPECIFIED: _ClassVar[ArtifactUploadState]
+    ARTIFACT_UPLOAD_STATE_OPEN: _ClassVar[ArtifactUploadState]
+    ARTIFACT_UPLOAD_STATE_FINALIZING: _ClassVar[ArtifactUploadState]
+    ARTIFACT_UPLOAD_STATE_FINALIZED: _ClassVar[ArtifactUploadState]
+    ARTIFACT_UPLOAD_STATE_ABORTED: _ClassVar[ArtifactUploadState]
+    ARTIFACT_UPLOAD_STATE_QUARANTINED: _ClassVar[ArtifactUploadState]
+    ARTIFACT_UPLOAD_STATE_EXPIRED: _ClassVar[ArtifactUploadState]
+ARTIFACT_UPLOAD_STATE_UNSPECIFIED: ArtifactUploadState
+ARTIFACT_UPLOAD_STATE_OPEN: ArtifactUploadState
+ARTIFACT_UPLOAD_STATE_FINALIZING: ArtifactUploadState
+ARTIFACT_UPLOAD_STATE_FINALIZED: ArtifactUploadState
+ARTIFACT_UPLOAD_STATE_ABORTED: ArtifactUploadState
+ARTIFACT_UPLOAD_STATE_QUARANTINED: ArtifactUploadState
+ARTIFACT_UPLOAD_STATE_EXPIRED: ArtifactUploadState
 
 class GetArtifactRequest(_message.Message):
     __slots__ = ("name", "digest")
@@ -128,3 +146,179 @@ class ReleaseArtifactLeaseRequest(_message.Message):
 class ReleaseArtifactLeaseResponse(_message.Message):
     __slots__ = ()
     def __init__(self) -> None: ...
+
+class ArtifactStagingReceipt(_message.Message):
+    __slots__ = ("receipt_digest", "artifact", "verified_at", "expire_time")
+    RECEIPT_DIGEST_FIELD_NUMBER: _ClassVar[int]
+    ARTIFACT_FIELD_NUMBER: _ClassVar[int]
+    VERIFIED_AT_FIELD_NUMBER: _ClassVar[int]
+    EXPIRE_TIME_FIELD_NUMBER: _ClassVar[int]
+    receipt_digest: str
+    artifact: _artifact_reference_pb2.ArtifactRef
+    verified_at: _timestamp_pb2.Timestamp
+    expire_time: _timestamp_pb2.Timestamp
+    def __init__(self, receipt_digest: _Optional[str] = ..., artifact: _Optional[_Union[_artifact_reference_pb2.ArtifactRef, _Mapping]] = ..., verified_at: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., expire_time: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ...) -> None: ...
+
+class ArtifactUploadSession(_message.Message):
+    __slots__ = ("name", "artifact", "state", "committed_offset", "next_chunk_index", "staging_receipt", "create_time", "update_time", "expire_time", "revision", "etag")
+    NAME_FIELD_NUMBER: _ClassVar[int]
+    ARTIFACT_FIELD_NUMBER: _ClassVar[int]
+    STATE_FIELD_NUMBER: _ClassVar[int]
+    COMMITTED_OFFSET_FIELD_NUMBER: _ClassVar[int]
+    NEXT_CHUNK_INDEX_FIELD_NUMBER: _ClassVar[int]
+    STAGING_RECEIPT_FIELD_NUMBER: _ClassVar[int]
+    CREATE_TIME_FIELD_NUMBER: _ClassVar[int]
+    UPDATE_TIME_FIELD_NUMBER: _ClassVar[int]
+    EXPIRE_TIME_FIELD_NUMBER: _ClassVar[int]
+    REVISION_FIELD_NUMBER: _ClassVar[int]
+    ETAG_FIELD_NUMBER: _ClassVar[int]
+    name: str
+    artifact: _artifact_reference_pb2.ArtifactRef
+    state: ArtifactUploadState
+    committed_offset: int
+    next_chunk_index: int
+    staging_receipt: ArtifactStagingReceipt
+    create_time: _timestamp_pb2.Timestamp
+    update_time: _timestamp_pb2.Timestamp
+    expire_time: _timestamp_pb2.Timestamp
+    revision: int
+    etag: str
+    def __init__(self, name: _Optional[str] = ..., artifact: _Optional[_Union[_artifact_reference_pb2.ArtifactRef, _Mapping]] = ..., state: _Optional[_Union[ArtifactUploadState, str]] = ..., committed_offset: _Optional[int] = ..., next_chunk_index: _Optional[int] = ..., staging_receipt: _Optional[_Union[ArtifactStagingReceipt, _Mapping]] = ..., create_time: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., update_time: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., expire_time: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., revision: _Optional[int] = ..., etag: _Optional[str] = ...) -> None: ...
+
+class BeginArtifactUploadRequest(_message.Message):
+    __slots__ = ("context", "parent", "artifact", "upload_id", "expire_time")
+    CONTEXT_FIELD_NUMBER: _ClassVar[int]
+    PARENT_FIELD_NUMBER: _ClassVar[int]
+    ARTIFACT_FIELD_NUMBER: _ClassVar[int]
+    UPLOAD_ID_FIELD_NUMBER: _ClassVar[int]
+    EXPIRE_TIME_FIELD_NUMBER: _ClassVar[int]
+    context: _command_context_pb2.CommandContext
+    parent: str
+    artifact: _artifact_reference_pb2.ArtifactRef
+    upload_id: str
+    expire_time: _timestamp_pb2.Timestamp
+    def __init__(self, context: _Optional[_Union[_command_context_pb2.CommandContext, _Mapping]] = ..., parent: _Optional[str] = ..., artifact: _Optional[_Union[_artifact_reference_pb2.ArtifactRef, _Mapping]] = ..., upload_id: _Optional[str] = ..., expire_time: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ...) -> None: ...
+
+class BeginArtifactUploadResponse(_message.Message):
+    __slots__ = ("upload",)
+    UPLOAD_FIELD_NUMBER: _ClassVar[int]
+    upload: ArtifactUploadSession
+    def __init__(self, upload: _Optional[_Union[ArtifactUploadSession, _Mapping]] = ...) -> None: ...
+
+class UploadArtifactChunkRequest(_message.Message):
+    __slots__ = ("context", "name", "chunk_index", "offset", "data", "chunk_digest", "etag")
+    CONTEXT_FIELD_NUMBER: _ClassVar[int]
+    NAME_FIELD_NUMBER: _ClassVar[int]
+    CHUNK_INDEX_FIELD_NUMBER: _ClassVar[int]
+    OFFSET_FIELD_NUMBER: _ClassVar[int]
+    DATA_FIELD_NUMBER: _ClassVar[int]
+    CHUNK_DIGEST_FIELD_NUMBER: _ClassVar[int]
+    ETAG_FIELD_NUMBER: _ClassVar[int]
+    context: _command_context_pb2.CommandContext
+    name: str
+    chunk_index: int
+    offset: int
+    data: bytes
+    chunk_digest: str
+    etag: str
+    def __init__(self, context: _Optional[_Union[_command_context_pb2.CommandContext, _Mapping]] = ..., name: _Optional[str] = ..., chunk_index: _Optional[int] = ..., offset: _Optional[int] = ..., data: _Optional[bytes] = ..., chunk_digest: _Optional[str] = ..., etag: _Optional[str] = ...) -> None: ...
+
+class UploadArtifactChunkResponse(_message.Message):
+    __slots__ = ("upload",)
+    UPLOAD_FIELD_NUMBER: _ClassVar[int]
+    upload: ArtifactUploadSession
+    def __init__(self, upload: _Optional[_Union[ArtifactUploadSession, _Mapping]] = ...) -> None: ...
+
+class GetArtifactUploadRequest(_message.Message):
+    __slots__ = ("name",)
+    NAME_FIELD_NUMBER: _ClassVar[int]
+    name: str
+    def __init__(self, name: _Optional[str] = ...) -> None: ...
+
+class GetArtifactUploadResponse(_message.Message):
+    __slots__ = ("upload",)
+    UPLOAD_FIELD_NUMBER: _ClassVar[int]
+    upload: ArtifactUploadSession
+    def __init__(self, upload: _Optional[_Union[ArtifactUploadSession, _Mapping]] = ...) -> None: ...
+
+class FinalizeArtifactUploadRequest(_message.Message):
+    __slots__ = ("context", "name", "etag", "receipt_expire_time")
+    CONTEXT_FIELD_NUMBER: _ClassVar[int]
+    NAME_FIELD_NUMBER: _ClassVar[int]
+    ETAG_FIELD_NUMBER: _ClassVar[int]
+    RECEIPT_EXPIRE_TIME_FIELD_NUMBER: _ClassVar[int]
+    context: _command_context_pb2.CommandContext
+    name: str
+    etag: str
+    receipt_expire_time: _timestamp_pb2.Timestamp
+    def __init__(self, context: _Optional[_Union[_command_context_pb2.CommandContext, _Mapping]] = ..., name: _Optional[str] = ..., etag: _Optional[str] = ..., receipt_expire_time: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ...) -> None: ...
+
+class FinalizeArtifactUploadResponse(_message.Message):
+    __slots__ = ("upload", "staging_receipt")
+    UPLOAD_FIELD_NUMBER: _ClassVar[int]
+    STAGING_RECEIPT_FIELD_NUMBER: _ClassVar[int]
+    upload: ArtifactUploadSession
+    staging_receipt: ArtifactStagingReceipt
+    def __init__(self, upload: _Optional[_Union[ArtifactUploadSession, _Mapping]] = ..., staging_receipt: _Optional[_Union[ArtifactStagingReceipt, _Mapping]] = ...) -> None: ...
+
+class AbortArtifactUploadRequest(_message.Message):
+    __slots__ = ("context", "name", "etag", "reason_code")
+    CONTEXT_FIELD_NUMBER: _ClassVar[int]
+    NAME_FIELD_NUMBER: _ClassVar[int]
+    ETAG_FIELD_NUMBER: _ClassVar[int]
+    REASON_CODE_FIELD_NUMBER: _ClassVar[int]
+    context: _command_context_pb2.CommandContext
+    name: str
+    etag: str
+    reason_code: str
+    def __init__(self, context: _Optional[_Union[_command_context_pb2.CommandContext, _Mapping]] = ..., name: _Optional[str] = ..., etag: _Optional[str] = ..., reason_code: _Optional[str] = ...) -> None: ...
+
+class AbortArtifactUploadResponse(_message.Message):
+    __slots__ = ("upload",)
+    UPLOAD_FIELD_NUMBER: _ClassVar[int]
+    upload: ArtifactUploadSession
+    def __init__(self, upload: _Optional[_Union[ArtifactUploadSession, _Mapping]] = ...) -> None: ...
+
+class QuarantineArtifactUploadRequest(_message.Message):
+    __slots__ = ("context", "name", "etag", "reason_code")
+    CONTEXT_FIELD_NUMBER: _ClassVar[int]
+    NAME_FIELD_NUMBER: _ClassVar[int]
+    ETAG_FIELD_NUMBER: _ClassVar[int]
+    REASON_CODE_FIELD_NUMBER: _ClassVar[int]
+    context: _command_context_pb2.CommandContext
+    name: str
+    etag: str
+    reason_code: str
+    def __init__(self, context: _Optional[_Union[_command_context_pb2.CommandContext, _Mapping]] = ..., name: _Optional[str] = ..., etag: _Optional[str] = ..., reason_code: _Optional[str] = ...) -> None: ...
+
+class QuarantineArtifactUploadResponse(_message.Message):
+    __slots__ = ("upload",)
+    UPLOAD_FIELD_NUMBER: _ClassVar[int]
+    upload: ArtifactUploadSession
+    def __init__(self, upload: _Optional[_Union[ArtifactUploadSession, _Mapping]] = ...) -> None: ...
+
+class DownloadArtifactRequest(_message.Message):
+    __slots__ = ("name", "digest", "offset", "max_chunk_bytes")
+    NAME_FIELD_NUMBER: _ClassVar[int]
+    DIGEST_FIELD_NUMBER: _ClassVar[int]
+    OFFSET_FIELD_NUMBER: _ClassVar[int]
+    MAX_CHUNK_BYTES_FIELD_NUMBER: _ClassVar[int]
+    name: str
+    digest: str
+    offset: int
+    max_chunk_bytes: int
+    def __init__(self, name: _Optional[str] = ..., digest: _Optional[str] = ..., offset: _Optional[int] = ..., max_chunk_bytes: _Optional[int] = ...) -> None: ...
+
+class DownloadArtifactResponse(_message.Message):
+    __slots__ = ("artifact", "offset", "data", "chunk_digest", "complete")
+    ARTIFACT_FIELD_NUMBER: _ClassVar[int]
+    OFFSET_FIELD_NUMBER: _ClassVar[int]
+    DATA_FIELD_NUMBER: _ClassVar[int]
+    CHUNK_DIGEST_FIELD_NUMBER: _ClassVar[int]
+    COMPLETE_FIELD_NUMBER: _ClassVar[int]
+    artifact: _artifact_reference_pb2.ArtifactRef
+    offset: int
+    data: bytes
+    chunk_digest: str
+    complete: bool
+    def __init__(self, artifact: _Optional[_Union[_artifact_reference_pb2.ArtifactRef, _Mapping]] = ..., offset: _Optional[int] = ..., data: _Optional[bytes] = ..., chunk_digest: _Optional[str] = ..., complete: _Optional[bool] = ...) -> None: ...

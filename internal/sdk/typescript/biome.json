@@ -1,0 +1,13 @@
+{
+  "$schema": "../../../node_modules/@biomejs/biome/configuration_schema.json",
+  "root": false,
+  "extends": ["../../../biome.json"],
+  "files": {
+    "includes": [
+      "internal/sdk/typescript/src/**/*.ts",
+      "internal/sdk/typescript/tests/**/*.ts",
+      "internal/sdk/typescript/package.json",
+      "internal/sdk/typescript/tsconfig.json"
+    ]
+  }
+}

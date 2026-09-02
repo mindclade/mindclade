@@ -64,11 +64,29 @@ message AuditQueryPage {
   mindclade.common.v1.PageResponse page = 2;
 }
 
-// AuditExport is an immutable, policy-controlled result for queries too large to page.
+// AuditExportState is the durable lifecycle of an asynchronous audit export.
+enum AuditExportState {
+  AUDIT_EXPORT_STATE_UNSPECIFIED = 0;
+  AUDIT_EXPORT_STATE_REQUESTED = 1;
+  AUDIT_EXPORT_STATE_RUNNING = 2;
+  AUDIT_EXPORT_STATE_SUCCEEDED = 3;
+  AUDIT_EXPORT_STATE_FAILED = 4;
+  AUDIT_EXPORT_STATE_EXPIRED = 5;
+}
+
+// AuditExport is a policy-controlled durable request whose succeeded revision
+// references one immutable export artifact.
 message AuditExport {
   string name = 1;
   mindclade.artifact.v1.ArtifactRef artifact = 2;
   string query_digest = 3;
   google.protobuf.Timestamp create_time = 4;
   google.protobuf.Timestamp expire_time = 5;
+  AuditExportState state = 6;
+  // Stable machine-readable failure code; protected details remain in audit evidence.
+  string failure_code = 7;
+  int64 revision = 8;
+  string etag = 9;
+  google.protobuf.Timestamp update_time = 10;
+  string uid = 11;
 }

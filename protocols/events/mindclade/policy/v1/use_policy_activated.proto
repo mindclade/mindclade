@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package mindclade.events.policy.v1;
+
+import "google/protobuf/timestamp.proto";
+import "proto/mindclade/common/v1/resource_reference.proto";
+import "proto/mindclade/policy/v1/policy_reference.proto";
+import "proto/mindclade/policy/v1/use_policy.proto";
+
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/policy/v1;policyv1";
+
+// UsePolicyActivated binds the mutable resource to the exact effective snapshot.
+message UsePolicyActivated {
+  mindclade.policy.v1.UsePolicy use_policy = 1;
+  mindclade.policy.v1.PolicyReference active_snapshot = 2;
+  mindclade.common.v1.ResourceRef operation = 3;
+  google.protobuf.Timestamp activated_at = 4;
+}

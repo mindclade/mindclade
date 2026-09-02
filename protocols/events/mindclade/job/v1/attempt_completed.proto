@@ -2,11 +2,19 @@ syntax = "proto3";
 
 package mindclade.events.job.v1;
 
+import "google/protobuf/timestamp.proto";
+import "proto/mindclade/job/v1/attempt.proto";
+import "proto/mindclade/job/v1/lease_fencing.proto";
+import "proto/mindclade/job/v1/run.proto";
+
 option go_package = "github.com/mindclade/mindclade/protocols/generated/go/job/v1;jobv1";
 
+// AttemptCompleted is emitted only after the authoritative current fence has
+// accepted a terminal attempt update. Outputs remain immutable artifact
+// references on Attempt and Run.
 message AttemptCompleted {
-  string attempt_id = 1;
-  uint64 lease_epoch = 2;
-  string result_digest = 3;
-  string completion_receipt_digest = 4;
+  mindclade.job.v1.Attempt attempt = 1;
+  mindclade.job.v1.Run run = 2;
+  mindclade.job.v1.LeaseFence fence = 3;
+  google.protobuf.Timestamp completed_at = 4;
 }

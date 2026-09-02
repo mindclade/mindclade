@@ -7,20 +7,21 @@ contracts, build definitions, and immutable release inputs.
 ## Current status
 
 The repository is **FOUNDER_BOOTSTRAPPED**. The Wave 1 durability kernel remains
-active, and ADR-0015 activates the complete contract catalog as a one-time
-clean-v1 source baseline. Blueprint waves guide implementation order rather
-than deferring authoritative contract definitions.
+active, and ADR-0015 activates the complete contract catalog as an unratified
+v1 candidate estate. Blueprint waves guide implementation order rather than
+deferring authoritative contract definitions; compatibility begins only after
+the evidence-gated ratification defined by ADR-0015.
 
 The active source boundary provides:
 
 - deterministic repository and architecture evidence;
 - common, artifact, job, audit, and complete versioned domain contracts;
 - pinned Protobuf and gRPC projections for Go, Python, Rust, and TypeScript;
-- durable JSON Schema documents and a curated public OpenAPI facade;
+- durable JSON Schema documents and an unratified public-safe OpenAPI candidate;
 - generated-code consumption in product libraries and process boundaries;
-- Mindclade-owned SDK Forge planning with OAGen as its typed-IR foundation,
-  Fern as the preferred qualified shadow, Speakeasy as a benchmark/fallback,
-  and Stainless retained only for existing-project legacy comparisons;
+- Buf-generated native Protobuf/gRPC/Connect clients wrapped by
+  Mindclade-owned internal Go, Python, Rust, and TypeScript facades; Fern and
+  Speakeasy remain optional HTTP/JSON comparison tools, never dependencies;
 - tenant-scoped idempotency, outbox/inbox, lease fencing, and reconciliation;
 - immutable artifact finalization and offline qualification tooling; and
 - a local CPU-only integration profile with no production authority.

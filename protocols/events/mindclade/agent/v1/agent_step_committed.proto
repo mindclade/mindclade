@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package mindclade.events.agent.v1;
+
+import "google/protobuf/timestamp.proto";
+import "proto/mindclade/agent/v1/agent_step.proto";
+import "proto/mindclade/common/v1/resource_reference.proto";
+
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/agent/v1;agentv1";
+
+// AgentStepCommitted records one append-only fenced step and resulting run revision.
+message AgentStepCommitted {
+  mindclade.agent.v1.AgentStep agent_step = 1;
+  mindclade.common.v1.ResourceRef agent_run = 2;
+  google.protobuf.Timestamp committed_at = 3;
+}

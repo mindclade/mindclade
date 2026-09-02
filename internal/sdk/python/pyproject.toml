@@ -1,0 +1,28 @@
+[project]
+name = "mindclade-internal-sdk"
+version = "0.1.0"
+description = "Private Mindclade SDK over generated Protobuf/gRPC clients"
+requires-python = "==3.12.*"
+dependencies = [
+  "grpcio==1.83.1",
+  "google-auth==2.57.0",
+  "mindclade-generated-protocols==0.1.0",
+  "protobuf==7.36.0",
+  "requests==2.34.2",
+]
+
+[tool.uv]
+package = false
+
+[tool.mindclade]
+visibility = "repository-internal"
+publish = false
+
+[tool.pyright]
+pythonVersion = "3.12"
+typeCheckingMode = "strict"
+include = ["mindclade_internal_sdk", "tests"]
+extraPaths = [".", "../../../protocols/generated/python"]
+venvPath = "../../.."
+venv = ".venv"
+reportMissingModuleSource = false

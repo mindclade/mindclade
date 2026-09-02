@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package mindclade.events.dataset.v1;
+
+import "google/protobuf/timestamp.proto";
+import "proto/mindclade/artifact/v1/artifact_reference.proto";
+import "proto/mindclade/artifact/v1/evidence_reference.proto";
+import "proto/mindclade/common/v1/resource_reference.proto";
+
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/dataset/v1;datasetv1";
+
+// DatasetReleasePublished records publication of a verified immutable manifest.
+message DatasetReleasePublished {
+  string dataset_release_name = 1;
+  string dataset_release_uid = 2;
+  int64 dataset_release_revision = 3;
+  string dataset_name = 4;
+  string release_id = 5;
+  mindclade.artifact.v1.ArtifactRef manifest = 6;
+  repeated mindclade.artifact.v1.EvidenceRef qualification_evidence = 7;
+  mindclade.common.v1.ResourceRef parent_release = 8;
+  mindclade.common.v1.ResourceRef use_policy = 9;
+  mindclade.common.v1.ResourceRef operation = 10;
+  google.protobuf.Timestamp published_at = 11;
+}

@@ -2,7 +2,7 @@ apiVersion: mindclade.dev/v1
 kind: Component
 metadata:
   name: services-control-plane
-  description: Wave 1 durable tenant-scoped control-plane kernel.
+  description: Generated-RPC control plane with tenant-scoped PostgreSQL durability and protobuf Pub/Sub delivery.
 spec:
   type: control-plane-service
   lifecycle: pre-production
@@ -20,6 +20,8 @@ spec:
     - durable-operation-kernel-v1
     - transactional-outbox-v1
     - fenced-attempt-v1
+    - generated-grpc-runtime-v1
+    - protobuf-pubsub-outbox-v1
   release:
     strategy: source-only
     artifact: null

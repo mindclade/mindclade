@@ -27,6 +27,77 @@ def root() -> Path:
 
 
 class GeneratedClientsContractTest(unittest.TestCase):
+    def test_every_declared_python_package_round_trips_a_populated_message(
+        self,
+    ) -> None:
+        repository = root()
+        sys.path.insert(0, str(repository / "protocols/generated/python"))
+        json_format = importlib.import_module("google.protobuf.json_format")
+        descriptor = importlib.import_module("google.protobuf.descriptor")
+        matrix = json.loads((repository / "tests/conformance/contract_matrix.yaml").read_text())
+
+        def scalar_value(field: object) -> object:
+            if field.type == descriptor.FieldDescriptor.TYPE_STRING:  # type: ignore[attr-defined]
+                return "fixture"
+            if field.type == descriptor.FieldDescriptor.TYPE_BYTES:  # type: ignore[attr-defined]
+                return b"fixture"
+            if field.type == descriptor.FieldDescriptor.TYPE_BOOL:  # type: ignore[attr-defined]
+                return True
+            if field.type == descriptor.FieldDescriptor.TYPE_ENUM:  # type: ignore[attr-defined]
+                values = field.enum_type.values  # type: ignore[attr-defined]
+                return values[1].number if len(values) > 1 else values[0].number
+            if field.type in (  # type: ignore[attr-defined]
+                descriptor.FieldDescriptor.TYPE_DOUBLE,
+                descriptor.FieldDescriptor.TYPE_FLOAT,
+            ):
+                return 1.25
+            return 7
+
+        def populate(message: object, depth: int = 0) -> bool:
+            for field in message.DESCRIPTOR.fields:  # type: ignore[attr-defined]
+                if field.is_repeated:
+                    continue
+                if field.type == descriptor.FieldDescriptor.TYPE_MESSAGE:
+                    continue
+                setattr(message, field.name, scalar_value(field))
+                return True
+            for field in message.DESCRIPTOR.fields:  # type: ignore[attr-defined]
+                if not field.is_repeated or field.type == descriptor.FieldDescriptor.TYPE_MESSAGE:
+                    continue
+                getattr(message, field.name).append(scalar_value(field))
+                return True
+            if depth < 8:
+                for field in message.DESCRIPTOR.fields:  # type: ignore[attr-defined]
+                    if field.is_repeated or field.type != descriptor.FieldDescriptor.TYPE_MESSAGE:
+                        continue
+                    child = getattr(message, field.name)
+                    if populate(child, depth + 1):
+                        return True
+            return False
+
+        for declaration in matrix["protobuf_packages"]:
+            package = declaration["name"]
+            with self.subTest(package=package):
+                module = importlib.import_module(declaration["module"])
+                message_type = getattr(module, declaration["message"])
+                original = message_type()
+                self.assertEqual(original.DESCRIPTOR.file.package, package)
+                self.assertTrue(
+                    populate(original),
+                    f"{original.DESCRIPTOR.full_name} has no populatable scalar field",
+                )
+                self.assertTrue(original.ListFields())
+
+                wire = original.SerializeToString(deterministic=True)
+                self.assertTrue(wire)
+                wire_decoded = message_type.FromString(wire)
+                self.assertEqual(original, wire_decoded)
+
+                json_payload = json_format.MessageToJson(original)
+                json_decoded = message_type()
+                json_format.Parse(json_payload, json_decoded)
+                self.assertEqual(original, json_decoded)
+
     def test_public_grpc_facade_executes_a_loopback_rpc(self) -> None:
         repository = root()
         sys.path.insert(0, str(repository / "protocols/generated/python"))
@@ -62,9 +133,7 @@ class GeneratedClientsContractTest(unittest.TestCase):
                     ),
                     timeout=5,
                 )
-            self.assertEqual(
-                response.name, "tenants/tenant_1/projects/project_1/operations/op_1"
-            )
+            self.assertEqual(response.name, "tenants/tenant_1/projects/project_1/operations/op_1")
             self.assertEqual(response.state, "RUNNING")
             self.assertEqual(response.revision, 3)
         finally:
@@ -195,6 +264,43 @@ class GeneratedClientsContractTest(unittest.TestCase):
         )
         decoded = serialization.parse_event_payload(envelope, event_module.JobRequested)
         self.assertEqual(decoded, payload)
+
+        with self.assertRaisesRegex(ValueError, "unregistered event type/version"):
+            serialization.make_event_envelope(
+                resource,
+                event_id="event_unregistered_type",
+                event_version=1,
+                tenant_id="tenant_1",
+                producer="control-plane",
+                occurred_at=datetime(2026, 8, 31, tzinfo=UTC),
+                subject=resource,
+            )
+        with self.assertRaisesRegex(ValueError, "unregistered event type/version"):
+            serialization.make_event_envelope(
+                payload,
+                event_id="event_unregistered_version",
+                event_version=2,
+                tenant_id="tenant_1",
+                producer="control-plane",
+                occurred_at=datetime(2026, 8, 31, tzinfo=UTC),
+                subject=resource,
+            )
+
+        unknown_type = type(envelope).FromString(envelope.SerializeToString())
+        unknown_type.event_type = "mindclade.events.job.v1.UnknownEvent"
+        with self.assertRaisesRegex(ValueError, "unregistered event type/version"):
+            serialization.parse_event_payload(unknown_type, event_module.JobRequested)
+
+        unknown_version = type(envelope).FromString(envelope.SerializeToString())
+        unknown_version.event_version = 2
+        with self.assertRaisesRegex(ValueError, "unregistered event type/version"):
+            serialization.parse_event_payload(unknown_version, event_module.JobRequested)
+
+        wrong_content_type = type(envelope).FromString(envelope.SerializeToString())
+        wrong_content_type.payload_content_type = "application/json"
+        with self.assertRaisesRegex(ValueError, "event content type mismatch"):
+            serialization.parse_event_payload(wrong_content_type, event_module.JobRequested)
+
         envelope.payload_digest = "sha256:" + "0" * 64
         with self.assertRaisesRegex(ValueError, "digest mismatch"):
             serialization.parse_event_payload(envelope, event_module.JobRequested)
@@ -253,7 +359,9 @@ class GeneratedClientsContractTest(unittest.TestCase):
         sys.path.insert(0, str(repository / "protocols/generated/python"))
         api = importlib.import_module("mindclade.api.v1.mindclade_service_pb2")
         annotations = importlib.import_module("google.api.annotations_pb2")
-        document = yaml.safe_load((repository / "protocols/openapi/external-api.yaml").read_text())
+        document = yaml.safe_load(
+            (repository / "protocols/openapi/published/mindclade.openapi.yaml").read_text()
+        )
 
         def openapi_operations() -> dict[str, tuple[str, str, dict[str, object]]]:
             result = {}
@@ -294,7 +402,8 @@ class GeneratedClientsContractTest(unittest.TestCase):
         operations = openapi_operations()
         service = api.DESCRIPTOR.services_by_name["MindcladeService"]
         self.assertEqual(
-            set(operations), {method.name[0].lower() + method.name[1:] for method in service.methods}
+            set(operations),
+            {method.name[0].lower() + method.name[1:] for method in service.methods},
         )
         for method in service.methods:
             operation_id = method.name[0].lower() + method.name[1:]
@@ -372,7 +481,9 @@ class GeneratedClientsContractTest(unittest.TestCase):
         sys.path.insert(0, str(repository / "protocols/generated/python"))
         api = importlib.import_module("mindclade.api.v1.mindclade_service_pb2")
         json_format = importlib.import_module("google.protobuf.json_format")
-        document = yaml.safe_load((repository / "protocols/openapi/external-api.yaml").read_text())
+        document = yaml.safe_load(
+            (repository / "protocols/openapi/published/mindclade.openapi.yaml").read_text()
+        )
 
         payload = json.loads(
             json_format.MessageToJson(
@@ -386,9 +497,7 @@ class GeneratedClientsContractTest(unittest.TestCase):
         )
         self.assertEqual(payload["mediaType"], "application/octet-stream")
         self.assertEqual(payload["sizeBytes"], "9007199254740993")
-        size_schema = document["components"]["schemas"]["ArtifactRef"]["properties"][
-            "sizeBytes"
-        ]
+        size_schema = document["components"]["schemas"]["ArtifactRef"]["properties"]["sizeBytes"]
         self.assertEqual(size_schema["type"], "string")
         self.assertRegex(payload["sizeBytes"], size_schema["pattern"])
         with self.assertRaisesRegex(json_format.ParseError, "no field named"):

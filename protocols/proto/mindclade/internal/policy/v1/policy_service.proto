@@ -12,7 +12,7 @@ import "proto/mindclade/policy/v1/authorization_decision.proto";
 import "proto/mindclade/policy/v1/policy_reference.proto";
 import "proto/mindclade/policy/v1/use_policy.proto";
 
-option go_package = "github.com/mindclade/mindclade/protocols/generated/go/internal/policy/v1;internalpolicyv1";
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/policy/v1;internalpolicyv1";
 
 // EvaluateAuthorizationRequest freezes the principal, action, target, and intent evaluated.
 message EvaluateAuthorizationRequest {
@@ -24,6 +24,8 @@ message EvaluateAuthorizationRequest {
   string intent_digest = 6;
   repeated mindclade.policy.v1.PolicyReference policy_snapshots = 7;
   google.protobuf.Timestamp deadline = 8;
+  // Durable command identity used to make retries replay the same decision.
+  mindclade.common.v1.CommandContext context = 9;
 }
 
 // EvaluateAuthorizationResponse returns an immutable fail-closed decision.

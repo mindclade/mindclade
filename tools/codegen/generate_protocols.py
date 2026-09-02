@@ -1,5 +1,5 @@
 #!/usr/bin/env python3.12
-"""Generate committed Protobuf bindings with the locked native toolchain."""
+"""Generate locked Protobuf bindings and refresh the unratified descriptor candidate."""
 
 from __future__ import annotations
 
@@ -25,6 +25,20 @@ from google.protobuf import descriptor_pb2, descriptor_pool, message_factory
 
 GENERATOR = "mindclade-contract-codegen 3.1.0"
 LANGUAGES = ("go", "python", "rust", "typescript")
+PROTOBUF_CANDIDATE = Path("protocols/compatibility/baselines/protobuf.candidate.json")
+PROTOBUF_PREDECESSOR = Path("protocols/compatibility/baselines/protobuf.predecessor.lock.json")
+PROTOBUF_RATIFIED_BASELINE = Path("protocols/compatibility/baselines/protobuf.lock.json")
+OPENAPI_CANDIDATE = Path("protocols/compatibility/baselines/openapi.lock.json")
+PREDECESSOR_ARTIFACT_DIGEST = (
+    "sha256:07d7ee37e68211870861b7fc1ec5118c423447319603523bd9589c1c5dea6aaf"
+)
+PREDECESSOR_DESCRIPTOR_DIGEST = (
+    "sha256:c817a8313d6378738386f6733337fd54fbeb37c38ddf86ac79859f10afb471d9"
+)
+PREDECESSOR_REVISION = "9b5fbea8a44b15c291c6fd6247a57ad350487544"
+TRAINING_VERTICAL_EVIDENCE_CHECKS = frozenset(
+    {"cross_language", "database", "event", "gateway", "grpc", "sdk"}
+)
 PROTO_SUFFIX = {"go": ".pb.go", "python": "_pb2.py", "rust": ".rs", "typescript": "_pb.ts"}
 GENERATED_SUFFIXES = {
     "go": (".pb.go", "_grpc.pb.go"),
@@ -131,6 +145,7 @@ def ensure_toolchain(root: Path, staging: Path, lock: Mapping[str, Any]) -> Path
             ["go", "tool", "protoc-gen-go-grpc", "--version"], root
         ),
         "protoc-gen-es": command_version(["node_modules/.bin/protoc-gen-es", "--version"], root),
+        "rustfmt": command_version(["rustfmt", "--version"], root),
     }
     for name, actual in actual_versions.items():
         wanted = tools[name]["version_output"]
@@ -238,6 +253,20 @@ def projection_parts(package: str) -> tuple[str, ...]:
     return (parts[1], "v1")
 
 
+def go_projection_parts(package: str) -> tuple[str, ...]:
+    """Return a Go-importable projection path for one Protobuf package.
+
+    Go reserves a path segment named ``internal`` for compiler-enforced import
+    visibility. The protobuf namespace remains ``mindclade.internal.*`` while
+    its Go projection uses ``internalrpc`` so control-plane and worker packages
+    can consume the generated interfaces.
+    """
+    parts = projection_parts(package)
+    if parts[0] == "internal":
+        return ("internalrpc", *parts[1:])
+    return parts
+
+
 def projection_path(package: str) -> Path:
     return Path(*projection_parts(package))
 
@@ -339,12 +368,22 @@ def previous_generated_paths(root: Path) -> set[Path]:
     if not isinstance(raw_files, dict):
         raise ValueError("generated file manifest has no files object")
     paths: set[Path] = set()
+    external_allowlist = {
+        OPENAPI_CANDIDATE,
+        Path("protocols/openapi/curated/mindclade.openapi.yaml"),
+        Path("protocols/openapi/published/mindclade.openapi.yaml"),
+        Path("protocols/openapi/raw/mindclade.openapi.yaml"),
+        Path("services/control_plane/internal/platform/queue/event_registry_generated.go"),
+    }
     for value in cast(dict[str, object], raw_files):
         relative = Path(value)
         if (
             relative.is_absolute()
             or ".." in relative.parts
-            or relative.parts[:2] != ("protocols", "generated")
+            or (
+                relative.parts[:2] != ("protocols", "generated")
+                and relative not in external_allowlist
+            )
         ):
             raise ValueError(f"unsafe prior generated path: {value}")
         paths.add(root / relative)
@@ -493,9 +532,13 @@ def target_path(
     suffix: str | None = None,
 ) -> Path:
     package = cast(str, descriptor["package"])
-    package_path = Path(
-        *(python_projection_parts(package) if language == "python" else projection_parts(package))
-    )
+    if language == "python":
+        parts = python_projection_parts(package)
+    elif language == "go":
+        parts = go_projection_parts(package)
+    else:
+        parts = projection_parts(package)
+    package_path = Path(*parts)
     stem = Path(cast(str, descriptor["name"])).stem
     resolved_suffix = PROTO_SUFFIX[language] if suffix is None else suffix
     return root / "protocols/generated" / language / package_path / f"{stem}{resolved_suffix}"
@@ -667,6 +710,7 @@ def normalize_rust(
             f"crate::{dependency_projection}::",
             content,
         )
+    content = re.sub(r"(?m)^[ \t]*///[ \t]*\n", "", content)
     return content.rstrip() + "\n"
 
 
@@ -794,18 +838,20 @@ def language_metadata(
             if "go" in declared_languages(lock, cast(str, item["package"]))
         ]
         if go_descriptors:
+            go_package_path = Path(*go_projection_parts(cast(str, go_descriptors[0]["package"])))
             go_sources = sorted(
                 path.name
                 for path in outputs
-                if path.parent == generated / "go" / package_path and path.name.endswith(".go")
+                if path.parent == generated / "go" / go_package_path and path.name.endswith(".go")
             )
             dependency_projections = sorted(
                 {
-                    projection_parts(cast(str, by_name[dependency]["package"]))
+                    go_projection_parts(cast(str, by_name[dependency]["package"]))
                     for item in go_descriptors
                     for dependency in cast(list[str], item.get("dependency", []))
                     if dependency in by_name
-                    and projection_parts(cast(str, by_name[dependency]["package"])) != projection
+                    and go_projection_parts(cast(str, by_name[dependency]["package"]))
+                    != go_projection_parts(cast(str, item["package"]))
                 }
             )
             deps = [
@@ -818,6 +864,9 @@ def language_metadata(
                 ),
                 "google/protobuf/duration.proto": (
                     "@org_golang_google_protobuf//types/known/durationpb"
+                ),
+                "google/protobuf/descriptor.proto": (
+                    "@org_golang_google_protobuf//types/descriptorpb"
                 ),
                 "google/protobuf/empty.proto": "@org_golang_google_protobuf//types/known/emptypb",
                 "google/protobuf/field_mask.proto": (
@@ -848,9 +897,10 @@ def language_metadata(
                 for value in dependency_projections
             )
             import_path = (
-                f"github.com/mindclade/mindclade/protocols/generated/go/{package_path.as_posix()}"
+                "github.com/mindclade/mindclade/protocols/generated/go/"
+                f"{go_package_path.as_posix()}"
             )
-            outputs[generated / "go" / package_path / "BUILD.bazel"] = (
+            outputs[generated / "go" / go_package_path / "BUILD.bazel"] = (
                 'load("@rules_go//go:def.bzl", "go_library")\n\n'
                 "go_library(\n"
                 '    name = "bindings",\n'
@@ -870,12 +920,20 @@ def language_metadata(
         b"# Generated Go bindings\n\nGenerated by the locked Protobuf and gRPC-Go toolchain.\n"
     )
     outputs[generated / "go" / "BUILD.bazel"] = generated_build(
-        ["BUILD.bazel", "README.generated.md"]
-        + [
-            f"//protocols/generated/go/{Path(*projection).as_posix()}:generated_sources"
-            for projection in projections
+        [
+            "BUILD.bazel",
+            "README.generated.md",
+            *sorted(
+                {
+                    "//protocols/generated/go/"
+                    f"{Path(*go_projection_parts(cast(str, descriptor['package']))).as_posix()}"
+                    ":generated_sources"
+                    for descriptor in descriptors
+                    if "go" in declared_languages(lock, cast(str, descriptor["package"]))
+                }
+            ),
+            "//protocols/generated/go/schema/v1:generated_sources",
         ]
-        + ["//protocols/generated/go/schema/v1:generated_sources"]
     )
     outputs[generated / "python" / "README.generated.md"] = (
         b"# Generated Python bindings\n\n"
@@ -887,7 +945,9 @@ def language_metadata(
         b'    name = "bindings",\n'
         b'    srcs = glob(["**/*.py"]),\n'
         b'    imports = ["."],\n'
-        b'    deps = ["@mindclade_pypi//googleapis_common_protos", "@mindclade_pypi//grpcio", "@mindclade_pypi//jsonschema", "@mindclade_pypi//protobuf"],\n'
+        b'    deps = ["@mindclade_pypi//googleapis_common_protos", '
+        b'"@mindclade_pypi//grpcio", "@mindclade_pypi//jsonschema", '
+        b'"@mindclade_pypi//protobuf"],\n'
         b'    visibility = ["//visibility:public"],\n'
         b")\n\n"
         b"filegroup(\n"
@@ -934,14 +994,22 @@ def language_metadata(
         b"Generated by the locked Protobuf-ES and Connect toolchain.\n"
     )
     outputs[generated / "typescript" / "BUILD.bazel"] = (
-        b'load("@aspect_rules_ts//ts:defs.bzl", "ts_project")\n'
+        b'load("@aspect_rules_ts//ts:defs.bzl", "ts_config", "ts_project")\n'
         b'load("@npm//:defs.bzl", "npm_link_all_packages")\n\n'
         b'npm_link_all_packages(name = "node_modules")\n\n'
+        b"# NodeNext classifies generated modules using this package boundary.\n"
+        b"# Keep package.json explicit so sandboxed builds emit the same ESM as pnpm.\n"
+        b"ts_config(\n"
+        b'    name = "generated_tsconfig",\n'
+        b'    src = "tsconfig.json",\n'
+        b'    deps = ["package.json"],\n'
+        b")\n\n"
         b"ts_project(\n"
         b'    name = "bindings",\n'
         b'    srcs = glob(["**/*.ts"], exclude = ["node_modules/**"]),\n'
+        b'    assets = ["package.json"],\n'
         b"    declaration = True,\n"
-        b'    tsconfig = "tsconfig.json",\n'
+        b'    tsconfig = ":generated_tsconfig",\n'
         b'    transpiler = "tsc",\n'
         b"    deps = [\n"
         b'        ":node_modules/@bufbuild/protobuf",\n'
@@ -953,7 +1021,7 @@ def language_metadata(
         b")\n\n"
         b"filegroup(\n"
         b'    name = "generated_sources",\n'
-        b'    srcs = glob(["**/*"]),\n'
+        b'    srcs = glob(["**/*"], exclude = ["node_modules/**"]),\n'
         b'    visibility = ["//visibility:public"],\n'
         b")\n"
     )
@@ -973,11 +1041,11 @@ def language_metadata(
     )
 
 
-def event_registry_go(
+def event_registry_entries(
     root: Path,
     descriptors: Sequence[Mapping[str, Any]],
-) -> bytes:
-    """Validate the governed event registry and render its Go lookup table."""
+) -> tuple[list[tuple[str, int, str, str]], str]:
+    """Validate and return the complete governed event registry."""
     registry_path = root / "protocols/events/registry.yaml"
     raw = yaml.safe_load(registry_path.read_text(encoding="utf-8"))
     if not isinstance(raw, dict) or raw.get("schema_version") != "mindclade.event-registry/v1":
@@ -1042,6 +1110,15 @@ def event_registry_go(
         orphaned = sorted(registered_names.difference(descriptor_events))
         raise ValueError(f"event registry descriptor drift: missing={missing}, orphaned={orphaned}")
 
+    return sorted(entries), sha256_file(registry_path)
+
+
+def event_registry_go(
+    root: Path,
+    descriptors: Sequence[Mapping[str, Any]],
+) -> bytes:
+    """Render the validated event registry as a Go lookup table."""
+    entries, digest = event_registry_entries(root, descriptors)
     rows = "\n".join(
         "\t{FullName: "
         + json.dumps(full_name)
@@ -1052,9 +1129,8 @@ def event_registry_go(
         + ", Source: "
         + json.dumps(source)
         + "},"
-        for full_name, version, content_type, source in sorted(entries)
+        for full_name, version, content_type, source in entries
     )
-    digest = sha256_file(registry_path)
     return (
         f"// Code generated by {GENERATOR}; DO NOT EDIT.\n"
         f"// Source: protocols/events/registry.yaml ({digest})\n\n"
@@ -1065,13 +1141,63 @@ def event_registry_go(
     ).encode()
 
 
-def protobuf_baseline(
+def event_registry_python(
+    root: Path,
+    descriptors: Sequence[Mapping[str, Any]],
+) -> bytes:
+    """Render the validated event registry for Python publishers and consumers."""
+    entries, digest = event_registry_entries(root, descriptors)
+    registrations = "\n".join(
+        "    EventRegistration(\n"
+        f"        full_name={json.dumps(full_name)},\n"
+        f"        version={version},\n"
+        f"        content_type={json.dumps(content_type)},\n"
+        f"        source={json.dumps(source)},\n"
+        "    ),"
+        for full_name, version, content_type, source in entries
+    )
+    return (
+        f"# Code generated by {GENERATOR}; DO NOT EDIT.\n"
+        "# Source: protocols/events/registry.yaml\n"
+        f"# Source digest: {digest}\n\n"
+        "from __future__ import annotations\n\n"
+        "from dataclasses import dataclass\n"
+        "from typing import Final\n\n"
+        "DETERMINISTIC_PROTOBUF_CONTENT_TYPE: Final = "
+        '"application/x-protobuf; deterministic=true"\n\n\n'
+        "@dataclass(frozen=True, slots=True)\n"
+        "class EventRegistration:\n"
+        "    full_name: str\n"
+        "    version: int\n"
+        "    content_type: str\n"
+        "    source: str\n\n\n"
+        "EVENT_REGISTRATIONS: Final = (\n"
+        f"{registrations}\n"
+        ")\n\n"
+        "_REGISTRATIONS_BY_IDENTITY: Final = {\n"
+        "    (registration.full_name, registration.version): registration\n"
+        "    for registration in EVENT_REGISTRATIONS\n"
+        "}\n\n\n"
+        "def require_event_registration(\n"
+        "    full_name: str, version: int, content_type: str\n"
+        ") -> EventRegistration:\n"
+        '    """Return the exact registration or reject an unsupported envelope."""\n'
+        "    registration = _REGISTRATIONS_BY_IDENTITY.get((full_name, version))\n"
+        "    if registration is None:\n"
+        '        raise ValueError(f"unregistered event type/version: {full_name}@{version}")\n'
+        "    if registration.content_type != content_type:\n"
+        "        raise ValueError(\n"
+        '            f"event content type mismatch: expected '
+        '{registration.content_type}, got {content_type}"\n'
+        "        )\n"
+        "    return registration\n"
+    ).encode()
+
+
+def protobuf_candidate(
     root: Path,
     descriptors: Sequence[Mapping[str, Any]],
     descriptor_set: bytes,
-    *,
-    predecessor_digest: str | None = None,
-    reset_authority: str | None = None,
 ) -> bytes:
     sources = {
         path.relative_to(root).as_posix(): sha256_file(path)
@@ -1097,7 +1223,23 @@ def protobuf_baseline(
             "base64": base64.b64encode(descriptor_set).decode("ascii"),
             "digest": sha256_bytes(descriptor_set),
         },
-        "schema_version": "mindclade.protobuf-baseline/v2",
+        "lifecycle": {
+            "authority": "docs/adr/0015-all-contracts-clean-v1-baseline.md",
+            "breaking_enforcement": "not-started",
+            "predecessor": {
+                "artifact_digest": PREDECESSOR_ARTIFACT_DIGEST,
+                "descriptor_digest": PREDECESSOR_DESCRIPTOR_DIGEST,
+                "path": PROTOBUF_PREDECESSOR.as_posix(),
+                "revision": PREDECESSOR_REVISION,
+                "source_count": 22,
+            },
+            "ratification": {
+                "action": "generate_protocols.py --ratify-v1-baseline",
+                "required_evidence": sorted(TRAINING_VERTICAL_EVIDENCE_CHECKS),
+            },
+            "state": "unratified-candidate",
+        },
+        "schema_version": "mindclade.protobuf-candidate/v1",
         "sources": sources,
         "wire_fixture": {
             "base64": base64.b64encode(fixture).decode("ascii"),
@@ -1111,25 +1253,339 @@ def protobuf_baseline(
             },
         },
     }
-    if predecessor_digest is not None:
-        if reset_authority is None:
-            value["promotion"] = {
-                "compatibility_check": "buf-breaking-file",
-                "mode": "compatible",
-                "predecessor_digest": predecessor_digest,
-            }
-        else:
-            value["promotion"] = {
-                "authority": reset_authority,
-                "compatibility_check": "intentional-clean-v1-reset",
-                "mode": "baseline-reset",
-                "predecessor_digest": predecessor_digest,
-            }
     return (json.dumps(value, sort_keys=True, separators=(",", ":")) + "\n").encode()
 
 
+def validate_training_vertical_evidence(
+    evidence_path: Path,
+    *,
+    candidate_descriptor_digest: str,
+) -> tuple[dict[str, Any], str]:
+    """Validate the closed evidence gate for the one-time v1 ratification."""
+
+    evidence = load_json(evidence_path)
+    if evidence.get("schema_version") != "mindclade.training-vertical-evidence/v1":
+        raise ValueError("training vertical evidence has an unsupported schema_version")
+    if evidence.get("status") != "passed":
+        raise ValueError("training vertical evidence is not passed")
+    if evidence.get("candidate_descriptor_digest") != candidate_descriptor_digest:
+        raise ValueError("training vertical evidence is bound to a different descriptor")
+    source_revision = evidence.get("source_revision")
+    if (
+        not isinstance(source_revision, str)
+        or re.fullmatch(r"[0-9a-f]{40}", source_revision) is None
+    ):
+        raise ValueError("training vertical evidence requires a full source_revision")
+    raw_checks = evidence.get("checks")
+    if not isinstance(raw_checks, dict) or set(raw_checks) != TRAINING_VERTICAL_EVIDENCE_CHECKS:
+        raise ValueError(
+            "training vertical evidence must contain exactly these checks: "
+            + ", ".join(sorted(TRAINING_VERTICAL_EVIDENCE_CHECKS))
+        )
+    checks = cast(dict[str, object], raw_checks)
+    for name, raw_check in sorted(checks.items()):
+        if not isinstance(raw_check, dict):
+            raise ValueError(f"training vertical evidence check {name!r} is not an object")
+        check = cast(dict[str, object], raw_check)
+        receipt_digest = check.get("receipt_digest")
+        if check.get("status") != "passed" or not isinstance(receipt_digest, str):
+            raise ValueError(f"training vertical evidence check {name!r} is not passed")
+        if re.fullmatch(r"sha256:[0-9a-f]{64}", receipt_digest) is None:
+            raise ValueError(
+                f"training vertical evidence check {name!r} has an invalid receipt digest"
+            )
+    return evidence, sha256_file(evidence_path)
+
+
+def ratified_protobuf_baseline(
+    candidate: Mapping[str, Any],
+    *,
+    evidence: Mapping[str, Any],
+    evidence_digest: str,
+) -> bytes:
+    """Construct the first enforceable v1 baseline after the evidence gate passes."""
+
+    value = {
+        "descriptor_set": candidate["descriptor_set"],
+        "ratification": {
+            "authority": "docs/adr/0015-all-contracts-clean-v1-baseline.md",
+            "candidate_artifact_digest": sha256_bytes(
+                (json.dumps(candidate, sort_keys=True, separators=(",", ":")) + "\n").encode()
+            ),
+            "evidence_digest": evidence_digest,
+            "evidence_schema_version": evidence["schema_version"],
+            "source_revision": evidence["source_revision"],
+            "predecessor_artifact_digest": PREDECESSOR_ARTIFACT_DIGEST,
+        },
+        "schema_version": "mindclade.protobuf-baseline/v3",
+        "sources": candidate["sources"],
+        "wire_fixture": candidate["wire_fixture"],
+    }
+    return (json.dumps(value, sort_keys=True, separators=(",", ":")) + "\n").encode()
+
+
+def protojson_field_schema(field: Any) -> dict[str, Any]:
+    """Return the descriptor-derived JSON shape of one Protobuf field."""
+    field_type = descriptor_pb2.FieldDescriptorProto
+    if (
+        field.type == field_type.TYPE_MESSAGE
+        and field.message_type is not None
+        and field.message_type.GetOptions().map_entry
+    ):
+        value = field.message_type.fields_by_name["value"]
+        return {
+            "additionalProperties": protojson_field_schema(value),
+            "type": "object",
+        }
+
+    if field.type == field_type.TYPE_MESSAGE:
+        well_known = {
+            "google.protobuf.Duration": {"format": "duration", "type": "string"},
+            "google.protobuf.Timestamp": {"format": "date-time", "type": "string"},
+        }
+        value = well_known.get(field.message_type.full_name)
+        schema = (
+            dict(value)
+            if value is not None
+            else {
+                "$ref": "#/components/schemas/" + field.message_type.full_name,
+            }
+        )
+    elif field.type == field_type.TYPE_ENUM:
+        schema = {
+            "enum": [value.name for value in field.enum_type.values],
+            "type": "string",
+        }
+    elif field.type == field_type.TYPE_BOOL:
+        schema = {"type": "boolean"}
+    elif field.type == field_type.TYPE_STRING:
+        schema = {"type": "string"}
+    elif field.type == field_type.TYPE_BYTES:
+        schema = {"format": "byte", "type": "string"}
+    elif field.type in {
+        field_type.TYPE_INT64,
+        field_type.TYPE_SFIXED64,
+        field_type.TYPE_SINT64,
+    }:
+        schema = {"pattern": "^-?(0|[1-9][0-9]*)$", "type": "string"}
+    elif field.type in {field_type.TYPE_FIXED64, field_type.TYPE_UINT64}:
+        schema = {"pattern": "^(0|[1-9][0-9]*)$", "type": "string"}
+    elif field.type in {
+        field_type.TYPE_INT32,
+        field_type.TYPE_SFIXED32,
+        field_type.TYPE_SINT32,
+    }:
+        schema = {"format": "int32", "type": "integer"}
+    elif field.type in {field_type.TYPE_FIXED32, field_type.TYPE_UINT32}:
+        schema = {"format": "uint32", "type": "integer"}
+    elif field.type == field_type.TYPE_FLOAT:
+        schema = {"format": "float", "type": "number"}
+    elif field.type == field_type.TYPE_DOUBLE:
+        schema = {"format": "double", "type": "number"}
+    else:
+        raise ValueError(f"unsupported public ProtoJSON field type: {field.full_name}")
+
+    if field.is_repeated:
+        return {"items": schema, "type": "array"}
+    return schema
+
+
+def public_protojson_components(
+    pool: descriptor_pool.DescriptorPool,
+) -> dict[str, dict[str, Any]]:
+    """Build complete public ProtoJSON component shapes from descriptors."""
+    options_class = message_factory.GetMessageClass(
+        pool.FindMessageTypeByName("google.protobuf.MessageOptions")
+    )
+    contract_extension = pool.FindExtensionByName("mindclade.api.v1.public_message")
+    public_file = pool.FindFileByName("proto/mindclade/api/v1/mindclade_service.proto")
+    pending = list(public_file.message_types_by_name.values())
+    messages: list[Any] = []
+    while pending:
+        message = pending.pop()
+        pending.extend(message.nested_types)
+        if not message.GetOptions().map_entry:
+            messages.append(message)
+
+    result: dict[str, dict[str, Any]] = {}
+    for message in sorted(messages, key=lambda value: value.full_name):
+        options = options_class.FromString(message.GetOptions().SerializeToString())
+        contract = options.Extensions[contract_extension]
+        required: list[str] = []
+        for field_name in contract.required_fields:
+            field = message.fields_by_name.get(field_name)
+            if field is None:
+                raise ValueError(
+                    f"public required field does not exist: {message.full_name}.{field_name}"
+                )
+            required.append(field.json_name)
+        properties = {field.json_name: protojson_field_schema(field) for field in message.fields}
+        for string_enum in contract.string_enums:
+            field = message.fields_by_name.get(string_enum.field)
+            if field is None or field.type != descriptor_pb2.FieldDescriptorProto.TYPE_STRING:
+                raise ValueError(
+                    "public string-enum field is not a string: "
+                    f"{message.full_name}.{string_enum.field}"
+                )
+            values = list(string_enum.values)
+            if not values or len(values) != len(set(values)):
+                raise ValueError(f"public string enum is empty or duplicated: {field.full_name}")
+            properties[field.json_name]["enum"] = values
+        result[message.full_name] = {
+            "x-mindclade-oneofs": {
+                oneof.name: sorted(field.json_name for field in oneof.fields)
+                for oneof in message.oneofs
+                if len(oneof.fields) > 1
+            },
+            "properties": properties,
+            "required": sorted(required),
+            "type": "object",
+        }
+    return result
+
+
+def expand_google_http_path(path_template: str) -> tuple[str, list[str]]:
+    """Expand a Google resource-pattern binding into a concrete OpenAPI path."""
+    parameter_names: list[str] = []
+
+    def singular(resource: str) -> str:
+        if resource.endswith("ies"):
+            return resource[:-3] + "y"
+        if resource.endswith("s"):
+            return resource[:-1]
+        return resource
+
+    def replace(match: re.Match[str]) -> str:
+        pattern = match.group(2).split("/")
+        result: list[str] = []
+        index = 0
+        while index < len(pattern):
+            part = pattern[index]
+            if index + 1 < len(pattern) and pattern[index + 1] in {"*", "**"}:
+                name = singular(part)
+                if name in parameter_names:
+                    raise ValueError(f"duplicate expanded path parameter: {name}")
+                parameter_names.append(name)
+                result.extend([part, "{" + name + "}"])
+                index += 2
+                continue
+            if part in {"*", "**"}:
+                raise ValueError(f"unbound wildcard in public HTTP path: {path_template}")
+            result.append(part)
+            index += 1
+        return "/".join(result)
+
+    expanded = re.sub(r"\{([^={}]+)=([^{}]+)\}", replace, path_template)
+    if "*" in expanded or re.search(r"\{[^{}=]+=", expanded):
+        raise ValueError(f"unsupported public HTTP path template: {path_template}")
+    return expanded, parameter_names
+
+
+def raw_openapi_document(
+    operations: Sequence[Mapping[str, Any]],
+    components: Mapping[str, Mapping[str, Any]],
+    descriptor_digest: str,
+) -> dict[str, Any]:
+    """Render a valid descriptor-derived OpenAPI 3.1 document."""
+    paths: dict[str, dict[str, Any]] = {}
+    for contract in operations:
+        path, path_parameters = expand_google_http_path(cast(str, contract["pathTemplate"]))
+        parameters: list[dict[str, Any]] = [
+            {
+                "in": "path",
+                "name": name,
+                "required": True,
+                "schema": {"type": "string"},
+            }
+            for name in path_parameters
+        ]
+        required_headers = set(cast(list[str], contract["requiredRequestHeaders"]))
+        parameters.extend(
+            {
+                "in": "header",
+                "name": name,
+                "required": name in required_headers,
+                "schema": {"type": "string"},
+            }
+            for name in cast(list[str], contract["requestHeaders"])
+        )
+        parameters.extend(
+            {
+                "in": "query",
+                "name": name,
+                "required": False,
+                "schema": schema,
+            }
+            for name, schema in cast(dict[str, dict[str, Any]], contract["queryFields"]).items()
+        )
+        responses: dict[str, Any] = {}
+        success_status = set(cast(list[int], contract["successStatus"]))
+        for status_code in cast(list[int], contract["responseStatus"]):
+            response: dict[str, Any] = {"description": "Descriptor-derived response contract."}
+            if status_code in success_status:
+                response["headers"] = {
+                    header: {"schema": {"type": "string"}}
+                    for header in cast(list[str], contract["responseHeaders"])
+                }
+                media_type = (
+                    "text/event-stream"
+                    if contract["stream"] == "STREAM_PROJECTION_SSE"
+                    else "application/json"
+                )
+                response["content"] = {
+                    media_type: {
+                        "schema": {
+                            "$ref": "#/components/schemas/" + cast(str, contract["responseMessage"])
+                        }
+                    }
+                }
+            elif status_code != 304:
+                response["content"] = {
+                    "application/problem+json": {
+                        "schema": {"$ref": "#/components/schemas/mindclade.api.v1.PublicError"}
+                    }
+                }
+            responses[str(status_code)] = response
+        operation: dict[str, Any] = {
+            "operationId": contract["operationId"],
+            "parameters": parameters,
+            "responses": responses,
+            "security": [{"bearerAuth": []}] if contract["auth"] == "bearer" else [],
+        }
+        body_message = contract.get("bodyMessage")
+        if isinstance(body_message, str):
+            operation["requestBody"] = {
+                "content": {
+                    "application/json": {"schema": {"$ref": "#/components/schemas/" + body_message}}
+                },
+                "required": contract["requestBodyRequired"],
+            }
+        paths.setdefault(path, {})[cast(str, contract["method"]).lower()] = operation
+    return {
+        "openapi": "3.1.0",
+        "info": {
+            "title": "Mindclade descriptor-derived public API projection",
+            "version": "v1-candidate",
+        },
+        "paths": paths,
+        "components": {
+            "schemas": dict(components),
+            "securitySchemes": {
+                "bearerAuth": {"scheme": "bearer", "type": "http"},
+            },
+        },
+        "x-mindclade-binding-contracts": list(operations),
+        "x-mindclade-descriptor-digest": descriptor_digest,
+        "x-mindclade-schema-version": "mindclade.raw-openapi-projection/v3",
+        "x-mindclade-generator": {
+            "name": GENERATOR,
+            "source": "tools/codegen/generate_protocols.py",
+        },
+    }
+
+
 def public_openapi_projection(descriptor_set: bytes) -> dict[str, Any]:
-    """Extract the raw public HTTP contract from compiled method descriptors."""
+    """Extract raw HTTP bindings and ProtoJSON components from descriptors."""
     files = descriptor_pb2.FileDescriptorSet.FromString(descriptor_set)
     pool = descriptor_pool.DescriptorPool()
     pending = list(files.file)
@@ -1161,60 +1617,531 @@ def public_openapi_projection(descriptor_set: bytes) -> dict[str, Any]:
         if verb is None:
             raise ValueError(f"public RPC has no google.api.http binding: {method.full_name}")
         stream_enum = contract.DESCRIPTOR.fields_by_name["stream"].enum_type
+        path_template = getattr(rule, verb)
+        path_fields = sorted(
+            {value.split(".", 1)[0] for value in re.findall(r"\{([^={}]+)=", path_template)}
+        )
+        body_field = method.input_type.fields_by_name.get(rule.body) if rule.body else None
+        query_fields = {
+            field.json_name: protojson_field_schema(field)
+            for field in method.input_type.fields
+            if field.name not in path_fields and field.name != rule.body
+        }
         operations.append(
             {
                 "auth": "bearer" if contract.bearer_auth else "none",
                 "body": rule.body or None,
+                "bodyMessage": (
+                    body_field.message_type.full_name
+                    if body_field is not None and body_field.message_type is not None
+                    else None
+                ),
                 "method": verb.upper(),
                 "operationId": method.name[0].lower() + method.name[1:],
-                "pathTemplate": getattr(rule, verb),
+                "pathFields": path_fields,
+                "pathTemplate": path_template,
+                "queryFields": query_fields,
                 "requestHeaders": sorted(contract.request_headers),
+                "requiredRequestHeaders": sorted(contract.required_request_headers),
+                "requestBodyRequired": contract.request_body_required,
+                "requestMessage": method.input_type.full_name,
                 "responseHeaders": sorted(contract.response_headers),
+                "responseMessage": method.output_type.full_name,
+                "responseStatus": sorted([*contract.success_status, *contract.non_success_status]),
                 "serverStreaming": method.server_streaming,
                 "stream": stream_enum.values_by_number[contract.stream].name,
                 "successStatus": sorted(contract.success_status),
             }
         )
-    return {
-        "descriptorDigest": sha256_bytes(descriptor_set),
-        "operations": sorted(operations, key=lambda item: cast(str, item["operationId"])),
-        "schemaVersion": "mindclade.raw-openapi-projection/v1",
+    return raw_openapi_document(
+        sorted(operations, key=lambda item: cast(str, item["operationId"])),
+        public_protojson_components(pool),
+        sha256_bytes(descriptor_set),
+    )
+
+
+def resolve_openapi_ref(document: Mapping[str, Any], value: Mapping[str, Any]) -> Any:
+    """Resolve one bundled OpenAPI reference without permitting external input."""
+    ref = value.get("$ref")
+    if not isinstance(ref, str):
+        return value
+    if not ref.startswith("#/"):
+        raise ValueError(f"external OpenAPI reference is forbidden: {ref}")
+    resolved: Any = document
+    for component in ref[2:].split("/"):
+        key = component.replace("~1", "/").replace("~0", "~")
+        if not isinstance(resolved, dict) or key not in resolved:
+            raise ValueError(f"unresolved OpenAPI reference: {ref}")
+        resolved = resolved[key]
+    return resolved
+
+
+def schema_authority_names(value: Any) -> set[str]:
+    """Collect descriptor message identities declared inside one schema."""
+    if isinstance(value, dict):
+        result = {
+            name
+            for name in [value.get("x-mindclade-authoritative-message")]
+            if isinstance(name, str)
+        }
+        for child in value.values():
+            result.update(schema_authority_names(child))
+        return result
+    if isinstance(value, list):
+        result: set[str] = set()
+        for child in value:
+            result.update(schema_authority_names(child))
+        return result
+    return set()
+
+
+def merged_openapi_object(
+    document: Mapping[str, Any],
+    schema: Mapping[str, Any],
+) -> tuple[dict[str, Any], set[str]]:
+    """Resolve object composition into its effective properties and required set."""
+    resolved = resolve_openapi_ref(document, schema)
+    if not isinstance(resolved, dict):
+        raise ValueError("OpenAPI schema reference did not resolve to an object")
+    properties = dict(cast(dict[str, Any], resolved.get("properties", {})))
+    required = set(cast(list[str], resolved.get("required", [])))
+    for part in cast(list[object], resolved.get("allOf", [])):
+        if not isinstance(part, dict):
+            raise ValueError("OpenAPI allOf member is not an object")
+        child_properties, child_required = merged_openapi_object(
+            document, cast(dict[str, Any], part)
+        )
+        overlap = set(properties).intersection(child_properties)
+        if overlap:
+            raise ValueError(f"OpenAPI allOf duplicates properties: {sorted(overlap)}")
+        properties.update(child_properties)
+        required.update(child_required)
+    return properties, required
+
+
+def validate_curated_protojson(
+    raw: Mapping[str, Any],
+    curated: Mapping[str, Any],
+) -> None:
+    """Reject curated component shapes that differ from descriptor ProtoJSON."""
+    raw_components = cast(
+        dict[str, dict[str, Any]], cast(dict[str, Any], raw["components"])["schemas"]
+    )
+    curated_components = cast(dict[str, dict[str, Any]], curated["components"]["schemas"])
+    component_messages: dict[str, str] = {}
+    for component_name, schema in curated_components.items():
+        authorities = schema_authority_names(schema)
+        if len(authorities) > 1:
+            raise ValueError(
+                f"OpenAPI component has multiple message authorities: {component_name}"
+            )
+        if authorities:
+            component_messages[component_name] = next(iter(authorities))
+            continue
+        inferred = f"mindclade.api.v1.{component_name}"
+        if inferred in raw_components:
+            component_messages[component_name] = inferred
+
+    validated_messages: set[str] = set()
+
+    def validate_schema(
+        curated_schema: Mapping[str, Any],
+        raw_schema: Mapping[str, Any],
+        context: str,
+    ) -> None:
+        expected_ref = raw_schema.get("$ref")
+        if isinstance(expected_ref, str):
+            expected_message = expected_ref.removeprefix("#/components/schemas/")
+            curated_ref = curated_schema.get("$ref")
+            if not isinstance(curated_ref, str) or not curated_ref.startswith(
+                "#/components/schemas/"
+            ):
+                raise ValueError(f"{context}: expected a message schema reference")
+            component_name = curated_ref.rsplit("/", 1)[1]
+            actual_ref = component_messages.get(component_name)
+            if actual_ref != expected_message:
+                raise ValueError(
+                    f"{context}: expected {expected_message}, got {actual_ref or component_name}"
+                )
+            validate_message(component_name, expected_message, context)
+            return
+
+        resolved = resolve_openapi_ref(curated, curated_schema)
+        if not isinstance(resolved, dict):
+            raise ValueError(f"{context}: schema did not resolve to an object")
+        expected_type = raw_schema.get("type")
+        actual_type = resolved.get("type")
+        if expected_type != actual_type:
+            raise ValueError(
+                f"{context}: ProtoJSON type mismatch: expected {expected_type}, got {actual_type}"
+            )
+        if expected_type == "array":
+            raw_items = raw_schema.get("items")
+            actual_items = resolved.get("items")
+            if not isinstance(raw_items, dict) or not isinstance(actual_items, dict):
+                raise ValueError(f"{context}: array item schema is missing")
+            validate_schema(actual_items, raw_items, f"{context}[]")
+        elif expected_type == "object" and "additionalProperties" in raw_schema:
+            raw_values = raw_schema["additionalProperties"]
+            actual_values = resolved.get("additionalProperties")
+            if not isinstance(raw_values, dict) or not isinstance(actual_values, dict):
+                raise ValueError(f"{context}: map value schema is missing")
+            validate_schema(actual_values, raw_values, f"{context}{{}}")
+        expected_enum = raw_schema.get("enum")
+        if expected_enum is not None and resolved.get("enum") != expected_enum:
+            raise ValueError(f"{context}: ProtoJSON enum mismatch")
+        expected_format = raw_schema.get("format")
+        if expected_format is not None and resolved.get("format") != expected_format:
+            raise ValueError(
+                f"{context}: expected format {expected_format}, got {resolved.get('format')}"
+            )
+
+    def validate_message(component_name: str, message_name: str, context: str) -> None:
+        if message_name in validated_messages:
+            return
+        validated_messages.add(message_name)
+        raw_message = raw_components.get(message_name)
+        if raw_message is None:
+            raise ValueError(f"{context}: unknown descriptor message {message_name}")
+        properties, required = merged_openapi_object(curated, curated_components[component_name])
+        raw_properties = cast(dict[str, dict[str, Any]], raw_message["properties"])
+        if set(properties) != set(raw_properties):
+            raise ValueError(
+                f"{context}: ProtoJSON property drift for {message_name}: "
+                f"curated-only={sorted(set(properties) - set(raw_properties))}, "
+                f"descriptor-only={sorted(set(raw_properties) - set(properties))}"
+            )
+        expected_required = set(cast(list[str], raw_message["required"]))
+        if required != expected_required:
+            raise ValueError(
+                f"{context}: requiredness drift for {message_name}: "
+                f"curated={sorted(required)}, descriptor={sorted(expected_required)}"
+            )
+        for field_name, raw_field in raw_properties.items():
+            validate_schema(
+                cast(dict[str, Any], properties[field_name]),
+                raw_field,
+                f"{context}.{field_name}",
+            )
+
+    def operation_schema(operation: Mapping[str, Any], success_status: int) -> dict[str, Any]:
+        response = cast(dict[str, Any], operation["responses"][str(success_status)])
+        response = cast(dict[str, Any], resolve_openapi_ref(curated, response))
+        content = cast(dict[str, dict[str, Any]], response.get("content", {}))
+        for media_type in ("application/json", "text/event-stream"):
+            if media_type in content:
+                return cast(dict[str, Any], content[media_type]["schema"])
+        raise ValueError(f"operation response has no ProtoJSON schema: {operation['operationId']}")
+
+    operation_by_id = {
+        operation["operationId"]: operation
+        for path_item in cast(dict[str, dict[str, Any]], curated["paths"]).values()
+        for method, operation in path_item.items()
+        if method in {"delete", "get", "patch", "post", "put"}
     }
+    for raw_operation in cast(list[dict[str, Any]], raw["x-mindclade-binding-contracts"]):
+        operation_id = cast(str, raw_operation["operationId"])
+        operation = operation_by_id[operation_id]
+        body_message = raw_operation.get("bodyMessage")
+        if isinstance(body_message, str):
+            body = cast(dict[str, Any], operation["requestBody"])
+            content = cast(dict[str, dict[str, Any]], body["content"])
+            validate_schema(
+                cast(dict[str, Any], content["application/json"]["schema"]),
+                {"$ref": "#/components/schemas/" + body_message},
+                f"{operation_id}.request",
+            )
+        validate_schema(
+            operation_schema(operation, cast(list[int], raw_operation["successStatus"])[0]),
+            {"$ref": "#/components/schemas/" + raw_operation["responseMessage"]},
+            f"{operation_id}.response",
+        )
+        for status_code in cast(list[int], raw_operation["responseStatus"]):
+            if status_code in raw_operation["successStatus"] or status_code == 304:
+                continue
+            error_response = cast(
+                dict[str, Any],
+                resolve_openapi_ref(
+                    curated,
+                    cast(dict[str, Any], operation["responses"][str(status_code)]),
+                ),
+            )
+            error_content = cast(dict[str, dict[str, Any]], error_response["content"])
+            validate_schema(
+                cast(dict[str, Any], error_content["application/problem+json"]["schema"]),
+                {"$ref": "#/components/schemas/mindclade.api.v1.PublicError"},
+                f"{operation_id}.error.{status_code}",
+            )
+    for component_name, message_name in sorted(component_messages.items()):
+        validate_message(component_name, message_name, f"component.{component_name}")
+
+
+def validate_curated_bindings(
+    raw: Mapping[str, Any],
+    curated: Mapping[str, Any],
+) -> None:
+    """Prove method, path, query, body, auth, status, header, and stream parity."""
+    methods = {"delete", "get", "patch", "post", "put"}
+    operations: dict[str, tuple[str, str, dict[str, Any]]] = {}
+    for path, path_item in cast(dict[str, dict[str, Any]], curated["paths"]).items():
+        for method, operation in path_item.items():
+            if method in methods:
+                operations[operation["operationId"]] = (method.upper(), path, operation)
+    raw_operations = {
+        cast(str, operation["operationId"]): operation
+        for operation in cast(list[dict[str, Any]], raw["x-mindclade-binding-contracts"])
+    }
+    if set(operations) != set(raw_operations):
+        raise ValueError(
+            "raw/curated public operation mismatch: "
+            f"raw-only={sorted(set(raw_operations) - set(operations))}, "
+            f"curated-only={sorted(set(operations) - set(raw_operations))}"
+        )
+
+    def parameters(operation: Mapping[str, Any]) -> list[dict[str, Any]]:
+        result: list[dict[str, Any]] = []
+        for raw_parameter in cast(list[object], operation.get("parameters", [])):
+            if not isinstance(raw_parameter, dict):
+                raise ValueError("OpenAPI operation parameter is not an object")
+            parameter = resolve_openapi_ref(curated, cast(dict[str, Any], raw_parameter))
+            if not isinstance(parameter, dict):
+                raise ValueError("OpenAPI parameter did not resolve to an object")
+            result.append(cast(dict[str, Any], parameter))
+        return result
+
+    def skeleton(path: str, *, descriptor: bool) -> str:
+        if descriptor:
+            path = re.sub(r"\{[^={}]+=([^{}]+)\}", r"\1", path)
+            return path.replace("*", "{}")
+        return re.sub(r"\{[^{}]+\}", "{}", path)
+
+    global_security = curated.get("security")
+    for operation_id, raw_operation in raw_operations.items():
+        method, path, operation = operations[operation_id]
+        if method != raw_operation["method"]:
+            raise ValueError(f"{operation_id}: HTTP method drift")
+        if skeleton(path, descriptor=False) != skeleton(
+            cast(str, raw_operation["pathTemplate"]), descriptor=True
+        ):
+            raise ValueError(f"{operation_id}: HTTP path binding drift")
+        effective_security = operation.get("security", global_security)
+        if raw_operation["auth"] == "bearer" and effective_security != [{"bearerAuth": []}]:
+            raise ValueError(f"{operation_id}: bearer authentication drift")
+        operation_parameters = parameters(operation)
+        request_headers = sorted(
+            parameter["name"] for parameter in operation_parameters if parameter["in"] == "header"
+        )
+        if request_headers != raw_operation["requestHeaders"]:
+            raise ValueError(f"{operation_id}: request-header binding drift")
+        required_request_headers = sorted(
+            parameter["name"]
+            for parameter in operation_parameters
+            if parameter["in"] == "header" and parameter.get("required") is True
+        )
+        if required_request_headers != raw_operation["requiredRequestHeaders"]:
+            raise ValueError(f"{operation_id}: request-header requiredness drift")
+        query = {
+            parameter["name"]: parameter
+            for parameter in operation_parameters
+            if parameter["in"] == "query"
+        }
+        raw_query = cast(dict[str, dict[str, Any]], raw_operation["queryFields"])
+        if set(query) != set(raw_query):
+            raise ValueError(f"{operation_id}: query binding drift")
+        for name, raw_schema in raw_query.items():
+            parameter_schema = query[name].get("schema")
+            if not isinstance(parameter_schema, dict):
+                raise ValueError(f"{operation_id}.{name}: query schema is missing")
+            resolved = resolve_openapi_ref(curated, parameter_schema)
+            if not isinstance(resolved, dict) or resolved.get("type") != raw_schema.get("type"):
+                raise ValueError(f"{operation_id}.{name}: query ProtoJSON type drift")
+            if raw_schema.get("format") is not None and resolved.get("format") != raw_schema.get(
+                "format"
+            ):
+                raise ValueError(f"{operation_id}.{name}: query ProtoJSON format drift")
+        has_body = "requestBody" in operation
+        if has_body != bool(raw_operation["body"]):
+            raise ValueError(f"{operation_id}: request-body binding drift")
+        if has_body and bool(operation["requestBody"].get("required")) != bool(
+            raw_operation["requestBodyRequired"]
+        ):
+            raise ValueError(f"{operation_id}: request-body requiredness drift")
+        path_parameters = [
+            parameter for parameter in operation_parameters if parameter["in"] == "path"
+        ]
+        if any(parameter.get("required") is not True for parameter in path_parameters):
+            raise ValueError(f"{operation_id}: path parameters must be required")
+        expected_path_parameter_count = cast(str, raw_operation["pathTemplate"]).count("*")
+        if len(path_parameters) != expected_path_parameter_count:
+            raise ValueError(f"{operation_id}: path parameter expansion drift")
+        if any(parameter.get("required") is True for parameter in query.values()):
+            raise ValueError(f"{operation_id}: optional query-field requiredness drift")
+        response_status = sorted(int(code) for code in operation["responses"])
+        if response_status != raw_operation["responseStatus"]:
+            raise ValueError(f"{operation_id}: documented response-status drift")
+        success_status = sorted(
+            int(code) for code in operation["responses"] if str(code).startswith("2")
+        )
+        if success_status != raw_operation["successStatus"]:
+            raise ValueError(f"{operation_id}: success-status drift")
+        response = cast(
+            dict[str, Any],
+            resolve_openapi_ref(
+                curated, cast(dict[str, Any], operation["responses"][str(success_status[0])])
+            ),
+        )
+        response_headers = sorted(cast(dict[str, Any], response.get("headers", {})))
+        if response_headers != raw_operation["responseHeaders"]:
+            raise ValueError(f"{operation_id}: response-header binding drift")
+        content_types = set(cast(dict[str, Any], response.get("content", {})))
+        expected_content = (
+            {"text/event-stream"}
+            if raw_operation["stream"] == "STREAM_PROJECTION_SSE"
+            else {"application/octet-stream"}
+            if raw_operation["stream"] == "STREAM_PROJECTION_BINARY"
+            else {"application/json"}
+        )
+        if content_types != expected_content:
+            raise ValueError(f"{operation_id}: response media-type/stream drift")
+        for status_code in raw_operation["responseStatus"]:
+            if status_code in raw_operation["successStatus"]:
+                continue
+            error_response = cast(
+                dict[str, Any],
+                resolve_openapi_ref(
+                    curated,
+                    cast(dict[str, Any], operation["responses"][str(status_code)]),
+                ),
+            )
+            if error_response.get("headers"):
+                raise ValueError(f"{operation_id}.{status_code}: response-header drift")
+            error_content = set(cast(dict[str, Any], error_response.get("content", {})))
+            expected_error_content = set() if status_code == 304 else {"application/problem+json"}
+            if error_content != expected_error_content:
+                raise ValueError(f"{operation_id}.{status_code}: error media-type/body drift")
+
+
+def curate_openapi_overlay(overlay: Mapping[str, Any]) -> dict[str, Any]:
+    """Apply deterministic, semantics-preserving curation to the public overlay."""
+    curated = cast(dict[str, Any], json.loads(json.dumps(overlay)))
+    components = cast(dict[str, dict[str, Any]], curated.get("components", {}))
+    reachable: dict[str, set[str]] = defaultdict(set)
+    pending: list[str] = []
+
+    def collect_references(value: Any) -> None:
+        if isinstance(value, dict):
+            for key, child in value.items():
+                if key == "$ref" and isinstance(child, str):
+                    pending.append(child)
+                else:
+                    collect_references(child)
+        elif isinstance(value, list):
+            for child in value:
+                collect_references(child)
+
+    collect_references(curated.get("paths", {}))
+    while pending:
+        reference = pending.pop()
+        match = re.fullmatch(r"#/components/([^/]+)/([^/]+)", reference)
+        if match is None:
+            raise ValueError(f"curation encountered an unsupported reference: {reference}")
+        section, name = match.groups()
+        if name in reachable[section]:
+            continue
+        values = components.get(section)
+        if values is None or name not in values:
+            raise ValueError(f"curation encountered an unresolved reference: {reference}")
+        reachable[section].add(name)
+        collect_references(values[name])
+
+    security_names: set[str] = set()
+    for security in cast(list[object], curated.get("security", [])):
+        if isinstance(security, dict):
+            security_names.update(cast(dict[str, Any], security))
+    for path_item in cast(dict[str, dict[str, Any]], curated.get("paths", {})).values():
+        for operation in path_item.values():
+            if not isinstance(operation, dict):
+                continue
+            for security in cast(list[object], operation.get("security", [])):
+                if isinstance(security, dict):
+                    security_names.update(cast(dict[str, Any], security))
+    reachable["securitySchemes"].update(security_names)
+
+    curated_components: dict[str, Any] = {}
+    for section, values in components.items():
+        selected = reachable.get(section, set())
+        if selected:
+            curated_components[section] = {
+                name: values[name] for name in values if name in selected
+            }
+    curated["components"] = curated_components
+    return curated
+
+
+def openapi_pipeline_outputs(root: Path, descriptor_set: bytes) -> dict[Path, bytes]:
+    """Return checked raw, curated, and published OpenAPI candidate stages."""
+    raw = public_openapi_projection(descriptor_set)
+    curated_source = root / "protocols/openapi/external-api.yaml"
+    overlay = yaml.safe_load(curated_source.read_text(encoding="utf-8"))
+    if not isinstance(overlay, dict) or not isinstance(overlay.get("paths"), dict):
+        raise ValueError("curated OpenAPI document has no paths object")
+    curated = curate_openapi_overlay(overlay)
+    validate_curated_bindings(raw, curated)
+    validate_curated_protojson(raw, curated)
+    curated_bytes = (
+        "# Code generated by mindclade-contract-codegen. DO NOT EDIT.\n"
+        + yaml.safe_dump(curated, sort_keys=False, allow_unicode=True)
+    ).encode()
+    raw_bytes = (
+        "# Code generated by mindclade-contract-codegen. DO NOT EDIT.\n"
+        + yaml.safe_dump(raw, sort_keys=False, allow_unicode=True)
+    ).encode()
+    return {
+        root / "protocols/openapi/raw/mindclade.openapi.yaml": raw_bytes,
+        root / "protocols/openapi/curated/mindclade.openapi.yaml": curated_bytes,
+        root / "protocols/openapi/published/mindclade.openapi.yaml": curated_bytes,
+    }
+
+
+def openapi_candidate_lock(root: Path, generated: Mapping[Path, bytes]) -> bytes:
+    """Bind every editable and generated OpenAPI candidate source by digest."""
+    openapi_root = root / "protocols/openapi"
+    sources = {
+        path
+        for path in openapi_root.rglob("*")
+        if path.is_file() and path.suffix in {".json", ".yaml"}
+    }
+    sources.update(generated)
+    digests: dict[str, str] = {}
+    for path in sorted(sources):
+        content = generated[path] if path in generated else path.read_bytes()
+        digests[path.relative_to(root).as_posix()] = sha256_bytes(content)
+    return (
+        json.dumps(
+            {
+                "schema_version": "mindclade.openapi-candidate/v1",
+                "sources": digests,
+            },
+            sort_keys=True,
+            separators=(",", ":"),
+        )
+        + "\n"
+    ).encode()
 
 
 def write_openapi_pipeline(root: Path, descriptor_set: bytes) -> None:
-    """Materialize raw, curated, and publishable OpenAPI stages under build/."""
-    raw = public_openapi_projection(descriptor_set)
-    curated_source = root / "protocols/openapi/external-api.yaml"
-    curated = yaml.safe_load(curated_source.read_text(encoding="utf-8"))
-    if not isinstance(curated, dict) or not isinstance(curated.get("paths"), dict):
-        raise ValueError("curated OpenAPI document has no paths object")
-    curated_ids = {
-        operation["operationId"]
-        for path_item in cast(dict[str, object], curated["paths"]).values()
-        if isinstance(path_item, dict)
-        for verb, operation in cast(dict[str, object], path_item).items()
-        if verb in {"delete", "get", "patch", "post", "put"}
-        and isinstance(operation, dict)
-        and isinstance(operation.get("operationId"), str)
-    }
-    raw_ids = {cast(str, item["operationId"]) for item in raw["operations"]}
-    if raw_ids != curated_ids:
-        raise ValueError(
-            "raw/curated public operation mismatch: "
-            f"raw-only={sorted(raw_ids - curated_ids)}, curated-only={sorted(curated_ids - raw_ids)}"
-        )
+    """Materialize build mirrors of the checked OpenAPI candidate stages."""
+    outputs = openapi_pipeline_outputs(root, descriptor_set)
 
     pipeline = root / "build/openapi"
-    raw_path = pipeline / "raw/descriptor-projection.json"
+    raw_path = pipeline / "raw/descriptor-projection.yaml"
     curated_path = pipeline / "curated/external-api.yaml"
     published_path = pipeline / "published/external-api.yaml"
     for path in (raw_path, curated_path, published_path):
         path.parent.mkdir(parents=True, exist_ok=True)
-    raw_path.write_text(json.dumps(raw, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    curated_bytes = curated_source.read_bytes()
-    curated_path.write_bytes(curated_bytes)
-    published_path.write_bytes(curated_bytes)
+    raw_path.write_bytes(outputs[root / "protocols/openapi/raw/mindclade.openapi.yaml"])
+    curated_path.write_bytes(outputs[root / "protocols/openapi/curated/mindclade.openapi.yaml"])
+    published_path.write_bytes(outputs[root / "protocols/openapi/published/mindclade.openapi.yaml"])
 
 
 def generated_outputs(root: Path) -> tuple[dict[Path, bytes], bytes, list[dict[str, Any]]]:
@@ -1306,15 +2233,24 @@ def generated_outputs(root: Path) -> tuple[dict[Path, bytes], bytes, list[dict[s
                 source.read_text(encoding="utf-8"), source, target, ts_raw_to_target
             ).encode()
         language_metadata(root, descriptors, lock, outputs)
+        outputs[root / "protocols/generated/python/mindclade/events/registry.py"] = (
+            event_registry_python(root, descriptors)
+        )
         outputs[
-            root
-            / "services/control_plane/internal/platform/queue/event_registry_generated.go"
+            root / "services/control_plane/internal/platform/queue/event_registry_generated.go"
         ] = event_registry_go(root, descriptors)
+        openapi_outputs = openapi_pipeline_outputs(root, descriptor_set)
+        overlap = set(outputs).intersection(openapi_outputs)
+        if overlap:
+            raise ValueError(f"OpenAPI output collision: {sorted(map(str, overlap))}")
+        outputs.update(openapi_outputs)
+        outputs[root / OPENAPI_CANDIDATE] = openapi_candidate_lock(root, openapi_outputs)
         format_generated_build_files(root, staging, outputs)
         generated = root / "protocols/generated"
         manifest_files = {
             path.relative_to(root).as_posix(): sha256_bytes(content)
             for path, content in sorted(outputs.items())
+            if path != root / OPENAPI_CANDIDATE
         }
         outputs[generated / "generated-files.manifest.json"] = (
             json.dumps(
@@ -1338,6 +2274,9 @@ def generated_outputs(root: Path) -> tuple[dict[Path, bytes], bytes, list[dict[s
                             "pnpm-workspace.yaml",
                             "pyproject.toml",
                             "protocols/events/registry.yaml",
+                            "protocols/openapi/compatibility-policy.yaml",
+                            "protocols/openapi/external-api.yaml",
+                            "protocols/openapi/generation.yaml",
                             "protocols/generated/python/pyproject.toml",
                             "protocols/generated/rust/Cargo.toml",
                             "protocols/generated/typescript/package.json",
@@ -1371,56 +2310,58 @@ def generated_outputs(root: Path) -> tuple[dict[Path, bytes], bytes, list[dict[s
 def write_generated(
     root: Path,
     *,
-    promote_baseline: bool,
-    reset_baseline: bool,
-    expected_baseline_digest: str | None,
+    ratify_v1_baseline: bool,
+    expected_candidate_digest: str | None,
+    training_vertical_evidence: Path | None,
 ) -> None:
     outputs, descriptor_set, descriptors = generated_outputs(root)
-    promoted_baseline: bytes | None = None
-    baseline = root / "protocols/compatibility/baselines/protobuf.lock.json"
-    if promote_baseline or reset_baseline:
-        actual_digest = sha256_file(baseline)
-        if expected_baseline_digest != actual_digest:
+    predecessor = root / PROTOBUF_PREDECESSOR
+    if not predecessor.is_file() or sha256_file(predecessor) != PREDECESSOR_ARTIFACT_DIGEST:
+        raise RuntimeError("the archived 22-source Protobuf predecessor is missing or has changed")
+    candidate_content = protobuf_candidate(root, descriptors, descriptor_set)
+    candidate_path = root / PROTOBUF_CANDIDATE
+    baseline_path = root / PROTOBUF_RATIFIED_BASELINE
+    ratified_baseline: bytes | None = None
+    if baseline_path.is_file() and not ratify_v1_baseline:
+        baseline = load_json(baseline_path)
+        if baseline.get("schema_version") != "mindclade.protobuf-baseline/v3":
+            raise RuntimeError("the ratified Protobuf baseline has an unsupported format")
+        raw_descriptor = baseline.get("descriptor_set")
+        if not isinstance(raw_descriptor, dict):
+            raise ValueError("the ratified Protobuf baseline has no descriptor set")
+        encoded_descriptor = cast(dict[str, object], raw_descriptor).get("base64")
+        if not isinstance(encoded_descriptor, str):
+            raise ValueError("the ratified Protobuf baseline has no descriptor bytes")
+        with tempfile.NamedTemporaryFile(suffix=".binpb") as previous_file:
+            previous_file.write(base64.b64decode(encoded_descriptor, validate=True))
+            previous_file.flush()
+            run(["buf", "breaking", "--against", previous_file.name], cwd=root)
+    if ratify_v1_baseline:
+        if baseline_path.exists():
+            raise RuntimeError("v1 is already ratified; baseline replacement is prohibited")
+        if not candidate_path.is_file() or candidate_path.read_bytes() != candidate_content:
             raise RuntimeError(
-                "baseline promotion requires the exact reviewed predecessor digest: "
-                f"expected {expected_baseline_digest!r}, actual {actual_digest!r}"
+                "ratification requires an up-to-date committed candidate; run ordinary "
+                "generation and review it first"
             )
-        recorded_predecessor_digest = actual_digest
-        if promote_baseline:
-            previous = load_json(baseline)
-            raw_descriptor = previous.get("descriptor_set")
-            if not isinstance(raw_descriptor, dict):
-                raise ValueError("existing Protobuf baseline has no descriptor set")
-            descriptor = cast(dict[str, Any], raw_descriptor)
-            encoded_descriptor = descriptor.get("base64")
-            if not isinstance(encoded_descriptor, str):
-                raise ValueError("existing Protobuf baseline has no descriptor set")
-            with tempfile.NamedTemporaryFile(suffix=".binpb") as previous_file:
-                previous_file.write(base64.b64decode(encoded_descriptor, validate=True))
-                previous_file.flush()
-                run(["buf", "breaking", "--against", previous_file.name], cwd=root)
-        reset_authority = None
-        if reset_baseline:
-            reset_authority = "docs/adr/0015-all-contracts-clean-v1-baseline.md"
-            if not (root / reset_authority).is_file():
-                raise RuntimeError(f"baseline reset authority is missing: {reset_authority}")
-            previous = load_json(baseline)
-            raw_promotion = previous.get("promotion")
-            if isinstance(raw_promotion, dict):
-                promotion = cast(dict[str, object], raw_promotion)
-                original_predecessor = promotion.get("predecessor_digest")
-                if (
-                    promotion.get("mode") == "baseline-reset"
-                    and promotion.get("authority") == reset_authority
-                    and isinstance(original_predecessor, str)
-                ):
-                    recorded_predecessor_digest = original_predecessor
-        promoted_baseline = protobuf_baseline(
-            root,
-            descriptors,
-            descriptor_set,
-            predecessor_digest=recorded_predecessor_digest,
-            reset_authority=reset_authority,
+        actual_candidate_digest = sha256_bytes(candidate_content)
+        if expected_candidate_digest != actual_candidate_digest:
+            raise RuntimeError(
+                "ratification requires the exact reviewed candidate artifact digest: "
+                f"expected {expected_candidate_digest!r}, actual {actual_candidate_digest!r}"
+            )
+        if training_vertical_evidence is None:
+            raise RuntimeError("ratification requires training vertical evidence")
+        candidate = cast(dict[str, Any], json.loads(candidate_content))
+        descriptor_digest = cast(dict[str, str], candidate["descriptor_set"])["digest"]
+        evidence, evidence_digest = validate_training_vertical_evidence(
+            training_vertical_evidence,
+            candidate_descriptor_digest=descriptor_digest,
+        )
+        ratified_baseline = ratified_protobuf_baseline(
+            candidate,
+            evidence=evidence,
+            evidence_digest=evidence_digest,
         )
     stale_candidates = (
         governed_generated_paths(root)
@@ -1433,8 +2374,9 @@ def write_generated(
     for path, content in sorted(outputs.items()):
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(content)
-    if promoted_baseline is not None:
-        baseline.write_bytes(promoted_baseline)
+    candidate_path.write_bytes(candidate_content)
+    if ratified_baseline is not None:
+        baseline_path.write_bytes(ratified_baseline)
     write_openapi_pipeline(root, descriptor_set)
 
 
@@ -1442,31 +2384,42 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", type=Path, default=Path.cwd())
     parser.add_argument(
-        "--promote-baseline",
+        "--ratify-v1-baseline",
         action="store_true",
-        help="promote a compatible descriptor set from an exact reviewed predecessor",
+        help="ratify the reviewed candidate after the training vertical evidence gate",
     )
     parser.add_argument(
-        "--reset-baseline",
-        action="store_true",
-        help="reset the clean-v1 descriptor baseline under ADR-0015 authority",
+        "--expected-candidate-digest",
+        help="sha256 digest of the exact reviewed candidate artifact",
     )
     parser.add_argument(
-        "--expected-baseline-digest",
-        help="sha256 digest of the reviewed baseline being promoted",
+        "--training-vertical-evidence",
+        type=Path,
+        help="passed evidence receipt covering every required training vertical boundary",
     )
     args = parser.parse_args()
-    if args.promote_baseline and args.reset_baseline:
-        parser.error("choose either --promote-baseline or --reset-baseline")
-    if bool(args.promote_baseline or args.reset_baseline) != bool(args.expected_baseline_digest):
+    ratification_arguments = bool(args.expected_candidate_digest or args.training_vertical_evidence)
+    if args.ratify_v1_baseline != ratification_arguments:
         parser.error(
-            "baseline changes require a promotion/reset mode and --expected-baseline-digest"
+            "--ratify-v1-baseline requires --expected-candidate-digest and "
+            "--training-vertical-evidence; those arguments are invalid during ordinary generation"
+        )
+    if args.ratify_v1_baseline and (
+        not args.expected_candidate_digest or args.training_vertical_evidence is None
+    ):
+        parser.error(
+            "--ratify-v1-baseline requires both --expected-candidate-digest and "
+            "--training-vertical-evidence"
         )
     write_generated(
         args.root.resolve(),
-        promote_baseline=args.promote_baseline,
-        reset_baseline=args.reset_baseline,
-        expected_baseline_digest=args.expected_baseline_digest,
+        ratify_v1_baseline=args.ratify_v1_baseline,
+        expected_candidate_digest=args.expected_candidate_digest,
+        training_vertical_evidence=(
+            args.training_vertical_evidence.resolve()
+            if args.training_vertical_evidence is not None
+            else None
+        ),
     )
     return 0
 

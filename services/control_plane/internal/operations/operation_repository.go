@@ -3,6 +3,7 @@ package operations
 import (
 	"context"
 	"crypto/sha256"
+	"crypto/subtle"
 	"database/sql"
 	"encoding/hex"
 	"errors"
@@ -19,15 +20,27 @@ import (
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
 	platformdb "github.com/mindclade/mindclade/services/control_plane/internal/platform/database"
+	"github.com/mindclade/mindclade/services/control_plane/internal/platform/queue"
 	"github.com/mindclade/mindclade/services/control_plane/internal/tenants"
 )
 
 type SQLRepository struct{ DB *sql.DB }
 
+const operationSelectColumns = `id, tenant_id, project_id, job_id,
+target_present, target_resource_type, target_resource_id, target_tenant_id,
+target_project_id, target_resource_version, target_name, target_etag,
+status, version, done, etag, result_ref_id, error_detail_id, request_hash,
+created_at, updated_at`
+
+const operationHistoryRetention = int64(256)
+
 // CreateAtomicallySQL accepts a generated Operation while persisting normalized
 // columns. Immutable outbox and audit envelopes are stored as protobuf bytes.
 func (r SQLRepository) CreateAtomicallySQL(ctx context.Context, operation *jobv1.Operation, requestDigest, commandKey, actorID string) (*jobv1.Operation, bool, error) {
 	if err := validateCreate(operation, requestDigest); err != nil {
+		return nil, false, err
+	}
+	if err := validateCommandIdentity(commandKey, actorID); err != nil {
 		return nil, false, err
 	}
 	tx, err := platformdb.BeginTenantTx(ctx, r.DB, operation.GetTenantId(), nil)
@@ -36,12 +49,12 @@ func (r SQLRepository) CreateAtomicallySQL(ctx context.Context, operation *jobv1
 	}
 	defer func() { _ = tx.Rollback() }()
 	var existingDigest, existingID string
-	err = tx.QueryRowContext(ctx, `SELECT request_hash, operation_id FROM idempotency_records WHERE tenant_id = $1 AND command_key = $2 FOR UPDATE`, operation.GetTenantId(), commandKey).Scan(&existingDigest, &existingID)
+	err = tx.QueryRowContext(ctx, `SELECT request_hash, operation_id FROM idempotency_records WHERE tenant_id = $1 AND project_id = $2 AND command_key = $3 FOR UPDATE`, operation.GetTenantId(), operation.GetProjectId(), commandKey).Scan(&existingDigest, &existingID)
 	if err == nil {
 		if existingDigest != requestDigest {
 			return nil, false, ErrIdempotencyConflict
 		}
-		row, scanErr := scanOperationRow(tx.QueryRowContext(ctx, `SELECT id, tenant_id, project_id, job_id, status, version, done, etag, result_ref_id, error_detail_id, request_hash, created_at, updated_at FROM operations WHERE tenant_id = $1 AND id = $2`, operation.GetTenantId(), existingID))
+		row, scanErr := scanOperationRow(tx.QueryRowContext(ctx, `SELECT `+operationSelectColumns+` FROM operations WHERE tenant_id = $1 AND project_id = $2 AND id = $3`, operation.GetTenantId(), operation.GetProjectId(), existingID))
 		if scanErr != nil {
 			return nil, false, scanErr
 		}
@@ -64,7 +77,7 @@ func (r SQLRepository) CreateAtomicallySQL(ctx context.Context, operation *jobv1
 	row.done = false
 	row.createdAt, row.updatedAt = now, now
 	var configurationDigest string
-	if err = tx.QueryRowContext(ctx, `SELECT configuration_digest FROM jobs WHERE tenant_id = $1 AND id = $2 FOR UPDATE`, row.tenantID, row.jobID).Scan(&configurationDigest); err != nil {
+	if err = tx.QueryRowContext(ctx, `SELECT configuration_digest FROM jobs WHERE tenant_id = $1 AND project_id = $2 AND id = $3 FOR UPDATE`, row.tenantID, row.projectID, row.jobID).Scan(&configurationDigest); err != nil {
 		return nil, false, err
 	}
 	envelope, err := newJobRequestedEnvelope(operationRowToProto(row), configurationDigest, now)
@@ -75,11 +88,15 @@ func (r SQLRepository) CreateAtomicallySQL(ctx context.Context, operation *jobv1
 	if err != nil {
 		return nil, false, err
 	}
-	envelopeBytes, err := proto.MarshalOptions{Deterministic: true}.Marshal(envelope)
+	envelopeBytes, err := queue.MarshalEnvelope(envelope)
 	if err != nil {
 		return nil, false, fmt.Errorf("marshal outbox envelope: %w", err)
 	}
-	auditEnvelopeBytes, err := proto.MarshalOptions{Deterministic: true}.Marshal(auditEnvelope)
+	aggregateType, aggregateID, err := queue.AggregateIdentity(envelope)
+	if err != nil {
+		return nil, false, fmt.Errorf("resolve outbox aggregate identity: %w", err)
+	}
+	auditEnvelopeBytes, err := queue.MarshalEnvelope(auditEnvelope)
 	if err != nil {
 		return nil, false, fmt.Errorf("marshal audit envelope: %w", err)
 	}
@@ -92,19 +109,39 @@ func (r SQLRepository) CreateAtomicallySQL(ctx context.Context, operation *jobv1
 		return nil, false, err
 	}
 	row.resultRefID, row.errorDetailID = resultRefID, errorDetailID
-	if _, err = tx.ExecContext(ctx, `UPDATE jobs SET operation_id = $3, desired_state = 'QUEUED', version = version + 1, updated_at = $4 WHERE tenant_id = $1 AND id = $2 AND desired_state IN ('ACCEPTED','QUEUED')`, row.tenantID, row.jobID, row.operationID, now); err != nil {
+	jobResult, err := tx.ExecContext(ctx, `UPDATE jobs SET operation_id = $4, desired_state = 'QUEUED', version = version + 1, updated_at = $5 WHERE tenant_id = $1 AND project_id = $2 AND id = $3 AND desired_state IN ('ACCEPTED','QUEUED') AND (operation_id = '' OR operation_id = $4)`, row.tenantID, row.projectID, row.jobID, row.operationID, now)
+	if err != nil {
 		return nil, false, err
 	}
-	if _, err = tx.ExecContext(ctx, `INSERT INTO operations (id, tenant_id, project_id, job_id, status, version, done, etag, result_ref_id, error_detail_id, request_hash, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$12)`, row.operationID, row.tenantID, row.projectID, row.jobID, operationStateDatabase(row.state), row.resourceVersion, row.done, row.etag, resultRefID, errorDetailID, requestDigest, now); err != nil {
+	if changed, rowsErr := jobResult.RowsAffected(); rowsErr != nil {
+		return nil, false, rowsErr
+	} else if changed != 1 {
+		return nil, false, ErrInvalidTransition
+	}
+	targetPresent, targetType, targetID, targetTenant, targetProject, targetVersion, targetName, targetETag := operationTargetColumns(row.target)
+	if _, err = tx.ExecContext(ctx, `INSERT INTO operations (
+id, tenant_id, project_id, job_id, target_present, target_resource_type,
+target_resource_id, target_tenant_id, target_project_id, target_resource_version,
+target_name, target_etag, status, version, done, etag, result_ref_id,
+error_detail_id, request_hash, created_at, updated_at
+) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$20)`,
+		row.operationID, row.tenantID, row.projectID, row.jobID,
+		targetPresent, targetType, targetID, targetTenant, targetProject, targetVersion, targetName, targetETag,
+		operationStateDatabase(row.state), row.resourceVersion, row.done, row.etag,
+		resultRefID, errorDetailID, requestDigest, now,
+	); err != nil {
 		return nil, false, err
 	}
-	if _, err = tx.ExecContext(ctx, `INSERT INTO idempotency_records (tenant_id, command_key, request_hash, operation_id, created_at) VALUES ($1, $2, $3, $4, $5)`, row.tenantID, commandKey, requestDigest, row.operationID, now); err != nil {
+	if err = recordOperationRevisionSQL(ctx, tx, row, now); err != nil {
+		return nil, false, err
+	}
+	if _, err = tx.ExecContext(ctx, `INSERT INTO idempotency_records (tenant_id, project_id, command_key, request_hash, operation_id, created_at) VALUES ($1, $2, $3, $4, $5, $6)`, row.tenantID, row.projectID, commandKey, requestDigest, row.operationID, now); err != nil {
 		return nil, false, err
 	}
 	if _, err = tx.ExecContext(ctx, `INSERT INTO audit_events (id, tenant_id, actor_id, action, subject_id, occurred_at, details_digest, event_version, payload_digest, envelope_bytes) VALUES ($1, $2, $3, 'operations.create', $4, $5, $6, $7, $8, $9)`, auditEnvelope.GetEventId(), row.tenantID, actorID, row.operationID, now, requestDigest, auditEnvelope.GetEventVersion(), auditEnvelope.GetPayloadDigest(), auditEnvelopeBytes); err != nil {
 		return nil, false, err
 	}
-	if _, err = tx.ExecContext(ctx, `INSERT INTO outbox_messages (id, tenant_id, event_type, event_version, payload_digest, envelope_bytes, next_attempt_at, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $7)`, envelope.GetEventId(), row.tenantID, envelope.GetEventType(), envelope.GetEventVersion(), envelope.GetPayloadDigest(), envelopeBytes, now); err != nil {
+	if _, err = tx.ExecContext(ctx, `INSERT INTO outbox_messages (id, tenant_id, event_type, event_version, aggregate_type, aggregate_id, aggregate_sequence, payload_digest, envelope_bytes, next_attempt_at, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $10)`, envelope.GetEventId(), row.tenantID, envelope.GetEventType(), envelope.GetEventVersion(), aggregateType, aggregateID, envelope.GetAggregateSequence(), envelope.GetPayloadDigest(), envelopeBytes, now); err != nil {
 		return nil, false, err
 	}
 	if err = tx.Commit(); err != nil {
@@ -113,13 +150,151 @@ func (r SQLRepository) CreateAtomicallySQL(ctx context.Context, operation *jobv1
 	return operationRowToProto(row), false, nil
 }
 
-func (r SQLRepository) GetSQL(ctx context.Context, tenantID, operationID string) (*jobv1.Operation, error) {
+// CreateJobAndOperationSQL is the generated JobService acceptance transaction.
+// It creates the normalized job, operation, first immutable operation revision,
+// idempotency receipt, audit evidence, and JobRequested outbox delivery as one
+// tenant-scoped commit. Replays return the original operation without writes.
+func (r SQLRepository) CreateJobAndOperationSQL(ctx context.Context, job *jobv1.Job, operation *jobv1.Operation, requestDigest, commandKey, actorID string, at time.Time) (*jobv1.Operation, bool, error) {
+	if job == nil || job.GetJobId() == "" || job.GetTenantId() == "" || job.GetProjectId() == "" ||
+		job.GetConfiguration() == nil || job.GetConfiguration().GetDigest() == "" || job.GetEtag() == "" ||
+		operation == nil || operation.GetJobId() != job.GetJobId() || operation.GetTenantId() != job.GetTenantId() ||
+		operation.GetProjectId() != job.GetProjectId() || at.IsZero() {
+		return nil, false, ErrNotFound
+	}
+	if err := validateCreate(operation, requestDigest); err != nil {
+		return nil, false, err
+	}
+	if err := validateDigest(job.GetConfiguration().GetDigest(), "configuration digest"); err != nil {
+		return nil, false, err
+	}
+	if err := validateCommandIdentity(commandKey, actorID); err != nil {
+		return nil, false, err
+	}
+	at = at.UTC()
+	tx, err := platformdb.BeginTenantTx(ctx, r.DB, job.GetTenantId(), nil)
+	if err != nil {
+		return nil, false, err
+	}
+	defer func() { _ = tx.Rollback() }()
+	lockKey := fmt.Sprintf("%d:%s:%d:%s:%s", len(job.GetTenantId()), job.GetTenantId(), len(job.GetProjectId()), job.GetProjectId(), commandKey)
+	if _, err = tx.ExecContext(ctx, `SELECT pg_advisory_xact_lock(hashtextextended($1, 0))`, lockKey); err != nil {
+		return nil, false, err
+	}
+	var existingDigest, existingID string
+	err = tx.QueryRowContext(ctx, `SELECT request_hash, operation_id FROM idempotency_records WHERE tenant_id=$1 AND project_id=$2 AND command_key=$3`, job.GetTenantId(), job.GetProjectId(), commandKey).Scan(&existingDigest, &existingID)
+	if err == nil {
+		if subtle.ConstantTimeCompare([]byte(existingDigest), []byte(requestDigest)) != 1 {
+			return nil, false, ErrIdempotencyConflict
+		}
+		row, scanErr := scanOperationRow(tx.QueryRowContext(ctx, `SELECT `+operationSelectColumns+` FROM operations WHERE tenant_id=$1 AND project_id=$2 AND id=$3`, job.GetTenantId(), job.GetProjectId(), existingID))
+		if scanErr != nil {
+			return nil, false, scanErr
+		}
+		existing, scanErr := operationRowToProtoSQL(ctx, tx, row)
+		if scanErr != nil {
+			return nil, false, scanErr
+		}
+		if err = tx.Commit(); err != nil {
+			return nil, false, err
+		}
+		return existing, true, nil
+	}
+	if !errors.Is(err, sql.ErrNoRows) {
+		return nil, false, err
+	}
+	inputRefID, err := platformdb.StoreArtifactRef(ctx, tx, job.GetTenantId(), job.GetInput())
+	if err != nil {
+		return nil, false, err
+	}
+	configurationRefID, err := platformdb.StoreArtifactRef(ctx, tx, job.GetTenantId(), job.GetConfiguration())
+	if err != nil {
+		return nil, false, err
+	}
+	if _, err = tx.ExecContext(ctx, `INSERT INTO jobs (
+id,tenant_id,operation_id,project_id,desired_state,version,policy_digest,job_kind,
+input_ref_id,configuration_ref_id,configuration_digest,etag,created_at,updated_at
+) VALUES ($1,$2,'',$3,'ACCEPTED',1,$4,$5,$6,$7,$8,$9,$10,$10)`,
+		job.GetJobId(), job.GetTenantId(), job.GetProjectId(), job.GetPolicyDigest(), job.GetJobKind(),
+		inputRefID, configurationRefID, job.GetConfiguration().GetDigest(), job.GetEtag(), at); err != nil {
+		if sqlState(err) == "23505" {
+			return nil, false, ErrAlreadyExists
+		}
+		return nil, false, err
+	}
+	row := operationToRow(operation, requestDigest)
+	row.state = jobv1.OperationState_OPERATION_STATE_PENDING
+	row.resourceVersion = 1
+	row.done = false
+	row.createdAt, row.updatedAt = at, at
+	envelope, err := newJobRequestedEnvelope(operationRowToProto(row), job.GetConfiguration().GetDigest(), at)
+	if err != nil {
+		return nil, false, err
+	}
+	auditEnvelope, err := newOperationAuditEnvelope(row, actorID, at)
+	if err != nil {
+		return nil, false, err
+	}
+	envelopeBytes, err := queue.MarshalEnvelope(envelope)
+	if err != nil {
+		return nil, false, fmt.Errorf("marshal outbox envelope: %w", err)
+	}
+	aggregateType, aggregateID, err := queue.AggregateIdentity(envelope)
+	if err != nil {
+		return nil, false, fmt.Errorf("resolve outbox aggregate identity: %w", err)
+	}
+	auditEnvelopeBytes, err := queue.MarshalEnvelope(auditEnvelope)
+	if err != nil {
+		return nil, false, fmt.Errorf("marshal audit envelope: %w", err)
+	}
+	jobResult, err := tx.ExecContext(ctx, `UPDATE jobs SET operation_id=$4,desired_state='QUEUED',version=2,etag=$5,updated_at=$6 WHERE tenant_id=$1 AND project_id=$2 AND id=$3 AND desired_state='ACCEPTED' AND version=1`, row.tenantID, row.projectID, row.jobID, row.operationID, ResourceETag(row.tenantID, row.projectID, row.jobID, 2), at)
+	if err != nil {
+		return nil, false, err
+	}
+	if changed, rowsErr := jobResult.RowsAffected(); rowsErr != nil || changed != 1 {
+		if rowsErr != nil {
+			return nil, false, rowsErr
+		}
+		return nil, false, ErrInvalidTransition
+	}
+	targetPresent, targetType, targetID, targetTenant, targetProject, targetVersion, targetName, targetETag := operationTargetColumns(row.target)
+	if _, err = tx.ExecContext(ctx, `INSERT INTO operations (
+id,tenant_id,project_id,job_id,target_present,target_resource_type,target_resource_id,
+target_tenant_id,target_project_id,target_resource_version,target_name,target_etag,status,
+version,done,etag,result_ref_id,error_detail_id,request_hash,created_at,updated_at
+) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,1,false,$14,NULL,NULL,$15,$16,$16)`,
+		row.operationID, row.tenantID, row.projectID, row.jobID, targetPresent, targetType, targetID,
+		targetTenant, targetProject, targetVersion, targetName, targetETag, operationStateDatabase(row.state), row.etag,
+		requestDigest, at); err != nil {
+		if sqlState(err) == "23505" {
+			return nil, false, ErrAlreadyExists
+		}
+		return nil, false, err
+	}
+	if err = recordOperationRevisionSQL(ctx, tx, row, at); err != nil {
+		return nil, false, err
+	}
+	if _, err = tx.ExecContext(ctx, `INSERT INTO idempotency_records (tenant_id,project_id,command_key,request_hash,operation_id,created_at) VALUES ($1,$2,$3,$4,$5,$6)`, row.tenantID, row.projectID, commandKey, requestDigest, row.operationID, at); err != nil {
+		return nil, false, err
+	}
+	if _, err = tx.ExecContext(ctx, `INSERT INTO audit_events (id,tenant_id,actor_id,action,subject_id,occurred_at,details_digest,event_version,payload_digest,envelope_bytes) VALUES ($1,$2,$3,'operations.create',$4,$5,$6,$7,$8,$9)`, auditEnvelope.GetEventId(), row.tenantID, actorID, row.operationID, at, requestDigest, auditEnvelope.GetEventVersion(), auditEnvelope.GetPayloadDigest(), auditEnvelopeBytes); err != nil {
+		return nil, false, err
+	}
+	if _, err = tx.ExecContext(ctx, `INSERT INTO outbox_messages (id,tenant_id,event_type,event_version,aggregate_type,aggregate_id,aggregate_sequence,payload_digest,envelope_bytes,next_attempt_at,created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$10)`, envelope.GetEventId(), row.tenantID, envelope.GetEventType(), envelope.GetEventVersion(), aggregateType, aggregateID, envelope.GetAggregateSequence(), envelope.GetPayloadDigest(), envelopeBytes, at); err != nil {
+		return nil, false, err
+	}
+	if err = tx.Commit(); err != nil {
+		return nil, false, err
+	}
+	return operationRowToProto(row), false, nil
+}
+
+func (r SQLRepository) GetSQL(ctx context.Context, tenantID, projectID, operationID string) (*jobv1.Operation, error) {
 	tx, err := platformdb.BeginTenantTx(ctx, r.DB, tenantID, &sql.TxOptions{ReadOnly: true})
 	if err != nil {
 		return nil, err
 	}
 	defer func() { _ = tx.Rollback() }()
-	row, err := scanOperationRow(tx.QueryRowContext(ctx, `SELECT id, tenant_id, project_id, job_id, status, version, done, etag, result_ref_id, error_detail_id, request_hash, created_at, updated_at FROM operations WHERE tenant_id = $1 AND id = $2`, tenantID, operationID))
+	row, err := scanOperationRow(tx.QueryRowContext(ctx, `SELECT `+operationSelectColumns+` FROM operations WHERE tenant_id = $1 AND project_id = $2 AND id = $3`, tenantID, projectID, operationID))
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNotFound
 	}
@@ -136,9 +311,51 @@ func (r SQLRepository) GetSQL(ctx context.Context, tenantID, operationID string)
 	return value, nil
 }
 
-func (r SQLRepository) AdvanceSQL(ctx context.Context, tenantID, operationID string, expectedVersion int64, state jobv1.OperationState) (*jobv1.Operation, error) {
+func recordOperationRevisionSQL(ctx context.Context, tx *sql.Tx, row operationRow, recordedAt time.Time) error {
+	targetPresent, targetType, targetID, targetTenant, targetProject, targetVersion, targetName, targetETag := operationTargetColumns(row.target)
+	if _, err := tx.ExecContext(ctx, `INSERT INTO operation_revisions (
+operation_id,tenant_id,project_id,revision,job_id,target_present,
+target_resource_type,target_resource_id,target_tenant_id,target_project_id,
+target_resource_version,target_name,target_etag,status,done,etag,result_ref_id,
+error_detail_id,created_at,updated_at,recorded_at
+) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21)`,
+		row.operationID, row.tenantID, row.projectID, row.resourceVersion, row.jobID,
+		targetPresent, targetType, targetID, targetTenant, targetProject, targetVersion,
+		targetName, targetETag, operationStateDatabase(row.state), row.done, row.etag,
+		row.resultRefID, row.errorDetailID, row.createdAt.UTC(), row.updatedAt.UTC(), recordedAt.UTC()); err != nil {
+		return err
+	}
+	floor := row.resourceVersion - operationHistoryRetention + 1
+	if floor < 1 {
+		floor = 1
+	}
+	if _, err := tx.ExecContext(ctx, `DELETE FROM operation_revisions
+WHERE tenant_id=$1 AND project_id=$2 AND operation_id=$3 AND revision<$4`,
+		row.tenantID, row.projectID, row.operationID, floor); err != nil {
+		return err
+	}
+	result, err := tx.ExecContext(ctx, `UPDATE operations SET history_floor_version=$4
+WHERE tenant_id=$1 AND project_id=$2 AND id=$3 AND version=$5`,
+		row.tenantID, row.projectID, row.operationID, floor, row.resourceVersion)
+	if err != nil {
+		return err
+	}
+	changed, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if changed != 1 {
+		return ErrVersionConflict
+	}
+	return nil
+}
+
+func (r SQLRepository) AdvanceSQL(ctx context.Context, tenantID, projectID, operationID string, expectedVersion int64, expectedETag string, state jobv1.OperationState) (*jobv1.Operation, error) {
 	if !validAdvanceState(state) {
 		return nil, ErrInvalidTransition
+	}
+	if tenantID == "" || projectID == "" || operationID == "" || expectedVersion < 1 || expectedETag == "" {
+		return nil, ErrVersionConflict
 	}
 	tx, err := platformdb.BeginTenantTx(ctx, r.DB, tenantID, nil)
 	if err != nil {
@@ -147,7 +364,9 @@ func (r SQLRepository) AdvanceSQL(ctx context.Context, tenantID, operationID str
 	defer func() { _ = tx.Rollback() }()
 	now := time.Now().UTC()
 	done := terminalOperationState(state)
-	result, err := tx.ExecContext(ctx, `UPDATE operations SET status = $4, version = version + 1, done = $5, updated_at = $6 WHERE tenant_id = $1 AND id = $2 AND version = $3 AND status NOT IN ('SUCCEEDED','FAILED','CANCELLED')`, tenantID, operationID, expectedVersion, operationStateDatabase(state), done, now)
+	nextVersion := expectedVersion + 1
+	nextETag := operationETag(tenantID, projectID, operationID, nextVersion)
+	result, err := tx.ExecContext(ctx, `UPDATE operations SET status = $6, version = $4, done = $7, etag = $5, updated_at = $8 WHERE tenant_id = $1 AND project_id = $2 AND id = $3 AND version = $9 AND etag = $10 AND status NOT IN ('SUCCEEDED','FAILED','CANCELLED')`, tenantID, projectID, operationID, nextVersion, nextETag, operationStateDatabase(state), done, now, expectedVersion, expectedETag)
 	if err != nil {
 		return nil, err
 	}
@@ -156,21 +375,31 @@ func (r SQLRepository) AdvanceSQL(ctx context.Context, tenantID, operationID str
 		return nil, err
 	}
 	if count != 1 {
-		var exists bool
-		if scanErr := tx.QueryRowContext(ctx, `SELECT EXISTS (SELECT 1 FROM operations WHERE tenant_id = $1 AND id = $2)`, tenantID, operationID).Scan(&exists); scanErr != nil {
-			return nil, scanErr
-		}
-		if !exists {
+		var persistedVersion int64
+		var persistedETag, persistedState string
+		scanErr := tx.QueryRowContext(ctx, `SELECT version, etag, status FROM operations WHERE tenant_id = $1 AND project_id = $2 AND id = $3`, tenantID, projectID, operationID).Scan(&persistedVersion, &persistedETag, &persistedState)
+		if errors.Is(scanErr, sql.ErrNoRows) {
 			return nil, ErrNotFound
 		}
+		if scanErr != nil {
+			return nil, scanErr
+		}
+		if persistedState == "SUCCEEDED" || persistedState == "FAILED" || persistedState == "CANCELLED" {
+			return nil, ErrTerminalTransition
+		}
+		_ = persistedVersion
+		_ = persistedETag
 		return nil, ErrVersionConflict
 	}
-	row, err := scanOperationRow(tx.QueryRowContext(ctx, `SELECT id, tenant_id, project_id, job_id, status, version, done, etag, result_ref_id, error_detail_id, request_hash, created_at, updated_at FROM operations WHERE tenant_id = $1 AND id = $2`, tenantID, operationID))
+	row, err := scanOperationRow(tx.QueryRowContext(ctx, `SELECT `+operationSelectColumns+` FROM operations WHERE tenant_id = $1 AND project_id = $2 AND id = $3`, tenantID, projectID, operationID))
 	if err != nil {
 		return nil, err
 	}
 	value, err := operationRowToProtoSQL(ctx, tx, row)
 	if err != nil {
+		return nil, err
+	}
+	if err = recordOperationRevisionSQL(ctx, tx, row, now); err != nil {
 		return nil, err
 	}
 	if err = tx.Commit(); err != nil {
@@ -179,8 +408,56 @@ func (r SQLRepository) AdvanceSQL(ctx context.Context, tenantID, operationID str
 	return value, nil
 }
 
+// AdvanceTxSQL applies an Operation transition inside a caller-owned tenant
+// transaction and appends its immutable revision before returning. Callers use
+// this to reconcile a domain aggregate and its client-visible Operation as one
+// commit.
+func AdvanceTxSQL(ctx context.Context, tx *sql.Tx, tenantID, projectID, operationID string, expectedVersion int64, expectedETag string, state jobv1.OperationState, at time.Time) (*jobv1.Operation, error) {
+	if tx == nil || !validAdvanceState(state) || tenantID == "" || projectID == "" || operationID == "" || expectedVersion < 1 || expectedETag == "" || at.IsZero() {
+		return nil, ErrVersionConflict
+	}
+	at = at.UTC()
+	nextVersion := expectedVersion + 1
+	nextETag := operationETag(tenantID, projectID, operationID, nextVersion)
+	result, err := tx.ExecContext(ctx, `UPDATE operations SET status=$6,version=$4,done=$7,etag=$5,updated_at=$8 WHERE tenant_id=$1 AND project_id=$2 AND id=$3 AND version=$9 AND etag=$10 AND status NOT IN ('SUCCEEDED','FAILED','CANCELLED')`, tenantID, projectID, operationID, nextVersion, nextETag, operationStateDatabase(state), terminalOperationState(state), at, expectedVersion, expectedETag)
+	if err != nil {
+		return nil, err
+	}
+	changed, err := result.RowsAffected()
+	if err != nil {
+		return nil, err
+	}
+	if changed != 1 {
+		var persistedState string
+		scanErr := tx.QueryRowContext(ctx, `SELECT status FROM operations WHERE tenant_id=$1 AND project_id=$2 AND id=$3`, tenantID, projectID, operationID).Scan(&persistedState)
+		if errors.Is(scanErr, sql.ErrNoRows) {
+			return nil, ErrNotFound
+		}
+		if scanErr != nil {
+			return nil, scanErr
+		}
+		if persistedState == "SUCCEEDED" || persistedState == "FAILED" || persistedState == "CANCELLED" {
+			return nil, ErrTerminalTransition
+		}
+		return nil, ErrVersionConflict
+	}
+	row, err := scanOperationRow(tx.QueryRowContext(ctx, `SELECT `+operationSelectColumns+` FROM operations WHERE tenant_id=$1 AND project_id=$2 AND id=$3`, tenantID, projectID, operationID))
+	if err != nil {
+		return nil, err
+	}
+	value, err := operationRowToProtoSQL(ctx, tx, row)
+	if err != nil {
+		return nil, err
+	}
+	if err = recordOperationRevisionSQL(ctx, tx, row, at); err != nil {
+		return nil, err
+	}
+	return value, nil
+}
+
 var (
 	ErrNotFound            = errors.New("operation not found")
+	ErrAlreadyExists       = errors.New("operation already exists")
 	ErrIdempotencyConflict = errors.New("idempotency key reused with a different request digest")
 	ErrVersionConflict     = errors.New("operation version conflict")
 	ErrTerminalTransition  = errors.New("operation terminal transition denied")
@@ -198,6 +475,7 @@ type operationRow struct {
 	resultRefID, errorDetailID              sql.NullInt64
 	result                                  *artifactv1.ArtifactRef
 	error                                   *commonv1.ErrorDetail
+	target                                  *commonv1.ResourceRef
 	requestDigest                           string
 	createdAt, updatedAt                    time.Time
 }
@@ -223,9 +501,12 @@ func (r *Repository) CreateAtomically(operation *jobv1.Operation, requestDigest,
 	if err := validateDigest(configurationDigest, "configuration digest"); err != nil {
 		return nil, false, err
 	}
+	if err := validateCommandIdentity(commandKey, actorID); err != nil {
+		return nil, false, err
+	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	key := operation.GetTenantId() + "\x00" + commandKey
+	key := operationScopeKey(operation.GetTenantId(), operation.GetProjectId(), commandKey)
 	if previous, ok := r.idempotency[key]; ok {
 		if previous.requestDigest != requestDigest {
 			return nil, false, ErrIdempotencyConflict
@@ -246,33 +527,38 @@ func (r *Repository) CreateAtomically(operation *jobv1.Operation, requestDigest,
 	if err != nil {
 		return nil, false, err
 	}
-	r.operations[row.operationID], r.idempotency[key] = row, row
+	operationKey := operationScopeKey(row.tenantID, row.projectID, row.operationID)
+	if _, exists := r.operations[operationKey]; exists {
+		return nil, false, ErrAlreadyExists
+	}
+	r.operations[operationKey], r.idempotency[key] = row, row
 	r.audit = append(r.audit, auditEnvelope)
 	r.outbox = append(r.outbox, envelope)
 	return operationRowToProto(row), false, nil
 }
 
-func (r *Repository) Get(tenantID, operationID string) (*jobv1.Operation, error) {
+func (r *Repository) Get(tenantID, projectID, operationID string) (*jobv1.Operation, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	row, ok := r.operations[operationID]
-	if !ok || tenants.RequireScope(tenantID, row.tenantID) != nil {
+	row, ok := r.operations[operationScopeKey(tenantID, projectID, operationID)]
+	if !ok || tenants.RequireScope(tenantID, row.tenantID) != nil || row.projectID != projectID {
 		return nil, ErrNotFound
 	}
 	return operationRowToProto(row), nil
 }
 
-func (r *Repository) Advance(tenantID, operationID string, expectedVersion int64, state jobv1.OperationState) (*jobv1.Operation, error) {
+func (r *Repository) Advance(tenantID, projectID, operationID string, expectedVersion int64, expectedETag string, state jobv1.OperationState) (*jobv1.Operation, error) {
 	if !validAdvanceState(state) {
 		return nil, ErrInvalidTransition
 	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	row, ok := r.operations[operationID]
-	if !ok || tenants.RequireScope(tenantID, row.tenantID) != nil {
+	key := operationScopeKey(tenantID, projectID, operationID)
+	row, ok := r.operations[key]
+	if !ok || tenants.RequireScope(tenantID, row.tenantID) != nil || row.projectID != projectID {
 		return nil, ErrNotFound
 	}
-	if row.resourceVersion != expectedVersion {
+	if row.resourceVersion != expectedVersion || row.etag != expectedETag {
 		return nil, ErrVersionConflict
 	}
 	if terminalOperationState(row.state) {
@@ -280,9 +566,10 @@ func (r *Repository) Advance(tenantID, operationID string, expectedVersion int64
 	}
 	row.state = state
 	row.resourceVersion++
+	row.etag = operationETag(row.tenantID, row.projectID, row.operationID, row.resourceVersion)
 	row.updatedAt = time.Now().UTC()
 	row.done = terminalOperationState(state)
-	r.operations[operationID] = row
+	r.operations[key] = row
 	return operationRowToProto(row), nil
 }
 
@@ -323,24 +610,45 @@ func newJobRequestedEnvelope(operation *jobv1.Operation, configurationDigest str
 	}
 	digest := sha256.Sum256(payload)
 	eventType := string(payloadMessage.ProtoReflect().Descriptor().FullName())
+	resourceName, resourceID := operationEventResourceIdentity(operation)
+	eventIdentity := sha256.Sum256([]byte(eventType + "\x00" + resourceName))
+	eventID := "job-requested:" + hex.EncodeToString(eventIdentity[:])
 	return &commonv1.EventEnvelope{
-		EventId:            "job-requested:" + operation.GetOperationId(),
+		EventId:            eventID,
 		EventType:          eventType,
 		EventVersion:       1,
 		OccurredAt:         timestamppb.New(at.UTC()),
 		RecordedAt:         timestamppb.New(at.UTC()),
 		TenantId:           operation.GetTenantId(),
 		ProjectId:          operation.GetProjectId(),
-		Subject:            &commonv1.ResourceRef{ResourceType: "operation", ResourceId: operation.GetOperationId(), TenantId: operation.GetTenantId(), ProjectId: operation.GetProjectId(), ResourceVersion: operation.GetResourceVersion()},
+		Subject:            &commonv1.ResourceRef{ResourceType: "operation", ResourceId: resourceID, TenantId: operation.GetTenantId(), ProjectId: operation.GetProjectId(), ResourceVersion: operation.GetResourceVersion(), Name: resourceName},
 		PayloadDigest:      "sha256:" + hex.EncodeToString(digest[:]),
 		Payload:            payload,
 		Producer:           "services/control_plane",
 		AggregateSequence:  1,
 		JobId:              operation.GetJobId(),
-		DeduplicationKey:   "job-requested:" + operation.GetOperationId(),
+		DeduplicationKey:   eventID,
 		PayloadContentType: "application/x-protobuf; deterministic=true",
 		Classification:     commonv1.DataClassification_DATA_CLASSIFICATION_INTERNAL,
 	}, nil
+}
+
+func operationEventResourceIdentity(operation *jobv1.Operation) (string, string) {
+	operationID := strings.TrimPrefix(operation.GetOperationId(), "/")
+	resourceID := operationID
+	if separator := strings.LastIndexByte(resourceID, '/'); separator >= 0 {
+		resourceID = resourceID[separator+1:]
+	}
+	scope := "tenants/" + operation.GetTenantId() + "/projects/" + operation.GetProjectId() + "/"
+	canonicalPrefix := scope + "operations/"
+	switch {
+	case strings.HasPrefix(operationID, canonicalPrefix):
+		return operationID, resourceID
+	case strings.HasPrefix(operationID, "operations/"):
+		return scope + operationID, resourceID
+	default:
+		return canonicalPrefix + operationID, resourceID
+	}
 }
 
 func newOperationAuditEnvelope(row operationRow, actorID string, at time.Time) (*commonv1.EventEnvelope, error) {
@@ -356,10 +664,48 @@ func newOperationAuditEnvelope(row operationRow, actorID string, at time.Time) (
 }
 
 func validateCreate(operation *jobv1.Operation, requestDigest string) error {
-	if operation == nil || operation.GetOperationId() == "" || operation.GetTenantId() == "" || operation.GetJobId() == "" {
+	if operation == nil || operation.GetOperationId() == "" || operation.GetTenantId() == "" || operation.GetProjectId() == "" || operation.GetJobId() == "" {
 		return ErrNotFound
 	}
+	if operation.GetEtag() == "" {
+		return ErrVersionConflict
+	}
 	return validateDigest(requestDigest, "request digest")
+}
+
+func validateCommandIdentity(commandKey, actorID string) error {
+	if commandKey == "" || len(commandKey) > 512 || strings.ContainsAny(commandKey, "\x00\r\n") {
+		return errors.New("idempotency key is required and must be bounded")
+	}
+	if actorID == "" || len(actorID) > 512 || strings.ContainsAny(actorID, "\x00\r\n") {
+		return errors.New("actor identity is required and must be bounded")
+	}
+	return nil
+}
+
+func operationScopeKey(tenantID, projectID, value string) string {
+	return tenantID + "\x00" + projectID + "\x00" + value
+}
+
+func operationETag(tenantID, projectID, operationID string, revision int64) string {
+	digest := sha256.Sum256([]byte(fmt.Sprintf("%s\x00%s\x00%s\x00%d", tenantID, projectID, operationID, revision)))
+	return "sha256:" + hex.EncodeToString(digest[:])
+}
+
+// ResourceETag returns the deterministic optimistic-concurrency token shared
+// by normalized Job and Operation aggregates.
+func ResourceETag(tenantID, projectID, resourceID string, revision int64) string {
+	return operationETag(tenantID, projectID, resourceID, revision)
+}
+
+type sqlStateCarrier interface{ SQLState() string }
+
+func sqlState(err error) string {
+	var value sqlStateCarrier
+	if errors.As(err, &value) {
+		return value.SQLState()
+	}
+	return ""
 }
 
 func validateDigest(value, field string) error {
@@ -377,6 +723,7 @@ func operationToRow(operation *jobv1.Operation, requestDigest string) operationR
 		operationID: operation.GetOperationId(), tenantID: operation.GetTenantId(), projectID: operation.GetProjectId(), jobID: operation.GetJobId(),
 		state: operation.GetState(), resourceVersion: operation.GetResourceVersion(), done: operation.GetDone(), etag: operation.GetEtag(),
 		result: cloneOperationArtifact(operation.GetResult()), error: cloneOperationError(operation.GetError()),
+		target:        cloneOperationResource(operation.GetTarget()),
 		requestDigest: requestDigest, createdAt: protoTimestampTime(operation.GetCreatedAt()), updatedAt: protoTimestampTime(operation.GetUpdatedAt()),
 	}
 }
@@ -386,6 +733,7 @@ func operationRowToProto(row operationRow) *jobv1.Operation {
 		OperationId: row.operationID, TenantId: row.tenantID, ProjectId: row.projectID, JobId: row.jobID,
 		State: row.state, ResourceVersion: row.resourceVersion, Done: row.done, Etag: row.etag,
 		Result: cloneOperationArtifact(row.result), Error: cloneOperationError(row.error),
+		Target:    cloneOperationResource(row.target),
 		CreatedAt: timeProtoTimestamp(row.createdAt), UpdatedAt: timeProtoTimestamp(row.updatedAt),
 	}
 }
@@ -397,8 +745,19 @@ type rowScanner interface {
 func scanOperationRow(scanner rowScanner) (operationRow, error) {
 	var row operationRow
 	var state string
-	if err := scanner.Scan(&row.operationID, &row.tenantID, &row.projectID, &row.jobID, &state, &row.resourceVersion, &row.done, &row.etag, &row.resultRefID, &row.errorDetailID, &row.requestDigest, &row.createdAt, &row.updatedAt); err != nil {
+	var targetPresent bool
+	var target commonv1.ResourceRef
+	if err := scanner.Scan(
+		&row.operationID, &row.tenantID, &row.projectID, &row.jobID,
+		&targetPresent, &target.ResourceType, &target.ResourceId, &target.TenantId,
+		&target.ProjectId, &target.ResourceVersion, &target.Name, &target.Etag,
+		&state, &row.resourceVersion, &row.done, &row.etag, &row.resultRefID,
+		&row.errorDetailID, &row.requestDigest, &row.createdAt, &row.updatedAt,
+	); err != nil {
 		return operationRow{}, err
+	}
+	if targetPresent {
+		row.target = &target
 	}
 	parsed, err := operationStateFromDatabase(state)
 	if err != nil {
@@ -482,4 +841,19 @@ func cloneOperationError(value *commonv1.ErrorDetail) *commonv1.ErrorDetail {
 		return nil
 	}
 	return proto.Clone(value).(*commonv1.ErrorDetail)
+}
+
+func cloneOperationResource(value *commonv1.ResourceRef) *commonv1.ResourceRef {
+	if value == nil {
+		return nil
+	}
+	return proto.Clone(value).(*commonv1.ResourceRef)
+}
+
+func operationTargetColumns(value *commonv1.ResourceRef) (bool, string, string, string, string, int64, string, string) {
+	if value == nil {
+		return false, "", "", "", "", 0, "", ""
+	}
+	return true, value.GetResourceType(), value.GetResourceId(), value.GetTenantId(),
+		value.GetProjectId(), value.GetResourceVersion(), value.GetName(), value.GetEtag()
 }

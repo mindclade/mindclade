@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package mindclade.events.workflow.v1;
+
+import "google/protobuf/timestamp.proto";
+import "proto/mindclade/workflow/v1/approval.proto";
+
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/workflow/v1;workflowv1";
+
+// ApprovalConsumed records atomic use of a binding-matched approval receipt.
+message ApprovalConsumed {
+  mindclade.workflow.v1.ApprovalReceipt approval_receipt = 1;
+  string call_id = 2;
+  google.protobuf.Timestamp consumed_at = 3;
+}

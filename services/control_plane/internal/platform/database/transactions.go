@@ -13,6 +13,15 @@ import (
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 )
 
+// CloseRows exposes the close error so callers can either propagate it or
+// deliberately ignore it after preserving a prior scan/iteration error.
+func CloseRows(rows *sql.Rows) error {
+	if rows == nil {
+		return nil
+	}
+	return rows.Close()
+}
+
 var ErrTenantScopeRequired = errors.New("database tenant scope is required")
 
 // Transaction is intentionally opaque: repositories expose no transaction object to workers.
@@ -104,6 +113,49 @@ FROM artifact_references WHERE tenant_id = $1 AND id = $2`, tenantID, id.Int64).
 	return value, nil
 }
 
+// StoreResourceRef persists a generated logical reference without leaking a
+// private row type. A NULL foreign key preserves absent protobuf presence.
+func StoreResourceRef(ctx context.Context, tx *sql.Tx, tenantID string, value *commonv1.ResourceRef) (sql.NullInt64, error) {
+	if value == nil {
+		return sql.NullInt64{}, nil
+	}
+	if value.GetResourceType() == "" || value.GetResourceId() == "" || value.GetName() == "" || value.GetResourceVersion() < 0 {
+		return sql.NullInt64{}, errors.New("resource reference requires type, id, name, and non-negative version")
+	}
+	var id int64
+	err := tx.QueryRowContext(ctx, `
+INSERT INTO resource_references (
+  tenant_id, resource_type, resource_id, referenced_tenant_id, project_id,
+  resource_version, name, etag
+) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+RETURNING id`, tenantID, value.GetResourceType(), value.GetResourceId(), value.GetTenantId(),
+		value.GetProjectId(), value.GetResourceVersion(), value.GetName(), value.GetEtag()).Scan(&id)
+	if err != nil {
+		return sql.NullInt64{}, fmt.Errorf("store resource reference: %w", err)
+	}
+	return sql.NullInt64{Int64: id, Valid: true}, nil
+}
+
+// LoadResourceRef reconstructs every generated field and preserves message
+// absence when the owning foreign key is NULL.
+func LoadResourceRef(ctx context.Context, tx *sql.Tx, tenantID string, id sql.NullInt64) (*commonv1.ResourceRef, error) {
+	if !id.Valid {
+		return nil, nil
+	}
+	value := new(commonv1.ResourceRef)
+	err := tx.QueryRowContext(ctx, `
+SELECT resource_type, resource_id, referenced_tenant_id, project_id,
+       resource_version, name, etag
+FROM resource_references WHERE tenant_id = $1 AND id = $2`, tenantID, id.Int64).Scan(
+		&value.ResourceType, &value.ResourceId, &value.TenantId, &value.ProjectId,
+		&value.ResourceVersion, &value.Name, &value.Etag,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("load resource reference: %w", err)
+	}
+	return value, nil
+}
+
 // StoreErrorDetail normalizes the generated error and its ordered violations.
 func StoreErrorDetail(ctx context.Context, tx *sql.Tx, tenantID string, value *commonv1.ErrorDetail) (sql.NullInt64, error) {
 	if value == nil {
@@ -115,6 +167,7 @@ func StoreErrorDetail(ctx context.Context, tx *sql.Tx, tenantID string, value *c
 	var (
 		subjectPresent                                        bool
 		subjectType, subjectID, subjectTenant, subjectProject string
+		subjectName, subjectETag                              string
 		subjectVersion                                        int64
 		retrySeconds                                          sql.NullInt64
 		retryNanos                                            sql.NullInt32
@@ -124,6 +177,7 @@ func StoreErrorDetail(ctx context.Context, tx *sql.Tx, tenantID string, value *c
 		subjectType, subjectID = subject.GetResourceType(), subject.GetResourceId()
 		subjectTenant, subjectProject = subject.GetTenantId(), subject.GetProjectId()
 		subjectVersion = subject.GetResourceVersion()
+		subjectName, subjectETag = subject.GetName(), subject.GetEtag()
 	}
 	if retryAfter := value.GetRetryAfter(); retryAfter != nil {
 		if err := retryAfter.CheckValid(); err != nil {
@@ -137,12 +191,12 @@ func StoreErrorDetail(ctx context.Context, tx *sql.Tx, tenantID string, value *c
 INSERT INTO error_details (
   tenant_id, code, message, retry_class, subject_present,
   subject_resource_type, subject_resource_id, subject_tenant_id,
-  subject_project_id, subject_resource_version, retry_after_seconds,
-  retry_after_nanos, error_id
-) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+	subject_project_id, subject_resource_version, subject_name, subject_etag,
+	retry_after_seconds, retry_after_nanos, error_id
+) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
 RETURNING id`, tenantID, int32(value.GetCode()), value.GetMessage(), int32(value.GetRetryClass()),
 		subjectPresent, subjectType, subjectID, subjectTenant, subjectProject, subjectVersion,
-		retrySeconds, retryNanos, value.GetErrorId()).Scan(&id)
+		subjectName, subjectETag, retrySeconds, retryNanos, value.GetErrorId()).Scan(&id)
 	if err != nil {
 		return sql.NullInt64{}, fmt.Errorf("store error detail: %w", err)
 	}
@@ -175,6 +229,7 @@ func LoadErrorDetail(ctx context.Context, tx *sql.Tx, tenantID string, id sql.Nu
 		code, retryClass                                      int32
 		subjectPresent                                        bool
 		subjectType, subjectID, subjectTenant, subjectProject string
+		subjectName, subjectETag                              string
 		subjectVersion                                        int64
 		retrySeconds                                          sql.NullInt64
 		retryNanos                                            sql.NullInt32
@@ -183,10 +238,11 @@ func LoadErrorDetail(ctx context.Context, tx *sql.Tx, tenantID string, id sql.Nu
 	err := tx.QueryRowContext(ctx, `
 SELECT code, message, retry_class, subject_present, subject_resource_type,
        subject_resource_id, subject_tenant_id, subject_project_id,
-       subject_resource_version, retry_after_seconds, retry_after_nanos, error_id
+	subject_resource_version, subject_name, subject_etag,
+	retry_after_seconds, retry_after_nanos, error_id
 FROM error_details WHERE tenant_id = $1 AND id = $2`, tenantID, id.Int64).Scan(
 		&code, &value.Message, &retryClass, &subjectPresent, &subjectType, &subjectID,
-		&subjectTenant, &subjectProject, &subjectVersion, &retrySeconds, &retryNanos,
+		&subjectTenant, &subjectProject, &subjectVersion, &subjectName, &subjectETag, &retrySeconds, &retryNanos,
 		&value.ErrorId,
 	)
 	if err != nil {
@@ -197,7 +253,7 @@ FROM error_details WHERE tenant_id = $1 AND id = $2`, tenantID, id.Int64).Scan(
 	if subjectPresent {
 		value.Subject = &commonv1.ResourceRef{
 			ResourceType: subjectType, ResourceId: subjectID, TenantId: subjectTenant,
-			ProjectId: subjectProject, ResourceVersion: subjectVersion,
+			ProjectId: subjectProject, ResourceVersion: subjectVersion, Name: subjectName, Etag: subjectETag,
 		}
 	}
 	if retrySeconds.Valid != retryNanos.Valid {
@@ -205,8 +261,8 @@ FROM error_details WHERE tenant_id = $1 AND id = $2`, tenantID, id.Int64).Scan(
 	}
 	if retrySeconds.Valid {
 		value.RetryAfter = &durationpb.Duration{Seconds: retrySeconds.Int64, Nanos: retryNanos.Int32}
-		if err := value.RetryAfter.CheckValid(); err != nil {
-			return nil, fmt.Errorf("persisted error retry_after: %w", err)
+		if retryErr := value.RetryAfter.CheckValid(); retryErr != nil {
+			return nil, fmt.Errorf("persisted error retry_after: %w", retryErr)
 		}
 	}
 	fieldRows, err := tx.QueryContext(ctx, `SELECT field_path, description FROM error_field_violations WHERE tenant_id = $1 AND error_detail_id = $2 ORDER BY ordinal`, tenantID, id.Int64)
@@ -216,16 +272,16 @@ FROM error_details WHERE tenant_id = $1 AND id = $2`, tenantID, id.Int64).Scan(
 	for fieldRows.Next() {
 		violation := new(commonv1.FieldViolation)
 		if err = fieldRows.Scan(&violation.Field, &violation.Description); err != nil {
-			_ = fieldRows.Close()
+			_ = CloseRows(fieldRows)
 			return nil, err
 		}
 		value.FieldViolations = append(value.FieldViolations, violation)
 	}
 	if err = fieldRows.Err(); err != nil {
-		_ = fieldRows.Close()
+		_ = CloseRows(fieldRows)
 		return nil, err
 	}
-	if err = fieldRows.Close(); err != nil {
+	if err = CloseRows(fieldRows); err != nil {
 		return nil, err
 	}
 	preconditionRows, err := tx.QueryContext(ctx, `SELECT violation_type, subject, description FROM error_precondition_violations WHERE tenant_id = $1 AND error_detail_id = $2 ORDER BY ordinal`, tenantID, id.Int64)

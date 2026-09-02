@@ -16,6 +16,7 @@ ts_project(
         },
     },
     visibility = ["//visibility:public"],
+    deps = ["//protocols/generated/typescript:bindings"],
 )
 
 js_test(
@@ -29,10 +30,9 @@ js_test(
 
 test_suite(
     name = "tests",
-    tests = [
-        ":config_typecheck_test",
-        ":resolution_test",
-    ],
+    # resolution_test has :config in data, so analysis and execution both
+    # require the strict TypeScript project to compile successfully.
+    tests = [":resolution_test"],
 )
 
 filegroup(

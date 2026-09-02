@@ -9,6 +9,7 @@ package artifactv1
 import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
@@ -73,14 +74,101 @@ func (x *ArtifactCommitted) GetProducerAttemptId() string {
 	return ""
 }
 
+// ArtifactStagingFinalized records immutable transfer verification without
+// leaking the provider generation or storage locator bound by the receipt.
+type ArtifactStagingFinalized struct {
+	state                protoimpl.MessageState `protogen:"open.v1"`
+	UploadName           string                 `protobuf:"bytes,1,opt,name=upload_name,json=uploadName,proto3" json:"upload_name,omitempty"`
+	Artifact             *ArtifactRef           `protobuf:"bytes,2,opt,name=artifact,proto3" json:"artifact,omitempty"`
+	StagingReceiptDigest string                 `protobuf:"bytes,3,opt,name=staging_receipt_digest,json=stagingReceiptDigest,proto3" json:"staging_receipt_digest,omitempty"`
+	VerifiedAt           *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=verified_at,json=verifiedAt,proto3" json:"verified_at,omitempty"`
+	ExpireTime           *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=expire_time,json=expireTime,proto3" json:"expire_time,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
+}
+
+func (x *ArtifactStagingFinalized) Reset() {
+	*x = ArtifactStagingFinalized{}
+	mi := &file_events_mindclade_artifact_v1_artifact_committed_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ArtifactStagingFinalized) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ArtifactStagingFinalized) ProtoMessage() {}
+
+func (x *ArtifactStagingFinalized) ProtoReflect() protoreflect.Message {
+	mi := &file_events_mindclade_artifact_v1_artifact_committed_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ArtifactStagingFinalized.ProtoReflect.Descriptor instead.
+func (*ArtifactStagingFinalized) Descriptor() ([]byte, []int) {
+	return file_events_mindclade_artifact_v1_artifact_committed_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *ArtifactStagingFinalized) GetUploadName() string {
+	if x != nil {
+		return x.UploadName
+	}
+	return ""
+}
+
+func (x *ArtifactStagingFinalized) GetArtifact() *ArtifactRef {
+	if x != nil {
+		return x.Artifact
+	}
+	return nil
+}
+
+func (x *ArtifactStagingFinalized) GetStagingReceiptDigest() string {
+	if x != nil {
+		return x.StagingReceiptDigest
+	}
+	return ""
+}
+
+func (x *ArtifactStagingFinalized) GetVerifiedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.VerifiedAt
+	}
+	return nil
+}
+
+func (x *ArtifactStagingFinalized) GetExpireTime() *timestamppb.Timestamp {
+	if x != nil {
+		return x.ExpireTime
+	}
+	return nil
+}
+
 var File_events_mindclade_artifact_v1_artifact_committed_proto protoreflect.FileDescriptor
 
 const file_events_mindclade_artifact_v1_artifact_committed_proto_rawDesc = "" +
 	"\n" +
-	"5events/mindclade/artifact/v1/artifact_committed.proto\x12\x1cmindclade.events.artifact.v1\x1a4proto/mindclade/artifact/v1/artifact_reference.proto\"\x83\x01\n" +
+	"5events/mindclade/artifact/v1/artifact_committed.proto\x12\x1cmindclade.events.artifact.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a4proto/mindclade/artifact/v1/artifact_reference.proto\"\x83\x01\n" +
 	"\x11ArtifactCommitted\x12>\n" +
 	"\bartifact\x18\x01 \x01(\v2\".mindclade.artifact.v1.ArtifactRefR\bartifact\x12.\n" +
-	"\x13producer_attempt_id\x18\x02 \x01(\tR\x11producerAttemptIdBNZLgithub.com/mindclade/mindclade/protocols/generated/go/artifact/v1;artifactv1b\x06proto3"
+	"\x13producer_attempt_id\x18\x02 \x01(\tR\x11producerAttemptId\"\xab\x02\n" +
+	"\x18ArtifactStagingFinalized\x12\x1f\n" +
+	"\vupload_name\x18\x01 \x01(\tR\n" +
+	"uploadName\x12>\n" +
+	"\bartifact\x18\x02 \x01(\v2\".mindclade.artifact.v1.ArtifactRefR\bartifact\x124\n" +
+	"\x16staging_receipt_digest\x18\x03 \x01(\tR\x14stagingReceiptDigest\x12;\n" +
+	"\vverified_at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
+	"verifiedAt\x12;\n" +
+	"\vexpire_time\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
+	"expireTimeBNZLgithub.com/mindclade/mindclade/protocols/generated/go/artifact/v1;artifactv1b\x06proto3"
 
 var (
 	file_events_mindclade_artifact_v1_artifact_committed_proto_rawDescOnce sync.Once
@@ -94,18 +182,23 @@ func file_events_mindclade_artifact_v1_artifact_committed_proto_rawDescGZIP() []
 	return file_events_mindclade_artifact_v1_artifact_committed_proto_rawDescData
 }
 
-var file_events_mindclade_artifact_v1_artifact_committed_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_events_mindclade_artifact_v1_artifact_committed_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
 var file_events_mindclade_artifact_v1_artifact_committed_proto_goTypes = []any{
-	(*ArtifactCommitted)(nil), // 0: mindclade.events.artifact.v1.ArtifactCommitted
-	(*ArtifactRef)(nil),       // 1: mindclade.artifact.v1.ArtifactRef
+	(*ArtifactCommitted)(nil),        // 0: mindclade.events.artifact.v1.ArtifactCommitted
+	(*ArtifactStagingFinalized)(nil), // 1: mindclade.events.artifact.v1.ArtifactStagingFinalized
+	(*ArtifactRef)(nil),              // 2: mindclade.artifact.v1.ArtifactRef
+	(*timestamppb.Timestamp)(nil),    // 3: google.protobuf.Timestamp
 }
 var file_events_mindclade_artifact_v1_artifact_committed_proto_depIdxs = []int32{
-	1, // 0: mindclade.events.artifact.v1.ArtifactCommitted.artifact:type_name -> mindclade.artifact.v1.ArtifactRef
-	1, // [1:1] is the sub-list for method output_type
-	1, // [1:1] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	2, // 0: mindclade.events.artifact.v1.ArtifactCommitted.artifact:type_name -> mindclade.artifact.v1.ArtifactRef
+	2, // 1: mindclade.events.artifact.v1.ArtifactStagingFinalized.artifact:type_name -> mindclade.artifact.v1.ArtifactRef
+	3, // 2: mindclade.events.artifact.v1.ArtifactStagingFinalized.verified_at:type_name -> google.protobuf.Timestamp
+	3, // 3: mindclade.events.artifact.v1.ArtifactStagingFinalized.expire_time:type_name -> google.protobuf.Timestamp
+	4, // [4:4] is the sub-list for method output_type
+	4, // [4:4] is the sub-list for method input_type
+	4, // [4:4] is the sub-list for extension type_name
+	4, // [4:4] is the sub-list for extension extendee
+	0, // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_events_mindclade_artifact_v1_artifact_committed_proto_init() }
@@ -120,7 +213,7 @@ func file_events_mindclade_artifact_v1_artifact_committed_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_events_mindclade_artifact_v1_artifact_committed_proto_rawDesc), len(file_events_mindclade_artifact_v1_artifact_committed_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   1,
+			NumMessages:   2,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

@@ -1,0 +1,32 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "bindings",
+    srcs = [
+        "model_service.pb.go",
+        "model_service_grpc.pb.go",
+    ],
+    importpath = "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/model/v1",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//protocols/generated/go/common/v1:bindings",
+        "//protocols/generated/go/job/v1:bindings",
+        "//protocols/generated/go/model/v1:bindings",
+        "@org_golang_google_grpc//:grpc",
+        "@org_golang_google_grpc//codes",
+        "@org_golang_google_grpc//status",
+        "@org_golang_google_protobuf//reflect/protoreflect",
+        "@org_golang_google_protobuf//runtime/protoimpl",
+        "@org_golang_google_protobuf//types/known/timestamppb",
+    ],
+)
+
+filegroup(
+    name = "generated_sources",
+    srcs = [
+        "BUILD.bazel",
+        "model_service.pb.go",
+        "model_service_grpc.pb.go",
+    ],
+    visibility = ["//visibility:public"],
+)

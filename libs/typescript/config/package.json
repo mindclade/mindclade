@@ -5,9 +5,13 @@
   "type": "module",
   "exports": "./src/index.ts",
   "scripts": {
-    "build": "rm -rf dist/native && tsc --strict --exactOptionalPropertyTypes --noUncheckedIndexedAccess --noFallthroughCasesInSwitch --target ES2022 --module NodeNext --moduleResolution NodeNext --esModuleInterop --rootDir . --outDir dist/native --sourceMap false --incremental false src/index.ts src/resolution.ts tests/resolution.test.ts",
-    "typecheck": "tsc --strict --exactOptionalPropertyTypes --noUncheckedIndexedAccess --noFallthroughCasesInSwitch --target ES2022 --module NodeNext --moduleResolution NodeNext --esModuleInterop --noEmit src/index.ts src/resolution.ts tests/resolution.test.ts",
-    "test": "pnpm run build && node --test dist/native/tests/resolution.test.js"
+    "build": "rm -rf dist/native && tsc --strict --exactOptionalPropertyTypes --noUncheckedIndexedAccess --noFallthroughCasesInSwitch --target ES2022 --module ES2022 --moduleResolution Bundler --esModuleInterop --rootDir ../../.. --outDir dist/native --sourceMap false --incremental false src/index.ts src/resolution.ts tests/resolution.test.ts",
+    "typecheck": "tsc --strict --exactOptionalPropertyTypes --noUncheckedIndexedAccess --noFallthroughCasesInSwitch --target ES2022 --module ES2022 --moduleResolution Bundler --esModuleInterop --noEmit src/index.ts src/resolution.ts tests/resolution.test.ts",
+    "test": "pnpm run build && node --test dist/native/libs/typescript/config/tests/resolution.test.js"
+  },
+  "dependencies": {
+    "ajv": "catalog:",
+    "ajv-formats": "catalog:"
   },
   "devDependencies": {
     "@types/node": "catalog:",

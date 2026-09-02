@@ -85,6 +85,11 @@ class AgentServiceStub:
                 request_serializer=proto_dot_mindclade_dot_internal_dot_agent_dot_v1_dot_agent__service__pb2.ListAgentStepsRequest.SerializeToString,
                 response_deserializer=proto_dot_mindclade_dot_internal_dot_agent_dot_v1_dot_agent__service__pb2.ListAgentStepsResponse.FromString,
                 _registered_method=True)
+        self.CommitAgentStep = channel.unary_unary(
+                '/mindclade.internal.agent.v1.AgentService/CommitAgentStep',
+                request_serializer=proto_dot_mindclade_dot_internal_dot_agent_dot_v1_dot_agent__service__pb2.CommitAgentStepRequest.SerializeToString,
+                response_deserializer=proto_dot_mindclade_dot_internal_dot_agent_dot_v1_dot_agent__service__pb2.CommitAgentStepResponse.FromString,
+                _registered_method=True)
         self.CommitToolReceipt = channel.unary_unary(
                 '/mindclade.internal.agent.v1.AgentService/CommitToolReceipt',
                 request_serializer=proto_dot_mindclade_dot_internal_dot_agent_dot_v1_dot_agent__service__pb2.CommitToolReceiptRequest.SerializeToString,
@@ -166,6 +171,13 @@ class AgentServiceServicer:
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def CommitAgentStep(self, request, context):
+        """CommitAgentStep appends a fenced decision/tool/wait/terminal step.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
     def CommitToolReceipt(self, request, context):
         """CommitToolReceipt rejects stale attempts and treats receipts as execution evidence.
         """
@@ -225,6 +237,11 @@ def add_AgentServiceServicer_to_server(servicer, server):
                     servicer.ListAgentSteps,
                     request_deserializer=proto_dot_mindclade_dot_internal_dot_agent_dot_v1_dot_agent__service__pb2.ListAgentStepsRequest.FromString,
                     response_serializer=proto_dot_mindclade_dot_internal_dot_agent_dot_v1_dot_agent__service__pb2.ListAgentStepsResponse.SerializeToString,
+            ),
+            'CommitAgentStep': grpc.unary_unary_rpc_method_handler(
+                    servicer.CommitAgentStep,
+                    request_deserializer=proto_dot_mindclade_dot_internal_dot_agent_dot_v1_dot_agent__service__pb2.CommitAgentStepRequest.FromString,
+                    response_serializer=proto_dot_mindclade_dot_internal_dot_agent_dot_v1_dot_agent__service__pb2.CommitAgentStepResponse.SerializeToString,
             ),
             'CommitToolReceipt': grpc.unary_unary_rpc_method_handler(
                     servicer.CommitToolReceipt,
@@ -503,6 +520,33 @@ class AgentService:
             '/mindclade.internal.agent.v1.AgentService/ListAgentSteps',
             proto_dot_mindclade_dot_internal_dot_agent_dot_v1_dot_agent__service__pb2.ListAgentStepsRequest.SerializeToString,
             proto_dot_mindclade_dot_internal_dot_agent_dot_v1_dot_agent__service__pb2.ListAgentStepsResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def CommitAgentStep(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/mindclade.internal.agent.v1.AgentService/CommitAgentStep',
+            proto_dot_mindclade_dot_internal_dot_agent_dot_v1_dot_agent__service__pb2.CommitAgentStepRequest.SerializeToString,
+            proto_dot_mindclade_dot_internal_dot_agent_dot_v1_dot_agent__service__pb2.CommitAgentStepResponse.FromString,
             options,
             channel_credentials,
             insecure,
