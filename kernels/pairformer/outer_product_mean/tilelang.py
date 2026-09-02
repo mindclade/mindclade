@@ -1,192 +1,369 @@
-# Copyright (c) 2026 Mindclade, LLC. All Rights Reserved.
-# Mindclade Proprietary and Confidential.
-# SPDX-License-Identifier: LicenseRef-Mindclade-Proprietary
+"""First-party TileLang program builders for outer-product mean.
 
-"""Offline TileLang forward builder for outer-product mean."""
+All builders are offline-only.  The program group returns the raw FP32
+normalizer explicitly and never materializes an outer-product source tensor.
+"""
 
-import importlib
+from __future__ import annotations
+
 from typing import Any
 
-_TILELANG_VERSION = "0.1.13"
-_SUPPORTED_TARGETS = {
-    "cuda": "cuda",
-    "cuda-sm80": {"kind": "cuda", "arch": "sm_80"},
-    "cuda-sm86": {"kind": "cuda", "arch": "sm_86"},
-    "cuda-sm89": {"kind": "cuda", "arch": "sm_89"},
-    "cuda-sm90": {"kind": "cuda", "arch": "sm_90"},
-}
-_SUPPORTED_DTYPES = {"float16", "bfloat16", "float32"}
-_SUPPORTED_THREADS = {32, 64, 128, 256}
-_MAX_BATCH_SIZE = 4096
-_MAX_SEQUENCE_LENGTH = 4096
-_MAX_NODES = 512
-_MAX_CHANNELS = 256
-_MAX_OUTPUT_ELEMENTS = 2_147_483_647
-
-class _LazyTileLangProgram:
-    def __init__(self, compiler: Any, prim_func: Any, target: Any) -> None:
-        self._compiler = compiler
-        self._prim_func = prim_func
-        self._target = target
-        self._compiled: Any | None = None
-
-    def compile(self) -> Any:
-        if self._compiled is None:
-            self._compiled = self._compiler(
-                self._prim_func,
-                out_idx=4,
-                target=self._target,
-                execution_backend="cython",
-            )
-        return self._compiled
-
-    def get_kernel_source(self) -> str:
-        compiled = self.compile()
-        source = compiled.get_kernel_source()
-        if not isinstance(source, str) or not source.strip():
-            raise RuntimeError("TileLang returned an empty outer_product_mean kernel source")
-        return source
+_SUPPORTED_ARCHITECTURES = {"sm90a": "sm_90a", "sm100a": "sm_100a"}
+_SUPPORTED_DTYPES = {"float16", "bfloat16"}
+_SUPPORTED_THREADS = {64, 128, 256}
 
 
-def _bounded_positive(name: str, value: int, maximum: int) -> int:
-    if isinstance(value, bool) or not isinstance(value, int) or not 1 <= value <= maximum:
-        raise ValueError(f"{name} must be an integer in [1, {maximum}]")
-    return value
-
-
-def build_tilelang_program(
+def _configuration(
     *,
     target: str,
+    architecture: str,
+    dtype: str,
     batch_size: int,
-    sequence_length: int,
-    nodes: int,
+    source_count: int,
+    node_count: int,
     left_channels: int,
     right_channels: int,
-    dtype: str,
     threads: int,
-) -> _LazyTileLangProgram:
-    """Build, but do not compile, a bounded TileLang CUDA specialization."""
-
-    if target not in _SUPPORTED_TARGETS:
-        raise ValueError(f"target must be one of {sorted(_SUPPORTED_TARGETS)}")
-    batch_size = _bounded_positive("batch_size", batch_size, _MAX_BATCH_SIZE)
-    sequence_length = _bounded_positive(
-        "sequence_length", sequence_length, _MAX_SEQUENCE_LENGTH
-    )
-    nodes = _bounded_positive("nodes", nodes, _MAX_NODES)
-    left_channels = _bounded_positive("left_channels", left_channels, _MAX_CHANNELS)
-    right_channels = _bounded_positive("right_channels", right_channels, _MAX_CHANNELS)
+) -> str:
+    if target != "cuda":
+        raise ValueError("outer-product mean TileLang builders require target='cuda'")
+    if architecture not in _SUPPORTED_ARCHITECTURES:
+        raise ValueError("architecture must be one of sm90a or sm100a")
     if dtype not in _SUPPORTED_DTYPES:
-        raise ValueError(f"dtype must be one of {sorted(_SUPPORTED_DTYPES)}")
+        raise ValueError("dtype must be float16 or bfloat16")
+    if min(batch_size, source_count, node_count, left_channels, right_channels) <= 0:
+        raise ValueError("all specialization dimensions must be positive")
     if threads not in _SUPPORTED_THREADS:
-        raise ValueError(f"threads must be one of {sorted(_SUPPORTED_THREADS)}")
+        raise ValueError("threads must be one of 64, 128, or 256")
+    return f"cuda -arch={_SUPPORTED_ARCHITECTURES[architecture]}"
 
-    output_elements = (
-        batch_size * nodes * nodes * left_channels * right_channels
-    )
-    if output_elements > _MAX_OUTPUT_ELEMENTS:
-        raise ValueError(
-            "specialization output exceeds the bounded 32-bit element envelope"
-        )
 
-    tilelang = importlib.import_module("tilelang")
-    version = str(getattr(tilelang, "__version__", "")).split("+", 1)[0]
-    if version != _TILELANG_VERSION:
+def _tilelang() -> tuple[Any, Any]:
+    try:
+        import tilelang
+        import tilelang.language as T
+    except ImportError as exc:  # pragma: no cover - exercised only in compile lane
         raise RuntimeError(
-            f"outer_product_mean requires TileLang {_TILELANG_VERSION}, found {version or 'unknown'}"
+            "TileLang is required only in the hermetic offline compilation lane"
+        ) from exc
+    if getattr(tilelang, "__version__", None) != "0.1.13":
+        raise RuntimeError(
+            "TileLang 0.1.13 is required, found "
+            f"{getattr(tilelang, '__version__', 'unknown')}"
         )
-    T = importlib.import_module("tilelang.language")
-    tilelang_target = _SUPPORTED_TARGETS[target]
-    accumulation_dtype = "float32"
+    return tilelang, T
 
+
+def build_normalizer_program(
+    *,
+    target: str = "cuda",
+    architecture: str = "sm90a",
+    dtype: str = "float16",
+    batch_size: int = 1,
+    source_count: int = 64,
+    node_count: int = 32,
+    left_channels: int = 64,
+    right_channels: int = 64,
+    threads: int = 256,
+) -> object:
+    target_config = _configuration(**locals())
+    tilelang, T = _tilelang()
+    total = batch_size * node_count * node_count
+    blocks = (total + threads - 1) // threads
+
+    @tilelang.jit(out_idx=[1], target=target_config)
     @T.prim_func
-    def outer_product_mean_kernel(
-        left: T.Tensor(
-            (batch_size, sequence_length, nodes, left_channels), dtype
-        ),
-        right: T.Tensor(
-            (batch_size, sequence_length, nodes, right_channels), dtype
-        ),
-        mask: T.Tensor((batch_size, sequence_length, nodes), dtype),
+    def mindclade_tilelang_outer_product_mean_normalizer_raw(
+        mask: T.Tensor((batch_size, source_count, node_count), dtype),
+        output: T.Tensor((batch_size, node_count, node_count), "float32"),
+    ):
+        T.func_attr({"global_symbol": "mindclade_tilelang_outer_product_mean_normalizer_raw"})
+        with T.Kernel(blocks, threads=threads) as block:
+            accumulation = T.alloc_local((1,), "float32")
+            for lane in T.Parallel(threads):
+                flat = block * threads + lane
+                if flat < total:
+                    right_node = flat % node_count
+                    left_node = (flat // node_count) % node_count
+                    batch = flat // (node_count * node_count)
+                    accumulation[0] = T.float32(0)
+                    for source in T.serial(source_count):
+                        accumulation[0] += T.Cast(
+                            "float32", mask[batch, source, left_node]
+                        ) * T.Cast("float32", mask[batch, source, right_node])
+                    output[batch, left_node, right_node] = accumulation[0]
+
+    return mindclade_tilelang_outer_product_mean_normalizer_raw
+
+
+def build_numerator_program(
+    *,
+    target: str = "cuda",
+    architecture: str = "sm90a",
+    dtype: str = "float16",
+    batch_size: int = 1,
+    source_count: int = 64,
+    node_count: int = 32,
+    left_channels: int = 64,
+    right_channels: int = 64,
+    threads: int = 256,
+) -> object:
+    target_config = _configuration(**locals())
+    tilelang, T = _tilelang()
+    total = batch_size * node_count * node_count * left_channels * right_channels
+    blocks = (total + threads - 1) // threads
+
+    @tilelang.jit(out_idx=[5], target=target_config)
+    @T.prim_func
+    def mindclade_tilelang_outer_product_mean_numerator_raw(
+        left: T.Tensor((batch_size, source_count, node_count, left_channels), dtype),
+        right: T.Tensor((batch_size, source_count, node_count, right_channels), dtype),
+        mask: T.Tensor((batch_size, source_count, node_count), dtype),
         epsilon: T.float32,
+        normalizer: T.Tensor((batch_size, node_count, node_count), "float32"),
         output: T.Tensor(
-            (batch_size, nodes, nodes, left_channels, right_channels), dtype
+            (batch_size, node_count, node_count, left_channels, right_channels),
+            dtype,
         ),
     ):
-        with T.Kernel(
-            T.ceildiv(output_elements, threads), threads=threads
-        ) as block:
-            numerator = T.alloc_fragment((threads,), accumulation_dtype)
-            denominator = T.alloc_fragment((threads,), accumulation_dtype)
-
+        T.func_attr({"global_symbol": "mindclade_tilelang_outer_product_mean_numerator_raw"})
+        with T.Kernel(blocks, threads=threads) as block:
+            accumulation = T.alloc_local((1,), "float32")
             for lane in T.Parallel(threads):
-                numerator[lane] = 0.0
-                denominator[lane] = 0.0
-
-            for sequence_index in T.Serial(sequence_length):
-                for lane in T.Parallel(threads):
-                    linear_index = block * threads + lane
-                    if linear_index < output_elements:
-                        remaining = linear_index
-                        right_channel = remaining % right_channels
-                        remaining = remaining // right_channels
-                        left_channel = remaining % left_channels
-                        remaining = remaining // left_channels
-                        right_node = remaining % nodes
-                        remaining = remaining // nodes
-                        left_node = remaining % nodes
-                        batch_index = remaining // nodes
-
-                        weight = T.cast(
-                            mask[batch_index, sequence_index, left_node]
-                            * mask[batch_index, sequence_index, right_node],
-                            accumulation_dtype,
+                flat = block * threads + lane
+                if flat < total:
+                    right_channel = flat % right_channels
+                    left_channel = (flat // right_channels) % left_channels
+                    right_node = (flat // (right_channels * left_channels)) % node_count
+                    left_node = (
+                        flat // (right_channels * left_channels * node_count)
+                    ) % node_count
+                    batch = flat // (
+                        right_channels * left_channels * node_count * node_count
+                    )
+                    accumulation[0] = T.float32(0)
+                    for source in T.serial(source_count):
+                        accumulation[0] += (
+                            T.Cast("float32", left[batch, source, left_node, left_channel])
+                            * T.Cast("float32", right[batch, source, right_node, right_channel])
+                            * T.Cast("float32", mask[batch, source, left_node])
+                            * T.Cast("float32", mask[batch, source, right_node])
                         )
-                        numerator[lane] += (
-                            weight
-                            * T.cast(
-                                left[
-                                    batch_index,
-                                    sequence_index,
-                                    left_node,
-                                    left_channel,
-                                ],
-                                accumulation_dtype,
-                            )
-                            * T.cast(
-                                right[
-                                    batch_index,
-                                    sequence_index,
-                                    right_node,
-                                    right_channel,
-                                ],
-                                accumulation_dtype,
-                            )
-                        )
-                        denominator[lane] += weight
+                    denominator = T.max(normalizer[batch, left_node, right_node], epsilon)
+                    output[batch, left_node, right_node, left_channel, right_channel] = T.Cast(
+                        dtype, accumulation[0] / denominator
+                    )
 
+    return mindclade_tilelang_outer_product_mean_numerator_raw
+
+
+def build_dleft_program(
+    *,
+    target: str = "cuda",
+    architecture: str = "sm90a",
+    dtype: str = "float16",
+    batch_size: int = 1,
+    source_count: int = 64,
+    node_count: int = 32,
+    left_channels: int = 64,
+    right_channels: int = 64,
+    threads: int = 256,
+) -> object:
+    target_config = _configuration(**locals())
+    tilelang, T = _tilelang()
+    total = batch_size * source_count * node_count * left_channels
+    blocks = (total + threads - 1) // threads
+
+    @tilelang.jit(out_idx=[5], target=target_config)
+    @T.prim_func
+    def mindclade_tilelang_outer_product_mean_dleft_raw(
+        grad_output: T.Tensor((batch_size, node_count, node_count, left_channels, right_channels), dtype),
+        right: T.Tensor((batch_size, source_count, node_count, right_channels), dtype),
+        mask: T.Tensor((batch_size, source_count, node_count), dtype),
+        epsilon: T.float32,
+        normalizer: T.Tensor((batch_size, node_count, node_count), "float32"),
+        grad_left: T.Tensor((batch_size, source_count, node_count, left_channels), dtype),
+    ):
+        T.func_attr({"global_symbol": "mindclade_tilelang_outer_product_mean_dleft_raw"})
+        with T.Kernel(blocks, threads=threads) as block:
+            accumulation = T.alloc_local((1,), "float32")
             for lane in T.Parallel(threads):
-                linear_index = block * threads + lane
-                if linear_index < output_elements:
-                    remaining = linear_index
-                    right_channel = remaining % right_channels
-                    remaining = remaining // right_channels
-                    left_channel = remaining % left_channels
-                    remaining = remaining // left_channels
-                    right_node = remaining % nodes
-                    remaining = remaining // nodes
-                    left_node = remaining % nodes
-                    batch_index = remaining // nodes
-                    output[
-                        batch_index,
-                        left_node,
-                        right_node,
-                        left_channel,
-                        right_channel,
-                    ] = numerator[lane] / T.max(denominator[lane], epsilon)
+                flat = block * threads + lane
+                if flat < total:
+                    channel = flat % left_channels
+                    node = (flat // left_channels) % node_count
+                    source = (flat // (left_channels * node_count)) % source_count
+                    batch = flat // (left_channels * node_count * source_count)
+                    accumulation[0] = T.float32(0)
+                    for right_node in T.serial(node_count):
+                        denominator = T.max(normalizer[batch, node, right_node], epsilon)
+                        for right_channel in T.serial(right_channels):
+                            accumulation[0] += (
+                                T.Cast("float32", grad_output[batch, node, right_node, channel, right_channel])
+                                * T.Cast("float32", right[batch, source, right_node, right_channel])
+                                * T.Cast("float32", mask[batch, source, node])
+                                * T.Cast("float32", mask[batch, source, right_node])
+                                / denominator
+                            )
+                    grad_left[batch, source, node, channel] = T.Cast(dtype, accumulation[0])
 
-    return _LazyTileLangProgram(
-        tilelang.compile,
-        outer_product_mean_kernel,
-        tilelang_target,
-    )
+    return mindclade_tilelang_outer_product_mean_dleft_raw
+
+
+def build_dright_program(
+    *,
+    target: str = "cuda",
+    architecture: str = "sm90a",
+    dtype: str = "float16",
+    batch_size: int = 1,
+    source_count: int = 64,
+    node_count: int = 32,
+    left_channels: int = 64,
+    right_channels: int = 64,
+    threads: int = 256,
+) -> object:
+    target_config = _configuration(**locals())
+    tilelang, T = _tilelang()
+    total = batch_size * source_count * node_count * right_channels
+    blocks = (total + threads - 1) // threads
+
+    @tilelang.jit(out_idx=[5], target=target_config)
+    @T.prim_func
+    def mindclade_tilelang_outer_product_mean_dright_raw(
+        grad_output: T.Tensor((batch_size, node_count, node_count, left_channels, right_channels), dtype),
+        left: T.Tensor((batch_size, source_count, node_count, left_channels), dtype),
+        mask: T.Tensor((batch_size, source_count, node_count), dtype),
+        epsilon: T.float32,
+        normalizer: T.Tensor((batch_size, node_count, node_count), "float32"),
+        grad_right: T.Tensor((batch_size, source_count, node_count, right_channels), dtype),
+    ):
+        T.func_attr({"global_symbol": "mindclade_tilelang_outer_product_mean_dright_raw"})
+        with T.Kernel(blocks, threads=threads) as block:
+            accumulation = T.alloc_local((1,), "float32")
+            for lane in T.Parallel(threads):
+                flat = block * threads + lane
+                if flat < total:
+                    channel = flat % right_channels
+                    node = (flat // right_channels) % node_count
+                    source = (flat // (right_channels * node_count)) % source_count
+                    batch = flat // (right_channels * node_count * source_count)
+                    accumulation[0] = T.float32(0)
+                    for left_node in T.serial(node_count):
+                        denominator = T.max(normalizer[batch, left_node, node], epsilon)
+                        for left_channel in T.serial(left_channels):
+                            accumulation[0] += (
+                                T.Cast("float32", grad_output[batch, left_node, node, left_channel, channel])
+                                * T.Cast("float32", left[batch, source, left_node, left_channel])
+                                * T.Cast("float32", mask[batch, source, left_node])
+                                * T.Cast("float32", mask[batch, source, node])
+                                / denominator
+                            )
+                    grad_right[batch, source, node, channel] = T.Cast(dtype, accumulation[0])
+
+    return mindclade_tilelang_outer_product_mean_dright_raw
+
+
+def build_dmask_program(
+    *,
+    target: str = "cuda",
+    architecture: str = "sm90a",
+    dtype: str = "float16",
+    batch_size: int = 1,
+    source_count: int = 64,
+    node_count: int = 32,
+    left_channels: int = 64,
+    right_channels: int = 64,
+    threads: int = 256,
+) -> object:
+    target_config = _configuration(**locals())
+    tilelang, T = _tilelang()
+    total = batch_size * source_count * node_count
+    blocks = (total + threads - 1) // threads
+
+    @tilelang.jit(out_idx=[7], target=target_config)
+    @T.prim_func
+    def mindclade_tilelang_outer_product_mean_dmask_raw(
+        grad_output: T.Tensor((batch_size, node_count, node_count, left_channels, right_channels), dtype),
+        left: T.Tensor((batch_size, source_count, node_count, left_channels), dtype),
+        right: T.Tensor((batch_size, source_count, node_count, right_channels), dtype),
+        mask: T.Tensor((batch_size, source_count, node_count), dtype),
+        epsilon: T.float32,
+        output: T.Tensor((batch_size, node_count, node_count, left_channels, right_channels), dtype),
+        normalizer: T.Tensor((batch_size, node_count, node_count), "float32"),
+        grad_mask: T.Tensor((batch_size, source_count, node_count), dtype),
+    ):
+        T.func_attr({"global_symbol": "mindclade_tilelang_outer_product_mean_dmask_raw"})
+        with T.Kernel(blocks, threads=threads) as block:
+            accumulation = T.alloc_local((1,), "float32")
+            for lane in T.Parallel(threads):
+                flat = block * threads + lane
+                if flat < total:
+                    node = flat % node_count
+                    source = (flat // node_count) % source_count
+                    batch = flat // (node_count * source_count)
+                    accumulation[0] = T.float32(0)
+                    for other in T.serial(node_count):
+                        left_denominator = T.max(normalizer[batch, node, other], epsilon)
+                        right_denominator = T.max(normalizer[batch, other, node], epsilon)
+                        for left_channel in T.serial(left_channels):
+                            for right_channel in T.serial(right_channels):
+                                left_go = T.Cast("float32", grad_output[batch, node, other, left_channel, right_channel])
+                                right_go = T.Cast("float32", grad_output[batch, other, node, left_channel, right_channel])
+                                accumulation[0] += (
+                                    left_go
+                                    * T.Cast("float32", left[batch, source, node, left_channel])
+                                    * T.Cast("float32", right[batch, source, other, right_channel])
+                                    * T.Cast("float32", mask[batch, source, other])
+                                    / left_denominator
+                                )
+                                accumulation[0] += (
+                                    right_go
+                                    * T.Cast("float32", left[batch, source, other, left_channel])
+                                    * T.Cast("float32", right[batch, source, node, right_channel])
+                                    * T.Cast("float32", mask[batch, source, other])
+                                    / right_denominator
+                                )
+                                if normalizer[batch, node, other] >= epsilon:
+                                    accumulation[0] -= (
+                                        left_go
+                                        * T.Cast("float32", output[batch, node, other, left_channel, right_channel])
+                                        * T.Cast("float32", mask[batch, source, other])
+                                        / left_denominator
+                                    )
+                                if normalizer[batch, other, node] >= epsilon:
+                                    accumulation[0] -= (
+                                        right_go
+                                        * T.Cast("float32", output[batch, other, node, left_channel, right_channel])
+                                        * T.Cast("float32", mask[batch, source, other])
+                                        / right_denominator
+                                    )
+                    grad_mask[batch, source, node] = T.Cast(dtype, accumulation[0])
+
+    return mindclade_tilelang_outer_product_mean_dmask_raw
+
+
+def build_forward_program_group(**_: object) -> dict[str, object]:
+    """Describe deterministic normalizer -> numerator orchestration."""
+
+    return {
+        "phase": "forward",
+        "logical_symbol": "mindclade_tilelang_outer_product_mean_fwd_launch",
+        "execution_order": ("normalizer", "numerator"),
+        "workspaces": (),
+        "version": 1,
+    }
+
+
+def build_backward_program_group(**_: object) -> dict[str, object]:
+    """Describe independent named-gradient orchestration."""
+
+    return {
+        "phase": "backward",
+        "logical_symbol": "mindclade_tilelang_outer_product_mean_bwd_launch",
+        "execution_order": ("dleft", "dmask", "dright"),
+        "workspaces": (),
+        "version": 1,
+    }
+
+
+build_tilelang_program = build_numerator_program

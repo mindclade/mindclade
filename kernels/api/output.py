@@ -4,6 +4,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass, fields, is_dataclass
 from enum import Enum
+import hashlib
+import json
+import math
 from typing import Any
 
 from .errors import KernelContractError
@@ -14,7 +17,6 @@ from .expressions import (
     ExprDomain,
     ShapeExpr,
     canonical_data,
-    content_digest,
 )
 
 
@@ -45,6 +47,12 @@ def _canonical(value: Any) -> Any:
             field.name: _canonical(getattr(value, field.name))
             for field in fields(value)
         }
+    if value is None or isinstance(value, (str, bool, int)):
+        return value
+    if isinstance(value, float):
+        if not math.isfinite(value):
+            raise KernelContractError("canonical contract floats must be finite")
+        return value
     return canonical_data(value)
 
 
@@ -64,7 +72,14 @@ class ContractModel:
 
     @property
     def digest(self) -> str:
-        return content_digest(self.to_canonical())
+        payload = json.dumps(
+            self.to_canonical(),
+            sort_keys=True,
+            separators=(",", ":"),
+            ensure_ascii=True,
+            allow_nan=False,
+        ).encode("utf-8")
+        return "sha256:" + hashlib.sha256(payload).hexdigest()
 
 
 @dataclass(frozen=True, slots=True)
@@ -78,7 +93,12 @@ class InitializationSpec(ContractModel):
     def __post_init__(self) -> None:
         if self.version != 1:
             raise KernelContractError(f"unsupported InitializationSpec version: {self.version}")
-        if self.mode not in {"zero", "value", "uninitialized"}:
+        if self.mode not in {
+            "zero",
+            "value",
+            "negative_infinity",
+            "uninitialized",
+        }:
             raise KernelContractError(f"unsupported initialization mode: {self.mode}")
         if self.mode == "value" and self.value is None:
             raise KernelContractError("value initialization requires an explicit value")

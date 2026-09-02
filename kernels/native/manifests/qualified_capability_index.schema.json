@@ -1,0 +1,233 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mindclade.com/schemas/native/qualified-capability-index-v1.json",
+  "title": "Mindclade qualified native capability index",
+  "oneOf": [
+    { "$ref": "#/$defs/sourceEmptyIndex" },
+    { "$ref": "#/$defs/signedDocument" }
+  ],
+  "$defs": {
+    "dimension": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "value"],
+      "properties": {
+        "name": { "type": "string", "pattern": "^[a-z][a-z0-9_]{0,63}$" },
+        "value": { "type": "integer", "minimum": 0, "maximum": 9223372036854775807 }
+      }
+    },
+    "attribute": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "type", "value"],
+      "properties": {
+        "name": { "type": "string", "pattern": "^[a-z][a-z0-9_]{0,63}$" },
+        "type": { "enum": ["bool", "int64", "float64", "string"] },
+        "value": {}
+      },
+      "allOf": [
+        { "if": { "properties": { "type": { "const": "bool" } } }, "then": { "properties": { "value": { "type": "boolean" } } } },
+        { "if": { "properties": { "type": { "const": "int64" } } }, "then": { "properties": { "value": { "type": "integer", "minimum": -9223372036854775808, "maximum": 9223372036854775807 } } } },
+        { "if": { "properties": { "type": { "const": "float64" } } }, "then": { "properties": { "value": { "type": "number" } } } },
+        { "if": { "properties": { "type": { "const": "string" } } }, "then": { "properties": { "value": { "type": "string", "maxLength": 1024 } } } }
+      ]
+    },
+    "digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "identity": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9._:/+\\-]{0,255}$"
+    },
+    "operation": {
+      "type": "string",
+      "pattern": "^mindclade::[a-z][a-z0-9_]{0,63}$"
+    },
+    "signature": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["algorithm", "key_id", "subject_digest", "signature"],
+      "properties": {
+        "algorithm": { "const": "ed25519" },
+        "key_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9._:/\\-]{2,255}$"
+        },
+        "subject_digest": { "$ref": "#/$defs/digest" },
+        "signature": {
+          "type": "string",
+          "minLength": 88,
+          "maxLength": 88,
+          "pattern": "^[A-Za-z0-9+/]{86}==$"
+        }
+      }
+    },
+    "capability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "operation", "operation_version", "implementation",
+        "implementation_version", "tier", "priority", "architecture",
+        "dtype", "layout", "mode", "workload_digest", "specialization_digest", "dimensions", "attributes", "schedule_digest",
+        "numerical_envelope_digest", "runtime_compatibility_digest",
+        "compile_environment_digest", "bundle_digest",
+        "native_manifest_digest", "library_digest", "executable_plan_digest",
+        "forward_artifact_digest", "backward_artifact_digest",
+        "release_receipt_digest", "release_signature_digest",
+        "k4_receipt_digest", "qualification_identity", "repository_revision",
+        "native_manifest_schema_version", "native_manifest_generator_version",
+        "build_receipt_schema_version", "autograd_policy", "status",
+        "capability_digest"
+      ],
+      "properties": {
+        "operation": { "$ref": "#/$defs/operation" },
+        "operation_version": { "type": "integer", "minimum": 1 },
+        "implementation": { "$ref": "#/$defs/identity" },
+        "implementation_version": { "type": "integer", "minimum": 1 },
+        "tier": {
+          "enum": ["portable", "optimized", "specialized", "hand_specialized"]
+        },
+        "priority": { "type": "integer" },
+        "architecture": { "type": "string", "pattern": "^sm[0-9]{2,3}a$" },
+        "dtype": { "$ref": "#/$defs/identity" },
+        "layout": { "$ref": "#/$defs/identity" },
+        "mode": { "$ref": "#/$defs/identity" },
+        "workload_digest": { "$ref": "#/$defs/digest" },
+        "specialization_digest": { "$ref": "#/$defs/digest" },
+        "dimensions": {
+          "type": "array", "minItems": 1, "maxItems": 64,
+          "items": { "$ref": "#/$defs/dimension" }
+        },
+        "attributes": {
+          "type": "array", "maxItems": 64,
+          "items": { "$ref": "#/$defs/attribute" }
+        },
+        "schedule_digest": { "$ref": "#/$defs/digest" },
+        "numerical_envelope_digest": { "$ref": "#/$defs/digest" },
+        "runtime_compatibility_digest": { "$ref": "#/$defs/digest" },
+        "compile_environment_digest": { "$ref": "#/$defs/digest" },
+        "bundle_digest": { "$ref": "#/$defs/digest" },
+        "native_manifest_digest": { "$ref": "#/$defs/digest" },
+        "library_digest": { "$ref": "#/$defs/digest" },
+        "executable_plan_digest": { "$ref": "#/$defs/digest" },
+        "forward_artifact_digest": { "$ref": "#/$defs/digest" },
+        "backward_artifact_digest": {
+          "oneOf": [{ "$ref": "#/$defs/digest" }, { "type": "null" }]
+        },
+        "release_receipt_digest": { "$ref": "#/$defs/digest" },
+        "release_signature_digest": { "$ref": "#/$defs/digest" },
+        "k4_receipt_digest": { "$ref": "#/$defs/digest" },
+        "qualification_identity": { "$ref": "#/$defs/identity" },
+        "repository_revision": {
+          "type": "string",
+          "pattern": "^(?:[0-9a-f]{40}|[0-9a-f]{64})$"
+        },
+        "native_manifest_schema_version": { "const": 4 },
+        "native_manifest_generator_version": { "const": 8 },
+        "build_receipt_schema_version": { "const": 4 },
+        "autograd_policy": { "enum": ["required", "none", "composite"] },
+        "status": { "enum": ["K5_PASS", "TEST_ONLY"] },
+        "capability_digest": { "$ref": "#/$defs/digest" }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "autograd_policy": { "const": "required" } },
+            "required": ["autograd_policy"]
+          },
+          "then": {
+            "properties": {
+              "backward_artifact_digest": { "$ref": "#/$defs/digest" }
+            }
+          },
+          "else": {
+            "properties": {
+              "backward_artifact_digest": { "type": "null" }
+            }
+          }
+        }
+      ]
+    },
+    "index": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version", "evidence_class", "capabilities", "revocations",
+        "rollbacks", "index_digest"
+      ],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "evidence_class": {
+          "enum": ["PRODUCTION_K4_K5", "TEST_ONLY_UNQUALIFIED"]
+        },
+        "capabilities": {
+          "type": "array",
+          "maxItems": 4096,
+          "items": { "$ref": "#/$defs/capability" }
+        },
+        "revocations": {
+          "type": "array",
+          "maxItems": 4096,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["capability_digest", "revocation_receipt_digest"],
+            "properties": {
+              "capability_digest": { "$ref": "#/$defs/digest" },
+              "revocation_receipt_digest": { "$ref": "#/$defs/digest" }
+            }
+          }
+        },
+        "rollbacks": {
+          "type": "array",
+          "maxItems": 4096,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "revoked_capability_digest", "replacement_capability_digest",
+              "rollback_receipt_digest"
+            ],
+            "properties": {
+              "revoked_capability_digest": { "$ref": "#/$defs/digest" },
+              "replacement_capability_digest": { "$ref": "#/$defs/digest" },
+              "rollback_receipt_digest": { "$ref": "#/$defs/digest" }
+            }
+          }
+        },
+        "index_digest": { "$ref": "#/$defs/digest" }
+      }
+    },
+    "sourceEmptyIndex": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version", "evidence_class", "capabilities", "revocations",
+        "rollbacks", "index_digest"
+      ],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "evidence_class": { "const": "SOURCE_EMPTY_UNQUALIFIED" },
+        "capabilities": { "const": [] },
+        "revocations": { "const": [] },
+        "rollbacks": { "const": [] },
+        "index_digest": {
+          "const": "sha256:d2957d149cadfb610ba09bd3fc9021975165420caafebd9be4896c749ba87501"
+        }
+      }
+    },
+    "signedDocument": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["payload_type", "index", "signature"],
+      "properties": {
+        "payload_type": {
+          "const": "application/vnd.mindclade.qualified-capability-index.v1+json"
+        },
+        "index": { "$ref": "#/$defs/index" },
+        "signature": { "$ref": "#/$defs/signature" }
+      }
+    }
+  }
+}

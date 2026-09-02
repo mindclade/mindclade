@@ -18,7 +18,8 @@ def _fixture_manifest(tmp_path: Path) -> dict:
     (operation / "spec.py").write_text(
         '''from kernels.api import (
     AutogradPolicy, EffectSpec, ForwardSpec, KernelSpec, LaunchContract,
-    OutputSpec, SameAsInputDType, SameAsInputDevice, ShapeOf,
+    OutputSpec, RankRef, RuntimeWorkloadSpec, SameAsInputDType,
+    SameAsInputDevice, ShapeOf, WorkloadDimensionBinding,
 )
 KERNEL_SPEC: KernelSpec = KernelSpec(
     name="fixture_op", namespace="mindclade", family="family_a",
@@ -36,6 +37,10 @@ KERNEL_SPEC: KernelSpec = KernelSpec(
         ),),
     ), backward=None, autograd_policy=AutogradPolicy.NONE,
     effects=EffectSpec(), launch=LaunchContract(graph_capture_safe=False),
+    runtime_workload=RuntimeWorkloadSpec(
+        dimensions=(WorkloadDimensionBinding(name="rank", value=RankRef(argument="x")),),
+        input_dtype=SameAsInputDType(argument="x"), layout="contiguous",
+    ),
 )
 IMPLEMENTATION_SPECS = ()
 ''', encoding="utf-8")
@@ -104,6 +109,9 @@ def _with_backward_bindings(manifest: dict) -> dict:
                 "type": "GradientSpec",
                 "input_name": "x",
                 "output_name": "grad_x",
+                "shape": {"node": "shape_of", "argument": "x"},
+                "dtype": {"node": "dtype_ref", "argument": "x"},
+                "device": {"node": "device_ref", "argument": "x"},
                 "optional": False,
                 "accumulation_dtype": None,
                 "version": 1,
@@ -117,6 +125,32 @@ def _with_backward_bindings(manifest: dict) -> dict:
 
 
 def _program_group() -> dict:
+    tensor = lambda position, name, access: {
+        "type": "ProgramParameterSpec",
+        "position": position,
+        "name": name,
+        "kind": "tensor",
+        "access": access,
+        "shape": {"node": "shape_of", "argument": "x"},
+        "dtype": {"node": "constant_dtype", "value": "float32"},
+        "device": {"node": "same_as_input_device", "argument": "x"},
+        "scalar_type": None,
+        "optional": False,
+        "version": 1,
+    }
+    stream = {
+        "type": "ProgramParameterSpec",
+        "position": 1,
+        "name": "stream",
+        "kind": "stream",
+        "access": "read",
+        "shape": None,
+        "dtype": None,
+        "device": None,
+        "scalar_type": None,
+        "optional": False,
+        "version": 1,
+    }
     return {
         "type": "ProgramGroupSpec",
         "nodes": [
@@ -125,15 +159,22 @@ def _program_group() -> dict:
                 "name": "produce",
                 "builder": "kernels.family_a.fixture_op.tilelang:build_produce",
                 "symbol": "mindclade_tilelang_fixture_op_produce_launch",
-                "depends_on": [],
-                "workspace_uses": [
+                "entry_symbol": "call",
+                "entry_abi": "tilelang_0_1_13_host_call",
+                "parameters": [tensor(0, "scratch", "write"), stream],
+                "bindings": [
                     {
-                        "type": "WorkspaceUseSpec",
-                        "workspace": "scratch",
-                        "access": "write",
-                        "version": 1,
-                    }
+                        "type": "ProgramBindingSpec", "parameter": "scratch",
+                        "source": "workspace", "source_name": "scratch", "version": 1,
+                    },
+                    {
+                        "type": "ProgramBindingSpec", "parameter": "stream",
+                        "source": "current_stream", "source_name": None, "version": 1,
+                    },
                 ],
+                "depends_on": [],
+                "return_abi": "status_i32_zero_success",
+                "artifact_boundary": "node_content_addressed_dso",
                 "version": 1,
             },
             {
@@ -141,15 +182,22 @@ def _program_group() -> dict:
                 "name": "consume",
                 "builder": "kernels.family_a.fixture_op.tilelang:build_consume",
                 "symbol": "mindclade_tilelang_fixture_op_consume_launch",
-                "depends_on": ["produce"],
-                "workspace_uses": [
+                "entry_symbol": "call",
+                "entry_abi": "tilelang_0_1_13_host_call",
+                "parameters": [tensor(0, "scratch", "read"), stream],
+                "bindings": [
                     {
-                        "type": "WorkspaceUseSpec",
-                        "workspace": "scratch",
-                        "access": "read_write",
-                        "version": 1,
-                    }
+                        "type": "ProgramBindingSpec", "parameter": "scratch",
+                        "source": "workspace", "source_name": "scratch", "version": 1,
+                    },
+                    {
+                        "type": "ProgramBindingSpec", "parameter": "stream",
+                        "source": "current_stream", "source_name": None, "version": 1,
+                    },
                 ],
+                "depends_on": ["produce"],
+                "return_abi": "status_i32_zero_success",
+                "artifact_boundary": "node_content_addressed_dso",
                 "version": 1,
             },
         ],
@@ -169,6 +217,7 @@ def _program_group() -> dict:
                 "version": 1,
             }
         ],
+        "selector_bindings": [],
         "version": 1,
     }
 
@@ -179,23 +228,22 @@ def _launcher_plan(phase: str) -> dict:
     return {
         "phase": phase,
         "logical_symbol": logical_symbol,
-        "bridge_requirement": "mindclade_program_group_bridge_v1",
+        "bridge_requirement": "mindclade_node_launch_v1",
         "execution_order": ["produce", "consume"],
-        "required_private_symbols": [
+        "adapter_symbol_prefixes": [
             node["symbol"] for node in group["nodes"]
         ],
         "nodes": [
             {
                 "name": node["name"],
                 "symbol": node["symbol"],
+                "entry_symbol": node["entry_symbol"],
+                "entry_abi": node["entry_abi"],
+                "return_abi": node["return_abi"],
+                "artifact_boundary": node["artifact_boundary"],
                 "depends_on": node["depends_on"],
-                "workspace_uses": [
-                    {
-                        "workspace": use["workspace"],
-                        "access": use["access"],
-                    }
-                    for use in node["workspace_uses"]
-                ],
+                "parameters": node["parameters"],
+                "bindings": node["bindings"],
             }
             for node in group["nodes"]
         ],
@@ -212,6 +260,7 @@ def _launcher_plan(phase: str) -> dict:
             }
             for workspace in group["workspaces"]
         ],
+        "selector_bindings": group["selector_bindings"],
     }
 
 
@@ -266,7 +315,7 @@ def test_schema_rejects_candidate_activation_claims(tmp_path: Path, field: str):
         _validator().validate(manifest)
 
 
-def test_generated_manifest_validates_against_strict_v3_schema():
+def test_generated_manifest_validates_against_strict_v4_schema():
     manifest = json.loads((ROOT / "generated" / "native_ops.json").read_text())
     _validator().validate(manifest)
 
@@ -349,9 +398,10 @@ def test_schema_accepts_forward_and_backward_program_groups(tmp_path: Path):
     ("contract", "field"),
     (
         ("group", "workspaces"),
-        ("node", "workspace_uses"),
+        ("node", "bindings"),
         ("workspace", "shape"),
-        ("use", "access"),
+        ("parameter", "access"),
+        ("binding", "source"),
     ),
 )
 def test_schema_rejects_missing_program_group_fields(
@@ -363,7 +413,8 @@ def test_schema_rejects_missing_program_group_fields(
         "group": group,
         "node": group["nodes"][0],
         "workspace": group["workspaces"][0],
-        "use": group["nodes"][0]["workspace_uses"][0],
+        "parameter": group["nodes"][0]["parameters"][0],
+        "binding": group["nodes"][0]["bindings"][0],
     }[contract]
     del target[field]
     manifest["operators"][0]["forward"]["program_group"] = group
@@ -371,7 +422,7 @@ def test_schema_rejects_missing_program_group_fields(
         _validator().validate(manifest)
 
 
-@pytest.mark.parametrize("contract", ("group", "node", "workspace", "use"))
+@pytest.mark.parametrize("contract", ("group", "node", "workspace", "parameter", "binding"))
 def test_schema_rejects_extra_program_group_fields(
     tmp_path: Path, contract: str
 ):
@@ -381,7 +432,8 @@ def test_schema_rejects_extra_program_group_fields(
         "group": group,
         "node": group["nodes"][0],
         "workspace": group["workspaces"][0],
-        "use": group["nodes"][0]["workspace_uses"][0],
+        "parameter": group["nodes"][0]["parameters"][0],
+        "binding": group["nodes"][0]["bindings"][0],
     }[contract]
     target["runtime_expression"] = "prohibited"
     manifest["operators"][0]["forward"]["program_group"] = group
@@ -399,9 +451,12 @@ def test_schema_rejects_extra_program_group_fields(
         ("workspace", "type", "RuntimeWorkspace"),
         ("workspace", "version", 2),
         ("workspace", "lifetime", "process"),
-        ("use", "type", "RuntimeWorkspaceUse"),
-        ("use", "version", 2),
-        ("use", "access", "execute"),
+        ("parameter", "type", "RuntimeProgramParameter"),
+        ("parameter", "version", 2),
+        ("parameter", "access", "execute"),
+        ("binding", "type", "RuntimeProgramBinding"),
+        ("binding", "version", 2),
+        ("binding", "source", "execute"),
     ),
 )
 def test_schema_rejects_invalid_program_group_contract_values(
@@ -413,7 +468,8 @@ def test_schema_rejects_invalid_program_group_contract_values(
         "group": group,
         "node": group["nodes"][0],
         "workspace": group["workspaces"][0],
-        "use": group["nodes"][0]["workspace_uses"][0],
+        "parameter": group["nodes"][0]["parameters"][0],
+        "binding": group["nodes"][0]["bindings"][0],
     }[contract]
     target[field] = invalid
     manifest["operators"][0]["forward"]["program_group"] = group
@@ -467,9 +523,10 @@ def test_schema_rejects_invalid_workspace_expression_domains(
     (
         ("plans", "backward"),
         ("plan", "execution_order"),
-        ("node", "workspace_uses"),
+        ("node", "bindings"),
         ("workspace", "shape"),
-        ("use", "access"),
+        ("parameter", "access"),
+        ("binding", "source"),
     ),
 )
 def test_schema_rejects_missing_launcher_plan_fields(
@@ -486,14 +543,15 @@ def test_schema_rejects_missing_launcher_plan_fields(
         "plan": plan,
         "node": plan["nodes"][0],
         "workspace": plan["workspaces"][0],
-        "use": plan["nodes"][0]["workspace_uses"][0],
+        "parameter": plan["nodes"][0]["parameters"][0],
+        "binding": plan["nodes"][0]["bindings"][0],
     }[location]
     del target[field]
     with pytest.raises(jsonschema.ValidationError):
         _validator().validate(manifest)
 
 
-@pytest.mark.parametrize("location", ("plans", "plan", "node", "workspace", "use"))
+@pytest.mark.parametrize("location", ("plans", "plan", "node", "workspace", "parameter", "binding"))
 def test_schema_rejects_extra_launcher_plan_fields(
     tmp_path: Path, location: str
 ):
@@ -508,7 +566,8 @@ def test_schema_rejects_extra_launcher_plan_fields(
         "plan": plan,
         "node": plan["nodes"][0],
         "workspace": plan["workspaces"][0],
-        "use": plan["nodes"][0]["workspace_uses"][0],
+        "parameter": plan["nodes"][0]["parameters"][0],
+        "binding": plan["nodes"][0]["bindings"][0],
     }[location]
     target["builder"] = "prohibited"
     with pytest.raises(jsonschema.ValidationError):
@@ -538,7 +597,7 @@ def test_schema_rejects_invalid_launcher_plan_contract_values(
 
 
 @pytest.mark.parametrize(
-    "field", ("execution_order", "required_private_symbols", "nodes")
+    "field", ("execution_order", "adapter_symbol_prefixes", "nodes")
 )
 def test_schema_rejects_empty_launcher_plan_execution_arrays(
     tmp_path: Path, field: str

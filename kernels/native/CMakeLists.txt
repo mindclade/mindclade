@@ -17,6 +17,9 @@ include(generated/native_ops.generated.cmake)
 if(NOT DEFINED MINDCLADE_TILELANG_REQUIRED_PRIVATE_SYMBOLS)
   message(FATAL_ERROR "Generated native inventory did not declare private symbols")
 endif()
+if(NOT DEFINED MINDCLADE_TILELANG_REQUIRED_LOGICAL_SYMBOLS)
+  message(FATAL_ERROR "Generated native inventory did not declare logical symbols")
+endif()
 
 set(
   MINDCLADE_TORCH_STABLE_ABI_VERSION

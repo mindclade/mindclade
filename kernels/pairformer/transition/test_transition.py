@@ -1,42 +1,116 @@
-# Copyright (c) 2026 Mindclade, LLC. All Rights Reserved.
-# Mindclade Proprietary and Confidential.
-# SPDX-License-Identifier: LicenseRef-Mindclade-Proprietary
-
 from __future__ import annotations
-
-import hashlib
-from pathlib import Path
 
 import pytest
 import torch
 
-from kernels.api import EvaluationContext, TensorMetadata
+from kernels.api import AutogradPolicy, EvaluationContext, TensorMetadata
 from kernels.pairformer.transition.dispatch import transition
-from kernels.pairformer.transition.reference import composite_backward, setup_context, transition_reference
+from kernels.pairformer.transition.reference import (
+    transition_reference,
+    transition_with_saved,
+)
 from kernels.pairformer.transition.spec import KERNEL_SPEC
-from kernels.pairformer.transition.tilelang import build_tilelang_program
+from kernels.pairformer.transition.tilelang import build_forward, build_forward_program
 
-def inputs(dtype=torch.float64):
-    gate=torch.randn(2,5,8,dtype=dtype); value=torch.randn_like(gate); weight=torch.randn(8,4,dtype=dtype); bias=torch.randn(4,dtype=dtype); mask=torch.tensor([[1,1,0,1,0],[1,0,1,1,1]],dtype=torch.bool); return gate,value,weight,bias,mask
 
-def test_reference_formula_mask_and_gradcheck():
-    gate,value,weight,bias,mask=inputs(); expected=((torch.nn.functional.silu(gate)*value)@weight+bias)*mask.unsqueeze(-1)
-    torch.testing.assert_close(transition_reference(gate,value,weight,bias,mask),expected)
-    tensors=tuple(item.requires_grad_(True) for item in (gate,value,weight,bias)); assert torch.autograd.gradcheck(lambda g,v,w,b: transition_reference(g,v,w,b,mask),tensors)
+def inputs(dtype: torch.dtype = torch.float64):
+    gate = torch.randn(2, 5, 8, dtype=dtype)
+    value = torch.randn_like(gate)
+    weight = torch.randn(8, 4, dtype=dtype)
+    bias = torch.randn(4, dtype=dtype)
+    mask = torch.rand(2, 5, dtype=dtype)
+    return gate, value, weight, bias, mask
 
-def test_composite_backward_maps_four_gradients():
-    gate,value,weight,bias,mask=inputs(); originals=tuple(item.requires_grad_(True) for item in (gate,value,weight,bias)); output=transition_reference(*originals,mask); grad=torch.randn_like(output); expected=torch.autograd.grad(output,originals,grad)
-    class Context:
-        needs_input_grad=(True,True,True,True,False)
-        def save_for_backward(self,*values): self.saved_tensors=values
-    ctx=Context(); setup_context(ctx,(*originals,mask),output); actual=composite_backward(ctx,grad)
-    for got,want in zip(actual[:4],expected): torch.testing.assert_close(got,want)
-    assert actual[4] is None
 
-def test_declarative_shape_dispatch_digest_and_profile_guards():
-    context=EvaluationContext({"gate":TensorMetadata((2,7,16),"bf16","cuda"),"output_weight":TensorMetadata((16,6),"bf16","cuda")})
-    assert KERNEL_SPEC.forward.outputs[0].shape.evaluate(context)==(2,7,6)
-    gate,value,weight,bias,mask=inputs(torch.float32); assert transition(gate,value,weight,bias,mask,use_reference=True).shape==(2,5,4)
-    reference=Path(__file__).parents[0]/"reference.py"; assert KERNEL_SPEC.composite.source_digest=="sha256:"+hashlib.sha256(reference.read_bytes()).hexdigest()
-    assert KERNEL_SPEC.backward is None and KERNEL_SPEC.forward.symbol.endswith("_fwd_launch")
-    with pytest.raises(ValueError,match="explicit CUDA"): build_tilelang_program(target="cpu",batch_size=1,rows=2,hidden_channels=16,output_channels=8)
+def test_reference_formula_saved_output_and_all_gradients() -> None:
+    gate, value, weight, bias, mask = inputs()
+    expected_pre_mask = (torch.nn.functional.silu(gate) * value) @ weight + bias
+    expected = expected_pre_mask * mask.unsqueeze(-1)
+    output, pre_mask = transition_with_saved(gate, value, weight, bias, mask)
+    torch.testing.assert_close(output, expected)
+    torch.testing.assert_close(pre_mask, expected_pre_mask)
+    differentiable = tuple(
+        tensor.requires_grad_(True) for tensor in (gate, value, weight, bias, mask)
+    )
+    assert torch.autograd.gradcheck(
+        lambda g, v, w, b, m: transition_reference(g, v, w, b, m),
+        differentiable,
+    )
+
+
+def test_required_contract_shape_and_named_gradient_coverage() -> None:
+    context = EvaluationContext(
+        {
+            "gate": TensorMetadata((2, 7, 16), "bf16", "cuda"),
+            "output_weight": TensorMetadata((16, 6), "bf16", "cuda"),
+        }
+    )
+    assert KERNEL_SPEC.forward.outputs[0].shape.evaluate(context) == (2, 7, 6)
+    assert KERNEL_SPEC.autograd_policy is AutogradPolicy.REQUIRED
+    assert KERNEL_SPEC.backward is not None
+    assert tuple(gradient.input_name for gradient in KERNEL_SPEC.backward.gradients) == (
+        "gate",
+        "value",
+        "output_weight",
+        "output_bias",
+        "mask",
+    )
+    assert KERNEL_SPEC.forward.outputs[1].saved_for_backward
+    assert not KERNEL_SPEC.backward.supports_double_backward
+
+
+def test_dispatch_fallback_and_build_contract_are_explicit() -> None:
+    gate, value, weight, bias, mask = inputs(torch.float32)
+    result = transition(
+        gate, value, weight, bias, mask, fallback="reference"
+    )
+    torch.testing.assert_close(
+        result, transition_reference(gate, value, weight, bias, mask)
+    )
+    descriptor = build_forward()
+    assert descriptor["execution_order"] == ("transition_forward",)
+    assert descriptor["logical_symbol"].endswith("_fwd_launch")
+    with pytest.raises(ValueError, match="target='cuda'"):
+        build_forward_program(
+            target="cpu",
+            architecture="sm90a",
+            dtype="bfloat16",
+            batch_size=1,
+            rows=2,
+            hidden_channels=16,
+            output_channels=8,
+        )
+
+
+
+def test_callable_nodes_split_independently_optional_gradients():
+    from kernels.api import ProgramArtifactBoundary, ProgramBindingSource, ProgramEntryABI
+
+    assert tuple(node.name for node in KERNEL_SPEC.backward.program_group.nodes) == (
+        "grad_bias", "grad_gate", "grad_mask", "grad_value", "grad_weight"
+    )
+    groups = (KERNEL_SPEC.forward.program_group, KERNEL_SPEC.backward.program_group)
+    for group in groups:
+        assert group is not None
+        for node in group.nodes:
+            assert node.entry_symbol == "call"
+            assert node.entry_abi is ProgramEntryABI.TILELANG_0_1_13_HOST_CALL
+            assert node.artifact_boundary is ProgramArtifactBoundary.NODE_CONTENT_ADDRESSED_DSO
+            assert sum(binding.source is ProgramBindingSource.CURRENT_STREAM for binding in node.bindings) == 1
+    assert all(
+        sum(binding.source is ProgramBindingSource.GRADIENT_REQUEST for binding in node.bindings) == 1
+        for node in KERNEL_SPEC.backward.program_group.nodes
+    )
+
+def test_runtime_workload_contract_is_exact():
+    from kernels.pairformer.transition.spec import KERNEL_SPEC
+
+    workload = KERNEL_SPEC.runtime_workload
+    assert tuple((binding.name, binding.value.argument, binding.value.axis) for binding in workload.dimensions) == (
+        ("batch_size", "gate", 0), ("hidden_channels", "gate", 2),
+        ("output_channels", "output_weight", 1), ("rows", "gate", 1),
+    )
+    assert workload.input_dtype.argument == "gate"
+    assert workload.layout == "contiguous"
+    assert workload.mode_selector is None
+    assert workload.attributes == ()

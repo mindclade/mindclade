@@ -1,0 +1,36 @@
+{
+  "generator": {
+    "id": "kernels.native.codegen.generate",
+    "version": 8
+  },
+  "row_count": 0,
+  "row_fields": [
+    "operation",
+    "phase",
+    "workload_digest",
+    "specialization_digest",
+    "capability_digest",
+    "artifact_digest",
+    "architecture",
+    "dtype",
+    "layout",
+    "mode",
+    "dimensions",
+    "attributes",
+    "specificity",
+    "priority",
+    "adapter_symbols"
+  ],
+  "rows": [],
+  "rows_digest": "sha256:4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+  "schema_version": 1,
+  "selection": "exact_qualified_only",
+  "sort_order": [
+    "operation",
+    "phase",
+    "-specificity",
+    "-priority",
+    "capability_digest"
+  ],
+  "table_digest": "sha256:6291f881e4379215d7b2cdc92ba0f2763a4e9ddbc7801b292c136d99fd3dbc35"
+}

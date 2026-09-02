@@ -3,6 +3,21 @@
 
 load("@rules_python//python:defs.bzl", "py_test")
 
+filegroup(
+    name = "policy_inputs",
+    srcs = [
+        "BUILD.bazel",
+        "README.md",
+        "__init__.py",
+        "dispatch.py",
+        "reference.py",
+        "spec.py",
+        "test_triangle_multiplication.py",
+        "tilelang.py",
+    ],
+    visibility = ["//visibility:public"],
+)
+
 exports_files(
     [
         "spec.py",
@@ -22,6 +37,7 @@ py_test(
         "tilelang.py",
     ],
     main = "test_triangle_multiplication.py",
+    data = [":policy_inputs"],
     tags = [
         "manual",
         "requires-hermetic-torch-2.10",

@@ -13,7 +13,7 @@ import re
 from typing import Any
 
 GENERATOR_ID = "kernels.native.codegen.generate"
-GENERATOR_VERSION = 6
+GENERATOR_VERSION = 8
 NAMESPACE = "mindclade"
 REGISTRATION_MODE = "build_time_generated"
 
@@ -32,7 +32,7 @@ _OPERATOR_KEYS = {
     "name", "qualified_name", "namespace", "family", "source", "spec_sha256",
     "kernel_spec_digest", "implementation_digest", "implementation_candidates", "operator_schema", "facade_outputs", "fake", "forward",
     "backward", "autograd_policy", "composite", "effects", "launch", "backend",
-    "version", "devices", "registrations", "launcher_plans",
+    "runtime_workload", "version", "devices", "registrations", "launcher_plans",
 }
 _REGISTRATION_KEYS = {"qualified_name", "schema", "kind", "implementation_symbol"}
 _FORWARD_KEYS = {"type", "schema", "builder", "symbol", "outputs", "program_group", "version"}
@@ -49,7 +49,8 @@ _OUTPUT_KEYS = {
 }
 _INITIALIZATION_KEYS = {"type", "mode", "value", "version"}
 _GRADIENT_KEYS = {
-    "type", "input_name", "output_name", "optional", "accumulation_dtype", "version",
+    "type", "input_name", "output_name", "shape", "dtype", "device",
+    "optional", "accumulation_dtype", "version",
 }
 _COMPOSITE_KEYS = {
     "type", "decomposition", "source_digest", "runtime_envelope", "gradients",
@@ -63,19 +64,28 @@ _LAUNCH_KEYS = {
     "graph_capture_safe", "determinism", "version",
 }
 _PROGRAM_GROUP_KEYS = {
-    "type", "nodes", "workspaces", "version",
+    "type", "nodes", "workspaces", "selector_bindings", "version",
 }
 _PROGRAM_NODE_KEYS = {
-    "type", "name", "builder", "symbol", "depends_on", "workspace_uses", "version",
+    "type", "name", "builder", "symbol", "entry_symbol", "entry_abi",
+    "parameters", "bindings", "depends_on", "return_abi", "artifact_boundary",
+    "version",
 }
-_WORKSPACE_USE_KEYS = {"type", "workspace", "access", "version"}
+_PROGRAM_PARAMETER_KEYS = {
+    "type", "position", "name", "kind", "access", "shape", "dtype", "device",
+    "scalar_type", "optional", "version",
+}
+_PROGRAM_BINDING_KEYS = {"type", "parameter", "source", "source_name", "version"}
+_PROGRAM_SELECTOR_BINDING_KEYS = {
+    "type", "provider_argument", "selector_key", "scalar_type", "cases", "version",
+}
 _WORKSPACE_KEYS = {
     "type", "name", "shape", "dtype", "zero_initialize", "lifetime", "version",
 }
 _LAUNCHER_PLANS_KEYS = {"forward", "backward"}
 _LAUNCHER_PLAN_KEYS = {
     "phase", "logical_symbol", "bridge_requirement", "execution_order",
-    "required_private_symbols", "nodes", "workspaces",
+    "adapter_symbol_prefixes", "nodes", "workspaces", "selector_bindings",
 }
 _IMPLEMENTATION_CANDIDATE_KEYS = {
     "name", "version", "tier", "priority", "requires", "envelope",
@@ -89,6 +99,11 @@ _DIMENSION_CONSTRAINT_KEYS = {"type", "predicate", "code", "message", "version"}
 _TENSOR_CAPABILITY_KEYS = {
     "type", "argument", "dtypes", "layouts", "devices", "ranks", "version",
 }
+_RUNTIME_WORKLOAD_KEYS = {
+    "type", "dimensions", "input_dtype", "layout", "mode_selector", "attributes",
+    "canonicalization_version", "version",
+}
+_WORKLOAD_BINDING_KEYS = {"type", "name", "value", "version"}
 
 
 def _canonical_json(value: object) -> str:
@@ -171,10 +186,53 @@ def _validate_gradient(value: object, label: str) -> tuple[str, str]:
         _identifier(item["output_name"], f"{label} output_name"),
     )
     _boolean(item["optional"], f"{label} optional")
+    _expression(item["shape"], f"{label} shape")
+    _expression(item["dtype"], f"{label} dtype")
+    _expression(item["device"], f"{label} device")
     if item["accumulation_dtype"] is not None:
         _string(item["accumulation_dtype"], f"{label} accumulation_dtype")
     _version(item["version"], f"{label} version")
     return mapping
+
+
+def _validate_runtime_workload(value: object, label: str) -> None:
+    workload = _exact_mapping(value, _RUNTIME_WORKLOAD_KEYS, label)
+    if workload["type"] != "RuntimeWorkloadSpec":
+        raise ValueError(f"native manifest {label} has unsupported contract type")
+    dimensions = workload["dimensions"]
+    if not isinstance(dimensions, list) or not dimensions:
+        raise ValueError(f"native manifest {label} dimensions must be non-empty")
+    dimension_names: list[str] = []
+    for index, raw in enumerate(dimensions):
+        binding = _exact_mapping(raw, _WORKLOAD_BINDING_KEYS, f"{label} dimension {index}")
+        if binding["type"] != "WorkloadDimensionBinding":
+            raise ValueError(f"native manifest {label} dimension has unsupported type")
+        dimension_names.append(_identifier(binding["name"], f"{label} dimension name"))
+        _expression(binding["value"], f"{label} dimension value")
+        _version(binding["version"], f"{label} dimension version")
+    if dimension_names != sorted(set(dimension_names)):
+        raise ValueError(f"native manifest {label} dimensions must be sorted and unique")
+    attributes = workload["attributes"]
+    if not isinstance(attributes, list):
+        raise ValueError(f"native manifest {label} attributes must be an array")
+    attribute_names: list[str] = []
+    for index, raw in enumerate(attributes):
+        binding = _exact_mapping(raw, _WORKLOAD_BINDING_KEYS, f"{label} attribute {index}")
+        if binding["type"] != "WorkloadAttributeBinding":
+            raise ValueError(f"native manifest {label} attribute has unsupported type")
+        attribute_names.append(_identifier(binding["name"], f"{label} attribute name"))
+        _expression(binding["value"], f"{label} attribute value")
+        _version(binding["version"], f"{label} attribute version")
+    if attribute_names != sorted(set(attribute_names)):
+        raise ValueError(f"native manifest {label} attributes must be sorted and unique")
+    if set(dimension_names) & set(attribute_names):
+        raise ValueError(f"native manifest {label} workload names must be disjoint")
+    _expression(workload["input_dtype"], f"{label} input_dtype")
+    _string(workload["layout"], f"{label} layout")
+    if workload["mode_selector"] is not None:
+        _identifier(workload["mode_selector"], f"{label} mode_selector")
+    _version(workload["canonicalization_version"], f"{label} canonicalization_version")
+    _version(workload["version"], f"{label} version")
 
 
 def _validate_program_group(value: object, label: str) -> dict[str, Any] | None:
@@ -207,6 +265,29 @@ def _validate_program_group(value: object, label: str) -> dict[str, Any] | None:
         _version(workspace["version"], f"{workspace_label} version")
     if len(workspace_names) != len(set(workspace_names)):
         raise ValueError(f"native manifest {label} workspace names must be unique")
+    selectors = group["selector_bindings"]
+    if not isinstance(selectors, list) or len(selectors) > 8:
+        raise ValueError(f"native manifest {label} selector_bindings must be bounded")
+    selector_arguments: list[str] = []
+    selector_keys: list[str] = []
+    for selector_index, raw_selector in enumerate(selectors):
+        selector_label = f"{label} selector {selector_index}"
+        selector = _exact_mapping(
+            raw_selector, _PROGRAM_SELECTOR_BINDING_KEYS, selector_label
+        )
+        if selector["type"] != "ProgramSelectorBinding":
+            raise ValueError(f"native manifest {selector_label} has unsupported type")
+        selector_arguments.append(
+            _identifier(selector["provider_argument"], f"{selector_label} provider_argument")
+        )
+        if selector["selector_key"] != "mode" or selector["scalar_type"] != "bool":
+            raise ValueError(f"native manifest {selector_label} selector ABI is unsupported")
+        if selector["cases"] != [[False, "incoming"], [True, "outgoing"]]:
+            raise ValueError(f"native manifest {selector_label} cases are not canonical")
+        selector_keys.append(selector["selector_key"])
+        _version(selector["version"], f"{selector_label} version")
+    if len(selector_arguments) != len(set(selector_arguments)) or len(selector_keys) != len(set(selector_keys)):
+        raise ValueError(f"native manifest {label} selector identities must be unique")
     known_workspaces = set(workspace_names)
     for index, raw_node in enumerate(nodes):
         node_label = f"{label} node {index}"
@@ -218,22 +299,105 @@ def _validate_program_group(value: object, label: str) -> dict[str, Any] | None:
         symbol = _string(node["symbol"], f"{node_label} symbol")
         if _SYMBOL.fullmatch(symbol) is None:
             raise ValueError(f"native manifest {node_label} symbol must be a C identifier")
+        entry_symbol = _string(node["entry_symbol"], f"{node_label} entry_symbol")
+        if _SYMBOL.fullmatch(entry_symbol) is None or entry_symbol == symbol:
+            raise ValueError(f"native manifest {node_label} entry_symbol is invalid")
+        if node["entry_abi"] != "tilelang_0_1_13_host_call":
+            raise ValueError(f"native manifest {node_label} entry_abi is unsupported")
+        if node["return_abi"] != "status_i32_zero_success":
+            raise ValueError(f"native manifest {node_label} return_abi is unsupported")
+        if node["artifact_boundary"] != "node_content_addressed_dso":
+            raise ValueError(f"native manifest {node_label} artifact boundary is unsupported")
         depends_on = _string_list(node["depends_on"], f"{node_label} depends_on")
-        uses = node["workspace_uses"]
-        if not isinstance(uses, list):
-            raise ValueError(f"native manifest {node_label} workspace_uses must be an array")
+        parameters = node["parameters"]
+        bindings = node["bindings"]
+        if not isinstance(parameters, list) or not parameters or len(parameters) > 256:
+            raise ValueError(f"native manifest {node_label} parameters must be bounded")
+        if not isinstance(bindings, list) or not bindings or len(bindings) > 256:
+            raise ValueError(f"native manifest {node_label} bindings must be bounded")
+        parameter_by_name: dict[str, dict[str, Any]] = {}
+        positions: list[int] = []
+        for parameter_index, raw_parameter in enumerate(parameters):
+            parameter_label = f"{node_label} parameter {parameter_index}"
+            parameter = _exact_mapping(
+                raw_parameter, _PROGRAM_PARAMETER_KEYS, parameter_label
+            )
+            if parameter["type"] != "ProgramParameterSpec":
+                raise ValueError(f"native manifest {parameter_label} has unsupported type")
+            if type(parameter["position"]) is not int or not 0 <= parameter["position"] < 256:
+                raise ValueError(f"native manifest {parameter_label} position is invalid")
+            positions.append(parameter["position"])
+            parameter_name = _identifier(parameter["name"], f"{parameter_label} name")
+            if parameter_name in parameter_by_name:
+                raise ValueError(f"native manifest {node_label} parameter names must be unique")
+            parameter_by_name[parameter_name] = parameter
+            if parameter["kind"] not in {"tensor", "scalar", "stream"}:
+                raise ValueError(f"native manifest {parameter_label} kind is unsupported")
+            if parameter["access"] not in {"read", "write", "read_write"}:
+                raise ValueError(f"native manifest {parameter_label} access is unsupported")
+            _boolean(parameter["optional"], f"{parameter_label} optional")
+            if parameter["kind"] == "tensor":
+                for field in ("shape", "dtype", "device"):
+                    _expression(parameter[field], f"{parameter_label} {field}")
+                if parameter["scalar_type"] is not None:
+                    raise ValueError(f"native manifest {parameter_label} scalar_type is invalid")
+            else:
+                if any(parameter[field] is not None for field in ("shape", "dtype", "device")):
+                    raise ValueError(f"native manifest {parameter_label} tensor metadata is invalid")
+                if parameter["kind"] == "scalar" and parameter["scalar_type"] not in {
+                    "bool", "int64", "float64"
+                }:
+                    raise ValueError(f"native manifest {parameter_label} scalar_type is invalid")
+                if parameter["kind"] == "stream" and parameter["scalar_type"] is not None:
+                    raise ValueError(f"native manifest {parameter_label} scalar_type is invalid")
+            _version(parameter["version"], f"{parameter_label} version")
+        if positions != list(range(len(parameters))):
+            raise ValueError(f"native manifest {node_label} positions must be contiguous")
+
+        bound_parameters: list[str] = []
         used_workspaces: list[str] = []
-        for use_index, raw_use in enumerate(uses):
-            use_label = f"{node_label} workspace use {use_index}"
-            use = _exact_mapping(raw_use, _WORKSPACE_USE_KEYS, use_label)
-            if use["type"] != "WorkspaceUseSpec":
-                raise ValueError(f"native manifest {use_label} has unsupported type")
-            used_workspaces.append(_identifier(use["workspace"], f"{use_label} workspace"))
-            if use["access"] not in {"read", "write", "read_write"}:
-                raise ValueError(f"native manifest {use_label} has unsupported access")
-            _version(use["version"], f"{use_label} version")
+        current_streams = 0
+        optional_provider_outputs: list[str] = []
+        gradient_requests: list[str] = []
+        for binding_index, raw_binding in enumerate(bindings):
+            binding_label = f"{node_label} binding {binding_index}"
+            binding = _exact_mapping(raw_binding, _PROGRAM_BINDING_KEYS, binding_label)
+            if binding["type"] != "ProgramBindingSpec":
+                raise ValueError(f"native manifest {binding_label} has unsupported type")
+            parameter_name = _identifier(binding["parameter"], f"{binding_label} parameter")
+            if parameter_name not in parameter_by_name:
+                raise ValueError(f"native manifest {binding_label} parameter is unknown")
+            bound_parameters.append(parameter_name)
+            source = binding["source"]
+            if source not in {
+                "operator_argument", "output_gradient", "forward_output",
+                "provider_output", "workspace", "gradient_request", "current_stream",
+            }:
+                raise ValueError(f"native manifest {binding_label} source is unsupported")
+            source_name = binding["source_name"]
+            if source == "current_stream":
+                current_streams += 1
+                if source_name is not None or parameter_by_name[parameter_name]["kind"] != "stream":
+                    raise ValueError(f"native manifest {binding_label} stream binding is invalid")
+            else:
+                source_name = _identifier(source_name, f"{binding_label} source_name")
+            if source == "workspace":
+                used_workspaces.append(source_name)
+            if source == "gradient_request":
+                gradient_requests.append(source_name)
+            if source == "provider_output" and parameter_by_name[parameter_name]["optional"]:
+                optional_provider_outputs.append(source_name)
+            _version(binding["version"], f"{binding_label} version")
+        if len(bound_parameters) != len(set(bound_parameters)) or set(bound_parameters) != set(parameter_by_name):
+            raise ValueError(f"native manifest {node_label} bindings must exactly cover parameters")
+        if current_streams != 1:
+            raise ValueError(f"native manifest {node_label} requires one current stream")
+        if optional_provider_outputs and len(gradient_requests) != 1:
+            raise ValueError(
+                f"native manifest {node_label} optional outputs require one gradient request"
+            )
         if len(used_workspaces) != len(set(used_workspaces)):
-            raise ValueError(f"native manifest {node_label} workspace uses must be unique")
+            raise ValueError(f"native manifest {node_label} workspace bindings must be unique")
         if set(used_workspaces) - known_workspaces:
             raise ValueError(f"native manifest {node_label} uses an unknown workspace")
         _version(node["version"], f"{node_label} version")
@@ -268,18 +432,21 @@ def _expected_launcher_plan(
     return {
         "phase": phase,
         "logical_symbol": logical_symbol,
-        "bridge_requirement": "mindclade_program_group_bridge_v1",
+        "bridge_requirement": "mindclade_node_launch_v1",
         "execution_order": [node["name"] for node in group["nodes"]],
-        "required_private_symbols": [node["symbol"] for node in group["nodes"]],
+        "adapter_symbol_prefixes": [node["symbol"] for node in group["nodes"]],
+        "selector_bindings": group["selector_bindings"],
         "nodes": [
             {
                 "name": node["name"],
                 "symbol": node["symbol"],
+                "entry_symbol": node["entry_symbol"],
+                "entry_abi": node["entry_abi"],
+                "return_abi": node["return_abi"],
+                "artifact_boundary": node["artifact_boundary"],
                 "depends_on": node["depends_on"],
-                "workspace_uses": [
-                    {"workspace": use["workspace"], "access": use["access"]}
-                    for use in node["workspace_uses"]
-                ],
+                "parameters": node["parameters"],
+                "bindings": node["bindings"],
             }
             for node in group["nodes"]
         ],
@@ -339,7 +506,12 @@ def _validate_output(value: object, label: str) -> tuple[str, bool]:
         initialization = _exact_mapping(initialization, _INITIALIZATION_KEYS, f"{label} initialization")
         if initialization["type"] != "InitializationSpec":
             raise ValueError(f"native manifest {label} initialization has unsupported type")
-        if initialization["mode"] not in {"zero", "value", "uninitialized"}:
+        if initialization["mode"] not in {
+            "zero",
+            "value",
+            "negative_infinity",
+            "uninitialized",
+        }:
             raise ValueError(f"native manifest {label} initialization mode is unsupported")
         has_value = initialization["value"] is not None
         if (initialization["mode"] == "value") != has_value:
@@ -593,6 +765,7 @@ def _validate_operator(value: object, index: int) -> dict[str, Any]:
     _validate_launcher_plans(operator["launcher_plans"], name, forward, backward)
     _validate_effects(operator["effects"], name)
     _validate_launch(operator["launch"], name)
+    _validate_runtime_workload(operator["runtime_workload"], f"{name} runtime_workload")
     if operator["backend"] != "tilelang" or operator["devices"] != ["cuda"]:
         raise ValueError(f"native manifest {name} backend/device contract is unsupported")
     _version(operator["version"], f"{name} version")
@@ -620,13 +793,13 @@ def _validate_operator(value: object, index: int) -> dict[str, Any]:
 
 
 def validate_manifest(value: object) -> dict[str, Any]:
-    """Validate and return an exact schema-v3 manifest."""
+    """Validate and return an exact callable-node schema-v4 manifest."""
 
     manifest = _exact_mapping(value, _TOP_LEVEL_KEYS, "top level")
     if manifest["generator"] != {"id": GENERATOR_ID, "version": GENERATOR_VERSION}:
         raise ValueError("native manifest generator identity is unsupported")
     constants = {
-        "schema_version": 3,
+        "schema_version": 4,
         "namespace": NAMESPACE,
         "registration_mode": REGISTRATION_MODE,
         "optimized_math_authority": "tilelang",
