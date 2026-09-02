@@ -441,6 +441,144 @@ class ProtobufCompatibilityTest(unittest.TestCase):
                 )
             self.assertEqual(target.read_text(encoding="utf-8"), "before\n")
 
+    def test_nondeterministic_outputs_reports_changed_added_and_dropped_paths(self) -> None:
+        first = {
+            Path("protocols/generated/README.md"): b"alpha\n",
+            Path("protocols/generated/go/BUILD.bazel"): b"beta\n",
+        }
+        self.assertEqual(generate_protocols.nondeterministic_outputs({}, {}), [])
+        self.assertEqual(generate_protocols.nondeterministic_outputs(first, dict(first)), [])
+
+        changed = dict(first)
+        changed[Path("protocols/generated/README.md")] = b"alpha drifted\n"
+        self.assertEqual(
+            generate_protocols.nondeterministic_outputs(first, changed),
+            ["protocols/generated/README.md"],
+        )
+
+        dropped = {path: content for path, content in first.items() if path.name != "BUILD.bazel"}
+        self.assertEqual(
+            generate_protocols.nondeterministic_outputs(first, dropped),
+            ["protocols/generated/go/BUILD.bazel"],
+        )
+        self.assertEqual(
+            generate_protocols.nondeterministic_outputs(dropped, first),
+            ["protocols/generated/go/BUILD.bazel"],
+        )
+
+        added = dict(first)
+        added[Path("protocols/generated/rust/lib.rs")] = b"gamma\n"
+        self.assertEqual(
+            generate_protocols.nondeterministic_outputs(first, added),
+            ["protocols/generated/rust/lib.rs"],
+        )
+        self.assertEqual(
+            generate_protocols.nondeterministic_outputs(dropped, added),
+            [
+                "protocols/generated/go/BUILD.bazel",
+                "protocols/generated/rust/lib.rs",
+            ],
+        )
+
+    def test_second_generation_pass_rejects_nondeterministic_output(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="mindclade-two-pass-generation-") as value:
+            repository = Path(value)
+            readme = repository / "protocols/generated/README.md"
+            outputs = {readme: b"first pass\n"}
+            descriptor_set = b"descriptor bytes\n"
+
+            def replay(
+                staged: dict[Path, bytes],
+                descriptor: bytes,
+            ) -> tuple[dict[Path, bytes], bytes, list[dict[str, Any]]]:
+                """Stand in for a second generation pass with the given staged bytes."""
+                return staged, descriptor, []
+
+            with mock.patch.object(
+                generate_protocols,
+                "generated_outputs",
+                return_value=replay(dict(outputs), descriptor_set),
+            ):
+                generate_protocols.require_deterministic_generation(
+                    repository, outputs, descriptor_set
+                )
+
+            with (
+                mock.patch.object(
+                    generate_protocols,
+                    "generated_outputs",
+                    return_value=replay({readme: b"second pass\n"}, descriptor_set),
+                ),
+                self.assertRaisesRegex(
+                    RuntimeError,
+                    r"^generation is not deterministic: protocols/generated/README\.md$",
+                ),
+            ):
+                generate_protocols.require_deterministic_generation(
+                    repository, outputs, descriptor_set
+                )
+
+            with (
+                mock.patch.object(
+                    generate_protocols,
+                    "generated_outputs",
+                    return_value=replay(dict(outputs), b"drifted descriptor\n"),
+                ),
+                self.assertRaisesRegex(
+                    RuntimeError,
+                    r"^generation is not deterministic: <descriptor-set>$",
+                ),
+            ):
+                generate_protocols.require_deterministic_generation(
+                    repository, outputs, descriptor_set
+                )
+
+            many = {
+                repository / f"protocols/generated/pass/{index:03d}.txt": b"first pass\n"
+                for index in range(25)
+            }
+            with (
+                mock.patch.object(
+                    generate_protocols,
+                    "generated_outputs",
+                    return_value=replay(dict.fromkeys(many, b"second pass\n"), descriptor_set),
+                ),
+                self.assertRaises(RuntimeError) as raised,
+            ):
+                generate_protocols.require_deterministic_generation(
+                    repository, many, descriptor_set
+                )
+            message = str(raised.exception)
+            self.assertTrue(message.startswith("generation is not deterministic: "))
+            self.assertIn("protocols/generated/pass/019.txt", message)
+            self.assertNotIn("protocols/generated/pass/020.txt", message)
+            self.assertTrue(message.endswith(" (+5 more)"))
+
+    def test_every_generated_build_and_markdown_file_carries_a_banner(self) -> None:
+        repository = root()
+        manifest: Any = json.loads(
+            (repository / "protocols/generated/generated-files.manifest.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        files = cast(dict[str, str], cast(dict[str, Any], manifest)["files"])
+        build_files = sorted(name for name in files if Path(name).name == "BUILD.bazel")
+        markdown_files = sorted(name for name in files if name.endswith(".md"))
+        self.assertTrue(build_files)
+        self.assertTrue(markdown_files)
+        for name in build_files:
+            self.assertRegex(
+                (repository / name).read_text(encoding="utf-8").splitlines()[0],
+                r"^# Code generated by mindclade-[a-z-]+\. DO NOT EDIT\.$",
+                msg=name,
+            )
+        for name in markdown_files:
+            self.assertEqual(
+                (repository / name).read_text(encoding="utf-8").splitlines()[0],
+                generate_protocols.MARKDOWN_BANNER.rstrip("\n"),
+                msg=name,
+            )
+
     def test_control_plane_explicitly_implements_every_descriptor_rpc(self) -> None:
         repository = root()
         expected = generate_grpc_implementation_coverage.render(repository)
