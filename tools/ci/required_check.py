@@ -1124,7 +1124,12 @@ def _self_test(org_schema: Path | None) -> None:
         "pipeline_class": "presubmit",
         "changed_paths": ["BUILD.bazel"],
         "targets": ["//:wave0_tests"],
-        "gates": ["immutable-launcher", "cache-boundary", "bazel-native-agreement"],
+        "gates": [
+            "immutable-launcher",
+            "cache-boundary",
+            "bazel-native-agreement",
+            "authoritative-integration-readiness",
+        ],
     }
     plan = {**unsigned_plan, "plan_id": calculate_plan_id(unsigned_plan)}
     private_key = ed25519.Ed25519PrivateKey.generate()
@@ -1248,6 +1253,18 @@ def _self_test(org_schema: Path | None) -> None:
                 }
             )
         )
+        readiness_path = root / "authoritative-integration-readiness.v2.json"
+        readiness_report: dict[str, object] = {
+            "schema_version": "mindclade.authoritative-integration-readiness/v2",
+            "criteria": [
+                {"criterion_id": "stages-and-exit-criteria-01", "status": "completion-verified"},
+                {
+                    "criterion_id": "stages-and-exit-criteria-02",
+                    "status": "candidate-evidence-incomplete",
+                },
+            ],
+        }
+        readiness_path.write_bytes(canonical_json(readiness_report))
         reference_revisions = {
             "bootstrap": "d" * 40,
             "github-config": "e" * 40,
@@ -1447,6 +1464,7 @@ def _self_test(org_schema: Path | None) -> None:
                 f"immutable-launcher={launcher_receipt_path}",
                 f"cache-boundary={cache_boundary_path}",
                 f"bazel-native-agreement={bazel_receipt_path}",
+                f"authoritative-integration-readiness={readiness_path}",
             ],
         )
         evidence = build_evidence(arguments)
@@ -1475,6 +1493,26 @@ def _self_test(org_schema: Path | None) -> None:
             raise AssertionError("evidence producer accepted a self-qualified launcher")
         launcher_candidate["qualification"] = "UNSIGNED_OBSERVATION_INPUT"
         launcher_receipt_path.write_bytes(canonical_json(launcher_candidate))
+
+        # A bundle containing the readiness report validates regardless of which
+        # (non-empty) status its criteria carry: this check is an evidence-state
+        # inventory, not a stage-completion signal, so `evidence` above is already
+        # proof that `build_evidence` accepted it. A criterion missing its status
+        # must still be rejected.
+        readiness_candidate = copy.deepcopy(readiness_report)
+        del cast(dict[str, object], cast(list[object], readiness_candidate["criteria"])[0])[
+            "status"
+        ]
+        readiness_path.write_bytes(canonical_json(readiness_candidate))
+        try:
+            build_evidence(arguments)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError(
+                "evidence producer accepted a readiness criterion without a status"
+            )
+        readiness_path.write_bytes(canonical_json(readiness_report))
 
         from evidence_bundle import validate_repository_governance
 

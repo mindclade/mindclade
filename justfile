@@ -299,6 +299,7 @@ check-schema-drift:
 # Fail when a contract source change has not regenerated every committed binding.
 check-contract-drift:
     {{ uv }} run python tools/codegen/generate_protocols.py --root . --check
+    just check-schema-drift
     just check-sdk-plan
 
 # Emit and verify the deterministic offline optional REST-provider comparison plan.
@@ -602,7 +603,8 @@ ci-evidence:
       "fresh-database-integration={{ evidence_dir }}/integration-ci.v1.json" \
       "source-check={{ evidence_dir }}/source-check.v1.json" \
       "wave1-full={{ evidence_dir }}/wave1-full.v1.json" \
-      "cacheless-reproducibility={{ evidence_dir }}/cacheless-reproducibility.v1.json"; do
+      "cacheless-reproducibility={{ evidence_dir }}/cacheless-reproducibility.v1.json" \
+      "authoritative-integration-readiness={{ evidence_dir }}/authoritative-integration-readiness.v2.json"; do
       report="${item#*=}"
       [[ -f "${report}" ]] && checks+=(--check "${item}")
     done

@@ -36,7 +36,7 @@ def steps() -> list[Step]:
             artifact_paths=(
                 "build/evidence/integration-ci.v1.json",
                 "build/evidence/training-vertical-rehearsal.v1.json",
-                "build/evidence/authoritative-integration-readiness.v1.json",
+                "build/evidence/authoritative-integration-readiness.v2.json",
             ),
         ),
         Step(
