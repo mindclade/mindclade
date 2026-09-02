@@ -8,9 +8,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net"
 	"os"
 	"path"
+	"runtime"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -29,11 +32,13 @@ import (
 
 	artifactv1 "github.com/mindclade/mindclade/protocols/generated/go/artifact/v1"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
+	inferencev1 "github.com/mindclade/mindclade/protocols/generated/go/inference/v1"
 	internalartifactv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/artifact/v1"
 	internaljobv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/job/v1"
 	internaltrainingv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/training/v1"
 	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
 	trainingv1 "github.com/mindclade/mindclade/protocols/generated/go/training/v1"
+	workflowv1 "github.com/mindclade/mindclade/protocols/generated/go/workflow/v1"
 )
 
 const fixtureContent = "immutable recipe content"
@@ -1835,5 +1840,715 @@ func TestStreamResponseMetadataIsCapturedWithoutCredentials(t *testing.T) {
 	}
 	if failed.Status != CodeUnavailable {
 		t.Fatalf("stream failure status = %q, want unavailable", failed.Status)
+	}
+}
+
+// scriptedWatchAttempt is one scripted server-side connection: either a refused
+// open, or a stream that yields responses and then ends with endErr.
+type scriptedWatchAttempt struct {
+	openErr   error
+	responses []*internaljobv1.WatchOperationResponse
+	endErr    error
+}
+
+// resumableOperationClient scripts a watch that is interrupted and re-opened,
+// recording every request so a test can assert the resume cursor the SDK sent.
+type resumableOperationClient struct {
+	internaljobv1.OperationServiceClient
+	mu       sync.Mutex
+	attempts []scriptedWatchAttempt
+	requests []*internaljobv1.WatchOperationRequest
+}
+
+func (client *resumableOperationClient) WatchOperation(_ context.Context, request *internaljobv1.WatchOperationRequest, _ ...grpc.CallOption) (grpc.ServerStreamingClient[internaljobv1.WatchOperationResponse], error) {
+	client.mu.Lock()
+	defer client.mu.Unlock()
+	client.requests = append(client.requests, cloneGenerated(request))
+	if len(client.attempts) == 0 {
+		return nil, status.Error(codes.Unavailable, "no scripted connection remains")
+	}
+	attempt := client.attempts[0]
+	client.attempts = client.attempts[1:]
+	if attempt.openErr != nil {
+		return nil, attempt.openErr
+	}
+	return &scriptedResumableStream{responses: attempt.responses, endErr: attempt.endErr}, nil
+}
+
+func (client *resumableOperationClient) recorded() []*internaljobv1.WatchOperationRequest {
+	client.mu.Lock()
+	defer client.mu.Unlock()
+	return append([]*internaljobv1.WatchOperationRequest(nil), client.requests...)
+}
+
+type scriptedResumableStream struct {
+	grpc.ClientStream
+	responses []*internaljobv1.WatchOperationResponse
+	endErr    error
+}
+
+func (stream *scriptedResumableStream) Recv() (*internaljobv1.WatchOperationResponse, error) {
+	if len(stream.responses) == 0 {
+		if stream.endErr != nil {
+			return nil, stream.endErr
+		}
+		return nil, io.EOF
+	}
+	response := stream.responses[0]
+	stream.responses = stream.responses[1:]
+	return response, nil
+}
+
+// watchedOperation builds one scripted watch response for the operation the
+// watcher tests follow.
+func watchedOperation(sequence uint64, done bool) *internaljobv1.WatchOperationResponse {
+	state := jobv1.OperationState_OPERATION_STATE_RUNNING
+	if done {
+		state = jobv1.OperationState_OPERATION_STATE_SUCCEEDED
+	}
+	return &internaljobv1.WatchOperationResponse{
+		Sequence:  sequence,
+		Operation: &jobv1.Operation{OperationId: "operations/watched-1", State: state, Done: done},
+	}
+}
+
+// instantRetryClient removes backoff from a test client so watcher reconnects
+// are observable without sleeping. The jitter source is injected, never faked
+// out of the code path, so the production wait arithmetic still runs.
+func instantRetryClient(t *testing.T) *Client {
+	t.Helper()
+	client, _, _ := testClient(t)
+	client.config.jitter = func(int64) int64 { return 0 }
+	client.Operations.client = client
+	return client
+}
+
+func TestGenericWatcherResumesFromLastAcknowledgedCursor(t *testing.T) {
+	client := instantRetryClient(t)
+	transport := &resumableOperationClient{attempts: []scriptedWatchAttempt{
+		{responses: []*internaljobv1.WatchOperationResponse{watchedOperation(1, false), watchedOperation(2, false)}, endErr: status.Error(codes.Unavailable, "stream dropped")},
+		{responses: []*internaljobv1.WatchOperationResponse{watchedOperation(3, true)}},
+	}}
+	client.Operations.transport = transport
+
+	watcher, err := client.Operations.Watch(context.Background(), "operations/watched-1", 0)
+	if err != nil {
+		t.Fatalf("Watch: %v", err)
+	}
+	defer func() { _ = watcher.Close() }()
+
+	observed := []uint64{}
+	for {
+		response, receiveErr := watcher.Recv()
+		if errors.Is(receiveErr, io.EOF) {
+			break
+		}
+		if receiveErr != nil {
+			t.Fatalf("Recv: %v", receiveErr)
+		}
+		observed = append(observed, response.GetSequence())
+	}
+	if len(observed) != 3 || observed[0] != 1 || observed[1] != 2 || observed[2] != 3 {
+		t.Fatalf("observed sequences = %v, want 1, 2, 3 with nothing replayed or skipped", observed)
+	}
+	requests := transport.recorded()
+	if len(requests) != 2 {
+		t.Fatalf("watch connections = %d, want exactly one reconnect", len(requests))
+	}
+	if requests[0].GetAfterSequence() != 0 || requests[1].GetAfterSequence() != 2 {
+		t.Fatalf("resume cursors = %d then %d, want 0 then the last acknowledged 2",
+			requests[0].GetAfterSequence(), requests[1].GetAfterSequence())
+	}
+	if watcher.Cursor() != 3 {
+		t.Fatalf("watcher cursor = %d, want the last acknowledged sequence 3", watcher.Cursor())
+	}
+}
+
+func TestWatcherReconnectRespectsRemainingDeadline(t *testing.T) {
+	client, _, _ := testClient(t)
+	client.config.RetryBaseDelay = 500 * time.Millisecond
+	client.config.RetryMaxDelay = 500 * time.Millisecond
+	client.config.jitter = func(bound int64) int64 { return bound }
+	transport := &resumableOperationClient{attempts: []scriptedWatchAttempt{
+		{responses: []*internaljobv1.WatchOperationResponse{watchedOperation(1, false)}, endErr: status.Error(codes.Unavailable, "stream dropped")},
+	}}
+	client.Operations.transport = transport
+
+	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
+	defer cancel()
+	watcher, err := client.Operations.Watch(ctx, "operations/watched-1", 0)
+	if err != nil {
+		t.Fatalf("Watch: %v", err)
+	}
+	defer func() { _ = watcher.Close() }()
+	if _, err = watcher.Recv(); err != nil {
+		t.Fatalf("first Recv: %v", err)
+	}
+	started := time.Now()
+	_, err = watcher.Recv()
+	elapsed := time.Since(started)
+	var sdkError *Error
+	if !errors.As(err, &sdkError) || sdkError.Code != CodeDeadlineExceeded {
+		t.Fatalf("interrupted watch error = %#v, want the caller's deadline", err)
+	}
+	if elapsed > 100*time.Millisecond {
+		t.Fatalf("watcher slept past its remaining deadline: elapsed=%s", elapsed)
+	}
+	if requests := transport.recorded(); len(requests) != 1 {
+		t.Fatalf("watch connections = %d, want no reconnect outside the deadline", len(requests))
+	}
+}
+
+func TestWatcherNextCurrentErrMirrorRecv(t *testing.T) {
+	script := func() []scriptedWatchAttempt {
+		return []scriptedWatchAttempt{{responses: []*internaljobv1.WatchOperationResponse{watchedOperation(1, false), watchedOperation(2, true)}}}
+	}
+
+	receiving := instantRetryClient(t)
+	receiving.Operations.transport = &resumableOperationClient{attempts: script()}
+	viaRecv, err := receiving.Operations.Watch(context.Background(), "operations/watched-1", 0)
+	if err != nil {
+		t.Fatalf("Watch: %v", err)
+	}
+	defer func() { _ = viaRecv.Close() }()
+	recvSequences := []uint64{}
+	for {
+		response, receiveErr := viaRecv.Recv()
+		if errors.Is(receiveErr, io.EOF) {
+			break
+		}
+		if receiveErr != nil {
+			t.Fatalf("Recv: %v", receiveErr)
+		}
+		recvSequences = append(recvSequences, response.GetSequence())
+	}
+
+	iterating := instantRetryClient(t)
+	iterating.Operations.transport = &resumableOperationClient{attempts: script()}
+	viaNext, err := iterating.Operations.Watch(context.Background(), "operations/watched-1", 0)
+	if err != nil {
+		t.Fatalf("Watch: %v", err)
+	}
+	defer func() { _ = viaNext.Close() }()
+	nextSequences := []uint64{}
+	for viaNext.Next() {
+		nextSequences = append(nextSequences, viaNext.Current().GetSequence())
+	}
+	if viaNext.Err() != nil {
+		t.Fatalf("Err at a clean end of stream = %v, want nil", viaNext.Err())
+	}
+	if len(recvSequences) != len(nextSequences) {
+		t.Fatalf("Recv yielded %v but Next yielded %v", recvSequences, nextSequences)
+	}
+	for index := range recvSequences {
+		if recvSequences[index] != nextSequences[index] {
+			t.Fatalf("Recv yielded %v but Next yielded %v", recvSequences, nextSequences)
+		}
+	}
+	if viaNext.Next() {
+		t.Fatal("Next advanced past the end of a completed stream")
+	}
+}
+
+func TestWatcherSurfacesTerminalFailureThroughBothSurfaces(t *testing.T) {
+	failed := &internaljobv1.WatchOperationResponse{
+		Sequence:  1,
+		Operation: &jobv1.Operation{OperationId: "operations/watched-1", State: jobv1.OperationState_OPERATION_STATE_FAILED, Done: true},
+	}
+	client := instantRetryClient(t)
+	client.Operations.transport = &resumableOperationClient{attempts: []scriptedWatchAttempt{{responses: []*internaljobv1.WatchOperationResponse{failed}}}}
+	watcher, err := client.Operations.Watch(context.Background(), "operations/watched-1", 0)
+	if err != nil {
+		t.Fatalf("Watch: %v", err)
+	}
+	defer func() { _ = watcher.Close() }()
+	// A terminal failure ends the iteration, so Next reports false; the failed
+	// revision is still readable through Current, exactly as Recv returns the
+	// message alongside the error.
+	if watcher.Next() {
+		t.Fatal("Next continued past a terminal failure")
+	}
+	if watcher.Current().GetSequence() != 1 {
+		t.Fatalf("Current sequence = %d, want the terminal revision", watcher.Current().GetSequence())
+	}
+	var operationError *OperationError
+	if !errors.As(watcher.Err(), &operationError) || operationError.Operation.GetOperationId() != "operations/watched-1" {
+		t.Fatalf("Err = %#v, want OperationError carrying the generated operation", watcher.Err())
+	}
+}
+
+// lroRecordingOperationClient records the request identity every long-running
+// verb carried into the transport, so a test can assert one logical call shares
+// one identity across polls and reconnects.
+type lroRecordingOperationClient struct {
+	internaljobv1.OperationServiceClient
+	mu         sync.Mutex
+	identities []string
+	requests   []*internaljobv1.WatchOperationRequest
+}
+
+func (client *lroRecordingOperationClient) record(ctx context.Context) {
+	value, _ := ctx.Value(requestContextKey{}).(requestMetadata)
+	client.mu.Lock()
+	defer client.mu.Unlock()
+	client.identities = append(client.identities, value.requestID)
+}
+
+func (client *lroRecordingOperationClient) GetOperation(ctx context.Context, _ *internaljobv1.GetOperationRequest, _ ...grpc.CallOption) (*internaljobv1.GetOperationResponse, error) {
+	client.record(ctx)
+	return &internaljobv1.GetOperationResponse{Operation: watchedOperation(1, true).GetOperation()}, nil
+}
+
+func (client *lroRecordingOperationClient) CancelOperation(ctx context.Context, _ *internaljobv1.CancelOperationRequest, _ ...grpc.CallOption) (*internaljobv1.CancelOperationResponse, error) {
+	client.record(ctx)
+	return &internaljobv1.CancelOperationResponse{Operation: watchedOperation(1, true).GetOperation()}, nil
+}
+
+func (client *lroRecordingOperationClient) WatchOperation(ctx context.Context, request *internaljobv1.WatchOperationRequest, _ ...grpc.CallOption) (grpc.ServerStreamingClient[internaljobv1.WatchOperationResponse], error) {
+	client.record(ctx)
+	client.mu.Lock()
+	client.requests = append(client.requests, cloneGenerated(request))
+	client.mu.Unlock()
+	return &scriptedResumableStream{responses: []*internaljobv1.WatchOperationResponse{watchedOperation(1, true)}}, nil
+}
+
+func TestOperationLROVerbsAreUniform(t *testing.T) {
+	const name = "operations/watched-1"
+	const identity = "lro-request-identity"
+	client := instantRetryClient(t)
+	transport := &lroRecordingOperationClient{}
+	client.Operations.transport = transport
+
+	if _, err := client.Operations.Get(context.Background(), name, WithRequestID(identity)); err != nil {
+		t.Fatalf("Get: %v", err)
+	}
+	if _, err := client.Operations.Wait(context.Background(), name, WaitOptions{PollInterval: time.Millisecond}, WithRequestID(identity)); err != nil {
+		t.Fatalf("Wait: %v", err)
+	}
+	watching, err := client.Operations.Watch(context.Background(), name, 0, WithRequestID(identity))
+	if err != nil {
+		t.Fatalf("Watch: %v", err)
+	}
+	_ = watching.Close()
+	resuming, err := client.Operations.ResumeWatch(context.Background(), name, 7, WithRequestID(identity))
+	if err != nil {
+		t.Fatalf("ResumeWatch: %v", err)
+	}
+	_ = resuming.Close()
+	if _, err := client.Operations.Cancel(context.Background(), name, "etag-1", "operator request", WithRequestID(identity)); err != nil {
+		t.Fatalf("Cancel: %v", err)
+	}
+
+	transport.mu.Lock()
+	identities := append([]string(nil), transport.identities...)
+	requests := append([]*internaljobv1.WatchOperationRequest(nil), transport.requests...)
+	transport.mu.Unlock()
+	if len(identities) != 5 {
+		t.Fatalf("recorded %d transport calls, want one per long-running verb", len(identities))
+	}
+	for index, recorded := range identities {
+		if recorded != identity {
+			t.Fatalf("call %d carried request id %q, want the caller's %q", index, recorded, identity)
+		}
+	}
+	if len(requests) != 2 || requests[0].GetAfterSequence() != 0 || requests[1].GetAfterSequence() != 7 {
+		t.Fatalf("watch cursors = %v, want Watch from 0 and ResumeWatch from the named 7", requests)
+	}
+}
+
+func TestFromEnvironmentIsTheOnlyEnvironmentPath(t *testing.T) {
+	t.Setenv("MINDCLADE_ENVIRONMENT", "staging")
+	t.Setenv("MINDCLADE_ENDPOINT", "control-plane.test:443")
+	t.Setenv("MINDCLADE_TENANT_ID", "tenant-env")
+	t.Setenv("MINDCLADE_PROJECT_ID", "project-env")
+	t.Setenv("MINDCLADE_PRINCIPAL_ID", "principal-env")
+	t.Setenv("MINDCLADE_AUDIENCE", "https://control-plane.test")
+	t.Setenv("MINDCLADE_LOG", "debug")
+	// No credential is ever read from the environment; these exist only to prove
+	// the SDK ignores them.
+	t.Setenv("MINDCLADE_TOKEN", "must-never-be-read")
+	t.Setenv("MINDCLADE_API_KEY", "must-never-be-read")
+
+	provider := WithTokenProvider(staticTokenProvider{Token{AccessToken: "token", Expiry: time.Now().Add(time.Hour)}})
+	if _, err := New(provider); err == nil {
+		t.Fatal("the ordinary constructor silently read the process environment")
+	}
+	if _, err := New(FromEnvironment()); err == nil {
+		t.Fatal("a credential was accepted from the environment")
+	}
+
+	client, err := New(FromEnvironment(), provider)
+	if err != nil {
+		t.Fatalf("New(FromEnvironment()): %v", err)
+	}
+	defer func() { _ = client.Close() }()
+	if client.config.Environment != Staging || client.config.Endpoint != "control-plane.test:443" {
+		t.Fatalf("environment = %q endpoint = %q, want the values FromEnvironment read", client.config.Environment, client.config.Endpoint)
+	}
+	for label, pair := range map[string][2]string{
+		"tenant":    {client.config.TenantID, "tenant-env"},
+		"project":   {client.config.ProjectID, "project-env"},
+		"principal": {client.config.PrincipalID, "principal-env"},
+		"audience":  {client.config.Audience, "https://control-plane.test"},
+	} {
+		if pair[0] != pair[1] {
+			t.Fatalf("%s = %q, want %q", label, pair[0], pair[1])
+		}
+	}
+	if _, ok := client.config.Observer.(slogObserver); !ok {
+		t.Fatalf("MINDCLADE_LOG did not install a structured logger: %T", client.config.Observer)
+	}
+
+	explicit := WithTenantProject("tenant-explicit", "project-explicit")
+	for label, options := range map[string][]Option{
+		"environment first": {FromEnvironment(), explicit, provider},
+		"explicit first":    {explicit, FromEnvironment(), provider},
+	} {
+		configured, err := New(options...)
+		if err != nil {
+			t.Fatalf("New(%s): %v", label, err)
+		}
+		if configured.config.TenantID != "tenant-explicit" || configured.config.ProjectID != "project-explicit" {
+			t.Fatalf("%s: explicit configuration lost to the environment: tenant=%q project=%q",
+				label, configured.config.TenantID, configured.config.ProjectID)
+		}
+		_ = configured.Close()
+	}
+}
+
+func TestCustomMetadataDenylistRejectsCredentialKeys(t *testing.T) {
+	for _, key := range []string{
+		"authorization", "proxy-authorization", "cookie", "set-cookie",
+		"x-api-key", "x-session-token", "my-api-key", "x-mindclade-lease-token",
+		"tenant-secret", "user-password", "service-credential",
+		"x-request-id", "x-trace-id", "x-mindclade-sdk", "x-mindclade-expected-tenant",
+		"grpc-timeout", "trace-bin", "x-bad key", "",
+	} {
+		pairs := map[string][]string{key: {"value"}}
+		if _, _, err := withRequestOptions(context.Background(), WithMetadata(pairs)); err == nil {
+			t.Fatalf("per-request metadata accepted the rejected key %q", key)
+		}
+		config := defaultConfig()
+		if err := WithDefaultMetadata(pairs)(&config); err == nil {
+			t.Fatalf("client-wide metadata accepted the rejected key %q", key)
+		}
+	}
+	if _, _, err := withRequestOptions(context.Background(), WithMetadata(map[string][]string{"x-custom-safe": {strings.Repeat("v", 257)}})); err == nil {
+		t.Fatal("an unbounded custom metadata value was accepted")
+	}
+
+	config := retryTestConfig(t, nil)
+	if err := WithDefaultMetadata(map[string][]string{"x-client-tier": {"batch"}})(&config); err != nil {
+		t.Fatalf("WithDefaultMetadata: %v", err)
+	}
+	ctx, _, err := withRequestOptions(context.Background(), WithMetadata(map[string][]string{"x-custom-safe": {"preserved"}}))
+	if err != nil {
+		t.Fatalf("WithMetadata: %v", err)
+	}
+	values, ok := metadata.FromOutgoingContext(attachRequestMetadata(ctx, config, safeUnaryMethod))
+	if !ok {
+		t.Fatal("SDK metadata was not attached")
+	}
+	for key, want := range map[string]string{"x-custom-safe": "preserved", "x-client-tier": "batch"} {
+		if got := values.Get(key); len(got) != 1 || got[0] != want {
+			t.Fatalf("custom metadata %q = %v, want exactly %q", key, got, want)
+		}
+	}
+}
+
+func TestPlatformMetadataIsStructuredAndBounded(t *testing.T) {
+	config := retryTestConfig(t, nil)
+	value := platformMetadata(config)
+	for _, component := range []string{
+		"language=go",
+		"version=" + Version,
+		"os=" + runtime.GOOS,
+		"arch=" + runtime.GOARCH,
+		"runtime=go",
+		"runtime_version=" + runtime.Version(),
+	} {
+		if !strings.Contains(value, component) {
+			t.Fatalf("x-mindclade-sdk %q is missing the component %q", value, component)
+		}
+	}
+	if err := validateMetadataIdentifier("x-mindclade-sdk", value); err != nil {
+		t.Fatalf("structured platform metadata is not a safe metadata identifier: %v", err)
+	}
+	ctx, _, err := withRequestOptions(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	values, _ := metadata.FromOutgoingContext(attachRequestMetadata(ctx, config, safeUnaryMethod))
+	if got := values.Get("x-mindclade-sdk"); len(got) != 1 || got[0] != value {
+		t.Fatalf("x-mindclade-sdk = %v, want exactly the structured value", got)
+	}
+
+	omitted := config
+	if err := WithOmitPlatformMetadata()(&omitted); err != nil {
+		t.Fatal(err)
+	}
+	if reduced := platformMetadata(omitted); reduced != "language=go;version="+Version {
+		t.Fatalf("omitted platform metadata = %q, want only language and version", reduced)
+	}
+	if !strings.Contains(config.UserAgent, Version) {
+		t.Fatalf("user agent %q does not carry the single source version %q", config.UserAgent, Version)
+	}
+}
+
+// metadataRecordingOperationServer records the metadata a real gRPC transport
+// delivered, so a test can compare it with what a caller interceptor observed.
+type metadataRecordingOperationServer struct {
+	internaljobv1.UnimplementedOperationServiceServer
+	mu       sync.Mutex
+	incoming metadata.MD
+}
+
+func (server *metadataRecordingOperationServer) GetOperation(ctx context.Context, _ *internaljobv1.GetOperationRequest) (*internaljobv1.GetOperationResponse, error) {
+	received, _ := metadata.FromIncomingContext(ctx)
+	server.mu.Lock()
+	server.incoming = received.Copy()
+	server.mu.Unlock()
+	return &internaljobv1.GetOperationResponse{Operation: watchedOperation(1, true).GetOperation()}, nil
+}
+
+// plaintextBearerCredentials stands in for the SDK's own per-RPC credentials
+// over a loopback test transport. Real credentials require transport security;
+// this exists only to prove where in the stack a credential is injected.
+type plaintextBearerCredentials struct{ token string }
+
+func (credential plaintextBearerCredentials) GetRequestMetadata(context.Context, ...string) (map[string]string, error) {
+	return map[string]string{"authorization": "Bearer " + credential.token}, nil
+}
+
+func (plaintextBearerCredentials) RequireTransportSecurity() bool { return false }
+
+func TestCallerInterceptorCannotObserveCredentials(t *testing.T) {
+	const secret = "caller-interceptor-must-not-see-this"
+	listener := bufconn.Listen(1 << 20)
+	server := grpc.NewServer()
+	recorder := &metadataRecordingOperationServer{}
+	internaljobv1.RegisterOperationServiceServer(server, recorder)
+	go func() { _ = server.Serve(listener) }()
+	t.Cleanup(server.Stop)
+
+	config := retryTestConfig(t, nil)
+	var observed metadata.MD
+	callerInterceptor := func(ctx context.Context, method string, request, response any, connection *grpc.ClientConn, invoke grpc.UnaryInvoker, options ...grpc.CallOption) error {
+		observed, _ = metadata.FromOutgoingContext(ctx)
+		return invoke(ctx, method, request, response, connection, options...)
+	}
+	if err := WithInterceptor(callerInterceptor)(&config); err != nil {
+		t.Fatal(err)
+	}
+	connection, err := grpc.NewClient(
+		"passthrough:///bufnet",
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithContextDialer(func(context.Context, string) (net.Conn, error) { return listener.Dial() }),
+		grpc.WithPerRPCCredentials(plaintextBearerCredentials{token: secret}),
+		grpc.WithChainUnaryInterceptor(append([]grpc.UnaryClientInterceptor{unaryInterceptor(config)}, config.unaryInterceptors...)...),
+	)
+	if err != nil {
+		t.Fatalf("dial bufconn: %v", err)
+	}
+	t.Cleanup(func() { _ = connection.Close() })
+
+	response, err := internaljobv1.NewOperationServiceClient(connection).GetOperation(context.Background(), &internaljobv1.GetOperationRequest{Name: "operations/watched-1"})
+	if err != nil || response.GetOperation() == nil {
+		t.Fatalf("GetOperation: response=%v err=%v", response, err)
+	}
+	if observed == nil {
+		t.Fatal("the caller interceptor never ran")
+	}
+	if values := observed.Get("authorization"); len(values) != 0 {
+		t.Fatalf("the caller interceptor observed a credential: %v", values)
+	}
+	for _, values := range observed {
+		for _, value := range values {
+			if strings.Contains(value, secret) {
+				t.Fatalf("the caller interceptor observed the credential material %q", value)
+			}
+		}
+	}
+	if observed.Get("x-request-id") == nil || observed.Get("x-mindclade-sdk") == nil {
+		t.Fatalf("the caller interceptor ran outside SDK policy: %v", observed)
+	}
+	recorder.mu.Lock()
+	delivered := recorder.incoming.Get("authorization")
+	recorder.mu.Unlock()
+	if len(delivered) != 1 || !strings.Contains(delivered[0], secret) {
+		t.Fatalf("the credential did not reach the transport: %v", delivered)
+	}
+}
+
+// capturingObserver records the bounded events the observability seam emits.
+type capturingObserver struct {
+	mu     sync.Mutex
+	events []RPCEvent
+}
+
+func (*capturingObserver) RPCStarted(string, int)                       {}
+func (*capturingObserver) RPCFinished(string, int, time.Duration, Code) {}
+
+func (observer *capturingObserver) RPCAttempt(event RPCEvent) {
+	observer.mu.Lock()
+	defer observer.mu.Unlock()
+	observer.events = append(observer.events, event)
+}
+
+func TestObserverAndLoggerNeverEmitValues(t *testing.T) {
+	const bearer = "bearer-material-must-not-be-logged"
+	const lease = "lease-material-must-not-be-logged"
+	responseHeaders := metadata.MD{
+		"authorization":           {"Bearer " + bearer},
+		"x-mindclade-lease-token": {lease},
+		"x-request-id":            {"server-request-id"},
+	}
+	responseTrailers := metadata.MD{"retry-after-ms": {"250"}}
+
+	observer := &capturingObserver{}
+	var logged bytes.Buffer
+	config := retryTestConfig(t, func(int64) int64 { return 0 })
+	config.Observer = observer
+	if err := WithLogger(slog.New(slog.NewTextHandler(&logged, &slog.HandlerOptions{Level: slog.LevelDebug})), slog.LevelInfo)(&config); err != nil {
+		t.Fatal(err)
+	}
+	logging := config
+	config.Observer = observer
+
+	for _, active := range []Config{config, logging} {
+		ctx, _, err := withRequestOptions(context.Background(), WithRequestID("observed-request"), WithTraceID("observed-trace"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		invokeErr := unaryInterceptor(active)(ctx, safeUnaryMethod, nil, nil, nil,
+			func(_ context.Context, _ string, _, _ any, _ *grpc.ClientConn, options ...grpc.CallOption) error {
+				scriptedHeaders(options, responseHeaders)
+				scriptedTrailers(options, responseTrailers)
+				return status.Error(codes.ResourceExhausted, "throttled")
+			},
+		)
+		if invokeErr == nil {
+			t.Fatal("scripted failure was not reported")
+		}
+	}
+
+	observer.mu.Lock()
+	events := append([]RPCEvent(nil), observer.events...)
+	observer.mu.Unlock()
+	if len(events) == 0 {
+		t.Fatal("the observer seam received no attempt")
+	}
+	for _, event := range events {
+		if event.Method != safeUnaryMethod || event.Attempt < 1 || event.Elapsed < 0 {
+			t.Fatalf("event is not bounded transport telemetry: %#v", event)
+		}
+		if event.Status != CodeResourceExhausted || event.RequestID != "observed-request" || event.TraceID != "observed-trace" {
+			t.Fatalf("event lost its identity or status: %#v", event)
+		}
+		if event.RetryAfter != 250*time.Millisecond {
+			t.Fatalf("event retry-after = %s, want the trailer hint", event.RetryAfter)
+		}
+		if !slices.Contains(event.MetadataKeys, "authorization") || !slices.Contains(event.MetadataKeys, "x-mindclade-lease-token") {
+			t.Fatalf("event did not report metadata key names: %v", event.MetadataKeys)
+		}
+		for _, name := range event.MetadataKeys {
+			if strings.Contains(name, bearer) || strings.Contains(name, lease) {
+				t.Fatalf("a metadata VALUE reached the observer: %q", name)
+			}
+		}
+	}
+
+	emitted := logged.String()
+	if emitted == "" {
+		t.Fatal("MINDCLADE_LOG level handling emitted nothing")
+	}
+	for _, secret := range []string{bearer, lease} {
+		if strings.Contains(emitted, secret) {
+			t.Fatalf("credential material was logged: %s", emitted)
+		}
+	}
+	for _, attribute := range []string{"method=", "attempt=", "elapsed=", "status=", "request_id=", "metadata_keys="} {
+		if !strings.Contains(emitted, attribute) {
+			t.Fatalf("log line is missing %q: %s", attribute, emitted)
+		}
+	}
+}
+
+func TestWatcherAliasesPreserveTheirCursorAndMessageTypes(t *testing.T) {
+	// The four domain watchers are aliases of one generic reader, so these
+	// assignments are the compile-time proof that consolidating them changed no
+	// public cursor or message type. A nil watcher is safe to interrogate.
+	var operations *Watcher
+	var inference *InferenceWatcher
+	var training *TrainingWatcher
+	var workflow *WorkflowWatcher
+
+	var operationCursor uint64 = operations.Cursor()
+	var inferenceCursor *inferencev1.InferenceStreamCursor = inference.Cursor()
+	var trainingCursor uint64 = training.Cursor()
+	var workflowCursor uint64 = workflow.Cursor()
+	if operationCursor != 0 || inferenceCursor != nil || trainingCursor != 0 || workflowCursor != 0 {
+		t.Fatal("a zero watcher reported a non-zero cursor")
+	}
+
+	var operationMessage *internaljobv1.WatchOperationResponse = operations.Current()
+	var inferenceMessage *inferencev1.InferenceStreamMessage = inference.Current()
+	var trainingMessage *internaltrainingv1.WatchTrainingRunResponse = training.Current()
+	var workflowMessage *workflowv1.WorkflowRun = workflow.Current()
+	if operationMessage != nil || inferenceMessage != nil || trainingMessage != nil || workflowMessage != nil {
+		t.Fatal("a zero watcher reported a message")
+	}
+
+	for _, err := range []error{operations.Err(), inference.Err(), training.Err(), workflow.Err()} {
+		if err != nil {
+			t.Fatalf("a zero watcher reported an error: %v", err)
+		}
+	}
+	if _, err := operations.Recv(); !errors.Is(err, io.EOF) {
+		t.Fatalf("Recv on a zero watcher = %v, want io.EOF", err)
+	}
+	if operations.Next() || workflow.Next() {
+		t.Fatal("Next advanced a zero watcher")
+	}
+	if err := operations.Close(); err != nil {
+		t.Fatalf("Close on a zero watcher = %v", err)
+	}
+}
+
+func TestInterceptorSeamIsExplicitAndChainedInsideSDKPolicy(t *testing.T) {
+	config := defaultConfig()
+	if err := WithInterceptor(nil)(&config); err == nil {
+		t.Fatal("a nil unary interceptor was accepted")
+	}
+	if err := WithStreamInterceptor(nil)(&config); err == nil {
+		t.Fatal("a nil stream interceptor was accepted")
+	}
+
+	unaryCalls, streamCalls := 0, 0
+	client, err := New(
+		WithEnvironment(Development),
+		WithEndpoint("control-plane.test:443"),
+		WithTenantProject("tenant-a", "project-a"),
+		WithPrincipal("principal-a"),
+		WithTokenProvider(staticTokenProvider{Token{AccessToken: "token", Expiry: time.Now().Add(time.Hour)}}),
+		WithInterceptor(func(ctx context.Context, method string, request, response any, connection *grpc.ClientConn, invoke grpc.UnaryInvoker, options ...grpc.CallOption) error {
+			unaryCalls++
+			return invoke(ctx, method, request, response, connection, options...)
+		}),
+		WithStreamInterceptor(func(ctx context.Context, description *grpc.StreamDesc, connection *grpc.ClientConn, method string, streamer grpc.Streamer, options ...grpc.CallOption) (grpc.ClientStream, error) {
+			streamCalls++
+			return streamer(ctx, description, connection, method, options...)
+		}),
+	)
+	if err != nil {
+		t.Fatalf("New with caller interceptors: %v", err)
+	}
+	defer func() { _ = client.Close() }()
+	if len(client.config.unaryInterceptors) != 1 || len(client.config.streamInterceptors) != 1 {
+		t.Fatalf("caller interceptors = %d unary and %d stream, want one of each",
+			len(client.config.unaryInterceptors), len(client.config.streamInterceptors))
+	}
+	if unaryCalls != 0 || streamCalls != 0 {
+		t.Fatal("a caller interceptor ran before any RPC was issued")
 	}
 }

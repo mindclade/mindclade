@@ -72,7 +72,7 @@ import {
 	type WaitOptions,
 } from "./request.js";
 import { invokeUnary } from "./retry.js";
-import { DEFAULT_WAIT_TIMEOUT_MS, watchStream, type WatchSource } from "./watch.js";
+import { DEFAULT_WAIT_TIMEOUT_MS, type WatchSource, watchStream } from "./watch.js";
 
 const SERVICE = "/mindclade.internal.training.v1.TrainingService";
 const CREATE = `${SERVICE}/CreateTrainingRun`;
@@ -170,19 +170,14 @@ export class Training {
 	async get(name: string, ifNoneMatch = "", options: SdkCallOptions = {}): Promise<TrainingRun> {
 		ensureUnfenced(options);
 		const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
-		const response = await invokeUnary(
-			this.#core,
-			prepared,
-			GET,
-			undefined,
-			(call) =>
-				this.#core.raw.training.getTrainingRun(
-					create(GetTrainingRunRequestSchema, {
-						ifNoneMatch: ifNoneMatch.trim(),
-						name: scopedRunName(this.#core, name),
-					}),
-					call,
-				),
+		const response = await invokeUnary(this.#core, prepared, GET, undefined, (call) =>
+			this.#core.raw.training.getTrainingRun(
+				create(GetTrainingRunRequestSchema, {
+					ifNoneMatch: ifNoneMatch.trim(),
+					name: scopedRunName(this.#core, name),
+				}),
+				call,
+			),
 		);
 		return requiredRun(response.trainingRun, "GetTrainingRun");
 	}
@@ -201,12 +196,8 @@ export class Training {
 			fetch: async (pageToken) => {
 				const paged = withPageToken(ListTrainingRunsRequestSchema, request, pageToken);
 				const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
-				const response = await invokeUnary(
-					this.#core,
-					prepared,
-					LIST,
-					undefined,
-					(call) => this.#core.raw.training.listTrainingRuns(paged, call),
+				const response = await invokeUnary(this.#core, prepared, LIST, undefined, (call) =>
+					this.#core.raw.training.listTrainingRuns(paged, call),
 				);
 				return { requestId: prepared.requestId, response };
 			},
@@ -452,18 +443,13 @@ export class Training {
 	async getCheckpoint(name: string, options: SdkCallOptions = {}): Promise<Checkpoint> {
 		ensureUnfenced(options);
 		const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
-		const response = await invokeUnary(
-			this.#core,
-			prepared,
-			GET_CHECKPOINT,
-			undefined,
-			(call) =>
-				this.#core.raw.training.getCheckpoint(
-					create(GetCheckpointRequestSchema, {
-						name: scopedCheckpointName(this.#core, name),
-					}),
-					call,
-				),
+		const response = await invokeUnary(this.#core, prepared, GET_CHECKPOINT, undefined, (call) =>
+			this.#core.raw.training.getCheckpoint(
+				create(GetCheckpointRequestSchema, {
+					name: scopedCheckpointName(this.#core, name),
+				}),
+				call,
+			),
 		);
 		return requiredCheckpoint(response.checkpoint, "GetCheckpoint");
 	}
@@ -516,12 +502,7 @@ export class Training {
 			this.#core.runtime,
 			callOptions(options, total),
 		);
-		yield* watchStream(
-			this.#core,
-			prepared,
-			this.#watchSource(runName, prepared),
-			afterSequence,
-		);
+		yield* watchStream(this.#core, prepared, this.#watchSource(runName, prepared), afterSequence);
 	}
 
 	/** Resumes a watch from a sequence the caller already accepted. */
@@ -616,13 +597,7 @@ export class Training {
 			schema,
 			command,
 		);
-		const response = await invokeUnary(
-			this.#core,
-			prepared,
-			route,
-			options.idempotencyKey,
-			invoke,
-		);
+		const response = await invokeUnary(this.#core, prepared, route, options.idempotencyKey, invoke);
 		return requiredRun(response.trainingRun, method);
 	}
 
@@ -645,13 +620,7 @@ export class Training {
 			schema,
 			command,
 		);
-		const response = await invokeUnary(
-			this.#core,
-			prepared,
-			route,
-			options.idempotencyKey,
-			invoke,
-		);
+		const response = await invokeUnary(this.#core, prepared, route, options.idempotencyKey, invoke);
 		return requiredCheckpoint(response.checkpoint, method);
 	}
 }

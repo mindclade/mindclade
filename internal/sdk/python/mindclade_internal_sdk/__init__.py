@@ -2,11 +2,15 @@
 
 from mindclade.artifact.v1.artifact_reference_pb2 import ArtifactRef
 
+from ._env import ENVIRONMENT_VARIABLES, config_from_env
+from ._logging import LOG_LEVELS, LOGGER_NAME, LoggingObserver, default_observer, log_level_from_env
 from ._metadata import (
     CREDENTIAL_METADATA_KEYS,
     SAFE_RESPONSE_METADATA_KEYS,
     is_credential_metadata_key,
 )
+from ._middleware import AsyncCredentialShield, CredentialShield
+from ._platform import PlatformMetadata
 from ._raw import (
     AsyncRawResponseProxy,
     AsyncWithRawResponse,
@@ -15,6 +19,7 @@ from ._raw import (
     WithRawResponse,
 )
 from ._retry import DEFAULT_JITTER, FixedJitter, JitterSource, SystemJitter
+from ._watch import AsyncWatchStream, WatchSpec, WatchStream
 from .admin import Admin, AsyncAdmin
 from .agents import Agents, AsyncAgents
 from .artifacts import Artifacts, AsyncArtifacts
@@ -77,6 +82,9 @@ from .workflows import Approvals, AsyncApprovals, AsyncWorkflows, Workflows
 __all__ = [
     "CREDENTIAL_METADATA_KEYS",
     "DEFAULT_JITTER",
+    "ENVIRONMENT_VARIABLES",
+    "LOGGER_NAME",
+    "LOG_LEVELS",
     "SAFE_RESPONSE_METADATA_KEYS",
     "AccessToken",
     "Admin",
@@ -89,6 +97,7 @@ __all__ = [
     "AsyncApprovals",
     "AsyncArtifacts",
     "AsyncClient",
+    "AsyncCredentialShield",
     "AsyncDatasets",
     "AsyncEvaluations",
     "AsyncExperiments",
@@ -104,6 +113,7 @@ __all__ = [
     "AsyncRuns",
     "AsyncTokenProvider",
     "AsyncTraining",
+    "AsyncWatchStream",
     "AsyncWithRawResponse",
     "AsyncWorkflows",
     "AttemptLease",
@@ -115,6 +125,7 @@ __all__ = [
     "ClientConfig",
     "ConfigurationError",
     "ConflictError",
+    "CredentialShield",
     "Datasets",
     "DeadlineExceededError",
     "Environment",
@@ -132,6 +143,7 @@ __all__ = [
     "JobRequestedDelivery",
     "Jobs",
     "LeaseCredential",
+    "LoggingObserver",
     "MindcladeError",
     "Models",
     "NotFoundError",
@@ -143,6 +155,7 @@ __all__ = [
     "PageBudget",
     "PaginationLimitError",
     "PaginationLimits",
+    "PlatformMetadata",
     "Policies",
     "PreconditionViolation",
     "ProtocolError",
@@ -162,12 +175,17 @@ __all__ = [
     "TransportError",
     "UnavailableError",
     "ValidationError",
+    "WatchSpec",
+    "WatchStream",
     "WithRawResponse",
     "WorkflowRunFailedError",
     "Workflows",
     "apaginate",
+    "config_from_env",
     "decode_job_requested_delivery",
+    "default_observer",
     "error_from_detail",
     "is_credential_metadata_key",
+    "log_level_from_env",
     "paginate",
 ]

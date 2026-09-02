@@ -11,7 +11,12 @@ import {
 	type RetryPolicy,
 } from "./config.js";
 import { MindcladeError } from "./error.js";
-import { consoleLogger, levelFromEnvironment, type Logger, type Observer } from "./observability.js";
+import {
+	consoleLogger,
+	type Logger,
+	levelFromEnvironment,
+	type Observer,
+} from "./observability.js";
 
 /**
  * The complete set of environment variables the SDK reads.
@@ -69,7 +74,11 @@ const environments: Readonly<Record<string, Environment>> = Object.freeze({
 	staging: Environment.Staging,
 });
 
-const required = (source: EnvironmentSource, name: string, supplied: string | undefined): string => {
+const required = (
+	source: EnvironmentSource,
+	name: string,
+	supplied: string | undefined,
+): string => {
 	const value = supplied ?? source[name];
 	if (value === undefined || value.trim() === "") {
 		throw MindcladeError.configuration(`${name} is required to configure a client`);
@@ -89,9 +98,7 @@ const optional = (source: EnvironmentSource, name: string): string | undefined =
  * The ordinary `ClientConfig.create` constructor stays environment-free, so a
  * client is never silently reconfigured by an ambient variable.
  */
-export const clientConfigFromEnvironment = (
-	overrides: EnvironmentOverrides = {},
-): ClientConfig => {
+export const clientConfigFromEnvironment = (overrides: EnvironmentOverrides = {}): ClientConfig => {
 	const source: EnvironmentSource = overrides.env ?? processEnv;
 	const name = required(source, "MINDCLADE_ENVIRONMENT", undefined).toLowerCase();
 	const environment = environments[name];

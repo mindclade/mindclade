@@ -148,12 +148,81 @@ link creation is the commit point; corruption, cancellation, and write failure
 before it leave the destination absent or unchanged.
 
 Persist each mutation's `idempotency_key` with durable caller intent before
-submission so crash/restart retries reuse the same identity. Consume resumable
-updates through `client.operations.watch` (or its async peer) and propagate the
-cancellation event. Cancellation events are one-shot signals: set them once and
-do not clear them. Runtime checks cover credentials, scope, correlation
-metadata, deadlines, page budgets, stream identity, and artifact integrity;
-generated protobuf types and the server own ordinary request-field constraints.
+submission so crash/restart retries reuse the same identity. Cancellation events
+are one-shot signals: set them once and do not clear them. Runtime checks cover
+credentials, scope, correlation metadata, deadlines, page budgets, stream
+identity, and artifact integrity; generated protobuf types and the server own
+ordinary request-field constraints.
+
+## Long-running operations and streaming
+
+Durable operations expose one uniform verb set on both clients: `get`, `wait`,
+`cancel`, `watch`, and `resume_watch`. Streaming stays native gRPC
+server-streaming; there is no SSE client in this SDK, because SSE is the
+gateway's public projection of `WatchOperation` alone.
+
+```python
+with client.operations.watch(name, timeout=600) as events:   # also async with
+    for event in events:
+        checkpoint(events.cursor)                            # durable cursor
+        if event.operation.done:
+            break
+
+# Re-attach later from the cursor you recorded. ``after_sequence`` is required,
+# so a resume can never silently replay from the beginning.
+stream = client.operations.resume_watch(name, after_sequence=checkpointed)
+```
+
+`client.operations.watch`, `client.training.watch`, `client.inference.watch`,
+and `client.workflows.watch` all run on one resumable watcher. It reconnects
+only inside the caller's remaining deadline, resumes from the last acknowledged
+cursor, carries the caller's lease token and idempotency key onto every attempt,
+re-runs each domain's sequence and identity checks after a reconnect, and raises
+the failure that actually ended the stream once the retry budget is spent. The
+returned stream is an iterator, a context manager whose exit releases the live
+call, and it exposes `request_id`, `trace_id`, and `cursor`. Every watcher takes
+`options=CallOptions(...)`, whose timeout narrows the watch budget but never
+widens it.
+
+## Configuration and environment variables
+
+`ClientConfig` reads nothing from the process environment. `Client.from_env()`
+and `AsyncClient.from_env()` are the only environment-reading path, and they
+recognise exactly `MINDCLADE_ENVIRONMENT`, `MINDCLADE_ENDPOINT`,
+`MINDCLADE_TENANT_ID`, `MINDCLADE_PROJECT_ID`, `MINDCLADE_PRINCIPAL_ID`,
+`MINDCLADE_AUDIENCE`, and `MINDCLADE_LOG`. **There is no credential environment
+variable**: the token provider is always an explicit argument, so a stray export
+can never change which identity the SDK presents. Keyword arguments to
+`from_env` beat the environment.
+
+```python
+client = Client.from_env(token_provider=GoogleWorkloadIdentityProvider(audience))
+```
+
+`custom_metadata={"x-team": "platform"}` adds caller metadata to every request.
+Keys are validated up front against the same credential denylist raw responses
+use and may not shadow an SDK key, so nothing credential-bearing and nothing
+reserved reaches the wire. `x-mindclade-sdk` carries structured, bounded
+platform facts (`lang`, `os`, `arch`, `runtime`, `runtime_version`) drawn from
+closed allowlists; `omit_platform_metadata=True` reduces it to the bare name and
+version.
+
+`middleware=[interceptor]` installs ordinary gRPC client interceptors on the
+channel. Each is wrapped in a credential shield: it never sees the SDK's
+authorization header or lease token, and any credential key it adds or removes
+is discarded before the call goes out. Credential injection is not
+interceptable.
+
+## Logging
+
+`MINDCLADE_LOG` selects a level — `off`, `error`, `warn`, `info`, or `debug` —
+for clients built with `from_env`. Records go to the `mindclade_internal_sdk`
+stdlib logger, which the SDK never configures, never handles, and never
+attaches to the root logger. `LoggingObserver` can also be passed explicitly to
+either constructor. A record carries method, attempt, status, elapsed time,
+request id, trace id, retry count, cumulative backoff, and metadata *key names*;
+there is no code path from a payload, a metadata value, an access token, or a
+lease token into a log line.
 
 ## Safety and retry behavior
 
@@ -168,8 +237,9 @@ generated protobuf types and the server own ordinary request-field constraints.
   an idempotency key and canonical request digest.
 - Errors preserve gRPC status, request ID, and retryability without copying
   provider details or request/response payloads.
-- Observers receive method, attempt, elapsed time, status, and request ID only.
-  Tokens and payloads are never logged.
+- Observers receive method, attempt, elapsed time, status, request ID, trace ID,
+  retry count, cumulative backoff, and metadata key names only. Metadata values,
+  tokens, and payloads are never observed or logged.
 - `FakeSyncTransport` and `FakeAsyncTransport` support hermetic consumer tests.
 
 Run focused tests with:

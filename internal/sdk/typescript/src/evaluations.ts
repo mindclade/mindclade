@@ -111,16 +111,11 @@ export class Evaluations {
 	): Promise<EvaluationRun> {
 		const scoped = scopedName(this.#core, name, "evaluationRuns");
 		const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
-		const response = await invokeUnary(
-			this.#core,
-			prepared,
-			GET_RUN,
-			undefined,
-			(call) =>
-				this.#core.raw.evaluations.getEvaluationRun(
-					create(GetEvaluationRunRequestSchema, { name: scoped, ifNoneMatch }),
-					call,
-				),
+		const response = await invokeUnary(this.#core, prepared, GET_RUN, undefined, (call) =>
+			this.#core.raw.evaluations.getEvaluationRun(
+				create(GetEvaluationRunRequestSchema, { name: scoped, ifNoneMatch }),
+				call,
+			),
 		);
 		if (response.evaluationRun === undefined || response.evaluationRun.name !== scoped)
 			throw MindcladeError.protocol("GetEvaluationRun response violated resource identity");
@@ -148,12 +143,8 @@ export class Evaluations {
 			fetch: async (pageToken) => {
 				const paged = withPageToken(ListEvaluationRunsRequestSchema, request, pageToken);
 				const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
-				const response = await invokeUnary(
-					this.#core,
-					prepared,
-					LIST,
-					undefined,
-					(call) => this.#core.raw.evaluations.listEvaluationRuns(paged, call),
+				const response = await invokeUnary(this.#core, prepared, LIST, undefined, (call) =>
+					this.#core.raw.evaluations.listEvaluationRuns(paged, call),
 				);
 				return { requestId: prepared.requestId, response };
 			},
@@ -254,16 +245,11 @@ export class Evaluations {
 	async getResult(name: string, options: SdkCallOptions = {}): Promise<EvaluationResult> {
 		const scoped = scopedName(this.#core, name, "evaluationResults");
 		const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
-		const response = await invokeUnary(
-			this.#core,
-			prepared,
-			GET_RESULT,
-			undefined,
-			(call) =>
-				this.#core.raw.evaluations.getEvaluationResult(
-					create(GetEvaluationResultRequestSchema, { name: scoped }),
-					call,
-				),
+		const response = await invokeUnary(this.#core, prepared, GET_RESULT, undefined, (call) =>
+			this.#core.raw.evaluations.getEvaluationResult(
+				create(GetEvaluationResultRequestSchema, { name: scoped }),
+				call,
+			),
 		);
 		if (response.result === undefined || response.result.name !== scoped)
 			throw MindcladeError.protocol("GetEvaluationResult response violated resource identity");
@@ -326,16 +312,11 @@ export class Evaluations {
 	): Promise<PromotionDecision> {
 		const scoped = scopedName(this.#core, name, "promotionDecisions");
 		const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
-		const response = await invokeUnary(
-			this.#core,
-			prepared,
-			GET_DECISION,
-			undefined,
-			(call) =>
-				this.#core.raw.evaluations.getPromotionDecision(
-					create(GetPromotionDecisionRequestSchema, { name: scoped }),
-					call,
-				),
+		const response = await invokeUnary(this.#core, prepared, GET_DECISION, undefined, (call) =>
+			this.#core.raw.evaluations.getPromotionDecision(
+				create(GetPromotionDecisionRequestSchema, { name: scoped }),
+				call,
+			),
 		);
 		if (response.promotionDecision === undefined || response.promotionDecision.name !== scoped)
 			throw MindcladeError.protocol("GetPromotionDecision response violated resource identity");

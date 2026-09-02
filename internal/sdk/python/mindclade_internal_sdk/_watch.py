@@ -31,10 +31,10 @@ from __future__ import annotations
 import asyncio
 import threading
 import time
-from collections.abc import AsyncIterator, Callable, Iterator
+from collections.abc import AsyncGenerator, AsyncIterator, Callable, Generator, Iterator
 from dataclasses import dataclass, replace
 from types import TracebackType
-from typing import Any, Self, cast
+from typing import Self
 
 from google.protobuf.message import Message
 
@@ -148,7 +148,7 @@ class WatchStream[ItemT, CursorT](Iterator[ItemT]):
         base: PreparedCall,
         total: float,
         cancellation: threading.Event | None,
-    ) -> Iterator[ItemT]:
+    ) -> Generator[ItemT, None, None]:
         deadline = time.monotonic() + total
         failures = 0
         while True:
@@ -194,11 +194,13 @@ class WatchStream[ItemT, CursorT](Iterator[ItemT]):
             if received:
                 failures = 0
             failures += 1
-            if failures >= invoker.config.retry.max_attempts:
-                raise stream_error
+            # An exhausted deadline outranks an exhausted attempt count: the
+            # caller asked for a bounded wait, so that is what they are told.
             remaining = deadline - time.monotonic()
             if _terminal_deadline(remaining):
                 raise spec.timeout_error()
+            if failures >= invoker.config.retry.max_attempts:
+                raise stream_error
             delay = retry_delay(
                 invoker.config.retry,
                 failures,
@@ -232,7 +234,7 @@ class WatchStream[ItemT, CursorT](Iterator[ItemT]):
     def close(self) -> None:
         """Release the live call without starting another attempt."""
 
-        cast(Any, self._iterator).close()
+        self._iterator.close()
 
 
 class AsyncWatchStream[ItemT, CursorT](AsyncIterator[ItemT]):
@@ -274,7 +276,7 @@ class AsyncWatchStream[ItemT, CursorT](AsyncIterator[ItemT]):
         base: PreparedCall,
         total: float,
         cancellation: asyncio.Event | None,
-    ) -> AsyncIterator[ItemT]:
+    ) -> AsyncGenerator[ItemT, None]:
         loop = asyncio.get_running_loop()
         deadline = loop.time() + total
         failures = 0
@@ -322,11 +324,11 @@ class AsyncWatchStream[ItemT, CursorT](AsyncIterator[ItemT]):
             if received:
                 failures = 0
             failures += 1
-            if failures >= invoker.config.retry.max_attempts:
-                raise stream_error
             remaining = deadline - loop.time()
             if _terminal_deadline(remaining):
                 raise spec.timeout_error()
+            if failures >= invoker.config.retry.max_attempts:
+                raise stream_error
             delay = retry_delay(
                 invoker.config.retry,
                 failures,
@@ -365,4 +367,4 @@ class AsyncWatchStream[ItemT, CursorT](AsyncIterator[ItemT]):
     async def aclose(self) -> None:
         """Release the live call without starting another attempt."""
 
-        await cast(Any, self._iterator).aclose()
+        await self._iterator.aclose()

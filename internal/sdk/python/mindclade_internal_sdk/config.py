@@ -8,6 +8,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from enum import StrEnum
 from types import MappingProxyType
+from typing import Any
 from urllib.parse import urlsplit
 
 from ._metadata import is_credential_metadata_key
@@ -141,8 +142,10 @@ _RESERVED_METADATA_KEYS = frozenset(
 )
 _RESERVED_METADATA_PREFIX = "x-mindclade-"
 
+_NO_CUSTOM_METADATA: Mapping[str, str] = MappingProxyType({})
 
-def _validated_custom_metadata(values: Mapping[str, str]) -> Mapping[str, str]:
+
+def _validated_custom_metadata(values: Mapping[Any, Any]) -> Mapping[str, str]:
     """Validate caller metadata, rejecting anything reserved or credential-bearing."""
 
     if len(values) > _MAX_CUSTOM_METADATA_ENTRIES:
@@ -179,8 +182,7 @@ def _validated_middleware(values: Sequence[object]) -> tuple[object, ...]:
     for entry in middleware:
         if not is_interceptor(entry):
             raise ConfigurationError(
-                "middleware entries must implement intercept_unary_unary "
-                "or intercept_unary_stream"
+                "middleware entries must implement intercept_unary_unary or intercept_unary_stream"
             )
     return middleware
 
@@ -213,7 +215,7 @@ class ClientConfig:
     """``x-mindclade-sdk``. Empty means "derive it from the running platform"."""
     insecure_for_testing: bool = False
     audience: str | None = None
-    custom_metadata: Mapping[str, str] = field(default_factory=dict)
+    custom_metadata: Mapping[str, str] = _NO_CUSTOM_METADATA
     """Caller metadata added to every request; never credential-bearing."""
     omit_platform_metadata: bool = False
     """Emit only the SDK name and version in ``x-mindclade-sdk``."""

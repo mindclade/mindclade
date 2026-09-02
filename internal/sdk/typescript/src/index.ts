@@ -197,7 +197,7 @@ export {
 export type { RetrySafety } from "./retry.js";
 export { AttemptLease, LeaseCredential, Runs } from "./runs.js";
 export type { Runtime } from "./runtime.js";
-export { isNeverRetryable, registeredMethodSafety } from "./safety.js";
+export { isNeverRetryable, REGISTERED_ROUTES, registeredMethodSafety } from "./safety.js";
 export { FakeRuntime, type RecordedTransportCall, RecordingTransport } from "./testing.js";
 export { Training, TrainingRunFailure, type TrainingUpdate } from "./training.js";
 export {

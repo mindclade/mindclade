@@ -367,9 +367,7 @@ export class AuthenticatedTransport implements Transport {
 		for (const name of strippedCredentialHeaders) headers.delete(name);
 		for (const [name, value] of Object.entries(this.#config.metadata)) {
 			if (isCredentialBearing(name)) {
-				throw MindcladeError.invalidArgument(
-					`custom metadata may not carry credentials: ${name}`,
-				);
+				throw MindcladeError.invalidArgument(`custom metadata may not carry credentials: ${name}`);
 			}
 			if (isReservedMetadata(name)) {
 				throw MindcladeError.invalidArgument(`custom metadata may not set the SDK-owned ${name}`);

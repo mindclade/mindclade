@@ -102,12 +102,8 @@ export class Approvals {
 			name: scopedName(this.#core, name, "approvalRequests"),
 		});
 		const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
-		const response = await invokeUnary(
-			this.#core,
-			prepared,
-			GET,
-			undefined,
-			(call) => this.#core.raw.approvals.getApprovalRequest(request, call),
+		const response = await invokeUnary(this.#core, prepared, GET, undefined, (call) =>
+			this.#core.raw.approvals.getApprovalRequest(request, call),
 		);
 		if (response.approvalRequest === undefined) {
 			throw MindcladeError.protocol("GetApprovalRequest response omitted its request");
@@ -138,12 +134,8 @@ export class Approvals {
 			fetch: async (pageToken) => {
 				const paged = withPageToken(ListApprovalRequestsRequestSchema, request, pageToken);
 				const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
-				const response = await invokeUnary(
-					this.#core,
-					prepared,
-					LIST,
-					undefined,
-					(call) => this.#core.raw.approvals.listApprovalRequests(paged, call),
+				const response = await invokeUnary(this.#core, prepared, LIST, undefined, (call) =>
+					this.#core.raw.approvals.listApprovalRequests(paged, call),
 				);
 				return { requestId: prepared.requestId, response };
 			},

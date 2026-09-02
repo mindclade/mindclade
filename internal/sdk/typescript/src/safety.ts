@@ -149,3 +149,13 @@ export const isNeverRetryable = (method: string): boolean => policies.get(method
 /** Unknown methods are unsafe and therefore receive exactly one attempt. */
 export const registeredMethodSafety = (method: string): RetrySafety =>
 	policies.get(method) ?? "unsafe";
+
+/**
+ * Every route this hand-maintained table classifies, sorted.
+ *
+ * The table is deliberately hand-written rather than generated, so this export
+ * is how a test proves it still covers the whole descriptor surface: an RPC
+ * that is added upstream and forgotten here would silently fall back to the
+ * unknown-route default instead of failing loudly.
+ */
+export const REGISTERED_ROUTES: readonly string[] = Object.freeze([...policies.keys()].sort());

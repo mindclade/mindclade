@@ -107,7 +107,11 @@ class _Shield:
         return cast(Callable[..., Any], hook) if callable(hook) else None
 
 
-class CredentialShield(_Shield, grpc.UnaryUnaryClientInterceptor, grpc.UnaryStreamClientInterceptor):
+class CredentialShield(
+    _Shield,
+    grpc.UnaryUnaryClientInterceptor,
+    grpc.UnaryStreamClientInterceptor,
+):
     """Synchronous shield around one caller-supplied interceptor."""
 
     __slots__ = ()

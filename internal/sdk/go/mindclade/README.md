@@ -21,14 +21,27 @@ operation, err := client.Training.Submit(ctx, mindclade.TrainingJob{
 })
 ```
 
-`MINDCLADE_TENANT_ID`, `MINDCLADE_PROJECT_ID`, and
-`MINDCLADE_PRINCIPAL_ID` provide the expected scope and correlation identity;
-callers may instead use `WithTenantProject`. Credentials are discovered through
-Application Default Credentials only when `WithWorkloadIdentity` is explicit.
-That option mints a short-lived Google workload-identity ID token, not a broad
-cloud-platform access token. `MINDCLADE_AUDIENCE` or `WithAudience` must match
-the control-plane verifier; otherwise the audience is derived from the secure
-endpoint as an HTTPS origin with the default `:443` port omitted. TLS is
+`New` never reads the process environment. `FromEnvironment()` is the only path
+that does, and it must be passed explicitly:
+
+```go
+client, err := mindclade.New(
+    mindclade.FromEnvironment(), // MINDCLADE_* configuration, opt-in
+    mindclade.WithWorkloadIdentity(),
+)
+```
+
+It recognises `MINDCLADE_ENVIRONMENT` (`development`, `staging`, `production`,
+plus `local` for the loopback test profile), `MINDCLADE_ENDPOINT`,
+`MINDCLADE_TENANT_ID`, `MINDCLADE_PROJECT_ID`, `MINDCLADE_PRINCIPAL_ID`,
+`MINDCLADE_AUDIENCE`, and `MINDCLADE_LOG`. It only fills fields that are still
+empty, so an explicit `With*` option wins on either side of it. **No credential
+is ever read from the environment, on any path.** Credentials are discovered
+through Application Default Credentials only when `WithWorkloadIdentity` is
+explicit; that option mints a short-lived Google workload-identity ID token, not
+a broad cloud-platform access token. `MINDCLADE_AUDIENCE` or `WithAudience` must
+match the control-plane verifier; otherwise the audience is derived from the
+secure endpoint as an HTTPS origin with the default `:443` port omitted. TLS is
 mandatory outside the local loopback test profile.
 
 Generated clients remain available through `client.Transport()` for activated
@@ -77,6 +90,57 @@ excludes every credential-bearing key. It is the only way to obtain a request
 id for a call that succeeded. `CaptureResponseMetadata`/
 `ResponseMetadataFromContext` do the same through a context when threading a
 record is impractical.
+
+Long-running operations expose one uniform verb set — `Get`, `Wait`, `Watch`,
+`Cancel`, and `ResumeWatch` — and every verb accepts `RequestOption`s, which are
+applied once so all of a wait's polls and all of a watch's reconnects share one
+request identity. Every server-streaming reader in the SDK is the same generic
+`StreamWatcher`; `Watcher`, `InferenceWatcher`, `TrainingWatcher`, and
+`WorkflowWatcher` are aliases of it, so their cursor and message types are
+unchanged:
+
+```go
+watcher, err := client.Operations.ResumeWatch(ctx, name, persistedCursor)
+if err != nil {
+    return err
+}
+defer watcher.Close()
+
+for watcher.Next() {
+    use(watcher.Current())
+}
+if err := watcher.Err(); err != nil { // nil at a clean end of stream
+    return err
+}
+persist(watcher.Cursor())
+```
+
+`Recv` remains available and returns `io.EOF` at the end of a stream. A watcher
+reconnects only inside the caller's remaining deadline — it never sleeps past
+the budget it was given — and always resumes from the last acknowledged cursor,
+so no message is replayed or skipped.
+
+`WithMetadata` (one call) and `WithDefaultMetadata` (every call) attach caller
+metadata. A credential-bearing key, a reserved SDK key, an unbounded value, or a
+`grpc-`/`-bin` key is rejected with an invalid-argument error rather than
+dropped silently. `WithInterceptor` and `WithStreamInterceptor` add caller gRPC
+interceptors; they run inside the SDK's own policy interceptor, and credential
+injection happens at the transport beneath the entire chain, so a caller
+interceptor structurally cannot observe or forge an authorization header.
+
+`x-mindclade-sdk` carries structured platform metadata —
+`language`, `version`, `os`, `arch`, `runtime`, `runtime_version` — with every
+component bounded. `WithOmitPlatformMetadata` reduces it to language and
+version. `Version` is the single source of truth for the SDK revision and is
+stamped into both the gRPC user agent and this value.
+
+`WithObserver` receives `RPCStarted`/`RPCFinished`; an observer that also
+implements `RequestObserver` receives the complete `RPCEvent` for every attempt:
+method, attempt, elapsed, status, request id, trace id, retry-after, and
+metadata **key names only**. `WithLogger` bridges the same seam to `log/slog`,
+and `MINDCLADE_LOG` (`debug`, `info`, `warn`, `error`, `off`) selects a default
+logger through `FromEnvironment`. Payloads, bearer tokens, lease tokens, and
+metadata values are never emitted.
 
 The sole intentional raw-only RPC is `RunService.ExpireAttemptLeases`, a
 control-plane reconciler primitive. Application code should use the fenced

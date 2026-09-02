@@ -93,7 +93,9 @@ def config_from_env(
     for field_name, variable in _REQUIRED_IDENTITY:
         value = _value(source, variable)
         if value is None and field_name not in overrides:
-            raise ConfigurationError(f"{variable} is required to build a client from the environment")
+            raise ConfigurationError(
+                f"{variable} is required to build a client from the environment"
+            )
         if value is not None:
             settings[field_name] = value
 

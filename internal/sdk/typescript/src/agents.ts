@@ -156,12 +156,8 @@ export class Agents {
 			name: expected,
 		});
 		const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
-		const response = await invokeUnary(
-			this.#core,
-			prepared,
-			GET_DEFINITION,
-			undefined,
-			(call) => this.#core.raw.agents.getAgentDefinition(request, call),
+		const response = await invokeUnary(this.#core, prepared, GET_DEFINITION, undefined, (call) =>
+			this.#core.raw.agents.getAgentDefinition(request, call),
 		);
 		if (response.agentDefinition === undefined || response.agentDefinition.name !== expected) {
 			throw MindcladeError.protocol("GetAgentDefinition returned an invalid resource identity");
@@ -252,12 +248,8 @@ export class Agents {
 			name: expected,
 		});
 		const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
-		const response = await invokeUnary(
-			this.#core,
-			prepared,
-			GET_RUN,
-			undefined,
-			(call) => this.#core.raw.agents.getAgentRun(request, call),
+		const response = await invokeUnary(this.#core, prepared, GET_RUN, undefined, (call) =>
+			this.#core.raw.agents.getAgentRun(request, call),
 		);
 		return requiredRun(response.agentRun, expected, "GetAgentRun");
 	}
@@ -275,12 +267,8 @@ export class Agents {
 			fetch: async (pageToken) => {
 				const paged = withPageToken(ListAgentRunsRequestSchema, request, pageToken);
 				const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
-				const response = await invokeUnary(
-					this.#core,
-					prepared,
-					LIST_RUNS,
-					undefined,
-					(call) => this.#core.raw.agents.listAgentRuns(paged, call),
+				const response = await invokeUnary(this.#core, prepared, LIST_RUNS, undefined, (call) =>
+					this.#core.raw.agents.listAgentRuns(paged, call),
 				);
 				return {
 					requestId: prepared.requestId,
@@ -325,12 +313,8 @@ export class Agents {
 		const expected = stepName(this.#core, name);
 		const request = create(GetAgentStepRequestSchema, { name: expected });
 		const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
-		const response = await invokeUnary(
-			this.#core,
-			prepared,
-			GET_STEP,
-			undefined,
-			(call) => this.#core.raw.agents.getAgentStep(request, call),
+		const response = await invokeUnary(this.#core, prepared, GET_STEP, undefined, (call) =>
+			this.#core.raw.agents.getAgentStep(request, call),
 		);
 		if (response.agentStep === undefined || response.agentStep.name !== expected) {
 			throw MindcladeError.protocol("GetAgentStep returned an invalid resource identity");
@@ -351,12 +335,8 @@ export class Agents {
 			fetch: async (pageToken) => {
 				const paged = withPageToken(ListAgentStepsRequestSchema, request, pageToken);
 				const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
-				const response = await invokeUnary(
-					this.#core,
-					prepared,
-					LIST_STEPS,
-					undefined,
-					(call) => this.#core.raw.agents.listAgentSteps(paged, call),
+				const response = await invokeUnary(this.#core, prepared, LIST_STEPS, undefined, (call) =>
+					this.#core.raw.agents.listAgentSteps(paged, call),
 				);
 				return {
 					requestId: prepared.requestId,

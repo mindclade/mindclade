@@ -200,11 +200,21 @@ func TestTrainingLifecycleFacadeCoversGeneratedRPCs(t *testing.T) {
 	if update, recvErr := watch.Recv(); recvErr != nil || update.GetSequence() != 1 {
 		t.Fatalf("watch=%v err=%v", update, recvErr)
 	}
+	// ResumeWatch continues from a persisted sequence rather than replaying the
+	// stream from its beginning.
+	resumed, err := service.ResumeWatch(ctx, runName, 4)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = resumed.Close() }()
+	if update, recvErr := resumed.Recv(); recvErr != nil || update.GetSequence() != 5 || resumed.Cursor() != 5 {
+		t.Fatalf("resumed watch=%v cursor=%d err=%v", update, resumed.Cursor(), recvErr)
+	}
 
 	server.mu.Lock()
 	defer server.mu.Unlock()
-	if len(server.requests) != 12 {
-		t.Fatalf("received %d training RPCs, want 12", len(server.requests))
+	if len(server.requests) != 13 {
+		t.Fatalf("received %d training RPCs, want 13", len(server.requests))
 	}
 	for _, index := range []int{2, 3, 4, 5, 6, 7} {
 		if server.leases[index] != "opaque-lease" {

@@ -33,7 +33,7 @@ import {
 	type WaitOptions,
 } from "./request.js";
 import { ensureActive, invokeUnary } from "./retry.js";
-import { DEFAULT_WAIT_TIMEOUT_MS, watchStream, type WatchSource } from "./watch.js";
+import { DEFAULT_WAIT_TIMEOUT_MS, type WatchSource, watchStream } from "./watch.js";
 
 const GET_OPERATION = "/mindclade.internal.job.v1.OperationService/GetOperation";
 const CANCEL_OPERATION = "/mindclade.internal.job.v1.OperationService/CancelOperation";
@@ -258,12 +258,8 @@ export class Operations {
 
 	async #getPrepared(name: string, prepared: PreparedCall): Promise<Operation> {
 		const request = create(GetOperationRequestSchema, { ifNoneMatch: "", name });
-		const response = await invokeUnary(
-			this.#core,
-			prepared,
-			GET_OPERATION,
-			undefined,
-			(call) => this.#core.raw.operations.getOperation(request, call),
+		const response = await invokeUnary(this.#core, prepared, GET_OPERATION, undefined, (call) =>
+			this.#core.raw.operations.getOperation(request, call),
 		);
 		if (response.operation === undefined) {
 			throw MindcladeError.protocol("GetOperation response omitted its operation");

@@ -128,8 +128,7 @@ describe("resumable watcher and long-running operation verbs", () => {
 					assert.fail("no update should be delivered");
 				}
 			})(),
-			(reason: unknown) =>
-				reason instanceof MindcladeError && reason.kind === "deadline_exceeded",
+			(reason: unknown) => reason instanceof MindcladeError && reason.kind === "deadline_exceeded",
 		);
 		assert.equal(streams, 1);
 		assert.deepEqual(runtime.sleeps, []);
@@ -239,10 +238,7 @@ describe("resumable watcher and long-running operation verbs", () => {
 			drain(clientWith(workflows).workflows.watch(WORKFLOW_RUN)),
 			protocolFailure,
 		);
-		await assert.rejects(
-			drain(clientWith(training).training.watch(TRAINING_RUN)),
-			protocolFailure,
-		);
+		await assert.rejects(drain(clientWith(training).training.watch(TRAINING_RUN)), protocolFailure);
 		await assert.rejects(
 			drain(clientWith(inference).inference.watch("operations/inference-1")),
 			protocolFailure,
@@ -269,8 +265,7 @@ describe("resumable watcher and long-running operation verbs", () => {
 					assert.fail("a zero cursor must be refused before any RPC");
 				}
 			})(),
-			(reason: unknown) =>
-				reason instanceof MindcladeError && reason.kind === "invalid_argument",
+			(reason: unknown) => reason instanceof MindcladeError && reason.kind === "invalid_argument",
 		);
 		assert.deepEqual(cursors, []);
 		const observed: bigint[] = [];
@@ -322,8 +317,7 @@ describe("resumable watcher and long-running operation verbs", () => {
 					assert.fail("a zero cursor must be refused before any RPC");
 				}
 			})(),
-			(reason: unknown) =>
-				reason instanceof MindcladeError && reason.kind === "invalid_argument",
+			(reason: unknown) => reason instanceof MindcladeError && reason.kind === "invalid_argument",
 		);
 		for await (const update of trainingClient.training.resumeWatch(TRAINING_RUN, 2n)) {
 			assert.equal(update.sequence, 3n);

@@ -40,7 +40,7 @@ import {
 	type WaitOptions,
 } from "./request.js";
 import { invokeUnary } from "./retry.js";
-import { DEFAULT_WAIT_TIMEOUT_MS, watchStream, type WatchSource } from "./watch.js";
+import { DEFAULT_WAIT_TIMEOUT_MS, type WatchSource, watchStream } from "./watch.js";
 
 const SUBMIT = "/mindclade.internal.inference.v1.InferenceService/SubmitInference";
 const GET_REQUEST = "/mindclade.internal.inference.v1.InferenceService/GetInferenceRequest";
@@ -94,12 +94,8 @@ export class Inference {
 		validateRequired("inference request name", name);
 		const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
 		const request = create(GetInferenceRequestRequestSchema, { name });
-		const response = await invokeUnary(
-			this.#core,
-			prepared,
-			GET_REQUEST,
-			undefined,
-			(call) => this.#core.raw.inference.getInferenceRequest(request, call),
+		const response = await invokeUnary(this.#core, prepared, GET_REQUEST, undefined, (call) =>
+			this.#core.raw.inference.getInferenceRequest(request, call),
 		);
 		if (response.inferenceRequest === undefined) {
 			throw MindcladeError.protocol("GetInferenceRequest response omitted its request");
@@ -115,12 +111,8 @@ export class Inference {
 		validateRequired("inference operation name", operationName);
 		const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
 		const request = create(GetInferenceResultRequestSchema, { operationName });
-		const response = await invokeUnary(
-			this.#core,
-			prepared,
-			GET_RESULT,
-			undefined,
-			(call) => this.#core.raw.inference.getInferenceResult(request, call),
+		const response = await invokeUnary(this.#core, prepared, GET_RESULT, undefined, (call) =>
+			this.#core.raw.inference.getInferenceResult(request, call),
 		);
 		if (response.result === undefined || response.operation === undefined) {
 			throw MindcladeError.protocol("GetInferenceResult response omitted its result or operation");

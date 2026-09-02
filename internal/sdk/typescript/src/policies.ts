@@ -142,12 +142,8 @@ export class Policies {
 		const generated = create(GetUsePolicyRequestSchema, request);
 		generated.name = policyName(this.#core, generated.name);
 		const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
-		const response = await invokeUnary(
-			this.#core,
-			prepared,
-			GET,
-			undefined,
-			(call) => this.#core.raw.policy.getUsePolicy(generated, call),
+		const response = await invokeUnary(this.#core, prepared, GET, undefined, (call) =>
+			this.#core.raw.policy.getUsePolicy(generated, call),
 		);
 		if (response.usePolicy === undefined)
 			throw MindcladeError.protocol("GetUsePolicy response omitted its policy");
@@ -170,12 +166,8 @@ export class Policies {
 			fetch: async (pageToken) => {
 				const paged = withPageToken(ListUsePoliciesRequestSchema, generated, pageToken);
 				const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
-				const response = await invokeUnary(
-					this.#core,
-					prepared,
-					LIST,
-					undefined,
-					(call) => this.#core.raw.policy.listUsePolicies(paged, call),
+				const response = await invokeUnary(this.#core, prepared, LIST, undefined, (call) =>
+					this.#core.raw.policy.listUsePolicies(paged, call),
 				);
 				return { requestId: prepared.requestId, response };
 			},
@@ -238,12 +230,8 @@ export class Policies {
 		if (generated.effectiveTime === undefined)
 			throw MindcladeError.invalidArgument("snapshot resolution requires an effective time");
 		const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
-		const response = await invokeUnary(
-			this.#core,
-			prepared,
-			RESOLVE,
-			undefined,
-			(call) => this.#core.raw.policy.resolvePolicySnapshot(generated, call),
+		const response = await invokeUnary(this.#core, prepared, RESOLVE, undefined, (call) =>
+			this.#core.raw.policy.resolvePolicySnapshot(generated, call),
 		);
 		if (response.policySnapshot === undefined)
 			throw MindcladeError.protocol("ResolvePolicySnapshot response omitted its snapshot");

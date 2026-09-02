@@ -136,16 +136,11 @@ export class Experiments {
 	async get(name: string, ifNoneMatch = "", options: SdkCallOptions = {}): Promise<Experiment> {
 		const scoped = experimentName(this.#core, name);
 		const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
-		const response = await invokeUnary(
-			this.#core,
-			prepared,
-			GET,
-			undefined,
-			(call) =>
-				this.#core.raw.experiments.getExperiment(
-					create(GetExperimentRequestSchema, { name: scoped, ifNoneMatch }),
-					call,
-				),
+		const response = await invokeUnary(this.#core, prepared, GET, undefined, (call) =>
+			this.#core.raw.experiments.getExperiment(
+				create(GetExperimentRequestSchema, { name: scoped, ifNoneMatch }),
+				call,
+			),
 		);
 		return named(response.experiment, ExperimentSchema, scoped, "GetExperiment");
 	}
@@ -171,12 +166,8 @@ export class Experiments {
 			fetch: async (pageToken) => {
 				const paged = withPageToken(ListExperimentsRequestSchema, request, pageToken);
 				const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
-				const response = await invokeUnary(
-					this.#core,
-					prepared,
-					LIST,
-					undefined,
-					(call) => this.#core.raw.experiments.listExperiments(paged, call),
+				const response = await invokeUnary(this.#core, prepared, LIST, undefined, (call) =>
+					this.#core.raw.experiments.listExperiments(paged, call),
 				);
 				for (const value of response.experiments) experimentName(this.#core, value.name);
 				return { requestId: prepared.requestId, response };
@@ -311,16 +302,11 @@ export class Experiments {
 	async getStudy(name: string, ifNoneMatch = "", options: SdkCallOptions = {}): Promise<Study> {
 		const scoped = studyName(this.#core, name);
 		const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
-		const response = await invokeUnary(
-			this.#core,
-			prepared,
-			GET_STUDY,
-			undefined,
-			(call) =>
-				this.#core.raw.experiments.getStudy(
-					create(GetStudyRequestSchema, { name: scoped, ifNoneMatch }),
-					call,
-				),
+		const response = await invokeUnary(this.#core, prepared, GET_STUDY, undefined, (call) =>
+			this.#core.raw.experiments.getStudy(
+				create(GetStudyRequestSchema, { name: scoped, ifNoneMatch }),
+				call,
+			),
 		);
 		return named(response.study, StudySchema, scoped, "GetStudy");
 	}
@@ -338,12 +324,8 @@ export class Experiments {
 			fetch: async (pageToken) => {
 				const paged = withPageToken(ListStudiesRequestSchema, request, pageToken);
 				const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
-				const response = await invokeUnary(
-					this.#core,
-					prepared,
-					LIST_STUDIES,
-					undefined,
-					(call) => this.#core.raw.experiments.listStudies(paged, call),
+				const response = await invokeUnary(this.#core, prepared, LIST_STUDIES, undefined, (call) =>
+					this.#core.raw.experiments.listStudies(paged, call),
 				);
 				for (const value of response.studies) studyName(this.#core, value.name);
 				return { requestId: prepared.requestId, response };
@@ -423,16 +405,11 @@ export class Experiments {
 	async getTrial(name: string, ifNoneMatch = "", options: SdkCallOptions = {}): Promise<Trial> {
 		const scoped = trialName(this.#core, name);
 		const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
-		const response = await invokeUnary(
-			this.#core,
-			prepared,
-			GET_TRIAL,
-			undefined,
-			(call) =>
-				this.#core.raw.experiments.getTrial(
-					create(GetTrialRequestSchema, { name: scoped, ifNoneMatch }),
-					call,
-				),
+		const response = await invokeUnary(this.#core, prepared, GET_TRIAL, undefined, (call) =>
+			this.#core.raw.experiments.getTrial(
+				create(GetTrialRequestSchema, { name: scoped, ifNoneMatch }),
+				call,
+			),
 		);
 		return named(response.trial, TrialSchema, scoped, "GetTrial");
 	}
@@ -450,12 +427,8 @@ export class Experiments {
 			fetch: async (pageToken) => {
 				const paged = withPageToken(ListTrialsRequestSchema, request, pageToken);
 				const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
-				const response = await invokeUnary(
-					this.#core,
-					prepared,
-					LIST_TRIALS,
-					undefined,
-					(call) => this.#core.raw.experiments.listTrials(paged, call),
+				const response = await invokeUnary(this.#core, prepared, LIST_TRIALS, undefined, (call) =>
+					this.#core.raw.experiments.listTrials(paged, call),
 				);
 				for (const value of response.trials) trialName(this.#core, value.name);
 				return { requestId: prepared.requestId, response };

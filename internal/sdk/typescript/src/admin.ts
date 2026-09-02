@@ -64,12 +64,8 @@ export class Admin {
 		if (generated.name !== tenantName(this.#core))
 			throw MindcladeError.invalidArgument("tenant name does not match client scope");
 		const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
-		const response = await invokeUnary(
-			this.#core,
-			prepared,
-			GET_TENANT,
-			undefined,
-			(call) => this.#core.raw.admin.getTenant(generated, call),
+		const response = await invokeUnary(this.#core, prepared, GET_TENANT, undefined, (call) =>
+			this.#core.raw.admin.getTenant(generated, call),
 		);
 		if (response.tenant === undefined)
 			throw MindcladeError.protocol("GetTenant response omitted its tenant");
@@ -149,12 +145,8 @@ export class Admin {
 		if (generated.name !== projectName(this.#core))
 			throw MindcladeError.invalidArgument("project name does not match client scope");
 		const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
-		const response = await invokeUnary(
-			this.#core,
-			prepared,
-			GET_PROJECT,
-			undefined,
-			(call) => this.#core.raw.admin.getProject(generated, call),
+		const response = await invokeUnary(this.#core, prepared, GET_PROJECT, undefined, (call) =>
+			this.#core.raw.admin.getProject(generated, call),
 		);
 		if (response.project === undefined)
 			throw MindcladeError.protocol("GetProject response omitted its project");
@@ -177,12 +169,8 @@ export class Admin {
 			fetch: async (pageToken) => {
 				const paged = withPageToken(ListProjectsRequestSchema, generated, pageToken);
 				const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
-				const response = await invokeUnary(
-					this.#core,
-					prepared,
-					LIST_PROJECTS,
-					undefined,
-					(call) => this.#core.raw.admin.listProjects(paged, call),
+				const response = await invokeUnary(this.#core, prepared, LIST_PROJECTS, undefined, (call) =>
+					this.#core.raw.admin.listProjects(paged, call),
 				);
 				return { requestId: prepared.requestId, response };
 			},
@@ -233,16 +221,11 @@ export class Admin {
 			fetch: async (pageToken) => {
 				const paged = withPageToken(AuditQuerySchema, generated, pageToken);
 				const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
-				const response = await invokeUnary(
-					this.#core,
-					prepared,
-					QUERY_AUDIT,
-					undefined,
-					(call) =>
-						this.#core.raw.admin.queryAuditRecords(
-							create(QueryAuditRecordsRequestSchema, { query: paged }),
-							call,
-						),
+				const response = await invokeUnary(this.#core, prepared, QUERY_AUDIT, undefined, (call) =>
+					this.#core.raw.admin.queryAuditRecords(
+						create(QueryAuditRecordsRequestSchema, { query: paged }),
+						call,
+					),
 				);
 				if (response.result === undefined)
 					throw MindcladeError.protocol("QueryAuditRecords response omitted its result");
@@ -284,12 +267,8 @@ export class Admin {
 		const generated = create(GetAuditExportRequestSchema, request);
 		generated.name = scopedProjectName(this.#core, generated.name, "auditExports");
 		const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
-		const response = await invokeUnary(
-			this.#core,
-			prepared,
-			GET_EXPORT,
-			undefined,
-			(call) => this.#core.raw.admin.getAuditExport(generated, call),
+		const response = await invokeUnary(this.#core, prepared, GET_EXPORT, undefined, (call) =>
+			this.#core.raw.admin.getAuditExport(generated, call),
 		);
 		if (response.auditExport === undefined)
 			throw MindcladeError.protocol("GetAuditExport response omitted its export");

@@ -5,7 +5,6 @@ from __future__ import annotations
 import asyncio
 import copy
 import threading
-import time
 from collections.abc import Mapping
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
@@ -342,9 +341,7 @@ def _training_watch_spec(run_name: str) -> TrainingWatchSpec:
             "training watch closed before a terminal event",
             retryable=True,
         ),
-        timeout_error=lambda: OperationTimeoutError(
-            "training watch exceeded its total deadline"
-        ),
+        timeout_error=lambda: OperationTimeoutError("training watch exceeded its total deadline"),
         cancelled_error=lambda: CancelledError("training watch was cancelled"),
     )
 

@@ -91,12 +91,8 @@ export class Datasets {
 		const generated = create(GetDatasetRequestSchema, request);
 		generated.name = datasetName(this.#core, generated.name);
 		const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
-		const response = await invokeUnary(
-			this.#core,
-			prepared,
-			GET,
-			undefined,
-			(call) => this.#core.raw.datasets.getDataset(generated, call),
+		const response = await invokeUnary(this.#core, prepared, GET, undefined, (call) =>
+			this.#core.raw.datasets.getDataset(generated, call),
 		);
 		if (response.dataset === undefined)
 			throw MindcladeError.protocol("GetDataset response omitted its dataset");
@@ -119,12 +115,8 @@ export class Datasets {
 			fetch: async (pageToken) => {
 				const paged = withPageToken(ListDatasetsRequestSchema, generated, pageToken);
 				const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
-				const response = await invokeUnary(
-					this.#core,
-					prepared,
-					LIST,
-					undefined,
-					(call) => this.#core.raw.datasets.listDatasets(paged, call),
+				const response = await invokeUnary(this.#core, prepared, LIST, undefined, (call) =>
+					this.#core.raw.datasets.listDatasets(paged, call),
 				);
 				return { requestId: prepared.requestId, response };
 			},
@@ -228,12 +220,8 @@ export class Datasets {
 		const generated = create(GetDatasetReleaseRequestSchema, request);
 		generated.name = releaseName(this.#core, generated.name);
 		const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
-		const response = await invokeUnary(
-			this.#core,
-			prepared,
-			GET_RELEASE,
-			undefined,
-			(call) => this.#core.raw.datasets.getDatasetRelease(generated, call),
+		const response = await invokeUnary(this.#core, prepared, GET_RELEASE, undefined, (call) =>
+			this.#core.raw.datasets.getDatasetRelease(generated, call),
 		);
 		if (response.datasetRelease === undefined)
 			throw MindcladeError.protocol("GetDatasetRelease response omitted its release");
@@ -253,12 +241,8 @@ export class Datasets {
 			fetch: async (pageToken) => {
 				const paged = withPageToken(ListDatasetReleasesRequestSchema, generated, pageToken);
 				const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
-				const response = await invokeUnary(
-					this.#core,
-					prepared,
-					LIST_RELEASES,
-					undefined,
-					(call) => this.#core.raw.datasets.listDatasetReleases(paged, call),
+				const response = await invokeUnary(this.#core, prepared, LIST_RELEASES, undefined, (call) =>
+					this.#core.raw.datasets.listDatasetReleases(paged, call),
 				);
 				return { requestId: prepared.requestId, response };
 			},

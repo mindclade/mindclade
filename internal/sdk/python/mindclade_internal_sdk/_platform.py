@@ -75,16 +75,21 @@ class PlatformMetadata:
         )
 
     def encode(self) -> str:
-        """Render the header value, falling back to the bare identity if oversized."""
+        """Render the header value.
+
+        Sanitisation runs here as well as in :meth:`detect`, so a hand-built
+        instance cannot inject a separator, a control character, or an
+        unbounded host string into the header either.
+        """
 
         value = " ".join(
             (
-                f"{SDK_NAME}/{self.version}",
-                f"lang={self.language}",
-                f"os={self.os}",
-                f"arch={self.arch}",
-                f"runtime={self.runtime}",
-                f"runtime_version={self.runtime_version}",
+                f"{SDK_NAME}/{_token(self.version)}",
+                f"lang={_token(self.language)}",
+                f"os={_token(self.os, _OPERATING_SYSTEMS)}",
+                f"arch={_token(self.arch, _ARCHITECTURES)}",
+                f"runtime={_token(self.runtime, _RUNTIMES)}",
+                f"runtime_version={_token(self.runtime_version)}",
             )
         )
         if len(value) > MAX_USER_AGENT_LENGTH:

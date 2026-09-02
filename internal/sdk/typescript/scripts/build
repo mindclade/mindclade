@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# Compile the package with the same tsc invocation Bazel and CI use.
+set -euo pipefail
+
+cd "$(dirname "$0")/../../../.."
+
+"${PNPM:-pnpm}" --filter ./internal/sdk/typescript run build

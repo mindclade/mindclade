@@ -90,12 +90,8 @@ export class Models {
 		const generated = create(GetModelRequestSchema, request);
 		generated.name = modelName(this.#core, generated.name);
 		const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
-		const response = await invokeUnary(
-			this.#core,
-			prepared,
-			GET,
-			undefined,
-			(call) => this.#core.raw.models.getModel(generated, call),
+		const response = await invokeUnary(this.#core, prepared, GET, undefined, (call) =>
+			this.#core.raw.models.getModel(generated, call),
 		);
 		if (response.model === undefined)
 			throw MindcladeError.protocol("GetModel response omitted its model");
@@ -118,12 +114,8 @@ export class Models {
 			fetch: async (pageToken) => {
 				const paged = withPageToken(ListModelsRequestSchema, generated, pageToken);
 				const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
-				const response = await invokeUnary(
-					this.#core,
-					prepared,
-					LIST,
-					undefined,
-					(call) => this.#core.raw.models.listModels(paged, call),
+				const response = await invokeUnary(this.#core, prepared, LIST, undefined, (call) =>
+					this.#core.raw.models.listModels(paged, call),
 				);
 				return { requestId: prepared.requestId, response };
 			},
@@ -170,12 +162,8 @@ export class Models {
 		const generated = create(GetModelReleaseRequestSchema, request);
 		generated.name = releaseName(this.#core, generated.name);
 		const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
-		const response = await invokeUnary(
-			this.#core,
-			prepared,
-			GET_RELEASE,
-			undefined,
-			(call) => this.#core.raw.models.getModelRelease(generated, call),
+		const response = await invokeUnary(this.#core, prepared, GET_RELEASE, undefined, (call) =>
+			this.#core.raw.models.getModelRelease(generated, call),
 		);
 		if (response.modelRelease === undefined)
 			throw MindcladeError.protocol("GetModelRelease response omitted its release");
@@ -195,12 +183,8 @@ export class Models {
 			fetch: async (pageToken) => {
 				const paged = withPageToken(ListModelReleasesRequestSchema, generated, pageToken);
 				const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
-				const response = await invokeUnary(
-					this.#core,
-					prepared,
-					LIST_RELEASES,
-					undefined,
-					(call) => this.#core.raw.models.listModelReleases(paged, call),
+				const response = await invokeUnary(this.#core, prepared, LIST_RELEASES, undefined, (call) =>
+					this.#core.raw.models.listModelReleases(paged, call),
 				);
 				return { requestId: prepared.requestId, response };
 			},

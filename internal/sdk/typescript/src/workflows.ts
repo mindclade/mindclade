@@ -49,7 +49,7 @@ import {
 	type WaitOptions,
 } from "./request.js";
 import { invokeUnary } from "./retry.js";
-import { DEFAULT_WAIT_TIMEOUT_MS, watchStream, type WatchSource } from "./watch.js";
+import { DEFAULT_WAIT_TIMEOUT_MS, type WatchSource, watchStream } from "./watch.js";
 
 const CREATE = "/mindclade.internal.workflow.v1.WorkflowService/CreateWorkflowDefinition";
 const UPDATE = "/mindclade.internal.workflow.v1.WorkflowService/UpdateWorkflowDefinition";
@@ -178,12 +178,8 @@ export class Workflows {
 			ifNoneMatch: ifNoneMatch.trim(),
 			name: scopedName(this.#core, name, "workflowDefinitions"),
 		});
-		const response = await invokeUnary(
-			this.#core,
-			prepared,
-			GET_DEFINITION,
-			undefined,
-			(call) => this.#core.raw.workflows.getWorkflowDefinition(request, call),
+		const response = await invokeUnary(this.#core, prepared, GET_DEFINITION, undefined, (call) =>
+			this.#core.raw.workflows.getWorkflowDefinition(request, call),
 		);
 		if (response.workflowDefinition === undefined) {
 			throw MindcladeError.protocol("GetWorkflowDefinition response omitted its definition");
@@ -271,12 +267,8 @@ export class Workflows {
 			ifNoneMatch: ifNoneMatch.trim(),
 			name: scopedName(this.#core, name, "workflowRuns"),
 		});
-		const response = await invokeUnary(
-			this.#core,
-			prepared,
-			GET_RUN,
-			undefined,
-			(call) => this.#core.raw.workflows.getWorkflowRun(request, call),
+		const response = await invokeUnary(this.#core, prepared, GET_RUN, undefined, (call) =>
+			this.#core.raw.workflows.getWorkflowRun(request, call),
 		);
 		return requiredRun(response.workflowRun, "GetWorkflowRun");
 	}
@@ -295,12 +287,8 @@ export class Workflows {
 			fetch: async (pageToken) => {
 				const paged = withPageToken(ListWorkflowRunsRequestSchema, request, pageToken);
 				const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
-				const response = await invokeUnary(
-					this.#core,
-					prepared,
-					LIST_RUNS,
-					undefined,
-					(call) => this.#core.raw.workflows.listWorkflowRuns(paged, call),
+				const response = await invokeUnary(this.#core, prepared, LIST_RUNS, undefined, (call) =>
+					this.#core.raw.workflows.listWorkflowRuns(paged, call),
 				);
 				return { requestId: prepared.requestId, response };
 			},
@@ -410,12 +398,7 @@ export class Workflows {
 			this.#core.runtime,
 			callOptions(options, total),
 		);
-		yield* watchStream(
-			this.#core,
-			prepared,
-			this.#watchSource(runName),
-			afterTransitionSequence,
-		);
+		yield* watchStream(this.#core, prepared, this.#watchSource(runName), afterTransitionSequence);
 	}
 
 	/** Resumes a watch from a transition sequence the caller already accepted. */

@@ -126,12 +126,8 @@ export class Artifacts {
 			throw MindcladeError.invalidArgument("artifact digest must be canonical sha256");
 		}
 		const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
-		const response = await invokeUnary(
-			this.#core,
-			prepared,
-			GET_ARTIFACT,
-			undefined,
-			(call) => this.#core.raw.artifacts.getArtifact(request, call),
+		const response = await invokeUnary(this.#core, prepared, GET_ARTIFACT, undefined, (call) =>
+			this.#core.raw.artifacts.getArtifact(request, call),
 		);
 		const artifact = validateResponseArtifact(response.artifact, "GetArtifact");
 		if (artifact.digest !== expectedDigest) {

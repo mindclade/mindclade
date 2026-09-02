@@ -154,9 +154,7 @@ def _operation_watch_spec(name: str) -> OperationWatchSpec:
             "operation watch closed before a terminal event",
             retryable=True,
         ),
-        timeout_error=lambda: OperationTimeoutError(
-            "operation watch exceeded its total deadline"
-        ),
+        timeout_error=lambda: OperationTimeoutError("operation watch exceeded its total deadline"),
         cancelled_error=lambda: CancelledError("operation watch was cancelled"),
     )
 

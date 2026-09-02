@@ -2,7 +2,7 @@ import type { Interceptor } from "@connectrpc/connect";
 
 import type { TokenProvider } from "./auth.js";
 import { MindcladeError } from "./error.js";
-import { LOG_LEVELS, type LogLevel, type Logger, type Observer } from "./observability.js";
+import { LOG_LEVELS, type Logger, type LogLevel, type Observer } from "./observability.js";
 import { isCredentialBearing } from "./response.js";
 
 export const Environment = {

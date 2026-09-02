@@ -144,6 +144,16 @@ js_test(
 )
 
 js_test(
+    name = "configuration_test",
+    data = [
+        "package.json",
+        ":governed_sources",
+        ":mindclade_internal_sdk",
+    ],
+    entry_point = "tests/configuration.test.ts",
+)
+
+js_test(
     name = "errors_test",
     data = [
         "package.json",
@@ -151,6 +161,16 @@ js_test(
         ":mindclade_internal_sdk",
     ],
     entry_point = "tests/errors.test.ts",
+)
+
+js_test(
+    name = "watch_lro_test",
+    data = [
+        "package.json",
+        ":governed_sources",
+        ":mindclade_internal_sdk",
+    ],
+    entry_point = "tests/watch_lro.test.ts",
 )
 
 js_test(
@@ -167,6 +187,7 @@ test_suite(
     name = "tests",
     tests = [
         ":agent_test",
+        ":configuration_test",
         ":errors_test",
         ":evaluation_test",
         ":experiment_test",
@@ -176,6 +197,7 @@ test_suite(
         ":retry_policy_test",
         ":sdk_test",
         ":training_test",
+        ":watch_lro_test",
         ":workflow_approval_test",
     ],
     visibility = ["//tests:__pkg__"],
@@ -185,12 +207,15 @@ filegroup(
     name = "governed_sources",
     srcs = [
         "BUILD.bazel",
+        "CHANGELOG.md",
         "README.md",
         "bazel/package.json",
         "biome.json",
+        "component.yaml",
         "package.json",
         "tsconfig.json",
     ] + glob([
+        "scripts/*",
         "src/*.ts",
         "tests/*.ts",
     ]),

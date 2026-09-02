@@ -106,12 +106,8 @@ export class Runs {
 	async getRun(name: string, options: SdkCallOptions = {}): Promise<Run> {
 		const canonical = resource(this.#core, name, "runs");
 		const call = prepareCall(this.#core.config, this.#core.runtime, options);
-		const response = await invokeUnary(
-			this.#core,
-			call,
-			routes.getRun,
-			undefined,
-			(o) => this.#core.raw.runs.getRun(create(GetRunRequestSchema, { name: canonical }), o),
+		const response = await invokeUnary(this.#core, call, routes.getRun, undefined, (o) =>
+			this.#core.raw.runs.getRun(create(GetRunRequestSchema, { name: canonical }), o),
 		);
 		if (
 			response.run === undefined ||
@@ -142,12 +138,8 @@ export class Runs {
 			fetch: async (pageToken) => {
 				const paged = withPageToken(ListRunsRequestSchema, request, pageToken);
 				const call = prepareCall(this.#core.config, this.#core.runtime, options);
-				const response = await invokeUnary(
-					this.#core,
-					call,
-					routes.listRuns,
-					undefined,
-					(o) => this.#core.raw.runs.listRuns(paged, o),
+				const response = await invokeUnary(this.#core, call, routes.listRuns, undefined, (o) =>
+					this.#core.raw.runs.listRuns(paged, o),
 				);
 				if (
 					response.runs.some(
@@ -168,13 +160,8 @@ export class Runs {
 	async getAttempt(name: string, options: SdkCallOptions = {}): Promise<Attempt> {
 		const canonical = resource(this.#core, name, "attempts");
 		const call = prepareCall(this.#core.config, this.#core.runtime, options);
-		const response = await invokeUnary(
-			this.#core,
-			call,
-			routes.getAttempt,
-			undefined,
-			(o) =>
-				this.#core.raw.runs.getAttempt(create(GetAttemptRequestSchema, { name: canonical }), o),
+		const response = await invokeUnary(this.#core, call, routes.getAttempt, undefined, (o) =>
+			this.#core.raw.runs.getAttempt(create(GetAttemptRequestSchema, { name: canonical }), o),
 		);
 		if (
 			response.attempt === undefined ||
@@ -202,12 +189,8 @@ export class Runs {
 			fetch: async (pageToken) => {
 				const paged = withPageToken(ListAttemptsRequestSchema, request, pageToken);
 				const call = prepareCall(this.#core.config, this.#core.runtime, options);
-				const response = await invokeUnary(
-					this.#core,
-					call,
-					routes.listAttempts,
-					undefined,
-					(o) => this.#core.raw.runs.listAttempts(paged, o),
+				const response = await invokeUnary(this.#core, call, routes.listAttempts, undefined, (o) =>
+					this.#core.raw.runs.listAttempts(paged, o),
 				);
 				if (
 					response.attempts.some(
@@ -253,12 +236,8 @@ export class Runs {
 			request,
 		);
 		const { capture, core } = captureFor(this.#core);
-		const response = await invokeUnary(
-			core,
-			call,
-			routes.acquire,
-			options.idempotencyKey,
-			(o) => this.#core.raw.runs.acquireAttemptLease(request, o),
+		const response = await invokeUnary(core, call, routes.acquire, options.idempotencyKey, (o) =>
+			this.#core.raw.runs.acquireAttemptLease(request, o),
 		);
 		const token = capture.headers?.get("x-mindclade-lease-token") ?? "";
 		const credential = captureLeaseCredential(token);

@@ -5,6 +5,7 @@ import type { ClientConfig } from "./config.js";
 import { validateAttempts, validateMetadata } from "./config.js";
 import { MindcladeError } from "./error.js";
 import type { PaginationLimits } from "./pagination.js";
+import { platformMetadata } from "./platform.js";
 import type { Runtime } from "./runtime.js";
 
 export type {
@@ -125,7 +126,7 @@ export const callHeaders = (
 	idempotencyKey?: string,
 ): Headers => {
 	const headers = new Headers({
-		"x-mindclade-sdk": "mindclade-internal-typescript-sdk/0.1",
+		"x-mindclade-sdk": platformMetadata(config.omitPlatformMetadata),
 		"x-mindclade-expected-tenant": config.identity.tenantId,
 		"x-mindclade-expected-project": config.identity.projectId,
 		"x-mindclade-expected-principal": config.identity.principalId,

@@ -90,16 +90,11 @@ export class Jobs {
 		if (ifNoneMatch.length > 512 || /[\0\r\n]/.test(ifNoneMatch))
 			throw MindcladeError.invalidArgument("job cache validator is invalid");
 		const call = prepareCall(this.#core.config, this.#core.runtime, options);
-		const response = await invokeUnary(
-			this.#core,
-			call,
-			GET,
-			undefined,
-			(callOptions) =>
-				this.#core.raw.jobs.getJob(
-					create(GetJobRequestSchema, { name: canonical, ifNoneMatch }),
-					callOptions,
-				),
+		const response = await invokeUnary(this.#core, call, GET, undefined, (callOptions) =>
+			this.#core.raw.jobs.getJob(
+				create(GetJobRequestSchema, { name: canonical, ifNoneMatch }),
+				callOptions,
+			),
 		);
 		if (
 			response.job === undefined ||
@@ -133,12 +128,8 @@ export class Jobs {
 			fetch: async (pageToken) => {
 				const paged = withPageToken(ListJobsRequestSchema, request, pageToken);
 				const call = prepareCall(this.#core.config, this.#core.runtime, options);
-				const response = await invokeUnary(
-					this.#core,
-					call,
-					LIST,
-					undefined,
-					(callOptions) => this.#core.raw.jobs.listJobs(paged, callOptions),
+				const response = await invokeUnary(this.#core, call, LIST, undefined, (callOptions) =>
+					this.#core.raw.jobs.listJobs(paged, callOptions),
 				);
 				if (response.jobs.some((value) => !validJob(this.#core, value)))
 					throw MindcladeError.protocol("ListJobs response escaped configured scope");

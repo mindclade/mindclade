@@ -8,7 +8,7 @@ import hashlib
 import inspect
 import threading
 import time
-from collections.abc import AsyncIterable, AsyncIterator, Callable, Iterator
+from collections.abc import AsyncGenerator, AsyncIterable, Callable, Generator
 from datetime import UTC, datetime, timedelta
 from typing import cast
 
@@ -33,7 +33,7 @@ from .errors import (
     TransportError,
     normalize_rpc_error,
 )
-from .transport import AsyncTransport, Metadata, SyncTransport
+from .transport import AsyncTransport, Metadata, SyncStreamCall, SyncTransport
 
 _CANCELLATION_CHECK_SECONDS = 0.01
 
@@ -483,9 +483,9 @@ class SyncInvoker:
         *,
         call: PreparedCall,
         cancellation: threading.Event | None = None,
-    ) -> Iterator[Message]:
+    ) -> Generator[Message, None, None]:
         deadline = time.monotonic() + call.timeout
-        stream: Iterator[Message] | None = None
+        stream: SyncStreamCall | None = None
         cancel_once: _CancelOnce | None = None
         stopped = threading.Event()
         caller_cancelled = threading.Event()
@@ -730,7 +730,7 @@ class AsyncInvoker:
         *,
         call: PreparedCall,
         cancellation: asyncio.Event | None = None,
-    ) -> AsyncIterator[Message]:
+    ) -> AsyncGenerator[Message, None]:
         loop = asyncio.get_running_loop()
         deadline = loop.time() + call.timeout
         stream: AsyncIterable[Message] | None = None
