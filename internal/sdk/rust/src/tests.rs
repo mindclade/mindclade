@@ -55,14 +55,19 @@ use mindclade_protocols::{
             RegisterModelReleaseRequest, RegisterModelReleaseResponse, RegisterModelRequest,
             RegisterModelResponse, RevokeModelReleaseRequest, RevokeModelReleaseResponse,
         },
-        training::v1::{CreateTrainingRunRequest, CreateTrainingRunResponse},
+        training::v1::{
+            CreateTrainingRunRequest, CreateTrainingRunResponse, WatchTrainingRunRequest,
+            WatchTrainingRunResponse,
+        },
+        workflow::v1::{WatchWorkflowRunRequest, WatchWorkflowRunResponse},
     },
     job::v1::{LeaseFence, Operation, OperationState},
     model::v1::{
         Model, ModelRelease, PromoteModelReleaseCommand, RegisterModelCommand,
         RegisterModelReleaseCommand, RevokeModelReleaseCommand,
     },
-    training::v1::CreateTrainingRunCommand,
+    training::v1::{CreateTrainingRunCommand, TrainingRun, TrainingRunState},
+    workflow::v1::{WorkflowRun, WorkflowRunState},
 };
 use prost_types::Timestamp;
 use sha2::{Digest, Sha256};
@@ -76,15 +81,18 @@ use crate::{
     AccessToken, ArtifactStream, ArtifactUploadOptions, CallOptions, CancellationToken, Client,
     Config, DEFAULT_PAGE_SIZE, Environment, Error, ErrorKind, FenceState, FinalCause,
     GcpWorkloadIdentityProvider, HARD_PAGE_SIZE_CEILING, Identity, InferenceStream,
-    InferenceWaitOptions, JitterSource, OperationStream, PaginationLimits, PaginationPage,
-    QuotaState, RecordingTransport, RetryAttemptSummary, RetryPolicy, RpcTransport,
-    SAFE_RESPONSE_METADATA, SubmitOptions, SystemJitter, TokenProvider, WaitOptions,
+    InferenceWaitOptions, JitterSource, LogLevel, LoggingObserver, OperationStream,
+    PaginationLimits, PaginationPage, QuotaState, RECOGNISED_ENVIRONMENT_VARIABLES,
+    RecordingTransport, RetryAttemptSummary, RetryPolicy, RpcTransport, SAFE_RESPONSE_METADATA,
+    SDK_NAME, SDK_VERSION, SubmitOptions, SystemJitter, TokenProvider, TrainingStream,
+    TrainingWatchOptions, WaitOptions, WorkflowStream, WorkflowWatchOptions,
     auth::GcpIdentityTokenExchange,
     error::{
         FENCE_PRECONDITION_TYPE, QUOTA_PRECONDITION_TYPE, REVISION_PRECONDITION_TYPE,
         retryable_status_code,
     },
     is_credential_bearing, paginate,
+    request::{validate_custom_metadata, validate_custom_metadata_key},
     retry::{CallSafety, Sleeper, never_retry_method, registered_method_policy},
     testing::ScriptedJitter,
 };
@@ -153,6 +161,7 @@ struct ObservedMetadata {
     authorization_present: bool,
     authorization_sensitive: bool,
     deadline_present: bool,
+    custom: std::collections::BTreeMap<String, String>,
 }
 
 impl ObservedMetadata {
@@ -171,6 +180,17 @@ impl ObservedMetadata {
             authorization_present: authorization.is_some(),
             authorization_sensitive: authorization.is_some_and(MetadataValue::is_sensitive),
             deadline_present: request.metadata().get("grpc-timeout").is_some(),
+            custom: request
+                .metadata()
+                .iter()
+                .filter_map(|entry| match entry {
+                    tonic::metadata::KeyAndValueRef::Ascii(key, value) => value
+                        .to_str()
+                        .ok()
+                        .map(|value| (key.as_str().to_owned(), value.to_owned())),
+                    tonic::metadata::KeyAndValueRef::Binary(_, _) => None,
+                })
+                .collect(),
         }
     }
 }
@@ -231,6 +251,10 @@ struct FakeTransport {
     lifecycle_page_tokens: Mutex<Vec<String>>,
     list_operations: Mutex<VecDeque<Result<ListOperationsResponse, Status>>>,
     list_operation_pages: Mutex<Vec<PageRequest>>,
+    training_watches: Mutex<VecDeque<TrainingWatchScript>>,
+    training_watch_after: Mutex<Vec<u64>>,
+    workflow_watches: Mutex<VecDeque<WorkflowWatchScript>>,
+    workflow_watch_after: Mutex<Vec<u64>>,
     hang_operations: AtomicBool,
     hang_downloads: AtomicBool,
 }
@@ -238,6 +262,8 @@ struct FakeTransport {
 type WatchScript = Result<Vec<Result<WatchOperationResponse, Status>>, Status>;
 type ArtifactDownloadScript = Result<Vec<Result<DownloadArtifactResponse, Status>>, Status>;
 type InferenceWatchScript = Result<Vec<Result<WatchInferenceResponse, Status>>, Status>;
+type TrainingWatchScript = Result<Vec<Result<WatchTrainingRunResponse, Status>>, Status>;
+type WorkflowWatchScript = Result<Vec<Result<WatchWorkflowRunResponse, Status>>, Status>;
 
 impl FakeTransport {
     fn observe<T>(&self, request: &Request<T>) {
@@ -661,6 +687,34 @@ impl RpcTransport for FakeTransport {
             .push(request.get_ref().cursor.clone());
         let updates = Self::pop(&self.inference_watches)?;
         let stream: InferenceStream = Box::pin(tokio_stream::iter(updates));
+        Ok(Response::new(stream))
+    }
+
+    async fn watch_training_run(
+        &self,
+        request: Request<WatchTrainingRunRequest>,
+    ) -> Result<Response<TrainingStream>, Status> {
+        self.observe(&request);
+        self.training_watch_after
+            .lock()
+            .unwrap()
+            .push(request.get_ref().after_sequence);
+        let updates = Self::pop(&self.training_watches)?;
+        let stream: TrainingStream = Box::pin(tokio_stream::iter(updates));
+        Ok(Response::new(stream))
+    }
+
+    async fn watch_workflow_run(
+        &self,
+        request: Request<WatchWorkflowRunRequest>,
+    ) -> Result<Response<WorkflowStream>, Status> {
+        self.observe(&request);
+        self.workflow_watch_after
+            .lock()
+            .unwrap()
+            .push(request.get_ref().after_transition_sequence);
+        let updates = Self::pop(&self.workflow_watches)?;
+        let stream: WorkflowStream = Box::pin(tokio_stream::iter(updates));
         Ok(Response::new(stream))
     }
 }
@@ -1256,7 +1310,7 @@ async fn recording_transport_covers_the_generated_facade_without_payloads() {
 #[test]
 fn unregistered_methods_are_never_retryable_by_metadata() {
     assert_eq!(
-        registered_method_policy("/unknown/Mutation"),
+        registered_method_policy("/unknown/Mutation").safety(),
         CallSafety::Unsafe
     );
 }
@@ -1731,14 +1785,15 @@ fn dataset_and_model_retry_registry_is_complete_and_fail_closed() {
     assert!(
         idempotent
             .iter()
-            .all(|method| registered_method_policy(method) == CallSafety::Idempotent)
+            .all(|method| registered_method_policy(method).safety() == CallSafety::Idempotent)
     );
     assert!(
         safe.iter()
-            .all(|method| registered_method_policy(method) == CallSafety::Safe)
+            .all(|method| registered_method_policy(method).safety() == CallSafety::Safe)
     );
     assert_eq!(
-        registered_method_policy("/mindclade.internal.model.v1.ModelService/UnknownMutation"),
+        registered_method_policy("/mindclade.internal.model.v1.ModelService/UnknownMutation")
+            .safety(),
         CallSafety::Unsafe
     );
 }
@@ -2786,7 +2841,10 @@ async fn named_unsafe_override_is_required_to_retry_a_non_idempotent_rpc() {
 fn expire_attempt_leases_is_never_retryable() {
     const ROUTE: &str = "/mindclade.internal.job.v1.RunService/ExpireAttemptLeases";
     assert!(never_retry_method(ROUTE));
-    assert_eq!(registered_method_policy(ROUTE), CallSafety::NeverRetry);
+    assert_eq!(
+        registered_method_policy(ROUTE).safety(),
+        CallSafety::NeverRetry
+    );
     assert!(!never_retry_method(
         "/mindclade.internal.job.v1.RunService/RenewAttemptLease"
     ));
@@ -3758,11 +3816,1088 @@ async fn send_with_metadata_dispatches_a_generated_request_under_sdk_policy() {
     assert_eq!(error.kind(), ErrorKind::InvalidArgument);
     assert!(error.to_string().contains("idempotency key"));
     assert_eq!(
-        registered_method_policy(<CancelOperationRequest as crate::RawRequest>::METHOD),
+        registered_method_policy(<CancelOperationRequest as crate::RawRequest>::METHOD).safety(),
         CallSafety::Idempotent
     );
     assert_eq!(
         <ListOperationsRequest as crate::RawRequest>::METHOD,
         "/mindclade.internal.job.v1.OperationService/ListOperations"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// WS2.5 watcher/LRO parity, WS2.6 configuration and escape hatches,
+// WS2.7 observability.
+// ---------------------------------------------------------------------------
+
+const SCOPED_PROJECT: &str = "tenants/t-1/projects/p-1";
+
+fn scoped(collection: &str, id: &str) -> String {
+    format!("{SCOPED_PROJECT}/{collection}/{id}")
+}
+
+fn training_run_fixture(state: TrainingRunState) -> TrainingRun {
+    TrainingRun {
+        name: scoped("trainingRuns", "run-1"),
+        state: state as i32,
+        ..TrainingRun::default()
+    }
+}
+
+fn training_update(sequence: u64, state: TrainingRunState) -> WatchTrainingRunResponse {
+    WatchTrainingRunResponse {
+        training_run: Some(training_run_fixture(state)),
+        progress: None,
+        sequence,
+        observed_at: None,
+    }
+}
+
+fn workflow_update(sequence: u64, state: WorkflowRunState) -> WatchWorkflowRunResponse {
+    WatchWorkflowRunResponse {
+        workflow_run: Some(WorkflowRun {
+            name: scoped("workflowRuns", "run-1"),
+            transition_sequence: sequence,
+            state: state as i32,
+            ..WorkflowRun::default()
+        }),
+    }
+}
+
+fn inference_final(sequence: u64) -> WatchInferenceResponse {
+    WatchInferenceResponse {
+        message: Some(InferenceStreamMessage {
+            request_name: "inferenceRequests/request-parity".to_owned(),
+            sequence,
+            resume_token: format!("cursor-{sequence}"),
+            update: Some(inference_stream_message::Update::FinalResult(
+                InferenceFinalUpdate::default(),
+            )),
+            ..InferenceStreamMessage::default()
+        }),
+    }
+}
+
+/// Every domain watcher is the same generic machine, so one scripted
+/// disconnect must produce the same reconnect count and the same backoff in
+/// all four, and each must resume from its own last acknowledged cursor.
+#[tokio::test]
+#[allow(clippy::too_many_lines)] // One narrative proves all four domains agree.
+async fn one_generic_watcher_serves_every_domain() {
+    let transport = Arc::new(FakeTransport::default());
+    transport.watches.lock().unwrap().extend([
+        Ok(vec![
+            Ok(WatchOperationResponse {
+                operation: Some(operation("operations/parity", false)),
+                sequence: 1,
+                observed_at: None,
+            }),
+            Err(Status::unavailable("stream interrupted")),
+        ]),
+        Ok(vec![Ok(WatchOperationResponse {
+            operation: Some(operation("operations/parity", true)),
+            sequence: 2,
+            observed_at: None,
+        })]),
+    ]);
+    transport.training_watches.lock().unwrap().extend([
+        Ok(vec![
+            Ok(training_update(1, TrainingRunState::Running)),
+            Err(Status::unavailable("stream interrupted")),
+        ]),
+        Ok(vec![Ok(training_update(2, TrainingRunState::Completed))]),
+    ]);
+    transport.workflow_watches.lock().unwrap().extend([
+        Ok(vec![
+            Ok(workflow_update(1, WorkflowRunState::Running)),
+            Err(Status::unavailable("stream interrupted")),
+        ]),
+        Ok(vec![Ok(workflow_update(2, WorkflowRunState::Succeeded))]),
+    ]);
+    transport.inference_watches.lock().unwrap().extend([
+        Ok(vec![Err(Status::unavailable("stream interrupted"))]),
+        Ok(vec![Ok(inference_final(1))]),
+    ]);
+
+    let sleeper = Arc::new(ImmediateSleeper::default());
+    let client = Client::with_test_sleeper(
+        test_config(test_provider(), 4, Duration::from_millis(1)),
+        transport.clone(),
+        sleeper.clone(),
+    );
+    let cancellation = CancellationToken::new();
+
+    let mut operations = client
+        .operations()
+        .watch(
+            "operations/parity",
+            0,
+            &CallOptions::new(),
+            cancellation.clone(),
+        )
+        .unwrap();
+    assert_eq!(operations.next().await.unwrap().unwrap().sequence, 1);
+    assert_eq!(operations.next().await.unwrap().unwrap().sequence, 2);
+    assert!(operations.next().await.unwrap().is_none());
+    assert_eq!(operations.last_sequence(), 2);
+
+    let mut training = client
+        .training()
+        .watch(
+            scoped("trainingRuns", "run-1"),
+            0,
+            &TrainingWatchOptions::new(),
+            cancellation.clone(),
+        )
+        .unwrap();
+    assert_eq!(training.next().await.unwrap().unwrap().sequence, 1);
+    assert_eq!(training.next().await.unwrap().unwrap().sequence, 2);
+    assert!(training.next().await.unwrap().is_none());
+    assert_eq!(training.last_sequence(), 2);
+
+    let mut workflows = client
+        .workflows()
+        .watch(
+            scoped("workflowRuns", "run-1"),
+            0,
+            &WorkflowWatchOptions::new(),
+            cancellation.clone(),
+        )
+        .unwrap();
+    assert_eq!(
+        workflows.next().await.unwrap().unwrap().transition_sequence,
+        1
+    );
+    assert_eq!(
+        workflows.next().await.unwrap().unwrap().transition_sequence,
+        2
+    );
+    assert!(workflows.next().await.unwrap().is_none());
+    assert_eq!(workflows.last_sequence(), 2);
+
+    let mut inference = client
+        .inference()
+        .watch(
+            "operations/parity-inference",
+            None,
+            &InferenceWaitOptions::new(),
+            cancellation,
+        )
+        .unwrap();
+    assert_eq!(inference.next().await.unwrap().unwrap().sequence, 1);
+    assert!(inference.next().await.unwrap().is_none());
+
+    // One reconnect per domain, each at the same clamped full-jitter backoff.
+    assert_eq!(
+        sleeper.delays.lock().unwrap().as_slice(),
+        [Duration::from_millis(1); 4]
+    );
+    assert_eq!(
+        transport.watch_after_sequences.lock().unwrap().as_slice(),
+        [0, 1]
+    );
+    assert_eq!(
+        transport.training_watch_after.lock().unwrap().as_slice(),
+        [0, 1]
+    );
+    assert_eq!(
+        transport.workflow_watch_after.lock().unwrap().as_slice(),
+        [0, 1]
+    );
+    let cursors = transport.inference_watch_cursors.lock().unwrap();
+    assert_eq!(cursors.len(), 2);
+    assert!(cursors.iter().all(Option::is_none));
+}
+
+/// A reconnect resumes from the last acknowledged cursor and only inside the
+/// caller's remaining deadline; an exhausted budget ends the watch.
+#[tokio::test]
+async fn watch_reconnect_resumes_from_the_last_acknowledged_cursor_within_the_remaining_deadline() {
+    let transport = Arc::new(FakeTransport::default());
+    transport.watches.lock().unwrap().extend([
+        Ok(vec![
+            Ok(WatchOperationResponse {
+                operation: Some(operation("operations/resume", false)),
+                sequence: 7,
+                observed_at: None,
+            }),
+            Err(Status::unavailable("stream interrupted")),
+        ]),
+        Ok(vec![Ok(WatchOperationResponse {
+            operation: Some(operation("operations/resume", true)),
+            sequence: 8,
+            observed_at: None,
+        })]),
+    ]);
+    let sleeper = Arc::new(ImmediateSleeper::default());
+    let client = Client::with_test_sleeper(
+        test_config(test_provider(), 4, Duration::from_millis(1)),
+        transport.clone(),
+        sleeper,
+    );
+    let mut watch = client
+        .operations()
+        .resume_watch(
+            "operations/resume",
+            6,
+            &CallOptions::new(),
+            CancellationToken::new(),
+        )
+        .unwrap();
+    assert_eq!(watch.next().await.unwrap().unwrap().sequence, 7);
+    assert_eq!(watch.next().await.unwrap().unwrap().sequence, 8);
+    // The first open resumes from the caller's cursor; the reconnect resumes
+    // from the last acknowledged revision, never from zero.
+    assert_eq!(
+        transport.watch_after_sequences.lock().unwrap().as_slice(),
+        [6, 7]
+    );
+
+    // A watch whose deadline is already smaller than the required backoff
+    // fails closed rather than reconnecting past it.
+    let transport = Arc::new(FakeTransport::default());
+    transport
+        .watches
+        .lock()
+        .unwrap()
+        .push_back(Ok(vec![Err(status_with(
+            Code::Unavailable,
+            &[("retry-after-ms", "60000")],
+        ))]));
+    let sleeper = Arc::new(ImmediateSleeper::default());
+    let client = Client::with_test_sleeper(
+        test_config(test_provider(), 4, Duration::from_millis(1)),
+        transport,
+        sleeper.clone(),
+    );
+    let options = CallOptions::new()
+        .with_timeout(Duration::from_millis(1))
+        .unwrap();
+    let mut watch = client
+        .operations()
+        .watch("operations/tight", 0, &options, CancellationToken::new())
+        .unwrap();
+    let error = watch.next().await.unwrap_err();
+    assert_eq!(error.kind(), ErrorKind::DeadlineExceeded);
+    assert!(sleeper.delays.lock().unwrap().is_empty());
+}
+
+/// The `Stream` adapter is exactly the watcher's own `next` loop.
+#[tokio::test]
+async fn watch_stream_adapter_yields_the_same_updates_as_next() {
+    use tonic::codegen::tokio_stream::StreamExt as _;
+
+    let transport = Arc::new(FakeTransport::default());
+    transport.watches.lock().unwrap().push_back(Ok(vec![
+        Ok(WatchOperationResponse {
+            operation: Some(operation("operations/stream", false)),
+            sequence: 1,
+            observed_at: None,
+        }),
+        Ok(WatchOperationResponse {
+            operation: Some(operation("operations/stream", true)),
+            sequence: 2,
+            observed_at: None,
+        }),
+    ]));
+    let client = Client::with_transport(
+        test_config(test_provider(), 2, Duration::from_millis(1)),
+        transport,
+    );
+    let watch = client
+        .operations()
+        .watch(
+            "operations/stream",
+            0,
+            &CallOptions::new(),
+            CancellationToken::new(),
+        )
+        .unwrap();
+    let mut stream = watch.into_stream();
+    let mut sequences = Vec::new();
+    while let Some(update) = stream.next().await {
+        sequences.push(update.unwrap().sequence);
+    }
+    assert_eq!(sequences, [1, 2]);
+}
+
+/// A page cursor is a `Stream` of items with the same budgets and guarantees.
+#[tokio::test]
+async fn pages_implements_stream() {
+    use tonic::codegen::tokio_stream::StreamExt as _;
+
+    let transport = Arc::new(FakeTransport::default());
+    transport.list_operations.lock().unwrap().extend([
+        Ok(ListOperationsResponse {
+            operations: vec![listed_operation("operations/stream-1")],
+            page: Some(PageResponse {
+                next_page_token: "cursor-2".to_owned(),
+            }),
+            read_time: None,
+        }),
+        Ok(ListOperationsResponse {
+            operations: vec![listed_operation("operations/stream-2")],
+            page: None,
+            read_time: None,
+        }),
+    ]);
+    let client = Client::with_transport(
+        test_config(test_provider(), 2, Duration::from_millis(1)),
+        transport,
+    );
+    let mut pages = client
+        .operations()
+        .list(ListOperationsRequest::default(), CallOptions::new())
+        .unwrap();
+    let mut ids = Vec::new();
+    while let Some(item) = pages.next().await {
+        ids.push(item.unwrap().operation_id);
+    }
+    assert_eq!(ids, ["operations/stream-1", "operations/stream-2"]);
+    assert_eq!(pages.page_count(), 2);
+    assert_eq!(pages.item_count(), 2);
+}
+
+/// The uniform training wait verb returns the terminal run and reports a
+/// non-success terminal state as a typed generated failure.
+#[tokio::test]
+async fn training_wait_returns_the_terminal_run_or_a_typed_failure() {
+    let transport = Arc::new(FakeTransport::default());
+    transport.training_watches.lock().unwrap().extend([
+        Ok(vec![
+            Ok(training_update(1, TrainingRunState::Running)),
+            Ok(training_update(2, TrainingRunState::Completed)),
+        ]),
+        Ok(vec![Ok(training_update(1, TrainingRunState::Failed))]),
+    ]);
+    let client = Client::with_transport(
+        test_config(test_provider(), 2, Duration::from_millis(1)),
+        transport,
+    );
+    let run = client
+        .training()
+        .wait(
+            scoped("trainingRuns", "run-1"),
+            0,
+            &TrainingWatchOptions::new(),
+            CancellationToken::new(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(run.state, TrainingRunState::Completed as i32);
+
+    let error = client
+        .training()
+        .wait(
+            scoped("trainingRuns", "run-1"),
+            0,
+            &TrainingWatchOptions::new(),
+            CancellationToken::new(),
+        )
+        .await
+        .unwrap_err();
+    let failure = error.training_failure().unwrap();
+    assert_eq!(failure.run().state, TrainingRunState::Failed as i32);
+    assert!(error.sdk_error().is_none());
+    assert!(std::error::Error::source(&error).is_some());
+    assert!(!format!("{failure:?}").contains("ErrorDetail"));
+}
+
+/// `Config::from_env` reads every documented variable and nothing else.
+#[test]
+fn config_from_env_reads_every_documented_variable_and_no_credential() {
+    let requested = Arc::new(Mutex::new(Vec::new()));
+    let observed = Arc::clone(&requested);
+    let values = [
+        ("MINDCLADE_ENVIRONMENT", "staging"),
+        ("MINDCLADE_ENDPOINT", "https://control-plane.example:8443"),
+        ("MINDCLADE_TENANT_ID", "tenants/t-9"),
+        ("MINDCLADE_PROJECT_ID", "projects/p-9"),
+        ("MINDCLADE_PRINCIPAL_ID", "principals/worker-9"),
+        ("MINDCLADE_AUDIENCE", "https://verifier.example/audience"),
+        ("MINDCLADE_LOG", "debug"),
+    ];
+    let config = Config::from_env_source(test_provider(), move |key| {
+        observed.lock().unwrap().push(key.to_owned());
+        values
+            .iter()
+            .find(|(name, _)| *name == key)
+            .map(|(_, value)| (*value).to_owned())
+    })
+    .unwrap()
+    .build()
+    .unwrap();
+
+    assert_eq!(config.environment(), Environment::Staging);
+    assert_eq!(config.endpoint(), "https://control-plane.example:8443");
+    assert_eq!(config.identity().tenant_id(), "tenants/t-9");
+    assert_eq!(config.identity().project_id(), "projects/p-9");
+    assert_eq!(config.identity().principal_id(), "principals/worker-9");
+    assert_eq!(config.audience(), "https://verifier.example/audience");
+    assert_eq!(config.log_level(), LogLevel::Debug);
+    assert_eq!(config.observers.len(), 1);
+
+    // Only the seven documented names were consulted, and not one of them
+    // could carry a credential.
+    let requested = requested.lock().unwrap().clone();
+    for key in &requested {
+        assert!(
+            RECOGNISED_ENVIRONMENT_VARIABLES.contains(&key.as_str()),
+            "undocumented environment variable {key}"
+        );
+    }
+    for name in RECOGNISED_ENVIRONMENT_VARIABLES {
+        assert!(
+            !is_credential_bearing(name),
+            "{name} could carry a credential"
+        );
+    }
+}
+
+/// A missing required variable or an invalid value fails closed.
+#[test]
+fn config_from_env_fails_closed_on_missing_or_invalid_values() {
+    let base = [
+        ("MINDCLADE_ENVIRONMENT", "production"),
+        ("MINDCLADE_TENANT_ID", "tenants/t-9"),
+        ("MINDCLADE_PROJECT_ID", "projects/p-9"),
+        ("MINDCLADE_PRINCIPAL_ID", "principals/worker-9"),
+    ];
+    for omitted in [
+        "MINDCLADE_ENVIRONMENT",
+        "MINDCLADE_TENANT_ID",
+        "MINDCLADE_PROJECT_ID",
+        "MINDCLADE_PRINCIPAL_ID",
+    ] {
+        let error = Config::from_env_source(test_provider(), |key| {
+            if key == omitted {
+                return None;
+            }
+            base.iter()
+                .find(|(name, _)| *name == key)
+                .map(|(_, value)| (*value).to_owned())
+        })
+        .err()
+        .expect("a missing required variable fails closed");
+        assert_eq!(error.kind(), ErrorKind::Configuration);
+    }
+
+    assert!(
+        Config::from_env_source(test_provider(), |key| {
+            if key == "MINDCLADE_ENVIRONMENT" {
+                return Some("moon-base".to_owned());
+            }
+            base.iter()
+                .find(|(name, _)| *name == key)
+                .map(|(_, value)| (*value).to_owned())
+        })
+        .is_err()
+    );
+    assert!(
+        Config::from_env_source(test_provider(), |key| {
+            if key == "MINDCLADE_LOG" {
+                return Some("shout".to_owned());
+            }
+            base.iter()
+                .find(|(name, _)| *name == key)
+                .map(|(_, value)| (*value).to_owned())
+        })
+        .is_err()
+    );
+    assert!(Environment::parse("development").is_ok());
+    assert_eq!(Environment::parse("staging").unwrap().label(), "staging");
+}
+
+/// The ordinary constructors never touch the process environment, and
+/// `Config::from_env` is the crate's only `std::env::var` call site.
+#[test]
+fn only_config_from_env_reads_the_process_environment() {
+    let root = ["src", "internal/sdk/rust/src"]
+        .into_iter()
+        .map(std::path::PathBuf::from)
+        .find(|candidate| candidate.join("config.rs").is_file())
+        .expect("the SDK sources are available to this test");
+    let mut offenders = Vec::new();
+    for entry in std::fs::read_dir(&root).unwrap() {
+        let path = entry.unwrap().path();
+        if path.extension().is_none_or(|value| value != "rs") {
+            continue;
+        }
+        let name = path.file_name().unwrap().to_string_lossy().into_owned();
+        if name == "config.rs" || name.ends_with("tests.rs") {
+            continue;
+        }
+        if std::fs::read_to_string(&path).unwrap().contains("env::var") {
+            offenders.push(name);
+        }
+    }
+    assert!(
+        offenders.is_empty(),
+        "environment reads outside Config::from_env: {offenders:?}"
+    );
+    let sources = std::fs::read_to_string(root.join("config.rs")).unwrap();
+    assert_eq!(sources.matches("std::env::var(").count(), 1);
+}
+
+/// Custom metadata is forwarded on every request; credential-bearing and
+/// reserved keys are refused by configuration and by per-call options alike.
+#[tokio::test]
+async fn custom_metadata_passes_through_and_refuses_credential_and_reserved_keys() {
+    for key in [
+        "authorization",
+        "x-mindclade-lease-token",
+        "cookie",
+        "x-api-key",
+        "x-refresh-token",
+        "my-secret",
+        "x-mindclade-sdk",
+        "x-request-id",
+        "x-trace-id",
+        "grpc-timeout",
+        "idempotency-key",
+        "Upper-Case",
+    ] {
+        assert!(
+            validate_custom_metadata_key(key).is_err(),
+            "{key} was accepted"
+        );
+        assert!(CallOptions::new().with_metadata(key, "value").is_err());
+    }
+    assert!(validate_custom_metadata("x-team", "platform").is_ok());
+    assert!(validate_custom_metadata("x-team", "not ascii\n").is_err());
+
+    let transport = Arc::new(FakeTransport::default());
+    transport
+        .operations
+        .lock()
+        .unwrap()
+        .push_back(Ok(GetOperationResponse {
+            operation: Some(operation("operations/metadata", true)),
+        }));
+    let identity = Identity::new("tenants/t-1", "projects/p-1", "principals/worker-1").unwrap();
+    let config = Config::builder(Environment::Development, identity, test_provider())
+        .custom_metadata("x-team", "platform")
+        .unwrap()
+        .jitter_source(Arc::new(ScriptedJitter::max()))
+        .build()
+        .unwrap();
+    assert_eq!(
+        config.custom_metadata(),
+        [("x-team".to_owned(), "platform".to_owned())]
+    );
+    let client = Client::with_transport(config, transport.clone());
+    client
+        .operations()
+        .get(
+            "operations/metadata",
+            CallOptions::new()
+                .with_metadata("x-experiment", "cursor-parity")
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    let observed = transport.observed.lock().unwrap();
+    assert_eq!(observed.len(), 1);
+    assert_eq!(
+        observed[0].custom.get("x-team").map(String::as_str),
+        Some("platform")
+    );
+    assert_eq!(
+        observed[0].custom.get("x-experiment").map(String::as_str),
+        Some("cursor-parity")
+    );
+}
+
+/// `x-mindclade-sdk` carries bounded structured platform metadata, and the
+/// opt-out reduces it to name and version alone.
+#[tokio::test]
+async fn x_mindclade_sdk_carries_bounded_structured_platform_metadata() {
+    async fn observed_sdk_value(omit_platform: bool) -> String {
+        let transport = Arc::new(FakeTransport::default());
+        transport
+            .operations
+            .lock()
+            .unwrap()
+            .push_back(Ok(GetOperationResponse {
+                operation: Some(operation("operations/sdk", true)),
+            }));
+        let identity = Identity::new("tenants/t-1", "projects/p-1", "principals/worker-1").unwrap();
+        let mut builder = Config::builder(Environment::Development, identity, test_provider())
+            .jitter_source(Arc::new(ScriptedJitter::max()));
+        if omit_platform {
+            builder = builder.omit_platform_metadata();
+        }
+        let client = Client::with_transport(builder.build().unwrap(), transport.clone());
+        client
+            .operations()
+            .get("operations/sdk", CallOptions::new())
+            .await
+            .unwrap();
+        let observed = transport.observed.lock().unwrap();
+        observed[0].sdk.clone().unwrap()
+    }
+
+    let full = observed_sdk_value(false).await;
+    assert!(full.starts_with(&format!("{SDK_NAME}/{SDK_VERSION} ")));
+    for component in ["lang=rust", "os=", "arch=", "rt=tokio", "rtver="] {
+        assert!(full.contains(component), "{component} missing from {full}");
+    }
+    assert!(full.len() <= 256);
+    assert!(full.bytes().all(|byte| (0x20..=0x7e).contains(&byte)));
+
+    let minimal = observed_sdk_value(true).await;
+    assert_eq!(minimal, format!("{SDK_NAME}/{SDK_VERSION}"));
+}
+
+/// The stamped SDK version is the crate manifest's version.
+#[test]
+fn sdk_version_matches_the_crate_manifest() {
+    let manifest = include_str!("../Cargo.toml");
+    let version = manifest
+        .lines()
+        .find_map(|line| line.strip_prefix("version = "))
+        .map(|value| value.trim().trim_matches('"'))
+        .expect("the crate manifest declares a version");
+    assert_eq!(version, SDK_VERSION);
+    assert_eq!(SDK_NAME, "mindclade-internal-rust-sdk");
+}
+
+#[derive(Debug, Default)]
+struct RecordingInterceptor {
+    calls: AtomicUsize,
+    keys: Mutex<Vec<String>>,
+    refusals: Mutex<Vec<String>>,
+}
+
+impl crate::Interceptor for RecordingInterceptor {
+    fn intercept(
+        &self,
+        context: &crate::InterceptContext<'_>,
+        metadata: &mut crate::InterceptorMetadata<'_>,
+    ) -> Result<(), Error> {
+        self.calls.fetch_add(1, Ordering::Relaxed);
+        assert!(!context.request_id.is_empty());
+        assert!(!context.method.is_empty());
+        *self.keys.lock().unwrap() = metadata
+            .keys()
+            .into_iter()
+            .map(str::to_owned)
+            .collect::<Vec<String>>();
+        for key in ["authorization", "x-mindclade-lease-token", "x-request-id"] {
+            if metadata.insert(key, "forged").is_err() {
+                self.refusals.lock().unwrap().push(format!("insert:{key}"));
+            }
+            if metadata.remove(key).is_err() {
+                self.refusals.lock().unwrap().push(format!("remove:{key}"));
+            }
+        }
+        metadata.insert("x-hop", "edge")?;
+        Ok(())
+    }
+}
+
+/// An interceptor runs before credential injection, cannot see or remove a
+/// credential, and cannot displace SDK-owned correlation metadata.
+#[tokio::test]
+async fn interceptor_runs_before_credential_injection_and_cannot_touch_credentials() {
+    let interceptor = Arc::new(RecordingInterceptor::default());
+    let transport = Arc::new(FakeTransport::default());
+    transport
+        .operations
+        .lock()
+        .unwrap()
+        .push_back(Ok(GetOperationResponse {
+            operation: Some(operation("operations/intercepted", true)),
+        }));
+    let identity = Identity::new("tenants/t-1", "projects/p-1", "principals/worker-1").unwrap();
+    let config = Config::builder(Environment::Development, identity, test_provider())
+        .interceptor(Arc::clone(&interceptor) as Arc<dyn crate::Interceptor>)
+        .jitter_source(Arc::new(ScriptedJitter::max()))
+        .build()
+        .unwrap();
+    let client = Client::with_transport(config, transport.clone());
+    client
+        .operations()
+        .get("operations/intercepted", CallOptions::new())
+        .await
+        .unwrap();
+
+    assert_eq!(interceptor.calls.load(Ordering::Relaxed), 1);
+    // The credential is not present while the interceptor runs, so it cannot
+    // be observed, and every attempt to write or strip a reserved key failed.
+    let keys = interceptor.keys.lock().unwrap().clone();
+    assert!(!keys.iter().any(|key| key == "authorization"));
+    assert!(keys.iter().any(|key| key == "x-request-id"));
+    assert_eq!(interceptor.refusals.lock().unwrap().len(), 6);
+
+    let observed = transport.observed.lock().unwrap();
+    assert!(observed[0].authorization_present);
+    assert!(observed[0].authorization_sensitive);
+    assert_eq!(
+        observed[0].custom.get("x-hop").map(String::as_str),
+        Some("edge")
+    );
+    assert!(observed[0].request_id.is_some());
+}
+
+type ObservedAttempt = (String, u8, Option<Code>, Vec<String>);
+type ObservedRetry = (String, u8, Duration);
+type ObservedCall = (String, u32, Option<Code>, FinalCause);
+
+#[derive(Debug, Default)]
+struct RecordingObserver {
+    attempts: Mutex<Vec<ObservedAttempt>>,
+    retries: Mutex<Vec<ObservedRetry>>,
+    calls: Mutex<Vec<ObservedCall>>,
+}
+
+impl crate::Observer for RecordingObserver {
+    fn on_attempt(&self, event: &crate::AttemptEvent<'_>) {
+        self.attempts.lock().unwrap().push((
+            event.method.to_owned(),
+            event.attempt,
+            event.status,
+            event
+                .metadata_keys
+                .iter()
+                .map(|key| (*key).to_owned())
+                .collect(),
+        ));
+    }
+
+    fn on_retry(&self, event: &crate::RetryEvent<'_>) {
+        self.retries
+            .lock()
+            .unwrap()
+            .push((event.method.to_owned(), event.attempt, event.delay));
+    }
+
+    fn on_call_complete(&self, event: &crate::CallEvent<'_>) {
+        self.calls.lock().unwrap().push((
+            event.method.to_owned(),
+            event.attempts,
+            event.status,
+            event.final_cause,
+        ));
+    }
+}
+
+/// Observers see method, attempt, status, correlation identity, and metadata
+/// key names; they never see a payload, a value, or a credential key.
+#[tokio::test]
+async fn observer_events_carry_metadata_key_names_only() {
+    let observer = Arc::new(RecordingObserver::default());
+    let transport = Arc::new(FakeTransport::default());
+    transport.operations.lock().unwrap().extend([
+        Err(Status::unavailable("sensitive server detail")),
+        Ok(GetOperationResponse {
+            operation: Some(operation("operations/observed", true)),
+        }),
+    ]);
+    let identity = Identity::new("tenants/t-1", "projects/p-1", "principals/worker-1").unwrap();
+    let config = Config::builder(Environment::Development, identity, test_provider())
+        .retry_policy(
+            RetryPolicy::new(3, Duration::from_millis(1), Duration::from_millis(8)).unwrap(),
+        )
+        .jitter_source(Arc::new(ScriptedJitter::max()))
+        .observer(Arc::clone(&observer) as Arc<dyn crate::Observer>)
+        .build()
+        .unwrap();
+    let sleeper = Arc::new(ImmediateSleeper::default());
+    let client = Client::with_test_sleeper(config, transport, sleeper);
+    client
+        .operations()
+        .get("operations/observed", CallOptions::new())
+        .await
+        .unwrap();
+
+    let attempts = observer.attempts.lock().unwrap().clone();
+    assert_eq!(attempts.len(), 2);
+    assert_eq!(
+        attempts[0].0,
+        "/mindclade.internal.job.v1.OperationService/GetOperation"
+    );
+    assert_eq!(attempts[0].1, 1);
+    assert_eq!(attempts[0].2, Some(Code::Unavailable));
+    assert_eq!(attempts[1].2, Some(Code::Ok));
+    let keys = &attempts[0].3;
+    for expected in [
+        "x-request-id",
+        "x-trace-id",
+        "x-mindclade-retry-count",
+        "x-mindclade-timeout-ms",
+        "x-mindclade-sdk",
+    ] {
+        assert!(keys.iter().any(|key| key == expected), "{expected} missing");
+    }
+    assert!(keys.iter().all(|key| !is_credential_bearing(key)));
+    assert!(
+        keys.iter().all(|key| !key.contains("operations/observed")),
+        "an observer key carried payload content"
+    );
+
+    let retries = observer.retries.lock().unwrap().clone();
+    assert_eq!(retries.len(), 1);
+    assert_eq!(retries[0].1, 1);
+    assert_eq!(retries[0].2, Duration::from_millis(1));
+
+    let calls = observer.calls.lock().unwrap().clone();
+    assert_eq!(calls.len(), 1);
+    assert_eq!(calls[0].1, 2);
+    assert_eq!(calls[0].2, Some(Code::Ok));
+    assert_eq!(calls[0].3, FinalCause::NotRetried);
+}
+
+/// A terminal failure reports its final cause to the observer exactly once.
+#[tokio::test]
+async fn observer_reports_a_terminal_failure_with_its_final_cause() {
+    let observer = Arc::new(RecordingObserver::default());
+    let transport = Arc::new(FakeTransport::default());
+    transport
+        .operations
+        .lock()
+        .unwrap()
+        .push_back(Err(Status::permission_denied("redacted")));
+    let identity = Identity::new("tenants/t-1", "projects/p-1", "principals/worker-1").unwrap();
+    let config = Config::builder(Environment::Development, identity, test_provider())
+        .jitter_source(Arc::new(ScriptedJitter::max()))
+        .observer(Arc::clone(&observer) as Arc<dyn crate::Observer>)
+        .build()
+        .unwrap();
+    let client = Client::with_transport(config, transport);
+    let error = client
+        .operations()
+        .get("operations/denied", CallOptions::new())
+        .await
+        .unwrap_err();
+    assert_eq!(error.kind(), ErrorKind::Authorization);
+    let calls = observer.calls.lock().unwrap().clone();
+    assert_eq!(calls.len(), 1);
+    assert_eq!(calls[0].2, Some(Code::PermissionDenied));
+    assert_eq!(calls[0].3, FinalCause::NonRetryableStatus);
+    assert!(observer.retries.lock().unwrap().is_empty());
+}
+
+/// `MINDCLADE_LOG` selects a level, and the built-in logging observer emits
+/// only at or below it.
+#[test]
+fn mindclade_log_level_gates_observer_emission() {
+    for (value, expected) in [
+        ("off", LogLevel::Off),
+        ("ERROR", LogLevel::Error),
+        ("warning", LogLevel::Warn),
+        ("info", LogLevel::Info),
+        ("debug", LogLevel::Debug),
+        ("trace", LogLevel::Trace),
+    ] {
+        assert_eq!(LogLevel::parse(value).unwrap(), expected);
+    }
+    assert!(LogLevel::parse("verbose").is_err());
+    assert!(LogLevel::Off < LogLevel::Error);
+    assert!(LogLevel::Warn < LogLevel::Debug);
+    assert_eq!(LoggingObserver::new(LogLevel::Warn).level(), LogLevel::Warn);
+    assert_eq!(LogLevel::default(), LogLevel::Off);
+
+    // A level of `off` installs no observer at all; any other level installs
+    // exactly the built-in logging sink.
+    let base = [
+        ("MINDCLADE_ENVIRONMENT", "development"),
+        ("MINDCLADE_TENANT_ID", "tenants/t-9"),
+        ("MINDCLADE_PROJECT_ID", "projects/p-9"),
+        ("MINDCLADE_PRINCIPAL_ID", "principals/worker-9"),
+    ];
+    for (level, observers) in [("off", 0), ("warn", 1)] {
+        let config = Config::from_env_source(test_provider(), |key| {
+            if key == "MINDCLADE_LOG" {
+                return Some(level.to_owned());
+            }
+            base.iter()
+                .find(|(name, _)| *name == key)
+                .map(|(_, value)| (*value).to_owned())
+        })
+        .unwrap()
+        .build()
+        .unwrap();
+        assert_eq!(config.observers.len(), observers);
+        assert_eq!(config.log_level(), LogLevel::parse(level).unwrap());
+    }
+}
+
+/// The workflow and inference resume verbs continue from the caller's own
+/// durable cursor, exactly as the operation and training verbs do.
+#[tokio::test]
+async fn workflow_and_inference_resume_watch_continue_from_a_supplied_cursor() {
+    let transport = Arc::new(FakeTransport::default());
+    transport
+        .workflow_watches
+        .lock()
+        .unwrap()
+        .push_back(Ok(vec![Ok(workflow_update(
+            5,
+            WorkflowRunState::Succeeded,
+        ))]));
+    transport
+        .inference_watches
+        .lock()
+        .unwrap()
+        .push_back(Ok(vec![Ok(inference_final(9))]));
+    let client = Client::with_transport(
+        test_config(test_provider(), 2, Duration::from_millis(1)),
+        transport.clone(),
+    );
+
+    let mut workflows = client
+        .workflows()
+        .resume_watch(
+            scoped("workflowRuns", "run-1"),
+            4,
+            &WorkflowWatchOptions::new(),
+            CancellationToken::new(),
+        )
+        .unwrap();
+    let run = workflows.next().await.unwrap().unwrap();
+    assert_eq!(run.transition_sequence, 5);
+    assert_eq!(workflows.last_sequence(), 5);
+    assert_eq!(
+        transport.workflow_watch_after.lock().unwrap().as_slice(),
+        [4]
+    );
+
+    let cursor = InferenceStreamCursor {
+        request_name: "inferenceRequests/request-parity".to_owned(),
+        after_sequence: 8,
+        resume_token: "cursor-8".to_owned(),
+    };
+    let mut inference = client
+        .inference()
+        .resume_watch(
+            "operations/resume-inference",
+            cursor.clone(),
+            &InferenceWaitOptions::new(),
+            CancellationToken::new(),
+        )
+        .unwrap();
+    assert_eq!(inference.next().await.unwrap().unwrap().sequence, 9);
+    assert_eq!(inference.cursor().unwrap().after_sequence, 9);
+    let cursors = transport.inference_watch_cursors.lock().unwrap();
+    assert_eq!(cursors[0].as_ref().unwrap().after_sequence, 8);
+
+    // A partial cursor is refused, so a resume can never fabricate one.
+    assert!(
+        client
+            .inference()
+            .resume_watch(
+                "operations/resume-inference",
+                InferenceStreamCursor::default(),
+                &InferenceWaitOptions::new(),
+                CancellationToken::new(),
+            )
+            .is_err()
+    );
+}
+
+/// A resumable watch reports its stream opens, its reconnect decisions, and
+/// one settled outcome to the same observer seam as a unary call.
+#[tokio::test]
+async fn watch_reconnects_are_observable_through_the_same_seam() {
+    let observer = Arc::new(RecordingObserver::default());
+    let transport = Arc::new(FakeTransport::default());
+    transport.watches.lock().unwrap().extend([
+        Ok(vec![Err(Status::unavailable("redacted"))]),
+        Ok(vec![Ok(WatchOperationResponse {
+            operation: Some(operation("operations/observed-watch", true)),
+            sequence: 1,
+            observed_at: None,
+        })]),
+    ]);
+    let identity = Identity::new("tenants/t-1", "projects/p-1", "principals/worker-1").unwrap();
+    let config = Config::builder(Environment::Development, identity, test_provider())
+        .retry_policy(
+            RetryPolicy::new(3, Duration::from_millis(1), Duration::from_millis(8)).unwrap(),
+        )
+        .jitter_source(Arc::new(ScriptedJitter::max()))
+        .observer(Arc::clone(&observer) as Arc<dyn crate::Observer>)
+        .build()
+        .unwrap();
+    let sleeper = Arc::new(ImmediateSleeper::default());
+    let client = Client::with_test_sleeper(config, transport, sleeper);
+    let mut watch = client
+        .operations()
+        .watch(
+            "operations/observed-watch",
+            0,
+            &CallOptions::new(),
+            CancellationToken::new(),
+        )
+        .unwrap();
+    assert_eq!(watch.next().await.unwrap().unwrap().sequence, 1);
+    assert!(watch.next().await.unwrap().is_none());
+    // A second read after terminal truth must not report the watch twice.
+    assert!(watch.next().await.unwrap().is_none());
+
+    let route = "/mindclade.internal.job.v1.OperationService/WatchOperation";
+    let attempts = observer.attempts.lock().unwrap().clone();
+    assert_eq!(attempts.len(), 2);
+    assert!(attempts.iter().all(|event| event.0 == route));
+    let retries = observer.retries.lock().unwrap().clone();
+    assert_eq!(retries.len(), 1);
+    assert_eq!(retries[0].0, route);
+    assert_eq!(retries[0].2, Duration::from_millis(1));
+    let calls = observer.calls.lock().unwrap().clone();
+    assert_eq!(calls.len(), 1);
+    assert_eq!(calls[0].0, route);
+    assert_eq!(calls[0].1, 2);
+    assert_eq!(calls[0].2, Some(Code::Ok));
+}
+
+/// Every per-domain watch option converts into the one shared watch policy.
+#[test]
+fn per_domain_watch_options_convert_to_the_shared_watch_policy() {
+    let call = CallOptions::new()
+        .with_request_id("request-shared")
+        .unwrap();
+    let wait = WaitOptions::new()
+        .with_call_options(call.clone())
+        .with_timeout(Duration::from_secs(11))
+        .unwrap()
+        .with_poll_interval(Duration::from_millis(250))
+        .unwrap();
+    let shared = crate::WatchOptions::from(wait);
+    assert_eq!(shared.timeout(), Duration::from_secs(11));
+    assert_eq!(shared.poll_interval(), Some(Duration::from_millis(250)));
+
+    let training = TrainingWatchOptions::new()
+        .with_call_options(call.clone())
+        .with_timeout(Duration::from_secs(12))
+        .unwrap();
+    assert_eq!(
+        crate::WatchOptions::from(training).timeout(),
+        Duration::from_secs(12)
+    );
+
+    let workflow = WorkflowWatchOptions::new()
+        .with_call_options(call.clone())
+        .with_timeout(Duration::from_secs(13))
+        .unwrap();
+    assert_eq!(
+        crate::WatchOptions::from(workflow).timeout(),
+        Duration::from_secs(13)
+    );
+
+    let inference = InferenceWaitOptions::new()
+        .with_call_options(call)
+        .with_timeout(Duration::from_secs(14))
+        .unwrap();
+    let shared = crate::WatchOptions::from(inference);
+    assert_eq!(shared.timeout(), Duration::from_secs(14));
+    assert_eq!(shared.poll_interval(), None);
+    assert!(
+        crate::WatchOptions::new()
+            .with_timeout(Duration::ZERO)
+            .is_err()
+    );
+    assert_eq!(
+        crate::WatchOptions::default().timeout(),
+        crate::WatchOptions::new().timeout()
     );
 }

@@ -52,7 +52,10 @@ pub use agents::Agents;
 pub use approvals::Approvals;
 pub use artifacts::{ArtifactUploadOptions, Artifacts};
 pub use auth::{AccessToken, GcpWorkloadIdentityProvider, TokenProvider};
-pub use config::{Config, ConfigBuilder, Environment, Identity, RetryPolicy};
+pub use config::{
+    Config, ConfigBuilder, Environment, Identity, RECOGNISED_ENVIRONMENT_VARIABLES, RetryPolicy,
+    SDK_NAME, SDK_VERSION,
+};
 pub use datasets::Datasets;
 pub use error::{
     Error, ErrorKind, FenceState, FinalCause, QuotaState, RetryAttemptSummary,
@@ -66,17 +69,23 @@ pub use jobs::Jobs;
 pub use models::Models;
 pub use operations::{
     CancellationToken, OperationFailure, OperationWaitError, OperationWatch, Operations,
-    WaitOptions,
+    WaitOptions, WatchNext, WatchOptions, WatchStream,
 };
 pub use policies::Policies;
 pub use request::{
-    CallOptions, DEFAULT_PAGE_SIZE, HARD_PAGE_SIZE_CEILING, Page, Pages, PaginationLimits,
+    CallOptions, DEFAULT_PAGE_SIZE, HARD_PAGE_SIZE_CEILING, InterceptContext, Interceptor,
+    InterceptorMetadata, MAX_CUSTOM_METADATA_ENTRIES, Page, Pages, PaginationLimits,
     PaginationPage, Paginator, Response, SAFE_RESPONSE_METADATA, SafeMetadata, SubmitOptions,
-    is_credential_bearing, paginate,
+    is_credential_bearing, paginate, validate_custom_metadata, validate_custom_metadata_key,
 };
-pub use retry::{JitterSource, SystemJitter};
+pub use retry::{
+    AttemptEvent, CallEvent, JitterSource, LogLevel, LoggingObserver, Observer, RetryEvent,
+    SystemJitter,
+};
 pub use runs::{AttemptLease, LeaseCredential, Runs};
-pub use training::{Training, TrainingWatch, TrainingWatchOptions};
+pub use training::{
+    Training, TrainingRunFailure, TrainingWaitError, TrainingWatch, TrainingWatchOptions,
+};
 pub use transport::{
     ArtifactStream, GeneratedClients, InferenceStream, OperationStream, RawDispatch, RawRequest,
     RecordedRpcCall, RecordingTransport, RpcTransport, TonicTransport, TrainingStream,
@@ -337,7 +346,7 @@ impl Client {
     ) -> Result<tonic::Request<T>, Error> {
         let prepared = options.prepare(&self.core.config);
         self.core
-            .request(message, &prepared, idempotency_key, 0)
+            .request(message, &prepared, idempotency_key, 0, "")
             .await
     }
 

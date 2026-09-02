@@ -233,7 +233,10 @@ not clear them.
 
 ## Errors
 
-Every failure that leaves the SDK is a `MindcladeError`. The hierarchy is:
+Every failure raised by an RPC call path is a `MindcladeError`. Two
+configuration- and decode-time exceptions predate that hierarchy and remain
+`ValueError` subclasses, so `except MindcladeError` does **not** catch them;
+they are listed below and marked. The hierarchy is:
 
 | Class | Raised for |
 |---|---|
@@ -253,12 +256,13 @@ Every failure that leaves the SDK is a `MindcladeError`. The hierarchy is:
 | `ProtocolError` | A response the contract forbids: bad cursor, sequence gap, identity drift, missing required message. |
 | `PaginationLimitError` | A traversal that passed its declared page or item budget. |
 | `TransportError` | A status with no more specific mapping, and a channel-level failure. |
-| `ConfigurationError` | Unsafe configuration, raised before any network activity. |
-| `EventRejectedError` | An inbound job event that fails envelope, scope, or identity validation in `decode_job_requested_delivery`. |
+| `ConfigurationError` (a `ValueError`, **not** a `MindcladeError`) | Unsafe configuration, raised before any network activity. |
+| `EventRejectedError` (a `ValueError`, **not** a `MindcladeError`) | An inbound job event that fails envelope, scope, or identity validation in `decode_job_requested_delivery`. |
 
-Every error carries the same bounded fields:
+Every `MindcladeError` carries the same bounded fields (the sanitized message
+itself is read with `str(error)`):
 
-`code`, `message`, `status`, `retryable`, `retry_after`, `request_id`,
+`code`, `status`, `retryable`, `retry_after`, `request_id`,
 `trace_id`, `operation_id`, `field_violations`, `precondition_violations`,
 `quota`, `fence`, `conflict_revision`, `diagnostic_reference`,
 `server_should_retry`, and `retry_trace`.
@@ -300,8 +304,9 @@ One policy, one predicate, applied identically by every call path:
   can never widen it.
 
 Retry accounting is observable on every RPC failure that leaves the SDK; it is
-`None` on an error raised before a call was attempted, such as a
-`ConfigurationError`:
+`None` on a `MindcladeError` raised before a transport attempt was made, such
+as a `ProtocolError` from argument validation or an `AuthenticationError` from
+credential acquisition:
 
 ```python
 try:
@@ -457,7 +462,7 @@ See [`component.yaml`](component.yaml) and the appendix below.
 
 ---
 
-# Package contract (appendix A08)
+## Package contract (appendix A08)
 
 ### Purpose
 

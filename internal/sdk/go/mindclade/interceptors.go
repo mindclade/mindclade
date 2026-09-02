@@ -206,7 +206,7 @@ func (stream *boundedClientStream) RecvMsg(message any) error {
 	// first message publishes the request id early; the terminal receive
 	// overwrites it with the complete headers, trailers, and final status.
 	if err == nil {
-		stream.captured.Do(func() { stream.capture("ok", "ok") })
+		stream.captured.Do(stream.captureHeaders)
 		return err
 	}
 	stream.once.Do(stream.cancel)
@@ -220,7 +220,24 @@ func (stream *boundedClientStream) RecvMsg(message any) error {
 	return err
 }
 
-// capture records the stream's allowlisted response metadata. Header and
+// captureHeaders publishes the request id as soon as a first message proves the
+// server has replied. Trailers are deliberately NOT read here: gRPC permits
+// ClientStream.Trailer only once a receive has returned a non-nil error, and
+// reading it mid-stream is an unsynchronized read of state the transport's own
+// reader goroutine is still writing. Nothing is lost by waiting — a live stream
+// has no trailers yet — and the terminal receive overwrites this capture with
+// the complete headers, trailers, and final status.
+func (stream *boundedClientStream) captureHeaders() {
+	if stream.request.responseTarget == nil && stream.request.responseSink == nil {
+		return
+	}
+	headers, _ := stream.Header()
+	captureResponseMetadata(stream.request, headers, nil, "ok", "ok")
+}
+
+// capture records the stream's terminal allowlisted response metadata. It runs
+// only after a receive has resolved with an error — a clean io.EOF included —
+// which is the one point at which reading Trailer is defined. Header and
 // trailer reads are best effort: a stream torn down before the server replied
 // still yields the status and the identity the SDK itself sent.
 func (stream *boundedClientStream) capture(code Code, statusMessage string) {

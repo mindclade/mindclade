@@ -4013,7 +4013,8 @@ mindclade/
 │   │   ├── generated_go_roundtrip_test.go
 │   │   ├── generated_rust_roundtrip_test.rs
 │   │   ├── generated_typescript_roundtrip_test.ts
-│   │   └── test_generated_package_consumers.py
+│   │   ├── test_generated_package_consumers.py
+│   │   └── test_sdk_retry_safety_parity.py
 │   ├── integration/
 │   │   ├── local_stack_test.py
 │   │   ├── control_worker_test.py
@@ -4310,7 +4311,8 @@ mindclade/
 │   │   │   │   └── A40-feature-and-data-transform-architecture.md
 │   │   │   └── generated/
 │   │   │       └── MINDCLADE_MONOREPO_BLUEPRINT_FULL.md
-│   │   └── authoritative-contract-integration-plan.md
+│   │   ├── authoritative-contract-integration-plan.md
+│   │   └── internal-sdk-conformance-contract.md
 │   ├── adr/
 │   │   ├── 0001-repository-identity-and-ownership.md
 │   │   ├── 0002-dependency-and-build-law.md
@@ -4417,7 +4419,12 @@ mindclade/
 │   │   ├── package.json
 │   │   ├── tsconfig.json
 │   │   ├── follow_operation.test.ts
-│   │   └── test_sdk_examples.py
+│   │   ├── test_sdk_examples.py
+│   │   ├── configure_client.ts
+│   │   ├── handle_errors.py
+│   │   ├── list_operations.py
+│   │   ├── read_request_id.ts
+│   │   └── sdk_examples.test.ts
 │   ├── data_connector/
 │   │   ├── connector.py
 │   │   ├── connector_contract_test.py
@@ -4480,6 +4487,7 @@ mindclade/
 │       ├── go/
 │       │   ├── mindclade/
 │       │   │   ├── BUILD.bazel
+│       │   │   ├── CHANGELOG.md
 │       │   │   ├── README.md
 │       │   │   ├── admin.go
 │       │   │   ├── agent_test.go
@@ -4490,6 +4498,7 @@ mindclade/
 │       │   │   ├── auth_test.go
 │       │   │   ├── client.go
 │       │   │   ├── client_test.go
+│       │   │   ├── component.yaml
 │       │   │   ├── config.go
 │       │   │   ├── datasets.go
 │       │   │   ├── error.go
@@ -4506,6 +4515,13 @@ mindclade/
 │       │   │   ├── policies.go
 │       │   │   ├── policy_admin_test.go
 │       │   │   ├── request.go
+│       │   │   ├── scripts/
+│       │   │   │   ├── bootstrap
+│       │   │   │   ├── build
+│       │   │   │   ├── common.sh
+│       │   │   │   ├── format
+│       │   │   │   ├── lint
+│       │   │   │   └── test
 │       │   │   ├── training.go
 │       │   │   ├── transport.go
 │       │   │   ├── workflow_test.go
@@ -4520,12 +4536,23 @@ mindclade/
 │       │   └── api.md
 │       ├── python/
 │       │   ├── BUILD.bazel
+│       │   ├── CHANGELOG.md
 │       │   ├── README.md
 │       │   ├── api.md
+│       │   ├── component.yaml
 │       │   ├── mindclade_internal_sdk/
 │       │   │   ├── __init__.py
+│       │   │   ├── _env.py
 │       │   │   ├── _invocation.py
+│       │   │   ├── _logging.py
+│       │   │   ├── _metadata.py
+│       │   │   ├── _middleware.py
+│       │   │   ├── _platform.py
+│       │   │   ├── _raw.py
+│       │   │   ├── _retry.py
 │       │   │   ├── _validation.py
+│       │   │   ├── _version.py
+│       │   │   ├── _watch.py
 │       │   │   ├── admin.py
 │       │   │   ├── agents.py
 │       │   │   ├── artifacts.py
@@ -4541,6 +4568,7 @@ mindclade/
 │       │   │   ├── method_policy.py
 │       │   │   ├── models.py
 │       │   │   ├── operations.py
+│       │   │   ├── pagination.py
 │       │   │   ├── policies.py
 │       │   │   ├── testing.py
 │       │   │   ├── training.py
@@ -4552,11 +4580,26 @@ mindclade/
 │       │   │   ├── experiments.py
 │       │   │   └── resources.py
 │       │   ├── pyproject.toml
+│       │   ├── scripts/
+│       │   │   ├── bootstrap
+│       │   │   ├── build
+│       │   │   ├── common.sh
+│       │   │   ├── format
+│       │   │   ├── lint
+│       │   │   └── test
 │       │   └── tests/
+│       │       ├── test_configuration_env.py
+│       │       ├── test_error_hierarchy.py
 │       │       ├── test_internal_sdk.py
 │       │       ├── test_agents.py
 │       │       ├── test_inference.py
+│       │       ├── test_observability.py
+│       │       ├── test_packaging.py
+│       │       ├── test_pagination.py
 │       │       ├── test_policy_admin.py
+│       │       ├── test_raw_response.py
+│       │       ├── test_retry_policy.py
+│       │       ├── test_watchers.py
 │       │       ├── test_workflows.py
 │       │       ├── test_artifact_operation_gaps.py
 │       │       ├── test_evaluations.py
@@ -4604,12 +4647,20 @@ mindclade/
 │       │       └── experiment_tests.rs
 │       ├── typescript/
 │       │   ├── BUILD.bazel
+│       │   ├── CHANGELOG.md
 │       │   ├── README.md
 │       │   ├── api.md
 │       │   ├── bazel/
 │       │   │   └── package.json
 │       │   ├── biome.json
+│       │   ├── component.yaml
 │       │   ├── package.json
+│       │   ├── scripts/
+│       │   │   ├── bootstrap
+│       │   │   ├── build
+│       │   │   ├── format
+│       │   │   ├── lint
+│       │   │   └── test
 │       │   ├── src/
 │       │   │   ├── admin.ts
 │       │   │   ├── agents.ts
@@ -4620,30 +4671,41 @@ mindclade/
 │       │   │   ├── config.ts
 │       │   │   ├── core.ts
 │       │   │   ├── datasets.ts
+│       │   │   ├── environment.ts
 │       │   │   ├── error.ts
 │       │   │   ├── gcp_auth.ts
 │       │   │   ├── inference.ts
 │       │   │   ├── index.ts
 │       │   │   ├── models.ts
+│       │   │   ├── observability.ts
 │       │   │   ├── operations.ts
+│       │   │   ├── pagination.ts
+│       │   │   ├── platform.ts
 │       │   │   ├── policies.ts
 │       │   │   ├── raw.ts
 │       │   │   ├── request.ts
+│       │   │   ├── response.ts
 │       │   │   ├── retry.ts
 │       │   │   ├── runtime.ts
 │       │   │   ├── safety.ts
 │       │   │   ├── testing.ts
 │       │   │   ├── training.ts
 │       │   │   ├── transport.ts
+│       │   │   ├── watch.ts
 │       │   │   ├── workflows.ts
 │       │   │   ├── evaluations.ts
 │       │   │   ├── jobs.ts
 │       │   │   ├── runs.ts
 │       │   │   └── experiments.ts
 │       │   ├── tests/
+│       │   │   ├── configuration.test.ts
+│       │   │   ├── errors.test.ts
+│       │   │   ├── pagination_response.test.ts
+│       │   │   ├── retry_policy.test.ts
 │       │   │   ├── sdk.test.ts
 │       │   │   ├── policy_admin.test.ts
 │       │   │   ├── agents.test.ts
+│       │   │   ├── watch_lro.test.ts
 │       │   │   ├── workflow_approval.test.ts
 │       │   │   ├── evaluations.test.ts
 │       │   │   ├── job_run.test.ts

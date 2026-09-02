@@ -45,6 +45,20 @@ impl RetryProgress {
     }
 }
 
+/// Why one attempt could not be issued or settled at all.
+struct AttemptFailure {
+    error: Error,
+    cause: FinalCause,
+    status: Option<Code>,
+    /// Whether the attempt actually reached the transport. A failure during
+    /// request assembly or credential acquisition never counts as an attempt.
+    issued: bool,
+}
+
+/// The settled result of one attempt: either a transport outcome to classify,
+/// or a failure that ends the call outright.
+type AttemptOutcome<R> = Result<Result<TonicResponse<R>, Status>, AttemptFailure>;
+
 pub(crate) type RpcFuture<R> =
     Pin<Box<dyn Future<Output = Result<TonicResponse<R>, Status>> + Send + 'static>>;
 
@@ -607,68 +621,38 @@ impl ClientCore {
         let mut progress = RetryProgress::default();
         let mut attempt: u8 = 1;
         loop {
-            let request = match self
-                .request(message.clone(), prepared, idempotency_key, attempt - 1, route)
-                .await
-            {
-                Ok(request) => request,
-                Err(error) => {
-                    progress.cause = if matches!(error.kind(), ErrorKind::DeadlineExceeded) {
-                        FinalCause::DeadlineExceeded
-                    } else {
-                        FinalCause::CredentialFailure
-                    };
-                    return Err(self.finish(route, prepared, started, progress, None, error));
-                }
-            };
-            let remaining = match prepared.remaining() {
-                Ok(remaining) => remaining,
-                Err(error) => {
-                    progress.cause = FinalCause::DeadlineExceeded;
-                    return Err(self.finish(route, prepared, started, progress, None, error));
-                }
-            };
-            progress.attempts = u32::from(attempt);
-            let metadata_keys = self.attempt_metadata_keys(&request);
-            let attempt_started = Instant::now();
-            let invocation =
-                match tokio::time::timeout(remaining, invoke(Arc::clone(&self.transport), request))
-                    .await
-                {
-                    Ok(invocation) => invocation,
-                    Err(_elapsed) => {
-                        progress.cause = FinalCause::DeadlineExceeded;
-                        self.report_attempt(
-                            route,
-                            prepared,
-                            attempt,
-                            attempt_started,
-                            Some(Code::DeadlineExceeded),
-                            &metadata_keys,
-                        );
-                        return Err(self.finish(
-                            route,
-                            prepared,
-                            started,
-                            progress,
-                            Some(Code::DeadlineExceeded),
-                            Error::deadline_exceeded(),
-                        ));
-                    }
-                };
-            let attempt_status = match &invocation {
-                Ok(_) => Code::Ok,
-                Err(status) => status.code(),
-            };
-            self.report_attempt(
-                route,
+            // One attempt's request assembly, credential acquisition, and
+            // transport call are boxed so this loop's own future stays small
+            // for large generated messages.
+            let issued = Box::pin(self.issue_attempt(
+                &message,
                 prepared,
+                idempotency_key,
                 attempt,
-                attempt_started,
-                Some(attempt_status),
-                &metadata_keys,
-            );
-            match invocation {
+                route,
+                &invoke,
+            ));
+            let outcome = match issued.await {
+                Ok(outcome) => {
+                    progress.attempts = u32::from(attempt);
+                    outcome
+                }
+                Err(failure) => {
+                    if failure.issued {
+                        progress.attempts = u32::from(attempt);
+                    }
+                    progress.cause = failure.cause;
+                    return Err(self.finish(
+                        route,
+                        prepared,
+                        started,
+                        progress,
+                        failure.status,
+                        failure.error,
+                    ));
+                }
+            };
+            match outcome {
                 Ok(response) => {
                     self.observe_call(&CallEvent {
                         method: route,
@@ -684,40 +668,15 @@ impl ClientCore {
                 }
                 Err(status) => {
                     let error = Error::from_status(&status);
-                    if !error.is_retryable() {
-                        progress.cause = if error.server_retry_override() == Some(false) {
-                            FinalCause::ServerRetryOptOut
-                        } else {
-                            FinalCause::NonRetryableStatus
-                        };
-                        return Err(
-                            self.finish(
-                            route,
-                            prepared,
-                            started,
-                            progress,
-                            Some(status.code()),
-                            error,
-                        )
-                        );
-                    }
-                    if attempt >= attempts {
-                        progress.cause = FinalCause::AttemptsExhausted;
-                        return Err(
-                            self.finish(
-                            route,
-                            prepared,
-                            started,
-                            progress,
-                            Some(status.code()),
-                            error,
-                        )
-                        );
-                    }
-                    let remaining = match prepared.remaining() {
-                        Ok(remaining) => remaining,
-                        Err(error) => {
-                            progress.cause = FinalCause::DeadlineExceeded;
+                    let delay = match self.plan_retry(&error, attempt, attempts, prepared) {
+                        Ok(delay) => delay,
+                        Err(cause) => {
+                            progress.cause = cause;
+                            let error = if matches!(cause, FinalCause::DeadlineExceeded) {
+                                Error::deadline_exceeded()
+                            } else {
+                                error
+                            };
                             return Err(self.finish(
                                 route,
                                 prepared,
@@ -728,25 +687,6 @@ impl ClientCore {
                             ));
                         }
                     };
-                    // A server-pinned `retry-after-ms` is authoritative but
-                    // is clamped to the configured maximum backoff, so a
-                    // remote value can never stall the caller past its own
-                    // policy.
-                    let delay = error.retry_after().map_or_else(
-                        || self.backoff(attempt),
-                        |hint| hint.min(self.config.retry.max_backoff),
-                    );
-                    if delay >= remaining {
-                        progress.cause = FinalCause::DeadlineExceeded;
-                        return Err(self.finish(
-                            route,
-                            prepared,
-                            started,
-                            progress,
-                            Some(status.code()),
-                            Error::deadline_exceeded(),
-                        ));
-                    }
                     self.observe_retry(&RetryEvent {
                         method: route,
                         attempt,
@@ -762,6 +702,121 @@ impl ClientCore {
         }
     }
 
+    /// Issues exactly one attempt.
+    ///
+    /// Request assembly and credential acquisition happen inside the caller's
+    /// total budget, so a slow credential provider consumes the same deadline
+    /// as the RPC itself. The attempt is reported to observers whatever its
+    /// outcome.
+    async fn issue_attempt<T, R, F>(
+        &self,
+        message: &T,
+        prepared: &PreparedCall,
+        idempotency_key: Option<&str>,
+        attempt: u8,
+        route: &str,
+        invoke: &F,
+    ) -> AttemptOutcome<R>
+    where
+        T: Clone + Send + 'static,
+        R: Send + 'static,
+        F: Fn(Arc<dyn RpcTransport>, Request<T>) -> RpcFuture<R>,
+    {
+        let request = self
+            .request(
+                message.clone(),
+                prepared,
+                idempotency_key,
+                attempt - 1,
+                route,
+            )
+            .await
+            .map_err(|error| AttemptFailure {
+                cause: if matches!(error.kind(), ErrorKind::DeadlineExceeded) {
+                    FinalCause::DeadlineExceeded
+                } else {
+                    FinalCause::CredentialFailure
+                },
+                error,
+                status: None,
+                issued: false,
+            })?;
+        let remaining = prepared.remaining().map_err(|error| AttemptFailure {
+            error,
+            cause: FinalCause::DeadlineExceeded,
+            status: None,
+            issued: false,
+        })?;
+        let metadata_keys = self.attempt_metadata_keys(&request);
+        let issued = Instant::now();
+        let invocation =
+            tokio::time::timeout(remaining, invoke(Arc::clone(&self.transport), request)).await;
+        let Ok(outcome) = invocation else {
+            self.report_attempt(
+                route,
+                prepared,
+                attempt,
+                issued,
+                Some(Code::DeadlineExceeded),
+                &metadata_keys,
+            );
+            return Err(AttemptFailure {
+                error: Error::deadline_exceeded(),
+                cause: FinalCause::DeadlineExceeded,
+                status: Some(Code::DeadlineExceeded),
+                issued: true,
+            });
+        };
+        let status = outcome
+            .as_ref()
+            .map_or_else(Status::code, |_response| Code::Ok);
+        self.report_attempt(
+            route,
+            prepared,
+            attempt,
+            issued,
+            Some(status),
+            &metadata_keys,
+        );
+        Ok(outcome)
+    }
+
+    /// Decides whether one failed attempt is retried and for how long.
+    ///
+    /// Returns the backoff to sleep, or the terminal cause that ends the
+    /// call. A server-pinned `retry-after-ms` is authoritative but is clamped
+    /// to the configured maximum backoff, so a remote value can never stall
+    /// the caller past its own policy.
+    fn plan_retry(
+        &self,
+        error: &Error,
+        attempt: u8,
+        attempts: u8,
+        prepared: &PreparedCall,
+    ) -> Result<Duration, FinalCause> {
+        if !error.is_retryable() {
+            return Err(if error.server_retry_override() == Some(false) {
+                FinalCause::ServerRetryOptOut
+            } else {
+                FinalCause::NonRetryableStatus
+            });
+        }
+        if attempt >= attempts {
+            return Err(FinalCause::AttemptsExhausted);
+        }
+        let remaining = prepared
+            .remaining()
+            .map_err(|_| FinalCause::DeadlineExceeded)?;
+        let delay = error.retry_after().map_or_else(
+            || self.backoff(attempt),
+            |hint| hint.min(self.config.retry.max_backoff),
+        );
+        if delay >= remaining {
+            return Err(FinalCause::DeadlineExceeded);
+        }
+        Ok(delay)
+    }
+
     /// Collects outbound metadata KEY NAMES for observers. Values are never
     /// read, and nothing is collected when no observer is listening.
     fn attempt_metadata_keys<T>(&self, request: &Request<T>) -> Vec<String> {
@@ -771,10 +826,13 @@ impl ClientCore {
         request
             .metadata()
             .keys()
-            .filter_map(|key| match key {
-                KeyRef::Ascii(key) => Some(key.as_str().to_owned()),
-                KeyRef::Binary(key) => Some(key.as_str().to_owned()),
+            .map(|key| match key {
+                KeyRef::Ascii(key) => key.as_str().to_owned(),
+                KeyRef::Binary(key) => key.as_str().to_owned(),
             })
+            // Even a key NAME that could identify a credential header is
+            // withheld, so an observer sees only routing and policy keys.
+            .filter(|key| !crate::is_credential_bearing(key))
             .collect()
     }
 

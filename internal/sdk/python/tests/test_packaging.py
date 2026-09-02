@@ -64,7 +64,9 @@ README_SECTION_ORDER = (
     "## Logging",
     "## Versioning",
     "## Status",
-    "# Package contract (appendix A08)",
+    # A section of the README, not a second document title: an appendix at h1
+    # gives the file two top-level headings, which MD025 rejects.
+    "## Package contract (appendix A08)",
 )
 
 README_APPENDIX_FIELDS = (
@@ -509,6 +511,54 @@ class ReadmeTest(unittest.TestCase):
     def test_the_readme_links_the_changelog_and_the_component_metadata(self) -> None:
         self.assertIn("(CHANGELOG.md)", self.text)
         self.assertIn("(component.yaml)", self.text)
+
+    def test_every_error_the_readme_calls_a_mindclade_error_really_is_one(self) -> None:
+        """The hierarchy table is a catch contract, so it must not overstate itself.
+
+        ``ConfigurationError`` and ``EventRejectedError`` predate the hierarchy and
+        are ``ValueError`` subclasses: ``except MindcladeError`` does not catch
+        them. Each such class must carry that warning on its own table row rather
+        than sitting unmarked among the classes the except-clause does catch.
+        """
+
+        exported = [
+            name
+            for name in sdk.__all__
+            if name.endswith("Error") and isinstance(getattr(sdk, name), type)
+        ]
+        rows = {
+            line.split("`")[1]: line for line in self.text.splitlines() if line.startswith("| `")
+        }
+        for name in exported:
+            error_type = getattr(sdk, name)
+            row = rows.get(name)
+            with self.subTest(error=name):
+                if issubclass(error_type, sdk.MindcladeError):
+                    if row is not None:
+                        self.assertNotIn("**not** a `MindcladeError`", row)
+                    continue
+                self.assertIsNotNone(
+                    row,
+                    f"{name} is not a MindcladeError and needs a marked hierarchy row",
+                )
+                assert row is not None
+                self.assertIn("**not** a `MindcladeError`", row)
+
+    def test_the_readme_field_list_names_only_real_error_attributes(self) -> None:
+        """A documented field a caller cannot actually read is a false claim."""
+
+        marker = "Every `MindcladeError` carries the same bounded fields"
+        self.assertIn(marker, self.text)
+        start = self.text.index(marker)
+        paragraph = self.text[start : self.text.index("\n\n", self.text.index("\n\n", start) + 2)]
+        documented = set(re.findall(r"`([a-z_]+)`", paragraph))
+        error = sdk.MindcladeError("bounded")
+        for name in sorted(documented):
+            with self.subTest(field=name):
+                self.assertTrue(
+                    hasattr(error, name),
+                    f"README documents `{name}` but MindcladeError has no such attribute",
+                )
 
 
 if __name__ == "__main__":

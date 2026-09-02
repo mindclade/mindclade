@@ -172,6 +172,56 @@ func (err *Error) Diagnostic() string { return err.DiagnosticReference }
 
 func (err *Error) RetryOutcome() (int, time.Duration) { return err.Attempts, err.CumulativeDelay }
 
+// As lets errors.As reach the typed hierarchy from the base carrier. Errors the
+// SDK raises locally — a validation refusal, a credential acquisition failure,
+// a protocol violation detected client side — are constructed as *Error rather
+// than through a gRPC status, and without this a caller matching
+// *ValidationError or *AuthenticationError would silently miss them even though
+// the documented mapping says otherwise. classify stays the single source of
+// that mapping, so the base and typed forms of one failure can never disagree.
+func (err *Error) As(target any) bool {
+	if err == nil {
+		return false
+	}
+	typed := classify(err)
+	switch pointer := target.(type) {
+	case **AuthenticationError:
+		return assignClassified(typed, pointer)
+	case **AuthorizationError:
+		return assignClassified(typed, pointer)
+	case **ValidationError:
+		return assignClassified(typed, pointer)
+	case **ConflictError:
+		return assignClassified(typed, pointer)
+	case **NotFoundError:
+		return assignClassified(typed, pointer)
+	case **RateLimitError:
+		return assignClassified(typed, pointer)
+	case **QuotaError:
+		return assignClassified(typed, pointer)
+	case **RetryableServiceError:
+		return assignClassified(typed, pointer)
+	case **OperationFailedError:
+		return assignClassified(typed, pointer)
+	case **CancelledError:
+		return assignClassified(typed, pointer)
+	case **TransportError:
+		return assignClassified(typed, pointer)
+	default:
+		return false
+	}
+}
+
+// assignClassified writes the classified error into a caller target when the
+// classification produced exactly that concrete type.
+func assignClassified[Typed error](classified error, pointer *Typed) bool {
+	concrete, ok := classified.(Typed)
+	if ok {
+		*pointer = concrete
+	}
+	return ok
+}
+
 // fault is the shared implementation embedded by every typed SDK error. It
 // keeps the base *Error private so the carrier can only be reached through
 // errors.As, never mutated through a promoted field.
@@ -792,8 +842,18 @@ func retryableStatus(err error) bool {
 	}
 	var sdkError *Error
 	if errors.As(err, &sdkError) {
-		if sdkError.Retryability() == RetryNever {
+		switch sdkError.Retryability() {
+		case RetryNever:
+			// Fail closed: an explicit never, an unrecognised class, and the
+			// generated UNRECOGNIZED sentinel all land here.
 			return false
+		case RetrySafe:
+			// The server's own classification is authoritative when it names a
+			// class the transport status cannot express — an INTERNAL the
+			// control plane knows is safe to repeat, for one. Without this the
+			// SDK would type such a failure *RetryableServiceError and then
+			// refuse to retry it.
+			return true
 		}
 		return sdkError.Retryable || retryableCode(grpcCodeFromCode(sdkError.Code))
 	}

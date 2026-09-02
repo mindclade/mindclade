@@ -25,10 +25,16 @@ import (
 	workflowv1 "github.com/mindclade/mindclade/protocols/generated/go/workflow/v1"
 )
 
-// safeUnaryMethods is the fully-qualified transport safety allowlist. Unknown
-// methods and all mutations default to one attempt. A descriptor-conformance
-// test keeps these identities tied to the generated service estate.
-var safeUnaryMethods = map[string]struct{}{
+// safeMethods is the fully-qualified transport safety allowlist. Unknown
+// methods and all mutations default to one attempt.
+//
+// Retry eligibility is a property of the RPC, not of the call shape, so this
+// set covers server-streaming reads as well as unary ones. The name once said
+// "unary" and the five server-streaming reads were simply absent, so Go
+// disagreed with the other three facades about whether replaying them was
+// valid. tests/conformance/test_sdk_retry_safety_parity.py now binds this set
+// to the descriptor-derived RPC estate and to its three siblings.
+var safeMethods = map[string]struct{}{
 	"/mindclade.internal.admin.v1.AdminService/GetTenant":                      {},
 	"/mindclade.internal.admin.v1.AdminService/GetProject":                     {},
 	"/mindclade.internal.admin.v1.AdminService/ListProjects":                   {},
@@ -85,6 +91,15 @@ var safeUnaryMethods = map[string]struct{}{
 	"/mindclade.internal.workflow.v1.WorkflowService/ListWorkflowRuns":         {},
 	"/mindclade.internal.workflow.v1.ApprovalService/GetApprovalRequest":       {},
 	"/mindclade.internal.workflow.v1.ApprovalService/ListApprovalRequests":     {},
+
+	// Server-streaming reads. Opening one of these streams is as replayable as
+	// any other read; a watcher reconnect resumes from the last acknowledged
+	// cursor rather than re-observing what the caller already saw.
+	"/mindclade.internal.artifact.v1.ArtifactService/DownloadArtifact": {},
+	"/mindclade.internal.inference.v1.InferenceService/WatchInference": {},
+	"/mindclade.internal.job.v1.OperationService/WatchOperation":       {},
+	"/mindclade.internal.training.v1.TrainingService/WatchTrainingRun": {},
+	"/mindclade.internal.workflow.v1.WorkflowService/WatchWorkflowRun": {},
 }
 
 type mutationRetryValidator func(any, requestMetadata, Config) bool
@@ -513,7 +528,7 @@ func retryPermitted(method string, request any, metadata requestMetadata, config
 	if neverRetryMethods[method] {
 		return false
 	}
-	if _, ok := safeUnaryMethods[method]; ok {
+	if _, ok := safeMethods[method]; ok {
 		return true
 	}
 	validator, ok := idempotentMutationMethods[method]

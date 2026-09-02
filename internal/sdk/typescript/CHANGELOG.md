@@ -37,6 +37,11 @@ in review.
 - The README claimed every watcher skips a redelivered prefix. Only `operations`
   skips; `inference`, `workflows`, and `training` are strictly contiguous and
   reject a replay as a terminal `protocol` failure. The claim is corrected.
+- The README claimed the package consumed "generated Protobuf-ES **and Connect**
+  contracts". There is no connect-es code generation in this repository:
+  `protocols/generated/typescript` contains protobuf-ES descriptors (`*_pb.ts`)
+  only, and Connect clients are constructed at runtime by `createClient` against
+  those descriptors. The claim is corrected.
 
 ### Added
 
@@ -63,14 +68,6 @@ in review.
   by the appendix-A08 package contract (owner, entrypoints, data
   classifications, dependency restrictions, compatibility contract, failure
   modes, retryable-versus-terminal errors, status).
-
-### Fixed
-
-- The README claimed the package consumed "generated Protobuf-ES **and Connect**
-  contracts". There is no connect-es code generation in this repository:
-  `protocols/generated/typescript` contains protobuf-ES descriptors (`*_pb.ts`)
-  only, and Connect clients are constructed at runtime by `createClient` against
-  those descriptors. The claim is corrected.
 
 ---
 

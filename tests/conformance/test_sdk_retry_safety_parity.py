@@ -49,7 +49,7 @@ def go_policy() -> dict[str, str]:
     text = (REPOSITORY / "internal/sdk/go/mindclade/method_policy.go").read_text(encoding="utf-8")
     policy: dict[str, str] = {}
     for marker, classification in (
-        ("var safeUnaryMethods", SAFE),
+        ("var safeMethods", SAFE),
         ("var idempotentMutationMethods", IDEMPOTENT),
         ("var neverRetryMethods", NEVER),
     ):

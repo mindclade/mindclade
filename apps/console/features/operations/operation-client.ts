@@ -84,7 +84,7 @@ export class OperationController {
 
 	/**
 	 * Every operation across the whole cursor, bounded by the SDK's traversal
-	 * budgets (100 items per page and 10,000 items by default). Exceeding a
+	 * budgets (100 pages and 10,000 items by default). Exceeding a
 	 * budget surfaces as an SDK error rather than a silently truncated list.
 	 */
 	async listAll(options: ConsoleListOptions = {}): Promise<readonly OperationView[]> {

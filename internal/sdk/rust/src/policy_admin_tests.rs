@@ -565,14 +565,14 @@ fn policy_admin_retry_registry_is_complete_and_unknowns_fail_closed() {
     assert!(
         idempotent
             .iter()
-            .all(|method| registered_method_policy(method) == CallSafety::Idempotent)
+            .all(|method| registered_method_policy(method).safety() == CallSafety::Idempotent)
     );
     assert!(
         safe.iter()
-            .all(|method| registered_method_policy(method) == CallSafety::Safe)
+            .all(|method| registered_method_policy(method).safety() == CallSafety::Safe)
     );
     assert_eq!(
-        registered_method_policy("/mindclade.internal.admin.v1.AdminService/Unknown"),
+        registered_method_policy("/mindclade.internal.admin.v1.AdminService/Unknown").safety(),
         CallSafety::Unsafe
     );
 }

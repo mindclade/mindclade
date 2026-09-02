@@ -22,6 +22,7 @@ rust_library(
 rust_test(
     name = "mindclade_internal_sdk_test",
     srcs = glob(["src/**/*.rs"]),
+    compile_data = ["Cargo.toml"],
     crate_root = "src/lib.rs",
     data = [":governed_sources"],
     edition = "2024",

@@ -9,7 +9,7 @@ use tonic::{
     Request, Response, Status,
     codegen::{async_trait, tokio_stream::Stream},
     metadata::MetadataValue,
-    service::{Interceptor, interceptor::InterceptedService},
+    service::{Interceptor as TonicInterceptor, interceptor::InterceptedService},
     transport::{Certificate, Channel, ClientTlsConfig, Endpoint},
 };
 
@@ -224,6 +224,9 @@ impl GeneratedClients {
             project_id: metadata_value(config.identity.project_id())?,
             principal_id: metadata_value(config.identity.principal_id())?,
             timeout: config.rpc_timeout,
+            sdk_metadata: config.sdk_metadata(),
+            custom_metadata: Arc::clone(&config.custom_metadata),
+            interceptors: Arc::clone(&config.interceptors),
         };
         Ok(Self::new(AuthorizedChannel::new(channel, interceptor)))
     }
@@ -258,9 +261,12 @@ pub struct GeneratedClientInterceptor {
     project_id: MetadataValue<tonic::metadata::Ascii>,
     principal_id: MetadataValue<tonic::metadata::Ascii>,
     timeout: std::time::Duration,
+    sdk_metadata: &'static str,
+    custom_metadata: Arc<[(String, String)]>,
+    interceptors: Arc<[Arc<dyn crate::Interceptor>]>,
 }
 
-impl Interceptor for GeneratedClientInterceptor {
+impl TonicInterceptor for GeneratedClientInterceptor {
     fn call(&mut self, mut request: Request<()>) -> Result<Request<()>, Status> {
         let credential_is_stale = self.expires_at.is_some_and(|expires_at| {
             expires_at
@@ -320,8 +326,16 @@ impl Interceptor for GeneratedClientInterceptor {
             .insert("x-mindclade-expected-principal", self.principal_id.clone());
         request.metadata_mut().insert(
             "x-mindclade-sdk",
-            MetadataValue::from_static("mindclade-internal-rust-sdk/0.1"),
+            MetadataValue::try_from(self.sdk_metadata)
+                .map_err(|_| Status::internal("sdk identity failed"))?,
         );
+        for (key, value) in self.custom_metadata.iter() {
+            let key = tonic::metadata::AsciiMetadataKey::from_bytes(key.as_bytes())
+                .map_err(|_| Status::invalid_argument("custom metadata key is invalid"))?;
+            let value = MetadataValue::try_from(value.as_str())
+                .map_err(|_| Status::invalid_argument("custom metadata value is invalid"))?;
+            request.metadata_mut().insert(key, value);
+        }
         if request.metadata().get("x-request-id").is_none() {
             request.metadata_mut().insert(
                 "x-request-id",
@@ -337,7 +351,48 @@ impl Interceptor for GeneratedClientInterceptor {
             );
         }
         request.set_timeout(timeout);
+        self.apply_caller_interceptors(&mut request, timeout)?;
         Ok(request)
+    }
+}
+
+impl GeneratedClientInterceptor {
+    /// Runs caller interceptors last, after every SDK-owned key including the
+    /// credential. `InterceptorMetadata` refuses reserved and
+    /// credential-bearing keys and cannot read values, so this seam can
+    /// neither observe nor displace the credential installed above.
+    fn apply_caller_interceptors(
+        &self,
+        request: &mut Request<()>,
+        timeout: std::time::Duration,
+    ) -> Result<(), Status> {
+        if self.interceptors.is_empty() {
+            return Ok(());
+        }
+        let correlation = |key: &str| -> String {
+            request
+                .metadata()
+                .get(key)
+                .and_then(|value| value.to_str().ok())
+                .unwrap_or_default()
+                .to_owned()
+        };
+        let request_id = correlation("x-request-id");
+        let trace_id = correlation("x-trace-id");
+        let context = crate::InterceptContext {
+            method: "",
+            attempt: 0,
+            request_id: &request_id,
+            trace_id: &trace_id,
+            remaining: timeout,
+        };
+        let mut view = crate::InterceptorMetadata::new(request.metadata_mut());
+        for interceptor in self.interceptors.iter() {
+            interceptor
+                .intercept(&context, &mut view)
+                .map_err(|_| Status::invalid_argument("request interceptor rejected the call"))?;
+        }
+        Ok(())
     }
 }
 
@@ -4354,7 +4409,10 @@ mod message_size_tests {
 
 #[cfg(test)]
 mod generated_client_policy_tests {
-    use std::time::{Duration, SystemTime};
+    use std::{
+        sync::Arc,
+        time::{Duration, SystemTime},
+    };
 
     use tonic::{Request, metadata::MetadataValue, service::Interceptor};
 
@@ -4370,7 +4428,82 @@ mod generated_client_policy_tests {
             project_id: metadata_value("project-01").unwrap(),
             principal_id: metadata_value("worker-01").unwrap(),
             timeout: Duration::from_secs(20),
+            sdk_metadata: crate::config::sdk_metadata_value(false),
+            custom_metadata: Arc::from(Vec::new()),
+            interceptors: Arc::from(Vec::new()),
         }
+    }
+
+    #[derive(Debug, Default)]
+    struct SeamInterceptor {
+        keys: std::sync::Mutex<Vec<String>>,
+        refusals: std::sync::atomic::AtomicUsize,
+    }
+
+    impl crate::Interceptor for SeamInterceptor {
+        fn intercept(
+            &self,
+            _context: &crate::InterceptContext<'_>,
+            metadata: &mut crate::InterceptorMetadata<'_>,
+        ) -> Result<(), crate::Error> {
+            *self.keys.lock().unwrap() = metadata
+                .keys()
+                .into_iter()
+                .map(str::to_owned)
+                .collect::<Vec<String>>();
+            for key in ["authorization", "x-api-key", "x-request-id"] {
+                if metadata.insert(key, "forged").is_err() {
+                    self.refusals
+                        .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                }
+                if metadata.remove(key).is_err() {
+                    self.refusals
+                        .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                }
+            }
+            metadata.insert("x-hop", "edge")
+        }
+    }
+
+    #[test]
+    fn raw_generated_client_interceptor_seam_cannot_inject_or_strip_a_credential() {
+        let seam = Arc::new(SeamInterceptor::default());
+        let mut policy = interceptor(SystemTime::now() + Duration::from_mins(5));
+        policy.interceptors = Arc::from(vec![Arc::clone(&seam) as Arc<dyn crate::Interceptor>]);
+        let request = policy.call(Request::new(())).unwrap();
+        // The SDK's own credential survives untouched and the caller seam
+        // could neither forge nor strip one.
+        let authorization = request.metadata().get("authorization").unwrap();
+        assert!(authorization.is_sensitive());
+        assert_eq!(authorization, "Bearer short-lived-test-token");
+        assert_eq!(request.metadata().get("x-hop").unwrap(), "edge");
+        // The SDK's correlation metadata is still present and unforged.
+        assert!(request.metadata().get("x-request-id").is_some());
+        let keys = seam.keys.lock().unwrap().clone();
+        assert!(keys.iter().any(|key| key == "x-request-id"));
+        // Six reserved writes were refused: insert and remove for each of the
+        // three keys the seam attempted.
+        assert_eq!(seam.refusals.load(std::sync::atomic::Ordering::Relaxed), 6);
+    }
+
+    #[test]
+    fn raw_generated_clients_carry_structured_sdk_metadata() {
+        let mut policy = interceptor(SystemTime::now() + Duration::from_mins(5));
+        let request = policy.call(Request::new(())).unwrap();
+        let value = request.metadata().get("x-mindclade-sdk").unwrap();
+        let value = value.to_str().unwrap();
+        assert_eq!(value, crate::config::sdk_metadata_value(false));
+        assert!(value.starts_with(&format!("{}/{}", crate::SDK_NAME, crate::SDK_VERSION)));
+        assert!(value.contains("lang=rust"));
+        assert!(value.len() <= 256);
+    }
+
+    #[test]
+    fn raw_generated_clients_forward_configured_custom_metadata() {
+        let mut policy = interceptor(SystemTime::now() + Duration::from_mins(5));
+        policy.custom_metadata = Arc::from(vec![("x-team".to_owned(), "platform".to_owned())]);
+        let request = policy.call(Request::new(())).unwrap();
+        assert_eq!(request.metadata().get("x-team").unwrap(), "platform");
     }
 
     #[test]
@@ -4413,6 +4546,9 @@ mod generated_client_policy_tests {
             project_id: metadata_value("project-01").unwrap(),
             principal_id: metadata_value("worker-01").unwrap(),
             timeout: Duration::from_secs(20),
+            sdk_metadata: crate::config::sdk_metadata_value(false),
+            custom_metadata: Arc::from(Vec::new()),
+            interceptors: Arc::from(Vec::new()),
         };
         let mut request = Request::new(());
         request.metadata_mut().insert(

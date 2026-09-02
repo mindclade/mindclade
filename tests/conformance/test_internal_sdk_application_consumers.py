@@ -22,6 +22,8 @@ CONSUMER_SOURCES = {
     "python": (
         Path("examples/agent_workflow/simulate.py"),
         Path("examples/sdk/download_artifact.py"),
+        Path("examples/sdk/handle_errors.py"),
+        Path("examples/sdk/list_operations.py"),
         Path("examples/sdk/submit_operation.py"),
         Path("workers/training_worker/python/control_plane.py"),
         Path("workers/training_worker/python/main.py"),
@@ -35,7 +37,9 @@ CONSUMER_SOURCES = {
         Path("apps/console/lib/control-plane.ts"),
         Path("apps/console/features/operations/operation-client.ts"),
         Path("apps/console/features/operations/operation-types.ts"),
+        Path("examples/sdk/configure_client.ts"),
         Path("examples/sdk/follow_operation.ts"),
+        Path("examples/sdk/read_request_id.ts"),
     ),
 }
 
@@ -78,6 +82,7 @@ class InternalSdkApplicationConsumerTest(unittest.TestCase):
         test_paths = (
             Path("examples/agent_workflow/test_simulate.py"),
             Path("examples/sdk/follow_operation.test.ts"),
+            Path("examples/sdk/sdk_examples.test.ts"),
             Path("examples/sdk/test_sdk_examples.py"),
             Path("tools/mindcladectl/command_test.go"),
             Path("workers/training_worker/tests/test_control_plane.py"),

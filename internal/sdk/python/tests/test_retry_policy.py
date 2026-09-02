@@ -7,6 +7,7 @@ from datetime import UTC, datetime, timedelta
 
 import grpc
 from google.protobuf.message import Message
+from mindclade.internal.agent.v1 import agent_service_pb2
 from mindclade.internal.job.v1 import job_service_pb2
 from mindclade.job.v1 import operation_pb2
 from mindclade_internal_sdk import (
@@ -23,10 +24,16 @@ from mindclade_internal_sdk import (
     TransportError,
     UnavailableError,
 )
-from mindclade_internal_sdk._invocation import SyncInvoker
+from mindclade_internal_sdk._invocation import SyncInvoker, canonical_digest, command_context
 from mindclade_internal_sdk._retry import DEFAULT_JITTER, retry_delay, should_retry
-from mindclade_internal_sdk.calls import prepare_call
-from mindclade_internal_sdk.method_policy import retry_permitted
+from mindclade_internal_sdk.calls import PreparedCall, prepare_call
+from mindclade_internal_sdk.method_policy import (
+    COMMIT_AGENT_STEP,
+    IDEMPOTENT_MUTATION_METHODS,
+    NEVER_RETRY_METHODS,
+    SAFE_UNARY_METHODS,
+    retry_permitted,
+)
 from mindclade_internal_sdk.testing import FakeAsyncTransport, FakeRpcError, FakeSyncTransport
 from mindclade_internal_sdk.transport import EXPIRE_ATTEMPT_LEASES, GET_OPERATION, Metadata
 
@@ -430,6 +437,96 @@ class ExpireAttemptLeasesTest(unittest.TestCase):
         with self.assertRaises(UnavailableError):
             client.generated.unary(EXPIRE_ATTEMPT_LEASES, request)
         self.assertEqual(attempts, 1)
+
+    def test_the_never_retry_table_outranks_verified_command_intent(self) -> None:
+        """A perfectly-formed CommandContext must not promote the raw-only RPC.
+
+        ``ExpireAttemptLeasesRequest`` embeds a ``CommandContext`` exactly like
+        every retryable mutation, so omission from the mutation tables is not a
+        durable guarantee. The never-retry tier is checked first and is what
+        actually holds the contract's "MUST NEVER be retried".
+        """
+
+        client_config = config()
+        call = prepare_call(
+            CallOptions(idempotency_key="k" * 32),
+            default_timeout=2.0,
+            require_idempotency=True,
+        )
+        request = job_service_pb2.ExpireAttemptLeasesRequest(
+            parent="tenants/tenant-1/projects/project-1",
+            limit=5,
+        )
+        unsigned = job_service_pb2.ExpireAttemptLeasesRequest()
+        unsigned.CopyFrom(request)
+        unsigned.ClearField("context")
+        request.context.CopyFrom(
+            command_context(client_config, call, request_digest=canonical_digest(unsigned))
+        )
+        self.assertFalse(retry_permitted(EXPIRE_ATTEMPT_LEASES, request, call, client_config))
+        self.assertIn(EXPIRE_ATTEMPT_LEASES, NEVER_RETRY_METHODS)
+        self.assertNotIn(EXPIRE_ATTEMPT_LEASES, IDEMPOTENT_MUTATION_METHODS)
+        self.assertNotIn(EXPIRE_ATTEMPT_LEASES, SAFE_UNARY_METHODS)
+
+    def test_the_three_retry_tiers_never_overlap(self) -> None:
+        self.assertEqual(SAFE_UNARY_METHODS & IDEMPOTENT_MUTATION_METHODS, frozenset())
+        self.assertEqual(SAFE_UNARY_METHODS & NEVER_RETRY_METHODS, frozenset())
+        self.assertEqual(IDEMPOTENT_MUTATION_METHODS & NEVER_RETRY_METHODS, frozenset())
+
+
+class DeclaredMutationTableTest(unittest.TestCase):
+    """The escape hatch and the ergonomic facades must agree on one RPC's safety."""
+
+    def _signed_commit_agent_step(
+        self,
+    ) -> tuple[agent_service_pb2.CommitAgentStepRequest, PreparedCall, ClientConfig]:
+        client_config = config()
+        call = prepare_call(
+            CallOptions(idempotency_key="j" * 32),
+            default_timeout=2.0,
+            require_idempotency=True,
+        )
+        request = agent_service_pb2.CommitAgentStepRequest(
+            run_etag="etag-1",
+            expected_next_step_sequence=2,
+        )
+        unsigned = agent_service_pb2.CommitAgentStepRequest()
+        unsigned.CopyFrom(request)
+        unsigned.ClearField("context")
+        request.context.CopyFrom(
+            command_context(client_config, call, request_digest=canonical_digest(unsigned))
+        )
+        return request, call, client_config
+
+    def test_a_verified_agent_mutation_is_retryable_through_the_escape_hatch(self) -> None:
+        """``client.agents.commit_step`` retries, so the same RPC must retry here too."""
+
+        request, call, client_config = self._signed_commit_agent_step()
+        self.assertIn(COMMIT_AGENT_STEP, IDEMPOTENT_MUTATION_METHODS)
+        self.assertTrue(retry_permitted(COMMIT_AGENT_STEP, request, call, client_config))
+
+    def test_an_agent_mutation_without_command_intent_is_not_retryable(self) -> None:
+        _, call, client_config = self._signed_commit_agent_step()
+        bare = agent_service_pb2.CommitAgentStepRequest(
+            run_etag="etag-1",
+            expected_next_step_sequence=2,
+        )
+        self.assertFalse(retry_permitted(COMMIT_AGENT_STEP, bare, call, client_config))
+
+    def test_a_tampered_agent_mutation_is_not_retryable(self) -> None:
+        request, call, client_config = self._signed_commit_agent_step()
+        tampered = agent_service_pb2.CommitAgentStepRequest()
+        tampered.CopyFrom(request)
+        tampered.run_etag = "etag-tampered"
+        self.assertFalse(retry_permitted(COMMIT_AGENT_STEP, tampered, call, client_config))
+
+    def test_an_undeclared_mutation_route_fails_closed(self) -> None:
+        """A route reachable through the dispatch but undeclared must not retry."""
+
+        request, call, client_config = self._signed_commit_agent_step()
+        undeclared = "/mindclade.internal.agent.v1.AgentService/CommitAgentStepV2"
+        self.assertNotIn(undeclared, IDEMPOTENT_MUTATION_METHODS)
+        self.assertFalse(retry_permitted(undeclared, request, call, client_config))
 
 
 class AsyncRetryLoopTest(unittest.IsolatedAsyncioTestCase):

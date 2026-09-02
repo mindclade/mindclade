@@ -838,14 +838,13 @@ impl<T> Pages<T> {
         // A page already in flight from a `Stream` poll is adopted rather than
         // re-issued, so the async accessors and the stream adapter can be
         // mixed without duplicating an RPC.
-        let future = match self.in_flight.take() {
-            Some(future) => future,
-            None => {
-                if self.page_hops >= self.limits.max_pages {
-                    return Err(self.exhausted("page"));
-                }
-                (self.fetch)(self.token.clone())
+        let future = if let Some(future) = self.in_flight.take() {
+            future
+        } else {
+            if self.page_hops >= self.limits.max_pages {
+                return Err(self.exhausted("page"));
             }
+            (self.fetch)(self.token.clone())
         };
         let result = future.await;
         self.accept_page(result)
@@ -911,7 +910,7 @@ impl<T> fmt::Debug for Pages<T> {
 /// it, so the adapter needs no self-referential state and no unsafe code. The
 /// same budgets, repeated-cursor guard, and fail-closed latch apply as when
 /// the cursor is advanced with [`Pages::try_next`].
-impl<T: Send + 'static> Stream for Pages<T> {
+impl<T: Send + Unpin + 'static> Stream for Pages<T> {
     type Item = Result<T, Error>;
 
     fn poll_next(self: Pin<&mut Self>, context: &mut Context<'_>) -> Poll<Option<Self::Item>> {

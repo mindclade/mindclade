@@ -2608,3 +2608,189 @@ func TestInterceptorSeamIsExplicitAndChainedInsideSDKPolicy(t *testing.T) {
 		t.Fatal("a caller interceptor ran before any RPC was issued")
 	}
 }
+
+// TestLocallyRaisedErrorsReachTheTypedHierarchy pins the guarantee the README's
+// error table makes for failures the SDK raises itself rather than decoding
+// from a status: a client-side validation refusal is a *ValidationError, and a
+// credential acquisition failure is an *AuthenticationError. Before the base
+// carrier learned to classify itself these matched nothing, so a caller
+// switching on the documented hierarchy silently missed every local failure.
+func TestLocallyRaisedErrorsReachTheTypedHierarchy(t *testing.T) {
+	tests := map[string]struct {
+		err   error
+		match func(error) bool
+		code  Code
+	}{
+		"validation": {
+			err:   invalidArgument("request is malformed"),
+			match: func(err error) bool { var typed *ValidationError; return errors.As(err, &typed) },
+			code:  CodeInvalidArgument,
+		},
+		"credential acquisition": {
+			err:   &Error{Code: CodeUnauthenticated, Message: "workload identity credential acquisition failed"},
+			match: func(err error) bool { var typed *AuthenticationError; return errors.As(err, &typed) },
+			code:  CodeUnauthenticated,
+		},
+		"protocol violation": {
+			err:   protocolDataLoss("list response repeated an opaque page token"),
+			match: func(err error) bool { var typed *TransportError; return errors.As(err, &typed) },
+			code:  CodeDataLoss,
+		},
+		"pagination budget": {
+			err:   paginationLimit("automatic pagination exceeded its item budget"),
+			match: func(err error) bool { var typed *QuotaError; return errors.As(err, &typed) },
+			code:  CodeResourceExhausted,
+		},
+	}
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			if !test.match(test.err) {
+				t.Fatalf("locally raised %T is unreachable through the documented typed error", test.err)
+			}
+			var base *Error
+			if !errors.As(test.err, &base) || base.Code != test.code {
+				t.Fatalf("base carrier = %#v, want code %s", base, test.code)
+			}
+			var contract MindcladeError
+			if !errors.As(test.err, &contract) || contract.ErrorCode() != test.code {
+				t.Fatalf("MindcladeError contract = %#v, want code %s", contract, test.code)
+			}
+			var mismatched *NotFoundError
+			if test.code != CodeNotFound && errors.As(test.err, &mismatched) {
+				t.Fatalf("classification is not exclusive: %T also matched *NotFoundError", test.err)
+			}
+		})
+	}
+}
+
+// TestServerClassifiedRetrySafeStatusIsRetried proves the one retry predicate
+// agrees with the one classifier. An INTERNAL the control plane labels
+// RETRY_CLASS_SAFE is typed *RetryableServiceError, so the SDK must actually
+// repeat it; classifying a failure as retryable and then refusing to retry it
+// would make the README's error table and its retry section contradict.
+func TestServerClassifiedRetrySafeStatusIsRetried(t *testing.T) {
+	retrySafeInternal := func() error {
+		grpcStatus, err := status.New(codes.Internal, "raw provider text").WithDetails(
+			&commonv1.ErrorDetail{RetryClass: commonv1.RetryClass_RETRY_CLASS_SAFE},
+		)
+		if err != nil {
+			t.Fatalf("build retry-safe status: %v", err)
+		}
+		return grpcStatus.Err()
+	}
+	normalized := normalizeError(retrySafeInternal())
+	var retryable *RetryableServiceError
+	if !errors.As(normalized, &retryable) {
+		t.Fatalf("retry-safe internal classified as %T, want *RetryableServiceError", normalized)
+	}
+	if !retryableStatus(normalized) {
+		t.Fatal("retry-safe internal is classified retryable but the retry predicate refuses it")
+	}
+
+	config := retryTestConfig(t, func(int64) int64 { return 0 })
+	config.MaxAttempts = 3
+	attempts := 0
+	err := unaryInterceptor(config)(context.Background(), safeUnaryMethod, nil, nil, nil,
+		func(context.Context, string, any, any, *grpc.ClientConn, ...grpc.CallOption) error {
+			attempts++
+			return retrySafeInternal()
+		},
+	)
+	if attempts != config.MaxAttempts {
+		t.Fatalf("attempts = %d, want the full budget of %d for a server-classified retry-safe failure", attempts, config.MaxAttempts)
+	}
+	if !errors.As(err, &retryable) {
+		t.Fatalf("terminal error = %T, want *RetryableServiceError", err)
+	}
+
+	// Fail closed in the other direction: an unrecognised class never retries.
+	unknownClass, statusErr := status.New(codes.Unavailable, "raw provider text").WithDetails(
+		&commonv1.ErrorDetail{RetryClass: commonv1.RetryClass(9999)},
+	)
+	if statusErr != nil {
+		t.Fatalf("build unknown-class status: %v", statusErr)
+	}
+	if retryableStatus(normalizeError(unknownClass.Err())) {
+		t.Fatal("an unrecognised retry class authorized a retry")
+	}
+}
+
+// trailerGuardStream fails the test if Trailer is read before a receive has
+// returned a non-nil error. gRPC defines ClientStream.Trailer only at that
+// point; reading it mid-stream is an unsynchronized read of state the
+// transport's reader goroutine still owns, which the race detector cannot see
+// through a hand-written double, so the double asserts the contract itself.
+type trailerGuardStream struct {
+	t         *testing.T
+	ctx       context.Context //nolint:containedctx // The gRPC stream test double must return the interceptor context.
+	headers   metadata.MD
+	trailers  metadata.MD
+	remaining int
+	ended     bool
+}
+
+func (stream *trailerGuardStream) Header() (metadata.MD, error) { return stream.headers, nil }
+
+func (stream *trailerGuardStream) Trailer() metadata.MD {
+	stream.t.Helper()
+	if !stream.ended {
+		stream.t.Error("Trailer was read before a receive returned an error, which gRPC leaves undefined")
+	}
+	return stream.trailers
+}
+
+func (stream *trailerGuardStream) CloseSend() error         { return nil }
+func (stream *trailerGuardStream) Context() context.Context { return stream.ctx }
+func (stream *trailerGuardStream) SendMsg(any) error        { return nil }
+
+func (stream *trailerGuardStream) RecvMsg(any) error {
+	if stream.remaining > 0 {
+		stream.remaining--
+		return nil
+	}
+	stream.ended = true
+	return io.EOF
+}
+
+func TestStreamCaptureNeverReadsTrailersMidStream(t *testing.T) {
+	config := defaultConfig()
+	config.DefaultRPCTimeout = time.Second
+	description := &internaljobv1.OperationService_ServiceDesc.Streams[0]
+
+	var captured ResponseMetadata
+	ctx, request, err := withRequestOptions(context.Background(), WithResponseMetadata(&captured))
+	if err != nil {
+		t.Fatal(err)
+	}
+	stream, err := streamInterceptor(config)(ctx, description, nil, "/mindclade.internal.job.v1.OperationService/WatchOperation",
+		func(callContext context.Context, _ *grpc.StreamDesc, _ *grpc.ClientConn, _ string, _ ...grpc.CallOption) (grpc.ClientStream, error) {
+			return &trailerGuardStream{
+				t:         t,
+				ctx:       callContext,
+				headers:   metadata.Pairs("x-request-id", "request-stream"),
+				trailers:  metadata.Pairs("x-trace-id", "trace-stream"),
+				remaining: 2,
+			}, nil
+		},
+	)
+	if err != nil {
+		t.Fatalf("open stream: %v", err)
+	}
+	for index := 0; index < 2; index++ {
+		if err = stream.RecvMsg(nil); err != nil {
+			t.Fatalf("receive %d: %v", index, err)
+		}
+		if captured.RequestID != "request-stream" {
+			t.Fatalf("early capture = %+v, want the request id published from headers alone", captured)
+		}
+		if captured.TraceID != request.traceID {
+			t.Fatalf("early capture trace id = %q, want the identity the SDK sent before trailers exist", captured.TraceID)
+		}
+	}
+	if err = stream.RecvMsg(nil); !errors.Is(err, io.EOF) {
+		t.Fatalf("terminal receive = %v, want EOF", err)
+	}
+	if captured.TraceID != "trace-stream" {
+		t.Fatalf("terminal capture = %+v, want the trailer trace id once the stream has ended", captured)
+	}
+}

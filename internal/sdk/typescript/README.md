@@ -509,7 +509,7 @@ See `component.yaml` and the appendix below.
 
 ---
 
-# Package contract (appendix A08)
+## Package contract (appendix A08)
 
 ### Purpose
 

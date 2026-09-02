@@ -3,10 +3,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from pathlib import Path
 
 from mindclade_internal_sdk import CallOptions, Client, MindcladeError, NotFoundError
-from mindclade_internal_sdk.resources import ArtifactRef
+from mindclade_internal_sdk.resources import Operation
 
 
 @dataclass(frozen=True, slots=True)
@@ -26,29 +25,25 @@ class FailureReport:
     invalid_fields: tuple[str, ...]
 
 
-def download_artifact_if_present(
+def operation_if_present(
     client: Client,
+    operation_name: str,
     *,
-    alias: str,
-    destination: Path,
-    parent: str | None = None,
     options: CallOptions | None = None,
-) -> ArtifactRef | None:
-    """Publish the aliased artifact, or return ``None`` when it does not exist.
+) -> Operation | None:
+    """Return the operation, or ``None`` when the control plane has no such name.
 
-    Exactly one typed class is caught, because a missing alias is the only
-    failure this caller can act on. Authentication, authorization, conflict,
-    quota and service failures keep the class the SDK gave them and reach the
-    caller unchanged. Nothing here inspects a gRPC status, and nothing retries:
-    the SDK already retried whatever was safe to retry before raising.
+    Exactly one typed class is caught, because absence is the only failure this
+    caller can turn into a value. Authentication, authorization, conflict, quota
+    and service failures keep the class the SDK gave them and reach the caller
+    unchanged. Nothing here inspects a gRPC status, and nothing retries: the SDK
+    already retried whatever was safe to retry before raising.
     """
 
     try:
-        artifact = client.artifacts.resolve_alias(alias, parent=parent, options=options)
+        return client.operations.get(operation_name, options=options)
     except NotFoundError:
         return None
-    client.artifacts.download_file(artifact, destination, options=options)
-    return artifact
 
 
 def failure_report(error: MindcladeError) -> FailureReport:
@@ -56,9 +51,9 @@ def failure_report(error: MindcladeError) -> FailureReport:
 
     Every value is read from the error itself: the stable code, the SDK's own
     retryability decision, the server's retry-after budget, the correlation
-    identifiers that also appear on a successful call, and the validated field
+    identifiers that a successful call also reports, and the validated field
     violations. The error hierarchy is shared by all four language SDKs, so this
-    projection stays the same shape wherever it is written.
+    projection keeps the same shape wherever it is written.
     """
 
     return FailureReport(
