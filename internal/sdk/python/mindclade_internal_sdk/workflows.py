@@ -528,6 +528,7 @@ class Workflows:
                         name=run_name, after_transition_sequence=cursor
                     ),
                     call=_watch_call(base, remaining),
+                    cancellation=cancellation,
                 ):
                     if cancellation is not None and cancellation.is_set():
                         raise CancelledError("workflow watch was cancelled")
@@ -828,6 +829,7 @@ class AsyncWorkflows:
                         name=run_name, after_transition_sequence=cursor
                     ),
                     call=_watch_call(base, remaining),
+                    cancellation=cancellation,
                 ):
                     if cancellation is not None and cancellation.is_set():
                         raise CancelledError("workflow watch was cancelled")

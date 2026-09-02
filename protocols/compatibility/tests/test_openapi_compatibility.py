@@ -1231,7 +1231,19 @@ class OpenApiCompatibilityTest(unittest.TestCase):
                                 "name": "name",
                                 "required": True,
                                 "schema": {"maxLength": 64, "type": "string"},
-                            }
+                            },
+                            {
+                                "in": "query",
+                                "name": "labels",
+                                "required": False,
+                                "schema": {
+                                    "additionalProperties": {
+                                        "maxLength": 8,
+                                        "type": "string",
+                                    },
+                                    "type": "object",
+                                },
+                            },
                         ],
                         "responses": {
                             "200": {
@@ -1257,6 +1269,13 @@ class OpenApiCompatibilityTest(unittest.TestCase):
                             "name": {"maxLength": 64, "type": "string"},
                             "state": {"enum": ["READY"], "type": "string"},
                             "score": {"maximum": 100, "minimum": 0, "type": "integer"},
+                            "attributes": {
+                                "additionalProperties": {
+                                    "maxLength": 8,
+                                    "type": "string",
+                                },
+                                "type": "object",
+                            },
                         },
                     }
                 }
@@ -1291,6 +1310,12 @@ class OpenApiCompatibilityTest(unittest.TestCase):
                     "schema": {"type": "string"},
                 }
             ),
+            "request enum restriction": lambda value: value["paths"]["/v1/widgets/{name}"]["get"][
+                "parameters"
+            ][0]["schema"].update(enum=["widgets/one"]),
+            "tightened request map values": lambda value: value["paths"]["/v1/widgets/{name}"][
+                "get"
+            ]["parameters"][1]["schema"]["additionalProperties"].update(maxLength=4),
             "removed property": lambda value: value["components"]["schemas"]["Widget"][
                 "properties"
             ].pop("name"),
@@ -1306,6 +1331,9 @@ class OpenApiCompatibilityTest(unittest.TestCase):
             "expanded response enum": lambda value: value["components"]["schemas"]["Widget"][
                 "properties"
             ]["state"]["enum"].append("ARCHIVED"),
+            "loosened response map values": lambda value: value["components"]["schemas"]["Widget"][
+                "properties"
+            ]["attributes"]["additionalProperties"].update(maxLength=80),
             "required response field became optional": lambda value: value["components"]["schemas"][
                 "Widget"
             ]["required"].remove("name"),

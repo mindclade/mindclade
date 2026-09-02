@@ -103,7 +103,8 @@ before it leave the destination absent or unchanged.
 Persist each mutation's `idempotency_key` with durable caller intent before
 submission so crash/restart retries reuse the same identity. Consume resumable
 updates through `client.operations.watch` (or its async peer) and propagate the
-cancellation event. Runtime checks cover credentials, scope, correlation
+cancellation event. Cancellation events are one-shot signals: set them once and
+do not clear them. Runtime checks cover credentials, scope, correlation
 metadata, deadlines, page budgets, stream identity, and artifact integrity;
 generated protobuf types and the server own ordinary request-field constraints.
 

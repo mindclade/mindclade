@@ -7,7 +7,7 @@ import tempfile
 import threading
 import time
 import unittest
-from collections.abc import AsyncIterator, Iterator
+from collections.abc import AsyncIterator, Callable, Iterator
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
@@ -88,7 +88,10 @@ from mindclade_internal_sdk.transport import (
     REVOKE_MODEL_RELEASE,
     UPDATE_DATASET,
     UPLOAD_ARTIFACT_CHUNK,
+    WATCH_INFERENCE,
     WATCH_OPERATION,
+    WATCH_TRAINING_RUN,
+    WATCH_WORKFLOW_RUN,
     GrpcSyncTransport,
     Metadata,
 )
@@ -154,6 +157,65 @@ class FakeRpcError(grpc.RpcError):
 
     def trailing_metadata(self) -> Any:
         return self._metadata
+
+
+class QuietSyncStream(Iterator[Message]):
+    """A live stream that ends only when its transport call is cancelled."""
+
+    def __init__(self, *, release_on_cancel: bool = True, raise_on_cancel: bool = False) -> None:
+        self.started = threading.Event()
+        self.cancel_observed = threading.Event()
+        self.released = threading.Event()
+        self.cancel_count = 0
+        self.release_on_cancel = release_on_cancel
+        self.raise_on_cancel = raise_on_cancel
+
+    def __iter__(self) -> QuietSyncStream:
+        return self
+
+    def __next__(self) -> Message:
+        self.started.set()
+        if not self.released.wait(timeout=2):
+            raise AssertionError("quiet sync stream was not cancelled")
+        raise StopIteration
+
+    def cancel(self) -> bool:
+        self.cancel_count += 1
+        self.cancel_observed.set()
+        if self.release_on_cancel:
+            self.released.set()
+        if self.raise_on_cancel:
+            raise RuntimeError("simulated transport cancellation failure")
+        return self.cancel_count == 1
+
+
+class QuietAsyncStream(AsyncIterator[Message]):
+    """A grpc.aio-faithful stream whose local cancellation raises CancelledError."""
+
+    def __init__(self, *, release_on_cancel: bool = True, raise_on_cancel: bool = False) -> None:
+        self.started = asyncio.Event()
+        self.cancel_observed = asyncio.Event()
+        self.released = asyncio.Event()
+        self.cancel_count = 0
+        self.release_on_cancel = release_on_cancel
+        self.raise_on_cancel = raise_on_cancel
+
+    def __aiter__(self) -> QuietAsyncStream:
+        return self
+
+    async def __anext__(self) -> Message:
+        self.started.set()
+        await self.released.wait()
+        raise asyncio.CancelledError
+
+    def cancel(self) -> bool:
+        self.cancel_count += 1
+        self.cancel_observed.set()
+        if self.release_on_cancel:
+            self.released.set()
+        if self.raise_on_cancel:
+            raise RuntimeError("simulated transport cancellation failure")
+        return self.cancel_count == 1
 
 
 def secure_config(*, asynchronous: bool = False) -> ClientConfig:
@@ -1194,6 +1256,199 @@ class SyncClientTest(unittest.TestCase):
                 idempotent=True,
             )
 
+    def test_watch_rejects_missing_or_different_operation_identity(self) -> None:
+        for operation_id in ("", "operations/wrong"):
+            with self.subTest(operation_id=operation_id):
+                transport = FakeSyncTransport()
+                transport.stream_handlers[WATCH_OPERATION] = (
+                    lambda request, timeout, metadata, operation_id=operation_id: [
+                        job_service_pb2.WatchOperationResponse(
+                            sequence=1,
+                            operation=operation_pb2.Operation(
+                                operation_id=operation_id,
+                                state=operation_pb2.OPERATION_STATE_RUNNING,
+                            ),
+                        )
+                    ]
+                )
+                client = Client(secure_config(), transport=transport)
+                with self.assertRaises(ProtocolError) as raised:
+                    list(client.operations.watch("operations/expected", timeout=1))
+                self.assertEqual(raised.exception.status, grpc.StatusCode.DATA_LOSS)
+                client.close()
+
+    def test_all_live_watch_calls_cancel_once_without_reconnect_polling(self) -> None:
+        config = secure_config()
+        parent = config.project_parent
+        watches: tuple[tuple[str, str, Callable[[Client, threading.Event], Iterator[Any]]], ...] = (
+            (
+                "operation",
+                WATCH_OPERATION,
+                lambda client, event: client.operations.watch(
+                    "operations/quiet", timeout=1, cancellation=event
+                ),
+            ),
+            (
+                "training",
+                WATCH_TRAINING_RUN,
+                lambda client, event: client.training.watch(
+                    f"{parent}/trainingRuns/quiet", timeout=1, cancellation=event
+                ),
+            ),
+            (
+                "inference",
+                WATCH_INFERENCE,
+                lambda client, event: client.inference.watch(
+                    "operations/quiet", timeout=1, cancellation=event
+                ),
+            ),
+            (
+                "workflow",
+                WATCH_WORKFLOW_RUN,
+                lambda client, event: client.workflows.watch(
+                    f"{parent}/workflowRuns/quiet", timeout=1, cancellation=event
+                ),
+            ),
+        )
+        for label, method, watch in watches:
+            with self.subTest(label=label):
+                transport = FakeSyncTransport()
+                quiet = QuietSyncStream()
+
+                def quiet_handler(
+                    request: Message,
+                    timeout: float,
+                    metadata: Metadata,
+                    selected: QuietSyncStream = quiet,
+                ) -> Iterator[Message]:
+                    del request, timeout, metadata
+                    return selected
+
+                transport.stream_handlers[method] = quiet_handler
+                client = Client(config, transport=transport)
+                cancellation = threading.Event()
+                errors: list[Exception] = []
+
+                def consume(
+                    selected_watch: Callable[[Client, threading.Event], Iterator[Any]],
+                    selected_client: Client,
+                    selected_cancellation: threading.Event,
+                    selected_errors: list[Exception],
+                ) -> None:
+                    try:
+                        list(selected_watch(selected_client, selected_cancellation))
+                    except Exception as error:
+                        selected_errors.append(error)
+
+                worker = threading.Thread(
+                    target=consume,
+                    args=(watch, client, cancellation, errors),
+                )
+                worker.start()
+                self.assertTrue(quiet.started.wait(timeout=1))
+                stream_calls = [call for call in transport.calls if call.method == method]
+                self.assertEqual(len(stream_calls), 1)
+                self.assertGreater(stream_calls[0].timeout, 0.5)
+                cancellation_started = time.monotonic()
+                cancellation.set()
+                worker.join(timeout=0.5)
+                self.assertFalse(worker.is_alive())
+                self.assertLess(time.monotonic() - cancellation_started, 0.2)
+                self.assertEqual(len(errors), 1)
+                self.assertIsInstance(errors[0], CancelledError)
+                self.assertIsNone(errors[0].__cause__)
+                self.assertEqual(quiet.cancel_count, 1)
+                self.assertEqual(
+                    len([call for call in transport.calls if call.method == method]),
+                    1,
+                )
+                self.assertFalse(
+                    any(
+                        thread.name == "mindclade-stream-cancellation" and thread.is_alive()
+                        for thread in threading.enumerate()
+                    )
+                )
+                client.close()
+
+    def test_live_watch_cancellation_does_not_consume_real_retry_budget(self) -> None:
+        transport = FakeSyncTransport()
+        quiet = QuietSyncStream()
+        attempts = 0
+
+        def stream(request: Message, timeout: float, metadata: Metadata) -> Iterator[Message]:
+            del request, timeout, metadata
+            nonlocal attempts
+            attempts += 1
+            if attempts == 1:
+                raise UnavailableError("real transient failure", retryable=True, retry_after=0)
+            return quiet
+
+        transport.stream_handlers[WATCH_OPERATION] = stream
+        client = Client(secure_config(), transport=transport)
+        cancellation = threading.Event()
+        errors: list[Exception] = []
+
+        def consume() -> None:
+            try:
+                list(
+                    client.operations.watch(
+                        "operations/quiet",
+                        timeout=1,
+                        cancellation=cancellation,
+                    )
+                )
+            except Exception as error:
+                errors.append(error)
+
+        worker = threading.Thread(target=consume)
+        worker.start()
+        self.assertTrue(quiet.started.wait(timeout=1))
+        cancellation.set()
+        worker.join(timeout=1)
+        self.assertFalse(worker.is_alive())
+        self.assertEqual(attempts, 2)
+        self.assertEqual(len(errors), 1)
+        self.assertIsInstance(errors[0], CancelledError)
+        self.assertEqual(quiet.cancel_count, 1)
+
+    def test_live_watch_latches_cancellation_and_sanitizes_cancel_hook_failure(self) -> None:
+        transport = FakeSyncTransport()
+        quiet = QuietSyncStream(release_on_cancel=False, raise_on_cancel=True)
+        transport.stream_handlers[WATCH_OPERATION] = lambda request, timeout, metadata: quiet
+        client = Client(secure_config(), transport=transport)
+        cancellation = threading.Event()
+        errors: list[Exception] = []
+
+        def consume() -> None:
+            try:
+                list(
+                    client.operations.watch(
+                        "operations/quiet",
+                        timeout=1,
+                        cancellation=cancellation,
+                    )
+                )
+            except Exception as error:
+                errors.append(error)
+
+        worker = threading.Thread(target=consume)
+        worker.start()
+        self.assertTrue(quiet.started.wait(timeout=1))
+        cancellation.set()
+        self.assertTrue(quiet.cancel_observed.wait(timeout=0.2))
+        cancellation.clear()
+        quiet.released.set()
+        worker.join(timeout=0.5)
+        self.assertFalse(worker.is_alive())
+        self.assertEqual(len(errors), 1)
+        self.assertIsInstance(errors[0], CancelledError)
+        self.assertIsNone(errors[0].__cause__)
+        self.assertEqual(quiet.cancel_count, 1)
+        self.assertEqual(
+            len([call for call in transport.calls if call.method == WATCH_OPERATION]),
+            1,
+        )
+
 
 class AsyncClientTest(unittest.IsolatedAsyncioTestCase):
     async def test_bounded_async_pagination_preserves_opaque_tokens(self) -> None:
@@ -1535,6 +1790,223 @@ class AsyncClientTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(seen_after, [0, 1])
         with self.assertRaises(OperationFailedError):
             await client.operations.wait("operations/failed-async", timeout=1)
+
+    async def test_async_watch_rejects_missing_or_different_operation_identity(self) -> None:
+        for operation_id in ("", "operations/wrong"):
+            with self.subTest(operation_id=operation_id):
+                transport = FakeAsyncTransport()
+
+                async def stream(
+                    request: Message,
+                    timeout: float,
+                    metadata: Metadata,
+                    operation_id: str = operation_id,
+                ) -> AsyncIterator[Message]:
+                    del request, timeout, metadata
+                    yield job_service_pb2.WatchOperationResponse(
+                        sequence=1,
+                        operation=operation_pb2.Operation(
+                            operation_id=operation_id,
+                            state=operation_pb2.OPERATION_STATE_RUNNING,
+                        ),
+                    )
+
+                transport.stream_handlers[WATCH_OPERATION] = stream
+                client = AsyncClient(secure_config(asynchronous=True), transport=transport)
+                with self.assertRaises(ProtocolError) as raised:
+                    async for _ in client.operations.watch(
+                        "operations/expected",
+                        timeout=1,
+                    ):
+                        self.fail("invalid operation identity yielded a watch response")
+                self.assertEqual(raised.exception.status, grpc.StatusCode.DATA_LOSS)
+                await client.close()
+
+    async def test_all_async_live_watch_calls_cancel_once_without_reconnect_polling(self) -> None:
+        config = secure_config(asynchronous=True)
+        parent = config.project_parent
+        watches: tuple[
+            tuple[str, str, Callable[[AsyncClient, asyncio.Event], AsyncIterator[Any]]], ...
+        ] = (
+            (
+                "operation",
+                WATCH_OPERATION,
+                lambda client, event: client.operations.watch(
+                    "operations/quiet", timeout=1, cancellation=event
+                ),
+            ),
+            (
+                "training",
+                WATCH_TRAINING_RUN,
+                lambda client, event: client.training.watch(
+                    f"{parent}/trainingRuns/quiet", timeout=1, cancellation=event
+                ),
+            ),
+            (
+                "inference",
+                WATCH_INFERENCE,
+                lambda client, event: client.inference.watch(
+                    "operations/quiet", timeout=1, cancellation=event
+                ),
+            ),
+            (
+                "workflow",
+                WATCH_WORKFLOW_RUN,
+                lambda client, event: client.workflows.watch(
+                    f"{parent}/workflowRuns/quiet", timeout=1, cancellation=event
+                ),
+            ),
+        )
+        for label, method, watch in watches:
+            with self.subTest(label=label):
+                transport = FakeAsyncTransport()
+                quiet = QuietAsyncStream()
+
+                def quiet_handler(
+                    request: Message,
+                    timeout: float,
+                    metadata: Metadata,
+                    selected: QuietAsyncStream = quiet,
+                ) -> AsyncIterator[Message]:
+                    del request, timeout, metadata
+                    return selected
+
+                transport.stream_handlers[method] = quiet_handler
+                client = AsyncClient(config, transport=transport)
+                cancellation = asyncio.Event()
+
+                async def consume(
+                    selected_watch: Callable[[AsyncClient, asyncio.Event], AsyncIterator[Any]],
+                    selected_client: AsyncClient,
+                    selected_cancellation: asyncio.Event,
+                ) -> None:
+                    async for _ in selected_watch(selected_client, selected_cancellation):
+                        self.fail("quiet watch yielded a response")
+
+                worker = asyncio.create_task(consume(watch, client, cancellation))
+                await asyncio.wait_for(quiet.started.wait(), timeout=1)
+                stream_calls = [call for call in transport.calls if call.method == method]
+                self.assertEqual(len(stream_calls), 1)
+                self.assertGreater(stream_calls[0].timeout, 0.5)
+                cancellation_started = asyncio.get_running_loop().time()
+                cancellation.set()
+                with self.assertRaises(CancelledError) as raised:
+                    await asyncio.wait_for(worker, timeout=0.2)
+                self.assertLess(
+                    asyncio.get_running_loop().time() - cancellation_started,
+                    0.2,
+                )
+                self.assertIsNone(raised.exception.__cause__)
+                self.assertEqual(quiet.cancel_count, 1)
+                self.assertTrue(quiet.released.is_set())
+                self.assertEqual(
+                    len([call for call in transport.calls if call.method == method]),
+                    1,
+                )
+                await asyncio.sleep(0)
+                self.assertFalse(
+                    any(
+                        task.get_name() == "mindclade-stream-cancellation" and not task.done()
+                        for task in asyncio.all_tasks()
+                    )
+                )
+                await client.close()
+
+    async def test_async_live_cancellation_preserves_real_retry_accounting(self) -> None:
+        transport = FakeAsyncTransport()
+        quiet = QuietAsyncStream()
+        attempts = 0
+
+        def stream(
+            request: Message,
+            timeout: float,
+            metadata: Metadata,
+        ) -> AsyncIterator[Message]:
+            del request, timeout, metadata
+            nonlocal attempts
+            attempts += 1
+            if attempts == 1:
+                raise UnavailableError("real transient failure", retryable=True, retry_after=0)
+            return quiet
+
+        transport.stream_handlers[WATCH_OPERATION] = stream
+        client = AsyncClient(secure_config(asynchronous=True), transport=transport)
+        cancellation = asyncio.Event()
+
+        async def consume() -> None:
+            async for _ in client.operations.watch(
+                "operations/quiet",
+                timeout=1,
+                cancellation=cancellation,
+            ):
+                self.fail("quiet watch yielded a response")
+
+        worker = asyncio.create_task(consume())
+        await asyncio.wait_for(quiet.started.wait(), timeout=1)
+        cancellation.set()
+        with self.assertRaises(CancelledError):
+            await asyncio.wait_for(worker, timeout=1)
+        self.assertEqual(attempts, 2)
+        self.assertEqual(quiet.cancel_count, 1)
+
+    async def test_async_watch_latches_signal_and_preserves_external_task_cancel(self) -> None:
+        transport = FakeAsyncTransport()
+        quiet = QuietAsyncStream(release_on_cancel=False, raise_on_cancel=True)
+        transport.stream_handlers[WATCH_OPERATION] = lambda request, timeout, metadata: quiet
+        client = AsyncClient(secure_config(asynchronous=True), transport=transport)
+        cancellation = asyncio.Event()
+
+        async def consume() -> None:
+            async for _ in client.operations.watch(
+                "operations/quiet",
+                timeout=1,
+                cancellation=cancellation,
+            ):
+                self.fail("quiet watch yielded a response")
+
+        worker = asyncio.create_task(consume())
+        await asyncio.wait_for(quiet.started.wait(), timeout=1)
+        cancellation.set()
+        await asyncio.wait_for(quiet.cancel_observed.wait(), timeout=0.2)
+        cancellation.clear()
+        quiet.released.set()
+        with self.assertRaises(CancelledError) as raised:
+            await asyncio.wait_for(worker, timeout=0.2)
+        self.assertIsNone(raised.exception.__cause__)
+        self.assertEqual(quiet.cancel_count, 1)
+        self.assertEqual(
+            len([call for call in transport.calls if call.method == WATCH_OPERATION]),
+            1,
+        )
+
+        external_quiet = QuietAsyncStream()
+        transport.stream_handlers[WATCH_OPERATION] = lambda request, timeout, metadata: (
+            external_quiet
+        )
+        external_cancellation = asyncio.Event()
+
+        async def externally_cancelled_consume() -> None:
+            async for _ in client.operations.watch(
+                "operations/external-cancel",
+                timeout=1,
+                cancellation=external_cancellation,
+            ):
+                self.fail("quiet watch yielded a response")
+
+        external_worker = asyncio.create_task(externally_cancelled_consume())
+        await asyncio.wait_for(external_quiet.started.wait(), timeout=1)
+        external_cancellation.set()
+        external_worker.cancel()
+        with self.assertRaises(asyncio.CancelledError):
+            await external_worker
+        self.assertEqual(external_quiet.cancel_count, 1)
+        await asyncio.sleep(0)
+        self.assertFalse(
+            any(
+                task.get_name() == "mindclade-stream-cancellation" and not task.done()
+                for task in asyncio.all_tasks()
+            )
+        )
 
 
 class DatasetModelLifecycleTest(unittest.TestCase):

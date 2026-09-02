@@ -291,6 +291,7 @@ class Inference:
                     WATCH_INFERENCE,
                     _watch_request(operation_name, current, remaining),
                     call=_watch_call(base, remaining),
+                    cancellation=cancellation,
                 ):
                     response = cast(inference_service_pb2.WatchInferenceResponse, raw)
                     message, current = _accept_message(response, current)
@@ -484,6 +485,7 @@ class AsyncInference:
                     WATCH_INFERENCE,
                     _watch_request(operation_name, current, remaining),
                     call=_watch_call(base, remaining),
+                    cancellation=cancellation,
                 ):
                     response = cast(inference_service_pb2.WatchInferenceResponse, raw)
                     message, current = _accept_message(response, current)

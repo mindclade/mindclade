@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import asyncio
+import contextlib
 import hashlib
 from collections.abc import AsyncIterator, Callable, Iterable, Iterator
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from typing import cast
 
 from google.protobuf.message import Message
 from google.protobuf.timestamp_pb2 import Timestamp
@@ -15,7 +18,7 @@ from mindclade.internal.artifact.v1 import artifact_service_pb2
 from mindclade.internal.job.v1 import job_service_pb2
 from mindclade.job.v1 import job_pb2, job_requested_pb2
 
-from .transport import Metadata
+from .transport import AsyncStreamCall, Metadata, SyncStreamCall
 
 SyncUnaryHandler = Callable[[Message, float, Metadata], Message]
 SyncStreamHandler = Callable[[Message, float, Metadata], Iterable[Message]]
@@ -46,6 +49,81 @@ class RecordedCall:
     method: str
     timeout: float
     metadata_keys: tuple[str, ...]
+
+
+class _FakeSyncStreamCall(Iterator[Message]):
+    """Cancelable adapter that keeps fake streams faithful to the transport seam."""
+
+    def __init__(self, values: Iterable[Message]) -> None:
+        self._iterator = iter(values)
+        self._cancelled = False
+
+    def __iter__(self) -> _FakeSyncStreamCall:
+        return self
+
+    def __next__(self) -> Message:
+        if self._cancelled:
+            raise StopIteration
+        return next(self._iterator)
+
+    def cancel(self) -> bool:
+        if self._cancelled:
+            return False
+        self._cancelled = True
+        cancel = getattr(self._iterator, "cancel", None)
+        if callable(cancel):
+            cancel()
+        return True
+
+
+class _FakeAsyncStreamCall(AsyncIterator[Message]):
+    """Cancelable adapter that can interrupt a quiet fake async iterator."""
+
+    def __init__(self, values: AsyncIterator[Message]) -> None:
+        self._iterator = values
+        self._cancelled = asyncio.Event()
+
+    def __aiter__(self) -> _FakeAsyncStreamCall:
+        return self
+
+    async def _read_next(self) -> Message:
+        """Adapt the iterator Awaitable to the Coroutine required by create_task."""
+
+        return await self._iterator.__anext__()
+
+    async def __anext__(self) -> Message:
+        if self._cancelled.is_set():
+            raise StopAsyncIteration
+        next_item = asyncio.create_task(self._read_next())
+        cancelled = asyncio.create_task(self._cancelled.wait())
+        try:
+            done, _ = await asyncio.wait(
+                {next_item, cancelled},
+                return_when=asyncio.FIRST_COMPLETED,
+            )
+            if cancelled in done:
+                next_item.cancel()
+                with contextlib.suppress(asyncio.CancelledError, StopAsyncIteration):
+                    await next_item
+                raise StopAsyncIteration
+            cancelled.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await cancelled
+            return next_item.result()
+        finally:
+            if not next_item.done():
+                next_item.cancel()
+            if not cancelled.done():
+                cancelled.cancel()
+
+    def cancel(self) -> bool:
+        if self._cancelled.is_set():
+            return False
+        self._cancelled.set()
+        cancel = getattr(self._iterator, "cancel", None)
+        if callable(cancel):
+            cancel()
+        return True
 
 
 class FakeSyncTransport:
@@ -85,9 +163,12 @@ class FakeSyncTransport:
         *,
         timeout: float,
         metadata: Metadata,
-    ) -> Iterator[Message]:
+    ) -> SyncStreamCall:
         self.calls.append(RecordedCall(method, timeout, tuple(sorted(key for key, _ in metadata))))
-        yield from self.stream_handlers[method](request, timeout, metadata)
+        values = self.stream_handlers[method](request, timeout, metadata)
+        if callable(getattr(values, "cancel", None)):
+            return cast(SyncStreamCall, values)
+        return _FakeSyncStreamCall(values)
 
     def close(self) -> None:
         self.closed = True
@@ -123,17 +204,19 @@ class FakeAsyncTransport:
         response = await self.unary_unary(method, request, timeout=timeout, metadata=metadata)
         return response, self.response_metadata.get(method, ())
 
-    async def unary_stream(
+    def unary_stream(
         self,
         method: str,
         request: Message,
         *,
         timeout: float,
         metadata: Metadata,
-    ) -> AsyncIterator[Message]:
+    ) -> AsyncStreamCall:
         self.calls.append(RecordedCall(method, timeout, tuple(sorted(key for key, _ in metadata))))
-        async for item in self.stream_handlers[method](request, timeout, metadata):
-            yield item
+        values = self.stream_handlers[method](request, timeout, metadata)
+        if callable(getattr(values, "cancel", None)):
+            return cast(AsyncStreamCall, values)
+        return _FakeAsyncStreamCall(values)
 
     async def close(self) -> None:
         self.closed = True

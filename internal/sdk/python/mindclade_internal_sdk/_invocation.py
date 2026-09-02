@@ -7,8 +7,9 @@ import contextlib
 import hashlib
 import inspect
 import random
+import threading
 import time
-from collections.abc import AsyncIterator, Iterator
+from collections.abc import AsyncIterable, AsyncIterator, Callable, Iterator
 from datetime import UTC, datetime, timedelta
 from typing import cast
 
@@ -22,11 +23,14 @@ from .calls import NullObserver, Observer, PreparedCall, RpcObservation
 from .config import ClientConfig, ConfigurationError
 from .errors import (
     AuthenticationError,
+    CancelledError,
     DeadlineExceededError,
     MindcladeError,
     normalize_rpc_error,
 )
 from .transport import AsyncTransport, Metadata, SyncTransport
+
+_CANCELLATION_CHECK_SECONDS = 0.01
 
 
 def canonical_digest(message: Message) -> str:
@@ -110,6 +114,61 @@ def _credential_deadline_error(call: PreparedCall) -> DeadlineExceededError:
         request_id=call.request_id,
         retryable=True,
     )
+
+
+def _caller_cancelled(call: PreparedCall) -> CancelledError:
+    return CancelledError(
+        "Mindclade stream was cancelled by the caller",
+        status=grpc.StatusCode.CANCELLED,
+        request_id=call.request_id,
+        retryable=False,
+    )
+
+
+class _CancelOnce:
+    """Invoke a transport's non-blocking cancellation hook at most once."""
+
+    def __init__(self, cancel: Callable[[], object]) -> None:
+        self._cancel = cancel
+        self._lock = threading.Lock()
+        self._called = False
+
+    def __call__(self) -> None:
+        with self._lock:
+            if self._called:
+                return
+            self._called = True
+        # A cleanup hook supplied by an injected transport must not replace the
+        # SDK's typed cancellation or the stream's primary failure.
+        with contextlib.suppress(Exception):
+            self._cancel()
+
+
+def _cancel_sync_call_when_requested(
+    cancellation: threading.Event,
+    stopped: threading.Event,
+    caller_cancelled: threading.Event,
+    cancel_once: _CancelOnce,
+) -> None:
+    """Cancel one live gRPC call without shortening its transport deadline."""
+
+    while not stopped.is_set():
+        if cancellation.wait(_CANCELLATION_CHECK_SECONDS):
+            caller_cancelled.set()
+            cancel_once()
+            return
+
+
+async def _cancel_async_call_when_requested(
+    cancellation: asyncio.Event,
+    caller_cancelled: asyncio.Event,
+    cancel_once: _CancelOnce,
+) -> None:
+    """Cancel one live asyncio gRPC call when the caller's event is set."""
+
+    await cancellation.wait()
+    caller_cancelled.set()
+    cancel_once()
 
 
 def _observe(
@@ -316,9 +375,17 @@ class SyncInvoker:
         request: Message,
         *,
         call: PreparedCall,
+        cancellation: threading.Event | None = None,
     ) -> Iterator[Message]:
         deadline = time.monotonic() + call.timeout
+        stream: Iterator[Message] | None = None
+        cancel_once: _CancelOnce | None = None
+        stopped = threading.Event()
+        caller_cancelled = threading.Event()
+        watcher: threading.Thread | None = None
         try:
+            if cancellation is not None and cancellation.is_set():
+                raise _caller_cancelled(call)
             remaining = deadline - time.monotonic()
             if remaining <= 0:
                 raise _credential_deadline_error(call)
@@ -326,14 +393,40 @@ class SyncInvoker:
             remaining = deadline - time.monotonic()
             if remaining <= 0:
                 raise _credential_deadline_error(call)
-            yield from self.transport.unary_stream(
+            stream = self.transport.unary_stream(
                 method,
                 request,
                 timeout=remaining,
                 metadata=_authorized_metadata(self.config, call, token),
             )
+            cancel = getattr(stream, "cancel", None)
+            if callable(cancel):
+                cancel_once = _CancelOnce(cancel)
+            if cancellation is not None:
+                if cancel_once is None:
+                    raise ConfigurationError(
+                        "synchronous stream transport must support cancellation"
+                    )
+                watcher = threading.Thread(
+                    target=_cancel_sync_call_when_requested,
+                    args=(cancellation, stopped, caller_cancelled, cancel_once),
+                    name="mindclade-stream-cancellation",
+                    daemon=True,
+                )
+                watcher.start()
+            yield from stream
+            if cancellation is not None and (caller_cancelled.is_set() or cancellation.is_set()):
+                raise _caller_cancelled(call)
         except grpc.RpcError as error:
+            if cancellation is not None and (caller_cancelled.is_set() or cancellation.is_set()):
+                raise _caller_cancelled(call) from None
             raise normalize_rpc_error(error, fallback_request_id=call.request_id) from None
+        finally:
+            stopped.set()
+            if cancel_once is not None:
+                cancel_once()
+            if watcher is not None:
+                watcher.join()
 
 
 class AsyncInvoker:
@@ -490,10 +583,17 @@ class AsyncInvoker:
         request: Message,
         *,
         call: PreparedCall,
+        cancellation: asyncio.Event | None = None,
     ) -> AsyncIterator[Message]:
         loop = asyncio.get_running_loop()
         deadline = loop.time() + call.timeout
+        stream: AsyncIterable[Message] | None = None
+        cancel_once: _CancelOnce | None = None
+        caller_cancelled = asyncio.Event()
+        watcher: asyncio.Task[None] | None = None
         try:
+            if cancellation is not None and cancellation.is_set():
+                raise _caller_cancelled(call)
             remaining = deadline - loop.time()
             if remaining <= 0:
                 raise _credential_deadline_error(call)
@@ -501,12 +601,50 @@ class AsyncInvoker:
             remaining = deadline - loop.time()
             if remaining <= 0:
                 raise _credential_deadline_error(call)
-            async for response in self.transport.unary_stream(
+            stream = self.transport.unary_stream(
                 method,
                 request,
                 timeout=remaining,
                 metadata=_authorized_metadata(self.config, call, token),
-            ):
+            )
+            cancel = getattr(stream, "cancel", None)
+            if callable(cancel):
+                cancel_once = _CancelOnce(cancel)
+            if cancellation is not None:
+                if cancel_once is None:
+                    raise ConfigurationError(
+                        "asynchronous stream transport must support cancellation"
+                    )
+                watcher = asyncio.create_task(
+                    _cancel_async_call_when_requested(
+                        cancellation,
+                        caller_cancelled,
+                        cancel_once,
+                    ),
+                    name="mindclade-stream-cancellation",
+                )
+            async for response in stream:
                 yield response
+            if cancellation is not None and (caller_cancelled.is_set() or cancellation.is_set()):
+                raise _caller_cancelled(call)
+        except asyncio.CancelledError:
+            task = asyncio.current_task()
+            externally_cancelled = task is not None and task.cancelling() > 0
+            if (
+                cancellation is not None
+                and (caller_cancelled.is_set() or cancellation.is_set())
+                and not externally_cancelled
+            ):
+                raise _caller_cancelled(call) from None
+            raise
         except grpc.RpcError as error:
+            if cancellation is not None and (caller_cancelled.is_set() or cancellation.is_set()):
+                raise _caller_cancelled(call) from None
             raise normalize_rpc_error(error, fallback_request_id=call.request_id) from None
+        finally:
+            if watcher is not None:
+                watcher.cancel()
+                with contextlib.suppress(asyncio.CancelledError):
+                    await watcher
+            if cancel_once is not None:
+                cancel_once()

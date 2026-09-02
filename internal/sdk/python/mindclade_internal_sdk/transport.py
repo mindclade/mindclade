@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from collections.abc import AsyncIterator, Iterator
-from typing import Any, Protocol
+from collections.abc import AsyncIterable, Iterator
+from typing import Any, Protocol, cast
 
 import grpc
 from google.protobuf.message import Message
@@ -213,6 +213,18 @@ def _declared_routes() -> tuple[frozenset[str], frozenset[str], frozenset[str]]:
 INTERNAL_UNARY_METHODS, INTERNAL_STREAM_METHODS, INTERNAL_SERVICE_NAMES = _declared_routes()
 
 
+class SyncStreamCall(Iterator[Message], Protocol):
+    """One live synchronous stream whose transport can be cancelled safely."""
+
+    def cancel(self) -> bool: ...
+
+
+class AsyncStreamCall(AsyncIterable[Message], Protocol):
+    """One live asynchronous stream whose transport can be cancelled safely."""
+
+    def cancel(self) -> bool: ...
+
+
 class SyncTransport(Protocol):
     def unary_unary(
         self,
@@ -239,7 +251,7 @@ class SyncTransport(Protocol):
         *,
         timeout: float,
         metadata: Metadata,
-    ) -> Iterator[Message]: ...
+    ) -> SyncStreamCall: ...
 
     def close(self) -> None: ...
 
@@ -270,7 +282,7 @@ class AsyncTransport(Protocol):
         *,
         timeout: float,
         metadata: Metadata,
-    ) -> AsyncIterator[Message]: ...
+    ) -> AsyncStreamCall: ...
 
     async def close(self) -> None: ...
 
@@ -335,12 +347,11 @@ class GrpcSyncTransport:
         *,
         timeout: float,
         metadata: Metadata,
-    ) -> Iterator[Message]:
-        call = self._streams[method](request, timeout=timeout, metadata=metadata)
-        try:
-            yield from call
-        finally:
-            call.cancel()
+    ) -> SyncStreamCall:
+        return cast(
+            SyncStreamCall,
+            self._streams[method](request, timeout=timeout, metadata=metadata),
+        )
 
     def close(self) -> None:
         self._channel.close()
@@ -385,20 +396,18 @@ class GrpcAsyncTransport:
         response = await call
         return response, _metadata(await call.initial_metadata())
 
-    async def unary_stream(
+    def unary_stream(
         self,
         method: str,
         request: Message,
         *,
         timeout: float,
         metadata: Metadata,
-    ) -> AsyncIterator[Message]:
-        call = self._streams[method](request, timeout=timeout, metadata=metadata)
-        try:
-            async for item in call:
-                yield item
-        finally:
-            call.cancel()
+    ) -> AsyncStreamCall:
+        return cast(
+            AsyncStreamCall,
+            self._streams[method](request, timeout=timeout, metadata=metadata),
+        )
 
     async def close(self) -> None:
         await self._channel.close()

@@ -67,7 +67,6 @@ _TERMINAL_TRAINING_STATES = frozenset(
         training_run_pb2.TRAINING_RUN_STATE_CANCELLED,
     }
 )
-_CANCELLATION_POLL_SECONDS = 0.25
 _MAXIMUM_PAGE_SIZE = 200
 
 
@@ -719,13 +718,8 @@ class Training:
             remaining = deadline - time.monotonic()
             if remaining <= 0:
                 raise OperationTimeoutError("training watch exceeded its total deadline")
-            stream_timeout = (
-                min(remaining, _CANCELLATION_POLL_SECONDS)
-                if cancellation is not None
-                else remaining
-            )
             call = PreparedCall(
-                timeout=stream_timeout,
+                timeout=remaining,
                 request_id=base_call.request_id,
                 trace_id=base_call.trace_id,
                 idempotency_key=None,
@@ -740,6 +734,7 @@ class Training:
                     WATCH_TRAINING_RUN,
                     request,
                     call=call,
+                    cancellation=cancellation,
                 ):
                     response = cast(training_service_pb2.WatchTrainingRunResponse, raw_response)
                     if response.sequence != sequence + 1:
@@ -773,8 +768,6 @@ class Training:
                     retryable=True,
                 )
             except DeadlineExceededError:
-                if cancellation is not None and time.monotonic() < deadline:
-                    continue
                 raise OperationTimeoutError("training watch exceeded its total deadline") from None
             except MindcladeError as error:
                 if not error.retryable:
@@ -1230,13 +1223,8 @@ class AsyncTraining:
             remaining = deadline - loop.time()
             if remaining <= 0:
                 raise OperationTimeoutError("training watch exceeded its total deadline")
-            stream_timeout = (
-                min(remaining, _CANCELLATION_POLL_SECONDS)
-                if cancellation is not None
-                else remaining
-            )
             call = PreparedCall(
-                timeout=stream_timeout,
+                timeout=remaining,
                 request_id=base_call.request_id,
                 trace_id=base_call.trace_id,
                 idempotency_key=None,
@@ -1247,11 +1235,12 @@ class AsyncTraining:
                 deadline=_deadline_timestamp(remaining),
             )
             try:
-                async with asyncio.timeout(stream_timeout):
+                async with asyncio.timeout(remaining):
                     async for raw_response in self._invoker.stream(
                         WATCH_TRAINING_RUN,
                         request,
                         call=call,
+                        cancellation=cancellation,
                     ):
                         response = cast(
                             training_service_pb2.WatchTrainingRunResponse,
@@ -1288,12 +1277,8 @@ class AsyncTraining:
                     retryable=True,
                 )
             except TimeoutError:
-                if cancellation is not None and loop.time() < deadline:
-                    continue
                 raise OperationTimeoutError("training watch exceeded its total deadline") from None
             except DeadlineExceededError:
-                if cancellation is not None and loop.time() < deadline:
-                    continue
                 raise OperationTimeoutError("training watch exceeded its total deadline") from None
             except MindcladeError as error:
                 if not error.retryable:

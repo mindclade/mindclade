@@ -4615,19 +4615,34 @@ def _openapi_schema_compatible(
             raise ValueError(f"OpenAPI compatibility break at {location}: {field} changed")
     baseline_enum = baseline_schema.get("enum")
     current_enum = current_schema.get("enum")
-    if baseline_enum is not None:
-        if not isinstance(baseline_enum, list) or not isinstance(current_enum, list):
+    if baseline_enum is not None or current_enum is not None:
+        if (baseline_enum is not None and not isinstance(baseline_enum, list)) or (
+            current_enum is not None and not isinstance(current_enum, list)
+        ):
             raise ValueError(f"OpenAPI compatibility break at {location}: enum changed")
-        incompatible_values = (
-            set(baseline_enum) - set(current_enum)
-            if request
-            else set(current_enum) - set(baseline_enum)
-        )
+        if request and baseline_enum is None:
+            raise ValueError(
+                f"OpenAPI compatibility break at {location}: enum restriction added to request"
+            )
+        if not request and current_enum is None:
+            raise ValueError(
+                f"OpenAPI compatibility break at {location}: enum restriction removed from response"
+            )
+        incompatible_values = []
+        if isinstance(baseline_enum, list) and isinstance(current_enum, list):
+            source, target = (
+                (baseline_enum, current_enum) if request else (current_enum, baseline_enum)
+            )
+            incompatible_values = [value for value in source if value not in target]
         if incompatible_values:
             direction = "removed from request" if request else "added to response"
+            rendered_values = sorted(
+                json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+                for value in incompatible_values
+            )
             raise ValueError(
                 f"OpenAPI compatibility break at {location}: enum values {direction} "
-                f"{sorted(incompatible_values)}"
+                f"{rendered_values}"
             )
 
     lower_bounds = ("minimum", "exclusiveMinimum", "minLength", "minItems", "minProperties")
@@ -4662,11 +4677,38 @@ def _openapi_schema_compatible(
             raise ValueError(f"OpenAPI compatibility break at {location}: {field} was {direction}")
     old_additional = baseline_schema.get("additionalProperties", True)
     new_additional = current_schema.get("additionalProperties", True)
-    if (request and old_additional is not False and new_additional is False) or (
-        not request and old_additional is False and new_additional is not False
+    if not isinstance(old_additional, (bool, Mapping)) or not isinstance(
+        new_additional, (bool, Mapping)
     ):
         raise ValueError(
+            f"OpenAPI compatibility break at {location}: additional-properties schema changed"
+        )
+    additional_variance_break = (
+        request
+        and (
+            (old_additional is True and new_additional is not True)
+            or (isinstance(old_additional, Mapping) and new_additional is False)
+        )
+    ) or (
+        not request
+        and (
+            (old_additional is False and new_additional is not False)
+            or (isinstance(old_additional, Mapping) and new_additional is True)
+        )
+    )
+    if additional_variance_break:
+        raise ValueError(
             f"OpenAPI compatibility break at {location}: additional-properties variance changed"
+        )
+    if isinstance(old_additional, Mapping) and isinstance(new_additional, Mapping):
+        _openapi_schema_compatible(
+            baseline_document,
+            current_document,
+            old_additional,
+            new_additional,
+            request=request,
+            location=f"{location}.additionalProperties",
+            visited=visited,
         )
 
     baseline_properties = baseline_schema.get("properties", {})

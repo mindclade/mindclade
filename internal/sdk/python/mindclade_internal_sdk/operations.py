@@ -46,7 +46,6 @@ _FAILED_STATES = frozenset(
         operation_pb2.OPERATION_STATE_CANCELLED,
     }
 )
-_CANCELLATION_POLL_SECONDS = 0.25
 _MAX_OPERATION_PAGE_SIZE = 200
 
 
@@ -66,7 +65,13 @@ def _operation_from_response(
         operation_pb2.Operation,
         label=label,
     )
-    required_text("operation id", operation.operation_id)
+    try:
+        required_text("operation id", operation.operation_id)
+    except ValueError as error:
+        raise ProtocolError(
+            f"{label} returned an invalid operation identity",
+            status=grpc.StatusCode.DATA_LOSS,
+        ) from error
     if operation.state == operation_pb2.OPERATION_STATE_UNSPECIFIED:
         raise ProtocolError(
             f"{label} returned an unspecified operation state",
@@ -268,13 +273,8 @@ class Operations:
             remaining = deadline - time.monotonic()
             if remaining <= 0:
                 raise OperationTimeoutError("operation watch exceeded its total deadline")
-            stream_timeout = (
-                min(remaining, _CANCELLATION_POLL_SECONDS)
-                if cancellation is not None
-                else remaining
-            )
             call = PreparedCall(
-                timeout=stream_timeout,
+                timeout=remaining,
                 request_id=base_call.request_id,
                 trace_id=base_call.trace_id,
                 idempotency_key=None,
@@ -289,6 +289,7 @@ class Operations:
                     WATCH_OPERATION,
                     request,
                     call=call,
+                    cancellation=cancellation,
                 ):
                     received = True
                     response = cast(job_service_pb2.WatchOperationResponse, raw_response)
@@ -314,8 +315,6 @@ class Operations:
                     retryable=True,
                 )
             except DeadlineExceededError:
-                if cancellation is not None and time.monotonic() < deadline:
-                    continue
                 raise OperationTimeoutError("operation watch exceeded its total deadline") from None
             except MindcladeError as error:
                 if not error.retryable:
@@ -512,13 +511,8 @@ class AsyncOperations:
             remaining = deadline - loop.time()
             if remaining <= 0:
                 raise OperationTimeoutError("operation watch exceeded its total deadline")
-            stream_timeout = (
-                min(remaining, _CANCELLATION_POLL_SECONDS)
-                if cancellation is not None
-                else remaining
-            )
             call = PreparedCall(
-                timeout=stream_timeout,
+                timeout=remaining,
                 request_id=base_call.request_id,
                 trace_id=base_call.trace_id,
                 idempotency_key=None,
@@ -529,11 +523,12 @@ class AsyncOperations:
             )
             received = False
             try:
-                async with asyncio.timeout(stream_timeout):
+                async with asyncio.timeout(remaining):
                     async for raw_response in self._invoker.stream(
                         WATCH_OPERATION,
                         request,
                         call=call,
+                        cancellation=cancellation,
                     ):
                         received = True
                         response = cast(job_service_pb2.WatchOperationResponse, raw_response)
@@ -562,12 +557,8 @@ class AsyncOperations:
                     retryable=True,
                 )
             except TimeoutError:
-                if cancellation is not None and loop.time() < deadline:
-                    continue
                 raise OperationTimeoutError("operation watch exceeded its total deadline") from None
             except DeadlineExceededError:
-                if cancellation is not None and loop.time() < deadline:
-                    continue
                 raise OperationTimeoutError("operation watch exceeded its total deadline") from None
             except MindcladeError as error:
                 if not error.retryable:

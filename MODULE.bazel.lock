@@ -577,7 +577,7 @@
     },
     "@@rules_rust+//crate_universe:extensions.bzl%crate": {
       "general": {
-        "bzlTransitiveDigest": "qBRaq2+eWQUzmaAfYSAIf3cHDwnPNUB4h5p9rpigQzE=",
+        "bzlTransitiveDigest": "U/KG7/4TgN9Tgn1KfulORe8WQg1t18xkIZDC0MYsCcg=",
         "usagesDigest": "XJEWRk2CY3K3W2oSDWY6LTBdihAzC+BCkwkgpjNo6tY=",
         "recordedInputs": [
           "ENV:CARGO_BAZEL_DEBUG \\0",
@@ -613,7 +613,7 @@
           "FILE:@@//libs/rust/retry/Cargo.toml 9038a67142c6fb95d8ea6dbcb60591ff864a0d97c4a811f637982cc83eaedfd9",
           "FILE:@@//libs/rust/storage/Cargo.toml 504a8f9bcb9ab7ee1fbbe27e0a85c485ffca6738abd06d60ca5e10e8a249ce66",
           "FILE:@@//libs/rust/testing/Cargo.toml 734d34fb054c1cfe8dc04418bdb3560dd4bc22bbb9078104e8deb29563f238df",
-          "FILE:@@//internal/sdk/rust/Cargo.toml 511972644d3b7d52085f0fbe2fdee9ad3d95cdbdddfb99c644057e3907a1a8a6",
+          "FILE:@@//internal/sdk/rust/Cargo.toml 7ba2fbbd7da7e74eb88726d160bbf166191cdf434686d56c7d8153ac7ce1d12a",
           "FILE:@@//workers/ingestion_worker/Cargo.toml 0c85eda600b5732e7e29d432a9cfa1a09f9172dfbc6f56758b1acc8bbf011396"
         ],
         "generatedRepoSpecs": {
@@ -2995,7 +2995,7 @@
     },
     "@@rules_rust+//crate_universe/private:internal_extensions.bzl%cu_nr": {
       "general": {
-        "bzlTransitiveDigest": "NmbMA3kIgReF0LG382gH6uXc6fzloYWqKGt4Jyf968g=",
+        "bzlTransitiveDigest": "Jp8jokDLNAPP0QxpyDW5XDMMJCWrz9aQRjxXjVqs6LQ=",
         "usagesDigest": "McimNXAztVHDzspa1Kng94T+YeyY/44zx9FkNqIMn2s=",
         "recordedInputs": [
           "REPO_MAPPING:apple_support+,bazel_skylib bazel_skylib+",
