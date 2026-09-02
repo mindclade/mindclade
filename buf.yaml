@@ -3,8 +3,10 @@ modules:
   - path: protocols
     excludes:
       - protocols/generated
-deps:
-  - buf.build/googleapis/googleapis
+# No registry dependencies. google/api/{annotations,http}.proto are vendored
+# under protocols/google/api so the contract build resolves every import from
+# the working tree: the descriptor is reproducible on a runner with no network
+# access to a schema registry. See docs/adr/ for the rationale.
 lint:
   use:
     - STANDARD

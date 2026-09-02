@@ -5614,7 +5614,11 @@ mindclade/
 │   │       ├── test_schema_compatibility.py
 │   │       └── test_openapi_compatibility.py
 │   ├── BUILD.bazel
-│   └── README.md
+│   ├── README.md
+│   └── google/
+│       └── api/
+│           ├── annotations.proto
+│           └── http.proto
 ├── libs/
 │   ├── python/
 │   │   ├── artifacts/
@@ -8299,7 +8303,8 @@ mindclade/
 │   │   ├── 0020-jit-06-triangle-attention-sm90a-sm100a.md
 │   │   ├── 0021-jit-06-triangle-multiplication-sm90a-sm100a.md
 │   │   ├── 0022-native-signed-qualification-and-production-admission-source-activation.md
-│   │   └── 0023-estate-nix-bazel-hermeticity-and-cache-preparation.md
+│   │   ├── 0023-estate-nix-bazel-hermeticity-and-cache-preparation.md
+│   │   └── 0024-vendored-contract-import-closure.md
 │   ├── domains/
 │   │   ├── bio.md
 │   │   ├── data.md

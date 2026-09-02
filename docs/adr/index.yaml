@@ -163,3 +163,10 @@ spec:
       path: docs/adr/0023-estate-nix-bazel-hermeticity-and-cache-preparation.md
       owners: [developer-platform, security]
       specificationAccepted: "2026-09-02"
+    - id: ADR-0024
+      title: Vendored contract import closure
+      status: accepted-in-specification
+      connectedRatification: not-required
+      path: docs/adr/0024-vendored-contract-import-closure.md
+      owners: [contract-governance, developer-platform]
+      specificationAccepted: "2026-09-02"
