@@ -17,7 +17,7 @@ use mindclade_protocols::{
 use crate::{
     CallOptions, ClientCore, Error, Page, Pages, SubmitOptions,
     request::{initial_page_token, page_request},
-    retry::registered_method_safety,
+    retry::registered_method_policy,
 };
 
 const REGISTER: &str = "/mindclade.internal.model.v1.ModelService/RegisterModel";
@@ -71,7 +71,7 @@ impl Models {
                     command: Some(command),
                 },
                 &prepared,
-                registered_method_safety(REGISTER),
+                registered_method_policy(REGISTER),
                 Some(&key),
                 |transport, request| {
                     Box::pin(async move { transport.register_model(request).await })
@@ -103,7 +103,7 @@ impl Models {
                     if_none_match: if_none_match.into(),
                 },
                 &prepared,
-                registered_method_safety(GET),
+                registered_method_policy(GET),
                 None,
                 |transport, request| Box::pin(async move { transport.get_model(request).await }),
             )
@@ -146,7 +146,7 @@ impl Models {
                         .unary(
                             request,
                             &prepared,
-                            registered_method_safety(LIST),
+                            registered_method_policy(LIST),
                             None,
                             |transport, request| {
                                 Box::pin(async move { transport.list_models(request).await })
@@ -197,7 +197,7 @@ impl Models {
                     command: Some(command),
                 },
                 &prepared,
-                registered_method_safety(REGISTER_RELEASE),
+                registered_method_policy(REGISTER_RELEASE),
                 Some(&key),
                 |transport, request| {
                     Box::pin(async move { transport.register_model_release(request).await })
@@ -225,7 +225,7 @@ impl Models {
             .unary(
                 GetModelReleaseRequest { name },
                 &prepared,
-                registered_method_safety(GET_RELEASE),
+                registered_method_policy(GET_RELEASE),
                 None,
                 |transport, request| {
                     Box::pin(async move { transport.get_model_release(request).await })
@@ -264,7 +264,7 @@ impl Models {
                         .unary(
                             request,
                             &prepared,
-                            registered_method_safety(LIST_RELEASES),
+                            registered_method_policy(LIST_RELEASES),
                             None,
                             |transport, request| {
                                 Box::pin(
@@ -316,7 +316,7 @@ impl Models {
                     command: Some(command),
                 },
                 &prepared,
-                registered_method_safety(PROMOTE),
+                registered_method_policy(PROMOTE),
                 Some(&key),
                 |transport, request| {
                     Box::pin(async move { transport.promote_model_release(request).await })
@@ -356,7 +356,7 @@ impl Models {
                     command: Some(command),
                 },
                 &prepared,
-                registered_method_safety(REVOKE),
+                registered_method_policy(REVOKE),
                 Some(&key),
                 |transport, request| {
                     Box::pin(async move { transport.revoke_model_release(request).await })

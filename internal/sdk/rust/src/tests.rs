@@ -85,7 +85,7 @@ use crate::{
         retryable_status_code,
     },
     is_credential_bearing, paginate,
-    retry::{CallSafety, Sleeper, never_retry_method, registered_method_safety},
+    retry::{CallSafety, Sleeper, never_retry_method, registered_method_policy},
     testing::ScriptedJitter,
 };
 
@@ -1256,7 +1256,7 @@ async fn recording_transport_covers_the_generated_facade_without_payloads() {
 #[test]
 fn unregistered_methods_are_never_retryable_by_metadata() {
     assert_eq!(
-        registered_method_safety("/unknown/Mutation"),
+        registered_method_policy("/unknown/Mutation"),
         CallSafety::Unsafe
     );
 }
@@ -1731,14 +1731,14 @@ fn dataset_and_model_retry_registry_is_complete_and_fail_closed() {
     assert!(
         idempotent
             .iter()
-            .all(|method| registered_method_safety(method) == CallSafety::Idempotent)
+            .all(|method| registered_method_policy(method) == CallSafety::Idempotent)
     );
     assert!(
         safe.iter()
-            .all(|method| registered_method_safety(method) == CallSafety::Safe)
+            .all(|method| registered_method_policy(method) == CallSafety::Safe)
     );
     assert_eq!(
-        registered_method_safety("/mindclade.internal.model.v1.ModelService/UnknownMutation"),
+        registered_method_policy("/mindclade.internal.model.v1.ModelService/UnknownMutation"),
         CallSafety::Unsafe
     );
 }
@@ -2786,7 +2786,7 @@ async fn named_unsafe_override_is_required_to_retry_a_non_idempotent_rpc() {
 fn expire_attempt_leases_is_never_retryable() {
     const ROUTE: &str = "/mindclade.internal.job.v1.RunService/ExpireAttemptLeases";
     assert!(never_retry_method(ROUTE));
-    assert_eq!(registered_method_safety(ROUTE), CallSafety::NeverRetry);
+    assert_eq!(registered_method_policy(ROUTE), CallSafety::NeverRetry);
     assert!(!never_retry_method(
         "/mindclade.internal.job.v1.RunService/RenewAttemptLease"
     ));
@@ -3758,7 +3758,7 @@ async fn send_with_metadata_dispatches_a_generated_request_under_sdk_policy() {
     assert_eq!(error.kind(), ErrorKind::InvalidArgument);
     assert!(error.to_string().contains("idempotency key"));
     assert_eq!(
-        registered_method_safety(<CancelOperationRequest as crate::RawRequest>::METHOD),
+        registered_method_policy(<CancelOperationRequest as crate::RawRequest>::METHOD),
         CallSafety::Idempotent
     );
     assert_eq!(

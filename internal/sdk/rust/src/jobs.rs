@@ -11,7 +11,7 @@ use sha2::{Digest, Sha256};
 use crate::{
     CallOptions, ClientCore, Error, Page, Pages, SubmitOptions,
     request::{initial_page_token, page_request},
-    retry::registered_method_safety,
+    retry::registered_method_policy,
 };
 
 const REQUEST: &str = "/mindclade.internal.job.v1.JobService/RequestJob";
@@ -64,7 +64,7 @@ impl Jobs {
                     command: Some(command),
                 },
                 &prepared,
-                registered_method_safety(REQUEST),
+                registered_method_policy(REQUEST),
                 Some(&key),
                 |transport, request| Box::pin(async move { transport.request_job(request).await }),
             )
@@ -114,7 +114,7 @@ impl Jobs {
                     if_none_match,
                 },
                 &prepared,
-                registered_method_safety(GET),
+                registered_method_policy(GET),
                 None,
                 |transport, request| Box::pin(async move { transport.get_job(request).await }),
             )
@@ -168,7 +168,7 @@ impl Jobs {
                         .unary(
                             request,
                             &prepared,
-                            registered_method_safety(LIST),
+                            registered_method_policy(LIST),
                             None,
                             |transport, request| {
                                 Box::pin(async move { transport.list_jobs(request).await })
@@ -229,7 +229,7 @@ impl Jobs {
             .unary(
                 request,
                 &prepared,
-                registered_method_safety(CANCEL),
+                registered_method_policy(CANCEL),
                 Some(&key),
                 |transport, request| Box::pin(async move { transport.cancel_job(request).await }),
             )

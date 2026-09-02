@@ -25,7 +25,7 @@ use tonic::codegen::tokio_stream::StreamExt;
 use crate::{
     CallOptions, CancellationToken, ClientCore, Error, Page, Pages, SubmitOptions, TrainingStream,
     request::{PreparedCall, initial_page_token, page_request},
-    retry::{CallSafety, registered_method_safety},
+    retry::{CallSafety, registered_method_policy},
     workflows::{command_context, normalize_parent, project_name, valid_sha256, validate_page},
 };
 
@@ -122,7 +122,7 @@ impl Training {
                     command: Some(command),
                 },
                 &prepared,
-                registered_method_safety(CREATE),
+                registered_method_policy(CREATE),
                 Some(&key),
                 |transport, request| {
                     Box::pin(async move { transport.create_training_run(request).await })
@@ -153,7 +153,7 @@ impl Training {
                     if_none_match: if_none_match.into(),
                 },
                 &prepared,
-                registered_method_safety(GET),
+                registered_method_policy(GET),
                 None,
                 |transport, request| {
                     Box::pin(async move { transport.get_training_run(request).await })
@@ -190,7 +190,7 @@ impl Training {
                         .unary(
                             request,
                             &prepared,
-                            registered_method_safety(LIST),
+                            registered_method_policy(LIST),
                             None,
                             |transport, request| {
                                 Box::pin(async move { transport.list_training_runs(request).await })
@@ -235,7 +235,7 @@ impl Training {
                     command: Some(command),
                 },
                 &prepared,
-                registered_method_safety(START),
+                registered_method_policy(START),
                 Some(&key),
                 |transport, request| {
                     Box::pin(async move { transport.start_training_attempt(request).await })
@@ -271,7 +271,7 @@ impl Training {
                     command: Some(command),
                 },
                 &prepared,
-                registered_method_safety(RESUME),
+                registered_method_policy(RESUME),
                 Some(&key),
                 |transport, request| {
                     Box::pin(async move { transport.resume_training_attempt(request).await })
@@ -314,7 +314,7 @@ impl Training {
                     command: Some(command),
                 },
                 &prepared,
-                registered_method_safety(COMMIT_PROGRESS),
+                registered_method_policy(COMMIT_PROGRESS),
                 Some(&key),
                 |transport, request| {
                     Box::pin(async move { transport.commit_training_progress(request).await })
@@ -368,7 +368,7 @@ impl Training {
                     command: Some(command),
                 },
                 &prepared,
-                registered_method_safety(PREPARE_CHECKPOINT),
+                registered_method_policy(PREPARE_CHECKPOINT),
                 Some(&key),
                 |transport, request| {
                     Box::pin(async move { transport.prepare_checkpoint(request).await })
@@ -414,7 +414,7 @@ impl Training {
                     command: Some(command),
                 },
                 &prepared,
-                registered_method_safety(COMMIT_CHECKPOINT),
+                registered_method_policy(COMMIT_CHECKPOINT),
                 Some(&key),
                 |transport, request| {
                     Box::pin(async move { transport.commit_checkpoint(request).await })
@@ -460,7 +460,7 @@ impl Training {
                     command: Some(command),
                 },
                 &prepared,
-                registered_method_safety(COMPLETE),
+                registered_method_policy(COMPLETE),
                 Some(&key),
                 |transport, request| {
                     Box::pin(async move { transport.complete_training_run(request).await })
@@ -501,7 +501,7 @@ impl Training {
                     command: Some(command),
                 },
                 &prepared,
-                registered_method_safety(CANCEL),
+                registered_method_policy(CANCEL),
                 Some(&key),
                 |transport, request| {
                     Box::pin(async move { transport.cancel_training_run(request).await })
@@ -529,7 +529,7 @@ impl Training {
             .unary(
                 GetCheckpointRequest { name },
                 &prepared,
-                registered_method_safety(GET_CHECKPOINT),
+                registered_method_policy(GET_CHECKPOINT),
                 None,
                 |transport, request| {
                     Box::pin(async move { transport.get_checkpoint(request).await })
@@ -568,7 +568,7 @@ impl Training {
                         .unary(
                             request,
                             &prepared,
-                            registered_method_safety(LIST_CHECKPOINTS),
+                            registered_method_policy(LIST_CHECKPOINTS),
                             None,
                             |transport, request| {
                                 Box::pin(async move { transport.list_checkpoints(request).await })
@@ -702,7 +702,7 @@ impl TrainingWatch {
     }
 
     async fn connect(&self) -> Result<TrainingStream, Error> {
-        if !matches!(registered_method_safety(WATCH), CallSafety::Safe) {
+        if !matches!(registered_method_policy(WATCH), CallSafety::Safe) {
             return Err(Error::protocol("training watch safety policy is missing"));
         }
         let request = WatchTrainingRunRequest {

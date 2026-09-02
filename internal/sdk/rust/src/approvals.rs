@@ -13,7 +13,7 @@ use sha2::{Digest, Sha256};
 use crate::{
     CallOptions, ClientCore, Error, Page, Pages, SubmitOptions,
     request::{initial_page_token, page_request},
-    retry::registered_method_safety,
+    retry::registered_method_policy,
     workflows::{command_context, normalize_parent, valid_sha256, validate_page, workflow_name},
 };
 
@@ -78,7 +78,7 @@ impl Approvals {
                     approval_request: Some(approval),
                 },
                 &prepared,
-                registered_method_safety(REQUEST),
+                registered_method_policy(REQUEST),
                 Some(&key),
                 |transport, request| {
                     Box::pin(async move { transport.request_approval(request).await })
@@ -118,7 +118,7 @@ impl Approvals {
             .unary(
                 GetApprovalRequestRequest { name },
                 &prepared,
-                registered_method_safety(GET),
+                registered_method_policy(GET),
                 None,
                 |transport, request| {
                     Box::pin(async move { transport.get_approval_request(request).await })
@@ -157,7 +157,7 @@ impl Approvals {
                         .unary(
                             request,
                             &prepared,
-                            registered_method_safety(LIST),
+                            registered_method_policy(LIST),
                             None,
                             |transport, request| {
                                 Box::pin(
@@ -214,7 +214,7 @@ impl Approvals {
             .unary(
                 request,
                 &prepared,
-                registered_method_safety(DECIDE),
+                registered_method_policy(DECIDE),
                 Some(&key),
                 |transport, request| {
                     Box::pin(async move { transport.decide_approval(request).await })
@@ -276,7 +276,7 @@ impl Approvals {
             .unary(
                 request,
                 &prepared,
-                registered_method_safety(CONSUME),
+                registered_method_policy(CONSUME),
                 Some(&key),
                 |transport, request| {
                     Box::pin(async move { transport.consume_approval(request).await })

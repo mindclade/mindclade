@@ -15,9 +15,14 @@ import platform
 import re
 from dataclasses import dataclass
 
+from ._version import SDK_NAME, USER_AGENT, __version__
+
 SDK_LANGUAGE = "python"
-SDK_NAME = "mindclade-internal-python-sdk"
-SDK_VERSION = "0.1"
+
+# ``_version`` is the single version source for the package. It is re-exported
+# here because this module is where the header is assembled, and a reader of
+# the header should not have to guess which of two literals won.
+SDK_VERSION = __version__
 
 # A gRPC metadata value is cheap but not free, and an unbounded header is a
 # fingerprint. 256 characters is the same ceiling the raw-response allowlist
@@ -47,7 +52,7 @@ def _token(value: str, allowed: frozenset[str] | None = None) -> str:
 def base_user_agent() -> str:
     """Return the SDK identity with no platform detail attached."""
 
-    return f"{SDK_NAME}/{SDK_VERSION}"
+    return USER_AGENT
 
 
 @dataclass(frozen=True, slots=True)

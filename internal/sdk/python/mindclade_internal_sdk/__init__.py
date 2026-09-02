@@ -1,7 +1,16 @@
-"""Private Mindclade SDK over authoritative generated Protobuf/gRPC clients."""
+"""Private Mindclade SDK over authoritative generated Protobuf/gRPC clients.
+
+``resources`` and ``testing`` are re-exported as attributes of this package
+because they are part of its supported surface: consumers build generated
+resource values through the first and drive hermetic tests through the second,
+and both are documented in ``README.md``. Importing the package therefore makes
+``mindclade_internal_sdk.resources`` and ``mindclade_internal_sdk.testing``
+usable without a separate submodule import.
+"""
 
 from mindclade.artifact.v1.artifact_reference_pb2 import ArtifactRef
 
+from . import resources, testing
 from ._env import ENVIRONMENT_VARIABLES, config_from_env
 from ._logging import LOG_LEVELS, LOGGER_NAME, LoggingObserver, default_observer, log_level_from_env
 from ._metadata import (
@@ -19,6 +28,7 @@ from ._raw import (
     WithRawResponse,
 )
 from ._retry import DEFAULT_JITTER, FixedJitter, JitterSource, SystemJitter
+from ._version import SDK_NAME, USER_AGENT, __version__
 from ._watch import AsyncWatchStream, WatchSpec, WatchStream
 from .admin import Admin, AsyncAdmin
 from .agents import Agents, AsyncAgents
@@ -86,6 +96,8 @@ __all__ = [
     "LOGGER_NAME",
     "LOG_LEVELS",
     "SAFE_RESPONSE_METADATA_KEYS",
+    "SDK_NAME",
+    "USER_AGENT",
     "AccessToken",
     "Admin",
     "Agents",
@@ -180,6 +192,7 @@ __all__ = [
     "WithRawResponse",
     "WorkflowRunFailedError",
     "Workflows",
+    "__version__",
     "apaginate",
     "config_from_env",
     "decode_job_requested_delivery",
@@ -188,4 +201,6 @@ __all__ = [
     "is_credential_metadata_key",
     "log_level_from_env",
     "paginate",
+    "resources",
+    "testing",
 ]

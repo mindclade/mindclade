@@ -15,7 +15,7 @@ use prost_types::Timestamp;
 use crate::{
     CallOptions, ClientCore, Error, Page, Pages, SubmitOptions,
     request::{initial_page_token, page_request},
-    retry::registered_method_safety,
+    retry::registered_method_policy,
 };
 
 const EVALUATE: &str = "/mindclade.internal.policy.v1.PolicyService/EvaluateAuthorization";
@@ -72,7 +72,7 @@ impl Policies {
             .unary(
                 request,
                 &prepared,
-                registered_method_safety(EVALUATE),
+                registered_method_policy(EVALUATE),
                 Some(&key),
                 |transport, request| {
                     Box::pin(async move { transport.evaluate_authorization(request).await })
@@ -165,7 +165,7 @@ impl Policies {
                     if_none_match: if_none_match.into(),
                 },
                 &prepared,
-                registered_method_safety(GET),
+                registered_method_policy(GET),
                 None,
                 |transport, request| {
                     Box::pin(async move { transport.get_use_policy(request).await })
@@ -210,7 +210,7 @@ impl Policies {
                         .unary(
                             request,
                             &prepared,
-                            registered_method_safety(LIST),
+                            registered_method_policy(LIST),
                             None,
                             |transport, request| {
                                 Box::pin(async move { transport.list_use_policies(request).await })
@@ -320,7 +320,7 @@ impl Policies {
                     effective_time: Some(effective_time),
                 },
                 &prepared,
-                registered_method_safety(RESOLVE),
+                registered_method_policy(RESOLVE),
                 None,
                 |transport, request| {
                     Box::pin(async move { transport.resolve_policy_snapshot(request).await })
@@ -353,7 +353,7 @@ impl Policies {
             .unary(
                 request,
                 &prepared,
-                registered_method_safety(method),
+                registered_method_policy(method),
                 Some(&key),
                 assign,
             )

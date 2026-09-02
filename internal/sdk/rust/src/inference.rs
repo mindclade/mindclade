@@ -21,7 +21,7 @@ use tonic::codegen::tokio_stream::StreamExt;
 use crate::{
     CallOptions, CancellationToken, ClientCore, Error, InferenceStream, SubmitOptions,
     request::{PreparedCall, validate_resource_value},
-    retry::registered_method_safety,
+    retry::registered_method_policy,
 };
 
 const DEFAULT_WAIT_TIMEOUT: Duration = Duration::from_mins(30);
@@ -117,7 +117,7 @@ impl Inference {
                     inference_request: Some(inference_request),
                 },
                 &prepared,
-                registered_method_safety(SUBMIT),
+                registered_method_policy(SUBMIT),
                 Some(&key),
                 |transport, request| {
                     Box::pin(async move { transport.submit_inference(request).await })
@@ -150,7 +150,7 @@ impl Inference {
             .unary(
                 GetInferenceRequestRequest { name },
                 &prepared,
-                registered_method_safety(GET_REQUEST),
+                registered_method_policy(GET_REQUEST),
                 None,
                 |transport, request| {
                     Box::pin(async move { transport.get_inference_request(request).await })
@@ -181,7 +181,7 @@ impl Inference {
             .unary(
                 GetInferenceResultRequest { operation_name },
                 &prepared,
-                registered_method_safety(GET_RESULT),
+                registered_method_policy(GET_RESULT),
                 None,
                 |transport, request| {
                     Box::pin(async move { transport.get_inference_result(request).await })
@@ -232,7 +232,7 @@ impl Inference {
             .unary(
                 command,
                 &prepared,
-                registered_method_safety(COMMIT_RESULT),
+                registered_method_policy(COMMIT_RESULT),
                 Some(&key),
                 |transport, request| {
                     Box::pin(async move { transport.commit_inference_result(request).await })
@@ -458,7 +458,7 @@ impl InferenceWatch {
 
     async fn connect(&self) -> Result<InferenceStream, Error> {
         if !matches!(
-            registered_method_safety(WATCH),
+            registered_method_policy(WATCH),
             crate::retry::CallSafety::Safe
         ) {
             return Err(Error::protocol("inference watch safety policy is missing"));

@@ -33,7 +33,7 @@ use tonic::{Request, Response, Status, codegen::async_trait};
 use crate::{
     AccessToken, CallOptions, Client, Config, Environment, Error, Identity, Pages, RpcTransport,
     SubmitOptions, TokenProvider,
-    retry::{CallSafety, registered_method_safety},
+    retry::{CallSafety, registered_method_policy},
 };
 
 /// Drains one page from a list cursor. These coverage tests only need the
@@ -565,14 +565,14 @@ fn policy_admin_retry_registry_is_complete_and_unknowns_fail_closed() {
     assert!(
         idempotent
             .iter()
-            .all(|method| registered_method_safety(method) == CallSafety::Idempotent)
+            .all(|method| registered_method_policy(method) == CallSafety::Idempotent)
     );
     assert!(
         safe.iter()
-            .all(|method| registered_method_safety(method) == CallSafety::Safe)
+            .all(|method| registered_method_policy(method) == CallSafety::Safe)
     );
     assert_eq!(
-        registered_method_safety("/mindclade.internal.admin.v1.AdminService/Unknown"),
+        registered_method_policy("/mindclade.internal.admin.v1.AdminService/Unknown"),
         CallSafety::Unsafe
     );
 }

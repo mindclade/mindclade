@@ -234,7 +234,7 @@ try {
 } catch (error) {
   if (error instanceof ValidationError) {
     for (const violation of error.fieldViolations) {
-      console.error(violation.field, violation.reason);
+      console.error(violation.field, violation.description);
     }
   } else if (error instanceof MindcladeError) {
     console.error(error.stableCode, error.requestId, error.retry?.attempts);

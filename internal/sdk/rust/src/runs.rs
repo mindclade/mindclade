@@ -19,7 +19,7 @@ use crate::{
     CallOptions, ClientCore, Error, Page, Pages, SubmitOptions,
     jobs::{canonical_resource, protobuf_digest, valid_compact_resource, valid_leaf},
     request::{PreparedCall, SensitiveLeaseToken, initial_page_token, page_request},
-    retry::registered_method_safety,
+    retry::registered_method_policy,
 };
 
 const GET_RUN: &str = "/mindclade.internal.job.v1.RunService/GetRun";
@@ -117,7 +117,7 @@ impl Runs {
             .unary(
                 GetRunRequest { name: name.clone() },
                 &prepared,
-                registered_method_safety(GET_RUN),
+                registered_method_policy(GET_RUN),
                 None,
                 |transport, request| Box::pin(async move { transport.get_run(request).await }),
             )
@@ -170,7 +170,7 @@ impl Runs {
                         .unary(
                             request,
                             &prepared,
-                            registered_method_safety(LIST_RUNS),
+                            registered_method_policy(LIST_RUNS),
                             None,
                             |transport, request| {
                                 Box::pin(async move { transport.list_runs(request).await })
@@ -218,7 +218,7 @@ impl Runs {
             .unary(
                 GetAttemptRequest { name: name.clone() },
                 &prepared,
-                registered_method_safety(GET_ATTEMPT),
+                registered_method_policy(GET_ATTEMPT),
                 None,
                 |transport, request| Box::pin(async move { transport.get_attempt(request).await }),
             )
@@ -270,7 +270,7 @@ impl Runs {
                         .unary(
                             request,
                             &prepared,
-                            registered_method_safety(LIST_ATTEMPTS),
+                            registered_method_policy(LIST_ATTEMPTS),
                             None,
                             |transport, request| {
                                 Box::pin(async move { transport.list_attempts(request).await })
@@ -330,7 +330,7 @@ impl Runs {
             .unary(
                 request,
                 &prepared,
-                registered_method_safety(ACQUIRE),
+                registered_method_policy(ACQUIRE),
                 Some(&key),
                 |transport, request| {
                     Box::pin(async move { transport.acquire_attempt_lease(request).await })
@@ -389,7 +389,7 @@ impl Runs {
             .unary(
                 request,
                 &prepared,
-                registered_method_safety(RENEW),
+                registered_method_policy(RENEW),
                 Some(&key),
                 |transport, request| {
                     Box::pin(async move { transport.renew_attempt_lease(request).await })
@@ -444,7 +444,7 @@ impl Runs {
             .unary(
                 request,
                 &prepared,
-                registered_method_safety(HEARTBEAT),
+                registered_method_policy(HEARTBEAT),
                 Some(&key),
                 |transport, request| {
                     Box::pin(async move { transport.heartbeat_attempt(request).await })
@@ -504,7 +504,7 @@ impl Runs {
             .unary(
                 request,
                 &prepared,
-                registered_method_safety(CANCEL),
+                registered_method_policy(CANCEL),
                 Some(&key),
                 |transport, request| {
                     Box::pin(async move { transport.cancel_attempt(request).await })
@@ -576,7 +576,7 @@ impl Runs {
             .unary(
                 request,
                 &prepared,
-                registered_method_safety(COMMIT),
+                registered_method_policy(COMMIT),
                 Some(&key),
                 |transport, request| {
                     Box::pin(async move { transport.commit_attempt(request).await })

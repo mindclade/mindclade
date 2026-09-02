@@ -260,6 +260,20 @@ py_test(
     ],
 )
 
+py_test(
+    name = "packaging_test",
+    size = "small",
+    srcs = ["tests/test_packaging.py"],
+    data = [":governed_sources"],
+    legacy_create_init = 0,
+    main = "tests/test_packaging.py",
+    deps = [
+        ":mindclade_internal_sdk",
+        "//protocols/generated/python:bindings",
+        "@mindclade_pypi//protobuf",
+    ],
+)
+
 test_suite(
     name = "tests",
     tests = [
@@ -273,6 +287,7 @@ test_suite(
         ":internal_sdk_test",
         ":job_run_test",
         ":observability_test",
+        ":packaging_test",
         ":pagination_test",
         ":policy_admin_test",
         ":raw_response_test",
@@ -288,11 +303,14 @@ filegroup(
     name = "governed_sources",
     srcs = [
         "BUILD.bazel",
+        "CHANGELOG.md",
         "README.md",
+        "component.yaml",
         "pyproject.toml",
     ] + glob(
         [
             "mindclade_internal_sdk/*.py",
+            "scripts/*",
             "tests/*.py",
         ],
     ),

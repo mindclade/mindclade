@@ -20,7 +20,7 @@ use sha2::{Digest, Sha256};
 use crate::{
     CallOptions, ClientCore, Error, Page, Pages, SubmitOptions,
     request::{initial_page_token, page_request},
-    retry::registered_method_safety,
+    retry::registered_method_policy,
 };
 
 const CREATE: &str = "/mindclade.internal.evaluation.v1.EvaluationService/CreateEvaluationRun";
@@ -95,7 +95,7 @@ impl Evaluations {
             .unary(
                 request,
                 &prepared,
-                registered_method_safety(CREATE),
+                registered_method_policy(CREATE),
                 Some(&key),
                 |transport, request| {
                     Box::pin(async move { transport.create_evaluation_run(request).await })
@@ -129,7 +129,7 @@ impl Evaluations {
                     if_none_match: if_none_match.into(),
                 },
                 &prepared,
-                registered_method_safety(GET_RUN),
+                registered_method_policy(GET_RUN),
                 None,
                 |transport, request| {
                     Box::pin(async move { transport.get_evaluation_run(request).await })
@@ -185,7 +185,7 @@ impl Evaluations {
                         .unary(
                             request,
                             &prepared,
-                            registered_method_safety(LIST),
+                            registered_method_policy(LIST),
                             None,
                             |transport, request| {
                                 Box::pin(
@@ -238,7 +238,7 @@ impl Evaluations {
             .unary(
                 request,
                 &prepared,
-                registered_method_safety(CANCEL),
+                registered_method_policy(CANCEL),
                 Some(&key),
                 |transport, request| {
                     Box::pin(async move { transport.cancel_evaluation_run(request).await })
@@ -309,7 +309,7 @@ impl Evaluations {
             .unary(
                 request,
                 &prepared,
-                registered_method_safety(COMMIT),
+                registered_method_policy(COMMIT),
                 Some(&key),
                 |transport, request| {
                     Box::pin(async move { transport.commit_evaluation_result(request).await })
@@ -350,7 +350,7 @@ impl Evaluations {
             .unary(
                 GetEvaluationResultRequest { name: name.clone() },
                 &prepared,
-                registered_method_safety(GET_RESULT),
+                registered_method_policy(GET_RESULT),
                 None,
                 |transport, request| {
                     Box::pin(async move { transport.get_evaluation_result(request).await })
@@ -449,7 +449,7 @@ impl Evaluations {
             .unary(
                 request,
                 &prepared,
-                registered_method_safety(CREATE_DECISION),
+                registered_method_policy(CREATE_DECISION),
                 Some(&key),
                 |transport, request| {
                     Box::pin(async move { transport.create_promotion_decision(request).await })
@@ -479,7 +479,7 @@ impl Evaluations {
             .unary(
                 GetPromotionDecisionRequest { name: name.clone() },
                 &prepared,
-                registered_method_safety(GET_DECISION),
+                registered_method_policy(GET_DECISION),
                 None,
                 |transport, request| {
                     Box::pin(async move { transport.get_promotion_decision(request).await })

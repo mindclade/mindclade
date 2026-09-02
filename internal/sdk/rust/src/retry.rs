@@ -54,6 +54,28 @@ pub(crate) enum CallSafety {
     NeverRetry,
 }
 
+/// The registered route together with its retry-safety class.
+///
+/// Facades resolve this once from their own route constant and hand it to
+/// [`ClientCore::unary`], so the retry loop, the interceptor seam, and the
+/// observer seam all see the same method name without the route string
+/// having to be threaded through every call site separately.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) struct CallPolicy {
+    route: &'static str,
+    safety: CallSafety,
+}
+
+impl CallPolicy {
+    pub(crate) fn route(self) -> &'static str {
+        self.route
+    }
+
+    pub(crate) fn safety(self) -> CallSafety {
+        self.safety
+    }
+}
+
 /// Routes that must never be retried, whatever the caller asks for.
 ///
 /// `RunService.ExpireAttemptLeases` is a raw-only reconciler command using
@@ -64,8 +86,8 @@ pub(crate) fn never_retry_method(method: &str) -> bool {
 
 /// Central policy for ergonomic methods. Unknown methods fail closed to one
 /// attempt; transport metadata can never make an unregistered mutation safe.
-pub(crate) fn registered_method_safety(method: &str) -> CallSafety {
-    if never_retry_method(method) {
+pub(crate) fn registered_method_policy(method: &'static str) -> CallPolicy {
+    let safety = if never_retry_method(method) {
         CallSafety::NeverRetry
     } else if idempotent_method(method) {
         CallSafety::Idempotent
@@ -73,6 +95,10 @@ pub(crate) fn registered_method_safety(method: &str) -> CallSafety {
         CallSafety::Safe
     } else {
         CallSafety::Unsafe
+    };
+    CallPolicy {
+        route: method,
+        safety,
     }
 }
 

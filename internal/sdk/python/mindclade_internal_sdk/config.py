@@ -293,5 +293,14 @@ class ClientConfig:
 
     @property
     def resolved_endpoint(self) -> str:
-        assert self.endpoint is not None
+        """Return the validated endpoint, failing closed rather than asserting.
+
+        ``__post_init__`` always sets this field, so the guard is unreachable in
+        a correctly constructed config. It is a raise rather than an ``assert``
+        because ``python -O`` strips assertions, and a stripped narrowing check
+        would let ``None`` escape as a ``str`` into channel construction.
+        """
+
+        if self.endpoint is None:
+            raise ConfigurationError("endpoint was not resolved during validation")
         return self.endpoint

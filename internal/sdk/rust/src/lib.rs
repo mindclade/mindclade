@@ -148,7 +148,7 @@ pub use mindclade_protocols::workflow::v1::{
 
 use std::sync::Arc;
 
-use retry::{Sleeper, TokioSleeper, registered_method_safety};
+use retry::{Sleeper, TokioSleeper, registered_method_policy};
 
 /// The internal SDK client. Cloning it is cheap and shares the channel,
 /// credential provider, and immutable runtime policy.
@@ -367,7 +367,7 @@ impl Client {
             .unary(
                 message,
                 &prepared,
-                registered_method_safety(T::METHOD),
+                registered_method_policy(T::METHOD),
                 idempotency_key,
                 T::dispatch,
             )

@@ -21,7 +21,7 @@ use sha2::{Digest, Sha256};
 use crate::{
     CallOptions, ClientCore, Error, Page, Pages, SubmitOptions,
     request::{PreparedCall, initial_page_token, page_request},
-    retry::registered_method_safety,
+    retry::registered_method_policy,
 };
 
 const CREATE: &str = "/mindclade.internal.experiment.v1.ExperimentService/CreateExperiment";
@@ -96,7 +96,7 @@ impl Experiments {
                     command: Some(command),
                 },
                 &prepared,
-                registered_method_safety(CREATE),
+                registered_method_policy(CREATE),
                 Some(&key),
                 |transport, request| {
                     Box::pin(async move { transport.create_experiment(request).await })
@@ -128,7 +128,7 @@ impl Experiments {
                     if_none_match: if_none_match.into(),
                 },
                 &prepared,
-                registered_method_safety(GET),
+                registered_method_policy(GET),
                 None,
                 |transport, request| {
                     Box::pin(async move { transport.get_experiment(request).await })
@@ -172,7 +172,7 @@ impl Experiments {
                         .unary(
                             request,
                             &prepared,
-                            registered_method_safety(LIST),
+                            registered_method_policy(LIST),
                             None,
                             |transport, request| {
                                 Box::pin(async move { transport.list_experiments(request).await })
@@ -245,7 +245,7 @@ impl Experiments {
                     command: Some(command),
                 },
                 &prepared,
-                registered_method_safety(UPDATE),
+                registered_method_policy(UPDATE),
                 Some(&key),
                 |transport, request| {
                     Box::pin(async move { transport.update_experiment(request).await })
@@ -289,7 +289,7 @@ impl Experiments {
                     command: Some(command),
                 },
                 &prepared,
-                registered_method_safety(TRANSITION),
+                registered_method_policy(TRANSITION),
                 Some(&key),
                 |transport, request| {
                     Box::pin(async move { transport.transition_experiment(request).await })
@@ -357,7 +357,7 @@ impl Experiments {
                     command: Some(command),
                 },
                 &prepared,
-                registered_method_safety(CREATE_STUDY),
+                registered_method_policy(CREATE_STUDY),
                 Some(&key),
                 |transport, request| Box::pin(async move { transport.create_study(request).await }),
             )
@@ -387,7 +387,7 @@ impl Experiments {
                     if_none_match: if_none_match.into(),
                 },
                 &prepared,
-                registered_method_safety(GET_STUDY),
+                registered_method_policy(GET_STUDY),
                 None,
                 |transport, request| Box::pin(async move { transport.get_study(request).await }),
             )
@@ -424,7 +424,7 @@ impl Experiments {
                         .unary(
                             request,
                             &prepared,
-                            registered_method_safety(LIST_STUDIES),
+                            registered_method_policy(LIST_STUDIES),
                             None,
                             |transport, request| {
                                 Box::pin(async move { transport.list_studies(request).await })
@@ -476,7 +476,7 @@ impl Experiments {
                     command: Some(command),
                 },
                 &prepared,
-                registered_method_safety(TRANSITION_STUDY),
+                registered_method_policy(TRANSITION_STUDY),
                 Some(&key),
                 |transport, request| {
                     Box::pin(async move { transport.transition_study(request).await })
@@ -519,7 +519,7 @@ impl Experiments {
                     command: Some(command),
                 },
                 &prepared,
-                registered_method_safety(CREATE_TRIAL),
+                registered_method_policy(CREATE_TRIAL),
                 Some(&key),
                 |transport, request| Box::pin(async move { transport.create_trial(request).await }),
             )
@@ -549,7 +549,7 @@ impl Experiments {
                     if_none_match: if_none_match.into(),
                 },
                 &prepared,
-                registered_method_safety(GET_TRIAL),
+                registered_method_policy(GET_TRIAL),
                 None,
                 |transport, request| Box::pin(async move { transport.get_trial(request).await }),
             )
@@ -586,7 +586,7 @@ impl Experiments {
                         .unary(
                             request,
                             &prepared,
-                            registered_method_safety(LIST_TRIALS),
+                            registered_method_policy(LIST_TRIALS),
                             None,
                             |transport, request| {
                                 Box::pin(async move { transport.list_trials(request).await })
@@ -638,7 +638,7 @@ impl Experiments {
                     command: Some(command),
                 },
                 &prepared,
-                registered_method_safety(TRANSITION_TRIAL),
+                registered_method_policy(TRANSITION_TRIAL),
                 Some(&key),
                 |transport, request| {
                     Box::pin(async move { transport.transition_trial(request).await })
@@ -710,7 +710,7 @@ impl Experiments {
                     command: Some(command),
                 },
                 &prepared,
-                registered_method_safety(COMPLETE_TRIAL),
+                registered_method_policy(COMPLETE_TRIAL),
                 Some(&key),
                 |transport, request| {
                     Box::pin(async move { transport.complete_trial(request).await })

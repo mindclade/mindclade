@@ -20,7 +20,7 @@ use tonic::codegen::tokio_stream::StreamExt;
 use crate::{
     CallOptions, ClientCore, Error, OperationStream, Page, Pages, SubmitOptions,
     request::{PreparedCall, initial_page_token, page_request, validate_resource_value},
-    retry::registered_method_safety,
+    retry::registered_method_policy,
 };
 
 const DEFAULT_WAIT_TIMEOUT: Duration = Duration::from_mins(30);
@@ -284,7 +284,7 @@ impl Operations {
                         .unary(
                             request,
                             &prepared,
-                            registered_method_safety(LIST_OPERATIONS),
+                            registered_method_policy(LIST_OPERATIONS),
                             None,
                             |transport, request| {
                                 Box::pin(async move { transport.list_operations(request).await })
@@ -330,7 +330,7 @@ impl Operations {
                     if_none_match: String::new(),
                 },
                 &prepared,
-                registered_method_safety(GET_OPERATION),
+                registered_method_policy(GET_OPERATION),
                 None,
                 |transport, request| {
                     Box::pin(async move { transport.get_operation(request).await })
@@ -430,7 +430,7 @@ impl Operations {
                     reason,
                 },
                 &prepared,
-                registered_method_safety(CANCEL_OPERATION),
+                registered_method_policy(CANCEL_OPERATION),
                 Some(&idempotency_key),
                 |transport, request| {
                     Box::pin(async move { transport.cancel_operation(request).await })
@@ -582,7 +582,7 @@ impl OperationWatch {
 
     async fn connect(&self) -> Result<OperationStream, Error> {
         if !matches!(
-            registered_method_safety(WATCH_OPERATION),
+            registered_method_policy(WATCH_OPERATION),
             crate::retry::CallSafety::Safe
         ) {
             return Err(Error::protocol("operation watch safety policy is missing"));

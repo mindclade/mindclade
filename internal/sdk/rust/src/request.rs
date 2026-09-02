@@ -9,7 +9,11 @@ use std::{
 
 use mindclade_protocols::common::v1::{PageRequest, PageResponse};
 use prost_types::Timestamp;
-use tonic::{Code, metadata::MetadataMap};
+use tonic::{
+    Code,
+    codegen::tokio_stream::Stream,
+    metadata::{AsciiMetadataKey, KeyRef, MetadataMap},
+};
 
 use crate::{Config, Error, config::validate_metadata_value};
 
@@ -526,6 +530,7 @@ pub struct Pages<T> {
     items: usize,
     finished: bool,
     failed: bool,
+    in_flight: Option<PageFuture<T>>,
 }
 
 impl<T> Pages<T> {
@@ -554,6 +559,7 @@ impl<T> Pages<T> {
             items: 0,
             finished: false,
             failed: false,
+            in_flight: None,
         }
     }
 

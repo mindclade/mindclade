@@ -17,7 +17,7 @@ use mindclade_protocols::{
 use crate::{
     CallOptions, ClientCore, Error, Page, Pages, SubmitOptions,
     request::{initial_page_token, page_request},
-    retry::registered_method_safety,
+    retry::registered_method_policy,
 };
 
 const CREATE: &str = "/mindclade.internal.dataset.v1.DatasetService/CreateDataset";
@@ -71,7 +71,7 @@ impl Datasets {
                     command: Some(command),
                 },
                 &prepared,
-                registered_method_safety(CREATE),
+                registered_method_policy(CREATE),
                 Some(&key),
                 |transport, request| {
                     Box::pin(async move { transport.create_dataset(request).await })
@@ -103,7 +103,7 @@ impl Datasets {
                     if_none_match: if_none_match.into(),
                 },
                 &prepared,
-                registered_method_safety(GET),
+                registered_method_policy(GET),
                 None,
                 |transport, request| Box::pin(async move { transport.get_dataset(request).await }),
             )
@@ -146,7 +146,7 @@ impl Datasets {
                         .unary(
                             request,
                             &prepared,
-                            registered_method_safety(LIST),
+                            registered_method_policy(LIST),
                             None,
                             |transport, request| {
                                 Box::pin(async move { transport.list_datasets(request).await })
@@ -196,7 +196,7 @@ impl Datasets {
                     command: Some(command),
                 },
                 &prepared,
-                registered_method_safety(UPDATE),
+                registered_method_policy(UPDATE),
                 Some(&key),
                 |transport, request| {
                     Box::pin(async move { transport.update_dataset(request).await })
@@ -236,7 +236,7 @@ impl Datasets {
                     command: Some(command),
                 },
                 &prepared,
-                registered_method_safety(PUBLISH),
+                registered_method_policy(PUBLISH),
                 Some(&key),
                 |transport, request| {
                     Box::pin(async move { transport.publish_dataset_release(request).await })
@@ -276,7 +276,7 @@ impl Datasets {
                     command: Some(command),
                 },
                 &prepared,
-                registered_method_safety(REVOKE),
+                registered_method_policy(REVOKE),
                 Some(&key),
                 |transport, request| {
                     Box::pin(async move { transport.revoke_dataset_release(request).await })
@@ -304,7 +304,7 @@ impl Datasets {
             .unary(
                 GetDatasetReleaseRequest { name },
                 &prepared,
-                registered_method_safety(GET_RELEASE),
+                registered_method_policy(GET_RELEASE),
                 None,
                 |transport, request| {
                     Box::pin(async move { transport.get_dataset_release(request).await })
@@ -343,7 +343,7 @@ impl Datasets {
                         .unary(
                             request,
                             &prepared,
-                            registered_method_safety(LIST_RELEASES),
+                            registered_method_policy(LIST_RELEASES),
                             None,
                             |transport, request| {
                                 Box::pin(

@@ -14,7 +14,7 @@ use mindclade_protocols::{
 use crate::{
     CallOptions, ClientCore, Error, Page, Pages, SubmitOptions,
     request::{initial_page_token, page_request},
-    retry::registered_method_safety,
+    retry::registered_method_policy,
 };
 
 const GET_TENANT: &str = "/mindclade.internal.admin.v1.AdminService/GetTenant";
@@ -64,7 +64,7 @@ impl Admin {
                     if_none_match: if_none_match.into(),
                 },
                 &prepared,
-                registered_method_safety(GET_TENANT),
+                registered_method_policy(GET_TENANT),
                 None,
                 |transport, request| Box::pin(async move { transport.get_tenant(request).await }),
             )
@@ -179,7 +179,7 @@ impl Admin {
                     if_none_match: if_none_match.into(),
                 },
                 &prepared,
-                registered_method_safety(GET_PROJECT),
+                registered_method_policy(GET_PROJECT),
                 None,
                 |transport, request| Box::pin(async move { transport.get_project(request).await }),
             )
@@ -223,7 +223,7 @@ impl Admin {
                         .unary(
                             request,
                             &prepared,
-                            registered_method_safety(LIST_PROJECTS),
+                            registered_method_policy(LIST_PROJECTS),
                             None,
                             |transport, request| {
                                 Box::pin(async move { transport.list_projects(request).await })
@@ -295,7 +295,7 @@ impl Admin {
             .unary(
                 QueryAuditRecordsRequest { query: Some(query) },
                 &prepared,
-                registered_method_safety(QUERY_AUDIT),
+                registered_method_policy(QUERY_AUDIT),
                 None,
                 |transport, request| {
                     Box::pin(async move { transport.query_audit_records(request).await })
@@ -355,7 +355,7 @@ impl Admin {
             .unary(
                 GetAuditExportRequest { name },
                 &prepared,
-                registered_method_safety(GET_EXPORT),
+                registered_method_policy(GET_EXPORT),
                 None,
                 |transport, request| {
                     Box::pin(async move { transport.get_audit_export(request).await })
@@ -393,7 +393,7 @@ impl Admin {
             .unary(
                 request,
                 &prepared,
-                registered_method_safety(method),
+                registered_method_policy(method),
                 Some(&key),
                 invoke,
             )

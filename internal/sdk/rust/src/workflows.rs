@@ -22,7 +22,7 @@ use tonic::codegen::tokio_stream::StreamExt;
 use crate::{
     CallOptions, CancellationToken, ClientCore, Error, Page, Pages, SubmitOptions, WorkflowStream,
     request::{PreparedCall, initial_page_token, page_request},
-    retry::registered_method_safety,
+    retry::registered_method_policy,
 };
 
 const CREATE: &str = "/mindclade.internal.workflow.v1.WorkflowService/CreateWorkflowDefinition";
@@ -202,7 +202,7 @@ impl Workflows {
             .unary(
                 request,
                 &prepared,
-                registered_method_safety(CREATE),
+                registered_method_policy(CREATE),
                 Some(&key),
                 |transport, request| {
                     Box::pin(async move { transport.create_workflow_definition(request).await })
@@ -248,7 +248,7 @@ impl Workflows {
             .unary(
                 request,
                 &prepared,
-                registered_method_safety(UPDATE),
+                registered_method_policy(UPDATE),
                 Some(&key),
                 |transport, request| {
                     Box::pin(async move { transport.update_workflow_definition(request).await })
@@ -279,7 +279,7 @@ impl Workflows {
                     if_none_match: if_none_match.into(),
                 },
                 &prepared,
-                registered_method_safety(GET_DEFINITION),
+                registered_method_policy(GET_DEFINITION),
                 None,
                 |transport, request| {
                     Box::pin(async move { transport.get_workflow_definition(request).await })
@@ -317,7 +317,7 @@ impl Workflows {
                         .unary(
                             request,
                             &prepared,
-                            registered_method_safety(LIST_DEFINITIONS),
+                            registered_method_policy(LIST_DEFINITIONS),
                             None,
                             |transport, request| {
                                 Box::pin(async move {
@@ -371,7 +371,7 @@ impl Workflows {
             .unary(
                 request,
                 &prepared,
-                registered_method_safety(START),
+                registered_method_policy(START),
                 Some(&key),
                 |transport, request| {
                     Box::pin(async move { transport.start_workflow_run(request).await })
@@ -402,7 +402,7 @@ impl Workflows {
                     if_none_match: if_none_match.into(),
                 },
                 &prepared,
-                registered_method_safety(GET_RUN),
+                registered_method_policy(GET_RUN),
                 None,
                 |transport, request| {
                     Box::pin(async move { transport.get_workflow_run(request).await })
@@ -440,7 +440,7 @@ impl Workflows {
                         .unary(
                             request,
                             &prepared,
-                            registered_method_safety(LIST_RUNS),
+                            registered_method_policy(LIST_RUNS),
                             None,
                             |transport, request| {
                                 Box::pin(async move { transport.list_workflow_runs(request).await })
@@ -489,7 +489,7 @@ impl Workflows {
             .unary(
                 request,
                 &prepared,
-                registered_method_safety(CANCEL),
+                registered_method_policy(CANCEL),
                 Some(&key),
                 |transport, request| {
                     Box::pin(async move { transport.cancel_workflow_run(request).await })
@@ -544,7 +544,7 @@ impl Workflows {
             .unary(
                 request,
                 &prepared,
-                registered_method_safety(COMMIT),
+                registered_method_policy(COMMIT),
                 Some(&key),
                 |transport, request| {
                     Box::pin(async move { transport.commit_workflow_transition(request).await })
@@ -694,7 +694,7 @@ impl WorkflowWatch {
 
     async fn connect(&self) -> Result<WorkflowStream, Error> {
         if !matches!(
-            registered_method_safety(WATCH),
+            registered_method_policy(WATCH),
             crate::retry::CallSafety::Safe
         ) {
             return Err(Error::protocol("workflow watch safety policy is missing"));

@@ -156,6 +156,42 @@ describe("resumable watcher and long-running operation verbs", () => {
 		assert.equal(streams, 1);
 	});
 
+	test("a reconnect burst is observable on the error and is bounded by the route", async () => {
+		const runtime = new FakeRuntime({ randomValues: [0.5, 0.5, 0.5] });
+		let streams = 0;
+		const transport = testTransport((router) => {
+			router.service(OperationService, {
+				async *watchOperation() {
+					streams += 1;
+					if (streams === 1) {
+						yield { operation: { done: false, operationId: OPERATION }, sequence: 1n };
+					}
+					throw new ConnectError("transient disconnect", Code.Unavailable);
+				},
+			});
+		});
+		const client = clientWith(transport, runtime);
+		const observed: bigint[] = [];
+		await assert.rejects(
+			(async () => {
+				for await (const update of client.operations.watch(OPERATION)) {
+					observed.push(update.sequence);
+				}
+			})(),
+			(reason: unknown) => {
+				assert.ok(reason instanceof MindcladeError);
+				// WatchOperation is a `safe` route, so the client policy's four
+				// attempts apply; the delivered update reset the burst, so the
+				// reported reconnects and delay are the ones since that update.
+				assert.deepEqual(reason.retry, { attempts: 4, cause: "remote", cumulativeDelayMs: 350 });
+				return true;
+			},
+		);
+		assert.deepEqual(observed, [1n]);
+		// One stream that made progress plus the four-attempt burst that followed.
+		assert.equal(streams, 4);
+	});
+
 	test("an abort signal ends the watch between messages", async () => {
 		const transport = testTransport((router) => {
 			router.service(OperationService, {

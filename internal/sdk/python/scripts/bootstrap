@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+# Prepare a working tree for internal Python SDK development.
+#
+# Two things have to be true before this package can be worked on, and they
+# fail for different reasons, so they are run and reported separately:
+#
+#   1. the repository's pinned Python environment is resolved from the lockfile;
+#   2. the repository's pinned toolchain is present at its exact versions,
+#      which `just bootstrap` (tools/dev/bootstrap.py) is the authority on.
+#
+# The lockfile is authoritative: a resolution that is not already recorded is a
+# governance change, not a developer convenience, so the sync refuses to
+# rewrite it.
+
+set -euo pipefail
+
+# shellcheck source=internal/sdk/python/scripts/common.sh
+source "$(dirname -- "${BASH_SOURCE[0]}")/common.sh"
+cd -- "$(repository_root)"
+
+require_tool "${UV:-uv}" "install uv; see docs/development or run 'nix develop'."
+
+announce "${UV:-uv} sync --frozen"
+"${UV:-uv}" sync --frozen
+
+if bazel_requested; then
+  require_tool bazel "install Bazelisk, or unset MINDCLADE_BAZEL to use the native toolchain."
+  announce "bazel fetch ${SDK_BAZEL_LIBRARY}"
+  bazel fetch "${SDK_BAZEL_LIBRARY}"
+fi
+
+audit=(just bootstrap)
+if ! command -v just >/dev/null 2>&1; then
+  require_tool python3 "install Python 3.12; see docs/development or run 'nix develop'."
+  audit=(python3 tools/dev/bootstrap.py --root .)
+fi
+
+announce "${audit[*]}"
+if ! "${audit[@]}"; then
+  printf '\n' >&2
+  printf 'bootstrap: %s has its pinned environment, but the repository toolchain\n' \
+    "${SDK_PACKAGE_DIR}" >&2
+  printf '           audit above reported a gap. Install or re-pin the tools it\n' >&2
+  printf '           named before running scripts/lint, scripts/format, or the\n' >&2
+  printf '           repository gates.\n' >&2
+  exit 1
+fi
+
+printf 'bootstrap: ready for %s\n' "${SDK_PACKAGE_DIR}" >&2

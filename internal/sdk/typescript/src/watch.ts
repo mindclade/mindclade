@@ -1,10 +1,11 @@
 import { Code, ConnectError } from "@connectrpc/connect";
 
 import type { ClientCore } from "./core.js";
-import { MindcladeError } from "./error.js";
+import { MindcladeError, type RetryState } from "./error.js";
 import { metadataKeyNames, observeCall } from "./observability.js";
 import { callHeaders, type PreparedCall } from "./request.js";
 import { ensureActive, retryableAttempts, retryDelay } from "./retry.js";
+import { registeredMethodSafety } from "./safety.js";
 
 /**
  * Default total budget for a long-running watch or wait.
@@ -80,6 +81,11 @@ export async function* watchStream<Value, Cursor, Update>(
 ): AsyncGenerator<Value> {
 	let cursor = initialCursor;
 	let failures = 0;
+	let cumulativeDelayMs = 0;
+	// The route is the authority for reconnect eligibility here exactly as it is
+	// on the unary path: `safety.ts` stays the only classifier, so a watcher
+	// cannot quietly grant itself a retry budget its RPC is not entitled to.
+	const attempts = retryableAttempts(core, prepared, registeredMethodSafety(source.route));
 	for (;;) {
 		ensureActive(core, prepared);
 		const remainingMs = Math.max(1, prepared.deadlineMs - core.runtime.nowMs());
@@ -96,7 +102,10 @@ export async function* watchStream<Value, Cursor, Update>(
 				const decision = source.accept(update, cursor);
 				if (decision.delivery === "skip") continue;
 				cursor = decision.cursor;
+				// Progress proves the stream is healthy, so the reconnect budget
+				// and the delay it has spent both restart from the new cursor.
 				failures = 0;
+				cumulativeDelayMs = 0;
 				yield decision.value;
 				if (source.terminal(decision.value)) return;
 			}
@@ -118,12 +127,21 @@ export async function* watchStream<Value, Cursor, Update>(
 				requestId: error.requestId ?? prepared.requestId,
 				status: error.kind,
 			});
-			if (!error.retryable || failures >= retryableAttempts(core, prepared, "safe")) throw error;
+			// Reconnects and delay are reported since the last acknowledged
+			// update, which is the burst that actually ended the stream.
+			const state = (cause: MindcladeError): RetryState => ({
+				attempts: failures,
+				cause: cause.kind,
+				cumulativeDelayMs,
+			});
+			if (!error.retryable || failures >= attempts) throw error.withRetryState(state(error));
 			const delay = retryDelay(core, failures, error.retryAfterMs);
 			if (delay >= prepared.deadlineMs - core.runtime.nowMs()) {
-				throw MindcladeError.deadlineExceeded();
+				const expired = MindcladeError.deadlineExceeded();
+				throw expired.withRetryState(state(expired));
 			}
 			await core.runtime.sleep(delay, prepared.signal);
+			cumulativeDelayMs += delay;
 		}
 	}
 }
