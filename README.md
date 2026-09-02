@@ -36,7 +36,7 @@ scientific, or production qualification.
 Use the pinned Nix shell or devcontainer, then run:
 
 ```text
-nix develop
+nix develop --no-accept-flake-config --no-update-lock-file
 just bootstrap
 just doctor
 just check
@@ -60,7 +60,7 @@ The opt-in Linux SM90/Hopper GPU intake shell includes pinned modern DeepEP
 inputs:
 
 ```text
-nix develop .#gpu
+nix develop --no-accept-flake-config --no-update-lock-file .#gpu
 python -c "import deep_ep; print(deep_ep.__file__)"
 ```
 
@@ -69,6 +69,11 @@ the legacy objects upstream still compiles. Multi-node use additionally
 requires qualified host IBGDA or GDRCopy configuration. This shell is
 development intake only and does not mutate host drivers or grant GPU, kernel,
 network, or production qualification.
+
+The committed `flake.lock` and `MODULE.bazel.lock` close the system-tool and
+Bazel module graphs. Remote Bazel execution and remote caching remain disabled
+until workers carry the exact reviewed Nix store paths or use an immutable,
+digest-pinned image built from the same toolchain closure.
 
 Read `AGENTS.md`, `ARCHITECTURE.md`, and `CONTRIBUTING.md` before editing. The
 editable blueprint sources live under `docs/architecture/blueprint/`; the

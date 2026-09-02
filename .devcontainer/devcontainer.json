@@ -15,7 +15,7 @@
     "LC_ALL": "C",
     "TZ": "UTC"
   },
-  "postCreateCommand": "nix develop --command just bootstrap",
+  "postCreateCommand": "nix develop --no-accept-flake-config --no-update-lock-file --command just bootstrap",
   "customizations": {
     "vscode": {
       "extensions": [

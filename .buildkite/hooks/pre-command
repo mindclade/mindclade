@@ -65,6 +65,8 @@ if nix_value("trusted-public-keys") != [
     raise SystemExit("Nix trusted-public-keys does not match the approved key")
 if nix_value("require-sigs") is not True:
     raise SystemExit("Nix signature verification must remain enabled")
+if nix_value("accept-flake-config") is not False:
+    raise SystemExit("repository flake configuration must remain disabled")
 
 context = json.loads(os.environ["MINDCLADE_CONTEXT_JSON"])
 if not isinstance(context, dict):

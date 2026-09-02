@@ -4,12 +4,16 @@ on:
   pull_request:
     paths:
       - "**/MODULE.bazel"
+      - "**/MODULE.bazel.lock"
       - "**/Cargo.toml"
       - "**/Cargo.lock"
+      - "**/buf.lock"
+      - "**/flake.lock"
       - "**/go.mod"
       - "**/go.sum"
       - "**/package.json"
       - "**/pnpm-lock.yaml"
+      - "**/pnpm-workspace.yaml"
       - "**/pyproject.toml"
       - "**/uv.lock"
       - ".github/dependabot.yml"
@@ -23,7 +27,7 @@ concurrency:
 
 jobs:
   review:
-    uses: mindclade/.github/.github/workflows/reusable-dependency-review.yml@6399abc50c4678d0dff7f33bbd7f6868043ef736
+    uses: mindclade/.github/.github/workflows/reusable-dependency-review.yml@c097ef86c25991a400050c13e78574e8d3d8c071
     with:
       source_revision: ${{ github.event.pull_request.head.sha }}
       base_revision: ${{ github.event.pull_request.base.sha }}

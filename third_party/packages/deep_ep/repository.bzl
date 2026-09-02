@@ -9,7 +9,7 @@ def _deep_ep_artifact_repository_impl(repository_ctx):
 
     nix = repository_ctx.os.environ.get("MINDCLADE_NIX_BIN")
     if nix == None or not nix.startswith("/nix/store/"):
-        fail("MINDCLADE_NIX_BIN must identify the Nix-store binary; invoke Bazel through nix develop .#deepep")
+        fail("MINDCLADE_NIX_BIN must identify the Nix-store binary; invoke Bazel through nix develop --no-accept-flake-config --no-update-lock-file .#deepep")
 
     # Resolving every declared label makes package, source, patch, Python, and
     # flake lock changes part of the repository rule key.
@@ -21,7 +21,7 @@ def _deep_ep_artifact_repository_impl(repository_ctx):
             nix,
             "--extra-experimental-features",
             "nix-command flakes",
-            "--accept-flake-config",
+            "--no-accept-flake-config",
             "build",
             "--no-link",
             "--no-update-lock-file",
