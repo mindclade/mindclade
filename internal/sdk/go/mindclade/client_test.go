@@ -186,6 +186,29 @@ type operationServer struct {
 	reads int
 }
 
+type scriptedOperationClient struct {
+	internaljobv1.OperationServiceClient
+	stream grpc.ServerStreamingClient[internaljobv1.WatchOperationResponse]
+}
+
+func (client *scriptedOperationClient) WatchOperation(context.Context, *internaljobv1.WatchOperationRequest, ...grpc.CallOption) (grpc.ServerStreamingClient[internaljobv1.WatchOperationResponse], error) {
+	return client.stream, nil
+}
+
+type scriptedOperationStream struct {
+	grpc.ClientStream
+	responses []*internaljobv1.WatchOperationResponse
+}
+
+func (stream *scriptedOperationStream) Recv() (*internaljobv1.WatchOperationResponse, error) {
+	if len(stream.responses) == 0 {
+		return nil, io.EOF
+	}
+	response := stream.responses[0]
+	stream.responses = stream.responses[1:]
+	return response, nil
+}
+
 func (server *operationServer) GetOperation(context.Context, *internaljobv1.GetOperationRequest) (*internaljobv1.GetOperationResponse, error) {
 	server.mu.Lock()
 	defer server.mu.Unlock()
@@ -308,6 +331,31 @@ func TestOperationWaitAndWatch(t *testing.T) {
 	}
 	if _, err = watcher.Recv(); !errors.Is(err, io.EOF) {
 		t.Fatalf("terminal watcher must end with EOF: %v", err)
+	}
+}
+
+func TestOperationWatchRejectsMissingOrCrossResourceIdentity(t *testing.T) {
+	client, _, _ := testClient(t)
+	for _, operationID := range []string{"", "operations/wrong"} {
+		client.Operations.transport = &scriptedOperationClient{stream: &scriptedOperationStream{
+			responses: []*internaljobv1.WatchOperationResponse{{
+				Sequence: 1,
+				Operation: &jobv1.Operation{
+					OperationId: operationID,
+					State:       jobv1.OperationState_OPERATION_STATE_RUNNING,
+				},
+			}},
+		}}
+		watcher, err := client.Operations.Watch(context.Background(), "operations/expected", 0)
+		if err != nil {
+			t.Fatalf("Watch(%q): %v", operationID, err)
+		}
+		_, err = watcher.Recv()
+		_ = watcher.Close()
+		var sdkError *Error
+		if !errors.As(err, &sdkError) || sdkError.Code != CodeDataLoss {
+			t.Fatalf("Watch(%q) error = %#v, want data_loss", operationID, err)
+		}
 	}
 }
 

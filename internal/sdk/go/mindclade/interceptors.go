@@ -14,6 +14,12 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+type longRunningStreamContextKey struct{}
+
+func longRunningStreamContext(ctx context.Context) context.Context {
+	return context.WithValue(ctx, longRunningStreamContextKey{}, struct{}{})
+}
+
 func unaryInterceptor(config Config) grpc.UnaryClientInterceptor {
 	return func(
 		ctx context.Context,
@@ -78,7 +84,8 @@ func streamInterceptor(config Config) grpc.StreamClientInterceptor {
 		options ...grpc.CallOption,
 	) (grpc.ClientStream, error) {
 		cancel := func() {}
-		if deadline, ok := ctx.Deadline(); !ok || time.Until(deadline) > config.DefaultRPCTimeout {
+		_, longRunning := ctx.Value(longRunningStreamContextKey{}).(struct{})
+		if deadline, ok := ctx.Deadline(); !longRunning && (!ok || time.Until(deadline) > config.DefaultRPCTimeout) {
 			ctx, cancel = context.WithTimeout(ctx, config.DefaultRPCTimeout)
 		}
 		ctx, _, _ = withRequestOptions(ctx)

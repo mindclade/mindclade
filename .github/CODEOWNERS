@@ -63,6 +63,7 @@
 
 # Wave 1 contract, library, durability, and local-integration ownership.
 /protocols/ @mindclade/architecture @mindclade/security
+/internal/sdk/ @mindclade/product-engineering @mindclade/architecture @mindclade/security
 /libs/ @mindclade/developer-platform
 /services/control_plane/ @mindclade/product-engineering @mindclade/security
 /deploy/ @mindclade/platform-operations @mindclade/security

@@ -4,7 +4,7 @@ import hashlib
 import tempfile
 import unittest
 from pathlib import Path
-from typing import BinaryIO, cast
+from typing import cast
 
 from mindclade_internal_sdk import CallOptions, Client, ProtocolError
 from mindclade_internal_sdk.resources import ArtifactRef, Operation, artifact_reference
@@ -32,6 +32,8 @@ class _FakeArtifacts:
             size_bytes=len(identity),
         )
         self.aliases: list[str] = []
+        self.resolutions: list[tuple[str, str | None, CallOptions | None]] = []
+        self.downloads: list[tuple[ArtifactRef, Path, CallOptions | None]] = []
 
     def resolve_alias(
         self,
@@ -40,19 +42,25 @@ class _FakeArtifacts:
         parent: str | None = None,
         options: CallOptions | None = None,
     ) -> ArtifactRef:
-        del parent, options
         self.aliases.append(alias)
+        self.resolutions.append((alias, parent, options))
         return self.artifact
 
-    def download(
+    def download_file(
         self,
         artifact: ArtifactRef,
-        destination: BinaryIO,
+        destination: Path,
         *,
         options: CallOptions | None = None,
     ) -> int:
-        del artifact, options
-        return destination.write(self.content)
+        target = Path(destination)
+        self.downloads.append((artifact, target, options))
+        if target.exists():
+            raise FileExistsError(target)
+        if "sha256:" + hashlib.sha256(self.content).hexdigest() != artifact.digest:
+            raise ProtocolError("fake SDK rejected corrupt artifact content")
+        target.write_bytes(self.content)
+        return len(self.content)
 
 
 class _FakeClient:
@@ -88,13 +96,25 @@ class SdkExamplesTest(unittest.TestCase):
         fake = _FakeClient(content)
         with tempfile.TemporaryDirectory() as directory:
             destination = Path(directory) / "result.bin"
+            options = CallOptions(request_id="artifact-download-01")
             artifact = download_verified_artifact(
-                cast(Client, fake), alias="latest", destination=destination
+                cast(Client, fake),
+                alias="latest",
+                destination=destination,
+                parent="tenants/t/projects/p",
+                options=options,
             )
             self.assertEqual(destination.read_bytes(), content)
             self.assertEqual(artifact, fake.artifacts.artifact)
             self.assertEqual(fake.artifacts.aliases, ["latest"])
-            self.assertEqual(list(Path(directory).glob("*.part")), [])
+            self.assertEqual(
+                fake.artifacts.resolutions,
+                [("latest", "tenants/t/projects/p", options)],
+            )
+            self.assertEqual(
+                fake.artifacts.downloads,
+                [(fake.artifacts.artifact, destination, options)],
+            )
 
     def test_download_never_publishes_corrupt_or_partial_content(self) -> None:
         fake = _FakeClient()
@@ -106,7 +126,17 @@ class SdkExamplesTest(unittest.TestCase):
                     cast(Client, fake), alias="latest", destination=destination
                 )
             self.assertFalse(destination.exists())
-            self.assertEqual(list(Path(directory).glob("*.part")), [])
+
+    def test_download_never_overwrites_an_existing_destination(self) -> None:
+        fake = _FakeClient(b"replacement")
+        with tempfile.TemporaryDirectory() as directory:
+            destination = Path(directory) / "result.bin"
+            destination.write_bytes(b"existing")
+            with self.assertRaises(FileExistsError):
+                download_verified_artifact(
+                    cast(Client, fake), alias="latest", destination=destination
+                )
+            self.assertEqual(destination.read_bytes(), b"existing")
 
 
 if __name__ == "__main__":

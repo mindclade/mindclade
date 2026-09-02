@@ -549,17 +549,18 @@ class Workflows:
             failures += 1
             if failures >= self._invoker.config.retry.max_attempts:
                 raise ProtocolError("workflow watch ended before terminal durable state")
+            retry_remaining = deadline - time.monotonic()
+            if retry_remaining <= 0:
+                raise TimeoutError("workflow watch deadline expired")
             delay = retry_delay(
                 self._invoker.config,
                 failures,
-                deadline - time.monotonic(),
+                retry_remaining,
                 retry_after=retry_after,
             )
-            if delay <= 0:
-                raise TimeoutError("workflow watch deadline expired")
-            if cancellation is not None and cancellation.wait(delay):
+            if delay > 0 and cancellation is not None and cancellation.wait(delay):
                 raise CancelledError("workflow watch was cancelled")
-            if cancellation is None:
+            if delay > 0 and cancellation is None:
                 time.sleep(delay)
 
     def wait(
@@ -848,14 +849,17 @@ class AsyncWorkflows:
             failures += 1
             if failures >= self._invoker.config.retry.max_attempts:
                 raise ProtocolError("workflow watch ended before terminal durable state")
+            retry_remaining = deadline - loop.time()
+            if retry_remaining <= 0:
+                raise TimeoutError("workflow watch deadline expired")
             delay = retry_delay(
                 self._invoker.config,
                 failures,
-                deadline - loop.time(),
+                retry_remaining,
                 retry_after=retry_after,
             )
             if delay <= 0:
-                raise TimeoutError("workflow watch deadline expired")
+                continue
             if cancellation is None:
                 await asyncio.sleep(delay)
             else:

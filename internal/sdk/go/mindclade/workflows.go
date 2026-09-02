@@ -378,7 +378,7 @@ func (service *WorkflowService) longRunningContext(ctx context.Context, options 
 		cancel()
 		return nil, nil, err
 	}
-	return decorated, cancel, nil
+	return longRunningStreamContext(decorated), cancel, nil
 }
 
 func (watcher *WorkflowWatcher) connect() error {

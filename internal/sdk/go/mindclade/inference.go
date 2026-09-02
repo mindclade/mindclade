@@ -168,10 +168,10 @@ func (service *InferenceService) longRunningContext(ctx context.Context) (contex
 		return nil, nil, &Error{Code: CodeInvalidArgument, Message: "context is required"}
 	}
 	if _, ok := ctx.Deadline(); ok {
-		return ctx, func() {}, nil
+		return longRunningStreamContext(ctx), func() {}, nil
 	}
 	bounded, cancel := context.WithTimeout(ctx, service.client.config.DefaultOperationTimeout)
-	return bounded, cancel, nil
+	return longRunningStreamContext(bounded), cancel, nil
 }
 
 func (watcher *InferenceWatcher) connect() error {

@@ -12,7 +12,14 @@ from mindclade.inference.v1 import (
 )
 from mindclade.internal.inference.v1 import inference_service_pb2
 from mindclade.job.v1 import lease_fencing_pb2, operation_pb2
-from mindclade_internal_sdk import AsyncClient, CallOptions, Client, ClientConfig, Environment
+from mindclade_internal_sdk import (
+    AsyncClient,
+    CallOptions,
+    Client,
+    ClientConfig,
+    Environment,
+    UnavailableError,
+)
 from mindclade_internal_sdk._invocation import canonical_digest
 from mindclade_internal_sdk.testing import FakeAsyncTransport, FakeSyncTransport
 from mindclade_internal_sdk.transport import (
@@ -171,6 +178,28 @@ class SyncInferenceTest(unittest.TestCase):
         self.assertEqual(terminal_result.name, result().name)
         self.assertEqual(terminal_operation.operation_id, OPERATION_NAME)
 
+    def test_watch_treats_zero_retry_after_as_immediate_retry(self) -> None:
+        transport = FakeSyncTransport()
+        attempts = 0
+
+        def stream(request: Message, timeout: float, metadata: Metadata) -> list[Message]:
+            del request, timeout, metadata
+            nonlocal attempts
+            attempts += 1
+            if attempts == 1:
+                raise UnavailableError(
+                    "transient inference stream failure",
+                    retryable=True,
+                    retry_after=0.0,
+                )
+            return list(stream_messages())
+
+        transport.stream_handlers[WATCH_INFERENCE] = stream
+        client = Client(config(), transport=transport)
+        messages = list(client.inference.watch(OPERATION_NAME, timeout=1))
+        self.assertEqual(attempts, 2)
+        self.assertEqual(messages[-1].sequence, 2)
+
 
 class AsyncInferenceTest(unittest.IsolatedAsyncioTestCase):
     async def test_async_generated_submit_and_wait(self) -> None:
@@ -205,6 +234,31 @@ class AsyncInferenceTest(unittest.IsolatedAsyncioTestCase):
         terminal_result, terminal_operation = await client.inference.wait(OPERATION_NAME, timeout=1)
         self.assertEqual(terminal_result.name, result().name)
         self.assertEqual(terminal_operation.operation_id, OPERATION_NAME)
+
+    async def test_watch_treats_zero_retry_after_as_immediate_retry(self) -> None:
+        transport = FakeAsyncTransport()
+        attempts = 0
+
+        async def stream(
+            request: Message, timeout: float, metadata: Metadata
+        ) -> AsyncIterator[Message]:
+            del request, timeout, metadata
+            nonlocal attempts
+            attempts += 1
+            if attempts == 1:
+                raise UnavailableError(
+                    "transient inference stream failure",
+                    retryable=True,
+                    retry_after=0.0,
+                )
+            for message in stream_messages():
+                yield message
+
+        transport.stream_handlers[WATCH_INFERENCE] = stream
+        client = AsyncClient(config(), transport=transport)
+        messages = [message async for message in client.inference.watch(OPERATION_NAME, timeout=1)]
+        self.assertEqual(attempts, 2)
+        self.assertEqual(messages[-1].sequence, 2)
 
 
 if __name__ == "__main__":

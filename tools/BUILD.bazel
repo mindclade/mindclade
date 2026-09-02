@@ -191,7 +191,14 @@ py_test(
 py_test(
     name = "repository_policies_test",
     srcs = ["repo/tests/test_repository_policies.py"],
-    data = _REPOSITORY_TEST_DATA,
+    data = _REPOSITORY_TEST_DATA + [
+        "//:internal_sdk_root_sources",
+        "//examples/sdk:governed_sources",
+        "//internal/sdk/go/mindclade:governed_sources",
+        "//internal/sdk/python:governed_sources",
+        "//internal/sdk/rust:governed_sources",
+        "//internal/sdk/typescript:governed_sources",
+    ],
     legacy_create_init = 0,
     main = "repo/tests/test_repository_policies.py",
     python_version = "PY3",

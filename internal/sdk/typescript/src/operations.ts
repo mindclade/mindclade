@@ -187,7 +187,7 @@ export class Operations {
 					if (update.operation === undefined) {
 						throw MindcladeError.protocol("operation watch update omitted its operation");
 					}
-					if (update.operation.operationId !== "" && update.operation.operationId !== name) {
+					if (update.operation.operationId !== name) {
 						throw MindcladeError.protocol("operation watch returned a different operation");
 					}
 					failures = 0;

@@ -305,6 +305,47 @@ def write_connected_adr_fixture(directory: Path) -> dict[str, object]:
 
 
 class ProtobufCompatibilityTest(unittest.TestCase):
+    def test_buildifier_version_accepts_only_locked_package_provenance(self) -> None:
+        expected = "buildifier scm revision: v8.5.1"
+        self.assertTrue(
+            generate_protocols.buildifier_version_matches_lock(
+                actual=expected,
+                expected=expected,
+                version="8.5.1",
+                executable=Path("/unversioned/buildifier"),
+            )
+        )
+        for executable in (
+            Path("/nix/store/source-hash-buildifier-8.5.1/bin/buildifier"),
+            Path("/opt/homebrew/Cellar/buildifier/8.5.1/bin/buildifier"),
+        ):
+            with self.subTest(executable=executable):
+                self.assertTrue(
+                    generate_protocols.buildifier_version_matches_lock(
+                        actual="buildifier scm revision: redacted",
+                        expected=expected,
+                        version="8.5.1",
+                        executable=executable,
+                    )
+                )
+        for actual, executable in (
+            ("buildifier scm revision: redacted", Path("/usr/local/bin/buildifier")),
+            (
+                "buildifier scm revision: redacted",
+                Path("/nix/store/source-hash-buildifier-8.5.0/bin/buildifier"),
+            ),
+            ("buildifier scm revision: v8.5.0", Path("/usr/local/bin/buildifier")),
+        ):
+            with self.subTest(actual=actual, executable=executable):
+                self.assertFalse(
+                    generate_protocols.buildifier_version_matches_lock(
+                        actual=actual,
+                        expected=expected,
+                        version="8.5.1",
+                        executable=executable,
+                    )
+                )
+
     def test_generation_transaction_rolls_back_and_publishes_manifest_last(self) -> None:
         with tempfile.TemporaryDirectory(prefix="mindclade-generation-transaction-") as value:
             repository = Path(value)

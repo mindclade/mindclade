@@ -542,6 +542,65 @@ class RepositoryPolicyTest(unittest.TestCase):
         plugin_gaps = [gap for gap in gaps if gap["path"].startswith("tools/codegen/rust_plugins/")]
         self.assertEqual(plugin_gaps, [])
 
+    def test_internal_sdk_documentation_matches_the_activated_surface(self) -> None:
+        readmes = {
+            "go": REPO_ROOT / "internal/sdk/go/mindclade/README.md",
+            "python": REPO_ROOT / "internal/sdk/python/README.md",
+            "rust": REPO_ROOT / "internal/sdk/rust/README.md",
+            "typescript": REPO_ROOT / "internal/sdk/typescript/README.md",
+        }
+        required_markers = {
+            "go": (
+                "IdempotencyKey",
+                "Paginate",
+                "Operations.Watch",
+                "DownloadFile",
+                "Transport()",
+                "go test",
+            ),
+            "python": (
+                "idempotency_key",
+                "paginate",
+                "operations.watch",
+                "download_file",
+                "client.generated",
+                "unittest",
+            ),
+            "rust": (
+                "SubmitOptions::new",
+                "paginate",
+                "operations().watch",
+                "download_file",
+                "generated_clients",
+                "cargo test",
+            ),
+            "typescript": (
+                "idempotencyKey",
+                "paginate",
+                "operations.watch",
+                "downloadFile",
+                "client.raw",
+                "pnpm",
+            ),
+        }
+        for language, path in readmes.items():
+            text = path.read_text(encoding="utf-8")
+            with self.subTest(language=language):
+                for marker in required_markers[language]:
+                    self.assertIn(marker, text)
+                self.assertIn("ExpireAttemptLeases", text)
+
+        python_readme = readmes["python"].read_text(encoding="utf-8")
+        self.assertNotIn("from mindclade.", python_readme)
+
+        example = (REPO_ROOT / "examples/sdk/download_artifact.py").read_text(encoding="utf-8")
+        example_readme = (REPO_ROOT / "examples/sdk/README.md").read_text(encoding="utf-8")
+        self.assertIn("client.artifacts.download_file", example)
+        self.assertNotIn("overwrite", example)
+        self.assertNotIn(".replace(", example)
+        self.assertIn("atomic no-clobber", example_readme)
+        self.assertNotIn("atomic same-directory rename", example_readme)
+
     def test_normalization_rejects_tokens_and_parent_escape(self) -> None:
         for path in ("/absolute", "a/../b", "a/{b}.py", "a/<domain>.py", "a\\b"):
             with self.subTest(path=path), self.assertRaises(PolicyError):
