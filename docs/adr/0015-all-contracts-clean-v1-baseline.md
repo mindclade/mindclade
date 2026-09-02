@@ -3,9 +3,9 @@
 - Status: Accepted in blueprint specification
 - Connected ratification: Pending independent review on protected infrastructure
 - Specification date: 2026-08-31
-- Effective date: 2026-08-31 for repository source implementation only
+- Effective date: Pending connected ratification; source implementation authorized 2026-08-31
 - Compatibility window: One clean-v1 reset before the first supported external release; additive v1 compatibility applies after the baseline is committed
-- Supersedes: The contract-scheduling and deferment portions of ADR-0004, ADR-0011, ADR-0012, blueprint wave timing, and ADR-0012's one-way OpenAPI derivation direction
+- Supersedes: ADR-0004
 - Superseded by: None
 - Owners: Architecture, Contract Governance
 - Reviewers: Developer Platform, Security, Domain Owners, Developer Experience

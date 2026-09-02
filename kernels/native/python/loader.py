@@ -1394,7 +1394,7 @@ def _parse_manifest(
         )
     if manifest["generator"] != {
         "id": "kernels.native.codegen.generate",
-        "version": 6,
+        "version": 7,
     }:
         raise NativeBundleVerificationError(
             "native manifest generator is unsupported"

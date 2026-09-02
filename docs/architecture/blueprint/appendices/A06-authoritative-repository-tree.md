@@ -2234,7 +2234,8 @@ mindclade/
 │       │   ├── CMakeLists.txt
 │       │   ├── abi_manifest.json
 │       │   ├── registration.cpp
-│       │   └── tensor_bridge.cpp
+│       │   ├── tensor_bridge.cpp
+│       │   └── tensor_bridge.h
 │       ├── tests/
 │       │   ├── pytest_runner.py
 │       │   ├── test_abi_compatibility.py
@@ -3782,7 +3783,13 @@ mindclade/
 │   │   ├── 0011-sqp-001-scientific-qualification-profile.md
 │   │   ├── 0012-http-json-operation-projection-python-sdk.md
 │   │   ├── 0014-tilelang-kernel-platform-source-development.md
-│   │   └── 0009-native-kernel-source-incubation.md
+│   │   ├── 0009-native-kernel-source-incubation.md
+│   │   ├── 0016-pairformer-native-kernel-platform-wave6-source-activation.md
+│   │   ├── 0017-jit-06-outer-product-mean-sm90a-sm100a.md
+│   │   ├── 0018-jit-06-pair-weighted-average-sm90a-sm100a.md
+│   │   ├── 0019-jit-06-transition-sm90a-sm100a.md
+│   │   ├── 0020-jit-06-triangle-attention-sm90a-sm100a.md
+│   │   └── 0021-jit-06-triangle-multiplication-sm90a-sm100a.md
 │   ├── domains/
 │   │   ├── bio.md
 │   │   ├── data.md

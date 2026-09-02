@@ -15,7 +15,7 @@
       "required": ["id", "version"],
       "properties": {
         "id": {"const": "kernels.native.codegen.generate"},
-        "version": {"const": 6}
+        "version": {"const": 7}
       }
     },
     "source_inventory_sha256": {"$ref": "#/$defs/digest"},
@@ -90,7 +90,9 @@
           "required": ["type", "mode", "value", "version"],
           "properties": {
             "type": {"const": "InitializationSpec"},
-            "mode": {"type": "string"},
+            "mode": {
+              "enum": ["zero", "value", "negative_infinity", "uninitialized"]
+            },
             "value": {"type": ["integer", "number", "boolean", "null"]},
             "version": {"const": 1}
           }

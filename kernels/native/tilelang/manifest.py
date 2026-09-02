@@ -13,7 +13,7 @@ import re
 from typing import Any
 
 GENERATOR_ID = "kernels.native.codegen.generate"
-GENERATOR_VERSION = 6
+GENERATOR_VERSION = 7
 NAMESPACE = "mindclade"
 REGISTRATION_MODE = "build_time_generated"
 
@@ -339,7 +339,12 @@ def _validate_output(value: object, label: str) -> tuple[str, bool]:
         initialization = _exact_mapping(initialization, _INITIALIZATION_KEYS, f"{label} initialization")
         if initialization["type"] != "InitializationSpec":
             raise ValueError(f"native manifest {label} initialization has unsupported type")
-        if initialization["mode"] not in {"zero", "value", "uninitialized"}:
+        if initialization["mode"] not in {
+            "zero",
+            "value",
+            "negative_infinity",
+            "uninitialized",
+        }:
             raise ValueError(f"native manifest {label} initialization mode is unsupported")
         has_value = initialization["value"] is not None
         if (initialization["mode"] == "value") != has_value:

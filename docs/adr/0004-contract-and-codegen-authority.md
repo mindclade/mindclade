@@ -10,7 +10,7 @@
 - Effective date: Pending connected ratification
 - Compatibility window: Authority fixed before Wave 1 durable contracts and generated clients
 - Supersedes: None
-- Superseded by: ADR-0015 for contract activation timing only; authority and compatibility law remains in force
+- Superseded by: ADR-0015
 - Owners: Architecture, Contract Governance
 - Reviewers: Developer Platform, Security, Domain Owners
 

@@ -1,56 +1,117 @@
-# Copyright (c) 2026 Mindclade, LLC. All Rights Reserved.
-# Mindclade Proprietary and Confidential.
-# SPDX-License-Identifier: LicenseRef-Mindclade-Proprietary
-
 from __future__ import annotations
 
-import hashlib
-import math
-from pathlib import Path
-
 import pytest
-import torch
 
-from kernels.api import EvaluationContext, TensorMetadata
-from kernels.pairformer.outer_product_mean.dispatch import outer_product_mean
-from kernels.pairformer.outer_product_mean.reference import composite_backward, outer_product_mean_reference, setup_context
-from kernels.pairformer.outer_product_mean.spec import KERNEL_SPEC
-from kernels.pairformer.outer_product_mean.tilelang import build_tilelang_program
+torch = pytest.importorskip("torch")
 
-def test_reference_shape_zero_mask_and_gradcheck():
-    left = torch.randn(2, 3, 2, dtype=torch.float64, requires_grad=True)
-    right = torch.randn(2, 3, 4, dtype=torch.float64, requires_grad=True)
-    mask = torch.zeros(2, 3, dtype=torch.float64, requires_grad=True)
-    output = outer_product_mean_reference(left, right, mask, 1e-6)
-    assert output.shape == (3, 3, 2, 4)
-    assert torch.count_nonzero(output) == 0 and torch.isfinite(output).all()
-    assert torch.autograd.gradcheck(lambda l, r, m: outer_product_mean_reference(l, r, m, 1e-6, _check_values=False), (left, right, mask))
+import kernels.pairformer.outer_product_mean.dispatch as dispatch_module
+from kernels.api import AutogradPolicy
+from kernels.pairformer.outer_product_mean.dispatch import (
+    FallbackPolicy,
+    NativeOperatorUnavailable,
+    outer_product_mean,
+)
+from kernels.pairformer.outer_product_mean.reference import (
+    outer_product_mean_reference,
+    outer_product_mean_with_normalizer,
+)
+from kernels.pairformer.outer_product_mean.spec import IMPLEMENTATION_SPECS, KERNEL_SPEC
+from kernels.pairformer.outer_product_mean.tilelang import build_normalizer_program
 
-def test_composite_backward_includes_mask_gradient():
-    left = torch.randn(2, 2, 2, dtype=torch.float64, requires_grad=True)
-    right = torch.randn(2, 2, 3, dtype=torch.float64, requires_grad=True)
-    mask = torch.rand(2, 2, dtype=torch.float64, requires_grad=True)
-    output = outer_product_mean_reference(left, right, mask, 1e-6)
-    grad = torch.randn_like(output)
-    expected = torch.autograd.grad(output, (left, right, mask), grad)
-    class Context:
-        needs_input_grad = (True, True, True, False)
-        def save_for_backward(self, *values): self.saved_tensors = values
-    ctx = Context(); setup_context(ctx, (left, right, mask, 1e-6), output)
-    actual = composite_backward(ctx, grad)
-    for got, want in zip(actual[:3], expected): torch.testing.assert_close(got, want)
 
-def test_declarative_shape_dispatch_and_source_digest():
-    context = EvaluationContext({"left": TensorMetadata((2, 4, 3, 5), "float32", "cuda"), "right": TensorMetadata((2, 4, 3, 7), "float32", "cuda")})
-    assert KERNEL_SPEC.forward.outputs[0].shape.evaluate(context) == (2, 3, 3, 5, 7)
-    assert outer_product_mean(torch.ones(2, 3, 2), torch.ones(2, 3, 4), torch.ones(2, 3), 1e-6, use_reference=True).shape == (3, 3, 2, 4)
-    reference = Path(__file__).parents[1] / "reference.py"
-    assert KERNEL_SPEC.composite.source_digest == "sha256:" + hashlib.sha256(reference.read_bytes()).hexdigest()
-    assert KERNEL_SPEC.backward is None and KERNEL_SPEC.forward.symbol.endswith("_fwd_launch")
+def _inputs(*, requires_grad: bool = False):
+    torch.manual_seed(7)
+    left = torch.randn(1, 3, 2, 4, dtype=torch.float64, requires_grad=requires_grad)
+    right = torch.randn(1, 3, 2, 5, dtype=torch.float64, requires_grad=requires_grad)
+    mask = torch.rand(1, 3, 2, dtype=torch.float64, requires_grad=requires_grad)
+    return left, right, mask
 
-@pytest.mark.parametrize("epsilon", [0.0, -1.0, math.inf, math.nan])
-def test_invalid_epsilon_and_profile_fail_closed(epsilon):
-    with pytest.raises(ValueError, match="epsilon"):
-        outer_product_mean_reference(torch.ones(2,3,2), torch.ones(2,3,2), torch.ones(2,3), epsilon)
-    with pytest.raises(ValueError, match="target"):
-        build_tilelang_program(target="cpu", batch_size=1, sequence_length=2, nodes=3, left_channels=2, right_channels=2, dtype="float32", threads=128)
+
+def test_required_contract_has_named_gradients_and_programs() -> None:
+    assert KERNEL_SPEC.autograd_policy is AutogradPolicy.REQUIRED
+    assert KERNEL_SPEC.composite is None
+    assert KERNEL_SPEC.facade_outputs == ("output",)
+    assert tuple(output.name for output in KERNEL_SPEC.forward.outputs) == (
+        "output",
+        "normalizer",
+    )
+    assert all(output.saved_for_backward for output in KERNEL_SPEC.forward.outputs)
+    assert tuple(node.name for node in KERNEL_SPEC.forward.program_group.nodes) == (
+        "normalizer",
+        "numerator",
+    )
+    assert {node.name for node in KERNEL_SPEC.backward.program_group.nodes} == {
+        "dleft",
+        "dright",
+        "dmask",
+    }
+    assert {gradient.input_name for gradient in KERNEL_SPEC.backward.gradients} == {
+        "left",
+        "right",
+        "mask",
+    }
+    assert all(gradient.optional for gradient in KERNEL_SPEC.backward.gradients)
+    assert KERNEL_SPEC.backward.supports_double_backward is False
+
+
+def test_candidate_matrix_is_independent_by_architecture_and_dtype() -> None:
+    assert {
+        (spec.envelope.architectures, spec.envelope.dtypes)
+        for spec in IMPLEMENTATION_SPECS
+    } == {
+        (("sm90a",), ("float16",)),
+        (("sm90a",), ("bfloat16",)),
+        (("sm100a",), ("float16",)),
+        (("sm100a",), ("bfloat16",)),
+    }
+    assert all(spec.envelope.training_capable for spec in IMPLEMENTATION_SPECS)
+    assert all(not spec.envelope.graph_capture_safe for spec in IMPLEMENTATION_SPECS)
+
+
+def test_reference_matches_direct_formula_and_exposes_fp32_normalizer() -> None:
+    left, right, mask = _inputs()
+    output, normalizer = outer_product_mean_with_normalizer(left, right, mask)
+    numerator = torch.einsum(
+        "...sic,...sjd->...ijcd",
+        left * mask.unsqueeze(-1),
+        right * mask.unsqueeze(-1),
+    )
+    expected_normalizer = torch.einsum("...si,...sj->...ij", mask, mask)
+    expected = numerator / expected_normalizer.clamp_min(1.0e-6)[..., None, None]
+    torch.testing.assert_close(output, expected)
+    torch.testing.assert_close(normalizer, expected_normalizer.float())
+    assert normalizer.dtype == torch.float32
+
+
+def test_reference_first_order_gradients_cover_every_declared_input() -> None:
+    left, right, mask = _inputs(requires_grad=True)
+    loss = outer_product_mean_reference(left, right, mask).square().sum()
+    gradients = torch.autograd.grad(loss, (left, right, mask))
+    assert all(gradient is not None for gradient in gradients)
+    assert all(torch.isfinite(gradient).all() for gradient in gradients)
+
+
+def test_fallback_is_explicit_and_native_saved_state_stays_private(monkeypatch) -> None:
+    left, right, mask = _inputs()
+    monkeypatch.setattr(dispatch_module, "_native_operator", lambda: None)
+    with pytest.raises(NativeOperatorUnavailable):
+        outer_product_mean(left, right, mask)
+    expected = outer_product_mean_reference(left, right, mask)
+    actual = outer_product_mean(
+        left, right, mask, fallback=FallbackPolicy.REFERENCE
+    )
+    torch.testing.assert_close(actual, expected)
+
+    normalizer = torch.ones(1, 2, 2, dtype=torch.float32)
+    monkeypatch.setattr(
+        dispatch_module,
+        "_native_operator",
+        lambda: lambda *_args: (expected, normalizer),
+    )
+    native = outer_product_mean(left, right, mask)
+    assert native is expected
+
+
+def test_builder_rejects_unqualified_architecture_before_tilelang_import() -> None:
+    with pytest.raises(ValueError, match="sm90a or sm100a"):
+        build_normalizer_program(architecture="sm80")

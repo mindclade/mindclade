@@ -13,6 +13,7 @@ cc_library(
         "stable_abi/registration.cpp",
         "stable_abi/tensor_bridge.cpp",
     ],
+    hdrs = ["stable_abi/tensor_bridge.h"],
     defines = [
         "MINDCLADE_NATIVE_SCHEMA_ONLY=1",
         "MINDCLADE_TORCH_STABLE_ABI_MAJOR=2",
@@ -26,7 +27,10 @@ cc_library(
 # acquiring unresolved GPU launch dependencies.
 cc_library(
     name = "native_cuda_registry",
-    srcs = ["generated/operation_registry.generated.cpp"],
+    srcs = [
+        "generated/launcher_plans.generated.cpp",
+        "generated/operation_registry.generated.cpp",
+    ],
     defines = [
         "MINDCLADE_TORCH_STABLE_ABI_MAJOR=2",
         "MINDCLADE_TORCH_STABLE_ABI_MINOR=10",
@@ -104,6 +108,7 @@ py_binary(
         "generated/native_ops.generated.bzl",
         "generated/native_ops.generated.cmake",
         "generated/native_ops.json",
+        "generated/launcher_plans.generated.cpp",
         "generated/operation_registry.generated.cpp",
         "generated/python_registration_generated.py",
         "generated/registration.generated.cpp",
@@ -157,6 +162,7 @@ filegroup(
         "generated/native_ops.generated.bzl",
         "generated/native_ops.generated.cmake",
         "generated/native_ops.json",
+        "generated/launcher_plans.generated.cpp",
         "generated/operation_registry.generated.cpp",
         "generated/python_registration_generated.py",
         "generated/registration.generated.cpp",

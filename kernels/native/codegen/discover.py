@@ -191,9 +191,9 @@ def _validate_implementations(
     scalar_arguments = semantic_arguments - tensor_arguments
     identities: set[tuple[str, int]] = set()
     for implementation in implementations:
-        if implementation.operation != spec.qualified_name:
+        if implementation.operation != spec.name:
             raise ValueError(
-                f"{relative}: implementation operation must equal {spec.qualified_name!r}"
+                f"{relative}: implementation operation must equal {spec.name!r}"
             )
         if implementation.family != spec.family:
             raise ValueError(

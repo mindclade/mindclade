@@ -33,4 +33,19 @@ py_test(
         "//kernels/native:tilelang_codegen_lib",
         "@mindclade_pypi//pytest",
     ],
+    data = [":policy_inputs"],
+)
+
+filegroup(
+    name = "policy_inputs",
+    srcs = [
+        "BUILD.bazel",
+        "__init__.py",
+        "dispatch.py",
+        "reference.py",
+        "spec.py",
+        "test_transition.py",
+        "tilelang.py",
+    ],
+    visibility = ["//visibility:public"],
 )

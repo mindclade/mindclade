@@ -1705,7 +1705,7 @@ def _native_source_incubation_targets(path: str) -> tuple[list[str], list[str]]:
     return list(dict.fromkeys(build_targets)), []
 
 
-def build_native_source_incubation_entry(path: str) -> dict[str, Any]:
+def _build_native_source_incubation_target_entry(path: str) -> dict[str, Any]:
     if path not in NATIVE_SOURCE_INCUBATION_PATHS:
         raise PolicyError(f"unapproved native source-incubation path: {path}")
     generated = path in NATIVE_GENERATED_PROJECTIONS
@@ -1749,7 +1749,7 @@ def _kernel_platform_source_targets(path: str) -> tuple[list[str], list[str]]:
     return ["//kernels/api:api"], []
 
 
-def build_kernel_platform_source_entry(path: str) -> dict[str, Any]:
+def _build_kernel_platform_source_target_entry(path: str) -> dict[str, Any]:
     if path not in KERNEL_PLATFORM_AUTHORIZED_PATHS:
         raise PolicyError(f"unapproved kernel-platform source path: {path}")
     build_targets, test_targets = _kernel_platform_source_targets(path)
@@ -1915,7 +1915,7 @@ def build_path_entry(path: str) -> dict[str, Any]:
     return entry
 
 
-def _reconciliation_addition_reason(path: str) -> str:
+def _base_reconciliation_addition_reason(path: str) -> str:
     if path in {".golangci.yml", "biome.json"}:
         return "Required tracked Wave 0 lint configuration omitted by A6."
     if path == ".github/actionlint.yaml":
@@ -2352,6 +2352,142 @@ def main(argv: Sequence[str] | None = None) -> int:
     print(f"repository path policy: PASS ({len(manifest['paths'])} canonical files)")
     return 0
 
+
+
+# Pairformer Wave 6 governance activation (ADR-0016 through ADR-0021).
+PAIRFORMER_WAVE6_PLATFORM_ACTIVATION_ADR = (
+    "docs/adr/0016-pairformer-native-kernel-platform-wave6-source-activation.md"
+)
+PAIRFORMER_WAVE6_JIT06_ADRS: tuple[str, ...] = (
+    "docs/adr/0017-jit-06-outer-product-mean-sm90a-sm100a.md",
+    "docs/adr/0018-jit-06-pair-weighted-average-sm90a-sm100a.md",
+    "docs/adr/0019-jit-06-transition-sm90a-sm100a.md",
+    "docs/adr/0020-jit-06-triangle-attention-sm90a-sm100a.md",
+    "docs/adr/0021-jit-06-triangle-multiplication-sm90a-sm100a.md",
+)
+PAIRFORMER_WAVE6_ADRS: tuple[str, ...] = (
+    PAIRFORMER_WAVE6_PLATFORM_ACTIVATION_ADR,
+    *PAIRFORMER_WAVE6_JIT06_ADRS,
+)
+_PAIRFORMER_WAVE6_OPERATIONS: tuple[str, ...] = (
+    "outer_product_mean",
+    "pair_weighted_average",
+    "transition",
+    "triangle_attention",
+    "triangle_multiplication",
+)
+_PAIRFORMER_WAVE6_OPERATION_PREFIXES: tuple[str, ...] = tuple(
+    f"kernels/pairformer/{operation}/" for operation in _PAIRFORMER_WAVE6_OPERATIONS
+)
+PAIRFORMER_WAVE6_OPERATION_PATHS: tuple[str, ...] = tuple(
+    path
+    for path in dict.fromkeys(
+        (*NATIVE_SOURCE_INCUBATION_PATHS, *KERNEL_PLATFORM_AUTHORIZED_PATHS)
+    )
+    if path.startswith(_PAIRFORMER_WAVE6_OPERATION_PREFIXES)
+)
+PAIRFORMER_WAVE6_ACTIVATION_CRITERION = (
+    "Activated by ADR-0016 as an operation-local source, build, and qualification "
+    "input. Production selection remains denied until the exact operation and "
+    "architecture satisfy JIT-06 K0-K5 evidence, immutable signing, runtime "
+    "compatibility, revocation, and rollback requirements."
+)
+_PAIRFORMER_WAVE6_TEST_TARGETS: dict[str, str] = {
+    operation: f"//kernels/pairformer/{operation}:test_{operation}"
+    for operation in _PAIRFORMER_WAVE6_OPERATIONS
+}
+
+
+def _pairformer_wave6_operation(path: str) -> str | None:
+    for operation, prefix in zip(
+        _PAIRFORMER_WAVE6_OPERATIONS,
+        _PAIRFORMER_WAVE6_OPERATION_PREFIXES,
+        strict=True,
+    ):
+        if path.startswith(prefix):
+            return operation
+    return None
+
+
+def _activate_pairformer_wave6_entry(
+    entry: dict[str, object], path: str
+) -> dict[str, object]:
+    operation = _pairformer_wave6_operation(path)
+    if operation is None or path not in PAIRFORMER_WAVE6_OPERATION_PATHS:
+        return entry
+    activated = dict(entry)
+    activated.update(
+        {
+            "component": "kernels",
+            "status": "active",
+            "build_targets": [
+                f"//kernels/pairformer/{operation}:policy_inputs"
+            ],
+            "test_targets": [_PAIRFORMER_WAVE6_TEST_TARGETS[operation]],
+            "activation_criterion": PAIRFORMER_WAVE6_ACTIVATION_CRITERION,
+        }
+    )
+    return activated
+
+
+def build_native_source_incubation_entry(path: str) -> dict[str, object]:
+    return _activate_pairformer_wave6_entry(
+        _build_native_source_incubation_target_entry(path), path
+    )
+
+
+def build_kernel_platform_source_entry(path: str) -> dict[str, object]:
+    return _activate_pairformer_wave6_entry(
+        _build_kernel_platform_source_target_entry(path), path
+    )
+
+
+def _reconciliation_addition_reason(path: str) -> str:
+    if path == PAIRFORMER_WAVE6_PLATFORM_ACTIVATION_ADR:
+        return (
+            "ADR-0016 records the governed source activation boundary for the five "
+            "operation-local Pairformer packages while leaving generic native and "
+            "future runtime subsystems fail closed."
+        )
+    if path in PAIRFORMER_WAVE6_JIT06_ADRS:
+        return (
+            "JIT-06 records the exact operation-by-architecture qualification "
+            "decision for sm90a and sm100a without granting promotion or support."
+        )
+    if path in PAIRFORMER_WAVE6_OPERATION_PATHS:
+        return (
+            "ADR-0016 activates this existing operation-local path under its exact "
+            "Bazel policy-input and test closure; K0-K5 production qualification "
+            "remains outstanding."
+        )
+    return _base_reconciliation_addition_reason(path)
+
+
+NATIVE_STABLE_ABI_TENSOR_BRIDGE_HEADER = (
+    "kernels/native/stable_abi/tensor_bridge.h"
+)
+NATIVE_SOURCE_INCUBATION_PATHS = (
+    *NATIVE_SOURCE_INCUBATION_PATHS,
+    NATIVE_STABLE_ABI_TENSOR_BRIDGE_HEADER,
+)
+NATIVE_SOURCE_INCUBATION_ADDITIONS = (
+    *NATIVE_SOURCE_INCUBATION_ADDITIONS,
+    NATIVE_STABLE_ABI_TENSOR_BRIDGE_HEADER,
+)
+REQUIRED_ADDITIONS = (
+    *REQUIRED_ADDITIONS,
+    NATIVE_STABLE_ABI_TENSOR_BRIDGE_HEADER,
+    *PAIRFORMER_WAVE6_ADRS,
+)
+CANONICAL_FILE_COUNT = CANONICAL_FILE_COUNT + len(PAIRFORMER_WAVE6_ADRS) + 1
+CANONICAL_PATH_SET_SHA256 = (
+    "64f4878995932fceaf3f557c12af692ae01a5b0b82863554229d6c997a20398a"
+)
+PRE_ACTIVATION_SOURCE_PATHS = frozenset(
+    path
+    for path in (*PRE_ACTIVATION_SOURCE_PATHS, NATIVE_STABLE_ABI_TENSOR_BRIDGE_HEADER)
+    if path not in PAIRFORMER_WAVE6_OPERATION_PATHS
+)
 
 if __name__ == "__main__":
     raise SystemExit(main())

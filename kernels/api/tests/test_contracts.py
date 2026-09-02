@@ -78,6 +78,33 @@ def output(name: str = "result", *, visible: bool = True, saved: bool = False) -
     )
 
 
+def test_negative_infinity_initialization_is_canonical_without_numeric_payload() -> None:
+    initialization = InitializationSpec("negative_infinity")
+    assert initialization.to_canonical() == {
+        "type": "InitializationSpec",
+        "mode": "negative_infinity",
+        "value": None,
+        "version": 1,
+    }
+    assert initialization.digest == InitializationSpec("negative_infinity").digest
+    with pytest.raises(KernelContractError, match="cannot carry a value"):
+        InitializationSpec("negative_infinity", -1.0)
+
+
+def test_contract_schema_canonicalization_is_not_limited_by_expression_tokens() -> None:
+    schema = "_long_provider(" + ", ".join(
+        f"Tensor input_{index}" for index in range(32)
+    ) + ") -> Tensor output"
+    forward = ForwardSpec(
+        schema=schema,
+        builder="kernels.family.operation.tilelang:build_forward",
+        symbol="mindclade_tilelang_long_provider_fwd_launch",
+        outputs=(output(),),
+    )
+    assert len(schema) > 256
+    assert forward.digest.startswith("sha256:")
+
+
 def envelope(*, training: bool = True, capture: bool = True) -> CapabilityEnvelope:
     return CapabilityEnvelope(
         architectures=("sm90",),

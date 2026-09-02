@@ -62,6 +62,24 @@ class AbiCompatibilityPolicyTest(unittest.TestCase):
             for namespace in macro.findall(text):
                 self.assertEqual(namespace, "mindclade", path)
 
+    def test_tensor_bridge_uses_only_approved_stable_headers(self) -> None:
+        header = (ROOT / "stable_abi" / "tensor_bridge.h").read_text(encoding="utf-8")
+        source = (ROOT / "stable_abi" / "tensor_bridge.cpp").read_text(encoding="utf-8")
+        combined = header + source
+        self.assertIn("torch/csrc/stable/tensor.h", combined)
+        self.assertIn("torch/csrc/stable/ops.h", combined)
+        self.assertIn("torch/csrc/inductor/aoti_torch/c/shim.h", combined)
+        for forbidden in ("<ATen/", "<torch/extension.h>", "c10::cuda", "cudaDeviceSynchronize"):
+            self.assertNotIn(forbidden, combined)
+        for required in (
+            "require_cuda_contiguous_tensor",
+            "current_cuda_stream",
+            "allocate_cuda_tensor",
+            "allocate_workspace",
+            "kNegativeInfinity",
+        ):
+            self.assertIn(required, combined)
+
 
 if __name__ == "__main__":
     unittest.main()

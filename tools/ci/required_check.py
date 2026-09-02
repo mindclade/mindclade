@@ -139,6 +139,48 @@ ADR_REGISTRY = (
         "accepted",
         "TileLang kernel platform source development",
     ),
+    AdrContract(
+        "ADR-0015",
+        "0015-all-contracts-clean-v1-baseline.md",
+        "accepted",
+        "All-Contracts Clean-v1 Baseline",
+    ),
+    AdrContract(
+        "ADR-0016",
+        "0016-pairformer-native-kernel-platform-wave6-source-activation.md",
+        "accepted",
+        "Pairformer native kernel platform Wave 6 source activation",
+    ),
+    AdrContract(
+        "ADR-0017",
+        "0017-jit-06-outer-product-mean-sm90a-sm100a.md",
+        "accepted",
+        "JIT-06 outer-product-mean qualification on SM90a and SM100a",
+    ),
+    AdrContract(
+        "ADR-0018",
+        "0018-jit-06-pair-weighted-average-sm90a-sm100a.md",
+        "accepted",
+        "JIT-06 pair-weighted-average qualification on SM90a and SM100a",
+    ),
+    AdrContract(
+        "ADR-0019",
+        "0019-jit-06-transition-sm90a-sm100a.md",
+        "accepted",
+        "JIT-06 transition qualification on SM90a and SM100a",
+    ),
+    AdrContract(
+        "ADR-0020",
+        "0020-jit-06-triangle-attention-sm90a-sm100a.md",
+        "accepted",
+        "JIT-06 triangle-attention qualification on SM90a and SM100a",
+    ),
+    AdrContract(
+        "ADR-0021",
+        "0021-jit-06-triangle-multiplication-sm90a-sm100a.md",
+        "accepted",
+        "JIT-06 triangle-multiplication qualification on SM90a and SM100a",
+    ),
 )
 ADR_PATHS = tuple(contract.filename for contract in ADR_REGISTRY)
 ADR_METADATA_FIELDS = {
@@ -1016,6 +1058,13 @@ def _self_test_adr_ratification_contract() -> None:
         "ADR-0012",
         "ADR-0013",
         "ADR-0014",
+        "ADR-0015",
+        "ADR-0016",
+        "ADR-0017",
+        "ADR-0018",
+        "ADR-0019",
+        "ADR-0020",
+        "ADR-0021",
     ]:
         raise AssertionError("ADR registry order drifted")
     for contract in ADR_REGISTRY:

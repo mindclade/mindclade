@@ -42,7 +42,7 @@ KERNEL_SPEC: KernelSpec = KernelSpec(
 )
 IMPLEMENTATION_SPECS = (
     ImplementationSpec(
-        operation="mindclade::fixture_op", name="portable", family="pairformer",
+        operation="fixture_op", name="portable", family="pairformer",
         backend="tilelang",
         builder="kernels.pairformer.fixture_op.tilelang:build_implementation",
         version=1, tier=ImplementationTier.PORTABLE, requires=("cuda",),
@@ -240,6 +240,8 @@ def test_generated_schema_registry_and_build_inventories_are_v3(tmp_path: Path):
     assert 'm.impl("fixture_op"' in implementations
     assert 'm.impl("_fixture_op_fwd"' in implementations
     assert "mindclade_tilelang_fixture_op_fwd_launch" in implementations
+    assert "MINDCLADE_TILELANG_REQUIRED_LOGICAL_SYMBOLS" in rendered["native_ops.generated.bzl"]
+    assert "mindclade_tilelang_fixture_op_fwd_launch" in rendered["native_ops.generated.cmake"]
     assert "MINDCLADE_KERNEL_SPEC_SOURCES" in rendered["native_ops.generated.bzl"]
     assert "//kernels/pairformer/fixture_op:spec.py" in rendered["native_ops.generated.bzl"]
     assert "MINDCLADE_TILELANG_KERNEL_SOURCES" in rendered["native_ops.generated.cmake"]
@@ -249,7 +251,7 @@ def test_manifest_has_exact_operator_keys_and_recomputable_digests(tmp_path: Pat
     native_root, source = _fixture_native_root(tmp_path)
     manifest = json.loads(render_all(native_root, source_files=[source])["native_ops.json"])
     assert manifest["schema_version"] == 3
-    assert manifest["generator"] == {"id": "kernels.native.codegen.generate", "version": 6}
+    assert manifest["generator"] == {"id": "kernels.native.codegen.generate", "version": 7}
     operator = manifest["operators"][0]
     assert set(operator) == {
         "name", "qualified_name", "namespace", "family", "source", "spec_sha256",
@@ -387,6 +389,12 @@ def test_program_group_emits_canonical_launcher_plan_and_bridge_guard(tmp_path: 
     for symbol in plan["required_private_symbols"]:
         assert symbol in rendered["native_ops.generated.bzl"]
         assert symbol in rendered["native_ops.generated.cmake"]
+        assert f'extern "C" void {symbol}();' in rendered["launcher_plans.generated.cpp"]
+        assert f"&{symbol}" in rendered["launcher_plans.generated.cpp"]
+    static_plans = rendered["launcher_plans.generated.cpp"]
+    assert '\"logical_symbol\":\"mindclade_tilelang_group_fixture_fwd_launch\"' in static_plans
+    assert '\"execution_order\":[\"load\",\"reduce\"]' in static_plans
+    assert "mindclade_native_required_private_launchers" in static_plans
 
 
 def test_declarative_fake_rejects_optional_tensor_metadata_dependency(tmp_path: Path):

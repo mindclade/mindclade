@@ -1,44 +1,97 @@
-# Copyright (c) 2026 Mindclade, LLC. All Rights Reserved.
-# Mindclade Proprietary and Confidential.
-# SPDX-License-Identifier: LicenseRef-Mindclade-Proprietary
-
 from __future__ import annotations
 
-import hashlib
-from pathlib import Path
-
 import pytest
-import torch
 
-from kernels.api import EvaluationContext, TensorMetadata
-from kernels.pairformer.pair_weighted_average.dispatch import pair_weighted_average
-from kernels.pairformer.pair_weighted_average.reference import composite_backward, pair_weighted_average_reference, setup_context
-from kernels.pairformer.pair_weighted_average.spec import KERNEL_SPEC
-from kernels.pairformer.pair_weighted_average.tilelang import build_tilelang_program
+torch = pytest.importorskip("torch")
 
-def test_reference_all_masked_and_gradcheck():
-    value = torch.randn(2, 3, 2, dtype=torch.float64, requires_grad=True)
-    weights = torch.randn(2, 3, 3, 2, dtype=torch.float64, requires_grad=True)
-    mask = torch.zeros(2, 3, dtype=torch.bool)
-    assert torch.equal(pair_weighted_average_reference(value, weights, mask, 1e-12), torch.zeros(2,3,2,2, dtype=torch.float64))
-    mask[0] = True
-    assert torch.autograd.gradcheck(lambda v, w: pair_weighted_average_reference(v, w, mask, 1e-12), (value, weights))
+import kernels.pairformer.pair_weighted_average.dispatch as dispatch_module
+from kernels.api import AutogradPolicy
+from kernels.pairformer.pair_weighted_average.dispatch import (
+    FallbackPolicy,
+    NativeOperatorUnavailable,
+    pair_weighted_average,
+)
+from kernels.pairformer.pair_weighted_average.reference import (
+    pair_weighted_average_reference,
+    pair_weighted_average_with_lse,
+)
+from kernels.pairformer.pair_weighted_average.spec import IMPLEMENTATION_SPECS, KERNEL_SPEC
+from kernels.pairformer.pair_weighted_average.tilelang import build_online_forward_program
 
-def test_composite_backward_maps_only_value_and_weights():
-    value = torch.randn(2,3,2,dtype=torch.float64,requires_grad=True); weights = torch.randn(2,3,3,2,dtype=torch.float64,requires_grad=True); mask = torch.ones(2,3,dtype=torch.bool)
-    output = pair_weighted_average_reference(value, weights, mask, 1e-12); grad = torch.randn_like(output)
-    expected = torch.autograd.grad(output, (value, weights), grad)
-    class Context:
-        needs_input_grad = (True, True, False, False)
-        def save_for_backward(self, *values): self.saved_tensors = values
-    ctx=Context(); setup_context(ctx,(value,weights,mask,1e-12),output); actual=composite_backward(ctx,grad)
-    torch.testing.assert_close(actual[0],expected[0]); torch.testing.assert_close(actual[1],expected[1]); assert actual[2:] == (None,None)
 
-def test_declarative_shape_dispatch_digest_and_profiles():
-    context=EvaluationContext({"value":TensorMetadata((2,4,5),"float32","cuda"),"weights":TensorMetadata((2,4,4,3),"float32","cuda")})
-    assert KERNEL_SPEC.forward.outputs[0].shape.evaluate(context)==(2,4,3,5)
-    result=pair_weighted_average(torch.ones(2,4,5),torch.zeros(2,4,4,3),torch.ones(2,4,dtype=torch.bool),1e-8,use_reference=True); assert result.shape==(2,4,3,5)
-    reference=Path(__file__).parents[0]/"reference.py"
-    assert KERNEL_SPEC.composite.source_digest=="sha256:"+hashlib.sha256(reference.read_bytes()).hexdigest()
-    assert KERNEL_SPEC.backward is None and KERNEL_SPEC.forward.symbol.endswith("_fwd_launch")
-    with pytest.raises(ValueError,match="only target='cuda'"): build_tilelang_program(target="cpu",batch_size=1,num_residues=32,channels=64,heads=4)
+def _inputs(*, requires_grad: bool = False):
+    torch.manual_seed(11)
+    value = torch.randn(1, 4, 3, dtype=torch.float64, requires_grad=requires_grad)
+    weights = torch.randn(1, 4, 4, 2, dtype=torch.float64, requires_grad=requires_grad)
+    mask = torch.tensor([[1.0, 0.0, 1.0, 1.0]], dtype=torch.float32)
+    return value, weights, mask
+
+
+def test_required_contract_has_lse_and_physical_backward_group() -> None:
+    assert KERNEL_SPEC.autograd_policy is AutogradPolicy.REQUIRED
+    assert KERNEL_SPEC.composite is None
+    assert KERNEL_SPEC.facade_outputs == ("output",)
+    assert tuple(output.name for output in KERNEL_SPEC.forward.outputs) == ("output", "lse")
+    assert all(output.saved_for_backward for output in KERNEL_SPEC.forward.outputs)
+    assert tuple(node.name for node in KERNEL_SPEC.forward.program_group.nodes) == ("online_forward",)
+    assert {node.name for node in KERNEL_SPEC.backward.program_group.nodes} == {"delta", "dvalue", "dweights"}
+    assert tuple(workspace.name for workspace in KERNEL_SPEC.backward.program_group.workspaces) == ("delta",)
+    assert all(gradient.optional for gradient in KERNEL_SPEC.backward.gradients)
+    assert KERNEL_SPEC.backward.supports_double_backward is False
+
+
+def test_candidate_matrix_is_independent_by_architecture_and_dtype() -> None:
+    assert {(spec.envelope.architectures, spec.envelope.dtypes) for spec in IMPLEMENTATION_SPECS} == {
+        (("sm90a",), ("float16",)),
+        (("sm90a",), ("bfloat16",)),
+        (("sm100a",), ("float16",)),
+        (("sm100a",), ("bfloat16",)),
+    }
+    assert all(spec.envelope.training_capable for spec in IMPLEMENTATION_SPECS)
+
+
+def test_reference_matches_masked_softmax_and_lse() -> None:
+    value, weights, mask = _inputs()
+    output, lse = pair_weighted_average_with_lse(value, weights, mask)
+    masked = weights.masked_fill(mask[:, None, :, None] == 0, -torch.inf)
+    probabilities = torch.softmax(masked, dim=-2)
+    expected = torch.einsum("...ijh,...jc->...ihc", probabilities, value)
+    expected_lse = torch.logsumexp(masked, dim=-2).float()
+    torch.testing.assert_close(output, expected)
+    torch.testing.assert_close(lse, expected_lse)
+    assert lse.dtype == torch.float32
+
+
+def test_all_masked_rows_are_zero_with_negative_infinite_lse() -> None:
+    value, weights, _mask = _inputs()
+    mask = torch.zeros(1, 4, dtype=torch.float32)
+    output, lse = pair_weighted_average_with_lse(value, weights, mask)
+    assert torch.count_nonzero(output) == 0
+    assert torch.isneginf(lse).all()
+
+
+def test_reference_gradients_cover_value_and_weights() -> None:
+    value, weights, mask = _inputs(requires_grad=True)
+    loss = pair_weighted_average_reference(value, weights, mask).square().sum()
+    grad_value, grad_weights = torch.autograd.grad(loss, (value, weights))
+    assert torch.isfinite(grad_value).all()
+    assert torch.isfinite(grad_weights).all()
+    assert torch.count_nonzero(grad_weights[:, :, 1, :]) == 0
+
+
+def test_fallback_is_explicit_and_lse_stays_private(monkeypatch) -> None:
+    value, weights, mask = _inputs()
+    monkeypatch.setattr(dispatch_module, "_native_operator", lambda: None)
+    with pytest.raises(NativeOperatorUnavailable):
+        pair_weighted_average(value, weights, mask)
+    expected = pair_weighted_average_reference(value, weights, mask)
+    actual = pair_weighted_average(value, weights, mask, fallback=FallbackPolicy.REFERENCE)
+    torch.testing.assert_close(actual, expected)
+    lse = torch.zeros(1, 4, 2, dtype=torch.float32)
+    monkeypatch.setattr(dispatch_module, "_native_operator", lambda: lambda *_args: (expected, lse))
+    assert pair_weighted_average(value, weights, mask) is expected
+
+
+def test_builder_rejects_unqualified_architecture_before_tilelang_import() -> None:
+    with pytest.raises(ValueError, match="sm90a or sm100a"):
+        build_online_forward_program(architecture="sm80")

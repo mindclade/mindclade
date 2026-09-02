@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 from dataclasses import fields, is_dataclass
 from enum import Enum
+import hashlib
 import json
 from pathlib import Path
 from typing import Any
@@ -14,19 +15,19 @@ from kernels.api import (
     BackwardArgumentSource,
     Expr,
     MissingGradientPolicy,
-    content_digest,
 )
 from kernels.native.codegen.discover import DiscoveredKernelSpec, discover_specs
 from kernels.native.codegen.schema import ParsedSchema, parse_schema
 
 GENERATOR_ID = "kernels.native.codegen.generate"
-GENERATOR_VERSION = 6
+GENERATOR_VERSION = 7
 SCHEMA_VERSION = 3
 
 GENERATED_FILENAMES = (
     "native_ops.json",
     "registration.generated.cpp",
     "operation_registry.generated.cpp",
+    "launcher_plans.generated.cpp",
     "python_registration_generated.py",
     "native_ops.generated.cmake",
     "native_ops.generated.bzl",
@@ -39,6 +40,17 @@ DEFAULT_SPEC_SOURCES = (
     "pairformer/triangle_attention/spec.py",
     "pairformer/triangle_multiplication/spec.py",
 )
+
+
+def _content_digest(value: object) -> str:
+    payload = json.dumps(
+        value,
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=True,
+        allow_nan=False,
+    ).encode("utf-8")
+    return "sha256:" + hashlib.sha256(payload).hexdigest()
 
 
 def _json_value(value: Any) -> Any:
@@ -142,7 +154,7 @@ def _operator_record(item: DiscoveredKernelSpec) -> dict[str, Any]:
                 "priority": implementation.priority,
                 "requires": list(implementation.requires),
                 "envelope": envelope,
-                "envelope_digest": content_digest(envelope),
+                "envelope_digest": _content_digest(envelope),
                 "promoted": False,
                 "selectable": False,
             }
@@ -155,7 +167,7 @@ def _operator_record(item: DiscoveredKernelSpec) -> dict[str, Any]:
         "source": spec.source,
         "spec_sha256": item.declaration_sha256,
         "kernel_spec_digest": spec.digest,
-        "implementation_digest": content_digest(implementation_contracts),
+        "implementation_digest": _content_digest(implementation_contracts),
         "implementation_candidates": implementation_candidates,
         "operator_schema": semantic.canonical,
         "facade_outputs": list(spec.facade_outputs),
@@ -202,16 +214,16 @@ def _manifest(discovered: list[DiscoveredKernelSpec]) -> dict[str, Any]:
     manifest: dict[str, Any] = {
         "schema_version": SCHEMA_VERSION,
         "generator": {"id": GENERATOR_ID, "version": GENERATOR_VERSION},
-        "source_inventory_sha256": content_digest(source_inventory),
+        "source_inventory_sha256": _content_digest(source_inventory),
         "namespace": "mindclade",
         "registration_mode": "build_time_generated",
         "optimized_math_authority": "tilelang",
         "runtime_discovery": False,
         "request_time_compilation": False,
         "operators": operators,
-        "semantic_digest": content_digest(semantic_inventory),
+        "semantic_digest": _content_digest(semantic_inventory),
     }
-    manifest["manifest_digest"] = content_digest(manifest)
+    manifest["manifest_digest"] = _content_digest(manifest)
     return manifest
 
 
@@ -696,6 +708,101 @@ def _private_symbols(discovered: list[DiscoveredKernelSpec]) -> list[str]:
     return sorted(symbols)
 
 
+def _logical_symbols(discovered: list[DiscoveredKernelSpec]) -> list[str]:
+    symbols: set[str] = set()
+    for item in discovered:
+        symbols.add(item.spec.forward.symbol)
+        if item.spec.backward is not None:
+            symbols.add(item.spec.backward.symbol)
+    return sorted(symbols)
+
+
+def _static_launcher_plans(discovered: list[DiscoveredKernelSpec]) -> list[dict[str, Any]]:
+    plans: list[dict[str, Any]] = []
+    for item in discovered:
+        providers = [("forward", item.spec.forward)]
+        if item.spec.backward is not None:
+            providers.append(("backward", item.spec.backward))
+        for phase, provider in providers:
+            group = provider.program_group
+            if group is None:
+                continue
+            outputs = []
+            if phase == "forward":
+                outputs = [
+                    {
+                        "initialization": _json_value(output.initialization),
+                        "name": output.name,
+                        "saved_for_backward": output.saved_for_backward,
+                    }
+                    for output in provider.outputs
+                ]
+            plans.append(
+                {
+                    "execution_order": [node.name for node in group.nodes],
+                    "logical_symbol": provider.symbol,
+                    "operation": item.spec.qualified_name,
+                    "outputs": outputs,
+                    "phase": phase,
+                    "required_private_symbols": [node.symbol for node in group.nodes],
+                    "workspaces": [
+                        {
+                            "dtype": _json_value(workspace.dtype),
+                            "lifetime": workspace.lifetime.value,
+                            "name": workspace.name,
+                            "shape": _json_value(workspace.shape),
+                            "zero_initialize": workspace.zero_initialize,
+                        }
+                        for workspace in group.workspaces
+                    ],
+                }
+            )
+    return plans
+
+
+def _render_static_launcher_plans(discovered: list[DiscoveredKernelSpec]) -> str:
+    private_symbols = _private_symbols(discovered)
+    plans = _static_launcher_plans(discovered)
+    lines = [
+        f"// GENERATED FILE - DO NOT EDIT. Generator: {GENERATOR_ID}@{GENERATOR_VERSION}.",
+        "#include <array>",
+        "#include <cstddef>",
+        "#include <string_view>",
+        "",
+    ]
+    lines.extend(f'extern "C" void {symbol}();' for symbol in private_symbols)
+    lines.extend(("", "namespace mindclade::native::generated {"))
+    lines.append("using PrivateLauncher = void (*)();")
+    lines.append(
+        f"const std::array<PrivateLauncher, {len(private_symbols)}> kRequiredPrivateLaunchers{{{{"
+    )
+    lines.extend(f"    &{symbol}," for symbol in private_symbols)
+    lines.extend(("}};", ""))
+    lines.append(
+        f"constexpr std::array<std::string_view, {len(plans)}> kStaticLauncherPlans{{{{"
+    )
+    for plan in plans:
+        canonical = json.dumps(plan, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
+        lines.append(f"    R\"mindclade({canonical})mindclade\",")
+    lines.extend(
+        (
+            "}};",
+            "}  // namespace mindclade::native::generated",
+            "",
+            'extern "C" const mindclade::native::generated::PrivateLauncher*',
+            "mindclade_native_required_private_launchers() noexcept {",
+            "  return mindclade::native::generated::kRequiredPrivateLaunchers.data();",
+            "}",
+            "",
+            'extern "C" std::size_t mindclade_native_static_launcher_plan_count() noexcept {',
+            "  return mindclade::native::generated::kStaticLauncherPlans.size();",
+            "}",
+            "",
+        )
+    )
+    return "\n".join(lines)
+
+
 def _render_bzl(discovered: list[DiscoveredKernelSpec]) -> str:
     specs, builders = _source_rows(discovered)
     lines = [
@@ -715,6 +822,9 @@ def _render_bzl(discovered: list[DiscoveredKernelSpec]) -> str:
     lines.append("MINDCLADE_TILELANG_REQUIRED_PRIVATE_SYMBOLS = [")
     lines.extend(f'    "{symbol}",' for symbol in _private_symbols(discovered))
     lines.extend(("]", ""))
+    lines.append("MINDCLADE_TILELANG_REQUIRED_LOGICAL_SYMBOLS = [")
+    lines.extend(f'    "{symbol}",' for symbol in _logical_symbols(discovered))
+    lines.extend(("]", ""))
     return "\n".join(lines)
 
 
@@ -730,6 +840,9 @@ def _render_cmake(discovered: list[DiscoveredKernelSpec]) -> str:
         lines.append(")")
     lines.append("set(MINDCLADE_TILELANG_REQUIRED_PRIVATE_SYMBOLS")
     lines.extend(f'  "{symbol}"' for symbol in _private_symbols(discovered))
+    lines.append(")")
+    lines.append("set(MINDCLADE_TILELANG_REQUIRED_LOGICAL_SYMBOLS")
+    lines.extend(f'  "{symbol}"' for symbol in _logical_symbols(discovered))
     lines.append(")")
     lines.append("")
     return "\n".join(lines)
@@ -748,6 +861,7 @@ def render_all(
         "native_ops.json": _render_manifest(discovered),
         "registration.generated.cpp": _render_schema_registration(discovered),
         "operation_registry.generated.cpp": _render_operation_registry(discovered),
+        "launcher_plans.generated.cpp": _render_static_launcher_plans(discovered),
         "python_registration_generated.py": _render_python_registration(discovered),
         "native_ops.generated.cmake": _render_cmake(discovered),
         "native_ops.generated.bzl": _render_bzl(discovered),

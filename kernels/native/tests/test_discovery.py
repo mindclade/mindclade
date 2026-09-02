@@ -134,7 +134,7 @@ KERNEL_SPEC = KernelSpec(
 
 IMPLEMENTATION_SPECS = (
     ImplementationSpec(
-        operation="mindclade::reference_fixture",
+        operation="reference_fixture",
         name="portable",
         family="family_a",
         backend="tilelang",

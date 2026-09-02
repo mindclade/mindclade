@@ -63,3 +63,18 @@ endfunction()
 function(mindclade_apply_gpu_registry_target_policy target)
   _mindclade_apply_native_common_target_policy("${target}")
 endfunction()
+
+function(mindclade_apply_no_undefined_link_policy target)
+  if(NOT TARGET "${target}")
+    message(FATAL_ERROR "Unknown native target: ${target}")
+  endif()
+  target_link_options(
+    "${target}"
+    PRIVATE
+      "$<$<CXX_COMPILER_ID:MSVC>:/WX>"
+      "$<$<PLATFORM_ID:Darwin>:LINKER:-undefined,error>"
+      "$<$<AND:$<NOT:$<CXX_COMPILER_ID:MSVC>>,$<NOT:$<PLATFORM_ID:Darwin>>>:LINKER:--no-undefined>"
+      "$<$<AND:$<NOT:$<CXX_COMPILER_ID:MSVC>>,$<NOT:$<PLATFORM_ID:Darwin>>>:LINKER:-z,defs>"
+      "$<$<AND:$<NOT:$<CXX_COMPILER_ID:MSVC>>,$<NOT:$<PLATFORM_ID:Darwin>>>:LINKER:-z,now>"
+  )
+endfunction()

@@ -173,7 +173,7 @@ def _resign(manifest: dict[str, object]) -> dict[str, object]:
 def _manifest() -> dict[str, object]:
     manifest: dict[str, object] = {
         "schema_version": 3,
-        "generator": {"id": "kernels.native.codegen.generate", "version": 6},
+        "generator": {"id": "kernels.native.codegen.generate", "version": 7},
         "source_inventory_sha256": "",
         "namespace": "mindclade",
         "registration_mode": "build_time_generated",

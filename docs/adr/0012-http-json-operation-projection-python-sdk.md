@@ -14,7 +14,7 @@
 - Effective date: Pending connected ratification and required owner approvals
 - Compatibility window: Supported HTTP v1 and Python SDK 1.x remain additive within the major
 - Supersedes: None
-- Superseded by: ADR-0015 only for language/provider deferments; the curated operation and artifact-verification model remains in force
+- Superseded by: ADR-0015
 - Owners: Developer Experience, Control Plane, Architecture
 - Reviewers: Security, Contract Governance, Inference Systems
 

@@ -90,156 +90,30 @@ class NativeModulePolicyTest(unittest.TestCase):
                 encoding="utf-8"
             )
         )
-        self.assertEqual(
-            profiles,
-            {
-                "mindclade::outer_product_mean": [
-                    {
-                        "arguments": {
-                            "batch_size": 1,
-                            "dtype": "float16",
-                            "left_channels": 64,
-                            "nodes": 32,
-                            "right_channels": 64,
-                            "sequence_length": 64,
-                            "threads": 128,
-                        },
-                        "name": "b1_s64_n32_cl64_cr64_fp16",
-                    }
-                ],
-                "mindclade::pair_weighted_average": [
-                    {
-                        "arguments": {
-                            "batch_size": 1,
-                            "block_sources": 64,
-                            "channels": 64,
-                            "dtype": "float16",
-                            "heads": 8,
-                            "mask_dtype": "float32",
-                            "num_residues": 64,
-                            "threads": 128,
-                        },
-                        "name": "b1_n64_h8_c64_fp16",
-                    }
-                ],
-                "mindclade::triangle_attention": [
-                    {
-                        "arguments": {
-                            "batch": 1,
-                            "dtype": "float16",
-                            "head_dim": 32,
-                            "heads": 4,
-                            "n": 32,
-                            "threads": 64,
-                        },
-                        "name": "b1_n32_h4_d32_fp16",
-                    },
-                    {
-                        "arguments": {
-                            "batch": 1,
-                            "dtype": "float16",
-                            "head_dim": 32,
-                            "heads": 8,
-                            "n": 64,
-                            "threads": 128,
-                        },
-                        "name": "b1_n64_h8_d32_fp16",
-                    },
-                    {
-                        "arguments": {
-                            "batch": 1,
-                            "dtype": "bfloat16",
-                            "head_dim": 64,
-                            "heads": 8,
-                            "n": 128,
-                            "threads": 128,
-                        },
-                        "name": "b1_n128_h8_d64_bf16",
-                    },
-                    {
-                        "arguments": {
-                            "batch": 2,
-                            "dtype": "float32",
-                            "head_dim": 64,
-                            "heads": 8,
-                            "n": 64,
-                            "threads": 128,
-                        },
-                        "name": "b2_n64_h8_d64_fp32",
-                    },
-                ],
-                "mindclade::triangle_multiplication": [
-                    {
-                        "arguments": {
-                            "batch": 1,
-                            "block_channels": 64,
-                            "channels": 64,
-                            "dtype": "float16",
-                            "outgoing": False,
-                            "residues": 64,
-                            "threads": 128,
-                        },
-                        "name": "b1_n64_c64_incoming_fp16",
-                    },
-                    {
-                        "arguments": {
-                            "batch": 1,
-                            "block_channels": 64,
-                            "channels": 64,
-                            "dtype": "float16",
-                            "outgoing": True,
-                            "residues": 64,
-                            "threads": 128,
-                        },
-                        "name": "b1_n64_c64_outgoing_fp16",
-                    },
-                ],
-            "mindclade::transition": [
-                {
-                    "arguments": {
-                        "architecture": "sm90a",
-                        "batch_size": 1,
-                        "block_k": 32,
-                        "block_m": 64,
-                        "block_n": 64,
-                        "capability_digest": "sha256:1e229c8e8af17e9ff8c9477357b5e9096eec4af01447634484ca9ff7f2924356",
-                        "dtype": "bfloat16",
-                        "hidden_channels": 512,
-                        "mask_dtype": "float32",
-                        "num_stages": 2,
-                        "output_channels": 128,
-                        "raster_order": "row",
-                        "raster_panel": 8,
-                        "rows": 147456,
-                        "shared_layout": "wgmma",
-                        "threads": 128,
-                    },
-                    "name": "pair_b1_r147456_h512_c128_bf16",
-                },
-                {
-                    "arguments": {
-                        "architecture": "sm90a",
-                        "batch_size": 1,
-                        "block_k": 32,
-                        "block_m": 64,
-                        "block_n": 64,
-                        "capability_digest": "sha256:1e229c8e8af17e9ff8c9477357b5e9096eec4af01447634484ca9ff7f2924356",
-                        "dtype": "bfloat16",
-                        "hidden_channels": 1536,
-                        "mask_dtype": "float32",
-                        "num_stages": 3,
-                        "output_channels": 384,
-                        "raster_order": "row",
-                        "raster_panel": 8,
-                        "rows": 768,
-                        "shared_layout": "wgmma",
-                        "threads": 128,
-                    },
-                    "name": "single_b1_r768_h1536_c384_bf16",
-                },
-            ],
-            },
+        manifest = json.loads(
+            (ROOT / "generated" / "native_ops.json").read_text(encoding="utf-8")
         )
+        self.assertEqual(
+            set(profiles),
+            {operator["qualified_name"] for operator in manifest["operators"]},
+        )
+        for operation, entries in profiles.items():
+            self.assertTrue(entries, operation)
+            by_shape = {}
+            for entry in entries:
+                arguments = entry["arguments"]
+                self.assertEqual(arguments["architecture"], "sm90a", operation)
+                self.assertIn(arguments["dtype"], {"float16", "bfloat16"})
+                shape = tuple(
+                    (key, value)
+                    for key, value in sorted(arguments.items())
+                    if key not in {"architecture", "dtype"}
+                )
+                by_shape.setdefault(shape, set()).add(arguments["dtype"])
+            self.assertTrue(
+                all(dtypes == {"float16", "bfloat16"} for dtypes in by_shape.values()),
+                operation,
+            )
 
     def test_bazel_separates_hermetic_and_torch_test_authority(self) -> None:
         build = (ROOT / "BUILD.bazel").read_text(encoding="utf-8")

@@ -24,6 +24,7 @@ py_test(
         "tilelang.py",
     ],
     main = "test_tilelang.py",
+    data = [":policy_inputs"],
     tags = [
         "manual",
         "requires-hermetic-torch-2.10",
@@ -32,4 +33,18 @@ py_test(
         "//kernels/api",
         "@mindclade_pypi//pytest",
     ],
+)
+
+filegroup(
+    name = "policy_inputs",
+    srcs = [
+        "BUILD.bazel",
+        "__init__.py",
+        "dispatch.py",
+        "reference.py",
+        "spec.py",
+        "test_tilelang.py",
+        "tilelang.py",
+    ],
+    visibility = ["//visibility:public"],
 )

@@ -2752,15 +2752,15 @@
         },
         {
           "path": "kernels/pairformer/pair_weighted_average/dispatch.py",
-          "reason": "ADR-0014 bounded Wave 2S kernel-platform API source surface with real Bazel ownership and tests; TARGET only, with no runtime or production authority."
+          "reason": "ADR-0016 activates this existing operation-local path under its exact Bazel policy-input and test closure; K0-K5 production qualification remains outstanding."
         },
         {
           "path": "kernels/pairformer/pair_weighted_average/reference.py",
-          "reason": "ADR-0014 bounded Wave 2S kernel-platform API source surface with real Bazel ownership and tests; TARGET only, with no runtime or production authority."
+          "reason": "ADR-0016 activates this existing operation-local path under its exact Bazel policy-input and test closure; K0-K5 production qualification remains outstanding."
         },
         {
           "path": "kernels/pairformer/pair_weighted_average/spec.py",
-          "reason": "ADR-0014 bounded Wave 2S kernel-platform API source surface with real Bazel ownership and tests; TARGET only, with no runtime or production authority."
+          "reason": "ADR-0016 activates this existing operation-local path under its exact Bazel policy-input and test closure; K0-K5 production qualification remains outstanding."
         },
         {
           "path": "docs/adr/0009-native-kernel-source-incubation.md",
@@ -3028,91 +3028,91 @@
         },
         {
           "path": "kernels/pairformer/outer_product_mean/BUILD.bazel",
-          "reason": "ADR-0009 bounded Wave 6 native source-incubation surface; TARGET or reviewed-generated only, with zero active or qualified operations and no production authority."
+          "reason": "ADR-0016 activates this existing operation-local path under its exact Bazel policy-input and test closure; K0-K5 production qualification remains outstanding."
         },
         {
           "path": "kernels/pairformer/outer_product_mean/__init__.py",
-          "reason": "ADR-0009 bounded Wave 6 native source-incubation surface; TARGET or reviewed-generated only, with zero active or qualified operations and no production authority."
+          "reason": "ADR-0016 activates this existing operation-local path under its exact Bazel policy-input and test closure; K0-K5 production qualification remains outstanding."
         },
         {
           "path": "kernels/pairformer/outer_product_mean/tests/test_outer_product_mean.py",
-          "reason": "ADR-0009 bounded Wave 6 native source-incubation surface; TARGET or reviewed-generated only, with zero active or qualified operations and no production authority."
+          "reason": "ADR-0016 activates this existing operation-local path under its exact Bazel policy-input and test closure; K0-K5 production qualification remains outstanding."
         },
         {
           "path": "kernels/pairformer/outer_product_mean/tilelang.py",
-          "reason": "ADR-0009 bounded Wave 6 native source-incubation surface; TARGET or reviewed-generated only, with zero active or qualified operations and no production authority."
+          "reason": "ADR-0016 activates this existing operation-local path under its exact Bazel policy-input and test closure; K0-K5 production qualification remains outstanding."
         },
         {
           "path": "kernels/pairformer/pair_weighted_average/BUILD.bazel",
-          "reason": "ADR-0009 bounded Wave 6 native source-incubation surface; TARGET or reviewed-generated only, with zero active or qualified operations and no production authority."
+          "reason": "ADR-0016 activates this existing operation-local path under its exact Bazel policy-input and test closure; K0-K5 production qualification remains outstanding."
         },
         {
           "path": "kernels/pairformer/pair_weighted_average/__init__.py",
-          "reason": "ADR-0009 bounded Wave 6 native source-incubation surface; TARGET or reviewed-generated only, with zero active or qualified operations and no production authority."
+          "reason": "ADR-0016 activates this existing operation-local path under its exact Bazel policy-input and test closure; K0-K5 production qualification remains outstanding."
         },
         {
           "path": "kernels/pairformer/pair_weighted_average/test_tilelang.py",
-          "reason": "ADR-0009 bounded Wave 6 native source-incubation surface; TARGET or reviewed-generated only, with zero active or qualified operations and no production authority."
+          "reason": "ADR-0016 activates this existing operation-local path under its exact Bazel policy-input and test closure; K0-K5 production qualification remains outstanding."
         },
         {
           "path": "kernels/pairformer/pair_weighted_average/tilelang.py",
-          "reason": "ADR-0009 bounded Wave 6 native source-incubation surface; TARGET or reviewed-generated only, with zero active or qualified operations and no production authority."
+          "reason": "ADR-0016 activates this existing operation-local path under its exact Bazel policy-input and test closure; K0-K5 production qualification remains outstanding."
         },
         {
           "path": "kernels/pairformer/triangle_attention/BUILD.bazel",
-          "reason": "ADR-0009 bounded Wave 6 native source-incubation surface; TARGET or reviewed-generated only, with zero active or qualified operations and no production authority."
+          "reason": "ADR-0016 activates this existing operation-local path under its exact Bazel policy-input and test closure; K0-K5 production qualification remains outstanding."
         },
         {
           "path": "kernels/pairformer/triangle_attention/__init__.py",
-          "reason": "ADR-0009 bounded Wave 6 native source-incubation surface; TARGET or reviewed-generated only, with zero active or qualified operations and no production authority."
+          "reason": "ADR-0016 activates this existing operation-local path under its exact Bazel policy-input and test closure; K0-K5 production qualification remains outstanding."
         },
         {
           "path": "kernels/pairformer/triangle_attention/tests/__init__.py",
-          "reason": "ADR-0009 bounded Wave 6 native source-incubation surface; TARGET or reviewed-generated only, with zero active or qualified operations and no production authority."
+          "reason": "ADR-0016 activates this existing operation-local path under its exact Bazel policy-input and test closure; K0-K5 production qualification remains outstanding."
         },
         {
           "path": "kernels/pairformer/triangle_attention/tests/test_triangle_attention.py",
-          "reason": "ADR-0009 bounded Wave 6 native source-incubation surface; TARGET or reviewed-generated only, with zero active or qualified operations and no production authority."
+          "reason": "ADR-0016 activates this existing operation-local path under its exact Bazel policy-input and test closure; K0-K5 production qualification remains outstanding."
         },
         {
           "path": "kernels/pairformer/triangle_attention/tilelang.py",
-          "reason": "ADR-0009 bounded Wave 6 native source-incubation surface; TARGET or reviewed-generated only, with zero active or qualified operations and no production authority."
+          "reason": "ADR-0016 activates this existing operation-local path under its exact Bazel policy-input and test closure; K0-K5 production qualification remains outstanding."
         },
         {
           "path": "kernels/pairformer/triangle_multiplication/BUILD.bazel",
-          "reason": "ADR-0009 bounded Wave 6 native source-incubation surface; TARGET or reviewed-generated only, with zero active or qualified operations and no production authority."
+          "reason": "ADR-0016 activates this existing operation-local path under its exact Bazel policy-input and test closure; K0-K5 production qualification remains outstanding."
         },
         {
           "path": "kernels/pairformer/triangle_multiplication/README.md",
-          "reason": "ADR-0009 bounded Wave 6 native source-incubation surface; TARGET or reviewed-generated only, with zero active or qualified operations and no production authority."
+          "reason": "ADR-0016 activates this existing operation-local path under its exact Bazel policy-input and test closure; K0-K5 production qualification remains outstanding."
         },
         {
           "path": "kernels/pairformer/triangle_multiplication/__init__.py",
-          "reason": "ADR-0009 bounded Wave 6 native source-incubation surface; TARGET or reviewed-generated only, with zero active or qualified operations and no production authority."
+          "reason": "ADR-0016 activates this existing operation-local path under its exact Bazel policy-input and test closure; K0-K5 production qualification remains outstanding."
         },
         {
           "path": "kernels/pairformer/triangle_multiplication/test_triangle_multiplication.py",
-          "reason": "ADR-0009 bounded Wave 6 native source-incubation surface; TARGET or reviewed-generated only, with zero active or qualified operations and no production authority."
+          "reason": "ADR-0016 activates this existing operation-local path under its exact Bazel policy-input and test closure; K0-K5 production qualification remains outstanding."
         },
         {
           "path": "kernels/pairformer/triangle_multiplication/tilelang.py",
-          "reason": "ADR-0009 bounded Wave 6 native source-incubation surface; TARGET or reviewed-generated only, with zero active or qualified operations and no production authority."
+          "reason": "ADR-0016 activates this existing operation-local path under its exact Bazel policy-input and test closure; K0-K5 production qualification remains outstanding."
         },
         {
           "path": "kernels/pairformer/transition/BUILD.bazel",
-          "reason": "ADR-0009 bounded Wave 6 native source-incubation surface; TARGET or reviewed-generated only, with zero active or qualified operations and no production authority."
+          "reason": "ADR-0016 activates this existing operation-local path under its exact Bazel policy-input and test closure; K0-K5 production qualification remains outstanding."
         },
         {
           "path": "kernels/pairformer/transition/__init__.py",
-          "reason": "ADR-0009 bounded Wave 6 native source-incubation surface; TARGET or reviewed-generated only, with zero active or qualified operations and no production authority."
+          "reason": "ADR-0016 activates this existing operation-local path under its exact Bazel policy-input and test closure; K0-K5 production qualification remains outstanding."
         },
         {
           "path": "kernels/pairformer/transition/test_transition.py",
-          "reason": "ADR-0009 bounded Wave 6 native source-incubation surface; TARGET or reviewed-generated only, with zero active or qualified operations and no production authority."
+          "reason": "ADR-0016 activates this existing operation-local path under its exact Bazel policy-input and test closure; K0-K5 production qualification remains outstanding."
         },
         {
           "path": "kernels/pairformer/transition/tilelang.py",
-          "reason": "ADR-0009 bounded Wave 6 native source-incubation surface; TARGET or reviewed-generated only, with zero active or qualified operations and no production authority."
+          "reason": "ADR-0016 activates this existing operation-local path under its exact Bazel policy-input and test closure; K0-K5 production qualification remains outstanding."
         },
         {
           "path": "kernels/native/generated/tilelang_capabilities.json",
@@ -4167,6 +4167,34 @@
           "reason": "Required generated package authority for an isolated internal gRPC service namespace or the curated mindclade.api.v1 facade."
         },
         {
+          "path": "kernels/native/stable_abi/tensor_bridge.h",
+          "reason": "ADR-0009 bounded Wave 6 native source-incubation surface; TARGET or reviewed-generated only, with zero active or qualified operations and no production authority."
+        },
+        {
+          "path": "docs/adr/0016-pairformer-native-kernel-platform-wave6-source-activation.md",
+          "reason": "ADR-0016 records the governed source activation boundary for the five operation-local Pairformer packages while leaving generic native and future runtime subsystems fail closed."
+        },
+        {
+          "path": "docs/adr/0017-jit-06-outer-product-mean-sm90a-sm100a.md",
+          "reason": "JIT-06 records the exact operation-by-architecture qualification decision for sm90a and sm100a without granting promotion or support."
+        },
+        {
+          "path": "docs/adr/0018-jit-06-pair-weighted-average-sm90a-sm100a.md",
+          "reason": "JIT-06 records the exact operation-by-architecture qualification decision for sm90a and sm100a without granting promotion or support."
+        },
+        {
+          "path": "docs/adr/0019-jit-06-transition-sm90a-sm100a.md",
+          "reason": "JIT-06 records the exact operation-by-architecture qualification decision for sm90a and sm100a without granting promotion or support."
+        },
+        {
+          "path": "docs/adr/0020-jit-06-triangle-attention-sm90a-sm100a.md",
+          "reason": "JIT-06 records the exact operation-by-architecture qualification decision for sm90a and sm100a without granting promotion or support."
+        },
+        {
+          "path": "docs/adr/0021-jit-06-triangle-multiplication-sm90a-sm100a.md",
+          "reason": "JIT-06 records the exact operation-by-architecture qualification decision for sm90a and sm100a without granting promotion or support."
+        },
+        {
           "path": "docs/adr/0001-repository-identity-and-ownership.md",
           "replaces": "docs/adr/0001-repository-identity.md",
           "reason": "Sections 1-18 and Section 14.1 take precedence over the stale A6 short ADR name."
@@ -4202,8 +4230,8 @@
           "reason": "Sections 1-18 and Section 14.1 take precedence over the stale A6 short ADR name."
         }
       ],
-      "canonical_file_count": 2880,
-      "canonical_path_set_sha256": "682e4cdc1d4bd5a4cd90692d58931eec90a59d9f043e3c219a67751b4e89866e"
+      "canonical_file_count": 2887,
+      "canonical_path_set_sha256": "64f4878995932fceaf3f557c12af692ae01a5b0b82863554229d6c997a20398a"
     },
     "owners": {
       "agent-platform": {
@@ -27609,474 +27637,510 @@
       "kind": "source",
       "owner": "ml-systems-performance",
       "component": "kernels",
-      "status": "target",
+      "status": "active",
       "activation_wave": "6",
       "source_authority": "hand-authored",
       "build_targets": [
-        "//kernels/pairformer/triangle_attention:tilelang.py"
+        "//kernels/pairformer/triangle_attention:policy_inputs"
       ],
       "test_targets": [
         "//kernels/pairformer/triangle_attention:test_triangle_attention"
       ],
       "public_surface": false,
-      "activation_criterion": "Activate only in Wave 6 with a concrete operation consumer, qualified native implementation, real target, tests, and qualification evidence."
+      "activation_criterion": "Activated by ADR-0016 as an operation-local source, build, and qualification input. Production selection remains denied until the exact operation and architecture satisfy JIT-06 K0-K5 evidence, immutable signing, runtime compatibility, revocation, and rollback requirements."
     },
     {
       "path": "kernels/pairformer/triangle_attention/spec.py",
       "kind": "source",
       "owner": "ml-systems-performance",
       "component": "kernels",
-      "status": "target",
+      "status": "active",
       "activation_wave": "6",
       "source_authority": "hand-authored",
       "build_targets": [
-        "//kernels/pairformer/triangle_attention:tilelang.py"
+        "//kernels/pairformer/triangle_attention:policy_inputs"
       ],
       "test_targets": [
         "//kernels/pairformer/triangle_attention:test_triangle_attention"
       ],
       "public_surface": false,
-      "activation_criterion": "Activate only in Wave 6 with a concrete operation consumer, qualified native implementation, real target, tests, and qualification evidence."
+      "activation_criterion": "Activated by ADR-0016 as an operation-local source, build, and qualification input. Production selection remains denied until the exact operation and architecture satisfy JIT-06 K0-K5 evidence, immutable signing, runtime compatibility, revocation, and rollback requirements."
     },
     {
       "path": "kernels/pairformer/triangle_attention/dispatch.py",
       "kind": "source",
       "owner": "ml-systems-performance",
       "component": "kernels",
-      "status": "target",
+      "status": "active",
       "activation_wave": "6",
       "source_authority": "hand-authored",
       "build_targets": [
-        "//kernels/pairformer/triangle_attention:tilelang.py"
+        "//kernels/pairformer/triangle_attention:policy_inputs"
       ],
       "test_targets": [
         "//kernels/pairformer/triangle_attention:test_triangle_attention"
       ],
       "public_surface": false,
-      "activation_criterion": "Activate only in Wave 6 with a concrete operation consumer, qualified native implementation, real target, tests, and qualification evidence."
+      "activation_criterion": "Activated by ADR-0016 as an operation-local source, build, and qualification input. Production selection remains denied until the exact operation and architecture satisfy JIT-06 K0-K5 evidence, immutable signing, runtime compatibility, revocation, and rollback requirements."
     },
     {
       "path": "kernels/pairformer/triangle_attention/BUILD.bazel",
       "kind": "build",
       "owner": "ml-systems-performance",
-      "component": "kernels-native",
-      "status": "target",
+      "component": "kernels",
+      "status": "active",
       "activation_wave": "6",
       "source_authority": "hand-authored",
       "build_targets": [
-        "//kernels/pairformer/triangle_attention:tilelang.py"
+        "//kernels/pairformer/triangle_attention:policy_inputs"
       ],
-      "test_targets": [],
+      "test_targets": [
+        "//kernels/pairformer/triangle_attention:test_triangle_attention"
+      ],
       "public_surface": false,
-      "activation_criterion": "ADR-0009 permits source incubation only through 2026-11-30; activate only after Wave 5 evidence and an operation-specific JIT-06 decision prove measured need, reference parity, gradients, locked dependencies, immutable artifacts, fallback, and revocation."
+      "activation_criterion": "Activated by ADR-0016 as an operation-local source, build, and qualification input. Production selection remains denied until the exact operation and architecture satisfy JIT-06 K0-K5 evidence, immutable signing, runtime compatibility, revocation, and rollback requirements."
     },
     {
       "path": "kernels/pairformer/triangle_attention/__init__.py",
       "kind": "source",
       "owner": "ml-systems-performance",
-      "component": "kernels-native",
-      "status": "target",
+      "component": "kernels",
+      "status": "active",
       "activation_wave": "6",
       "source_authority": "hand-authored",
       "build_targets": [
-        "//kernels/pairformer/triangle_attention:tilelang.py"
+        "//kernels/pairformer/triangle_attention:policy_inputs"
       ],
-      "test_targets": [],
+      "test_targets": [
+        "//kernels/pairformer/triangle_attention:test_triangle_attention"
+      ],
       "public_surface": false,
-      "activation_criterion": "ADR-0009 permits source incubation only through 2026-11-30; activate only after Wave 5 evidence and an operation-specific JIT-06 decision prove measured need, reference parity, gradients, locked dependencies, immutable artifacts, fallback, and revocation."
+      "activation_criterion": "Activated by ADR-0016 as an operation-local source, build, and qualification input. Production selection remains denied until the exact operation and architecture satisfy JIT-06 K0-K5 evidence, immutable signing, runtime compatibility, revocation, and rollback requirements."
     },
     {
       "path": "kernels/pairformer/triangle_attention/tests/__init__.py",
       "kind": "source",
       "owner": "ml-systems-performance",
-      "component": "kernels-native",
-      "status": "target",
+      "component": "kernels",
+      "status": "active",
       "activation_wave": "6",
       "source_authority": "hand-authored",
-      "build_targets": [],
+      "build_targets": [
+        "//kernels/pairformer/triangle_attention:policy_inputs"
+      ],
       "test_targets": [
         "//kernels/pairformer/triangle_attention:test_triangle_attention"
       ],
       "public_surface": false,
-      "activation_criterion": "ADR-0009 permits source incubation only through 2026-11-30; activate only after Wave 5 evidence and an operation-specific JIT-06 decision prove measured need, reference parity, gradients, locked dependencies, immutable artifacts, fallback, and revocation."
+      "activation_criterion": "Activated by ADR-0016 as an operation-local source, build, and qualification input. Production selection remains denied until the exact operation and architecture satisfy JIT-06 K0-K5 evidence, immutable signing, runtime compatibility, revocation, and rollback requirements."
     },
     {
       "path": "kernels/pairformer/triangle_attention/tests/test_triangle_attention.py",
       "kind": "source",
       "owner": "ml-systems-performance",
-      "component": "kernels-native",
-      "status": "target",
+      "component": "kernels",
+      "status": "active",
       "activation_wave": "6",
       "source_authority": "hand-authored",
-      "build_targets": [],
+      "build_targets": [
+        "//kernels/pairformer/triangle_attention:policy_inputs"
+      ],
       "test_targets": [
         "//kernels/pairformer/triangle_attention:test_triangle_attention"
       ],
       "public_surface": false,
-      "activation_criterion": "ADR-0009 permits source incubation only through 2026-11-30; activate only after Wave 5 evidence and an operation-specific JIT-06 decision prove measured need, reference parity, gradients, locked dependencies, immutable artifacts, fallback, and revocation."
+      "activation_criterion": "Activated by ADR-0016 as an operation-local source, build, and qualification input. Production selection remains denied until the exact operation and architecture satisfy JIT-06 K0-K5 evidence, immutable signing, runtime compatibility, revocation, and rollback requirements."
     },
     {
       "path": "kernels/pairformer/triangle_attention/tilelang.py",
       "kind": "source",
       "owner": "ml-systems-performance",
-      "component": "kernels-native",
-      "status": "target",
+      "component": "kernels",
+      "status": "active",
       "activation_wave": "6",
       "source_authority": "hand-authored",
       "build_targets": [
-        "//kernels/pairformer/triangle_attention:tilelang.py"
+        "//kernels/pairformer/triangle_attention:policy_inputs"
       ],
-      "test_targets": [],
+      "test_targets": [
+        "//kernels/pairformer/triangle_attention:test_triangle_attention"
+      ],
       "public_surface": false,
-      "activation_criterion": "ADR-0009 permits source incubation only through 2026-11-30; activate only after Wave 5 evidence and an operation-specific JIT-06 decision prove measured need, reference parity, gradients, locked dependencies, immutable artifacts, fallback, and revocation."
+      "activation_criterion": "Activated by ADR-0016 as an operation-local source, build, and qualification input. Production selection remains denied until the exact operation and architecture satisfy JIT-06 K0-K5 evidence, immutable signing, runtime compatibility, revocation, and rollback requirements."
     },
     {
       "path": "kernels/pairformer/triangle_multiplication/reference.py",
       "kind": "source",
       "owner": "ml-systems-performance",
       "component": "kernels",
-      "status": "target",
+      "status": "active",
       "activation_wave": "6",
       "source_authority": "hand-authored",
       "build_targets": [
-        "//kernels/pairformer/triangle_multiplication:tilelang.py"
+        "//kernels/pairformer/triangle_multiplication:policy_inputs"
       ],
       "test_targets": [
         "//kernels/pairformer/triangle_multiplication:test_triangle_multiplication"
       ],
       "public_surface": false,
-      "activation_criterion": "Activate only in Wave 6 with a concrete operation consumer, qualified native implementation, real target, tests, and qualification evidence."
+      "activation_criterion": "Activated by ADR-0016 as an operation-local source, build, and qualification input. Production selection remains denied until the exact operation and architecture satisfy JIT-06 K0-K5 evidence, immutable signing, runtime compatibility, revocation, and rollback requirements."
     },
     {
       "path": "kernels/pairformer/triangle_multiplication/spec.py",
       "kind": "source",
       "owner": "ml-systems-performance",
       "component": "kernels",
-      "status": "target",
+      "status": "active",
       "activation_wave": "6",
       "source_authority": "hand-authored",
       "build_targets": [
-        "//kernels/pairformer/triangle_multiplication:tilelang.py"
+        "//kernels/pairformer/triangle_multiplication:policy_inputs"
       ],
       "test_targets": [
         "//kernels/pairformer/triangle_multiplication:test_triangle_multiplication"
       ],
       "public_surface": false,
-      "activation_criterion": "Activate only in Wave 6 with a concrete operation consumer, qualified native implementation, real target, tests, and qualification evidence."
+      "activation_criterion": "Activated by ADR-0016 as an operation-local source, build, and qualification input. Production selection remains denied until the exact operation and architecture satisfy JIT-06 K0-K5 evidence, immutable signing, runtime compatibility, revocation, and rollback requirements."
     },
     {
       "path": "kernels/pairformer/triangle_multiplication/dispatch.py",
       "kind": "source",
       "owner": "ml-systems-performance",
       "component": "kernels",
-      "status": "target",
+      "status": "active",
       "activation_wave": "6",
       "source_authority": "hand-authored",
       "build_targets": [
-        "//kernels/pairformer/triangle_multiplication:tilelang.py"
+        "//kernels/pairformer/triangle_multiplication:policy_inputs"
       ],
       "test_targets": [
         "//kernels/pairformer/triangle_multiplication:test_triangle_multiplication"
       ],
       "public_surface": false,
-      "activation_criterion": "Activate only in Wave 6 with a concrete operation consumer, qualified native implementation, real target, tests, and qualification evidence."
+      "activation_criterion": "Activated by ADR-0016 as an operation-local source, build, and qualification input. Production selection remains denied until the exact operation and architecture satisfy JIT-06 K0-K5 evidence, immutable signing, runtime compatibility, revocation, and rollback requirements."
     },
     {
       "path": "kernels/pairformer/triangle_multiplication/BUILD.bazel",
       "kind": "build",
       "owner": "ml-systems-performance",
-      "component": "kernels-native",
-      "status": "target",
+      "component": "kernels",
+      "status": "active",
       "activation_wave": "6",
       "source_authority": "hand-authored",
       "build_targets": [
-        "//kernels/pairformer/triangle_multiplication:tilelang.py"
+        "//kernels/pairformer/triangle_multiplication:policy_inputs"
       ],
-      "test_targets": [],
+      "test_targets": [
+        "//kernels/pairformer/triangle_multiplication:test_triangle_multiplication"
+      ],
       "public_surface": false,
-      "activation_criterion": "ADR-0009 permits source incubation only through 2026-11-30; activate only after Wave 5 evidence and an operation-specific JIT-06 decision prove measured need, reference parity, gradients, locked dependencies, immutable artifacts, fallback, and revocation."
+      "activation_criterion": "Activated by ADR-0016 as an operation-local source, build, and qualification input. Production selection remains denied until the exact operation and architecture satisfy JIT-06 K0-K5 evidence, immutable signing, runtime compatibility, revocation, and rollback requirements."
     },
     {
       "path": "kernels/pairformer/triangle_multiplication/README.md",
       "kind": "documentation",
       "owner": "ml-systems-performance",
-      "component": "kernels-native",
-      "status": "target",
+      "component": "kernels",
+      "status": "active",
       "activation_wave": "6",
       "source_authority": "hand-authored",
       "build_targets": [
-        "//kernels/pairformer/triangle_multiplication:tilelang.py"
+        "//kernels/pairformer/triangle_multiplication:policy_inputs"
       ],
-      "test_targets": [],
+      "test_targets": [
+        "//kernels/pairformer/triangle_multiplication:test_triangle_multiplication"
+      ],
       "public_surface": false,
-      "activation_criterion": "ADR-0009 permits source incubation only through 2026-11-30; activate only after Wave 5 evidence and an operation-specific JIT-06 decision prove measured need, reference parity, gradients, locked dependencies, immutable artifacts, fallback, and revocation."
+      "activation_criterion": "Activated by ADR-0016 as an operation-local source, build, and qualification input. Production selection remains denied until the exact operation and architecture satisfy JIT-06 K0-K5 evidence, immutable signing, runtime compatibility, revocation, and rollback requirements."
     },
     {
       "path": "kernels/pairformer/triangle_multiplication/__init__.py",
       "kind": "source",
       "owner": "ml-systems-performance",
-      "component": "kernels-native",
-      "status": "target",
+      "component": "kernels",
+      "status": "active",
       "activation_wave": "6",
       "source_authority": "hand-authored",
       "build_targets": [
-        "//kernels/pairformer/triangle_multiplication:tilelang.py"
+        "//kernels/pairformer/triangle_multiplication:policy_inputs"
       ],
-      "test_targets": [],
+      "test_targets": [
+        "//kernels/pairformer/triangle_multiplication:test_triangle_multiplication"
+      ],
       "public_surface": false,
-      "activation_criterion": "ADR-0009 permits source incubation only through 2026-11-30; activate only after Wave 5 evidence and an operation-specific JIT-06 decision prove measured need, reference parity, gradients, locked dependencies, immutable artifacts, fallback, and revocation."
+      "activation_criterion": "Activated by ADR-0016 as an operation-local source, build, and qualification input. Production selection remains denied until the exact operation and architecture satisfy JIT-06 K0-K5 evidence, immutable signing, runtime compatibility, revocation, and rollback requirements."
     },
     {
       "path": "kernels/pairformer/triangle_multiplication/test_triangle_multiplication.py",
       "kind": "source",
       "owner": "ml-systems-performance",
-      "component": "kernels-native",
-      "status": "target",
+      "component": "kernels",
+      "status": "active",
       "activation_wave": "6",
       "source_authority": "hand-authored",
-      "build_targets": [],
+      "build_targets": [
+        "//kernels/pairformer/triangle_multiplication:policy_inputs"
+      ],
       "test_targets": [
         "//kernels/pairformer/triangle_multiplication:test_triangle_multiplication"
       ],
       "public_surface": false,
-      "activation_criterion": "ADR-0009 permits source incubation only through 2026-11-30; activate only after Wave 5 evidence and an operation-specific JIT-06 decision prove measured need, reference parity, gradients, locked dependencies, immutable artifacts, fallback, and revocation."
+      "activation_criterion": "Activated by ADR-0016 as an operation-local source, build, and qualification input. Production selection remains denied until the exact operation and architecture satisfy JIT-06 K0-K5 evidence, immutable signing, runtime compatibility, revocation, and rollback requirements."
     },
     {
       "path": "kernels/pairformer/triangle_multiplication/tilelang.py",
       "kind": "source",
       "owner": "ml-systems-performance",
-      "component": "kernels-native",
-      "status": "target",
+      "component": "kernels",
+      "status": "active",
       "activation_wave": "6",
       "source_authority": "hand-authored",
       "build_targets": [
-        "//kernels/pairformer/triangle_multiplication:tilelang.py"
+        "//kernels/pairformer/triangle_multiplication:policy_inputs"
       ],
-      "test_targets": [],
+      "test_targets": [
+        "//kernels/pairformer/triangle_multiplication:test_triangle_multiplication"
+      ],
       "public_surface": false,
-      "activation_criterion": "ADR-0009 permits source incubation only through 2026-11-30; activate only after Wave 5 evidence and an operation-specific JIT-06 decision prove measured need, reference parity, gradients, locked dependencies, immutable artifacts, fallback, and revocation."
+      "activation_criterion": "Activated by ADR-0016 as an operation-local source, build, and qualification input. Production selection remains denied until the exact operation and architecture satisfy JIT-06 K0-K5 evidence, immutable signing, runtime compatibility, revocation, and rollback requirements."
     },
     {
       "path": "kernels/pairformer/outer_product_mean/reference.py",
       "kind": "source",
       "owner": "ml-systems-performance",
       "component": "kernels",
-      "status": "target",
+      "status": "active",
       "activation_wave": "6",
       "source_authority": "hand-authored",
       "build_targets": [
-        "//kernels/pairformer/outer_product_mean:tilelang.py"
+        "//kernels/pairformer/outer_product_mean:policy_inputs"
       ],
       "test_targets": [
         "//kernels/pairformer/outer_product_mean:test_outer_product_mean"
       ],
       "public_surface": false,
-      "activation_criterion": "Activate only in Wave 6 with a concrete operation consumer, qualified native implementation, real target, tests, and qualification evidence."
+      "activation_criterion": "Activated by ADR-0016 as an operation-local source, build, and qualification input. Production selection remains denied until the exact operation and architecture satisfy JIT-06 K0-K5 evidence, immutable signing, runtime compatibility, revocation, and rollback requirements."
     },
     {
       "path": "kernels/pairformer/outer_product_mean/spec.py",
       "kind": "source",
       "owner": "ml-systems-performance",
       "component": "kernels",
-      "status": "target",
+      "status": "active",
       "activation_wave": "6",
       "source_authority": "hand-authored",
       "build_targets": [
-        "//kernels/pairformer/outer_product_mean:tilelang.py"
+        "//kernels/pairformer/outer_product_mean:policy_inputs"
       ],
       "test_targets": [
         "//kernels/pairformer/outer_product_mean:test_outer_product_mean"
       ],
       "public_surface": false,
-      "activation_criterion": "Activate only in Wave 6 with a concrete operation consumer, qualified native implementation, real target, tests, and qualification evidence."
+      "activation_criterion": "Activated by ADR-0016 as an operation-local source, build, and qualification input. Production selection remains denied until the exact operation and architecture satisfy JIT-06 K0-K5 evidence, immutable signing, runtime compatibility, revocation, and rollback requirements."
     },
     {
       "path": "kernels/pairformer/outer_product_mean/dispatch.py",
       "kind": "source",
       "owner": "ml-systems-performance",
       "component": "kernels",
-      "status": "target",
+      "status": "active",
       "activation_wave": "6",
       "source_authority": "hand-authored",
       "build_targets": [
-        "//kernels/pairformer/outer_product_mean:tilelang.py"
+        "//kernels/pairformer/outer_product_mean:policy_inputs"
       ],
       "test_targets": [
         "//kernels/pairformer/outer_product_mean:test_outer_product_mean"
       ],
       "public_surface": false,
-      "activation_criterion": "Activate only in Wave 6 with a concrete operation consumer, qualified native implementation, real target, tests, and qualification evidence."
+      "activation_criterion": "Activated by ADR-0016 as an operation-local source, build, and qualification input. Production selection remains denied until the exact operation and architecture satisfy JIT-06 K0-K5 evidence, immutable signing, runtime compatibility, revocation, and rollback requirements."
     },
     {
       "path": "kernels/pairformer/outer_product_mean/BUILD.bazel",
       "kind": "build",
       "owner": "ml-systems-performance",
-      "component": "kernels-native",
-      "status": "target",
+      "component": "kernels",
+      "status": "active",
       "activation_wave": "6",
       "source_authority": "hand-authored",
       "build_targets": [
-        "//kernels/pairformer/outer_product_mean:tilelang.py"
+        "//kernels/pairformer/outer_product_mean:policy_inputs"
       ],
-      "test_targets": [],
+      "test_targets": [
+        "//kernels/pairformer/outer_product_mean:test_outer_product_mean"
+      ],
       "public_surface": false,
-      "activation_criterion": "ADR-0009 permits source incubation only through 2026-11-30; activate only after Wave 5 evidence and an operation-specific JIT-06 decision prove measured need, reference parity, gradients, locked dependencies, immutable artifacts, fallback, and revocation."
+      "activation_criterion": "Activated by ADR-0016 as an operation-local source, build, and qualification input. Production selection remains denied until the exact operation and architecture satisfy JIT-06 K0-K5 evidence, immutable signing, runtime compatibility, revocation, and rollback requirements."
     },
     {
       "path": "kernels/pairformer/outer_product_mean/__init__.py",
       "kind": "source",
       "owner": "ml-systems-performance",
-      "component": "kernels-native",
-      "status": "target",
+      "component": "kernels",
+      "status": "active",
       "activation_wave": "6",
       "source_authority": "hand-authored",
       "build_targets": [
-        "//kernels/pairformer/outer_product_mean:tilelang.py"
+        "//kernels/pairformer/outer_product_mean:policy_inputs"
       ],
-      "test_targets": [],
+      "test_targets": [
+        "//kernels/pairformer/outer_product_mean:test_outer_product_mean"
+      ],
       "public_surface": false,
-      "activation_criterion": "ADR-0009 permits source incubation only through 2026-11-30; activate only after Wave 5 evidence and an operation-specific JIT-06 decision prove measured need, reference parity, gradients, locked dependencies, immutable artifacts, fallback, and revocation."
+      "activation_criterion": "Activated by ADR-0016 as an operation-local source, build, and qualification input. Production selection remains denied until the exact operation and architecture satisfy JIT-06 K0-K5 evidence, immutable signing, runtime compatibility, revocation, and rollback requirements."
     },
     {
       "path": "kernels/pairformer/outer_product_mean/tests/test_outer_product_mean.py",
       "kind": "source",
       "owner": "ml-systems-performance",
-      "component": "kernels-native",
-      "status": "target",
+      "component": "kernels",
+      "status": "active",
       "activation_wave": "6",
       "source_authority": "hand-authored",
-      "build_targets": [],
+      "build_targets": [
+        "//kernels/pairformer/outer_product_mean:policy_inputs"
+      ],
       "test_targets": [
         "//kernels/pairformer/outer_product_mean:test_outer_product_mean"
       ],
       "public_surface": false,
-      "activation_criterion": "ADR-0009 permits source incubation only through 2026-11-30; activate only after Wave 5 evidence and an operation-specific JIT-06 decision prove measured need, reference parity, gradients, locked dependencies, immutable artifacts, fallback, and revocation."
+      "activation_criterion": "Activated by ADR-0016 as an operation-local source, build, and qualification input. Production selection remains denied until the exact operation and architecture satisfy JIT-06 K0-K5 evidence, immutable signing, runtime compatibility, revocation, and rollback requirements."
     },
     {
       "path": "kernels/pairformer/outer_product_mean/tilelang.py",
       "kind": "source",
       "owner": "ml-systems-performance",
-      "component": "kernels-native",
-      "status": "target",
+      "component": "kernels",
+      "status": "active",
       "activation_wave": "6",
       "source_authority": "hand-authored",
       "build_targets": [
-        "//kernels/pairformer/outer_product_mean:tilelang.py"
+        "//kernels/pairformer/outer_product_mean:policy_inputs"
       ],
-      "test_targets": [],
+      "test_targets": [
+        "//kernels/pairformer/outer_product_mean:test_outer_product_mean"
+      ],
       "public_surface": false,
-      "activation_criterion": "ADR-0009 permits source incubation only through 2026-11-30; activate only after Wave 5 evidence and an operation-specific JIT-06 decision prove measured need, reference parity, gradients, locked dependencies, immutable artifacts, fallback, and revocation."
+      "activation_criterion": "Activated by ADR-0016 as an operation-local source, build, and qualification input. Production selection remains denied until the exact operation and architecture satisfy JIT-06 K0-K5 evidence, immutable signing, runtime compatibility, revocation, and rollback requirements."
     },
     {
       "path": "kernels/pairformer/transition/reference.py",
       "kind": "source",
       "owner": "ml-systems-performance",
       "component": "kernels",
-      "status": "target",
+      "status": "active",
       "activation_wave": "6",
       "source_authority": "hand-authored",
       "build_targets": [
-        "//kernels/pairformer/transition:tilelang.py"
+        "//kernels/pairformer/transition:policy_inputs"
       ],
       "test_targets": [
         "//kernels/pairformer/transition:test_transition"
       ],
       "public_surface": false,
-      "activation_criterion": "Activate only in Wave 6 with a concrete operation consumer, qualified native implementation, real target, tests, and qualification evidence."
+      "activation_criterion": "Activated by ADR-0016 as an operation-local source, build, and qualification input. Production selection remains denied until the exact operation and architecture satisfy JIT-06 K0-K5 evidence, immutable signing, runtime compatibility, revocation, and rollback requirements."
     },
     {
       "path": "kernels/pairformer/transition/spec.py",
       "kind": "source",
       "owner": "ml-systems-performance",
       "component": "kernels",
-      "status": "target",
+      "status": "active",
       "activation_wave": "6",
       "source_authority": "hand-authored",
       "build_targets": [
-        "//kernels/pairformer/transition:tilelang.py"
+        "//kernels/pairformer/transition:policy_inputs"
       ],
       "test_targets": [
         "//kernels/pairformer/transition:test_transition"
       ],
       "public_surface": false,
-      "activation_criterion": "Activate only in Wave 6 with a concrete operation consumer, qualified native implementation, real target, tests, and qualification evidence."
+      "activation_criterion": "Activated by ADR-0016 as an operation-local source, build, and qualification input. Production selection remains denied until the exact operation and architecture satisfy JIT-06 K0-K5 evidence, immutable signing, runtime compatibility, revocation, and rollback requirements."
     },
     {
       "path": "kernels/pairformer/transition/dispatch.py",
       "kind": "source",
       "owner": "ml-systems-performance",
       "component": "kernels",
-      "status": "target",
+      "status": "active",
       "activation_wave": "6",
       "source_authority": "hand-authored",
       "build_targets": [
-        "//kernels/pairformer/transition:tilelang.py"
+        "//kernels/pairformer/transition:policy_inputs"
       ],
       "test_targets": [
         "//kernels/pairformer/transition:test_transition"
       ],
       "public_surface": false,
-      "activation_criterion": "Activate only in Wave 6 with a concrete operation consumer, qualified native implementation, real target, tests, and qualification evidence."
+      "activation_criterion": "Activated by ADR-0016 as an operation-local source, build, and qualification input. Production selection remains denied until the exact operation and architecture satisfy JIT-06 K0-K5 evidence, immutable signing, runtime compatibility, revocation, and rollback requirements."
     },
     {
       "path": "kernels/pairformer/transition/BUILD.bazel",
       "kind": "build",
       "owner": "ml-systems-performance",
-      "component": "kernels-native",
-      "status": "target",
+      "component": "kernels",
+      "status": "active",
       "activation_wave": "6",
       "source_authority": "hand-authored",
       "build_targets": [
-        "//kernels/pairformer/transition:tilelang.py"
+        "//kernels/pairformer/transition:policy_inputs"
       ],
-      "test_targets": [],
+      "test_targets": [
+        "//kernels/pairformer/transition:test_transition"
+      ],
       "public_surface": false,
-      "activation_criterion": "ADR-0009 permits source incubation only through 2026-11-30; activate only after Wave 5 evidence and an operation-specific JIT-06 decision prove measured need, reference parity, gradients, locked dependencies, immutable artifacts, fallback, and revocation."
+      "activation_criterion": "Activated by ADR-0016 as an operation-local source, build, and qualification input. Production selection remains denied until the exact operation and architecture satisfy JIT-06 K0-K5 evidence, immutable signing, runtime compatibility, revocation, and rollback requirements."
     },
     {
       "path": "kernels/pairformer/transition/__init__.py",
       "kind": "source",
       "owner": "ml-systems-performance",
-      "component": "kernels-native",
-      "status": "target",
+      "component": "kernels",
+      "status": "active",
       "activation_wave": "6",
       "source_authority": "hand-authored",
       "build_targets": [
-        "//kernels/pairformer/transition:tilelang.py"
+        "//kernels/pairformer/transition:policy_inputs"
       ],
-      "test_targets": [],
+      "test_targets": [
+        "//kernels/pairformer/transition:test_transition"
+      ],
       "public_surface": false,
-      "activation_criterion": "ADR-0009 permits source incubation only through 2026-11-30; activate only after Wave 5 evidence and an operation-specific JIT-06 decision prove measured need, reference parity, gradients, locked dependencies, immutable artifacts, fallback, and revocation."
+      "activation_criterion": "Activated by ADR-0016 as an operation-local source, build, and qualification input. Production selection remains denied until the exact operation and architecture satisfy JIT-06 K0-K5 evidence, immutable signing, runtime compatibility, revocation, and rollback requirements."
     },
     {
       "path": "kernels/pairformer/transition/test_transition.py",
       "kind": "source",
       "owner": "ml-systems-performance",
-      "component": "kernels-native",
-      "status": "target",
+      "component": "kernels",
+      "status": "active",
       "activation_wave": "6",
       "source_authority": "hand-authored",
-      "build_targets": [],
+      "build_targets": [
+        "//kernels/pairformer/transition:policy_inputs"
+      ],
       "test_targets": [
         "//kernels/pairformer/transition:test_transition"
       ],
       "public_surface": false,
-      "activation_criterion": "ADR-0009 permits source incubation only through 2026-11-30; activate only after Wave 5 evidence and an operation-specific JIT-06 decision prove measured need, reference parity, gradients, locked dependencies, immutable artifacts, fallback, and revocation."
+      "activation_criterion": "Activated by ADR-0016 as an operation-local source, build, and qualification input. Production selection remains denied until the exact operation and architecture satisfy JIT-06 K0-K5 evidence, immutable signing, runtime compatibility, revocation, and rollback requirements."
     },
     {
       "path": "kernels/pairformer/transition/tilelang.py",
       "kind": "source",
       "owner": "ml-systems-performance",
-      "component": "kernels-native",
-      "status": "target",
+      "component": "kernels",
+      "status": "active",
       "activation_wave": "6",
       "source_authority": "hand-authored",
       "build_targets": [
-        "//kernels/pairformer/transition:tilelang.py"
+        "//kernels/pairformer/transition:policy_inputs"
       ],
-      "test_targets": [],
+      "test_targets": [
+        "//kernels/pairformer/transition:test_transition"
+      ],
       "public_surface": false,
-      "activation_criterion": "ADR-0009 permits source incubation only through 2026-11-30; activate only after Wave 5 evidence and an operation-specific JIT-06 decision prove measured need, reference parity, gradients, locked dependencies, immutable artifacts, fallback, and revocation."
+      "activation_criterion": "Activated by ADR-0016 as an operation-local source, build, and qualification input. Production selection remains denied until the exact operation and architecture satisfy JIT-06 K0-K5 evidence, immutable signing, runtime compatibility, revocation, and rollback requirements."
     },
     {
       "path": "kernels/pairformer/tests/test_triangle_attention.py",
@@ -28200,111 +28264,119 @@
       "kind": "source",
       "owner": "ml-systems-performance",
       "component": "kernels",
-      "status": "target",
+      "status": "active",
       "activation_wave": "2S",
       "source_authority": "hand-authored",
       "build_targets": [
-        "//kernels/pairformer/pair_weighted_average:tilelang.py"
+        "//kernels/pairformer/pair_weighted_average:policy_inputs"
       ],
       "test_targets": [
         "//kernels/pairformer/pair_weighted_average:test_pair_weighted_average"
       ],
       "public_surface": false,
-      "activation_criterion": "ADR-0014 permits bounded source development only through 2026-11-30; activate in Wave 2S only with concrete operation consumers, stable typed contracts, real Bazel targets, qualification evidence, and a separately reviewed production decision."
+      "activation_criterion": "Activated by ADR-0016 as an operation-local source, build, and qualification input. Production selection remains denied until the exact operation and architecture satisfy JIT-06 K0-K5 evidence, immutable signing, runtime compatibility, revocation, and rollback requirements."
     },
     {
       "path": "kernels/pairformer/pair_weighted_average/reference.py",
       "kind": "source",
       "owner": "ml-systems-performance",
       "component": "kernels",
-      "status": "target",
+      "status": "active",
       "activation_wave": "2S",
       "source_authority": "hand-authored",
       "build_targets": [
-        "//kernels/pairformer/pair_weighted_average:tilelang.py"
+        "//kernels/pairformer/pair_weighted_average:policy_inputs"
       ],
       "test_targets": [
         "//kernels/pairformer/pair_weighted_average:test_pair_weighted_average"
       ],
       "public_surface": false,
-      "activation_criterion": "ADR-0014 permits bounded source development only through 2026-11-30; activate in Wave 2S only with concrete operation consumers, stable typed contracts, real Bazel targets, qualification evidence, and a separately reviewed production decision."
+      "activation_criterion": "Activated by ADR-0016 as an operation-local source, build, and qualification input. Production selection remains denied until the exact operation and architecture satisfy JIT-06 K0-K5 evidence, immutable signing, runtime compatibility, revocation, and rollback requirements."
     },
     {
       "path": "kernels/pairformer/pair_weighted_average/spec.py",
       "kind": "source",
       "owner": "ml-systems-performance",
       "component": "kernels",
-      "status": "target",
+      "status": "active",
       "activation_wave": "2S",
       "source_authority": "hand-authored",
       "build_targets": [
-        "//kernels/pairformer/pair_weighted_average:tilelang.py"
+        "//kernels/pairformer/pair_weighted_average:policy_inputs"
       ],
       "test_targets": [
         "//kernels/pairformer/pair_weighted_average:test_pair_weighted_average"
       ],
       "public_surface": false,
-      "activation_criterion": "ADR-0014 permits bounded source development only through 2026-11-30; activate in Wave 2S only with concrete operation consumers, stable typed contracts, real Bazel targets, qualification evidence, and a separately reviewed production decision."
+      "activation_criterion": "Activated by ADR-0016 as an operation-local source, build, and qualification input. Production selection remains denied until the exact operation and architecture satisfy JIT-06 K0-K5 evidence, immutable signing, runtime compatibility, revocation, and rollback requirements."
     },
     {
       "path": "kernels/pairformer/pair_weighted_average/BUILD.bazel",
       "kind": "build",
       "owner": "ml-systems-performance",
-      "component": "kernels-native",
-      "status": "target",
+      "component": "kernels",
+      "status": "active",
       "activation_wave": "6",
       "source_authority": "hand-authored",
       "build_targets": [
-        "//kernels/pairformer/pair_weighted_average:tilelang.py"
+        "//kernels/pairformer/pair_weighted_average:policy_inputs"
       ],
-      "test_targets": [],
+      "test_targets": [
+        "//kernels/pairformer/pair_weighted_average:test_pair_weighted_average"
+      ],
       "public_surface": false,
-      "activation_criterion": "ADR-0009 permits source incubation only through 2026-11-30; activate only after Wave 5 evidence and an operation-specific JIT-06 decision prove measured need, reference parity, gradients, locked dependencies, immutable artifacts, fallback, and revocation."
+      "activation_criterion": "Activated by ADR-0016 as an operation-local source, build, and qualification input. Production selection remains denied until the exact operation and architecture satisfy JIT-06 K0-K5 evidence, immutable signing, runtime compatibility, revocation, and rollback requirements."
     },
     {
       "path": "kernels/pairformer/pair_weighted_average/__init__.py",
       "kind": "source",
       "owner": "ml-systems-performance",
-      "component": "kernels-native",
-      "status": "target",
+      "component": "kernels",
+      "status": "active",
       "activation_wave": "6",
       "source_authority": "hand-authored",
       "build_targets": [
-        "//kernels/pairformer/pair_weighted_average:tilelang.py"
+        "//kernels/pairformer/pair_weighted_average:policy_inputs"
       ],
-      "test_targets": [],
+      "test_targets": [
+        "//kernels/pairformer/pair_weighted_average:test_pair_weighted_average"
+      ],
       "public_surface": false,
-      "activation_criterion": "ADR-0009 permits source incubation only through 2026-11-30; activate only after Wave 5 evidence and an operation-specific JIT-06 decision prove measured need, reference parity, gradients, locked dependencies, immutable artifacts, fallback, and revocation."
+      "activation_criterion": "Activated by ADR-0016 as an operation-local source, build, and qualification input. Production selection remains denied until the exact operation and architecture satisfy JIT-06 K0-K5 evidence, immutable signing, runtime compatibility, revocation, and rollback requirements."
     },
     {
       "path": "kernels/pairformer/pair_weighted_average/test_tilelang.py",
       "kind": "source",
       "owner": "ml-systems-performance",
-      "component": "kernels-native",
-      "status": "target",
+      "component": "kernels",
+      "status": "active",
       "activation_wave": "6",
       "source_authority": "hand-authored",
-      "build_targets": [],
+      "build_targets": [
+        "//kernels/pairformer/pair_weighted_average:policy_inputs"
+      ],
       "test_targets": [
         "//kernels/pairformer/pair_weighted_average:test_pair_weighted_average"
       ],
       "public_surface": false,
-      "activation_criterion": "ADR-0009 permits source incubation only through 2026-11-30; activate only after Wave 5 evidence and an operation-specific JIT-06 decision prove measured need, reference parity, gradients, locked dependencies, immutable artifacts, fallback, and revocation."
+      "activation_criterion": "Activated by ADR-0016 as an operation-local source, build, and qualification input. Production selection remains denied until the exact operation and architecture satisfy JIT-06 K0-K5 evidence, immutable signing, runtime compatibility, revocation, and rollback requirements."
     },
     {
       "path": "kernels/pairformer/pair_weighted_average/tilelang.py",
       "kind": "source",
       "owner": "ml-systems-performance",
-      "component": "kernels-native",
-      "status": "target",
+      "component": "kernels",
+      "status": "active",
       "activation_wave": "6",
       "source_authority": "hand-authored",
       "build_targets": [
-        "//kernels/pairformer/pair_weighted_average:tilelang.py"
+        "//kernels/pairformer/pair_weighted_average:policy_inputs"
       ],
-      "test_targets": [],
+      "test_targets": [
+        "//kernels/pairformer/pair_weighted_average:test_pair_weighted_average"
+      ],
       "public_surface": false,
-      "activation_criterion": "ADR-0009 permits source incubation only through 2026-11-30; activate only after Wave 5 evidence and an operation-specific JIT-06 decision prove measured need, reference parity, gradients, locked dependencies, immutable artifacts, fallback, and revocation."
+      "activation_criterion": "Activated by ADR-0016 as an operation-local source, build, and qualification input. Production selection remains denied until the exact operation and architecture satisfy JIT-06 K0-K5 evidence, immutable signing, runtime compatibility, revocation, and rollback requirements."
     },
     {
       "path": "kernels/diffusion/reference.py",
@@ -29311,6 +29383,21 @@
       "build_targets": [
         "//kernels/native:native_policy_inputs",
         "//kernels/native:native_schema"
+      ],
+      "test_targets": [],
+      "public_surface": false,
+      "activation_criterion": "ADR-0009 permits source incubation only through 2026-11-30; activate only after Wave 5 evidence and an operation-specific JIT-06 decision prove measured need, reference parity, gradients, locked dependencies, immutable artifacts, fallback, and revocation."
+    },
+    {
+      "path": "kernels/native/stable_abi/tensor_bridge.h",
+      "kind": "source",
+      "owner": "ml-systems-performance",
+      "component": "kernels-native",
+      "status": "target",
+      "activation_wave": "6",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//kernels/native:native_policy_inputs"
       ],
       "test_targets": [],
       "public_surface": false,
@@ -45559,6 +45646,102 @@
     },
     {
       "path": "docs/adr/0009-native-kernel-source-incubation.md",
+      "kind": "documentation",
+      "owner": "architecture",
+      "component": "docs-adr",
+      "status": "active",
+      "activation_wave": "0",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:wave0_governance_sources"
+      ],
+      "test_targets": [
+        "//:wave0_tests"
+      ],
+      "public_surface": false
+    },
+    {
+      "path": "docs/adr/0016-pairformer-native-kernel-platform-wave6-source-activation.md",
+      "kind": "documentation",
+      "owner": "architecture",
+      "component": "docs-adr",
+      "status": "active",
+      "activation_wave": "0",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:wave0_governance_sources"
+      ],
+      "test_targets": [
+        "//:wave0_tests"
+      ],
+      "public_surface": false
+    },
+    {
+      "path": "docs/adr/0017-jit-06-outer-product-mean-sm90a-sm100a.md",
+      "kind": "documentation",
+      "owner": "architecture",
+      "component": "docs-adr",
+      "status": "active",
+      "activation_wave": "0",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:wave0_governance_sources"
+      ],
+      "test_targets": [
+        "//:wave0_tests"
+      ],
+      "public_surface": false
+    },
+    {
+      "path": "docs/adr/0018-jit-06-pair-weighted-average-sm90a-sm100a.md",
+      "kind": "documentation",
+      "owner": "architecture",
+      "component": "docs-adr",
+      "status": "active",
+      "activation_wave": "0",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:wave0_governance_sources"
+      ],
+      "test_targets": [
+        "//:wave0_tests"
+      ],
+      "public_surface": false
+    },
+    {
+      "path": "docs/adr/0019-jit-06-transition-sm90a-sm100a.md",
+      "kind": "documentation",
+      "owner": "architecture",
+      "component": "docs-adr",
+      "status": "active",
+      "activation_wave": "0",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:wave0_governance_sources"
+      ],
+      "test_targets": [
+        "//:wave0_tests"
+      ],
+      "public_surface": false
+    },
+    {
+      "path": "docs/adr/0020-jit-06-triangle-attention-sm90a-sm100a.md",
+      "kind": "documentation",
+      "owner": "architecture",
+      "component": "docs-adr",
+      "status": "active",
+      "activation_wave": "0",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:wave0_governance_sources"
+      ],
+      "test_targets": [
+        "//:wave0_tests"
+      ],
+      "public_surface": false
+    },
+    {
+      "path": "docs/adr/0021-jit-06-triangle-multiplication-sm90a-sm100a.md",
       "kind": "documentation",
       "owner": "architecture",
       "component": "docs-adr",

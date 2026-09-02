@@ -1,260 +1,547 @@
-# Copyright (c) 2026 Mindclade, LLC. All Rights Reserved.
-# Mindclade Proprietary and Confidential.
-# SPDX-License-Identifier: LicenseRef-Mindclade-Proprietary
+"""First-party TileLang programs for Pairformer triangle attention.
 
-"""Offline TileLang builder and optimized mathematics for triangle attention."""
+The public tensors are logically ``[..., N, N, H, D]``.  The native launcher
+flattens the leading pair-stack dimensions into ``batch`` before invoking these
+static programs.  Forward uses row-wise online normalization and never stores
+an ``N x N`` probability matrix.  Backward deterministically recomputes the
+probabilities from the saved FP32 LSE and is split into private programs so no
+gradient requires atomics.
+
+Builders are build-plane only.  Importing this module does not compile or
+register a kernel.
+"""
 
 from __future__ import annotations
 
 from collections.abc import Mapping
-import importlib
+from typing import Any
 
-_TILELANG_VERSION = "0.1.13"
-_SUPPORTED_DTYPES = frozenset({"float16", "bfloat16", "float32"})
-_SUPPORTED_HEAD_DIMS = frozenset({16, 32, 64, 128})
-_SUPPORTED_THREADS = frozenset({32, 64, 128, 256})
-_MAX_BATCH = 64
-_MAX_N = 256
-_MAX_HEADS = 64
-_MAX_ROWS = 2_147_483_647
+
+TILELANG_VERSION = "0.1.13"
+SUPPORTED_ARCHITECTURES = ("sm90a", "sm100a")
+SUPPORTED_DTYPES = ("float16", "bfloat16")
 
 TRIANGLE_ATTENTION_PROFILES: tuple[Mapping[str, object], ...] = (
     {
         "name": "b1_n32_h4_d32_fp16",
-        "arguments": {
-            "batch": 1,
-            "n": 32,
-            "heads": 4,
-            "head_dim": 32,
-            "dtype": "float16",
-            "threads": 64,
-        },
+        "batch": 1,
+        "n": 32,
+        "heads": 4,
+        "head_dim": 32,
+        "dtype": "float16",
+        "threads": 64,
     },
     {
         "name": "b1_n64_h8_d32_fp16",
-        "arguments": {
-            "batch": 1,
-            "n": 64,
-            "heads": 8,
-            "head_dim": 32,
-            "dtype": "float16",
-            "threads": 128,
-        },
+        "batch": 1,
+        "n": 64,
+        "heads": 8,
+        "head_dim": 32,
+        "dtype": "float16",
+        "threads": 128,
     },
     {
         "name": "b1_n128_h8_d64_bf16",
-        "arguments": {
-            "batch": 1,
-            "n": 128,
-            "heads": 8,
-            "head_dim": 64,
-            "dtype": "bfloat16",
-            "threads": 128,
-        },
-    },
-    {
-        "name": "b2_n64_h8_d64_fp32",
-        "arguments": {
-            "batch": 2,
-            "n": 64,
-            "heads": 8,
-            "head_dim": 64,
-            "dtype": "float32",
-            "threads": 128,
-        },
+        "batch": 1,
+        "n": 128,
+        "heads": 8,
+        "head_dim": 64,
+        "dtype": "bfloat16",
+        "threads": 128,
     },
 )
 
 
-
-def _validate_build_profile(
-    *,
-    target: str,
-    batch: int,
-    n: int,
-    heads: int,
-    head_dim: int,
-    dtype: str,
-    threads: int,
-) -> None:
-    if target != "cuda":
-        raise ValueError("triangle_attention TileLang target must be exactly 'cuda'")
-    for name, value, maximum in (
-        ("batch", batch, _MAX_BATCH),
-        ("n", n, _MAX_N),
-        ("heads", heads, _MAX_HEADS),
-    ):
-        if isinstance(value, bool) or not isinstance(value, int) or not 1 <= value <= maximum:
-            raise ValueError(f"{name} must be an integer in [1, {maximum}]")
-    if head_dim not in _SUPPORTED_HEAD_DIMS:
-        raise ValueError(f"head_dim must be one of {sorted(_SUPPORTED_HEAD_DIMS)}")
-    if dtype not in _SUPPORTED_DTYPES:
-        raise ValueError(f"dtype must be one of {sorted(_SUPPORTED_DTYPES)}")
-    if threads not in _SUPPORTED_THREADS or threads < head_dim:
-        raise ValueError(
-            f"threads must be one of {sorted(_SUPPORTED_THREADS)} and at least head_dim"
+def _tilelang() -> tuple[Any, Any]:
+    try:
+        import tilelang
+        from tilelang import language as T
+    except ImportError as exc:  # pragma: no cover - exercised in build lane
+        raise RuntimeError(
+            "TileLang 0.1.13 is required in the hermetic native build lane"
+        ) from exc
+    if getattr(tilelang, "__version__", None) != TILELANG_VERSION:
+        raise RuntimeError(
+            f"expected TileLang {TILELANG_VERSION}, got "
+            f"{getattr(tilelang, '__version__', 'unknown')}"
         )
-    rows = batch * n * n * heads
-    if rows > _MAX_ROWS:
-        raise ValueError("specialization exceeds the bounded CUDA grid row count")
+    return tilelang, T
 
 
-def build_tilelang_program(
+def _validate(
     *,
     target: str,
+    architecture: str,
+    dtype: str,
     batch: int,
     n: int,
     heads: int,
     head_dim: int,
-    dtype: str,
     threads: int,
-):
-    """Return a lazy, compilable TileLang 0.1.13 CUDA specialization.
+) -> tuple[Any, str, int]:
+    if target != "cuda":
+        raise ValueError("triangle attention supports only the explicit cuda target")
+    if architecture not in SUPPORTED_ARCHITECTURES:
+        raise ValueError(
+            f"unsupported architecture {architecture!r}; expected sm90a or sm100a"
+        )
+    if dtype not in SUPPORTED_DTYPES:
+        raise ValueError("production triangle attention supports float16 and bfloat16")
+    if min(batch, n, heads, head_dim, threads) <= 0:
+        raise ValueError("all static launch dimensions must be positive")
+    if head_dim not in (32, 64):
+        raise ValueError("head_dim must be 32 or 64")
+    if n > 128:
+        raise ValueError("the v1 capability envelope supports n <= 128")
+    if threads not in (64, 128, 256):
+        raise ValueError("threads must be 64, 128, or 256")
+    _, T = _tilelang()
+    target_arch = {"sm90a": "sm_90a", "sm100a": "sm_100a"}[architecture]
+    padded_n = ((n + 31) // 32) * 32
+    return T, target_arch, padded_n
 
-    Inputs use flattened batch shapes ``[B,N,N,H,D]`` and dense bias shape
-    ``[B,N,H,N,N]``. This correctness-first baseline assigns one CUDA block to
-    each attention row and parallelizes output channels without cross-thread
-    reductions, avoiding reduction-order ambiguity for masked rows.
-    """
 
-    _validate_build_profile(
+def _logical_group(
+    *,
+    phase: str,
+    logical_symbol: str,
+    execution_order: tuple[str, ...],
+    workspaces: tuple[str, ...],
+) -> dict[str, object]:
+    return {
+        "phase": phase,
+        "logical_symbol": logical_symbol,
+        "execution_order": execution_order,
+        "workspaces": workspaces,
+        "version": 1,
+    }
+
+
+def build_forward_program_group(**_: object) -> dict[str, object]:
+    """Return deterministic logical FWD orchestration metadata."""
+
+    return _logical_group(
+        phase="forward",
+        logical_symbol="mindclade_tilelang_triangle_attention_fwd_launch",
+        execution_order=("forward",),
+        workspaces=(),
+    )
+
+
+def build_backward_program_group(**_: object) -> dict[str, object]:
+    """Return deterministic logical BWD orchestration metadata."""
+
+    return _logical_group(
+        phase="backward",
+        logical_symbol="mindclade_tilelang_triangle_attention_bwd_launch",
+        execution_order=("delta", "dbias", "dkv", "dq"),
+        workspaces=("delta",),
+    )
+
+
+def build_forward_program(
+    *,
+    target: str,
+    architecture: str,
+    dtype: str,
+    batch: int,
+    n: int,
+    heads: int,
+    head_dim: int,
+    threads: int = 128,
+    **_: object,
+) -> Any:
+    """Build online-softmax FWD returning output and padded FP32 LSE."""
+
+    T, target_arch, padded_n = _validate(
         target=target,
+        architecture=architecture,
+        dtype=dtype,
         batch=batch,
         n=n,
         heads=heads,
         head_dim=head_dim,
-        dtype=dtype,
         threads=threads,
     )
-    try:
-        tilelang = importlib.import_module("tilelang")
-        T = importlib.import_module("tilelang.language")
-    except ModuleNotFoundError as exc:
-        raise RuntimeError(
-            "TileLang 0.1.13 is required only in the trusted offline CUDA build environment"
-        ) from exc
-    version = getattr(tilelang, "__version__", None)
-    if version != _TILELANG_VERSION:
-        raise RuntimeError(
-            f"triangle_attention requires TileLang {_TILELANG_VERSION}, found {version!r}"
-        )
+    @T.prim_func
+    def mindclade_tilelang_triangle_attention_forward_raw(
+        q: T.Tensor((batch, n, heads, head_dim), dtype),
+        k: T.Tensor((batch, n, heads, head_dim), dtype),
+        v: T.Tensor((batch, n, heads, head_dim), dtype),
+        bias: T.Tensor((batch, heads, n, n), dtype),
+        mask: T.Tensor((batch, n, n), "bool"),
+        scale: T.float32,
+        output: T.Tensor((batch, n, heads, head_dim), dtype),
+        lse: T.Tensor((batch, heads, padded_n), "float32"),
+    ):
+        with T.Kernel(batch * heads * padded_n, threads=threads) as block:
+            query_index = block % padded_n
+            head = (block // padded_n) % heads
+            batch_index = block // (padded_n * heads)
 
-    tensor_shape = (batch, n, n, heads, head_dim)
-    bias_shape = (batch, n, heads, n, n)
-    mask_shape = (batch, n, n)
-    accumulation_dtype = "float32"
-    row_count = batch * n * n * heads
+            if query_index < n:
+                for out_d in T.Parallel(head_dim):
+                    row_max = T.alloc_local((1,), "float32")
+                    row_sum = T.alloc_local((1,), "float32")
+                    numerator = T.alloc_local((1,), "float32")
+                    row_max[0] = -T.infinity("float32")
+                    row_sum[0] = 0.0
+                    numerator[0] = 0.0
 
-    @tilelang.jit(out_idx=[-1], target=target)
-    def triangle_attention_cuda():
-        @T.prim_func
-        def kernel(
-            Q: T.Tensor(tensor_shape, dtype),
-            K: T.Tensor(tensor_shape, dtype),
-            V: T.Tensor(tensor_shape, dtype),
-            Bias: T.Tensor(bias_shape, dtype),
-            Mask: T.Tensor(mask_shape, "bool"),
-            Scale: T.float32,
-            Output: T.Tensor(tensor_shape, dtype),
-        ):
-            with T.Kernel(row_count, threads=threads) as row:
-                h_index = row % heads
-                row_without_head = row // heads
-                j_index = row_without_head % n
-                row_without_j = row_without_head // n
-                i_index = row_without_j % n
-                batch_index = row_without_j // n
-
-                score = T.alloc_fragment((head_dim,), accumulation_dtype)
-                row_max = T.alloc_fragment((head_dim,), accumulation_dtype)
-                denominator = T.alloc_fragment((head_dim,), accumulation_dtype)
-                output_accumulator = T.alloc_fragment((head_dim,), accumulation_dtype)
-                valid_count = T.alloc_fragment((head_dim,), "int32")
-                T.fill(row_max, -T.infinity(accumulation_dtype))
-                T.clear(denominator)
-                T.clear(output_accumulator)
-                T.clear(valid_count)
-
-                for output_dim in T.Parallel(head_dim):
-                    for source_index in T.serial(n):
-                        if Mask[batch_index, i_index, source_index]:
-                            score[output_dim] = 0.0
-                            for reduction_dim in T.serial(head_dim):
-                                score[output_dim] += (
-                                    Q[batch_index, i_index, j_index, h_index, reduction_dim]
-                                    * K[
-                                        batch_index,
-                                        i_index,
-                                        source_index,
-                                        h_index,
-                                        reduction_dim,
-                                    ]
-                                )
-                            score[output_dim] = (
-                                score[output_dim] * Scale
-                                + Bias[
-                                    batch_index,
-                                    i_index,
-                                    h_index,
-                                    j_index,
-                                    source_index,
-                                ]
+                    # Pass one computes the stable row maximum.  Each output
+                    # lane deliberately recomputes the scalar statistic; this
+                    # avoids synchronization and retains fixed reduction order.
+                    for key_index in T.serial(n):
+                        score = T.alloc_local((1,), "float32")
+                        score[0] = 0.0
+                        for reduce_d in T.serial(head_dim):
+                            score[0] += T.Cast("float32", q[batch_index, query_index, head, reduce_d]) * T.Cast(
+                                "float32", k[batch_index, key_index, head, reduce_d]
                             )
-                            row_max[output_dim] = T.max(
-                                row_max[output_dim], score[output_dim]
-                            )
-                            valid_count[output_dim] += 1
+                        score[0] = score[0] * scale
+                        score[0] += T.Cast(
+                            "float32", bias[batch_index, head, query_index, key_index]
+                        )
+                        if mask[batch_index, query_index, key_index]:
+                            row_max[0] = T.max(row_max[0], score[0])
 
-                for output_dim in T.Parallel(head_dim):
-                    if valid_count[output_dim] > 0:
-                        for source_index in T.serial(n):
-                            if Mask[batch_index, i_index, source_index]:
-                                score[output_dim] = 0.0
-                                for reduction_dim in T.serial(head_dim):
-                                    score[output_dim] += (
-                                        Q[
-                                            batch_index,
-                                            i_index,
-                                            j_index,
-                                            h_index,
-                                            reduction_dim,
-                                        ]
-                                        * K[
-                                            batch_index,
-                                            i_index,
-                                            source_index,
-                                            h_index,
-                                            reduction_dim,
-                                        ]
-                                    )
-                                score[output_dim] = T.exp(
-                                    score[output_dim] * Scale
-                                    + Bias[
-                                        batch_index,
-                                        i_index,
-                                        h_index,
-                                        j_index,
-                                        source_index,
-                                    ]
-                                    - row_max[output_dim]
-                                )
-                                denominator[output_dim] += score[output_dim]
-                                output_accumulator[output_dim] += (
-                                    score[output_dim]
-                                    * V[
-                                        batch_index,
-                                        i_index,
-                                        source_index,
-                                        h_index,
-                                        output_dim,
-                                    ]
-                                )
-                        Output[batch_index, i_index, j_index, h_index, output_dim] = (
-                            output_accumulator[output_dim] / denominator[output_dim]
+                    # Pass two performs online-normalized value accumulation.
+                    for key_index in T.serial(n):
+                        score = T.alloc_local((1,), "float32")
+                        score[0] = 0.0
+                        for reduce_d in T.serial(head_dim):
+                            score[0] += T.Cast("float32", q[batch_index, query_index, head, reduce_d]) * T.Cast(
+                                "float32", k[batch_index, key_index, head, reduce_d]
+                            )
+                        score[0] = score[0] * scale
+                        score[0] += T.Cast(
+                            "float32", bias[batch_index, head, query_index, key_index]
+                        )
+                        if mask[batch_index, query_index, key_index]:
+                            probability_numerator = T.exp(score[0] - row_max[0])
+                            row_sum[0] += probability_numerator
+                            numerator[0] += probability_numerator * T.Cast(
+                                "float32", v[batch_index, key_index, head, out_d]
+                            )
+
+                    if row_sum[0] > 0.0:
+                        output[batch_index, query_index, head, out_d] = T.Cast(
+                            dtype, numerator[0] / row_sum[0]
                         )
                     else:
-                        Output[batch_index, i_index, j_index, h_index, output_dim] = 0.0
+                        output[batch_index, query_index, head, out_d] = T.Cast(dtype, 0.0)
+                    if out_d == 0:
+                        if row_sum[0] > 0.0:
+                            lse[batch_index, head, query_index] = row_max[0] + T.log(row_sum[0])
+                        else:
+                            lse[batch_index, head, query_index] = -T.infinity("float32")
+            else:
+                lse[batch_index, head, query_index] = -T.infinity("float32")
 
-        return kernel
+    return mindclade_tilelang_triangle_attention_forward_raw.with_attr(
+        {
+            "target": target_arch,
+            "global_symbol": "mindclade_tilelang_triangle_attention_forward_raw",
+        }
+    )
 
-    return triangle_attention_cuda
+
+def build_delta(
+    *,
+    target: str,
+    architecture: str,
+    dtype: str,
+    batch: int,
+    n: int,
+    heads: int,
+    head_dim: int,
+    threads: int = 128,
+    **_: object,
+) -> Any:
+    """Build the deterministic ``sum(dO * O)`` workspace producer."""
+
+    T, target_arch, padded_n = _validate(
+        target=target,
+        architecture=architecture,
+        dtype=dtype,
+        batch=batch,
+        n=n,
+        heads=heads,
+        head_dim=head_dim,
+        threads=threads,
+    )
+
+    @T.prim_func
+    def mindclade_tilelang_triangle_attention_delta_raw(
+        grad_output: T.Tensor((batch, n, heads, head_dim), dtype),
+        output: T.Tensor((batch, n, heads, head_dim), dtype),
+        delta: T.Tensor((batch, heads, padded_n), "float32"),
+    ):
+        with T.Kernel(batch * heads * padded_n, threads=threads) as block:
+            query_index = block % padded_n
+            head = (block // padded_n) % heads
+            batch_index = block // (padded_n * heads)
+            value = T.alloc_local((1,), "float32")
+            value[0] = 0.0
+            if query_index < n:
+                for d in T.serial(head_dim):
+                    value[0] += T.Cast(
+                        "float32", grad_output[batch_index, query_index, head, d]
+                    ) * T.Cast("float32", output[batch_index, query_index, head, d])
+            delta[batch_index, head, query_index] = value[0]
+
+    return mindclade_tilelang_triangle_attention_delta_raw.with_attr(
+        {
+            "target": target_arch,
+            "global_symbol": "mindclade_tilelang_triangle_attention_delta_raw",
+        }
+    )
+
+
+def build_dq(
+    *,
+    target: str,
+    architecture: str,
+    dtype: str,
+    batch: int,
+    n: int,
+    heads: int,
+    head_dim: int,
+    threads: int = 128,
+    **_: object,
+) -> Any:
+    """Build dQ with probability recomputation from saved LSE."""
+
+    T, target_arch, padded_n = _validate(
+        target=target,
+        architecture=architecture,
+        dtype=dtype,
+        batch=batch,
+        n=n,
+        heads=heads,
+        head_dim=head_dim,
+        threads=threads,
+    )
+
+    @T.prim_func
+    def mindclade_tilelang_triangle_attention_dq_raw(
+        grad_output: T.Tensor((batch, n, heads, head_dim), dtype),
+        q: T.Tensor((batch, n, heads, head_dim), dtype),
+        k: T.Tensor((batch, n, heads, head_dim), dtype),
+        v: T.Tensor((batch, n, heads, head_dim), dtype),
+        bias: T.Tensor((batch, heads, n, n), dtype),
+        mask: T.Tensor((batch, n, n), "bool"),
+        scale: T.float32,
+        lse: T.Tensor((batch, heads, padded_n), "float32"),
+        delta: T.Tensor((batch, heads, padded_n), "float32"),
+        grad_q: T.Tensor((batch, n, heads, head_dim), dtype),
+    ):
+        with T.Kernel(batch * n * heads * head_dim, threads=threads) as block:
+            d = block % head_dim
+            head = (block // head_dim) % heads
+            query_index = (block // (head_dim * heads)) % n
+            batch_index = block // (head_dim * heads * n)
+            result = T.alloc_local((1,), "float32")
+            result[0] = 0.0
+            for key_index in T.serial(n):
+                if mask[batch_index, query_index, key_index]:
+                    score = T.alloc_local((1,), "float32")
+                    grad_probability = T.alloc_local((1,), "float32")
+                    score[0] = 0.0
+                    grad_probability[0] = 0.0
+                    for reduce_d in T.serial(head_dim):
+                        score[0] += T.Cast("float32", q[batch_index, query_index, head, reduce_d]) * T.Cast(
+                            "float32", k[batch_index, key_index, head, reduce_d]
+                        )
+                        grad_probability[0] += T.Cast(
+                            "float32", grad_output[batch_index, query_index, head, reduce_d]
+                        ) * T.Cast("float32", v[batch_index, key_index, head, reduce_d])
+                    score[0] = score[0] * scale
+                    score[0] += T.Cast(
+                        "float32", bias[batch_index, head, query_index, key_index]
+                    )
+                    probability = T.exp(score[0] - lse[batch_index, head, query_index])
+                    grad_score = probability * (
+                        grad_probability[0] - delta[batch_index, head, query_index]
+                    )
+                    result[0] += grad_score * T.Cast(
+                        "float32", k[batch_index, key_index, head, d]
+                    ) * scale
+            grad_q[batch_index, query_index, head, d] = T.Cast(dtype, result[0])
+
+    return mindclade_tilelang_triangle_attention_dq_raw.with_attr(
+        {
+            "target": target_arch,
+            "global_symbol": "mindclade_tilelang_triangle_attention_dq_raw",
+        }
+    )
+
+
+def build_dkv(
+    *,
+    target: str,
+    architecture: str,
+    dtype: str,
+    batch: int,
+    n: int,
+    heads: int,
+    head_dim: int,
+    threads: int = 128,
+    **_: object,
+) -> Any:
+    """Build atomics-free dK and dV using source-key ownership."""
+
+    T, target_arch, padded_n = _validate(
+        target=target,
+        architecture=architecture,
+        dtype=dtype,
+        batch=batch,
+        n=n,
+        heads=heads,
+        head_dim=head_dim,
+        threads=threads,
+    )
+
+    @T.prim_func
+    def mindclade_tilelang_triangle_attention_dkv_raw(
+        grad_output: T.Tensor((batch, n, heads, head_dim), dtype),
+        q: T.Tensor((batch, n, heads, head_dim), dtype),
+        k: T.Tensor((batch, n, heads, head_dim), dtype),
+        v: T.Tensor((batch, n, heads, head_dim), dtype),
+        bias: T.Tensor((batch, heads, n, n), dtype),
+        mask: T.Tensor((batch, n, n), "bool"),
+        scale: T.float32,
+        lse: T.Tensor((batch, heads, padded_n), "float32"),
+        delta: T.Tensor((batch, heads, padded_n), "float32"),
+        grad_k: T.Tensor((batch, n, heads, head_dim), dtype),
+        grad_v: T.Tensor((batch, n, heads, head_dim), dtype),
+    ):
+        with T.Kernel(batch * n * heads * head_dim, threads=threads) as block:
+            d = block % head_dim
+            head = (block // head_dim) % heads
+            key_index = (block // (head_dim * heads)) % n
+            batch_index = block // (head_dim * heads * n)
+            result_k = T.alloc_local((1,), "float32")
+            result_v = T.alloc_local((1,), "float32")
+            result_k[0] = 0.0
+            result_v[0] = 0.0
+            for query_index in T.serial(n):
+                if mask[batch_index, query_index, key_index]:
+                    score = T.alloc_local((1,), "float32")
+                    grad_probability = T.alloc_local((1,), "float32")
+                    score[0] = 0.0
+                    grad_probability[0] = 0.0
+                    for reduce_d in T.serial(head_dim):
+                        score[0] += T.Cast("float32", q[batch_index, query_index, head, reduce_d]) * T.Cast(
+                            "float32", k[batch_index, key_index, head, reduce_d]
+                        )
+                        grad_probability[0] += T.Cast(
+                            "float32", grad_output[batch_index, query_index, head, reduce_d]
+                        ) * T.Cast("float32", v[batch_index, key_index, head, reduce_d])
+                    score[0] = score[0] * scale
+                    score[0] += T.Cast(
+                        "float32", bias[batch_index, head, query_index, key_index]
+                    )
+                    probability = T.exp(score[0] - lse[batch_index, head, query_index])
+                    grad_score = probability * (
+                        grad_probability[0] - delta[batch_index, head, query_index]
+                    )
+                    result_k[0] += grad_score * T.Cast(
+                        "float32", q[batch_index, query_index, head, d]
+                    ) * scale
+                    result_v[0] += probability * T.Cast(
+                        "float32", grad_output[batch_index, query_index, head, d]
+                    )
+            grad_k[batch_index, key_index, head, d] = T.Cast(dtype, result_k[0])
+            grad_v[batch_index, key_index, head, d] = T.Cast(dtype, result_v[0])
+
+    return mindclade_tilelang_triangle_attention_dkv_raw.with_attr(
+        {
+            "target": target_arch,
+            "global_symbol": "mindclade_tilelang_triangle_attention_dkv_raw",
+        }
+    )
+
+
+def build_dbias(
+    *,
+    target: str,
+    architecture: str,
+    dtype: str,
+    batch: int,
+    n: int,
+    heads: int,
+    head_dim: int,
+    threads: int = 128,
+    **_: object,
+) -> Any:
+    """Build dense dBias; facade code reduces normalized broadcast axes."""
+
+    T, target_arch, padded_n = _validate(
+        target=target,
+        architecture=architecture,
+        dtype=dtype,
+        batch=batch,
+        n=n,
+        heads=heads,
+        head_dim=head_dim,
+        threads=threads,
+    )
+
+    @T.prim_func
+    def mindclade_tilelang_triangle_attention_dbias_raw(
+        grad_output: T.Tensor((batch, n, heads, head_dim), dtype),
+        q: T.Tensor((batch, n, heads, head_dim), dtype),
+        k: T.Tensor((batch, n, heads, head_dim), dtype),
+        v: T.Tensor((batch, n, heads, head_dim), dtype),
+        bias: T.Tensor((batch, heads, n, n), dtype),
+        mask: T.Tensor((batch, n, n), "bool"),
+        scale: T.float32,
+        lse: T.Tensor((batch, heads, padded_n), "float32"),
+        delta: T.Tensor((batch, heads, padded_n), "float32"),
+        grad_bias: T.Tensor((batch, heads, n, n), dtype),
+    ):
+        with T.Kernel(batch * heads * n * n, threads=threads) as block:
+            key_index = block % n
+            query_index = (block // n) % n
+            head = (block // (n * n)) % heads
+            batch_index = block // (n * n * heads)
+            grad_score = T.alloc_local((1,), "float32")
+            grad_score[0] = 0.0
+            if mask[batch_index, query_index, key_index]:
+                score = T.alloc_local((1,), "float32")
+                grad_probability = T.alloc_local((1,), "float32")
+                score[0] = 0.0
+                grad_probability[0] = 0.0
+                for d in T.serial(head_dim):
+                    score[0] += T.Cast("float32", q[batch_index, query_index, head, d]) * T.Cast(
+                        "float32", k[batch_index, key_index, head, d]
+                    )
+                    grad_probability[0] += T.Cast(
+                        "float32", grad_output[batch_index, query_index, head, d]
+                    ) * T.Cast("float32", v[batch_index, key_index, head, d])
+                score[0] = score[0] * scale
+                score[0] += T.Cast(
+                    "float32", bias[batch_index, head, query_index, key_index]
+                )
+                probability = T.exp(score[0] - lse[batch_index, head, query_index])
+                grad_score[0] = probability * (
+                    grad_probability[0] - delta[batch_index, head, query_index]
+                )
+            grad_bias[batch_index, head, query_index, key_index] = T.Cast(
+                dtype, grad_score[0]
+            )
+
+    return mindclade_tilelang_triangle_attention_dbias_raw.with_attr(
+        {
+            "target": target_arch,
+            "global_symbol": "mindclade_tilelang_triangle_attention_dbias_raw",
+        }
+    )
+
+
+# Kept only for build-tool compatibility with pre-v3 callers.  Production
+# registry generation points at build_forward/build_forward_program directly.
+build_forward = build_forward_program_group
+build_backward = build_backward_program_group
+build_tilelang_program = build_forward_program

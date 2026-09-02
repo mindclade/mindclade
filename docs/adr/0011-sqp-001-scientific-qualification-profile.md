@@ -6,7 +6,7 @@
 - Effective date: Pending connected ratification and required owner approvals
 - Compatibility window: A ratified frozen field changes only through SQP-002 or a versioned successor
 - Supersedes: None
-- Superseded by: ADR-0015 only for the prohibition on early protocol/schema implementation; scientific and approval gates remain in force
+- Superseded by: ADR-0015
 - Owners: Scientific Leadership, Data Governance, ML Systems
 - Reviewers: Computational Biology, Biological Safety, Finance and Operations, Architecture
 

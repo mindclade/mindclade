@@ -132,6 +132,32 @@ class CMakePolicyTest(unittest.TestCase):
         self.assertEqual(cuda.count("MINDCLADE_PROGRAM_GROUP_BRIDGE_V1=1"), 1)
         self.assertNotIn("MINDCLADE_NATIVE_SCHEMA_ONLY", cuda)
 
+    def test_production_library_is_separate_and_fails_unresolved_symbols(self) -> None:
+        stable = (ROOT / "stable_abi" / "CMakeLists.txt").read_text(encoding="utf-8")
+        cuda = (ROOT / "cuda" / "CMakeLists.txt").read_text(encoding="utf-8")
+        policy = (ROOT / "cmake" / "MindcladeTorchStable.cmake").read_text(
+            encoding="utf-8"
+        )
+        self.assertNotIn("target_sources(\n  mindclade_native_schema", cuda)
+        self.assertIn("add_library(\n  mindclade_ops\n  SHARED", cuda)
+        self.assertIn("launcher_plans.generated.cpp", cuda)
+        self.assertIn("mindclade_apply_no_undefined_link_policy(mindclade_ops)", cuda)
+        self.assertIn("--no-undefined", policy)
+        self.assertIn("-undefined,error", policy)
+        self.assertIn("mindclade_native_schema", stable)
+
+    def test_qualification_binds_exact_artifact_and_required_symbols(self) -> None:
+        cuda = (ROOT / "cuda" / "CMakeLists.txt").read_text(encoding="utf-8")
+        for token in (
+            "artifact_sha256",
+            "required_symbols",
+            "MINDCLADE_TILELANG_REQUIRED_LOGICAL_SYMBOLS",
+            "MINDCLADE_TILELANG_REQUIRED_PRIVATE_SYMBOLS",
+            "do not match generated inventory",
+            "must not contain duplicates",
+        ):
+            self.assertIn(token, cuda)
+
     def test_cmake_does_not_invent_dependency_authority(self) -> None:
         combined = "\n".join(
             path.read_text(encoding="utf-8") for path in CMAKE_FILES

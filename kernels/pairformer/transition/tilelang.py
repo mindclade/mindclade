@@ -1,158 +1,254 @@
-# Copyright (c) 2026 Mindclade, LLC. All Rights Reserved.
-# Mindclade Proprietary and Confidential.
-# SPDX-License-Identifier: LicenseRef-Mindclade-Proprietary
+"""First-party TileLang FWD/BWD programs for Pairformer SwiGLU transition.
 
-"""Offline TileLang forward builder for the Pairformer transition contraction."""
+The operation consumes projected gate/value tensors, applies ``silu(gate) *
+value``, projects to pair channels, adds bias, and multiplies by the exact
+floating mask.  Programs use FP32 accumulation and fixed-order reductions.
+"""
 
+from __future__ import annotations
+
+from collections.abc import Mapping
 from typing import Any
 
-from kernels.native.tilelang.swizzle import (
-    CtaRasterPolicy, OperandRole, RasterOrder, SharedLayoutKind,
-    SharedLayoutPolicy, apply_cta_raster, shared_layout_for,
+TILELANG_VERSION = "0.1.13"
+SUPPORTED_ARCHITECTURES = ("sm90a", "sm100a")
+SUPPORTED_DTYPES = ("float16", "bfloat16")
+
+TRANSITION_PROFILES: tuple[Mapping[str, object], ...] = (
+    {"name": "pair_b1_r147456_h512_c128_bf16", "batch_size": 1,
+     "rows": 147456, "hidden_channels": 512, "output_channels": 128,
+     "dtype": "bfloat16", "mask_dtype": "float32", "threads": 128},
+    {"name": "single_b1_r768_h1536_c384_bf16", "batch_size": 1,
+     "rows": 768, "hidden_channels": 1536, "output_channels": 384,
+     "dtype": "bfloat16", "mask_dtype": "float32", "threads": 128},
 )
-from kernels.native.tilelang.targets import capability_manifest, normalize_target, validate_toolchain
 
-_SUPPORTED_DTYPES = {"float16", "bfloat16", "float32"}
 
-def build_tilelang_program(
-    *,
-    target: str,
-    batch_size: int,
-    rows: int,
-    hidden_channels: int,
-    output_channels: int,
-    dtype: str = "bfloat16",
-    mask_dtype: str = "float32",
-    block_m: int = 64,
-    block_n: int = 64,
-    block_k: int = 32,
-    num_stages: int = 2,
-    threads: int = 128,
-    architecture: str | None = None,
-    shared_layout: str = "auto",
-    raster_panel: int = 0,
-    raster_order: str = "row",
-    capability_digest: str | None = None,
-) -> Any:
-    """Return a lazy, offline-compilable tiled GEMM program."""
-
+def _prepare(
+    *, target: str, architecture: str, dtype: str, mask_dtype: str,
+    batch_size: int, rows: int, hidden_channels: int, output_channels: int,
+    threads: int,
+) -> tuple[Any, Any, str]:
     if target != "cuda":
-        raise ValueError("transition manifest v2 supports the explicit CUDA build lane only")
-    if dtype not in _SUPPORTED_DTYPES:
-        raise ValueError(f"unsupported transition dtype: {dtype!r}")
-    if mask_dtype not in {"bool", "float16", "bfloat16", "float32"}:
-        raise ValueError(f"unsupported transition mask dtype: {mask_dtype!r}")
-    dimensions = (batch_size, rows, hidden_channels, output_channels)
-    if any(isinstance(value, bool) or not isinstance(value, int) or value <= 0 for value in dimensions):
-        raise ValueError("transition dimensions must be positive integers")
-    tiles = (block_m, block_n, block_k)
-    if any(tile not in {16, 32, 64, 128} for tile in tiles):
-        raise ValueError("transition tiles must be one of 16, 32, 64, or 128")
-    if block_m % 16 or block_n % 16 or block_k % 16:
-        raise ValueError("transition tensor-core tiles must be multiples of 16")
-    if threads not in {128, 256}:
-        raise ValueError("transition threads must be 128 or 256")
-    if num_stages not in {1, 2, 3, 4}:
-        raise ValueError("transition num_stages must be between one and four")
+        raise ValueError("transition requires target='cuda'")
+    if architecture not in SUPPORTED_ARCHITECTURES:
+        raise ValueError("architecture must be sm90a or sm100a")
+    if dtype not in SUPPORTED_DTYPES:
+        raise ValueError("production transition supports float16 and bfloat16")
+    if mask_dtype not in ("float16", "bfloat16", "float32"):
+        raise ValueError("unsupported floating mask dtype")
+    if min(batch_size, rows, hidden_channels, output_channels, threads) <= 0:
+        raise ValueError("static launch dimensions must be positive")
+    try:
+        import tilelang
+        from tilelang import language as T
+    except ImportError as exc:  # pragma: no cover - hermetic build lane only
+        raise RuntimeError("TileLang 0.1.13 is required for offline compilation") from exc
+    if getattr(tilelang, "__version__", None) != TILELANG_VERSION:
+        raise RuntimeError(
+            f"expected TileLang {TILELANG_VERSION}, got "
+            f"{getattr(tilelang, '__version__', 'unknown')}"
+        )
+    target_architecture = {"sm90a": "sm_90a", "sm100a": "sm_100a"}[
+        architecture
+    ]
+    target_config = f"cuda -arch={target_architecture}"
+    return tilelang, T, target_config
 
-    import tilelang
-    import tilelang.language as T
 
-    target_contract = normalize_target(architecture or target)
-    validate_toolchain(target_contract, tilelang_version=str(tilelang.__version__))
-    expected_capability_digest = capability_manifest()["semantic_digest"]
-    if capability_digest is not None and capability_digest != expected_capability_digest:
-        raise ValueError("TileLang capability manifest digest does not match the approved contract")
-    layout_kind = SharedLayoutKind(shared_layout)
-    raster_policy = CtaRasterPolicy(raster_panel, RasterOrder(raster_order))
+def build_forward(**_: object) -> dict[str, object]:
+    return {"phase": "forward",
+            "logical_symbol": "mindclade_tilelang_transition_fwd_launch",
+            "execution_order": ("transition_forward",), "workspaces": (), "version": 1}
 
-    accumulation_dtype = "float32"
-    total_rows = batch_size * rows
 
-    @tilelang.jit(out_idx=[5], target=target_contract.tilelang_target)
-    def transition_kernel():
-        @T.prim_func
-        def main(
-            Gate: T.Tensor((batch_size, rows, hidden_channels), dtype),
-            Value: T.Tensor((batch_size, rows, hidden_channels), dtype),
-            OutputWeight: T.Tensor((hidden_channels, output_channels), dtype),
-            OutputBias: T.Tensor((output_channels,), dtype),
-            Mask: T.Tensor((batch_size, rows), mask_dtype),
-            Output: T.Tensor((batch_size, rows, output_channels), dtype),
-        ):
-            with T.Kernel(
-                T.ceildiv(total_rows, block_m),
-                T.ceildiv(output_channels, block_n),
-                threads=threads,
-            ) as (bx, by):
-                activation_shared = T.alloc_shared((block_m, block_k), dtype)
-                weight_shared = T.alloc_shared((block_k, block_n), dtype)
-                accumulator = T.alloc_fragment(
-                    (block_m, block_n), accumulation_dtype
+def build_backward(**_: object) -> dict[str, object]:
+    return {"phase": "backward",
+            "logical_symbol": "mindclade_tilelang_transition_bwd_launch",
+            "execution_order": ("grad_gate_value", "grad_weight", "grad_bias", "grad_mask"),
+            "workspaces": (), "version": 1}
+
+
+def build_forward_program(
+    *, target: str, architecture: str, dtype: str, batch_size: int, rows: int,
+    hidden_channels: int, output_channels: int, mask_dtype: str = "float32",
+    threads: int = 128, **_: object,
+) -> Any:
+    tilelang, T, target_config = _prepare(target=target, architecture=architecture, dtype=dtype,
+                       mask_dtype=mask_dtype, batch_size=batch_size, rows=rows,
+                       hidden_channels=hidden_channels,
+                       output_channels=output_channels, threads=threads)
+
+    @tilelang.jit(out_idx=[5, 6], target=target_config)
+    @T.prim_func
+    def mindclade_tilelang_transition_forward_program_launch(
+        gate: T.Tensor((batch_size, rows, hidden_channels), dtype),
+        value: T.Tensor((batch_size, rows, hidden_channels), dtype),
+        output_weight: T.Tensor((hidden_channels, output_channels), dtype),
+        output_bias: T.Tensor((output_channels,), dtype),
+        mask: T.Tensor((batch_size, rows), mask_dtype),
+        output: T.Tensor((batch_size, rows, output_channels), dtype),
+        pre_mask_output: T.Tensor((batch_size, rows, output_channels), dtype),
+    ):
+        with T.Kernel(batch_size * rows, threads=threads) as block:
+            row = block % rows
+            batch = block // rows
+            for channel in T.Parallel(output_channels):
+                acc = T.alloc_local((1,), "float32")
+                acc[0] = T.Cast("float32", output_bias[channel])
+                for hidden in T.serial(hidden_channels):
+                    gate_value = T.Cast("float32", gate[batch, row, hidden])
+                    activated = gate_value * T.sigmoid(gate_value) * T.Cast(
+                        "float32", value[batch, row, hidden])
+                    acc[0] += activated * T.Cast(
+                        "float32", output_weight[hidden, channel])
+                pre_mask_output[batch, row, channel] = T.Cast(dtype, acc[0])
+                output[batch, row, channel] = T.Cast(
+                    dtype, acc[0] * T.Cast("float32", mask[batch, row])
                 )
-                apply_cta_raster(raster_policy, language=T)
-                T.annotate_layout(
-                    {
-                        activation_shared: shared_layout_for(
-                            activation_shared,
-                            SharedLayoutPolicy(kind=layout_kind, role=OperandRole.GEMM_A, k_major=True),
-                            target_contract,
-                        ),
-                        weight_shared: shared_layout_for(
-                            weight_shared,
-                            SharedLayoutPolicy(kind=layout_kind, role=OperandRole.GEMM_B, k_major=True),
-                            target_contract,
-                        ),
-                    }
+
+    return mindclade_tilelang_transition_forward_program_launch
+
+
+def build_grad_gate_value(
+    *, target: str, architecture: str, dtype: str, batch_size: int, rows: int,
+    hidden_channels: int, output_channels: int, mask_dtype: str = "float32",
+    threads: int = 128, **_: object,
+) -> Any:
+    tilelang, T, target_config = _prepare(target=target, architecture=architecture, dtype=dtype,
+                       mask_dtype=mask_dtype, batch_size=batch_size, rows=rows,
+                       hidden_channels=hidden_channels,
+                       output_channels=output_channels, threads=threads)
+
+    @tilelang.jit(out_idx=[5, 6], target=target_config)
+    @T.prim_func
+    def mindclade_tilelang_transition_grad_gate_value_launch(
+        grad_output: T.Tensor((batch_size, rows, output_channels), dtype),
+        gate: T.Tensor((batch_size, rows, hidden_channels), dtype),
+        value: T.Tensor((batch_size, rows, hidden_channels), dtype),
+        output_weight: T.Tensor((hidden_channels, output_channels), dtype),
+        mask: T.Tensor((batch_size, rows), mask_dtype),
+        grad_gate: T.Tensor((batch_size, rows, hidden_channels), dtype),
+        grad_value: T.Tensor((batch_size, rows, hidden_channels), dtype),
+    ):
+        with T.Kernel(batch_size * rows * hidden_channels, threads=threads) as block:
+            hidden = block % hidden_channels
+            row = (block // hidden_channels) % rows
+            batch = block // (hidden_channels * rows)
+            grad_activated = T.alloc_local((1,), "float32")
+            grad_activated[0] = 0.0
+            for channel in T.serial(output_channels):
+                grad_activated[0] += T.Cast(
+                    "float32", grad_output[batch, row, channel]
+                ) * T.Cast("float32", mask[batch, row]) * T.Cast(
+                    "float32", output_weight[hidden, channel]
                 )
-                T.clear(accumulator)
+            gate_value = T.Cast("float32", gate[batch, row, hidden])
+            sigmoid = T.sigmoid(gate_value)
+            grad_gate[batch, row, hidden] = T.Cast(
+                dtype,
+                grad_activated[0] * T.Cast("float32", value[batch, row, hidden])
+                * sigmoid * (1.0 + gate_value * (1.0 - sigmoid)),
+            )
+            grad_value[batch, row, hidden] = T.Cast(
+                dtype, grad_activated[0] * gate_value * sigmoid
+            )
 
-                for ko in T.Pipelined(
-                    T.ceildiv(hidden_channels, block_k),
-                    num_stages=num_stages,
-                ):
-                    for i, k in T.Parallel(block_m, block_k):
-                        flat_row = bx * block_m + i
-                        hidden = ko * block_k + k
-                        if flat_row < total_rows and hidden < hidden_channels:
-                            batch = flat_row // rows
-                            row = flat_row % rows
-                            gate_value = T.cast(Gate[batch, row, hidden], accumulation_dtype)
-                            input_value = T.cast(Value[batch, row, hidden], accumulation_dtype)
-                            silu_value = gate_value / (
-                                T.float32(1.0) + T.exp(-gate_value)
-                            )
-                            activation_shared[i, k] = T.cast(
-                                silu_value * input_value, dtype
-                            )
-                        else:
-                            activation_shared[i, k] = T.cast(0, dtype)
+    return mindclade_tilelang_transition_grad_gate_value_launch
 
-                    for k, j in T.Parallel(block_k, block_n):
-                        hidden = ko * block_k + k
-                        channel = by * block_n + j
-                        if hidden < hidden_channels and channel < output_channels:
-                            weight_shared[k, j] = OutputWeight[hidden, channel]
-                        else:
-                            weight_shared[k, j] = T.cast(0, dtype)
 
-                    T.gemm(activation_shared, weight_shared, accumulator)
+def build_grad_weight(
+    *, target: str, architecture: str, dtype: str, batch_size: int, rows: int,
+    hidden_channels: int, output_channels: int, mask_dtype: str = "float32",
+    threads: int = 128, **_: object,
+) -> Any:
+    tilelang, T, target_config = _prepare(target=target, architecture=architecture, dtype=dtype,
+                       mask_dtype=mask_dtype, batch_size=batch_size, rows=rows,
+                       hidden_channels=hidden_channels,
+                       output_channels=output_channels, threads=threads)
 
-                for i, j in T.Parallel(block_m, block_n):
-                    flat_row = bx * block_m + i
-                    channel = by * block_n + j
-                    if flat_row < total_rows and channel < output_channels:
-                        batch = flat_row // rows
-                        row = flat_row % rows
-                        if Mask[batch, row] != 0:
-                            Output[batch, row, channel] = T.cast(
-                                accumulator[i, j]
-                                + T.cast(OutputBias[channel], accumulation_dtype),
-                                dtype,
-                            )
-                        else:
-                            Output[batch, row, channel] = T.cast(0, dtype)
+    @tilelang.jit(out_idx=[4], target=target_config)
+    @T.prim_func
+    def mindclade_tilelang_transition_grad_weight_launch(
+        grad_output: T.Tensor((batch_size, rows, output_channels), dtype),
+        gate: T.Tensor((batch_size, rows, hidden_channels), dtype),
+        value: T.Tensor((batch_size, rows, hidden_channels), dtype),
+        mask: T.Tensor((batch_size, rows), mask_dtype),
+        grad_weight: T.Tensor((hidden_channels, output_channels), dtype),
+    ):
+        with T.Kernel(output_channels * hidden_channels, threads=threads) as block:
+            channel = block % output_channels
+            hidden = block // output_channels
+            acc = T.alloc_local((1,), "float32")
+            acc[0] = 0.0
+            for batch in T.serial(batch_size):
+                for row in T.serial(rows):
+                    gate_value = T.Cast("float32", gate[batch, row, hidden])
+                    acc[0] += T.Cast("float32", grad_output[batch, row, channel]) * T.Cast(
+                        "float32", mask[batch, row]) * gate_value * T.sigmoid(gate_value) * T.Cast(
+                        "float32", value[batch, row, hidden])
+            grad_weight[hidden, channel] = T.Cast(dtype, acc[0])
 
-        return main
+    return mindclade_tilelang_transition_grad_weight_launch
 
-    return transition_kernel
+
+def build_grad_bias(
+    *, target: str, architecture: str, dtype: str, batch_size: int, rows: int,
+    hidden_channels: int, output_channels: int, mask_dtype: str = "float32",
+    threads: int = 128, **_: object,
+) -> Any:
+    tilelang, T, target_config = _prepare(target=target, architecture=architecture, dtype=dtype,
+                       mask_dtype=mask_dtype, batch_size=batch_size, rows=rows,
+                       hidden_channels=hidden_channels,
+                       output_channels=output_channels, threads=threads)
+
+    @tilelang.jit(out_idx=[2], target=target_config)
+    @T.prim_func
+    def mindclade_tilelang_transition_grad_bias_launch(
+        grad_output: T.Tensor((batch_size, rows, output_channels), dtype),
+        mask: T.Tensor((batch_size, rows), mask_dtype),
+        grad_bias: T.Tensor((output_channels,), dtype),
+    ):
+        with T.Kernel(output_channels, threads=threads) as channel:
+            acc = T.alloc_local((1,), "float32")
+            acc[0] = 0.0
+            for batch in T.serial(batch_size):
+                for row in T.serial(rows):
+                    acc[0] += T.Cast("float32", grad_output[batch, row, channel]) * T.Cast(
+                        "float32", mask[batch, row])
+            grad_bias[channel] = T.Cast(dtype, acc[0])
+
+    return mindclade_tilelang_transition_grad_bias_launch
+
+
+def build_grad_mask(
+    *, target: str, architecture: str, dtype: str, batch_size: int, rows: int,
+    hidden_channels: int, output_channels: int, mask_dtype: str = "float32",
+    threads: int = 128, **_: object,
+) -> Any:
+    tilelang, T, target_config = _prepare(target=target, architecture=architecture, dtype=dtype,
+                       mask_dtype=mask_dtype, batch_size=batch_size, rows=rows,
+                       hidden_channels=hidden_channels,
+                       output_channels=output_channels, threads=threads)
+
+    @tilelang.jit(out_idx=[2], target=target_config)
+    @T.prim_func
+    def mindclade_tilelang_transition_grad_mask_launch(
+        grad_output: T.Tensor((batch_size, rows, output_channels), dtype),
+        pre_mask_output: T.Tensor((batch_size, rows, output_channels), dtype),
+        grad_mask: T.Tensor((batch_size, rows), mask_dtype),
+    ):
+        with T.Kernel(batch_size * rows, threads=threads) as block:
+            row = block % rows
+            batch = block // rows
+            acc = T.alloc_local((1,), "float32")
+            acc[0] = 0.0
+            for channel in T.serial(output_channels):
+                acc[0] += T.Cast("float32", grad_output[batch, row, channel]) * T.Cast(
+                    "float32", pre_mask_output[batch, row, channel])
+            grad_mask[batch, row] = T.Cast(mask_dtype, acc[0])
+
+    return mindclade_tilelang_transition_grad_mask_launch
+
+
+build_tilelang_program = build_forward_program

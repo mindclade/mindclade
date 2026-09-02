@@ -1,4 +1,4 @@
-# GENERATED FILE - DO NOT EDIT. Generator: kernels.native.codegen.generate@6.
+# GENERATED FILE - DO NOT EDIT. Generator: kernels.native.codegen.generate@7.
 set(MINDCLADE_KERNEL_SPEC_SOURCES
   "${CMAKE_CURRENT_LIST_DIR}/../../pairformer/outer_product_mean/spec.py"
   "${CMAKE_CURRENT_LIST_DIR}/../../pairformer/pair_weighted_average/spec.py"
@@ -14,4 +14,38 @@ set(MINDCLADE_TILELANG_KERNEL_SOURCES
   "${CMAKE_CURRENT_LIST_DIR}/../../pairformer/triangle_multiplication/tilelang.py"
 )
 set(MINDCLADE_TILELANG_REQUIRED_PRIVATE_SYMBOLS
+  "mindclade_tilelang_outer_product_mean_dleft_launch"
+  "mindclade_tilelang_outer_product_mean_dmask_launch"
+  "mindclade_tilelang_outer_product_mean_dright_launch"
+  "mindclade_tilelang_outer_product_mean_normalizer_launch"
+  "mindclade_tilelang_outer_product_mean_numerator_launch"
+  "mindclade_tilelang_pair_weighted_average_delta_launch"
+  "mindclade_tilelang_pair_weighted_average_dvalue_launch"
+  "mindclade_tilelang_pair_weighted_average_dweights_launch"
+  "mindclade_tilelang_pair_weighted_average_online_forward_launch"
+  "mindclade_tilelang_transition_forward_program_launch"
+  "mindclade_tilelang_transition_grad_bias_launch"
+  "mindclade_tilelang_transition_grad_gate_value_launch"
+  "mindclade_tilelang_transition_grad_mask_launch"
+  "mindclade_tilelang_transition_grad_weight_launch"
+  "mindclade_tilelang_triangle_attention_dbias_raw"
+  "mindclade_tilelang_triangle_attention_delta_raw"
+  "mindclade_tilelang_triangle_attention_dkv_raw"
+  "mindclade_tilelang_triangle_attention_dq_raw"
+  "mindclade_tilelang_triangle_attention_forward_raw"
+  "mindclade_tilelang_triangle_multiplication_dleft_raw"
+  "mindclade_tilelang_triangle_multiplication_dright_raw"
+  "mindclade_tilelang_triangle_multiplication_forward_raw"
+)
+set(MINDCLADE_TILELANG_REQUIRED_LOGICAL_SYMBOLS
+  "mindclade_tilelang_outer_product_mean_bwd_launch"
+  "mindclade_tilelang_outer_product_mean_fwd_launch"
+  "mindclade_tilelang_pair_weighted_average_bwd_launch"
+  "mindclade_tilelang_pair_weighted_average_fwd_launch"
+  "mindclade_tilelang_transition_bwd_launch"
+  "mindclade_tilelang_transition_fwd_launch"
+  "mindclade_tilelang_triangle_attention_bwd_launch"
+  "mindclade_tilelang_triangle_attention_fwd_launch"
+  "mindclade_tilelang_triangle_multiplication_bwd_launch"
+  "mindclade_tilelang_triangle_multiplication_fwd_launch"
 )
