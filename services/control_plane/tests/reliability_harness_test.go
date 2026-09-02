@@ -48,7 +48,8 @@ func newReliabilityHarness(t *testing.T, db *sql.DB, scenario string) *reliabili
 			"dead_letter_replay_receipts", "run_command_receipt_attempts", "run_command_receipts",
 			"attempt_completion_history", "attempt_output_refs", "attempts", "run_output_refs", "runs",
 			"inbox_delivery_failures", "inbox_messages", "dead_letter_messages", "outbox_messages",
-			"audit_events", "idempotency_records", "operations", "jobs", "artifacts", "artifact_references",
+			"audit_events", "idempotency_records", "operations", "jobs", "error_precondition_violations",
+			"error_field_violations", "error_details", "artifacts", "artifact_references",
 		} {
 			if _, err := db.ExecContext(h.context(), "DELETE FROM "+table+" WHERE tenant_id=$1", h.tenant); err != nil { //nolint:gosec // Closed, reviewed table list; tenant remains a bound parameter.
 				t.Errorf("clean reliability table %s: %v", table, err)
@@ -326,6 +327,113 @@ func (h *reliabilityHarness) runExpiredFence() {
 	var accepted bool
 	if queryErr := h.db.QueryRowContext(h.context(), `SELECT accepted FROM attempt_completion_history WHERE tenant_id=$1 AND project_id=$2 AND attempt_id=$3 ORDER BY recorded_at DESC LIMIT 1`, h.tenant, h.project, lease.Attempt.GetAttemptId()).Scan(&accepted); queryErr != nil || accepted {
 		h.t.Fatalf("expired completion evidence accepted=%v err=%v", accepted, queryErr)
+	}
+}
+
+func (h *reliabilityHarness) runLeaseExpiryDelivery() {
+	repository, lease := h.leasedRun("lease-expiry-delivery")
+	expiredAt := lease.Attempt.GetLeaseExpiresAt().AsTime().Add(time.Nanosecond)
+	command := h.runCommand("run.expire_leases", "expire-leases", "scheduler-expiry", "f", expiredAt)
+	expired, err := repository.ExpireLeasesSQL(h.context(), jobs.ExpireLeasesCommand{
+		TenantID: h.tenant, Limit: 10, Now: expiredAt, Command: command,
+	})
+	if err != nil || expired.Replay || len(expired.Attempts) != 1 {
+		h.t.Fatalf("expire current lease: result=%v err=%v", expired, err)
+	}
+	attempt := expired.Attempts[0]
+	run, err := repository.GetRunSQL(h.context(), h.tenant, h.project, attempt.GetRunId())
+	if err != nil {
+		h.t.Fatal(err)
+	}
+	if attempt.GetState() != jobv1.AttemptState_ATTEMPT_STATE_TIMED_OUT ||
+		run.GetState() != jobv1.RunState_RUN_STATE_READY {
+		h.t.Fatalf("expired lease state was incomplete: attempt=%v run=%v", attempt, run)
+	}
+	replayed, err := repository.ExpireLeasesSQL(h.context(), jobs.ExpireLeasesCommand{
+		TenantID: h.tenant, Limit: 10, Now: expiredAt, Command: command,
+	})
+	if err != nil || !replayed.Replay || len(replayed.Attempts) != 1 || !proto.Equal(replayed.Attempts[0], attempt) {
+		h.t.Fatalf("expiry replay changed durable result: result=%v err=%v", replayed, err)
+	}
+
+	publisher := &recordingPublisher{}
+	dispatcher := outbox.Dispatcher{
+		Store: outbox.SQLStore{DB: h.db}, Publisher: publisher,
+		Now: func() time.Time { return expiredAt.Add(time.Second) }, ClaimTTL: time.Minute,
+	}
+	for expected := uint64(1); expected <= 2; expected++ {
+		if delivered, dispatchErr := dispatcher.DeliverBatch(h.context(), h.tenant, 10); delivered != 1 || dispatchErr != nil {
+			h.t.Fatalf("dispatch expiry lifecycle sequence %d: delivered=%d err=%v", expected, delivered, dispatchErr)
+		}
+		envelope := publisher.published[len(publisher.published)-1]
+		if envelope.GetAggregateSequence() != expected {
+			h.t.Fatalf("expiry lifecycle sequence=%d want=%d", envelope.GetAggregateSequence(), expected)
+		}
+		if expected == 2 {
+			payload, decodeErr := queue.UnmarshalRegisteredPayload(envelope)
+			fact, ok := payload.(*jobv1.AttemptCompleted)
+			if decodeErr != nil || !ok || !proto.Equal(fact.GetAttempt(), attempt) || fact.GetRun().GetState() != jobv1.RunState_RUN_STATE_READY {
+				h.t.Fatalf("invalid delivered expiry fact: payload=%T %v err=%v", payload, payload, decodeErr)
+			}
+		}
+	}
+}
+
+func (h *reliabilityHarness) runAttemptCancellationDelivery() {
+	repository, lease := h.leasedRun("attempt-cancellation-delivery")
+	cancelledAt := h.now.Add(time.Second)
+	reason := "operator requested bounded shutdown"
+	command := h.runCommand("run.cancel_attempt", "cancel-attempt", lease.Attempt.GetWorkerId(), "1", cancelledAt)
+	cancelled, err := repository.CancelAttemptSQL(h.context(), jobs.CancelAttemptCommand{
+		Credentials: jobs.LeaseCredentials{
+			TenantID: h.tenant, ProjectID: h.project, AttemptID: lease.Attempt.GetAttemptId(),
+			WorkerID: lease.Attempt.GetWorkerId(), Token: lease.token, Epoch: lease.Attempt.GetLeaseEpoch(),
+		},
+		ExpectedResourceVersion: lease.Attempt.GetResourceVersion(), Reason: reason, Now: cancelledAt, Command: command,
+	})
+	if err != nil || cancelled.Replay {
+		h.t.Fatalf("cancel current attempt: result=%v err=%v", cancelled, err)
+	}
+	if cancelled.Attempt.GetState() != jobv1.AttemptState_ATTEMPT_STATE_CANCELLED ||
+		cancelled.Run.GetState() != jobv1.RunState_RUN_STATE_CANCELLED ||
+		cancelled.Attempt.GetError().GetCode() != commonv1.ErrorCode_ERROR_CODE_CANCELLED ||
+		cancelled.Attempt.GetError().GetMessage() != reason || !proto.Equal(cancelled.Attempt.GetError(), cancelled.Run.GetError()) {
+		h.t.Fatalf("cancellation reason was not preserved in terminal resources: %v", cancelled)
+	}
+	replayed, err := repository.CancelAttemptSQL(h.context(), jobs.CancelAttemptCommand{
+		Credentials: jobs.LeaseCredentials{
+			TenantID: h.tenant, ProjectID: h.project, AttemptID: lease.Attempt.GetAttemptId(),
+			WorkerID: lease.Attempt.GetWorkerId(), Token: lease.token, Epoch: lease.Attempt.GetLeaseEpoch(),
+		},
+		ExpectedResourceVersion: lease.Attempt.GetResourceVersion(), Reason: reason, Now: cancelledAt, Command: command,
+	})
+	if err != nil || !replayed.Replay || !proto.Equal(replayed.Attempt, cancelled.Attempt) || !proto.Equal(replayed.Run, cancelled.Run) {
+		h.t.Fatalf("cancellation replay changed durable result: result=%v err=%v", replayed, err)
+	}
+
+	publisher := &recordingPublisher{}
+	dispatcher := outbox.Dispatcher{
+		Store: outbox.SQLStore{DB: h.db}, Publisher: publisher,
+		Now: func() time.Time { return cancelledAt.Add(time.Second) }, ClaimTTL: time.Minute,
+	}
+	for expected := uint64(1); expected <= 2; expected++ {
+		if delivered, dispatchErr := dispatcher.DeliverBatch(h.context(), h.tenant, 10); delivered != 1 || dispatchErr != nil {
+			h.t.Fatalf("dispatch cancellation lifecycle sequence %d: delivered=%d err=%v", expected, delivered, dispatchErr)
+		}
+		envelope := publisher.published[len(publisher.published)-1]
+		if envelope.GetAggregateSequence() != expected {
+			h.t.Fatalf("cancellation lifecycle sequence=%d want=%d", envelope.GetAggregateSequence(), expected)
+		}
+		if expected == 2 {
+			payload, decodeErr := queue.UnmarshalRegisteredPayload(envelope)
+			fact, ok := payload.(*jobv1.AttemptCompleted)
+			if decodeErr != nil || !ok || fact.GetAttempt().GetError().GetMessage() != reason || !proto.Equal(fact.GetAttempt(), cancelled.Attempt) || !proto.Equal(fact.GetRun(), cancelled.Run) {
+				h.t.Fatalf("invalid delivered cancellation fact: payload=%T %v err=%v", payload, payload, decodeErr)
+			}
+		}
+	}
+	if delivered, dispatchErr := dispatcher.DeliverBatch(h.context(), h.tenant, 10); delivered != 0 || dispatchErr != nil {
+		h.t.Fatalf("idempotent cancellation replay emitted another event: delivered=%d err=%v", delivered, dispatchErr)
 	}
 }
 
@@ -612,6 +720,8 @@ func TestPostgresReliabilityHarness(t *testing.T) {
 		{name: "heartbeat then completion delivery", run: (*reliabilityHarness).runHeartbeatThenCompletionDelivery},
 		{name: "job cancellation audit delivery", run: (*reliabilityHarness).runJobCancellationDelivery},
 		{name: "expired fence", run: (*reliabilityHarness).runExpiredFence},
+		{name: "lease expiry event delivery", run: (*reliabilityHarness).runLeaseExpiryDelivery},
+		{name: "attempt cancellation event delivery", run: (*reliabilityHarness).runAttemptCancellationDelivery},
 		{name: "cancellation race", run: (*reliabilityHarness).runCancellationRace},
 	}
 	for _, test := range tests {

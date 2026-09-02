@@ -2074,6 +2074,7 @@ def ratification_bindings(
     *,
     candidate_descriptor_digest: str,
     event_registry_digest: str,
+    staged_outputs: Mapping[Path, bytes],
 ) -> dict[str, Any]:
     """Resolve every immutable input the eventual v1 receipt must bind."""
 
@@ -2094,6 +2095,13 @@ def ratification_bindings(
     missing = [path.as_posix() for path in required_files if not (root / path).is_file()]
     if missing:
         raise RuntimeError(f"ratification inputs are missing: {missing}")
+
+    def staged_digest(relative: Path) -> str:
+        content = staged_outputs.get(root / relative)
+        if content is None:
+            raise RuntimeError(f"ratification staged output is missing: {relative}")
+        return sha256_bytes(content)
+
     migration_paths = _tracked_paths(root, "services/control_plane/migrations")
     if any(path.suffix != ".sql" for path in migration_paths):
         raise RuntimeError("the tracked migration set contains a non-SQL file")
@@ -2105,12 +2113,12 @@ def ratification_bindings(
         "candidate_descriptor_digest": candidate_descriptor_digest,
         "codegen_toolchain_digest": sha256_file(root / TOOLCHAIN_LOCK),
         "event_registry_digest": event_registry_digest,
-        "generated_manifest_digest": sha256_file(root / GENERATED_MANIFEST),
-        "grpc_implementation_digest": sha256_file(root / GRPC_IMPLEMENTATION_COVERAGE),
+        "generated_manifest_digest": staged_digest(GENERATED_MANIFEST),
+        "grpc_implementation_digest": staged_digest(GRPC_IMPLEMENTATION_COVERAGE),
         "migration_set_digest": _inventory_digest(root, migration_paths),
-        "openapi_projection_digest": sha256_file(root / PUBLISHED_OPENAPI),
+        "openapi_projection_digest": staged_digest(PUBLISHED_OPENAPI),
         "sdk_package_digests": sdk_package_digests,
-        "sdk_rpc_coverage_digest": sha256_file(root / SDK_RPC_COVERAGE),
+        "sdk_rpc_coverage_digest": staged_digest(SDK_RPC_COVERAGE),
         "source_revision": source_revision,
     }
 
@@ -2898,20 +2906,15 @@ def validate_curated_bindings(
             result.append(cast(dict[str, Any], parameter))
         return result
 
-    def skeleton(path: str, *, descriptor: bool) -> str:
-        if descriptor:
-            path = re.sub(r"\{[^={}]+=([^{}]+)\}", r"\1", path)
-            return path.replace("*", "{}")
-        return re.sub(r"\{[^{}]+\}", "{}", path)
-
     global_security = curated.get("security")
     for operation_id, raw_operation in raw_operations.items():
         method, path, operation = operations[operation_id]
         if method != raw_operation["method"]:
             raise ValueError(f"{operation_id}: HTTP method drift")
-        if skeleton(path, descriptor=False) != skeleton(
-            cast(str, raw_operation["pathTemplate"]), descriptor=True
-        ):
+        expected_path, expected_path_parameters = expand_google_http_path(
+            cast(str, raw_operation["pathTemplate"])
+        )
+        if path != expected_path:
             raise ValueError(f"{operation_id}: HTTP path binding drift")
         effective_security = operation.get("security", global_security)
         if raw_operation["auth"] == "bearer" and effective_security != [{"bearerAuth": []}]:
@@ -2963,9 +2966,11 @@ def validate_curated_bindings(
         ]
         if any(parameter.get("required") is not True for parameter in path_parameters):
             raise ValueError(f"{operation_id}: path parameters must be required")
-        expected_path_parameter_count = cast(str, raw_operation["pathTemplate"]).count("*")
-        if len(path_parameters) != expected_path_parameter_count:
-            raise ValueError(f"{operation_id}: path parameter expansion drift")
+        path_parameter_names = [parameter.get("name") for parameter in path_parameters]
+        if any(not isinstance(name, str) for name in path_parameter_names) or sorted(
+            cast(list[str], path_parameter_names)
+        ) != sorted(expected_path_parameters):
+            raise ValueError(f"{operation_id}: path-parameter binding drift")
         if any(parameter.get("required") is True for parameter in query.values()):
             raise ValueError(f"{operation_id}: optional query-field requiredness drift")
         response_status = sorted(int(code) for code in operation["responses"])
@@ -3522,8 +3527,8 @@ def commit_generation_transaction(
                 write_order.append(manifest_path)
             for path in write_order:
                 content = (stage / path.relative_to(root)).read_bytes()
-                atomic_replace_generated_file(path, content)
                 committed.append(path)
+                atomic_replace_generated_file(path, content)
         except BaseException as error:
             rollback_errors: list[str] = []
             for path in reversed(committed):
@@ -3559,6 +3564,25 @@ def generation_drift(
     return sorted(set(drift))
 
 
+def require_current_ratification_generation(
+    root: Path,
+    outputs: Mapping[Path, bytes],
+    stale_paths: Sequence[Path],
+) -> None:
+    """Require ratification to bind the complete reviewed generation transaction."""
+
+    drift = generation_drift(root, outputs, stale_paths)
+    if not drift:
+        return
+    relative = [path.relative_to(root).as_posix() for path in drift]
+    preview = ", ".join(relative[:8])
+    suffix = "" if len(relative) <= 8 else f" (+{len(relative) - 8} more)"
+    raise RuntimeError(
+        "ratification requires the complete committed generated estate to be current; "
+        f"drift: {preview}{suffix}"
+    )
+
+
 def write_generated(
     root: Path,
     *,
@@ -3568,7 +3592,7 @@ def write_generated(
     check: bool = False,
 ) -> bool:
     source_digest_before = generation_authority_digest(root)
-    outputs, descriptor_set, descriptors = generated_outputs(root)
+    outputs, _, descriptors = generated_outputs(root)
     source_digest_after = generation_authority_digest(root)
     if source_digest_after != source_digest_before:
         raise RuntimeError(
@@ -3582,6 +3606,11 @@ def write_generated(
     candidate_path = root / PROTOBUF_CANDIDATE
     baseline_path = root / PROTOBUF_RATIFIED_BASELINE
     ratified_baseline: bytes | None = None
+    stale_candidates = sorted(
+        governed_generated_paths(root)
+        | previous_generated_paths(root)
+        | discovered_generated_paths(root)
+    )
     if baseline_path.is_file() and not ratify_v1_baseline:
         baseline = load_json(baseline_path)
         if baseline.get("schema_version") != "mindclade.protobuf-baseline/v3":
@@ -3610,6 +3639,7 @@ def write_generated(
                 "ratification requires the exact reviewed candidate artifact digest: "
                 f"expected {expected_candidate_digest!r}, actual {actual_candidate_digest!r}"
             )
+        require_current_ratification_generation(root, outputs, stale_candidates)
         if training_vertical_evidence is None:
             raise RuntimeError("ratification requires training vertical evidence")
         event_entries, _ = event_registry_entries(root, descriptors)
@@ -3628,6 +3658,7 @@ def write_generated(
             root,
             candidate_descriptor_digest=descriptor_digest,
             event_registry_digest=event_registry_digest,
+            staged_outputs=outputs,
         )
         evidence, evidence_digest = validate_training_vertical_evidence(
             root,
@@ -3640,11 +3671,6 @@ def write_generated(
             evidence=evidence,
             evidence_digest=evidence_digest,
         )
-    stale_candidates = sorted(
-        governed_generated_paths(root)
-        | previous_generated_paths(root)
-        | discovered_generated_paths(root)
-    )
     if generation_authority_digest(root) != source_digest_before:
         raise RuntimeError(
             "contract generation inputs changed before commit; no authoritative output was updated"
@@ -3658,16 +3684,15 @@ def write_generated(
     materialized_outputs = dict(outputs)
     if ratified_baseline is not None:
         materialized_outputs[baseline_path] = ratified_baseline
-    openapi_outputs = openapi_pipeline_outputs(root, descriptor_set)
     materialized_outputs.update(
         {
-            root / "build/openapi/raw/descriptor-projection.yaml": openapi_outputs[
+            root / "build/openapi/raw/descriptor-projection.yaml": outputs[
                 root / "protocols/openapi/raw/mindclade.openapi.yaml"
             ],
-            root / "build/openapi/curated/external-api.yaml": openapi_outputs[
+            root / "build/openapi/curated/external-api.yaml": outputs[
                 root / "protocols/openapi/curated/mindclade.openapi.yaml"
             ],
-            root / "build/openapi/published/external-api.yaml": openapi_outputs[
+            root / "build/openapi/published/external-api.yaml": outputs[
                 root / "protocols/openapi/published/mindclade.openapi.yaml"
             ],
         }

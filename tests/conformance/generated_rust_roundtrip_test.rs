@@ -195,7 +195,7 @@ fn generated_event_registry_enforces_exact_identity_and_activation_state() {
     assert_eq!(registration.compatibility_policy, "exact-version");
     assert!(!registration.producers.is_empty());
     assert!(!registration.consumers.is_empty());
-    assert!(!protocols::event_registry::EVENT_REGISTRY_RATIFIABLE);
+    assert!(protocols::event_registry::EVENT_REGISTRY_RATIFIABLE);
     assert!(protocols::event_registry::require_event_registration(
         "mindclade.events.job.v1.JobRequested",
         2,

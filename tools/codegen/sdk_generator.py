@@ -363,9 +363,7 @@ def selected_values(selection: str, available: Sequence[str]) -> tuple[str, ...]
     return tuple(available) if selection == "all" else (selection,)
 
 
-def selected_provider_languages(
-    provider_id: str, language_selection: str
-) -> tuple[str, ...]:
+def selected_provider_languages(provider_id: str, language_selection: str) -> tuple[str, ...]:
     supported = ADAPTERS[provider_id].languages
     if language_selection == "all":
         return supported

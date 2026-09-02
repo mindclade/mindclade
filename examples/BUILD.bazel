@@ -1,33 +1,6 @@
-load("@aspect_rules_js//js:defs.bzl", "js_test")
-load("@aspect_rules_ts//ts:defs.bzl", "ts_config", "ts_project")
-load("@npm//:defs.bzl", "npm_link_all_packages")
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
 package(default_visibility = ["//visibility:private"])
-
-npm_link_all_packages(name = "node_modules")
-
-py_library(
-    name = "sdk_python_examples",
-    srcs = [
-        "sdk/__init__.py",
-        "sdk/download_artifact.py",
-        "sdk/submit_operation.py",
-    ],
-    imports = [".."],
-    deps = ["//internal/sdk/python:mindclade_internal_sdk"],
-)
-
-py_test(
-    name = "sdk_python_examples_test",
-    srcs = ["sdk/test_sdk_examples.py"],
-    legacy_create_init = 0,
-    main = "sdk/test_sdk_examples.py",
-    deps = [
-        ":sdk_python_examples",
-        "//internal/sdk/python:mindclade_internal_sdk",
-    ],
-)
 
 py_library(
     name = "bounded_agent_workflow",
@@ -58,41 +31,6 @@ py_test(
     ],
 )
 
-ts_config(
-    name = "sdk_examples_tsconfig",
-    src = "sdk/tsconfig.json",
-    deps = [
-        "sdk/package.json",
-        "//internal/sdk/typescript:mindclade_internal_sdk",
-    ],
-)
-
-ts_project(
-    name = "sdk_typescript_examples",
-    srcs = [
-        "sdk/follow_operation.test.ts",
-        "sdk/follow_operation.ts",
-    ],
-    declaration = True,
-    transpiler = "tsc",
-    tsconfig = ":sdk_examples_tsconfig",
-    deps = [
-        ":node_modules/@mindclade/internal-sdk",
-        ":node_modules/@types/node",
-        "//internal/sdk/typescript:mindclade_internal_sdk",
-    ],
-)
-
-js_test(
-    name = "sdk_typescript_examples_test",
-    data = [
-        ":node_modules/@mindclade/internal-sdk",
-        ":sdk_typescript_examples",
-        "//internal/sdk/typescript:mindclade_internal_sdk",
-    ],
-    entry_point = "sdk/follow_operation.test.ts",
-)
-
 filegroup(
     name = "governed_sources",
     srcs = [
@@ -100,14 +38,9 @@ filegroup(
         "agent_workflow/README.md",
         "agent_workflow/agent.yaml",
         "agent_workflow/workflow.yaml",
-        "sdk/README.md",
-        "sdk/biome.json",
-        "sdk/package.json",
-        "sdk/tsconfig.json",
+        "//examples/sdk:governed_sources",
     ] + glob([
         "agent_workflow/*.py",
-        "sdk/*.py",
-        "sdk/*.ts",
     ]),
     visibility = ["//visibility:public"],
 )
@@ -116,8 +49,7 @@ test_suite(
     name = "tests",
     tests = [
         ":bounded_agent_workflow_test",
-        ":sdk_python_examples_test",
-        ":sdk_typescript_examples_test",
+        "//examples/sdk:tests",
     ],
     visibility = ["//tests:__pkg__"],
 )

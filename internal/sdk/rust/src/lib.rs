@@ -177,6 +177,12 @@ impl Client {
         Self::from_parts(config, transport, Arc::new(TokioSleeper), None)
     }
 
+    /// Returns the immutable identity scope enforced by this client.
+    #[must_use]
+    pub fn identity(&self) -> &Identity {
+        self.core.config.identity()
+    }
+
     fn from_parts(
         config: Config,
         transport: Arc<dyn RpcTransport>,

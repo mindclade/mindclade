@@ -52,14 +52,14 @@ class ActivationBundlePolicyTest(unittest.TestCase):
         self.assertEqual(validate_activation_bundle_projection(), [])
         self.assertEqual(len(ACTIVATION_BUNDLES), 27)
         self.assertEqual(ACTIVATION_BUNDLE_PROJECTION["bundle_count"], 27)
-        self.assertEqual(ACTIVATION_BUNDLE_PROJECTION["path_count"], 900)
+        self.assertEqual(ACTIVATION_BUNDLE_PROJECTION["path_count"], 911)
         self.assertEqual(
             ACTIVATION_BUNDLE_PROJECTION["source_digest"],
-            "sha256:08e297ddde01de65bf332b671576faba9b76473b46df09c31a3d7d68238d4704",
+            "sha256:9bf2bec3f980719d23e9730ff6dd0f912564ad023e381ea9c754dffd4465a96b",
         )
         self.assertEqual(
             ACTIVATION_BUNDLE_PROJECTION["path_set_digest"],
-            "sha256:a438d3a8cdb540e0642dcf4167ae0f3a677a27d3c618772e4a2b490308c637b3",
+            "sha256:24e259349e0f667429fb11cb87bf06cd45fa6443378ef3e40589ce2447fdd5ea",
         )
 
         paths = [path for bundle in ACTIVATION_BUNDLES for path in bundle.paths]
@@ -80,16 +80,16 @@ class ActivationBundlePolicyTest(unittest.TestCase):
         runtime_consumers = next(
             bundle for bundle in ACTIVATION_BUNDLES if bundle.identity == "sdk-runtime-consumers"
         )
-        self.assertEqual(runtime_consumers.path_count, 31)
-        self.assertEqual(len(runtime_consumers.addition_paths), 15)
+        self.assertEqual(runtime_consumers.path_count, 32)
+        self.assertEqual(len(runtime_consumers.addition_paths), 16)
         self.assertEqual(len(runtime_consumers.predeclared_paths), 16)
         stage8_examples = next(
             bundle
             for bundle in ACTIVATION_BUNDLES
             if bundle.identity == "stage8-private-sdk-examples"
         )
-        self.assertEqual(stage8_examples.path_count, 18)
-        self.assertEqual(len(stage8_examples.addition_paths), 11)
+        self.assertEqual(stage8_examples.path_count, 19)
+        self.assertEqual(len(stage8_examples.addition_paths), 12)
         self.assertEqual(len(stage8_examples.predeclared_paths), 7)
 
     def test_existing_grpc_and_event_projections_preserve_semantics(self) -> None:
@@ -178,9 +178,7 @@ class ActivationBundlePolicyTest(unittest.TestCase):
 
     def test_predeclared_paths_must_be_part_of_the_bundle_surface(self) -> None:
         invalid = copy.deepcopy(self.document)
-        bundle = next(
-            bundle for bundle in invalid["bundles"] if "predeclared_paths" in bundle
-        )
+        bundle = next(bundle for bundle in invalid["bundles"] if "predeclared_paths" in bundle)
         bundle["predeclared_paths"].append("not/in/bundle.txt")
         with tempfile.TemporaryDirectory() as directory:
             path = self._write_document(invalid, directory)

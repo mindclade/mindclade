@@ -1,9 +1,9 @@
 {
   "schema_version": "mindclade.activation-bundle-projection/v1",
-  "source_digest": "sha256:08e297ddde01de65bf332b671576faba9b76473b46df09c31a3d7d68238d4704",
+  "source_digest": "sha256:9bf2bec3f980719d23e9730ff6dd0f912564ad023e381ea9c754dffd4465a96b",
   "bundle_count": 27,
-  "path_count": 900,
-  "path_set_digest": "sha256:a438d3a8cdb540e0642dcf4167ae0f3a677a27d3c618772e4a2b490308c637b3",
+  "path_count": 911,
+  "path_set_digest": "sha256:24e259349e0f667429fb11cb87bf06cd45fa6443378ef3e40589ce2447fdd5ea",
   "bundles": [
     {
       "id": "activation-bundle-governance",
@@ -71,11 +71,11 @@
     {
       "id": "internal-sdk",
       "constant": "INTERNAL_SDK_ADDITIONS",
-      "path_count": 146,
-      "addition_count": 146,
+      "path_count": 150,
+      "addition_count": 150,
       "predeclared_count": 0,
-      "sequence_digest": "sha256:b96dfd5ee439f2fc30a12547058844d0244a6139fa421f51fab9f239b5f478b9",
-      "path_set_digest": "sha256:63fb79168903824a449e06525da389804ce9d0ab53fe1c31e1870c60e8440781"
+      "sequence_digest": "sha256:63e790cd8be4834792d39646ce8124038dbf9228389bf2e4944b193ba281a3d5",
+      "path_set_digest": "sha256:032df05b19961824ca7ad8848f1c8fc45cbe047e9291bd91b8cc97eb3f9fb2b2"
     },
     {
       "id": "training-control-plane",
@@ -98,11 +98,11 @@
     {
       "id": "worker-coordination",
       "constant": "WORKER_COORDINATION_ADDITIONS",
-      "path_count": 4,
-      "addition_count": 4,
+      "path_count": 5,
+      "addition_count": 5,
       "predeclared_count": 0,
-      "sequence_digest": "sha256:ea51cfe99654d12bb310b13821caaf57f79b257e0e759d215bd3ac3f59415f9c",
-      "path_set_digest": "sha256:24c32532c63ac9a25d41726417531e41e2349577021e2de87458efc16f590555"
+      "sequence_digest": "sha256:d2919819092c248819d810580b3e364beb170d69ad77a21825e2b8bd3cb9f7ba",
+      "path_set_digest": "sha256:de66171cfcfcc22f071c80cadf5ac7faa00020ed4205d50db45c26936f38ef09"
     },
     {
       "id": "artifact-control-plane",
@@ -134,20 +134,20 @@
     {
       "id": "domain-control-plane",
       "constant": "CONTROL_PLANE_DOMAIN_ADDITIONS",
-      "path_count": 53,
-      "addition_count": 53,
+      "path_count": 54,
+      "addition_count": 54,
       "predeclared_count": 0,
-      "sequence_digest": "sha256:b773bebd1e59d433577ecb7647d7fab6e46c873c3c57947b408849adc1a58be6",
-      "path_set_digest": "sha256:b773bebd1e59d433577ecb7647d7fab6e46c873c3c57947b408849adc1a58be6"
+      "sequence_digest": "sha256:e6ce785c6e066f19dc4e5391d4e54a795a7456fb2342036ed30e71d97611bf67",
+      "path_set_digest": "sha256:e6ce785c6e066f19dc4e5391d4e54a795a7456fb2342036ed30e71d97611bf67"
     },
     {
       "id": "contract-conformance",
       "constant": "CONTRACT_CONFORMANCE_ADDITIONS",
-      "path_count": 4,
-      "addition_count": 4,
+      "path_count": 7,
+      "addition_count": 7,
       "predeclared_count": 0,
-      "sequence_digest": "sha256:f324ce249cb6d147202e2ef894c3e0df8f8e3ef41eb943dfc91a560ef8748b7d",
-      "path_set_digest": "sha256:f324ce249cb6d147202e2ef894c3e0df8f8e3ef41eb943dfc91a560ef8748b7d"
+      "sequence_digest": "sha256:35124cbb6beabae00ac7b1351b483ee34500c1061d2439a66efea366fef6a20c",
+      "path_set_digest": "sha256:35124cbb6beabae00ac7b1351b483ee34500c1061d2439a66efea366fef6a20c"
     },
     {
       "id": "sdk-generator",
@@ -224,11 +224,11 @@
     {
       "id": "sdk-runtime-consumers",
       "constant": "SDK_RUNTIME_CONSUMER_ADDITIONS",
-      "path_count": 31,
-      "addition_count": 15,
+      "path_count": 32,
+      "addition_count": 16,
       "predeclared_count": 16,
-      "sequence_digest": "sha256:dc1d73938931c4e85fb3197f735a882f972ca87e74ce19b4a298cbd8e5a42ef0",
-      "path_set_digest": "sha256:e50844c7aad7844e905a3fabb978e589df6fbcaf353ba8fc014ba41186ab662e"
+      "sequence_digest": "sha256:468d6239ebb676a9eefefe48d4890488aebdb0f96781dc144a11dc2303a3682a",
+      "path_set_digest": "sha256:c2150d6991a91e09b322c54925be7a08df7703df38f37ed4c728f3f5aac6ec7f"
     },
     {
       "id": "experiment-candidate-vertical",
@@ -242,11 +242,11 @@
     {
       "id": "stage8-private-sdk-examples",
       "constant": "STAGE8_PRIVATE_SDK_EXAMPLE_ADDITIONS",
-      "path_count": 18,
-      "addition_count": 11,
+      "path_count": 19,
+      "addition_count": 12,
       "predeclared_count": 7,
-      "sequence_digest": "sha256:08c23a63cd03eafe2f094dea8a5f7c4763202d7bc51c5e6195f2845906ce2a98",
-      "path_set_digest": "sha256:751b1a2029fab0891f942a709749399cbad1daf034bc3f7d55d8025178f90c99"
+      "sequence_digest": "sha256:dd89027eff3ecf940d2af69fde7d7a3daffd3ff8c7ff712d8a9618c9df21db12",
+      "path_set_digest": "sha256:d1426c8bb4480bd627882d76d5d3fdc4da476900a21ca36369f0daa085ee1466"
     }
   ]
 }

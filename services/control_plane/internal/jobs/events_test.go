@@ -94,6 +94,45 @@ func TestAttemptEventsAreRegisteredDeterministicGeneratedFacts(t *testing.T) {
 	}
 }
 
+func TestDeterministicJobRunIDIsStableAndScopeBound(t *testing.T) {
+	t.Parallel()
+	const expected = "runs/2ad0a14548afafc40e65ef62dba93bb1699bd8dec3039ce4b5edeac58b0b0285"
+	if got := deterministicJobRunID("tenant-1", "project-1", "jobs/job-1"); got != expected {
+		t.Fatalf("deterministic run id = %q, want %q", got, expected)
+	}
+	for _, changed := range []string{
+		deterministicJobRunID("tenant-2", "project-1", "jobs/job-1"),
+		deterministicJobRunID("tenant-1", "project-2", "jobs/job-1"),
+		deterministicJobRunID("tenant-1", "project-1", "jobs/job-2"),
+	} {
+		if changed == expected {
+			t.Fatalf("scoped identity collision produced %q", changed)
+		}
+	}
+}
+
+func TestSchedulerLifecycleTransitionsAreMonotonic(t *testing.T) {
+	t.Parallel()
+	for _, test := range []struct {
+		name, current, target string
+		advance               bool
+		wantErr               bool
+	}{
+		{name: "queued to running", current: "QUEUED", target: "RUNNING", advance: true},
+		{name: "running is idempotent", current: "RUNNING", target: "RUNNING"},
+		{name: "cancellation wins", current: "CANCELLING", target: "SUCCEEDED", wantErr: true},
+		{name: "cancellation completes", current: "CANCELLING", target: "CANCELLED", advance: true},
+		{name: "terminal cannot change", current: "FAILED", target: "SUCCEEDED", wantErr: true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			advance, err := schedulerJobTransition(test.current, test.target)
+			if advance != test.advance || (err != nil) != test.wantErr {
+				t.Fatalf("transition %s -> %s: advance=%v err=%v", test.current, test.target, advance, err)
+			}
+		})
+	}
+}
+
 func TestDomainCompletionEventsUseTypedCommandsAndExactJobKinds(t *testing.T) {
 	t.Parallel()
 	at := time.Date(2026, time.September, 2, 12, 30, 0, 0, time.UTC)

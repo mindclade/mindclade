@@ -93,6 +93,7 @@ class InternalSdkApplicationConsumerTest(unittest.TestCase):
     def test_native_build_graphs_depend_on_sdk_not_generated_transports(self) -> None:
         build_files = (
             Path("examples/BUILD.bazel"),
+            Path("examples/sdk/BUILD.bazel"),
             Path("tools/mindcladectl/BUILD.bazel"),
             Path("workers/training_worker/BUILD.bazel"),
             Path("workers/ingestion_worker/BUILD.bazel"),

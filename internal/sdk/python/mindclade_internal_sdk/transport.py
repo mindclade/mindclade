@@ -23,6 +23,7 @@ from mindclade.internal.workflow.v1 import workflow_service_pb2, workflow_servic
 from .config import ClientConfig
 
 Metadata = tuple[tuple[str, str | bytes], ...]
+_MAX_WIRE_MESSAGE_BYTES = 8 << 20
 
 GET_OPERATION = "/mindclade.internal.job.v1.OperationService/GetOperation"
 LIST_OPERATIONS = "/mindclade.internal.job.v1.OperationService/ListOperations"
@@ -277,8 +278,8 @@ class AsyncTransport(Protocol):
 def _channel_options(config: ClientConfig) -> tuple[tuple[str, str | int], ...]:
     options: list[tuple[str, str | int]] = [
         ("grpc.primary_user_agent", config.user_agent),
-        ("grpc.max_receive_message_length", 4 * 1024 * 1024),
-        ("grpc.max_send_message_length", 4 * 1024 * 1024),
+        ("grpc.max_receive_message_length", _MAX_WIRE_MESSAGE_BYTES),
+        ("grpc.max_send_message_length", _MAX_WIRE_MESSAGE_BYTES),
     ]
     if config.tls_server_name:
         options.append(("grpc.ssl_target_name_override", config.tls_server_name))

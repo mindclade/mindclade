@@ -109,13 +109,19 @@ impl SourceFetcher {
     ///
     /// # Errors
     ///
-    /// Returns an error when a bound is zero or unreasonably large.
+    /// Returns an error when client and worker identity differ or a bound is
+    /// zero or unreasonably large.
     pub fn new(
         client: Client,
         identity: Identity,
         rpc_timeout: Duration,
         maximum_artifact_bytes: Option<u64>,
     ) -> Result<Self, AssignmentError> {
+        if client.identity() != &identity {
+            return Err(AssignmentError::Rejected(
+                "worker identity does not match SDK client scope",
+            ));
+        }
         if rpc_timeout.is_zero() || rpc_timeout > Duration::from_mins(5) {
             return Err(AssignmentError::Rejected("RPC timeout is outside policy"));
         }
@@ -464,6 +470,25 @@ mod tests {
             matches!(error, AssignmentError::Deadline)
                 || error.sdk_kind() == Some(ErrorKind::DeadlineExceeded)
         );
+    }
+
+    #[test]
+    fn rejects_identity_that_does_not_match_the_sdk_client() {
+        let (_, job, artifacts) = fixture(b"config", b"input");
+        let transport: Arc<dyn RpcTransport> =
+            Arc::new(ScriptedJobArtifactTransport::new(job, artifacts));
+        let result = SourceFetcher::new(
+            client(transport),
+            Identity::new("other-tenant", "project-1", "ingestion-worker-1").unwrap(),
+            Duration::from_secs(1),
+            None,
+        );
+        assert!(matches!(
+            result,
+            Err(AssignmentError::Rejected(
+                "worker identity does not match SDK client scope"
+            ))
+        ));
     }
 
     #[test]

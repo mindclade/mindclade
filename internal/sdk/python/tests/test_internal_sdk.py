@@ -6,7 +6,7 @@ import io
 import threading
 import time
 import unittest
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Iterator
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
@@ -19,6 +19,7 @@ from mindclade.artifact.v1 import artifact_reference_pb2
 from mindclade.common.v1 import pagination_pb2, resource_reference_pb2
 from mindclade.dataset.v1 import dataset_commands_pb2, dataset_pb2, dataset_release_pb2
 from mindclade.internal.artifact.v1 import artifact_service_pb2
+from mindclade.internal.artifact.v1 import artifact_service_pb2_grpc as artifact_service_pb2_grpc
 from mindclade.internal.dataset.v1 import dataset_service_pb2
 from mindclade.internal.job.v1 import job_service_pb2
 from mindclade.internal.model.v1 import model_service_pb2
@@ -79,6 +80,7 @@ from mindclade_internal_sdk.transport import (
     UPDATE_DATASET,
     UPLOAD_ARTIFACT_CHUNK,
     WATCH_OPERATION,
+    GrpcSyncTransport,
     Metadata,
 )
 
@@ -98,6 +100,33 @@ class AsyncCredentials:
         return AccessToken(
             "test-only-token",
             datetime.now(UTC) + timedelta(minutes=5),
+        )
+
+
+class ArtifactBoundaryService(artifact_service_pb2_grpc.ArtifactServiceServicer):
+    def __init__(self, chunk: bytes) -> None:
+        self._chunk = chunk
+        self.uploaded_bytes = 0
+
+    def UploadArtifactChunk(  # noqa: N802 -- generated gRPC service method
+        self,
+        request: artifact_service_pb2.UploadArtifactChunkRequest,
+        context: grpc.ServicerContext,
+    ) -> artifact_service_pb2.UploadArtifactChunkResponse:
+        del context
+        self.uploaded_bytes = len(request.data)
+        return artifact_service_pb2.UploadArtifactChunkResponse()
+
+    def DownloadArtifact(  # noqa: N802 -- generated gRPC service method
+        self,
+        request: artifact_service_pb2.DownloadArtifactRequest,
+        context: grpc.ServicerContext,
+    ) -> Iterator[artifact_service_pb2.DownloadArtifactResponse]:
+        del request, context
+        yield artifact_service_pb2.DownloadArtifactResponse(
+            data=self._chunk,
+            chunk_digest="sha256:" + hashlib.sha256(self._chunk).hexdigest(),
+            complete=True,
         )
 
 
@@ -220,6 +249,67 @@ class ConfigurationTest(unittest.TestCase):
         )
         self.assertGreaterEqual(len(INTERNAL_UNARY_METHODS | INTERNAL_STREAM_METHODS), 108)
         self.assertFalse(INTERNAL_UNARY_METHODS & INTERNAL_STREAM_METHODS)
+
+    def test_maximum_artifact_chunks_cross_the_production_grpc_transport(self) -> None:
+        chunk = b"x" * (4 << 20)
+        service = ArtifactBoundaryService(chunk)  # pyright: ignore[reportAbstractUsage]
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            server = grpc.server(
+                executor,
+                options=(
+                    ("grpc.max_receive_message_length", 16 << 20),
+                    ("grpc.max_send_message_length", 16 << 20),
+                ),
+            )
+            artifact_service_pb2_grpc.add_ArtifactServiceServicer_to_server(service, server)
+            port = server.add_insecure_port("127.0.0.1:0")
+            self.assertGreater(port, 0)
+            server.start()
+            transport = GrpcSyncTransport(
+                ClientConfig(
+                    tenant_id="tenant-01",
+                    project_id="project-01",
+                    principal_id="principal-01",
+                    environment=Environment.LOCAL,
+                    endpoint=f"127.0.0.1:{port}",
+                    insecure_for_testing=True,
+                )
+            )
+            try:
+                response = transport.unary_unary(
+                    UPLOAD_ARTIFACT_CHUNK,
+                    artifact_service_pb2.UploadArtifactChunkRequest(
+                        name="tenants/tenant-01/projects/project-01/artifactUploads/upload-01",
+                        data=chunk,
+                        chunk_digest="sha256:" + hashlib.sha256(chunk).hexdigest(),
+                        etag="etag-01",
+                    ),
+                    timeout=5,
+                    metadata=(),
+                )
+                self.assertIsInstance(response, artifact_service_pb2.UploadArtifactChunkResponse)
+                downloaded = list(
+                    transport.unary_stream(
+                        DOWNLOAD_ARTIFACT,
+                        artifact_service_pb2.DownloadArtifactRequest(
+                            digest="sha256:" + hashlib.sha256(chunk).hexdigest(),
+                            max_chunk_bytes=len(chunk),
+                        ),
+                        timeout=5,
+                        metadata=(),
+                    )
+                )
+            finally:
+                transport.close()
+                server.stop(None).wait(timeout=5)
+        self.assertEqual(service.uploaded_bytes, len(chunk))
+        self.assertEqual(
+            [
+                cast(artifact_service_pb2.DownloadArtifactResponse, value).data
+                for value in downloaded
+            ],
+            [chunk],
+        )
 
     def test_tls_and_workload_identity_are_required_by_default(self) -> None:
         with self.assertRaisesRegex(ConfigurationError, "token provider"):

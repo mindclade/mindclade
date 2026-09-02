@@ -73,6 +73,7 @@ type runRepositoryFixture struct {
 	acquireCount int
 	attempt      *jobv1.Attempt
 	fence        *jobv1.LeaseFence
+	cancel       *CancelAttemptCommand
 }
 
 func (*runRepositoryFixture) GetRunSQL(context.Context, string, string, string) (*jobv1.Run, error) {
@@ -134,8 +135,19 @@ func (r *runRepositoryFixture) HeartbeatLeaseSQL(ctx context.Context, command Re
 	return r.RenewLeaseSQL(ctx, command)
 }
 
-func (*runRepositoryFixture) CancelAttemptSQL(context.Context, CancelAttemptCommand) (*AttemptMutationResult, error) {
-	return nil, errors.New("not called")
+func (r *runRepositoryFixture) CancelAttemptSQL(_ context.Context, command CancelAttemptCommand) (*AttemptMutationResult, error) {
+	copy := command
+	r.cancel = &copy
+	attempt := &jobv1.Attempt{
+		AttemptId: command.Credentials.AttemptID, RunId: "run-01", JobId: "job-01", TenantId: command.Credentials.TenantID,
+		ProjectId: command.Credentials.ProjectID, WorkerId: command.Credentials.WorkerID, LeaseEpoch: command.Credentials.Epoch,
+		State: jobv1.AttemptState_ATTEMPT_STATE_CANCELLED, ResourceVersion: command.ExpectedResourceVersion + 1,
+	}
+	run := &jobv1.Run{
+		RunId: "run-01", JobId: "job-01", TenantId: command.Credentials.TenantID, ProjectId: command.Credentials.ProjectID,
+		LeaseEpoch: command.Credentials.Epoch, State: jobv1.RunState_RUN_STATE_CANCELLED, ResourceVersion: 3,
+	}
+	return &AttemptMutationResult{Attempt: attempt, Run: run}, nil
 }
 
 func (*runRepositoryFixture) ExpireLeasesSQL(context.Context, ExpireLeasesCommand) (*ExpireLeasesResult, error) {
@@ -226,6 +238,20 @@ func TestRunServerIssuesAndAuthenticatesOpaqueLeaseToken(t *testing.T) {
 	}
 	if renewed.GetAttempt().GetResourceVersion() != 2 {
 		t.Fatalf("renewed attempt = %v", renewed.GetAttempt())
+	}
+	cancelReason := "operator requested bounded shutdown"
+	cancelled, err := client.CancelAttempt(renewContext, &internaljobv1.CancelAttemptRequest{
+		Context: &commonv1.CommandContext{
+			TenantId: "tenant-01", ProjectId: "project-01", PrincipalId: "worker-principal-01",
+			RequestId: "request-cancel-01", IdempotencyKey: "cancel-01", Deadline: timestamppb.New(time.Now().Add(time.Minute)),
+		},
+		Fence: acquired.GetFence(), ExpectedResourceVersion: renewed.GetAttempt().GetResourceVersion(), Reason: cancelReason,
+	})
+	if err != nil {
+		t.Fatalf("cancel attempt with reason: %v", err)
+	}
+	if cancelled.GetAttempt().GetState() != jobv1.AttemptState_ATTEMPT_STATE_CANCELLED || repository.cancel == nil || repository.cancel.Reason != cancelReason {
+		t.Fatalf("cancellation reason was not preserved at the repository boundary: response=%v command=%v", cancelled, repository.cancel)
 	}
 }
 
@@ -642,6 +668,45 @@ func TestAttemptCompletionFieldMaskPreservesOmittedFields(t *testing.T) {
 	}
 	if _, err = applyAttemptCompletionMask(stored, requested, []string{"state", "state"}, 7); !errors.Is(err, ErrInvalidOutcome) {
 		t.Fatalf("duplicate field mask err=%v", err)
+	}
+}
+
+func TestAttemptCompletionRequiresStructuredFailure(t *testing.T) {
+	t.Parallel()
+	stored := &jobv1.Attempt{
+		AttemptId: "attempt-01", RunId: "run-01", JobId: "job-01", TenantId: "tenant-01", ProjectId: "project-01",
+		WorkerId: "worker-01", LeaseEpoch: 3, ResourceVersion: 7, State: jobv1.AttemptState_ATTEMPT_STATE_RUNNING,
+	}
+	for _, terminalState := range []jobv1.AttemptState{
+		jobv1.AttemptState_ATTEMPT_STATE_FAILED,
+		jobv1.AttemptState_ATTEMPT_STATE_TIMED_OUT,
+		jobv1.AttemptState_ATTEMPT_STATE_CANCELLED,
+	} {
+		terminalState := terminalState
+		t.Run(terminalState.String(), func(t *testing.T) {
+			t.Parallel()
+			requested := proto.Clone(stored).(*jobv1.Attempt)
+			requested.State = terminalState
+			if _, err := applyAttemptCompletionMask(stored, requested, []string{"state"}, 7); !errors.Is(err, ErrInvalidOutcome) {
+				t.Fatalf("completion without an error detail err=%v", err)
+			}
+		})
+	}
+
+	requested := proto.Clone(stored).(*jobv1.Attempt)
+	requested.State = jobv1.AttemptState_ATTEMPT_STATE_FAILED
+	requested.Error = &commonv1.ErrorDetail{}
+	if _, err := applyAttemptCompletionMask(stored, requested, []string{"state", "error"}, 7); !errors.Is(err, ErrInvalidOutcome) {
+		t.Fatalf("completion with an unspecified error code err=%v", err)
+	}
+
+	requested.Error = &commonv1.ErrorDetail{
+		Code:    commonv1.ErrorCode_ERROR_CODE_FAILED_PRECONDITION,
+		Message: "structured failure",
+	}
+	masked, err := applyAttemptCompletionMask(stored, requested, []string{"state", "error"}, 7)
+	if err != nil || !proto.Equal(masked.GetError(), requested.GetError()) {
+		t.Fatalf("completion with a structured error: value=%v err=%v", masked, err)
 	}
 }
 

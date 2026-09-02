@@ -16,6 +16,7 @@ import (
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	inferencev1 "github.com/mindclade/mindclade/protocols/generated/go/inference/v1"
 	internalinferencev1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/inference/v1"
+	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
 	policyv1 "github.com/mindclade/mindclade/protocols/generated/go/policy/v1"
 	"github.com/mindclade/mindclade/services/control_plane/internal/jobs"
 	platformdb "github.com/mindclade/mindclade/services/control_plane/internal/platform/database"
@@ -176,7 +177,7 @@ func TestPostgresInferenceJourneyIsNormalizedFencedResumableAndEventBacked(t *te
 	}
 	worker.LeaseToken = leaseToken
 	storedResult, completedOperation, replayedResult, err := repository.CommitResult(ctx, worker, commit, commitDigest, commitAt)
-	if err != nil || replayedResult || !proto.Equal(storedResult, result) || !completedOperation.GetDone() || completedOperation.GetResourceVersion() != 2 {
+	if err != nil || replayedResult || !proto.Equal(storedResult, result) || !completedOperation.GetDone() || completedOperation.GetResourceVersion() != 3 {
 		t.Fatalf("commit result=%v operation=%v replay=%v err=%v", storedResult, completedOperation, replayedResult, err)
 	}
 	storedReplay, operationReplay, replayedResult, err := repository.CommitResult(ctx, worker, clone(commit), commitDigest, commitAt.Add(time.Second))
@@ -188,14 +189,17 @@ func TestPostgresInferenceJourneyIsNormalizedFencedResumableAndEventBacked(t *te
 		t.Fatalf("result SQL roundtrip=%v operation=%v err=%v", readResult, readOperation, err)
 	}
 	requestName, history, terminal, err := repository.ReadOperationRevisions(ctx, identity, operation.GetOperationId(), 0, operationWatchBatchSize)
-	if err != nil || requestName != request.GetName() || !terminal || len(history) != 2 || history[0].GetResourceVersion() != 1 || history[1].GetResourceVersion() != 2 {
+	if err != nil || requestName != request.GetName() || !terminal || len(history) != 3 ||
+		history[0].GetResourceVersion() != 1 || history[0].GetState() != jobv1.OperationState_OPERATION_STATE_PENDING ||
+		history[1].GetResourceVersion() != 2 || history[1].GetState() != jobv1.OperationState_OPERATION_STATE_RUNNING ||
+		history[2].GetResourceVersion() != 3 || history[2].GetState() != jobv1.OperationState_OPERATION_STATE_SUCCEEDED {
 		t.Fatalf("history request=%q revisions=%v terminal=%v err=%v", requestName, history, terminal, err)
 	}
-	_, resumed, terminal, err := repository.ReadOperationRevisions(ctx, identity, operation.GetOperationId(), 2, operationWatchBatchSize)
+	_, resumed, terminal, err := repository.ReadOperationRevisions(ctx, identity, operation.GetOperationId(), 3, operationWatchBatchSize)
 	if err != nil || !terminal || len(resumed) != 0 {
 		t.Fatalf("terminal resume revisions=%v terminal=%v err=%v", resumed, terminal, err)
 	}
-	if _, _, _, err = repository.ReadOperationRevisions(ctx, identity, operation.GetOperationId(), 3, operationWatchBatchSize); !errors.Is(err, ErrCursorAhead) {
+	if _, _, _, err = repository.ReadOperationRevisions(ctx, identity, operation.GetOperationId(), 4, operationWatchBatchSize); !errors.Is(err, ErrCursorAhead) {
 		t.Fatalf("ahead cursor err=%v", err)
 	}
 	otherProject := identity
@@ -217,7 +221,7 @@ func TestPostgresInferenceJourneyIsNormalizedFencedResumableAndEventBacked(t *te
 (SELECT count(*) FROM operation_revisions WHERE tenant_id=$1)`, identity.TenantID).Scan(&events, &audits, &receipts, &operationRevisions); err != nil {
 		t.Fatal(err)
 	}
-	if events != 4 || audits != 2 || receipts != 2 || operationRevisions != 2 {
+	if events != 4 || audits != 2 || receipts != 2 || operationRevisions != 3 {
 		t.Fatalf("events=%d audits=%d receipts=%d revisions=%d", events, audits, receipts, operationRevisions)
 	}
 	rows, err := verify.QueryContext(ctx, `SELECT envelope_bytes FROM outbox_messages WHERE tenant_id=$1 ORDER BY created_at,event_type`, identity.TenantID)
@@ -262,7 +266,7 @@ JOIN jobs j ON j.tenant_id=r.tenant_id AND j.project_id=r.project_id AND j.id=r.
 WHERE a.tenant_id=$1 AND a.project_id=$2 AND a.id=$3`, identity.TenantID, identity.ProjectID, lease.Attempt.GetAttemptId()).Scan(&attemptState, &runState, &runVersion, &jobState, &jobVersion); err != nil {
 		t.Fatal(err)
 	}
-	if attemptState != "COMPLETED" || runState != "SUCCEEDED" || jobState != "SUCCEEDED" || runVersion != 3 || jobVersion != 2 {
+	if attemptState != "COMPLETED" || runState != "SUCCEEDED" || jobState != "SUCCEEDED" || runVersion != 3 || jobVersion != 3 {
 		t.Fatalf("attempt=%s run=%s/v%d job=%s/v%d", attemptState, runState, runVersion, jobState, jobVersion)
 	}
 	if _, err = verify.ExecContext(ctx, `UPDATE inference_results SET source_revision='tampered' WHERE tenant_id=$1 AND project_id=$2 AND name=$3`, identity.TenantID, identity.ProjectID, result.GetName()); err == nil {

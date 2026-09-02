@@ -53,7 +53,7 @@ const cases: ReadonlyArray<readonly [RuntimeSchema, Record<string, unknown>]> = 
   [IdentifiersSchema, { tenantId: "tenant-fixture" }],
   [DatasetSchema, { name: "datasets/fixture" }],
   [EvaluationRunSchema, { name: "evaluationRuns/fixture" }],
-  [ExperimentCreatedSchema, { experimentName: "experiments/fixture" }],
+  [ExperimentCreatedSchema, { experiment: { name: "experiments/fixture" } }],
   [AgentRunCompletedSchema, { attemptId: "attempt-fixture" }],
   [ArtifactCommittedSchema, { producerAttemptId: "attempt-fixture" }],
   [AuditEventSchema, { actorPrincipalId: "principal-fixture" }],
@@ -113,8 +113,8 @@ if (jobRequestedRegistration.lifecycleState !== "active") {
 if (jobRequestedRegistration.producers.length === 0 || jobRequestedRegistration.consumers.length === 0) {
   throw new Error("active event registration lacks producer or semantic-consumer evidence");
 }
-if (EVENT_REGISTRY_RATIFIABLE) {
-  throw new Error("candidate event registrations must block v1 ratification");
+if (!EVENT_REGISTRY_RATIFIABLE) {
+  throw new Error("the fully active event registry must be eligible for candidate ratification");
 }
 try {
   requireEventRegistration(

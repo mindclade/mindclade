@@ -688,6 +688,24 @@ func TestPostgresKernelJourney(t *testing.T) {
 		t.Fatalf("acquire replacement PostgreSQL lease: %v", err)
 	}
 	second := secondLease.Attempt
+	firstAttemptName := "tenants/" + tenantID + "/projects/project-integration/jobs/" + jobID + "/runs/" + runID + "/attempts/" + first.GetAttemptId()
+	var timedOutEnvelopeBytes []byte
+	if queryErr := db.QueryRowContext(testContext, `SELECT envelope_bytes FROM outbox_messages WHERE tenant_id=$1 AND aggregate_type='attempt' AND aggregate_id=$2 AND aggregate_sequence=2 AND event_type='mindclade.events.job.v1.AttemptCompleted'`, tenantID, firstAttemptName).Scan(&timedOutEnvelopeBytes); queryErr != nil {
+		t.Fatalf("replacement lease did not atomically record the expired attempt: %v", queryErr)
+	}
+	timedOutEnvelope, decodeErr := queue.UnmarshalEnvelope(timedOutEnvelopeBytes)
+	if decodeErr != nil {
+		t.Fatal(decodeErr)
+	}
+	timedOutPayload, decodeErr := queue.UnmarshalRegisteredPayload(timedOutEnvelope)
+	if decodeErr != nil {
+		t.Fatal(decodeErr)
+	}
+	timedOutFact, ok := timedOutPayload.(*jobv1.AttemptCompleted)
+	if !ok || timedOutFact.GetAttempt().GetState() != jobv1.AttemptState_ATTEMPT_STATE_TIMED_OUT ||
+		timedOutFact.GetRun().GetLeaseEpoch() != first.GetLeaseEpoch() || timedOutFact.GetFence().GetLeaseEpoch() != first.GetLeaseEpoch() {
+		t.Fatalf("invalid generated replacement-timeout fact: %T %v", timedOutPayload, timedOutPayload)
+	}
 	completion := proto.Clone(first).(*jobv1.Attempt)
 	completion.State = jobv1.AttemptState_ATTEMPT_STATE_SUCCEEDED
 	credentials := jobs.LeaseCredentials{TenantID: tenantID, ProjectID: "project-integration", AttemptID: first.GetAttemptId(), WorkerID: first.GetWorkerId(), Token: firstToken, Epoch: first.GetLeaseEpoch()}
@@ -705,7 +723,10 @@ func TestPostgresKernelJourney(t *testing.T) {
 	acceptedCompletion := proto.Clone(second).(*jobv1.Attempt)
 	acceptedCompletion.State = jobv1.AttemptState_ATTEMPT_STATE_FAILED
 	acceptedCompletion.Outputs = []*artifactv1.ArtifactRef{configuration}
-	acceptedCompletion.Error = richError
+	completionError := proto.Clone(richError).(*commonv1.ErrorDetail)
+	completionError.Message = "attempt terminal failure"
+	completionError.ErrorId = "completion-error-" + unique
+	acceptedCompletion.Error = completionError
 	acceptedCredentials := jobs.LeaseCredentials{TenantID: tenantID, ProjectID: "project-integration", AttemptID: second.GetAttemptId(), WorkerID: second.GetWorkerId(), Token: secondToken, Epoch: second.GetLeaseEpoch()}
 	acceptedResult, completionErr := jobsSQL.CompleteAttemptSQL(testContext, jobs.CompleteAttemptCommand{
 		Credentials: acceptedCredentials, Attempt: acceptedCompletion, UpdateMask: []string{"state", "outputs", "error"},
@@ -721,8 +742,12 @@ func TestPostgresKernelJourney(t *testing.T) {
 	if acceptedResult != nil {
 		acceptedAttempt, acceptedRun = acceptedResult.Attempt, acceptedResult.Run
 	}
-	if completionErr != nil || acceptedAttempt.GetState() != jobv1.AttemptState_ATTEMPT_STATE_FAILED || acceptedRun.GetState() != jobv1.RunState_RUN_STATE_FAILED || len(acceptedAttempt.GetOutputs()) != 1 || len(acceptedRun.GetOutputs()) != 1 || !proto.Equal(acceptedAttempt.GetOutputs()[0], configuration) || !proto.Equal(acceptedRun.GetOutputs()[0], configuration) || !proto.Equal(acceptedAttempt.GetError(), richError) || !proto.Equal(acceptedRun.GetError(), richError) {
+	if completionErr != nil || acceptedAttempt.GetState() != jobv1.AttemptState_ATTEMPT_STATE_FAILED || acceptedRun.GetState() != jobv1.RunState_RUN_STATE_FAILED || len(acceptedAttempt.GetOutputs()) != 1 || len(acceptedRun.GetOutputs()) != 1 || !proto.Equal(acceptedAttempt.GetOutputs()[0], configuration) || !proto.Equal(acceptedRun.GetOutputs()[0], configuration) || !proto.Equal(acceptedAttempt.GetError(), completionError) || !proto.Equal(acceptedRun.GetError(), completionError) {
 		t.Fatalf("PostgreSQL generated attempt/run completion round trip: attempt=%v run=%v err=%v", acceptedAttempt, acceptedRun, completionErr)
+	}
+	failedOperation, operationErr := operationsSQL.GetSQL(testContext, tenantID, "project-integration", operationID)
+	if operationErr != nil || failedOperation.GetState() != jobv1.OperationState_OPERATION_STATE_FAILED || !failedOperation.GetDone() || failedOperation.GetResult() != nil || !proto.Equal(failedOperation.GetError(), completionError) {
+		t.Fatalf("PostgreSQL terminal attempt error was not propagated to the operation: operation=%v err=%v", failedOperation, operationErr)
 	}
 
 	leaseReplay, replayErr := jobsSQL.AcquireLeaseSQL(testContext, jobs.AcquireLeaseCommand{
@@ -791,5 +816,300 @@ func TestPostgresKernelJourney(t *testing.T) {
 	completedFact, ok := completedPayload.(*jobv1.AttemptCompleted)
 	if !ok || !proto.Equal(completedFact.GetAttempt(), acceptedAttempt) || !proto.Equal(completedFact.GetRun(), acceptedRun) || completedFact.GetFence().GetLeaseTokenDigest() == "" || completedFact.GetCompletedAt() == nil {
 		t.Fatalf("invalid generated AttemptCompleted outbox fact: %T %v", completedPayload, completedPayload)
+	}
+}
+
+func TestPostgresGenericJobSchedulerLifecycle(t *testing.T) {
+	db := postgresDB(t)
+	if db == nil {
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	suffix := strings.ReplaceAll(time.Now().UTC().Format("20060102150405.000000000"), ".", "")
+	tenantID, projectID := "generic-scheduler-tenant-"+suffix, "project-1"
+	jobID, operationID := "jobs/generic-"+suffix, "operations/generic-"+suffix
+	t.Cleanup(func() {
+		cleanupContext, cleanupCancel := context.WithTimeout(context.Background(), 15*time.Second)
+		defer cleanupCancel()
+		for _, table := range []string{
+			"run_command_receipt_attempts", "run_command_receipts", "attempt_completion_history",
+			"attempt_output_refs", "attempts", "run_output_refs", "runs", "inbox_delivery_failures",
+			"inbox_messages", "dead_letter_messages", "outbox_messages", "audit_events",
+			"idempotency_records", "operations", "jobs", "error_precondition_violations",
+			"error_field_violations", "error_details", "artifact_references", "artifacts",
+		} {
+			if _, cleanupErr := db.ExecContext(cleanupContext, "DELETE FROM "+table+" WHERE tenant_id=$1", tenantID); cleanupErr != nil { //nolint:gosec // closed table list; tenant remains bound.
+				t.Errorf("clean generic scheduler table %s: %v", table, cleanupErr)
+				return
+			}
+		}
+	})
+
+	at := time.Now().UTC().Truncate(time.Microsecond)
+	configuration := &artifactv1.ArtifactRef{
+		Digest: "sha256:" + strings.Repeat("8", 64), IntegrityDigest: "sha256:" + strings.Repeat("8", 64),
+		MediaType: "application/json", SizeBytes: 1, ArtifactKind: "configuration", SchemaId: "scheduler-test", SchemaVersion: "1",
+	}
+	input := &artifactv1.ArtifactRef{
+		Digest: "sha256:" + strings.Repeat("9", 64), IntegrityDigest: "sha256:" + strings.Repeat("9", 64),
+		MediaType: "application/octet-stream", SizeBytes: 1, ArtifactKind: "input", SchemaId: "scheduler-test", SchemaVersion: "1",
+	}
+	repository := jobs.SQLRepository{DB: db}
+	requested, err := repository.RequestJobSQL(ctx, &jobv1.Job{
+		JobId: jobID, TenantId: tenantID, ProjectId: projectID, JobKind: "generic.test",
+		Input: input, Configuration: configuration, Etag: "job-etag-1",
+	}, &jobv1.Operation{
+		OperationId: operationID, TenantId: tenantID, ProjectId: projectID, JobId: jobID, Etag: "operation-etag-1",
+	}, jobs.JobCommandMetadata{
+		TenantID: tenantID, ProjectID: projectID, PrincipalID: "scheduler-test-principal",
+		IdempotencyKey: "request-generic", RequestDigest: "sha256:" + strings.Repeat("a", 64), ObservedAt: at,
+	})
+	if err != nil || requested.Replay {
+		t.Fatalf("request generic job: result=%v err=%v", requested, err)
+	}
+
+	var encoded []byte
+	if err = db.QueryRowContext(ctx, `SELECT envelope_bytes FROM outbox_messages WHERE tenant_id=$1 AND event_type='mindclade.events.job.v1.JobRequested'`, tenantID).Scan(&encoded); err != nil {
+		t.Fatal(err)
+	}
+	envelope, err := queue.UnmarshalEnvelope(encoded)
+	if err != nil {
+		t.Fatal(err)
+	}
+	payload, err := queue.UnmarshalRegisteredPayload(envelope)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, consumer := range []string{"generic-scheduler-a", "generic-scheduler-b"} {
+		accepted, consumeErr := inbox.AcceptAndHandleSQL(ctx, db, consumer, envelope, payload, jobs.JobRequestedHandler{})
+		if consumeErr != nil || !accepted {
+			t.Fatalf("consume JobRequested as %s: accepted=%v err=%v", consumer, accepted, consumeErr)
+		}
+	}
+	var runID, runState string
+	var runCount int
+	if err = db.QueryRowContext(ctx, `SELECT count(*),min(id),min(status) FROM runs WHERE tenant_id=$1 AND project_id=$2 AND job_id=$3`, tenantID, projectID, jobID).Scan(&runCount, &runID, &runState); err != nil {
+		t.Fatal(err)
+	}
+	if runCount != 1 || !strings.HasPrefix(runID, "runs/") || runState != "READY" {
+		t.Fatalf("JobRequested scheduler projection: count=%d run=%q state=%q", runCount, runID, runState)
+	}
+	createdRun, err := repository.GetRunSQL(ctx, tenantID, projectID, runID)
+	if err != nil || !proto.Equal(createdRun.GetInput(), input) || !proto.Equal(createdRun.GetConfiguration(), configuration) {
+		t.Fatalf("generic scheduler Run lost frozen inputs: run=%v err=%v", createdRun, err)
+	}
+	queuedJob, err := repository.GetJobSQL(ctx, tenantID, projectID, jobID)
+	if err != nil || queuedJob.GetState() != jobv1.JobState_JOB_STATE_QUEUED {
+		t.Fatalf("generic scheduler Job not queued: job=%v err=%v", queuedJob, err)
+	}
+	queuedOperation, err := (operations.SQLRepository{DB: db}).GetSQL(ctx, tenantID, projectID, operationID)
+	if err != nil || queuedOperation.GetState() != jobv1.OperationState_OPERATION_STATE_PENDING {
+		t.Fatalf("generic scheduler Operation advanced before acquisition: operation=%v err=%v", queuedOperation, err)
+	}
+
+	leaseAt := at.Add(time.Second)
+	token := "generic-scheduler-token-" + strings.Repeat("x", 32)
+	acquire := jobs.AcquireLeaseCommand{
+		TenantID: tenantID, RunID: runID, AttemptID: "attempts/generic-" + suffix, WorkerID: "worker-1",
+		Token: token, TokenKeyID: "scheduler-key-1", Duration: time.Minute, Now: leaseAt,
+		Command: jobs.RunCommandMetadata{
+			TenantID: tenantID, ProjectID: projectID, PrincipalID: "scheduler-test-principal", WorkerID: "worker-1",
+			Action: "run.acquire_lease", IdempotencyKey: "acquire-generic", RequestDigest: "sha256:" + strings.Repeat("b", 64), ObservedAt: leaseAt,
+		},
+	}
+	lease, err := repository.AcquireLeaseSQL(ctx, acquire)
+	if err != nil || lease.Replay {
+		t.Fatalf("acquire generic scheduler Run: result=%v err=%v", lease, err)
+	}
+	runningJob, err := repository.GetJobSQL(ctx, tenantID, projectID, jobID)
+	if err != nil || runningJob.GetState() != jobv1.JobState_JOB_STATE_RUNNING {
+		t.Fatalf("lease did not advance Job: job=%v err=%v", runningJob, err)
+	}
+	runningOperation, err := (operations.SQLRepository{DB: db}).GetSQL(ctx, tenantID, projectID, operationID)
+	if err != nil || runningOperation.GetState() != jobv1.OperationState_OPERATION_STATE_RUNNING || runningOperation.GetDone() {
+		t.Fatalf("lease did not advance Operation: operation=%v err=%v", runningOperation, err)
+	}
+	if replay, replayErr := repository.AcquireLeaseSQL(ctx, acquire); replayErr != nil || !replay.Replay {
+		t.Fatalf("acquire replay: result=%v err=%v", replay, replayErr)
+	}
+
+	completedAt := leaseAt.Add(time.Second)
+	completedAttempt := proto.Clone(lease.Attempt).(*jobv1.Attempt)
+	completedAttempt.State = jobv1.AttemptState_ATTEMPT_STATE_SUCCEEDED
+	completedAttempt.Outputs = []*artifactv1.ArtifactRef{configuration}
+	completion := jobs.CompleteAttemptCommand{
+		Credentials: jobs.LeaseCredentials{
+			TenantID: tenantID, ProjectID: projectID, AttemptID: lease.Attempt.GetAttemptId(), WorkerID: lease.Attempt.GetWorkerId(),
+			Token: token, Epoch: lease.Attempt.GetLeaseEpoch(),
+		},
+		Attempt: completedAttempt, UpdateMask: []string{"state", "outputs"}, ExpectedResourceVersion: lease.Attempt.GetResourceVersion(), Now: completedAt,
+		Command: jobs.RunCommandMetadata{
+			TenantID: tenantID, ProjectID: projectID, PrincipalID: "scheduler-test-principal", WorkerID: "worker-1",
+			Action: "run.commit_attempt", IdempotencyKey: "complete-generic", RequestDigest: "sha256:" + strings.Repeat("c", 64), ObservedAt: completedAt,
+		},
+	}
+	completed, err := repository.CompleteAttemptSQL(ctx, completion)
+	if err != nil || completed.Replay || completed.Run.GetState() != jobv1.RunState_RUN_STATE_SUCCEEDED {
+		t.Fatalf("complete generic scheduler Run: result=%v err=%v", completed, err)
+	}
+	terminalJob, err := repository.GetJobSQL(ctx, tenantID, projectID, jobID)
+	if err != nil || terminalJob.GetState() != jobv1.JobState_JOB_STATE_SUCCEEDED {
+		t.Fatalf("completion did not terminally advance Job: job=%v err=%v", terminalJob, err)
+	}
+	terminalOperation, err := (operations.SQLRepository{DB: db}).GetSQL(ctx, tenantID, projectID, operationID)
+	if err != nil || terminalOperation.GetState() != jobv1.OperationState_OPERATION_STATE_SUCCEEDED || !terminalOperation.GetDone() ||
+		!proto.Equal(terminalOperation.GetResult(), configuration) || terminalOperation.GetError() != nil ||
+		terminalOperation.GetTarget().GetResourceType() != "run" || terminalOperation.GetTarget().GetResourceId() != strings.TrimPrefix(runID, "runs/") ||
+		terminalOperation.GetTarget().GetResourceVersion() != completed.Run.GetResourceVersion() || terminalOperation.GetTarget().GetEtag() != completed.Run.GetEtag() {
+		t.Fatalf("completion did not terminally advance Operation: operation=%v err=%v", terminalOperation, err)
+	}
+	if replay, replayErr := repository.CompleteAttemptSQL(ctx, completion); replayErr != nil || !replay.Replay {
+		t.Fatalf("completion replay: result=%v err=%v", replay, replayErr)
+	}
+	unchangedJob, _ := repository.GetJobSQL(ctx, tenantID, projectID, jobID)
+	unchangedOperation, _ := (operations.SQLRepository{DB: db}).GetSQL(ctx, tenantID, projectID, operationID)
+	if unchangedJob.GetResourceVersion() != terminalJob.GetResourceVersion() || unchangedOperation.GetResourceVersion() != terminalOperation.GetResourceVersion() {
+		t.Fatalf("idempotent replay created lifecycle revisions: job=%d/%d operation=%d/%d", unchangedJob.GetResourceVersion(), terminalJob.GetResourceVersion(), unchangedOperation.GetResourceVersion(), terminalOperation.GetResourceVersion())
+	}
+}
+
+func TestPostgresCancellationExpiryFinalizesSchedulerLifecycle(t *testing.T) {
+	db := postgresDB(t)
+	if db == nil {
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	suffix := strings.ReplaceAll(time.Now().UTC().Format("20060102150405.000000000"), ".", "")
+	tenantID, projectID := "expiry-cancel-tenant-"+suffix, "project-1"
+	jobID, operationID := "jobs/expiry-cancel-"+suffix, "operations/expiry-cancel-"+suffix
+	t.Cleanup(func() {
+		cleanupContext, cleanupCancel := context.WithTimeout(context.Background(), 15*time.Second)
+		defer cleanupCancel()
+		for _, table := range []string{
+			"run_command_receipt_attempts", "run_command_receipts", "attempt_completion_history",
+			"attempt_output_refs", "attempts", "run_output_refs", "runs", "inbox_delivery_failures",
+			"inbox_messages", "dead_letter_messages", "outbox_messages", "audit_events",
+			"idempotency_records", "operations", "jobs", "error_precondition_violations",
+			"error_field_violations", "error_details", "artifact_references", "artifacts",
+		} {
+			if _, cleanupErr := db.ExecContext(cleanupContext, "DELETE FROM "+table+" WHERE tenant_id=$1", tenantID); cleanupErr != nil { //nolint:gosec // closed table list; tenant remains bound.
+				t.Errorf("clean cancellation expiry table %s: %v", table, cleanupErr)
+				return
+			}
+		}
+	})
+
+	at := time.Now().UTC().Truncate(time.Microsecond)
+	digest := "sha256:" + strings.Repeat("d", 64)
+	configuration := &artifactv1.ArtifactRef{
+		Digest: digest, IntegrityDigest: digest, MediaType: "application/json", SizeBytes: 1,
+		ArtifactKind: "configuration", SchemaId: "scheduler-test", SchemaVersion: "1",
+	}
+	repository := jobs.SQLRepository{DB: db}
+	requested, err := repository.RequestJobSQL(ctx, &jobv1.Job{
+		JobId: jobID, TenantId: tenantID, ProjectId: projectID, JobKind: "generic.test",
+		Configuration: configuration, Etag: "job-etag-1",
+	}, &jobv1.Operation{
+		OperationId: operationID, TenantId: tenantID, ProjectId: projectID, JobId: jobID, Etag: "operation-etag-1",
+	}, jobs.JobCommandMetadata{
+		TenantID: tenantID, ProjectID: projectID, PrincipalID: "scheduler-test-principal",
+		IdempotencyKey: "request-expiry-cancel", RequestDigest: "sha256:" + strings.Repeat("e", 64), ObservedAt: at,
+	})
+	if err != nil || requested.Replay {
+		t.Fatalf("request cancellation-expiry job: result=%v err=%v", requested, err)
+	}
+	var encoded []byte
+	if err = db.QueryRowContext(ctx, `SELECT envelope_bytes FROM outbox_messages WHERE tenant_id=$1 AND event_type='mindclade.events.job.v1.JobRequested'`, tenantID).Scan(&encoded); err != nil {
+		t.Fatal(err)
+	}
+	envelope, err := queue.UnmarshalEnvelope(encoded)
+	if err != nil {
+		t.Fatal(err)
+	}
+	payload, err := queue.UnmarshalRegisteredPayload(envelope)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if accepted, consumeErr := inbox.AcceptAndHandleSQL(ctx, db, "expiry-cancel-scheduler", envelope, payload, jobs.JobRequestedHandler{}); consumeErr != nil || !accepted {
+		t.Fatalf("consume cancellation-expiry JobRequested: accepted=%v err=%v", accepted, consumeErr)
+	}
+	var runID string
+	if err = db.QueryRowContext(ctx, `SELECT id FROM runs WHERE tenant_id=$1 AND project_id=$2 AND job_id=$3`, tenantID, projectID, jobID).Scan(&runID); err != nil {
+		t.Fatal(err)
+	}
+
+	leaseAt := at.Add(time.Second)
+	token := "expiry-cancellation-token-" + strings.Repeat("y", 32)
+	lease, err := repository.AcquireLeaseSQL(ctx, jobs.AcquireLeaseCommand{
+		TenantID: tenantID, RunID: runID, AttemptID: "attempts/expiry-cancel-" + suffix, WorkerID: "worker-1",
+		Token: token, TokenKeyID: "scheduler-key-1", Duration: jobs.MinimumLeaseDuration, Now: leaseAt,
+		Command: jobs.RunCommandMetadata{
+			TenantID: tenantID, ProjectID: projectID, PrincipalID: "scheduler-test-principal", WorkerID: "worker-1",
+			Action: "run.acquire_lease", IdempotencyKey: "acquire-expiry-cancel", RequestDigest: "sha256:" + strings.Repeat("f", 64), ObservedAt: leaseAt,
+		},
+	})
+	if err != nil {
+		t.Fatalf("acquire cancellation-expiry lease: %v", err)
+	}
+	runningJob, err := repository.GetJobSQL(ctx, tenantID, projectID, jobID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cancelled, err := repository.CancelJobSQL(ctx, jobID, runningJob.GetEtag(), "operator cancellation", jobs.JobCommandMetadata{
+		TenantID: tenantID, ProjectID: projectID, PrincipalID: "scheduler-test-principal",
+		IdempotencyKey: "cancel-expiry-job", RequestDigest: "sha256:" + strings.Repeat("1", 64), ObservedAt: leaseAt.Add(time.Second),
+	})
+	if err != nil || cancelled.Job.GetState() != jobv1.JobState_JOB_STATE_CANCELLING || cancelled.Operation.GetState() != jobv1.OperationState_OPERATION_STATE_CANCELLING {
+		t.Fatalf("request cancellation before expiry: result=%v err=%v", cancelled, err)
+	}
+	renewAt := leaseAt.Add(2 * time.Second)
+	if _, renewErr := repository.RenewLeaseSQL(ctx, jobs.RenewLeaseCommand{
+		Credentials: jobs.LeaseCredentials{
+			TenantID: tenantID, ProjectID: projectID, AttemptID: lease.Attempt.GetAttemptId(), WorkerID: lease.Attempt.GetWorkerId(),
+			Token: token, Epoch: lease.Attempt.GetLeaseEpoch(),
+		},
+		ExpectedResourceVersion: lease.Attempt.GetResourceVersion(), Duration: time.Minute, Now: renewAt,
+		Command: jobs.RunCommandMetadata{
+			TenantID: tenantID, ProjectID: projectID, PrincipalID: "scheduler-test-principal", WorkerID: "worker-1",
+			Action: "run.renew_lease", IdempotencyKey: "renew-after-cancel", RequestDigest: "sha256:" + strings.Repeat("3", 64), ObservedAt: renewAt,
+		},
+	}); !errors.Is(renewErr, jobs.ErrTerminalMutation) {
+		t.Fatalf("renew after cancellation error=%v, want terminal mutation", renewErr)
+	}
+	unrenewed, err := repository.GetAttemptSQL(ctx, tenantID, projectID, lease.Attempt.GetAttemptId())
+	if err != nil || unrenewed.GetResourceVersion() != lease.Attempt.GetResourceVersion() || !proto.Equal(unrenewed.GetLeaseExpiresAt(), lease.Attempt.GetLeaseExpiresAt()) {
+		t.Fatalf("rejected renewal mutated lease: attempt=%v err=%v", unrenewed, err)
+	}
+
+	expiredAt := lease.Attempt.GetLeaseExpiresAt().AsTime().Add(time.Nanosecond)
+	expire := jobs.ExpireLeasesCommand{
+		TenantID: tenantID, Limit: 10, Now: expiredAt,
+		Command: jobs.RunCommandMetadata{
+			TenantID: tenantID, ProjectID: projectID, PrincipalID: "scheduler-test-principal", WorkerID: "scheduler-1",
+			Action: "run.expire_leases", IdempotencyKey: "expire-cancelled-lease", RequestDigest: "sha256:" + strings.Repeat("2", 64), ObservedAt: expiredAt,
+		},
+	}
+	expired, err := repository.ExpireLeasesSQL(ctx, expire)
+	if err != nil || expired.Replay || len(expired.Attempts) != 1 || expired.Attempts[0].GetState() != jobv1.AttemptState_ATTEMPT_STATE_CANCELLED {
+		t.Fatalf("expire cancelling lease: result=%v err=%v", expired, err)
+	}
+	terminalRun, err := repository.GetRunSQL(ctx, tenantID, projectID, runID)
+	if err != nil || terminalRun.GetState() != jobv1.RunState_RUN_STATE_CANCELLED || terminalRun.GetError().GetCode() != commonv1.ErrorCode_ERROR_CODE_CANCELLED {
+		t.Fatalf("expiry did not cancel Run: run=%v err=%v", terminalRun, err)
+	}
+	terminalJob, err := repository.GetJobSQL(ctx, tenantID, projectID, jobID)
+	if err != nil || terminalJob.GetState() != jobv1.JobState_JOB_STATE_CANCELLED {
+		t.Fatalf("expiry did not cancel Job: job=%v err=%v", terminalJob, err)
+	}
+	terminalOperation, err := (operations.SQLRepository{DB: db}).GetSQL(ctx, tenantID, projectID, operationID)
+	if err != nil || terminalOperation.GetState() != jobv1.OperationState_OPERATION_STATE_CANCELLED || !terminalOperation.GetDone() ||
+		!proto.Equal(terminalOperation.GetError(), terminalRun.GetError()) || terminalOperation.GetTarget().GetResourceType() != "run" ||
+		terminalOperation.GetTarget().GetResourceVersion() != terminalRun.GetResourceVersion() || terminalOperation.GetTarget().GetEtag() != terminalRun.GetEtag() {
+		t.Fatalf("expiry did not cancel Operation: operation=%v err=%v", terminalOperation, err)
+	}
+	if replay, replayErr := repository.ExpireLeasesSQL(ctx, expire); replayErr != nil || !replay.Replay || len(replay.Attempts) != 1 || !proto.Equal(replay.Attempts[0], expired.Attempts[0]) {
+		t.Fatalf("cancellation expiry replay changed result: result=%v err=%v", replay, replayErr)
 	}
 }

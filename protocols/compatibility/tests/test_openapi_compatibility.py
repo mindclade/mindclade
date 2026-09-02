@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+import copy
 import hashlib
 import json
 import re
@@ -245,6 +246,23 @@ class OpenApiCompatibilityTest(unittest.TestCase):
         grpc_path = self.repository / "protocols/proto/mindclade/api/v1/mindclade_service.proto"
         grpc_source = grpc_path.read_text()
         self.assertNotIn('import "proto/mindclade/internal/', grpc_source)
+
+    def test_curated_path_and_parameter_names_are_descriptor_exact(self) -> None:
+        raw = load_yaml(self.repository / "protocols/openapi/raw/mindclade.openapi.yaml")
+
+        renamed_path = copy.deepcopy(self.openapi)
+        renamed_path["paths"] = {
+            path.replace("{tenant}", "{workspace}"): path_item
+            for path, path_item in renamed_path["paths"].items()
+        }
+        renamed_path["components"]["parameters"]["TenantId"]["name"] = "workspace"
+        with self.assertRaisesRegex(ValueError, "HTTP path binding drift"):
+            generate_protocols.validate_curated_bindings(raw, renamed_path)
+
+        renamed_parameter = copy.deepcopy(self.openapi)
+        renamed_parameter["components"]["parameters"]["TenantId"]["name"] = "workspace"
+        with self.assertRaisesRegex(ValueError, "path-parameter binding drift"):
+            generate_protocols.validate_curated_bindings(raw, renamed_parameter)
 
     def test_public_descriptor_boundary_rejects_trusted_identity_fields(self) -> None:
         candidate_path = (

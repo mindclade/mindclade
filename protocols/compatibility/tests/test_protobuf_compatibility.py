@@ -106,6 +106,35 @@ class ProtobufCompatibilityTest(unittest.TestCase):
             self.assertEqual(created.read_bytes(), b"created\n")
             self.assertFalse(stale.exists())
 
+    def test_generation_transaction_rolls_back_a_post_replace_failure(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="mindclade-post-replace-failure-") as value:
+            repository = Path(value)
+            target = repository / "protocols/generated/example.txt"
+            target.parent.mkdir(parents=True)
+            target.write_text("before\n", encoding="utf-8")
+            replace = generate_protocols.atomic_replace_generated_file
+            attempts = 0
+
+            def fail_after_first_replace(path: Path, content: bytes, mode: int = 0o644) -> None:
+                nonlocal attempts
+                attempts += 1
+                replace(path, content, mode)
+                if attempts == 1:
+                    raise OSError("synthetic post-replace durability failure")
+
+            with (
+                mock.patch.object(
+                    generate_protocols,
+                    "atomic_replace_generated_file",
+                    fail_after_first_replace,
+                ),
+                self.assertRaisesRegex(OSError, "post-replace durability failure"),
+            ):
+                generate_protocols.commit_generation_transaction(
+                    repository, {target: b"after\n"}, []
+                )
+            self.assertEqual(target.read_text(encoding="utf-8"), "before\n")
+
     def test_control_plane_explicitly_implements_every_descriptor_rpc(self) -> None:
         repository = root()
         expected = generate_grpc_implementation_coverage.render(repository)
@@ -275,6 +304,99 @@ class ProtobufCompatibilityTest(unittest.TestCase):
                 generate_protocols.validate_training_vertical_evidence(
                     repository, path, bindings=bindings
                 )
+
+    def test_ratification_requires_all_generated_outputs_and_binds_staged_bytes(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="mindclade-ratification-bindings-") as value:
+            repository = Path(value)
+            generated_outputs = {
+                repository / generate_protocols.GENERATED_MANIFEST: b"staged manifest\n",
+                repository / generate_protocols.GRPC_IMPLEMENTATION_COVERAGE: b"staged grpc\n",
+                repository / generate_protocols.PUBLISHED_OPENAPI: b"staged openapi\n",
+                repository / generate_protocols.SDK_RPC_COVERAGE: b"staged sdk\n",
+            }
+            for path in (
+                repository / generate_protocols.TOOLCHAIN_LOCK,
+                *generated_outputs,
+            ):
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_bytes(b"committed bytes\n")
+
+            generated_outputs[repository / generate_protocols.PUBLISHED_OPENAPI] = (
+                b"drifted staged openapi\n"
+            )
+            with self.assertRaisesRegex(RuntimeError, "complete committed generated estate"):
+                generate_protocols.require_current_ratification_generation(
+                    repository, generated_outputs, []
+                )
+
+            for path, content in generated_outputs.items():
+                path.write_bytes(content)
+            generate_protocols.require_current_ratification_generation(
+                repository, generated_outputs, []
+            )
+            for path in generated_outputs:
+                path.write_bytes(b"changed after drift check\n")
+
+            def fake_run(command: list[str], *, cwd: Path) -> subprocess.CompletedProcess[bytes]:
+                del cwd
+                if command[:3] == ["git", "status", "--porcelain=v1"]:
+                    return subprocess.CompletedProcess(command, 0, stdout=b"")
+                if command == ["git", "rev-parse", "HEAD"]:
+                    return subprocess.CompletedProcess(command, 0, stdout=b"a" * 40 + b"\n")
+                raise AssertionError(f"unexpected command: {command}")
+
+            def fake_tracked_paths(_root: Path, prefix: str) -> list[Path]:
+                return [
+                    Path("migration.sql")
+                    if prefix == "services/control_plane/migrations"
+                    else Path("tracked.txt")
+                ]
+
+            inventory_digest = "sha256:" + "b" * 64
+            with (
+                mock.patch.object(generate_protocols, "run", side_effect=fake_run),
+                mock.patch.object(
+                    generate_protocols,
+                    "_tracked_paths",
+                    side_effect=fake_tracked_paths,
+                ),
+                mock.patch.object(
+                    generate_protocols,
+                    "_inventory_digest",
+                    return_value=inventory_digest,
+                ),
+            ):
+                bindings = generate_protocols.ratification_bindings(
+                    repository,
+                    candidate_descriptor_digest="sha256:" + "c" * 64,
+                    event_registry_digest="sha256:" + "d" * 64,
+                    staged_outputs=generated_outputs,
+                )
+
+            self.assertEqual(
+                bindings["generated_manifest_digest"],
+                generate_protocols.sha256_bytes(
+                    generated_outputs[repository / generate_protocols.GENERATED_MANIFEST]
+                ),
+            )
+            self.assertEqual(
+                bindings["grpc_implementation_digest"],
+                generate_protocols.sha256_bytes(
+                    generated_outputs[repository / generate_protocols.GRPC_IMPLEMENTATION_COVERAGE]
+                ),
+            )
+            self.assertEqual(
+                bindings["openapi_projection_digest"],
+                generate_protocols.sha256_bytes(
+                    generated_outputs[repository / generate_protocols.PUBLISHED_OPENAPI]
+                ),
+            )
+            self.assertEqual(
+                bindings["sdk_rpc_coverage_digest"],
+                generate_protocols.sha256_bytes(
+                    generated_outputs[repository / generate_protocols.SDK_RPC_COVERAGE]
+                ),
+            )
 
     def test_committed_descriptor_candidate_matches_sources_but_is_not_a_baseline(self) -> None:
         repository = root()

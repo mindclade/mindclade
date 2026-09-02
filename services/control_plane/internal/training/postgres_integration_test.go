@@ -127,7 +127,6 @@ func TestPostgresProjectScopedSchedulerIdentitiesAndOperationHistory(t *testing.
 		t.Fatal(err)
 	}
 	for _, state := range []jobv1.OperationState{
-		jobv1.OperationState_OPERATION_STATE_RUNNING,
 		jobv1.OperationState_OPERATION_STATE_CANCELLING,
 		jobv1.OperationState_OPERATION_STATE_CANCELLED,
 	} {

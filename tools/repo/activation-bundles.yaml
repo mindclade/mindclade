@@ -601,6 +601,7 @@
         "internal/sdk/python/mindclade_internal_sdk/config.py",
         "internal/sdk/python/mindclade_internal_sdk/datasets.py",
         "internal/sdk/python/mindclade_internal_sdk/errors.py",
+        "internal/sdk/python/mindclade_internal_sdk/events.py",
         "internal/sdk/python/mindclade_internal_sdk/generated.py",
         "internal/sdk/python/mindclade_internal_sdk/inference.py",
         "internal/sdk/python/mindclade_internal_sdk/method_policy.py",
@@ -629,6 +630,7 @@
         "internal/sdk/rust/src/config.rs",
         "internal/sdk/rust/src/datasets.rs",
         "internal/sdk/rust/src/error.rs",
+        "internal/sdk/rust/src/events.rs",
         "internal/sdk/rust/src/inference.rs",
         "internal/sdk/rust/src/lib.rs",
         "internal/sdk/rust/src/models.rs",
@@ -638,12 +640,14 @@
         "internal/sdk/rust/src/request.rs",
         "internal/sdk/rust/src/retry.rs",
         "internal/sdk/rust/src/tests.rs",
+        "internal/sdk/rust/src/testing.rs",
         "internal/sdk/rust/src/training.rs",
         "internal/sdk/rust/src/transport.rs",
         "internal/sdk/rust/src/workflow_tests.rs",
         "internal/sdk/rust/src/workflows.rs",
         "internal/sdk/typescript/BUILD.bazel",
         "internal/sdk/typescript/README.md",
+        "internal/sdk/typescript/bazel/package.json",
         "internal/sdk/typescript/biome.json",
         "internal/sdk/typescript/package.json",
         "internal/sdk/typescript/src/admin.ts",
@@ -752,7 +756,8 @@
         "services/control_plane/internal/jobs/server.go",
         "services/control_plane/internal/jobs/server_test.go",
         "services/control_plane/internal/jobs/events.go",
-        "services/control_plane/internal/jobs/events_test.go"
+        "services/control_plane/internal/jobs/events_test.go",
+        "services/control_plane/internal/jobs/domain_completion_postgres_test.go"
       ]
     },
     {
@@ -854,6 +859,7 @@
         "services/control_plane/internal/agents/common_sql.go",
         "services/control_plane/internal/agents/contracts.go",
         "services/control_plane/internal/agents/events.go",
+        "services/control_plane/internal/agents/events_test.go",
         "services/control_plane/internal/agents/mapping_sql.go",
         "services/control_plane/internal/agents/pagination.go",
         "services/control_plane/internal/agents/postgres_integration_test.go",
@@ -908,7 +914,10 @@
         "tests/conformance/generated_go_roundtrip_test.go",
         "tests/conformance/generated_rust_roundtrip_test.rs",
         "tests/conformance/generated_typescript_roundtrip_test.ts",
-        "tests/conformance/test_generated_package_consumers.py"
+        "tests/conformance/test_generated_package_consumers.py",
+        "tools/qualification/readiness_report.py",
+        "tools/qualification/tests/test_training_evidence.py",
+        "tools/qualification/training_rehearsal.py"
       ]
     },
     {
@@ -1064,6 +1073,7 @@
         "workers/training_worker/BUILD.bazel",
         "workers/training_worker/README.md",
         "workers/training_worker/component.yaml",
+        "workers/training_worker/pyrightconfig.json",
         "workers/training_worker/python/control_plane.py",
         "workers/training_worker/python/main.py",
         "workers/training_worker/tests/test_control_plane.py",
@@ -1209,6 +1219,7 @@
       "paths": [
         "internal/sdk/python/mindclade_internal_sdk/resources.py",
         "examples/BUILD.bazel",
+        "examples/sdk/BUILD.bazel",
         "examples/sdk/__init__.py",
         "examples/sdk/submit_operation.py",
         "examples/sdk/follow_operation.ts",

@@ -241,6 +241,45 @@ func TestClientRegistersAgentFacade(t *testing.T) {
 	}
 }
 
+func TestAgentMutationRetryRegistryIsCompleteAndFailClosed(t *testing.T) {
+	config := defaultConfig()
+	config.TenantID, config.ProjectID, config.PrincipalID = "tenant-a", "project-a", "principal-a"
+	metadata := requestMetadata{
+		idempotencyKey: "agent-retry-key",
+		requestID:      "agent-request-id",
+		traceID:        "agent-trace-id",
+	}
+	tests := []struct {
+		method  string
+		request proto.Message
+	}{
+		{"/mindclade.internal.agent.v1.AgentService/CreateAgentDefinition", &internalagentv1.CreateAgentDefinitionRequest{}},
+		{"/mindclade.internal.agent.v1.AgentService/UpdateAgentDefinition", &internalagentv1.UpdateAgentDefinitionRequest{}},
+		{"/mindclade.internal.agent.v1.AgentService/StartAgentRun", &internalagentv1.StartAgentRunRequest{}},
+		{"/mindclade.internal.agent.v1.AgentService/CancelAgentRun", &internalagentv1.CancelAgentRunRequest{}},
+		{"/mindclade.internal.agent.v1.AgentService/CommitAgentStep", &internalagentv1.CommitAgentStepRequest{}},
+		{"/mindclade.internal.agent.v1.AgentService/CommitToolReceipt", &internalagentv1.CommitToolReceiptRequest{}},
+	}
+	ctx := contextWithDeadline(t)
+	for _, test := range tests {
+		t.Run(test.method, func(t *testing.T) {
+			digest, err := deterministicDigest(test.request)
+			if err != nil {
+				t.Fatal(err)
+			}
+			setCommandContext(test.request, commandContext(config, ctx, metadata, digest))
+			if !retryPermitted(test.method, test.request, metadata, config) {
+				t.Fatal("fully bound agent mutation was not retry-safe")
+			}
+			mismatched := metadata
+			mismatched.idempotencyKey = "different-key"
+			if retryPermitted(test.method, test.request, mismatched, config) {
+				t.Fatal("mismatched metadata promoted agent mutation retry safety")
+			}
+		})
+	}
+}
+
 func cloneGeneratedSlice[T proto.Message](values []T) []T {
 	result := make([]T, len(values))
 	for index, value := range values {

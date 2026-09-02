@@ -10,6 +10,7 @@ import (
 	datasetv1 "github.com/mindclade/mindclade/protocols/generated/go/dataset/v1"
 	inferencev1 "github.com/mindclade/mindclade/protocols/generated/go/inference/v1"
 	internaladminv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/admin/v1"
+	internalagentv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/agent/v1"
 	internalartifactv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/artifact/v1"
 	internaldatasetv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/dataset/v1"
 	internalinferencev1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/inference/v1"
@@ -92,6 +93,12 @@ type mutationRetryValidator func(any, requestMetadata, Config) bool
 // whose key, scope, and canonical digest match the actual request. Merely
 // attaching idempotency metadata can never promote an arbitrary raw mutation.
 var idempotentMutationMethods = map[string]mutationRetryValidator{
+	"/mindclade.internal.agent.v1.AgentService/CreateAgentDefinition":             validateAgentMutationRetry,
+	"/mindclade.internal.agent.v1.AgentService/UpdateAgentDefinition":             validateAgentMutationRetry,
+	"/mindclade.internal.agent.v1.AgentService/StartAgentRun":                     validateAgentMutationRetry,
+	"/mindclade.internal.agent.v1.AgentService/CancelAgentRun":                    validateAgentMutationRetry,
+	"/mindclade.internal.agent.v1.AgentService/CommitAgentStep":                   validateAgentMutationRetry,
+	"/mindclade.internal.agent.v1.AgentService/CommitToolReceipt":                 validateAgentMutationRetry,
 	"/mindclade.internal.job.v1.OperationService/CancelOperation":                 validateCancelOperationRetry,
 	"/mindclade.internal.job.v1.JobService/RequestJob":                            validateJobMutationRetry,
 	"/mindclade.internal.job.v1.JobService/CancelJob":                             validateJobMutationRetry,
@@ -156,6 +163,41 @@ var idempotentMutationMethods = map[string]mutationRetryValidator{
 	"/mindclade.internal.workflow.v1.ApprovalService/RequestApproval":             validateWorkflowMutationRetry,
 	"/mindclade.internal.workflow.v1.ApprovalService/DecideApproval":              validateWorkflowMutationRetry,
 	"/mindclade.internal.workflow.v1.ApprovalService/ConsumeApproval":             validateWorkflowMutationRetry,
+}
+
+func validateAgentMutationRetry(request any, metadata requestMetadata, config Config) bool {
+	var command *commonv1.CommandContext
+	var message proto.Message
+	switch typed := request.(type) {
+	case *internalagentv1.CreateAgentDefinitionRequest:
+		copyMessage := proto.Clone(typed).(*internalagentv1.CreateAgentDefinitionRequest)
+		command, copyMessage.Context = copyMessage.Context, nil
+		message = copyMessage
+	case *internalagentv1.UpdateAgentDefinitionRequest:
+		copyMessage := proto.Clone(typed).(*internalagentv1.UpdateAgentDefinitionRequest)
+		command, copyMessage.Context = copyMessage.Context, nil
+		message = copyMessage
+	case *internalagentv1.StartAgentRunRequest:
+		copyMessage := proto.Clone(typed).(*internalagentv1.StartAgentRunRequest)
+		command, copyMessage.Context = copyMessage.Context, nil
+		message = copyMessage
+	case *internalagentv1.CancelAgentRunRequest:
+		copyMessage := proto.Clone(typed).(*internalagentv1.CancelAgentRunRequest)
+		command, copyMessage.Context = copyMessage.Context, nil
+		message = copyMessage
+	case *internalagentv1.CommitAgentStepRequest:
+		copyMessage := proto.Clone(typed).(*internalagentv1.CommitAgentStepRequest)
+		command, copyMessage.Context = copyMessage.Context, nil
+		message = copyMessage
+	case *internalagentv1.CommitToolReceiptRequest:
+		copyMessage := proto.Clone(typed).(*internalagentv1.CommitToolReceiptRequest)
+		command, copyMessage.Context = copyMessage.Context, nil
+		message = copyMessage
+	default:
+		return false
+	}
+	digest, err := deterministicDigest(message)
+	return err == nil && validRetryContext(command, metadata, config, digest)
 }
 
 func validateJobMutationRetry(request any, metadata requestMetadata, config Config) bool {

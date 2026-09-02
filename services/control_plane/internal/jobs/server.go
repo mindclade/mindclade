@@ -762,7 +762,7 @@ func (s *RunServer) CancelAttempt(ctx context.Context, request *internaljobv1.Ca
 	}
 	result, err := s.repository.CancelAttemptSQL(ctx, CancelAttemptCommand{
 		Credentials: credentials, ExpectedResourceVersion: request.GetExpectedResourceVersion(),
-		Now: now, Command: commandMetadata,
+		Reason: request.GetReason(), Now: now, Command: commandMetadata,
 	})
 	if err != nil {
 		return nil, runRPCError(err)

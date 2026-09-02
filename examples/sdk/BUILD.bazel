@@ -1,0 +1,92 @@
+load("@aspect_rules_js//js:defs.bzl", "js_test")
+load("@aspect_rules_ts//ts:defs.bzl", "ts_config", "ts_project")
+load("@npm//:defs.bzl", "npm_link_all_packages")
+load("@rules_python//python:defs.bzl", "py_library", "py_test")
+
+package(default_visibility = ["//visibility:private"])
+
+# pnpm declares examples/sdk as a workspace project. Keep the npm link rule in
+# this matching Bazel package so rules_js can resolve the hermetic dependency
+# graph from pnpm-lock.yaml.
+npm_link_all_packages(name = "node_modules")
+
+py_library(
+    name = "python_examples",
+    srcs = [
+        "__init__.py",
+        "download_artifact.py",
+        "submit_operation.py",
+    ],
+    imports = ["../.."],
+    deps = ["//internal/sdk/python:mindclade_internal_sdk"],
+)
+
+py_test(
+    name = "python_examples_test",
+    srcs = ["test_sdk_examples.py"],
+    legacy_create_init = 0,
+    main = "test_sdk_examples.py",
+    deps = [
+        ":python_examples",
+        "//internal/sdk/python:mindclade_internal_sdk",
+    ],
+)
+
+ts_config(
+    name = "tsconfig",
+    src = "tsconfig.json",
+    deps = [
+        "package.json",
+        "//internal/sdk/typescript:mindclade_internal_sdk",
+    ],
+)
+
+ts_project(
+    name = "typescript_examples",
+    srcs = [
+        "follow_operation.test.ts",
+        "follow_operation.ts",
+    ],
+    declaration = True,
+    transpiler = "tsc",
+    tsconfig = ":tsconfig",
+    deps = [
+        ":node_modules/@mindclade/internal-sdk",
+        ":node_modules/@types/node",
+        "//internal/sdk/typescript:mindclade_internal_sdk",
+    ],
+)
+
+js_test(
+    name = "typescript_examples_test",
+    data = [
+        ":node_modules/@mindclade/internal-sdk",
+        ":typescript_examples",
+        "//internal/sdk/typescript:mindclade_internal_sdk",
+    ],
+    entry_point = "follow_operation.test.ts",
+)
+
+filegroup(
+    name = "governed_sources",
+    srcs = [
+        "BUILD.bazel",
+        "README.md",
+        "biome.json",
+        "package.json",
+        "tsconfig.json",
+    ] + glob([
+        "*.py",
+        "*.ts",
+    ]),
+    visibility = ["//visibility:public"],
+)
+
+test_suite(
+    name = "tests",
+    tests = [
+        ":python_examples_test",
+        ":typescript_examples_test",
+    ],
+    visibility = ["//examples:__pkg__"],
+)

@@ -754,7 +754,7 @@ func verifyDatabase(ctx context.Context, db *sql.DB) error {
 	var usePolicyTable, administrativeProjectTable, administrativeAuditTable, policyAdminReceiptTable bool
 	var eventAuditProjectionTable, eventAuditProjectionHeadTable bool
 	var experimentTable, experimentStudyTable, experimentTrialTable, experimentReceiptTable bool
-	var forcedDataModelRLS, forcedEvaluationInferenceRLS, forcedWorkflowAgentRLS, forcedPolicyAdminRLS, forcedEventProjectionRLS, forcedExperimentRLS int
+	var forcedFoundationRLS, forcedDataModelRLS, forcedEvaluationInferenceRLS, forcedWorkflowAgentRLS, forcedPolicyAdminRLS, forcedEventProjectionRLS, forcedExperimentRLS int
 	if err := db.QueryRowContext(ctx, `
 SELECT role.rolsuper, role.rolbypassrls,
        to_regclass('public.training_runs') IS NOT NULL,
@@ -783,6 +783,14 @@ SELECT role.rolsuper, role.rolbypassrls,
 	   to_regclass('public.experiment_studies') IS NOT NULL,
 	   to_regclass('public.experiment_trials') IS NOT NULL,
 	   to_regclass('public.experiment_command_receipts') IS NOT NULL,
+	   (SELECT count(*) FROM pg_class AS isolated WHERE isolated.relnamespace = 'public'::regnamespace AND isolated.relname = ANY(ARRAY[
+	     'artifact_references','resource_references','error_details','error_field_violations','error_precondition_violations',
+	     'operations','operation_revisions','training_progress_snapshots','training_runs','training_run_labels','training_checkpoints',
+	     'jobs','runs','run_output_refs','attempts','attempt_output_refs','attempt_completion_history','run_command_receipts',
+	     'run_command_receipt_attempts','artifacts','idempotency_records','audit_events','outbox_messages','inbox_messages',
+	     'inbox_delivery_failures','dead_letter_messages','dead_letter_replay_receipts','artifact_staging_receipts','artifact_upload_sessions','artifact_upload_chunks',
+	     'artifact_catalog_entries','artifact_aliases','artifact_quarantine_evidence','artifact_leases','artifact_operations','artifact_command_receipts'
+	   ]) AND isolated.relrowsecurity AND isolated.relforcerowsecurity),
 	   (SELECT count(*) FROM pg_class AS isolated WHERE isolated.relnamespace = 'public'::regnamespace AND isolated.relname = ANY(ARRAY[
 	     'datasets','dataset_labels','dataset_annotations','dataset_releases',
 	     'dataset_release_qualification_evidence','dataset_release_revocation_evidence',
@@ -831,7 +839,7 @@ FROM pg_roles AS role WHERE role.rolname = current_user`).Scan(
 		&usePolicyTable, &administrativeProjectTable, &administrativeAuditTable, &policyAdminReceiptTable,
 		&eventAuditProjectionTable, &eventAuditProjectionHeadTable,
 		&experimentTable, &experimentStudyTable, &experimentTrialTable, &experimentReceiptTable,
-		&forcedDataModelRLS, &forcedEvaluationInferenceRLS, &forcedWorkflowAgentRLS, &forcedPolicyAdminRLS, &forcedEventProjectionRLS, &forcedExperimentRLS,
+		&forcedFoundationRLS, &forcedDataModelRLS, &forcedEvaluationInferenceRLS, &forcedWorkflowAgentRLS, &forcedPolicyAdminRLS, &forcedEventProjectionRLS, &forcedExperimentRLS,
 	); err != nil {
 		return fmt.Errorf("verify PostgreSQL runtime role: %w", err)
 	}
@@ -843,6 +851,9 @@ FROM pg_roles AS role WHERE role.rolname = current_user`).Scan(
 	}
 	if !artifactTable || !stagingReceiptTable {
 		return errors.New("PostgreSQL migrations are incomplete: artifact catalog or staging receipts are absent")
+	}
+	if forcedFoundationRLS != 36 {
+		return fmt.Errorf("PostgreSQL foundation tenant isolation is incomplete: %d/36 tables force RLS", forcedFoundationRLS)
 	}
 	if !datasetTable || !datasetReleaseTable || !modelTable || !modelReleaseTable || !dataModelReceiptTable {
 		return errors.New("PostgreSQL migrations are incomplete: dataset/model lifecycle tables are absent")
