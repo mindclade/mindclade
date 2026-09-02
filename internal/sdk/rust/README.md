@@ -24,8 +24,9 @@ singleflight. Secure clients require a token provider. The only credential-free
 mode is `Config::local_insecure_builder`, which is restricted to an explicit
 plaintext loopback endpoint and cannot be combined with credentials.
 Set `ConfigBuilder::audience` to the verifier's exact configured OIDC audience.
-If omitted, the current fallback is the endpoint URL literally, including an
-explicit `:443`; no cross-language default-port normalization is promised.
+If omitted, the SDK derives the endpoint's canonical HTTPS origin: the host is
+lowercase, IPv6 remains bracketed, default `:443` is omitted, and a non-default
+port is retained.
 
 Operation watches resume from the last accepted sequence after bounded
 consecutive retryable failures, retain one total deadline, reject malformed or

@@ -28,8 +28,20 @@ public_http: _descriptor.FieldDescriptor
 PUBLIC_MESSAGE_FIELD_NUMBER: _ClassVar[int]
 public_message: _descriptor.FieldDescriptor
 
+class PublicSseContract(_message.Message):
+    __slots__ = ("retry_milliseconds", "heartbeat_interval_seconds", "heartbeat_reuses_last_durable_event_id", "replay_acknowledged_terminal_event")
+    RETRY_MILLISECONDS_FIELD_NUMBER: _ClassVar[int]
+    HEARTBEAT_INTERVAL_SECONDS_FIELD_NUMBER: _ClassVar[int]
+    HEARTBEAT_REUSES_LAST_DURABLE_EVENT_ID_FIELD_NUMBER: _ClassVar[int]
+    REPLAY_ACKNOWLEDGED_TERMINAL_EVENT_FIELD_NUMBER: _ClassVar[int]
+    retry_milliseconds: int
+    heartbeat_interval_seconds: int
+    heartbeat_reuses_last_durable_event_id: bool
+    replay_acknowledged_terminal_event: bool
+    def __init__(self, retry_milliseconds: _Optional[int] = ..., heartbeat_interval_seconds: _Optional[int] = ..., heartbeat_reuses_last_durable_event_id: _Optional[bool] = ..., replay_acknowledged_terminal_event: _Optional[bool] = ...) -> None: ...
+
 class PublicHttpContract(_message.Message):
-    __slots__ = ("success_status", "bearer_auth", "request_headers", "response_headers", "stream", "non_success_status", "request_body_required", "required_request_headers")
+    __slots__ = ("success_status", "bearer_auth", "request_headers", "response_headers", "stream", "non_success_status", "request_body_required", "required_request_headers", "sse")
     SUCCESS_STATUS_FIELD_NUMBER: _ClassVar[int]
     BEARER_AUTH_FIELD_NUMBER: _ClassVar[int]
     REQUEST_HEADERS_FIELD_NUMBER: _ClassVar[int]
@@ -38,6 +50,7 @@ class PublicHttpContract(_message.Message):
     NON_SUCCESS_STATUS_FIELD_NUMBER: _ClassVar[int]
     REQUEST_BODY_REQUIRED_FIELD_NUMBER: _ClassVar[int]
     REQUIRED_REQUEST_HEADERS_FIELD_NUMBER: _ClassVar[int]
+    SSE_FIELD_NUMBER: _ClassVar[int]
     success_status: _containers.RepeatedScalarFieldContainer[int]
     bearer_auth: bool
     request_headers: _containers.RepeatedScalarFieldContainer[str]
@@ -46,7 +59,8 @@ class PublicHttpContract(_message.Message):
     non_success_status: _containers.RepeatedScalarFieldContainer[int]
     request_body_required: bool
     required_request_headers: _containers.RepeatedScalarFieldContainer[str]
-    def __init__(self, success_status: _Optional[_Iterable[int]] = ..., bearer_auth: _Optional[bool] = ..., request_headers: _Optional[_Iterable[str]] = ..., response_headers: _Optional[_Iterable[str]] = ..., stream: _Optional[_Union[StreamProjection, str]] = ..., non_success_status: _Optional[_Iterable[int]] = ..., request_body_required: _Optional[bool] = ..., required_request_headers: _Optional[_Iterable[str]] = ...) -> None: ...
+    sse: PublicSseContract
+    def __init__(self, success_status: _Optional[_Iterable[int]] = ..., bearer_auth: _Optional[bool] = ..., request_headers: _Optional[_Iterable[str]] = ..., response_headers: _Optional[_Iterable[str]] = ..., stream: _Optional[_Union[StreamProjection, str]] = ..., non_success_status: _Optional[_Iterable[int]] = ..., request_body_required: _Optional[bool] = ..., required_request_headers: _Optional[_Iterable[str]] = ..., sse: _Optional[_Union[PublicSseContract, _Mapping]] = ...) -> None: ...
 
 class PublicStringEnumContract(_message.Message):
     __slots__ = ("field", "values")
@@ -185,7 +199,7 @@ class Operation(_message.Message):
     def __init__(self, name: _Optional[str] = ..., uid: _Optional[str] = ..., revision: _Optional[int] = ..., etag: _Optional[str] = ..., state: _Optional[str] = ..., done: _Optional[bool] = ..., create_time: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., update_time: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., target: _Optional[_Union[ResourceRef, _Mapping]] = ..., result: _Optional[_Union[OperationResult, _Mapping]] = ..., error: _Optional[_Union[PublicError, _Mapping]] = ...) -> None: ...
 
 class OperationEvent(_message.Message):
-    __slots__ = ("event_id", "operation", "event_type", "schema_version", "operation_revision", "resume_cursor", "heartbeat", "emitted_at")
+    __slots__ = ("event_id", "operation", "event_type", "schema_version", "operation_revision", "resume_cursor", "heartbeat", "emitted_at", "error")
     EVENT_ID_FIELD_NUMBER: _ClassVar[int]
     OPERATION_FIELD_NUMBER: _ClassVar[int]
     EVENT_TYPE_FIELD_NUMBER: _ClassVar[int]
@@ -194,6 +208,7 @@ class OperationEvent(_message.Message):
     RESUME_CURSOR_FIELD_NUMBER: _ClassVar[int]
     HEARTBEAT_FIELD_NUMBER: _ClassVar[int]
     EMITTED_AT_FIELD_NUMBER: _ClassVar[int]
+    ERROR_FIELD_NUMBER: _ClassVar[int]
     event_id: str
     operation: Operation
     event_type: str
@@ -202,7 +217,8 @@ class OperationEvent(_message.Message):
     resume_cursor: str
     heartbeat: bool
     emitted_at: _timestamp_pb2.Timestamp
-    def __init__(self, event_id: _Optional[str] = ..., operation: _Optional[_Union[Operation, _Mapping]] = ..., event_type: _Optional[str] = ..., schema_version: _Optional[int] = ..., operation_revision: _Optional[int] = ..., resume_cursor: _Optional[str] = ..., heartbeat: _Optional[bool] = ..., emitted_at: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ...) -> None: ...
+    error: PublicError
+    def __init__(self, event_id: _Optional[str] = ..., operation: _Optional[_Union[Operation, _Mapping]] = ..., event_type: _Optional[str] = ..., schema_version: _Optional[int] = ..., operation_revision: _Optional[int] = ..., resume_cursor: _Optional[str] = ..., heartbeat: _Optional[bool] = ..., emitted_at: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., error: _Optional[_Union[PublicError, _Mapping]] = ...) -> None: ...
 
 class CancellationRequest(_message.Message):
     __slots__ = ("reason",)

@@ -1,4 +1,4 @@
-use std::{fmt, sync::Arc, time::Duration};
+use std::{fmt, net::IpAddr, sync::Arc, time::Duration};
 
 use tonic::codegen::http::Uri;
 
@@ -215,6 +215,12 @@ impl Config {
         &self.endpoint
     }
 
+    /// Returns the exact OIDC audience used for workload-identity credentials.
+    #[must_use]
+    pub fn audience(&self) -> &str {
+        &self.audience
+    }
+
     #[must_use]
     pub fn identity(&self) -> &Identity {
         &self.identity
@@ -352,7 +358,9 @@ impl ConfigBuilder {
             ));
         }
 
-        let audience = self.audience.unwrap_or_else(|| endpoint.clone());
+        let audience = self
+            .audience
+            .unwrap_or_else(|| canonical_https_origin(&uri));
         validate_metadata_value("credential audience", &audience, true)?;
 
         let server_name = self.server_name.map(|value| value.trim().to_owned());
@@ -457,6 +465,26 @@ fn is_loopback_host(host: &str) -> bool {
     matches!(host, "localhost" | "127.0.0.1" | "::1" | "[::1]")
 }
 
+fn canonical_https_origin(uri: &Uri) -> String {
+    let host = uri
+        .host()
+        .expect("validated endpoints always have a host")
+        .trim_start_matches('[')
+        .trim_end_matches(']');
+    let canonical_host = host
+        .parse::<IpAddr>()
+        .map_or_else(|_| host.to_ascii_lowercase(), |value| value.to_string());
+    let origin_host = if canonical_host.contains(':') {
+        format!("[{canonical_host}]")
+    } else {
+        canonical_host
+    };
+    match uri.port_u16() {
+        Some(port) if port != 443 => format!("https://{origin_host}:{port}"),
+        _ => format!("https://{origin_host}"),
+    }
+}
+
 fn validate_server_name(value: &str) -> Result<(), Error> {
     validate_metadata_value("TLS server name", value, true)?;
     if value.contains(['/', ':', '@']) {
@@ -479,4 +507,62 @@ pub(crate) fn validate_metadata_value(
         )));
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod audience_tests {
+    use std::sync::Arc;
+
+    use tonic::codegen::async_trait;
+
+    use super::{Config, Environment, Identity};
+    use crate::{AccessToken, Error, TokenProvider};
+
+    struct NeverTokenProvider;
+
+    #[async_trait]
+    impl TokenProvider for NeverTokenProvider {
+        async fn token(&self, _audience: &str) -> Result<AccessToken, Error> {
+            Err(Error::authentication("test provider is never invoked"))
+        }
+    }
+
+    fn config(endpoint: &str, audience: Option<&str>) -> Config {
+        let identity = Identity::new("tenant-01", "project-01", "principal-01").unwrap();
+        let mut builder = Config::builder(
+            Environment::Development,
+            identity,
+            Arc::new(NeverTokenProvider),
+        )
+        .endpoint(endpoint);
+        if let Some(value) = audience {
+            builder = builder.audience(value);
+        }
+        builder.build().unwrap()
+    }
+
+    #[test]
+    fn workload_identity_audience_uses_canonical_https_origin() {
+        for (endpoint, expected) in [
+            (
+                "https://CONTROL-PLANE.EXAMPLE:443",
+                "https://control-plane.example",
+            ),
+            (
+                "https://control-plane.example:8443",
+                "https://control-plane.example:8443",
+            ),
+            ("https://[2001:db8::1]:443", "https://[2001:db8::1]"),
+        ] {
+            assert_eq!(config(endpoint, None).audience(), expected);
+        }
+        assert_eq!(
+            config(
+                "https://control-plane.example:443",
+                Some("https://verifier.example/custom-audience"),
+            )
+            .audience(),
+            "https://verifier.example/custom-audience"
+        );
+    }
 }

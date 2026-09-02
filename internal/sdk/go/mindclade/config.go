@@ -381,9 +381,20 @@ func defaultAudience(endpoint string) string {
 	if err != nil {
 		return ""
 	}
-	host = strings.Trim(host, "[]")
-	if port == "443" {
-		return "https://" + host
+	host = strings.ToLower(strings.Trim(host, "[]"))
+	if parsed := net.ParseIP(host); parsed != nil {
+		host = parsed.String()
 	}
-	return "https://" + net.JoinHostPort(host, port)
+	portNumber, err := strconv.ParseUint(port, 10, 16)
+	if err != nil || portNumber == 0 {
+		return ""
+	}
+	originHost := host
+	if strings.Contains(host, ":") {
+		originHost = "[" + host + "]"
+	}
+	if portNumber == 443 {
+		return "https://" + originHost
+	}
+	return "https://" + net.JoinHostPort(host, strconv.FormatUint(portNumber, 10))
 }

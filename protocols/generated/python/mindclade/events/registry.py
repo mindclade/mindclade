@@ -7,7 +7,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Final
 
-EVENT_DESCRIPTOR_DIGEST: Final = "sha256:e53ce4489fb3bf19a0f0fe3a417806fa4b7aecf32f58d189994ae09e33baeb61"
+EVENT_DESCRIPTOR_DIGEST: Final = "sha256:46514bdee27df6f41f03b63f050b2cfcb95867fc8f291fe943eaf2019693c0ed"
 DETERMINISTIC_PROTOBUF_CONTENT_TYPE: Final = "application/x-protobuf; deterministic=true"
 
 

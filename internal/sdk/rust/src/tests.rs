@@ -932,8 +932,8 @@ async fn training_submit_retries_idempotently_and_binds_generated_context() {
     assert_eq!(
         provider.audiences.lock().unwrap().as_slice(),
         [
-            "https://control-plane.development.mindclade.internal:443",
-            "https://control-plane.development.mindclade.internal:443"
+            "https://control-plane.development.mindclade.internal",
+            "https://control-plane.development.mindclade.internal"
         ]
     );
 }
@@ -1829,6 +1829,15 @@ async fn artifact_upload_resumes_in_a_fresh_client_and_verifies_generated_transf
     assert_eq!(destination, content);
 }
 
+fn artifact_download_test_directory() -> std::path::PathBuf {
+    let directory = std::env::temp_dir().join(format!(
+        "mindclade-sdk-artifact-{}",
+        crate::request::generate_request_id()
+    ));
+    std::fs::create_dir(&directory).unwrap();
+    directory
+}
+
 #[tokio::test]
 async fn artifact_download_file_is_atomic_verified_and_no_clobber() {
     let content = b"atomic-artifact";
@@ -1861,11 +1870,7 @@ async fn artifact_download_file_is_atomic_verified_and_no_clobber() {
         transport.clone(),
     );
     let artifacts = client.artifacts();
-    let directory = std::env::temp_dir().join(format!(
-        "mindclade-sdk-artifact-{}",
-        crate::request::generate_request_id()
-    ));
-    std::fs::create_dir(&directory).unwrap();
+    let directory = artifact_download_test_directory();
 
     let destination = directory.join("artifact.bin");
     assert_eq!(

@@ -37,6 +37,44 @@ func TestPlaintextAuthorityRequiresExactLoopback(t *testing.T) {
 	}
 }
 
+func TestWorkloadIdentityAudienceUsesCanonicalHTTPSOrigin(t *testing.T) {
+	for _, test := range []struct {
+		endpoint string
+		want     string
+	}{
+		{endpoint: "CONTROL-PLANE.EXAMPLE:443", want: "https://control-plane.example"},
+		{endpoint: "control-plane.example:8443", want: "https://control-plane.example:8443"},
+		{endpoint: "[2001:db8::1]:443", want: "https://[2001:db8::1]"},
+	} {
+		config := defaultConfig()
+		config.Endpoint = test.endpoint
+		config.TenantID = "tenant-a"
+		config.ProjectID = "project-a"
+		config.PrincipalID = "principal-a"
+		config.workloadIdentity = true
+		if err := config.finalize(); err != nil {
+			t.Fatalf("finalize %q: %v", test.endpoint, err)
+		}
+		if config.Audience != test.want {
+			t.Fatalf("audience for %q = %q, want %q", test.endpoint, config.Audience, test.want)
+		}
+	}
+
+	config := defaultConfig()
+	config.Endpoint = "control-plane.example:443"
+	config.Audience = "https://verifier.example/custom-audience"
+	config.TenantID = "tenant-a"
+	config.ProjectID = "project-a"
+	config.PrincipalID = "principal-a"
+	config.workloadIdentity = true
+	if err := config.finalize(); err != nil {
+		t.Fatal(err)
+	}
+	if config.Audience != "https://verifier.example/custom-audience" {
+		t.Fatalf("explicit audience was changed: %q", config.Audience)
+	}
+}
+
 func TestRawMutationMetadataCannotPromoteRetrySafety(t *testing.T) {
 	config := defaultConfig()
 	config.TenantID = "tenant-a"

@@ -81,6 +81,7 @@ paths:
                 $ref: '#/components/schemas/mindclade.api.v1.PublicError'
       security:
         - bearerAuth: []
+      x-mindclade-operation-kind: unary
       requestBody:
         content:
           application/json:
@@ -151,6 +152,7 @@ paths:
                 $ref: '#/components/schemas/mindclade.api.v1.PublicError'
       security:
         - bearerAuth: []
+      x-mindclade-operation-kind: unary
       requestBody:
         content:
           application/json:
@@ -219,6 +221,7 @@ paths:
                 $ref: '#/components/schemas/mindclade.api.v1.PublicError'
       security:
         - bearerAuth: []
+      x-mindclade-operation-kind: unary
   /v1/tenants/{tenant}/projects/{project}/operations/{operation}:
     get:
       operationId: getOperation
@@ -276,6 +279,7 @@ paths:
                 $ref: '#/components/schemas/mindclade.api.v1.PublicError'
       security:
         - bearerAuth: []
+      x-mindclade-operation-kind: unary
   /v1/tenants/{tenant}/projects/{project}/trainingRuns/{trainingRun}:
     get:
       operationId: getTrainingRun
@@ -333,6 +337,7 @@ paths:
                 $ref: '#/components/schemas/mindclade.api.v1.PublicError'
       security:
         - bearerAuth: []
+      x-mindclade-operation-kind: unary
   /v1/tenants/{tenant}/projects/{project}/operations/{operation}:watch:
     get:
       operationId: watchOperation
@@ -371,6 +376,12 @@ paths:
             text/event-stream:
               schema:
                 $ref: '#/components/schemas/mindclade.api.v1.OperationEvent'
+        '400':
+          description: Descriptor-derived response contract.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/mindclade.api.v1.PublicError'
         '401':
           description: Descriptor-derived response contract.
           content:
@@ -389,8 +400,35 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/mindclade.api.v1.PublicError'
+        '410':
+          description: Descriptor-derived response contract.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/mindclade.api.v1.PublicError'
+        '412':
+          description: Descriptor-derived response contract.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/mindclade.api.v1.PublicError'
+        '500':
+          description: Descriptor-derived response contract.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/mindclade.api.v1.PublicError'
       security:
         - bearerAuth: []
+      x-mindclade-operation-kind: sse
+      x-mindclade-sse:
+        errorEventType: error
+        eventModel: mindclade.api.v1.OperationEvent
+        resumeHeader: Last-Event-ID
+        retryMilliseconds: 3000
+        heartbeatIntervalSeconds: 15
+        heartbeatReusesLastDurableEventId: true
+        replayAcknowledgedTerminalEvent: false
 components:
   schemas:
     mindclade.api.v1.AgentBudget:
@@ -1511,6 +1549,7 @@ components:
             - operation.updated
             - operation.terminal
             - heartbeat
+            - error
         schemaVersion:
           format: uint32
           type: integer
@@ -1524,10 +1563,14 @@ components:
         emittedAt:
           format: date-time
           type: string
+        error:
+          $ref: '#/components/schemas/mindclade.api.v1.PublicError'
       required:
         - emittedAt
         - eventId
         - eventType
+        - heartbeat
+        - operationRevision
         - resumeCursor
         - schemaVersion
       type: object
@@ -1696,6 +1739,8 @@ components:
           items:
             type: string
           type: array
+        sse:
+          $ref: '#/components/schemas/mindclade.api.v1.PublicSseContract'
       required: []
       type: object
     mindclade.api.v1.PublicMessageContract:
@@ -1709,6 +1754,21 @@ components:
           items:
             $ref: '#/components/schemas/mindclade.api.v1.PublicStringEnumContract'
           type: array
+      required: []
+      type: object
+    mindclade.api.v1.PublicSseContract:
+      x-mindclade-oneofs: {}
+      properties:
+        retryMilliseconds:
+          format: uint32
+          type: integer
+        heartbeatIntervalSeconds:
+          format: uint32
+          type: integer
+        heartbeatReusesLastDurableEventId:
+          type: boolean
+        replayAcknowledgedTerminalEvent:
+          type: boolean
       required: []
       type: object
     mindclade.api.v1.PublicStringEnumContract:
@@ -2048,6 +2108,7 @@ x-mindclade-binding-contracts:
     bodyMessage: mindclade.api.v1.CancellationRequest
     method: POST
     operationId: cancelOperation
+    operationKind: unary
     pathFields:
       - name
     pathTemplate: /v1/{name=tenants/*/projects/*/operations/*}:cancel
@@ -2081,6 +2142,7 @@ x-mindclade-binding-contracts:
     bodyMessage: mindclade.api.v1.TrainingRunCreate
     method: POST
     operationId: createTrainingRun
+    operationKind: unary
     pathFields:
       - parent
     pathTemplate: /v1/{parent=tenants/*/projects/*}/trainingRuns
@@ -2111,6 +2173,7 @@ x-mindclade-binding-contracts:
     bodyMessage: null
     method: GET
     operationId: getOperation
+    operationKind: unary
     pathFields:
       - name
     pathTemplate: /v1/{name=tenants/*/projects/*/operations/*}
@@ -2138,6 +2201,7 @@ x-mindclade-binding-contracts:
     bodyMessage: null
     method: GET
     operationId: getTrainingRun
+    operationKind: unary
     pathFields:
       - name
     pathTemplate: /v1/{name=tenants/*/projects/*/trainingRuns/*}
@@ -2165,6 +2229,7 @@ x-mindclade-binding-contracts:
     bodyMessage: null
     method: GET
     operationId: listTrainingRuns
+    operationKind: unary
     pathFields:
       - parent
     pathTemplate: /v1/{parent=tenants/*/projects/*}/trainingRuns
@@ -2193,6 +2258,7 @@ x-mindclade-binding-contracts:
     bodyMessage: null
     method: GET
     operationId: watchOperation
+    operationKind: sse
     pathFields:
       - name
     pathTemplate: /v1/{name=tenants/*/projects/*/operations/*}:watch
@@ -2208,15 +2274,27 @@ x-mindclade-binding-contracts:
     responseMessage: mindclade.api.v1.OperationEvent
     responseStatus:
       - 200
+      - 400
       - 401
       - 403
       - 404
+      - 410
+      - 412
+      - 500
     serverStreaming: true
     stream: STREAM_PROJECTION_SSE
     successStatus:
       - 200
-x-mindclade-descriptor-digest: sha256:e53ce4489fb3bf19a0f0fe3a417806fa4b7aecf32f58d189994ae09e33baeb61
-x-mindclade-schema-version: mindclade.raw-openapi-projection/v3
+    sse:
+      errorEventType: error
+      eventModel: mindclade.api.v1.OperationEvent
+      resumeHeader: Last-Event-ID
+      retryMilliseconds: 3000
+      heartbeatIntervalSeconds: 15
+      heartbeatReusesLastDurableEventId: true
+      replayAcknowledgedTerminalEvent: false
+x-mindclade-descriptor-digest: sha256:46514bdee27df6f41f03b63f050b2cfcb95867fc8f291fe943eaf2019693c0ed
+x-mindclade-schema-version: mindclade.raw-openapi-projection/v4
 x-mindclade-generator:
   name: mindclade-contract-codegen 3.1.0
   source: tools/codegen/generate_protocols.py

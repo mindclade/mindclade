@@ -65,12 +65,12 @@ export class ClientConfig {
 	readonly serverName: string | undefined;
 	readonly insecureLoopback: boolean;
 
-	private constructor(input: ClientConfigInput, endpoint: string) {
+	private constructor(input: ClientConfigInput, endpoint: string, audience: string) {
 		this.environment = input.environment;
 		this.identity = Object.freeze({ ...input.identity });
 		this.tokenProvider = input.tokenProvider;
 		this.endpoint = endpoint;
-		this.audience = input.audience ?? endpoint;
+		this.audience = audience;
 		this.defaultTimeoutMs = input.defaultTimeoutMs ?? 20_000;
 		this.pollIntervalMs = input.pollIntervalMs ?? 500;
 		this.retry = Object.freeze({ ...(input.retry ?? defaultRetry) });
@@ -93,6 +93,7 @@ export class ClientConfig {
 
 		const endpoint = input.endpoint ?? endpoints[input.environment];
 		validateEndpoint(endpoint, input.environment, input.insecureLoopbackForTesting ?? false);
+		const audience = input.audience ?? canonicalHttpsOrigin(endpoint);
 		const insecure = input.insecureLoopbackForTesting ?? false;
 		if (insecure && input.tokenProvider !== undefined) {
 			throw MindcladeError.configuration("credentials cannot be sent over plaintext transport");
@@ -102,7 +103,7 @@ export class ClientConfig {
 				"secure clients require a workload-identity token provider",
 			);
 		}
-		validateMetadata("credential audience", input.audience ?? endpoint, true);
+		validateMetadata("credential audience", audience, true);
 		if (input.tls?.serverName !== undefined) {
 			validateMetadata("TLS server name", input.tls.serverName, true);
 			if (/[/@:]/.test(input.tls.serverName)) {
@@ -114,9 +115,14 @@ export class ClientConfig {
 				throw MindcladeError.configuration("custom CA PEM must contain at most one mebibyte");
 			}
 		}
-		return new ClientConfig(input, endpoint);
+		return new ClientConfig(input, endpoint, audience);
 	}
 }
+
+const canonicalHttpsOrigin = (endpoint: string): string => {
+	const url = new URL(endpoint);
+	return `https://${url.host}`;
+};
 
 const validateEndpoint = (value: string, environment: Environment, insecure: boolean): void => {
 	if (value.trim() !== value || /[\r\n]/.test(value)) {

@@ -72,6 +72,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+      x-mindclade-operation-kind: unary
   /v1/tenants/{tenant}/projects/{project}/operations/{operation}:cancel:
     post:
       tags:
@@ -113,6 +114,7 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+      x-mindclade-operation-kind: unary
   /v1/tenants/{tenant}/projects/{project}/operations/{operation}:watch:
     get:
       tags:
@@ -120,7 +122,9 @@ paths:
       operationId: watchOperation
       summary: Watch durable operation revisions
       description: Resumable server-sent events; each data field is one OperationEvent
-        encoded with ProtoJSON.
+        encoded with ProtoJSON. Validation failures before the first durable event
+        use an HTTP problem response. Failures after HTTP 200 use an OperationEvent
+        with eventType error and the last durable cursor.
       parameters:
         - $ref: '#/components/parameters/TenantId'
         - $ref: '#/components/parameters/ProjectId'
@@ -131,7 +135,8 @@ paths:
           description: Last fully processed opaque event identifier.
           schema:
             type: string
-            maxLength: 256
+            minLength: 1
+            maxLength: 4096
       responses:
         '200':
           description: Ordered operation revisions until the operation is terminal
@@ -149,12 +154,44 @@ paths:
             text/event-stream:
               schema:
                 $ref: '#/components/schemas/OperationEvent'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthenticated'
         '403':
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+        '410':
+          description: The authenticated resume cursor is outside the retained operation
+            history.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/PublicError'
+        '412':
+          description: The authenticated resume cursor is ahead of durable operation
+            state.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/PublicError'
+        '500':
+          description: Durable operation history or the required streaming response
+            capabilities could not be served safely.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/PublicError'
+      x-mindclade-operation-kind: sse
+      x-mindclade-sse:
+        errorEventType: error
+        eventModel: mindclade.api.v1.OperationEvent
+        resumeHeader: Last-Event-ID
+        retryMilliseconds: 3000
+        heartbeatIntervalSeconds: 15
+        heartbeatReusesLastDurableEventId: true
+        replayAcknowledgedTerminalEvent: false
   /v1/tenants/{tenant}/projects/{project}/trainingRuns:
     get:
       tags:
@@ -181,6 +218,7 @@ paths:
           $ref: '#/components/responses/Unauthenticated'
         '403':
           $ref: '#/components/responses/Forbidden'
+      x-mindclade-operation-kind: unary
     post:
       tags:
         - Training
@@ -210,6 +248,7 @@ paths:
           $ref: '#/components/responses/Conflict'
         '429':
           $ref: '#/components/responses/RateLimited'
+      x-mindclade-operation-kind: unary
   /v1/tenants/{tenant}/projects/{project}/trainingRuns/{trainingRun}:
     get:
       tags:
@@ -239,6 +278,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+      x-mindclade-operation-kind: unary
 components:
   securitySchemes:
     bearerAuth:
@@ -623,17 +663,74 @@ components:
       type: object
       additionalProperties: false
       x-mindclade-authoritative-message: mindclade.api.v1.OperationEvent
+      description: A durable operation update, terminal record, gateway heartbeat,
+        or sanitized post-commit stream error. The four shapes are mutually exclusive.
       required:
         - eventId
         - eventType
         - schemaVersion
+        - operationRevision
         - resumeCursor
+        - heartbeat
         - emittedAt
+      discriminator:
+        propertyName: eventType
+        mapping:
+          operation.updated: '#/components/schemas/OperationEvent/oneOf/0'
+          operation.terminal: '#/components/schemas/OperationEvent/oneOf/1'
+          heartbeat: '#/components/schemas/OperationEvent/oneOf/2'
+          error: '#/components/schemas/OperationEvent/oneOf/3'
+      oneOf:
+        - title: Operation update
+          properties:
+            eventType:
+              const: operation.updated
+            heartbeat:
+              const: false
+          required:
+            - operation
+          not:
+            required:
+              - error
+        - title: Terminal operation
+          properties:
+            eventType:
+              const: operation.terminal
+            heartbeat:
+              const: false
+          required:
+            - operation
+          not:
+            required:
+              - error
+        - title: Heartbeat
+          properties:
+            eventType:
+              const: heartbeat
+            heartbeat:
+              const: true
+          not:
+            anyOf:
+              - required:
+                  - operation
+              - required:
+                  - error
+        - title: Sanitized stream error
+          properties:
+            eventType:
+              const: error
+            heartbeat:
+              const: false
+          required:
+            - error
+          not:
+            required:
+              - operation
       properties:
         eventId:
           type: string
           minLength: 1
-          maxLength: 256
+          maxLength: 4096
         operation:
           $ref: '#/components/schemas/Operation'
         eventType:
@@ -642,6 +739,7 @@ components:
             - operation.updated
             - operation.terminal
             - heartbeat
+            - error
         schemaVersion:
           type: integer
           format: uint32
@@ -658,6 +756,8 @@ components:
           type: boolean
         emittedAt:
           $ref: '#/components/schemas/Timestamp'
+        error:
+          $ref: '#/components/schemas/PublicError'
     CancellationRequest:
       type: object
       additionalProperties: false
@@ -803,4 +903,4 @@ components:
             $ref: '#/components/schemas/ArtifactRef'
         resultDigest:
           $ref: '#/components/schemas/Digest'
-x-mindclade-descriptor-digest: sha256:e53ce4489fb3bf19a0f0fe3a417806fa4b7aecf32f58d189994ae09e33baeb61
+x-mindclade-descriptor-digest: sha256:46514bdee27df6f41f03b63f050b2cfcb95867fc8f291fe943eaf2019693c0ed

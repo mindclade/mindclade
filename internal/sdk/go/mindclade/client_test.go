@@ -390,9 +390,9 @@ func TestArtifactDownloadFilePublishesAtomicallyWithoutClobbering(t *testing.T) 
 	if err := client.Artifacts.DownloadFile(context.Background(), fixtureArtifact(), destination); err != nil {
 		t.Fatalf("atomic download: %v", err)
 	}
-	content, err := os.ReadFile(destination)
-	if err != nil || string(content) != fixtureContent {
-		t.Fatalf("published content = %q, err=%v", content, err)
+	content := readTempArtifactFile(t, destination)
+	if string(content) != fixtureContent {
+		t.Fatalf("published content = %q", content)
 	}
 	info, err := os.Stat(destination)
 	if err != nil {
@@ -404,9 +404,9 @@ func TestArtifactDownloadFilePublishesAtomicallyWithoutClobbering(t *testing.T) 
 	if err = client.Artifacts.DownloadFile(context.Background(), fixtureArtifact(), destination); !hasErrorCode(err, CodeAlreadyExists) {
 		t.Fatalf("existing destination was not protected: %v", err)
 	}
-	content, err = os.ReadFile(destination)
-	if err != nil || string(content) != fixtureContent {
-		t.Fatalf("existing destination changed: %q, err=%v", content, err)
+	content = readTempArtifactFile(t, destination)
+	if string(content) != fixtureContent {
+		t.Fatalf("existing destination changed: %q", content)
 	}
 
 	corrupt := fixtureArtifact()
@@ -458,9 +458,9 @@ func TestArtifactDownloadFilePublishesAtomicallyWithoutClobbering(t *testing.T) 
 	if successes != 1 || conflicts != 1 {
 		t.Fatalf("racing publication results: success=%d, already-exists=%d", successes, conflicts)
 	}
-	content, err = os.ReadFile(raceDestination)
-	if err != nil || string(content) != fixtureContent {
-		t.Fatalf("racing destination content = %q, err=%v", content, err)
+	content = readTempArtifactFile(t, raceDestination)
+	if string(content) != fixtureContent {
+		t.Fatalf("racing destination content = %q", content)
 	}
 
 	staging := directory + "/.mindclade-download-commit-point"
@@ -489,9 +489,9 @@ func TestArtifactDownloadFilePublishesAtomicallyWithoutClobbering(t *testing.T) 
 	if removeCalls != 1 || syncCalls != 2 {
 		t.Fatalf("post-commit cleanup calls: remove=%d sync=%d", removeCalls, syncCalls)
 	}
-	content, err = os.ReadFile(commitDestination)
-	if err != nil || string(content) != fixtureContent {
-		t.Fatalf("committed destination content = %q, err=%v", content, err)
+	content = readTempArtifactFile(t, commitDestination)
+	if string(content) != fixtureContent {
+		t.Fatalf("committed destination content = %q", content)
 	}
 	if err = os.Remove(staging); err != nil {
 		t.Fatal(err)
@@ -861,7 +861,7 @@ func TestPaginatePreservesOpaqueTokensAndEnforcesBounds(t *testing.T) {
 }
 
 type deadlineClientStream struct {
-	ctx context.Context
+	ctx context.Context //nolint:containedctx // The generated gRPC stream test double must return the exact interceptor context.
 }
 
 func (stream *deadlineClientStream) Header() (metadata.MD, error) { return nil, nil }
@@ -870,6 +870,15 @@ func (stream *deadlineClientStream) CloseSend() error             { return nil }
 func (stream *deadlineClientStream) Context() context.Context     { return stream.ctx }
 func (stream *deadlineClientStream) SendMsg(any) error            { return nil }
 func (stream *deadlineClientStream) RecvMsg(any) error            { return io.EOF }
+
+func readTempArtifactFile(t *testing.T, path string) []byte {
+	t.Helper()
+	content, err := os.ReadFile(path) //nolint:gosec // All callers pass paths created beneath this test's t.TempDir.
+	if err != nil {
+		t.Fatalf("read temporary artifact file %q: %v", path, err)
+	}
+	return content
+}
 
 func testClient(t *testing.T) (*Client, *trainingServer, *catalogServer) {
 	t.Helper()

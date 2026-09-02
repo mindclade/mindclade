@@ -398,7 +398,7 @@ func publishArtifactFile(
 }
 
 func syncArtifactDirectory(directory string) error {
-	handle, err := os.Open(directory)
+	handle, err := os.Open(directory) //nolint:gosec // The caller-authorized destination directory is intentionally opened only to fsync publication metadata.
 	if err != nil {
 		return err
 	}

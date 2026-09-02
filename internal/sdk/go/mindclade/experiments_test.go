@@ -233,8 +233,8 @@ func TestExperimentFacadeRoutesAllDescriptorRPCsAndBindsCommandAuthority(t *test
 	if capturedCreate.GetContext().GetTenantId() != config.TenantID || capturedCreate.GetContext().GetProjectId() != config.ProjectID || capturedCreate.GetContext().GetPrincipalId() != config.PrincipalID || !validSHA256Digest(capturedCreate.GetContext().GetCanonicalRequestDigest()) {
 		t.Fatalf("captured generated command context was not authoritative: %+v", capturedCreate.GetContext())
 	}
-	if token := requests[2].(*internalexperimentv1.ListExperimentsRequest).GetPage().GetPageToken(); token != " opaque-token== " {
-		t.Fatalf("opaque page token was changed: %q", token)
+	if cursor := requests[2].(*internalexperimentv1.ListExperimentsRequest).GetPage().GetPageToken(); cursor != " opaque-token== " {
+		t.Fatalf("opaque page token was changed: %q", cursor)
 	}
 	for _, index := range []int{0, 3, 4, 5, 8, 9, 12, 13} {
 		if !validateExperimentMutationRetry(requests[index], requestMetadata{idempotencyKey: experimentCommandContext(requests[index]).GetIdempotencyKey()}, config) {

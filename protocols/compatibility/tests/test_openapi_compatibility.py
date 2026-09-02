@@ -375,28 +375,37 @@ class OpenApiCompatibilityTest(unittest.TestCase):
             self.repository / "protocols/compatibility/baselines/protobuf.candidate.json"
         )
         candidate = json.loads(candidate_path.read_text())
-        descriptor_set = descriptor_pb2.FileDescriptorSet.FromString(
-            base64.b64decode(candidate["descriptor_set"]["base64"], validate=True)
-        )
-        public_file = next(
-            file
-            for file in descriptor_set.file
-            if file.name == "proto/mindclade/api/v1/mindclade_service.proto"
-        )
-        project_view = next(
-            message for message in public_file.message_type if message.name == "ProjectView"
-        )
-        forbidden = project_view.field.add()
-        forbidden.name = "principal_id"
-        forbidden.json_name = "principalId"
-        forbidden.number = 99
-        forbidden.label = descriptor_pb2.FieldDescriptorProto.LABEL_OPTIONAL
-        forbidden.type = descriptor_pb2.FieldDescriptorProto.TYPE_STRING
+        encoded = base64.b64decode(candidate["descriptor_set"]["base64"], validate=True)
+        for field_name in (
+            "principal_id",
+            "access_token",
+            "api_key",
+            "password",
+            "credential",
+            "private_key",
+            "authorization",
+        ):
+            with self.subTest(field_name=field_name):
+                descriptor_set = descriptor_pb2.FileDescriptorSet.FromString(encoded)
+                public_file = next(
+                    file
+                    for file in descriptor_set.file
+                    if file.name == "proto/mindclade/api/v1/mindclade_service.proto"
+                )
+                project_view = next(
+                    message for message in public_file.message_type if message.name == "ProjectView"
+                )
+                forbidden = project_view.field.add()
+                forbidden.name = field_name
+                forbidden.json_name = field_name
+                forbidden.number = 99
+                forbidden.label = descriptor_pb2.FieldDescriptorProto.LABEL_OPTIONAL
+                forbidden.type = descriptor_pb2.FieldDescriptorProto.TYPE_STRING
 
-        with self.assertRaisesRegex(ValueError, "forbidden field.*principal_id"):
-            generate_protocols.public_openapi_projection(
-                descriptor_set.SerializeToString(deterministic=True)
-            )
+                with self.assertRaisesRegex(ValueError, rf"forbidden field.*{field_name}"):
+                    generate_protocols.public_openapi_projection(
+                        descriptor_set.SerializeToString(deterministic=True)
+                    )
 
     def test_sse_policy_validation_fails_closed(self) -> None:
         def valid() -> tuple[SimpleNamespace, PresenceMessage]:
@@ -1247,6 +1256,7 @@ class OpenApiCompatibilityTest(unittest.TestCase):
                         "properties": {
                             "name": {"maxLength": 64, "type": "string"},
                             "state": {"enum": ["READY"], "type": "string"},
+                            "score": {"maximum": 100, "minimum": 0, "type": "integer"},
                         },
                     }
                 }
@@ -1256,9 +1266,7 @@ class OpenApiCompatibilityTest(unittest.TestCase):
         additive["components"]["schemas"]["Widget"]["properties"]["description"] = {
             "type": "string"
         }
-        additive["components"]["schemas"]["Widget"]["properties"]["state"]["enum"].append(
-            "ARCHIVED"
-        )
+        additive["components"]["schemas"]["Widget"]["properties"]["name"]["maxLength"] = 32
         additive["paths"]["/v1/widgets"] = {
             "get": {
                 "operationId": "listWidgets",
@@ -1286,9 +1294,21 @@ class OpenApiCompatibilityTest(unittest.TestCase):
             "removed property": lambda value: value["components"]["schemas"]["Widget"][
                 "properties"
             ].pop("name"),
-            "tightened bound": lambda value: value["components"]["schemas"]["Widget"]["properties"][
-                "name"
-            ].update(maxLength=32),
+            "loosened response bound": lambda value: value["components"]["schemas"]["Widget"][
+                "properties"
+            ]["name"].update(maxLength=128),
+            "removed response bound": lambda value: value["components"]["schemas"]["Widget"][
+                "properties"
+            ]["score"].pop("maximum"),
+            "loosened response lower bound": lambda value: value["components"]["schemas"]["Widget"][
+                "properties"
+            ]["score"].update(minimum=-1),
+            "expanded response enum": lambda value: value["components"]["schemas"]["Widget"][
+                "properties"
+            ]["state"]["enum"].append("ARCHIVED"),
+            "required response field became optional": lambda value: value["components"]["schemas"][
+                "Widget"
+            ]["required"].remove("name"),
             "removed response header": lambda value: value["paths"]["/v1/widgets/{name}"]["get"][
                 "responses"
             ]["200"]["headers"].pop("ETag"),
