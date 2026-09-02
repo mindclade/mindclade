@@ -366,6 +366,7 @@ go_library(
         "internal/platform/queue/dead_letter.go",
         "internal/platform/queue/delivery.go",
         "internal/platform/queue/event_registry_generated.go",
+        "internal/platform/queue/outbox_producer.go",
         "internal/platform/queue/transport.go",
     ],
     importpath = "github.com/mindclade/mindclade/services/control_plane/internal/platform/queue",
@@ -439,6 +440,7 @@ filegroup(
     srcs = [
         "tests/idempotency_test.go",
         "tests/lease_fencing_test.go",
+        "tests/outbox_producer_test.go",
         "tests/reliability_harness_test.go",
         "tests/tenant_isolation_test.go",
         "tests/transaction_outbox_test.go",
@@ -461,6 +463,7 @@ go_test(
         ":storage",
         "//libs/go/audit",
         "//protocols/generated/go/artifact/v1:bindings",
+        "//protocols/generated/go/audit/v1:bindings",
         "//protocols/generated/go/common/v1:bindings",
         "//protocols/generated/go/job/v1:bindings",
         "//services/control_plane/internal/policies",

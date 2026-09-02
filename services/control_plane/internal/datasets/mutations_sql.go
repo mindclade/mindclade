@@ -159,15 +159,7 @@ func recordMutation(ctx context.Context, tx *sql.Tx, identity Identity, action, 
 		return err
 	}
 	for _, event := range events {
-		encoded, marshalErr := queue.MarshalEnvelope(event)
-		if marshalErr != nil {
-			return marshalErr
-		}
-		kind, id, identityErr := queue.AggregateIdentity(event)
-		if identityErr != nil {
-			return identityErr
-		}
-		if _, err = tx.ExecContext(ctx, `INSERT INTO outbox_messages(id,tenant_id,event_type,event_version,aggregate_type,aggregate_id,aggregate_sequence,payload_digest,envelope_bytes,next_attempt_at,created_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$10)`, event.GetEventId(), event.GetTenantId(), event.GetEventType(), event.GetEventVersion(), kind, id, event.GetAggregateSequence(), event.GetPayloadDigest(), encoded, at.UTC()); err != nil {
+		if err = queue.InsertOutboxMessage(ctx, tx, event, at); err != nil {
 			return err
 		}
 	}

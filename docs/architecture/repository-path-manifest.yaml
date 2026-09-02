@@ -7247,10 +7247,18 @@
         {
           "path": "docs/adr/0024-vendored-contract-import-closure.md",
           "reason": "ADR-0024 records why the contract build vendors its third-party import closure."
+        },
+        {
+          "path": "services/control_plane/internal/platform/queue/outbox_producer.go",
+          "reason": "The single transactional-outbox producer and its unit tests; it replaces fourteen hand-copied INSERT statements so the envelope-derived routing columns, the validation gate, and the envelope size bound cannot be omitted by one call site."
+        },
+        {
+          "path": "services/control_plane/tests/outbox_producer_test.go",
+          "reason": "The single transactional-outbox producer and its unit tests; it replaces fourteen hand-copied INSERT statements so the envelope-derived routing columns, the validation gate, and the envelope size bound cannot be omitted by one call site."
         }
       ],
-      "canonical_file_count": 3639,
-      "canonical_path_set_sha256": "4ea057c0574249516036099dceaff5b0ea4e03e25c2a43215c1caf422c50de17"
+      "canonical_file_count": 3641,
+      "canonical_path_set_sha256": "82cae7e754e9f58589463af3f96bc7c87724dd247f664624678896d97c2520e9"
     },
     "owners": {
       "agent-platform": {
@@ -46943,6 +46951,23 @@
       "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
     },
     {
+      "path": "services/control_plane/internal/platform/queue/outbox_producer.go",
+      "kind": "source",
+      "owner": "platform-control-plane",
+      "component": "services-control-plane",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:wave1_sources"
+      ],
+      "test_targets": [
+        "//:wave1_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
+    },
+    {
       "path": "services/control_plane/internal/platform/storage/artifact_catalog.go",
       "kind": "source",
       "owner": "platform-control-plane",
@@ -48344,6 +48369,23 @@
       ],
       "public_surface": false,
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "services/control_plane/tests/outbox_producer_test.go",
+      "kind": "test",
+      "owner": "platform-control-plane",
+      "component": "services-control-plane",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:wave1_sources"
+      ],
+      "test_targets": [
+        "//:wave1_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
     },
     {
       "path": "services/control_plane/BUILD.bazel",

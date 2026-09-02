@@ -72,16 +72,7 @@ func insertReceipt(ctx context.Context, tx *sql.Tx, identity Identity, projectID
 }
 
 func insertOutbox(ctx context.Context, tx *sql.Tx, event *commonv1.EventEnvelope, at time.Time) error {
-	encoded, err := queue.MarshalEnvelope(event)
-	if err != nil {
-		return err
-	}
-	kind, id, err := queue.AggregateIdentity(event)
-	if err != nil {
-		return err
-	}
-	_, err = tx.ExecContext(ctx, `INSERT INTO outbox_messages(id,tenant_id,event_type,event_version,aggregate_type,aggregate_id,aggregate_sequence,payload_digest,envelope_bytes,next_attempt_at,created_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$10)`, event.GetEventId(), event.GetTenantId(), event.GetEventType(), event.GetEventVersion(), kind, id, event.GetAggregateSequence(), event.GetPayloadDigest(), encoded, at.UTC())
-	return err
+	return queue.InsertOutboxMessage(ctx, tx, event, at)
 }
 
 func insertAdminAudit(ctx context.Context, tx *sql.Tx, identity Identity, projectID, action string, subject *commonv1.ResourceRef, result adminv1.AuditActionResult, failure, beforeRevision, afterRevision, detailDigest string, command *commonv1.CommandContext, at time.Time) error {

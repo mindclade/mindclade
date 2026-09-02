@@ -97,19 +97,7 @@ func eventEnvelope(identity Identity, subject *commonv1.ResourceRef, payload pro
 }
 
 func insertOutbox(ctx context.Context, tx sqlExecutor, event *commonv1.EventEnvelope, at time.Time) error {
-	encoded, err := queue.MarshalEnvelope(event)
-	if err != nil {
-		return err
-	}
-	aggregateType, aggregateID, err := queue.AggregateIdentity(event)
-	if err != nil {
-		return err
-	}
-	_, err = tx.ExecContext(ctx, `INSERT INTO outbox_messages(
-id,tenant_id,event_type,event_version,aggregate_type,aggregate_id,aggregate_sequence,
-payload_digest,envelope_bytes,next_attempt_at,created_at
-) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$10)`, event.GetEventId(), event.GetTenantId(), event.GetEventType(), event.GetEventVersion(), aggregateType, aggregateID, event.GetAggregateSequence(), event.GetPayloadDigest(), encoded, at.UTC())
-	return err
+	return queue.InsertOutboxMessage(ctx, tx, event, at)
 }
 
 func insertAudit(ctx context.Context, tx sqlExecutor, identity Identity, action, subject, digest string, at time.Time) error {

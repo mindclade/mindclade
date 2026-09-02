@@ -7402,7 +7402,8 @@ mindclade/
 │   │   │   │   │   ├── transport.go
 │   │   │   │   │   ├── delivery.go
 │   │   │   │   │   ├── dead_letter.go
-│   │   │   │   │   └── event_registry_generated.go
+│   │   │   │   │   ├── event_registry_generated.go
+│   │   │   │   │   └── outbox_producer.go
 │   │   │   │   ├── storage/
 │   │   │   │   │   ├── artifact_catalog.go
 │   │   │   │   │   ├── object_store.go
@@ -7497,7 +7498,8 @@ mindclade/
 │   │   │   ├── idempotency_test.go
 │   │   │   ├── lease_fencing_test.go
 │   │   │   ├── tenant_isolation_test.go
-│   │   │   └── reliability_harness_test.go
+│   │   │   ├── reliability_harness_test.go
+│   │   │   └── outbox_producer_test.go
 │   │   ├── BUILD.bazel
 │   │   ├── component.yaml
 │   │   ├── README.md

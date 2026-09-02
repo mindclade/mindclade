@@ -3464,7 +3464,7 @@ CANONICAL_PATH_SET_SHA256 = (  # pyright: ignore[reportConstantRedefinition]
 _contract_vendored_import_addition_reason = _reconciliation_addition_reason
 
 
-def _reconciliation_addition_reason(path: str) -> str:
+def _reconciliation_addition_reason(path: str) -> str:  # pyright: ignore[reportRedeclaration]
     if path == CONTRACT_VENDORED_IMPORT_ADR:
         return "ADR-0024 records why the contract build vendors its third-party import closure."
     if path in CONTRACT_VENDORED_IMPORT_PATHS:
@@ -3474,6 +3474,42 @@ def _reconciliation_addition_reason(path: str) -> str:
             "schema-registry dependency without changing the descriptor digest."
         )
     return _contract_vendored_import_addition_reason(path)
+
+
+# The single transactional-outbox producer, extracted from fourteen hand-copied
+# INSERT statements that had drifted apart: one dropped the resource_id fallback
+# and would have written an empty aggregate_id for a subject carrying no name,
+# one sourced the tenant from its command rather than from the envelope the row
+# carries, and none bounded the envelope size, so an oversized event failed at
+# the relay -- asynchronously, in quarantine -- instead of at the write that
+# produced it. One producer makes those three properties structural.
+OUTBOX_PRODUCER_PATHS: tuple[str, ...] = (
+    "services/control_plane/internal/platform/queue/outbox_producer.go",
+    "services/control_plane/tests/outbox_producer_test.go",
+)
+REQUIRED_ADDITIONS = (  # pyright: ignore[reportConstantRedefinition]
+    *REQUIRED_ADDITIONS,
+    *OUTBOX_PRODUCER_PATHS,
+)
+CANONICAL_FILE_COUNT = (  # pyright: ignore[reportConstantRedefinition]
+    CANONICAL_FILE_COUNT + len(OUTBOX_PRODUCER_PATHS)
+)
+CANONICAL_PATH_SET_SHA256 = (  # pyright: ignore[reportConstantRedefinition]
+    "82cae7e754e9f58589463af3f96bc7c87724dd247f664624678896d97c2520e9"
+)
+
+_outbox_producer_addition_reason = _reconciliation_addition_reason
+
+
+def _reconciliation_addition_reason(path: str) -> str:
+    if path in OUTBOX_PRODUCER_PATHS:
+        return (
+            "The single transactional-outbox producer and its unit tests; it replaces "
+            "fourteen hand-copied INSERT statements so the envelope-derived routing "
+            "columns, the validation gate, and the envelope size bound cannot be "
+            "omitted by one call site."
+        )
+    return _outbox_producer_addition_reason(path)
 
 
 if __name__ == "__main__":
