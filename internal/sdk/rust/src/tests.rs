@@ -45,7 +45,8 @@ use mindclade_protocols::{
         },
         job::v1::{
             CancelOperationRequest, CancelOperationResponse, GetOperationRequest,
-            GetOperationResponse, WatchOperationRequest, WatchOperationResponse,
+            GetOperationResponse, ListOperationsRequest, ListOperationsResponse,
+            WatchOperationRequest, WatchOperationResponse,
         },
         model::v1::{
             GetModelReleaseRequest, GetModelReleaseResponse, GetModelRequest, GetModelResponse,
@@ -73,10 +74,12 @@ use tonic::{
 
 use crate::{
     AccessToken, ArtifactStream, ArtifactUploadOptions, CallOptions, CancellationToken, Client,
-    Config, Environment, Error, ErrorKind, FenceState, FinalCause, GcpWorkloadIdentityProvider,
-    Identity, InferenceStream, InferenceWaitOptions, JitterSource, OperationStream,
-    PaginationLimits, PaginationPage, QuotaState, RecordingTransport, RetryAttemptSummary,
-    RetryPolicy, RpcTransport, SubmitOptions, SystemJitter, TokenProvider, WaitOptions,
+    Config, DEFAULT_PAGE_SIZE, Environment, Error, ErrorKind, FenceState, FinalCause,
+    GcpWorkloadIdentityProvider, HARD_PAGE_SIZE_CEILING, Identity, InferenceStream,
+    InferenceWaitOptions, JitterSource, OperationStream, PaginationLimits, PaginationPage,
+    QuotaState, RecordingTransport, RetryAttemptSummary, RetryPolicy, RpcTransport,
+    SAFE_RESPONSE_METADATA, SubmitOptions, SystemJitter, TokenProvider, WaitOptions,
+    is_credential_bearing,
     auth::GcpIdentityTokenExchange,
     error::{
         FENCE_PRECONDITION_TYPE, QUOTA_PRECONDITION_TYPE, REVISION_PRECONDITION_TYPE,
@@ -227,6 +230,8 @@ struct FakeTransport {
     submitted_commands: Mutex<Vec<CreateTrainingRunCommand>>,
     lifecycle_contexts: Mutex<Vec<CommandContext>>,
     lifecycle_page_tokens: Mutex<Vec<String>>,
+    list_operations: Mutex<VecDeque<Result<ListOperationsResponse, Status>>>,
+    list_operation_pages: Mutex<Vec<PageRequest>>,
     hang_operations: AtomicBool,
     hang_downloads: AtomicBool,
 }
@@ -281,6 +286,27 @@ impl RpcTransport for FakeTransport {
             self.submitted_commands.lock().unwrap().push(command);
         }
         Self::pop(&self.training).map(Response::new)
+    }
+
+    async fn list_operations(
+        &self,
+        request: Request<ListOperationsRequest>,
+    ) -> Result<Response<ListOperationsResponse>, Status> {
+        self.observe(&request);
+        if let Some(page) = request.get_ref().page.clone() {
+            self.list_operation_pages.lock().unwrap().push(page);
+        }
+        // A real server echoes the caller's correlation identity; the page
+        // cursor surfaces it through `Page::request_id`.
+        let echoed = metadata(&request, "x-request-id");
+        let mut response = Response::new(Self::pop(&self.list_operations)?);
+        if let Some(value) = echoed {
+            response.metadata_mut().insert(
+                "x-request-id",
+                MetadataValue::try_from(value.as_str()).unwrap(),
+            );
+        }
+        Ok(response)
     }
 
     async fn create_dataset(
