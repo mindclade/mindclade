@@ -69,6 +69,18 @@ mutation is retried only when its fully qualified method is allowlisted and its
 generated `CommandContext` contains the same explicit idempotency key, scope,
 and canonical request digest. A boolean flag cannot promote arbitrary raw RPCs.
 
+The sole intentional raw-only RPC is `RunService.ExpireAttemptLeases`, a
+control-plane reconciler primitive. Application code should use the fenced
+run/attempt lifecycle helpers. Calling this method through `generated` is
+conspicuous and never enables implicit retry or an ergonomic compatibility
+promise.
+
+`client.artifacts.download_file(artifact, path)` and its `AsyncClient` peer
+stage mode-0600 content beside the destination, verify the complete immutable
+digest, and atomically publish without overwriting an existing path. Successful
+link creation is the commit point; corruption, cancellation, and write failure
+before it leave the destination absent or unchanged.
+
 ## Safety and retry behavior
 
 - TLS and a short-lived token provider are mandatory by default.

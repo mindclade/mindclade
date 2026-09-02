@@ -711,9 +711,12 @@ integration-ci:
       --integration-output {{ evidence_dir }}/integration-ci.v1.json \
       --output {{ evidence_dir }}/training-vertical-rehearsal.v1.json
     {{ uv }} run python tools/qualification/readiness_report.py \
+      --root . \
       --plan docs/architecture/authoritative-contract-integration-plan.md \
+      --criterion-map tools/qualification/authoritative-integration-criteria.v1.json \
       --rehearsal {{ evidence_dir }}/training-vertical-rehearsal.v1.json \
-      --output {{ evidence_dir }}/authoritative-integration-readiness.v1.json
+      --expected-source-revision "${source_revision}" \
+      --output {{ evidence_dir }}/authoritative-integration-readiness.v2.json
 
 integration-down:
     docker compose -f deploy/local/compose.yaml down --volumes --remove-orphans

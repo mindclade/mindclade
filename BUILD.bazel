@@ -140,13 +140,18 @@ filegroup(
     srcs = [
         ":internal_sdk_root_sources",
         ":wave1_contract_sources",
+        "//apps/console:governed_sources",
         "//examples:governed_sources",
         "//internal/sdk/go/mindclade:governed_sources",
         "//internal/sdk/python:governed_sources",
         "//internal/sdk/rust:governed_sources",
         "//internal/sdk/typescript:governed_sources",
+        "//libs/go/numconv:governed_sources",
         "//services/control_plane:control_plane_sources",
         "//tests:all_contract_sources",
+        "//tools/mindcladectl:governed_sources",
+        "//workers/ingestion_worker:governed_sources",
+        "//workers/training_worker:governed_sources",
     ],
     visibility = ["//visibility:public"],
 )

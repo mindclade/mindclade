@@ -135,7 +135,11 @@ use mindclade_protocols::internal::{
     },
 };
 
-use crate::{Config, Error, config::TrustRoots, request::generate_request_id};
+use crate::{
+    Config, Error,
+    config::{TrustRoots, validate_metadata_value},
+    request::generate_request_id,
+};
 
 /// Boxed generated operation-update stream used by production and fake
 /// transports.
@@ -267,11 +271,29 @@ impl Interceptor for GeneratedClientInterceptor {
                 .to_owned(),
             None => generate_request_id(),
         };
+        validate_metadata_value("request ID", &request_id, true)
+            .map_err(|_| Status::invalid_argument("request identity is invalid"))?;
+        if let Some(trace_id) = request.metadata().get("x-trace-id") {
+            let trace_id = trace_id
+                .to_str()
+                .map_err(|_| Status::invalid_argument("trace identity is invalid"))?;
+            validate_metadata_value("trace ID", trace_id, true)
+                .map_err(|_| Status::invalid_argument("trace identity is invalid"))?;
+        }
         let timeout = request
             .metadata()
             .get("grpc-timeout")
             .and_then(parse_grpc_timeout)
             .map_or(self.timeout, |requested| requested.min(self.timeout));
+        for key in [
+            "authorization",
+            "proxy-authorization",
+            "cookie",
+            "x-api-key",
+            "x-goog-api-key",
+        ] {
+            request.metadata_mut().remove(key);
+        }
         if let Some(authorization) = &self.authorization {
             request
                 .metadata_mut()
@@ -3391,7 +3413,7 @@ impl RpcTransport for TonicTransport {
 mod generated_client_policy_tests {
     use std::time::{Duration, SystemTime};
 
-    use tonic::{Request, service::Interceptor};
+    use tonic::{Request, metadata::MetadataValue, service::Interceptor};
 
     use super::{
         GeneratedClientInterceptor, metadata_value, parse_grpc_timeout, sensitive_authorization,
@@ -3449,8 +3471,55 @@ mod generated_client_policy_tests {
             principal_id: metadata_value("worker-01").unwrap(),
             timeout: Duration::from_secs(20),
         };
-        let request = policy.call(Request::new(())).unwrap();
-        assert!(request.metadata().get("authorization").is_none());
+        let mut request = Request::new(());
+        request.metadata_mut().insert(
+            "authorization",
+            sensitive_authorization("Bearer caller-controlled").unwrap(),
+        );
+        request.metadata_mut().insert(
+            "proxy-authorization",
+            metadata_value("Basic-caller-controlled").unwrap(),
+        );
+        request.metadata_mut().insert(
+            "cookie",
+            metadata_value("session=caller-controlled").unwrap(),
+        );
+        request
+            .metadata_mut()
+            .insert("x-api-key", metadata_value("caller-controlled").unwrap());
+        let request = policy.call(request).unwrap();
+        for key in [
+            "authorization",
+            "proxy-authorization",
+            "cookie",
+            "x-api-key",
+        ] {
+            assert!(request.metadata().get(key).is_none(), "{key} survived");
+        }
+    }
+
+    #[test]
+    fn raw_generated_clients_reject_unbounded_correlation_metadata() {
+        let mut policy = interceptor(SystemTime::now() + Duration::from_mins(5));
+        let mut request = Request::new(());
+        request.metadata_mut().insert(
+            "x-request-id",
+            MetadataValue::try_from("r".repeat(513)).unwrap(),
+        );
+        assert_eq!(
+            policy.call(request).unwrap_err().code(),
+            tonic::Code::InvalidArgument
+        );
+
+        let mut request = Request::new(());
+        request.metadata_mut().insert(
+            "x-trace-id",
+            MetadataValue::try_from("t".repeat(513)).unwrap(),
+        );
+        assert_eq!(
+            policy.call(request).unwrap_err().code(),
+            tonic::Code::InvalidArgument
+        );
     }
 
     #[test]

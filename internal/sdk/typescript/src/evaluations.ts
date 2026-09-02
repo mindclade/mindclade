@@ -127,7 +127,13 @@ export class Evaluations {
 	): Promise<ListEvaluationRunsResponse> {
 		const request = create(ListEvaluationRunsRequestSchema, input);
 		const parent = projectName(this.#core);
-		if ((request.parent !== "" && request.parent !== parent) || (request.page?.pageSize ?? 0) > 200)
+		const pageSize = request.page?.pageSize ?? 0;
+		if (
+			(request.parent !== "" && request.parent !== parent) ||
+			!Number.isInteger(pageSize) ||
+			pageSize < 0 ||
+			pageSize > 200
+		)
 			throw MindcladeError.invalidArgument("evaluation list scope or page size is invalid");
 		request.parent = parent;
 		const prepared = prepareCall(this.#core.config, this.#core.runtime, options);

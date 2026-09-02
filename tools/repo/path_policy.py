@@ -302,7 +302,7 @@ BLUEPRINT_SHA256 = "d099074e755168bbdce076d50918bf06aff677f9e5d620fdfe53cb7cef74
 ANCHOR_COMMIT = "292b71f47b1b29cc9ba7cf760a9bd07cd5e0ffa7"
 AUTHORITY_FILE_COUNT = 2461
 AUTHORITY_DIRECTORY_COUNT = 787
-CANONICAL_FILE_COUNT = 3523
+CANONICAL_FILE_COUNT = 3525
 AUTHORITY_PATH_SET_SHA256 = "f2011dd32ccc19649e6abb70ffb4473aea4a224410062d40292222e2e6263692"
 CANONICAL_PATH_SET_SHA256 = "cc37578846ef6bddc0d0839ec6fab7f1fc8c52dbae62423f9da543538d79713f"
 
@@ -984,6 +984,15 @@ REQUIRED_ADDITIONS = (
 
 STATUSES = {"target", "active", "generated", "deferred", "retired"}
 SOURCE_AUTHORITIES = {"hand-authored", "immutable-provenance", "reviewed-generated"}
+PROTECTED_RATIFICATION_ARTIFACT_PATHS = frozenset(
+    {
+        "protocols/compatibility/baselines/openapi.lock.json",
+        "protocols/compatibility/baselines/protobuf.lock.json",
+    }
+)
+OPTIONAL_PENDING_RATIFICATION_ARTIFACT_PATHS = frozenset(
+    {"protocols/compatibility/baselines/protobuf.lock.json"}
+)
 PRE_ACTIVATION_SOURCE_PATHS = frozenset(
     (*NATIVE_SOURCE_INCUBATION_PATHS, *KERNEL_PLATFORM_AUTHORIZED_PATHS)
 )
@@ -2057,6 +2066,7 @@ def infer_source_authority(path: str) -> str:
     if path in {
         "protocols/compatibility/baselines/openapi.lock.json",
         "protocols/compatibility/baselines/protobuf.candidate.json",
+        "protocols/compatibility/baselines/protobuf.lock.json",
         "services/control_plane/internal/platform/queue/event_registry_generated.go",
         *OPENAPI_STAGE_ARTIFACT_ADDITIONS,
     }:
@@ -2319,9 +2329,7 @@ def build_path_entry(path: str) -> dict[str, Any]:
     generated = infer_source_authority(path) == "reviewed-generated"
     all_contract_baseline = is_all_contract_baseline_path(path)
     pending_ratified_baseline = path == "protocols/compatibility/baselines/protobuf.lock.json"
-    if pending_ratified_baseline:
-        status = "target"
-    elif all_contract_baseline:
+    if all_contract_baseline:
         status = "generated" if generated else "active"
     elif deferred:
         status = "deferred"
@@ -2360,7 +2368,8 @@ def build_path_entry(path: str) -> dict[str, Any]:
     }
     if pending_ratified_baseline:
         entry["activation_criterion"] = (
-            "Create and activate only through the explicit ADR-0015 ratification action after "
+            "This generated path may remain absent until the explicit ADR-0015 ratification "
+            "action creates it atomically with the OpenAPI baseline after "
             "cross-language, database, gRPC, gateway, event, and SDK training-vertical evidence "
             "is passed and bound to the exact candidate descriptor."
         )
@@ -2544,6 +2553,14 @@ def _base_reconciliation_addition_reason(path: str) -> str:
             "ADR-0015 admin, agent, inference, policy, or workflow producer-consumer source "
             "required to prove candidate contracts, normalized PostgreSQL state, fencing, "
             "authorization, and durable event delivery."
+        )
+    if path in {
+        "tools/qualification/authoritative-integration-criteria.v1.json",
+        "tools/qualification/training_evidence_assembler.py",
+    }:
+        return (
+            "ADR-0015 fail-closed criterion and evidence authority required to keep source "
+            "readiness, non-ratifying rehearsal, and protected ratification distinct."
         )
     if path in CONTRACT_CONFORMANCE_ADDITIONS:
         return (
@@ -2828,6 +2845,7 @@ def validate_populated_paths(
             path
             for path, entry in entries.items()
             if entry.get("status") in {"active", "generated"} and path not in actual
+            and path not in OPTIONAL_PENDING_RATIFICATION_ARTIFACT_PATHS
         )
     restricted = sorted(
         path for path in actual if PurePosixPath(path).suffix.lower() in RESTRICTED_SUFFIXES
@@ -3035,7 +3053,7 @@ CANONICAL_FILE_COUNT = (  # pyright: ignore[reportConstantRedefinition]
     CANONICAL_FILE_COUNT + len(PAIRFORMER_WAVE6_ADRS) + 1
 )
 CANONICAL_PATH_SET_SHA256 = (  # pyright: ignore[reportConstantRedefinition]
-    "768584f159bdb8a81e09fb24f91a7b5b075bd96924c4d460a223b73d7ab07323"
+    "bf3a6fd8d3f0ec98138f4b7ae415b60c39aefb698eae0a34ce6a6711073ed86d"
 )
 PRE_ACTIVATION_SOURCE_PATHS = frozenset(  # pyright: ignore[reportConstantRedefinition]
     path

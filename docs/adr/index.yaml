@@ -81,7 +81,7 @@ spec:
       path: docs/adr/0011-sqp-001-scientific-qualification-profile.md
       owners: [scientific-leadership, data-governance, ml-systems]
     - id: ADR-0012
-      title: HTTP/JSON Operation Projection and Python SDK
+      title: Candidate HTTP/JSON and Server-Sent Event Projection
       status: proposed
       connectedRatification: pending
       path: docs/adr/0012-http-json-operation-projection-python-sdk.md

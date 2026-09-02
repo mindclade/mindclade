@@ -213,6 +213,7 @@ struct FakeTransport {
     lifecycle_contexts: Mutex<Vec<CommandContext>>,
     lifecycle_page_tokens: Mutex<Vec<String>>,
     hang_operations: AtomicBool,
+    hang_downloads: AtomicBool,
 }
 
 type WatchScript = Result<Vec<Result<WatchOperationResponse, Status>>, Status>;
@@ -562,6 +563,9 @@ impl RpcTransport for FakeTransport {
         request: Request<DownloadArtifactRequest>,
     ) -> Result<Response<ArtifactStream>, Status> {
         self.observe(&request);
+        if self.hang_downloads.load(Ordering::Relaxed) {
+            std::future::pending::<()>().await;
+        }
         let updates = Self::pop(&self.downloads)?;
         let stream: ArtifactStream = Box::pin(tokio_stream::iter(updates));
         Ok(Response::new(stream))
@@ -1791,6 +1795,118 @@ async fn artifact_upload_resumes_in_a_fresh_client_and_verifies_generated_transf
         .unwrap();
     assert_eq!(downloaded, 6);
     assert_eq!(destination, content);
+}
+
+#[tokio::test]
+async fn artifact_download_file_is_atomic_verified_and_no_clobber() {
+    let content = b"atomic-artifact";
+    let artifact = artifact_for(content);
+    let download = |corrupt: bool| {
+        Ok(vec![Ok(DownloadArtifactResponse {
+            artifact: Some(artifact.clone()),
+            offset: 0,
+            data: content.to_vec(),
+            chunk_digest: if corrupt {
+                format!("sha256:{}", "0".repeat(64))
+            } else {
+                format!("sha256:{:x}", Sha256::digest(content))
+            },
+            complete: true,
+        })])
+    };
+    let transport = Arc::new(FakeTransport::default());
+    transport.downloads.lock().unwrap().extend([
+        download(false),
+        download(false),
+        download(true),
+        download(false),
+        download(false),
+    ]);
+    let provider: Arc<dyn TokenProvider> =
+        Arc::new(FakeTokenProvider::new(Duration::from_hours(1)));
+    let client = Client::with_transport(
+        test_config(provider, 1, Duration::from_millis(1)),
+        transport.clone(),
+    );
+    let artifacts = client.artifacts();
+    let directory = std::env::temp_dir().join(format!(
+        "mindclade-sdk-artifact-{}",
+        crate::request::generate_request_id()
+    ));
+    std::fs::create_dir(&directory).unwrap();
+
+    let destination = directory.join("artifact.bin");
+    assert_eq!(
+        artifacts
+            .download_file(&artifact, &destination, CallOptions::new())
+            .await
+            .unwrap(),
+        u64::try_from(content.len()).unwrap()
+    );
+    assert_eq!(std::fs::read(&destination).unwrap(), content);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+
+        assert_eq!(
+            std::fs::metadata(&destination)
+                .unwrap()
+                .permissions()
+                .mode()
+                & 0o777,
+            0o600
+        );
+    }
+
+    let existing_error = artifacts
+        .download_file(&artifact, &destination, CallOptions::new())
+        .await
+        .unwrap_err();
+    assert_eq!(existing_error.kind(), ErrorKind::AlreadyExists);
+    assert_eq!(std::fs::read(&destination).unwrap(), content);
+
+    let corrupt_destination = directory.join("corrupt.bin");
+    let corrupt_error = artifacts
+        .download_file(&artifact, &corrupt_destination, CallOptions::new())
+        .await
+        .unwrap_err();
+    assert_eq!(corrupt_error.kind(), ErrorKind::Protocol);
+    assert!(!corrupt_destination.exists());
+
+    let race_destination = directory.join("race.bin");
+    let left_artifacts = artifacts.clone();
+    let right_artifacts = artifacts.clone();
+    let (left, right) = tokio::join!(
+        left_artifacts.download_file(&artifact, &race_destination, CallOptions::new()),
+        right_artifacts.download_file(&artifact, &race_destination, CallOptions::new())
+    );
+    assert!(matches!(
+        (&left, &right),
+        (Ok(_), Err(error)) | (Err(error), Ok(_))
+            if error.kind() == ErrorKind::AlreadyExists
+    ));
+    assert_eq!(std::fs::read(&race_destination).unwrap(), content);
+
+    transport.hang_downloads.store(true, Ordering::Relaxed);
+    let cancelled_destination = directory.join("cancelled.bin");
+    assert!(
+        tokio::time::timeout(
+            Duration::from_millis(10),
+            artifacts.download_file(&artifact, &cancelled_destination, CallOptions::new())
+        )
+        .await
+        .is_err()
+    );
+    transport.hang_downloads.store(false, Ordering::Relaxed);
+    assert!(!cancelled_destination.exists());
+    assert!(std::fs::read_dir(&directory).unwrap().all(|entry| {
+        !entry
+            .unwrap()
+            .file_name()
+            .to_string_lossy()
+            .starts_with(".mindclade-download-")
+    }));
+    std::fs::remove_dir_all(directory).unwrap();
 }
 
 #[tokio::test]

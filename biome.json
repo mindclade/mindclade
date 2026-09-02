@@ -12,6 +12,7 @@
       "libs/typescript/**/*.ts",
       "libs/typescript/**/*.tsx",
       "libs/typescript/**/package.json",
+      "!libs/typescript/**/dist",
       "package.json"
     ]
   },

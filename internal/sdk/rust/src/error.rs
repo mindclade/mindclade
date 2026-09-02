@@ -7,6 +7,7 @@ use tonic::{Code, Status, metadata::MetadataMap};
 pub enum ErrorKind {
     Configuration,
     InvalidArgument,
+    AlreadyExists,
     Authentication,
     Cancelled,
     DeadlineExceeded,
@@ -61,6 +62,17 @@ impl Error {
         Self::local(ErrorKind::InvalidArgument, message)
     }
 
+    pub(crate) fn already_exists(message: impl Into<String>) -> Self {
+        Self {
+            kind: ErrorKind::AlreadyExists,
+            code: Some(Code::AlreadyExists),
+            request_id: None,
+            retryable: false,
+            retry_after: None,
+            safe_message: message.into(),
+        }
+    }
+
     pub(crate) fn authentication(message: impl Into<String>) -> Self {
         Self::local(ErrorKind::Authentication, message)
     }
@@ -71,6 +83,10 @@ impl Error {
 
     pub(crate) fn transport() -> Self {
         Self::local(ErrorKind::Transport, "transport connection failed")
+    }
+
+    pub(crate) fn filesystem(message: impl Into<String>) -> Self {
+        Self::local(ErrorKind::Transport, message)
     }
 
     pub(crate) fn cancelled() -> Self {
@@ -137,7 +153,7 @@ impl std::error::Error for Error {}
 pub(crate) fn is_retryable_code(code: Code) -> bool {
     matches!(
         code,
-        Code::Unavailable | Code::ResourceExhausted | Code::Aborted
+        Code::Unavailable | Code::ResourceExhausted | Code::Aborted | Code::DeadlineExceeded
     )
 }
 

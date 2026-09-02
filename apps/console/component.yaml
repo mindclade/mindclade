@@ -1,13 +1,13 @@
 apiVersion: mindclade.dev/v1
 kind: Component
 metadata:
-  name: apps-internal-console-client
+  name: apps-console
   description: Server-side internal console data source consuming the private TypeScript SDK.
 spec:
   type: application
   lifecycle: pre-production
   maturity: internal
-  owner: developer-platform
+  owner: product-engineering
   security_reviewers:
     - security
   repository_class: application-source
@@ -16,7 +16,12 @@ spec:
   data_classification: internal
   production_authority: false
   dependencies:
-    - internal-sdk-typescript
+    - component: internal-sdk-typescript
+      kind: compile-api
+      visibility: repository
+      owner: developer-experience
+      justification: The console uses the governed ergonomic TypeScript facade over generated transports.
+      scope: operation and verified-artifact client calls
   provides:
     - console-operation-and-artifact-data-source
   release:

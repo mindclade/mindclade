@@ -18,8 +18,14 @@ protocols/proto
 Generated bindings own wire messages, serialization, and RPC signatures. This
 layer owns endpoint and credential discovery, secure transport, retry budgets,
 idempotency, deadlines, normalized errors, observability, operation helpers,
-artifact resolution, and test fakes. It does not redefine persisted resources
-or wire models.
+artifact resolution, verified no-clobber file downloads, and test fakes. It
+does not redefine persisted resources or wire models.
+
+`RunService.ExpireAttemptLeases` is deliberately and permanently classified
+as **raw-only**. Lease expiry is a control-plane reconciler primitive, not an
+application SDK workflow; ordinary callers use the fenced run/attempt helpers.
+Using the generated escape hatch for this RPC is conspicuous, receives no
+implicit retry, and does not create an ergonomic compatibility promise.
 
 SDK clients never access PostgreSQL, GCS, or Pub/Sub directly. Services enforce
 tenant-scoped transactions and publish immutable protobuf envelopes only after

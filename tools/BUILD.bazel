@@ -1,4 +1,4 @@
-load("@rules_python//python:defs.bzl", "py_binary", "py_test")
+load("@rules_python//python:defs.bzl", "py_binary", "py_library", "py_test")
 load("//tools:bazel/rules/component_rule.bzl", "component_metadata")
 
 package(default_visibility = ["//visibility:private"])
@@ -67,17 +67,40 @@ py_test(
     ],
 )
 
+py_library(
+    name = "ci_evidence_bundle",
+    srcs = ["ci/evidence_bundle.py"],
+    visibility = ["//visibility:public"],
+    deps = ["@mindclade_pypi//jsonschema"],
+)
+
 py_test(
     name = "training_evidence_test",
     srcs = [
         "qualification/readiness_report.py",
         "qualification/tests/test_training_evidence.py",
+        "qualification/training_evidence_assembler.py",
         "qualification/training_rehearsal.py",
+    ],
+    data = [
+        "qualification/authoritative-integration-criteria.v1.json",
+        "//docs:architecture_governance",
     ],
     imports = ["qualification"],
     legacy_create_init = 0,
     main = "qualification/tests/test_training_evidence.py",
     python_version = "PY3",
+    deps = [":ci_evidence_bundle"],
+)
+
+py_binary(
+    name = "training_evidence_assembler",
+    srcs = ["qualification/training_evidence_assembler.py"],
+    legacy_create_init = 0,
+    main = "qualification/training_evidence_assembler.py",
+    python_version = "PY3",
+    visibility = ["//visibility:public"],
+    deps = [":ci_evidence_bundle"],
 )
 
 py_test(
@@ -228,11 +251,13 @@ filegroup(
     name = "wave1_tooling_sources",
     srcs = [
         "BUILD.bazel",
+        "qualification/authoritative-integration-criteria.v1.json",
         "qualification/collect_evidence.py",
         "qualification/hardware_envelope.py",
         "qualification/readiness_report.py",
         "qualification/resolve_policy.py",
         "qualification/tests/test_training_evidence.py",
+        "qualification/training_evidence_assembler.py",
         "qualification/training_rehearsal.py",
         "qualification/verify_evidence.py",
         "release/build_release_manifest.py",

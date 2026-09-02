@@ -261,14 +261,22 @@ class SyncInvoker:
                 last_error = normalized
                 if not (retry_safe and normalized.retryable and attempt < attempts):
                     raise normalized from error
-                delay = min(
-                    self.config.retry.max_delay,
-                    self.config.retry.base_delay * (2 ** (attempt - 1)),
-                    max(0.0, deadline - time.monotonic()),
-                )
-                if delay <= 0:
+                remaining = max(0.0, deadline - time.monotonic())
+                if normalized.retry_after is not None:
+                    delay = min(self.config.retry.max_delay, normalized.retry_after, remaining)
+                    if remaining <= 0:
+                        raise normalized from error
+                else:
+                    delay = min(
+                        self.config.retry.max_delay,
+                        self.config.retry.base_delay * (2 ** (attempt - 1)),
+                        remaining,
+                    )
+                if delay < 0 or (delay == 0 and normalized.retry_after is None):
                     raise normalized from error
-                time.sleep(random.uniform(0.0, delay))
+                time.sleep(
+                    delay if normalized.retry_after is not None else random.uniform(0.0, delay)
+                )
                 continue
             _observe(
                 self.observer,
@@ -433,14 +441,22 @@ class AsyncInvoker:
                 last_error = normalized
                 if not (retry_safe and normalized.retryable and attempt < attempts):
                     raise normalized from error
-                delay = min(
-                    self.config.retry.max_delay,
-                    self.config.retry.base_delay * (2 ** (attempt - 1)),
-                    max(0.0, deadline - loop.time()),
-                )
-                if delay <= 0:
+                remaining = max(0.0, deadline - loop.time())
+                if normalized.retry_after is not None:
+                    delay = min(self.config.retry.max_delay, normalized.retry_after, remaining)
+                    if remaining <= 0:
+                        raise normalized from error
+                else:
+                    delay = min(
+                        self.config.retry.max_delay,
+                        self.config.retry.base_delay * (2 ** (attempt - 1)),
+                        remaining,
+                    )
+                if delay < 0 or (delay == 0 and normalized.retry_after is None):
                     raise normalized from error
-                await asyncio.sleep(random.uniform(0.0, delay))
+                await asyncio.sleep(
+                    delay if normalized.retry_after is not None else random.uniform(0.0, delay)
+                )
                 continue
             _observe(
                 self.observer,

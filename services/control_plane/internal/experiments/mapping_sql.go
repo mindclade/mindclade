@@ -87,7 +87,7 @@ func loadSubjectIDs(ctx context.Context, tx *sql.Tx, row experimentRow) ([]sql.N
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	result := make([]sql.NullInt64, 0)
 	for rows.Next() {
 		var id sql.NullInt64

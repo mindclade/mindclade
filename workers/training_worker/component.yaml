@@ -16,8 +16,18 @@ spec:
   data_classification: internal
   production_authority: false
   dependencies:
-    - internal-sdk-python
-    - protobuf-job-events
+    - component: internal-sdk-python
+      kind: compile-api
+      visibility: repository
+      owner: developer-experience
+      justification: The worker uses the governed ergonomic Python facade over generated transports.
+      scope: fenced training lifecycle and verified artifact access
+    - component: protobuf-job-events
+      kind: protocol
+      visibility: repository
+      owner: architecture
+      justification: Immutable typed job events are the authoritative assignment-delivery contract.
+      scope: Pub/Sub training assignment intake
   provides:
     - verified-training-assignment-intake
   release:

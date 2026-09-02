@@ -376,5 +376,7 @@ func referenceFixture(identity Identity, kind, id, name string, revision int64) 
 func resourceForExperiment(value *experimentv1.Experiment) *commonv1.ResourceRef {
 	return experimentResource(value)
 }
+
 func resourceForStudy(value *experimentv1.Study) *commonv1.ResourceRef { return studyResource(value) }
+
 func resourceForTrial(value *experimentv1.Trial) *commonv1.ResourceRef { return trialResource(value) }

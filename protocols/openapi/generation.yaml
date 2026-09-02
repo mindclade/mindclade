@@ -176,6 +176,14 @@ spec:
       - ProviderPolicyCompiler
       - SdkEmitter
       - SdkBehaviorVerifier
+    streamingPolicy:
+      operationKindExtension: x-mindclade-operation-kind
+      ssePolicyExtension: x-mindclade-sse
+      eligibleKinds: [unary]
+      reviewedUnsupported:
+        watchOperation:
+          kind: sse
+          reason: explicit-stream-capable-rest-adapter-not-qualified
     providers:
       - id: fern
         displayName: Fern

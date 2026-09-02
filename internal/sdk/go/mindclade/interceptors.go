@@ -3,7 +3,9 @@ package mindclade
 import (
 	"context"
 	cryptorand "crypto/rand"
+	"errors"
 	"math/big"
+	"sync"
 	"time"
 
 	"google.golang.org/grpc"
@@ -21,7 +23,7 @@ func unaryInterceptor(config Config) grpc.UnaryClientInterceptor {
 		invoke grpc.UnaryInvoker,
 		options ...grpc.CallOption,
 	) error {
-		if _, ok := ctx.Deadline(); !ok {
+		if deadline, ok := ctx.Deadline(); !ok || time.Until(deadline) > config.DefaultRPCTimeout {
 			var cancel context.CancelFunc
 			ctx, cancel = context.WithTimeout(ctx, config.DefaultRPCTimeout)
 			defer cancel()
@@ -33,10 +35,10 @@ func unaryInterceptor(config Config) grpc.UnaryClientInterceptor {
 		if retryPermitted(method, request, requestValue, config) {
 			attempts = config.MaxAttempts
 		}
-		var trailers metadata.MD
-		callOptions := append([]grpc.CallOption(nil), options...)
-		callOptions = append(callOptions, grpc.Trailer(&trailers))
 		for attempt := 1; attempt <= attempts; attempt++ {
+			var trailers metadata.MD
+			callOptions := append([]grpc.CallOption(nil), options...)
+			callOptions = append(callOptions, grpc.Trailer(&trailers))
 			started := time.Now()
 			observeStarted(config.Observer, method, attempt)
 			err := invoke(ctx, method, request, response, connection, callOptions...)
@@ -44,17 +46,26 @@ func unaryInterceptor(config Config) grpc.UnaryClientInterceptor {
 			if err == nil {
 				return nil
 			}
+			normalized := enrichError(err, trailers)
 			code := status.Code(err)
 			if attempt == attempts || !retryableCode(code) {
-				return enrichError(err, trailers)
+				return normalized
 			}
-			delay := retryDelay(config, attempt)
+			delay := retryDelayForError(config, attempt, normalized)
 			if err := waitContext(ctx, delay); err != nil {
 				return normalizeError(err)
 			}
 		}
 		return &Error{Code: CodeInternal, Message: "retry loop exited unexpectedly"}
 	}
+}
+
+func retryDelayForError(config Config, attempt int, err error) time.Duration {
+	var sdkError *Error
+	if errors.As(err, &sdkError) && (sdkError.retryAfterSet || sdkError.RetryAfter > 0) {
+		return min(sdkError.RetryAfter, config.RetryMaxDelay)
+	}
+	return retryDelay(config, attempt)
 }
 
 func streamInterceptor(config Config) grpc.StreamClientInterceptor {
@@ -66,6 +77,10 @@ func streamInterceptor(config Config) grpc.StreamClientInterceptor {
 		streamer grpc.Streamer,
 		options ...grpc.CallOption,
 	) (grpc.ClientStream, error) {
+		cancel := func() {}
+		if deadline, ok := ctx.Deadline(); !ok || time.Until(deadline) > config.DefaultRPCTimeout {
+			ctx, cancel = context.WithTimeout(ctx, config.DefaultRPCTimeout)
+		}
 		ctx, _, _ = withRequestOptions(ctx)
 		ctx = attachRequestMetadata(ctx, config, method)
 		started := time.Now()
@@ -73,10 +88,28 @@ func streamInterceptor(config Config) grpc.StreamClientInterceptor {
 		stream, err := streamer(ctx, description, connection, method, options...)
 		observeFinished(config.Observer, method, 1, time.Since(started), errorCode(err))
 		if err != nil {
+			cancel()
 			return nil, normalizeError(err)
 		}
-		return stream, nil
+		return &boundedClientStream{ClientStream: stream, cancel: cancel}, nil
 	}
+}
+
+// boundedClientStream releases an SDK-created deadline timer when the stream
+// reaches EOF or another terminal receive error. Caller cancellation remains
+// authoritative when a consumer abandons a stream before reading it to end.
+type boundedClientStream struct {
+	grpc.ClientStream
+	cancel context.CancelFunc
+	once   sync.Once
+}
+
+func (stream *boundedClientStream) RecvMsg(message any) error {
+	err := stream.ClientStream.RecvMsg(message)
+	if err != nil {
+		stream.once.Do(stream.cancel)
+	}
+	return err
 }
 
 func observeStarted(observer Observer, method string, attempt int) {

@@ -20,7 +20,7 @@ from typing import Any, NoReturn, cast
 
 import yaml
 
-PLAN_SCHEMA_VERSION = "mindclade.optional-rest-sdk-plan/v3"
+PLAN_SCHEMA_VERSION = "mindclade.optional-rest-sdk-plan/v4"
 PROVENANCE_SCHEMA_VERSION = "mindclade.optional-rest-sdk-provenance/v3"
 DEFAULT_OPENAPI = Path("protocols/openapi/published/mindclade.openapi.yaml")
 DEFAULT_GENERATION = Path("protocols/openapi/generation.yaml")
@@ -154,24 +154,155 @@ def write_atomic(output_root: Path, relative: Path, content: bytes) -> Path:
     return destination
 
 
-def operation_ids(openapi: Mapping[str, Any]) -> tuple[str, ...]:
+OPERATION_KINDS = frozenset({"unary", "server-stream", "sse"})
+SSE_POLICY_FIELDS = frozenset(
+    {
+        "errorEventType",
+        "eventModel",
+        "heartbeatIntervalSeconds",
+        "heartbeatReusesLastDurableEventId",
+        "replayAcknowledgedTerminalEvent",
+        "resumeHeader",
+        "retryMilliseconds",
+    }
+)
+
+
+def _positive_integer(value: Any, location: str) -> int:
+    if not isinstance(value, int) or isinstance(value, bool) or value <= 0:
+        raise SdkGeneratorError(f"{location} must be a positive integer")
+    return value
+
+
+def operation_contracts(openapi: Mapping[str, Any]) -> tuple[dict[str, Any], ...]:
+    """Validate operation-kind metadata so streams cannot become unary by omission."""
+
     paths = require_mapping(openapi.get("paths"), "OpenAPI paths")
-    found: list[str] = []
+    found: list[dict[str, Any]] = []
     for path_name, raw_path_item in paths.items():
         path_item = require_mapping(raw_path_item, f"OpenAPI path {path_name}")
         for method, raw_operation in path_item.items():
             if method not in HTTP_METHODS:
                 continue
             operation = require_mapping(raw_operation, f"OpenAPI {method} {path_name}")
-            found.append(
-                require_string(
-                    operation.get("operationId"),
-                    f"OpenAPI {method} {path_name}.operationId",
-                )
+            operation_id = require_string(
+                operation.get("operationId"),
+                f"OpenAPI {method} {path_name}.operationId",
             )
-    if not found or len(found) != len(set(found)):
+            kind = require_string(
+                operation.get("x-mindclade-operation-kind"),
+                f"OpenAPI {method} {path_name}.x-mindclade-operation-kind",
+            )
+            if kind not in OPERATION_KINDS:
+                raise SdkGeneratorError(
+                    f"OpenAPI operation {operation_id} has unsupported operation kind {kind!r}"
+                )
+            raw_sse = operation.get("x-mindclade-sse")
+            record: dict[str, Any] = {"kind": kind, "operationId": operation_id}
+            if kind == "sse":
+                sse = require_mapping(raw_sse, f"OpenAPI operation {operation_id} SSE policy")
+                if set(sse) != set(SSE_POLICY_FIELDS):
+                    raise SdkGeneratorError(
+                        f"OpenAPI operation {operation_id} SSE policy fields differ"
+                    )
+                require_string(sse.get("eventModel"), f"{operation_id} SSE eventModel")
+                if sse.get("errorEventType") != "error":
+                    raise SdkGeneratorError(
+                        f"OpenAPI operation {operation_id} SSE error event is unsupported"
+                    )
+                if sse.get("resumeHeader") != "Last-Event-ID":
+                    raise SdkGeneratorError(
+                        f"OpenAPI operation {operation_id} SSE resume header is unsupported"
+                    )
+                _positive_integer(sse.get("retryMilliseconds"), f"{operation_id} SSE retry")
+                _positive_integer(
+                    sse.get("heartbeatIntervalSeconds"), f"{operation_id} SSE heartbeat"
+                )
+                if sse.get("heartbeatReusesLastDurableEventId") is not True:
+                    raise SdkGeneratorError(
+                        f"OpenAPI operation {operation_id} SSE heartbeat policy is unsupported"
+                    )
+                if sse.get("replayAcknowledgedTerminalEvent") is not False:
+                    raise SdkGeneratorError(
+                        f"OpenAPI operation {operation_id} SSE terminal replay is unsupported"
+                    )
+                responses = require_mapping(
+                    operation.get("responses"), f"OpenAPI operation {operation_id} responses"
+                )
+                success = require_mapping(
+                    responses.get("200"), f"OpenAPI operation {operation_id} response 200"
+                )
+                content = require_mapping(
+                    success.get("content"), f"OpenAPI operation {operation_id} response content"
+                )
+                if set(content) != {"text/event-stream"}:
+                    raise SdkGeneratorError(
+                        f"OpenAPI operation {operation_id} is not an explicit SSE response"
+                    )
+                record["ssePolicy"] = dict(sse)
+            elif raw_sse is not None:
+                raise SdkGeneratorError(
+                    f"OpenAPI non-SSE operation {operation_id} declares SSE policy"
+                )
+            found.append(record)
+    identifiers = [cast(str, record["operationId"]) for record in found]
+    if not found or len(identifiers) != len(set(identifiers)):
         raise SdkGeneratorError("OpenAPI must contain unique, non-empty operationId values")
-    return tuple(sorted(found))
+    return tuple(sorted(found, key=lambda record: cast(str, record["operationId"])))
+
+
+def operation_ids(openapi: Mapping[str, Any]) -> tuple[str, ...]:
+    return tuple(cast(str, record["operationId"]) for record in operation_contracts(openapi))
+
+
+def operation_dispositions(
+    optional: Mapping[str, Any],
+    operations: Sequence[Mapping[str, Any]],
+) -> dict[str, dict[str, str]]:
+    """Require an explicit reviewed disposition for every non-unary operation."""
+
+    policy = require_mapping(optional.get("streamingPolicy"), "streamingPolicy")
+    if (
+        policy.get("operationKindExtension") != "x-mindclade-operation-kind"
+        or policy.get("ssePolicyExtension") != "x-mindclade-sse"
+        or tuple(require_sequence(policy.get("eligibleKinds"), "streamingPolicy.eligibleKinds"))
+        != ("unary",)
+    ):
+        raise SdkGeneratorError(
+            "optional REST streaming policy must admit only explicitly classified unary methods"
+        )
+    reviewed = require_mapping(
+        policy.get("reviewedUnsupported"), "streamingPolicy.reviewedUnsupported"
+    )
+    operation_by_id = {cast(str, operation["operationId"]): operation for operation in operations}
+    dispositions: dict[str, dict[str, str]] = {}
+    for operation_id, operation in operation_by_id.items():
+        kind = cast(str, operation["kind"])
+        raw_review = reviewed.get(operation_id)
+        if kind == "unary":
+            if raw_review is not None:
+                raise SdkGeneratorError(
+                    f"unary operation {operation_id} cannot be reviewed as unsupported"
+                )
+            dispositions[operation_id] = {"disposition": "eligible", "kind": kind}
+            continue
+        review = require_mapping(raw_review, f"streamingPolicy.reviewedUnsupported.{operation_id}")
+        if set(review) != {"kind", "reason"} or review.get("kind") != kind:
+            raise SdkGeneratorError(
+                f"streaming operation {operation_id} has no exact reviewed disposition"
+            )
+        reason = require_string(
+            review.get("reason"), f"streamingPolicy.reviewedUnsupported.{operation_id}.reason"
+        )
+        dispositions[operation_id] = {
+            "disposition": "reviewed-unsupported",
+            "kind": kind,
+            "reason": reason,
+        }
+    unexpected = sorted(set(reviewed) - set(operation_by_id))
+    if unexpected:
+        raise SdkGeneratorError(f"streaming policy names unknown operations: {unexpected}")
+    return dispositions
 
 
 def public_schemas(openapi: Mapping[str, Any]) -> tuple[str, ...]:
@@ -300,6 +431,7 @@ def validate_contract(
         != OPTIONAL_PIPELINE_INTERFACES
     ):
         raise SdkGeneratorError("optional REST provider interfaces changed")
+    operation_dispositions(optional, operation_contracts(openapi))
 
     providers = configured_providers(optional)
     if set(providers) != set(ADAPTERS):
@@ -428,6 +560,17 @@ def build_plan(
     spec = require_mapping(generation["spec"], "generation.spec")
     optional = require_mapping(spec["optionalRestGeneration"], "optionalRestGeneration")
     parity = require_mapping(optional.get("parity"), "optionalRestGeneration.parity")
+    operations = operation_contracts(openapi)
+    dispositions = operation_dispositions(optional, operations)
+    operation_inventory: list[dict[str, Any]] = []
+    for operation in operations:
+        operation_id = cast(str, operation["operationId"])
+        disposition = dispositions[operation_id]
+        record = dict(operation)
+        record["providerDisposition"] = disposition["disposition"]
+        if "reason" in disposition:
+            record["reviewedReason"] = disposition["reason"]
+        operation_inventory.append(record)
     return {
         "schemaVersion": PLAN_SCHEMA_VERSION,
         "kind": "OptionalRestSdkPlan",
@@ -444,7 +587,18 @@ def build_plan(
             "optionalPolicySha256": policy_digest,
         },
         "inventory": {
-            "operationIds": list(operation_ids(openapi)),
+            "operationIds": [record["operationId"] for record in operation_inventory],
+            "operations": operation_inventory,
+            "providerEligibleOperationIds": [
+                record["operationId"]
+                for record in operation_inventory
+                if record["providerDisposition"] == "eligible"
+            ],
+            "reviewedUnsupportedOperationIds": [
+                record["operationId"]
+                for record in operation_inventory
+                if record["providerDisposition"] == "reviewed-unsupported"
+            ],
             "publicSchemas": list(public_schemas(openapi)),
         },
         "provenance": provenance,
@@ -487,8 +641,24 @@ def generate_connected(args: argparse.Namespace) -> int:
 
     openapi_path = Path(args.openapi).resolve()
     generation_path = Path(args.generation).resolve()
+    openapi = load_yaml_mapping(openapi_path)
     generation = load_yaml_mapping(generation_path)
-    providers = validate_contract(load_yaml_mapping(openapi_path), generation)
+    providers = validate_contract(openapi, generation)
+    optional = require_mapping(
+        require_mapping(generation.get("spec"), "generation.spec").get("optionalRestGeneration"),
+        "optionalRestGeneration",
+    )
+    dispositions = operation_dispositions(optional, operation_contracts(openapi))
+    unsupported = sorted(
+        operation_id
+        for operation_id, disposition in dispositions.items()
+        if disposition["disposition"] != "eligible"
+    )
+    if unsupported:
+        raise ConnectedGenerationError(
+            "connected optional generation requires a qualified stream-capable adapter or a "
+            f"descriptor-derived filtered input; reviewed-unsupported operations: {unsupported}"
+        )
     provider = providers[args.provider]
     if args.language not in ADAPTERS[args.provider].languages:
         raise ConnectedGenerationError(

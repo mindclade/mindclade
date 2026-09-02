@@ -3353,7 +3353,8 @@ mindclade/
 │   │   │   │   ├── server.go
 │   │   │   │   ├── server_test.go
 │   │   │   │   ├── events.go
-│   │   │   │   └── events_test.go
+│   │   │   │   ├── events_test.go
+│   │   │   │   └── domain_completion_postgres_test.go
 │   │   │   ├── agents/
 │   │   │   │   ├── agent_commands.go
 │   │   │   │   ├── agent_repository.go
@@ -3362,6 +3363,7 @@ mindclade/
 │   │   │   │   ├── common_sql.go
 │   │   │   │   ├── contracts.go
 │   │   │   │   ├── events.go
+│   │   │   │   ├── events_test.go
 │   │   │   │   ├── mapping_sql.go
 │   │   │   │   ├── pagination.go
 │   │   │   │   ├── postgres_integration_test.go
@@ -3448,8 +3450,12 @@ mindclade/
 │   │   │   │   │   └── audit_events.go
 │   │   │   │   ├── audit/
 │   │   │   │   │   └── audit_store.go
-│   │   │   │   └── inbox/
-│   │   │   │       └── inbox_store.go
+│   │   │   │   ├── inbox/
+│   │   │   │   │   └── inbox_store.go
+│   │   │   │   └── eventprojection/
+│   │   │   │       ├── BUILD.bazel
+│   │   │   │       ├── projection.go
+│   │   │   │       └── projection_test.go
 │   │   │   ├── operations/
 │   │   │   │   ├── operation_commands.go
 │   │   │   │   ├── operation_repository.go
@@ -3518,6 +3524,8 @@ mindclade/
 │   │   │   ├── 000007_numeric_bounds.up.sql
 │   │   │   ├── 000008_dead_letter_replay.down.sql
 │   │   │   ├── 000008_dead_letter_replay.up.sql
+│   │   │   ├── 000009_event_audit_projection.down.sql
+│   │   │   ├── 000009_event_audit_projection.up.sql
 │   │   │   ├── 000010_experiment_vertical.down.sql
 │   │   │   └── 000010_experiment_vertical.up.sql
 │   │   ├── tests/
@@ -3652,7 +3660,8 @@ mindclade/
 │   │   │   └── test_control_plane.py
 │   │   ├── BUILD.bazel
 │   │   ├── component.yaml
-│   │   └── README.md
+│   │   ├── README.md
+│   │   └── pyrightconfig.json
 │   ├── evaluation_worker/
 │   │   ├── python/
 │   │   │   ├── main.py
@@ -4124,7 +4133,13 @@ mindclade/
 │   │   ├── resolve_policy.py
 │   │   ├── collect_evidence.py
 │   │   ├── verify_evidence.py
-│   │   └── hardware_envelope.py
+│   │   ├── hardware_envelope.py
+│   │   ├── authoritative-integration-criteria.v1.json
+│   │   ├── readiness_report.py
+│   │   ├── tests/
+│   │   │   └── test_training_evidence.py
+│   │   ├── training_evidence_assembler.py
+│   │   └── training_rehearsal.py
 │   ├── migration/
 │   │   ├── plan_path_move.py
 │   │   ├── verify_compatibility.py
@@ -4385,6 +4400,7 @@ mindclade/
 │   │   ├── submit_operation.py
 │   │   ├── follow_operation.ts
 │   │   ├── download_artifact.py
+│   │   ├── BUILD.bazel
 │   │   ├── __init__.py
 │   │   ├── README.md
 │   │   ├── biome.json
@@ -4507,6 +4523,7 @@ mindclade/
         │   │   ├── config.py
         │   │   ├── datasets.py
         │   │   ├── errors.py
+        │   │   ├── events.py
         │   │   ├── generated.py
         │   │   ├── inference.py
         │   │   ├── method_policy.py
@@ -4548,6 +4565,7 @@ mindclade/
         │       ├── config.rs
         │       ├── datasets.rs
         │       ├── error.rs
+        │       ├── events.rs
         │       ├── inference.rs
         │       ├── lib.rs
         │       ├── models.rs
@@ -4557,6 +4575,7 @@ mindclade/
         │       ├── request.rs
         │       ├── retry.rs
         │       ├── tests.rs
+        │       ├── testing.rs
         │       ├── training.rs
         │       ├── transport.rs
         │       ├── workflow_tests.rs
@@ -4573,6 +4592,8 @@ mindclade/
         ├── typescript/
         │   ├── BUILD.bazel
         │   ├── README.md
+        │   ├── bazel/
+        │   │   └── package.json
         │   ├── biome.json
         │   ├── package.json
         │   ├── src/

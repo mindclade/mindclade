@@ -45,6 +45,7 @@ type Error struct {
 	Retryable  bool
 	RetryAfter time.Duration
 	Cause      error
+	retryAfterSet bool
 }
 
 // OperationError represents a durable terminal failure. The generated
@@ -146,6 +147,7 @@ func enrichError(err error, trailers metadata.MD) error {
 	if value := firstMetadata(trailers, "retry-after-ms"); value != "" {
 		if milliseconds, parseErr := strconv.ParseInt(value, 10, 64); parseErr == nil && milliseconds >= 0 && milliseconds <= int64(time.Hour/time.Millisecond) {
 			clone.RetryAfter = time.Duration(milliseconds) * time.Millisecond
+			clone.retryAfterSet = true
 		}
 	}
 	return &clone
@@ -202,5 +204,5 @@ func codeFromGRPC(code codes.Code) Code {
 }
 
 func retryableCode(code codes.Code) bool {
-	return code == codes.Unavailable || code == codes.ResourceExhausted || code == codes.Aborted
+	return code == codes.Unavailable || code == codes.ResourceExhausted || code == codes.Aborted || code == codes.DeadlineExceeded
 }

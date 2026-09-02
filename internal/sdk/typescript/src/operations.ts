@@ -63,8 +63,11 @@ export class Operations {
 				"operation list parent must match the configured project",
 			);
 		}
-		if ((request.page?.pageSize ?? 0) > MAX_OPERATION_PAGE_SIZE) {
-			throw MindcladeError.invalidArgument("operation page size cannot exceed 200");
+		const pageSize = request.page?.pageSize ?? 0;
+		if (!Number.isInteger(pageSize) || pageSize < 0 || pageSize > MAX_OPERATION_PAGE_SIZE) {
+			throw MindcladeError.invalidArgument(
+				"operation page size must be an integer between zero and 200",
+			);
 		}
 		request.parent = parent;
 		const prepared = prepareCall(this.#core.config, this.#core.runtime, options);

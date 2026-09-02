@@ -605,8 +605,10 @@ const validateId = (label: string, value: string): void => {
 };
 
 const validatePage = (size: number | undefined): void => {
-	if (size !== undefined && size > MAXIMUM_PAGE_SIZE) {
-		throw MindcladeError.invalidArgument("workflow page size cannot exceed 200");
+	if (size !== undefined && (!Number.isInteger(size) || size < 0 || size > MAXIMUM_PAGE_SIZE)) {
+		throw MindcladeError.invalidArgument(
+			"workflow page size must be an integer between zero and 200",
+		);
 	}
 };
 

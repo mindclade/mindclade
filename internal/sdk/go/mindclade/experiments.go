@@ -103,7 +103,7 @@ func (service *ExperimentService) ListPage(ctx context.Context, pageSize int32, 
 		return nil, invalidArgument("experiment page size must be between zero and 200")
 	}
 	return service.List(ctx, &internalexperimentv1.ListExperimentsRequest{
-		Page: &commonv1.PageRequest{PageSize: convertedPageSize, PageToken: strings.TrimSpace(pageToken)},
+		Page: &commonv1.PageRequest{PageSize: convertedPageSize, PageToken: pageToken},
 	}, options...)
 }
 

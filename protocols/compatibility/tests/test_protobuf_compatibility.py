@@ -16,6 +16,8 @@ from typing import Any, cast
 from unittest import mock
 
 import yaml
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import ed25519
 from google.protobuf import descriptor_pb2, json_format
 
 from tools.codegen import generate_grpc_implementation_coverage, generate_protocols
@@ -46,6 +48,165 @@ def predecessor(repository: Path) -> dict[str, Any]:
     if not isinstance(value, dict):
         raise TypeError("Protobuf predecessor must be an object")
     return cast(dict[str, Any], value)
+
+
+def canonical_ratification_json(value: object) -> bytes:
+    return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()
+
+
+def ratification_dsse_pae(payload_type: str, payload: bytes) -> bytes:
+    type_bytes = payload_type.encode()
+    return b" ".join(
+        (
+            b"DSSEv1",
+            str(len(type_bytes)).encode(),
+            type_bytes,
+            str(len(payload)).encode(),
+            payload,
+        )
+    )
+
+
+def ratification_bindings_fixture() -> dict[str, Any]:
+    return {
+        "candidate_descriptor_digest": "sha256:" + "1" * 64,
+        "codegen_toolchain_digest": "sha256:" + "2" * 64,
+        "event_registry_digest": "sha256:" + "3" * 64,
+        "generated_manifest_digest": "sha256:" + "4" * 64,
+        "grpc_implementation_digest": "sha256:" + "5" * 64,
+        "migration_set_digest": "sha256:" + "6" * 64,
+        "openapi_projection_digest": "sha256:" + "7" * 64,
+        "sdk_package_digests": {
+            language: "sha256:" + value * 64
+            for language, value in zip(
+                ("go", "python", "rust", "typescript"),
+                ("8", "9", "a", "b"),
+                strict=True,
+            )
+        },
+        "sdk_rpc_coverage_digest": "sha256:" + "c" * 64,
+        "source_revision": "d" * 40,
+    }
+
+
+def write_signed_ratification_fixture(
+    directory: Path,
+    bindings: dict[str, Any],
+    *,
+    private_key: ed25519.Ed25519PrivateKey | None = None,
+) -> dict[str, object]:
+    signer = private_key or ed25519.Ed25519PrivateKey.generate()
+    public_key = signer.public_key()
+    encoded_public_key = public_key.public_bytes(
+        encoding=serialization.Encoding.DER,
+        format=serialization.PublicFormat.SubjectPublicKeyInfo,
+    )
+    signer_key_id = generate_protocols.sha256_bytes(encoded_public_key)
+    protected_build_identity = "buildkite://mindclade/mindclade/builds/stage5-001"
+    context = {
+        "base_revision": "1" * 40,
+        "cache_architecture": "x86_64",
+        "cache_build_mode": "protected",
+        "cache_classification": "private-internal",
+        "cache_mode": "disabled",
+        "cache_namespace_epoch": "disabled-v1",
+        "cache_platform": "linux",
+        "cache_toolchain_digest": "sha256:" + "2" * 64,
+        "correlation_id": "stage5-ratification-001",
+        "execution_tier": "trusted",
+        "launcher_digest": "sha256:" + "3" * 64,
+        "launcher_identity": "buildkite://mindclade/protected-launcher",
+        "launcher_revision": "4" * 40,
+        "pipeline_class": "protected",
+        "pipeline_definition_revision": "5" * 40,
+        "repository": "mindclade/mindclade",
+        "source_revision": bindings["source_revision"],
+        "source_trust": "protected",
+        "workflow_ref": ".github/workflows/required-check.yml",
+        "workflow_revision": "6" * 40,
+    }
+    context_bytes = canonical_ratification_json(context)
+    context_digest = generate_protocols.sha256_bytes(context_bytes)
+    check_names = sorted(generate_protocols.TRAINING_VERTICAL_EVIDENCE_CHECKS)
+    producer_identities = {
+        "cross_language": "principal://mindclade/qualification/cross-language",
+        "database": "principal://mindclade/qualification/database",
+        "event": "principal://mindclade/qualification/event-delivery",
+        "gateway": "principal://mindclade/qualification/gateway-sse",
+        "grpc": "principal://mindclade/qualification/grpc",
+        "sdk": "principal://mindclade/qualification/sdk",
+    }
+    checks = {
+        name: {
+            "producer_identity": producer_identities[name],
+            "receipt_digest": "sha256:" + f"{index:x}" * 64,
+            "result_artifact_digest": "sha256:" + f"{index + 6:x}" * 64,
+            "status": "passed",
+        }
+        for index, name in enumerate(check_names, start=1)
+    }
+    evidence = {
+        **bindings,
+        "approval": {
+            "approval_digest": "sha256:" + "d" * 64,
+            "approval_id": "stage5-contract-approval-001",
+            "approved_at": "2026-09-02T12:02:00Z",
+            "reviewer_identity": "principal://mindclade/reviewers/contract-governance",
+        },
+        "checks": checks,
+        "protected_context": {
+            "context_digest": context_digest,
+            "execution_tier": "trusted",
+            "launcher_identity": context["launcher_identity"],
+            "pipeline_class": "protected",
+            "pipeline_definition_revision": context["pipeline_definition_revision"],
+            "protected_build_identity": protected_build_identity,
+            "source_revision": bindings["source_revision"],
+            "source_trust": "protected",
+        },
+        "schema_version": "mindclade.training-vertical-evidence/v2",
+        "status": "passed",
+    }
+    evidence_bytes = canonical_ratification_json(evidence)
+    signature = signer.sign(
+        ratification_dsse_pae(
+            generate_protocols.TRAINING_EVIDENCE_SIGNATURE_PAYLOAD_TYPE,
+            evidence_bytes,
+        )
+    )
+    envelope = {
+        "payloadType": generate_protocols.TRAINING_EVIDENCE_SIGNATURE_PAYLOAD_TYPE,
+        "payload": base64.b64encode(evidence_bytes).decode(),
+        "signatures": [
+            {
+                "keyid": signer_key_id,
+                "sig": base64.b64encode(signature).decode(),
+            }
+        ],
+    }
+    evidence_path = directory / "training-evidence.json"
+    context_path = directory / "trusted-context.json"
+    envelope_path = directory / "training-evidence.dsse.json"
+    public_key_path = directory / "ratification-public-key.pem"
+    evidence_path.write_bytes(evidence_bytes)
+    context_path.write_bytes(context_bytes)
+    envelope_path.write_bytes(canonical_ratification_json(envelope))
+    public_key_path.write_bytes(
+        public_key.public_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PublicFormat.SubjectPublicKeyInfo,
+        )
+    )
+    return {
+        "context_path": context_path,
+        "envelope_path": envelope_path,
+        "evidence": evidence,
+        "evidence_path": evidence_path,
+        "private_key": signer,
+        "protected_build_identity": protected_build_identity,
+        "public_key_path": public_key_path,
+        "signer_key_id": signer_key_id,
+    }
 
 
 class ProtobufCompatibilityTest(unittest.TestCase):
@@ -249,61 +410,115 @@ class ProtobufCompatibilityTest(unittest.TestCase):
 
     def test_ratification_evidence_binds_the_complete_supply_chain(self) -> None:
         repository = root()
-        bindings: dict[str, Any] = {
-            "candidate_descriptor_digest": "sha256:" + "1" * 64,
-            "codegen_toolchain_digest": "sha256:" + "2" * 64,
-            "event_registry_digest": "sha256:" + "3" * 64,
-            "generated_manifest_digest": "sha256:" + "4" * 64,
-            "grpc_implementation_digest": "sha256:" + "5" * 64,
-            "migration_set_digest": "sha256:" + "6" * 64,
-            "openapi_projection_digest": "sha256:" + "7" * 64,
-            "sdk_package_digests": {
-                language: "sha256:" + value * 64
-                for language, value in zip(
-                    ("go", "python", "rust", "typescript"),
-                    ("8", "9", "a", "b"),
-                    strict=True,
-                )
-            },
-            "sdk_rpc_coverage_digest": "sha256:" + "c" * 64,
-            "source_revision": "d" * 40,
-        }
-        evidence = {
-            **bindings,
-            "checks": {
-                name: {"status": "passed", "receipt_digest": "sha256:" + "e" * 64}
-                for name in (
-                    "cross_language",
-                    "database",
-                    "event",
-                    "gateway",
-                    "grpc",
-                    "sdk",
-                )
-            },
-            "schema_version": "mindclade.training-vertical-evidence/v2",
-            "status": "passed",
-        }
+        bindings = ratification_bindings_fixture()
         with tempfile.TemporaryDirectory(
             prefix=".ratification-evidence-test-", dir=repository
         ) as temporary:
-            path = Path(temporary) / "receipt.json"
-            path.write_text(json.dumps(evidence), encoding="utf-8")
-            validated, evidence_digest = generate_protocols.validate_training_vertical_evidence(
-                repository, path, bindings=bindings
-            )
-            self.assertEqual(validated, evidence)
+            paths = write_signed_ratification_fixture(Path(temporary), bindings)
+            key_id = cast(str, paths["signer_key_id"])
+            with mock.patch.object(
+                generate_protocols,
+                "RATIFICATION_TRUSTED_SIGNER_KEY_IDS",
+                frozenset({key_id}),
+            ):
+                validated, evidence_digest, authorization = (
+                    generate_protocols.validate_training_vertical_evidence(
+                        repository,
+                        cast(Path, paths["evidence_path"]),
+                        bindings=bindings,
+                        signature_envelope_path=cast(Path, paths["envelope_path"]),
+                        public_key_path=cast(Path, paths["public_key_path"]),
+                        expected_signer_key_id=key_id,
+                        trusted_context_path=cast(Path, paths["context_path"]),
+                        expected_protected_build_identity=cast(
+                            str, paths["protected_build_identity"]
+                        ),
+                    )
+                )
+            self.assertEqual(validated, paths["evidence"])
             self.assertEqual(
-                evidence_digest, "sha256:" + hashlib.sha256(path.read_bytes()).hexdigest()
+                evidence_digest,
+                "sha256:"
+                + hashlib.sha256(cast(Path, paths["evidence_path"]).read_bytes()).hexdigest(),
+            )
+            self.assertEqual(authorization["signer_key_id"], key_id)
+            self.assertEqual(
+                authorization["context_digest"],
+                cast(dict[str, Any], paths["evidence"])["protected_context"]["context_digest"],
+            )
+            self.assertEqual(
+                authorization["approval_digest"],
+                cast(dict[str, Any], paths["evidence"])["approval"]["approval_digest"],
             )
 
-            mismatched = copy.deepcopy(evidence)
+            mismatched = copy.deepcopy(bindings)
             mismatched["openapi_projection_digest"] = "sha256:" + "f" * 64
-            path.write_text(json.dumps(mismatched), encoding="utf-8")
-            with self.assertRaisesRegex(ValueError, "openapi_projection_digest"):
+            paths = write_signed_ratification_fixture(
+                Path(temporary),
+                mismatched,
+                private_key=cast(ed25519.Ed25519PrivateKey, paths["private_key"]),
+            )
+            key_id = cast(str, paths["signer_key_id"])
+            with (
+                mock.patch.object(
+                    generate_protocols,
+                    "RATIFICATION_TRUSTED_SIGNER_KEY_IDS",
+                    frozenset({key_id}),
+                ),
+                self.assertRaisesRegex(ValueError, "openapi_projection_digest"),
+            ):
                 generate_protocols.validate_training_vertical_evidence(
-                    repository, path, bindings=bindings
+                    repository,
+                    cast(Path, paths["evidence_path"]),
+                    bindings=bindings,
+                    signature_envelope_path=cast(Path, paths["envelope_path"]),
+                    public_key_path=cast(Path, paths["public_key_path"]),
+                    expected_signer_key_id=key_id,
+                    trusted_context_path=cast(Path, paths["context_path"]),
+                    expected_protected_build_identity=cast(str, paths["protected_build_identity"]),
                 )
+
+    def test_arbitrary_local_signer_cannot_authorize_ratification(self) -> None:
+        repository = root()
+        bindings = ratification_bindings_fixture()
+        with tempfile.TemporaryDirectory(
+            prefix=".untrusted-ratification-signer-test-", dir=repository
+        ) as temporary:
+            paths = write_signed_ratification_fixture(Path(temporary), bindings)
+            with self.assertRaisesRegex(ValueError, "signer is not activated"):
+                generate_protocols.validate_training_vertical_evidence(
+                    repository,
+                    cast(Path, paths["evidence_path"]),
+                    bindings=bindings,
+                    signature_envelope_path=cast(Path, paths["envelope_path"]),
+                    public_key_path=cast(Path, paths["public_key_path"]),
+                    expected_signer_key_id=cast(str, paths["signer_key_id"]),
+                    trusted_context_path=cast(Path, paths["context_path"]),
+                    expected_protected_build_identity=cast(str, paths["protected_build_identity"]),
+                )
+
+    def test_stage5_remains_disabled_while_connected_ratification_is_pending(self) -> None:
+        with self.assertRaisesRegex(ValueError, "independently ratified"):
+            generate_protocols.validate_connected_stage5_authority(root())
+
+    def test_ratification_cli_requires_every_protected_authorization_input(self) -> None:
+        with (
+            mock.patch.object(
+                sys,
+                "argv",
+                [
+                    "generate_protocols.py",
+                    "--ratify-v1-baseline",
+                    "--expected-candidate-digest",
+                    "sha256:" + "a" * 64,
+                    "--training-vertical-evidence",
+                    "evidence.json",
+                ],
+            ),
+            self.assertRaises(SystemExit) as raised,
+        ):
+            generate_protocols.main()
+        self.assertEqual(raised.exception.code, 2)
 
     def test_ratification_requires_all_generated_outputs_and_binds_staged_bytes(self) -> None:
         with tempfile.TemporaryDirectory(prefix="mindclade-ratification-bindings-") as value:
@@ -523,6 +738,58 @@ class ProtobufCompatibilityTest(unittest.TestCase):
         self.assertEqual(
             fields["mindclade.common.v1.PageRequest.page_size"],
             descriptor_pb2.FieldDescriptorProto.TYPE_UINT32,
+        )
+
+    def test_public_sse_policy_uses_additive_presence_aware_fields(self) -> None:
+        value = candidate(root())
+        encoded = base64.b64decode(cast(dict[str, str], value["descriptor_set"])["base64"])
+        descriptor_set = descriptor_pb2.FileDescriptorSet.FromString(encoded)
+        public_file = next(
+            file
+            for file in descriptor_set.file
+            if file.name == "proto/mindclade/api/v1/mindclade_service.proto"
+        )
+        messages = {message.name: message for message in public_file.message_type}
+        http_fields = {field.name: field for field in messages["PublicHttpContract"].field}
+        self.assertEqual(http_fields["sse"].number, 9)
+        self.assertEqual(
+            http_fields["sse"].type,
+            descriptor_pb2.FieldDescriptorProto.TYPE_MESSAGE,
+        )
+        self.assertEqual(http_fields["sse"].type_name, ".mindclade.api.v1.PublicSseContract")
+
+        sse_fields = {field.name: field for field in messages["PublicSseContract"].field}
+        self.assertEqual(
+            {name: field.number for name, field in sse_fields.items()},
+            {
+                "retry_milliseconds": 1,
+                "heartbeat_interval_seconds": 2,
+                "heartbeat_reuses_last_durable_event_id": 3,
+                "replay_acknowledged_terminal_event": 4,
+            },
+        )
+        self.assertTrue(sse_fields["heartbeat_reuses_last_durable_event_id"].proto3_optional)
+        self.assertTrue(sse_fields["replay_acknowledged_terminal_event"].proto3_optional)
+
+        event_fields = {field.name: field for field in messages["OperationEvent"].field}
+        self.assertEqual(event_fields["error"].number, 9)
+        self.assertEqual(
+            event_fields["error"].type,
+            descriptor_pb2.FieldDescriptorProto.TYPE_MESSAGE,
+        )
+        self.assertEqual(event_fields["error"].type_name, ".mindclade.api.v1.PublicError")
+        projected = generate_protocols.public_openapi_projection(encoded)
+        self.assertEqual(
+            set(projected["components"]["schemas"]["OperationEvent"]["required"]),
+            {
+                "eventId",
+                "eventType",
+                "schemaVersion",
+                "operationRevision",
+                "resumeCursor",
+                "heartbeat",
+                "emittedAt",
+            },
         )
 
     def test_event_registry_is_descriptor_complete_strict_and_ratification_bound(self) -> None:

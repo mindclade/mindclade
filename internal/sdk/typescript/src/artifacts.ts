@@ -1,4 +1,6 @@
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
+import { type FileHandle, link, open, unlink } from "node:fs/promises";
+import { dirname, join, resolve } from "node:path";
 
 import { clone, create, equals, toBinary } from "@bufbuild/protobuf";
 import { timestampFromDate } from "@bufbuild/protobuf/wkt";
@@ -132,8 +134,11 @@ export class Artifacts {
 				"artifact list parent must match the configured project",
 			);
 		}
-		if ((request.page?.pageSize ?? 0) > MAX_ARTIFACT_PAGE_SIZE) {
-			throw MindcladeError.invalidArgument("artifact page size cannot exceed 100");
+		const pageSize = request.page?.pageSize ?? 0;
+		if (!Number.isInteger(pageSize) || pageSize < 0 || pageSize > MAX_ARTIFACT_PAGE_SIZE) {
+			throw MindcladeError.invalidArgument(
+				"artifact page size must be an integer between zero and 100",
+			);
 		}
 		request.parent = parent;
 		const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
@@ -500,6 +505,87 @@ export class Artifacts {
 		return offset;
 	}
 
+	/** Downloads, verifies, and atomically publishes a new mode-0600 file.
+	 *
+	 * The destination is never overwritten. Successful no-clobber link
+	 * creation is the commit point; later best-effort staging cleanup cannot
+	 * turn a committed file into an ambiguous failure result.
+	 */
+	async downloadFile(
+		artifactValue: ArtifactRef,
+		destination: string,
+		options: SdkCallOptions = {},
+	): Promise<bigint> {
+		if (destination.length === 0 || destination.includes("\0")) {
+			throw MindcladeError.invalidArgument("artifact destination must be a non-empty text path");
+		}
+		const target = resolve(destination);
+		const directory = dirname(target);
+		const staging = join(directory, `.mindclade-download-${randomUUID()}`);
+		const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
+		ensureActive(this.#core, prepared);
+		let stagingFile: FileHandle | undefined;
+		try {
+			stagingFile = await open(staging, "wx", 0o600);
+			ensureActive(this.#core, prepared);
+			const written = await this.download(
+				artifactValue,
+				async (chunk) => {
+					let position = 0;
+					while (position < chunk.byteLength) {
+						const result = await stagingFile?.write(
+							chunk,
+							position,
+							chunk.byteLength - position,
+							null,
+						);
+						if (result === undefined || result.bytesWritten <= 0) {
+							throw MindcladeError.transport("artifact destination write failed");
+						}
+						position += result.bytesWritten;
+						ensureActive(this.#core, prepared);
+					}
+				},
+				{
+					...options,
+					requestId: prepared.requestId,
+					traceId: prepared.traceId,
+					timeoutMs: Math.max(1, prepared.deadlineMs - this.#core.runtime.nowMs()),
+				},
+			);
+			await stagingFile.sync();
+			ensureActive(this.#core, prepared);
+			await stagingFile.close();
+			stagingFile = undefined;
+			// Closing the staging handle yields to the runtime. Re-check caller
+			// cancellation immediately before the atomic publication point so a
+			// cancellation observed before commit cannot leave a destination.
+			ensureActive(this.#core, prepared);
+			try {
+				// Same-directory hard-link publication is atomic and fails closed
+				// when the destination exists, including under a racing writer.
+				await link(staging, target);
+			} catch (reason) {
+				if (filesystemCode(reason) === "EEXIST") {
+					throw MindcladeError.alreadyExists("artifact destination already exists");
+				}
+				throw MindcladeError.transport("artifact destination publication failed");
+			}
+			// Link success is the commit point. These operations intentionally
+			// cannot change the successful result into an apparent failure.
+			await syncDirectoryBestEffort(directory);
+			await unlink(staging).catch(() => undefined);
+			await syncDirectoryBestEffort(directory);
+			return written;
+		} catch (reason) {
+			if (reason instanceof MindcladeError) throw reason;
+			throw MindcladeError.transport("artifact destination operation failed");
+		} finally {
+			await stagingFile?.close().catch(() => undefined);
+			await unlink(staging).catch(() => undefined);
+		}
+	}
+
 	async #beginUpload(
 		parent: string,
 		artifact: ArtifactRef,
@@ -676,6 +762,23 @@ class SourceReader {
 async function* singleChunk(value: Uint8Array): AsyncIterable<Uint8Array> {
 	yield value;
 }
+
+const filesystemCode = (reason: unknown): string | undefined => {
+	if (typeof reason !== "object" || reason === null || !("code" in reason)) return undefined;
+	return typeof reason.code === "string" ? reason.code : undefined;
+};
+
+const syncDirectoryBestEffort = async (directory: string): Promise<void> => {
+	let handle: FileHandle | undefined;
+	try {
+		handle = await open(directory, "r");
+		await handle.sync();
+	} catch {
+		// Link creation is the commit point; sync support varies by filesystem.
+	} finally {
+		await handle?.close().catch(() => undefined);
+	}
+};
 
 const validateArtifact = (value: ArtifactRef | undefined, label: string): ArtifactRef => {
 	if (

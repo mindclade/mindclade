@@ -67,6 +67,22 @@ func withRequestOptions(ctx context.Context, options ...RequestOption) (context.
 	if value.traceID == "" {
 		value.traceID = value.requestID
 	}
+	for _, field := range []struct {
+		label string
+		value string
+	}{
+		{label: "request ID", value: value.requestID},
+		{label: "trace ID", value: value.traceID},
+	} {
+		if err := validateMetadataIdentifier(field.label, field.value); err != nil {
+			return nil, requestMetadata{}, err
+		}
+	}
+	if value.idempotencyKey != "" {
+		if err := validateMetadataIdentifier("idempotency key", value.idempotencyKey); err != nil {
+			return nil, requestMetadata{}, err
+		}
+	}
 	if value.leaseToken != "" {
 		if len(value.leaseToken) > 4096 || strings.ContainsAny(value.leaseToken, " \t\r\n\x00") {
 			return nil, requestMetadata{}, invalidArgument("lease token contains unsafe metadata characters")
@@ -117,6 +133,30 @@ func (client *Client) mutationContext(
 }
 
 func attachRequestMetadata(ctx context.Context, config Config, method string) context.Context {
+	// Outgoing contexts are caller-controlled, including on the raw generated
+	// transport escape hatch. Rebuild the metadata map without SDK-authoritative
+	// identity or credential fields so a caller cannot smuggle credentials into
+	// Local plaintext calls or create ambiguous duplicate scope metadata.
+	existing, _ := metadata.FromOutgoingContext(ctx)
+	sanitized := existing.Copy()
+	for _, key := range []string{
+		"authorization",
+		"proxy-authorization",
+		"cookie",
+		"x-api-key",
+		"x-goog-api-key",
+		"x-mindclade-sdk",
+		"x-mindclade-expected-tenant",
+		"x-mindclade-expected-project",
+		"x-mindclade-expected-principal",
+		"x-request-id",
+		"x-trace-id",
+		"idempotency-key",
+		"x-mindclade-lease-token",
+	} {
+		sanitized.Delete(key)
+	}
+	ctx = metadata.NewOutgoingContext(ctx, sanitized)
 	value, _ := ctx.Value(requestContextKey{}).(requestMetadata)
 	pairs := []string{
 		"x-mindclade-sdk", config.UserAgent,

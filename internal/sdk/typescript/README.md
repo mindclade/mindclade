@@ -39,3 +39,14 @@ calls are never implicitly retried. The SDK has no PostgreSQL, Pub/Sub, or GCS
 client dependency: persistence, event delivery, and artifact storage remain
 server-side concerns behind generated RPCs. The future public HTTP SDK remains
 a separate package and compatibility surface.
+
+The sole intentional raw-only RPC is `RunService.ExpireAttemptLeases`, a
+control-plane reconciler primitive. Application code should use the fenced
+run/attempt lifecycle helpers and must not infer an ergonomic compatibility or
+retry promise from `client.raw`.
+
+`client.artifacts.downloadFile(artifact, path)` stages a private mode-0600 file
+beside the destination, verifies the complete immutable digest, and atomically
+publishes without overwriting an existing path. Successful link creation is the
+commit point; corruption, cancellation, and write failure before it leave the
+destination absent or unchanged.

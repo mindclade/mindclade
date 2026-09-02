@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import io
+import tempfile
 import threading
 import time
 import unittest
@@ -10,6 +11,7 @@ from collections.abc import AsyncIterator, Iterator
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from typing import Any, cast
 
 import grpc
@@ -507,7 +509,10 @@ class SyncClientTest(unittest.TestCase):
             del request, timeout, metadata
             raise FakeRpcError(
                 grpc.StatusCode.UNAVAILABLE,
-                (("x-request-id", "server-request-02"),),
+                (
+                    ("x-request-id", "server-request-02"),
+                    ("retry-after-ms", "1"),
+                ),
             )
 
         transport.unary_handlers[GET_OPERATION] = unavailable
@@ -515,6 +520,7 @@ class SyncClientTest(unittest.TestCase):
             client.operations.get("operations/02")
         self.assertEqual(raised.exception.request_id, "server-request-02")
         self.assertTrue(raised.exception.retryable)
+        self.assertEqual(raised.exception.retry_after, 0.001)
         self.assertNotIn("provider payload", str(raised.exception))
 
     def test_non_idempotent_invocation_is_never_retried(self) -> None:
@@ -714,6 +720,20 @@ class SyncClientTest(unittest.TestCase):
         destination = io.BytesIO()
         self.assertEqual(client.artifacts.download(expected, destination), len(content))
         self.assertEqual(destination.getvalue(), content)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            path = root / "artifact.bin"
+            self.assertEqual(client.artifacts.download_file(expected, path), len(content))
+            with path.open("rb") as published:
+                self.assertEqual(published.read(), content)
+            self.assertEqual(path.stat().st_mode & 0o777, 0o600)
+            with self.assertRaises(FileExistsError):
+                client.artifacts.download_file(expected, path)
+            with path.open("rb") as published:
+                self.assertEqual(published.read(), content)
+            self.assertFalse(
+                any(entry.name.startswith(".mindclade-download-") for entry in root.iterdir())
+            )
         self.assertEqual(len(contexts), chunk_index + 3)
         self.assertEqual(len(contexts), len(set(contexts)))
 
@@ -845,6 +865,13 @@ class SyncClientTest(unittest.TestCase):
         with self.assertRaises(ProtocolError) as raised:
             list(client.artifacts.iter_download(expected))
         self.assertEqual(raised.exception.status, grpc.StatusCode.DATA_LOSS)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            path = root / "corrupt.bin"
+            with self.assertRaises(ProtocolError):
+                client.artifacts.download_file(expected, path)
+            self.assertFalse(path.exists())
+            self.assertEqual(list(root.iterdir()), [])
 
     def test_artifact_upload_resumes_across_fresh_client_without_new_expiry_digest(
         self,
@@ -1212,6 +1239,47 @@ class AsyncClientTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(await client.artifacts.commit(result), expected)
         downloaded = b"".join([chunk async for chunk in client.artifacts.iter_download(expected)])
         self.assertEqual(downloaded, content)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            path = root / "artifact.bin"
+            self.assertEqual(await client.artifacts.download_file(expected, path), len(content))
+            with path.open("rb") as published:
+                self.assertEqual(published.read(), content)
+            with self.assertRaises(FileExistsError):
+                await client.artifacts.download_file(expected, path)
+            with path.open("rb") as published:
+                self.assertEqual(published.read(), content)
+            self.assertFalse(
+                any(entry.name.startswith(".mindclade-download-") for entry in root.iterdir())
+            )
+
+            started = asyncio.Event()
+
+            async def stalled_download(
+                request: Message, timeout: float, metadata: Metadata
+            ) -> AsyncIterator[Message]:
+                del request, timeout, metadata
+                data = content[:5]
+                yield artifact_service_pb2.DownloadArtifactResponse(
+                    artifact=expected,
+                    offset=0,
+                    data=data,
+                    chunk_digest="sha256:" + hashlib.sha256(data).hexdigest(),
+                )
+                started.set()
+                await asyncio.sleep(60)
+
+            transport.stream_handlers[DOWNLOAD_ARTIFACT] = stalled_download
+            cancelled_path = root / "cancelled.bin"
+            task = asyncio.create_task(client.artifacts.download_file(expected, cancelled_path))
+            await started.wait()
+            task.cancel()
+            with self.assertRaises(asyncio.CancelledError):
+                await task
+            self.assertFalse(cancelled_path.exists())
+            self.assertFalse(
+                any(entry.name.startswith(".mindclade-download-") for entry in root.iterdir())
+            )
 
     async def test_async_wait_and_watch_honor_cancellation(self) -> None:
         transport = FakeAsyncTransport()

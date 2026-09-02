@@ -122,7 +122,13 @@ export class Runs {
 	): Promise<ListRunsResponse> {
 		const request = clone(ListRunsRequestSchema, create(ListRunsRequestSchema, input));
 		request.parent = resource(this.#core, request.parent, "jobs");
-		if ((request.page?.pageSize ?? 0) > 200 || request.filter.trim() !== "")
+		const pageSize = request.page?.pageSize ?? 0;
+		if (
+			!Number.isInteger(pageSize) ||
+			pageSize < 0 ||
+			pageSize > 200 ||
+			request.filter.trim() !== ""
+		)
 			throw MindcladeError.invalidArgument("run list page or filter is invalid");
 		const call = prepareCall(this.#core.config, this.#core.runtime, options);
 		const response = await invokeUnary(
@@ -165,8 +171,11 @@ export class Runs {
 	): Promise<ListAttemptsResponse> {
 		const request = clone(ListAttemptsRequestSchema, create(ListAttemptsRequestSchema, input));
 		request.parent = resource(this.#core, request.parent, "runs");
-		if ((request.page?.pageSize ?? 0) > 200)
-			throw MindcladeError.invalidArgument("attempt page exceeds 200");
+		const pageSize = request.page?.pageSize ?? 0;
+		if (!Number.isInteger(pageSize) || pageSize < 0 || pageSize > 200)
+			throw MindcladeError.invalidArgument(
+				"attempt page size must be an integer between zero and 200",
+			);
 		const call = prepareCall(this.#core.config, this.#core.runtime, options);
 		const response = await invokeUnary(
 			this.#core,

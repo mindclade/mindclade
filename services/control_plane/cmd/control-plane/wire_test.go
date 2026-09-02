@@ -6,10 +6,12 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"net/http"
 	"net/http/httptest"
 	"slices"
 	"sort"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -19,6 +21,7 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 	"google.golang.org/grpc/test/bufconn"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/types/dynamicpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -691,6 +694,292 @@ func TestRequiredHMACKeyRingSupportsRotationAndZeroing(t *testing.T) {
 	}
 }
 
+func operationWatchMethod(t *testing.T) protoreflect.MethodDescriptor {
+	t.Helper()
+	service := apiv1.File_proto_mindclade_api_v1_mindclade_service_proto.
+		Services().ByName("MindcladeService")
+	method := service.Methods().ByName("WatchOperation")
+	if method == nil {
+		t.Fatal("WatchOperation descriptor is unavailable")
+	}
+	return method
+}
+
+func operationWatchContract(t *testing.T) *apiv1.PublicHttpContract {
+	t.Helper()
+	value := proto.GetExtension(operationWatchMethod(t).Options(), apiv1.E_PublicHttp)
+	contract, ok := value.(*apiv1.PublicHttpContract)
+	if !ok || contract == nil || contract.GetSse() == nil {
+		t.Fatal("WatchOperation SSE contract is unavailable")
+	}
+	return contract
+}
+
+func operationSSEEvent(name string, cursor string, revision uint64, terminal bool) *apiv1.OperationEvent {
+	state := "RUNNING"
+	eventType := "operation.updated"
+	if terminal {
+		state = "SUCCEEDED"
+		eventType = "operation.terminal"
+	}
+	emittedAt := timestamppb.New(time.Unix(int64(revision), 0).UTC())
+	return &apiv1.OperationEvent{
+		EventId: cursor, EventType: eventType, SchemaVersion: 1,
+		OperationRevision: revision, ResumeCursor: cursor,
+		EmittedAt: emittedAt,
+		Operation: &apiv1.Operation{
+			Name: name, Uid: "operation-uid", Revision: revision, Etag: "etag-operation",
+			State: state, Done: terminal, CreateTime: emittedAt, UpdateTime: emittedAt,
+		},
+	}
+}
+
+func TestGatewayValidatesDescriptorOwnedSSEContract(t *testing.T) {
+	t.Parallel()
+	method := operationWatchMethod(t)
+	contract := operationWatchContract(t)
+	httpMethod, template, body, err := httpRule(method)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = validateHTTPStreamContract(method, httpMethod, template, body, contract); err != nil {
+		t.Fatalf("valid WatchOperation SSE contract: %v", err)
+	}
+	service, ok := method.Parent().(protoreflect.ServiceDescriptor)
+	if !ok {
+		t.Fatalf("WatchOperation parent is %T, want protoreflect.ServiceDescriptor", method.Parent())
+	}
+	wrongMethod := service.Methods().ByName("GetOperation")
+	if err = validateHTTPStreamContract(wrongMethod, httpMethod, template, body, contract); err == nil {
+		t.Fatal("SSE contract was accepted for a method other than WatchOperation")
+	}
+
+	invalidMetadata := map[string]func(*apiv1.PublicHttpContract){
+		"extra request header": func(candidate *apiv1.PublicHttpContract) {
+			candidate.RequestHeaders = append(candidate.RequestHeaders, "X-Extra")
+		},
+		"required resume header": func(candidate *apiv1.PublicHttpContract) {
+			candidate.RequiredRequestHeaders = []string{"Last-Event-ID"}
+		},
+		"extra response header": func(candidate *apiv1.PublicHttpContract) {
+			candidate.ResponseHeaders = append(candidate.ResponseHeaders, "X-Extra")
+		},
+		"wrong non-success status": func(candidate *apiv1.PublicHttpContract) {
+			candidate.NonSuccessStatus = []uint32{400, 401, 403, 404, 412, 500, 503}
+		},
+		"required request body": func(candidate *apiv1.PublicHttpContract) {
+			candidate.RequestBodyRequired = true
+		},
+		"binary projection": func(candidate *apiv1.PublicHttpContract) {
+			candidate.Stream = apiv1.StreamProjection_STREAM_PROJECTION_BINARY
+			candidate.Sse = nil
+		},
+	}
+	for testName, mutate := range invalidMetadata {
+		t.Run(testName, func(t *testing.T) {
+			candidate := proto.Clone(contract).(*apiv1.PublicHttpContract)
+			mutate(candidate)
+			if err := validateHTTPStreamContract(method, httpMethod, template, body, candidate); err == nil {
+				t.Fatal("invalid SSE descriptor metadata was accepted")
+			}
+		})
+	}
+
+	missingTiming := proto.Clone(contract).(*apiv1.PublicHttpContract)
+	missingTiming.GetSse().RetryMilliseconds = 0
+	if err = validateHTTPStreamContract(method, httpMethod, template, body, missingTiming); err == nil {
+		t.Fatal("SSE contract without retry timing was accepted")
+	}
+
+	missingPresence := proto.Clone(contract).(*apiv1.PublicHttpContract)
+	field := missingPresence.GetSse().ProtoReflect().Descriptor().Fields().ByName("replay_acknowledged_terminal_event")
+	missingPresence.GetSse().ProtoReflect().Clear(field)
+	if err = validateHTTPStreamContract(method, httpMethod, template, body, missingPresence); err == nil {
+		t.Fatal("SSE contract without explicit terminal replay policy was accepted")
+	}
+
+	unsupportedReplay := proto.Clone(contract).(*apiv1.PublicHttpContract)
+	unsupportedReplay.GetSse().ProtoReflect().Set(field, protoreflect.ValueOfBool(true))
+	if err = validateHTTPStreamContract(method, httpMethod, template, body, unsupportedReplay); err == nil {
+		t.Fatal("unsupported terminal replay behavior was accepted")
+	}
+}
+
+func TestOperationSSEValidationRejectsInvalidDurableEvents(t *testing.T) {
+	t.Parallel()
+	name := "tenants/t-1/projects/p-1/operations/op-1"
+	valid := operationSSEEvent(name, "cursor-2", 2, false)
+	if err := validateOperationSSEEvent(valid, name, 1); err != nil {
+		t.Fatalf("valid operation event: %v", err)
+	}
+
+	tests := map[string]func(*apiv1.OperationEvent){
+		"mismatched event and resume cursor": func(event *apiv1.OperationEvent) { event.ResumeCursor = "other" },
+		"control character in metadata":      func(event *apiv1.OperationEvent) { event.EventId = "bad\ncursor" },
+		"wrong operation identity":           func(event *apiv1.OperationEvent) { event.Operation.Name = "tenants/t-1/projects/p-1/operations/other" },
+		"non-monotonic revision":             func(event *apiv1.OperationEvent) { event.OperationRevision = 1; event.Operation.Revision = 1 },
+		"revision mismatch":                  func(event *apiv1.OperationEvent) { event.Operation.Revision = 3 },
+		"invalid emitted timestamp": func(event *apiv1.OperationEvent) {
+			event.EmittedAt = timestamppb.New(time.Date(10000, 1, 1, 0, 0, 0, 0, time.UTC))
+		},
+		"updated terminal operation":           func(event *apiv1.OperationEvent) { event.Operation.Done = true; event.Operation.State = "SUCCEEDED" },
+		"terminal type without terminal state": func(event *apiv1.OperationEvent) { event.EventType = "operation.terminal" },
+		"application heartbeat": func(event *apiv1.OperationEvent) {
+			event.EventType = "heartbeat"
+			event.Heartbeat = true
+			event.Operation = nil
+		},
+		"operation and error payloads": func(event *apiv1.OperationEvent) {
+			event.Error = &apiv1.PublicError{Code: "INTERNAL", Message: "safe", RequestId: "request-1"}
+		},
+		"application error event": func(event *apiv1.OperationEvent) {
+			event.EventType = "error"
+			event.Operation = nil
+			event.Error = &apiv1.PublicError{Code: "INTERNAL", Message: "safe", RequestId: "request-1"}
+		},
+		"unsupported public error code": func(event *apiv1.OperationEvent) {
+			event.EventType = "error"
+			event.Operation = nil
+			event.Error = &apiv1.PublicError{Code: "CURSOR_EXPIRED", Message: "safe", RequestId: "request-1"}
+		},
+		"invalid nested operation error": func(event *apiv1.OperationEvent) {
+			event.Operation.Error = &apiv1.PublicError{Code: "INTERNAL", Message: "safe", RequestId: "bad\nrequest"}
+		},
+	}
+	for testName, mutate := range tests {
+		t.Run(testName, func(t *testing.T) {
+			event := proto.Clone(valid).(*apiv1.OperationEvent)
+			mutate(event)
+			if err := validateOperationSSEEvent(event, name, 1); err == nil {
+				t.Fatal("invalid operation SSE event was accepted")
+			}
+		})
+	}
+}
+
+func TestLastEventIDValidationIsExactBoundedAndControlSafe(t *testing.T) {
+	t.Parallel()
+	if value, err := validateOptionalLastEventID(nil); err != nil || value != "" {
+		t.Fatalf("absent Last-Event-ID value=%q err=%v", value, err)
+	}
+	valid := strings.Repeat("x", 4096)
+	if value, err := validateOptionalLastEventID([]string{valid}); err != nil || value != valid {
+		t.Fatalf("4096-byte Last-Event-ID length=%d err=%v", len(value), err)
+	}
+	for name, values := range map[string][]string{
+		"empty":     {""},
+		"oversized": {valid + "x"},
+		"control":   {"opaque\nvalue"},
+		"duplicate": {"opaque", "opaque"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			if _, err := validateOptionalLastEventID(values); err == nil {
+				t.Fatal("invalid Last-Event-ID was accepted")
+			}
+		})
+	}
+	headers := http.Header{
+		"Last-Event-Id": {"cursor-one"},
+		"last-event-id": {"cursor-two"},
+	}
+	if values := exactHTTPHeaderValues(headers, "Last-Event-ID"); len(values) != 2 {
+		t.Fatalf("case-insensitive duplicate header values=%v", values)
+	} else if _, err := validateOptionalLastEventID(values); err == nil {
+		t.Fatal("case-insensitive duplicate Last-Event-ID was accepted")
+	}
+}
+
+func TestPublicProtoJSONEmitsRequiredDefaultsWithoutAbsentOptionals(t *testing.T) {
+	t.Parallel()
+	publicFailure := &apiv1.PublicError{Code: "INTERNAL", Message: "safe failure", RequestId: "request-1"}
+	payload, err := marshalPublicProtoJSON(publicFailure)
+	if err != nil {
+		t.Fatal(err)
+	}
+	encoded := string(payload)
+	if !strings.Contains(encoded, `"retryable":false`) {
+		t.Fatalf("required false retryable field is absent: %s", payload)
+	}
+	for _, absent := range []string{`"traceId"`, `"retryAfter"`, `"diagnosticRef"`, `"details"`} {
+		if strings.Contains(encoded, absent) {
+			t.Fatalf("absent optional field %s was emitted: %s", absent, payload)
+		}
+	}
+
+	event := operationSSEEvent("tenants/t-1/projects/p-1/operations/op-1", "cursor-1", 1, false)
+	payload, err = marshalPublicProtoJSON(event)
+	if err != nil {
+		t.Fatal(err)
+	}
+	encoded = string(payload)
+	if !strings.Contains(encoded, `"done":false`) || !strings.Contains(encoded, `"heartbeat":false`) {
+		t.Fatalf("descriptor-required false fields are absent: %s", payload)
+	}
+	for _, absent := range []string{`"error"`, `"result"`, `"target"`} {
+		if strings.Contains(encoded, absent) {
+			t.Fatalf("absent message field %s was emitted: %s", absent, payload)
+		}
+	}
+}
+
+func TestInternalErrorCodeProjectionIsExhaustiveAndFailClosed(t *testing.T) {
+	t.Parallel()
+	want := map[commonv1.ErrorCode]string{
+		commonv1.ErrorCode_ERROR_CODE_INVALID_ARGUMENT:    "INVALID_ARGUMENT",
+		commonv1.ErrorCode_ERROR_CODE_FAILED_PRECONDITION: "FAILED_PRECONDITION",
+		commonv1.ErrorCode_ERROR_CODE_NOT_FOUND:           "NOT_FOUND",
+		commonv1.ErrorCode_ERROR_CODE_ALREADY_EXISTS:      "CONFLICT",
+		commonv1.ErrorCode_ERROR_CODE_PERMISSION_DENIED:   "PERMISSION_DENIED",
+		commonv1.ErrorCode_ERROR_CODE_UNAUTHENTICATED:     "AUTHENTICATION_REQUIRED",
+		commonv1.ErrorCode_ERROR_CODE_RESOURCE_EXHAUSTED:  "RATE_LIMITED",
+		commonv1.ErrorCode_ERROR_CODE_ABORTED:             "CONFLICT",
+		commonv1.ErrorCode_ERROR_CODE_CONFLICT:            "CONFLICT",
+		commonv1.ErrorCode_ERROR_CODE_UNAVAILABLE:         "UNAVAILABLE",
+		commonv1.ErrorCode_ERROR_CODE_DEADLINE_EXCEEDED:   "DEADLINE_EXCEEDED",
+		commonv1.ErrorCode_ERROR_CODE_CANCELLED:           "CANCELLED",
+		commonv1.ErrorCode_ERROR_CODE_INTERNAL:            "INTERNAL",
+		commonv1.ErrorCode_ERROR_CODE_DATA_LOSS:           "INTERNAL",
+		commonv1.ErrorCode_ERROR_CODE_UNSUPPORTED:         "FAILED_PRECONDITION",
+		commonv1.ErrorCode_ERROR_CODE_POLICY_DENIED:       "PERMISSION_DENIED",
+	}
+	for number := range commonv1.ErrorCode_name {
+		code := commonv1.ErrorCode(number)
+		projected, err := publicError(&commonv1.ErrorDetail{
+			Code: code, RetryClass: commonv1.RetryClass_RETRY_CLASS_NEVER,
+		})
+		if code == commonv1.ErrorCode_ERROR_CODE_UNSPECIFIED {
+			if err == nil {
+				t.Fatal("unspecified internal error code was projected")
+			}
+			continue
+		}
+		if err != nil || projected.GetCode() != want[code] {
+			t.Fatalf("internal error code %s projected=%v err=%v", code, projected, err)
+		}
+		if projected.GetRequestId() == "" || len(projected.GetRequestId()) > 128 {
+			t.Fatalf("internal error code %s request ID=%q", code, projected.GetRequestId())
+		}
+	}
+	if _, err := publicError(&commonv1.ErrorDetail{Code: commonv1.ErrorCode(999)}); err == nil {
+		t.Fatal("unknown internal error code was projected")
+	}
+	projected, err := publicError(&commonv1.ErrorDetail{
+		Code:            commonv1.ErrorCode_ERROR_CODE_INVALID_ARGUMENT,
+		RetryClass:      commonv1.RetryClass_RETRY_CLASS_NEVER,
+		FieldViolations: []*commonv1.FieldViolation{{Field: "profile", Description: "is invalid"}},
+	})
+	if err != nil || len(projected.GetDetails()) != 1 || projected.GetDetails()[0].GetKind() != "fieldViolation" {
+		t.Fatalf("field violation projection=%v err=%v", projected, err)
+	}
+	tooMany := &commonv1.ErrorDetail{Code: commonv1.ErrorCode_ERROR_CODE_INTERNAL}
+	for range 33 {
+		tooMany.FieldViolations = append(tooMany.FieldViolations, &commonv1.FieldViolation{Field: "field"})
+	}
+	if _, err = publicError(tooMany); err == nil {
+		t.Fatal("oversized nested public error was projected")
+	}
+}
+
 func TestOperationSSEEventCarriesVersionedResumeState(t *testing.T) {
 	t.Parallel()
 	codec, err := trainingapp.NewPageTokenCodec([]byte(strings.Repeat("s", 32)))
@@ -704,7 +993,8 @@ func TestOperationSSEEventCarriesVersionedResumeState(t *testing.T) {
 	}, encode: codec.EncodeOperationCursor}
 	operation := &jobv1.Operation{
 		OperationId: "operations/op-01", TenantId: "tenant-01", ProjectId: "project-01",
-		ResourceVersion: 9, State: jobv1.OperationState_OPERATION_STATE_SUCCEEDED, Done: true,
+		ResourceVersion: 9, Etag: "etag-operation", State: jobv1.OperationState_OPERATION_STATE_SUCCEEDED, Done: true,
+		CreatedAt: timestamppb.New(time.Unix(9, 0).UTC()), UpdatedAt: timestamppb.New(time.Unix(10, 0).UTC()),
 	}
 	if sendErr := bridge.Send(&internaljobv1.WatchOperationResponse{
 		Operation: operation, Sequence: 9, ObservedAt: timestamppb.New(time.Unix(10, 0).UTC()),
@@ -730,30 +1020,108 @@ func TestOperationSSEEventCarriesVersionedResumeState(t *testing.T) {
 func TestSSEErrorFrameIsSafeAndKeepsLastDurableCursor(t *testing.T) {
 	t.Parallel()
 	var encoded strings.Builder
-	if err := writeSSEError(&encoded, "durable-cursor-7", status.Error(codes.Unavailable, "secret database detail")); err != nil {
+	emittedAt := time.Unix(20, 0).UTC()
+	if err := writeSSEError(
+		&encoded, "durable-cursor-7", 7, emittedAt, status.Error(codes.Unavailable, "secret database detail"),
+	); err != nil {
 		t.Fatal(err)
 	}
 	frame := encoded.String()
-	if !strings.Contains(frame, "id: durable-cursor-7\nevent: error\n") || !strings.Contains(frame, `"code":"UNAVAILABLE"`) || !strings.Contains(frame, `"retryable":true`) {
+	if !strings.Contains(frame, "id: durable-cursor-7\nevent: error\n") ||
+		!strings.Contains(frame, `"eventType":"error"`) ||
+		!strings.Contains(frame, `"operationRevision":"7"`) ||
+		!strings.Contains(frame, `"code":"UNAVAILABLE"`) ||
+		!strings.Contains(frame, `"requestId":"gateway_`) ||
+		!strings.Contains(frame, `"retryable":true`) {
 		t.Fatalf("error frame = %q", frame)
 	}
 	if strings.Contains(frame, "secret database detail") {
 		t.Fatalf("error frame leaked internal status: %q", frame)
 	}
+	encoded.Reset()
+	if err := writeSSEError(
+		&encoded, "bad\ncursor", 7, emittedAt, status.Error(codes.Unavailable, "private"),
+	); err == nil {
+		t.Fatal("error frame accepted a cursor containing a control character")
+	}
+	if encoded.Len() != 0 {
+		t.Fatalf("invalid cursor produced a partial SSE frame: %q", encoded.String())
+	}
+	if err := writeSSEError(&encoded, "", 7, emittedAt, status.Error(codes.Internal, "private")); err == nil {
+		t.Fatal("error frame accepted an empty durable cursor")
+	}
+	if err := writeSSEError(&encoded, "durable-cursor-7", 0, emittedAt, status.Error(codes.Internal, "private")); err == nil {
+		t.Fatal("error frame accepted a zero durable revision")
+	}
+}
+
+func TestSSECursorContractAccepts4096BytesAndRejects4097(t *testing.T) {
+	t.Parallel()
+	cursor := strings.Repeat("x", 4096)
+	var encoded strings.Builder
+	if err := writeSSEError(
+		&encoded, cursor, 17, time.Unix(20, 0).UTC(), status.Error(codes.DataLoss, "private history detail"),
+	); err != nil {
+		t.Fatal(err)
+	}
+	frame := encoded.String()
+	if !strings.HasPrefix(frame, "id: "+cursor+"\nevent: error\n") ||
+		!strings.Contains(frame, `"resumeCursor":"`+cursor+`"`) ||
+		!strings.Contains(frame, `"code":"INTERNAL"`) {
+		t.Fatalf("long cursor error frame was not preserved: length=%d", len(frame))
+	}
+	encoded.Reset()
+	if err := writeSSEError(
+		&encoded, cursor+"x", 17, time.Unix(20, 0).UTC(), status.Error(codes.DataLoss, "private history detail"),
+	); err == nil {
+		t.Fatal("4097-byte cursor was accepted")
+	}
+	if encoded.Len() != 0 {
+		t.Fatalf("4097-byte cursor produced a partial frame: %q", encoded.String())
+	}
 }
 
 type operationWatchNetworkFixture struct {
 	apiv1.UnimplementedMindcladeServiceServer
-	event           *apiv1.OperationEvent
-	afterEventError error
+	event            *apiv1.OperationEvent
+	events           []*apiv1.OperationEvent
+	afterEventError  error
+	releaseEvent     <-chan struct{}
+	preflightWaiting chan<- struct{}
+	waitForCancel    bool
+	cancelled        chan<- struct{}
 }
 
 func (f operationWatchNetworkFixture) WatchOperation(_ *apiv1.WatchOperationRequest, stream grpc.ServerStreamingServer[apiv1.OperationEvent]) error {
 	values, _ := metadata.FromIncomingContext(stream.Context())
-	if f.event != nil && first(values.Get("last-event-id")) != f.event.GetResumeCursor() {
-		if err := stream.Send(f.event); err != nil {
+	events := f.events
+	if f.event != nil {
+		events = append([]*apiv1.OperationEvent{f.event}, events...)
+	}
+	if len(events) != 0 && f.releaseEvent != nil {
+		if f.preflightWaiting != nil {
+			close(f.preflightWaiting)
+		}
+		select {
+		case <-f.releaseEvent:
+		case <-stream.Context().Done():
+			return status.FromContextError(stream.Context().Err()).Err()
+		}
+	}
+	for _, event := range events {
+		if first(values.Get("last-event-id")) == event.GetResumeCursor() {
+			continue
+		}
+		if err := stream.Send(event); err != nil {
 			return err
 		}
+	}
+	if f.waitForCancel {
+		<-stream.Context().Done()
+		if f.cancelled != nil {
+			close(f.cancelled)
+		}
+		return status.FromContextError(stream.Context().Err()).Err()
 	}
 	return f.afterEventError
 }
@@ -782,7 +1150,21 @@ func operationWatchGateway(t *testing.T, fixture operationWatchNetworkFixture) g
 			t.Errorf("serve operation watch fixture: %v", serveErr)
 		}
 	})
-	return gateway{client: apiv1.NewMindcladeServiceClient(connection), conn: connection}
+	return gateway{
+		client: apiv1.NewMindcladeServiceClient(connection), clock: wallSSEClock{}, conn: connection,
+		sseWriteDeadlineSetter: func(http.ResponseWriter, time.Time) error { return nil },
+	}
+}
+
+func TestNewGatewayAcceptsGeneratedHTTPContracts(t *testing.T) {
+	connection := operationWatchGateway(t, operationWatchNetworkFixture{}).conn
+	configured, err := newGateway(connection, bearerAuthorizer{}, func(context.Context) error { return nil })
+	if err != nil {
+		t.Fatalf("construct gateway from generated HTTP contracts: %v", err)
+	}
+	if len(configured.routes) == 0 {
+		t.Fatal("generated gateway has no routes")
+	}
 }
 
 func operationWatchInput(name string) *dynamicpb.Message {
@@ -794,16 +1176,14 @@ func operationWatchInput(name string) *dynamicpb.Message {
 func TestNetworkSSEEmitsSafePost200ErrorAndTerminalReconnectIsExact(t *testing.T) {
 	name := "tenants/t-1/projects/p-1/operations/op-1"
 	terminalCursor := "signed-terminal-cursor"
-	terminal := &apiv1.OperationEvent{
-		EventId: terminalCursor, EventType: "operation.terminal", SchemaVersion: 1,
-		OperationRevision: 4, ResumeCursor: terminalCursor, EmittedAt: timestamppb.New(time.Now().UTC()),
-	}
+	terminal := operationSSEEvent(name, terminalCursor, 4, true)
+	updated := operationSSEEvent(name, "signed-update-cursor", 3, false)
 	failed := operationWatchGateway(t, operationWatchNetworkFixture{
-		event: terminal, afterEventError: status.Error(codes.Unavailable, "private backend failure"),
+		event: updated, afterEventError: status.Error(codes.Unavailable, "private backend failure"),
 	})
 	failedResponse := httptest.NewRecorder()
-	failed.serveSSE(context.Background(), failedResponse, operationWatchInput(name))
-	if failedResponse.Code != 200 || !strings.Contains(failedResponse.Body.String(), "event: operation.terminal") || !strings.Contains(failedResponse.Body.String(), "event: error") {
+	failed.serveSSE(context.Background(), failedResponse, operationWatchInput(name), operationWatchContract(t).GetSse())
+	if failedResponse.Code != 200 || !strings.Contains(failedResponse.Body.String(), "event: operation.updated") || !strings.Contains(failedResponse.Body.String(), "event: error") {
 		t.Fatalf("failed stream response code=%d body=%q", failedResponse.Code, failedResponse.Body.String())
 	}
 	if strings.Contains(failedResponse.Body.String(), "private backend failure") {
@@ -812,27 +1192,464 @@ func TestNetworkSSEEmitsSafePost200ErrorAndTerminalReconnectIsExact(t *testing.T
 
 	clean := operationWatchGateway(t, operationWatchNetworkFixture{event: terminal})
 	firstResponse := httptest.NewRecorder()
-	clean.serveSSE(context.Background(), firstResponse, operationWatchInput(name))
+	clean.serveSSE(context.Background(), firstResponse, operationWatchInput(name), operationWatchContract(t).GetSse())
 	if strings.Count(firstResponse.Body.String(), "event: operation.terminal") != 1 {
 		t.Fatalf("initial terminal stream = %q", firstResponse.Body.String())
 	}
+	if strings.Contains(firstResponse.Body.String(), "event: error") {
+		t.Fatalf("terminal event was followed by an error frame: %q", firstResponse.Body.String())
+	}
 	reconnectContext := metadata.NewOutgoingContext(context.Background(), metadata.Pairs("last-event-id", terminalCursor))
 	reconnectResponse := httptest.NewRecorder()
-	clean.serveSSE(reconnectContext, reconnectResponse, operationWatchInput(name))
-	if strings.Contains(reconnectResponse.Body.String(), "event: operation.terminal") || strings.Contains(reconnectResponse.Body.String(), "event: error") {
+	clean.serveSSE(reconnectContext, reconnectResponse, operationWatchInput(name), operationWatchContract(t).GetSse())
+	if reconnectResponse.Code != http.StatusOK || reconnectResponse.Header().Get("Content-Type") != "text/event-stream" ||
+		!strings.Contains(reconnectResponse.Body.String(), "retry: 3000\n\n") ||
+		strings.Contains(reconnectResponse.Body.String(), "event:") {
 		t.Fatalf("acknowledged terminal cursor replayed data: %q", reconnectResponse.Body.String())
 	}
 }
 
-func firstUnaryMethod(t *testing.T, service protoreflect.ServiceDescriptor) protoreflect.MethodDescriptor {
-	t.Helper()
-	methods := service.Methods()
-	for index := 0; index < methods.Len(); index++ {
-		method := methods.Get(index)
-		if !method.IsStreamingClient() && !method.IsStreamingServer() {
-			return method
+func TestSSEPreflightErrorsRemainHTTPProblems(t *testing.T) {
+	name := "tenants/t-1/projects/p-1/operations/op-1"
+	tests := []struct {
+		name       string
+		fixture    operationWatchNetworkFixture
+		statusCode int
+		publicCode string
+	}{
+		{
+			name: "expired cursor",
+			fixture: operationWatchNetworkFixture{
+				afterEventError: status.Error(codes.OutOfRange, "private retention detail"),
+			},
+			statusCode: http.StatusGone,
+			publicCode: `"code":"FAILED_PRECONDITION"`,
+		},
+		{
+			name:       "invalid initial event",
+			fixture:    operationWatchNetworkFixture{event: operationSSEEvent("wrong-operation", "cursor-1", 1, false)},
+			statusCode: http.StatusInternalServerError,
+			publicCode: `"code":"INTERNAL"`,
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			gateway := operationWatchGateway(t, test.fixture)
+			response := httptest.NewRecorder()
+			gateway.serveSSE(context.Background(), response, operationWatchInput(name), operationWatchContract(t).GetSse())
+			body := response.Body.String()
+			if response.Code != test.statusCode || response.Header().Get("Content-Type") != "application/problem+json" ||
+				!strings.Contains(body, test.publicCode) {
+				t.Fatalf("preflight response code=%d headers=%v body=%q", response.Code, response.Header(), body)
+			}
+			if strings.Contains(body, "retry:") || strings.Contains(body, "private retention detail") ||
+				strings.Contains(body, "wrong-operation") {
+				t.Fatalf("preflight response leaked SSE or upstream detail: %q", body)
+			}
+		})
+	}
+}
+
+func TestSSEPreflightEOFStartsAndClosesCleanStream(t *testing.T) {
+	name := "tenants/t-1/projects/p-1/operations/op-1"
+	gateway := operationWatchGateway(t, operationWatchNetworkFixture{})
+	response := httptest.NewRecorder()
+	gateway.serveSSE(context.Background(), response, operationWatchInput(name), operationWatchContract(t).GetSse())
+	if response.Code != http.StatusOK || response.Header().Get("Content-Type") != "text/event-stream" ||
+		response.Header().Get("Cache-Control") != "no-store" ||
+		response.Header().Get("X-Accel-Buffering") != "no" ||
+		response.Body.String() != "retry: 3000\n\n" {
+		t.Fatalf("clean empty SSE response code=%d headers=%v body=%q", response.Code, response.Header(), response.Body.String())
+	}
+}
+
+func TestNetworkSSERejectsInvalidEventWithSafePost200Error(t *testing.T) {
+	name := "tenants/t-1/projects/p-1/operations/op-1"
+	valid := operationSSEEvent(name, "durable-cursor-1", 1, false)
+	invalid := operationSSEEvent(name, "cursor\ninjection", 2, false)
+	gateway := operationWatchGateway(t, operationWatchNetworkFixture{events: []*apiv1.OperationEvent{valid, invalid}})
+	response := httptest.NewRecorder()
+	gateway.serveSSE(context.Background(), response, operationWatchInput(name), operationWatchContract(t).GetSse())
+	body := response.Body.String()
+	if response.Code != http.StatusOK || !strings.Contains(body, "event: error\n") ||
+		!strings.Contains(body, "id: durable-cursor-1\nevent: error\n") ||
+		!strings.Contains(body, `"eventType":"error"`) ||
+		!strings.Contains(body, `"operationRevision":"1"`) ||
+		!strings.Contains(body, `"code":"INTERNAL"`) {
+		t.Fatalf("invalid event response code=%d body=%q", response.Code, body)
+	}
+	if strings.Contains(body, "cursor\ninjection") || strings.Contains(body, "invalid operation event") {
+		t.Fatalf("invalid event metadata reached the SSE stream: %q", body)
+	}
+}
+
+func TestNetworkSSEPreencodesBeforeCommitAndCursorAdvance(t *testing.T) {
+	name := "tenants/t-1/projects/p-1/operations/op-1"
+	invalidFirst := operationSSEEvent(name, "cursor-1", 1, false)
+	invalidFirst.Operation.Etag = string([]byte{0xff})
+	preflightGateway := operationWatchGateway(t, operationWatchNetworkFixture{event: invalidFirst})
+	preflightResponse := httptest.NewRecorder()
+	preflightGateway.serveSSE(
+		context.Background(), preflightResponse, operationWatchInput(name), operationWatchContract(t).GetSse(),
+	)
+	if preflightResponse.Code != http.StatusInternalServerError ||
+		preflightResponse.Header().Get("Content-Type") != "application/problem+json" ||
+		strings.Contains(preflightResponse.Body.String(), "retry:") {
+		t.Fatalf("unencodable preflight event committed SSE: code=%d body=%q", preflightResponse.Code, preflightResponse.Body.String())
+	}
+
+	first := operationSSEEvent(name, "cursor-1", 1, false)
+	invalidSecond := operationSSEEvent(name, "cursor-2", 2, false)
+	invalidSecond.Operation.Etag = string([]byte{0xff})
+	gateway := operationWatchGateway(t, operationWatchNetworkFixture{
+		events: []*apiv1.OperationEvent{first, invalidSecond},
+	})
+	response := httptest.NewRecorder()
+	gateway.serveSSE(context.Background(), response, operationWatchInput(name), operationWatchContract(t).GetSse())
+	body := response.Body.String()
+	if response.Code != http.StatusOK ||
+		strings.Count(body, "event: operation.updated\n") != 1 ||
+		!strings.Contains(body, "id: cursor-1\nevent: error\n") ||
+		strings.Contains(body, "id: cursor-2\n") {
+		t.Fatalf("unencodable subsequent event advanced durable cursor: %q", body)
+	}
+}
+
+type manualSSETicker struct {
+	ticks    chan time.Time
+	stopped  chan struct{}
+	stopOnce sync.Once
+}
+
+func (ticker *manualSSETicker) C() <-chan time.Time { return ticker.ticks }
+
+func (ticker *manualSSETicker) Stop() {
+	ticker.stopOnce.Do(func() { close(ticker.stopped) })
+}
+
+type manualSSEClock struct {
+	intervals chan time.Duration
+	now       time.Time
+	ticker    *manualSSETicker
+}
+
+func (clock manualSSEClock) NewTicker(interval time.Duration) sseTicker {
+	clock.intervals <- interval
+	return clock.ticker
+}
+
+func (clock manualSSEClock) Now() time.Time {
+	if clock.now.IsZero() {
+		return time.Unix(1, 0).UTC()
+	}
+	return clock.now.UTC()
+}
+
+type notifyingSSEWriter struct {
+	*httptest.ResponseRecorder
+	heartbeat  chan struct{}
+	updated    chan struct{}
+	heartOnce  sync.Once
+	updateOnce sync.Once
+}
+
+func (writer *notifyingSSEWriter) Write(payload []byte) (int, error) {
+	written, err := writer.ResponseRecorder.Write(payload)
+	value := string(payload)
+	if strings.Contains(value, "event: operation.updated") {
+		writer.updateOnce.Do(func() { close(writer.updated) })
+	}
+	if strings.Contains(value, "event: heartbeat") {
+		writer.heartOnce.Do(func() { close(writer.heartbeat) })
+	}
+	return written, err
+}
+
+type failingSSEWriter struct {
+	body        strings.Builder
+	header      http.Header
+	statusCode  int
+	writes      int
+	failOnWrite int
+}
+
+func (writer *failingSSEWriter) Header() http.Header {
+	if writer.header == nil {
+		writer.header = make(http.Header)
+	}
+	return writer.header
+}
+
+func (writer *failingSSEWriter) WriteHeader(statusCode int) { writer.statusCode = statusCode }
+
+func (writer *failingSSEWriter) Write(payload []byte) (int, error) {
+	writer.writes++
+	if writer.writes == writer.failOnWrite {
+		return 0, errors.New("injected writer failure")
+	}
+	return writer.body.Write(payload)
+}
+
+func (*failingSSEWriter) Flush() {}
+
+type nonFlushingResponseWriter struct {
+	recorder *httptest.ResponseRecorder
+}
+
+func (writer *nonFlushingResponseWriter) Header() http.Header { return writer.recorder.Header() }
+
+func (writer *nonFlushingResponseWriter) WriteHeader(statusCode int) {
+	writer.recorder.WriteHeader(statusCode)
+}
+
+func (writer *nonFlushingResponseWriter) Write(payload []byte) (int, error) {
+	return writer.recorder.Write(payload)
+}
+
+type deadlineBlockingSSEWriter struct {
+	body         strings.Builder
+	deadline     time.Time
+	deadlines    []time.Time
+	header       http.Header
+	statusCode   int
+	writes       int
+	blockOnWrite int
+}
+
+func (writer *deadlineBlockingSSEWriter) Header() http.Header {
+	if writer.header == nil {
+		writer.header = make(http.Header)
+	}
+	return writer.header
+}
+
+func (writer *deadlineBlockingSSEWriter) WriteHeader(statusCode int) { writer.statusCode = statusCode }
+
+func (writer *deadlineBlockingSSEWriter) SetWriteDeadline(deadline time.Time) error {
+	writer.deadline = deadline
+	writer.deadlines = append(writer.deadlines, deadline)
+	return nil
+}
+
+func (writer *deadlineBlockingSSEWriter) Write(payload []byte) (int, error) {
+	writer.writes++
+	if writer.writes == writer.blockOnWrite {
+		delay := time.Until(writer.deadline)
+		if delay > 0 {
+			timer := time.NewTimer(delay)
+			defer timer.Stop()
+			<-timer.C
+		}
+		return 0, errors.New("simulated write deadline exceeded")
+	}
+	return writer.body.Write(payload)
+}
+
+func (*deadlineBlockingSSEWriter) Flush() {}
+
+func TestSSEWithoutFlushCapabilityReturnsDocumentedInternalError(t *testing.T) {
+	writer := &nonFlushingResponseWriter{recorder: httptest.NewRecorder()}
+	(&gateway{}).serveSSE(
+		context.Background(), writer, operationWatchInput("tenants/t-1/projects/p-1/operations/op-1"),
+		operationWatchContract(t).GetSse(),
+	)
+	if writer.recorder.Code != http.StatusInternalServerError ||
+		!strings.Contains(writer.recorder.Body.String(), `"code":"INTERNAL"`) {
+		t.Fatalf("non-flushing response code=%d body=%q", writer.recorder.Code, writer.recorder.Body.String())
+	}
+}
+
+func TestSSEFrameWriteDeadlineHasProductionDefault(t *testing.T) {
+	t.Parallel()
+	var deadline time.Time
+	gateway := gateway{sseWriteDeadlineSetter: func(_ http.ResponseWriter, value time.Time) error {
+		deadline = value
+		return nil
+	}}
+	before := time.Now().UTC()
+	if err := gateway.setSSEFrameWriteDeadline(httptest.NewRecorder()); err != nil {
+		t.Fatal(err)
+	}
+	after := time.Now().UTC()
+	if deadline.Before(before.Add(defaultSSEFrameWriteTimeout)) ||
+		deadline.After(after.Add(defaultSSEFrameWriteTimeout)) {
+		t.Fatalf("default SSE deadline=%s before=%s after=%s", deadline, before, after)
+	}
+}
+
+func TestSSEFrameWriteDeadlineBoundsSlowClientAndCancelsUpstream(t *testing.T) {
+	name := "tenants/t-1/projects/p-1/operations/op-1"
+	cancelled := make(chan struct{})
+	gateway := operationWatchGateway(t, operationWatchNetworkFixture{
+		event: operationSSEEvent(name, "cursor-1", 1, false), waitForCancel: true, cancelled: cancelled,
+	})
+	gateway.sseWriteDeadlineSetter = nil
+	gateway.sseFrameWriteTimeout = 25 * time.Millisecond
+	writer := &deadlineBlockingSSEWriter{blockOnWrite: 2}
+	started := time.Now()
+	gateway.serveSSE(context.Background(), writer, operationWatchInput(name), operationWatchContract(t).GetSse())
+	if writer.statusCode != http.StatusOK || writer.writes != 2 || len(writer.deadlines) < 2 {
+		t.Fatalf("slow writer status=%d writes=%d deadlines=%d", writer.statusCode, writer.writes, len(writer.deadlines))
+	}
+	if elapsed := time.Since(started); elapsed > time.Second {
+		t.Fatalf("slow writer remained blocked for %s", elapsed)
+	}
+	select {
+	case <-cancelled:
+	case <-time.After(5 * time.Second):
+		t.Fatal("upstream stream did not observe cancellation after the write deadline")
+	}
+}
+
+func TestSSEWriterFailureCancelsPreflightStream(t *testing.T) {
+	name := "tenants/t-1/projects/p-1/operations/op-1"
+	cancelled := make(chan struct{})
+	gateway := operationWatchGateway(t, operationWatchNetworkFixture{
+		event: operationSSEEvent(name, "cursor-1", 1, false), waitForCancel: true, cancelled: cancelled,
+	})
+	writer := &failingSSEWriter{failOnWrite: 2}
+	gateway.serveSSE(context.Background(), writer, operationWatchInput(name), operationWatchContract(t).GetSse())
+	if writer.statusCode != http.StatusOK || writer.writes != 2 || writer.body.String() != "retry: 3000\n\n" {
+		t.Fatalf("failed writer status=%d writes=%d body=%q", writer.statusCode, writer.writes, writer.body.String())
+	}
+	select {
+	case <-cancelled:
+	case <-time.After(5 * time.Second):
+		t.Fatal("upstream stream did not observe cancellation after writer failure")
+	}
+}
+
+func TestSSENeverHeartbeatsBeforeDurableCursor(t *testing.T) {
+	name := "tenants/t-1/projects/p-1/operations/op-1"
+	releaseEvent := make(chan struct{})
+	preflightWaiting := make(chan struct{})
+	cancelled := make(chan struct{})
+	gateway := operationWatchGateway(t, operationWatchNetworkFixture{
+		event: operationSSEEvent(name, "cursor-2", 2, false), releaseEvent: releaseEvent,
+		preflightWaiting: preflightWaiting, waitForCancel: true, cancelled: cancelled,
+	})
+	ticker := &manualSSETicker{
+		ticks: make(chan time.Time, 1), stopped: make(chan struct{}),
+	}
+	intervals := make(chan time.Duration, 1)
+	gateway.clock = manualSSEClock{intervals: intervals, ticker: ticker}
+	response := &notifyingSSEWriter{
+		ResponseRecorder: httptest.NewRecorder(),
+		heartbeat:        make(chan struct{}),
+		updated:          make(chan struct{}),
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	policy := operationWatchContract(t).GetSse()
+	done := make(chan struct{})
+	go func() {
+		gateway.serveSSE(ctx, response, operationWatchInput(name), policy)
+		close(done)
+	}()
+
+	select {
+	case <-preflightWaiting:
+	case <-time.After(5 * time.Second):
+		t.Fatal("SSE handler did not enter first-event preflight")
+	}
+	select {
+	case interval := <-intervals:
+		t.Fatalf("SSE handler created %s ticker before durable cursor truth", interval)
+	default:
+	}
+	if response.Header().Get("Content-Type") != "" || response.Body.Len() != 0 {
+		t.Fatalf("SSE handler committed before durable cursor truth: headers=%v body=%q", response.Header(), response.Body.String())
+	}
+	close(releaseEvent)
+	select {
+	case <-response.updated:
+	case <-time.After(5 * time.Second):
+		t.Fatal("SSE handler did not emit the released durable event")
+	}
+	select {
+	case interval := <-intervals:
+		if interval != 15*time.Second {
+			t.Fatalf("heartbeat interval = %s", interval)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("SSE handler did not create its post-preflight heartbeat ticker")
+	}
+	cancel()
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("SSE handler did not stop after cancellation")
+	}
+	select {
+	case <-cancelled:
+	case <-time.After(5 * time.Second):
+		t.Fatal("upstream stream did not observe cancellation")
+	}
+	if strings.Contains(response.Body.String(), "event: heartbeat") ||
+		!strings.Contains(response.Body.String(), "event: operation.updated") {
+		t.Fatalf("unexpected preflight SSE response: %q", response.Body.String())
+	}
+}
+
+func TestSSEUsesDescriptorHeartbeatPolicyAndCleansUpOnCancellation(t *testing.T) {
+	name := "tenants/t-1/projects/p-1/operations/op-1"
+	cancelled := make(chan struct{})
+	gateway := operationWatchGateway(t, operationWatchNetworkFixture{
+		event: operationSSEEvent(name, "cursor-2", 2, false), waitForCancel: true, cancelled: cancelled,
+	})
+	ticker := &manualSSETicker{
+		ticks: make(chan time.Time, 1), stopped: make(chan struct{}),
+	}
+	intervals := make(chan time.Duration, 1)
+	gateway.clock = manualSSEClock{intervals: intervals, ticker: ticker}
+	response := &notifyingSSEWriter{
+		ResponseRecorder: httptest.NewRecorder(),
+		heartbeat:        make(chan struct{}),
+		updated:          make(chan struct{}),
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	policy := operationWatchContract(t).GetSse()
+	input := operationWatchInput(name)
+	done := make(chan struct{})
+	go func() {
+		gateway.serveSSE(ctx, response, input, policy)
+		close(done)
+	}()
+
+	select {
+	case interval := <-intervals:
+		if interval != 15*time.Second {
+			t.Fatalf("heartbeat interval = %s", interval)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("SSE handler did not create its heartbeat ticker")
+	}
+	select {
+	case <-response.updated:
+	case <-time.After(5 * time.Second):
+		t.Fatal("SSE handler did not emit the durable application event")
+	}
+	ticker.ticks <- time.Unix(20, 0).UTC()
+	select {
+	case <-response.heartbeat:
+	case <-time.After(5 * time.Second):
+		t.Fatal("SSE handler did not emit a heartbeat")
+	}
+	cancel()
+	for label, signal := range map[string]<-chan struct{}{
+		"handler": done, "upstream stream": cancelled, "heartbeat ticker": ticker.stopped,
+	} {
+		select {
+		case <-signal:
+		case <-time.After(5 * time.Second):
+			t.Fatalf("%s was not cleaned up after cancellation", label)
 		}
 	}
-	t.Fatalf("%s has no unary method for registration conformance", service.FullName())
-	return nil
+	body := response.Body.String()
+	if !strings.Contains(body, "retry: 3000\n\n") ||
+		!strings.Contains(body, "id: cursor-2\nevent: heartbeat\n") ||
+		!strings.Contains(body, `"operationRevision":"2"`) {
+		t.Fatalf("descriptor-owned SSE frames = %q", body)
+	}
 }
