@@ -8,36 +8,36 @@ paths:
     post:
       operationId: cancelOperation
       parameters:
-      - in: path
-        name: tenant
-        required: true
-        schema:
-          type: string
-      - in: path
-        name: project
-        required: true
-        schema:
-          type: string
-      - in: path
-        name: operation
-        required: true
-        schema:
-          type: string
-      - in: header
-        name: Idempotency-Key
-        required: true
-        schema:
-          type: string
-      - in: header
-        name: If-Match
-        required: true
-        schema:
-          type: string
-      - in: header
-        name: X-Mindclade-Deadline
-        required: true
-        schema:
-          type: string
+        - in: path
+          name: tenant
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: project
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: operation
+          required: true
+          schema:
+            type: string
+        - in: header
+          name: Idempotency-Key
+          required: true
+          schema:
+            type: string
+        - in: header
+          name: If-Match
+          required: true
+          schema:
+            type: string
+        - in: header
+          name: X-Mindclade-Deadline
+          required: true
+          schema:
+            type: string
       responses:
         '200':
           description: Descriptor-derived response contract.
@@ -80,7 +80,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/mindclade.api.v1.PublicError'
       security:
-      - bearerAuth: []
+        - bearerAuth: []
       requestBody:
         content:
           application/json:
@@ -91,26 +91,26 @@ paths:
     post:
       operationId: createTrainingRun
       parameters:
-      - in: path
-        name: tenant
-        required: true
-        schema:
-          type: string
-      - in: path
-        name: project
-        required: true
-        schema:
-          type: string
-      - in: header
-        name: Idempotency-Key
-        required: true
-        schema:
-          type: string
-      - in: header
-        name: X-Mindclade-Deadline
-        required: true
-        schema:
-          type: string
+        - in: path
+          name: tenant
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: project
+          required: true
+          schema:
+            type: string
+        - in: header
+          name: Idempotency-Key
+          required: true
+          schema:
+            type: string
+        - in: header
+          name: X-Mindclade-Deadline
+          required: true
+          schema:
+            type: string
       responses:
         '202':
           description: Descriptor-derived response contract.
@@ -150,7 +150,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/mindclade.api.v1.PublicError'
       security:
-      - bearerAuth: []
+        - bearerAuth: []
       requestBody:
         content:
           application/json:
@@ -160,37 +160,37 @@ paths:
     get:
       operationId: listTrainingRuns
       parameters:
-      - in: path
-        name: tenant
-        required: true
-        schema:
-          type: string
-      - in: path
-        name: project
-        required: true
-        schema:
-          type: string
-      - in: query
-        name: pageSize
-        required: false
-        schema: &id001
-          format: uint32
-          type: integer
-      - in: query
-        name: pageToken
-        required: false
-        schema: &id002
-          type: string
-      - in: query
-        name: filter
-        required: false
-        schema: &id003
-          type: string
-      - in: query
-        name: orderBy
-        required: false
-        schema: &id004
-          type: string
+        - in: path
+          name: tenant
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: project
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: pageSize
+          required: false
+          schema: &id001
+            format: uint32
+            type: integer
+        - in: query
+          name: pageToken
+          required: false
+          schema: &id002
+            type: string
+        - in: query
+          name: filter
+          required: false
+          schema: &id003
+            type: string
+        - in: query
+          name: orderBy
+          required: false
+          schema: &id004
+            type: string
       responses:
         '200':
           description: Descriptor-derived response contract.
@@ -218,31 +218,31 @@ paths:
               schema:
                 $ref: '#/components/schemas/mindclade.api.v1.PublicError'
       security:
-      - bearerAuth: []
+        - bearerAuth: []
   /v1/tenants/{tenant}/projects/{project}/operations/{operation}:
     get:
       operationId: getOperation
       parameters:
-      - in: path
-        name: tenant
-        required: true
-        schema:
-          type: string
-      - in: path
-        name: project
-        required: true
-        schema:
-          type: string
-      - in: path
-        name: operation
-        required: true
-        schema:
-          type: string
-      - in: header
-        name: If-None-Match
-        required: false
-        schema:
-          type: string
+        - in: path
+          name: tenant
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: project
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: operation
+          required: true
+          schema:
+            type: string
+        - in: header
+          name: If-None-Match
+          required: false
+          schema:
+            type: string
       responses:
         '200':
           description: Descriptor-derived response contract.
@@ -275,31 +275,31 @@ paths:
               schema:
                 $ref: '#/components/schemas/mindclade.api.v1.PublicError'
       security:
-      - bearerAuth: []
+        - bearerAuth: []
   /v1/tenants/{tenant}/projects/{project}/trainingRuns/{trainingRun}:
     get:
       operationId: getTrainingRun
       parameters:
-      - in: path
-        name: tenant
-        required: true
-        schema:
-          type: string
-      - in: path
-        name: project
-        required: true
-        schema:
-          type: string
-      - in: path
-        name: trainingRun
-        required: true
-        schema:
-          type: string
-      - in: header
-        name: If-None-Match
-        required: false
-        schema:
-          type: string
+        - in: path
+          name: tenant
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: project
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: trainingRun
+          required: true
+          schema:
+            type: string
+        - in: header
+          name: If-None-Match
+          required: false
+          schema:
+            type: string
       responses:
         '200':
           description: Descriptor-derived response contract.
@@ -332,31 +332,31 @@ paths:
               schema:
                 $ref: '#/components/schemas/mindclade.api.v1.PublicError'
       security:
-      - bearerAuth: []
+        - bearerAuth: []
   /v1/tenants/{tenant}/projects/{project}/operations/{operation}:watch:
     get:
       operationId: watchOperation
       parameters:
-      - in: path
-        name: tenant
-        required: true
-        schema:
-          type: string
-      - in: path
-        name: project
-        required: true
-        schema:
-          type: string
-      - in: path
-        name: operation
-        required: true
-        schema:
-          type: string
-      - in: header
-        name: Last-Event-ID
-        required: false
-        schema:
-          type: string
+        - in: path
+          name: tenant
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: project
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: operation
+          required: true
+          schema:
+            type: string
+        - in: header
+          name: Last-Event-ID
+          required: false
+          schema:
+            type: string
       responses:
         '200':
           description: Descriptor-derived response contract.
@@ -390,7 +390,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/mindclade.api.v1.PublicError'
       security:
-      - bearerAuth: []
+        - bearerAuth: []
 components:
   schemas:
     mindclade.api.v1.AgentBudget:
@@ -646,10 +646,10 @@ components:
         integrityDigest:
           type: string
       required:
-      - artifactKind
-      - digest
-      - mediaType
-      - sizeBytes
+        - artifactKind
+        - digest
+        - mediaType
+        - sizeBytes
       type: object
     mindclade.api.v1.ArtifactView:
       x-mindclade-oneofs: {}
@@ -719,7 +719,7 @@ components:
         reason:
           type: string
       required:
-      - reason
+        - reason
       type: object
     mindclade.api.v1.CreateAgentDefinitionRequest:
       x-mindclade-oneofs: {}
@@ -1011,12 +1011,12 @@ components:
         kind:
           type: string
           enum:
-          - fieldViolation
-          - resource
-          - precondition
-          - policy
-          - quota
-          - conflict
+            - fieldViolation
+            - resource
+            - precondition
+            - policy
+            - quota
+            - conflict
         field:
           type: string
         reason:
@@ -1029,7 +1029,7 @@ components:
         limitName:
           type: string
       required:
-      - kind
+        - kind
       type: object
     mindclade.api.v1.EvaluationResultView:
       x-mindclade-oneofs: {}
@@ -1178,12 +1178,12 @@ components:
         resultDigest:
           type: string
       required:
-      - name
-      - operation
-      - request
-      - resultDigest
-      - resultManifest
-      - uid
+        - name
+        - operation
+        - request
+        - resultDigest
+        - resultManifest
+        - uid
       type: object
     mindclade.api.v1.InferenceSubmission:
       x-mindclade-oneofs: {}
@@ -1468,12 +1468,12 @@ components:
         state:
           type: string
           enum:
-          - PENDING
-          - RUNNING
-          - SUCCEEDED
-          - FAILED
-          - CANCELLING
-          - CANCELLED
+            - PENDING
+            - RUNNING
+            - SUCCEEDED
+            - FAILED
+            - CANCELLING
+            - CANCELLED
         done:
           type: boolean
         createTime:
@@ -1489,14 +1489,14 @@ components:
         error:
           $ref: '#/components/schemas/mindclade.api.v1.PublicError'
       required:
-      - createTime
-      - done
-      - etag
-      - name
-      - revision
-      - state
-      - uid
-      - updateTime
+        - createTime
+        - done
+        - etag
+        - name
+        - revision
+        - state
+        - uid
+        - updateTime
       type: object
     mindclade.api.v1.OperationEvent:
       x-mindclade-oneofs: {}
@@ -1508,9 +1508,9 @@ components:
         eventType:
           type: string
           enum:
-          - operation.updated
-          - operation.terminal
-          - heartbeat
+            - operation.updated
+            - operation.terminal
+            - heartbeat
         schemaVersion:
           format: uint32
           type: integer
@@ -1525,11 +1525,11 @@ components:
           format: date-time
           type: string
       required:
-      - emittedAt
-      - eventId
-      - eventType
-      - resumeCursor
-      - schemaVersion
+        - emittedAt
+        - eventId
+        - eventType
+        - resumeCursor
+        - schemaVersion
       type: object
     mindclade.api.v1.OperationResult:
       x-mindclade-oneofs: {}
@@ -1626,18 +1626,18 @@ components:
         code:
           type: string
           enum:
-          - AUTHENTICATION_REQUIRED
-          - PERMISSION_DENIED
-          - INVALID_ARGUMENT
-          - FAILED_PRECONDITION
-          - NOT_FOUND
-          - CONFLICT
-          - RATE_LIMITED
-          - QUOTA_EXCEEDED
-          - UNAVAILABLE
-          - DEADLINE_EXCEEDED
-          - CANCELLED
-          - INTERNAL
+            - AUTHENTICATION_REQUIRED
+            - PERMISSION_DENIED
+            - INVALID_ARGUMENT
+            - FAILED_PRECONDITION
+            - NOT_FOUND
+            - CONFLICT
+            - RATE_LIMITED
+            - QUOTA_EXCEEDED
+            - UNAVAILABLE
+            - DEADLINE_EXCEEDED
+            - CANCELLED
+            - INTERNAL
         message:
           type: string
         requestId:
@@ -1655,10 +1655,10 @@ components:
             $ref: '#/components/schemas/mindclade.api.v1.ErrorDetail'
           type: array
       required:
-      - code
-      - message
-      - requestId
-      - retryable
+        - code
+        - message
+        - requestId
+        - retryable
       type: object
     mindclade.api.v1.PublicHttpContract:
       x-mindclade-oneofs: {}
@@ -1680,10 +1680,10 @@ components:
           type: array
         stream:
           enum:
-          - STREAM_PROJECTION_UNSPECIFIED
-          - STREAM_PROJECTION_NONE
-          - STREAM_PROJECTION_BINARY
-          - STREAM_PROJECTION_SSE
+            - STREAM_PROJECTION_UNSPECIFIED
+            - STREAM_PROJECTION_NONE
+            - STREAM_PROJECTION_BINARY
+            - STREAM_PROJECTION_SSE
           type: string
         nonSuccessStatus:
           items:
@@ -1733,9 +1733,9 @@ components:
           pattern: ^(0|[1-9][0-9]*)$
           type: string
       required:
-      - name
-      - revision
-      - uid
+        - name
+        - revision
+        - uid
       type: object
     mindclade.api.v1.SubmitInferenceRequest:
       x-mindclade-oneofs: {}
@@ -1805,10 +1805,10 @@ components:
         policyClassification:
           type: string
       required:
-      - datasetRelease
-      - modelRelease
-      - trainingRecipe
-      - trainingRunId
+        - datasetRelease
+        - modelRelease
+        - trainingRecipe
+        - trainingRunId
       type: object
     mindclade.api.v1.TrainingRunList:
       x-mindclade-oneofs: {}
@@ -1820,8 +1820,8 @@ components:
         page:
           $ref: '#/components/schemas/mindclade.api.v1.PageMetadata'
       required:
-      - page
-      - trainingRuns
+        - page
+        - trainingRuns
       type: object
     mindclade.api.v1.TrainingRunView:
       x-mindclade-oneofs: {}
@@ -1844,16 +1844,16 @@ components:
         state:
           type: string
           enum:
-          - CREATED
-          - VALIDATING
-          - ADMITTED
-          - RUNNING
-          - CHECKPOINTING
-          - RECOVERING
-          - DRAINING
-          - COMPLETED
-          - FAILED
-          - CANCELLED
+            - CREATED
+            - VALIDATING
+            - ADMITTED
+            - RUNNING
+            - CHECKPOINTING
+            - RECOVERING
+            - DRAINING
+            - COMPLETED
+            - FAILED
+            - CANCELLED
         trainingRecipe:
           $ref: '#/components/schemas/mindclade.api.v1.ArtifactRef'
         datasetRelease:
@@ -1872,16 +1872,16 @@ components:
           format: date-time
           type: string
       required:
-      - createTime
-      - datasetRelease
-      - etag
-      - modelRelease
-      - name
-      - revision
-      - state
-      - trainingRecipe
-      - uid
-      - updateTime
+        - createTime
+        - datasetRelease
+        - etag
+        - modelRelease
+        - name
+        - revision
+        - state
+        - trainingRecipe
+        - uid
+        - updateTime
       type: object
     mindclade.api.v1.UpdateDatasetRequest:
       x-mindclade-oneofs: {}
@@ -2043,178 +2043,178 @@ components:
       scheme: bearer
       type: http
 x-mindclade-binding-contracts:
-- auth: bearer
-  body: cancellation
-  bodyMessage: mindclade.api.v1.CancellationRequest
-  method: POST
-  operationId: cancelOperation
-  pathFields:
-  - name
-  pathTemplate: /v1/{name=tenants/*/projects/*/operations/*}:cancel
-  queryFields: {}
-  requestHeaders:
-  - Idempotency-Key
-  - If-Match
-  - X-Mindclade-Deadline
-  requiredRequestHeaders:
-  - Idempotency-Key
-  - If-Match
-  - X-Mindclade-Deadline
-  requestBodyRequired: true
-  requestMessage: mindclade.api.v1.CancelOperationRequest
-  responseHeaders:
-  - ETag
-  responseMessage: mindclade.api.v1.Operation
-  responseStatus:
-  - 200
-  - 400
-  - 401
-  - 403
-  - 404
-  - 409
-  serverStreaming: false
-  stream: STREAM_PROJECTION_NONE
-  successStatus:
-  - 200
-- auth: bearer
-  body: training_run
-  bodyMessage: mindclade.api.v1.TrainingRunCreate
-  method: POST
-  operationId: createTrainingRun
-  pathFields:
-  - parent
-  pathTemplate: /v1/{parent=tenants/*/projects/*}/trainingRuns
-  queryFields: {}
-  requestHeaders:
-  - Idempotency-Key
-  - X-Mindclade-Deadline
-  requiredRequestHeaders:
-  - Idempotency-Key
-  - X-Mindclade-Deadline
-  requestBodyRequired: true
-  requestMessage: mindclade.api.v1.CreateTrainingRunRequest
-  responseHeaders: []
-  responseMessage: mindclade.api.v1.Operation
-  responseStatus:
-  - 202
-  - 400
-  - 401
-  - 403
-  - 409
-  - 429
-  serverStreaming: false
-  stream: STREAM_PROJECTION_NONE
-  successStatus:
-  - 202
-- auth: bearer
-  body: null
-  bodyMessage: null
-  method: GET
-  operationId: getOperation
-  pathFields:
-  - name
-  pathTemplate: /v1/{name=tenants/*/projects/*/operations/*}
-  queryFields: {}
-  requestHeaders:
-  - If-None-Match
-  requiredRequestHeaders: []
-  requestBodyRequired: false
-  requestMessage: mindclade.api.v1.GetResourceRequest
-  responseHeaders:
-  - ETag
-  responseMessage: mindclade.api.v1.Operation
-  responseStatus:
-  - 200
-  - 304
-  - 401
-  - 403
-  - 404
-  serverStreaming: false
-  stream: STREAM_PROJECTION_NONE
-  successStatus:
-  - 200
-- auth: bearer
-  body: null
-  bodyMessage: null
-  method: GET
-  operationId: getTrainingRun
-  pathFields:
-  - name
-  pathTemplate: /v1/{name=tenants/*/projects/*/trainingRuns/*}
-  queryFields: {}
-  requestHeaders:
-  - If-None-Match
-  requiredRequestHeaders: []
-  requestBodyRequired: false
-  requestMessage: mindclade.api.v1.GetResourceRequest
-  responseHeaders:
-  - ETag
-  responseMessage: mindclade.api.v1.TrainingRunView
-  responseStatus:
-  - 200
-  - 304
-  - 401
-  - 403
-  - 404
-  serverStreaming: false
-  stream: STREAM_PROJECTION_NONE
-  successStatus:
-  - 200
-- auth: bearer
-  body: null
-  bodyMessage: null
-  method: GET
-  operationId: listTrainingRuns
-  pathFields:
-  - parent
-  pathTemplate: /v1/{parent=tenants/*/projects/*}/trainingRuns
-  queryFields:
-    pageSize: *id001
-    pageToken: *id002
-    filter: *id003
-    orderBy: *id004
-  requestHeaders: []
-  requiredRequestHeaders: []
-  requestBodyRequired: false
-  requestMessage: mindclade.api.v1.ListResourcesRequest
-  responseHeaders: []
-  responseMessage: mindclade.api.v1.TrainingRunList
-  responseStatus:
-  - 200
-  - 400
-  - 401
-  - 403
-  serverStreaming: false
-  stream: STREAM_PROJECTION_NONE
-  successStatus:
-  - 200
-- auth: bearer
-  body: null
-  bodyMessage: null
-  method: GET
-  operationId: watchOperation
-  pathFields:
-  - name
-  pathTemplate: /v1/{name=tenants/*/projects/*/operations/*}:watch
-  queryFields: {}
-  requestHeaders:
-  - Last-Event-ID
-  requiredRequestHeaders: []
-  requestBodyRequired: false
-  requestMessage: mindclade.api.v1.WatchOperationRequest
-  responseHeaders:
-  - Cache-Control
-  - X-Accel-Buffering
-  responseMessage: mindclade.api.v1.OperationEvent
-  responseStatus:
-  - 200
-  - 401
-  - 403
-  - 404
-  serverStreaming: true
-  stream: STREAM_PROJECTION_SSE
-  successStatus:
-  - 200
+  - auth: bearer
+    body: cancellation
+    bodyMessage: mindclade.api.v1.CancellationRequest
+    method: POST
+    operationId: cancelOperation
+    pathFields:
+      - name
+    pathTemplate: /v1/{name=tenants/*/projects/*/operations/*}:cancel
+    queryFields: {}
+    requestHeaders:
+      - Idempotency-Key
+      - If-Match
+      - X-Mindclade-Deadline
+    requiredRequestHeaders:
+      - Idempotency-Key
+      - If-Match
+      - X-Mindclade-Deadline
+    requestBodyRequired: true
+    requestMessage: mindclade.api.v1.CancelOperationRequest
+    responseHeaders:
+      - ETag
+    responseMessage: mindclade.api.v1.Operation
+    responseStatus:
+      - 200
+      - 400
+      - 401
+      - 403
+      - 404
+      - 409
+    serverStreaming: false
+    stream: STREAM_PROJECTION_NONE
+    successStatus:
+      - 200
+  - auth: bearer
+    body: training_run
+    bodyMessage: mindclade.api.v1.TrainingRunCreate
+    method: POST
+    operationId: createTrainingRun
+    pathFields:
+      - parent
+    pathTemplate: /v1/{parent=tenants/*/projects/*}/trainingRuns
+    queryFields: {}
+    requestHeaders:
+      - Idempotency-Key
+      - X-Mindclade-Deadline
+    requiredRequestHeaders:
+      - Idempotency-Key
+      - X-Mindclade-Deadline
+    requestBodyRequired: true
+    requestMessage: mindclade.api.v1.CreateTrainingRunRequest
+    responseHeaders: []
+    responseMessage: mindclade.api.v1.Operation
+    responseStatus:
+      - 202
+      - 400
+      - 401
+      - 403
+      - 409
+      - 429
+    serverStreaming: false
+    stream: STREAM_PROJECTION_NONE
+    successStatus:
+      - 202
+  - auth: bearer
+    body: null
+    bodyMessage: null
+    method: GET
+    operationId: getOperation
+    pathFields:
+      - name
+    pathTemplate: /v1/{name=tenants/*/projects/*/operations/*}
+    queryFields: {}
+    requestHeaders:
+      - If-None-Match
+    requiredRequestHeaders: []
+    requestBodyRequired: false
+    requestMessage: mindclade.api.v1.GetResourceRequest
+    responseHeaders:
+      - ETag
+    responseMessage: mindclade.api.v1.Operation
+    responseStatus:
+      - 200
+      - 304
+      - 401
+      - 403
+      - 404
+    serverStreaming: false
+    stream: STREAM_PROJECTION_NONE
+    successStatus:
+      - 200
+  - auth: bearer
+    body: null
+    bodyMessage: null
+    method: GET
+    operationId: getTrainingRun
+    pathFields:
+      - name
+    pathTemplate: /v1/{name=tenants/*/projects/*/trainingRuns/*}
+    queryFields: {}
+    requestHeaders:
+      - If-None-Match
+    requiredRequestHeaders: []
+    requestBodyRequired: false
+    requestMessage: mindclade.api.v1.GetResourceRequest
+    responseHeaders:
+      - ETag
+    responseMessage: mindclade.api.v1.TrainingRunView
+    responseStatus:
+      - 200
+      - 304
+      - 401
+      - 403
+      - 404
+    serverStreaming: false
+    stream: STREAM_PROJECTION_NONE
+    successStatus:
+      - 200
+  - auth: bearer
+    body: null
+    bodyMessage: null
+    method: GET
+    operationId: listTrainingRuns
+    pathFields:
+      - parent
+    pathTemplate: /v1/{parent=tenants/*/projects/*}/trainingRuns
+    queryFields:
+      pageSize: *id001
+      pageToken: *id002
+      filter: *id003
+      orderBy: *id004
+    requestHeaders: []
+    requiredRequestHeaders: []
+    requestBodyRequired: false
+    requestMessage: mindclade.api.v1.ListResourcesRequest
+    responseHeaders: []
+    responseMessage: mindclade.api.v1.TrainingRunList
+    responseStatus:
+      - 200
+      - 400
+      - 401
+      - 403
+    serverStreaming: false
+    stream: STREAM_PROJECTION_NONE
+    successStatus:
+      - 200
+  - auth: bearer
+    body: null
+    bodyMessage: null
+    method: GET
+    operationId: watchOperation
+    pathFields:
+      - name
+    pathTemplate: /v1/{name=tenants/*/projects/*/operations/*}:watch
+    queryFields: {}
+    requestHeaders:
+      - Last-Event-ID
+    requiredRequestHeaders: []
+    requestBodyRequired: false
+    requestMessage: mindclade.api.v1.WatchOperationRequest
+    responseHeaders:
+      - Cache-Control
+      - X-Accel-Buffering
+    responseMessage: mindclade.api.v1.OperationEvent
+    responseStatus:
+      - 200
+      - 401
+      - 403
+      - 404
+    serverStreaming: true
+    stream: STREAM_PROJECTION_SSE
+    successStatus:
+      - 200
 x-mindclade-descriptor-digest: sha256:ffe75f1ad43b32058a0949b03ddba70bc5ddacde27d27b1ae2a30f6245d926f0
 x-mindclade-schema-version: mindclade.raw-openapi-projection/v3
 x-mindclade-generator:
