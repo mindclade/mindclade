@@ -460,6 +460,10 @@ def render(root: Path, *, descriptor_bytes: bytes | None = None) -> bytes:
     result = {
         "descriptor_digest": descriptor_digest,
         "explicit_rpc_count": rpc_count,
+        "generator": {
+            "name": "tools/codegen/generate_grpc_implementation_coverage.py",
+            "version": OUTPUT_SCHEMA,
+        },
         "policy_digest": digest(policy_bytes),
         "schema_version": OUTPUT_SCHEMA,
         "service_count": len(projection),

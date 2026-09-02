@@ -16,6 +16,14 @@ enum StreamProjection {
   STREAM_PROJECTION_SSE = 3;
 }
 
+// PublicSseContract records reconnect and heartbeat behavior for an SSE RPC.
+message PublicSseContract {
+  uint32 retry_milliseconds = 1;
+  uint32 heartbeat_interval_seconds = 2;
+  optional bool heartbeat_reuses_last_durable_event_id = 3;
+  optional bool replay_acknowledged_terminal_event = 4;
+}
+
 // PublicHttpContract records HTTP facts not represented by google.api.http.
 message PublicHttpContract {
   repeated uint32 success_status = 1;
@@ -26,6 +34,7 @@ message PublicHttpContract {
   repeated uint32 non_success_status = 6;
   bool request_body_required = 7;
   repeated string required_request_headers = 8;
+  PublicSseContract sse = 9;
 }
 
 // PublicStringEnumContract makes a curated string enumeration descriptor-visible.
@@ -198,13 +207,16 @@ message OperationEvent {
     required_fields: "event_id"
     required_fields: "event_type"
     required_fields: "schema_version"
+    required_fields: "operation_revision"
     required_fields: "resume_cursor"
+    required_fields: "heartbeat"
     required_fields: "emitted_at"
     string_enums: {
       field: "event_type"
       values: "operation.updated"
       values: "operation.terminal"
       values: "heartbeat"
+      values: "error"
     }
   };
 
@@ -216,6 +228,8 @@ message OperationEvent {
   string resume_cursor = 6;
   bool heartbeat = 7;
   google.protobuf.Timestamp emitted_at = 8;
+  // error is present only when event_type is "error" after HTTP 200 commits.
+  PublicError error = 9;
 }
 
 // CancellationRequest is the public cancellation body.
@@ -996,10 +1010,20 @@ service MindcladeService {
       request_headers: "Last-Event-ID"
       response_headers: "Cache-Control"
       response_headers: "X-Accel-Buffering"
+      non_success_status: 400
       non_success_status: 401
       non_success_status: 403
       non_success_status: 404
+      non_success_status: 410
+      non_success_status: 412
+      non_success_status: 500
       stream: STREAM_PROJECTION_SSE
+      sse: {
+        retry_milliseconds: 3000
+        heartbeat_interval_seconds: 15
+        heartbeat_reuses_last_durable_event_id: true
+        replay_acknowledged_terminal_event: false
+      }
     };
   }
   rpc ListTrainingRuns(ListResourcesRequest) returns (TrainingRunList) {

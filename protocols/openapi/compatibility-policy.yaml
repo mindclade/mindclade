@@ -3,7 +3,7 @@ kind: OpenApiCompatibilityPolicy
 metadata:
   name: public-api-v1
   owner: contract-governance
-  status: candidate-unratified
+  status: governed-ratification-gated
 spec:
   authority:
     descriptorSource: protocols/proto/mindclade/api/v1/mindclade_service.proto
@@ -16,9 +16,12 @@ spec:
     rule: Public descriptors own runtime semantics; curation may add documentation metadata but cannot change bindings or ProtoJSON shapes.
   versioning:
     profile: v1
-    ratified: false
-    baselineRule: The checked descriptor and OpenAPI artifacts are review candidates, not a supported compatibility baseline.
-    postBaselineRule: Additive compatibility becomes mandatory only after training-vertical ratification establishes the v1 baseline.
+    ratificationStateAuthority:
+      protobufBaseline: protocols/compatibility/baselines/protobuf.lock.json
+      openapiBaseline: protocols/compatibility/baselines/openapi.lock.json
+      rule: Both immutable baseline schemas must be present and co-ratified by one protected transaction; either both absent/candidate or both ratified is valid.
+    baselineRule: Before the paired immutable baselines exist, checked descriptor and OpenAPI artifacts are review candidates and establish no supported compatibility promise.
+    postBaselineRule: After protected ratification, additive compatibility is mandatory whenever the paired v1 baselines exist; the generator enforces Buf and OpenAPI compatibility before replacement.
     deprecation:
       documentationRequired: true
       replacementRequired: true

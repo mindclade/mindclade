@@ -2,14 +2,18 @@
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import hmac
+import os
 import re
+import tempfile
 import uuid
-from collections.abc import AsyncIterable, AsyncIterator, Iterator
+from collections.abc import AsyncIterable, AsyncIterator, Callable, Iterator
 from contextlib import suppress
 from datetime import UTC, datetime, timedelta
-from typing import Protocol, cast
+from pathlib import Path
+from typing import BinaryIO, Protocol, cast
 
 import grpc
 from google.protobuf.message import Message
@@ -67,6 +71,88 @@ class BinaryWriter(Protocol):
 
 class _Digest(Protocol):
     def update(self, data: bytes, /) -> None: ...
+
+
+def _atomic_destination(destination: str | os.PathLike[str]) -> tuple[Path, Path]:
+    raw = os.fspath(destination)
+    if not raw or "\x00" in raw:
+        raise ValueError("artifact destination must be a non-empty text path")
+    if raw.endswith(os.sep) or (os.altsep is not None and raw.endswith(os.altsep)):
+        raise ValueError("artifact destination must name a file")
+    target = Path(raw).absolute()
+    return target, target.parent
+
+
+def _new_staging_file(directory: Path) -> tuple[BinaryIO, Path]:
+    descriptor, path = tempfile.mkstemp(prefix=".mindclade-download-", dir=directory)
+    return os.fdopen(descriptor, "wb"), Path(path)
+
+
+def _sync_file(destination: BinaryIO) -> None:
+    destination.flush()
+    os.fsync(destination.fileno())
+
+
+def _sync_directory(directory: Path) -> None:
+    descriptor = os.open(directory, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0))
+    try:
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
+
+
+def _publish_staging_file(staging: Path, destination: Path, directory: Path) -> None:
+    # A same-directory hard link is an atomic, no-clobber publication. Keep the
+    # staging name until the destination exists so failure cleanup is possible.
+    # Successful link creation is the commit point: after it, cleanup and
+    # directory-sync failures are best effort so this helper never reports a
+    # failed download while leaving a valid destination behind.
+    try:
+        os.link(staging, destination)
+    except FileExistsError as error:
+        raise ConflictError(
+            "artifact destination already exists",
+            status=grpc.StatusCode.ALREADY_EXISTS,
+        ) from error
+    with suppress(OSError):
+        _sync_directory(directory)
+    with suppress(OSError):
+        staging.unlink()
+    with suppress(OSError):
+        _sync_directory(directory)
+
+
+async def _run_file_operation[**P, R](
+    operation: Callable[P, R], *args: P.args, **kwargs: P.kwargs
+) -> R:
+    """Finish an in-flight filesystem operation before cancellation cleanup."""
+
+    task = asyncio.create_task(asyncio.to_thread(operation, *args, **kwargs))
+    try:
+        return await asyncio.shield(task)
+    except asyncio.CancelledError:
+        # A thread cannot be cancelled safely. Waiting prevents cleanup from
+        # racing a write that still owns the staging file.
+        with suppress(BaseException):
+            await task
+        raise
+
+
+async def _commit_staging_file(staging: Path, destination: Path, directory: Path) -> None:
+    """Make publication the cancellation linearization point.
+
+    Cancellation before this helper leaves no destination. Once publication
+    begins, the filesystem result wins so callers never observe cancellation
+    for a file that was actually committed.
+    """
+
+    task = asyncio.create_task(
+        asyncio.to_thread(_publish_staging_file, staging, destination, directory)
+    )
+    try:
+        await asyncio.shield(task)
+    except asyncio.CancelledError:
+        await task
 
 
 type _MutationRequest = (
@@ -985,6 +1071,42 @@ class Artifacts:
             written += count
         return written
 
+    def download_file(
+        self,
+        artifact: artifact_reference_pb2.ArtifactRef,
+        destination: str | os.PathLike[str],
+        *,
+        max_chunk_bytes: int = _DEFAULT_CHUNK_BYTES,
+        options: CallOptions | None = None,
+    ) -> int:
+        """Download, verify, and atomically publish a new mode-0600 file.
+
+        The destination is never overwritten. A digest mismatch, short write,
+        deadline, or other failure removes the same-directory staging file and
+        leaves the destination absent or unchanged. Successful no-clobber link
+        creation is the commit point; later best-effort staging cleanup cannot
+        change a successful result into an ambiguous failure.
+        """
+
+        target, directory = _atomic_destination(destination)
+        temporary, staging = _new_staging_file(directory)
+        try:
+            written = self.download(
+                artifact,
+                temporary,
+                max_chunk_bytes=max_chunk_bytes,
+                options=options,
+            )
+            _sync_file(temporary)
+            temporary.close()
+            _publish_staging_file(staging, target, directory)
+            return written
+        finally:
+            if not temporary.closed:
+                temporary.close()
+            with suppress(OSError):
+                staging.unlink()
+
 
 class AsyncArtifacts:
     def __init__(self, invoker: AsyncInvoker) -> None:
@@ -1531,3 +1653,67 @@ class AsyncArtifacts:
                 "artifact download digest verification failed",
                 status=grpc.StatusCode.DATA_LOSS,
             )
+
+    async def download(
+        self,
+        artifact: artifact_reference_pb2.ArtifactRef,
+        destination: BinaryWriter,
+        *,
+        offset: int = 0,
+        max_chunk_bytes: int = _DEFAULT_CHUNK_BYTES,
+        options: CallOptions | None = None,
+    ) -> int:
+        """Stream a verified artifact into a synchronous binary writer.
+
+        Blocking writes run outside the event loop. Cancellation waits for an
+        in-flight write to finish before returning, so the writer is never
+        concurrently mutated after this method exits.
+        """
+
+        written = 0
+        async for data in self.iter_download(
+            artifact,
+            offset=offset,
+            max_chunk_bytes=max_chunk_bytes,
+            options=options,
+        ):
+            count = await _run_file_operation(destination.write, data)
+            if count != len(data):
+                raise ProtocolError(
+                    "artifact download destination accepted a short write",
+                    status=grpc.StatusCode.DATA_LOSS,
+                )
+            written += count
+        return written
+
+    async def download_file(
+        self,
+        artifact: artifact_reference_pb2.ArtifactRef,
+        destination: str | os.PathLike[str],
+        *,
+        max_chunk_bytes: int = _DEFAULT_CHUNK_BYTES,
+        options: CallOptions | None = None,
+    ) -> int:
+        """Asynchronously download and atomically publish a verified new file."""
+
+        target, directory = _atomic_destination(destination)
+        temporary, staging = await _run_file_operation(_new_staging_file, directory)
+        try:
+            written = await self.download(
+                artifact,
+                temporary,
+                max_chunk_bytes=max_chunk_bytes,
+                options=options,
+            )
+            await _run_file_operation(_sync_file, temporary)
+            temporary.close()
+            # Deliver any already-pending cancellation before the atomic
+            # commit. Publication itself is the linearization point.
+            await asyncio.sleep(0)
+            await _commit_staging_file(staging, target, directory)
+            return written
+        finally:
+            if not temporary.closed:
+                temporary.close()
+            with suppress(OSError):
+                staging.unlink()

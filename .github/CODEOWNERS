@@ -71,6 +71,9 @@
 /kernels/native/ @mindclade/ml-systems
 /kernels/native/stable_abi/tensor_bridge.h @mindclade/ml-systems
 /kernels/pairformer/ @mindclade/ml-systems
+/examples/ @mindclade/developer-platform
+/workers/ingestion_worker/ @mindclade/data-platform
+/workers/training_worker/ @mindclade/ml-systems
 
 # Architecture, security, and foundational domain decisions.
 /docs/architecture/ @mindclade/architecture

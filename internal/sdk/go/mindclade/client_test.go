@@ -6,8 +6,10 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"io"
 	"net"
+	"os"
 	"strings"
 	"sync"
 	"testing"
@@ -16,6 +18,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 	"google.golang.org/grpc/test/bufconn"
 	"google.golang.org/protobuf/proto"
@@ -332,6 +335,131 @@ func TestArtifactTransferVerifiesContent(t *testing.T) {
 	}
 }
 
+func TestArtifactDownloadFilePublishesAtomicallyWithoutClobbering(t *testing.T) {
+	client, _, _ := testClient(t)
+	directory := t.TempDir()
+	destination := directory + "/artifact.bin"
+	if err := client.Artifacts.DownloadFile(context.Background(), fixtureArtifact(), destination); err != nil {
+		t.Fatalf("atomic download: %v", err)
+	}
+	content, err := os.ReadFile(destination)
+	if err != nil || string(content) != fixtureContent {
+		t.Fatalf("published content = %q, err=%v", content, err)
+	}
+	info, err := os.Stat(destination)
+	if err != nil {
+		t.Fatalf("published stat: %v", err)
+	}
+	if info.Mode().Perm() != 0o600 {
+		t.Fatalf("published mode = %v", info.Mode().Perm())
+	}
+	if err = client.Artifacts.DownloadFile(context.Background(), fixtureArtifact(), destination); !hasErrorCode(err, CodeAlreadyExists) {
+		t.Fatalf("existing destination was not protected: %v", err)
+	}
+	content, err = os.ReadFile(destination)
+	if err != nil || string(content) != fixtureContent {
+		t.Fatalf("existing destination changed: %q, err=%v", content, err)
+	}
+
+	corrupt := fixtureArtifact()
+	corrupt.Digest = "sha256:" + strings.Repeat("0", 64)
+	corruptDestination := directory + "/corrupt.bin"
+	if err = client.Artifacts.DownloadFile(context.Background(), corrupt, corruptDestination); err == nil {
+		t.Fatal("corrupt artifact was published")
+	}
+	if _, statErr := os.Stat(corruptDestination); !errors.Is(statErr, os.ErrNotExist) {
+		t.Fatalf("corrupt destination exists: %v", statErr)
+	}
+
+	canceled, cancel := context.WithCancel(context.Background())
+	cancel()
+	canceledDestination := directory + "/cancelled.bin"
+	if err = client.Artifacts.DownloadFile(canceled, fixtureArtifact(), canceledDestination); !hasErrorCode(err, CodeCanceled) {
+		t.Fatalf("cancelled download error = %v", err)
+	}
+	if _, statErr := os.Stat(canceledDestination); !errors.Is(statErr, os.ErrNotExist) {
+		t.Fatalf("cancelled destination exists: %v", statErr)
+	}
+
+	raceDestination := directory + "/race.bin"
+	start := make(chan struct{})
+	results := make(chan error, 2)
+	var writers sync.WaitGroup
+	writers.Add(2)
+	for range 2 {
+		go func() {
+			defer writers.Done()
+			<-start
+			results <- client.Artifacts.DownloadFile(context.Background(), fixtureArtifact(), raceDestination)
+		}()
+	}
+	close(start)
+	writers.Wait()
+	close(results)
+	successes, conflicts := 0, 0
+	for result := range results {
+		switch {
+		case result == nil:
+			successes++
+		case hasErrorCode(result, CodeAlreadyExists):
+			conflicts++
+		default:
+			t.Fatalf("racing download error = %v", result)
+		}
+	}
+	if successes != 1 || conflicts != 1 {
+		t.Fatalf("racing publication results: success=%d, already-exists=%d", successes, conflicts)
+	}
+	content, err = os.ReadFile(raceDestination)
+	if err != nil || string(content) != fixtureContent {
+		t.Fatalf("racing destination content = %q, err=%v", content, err)
+	}
+
+	staging := directory + "/.mindclade-download-commit-point"
+	commitDestination := directory + "/commit-point.bin"
+	if err = os.WriteFile(staging, []byte(fixtureContent), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	removeCalls, syncCalls := 0, 0
+	err = publishArtifactFile(
+		staging,
+		commitDestination,
+		directory,
+		os.Link,
+		func(string) error {
+			removeCalls++
+			return errors.New("simulated staging cleanup failure")
+		},
+		func(string) error {
+			syncCalls++
+			return errors.New("simulated directory sync failure")
+		},
+	)
+	if err != nil {
+		t.Fatalf("post-commit cleanup changed success to error: %v", err)
+	}
+	if removeCalls != 1 || syncCalls != 2 {
+		t.Fatalf("post-commit cleanup calls: remove=%d sync=%d", removeCalls, syncCalls)
+	}
+	content, err = os.ReadFile(commitDestination)
+	if err != nil || string(content) != fixtureContent {
+		t.Fatalf("committed destination content = %q, err=%v", content, err)
+	}
+	if err = os.Remove(staging); err != nil {
+		t.Fatal(err)
+	}
+
+	entries, err := os.ReadDir(directory)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, entry := range entries {
+		if strings.HasPrefix(entry.Name(), ".mindclade-download-") {
+			t.Fatalf("temporary artifact file leaked: %s", entry.Name())
+		}
+	}
+}
+
 func TestArtifactUploadResumesAcrossFreshClientWithoutExpiryDigestConflict(t *testing.T) {
 	client, _, catalog := testClient(t)
 	partial := fixtureContent[:7]
@@ -443,6 +571,20 @@ func TestErrorsAndCredentialFailuresDoNotExposeProviderPayloads(t *testing.T) {
 	}
 }
 
+func TestRetryPolicyHonorsBoundedServerHintAndRemoteDeadline(t *testing.T) {
+	config := defaultConfig()
+	config.RetryMaxDelay = 2 * time.Second
+	if delay := retryDelayForError(config, 1, &Error{RetryAfter: 5 * time.Second}); delay != config.RetryMaxDelay {
+		t.Fatalf("bounded retry delay = %s, want %s", delay, config.RetryMaxDelay)
+	}
+	if delay := retryDelayForError(config, 1, &Error{}); delay < 0 || delay > config.RetryBaseDelay {
+		t.Fatalf("jittered retry delay outside policy: %s", delay)
+	}
+	if !retryableCode(codes.DeadlineExceeded) {
+		t.Fatal("remote deadline exceeded was not retryable for a classified safe call")
+	}
+}
+
 func TestObserverPanicsCannotChangeRPCOutcome(t *testing.T) {
 	config := defaultConfig()
 	config.Observer = panicObserver{}
@@ -452,6 +594,69 @@ func TestObserverPanicsCannotChangeRPCOutcome(t *testing.T) {
 	)
 	if err != nil {
 		t.Fatalf("observer panic changed RPC outcome: %v", err)
+	}
+}
+
+func TestRawTransportCannotOverrideSDKIdentityOrInjectCredentials(t *testing.T) {
+	config := defaultConfig()
+	config.TenantID = "tenant-authoritative"
+	config.ProjectID = "project-authoritative"
+	config.PrincipalID = "principal-authoritative"
+	ctx := metadata.NewOutgoingContext(context.Background(), metadata.Pairs(
+		"authorization", "Bearer caller-controlled",
+		"proxy-authorization", "Basic caller-controlled",
+		"cookie", "session=caller-controlled",
+		"x-api-key", "caller-controlled",
+		"x-mindclade-expected-tenant", "tenant-forged",
+		"x-request-id", "request-forged",
+		"x-custom-safe", "preserved",
+	))
+	ctx, _, err := withRequestOptions(
+		ctx,
+		WithRequestID("request-authoritative"),
+		WithTraceID("trace-authoritative"),
+		WithIdempotencyKey("idempotency-authoritative"),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx = attachRequestMetadata(ctx, config, "/mindclade.internal.job.v1.OperationService/GetOperation")
+	values, ok := metadata.FromOutgoingContext(ctx)
+	if !ok {
+		t.Fatal("SDK metadata was not attached")
+	}
+	for _, key := range []string{"authorization", "proxy-authorization", "cookie", "x-api-key"} {
+		if values.Get(key) != nil {
+			t.Fatalf("caller credential metadata %q survived policy enforcement", key)
+		}
+	}
+	for key, expected := range map[string]string{
+		"x-custom-safe":                  "preserved",
+		"x-mindclade-expected-tenant":    "tenant-authoritative",
+		"x-mindclade-expected-project":   "project-authoritative",
+		"x-mindclade-expected-principal": "principal-authoritative",
+		"x-request-id":                   "request-authoritative",
+		"x-trace-id":                     "trace-authoritative",
+		"idempotency-key":                "idempotency-authoritative",
+	} {
+		actual := values.Get(key)
+		if len(actual) != 1 || actual[0] != expected {
+			t.Fatalf("metadata %q = %v, want exactly %q", key, actual, expected)
+		}
+	}
+}
+
+func TestCallIdentityIsValidatedBeforeTransport(t *testing.T) {
+	for name, option := range map[string]RequestOption{
+		"request":     WithRequestID(strings.Repeat("r", 257)),
+		"trace":       WithTraceID("trace\nforged"),
+		"idempotency": WithIdempotencyKey("idempotency\x00forged"),
+	} {
+		t.Run(name, func(t *testing.T) {
+			if _, _, err := withRequestOptions(context.Background(), option); err == nil {
+				t.Fatal("unsafe call identity was accepted")
+			}
+		})
 	}
 }
 
@@ -485,6 +690,138 @@ func TestUnaryRetryIsBoundedAndIdempotent(t *testing.T) {
 		t.Fatalf("unsafe retry result: attempts=%d err=%v", attempts, err)
 	}
 }
+
+func TestRawUnaryDeadlineIsBoundedBySDKPolicy(t *testing.T) {
+	config := defaultConfig()
+	config.DefaultRPCTimeout = time.Second
+	interceptor := unaryInterceptor(config)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Hour)
+	defer cancel()
+	err := interceptor(ctx, "/mindclade.internal.job.v1.OperationService/GetOperation", nil, nil, nil,
+		func(callContext context.Context, _ string, _, _ any, _ *grpc.ClientConn, _ ...grpc.CallOption) error {
+			deadline, ok := callContext.Deadline()
+			if !ok || time.Until(deadline) > config.DefaultRPCTimeout {
+				t.Fatalf("raw deadline was not bounded: %v", deadline)
+			}
+			return nil
+		},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestRawStreamDeadlineIsBoundedBySDKPolicy(t *testing.T) {
+	config := defaultConfig()
+	config.DefaultRPCTimeout = time.Second
+	interceptor := streamInterceptor(config)
+	description := &internaljobv1.OperationService_ServiceDesc.Streams[0]
+	assertDeadline := func(ctx context.Context, wantMaximum, wantMinimum time.Duration) {
+		t.Helper()
+		stream, err := interceptor(ctx, description, nil, "/mindclade.internal.job.v1.OperationService/WatchOperation",
+			func(callContext context.Context, _ *grpc.StreamDesc, _ *grpc.ClientConn, _ string, _ ...grpc.CallOption) (grpc.ClientStream, error) {
+				deadline, ok := callContext.Deadline()
+				if !ok {
+					t.Fatal("stream call has no deadline")
+				}
+				remaining := time.Until(deadline)
+				if remaining > wantMaximum || remaining < wantMinimum {
+					t.Fatalf("stream deadline remaining=%v, want within [%v, %v]", remaining, wantMinimum, wantMaximum)
+				}
+				return &deadlineClientStream{ctx: callContext}, nil
+			},
+		)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err = stream.RecvMsg(nil); !errors.Is(err, io.EOF) {
+			t.Fatalf("stream terminal receive = %v, want EOF", err)
+		}
+	}
+
+	assertDeadline(context.Background(), time.Second, 900*time.Millisecond)
+	longContext, cancel := context.WithTimeout(context.Background(), time.Hour)
+	defer cancel()
+	assertDeadline(longContext, time.Second, 900*time.Millisecond)
+}
+
+func TestPaginatePreservesOpaqueTokensAndEnforcesBounds(t *testing.T) {
+	seen := []string{}
+	values := []int{}
+	for value, err := range Paginate(
+		context.Background(),
+		" initial token ",
+		PaginationLimits{},
+		func(_ context.Context, token string) (Page[int], error) {
+			seen = append(seen, token)
+			if len(seen) == 1 {
+				return Page[int]{Items: []int{1, 2}, NextPageToken: " next token "}, nil
+			}
+			return Page[int]{Items: []int{3}}, nil
+		},
+	) {
+		if err != nil {
+			t.Fatal(err)
+		}
+		values = append(values, value)
+	}
+	if got, want := strings.Join(seen, ","), " initial token , next token "; got != want {
+		t.Fatalf("page tokens = %q, want %q", got, want)
+	}
+	if got, want := fmt.Sprint(values), "[1 2 3]"; got != want {
+		t.Fatalf("values = %s, want %s", got, want)
+	}
+
+	var terminal error
+	for _, err := range Paginate(
+		context.Background(),
+		"opaque",
+		PaginationLimits{},
+		func(_ context.Context, token string) (Page[int], error) {
+			return Page[int]{Items: []int{1}, NextPageToken: token}, nil
+		},
+	) {
+		terminal = err
+	}
+	var sdkError *Error
+	if !errors.As(terminal, &sdkError) || sdkError.Code != CodeDataLoss {
+		t.Fatalf("repeated-token error = %#v, want data_loss", terminal)
+	}
+
+	values = values[:0]
+	terminal = nil
+	for value, err := range Paginate(
+		context.Background(),
+		"",
+		PaginationLimits{MaxPages: 2, MaxItems: 2},
+		func(context.Context, string) (Page[int], error) {
+			return Page[int]{Items: []int{1, 2, 3}, NextPageToken: "more"}, nil
+		},
+	) {
+		if err != nil {
+			terminal = err
+			continue
+		}
+		values = append(values, value)
+	}
+	if fmt.Sprint(values) != "[1 2]" {
+		t.Fatalf("bounded values = %v", values)
+	}
+	if !errors.As(terminal, &sdkError) || sdkError.Code != CodeResourceExhausted {
+		t.Fatalf("budget error = %#v, want resource_exhausted", terminal)
+	}
+}
+
+type deadlineClientStream struct {
+	ctx context.Context
+}
+
+func (stream *deadlineClientStream) Header() (metadata.MD, error) { return nil, nil }
+func (stream *deadlineClientStream) Trailer() metadata.MD         { return nil }
+func (stream *deadlineClientStream) CloseSend() error             { return nil }
+func (stream *deadlineClientStream) Context() context.Context     { return stream.ctx }
+func (stream *deadlineClientStream) SendMsg(any) error            { return nil }
+func (stream *deadlineClientStream) RecvMsg(any) error            { return io.EOF }
 
 func testClient(t *testing.T) (*Client, *trainingServer, *catalogServer) {
 	t.Helper()

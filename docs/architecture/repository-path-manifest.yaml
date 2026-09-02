@@ -6212,31 +6212,39 @@
         },
         {
           "path": "tests/conformance/generated_go_roundtrip_test.go",
-          "reason": "Native cross-language round trips and consumer coverage prove generated package interoperability."
+          "reason": "Native interoperability tests, authoritative criterion mapping, readiness reporting, non-ratifying rehearsal, and protected Stage-5 evidence assembly govern contract qualification."
         },
         {
           "path": "tests/conformance/generated_rust_roundtrip_test.rs",
-          "reason": "Native cross-language round trips and consumer coverage prove generated package interoperability."
+          "reason": "Native interoperability tests, authoritative criterion mapping, readiness reporting, non-ratifying rehearsal, and protected Stage-5 evidence assembly govern contract qualification."
         },
         {
           "path": "tests/conformance/generated_typescript_roundtrip_test.ts",
-          "reason": "Native cross-language round trips and consumer coverage prove generated package interoperability."
+          "reason": "Native interoperability tests, authoritative criterion mapping, readiness reporting, non-ratifying rehearsal, and protected Stage-5 evidence assembly govern contract qualification."
         },
         {
           "path": "tests/conformance/test_generated_package_consumers.py",
-          "reason": "Native cross-language round trips and consumer coverage prove generated package interoperability."
+          "reason": "Native interoperability tests, authoritative criterion mapping, readiness reporting, non-ratifying rehearsal, and protected Stage-5 evidence assembly govern contract qualification."
+        },
+        {
+          "path": "tools/qualification/authoritative-integration-criteria.v1.json",
+          "reason": "Native interoperability tests, authoritative criterion mapping, readiness reporting, non-ratifying rehearsal, and protected Stage-5 evidence assembly govern contract qualification."
         },
         {
           "path": "tools/qualification/readiness_report.py",
-          "reason": "Native cross-language round trips and consumer coverage prove generated package interoperability."
+          "reason": "Native interoperability tests, authoritative criterion mapping, readiness reporting, non-ratifying rehearsal, and protected Stage-5 evidence assembly govern contract qualification."
         },
         {
           "path": "tools/qualification/tests/test_training_evidence.py",
-          "reason": "Native cross-language round trips and consumer coverage prove generated package interoperability."
+          "reason": "Native interoperability tests, authoritative criterion mapping, readiness reporting, non-ratifying rehearsal, and protected Stage-5 evidence assembly govern contract qualification."
+        },
+        {
+          "path": "tools/qualification/training_evidence_assembler.py",
+          "reason": "Native interoperability tests, authoritative criterion mapping, readiness reporting, non-ratifying rehearsal, and protected Stage-5 evidence assembly govern contract qualification."
         },
         {
           "path": "tools/qualification/training_rehearsal.py",
-          "reason": "Native cross-language round trips and consumer coverage prove generated package interoperability."
+          "reason": "Native interoperability tests, authoritative criterion mapping, readiness reporting, non-ratifying rehearsal, and protected Stage-5 evidence assembly govern contract qualification."
         },
         {
           "path": "internal/sdk/rpc-coverage.yaml",
@@ -6938,8 +6946,8 @@
           "reason": "Sections 1-18 and Section 14.1 take precedence over the stale A6 short ADR name."
         }
       ],
-      "canonical_file_count": 3564,
-      "canonical_path_set_sha256": "959b143842f1c90965ec7a4f9e57fb8595389a353cf80d1ad1b5c5e50f123196"
+      "canonical_file_count": 3566,
+      "canonical_path_set_sha256": "a56bcc77d6845bfb0ebafb453f98918c3370028ea19ffbe1787fec075e752f93"
     },
     "owners": {
       "agent-platform": {
@@ -26934,13 +26942,17 @@
       "kind": "data",
       "owner": "contract-governance",
       "component": "protocols-compatibility",
-      "status": "target",
+      "status": "generated",
       "activation_wave": "1",
-      "source_authority": "hand-authored",
-      "build_targets": [],
-      "test_targets": [],
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
       "public_surface": true,
-      "activation_criterion": "Create and activate only through the explicit ADR-0015 ratification action after cross-language, database, gRPC, gateway, event, and SDK training-vertical evidence is passed and bound to the exact candidate descriptor."
+      "activation_criterion": "The explicit ADR-0015 ratification action transitions this protected artifact atomically with its paired Protobuf/OpenAPI baseline after cross-language, database, gRPC, gateway, event, and SDK training-vertical evidence is passed and bound to the exact candidate descriptor; protobuf.lock.json may remain absent until that transition."
     },
     {
       "path": "protocols/compatibility/baselines/json-schema.lock.json",
@@ -26968,13 +26980,13 @@
       "activation_wave": "1",
       "source_authority": "reviewed-generated",
       "build_targets": [
-        "//:wave1_sources"
+        "//:all_contract_sources"
       ],
       "test_targets": [
-        "//:wave1_tests"
+        "//:all_contract_tests"
       ],
       "public_surface": true,
-      "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
+      "activation_criterion": "The explicit ADR-0015 ratification action transitions this protected artifact atomically with its paired Protobuf/OpenAPI baseline after cross-language, database, gRPC, gateway, event, and SDK training-vertical evidence is passed and bound to the exact candidate descriptor; protobuf.lock.json may remain absent until that transition."
     },
     {
       "path": "protocols/compatibility/baselines/protobuf.candidate.json",
@@ -54586,6 +54598,23 @@
       "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
     },
     {
+      "path": "tools/qualification/authoritative-integration-criteria.v1.json",
+      "kind": "data",
+      "owner": "developer-platform",
+      "component": "tools-qualification",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
       "path": "tools/qualification/readiness_report.py",
       "kind": "source",
       "owner": "developer-platform",
@@ -54605,6 +54634,23 @@
     {
       "path": "tools/qualification/tests/test_training_evidence.py",
       "kind": "test",
+      "owner": "developer-platform",
+      "component": "tools-qualification",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "tools/qualification/training_evidence_assembler.py",
+      "kind": "source",
       "owner": "developer-platform",
       "component": "tools-qualification",
       "status": "active",

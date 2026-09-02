@@ -1,5 +1,8 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
+import { mkdtemp, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, test } from "node:test";
 
 import { create } from "@bufbuild/protobuf";
@@ -37,9 +40,60 @@ import {
 	MindcladeClient,
 	MindcladeError,
 	OperationFailure,
+	paginate,
 	RecordingTransport,
 	type TokenProvider,
 } from "../src/index.js";
+
+test("bounded pagination preserves opaque tokens and fails closed", async () => {
+	const seen: string[] = [];
+	const values: number[] = [];
+	for await (const value of paginate(
+		async (pageToken) => {
+			seen.push(pageToken);
+			return seen.length === 1
+				? { items: [1, 2], nextPageToken: " next token " }
+				: { items: [3], nextPageToken: "" };
+		},
+		{ initialPageToken: " initial token " },
+	)) {
+		values.push(value);
+	}
+	assert.deepEqual(seen, [" initial token ", " next token "]);
+	assert.deepEqual(values, [1, 2, 3]);
+
+	await assert.rejects(
+		async () => {
+			for await (const _ of paginate(
+				async (pageToken) => ({
+					items: [1],
+					nextPageToken: pageToken,
+				}),
+				{ initialPageToken: "opaque" },
+			)) {
+				// The repeated token is rejected before page items are exposed.
+			}
+		},
+		(reason: unknown) => reason instanceof MindcladeError && reason.kind === "protocol",
+	);
+
+	const bounded: number[] = [];
+	await assert.rejects(
+		async () => {
+			for await (const value of paginate(
+				async () => ({
+					items: [1, 2, 3],
+					nextPageToken: "more",
+				}),
+				{ limits: { maxItems: 2 } },
+			)) {
+				bounded.push(value);
+			}
+		},
+		(reason: unknown) => reason instanceof MindcladeError && reason.kind === "pagination_limit",
+	);
+	assert.deepEqual(bounded, [1, 2]);
+});
 
 class FakeTokenProvider implements TokenProvider {
 	readonly audiences: string[] = [];
@@ -95,6 +149,11 @@ const testTransport = (routes: Parameters<typeof createRouterTransport>[0]): Tra
 		},
 	};
 };
+
+const hasFilesystemCode =
+	(code: string) =>
+	(reason: unknown): boolean =>
+		typeof reason === "object" && reason !== null && "code" in reason && reason.code === code;
 
 describe("configuration and credentials", () => {
 	test("TLS is required except explicit Local loopback", () => {
@@ -280,6 +339,9 @@ describe("configuration and credentials", () => {
 			router.service(OperationService, {
 				getOperation(_request, context) {
 					assert.equal(context.requestHeader.has("authorization"), false);
+					assert.equal(context.requestHeader.has("proxy-authorization"), false);
+					assert.equal(context.requestHeader.has("cookie"), false);
+					assert.equal(context.requestHeader.has("x-api-key"), false);
 					return {
 						operation: {
 							done: true,
@@ -292,6 +354,24 @@ describe("configuration and credentials", () => {
 		});
 		const client = MindcladeClient.withTransport(local, transport, runtime);
 		assert.equal((await client.operations.get("operations/local")).operationId, "operations/local");
+		await client.raw.operations.getOperation(
+			{ name: "operations/local" },
+			{
+				headers: {
+					authorization: "Bearer caller-controlled",
+					cookie: "session=caller-controlled",
+					"proxy-authorization": "Basic caller-controlled",
+					"x-api-key": "caller-controlled",
+				},
+			},
+		);
+		await assert.rejects(
+			client.raw.operations.getOperation(
+				{ name: "operations/local" },
+				{ headers: { "x-request-id": "x".repeat(513) } },
+			),
+			(reason: unknown) => reason instanceof MindcladeError && reason.kind === "invalid_argument",
+		);
 	});
 });
 
@@ -857,6 +937,63 @@ describe("ergonomic generated-contract APIs", () => {
 			6n,
 		);
 		assert.deepEqual(Buffer.concat(downloaded), Buffer.from(content));
+		const directory = await mkdtemp(join(tmpdir(), "mindclade-sdk-artifact-"));
+		try {
+			const destination = join(directory, "artifact.bin");
+			assert.equal(await second.artifacts.downloadFile(artifact, destination), 6n);
+			assert.deepEqual(await readFile(destination), Buffer.from(content));
+			assert.equal((await stat(destination)).mode & 0o777, 0o600);
+
+			const existing = join(directory, "existing.bin");
+			await writeFile(existing, "caller-owned", { mode: 0o600 });
+			await assert.rejects(
+				second.artifacts.downloadFile(artifact, existing),
+				(reason: unknown) => reason instanceof MindcladeError && reason.kind === "already_exists",
+			);
+			assert.equal(await readFile(existing, "utf8"), "caller-owned");
+
+			const cancelled = new AbortController();
+			cancelled.abort();
+			const cancelledPath = join(directory, "cancelled.bin");
+			await assert.rejects(
+				second.artifacts.downloadFile(artifact, cancelledPath, {
+					signal: cancelled.signal,
+				}),
+				(reason: unknown) => reason instanceof MindcladeError && reason.kind === "cancelled",
+			);
+			await assert.rejects(readFile(cancelledPath), hasFilesystemCode("ENOENT"));
+
+			const racePath = join(directory, "race.bin");
+			const race = await Promise.allSettled([
+				second.artifacts.downloadFile(artifact, racePath),
+				second.artifacts.downloadFile(artifact, racePath),
+			]);
+			assert.equal(race.filter((result) => result.status === "fulfilled").length, 1);
+			assert.equal(
+				race.filter(
+					(result) =>
+						result.status === "rejected" &&
+						result.reason instanceof MindcladeError &&
+						result.reason.kind === "already_exists",
+				).length,
+				1,
+			);
+			assert.deepEqual(await readFile(racePath), Buffer.from(content));
+
+			corruptDownload = true;
+			const corruptPath = join(directory, "corrupt.bin");
+			await assert.rejects(
+				second.artifacts.downloadFile(artifact, corruptPath),
+				(reason: unknown) => reason instanceof MindcladeError && reason.kind === "protocol",
+			);
+			await assert.rejects(readFile(corruptPath), hasFilesystemCode("ENOENT"));
+			assert.deepEqual(
+				(await readdir(directory)).filter((name) => name.startsWith(".mindclade-download-")),
+				[],
+			);
+		} finally {
+			await rm(directory, { force: true, recursive: true });
+		}
 		corruptDownload = true;
 		await assert.rejects(
 			second.artifacts.download(artifact, () => undefined),
@@ -953,7 +1090,7 @@ test("recording transport covers unary and streaming generated clients without p
 	assert.doesNotMatch(JSON.stringify(recorder.calls), /secret-(payload|stream)-id/);
 });
 
-test("raw estate covers all fourteen internal services and a descriptor escape hatch", () => {
+test("raw estate covers all fifteen internal services and a descriptor escape hatch", () => {
 	const runtime = new FakeRuntime();
 	const setup = config(runtime);
 	const transport = testTransport(() => undefined);
@@ -964,6 +1101,7 @@ test("raw estate covers all fourteen internal services and a descriptor escape h
 		raw.artifacts,
 		raw.datasets,
 		raw.evaluations,
+		raw.experiments,
 		raw.inference,
 		raw.jobs,
 		raw.operations,
@@ -974,7 +1112,7 @@ test("raw estate covers all fourteen internal services and a descriptor escape h
 		raw.workflows,
 		raw.approvals,
 	];
-	assert.equal(clients.length, 14);
+	assert.equal(clients.length, 15);
 	assert.equal(typeof raw.forService(TrainingService).createTrainingRun, "function");
 });
 

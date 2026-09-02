@@ -135,7 +135,11 @@ use mindclade_protocols::internal::{
     },
 };
 
-use crate::{Config, Error, config::TrustRoots, request::generate_request_id};
+use crate::{
+    Config, Error,
+    config::{TrustRoots, validate_metadata_value},
+    request::generate_request_id,
+};
 
 /// Boxed generated operation-update stream used by production and fake
 /// transports.
@@ -163,6 +167,15 @@ pub type TrainingStream =
     Pin<Box<dyn Stream<Item = Result<WatchTrainingRunResponse, Status>> + Send + 'static>>;
 
 type AuthorizedChannel = InterceptedService<Channel, GeneratedClientInterceptor>;
+const MAX_WIRE_MESSAGE_BYTES: usize = 8 << 20;
+
+macro_rules! bounded_client {
+    ($client:ty, $channel:expr) => {
+        <$client>::new($channel)
+            .max_decoding_message_size(MAX_WIRE_MESSAGE_BYTES)
+            .max_encoding_message_size(MAX_WIRE_MESSAGE_BYTES)
+    };
+}
 
 /// Complete generated Tonic client estate for uncommon internal workflows.
 /// Every client is backed by a policy-enforcing interceptor, so callers cannot
@@ -216,21 +229,21 @@ impl GeneratedClients {
 
     fn new(channel: AuthorizedChannel) -> Self {
         Self {
-            admin: AdminServiceClient::new(channel.clone()),
-            agent: AgentServiceClient::new(channel.clone()),
-            artifact: ArtifactServiceClient::new(channel.clone()),
-            dataset: DatasetServiceClient::new(channel.clone()),
-            evaluation: EvaluationServiceClient::new(channel.clone()),
-            experiment: ExperimentServiceClient::new(channel.clone()),
-            inference: InferenceServiceClient::new(channel.clone()),
-            job: JobServiceClient::new(channel.clone()),
-            operation: OperationServiceClient::new(channel.clone()),
-            run: RunServiceClient::new(channel.clone()),
-            model: ModelServiceClient::new(channel.clone()),
-            policy: PolicyServiceClient::new(channel.clone()),
-            training: TrainingServiceClient::new(channel.clone()),
-            workflow: WorkflowServiceClient::new(channel.clone()),
-            approval: ApprovalServiceClient::new(channel),
+            admin: bounded_client!(AdminServiceClient<_>, channel.clone()),
+            agent: bounded_client!(AgentServiceClient<_>, channel.clone()),
+            artifact: bounded_client!(ArtifactServiceClient<_>, channel.clone()),
+            dataset: bounded_client!(DatasetServiceClient<_>, channel.clone()),
+            evaluation: bounded_client!(EvaluationServiceClient<_>, channel.clone()),
+            experiment: bounded_client!(ExperimentServiceClient<_>, channel.clone()),
+            inference: bounded_client!(InferenceServiceClient<_>, channel.clone()),
+            job: bounded_client!(JobServiceClient<_>, channel.clone()),
+            operation: bounded_client!(OperationServiceClient<_>, channel.clone()),
+            run: bounded_client!(RunServiceClient<_>, channel.clone()),
+            model: bounded_client!(ModelServiceClient<_>, channel.clone()),
+            policy: bounded_client!(PolicyServiceClient<_>, channel.clone()),
+            training: bounded_client!(TrainingServiceClient<_>, channel.clone()),
+            workflow: bounded_client!(WorkflowServiceClient<_>, channel.clone()),
+            approval: bounded_client!(ApprovalServiceClient<_>, channel),
         }
     }
 }
@@ -267,11 +280,29 @@ impl Interceptor for GeneratedClientInterceptor {
                 .to_owned(),
             None => generate_request_id(),
         };
+        validate_metadata_value("request ID", &request_id, true)
+            .map_err(|_| Status::invalid_argument("request identity is invalid"))?;
+        if let Some(trace_id) = request.metadata().get("x-trace-id") {
+            let trace_id = trace_id
+                .to_str()
+                .map_err(|_| Status::invalid_argument("trace identity is invalid"))?;
+            validate_metadata_value("trace ID", trace_id, true)
+                .map_err(|_| Status::invalid_argument("trace identity is invalid"))?;
+        }
         let timeout = request
             .metadata()
             .get("grpc-timeout")
             .and_then(parse_grpc_timeout)
             .map_or(self.timeout, |requested| requested.min(self.timeout));
+        for key in [
+            "authorization",
+            "proxy-authorization",
+            "cookie",
+            "x-api-key",
+            "x-goog-api-key",
+        ] {
+            request.metadata_mut().remove(key);
+        }
         if let Some(authorization) = &self.authorization {
             request
                 .metadata_mut()
@@ -2567,21 +2598,21 @@ impl TonicTransport {
         let channel = endpoint.connect().await.map_err(|_| Error::transport())?;
         Ok(Self {
             channel: channel.clone(),
-            agent: AgentServiceClient::new(channel.clone()),
-            training: TrainingServiceClient::new(channel.clone()),
-            job: JobServiceClient::new(channel.clone()),
-            operation: OperationServiceClient::new(channel.clone()),
-            run: RunServiceClient::new(channel.clone()),
-            artifact: ArtifactServiceClient::new(channel.clone()),
-            inference: InferenceServiceClient::new(channel.clone()),
-            dataset: DatasetServiceClient::new(channel.clone()),
-            evaluation: EvaluationServiceClient::new(channel.clone()),
-            experiment: ExperimentServiceClient::new(channel.clone()),
-            model: ModelServiceClient::new(channel.clone()),
-            policy: PolicyServiceClient::new(channel.clone()),
-            admin: AdminServiceClient::new(channel.clone()),
-            workflow: WorkflowServiceClient::new(channel.clone()),
-            approval: ApprovalServiceClient::new(channel),
+            agent: bounded_client!(AgentServiceClient<_>, channel.clone()),
+            training: bounded_client!(TrainingServiceClient<_>, channel.clone()),
+            job: bounded_client!(JobServiceClient<_>, channel.clone()),
+            operation: bounded_client!(OperationServiceClient<_>, channel.clone()),
+            run: bounded_client!(RunServiceClient<_>, channel.clone()),
+            artifact: bounded_client!(ArtifactServiceClient<_>, channel.clone()),
+            inference: bounded_client!(InferenceServiceClient<_>, channel.clone()),
+            dataset: bounded_client!(DatasetServiceClient<_>, channel.clone()),
+            evaluation: bounded_client!(EvaluationServiceClient<_>, channel.clone()),
+            experiment: bounded_client!(ExperimentServiceClient<_>, channel.clone()),
+            model: bounded_client!(ModelServiceClient<_>, channel.clone()),
+            policy: bounded_client!(PolicyServiceClient<_>, channel.clone()),
+            admin: bounded_client!(AdminServiceClient<_>, channel.clone()),
+            workflow: bounded_client!(WorkflowServiceClient<_>, channel.clone()),
+            approval: bounded_client!(ApprovalServiceClient<_>, channel),
         })
     }
 
@@ -3388,10 +3419,95 @@ impl RpcTransport for TonicTransport {
 }
 
 #[cfg(test)]
+mod message_size_tests {
+    use super::*;
+    use mindclade_protocols::{
+        internal::job::v1::operation_service_server::{OperationService, OperationServiceServer},
+        job::v1::Operation,
+    };
+    use tonic::codegen::tokio_stream;
+    use tonic::transport::Server;
+
+    struct LargeOperationService;
+
+    #[async_trait]
+    impl OperationService for LargeOperationService {
+        async fn get_operation(
+            &self,
+            _request: Request<GetOperationRequest>,
+        ) -> Result<Response<GetOperationResponse>, Status> {
+            Ok(Response::new(GetOperationResponse {
+                operation: Some(Operation {
+                    operation_id: "x".repeat((4 << 20) + 1_024),
+                    ..Operation::default()
+                }),
+            }))
+        }
+
+        async fn list_operations(
+            &self,
+            _request: Request<ListOperationsRequest>,
+        ) -> Result<Response<ListOperationsResponse>, Status> {
+            Ok(Response::new(ListOperationsResponse::default()))
+        }
+
+        async fn cancel_operation(
+            &self,
+            _request: Request<CancelOperationRequest>,
+        ) -> Result<Response<CancelOperationResponse>, Status> {
+            Ok(Response::new(CancelOperationResponse::default()))
+        }
+
+        type WatchOperationStream = OperationStream;
+
+        async fn watch_operation(
+            &self,
+            _request: Request<WatchOperationRequest>,
+        ) -> Result<Response<Self::WatchOperationStream>, Status> {
+            Ok(Response::new(Box::pin(tokio_stream::empty())))
+        }
+    }
+
+    #[tokio::test]
+    async fn configured_client_decodes_a_valid_above_default_wire_message() {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap();
+        let incoming = tokio_stream::wrappers::TcpListenerStream::new(listener);
+        let (shutdown_sender, shutdown_receiver) = tokio::sync::oneshot::channel();
+        let server = tokio::spawn(async move {
+            Server::builder()
+                .add_service(
+                    OperationServiceServer::new(LargeOperationService)
+                        .max_encoding_message_size(MAX_WIRE_MESSAGE_BYTES),
+                )
+                .serve_with_incoming_shutdown(incoming, async {
+                    let _ = shutdown_receiver.await;
+                })
+                .await
+                .unwrap();
+        });
+        let channel = Endpoint::from_shared(format!("http://{address}"))
+            .unwrap()
+            .connect()
+            .await
+            .unwrap();
+        let mut client = bounded_client!(OperationServiceClient<_>, channel);
+        let response = client
+            .get_operation(GetOperationRequest::default())
+            .await
+            .unwrap()
+            .into_inner();
+        assert!(response.operation.unwrap().operation_id.len() > 4 << 20);
+        let _ = shutdown_sender.send(());
+        server.await.unwrap();
+    }
+}
+
+#[cfg(test)]
 mod generated_client_policy_tests {
     use std::time::{Duration, SystemTime};
 
-    use tonic::{Request, service::Interceptor};
+    use tonic::{Request, metadata::MetadataValue, service::Interceptor};
 
     use super::{
         GeneratedClientInterceptor, metadata_value, parse_grpc_timeout, sensitive_authorization,
@@ -3449,8 +3565,55 @@ mod generated_client_policy_tests {
             principal_id: metadata_value("worker-01").unwrap(),
             timeout: Duration::from_secs(20),
         };
-        let request = policy.call(Request::new(())).unwrap();
-        assert!(request.metadata().get("authorization").is_none());
+        let mut request = Request::new(());
+        request.metadata_mut().insert(
+            "authorization",
+            sensitive_authorization("Bearer caller-controlled").unwrap(),
+        );
+        request.metadata_mut().insert(
+            "proxy-authorization",
+            metadata_value("Basic-caller-controlled").unwrap(),
+        );
+        request.metadata_mut().insert(
+            "cookie",
+            metadata_value("session=caller-controlled").unwrap(),
+        );
+        request
+            .metadata_mut()
+            .insert("x-api-key", metadata_value("caller-controlled").unwrap());
+        let request = policy.call(request).unwrap();
+        for key in [
+            "authorization",
+            "proxy-authorization",
+            "cookie",
+            "x-api-key",
+        ] {
+            assert!(request.metadata().get(key).is_none(), "{key} survived");
+        }
+    }
+
+    #[test]
+    fn raw_generated_clients_reject_unbounded_correlation_metadata() {
+        let mut policy = interceptor(SystemTime::now() + Duration::from_mins(5));
+        let mut request = Request::new(());
+        request.metadata_mut().insert(
+            "x-request-id",
+            MetadataValue::try_from("r".repeat(513)).unwrap(),
+        );
+        assert_eq!(
+            policy.call(request).unwrap_err().code(),
+            tonic::Code::InvalidArgument
+        );
+
+        let mut request = Request::new(());
+        request.metadata_mut().insert(
+            "x-trace-id",
+            MetadataValue::try_from("t".repeat(513)).unwrap(),
+        );
+        assert_eq!(
+            policy.call(request).unwrap_err().code(),
+            tonic::Code::InvalidArgument
+        );
     }
 
     #[test]

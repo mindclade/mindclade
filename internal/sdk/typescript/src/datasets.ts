@@ -291,8 +291,8 @@ const normalizeReference = (
 	reference.projectId = core.config.identity.projectId;
 };
 const validatePage = (size: number | undefined): void => {
-	if (size !== undefined && size > 1000)
-		throw MindcladeError.invalidArgument("page size cannot exceed 1000");
+	if (size !== undefined && (!Number.isInteger(size) || size < 0 || size > 1000))
+		throw MindcladeError.invalidArgument("page size must be an integer between zero and 1000");
 };
 const requiredOperation = (operation: Operation | undefined, method: string): Operation => {
 	if (operation === undefined || operation.operationId.trim() === "")

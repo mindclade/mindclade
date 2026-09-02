@@ -19,7 +19,7 @@ from mindclade.internal.workflow.v1 import workflow_service_pb2
 from mindclade.job.v1 import operation_pb2
 from mindclade.workflow.v1 import approval_pb2, workflow_definition_pb2, workflow_run_pb2
 
-from ._invocation import AsyncInvoker, SyncInvoker, canonical_digest, command_context
+from ._invocation import AsyncInvoker, SyncInvoker, canonical_digest, command_context, retry_delay
 from ._validation import required_response_message, required_text
 from .calls import CallOptions, PreparedCall, prepare_call
 from .errors import CancelledError, MindcladeError, ProtocolError, WorkflowRunFailedError
@@ -278,15 +278,6 @@ def _watch_call(base: PreparedCall, remaining: float) -> PreparedCall:
     return replace(base, timeout=max(0.001, min(remaining, 300.0)))
 
 
-def _retry_delay(invoker: SyncInvoker | AsyncInvoker, failures: int, remaining: float) -> float:
-    exponent = min(max(0, failures - 1), 30)
-    return min(
-        invoker.config.retry.max_delay,
-        invoker.config.retry.base_delay * (2**exponent),
-        max(0.0, remaining),
-    )
-
-
 def _watch_budget(
     invoker: SyncInvoker | AsyncInvoker,
     timeout: float,
@@ -524,6 +515,7 @@ class Workflows:
         cursor = after_transition_sequence
         failures = 0
         while True:
+            retry_after: float | None = None
             if cancellation is not None and cancellation.is_set():
                 raise CancelledError("workflow watch was cancelled")
             remaining = deadline - time.monotonic()
@@ -553,10 +545,16 @@ class Workflows:
             except MindcladeError as error:
                 if not error.retryable:
                     raise
+                retry_after = error.retry_after
             failures += 1
             if failures >= self._invoker.config.retry.max_attempts:
                 raise ProtocolError("workflow watch ended before terminal durable state")
-            delay = _retry_delay(self._invoker, failures, deadline - time.monotonic())
+            delay = retry_delay(
+                self._invoker.config,
+                failures,
+                deadline - time.monotonic(),
+                retry_after=retry_after,
+            )
             if delay <= 0:
                 raise TimeoutError("workflow watch deadline expired")
             if cancellation is not None and cancellation.wait(delay):
@@ -816,6 +814,7 @@ class AsyncWorkflows:
         cursor = after_transition_sequence
         failures = 0
         while True:
+            retry_after: float | None = None
             if cancellation is not None and cancellation.is_set():
                 raise CancelledError("workflow watch was cancelled")
             remaining = deadline - loop.time()
@@ -845,10 +844,16 @@ class AsyncWorkflows:
             except MindcladeError as error:
                 if not error.retryable:
                     raise
+                retry_after = error.retry_after
             failures += 1
             if failures >= self._invoker.config.retry.max_attempts:
                 raise ProtocolError("workflow watch ended before terminal durable state")
-            delay = _retry_delay(self._invoker, failures, deadline - loop.time())
+            delay = retry_delay(
+                self._invoker.config,
+                failures,
+                deadline - loop.time(),
+                retry_after=retry_after,
+            )
             if delay <= 0:
                 raise TimeoutError("workflow watch deadline expired")
             if cancellation is None:

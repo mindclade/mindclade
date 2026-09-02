@@ -16,6 +16,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
+	"unicode/utf8"
 
 	annotations "google.golang.org/genproto/googleapis/api/annotations"
 	"google.golang.org/grpc"
@@ -506,12 +508,60 @@ type route struct {
 }
 
 type gateway struct {
-	authorizer bearerAuthorizer
-	client     apiv1.MindcladeServiceClient
-	conn       *grpc.ClientConn
-	ready      func(context.Context) error
-	routes     []route
+	authorizer             bearerAuthorizer
+	client                 apiv1.MindcladeServiceClient
+	clock                  sseClock
+	conn                   *grpc.ClientConn
+	ready                  func(context.Context) error
+	routes                 []route
+	sseFrameWriteTimeout   time.Duration
+	sseWriteDeadlineSetter func(http.ResponseWriter, time.Time) error
 }
+
+const defaultSSEFrameWriteTimeout = 30 * time.Second
+
+type sseTicker interface {
+	C() <-chan time.Time
+	Stop()
+}
+
+type sseClock interface {
+	NewTicker(time.Duration) sseTicker
+	Now() time.Time
+}
+
+type wallSSEClock struct{}
+
+func (wallSSEClock) NewTicker(interval time.Duration) sseTicker {
+	return wallSSETicker{Ticker: time.NewTicker(interval)}
+}
+
+func (wallSSEClock) Now() time.Time { return time.Now().UTC() }
+
+func responseControllerWriteDeadline(writer http.ResponseWriter, deadline time.Time) error {
+	return http.NewResponseController(writer).SetWriteDeadline(deadline)
+}
+
+func (g *gateway) setSSEFrameWriteDeadline(writer http.ResponseWriter) error {
+	timeout := g.sseFrameWriteTimeout
+	if timeout <= 0 {
+		timeout = defaultSSEFrameWriteTimeout
+	}
+	setter := g.sseWriteDeadlineSetter
+	if setter == nil {
+		setter = responseControllerWriteDeadline
+	}
+	if err := setter(writer, time.Now().UTC().Add(timeout)); err != nil {
+		return fmt.Errorf("set SSE frame write deadline: %w", err)
+	}
+	return nil
+}
+
+type wallSSETicker struct {
+	*time.Ticker
+}
+
+func (ticker wallSSETicker) C() <-chan time.Time { return ticker.Ticker.C }
 
 var pathBinding = regexp.MustCompile(`\{([a-zA-Z][a-zA-Z0-9_]*)=([^{}]+)\}`)
 
@@ -590,18 +640,146 @@ func newGateway(
 		if !ok || contract == nil {
 			return nil, fmt.Errorf("%s has no public HTTP contract", method.FullName())
 		}
+		if err = validateHTTPStreamContract(method, httpMethod, template, body, contract); err != nil {
+			return nil, err
+		}
 		routes = append(routes, route{
 			body: body, contract: contract, expression: expression,
 			httpMethod: httpMethod, method: method, pathFields: fields,
 		})
 	}
 	return &gateway{
-		authorizer: authorizer,
-		client:     apiv1.NewMindcladeServiceClient(conn),
-		conn:       conn,
-		ready:      ready,
-		routes:     routes,
+		authorizer:           authorizer,
+		client:               apiv1.NewMindcladeServiceClient(conn),
+		clock:                wallSSEClock{},
+		conn:                 conn,
+		ready:                ready,
+		routes:               routes,
+		sseFrameWriteTimeout: defaultSSEFrameWriteTimeout,
 	}, nil
+}
+
+func validateHTTPStreamContract(
+	method protoreflect.MethodDescriptor,
+	httpMethod string,
+	template string,
+	body string,
+	contract *apiv1.PublicHttpContract,
+) error {
+	if method == nil || contract == nil {
+		return errors.New("public HTTP method and contract are required")
+	}
+	policy := contract.GetSse()
+	switch contract.GetStream() {
+	case apiv1.StreamProjection_STREAM_PROJECTION_NONE:
+		if method.IsStreamingClient() || method.IsStreamingServer() {
+			return fmt.Errorf("%s declares a unary projection for a streaming RPC", method.FullName())
+		}
+		if policy != nil {
+			return fmt.Errorf("%s declares SSE policy for a unary projection", method.FullName())
+		}
+		return nil
+	case apiv1.StreamProjection_STREAM_PROJECTION_BINARY:
+		return fmt.Errorf("%s declares a binary stream projection unsupported by the HTTP runtime", method.FullName())
+	case apiv1.StreamProjection_STREAM_PROJECTION_SSE:
+		// V1 intentionally supports one explicit SSE capability. Widening this
+		// binding requires a generic dispatcher and a separately reviewed policy.
+		if method.FullName() != "mindclade.api.v1.MindcladeService.WatchOperation" ||
+			method.Input().FullName() != "mindclade.api.v1.WatchOperationRequest" ||
+			method.Output().FullName() != "mindclade.api.v1.OperationEvent" ||
+			method.IsStreamingClient() || !method.IsStreamingServer() {
+			return fmt.Errorf("%s is not the supported WatchOperation to OperationEvent SSE binding", method.FullName())
+		}
+		if httpMethod != http.MethodGet ||
+			template != "/v1/{name=tenants/*/projects/*/operations/*}:watch" || body != "" ||
+			contract.GetRequestBodyRequired() {
+			return fmt.Errorf("%s has an invalid SSE HTTP binding", method.FullName())
+		}
+		if !contract.GetBearerAuth() ||
+			!sameStrings(contract.GetRequestHeaders(), "Last-Event-ID") ||
+			len(contract.GetRequiredRequestHeaders()) != 0 ||
+			!sameStrings(contract.GetResponseHeaders(), "Cache-Control", "X-Accel-Buffering") ||
+			!sameUint32s(contract.GetSuccessStatus(), http.StatusOK) ||
+			!sameUint32s(contract.GetNonSuccessStatus(),
+				http.StatusBadRequest,
+				http.StatusUnauthorized,
+				http.StatusForbidden,
+				http.StatusNotFound,
+				http.StatusGone,
+				http.StatusPreconditionFailed,
+				http.StatusInternalServerError,
+			) {
+			return fmt.Errorf("%s has incomplete SSE HTTP metadata", method.FullName())
+		}
+		errorField := method.Output().Fields().ByName("error")
+		if errorField == nil || errorField.Number() != 9 || errorField.Message() == nil ||
+			errorField.Message().FullName() != "mindclade.api.v1.PublicError" {
+			return fmt.Errorf("%s has no descriptor-owned PublicError event field", method.FullName())
+		}
+		if policy == nil || policy.GetRetryMilliseconds() == 0 || policy.GetHeartbeatIntervalSeconds() == 0 {
+			return fmt.Errorf("%s has incomplete SSE timing policy", method.FullName())
+		}
+		if !messageFieldPresent(policy, "heartbeat_reuses_last_durable_event_id") ||
+			!messageFieldPresent(policy, "replay_acknowledged_terminal_event") {
+			return fmt.Errorf("%s must declare both optional SSE replay policies", method.FullName())
+		}
+		if !policy.GetHeartbeatReusesLastDurableEventId() || policy.GetReplayAcknowledgedTerminalEvent() {
+			return fmt.Errorf("%s declares SSE behavior unsupported by the v1 runtime", method.FullName())
+		}
+		return nil
+	case apiv1.StreamProjection_STREAM_PROJECTION_UNSPECIFIED:
+		return fmt.Errorf("%s has an unspecified public stream projection", method.FullName())
+	default:
+		return fmt.Errorf("%s has an unknown public stream projection", method.FullName())
+	}
+}
+
+func messageFieldPresent(message proto.Message, name protoreflect.Name) bool {
+	if message == nil {
+		return false
+	}
+	reflected := message.ProtoReflect()
+	field := reflected.Descriptor().Fields().ByName(name)
+	return field != nil && reflected.Has(field)
+}
+
+func sameStrings(actual []string, expected ...string) bool {
+	if len(actual) != len(expected) {
+		return false
+	}
+	values := make(map[string]struct{}, len(actual))
+	for _, value := range actual {
+		canonical := strings.ToLower(value)
+		if _, duplicate := values[canonical]; duplicate {
+			return false
+		}
+		values[canonical] = struct{}{}
+	}
+	for _, value := range expected {
+		if _, ok := values[strings.ToLower(value)]; !ok {
+			return false
+		}
+	}
+	return true
+}
+
+func sameUint32s(actual []uint32, expected ...uint32) bool {
+	if len(actual) != len(expected) {
+		return false
+	}
+	values := make(map[uint32]struct{}, len(actual))
+	for _, value := range actual {
+		if _, duplicate := values[value]; duplicate {
+			return false
+		}
+		values[value] = struct{}{}
+	}
+	for _, value := range expected {
+		if _, ok := values[value]; !ok {
+			return false
+		}
+	}
+	return true
 }
 
 func (g *gateway) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
@@ -632,6 +810,21 @@ func (g *gateway) serveRoute(writer http.ResponseWriter, request *http.Request, 
 	if _, err := g.authorizer.authorize(request.Context(), request.Header.Get("Authorization")); err != nil {
 		writeHTTPError(writer, err)
 		return
+	}
+	if selected.contract.GetStream() == apiv1.StreamProjection_STREAM_PROJECTION_SSE {
+		cursor, err := validateOptionalLastEventID(exactHTTPHeaderValues(request.Header, "Last-Event-ID"))
+		if err != nil {
+			writeHTTPError(writer, status.Error(codes.InvalidArgument, err.Error()))
+			return
+		}
+		for name := range request.Header {
+			if strings.EqualFold(name, "Last-Event-ID") {
+				delete(request.Header, name)
+			}
+		}
+		if cursor != "" {
+			request.Header.Set("Last-Event-ID", cursor)
+		}
 	}
 	for _, header := range selected.contract.GetRequestHeaders() {
 		if requiredHeader(header) && request.Header.Get(header) == "" {
@@ -678,7 +871,7 @@ func (g *gateway) serveRoute(writer http.ResponseWriter, request *http.Request, 
 	ctx := outgoingContext(request.Context(), request)
 	switch selected.contract.GetStream() {
 	case apiv1.StreamProjection_STREAM_PROJECTION_SSE:
-		g.serveSSE(ctx, writer, input)
+		g.serveSSE(ctx, writer, input, selected.contract.GetSse())
 	default:
 		output := dynamicpb.NewMessage(selected.method.Output())
 		fullMethod := "/" + string(selected.method.Parent().FullName()) + "/" + string(selected.method.Name())
@@ -700,7 +893,7 @@ func (g *gateway) serveRoute(writer http.ResponseWriter, request *http.Request, 
 			writer.WriteHeader(http.StatusNotModified)
 			return
 		}
-		content, err := protojson.MarshalOptions{UseProtoNames: false}.Marshal(output)
+		content, err := marshalPublicProtoJSON(output)
 		if err != nil {
 			writeHTTPError(writer, status.Error(codes.Internal, "response serialization failed"))
 			return
@@ -785,41 +978,93 @@ func successStatus(contract *apiv1.PublicHttpContract) int {
 	return int(contract.GetSuccessStatus()[0])
 }
 
-func (g *gateway) serveSSE(ctx context.Context, writer http.ResponseWriter, input *dynamicpb.Message) {
+func (g *gateway) serveSSE(
+	ctx context.Context,
+	writer http.ResponseWriter,
+	input *dynamicpb.Message,
+	policy *apiv1.PublicSseContract,
+) {
+	if policy == nil || policy.GetRetryMilliseconds() == 0 || policy.GetHeartbeatIntervalSeconds() == 0 ||
+		!messageFieldPresent(policy, "heartbeat_reuses_last_durable_event_id") ||
+		!messageFieldPresent(policy, "replay_acknowledged_terminal_event") ||
+		!policy.GetHeartbeatReusesLastDurableEventId() || policy.GetReplayAcknowledgedTerminalEvent() {
+		writeHTTPError(writer, status.Error(codes.Internal, "SSE policy is unavailable"))
+		return
+	}
+	if !supportsSSEFlush(writer) {
+		writeHTTPError(writer, status.Error(codes.Internal, "streaming response capabilities are unavailable"))
+		return
+	}
+	// V1 has no independent maximum watch lifetime. The caller's HTTP context
+	// owns the connection lifetime and is propagated to the upstream stream.
 	streamContext, cancel := context.WithCancel(ctx)
 	defer cancel()
 	name := input.Get(input.Descriptor().Fields().ByName("name")).String()
 	stream, err := g.client.WatchOperation(streamContext, &apiv1.WatchOperationRequest{Name: name})
 	if err != nil {
-		writeHTTPError(writer, err)
+		writeSSEPreflightError(writer, err)
 		return
 	}
-	flusher, ok := writer.(http.Flusher)
-	if !ok {
-		writeHTTPError(writer, status.Error(codes.Unimplemented, "streaming is unavailable"))
+
+	// Receive and validate the first item before committing HTTP 200. This keeps
+	// cursor, authorization, retention, and upstream failures representable as
+	// ordinary problem responses instead of ambiguous post-200 stream failures.
+	firstEvent, receiveErr := stream.Recv()
+	if streamContext.Err() != nil {
 		return
 	}
-	writer.Header().Set("Content-Type", "text/event-stream")
-	writer.Header().Set("Cache-Control", "no-store")
-	writer.Header().Set("X-Accel-Buffering", "no")
-	writer.WriteHeader(http.StatusOK)
-	if _, err = io.WriteString(writer, "retry: 3000\n\n"); err != nil {
+	if errors.Is(receiveErr, io.EOF) {
+		if err = g.beginSSE(writer, policy); err != nil {
+			if errors.Is(err, errSSEWriteDeadlineUnavailable) {
+				writeHTTPError(writer, status.Error(codes.Internal, "streaming response deadline is unavailable"))
+			}
+			return
+		}
 		return
 	}
-	flusher.Flush()
+	if receiveErr != nil {
+		writeSSEPreflightError(writer, receiveErr)
+		return
+	}
+	if validationErr := validateOperationSSEEvent(firstEvent, name, 0); validationErr != nil {
+		slog.Error("operation SSE application stream returned an invalid preflight event", "reason", validationErr.Error())
+		writeSSEPreflightError(writer, status.Error(codes.DataLoss, "invalid operation event"))
+		return
+	}
+	firstFrame, err := encodeSSEEvent(firstEvent)
+	if err != nil {
+		slog.Error("operation SSE preflight event could not be encoded", "reason", err.Error())
+		writeSSEPreflightError(writer, status.Error(codes.DataLoss, "invalid operation event"))
+		return
+	}
+	if err = g.beginSSE(writer, policy); err != nil {
+		if errors.Is(err, errSSEWriteDeadlineUnavailable) {
+			writeHTTPError(writer, status.Error(codes.Internal, "streaming response deadline is unavailable"))
+		}
+		return
+	}
+	if err = g.writeSSEFrame(writer, firstFrame); err != nil {
+		return
+	}
+	lastCursor := firstEvent.GetResumeCursor()
+	lastRevision := firstEvent.GetOperationRevision()
+	if firstEvent.GetEventType() == "operation.terminal" {
+		return
+	}
+
 	type receiveResult struct {
 		event *apiv1.OperationEvent
 		err   error
 	}
 	received := make(chan receiveResult, 1)
-	consumerDone := make(chan struct{})
-	defer close(consumerDone)
+	receiverDone := make(chan struct{})
 	go func() {
+		defer close(receiverDone)
 		for {
 			event, receiveErr := stream.Recv()
 			select {
 			case received <- receiveResult{event: event, err: receiveErr}:
-			case <-consumerDone:
+			case <-streamContext.Done():
 				return
 			}
 			if receiveErr != nil {
@@ -827,36 +1072,59 @@ func (g *gateway) serveSSE(ctx context.Context, writer http.ResponseWriter, inpu
 			}
 		}
 	}()
-	heartbeats := time.NewTicker(15 * time.Second)
+	defer func() {
+		cancel()
+		<-receiverDone
+	}()
+	clock := g.clock
+	if clock == nil {
+		clock = wallSSEClock{}
+	}
+	heartbeats := clock.NewTicker(time.Duration(policy.GetHeartbeatIntervalSeconds()) * time.Second)
 	defer heartbeats.Stop()
-	// The request cursor is intentionally not trusted here. The application
-	// establishes durability by returning an event; until then no heartbeat may
-	// advance a browser's Last-Event-ID state.
-	lastCursor := ""
 	for {
 		select {
+		case <-streamContext.Done():
+			return
 		case result := <-received:
+			if streamContext.Err() != nil {
+				return
+			}
 			if errors.Is(result.err, io.EOF) {
 				return
 			}
 			if result.err != nil {
 				slog.Warn("operation SSE stream ended", "code", status.Code(result.err))
-				_ = writeSSEError(writer, lastCursor, result.err)
-				flusher.Flush()
+				g.writeSSEPostCommitError(writer, lastCursor, lastRevision, clock.Now(), result.err)
 				return
 			}
-			if result.event == nil || result.event.GetSchemaVersion() != 1 || result.event.GetResumeCursor() == "" {
-				slog.Error("operation SSE application stream returned an invalid event")
-				_ = writeSSEError(writer, lastCursor, status.Error(codes.DataLoss, "invalid operation event"))
-				flusher.Flush()
+			if validationErr := validateOperationSSEEvent(result.event, name, lastRevision); validationErr != nil {
+				slog.Error("operation SSE application stream returned an invalid event", "reason", validationErr.Error())
+				g.writeSSEPostCommitError(
+					writer, lastCursor, lastRevision, clock.Now(), status.Error(codes.DataLoss, "invalid operation event"),
+				)
+				return
+			}
+			frame, encodeErr := encodeSSEEvent(result.event)
+			if encodeErr != nil {
+				slog.Error("operation SSE application event could not be encoded", "reason", encodeErr.Error())
+				g.writeSSEPostCommitError(
+					writer, lastCursor, lastRevision, clock.Now(), status.Error(codes.DataLoss, "invalid operation event"),
+				)
+				return
+			}
+			if g.writeSSEFrame(writer, frame) != nil {
 				return
 			}
 			lastCursor = result.event.GetResumeCursor()
-			if writeSSEEvent(writer, result.event) != nil {
+			lastRevision = result.event.GetOperationRevision()
+			if result.event.GetEventType() == "operation.terminal" {
 				return
 			}
-			flusher.Flush()
-		case emittedAt := <-heartbeats.C:
+		case emittedAt := <-heartbeats.C():
+			if streamContext.Err() != nil {
+				return
+			}
 			// A heartbeat is resumable only after an application event establishes
 			// a validated durable cursor. Emitting an empty or merely presented id
 			// would create an acknowledgement the server cannot honor.
@@ -865,70 +1133,638 @@ func (g *gateway) serveSSE(ctx context.Context, writer http.ResponseWriter, inpu
 			}
 			heartbeat := &apiv1.OperationEvent{
 				EventId: lastCursor, EventType: "heartbeat", SchemaVersion: 1,
-				ResumeCursor: lastCursor, Heartbeat: true, EmittedAt: timestamppb.New(emittedAt.UTC()),
+				OperationRevision: lastRevision, ResumeCursor: lastCursor, Heartbeat: true,
+				EmittedAt: timestamppb.New(emittedAt.UTC()),
 			}
-			if writeSSEEvent(writer, heartbeat) != nil {
+			frame, encodeErr := encodeSSEEvent(heartbeat)
+			if encodeErr != nil || g.writeSSEFrame(writer, frame) != nil {
 				return
 			}
-			flusher.Flush()
 		}
 	}
 }
 
-func writeSSEEvent(writer io.Writer, event *apiv1.OperationEvent) error {
-	payload, err := protojson.Marshal(event)
+func supportsSSEFlush(writer http.ResponseWriter) bool {
+	for depth := 0; depth < 32; depth++ {
+		if _, ok := writer.(interface{ FlushError() error }); ok {
+			return true
+		}
+		if _, ok := writer.(http.Flusher); ok {
+			return true
+		}
+		unwrapper, ok := writer.(interface{ Unwrap() http.ResponseWriter })
+		if !ok {
+			return false
+		}
+		writer = unwrapper.Unwrap()
+		if writer == nil {
+			return false
+		}
+	}
+	return false
+}
+
+var errSSEWriteDeadlineUnavailable = errors.New("SSE write deadline unavailable")
+
+func (g *gateway) beginSSE(writer http.ResponseWriter, policy *apiv1.PublicSseContract) error {
+	if err := g.setSSEFrameWriteDeadline(writer); err != nil {
+		return fmt.Errorf("%w: %w", errSSEWriteDeadlineUnavailable, err)
+	}
+	writer.Header().Set("Content-Type", "text/event-stream")
+	writer.Header().Set("Cache-Control", "no-store")
+	writer.Header().Set("X-Accel-Buffering", "no")
+	writer.WriteHeader(http.StatusOK)
+	if err := writeAll(writer, []byte(fmt.Sprintf("retry: %d\n\n", policy.GetRetryMilliseconds()))); err != nil {
+		return err
+	}
+	return http.NewResponseController(writer).Flush()
+}
+
+func (g *gateway) writeSSEFrame(writer http.ResponseWriter, frame []byte) error {
+	if err := g.setSSEFrameWriteDeadline(writer); err != nil {
+		return err
+	}
+	if err := writeAll(writer, frame); err != nil {
+		return err
+	}
+	return http.NewResponseController(writer).Flush()
+}
+
+func (g *gateway) writeSSEPostCommitError(
+	writer http.ResponseWriter,
+	durableCursor string,
+	durableRevision uint64,
+	emittedAt time.Time,
+	err error,
+) {
+	frame, encodeErr := encodeSSEError(durableCursor, durableRevision, emittedAt, err)
+	if encodeErr != nil {
+		return
+	}
+	_ = g.writeSSEFrame(writer, frame)
+}
+
+func writeSSEPreflightError(writer http.ResponseWriter, err error) {
+	switch status.Code(err) {
+	case codes.InvalidArgument,
+		codes.Unauthenticated,
+		codes.PermissionDenied,
+		codes.NotFound,
+		codes.OutOfRange,
+		codes.FailedPrecondition:
+		writeHTTPError(writer, err)
+	default:
+		writeHTTPError(writer, status.Error(codes.Internal, "operation stream could not be established"))
+	}
+}
+
+func validateOperationSSEEvent(event *apiv1.OperationEvent, operationName string, lastRevision uint64) error {
+	if err := validateSSEEventEnvelope(event); err != nil {
+		return err
+	}
+	if event.GetEventType() != "operation.updated" && event.GetEventType() != "operation.terminal" {
+		return errors.New("application stream may emit only operation update or terminal events")
+	}
+	operation := event.GetOperation()
+	if operation == nil || operation.GetName() != operationName {
+		return errors.New("operation event identity does not match the requested operation")
+	}
+	if operation.GetError() != nil {
+		if err := validatePublicSSEError(operation.GetError()); err != nil {
+			return fmt.Errorf("operation event carries an invalid nested error: %w", err)
+		}
+	}
+	if event.GetOperationRevision() == 0 || event.GetOperationRevision() <= lastRevision ||
+		operation.GetRevision() != event.GetOperationRevision() {
+		return errors.New("operation event revision is not strictly monotonic")
+	}
+	terminalState := false
+	switch operation.GetState() {
+	case "PENDING", "RUNNING", "CANCELLING":
+	case "SUCCEEDED", "FAILED", "CANCELLED":
+		terminalState = true
+	default:
+		return errors.New("operation event carries an unknown operation state")
+	}
+	switch event.GetEventType() {
+	case "operation.updated":
+		if operation.GetDone() || terminalState {
+			return errors.New("operation update carries terminal operation state")
+		}
+	case "operation.terminal":
+		if !operation.GetDone() || !terminalState {
+			return errors.New("terminal operation event carries non-terminal operation state")
+		}
+	default:
+		return errors.New("operation event type is unsupported")
+	}
+	return nil
+}
+
+func validateSSEEventEnvelope(event *apiv1.OperationEvent) error {
+	if event == nil {
+		return errors.New("SSE event is required")
+	}
+	if event.GetSchemaVersion() != 1 {
+		return errors.New("SSE event schema version is unsupported")
+	}
+	if err := validateSSECursor("event ID", event.GetEventId()); err != nil {
+		return err
+	}
+	if err := validateSSECursor("resume cursor", event.GetResumeCursor()); err != nil {
+		return err
+	}
+	if event.GetEventId() != event.GetResumeCursor() {
+		return errors.New("SSE event ID and resume cursor differ")
+	}
+	if err := validateSSEMetadata("event type", event.GetEventType(), true); err != nil {
+		return err
+	}
+	if event.GetEmittedAt() == nil {
+		return errors.New("SSE event emitted_at is required")
+	}
+	if err := event.GetEmittedAt().CheckValid(); err != nil {
+		return fmt.Errorf("SSE event emitted_at is invalid: %w", err)
+	}
+	operation := event.GetOperation()
+	streamError := event.GetError()
+	switch event.GetEventType() {
+	case "operation.updated", "operation.terminal":
+		if event.GetHeartbeat() || operation == nil || streamError != nil {
+			return errors.New("operation event has inconsistent heartbeat, operation, or error payload")
+		}
+	case "heartbeat":
+		if !event.GetHeartbeat() || operation != nil || streamError != nil || event.GetOperationRevision() == 0 {
+			return errors.New("heartbeat event has inconsistent heartbeat, operation, error, or revision state")
+		}
+	case "error":
+		if event.GetHeartbeat() || operation != nil || streamError == nil || event.GetOperationRevision() == 0 {
+			return errors.New("error event has inconsistent heartbeat, operation, error, or revision state")
+		}
+		if err := validatePublicSSEError(streamError); err != nil {
+			return err
+		}
+	default:
+		return errors.New("SSE event type is unsupported")
+	}
+	return nil
+}
+
+func validatePublicSSEError(value *apiv1.PublicError) error {
+	if value == nil {
+		return errors.New("SSE PublicError is incomplete")
+	}
+	return validatePublicErrorMessage(value.ProtoReflect())
+}
+
+func validatePublicErrorMessage(value protoreflect.Message) error {
+	if value.Descriptor().FullName() != "mindclade.api.v1.PublicError" {
+		return errors.New("public error descriptor is invalid")
+	}
+	fields := value.Descriptor().Fields()
+	stringValue := func(name protoreflect.Name) string {
+		return value.Get(fields.ByName(name)).String()
+	}
+	if err := validatePublicErrorText("code", stringValue("code"), true, 64); err != nil {
+		return err
+	}
+	if err := validatePublicErrorText("message", stringValue("message"), true, 1024); err != nil {
+		return err
+	}
+	if err := validatePublicErrorText("request ID", stringValue("request_id"), true, 128); err != nil {
+		return err
+	}
+	if err := validatePublicErrorText("trace ID", stringValue("trace_id"), false, 128); err != nil {
+		return err
+	}
+	if err := validatePublicErrorText("retry-after", stringValue("retry_after"), false, 64); err != nil {
+		return err
+	}
+	if err := validatePublicErrorText("diagnostic reference", stringValue("diagnostic_ref"), false, 256); err != nil {
+		return err
+	}
+	switch stringValue("code") {
+	case "AUTHENTICATION_REQUIRED",
+		"PERMISSION_DENIED",
+		"INVALID_ARGUMENT",
+		"FAILED_PRECONDITION",
+		"NOT_FOUND",
+		"CONFLICT",
+		"RATE_LIMITED",
+		"QUOTA_EXCEEDED",
+		"UNAVAILABLE",
+		"DEADLINE_EXCEEDED",
+		"CANCELLED",
+		"INTERNAL":
+	default:
+		return errors.New("SSE PublicError code is unsupported")
+	}
+	details := value.Get(fields.ByName("details")).List()
+	if details.Len() > 32 {
+		return errors.New("SSE PublicError contains too many details")
+	}
+	for index := 0; index < details.Len(); index++ {
+		detail := details.Get(index).Message()
+		if err := validatePublicErrorDetail(detail); err != nil {
+			return fmt.Errorf("SSE PublicError detail %d: %w", index, err)
+		}
+	}
+	return nil
+}
+
+func validatePublicErrorDetail(value protoreflect.Message) error {
+	if !value.IsValid() || value.Descriptor().FullName() != "mindclade.api.v1.ErrorDetail" {
+		return errors.New("descriptor is invalid")
+	}
+	fields := value.Descriptor().Fields()
+	stringValue := func(name protoreflect.Name) string {
+		return value.Get(fields.ByName(name)).String()
+	}
+	kind := stringValue("kind")
+	if err := validatePublicErrorText("kind", kind, true, 32); err != nil {
+		return err
+	}
+	switch kind {
+	case "fieldViolation", "resource", "precondition", "policy", "quota", "conflict":
+	default:
+		return errors.New("kind is unsupported")
+	}
+	if err := validatePublicErrorText("field", stringValue("field"), false, 256); err != nil {
+		return err
+	}
+	if err := validatePublicErrorText("reason", stringValue("reason"), false, 128); err != nil {
+		return err
+	}
+	if err := validatePublicErrorText("limit name", stringValue("limit_name"), false, 128); err != nil {
+		return err
+	}
+	resourceField := fields.ByName("resource")
+	if value.Has(resourceField) {
+		if err := validatePublicErrorResource(value.Get(resourceField).Message()); err != nil {
+			return err
+		}
+	} else if kind == "resource" {
+		return errors.New("resource detail has no resource")
+	}
+	if kind == "fieldViolation" && stringValue("field") == "" {
+		return errors.New("fieldViolation detail has no field")
+	}
+	return nil
+}
+
+func validatePublicErrorResource(value protoreflect.Message) error {
+	if !value.IsValid() || value.Descriptor().FullName() != "mindclade.api.v1.ResourceRef" {
+		return errors.New("resource descriptor is invalid")
+	}
+	fields := value.Descriptor().Fields()
+	if err := validatePublicErrorText("resource name", value.Get(fields.ByName("name")).String(), true, 1024); err != nil {
+		return err
+	}
+	if err := validatePublicErrorText("resource UID", value.Get(fields.ByName("uid")).String(), true, 128); err != nil {
+		return err
+	}
+	if value.Get(fields.ByName("revision")).Uint() == 0 {
+		return errors.New("resource revision is required")
+	}
+	return nil
+}
+
+func validatePublicErrorText(field string, value string, required bool, maximum int) error {
+	if required && value == "" {
+		return fmt.Errorf("public error %s is required", field)
+	}
+	if !utf8.ValidString(value) || strings.IndexFunc(value, unicode.IsControl) >= 0 {
+		return fmt.Errorf("public error %s is not control-safe UTF-8", field)
+	}
+	if len(value) > maximum {
+		return fmt.Errorf("public error %s exceeds %d bytes", field, maximum)
+	}
+	return nil
+}
+
+func validateSSEMetadata(field string, value string, required bool) error {
+	if required && value == "" {
+		return fmt.Errorf("SSE %s is required", field)
+	}
+	if !utf8.ValidString(value) {
+		return fmt.Errorf("SSE %s is not valid UTF-8", field)
+	}
+	if strings.IndexFunc(value, unicode.IsControl) >= 0 {
+		return fmt.Errorf("SSE %s contains a control character", field)
+	}
+	return nil
+}
+
+func validateSSECursor(field string, value string) error {
+	if err := validateSSEMetadata(field, value, true); err != nil {
+		return err
+	}
+	if len(value) > 4096 {
+		return fmt.Errorf("SSE %s exceeds the 4096-byte contract limit", field)
+	}
+	return nil
+}
+
+func validateOptionalLastEventID(values []string) (string, error) {
+	switch len(values) {
+	case 0:
+		return "", nil
+	case 1:
+		if err := validateSSECursor("Last-Event-ID", values[0]); err != nil {
+			return "", err
+		}
+		return values[0], nil
+	default:
+		return "", errors.New("SSE Last-Event-ID must be supplied at most once")
+	}
+}
+
+func exactHTTPHeaderValues(header http.Header, name string) []string {
+	var values []string
+	for candidate, items := range header {
+		if strings.EqualFold(candidate, name) {
+			values = append(values, items...)
+		}
+	}
+	return values
+}
+
+func marshalPublicProtoJSON(message proto.Message) ([]byte, error) {
+	if message == nil {
+		return nil, errors.New("public ProtoJSON message is required")
+	}
+	payload, err := (protojson.MarshalOptions{UseProtoNames: false}).Marshal(message)
+	if err != nil {
+		return nil, err
+	}
+	var document any
+	if err = json.Unmarshal(payload, &document); err != nil {
+		return nil, fmt.Errorf("decode generated public ProtoJSON: %w", err)
+	}
+	if err = applyPublicMessageContract(message.ProtoReflect(), document); err != nil {
+		return nil, err
+	}
+	payload, err = json.Marshal(document)
+	if err != nil {
+		return nil, fmt.Errorf("encode contracted public ProtoJSON: %w", err)
+	}
+	return payload, nil
+}
+
+func publicMessageContract(descriptor protoreflect.MessageDescriptor) (*apiv1.PublicMessageContract, bool, error) {
+	options := descriptor.Options()
+	if options == nil || !proto.HasExtension(options, apiv1.E_PublicMessage) {
+		return nil, false, nil
+	}
+	value := proto.GetExtension(options, apiv1.E_PublicMessage)
+	contract, ok := value.(*apiv1.PublicMessageContract)
+	if !ok || contract == nil {
+		return nil, false, fmt.Errorf("%s has an invalid public message contract", descriptor.FullName())
+	}
+	return contract, true, nil
+}
+
+func applyPublicMessageContract(message protoreflect.Message, document any) error {
+	descriptor := message.Descriptor()
+	contract, contracted, err := publicMessageContract(descriptor)
 	if err != nil {
 		return err
 	}
-	eventID := strings.NewReplacer("\r", "", "\n", "").Replace(event.GetEventId())
-	eventType := strings.NewReplacer("\r", "", "\n", "").Replace(event.GetEventType())
-	if eventType == "" {
-		eventType = "operation.updated"
+	object, objectOK := document.(map[string]any)
+	if !objectOK {
+		if contracted {
+			return fmt.Errorf("%s did not encode as a public JSON object", descriptor.FullName())
+		}
+		return nil
 	}
-	_, err = fmt.Fprintf(writer, "id: %s\nevent: %s\ndata: %s\n\n", eventID, eventType, payload)
-	return err
+	if descriptor.FullName() == "mindclade.api.v1.PublicError" {
+		if err = validatePublicErrorMessage(message); err != nil {
+			return err
+		}
+	}
+	if contracted {
+		required := make(map[protoreflect.Name]struct{}, len(contract.GetRequiredFields()))
+		for _, fieldName := range contract.GetRequiredFields() {
+			name := protoreflect.Name(fieldName)
+			if _, duplicate := required[name]; duplicate {
+				return fmt.Errorf("%s repeats required field %s", descriptor.FullName(), fieldName)
+			}
+			required[name] = struct{}{}
+			field := descriptor.Fields().ByName(name)
+			if field == nil {
+				return fmt.Errorf("%s requires unknown field %s", descriptor.FullName(), fieldName)
+			}
+			if _, present := object[field.JSONName()]; present {
+				continue
+			}
+			if field.IsMap() {
+				object[field.JSONName()] = map[string]any{}
+				continue
+			}
+			if field.IsList() {
+				object[field.JSONName()] = []any{}
+				continue
+			}
+			if field.HasPresence() {
+				return fmt.Errorf("%s is missing required field %s", descriptor.FullName(), fieldName)
+			}
+			defaultValue, defaultErr := publicProtoJSONDefault(field)
+			if defaultErr != nil {
+				return defaultErr
+			}
+			object[field.JSONName()] = defaultValue
+		}
+		for _, stringEnum := range contract.GetStringEnums() {
+			field := descriptor.Fields().ByName(protoreflect.Name(stringEnum.GetField()))
+			if field == nil || field.Kind() != protoreflect.StringKind {
+				return fmt.Errorf("%s declares an invalid public string enum", descriptor.FullName())
+			}
+			value := message.Get(field).String()
+			valid := false
+			for _, allowed := range stringEnum.GetValues() {
+				if value == allowed {
+					valid = true
+					break
+				}
+			}
+			if !valid {
+				return fmt.Errorf("%s.%s has an unsupported public string value", descriptor.FullName(), field.Name())
+			}
+		}
+	}
+
+	fields := descriptor.Fields()
+	for index := 0; index < fields.Len(); index++ {
+		field := fields.Get(index)
+		encoded, present := object[field.JSONName()]
+		if !present || field.Kind() != protoreflect.MessageKind {
+			continue
+		}
+		if field.IsMap() {
+			// No current public map has message values. Fail closed if that changes
+			// until its ProtoJSON key/value traversal is explicitly qualified.
+			if field.MapValue().Kind() == protoreflect.MessageKind {
+				return fmt.Errorf("%s.%s uses an unsupported public message map", descriptor.FullName(), field.Name())
+			}
+			continue
+		}
+		if field.IsList() {
+			items, ok := encoded.([]any)
+			if !ok {
+				return fmt.Errorf("%s.%s did not encode as a JSON array", descriptor.FullName(), field.Name())
+			}
+			values := message.Get(field).List()
+			if len(items) != values.Len() {
+				return fmt.Errorf("%s.%s changed length during ProtoJSON projection", descriptor.FullName(), field.Name())
+			}
+			for itemIndex := 0; itemIndex < values.Len(); itemIndex++ {
+				if err = applyPublicMessageContract(values.Get(itemIndex).Message(), items[itemIndex]); err != nil {
+					return err
+				}
+			}
+			continue
+		}
+		if !message.Has(field) {
+			continue
+		}
+		if err = applyPublicMessageContract(message.Get(field).Message(), encoded); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
-type sseErrorPayload struct {
-	Code         string `json:"code"`
-	Message      string `json:"message"`
-	ResumeCursor string `json:"resumeCursor,omitempty"`
-	Retryable    bool   `json:"retryable"`
+func publicProtoJSONDefault(field protoreflect.FieldDescriptor) (any, error) {
+	value := field.Default()
+	switch field.Kind() {
+	case protoreflect.BoolKind:
+		return value.Bool(), nil
+	case protoreflect.StringKind:
+		return value.String(), nil
+	case protoreflect.BytesKind:
+		return "", nil
+	case protoreflect.EnumKind:
+		enumValue := field.Enum().Values().ByNumber(value.Enum())
+		if enumValue == nil {
+			return nil, fmt.Errorf("%s has an unknown default enum value", field.FullName())
+		}
+		return string(enumValue.Name()), nil
+	case protoreflect.Int64Kind, protoreflect.Sint64Kind, protoreflect.Sfixed64Kind:
+		return strconv.FormatInt(value.Int(), 10), nil
+	case protoreflect.Uint64Kind, protoreflect.Fixed64Kind:
+		return strconv.FormatUint(value.Uint(), 10), nil
+	case protoreflect.Int32Kind, protoreflect.Sint32Kind, protoreflect.Sfixed32Kind:
+		return int32(value.Int()), nil
+	case protoreflect.Uint32Kind, protoreflect.Fixed32Kind:
+		return uint32(value.Uint()), nil
+	case protoreflect.FloatKind, protoreflect.DoubleKind:
+		return value.Float(), nil
+	default:
+		return nil, fmt.Errorf("%s cannot synthesize a required public ProtoJSON default", field.FullName())
+	}
+}
+
+func writeSSEEvent(writer io.Writer, event *apiv1.OperationEvent) error {
+	frame, err := encodeSSEEvent(event)
+	if err != nil {
+		return err
+	}
+	return writeAll(writer, frame)
+}
+
+func encodeSSEEvent(event *apiv1.OperationEvent) ([]byte, error) {
+	if err := validateSSEEventEnvelope(event); err != nil {
+		return nil, err
+	}
+	payload, err := marshalPublicProtoJSON(event)
+	if err != nil {
+		return nil, err
+	}
+	frame := make([]byte, 0, len(event.GetEventId())+len(event.GetEventType())+len(payload)+20)
+	frame = append(frame, "id: "...)
+	frame = append(frame, event.GetEventId()...)
+	frame = append(frame, "\nevent: "...)
+	frame = append(frame, event.GetEventType()...)
+	frame = append(frame, "\ndata: "...)
+	frame = append(frame, payload...)
+	frame = append(frame, '\n', '\n')
+	return frame, nil
+}
+
+func writeAll(writer io.Writer, payload []byte) error {
+	written, err := writer.Write(payload)
+	if err != nil {
+		return err
+	}
+	if written != len(payload) {
+		return io.ErrShortWrite
+	}
+	return nil
 }
 
 // writeSSEError is used only after HTTP 200 has committed. It maps transport
-// failures to bounded public data and never serializes internal status text.
-func writeSSEError(writer io.Writer, durableCursor string, err error) error {
-	value := sseErrorPayload{Code: "STREAM_ERROR", Message: "operation stream ended", ResumeCursor: durableCursor}
+// failures to a descriptor-owned error event and never serializes internal
+// status text. A post-200 error can be resumed only from established durable
+// cursor truth, so empty cursors and zero revisions are rejected.
+func writeSSEError(
+	writer io.Writer,
+	durableCursor string,
+	durableRevision uint64,
+	emittedAt time.Time,
+	err error,
+) error {
+	frame, frameErr := encodeSSEError(durableCursor, durableRevision, emittedAt, err)
+	if frameErr != nil {
+		return frameErr
+	}
+	return writeAll(writer, frame)
+}
+
+func encodeSSEError(
+	durableCursor string,
+	durableRevision uint64,
+	emittedAt time.Time,
+	err error,
+) ([]byte, error) {
+	if metadataErr := validateSSECursor("durable cursor", durableCursor); metadataErr != nil {
+		return nil, metadataErr
+	}
+	if durableRevision == 0 {
+		return nil, errors.New("durable SSE revision is required")
+	}
+	requestID, identityErr := randomPublicID("gateway_")
+	if identityErr != nil {
+		return nil, errors.New("SSE error identity generation failed")
+	}
+	value := &apiv1.PublicError{Code: "INTERNAL", Message: "operation stream ended", RequestId: requestID}
 	switch status.Code(err) {
 	case codes.InvalidArgument:
-		value.Code, value.Message = "INVALID_CURSOR", "resume cursor is invalid"
+		value.Code, value.Message = "INVALID_ARGUMENT", "stream request is invalid"
+	case codes.Unauthenticated:
+		value.Code, value.Message = "AUTHENTICATION_REQUIRED", "authentication is required"
 	case codes.PermissionDenied:
-		value.Code, value.Message = "CURSOR_RESOURCE_MISMATCH", "resume cursor belongs to another operation"
-	case codes.FailedPrecondition:
-		value.Code, value.Message = "CURSOR_AHEAD", "resume cursor is ahead of durable state"
-	case codes.OutOfRange:
-		value.Code, value.Message = "CURSOR_EXPIRED", "resume cursor is outside the retention window"
+		value.Code, value.Message = "PERMISSION_DENIED", "stream access is denied"
+	case codes.FailedPrecondition, codes.OutOfRange:
+		value.Code, value.Message = "FAILED_PRECONDITION", "stream cannot resume from the acknowledged cursor"
 	case codes.NotFound:
-		value.Code, value.Message = "NOT_FOUND", "operation was not found"
+		value.Code, value.Message = "NOT_FOUND", "stream resource was not found"
+	case codes.AlreadyExists, codes.Aborted:
+		value.Code, value.Message = "CONFLICT", "stream conflicts with current state"
+	case codes.ResourceExhausted:
+		value.Code, value.Message, value.Retryable = "RATE_LIMITED", "stream capacity is temporarily exhausted", true
 	case codes.DeadlineExceeded:
-		value.Code, value.Message, value.Retryable = "WATCH_DEADLINE", "operation watch deadline elapsed", true
-	case codes.Unavailable, codes.ResourceExhausted, codes.Aborted:
-		value.Code, value.Message, value.Retryable = "UNAVAILABLE", "operation stream is temporarily unavailable", true
-	case codes.DataLoss:
-		value.Code, value.Message = "HISTORY_UNAVAILABLE", "operation history is unavailable"
+		value.Code, value.Message, value.Retryable = "DEADLINE_EXCEEDED", "stream deadline elapsed", true
+	case codes.Unavailable:
+		value.Code, value.Message, value.Retryable = "UNAVAILABLE", "stream is temporarily unavailable", true
+	case codes.Canceled:
+		value.Code, value.Message = "CANCELLED", "stream was cancelled"
 	}
-	payload, marshalErr := json.Marshal(value)
-	if marshalErr != nil {
-		return marshalErr
+	event := &apiv1.OperationEvent{
+		EventId: durableCursor, EventType: "error", SchemaVersion: 1,
+		OperationRevision: durableRevision, ResumeCursor: durableCursor,
+		EmittedAt: timestamppb.New(emittedAt.UTC()), Error: value,
 	}
-	cursor := strings.NewReplacer("\r", "", "\n", "").Replace(durableCursor)
-	if cursor == "" {
-		_, marshalErr = fmt.Fprintf(writer, "event: error\ndata: %s\n\n", payload)
-		return marshalErr
-	}
-	_, marshalErr = fmt.Fprintf(writer, "id: %s\nevent: error\ndata: %s\n\n", cursor, payload)
-	return marshalErr
+	return encodeSSEEvent(event)
 }
 
 func writeHTTPError(writer http.ResponseWriter, err error) {
@@ -945,6 +1781,8 @@ func writeHTTPError(writer http.ResponseWriter, err error) {
 		httpStatus, publicCode, publicMessage = http.StatusForbidden, "PERMISSION_DENIED", "permission denied"
 	case codes.NotFound:
 		httpStatus, publicCode, publicMessage = http.StatusNotFound, "NOT_FOUND", "resource not found"
+	case codes.OutOfRange:
+		httpStatus, publicCode, publicMessage = http.StatusGone, "FAILED_PRECONDITION", "requested stream position is no longer available"
 	case codes.AlreadyExists, codes.Aborted:
 		httpStatus, publicCode, publicMessage = http.StatusConflict, "CONFLICT", "request conflicts with current state"
 	case codes.ResourceExhausted:
@@ -957,15 +1795,22 @@ func writeHTTPError(writer http.ResponseWriter, err error) {
 		httpStatus, publicCode, publicMessage = http.StatusGatewayTimeout, "DEADLINE_EXCEEDED", "request deadline exceeded"
 	case codes.Canceled:
 		httpStatus, publicCode, publicMessage = 499, "CANCELLED", "request cancelled"
-	case codes.Unimplemented:
-		httpStatus, publicCode, publicMessage = http.StatusNotImplemented, "NOT_IMPLEMENTED", "method is not implemented"
+	}
+	requestID, identityErr := randomPublicID("gateway_")
+	if identityErr != nil {
+		requestID = "gateway_unavailable"
+	}
+	payload, marshalErr := marshalPublicProtoJSON(&apiv1.PublicError{
+		Code: publicCode, Message: publicMessage, RequestId: requestID,
+		Retryable: grpcStatus.Code() == codes.Unavailable,
+	})
+	if marshalErr != nil {
+		payload = []byte(`{"code":"INTERNAL","message":"request failed","requestId":"gateway_unavailable","retryable":false}`)
+		httpStatus = http.StatusInternalServerError
 	}
 	writer.Header().Set("Content-Type", "application/problem+json")
 	writer.WriteHeader(httpStatus)
-	_ = json.NewEncoder(writer).Encode(map[string]any{
-		"code": publicCode, "message": publicMessage, "retryable": grpcStatus.Code() == codes.Unavailable,
-		"requestId": fmt.Sprintf("gateway-%d", time.Now().UTC().UnixNano()),
-	})
+	_ = writeAll(writer, append(payload, '\n'))
 }
 
 type runtime struct {
@@ -1021,9 +1866,12 @@ func newRuntimeWithAuthorizer(
 			Handler:           httpGateway,
 			ReadHeaderTimeout: 10 * time.Second,
 			ReadTimeout:       30 * time.Second,
-			WriteTimeout:      0,
-			IdleTimeout:       90 * time.Second,
-			MaxHeaderBytes:    64 << 10,
+			// Long-lived SSE connections cannot use one server-wide WriteTimeout.
+			// The gateway instead applies a fresh bounded ResponseController write
+			// deadline to the retry prelude and every event frame.
+			WriteTimeout:   0,
+			IdleTimeout:    90 * time.Second,
+			MaxHeaderBytes: 64 << 10,
 		},
 		conn: conn,
 	}, nil

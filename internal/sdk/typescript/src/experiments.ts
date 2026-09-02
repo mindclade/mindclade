@@ -150,7 +150,13 @@ export class Experiments {
 	): Promise<ListExperimentsResponse> {
 		const request = create(ListExperimentsRequestSchema, input);
 		const parent = projectName(this.#core);
-		if ((request.parent !== "" && request.parent !== parent) || (request.page?.pageSize ?? 0) > 200)
+		const pageSize = request.page?.pageSize ?? 0;
+		if (
+			(request.parent !== "" && request.parent !== parent) ||
+			!Number.isInteger(pageSize) ||
+			pageSize < 0 ||
+			pageSize > 200
+		)
 			throw MindcladeError.invalidArgument("experiment list scope or page size is invalid");
 		request.parent = parent;
 		const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
@@ -602,7 +608,8 @@ const validateTransition = (
 		throw MindcladeError.invalidArgument("lifecycle transition intent is invalid");
 };
 const validatePage = (size: number): void => {
-	if (size > 200) throw MindcladeError.invalidArgument("page size cannot exceed 200");
+	if (!Number.isInteger(size) || size < 0 || size > 200)
+		throw MindcladeError.invalidArgument("page size must be an integer between zero and 200");
 };
 const contextWithDigest = (
 	core: ClientCore,

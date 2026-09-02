@@ -176,7 +176,7 @@ func TestExperimentFacadeRoutesAllDescriptorRPCsAndBindsCommandAuthority(t *test
 	if _, err := service.Get(ctx, experimentName, ""); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := service.ListPage(ctx, 20, "opaque"); err != nil {
+	if _, err := service.ListPage(ctx, 20, " opaque-token== "); err != nil {
 		t.Fatal(err)
 	}
 	update := &experimentv1.UpdateExperimentCommand{Context: &commonv1.CommandContext{IdempotencyKey: "experiment-update"}, Experiment: cloneGenerated(server.experiment), UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{"display_name"}}, Etag: server.experiment.GetEtag()}
@@ -232,6 +232,9 @@ func TestExperimentFacadeRoutesAllDescriptorRPCsAndBindsCommandAuthority(t *test
 	capturedCreate := requests[0].(*internalexperimentv1.CreateExperimentRequest).GetCommand()
 	if capturedCreate.GetContext().GetTenantId() != config.TenantID || capturedCreate.GetContext().GetProjectId() != config.ProjectID || capturedCreate.GetContext().GetPrincipalId() != config.PrincipalID || !validSHA256Digest(capturedCreate.GetContext().GetCanonicalRequestDigest()) {
 		t.Fatalf("captured generated command context was not authoritative: %+v", capturedCreate.GetContext())
+	}
+	if token := requests[2].(*internalexperimentv1.ListExperimentsRequest).GetPage().GetPageToken(); token != " opaque-token== " {
+		t.Fatalf("opaque page token was changed: %q", token)
 	}
 	for _, index := range []int{0, 3, 4, 5, 8, 9, 12, 13} {
 		if !validateExperimentMutationRetry(requests[index], requestMetadata{idempotencyKey: experimentCommandContext(requests[index]).GetIdempotencyKey()}, config) {

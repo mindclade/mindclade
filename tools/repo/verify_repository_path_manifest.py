@@ -15,7 +15,12 @@ from typing import Any, cast
 
 from dependency_policy import validate_dependency_graph
 from owner_policy import discover_components, validate_owners
-from path_policy import load_manifest, validate_manifest, validate_populated_paths
+from path_policy import (
+    OPTIONAL_PENDING_RATIFICATION_ARTIFACT_PATHS,
+    load_manifest,
+    validate_manifest,
+    validate_populated_paths,
+)
 
 GENERATED_MARKERS = ("generated", "do not edit", "begin generated: repository-path-manifest")
 TARGET_MEMBERSHIP_ATTRIBUTES = (
@@ -80,7 +85,25 @@ def validate_generated_files(manifest: Mapping[str, Any], root: Path) -> list[st
                     and value_object.get("schema_version") == "mindclade.openapi-candidate/v1"
                     and isinstance(value_object.get("sources"), Mapping)
                 )
-                if structured_generator or candidate_descriptor or candidate_openapi:
+                ratified_baseline = (
+                    entry["path"]
+                    in {
+                        "protocols/compatibility/baselines/openapi.lock.json",
+                        "protocols/compatibility/baselines/protobuf.lock.json",
+                    }
+                    and value_object.get("schema_version")
+                    in {
+                        "mindclade.openapi-baseline/v1",
+                        "mindclade.protobuf-baseline/v3",
+                    }
+                    and isinstance(value_object.get("ratification"), Mapping)
+                )
+                if (
+                    structured_generator
+                    or candidate_descriptor
+                    or candidate_openapi
+                    or ratified_baseline
+                ):
                     continue
         prefix = path.read_bytes()[:8192].decode("utf-8", errors="ignore").lower()
         if not any(marker in prefix for marker in GENERATED_MARKERS):
@@ -179,6 +202,11 @@ def validate_declared_targets(manifest: Mapping[str, Any], root: Path) -> list[s
 
     for entry in manifest["paths"]:
         if entry.get("status") not in {"active", "generated"}:
+            continue
+        if (
+            entry["path"] in OPTIONAL_PENDING_RATIFICATION_ARTIFACT_PATHS
+            and not (root / entry["path"]).is_file()
+        ):
             continue
         for label in (*entry.get("build_targets", []), *entry.get("test_targets", [])):
             if label in target_sources and entry["path"] not in target_sources[label]:

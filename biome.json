@@ -12,8 +12,8 @@
       "libs/typescript/**/*.ts",
       "libs/typescript/**/*.tsx",
       "libs/typescript/**/package.json",
-      "package.json",
-      "!libs/typescript/*/dist/native/**"
+      "!libs/typescript/**/dist",
+      "package.json"
     ]
   },
   "formatter": {

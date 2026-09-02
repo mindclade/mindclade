@@ -8103,9 +8103,11 @@ mindclade/
 │   │   ├── collect_evidence.py
 │   │   ├── verify_evidence.py
 │   │   ├── hardware_envelope.py
+│   │   ├── authoritative-integration-criteria.v1.json
 │   │   ├── readiness_report.py
 │   │   ├── tests/
 │   │   │   └── test_training_evidence.py
+│   │   ├── training_evidence_assembler.py
 │   │   └── training_rehearsal.py
 │   ├── migration/
 │   │   ├── plan_path_move.py

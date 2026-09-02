@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import random
 import threading
 import time
 from collections.abc import AsyncIterator, Iterator
@@ -18,7 +17,7 @@ from mindclade.inference.v1 import (
 from mindclade.internal.inference.v1 import inference_service_pb2
 from mindclade.job.v1 import operation_pb2
 
-from ._invocation import AsyncInvoker, SyncInvoker, canonical_digest, command_context
+from ._invocation import AsyncInvoker, SyncInvoker, canonical_digest, command_context, retry_delay
 from ._validation import required_response_message, required_text
 from .calls import CallOptions, PreparedCall, prepare_call
 from .errors import CancelledError, MindcladeError, ProtocolError
@@ -145,15 +144,6 @@ def _accept_message(
         after_sequence=message.sequence,
         resume_token=message.resume_token,
     )
-
-
-def _retry_delay(invoker: SyncInvoker | AsyncInvoker, failures: int, remaining: float) -> float:
-    cap = min(
-        invoker.config.retry.max_delay,
-        invoker.config.retry.base_delay * (2 ** min(max(0, failures - 1), 30)),
-        max(0.0, remaining),
-    )
-    return random.uniform(0.0, cap) if cap > 0 else 0.0
 
 
 class Inference:
@@ -315,7 +305,12 @@ class Inference:
                 failures += 1
                 if failures >= self._invoker.config.retry.max_attempts:
                     raise
-                delay = _retry_delay(self._invoker, failures, deadline - time.monotonic())
+                delay = retry_delay(
+                    self._invoker.config,
+                    failures,
+                    deadline - time.monotonic(),
+                    retry_after=error.retry_after,
+                )
                 if delay <= 0:
                     raise
                 time.sleep(delay)
@@ -494,7 +489,12 @@ class AsyncInference:
                 failures += 1
                 if failures >= self._invoker.config.retry.max_attempts:
                     raise
-                delay = _retry_delay(self._invoker, failures, deadline - loop.time())
+                delay = retry_delay(
+                    self._invoker.config,
+                    failures,
+                    deadline - loop.time(),
+                    retry_after=error.retry_after,
+                )
                 if delay <= 0:
                     raise
                 await asyncio.sleep(delay)

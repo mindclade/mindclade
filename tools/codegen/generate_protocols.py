@@ -163,6 +163,13 @@ class _PublicMessageContract(Protocol):
     string_enums: Sequence[_PublicStringEnumContract]
 
 
+class _PublicSSEContract(Protocol):
+    heartbeat_interval_seconds: int
+    heartbeat_reuses_last_durable_event_id: bool
+    replay_acknowledged_terminal_event: bool
+    retry_milliseconds: int
+
+
 class _GoogleHTTPRule(Protocol):
     body: str
 
@@ -174,6 +181,7 @@ class _PublicHTTPContract(Protocol):
     request_headers: Sequence[str]
     required_request_headers: Sequence[str]
     response_headers: Sequence[str]
+    sse: _PublicSSEContract
     stream: int
     success_status: Sequence[int]
 
@@ -2069,6 +2077,466 @@ def _inventory_digest(root: Path, paths: Sequence[Path]) -> str:
     )
 
 
+TRAINING_EVIDENCE_SIGNATURE_PAYLOAD_TYPE = (
+    "application/vnd.mindclade.training-vertical-evidence.v2+json"
+)
+CONNECTED_ADR_SIGNATURE_PAYLOAD_TYPE = "application/vnd.mindclade.adr-ratification.v1+json"
+TRAINING_EVIDENCE_CHECK_FIELDS = frozenset(
+    {
+        "producer_identity",
+        "receipt_digest",
+        "result_artifact_digest",
+        "status",
+    }
+)
+TRAINING_EVIDENCE_PROTECTED_CONTEXT_FIELDS = frozenset(
+    {
+        "context_digest",
+        "execution_tier",
+        "launcher_identity",
+        "pipeline_class",
+        "pipeline_definition_revision",
+        "protected_build_identity",
+        "source_revision",
+        "source_trust",
+    }
+)
+TRAINING_EVIDENCE_APPROVAL_FIELDS = frozenset(
+    {
+        "approval_digest",
+        "approval_id",
+        "approved_at",
+        "reviewer_identity",
+    }
+)
+TRAINING_EVIDENCE_PRODUCER_IDENTITIES = {
+    "cross_language": "principal://mindclade/qualification/cross-language",
+    "database": "principal://mindclade/qualification/database",
+    "event": "principal://mindclade/qualification/event-delivery",
+    "gateway": "principal://mindclade/qualification/gateway-sse",
+    "grpc": "principal://mindclade/qualification/grpc",
+    "sdk": "principal://mindclade/qualification/sdk",
+}
+TRAINING_EVIDENCE_REVIEWER_IDENTITIES = frozenset(
+    {"principal://mindclade/reviewers/contract-governance"}
+)
+RATIFICATION_BUILD_IDENTITY = re.compile(r"^buildkite://[a-z0-9][a-z0-9._/-]{7,255}$")
+RATIFICATION_PRINCIPAL_IDENTITY = re.compile(r"^principal://[a-z0-9][a-z0-9._/-]{7,255}$")
+RATIFICATION_APPROVAL_ID = re.compile(r"^[a-z][a-z0-9._-]{7,127}$")
+RATIFICATION_UTC = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
+RATIFICATION_REVISION = re.compile(r"^[0-9a-f]{40}$")
+RATIFICATION_DIGEST = re.compile(r"^sha256:[0-9a-f]{64}$")
+# Connected governance has not yet activated a Stage-5 signer. A protected
+# source change must add the approved DER-SPKI digest after independent
+# ratification; caller-provided CLI values never extend this trust set.
+RATIFICATION_TRUSTED_SIGNER_KEY_IDS: frozenset[str] = frozenset()
+# The connected ADR decision is a separate trust event from training
+# qualification. Its signer set is intentionally independent and remains empty
+# until protected governance activates exact DER-SPKI digests in source.
+CONNECTED_ADR_TRUSTED_SIGNER_KEY_IDS: frozenset[str] = frozenset()
+RATIFICATION_ADR_MUTABLE_METADATA_PREFIXES = (
+    "- Connected ratification: ",
+    "- Effective date: ",
+)
+
+
+def _ratification_json_contract() -> tuple[Any, Any]:
+    """Load the repository's canonical JSON and trusted-context validators."""
+
+    repository_python_root = str(Path(__file__).resolve().parents[2])
+    inserted = repository_python_root not in sys.path
+    if inserted:
+        sys.path.insert(0, repository_python_root)
+    try:
+        from tools.ci.evidence_bundle import canonical_json, validate_trusted_context
+    finally:
+        if inserted:
+            sys.path.remove(repository_python_root)
+    return canonical_json, validate_trusted_context
+
+
+def _unique_ratification_object(pairs: list[tuple[str, object]]) -> dict[str, object]:
+    value: dict[str, object] = {}
+    for name, item in pairs:
+        if name in value:
+            raise ValueError(f"ratification JSON contains duplicate field {name!r}")
+        value[name] = item
+    return value
+
+
+def _load_ratification_object(path: Path, label: str) -> dict[str, Any]:
+    try:
+        value: object = json.loads(
+            path.read_text(encoding="utf-8"),
+            object_pairs_hook=_unique_ratification_object,
+        )
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as error:
+        raise ValueError(f"cannot read {label}: {error}") from error
+    if not isinstance(value, dict):
+        raise ValueError(f"{label} must contain exactly one JSON object")
+    return cast(dict[str, Any], value)
+
+
+def _ratification_string(
+    value: object,
+    label: str,
+    pattern: re.Pattern[str],
+) -> str:
+    if not isinstance(value, str) or pattern.fullmatch(value) is None:
+        raise ValueError(f"{label} has an invalid value")
+    return value
+
+
+def _ratification_utc_string(value: object, label: str) -> str:
+    from datetime import datetime
+
+    text = _ratification_string(value, label, RATIFICATION_UTC)
+    try:
+        datetime.strptime(text, "%Y-%m-%dT%H:%M:%SZ")
+    except ValueError as error:
+        raise ValueError(f"{label} is not a real UTC timestamp") from error
+    return text
+
+
+def _decode_ratification_base64(value: object, label: str) -> bytes:
+    if not isinstance(value, str):
+        raise ValueError(f"{label} must be canonical base64")
+    try:
+        decoded = base64.b64decode(value, validate=True)
+    except ValueError as error:
+        raise ValueError(f"{label} must be canonical base64") from error
+    if base64.b64encode(decoded).decode("ascii") != value:
+        raise ValueError(f"{label} must be canonical base64")
+    return decoded
+
+
+def _dsse_pae(payload_type: str, payload: bytes) -> bytes:
+    type_bytes = payload_type.encode("utf-8")
+    return b" ".join(
+        (
+            b"DSSEv1",
+            str(len(type_bytes)).encode("ascii"),
+            type_bytes,
+            str(len(payload)).encode("ascii"),
+            payload,
+        )
+    )
+
+
+def _ratification_adr_decision_digest(source: str) -> str:
+    """Apply the repository's adr-decision-v1 canonicalization profile."""
+
+    normalized = source.replace("\r\n", "\n").replace("\r", "\n")
+    retained: list[str] = []
+    excluded: dict[str, int] = dict.fromkeys(RATIFICATION_ADR_MUTABLE_METADATA_PREFIXES, 0)
+    metadata = True
+    for line in normalized.split("\n"):
+        if line.startswith("## "):
+            metadata = False
+        matched = next(
+            (
+                prefix
+                for prefix in RATIFICATION_ADR_MUTABLE_METADATA_PREFIXES
+                if metadata and line.startswith(prefix)
+            ),
+            None,
+        )
+        if matched is None:
+            retained.append(line)
+        else:
+            excluded[matched] += 1
+    if any(count != 1 for count in excluded.values()):
+        raise ValueError(
+            "ADR-0015 must contain exactly one connected-ratification and effective-date line"
+        )
+    canonical = "\n".join(retained).rstrip("\n") + "\n"
+    return sha256_bytes(canonical.encode("utf-8"))
+
+
+def validate_connected_stage5_authority(
+    root: Path,
+    *,
+    signature_envelope_path: Path | None = None,
+    public_key_path: Path | None = None,
+    expected_signer_key_id: str | None = None,
+) -> dict[str, str]:
+    """Cryptographically verify the independent connected ADR decision."""
+
+    index_path = root / "docs/adr/index.yaml"
+    try:
+        raw_index: object = yaml.safe_load(index_path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, yaml.YAMLError) as error:
+        raise ValueError(f"cannot read ADR ratification index: {error}") from error
+    if not isinstance(raw_index, dict):
+        raise ValueError("ADR ratification index must be an object")
+    index = cast(dict[str, object], raw_index)
+    raw_spec = index.get("spec")
+    if not isinstance(raw_spec, dict):
+        raise ValueError("ADR ratification index has no decision list")
+    spec = cast(dict[str, object], raw_spec)
+    raw_decisions = spec.get("decisions")
+    if not isinstance(raw_decisions, list):
+        raise ValueError("ADR ratification index has no decision list")
+    matches: list[dict[str, object]] = []
+    for candidate in cast(list[object], raw_decisions):
+        if not isinstance(candidate, dict):
+            continue
+        candidate_entry = cast(dict[str, object], candidate)
+        if candidate_entry.get("id") == "ADR-0015":
+            matches.append(candidate_entry)
+    if len(matches) != 1:
+        raise ValueError("ADR ratification index must contain exactly one ADR-0015 entry")
+    entry = matches[0]
+    if (
+        entry.get("status") != "accepted-in-specification"
+        or entry.get("connectedRatification") != "ratified"
+        or entry.get("path") != "docs/adr/0015-all-contracts-clean-v1-baseline.md"
+    ):
+        raise ValueError(
+            "Stage-5 ratification is disabled until ADR-0015 is independently "
+            "ratified on protected infrastructure"
+        )
+    expected_fields = {
+        "connectedRatification",
+        "id",
+        "owners",
+        "path",
+        "ratificationDecisionDigest",
+        "ratificationReceiptDigest",
+        "ratificationSubjectRevision",
+        "ratifiedAt",
+        "specificationAccepted",
+        "status",
+        "title",
+    }
+    if set(entry) != expected_fields:
+        raise ValueError("ADR-0015 connected ratification is incomplete or has unknown fields")
+    subject_revision = _ratification_string(
+        entry.get("ratificationSubjectRevision"),
+        "ADR-0015 ratification subject revision",
+        RATIFICATION_REVISION,
+    )
+    decision_digest = _ratification_string(
+        entry.get("ratificationDecisionDigest"),
+        "ADR-0015 ratification decision digest",
+        RATIFICATION_DIGEST,
+    )
+    receipt_digest = _ratification_string(
+        entry.get("ratificationReceiptDigest"),
+        "ADR-0015 ratification receipt digest",
+        RATIFICATION_DIGEST,
+    )
+    ratified_at = _ratification_utc_string(
+        entry.get("ratifiedAt"),
+        "ADR-0015 ratifiedAt",
+    )
+    adr_path = root / cast(str, entry["path"])
+    try:
+        source = adr_path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError) as error:
+        raise ValueError(f"cannot read ADR-0015 decision: {error}") from error
+    if decision_digest != _ratification_adr_decision_digest(source):
+        raise ValueError("ADR-0015 ratification decision digest does not match its source")
+    if "- Connected ratification: Pending independent review" in source:
+        raise ValueError("ADR-0015 source still declares connected ratification pending")
+    if f"- Effective date: {ratified_at[:10]}" not in source:
+        raise ValueError("ADR-0015 effective date does not match its ratification timestamp")
+    if signature_envelope_path is None or public_key_path is None or expected_signer_key_id is None:
+        raise ValueError(
+            "ADR-0015 connected ratification requires its DSSE envelope, public key, "
+            "and source-activated signer key ID"
+        )
+
+    from cryptography.exceptions import InvalidSignature
+    from cryptography.hazmat.primitives import serialization
+    from cryptography.hazmat.primitives.asymmetric import ed25519
+
+    canonical_json, _ = _ratification_json_contract()
+    signer_key_id = _ratification_string(
+        expected_signer_key_id,
+        "ADR-0015 connected ratification signer key ID",
+        RATIFICATION_DIGEST,
+    )
+    if signer_key_id not in CONNECTED_ADR_TRUSTED_SIGNER_KEY_IDS:
+        raise ValueError("ADR-0015 connected ratification signer is not activated")
+    envelope = _load_ratification_object(
+        signature_envelope_path,
+        "ADR-0015 connected ratification envelope",
+    )
+    if set(envelope) != {"payloadType", "payload", "signatures"}:
+        raise ValueError("ADR-0015 connected ratification envelope fields differ")
+    supplied_envelope = signature_envelope_path.read_bytes()
+    if supplied_envelope != canonical_json(envelope):
+        raise ValueError("ADR-0015 connected ratification envelope is not canonical JSON")
+    if sha256_bytes(supplied_envelope) != receipt_digest:
+        raise ValueError("ADR-0015 connected ratification receipt digest does not match")
+    if envelope.get("payloadType") != CONNECTED_ADR_SIGNATURE_PAYLOAD_TYPE:
+        raise ValueError("ADR-0015 connected ratification envelope has the wrong payload type")
+    payload = _decode_ratification_base64(
+        envelope.get("payload"),
+        "ADR-0015 connected ratification payload",
+    )
+    try:
+        decision: object = json.loads(
+            payload.decode("utf-8"),
+            object_pairs_hook=_unique_ratification_object,
+        )
+    except (UnicodeDecodeError, json.JSONDecodeError) as error:
+        raise ValueError("ADR-0015 connected ratification payload is invalid JSON") from error
+    if not isinstance(decision, dict) or payload != canonical_json(decision):
+        raise ValueError("ADR-0015 connected ratification payload is not canonical JSON")
+    expected_decision = {
+        "adr_id": "ADR-0015",
+        "decision_digest": decision_digest,
+        "ratified_at": ratified_at,
+        "repository": "mindclade/mindclade",
+        "schema_version": "mindclade.adr-ratification/v1",
+        "status": "ratified",
+        "subject_revision": subject_revision,
+    }
+    if decision != expected_decision:
+        raise ValueError("ADR-0015 connected ratification payload differs from the index")
+    raw_signatures = envelope.get("signatures")
+    if not isinstance(raw_signatures, list) or len(raw_signatures) != 1:
+        raise ValueError("ADR-0015 connected ratification requires exactly one signature")
+    raw_signature = raw_signatures[0]
+    if not isinstance(raw_signature, dict) or set(raw_signature) != {"keyid", "sig"}:
+        raise ValueError("ADR-0015 connected ratification signature fields differ")
+    if raw_signature.get("keyid") != signer_key_id:
+        raise ValueError("ADR-0015 connected ratification signer key ID differs")
+    try:
+        loaded_key = serialization.load_pem_public_key(public_key_path.read_bytes())
+    except (OSError, TypeError, ValueError) as error:
+        raise ValueError("ADR-0015 connected ratification public key is invalid") from error
+    if not isinstance(loaded_key, ed25519.Ed25519PublicKey):
+        raise ValueError("ADR-0015 connected ratification key must use Ed25519")
+    encoded_key = loaded_key.public_bytes(
+        encoding=serialization.Encoding.DER,
+        format=serialization.PublicFormat.SubjectPublicKeyInfo,
+    )
+    if sha256_bytes(encoded_key) != signer_key_id:
+        raise ValueError("ADR-0015 connected ratification signer does not bind its key")
+    signature = _decode_ratification_base64(
+        raw_signature.get("sig"),
+        "ADR-0015 connected ratification signature",
+    )
+    try:
+        loaded_key.verify(
+            signature,
+            _dsse_pae(CONNECTED_ADR_SIGNATURE_PAYLOAD_TYPE, payload),
+        )
+    except InvalidSignature as error:
+        raise ValueError("ADR-0015 connected ratification signature is invalid") from error
+
+    head_revision = run(["git", "rev-parse", "HEAD"], cwd=root).stdout.decode().strip()
+    if RATIFICATION_REVISION.fullmatch(head_revision) is None:
+        raise ValueError("current revision is not an exact Git commit")
+    try:
+        run(["git", "merge-base", "--is-ancestor", subject_revision, head_revision], cwd=root)
+    except RuntimeError as error:
+        raise ValueError(
+            "ADR-0015 connected ratification subject is not an ancestor of the candidate"
+        ) from error
+    return {
+        "connected_ratification_decision_digest": decision_digest,
+        "connected_ratification_receipt_digest": receipt_digest,
+        "connected_ratification_signer_key_id": signer_key_id,
+        "connected_ratification_subject_revision": subject_revision,
+        "connected_ratified_at": ratified_at,
+    }
+
+
+def validate_ratification_signature(
+    evidence: Mapping[str, Any],
+    *,
+    signature_envelope_path: Path,
+    public_key_path: Path,
+    expected_signer_key_id: str,
+) -> dict[str, str]:
+    """Verify one exact DSSE/Ed25519 authorization for the evidence object."""
+
+    from cryptography.exceptions import InvalidSignature
+    from cryptography.hazmat.primitives import serialization
+    from cryptography.hazmat.primitives.asymmetric import ed25519
+
+    canonical_json, _ = _ratification_json_contract()
+    expected_key_id = _ratification_string(
+        expected_signer_key_id,
+        "expected ratification signer key ID",
+        RATIFICATION_DIGEST,
+    )
+    if expected_key_id not in RATIFICATION_TRUSTED_SIGNER_KEY_IDS:
+        raise ValueError("ratification signer is not activated by connected repository authority")
+    envelope = cast(
+        dict[str, object],
+        _load_ratification_object(
+            signature_envelope_path,
+            "training evidence signature envelope",
+        ),
+    )
+    canonical_envelope = canonical_json(envelope)
+    try:
+        supplied_envelope = signature_envelope_path.read_bytes()
+    except OSError as error:
+        raise ValueError(f"cannot read training evidence signature envelope: {error}") from error
+    if supplied_envelope != canonical_envelope:
+        raise ValueError("training evidence signature envelope must use canonical JSON bytes")
+    if set(envelope) != {"payloadType", "payload", "signatures"}:
+        raise ValueError("training evidence signature envelope has missing or unknown fields")
+    if envelope.get("payloadType") != TRAINING_EVIDENCE_SIGNATURE_PAYLOAD_TYPE:
+        raise ValueError("training evidence signature envelope has the wrong payload type")
+    canonical_evidence = canonical_json(evidence)
+    payload = _decode_ratification_base64(
+        envelope.get("payload"),
+        "training evidence signature payload",
+    )
+    if payload != canonical_evidence:
+        raise ValueError("training evidence signature does not bind the exact evidence object")
+    raw_signatures = envelope.get("signatures")
+    if not isinstance(raw_signatures, list):
+        raise ValueError("training evidence must have exactly one qualified signature")
+    signatures = cast(list[object], raw_signatures)
+    if len(signatures) != 1:
+        raise ValueError("training evidence must have exactly one qualified signature")
+    raw_signature_value = signatures[0]
+    if not isinstance(raw_signature_value, dict):
+        raise ValueError("training evidence signature has missing or unknown fields")
+    raw_signature = cast(dict[str, object], raw_signature_value)
+    if set(raw_signature) != {"keyid", "sig"}:
+        raise ValueError("training evidence signature has missing or unknown fields")
+    if raw_signature.get("keyid") != expected_key_id:
+        raise ValueError("training evidence signer key ID does not match the trusted input")
+
+    try:
+        loaded_key = serialization.load_pem_public_key(public_key_path.read_bytes())
+    except (OSError, TypeError, ValueError) as error:
+        raise ValueError("ratification public key is not a valid PEM public key") from error
+    if not isinstance(loaded_key, ed25519.Ed25519PublicKey):
+        raise ValueError("ratification public key must use Ed25519")
+    encoded_key = loaded_key.public_bytes(
+        encoding=serialization.Encoding.DER,
+        format=serialization.PublicFormat.SubjectPublicKeyInfo,
+    )
+    if sha256_bytes(encoded_key) != expected_key_id:
+        raise ValueError("ratification signer key ID does not bind the supplied public key")
+    signature = _decode_ratification_base64(
+        raw_signature.get("sig"),
+        "training evidence signature",
+    )
+    try:
+        loaded_key.verify(
+            signature,
+            _dsse_pae(TRAINING_EVIDENCE_SIGNATURE_PAYLOAD_TYPE, payload),
+        )
+    except InvalidSignature as error:
+        raise ValueError("training evidence signature verification failed") from error
+    return {
+        "signature_envelope_digest": sha256_bytes(supplied_envelope),
+        "signature_payload_type": TRAINING_EVIDENCE_SIGNATURE_PAYLOAD_TYPE,
+        "signer_key_id": expected_key_id,
+    }
+
+
 def ratification_bindings(
     root: Path,
     *,
@@ -2128,13 +2596,27 @@ def validate_training_vertical_evidence(
     evidence_path: Path,
     *,
     bindings: Mapping[str, Any],
-) -> tuple[dict[str, Any], str]:
-    """Validate the closed evidence gate for the one-time v1 ratification."""
+    signature_envelope_path: Path,
+    public_key_path: Path,
+    expected_signer_key_id: str,
+    trusted_context_path: Path,
+) -> tuple[dict[str, Any], str, dict[str, str]]:
+    """Validate signed protected evidence for the one-time v1 ratification."""
 
-    evidence = load_json(evidence_path)
+    evidence_path = evidence_path.resolve()
+    if not evidence_path.is_relative_to(root.resolve()):
+        raise ValueError("training vertical evidence must be a repository-owned receipt")
+    evidence = _load_ratification_object(evidence_path, "training vertical evidence")
     if evidence.get("schema_version") != "mindclade.training-vertical-evidence/v2":
         raise ValueError("training vertical evidence has an unsupported schema_version")
-    expected_fields = {"checks", "schema_version", "status", *RATIFICATION_BINDING_FIELDS}
+    expected_fields = {
+        "approval",
+        "checks",
+        "protected_context",
+        "schema_version",
+        "status",
+        *RATIFICATION_BINDING_FIELDS,
+    }
     if set(evidence) != expected_fields:
         raise ValueError(
             "training vertical evidence fields differ: "
@@ -2143,6 +2625,16 @@ def validate_training_vertical_evidence(
         )
     if evidence.get("status") != "passed":
         raise ValueError("training vertical evidence is not passed")
+    canonical_json, validate_trusted_context = _ratification_json_contract()
+    canonical_evidence = canonical_json(evidence)
+    if evidence_path.read_bytes() != canonical_evidence:
+        raise ValueError("training vertical evidence must use canonical JSON bytes")
+    signature = validate_ratification_signature(
+        evidence,
+        signature_envelope_path=signature_envelope_path,
+        public_key_path=public_key_path,
+        expected_signer_key_id=expected_signer_key_id,
+    )
     if set(bindings) != set(RATIFICATION_BINDING_FIELDS):
         raise ValueError("internal ratification binding set is incomplete")
     for name, expected in sorted(bindings.items()):
@@ -2164,16 +2656,165 @@ def validate_training_vertical_evidence(
         if not isinstance(raw_check, dict):
             raise ValueError(f"training vertical evidence check {name!r} is not an object")
         check = cast(dict[str, object], raw_check)
-        receipt_digest = check.get("receipt_digest")
-        if check.get("status") != "passed" or not isinstance(receipt_digest, str):
-            raise ValueError(f"training vertical evidence check {name!r} is not passed")
-        if re.fullmatch(r"sha256:[0-9a-f]{64}", receipt_digest) is None:
+        if set(check) != set(TRAINING_EVIDENCE_CHECK_FIELDS):
             raise ValueError(
-                f"training vertical evidence check {name!r} has an invalid receipt digest"
+                f"training vertical evidence check {name!r} fields differ: "
+                f"missing={sorted(TRAINING_EVIDENCE_CHECK_FIELDS - set(check))}, "
+                f"unexpected={sorted(set(check) - TRAINING_EVIDENCE_CHECK_FIELDS)}"
             )
-    if evidence_path.resolve().is_relative_to(root.resolve()) is False:
-        raise ValueError("training vertical evidence must be a repository-owned receipt")
-    return evidence, sha256_file(evidence_path)
+        if check.get("status") != "passed":
+            raise ValueError(f"training vertical evidence check {name!r} is not passed")
+        for digest_name in ("receipt_digest", "result_artifact_digest"):
+            _ratification_string(
+                check.get(digest_name),
+                f"training vertical evidence check {name!r} {digest_name}",
+                RATIFICATION_DIGEST,
+            )
+        _ratification_string(
+            check.get("producer_identity"),
+            f"training vertical evidence check {name!r} producer_identity",
+            RATIFICATION_PRINCIPAL_IDENTITY,
+        )
+        if check.get("producer_identity") != TRAINING_EVIDENCE_PRODUCER_IDENTITIES[name]:
+            raise ValueError(
+                f"training vertical evidence check {name!r} has an unauthorized producer"
+            )
+    producer_identities = {
+        cast(str, cast(Mapping[str, object], check)["producer_identity"])
+        for check in checks.values()
+    }
+    if len(producer_identities) != len(TRAINING_VERTICAL_EVIDENCE_CHECKS):
+        raise ValueError("training vertical evidence producers must be independent")
+    receipt_digests = {
+        cast(str, cast(Mapping[str, object], check)["receipt_digest"]) for check in checks.values()
+    }
+    if len(receipt_digests) != len(TRAINING_VERTICAL_EVIDENCE_CHECKS):
+        raise ValueError("training vertical evidence must bind six distinct receipts")
+    result_artifact_digests = {
+        cast(str, cast(Mapping[str, object], check)["result_artifact_digest"])
+        for check in checks.values()
+    }
+    if len(result_artifact_digests) != len(TRAINING_VERTICAL_EVIDENCE_CHECKS):
+        raise ValueError("training vertical evidence must bind six distinct result artifacts")
+
+    raw_approval = evidence.get("approval")
+    if not isinstance(raw_approval, dict):
+        raise ValueError("training vertical evidence approval must be an object")
+    approval = cast(dict[str, object], raw_approval)
+    if set(approval) != set(TRAINING_EVIDENCE_APPROVAL_FIELDS):
+        raise ValueError("training vertical evidence approval has missing or unknown fields")
+    approval_digest = _ratification_string(
+        approval.get("approval_digest"),
+        "training vertical evidence approval_digest",
+        RATIFICATION_DIGEST,
+    )
+    approval_id = _ratification_string(
+        approval.get("approval_id"),
+        "training vertical evidence approval_id",
+        RATIFICATION_APPROVAL_ID,
+    )
+    _ratification_utc_string(
+        approval.get("approved_at"),
+        "training vertical evidence approved_at",
+    )
+    reviewer_identity = _ratification_string(
+        approval.get("reviewer_identity"),
+        "training vertical evidence reviewer_identity",
+        RATIFICATION_PRINCIPAL_IDENTITY,
+    )
+    if reviewer_identity not in TRAINING_EVIDENCE_REVIEWER_IDENTITIES:
+        raise ValueError("training vertical evidence reviewer is not authorized by policy")
+    if reviewer_identity in producer_identities:
+        raise ValueError("training vertical evidence reviewer is not independent")
+
+    raw_protected_context = evidence.get("protected_context")
+    if not isinstance(raw_protected_context, dict):
+        raise ValueError("training vertical evidence protected_context must be an object")
+    protected_context = cast(dict[str, object], raw_protected_context)
+    if set(protected_context) != set(TRAINING_EVIDENCE_PROTECTED_CONTEXT_FIELDS):
+        raise ValueError(
+            "training vertical evidence protected_context has missing or unknown fields"
+        )
+    if protected_context.get("source_revision") != bindings["source_revision"]:
+        raise ValueError("training vertical evidence protected context is stale")
+    expected_protected_values = {
+        "pipeline_class": "protected",
+        "source_trust": "protected",
+        "execution_tier": "trusted",
+    }
+    for field, expected in expected_protected_values.items():
+        if protected_context.get(field) != expected:
+            raise ValueError(f"training vertical evidence protected context has invalid {field}")
+    context_digest = _ratification_string(
+        protected_context.get("context_digest"),
+        "training vertical evidence context_digest",
+        RATIFICATION_DIGEST,
+    )
+    pipeline_definition_revision = _ratification_string(
+        protected_context.get("pipeline_definition_revision"),
+        "training vertical evidence pipeline_definition_revision",
+        RATIFICATION_REVISION,
+    )
+    launcher_identity = _ratification_string(
+        protected_context.get("launcher_identity"),
+        "training vertical evidence launcher_identity",
+        RATIFICATION_BUILD_IDENTITY,
+    )
+    trusted_context = _load_ratification_object(
+        trusted_context_path,
+        "ratification trusted context",
+    )
+    if trusted_context_path.read_bytes() != canonical_json(trusted_context):
+        raise ValueError("ratification trusted context must use canonical JSON bytes")
+    try:
+        validate_trusted_context(
+            trusted_context,
+            context_digest=context_digest,
+            pipeline_definition_revision=pipeline_definition_revision,
+        )
+    except ValueError as error:
+        raise ValueError(f"ratification trusted context is invalid: {error}") from error
+    if trusted_context.get("launcher_identity") != launcher_identity:
+        raise ValueError(
+            "training vertical evidence launcher identity does not match trusted context"
+        )
+    trusted_projection = {
+        "context_digest": context_digest,
+        "execution_tier": trusted_context.get("execution_tier"),
+        "launcher_identity": trusted_context.get("launcher_identity"),
+        "pipeline_class": trusted_context.get("pipeline_class"),
+        "pipeline_definition_revision": trusted_context.get("pipeline_definition_revision"),
+        "source_revision": trusted_context.get("source_revision"),
+        "source_trust": trusted_context.get("source_trust"),
+    }
+    for field, expected in trusted_projection.items():
+        if protected_context.get(field) != expected:
+            raise ValueError(
+                f"training vertical evidence does not bind trusted context field {field}"
+            )
+    if trusted_context.get("repository") != "mindclade/mindclade":
+        raise ValueError("ratification trusted context has the wrong repository")
+    protected_build_identity = _ratification_string(
+        "buildkite://mindclade/mindclade/contexts/" + context_digest.removeprefix("sha256:"),
+        "derived protected build identity",
+        RATIFICATION_BUILD_IDENTITY,
+    )
+    if protected_context.get("protected_build_identity") != protected_build_identity:
+        raise ValueError(
+            "training vertical evidence protected build identity is not derived from its "
+            "authenticated context"
+        )
+
+    authorization = {
+        **signature,
+        "approval_digest": approval_digest,
+        "approval_id": approval_id,
+        "context_digest": context_digest,
+        "pipeline_definition_revision": pipeline_definition_revision,
+        "protected_build_identity": protected_build_identity,
+        "reviewer_identity": reviewer_identity,
+    }
+    return evidence, sha256_bytes(canonical_evidence), authorization
 
 
 def ratified_protobuf_baseline(
@@ -2182,6 +2823,7 @@ def ratified_protobuf_baseline(
     bindings: Mapping[str, Any],
     evidence: Mapping[str, Any],
     evidence_digest: str,
+    authorization: Mapping[str, str],
 ) -> bytes:
     """Construct the first enforceable v1 baseline after the evidence gate passes."""
 
@@ -2195,6 +2837,7 @@ def ratified_protobuf_baseline(
             ),
             "evidence_digest": evidence_digest,
             "evidence_schema_version": evidence["schema_version"],
+            "protected_authorization": dict(sorted(authorization.items())),
             "bindings": dict(bindings),
             "qualification_results": {
                 name: cast(Mapping[str, str], check)["receipt_digest"]
@@ -2453,6 +3096,152 @@ def expand_google_http_path(path_template: str) -> tuple[str, list[str]]:
     return expanded, parameter_names
 
 
+PUBLIC_OPERATION_KIND_BY_STREAM = {
+    "STREAM_PROJECTION_NONE": "unary",
+    "STREAM_PROJECTION_BINARY": "server-stream",
+    "STREAM_PROJECTION_SSE": "sse",
+}
+PUBLIC_OPERATION_MEDIA_TYPE = {
+    "unary": "application/json",
+    "server-stream": "application/octet-stream",
+    "sse": "text/event-stream",
+}
+PUBLIC_SSE_METHOD = "mindclade.api.v1.MindcladeService.WatchOperation"
+PUBLIC_SSE_REQUEST_MODEL = "mindclade.api.v1.WatchOperationRequest"
+PUBLIC_SSE_EVENT_MODEL = "mindclade.api.v1.OperationEvent"
+PUBLIC_SSE_ERROR_MODEL = "mindclade.api.v1.PublicError"
+PUBLIC_SSE_ERROR_EVENT_TYPE = "error"
+PUBLIC_SSE_PATH_TEMPLATE = "/v1/{name=tenants/*/projects/*/operations/*}:watch"
+PUBLIC_SSE_RESUME_HEADER = "Last-Event-ID"
+PUBLIC_SSE_RESPONSE_HEADERS = frozenset({"Cache-Control", "X-Accel-Buffering"})
+PUBLIC_SSE_NON_SUCCESS_STATUS = frozenset({400, 401, 403, 404, 410, 412, 500})
+OPENAPI_HTTP_METHODS = frozenset({"delete", "get", "patch", "post", "put"})
+
+
+def public_operation_stream_metadata(
+    method: protobuf_descriptor.MethodDescriptor,
+    contract: _PublicHTTPContract,
+    *,
+    http_body: str,
+    http_method: str,
+    http_path_template: str,
+    stream_projection: str,
+) -> tuple[str, dict[str, Any] | None]:
+    """Validate one public stream binding and return descriptor-owned metadata."""
+    if method.client_streaming:
+        raise ValueError(f"public HTTP RPC uses unapproved client streaming: {method.full_name}")
+    operation_kind = PUBLIC_OPERATION_KIND_BY_STREAM.get(stream_projection)
+    if operation_kind is None:
+        raise ValueError(f"public RPC has an unspecified stream projection: {method.full_name}")
+    expects_server_stream = operation_kind in {"server-stream", "sse"}
+    if method.server_streaming != expects_server_stream:
+        raise ValueError(
+            "public RPC stream projection/server-streaming mismatch: "
+            f"{method.full_name} declares {stream_projection}"
+        )
+
+    has_sse_policy = cast(protobuf_message.Message, contract).HasField("sse")
+    if operation_kind != "sse":
+        if has_sse_policy:
+            raise ValueError(f"non-SSE public RPC declares an SSE policy: {method.full_name}")
+        return operation_kind, None
+
+    if (
+        method.full_name != PUBLIC_SSE_METHOD
+        or method.input_type.full_name != PUBLIC_SSE_REQUEST_MODEL
+        or method.output_type.full_name != PUBLIC_SSE_EVENT_MODEL
+    ):
+        raise ValueError(
+            "unsupported public SSE binding; only "
+            f"{PUBLIC_SSE_METHOD}: {PUBLIC_SSE_REQUEST_MODEL} -> "
+            f"{PUBLIC_SSE_EVENT_MODEL} is approved"
+        )
+    error_field = method.output_type.fields_by_name.get("error")
+    if (
+        error_field is None
+        or error_field.number != 9
+        or error_field.message_type is None
+        or error_field.message_type.full_name != PUBLIC_SSE_ERROR_MODEL
+    ):
+        raise ValueError(
+            "public SSE event model must expose descriptor-owned PublicError field: "
+            f"{method.full_name}"
+        )
+    if http_method != "GET":
+        raise ValueError(f"public SSE RPC must use GET: {method.full_name}")
+    if http_path_template != PUBLIC_SSE_PATH_TEMPLATE:
+        raise ValueError(f"public SSE RPC has an unsupported route: {method.full_name}")
+    if http_body or contract.request_body_required:
+        raise ValueError(f"public SSE RPC must not declare a request body: {method.full_name}")
+    resume_headers = [
+        header
+        for header in contract.request_headers
+        if header.casefold() == PUBLIC_SSE_RESUME_HEADER.casefold()
+    ]
+    if len(contract.request_headers) != 1 or len(resume_headers) != 1:
+        raise ValueError(
+            "public SSE RPC must declare exactly one "
+            f"{PUBLIC_SSE_RESUME_HEADER} header: {method.full_name}"
+        )
+    if contract.required_request_headers:
+        raise ValueError(f"public SSE request headers must remain optional: {method.full_name}")
+    if not contract.bearer_auth:
+        raise ValueError(f"public SSE RPC must require bearer authentication: {method.full_name}")
+    if list(contract.success_status) != [200]:
+        raise ValueError(f"public SSE RPC must declare only HTTP 200 success: {method.full_name}")
+    if len(contract.non_success_status) != len(PUBLIC_SSE_NON_SUCCESS_STATUS) or set(
+        contract.non_success_status
+    ) != set(PUBLIC_SSE_NON_SUCCESS_STATUS):
+        raise ValueError(
+            "public SSE RPC must declare the exact pre-commit failure status set: "
+            f"{method.full_name}"
+        )
+    response_headers = {header.casefold() for header in contract.response_headers}
+    expected_response_headers = {header.casefold() for header in PUBLIC_SSE_RESPONSE_HEADERS}
+    if (
+        len(contract.response_headers) != len(PUBLIC_SSE_RESPONSE_HEADERS)
+        or response_headers != expected_response_headers
+    ):
+        raise ValueError(
+            "public SSE RPC must declare Cache-Control and X-Accel-Buffering responses: "
+            f"{method.full_name}"
+        )
+    if not has_sse_policy:
+        raise ValueError(f"public SSE RPC has no SSE policy: {method.full_name}")
+
+    sse = contract.sse
+    if sse.retry_milliseconds <= 0:
+        raise ValueError(f"public SSE retry interval must be positive: {method.full_name}")
+    if sse.heartbeat_interval_seconds <= 0:
+        raise ValueError(f"public SSE heartbeat interval must be positive: {method.full_name}")
+    for field_name in (
+        "heartbeat_reuses_last_durable_event_id",
+        "replay_acknowledged_terminal_event",
+    ):
+        if not cast(protobuf_message.Message, sse).HasField(field_name):
+            raise ValueError(
+                f"public SSE policy must explicitly set {field_name}: {method.full_name}"
+            )
+    if not sse.heartbeat_reuses_last_durable_event_id:
+        raise ValueError(
+            f"public SSE heartbeat must reuse the last durable event ID: {method.full_name}"
+        )
+    if sse.replay_acknowledged_terminal_event:
+        raise ValueError(
+            f"public SSE must not replay an acknowledged terminal event: {method.full_name}"
+        )
+
+    return operation_kind, {
+        "errorEventType": PUBLIC_SSE_ERROR_EVENT_TYPE,
+        "eventModel": method.output_type.full_name,
+        "resumeHeader": PUBLIC_SSE_RESUME_HEADER,
+        "retryMilliseconds": sse.retry_milliseconds,
+        "heartbeatIntervalSeconds": sse.heartbeat_interval_seconds,
+        "heartbeatReusesLastDurableEventId": sse.heartbeat_reuses_last_durable_event_id,
+        "replayAcknowledgedTerminalEvent": sse.replay_acknowledged_terminal_event,
+    }
+
+
 def raw_openapi_document(
     operations: Sequence[Mapping[str, Any]],
     components: Mapping[str, Mapping[str, Any]],
@@ -2499,11 +3288,11 @@ def raw_openapi_document(
                     header: {"schema": {"type": "string"}}
                     for header in cast(list[str], contract["responseHeaders"])
                 }
-                media_type = (
-                    "text/event-stream"
-                    if contract["stream"] == "STREAM_PROJECTION_SSE"
-                    else "application/json"
-                )
+                operation_kind = cast(str, contract["operationKind"])
+                try:
+                    media_type = PUBLIC_OPERATION_MEDIA_TYPE[operation_kind]
+                except KeyError as error:
+                    raise ValueError(f"unknown public operation kind: {operation_kind}") from error
                 response["content"] = {
                     media_type: {
                         "schema": {
@@ -2523,7 +3312,19 @@ def raw_openapi_document(
             "parameters": parameters,
             "responses": responses,
             "security": [{"bearerAuth": []}] if contract["auth"] == "bearer" else [],
+            "x-mindclade-operation-kind": contract["operationKind"],
         }
+        sse = contract.get("sse")
+        if contract["operationKind"] == "sse":
+            if not isinstance(sse, dict):
+                raise ValueError(
+                    f"SSE operation has no descriptor policy: {contract['operationId']}"
+                )
+            operation["x-mindclade-sse"] = cast(dict[str, Any], sse).copy()
+        elif sse is not None:
+            raise ValueError(
+                f"non-SSE operation has descriptor SSE policy: {contract['operationId']}"
+            )
         body_message = contract.get("bodyMessage")
         if isinstance(body_message, str):
             operation["requestBody"] = {
@@ -2548,7 +3349,7 @@ def raw_openapi_document(
         },
         "x-mindclade-binding-contracts": list(operations),
         "x-mindclade-descriptor-digest": descriptor_digest,
-        "x-mindclade-schema-version": "mindclade.raw-openapi-projection/v3",
+        "x-mindclade-schema-version": "mindclade.raw-openapi-projection/v4",
         "x-mindclade-generator": {
             "name": GENERATOR,
             "source": "tools/codegen/generate_protocols.py",
@@ -2604,6 +3405,14 @@ def public_openapi_projection(descriptor_set: bytes) -> dict[str, Any]:
         if not isinstance(raw_path_template, str):
             raise ValueError(f"public RPC has an invalid HTTP path: {method.full_name}")
         path_template = raw_path_template
+        operation_kind, sse = public_operation_stream_metadata(
+            method,
+            contract,
+            http_body=rule.body,
+            http_method=verb.upper(),
+            http_path_template=path_template,
+            stream_projection=stream_value.name,
+        )
         path_fields = sorted(
             {value.split(".", 1)[0] for value in re.findall(r"\{([^={}]+)=", path_template)}
         )
@@ -2614,37 +3423,74 @@ def public_openapi_projection(descriptor_set: bytes) -> dict[str, Any]:
             for field in method.input_type.fields
             if field.name not in path_fields and field.name != body
         }
-        operations.append(
-            {
-                "auth": "bearer" if contract.bearer_auth else "none",
-                "body": body or None,
-                "bodyMessage": (
-                    body_field.message_type.full_name
-                    if body_field is not None and body_field.message_type is not None
-                    else None
-                ),
-                "method": verb.upper(),
-                "operationId": method.name[0].lower() + method.name[1:],
-                "pathFields": path_fields,
-                "pathTemplate": path_template,
-                "queryFields": query_fields,
-                "requestHeaders": sorted(contract.request_headers),
-                "requiredRequestHeaders": sorted(contract.required_request_headers),
-                "requestBodyRequired": contract.request_body_required,
-                "requestMessage": method.input_type.full_name,
-                "responseHeaders": sorted(contract.response_headers),
-                "responseMessage": method.output_type.full_name,
-                "responseStatus": sorted([*contract.success_status, *contract.non_success_status]),
-                "serverStreaming": method.server_streaming,
-                "stream": stream_value.name,
-                "successStatus": sorted(contract.success_status),
-            }
-        )
+        operation: dict[str, Any] = {
+            "auth": "bearer" if contract.bearer_auth else "none",
+            "body": body or None,
+            "bodyMessage": (
+                body_field.message_type.full_name
+                if body_field is not None and body_field.message_type is not None
+                else None
+            ),
+            "method": verb.upper(),
+            "operationId": method.name[0].lower() + method.name[1:],
+            "operationKind": operation_kind,
+            "pathFields": path_fields,
+            "pathTemplate": path_template,
+            "queryFields": query_fields,
+            "requestHeaders": sorted(contract.request_headers),
+            "requiredRequestHeaders": sorted(contract.required_request_headers),
+            "requestBodyRequired": contract.request_body_required,
+            "requestMessage": method.input_type.full_name,
+            "responseHeaders": sorted(contract.response_headers),
+            "responseMessage": method.output_type.full_name,
+            "responseStatus": sorted([*contract.success_status, *contract.non_success_status]),
+            "serverStreaming": method.server_streaming,
+            "stream": stream_value.name,
+            "successStatus": sorted(contract.success_status),
+        }
+        if sse is not None:
+            operation["sse"] = sse
+        operations.append(operation)
     return raw_openapi_document(
         sorted(operations, key=lambda item: cast(str, item["operationId"])),
         public_protojson_components(pool),
         sha256_bytes(descriptor_set),
     )
+
+
+def project_descriptor_operation_extensions(
+    raw: Mapping[str, Any],
+    curated: dict[str, Any],
+) -> None:
+    """Project descriptor-owned operation metadata into the curated document."""
+    contracts = {
+        cast(str, contract["operationId"]): contract
+        for contract in cast(list[dict[str, Any]], raw["x-mindclade-binding-contracts"])
+    }
+    for path_item in cast(dict[str, dict[str, Any]], curated["paths"]).values():
+        for method, operation in path_item.items():
+            if method not in OPENAPI_HTTP_METHODS:
+                continue
+            operation_id = operation.get("operationId")
+            if not isinstance(operation_id, str) or operation_id not in contracts:
+                continue
+            contract = contracts[operation_id]
+            operation_kind = contract["operationKind"]
+            if (
+                "x-mindclade-operation-kind" in operation
+                and operation["x-mindclade-operation-kind"] != operation_kind
+            ):
+                raise ValueError(f"{operation_id}: descriptor operation-kind drift")
+            operation["x-mindclade-operation-kind"] = operation_kind
+
+            sse = contract.get("sse")
+            if sse is None:
+                if "x-mindclade-sse" in operation:
+                    raise ValueError(f"{operation_id}: unexpected SSE policy")
+                continue
+            if "x-mindclade-sse" in operation and operation["x-mindclade-sse"] != sse:
+                raise ValueError(f"{operation_id}: descriptor SSE-policy drift")
+            operation["x-mindclade-sse"] = json.loads(json.dumps(sse))
 
 
 def resolve_openapi_ref(document: Mapping[str, Any], value: Mapping[str, Any]) -> object:
@@ -2911,6 +3757,14 @@ def validate_curated_bindings(
         method, path, operation = operations[operation_id]
         if method != raw_operation["method"]:
             raise ValueError(f"{operation_id}: HTTP method drift")
+        if operation.get("x-mindclade-operation-kind") != raw_operation["operationKind"]:
+            raise ValueError(f"{operation_id}: descriptor operation-kind drift")
+        expected_sse = raw_operation.get("sse")
+        if expected_sse is None:
+            if "x-mindclade-sse" in operation:
+                raise ValueError(f"{operation_id}: unexpected SSE policy")
+        elif operation.get("x-mindclade-sse") != expected_sse:
+            raise ValueError(f"{operation_id}: descriptor SSE-policy drift")
         expected_path, expected_path_parameters = expand_google_http_path(
             cast(str, raw_operation["pathTemplate"])
         )
@@ -3089,6 +3943,7 @@ def openapi_pipeline_outputs(root: Path, descriptor_set: bytes) -> dict[Path, by
     if not isinstance(overlay.get("paths"), dict):
         raise ValueError("curated OpenAPI document has no paths object")
     curated = curate_openapi_overlay(overlay)
+    project_descriptor_operation_extensions(raw, curated)
     descriptor_digest = raw.get("x-mindclade-descriptor-digest")
     if not isinstance(descriptor_digest, str):
         raise ValueError("raw OpenAPI projection has no descriptor digest")
@@ -3132,6 +3987,469 @@ def openapi_candidate_lock(root: Path, generated: Mapping[Path, bytes]) -> bytes
         )
         + "\n"
     ).encode()
+
+
+def _openapi_local_ref(document: Mapping[str, Any], value: object) -> object:
+    if not isinstance(value, str) or not value.startswith("#/"):
+        raise ValueError(f"ratified OpenAPI contains an unsupported reference: {value!r}")
+    current: object = document
+    for raw_part in value[2:].split("/"):
+        part = raw_part.replace("~1", "/").replace("~0", "~")
+        if not isinstance(current, Mapping) or part not in current:
+            raise ValueError(f"ratified OpenAPI contains an unresolved reference: {value}")
+        current = current[part]
+    return current
+
+
+def _openapi_schema_compatible(
+    baseline_document: Mapping[str, Any],
+    current_document: Mapping[str, Any],
+    baseline: object,
+    current: object,
+    *,
+    request: bool,
+    location: str,
+    visited: set[tuple[str, str, bool]],
+) -> None:
+    """Reject schema changes forbidden by the governed additive-v1 policy."""
+
+    if not isinstance(baseline, Mapping) or not isinstance(current, Mapping):
+        if baseline != current:
+            raise ValueError(f"OpenAPI compatibility break at {location}: schema shape changed")
+        return
+    baseline_schema = cast(Mapping[str, Any], baseline)
+    current_schema = cast(Mapping[str, Any], current)
+    baseline_ref = baseline_schema.get("$ref")
+    current_ref = current_schema.get("$ref")
+    if baseline_ref is not None or current_ref is not None:
+        if not isinstance(baseline_ref, str) or not isinstance(current_ref, str):
+            raise ValueError(f"OpenAPI compatibility break at {location}: reference changed")
+        key = (baseline_ref, current_ref, request)
+        if key in visited:
+            return
+        visited.add(key)
+        _openapi_schema_compatible(
+            baseline_document,
+            current_document,
+            _openapi_local_ref(baseline_document, baseline_ref),
+            _openapi_local_ref(current_document, current_ref),
+            request=request,
+            location=f"{location} ({baseline_ref})",
+            visited=visited,
+        )
+        return
+
+    for field in (
+        "type",
+        "format",
+        "const",
+        "pattern",
+        "contentEncoding",
+        "contentMediaType",
+        "x-mindclade-authoritative-message",
+    ):
+        if baseline_schema.get(field) != current_schema.get(field):
+            raise ValueError(f"OpenAPI compatibility break at {location}: {field} changed")
+    baseline_enum = baseline_schema.get("enum")
+    current_enum = current_schema.get("enum")
+    if baseline_enum is not None:
+        if not isinstance(baseline_enum, list) or not isinstance(current_enum, list):
+            raise ValueError(f"OpenAPI compatibility break at {location}: enum changed")
+        if not all(value in current_enum for value in baseline_enum):
+            raise ValueError(f"OpenAPI compatibility break at {location}: enum value removed")
+
+    lower_bounds = ("minimum", "exclusiveMinimum", "minLength", "minItems", "minProperties")
+    upper_bounds = ("maximum", "exclusiveMaximum", "maxLength", "maxItems", "maxProperties")
+    for field in lower_bounds:
+        old = baseline_schema.get(field)
+        new = current_schema.get(field)
+        if old is None:
+            if new is not None:
+                raise ValueError(f"OpenAPI compatibility break at {location}: {field} was added")
+        elif new is not None and cast(float, new) > cast(float, old):
+            raise ValueError(f"OpenAPI compatibility break at {location}: {field} was tightened")
+    for field in upper_bounds:
+        old = baseline_schema.get(field)
+        new = current_schema.get(field)
+        if old is None:
+            if new is not None:
+                raise ValueError(f"OpenAPI compatibility break at {location}: {field} was added")
+        elif new is not None and cast(float, new) < cast(float, old):
+            raise ValueError(f"OpenAPI compatibility break at {location}: {field} was tightened")
+    if (
+        baseline_schema.get("additionalProperties", True) is not False
+        and current_schema.get("additionalProperties", True) is False
+    ):
+        raise ValueError(
+            f"OpenAPI compatibility break at {location}: additional properties were forbidden"
+        )
+
+    baseline_properties = baseline_schema.get("properties", {})
+    current_properties = current_schema.get("properties", {})
+    if not isinstance(baseline_properties, Mapping) or not isinstance(current_properties, Mapping):
+        raise ValueError(f"OpenAPI compatibility break at {location}: properties changed")
+    removed = set(baseline_properties) - set(current_properties)
+    if removed:
+        raise ValueError(
+            f"OpenAPI compatibility break at {location}: properties removed {sorted(removed)}"
+        )
+    baseline_required = baseline_schema.get("required", [])
+    current_required = current_schema.get("required", [])
+    if not isinstance(baseline_required, list) or not isinstance(current_required, list):
+        raise ValueError(f"OpenAPI compatibility break at {location}: required fields changed")
+    if request:
+        newly_required = set(current_required) - set(baseline_required)
+        if newly_required:
+            raise ValueError(
+                f"OpenAPI compatibility break at {location}: request fields became required "
+                f"{sorted(newly_required)}"
+            )
+    for name, old_property in baseline_properties.items():
+        _openapi_schema_compatible(
+            baseline_document,
+            current_document,
+            old_property,
+            current_properties[name],
+            request=request,
+            location=f"{location}.properties.{name}",
+            visited=visited,
+        )
+
+    if "items" in baseline_schema or "items" in current_schema:
+        if "items" not in baseline_schema or "items" not in current_schema:
+            raise ValueError(f"OpenAPI compatibility break at {location}: array items changed")
+        _openapi_schema_compatible(
+            baseline_document,
+            current_document,
+            baseline_schema["items"],
+            current_schema["items"],
+            request=request,
+            location=f"{location}.items",
+            visited=visited,
+        )
+    for composition in ("allOf", "anyOf", "oneOf"):
+        old_shapes = baseline_schema.get(composition)
+        new_shapes = current_schema.get(composition)
+        if old_shapes is None and new_shapes is None:
+            continue
+        if (
+            not isinstance(old_shapes, list)
+            or not isinstance(new_shapes, list)
+            or len(old_shapes) != len(new_shapes)
+        ):
+            raise ValueError(f"OpenAPI compatibility break at {location}: {composition} changed")
+        for index, old_shape in enumerate(old_shapes):
+            _openapi_schema_compatible(
+                baseline_document,
+                current_document,
+                old_shape,
+                new_shapes[index],
+                request=request,
+                location=f"{location}.{composition}[{index}]",
+                visited=visited,
+            )
+
+
+def validate_openapi_compatibility(
+    baseline_bytes: bytes,
+    current_bytes: bytes,
+) -> None:
+    """Enforce the post-Stage-5 additive compatibility policy."""
+
+    baseline_value: object = yaml.safe_load(baseline_bytes)
+    current_value: object = yaml.safe_load(current_bytes)
+    if not isinstance(baseline_value, dict) or not isinstance(current_value, dict):
+        raise ValueError("ratified and candidate OpenAPI documents must be objects")
+    baseline = cast(dict[str, Any], baseline_value)
+    current = cast(dict[str, Any], current_value)
+    for field in ("openapi", "jsonSchemaDialect", "security"):
+        if baseline.get(field) != current.get(field):
+            raise ValueError(f"OpenAPI compatibility break: top-level {field} changed")
+    baseline_paths = baseline.get("paths")
+    current_paths = current.get("paths")
+    if not isinstance(baseline_paths, Mapping) or not isinstance(current_paths, Mapping):
+        raise ValueError("ratified and candidate OpenAPI paths must be objects")
+    http_methods = {"delete", "get", "head", "options", "patch", "post", "put", "trace"}
+    for path, raw_baseline_path in baseline_paths.items():
+        raw_current_path = current_paths.get(path)
+        if not isinstance(raw_baseline_path, Mapping) or not isinstance(raw_current_path, Mapping):
+            raise ValueError(f"OpenAPI compatibility break: path removed {path}")
+        for method, raw_baseline_operation in raw_baseline_path.items():
+            if method not in http_methods:
+                continue
+            raw_current_operation = raw_current_path.get(method)
+            if not isinstance(raw_baseline_operation, Mapping) or not isinstance(
+                raw_current_operation, Mapping
+            ):
+                raise ValueError(f"OpenAPI compatibility break: operation removed {method} {path}")
+            old_operation = cast(Mapping[str, Any], raw_baseline_operation)
+            new_operation = cast(Mapping[str, Any], raw_current_operation)
+            location = f"{method.upper()} {path}"
+            for field in (
+                "operationId",
+                "security",
+                "x-mindclade-operation-kind",
+                "x-mindclade-sse",
+            ):
+                if old_operation.get(field) != new_operation.get(field):
+                    raise ValueError(f"OpenAPI compatibility break at {location}: {field} changed")
+
+            def resolved_parameters(
+                document: Mapping[str, Any],
+                operation: Mapping[str, Any],
+                operation_location: str,
+            ) -> dict[tuple[str, str], Mapping[str, Any]]:
+                result: dict[tuple[str, str], Mapping[str, Any]] = {}
+                raw_parameters = operation.get("parameters", [])
+                if not isinstance(raw_parameters, list):
+                    raise ValueError(
+                        f"OpenAPI compatibility break at {operation_location}: parameters changed"
+                    )
+                for raw_parameter in raw_parameters:
+                    parameter = raw_parameter
+                    if isinstance(parameter, Mapping) and "$ref" in parameter:
+                        parameter = _openapi_local_ref(document, parameter["$ref"])
+                    if not isinstance(parameter, Mapping):
+                        raise ValueError(
+                            "OpenAPI compatibility break at "
+                            f"{operation_location}: parameter changed"
+                        )
+                    key = (str(parameter.get("in")), str(parameter.get("name")))
+                    if key in result:
+                        raise ValueError(
+                            "OpenAPI compatibility break at "
+                            f"{operation_location}: duplicate parameter {key}"
+                        )
+                    result[key] = cast(Mapping[str, Any], parameter)
+                return result
+
+            old_parameters = resolved_parameters(baseline, old_operation, location)
+            new_parameters = resolved_parameters(current, new_operation, location)
+            for key, old_parameter in old_parameters.items():
+                new_parameter = new_parameters.get(key)
+                if new_parameter is None:
+                    raise ValueError(
+                        f"OpenAPI compatibility break at {location}: parameter removed {key}"
+                    )
+                if not old_parameter.get("required", False) and new_parameter.get(
+                    "required", False
+                ):
+                    raise ValueError(
+                        f"OpenAPI compatibility break at {location}: "
+                        f"parameter became required {key}"
+                    )
+                for field in ("style", "explode", "allowReserved"):
+                    if old_parameter.get(field) != new_parameter.get(field):
+                        raise ValueError(
+                            f"OpenAPI compatibility break at {location}: "
+                            f"parameter {key} {field} changed"
+                        )
+                _openapi_schema_compatible(
+                    baseline,
+                    current,
+                    old_parameter.get("schema", {}),
+                    new_parameter.get("schema", {}),
+                    request=True,
+                    location=f"{location} parameter {key}",
+                    visited=set(),
+                )
+            for key, parameter in new_parameters.items():
+                if key not in old_parameters and parameter.get("required", False):
+                    raise ValueError(
+                        f"OpenAPI compatibility break at {location}: new required parameter {key}"
+                    )
+
+            old_body = old_operation.get("requestBody")
+            new_body = new_operation.get("requestBody")
+            if old_body is not None or new_body is not None:
+                if isinstance(old_body, Mapping) and "$ref" in old_body:
+                    old_body = _openapi_local_ref(baseline, old_body["$ref"])
+                if isinstance(new_body, Mapping) and "$ref" in new_body:
+                    new_body = _openapi_local_ref(current, new_body["$ref"])
+                if old_body is None:
+                    if not isinstance(new_body, Mapping) or new_body.get("required", False):
+                        raise ValueError(
+                            f"OpenAPI compatibility break at {location}: required body added"
+                        )
+                elif not isinstance(old_body, Mapping) or not isinstance(new_body, Mapping):
+                    raise ValueError(f"OpenAPI compatibility break at {location}: body removed")
+                else:
+                    if not old_body.get("required", False) and new_body.get("required", False):
+                        raise ValueError(
+                            f"OpenAPI compatibility break at {location}: body became required"
+                        )
+                    old_content = old_body.get("content", {})
+                    new_content = new_body.get("content", {})
+                    if not isinstance(old_content, Mapping) or not isinstance(new_content, Mapping):
+                        raise ValueError(
+                            f"OpenAPI compatibility break at {location}: body content changed"
+                        )
+                    for media_type, old_media in old_content.items():
+                        new_media = new_content.get(media_type)
+                        if not isinstance(old_media, Mapping) or not isinstance(new_media, Mapping):
+                            raise ValueError(
+                                f"OpenAPI compatibility break at {location}: "
+                                "request media type removed"
+                            )
+                        _openapi_schema_compatible(
+                            baseline,
+                            current,
+                            old_media.get("schema", {}),
+                            new_media.get("schema", {}),
+                            request=True,
+                            location=f"{location} request {media_type}",
+                            visited=set(),
+                        )
+
+            old_responses = old_operation.get("responses")
+            new_responses = new_operation.get("responses")
+            if not isinstance(old_responses, Mapping) or not isinstance(new_responses, Mapping):
+                raise ValueError(f"OpenAPI compatibility break at {location}: responses changed")
+            for status, old_response_value in old_responses.items():
+                new_response_value = new_responses.get(status)
+                old_response = old_response_value
+                new_response = new_response_value
+                if isinstance(old_response, Mapping) and "$ref" in old_response:
+                    old_response = _openapi_local_ref(baseline, old_response["$ref"])
+                if isinstance(new_response, Mapping) and "$ref" in new_response:
+                    new_response = _openapi_local_ref(current, new_response["$ref"])
+                if not isinstance(old_response, Mapping) or not isinstance(new_response, Mapping):
+                    raise ValueError(
+                        f"OpenAPI compatibility break at {location}: response removed {status}"
+                    )
+                old_headers = old_response.get("headers", {})
+                new_headers = new_response.get("headers", {})
+                if not isinstance(old_headers, Mapping) or not isinstance(new_headers, Mapping):
+                    raise ValueError(
+                        f"OpenAPI compatibility break at {location}: response headers changed"
+                    )
+                for header_name, old_header_value in old_headers.items():
+                    new_header_value = new_headers.get(header_name)
+                    old_header = old_header_value
+                    new_header = new_header_value
+                    if isinstance(old_header, Mapping) and "$ref" in old_header:
+                        old_header = _openapi_local_ref(baseline, old_header["$ref"])
+                    if isinstance(new_header, Mapping) and "$ref" in new_header:
+                        new_header = _openapi_local_ref(current, new_header["$ref"])
+                    if not isinstance(old_header, Mapping) or not isinstance(new_header, Mapping):
+                        raise ValueError(
+                            f"OpenAPI compatibility break at {location}: "
+                            f"response header removed {status} {header_name}"
+                        )
+                    _openapi_schema_compatible(
+                        baseline,
+                        current,
+                        old_header.get("schema", {}),
+                        new_header.get("schema", {}),
+                        request=False,
+                        location=f"{location} response {status} header {header_name}",
+                        visited=set(),
+                    )
+                old_content = old_response.get("content", {})
+                new_content = new_response.get("content", {})
+                if not isinstance(old_content, Mapping) or not isinstance(new_content, Mapping):
+                    raise ValueError(
+                        f"OpenAPI compatibility break at {location}: response content changed"
+                    )
+                for media_type, old_media in old_content.items():
+                    new_media = new_content.get(media_type)
+                    if not isinstance(old_media, Mapping) or not isinstance(new_media, Mapping):
+                        raise ValueError(
+                            f"OpenAPI compatibility break at {location}: "
+                            "response media type removed"
+                        )
+                    _openapi_schema_compatible(
+                        baseline,
+                        current,
+                        old_media.get("schema", {}),
+                        new_media.get("schema", {}),
+                        request=False,
+                        location=f"{location} response {status} {media_type}",
+                        visited=set(),
+                    )
+
+    baseline_schemas = baseline.get("components", {}).get("schemas", {})
+    current_schemas = current.get("components", {}).get("schemas", {})
+    if not isinstance(baseline_schemas, Mapping) or not isinstance(current_schemas, Mapping):
+        raise ValueError("OpenAPI compatibility break: component schemas changed")
+    for name, baseline_schema in baseline_schemas.items():
+        if name not in current_schemas:
+            raise ValueError(f"OpenAPI compatibility break: schema removed {name}")
+        _openapi_schema_compatible(
+            baseline,
+            current,
+            baseline_schema,
+            current_schemas[name],
+            request=False,
+            location=f"components.schemas.{name}",
+            visited=set(),
+        )
+
+
+def ratified_openapi_baseline(
+    published_openapi: bytes,
+    *,
+    descriptor_digest: str,
+    bindings: Mapping[str, Any],
+    evidence: Mapping[str, Any],
+    evidence_digest: str,
+    authorization: Mapping[str, str],
+) -> bytes:
+    """Construct the immutable public v1 baseline in the protected transaction."""
+
+    value = {
+        "document": {
+            "base64": base64.b64encode(published_openapi).decode("ascii"),
+            "digest": sha256_bytes(published_openapi),
+        },
+        "descriptor_digest": descriptor_digest,
+        "ratification": {
+            "authority": "docs/adr/0015-all-contracts-clean-v1-baseline.md",
+            "bindings": dict(bindings),
+            "evidence_digest": evidence_digest,
+            "evidence_schema_version": evidence["schema_version"],
+            "protected_authorization": dict(sorted(authorization.items())),
+            "source_revision": bindings["source_revision"],
+        },
+        "schema_version": "mindclade.openapi-baseline/v1",
+    }
+    return (json.dumps(value, sort_keys=True, separators=(",", ":")) + "\n").encode()
+
+
+def ratified_openapi_document(content: bytes) -> bytes | None:
+    """Return a validated baseline document, or None for the unratified candidate lock."""
+
+    try:
+        value: object = json.loads(content)
+    except json.JSONDecodeError as error:
+        raise ValueError("OpenAPI compatibility artifact is not valid JSON") from error
+    if not isinstance(value, dict):
+        raise ValueError("OpenAPI compatibility artifact must be an object")
+    artifact = cast(dict[str, Any], value)
+    if artifact.get("schema_version") == "mindclade.openapi-candidate/v1":
+        return None
+    if artifact.get("schema_version") != "mindclade.openapi-baseline/v1" or set(artifact) != {
+        "descriptor_digest",
+        "document",
+        "ratification",
+        "schema_version",
+    }:
+        raise ValueError("OpenAPI compatibility artifact has an unsupported baseline format")
+    document = artifact.get("document")
+    if not isinstance(document, dict) or set(document) != {"base64", "digest"}:
+        raise ValueError("OpenAPI baseline document binding is malformed")
+    encoded = document.get("base64")
+    if not isinstance(encoded, str):
+        raise ValueError("OpenAPI baseline document has no canonical bytes")
+    try:
+        decoded = base64.b64decode(encoded, validate=True)
+    except ValueError as error:
+        raise ValueError("OpenAPI baseline document is not canonical base64") from error
+    if base64.b64encode(decoded).decode("ascii") != encoded:
+        raise ValueError("OpenAPI baseline document is not canonical base64")
+    if document.get("digest") != sha256_bytes(decoded):
+        raise ValueError("OpenAPI baseline document digest does not match")
+    return decoded
 
 
 def validate_staged_descriptor_joins(
@@ -3301,7 +4619,18 @@ def generated_outputs(root: Path) -> tuple[dict[Path, bytes], bytes, list[dict[s
         if overlap:
             raise ValueError(f"OpenAPI output collision: {sorted(map(str, overlap))}")
         outputs.update(openapi_outputs)
-        outputs[root / OPENAPI_CANDIDATE] = openapi_candidate_lock(root, openapi_outputs)
+        openapi_lock_path = root / OPENAPI_CANDIDATE
+        ratified_openapi: bytes | None = None
+        if openapi_lock_path.is_file():
+            ratified_openapi = ratified_openapi_document(openapi_lock_path.read_bytes())
+        if ratified_openapi is None:
+            outputs[openapi_lock_path] = openapi_candidate_lock(root, openapi_outputs)
+        else:
+            validate_openapi_compatibility(
+                ratified_openapi,
+                openapi_outputs[root / PUBLISHED_OPENAPI],
+            )
+            outputs[openapi_lock_path] = openapi_lock_path.read_bytes()
 
         outputs[root / "protocols/generated/python/mindclade/events/registry.py"] = (
             event_registry_python(root, descriptors, descriptor_digest)
@@ -3337,9 +4666,14 @@ def generated_outputs(root: Path) -> tuple[dict[Path, bytes], bytes, list[dict[s
         )
         validate_staged_descriptor_joins(root, outputs, descriptor_digest)
         generated = root / "protocols/generated"
+        # Ratified baselines bind this manifest, so including their own content
+        # digests here would create a cryptographic cycle. Inventory their exact
+        # subjects separately and keep the subject entries stable across the
+        # one-time protected transition.
         manifest_files = {
             path.relative_to(root).as_posix(): sha256_bytes(content)
             for path, content in sorted(outputs.items())
+            if path != root / OPENAPI_CANDIDATE
         }
         outputs[generated / "generated-files.manifest.json"] = (
             json.dumps(
@@ -3387,6 +4721,16 @@ def generated_outputs(root: Path) -> tuple[dict[Path, bytes], bytes, list[dict[s
                                 for path in (root / "protocols/schemas").glob("*/*.json")
                             ),
                         )
+                    },
+                    "protected_ratification_artifacts": {
+                        OPENAPI_CANDIDATE.as_posix(): {
+                            "artifact_schema": "mindclade.openapi-baseline/v1",
+                            "subject_digest": sha256_bytes(outputs[root / PUBLISHED_OPENAPI]),
+                        },
+                        PROTOBUF_RATIFIED_BASELINE.as_posix(): {
+                            "artifact_schema": "mindclade.protobuf-baseline/v3",
+                            "subject_digest": descriptor_digest,
+                        },
                     },
                     "schema_version": "mindclade.generated-files/v2",
                     "toolchain_digest": sha256_file(root / "tools/codegen/toolchain.lock.json"),
@@ -3589,6 +4933,13 @@ def write_generated(
     ratify_v1_baseline: bool,
     expected_candidate_digest: str | None,
     training_vertical_evidence: Path | None,
+    training_evidence_signature: Path | None,
+    ratification_public_key: Path | None,
+    expected_ratification_signer_key_id: str | None,
+    ratification_trusted_context: Path | None,
+    connected_ratification_signature: Path | None,
+    connected_ratification_public_key: Path | None,
+    expected_connected_ratification_signer_key_id: str | None,
     check: bool = False,
 ) -> bool:
     source_digest_before = generation_authority_digest(root)
@@ -3605,12 +4956,19 @@ def write_generated(
     candidate_content = outputs[root / PROTOBUF_CANDIDATE]
     candidate_path = root / PROTOBUF_CANDIDATE
     baseline_path = root / PROTOBUF_RATIFIED_BASELINE
+    openapi_baseline_path = root / OPENAPI_CANDIDATE
     ratified_baseline: bytes | None = None
+    ratified_openapi: bytes | None = None
     stale_candidates = sorted(
         governed_generated_paths(root)
         | previous_generated_paths(root)
         | discovered_generated_paths(root)
     )
+    existing_openapi_baseline = ratified_openapi_document(outputs[openapi_baseline_path])
+    if baseline_path.is_file() != (existing_openapi_baseline is not None):
+        raise RuntimeError(
+            "the Protobuf and OpenAPI v1 baselines must be present or absent together"
+        )
     if baseline_path.is_file() and not ratify_v1_baseline:
         baseline = load_json(baseline_path)
         if baseline.get("schema_version") != "mindclade.protobuf-baseline/v3":
@@ -3628,6 +4986,8 @@ def write_generated(
     if ratify_v1_baseline:
         if baseline_path.exists():
             raise RuntimeError("v1 is already ratified; baseline replacement is prohibited")
+        if existing_openapi_baseline is not None:
+            raise RuntimeError("v1 OpenAPI is already ratified; baseline replacement is prohibited")
         if not candidate_path.is_file() or candidate_path.read_bytes() != candidate_content:
             raise RuntimeError(
                 "ratification requires an up-to-date committed candidate; run ordinary "
@@ -3640,8 +5000,26 @@ def write_generated(
                 f"expected {expected_candidate_digest!r}, actual {actual_candidate_digest!r}"
             )
         require_current_ratification_generation(root, outputs, stale_candidates)
-        if training_vertical_evidence is None:
-            raise RuntimeError("ratification requires training vertical evidence")
+        protected_inputs = {
+            "training vertical evidence": training_vertical_evidence,
+            "training evidence signature": training_evidence_signature,
+            "ratification public key": ratification_public_key,
+            "expected ratification signer key ID": expected_ratification_signer_key_id,
+            "ratification trusted context": ratification_trusted_context,
+            "connected ratification signature": connected_ratification_signature,
+            "connected ratification public key": connected_ratification_public_key,
+            "expected connected ratification signer key ID": (
+                expected_connected_ratification_signer_key_id
+            ),
+        }
+        missing_protected_inputs = sorted(
+            name for name, value in protected_inputs.items() if value is None
+        )
+        if missing_protected_inputs:
+            raise RuntimeError(
+                "ratification requires explicit protected authorization inputs: "
+                + ", ".join(missing_protected_inputs)
+            )
         event_entries, _ = event_registry_entries(root, descriptors)
         event_blockers = event_registry_ratification_blockers(event_entries)
         if event_blockers:
@@ -3660,16 +5038,40 @@ def write_generated(
             event_registry_digest=event_registry_digest,
             staged_outputs=outputs,
         )
-        evidence, evidence_digest = validate_training_vertical_evidence(
+        connected_authority = validate_connected_stage5_authority(
             root,
-            training_vertical_evidence,
-            bindings=bindings,
+            signature_envelope_path=cast(Path, connected_ratification_signature),
+            public_key_path=cast(Path, connected_ratification_public_key),
+            expected_signer_key_id=cast(str, expected_connected_ratification_signer_key_id),
         )
+        evidence, evidence_digest, authorization = validate_training_vertical_evidence(
+            root,
+            cast(Path, training_vertical_evidence),
+            bindings=bindings,
+            signature_envelope_path=cast(Path, training_evidence_signature),
+            public_key_path=cast(Path, ratification_public_key),
+            expected_signer_key_id=cast(str, expected_ratification_signer_key_id),
+            trusted_context_path=cast(Path, ratification_trusted_context),
+        )
+        authorization.update(connected_authority)
+        if authorization["signer_key_id"] == authorization["connected_ratification_signer_key_id"]:
+            raise ValueError(
+                "training qualification and connected ADR ratification require independent signers"
+            )
         ratified_baseline = ratified_protobuf_baseline(
             candidate,
             bindings=bindings,
             evidence=evidence,
             evidence_digest=evidence_digest,
+            authorization=authorization,
+        )
+        ratified_openapi = ratified_openapi_baseline(
+            outputs[root / PUBLISHED_OPENAPI],
+            descriptor_digest=descriptor_digest,
+            bindings=bindings,
+            evidence=evidence,
+            evidence_digest=evidence_digest,
+            authorization=authorization,
         )
     if generation_authority_digest(root) != source_digest_before:
         raise RuntimeError(
@@ -3684,6 +5086,13 @@ def write_generated(
     materialized_outputs = dict(outputs)
     if ratified_baseline is not None:
         materialized_outputs[baseline_path] = ratified_baseline
+    if ratified_openapi is not None:
+        materialized_outputs[openapi_baseline_path] = ratified_openapi
+    if ratified_baseline is not None:
+        # Revalidate the complete protected transition, including the otherwise
+        # absent baseline path, against the generated repository-path authority
+        # before any file is committed.
+        validate_manifest(root, descriptors, materialized_outputs)
     materialized_outputs.update(
         {
             root / "build/openapi/raw/descriptor-projection.yaml": outputs[
@@ -3716,7 +5125,40 @@ def main() -> int:
     parser.add_argument(
         "--training-vertical-evidence",
         type=Path,
-        help="passed evidence receipt covering every required training vertical boundary",
+        help="signed canonical evidence covering every required training vertical boundary",
+    )
+    parser.add_argument(
+        "--training-evidence-signature",
+        type=Path,
+        help="detached DSSE envelope signing the exact training evidence bytes",
+    )
+    parser.add_argument(
+        "--ratification-public-key",
+        type=Path,
+        help="explicit trusted Ed25519 public key for the protected ratification signer",
+    )
+    parser.add_argument(
+        "--expected-ratification-signer-key-id",
+        help="sha256 digest of the trusted ratification signer's DER public key",
+    )
+    parser.add_argument(
+        "--ratification-trusted-context",
+        type=Path,
+        help="canonical trusted protected-pipeline context bound by the signed evidence",
+    )
+    parser.add_argument(
+        "--connected-ratification-signature",
+        type=Path,
+        help="canonical DSSE envelope for the independently ratified ADR-0015 decision",
+    )
+    parser.add_argument(
+        "--connected-ratification-public-key",
+        type=Path,
+        help="Ed25519 public key for the connected ADR-0015 ratification signer",
+    )
+    parser.add_argument(
+        "--expected-connected-ratification-signer-key-id",
+        help="source-activated DER-SPKI digest for the independent ADR-0015 signer",
     )
     parser.add_argument(
         "--check",
@@ -3726,18 +5168,33 @@ def main() -> int:
     args = parser.parse_args()
     if args.check and args.ratify_v1_baseline:
         parser.error("--check cannot be combined with --ratify-v1-baseline")
-    ratification_arguments = bool(args.expected_candidate_digest or args.training_vertical_evidence)
-    if args.ratify_v1_baseline != ratification_arguments:
+    ratification_inputs = {
+        "--expected-candidate-digest": args.expected_candidate_digest,
+        "--training-vertical-evidence": args.training_vertical_evidence,
+        "--training-evidence-signature": args.training_evidence_signature,
+        "--ratification-public-key": args.ratification_public_key,
+        "--expected-ratification-signer-key-id": args.expected_ratification_signer_key_id,
+        "--ratification-trusted-context": args.ratification_trusted_context,
+        "--connected-ratification-signature": args.connected_ratification_signature,
+        "--connected-ratification-public-key": args.connected_ratification_public_key,
+        "--expected-connected-ratification-signer-key-id": (
+            args.expected_connected_ratification_signer_key_id
+        ),
+    }
+    supplied_ratification_inputs = {
+        name for name, value in ratification_inputs.items() if value is not None
+    }
+    if not args.ratify_v1_baseline and supplied_ratification_inputs:
         parser.error(
-            "--ratify-v1-baseline requires --expected-candidate-digest and "
-            "--training-vertical-evidence; those arguments are invalid during ordinary generation"
+            "ratification inputs are invalid during ordinary generation: "
+            + ", ".join(sorted(supplied_ratification_inputs))
         )
-    if args.ratify_v1_baseline and (
-        not args.expected_candidate_digest or args.training_vertical_evidence is None
-    ):
+    missing_ratification_inputs = {
+        name for name, value in ratification_inputs.items() if value is None
+    }
+    if args.ratify_v1_baseline and missing_ratification_inputs:
         parser.error(
-            "--ratify-v1-baseline requires both --expected-candidate-digest and "
-            "--training-vertical-evidence"
+            "--ratify-v1-baseline requires: " + ", ".join(sorted(missing_ratification_inputs))
         )
     root = args.root.resolve()
     with exclusive_generation_lock(root):
@@ -3749,6 +5206,35 @@ def main() -> int:
                 args.training_vertical_evidence.resolve()
                 if args.training_vertical_evidence is not None
                 else None
+            ),
+            training_evidence_signature=(
+                args.training_evidence_signature.resolve()
+                if args.training_evidence_signature is not None
+                else None
+            ),
+            ratification_public_key=(
+                args.ratification_public_key.resolve()
+                if args.ratification_public_key is not None
+                else None
+            ),
+            expected_ratification_signer_key_id=args.expected_ratification_signer_key_id,
+            ratification_trusted_context=(
+                args.ratification_trusted_context.resolve()
+                if args.ratification_trusted_context is not None
+                else None
+            ),
+            connected_ratification_signature=(
+                args.connected_ratification_signature.resolve()
+                if args.connected_ratification_signature is not None
+                else None
+            ),
+            connected_ratification_public_key=(
+                args.connected_ratification_public_key.resolve()
+                if args.connected_ratification_public_key is not None
+                else None
+            ),
+            expected_connected_ratification_signer_key_id=(
+                args.expected_connected_ratification_signer_key_id
             ),
             check=args.check,
         )

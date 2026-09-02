@@ -7,7 +7,7 @@ spec:
   type: internal-cli
   lifecycle: pre-production
   maturity: internal
-  owner: developer-experience
+  owner: developer-platform
   security_reviewers:
     - security
   repository_class: application-source
@@ -16,7 +16,12 @@ spec:
   data_classification: internal
   production_authority: false
   dependencies:
-    - internal-sdk-go
+    - component: internal-sdk-go
+      kind: compile-api
+      visibility: repository
+      owner: developer-experience
+      justification: The CLI uses the governed ergonomic Go facade over generated transports.
+      scope: bounded operation administration and verified artifact download
   provides:
     - operation-administration
     - verified-artifact-download

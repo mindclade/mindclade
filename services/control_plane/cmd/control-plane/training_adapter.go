@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -282,8 +283,13 @@ func (a *publicTrainingAdapter) WatchOperation(request *apiv1.WatchOperationRequ
 	if err != nil {
 		return err
 	}
+	metadataValues, _ := metadata.FromIncomingContext(stream.Context())
+	cursor, err := validateOptionalLastEventID(metadataValues.Get("last-event-id"))
+	if err != nil {
+		return status.Error(codes.InvalidArgument, "Last-Event-ID is invalid")
+	}
 	sequence := uint64(0)
-	if cursor := incomingMetadata(stream.Context(), "last-event-id"); cursor != "" {
+	if cursor != "" {
 		sequence, err = a.application.DecodeOperationCursor(cursor, publicName)
 		if err != nil {
 			return err
@@ -417,7 +423,10 @@ func publicOperation(value *jobv1.Operation) (*apiv1.Operation, error) {
 		}
 		result.Result = &apiv1.OperationResult{Manifest: manifest}
 	}
-	result.Error = publicError(value.GetError())
+	result.Error, err = publicError(value.GetError())
+	if err != nil {
+		return nil, status.Error(codes.Internal, "persisted operation error cannot be projected safely")
+	}
 	return result, nil
 }
 
@@ -469,6 +478,10 @@ func publicTrainingRun(value *trainingv1.TrainingRun) (*apiv1.TrainingRunView, e
 	if value.GetCompleteTime() != nil {
 		updated = value.GetCompleteTime()
 	}
+	projectedFailure, err := publicError(value.GetError())
+	if err != nil {
+		return nil, status.Error(codes.Internal, "persisted training error cannot be projected safely")
+	}
 	return &apiv1.TrainingRunView{
 		Name: canonicalName(tenantID, projectID, "trainingRuns", resourceTail(value.GetName())),
 		Uid:  value.GetUid(), Revision: revision, Etag: value.GetEtag(),
@@ -477,7 +490,7 @@ func publicTrainingRun(value *trainingv1.TrainingRun) (*apiv1.TrainingRunView, e
 		TrainingRecipe: trainingRecipe, DatasetRelease: datasetRelease,
 		ModelRelease: modelRelease, HardwareTopology: hardwareTopology,
 		LatestCheckpoint: latestCheckpoint, ResultManifest: resultManifest,
-		Failure: publicError(value.GetError()),
+		Failure: projectedFailure,
 	}, nil
 }
 
@@ -554,22 +567,101 @@ func domainResource(identity trainingapp.Identity, value *apiv1.ResourceRef, res
 	}, nil
 }
 
-func publicError(value *commonv1.ErrorDetail) *apiv1.PublicError {
+func publicError(value *commonv1.ErrorDetail) (*apiv1.PublicError, error) {
 	if value == nil {
-		return nil
+		return nil, nil
+	}
+	code, err := publicErrorCode(value.GetCode())
+	if err != nil {
+		return nil, err
+	}
+	requestID, err := randomPublicID("request_")
+	if err != nil {
+		return nil, errors.New("public error request identity generation failed")
+	}
+	detailCount := len(value.GetFieldViolations()) + len(value.GetPreconditionViolations())
+	if value.GetSubject() != nil {
+		detailCount++
+	}
+	if detailCount > 32 {
+		return nil, errors.New("public error detail count exceeds the contract limit")
 	}
 	result := &apiv1.PublicError{
-		Code:    strings.TrimPrefix(value.GetCode().String(), "ERROR_CODE_"),
-		Message: "the operation failed", Retryable: value.GetRetryClass() == commonv1.RetryClass_RETRY_CLASS_SAFE,
+		Code: code, Message: "the operation failed", RequestId: requestID,
+		Retryable:     value.GetRetryClass() == commonv1.RetryClass_RETRY_CLASS_SAFE,
 		DiagnosticRef: value.GetErrorId(),
 	}
 	if retry := value.GetRetryAfter(); retry != nil {
+		if err = retry.CheckValid(); err != nil {
+			return nil, fmt.Errorf("public error retry-after is invalid: %w", err)
+		}
 		result.RetryAfter = retry.AsDuration().String()
 	}
 	for _, violation := range value.GetFieldViolations() {
-		result.Details = append(result.Details, &apiv1.ErrorDetail{Kind: "field", Field: violation.GetField(), Reason: violation.GetDescription()})
+		if violation == nil {
+			return nil, errors.New("public error contains an empty field violation")
+		}
+		result.Details = append(result.Details, &apiv1.ErrorDetail{
+			Kind: "fieldViolation", Field: violation.GetField(), Reason: violation.GetDescription(),
+		})
 	}
-	return result
+	for _, violation := range value.GetPreconditionViolations() {
+		if violation == nil {
+			return nil, errors.New("public error contains an empty precondition violation")
+		}
+		result.Details = append(result.Details, &apiv1.ErrorDetail{
+			Kind: "precondition", Field: violation.GetSubject(), Reason: violation.GetDescription(),
+			LimitName: violation.GetType(),
+		})
+	}
+	if value.GetSubject() != nil {
+		resource, projectionErr := publicResource(value.GetSubject())
+		if projectionErr != nil {
+			return nil, projectionErr
+		}
+		result.Details = append(result.Details, &apiv1.ErrorDetail{Kind: "resource", Resource: resource})
+	}
+	if err = validatePublicSSEError(result); err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func publicErrorCode(value commonv1.ErrorCode) (string, error) {
+	switch value {
+	case commonv1.ErrorCode_ERROR_CODE_INVALID_ARGUMENT:
+		return "INVALID_ARGUMENT", nil
+	case commonv1.ErrorCode_ERROR_CODE_FAILED_PRECONDITION:
+		return "FAILED_PRECONDITION", nil
+	case commonv1.ErrorCode_ERROR_CODE_NOT_FOUND:
+		return "NOT_FOUND", nil
+	case commonv1.ErrorCode_ERROR_CODE_ALREADY_EXISTS,
+		commonv1.ErrorCode_ERROR_CODE_ABORTED,
+		commonv1.ErrorCode_ERROR_CODE_CONFLICT:
+		return "CONFLICT", nil
+	case commonv1.ErrorCode_ERROR_CODE_PERMISSION_DENIED,
+		commonv1.ErrorCode_ERROR_CODE_POLICY_DENIED:
+		return "PERMISSION_DENIED", nil
+	case commonv1.ErrorCode_ERROR_CODE_UNAUTHENTICATED:
+		return "AUTHENTICATION_REQUIRED", nil
+	case commonv1.ErrorCode_ERROR_CODE_RESOURCE_EXHAUSTED:
+		return "RATE_LIMITED", nil
+	case commonv1.ErrorCode_ERROR_CODE_UNAVAILABLE:
+		return "UNAVAILABLE", nil
+	case commonv1.ErrorCode_ERROR_CODE_DEADLINE_EXCEEDED:
+		return "DEADLINE_EXCEEDED", nil
+	case commonv1.ErrorCode_ERROR_CODE_CANCELLED:
+		return "CANCELLED", nil
+	case commonv1.ErrorCode_ERROR_CODE_UNSUPPORTED:
+		return "FAILED_PRECONDITION", nil
+	case commonv1.ErrorCode_ERROR_CODE_INTERNAL,
+		commonv1.ErrorCode_ERROR_CODE_DATA_LOSS:
+		return "INTERNAL", nil
+	case commonv1.ErrorCode_ERROR_CODE_UNSPECIFIED:
+		return "", errors.New("public error code is unspecified")
+	default:
+		return "", fmt.Errorf("public error code %d is unknown", value)
+	}
 }
 
 func projectParent(identity trainingapp.Identity) string {

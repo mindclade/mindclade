@@ -29,6 +29,26 @@ export interface WaitOptions extends SdkCallOptions {
 	readonly pollIntervalMs?: number;
 }
 
+export interface PaginationLimits {
+	/** Defaults to 100 and may not exceed 1,000. */
+	readonly maxPages?: number;
+	/** Defaults to 10,000 and may not exceed 1,000,000. */
+	readonly maxItems?: number;
+}
+
+export interface PaginationOptions {
+	/** Opaque token passed to the first request without normalization. */
+	readonly initialPageToken?: string;
+	readonly limits?: PaginationLimits;
+	/** Also pass this signal to the facade call made by `fetchPage`. */
+	readonly signal?: AbortSignal;
+}
+
+export interface PaginationPage<T> {
+	readonly items: readonly T[];
+	readonly nextPageToken: string;
+}
+
 export interface PreparedCall {
 	readonly requestId: string;
 	readonly traceId: string;
@@ -118,6 +138,60 @@ export const validateDuration = (name: string, value: number): void => {
 	if (!Number.isFinite(value) || value <= 0 || value > 86_400_000) {
 		throw MindcladeError.invalidArgument(`${name} must be positive and at most twenty-four hours`);
 	}
+};
+
+/**
+ * Lazily traverses facade list calls while preserving opaque page tokens.
+ * Repeated cursors and caller budgets fail explicitly, so a partial traversal
+ * is never presented as complete.
+ */
+export async function* paginate<T>(
+	fetchPage: (pageToken: string) => Promise<PaginationPage<T>>,
+	options: PaginationOptions = {},
+): AsyncGenerator<T, void, undefined> {
+	if (typeof fetchPage !== "function")
+		throw MindcladeError.invalidArgument("pagination fetch function is required");
+	const maxPages = paginationBound("pagination max pages", options.limits?.maxPages ?? 100, 1_000);
+	const maxItems = paginationBound(
+		"pagination max items",
+		options.limits?.maxItems ?? 10_000,
+		1_000_000,
+	);
+	const initialPageToken = options.initialPageToken ?? "";
+	if (typeof initialPageToken !== "string")
+		throw MindcladeError.invalidArgument("initial page token must be text");
+	let token = initialPageToken;
+	const seen = new Set<string>(token === "" ? [] : [token]);
+	let pages = 0;
+	let items = 0;
+	for (;;) {
+		if (options.signal?.aborted === true) throw MindcladeError.cancelled();
+		if (pages >= maxPages)
+			throw MindcladeError.paginationLimit("automatic pagination exceeded its page budget");
+		if (items >= maxItems)
+			throw MindcladeError.paginationLimit("automatic pagination exceeded its item budget");
+		const page = await fetchPage(token);
+		pages += 1;
+		if (!Array.isArray(page.items) || typeof page.nextPageToken !== "string")
+			throw MindcladeError.protocol("list response returned an invalid pagination page");
+		if (page.nextPageToken !== "" && seen.has(page.nextPageToken))
+			throw MindcladeError.protocol("list response repeated an opaque page token");
+		if (page.nextPageToken !== "") seen.add(page.nextPageToken);
+		for (const item of page.items) {
+			if (items >= maxItems)
+				throw MindcladeError.paginationLimit("automatic pagination exceeded its item budget");
+			items += 1;
+			yield item;
+		}
+		if (page.nextPageToken === "") return;
+		token = page.nextPageToken;
+	}
+}
+
+const paginationBound = (name: string, value: number, maximum: number): number => {
+	if (!Number.isInteger(value) || value < 1 || value > maximum)
+		throw MindcladeError.invalidArgument(`${name} must be an integer in [1, ${maximum}]`);
+	return value;
 };
 
 const checkedOptional = (name: string, value: string | undefined): string => {

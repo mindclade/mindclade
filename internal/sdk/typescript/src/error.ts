@@ -4,16 +4,23 @@ import type { Operation } from "../../../../protocols/generated/typescript/job/v
 import { OperationState } from "../../../../protocols/generated/typescript/job/v1/operation_pb.js";
 
 export type ErrorKind =
+	| "already_exists"
 	| "authentication"
 	| "cancelled"
 	| "configuration"
 	| "deadline_exceeded"
 	| "invalid_argument"
+	| "pagination_limit"
 	| "protocol"
 	| "remote"
 	| "transport";
 
-const retryableCodes = new Set<Code>([Code.Unavailable, Code.ResourceExhausted, Code.Aborted]);
+const retryableCodes = new Set<Code>([
+	Code.Unavailable,
+	Code.ResourceExhausted,
+	Code.Aborted,
+	Code.DeadlineExceeded,
+]);
 
 /** Sanitized, machine-actionable SDK failure. */
 export class MindcladeError extends Error {
@@ -47,6 +54,26 @@ export class MindcladeError extends Error {
 
 	static invalidArgument(message: string): MindcladeError {
 		return new MindcladeError({ kind: "invalid_argument", safeMessage: message });
+	}
+
+	static alreadyExists(message: string): MindcladeError {
+		return new MindcladeError({
+			kind: "already_exists",
+			safeMessage: message,
+			code: Code.AlreadyExists,
+		});
+	}
+
+	static paginationLimit(message: string): MindcladeError {
+		return new MindcladeError({
+			kind: "pagination_limit",
+			safeMessage: message,
+			code: Code.ResourceExhausted,
+		});
+	}
+
+	static transport(message: string): MindcladeError {
+		return new MindcladeError({ kind: "transport", safeMessage: message });
 	}
 
 	static authentication(message = "credential provider failed"): MindcladeError {
@@ -87,9 +114,11 @@ export class MindcladeError extends Error {
 				? "cancelled"
 				: error.code === Code.DeadlineExceeded
 					? "deadline_exceeded"
-					: error.code === Code.Unauthenticated
-						? "authentication"
-						: "remote";
+					: error.code === Code.AlreadyExists
+						? "already_exists"
+						: error.code === Code.Unauthenticated
+							? "authentication"
+							: "remote";
 		return new MindcladeError({
 			kind,
 			safeMessage: safeCodeMessage(error.code),

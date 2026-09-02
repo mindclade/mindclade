@@ -7,7 +7,7 @@ import type {
 import type { ContextValues, StreamResponse, Transport, UnaryResponse } from "@connectrpc/connect";
 import { createGrpcTransport } from "@connectrpc/connect-node";
 import type { AccessToken } from "./auth.js";
-import type { ClientConfig } from "./config.js";
+import { type ClientConfig, validateMetadata } from "./config.js";
 import { MindcladeError } from "./error.js";
 import type { Runtime } from "./runtime.js";
 
@@ -112,9 +112,29 @@ export class AuthenticatedTransport implements Transport {
 	}
 
 	async #headers(initial: HeadersInit | undefined, signal: AbortSignal): Promise<Headers> {
-		const headers = new Headers(initial);
+		let headers: Headers;
+		try {
+			headers = new Headers(initial);
+		} catch {
+			throw MindcladeError.invalidArgument("request metadata is invalid");
+		}
+		// Authentication is owned by the configured workload-identity provider.
+		// Strip caller-supplied credential fields even in Local mode so the raw
+		// generated escape hatch cannot leak credentials over plaintext.
+		for (const name of [
+			"authorization",
+			"proxy-authorization",
+			"cookie",
+			"x-api-key",
+			"x-goog-api-key",
+		]) {
+			headers.delete(name);
+		}
 		if (!headers.has("x-request-id")) headers.set("x-request-id", this.#runtime.requestId());
-		if (!headers.has("x-trace-id")) headers.set("x-trace-id", headers.get("x-request-id") ?? "");
+		const requestId = headers.get("x-request-id") ?? "";
+		validateMetadata("request ID", requestId, true);
+		if (!headers.has("x-trace-id")) headers.set("x-trace-id", requestId);
+		validateMetadata("trace ID", headers.get("x-trace-id") ?? "", true);
 		headers.set("x-mindclade-sdk", "mindclade-internal-typescript-sdk/0.1");
 		headers.set("x-mindclade-expected-tenant", this.#config.identity.tenantId);
 		headers.set("x-mindclade-expected-project", this.#config.identity.projectId);
@@ -138,6 +158,11 @@ const deadlineSignal = (
 	parent: AbortSignal | undefined,
 	timeoutMs: number,
 ): { readonly signal: AbortSignal; readonly timeoutMs: number; readonly dispose: () => void } => {
+	if (!Number.isFinite(timeoutMs) || timeoutMs <= 0 || timeoutMs > 86_400_000) {
+		throw MindcladeError.invalidArgument(
+			"call timeout must be positive and at most twenty-four hours",
+		);
+	}
 	const controller = new AbortController();
 	const abort = (): void => controller.abort(parent?.reason);
 	if (parent?.aborted === true) abort();

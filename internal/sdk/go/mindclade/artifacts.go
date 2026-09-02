@@ -7,6 +7,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
@@ -319,6 +321,89 @@ func (service *ArtifactService) Download(ctx context.Context, artifact *artifact
 		return &Error{Code: CodeDataLoss, Message: "artifact digest verification failed"}
 	}
 	return nil
+}
+
+// DownloadFile publishes verified immutable content to a new filesystem path.
+// The file is downloaded into a mode-0600 temporary file in the destination
+// directory, fully verified and synced, then atomically linked into place.
+// An existing destination is never overwritten. Any failure before publication
+// removes the temporary file and leaves the destination absent or unchanged.
+func (service *ArtifactService) DownloadFile(ctx context.Context, artifact *artifactv1.ArtifactRef, destination string, options ...RequestOption) (err error) {
+	if destination == "" || strings.ContainsRune(destination, '\x00') {
+		return invalidArgument("artifact destination path is required")
+	}
+	directory := filepath.Dir(destination)
+	if filepath.Base(destination) == "." || filepath.Base(destination) == string(filepath.Separator) {
+		return invalidArgument("artifact destination must name a file")
+	}
+	temporary, err := os.CreateTemp(directory, ".mindclade-download-*")
+	if err != nil {
+		return normalizeError(err)
+	}
+	temporaryName := temporary.Name()
+	defer func() {
+		if temporary != nil {
+			_ = temporary.Close()
+		}
+		_ = os.Remove(temporaryName)
+	}()
+	if err = service.Download(ctx, artifact, temporary, options...); err != nil {
+		return err
+	}
+	if err = temporary.Sync(); err != nil {
+		return normalizeError(err)
+	}
+	if err = temporary.Close(); err != nil {
+		return normalizeError(err)
+	}
+	temporary = nil
+	if err = ctx.Err(); err != nil {
+		return normalizeError(err)
+	}
+	// Hard-link publication is same-filesystem and no-clobber: unlike Rename,
+	// it cannot silently replace a destination created by a racing process.
+	if err = publishArtifactFile(
+		temporaryName,
+		destination,
+		directory,
+		os.Link,
+		os.Remove,
+		syncArtifactDirectory,
+	); err != nil {
+		if errors.Is(err, os.ErrExist) {
+			return &Error{Code: CodeAlreadyExists, Message: "artifact destination already exists"}
+		}
+		return normalizeError(err)
+	}
+	return nil
+}
+
+func publishArtifactFile(
+	staging, destination, directory string,
+	link func(string, string) error,
+	remove func(string) error,
+	syncDirectory func(string) error,
+) error {
+	if err := link(staging, destination); err != nil {
+		return err
+	}
+	// Successful link creation is the commit point. From here the verified
+	// destination is authoritative, and cancellation or best-effort directory
+	// sync/staging cleanup cannot turn the call into an apparent failure while
+	// leaving a valid file behind. The deferred cleanup retries staging removal.
+	_ = syncDirectory(directory)
+	_ = remove(staging)
+	_ = syncDirectory(directory)
+	return nil
+}
+
+func syncArtifactDirectory(directory string) error {
+	handle, err := os.Open(directory)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = handle.Close() }()
+	return handle.Sync()
 }
 
 // Upload transfers caller-known immutable content through generated gRPC

@@ -11,7 +11,8 @@ import tempfile
 import unittest
 from collections.abc import Iterator, Mapping
 from pathlib import Path
-from typing import Any
+from types import SimpleNamespace
+from typing import Any, cast
 
 import yaml
 from google.protobuf import descriptor_pb2
@@ -29,6 +30,15 @@ EXPECTED_TAGS = {
     "Operations",
     "Training",
 }
+
+
+class PresenceMessage(SimpleNamespace):
+    def __init__(self, *, present: set[str] | None = None, **values: Any) -> None:
+        super().__init__(**values)
+        self._present = present or set()
+
+    def HasField(self, field_name: str) -> bool:  # noqa: N802 - mirrors protobuf API
+        return field_name in self._present
 
 
 def root() -> Path:
@@ -115,12 +125,14 @@ class OpenApiCompatibilityTest(unittest.TestCase):
         published_path = self.repository / "protocols/openapi/published/mindclade.openapi.yaml"
         raw = load_yaml(raw_path)
         self.assertEqual(raw["openapi"], "3.1.0")
-        self.assertEqual(raw["x-mindclade-schema-version"], "mindclade.raw-openapi-projection/v3")
+        self.assertEqual(raw["x-mindclade-schema-version"], "mindclade.raw-openapi-projection/v4")
         for ref in iter_refs(raw):
             resolve_local_ref(raw, ref)
         self.assertEqual(curated_path.read_bytes(), published_path.read_bytes())
         overlay = load_yaml(self.openapi_overlay_path)
-        self.assertEqual(overlay["paths"], self.openapi["paths"])
+        projected_overlay = copy.deepcopy(overlay)
+        generate_protocols.project_descriptor_operation_extensions(raw, projected_overlay)
+        self.assertEqual(projected_overlay["paths"], self.openapi["paths"])
         self.assertGreater(
             len(overlay["components"]["schemas"]),
             len(self.openapi["components"]["schemas"]),
@@ -177,6 +189,64 @@ class OpenApiCompatibilityTest(unittest.TestCase):
         self.assertIn("Idempotency-Key", parameter_names(self.openapi, cancel_operation))
         operation = self.openapi["components"]["schemas"]["Operation"]
         self.assertTrue({"revision", "etag", "done", "state"}.issubset(operation["required"]))
+
+    def test_operation_watch_cursor_bounds_match_the_runtime_codec(self) -> None:
+        by_id = {
+            operation["operationId"]: operation for _, _, operation in operations(self.openapi)
+        }
+        watch_parameters = {
+            parameter.get("name"): parameter
+            for parameter in (
+                resolve_local_ref(self.openapi, value["$ref"]) if "$ref" in value else value
+                for value in by_id["watchOperation"]["parameters"]
+            )
+        }
+        self.assertEqual(
+            set(by_id["watchOperation"]["responses"]),
+            {"200", "400", "401", "403", "404", "410", "412", "500"},
+        )
+        self.assertEqual(
+            watch_parameters["Last-Event-ID"]["schema"],
+            {"type": "string", "minLength": 1, "maxLength": 4096},
+        )
+        event = self.openapi["components"]["schemas"]["OperationEvent"]["properties"]
+        self.assertEqual(event["eventId"]["maxLength"], 4096)
+        self.assertEqual(event["resumeCursor"]["maxLength"], 4096)
+        event_schema = self.openapi["components"]["schemas"]["OperationEvent"]
+        self.assertEqual(
+            [shape["title"] for shape in event_schema["oneOf"]],
+            [
+                "Operation update",
+                "Terminal operation",
+                "Heartbeat",
+                "Sanitized stream error",
+            ],
+        )
+        self.assertEqual(event_schema["oneOf"][3]["required"], ["error"])
+        self.assertEqual(
+            event_schema["required"],
+            [
+                "eventId",
+                "eventType",
+                "schemaVersion",
+                "operationRevision",
+                "resumeCursor",
+                "heartbeat",
+                "emittedAt",
+            ],
+        )
+        self.assertEqual(
+            event_schema["discriminator"],
+            {
+                "propertyName": "eventType",
+                "mapping": {
+                    "operation.updated": "#/components/schemas/OperationEvent/oneOf/0",
+                    "operation.terminal": "#/components/schemas/OperationEvent/oneOf/1",
+                    "heartbeat": "#/components/schemas/OperationEvent/oneOf/2",
+                    "error": "#/components/schemas/OperationEvent/oneOf/3",
+                },
+            },
+        )
 
     def test_list_operations_use_opaque_bounded_pagination(self) -> None:
         by_id = {
@@ -238,10 +308,46 @@ class OpenApiCompatibilityTest(unittest.TestCase):
         raw = generate_protocols.public_openapi_projection(descriptor_set)
 
         self.assertEqual(raw["openapi"], "3.1.0")
-        self.assertEqual(raw["x-mindclade-schema-version"], "mindclade.raw-openapi-projection/v3")
+        self.assertEqual(raw["x-mindclade-schema-version"], "mindclade.raw-openapi-projection/v4")
         self.assertEqual(len(raw["x-mindclade-binding-contracts"]), 6)
         generate_protocols.validate_curated_bindings(raw, self.openapi)
         generate_protocols.validate_curated_protojson(raw, self.openapi)
+
+        raw_bindings = {
+            binding["operationId"]: binding for binding in raw["x-mindclade-binding-contracts"]
+        }
+        self.assertEqual(
+            raw_bindings["watchOperation"]["sse"],
+            {
+                "errorEventType": "error",
+                "eventModel": "mindclade.api.v1.OperationEvent",
+                "resumeHeader": "Last-Event-ID",
+                "retryMilliseconds": 3000,
+                "heartbeatIntervalSeconds": 15,
+                "heartbeatReusesLastDurableEventId": True,
+                "replayAcknowledgedTerminalEvent": False,
+            },
+        )
+        self.assertEqual(raw_bindings["watchOperation"]["operationKind"], "sse")
+        self.assertTrue(
+            all(
+                binding["operationKind"] == "unary"
+                for operation_id, binding in raw_bindings.items()
+                if operation_id != "watchOperation"
+            )
+        )
+
+        published_operations = {
+            operation["operationId"]: operation for _, _, operation in operations(self.openapi)
+        }
+        self.assertEqual(
+            published_operations["watchOperation"]["x-mindclade-sse"],
+            raw_bindings["watchOperation"]["sse"],
+        )
+        self.assertEqual(
+            published_operations["watchOperation"]["x-mindclade-operation-kind"],
+            "sse",
+        )
 
         grpc_path = self.repository / "protocols/proto/mindclade/api/v1/mindclade_service.proto"
         grpc_source = grpc_path.read_text()
@@ -292,6 +398,293 @@ class OpenApiCompatibilityTest(unittest.TestCase):
                 descriptor_set.SerializeToString(deterministic=True)
             )
 
+    def test_sse_policy_validation_fails_closed(self) -> None:
+        def valid() -> tuple[SimpleNamespace, PresenceMessage]:
+            method = SimpleNamespace(
+                client_streaming=False,
+                full_name="mindclade.api.v1.MindcladeService.WatchOperation",
+                input_type=SimpleNamespace(full_name="mindclade.api.v1.WatchOperationRequest"),
+                output_type=SimpleNamespace(
+                    fields_by_name={
+                        "error": SimpleNamespace(
+                            number=9,
+                            message_type=SimpleNamespace(full_name="mindclade.api.v1.PublicError"),
+                        )
+                    },
+                    full_name="mindclade.api.v1.OperationEvent",
+                ),
+                server_streaming=True,
+            )
+            sse = PresenceMessage(
+                present={
+                    "heartbeat_reuses_last_durable_event_id",
+                    "replay_acknowledged_terminal_event",
+                },
+                heartbeat_interval_seconds=15,
+                heartbeat_reuses_last_durable_event_id=True,
+                replay_acknowledged_terminal_event=False,
+                retry_milliseconds=3000,
+            )
+            contract = PresenceMessage(
+                present={"sse"},
+                bearer_auth=True,
+                request_body_required=False,
+                request_headers=["Last-Event-ID"],
+                required_request_headers=[],
+                non_success_status=[400, 401, 403, 404, 410, 412, 500],
+                response_headers=["Cache-Control", "X-Accel-Buffering"],
+                sse=sse,
+                success_status=[200],
+            )
+            return method, contract
+
+        case_insensitive_method, case_insensitive_contract = valid()
+        case_insensitive_contract.request_headers = ["last-event-id"]
+        operation_kind, sse = generate_protocols.public_operation_stream_metadata(
+            case_insensitive_method,
+            case_insensitive_contract,
+            http_body="",
+            http_method="GET",
+            http_path_template=("/v1/{name=tenants/*/projects/*/operations/*}:watch"),
+            stream_projection="STREAM_PROJECTION_SSE",
+        )
+        self.assertEqual(operation_kind, "sse")
+        self.assertEqual(sse["resumeHeader"], "Last-Event-ID")
+
+        cases: list[tuple[str, str, Any]] = [
+            (
+                "unspecified projection",
+                "unspecified stream projection",
+                lambda method, contract, arguments: arguments.update(
+                    stream_projection="STREAM_PROJECTION_UNSPECIFIED"
+                ),
+            ),
+            (
+                "client streaming",
+                "unapproved client streaming",
+                lambda method, contract, arguments: setattr(method, "client_streaming", True),
+            ),
+            (
+                "server stream mismatch",
+                "stream projection/server-streaming mismatch",
+                lambda method, contract, arguments: setattr(method, "server_streaming", False),
+            ),
+            (
+                "missing policy",
+                "has no SSE policy",
+                lambda method, contract, arguments: contract._present.remove("sse"),
+            ),
+            (
+                "missing resume header",
+                "must declare exactly one Last-Event-ID",
+                lambda method, contract, arguments: setattr(contract, "request_headers", []),
+            ),
+            (
+                "duplicate resume header",
+                "must declare exactly one Last-Event-ID",
+                lambda method, contract, arguments: setattr(
+                    contract,
+                    "request_headers",
+                    ["Last-Event-ID", "last-event-id"],
+                ),
+            ),
+            (
+                "extra request header",
+                "must declare exactly one Last-Event-ID",
+                lambda method, contract, arguments: setattr(
+                    contract,
+                    "request_headers",
+                    ["Last-Event-ID", "X-Undeclared-Stream-Option"],
+                ),
+            ),
+            (
+                "required resume header",
+                "request headers must remain optional",
+                lambda method, contract, arguments: setattr(
+                    contract,
+                    "required_request_headers",
+                    ["last-event-id"],
+                ),
+            ),
+            (
+                "unrelated required header",
+                "request headers must remain optional",
+                lambda method, contract, arguments: setattr(
+                    contract,
+                    "required_request_headers",
+                    ["X-Undeclared-Stream-Option"],
+                ),
+            ),
+            (
+                "non-GET binding",
+                "must use GET",
+                lambda method, contract, arguments: arguments.update(http_method="POST"),
+            ),
+            (
+                "wrong route",
+                "unsupported route",
+                lambda method, contract, arguments: arguments.update(
+                    http_path_template="/v1/{name=tenants/*/projects/*/operations/*}:events"
+                ),
+            ),
+            (
+                "request body",
+                "must not declare a request body",
+                lambda method, contract, arguments: arguments.update(http_body="operation"),
+            ),
+            (
+                "missing bearer auth",
+                "must require bearer authentication",
+                lambda method, contract, arguments: setattr(contract, "bearer_auth", False),
+            ),
+            (
+                "wrong success status",
+                "must declare only HTTP 200 success",
+                lambda method, contract, arguments: setattr(contract, "success_status", [200, 206]),
+            ),
+            (
+                "wrong pre-commit status set",
+                "exact pre-commit failure status set",
+                lambda method, contract, arguments: setattr(
+                    contract, "non_success_status", [400, 401, 403, 404, 410, 412]
+                ),
+            ),
+            (
+                "missing anti-buffering response header",
+                "must declare Cache-Control and X-Accel-Buffering responses",
+                lambda method, contract, arguments: setattr(
+                    contract, "response_headers", ["Cache-Control"]
+                ),
+            ),
+            (
+                "wrong response",
+                "unsupported public SSE binding",
+                lambda method, contract, arguments: setattr(
+                    method.output_type, "full_name", "mindclade.api.v1.Operation"
+                ),
+            ),
+            (
+                "wrong request",
+                "unsupported public SSE binding",
+                lambda method, contract, arguments: setattr(
+                    method.input_type, "full_name", "mindclade.api.v1.GetOperationRequest"
+                ),
+            ),
+            (
+                "missing descriptor-owned error",
+                "descriptor-owned PublicError field",
+                lambda method, contract, arguments: setattr(
+                    method.output_type, "fields_by_name", {}
+                ),
+            ),
+            (
+                "wrong descriptor-owned error field number",
+                "descriptor-owned PublicError field",
+                lambda method, contract, arguments: setattr(
+                    method.output_type.fields_by_name["error"], "number", 10
+                ),
+            ),
+            (
+                "zero retry",
+                "retry interval must be positive",
+                lambda method, contract, arguments: setattr(contract.sse, "retry_milliseconds", 0),
+            ),
+            (
+                "implicit replay policy",
+                "must explicitly set replay_acknowledged_terminal_event",
+                lambda method, contract, arguments: contract.sse._present.remove(
+                    "replay_acknowledged_terminal_event"
+                ),
+            ),
+            (
+                "heartbeat does not reuse durable cursor",
+                "heartbeat must reuse the last durable event ID",
+                lambda method, contract, arguments: setattr(
+                    contract.sse, "heartbeat_reuses_last_durable_event_id", False
+                ),
+            ),
+            (
+                "acknowledged terminal replay enabled",
+                "must not replay an acknowledged terminal event",
+                lambda method, contract, arguments: setattr(
+                    contract.sse, "replay_acknowledged_terminal_event", True
+                ),
+            ),
+        ]
+        for name, expected, mutate in cases:
+            with self.subTest(name=name):
+                method, contract = valid()
+                arguments = {
+                    "http_body": "",
+                    "http_method": "GET",
+                    "http_path_template": ("/v1/{name=tenants/*/projects/*/operations/*}:watch"),
+                    "stream_projection": "STREAM_PROJECTION_SSE",
+                }
+                mutate(method, contract, arguments)
+                with self.assertRaisesRegex(ValueError, expected):
+                    generate_protocols.public_operation_stream_metadata(
+                        method,
+                        contract,
+                        **arguments,
+                    )
+
+    def test_sse_extensions_are_projected_and_media_type_is_enforced(self) -> None:
+        sse = {
+            "errorEventType": "error",
+            "eventModel": "mindclade.api.v1.OperationEvent",
+            "resumeHeader": "Last-Event-ID",
+            "retryMilliseconds": 3000,
+            "heartbeatIntervalSeconds": 15,
+            "heartbeatReusesLastDurableEventId": True,
+            "replayAcknowledgedTerminalEvent": False,
+        }
+        contract = {
+            "auth": "bearer",
+            "body": None,
+            "bodyMessage": None,
+            "method": "GET",
+            "operationId": "watchOperation",
+            "operationKind": "sse",
+            "pathFields": ["name"],
+            "pathTemplate": "/v1/{name=tenants/*/projects/*/operations/*}:watch",
+            "queryFields": {},
+            "requestHeaders": ["Last-Event-ID"],
+            "requiredRequestHeaders": [],
+            "requestBodyRequired": False,
+            "requestMessage": "mindclade.api.v1.WatchOperationRequest",
+            "responseHeaders": ["Cache-Control", "X-Accel-Buffering"],
+            "responseMessage": "mindclade.api.v1.OperationEvent",
+            "responseStatus": [200],
+            "serverStreaming": True,
+            "sse": sse,
+            "stream": "STREAM_PROJECTION_SSE",
+            "successStatus": [200],
+        }
+        raw = generate_protocols.raw_openapi_document(
+            [contract],
+            {},
+            "sha256:" + "1" * 64,
+        )
+        self.assertEqual(raw["x-mindclade-schema-version"], "mindclade.raw-openapi-projection/v4")
+        _, _, raw_operation = next(operations(raw))
+        self.assertEqual(raw_operation["x-mindclade-operation-kind"], "sse")
+        self.assertEqual(raw_operation["x-mindclade-sse"], sse)
+
+        curated = copy.deepcopy(raw)
+        _, _, curated_operation = next(operations(curated))
+        del curated_operation["x-mindclade-operation-kind"]
+        del curated_operation["x-mindclade-sse"]
+        generate_protocols.project_descriptor_operation_extensions(raw, curated)
+        self.assertEqual(curated_operation["x-mindclade-operation-kind"], "sse")
+        self.assertEqual(curated_operation["x-mindclade-sse"], sse)
+        generate_protocols.validate_curated_bindings(raw, curated)
+
+        missing_media_type = copy.deepcopy(curated)
+        _, _, missing_media_operation = next(operations(missing_media_type))
+        missing_media_operation["responses"]["200"]["content"] = {}
+        with self.assertRaisesRegex(ValueError, "response media-type/stream drift"):
+            generate_protocols.validate_curated_bindings(raw, missing_media_type)
+
     def test_historical_openapi_drift_regressions_are_closed(self) -> None:
         schemas = self.openapi["components"]["schemas"]
         training_run_properties, _ = generate_protocols.merged_openapi_object(
@@ -331,6 +724,7 @@ class OpenApiCompatibilityTest(unittest.TestCase):
                 "resumeCursor",
                 "emittedAt",
                 "heartbeat",
+                "error",
             },
         )
 
@@ -367,6 +761,16 @@ class OpenApiCompatibilityTest(unittest.TestCase):
             "intentionally-exported-generated-protobuf-types",
         )
         self.assertEqual(spec["internalSdkPolicy"]["handwrittenWireModels"], "forbidden")
+        quality = spec["internalSdkPolicy"]["productionQuality"]
+        self.assertEqual(
+            set(quality),
+            {"codegen", "runtime", "testing", "lifecycle", "delivery", "excludedOrDeferred"},
+        )
+        self.assertIn("atomic-staged-generation", quality["codegen"])
+        self.assertIn("descriptor-derived-rpc-coverage", quality["codegen"])
+        self.assertIn("safe-idempotent-retries-with-jitter-and-server-hints", quality["runtime"])
+        self.assertIn("every-rpc-four-language-behavioral-evidence", quality["testing"])
+        self.assertIn("hosted-generator-authority", quality["excludedOrDeferred"])
         self.assertEqual(
             spec["pipeline"]["interfaces"],
             [
@@ -480,7 +884,7 @@ class OpenApiCompatibilityTest(unittest.TestCase):
             first_bytes = (output_root / "first.json").read_bytes()
             self.assertEqual(first_bytes, (output_root / "second.json").read_bytes())
             plan = json.loads(first_bytes)
-            self.assertEqual(plan["schemaVersion"], "mindclade.optional-rest-sdk-plan/v3")
+            self.assertEqual(plan["schemaVersion"], "mindclade.optional-rest-sdk-plan/v4")
             self.assertEqual(plan["kind"], "OptionalRestSdkPlan")
             self.assertEqual(
                 plan["inventory"]["operationIds"],
@@ -492,6 +896,33 @@ class OpenApiCompatibilityTest(unittest.TestCase):
                     "listTrainingRuns",
                     "watchOperation",
                 ],
+            )
+            self.assertEqual(
+                plan["inventory"]["providerEligibleOperationIds"],
+                [
+                    "cancelOperation",
+                    "createTrainingRun",
+                    "getOperation",
+                    "getTrainingRun",
+                    "listTrainingRuns",
+                ],
+            )
+            self.assertEqual(
+                plan["inventory"]["reviewedUnsupportedOperationIds"],
+                ["watchOperation"],
+            )
+            planned_operations = {
+                operation["operationId"]: operation for operation in plan["inventory"]["operations"]
+            }
+            self.assertEqual(planned_operations["getOperation"]["kind"], "unary")
+            self.assertEqual(
+                planned_operations["watchOperation"]["providerDisposition"],
+                "reviewed-unsupported",
+            )
+            self.assertEqual(planned_operations["watchOperation"]["kind"], "sse")
+            self.assertEqual(
+                planned_operations["watchOperation"]["ssePolicy"]["eventModel"],
+                "mindclade.api.v1.OperationEvent",
             )
             self.assertIn("ArtifactRef", plan["inventory"]["publicSchemas"])
             self.assertEqual(
@@ -586,7 +1017,7 @@ class OpenApiCompatibilityTest(unittest.TestCase):
                 text=True,
             )
             self.assertEqual(generate.returncode, 3)
-            self.assertIn("configuration-only", generate.stderr)
+            self.assertIn("reviewed-unsupported operations", generate.stderr)
             self.assertFalse((output_root / "fern/python").exists())
 
             unsupported = subprocess.run(
@@ -615,6 +1046,18 @@ class OpenApiCompatibilityTest(unittest.TestCase):
             return json.loads(json.dumps(self.generation))
 
         invalid_cases: list[tuple[str, dict[str, Any], str]] = []
+
+        missing_quality_gate = copied_generation()
+        missing_quality_gate["spec"]["internalSdkPolicy"]["productionQuality"]["codegen"].remove(
+            "descriptor-digest-join-key"
+        )
+        invalid_cases.append(
+            (
+                "missing-quality-gate",
+                missing_quality_gate,
+                "production-quality contract differs for codegen",
+            )
+        )
 
         wrong_native = copied_generation()
         wrong_native["spec"]["nativeGeneration"]["implementation"] = "hosted-provider"
@@ -648,6 +1091,18 @@ class OpenApiCompatibilityTest(unittest.TestCase):
             )
         )
 
+        unreviewed_stream = copied_generation()
+        del unreviewed_stream["spec"]["optionalRestGeneration"]["streamingPolicy"][
+            "reviewedUnsupported"
+        ]["watchOperation"]
+        invalid_cases.append(
+            (
+                "unreviewed-stream",
+                unreviewed_stream,
+                "streamingPolicy.reviewedUnsupported.watchOperation must be a mapping",
+            )
+        )
+
         with tempfile.TemporaryDirectory() as directory:
             temporary = Path(directory)
             for case_name, generation, expected_error in invalid_cases:
@@ -676,7 +1131,7 @@ class OpenApiCompatibilityTest(unittest.TestCase):
                     self.assertEqual(result.returncode, 2, result.stderr)
                     self.assertIn(expected_error, result.stderr)
 
-    def test_compatibility_policy_keeps_v1_unratified_and_internal_sdk_native(
+    def test_compatibility_policy_derives_v1_state_and_keeps_internal_sdk_native(
         self,
     ) -> None:
         spec = self.policy["spec"]
@@ -687,8 +1142,17 @@ class OpenApiCompatibilityTest(unittest.TestCase):
         self.assertEqual(
             spec["authority"]["curationOverlay"], "protocols/openapi/external-api.yaml"
         )
-        self.assertEqual(self.policy["metadata"]["status"], "candidate-unratified")
-        self.assertFalse(spec["versioning"]["ratified"])
+        self.assertEqual(self.policy["metadata"]["status"], "governed-ratification-gated")
+        state_authority = spec["versioning"]["ratificationStateAuthority"]
+        self.assertEqual(
+            state_authority["protobufBaseline"],
+            "protocols/compatibility/baselines/protobuf.lock.json",
+        )
+        self.assertEqual(
+            state_authority["openapiBaseline"],
+            "protocols/compatibility/baselines/openapi.lock.json",
+        )
+        self.assertIn("co-ratified", state_authority["rule"])
         self.assertIn("ratification", spec["versioning"]["postBaselineRule"])
         self.assertIn("change-operation-id", spec["compatibility"]["breaking"])
         self.assertIn("mutations-have-explicit-idempotency-semantics", spec["publicInvariants"])
@@ -715,6 +1179,128 @@ class OpenApiCompatibilityTest(unittest.TestCase):
             json.loads(candidate.read_text()),
             {"schema_version": "mindclade.openapi-candidate/v1", "sources": expected},
         )
+
+    def test_ratified_openapi_baseline_round_trips_exact_published_bytes(self) -> None:
+        published = self.openapi_path.read_bytes()
+        digest = "sha256:" + hashlib.sha256(published).hexdigest()
+        bindings = {
+            "source_revision": "a" * 40,
+            "openapi_projection_digest": digest,
+        }
+        baseline = generate_protocols.ratified_openapi_baseline(
+            published,
+            descriptor_digest=cast(str, self.openapi["x-mindclade-descriptor-digest"]),
+            bindings=bindings,
+            evidence={"schema_version": "mindclade.training-vertical-evidence/v2"},
+            evidence_digest="sha256:" + "b" * 64,
+            authorization={"signer_key_id": "sha256:" + "c" * 64},
+        )
+        value = json.loads(baseline)
+        self.assertEqual(value["schema_version"], "mindclade.openapi-baseline/v1")
+        self.assertEqual(value["document"]["digest"], digest)
+        self.assertEqual(generate_protocols.ratified_openapi_document(baseline), published)
+
+        corrupted = copy.deepcopy(value)
+        corrupted["document"]["digest"] = "sha256:" + "d" * 64
+        with self.assertRaisesRegex(ValueError, "digest does not match"):
+            generate_protocols.ratified_openapi_document(
+                json.dumps(corrupted, sort_keys=True, separators=(",", ":")).encode()
+            )
+
+    def test_post_ratification_openapi_policy_allows_additive_and_rejects_breaking(self) -> None:
+        baseline = {
+            "openapi": "3.1.0",
+            "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
+            "security": [{"bearerAuth": []}],
+            "paths": {
+                "/v1/widgets/{name}": {
+                    "get": {
+                        "operationId": "getWidget",
+                        "parameters": [
+                            {
+                                "in": "path",
+                                "name": "name",
+                                "required": True,
+                                "schema": {"maxLength": 64, "type": "string"},
+                            }
+                        ],
+                        "responses": {
+                            "200": {
+                                "headers": {"ETag": {"schema": {"type": "string"}}},
+                                "content": {
+                                    "application/json": {
+                                        "schema": {"$ref": "#/components/schemas/Widget"}
+                                    }
+                                },
+                            }
+                        },
+                        "security": [{"bearerAuth": []}],
+                        "x-mindclade-operation-kind": "unary",
+                    }
+                }
+            },
+            "components": {
+                "schemas": {
+                    "Widget": {
+                        "type": "object",
+                        "required": ["name"],
+                        "properties": {
+                            "name": {"maxLength": 64, "type": "string"},
+                            "state": {"enum": ["READY"], "type": "string"},
+                        },
+                    }
+                }
+            },
+        }
+        additive = copy.deepcopy(baseline)
+        additive["components"]["schemas"]["Widget"]["properties"]["description"] = {
+            "type": "string"
+        }
+        additive["components"]["schemas"]["Widget"]["properties"]["state"]["enum"].append(
+            "ARCHIVED"
+        )
+        additive["paths"]["/v1/widgets"] = {
+            "get": {
+                "operationId": "listWidgets",
+                "responses": {"200": {"description": "OK"}},
+            }
+        }
+        generate_protocols.validate_openapi_compatibility(
+            yaml.safe_dump(baseline).encode(), yaml.safe_dump(additive).encode()
+        )
+
+        breaking_cases = {
+            "operation": lambda value: value["paths"]["/v1/widgets/{name}"]["get"].update(
+                operationId="fetchWidget"
+            ),
+            "required parameter": lambda value: value["paths"]["/v1/widgets/{name}"]["get"][
+                "parameters"
+            ].append(
+                {
+                    "in": "query",
+                    "name": "view",
+                    "required": True,
+                    "schema": {"type": "string"},
+                }
+            ),
+            "removed property": lambda value: value["components"]["schemas"]["Widget"][
+                "properties"
+            ].pop("name"),
+            "tightened bound": lambda value: value["components"]["schemas"]["Widget"]["properties"][
+                "name"
+            ].update(maxLength=32),
+            "removed response header": lambda value: value["paths"]["/v1/widgets/{name}"]["get"][
+                "responses"
+            ]["200"]["headers"].pop("ETag"),
+        }
+        for name, mutate in breaking_cases.items():
+            with self.subTest(name=name):
+                current = copy.deepcopy(baseline)
+                mutate(current)
+                with self.assertRaisesRegex(ValueError, "OpenAPI compatibility break"):
+                    generate_protocols.validate_openapi_compatibility(
+                        yaml.safe_dump(baseline).encode(), yaml.safe_dump(current).encode()
+                    )
 
 
 if __name__ == "__main__":

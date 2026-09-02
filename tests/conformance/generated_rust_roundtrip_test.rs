@@ -47,7 +47,10 @@ fn every_generated_rust_package_round_trips_a_representative_message() {
         ..Default::default()
     });
     assert_wire_round_trip(protocols::experiment::v1::ExperimentCreated {
-        experiment_name: "experiments/fixture".into(),
+        experiment: Some(protocols::experiment::v1::Experiment {
+            name: "experiments/fixture".into(),
+            ..Default::default()
+        }),
         ..Default::default()
     });
     assert_wire_round_trip(protocols::agent::v1::AgentRunCompleted {

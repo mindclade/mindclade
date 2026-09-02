@@ -12,7 +12,7 @@ from .auth import (
     GoogleWorkloadIdentityProvider,
     SyncTokenProvider,
 )
-from .calls import CallOptions, Observer, RpcObservation
+from .calls import CallOptions, Observer, PaginationLimits, RpcObservation, apaginate, paginate
 from .client import AsyncClient, Client
 from .config import ClientConfig, ConfigurationError, Environment, RetryPolicy
 from .datasets import AsyncDatasets, Datasets
@@ -27,6 +27,7 @@ from .errors import (
     NotFoundError,
     OperationFailedError,
     OperationTimeoutError,
+    PaginationLimitError,
     ProtocolError,
     RateLimitError,
     TransportError,
@@ -105,6 +106,8 @@ __all__ = [
     "OperationFailedError",
     "OperationTimeoutError",
     "Operations",
+    "PaginationLimitError",
+    "PaginationLimits",
     "Policies",
     "ProtocolError",
     "RateLimitError",
@@ -117,5 +120,7 @@ __all__ = [
     "UnavailableError",
     "WorkflowRunFailedError",
     "Workflows",
+    "apaginate",
     "decode_job_requested_delivery",
+    "paginate",
 ]

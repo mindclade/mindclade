@@ -909,14 +909,16 @@
       "owner": "contract-governance",
       "activation_wave": "1",
       "status": "active",
-      "reason": "Native cross-language round trips and consumer coverage prove generated package interoperability.",
+      "reason": "Native interoperability tests, authoritative criterion mapping, readiness reporting, non-ratifying rehearsal, and protected Stage-5 evidence assembly govern contract qualification.",
       "paths": [
         "tests/conformance/generated_go_roundtrip_test.go",
         "tests/conformance/generated_rust_roundtrip_test.rs",
         "tests/conformance/generated_typescript_roundtrip_test.ts",
         "tests/conformance/test_generated_package_consumers.py",
+        "tools/qualification/authoritative-integration-criteria.v1.json",
         "tools/qualification/readiness_report.py",
         "tools/qualification/tests/test_training_evidence.py",
+        "tools/qualification/training_evidence_assembler.py",
         "tools/qualification/training_rehearsal.py"
       ]
     },

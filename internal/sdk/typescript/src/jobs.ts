@@ -110,9 +110,12 @@ export class Jobs {
 	): Promise<ListJobsResponse> {
 		const request = clone(ListJobsRequestSchema, create(ListJobsRequestSchema, input));
 		const parent = project(this.#core);
+		const pageSize = request.page?.pageSize ?? 0;
 		if (
 			(request.parent !== "" && request.parent !== parent) ||
-			(request.page?.pageSize ?? 0) > 200 ||
+			!Number.isInteger(pageSize) ||
+			pageSize < 0 ||
+			pageSize > 200 ||
 			request.filter.trim() !== "" ||
 			!["", "job_id"].includes(request.orderBy)
 		)

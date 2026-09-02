@@ -1,7 +1,12 @@
 use std::{
+    fs::OpenOptions,
+    path::{Path, PathBuf},
     sync::Arc,
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
+
+#[cfg(unix)]
+use std::os::unix::fs::OpenOptionsExt;
 
 use mindclade_protocols::{
     artifact::v1::{ArtifactRef, CommitArtifactCommand},
@@ -24,7 +29,8 @@ use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 use tonic::{Code, codegen::tokio_stream::StreamExt};
 
 use crate::{
-    CallOptions, ClientCore, Error, SubmitOptions, request::validate_resource_value,
+    CallOptions, ClientCore, Error, SubmitOptions,
+    request::{generate_request_id, validate_resource_value},
     retry::registered_method_safety,
 };
 
@@ -962,6 +968,102 @@ impl Artifacts {
         }
         u64::try_from(offset)
             .map_err(|_| Error::protocol("artifact download byte count was negative"))
+    }
+
+    /// Downloads, verifies, and atomically publishes a new mode-0600 file.
+    ///
+    /// Same-directory hard-link publication never overwrites an existing
+    /// destination, including under a racing writer. Successful link creation
+    /// is the commit point; later best-effort staging cleanup cannot turn a
+    /// committed file into an ambiguous failure result.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error for an invalid path, an existing destination, any
+    /// download/integrity failure, or a filesystem failure before publication.
+    pub async fn download_file(
+        &self,
+        artifact: &ArtifactRef,
+        destination: impl AsRef<Path>,
+        options: CallOptions,
+    ) -> Result<u64, Error> {
+        let destination = destination.as_ref();
+        if destination.as_os_str().is_empty()
+            || destination.as_os_str().as_encoded_bytes().contains(&0)
+        {
+            return Err(Error::invalid_argument(
+                "artifact destination must be a non-empty NUL-free filesystem path",
+            ));
+        }
+        let target = if destination.is_absolute() {
+            destination.to_path_buf()
+        } else {
+            std::env::current_dir()
+                .map_err(|_| Error::filesystem("artifact destination directory is unavailable"))?
+                .join(destination)
+        };
+        let directory = target.parent().ok_or_else(|| {
+            Error::invalid_argument("artifact destination must have a parent directory")
+        })?;
+        let staging = directory.join(format!(".mindclade-download-{}", generate_request_id()));
+        let mut open_options = OpenOptions::new();
+        open_options.create_new(true).read(true).write(true);
+        #[cfg(unix)]
+        open_options.mode(0o600);
+        let standard_file = open_options.open(&staging).map_err(|_| {
+            Error::filesystem("artifact destination staging file could not be created")
+        })?;
+        let mut cleanup = StagedArtifactFile::new(staging.clone());
+        let mut file = tokio::fs::File::from_std(standard_file);
+        let written = self.download(artifact, &mut file, options).await?;
+        file.sync_all()
+            .await
+            .map_err(|_| Error::filesystem("artifact destination sync failed"))?;
+        drop(file);
+        match std::fs::hard_link(&staging, &target) {
+            Ok(()) => {}
+            Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {
+                return Err(Error::already_exists("artifact destination already exists"));
+            }
+            Err(_) => {
+                return Err(Error::filesystem("artifact destination publication failed"));
+            }
+        }
+        // Hard-link success is the commit point. From here onward every
+        // operation is best effort so cancellation or cleanup support cannot
+        // produce an error while leaving a valid destination behind.
+        sync_artifact_directory(directory);
+        cleanup.remove();
+        sync_artifact_directory(directory);
+        Ok(written)
+    }
+}
+
+struct StagedArtifactFile {
+    path: Option<PathBuf>,
+}
+
+impl StagedArtifactFile {
+    fn new(path: PathBuf) -> Self {
+        Self { path: Some(path) }
+    }
+
+    fn remove(&mut self) {
+        if let Some(path) = self.path.take() {
+            let _ = std::fs::remove_file(path);
+        }
+    }
+}
+
+impl Drop for StagedArtifactFile {
+    fn drop(&mut self) {
+        self.remove();
+    }
+}
+
+fn sync_artifact_directory(directory: &Path) {
+    if let Ok(handle) = std::fs::File::open(directory) {
+        let _ = handle.sync_all();
     }
 }
 

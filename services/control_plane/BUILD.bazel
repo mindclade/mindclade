@@ -501,6 +501,7 @@ filegroup(
         "grpc-implementation.yaml",
         "internal/artifacts/postgres_integration_test.go",
         "internal/artifacts/server_test.go",
+        "internal/jobs/domain_completion_postgres_test.go",
         "internal/jobs/events_test.go",
         "internal/jobs/server_test.go",
         "internal/platform/storage/gcs_object_store_test.go",

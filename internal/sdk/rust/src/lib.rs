@@ -66,7 +66,9 @@ pub use operations::{
     WaitOptions,
 };
 pub use policies::Policies;
-pub use request::{CallOptions, SubmitOptions};
+pub use request::{
+    CallOptions, PaginationLimits, PaginationPage, Paginator, SubmitOptions, paginate,
+};
 pub use runs::{AttemptLease, LeaseCredential, Runs};
 pub use training::{Training, TrainingWatch, TrainingWatchOptions};
 pub use transport::{

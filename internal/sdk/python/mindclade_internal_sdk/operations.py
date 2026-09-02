@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import random
 import threading
 import time
 from collections.abc import AsyncIterator, Iterator
@@ -19,6 +18,7 @@ from ._invocation import (
     SyncInvoker,
     canonical_digest,
     command_context,
+    retry_delay,
 )
 from ._validation import required_response_message, required_text
 from .calls import CallOptions, PreparedCall, prepare_call
@@ -99,16 +99,6 @@ def _validate_listed_operation(
             "ListOperations returned invalid or cross-project durable state",
             status=grpc.StatusCode.DATA_LOSS,
         )
-
-
-def _watch_backoff(invoker: SyncInvoker | AsyncInvoker, failures: int, remaining: float) -> float:
-    exponent = min(max(0, failures - 1), 30)
-    cap = min(
-        invoker.config.retry.max_delay,
-        invoker.config.retry.base_delay * (2**exponent),
-        max(0.0, remaining),
-    )
-    return random.uniform(0.0, cap) if cap > 0 else 0.0
 
 
 class Operations:
@@ -336,10 +326,11 @@ class Operations:
             failures += 1
             if failures >= self._invoker.config.retry.max_attempts:
                 raise stream_error
-            delay = _watch_backoff(
-                self._invoker,
+            delay = retry_delay(
+                self._invoker.config,
                 failures,
                 deadline - time.monotonic(),
+                retry_after=stream_error.retry_after,
             )
             if cancellation is not None:
                 if cancellation.wait(delay):
@@ -587,7 +578,12 @@ class AsyncOperations:
             failures += 1
             if failures >= self._invoker.config.retry.max_attempts:
                 raise stream_error
-            delay = _watch_backoff(self._invoker, failures, deadline - loop.time())
+            delay = retry_delay(
+                self._invoker.config,
+                failures,
+                deadline - loop.time(),
+                retry_after=stream_error.retry_after,
+            )
             if cancellation is None:
                 if delay > 0:
                     await asyncio.sleep(delay)

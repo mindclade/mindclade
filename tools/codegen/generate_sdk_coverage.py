@@ -743,6 +743,10 @@ def render(
         "evidence_files": [
             {"digest": digest, "path": path} for path, digest in sorted(evidence_files.items())
         ],
+        "generator": {
+            "name": "tools/codegen/generate_sdk_coverage.py",
+            "version": GENERATED_SCHEMA_VERSION,
+        },
         "languages": list(LANGUAGES),
         "policy_digest": sha256(policy_bytes),
         "ratification_ready": not temporary_gaps,

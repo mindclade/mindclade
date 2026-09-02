@@ -1,4 +1,4 @@
-# ADR-0012: HTTP/JSON Operation Projection and Python SDK
+# ADR-0012: Candidate HTTP/JSON and Server-Sent Event Projection
 
 > Partially superseded by ADR-0015: Protobuf plus Buf-generated native
 > Protobuf/gRPC/Connect bindings are the internal transport authority.
@@ -7,12 +7,14 @@
 > projection; Fern and Speakeasy may be evaluated only as optional internal
 > REST generators and never become foundational dependencies. This proposed
 > public SDK is not adopted by ADR-0015 and has no current release authority.
+> This revision narrows the proposal to the descriptor-derived candidate HTTP
+> and Server-Sent Event projection already permitted by ADR-0015.
 
 - Status: Proposed
 - Connected ratification: Pending independent review on protected infrastructure
 - Specification date: Proposed 2026-08-30; not accepted
 - Effective date: Pending connected ratification and required owner approvals
-- Compatibility window: Supported HTTP v1 and Python SDK 1.x remain additive within the major
+- Compatibility window: The projection remains an unratified candidate; additive v1 compatibility starts only after the protected ADR-0015 baseline is created
 - Supersedes: None
 - Superseded by: ADR-0015
 - Owners: Developer Experience, Control Plane, Architecture
@@ -20,23 +22,23 @@
 
 ## Decision record metadata
 
-- Affected invariants: curated external projection, durable asynchronous operations, finite deadlines, idempotent mutation, revision-aware polling, immutable artifact verification, stable errors, and transport-independent SDK types.
-- Affected paths: Wave 2P HTTP edge, OpenAPI output, Python SDK client/models/errors/artifact transfer, compatibility baselines, and platform journey qualification.
-- Affected contracts: inference submission, Operation, InferenceResult, cancellation, ETag/revision, ArtifactRef download, public error envelope, synchronous and asynchronous Python clients.
-- Security and safety impact: authentication remains transport metadata; tenant/project identity is verified; credentials and restricted request bodies are not logged; downloads verify digest before atomic replacement.
+- Affected invariants: descriptor-derived HTTP projection, explicit SSE operation kind, durable asynchronous operations, finite mutation deadlines, idempotent mutation, resumable watches, immutable artifact verification, and stable errors.
+- Affected paths: the candidate HTTP edge, public-safe protobuf facade, raw/curated/published OpenAPI projections, compatibility candidates, and gateway qualification.
+- Affected contracts: inference submission, Operation, OperationEvent, operation watch/cancellation, ETag/revision, ArtifactRef download, and the public error envelope.
+- Security and safety impact: authentication remains transport metadata; tenant/project identity is verified; credentials and restricted request bodies are not logged; downloads verify digest before atomic no-clobber publication.
 - Migration: evolve HTTP v1 and Python 1.x additively, preserve unknown fields where possible, serve current and immediately previous compatible projections, and use a new major for breaking changes.
 - Rollback: disable the fixture inference route, keep terminal operations readable, retain the previous compatible SDK/server pair, and never invalidate immutable result artifacts.
-- Required evidence: curated OpenAPI drift, version/skew fixtures, idempotency conflict, ETag polling, deadline/cancellation, stable error mapping, clean wheel installation, sync/async parity, artifact corruption, and a 16-input consumer journey.
+- Required evidence: descriptor/OpenAPI drift, exact HTTP-binding parity, operation-kind projection, idempotency conflict, ETag reads, deadline/cancellation, resumable SSE cursor/heartbeat/terminal behavior, stable error mapping, artifact corruption, and four-language generated-stream conformance.
 
 ## Context
 
-Wave 2P needs one supported external surface without leaking internal Protobuf layout, database rows, queue state, or provider objects. The workflow is asynchronous and may outlive one HTTP connection, so the public contract must expose a durable Operation and verified result artifact rather than a synchronous inference response.
+The candidate HTTP surface must not leak internal Protobuf layout, database rows, queue state, or provider objects. Work may outlive one HTTP connection, so the candidate contract exposes a durable Operation, resumable OperationEvent stream, and verified result artifact rather than a synchronous inference response.
 
 This record is a proposal. It does not create a supported API or SDK release until protected ratification and conformance evidence exist; `production_authority` remains `false`.
 
 ## Decision
 
-The supported projection is HTTP/JSON profile `v1`. Canonical resource names are:
+The candidate projection is HTTP/JSON profile `v1`. Canonical resource names are:
 
 ```text
 parent:    tenants/{tenant}/projects/{project}
@@ -49,6 +51,7 @@ The minimal Wave 2P routes are:
 ```text
 POST /v1/{parent=tenants/*/projects/*}/inferenceOperations
 GET  /v1/{name=tenants/*/projects/*/operations/*}
+GET  /v1/{name=tenants/*/projects/*/operations/*}:watch
 POST /v1/{name=tenants/*/projects/*/operations/*}:cancel
 GET  /v1/{name=tenants/*/projects/*/artifacts/*}:download
 ```
@@ -57,31 +60,62 @@ Submission requires `Authorization`, `Idempotency-Key`, and an absolute RFC 3339
 
 Operation reads return an `ETag` derived from the durable revision. The SDK sends `If-None-Match` while polling and treats HTTP 304 as unchanged state. Polling always has a finite client deadline and bounded jittered interval. Cancellation is an idempotent request for durable cancellation, requires the last observed `If-Match` ETag, returns the current Operation, and does not claim immediate worker termination. A stale ETag returns a conflict with the current safe revision detail.
 
-The terminal result contains the result ArtifactRef plus the verified input, model, fixture-profile, AttemptId, and LeaseEpoch identities. Artifact download supports bounded streaming/range behavior where available, writes to an attempt-local temporary destination, verifies size and digest, and atomically replaces the caller destination only after verification. Callers never construct storage paths or receive cloud credentials as durable identity.
-
-All non-success responses use one public error envelope with stable `code`, safe `message`, `requestId`, bounded typed `details`, and optional `retryAfter`. HTTP status is transport classification, not the stable domain code. The Python SDK maps errors to the documented MindcladeError hierarchy and preserves the cause without exposing raw transport or server internals.
-
-The supported package exports synchronous `MindcladeClient` and asynchronous `AsyncMindcladeClient`, typed request/result/operation/artifact models, and equivalent operations:
+Operation watch is an explicit SSE capability, not a unary JSON method. The
+`PublicHttpContract` method option owns a nested `PublicSseContract` with this
+candidate policy:
 
 ```text
-submit_inference(request, *, idempotency_key, deadline) -> OperationHandle[InferenceResult]
-get_operation(name, *, etag=None) -> Operation
-wait_operation(operation, *, deadline, polling_policy=None) -> InferenceResult
-cancel_operation(operation, *, etag) -> Operation
-download_artifact(ref, destination, *, deadline) -> verified destination
+retry_milliseconds = 3000
+heartbeat_interval_seconds = 15
+heartbeat_reuses_last_durable_event_id = true
+replay_acknowledged_terminal_event = false
 ```
 
-The package is strictly typed and ships `py.typed`; construction is explicit; credentials are lazy; import performs no network or credential lookup; public models are SDK-owned rather than generated transport structs; sync and async clients have semantic parity; and model/training/torch packages are not dependencies. Under ADR-0015, the curated checked-in OpenAPI document is the HTTP/JSON source, while exact operation and model mappings prove parity with the public gRPC façade.
+`Last-Event-ID` is an optional opaque, authenticated, resource-bound resume
+cursor. Resume is exclusive of the acknowledged cursor. No heartbeat is
+emitted before a durable application event establishes cursor truth; later
+heartbeats repeat that cursor and never advance it. A connection emits at most
+one terminal event and returns immediately afterward. Reconnecting with an
+acknowledged terminal cursor emits no duplicate terminal event; reconnecting
+from an earlier valid cursor may replay it once. A client must apply one finite
+overall deadline and a bounded retry budget across all connections. Each
+connection ends on terminal state, caller cancellation or disconnect,
+transport failure, server shutdown, or exhaustion of that caller-owned
+deadline, while per-connection buffers and goroutines remain bounded.
 
-Within HTTP v1 and Python SDK 1.x, changes are additive, existing field meaning is stable, unknown response fields are preserved where the runtime permits, and stable error codes are not repurposed. A breaking route, required request field, resource-name rule, error meaning, or public Python signature requires a new major and a tested migration window.
+Generation derives `unary`, `server-stream`, or `sse` operation kind from the
+RPC and stream projection. It emits `x-mindclade-operation-kind` for every
+operation and `x-mindclade-sse` for the watch, including the response event
+model, resume header, retry, heartbeat, durable-cursor, and terminal-replay
+policy. Generation fails closed when streaming shape, HTTP method, request
+body, resume header, media type, response type, or required SSE policy does not
+match. The current candidate permits SSE only for
+`MindcladeService.WatchOperation -> OperationEvent`.
+
+The terminal result contains the result ArtifactRef plus the verified input, model, fixture-profile, AttemptId, and LeaseEpoch identities. Artifact download supports bounded streaming/range behavior where available, writes to a mode-0600 sibling temporary file, verifies size and digest, and atomically publishes without replacing an existing caller destination. The destination-directory durability barrier completes only after successful no-clobber publication. Corruption, cancellation, write failure, or a pre-existing destination removes staging and leaves the destination absent or unchanged. Callers never construct storage paths or receive cloud credentials as durable identity.
+
+All non-success responses use one public error envelope with stable `code`, safe `message`, `requestId`, bounded typed `details`, and optional `retryAfter`. HTTP status is transport classification, not the stable domain code. Internal SDK facades map transport failures to their documented Mindclade error types and preserve safe causes without exposing raw transport or server internals.
+
+ADR-0015 does not adopt the public Python package proposed by the predecessor
+text of this record. Internal Go, Python, Rust, and TypeScript SDKs remain thin
+Mindclade-owned facades over generated native transports. Any supported public
+HTTP SDK requires a separate release decision. During this candidate program,
+generated clients must preserve streaming methods as streaming and must never
+silently expose SSE as an ordinary unary request/response method.
+
+After protected v1 ratification, HTTP changes are additive, existing field
+meaning remains stable, and stable error codes are not repurposed. A breaking
+route, required request field, resource-name rule, cursor meaning, event
+semantics, or error meaning requires a versioned migration and consumer
+evidence.
 
 ## Consequences
 
-- Clients can survive process restarts and long work without keeping an HTTP request open.
+- Clients can survive process restarts and resume operation observation without treating one HTTP connection as durable truth.
 - Internal messages and persistence remain free to evolve behind one curated projection.
 - Idempotency, deadlines, ETags, and typed errors have one testable client/server meaning.
-- Artifact integrity is checked at the supported SDK boundary.
-- ADR-0015 supersedes the TypeScript SDK, streaming-contract, and broader-resource deferments; the console runtime remains deferred until its own activation evidence exists.
+- Artifact integrity is checked at the internal SDK/application boundary.
+- ADR-0015 remains the authority for internal transports, SDK facades, candidate lifecycle, and eventual compatibility baseline.
 
 ## Rejected alternatives
 
@@ -93,4 +127,12 @@ Within HTTP v1 and Python SDK 1.x, changes are additive, existing field meaning 
 
 ## Qualification and rollback
 
-Ratification requires one reviewed Operation resource, versioning fixtures, and the complete Python consumer journey. Qualification builds a wheel, installs it in a clean environment, proves no import-time I/O, exercises sync/async submission, polling, cancellation, errors, and verified download across all 16 deterministic fixtures, and tests current/previous compatibility. Rollback disables new submission while retaining readable operations and verified result downloads through the previous compatible projection.
+Ratification requires one reviewed Operation/OperationEvent contract, exact
+descriptor-to-OpenAPI parity, generated streaming conformance, and gateway SSE
+qualification covering initial watch, resume, cursor rejection, heartbeat,
+terminal acknowledgement, malformed events, slow clients, cancellation, and
+resource cleanup. It remains one input to the protected ADR-0015 ratification
+receipt and does not independently authorize public release. Rollback restores
+the prior complete candidate source/generator closure and retains readable
+operations and verified result downloads; it never rolls back one generated
+language or projection independently.

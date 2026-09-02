@@ -29,11 +29,13 @@ class MindcladeError(Exception):
         status: grpc.StatusCode | None = None,
         request_id: str | None = None,
         retryable: bool = False,
+        retry_after: float | None = None,
     ) -> None:
         super().__init__(message)
         self.status = status
         self.request_id = request_id
         self.retryable = retryable
+        self.retry_after = retry_after
 
 
 class AuthenticationError(MindcladeError):
@@ -74,6 +76,13 @@ class UnavailableError(MindcladeError):
 
 class OperationTimeoutError(MindcladeError):
     pass
+
+
+class PaginationLimitError(MindcladeError):
+    """Automatic pagination stopped before implying a complete result."""
+
+    def __init__(self, message: str) -> None:
+        super().__init__(message, status=grpc.StatusCode.RESOURCE_EXHAUSTED, retryable=False)
 
 
 class OperationFailedError(MindcladeError):
@@ -145,6 +154,38 @@ def _rpc_request_id(error: grpc.RpcError, fallback: str | None) -> str | None:
     return fallback
 
 
+def _metadata_retry_after(metadata: Iterable[tuple[str, str | bytes]] | None) -> float | None:
+    if metadata is None:
+        return None
+    for key, value in metadata:
+        if key.lower() != "retry-after-ms":
+            continue
+        decoded = value.decode("ascii", errors="ignore") if isinstance(value, bytes) else value
+        if not decoded.isascii() or not decoded.isdecimal():
+            return None
+        milliseconds = int(decoded)
+        if milliseconds > 30_000:
+            milliseconds = 30_000
+        return milliseconds / 1_000
+    return None
+
+
+def _rpc_retry_after(error: grpc.RpcError) -> float | None:
+    for accessor_name in ("trailing_metadata", "initial_metadata"):
+        accessor: Any = getattr(error, accessor_name, None)
+        if not callable(accessor):
+            continue
+        try:
+            raw_metadata = accessor()
+            metadata = cast(Iterable[tuple[str, str | bytes]] | None, raw_metadata)
+            retry_after = _metadata_retry_after(metadata)
+        except Exception:  # pragma: no cover - defensive provider boundary
+            continue
+        if retry_after is not None:
+            return retry_after
+    return None
+
+
 def normalize_rpc_error(error: grpc.RpcError, *, fallback_request_id: str) -> MindcladeError:
     """Map gRPC status without copying provider detail strings or payloads."""
 
@@ -185,4 +226,5 @@ def normalize_rpc_error(error: grpc.RpcError, *, fallback_request_id: str) -> Mi
         status=status,
         request_id=request_id,
         retryable=retryable,
+        retry_after=_rpc_retry_after(error),
     )

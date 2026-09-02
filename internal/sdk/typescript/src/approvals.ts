@@ -116,8 +116,15 @@ export class Approvals {
 		ensureUnfenced(options);
 		const request = create(ListApprovalRequestsRequestSchema, input);
 		request.parent = normalizeParent(this.#core, request.parent);
-		if (request.page !== undefined && request.page.pageSize > MAXIMUM_PAGE_SIZE) {
-			throw MindcladeError.invalidArgument("approval page size cannot exceed 200");
+		if (
+			request.page !== undefined &&
+			(!Number.isInteger(request.page.pageSize) ||
+				request.page.pageSize < 0 ||
+				request.page.pageSize > MAXIMUM_PAGE_SIZE)
+		) {
+			throw MindcladeError.invalidArgument(
+				"approval page size must be an integer between zero and 200",
+			);
 		}
 		const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
 		return await invokeUnary(

@@ -1,9 +1,9 @@
 {
   "schema_version": "mindclade.activation-bundle-projection/v1",
-  "source_digest": "sha256:9bf2bec3f980719d23e9730ff6dd0f912564ad023e381ea9c754dffd4465a96b",
+  "source_digest": "sha256:2db062e0f34eeb9dc7b1a1f166bb3fd6fcbfc7997a23583ee5a4d83c693e7953",
   "bundle_count": 27,
-  "path_count": 911,
-  "path_set_digest": "sha256:24e259349e0f667429fb11cb87bf06cd45fa6443378ef3e40589ce2447fdd5ea",
+  "path_count": 913,
+  "path_set_digest": "sha256:f0fa8d911a118c0ef7d3d023ca9791744ed3037eb393268f1c6cce3848993895",
   "bundles": [
     {
       "id": "activation-bundle-governance",
@@ -143,11 +143,11 @@
     {
       "id": "contract-conformance",
       "constant": "CONTRACT_CONFORMANCE_ADDITIONS",
-      "path_count": 7,
-      "addition_count": 7,
+      "path_count": 9,
+      "addition_count": 9,
       "predeclared_count": 0,
-      "sequence_digest": "sha256:35124cbb6beabae00ac7b1351b483ee34500c1061d2439a66efea366fef6a20c",
-      "path_set_digest": "sha256:35124cbb6beabae00ac7b1351b483ee34500c1061d2439a66efea366fef6a20c"
+      "sequence_digest": "sha256:ba6918077b09d4491d7b04dfbd43fe5954d4bad1302c0f6bf02b4ce07e1ef0ed",
+      "path_set_digest": "sha256:ba6918077b09d4491d7b04dfbd43fe5954d4bad1302c0f6bf02b4ce07e1ef0ed"
     },
     {
       "id": "sdk-generator",

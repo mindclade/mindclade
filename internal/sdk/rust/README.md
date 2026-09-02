@@ -36,7 +36,7 @@ output.
 The future public HTTP SDK is a separate compatibility surface and must not
 depend on this crate or expose internal RPC contracts.
 
-`Client::generated_clients().await` exposes all fourteen internal generated
+`Client::generated_clients().await` exposes all fifteen internal generated
 Tonic service clients for uncommon workflows. Those clients are wrapped in a
 policy interceptor, so even a bare generated request receives short-lived
 workload identity, a bounded default deadline, tenant/project/principal
@@ -46,9 +46,29 @@ adds explicit per-call behavior when needed. The ergonomic Training,
 Operations, and Artifacts APIs remain preferred because they also own bounded
 retry and response-invariant checks.
 
+The descriptor-bound coverage gate fixes the current surface at 15 services
+and 132 RPCs: 127 unary and five server-streaming, with 131 ergonomic methods
+and one reviewed raw-only method. The lazy `paginate`/`Paginator::try_next`
+surface preserves opaque tokens exactly, rejects cursor loops, and reports
+caller-selectable page or item budget exhaustion as a typed non-retryable
+error. Every generated Tonic client uses an 8 MiB encode/decode ceiling, which
+admits a valid 4 MiB artifact chunk plus protobuf framing while remaining
+bounded.
+
 `RecordingTransport` wraps the generated-type-only `RpcTransport` seam and
 records method names plus metadata keys without retaining payloads or header
 values. Unknown ergonomic methods default to unsafe (one attempt); raw
 generated methods are never implicitly retried. The SDK has no PostgreSQL,
 Pub/Sub, or GCS client dependency—durability, event publication, and artifact
 storage remain server responsibilities behind generated RPC contracts.
+
+The sole intentional raw-only RPC is `RunService.ExpireAttemptLeases`, a
+control-plane reconciler primitive. Application code should use the fenced
+run/attempt lifecycle helpers and must not infer an ergonomic compatibility or
+retry promise from the generated escape hatch.
+
+`client.artifacts().download_file(&artifact, path, options)` stages a private
+mode-0600 file beside the destination, verifies the complete immutable digest,
+and atomically publishes without overwriting an existing path. Successful link
+creation is the commit point; corruption, cancellation, and write failure
+before it remove staging and leave the destination absent or unchanged.

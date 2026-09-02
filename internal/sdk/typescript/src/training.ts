@@ -751,8 +751,10 @@ const scopedName = (core: ClientCore, name: string, collection: string): string 
 };
 
 const validatePage = (size: number | undefined): void => {
-	if (size !== undefined && (size < 0 || size > MAXIMUM_PAGE_SIZE))
-		throw MindcladeError.invalidArgument("training page size must be between zero and 200");
+	if (size !== undefined && (!Number.isInteger(size) || size < 0 || size > MAXIMUM_PAGE_SIZE))
+		throw MindcladeError.invalidArgument(
+			"training page size must be an integer between zero and 200",
+		);
 };
 
 const ensureUnfenced = (options: SdkCallOptions): void => {

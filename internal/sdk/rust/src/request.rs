@@ -1,5 +1,7 @@
 use std::{
+    collections::{HashSet, VecDeque},
     fmt,
+    future::Future,
     sync::atomic::{AtomicU64, Ordering},
     time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
@@ -9,6 +11,173 @@ use prost_types::Timestamp;
 use crate::{Config, Error, config::validate_metadata_value};
 
 static REQUEST_SEQUENCE: AtomicU64 = AtomicU64::new(1);
+
+const DEFAULT_PAGINATION_MAX_PAGES: usize = 100;
+const DEFAULT_PAGINATION_MAX_ITEMS: usize = 10_000;
+const HARD_PAGINATION_MAX_PAGES: usize = 1_000;
+const HARD_PAGINATION_MAX_ITEMS: usize = 1_000_000;
+
+/// Hard limits for lazy traversal of opaque-token list pages.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct PaginationLimits {
+    max_pages: usize,
+    max_items: usize,
+}
+
+impl PaginationLimits {
+    /// Builds validated pagination limits.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error for zero or unreasonably large limits.
+    pub fn new(max_pages: usize, max_items: usize) -> Result<Self, Error> {
+        if !(1..=HARD_PAGINATION_MAX_PAGES).contains(&max_pages) {
+            return Err(Error::invalid_argument(
+                "pagination max pages must be in [1, 1000]",
+            ));
+        }
+        if !(1..=HARD_PAGINATION_MAX_ITEMS).contains(&max_items) {
+            return Err(Error::invalid_argument(
+                "pagination max items must be in [1, 1000000]",
+            ));
+        }
+        Ok(Self {
+            max_pages,
+            max_items,
+        })
+    }
+}
+
+impl Default for PaginationLimits {
+    fn default() -> Self {
+        Self {
+            max_pages: DEFAULT_PAGINATION_MAX_PAGES,
+            max_items: DEFAULT_PAGINATION_MAX_ITEMS,
+        }
+    }
+}
+
+/// One generated-facade page adapted for [`Paginator`].
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct PaginationPage<T> {
+    pub items: Vec<T>,
+    pub next_page_token: String,
+}
+
+impl<T> PaginationPage<T> {
+    #[must_use]
+    pub fn new(items: Vec<T>, next_page_token: impl Into<String>) -> Self {
+        Self {
+            items,
+            next_page_token: next_page_token.into(),
+        }
+    }
+}
+
+/// Lazy, bounded automatic pagination over an ergonomic facade list method.
+///
+/// The fetch closure receives each opaque token without normalization. Use
+/// [`Paginator::try_next`] in a loop; it rejects repeated cursors and reports
+/// budget exhaustion rather than presenting a partial traversal as complete.
+pub struct Paginator<T, Fetch> {
+    fetch_page: Fetch,
+    token: String,
+    seen: HashSet<String>,
+    pending: VecDeque<T>,
+    limits: PaginationLimits,
+    pages: usize,
+    items: usize,
+    finished: bool,
+    failed: bool,
+}
+
+/// Creates a lazy paginator. `fetch_page` should call an ergonomic SDK list
+/// method so identity, deadlines, retries, and response validation stay active.
+pub fn paginate<T, Fetch>(
+    fetch_page: Fetch,
+    initial_page_token: impl Into<String>,
+    limits: PaginationLimits,
+) -> Paginator<T, Fetch> {
+    let token = initial_page_token.into();
+    let seen = if token.is_empty() {
+        HashSet::new()
+    } else {
+        HashSet::from([token.clone()])
+    };
+    Paginator {
+        fetch_page,
+        token,
+        seen,
+        pending: VecDeque::new(),
+        limits,
+        pages: 0,
+        items: 0,
+        finished: false,
+        failed: false,
+    }
+}
+
+impl<T, Fetch> Paginator<T, Fetch> {
+    /// Returns the next item, fetching pages only as needed.
+    ///
+    /// # Errors
+    ///
+    /// Returns the facade fetch error, a protocol error for a repeated token,
+    /// or a non-retryable resource-exhausted error when a limit is reached.
+    pub async fn try_next<FetchFuture>(&mut self) -> Result<Option<T>, Error>
+    where
+        Fetch: FnMut(String) -> FetchFuture,
+        FetchFuture: Future<Output = Result<PaginationPage<T>, Error>>,
+    {
+        loop {
+            if self.failed {
+                return Ok(None);
+            }
+            if let Some(item) = self.pending.pop_front() {
+                if self.items >= self.limits.max_items {
+                    self.failed = true;
+                    return Err(Error::pagination_limit(
+                        "automatic pagination exceeded its item budget",
+                    ));
+                }
+                self.items += 1;
+                return Ok(Some(item));
+            }
+            if self.finished {
+                return Ok(None);
+            }
+            if self.items >= self.limits.max_items {
+                self.failed = true;
+                return Err(Error::pagination_limit(
+                    "automatic pagination exceeded its item budget",
+                ));
+            }
+            if self.pages >= self.limits.max_pages {
+                self.failed = true;
+                return Err(Error::pagination_limit(
+                    "automatic pagination exceeded its page budget",
+                ));
+            }
+            let page = match (self.fetch_page)(self.token.clone()).await {
+                Ok(page) => page,
+                Err(error) => {
+                    self.failed = true;
+                    return Err(error);
+                }
+            };
+            self.pages += 1;
+            if !page.next_page_token.is_empty() && !self.seen.insert(page.next_page_token.clone()) {
+                self.failed = true;
+                return Err(Error::protocol(
+                    "list response repeated an opaque page token",
+                ));
+            }
+            self.finished = page.next_page_token.is_empty();
+            self.token = page.next_page_token;
+            self.pending = page.items.into();
+        }
+    }
+}
 
 /// Per-RPC behavior and correlation metadata. It does not redefine the wire
 /// request.

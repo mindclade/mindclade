@@ -1,5 +1,5 @@
 #!/usr/bin/env python3.12
-"""Map every authoritative integration-plan criterion to concrete evidence."""
+"""Build a fail-closed report from the governed integration-criterion map."""
 
 from __future__ import annotations
 
@@ -8,10 +8,14 @@ import hashlib
 import json
 import os
 import re
+import subprocess
 import tempfile
-from collections.abc import Sequence
+from collections.abc import Callable, Mapping, Sequence
+from dataclasses import dataclass
 from pathlib import Path
 from typing import cast
+
+from training_evidence_assembler import validate_assembled_evidence_payload
 
 type JsonScalar = bool | float | int | str | None
 type JsonValue = JsonScalar | list[JsonValue] | dict[str, JsonValue]
@@ -19,6 +23,78 @@ type JsonObject = dict[str, JsonValue]
 
 CHECKBOX_RE = re.compile(r"^- \[(?P<checked>[ x])\] (?P<text>.+)$")
 QUEUE_RE = re.compile(r"^(?P<number>[0-9]+)\. (?P<text>.+)$")
+BAZEL_TARGET_RE = re.compile(r"^//(?P<package>[A-Za-z0-9_./-]*):(?P<target>[A-Za-z0-9_.+-]+)$")
+DIGEST_RE = re.compile(r"^sha256:[0-9a-f]{64}$")
+REVISION_RE = re.compile(r"^[0-9a-f]{40}$")
+SCHEMA_VERSION_RE = re.compile(r"^mindclade\.[a-z0-9.-]+/v[1-9][0-9]*$")
+CRITERION_ID_RE = re.compile(
+    r"^(?:adapted-execution-checklist|stages-and-exit-criteria|completion-work-queue)-[0-9]{2}$"
+)
+OWNER_RE = re.compile(r"^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$")
+QUALIFICATION_CLASSES = frozenset({"source", "protected", "connected", "scientific"})
+KNOWN_OWNERS = frozenset(
+    {
+        "agent-platform",
+        "architecture",
+        "computational-biology",
+        "contract-governance",
+        "data-platform",
+        "developer-experience",
+        "developer-platform",
+        "evaluation-science",
+        "inference-systems",
+        "ml-systems-performance",
+        "model-architecture",
+        "platform-control-plane",
+        "platform-operations",
+        "product-engineering",
+        "research",
+        "security",
+        "training-systems",
+    }
+)
+CRITERION_MAP_SCHEMA = "mindclade.authoritative-integration-criterion-map/v1"
+READINESS_SCHEMA = "mindclade.authoritative-integration-readiness/v2"
+REHEARSAL_SCHEMA = "mindclade.training-vertical-rehearsal/v1"
+TRAINING_EVIDENCE_SCHEMA = "mindclade.training-vertical-evidence/v2"
+DEFAULT_MAPPING_PATH = Path(__file__).with_name("authoritative-integration-criteria.v1.json")
+REHEARSAL_FIELDS = frozenset(
+    {"bindings", "checks", "ratification", "receipt_digest", "schema_version", "status"}
+)
+REHEARSAL_BINDING_FIELDS = frozenset(
+    {
+        "candidate_artifact_digest",
+        "candidate_descriptor_digest",
+        "codegen_toolchain_digest",
+        "event_registry_digest",
+        "event_registry_source_digest",
+        "fresh_database_integration_receipt_digest",
+        "generated_manifest_digest",
+        "grpc_implementation_digest",
+        "migration_set_digest",
+        "openapi_projection_digest",
+        "sdk_package_digests",
+        "sdk_rpc_coverage_digest",
+        "source_revision",
+        "source_tree_digest",
+    }
+)
+REHEARSAL_CHECK_TARGETS = {
+    "cross_language": "//:all_contract_tests",
+    "database": "//services/control_plane:control_plane_test",
+    "event": "//services/control_plane/internal/platform/eventprojection:event_projection_test",
+    "gateway": "//services/control_plane:control_plane_grpc_registration_test",
+    "grpc": "//services/control_plane:control_plane_grpc_registration_test",
+    "sdk": "//:all_contract_tests",
+}
+
+
+@dataclass(frozen=True)
+class ValidatedReceipt:
+    digest: str
+    payload: JsonObject
+    bound_targets: frozenset[str]
+    verification_class: str
 
 
 def canonical_json(value: JsonValue) -> bytes:
@@ -29,8 +105,17 @@ def digest_bytes(value: bytes) -> str:
     return "sha256:" + hashlib.sha256(value).hexdigest()
 
 
+def _unique_object(pairs: list[tuple[str, object]]) -> dict[str, object]:
+    result: dict[str, object] = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError(f"duplicate JSON object key: {key}")
+        result[key] = value
+    return result
+
+
 def load_object(path: Path) -> JsonObject:
-    value: object = json.loads(path.read_text(encoding="utf-8"))
+    value: object = json.loads(path.read_text(encoding="utf-8"), object_pairs_hook=_unique_object)
     if not isinstance(value, dict):
         raise ValueError(f"{path} must contain one JSON object")
     raw = cast(dict[object, object], value)
@@ -40,6 +125,8 @@ def load_object(path: Path) -> JsonObject:
 
 
 def plan_criteria(source: str) -> list[tuple[str, bool, str]]:
+    """Extract the three governed criterion collections from the plan."""
+
     criteria: list[tuple[str, bool, str]] = []
     current_id = ""
     current_checked = False
@@ -83,137 +170,541 @@ def plan_criteria(source: str) -> list[tuple[str, bool, str]]:
     return criteria
 
 
-def evidence_mapping(text: str) -> tuple[list[JsonValue], str, str]:
-    lowered = text.lower()
-    if any(
-        word in lowered
-        for word in (
-            "postgresql",
-            "migration",
-            "rls",
-            "fenc",
-            "lease",
-            "reliability",
-            "dlq",
-            "outbox",
-            "inbox",
-        )
-    ):
-        return (
-            [
-                "//services/control_plane:control_plane_test",
-                "//services/control_plane:jobs_server_test",
-                "//services/control_plane/internal/platform/eventprojection:event_projection_test",
-            ],
-            "just integration-ci",
-            "build/evidence/training-vertical-rehearsal.v1.json",
-        )
-    if any(word in lowered for word in ("sdk", "buf", "python", "rust", "typescript", "connect")):
-        return (
-            [
-                "//internal/sdk/go/mindclade:mindclade_test",
-                "//internal/sdk/python:tests",
-                "//internal/sdk/rust:mindclade_internal_sdk_test",
-                "//internal/sdk/typescript:tests",
-            ],
-            "just check",
-            "build/evidence/training-vertical-rehearsal.v1.json",
-        )
-    if any(
-        word in lowered
-        for word in ("scientific", "sqp-001", "pa-01", "accelerator", "production qualification")
-    ):
-        return ([], "protected scientific/production qualification is not active", "none")
-    if any(
-        word in lowered
-        for word in ("deploy", "gitops", "staging", "production promotion", "post-launch")
-    ):
-        return ([], "protected connected deployment gate is not active", "none")
-    if any(word in lowered for word in ("path-policy", "activation", "blueprint")):
-        return (
-            ["//tools:repository_policies_test"],
-            "just governance-ci",
-            "build/evidence/repository_drift.v1.json",
-        )
+def _string(value: JsonValue, label: str, pattern: re.Pattern[str] | None = None) -> str:
+    if not isinstance(value, str) or not value:
+        raise ValueError(f"{label} must be a non-empty string")
+    if pattern is not None and pattern.fullmatch(value) is None:
+        raise ValueError(f"{label} has an invalid value: {value!r}")
+    return value
+
+
+def _string_list(
+    value: JsonValue,
+    label: str,
+    *,
+    nonempty: bool = False,
+    pattern: re.Pattern[str] | None = None,
+) -> list[str]:
+    if not isinstance(value, list) or not all(isinstance(item, str) for item in value):
+        raise ValueError(f"{label} must be a string array")
+    result = cast(list[str], value)
+    if nonempty and not result:
+        raise ValueError(f"{label} must not be empty")
+    if result != sorted(set(result)):
+        raise ValueError(f"{label} must be sorted and unique")
+    if pattern is not None:
+        for item in result:
+            if pattern.fullmatch(item) is None:
+                raise ValueError(f"{label} contains an invalid value: {item!r}")
+    return result
+
+
+def _target_exists(root: Path, label: str) -> bool:
+    match = BAZEL_TARGET_RE.fullmatch(label)
+    if match is None:
+        return False
+    package = match.group("package")
+    build_root = root / package if package else root
+    build_file = next(
+        (path for path in (build_root / "BUILD.bazel", build_root / "BUILD") if path.is_file()),
+        None,
+    )
+    if build_file is None:
+        return False
+    target = re.escape(match.group("target"))
     return (
-        ["//:all_contract_tests"],
-        "just check",
-        "build/evidence/training-vertical-rehearsal.v1.json",
+        re.search(
+            rf"\bname\s*=\s*['\"]{target}['\"]",
+            build_file.read_text(encoding="utf-8"),
+        )
+        is not None
     )
 
 
-def criterion_status(text: str, checked: bool, rehearsal_passed: bool) -> str:
-    lowered = text.lower()
-    if checked:
-        return "source-complete"
-    if "ratif" in lowered or "stage 5" in lowered:
-        return "blocked-protected-ratification"
-    if any(
-        word in lowered
-        for word in ("deploy", "gitops", "staging", "production promotion", "post-launch")
-    ):
-        return "pending-connected-qualification"
-    if any(word in lowered for word in ("scientific", "sqp-001", "pa-01", "accelerator")):
-        return "pending-scientific-qualification"
-    if rehearsal_passed and any(
-        word in lowered
-        for word in (
-            "training",
-            "postgresql",
-            "migration",
-            "grpc",
-            "sdk",
-            "event",
-            "reliability",
-            "fenc",
-            "outbox",
-            "inbox",
+def load_criterion_map(
+    mapping_path: Path,
+    plan: Sequence[tuple[str, bool, str]],
+    root: Path,
+) -> dict[str, JsonObject]:
+    """Validate the exact criterion map and every declared Bazel label."""
+
+    mapping = load_object(mapping_path)
+    if set(mapping) != {"criteria", "schema_version"}:
+        raise ValueError("criterion map fields must be exactly criteria and schema_version")
+    if mapping.get("schema_version") != CRITERION_MAP_SCHEMA:
+        raise ValueError("criterion map has an unsupported schema_version")
+    raw_entries = mapping.get("criteria")
+    if not isinstance(raw_entries, list):
+        raise ValueError("criterion map criteria must be an array")
+
+    entries: dict[str, JsonObject] = {}
+    expected_fields = {
+        "bazel_targets",
+        "criterion",
+        "criterion_id",
+        "dependencies",
+        "owner",
+        "qualification_class",
+        "receipt_name",
+        "receipt_schema_version",
+        "required_digests",
+        "stage",
+    }
+    for index, raw in enumerate(raw_entries):
+        if not isinstance(raw, dict):
+            raise ValueError(f"criterion map entry {index} must be an object")
+        entry = cast(JsonObject, raw)
+        if set(entry) != expected_fields:
+            raise ValueError(f"criterion map entry {index} fields differ from the contract")
+        criterion_id = _string(
+            entry.get("criterion_id"), f"criterion map entry {index} id", CRITERION_ID_RE
         )
+        if criterion_id in entries:
+            raise ValueError(f"duplicate criterion mapping: {criterion_id}")
+        _string(entry.get("criterion"), f"criterion {criterion_id} text")
+        _string(entry.get("stage"), f"criterion {criterion_id} stage")
+        owner = _string(entry.get("owner"), f"criterion {criterion_id} owner", OWNER_RE)
+        if owner not in KNOWN_OWNERS:
+            raise ValueError(f"criterion {criterion_id} has unknown manifest owner: {owner}")
+        qualification_class = _string(
+            entry.get("qualification_class"),
+            f"criterion {criterion_id} qualification_class",
+        )
+        if qualification_class not in QUALIFICATION_CLASSES:
+            raise ValueError(
+                f"criterion {criterion_id} has invalid qualification_class: {qualification_class}"
+            )
+        _string(entry.get("receipt_name"), f"criterion {criterion_id} receipt_name")
+        _string(
+            entry.get("receipt_schema_version"),
+            f"criterion {criterion_id} receipt_schema_version",
+            SCHEMA_VERSION_RE,
+        )
+        targets = _string_list(
+            entry.get("bazel_targets"),
+            f"criterion {criterion_id} bazel_targets",
+            nonempty=True,
+            pattern=BAZEL_TARGET_RE,
+        )
+        missing_targets = [target for target in targets if not _target_exists(root, target)]
+        if missing_targets:
+            raise ValueError(
+                f"criterion {criterion_id} declares missing Bazel targets: {missing_targets}"
+            )
+        _string_list(
+            entry.get("required_digests"),
+            f"criterion {criterion_id} required_digests",
+            nonempty=True,
+        )
+        _string_list(entry.get("dependencies"), f"criterion {criterion_id} dependencies")
+        entries[criterion_id] = entry
+
+    plan_by_id = {criterion_id: text for criterion_id, _, text in plan}
+    if len(plan_by_id) != len(plan):
+        raise ValueError("the authoritative plan contains duplicate criterion IDs")
+    if set(entries) != set(plan_by_id):
+        raise ValueError(
+            "criterion map does not exactly cover the authoritative plan: "
+            f"unmapped={sorted(set(plan_by_id) - set(entries))}, "
+            f"obsolete={sorted(set(entries) - set(plan_by_id))}"
+        )
+    for criterion_id, text in plan_by_id.items():
+        if entries[criterion_id].get("criterion") != text:
+            raise ValueError(f"criterion mapping is stale for {criterion_id}")
+    for criterion_id, entry in entries.items():
+        dependencies = cast(list[str], entry["dependencies"])
+        unknown = sorted(set(dependencies) - set(entries))
+        if unknown:
+            raise ValueError(f"criterion {criterion_id} has unknown dependencies: {unknown}")
+        if criterion_id in dependencies:
+            raise ValueError(f"criterion {criterion_id} depends on itself")
+    _validate_dependency_cycles(entries)
+    return entries
+
+
+def _validate_dependency_cycles(entries: Mapping[str, JsonObject]) -> None:
+    visiting: set[str] = set()
+    visited: set[str] = set()
+
+    def visit(criterion_id: str) -> None:
+        if criterion_id in visiting:
+            raise ValueError(f"criterion dependency cycle contains {criterion_id}")
+        if criterion_id in visited:
+            return
+        visiting.add(criterion_id)
+        dependencies = cast(list[str], entries[criterion_id]["dependencies"])
+        for dependency in dependencies:
+            visit(dependency)
+        visiting.remove(criterion_id)
+        visited.add(criterion_id)
+
+    for criterion_id in sorted(entries):
+        visit(criterion_id)
+
+
+def _receipt_bindings(receipt: JsonObject) -> JsonObject:
+    if receipt.get("schema_version") == TRAINING_EVIDENCE_SCHEMA:
+        return {
+            key: value
+            for key, value in receipt.items()
+            if key not in {"checks", "schema_version", "status"}
+        }
+    bindings = receipt.get("bindings")
+    if isinstance(bindings, dict):
+        return cast(JsonObject, bindings)
+    return receipt
+
+
+def _validate_receipt_digest(receipt: JsonObject, path: Path) -> str:
+    receipt_digest = receipt.get("receipt_digest")
+    if receipt_digest is None:
+        return digest_bytes(path.read_bytes())
+    if not isinstance(receipt_digest, str) or DIGEST_RE.fullmatch(receipt_digest) is None:
+        raise ValueError(f"{path} receipt_digest is not canonical")
+    unsigned = dict(receipt)
+    unsigned.pop("receipt_digest")
+    if receipt_digest != digest_bytes(canonical_json(cast(JsonValue, unsigned))):
+        raise ValueError(f"{path} receipt_digest does not bind its canonical content")
+    return receipt_digest
+
+
+def _validate_required_bindings(
+    receipt: JsonObject,
+    path: Path,
+    required_digests: Sequence[str],
+) -> None:
+    bindings = _receipt_bindings(receipt)
+    for name in required_digests:
+        value = bindings.get(name)
+        if name == "sdk_package_digests":
+            if not isinstance(value, dict) or set(value) != {
+                "go",
+                "python",
+                "rust",
+                "typescript",
+            }:
+                raise ValueError(f"{path} has an incomplete sdk_package_digests binding")
+            for language, digest in value.items():
+                if not isinstance(digest, str) or DIGEST_RE.fullmatch(digest) is None:
+                    raise ValueError(f"{path} has invalid {language} SDK digest")
+        elif not isinstance(value, str) or DIGEST_RE.fullmatch(value) is None:
+            raise ValueError(f"{path} is missing canonical digest binding {name}")
+
+
+def _validate_rehearsal(
+    path: Path,
+    receipt: JsonObject,
+    expected_revision: str,
+) -> ValidatedReceipt:
+    if set(receipt) != set(REHEARSAL_FIELDS):
+        raise ValueError(f"{path} fields differ from the exact rehearsal contract")
+    if receipt.get("status") != "passed":
+        raise ValueError(f"{path} is not passed")
+    ratification = receipt.get("ratification")
+    if (
+        not isinstance(ratification, dict)
+        or set(ratification) != {"authorized", "reason"}
+        or ratification.get("authorized") is not False
+        or not isinstance(ratification.get("reason"), str)
+        or not ratification.get("reason")
     ):
-        return "local-rehearsal-passed"
-    return "candidate-evidence-incomplete"
+        raise ValueError(f"{path} is not explicitly and exactly non-ratifying")
+
+    raw_bindings = receipt.get("bindings")
+    if not isinstance(raw_bindings, dict) or set(raw_bindings) != set(REHEARSAL_BINDING_FIELDS):
+        raise ValueError(f"{path} rehearsal bindings differ from the producer contract")
+    bindings = cast(JsonObject, raw_bindings)
+    if bindings.get("source_revision") != expected_revision:
+        raise ValueError(f"{path} is stale or bound to a different source revision")
+    _validate_required_bindings(
+        receipt,
+        path,
+        sorted(REHEARSAL_BINDING_FIELDS - {"source_revision"}),
+    )
+
+    raw_checks = receipt.get("checks")
+    if not isinstance(raw_checks, dict) or set(raw_checks) != set(REHEARSAL_CHECK_TARGETS):
+        raise ValueError(f"{path} rehearsal checks differ from the exact six-check contract")
+    checks = cast(JsonObject, raw_checks)
+    bound_targets: set[str] = set()
+    for name, expected_target in sorted(REHEARSAL_CHECK_TARGETS.items()):
+        raw_check = checks[name]
+        if (
+            not isinstance(raw_check, dict)
+            or set(raw_check) != {"bazel_target", "status"}
+            or raw_check.get("status") != "passed"
+            or raw_check.get("bazel_target") != expected_target
+        ):
+            raise ValueError(f"{path} rehearsal check {name} differs from policy")
+        bound_targets.add(expected_target)
+    if path.read_bytes() != canonical_json(receipt):
+        raise ValueError(f"{path} is not canonical JSON")
+    return ValidatedReceipt(
+        digest=_validate_receipt_digest(receipt, path),
+        payload=receipt,
+        bound_targets=frozenset(bound_targets),
+        # `training_rehearsal.py` records caller-provided passed-check assertions;
+        # it is not a BEP/result-artifact verifier and cannot prove execution.
+        verification_class="source-assertion-validated",
+    )
 
 
-def build_report(plan_path: Path, rehearsal_path: Path) -> JsonObject:
+def _validate_training_payload(
+    path: Path,
+    receipt: JsonObject,
+    expected_revision: str,
+) -> ValidatedReceipt:
+    bound_targets = validate_assembled_evidence_payload(
+        receipt,
+        expected_source_revision=expected_revision,
+        encoded=path.read_bytes(),
+    )
+    return ValidatedReceipt(
+        digest=digest_bytes(path.read_bytes()),
+        payload=receipt,
+        bound_targets=bound_targets,
+        # The detached signature and ratification authority are deliberately not
+        # inputs to this source-readiness report. A valid payload is not a
+        # protected qualification by itself.
+        verification_class="protected-payload-unverified",
+    )
+
+
+type ReceiptVerifier = Callable[[Path, JsonObject, str], ValidatedReceipt]
+RECEIPT_VERIFIERS: Mapping[tuple[str, str], ReceiptVerifier] = {
+    ("training_rehearsal", REHEARSAL_SCHEMA): _validate_rehearsal,
+    ("training_vertical", TRAINING_EVIDENCE_SCHEMA): _validate_training_payload,
+}
+
+
+def validate_receipt(
+    path: Path,
+    *,
+    receipt_name: str,
+    expected_schema: str,
+    expected_revision: str,
+    required_digests: Sequence[str],
+) -> ValidatedReceipt:
+    receipt = load_object(path)
+    if receipt.get("schema_version") != expected_schema:
+        raise ValueError(f"{path} schema_version is not the required {expected_schema}")
+    verifier = RECEIPT_VERIFIERS.get((receipt_name, expected_schema))
+    if verifier is None:
+        raise ValueError(
+            f"no governed receipt verifier is registered for {receipt_name} ({expected_schema})"
+        )
+    validated = verifier(path, receipt, expected_revision)
+    _validate_required_bindings(validated.payload, path, required_digests)
+    return validated
+
+
+def _git_revision(root: Path) -> str:
+    completed = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=root,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    revision = completed.stdout.strip()
+    if REVISION_RE.fullmatch(revision) is None:
+        raise ValueError("Git did not return an exact lowercase source revision")
+    return revision
+
+
+def parse_receipt(value: str) -> tuple[str, Path]:
+    name, separator, path = value.partition("=")
+    if not separator or not name or not path:
+        raise argparse.ArgumentTypeError("receipts must use NAME=PATH")
+    return name, Path(path)
+
+
+def build_report(
+    plan_path: Path,
+    rehearsal_path: Path,
+    *,
+    mapping_path: Path = DEFAULT_MAPPING_PATH,
+    root: Path | None = None,
+    receipt_paths: Mapping[str, Path] | None = None,
+    expected_source_revision: str | None = None,
+) -> JsonObject:
+    root = (root or plan_path.resolve().parents[2]).resolve()
     plan_source = plan_path.read_text(encoding="utf-8")
     criteria = plan_criteria(plan_source)
     if len(criteria) < 30:
         raise ValueError(f"readiness plan extraction is incomplete: only {len(criteria)} criteria")
-    rehearsal = load_object(rehearsal_path)
-    rehearsal_passed = (
-        rehearsal.get("schema_version") == "mindclade.training-vertical-rehearsal/v1"
-        and rehearsal.get("status") == "passed"
-        and isinstance(rehearsal.get("ratification"), dict)
-        and cast(dict[str, JsonValue], rehearsal["ratification"]).get("authorized") is False
-    )
-    if not rehearsal_passed:
-        raise ValueError("readiness report requires a passed, explicitly non-ratifying rehearsal")
+    entries = load_criterion_map(mapping_path, criteria, root)
+    checked_out_revision = _git_revision(root)
+    if expected_source_revision is not None and expected_source_revision != checked_out_revision:
+        raise ValueError("expected source revision does not match checked-out HEAD")
+    expected_revision = checked_out_revision
+    if REVISION_RE.fullmatch(expected_revision) is None:
+        raise ValueError("expected source revision must be an exact lowercase Git revision")
+
+    paths = dict(receipt_paths or {})
+    if "training_rehearsal" in paths and paths["training_rehearsal"] != rehearsal_path:
+        raise ValueError("training_rehearsal receipt was provided twice with different paths")
+    paths["training_rehearsal"] = rehearsal_path
+    used_receipts = {cast(str, entry["receipt_name"]) for entry in entries.values()}
+    unexpected_receipts = sorted(set(paths) - used_receipts)
+    if unexpected_receipts:
+        raise ValueError(f"readiness receipts are not mapped to criteria: {unexpected_receipts}")
+
+    validated: dict[tuple[str, str, tuple[str, ...]], ValidatedReceipt] = {}
+    evidence_by_id: dict[str, dict[str, object]] = {}
+    for criterion_id, checked, text in criteria:
+        entry = entries[criterion_id]
+        receipt_name = cast(str, entry["receipt_name"])
+        expected_schema = cast(str, entry["receipt_schema_version"])
+        required_digests = cast(list[str], entry["required_digests"])
+        receipt_path = paths.get(receipt_name)
+        evidence_present = receipt_path is not None
+        validated_receipt: ValidatedReceipt | None = None
+        if receipt_path is not None:
+            key = (receipt_name, expected_schema, tuple(required_digests))
+            if key not in validated:
+                validated[key] = validate_receipt(
+                    receipt_path,
+                    receipt_name=receipt_name,
+                    expected_schema=expected_schema,
+                    expected_revision=expected_revision,
+                    required_digests=required_digests,
+                )
+            validated_receipt = validated[key]
+        targets = cast(list[str], entry["bazel_targets"])
+        bound_targets: frozenset[str] = (
+            validated_receipt.bound_targets if validated_receipt is not None else frozenset()
+        )
+        target_binding_validated = set(targets).issubset(bound_targets)
+        qualification_class = cast(str, entry["qualification_class"])
+        verification_class = (
+            validated_receipt.verification_class if validated_receipt is not None else None
+        )
+        # Source rehearsal evidence can establish only source readiness. An unsigned
+        # protected payload is structurally validated but cannot satisfy protected,
+        # connected, or scientific qualification.
+        qualification_verified = False
+        evidence_verified = (
+            validated_receipt is not None and target_binding_validated and qualification_verified
+        )
+        evidence_by_id[criterion_id] = {
+            "checked": checked,
+            "criterion": text,
+            "evidence_present": evidence_present,
+            "evidence_verified": evidence_verified,
+            "qualification_class": qualification_class,
+            "qualification_verified": qualification_verified,
+            "receipt": validated_receipt,
+            "target_binding_validated": target_binding_validated,
+            "verification_class": verification_class,
+        }
+
+    completion_by_id: dict[str, bool] = {}
+
+    def completion_verified(criterion_id: str) -> bool:
+        if criterion_id in completion_by_id:
+            return completion_by_id[criterion_id]
+        state = evidence_by_id[criterion_id]
+        documentary_check_required = not criterion_id.startswith("completion-work-queue-")
+        documentary_complete = bool(state["checked"]) or not documentary_check_required
+        dependencies = cast(list[str], entries[criterion_id]["dependencies"])
+        complete = (
+            bool(state["evidence_verified"])
+            and documentary_complete
+            and all(completion_verified(dependency) for dependency in dependencies)
+        )
+        completion_by_id[criterion_id] = complete
+        return complete
+
+    for criterion_id in entries:
+        completion_verified(criterion_id)
 
     records: list[JsonValue] = []
     summary: dict[str, int] = {}
     for criterion_id, checked, text in criteria:
-        targets, test, receipt = evidence_mapping(text)
-        status = criterion_status(text, checked, rehearsal_passed)
+        entry = entries[criterion_id]
+        state = evidence_by_id[criterion_id]
+        validated_receipt = cast(ValidatedReceipt | None, state["receipt"])
+        dependencies = cast(list[str], entry["dependencies"])
+        required_digests = cast(list[str], entry["required_digests"])
+        incomplete_dependencies = [
+            dependency for dependency in dependencies if not completion_by_id[dependency]
+        ]
+        qualification_class = cast(str, state["qualification_class"])
+        evidence_present = bool(state["evidence_present"])
+        evidence_verified = bool(state["evidence_verified"])
+        target_binding_validated = bool(state["target_binding_validated"])
+        if completion_by_id[criterion_id]:
+            status = "completion-verified"
+        elif qualification_class == "protected":
+            status = "pending-protected-qualification"
+        elif qualification_class == "connected":
+            status = "pending-connected-qualification"
+        elif qualification_class == "scientific":
+            status = "pending-scientific-qualification"
+        elif evidence_present and not target_binding_validated:
+            status = "receipt-target-binding-incomplete"
+        elif evidence_present and not evidence_verified:
+            status = "receipt-validated-execution-unverified"
+        elif checked and not evidence_verified:
+            status = "plan-checked-evidence-unverified"
+        elif not evidence_present:
+            status = "candidate-evidence-incomplete"
+        elif incomplete_dependencies:
+            status = "blocked-by-evidence-dependency"
+        else:
+            status = "evidence-verified-plan-unchecked"
         summary[status] = summary.get(status, 0) + 1
         records.append(
-            {
-                "bazel_targets": targets,
-                "criterion": text,
-                "criterion_id": criterion_id,
-                "receipt": receipt,
-                "status": status,
-                "test": test,
-            }
+            cast(
+                JsonValue,
+                {
+                    "bazel_targets": entry["bazel_targets"],
+                    "criterion": text,
+                    "criterion_id": criterion_id,
+                    "completion_verified": completion_by_id[criterion_id],
+                    "dependencies": dependencies,
+                    "documentary_check_required": not criterion_id.startswith(
+                        "completion-work-queue-"
+                    ),
+                    "evidence_verified": evidence_verified,
+                    "incomplete_dependencies": incomplete_dependencies,
+                    "owner": entry["owner"],
+                    "plan_checked": checked,
+                    "qualification_class": qualification_class,
+                    "qualification_verified": bool(state["qualification_verified"]),
+                    "receipt": {
+                        "digest": (
+                            validated_receipt.digest if validated_receipt is not None else None
+                        ),
+                        "name": entry["receipt_name"],
+                        "execution_proof_available": False,
+                        "present": evidence_present,
+                        "producer_available": entry["receipt_name"] == "training_rehearsal",
+                        "bound_bazel_targets": (
+                            sorted(validated_receipt.bound_targets)
+                            if validated_receipt is not None
+                            else []
+                        ),
+                        "schema_version": entry["receipt_schema_version"],
+                        "validated": validated_receipt is not None,
+                        "verification_class": state["verification_class"],
+                    },
+                    "required_digests": required_digests,
+                    "stage": entry["stage"],
+                    "status": status,
+                    "target_binding_validated": target_binding_validated,
+                },
+            )
         )
-    summary_json: JsonObject = {}
-    for key in sorted(summary):
-        summary_json[key] = summary[key]
+    summary_json: JsonObject = {key: summary[key] for key in sorted(summary)}
     report: JsonObject = {
         "criteria": records,
+        "criterion_map_digest": digest_bytes(mapping_path.read_bytes()),
         "plan_digest": digest_bytes(plan_source.encode()),
         "ratification_authorized": False,
-        "rehearsal_receipt_digest": digest_bytes(rehearsal_path.read_bytes()),
-        "schema_version": "mindclade.authoritative-integration-readiness/v1",
+        "schema_version": READINESS_SCHEMA,
+        "source_revision": expected_revision,
         "summary": summary_json,
     }
     report["report_digest"] = digest_bytes(canonical_json(report))
@@ -234,17 +725,29 @@ def atomic_write(path: Path, value: JsonObject) -> None:
 
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--root", type=Path, default=Path.cwd())
     parser.add_argument("--plan", type=Path, required=True)
+    parser.add_argument("--criterion-map", type=Path, default=DEFAULT_MAPPING_PATH)
     parser.add_argument("--rehearsal", type=Path, required=True)
+    parser.add_argument("--receipt", action="append", type=parse_receipt, default=[])
+    parser.add_argument("--expected-source-revision")
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args(argv)
+    raw_receipts = cast(list[tuple[str, Path]], args.receipt)
+    receipts = dict(raw_receipts)
+    if len(receipts) != len(raw_receipts):
+        raise SystemExit("readiness report failed: duplicate receipt name")
     try:
         report = build_report(
             cast(Path, args.plan),
             cast(Path, args.rehearsal),
+            mapping_path=cast(Path, args.criterion_map),
+            root=cast(Path, args.root),
+            receipt_paths=receipts,
+            expected_source_revision=cast(str | None, args.expected_source_revision),
         )
         atomic_write(cast(Path, args.output), report)
-    except (OSError, ValueError) as error:
+    except (OSError, ValueError, subprocess.CalledProcessError) as error:
         raise SystemExit(f"readiness report failed: {error}") from error
     print(cast(Path, args.output))
     return 0

@@ -74,9 +74,10 @@ use tonic::{
 use crate::{
     AccessToken, ArtifactStream, ArtifactUploadOptions, CallOptions, CancellationToken, Client,
     Config, Environment, Error, ErrorKind, GcpWorkloadIdentityProvider, Identity, InferenceStream,
-    InferenceWaitOptions, OperationStream, RecordingTransport, RetryPolicy, RpcTransport,
-    SubmitOptions, TokenProvider, WaitOptions,
+    InferenceWaitOptions, OperationStream, PaginationLimits, PaginationPage, RecordingTransport,
+    RetryPolicy, RpcTransport, SubmitOptions, TokenProvider, WaitOptions,
     auth::GcpIdentityTokenExchange,
+    paginate,
     retry::{CallSafety, Sleeper, registered_method_safety},
 };
 
@@ -213,6 +214,7 @@ struct FakeTransport {
     lifecycle_contexts: Mutex<Vec<CommandContext>>,
     lifecycle_page_tokens: Mutex<Vec<String>>,
     hang_operations: AtomicBool,
+    hang_downloads: AtomicBool,
 }
 
 type WatchScript = Result<Vec<Result<WatchOperationResponse, Status>>, Status>;
@@ -562,6 +564,9 @@ impl RpcTransport for FakeTransport {
         request: Request<DownloadArtifactRequest>,
     ) -> Result<Response<ArtifactStream>, Status> {
         self.observe(&request);
+        if self.hang_downloads.load(Ordering::Relaxed) {
+            std::future::pending::<()>().await;
+        }
         let updates = Self::pop(&self.downloads)?;
         let stream: ArtifactStream = Box::pin(tokio_stream::iter(updates));
         Ok(Response::new(stream))
@@ -1794,6 +1799,118 @@ async fn artifact_upload_resumes_in_a_fresh_client_and_verifies_generated_transf
 }
 
 #[tokio::test]
+async fn artifact_download_file_is_atomic_verified_and_no_clobber() {
+    let content = b"atomic-artifact";
+    let artifact = artifact_for(content);
+    let download = |corrupt: bool| {
+        Ok(vec![Ok(DownloadArtifactResponse {
+            artifact: Some(artifact.clone()),
+            offset: 0,
+            data: content.to_vec(),
+            chunk_digest: if corrupt {
+                format!("sha256:{}", "0".repeat(64))
+            } else {
+                format!("sha256:{:x}", Sha256::digest(content))
+            },
+            complete: true,
+        })])
+    };
+    let transport = Arc::new(FakeTransport::default());
+    transport.downloads.lock().unwrap().extend([
+        download(false),
+        download(false),
+        download(true),
+        download(false),
+        download(false),
+    ]);
+    let provider: Arc<dyn TokenProvider> =
+        Arc::new(FakeTokenProvider::new(Duration::from_hours(1)));
+    let client = Client::with_transport(
+        test_config(provider, 1, Duration::from_millis(1)),
+        transport.clone(),
+    );
+    let artifacts = client.artifacts();
+    let directory = std::env::temp_dir().join(format!(
+        "mindclade-sdk-artifact-{}",
+        crate::request::generate_request_id()
+    ));
+    std::fs::create_dir(&directory).unwrap();
+
+    let destination = directory.join("artifact.bin");
+    assert_eq!(
+        artifacts
+            .download_file(&artifact, &destination, CallOptions::new())
+            .await
+            .unwrap(),
+        u64::try_from(content.len()).unwrap()
+    );
+    assert_eq!(std::fs::read(&destination).unwrap(), content);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+
+        assert_eq!(
+            std::fs::metadata(&destination)
+                .unwrap()
+                .permissions()
+                .mode()
+                & 0o777,
+            0o600
+        );
+    }
+
+    let existing_error = artifacts
+        .download_file(&artifact, &destination, CallOptions::new())
+        .await
+        .unwrap_err();
+    assert_eq!(existing_error.kind(), ErrorKind::AlreadyExists);
+    assert_eq!(std::fs::read(&destination).unwrap(), content);
+
+    let corrupt_destination = directory.join("corrupt.bin");
+    let corrupt_error = artifacts
+        .download_file(&artifact, &corrupt_destination, CallOptions::new())
+        .await
+        .unwrap_err();
+    assert_eq!(corrupt_error.kind(), ErrorKind::Protocol);
+    assert!(!corrupt_destination.exists());
+
+    let race_destination = directory.join("race.bin");
+    let left_artifacts = artifacts.clone();
+    let right_artifacts = artifacts.clone();
+    let (left, right) = tokio::join!(
+        left_artifacts.download_file(&artifact, &race_destination, CallOptions::new()),
+        right_artifacts.download_file(&artifact, &race_destination, CallOptions::new())
+    );
+    assert!(matches!(
+        (&left, &right),
+        (Ok(_), Err(error)) | (Err(error), Ok(_))
+            if error.kind() == ErrorKind::AlreadyExists
+    ));
+    assert_eq!(std::fs::read(&race_destination).unwrap(), content);
+
+    transport.hang_downloads.store(true, Ordering::Relaxed);
+    let cancelled_destination = directory.join("cancelled.bin");
+    assert!(
+        tokio::time::timeout(
+            Duration::from_millis(10),
+            artifacts.download_file(&artifact, &cancelled_destination, CallOptions::new())
+        )
+        .await
+        .is_err()
+    );
+    transport.hang_downloads.store(false, Ordering::Relaxed);
+    assert!(!cancelled_destination.exists());
+    assert!(std::fs::read_dir(&directory).unwrap().all(|entry| {
+        !entry
+            .unwrap()
+            .file_name()
+            .to_string_lossy()
+            .starts_with(".mindclade-download-")
+    }));
+    std::fs::remove_dir_all(directory).unwrap();
+}
+
+#[tokio::test]
 async fn artifact_abort_and_quarantine_require_declared_terminal_states() {
     let content = b"abc";
     let artifact = artifact_for(content);
@@ -2128,6 +2245,56 @@ async fn credential_and_transport_futures_share_the_total_call_deadline() {
         .await
         .unwrap_err();
     assert_eq!(error.kind(), ErrorKind::DeadlineExceeded);
+}
+
+#[tokio::test]
+async fn bounded_pagination_preserves_opaque_tokens_and_fails_closed() {
+    let seen = Arc::new(Mutex::new(Vec::new()));
+    let captured = Arc::clone(&seen);
+    let mut paginator = paginate(
+        move |token: String| {
+            let captured = Arc::clone(&captured);
+            async move {
+                captured.lock().unwrap().push(token.clone());
+                if token == " initial token " {
+                    Ok(PaginationPage::new(vec![1, 2], " next token "))
+                } else {
+                    Ok(PaginationPage::new(vec![3], ""))
+                }
+            }
+        },
+        " initial token ",
+        PaginationLimits::default(),
+    );
+    let mut values = Vec::new();
+    while let Some(value) = paginator.try_next().await.unwrap() {
+        values.push(value);
+    }
+    assert_eq!(values, vec![1, 2, 3]);
+    assert_eq!(
+        *seen.lock().unwrap(),
+        vec![" initial token ".to_owned(), " next token ".to_owned()]
+    );
+
+    let mut repeated = paginate(
+        |token: String| async move { Ok(PaginationPage::new(vec![1], token)) },
+        "opaque",
+        PaginationLimits::default(),
+    );
+    let error = repeated.try_next().await.unwrap_err();
+    assert_eq!(error.kind(), ErrorKind::Protocol);
+    assert!(repeated.try_next().await.unwrap().is_none());
+
+    let mut bounded = paginate(
+        |_token: String| async { Ok(PaginationPage::new(vec![1, 2, 3], "more")) },
+        "",
+        PaginationLimits::new(2, 2).unwrap(),
+    );
+    assert_eq!(bounded.try_next().await.unwrap(), Some(1));
+    assert_eq!(bounded.try_next().await.unwrap(), Some(2));
+    let error = bounded.try_next().await.unwrap_err();
+    assert_eq!(error.kind(), ErrorKind::PaginationLimit);
+    assert_eq!(error.code(), Some(Code::ResourceExhausted));
 }
 
 fn base64url(value: &[u8]) -> String {
