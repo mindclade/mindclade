@@ -1,7 +1,8 @@
 # Mindclade internal TypeScript SDK
 
 This private package is the handwritten TypeScript developer experience over
-the authoritative generated Protobuf-ES and Connect contracts:
+the authoritative generated Protobuf-ES contracts; Connect clients are created
+at runtime from the generated service descriptors:
 
 ```text
 protocols/proto

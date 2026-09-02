@@ -941,6 +941,20 @@ def validate_check_report(
             or first != second
         ):
             raise ValueError("cacheless canary lacks matching independent output digests")
+    elif name == "authoritative-integration-readiness":
+        report = read_object(path, "mindclade.authoritative-integration-readiness/v2")
+        if report.get("schema_version") != "mindclade.authoritative-integration-readiness/v2":
+            raise ValueError("authoritative integration readiness report has the wrong schema")
+        # This report is an inventory of evidence state, not a stage-completion
+        # signal, so PASS here must never be derived from criterion statuses.
+        for raw_criterion in _array_field(report, "criteria"):
+            if not isinstance(raw_criterion, dict):
+                raise ValueError("authoritative integration readiness criterion must be an object")
+            status = cast(dict[str, object], raw_criterion).get("status")
+            if not isinstance(status, str) or not status:
+                raise ValueError(
+                    "authoritative integration readiness criterion is missing a status"
+                )
     else:
         raise ValueError(f"unsupported planned check: {name}")
 

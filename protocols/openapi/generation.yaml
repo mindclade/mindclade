@@ -52,7 +52,7 @@ spec:
         facade: internal/sdk/rust
       typescript:
         messages: protobuf-es
-        grpc: connect-es
+        grpc: connect-runtime-clients  # Connect clients are created at runtime from protobuf-ES service descriptors; no connect-es plugin runs.
         output: protocols/generated/typescript
         facade: internal/sdk/typescript
     guarantees:
