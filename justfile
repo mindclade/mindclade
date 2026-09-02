@@ -601,6 +601,7 @@ ci-evidence:
       "secret-scan={{ evidence_dir }}/secret-scan.v1.json" \
       "bazel-native-agreement={{ evidence_dir }}/bazel-native-agreement.v2.json" \
       "fresh-database-integration={{ evidence_dir }}/integration-ci.v1.json" \
+      "authoritative-integration-readiness={{ evidence_dir }}/authoritative-integration-readiness.v2.json" \
       "source-check={{ evidence_dir }}/source-check.v1.json" \
       "wave1-full={{ evidence_dir }}/wave1-full.v1.json" \
       "cacheless-reproducibility={{ evidence_dir }}/cacheless-reproducibility.v1.json" \
