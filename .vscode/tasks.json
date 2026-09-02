@@ -4,20 +4,20 @@
     {
       "label": "Mindclade: doctor",
       "type": "shell",
-      "command": "nix develop --command just doctor",
+      "command": "nix develop --no-accept-flake-config --no-update-lock-file --command just doctor",
       "problemMatcher": []
     },
     {
       "label": "Mindclade: check",
       "type": "shell",
-      "command": "nix develop --command just check",
+      "command": "nix develop --no-accept-flake-config --no-update-lock-file --command just check",
       "group": "test",
       "problemMatcher": []
     },
     {
       "label": "Mindclade: affected tests",
       "type": "shell",
-      "command": "nix develop --command just test-affected",
+      "command": "nix develop --no-accept-flake-config --no-update-lock-file --command just test-affected",
       "group": "test",
       "problemMatcher": []
     }

@@ -17,16 +17,17 @@ runtime-complete Python environment containing DeepEP, Python, NVCC,
 `cuobjdump`, NCCL, and NVSHMEM. On a supported Linux host:
 
 ```text
-nix build .#packages.x86_64-linux.deep-ep
-nix shell .#packages.x86_64-linux.deep-ep --command \
+nix build --no-accept-flake-config --no-update-lock-file .#packages.x86_64-linux.deep-ep
+nix shell --no-accept-flake-config --no-update-lock-file .#packages.x86_64-linux.deep-ep --command \
   python -c "import deep_ep; print(deep_ep.__version__)"
-nix shell .#packages.x86_64-linux.deep-ep --command nvshmem-info -a
+nix shell --no-accept-flake-config --no-update-lock-file .#packages.x86_64-linux.deep-ep --command \
+  nvshmem-info -a
 ```
 
 The development shell adds repository qualification settings:
 
 ```text
-nix develop .#deepep
+nix develop --no-accept-flake-config --no-update-lock-file .#deepep
 python -c "import deep_ep; print(deep_ep.__version__)"
 nvshmem-info -a
 ```
@@ -35,7 +36,7 @@ Bazel exposes the real Nix-produced artifact bundle rather than a source
 filegroup. It must be invoked from the pinned Nix environment:
 
 ```text
-nix develop .#deepep --command \
+nix develop --no-accept-flake-config --no-update-lock-file .#deepep --command \
   bazel build //third_party/packages/deep_ep:artifact_bundle
 ```
 
@@ -120,7 +121,7 @@ protected-runner evidence exist.
 - CUDA, PyTorch, NCCL, and NVSHMEM versions locked by `flake.lock` and the
   source inventory
 
-Use `nix build .#packages.x86_64-linux.deep-ep --dry-run` to inspect the build
+Use `nix build --no-accept-flake-config --no-update-lock-file .#packages.x86_64-linux.deep-ep --dry-run` to inspect the build
 plan. Source policy checks can run without a GPU. A real package build requires
 a Linux CUDA builder; GPU execution still requires the separately qualified
 hardware and fabric described above.

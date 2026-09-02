@@ -320,7 +320,7 @@ check: bootstrap
     {{ uv }} lock --check
     cargo metadata --locked --no-deps --format-version=1 >/dev/null
     go list -mod=readonly -m >/dev/null
-    pnpm install --lockfile-only --frozen-lockfile --offline --ignore-scripts
+    pnpm install --frozen-lockfile --prefer-offline --ignore-scripts
     pnpm run check:manifest
     buf config ls-modules >/dev/null
     buf config ls-lint-rules >/dev/null
@@ -332,7 +332,7 @@ check: bootstrap
     cargo test --workspace --locked
     pnpm --recursive --if-present run typecheck
     pnpm --recursive --if-present run test
-    nix flake check path:. --no-build
+    nix flake check --no-accept-flake-config --no-build --no-update-lock-file path:.
     just governance
 
 # Resolve and execute the conservative Bazel test closure.
@@ -583,7 +583,7 @@ require-activation capability:
     @exit 78
 
 # Run an unsigned, non-production DeepEP communication probe on one Linux SM90
-# node. Enter `nix develop .#deepep` first so the locked CUDA closure is active.
+# node. Enter `nix develop --no-accept-flake-config --no-update-lock-file .#deepep` first.
 test-deep-ep-gpu-intranode:
     #!/usr/bin/env bash
     set -euo pipefail

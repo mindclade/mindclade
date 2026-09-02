@@ -16,7 +16,10 @@ def steps() -> list[Step]:
         Step(
             key="gpu-intranode-probe",
             label=":gpu: DeepEP intra-node GPU probe",
-            command="nix develop .#deepep --command just ci-gpu",
+            command=(
+                "nix develop --no-accept-flake-config --no-update-lock-file "
+                ".#deepep --command just ci-gpu"
+            ),
             timeout_minutes=240,
             depends_on=("gpu-activation-gate",),
             artifact_paths=("build/evidence/gpu-deepep-intranode.json",),
@@ -27,7 +30,8 @@ def steps() -> list[Step]:
             command=(
                 "MINDCLADE_DEEPEP_NODE_RANK=${BUILDKITE_PARALLEL_JOB} "
                 "MINDCLADE_DEEPEP_RDZV_ID=${BUILDKITE_BUILD_ID} "
-                "nix develop .#deepep --command just ci-gpu-multinode"
+                "nix develop --no-accept-flake-config --no-update-lock-file "
+                ".#deepep --command just ci-gpu-multinode"
             ),
             timeout_minutes=240,
             depends_on=("gpu-activation-gate",),

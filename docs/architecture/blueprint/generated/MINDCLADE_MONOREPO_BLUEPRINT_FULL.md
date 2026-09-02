@@ -19036,7 +19036,7 @@ Governance is production-ready when:
 ### First checkout
 
 ```bash
-nix develop
+nix develop --no-accept-flake-config --no-update-lock-file
 just doctor
 just bootstrap
 just test-affected

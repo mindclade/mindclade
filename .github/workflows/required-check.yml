@@ -13,7 +13,7 @@ concurrency:
 
 jobs:
   classify:
-    uses: mindclade/.github/.github/workflows/reusable-metadata-validation.yml@6399abc50c4678d0dff7f33bbd7f6868043ef736
+    uses: mindclade/.github/.github/workflows/reusable-metadata-validation.yml@c097ef86c25991a400050c13e78574e8d3d8c071
     with:
       source_revision: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha || github.sha }}
 
@@ -23,7 +23,7 @@ jobs:
       needs.classify.result == 'success' &&
       github.event_name == 'pull_request' &&
       needs.classify.outputs.trust_classification == 'untrusted'
-    uses: mindclade/.github/.github/workflows/reusable-documentation-check.yml@6399abc50c4678d0dff7f33bbd7f6868043ef736
+    uses: mindclade/.github/.github/workflows/reusable-documentation-check.yml@c097ef86c25991a400050c13e78574e8d3d8c071
     with:
       source_revision: ${{ github.event.pull_request.head.sha }}
       documentation_roots: |-
@@ -38,10 +38,9 @@ jobs:
         github.event_name != 'pull_request' ||
         needs.classify.outputs.trust_classification == 'trusted'
       )
-    uses: mindclade/.github/.github/workflows/reusable-buildkite-dispatch.yml@6399abc50c4678d0dff7f33bbd7f6868043ef736
+    uses: mindclade/.github/.github/workflows/reusable-buildkite-dispatch.yml@c097ef86c25991a400050c13e78574e8d3d8c071
     with:
       source_revision: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha || github.sha }}
-      pipeline_definition_revision: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.sha }}
       pipeline_class: ${{ (github.event_name == 'pull_request' || github.event_name == 'merge_group') && 'presubmit' || github.event_name == 'release' && 'release' || 'protected' }}
     secrets:
       buildkite_dispatch_token: ${{ secrets.MINDCLADE_BUILDKITE_DISPATCH_TOKEN }}
@@ -50,7 +49,7 @@ jobs:
   buildkite_required:
     needs: [classify, dispatch]
     if: needs.dispatch.result == 'success'
-    uses: mindclade/.github/.github/workflows/reusable-required-check.yml@6399abc50c4678d0dff7f33bbd7f6868043ef736
+    uses: mindclade/.github/.github/workflows/reusable-required-check.yml@c097ef86c25991a400050c13e78574e8d3d8c071
     with:
       source_revision: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha || github.sha }}
       pipeline_definition_revision: ${{ needs.dispatch.outputs.pipeline_definition_revision }}
