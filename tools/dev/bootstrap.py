@@ -40,7 +40,7 @@ TOOLS = (
     Tool("Node", "node", ("--version",), r"^v26\.[0-9]+\.[0-9]+$"),
     Tool("pnpm", "pnpm", ("--version",), r"^11\.22\.0$"),
     Tool("Buf", "buf", ("--version",), r"^1\.72\.0$"),
-    Tool("Nix", "nix", ("--version",), r"\b2\.35\.[0-9]+\b"),
+    Tool("Nix", "nix", ("--version",), r"\b2\.34\.8\b"),
     Tool("just", "just", ("--version",), r"\bjust 1\.[0-9]+\.[0-9]+\b"),
     Tool("actionlint", "actionlint", ("--version",), r"\b1\.7\.[0-9]+\b"),
     Tool("Buildifier", "buildifier", ("--version",), r"\b8\.5\.1\b"),

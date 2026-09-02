@@ -169,6 +169,7 @@ py_test(
     legacy_create_init = 0,
     main = "conformance/test_configuration_resolution.py",
     python_version = "PY3",
+    visibility = ["//:__pkg__"],
     deps = ["//libs/python/config"],
 )
 
@@ -180,6 +181,7 @@ py_test(
     legacy_create_init = 0,
     main = "conformance/test_release_signing.py",
     python_version = "PY3",
+    visibility = ["//:__pkg__"],
     deps = ["@mindclade_pypi//cryptography"],
 )
 
@@ -191,6 +193,7 @@ py_test(
     legacy_create_init = 0,
     main = "integration/local_stack_test.py",
     python_version = "PY3",
+    visibility = ["//:__pkg__"],
 )
 
 py_test(
@@ -202,6 +205,7 @@ py_test(
     legacy_create_init = 0,
     main = "integration/control_worker_test.py",
     python_version = "PY3",
+    visibility = ["//:__pkg__"],
 )
 
 py_test(
@@ -213,6 +217,7 @@ py_test(
     legacy_create_init = 0,
     main = "integration/artifact_commit_test.py",
     python_version = "PY3",
+    visibility = ["//:__pkg__"],
 )
 
 filegroup(

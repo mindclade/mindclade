@@ -26,6 +26,7 @@ js_test(
         ":config",
     ],
     entry_point = "tests/resolution.test.ts",
+    visibility = ["//libs:__pkg__"],
 )
 
 test_suite(

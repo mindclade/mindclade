@@ -524,7 +524,7 @@ def _validate_cache_boundary(
     context: Mapping[str, object],
 ) -> None:
     report = read_object(path, "cache boundary")
-    expected_fields = {
+    v1_fields = {
         "schema_version",
         "qualification",
         "source_revision",
@@ -538,30 +538,114 @@ def _validate_cache_boundary(
         "cacheless_canary",
         "poison_recovery",
     }
+    if report.get("schema_version") == "cache-boundary.v1":
+        if context.get("cache_namespace_epoch") != "disabled-v1":
+            raise ValueError("cache boundary v1 requires the disabled-v1 namespace")
+        if set(report) != v1_fields:
+            raise ValueError("cache boundary v1 contains missing or unknown fields")
+        if (
+            report.get("qualification") != "UNSIGNED_OBSERVATION_INPUT"
+            or report.get("source_revision") != source_revision
+            or report.get("cache_mode") != "disabled"
+            or report.get("cache_used") is not False
+            or report.get("cache_outputs_are_evidence") is not False
+            or report.get("public_cache_target_allowlist") != []
+            or report.get("iam_qualification_digest") is not None
+            or report.get("write_activation_digest") is not None
+        ):
+            raise ValueError("cache boundary v1 activates or treats cache state as evidence")
+        namespace = _object_field(report, "namespace")
+        if namespace != {
+            "schema_version": "cache-namespace.v1",
+            "classification": context.get("cache_classification"),
+            "namespace_epoch": context.get("cache_namespace_epoch"),
+            "trust_class": context.get("source_trust"),
+            "platform": context.get("cache_platform"),
+            "architecture": context.get("cache_architecture"),
+            "toolchain_digest": context.get("cache_toolchain_digest"),
+            "build_mode": pipeline_class,
+        }:
+            raise ValueError("cache namespace v1 is not bound to the exact trusted context")
+        canary = _object_field(report, "cacheless_canary")
+        if canary != {
+            "required": pipeline_class in {"protected", "nightly"},
+            "targets": ["//:wave1_tests"],
+            "remote_cache_read": False,
+            "remote_cache_write": False,
+        }:
+            raise ValueError("cacheless reproducibility plan v1 is incomplete")
+        if report.get("poison_recovery") != [
+            "revoke-affected-namespace",
+            "rebuild-with-cache-disabled",
+            "compare-clean-output-digests",
+            "require-reviewed-reactivation-evidence",
+        ]:
+            raise ValueError("cache poison-recovery plan v1 is incomplete")
+        return
+    expected_fields = v1_fields | {
+        "endpoint",
+        "signer_public_key_digest",
+        "audit_sink_digest",
+    }
     if set(report) != expected_fields:
         raise ValueError("cache boundary contains missing or unknown fields")
+    if report.get("schema_version") != "cache-boundary.v2":
+        raise ValueError("cache boundary schema is unsupported")
+    mode = report.get("cache_mode")
+    qualification = report.get("qualification")
     if (
-        report.get("schema_version") != "cache-boundary.v1"
-        or report.get("qualification") != "UNSIGNED_OBSERVATION_INPUT"
-        or report.get("source_revision") != source_revision
-        or report.get("cache_mode") != "disabled"
-        or report.get("cache_used") is not False
+        report.get("source_revision") != source_revision
+        or mode not in {"disabled", "read", "write"}
+        or report.get("cache_used") != (mode != "disabled")
         or report.get("cache_outputs_are_evidence") is not False
         or report.get("public_cache_target_allowlist") != []
-        or report.get("iam_qualification_digest") is not None
-        or report.get("write_activation_digest") is not None
     ):
-        raise ValueError("cache boundary activates or treats cache state as evidence")
+        raise ValueError("cache boundary v2 contains inconsistent cache state")
+    digest_fields = (
+        "iam_qualification_digest",
+        "signer_public_key_digest",
+        "audit_sink_digest",
+    )
+    if mode == "disabled":
+        if context.get("cache_namespace_epoch") != "disabled-v2":
+            raise ValueError("disabled cache v2 requires the disabled-v2 namespace")
+        if qualification != "DISABLED" or report.get("endpoint") is not None:
+            raise ValueError("disabled cache v2 claims qualification or an endpoint")
+        if any(
+            report.get(field) is not None for field in (*digest_fields, "write_activation_digest")
+        ):
+            raise ValueError("disabled cache v2 carries activation evidence")
+    else:
+        endpoint = report.get("endpoint")
+        if not isinstance(endpoint, str) or not re.fullmatch(
+            r"https://[a-z0-9](?:[a-z0-9.-]{0,251}[a-z0-9])?", endpoint
+        ):
+            raise ValueError("active cache endpoint is not canonical HTTPS")
+        for field in digest_fields:
+            if not DIGEST_PATTERN.fullmatch(_required_string(report, field)):
+                raise ValueError(f"active cache {field} is not canonical")
+        if mode == "read":
+            if (
+                qualification != "IAM_QUALIFIED"
+                or report.get("write_activation_digest") is not None
+            ):
+                raise ValueError("read cache has invalid qualification")
+        elif (
+            qualification != "WRITE_ACTIVATED"
+            or not DIGEST_PATTERN.fullmatch(_required_string(report, "write_activation_digest"))
+            or context.get("source_trust") != "protected"
+            or pipeline_class not in {"protected", "nightly"}
+        ):
+            raise ValueError("write cache lacks protected activation evidence")
     namespace = _object_field(report, "namespace")
     if context.get("cache_build_mode") != pipeline_class:
         raise ValueError("cache build mode does not match the dispatched pipeline class")
     expected_namespace = {
-        "schema_version": "cache-namespace.v1",
+        "schema_version": "cache-namespace.v2",
         "classification": context.get("cache_classification"),
         "namespace_epoch": context.get("cache_namespace_epoch"),
         "trust_class": context.get("source_trust"),
-        "platform": context.get("cache_platform"),
-        "architecture": context.get("cache_architecture"),
+        "system": f"{context.get('cache_architecture')}-{context.get('cache_platform')}",
         "toolchain_digest": context.get("cache_toolchain_digest"),
         "build_mode": pipeline_class,
     }
@@ -639,13 +723,102 @@ def _validate_secret_scan(path: Path) -> None:
         raise ValueError("secret scan report is not an empty finding array")
 
 
-def _validate_bazel_receipt(path: Path) -> None:
+def validate_bazel_receipt(path: Path, context: Mapping[str, object]) -> None:
     report = read_object(path, "Bazel native agreement report")
-    if report != {
+    if report == {
         "conclusion": "PASS",
         "schema_version": "bazel-native-agreement.v1",
     }:
-        raise ValueError("Bazel native agreement report is not a canonical PASS receipt")
+        if context.get("cache_mode") != "disabled":
+            raise ValueError("Bazel native agreement v1 cannot authorize active cache use")
+        return
+    expected_fields = {
+        "schema_version",
+        "conclusion",
+        "repository",
+        "system",
+        "nix_toolchain_digest",
+        "bazel_resolution_digest",
+        "toolchains",
+        "agreement_digest",
+    }
+    if set(report) != expected_fields:
+        raise ValueError("Bazel native agreement v2 contains missing or unknown fields")
+    if (
+        report.get("schema_version") != "bazel-native-agreement.v2"
+        or report.get("conclusion") != "PASS"
+        or report.get("repository") != REPOSITORY
+    ):
+        raise ValueError("Bazel native agreement v2 identity is invalid")
+    expected_system = f"{context.get('cache_architecture')}-{context.get('cache_platform')}"
+    if report.get("system") != expected_system:
+        raise ValueError("Bazel native agreement system does not match trusted context")
+    if report.get("nix_toolchain_digest") != context.get("cache_toolchain_digest"):
+        raise ValueError("Bazel native agreement toolchain does not match trusted context")
+    for field in ("nix_toolchain_digest", "bazel_resolution_digest", "agreement_digest"):
+        if not DIGEST_PATTERN.fullmatch(_required_string(report, field)):
+            raise ValueError(f"Bazel native agreement {field} is not canonical")
+    unsigned = {key: value for key, value in report.items() if key != "agreement_digest"}
+    if sha256_bytes(canonical_json(unsigned)) != report["agreement_digest"]:
+        raise ValueError("Bazel native agreement digest does not bind canonical content")
+    toolchains = _array_field(report, "toolchains")
+    required = {
+        "bazel",
+        "cargo",
+        "cc",
+        "cxx",
+        "go",
+        "java",
+        "just",
+        "nix",
+        "node",
+        "node_runtime",
+        "pnpm",
+        "python",
+        "rustc",
+        "rustdoc",
+    }
+    expected_toolchain_fields = {
+        "label",
+        "name",
+        "observation",
+        "observed_path",
+        "observed_provider_path",
+        "observed_provider_realpath",
+        "observed_sha256",
+        "observed_store_path",
+        "provider_version",
+        "toolchain_type",
+    }
+    names: list[str] = []
+    for raw in toolchains:
+        if not isinstance(raw, dict):
+            raise ValueError("Bazel native agreement toolchain must be an object")
+        item = cast(dict[str, object], raw)
+        if set(item) != expected_toolchain_fields:
+            raise ValueError("Bazel native agreement toolchain fields are not exact")
+        name = _required_string(item, "name")
+        names.append(name)
+        observed_path = _required_string(item, "observed_path")
+        observed_store_path = _required_string(item, "observed_store_path")
+        if not observed_path.startswith("/nix/store/"):
+            raise ValueError(f"Bazel toolchain {name} executable is not Nix-backed")
+        if not observed_store_path.startswith("/nix/store/"):
+            raise ValueError(f"Bazel toolchain {name} store path is not Nix-backed")
+        if not observed_path.startswith(observed_store_path.rstrip("/") + "/"):
+            raise ValueError(f"Bazel toolchain {name} executable escapes its store path")
+        if not DIGEST_PATTERN.fullmatch(_required_string(item, "observed_sha256")):
+            raise ValueError(f"Bazel toolchain {name} digest is not canonical")
+        _required_string(item, "label")
+        _required_string(item, "observation")
+        _required_string(item, "observed_provider_path")
+        _required_string(item, "observed_provider_realpath")
+        _required_string(item, "toolchain_type")
+        provider_version = item.get("provider_version")
+        if not isinstance(provider_version, str):
+            raise ValueError(f"Bazel toolchain {name} provider version is not a string")
+    if names != sorted(required):
+        raise ValueError("Bazel native agreement v2 toolchain set is incomplete or unordered")
 
 
 def validate_check_report(
@@ -665,7 +838,7 @@ def validate_check_report(
     elif name == "secret-scan":
         _validate_secret_scan(path)
     elif name == "bazel-native-agreement":
-        _validate_bazel_receipt(path)
+        validate_bazel_receipt(path, context)
     elif name == "immutable-launcher":
         _validate_launcher_observation(
             path,
@@ -812,7 +985,7 @@ def validate_trusted_context(
         raise ValueError("trusted context pipeline class has the wrong execution tier")
     if context.get("cache_classification") != "private-internal":
         raise ValueError("trusted context public cache is not activated")
-    if context.get("cache_namespace_epoch") != "disabled-v1":
+    if context.get("cache_namespace_epoch") not in {"disabled-v1", "disabled-v2"}:
         raise ValueError("trusted context cache namespace epoch is not activated")
     for field in ("cache_platform", "cache_architecture"):
         if not re.fullmatch(r"[a-z0-9][a-z0-9._-]{1,63}", _required_string(context, field)):

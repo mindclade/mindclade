@@ -18,6 +18,12 @@ exports_files([
 ])
 
 filegroup(
+    name = "generated_policy_bundle",
+    srcs = glob(["generated/**"]),
+    visibility = ["//visibility:public"],
+)
+
+filegroup(
     name = "wave0_governance_sources",
     srcs = [
         ".bazelignore",
@@ -60,6 +66,7 @@ filegroup(
         "pyproject.toml",
         "rust-toolchain.toml",
         "uv.lock",
+        ":generated_policy_bundle",
         "//docs:documentation",
         "//tools:repository_governance",
     ] + glob(

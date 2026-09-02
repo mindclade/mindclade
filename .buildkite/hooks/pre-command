@@ -30,7 +30,7 @@ cache_namespace_epoch="${MINDCLADE_CACHE_NAMESPACE_EPOCH:?missing cache namespac
 [[ "${cache_toolchain_digest}" =~ ^sha256:[0-9a-f]{64}$ ]]
 [[ "${cache_build_mode}" == "${pipeline_class}" ]]
 [[ "${cache_classification}" == private-internal ]]
-[[ "${cache_namespace_epoch}" == disabled-v1 ]]
+[[ "${cache_namespace_epoch}" == disabled-v1 || "${cache_namespace_epoch}" == disabled-v2 ]]
 [[ -z "${MINDCLADE_CACHE_IAM_QUALIFICATION_DIGEST:-}" ]]
 [[ -z "${MINDCLADE_CACHE_WRITE_ACTIVATION_DIGEST:-}" ]]
 [[ "$(git rev-parse HEAD)" == "${source_revision}" ]]

@@ -62,8 +62,7 @@ CACHE_NAMESPACE_FIELDS = (
     "classification",
     "namespace_epoch",
     "trust_class",
-    "platform",
-    "architecture",
+    "system",
     "toolchain_digest",
     "build_mode",
 )
@@ -227,6 +226,9 @@ def build_cache_boundary(
     namespace_epoch: str,
     iam_qualification_digest: str | None,
     write_activation_digest: str | None,
+    endpoint: str | None = None,
+    signer_public_key_digest: str | None = None,
+    audit_sink_digest: str | None = None,
 ) -> dict[str, object]:
     if not SHA_PATTERN.fullmatch(source_revision):
         raise ValueError("cache boundary source revision must be a full lowercase Git SHA")
@@ -240,41 +242,69 @@ def build_cache_boundary(
         raise ValueError("cache toolchain digest is not canonical")
     if build_mode != pipeline_class:
         raise ValueError("cache build mode must match the pipeline class")
-    if cache_mode != "disabled":
-        if not iam_qualification_digest or not DIGEST_PATTERN.fullmatch(iam_qualification_digest):
-            raise ValueError("cache use requires immutable IAM qualification evidence")
-        if cache_mode == "write" and (
-            not write_activation_digest or not DIGEST_PATTERN.fullmatch(write_activation_digest)
+    if cache_mode not in {"disabled", "read", "write"}:
+        raise ValueError("cache mode is not allowlisted")
+    evidence = (iam_qualification_digest, signer_public_key_digest, audit_sink_digest)
+    if cache_mode == "disabled":
+        if any(value is not None for value in (*evidence, write_activation_digest, endpoint)):
+            raise ValueError("disabled cache mode must not imply connected activation evidence")
+        if classification != "private-internal" or namespace_epoch != "disabled-v2":
+            raise ValueError("disabled cache must use the unactivated private namespace")
+        qualification = "DISABLED"
+    else:
+        if not isinstance(endpoint, str) or not re.fullmatch(
+            r"https://[a-z0-9](?:[a-z0-9.-]{0,251}[a-z0-9])?", endpoint
         ):
-            raise ValueError("cache writes require immutable write-activation evidence")
-        raise ValueError("repository cache use is not activated by source policy")
-    if iam_qualification_digest is not None or write_activation_digest is not None:
-        raise ValueError("disabled cache mode must not imply connected activation evidence")
-    if classification != "private-internal" or namespace_epoch != "disabled-v1":
-        raise ValueError("disabled cache must use the unactivated private namespace")
+            raise ValueError("active cache requires a canonical HTTPS endpoint")
+        if any(
+            not isinstance(value, str) or not DIGEST_PATTERN.fullmatch(value) for value in evidence
+        ):
+            raise ValueError("cache use requires IAM, signer, and audit qualification digests")
+        if namespace_epoch == "disabled-v2" or not re.fullmatch(
+            r"[a-z0-9][a-z0-9._-]{1,63}", namespace_epoch
+        ):
+            raise ValueError("active cache requires a qualified namespace epoch")
+        if trust_class == "untrusted":
+            raise ValueError("untrusted source cannot use the private cache")
+        qualification = "IAM_QUALIFIED"
+        if cache_mode == "write":
+            if trust_class != "protected" or pipeline_class not in {"protected", "nightly"}:
+                raise ValueError("cache writes require protected main or nightly execution")
+            if not isinstance(write_activation_digest, str) or not DIGEST_PATTERN.fullmatch(
+                write_activation_digest
+            ):
+                raise ValueError("cache writes require immutable activation evidence")
+            qualification = "WRITE_ACTIVATED"
+        elif write_activation_digest is not None:
+            raise ValueError("read-only cache must not carry write activation evidence")
+    system = f"{architecture}-{platform}"
+    if system not in {"aarch64-darwin", "aarch64-linux", "x86_64-linux"}:
+        raise ValueError("cache system is unsupported")
     namespace = {
-        "schema_version": "cache-namespace.v1",
+        "schema_version": "cache-namespace.v2",
         "classification": classification,
         "namespace_epoch": namespace_epoch,
         "trust_class": trust_class,
-        "platform": platform,
-        "architecture": architecture,
+        "system": system,
         "toolchain_digest": toolchain_digest,
         "build_mode": build_mode,
     }
     if tuple(namespace) != CACHE_NAMESPACE_FIELDS:
         raise AssertionError("cache namespace field order drifted")
     return {
-        "schema_version": "cache-boundary.v1",
-        "qualification": "UNSIGNED_OBSERVATION_INPUT",
+        "schema_version": "cache-boundary.v2",
+        "qualification": qualification,
         "source_revision": source_revision,
-        "cache_mode": "disabled",
-        "cache_used": False,
+        "cache_mode": cache_mode,
+        "cache_used": cache_mode != "disabled",
         "cache_outputs_are_evidence": False,
         "public_cache_target_allowlist": list(PUBLIC_CACHE_TARGET_ALLOWLIST),
+        "endpoint": endpoint,
         "namespace": namespace,
-        "iam_qualification_digest": None,
-        "write_activation_digest": None,
+        "iam_qualification_digest": iam_qualification_digest,
+        "write_activation_digest": write_activation_digest,
+        "signer_public_key_digest": signer_public_key_digest,
+        "audit_sink_digest": audit_sink_digest,
         "cacheless_canary": {
             "required": pipeline_class in {"protected", "nightly"},
             "targets": ["//:wave1_tests"],
@@ -333,7 +363,7 @@ def self_test() -> None:
         build_mode="protected",
         cache_mode="disabled",
         classification="private-internal",
-        namespace_epoch="disabled-v1",
+        namespace_epoch="disabled-v2",
         iam_qualification_digest=None,
         write_activation_digest=None,
     )
@@ -357,13 +387,19 @@ def self_test() -> None:
                 build_mode="protected",
                 cache_mode=mode,
                 classification="private-internal",
-                namespace_epoch="disabled-v1",
+                namespace_epoch="qualified-epoch-1",
                 iam_qualification_digest=iam,
                 write_activation_digest=write,
+                endpoint="https://nix-cache.mindclade.com" if iam else None,
+                signer_public_key_digest="sha256:" + "3" * 64 if iam else None,
+                audit_sink_digest="sha256:" + "4" * 64 if iam else None,
             )
         except ValueError:
-            continue
-        raise AssertionError(f"cache mode {mode} activated without qualified source policy")
+            if mode != "write" or iam is None or write is None:
+                continue
+            raise
+        if mode != "write" or write is None:
+            raise AssertionError(f"cache mode {mode} activated without complete evidence")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -392,6 +428,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--cache-namespace-epoch")
     parser.add_argument("--cache-iam-qualification-digest")
     parser.add_argument("--cache-write-activation-digest")
+    parser.add_argument("--cache-endpoint")
+    parser.add_argument("--cache-signer-public-key-digest")
+    parser.add_argument("--cache-audit-sink-digest")
     parser.add_argument("--self-test", action="store_true")
     return parser
 
@@ -465,6 +504,9 @@ def main(argv: Sequence[str] | None = None) -> int:
             namespace_epoch=cast(str, args.cache_namespace_epoch),
             iam_qualification_digest=args.cache_iam_qualification_digest,
             write_activation_digest=args.cache_write_activation_digest,
+            endpoint=args.cache_endpoint,
+            signer_public_key_digest=args.cache_signer_public_key_digest,
+            audit_sink_digest=args.cache_audit_sink_digest,
         )
     except (FileNotFoundError, subprocess.CalledProcessError, ValueError) as error:
         print(f"invalid pipeline plan: {error}", file=sys.stderr)

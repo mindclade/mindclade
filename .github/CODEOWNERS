@@ -48,6 +48,7 @@
 /.devcontainer/ @mindclade/developer-platform
 /.github/ @mindclade/developer-platform @mindclade/security
 /.vscode/ @mindclade/developer-platform
+/generated/ @mindclade/developer-platform
 /BUILD.bazel @mindclade/developer-platform
 /MODULE.bazel @mindclade/developer-platform
 /flake.lock @mindclade/developer-platform

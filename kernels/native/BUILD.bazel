@@ -166,6 +166,7 @@ filegroup(
         "IMPLEMENTATION_STATUS.md",
         "MIGRATION.md",
         "README.md",
+        "__init__.py",
         "cmake/MindcladeTorchStable.cmake",
         "codegen/__init__.py",
         "codegen/discover.py",

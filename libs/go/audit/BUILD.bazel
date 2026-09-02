@@ -21,6 +21,7 @@ go_test(
     srcs = ["writer_test.go"],
     embed = [":audit"],
     pure = "on",
+    visibility = ["//libs:__pkg__"],
 )
 
 filegroup(

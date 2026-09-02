@@ -1,5 +1,6 @@
 load("@rules_python//python:defs.bzl", "py_binary", "py_test")
 load("//tools:bazel/rules/component_rule.bzl", "component_metadata")
+load("//tools:bazel/toolchain_probe.bzl", "configured_toolchain_probe")
 
 package(default_visibility = ["//visibility:private"])
 
@@ -15,6 +16,11 @@ component_metadata(
     component_name = "mindclade",
     metadata = "//:component.yaml",
     owner = "product-engineering",
+)
+
+configured_toolchain_probe(
+    name = "configured_toolchain_probe",
+    visibility = ["//visibility:public"],
 )
 
 filegroup(
@@ -68,6 +74,27 @@ py_test(
 )
 
 py_test(
+    name = "build_contracts_test",
+    srcs = [
+        "bazel/local_cache.py",
+        "bazel/rbe_manifest.py",
+        "bazel/tests/test_build_contracts.py",
+        "bazel/toolchain_contract.py",
+        "bazel/vendor.py",
+        "ci/evidence_bundle.py",
+    ],
+    data = ["//:generated_policy_bundle"],
+    imports = [
+        "bazel",
+        "ci",
+    ],
+    legacy_create_init = 0,
+    main = "bazel/tests/test_build_contracts.py",
+    python_version = "PY3",
+    deps = ["@mindclade_pypi//jsonschema"],
+)
+
+py_test(
     name = "license_scanner_contract_test",
     srcs = ["licenses/scan_licenses.py"],
     args = ["--self-test"],
@@ -115,6 +142,7 @@ py_test(
     legacy_create_init = 0,
     main = "repo/tests/test_repository_policies.py",
     python_version = "PY3",
+    visibility = ["//:__pkg__"],
     deps = ["@mindclade_pypi//jsonschema"],
 )
 
@@ -147,6 +175,7 @@ test_suite(
     tests = [
         ":blueprint_render_test",
         ":blueprint_source_manifest_test",
+        ":build_contracts_test",
         ":license_scanner_contract_test",
         ":monorepo_tree_authority_test",
         ":pipeline_plan_contract_test",

@@ -12,11 +12,8 @@
   outputs =
     { self, nixpkgs }:
     let
-      systems = [
-        "aarch64-darwin"
-        "aarch64-linux"
-        "x86_64-linux"
-      ];
+      estatePolicy = import ./generated/nix-bazel-policy.nix;
+      systems = estatePolicy.spec.systems;
       gpuSystems = [
         "aarch64-linux"
         "x86_64-linux"
@@ -71,6 +68,7 @@
               findutils
               gawk
               git
+              go_1_26
               gnugrep
               gnumake
               gnused
@@ -81,6 +79,7 @@
               openssl.bin
               openssh
               patch
+              pythonEnv
               stdenv.cc
               unzip
               which
@@ -88,8 +87,9 @@
               zip
             ]
             ++ lib.optionals stdenv.hostPlatform.isDarwin [
+              apple-sdk
               darwin.cctools
-              darwin.cctools.libtool
+              libiconv
             ];
           bazel = pkgs.writeShellApplication {
             name = "bazel";
@@ -97,13 +97,18 @@
             text = ''
               export PATH=${pkgs.lib.makeBinPath bazelRuntimeInputs}
               export JAVA_HOME=${pkgs.jdk21_headless}
+              export GOROOT=${pkgs.go_1_26}/share/go
               export CC=${pkgs.stdenv.cc}/bin/cc
               export CXX=${pkgs.stdenv.cc}/bin/c++
-              export BAZEL_LINKOPTS=${pkgs.lib.escapeShellArg (pkgs.lib.optionalString pkgs.stdenv.hostPlatform.isDarwin "-L${pkgs.darwin.libresolv}/lib")}
+              export SDKROOT=${
+                pkgs.lib.escapeShellArg (if pkgs.stdenv.hostPlatform.isDarwin then pkgs.apple-sdk.sdkroot else "")
+              }
+              export BAZEL_LINKOPTS=${pkgs.lib.escapeShellArg (pkgs.lib.optionalString pkgs.stdenv.hostPlatform.isDarwin "-L${pkgs.darwin.libresolv}/lib:-L${pkgs.libiconv}/lib")}
               export LANG=C
               export LC_ALL=C
               export TZ=UTC
               export MINDCLADE_NIX_BIN=${pkgs.nix}/bin/nix
+              export MINDCLADE_TOOLCHAIN_MANIFEST=${toolchainManifest}/share/mindclade/toolchain-manifest.json
               if [[ "''${1:-}" == "--version" ]]; then
                 printf 'bazel %s\n' '${pkgs.bazel_9.version}'
                 exit 0
@@ -115,32 +120,76 @@
               exec ${pkgs.bazel_9}/bin/bazel "''${startup_flags[@]}" "$@"
             '';
           };
-          toolchainManifest = pkgs.writeTextDir "share/mindclade/toolchain-manifest.json" (
-            builtins.toJSON {
-              schema_version = "mindclade-toolchain.v1";
-              repository = "mindclade/mindclade";
-              inherit system;
-              nixpkgs = {
-                revision = nixpkgs.rev;
-                nar_hash = nixpkgs.narHash;
-              };
-              flake_lock_sha256 = builtins.hashFile "sha256" "${self}/flake.lock";
-              module_lock_sha256 = builtins.hashFile "sha256" "${self}/MODULE.bazel.lock";
-              bazel = {
-                version = pkgs.bazel_9.version;
-                store_path = "${pkgs.bazel_9}";
-              };
-              startup_jdk = {
-                version = pkgs.jdk21_headless.version;
-                store_path = "${pkgs.jdk21_headless}";
-              };
-              native_cc_store_path = "${pkgs.stdenv.cc}";
-              rust = {
-                version = pkgs.rustc.version;
-                store_path = "${pkgs.rustc}";
-              };
-            }
-          );
+          toolchainManifest =
+            pkgs.runCommand "mindclade-toolchain-manifest-v2"
+              {
+                nativeBuildInputs = [
+                  pkgs.coreutils
+                  pkgs.jq
+                ];
+              }
+              ''
+                set -euo pipefail
+                mkdir -p "$out/share/mindclade"
+                record() {
+                  local path="$1" store_path="$2" version="$3"
+                  local sha256
+                  sha256="$(sha256sum "$path" | cut -d' ' -f1)"
+                  jq -cn \
+                    --arg path "$path" \
+                    --arg sha256 "sha256:$sha256" \
+                    --arg store_path "$store_path" \
+                    --arg version "$version" \
+                    '{path:$path,sha256:$sha256,store_path:$store_path,version:$version}'
+                }
+                bazel_json="$(record ${pkgs.bazel_9}/bin/bazel ${pkgs.bazel_9} ${pkgs.bazel_9.version})"
+                cargo_json="$(record ${pkgs.cargo}/bin/cargo ${pkgs.cargo} ${pkgs.cargo.version})"
+                cc_json="$(record ${
+                  if pkgs.stdenv.hostPlatform.isDarwin then
+                    "${pkgs.stdenv.cc}/bin/clang"
+                  else
+                    "${pkgs.stdenv.cc}/bin/cc"
+                } ${pkgs.stdenv.cc} ${pkgs.stdenv.cc.version})"
+                cxx_json="$cc_json"
+                go_json="$(record ${pkgs.go_1_26}/share/go/bin/go ${pkgs.go_1_26} ${pkgs.go_1_26.version})"
+                java_json="$(record ${pkgs.jdk21_headless}/bin/java ${pkgs.jdk21_headless} ${pkgs.jdk21_headless.version})"
+                just_json="$(record ${pkgs.just}/bin/just ${pkgs.just} ${pkgs.just.version})"
+                nix_json="$(record ${pkgs.nix}/bin/nix ${pkgs.nix} ${pkgs.nix.version})"
+                node_json="$(record ${pkgs.nodejs_26}/bin/node ${pkgs.nodejs_26} ${pkgs.nodejs_26.version})"
+                pnpm_json="$(record ${pnpmNode26}/bin/pnpm ${pnpmNode26} ${pnpmNode26.version})"
+                python_json="$(record ${pythonEnv}/bin/python3 ${pythonEnv} ${pkgs.python312.version})"
+                rustc_json="$(record ${pkgs.rustc}/bin/rustc ${pkgs.rustc} ${pkgs.rustc.version})"
+                rustdoc_json="$(record ${pkgs.rustc}/bin/rustdoc ${pkgs.rustc} ${pkgs.rustc.version})"
+                unsigned="$TMPDIR/unsigned.json"
+                jq -Scn \
+                  --arg repository mindclade/mindclade \
+                  --arg system ${system} \
+                  --arg revision ${nixpkgs.rev} \
+                  --arg nar_hash ${nixpkgs.narHash} \
+                  --arg flake "sha256:${builtins.hashFile "sha256" "${self}/flake.lock"}" \
+                  --arg module "sha256:${builtins.hashFile "sha256" "${self}/MODULE.bazel.lock"}" \
+                  --arg policy_lock "sha256:${builtins.hashFile "sha256" "${self}/generated/nix-bazel-policy.lock.json"}" \
+                  --arg policy_revision ${estatePolicy.generated.authority_revision} \
+                  --arg policy_digest ${estatePolicy.generated.policy_digest} \
+                  --argjson bazel "$bazel_json" \
+                  --argjson cargo "$cargo_json" \
+                  --argjson cc "$cc_json" \
+                  --argjson cxx "$cxx_json" \
+                  --argjson go "$go_json" \
+                  --argjson java "$java_json" \
+                  --argjson just "$just_json" \
+                  --argjson nix "$nix_json" \
+                  --argjson node "$node_json" \
+                  --argjson pnpm "$pnpm_json" \
+                  --argjson python "$python_json" \
+                  --argjson rustc "$rustc_json" \
+                  --argjson rustdoc "$rustdoc_json" \
+                  '{schema_version:"mindclade-toolchain.v2",repository:$repository,system:$system,policy:{authority_repository:"mindclade/.github",authority_revision:$policy_revision,policy_digest:$policy_digest},nixpkgs:{revision:$revision,nar_hash:$nar_hash},locks:{flake:$flake,module:$module,policy:$policy_lock},executables:{bazel:$bazel,cargo:$cargo,cc:$cc,cxx:$cxx,go:$go,java:$java,just:$just,nix:$nix,node:$node,pnpm:$pnpm,python:$python,rustc:$rustc,rustdoc:$rustdoc}}' \
+                  > "$unsigned"
+                digest="sha256:$(jq -jSc . "$unsigned" | sha256sum | cut -d' ' -f1)"
+                jq -Sc --arg digest "$digest" '. + {toolchain_digest:$digest}' "$unsigned" \
+                  > "$out/share/mindclade/toolchain-manifest.json"
+              '';
           toolchainPackages = with pkgs; [
             actionlint
             bazel
@@ -156,6 +205,7 @@
             jq
             just
             markdownlint-cli2
+            nix
             nixfmt
             nodejs_26
             pnpmNode26
@@ -171,6 +221,9 @@
             toolchainManifest
             uv
             yamllint
+          ]
+          ++ lib.optionals stdenv.hostPlatform.isLinux [
+            util-linux
           ];
           toolchain = pkgs.buildEnv {
             name = "mindclade-toolchain";
@@ -204,6 +257,7 @@
             LC_ALL = current.locale;
             TZ = "UTC";
             UV_PROJECT_ENVIRONMENT = ".venv";
+            MINDCLADE_TOOLCHAIN_MANIFEST = "${current.toolchainManifest}/share/mindclade/toolchain-manifest.json";
             shellHook = ''
               # mkShell preserves parts of the invoking PATH on some hosts.
               # Reassert the repository closure first so Homebrew/rustup cannot
@@ -337,10 +391,10 @@
                 }
                 ''
                   set -euo pipefail
-                  command -v bazel buildifier buf cargo go jq just nixfmt node pnpm python3 rustc uv >/dev/null
+                  command -v bazel buildifier buf cargo cc c++ go java jq just nix nixfmt node pnpm python3 rustc uv >/dev/null
                   test "$(bazel --version)" = "bazel 9.1.1"
                   test "$(rustc --version | cut -d' ' -f2)" = '${pkgs.rustc.version}'
-                  jq -e '.schema_version == "mindclade-toolchain.v1" and .bazel.version == "9.1.1" and .rust.version == "${pkgs.rustc.version}"' \
+                  jq -e '.schema_version == "mindclade-toolchain.v2" and .executables.bazel.version == "9.1.1" and .executables.rustc.version == "${pkgs.rustc.version}" and .executables.go.version == "1.26.7"' \
                     ${current.toolchain}/share/mindclade/toolchain-manifest.json >/dev/null
                   mkdir -p "$out"
                   cp ${current.toolchain}/share/mindclade/toolchain-manifest.json "$out/"

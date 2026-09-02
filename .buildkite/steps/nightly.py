@@ -16,7 +16,7 @@ def steps() -> list[Step]:
                 "build/evidence/pipeline-plan.v1.json",
                 "build/evidence/trusted-context.v1.json",
                 "build/evidence/immutable-launcher.v1.json",
-                "build/evidence/cache-boundary.v1.json",
+                "build/evidence/cache-boundary.v2.json",
             ),
         ),
         Step(
@@ -45,7 +45,7 @@ def steps() -> list[Step]:
             ),
             timeout_minutes=60,
             depends_on=("pipeline-plan",),
-            artifact_paths=("build/evidence/bazel-native-agreement.v1.json",),
+            artifact_paths=("build/evidence/bazel-native-agreement.v2.json",),
         ),
         Step(
             key="wave1-full",

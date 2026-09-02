@@ -143,7 +143,7 @@ ADR_REGISTRY = (
         "ADR-0015",
         "0015-all-contracts-clean-v1-baseline.md",
         "accepted",
-        "All-Contracts Clean-v1 Baseline",
+        "All-Contracts Candidate v1 Estate and Ratification Gate",
     ),
     AdrContract(
         "ADR-0016",
@@ -186,6 +186,12 @@ ADR_REGISTRY = (
         "0022-native-signed-qualification-and-production-admission-source-activation.md",
         "accepted",
         "Native signed qualification and production admission source activation",
+    ),
+    AdrContract(
+        "ADR-0023",
+        "0023-estate-nix-bazel-hermeticity-and-cache-preparation.md",
+        "accepted",
+        "Estate Nix and Bazel hermeticity and cache preparation",
     ),
 )
 ADR_PATHS = tuple(contract.filename for contract in ADR_REGISTRY)
@@ -1071,6 +1077,8 @@ def _self_test_adr_ratification_contract() -> None:
         "ADR-0019",
         "ADR-0020",
         "ADR-0021",
+        "ADR-0022",
+        "ADR-0023",
     ]:
         raise AssertionError("ADR registry order drifted")
     for contract in ADR_REGISTRY:
@@ -1106,7 +1114,7 @@ def _self_test(org_schema: Path | None) -> None:
         "cache_toolchain_digest": "sha256:" + "f" * 64,
         "cache_build_mode": "presubmit",
         "cache_classification": "private-internal",
-        "cache_namespace_epoch": "disabled-v1",
+        "cache_namespace_epoch": "disabled-v2",
     }
     context_digest = sha256_bytes(canonical_json(context))
     unsigned_plan: dict[str, object] = {
@@ -1133,12 +1141,53 @@ def _self_test(org_schema: Path | None) -> None:
         plan_path = root / "pipeline-plan.v1.json"
         plan_path.write_bytes(canonical_json(plan))
         report_path = root / "governance.json"
-        bazel_receipt_path = root / "bazel-native-agreement.v1.json"
+        bazel_receipt_path = root / "bazel-native-agreement.v2.json"
+        toolchains = [
+            {
+                "name": name,
+                "label": f"nix-bootstrap://{name}",
+                "observation": "self-test",
+                "observed_path": f"/nix/store/{'a' * 32}-toolchain/bin/{name}",
+                "observed_provider_path": f"/nix/store/{'a' * 32}-toolchain/bin/{name}",
+                "observed_provider_realpath": f"/nix/store/{'a' * 32}-toolchain/bin/{name}",
+                "observed_sha256": "sha256:" + "9" * 64,
+                "observed_store_path": f"/nix/store/{'a' * 32}-toolchain",
+                "provider_version": "1.0",
+                "toolchain_type": "nix-bootstrap",
+            }
+            for name in sorted(
+                {
+                    "bazel",
+                    "cargo",
+                    "cc",
+                    "cxx",
+                    "go",
+                    "java",
+                    "just",
+                    "nix",
+                    "node",
+                    "node_runtime",
+                    "pnpm",
+                    "python",
+                    "rustc",
+                    "rustdoc",
+                }
+            )
+        ]
+        unsigned_bazel_receipt = {
+            "schema_version": "bazel-native-agreement.v2",
+            "conclusion": "PASS",
+            "repository": REPOSITORY,
+            "system": "x86_64-linux",
+            "nix_toolchain_digest": context["cache_toolchain_digest"],
+            "bazel_resolution_digest": "sha256:" + "8" * 64,
+            "toolchains": toolchains,
+        }
         bazel_receipt_path.write_bytes(
             canonical_json(
                 {
-                    "conclusion": "PASS",
-                    "schema_version": "bazel-native-agreement.v1",
+                    **unsigned_bazel_receipt,
+                    "agreement_digest": sha256_bytes(canonical_json(unsigned_bazel_receipt)),
                 }
             )
         )
@@ -1159,29 +1208,31 @@ def _self_test(org_schema: Path | None) -> None:
                 }
             )
         )
-        cache_boundary_path = root / "cache-boundary.v1.json"
+        cache_boundary_path = root / "cache-boundary.v2.json"
         cache_boundary_path.write_bytes(
             canonical_json(
                 {
-                    "schema_version": "cache-boundary.v1",
-                    "qualification": "UNSIGNED_OBSERVATION_INPUT",
+                    "schema_version": "cache-boundary.v2",
+                    "qualification": "DISABLED",
                     "source_revision": source_revision,
                     "cache_mode": "disabled",
                     "cache_used": False,
                     "cache_outputs_are_evidence": False,
                     "public_cache_target_allowlist": [],
+                    "endpoint": None,
                     "namespace": {
-                        "schema_version": "cache-namespace.v1",
+                        "schema_version": "cache-namespace.v2",
                         "classification": "private-internal",
-                        "namespace_epoch": "disabled-v1",
+                        "namespace_epoch": "disabled-v2",
                         "trust_class": "untrusted",
-                        "platform": "linux",
-                        "architecture": "x86_64",
+                        "system": "x86_64-linux",
                         "toolchain_digest": "sha256:" + "f" * 64,
                         "build_mode": "presubmit",
                     },
                     "iam_qualification_digest": None,
                     "write_activation_digest": None,
+                    "signer_public_key_digest": None,
+                    "audit_sink_digest": None,
                     "cacheless_canary": {
                         "required": False,
                         "targets": ["//:wave1_tests"],
