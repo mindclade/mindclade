@@ -3229,7 +3229,7 @@ CANONICAL_FILE_COUNT = (  # pyright: ignore[reportConstantRedefinition]
     CANONICAL_FILE_COUNT + len(ESTATE_BUILD_OPTIMIZATION_PATHS) + 1
 )
 CANONICAL_PATH_SET_SHA256 = (  # pyright: ignore[reportConstantRedefinition]
-    "3658919aec07bae371025a7297224daaa984c5ab94131ce1acbbc38f90fe47a4"
+    "959b143842f1c90965ec7a4f9e57fb8595389a353cf80d1ad1b5c5e50f123196"
 )
 
 _adr0023_reconciliation_addition_reason = _reconciliation_addition_reason
