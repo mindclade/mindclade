@@ -3308,5 +3308,51 @@ def _reconciliation_addition_reason(path: str) -> str:
     return _adr0023_reconciliation_addition_reason(path)
 
 
+# Descriptor-derived internal SDK API reference (completion work-queue item 15).
+SDK_API_REFERENCE_TOOLING_PATHS: tuple[str, ...] = (
+    "tools/docs/render_sdk_api_reference.py",
+    "tools/docs/tests/test_render_sdk_api_reference.py",
+)
+SDK_API_REFERENCE_DOCUMENT_PATHS: tuple[str, ...] = (
+    "internal/sdk/go/api.md",
+    "internal/sdk/python/api.md",
+    "internal/sdk/rust/api.md",
+    "internal/sdk/typescript/api.md",
+)
+SDK_API_REFERENCE_PATHS: tuple[str, ...] = (
+    *SDK_API_REFERENCE_TOOLING_PATHS,
+    *SDK_API_REFERENCE_DOCUMENT_PATHS,
+)
+# The four api.md documents already reach REQUIRED_ADDITIONS through the
+# internal-sdk activation bundle, so only the renderer and its test are added
+# here; the canonical count still grows by every new path.
+REQUIRED_ADDITIONS = (  # pyright: ignore[reportConstantRedefinition]
+    *REQUIRED_ADDITIONS,
+    *SDK_API_REFERENCE_TOOLING_PATHS,
+)
+CANONICAL_FILE_COUNT = (  # pyright: ignore[reportConstantRedefinition]
+    CANONICAL_FILE_COUNT + len(SDK_API_REFERENCE_PATHS)
+)
+CANONICAL_PATH_SET_SHA256 = (  # pyright: ignore[reportConstantRedefinition]
+    "245d569473e5d389a7062c2a299823392c4e9fe8108d211c8480a13e7c96752a"
+)
+
+_sdk_api_reference_addition_reason = _reconciliation_addition_reason
+
+
+def _reconciliation_addition_reason(path: str) -> str:
+    if path in SDK_API_REFERENCE_TOOLING_PATHS:
+        return (
+            "The internal SDK API reference is rendered from the governed RPC-coverage "
+            "projection so a facade cannot document a method the descriptor never declared."
+        )
+    if path in SDK_API_REFERENCE_DOCUMENT_PATHS:
+        return (
+            "Committed per-language API reference derived from the candidate descriptor "
+            "and drift-checked by `just docs`."
+        )
+    return _sdk_api_reference_addition_reason(path)
+
+
 if __name__ == "__main__":
     raise SystemExit(main())

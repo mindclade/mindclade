@@ -6951,10 +6951,34 @@
           "path": ".github/renovate.json",
           "replaces": ".github/dependabot.yml",
           "reason": "Dependabot is retired estate-wide; Renovate configuration extending the organization preset in mindclade/.github replaces it."
+        },
+        {
+          "path": "internal/sdk/go/api.md",
+          "reason": "Committed per-language API reference derived from the candidate descriptor and drift-checked by `just docs`."
+        },
+        {
+          "path": "internal/sdk/python/api.md",
+          "reason": "Committed per-language API reference derived from the candidate descriptor and drift-checked by `just docs`."
+        },
+        {
+          "path": "internal/sdk/rust/api.md",
+          "reason": "Committed per-language API reference derived from the candidate descriptor and drift-checked by `just docs`."
+        },
+        {
+          "path": "internal/sdk/typescript/api.md",
+          "reason": "Committed per-language API reference derived from the candidate descriptor and drift-checked by `just docs`."
+        },
+        {
+          "path": "tools/docs/render_sdk_api_reference.py",
+          "reason": "The internal SDK API reference is rendered from the governed RPC-coverage projection so a facade cannot document a method the descriptor never declared."
+        },
+        {
+          "path": "tools/docs/tests/test_render_sdk_api_reference.py",
+          "reason": "The internal SDK API reference is rendered from the governed RPC-coverage projection so a facade cannot document a method the descriptor never declared."
         }
       ],
-      "canonical_file_count": 3565,
-      "canonical_path_set_sha256": "7d39a90b849df78856af43adc5d8ac17017f22ac79b00e65064dfc53d890d613"
+      "canonical_file_count": 3571,
+      "canonical_path_set_sha256": "245d569473e5d389a7062c2a299823392c4e9fe8108d211c8480a13e7c96752a"
     },
     "owners": {
       "agent-platform": {
@@ -54116,8 +54140,8 @@
       "public_surface": false
     },
     {
-      "path": "tools/docs/render_sdk_api_reference.py",
-      "kind": "source",
+      "path": "tools/docs/tests/test_render_sdk_api_reference.py",
+      "kind": "test",
       "owner": "developer-platform",
       "component": "tools-docs",
       "status": "active",
@@ -54132,8 +54156,8 @@
       "public_surface": false
     },
     {
-      "path": "tools/docs/tests/test_render_sdk_api_reference.py",
-      "kind": "test",
+      "path": "tools/docs/render_sdk_api_reference.py",
+      "kind": "source",
       "owner": "developer-platform",
       "component": "tools-docs",
       "status": "active",
@@ -58789,23 +58813,6 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/go/api.md",
-      "kind": "documentation",
-      "owner": "developer-experience",
-      "component": "internal-sdk-go",
-      "status": "generated",
-      "activation_wave": "1",
-      "source_authority": "reviewed-generated",
-      "build_targets": [
-        "//:all_contract_sources"
-      ],
-      "test_targets": [
-        "//:all_contract_tests"
-      ],
-      "public_surface": false,
-      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
-    },
-    {
       "path": "internal/sdk/go/mindclade/admin.go",
       "kind": "source",
       "owner": "developer-experience",
@@ -59408,6 +59415,23 @@
       "status": "active",
       "activation_wave": "1",
       "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "internal/sdk/go/api.md",
+      "kind": "documentation",
+      "owner": "developer-experience",
+      "component": "internal-sdk-go",
+      "status": "generated",
+      "activation_wave": "1",
+      "source_authority": "reviewed-generated",
       "build_targets": [
         "//:all_contract_sources"
       ],
