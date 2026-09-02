@@ -63,6 +63,16 @@ js_test(
 )
 
 js_test(
+    name = "evaluation_test",
+    data = [
+        "package.json",
+        ":governed_sources",
+        ":mindclade_internal_sdk",
+    ],
+    entry_point = "tests/evaluations.test.ts",
+)
+
+js_test(
     name = "workflow_approval_test",
     data = [
         "package.json",
@@ -76,6 +86,7 @@ test_suite(
     name = "tests",
     tests = [
         ":agent_test",
+        ":evaluation_test",
         ":policy_admin_test",
         ":sdk_test",
         ":workflow_approval_test",

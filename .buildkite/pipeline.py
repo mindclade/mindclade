@@ -170,21 +170,13 @@ def self_test() -> None:
         raise AssertionError("organization workflow caller inventory is incomplete")
     permission_boundaries = {
         ("buildkite-dispatch.yml", "verify"): (
-            "      actions: read\n"
-            "      contents: read\n"
-            "      id-token: write\n"
+            "      actions: read\n      contents: read\n      id-token: write\n"
         ),
-        ("codeql.yml", "python"): (
-            "      contents: read\n      security-events: write\n"
-        ),
+        ("codeql.yml", "python"): ("      contents: read\n      security-events: write\n"),
         ("required-check.yml", "buildkite_required"): (
-            "      actions: read\n"
-            "      contents: read\n"
-            "      id-token: write\n"
+            "      actions: read\n      contents: read\n      id-token: write\n"
         ),
-        ("scorecard.yml", "scorecard"): (
-            "      contents: read\n      security-events: write\n"
-        ),
+        ("scorecard.yml", "scorecard"): ("      contents: read\n      security-events: write\n"),
     }
     for (workflow_name, job_name), permissions in permission_boundaries.items():
         source = (workflow_root / workflow_name).read_text(encoding="utf-8")
