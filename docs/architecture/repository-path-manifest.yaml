@@ -5451,6 +5451,10 @@
           "reason": "ADR-0015 private Mindclade-owned SDK facade or conformance source that wraps Buf-generated native transport clients without redefining wire models."
         },
         {
+          "path": "internal/sdk/typescript/src/evaluations.ts",
+          "reason": "ADR-0015 private Mindclade-owned SDK facade or conformance source that wraps Buf-generated native transport clients without redefining wire models."
+        },
+        {
           "path": "internal/sdk/typescript/src/gcp_auth.ts",
           "reason": "ADR-0015 private Mindclade-owned SDK facade or conformance source that wraps Buf-generated native transport clients without redefining wire models."
         },
@@ -5520,6 +5524,10 @@
         },
         {
           "path": "internal/sdk/typescript/tests/agents.test.ts",
+          "reason": "ADR-0015 private Mindclade-owned SDK facade or conformance source that wraps Buf-generated native transport clients without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/typescript/tests/evaluations.test.ts",
           "reason": "ADR-0015 private Mindclade-owned SDK facade or conformance source that wraps Buf-generated native transport clients without redefining wire models."
         },
         {
@@ -6158,8 +6166,8 @@
           "reason": "Sections 1-18 and Section 14.1 take precedence over the stale A6 short ADR name."
         }
       ],
-      "canonical_file_count": 3369,
-      "canonical_path_set_sha256": "978e5706369c7372cff6730558adea2a4af5d7b9c766fb5bbedd02196bd31b54"
+      "canonical_file_count": 3371,
+      "canonical_path_set_sha256": "f8e20536225b44168f47d6b5f6843563c79b90cf1b36f150a952562c77369658"
     },
     "owners": {
       "agent-platform": {
@@ -56966,6 +56974,23 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
+      "path": "internal/sdk/typescript/src/evaluations.ts",
+      "kind": "source",
+      "owner": "developer-experience",
+      "component": "internal-sdk-typescript",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
       "path": "internal/sdk/typescript/src/gcp_auth.ts",
       "kind": "source",
       "owner": "developer-experience",
@@ -57256,6 +57281,23 @@
     },
     {
       "path": "internal/sdk/typescript/tests/agents.test.ts",
+      "kind": "test",
+      "owner": "developer-experience",
+      "component": "internal-sdk-typescript",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "internal/sdk/typescript/tests/evaluations.test.ts",
       "kind": "test",
       "owner": "developer-experience",
       "component": "internal-sdk-typescript",

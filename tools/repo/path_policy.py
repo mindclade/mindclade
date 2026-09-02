@@ -28,7 +28,7 @@ BLUEPRINT_SHA256 = "d099074e755168bbdce076d50918bf06aff677f9e5d620fdfe53cb7cef74
 ANCHOR_COMMIT = "292b71f47b1b29cc9ba7cf760a9bd07cd5e0ffa7"
 AUTHORITY_FILE_COUNT = 2461
 AUTHORITY_DIRECTORY_COUNT = 787
-CANONICAL_FILE_COUNT = 3342
+CANONICAL_FILE_COUNT = 3344
 AUTHORITY_PATH_SET_SHA256 = "f2011dd32ccc19649e6abb70ffb4473aea4a224410062d40292222e2e6263692"
 CANONICAL_PATH_SET_SHA256 = "a53521ed4fb8fd9873ba6fae6fa8c1bb256c40445116df695223a5db19634781"
 
@@ -692,6 +692,7 @@ INTERNAL_SDK_ADDITIONS = (
     "internal/sdk/typescript/src/core.ts",
     "internal/sdk/typescript/src/datasets.ts",
     "internal/sdk/typescript/src/error.ts",
+    "internal/sdk/typescript/src/evaluations.ts",
     "internal/sdk/typescript/src/gcp_auth.ts",
     "internal/sdk/typescript/src/inference.ts",
     "internal/sdk/typescript/src/index.ts",
@@ -710,6 +711,7 @@ INTERNAL_SDK_ADDITIONS = (
     "internal/sdk/typescript/tests/sdk.test.ts",
     "internal/sdk/typescript/tests/policy_admin.test.ts",
     "internal/sdk/typescript/tests/agents.test.ts",
+    "internal/sdk/typescript/tests/evaluations.test.ts",
     "internal/sdk/typescript/tests/workflow_approval.test.ts",
     "internal/sdk/typescript/tsconfig.json",
 )
@@ -2992,7 +2994,7 @@ REQUIRED_ADDITIONS = (
 )
 CANONICAL_FILE_COUNT = CANONICAL_FILE_COUNT + len(PAIRFORMER_WAVE6_ADRS) + 1
 CANONICAL_PATH_SET_SHA256 = (
-    "978e5706369c7372cff6730558adea2a4af5d7b9c766fb5bbedd02196bd31b54"
+    "f8e20536225b44168f47d6b5f6843563c79b90cf1b36f150a952562c77369658"
 )
 PRE_ACTIVATION_SOURCE_PATHS = frozenset(
     path

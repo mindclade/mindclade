@@ -79,7 +79,7 @@ class RepositoryPolicyTest(unittest.TestCase):
         self.assertEqual(validate_manifest(self.manifest), [])
         self.assertEqual(len(self.manifest["paths"]), CANONICAL_FILE_COUNT)
         wave_one = [entry for entry in self.manifest["paths"] if entry["activation_wave"] == "1"]
-        self.assertEqual(len(wave_one), 651)
+        self.assertEqual(len(wave_one), 653)
         for entry in wave_one:
             with self.subTest(path=entry["path"]):
                 status = entry["status"]
