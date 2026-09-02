@@ -30,8 +30,14 @@ export interface PaginationPage<T> {
 	readonly nextPageToken: string;
 }
 
-/** Page-level provenance for one fetched page of a list traversal. */
-export interface PageMetadata {
+/**
+ * Page-level provenance for one fetched page of a list traversal.
+ *
+ * Named SdkPageInfo rather than PageMetadata because protobuf already owns
+ * `mindclade.api.v1.PageMetadata` (`next_page_token`, `snapshot_token`), which is a
+ * different contract type. Reusing that name here would be a handwritten wire model.
+ */
+export interface SdkPageInfo {
 	/** Request ID of the RPC that produced this page. */
 	readonly requestId: string | undefined;
 	/** Opaque token that addressed this page; empty for the first page. */
@@ -58,7 +64,7 @@ export interface PageFetch<Response> {
 export interface PageSource<Item, Response> {
 	/** Opaque token for the first page, taken verbatim from the caller. */
 	readonly pageToken: string;
-	/** Page size the caller requested; recorded in {@link PageMetadata}. */
+	/** Page size the caller requested; recorded in {@link SdkPageInfo}. */
 	readonly pageSize: number;
 	/** Issues one page request, re-running the facade's per-page validation. */
 	readonly fetch: (pageToken: string) => Promise<PageFetch<Response>>;
@@ -88,7 +94,7 @@ export interface PageInit<Item, Response> {
 	readonly chain: PageChain<Item, Response>;
 	readonly response: Response;
 	readonly items: readonly Item[];
-	readonly metadata: PageMetadata;
+	readonly metadata: SdkPageInfo;
 }
 
 /**
@@ -103,7 +109,7 @@ export class Page<Item, Response> implements AsyncIterable<Item> {
 	readonly items: readonly Item[];
 	/** The generated list response for this page, exactly as received. */
 	readonly response: Response;
-	readonly metadata: PageMetadata;
+	readonly metadata: SdkPageInfo;
 
 	readonly #chain: PageChain<Item, Response>;
 	#next: Promise<Page<Item, Response> | undefined> | undefined;

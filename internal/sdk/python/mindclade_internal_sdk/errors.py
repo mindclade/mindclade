@@ -63,21 +63,12 @@ def _safe_text(value: object, *, limit: int = _MAX_DETAIL_TEXT) -> str:
     return "".join(character for character in trimmed if character.isprintable())
 
 
-@dataclass(frozen=True, slots=True)
-class FieldViolation:
-    """One request field the server rejected, copied from structured detail."""
-
-    field: str
-    description: str
-
-
-@dataclass(frozen=True, slots=True)
-class PreconditionViolation:
-    """One unmet server precondition, copied from structured detail."""
-
-    type: str
-    subject: str
-    description: str
+# Protobuf owns these wire models. The facade sanitizes the values it copies out
+# of a server ``ErrorDetail`` but re-uses the generated messages rather than
+# declaring a parallel pair, which the boundary law forbids and which would give
+# callers two incompatible shapes for the same contract type.
+FieldViolation = error_detail_pb2.FieldViolation
+PreconditionViolation = error_detail_pb2.PreconditionViolation
 
 
 @dataclass(frozen=True, slots=True)

@@ -151,11 +151,11 @@ export { Jobs } from "./jobs.js";
 export { Models } from "./models.js";
 export {
 	consoleLogger,
-	levelFromEnvironment,
 	LOG_LEVELS,
 	type LogFields,
 	type Logger,
 	type LogLevel,
+	levelFromEnvironment,
 	metadataKeyNames,
 	type ObservabilityPolicy,
 	type ObservedCall,
@@ -168,7 +168,7 @@ export {
 	Page,
 	type PageFetch,
 	type PageInit,
-	type PageMetadata,
+	type SdkPageInfo,
 	type PageSource,
 	withPageToken,
 } from "./pagination.js";
