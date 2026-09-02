@@ -52,14 +52,14 @@ class ActivationBundlePolicyTest(unittest.TestCase):
         self.assertEqual(validate_activation_bundle_projection(), [])
         self.assertEqual(len(ACTIVATION_BUNDLES), 27)
         self.assertEqual(ACTIVATION_BUNDLE_PROJECTION["bundle_count"], 27)
-        self.assertEqual(ACTIVATION_BUNDLE_PROJECTION["path_count"], 969)
+        self.assertEqual(ACTIVATION_BUNDLE_PROJECTION["path_count"], 975)
         self.assertEqual(
             ACTIVATION_BUNDLE_PROJECTION["source_digest"],
-            "sha256:2eea5377770165ebdb9249e3fa9344a9e0bd111963eb11c7887093f2ca553ef5",
+            "sha256:a4bbd6c3ae74a865cb350cef0f0718601f2b407b7cc7ac89d07c8d1b647da8e1",
         )
         self.assertEqual(
             ACTIVATION_BUNDLE_PROJECTION["path_set_digest"],
-            "sha256:079cbfe7d54488cb28dcb2b4fa8e4a63b548a847c18ca8b1608e5678429c2899",
+            "sha256:4311aed9d53e82269d428c1408fa5164c54e04550407a7e29f9a5c8914ace42c",
         )
 
         paths = [path for bundle in ACTIVATION_BUNDLES for path in bundle.paths]

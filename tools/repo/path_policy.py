@@ -3417,5 +3417,26 @@ def _reconciliation_addition_reason(path: str) -> str:
     return _sdk_conformance_contract_addition_reason(path)
 
 
+# The Rust facade's five packaging entry points and their shared helper, which
+# complete the four-language set: every internal SDK now presents the same
+# bootstrap/build/format/lint/test surface over its own toolchain. These reach
+# REQUIRED_ADDITIONS through the internal-sdk activation bundle, so only the
+# canonical count and digest move here.
+SDK_RUST_PACKAGING_SCRIPT_PATHS: tuple[str, ...] = (
+    "internal/sdk/rust/scripts/bootstrap",
+    "internal/sdk/rust/scripts/build",
+    "internal/sdk/rust/scripts/common.sh",
+    "internal/sdk/rust/scripts/format",
+    "internal/sdk/rust/scripts/lint",
+    "internal/sdk/rust/scripts/test",
+)
+CANONICAL_FILE_COUNT = (  # pyright: ignore[reportConstantRedefinition]
+    CANONICAL_FILE_COUNT + len(SDK_RUST_PACKAGING_SCRIPT_PATHS)
+)
+CANONICAL_PATH_SET_SHA256 = (  # pyright: ignore[reportConstantRedefinition]
+    "66f3677b01d1f7c6c0d9143d15c56abcdb24aa4bb589f0fc12200326478b83e0"
+)
+
+
 if __name__ == "__main__":
     raise SystemExit(main())

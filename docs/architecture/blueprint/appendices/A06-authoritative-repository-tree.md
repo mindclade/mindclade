@@ -4611,6 +4611,13 @@ mindclade/
 │       │   ├── Cargo.toml
 │       │   ├── README.md
 │       │   ├── api.md
+│       │   ├── scripts/
+│       │   │   ├── bootstrap
+│       │   │   ├── build
+│       │   │   ├── common.sh
+│       │   │   ├── format
+│       │   │   ├── lint
+│       │   │   └── test
 │       │   └── src/
 │       │       ├── admin.rs
 │       │       ├── agent_tests.rs

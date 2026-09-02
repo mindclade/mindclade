@@ -1,0 +1,24 @@
+#!/bin/sh
+# Run static analysis for this crate.
+#
+# Mirrors the Rust half of `just lint` and `just format-check`, narrowed to the
+# SDK. Two checks run because they catch different classes of defect and neither
+# subsumes the other:
+#
+#   * cargo fmt --check reports style drift as a diff rather than rewriting the
+#     tree, so lint never mutates a working copy; run scripts/format to apply it.
+#   * cargo clippy carries the repository's correctness, pedantic, and API rules,
+#     which are declared once in the workspace `[lints]` table. `--all-targets`
+#     includes the test modules, and `-D warnings` is what the repository gate
+#     uses.
+#
+# Arguments are forwarded to clippy.
+
+set -eu
+
+. "$(dirname -- "$0")/common.sh"
+
+cargo_run fmt --package "${SDK_CARGO_PACKAGE}" --check
+
+cargo_run clippy --package "${SDK_CARGO_PACKAGE}" --all-targets --locked --no-deps "$@" \
+  -- -D warnings

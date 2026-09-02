@@ -1,0 +1,16 @@
+#!/bin/sh
+# Apply this crate's owning formatter.
+#
+# Mirrors the Rust half of `just format`, narrowed to the SDK. rustfmt owns Rust
+# formatting in this repository and its edition is pinned by the workspace, so
+# this wrapper deliberately passes a package rather than a configuration of its
+# own: a crate-local style would silently diverge from the repository-wide
+# `just format-check` gate, which runs `cargo fmt --all --check`.
+#
+# Arguments are forwarded to cargo fmt, so `scripts/format -- --check` works.
+
+set -eu
+
+. "$(dirname -- "$0")/common.sh"
+
+cargo_run fmt --package "${SDK_CARGO_PACKAGE}" "$@"
