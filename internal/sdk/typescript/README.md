@@ -24,6 +24,10 @@ metadata. Secure clients require a provider. `GcpWorkloadIdentityProvider`
 uses the fixed GCE/GKE metadata identity endpoint with an audience-bound,
 bounded exchange, refresh skew, per-audience cache, concurrency-safe
 singleflight, caller cancellation, and redacted failures.
+Set `ClientConfigInput.audience` to the verifier's exact configured OIDC
+audience. If omitted, the current fallback is the endpoint URL literally,
+including an explicit `:443`; no cross-language default-port normalization is
+promised.
 
 Operation watches retain one total deadline, resume from `last_sequence` after
 bounded consecutive retryable failures, validate generated updates, and stop
@@ -57,3 +61,12 @@ beside the destination, verifies the complete immutable digest, and atomically
 publishes without overwriting an existing path. Successful link creation is the
 commit point; corruption, cancellation, and write failure before it leave the
 destination absent or unchanged.
+
+Persist each mutation's `idempotencyKey` with durable caller intent before
+submission so crash/restart retries reuse the same identity. Consume resumable
+updates through `client.operations.watch` and propagate its `AbortSignal`.
+Runtime checks cover credentials, scope, correlation metadata, deadlines, page
+budgets, stream identity, and artifact integrity; generated Protobuf-ES types
+and the server own ordinary request-field constraints.
+
+Run focused checks with `pnpm test`, `pnpm run typecheck`, and `pnpm run lint`.

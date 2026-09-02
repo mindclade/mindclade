@@ -20,7 +20,7 @@ from mindclade.job.v1 import operation_pb2
 from ._invocation import AsyncInvoker, SyncInvoker, canonical_digest, command_context, retry_delay
 from ._validation import required_response_message, required_text
 from .calls import CallOptions, PreparedCall, prepare_call
-from .errors import CancelledError, MindcladeError, ProtocolError
+from .errors import CancelledError, MindcladeError, ProtocolError, UnavailableError
 from .transport import (
     COMMIT_INFERENCE_RESULT,
     GET_INFERENCE_REQUEST,
@@ -298,21 +298,30 @@ class Inference:
                     yield message
                     if message.WhichOneof("update") in {"final_result", "failure"}:
                         return
-                return
+                stream_error: MindcladeError = UnavailableError(
+                    "inference watch closed before terminal durable truth",
+                    retryable=True,
+                )
             except MindcladeError as error:
                 if not error.retryable:
                     raise
-                failures += 1
-                if failures >= self._invoker.config.retry.max_attempts:
-                    raise
-                delay = retry_delay(
-                    self._invoker.config,
-                    failures,
-                    deadline - time.monotonic(),
-                    retry_after=error.retry_after,
-                )
-                if delay <= 0:
-                    raise
+                stream_error = error
+            failures += 1
+            if failures >= self._invoker.config.retry.max_attempts:
+                raise stream_error
+            retry_remaining = deadline - time.monotonic()
+            if retry_remaining <= 0:
+                raise TimeoutError("inference watch deadline expired") from stream_error
+            delay = retry_delay(
+                self._invoker.config,
+                failures,
+                retry_remaining,
+                retry_after=stream_error.retry_after,
+            )
+            if cancellation is not None:
+                if cancellation.wait(delay):
+                    raise CancelledError("inference watch was cancelled")
+            elif delay > 0:
                 time.sleep(delay)
 
     def wait(
@@ -482,22 +491,36 @@ class AsyncInference:
                     yield message
                     if message.WhichOneof("update") in {"final_result", "failure"}:
                         return
-                return
+                stream_error: MindcladeError = UnavailableError(
+                    "inference watch closed before terminal durable truth",
+                    retryable=True,
+                )
             except MindcladeError as error:
                 if not error.retryable:
                     raise
-                failures += 1
-                if failures >= self._invoker.config.retry.max_attempts:
-                    raise
-                delay = retry_delay(
-                    self._invoker.config,
-                    failures,
-                    deadline - loop.time(),
-                    retry_after=error.retry_after,
-                )
-                if delay <= 0:
-                    raise
-                await asyncio.sleep(delay)
+                stream_error = error
+            failures += 1
+            if failures >= self._invoker.config.retry.max_attempts:
+                raise stream_error
+            retry_remaining = deadline - loop.time()
+            if retry_remaining <= 0:
+                raise TimeoutError("inference watch deadline expired") from stream_error
+            delay = retry_delay(
+                self._invoker.config,
+                failures,
+                retry_remaining,
+                retry_after=stream_error.retry_after,
+            )
+            if cancellation is None:
+                if delay > 0:
+                    await asyncio.sleep(delay)
+            else:
+                try:
+                    await asyncio.wait_for(cancellation.wait(), timeout=delay)
+                except TimeoutError:
+                    pass
+                else:
+                    raise CancelledError("inference watch was cancelled")
 
     async def wait(
         self,

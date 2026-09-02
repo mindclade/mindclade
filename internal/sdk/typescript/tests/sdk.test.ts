@@ -770,25 +770,27 @@ describe("ergonomic generated-contract APIs", () => {
 		);
 	});
 
-	test("watch rejects updates for a different operation", async () => {
-		const runtime = new FakeRuntime();
-		const setup = config(runtime, { attempts: 1 });
-		const transport = testTransport((router) => {
-			router.service(OperationService, {
-				async *watchOperation() {
-					yield {
-						operation: { operationId: "operations/wrong" },
-						sequence: 1n,
-					};
-				},
+	test("watch rejects missing or different operation identity", async () => {
+		for (const operationId of ["", "operations/wrong"]) {
+			const runtime = new FakeRuntime();
+			const setup = config(runtime, { attempts: 1 });
+			const transport = testTransport((router) => {
+				router.service(OperationService, {
+					async *watchOperation() {
+						yield {
+							operation: { operationId },
+							sequence: 1n,
+						};
+					},
+				});
 			});
-		});
-		const client = MindcladeClient.withTransport(setup.config, transport, runtime);
-		const iterator = client.operations.watch("operations/expected")[Symbol.asyncIterator]();
-		await assert.rejects(
-			iterator.next(),
-			(reason: unknown) => reason instanceof MindcladeError && reason.kind === "protocol",
-		);
+			const client = MindcladeClient.withTransport(setup.config, transport, runtime);
+			const iterator = client.operations.watch("operations/expected")[Symbol.asyncIterator]();
+			await assert.rejects(
+				iterator.next(),
+				(reason: unknown) => reason instanceof MindcladeError && reason.kind === "protocol",
+			);
+		}
 	});
 
 	test("artifact aliases return generated references and reject missing payloads", async () => {

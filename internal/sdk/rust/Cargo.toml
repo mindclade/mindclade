@@ -17,6 +17,7 @@ tonic = { workspace = true, features = ["tls-ring", "tls-webpki-roots"] }
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["fs", "io-util", "macros", "net", "rt-multi-thread", "sync", "test-util", "time"] }
+tokio-stream.workspace = true
 
 [lints]
 workspace = true

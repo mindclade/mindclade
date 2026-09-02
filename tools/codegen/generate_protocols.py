@@ -251,6 +251,30 @@ def command_version(command: Sequence[str], root: Path) -> str:
     return (completed.stdout + completed.stderr).decode("utf-8").strip().splitlines()[-1]
 
 
+def buildifier_version_matches_lock(
+    *, actual: str, expected: str, version: str, executable: Path
+) -> bool:
+    """Accept reproducible-package redaction only when its path binds the version.
+
+    Nixpkgs and Homebrew both build Buildifier with VCS metadata removed, so the
+    binary reports ``redacted`` even though the package manager pins an exact
+    release.  The ordinary upstream version output remains preferred.  A
+    redacted binary is accepted only from the exact versioned package layout
+    used by those two declared toolchain providers; an arbitrary PATH binary
+    cannot satisfy this fallback.
+    """
+
+    if actual == expected:
+        return True
+    if actual != "buildifier scm revision: redacted":
+        return False
+    resolved = executable.resolve().as_posix()
+    return (
+        f"/Cellar/buildifier/{version}/" in resolved
+        or re.search(rf"/[^/]+-buildifier-{re.escape(version)}/", resolved) is not None
+    )
+
+
 def rust_plugin_cache_digest(
     root: Path, lock: Mapping[str, Any], rust_toolchain: Mapping[str, str]
 ) -> str:
@@ -367,6 +391,15 @@ def ensure_toolchain(root: Path, staging: Path, lock: Mapping[str, Any]) -> Path
     }
     for name, actual in actual_versions.items():
         wanted = tools[name]["version_output"]
+        if name == "buildifier":
+            executable = shutil.which("buildifier")
+            if executable is not None and buildifier_version_matches_lock(
+                actual=actual,
+                expected=wanted,
+                version=tools[name]["version"],
+                executable=Path(executable),
+            ):
+                continue
         if actual != wanted:
             raise RuntimeError(f"{name} version mismatch: expected {wanted!r}, got {actual!r}")
 

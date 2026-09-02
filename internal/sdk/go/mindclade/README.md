@@ -28,7 +28,8 @@ Application Default Credentials only when `WithWorkloadIdentity` is explicit.
 That option mints a short-lived Google workload-identity ID token, not a broad
 cloud-platform access token. `MINDCLADE_AUDIENCE` or `WithAudience` must match
 the control-plane verifier; otherwise the audience is derived from the secure
-endpoint. TLS is mandatory outside the local loopback test profile.
+endpoint as an HTTPS origin with the default `:443` port omitted. TLS is
+mandatory outside the local loopback test profile.
 
 Generated clients remain available through `client.Transport()` for activated
 RPCs that do not yet have an ergonomic helper. This escape hatch remains inside
@@ -50,3 +51,12 @@ same-directory staging file, verifies the complete immutable digest, and
 publishes with an atomic no-clobber link. It never replaces an existing path.
 Successful link creation is the commit point; corruption, cancellation, and
 write failure before that point leave the destination absent or unchanged.
+
+Persist a command's `IdempotencyKey` with the caller's durable intent before
+submission so crash/restart retries reuse the same identity. Use
+`Operations.Watch` for bounded resumable iteration and propagate its context
+cancellation. Runtime checks cover credentials, scope, correlation metadata,
+deadlines, page budgets, stream identity, and artifact integrity; generated
+protobuf types and the server own ordinary request-field constraints.
+
+Run focused tests with `go test ./internal/sdk/go/mindclade`.

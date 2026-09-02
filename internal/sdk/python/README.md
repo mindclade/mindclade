@@ -64,6 +64,8 @@ with Client(config) as client:
 Custom synchronous providers implement `get_token(*, timeout: float)` and must
 honor that remaining budget for every external exchange. Never wrap the
 synchronous client in an event loop.
+The Google provider's audience argument is explicit and must exactly match the
+control-plane verifier; `ClientConfig` does not derive or normalize it.
 
 All declared internal services remain reachable through `client.generated`
 using their generated request and response messages and fully qualified gRPC
@@ -92,6 +94,13 @@ stage mode-0600 content beside the destination, verify the complete immutable
 digest, and atomically publish without overwriting an existing path. Successful
 link creation is the commit point; corruption, cancellation, and write failure
 before it leave the destination absent or unchanged.
+
+Persist each mutation's `idempotency_key` with durable caller intent before
+submission so crash/restart retries reuse the same identity. Consume resumable
+updates through `client.operations.watch` (or its async peer) and propagate the
+cancellation event. Runtime checks cover credentials, scope, correlation
+metadata, deadlines, page budgets, stream identity, and artifact integrity;
+generated protobuf types and the server own ordinary request-field constraints.
 
 ## Safety and retry behavior
 

@@ -8,9 +8,9 @@ directly:
   factories and submits idempotent training intent.
 - `follow_operation.ts` resumes the generated operation stream from a durable
   sequence cursor while the SDK owns reconnection, deadline, and cancellation.
-- `download_artifact.py` resolves immutable identity, delegates chunk and full
-  digest verification to the SDK, re-verifies the staged file, and publishes it
-  with an atomic same-directory rename.
+- `download_artifact.py` resolves immutable identity and delegates verified,
+  mode-0600, atomic no-clobber publication to the SDK file helper. It never
+  replaces an existing destination, including under a racing writer.
 
 Applications must construct a configured SDK client with workload identity and
 TLS; tests inject SDK-shaped fakes and make no network calls. Source readiness

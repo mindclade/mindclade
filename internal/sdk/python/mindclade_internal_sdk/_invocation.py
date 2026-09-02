@@ -286,10 +286,10 @@ class SyncInvoker:
                 )
                 last_error = normalized
                 if not (retry_safe and normalized.retryable and attempt < attempts):
-                    raise normalized from error
+                    raise normalized from None
                 remaining = deadline - time.monotonic()
                 if remaining <= 0:
-                    raise normalized from error
+                    raise normalized from None
                 delay = retry_delay(
                     self.config,
                     attempt,
@@ -333,7 +333,7 @@ class SyncInvoker:
                 metadata=_authorized_metadata(self.config, call, token),
             )
         except grpc.RpcError as error:
-            raise normalize_rpc_error(error, fallback_request_id=call.request_id) from error
+            raise normalize_rpc_error(error, fallback_request_id=call.request_id) from None
 
 
 class AsyncInvoker:
@@ -460,10 +460,10 @@ class AsyncInvoker:
                 )
                 last_error = normalized
                 if not (retry_safe and normalized.retryable and attempt < attempts):
-                    raise normalized from error
+                    raise normalized from None
                 remaining = deadline - loop.time()
                 if remaining <= 0:
-                    raise normalized from error
+                    raise normalized from None
                 delay = retry_delay(
                     self.config,
                     attempt,
@@ -509,4 +509,4 @@ class AsyncInvoker:
             ):
                 yield response
         except grpc.RpcError as error:
-            raise normalize_rpc_error(error, fallback_request_id=call.request_id) from error
+            raise normalize_rpc_error(error, fallback_request_id=call.request_id) from None

@@ -535,7 +535,7 @@ impl OperationWatch {
                     let operation = response.operation.as_ref().ok_or_else(|| {
                         Error::protocol("operation watch update omitted its operation")
                     })?;
-                    if !operation.operation_id.is_empty() && operation.operation_id != self.name {
+                    if operation.operation_id != self.name {
                         return Err(Error::protocol(
                             "operation watch returned a different operation",
                         ));

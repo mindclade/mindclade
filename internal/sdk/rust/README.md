@@ -23,6 +23,9 @@ bounded exchange, refresh skew, per-audience cache, and concurrency-safe
 singleflight. Secure clients require a token provider. The only credential-free
 mode is `Config::local_insecure_builder`, which is restricted to an explicit
 plaintext loopback endpoint and cannot be combined with credentials.
+Set `ConfigBuilder::audience` to the verifier's exact configured OIDC audience.
+If omitted, the current fallback is the endpoint URL literally, including an
+explicit `:443`; no cross-language default-port normalization is promised.
 
 Operation watches resume from the last accepted sequence after bounded
 consecutive retryable failures, retain one total deadline, reject malformed or
@@ -72,3 +75,13 @@ mode-0600 file beside the destination, verifies the complete immutable digest,
 and atomically publishes without overwriting an existing path. Successful link
 creation is the commit point; corruption, cancellation, and write failure
 before it remove staging and leave the destination absent or unchanged.
+
+Persist the key passed to `SubmitOptions::new` with durable caller intent before
+submission so crash/restart retries reuse the same identity. Consume resumable
+updates through `client.operations().watch` and propagate its cancellation
+token. Runtime checks cover credentials, scope, correlation metadata, deadlines,
+page budgets, stream identity, and artifact integrity; generated Prost types
+and the server own ordinary request-field constraints.
+
+Run focused tests with `cargo test -p mindclade-internal-sdk` using the pinned
+Rust toolchain.

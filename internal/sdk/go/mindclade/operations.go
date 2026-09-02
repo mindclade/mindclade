@@ -227,8 +227,8 @@ func (watcher *Watcher) Recv() (*internaljobv1.WatchOperationResponse, error) {
 			}
 			detached := cloneGenerated(response)
 			operation := detached.GetOperation()
-			if operation == nil || strings.TrimSpace(operation.GetOperationId()) == "" {
-				return nil, &Error{Code: CodeDataLoss, Message: "operation watch returned no operation"}
+			if operation == nil || operation.GetOperationId() != watcher.name {
+				return nil, &Error{Code: CodeDataLoss, Message: "operation watch returned a different or missing operation"}
 			}
 			if operation.GetDone() != terminalOperationState(operation.GetState()) {
 				return nil, &Error{Code: CodeDataLoss, Message: "operation terminal state is inconsistent"}
@@ -311,8 +311,8 @@ func (service *OperationService) longRunningContext(ctx context.Context) (contex
 		return nil, nil, &Error{Code: CodeInvalidArgument, Message: "context is required"}
 	}
 	if _, ok := ctx.Deadline(); ok {
-		return ctx, func() {}, nil
+		return longRunningStreamContext(ctx), func() {}, nil
 	}
 	bounded, cancel := context.WithTimeout(ctx, service.client.config.DefaultOperationTimeout)
-	return bounded, cancel, nil
+	return longRunningStreamContext(bounded), cancel, nil
 }

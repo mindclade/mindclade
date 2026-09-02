@@ -1112,6 +1112,37 @@ async fn watch_is_resumable_monotonic_and_cancellation_aware() {
 }
 
 #[tokio::test]
+async fn operation_watch_rejects_missing_or_cross_resource_identity() {
+    for operation_id in ["", "operations/wrong"] {
+        let provider: Arc<dyn TokenProvider> =
+            Arc::new(FakeTokenProvider::new(Duration::from_hours(1)));
+        let config = test_config(provider, 1, Duration::from_millis(1));
+        let transport = Arc::new(FakeTransport::default());
+        transport
+            .watches
+            .lock()
+            .unwrap()
+            .push_back(Ok(vec![Ok(WatchOperationResponse {
+                operation: Some(operation(operation_id, false)),
+                sequence: 1,
+                observed_at: None,
+            })]));
+        let client = Client::with_transport(config, transport);
+        let mut watch = client
+            .operations()
+            .watch(
+                "operations/expected",
+                0,
+                &CallOptions::new(),
+                CancellationToken::new(),
+            )
+            .unwrap();
+        let error = watch.next().await.unwrap_err();
+        assert_eq!(error.kind(), ErrorKind::Protocol);
+    }
+}
+
+#[tokio::test]
 async fn local_plaintext_never_acquires_or_transmits_credentials() {
     let identity = Identity::new("tenant", "project", "principal").unwrap();
     let config = Config::local_insecure_builder(identity).build().unwrap();
