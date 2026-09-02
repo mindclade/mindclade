@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import ast
 import base64
 import fcntl
 import hashlib
@@ -16,7 +17,7 @@ import subprocess
 import sys
 import tempfile
 import tomllib
-from collections import defaultdict
+from collections import Counter, defaultdict
 from collections.abc import Generator, Mapping, Sequence
 from contextlib import contextmanager, suppress
 from dataclasses import dataclass
@@ -2197,6 +2198,136 @@ def _event_registry_typescript_row(entry: EventRegistryEntry) -> str:
         "version": entry.version,
     }
     return "  " + json.dumps(value, sort_keys=True, separators=(",", ":"))
+
+
+# Go, Python, and Rust registry rows name their fields with bare identifiers, so
+# every quoted string and bare integer in a row is a projected value rather than
+# a field name or a type name. Python renders its activation-gap tuple with
+# ``repr``, which single-quotes its members.
+_EVENT_REGISTRY_LITERAL = re.compile(
+    r'"(?:[^"\\]|\\.)*"' r"|'(?:[^'\\]|\\.)*'" r"|(?<![\w.])\d+(?![\w.])"
+)
+
+
+def _literal_key(value: object) -> str:
+    """Tag a projected scalar with its type so "1" never matches the integer 1."""
+
+    kind = "i" if isinstance(value, int) and not isinstance(value, bool) else "s"
+    return f"{kind}:{value}"
+
+
+def _source_row_literals(row: str) -> Counter[str]:
+    """Return every scalar a Go, Python, or Rust registry row projects."""
+
+    literals: Counter[str] = Counter()
+    for token in _EVENT_REGISTRY_LITERAL.findall(row):
+        if token.startswith('"'):
+            literals[_literal_key(json.loads(token))] += 1
+        elif token.startswith("'"):
+            literals[_literal_key(cast(str, ast.literal_eval(token)))] += 1
+        else:
+            literals[_literal_key(int(token))] += 1
+    return literals
+
+
+def _json_row_literals(value: object) -> Counter[str]:
+    """Return every leaf scalar a parsed TypeScript registry row projects.
+
+    Object keys are the TypeScript field names, so only values are collected and
+    the comparison stays independent of each language's naming convention.
+    """
+
+    if isinstance(value, Mapping):
+        members: list[object] = list(cast(Mapping[str, object], value).values())
+    elif isinstance(value, list):
+        members = list(cast(list[object], value))
+    else:
+        return Counter({_literal_key(value): 1})
+    literals: Counter[str] = Counter()
+    for member in members:
+        literals.update(_json_row_literals(member))
+    return literals
+
+
+def _event_registry_entry_literals(entry: EventRegistryEntry) -> Counter[str]:
+    """Return the scalars every language projection must carry for one event."""
+
+    fixture = entry.fixture
+    literals: Counter[str] = Counter(
+        _literal_key(value)
+        for value in (
+            entry.full_name,
+            entry.version,
+            entry.content_type,
+            entry.source,
+            entry.owner,
+            entry.lifecycle_state,
+            entry.compatibility_policy,
+            fixture.status,
+            fixture.source,
+            fixture.target,
+            fixture.mode,
+            fixture.reason,
+            *entry.activation_gaps,
+        )
+    )
+    for endpoint in (*entry.producers, *entry.consumers):
+        literals.update(
+            _literal_key(value)
+            for value in (endpoint.endpoint_id, endpoint.source, endpoint.target, endpoint.mode)
+        )
+    return literals
+
+
+def event_registry_projection_disagreements(
+    entries: Sequence[EventRegistryEntry],
+) -> list[str]:
+    """Report every event whose four language projections carry different facts.
+
+    The Go, Python, Rust, and TypeScript registries are four renderings of one
+    governed registry entry, and services on either side of an event boundary
+    read different renderings. A field added to one language and forgotten in
+    another is therefore a silent divergence rather than a build failure.
+
+    Comparing the multiset of projected scalars makes the check independent of
+    each language's field order, naming convention, nesting, and punctuation, so
+    a future field addition is covered without rewriting the comparison. A field
+    added to every projection but not to the declared scalar set is reported as
+    an addition in all four languages, which keeps the declaration authoritative
+    rather than advisory.
+    """
+
+    disagreements: list[str] = []
+    for entry in entries:
+        declared = _event_registry_entry_literals(entry)
+        projected = {
+            "go": _source_row_literals(_event_registry_go_row(entry)),
+            "python": _source_row_literals(_event_registry_python_row(entry)),
+            "rust": _source_row_literals(_event_registry_rust_row(entry)),
+            "typescript": _json_row_literals(
+                cast(object, json.loads(_event_registry_typescript_row(entry)))
+            ),
+        }
+        identity = f"{entry.full_name}@{entry.version}"
+        for language, literals in projected.items():
+            for key, count in sorted((declared - literals).items()):
+                disagreements.append(f"{identity}: {language} omits {key} (x{count})")
+            for key, count in sorted((literals - declared).items()):
+                disagreements.append(f"{identity}: {language} adds {key} (x{count})")
+    return disagreements
+
+
+def require_conformant_event_registry_projections(
+    entries: Sequence[EventRegistryEntry],
+) -> None:
+    """Require the four generated event registries to agree before anything is written."""
+
+    disagreements = event_registry_projection_disagreements(entries)
+    if not disagreements:
+        return
+    preview = "; ".join(disagreements[:8])
+    suffix = "" if len(disagreements) <= 8 else f" (+{len(disagreements) - 8} more)"
+    raise RuntimeError(f"event registry projections disagree: {preview}{suffix}")
 
 
 def protobuf_candidate(
@@ -5804,6 +5935,7 @@ def write_generated(
     source_digest_before = generation_authority_digest(root)
     outputs, descriptor_set, descriptors = generated_outputs(root)
     require_deterministic_generation(root, outputs, descriptor_set)
+    require_conformant_event_registry_projections(event_registry_entries(root, descriptors)[0])
     source_digest_after = generation_authority_digest(root)
     if source_digest_after != source_digest_before:
         raise RuntimeError(
