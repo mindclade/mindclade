@@ -95,7 +95,7 @@ pub mod workflow {
 }
 
 pub mod event_registry {
-    // Source: protocols/events/registry.yaml (sha256:7d4a0895c341d73b5d5dd813e5ff567b4e71246f9a3a33b929ac769aa53c988b)
+    // Source: protocols/events/registry.yaml (sha256:4ab4f0844c791e160e80ff4bc2df42ab2fb1c710b26e5a42db7f61d3f72412c6)
     pub const EVENT_DESCRIPTOR_DIGEST: &str =
         "sha256:46514bdee27df6f41f03b63f050b2cfcb95867fc8f291fe943eaf2019693c0ed";
 
