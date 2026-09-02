@@ -186,3 +186,138 @@ int main() {{
         cwd=Path.cwd(),
     )
     subprocess.run([str(executable)], check=True)
+
+
+def test_node_launch_v1_contract_rejects_adversarial_mutations(
+    tmp_path: Path,
+) -> None:
+    compiler = shutil.which("c++") or shutil.which("clang++") or shutil.which("g++")
+    if compiler is None:
+        pytest.skip("C++17 compiler unavailable")
+    main = tmp_path / "node_launch_validation.cpp"
+    main.write_text(
+        r'''#include <cassert>
+#include <cstdint>
+#include <cstring>
+#include "kernels/native/stable_abi/qualified_capability_table.h"
+
+int main() {
+  std::int64_t sizes[] = {2, 4};
+  std::int64_t strides[] = {4, 1};
+  std::uint8_t data[32]{};
+  MindcladeNodeValueV1 values[3]{};
+  values[0].kind = MINDCLADE_NODE_VALUE_TENSOR_V1;
+  values[0].access = MINDCLADE_NODE_ACCESS_READ_V1;
+  values[0].payload.tensor = {data, sizes, strides, 2,
+      MINDCLADE_NODE_DTYPE_FLOAT32_V1, 0, MINDCLADE_NODE_TENSOR_PRESENT_V1};
+  values[1].kind = MINDCLADE_NODE_VALUE_TENSOR_V1;
+  values[1].access = MINDCLADE_NODE_ACCESS_WRITE_V1;
+  values[1].payload.tensor = {data, sizes, strides, 2,
+      MINDCLADE_NODE_DTYPE_FLOAT32_V1, 0, MINDCLADE_NODE_TENSOR_PRESENT_V1};
+  values[2].kind = MINDCLADE_NODE_VALUE_STREAM_V1;
+  values[2].access = MINDCLADE_NODE_ACCESS_READ_V1;
+  values[2].payload.stream = data;
+
+  MindcladeNodeLaunchV1 launch{};
+  launch.abi_version = MINDCLADE_NODE_LAUNCH_ABI_VERSION;
+  launch.parameter_count = 3;
+  launch.specialization_digest[0] = 0xa5;
+  launch.parameters = values;
+  MindcladeNodeParameterContractV1 parameters[] = {
+      {MINDCLADE_NODE_VALUE_TENSOR_V1, MINDCLADE_NODE_ACCESS_READ_V1, 2, 0},
+      {MINDCLADE_NODE_VALUE_TENSOR_V1, MINDCLADE_NODE_ACCESS_WRITE_V1, 2,
+       MINDCLADE_NODE_CONTRACT_WORKSPACE_V1},
+      {MINDCLADE_NODE_VALUE_STREAM_V1, MINDCLADE_NODE_ACCESS_READ_V1,
+       MINDCLADE_NODE_ANY_RANK_V1, 0},
+  };
+  MindcladeNodeLaunchContractV1 contract{};
+  contract.parameter_count = 3;
+  contract.specialization_digest[0] = 0xa5;
+  contract.parameters = parameters;
+  assert(mindclade_validate_node_launch_v1(&launch) ==
+         MINDCLADE_NODE_STATUS_SUCCESS_V1);
+  assert(mindclade_validate_node_launch_contract_v1(&launch, &contract) ==
+         MINDCLADE_NODE_STATUS_SUCCESS_V1);
+  assert(mindclade_validate_node_launch_v1(nullptr) ==
+         MINDCLADE_NODE_STATUS_INVALID_PARAMETER_V1);
+  assert(mindclade_validate_node_launch_contract_v1(&launch, nullptr) ==
+         MINDCLADE_NODE_STATUS_INVALID_PARAMETER_V1);
+
+  for (std::uint32_t kind = 0; kind < 64; ++kind) {
+    if (kind >= MINDCLADE_NODE_VALUE_TENSOR_V1 &&
+        kind <= MINDCLADE_NODE_VALUE_STREAM_V1) continue;
+    values[0].kind = kind;
+    assert(mindclade_validate_node_launch_v1(&launch) ==
+           MINDCLADE_NODE_STATUS_INVALID_PARAMETER_V1);
+  }
+  values[0].kind = MINDCLADE_NODE_VALUE_TENSOR_V1;
+  values[0].payload.tensor.flags = 0;
+  assert(mindclade_validate_node_launch_v1(&launch) ==
+         MINDCLADE_NODE_STATUS_INVALID_PARAMETER_V1);
+  values[0].payload.tensor.flags = MINDCLADE_NODE_TENSOR_PRESENT_V1;
+
+  for (std::int32_t rank = -8; rank <= 24; ++rank) {
+    if (rank >= 0 && rank <= 16) continue;
+    values[0].payload.tensor.rank = rank;
+    assert(mindclade_validate_node_launch_v1(&launch) ==
+           MINDCLADE_NODE_STATUS_INVALID_PARAMETER_V1);
+  }
+  values[0].payload.tensor.rank = 2;
+  values[0].payload.tensor.data = nullptr;
+  assert(mindclade_validate_node_launch_v1(&launch) ==
+         MINDCLADE_NODE_STATUS_INVALID_PARAMETER_V1);
+  values[0].payload.tensor.data = data;
+  values[0].payload.tensor.sizes = nullptr;
+  assert(mindclade_validate_node_launch_v1(&launch) ==
+         MINDCLADE_NODE_STATUS_INVALID_PARAMETER_V1);
+  values[0].payload.tensor.sizes = sizes;
+
+  std::uint8_t saved_digest[32];
+  std::memcpy(saved_digest, launch.specialization_digest, 32);
+  std::memset(launch.specialization_digest, 0, 32);
+  assert(mindclade_validate_node_launch_v1(&launch) ==
+         MINDCLADE_NODE_STATUS_INVALID_PARAMETER_V1);
+  std::memcpy(launch.specialization_digest, saved_digest, 32);
+  launch.specialization_digest[0] ^= 1u;
+  assert(mindclade_validate_node_launch_contract_v1(&launch, &contract) ==
+         MINDCLADE_NODE_STATUS_INVALID_PARAMETER_V1);
+  std::memcpy(launch.specialization_digest, saved_digest, 32);
+
+  values[1].payload.tensor.flags = MINDCLADE_NODE_TENSOR_OPTIONAL_V1;
+  values[1].payload.tensor.data = nullptr;
+  values[1].payload.tensor.sizes = nullptr;
+  values[1].payload.tensor.strides = nullptr;
+  values[1].payload.tensor.rank = 0;
+  values[1].payload.tensor.dtype = 0;
+  assert(mindclade_validate_node_launch_v1(&launch) ==
+         MINDCLADE_NODE_STATUS_INVALID_PARAMETER_V1);
+  values[1].payload.tensor = {data, sizes, strides, 2,
+      MINDCLADE_NODE_DTYPE_FLOAT32_V1, 0, MINDCLADE_NODE_TENSOR_PRESENT_V1};
+  values[2].payload.stream = nullptr;
+  assert(mindclade_validate_node_launch_v1(&launch) ==
+         MINDCLADE_NODE_STATUS_INVALID_PARAMETER_V1);
+  values[2].payload.stream = data;
+
+  launch.parameters = nullptr;
+  assert(mindclade_validate_node_launch_v1(&launch) ==
+         MINDCLADE_NODE_STATUS_INVALID_PARAMETER_V1);
+  launch.parameters = values;
+  launch.parameter_count = 129;
+  assert(mindclade_validate_node_launch_v1(&launch) ==
+         MINDCLADE_NODE_STATUS_INVALID_PARAMETER_COUNT_V1);
+  return 0;
+}
+'''
+    )
+    selector = Path("kernels/native/stable_abi/qualified_capability_selector.cpp")
+    executable = tmp_path / "node_launch_validation"
+    subprocess.run(
+        [
+            compiler, "-std=c++17", "-Wall", "-Wextra", "-Wpedantic", "-Werror",
+            "-I", ".", "-I", "kernels/native/stable_abi",
+            str(selector), str(main), "-o", str(executable),
+        ],
+        check=True,
+        cwd=Path.cwd(),
+    )
+    subprocess.run([str(executable)], check=True)

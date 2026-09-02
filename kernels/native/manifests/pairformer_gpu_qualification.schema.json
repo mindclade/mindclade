@@ -1,0 +1,155 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.mindclade.internal/kernels/native/pairformer-gpu-qualification-v1.json",
+  "title": "Mindclade Pairformer source-only GPU qualification plan",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "status", "lane_order", "toolchain", "protocols", "lanes"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "status": {"const": "SOURCE_ONLY_UNQUALIFIED"},
+    "lane_order": {"const": ["sm90a", "sm100a"]},
+    "toolchain": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tilelang", "cuda", "nvcc", "pytorch"],
+      "properties": {
+        "tilelang": {"const": "0.1.13"},
+        "cuda": {"const": "12.9"},
+        "nvcc": {"const": "12.9.86"},
+        "pytorch": {"const": "2.10.0"}
+      }
+    },
+    "protocols": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["numerical", "execution", "benchmark"],
+      "properties": {
+        "numerical": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["reviewed_envelope_required", "reject_nan_inf", "required_results"],
+          "properties": {
+            "reviewed_envelope_required": {"const": true},
+            "reject_nan_inf": {"const": true},
+            "required_results": {"const": ["forward", "saved_outputs", "all_named_gradients"]}
+          }
+        },
+        "execution": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["non_default_stream", "cuda_graph_capture", "cuda_graph_replays", "workspace_stability", "workspace_growth_bytes_max", "deterministic_repetitions"],
+          "properties": {
+            "non_default_stream": {"const": true},
+            "cuda_graph_capture": {"const": true},
+            "cuda_graph_replays": {"const": 10},
+            "workspace_stability": {"const": true},
+            "workspace_growth_bytes_max": {"const": 0},
+            "deterministic_repetitions": {"const": 10}
+          }
+        },
+        "benchmark": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["warmup", "measurements", "timing", "interleave", "raw_samples_required", "reviewed_baseline_required", "max_regression_percent"],
+          "properties": {
+            "warmup": {"const": 20},
+            "measurements": {"const": 100},
+            "timing": {"const": "cuda_events"},
+            "interleave": {"const": "candidate_baseline_alternating"},
+            "raw_samples_required": {"const": true},
+            "reviewed_baseline_required": {"const": true},
+            "max_regression_percent": {"const": 5.0}
+          }
+        }
+      }
+    },
+    "lanes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sm90a", "sm100a"],
+      "properties": {
+        "sm90a": {"allOf": [{"$ref": "#/$defs/lane"}, {"$ref": "#/$defs/sm90a"}]},
+        "sm100a": {"allOf": [{"$ref": "#/$defs/lane"}, {"$ref": "#/$defs/sm100a"}]}
+      }
+    }
+  },
+  "$defs": {
+    "schedule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "block_m", "block_n", "block_k", "threads", "num_stages", "vector_width", "use_tma", "use_wgmma", "use_tcgen05", "cluster_m", "cluster_n", "persistent", "split_k"],
+      "properties": {
+        "id": {"type": "string", "pattern": "^[a-z][a-z0-9_]{0,63}$"},
+        "block_m": {"type": "integer", "minimum": 16, "maximum": 256},
+        "block_n": {"type": "integer", "minimum": 16, "maximum": 256},
+        "block_k": {"type": "integer", "minimum": 8, "maximum": 128},
+        "threads": {"enum": [64, 96, 128, 160, 192, 224, 256, 288, 320, 352, 384, 416, 448, 480, 512]},
+        "num_stages": {"type": "integer", "minimum": 1, "maximum": 8},
+        "vector_width": {"type": "integer", "minimum": 1, "maximum": 16},
+        "use_tma": {"const": true},
+        "use_wgmma": {"type": "boolean"},
+        "use_tcgen05": {"type": "boolean"},
+        "cluster_m": {"type": "integer", "minimum": 1, "maximum": 4},
+        "cluster_n": {"type": "integer", "minimum": 1, "maximum": 4},
+        "persistent": {"type": "boolean"},
+        "split_k": {"type": "integer", "minimum": 1, "maximum": 8}
+      }
+    },
+    "candidateArray": {"type": "array", "minItems": 2, "maxItems": 8, "items": {"$ref": "#/$defs/schedule"}},
+    "candidateSpaces": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mindclade::outer_product_mean", "mindclade::pair_weighted_average", "mindclade::transition", "mindclade::triangle_attention", "mindclade::triangle_multiplication"],
+      "properties": {
+        "mindclade::outer_product_mean": {"$ref": "#/$defs/candidateArray"},
+        "mindclade::pair_weighted_average": {"$ref": "#/$defs/candidateArray"},
+        "mindclade::transition": {"$ref": "#/$defs/candidateArray"},
+        "mindclade::triangle_attention": {"$ref": "#/$defs/candidateArray"},
+        "mindclade::triangle_multiplication": {"$ref": "#/$defs/candidateArray"}
+      }
+    },
+    "features": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tma", "wgmma", "tcgen05", "cluster_launch"],
+      "properties": {
+        "tma": {"const": true},
+        "wgmma": {"type": "boolean"},
+        "tcgen05": {"type": "boolean"},
+        "cluster_launch": {"const": true}
+      }
+    },
+    "lane": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["architecture", "compute_capability", "independent", "evidence_reuse", "allowed_gpu_skus", "profiles_manifest", "features", "candidate_spaces"],
+      "properties": {
+        "architecture": {"enum": ["sm90a", "sm100a"]},
+        "compute_capability": {"enum": ["9.0", "10.0"]},
+        "independent": {"const": true},
+        "evidence_reuse": {"const": false},
+        "allowed_gpu_skus": {"type": "array", "minItems": 1, "maxItems": 8, "uniqueItems": true, "items": {"type": "string", "minLength": 3, "maxLength": 128}},
+        "profiles_manifest": {"type": "string", "pattern": "^kernels/native/manifests/tilelang_profiles\\.sm(?:90|100)\\.json$"},
+        "features": {"$ref": "#/$defs/features"},
+        "candidate_spaces": {"$ref": "#/$defs/candidateSpaces"}
+      }
+    },
+    "sm90a": {
+      "properties": {
+        "architecture": {"const": "sm90a"},
+        "compute_capability": {"const": "9.0"},
+        "profiles_manifest": {"const": "kernels/native/manifests/tilelang_profiles.sm90.json"},
+        "features": {"properties": {"wgmma": {"const": true}, "tcgen05": {"const": false}}}
+      }
+    },
+    "sm100a": {
+      "properties": {
+        "architecture": {"const": "sm100a"},
+        "compute_capability": {"const": "10.0"},
+        "profiles_manifest": {"const": "kernels/native/manifests/tilelang_profiles.sm100.json"},
+        "features": {"properties": {"wgmma": {"const": false}, "tcgen05": {"const": true}}}
+      }
+    }
+  }
+}

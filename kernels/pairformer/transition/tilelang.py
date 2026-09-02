@@ -72,8 +72,20 @@ def build_backward(**_: object) -> dict[str, object]:
 def build_forward_program(
     *, target: str, architecture: str, dtype: str, batch_size: int, rows: int,
     hidden_channels: int, output_channels: int, mask_dtype: str = "float32",
-    threads: int = 128, **_: object,
+    threads: int = 128, block_rows: int = 64, block_outputs: int = 64,
+    block_hidden: int = 32, num_stages: int = 3,
+    enable_rasterization: bool = True, **_: object,
 ) -> Any:
+    if block_rows not in {32, 64, 128}:
+        raise ValueError("block_rows must be one of 32, 64, or 128")
+    if block_outputs not in {32, 64, 128}:
+        raise ValueError("block_outputs must be one of 32, 64, or 128")
+    if block_hidden not in {16, 32, 64}:
+        raise ValueError("block_hidden must be one of 16, 32, or 64")
+    if num_stages not in {2, 3, 4}:
+        raise ValueError("num_stages must be one of 2, 3, or 4")
+    if not isinstance(enable_rasterization, bool):
+        raise TypeError("enable_rasterization must be a bool")
     tilelang, T, target_config = _prepare(target=target, architecture=architecture, dtype=dtype,
                        mask_dtype=mask_dtype, batch_size=batch_size, rows=rows,
                        hidden_channels=hidden_channels,
@@ -90,22 +102,75 @@ def build_forward_program(
         output: T.Tensor((batch_size, rows, output_channels), dtype),
         pre_mask_output: T.Tensor((batch_size, rows, output_channels), dtype),
     ):
-        with T.Kernel(batch_size * rows, threads=threads) as block:
-            row = block % rows
-            batch = block // rows
-            for channel in T.Parallel(output_channels):
-                acc = T.alloc_local((1,), "float32")
-                acc[0] = T.Cast("float32", output_bias[channel])
-                for hidden in T.serial(hidden_channels):
-                    gate_value = T.Cast("float32", gate[batch, row, hidden])
-                    activated = gate_value * T.sigmoid(gate_value) * T.Cast(
-                        "float32", value[batch, row, hidden])
-                    acc[0] += activated * T.Cast(
-                        "float32", output_weight[hidden, channel])
-                pre_mask_output[batch, row, channel] = T.Cast(dtype, acc[0])
-                output[batch, row, channel] = T.Cast(
-                    dtype, acc[0] * T.Cast("float32", mask[batch, row])
-                )
+        with T.Kernel(
+            T.ceildiv(output_channels, block_outputs),
+            T.ceildiv(batch_size * rows, block_rows),
+            threads=threads,
+        ) as (output_block, row_block):
+            activation_shared = T.alloc_shared(
+                (block_rows, block_hidden), dtype
+            )
+            weight_shared = T.alloc_shared(
+                (block_hidden, block_outputs), dtype
+            )
+            accumulation = T.alloc_fragment(
+                (block_rows, block_outputs), "float32"
+            )
+            T.use_swizzle(panel_size=10, enable=enable_rasterization)
+            T.clear(accumulation)
+            for hidden_block in T.Pipelined(
+                T.ceildiv(hidden_channels, block_hidden),
+                num_stages=num_stages,
+            ):
+                for local_row, local_hidden in T.Parallel(
+                    block_rows, block_hidden
+                ):
+                    flat_row = row_block * block_rows + local_row
+                    hidden = hidden_block * block_hidden + local_hidden
+                    if flat_row < batch_size * rows and hidden < hidden_channels:
+                        batch = flat_row // rows
+                        row = flat_row % rows
+                        gate_value = T.Cast(
+                            "float32", gate[batch, row, hidden]
+                        )
+                        activation_shared[local_row, local_hidden] = T.Cast(
+                            dtype,
+                            gate_value
+                            * T.sigmoid(gate_value)
+                            * T.Cast("float32", value[batch, row, hidden]),
+                        )
+                    else:
+                        activation_shared[local_row, local_hidden] = T.Cast(
+                            dtype, 0
+                        )
+                for local_hidden, local_output in T.Parallel(
+                    block_hidden, block_outputs
+                ):
+                    hidden = hidden_block * block_hidden + local_hidden
+                    channel = output_block * block_outputs + local_output
+                    if hidden < hidden_channels and channel < output_channels:
+                        weight_shared[local_hidden, local_output] = (
+                            output_weight[hidden, channel]
+                        )
+                    else:
+                        weight_shared[local_hidden, local_output] = T.Cast(dtype, 0)
+                T.gemm(activation_shared, weight_shared, accumulation)
+            for local_row, local_output in T.Parallel(
+                block_rows, block_outputs
+            ):
+                flat_row = row_block * block_rows + local_row
+                channel = output_block * block_outputs + local_output
+                if flat_row < batch_size * rows and channel < output_channels:
+                    batch = flat_row // rows
+                    row = flat_row % rows
+                    biased = accumulation[local_row, local_output] + T.Cast(
+                        "float32", output_bias[channel]
+                    )
+                    pre_mask_output[batch, row, channel] = T.Cast(dtype, biased)
+                    output[batch, row, channel] = T.Cast(
+                        dtype,
+                        biased * T.Cast("float32", mask[batch, row]),
+                    )
 
     return mindclade_tilelang_transition_forward_program_raw
 

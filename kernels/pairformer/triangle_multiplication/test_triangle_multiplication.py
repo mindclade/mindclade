@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import inspect
+
 import pytest
 
 torch = pytest.importorskip("torch")
@@ -18,6 +20,7 @@ from kernels.pairformer.triangle_multiplication.reference import (
 from kernels.pairformer.triangle_multiplication.spec import IMPLEMENTATION_SPECS, KERNEL_SPEC
 from kernels.pairformer.triangle_multiplication.tilelang import (
     build_backward_program_group,
+    build_forward_program,
     build_forward_program_group,
     build_tilelang_program,
 )
@@ -142,6 +145,15 @@ def test_builder_rejects_unqualified_target_before_tilelang_import():
             target="auto", architecture="sm90a", batch=1,
             residues=64, channels=64, outgoing=True,
         )
+
+
+def test_forward_builder_is_tiled_gemm_with_fused_mask_epilogue():
+    source = inspect.getsource(build_forward_program)
+    assert "T.alloc_shared" in source
+    assert "T.Pipelined" in source
+    assert "T.gemm(" in source
+    assert "transpose_B=True" in source
+    assert 'mask[batch_index, row, column]' in source
 
 
 def test_callable_nodes_use_artifact_scoped_host_call_abi():

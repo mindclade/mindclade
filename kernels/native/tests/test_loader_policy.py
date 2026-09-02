@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: LicenseRef-Mindclade-Proprietary
 
 from dataclasses import replace
+import ctypes
 import hashlib
 import json
 from pathlib import Path
@@ -12,6 +13,9 @@ import pytest
 from kernels.native.python import loader
 from kernels.native.python.capability_index import (
     CapabilityRequest,
+    DispatchReceipt,
+    NativeCapabilityTable,
+    NativeCapabilityTableIdentity,
     VerifiedCapabilityIndex,
 )
 
@@ -362,6 +366,39 @@ def _bundle(
     return descriptor, library
 
 
+def _program_bundle(
+    tmp_path: Path,
+) -> tuple[loader.NativeBundleDescriptor, Path]:
+    descriptor, library = _bundle(tmp_path)
+    manifest_contents = _manifest([_operator_with_launcher_plan()])
+    (Path(descriptor.bundle_root) / descriptor.manifest_path).write_bytes(
+        manifest_contents
+    )
+    program_root = Path(descriptor.bundle_root) / "programs"
+    program_root.mkdir()
+    programs: list[loader.NativeProgramLibrary] = []
+    for name in ("produce", "consume"):
+        contents = f"test-only-{name}-dso".encode()
+        relative = f"programs/{name}.so"
+        (Path(descriptor.bundle_root) / relative).write_bytes(contents)
+        programs.append(
+            loader.NativeProgramLibrary(
+                library_path=relative,
+                library_sha256=_digest(contents),
+                adapter_symbol=f"mindclade_tilelang_sample_{name}_launch",
+            )
+        )
+    return (
+        replace(
+            descriptor,
+            native_manifest_sha256=_digest(manifest_contents),
+            activation_policy=loader.BundleActivationPolicy.PRODUCTION,
+            program_libraries=tuple(programs),
+        ),
+        library,
+    )
+
+
 def _trust(
     descriptor: loader.NativeBundleDescriptor,
 ) -> loader.BundleTrustDecision:
@@ -610,6 +647,176 @@ def test_second_bundle_is_rejected(monkeypatch, tmp_path):
             second,
             signature_verifier=lambda value, _payload: _trust(value),
         )
+
+
+def test_program_group_dsos_are_verified_resolved_and_cached_once(
+    monkeypatch, tmp_path
+):
+    descriptor, bridge_library = _program_bundle(tmp_path)
+    events: list[str] = []
+    callbacks: dict[str, object] = {}
+    callback_type = ctypes.CFUNCTYPE(ctypes.c_int32, ctypes.c_void_p)
+
+    class FakeProgramLibrary:
+        def __init__(self, path: Path):
+            self.path = path
+
+        def __getattr__(self, symbol: str):
+            events.append(f"dlsym:{symbol}")
+            callback = callback_type(lambda _launch: 0)
+            callbacks[symbol] = callback
+            return callback
+
+    def open_program(path: Path):
+        events.append(f"open:{path.name}")
+        return FakeProgramLibrary(path)
+
+    monkeypatch.setattr(loader, "_open_program_library", open_program)
+    monkeypatch.setattr(
+        loader,
+        "_load_torch_library",
+        lambda path: events.append(f"bridge:{path.name}"),
+    )
+    expected_names = frozenset(
+        registration["qualified_name"]
+        for registration in _operator_with_launcher_plan()["registrations"]
+    )
+    baseline = frozenset({"aten::existing"})
+    snapshots = iter(
+        (baseline, baseline | expected_names, baseline | expected_names)
+    )
+    monkeypatch.setattr(loader, "_dispatcher_snapshot", lambda: next(snapshots))
+    monkeypatch.setattr(
+        loader,
+        "register_packaged_python_kernels",
+        lambda: events.append("register"),
+    )
+    monkeypatch.setattr(
+        loader,
+        "_reconcile_dispatcher",
+        lambda _operators, _snapshot: events.append("reconcile"),
+    )
+    monkeypatch.setattr(
+        loader, "reconcile_signed_native_capability_table", lambda *_args: None
+    )
+    monkeypatch.setattr(
+        loader,
+        "reconcile_exported_native_capability_identity",
+        lambda *_args, **_kwargs: None,
+    )
+    identity = NativeCapabilityTableIdentity(
+        row_count=0,
+        rows_digest="sha256:" + "0" * 64,
+        table_digest="sha256:" + "1" * 64,
+    )
+    monkeypatch.setattr(
+        loader, "_exported_native_capability_identity", lambda _path: identity
+    )
+    receipt = DispatchReceipt(
+        operation="mindclade::sample",
+        implementation="portable",
+        workload_digest="sha256:" + "2" * 64,
+        capability_digest="sha256:" + "3" * 64,
+        artifact_digest="sha256:" + "4" * 64,
+        release_receipt_digest="sha256:" + "5" * 64,
+        selection_reason="test-only exact selection",
+    )
+    monkeypatch.setattr(
+        loader, "select_capability", lambda *_args, **_kwargs: receipt
+    )
+    original_parse = loader._parse_manifest
+
+    def parse_once(contents, activation):
+        events.append("parse")
+        return original_parse(contents, activation)
+
+    monkeypatch.setattr(loader, "_parse_manifest", parse_once)
+    index = VerifiedCapabilityIndex(
+        capabilities=(),
+        revoked_capability_digests=frozenset(),
+        rollbacks=(),
+        evidence_class="PRODUCTION_K4_K5",
+        signer_key_id="protected.release",
+        subject_digest="sha256:" + "6" * 64,
+        production_eligible=True,
+    )
+    request = CapabilityRequest(
+        operation="mindclade::sample",
+        architecture="sm90a",
+        dtype="float32",
+        layout="contiguous",
+        mode="default",
+        workload_digest="sha256:" + "2" * 64,
+        training=False,
+    )
+    table = NativeCapabilityTable(rows=(), identity=identity)
+
+    def verifier(value, _payload):
+        events.append("verify")
+        return _trust(value)
+
+    loaded = loader.load_native_library(
+        descriptor,
+        signature_verifier=verifier,
+        capability_index=index,
+        capability_request=request,
+        native_capability_table=table,
+    )
+    assert loaded == bridge_library
+    assert events == [
+        "parse",
+        "verify",
+        "open:produce.so",
+        "dlsym:mindclade_tilelang_sample_produce_launch",
+        "open:consume.so",
+        "dlsym:mindclade_tilelang_sample_consume_launch",
+        "bridge:libmindclade_ops.so",
+        "register",
+        "reconcile",
+    ]
+    assert loader._LOADED_BUNDLE is not None
+    assert tuple(
+        item.descriptor.adapter_symbol
+        for item in loader._LOADED_BUNDLE.program_libraries
+    ) == (
+        "mindclade_tilelang_sample_produce_launch",
+        "mindclade_tilelang_sample_consume_launch",
+    )
+    assert all(
+        item.function_address != 0
+        for item in loader._LOADED_BUNDLE.program_libraries
+    )
+
+    assert loader.load_native_library(
+        descriptor,
+        signature_verifier=verifier,
+        capability_index=index,
+        capability_request=request,
+        native_capability_table=table,
+    ) == bridge_library
+    assert events.count("parse") == 1
+    assert sum(event.startswith("open:") for event in events) == 2
+    assert sum(event.startswith("dlsym:") for event in events) == 2
+
+
+def test_program_group_dso_projection_mismatch_fails_before_trust(tmp_path):
+    descriptor, _ = _program_bundle(tmp_path)
+    descriptor = replace(
+        descriptor, program_libraries=descriptor.program_libraries[:-1]
+    )
+    verified = False
+
+    def verifier(value, _payload):
+        nonlocal verified
+        verified = True
+        return _trust(value)
+
+    with pytest.raises(
+        loader.NativeBundleVerificationError,
+        match="per-node program libraries",
+    ):
+        loader._verify_bundle(descriptor, verifier)
+    assert verified is False
 
 
 @pytest.mark.parametrize("autograd_policy", ["none", "composite", "required"])

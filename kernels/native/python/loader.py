@@ -254,6 +254,20 @@ def _require_relative_path(value: object, field: str) -> str:
 
 
 @dataclass(frozen=True, slots=True)
+class NativeProgramLibrary:
+    """One signed, content-addressed node DSO and its stable adapter export."""
+
+    library_path: str
+    library_sha256: str
+    adapter_symbol: str
+
+    def __post_init__(self) -> None:
+        _require_relative_path(self.library_path, "program library_path")
+        _require_digest(self.library_sha256, "program library_sha256")
+        _require_identifier(self.adapter_symbol, "program adapter_symbol")
+
+
+@dataclass(frozen=True, slots=True)
 class NativeBundleDescriptor:
     """Immutable release-bound identity for one complete native operator bundle."""
 
@@ -269,6 +283,7 @@ class NativeBundleDescriptor:
     revocation_policy_identity: str
     signature_evidence: bytes
     activation_policy: BundleActivationPolicy = BundleActivationPolicy.PRODUCTION
+    program_libraries: tuple[NativeProgramLibrary, ...] = ()
 
     def __post_init__(self) -> None:
         root = Path(self.bundle_root)
@@ -309,6 +324,33 @@ class NativeBundleDescriptor:
                 "activation_policy is not supported"
             ) from exc
         object.__setattr__(self, "activation_policy", activation)
+        if not isinstance(self.program_libraries, tuple) or any(
+            not isinstance(item, NativeProgramLibrary)
+            for item in self.program_libraries
+        ):
+            raise NativeBundleVerificationError(
+                "program_libraries must be an immutable tuple of "
+                "NativeProgramLibrary values"
+            )
+        program_paths = tuple(item.library_path for item in self.program_libraries)
+        program_symbols = tuple(
+            item.adapter_symbol for item in self.program_libraries
+        )
+        if len(program_paths) != len(set(program_paths)):
+            raise NativeBundleVerificationError(
+                "program library paths must be unique"
+            )
+        if len(program_symbols) != len(set(program_symbols)):
+            raise NativeBundleVerificationError(
+                "program adapter symbols must be unique"
+            )
+        if any(
+            path in {self.library_path, self.manifest_path}
+            for path in program_paths
+        ):
+            raise NativeBundleVerificationError(
+                "program libraries must remain separate per-node DSOs"
+            )
 
     def signature_payload(self) -> bytes:
         """Return the canonical, path-independent payload verified by the signer."""
@@ -320,6 +362,14 @@ class NativeBundleDescriptor:
             "library_sha256": self.library_sha256,
             "manifest_path": self.manifest_path,
             "native_manifest_sha256": self.native_manifest_sha256,
+            "program_libraries": [
+                {
+                    "adapter_symbol": item.adapter_symbol,
+                    "library_path": item.library_path,
+                    "library_sha256": item.library_sha256,
+                }
+                for item in self.program_libraries
+            ],
             "qualification_identity": self.qualification_identity,
             "repository_revision": self.repository_revision,
             "revocation_policy_identity": self.revocation_policy_identity,
@@ -496,12 +546,28 @@ class _ManifestOperator:
 
 
 @dataclass(frozen=True, slots=True)
+class _VerifiedProgramLibrary:
+    descriptor: NativeProgramLibrary
+    path: Path
+
+
+@dataclass(frozen=True, slots=True)
 class _VerifiedBundle:
     descriptor: NativeBundleDescriptor
     library: Path
     manifest: Path
     operators: tuple[_ManifestOperator, ...]
     trust: BundleTrustDecision
+    program_libraries: tuple[_VerifiedProgramLibrary, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class _ResolvedProgramLibrary:
+    descriptor: NativeProgramLibrary
+    path: Path
+    handle: Any
+    adapter: Any
+    function_address: int
 
 
 @dataclass(frozen=True, slots=True)
@@ -511,6 +577,7 @@ class _LoadedBundle:
     operators: tuple[_ManifestOperator, ...]
     trust: BundleTrustDecision
     selection: DispatchReceipt | None
+    program_libraries: tuple[_ResolvedProgramLibrary, ...]
 
 
 _LOCK = threading.Lock()
@@ -619,6 +686,51 @@ def _read_hashed_file(
     if not hmac.compare_digest(actual_digest, expected_digest):
         raise NativeBundleVerificationError(f"{label} digest mismatch")
     return b"".join(chunks) if chunks is not None else None
+
+
+def _manifest_program_symbols(
+    operators: tuple[_ManifestOperator, ...],
+) -> tuple[str, ...]:
+    symbols: list[str] = []
+    for operator in operators:
+        for plan in (
+            operator.forward_launcher_plan,
+            operator.backward_launcher_plan,
+        ):
+            if plan is not None:
+                symbols.extend(node.symbol for node in plan.nodes)
+    return tuple(symbols)
+
+
+def _verify_program_libraries(
+    root: Path,
+    descriptor: NativeBundleDescriptor,
+    operators: tuple[_ManifestOperator, ...],
+) -> tuple[_VerifiedProgramLibrary, ...]:
+    expected_symbols = _manifest_program_symbols(operators)
+    actual_symbols = tuple(
+        item.adapter_symbol for item in descriptor.program_libraries
+    )
+    if actual_symbols != expected_symbols:
+        raise NativeBundleVerificationError(
+            "signed per-node program libraries do not exactly match the "
+            "immutable launcher-plan execution order"
+        )
+    verified: list[_VerifiedProgramLibrary] = []
+    for index, program in enumerate(descriptor.program_libraries):
+        path = _resolve_regular_file(
+            root,
+            program.library_path,
+            f"program library {index}",
+        )
+        _read_hashed_file(
+            path,
+            program.library_sha256,
+            f"program library {index}",
+            retain=False,
+        )
+        verified.append(_VerifiedProgramLibrary(program, path))
+    return tuple(verified)
 
 
 def _unique_json_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
@@ -1952,9 +2064,12 @@ def _verify_bundle(
     operators = _parse_manifest(
         manifest_contents, descriptor.activation_policy
     )
+    program_libraries = _verify_program_libraries(
+        root, descriptor, operators
+    )
     trust = _verify_trust(descriptor, verifier)
     return _VerifiedBundle(
-        descriptor, library, manifest, operators, trust
+        descriptor, library, manifest, operators, trust, program_libraries
     )
 
 
@@ -2108,6 +2223,42 @@ def _load_torch_library(path: Path) -> None:
     torch.ops.load_library(str(path))
 
 
+def _open_program_library(path: Path) -> Any:
+    mode = getattr(os, "RTLD_LOCAL", 0) | getattr(os, "RTLD_NOW", 0)
+    return ctypes.CDLL(str(path), mode=mode)
+
+
+def _load_program_libraries(
+    libraries: tuple[_VerifiedProgramLibrary, ...],
+) -> tuple[_ResolvedProgramLibrary, ...]:
+    """Eagerly resolve every signed adapter once and retain its DSO handle."""
+
+    resolved: list[_ResolvedProgramLibrary] = []
+    for index, library in enumerate(libraries):
+        try:
+            handle = _open_program_library(library.path)
+            adapter = getattr(handle, library.descriptor.adapter_symbol)
+            adapter.argtypes = [ctypes.c_void_p]
+            adapter.restype = ctypes.c_int32
+            function_address = ctypes.cast(adapter, ctypes.c_void_p).value
+            if function_address is None or function_address == 0:
+                raise ValueError("resolved adapter address is null")
+        except (AttributeError, OSError, TypeError, ValueError) as exc:
+            raise NativeBundleLoadError(
+                f"program library {index} does not export its signed adapter"
+            ) from exc
+        resolved.append(
+            _ResolvedProgramLibrary(
+                descriptor=library.descriptor,
+                path=library.path,
+                handle=handle,
+                adapter=adapter,
+                function_address=function_address,
+            )
+        )
+    return tuple(resolved)
+
+
 def _exported_native_capability_identity(
     path: Path,
 ) -> NativeCapabilityTableIdentity:
@@ -2248,8 +2399,12 @@ def load_native_library(
             )
             raise NativeBundleStateError(_POISONED_REASON)
         load_started = False
+        resolved_program_libraries: tuple[_ResolvedProgramLibrary, ...] = ()
         try:
             load_started = True
+            resolved_program_libraries = _load_program_libraries(
+                verified.program_libraries
+            )
             try:
                 _load_torch_library(verified.library)
             except Exception as exc:
@@ -2303,5 +2458,6 @@ def load_native_library(
             operators=verified.operators,
             trust=verified.trust,
             selection=selection,
+            program_libraries=resolved_program_libraries,
         )
         return verified.library

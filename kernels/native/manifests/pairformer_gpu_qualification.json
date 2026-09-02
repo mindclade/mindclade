@@ -1,0 +1,99 @@
+{
+  "schema_version": 1,
+  "status": "SOURCE_ONLY_UNQUALIFIED",
+  "lane_order": ["sm90a", "sm100a"],
+  "toolchain": {
+    "tilelang": "0.1.13",
+    "cuda": "12.9",
+    "nvcc": "12.9.86",
+    "pytorch": "2.10.0"
+  },
+  "protocols": {
+    "numerical": {
+      "reviewed_envelope_required": true,
+      "reject_nan_inf": true,
+      "required_results": ["forward", "saved_outputs", "all_named_gradients"]
+    },
+    "execution": {
+      "non_default_stream": true,
+      "cuda_graph_capture": true,
+      "cuda_graph_replays": 10,
+      "workspace_stability": true,
+      "workspace_growth_bytes_max": 0,
+      "deterministic_repetitions": 10
+    },
+    "benchmark": {
+      "warmup": 20,
+      "measurements": 100,
+      "timing": "cuda_events",
+      "interleave": "candidate_baseline_alternating",
+      "raw_samples_required": true,
+      "reviewed_baseline_required": true,
+      "max_regression_percent": 5.0
+    }
+  },
+  "lanes": {
+    "sm90a": {
+      "architecture": "sm90a",
+      "compute_capability": "9.0",
+      "independent": true,
+      "evidence_reuse": false,
+      "allowed_gpu_skus": ["NVIDIA H100 80GB HBM3", "NVIDIA H100 NVL", "NVIDIA H200"],
+      "profiles_manifest": "kernels/native/manifests/tilelang_profiles.sm90.json",
+      "features": {"tma": true, "wgmma": true, "tcgen05": false, "cluster_launch": true},
+      "candidate_spaces": {
+        "mindclade::outer_product_mean": [
+          {"id": "opm_sm90a_tma", "block_m": 64, "block_n": 64, "block_k": 32, "threads": 256, "num_stages": 3, "vector_width": 8, "use_tma": true, "use_wgmma": true, "use_tcgen05": false, "cluster_m": 1, "cluster_n": 1, "persistent": false, "split_k": 1},
+          {"id": "opm_sm90a_cluster", "block_m": 128, "block_n": 64, "block_k": 32, "threads": 256, "num_stages": 4, "vector_width": 8, "use_tma": true, "use_wgmma": true, "use_tcgen05": false, "cluster_m": 2, "cluster_n": 1, "persistent": false, "split_k": 1}
+        ],
+        "mindclade::pair_weighted_average": [
+          {"id": "pwa_sm90a_tma", "block_m": 64, "block_n": 64, "block_k": 32, "threads": 256, "num_stages": 3, "vector_width": 8, "use_tma": true, "use_wgmma": true, "use_tcgen05": false, "cluster_m": 1, "cluster_n": 1, "persistent": false, "split_k": 1},
+          {"id": "pwa_sm90a_cluster", "block_m": 64, "block_n": 128, "block_k": 32, "threads": 256, "num_stages": 4, "vector_width": 8, "use_tma": true, "use_wgmma": true, "use_tcgen05": false, "cluster_m": 1, "cluster_n": 2, "persistent": false, "split_k": 1}
+        ],
+        "mindclade::transition": [
+          {"id": "transition_sm90a_tma", "block_m": 64, "block_n": 128, "block_k": 32, "threads": 128, "num_stages": 3, "vector_width": 8, "use_tma": true, "use_wgmma": true, "use_tcgen05": false, "cluster_m": 1, "cluster_n": 1, "persistent": true, "split_k": 1},
+          {"id": "transition_sm90a_cluster", "block_m": 128, "block_n": 128, "block_k": 32, "threads": 256, "num_stages": 4, "vector_width": 8, "use_tma": true, "use_wgmma": true, "use_tcgen05": false, "cluster_m": 2, "cluster_n": 1, "persistent": true, "split_k": 1}
+        ],
+        "mindclade::triangle_attention": [
+          {"id": "triangle_attention_sm90a_tma", "block_m": 64, "block_n": 64, "block_k": 32, "threads": 128, "num_stages": 3, "vector_width": 8, "use_tma": true, "use_wgmma": true, "use_tcgen05": false, "cluster_m": 1, "cluster_n": 1, "persistent": false, "split_k": 1},
+          {"id": "triangle_attention_sm90a_cluster", "block_m": 128, "block_n": 64, "block_k": 32, "threads": 256, "num_stages": 4, "vector_width": 8, "use_tma": true, "use_wgmma": true, "use_tcgen05": false, "cluster_m": 2, "cluster_n": 1, "persistent": false, "split_k": 1}
+        ],
+        "mindclade::triangle_multiplication": [
+          {"id": "triangle_multiplication_sm90a_tma", "block_m": 64, "block_n": 64, "block_k": 64, "threads": 128, "num_stages": 3, "vector_width": 8, "use_tma": true, "use_wgmma": true, "use_tcgen05": false, "cluster_m": 1, "cluster_n": 1, "persistent": false, "split_k": 1},
+          {"id": "triangle_multiplication_sm90a_cluster", "block_m": 128, "block_n": 64, "block_k": 64, "threads": 256, "num_stages": 4, "vector_width": 8, "use_tma": true, "use_wgmma": true, "use_tcgen05": false, "cluster_m": 2, "cluster_n": 1, "persistent": false, "split_k": 1}
+        ]
+      }
+    },
+    "sm100a": {
+      "architecture": "sm100a",
+      "compute_capability": "10.0",
+      "independent": true,
+      "evidence_reuse": false,
+      "allowed_gpu_skus": ["NVIDIA B200", "NVIDIA GB200"],
+      "profiles_manifest": "kernels/native/manifests/tilelang_profiles.sm100.json",
+      "features": {"tma": true, "wgmma": false, "tcgen05": true, "cluster_launch": true},
+      "candidate_spaces": {
+        "mindclade::outer_product_mean": [
+          {"id": "opm_sm100a_tma", "block_m": 128, "block_n": 64, "block_k": 64, "threads": 256, "num_stages": 4, "vector_width": 16, "use_tma": true, "use_wgmma": false, "use_tcgen05": true, "cluster_m": 1, "cluster_n": 1, "persistent": false, "split_k": 1},
+          {"id": "opm_sm100a_cluster", "block_m": 128, "block_n": 128, "block_k": 64, "threads": 256, "num_stages": 5, "vector_width": 16, "use_tma": true, "use_wgmma": false, "use_tcgen05": true, "cluster_m": 2, "cluster_n": 1, "persistent": false, "split_k": 1}
+        ],
+        "mindclade::pair_weighted_average": [
+          {"id": "pwa_sm100a_tma", "block_m": 64, "block_n": 128, "block_k": 64, "threads": 256, "num_stages": 4, "vector_width": 16, "use_tma": true, "use_wgmma": false, "use_tcgen05": true, "cluster_m": 1, "cluster_n": 1, "persistent": false, "split_k": 1},
+          {"id": "pwa_sm100a_cluster", "block_m": 128, "block_n": 128, "block_k": 64, "threads": 256, "num_stages": 5, "vector_width": 16, "use_tma": true, "use_wgmma": false, "use_tcgen05": true, "cluster_m": 1, "cluster_n": 2, "persistent": false, "split_k": 1}
+        ],
+        "mindclade::transition": [
+          {"id": "transition_sm100a_tma", "block_m": 128, "block_n": 128, "block_k": 64, "threads": 256, "num_stages": 4, "vector_width": 16, "use_tma": true, "use_wgmma": false, "use_tcgen05": true, "cluster_m": 1, "cluster_n": 1, "persistent": true, "split_k": 1},
+          {"id": "transition_sm100a_cluster", "block_m": 256, "block_n": 128, "block_k": 64, "threads": 256, "num_stages": 5, "vector_width": 16, "use_tma": true, "use_wgmma": false, "use_tcgen05": true, "cluster_m": 2, "cluster_n": 1, "persistent": true, "split_k": 1}
+        ],
+        "mindclade::triangle_attention": [
+          {"id": "triangle_attention_sm100a_tma", "block_m": 128, "block_n": 64, "block_k": 64, "threads": 256, "num_stages": 4, "vector_width": 16, "use_tma": true, "use_wgmma": false, "use_tcgen05": true, "cluster_m": 1, "cluster_n": 1, "persistent": false, "split_k": 1},
+          {"id": "triangle_attention_sm100a_cluster", "block_m": 128, "block_n": 128, "block_k": 64, "threads": 256, "num_stages": 5, "vector_width": 16, "use_tma": true, "use_wgmma": false, "use_tcgen05": true, "cluster_m": 2, "cluster_n": 1, "persistent": false, "split_k": 1}
+        ],
+        "mindclade::triangle_multiplication": [
+          {"id": "triangle_multiplication_sm100a_tma", "block_m": 128, "block_n": 64, "block_k": 64, "threads": 256, "num_stages": 4, "vector_width": 16, "use_tma": true, "use_wgmma": false, "use_tcgen05": true, "cluster_m": 1, "cluster_n": 1, "persistent": false, "split_k": 1},
+          {"id": "triangle_multiplication_sm100a_cluster", "block_m": 128, "block_n": 128, "block_k": 64, "threads": 256, "num_stages": 5, "vector_width": 16, "use_tma": true, "use_wgmma": false, "use_tcgen05": true, "cluster_m": 2, "cluster_n": 1, "persistent": false, "split_k": 1}
+        ]
+      }
+    }
+  }
+}

@@ -44,8 +44,8 @@ from owner_policy import (  # noqa: E402
 )
 from path_policy import (  # noqa: E402
     ALL_CONTRACT_GRPC_SERVICES,
-    CANONICAL_FILE_COUNT,
     ALL_CONTRACT_RUST_PLUGIN_PATHS,
+    CANONICAL_FILE_COUNT,
     PolicyError,
     discover_actual_paths,
     is_all_contract_baseline_path,
@@ -699,9 +699,7 @@ class PairformerWave6GovernanceTests(unittest.TestCase):
         self.assertFalse(any(path.startswith("kernels/artifacts/") for path in entries))
 
     def test_native_signed_qualification_has_exact_source_only_closure(self) -> None:
-        adr = self.policy.build_path_entry(
-            self.policy.NATIVE_SIGNED_QUALIFICATION_ADR
-        )
+        adr = self.policy.build_path_entry(self.policy.NATIVE_SIGNED_QUALIFICATION_ADR)
         self.assertEqual(adr["status"], "active")
         for path in self.policy.NATIVE_SIGNED_QUALIFICATION_ACTIVE_PATHS:
             entry = self.policy.build_path_entry(path)
@@ -715,6 +713,7 @@ class PairformerWave6GovernanceTests(unittest.TestCase):
                 entry["test_targets"],
                 [
                     "//kernels/native:test_capability_index",
+                    "//kernels/native:test_gpu_qualification",
                     "//kernels/native:test_loader_policy",
                     "//kernels/native:test_qualification",
                 ],

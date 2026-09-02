@@ -34,6 +34,14 @@ the qualified IBGDA mode. The Buildkite build ID isolates the rendezvous from
 concurrent runs. Both steps remain unreachable while the `gpu` activation gate
 is closed.
 
+The protected GPU graph also contains independent Pairformer preflights for
+exact `sm90a` and `sm100a` agent tags. Each verifies TileLang 0.1.13, CUDA 12.9
+with nvcc 12.9.86, PyTorch 2.10.0, and the exact GPU architecture before
+emitting an unsigned, explicitly unqualified receipt. Numerical, non-default
+stream, CUDA graph, workspace, determinism, and performance candidate receipts
+require the complete checked-in protocol and reviewed numerical/baseline
+digests. Neither architecture lane can promote or reuse the other's evidence.
+
 Every dynamic pipeline requires the connected launcher to inject a canonical
 `buildkite://` identity, an immutable launcher revision, and a `sha256:`
 launcher digest into both the protected environment and trusted context.

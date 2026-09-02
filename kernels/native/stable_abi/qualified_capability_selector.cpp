@@ -18,6 +18,8 @@ namespace {
 
 constexpr std::size_t kSha256Bytes = 32;
 constexpr std::size_t kDigestTextBytes = 71;
+constexpr std::uint32_t kMaximumNodeParameters = 128;
+constexpr std::int32_t kMaximumTensorRank = 16;
 
 bool valid_text(const char* value) noexcept {
   return value != nullptr && value[0] != '\0';
@@ -231,6 +233,100 @@ bool names_disjoint(
   return true;
 }
 
+bool valid_access(std::uint32_t access) noexcept {
+  return access == MINDCLADE_NODE_ACCESS_READ_V1 ||
+      access == MINDCLADE_NODE_ACCESS_WRITE_V1 ||
+      access == MINDCLADE_NODE_ACCESS_READ_WRITE_V1;
+}
+
+bool valid_kind(std::uint32_t kind) noexcept {
+  return kind >= MINDCLADE_NODE_VALUE_TENSOR_V1 &&
+      kind <= MINDCLADE_NODE_VALUE_STREAM_V1;
+}
+
+bool valid_specialization_digest(const std::uint8_t* digest) noexcept {
+  for (std::size_t index = 0; index < kSha256Bytes; ++index) {
+    if (digest[index] != 0u) return true;
+  }
+  return false;
+}
+
+bool valid_tensor_value(const MindcladeNodeValueV1& value) noexcept {
+  const MindcladeNodeTensorV1& tensor = value.payload.tensor;
+  constexpr std::uint32_t kKnownFlags =
+      MINDCLADE_NODE_TENSOR_PRESENT_V1 | MINDCLADE_NODE_TENSOR_OPTIONAL_V1;
+  if ((tensor.flags & ~kKnownFlags) != 0u || tensor.rank < 0 ||
+      tensor.rank > kMaximumTensorRank) {
+    return false;
+  }
+  const bool present =
+      (tensor.flags & MINDCLADE_NODE_TENSOR_PRESENT_V1) != 0u;
+  const bool optional =
+      (tensor.flags & MINDCLADE_NODE_TENSOR_OPTIONAL_V1) != 0u;
+  if (!present) {
+    return optional && value.access == MINDCLADE_NODE_ACCESS_READ_V1 &&
+        tensor.data == nullptr && tensor.sizes == nullptr &&
+        tensor.strides == nullptr && tensor.rank == 0 && tensor.dtype == 0 &&
+        tensor.device_index == 0;
+  }
+  if (dtype_name(static_cast<std::uint32_t>(tensor.dtype)) == nullptr ||
+      tensor.device_index < 0 ||
+      (tensor.rank != 0 &&
+       (tensor.sizes == nullptr || tensor.strides == nullptr))) {
+    return false;
+  }
+  bool has_elements = true;
+  for (std::int32_t axis = 0; axis < tensor.rank; ++axis) {
+    if (tensor.sizes[axis] < 0 || tensor.strides[axis] < 0) return false;
+    if (tensor.sizes[axis] == 0) has_elements = false;
+  }
+  return !has_elements || tensor.data != nullptr;
+}
+
+bool valid_node_value(const MindcladeNodeValueV1& value) noexcept {
+  if (!valid_kind(value.kind) || !valid_access(value.access)) return false;
+  switch (value.kind) {
+    case MINDCLADE_NODE_VALUE_TENSOR_V1:
+      return valid_tensor_value(value);
+    case MINDCLADE_NODE_VALUE_BOOL_V1:
+      return value.access == MINDCLADE_NODE_ACCESS_READ_V1 &&
+          value.payload.boolean_value <= UINT64_C(1);
+    case MINDCLADE_NODE_VALUE_INT64_V1:
+    case MINDCLADE_NODE_VALUE_FLOAT64_V1:
+      return value.access == MINDCLADE_NODE_ACCESS_READ_V1;
+    case MINDCLADE_NODE_VALUE_STREAM_V1:
+      return value.access == MINDCLADE_NODE_ACCESS_READ_V1 &&
+          value.payload.stream != nullptr;
+    default:
+      return false;
+  }
+}
+
+bool valid_parameter_contract(
+    const MindcladeNodeParameterContractV1& parameter) noexcept {
+  constexpr std::uint32_t kKnownFlags =
+      MINDCLADE_NODE_CONTRACT_OPTIONAL_V1 |
+      MINDCLADE_NODE_CONTRACT_WORKSPACE_V1;
+  if (!valid_kind(parameter.kind) || !valid_access(parameter.access) ||
+      parameter.rank < MINDCLADE_NODE_ANY_RANK_V1 ||
+      parameter.rank > kMaximumTensorRank ||
+      (parameter.flags & ~kKnownFlags) != 0u) {
+    return false;
+  }
+  const bool tensor = parameter.kind == MINDCLADE_NODE_VALUE_TENSOR_V1;
+  const bool optional =
+      (parameter.flags & MINDCLADE_NODE_CONTRACT_OPTIONAL_V1) != 0u;
+  const bool workspace =
+      (parameter.flags & MINDCLADE_NODE_CONTRACT_WORKSPACE_V1) != 0u;
+  if (!tensor) {
+    return parameter.rank == MINDCLADE_NODE_ANY_RANK_V1 &&
+        parameter.flags == 0u &&
+        parameter.access == MINDCLADE_NODE_ACCESS_READ_V1;
+  }
+  return !(workspace &&
+           (optional || parameter.access == MINDCLADE_NODE_ACCESS_READ_V1));
+}
+
 bool same_dimensions(
     const MindcladeCapabilityDimensionV1* lhs, std::size_t lhs_count,
     const MindcladeCapabilityDimensionV1* rhs, std::size_t rhs_count) noexcept {
@@ -324,6 +420,74 @@ bool preferred(
 }
 
 }  // namespace
+
+extern "C" int32_t mindclade_validate_node_launch_v1(
+    const MindcladeNodeLaunchV1* launch) {
+  if (launch == nullptr) return MINDCLADE_NODE_STATUS_INVALID_PARAMETER_V1;
+  if (launch->abi_version != MINDCLADE_NODE_LAUNCH_ABI_VERSION) {
+    return MINDCLADE_NODE_STATUS_INVALID_ABI_V1;
+  }
+  if (launch->parameter_count > kMaximumNodeParameters) {
+    return MINDCLADE_NODE_STATUS_INVALID_PARAMETER_COUNT_V1;
+  }
+  if (!valid_specialization_digest(launch->specialization_digest) ||
+      (launch->parameter_count != 0u && launch->parameters == nullptr)) {
+    return MINDCLADE_NODE_STATUS_INVALID_PARAMETER_V1;
+  }
+  for (std::uint32_t index = 0; index < launch->parameter_count; ++index) {
+    if (!valid_node_value(launch->parameters[index])) {
+      return MINDCLADE_NODE_STATUS_INVALID_PARAMETER_V1;
+    }
+  }
+  return MINDCLADE_NODE_STATUS_SUCCESS_V1;
+}
+
+extern "C" int32_t mindclade_validate_node_launch_contract_v1(
+    const MindcladeNodeLaunchV1* launch,
+    const MindcladeNodeLaunchContractV1* contract) {
+  const std::int32_t launch_status = mindclade_validate_node_launch_v1(launch);
+  if (launch_status != MINDCLADE_NODE_STATUS_SUCCESS_V1) return launch_status;
+  if (contract == nullptr || contract->reserved != 0u ||
+      contract->parameter_count > kMaximumNodeParameters ||
+      (contract->parameter_count != 0u && contract->parameters == nullptr) ||
+      !valid_specialization_digest(contract->specialization_digest)) {
+    return MINDCLADE_NODE_STATUS_INVALID_PARAMETER_V1;
+  }
+  if (launch->parameter_count != contract->parameter_count) {
+    return MINDCLADE_NODE_STATUS_INVALID_PARAMETER_COUNT_V1;
+  }
+  if (std::memcmp(
+          launch->specialization_digest,
+          contract->specialization_digest,
+          kSha256Bytes) != 0) {
+    return MINDCLADE_NODE_STATUS_INVALID_PARAMETER_V1;
+  }
+  for (std::uint32_t index = 0; index < contract->parameter_count; ++index) {
+    const MindcladeNodeParameterContractV1& expected =
+        contract->parameters[index];
+    const MindcladeNodeValueV1& actual = launch->parameters[index];
+    if (!valid_parameter_contract(expected) || actual.kind != expected.kind ||
+        actual.access != expected.access) {
+      return MINDCLADE_NODE_STATUS_INVALID_PARAMETER_V1;
+    }
+    if (expected.kind == MINDCLADE_NODE_VALUE_TENSOR_V1) {
+      const bool actual_optional =
+          (actual.payload.tensor.flags & MINDCLADE_NODE_TENSOR_OPTIONAL_V1) != 0u;
+      const bool expected_optional =
+          (expected.flags & MINDCLADE_NODE_CONTRACT_OPTIONAL_V1) != 0u;
+      const bool workspace =
+          (expected.flags & MINDCLADE_NODE_CONTRACT_WORKSPACE_V1) != 0u;
+      const bool present =
+          (actual.payload.tensor.flags & MINDCLADE_NODE_TENSOR_PRESENT_V1) != 0u;
+      if (actual_optional != expected_optional || (workspace && !present) ||
+          (expected.rank != MINDCLADE_NODE_ANY_RANK_V1 &&
+           actual.payload.tensor.rank != expected.rank)) {
+        return MINDCLADE_NODE_STATUS_INVALID_PARAMETER_V1;
+      }
+    }
+  }
+  return MINDCLADE_NODE_STATUS_SUCCESS_V1;
+}
 
 extern "C" int32_t mindclade_canonical_workload_digest_v1(
     const char* operation,
@@ -478,6 +642,12 @@ extern "C" int32_t mindclade_execute_qualified_capability_v1(
     launch.parameter_count = invocations[index].parameter_count;
     std::memcpy(launch.specialization_digest, capability->specialization_digest, kSha256Bytes);
     launch.parameters = invocations[index].parameters;
+    const std::int32_t validation_status =
+        mindclade_validate_node_launch_v1(&launch);
+    if (validation_status != MINDCLADE_NODE_STATUS_SUCCESS_V1) {
+      *adapter_status = validation_status;
+      return MINDCLADE_CAPABILITY_STATUS_INVALID_ARGUMENT_V1;
+    }
     const std::int32_t status = capability->adapters[index](&launch);
     if (status != MINDCLADE_NODE_STATUS_SUCCESS_V1) {
       *adapter_status = status;

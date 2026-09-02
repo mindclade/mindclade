@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import inspect
+
 import pytest
 import torch
 
@@ -80,6 +82,16 @@ def test_dispatch_fallback_and_build_contract_are_explicit() -> None:
             hidden_channels=16,
             output_channels=8,
         )
+
+
+def test_forward_builder_fuses_swiglu_gemm_bias_and_mask_epilogue() -> None:
+    source = inspect.getsource(build_forward_program)
+    assert "gate_value" in source
+    assert "* T.sigmoid(gate_value)" in source
+    assert "T.Pipelined" in source
+    assert "T.gemm(activation_shared, weight_shared, accumulation)" in source
+    assert "output_bias[channel]" in source
+    assert "mask[batch, row]" in source
 
 
 

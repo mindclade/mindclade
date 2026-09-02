@@ -2228,6 +2228,8 @@ mindclade/
 │       │   ├── tilelang_profiles.sm100.json
 │       │   ├── tilelang_profiles.sm90.json
 │       │   ├── tilelang_capabilities.schema.json
+│       │   ├── pairformer_gpu_qualification.json
+│       │   ├── pairformer_gpu_qualification.schema.json
 │       │   ├── qualification_release.schema.json
 │       │   ├── qualified_capability_index.json
 │       │   └── qualified_capability_index.schema.json
@@ -2237,7 +2239,8 @@ mindclade/
 │       │   ├── qualification.py
 │       │   ├── reference_runtime.py
 │       │   ├── registration.py
-│       │   └── capability_index.py
+│       │   ├── capability_index.py
+│       │   └── gpu_qualification.py
 │       ├── stable_abi/
 │       │   ├── CMakeLists.txt
 │       │   ├── abi_manifest.json
@@ -2247,6 +2250,7 @@ mindclade/
 │       │   ├── node_launch_abi.h
 │       │   ├── node_launch_bridge.cpp
 │       │   ├── node_launch_bridge.h
+│       │   ├── qualified_capability_selector.cpp
 │       │   └── qualified_capability_table.h
 │       ├── tests/
 │       │   ├── pytest_runner.py
@@ -2272,7 +2276,9 @@ mindclade/
 │       │   ├── test_tilelang_swizzle.py
 │       │   ├── test_tilelang_targets.py
 │       │   ├── test_tilelang_tma.py
-│       │   └── test_capability_index.py
+│       │   ├── test_capability_index.py
+│       │   ├── test_gpu_qualification.py
+│       │   └── test_qualified_capability_selector.py
 │       └── tilelang/
 │           ├── README.md
 │           ├── __init__.py
