@@ -1196,7 +1196,9 @@ def reconcile_authority_paths(source_paths: Sequence[str]) -> list[str]:
         raise PolicyError(f"ADR reconciliation sources are absent: {sorted(missing)!r}")
     missing_retired = set(RETIRED_PATHS) - source_set
     if missing_retired:
-        raise PolicyError(f"retired paths are absent from source authority: {sorted(missing_retired)!r}")
+        raise PolicyError(
+            f"retired paths are absent from source authority: {sorted(missing_retired)!r}"
+        )
     if set(REQUIRED_ADDITIONS) & source_set:
         raise PolicyError("required reconciliation addition already exists in source authority")
 
