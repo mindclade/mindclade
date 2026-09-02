@@ -125,7 +125,7 @@ ADR_REGISTRY = (
         "ADR-0012",
         "0012-http-json-operation-projection-python-sdk.md",
         "proposed",
-        "HTTP/JSON Operation Projection and Python SDK",
+        "Candidate HTTP/JSON and Server-Sent Event Projection",
     ),
     AdrContract(
         "ADR-0013",
