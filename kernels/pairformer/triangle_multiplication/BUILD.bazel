@@ -36,8 +36,8 @@ py_test(
         "test_triangle_multiplication.py",
         "tilelang.py",
     ],
-    main = "test_triangle_multiplication.py",
     data = [":policy_inputs"],
+    main = "test_triangle_multiplication.py",
     tags = [
         "manual",
         "requires-hermetic-torch-2.10",

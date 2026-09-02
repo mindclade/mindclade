@@ -22,8 +22,8 @@ py_test(
         "tests/test_triangle_attention.py",
         "tilelang.py",
     ],
-    main = "tests/test_triangle_attention.py",
     data = [":policy_inputs"],
+    main = "tests/test_triangle_attention.py",
     tags = [
         "manual",
         "requires-hermetic-torch-2.10",

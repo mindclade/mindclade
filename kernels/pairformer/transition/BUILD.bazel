@@ -23,6 +23,7 @@ py_test(
         "test_transition.py",
         "tilelang.py",
     ],
+    data = [":policy_inputs"],
     main = "test_transition.py",
     tags = [
         "manual",
@@ -33,7 +34,6 @@ py_test(
         "//kernels/native:tilelang_codegen_lib",
         "@mindclade_pypi//pytest",
     ],
-    data = [":policy_inputs"],
 )
 
 filegroup(
