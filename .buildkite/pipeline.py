@@ -147,7 +147,7 @@ def self_test() -> None:
     if dependency_install not in justfile:
         raise AssertionError("canonical source checks do not hydrate frozen pnpm dependencies")
     workflow_root = BUILDKITE_ROOT.parent / ".github/workflows"
-    implementation_pin = "@f9b6ebcecd197157d9466eeacf8e2864e32c9a79"
+    implementation_pin = "@fc5af9efc19b47078fe446feee750d7f4973195b"
     organization_references: list[str] = []
     for workflow_path in sorted(workflow_root.glob("*.yml")):
         lines = workflow_path.read_text(encoding="utf-8").splitlines()
