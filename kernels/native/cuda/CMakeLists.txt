@@ -5,6 +5,8 @@ if(NOT MINDCLADE_NATIVE_ENABLE_GPU)
   return()
 endif()
 
+find_package(CUDAToolkit REQUIRED)
+
 if("${MINDCLADE_NATIVE_GPU_QUALIFICATION_MANIFEST}" STREQUAL "")
   message(FATAL_ERROR "GPU enablement requires a qualification manifest")
 endif()
@@ -118,27 +120,72 @@ if(NOT _gpu_artifact_actual_sha256 STREQUAL _gpu_artifact_expected_sha256)
   message(FATAL_ERROR "GPU artifact digest mismatch")
 endif()
 
+string(
+  JSON _qualified_artifact_sha256
+  ERROR_VARIABLE _qualified_artifact_sha256_error
+  GET "${_qualification_json}" artifact_sha256
+)
+if(
+  NOT _qualified_artifact_sha256_error STREQUAL "NOTFOUND"
+  OR NOT _qualified_artifact_sha256 STREQUAL MINDCLADE_NATIVE_GPU_ARTIFACT_SHA256
+)
+  message(FATAL_ERROR "GPU qualification manifest does not bind the configured artifact digest")
+endif()
+
+set(
+  _expected_required_symbols
+  ${MINDCLADE_TILELANG_REQUIRED_PRIVATE_SYMBOLS}
+)
+list(REMOVE_DUPLICATES _expected_required_symbols)
+list(SORT _expected_required_symbols)
+string(
+  JSON _required_symbol_count
+  ERROR_VARIABLE _required_symbol_count_error
+  LENGTH "${_qualification_json}" required_symbols
+)
+if(NOT _required_symbol_count_error STREQUAL "NOTFOUND")
+  message(FATAL_ERROR "GPU qualification manifest must declare required_symbols")
+endif()
+set(_qualified_required_symbols)
+if(_required_symbol_count GREATER 0)
+  math(EXPR _required_symbol_last "${_required_symbol_count} - 1")
+  foreach(_required_symbol_index RANGE 0 ${_required_symbol_last})
+    string(
+      JSON _required_symbol
+      GET "${_qualification_json}" required_symbols ${_required_symbol_index}
+    )
+    list(APPEND _qualified_required_symbols "${_required_symbol}")
+  endforeach()
+endif()
+list(LENGTH _qualified_required_symbols _qualified_required_symbol_count)
+list(REMOVE_DUPLICATES _qualified_required_symbols)
+list(LENGTH _qualified_required_symbols _qualified_unique_required_symbol_count)
+if(NOT _qualified_required_symbol_count EQUAL _qualified_unique_required_symbol_count)
+  message(FATAL_ERROR "GPU qualification required_symbols must not contain duplicates")
+endif()
+list(SORT _qualified_required_symbols)
+if(NOT _qualified_required_symbols STREQUAL _expected_required_symbols)
+  message(FATAL_ERROR "GPU qualification required_symbols do not match generated inventory")
+endif()
+
 add_library(
   mindclade_native_cuda_registry
   OBJECT
     ../generated/operation_registry.generated.cpp
+    ../generated/launcher_plans.generated.cpp
+    ../generated/qualified_capabilities.generated.cpp
     operation_registry.cpp
 )
 mindclade_apply_gpu_registry_target_policy(mindclade_native_cuda_registry)
+target_compile_definitions(
+  mindclade_native_cuda_registry
+  PRIVATE MINDCLADE_NODE_LAUNCH_ABI_V1=1
+)
 
-add_library(mindclade_native_gpu_artifact SHARED IMPORTED GLOBAL)
+add_library(mindclade_native_gpu_artifact UNKNOWN IMPORTED GLOBAL)
 set_target_properties(
   mindclade_native_gpu_artifact
   PROPERTIES IMPORTED_LOCATION "${MINDCLADE_NATIVE_GPU_ARTIFACT}"
-)
-
-target_sources(
-  mindclade_native_schema
-  PRIVATE $<TARGET_OBJECTS:mindclade_native_cuda_registry>
-)
-target_link_libraries(
-  mindclade_native_schema
-  PRIVATE mindclade_native_gpu_artifact
 )
 
 if(MINDCLADE_TILELANG_REQUIRED_PRIVATE_SYMBOLS)
@@ -195,12 +242,44 @@ if(MINDCLADE_TILELANG_REQUIRED_PRIVATE_SYMBOLS)
     PROPERTIES
       IMPORTED_LOCATION "${MINDCLADE_NATIVE_PROGRAM_GROUP_BRIDGE_LIBRARY}"
   )
-  target_link_libraries(
-    mindclade_native_schema
-    PRIVATE mindclade_native_program_group_bridge
-  )
-  target_compile_definitions(
-    mindclade_native_cuda_registry
-    PRIVATE MINDCLADE_PROGRAM_GROUP_BRIDGE_V1=1
-  )
 endif()
+
+add_library(
+  mindclade_ops
+  SHARED
+    ../generated/registration.generated.cpp
+    ../stable_abi/registration.cpp
+    ../stable_abi/node_launch_abi.h
+    ../stable_abi/node_launch_bridge.cpp
+    ../stable_abi/node_launch_bridge.h
+    ../stable_abi/qualified_capability_selector.cpp
+    ../stable_abi/qualified_capability_table.h
+    ../stable_abi/tensor_bridge.cpp
+    ../stable_abi/tensor_bridge.h
+    $<TARGET_OBJECTS:mindclade_native_cuda_registry>
+    device_architecture.cpp
+    device_architecture.h
+)
+add_library(Mindclade::ops ALIAS mindclade_ops)
+mindclade_apply_gpu_registry_target_policy(mindclade_ops)
+mindclade_apply_no_undefined_link_policy(mindclade_ops)
+target_include_directories(mindclade_ops PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../stable_abi")
+target_compile_definitions(mindclade_ops PRIVATE USE_CUDA=1)
+target_link_libraries(mindclade_ops PRIVATE mindclade_native_gpu_artifact CUDA::cudart)
+if(MINDCLADE_TILELANG_REQUIRED_PRIVATE_SYMBOLS)
+  target_link_libraries(mindclade_ops PRIVATE mindclade_native_program_group_bridge)
+endif()
+set_target_properties(
+  mindclade_ops
+  PROPERTIES
+    OUTPUT_NAME mindclade_ops
+    VERSION "${PROJECT_VERSION}"
+    SOVERSION "0"
+)
+install(
+  TARGETS mindclade_ops
+  EXPORT MindcladeNativeTargets
+  LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}" COMPONENT Runtime
+  ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}" COMPONENT Development
+  RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}" COMPONENT Runtime
+)

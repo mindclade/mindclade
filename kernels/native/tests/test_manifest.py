@@ -32,6 +32,9 @@ def _gradient(input_name: str, output_name: str) -> dict[str, object]:
         "type": "GradientSpec",
         "input_name": input_name,
         "output_name": output_name,
+        "shape": {"node": "shape_of", "argument": input_name},
+        "dtype": {"node": "dtype_ref", "argument": input_name},
+        "device": {"node": "device_ref", "argument": input_name},
         "optional": False,
         "accumulation_dtype": None,
         "version": 1,
@@ -106,6 +109,21 @@ def _operator(source: str) -> dict[str, object]:
             "determinism": "conditionally_deterministic",
             "version": 1,
         },
+        "runtime_workload": {
+            "type": "RuntimeWorkloadSpec",
+            "dimensions": [{
+                "type": "WorkloadDimensionBinding",
+                "name": "rank",
+                "value": {"argument": "input", "node": "rank_ref"},
+                "version": 1,
+            }],
+            "input_dtype": {"argument": "input", "node": "dtype_ref"},
+            "layout": "contiguous",
+            "mode_selector": None,
+            "attributes": [],
+            "canonicalization_version": 1,
+            "version": 1,
+        },
         "backend": "tilelang",
         "version": 1,
         "devices": ["cuda"],
@@ -132,7 +150,7 @@ def _operator(source: str) -> dict[str, object]:
             for key in (
                 "name", "namespace", "family", "source", "operator_schema",
                 "facade_outputs", "fake", "forward", "backward", "autograd_policy",
-                "effects", "launch", "backend", "version", "devices", "composite",
+                "effects", "launch", "runtime_workload", "backend", "version", "devices", "composite",
             )
         },
     }
@@ -172,8 +190,8 @@ def _resign(manifest: dict[str, object]) -> dict[str, object]:
 
 def _manifest() -> dict[str, object]:
     manifest: dict[str, object] = {
-        "schema_version": 3,
-        "generator": {"id": "kernels.native.codegen.generate", "version": 6},
+        "schema_version": 4,
+        "generator": {"id": "kernels.native.codegen.generate", "version": 8},
         "source_inventory_sha256": "",
         "namespace": "mindclade",
         "registration_mode": "build_time_generated",
@@ -187,19 +205,19 @@ def _manifest() -> dict[str, object]:
     return _resign(manifest)
 
 
-def test_v3_fixture_is_strict_closed_world_target_inventory():
+def test_v4_fixture_is_strict_closed_world_target_inventory():
     manifest = validate_manifest(_manifest())
     assert set(manifest) == {
         "schema_version", "generator", "source_inventory_sha256", "namespace",
         "registration_mode", "optimized_math_authority", "runtime_discovery",
         "request_time_compilation", "operators", "semantic_digest", "manifest_digest",
     }
-    assert manifest["schema_version"] == 3
+    assert manifest["schema_version"] == 4
     assert tuple(operator["source"] for operator in manifest["operators"]) == EXPECTED_SPEC_SOURCES
     assert all("qualification" not in operator for operator in manifest["operators"])
 
 
-def test_v3_fixture_digest_roots_match_exact_canonical_inventories():
+def test_v4_fixture_digest_roots_match_exact_canonical_inventories():
     manifest = validate_manifest(_manifest())
     operators = manifest["operators"]
     source_inventory = [
@@ -292,7 +310,7 @@ def test_manifest_load_never_regenerates_missing_output(tmp_path: Path):
     assert not (tmp_path / "generated").exists()
 
 
-def test_manifest_loads_valid_v3_without_authoring_imports(tmp_path: Path):
+def test_manifest_loads_valid_v4_without_authoring_imports(tmp_path: Path):
     manifest = _manifest()
     generated = tmp_path / "generated"
     generated.mkdir()
@@ -304,12 +322,12 @@ def test_manifest_rejects_duplicate_json_keys(tmp_path: Path):
     generated = tmp_path / "generated"
     generated.mkdir()
     (generated / "native_ops.json").write_text(
-        '{"schema_version":3,"schema_version":3}', encoding="utf-8"
+        '{"schema_version":4,"schema_version":4}', encoding="utf-8"
     )
     with pytest.raises(ValueError, match="duplicate JSON key"):
         load_manifest(tmp_path)
 
 
-def test_committed_manifest_is_current_v3_generated_output():
+def test_committed_manifest_is_current_v4_generated_output():
     manifest = load_manifest(ROOT)
     assert tuple(operator["source"] for operator in manifest["operators"]) == EXPECTED_SPEC_SOURCES

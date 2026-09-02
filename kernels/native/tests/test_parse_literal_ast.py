@@ -127,12 +127,18 @@ KERNEL_SPEC = TensorCapabilityConstraint(
 
     composite = parse_literal_source(
         '''
-from kernels.api import CompositeAutogradSpec, GradientSpec
+from kernels.api import (
+    CompositeAutogradSpec, ConstantDType, ConstantDevice, GradientSpec, ShapeOf,
+)
 KERNEL_SPEC = CompositeAutogradSpec(
     decomposition="kernels.testing.noop.reference:backward",
     source_digest="sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     runtime_envelope="pytorch-2.10",
-    gradients=(GradientSpec(input_name="x", output_name="grad_x"),),
+    gradients=(GradientSpec(
+        input_name="x", output_name="grad_x", shape=ShapeOf(argument="x"),
+        dtype=ConstantDType(value="float32"),
+        device=ConstantDevice(value="cuda"),
+    ),),
     supports_double_backward=False,
     setup_context="kernels.testing.noop.reference:setup_context",
     backward="kernels.testing.noop.reference:backward",
@@ -140,6 +146,33 @@ KERNEL_SPEC = CompositeAutogradSpec(
 '''
     )
     assert composite.gradients[0].input_name == "x"
+
+    selector = parse_literal_source(
+        '''
+from kernels.api import ProgramSelectorBinding, ScalarABIType
+KERNEL_SPEC = ProgramSelectorBinding(
+    provider_argument="outgoing",
+    selector_key="mode",
+    scalar_type=ScalarABIType.BOOL,
+    cases=((False, "incoming"), (True, "outgoing")),
+)
+'''
+    )
+    assert selector.provider_argument == "outgoing"
+
+
+def test_selector_binding_rejects_unsafe_computed_cases() -> None:
+    with pytest.raises(LiteralAstError, match="not an approved constructor"):
+        parse_literal_source(
+            '''
+from kernels.api import ProgramSelectorBinding, ScalarABIType
+KERNEL_SPEC = ProgramSelectorBinding(
+    provider_argument="outgoing", selector_key="mode",
+    scalar_type=ScalarABIType.BOOL,
+    cases=tuple([(False, "incoming"), (True, "outgoing")]),
+)
+'''
+        )
 
 
 def test_literal_file_reads_spec_without_importing_its_package(tmp_path: Path) -> None:

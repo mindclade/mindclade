@@ -2,33 +2,81 @@
   "mindclade::outer_product_mean": [
     {
       "arguments": {
+        "architecture": "sm90a",
         "batch_size": 1,
         "dtype": "float16",
         "left_channels": 64,
-        "nodes": 32,
+        "node_count": 32,
         "right_channels": 64,
-        "sequence_length": 64,
-        "threads": 128
+        "source_count": 64,
+        "threads": 256
       },
       "name": "b1_s64_n32_cl64_cr64_fp16"
+    },
+    {
+      "arguments": {
+        "architecture": "sm90a",
+        "batch_size": 1,
+        "dtype": "bfloat16",
+        "left_channels": 64,
+        "node_count": 32,
+        "right_channels": 64,
+        "source_count": 64,
+        "threads": 256
+      },
+      "name": "b1_s64_n32_cl64_cr64_bf16"
     }
   ],
   "mindclade::pair_weighted_average": [
     {
       "arguments": {
+        "architecture": "sm90a",
         "batch_size": 1,
-        "block_sources": 64,
         "channels": 64,
         "dtype": "float16",
         "heads": 8,
         "mask_dtype": "float32",
-        "num_residues": 64,
-        "threads": 128
+        "node_count": 64,
+        "threads": 256
       },
       "name": "b1_n64_h8_c64_fp16"
+    },
+    {
+      "arguments": {
+        "architecture": "sm90a",
+        "batch_size": 1,
+        "channels": 64,
+        "dtype": "bfloat16",
+        "heads": 8,
+        "mask_dtype": "float32",
+        "node_count": 64,
+        "threads": 256
+      },
+      "name": "b1_n64_h8_c64_bf16"
     }
   ],
   "mindclade::transition": [
+    {
+      "arguments": {
+        "architecture": "sm90a",
+        "batch_size": 1,
+        "block_k": 32,
+        "block_m": 64,
+        "block_n": 64,
+        "capability_digest": "sha256:1e229c8e8af17e9ff8c9477357b5e9096eec4af01447634484ca9ff7f2924356",
+        "dtype": "float16",
+        "hidden_channels": 512,
+        "mask_dtype": "float32",
+        "num_stages": 2,
+        "output_channels": 128,
+        "raster_order": "row",
+        "raster_panel": 8,
+        "rows": 147456,
+        "shared_layout": "wgmma",
+        "threads": 128
+      },
+      "name": "pair_b1_r147456_h512_c128_fp16"
+    },
     {
       "arguments": {
         "architecture": "sm90a",
@@ -58,6 +106,27 @@
         "block_m": 64,
         "block_n": 64,
         "capability_digest": "sha256:1e229c8e8af17e9ff8c9477357b5e9096eec4af01447634484ca9ff7f2924356",
+        "dtype": "float16",
+        "hidden_channels": 1536,
+        "mask_dtype": "float32",
+        "num_stages": 3,
+        "output_channels": 384,
+        "raster_order": "row",
+        "raster_panel": 8,
+        "rows": 768,
+        "shared_layout": "wgmma",
+        "threads": 128
+      },
+      "name": "single_b1_r768_h1536_c384_fp16"
+    },
+    {
+      "arguments": {
+        "architecture": "sm90a",
+        "batch_size": 1,
+        "block_k": 32,
+        "block_m": 64,
+        "block_n": 64,
+        "capability_digest": "sha256:1e229c8e8af17e9ff8c9477357b5e9096eec4af01447634484ca9ff7f2924356",
         "dtype": "bfloat16",
         "hidden_channels": 1536,
         "mask_dtype": "float32",
@@ -75,6 +144,7 @@
   "mindclade::triangle_attention": [
     {
       "arguments": {
+        "architecture": "sm90a",
         "batch": 1,
         "dtype": "float16",
         "head_dim": 32,
@@ -86,6 +156,19 @@
     },
     {
       "arguments": {
+        "architecture": "sm90a",
+        "batch": 1,
+        "dtype": "bfloat16",
+        "head_dim": 32,
+        "heads": 4,
+        "n": 32,
+        "threads": 64
+      },
+      "name": "b1_n32_h4_d32_bf16"
+    },
+    {
+      "arguments": {
+        "architecture": "sm90a",
         "batch": 1,
         "dtype": "float16",
         "head_dim": 32,
@@ -97,6 +180,31 @@
     },
     {
       "arguments": {
+        "architecture": "sm90a",
+        "batch": 1,
+        "dtype": "bfloat16",
+        "head_dim": 32,
+        "heads": 8,
+        "n": 64,
+        "threads": 128
+      },
+      "name": "b1_n64_h8_d32_bf16"
+    },
+    {
+      "arguments": {
+        "architecture": "sm90a",
+        "batch": 1,
+        "dtype": "float16",
+        "head_dim": 64,
+        "heads": 8,
+        "n": 128,
+        "threads": 128
+      },
+      "name": "b1_n128_h8_d64_fp16"
+    },
+    {
+      "arguments": {
+        "architecture": "sm90a",
         "batch": 1,
         "dtype": "bfloat16",
         "head_dim": 64,
@@ -108,19 +216,33 @@
     },
     {
       "arguments": {
+        "architecture": "sm90a",
         "batch": 2,
-        "dtype": "float32",
+        "dtype": "float16",
         "head_dim": 64,
         "heads": 8,
         "n": 64,
         "threads": 128
       },
-      "name": "b2_n64_h8_d64_fp32"
+      "name": "b2_n64_h8_d64_fp16"
+    },
+    {
+      "arguments": {
+        "architecture": "sm90a",
+        "batch": 2,
+        "dtype": "bfloat16",
+        "head_dim": 64,
+        "heads": 8,
+        "n": 64,
+        "threads": 128
+      },
+      "name": "b2_n64_h8_d64_bf16"
     }
   ],
   "mindclade::triangle_multiplication": [
     {
       "arguments": {
+        "architecture": "sm90a",
         "batch": 1,
         "block_channels": 64,
         "channels": 64,
@@ -133,6 +255,20 @@
     },
     {
       "arguments": {
+        "architecture": "sm90a",
+        "batch": 1,
+        "block_channels": 64,
+        "channels": 64,
+        "dtype": "bfloat16",
+        "outgoing": false,
+        "residues": 64,
+        "threads": 128
+      },
+      "name": "b1_n64_c64_incoming_bf16"
+    },
+    {
+      "arguments": {
+        "architecture": "sm90a",
         "batch": 1,
         "block_channels": 64,
         "channels": 64,
@@ -142,6 +278,19 @@
         "threads": 128
       },
       "name": "b1_n64_c64_outgoing_fp16"
+    },
+    {
+      "arguments": {
+        "architecture": "sm90a",
+        "batch": 1,
+        "block_channels": 64,
+        "channels": 64,
+        "dtype": "bfloat16",
+        "outgoing": true,
+        "residues": 64,
+        "threads": 128
+      },
+      "name": "b1_n64_c64_outgoing_bf16"
     }
   ]
 }

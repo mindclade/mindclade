@@ -100,16 +100,30 @@ from .launch import DeterminismClass, LaunchContract
 from .numerics import NumericalEnvelope, TensorTolerance
 from .output import ContractModel, InitializationSpec, OutputSpec
 from .program_group import (
+    ProgramArtifactBoundary,
+    ProgramBindingSource,
+    ProgramBindingSpec,
+    ProgramEntryABI,
     ProgramGroupSpec,
     ProgramNodeSpec,
+    ProgramParameterKind,
+    ProgramParameterSpec,
+    ProgramReturnABI,
+    ProgramSelectorBinding,
+    ScalarABIType,
     WorkspaceAccess,
     WorkspaceLifetime,
     WorkspaceSpec,
-    WorkspaceUseSpec,
 )
 from .qualification import QualifiedCapability
 from .schedule import ScheduleSpec, SpecializationSpec
-from .workload import ScalarValue, WorkloadSpec
+from .workload import (
+    RuntimeWorkloadSpec,
+    ScalarValue,
+    WorkloadAttributeBinding,
+    WorkloadDimensionBinding,
+    WorkloadSpec,
+)
 
 __all__ = (
     "Add",
@@ -179,15 +193,25 @@ __all__ = (
     "Or",
     "OutputSpec",
     "InitializationSpec",
+    "ProgramArtifactBoundary",
+    "ProgramBindingSource",
+    "ProgramBindingSpec",
+    "ProgramEntryABI",
     "ProgramGroupSpec",
     "ProgramNodeSpec",
+    "ProgramParameterKind",
+    "ProgramParameterSpec",
+    "ProgramReturnABI",
+    "ProgramSelectorBinding",
     "QualifiedCapability",
     "RankRef",
     "RoundUp",
     "RuntimeCompatibility",
+    "RuntimeWorkloadSpec",
     "SameAsInputDType",
     "SameAsInputDevice",
     "ScalarRef",
+    "ScalarABIType",
     "ScalarType",
     "ScalarValue",
     "ScheduleSpec",
@@ -204,10 +228,11 @@ __all__ = (
     "TensorCapabilityConstraint",
     "TensorTolerance",
     "WorkloadSpec",
+    "WorkloadAttributeBinding",
+    "WorkloadDimensionBinding",
     "WorkspaceSpec",
     "WorkspaceAccess",
     "WorkspaceLifetime",
-    "WorkspaceUseSpec",
     "canonical_data",
     "canonical_json",
     "content_digest",

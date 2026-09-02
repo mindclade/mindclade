@@ -68,6 +68,7 @@
 /tests/ @mindclade/developer-platform @mindclade/security
 /third_party/ @mindclade/security @mindclade/developer-platform
 /kernels/native/ @mindclade/ml-systems
+/kernels/native/stable_abi/tensor_bridge.h @mindclade/ml-systems
 /kernels/pairformer/ @mindclade/ml-systems
 
 # Architecture, security, and foundational domain decisions.
@@ -79,3 +80,10 @@
 /docs/adr/0007-training-state-progress-and-checkpoint.md @mindclade/ml-systems @mindclade/architecture
 /SECURITY.md @mindclade/security
 /tools/licenses/ @mindclade/security @mindclade/developer-platform
+/docs/adr/0016-pairformer-native-kernel-platform-wave6-source-activation.md @mindclade/architecture @mindclade/ml-systems @mindclade/security
+/docs/adr/0017-jit-06-outer-product-mean-sm90a-sm100a.md @mindclade/architecture @mindclade/ml-systems @mindclade/security
+/docs/adr/0018-jit-06-pair-weighted-average-sm90a-sm100a.md @mindclade/architecture @mindclade/ml-systems @mindclade/security
+/docs/adr/0019-jit-06-transition-sm90a-sm100a.md @mindclade/architecture @mindclade/ml-systems @mindclade/security
+/docs/adr/0020-jit-06-triangle-attention-sm90a-sm100a.md @mindclade/architecture @mindclade/ml-systems @mindclade/security
+/docs/adr/0021-jit-06-triangle-multiplication-sm90a-sm100a.md @mindclade/architecture @mindclade/ml-systems @mindclade/security
+/docs/adr/0022-native-signed-qualification-and-production-admission-source-activation.md @mindclade/architecture @mindclade/ml-systems @mindclade/security

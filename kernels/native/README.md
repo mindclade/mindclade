@@ -8,9 +8,9 @@ Proprietary and confidential. Unauthorized use, copying, or distribution is proh
 Status: TARGET. Lifecycle: proposed. Activation: Wave 6 through JIT-06.
 Production authority: false.
 
-This document describes the implemented manifest-v2 infrastructure. The
-manifest-v3 forward/backward design is specified separately in `MIGRATION.md`.
-Future behavior is not presented here as current behavior.
+This document describes the implemented manifest-v4 infrastructure. The
+broader kernel-platform architecture and migration history are specified in
+`MIGRATION.md`. Future behavior is not presented here as current behavior.
 
 The source inventory contains five declared, unqualified TileLang CUDA
 implementations: `outer_product_mean`, `pair_weighted_average`,
@@ -42,7 +42,7 @@ Other non-negotiable properties are:
 - unqualified source and build receipts never grant production authority;
 - a native bundle is verified before loading and reconciled against its manifest after loading.
 
-## Implemented manifest-v2 flow
+## Implemented manifest-v4 flow
 
 ```text
 kernels/<family>/<operation>/tilelang.py
@@ -121,7 +121,7 @@ and test entries. The tables below describe their implemented purpose.
 |---|---|---|
 | `README.md` | Architecture, authority, flow, build modes, and file reference for the subsystem. | Edit when the implemented subsystem changes. |
 | `IMPLEMENTATION_STATUS.md` | Evidence ledger separating implemented source controls from unqualified or proposed behavior. | Edit with evidence-bearing changes. |
-| `MIGRATION.md` | Reviewed manifest-v3 target contract and migration gates from implemented manifest v2. | Edit when the approved target design changes. |
+| `MIGRATION.md` | Reviewed kernel-platform contract, terminology, and migration gates through the implemented manifest-v4 boundary. | Edit when the approved target design changes. |
 | `component.yaml` | Machine-readable lifecycle, ownership, activation, authority, and readiness metadata. | Edit only with matching governance changes. |
 | `CMakeLists.txt` | Subordinate schema packaging and optional immutable GPU-artifact intake. | Edit carefully; it is not the dependency authority. |
 | `BUILD.bazel` | Repository build graph, explicit operation source inventory, codegen targets, policy inputs, and test suites. | Edit with source-inventory or build-graph changes. |
@@ -143,8 +143,8 @@ target policies.
 |---|---|
 | `codegen/__init__.py` | Import-safe package marker. |
 | `codegen/discover.py` | Validates only explicitly declared operation sources and extracts one literal `@mindclade_kernel` declaration from each source through the Python AST. |
-| `codegen/schema.py` | Parses the deliberately narrow manifest-v2 schema subset: `Tensor`, `float`, `int`, and `bool` arguments with one `Tensor` return. |
-| `codegen/generate.py` | Canonically orders discovered specs and renders the six generated registration, manifest, CMake, Bazel, and Python outputs. |
+| `codegen/schema.py` | Parses the supported semantic/provider PyTorch schema subset into deterministic named arguments and returns. |
+| `codegen/generate.py` | Canonically orders discovered specs and renders the generated registration, launcher-plan, capability-table, manifest, CMake, Bazel, and Python outputs. |
 
 Discovery neither imports operation code nor initializes CUDA or TileLang. A
 declared source must be exactly
@@ -158,7 +158,7 @@ Every file in this directory is derived and must not be hand-edited.
 | File | Implemented purpose |
 |---|---|
 | `generated/__init__.py` | Package marker for committed generated Python output. |
-| `generated/native_ops.json` | Canonical manifest-v2 operator inventory, source digests, generator identity, and semantic digest. |
+| `generated/native_ops.json` | Canonical manifest-v4 semantic/provider inventory, callable plans, source digests, generator identity, and semantic digest. |
 | `generated/registration.generated.cpp` | Defines public schemas with `STABLE_TORCH_LIBRARY(mindclade, m)`. |
 | `generated/operation_registry.generated.cpp` | Declares exact C-linkage launch symbols, provides Stable ABI wrappers, and binds them to the CUDA dispatch key. |
 | `generated/python_registration_generated.py` | Explicitly imports and registers operation-local fake and autograd callables. |
@@ -172,9 +172,12 @@ linkage fixes symbol names; it is not a language-neutral C ABI.
 
 | File | Implemented purpose |
 |---|---|
-| `manifests/native_ops.schema.json` | JSON Schema for the exact generated manifest-v2 format and locality, namespace, backend, and no-runtime-compilation invariants. |
+| `manifests/native_ops.schema.json` | JSON Schema for the exact generated manifest-v4 format and locality, callable ABI, namespace, backend, and no-runtime-compilation invariants. |
 | `manifests/benchmark.schema.json` | Contract for benchmark evidence candidates. |
 | `manifests/qualification.schema.json` | Contract for qualification evidence candidates. |
+| `manifests/qualification_release.schema.json` | Exact immutable K4/K5, revocation, and rollback receipt payload contract. |
+| `manifests/qualified_capability_index.schema.json` | Exact detached-Ed25519 signed qualified-index contract and empty source-state contract. |
+| `manifests/qualified_capability_index.json` | Empty, unsigned, unqualified source index; it cannot authorize loading. |
 | `manifests/performance_policy.json` | Unmeasured baseline state and post-promotion regression policy. |
 | `manifests/tilelang_profiles.sm90.json` | Bounded, unqualified SM90 specialization inputs for all five declared operations. |
 | `manifests/tilelang_profiles.sm100.json` | Separate bounded, unqualified SM100 specialization inputs; separation is not independent tuning evidence. |
@@ -210,7 +213,7 @@ own qualification; it is not silently prohibited or silently accepted.
 |---|---|
 | `tilelang/README.md` | Documents the offline TileLang source and compilation boundary. |
 | `tilelang/__init__.py` | Import-safe package marker. |
-| `tilelang/model.py` | Defines manifest-v2 `KernelSpec`, `CallableRef`, and current registered/not-supported autograd policy validation. |
+| `tilelang/model.py` | Provides the build-plane TileLang model and manifest helpers without becoming an operation-declaration authority. |
 | `tilelang/decorator.py` | Validates and attaches non-authoritative developer metadata when an operation module is deliberately imported. |
 | `tilelang/registry.py` | Deterministically validates a supplied set of specs; it does not discover files. |
 | `tilelang/targets.py` | Defines immutable portable, SM90/SM90a, and SM100/SM100a capability contracts and generates their semantic manifest. |
@@ -228,8 +231,9 @@ Production discovery reads its literal arguments from the AST.
 |---|---|
 | `python/__init__.py` | Exposes the verified bundle descriptor, trust/error types, and `load_native_library`; it exposes no operator aliases. |
 | `python/loader.py` | Validates bounded bundle paths, digests, revision and plan identity, external signature/trust/revocation decision, then loads once and reconciles exact dispatcher state. |
+| `python/capability_index.py` | Verifies explicit Ed25519 trust roots, immutable qualified indexes, revocations, rollbacks, and exact deterministic pre-load selection. It cannot authorize a nonempty native table by itself. |
 | `python/registration.py` | Imports only the packaged generated registrar and runs it idempotently. |
-| `python/qualification.py` | Selects exact offline profiles/receipts and exercises an already-loaded CUDA operator to produce unsigned qualification evidence candidates. |
+| `python/qualification.py` | Preserves unsigned CUDA evidence candidates and defines immutable K4/K5/revocation/rollback receipts plus protected-lane signing helpers. CPU tests use test-only evidence and never establish K4/K5. |
 | `python/reference_runtime.py` | Explicit environment-gated, process-isolated development runtime that registers the four PyTorch references in the same dispatcher namespace. |
 
 The loader accepts an explicit `NativeBundleDescriptor`. The environment
@@ -256,6 +260,7 @@ The reference runtime and a native bundle cannot coexist in one process.
 | `tests/test_opcheck.py` | Verifies declared inventory and dispatcher reconciliation requirements; it does not claim actual GPU `opcheck` qualification. |
 | `tests/test_policy.py` | Enforces lifecycle, namespace, build/test authority, profile coverage, and zero-production claims. |
 | `tests/test_qualification.py` | Verifies qualification configuration, exact profile/artifact selection, evidence shape, and fail-closed hardware requirements. |
+| `tests/test_capability_index.py` | Verifies content identity, explicit Ed25519 trust, exact envelope selection, atomic REQUIRED artifacts, revocation/rollback, schemas, and test-only non-promotion. |
 | `tests/test_reference_runtime.py` | Verifies explicit reference-runtime gating, operation behavior, and process isolation. |
 | `tests/test_schema_manifest.py` | Validates the generated operator manifest against its JSON Schema. |
 
@@ -264,7 +269,7 @@ stream, graph-capture, determinism, and latency evidence are produced only by
 the qualification path on the intended GPU. Source tests do not substitute for
 that evidence.
 
-## Adding an operation under manifest v2
+## Adding an operation under manifest v4
 
 An operation declaration alone is necessary but not sufficient for a shipped
 kernel. The complete source workflow is:
@@ -308,9 +313,10 @@ unqualified and do not establish production performance.
 ## Kernel Platform Constitution
 
 The approved target architecture is defined by the **Kernel Platform v3
-constitution** in [MIGRATION.md](MIGRATION.md). The current implementation is
-still the manifest-v2, operation-local `tilelang.py` system unless a capability
-is explicitly marked otherwise in [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md).
+constitution** in [MIGRATION.md](MIGRATION.md). The current declaration boundary
+is the manifest-v4, operation-local `spec.py` system; optimized mathematics and
+builders remain in `tilelang.py`. Capability status is recorded separately in
+[IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md).
 
 The final terminology is:
 

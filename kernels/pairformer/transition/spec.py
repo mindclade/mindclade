@@ -1,242 +1,414 @@
-# Copyright (c) 2026 Mindclade, LLC. All Rights Reserved.
-# Mindclade Proprietary and Confidential.
-# SPDX-License-Identifier: LicenseRef-Mindclade-Proprietary
-
-"""Declarative integration contract for Pairformer transition."""
+"""Declarative native contract for Pairformer SwiGLU transition."""
 
 from kernels.api import (
-    AutogradPolicy, CapabilityEnvelope, CompositeAutogradSpec, DeviceRef,
-    DimensionConstraint, DimRef, DTypeRef, EffectSpec, Eq, ForwardSpec,
-    GradientSpec, ImplementationSpec, ImplementationTier, IntLiteral,
-    KernelSpec, LaunchContract, DeterminismClass, OutputSpec, ShapeTuple,
+    RuntimeWorkloadSpec, WorkloadDimensionBinding,
+    And,
+    AutogradPolicy,
+    BackwardArgumentBinding,
+    BackwardArgumentSource,
+    BackwardSpec,
+    CapabilityEnvelope,
+    ConcatShape,
+    DeterminismClass,
+    DeviceRef,
+    DimensionConstraint,
+    DimRef,
+    DTypeRef,
+    EffectSpec,
+    Eq,
+    ForwardSpec,
+    GradientSpec,
+    ImplementationSpec,
+    ImplementationTier,
+    IntLiteral,
+    KernelSpec,
+    LaunchContract,
+    MissingGradientPolicy,
+    Or,
+    OutputSpec,
+    ProgramGroupSpec,
+    ProgramArtifactBoundary,
+    ProgramBindingSource,
+    ProgramBindingSpec,
+    ProgramEntryABI,
+    ProgramParameterKind,
+    ProgramParameterSpec,
+    WorkspaceAccess,
+    ShapeOf,
+    WorkspaceLifetime,
+    WorkspaceSpec,
+    ProgramReturnABI,
+    ScalarABIType,
+    ProgramNodeSpec,
+    RankRef,
+    ShapePrefix,
+    ShapeTuple,
     TensorCapabilityConstraint,
 )
 
-KERNEL_SPEC = KernelSpec(
-    name="transition", namespace="mindclade", family="pairformer",
+
+KERNEL_SPEC: KernelSpec = KernelSpec(
+    name="transition",
+    namespace="mindclade",
+    family="pairformer",
     source="pairformer/transition/spec.py",
-    operator_schema="transition(Tensor gate, Tensor value, Tensor output_weight, Tensor output_bias, Tensor mask) -> Tensor output",
-    facade_outputs=("output",), fake=None,
-    forward=ForwardSpec(
-        schema="_transition_fwd(Tensor gate, Tensor value, Tensor output_weight, Tensor output_bias, Tensor mask) -> Tensor output",
-        builder="kernels.pairformer.transition.tilelang:build_tilelang_program",
-        symbol="mindclade_tilelang_transition_fwd_launch",
-        outputs=(OutputSpec(
-            name="output", shape=ShapeTuple(dimensions=(
-                DimRef(argument="gate", axis=0),
-                DimRef(argument="gate", axis=1),
-                DimRef(argument="output_weight", axis=1),
-            )),
-            dtype=DTypeRef(argument="gate"), device=DeviceRef(argument="gate"),
-            semantic_axes=("batch", "row", "channel"), visible_in_facade=True, saved_for_backward=False,
-        ),),
+    operator_schema=(
+        "transition(Tensor gate, Tensor value, Tensor output_weight, "
+        "Tensor output_bias, Tensor mask) -> (Tensor output, Tensor pre_mask_output)"
     ),
-    backward=None, autograd_policy=AutogradPolicy.COMPOSITE,
-    composite=CompositeAutogradSpec(
-        decomposition="kernels.pairformer.transition.reference:transition_reference",
-        source_digest="sha256:66ee4727de452b204913aea9afedf38efaf7b744c18d7eaa3bc4d723454a49a2", runtime_envelope="pytorch>=2.10,<2.11",
+    facade_outputs=("output",),
+    fake=None,
+    forward=ForwardSpec(
+        schema=(
+            "_transition_fwd(Tensor gate, Tensor value, Tensor output_weight, "
+            "Tensor output_bias, Tensor mask) -> "
+            "(Tensor output, Tensor pre_mask_output)"
+        ),
+        builder="kernels.pairformer.transition.tilelang:build_forward",
+        symbol="mindclade_tilelang_transition_fwd_launch",
+        outputs=(
+            OutputSpec(
+                name="output",
+                shape=ConcatShape(
+                    parts=(
+                        ShapePrefix(argument="gate", trailing_rank=1),
+                        ShapeTuple(
+                            dimensions=(DimRef(argument="output_weight", axis=1),)
+                        ),
+                    )
+                ),
+                dtype=DTypeRef(argument="gate"),
+                device=DeviceRef(argument="gate"),
+                semantic_axes=("batch", "row", "output_channel"),
+                visible_in_facade=True,
+                saved_for_backward=False,
+            ),
+            OutputSpec(
+                name="pre_mask_output",
+                shape=ConcatShape(
+                    parts=(
+                        ShapePrefix(argument="gate", trailing_rank=1),
+                        ShapeTuple(
+                            dimensions=(DimRef(argument="output_weight", axis=1),)
+                        ),
+                    )
+                ),
+                dtype=DTypeRef(argument="gate"),
+                device=DeviceRef(argument="gate"),
+                semantic_axes=("batch", "row", "output_channel"),
+                visible_in_facade=False,
+                saved_for_backward=True,
+            ),
+        ),
+        program_group=ProgramGroupSpec(
+            nodes=(
+            ProgramNodeSpec(
+                name='transition_forward',
+                builder='kernels.pairformer.transition.tilelang:build_forward_program',
+                symbol='mindclade_tilelang_transition_transition_forward_launch',
+                entry_symbol="call",
+                entry_abi=ProgramEntryABI.TILELANG_0_1_13_HOST_CALL,
+                parameters=(
+                    ProgramParameterSpec(position=0, name='gate', kind=ProgramParameterKind.TENSOR, access=WorkspaceAccess.READ, shape=ShapeOf(argument='gate'), dtype=DTypeRef(argument='gate'), device=DeviceRef(argument='gate')),
+                    ProgramParameterSpec(position=1, name='value', kind=ProgramParameterKind.TENSOR, access=WorkspaceAccess.READ, shape=ShapeOf(argument='value'), dtype=DTypeRef(argument='value'), device=DeviceRef(argument='value')),
+                    ProgramParameterSpec(position=2, name='output_weight', kind=ProgramParameterKind.TENSOR, access=WorkspaceAccess.READ, shape=ShapeOf(argument='output_weight'), dtype=DTypeRef(argument='output_weight'), device=DeviceRef(argument='output_weight')),
+                    ProgramParameterSpec(position=3, name='output_bias', kind=ProgramParameterKind.TENSOR, access=WorkspaceAccess.READ, shape=ShapeOf(argument='output_bias'), dtype=DTypeRef(argument='output_bias'), device=DeviceRef(argument='output_bias')),
+                    ProgramParameterSpec(position=4, name='mask', kind=ProgramParameterKind.TENSOR, access=WorkspaceAccess.READ, shape=ShapeOf(argument='mask'), dtype=DTypeRef(argument='mask'), device=DeviceRef(argument='mask')),
+                    ProgramParameterSpec(position=5, name='output', kind=ProgramParameterKind.TENSOR, access=WorkspaceAccess.WRITE, shape=ShapeTuple(dimensions=(DimRef(argument="gate", axis=0), DimRef(argument="gate", axis=1), DimRef(argument="output_weight", axis=1))), dtype=DTypeRef(argument='gate'), device=DeviceRef(argument='gate')),
+                    ProgramParameterSpec(position=6, name='pre_mask_output', kind=ProgramParameterKind.TENSOR, access=WorkspaceAccess.WRITE, shape=ShapeTuple(dimensions=(DimRef(argument="gate", axis=0), DimRef(argument="gate", axis=1), DimRef(argument="output_weight", axis=1))), dtype=DTypeRef(argument='gate'), device=DeviceRef(argument='gate')),
+                    ProgramParameterSpec(position=7, name='stream', kind=ProgramParameterKind.STREAM, access=WorkspaceAccess.READ),
+                ),
+                bindings=(
+                    ProgramBindingSpec(parameter='gate', source=ProgramBindingSource.OPERATOR_ARGUMENT, source_name='gate'),
+                    ProgramBindingSpec(parameter='value', source=ProgramBindingSource.OPERATOR_ARGUMENT, source_name='value'),
+                    ProgramBindingSpec(parameter='output_weight', source=ProgramBindingSource.OPERATOR_ARGUMENT, source_name='output_weight'),
+                    ProgramBindingSpec(parameter='output_bias', source=ProgramBindingSource.OPERATOR_ARGUMENT, source_name='output_bias'),
+                    ProgramBindingSpec(parameter='mask', source=ProgramBindingSource.OPERATOR_ARGUMENT, source_name='mask'),
+                    ProgramBindingSpec(parameter='output', source=ProgramBindingSource.PROVIDER_OUTPUT, source_name='output'),
+                    ProgramBindingSpec(parameter='pre_mask_output', source=ProgramBindingSource.PROVIDER_OUTPUT, source_name='pre_mask_output'),
+                    ProgramBindingSpec(parameter='stream', source=ProgramBindingSource.CURRENT_STREAM),
+             
+             
+             
+             
+            )
+            ,
+                return_abi=ProgramReturnABI.STATUS_I32_ZERO_SUCCESS,
+                artifact_boundary=ProgramArtifactBoundary.NODE_CONTENT_ADDRESSED_DSO,
+            ),
+            ),
+        ),
+    ),
+    backward=BackwardSpec(
+        schema=(
+            "_transition_bwd(Tensor grad_output, Tensor gate, Tensor value, "
+            "Tensor output_weight, Tensor mask, "
+            "Tensor pre_mask_output, bool need_gate_grad, bool need_value_grad, "
+            "bool need_weight_grad, bool need_bias_grad, bool need_mask_grad) -> "
+            "(Tensor? grad_gate, Tensor? grad_value, Tensor? grad_weight, "
+            "Tensor? grad_bias, Tensor? grad_mask)"
+        ),
+        builder="kernels.pairformer.transition.tilelang:build_backward",
+        symbol="mindclade_tilelang_transition_bwd_launch",
+        argument_bindings=(
+            BackwardArgumentBinding(provider_argument="grad_output", source=BackwardArgumentSource.OUTPUT_GRADIENT, source_name="output", missing=MissingGradientPolicy.ERROR),
+            BackwardArgumentBinding(provider_argument="gate", source=BackwardArgumentSource.OPERATOR_ARGUMENT, source_name="gate"),
+            BackwardArgumentBinding(provider_argument="value", source=BackwardArgumentSource.OPERATOR_ARGUMENT, source_name="value"),
+            BackwardArgumentBinding(provider_argument="output_weight", source=BackwardArgumentSource.OPERATOR_ARGUMENT, source_name="output_weight"),
+            BackwardArgumentBinding(provider_argument="mask", source=BackwardArgumentSource.OPERATOR_ARGUMENT, source_name="mask"),
+            BackwardArgumentBinding(provider_argument="pre_mask_output", source=BackwardArgumentSource.FORWARD_OUTPUT, source_name="pre_mask_output"),
+            BackwardArgumentBinding(provider_argument="need_gate_grad", source=BackwardArgumentSource.NEEDS_INPUT_GRAD, source_name="gate"),
+            BackwardArgumentBinding(provider_argument="need_value_grad", source=BackwardArgumentSource.NEEDS_INPUT_GRAD, source_name="value"),
+            BackwardArgumentBinding(provider_argument="need_weight_grad", source=BackwardArgumentSource.NEEDS_INPUT_GRAD, source_name="output_weight"),
+            BackwardArgumentBinding(provider_argument="need_bias_grad", source=BackwardArgumentSource.NEEDS_INPUT_GRAD, source_name="output_bias"),
+            BackwardArgumentBinding(provider_argument="need_mask_grad", source=BackwardArgumentSource.NEEDS_INPUT_GRAD, source_name="mask"),
+        ),
         gradients=(
-            GradientSpec(input_name="gate", output_name="grad_gate"),
-            GradientSpec(input_name="value", output_name="grad_value"),
-            GradientSpec(input_name="output_weight", output_name="grad_output_weight"),
-            GradientSpec(input_name="output_bias", output_name="grad_output_bias"),
+            GradientSpec(input_name="gate", output_name="grad_gate", shape=ShapeOf(argument="gate"), dtype=DTypeRef(argument="gate"), device=DeviceRef(argument="gate"), optional=True, accumulation_dtype="float32"),
+            GradientSpec(input_name="value", output_name="grad_value", shape=ShapeOf(argument="value"), dtype=DTypeRef(argument="value"), device=DeviceRef(argument="value"), optional=True, accumulation_dtype="float32"),
+            GradientSpec(input_name="output_weight", output_name="grad_weight", shape=ShapeOf(argument="output_weight"), dtype=DTypeRef(argument="output_weight"), device=DeviceRef(argument="output_weight"), optional=True, accumulation_dtype="float32"),
+            GradientSpec(input_name="output_bias", output_name="grad_bias", shape=ShapeTuple(dimensions=(DimRef(argument="output_weight", axis=1),)), dtype=DTypeRef(argument="output_weight"), device=DeviceRef(argument="output_weight"), optional=True, accumulation_dtype="float32"),
+            GradientSpec(input_name="mask", output_name="grad_mask", shape=ShapeOf(argument="mask"), dtype=DTypeRef(argument="mask"), device=DeviceRef(argument="mask"), optional=True, accumulation_dtype="float32"),
         ),
         supports_double_backward=False,
-        setup_context="kernels.pairformer.transition.reference:setup_context",
-        backward="kernels.pairformer.transition.reference:composite_backward",
+        program_group=ProgramGroupSpec(
+            nodes=(
+            ProgramNodeSpec(
+                name='grad_gate',
+                builder='kernels.pairformer.transition.tilelang:build_grad_gate',
+                symbol='mindclade_tilelang_transition_grad_gate_launch',
+                entry_symbol="call",
+                entry_abi=ProgramEntryABI.TILELANG_0_1_13_HOST_CALL,
+                parameters=(
+                    ProgramParameterSpec(position=0, name='grad_output', kind=ProgramParameterKind.TENSOR, access=WorkspaceAccess.READ, shape=ShapeTuple(dimensions=(DimRef(argument="gate", axis=0), DimRef(argument="gate", axis=1), DimRef(argument="output_weight", axis=1))), dtype=DTypeRef(argument='gate'), device=DeviceRef(argument='gate')),
+                    ProgramParameterSpec(position=1, name='gate', kind=ProgramParameterKind.TENSOR, access=WorkspaceAccess.READ, shape=ShapeOf(argument='gate'), dtype=DTypeRef(argument='gate'), device=DeviceRef(argument='gate')),
+                    ProgramParameterSpec(position=2, name='value', kind=ProgramParameterKind.TENSOR, access=WorkspaceAccess.READ, shape=ShapeOf(argument='value'), dtype=DTypeRef(argument='value'), device=DeviceRef(argument='value')),
+                    ProgramParameterSpec(position=3, name='output_weight', kind=ProgramParameterKind.TENSOR, access=WorkspaceAccess.READ, shape=ShapeOf(argument='output_weight'), dtype=DTypeRef(argument='output_weight'), device=DeviceRef(argument='output_weight')),
+                    ProgramParameterSpec(position=4, name='mask', kind=ProgramParameterKind.TENSOR, access=WorkspaceAccess.READ, shape=ShapeOf(argument='mask'), dtype=DTypeRef(argument='mask'), device=DeviceRef(argument='mask')),
+                    ProgramParameterSpec(position=5, name='grad_gate', kind=ProgramParameterKind.TENSOR, access=WorkspaceAccess.WRITE, shape=ShapeOf(argument='gate'), dtype=DTypeRef(argument='gate'), device=DeviceRef(argument='gate'), optional=True),
+                    ProgramParameterSpec(position=6, name='need_gate_grad', kind=ProgramParameterKind.SCALAR, access=WorkspaceAccess.READ, scalar_type=ScalarABIType.BOOL),
+                    ProgramParameterSpec(position=7, name='stream', kind=ProgramParameterKind.STREAM, access=WorkspaceAccess.READ),
+                ),
+                bindings=(
+                    ProgramBindingSpec(parameter='grad_output', source=ProgramBindingSource.OUTPUT_GRADIENT, source_name='output'),
+                    ProgramBindingSpec(parameter='gate', source=ProgramBindingSource.OPERATOR_ARGUMENT, source_name='gate'),
+                    ProgramBindingSpec(parameter='value', source=ProgramBindingSource.OPERATOR_ARGUMENT, source_name='value'),
+                    ProgramBindingSpec(parameter='output_weight', source=ProgramBindingSource.OPERATOR_ARGUMENT, source_name='output_weight'),
+                    ProgramBindingSpec(parameter='mask', source=ProgramBindingSource.OPERATOR_ARGUMENT, source_name='mask'),
+                    ProgramBindingSpec(parameter='grad_gate', source=ProgramBindingSource.PROVIDER_OUTPUT, source_name='grad_gate'),
+                    ProgramBindingSpec(parameter='need_gate_grad', source=ProgramBindingSource.GRADIENT_REQUEST, source_name='gate'),
+                    ProgramBindingSpec(parameter='stream', source=ProgramBindingSource.CURRENT_STREAM),
+             
+             
+             
+             
+            )
+            ,
+                return_abi=ProgramReturnABI.STATUS_I32_ZERO_SUCCESS,
+                artifact_boundary=ProgramArtifactBoundary.NODE_CONTENT_ADDRESSED_DSO,
+            ),
+            ProgramNodeSpec(
+                name='grad_value',
+                builder='kernels.pairformer.transition.tilelang:build_grad_value',
+                symbol='mindclade_tilelang_transition_grad_value_launch',
+                entry_symbol="call",
+                entry_abi=ProgramEntryABI.TILELANG_0_1_13_HOST_CALL,
+                parameters=(
+                    ProgramParameterSpec(position=0, name='grad_output', kind=ProgramParameterKind.TENSOR, access=WorkspaceAccess.READ, shape=ShapeTuple(dimensions=(DimRef(argument="gate", axis=0), DimRef(argument="gate", axis=1), DimRef(argument="output_weight", axis=1))), dtype=DTypeRef(argument='gate'), device=DeviceRef(argument='gate')),
+                    ProgramParameterSpec(position=1, name='gate', kind=ProgramParameterKind.TENSOR, access=WorkspaceAccess.READ, shape=ShapeOf(argument='gate'), dtype=DTypeRef(argument='gate'), device=DeviceRef(argument='gate')),
+                    ProgramParameterSpec(position=2, name='output_weight', kind=ProgramParameterKind.TENSOR, access=WorkspaceAccess.READ, shape=ShapeOf(argument='output_weight'), dtype=DTypeRef(argument='output_weight'), device=DeviceRef(argument='output_weight')),
+                    ProgramParameterSpec(position=3, name='mask', kind=ProgramParameterKind.TENSOR, access=WorkspaceAccess.READ, shape=ShapeOf(argument='mask'), dtype=DTypeRef(argument='mask'), device=DeviceRef(argument='mask')),
+                    ProgramParameterSpec(position=4, name='grad_value', kind=ProgramParameterKind.TENSOR, access=WorkspaceAccess.WRITE, shape=ShapeOf(argument='value'), dtype=DTypeRef(argument='value'), device=DeviceRef(argument='value'), optional=True),
+                    ProgramParameterSpec(position=5, name='need_value_grad', kind=ProgramParameterKind.SCALAR, access=WorkspaceAccess.READ, scalar_type=ScalarABIType.BOOL),
+                    ProgramParameterSpec(position=6, name='stream', kind=ProgramParameterKind.STREAM, access=WorkspaceAccess.READ),
+                ),
+                bindings=(
+                    ProgramBindingSpec(parameter='grad_output', source=ProgramBindingSource.OUTPUT_GRADIENT, source_name='output'),
+                    ProgramBindingSpec(parameter='gate', source=ProgramBindingSource.OPERATOR_ARGUMENT, source_name='gate'),
+                    ProgramBindingSpec(parameter='output_weight', source=ProgramBindingSource.OPERATOR_ARGUMENT, source_name='output_weight'),
+                    ProgramBindingSpec(parameter='mask', source=ProgramBindingSource.OPERATOR_ARGUMENT, source_name='mask'),
+                    ProgramBindingSpec(parameter='grad_value', source=ProgramBindingSource.PROVIDER_OUTPUT, source_name='grad_value'),
+                    ProgramBindingSpec(parameter='need_value_grad', source=ProgramBindingSource.GRADIENT_REQUEST, source_name='value'),
+                    ProgramBindingSpec(parameter='stream', source=ProgramBindingSource.CURRENT_STREAM),
+             
+             
+             
+             
+            )
+            ,
+                return_abi=ProgramReturnABI.STATUS_I32_ZERO_SUCCESS,
+                artifact_boundary=ProgramArtifactBoundary.NODE_CONTENT_ADDRESSED_DSO,
+            ),
+            ProgramNodeSpec(
+                name='grad_weight',
+                builder='kernels.pairformer.transition.tilelang:build_grad_weight',
+                symbol='mindclade_tilelang_transition_grad_weight_launch',
+                entry_symbol="call",
+                entry_abi=ProgramEntryABI.TILELANG_0_1_13_HOST_CALL,
+                parameters=(
+                    ProgramParameterSpec(position=0, name='grad_output', kind=ProgramParameterKind.TENSOR, access=WorkspaceAccess.READ, shape=ShapeTuple(dimensions=(DimRef(argument="gate", axis=0), DimRef(argument="gate", axis=1), DimRef(argument="output_weight", axis=1))), dtype=DTypeRef(argument='gate'), device=DeviceRef(argument='gate')),
+                    ProgramParameterSpec(position=1, name='gate', kind=ProgramParameterKind.TENSOR, access=WorkspaceAccess.READ, shape=ShapeOf(argument='gate'), dtype=DTypeRef(argument='gate'), device=DeviceRef(argument='gate')),
+                    ProgramParameterSpec(position=2, name='value', kind=ProgramParameterKind.TENSOR, access=WorkspaceAccess.READ, shape=ShapeOf(argument='value'), dtype=DTypeRef(argument='value'), device=DeviceRef(argument='value')),
+                    ProgramParameterSpec(position=3, name='mask', kind=ProgramParameterKind.TENSOR, access=WorkspaceAccess.READ, shape=ShapeOf(argument='mask'), dtype=DTypeRef(argument='mask'), device=DeviceRef(argument='mask')),
+                    ProgramParameterSpec(position=4, name='grad_weight', kind=ProgramParameterKind.TENSOR, access=WorkspaceAccess.WRITE, shape=ShapeOf(argument='output_weight'), dtype=DTypeRef(argument='output_weight'), device=DeviceRef(argument='output_weight'), optional=True),
+                    ProgramParameterSpec(position=5, name='need_output_weight_grad', kind=ProgramParameterKind.SCALAR, access=WorkspaceAccess.READ, scalar_type=ScalarABIType.BOOL),
+                    ProgramParameterSpec(position=6, name='stream', kind=ProgramParameterKind.STREAM, access=WorkspaceAccess.READ),
+                ),
+                bindings=(
+                    ProgramBindingSpec(parameter='grad_output', source=ProgramBindingSource.OUTPUT_GRADIENT, source_name='output'),
+                    ProgramBindingSpec(parameter='gate', source=ProgramBindingSource.OPERATOR_ARGUMENT, source_name='gate'),
+                    ProgramBindingSpec(parameter='value', source=ProgramBindingSource.OPERATOR_ARGUMENT, source_name='value'),
+                    ProgramBindingSpec(parameter='mask', source=ProgramBindingSource.OPERATOR_ARGUMENT, source_name='mask'),
+                    ProgramBindingSpec(parameter='grad_weight', source=ProgramBindingSource.PROVIDER_OUTPUT, source_name='grad_weight'),
+                    ProgramBindingSpec(parameter='need_output_weight_grad', source=ProgramBindingSource.GRADIENT_REQUEST, source_name='output_weight'),
+                    ProgramBindingSpec(parameter='stream', source=ProgramBindingSource.CURRENT_STREAM),
+             
+             
+             
+             
+            )
+            ,
+                return_abi=ProgramReturnABI.STATUS_I32_ZERO_SUCCESS,
+                artifact_boundary=ProgramArtifactBoundary.NODE_CONTENT_ADDRESSED_DSO,
+            ),
+            ProgramNodeSpec(
+                name='grad_bias',
+                builder='kernels.pairformer.transition.tilelang:build_grad_bias',
+                symbol='mindclade_tilelang_transition_grad_bias_launch',
+                entry_symbol="call",
+                entry_abi=ProgramEntryABI.TILELANG_0_1_13_HOST_CALL,
+                parameters=(
+                    ProgramParameterSpec(position=0, name='grad_output', kind=ProgramParameterKind.TENSOR, access=WorkspaceAccess.READ, shape=ShapeTuple(dimensions=(DimRef(argument="gate", axis=0), DimRef(argument="gate", axis=1), DimRef(argument="output_weight", axis=1))), dtype=DTypeRef(argument='gate'), device=DeviceRef(argument='gate')),
+                    ProgramParameterSpec(position=1, name='mask', kind=ProgramParameterKind.TENSOR, access=WorkspaceAccess.READ, shape=ShapeOf(argument='mask'), dtype=DTypeRef(argument='mask'), device=DeviceRef(argument='mask')),
+                    ProgramParameterSpec(position=2, name='grad_bias', kind=ProgramParameterKind.TENSOR, access=WorkspaceAccess.WRITE, shape=ShapeOf(argument='output_bias'), dtype=DTypeRef(argument='output_bias'), device=DeviceRef(argument='output_bias'), optional=True),
+                    ProgramParameterSpec(position=3, name='need_output_bias_grad', kind=ProgramParameterKind.SCALAR, access=WorkspaceAccess.READ, scalar_type=ScalarABIType.BOOL),
+                    ProgramParameterSpec(position=4, name='stream', kind=ProgramParameterKind.STREAM, access=WorkspaceAccess.READ),
+                ),
+                bindings=(
+                    ProgramBindingSpec(parameter='grad_output', source=ProgramBindingSource.OUTPUT_GRADIENT, source_name='output'),
+                    ProgramBindingSpec(parameter='mask', source=ProgramBindingSource.OPERATOR_ARGUMENT, source_name='mask'),
+                    ProgramBindingSpec(parameter='grad_bias', source=ProgramBindingSource.PROVIDER_OUTPUT, source_name='grad_bias'),
+                    ProgramBindingSpec(parameter='need_output_bias_grad', source=ProgramBindingSource.GRADIENT_REQUEST, source_name='output_bias'),
+                    ProgramBindingSpec(parameter='stream', source=ProgramBindingSource.CURRENT_STREAM),
+             
+             
+             
+             
+            )
+            ,
+                return_abi=ProgramReturnABI.STATUS_I32_ZERO_SUCCESS,
+                artifact_boundary=ProgramArtifactBoundary.NODE_CONTENT_ADDRESSED_DSO,
+            ),
+            ProgramNodeSpec(
+                name='grad_mask',
+                builder='kernels.pairformer.transition.tilelang:build_grad_mask',
+                symbol='mindclade_tilelang_transition_grad_mask_launch',
+                entry_symbol="call",
+                entry_abi=ProgramEntryABI.TILELANG_0_1_13_HOST_CALL,
+                parameters=(
+                    ProgramParameterSpec(position=0, name='grad_output', kind=ProgramParameterKind.TENSOR, access=WorkspaceAccess.READ, shape=ShapeTuple(dimensions=(DimRef(argument="gate", axis=0), DimRef(argument="gate", axis=1), DimRef(argument="output_weight", axis=1))), dtype=DTypeRef(argument='gate'), device=DeviceRef(argument='gate')),
+                    ProgramParameterSpec(position=1, name='pre_mask_output', kind=ProgramParameterKind.TENSOR, access=WorkspaceAccess.READ, shape=ShapeTuple(dimensions=(DimRef(argument="gate", axis=0), DimRef(argument="gate", axis=1), DimRef(argument="output_weight", axis=1))), dtype=DTypeRef(argument='gate'), device=DeviceRef(argument='gate')),
+                    ProgramParameterSpec(position=2, name='grad_mask', kind=ProgramParameterKind.TENSOR, access=WorkspaceAccess.WRITE, shape=ShapeOf(argument='mask'), dtype=DTypeRef(argument='mask'), device=DeviceRef(argument='mask'), optional=True),
+                    ProgramParameterSpec(position=3, name='need_mask_grad', kind=ProgramParameterKind.SCALAR, access=WorkspaceAccess.READ, scalar_type=ScalarABIType.BOOL),
+                    ProgramParameterSpec(position=4, name='stream', kind=ProgramParameterKind.STREAM, access=WorkspaceAccess.READ),
+                ),
+                bindings=(
+                    ProgramBindingSpec(parameter='grad_output', source=ProgramBindingSource.OUTPUT_GRADIENT, source_name='output'),
+                    ProgramBindingSpec(parameter='pre_mask_output', source=ProgramBindingSource.FORWARD_OUTPUT, source_name='pre_mask_output'),
+                    ProgramBindingSpec(parameter='grad_mask', source=ProgramBindingSource.PROVIDER_OUTPUT, source_name='grad_mask'),
+                    ProgramBindingSpec(parameter='need_mask_grad', source=ProgramBindingSource.GRADIENT_REQUEST, source_name='mask'),
+                    ProgramBindingSpec(parameter='stream', source=ProgramBindingSource.CURRENT_STREAM),
+             
+             
+             
+             
+            )
+            ,
+                return_abi=ProgramReturnABI.STATUS_I32_ZERO_SUCCESS,
+                artifact_boundary=ProgramArtifactBoundary.NODE_CONTENT_ADDRESSED_DSO,
+            ),
+            ),
+        ),
+    ),
+    autograd_policy=AutogradPolicy.REQUIRED,
+    runtime_workload=RuntimeWorkloadSpec(
+        dimensions=(
+            WorkloadDimensionBinding(name="batch_size", value=DimRef(argument="gate", axis=0)),
+            WorkloadDimensionBinding(name="hidden_channels", value=DimRef(argument="gate", axis=2)),
+            WorkloadDimensionBinding(name="output_channels", value=DimRef(argument="output_weight", axis=1)),
+            WorkloadDimensionBinding(name="rows", value=DimRef(argument="gate", axis=1)),
+        ),
+        input_dtype=DTypeRef(argument="gate"),
+        layout="contiguous",
+        mode_selector=None,
+        attributes=(),
+        canonicalization_version=1,
+        version=1,
     ),
     effects=EffectSpec(),
-    launch=LaunchContract(graph_capture_safe=False, determinism=DeterminismClass.CONDITIONALLY_DETERMINISTIC),
+    launch=LaunchContract(
+        current_stream_only=True,
+        global_synchronization=False,
+        hidden_device_allocation=False,
+        graph_capture_safe=True,
+        determinism=DeterminismClass.DETERMINISTIC,
+    ),
 )
+
 
 IMPLEMENTATION_SPECS = (
     ImplementationSpec(
-        operation="mindclade::transition",
-        name="transition_sm90_pair_b1_r147456_h512_c128_bf16",
+        operation="transition",
+        name="transition_sm90a_sm100a_fp16_bf16_v1",
         family="pairformer",
         backend="tilelang",
-        builder="kernels.pairformer.transition.tilelang:build_tilelang_program",
+        builder="kernels.pairformer.transition.tilelang:build_forward",
         version=1,
         tier=ImplementationTier.SPECIALIZED,
-        requires=("cuda", "sm90a", "tilelang-0.1.13", "wgmma"),
+        requires=("cuda", "tilelang-0.1.13"),
         envelope=CapabilityEnvelope(
-            architectures=("sm90a",),
-            dtypes=("bfloat16",),
+            architectures=("sm90a", "sm100a"),
+            dtypes=("float16", "bfloat16"),
             layouts=("contiguous",),
-            modes=("pair_b1_r147456_h512_c128_bf16",),
+            modes=("pair_b1_r147456_h512_c128", "single_b1_r768_h1536_c384"),
             constraints=(
                 DimensionConstraint(
-                    predicate=Eq(lhs=DimRef(argument="gate", axis=0), rhs=IntLiteral(value=1)),
-                    code="GATE_BATCH_EXACT", message="gate batch dimension must equal 1",
-                ),
-                DimensionConstraint(
-                    predicate=Eq(lhs=DimRef(argument="gate", axis=1), rhs=IntLiteral(value=147456)),
-                    code="GATE_ROWS_EXACT", message="gate row dimension must equal 147456",
-                ),
-                DimensionConstraint(
-                    predicate=Eq(lhs=DimRef(argument="gate", axis=2), rhs=IntLiteral(value=512)),
-                    code="GATE_HIDDEN_EXACT", message="gate hidden dimension must equal 512",
-                ),
-                DimensionConstraint(
-                    predicate=Eq(lhs=DimRef(argument="value", axis=0), rhs=DimRef(argument="gate", axis=0)),
-                    code="VALUE_BATCH_MATCH", message="value batch dimension must match gate",
-                ),
-                DimensionConstraint(
-                    predicate=Eq(lhs=DimRef(argument="value", axis=1), rhs=DimRef(argument="gate", axis=1)),
-                    code="VALUE_ROWS_MATCH", message="value row dimension must match gate",
-                ),
-                DimensionConstraint(
-                    predicate=Eq(lhs=DimRef(argument="value", axis=2), rhs=DimRef(argument="gate", axis=2)),
-                    code="VALUE_HIDDEN_MATCH", message="value hidden dimension must match gate",
-                ),
-                DimensionConstraint(
-                    predicate=Eq(lhs=DimRef(argument="output_weight", axis=0), rhs=DimRef(argument="gate", axis=2)),
-                    code="WEIGHT_HIDDEN_MATCH", message="output weight hidden dimension must match gate",
-                ),
-                DimensionConstraint(
-                    predicate=Eq(lhs=DimRef(argument="output_weight", axis=1), rhs=IntLiteral(value=128)),
-                    code="WEIGHT_CHANNELS_EXACT", message="output weight channel dimension must equal 128",
-                ),
-                DimensionConstraint(
-                    predicate=Eq(lhs=DimRef(argument="output_bias", axis=0), rhs=DimRef(argument="output_weight", axis=1)),
-                    code="BIAS_CHANNELS_MATCH", message="output bias channels must match output weight",
-                ),
-                DimensionConstraint(
-                    predicate=Eq(lhs=DimRef(argument="mask", axis=0), rhs=DimRef(argument="gate", axis=0)),
-                    code="MASK_BATCH_MATCH", message="mask batch dimension must match gate",
-                ),
-                DimensionConstraint(
-                    predicate=Eq(lhs=DimRef(argument="mask", axis=1), rhs=DimRef(argument="gate", axis=1)),
-                    code="MASK_ROWS_MATCH", message="mask row dimension must match gate",
+                    predicate=And(
+                        operands=(
+                            Eq(lhs=RankRef(argument="gate"), rhs=IntLiteral(value=3)),
+                            Eq(lhs=RankRef(argument="value"), rhs=IntLiteral(value=3)),
+                            Eq(lhs=RankRef(argument="output_weight"), rhs=IntLiteral(value=2)),
+                            Eq(lhs=RankRef(argument="output_bias"), rhs=IntLiteral(value=1)),
+                            Eq(lhs=RankRef(argument="mask"), rhs=IntLiteral(value=2)),
+                            Eq(lhs=DimRef(argument="value", axis=0), rhs=DimRef(argument="gate", axis=0)),
+                            Eq(lhs=DimRef(argument="value", axis=1), rhs=DimRef(argument="gate", axis=1)),
+                            Eq(lhs=DimRef(argument="value", axis=2), rhs=DimRef(argument="gate", axis=2)),
+                            Eq(lhs=DimRef(argument="output_weight", axis=0), rhs=DimRef(argument="gate", axis=2)),
+                            Eq(lhs=DimRef(argument="output_bias", axis=0), rhs=DimRef(argument="output_weight", axis=1)),
+                            Eq(lhs=DimRef(argument="mask", axis=0), rhs=DimRef(argument="gate", axis=0)),
+                            Eq(lhs=DimRef(argument="mask", axis=1), rhs=DimRef(argument="gate", axis=1)),
+                            Or(
+                                operands=(
+                                    And(operands=(Eq(lhs=DimRef(argument="gate", axis=0), rhs=IntLiteral(value=1)), Eq(lhs=DimRef(argument="gate", axis=1), rhs=IntLiteral(value=147456)), Eq(lhs=DimRef(argument="gate", axis=2), rhs=IntLiteral(value=512)), Eq(lhs=DimRef(argument="output_weight", axis=1), rhs=IntLiteral(value=128)))),
+                                    And(operands=(Eq(lhs=DimRef(argument="gate", axis=0), rhs=IntLiteral(value=1)), Eq(lhs=DimRef(argument="gate", axis=1), rhs=IntLiteral(value=768)), Eq(lhs=DimRef(argument="gate", axis=2), rhs=IntLiteral(value=1536)), Eq(lhs=DimRef(argument="output_weight", axis=1), rhs=IntLiteral(value=384)))),
+                                )
+                            ),
+                        )
+                    ),
+                    code="TRANSITION_APPROVED_PROFILE",
+                    message="requires one of the two approved transition shape profiles",
                 ),
             ),
-            graph_capture_safe=False,
-            training_capable=False,
+            graph_capture_safe=True,
+            training_capable=True,
             tensor_constraints=(
-                TensorCapabilityConstraint(argument="gate", dtypes=("bfloat16",), layouts=("contiguous",), devices=("cuda",), ranks=(3,)),
-                TensorCapabilityConstraint(argument="value", dtypes=("bfloat16",), layouts=("contiguous",), devices=("cuda",), ranks=(3,)),
-                TensorCapabilityConstraint(argument="output_weight", dtypes=("bfloat16",), layouts=("contiguous",), devices=("cuda",), ranks=(2,)),
-                TensorCapabilityConstraint(argument="output_bias", dtypes=("bfloat16",), layouts=("contiguous",), devices=("cuda",), ranks=(1,)),
-                TensorCapabilityConstraint(argument="mask", dtypes=("float32",), layouts=("contiguous",), devices=("cuda",), ranks=(2,)),
+                TensorCapabilityConstraint(argument="gate", dtypes=("float16", "bfloat16"), layouts=("contiguous",), devices=("cuda",), ranks=(3,)),
+                TensorCapabilityConstraint(argument="value", dtypes=("float16", "bfloat16"), layouts=("contiguous",), devices=("cuda",), ranks=(3,)),
+                TensorCapabilityConstraint(argument="output_weight", dtypes=("float16", "bfloat16"), layouts=("contiguous",), devices=("cuda",), ranks=(2,)),
+                TensorCapabilityConstraint(argument="output_bias", dtypes=("float16", "bfloat16"), layouts=("contiguous",), devices=("cuda",), ranks=(1,)),
+                TensorCapabilityConstraint(argument="mask", dtypes=("float16", "bfloat16", "float32"), layouts=("contiguous",), devices=("cuda",), ranks=(2,)),
             ),
         ),
-        priority=0,
-    ),
-    ImplementationSpec(
-        operation="mindclade::transition",
-        name="transition_sm90_single_b1_r768_h1536_c384_bf16",
-        family="pairformer",
-        backend="tilelang",
-        builder="kernels.pairformer.transition.tilelang:build_tilelang_program",
-        version=1,
-        tier=ImplementationTier.SPECIALIZED,
-        requires=("cuda", "sm90a", "tilelang-0.1.13", "wgmma"),
-        envelope=CapabilityEnvelope(
-            architectures=("sm90a",),
-            dtypes=("bfloat16",),
-            layouts=("contiguous",),
-            modes=("single_b1_r768_h1536_c384_bf16",),
-            constraints=(
-                DimensionConstraint(predicate=Eq(lhs=DimRef(argument="gate", axis=0), rhs=IntLiteral(value=1)), code="GATE_BATCH_EXACT", message="gate batch dimension must equal 1"),
-                DimensionConstraint(predicate=Eq(lhs=DimRef(argument="gate", axis=1), rhs=IntLiteral(value=768)), code="GATE_ROWS_EXACT", message="gate row dimension must equal 768"),
-                DimensionConstraint(predicate=Eq(lhs=DimRef(argument="gate", axis=2), rhs=IntLiteral(value=1536)), code="GATE_HIDDEN_EXACT", message="gate hidden dimension must equal 1536"),
-                DimensionConstraint(predicate=Eq(lhs=DimRef(argument="value", axis=0), rhs=DimRef(argument="gate", axis=0)), code="VALUE_BATCH_MATCH", message="value batch dimension must match gate"),
-                DimensionConstraint(predicate=Eq(lhs=DimRef(argument="value", axis=1), rhs=DimRef(argument="gate", axis=1)), code="VALUE_ROWS_MATCH", message="value row dimension must match gate"),
-                DimensionConstraint(predicate=Eq(lhs=DimRef(argument="value", axis=2), rhs=DimRef(argument="gate", axis=2)), code="VALUE_HIDDEN_MATCH", message="value hidden dimension must match gate"),
-                DimensionConstraint(predicate=Eq(lhs=DimRef(argument="output_weight", axis=0), rhs=DimRef(argument="gate", axis=2)), code="WEIGHT_HIDDEN_MATCH", message="output weight hidden dimension must match gate"),
-                DimensionConstraint(predicate=Eq(lhs=DimRef(argument="output_weight", axis=1), rhs=IntLiteral(value=384)), code="WEIGHT_CHANNELS_EXACT", message="output weight channel dimension must equal 384"),
-                DimensionConstraint(predicate=Eq(lhs=DimRef(argument="output_bias", axis=0), rhs=DimRef(argument="output_weight", axis=1)), code="BIAS_CHANNELS_MATCH", message="output bias channels must match output weight"),
-                DimensionConstraint(predicate=Eq(lhs=DimRef(argument="mask", axis=0), rhs=DimRef(argument="gate", axis=0)), code="MASK_BATCH_MATCH", message="mask batch dimension must match gate"),
-                DimensionConstraint(predicate=Eq(lhs=DimRef(argument="mask", axis=1), rhs=DimRef(argument="gate", axis=1)), code="MASK_ROWS_MATCH", message="mask row dimension must match gate"),
-            ),
-            graph_capture_safe=False,
-            training_capable=False,
-            tensor_constraints=(
-                TensorCapabilityConstraint(argument="gate", dtypes=("bfloat16",), layouts=("contiguous",), devices=("cuda",), ranks=(3,)),
-                TensorCapabilityConstraint(argument="value", dtypes=("bfloat16",), layouts=("contiguous",), devices=("cuda",), ranks=(3,)),
-                TensorCapabilityConstraint(argument="output_weight", dtypes=("bfloat16",), layouts=("contiguous",), devices=("cuda",), ranks=(2,)),
-                TensorCapabilityConstraint(argument="output_bias", dtypes=("bfloat16",), layouts=("contiguous",), devices=("cuda",), ranks=(1,)),
-                TensorCapabilityConstraint(argument="mask", dtypes=("float32",), layouts=("contiguous",), devices=("cuda",), ranks=(2,)),
-            ),
-        ),
-        priority=0,
-    ),
-    ImplementationSpec(
-        operation="mindclade::transition",
-        name="transition_sm100_pair_b1_r147456_h512_c128_bf16",
-        family="pairformer",
-        backend="tilelang",
-        builder="kernels.pairformer.transition.tilelang:build_tilelang_program",
-        version=1,
-        tier=ImplementationTier.SPECIALIZED,
-        requires=("cuda", "sm100a", "tilelang-0.1.13", "tcgen05"),
-        envelope=CapabilityEnvelope(
-            architectures=("sm100a",),
-            dtypes=("bfloat16",),
-            layouts=("contiguous",),
-            modes=("pair_b1_r147456_h512_c128_bf16",),
-            constraints=(
-                DimensionConstraint(predicate=Eq(lhs=DimRef(argument="gate", axis=0), rhs=IntLiteral(value=1)), code="GATE_BATCH_EXACT", message="gate batch dimension must equal 1"),
-                DimensionConstraint(predicate=Eq(lhs=DimRef(argument="gate", axis=1), rhs=IntLiteral(value=147456)), code="GATE_ROWS_EXACT", message="gate row dimension must equal 147456"),
-                DimensionConstraint(predicate=Eq(lhs=DimRef(argument="gate", axis=2), rhs=IntLiteral(value=512)), code="GATE_HIDDEN_EXACT", message="gate hidden dimension must equal 512"),
-                DimensionConstraint(predicate=Eq(lhs=DimRef(argument="value", axis=0), rhs=DimRef(argument="gate", axis=0)), code="VALUE_BATCH_MATCH", message="value batch dimension must match gate"),
-                DimensionConstraint(predicate=Eq(lhs=DimRef(argument="value", axis=1), rhs=DimRef(argument="gate", axis=1)), code="VALUE_ROWS_MATCH", message="value row dimension must match gate"),
-                DimensionConstraint(predicate=Eq(lhs=DimRef(argument="value", axis=2), rhs=DimRef(argument="gate", axis=2)), code="VALUE_HIDDEN_MATCH", message="value hidden dimension must match gate"),
-                DimensionConstraint(predicate=Eq(lhs=DimRef(argument="output_weight", axis=0), rhs=DimRef(argument="gate", axis=2)), code="WEIGHT_HIDDEN_MATCH", message="output weight hidden dimension must match gate"),
-                DimensionConstraint(predicate=Eq(lhs=DimRef(argument="output_weight", axis=1), rhs=IntLiteral(value=128)), code="WEIGHT_CHANNELS_EXACT", message="output weight channel dimension must equal 128"),
-                DimensionConstraint(predicate=Eq(lhs=DimRef(argument="output_bias", axis=0), rhs=DimRef(argument="output_weight", axis=1)), code="BIAS_CHANNELS_MATCH", message="output bias channels must match output weight"),
-                DimensionConstraint(predicate=Eq(lhs=DimRef(argument="mask", axis=0), rhs=DimRef(argument="gate", axis=0)), code="MASK_BATCH_MATCH", message="mask batch dimension must match gate"),
-                DimensionConstraint(predicate=Eq(lhs=DimRef(argument="mask", axis=1), rhs=DimRef(argument="gate", axis=1)), code="MASK_ROWS_MATCH", message="mask row dimension must match gate"),
-            ),
-            graph_capture_safe=False,
-            training_capable=False,
-            tensor_constraints=(
-                TensorCapabilityConstraint(argument="gate", dtypes=("bfloat16",), layouts=("contiguous",), devices=("cuda",), ranks=(3,)),
-                TensorCapabilityConstraint(argument="value", dtypes=("bfloat16",), layouts=("contiguous",), devices=("cuda",), ranks=(3,)),
-                TensorCapabilityConstraint(argument="output_weight", dtypes=("bfloat16",), layouts=("contiguous",), devices=("cuda",), ranks=(2,)),
-                TensorCapabilityConstraint(argument="output_bias", dtypes=("bfloat16",), layouts=("contiguous",), devices=("cuda",), ranks=(1,)),
-                TensorCapabilityConstraint(argument="mask", dtypes=("float32",), layouts=("contiguous",), devices=("cuda",), ranks=(2,)),
-            ),
-        ),
-        priority=0,
-    ),
-    ImplementationSpec(
-        operation="mindclade::transition",
-        name="transition_sm100_single_b1_r768_h1536_c384_bf16",
-        family="pairformer",
-        backend="tilelang",
-        builder="kernels.pairformer.transition.tilelang:build_tilelang_program",
-        version=1,
-        tier=ImplementationTier.SPECIALIZED,
-        requires=("cuda", "sm100a", "tilelang-0.1.13", "tcgen05"),
-        envelope=CapabilityEnvelope(
-            architectures=("sm100a",),
-            dtypes=("bfloat16",),
-            layouts=("contiguous",),
-            modes=("single_b1_r768_h1536_c384_bf16",),
-            constraints=(
-                DimensionConstraint(predicate=Eq(lhs=DimRef(argument="gate", axis=0), rhs=IntLiteral(value=1)), code="GATE_BATCH_EXACT", message="gate batch dimension must equal 1"),
-                DimensionConstraint(predicate=Eq(lhs=DimRef(argument="gate", axis=1), rhs=IntLiteral(value=768)), code="GATE_ROWS_EXACT", message="gate row dimension must equal 768"),
-                DimensionConstraint(predicate=Eq(lhs=DimRef(argument="gate", axis=2), rhs=IntLiteral(value=1536)), code="GATE_HIDDEN_EXACT", message="gate hidden dimension must equal 1536"),
-                DimensionConstraint(predicate=Eq(lhs=DimRef(argument="value", axis=0), rhs=DimRef(argument="gate", axis=0)), code="VALUE_BATCH_MATCH", message="value batch dimension must match gate"),
-                DimensionConstraint(predicate=Eq(lhs=DimRef(argument="value", axis=1), rhs=DimRef(argument="gate", axis=1)), code="VALUE_ROWS_MATCH", message="value row dimension must match gate"),
-                DimensionConstraint(predicate=Eq(lhs=DimRef(argument="value", axis=2), rhs=DimRef(argument="gate", axis=2)), code="VALUE_HIDDEN_MATCH", message="value hidden dimension must match gate"),
-                DimensionConstraint(predicate=Eq(lhs=DimRef(argument="output_weight", axis=0), rhs=DimRef(argument="gate", axis=2)), code="WEIGHT_HIDDEN_MATCH", message="output weight hidden dimension must match gate"),
-                DimensionConstraint(predicate=Eq(lhs=DimRef(argument="output_weight", axis=1), rhs=IntLiteral(value=384)), code="WEIGHT_CHANNELS_EXACT", message="output weight channel dimension must equal 384"),
-                DimensionConstraint(predicate=Eq(lhs=DimRef(argument="output_bias", axis=0), rhs=DimRef(argument="output_weight", axis=1)), code="BIAS_CHANNELS_MATCH", message="output bias channels must match output weight"),
-                DimensionConstraint(predicate=Eq(lhs=DimRef(argument="mask", axis=0), rhs=DimRef(argument="gate", axis=0)), code="MASK_BATCH_MATCH", message="mask batch dimension must match gate"),
-                DimensionConstraint(predicate=Eq(lhs=DimRef(argument="mask", axis=1), rhs=DimRef(argument="gate", axis=1)), code="MASK_ROWS_MATCH", message="mask row dimension must match gate"),
-            ),
-            graph_capture_safe=False,
-            training_capable=False,
-            tensor_constraints=(
-                TensorCapabilityConstraint(argument="gate", dtypes=("bfloat16",), layouts=("contiguous",), devices=("cuda",), ranks=(3,)),
-                TensorCapabilityConstraint(argument="value", dtypes=("bfloat16",), layouts=("contiguous",), devices=("cuda",), ranks=(3,)),
-                TensorCapabilityConstraint(argument="output_weight", dtypes=("bfloat16",), layouts=("contiguous",), devices=("cuda",), ranks=(2,)),
-                TensorCapabilityConstraint(argument="output_bias", dtypes=("bfloat16",), layouts=("contiguous",), devices=("cuda",), ranks=(1,)),
-                TensorCapabilityConstraint(argument="mask", dtypes=("float32",), layouts=("contiguous",), devices=("cuda",), ranks=(2,)),
-            ),
-        ),
-        priority=0,
+        priority=100,
     ),
 )

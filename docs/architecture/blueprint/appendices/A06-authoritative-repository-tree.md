@@ -2445,12 +2445,15 @@ mindclade/
 │       │   ├── discover.py
 │       │   ├── generate.py
 │       │   ├── parse_literal_ast.py
-│       │   └── schema.py
+│       │   ├── schema.py
+│       │   └── callable_abi.py
 │       ├── component.yaml
 │       ├── cuda/
 │       │   ├── CMakeLists.txt
 │       │   ├── README.md
-│       │   └── operation_registry.cpp
+│       │   ├── operation_registry.cpp
+│       │   ├── device_architecture.cpp
+│       │   └── device_architecture.h
 │       ├── generated/
 │       │   ├── __init__.py
 │       │   ├── native_ops.generated.bzl
@@ -2459,7 +2462,10 @@ mindclade/
 │       │   ├── operation_registry.generated.cpp
 │       │   ├── python_registration_generated.py
 │       │   ├── registration.generated.cpp
-│       │   └── tilelang_capabilities.json
+│       │   ├── tilelang_capabilities.json
+│       │   ├── launcher_plans.generated.cpp
+│       │   ├── qualified_capabilities.generated.cpp
+│       │   └── qualified_capabilities.generated.json
 │       ├── manifests/
 │       │   ├── benchmark.schema.json
 │       │   ├── native_ops.schema.json
@@ -2467,18 +2473,28 @@ mindclade/
 │       │   ├── qualification.schema.json
 │       │   ├── tilelang_profiles.sm100.json
 │       │   ├── tilelang_profiles.sm90.json
-│       │   └── tilelang_capabilities.schema.json
+│       │   ├── tilelang_capabilities.schema.json
+│       │   ├── qualification_release.schema.json
+│       │   ├── qualified_capability_index.json
+│       │   └── qualified_capability_index.schema.json
 │       ├── python/
 │       │   ├── __init__.py
 │       │   ├── loader.py
 │       │   ├── qualification.py
 │       │   ├── reference_runtime.py
-│       │   └── registration.py
+│       │   ├── registration.py
+│       │   └── capability_index.py
 │       ├── stable_abi/
 │       │   ├── CMakeLists.txt
 │       │   ├── abi_manifest.json
 │       │   ├── registration.cpp
-│       │   └── tensor_bridge.cpp
+│       │   ├── tensor_bridge.cpp
+│       │   ├── tensor_bridge.h
+│       │   ├── node_launch_abi.h
+│       │   ├── node_launch_bridge.cpp
+│       │   ├── node_launch_bridge.h
+│       │   ├── qualified_capability_selector.cpp
+│       │   └── qualified_capability_table.h
 │       ├── tests/
 │       │   ├── pytest_runner.py
 │       │   ├── test_abi_compatibility.py
@@ -2502,7 +2518,9 @@ mindclade/
 │       │   ├── test_schema_manifest.py
 │       │   ├── test_tilelang_swizzle.py
 │       │   ├── test_tilelang_targets.py
-│       │   └── test_tilelang_tma.py
+│       │   ├── test_tilelang_tma.py
+│       │   ├── test_capability_index.py
+│       │   └── test_qualified_capability_selector.py
 │       └── tilelang/
 │           ├── README.md
 │           ├── __init__.py
@@ -3231,6 +3249,8 @@ mindclade/
 │   │   │   │   ├── job_repository.go
 │   │   │   │   ├── job_reconciler.go
 │   │   │   │   ├── lease_fencing.go
+│   │   │   │   ├── events.go
+│   │   │   │   ├── events_test.go
 │   │   │   │   ├── server.go
 │   │   │   │   └── server_test.go
 │   │   │   ├── agents/
@@ -4150,7 +4170,14 @@ mindclade/
 │   │   ├── 0011-sqp-001-scientific-qualification-profile.md
 │   │   ├── 0012-http-json-operation-projection-python-sdk.md
 │   │   ├── 0014-tilelang-kernel-platform-source-development.md
-│   │   └── 0009-native-kernel-source-incubation.md
+│   │   ├── 0009-native-kernel-source-incubation.md
+│   │   ├── 0016-pairformer-native-kernel-platform-wave6-source-activation.md
+│   │   ├── 0017-jit-06-outer-product-mean-sm90a-sm100a.md
+│   │   ├── 0018-jit-06-pair-weighted-average-sm90a-sm100a.md
+│   │   ├── 0019-jit-06-transition-sm90a-sm100a.md
+│   │   ├── 0020-jit-06-triangle-attention-sm90a-sm100a.md
+│   │   ├── 0021-jit-06-triangle-multiplication-sm90a-sm100a.md
+│   │   └── 0022-native-signed-qualification-and-production-admission-source-activation.md
 │   ├── domains/
 │   │   ├── bio.md
 │   │   ├── data.md
@@ -4325,6 +4352,7 @@ mindclade/
         │   │   ├── config.py
         │   │   ├── datasets.py
         │   │   ├── errors.py
+        │   │   ├── evaluations.py
         │   │   ├── generated.py
         │   │   ├── inference.py
         │   │   ├── method_policy.py
@@ -4339,6 +4367,7 @@ mindclade/
         │   └── tests/
         │       ├── test_internal_sdk.py
         │       ├── test_agents.py
+        │       ├── test_evaluations.py
         │       ├── test_inference.py
         │       ├── test_policy_admin.py
         │       └── test_workflows.py
@@ -4356,6 +4385,8 @@ mindclade/
         │       ├── config.rs
         │       ├── datasets.rs
         │       ├── error.rs
+        │       ├── evaluation_tests.rs
+        │       ├── evaluations.rs
         │       ├── inference.rs
         │       ├── lib.rs
         │       ├── models.rs
@@ -4385,6 +4416,7 @@ mindclade/
             │   ├── core.ts
             │   ├── datasets.ts
             │   ├── error.ts
+            │   ├── evaluations.ts
             │   ├── gcp_auth.ts
             │   ├── inference.ts
             │   ├── index.ts
@@ -4404,6 +4436,7 @@ mindclade/
             │   ├── sdk.test.ts
             │   ├── policy_admin.test.ts
             │   ├── agents.test.ts
+            │   ├── evaluations.test.ts
             │   └── workflow_approval.test.ts
             └── tsconfig.json
 ```

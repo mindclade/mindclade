@@ -6,11 +6,21 @@ add_library(
   SHARED
     ../generated/registration.generated.cpp
     registration.cpp
+    node_launch_abi.h
+    node_launch_bridge.cpp
+    node_launch_bridge.h
+    qualified_capability_selector.cpp
+    qualified_capability_table.h
     tensor_bridge.cpp
+    tensor_bridge.h
 )
 add_library(Mindclade::native_schema ALIAS mindclade_native_schema)
 
 mindclade_apply_native_target_policy(mindclade_native_schema)
+target_include_directories(
+  mindclade_native_schema
+  PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}"
+)
 
 set_target_properties(
   mindclade_native_schema

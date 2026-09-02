@@ -1,78 +1,256 @@
-"""Declarative integration contract for Pairformer triangle multiplication."""
+"""Declarative native-training contract for Pairformer triangle multiplication."""
 
 from kernels.api import (
+    RuntimeWorkloadSpec, WorkloadDimensionBinding,
+    And,
     AutogradPolicy,
-    CompositeAutogradSpec,
+    BackwardArgumentBinding,
+    BackwardArgumentSource,
+    BackwardSpec,
+    CapabilityEnvelope,
     DeterminismClass,
+    DeviceRef,
+    DimensionConstraint,
+    DimRef,
+    DTypeRef,
     EffectSpec,
+    Eq,
     ForwardSpec,
     GradientSpec,
+    ImplementationSpec,
+    ImplementationTier,
+    IntLiteral,
     KernelSpec,
     LaunchContract,
+    MissingGradientPolicy,
     OutputSpec,
-    SameAsInputDType,
-    SameAsInputDevice,
+    ProgramGroupSpec,
+    ProgramArtifactBoundary,
+    ProgramBindingSource,
+    ProgramBindingSpec,
+    ProgramEntryABI,
+    ProgramParameterKind,
+    ProgramParameterSpec,
+    WorkspaceAccess,
+    WorkspaceLifetime,
+    WorkspaceSpec,
+    ProgramReturnABI,
+    ProgramSelectorBinding,
+    ScalarABIType,
+    ProgramNodeSpec,
+    RankRef,
     ShapeOf,
+    TensorCapabilityConstraint,
 )
+
 
 KERNEL_SPEC: KernelSpec = KernelSpec(
     name="triangle_multiplication",
     namespace="mindclade",
     family="pairformer",
     source="pairformer/triangle_multiplication/spec.py",
-    operator_schema=(
-        "triangle_multiplication(Tensor left, Tensor right, Tensor mask, "
-        "bool outgoing) -> Tensor output"
-    ),
+    operator_schema="triangle_multiplication(Tensor left, Tensor right, Tensor mask, bool outgoing) -> Tensor output",
     facade_outputs=("output",),
-    fake="kernels.pairformer.triangle_multiplication.reference:fake",
+    fake=None,
     forward=ForwardSpec(
-        schema=(
-            "_triangle_multiplication_fwd(Tensor left, Tensor right, Tensor mask, "
-            "bool outgoing) -> Tensor output"
-        ),
-        builder=(
-            "kernels.pairformer.triangle_multiplication.tilelang:"
-            "build_tilelang_program"
-        ),
+        schema="_triangle_multiplication_fwd(Tensor left, Tensor right, Tensor mask, bool outgoing) -> Tensor output",
+        builder="kernels.pairformer.triangle_multiplication.tilelang:build_forward_program_group",
         symbol="mindclade_tilelang_triangle_multiplication_fwd_launch",
         outputs=(
             OutputSpec(
                 name="output",
                 shape=ShapeOf(argument="left"),
-                dtype=SameAsInputDType(argument="left"),
-                device=SameAsInputDevice(argument="left"),
-                semantic_axes=("batch_prefix", "pair_row", "pair_column", "channel"),
+                dtype=DTypeRef(argument="left"),
+                device=DeviceRef(argument="left"),
+                semantic_axes=("batch", "pair_row", "pair_column", "channel"),
                 visible_in_facade=True,
                 saved_for_backward=False,
             ),
         ),
-    ),
-    backward=None,
-    autograd_policy=AutogradPolicy.COMPOSITE,
-    composite=CompositeAutogradSpec(
-        decomposition=(
-            "kernels.pairformer.triangle_multiplication.reference:"
-            "triangle_multiplication_reference"
+        program_group=ProgramGroupSpec(
+            nodes=(
+            ProgramNodeSpec(
+                name='forward',
+                builder='kernels.pairformer.triangle_multiplication.tilelang:build_forward_program',
+                symbol='mindclade_tilelang_triangle_multiplication_forward_launch',
+                entry_symbol="call",
+                entry_abi=ProgramEntryABI.TILELANG_0_1_13_HOST_CALL,
+                parameters=(
+                    ProgramParameterSpec(position=0, name='left', kind=ProgramParameterKind.TENSOR, access=WorkspaceAccess.READ, shape=ShapeOf(argument='left'), dtype=DTypeRef(argument='left'), device=DeviceRef(argument='left')),
+                    ProgramParameterSpec(position=1, name='right', kind=ProgramParameterKind.TENSOR, access=WorkspaceAccess.READ, shape=ShapeOf(argument='right'), dtype=DTypeRef(argument='right'), device=DeviceRef(argument='right')),
+                    ProgramParameterSpec(position=2, name='mask', kind=ProgramParameterKind.TENSOR, access=WorkspaceAccess.READ, shape=ShapeOf(argument='mask'), dtype=DTypeRef(argument='mask'), device=DeviceRef(argument='mask')),
+                    ProgramParameterSpec(position=3, name='output', kind=ProgramParameterKind.TENSOR, access=WorkspaceAccess.WRITE, shape=ShapeOf(argument='left'), dtype=DTypeRef(argument='left'), device=DeviceRef(argument='left')),
+                    ProgramParameterSpec(position=4, name='stream', kind=ProgramParameterKind.STREAM, access=WorkspaceAccess.READ),
+                ),
+                bindings=(
+                    ProgramBindingSpec(parameter='left', source=ProgramBindingSource.OPERATOR_ARGUMENT, source_name='left'),
+                    ProgramBindingSpec(parameter='right', source=ProgramBindingSource.OPERATOR_ARGUMENT, source_name='right'),
+                    ProgramBindingSpec(parameter='mask', source=ProgramBindingSource.OPERATOR_ARGUMENT, source_name='mask'),
+                    ProgramBindingSpec(parameter='output', source=ProgramBindingSource.PROVIDER_OUTPUT, source_name='output'),
+                    ProgramBindingSpec(parameter='stream', source=ProgramBindingSource.CURRENT_STREAM),
+             
+             
+             
+             
+            )
+            ,
+                return_abi=ProgramReturnABI.STATUS_I32_ZERO_SUCCESS,
+                artifact_boundary=ProgramArtifactBoundary.NODE_CONTENT_ADDRESSED_DSO,
+            ),
+            ),
+            selector_bindings=(
+                ProgramSelectorBinding(
+                    provider_argument="outgoing",
+                    selector_key="mode",
+                    scalar_type=ScalarABIType.BOOL,
+                    cases=((False, "incoming"), (True, "outgoing")),
+                ),
+            ),
         ),
-        source_digest="sha256:5e72ba2c8e667afeb004bdb6e258045c8bdcdf922ec298c3342b624b75fe0bf3",
-        runtime_envelope="pytorch-reference;promotion=unpromoted",
+    ),
+    backward=BackwardSpec(
+        schema=(
+            "_triangle_multiplication_bwd(Tensor grad_output, Tensor left, "
+            "Tensor right, Tensor mask, bool outgoing, bool need_left_grad, "
+            "bool need_right_grad) -> (Tensor? grad_left, Tensor? grad_right)"
+        ),
+        builder="kernels.pairformer.triangle_multiplication.tilelang:build_backward_program_group",
+        symbol="mindclade_tilelang_triangle_multiplication_bwd_launch",
+        argument_bindings=(
+            BackwardArgumentBinding(provider_argument="grad_output", source=BackwardArgumentSource.OUTPUT_GRADIENT, source_name="output", missing=MissingGradientPolicy.ERROR),
+            BackwardArgumentBinding(provider_argument="left", source=BackwardArgumentSource.OPERATOR_ARGUMENT, source_name="left"),
+            BackwardArgumentBinding(provider_argument="right", source=BackwardArgumentSource.OPERATOR_ARGUMENT, source_name="right"),
+            BackwardArgumentBinding(provider_argument="mask", source=BackwardArgumentSource.OPERATOR_ARGUMENT, source_name="mask"),
+            BackwardArgumentBinding(provider_argument="outgoing", source=BackwardArgumentSource.OPERATOR_ARGUMENT, source_name="outgoing"),
+            BackwardArgumentBinding(provider_argument="need_left_grad", source=BackwardArgumentSource.NEEDS_INPUT_GRAD, source_name="left"),
+            BackwardArgumentBinding(provider_argument="need_right_grad", source=BackwardArgumentSource.NEEDS_INPUT_GRAD, source_name="right"),
+        ),
         gradients=(
-            GradientSpec(input_name="left", output_name="grad_left"),
-            GradientSpec(input_name="right", output_name="grad_right"),
+            GradientSpec(input_name="left", output_name="grad_left", shape=ShapeOf(argument="left"), dtype=DTypeRef(argument="left"), device=DeviceRef(argument="left"), optional=True, accumulation_dtype="float32"),
+            GradientSpec(input_name="right", output_name="grad_right", shape=ShapeOf(argument="right"), dtype=DTypeRef(argument="right"), device=DeviceRef(argument="right"), optional=True, accumulation_dtype="float32"),
         ),
         supports_double_backward=False,
-        setup_context="kernels.pairformer.triangle_multiplication.reference:setup_context",
-        backward="kernels.pairformer.triangle_multiplication.reference:composite_backward",
+        program_group=ProgramGroupSpec(
+            nodes=(
+            ProgramNodeSpec(
+                name='dleft',
+                builder='kernels.pairformer.triangle_multiplication.tilelang:build_dleft',
+                symbol='mindclade_tilelang_triangle_multiplication_dleft_launch',
+                entry_symbol="call",
+                entry_abi=ProgramEntryABI.TILELANG_0_1_13_HOST_CALL,
+                parameters=(
+                    ProgramParameterSpec(position=0, name='grad_output', kind=ProgramParameterKind.TENSOR, access=WorkspaceAccess.READ, shape=ShapeOf(argument='left'), dtype=DTypeRef(argument='left'), device=DeviceRef(argument='left')),
+                    ProgramParameterSpec(position=1, name='left', kind=ProgramParameterKind.TENSOR, access=WorkspaceAccess.READ, shape=ShapeOf(argument='left'), dtype=DTypeRef(argument='left'), device=DeviceRef(argument='left')),
+                    ProgramParameterSpec(position=2, name='right', kind=ProgramParameterKind.TENSOR, access=WorkspaceAccess.READ, shape=ShapeOf(argument='right'), dtype=DTypeRef(argument='right'), device=DeviceRef(argument='right')),
+                    ProgramParameterSpec(position=3, name='mask', kind=ProgramParameterKind.TENSOR, access=WorkspaceAccess.READ, shape=ShapeOf(argument='mask'), dtype=DTypeRef(argument='mask'), device=DeviceRef(argument='mask')),
+                    ProgramParameterSpec(position=4, name='grad_left', kind=ProgramParameterKind.TENSOR, access=WorkspaceAccess.WRITE, shape=ShapeOf(argument='left'), dtype=DTypeRef(argument='left'), device=DeviceRef(argument='left'), optional=True),
+                    ProgramParameterSpec(position=5, name='need_left_grad', kind=ProgramParameterKind.SCALAR, access=WorkspaceAccess.READ, scalar_type=ScalarABIType.BOOL),
+                    ProgramParameterSpec(position=6, name='stream', kind=ProgramParameterKind.STREAM, access=WorkspaceAccess.READ),
+                ),
+                bindings=(
+                    ProgramBindingSpec(parameter='grad_output', source=ProgramBindingSource.OUTPUT_GRADIENT, source_name='output'),
+                    ProgramBindingSpec(parameter='left', source=ProgramBindingSource.OPERATOR_ARGUMENT, source_name='left'),
+                    ProgramBindingSpec(parameter='right', source=ProgramBindingSource.OPERATOR_ARGUMENT, source_name='right'),
+                    ProgramBindingSpec(parameter='mask', source=ProgramBindingSource.OPERATOR_ARGUMENT, source_name='mask'),
+                    ProgramBindingSpec(parameter='grad_left', source=ProgramBindingSource.PROVIDER_OUTPUT, source_name='grad_left'),
+                    ProgramBindingSpec(parameter='need_left_grad', source=ProgramBindingSource.GRADIENT_REQUEST, source_name='left'),
+                    ProgramBindingSpec(parameter='stream', source=ProgramBindingSource.CURRENT_STREAM),
+             
+             
+             
+             
+            )
+            ,
+                return_abi=ProgramReturnABI.STATUS_I32_ZERO_SUCCESS,
+                artifact_boundary=ProgramArtifactBoundary.NODE_CONTENT_ADDRESSED_DSO,
+            ),
+            ProgramNodeSpec(
+                name='dright',
+                builder='kernels.pairformer.triangle_multiplication.tilelang:build_dright',
+                symbol='mindclade_tilelang_triangle_multiplication_dright_launch',
+                entry_symbol="call",
+                entry_abi=ProgramEntryABI.TILELANG_0_1_13_HOST_CALL,
+                parameters=(
+                    ProgramParameterSpec(position=0, name='grad_output', kind=ProgramParameterKind.TENSOR, access=WorkspaceAccess.READ, shape=ShapeOf(argument='left'), dtype=DTypeRef(argument='left'), device=DeviceRef(argument='left')),
+                    ProgramParameterSpec(position=1, name='left', kind=ProgramParameterKind.TENSOR, access=WorkspaceAccess.READ, shape=ShapeOf(argument='left'), dtype=DTypeRef(argument='left'), device=DeviceRef(argument='left')),
+                    ProgramParameterSpec(position=2, name='right', kind=ProgramParameterKind.TENSOR, access=WorkspaceAccess.READ, shape=ShapeOf(argument='right'), dtype=DTypeRef(argument='right'), device=DeviceRef(argument='right')),
+                    ProgramParameterSpec(position=3, name='mask', kind=ProgramParameterKind.TENSOR, access=WorkspaceAccess.READ, shape=ShapeOf(argument='mask'), dtype=DTypeRef(argument='mask'), device=DeviceRef(argument='mask')),
+                    ProgramParameterSpec(position=4, name='grad_right', kind=ProgramParameterKind.TENSOR, access=WorkspaceAccess.WRITE, shape=ShapeOf(argument='right'), dtype=DTypeRef(argument='right'), device=DeviceRef(argument='right'), optional=True),
+                    ProgramParameterSpec(position=5, name='need_right_grad', kind=ProgramParameterKind.SCALAR, access=WorkspaceAccess.READ, scalar_type=ScalarABIType.BOOL),
+                    ProgramParameterSpec(position=6, name='stream', kind=ProgramParameterKind.STREAM, access=WorkspaceAccess.READ),
+                ),
+                bindings=(
+                    ProgramBindingSpec(parameter='grad_output', source=ProgramBindingSource.OUTPUT_GRADIENT, source_name='output'),
+                    ProgramBindingSpec(parameter='left', source=ProgramBindingSource.OPERATOR_ARGUMENT, source_name='left'),
+                    ProgramBindingSpec(parameter='right', source=ProgramBindingSource.OPERATOR_ARGUMENT, source_name='right'),
+                    ProgramBindingSpec(parameter='mask', source=ProgramBindingSource.OPERATOR_ARGUMENT, source_name='mask'),
+                    ProgramBindingSpec(parameter='grad_right', source=ProgramBindingSource.PROVIDER_OUTPUT, source_name='grad_right'),
+                    ProgramBindingSpec(parameter='need_right_grad', source=ProgramBindingSource.GRADIENT_REQUEST, source_name='right'),
+                    ProgramBindingSpec(parameter='stream', source=ProgramBindingSource.CURRENT_STREAM),
+             
+             
+             
+             
+            )
+            ,
+                return_abi=ProgramReturnABI.STATUS_I32_ZERO_SUCCESS,
+                artifact_boundary=ProgramArtifactBoundary.NODE_CONTENT_ADDRESSED_DSO,
+            ),
+            ),
+            selector_bindings=(
+                ProgramSelectorBinding(
+                    provider_argument="outgoing",
+                    selector_key="mode",
+                    scalar_type=ScalarABIType.BOOL,
+                    cases=((False, "incoming"), (True, "outgoing")),
+                ),
+            ),
+        ),
+    ),
+    autograd_policy=AutogradPolicy.REQUIRED,
+    runtime_workload=RuntimeWorkloadSpec(
+        dimensions=(
+            WorkloadDimensionBinding(name="batch", value=DimRef(argument="left", axis=0)),
+            WorkloadDimensionBinding(name="channels", value=DimRef(argument="left", axis=3)),
+            WorkloadDimensionBinding(name="residues", value=DimRef(argument="left", axis=1)),
+        ),
+        input_dtype=DTypeRef(argument="left"),
+        layout="contiguous",
+        mode_selector="mode",
+        attributes=(),
+        canonicalization_version=1,
+        version=1,
     ),
     effects=EffectSpec(),
     launch=LaunchContract(
         current_stream_only=True,
         global_synchronization=False,
         hidden_device_allocation=False,
-        graph_capture_safe=False,
+        graph_capture_safe=True,
         determinism=DeterminismClass.DETERMINISTIC,
     ),
 )
 
-IMPLEMENTATION_SPECS = ()
+
+IMPLEMENTATION_SPECS = (
+    ImplementationSpec(
+        operation="triangle_multiplication", name="triangle_multiplication_sm90a_fp16_n64_c64", family="pairformer", backend="tilelang", builder="kernels.pairformer.triangle_multiplication.tilelang:build_forward_program_group", version=1, tier=ImplementationTier.SPECIALIZED, requires=("cuda", "sm90a", "tilelang-0.1.13"),
+        envelope=CapabilityEnvelope(
+            architectures=("sm90a",), dtypes=("float16",), layouts=("contiguous",), modes=("incoming", "outgoing"),
+            constraints=(DimensionConstraint(predicate=And(operands=(Eq(lhs=RankRef(argument="left"), rhs=IntLiteral(value=4)), Eq(lhs=RankRef(argument="right"), rhs=IntLiteral(value=4)), Eq(lhs=RankRef(argument="mask"), rhs=IntLiteral(value=3)), Eq(lhs=DimRef(argument="left", axis=0), rhs=IntLiteral(value=1)), Eq(lhs=DimRef(argument="left", axis=1), rhs=IntLiteral(value=64)), Eq(lhs=DimRef(argument="left", axis=2), rhs=IntLiteral(value=64)), Eq(lhs=DimRef(argument="left", axis=3), rhs=IntLiteral(value=64)), Eq(lhs=DimRef(argument="right", axis=0), rhs=DimRef(argument="left", axis=0)), Eq(lhs=DimRef(argument="right", axis=1), rhs=DimRef(argument="left", axis=1)), Eq(lhs=DimRef(argument="right", axis=2), rhs=DimRef(argument="left", axis=2)), Eq(lhs=DimRef(argument="right", axis=3), rhs=DimRef(argument="left", axis=3)), Eq(lhs=DimRef(argument="mask", axis=0), rhs=DimRef(argument="left", axis=0)), Eq(lhs=DimRef(argument="mask", axis=1), rhs=DimRef(argument="left", axis=1)), Eq(lhs=DimRef(argument="mask", axis=2), rhs=DimRef(argument="left", axis=2)))), code="EXACT_B1_N64_C64", message="requires exact [1,64,64,64] operands and [1,64,64] mask"),), graph_capture_safe=True, training_capable=True,
+            tensor_constraints=(TensorCapabilityConstraint(argument="left", dtypes=("float16",), layouts=("contiguous",), devices=("cuda",), ranks=(4,)), TensorCapabilityConstraint(argument="right", dtypes=("float16",), layouts=("contiguous",), devices=("cuda",), ranks=(4,)), TensorCapabilityConstraint(argument="mask", dtypes=("float16",), layouts=("contiguous",), devices=("cuda",), ranks=(3,))),
+        ), priority=100,
+    ),
+    ImplementationSpec(
+        operation="triangle_multiplication", name="triangle_multiplication_sm90a_bf16_n64_c64", family="pairformer", backend="tilelang", builder="kernels.pairformer.triangle_multiplication.tilelang:build_forward_program_group", version=1, tier=ImplementationTier.SPECIALIZED, requires=("cuda", "sm90a", "tilelang-0.1.13"),
+        envelope=CapabilityEnvelope(architectures=("sm90a",), dtypes=("bfloat16",), layouts=("contiguous",), modes=("incoming", "outgoing"), constraints=(DimensionConstraint(predicate=And(operands=(Eq(lhs=RankRef(argument="left"), rhs=IntLiteral(value=4)), Eq(lhs=RankRef(argument="right"), rhs=IntLiteral(value=4)), Eq(lhs=RankRef(argument="mask"), rhs=IntLiteral(value=3)), Eq(lhs=DimRef(argument="left", axis=0), rhs=IntLiteral(value=1)), Eq(lhs=DimRef(argument="left", axis=1), rhs=IntLiteral(value=64)), Eq(lhs=DimRef(argument="left", axis=2), rhs=IntLiteral(value=64)), Eq(lhs=DimRef(argument="left", axis=3), rhs=IntLiteral(value=64)), Eq(lhs=DimRef(argument="right", axis=0), rhs=DimRef(argument="left", axis=0)), Eq(lhs=DimRef(argument="right", axis=1), rhs=DimRef(argument="left", axis=1)), Eq(lhs=DimRef(argument="right", axis=2), rhs=DimRef(argument="left", axis=2)), Eq(lhs=DimRef(argument="right", axis=3), rhs=DimRef(argument="left", axis=3)), Eq(lhs=DimRef(argument="mask", axis=0), rhs=DimRef(argument="left", axis=0)), Eq(lhs=DimRef(argument="mask", axis=1), rhs=DimRef(argument="left", axis=1)), Eq(lhs=DimRef(argument="mask", axis=2), rhs=DimRef(argument="left", axis=2)))), code="EXACT_B1_N64_C64", message="requires exact [1,64,64,64] operands and [1,64,64] mask"),), graph_capture_safe=True, training_capable=True, tensor_constraints=(TensorCapabilityConstraint(argument="left", dtypes=("bfloat16",), layouts=("contiguous",), devices=("cuda",), ranks=(4,)), TensorCapabilityConstraint(argument="right", dtypes=("bfloat16",), layouts=("contiguous",), devices=("cuda",), ranks=(4,)), TensorCapabilityConstraint(argument="mask", dtypes=("bfloat16",), layouts=("contiguous",), devices=("cuda",), ranks=(3,)))), priority=100,
+    ),
+    ImplementationSpec(
+        operation="triangle_multiplication", name="triangle_multiplication_sm100a_fp16_n64_c64", family="pairformer", backend="tilelang", builder="kernels.pairformer.triangle_multiplication.tilelang:build_forward_program_group", version=1, tier=ImplementationTier.SPECIALIZED, requires=("cuda", "sm100a", "tilelang-0.1.13"),
+        envelope=CapabilityEnvelope(architectures=("sm100a",), dtypes=("float16",), layouts=("contiguous",), modes=("incoming", "outgoing"), constraints=(DimensionConstraint(predicate=And(operands=(Eq(lhs=RankRef(argument="left"), rhs=IntLiteral(value=4)), Eq(lhs=RankRef(argument="right"), rhs=IntLiteral(value=4)), Eq(lhs=RankRef(argument="mask"), rhs=IntLiteral(value=3)), Eq(lhs=DimRef(argument="left", axis=0), rhs=IntLiteral(value=1)), Eq(lhs=DimRef(argument="left", axis=1), rhs=IntLiteral(value=64)), Eq(lhs=DimRef(argument="left", axis=2), rhs=IntLiteral(value=64)), Eq(lhs=DimRef(argument="left", axis=3), rhs=IntLiteral(value=64)), Eq(lhs=DimRef(argument="right", axis=0), rhs=DimRef(argument="left", axis=0)), Eq(lhs=DimRef(argument="right", axis=1), rhs=DimRef(argument="left", axis=1)), Eq(lhs=DimRef(argument="right", axis=2), rhs=DimRef(argument="left", axis=2)), Eq(lhs=DimRef(argument="right", axis=3), rhs=DimRef(argument="left", axis=3)), Eq(lhs=DimRef(argument="mask", axis=0), rhs=DimRef(argument="left", axis=0)), Eq(lhs=DimRef(argument="mask", axis=1), rhs=DimRef(argument="left", axis=1)), Eq(lhs=DimRef(argument="mask", axis=2), rhs=DimRef(argument="left", axis=2)))), code="EXACT_B1_N64_C64", message="requires exact [1,64,64,64] operands and [1,64,64] mask"),), graph_capture_safe=True, training_capable=True, tensor_constraints=(TensorCapabilityConstraint(argument="left", dtypes=("float16",), layouts=("contiguous",), devices=("cuda",), ranks=(4,)), TensorCapabilityConstraint(argument="right", dtypes=("float16",), layouts=("contiguous",), devices=("cuda",), ranks=(4,)), TensorCapabilityConstraint(argument="mask", dtypes=("float16",), layouts=("contiguous",), devices=("cuda",), ranks=(3,)))), priority=100,
+    ),
+    ImplementationSpec(
+        operation="triangle_multiplication", name="triangle_multiplication_sm100a_bf16_n64_c64", family="pairformer", backend="tilelang", builder="kernels.pairformer.triangle_multiplication.tilelang:build_forward_program_group", version=1, tier=ImplementationTier.SPECIALIZED, requires=("cuda", "sm100a", "tilelang-0.1.13"),
+        envelope=CapabilityEnvelope(architectures=("sm100a",), dtypes=("bfloat16",), layouts=("contiguous",), modes=("incoming", "outgoing"), constraints=(DimensionConstraint(predicate=And(operands=(Eq(lhs=RankRef(argument="left"), rhs=IntLiteral(value=4)), Eq(lhs=RankRef(argument="right"), rhs=IntLiteral(value=4)), Eq(lhs=RankRef(argument="mask"), rhs=IntLiteral(value=3)), Eq(lhs=DimRef(argument="left", axis=0), rhs=IntLiteral(value=1)), Eq(lhs=DimRef(argument="left", axis=1), rhs=IntLiteral(value=64)), Eq(lhs=DimRef(argument="left", axis=2), rhs=IntLiteral(value=64)), Eq(lhs=DimRef(argument="left", axis=3), rhs=IntLiteral(value=64)), Eq(lhs=DimRef(argument="right", axis=0), rhs=DimRef(argument="left", axis=0)), Eq(lhs=DimRef(argument="right", axis=1), rhs=DimRef(argument="left", axis=1)), Eq(lhs=DimRef(argument="right", axis=2), rhs=DimRef(argument="left", axis=2)), Eq(lhs=DimRef(argument="right", axis=3), rhs=DimRef(argument="left", axis=3)), Eq(lhs=DimRef(argument="mask", axis=0), rhs=DimRef(argument="left", axis=0)), Eq(lhs=DimRef(argument="mask", axis=1), rhs=DimRef(argument="left", axis=1)), Eq(lhs=DimRef(argument="mask", axis=2), rhs=DimRef(argument="left", axis=2)))), code="EXACT_B1_N64_C64", message="requires exact [1,64,64,64] operands and [1,64,64] mask"),), graph_capture_safe=True, training_capable=True, tensor_constraints=(TensorCapabilityConstraint(argument="left", dtypes=("bfloat16",), layouts=("contiguous",), devices=("cuda",), ranks=(4,)), TensorCapabilityConstraint(argument="right", dtypes=("bfloat16",), layouts=("contiguous",), devices=("cuda",), ranks=(4,)), TensorCapabilityConstraint(argument="mask", dtypes=("bfloat16",), layouts=("contiguous",), devices=("cuda",), ranks=(3,)))), priority=100,
+    ),
+)

@@ -28,7 +28,7 @@ BLUEPRINT_SHA256 = "d099074e755168bbdce076d50918bf06aff677f9e5d620fdfe53cb7cef74
 ANCHOR_COMMIT = "292b71f47b1b29cc9ba7cf760a9bd07cd5e0ffa7"
 AUTHORITY_FILE_COUNT = 2461
 AUTHORITY_DIRECTORY_COUNT = 787
-CANONICAL_FILE_COUNT = 3342
+CANONICAL_FILE_COUNT = 3350
 AUTHORITY_PATH_SET_SHA256 = "f2011dd32ccc19649e6abb70ffb4473aea4a224410062d40292222e2e6263692"
 CANONICAL_PATH_SET_SHA256 = "a53521ed4fb8fd9873ba6fae6fa8c1bb256c40445116df695223a5db19634781"
 
@@ -633,6 +633,7 @@ INTERNAL_SDK_ADDITIONS = (
     "internal/sdk/python/mindclade_internal_sdk/config.py",
     "internal/sdk/python/mindclade_internal_sdk/datasets.py",
     "internal/sdk/python/mindclade_internal_sdk/errors.py",
+    "internal/sdk/python/mindclade_internal_sdk/evaluations.py",
     "internal/sdk/python/mindclade_internal_sdk/generated.py",
     "internal/sdk/python/mindclade_internal_sdk/inference.py",
     "internal/sdk/python/mindclade_internal_sdk/method_policy.py",
@@ -646,6 +647,7 @@ INTERNAL_SDK_ADDITIONS = (
     "internal/sdk/python/pyproject.toml",
     "internal/sdk/python/tests/test_internal_sdk.py",
     "internal/sdk/python/tests/test_agents.py",
+    "internal/sdk/python/tests/test_evaluations.py",
     "internal/sdk/python/tests/test_inference.py",
     "internal/sdk/python/tests/test_policy_admin.py",
     "internal/sdk/python/tests/test_workflows.py",
@@ -661,6 +663,8 @@ INTERNAL_SDK_ADDITIONS = (
     "internal/sdk/rust/src/config.rs",
     "internal/sdk/rust/src/datasets.rs",
     "internal/sdk/rust/src/error.rs",
+    "internal/sdk/rust/src/evaluation_tests.rs",
+    "internal/sdk/rust/src/evaluations.rs",
     "internal/sdk/rust/src/inference.rs",
     "internal/sdk/rust/src/lib.rs",
     "internal/sdk/rust/src/models.rs",
@@ -688,6 +692,7 @@ INTERNAL_SDK_ADDITIONS = (
     "internal/sdk/typescript/src/core.ts",
     "internal/sdk/typescript/src/datasets.ts",
     "internal/sdk/typescript/src/error.ts",
+    "internal/sdk/typescript/src/evaluations.ts",
     "internal/sdk/typescript/src/gcp_auth.ts",
     "internal/sdk/typescript/src/inference.ts",
     "internal/sdk/typescript/src/index.ts",
@@ -706,6 +711,7 @@ INTERNAL_SDK_ADDITIONS = (
     "internal/sdk/typescript/tests/sdk.test.ts",
     "internal/sdk/typescript/tests/policy_admin.test.ts",
     "internal/sdk/typescript/tests/agents.test.ts",
+    "internal/sdk/typescript/tests/evaluations.test.ts",
     "internal/sdk/typescript/tests/workflow_approval.test.ts",
     "internal/sdk/typescript/tsconfig.json",
 )
@@ -732,6 +738,8 @@ CONTROL_PLANE_TRANSPORT_ADDITIONS = (
 )
 
 WORKER_COORDINATION_ADDITIONS = (
+    "services/control_plane/internal/jobs/events.go",
+    "services/control_plane/internal/jobs/events_test.go",
     "services/control_plane/internal/jobs/server.go",
     "services/control_plane/internal/jobs/server_test.go",
 )
@@ -2132,7 +2140,7 @@ def _native_source_incubation_targets(path: str) -> tuple[list[str], list[str]]:
     return list(dict.fromkeys(build_targets)), []
 
 
-def build_native_source_incubation_entry(path: str) -> dict[str, Any]:
+def _build_native_source_incubation_target_entry(path: str) -> dict[str, Any]:
     if path not in NATIVE_SOURCE_INCUBATION_PATHS:
         raise PolicyError(f"unapproved native source-incubation path: {path}")
     generated = path in NATIVE_GENERATED_PROJECTIONS
@@ -2176,7 +2184,7 @@ def _kernel_platform_source_targets(path: str) -> tuple[list[str], list[str]]:
     return ["//kernels/api:api"], []
 
 
-def build_kernel_platform_source_entry(path: str) -> dict[str, Any]:
+def _build_kernel_platform_source_target_entry(path: str) -> dict[str, Any]:
     if path not in KERNEL_PLATFORM_AUTHORIZED_PATHS:
         raise PolicyError(f"unapproved kernel-platform source path: {path}")
     build_targets, test_targets = _kernel_platform_source_targets(path)
@@ -2362,7 +2370,7 @@ def build_path_entry(path: str) -> dict[str, Any]:
     return entry
 
 
-def _reconciliation_addition_reason(path: str) -> str:
+def _base_reconciliation_addition_reason(path: str) -> str:
     if path in {".golangci.yml", "biome.json"}:
         return "Required tracked Wave 0 lint configuration omitted by A6."
     if path == ".github/actionlint.yaml":
@@ -2859,6 +2867,270 @@ def main(argv: Sequence[str] | None = None) -> int:
     print(f"repository path policy: PASS ({len(manifest['paths'])} canonical files)")
     return 0
 
+
+
+# Pairformer Wave 6 governance activation (ADR-0016 through ADR-0021).
+PAIRFORMER_WAVE6_PLATFORM_ACTIVATION_ADR = (
+    "docs/adr/0016-pairformer-native-kernel-platform-wave6-source-activation.md"
+)
+PAIRFORMER_WAVE6_JIT06_ADRS: tuple[str, ...] = (
+    "docs/adr/0017-jit-06-outer-product-mean-sm90a-sm100a.md",
+    "docs/adr/0018-jit-06-pair-weighted-average-sm90a-sm100a.md",
+    "docs/adr/0019-jit-06-transition-sm90a-sm100a.md",
+    "docs/adr/0020-jit-06-triangle-attention-sm90a-sm100a.md",
+    "docs/adr/0021-jit-06-triangle-multiplication-sm90a-sm100a.md",
+)
+PAIRFORMER_WAVE6_ADRS: tuple[str, ...] = (
+    PAIRFORMER_WAVE6_PLATFORM_ACTIVATION_ADR,
+    *PAIRFORMER_WAVE6_JIT06_ADRS,
+)
+_PAIRFORMER_WAVE6_OPERATIONS: tuple[str, ...] = (
+    "outer_product_mean",
+    "pair_weighted_average",
+    "transition",
+    "triangle_attention",
+    "triangle_multiplication",
+)
+_PAIRFORMER_WAVE6_OPERATION_PREFIXES: tuple[str, ...] = tuple(
+    f"kernels/pairformer/{operation}/" for operation in _PAIRFORMER_WAVE6_OPERATIONS
+)
+PAIRFORMER_WAVE6_OPERATION_PATHS: tuple[str, ...] = tuple(
+    path
+    for path in dict.fromkeys(
+        (*NATIVE_SOURCE_INCUBATION_PATHS, *KERNEL_PLATFORM_AUTHORIZED_PATHS)
+    )
+    if path.startswith(_PAIRFORMER_WAVE6_OPERATION_PREFIXES)
+)
+PAIRFORMER_WAVE6_ACTIVATION_CRITERION = (
+    "Activated by ADR-0016 as an operation-local source, build, and qualification "
+    "input. Production selection remains denied until the exact operation and "
+    "architecture satisfy JIT-06 K0-K5 evidence, immutable signing, runtime "
+    "compatibility, revocation, and rollback requirements."
+)
+_PAIRFORMER_WAVE6_TEST_TARGETS: dict[str, str] = {
+    operation: f"//kernels/pairformer/{operation}:test_{operation}"
+    for operation in _PAIRFORMER_WAVE6_OPERATIONS
+}
+
+
+def _pairformer_wave6_operation(path: str) -> str | None:
+    for operation, prefix in zip(
+        _PAIRFORMER_WAVE6_OPERATIONS,
+        _PAIRFORMER_WAVE6_OPERATION_PREFIXES,
+        strict=True,
+    ):
+        if path.startswith(prefix):
+            return operation
+    return None
+
+
+def _activate_pairformer_wave6_entry(
+    entry: dict[str, object], path: str
+) -> dict[str, object]:
+    operation = _pairformer_wave6_operation(path)
+    if operation is None or path not in PAIRFORMER_WAVE6_OPERATION_PATHS:
+        return entry
+    activated = dict(entry)
+    activated.update(
+        {
+            "component": "kernels",
+            "status": "active",
+            "build_targets": [
+                f"//kernels/pairformer/{operation}:policy_inputs"
+            ],
+            "test_targets": [_PAIRFORMER_WAVE6_TEST_TARGETS[operation]],
+            "activation_criterion": PAIRFORMER_WAVE6_ACTIVATION_CRITERION,
+        }
+    )
+    return activated
+
+
+def build_native_source_incubation_entry(path: str) -> dict[str, object]:
+    return _activate_pairformer_wave6_entry(
+        _build_native_source_incubation_target_entry(path), path
+    )
+
+
+def build_kernel_platform_source_entry(path: str) -> dict[str, object]:
+    return _activate_pairformer_wave6_entry(
+        _build_kernel_platform_source_target_entry(path), path
+    )
+
+
+def _reconciliation_addition_reason(path: str) -> str:
+    if path == PAIRFORMER_WAVE6_PLATFORM_ACTIVATION_ADR:
+        return (
+            "ADR-0016 records the governed source activation boundary for the five "
+            "operation-local Pairformer packages while leaving generic native and "
+            "future runtime subsystems fail closed."
+        )
+    if path in PAIRFORMER_WAVE6_JIT06_ADRS:
+        return (
+            "JIT-06 records the exact operation-by-architecture qualification "
+            "decision for sm90a and sm100a without granting promotion or support."
+        )
+    if path in PAIRFORMER_WAVE6_OPERATION_PATHS:
+        return (
+            "ADR-0016 activates this existing operation-local path under its exact "
+            "Bazel policy-input and test closure; K0-K5 production qualification "
+            "remains outstanding."
+        )
+    return _base_reconciliation_addition_reason(path)
+
+
+NATIVE_STABLE_ABI_TENSOR_BRIDGE_HEADER = (
+    "kernels/native/stable_abi/tensor_bridge.h"
+)
+NATIVE_SOURCE_INCUBATION_PATHS = (
+    *NATIVE_SOURCE_INCUBATION_PATHS,
+    NATIVE_STABLE_ABI_TENSOR_BRIDGE_HEADER,
+)
+NATIVE_SOURCE_INCUBATION_ADDITIONS = (
+    *NATIVE_SOURCE_INCUBATION_ADDITIONS,
+    NATIVE_STABLE_ABI_TENSOR_BRIDGE_HEADER,
+)
+REQUIRED_ADDITIONS = (
+    *REQUIRED_ADDITIONS,
+    NATIVE_STABLE_ABI_TENSOR_BRIDGE_HEADER,
+    *PAIRFORMER_WAVE6_ADRS,
+)
+CANONICAL_FILE_COUNT = CANONICAL_FILE_COUNT + len(PAIRFORMER_WAVE6_ADRS) + 1
+CANONICAL_PATH_SET_SHA256 = (
+    "9798adb4eb4b2ea25b611731ca0ce80cc4d71bffa9622f127e53178855020ed1"
+)
+PRE_ACTIVATION_SOURCE_PATHS = frozenset(
+    path
+    for path in (*PRE_ACTIVATION_SOURCE_PATHS, NATIVE_STABLE_ABI_TENSOR_BRIDGE_HEADER)
+    if path not in PAIRFORMER_WAVE6_OPERATION_PATHS
+)
+
+# Native signed-qualification and callable-ABI governance (ADR-0022).
+NATIVE_SIGNED_QUALIFICATION_ADR = (
+    "docs/adr/0022-native-signed-qualification-and-production-admission-source-activation.md"
+)
+NATIVE_SIGNED_QUALIFICATION_NEW_PATHS: tuple[str, ...] = (
+    "kernels/native/python/capability_index.py",
+    "kernels/native/manifests/qualification_release.schema.json",
+    "kernels/native/manifests/qualified_capability_index.json",
+    "kernels/native/manifests/qualified_capability_index.schema.json",
+    "kernels/native/tests/test_capability_index.py",
+)
+NATIVE_CALLABLE_ABI_NEW_PATHS: tuple[str, ...] = (
+    "kernels/native/cuda/device_architecture.cpp",
+    "kernels/native/cuda/device_architecture.h",
+    "kernels/native/codegen/callable_abi.py",
+    "kernels/native/generated/launcher_plans.generated.cpp",
+    "kernels/native/generated/qualified_capabilities.generated.cpp",
+    "kernels/native/generated/qualified_capabilities.generated.json",
+    "kernels/native/stable_abi/node_launch_abi.h",
+    "kernels/native/stable_abi/node_launch_bridge.cpp",
+    "kernels/native/stable_abi/node_launch_bridge.h",
+    "kernels/native/stable_abi/qualified_capability_selector.cpp",
+    "kernels/native/stable_abi/qualified_capability_table.h",
+    "kernels/native/tests/test_qualified_capability_selector.py",
+)
+NATIVE_ADR0022_GENERATED_PROJECTIONS: tuple[str, ...] = (
+    "kernels/native/generated/launcher_plans.generated.cpp",
+    "kernels/native/generated/qualified_capabilities.generated.cpp",
+    "kernels/native/generated/qualified_capabilities.generated.json",
+)
+NATIVE_GENERATED_PROJECTIONS = (
+    *NATIVE_GENERATED_PROJECTIONS,
+    *NATIVE_ADR0022_GENERATED_PROJECTIONS,
+)
+NATIVE_SIGNED_QUALIFICATION_ACTIVE_PATHS: tuple[str, ...] = (
+    "kernels/native/BUILD.bazel",
+    "kernels/native/IMPLEMENTATION_STATUS.md",
+    "kernels/native/README.md",
+    "kernels/native/__init__.py",
+    "kernels/native/component.yaml",
+    "kernels/native/manifests/qualification_release.schema.json",
+    "kernels/native/manifests/qualified_capability_index.json",
+    "kernels/native/manifests/qualified_capability_index.schema.json",
+    "kernels/native/python/__init__.py",
+    "kernels/native/python/capability_index.py",
+    "kernels/native/python/loader.py",
+    "kernels/native/python/qualification.py",
+    "kernels/native/tests/test_capability_index.py",
+    "kernels/native/tests/test_loader_policy.py",
+    "kernels/native/tests/test_qualification.py",
+)
+NATIVE_SIGNED_QUALIFICATION_ACTIVATION_CRITERION = (
+    "Activated by ADR-0022 as signed-qualification, exact capability-inspection, "
+    "and fail-closed loader source. CPU/test-only evidence grants no K4, K5, "
+    "promotion, or production authority. Nonempty native execution remains "
+    "denied until signed K5 and generated native-table projections reconcile."
+)
+
+_build_pairformer_wave6_native_source_entry = build_native_source_incubation_entry
+
+
+def build_native_source_incubation_entry(path: str) -> dict[str, object]:
+    entry = _build_pairformer_wave6_native_source_entry(path)
+    if path not in NATIVE_SIGNED_QUALIFICATION_ACTIVE_PATHS:
+        return entry
+    activated = dict(entry)
+    activated.update(
+        {
+            "component": "kernels-native",
+            "status": "active",
+            "build_targets": ["//kernels/native:native_policy_inputs"],
+            "test_targets": [
+                "//kernels/native:test_capability_index",
+                "//kernels/native:test_loader_policy",
+                "//kernels/native:test_qualification",
+            ],
+            "activation_criterion": NATIVE_SIGNED_QUALIFICATION_ACTIVATION_CRITERION,
+        }
+    )
+    return activated
+
+
+_pairformer_wave6_reconciliation_addition_reason = _reconciliation_addition_reason
+
+
+def _reconciliation_addition_reason(path: str) -> str:
+    if path == NATIVE_SIGNED_QUALIFICATION_ADR:
+        return (
+            "ADR-0022 activates the exact signed-qualification and loader source "
+            "closure while retaining zero promoted capability rows."
+        )
+    if path in NATIVE_SIGNED_QUALIFICATION_NEW_PATHS:
+        return (
+            "ADR-0022 governs immutable K4/K5 evidence, explicit Ed25519 trust, "
+            "revocation/rollback, and fail-closed qualified-index inspection."
+        )
+    if path in NATIVE_CALLABLE_ABI_NEW_PATHS:
+        return (
+            "ADR-0022 governs the callable-node ABI and compact native-table "
+            "source/generated boundary without granting production execution."
+        )
+    return _pairformer_wave6_reconciliation_addition_reason(path)
+
+
+_NATIVE_ADR0022_NEW_PATHS = (
+    *NATIVE_SIGNED_QUALIFICATION_NEW_PATHS,
+    *NATIVE_CALLABLE_ABI_NEW_PATHS,
+)
+NATIVE_SOURCE_INCUBATION_PATHS = (
+    *NATIVE_SOURCE_INCUBATION_PATHS,
+    *_NATIVE_ADR0022_NEW_PATHS,
+)
+NATIVE_SOURCE_INCUBATION_ADDITIONS = (
+    *NATIVE_SOURCE_INCUBATION_ADDITIONS,
+    *_NATIVE_ADR0022_NEW_PATHS,
+)
+REQUIRED_ADDITIONS = (
+    *REQUIRED_ADDITIONS,
+    *_NATIVE_ADR0022_NEW_PATHS,
+    NATIVE_SIGNED_QUALIFICATION_ADR,
+)
+CANONICAL_FILE_COUNT = CANONICAL_FILE_COUNT + len(_NATIVE_ADR0022_NEW_PATHS) + 1
+PRE_ACTIVATION_SOURCE_PATHS = frozenset(
+    path
+    for path in (*PRE_ACTIVATION_SOURCE_PATHS, *_NATIVE_ADR0022_NEW_PATHS)
+    if path not in NATIVE_SIGNED_QUALIFICATION_ACTIVE_PATHS
+)
 
 if __name__ == "__main__":
     raise SystemExit(main())

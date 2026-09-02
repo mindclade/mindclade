@@ -18,7 +18,7 @@ _RETURN = re.compile(rf"^(?P<kind>Tensor\?|Tensor) (?P<name>{_VALUE_NAME})$")
 
 _CPP_ARGUMENT_TYPES = {
     "Tensor": "const torch::stable::Tensor&",
-    "Tensor?": "const torch::stable::std::optional<torch::stable::Tensor>&",
+    "Tensor?": "const std::optional<torch::stable::Tensor>&",
     "float": "double",
     "int": "int64_t",
     "bool": "bool",
@@ -26,7 +26,7 @@ _CPP_ARGUMENT_TYPES = {
 
 _CPP_RETURN_TYPES = {
     "Tensor": "torch::stable::Tensor",
-    "Tensor?": "torch::stable::std::optional<torch::stable::Tensor>",
+    "Tensor?": "std::optional<torch::stable::Tensor>",
 }
 
 # Keep this policy static: generated surfaces must not change because a host
@@ -135,7 +135,7 @@ class ParsedSchema:
         if len(self.returns) == 1:
             return self.returns[0].cpp_type
         members = ", ".join(item.cpp_type for item in self.returns)
-        return f"torch::stable::std::tuple<{members}>"
+        return f"std::tuple<{members}>"
 
     @property
     def cpp_parameters(self) -> str:

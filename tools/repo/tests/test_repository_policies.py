@@ -79,7 +79,7 @@ class RepositoryPolicyTest(unittest.TestCase):
         self.assertEqual(validate_manifest(self.manifest), [])
         self.assertEqual(len(self.manifest["paths"]), CANONICAL_FILE_COUNT)
         wave_one = [entry for entry in self.manifest["paths"] if entry["activation_wave"] == "1"]
-        self.assertEqual(len(wave_one), 651)
+        self.assertEqual(len(wave_one), 659)
         for entry in wave_one:
             with self.subTest(path=entry["path"]):
                 status = entry["status"]
@@ -653,3 +653,90 @@ class RepositoryPolicyTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class PairformerWave6GovernanceTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        from tools.repo import path_policy
+
+        cls.policy = path_policy
+
+    def test_wave6_adrs_are_active_governance_sources(self) -> None:
+        for path in self.policy.PAIRFORMER_WAVE6_ADRS:
+            entry = self.policy.build_path_entry(path)
+            self.assertEqual(entry["status"], "active")
+            self.assertEqual(entry["activation_wave"], "0")
+            self.assertEqual(entry["build_targets"], ["//:wave0_governance_sources"])
+            self.assertEqual(entry["test_targets"], ["//:wave0_tests"])
+
+    def test_pairformer_operation_sources_have_exact_active_closures(self) -> None:
+        self.assertTrue(self.policy.PAIRFORMER_WAVE6_OPERATION_PATHS)
+        for path in self.policy.PAIRFORMER_WAVE6_OPERATION_PATHS:
+            entry = self.policy.build_path_entry(path)
+            operation = path.split("/")[2]
+            self.assertEqual(entry["component"], "kernels")
+            self.assertEqual(entry["status"], "active")
+            self.assertEqual(
+                entry["build_targets"],
+                [f"//kernels/pairformer/{operation}:policy_inputs"],
+            )
+            self.assertEqual(
+                entry["test_targets"],
+                [f"//kernels/pairformer/{operation}:test_{operation}"],
+            )
+            self.assertIn("K0-K5", entry["activation_criterion"])
+
+    def test_native_and_future_runtime_subsystems_remain_fail_closed(self) -> None:
+        active_operations = set(self.policy.PAIRFORMER_WAVE6_OPERATION_PATHS) | set(
+            self.policy.NATIVE_SIGNED_QUALIFICATION_ACTIVE_PATHS
+        )
+        generated = set(self.policy.NATIVE_GENERATED_PROJECTIONS)
+        for path in self.policy.NATIVE_SOURCE_INCUBATION_PATHS:
+            if path in active_operations or path in generated:
+                continue
+            self.assertEqual(self.policy.build_path_entry(path)["status"], "target")
+        for path in self.policy.NATIVE_GENERATED_PROJECTIONS:
+            self.assertEqual(self.policy.build_path_entry(path)["status"], "generated")
+        from pathlib import Path
+
+        root = Path(__file__).resolve().parents[3]
+        manifest = self.policy.load_manifest(
+            root / "docs/architecture/repository-path-manifest.yaml"
+        )
+        entries = {entry["path"]: entry for entry in manifest["paths"]}
+        for prefix in (
+            "kernels/registry/",
+            "kernels/dispatch/",
+            "kernels/qualification/",
+            "kernels/benchmarks/",
+        ):
+            matching = [entry for path, entry in entries.items() if path.startswith(prefix)]
+            self.assertTrue(matching, prefix)
+            self.assertEqual({entry["status"] for entry in matching}, {"target"})
+        self.assertFalse(any(path.startswith("kernels/artifacts/") for path in entries))
+
+    def test_native_signed_qualification_has_exact_source_only_closure(self) -> None:
+        adr = self.policy.build_path_entry(
+            self.policy.NATIVE_SIGNED_QUALIFICATION_ADR
+        )
+        self.assertEqual(adr["status"], "active")
+        for path in self.policy.NATIVE_SIGNED_QUALIFICATION_ACTIVE_PATHS:
+            entry = self.policy.build_path_entry(path)
+            self.assertEqual(entry["component"], "kernels-native")
+            self.assertEqual(entry["status"], "active")
+            self.assertEqual(
+                entry["build_targets"],
+                ["//kernels/native:native_policy_inputs"],
+            )
+            self.assertEqual(
+                entry["test_targets"],
+                [
+                    "//kernels/native:test_capability_index",
+                    "//kernels/native:test_loader_policy",
+                    "//kernels/native:test_qualification",
+                ],
+            )
+            self.assertIn("no K4, K5", entry["activation_criterion"])
+        for path in self.policy.NATIVE_ADR0022_GENERATED_PROJECTIONS:
+            self.assertEqual(self.policy.build_path_entry(path)["status"], "generated")
