@@ -12,7 +12,7 @@ import sys
 from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Protocol, cast
+from typing import Any, Protocol, TypeGuard, cast
 
 from jsonschema import Draft202012Validator, FormatChecker
 from jsonschema.exceptions import SchemaError, ValidationError
@@ -228,6 +228,11 @@ def pointer_escape(value: str) -> str:
     return value.replace("~", "~0").replace("/", "~1")
 
 
+def is_object_mapping(value: object) -> TypeGuard[Mapping[str, object]]:
+    """Narrow JSON objects to the string-keyed mapping used by schema traversal."""
+    return isinstance(value, Mapping)
+
+
 def pointer_value(schema: Mapping[str, object], pointer: str) -> Mapping[str, object]:
     if pointer == "#":
         return schema
@@ -236,12 +241,14 @@ def pointer_value(schema: Mapping[str, object], pointer: str) -> Mapping[str, ob
     value: object = schema
     for encoded in pointer[2:].split("/"):
         part = encoded.replace("~1", "/").replace("~0", "~")
-        if not isinstance(value, Mapping) or part not in value:
+        if not is_object_mapping(value):
+            raise CatalogError(f"unresolved local JSON Schema reference: {pointer}")
+        if part not in value:
             raise CatalogError(f"unresolved local JSON Schema reference: {pointer}")
         value = value[part]
-    if not isinstance(value, Mapping):
+    if not is_object_mapping(value):
         raise CatalogError(f"JSON Schema reference is not an object: {pointer}")
-    return cast(Mapping[str, object], value)
+    return value
 
 
 def is_object_schema(value: Mapping[str, object]) -> bool:
@@ -348,9 +355,12 @@ def mapping_entries(value: object) -> list[tuple[str, Mapping[str, object]]]:
 
 def required_names(value: Mapping[str, object]) -> frozenset[str]:
     raw = value.get("required")
-    if not isinstance(raw, list) or not all(isinstance(item, str) for item in raw):
+    if not isinstance(raw, list):
         return frozenset()
-    return frozenset(cast(list[str], raw))
+    raw_items = cast(list[object], raw)
+    if not all(isinstance(item, str) for item in raw_items):
+        return frozenset()
+    return frozenset(cast(list[str], raw_items))
 
 
 def schema_source_map(bindings: Sequence[SchemaBinding]) -> dict[str, str]:
@@ -398,7 +408,7 @@ def python_type(binding: SchemaBinding, value: Mapping[str, object], pointer: st
         return f"Literal[{resolved['const']!r}]"
     enum = resolved.get("enum")
     if isinstance(enum, list) and enum:
-        values = ", ".join(repr(item) for item in enum)
+        values = ", ".join(repr(item) for item in cast(list[object], enum))
         return f"Literal[{values}]"
     value_type = resolved.get("type")
     if isinstance(value_type, list):
@@ -1146,7 +1156,7 @@ def typescript_type(binding: SchemaBinding, value: Mapping[str, object], pointer
         return json.dumps(resolved["const"], ensure_ascii=True)
     enum = resolved.get("enum")
     if isinstance(enum, list) and enum:
-        return " | ".join(json.dumps(item, ensure_ascii=True) for item in enum)
+        return " | ".join(json.dumps(item, ensure_ascii=True) for item in cast(list[object], enum))
     value_type = resolved.get("type")
     if isinstance(value_type, list):
         members = [
@@ -1289,7 +1299,10 @@ def generated_binding_outputs(root: Path) -> dict[Path, bytes]:
     if not isinstance(tools, Mapping):
         raise CatalogError(f"{TOOLCHAIN_LOCK} has no tools object")
     rustfmt = cast(Mapping[str, object], tools).get("rustfmt")
-    if not isinstance(rustfmt, Mapping) or not isinstance(rustfmt.get("version_output"), str):
+    if not isinstance(rustfmt, Mapping):
+        raise CatalogError(f"{TOOLCHAIN_LOCK} has no pinned rustfmt")
+    rustfmt_version_output = cast(Mapping[str, object], rustfmt).get("version_output")
+    if not isinstance(rustfmt_version_output, str):
         raise CatalogError(f"{TOOLCHAIN_LOCK} has no pinned rustfmt")
     rustfmt_version = subprocess.run(
         ["rustfmt", "--version"],
@@ -1297,10 +1310,10 @@ def generated_binding_outputs(root: Path) -> dict[Path, bytes]:
         stdout=subprocess.PIPE,
         text=True,
     ).stdout.strip()
-    if rustfmt_version != rustfmt["version_output"]:
+    if rustfmt_version != rustfmt_version_output:
         raise CatalogError(
             "rustfmt version mismatch: "
-            f"expected {rustfmt['version_output']!r}, got {rustfmt_version!r}"
+            f"expected {rustfmt_version_output!r}, got {rustfmt_version!r}"
         )
 
     bindings = schema_bindings(root)

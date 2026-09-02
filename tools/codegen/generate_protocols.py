@@ -481,12 +481,16 @@ def generate_language(
             if descriptor.get("service")
         ]
         if grpc_sources:
-            buf_lock = yaml.safe_load((root / "buf.lock").read_text(encoding="utf-8"))
-            if not isinstance(buf_lock, dict) or not isinstance(buf_lock.get("deps"), list):
+            raw_buf_lock: object = yaml.safe_load((root / "buf.lock").read_text(encoding="utf-8"))
+            if not isinstance(raw_buf_lock, Mapping):
+                raise ValueError("buf.lock has no dependency closure")
+            buf_lock = cast(Mapping[str, object], raw_buf_lock)
+            dependencies = buf_lock.get("deps")
+            if not isinstance(dependencies, list):
                 raise ValueError("buf.lock has no dependency closure")
             googleapis = next(
                 dependency
-                for dependency in cast(list[dict[str, str]], buf_lock["deps"])
+                for dependency in cast(list[dict[str, str]], dependencies)
                 if dependency.get("name") == "buf.build/googleapis/googleapis"
             )
             googleapis_root = staging / "external" / "googleapis"
@@ -1047,8 +1051,11 @@ def event_registry_entries(
 ) -> tuple[list[tuple[str, int, str, str]], str]:
     """Validate and return the complete governed event registry."""
     registry_path = root / "protocols/events/registry.yaml"
-    raw = yaml.safe_load(registry_path.read_text(encoding="utf-8"))
-    if not isinstance(raw, dict) or raw.get("schema_version") != "mindclade.event-registry/v1":
+    raw_registry: object = yaml.safe_load(registry_path.read_text(encoding="utf-8"))
+    if not isinstance(raw_registry, Mapping):
+        raise ValueError("protocols/events/registry.yaml has an unsupported schema version")
+    raw = cast(Mapping[str, object], raw_registry)
+    if raw.get("schema_version") != "mindclade.event-registry/v1":
         raise ValueError("protocols/events/registry.yaml has an unsupported schema version")
     raw_events = raw.get("events")
     if not isinstance(raw_events, list):
@@ -1277,12 +1284,17 @@ def validate_training_vertical_evidence(
     ):
         raise ValueError("training vertical evidence requires a full source_revision")
     raw_checks = evidence.get("checks")
-    if not isinstance(raw_checks, dict) or set(raw_checks) != TRAINING_VERTICAL_EVIDENCE_CHECKS:
+    if not isinstance(raw_checks, Mapping):
         raise ValueError(
             "training vertical evidence must contain exactly these checks: "
             + ", ".join(sorted(TRAINING_VERTICAL_EVIDENCE_CHECKS))
         )
-    checks = cast(dict[str, object], raw_checks)
+    checks = cast(Mapping[str, object], raw_checks)
+    if frozenset(checks) != TRAINING_VERTICAL_EVIDENCE_CHECKS:
+        raise ValueError(
+            "training vertical evidence must contain exactly these checks: "
+            + ", ".join(sorted(TRAINING_VERTICAL_EVIDENCE_CHECKS))
+        )
     for name, raw_check in sorted(checks.items()):
         if not isinstance(raw_check, dict):
             raise ValueError(f"training vertical evidence check {name!r} is not an object")
@@ -1339,16 +1351,19 @@ def protojson_field_schema(field: Any) -> dict[str, Any]:
         }
 
     if field.type == field_type.TYPE_MESSAGE:
+        message_type = field.message_type
+        if message_type is None:
+            raise ValueError(f"public message field has no message type: {field.full_name}")
         well_known = {
             "google.protobuf.Duration": {"format": "duration", "type": "string"},
             "google.protobuf.Timestamp": {"format": "date-time", "type": "string"},
         }
-        value = well_known.get(field.message_type.full_name)
+        value = well_known.get(message_type.full_name)
         schema = (
             dict(value)
             if value is not None
             else {
-                "$ref": "#/components/schemas/" + field.message_type.full_name,
+                "$ref": "#/components/schemas/" + message_type.full_name,
             }
         )
     elif field.type == field_type.TYPE_ENUM:
@@ -1409,7 +1424,7 @@ def public_protojson_components(
 
     result: dict[str, dict[str, Any]] = {}
     for message in sorted(messages, key=lambda value: value.full_name):
-        options = options_class.FromString(message.GetOptions().SerializeToString())
+        options = cast(Any, options_class.FromString(message.GetOptions().SerializeToString()))
         contract = options.Extensions[contract_extension]
         required: list[str] = []
         for field_name in contract.required_fields:
@@ -1610,27 +1625,30 @@ def public_openapi_projection(descriptor_set: bytes) -> dict[str, Any]:
     service = pool.FindServiceByName("mindclade.api.v1.MindcladeService")
     operations: list[dict[str, Any]] = []
     for method in service.methods:
-        options = options_class.FromString(method.GetOptions().SerializeToString())
+        options = cast(Any, options_class.FromString(method.GetOptions().SerializeToString()))
         rule = options.Extensions[http_extension]
         contract = options.Extensions[contract_extension]
         verb = rule.WhichOneof("pattern")
-        if verb is None:
+        if not isinstance(verb, str):
             raise ValueError(f"public RPC has no google.api.http binding: {method.full_name}")
         stream_enum = contract.DESCRIPTOR.fields_by_name["stream"].enum_type
         path_template = getattr(rule, verb)
+        if not isinstance(path_template, str):
+            raise ValueError(f"public RPC has an invalid HTTP path: {method.full_name}")
+        body = cast(str, rule.body)
         path_fields = sorted(
             {value.split(".", 1)[0] for value in re.findall(r"\{([^={}]+)=", path_template)}
         )
-        body_field = method.input_type.fields_by_name.get(rule.body) if rule.body else None
+        body_field = method.input_type.fields_by_name.get(body) if body else None
         query_fields = {
             field.json_name: protojson_field_schema(field)
             for field in method.input_type.fields
-            if field.name not in path_fields and field.name != rule.body
+            if field.name not in path_fields and field.name != body
         }
         operations.append(
             {
                 "auth": "bearer" if contract.bearer_auth else "none",
-                "body": rule.body or None,
+                "body": body or None,
                 "bodyMessage": (
                     body_field.message_type.full_name
                     if body_field is not None and body_field.message_type is not None
@@ -1670,26 +1688,30 @@ def resolve_openapi_ref(document: Mapping[str, Any], value: Mapping[str, Any]) -
     resolved: Any = document
     for component in ref[2:].split("/"):
         key = component.replace("~1", "/").replace("~0", "~")
-        if not isinstance(resolved, dict) or key not in resolved:
+        if not isinstance(resolved, Mapping):
             raise ValueError(f"unresolved OpenAPI reference: {ref}")
-        resolved = resolved[key]
+        resolved_mapping = cast(Mapping[str, Any], resolved)
+        if key not in resolved_mapping:
+            raise ValueError(f"unresolved OpenAPI reference: {ref}")
+        resolved = resolved_mapping[key]
     return resolved
 
 
 def schema_authority_names(value: Any) -> set[str]:
     """Collect descriptor message identities declared inside one schema."""
-    if isinstance(value, dict):
+    if isinstance(value, Mapping):
+        mapping = cast(Mapping[str, Any], value)
         result = {
             name
-            for name in [value.get("x-mindclade-authoritative-message")]
+            for name in [mapping.get("x-mindclade-authoritative-message")]
             if isinstance(name, str)
         }
-        for child in value.values():
+        for child in mapping.values():
             result.update(schema_authority_names(child))
         return result
     if isinstance(value, list):
         result: set[str] = set()
-        for child in value:
+        for child in cast(list[Any], value):
             result.update(schema_authority_names(child))
         return result
     return set()
@@ -1701,11 +1723,12 @@ def merged_openapi_object(
 ) -> tuple[dict[str, Any], set[str]]:
     """Resolve object composition into its effective properties and required set."""
     resolved = resolve_openapi_ref(document, schema)
-    if not isinstance(resolved, dict):
+    if not isinstance(resolved, Mapping):
         raise ValueError("OpenAPI schema reference did not resolve to an object")
-    properties = dict(cast(dict[str, Any], resolved.get("properties", {})))
-    required = set(cast(list[str], resolved.get("required", [])))
-    for part in cast(list[object], resolved.get("allOf", [])):
+    resolved_object = cast(Mapping[str, Any], resolved)
+    properties = dict(cast(dict[str, Any], resolved_object.get("properties", {})))
+    required = set(cast(list[str], resolved_object.get("required", [])))
+    for part in cast(list[object], resolved_object.get("allOf", [])):
         if not isinstance(part, dict):
             raise ValueError("OpenAPI allOf member is not an object")
         child_properties, child_required = merged_openapi_object(
@@ -1767,33 +1790,42 @@ def validate_curated_protojson(
             return
 
         resolved = resolve_openapi_ref(curated, curated_schema)
-        if not isinstance(resolved, dict):
+        if not isinstance(resolved, Mapping):
             raise ValueError(f"{context}: schema did not resolve to an object")
+        resolved_object = cast(Mapping[str, Any], resolved)
         expected_type = raw_schema.get("type")
-        actual_type = resolved.get("type")
+        actual_type = resolved_object.get("type")
         if expected_type != actual_type:
             raise ValueError(
                 f"{context}: ProtoJSON type mismatch: expected {expected_type}, got {actual_type}"
             )
         if expected_type == "array":
             raw_items = raw_schema.get("items")
-            actual_items = resolved.get("items")
-            if not isinstance(raw_items, dict) or not isinstance(actual_items, dict):
+            actual_items = resolved_object.get("items")
+            if not isinstance(raw_items, Mapping) or not isinstance(actual_items, Mapping):
                 raise ValueError(f"{context}: array item schema is missing")
-            validate_schema(actual_items, raw_items, f"{context}[]")
+            validate_schema(
+                cast(Mapping[str, Any], actual_items),
+                cast(Mapping[str, Any], raw_items),
+                f"{context}[]",
+            )
         elif expected_type == "object" and "additionalProperties" in raw_schema:
             raw_values = raw_schema["additionalProperties"]
-            actual_values = resolved.get("additionalProperties")
-            if not isinstance(raw_values, dict) or not isinstance(actual_values, dict):
+            actual_values = resolved_object.get("additionalProperties")
+            if not isinstance(raw_values, Mapping) or not isinstance(actual_values, Mapping):
                 raise ValueError(f"{context}: map value schema is missing")
-            validate_schema(actual_values, raw_values, f"{context}{{}}")
+            validate_schema(
+                cast(Mapping[str, Any], actual_values),
+                cast(Mapping[str, Any], raw_values),
+                f"{context}{{}}",
+            )
         expected_enum = raw_schema.get("enum")
-        if expected_enum is not None and resolved.get("enum") != expected_enum:
+        if expected_enum is not None and resolved_object.get("enum") != expected_enum:
             raise ValueError(f"{context}: ProtoJSON enum mismatch")
         expected_format = raw_schema.get("format")
-        if expected_format is not None and resolved.get("format") != expected_format:
+        if expected_format is not None and resolved_object.get("format") != expected_format:
             raise ValueError(
-                f"{context}: expected format {expected_format}, got {resolved.get('format')}"
+                f"{context}: expected format {expected_format}, got {resolved_object.get('format')}"
             )
 
     def validate_message(component_name: str, message_name: str, context: str) -> None:
@@ -1950,14 +1982,17 @@ def validate_curated_bindings(
             raise ValueError(f"{operation_id}: query binding drift")
         for name, raw_schema in raw_query.items():
             parameter_schema = query[name].get("schema")
-            if not isinstance(parameter_schema, dict):
+            if not isinstance(parameter_schema, Mapping):
                 raise ValueError(f"{operation_id}.{name}: query schema is missing")
-            resolved = resolve_openapi_ref(curated, parameter_schema)
-            if not isinstance(resolved, dict) or resolved.get("type") != raw_schema.get("type"):
+            resolved = resolve_openapi_ref(curated, cast(Mapping[str, Any], parameter_schema))
+            if not isinstance(resolved, Mapping):
                 raise ValueError(f"{operation_id}.{name}: query ProtoJSON type drift")
-            if raw_schema.get("format") is not None and resolved.get("format") != raw_schema.get(
+            resolved_schema = cast(Mapping[str, Any], resolved)
+            if resolved_schema.get("type") != raw_schema.get("type"):
+                raise ValueError(f"{operation_id}.{name}: query ProtoJSON type drift")
+            if raw_schema.get("format") is not None and resolved_schema.get(
                 "format"
-            ):
+            ) != raw_schema.get("format"):
                 raise ValueError(f"{operation_id}.{name}: query ProtoJSON format drift")
         has_body = "requestBody" in operation
         if has_body != bool(raw_operation["body"]):
@@ -2016,7 +2051,9 @@ def validate_curated_bindings(
             if error_response.get("headers"):
                 raise ValueError(f"{operation_id}.{status_code}: response-header drift")
             error_content = set(cast(dict[str, Any], error_response.get("content", {})))
-            expected_error_content = set() if status_code == 304 else {"application/problem+json"}
+            expected_error_content: set[str] = (
+                set() if status_code == 304 else {"application/problem+json"}
+            )
             if error_content != expected_error_content:
                 raise ValueError(f"{operation_id}.{status_code}: error media-type/body drift")
 
@@ -2029,14 +2066,14 @@ def curate_openapi_overlay(overlay: Mapping[str, Any]) -> dict[str, Any]:
     pending: list[str] = []
 
     def collect_references(value: Any) -> None:
-        if isinstance(value, dict):
-            for key, child in value.items():
+        if isinstance(value, Mapping):
+            for key, child in cast(Mapping[str, Any], value).items():
                 if key == "$ref" and isinstance(child, str):
                     pending.append(child)
                 else:
                     collect_references(child)
         elif isinstance(value, list):
-            for child in value:
+            for child in cast(list[Any], value):
                 collect_references(child)
 
     collect_references(curated.get("paths", {}))
@@ -2060,9 +2097,10 @@ def curate_openapi_overlay(overlay: Mapping[str, Any]) -> dict[str, Any]:
             security_names.update(cast(dict[str, Any], security))
     for path_item in cast(dict[str, dict[str, Any]], curated.get("paths", {})).values():
         for operation in path_item.values():
-            if not isinstance(operation, dict):
+            if not isinstance(operation, Mapping):
                 continue
-            for security in cast(list[object], operation.get("security", [])):
+            operation_object = cast(Mapping[str, Any], operation)
+            for security in cast(list[object], operation_object.get("security", [])):
                 if isinstance(security, dict):
                     security_names.update(cast(dict[str, Any], security))
     reachable["securitySchemes"].update(security_names)
@@ -2082,8 +2120,11 @@ def openapi_pipeline_outputs(root: Path, descriptor_set: bytes) -> dict[Path, by
     """Return checked raw, curated, and published OpenAPI candidate stages."""
     raw = public_openapi_projection(descriptor_set)
     curated_source = root / "protocols/openapi/external-api.yaml"
-    overlay = yaml.safe_load(curated_source.read_text(encoding="utf-8"))
-    if not isinstance(overlay, dict) or not isinstance(overlay.get("paths"), dict):
+    raw_overlay: object = yaml.safe_load(curated_source.read_text(encoding="utf-8"))
+    if not isinstance(raw_overlay, Mapping):
+        raise ValueError("curated OpenAPI document has no paths object")
+    overlay = cast(Mapping[str, Any], raw_overlay)
+    if not isinstance(overlay.get("paths"), Mapping):
         raise ValueError("curated OpenAPI document has no paths object")
     curated = curate_openapi_overlay(overlay)
     validate_curated_bindings(raw, curated)
