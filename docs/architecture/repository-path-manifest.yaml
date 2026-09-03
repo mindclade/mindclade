@@ -7478,58 +7478,58 @@
     },
     "owners": {
       "agent-platform": {
-        "team": "@mindclade/product-engineering"
+        "team": "@mindclade/product"
       },
       "architecture": {
-        "team": "@mindclade/architecture"
+        "team": "@mindclade/engineering"
       },
       "computational-biology": {
-        "team": "@mindclade/computational-biology"
+        "team": "@mindclade/research"
       },
       "contract-governance": {
-        "team": "@mindclade/architecture"
+        "team": "@mindclade/engineering"
       },
       "data-platform": {
         "team": "@mindclade/data-platform"
       },
       "developer-experience": {
-        "team": "@mindclade/product-engineering"
+        "team": "@mindclade/product"
       },
       "developer-platform": {
-        "team": "@mindclade/developer-platform"
+        "team": "@mindclade/platform"
       },
       "evaluation-science": {
-        "team": "@mindclade/ml-systems"
+        "team": "@mindclade/model-training"
       },
       "inference-systems": {
-        "team": "@mindclade/ml-systems"
+        "team": "@mindclade/model-training"
       },
       "ml-systems-performance": {
-        "team": "@mindclade/ml-systems"
+        "team": "@mindclade/model-training"
       },
       "model-architecture": {
-        "team": "@mindclade/ml-systems"
+        "team": "@mindclade/model-training"
       },
       "platform-control-plane": {
-        "team": "@mindclade/product-engineering"
+        "team": "@mindclade/product"
       },
       "platform-operations": {
-        "team": "@mindclade/platform-operations"
+        "team": "@mindclade/infrastructure"
       },
       "product-engineering": {
-        "team": "@mindclade/product-engineering"
+        "team": "@mindclade/product"
       },
       "release-engineering": {
-        "team": "@mindclade/release-engineering"
+        "team": "@mindclade/release"
       },
       "research": {
-        "team": "@mindclade/computational-biology"
+        "team": "@mindclade/research"
       },
       "security": {
         "team": "@mindclade/security"
       },
       "training-systems": {
-        "team": "@mindclade/ml-systems"
+        "team": "@mindclade/model-training"
       }
     }
   },

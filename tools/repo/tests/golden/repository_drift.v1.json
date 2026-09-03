@@ -13,7 +13,7 @@
     "observed_commit": null,
     "working_tree_state": "clean",
     "path_set_sha256": "a2fd16f7a1cfe160827ecbc7244adc22ce1c4bcc05390693e6bae937544a2005",
-    "content_snapshot_sha256": "b95aec848d5f37e6a6088406d3f77507c584221a405f48dd57d6f40de29a2c6b",
+    "content_snapshot_sha256": "c93b0aaa3615836719e34832744e9270dd4f0fe5b616996c535206efbc94ee68",
     "evidence_outputs_excluded": [
       "docs/architecture/repository-drift-baseline.md"
     ]
