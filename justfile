@@ -289,6 +289,7 @@ generate:
       --write
     {{ python }} tools/docs/render_architecture_blueprint.py --manifest docs/architecture/blueprint/manifest.yaml
     {{ python }} tools/docs/render_sdk_api_reference.py --root .
+    {{ uv }} run python tools/codegen/generate_cross_field_constraints.py --root .
 
 # Atomically generate descriptor, transports, OpenAPI, registries, coverage, and manifest.
 generate-contracts:
@@ -302,7 +303,14 @@ check-schema-drift:
 check-contract-drift:
     {{ uv }} run python tools/codegen/generate_protocols.py --root . --check
     just check-schema-drift
+    just check-cross-field-drift
     just check-sdk-plan
+
+# Fail when the cross-field constraint table and its five validators disagree.
+# Runs without the pinned contract toolchain, so it is reachable even where
+# `generate-contracts` is not.
+check-cross-field-drift:
+    {{ uv }} run python tools/codegen/generate_cross_field_constraints.py --root . --check
 
 # Emit and verify the deterministic offline optional REST-provider comparison plan.
 check-sdk-plan:
