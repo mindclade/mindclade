@@ -8587,40 +8587,41 @@ mindclade/
 │       │   │   ├── format
 │       │   │   ├── lint
 │       │   │   └── test
-│       │   └── src/
-│       │       ├── admin.rs
-│       │       ├── agent_tests.rs
-│       │       ├── agents.rs
-│       │       ├── approvals.rs
-│       │       ├── artifacts.rs
-│       │       ├── auth.rs
-│       │       ├── config.rs
-│       │       ├── datasets.rs
-│       │       ├── error.rs
-│       │       ├── events.rs
-│       │       ├── inference.rs
-│       │       ├── lib.rs
-│       │       ├── models.rs
-│       │       ├── operations.rs
-│       │       ├── policies.rs
-│       │       ├── policy_admin_tests.rs
-│       │       ├── request.rs
-│       │       ├── retry.rs
-│       │       ├── tests.rs
-│       │       ├── testing.rs
-│       │       ├── training.rs
-│       │       ├── transport.rs
-│       │       ├── workflow_tests.rs
-│       │       ├── workflows.rs
-│       │       ├── artifact_operation_gap_tests.rs
-│       │       ├── evaluation_tests.rs
-│       │       ├── evaluations.rs
-│       │       ├── job_run_tests.rs
-│       │       ├── jobs.rs
-│       │       ├── runs.rs
-│       │       ├── training_tests.rs
-│       │       ├── experiments.rs
-│       │       └── experiment_tests.rs
+│       │   ├── src/
+│       │   │   ├── admin.rs
+│       │   │   ├── agent_tests.rs
+│       │   │   ├── agents.rs
+│       │   │   ├── approvals.rs
+│       │   │   ├── artifacts.rs
+│       │   │   ├── auth.rs
+│       │   │   ├── config.rs
+│       │   │   ├── datasets.rs
+│       │   │   ├── error.rs
+│       │   │   ├── events.rs
+│       │   │   ├── inference.rs
+│       │   │   ├── lib.rs
+│       │   │   ├── models.rs
+│       │   │   ├── operations.rs
+│       │   │   ├── policies.rs
+│       │   │   ├── policy_admin_tests.rs
+│       │   │   ├── request.rs
+│       │   │   ├── retry.rs
+│       │   │   ├── tests.rs
+│       │   │   ├── testing.rs
+│       │   │   ├── training.rs
+│       │   │   ├── transport.rs
+│       │   │   ├── workflow_tests.rs
+│       │   │   ├── workflows.rs
+│       │   │   ├── artifact_operation_gap_tests.rs
+│       │   │   ├── evaluation_tests.rs
+│       │   │   ├── evaluations.rs
+│       │   │   ├── job_run_tests.rs
+│       │   │   ├── jobs.rs
+│       │   │   ├── runs.rs
+│       │   │   ├── training_tests.rs
+│       │   │   ├── experiments.rs
+│       │   │   └── experiment_tests.rs
+│       │   └── component.yaml
 │       ├── typescript/
 │       │   ├── BUILD.bazel
 │       │   ├── CHANGELOG.md

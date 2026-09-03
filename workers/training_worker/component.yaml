@@ -22,12 +22,6 @@ spec:
       owner: developer-experience
       justification: The worker uses the governed ergonomic Python facade over generated transports.
       scope: fenced training lifecycle and verified artifact access
-    - component: protobuf-job-events
-      kind: protocol
-      visibility: repository
-      owner: architecture
-      justification: Immutable typed job events are the authoritative assignment-delivery contract.
-      scope: Pub/Sub training assignment intake
   provides:
     - verified-training-assignment-intake
   release:

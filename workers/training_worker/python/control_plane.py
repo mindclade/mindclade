@@ -16,6 +16,7 @@ from mindclade_internal_sdk import (
     AsyncClient,
     AsyncGoogleWorkloadIdentityProvider,
     CallOptions,
+    ConfigurationError,
     ConflictError,
     DeadlineExceededError,
     Environment,
@@ -58,10 +59,20 @@ def client_options() -> dict[str, Any]:
     if probe.environment is Environment.LOCAL:
         # Loopback development: the SDK forbids credentials over insecure transport.
         return {"user_agent": _USER_AGENT, "insecure_for_testing": True}
+    # ``audience`` is optional to *construct* a configuration -- the SDK derives
+    # it from the endpoint when omitted -- so the field stays ``str | None`` even
+    # though ``__post_init__`` always resolves one. The provider signature is
+    # ``str``, and binding a token to ``None`` would be a credential bound to
+    # nothing, so state the dependency here rather than let it fail deeper.
+    audience = probe.audience
+    if audience is None:
+        raise ConfigurationError(
+            f"the SDK resolved no verifier audience for environment {probe.environment.value}"
+        )
     return {
         "user_agent": _USER_AGENT,
-        "audience": probe.audience,
-        "token_provider": AsyncGoogleWorkloadIdentityProvider(probe.audience),
+        "audience": audience,
+        "token_provider": AsyncGoogleWorkloadIdentityProvider(audience),
     }
 
 

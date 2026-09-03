@@ -1219,7 +1219,9 @@ def reconcile_authority_paths(source_paths: Sequence[str]) -> list[str]:
         raise PolicyError(f"ADR reconciliation sources are absent: {sorted(missing)!r}")
     missing_retired = set(RETIRED_PATHS) - source_set
     if missing_retired:
-        raise PolicyError(f"retired paths are absent from source authority: {sorted(missing_retired)!r}")
+        raise PolicyError(
+            f"retired paths are absent from source authority: {sorted(missing_retired)!r}"
+        )
     if set(REQUIRED_ADDITIONS) & source_set:
         raise PolicyError("required reconciliation addition already exists in source authority")
 
@@ -1445,12 +1447,7 @@ def infer_kind(path: str) -> str:
         return "configuration"
     if suffix in {".bzl", ".bazel"} or name in {"BUILD", "BUILD.bazel", "MODULE.bazel"}:
         return "build"
-    if (
-        "/tests/" in f"/{path}/"
-        or name.startswith("test_")
-        or "_test." in name
-        or ".test." in name
-    ):
+    if "/tests/" in f"/{path}/" or name.startswith("test_") or "_test." in name or ".test." in name:
         return "test"
     if suffix in {".md", ".rst"}:
         return "documentation"
@@ -3333,7 +3330,7 @@ CANONICAL_PATH_SET_SHA256 = (  # pyright: ignore[reportConstantRedefinition]
 _adr0023_reconciliation_addition_reason = _reconciliation_addition_reason
 
 
-def _reconciliation_addition_reason(path: str) -> str:
+def _reconciliation_addition_reason(path: str) -> str:  # pyright: ignore[reportRedeclaration]
     if path == ESTATE_BUILD_OPTIMIZATION_ADR:
         return (
             "ADR-0023 records the source-only hermetic toolchain, offline vendor, "
@@ -3379,7 +3376,7 @@ CANONICAL_PATH_SET_SHA256 = (  # pyright: ignore[reportConstantRedefinition]
 _sdk_api_reference_addition_reason = _reconciliation_addition_reason
 
 
-def _reconciliation_addition_reason(path: str) -> str:
+def _reconciliation_addition_reason(path: str) -> str:  # pyright: ignore[reportRedeclaration]
     if path in SDK_API_REFERENCE_TOOLING_PATHS:
         return (
             "The internal SDK API reference is rendered from the governed RPC-coverage "
@@ -3425,7 +3422,7 @@ CANONICAL_PATH_SET_SHA256 = (  # pyright: ignore[reportConstantRedefinition]
 _sdk_parity_addition_reason = _reconciliation_addition_reason
 
 
-def _reconciliation_addition_reason(path: str) -> str:
+def _reconciliation_addition_reason(path: str) -> str:  # pyright: ignore[reportRedeclaration]
     if path in SDK_PARITY_PATHS:
         return (
             "Stage 7 four-language SDK parity and its Stage 8 worked consumers: "
@@ -3455,7 +3452,7 @@ CANONICAL_PATH_SET_SHA256 = (  # pyright: ignore[reportConstantRedefinition]
 _sdk_conformance_contract_addition_reason = _reconciliation_addition_reason
 
 
-def _reconciliation_addition_reason(path: str) -> str:
+def _reconciliation_addition_reason(path: str) -> str:  # pyright: ignore[reportRedeclaration]
     if path in SDK_CONFORMANCE_CONTRACT_PATHS:
         return (
             "The behaviour contract the four internal SDK facades are held to, naming "
@@ -3594,7 +3591,7 @@ CANONICAL_PATH_SET_SHA256 = (  # pyright: ignore[reportConstantRedefinition]
 _crud_chain_completeness_addition_reason = _reconciliation_addition_reason
 
 
-def _reconciliation_addition_reason(path: str) -> str:
+def _reconciliation_addition_reason(path: str) -> str:  # pyright: ignore[reportRedeclaration]
     if path in CRUD_CHAIN_COMPLETENESS_PATHS:
         return (
             "The descriptor-bound gate holding every create/read/update/delete chain "
@@ -3602,6 +3599,44 @@ def _reconciliation_addition_reason(path: str) -> str:
             "returned."
         )
     return _crud_chain_completeness_addition_reason(path)
+
+
+# The Rust facade's component declaration. Go, Python and TypeScript each
+# declared one; Rust did not, so `internal-sdk-rust` was a name no component
+# answered to -- and the ingestion worker, whose only first-party Cargo
+# dependency is that facade, carried a dependency edge the graph could not
+# resolve. It reaches Bazel through the `internal/sdk/rust` glob already.
+SDK_RUST_COMPONENT_PATHS: tuple[str, ...] = ("internal/sdk/rust/component.yaml",)
+REQUIRED_ADDITIONS = (  # pyright: ignore[reportConstantRedefinition]
+    *REQUIRED_ADDITIONS,
+    *SDK_RUST_COMPONENT_PATHS,
+)
+# Waved and targeted with the three sibling facade declarations.
+LATE_ACTIVATION_WAVE_ONE_PATHS = (  # pyright: ignore[reportConstantRedefinition]
+    *LATE_ACTIVATION_WAVE_ONE_PATHS,
+    *SDK_RUST_COMPONENT_PATHS,
+)
+LATE_ACTIVATION_ALL_CONTRACT_PATHS = (  # pyright: ignore[reportConstantRedefinition]
+    *LATE_ACTIVATION_ALL_CONTRACT_PATHS,
+    *SDK_RUST_COMPONENT_PATHS,
+)
+CANONICAL_FILE_COUNT = (  # pyright: ignore[reportConstantRedefinition]
+    CANONICAL_FILE_COUNT + len(SDK_RUST_COMPONENT_PATHS)
+)
+CANONICAL_PATH_SET_SHA256 = (  # pyright: ignore[reportConstantRedefinition]
+    "9f16310364fdbf5a4519135c28740b196090c5c6400a1fba58e86952834cf07c"
+)
+
+_sdk_rust_component_addition_reason = _reconciliation_addition_reason
+
+
+def _reconciliation_addition_reason(path: str) -> str:
+    if path in SDK_RUST_COMPONENT_PATHS:
+        return (
+            "The Rust facade's component declaration, so the fourth internal SDK is a "
+            "resolvable dependency-graph identity like the other three."
+        )
+    return _sdk_rust_component_addition_reason(path)
 
 
 if __name__ == "__main__":

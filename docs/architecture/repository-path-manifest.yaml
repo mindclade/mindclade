@@ -7221,6 +7221,10 @@
           "reason": "The descriptor-bound gate holding every create/read/update/delete chain to closure, so a read cannot require identity the create response never returned."
         },
         {
+          "path": "internal/sdk/rust/component.yaml",
+          "reason": "The Rust facade's component declaration, so the fourth internal SDK is a resolvable dependency-graph identity like the other three."
+        },
+        {
           "path": "docs/adr/0001-repository-identity-and-ownership.md",
           "replaces": "docs/adr/0001-repository-identity.md",
           "reason": "Sections 1-18 and Section 14.1 take precedence over the stale A6 short ADR name."
@@ -7261,8 +7265,8 @@
           "reason": "Dependabot is retired estate-wide; Renovate configuration extending the organization preset in mindclade/.github replaces it."
         }
       ],
-      "canonical_file_count": 3642,
-      "canonical_path_set_sha256": "8d6540ccf1d90a353418c022cb45f924ba20d10a3ed3f68aef6b97e0f75f22e7"
+      "canonical_file_count": 3643,
+      "canonical_path_set_sha256": "9f16310364fdbf5a4519135c28740b196090c5c6400a1fba58e86952834cf07c"
     },
     "owners": {
       "agent-platform": {
@@ -61953,6 +61957,23 @@
     {
       "path": "internal/sdk/rust/src/experiment_tests.rs",
       "kind": "source",
+      "owner": "developer-experience",
+      "component": "internal-sdk-rust",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "internal/sdk/rust/component.yaml",
+      "kind": "configuration",
       "owner": "developer-experience",
       "component": "internal-sdk-rust",
       "status": "active",
