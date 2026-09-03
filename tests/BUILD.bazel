@@ -74,6 +74,8 @@ py_test(
     srcs = ["conformance/test_generated_package_consumers.py"],
     data = _WAVE1_DATA + [
         "//:internal_sdk_root_sources",
+        "//libs/go/eventruntime:governed_sources",
+        "//libs/go/numconv:governed_sources",
         "//sdks/go/mindclade:governed_sources",
         "//sdks/python:governed_sources",
         "//sdks/rust:governed_sources",
@@ -301,6 +303,7 @@ test_suite(
         "//apps/console:operation_flow_test",
         "//examples:tests",
         "//libs/go/eventruntime:eventruntime_test",
+        "//libs/go/numconv:conversion_test",
         "//libs/go/storage:gcs_object_store_test",
         "//libs/python/artifacts:schema_binding_test",
         "//libs/rust/artifact:artifact_test",
