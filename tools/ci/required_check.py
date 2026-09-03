@@ -193,6 +193,18 @@ ADR_REGISTRY = (
         "accepted",
         "Estate Nix and Bazel hermeticity and cache preparation",
     ),
+    AdrContract(
+        "ADR-0024",
+        "0024-vendored-contract-import-closure.md",
+        "accepted",
+        "Vendored contract import closure",
+    ),
+    AdrContract(
+        "ADR-0025",
+        "0025-cross-field-constraints-as-a-transitional-side-car.md",
+        "accepted",
+        "Cross-field constraints as a transitional side-car",
+    ),
 )
 ADR_PATHS = tuple(contract.filename for contract in ADR_REGISTRY)
 ADR_METADATA_FIELDS = {
@@ -1079,6 +1091,8 @@ def _self_test_adr_ratification_contract() -> None:
         "ADR-0021",
         "ADR-0022",
         "ADR-0023",
+        "ADR-0024",
+        "ADR-0025",
     ]:
         raise AssertionError("ADR registry order drifted")
     for contract in ADR_REGISTRY:

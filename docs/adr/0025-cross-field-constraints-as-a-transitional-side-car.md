@@ -1,14 +1,24 @@
 # ADR-0025: Cross-field constraints as a transitional side-car
 
 - Status: Accepted in blueprint specification
-- Connected ratification: Not required; no contract surface changes
+- Connected ratification: Pending independent review on protected infrastructure
 - Specification date: 2026-09-03
-- Effective date: 2026-09-03
+- Effective date: Pending connected ratification; source-only implementation authorized 2026-09-03
 - Compatibility window: Until the next descriptor regeneration in the pinned toolchain
 - Supersedes: None
 - Superseded by: None
 - Owners: Contract Governance, Developer Platform
 - Reviewers: Architecture, Security
+
+## Decision record metadata
+
+- Affected invariants: exactly one place defines a cross-field constraint; the generator is the only writer of the five projections; the table resolves against the descriptor digest it names, and fails generation loudly when it does not
+- Affected paths: `protocols/constraints/cross-field.yaml`; `tools/codegen/generate_cross_field_constraints.py`; `services/control_plane/internal/platform/validation/`; `services/control_plane/cmd/control-plane/wire.go`; the four SDK facades under `internal/sdk/`
+- Affected contracts: none; the side-car carries no wire surface and adds no field, message, or RPC to the descriptor set
+- Security and safety impact: constraints are enforced in the gRPC unary interceptor after authorization, never before it; identifiers, message names, and dot paths are pinned to a pattern admitting no quote, backslash, or newline, and that property is load-bearing for the five generated languages
+- Migration: retire the side-car at the migration trigger in favour of `field_behavior = OUTPUT_ONLY` and a Mindclade `MessageOptions` extension, superseding this record rather than extending it
+- Rollback: delete the table and the generated projections; the hand-written validators the extraction replaced are recoverable from this change's parent revision
+- Required evidence: `just check-cross-field-drift`; the conformance suite proving the five projections agree; negative fixtures for `conflicts-with`, `xor-with`, and `required-with`
 
 ## Context
 
