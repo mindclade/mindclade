@@ -83,24 +83,25 @@ func (h *reliabilityHarness) envelope(id string) *commonv1.EventEnvelope {
 	return repository.OutboxEnvelopes()[0]
 }
 
+// insertOutbox seeds the outbox through the same producer the services use.
+//
+// It previously spelled the columns out by hand, which made it the fifteenth
+// copy of a statement the producer exists to own -- and the copy that a test
+// would have been least likely to catch drifting, since a harness that writes
+// its own rows agrees with itself no matter what production does. Going through
+// the producer inside a transaction is also how the row is really written.
 func (h *reliabilityHarness) insertOutbox(envelope *commonv1.EventEnvelope, at time.Time) {
 	h.t.Helper()
-	encoded, err := queue.MarshalEnvelope(envelope)
+	transaction, err := h.db.BeginTx(h.context(), nil)
 	if err != nil {
-		h.t.Fatal(err)
+		h.t.Fatalf("begin reliability outbox transaction: %v", err)
 	}
-	aggregateType, aggregateID, err := queue.AggregateIdentity(envelope)
-	if err != nil {
-		h.t.Fatal(err)
-	}
-	if _, err = h.db.ExecContext(h.context(), `
-INSERT INTO outbox_messages (
-  id,tenant_id,event_type,event_version,aggregate_type,aggregate_id,
-  aggregate_sequence,payload_digest,envelope_bytes,next_attempt_at,created_at
-) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$10)`, envelope.GetEventId(), h.tenant,
-		envelope.GetEventType(), envelope.GetEventVersion(), aggregateType, aggregateID,
-		envelope.GetAggregateSequence(), envelope.GetPayloadDigest(), encoded, at.UTC()); err != nil {
+	if err = queue.InsertOutboxMessage(h.context(), transaction, envelope, at.UTC()); err != nil {
+		_ = transaction.Rollback()
 		h.t.Fatalf("insert reliability outbox envelope: %v", err)
+	}
+	if err = transaction.Commit(); err != nil {
+		h.t.Fatalf("commit reliability outbox envelope: %v", err)
 	}
 }
 
