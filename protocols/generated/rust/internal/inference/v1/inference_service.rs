@@ -10,7 +10,7 @@ pub struct SubmitInferenceRequest {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct SubmitInferenceResponse {
     #[prost(message, optional, tag = "1")]
-    pub operation: ::core::option::Option<crate::job::v1::Operation>,
+    pub operation: ::core::option::Option<crate::operation::v1::Operation>,
 }
 /// GetInferenceRequestRequest identifies one admitted authoritative request.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
@@ -36,7 +36,7 @@ pub struct GetInferenceResultResponse {
     #[prost(message, optional, tag = "1")]
     pub result: ::core::option::Option<crate::inference::v1::InferenceResult>,
     #[prost(message, optional, tag = "2")]
-    pub operation: ::core::option::Option<crate::job::v1::Operation>,
+    pub operation: ::core::option::Option<crate::operation::v1::Operation>,
 }
 /// WatchInferenceRequest resumes bounded status/candidate updates from a durable cursor.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
@@ -74,6 +74,6 @@ pub struct CommitInferenceResultResponse {
     #[prost(message, optional, tag = "1")]
     pub result: ::core::option::Option<crate::inference::v1::InferenceResult>,
     #[prost(message, optional, tag = "2")]
-    pub operation: ::core::option::Option<crate::job::v1::Operation>,
+    pub operation: ::core::option::Option<crate::operation::v1::Operation>,
 }
 // @@protoc_insertion_point(module)

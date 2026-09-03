@@ -78,6 +78,9 @@ pub mod job {
 pub mod model {
     pub mod v1;
 }
+pub mod operation {
+    pub mod v1;
+}
 pub mod policy {
     pub mod v1;
 }
@@ -97,7 +100,7 @@ pub mod workflow {
 pub mod event_registry {
     // Source: protocols/events/registry.yaml (sha256:5986ff11cb9ec64abe0d6f7398220253b5289140d3bcbecf723e8f53b1fe2738)
     pub const EVENT_DESCRIPTOR_DIGEST: &str =
-        "sha256:46514bdee27df6f41f03b63f050b2cfcb95867fc8f291fe943eaf2019693c0ed";
+        "sha256:f9a9dfd1eb8cbc6960f8f7e59f2dc5ec6191b7104e07ac9614db20945ffccccd";
 
     #[derive(Clone, Copy, Debug, Eq, PartialEq)]
     pub struct EventEvidenceEndpoint {

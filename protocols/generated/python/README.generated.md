@@ -48,6 +48,7 @@ architecture test rejects the rest.
 | `mindclade/internal/workflow/v1` | `//protocols/generated/python:bindings` |
 | `mindclade/job/v1` | `//protocols/generated/python:bindings` |
 | `mindclade/model/v1` | `//protocols/generated/python:bindings` |
+| `mindclade/operation/v1` | `//protocols/generated/python:bindings` |
 | `mindclade/policy/v1` | `//protocols/generated/python:bindings` |
 | `mindclade/training/v1` | `//protocols/generated/python:bindings` |
 | `mindclade/transform/v1` | `//protocols/generated/python:bindings` |

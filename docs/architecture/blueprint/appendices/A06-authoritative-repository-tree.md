@@ -167,9 +167,11 @@ mindclade/
 │   │       │       ├── artifact_reference.proto
 │   │       │       ├── evidence_reference.proto
 │   │       │       └── artifact_commands.proto
+│   │       ├── operation/
+│   │       │   └── v1/
+│   │       │       └── operation.proto
 │   │       ├── job/
 │   │       │   └── v1/
-│   │       │       ├── operation.proto
 │   │       │       ├── job.proto
 │   │       │       ├── run.proto
 │   │       │       ├── attempt.proto
@@ -576,9 +578,12 @@ mindclade/
 │   │   │   │       ├── artifact_committed.pb.go
 │   │   │   │       ├── artifact_quarantined.pb.go
 │   │   │   │       └── BUILD.bazel
-│   │   │   ├── job/
+│   │   │   ├── operation/
 │   │   │   │   └── v1/
 │   │   │   │       ├── operation.pb.go
+│   │   │   │       └── BUILD.bazel
+│   │   │   ├── job/
+│   │   │   │   └── v1/
 │   │   │   │       ├── job.pb.go
 │   │   │   │       ├── run.pb.go
 │   │   │   │       ├── attempt.pb.go
@@ -825,9 +830,13 @@ mindclade/
 │   │   │   │   │       ├── artifact_commands_pb2.pyi
 │   │   │   │   │       ├── artifact_committed_pb2.pyi
 │   │   │   │   │       └── artifact_quarantined_pb2.pyi
-│   │   │   │   ├── job/
+│   │   │   │   ├── operation/
 │   │   │   │   │   └── v1/
 │   │   │   │   │       ├── operation_pb2.py
+│   │   │   │   │       ├── operation_pb2.pyi
+│   │   │   │   │       └── __init__.py
+│   │   │   │   ├── job/
+│   │   │   │   │   └── v1/
 │   │   │   │   │       ├── job_pb2.py
 │   │   │   │   │       ├── run_pb2.py
 │   │   │   │   │       ├── attempt_pb2.py
@@ -837,7 +846,6 @@ mindclade/
 │   │   │   │   │       ├── attempt_leased_pb2.py
 │   │   │   │   │       ├── attempt_completed_pb2.py
 │   │   │   │   │       ├── __init__.py
-│   │   │   │   │       ├── operation_pb2.pyi
 │   │   │   │   │       ├── job_pb2.pyi
 │   │   │   │   │       ├── run_pb2.pyi
 │   │   │   │   │       ├── attempt_pb2.pyi
@@ -1194,9 +1202,12 @@ mindclade/
 │   │   │   │       ├── artifact_committed.rs
 │   │   │   │       ├── artifact_quarantined.rs
 │   │   │   │       └── mod.rs
-│   │   │   ├── job/
+│   │   │   ├── operation/
 │   │   │   │   └── v1/
 │   │   │   │       ├── operation.rs
+│   │   │   │       └── mod.rs
+│   │   │   ├── job/
+│   │   │   │   └── v1/
 │   │   │   │       ├── job.rs
 │   │   │   │       ├── run.rs
 │   │   │   │       ├── attempt.rs
@@ -1430,9 +1441,12 @@ mindclade/
 │   │   │   │       ├── artifact_committed_pb.ts
 │   │   │   │       ├── artifact_quarantined_pb.ts
 │   │   │   │       └── index.ts
-│   │   │   ├── job/
+│   │   │   ├── operation/
 │   │   │   │   └── v1/
 │   │   │   │       ├── operation_pb.ts
+│   │   │   │       └── index.ts
+│   │   │   ├── job/
+│   │   │   │   └── v1/
 │   │   │   │       ├── job_pb.ts
 │   │   │   │       ├── run_pb.ts
 │   │   │   │       ├── attempt_pb.ts
@@ -4342,7 +4356,8 @@ mindclade/
 │   │   ├── 0022-native-signed-qualification-and-production-admission-source-activation.md
 │   │   ├── 0023-estate-nix-bazel-hermeticity-and-cache-preparation.md
 │   │   ├── 0024-internal-sdk-roots-move-to-sdks.md
-│   │   └── 0025-control-plane-platform-runtime-becomes-shared-go-libraries.md
+│   │   ├── 0025-control-plane-platform-runtime-becomes-shared-go-libraries.md
+│   │   └── 0026-operations-become-a-first-class-namespace.md
 │   ├── domains/
 │   │   ├── bio.md
 │   │   ├── data.md

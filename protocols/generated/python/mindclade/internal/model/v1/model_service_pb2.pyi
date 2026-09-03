@@ -3,7 +3,7 @@ import datetime
 
 from google.protobuf import timestamp_pb2 as _timestamp_pb2
 from mindclade.common.v1 import pagination_pb2 as _pagination_pb2
-from mindclade.job.v1 import operation_pb2 as _operation_pb2
+from mindclade.operation.v1 import operation_pb2 as _operation_pb2
 from mindclade.model.v1 import model_pb2 as _model_pb2
 from mindclade.model.v1 import model_commands_pb2 as _model_commands_pb2
 from mindclade.model.v1 import model_release_pb2 as _model_release_pb2

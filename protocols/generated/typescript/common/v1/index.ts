@@ -8,7 +8,7 @@ export * from './pagination_pb.js';
 export * from './resource_reference_pb.js';
 
 // Source: protocols/events/registry.yaml (sha256:5986ff11cb9ec64abe0d6f7398220253b5289140d3bcbecf723e8f53b1fe2738)
-export const EVENT_DESCRIPTOR_DIGEST = "sha256:46514bdee27df6f41f03b63f050b2cfcb95867fc8f291fe943eaf2019693c0ed" as const;
+export const EVENT_DESCRIPTOR_DIGEST = "sha256:f9a9dfd1eb8cbc6960f8f7e59f2dc5ec6191b7104e07ac9614db20945ffccccd" as const;
 
 export interface EventEvidenceEndpoint {
   readonly id: string;

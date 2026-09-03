@@ -10,7 +10,7 @@ from mindclade.evaluation.v1 import evaluation_result_pb2 as _evaluation_result_
 from mindclade.evaluation.v1 import evaluation_run_pb2 as _evaluation_run_pb2
 from mindclade.evaluation.v1 import promotion_decision_pb2 as _promotion_decision_pb2
 from mindclade.job.v1 import lease_fencing_pb2 as _lease_fencing_pb2
-from mindclade.job.v1 import operation_pb2 as _operation_pb2
+from mindclade.operation.v1 import operation_pb2 as _operation_pb2
 from mindclade.policy.v1 import policy_reference_pb2 as _policy_reference_pb2
 from google.protobuf.internal import containers as _containers
 from google.protobuf import descriptor as _descriptor

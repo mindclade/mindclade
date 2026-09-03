@@ -12,7 +12,7 @@ pub struct GetOperationRequest {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetOperationResponse {
     #[prost(message, optional, tag = "1")]
-    pub operation: ::core::option::Option<crate::job::v1::Operation>,
+    pub operation: ::core::option::Option<crate::operation::v1::Operation>,
 }
 /// ListOperationsRequest defines a bounded project-scoped operation query.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
@@ -30,7 +30,7 @@ pub struct ListOperationsRequest {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListOperationsResponse {
     #[prost(message, repeated, tag = "1")]
-    pub operations: ::prost::alloc::vec::Vec<crate::job::v1::Operation>,
+    pub operations: ::prost::alloc::vec::Vec<crate::operation::v1::Operation>,
     #[prost(message, optional, tag = "2")]
     pub page: ::core::option::Option<crate::common::v1::PageResponse>,
     #[prost(message, optional, tag = "3")]
@@ -52,7 +52,7 @@ pub struct CancelOperationRequest {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CancelOperationResponse {
     #[prost(message, optional, tag = "1")]
-    pub operation: ::core::option::Option<crate::job::v1::Operation>,
+    pub operation: ::core::option::Option<crate::operation::v1::Operation>,
 }
 /// WatchOperationRequest resumes a bounded stream after an acknowledged sequence.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
@@ -68,7 +68,7 @@ pub struct WatchOperationRequest {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct WatchOperationResponse {
     #[prost(message, optional, tag = "1")]
-    pub operation: ::core::option::Option<crate::job::v1::Operation>,
+    pub operation: ::core::option::Option<crate::operation::v1::Operation>,
     #[prost(uint64, tag = "2")]
     pub sequence: u64,
     #[prost(message, optional, tag = "3")]
@@ -86,7 +86,7 @@ pub struct RequestJobResponse {
     #[prost(message, optional, tag = "1")]
     pub job: ::core::option::Option<crate::job::v1::Job>,
     #[prost(message, optional, tag = "2")]
-    pub operation: ::core::option::Option<crate::job::v1::Operation>,
+    pub operation: ::core::option::Option<crate::operation::v1::Operation>,
 }
 /// GetJobRequest identifies a durable job.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
@@ -140,7 +140,7 @@ pub struct CancelJobRequest {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CancelJobResponse {
     #[prost(message, optional, tag = "1")]
-    pub operation: ::core::option::Option<crate::job::v1::Operation>,
+    pub operation: ::core::option::Option<crate::operation::v1::Operation>,
 }
 /// GetRunRequest identifies one frozen logical execution.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]

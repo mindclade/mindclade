@@ -45,7 +45,7 @@ pub struct CreateUsePolicyRequest {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CreateUsePolicyResponse {
     #[prost(message, optional, tag = "1")]
-    pub operation: ::core::option::Option<crate::job::v1::Operation>,
+    pub operation: ::core::option::Option<crate::operation::v1::Operation>,
 }
 /// UpdateUsePolicyRequest applies selected mutable metadata under an ETag.
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -63,7 +63,7 @@ pub struct UpdateUsePolicyRequest {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct UpdateUsePolicyResponse {
     #[prost(message, optional, tag = "1")]
-    pub operation: ::core::option::Option<crate::job::v1::Operation>,
+    pub operation: ::core::option::Option<crate::operation::v1::Operation>,
 }
 /// GetUsePolicyRequest identifies one use-policy revision.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
@@ -115,7 +115,7 @@ pub struct ActivateUsePolicyRequest {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ActivateUsePolicyResponse {
     #[prost(message, optional, tag = "1")]
-    pub operation: ::core::option::Option<crate::job::v1::Operation>,
+    pub operation: ::core::option::Option<crate::operation::v1::Operation>,
 }
 /// RevokeUsePolicyRequest records a fail-closed revocation under an ETag.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
@@ -133,7 +133,7 @@ pub struct RevokeUsePolicyRequest {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RevokeUsePolicyResponse {
     #[prost(message, optional, tag = "1")]
-    pub operation: ::core::option::Option<crate::job::v1::Operation>,
+    pub operation: ::core::option::Option<crate::operation::v1::Operation>,
 }
 /// ResolvePolicySnapshotRequest resolves an exact effective snapshot at a point in time.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]

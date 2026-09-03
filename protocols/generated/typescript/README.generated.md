@@ -48,6 +48,7 @@ architecture test rejects the rest.
 | `internal/workflow/v1` | `//protocols/generated/typescript:bindings` |
 | `job/v1` | `//protocols/generated/typescript:bindings` |
 | `model/v1` | `//protocols/generated/typescript:bindings` |
+| `operation/v1` | `//protocols/generated/typescript:bindings` |
 | `policy/v1` | `//protocols/generated/typescript:bindings` |
 | `training/v1` | `//protocols/generated/typescript:bindings` |
 | `transform/v1` | `//protocols/generated/typescript:bindings` |

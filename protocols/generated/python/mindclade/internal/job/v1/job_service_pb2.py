@@ -32,12 +32,12 @@ from mindclade.job.v1 import attempt_pb2 as proto_dot_mindclade_dot_job_dot_v1_d
 from mindclade.job.v1 import job_pb2 as proto_dot_mindclade_dot_job_dot_v1_dot_job__pb2
 from mindclade.job.v1 import job_commands_pb2 as proto_dot_mindclade_dot_job_dot_v1_dot_job__commands__pb2
 from mindclade.job.v1 import lease_fencing_pb2 as proto_dot_mindclade_dot_job_dot_v1_dot_lease__fencing__pb2
-from mindclade.job.v1 import operation_pb2 as proto_dot_mindclade_dot_job_dot_v1_dot_operation__pb2
+from mindclade.operation.v1 import operation_pb2 as proto_dot_mindclade_dot_operation_dot_v1_dot_operation__pb2
 from mindclade.job.v1 import run_pb2 as proto_dot_mindclade_dot_job_dot_v1_dot_run__pb2
 from mindclade.transform.v1 import transform_commands_pb2 as proto_dot_mindclade_dot_transform_dot_v1_dot_transform__commands__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n1proto/mindclade/internal/job/v1/job_service.proto\x12\x19mindclade.internal.job.v1\x1a google/protobuf/field_mask.proto\x1a\x1egoogle/protobuf/duration.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a/proto/mindclade/common/v1/command_context.proto\x1a*proto/mindclade/common/v1/pagination.proto\x1a\x31proto/mindclade/feature/v1/feature_commands.proto\x1a$proto/mindclade/job/v1/attempt.proto\x1a proto/mindclade/job/v1/job.proto\x1a)proto/mindclade/job/v1/job_commands.proto\x1a*proto/mindclade/job/v1/lease_fencing.proto\x1a&proto/mindclade/job/v1/operation.proto\x1a proto/mindclade/job/v1/run.proto\x1a\x35proto/mindclade/transform/v1/transform_commands.proto\"M\n\x13GetOperationRequest\x12\x12\n\x04name\x18\x01 \x01(\tR\x04name\x12\"\n\rif_none_match\x18\x02 \x01(\tR\x0bifNoneMatch\"Q\n\x14GetOperationResponse\x12\x39\n\toperation\x18\x01 \x01(\x0b\x32\x1b.mindclade.job.v1.OperationR\toperation\"\x98\x01\n\x15ListOperationsRequest\x12\x16\n\x06parent\x18\x01 \x01(\tR\x06parent\x12\x34\n\x04page\x18\x02 \x01(\x0b\x32 .mindclade.common.v1.PageRequestR\x04page\x12\x16\n\x06\x66ilter\x18\x03 \x01(\tR\x06\x66ilter\x12\x19\n\x08order_by\x18\x04 \x01(\tR\x07orderBy\"\xc5\x01\n\x16ListOperationsResponse\x12;\n\noperations\x18\x01 \x03(\x0b\x32\x1b.mindclade.job.v1.OperationR\noperations\x12\x35\n\x04page\x18\x02 \x01(\x0b\x32!.mindclade.common.v1.PageResponseR\x04page\x12\x37\n\tread_time\x18\x03 \x01(\x0b\x32\x1a.google.protobuf.TimestampR\x08readTime\"\x97\x01\n\x16\x43\x61ncelOperationRequest\x12=\n\x07\x63ontext\x18\x01 \x01(\x0b\x32#.mindclade.common.v1.CommandContextR\x07\x63ontext\x12\x12\n\x04name\x18\x02 \x01(\tR\x04name\x12\x12\n\x04\x65tag\x18\x03 \x01(\tR\x04\x65tag\x12\x16\n\x06reason\x18\x04 \x01(\tR\x06reason\"T\n\x17\x43\x61ncelOperationResponse\x12\x39\n\toperation\x18\x01 \x01(\x0b\x32\x1b.mindclade.job.v1.OperationR\toperation\"\x8a\x01\n\x15WatchOperationRequest\x12\x12\n\x04name\x18\x01 \x01(\tR\x04name\x12%\n\x0e\x61\x66ter_sequence\x18\x02 \x01(\x04R\rafterSequence\x12\x36\n\x08\x64\x65\x61\x64line\x18\x03 \x01(\x0b\x32\x1a.google.protobuf.TimestampR\x08\x64\x65\x61\x64line\"\xac\x01\n\x16WatchOperationResponse\x12\x39\n\toperation\x18\x01 \x01(\x0b\x32\x1b.mindclade.job.v1.OperationR\toperation\x12\x1a\n\x08sequence\x18\x02 \x01(\x04R\x08sequence\x12;\n\x0bobserved_at\x18\x03 \x01(\x0b\x32\x1a.google.protobuf.TimestampR\nobservedAt\"R\n\x11RequestJobRequest\x12=\n\x07\x63ommand\x18\x01 \x01(\x0b\x32#.mindclade.job.v1.RequestJobCommandR\x07\x63ommand\"x\n\x12RequestJobResponse\x12\'\n\x03job\x18\x01 \x01(\x0b\x32\x15.mindclade.job.v1.JobR\x03job\x12\x39\n\toperation\x18\x02 \x01(\x0b\x32\x1b.mindclade.job.v1.OperationR\toperation\"G\n\rGetJobRequest\x12\x12\n\x04name\x18\x01 \x01(\tR\x04name\x12\"\n\rif_none_match\x18\x02 \x01(\tR\x0bifNoneMatch\"9\n\x0eGetJobResponse\x12\'\n\x03job\x18\x01 \x01(\x0b\x32\x15.mindclade.job.v1.JobR\x03job\"\x92\x01\n\x0fListJobsRequest\x12\x16\n\x06parent\x18\x01 \x01(\tR\x06parent\x12\x34\n\x04page\x18\x02 \x01(\x0b\x32 .mindclade.common.v1.PageRequestR\x04page\x12\x16\n\x06\x66ilter\x18\x03 \x01(\tR\x06\x66ilter\x12\x19\n\x08order_by\x18\x04 \x01(\tR\x07orderBy\"\xad\x01\n\x10ListJobsResponse\x12)\n\x04jobs\x18\x01 \x03(\x0b\x32\x15.mindclade.job.v1.JobR\x04jobs\x12\x35\n\x04page\x18\x02 \x01(\x0b\x32!.mindclade.common.v1.PageResponseR\x04page\x12\x37\n\tread_time\x18\x03 \x01(\x0b\x32\x1a.google.protobuf.TimestampR\x08readTime\"\x91\x01\n\x10\x43\x61ncelJobRequest\x12=\n\x07\x63ontext\x18\x01 \x01(\x0b\x32#.mindclade.common.v1.CommandContextR\x07\x63ontext\x12\x12\n\x04name\x18\x02 \x01(\tR\x04name\x12\x12\n\x04\x65tag\x18\x03 \x01(\tR\x04\x65tag\x12\x16\n\x06reason\x18\x04 \x01(\tR\x06reason\"N\n\x11\x43\x61ncelJobResponse\x12\x39\n\toperation\x18\x01 \x01(\x0b\x32\x1b.mindclade.job.v1.OperationR\toperation\"#\n\rGetRunRequest\x12\x12\n\x04name\x18\x01 \x01(\tR\x04name\"9\n\x0eGetRunResponse\x12\'\n\x03run\x18\x01 \x01(\x0b\x32\x15.mindclade.job.v1.RunR\x03run\"w\n\x0fListRunsRequest\x12\x16\n\x06parent\x18\x01 \x01(\tR\x06parent\x12\x34\n\x04page\x18\x02 \x01(\x0b\x32 .mindclade.common.v1.PageRequestR\x04page\x12\x16\n\x06\x66ilter\x18\x03 \x01(\tR\x06\x66ilter\"\xad\x01\n\x10ListRunsResponse\x12)\n\x04runs\x18\x01 \x03(\x0b\x32\x15.mindclade.job.v1.RunR\x04runs\x12\x35\n\x04page\x18\x02 \x01(\x0b\x32!.mindclade.common.v1.PageResponseR\x04page\x12\x37\n\tread_time\x18\x03 \x01(\x0b\x32\x1a.google.protobuf.TimestampR\x08readTime\"\'\n\x11GetAttemptRequest\x12\x12\n\x04name\x18\x01 \x01(\tR\x04name\"I\n\x12GetAttemptResponse\x12\x33\n\x07\x61ttempt\x18\x01 \x01(\x0b\x32\x19.mindclade.job.v1.AttemptR\x07\x61ttempt\"c\n\x13ListAttemptsRequest\x12\x16\n\x06parent\x18\x01 \x01(\tR\x06parent\x12\x34\n\x04page\x18\x02 \x01(\x0b\x32 .mindclade.common.v1.PageRequestR\x04page\"\xbd\x01\n\x14ListAttemptsResponse\x12\x35\n\x08\x61ttempts\x18\x01 \x03(\x0b\x32\x19.mindclade.job.v1.AttemptR\x08\x61ttempts\x12\x35\n\x04page\x18\x02 \x01(\x0b\x32!.mindclade.common.v1.PageResponseR\x04page\x12\x37\n\tread_time\x18\x03 \x01(\x0b\x32\x1a.google.protobuf.TimestampR\x08readTime\"\xd7\x01\n\x1a\x41\x63quireAttemptLeaseRequest\x12=\n\x07\x63ontext\x18\x01 \x01(\x0b\x32#.mindclade.common.v1.CommandContextR\x07\x63ontext\x12\x19\n\x08run_name\x18\x02 \x01(\tR\x07runName\x12\x1d\n\nattempt_id\x18\x03 \x01(\tR\tattemptId\x12@\n\x0elease_duration\x18\x04 \x01(\x0b\x32\x19.google.protobuf.DurationR\rleaseDuration\"\x86\x01\n\x1b\x41\x63quireAttemptLeaseResponse\x12\x33\n\x07\x61ttempt\x18\x01 \x01(\x0b\x32\x19.mindclade.job.v1.AttemptR\x07\x61ttempt\x12\x32\n\x05\x66\x65nce\x18\x02 \x01(\x0b\x32\x1c.mindclade.job.v1.LeaseFenceR\x05\x66\x65nce\"\x8b\x02\n\x18RenewAttemptLeaseRequest\x12=\n\x07\x63ontext\x18\x01 \x01(\x0b\x32#.mindclade.common.v1.CommandContextR\x07\x63ontext\x12\x32\n\x05\x66\x65nce\x18\x02 \x01(\x0b\x32\x1c.mindclade.job.v1.LeaseFenceR\x05\x66\x65nce\x12@\n\x0elease_duration\x18\x03 \x01(\x0b\x32\x19.google.protobuf.DurationR\rleaseDuration\x12:\n\x19\x65xpected_resource_version\x18\x04 \x01(\x03R\x17\x65xpectedResourceVersion\"\x84\x01\n\x19RenewAttemptLeaseResponse\x12\x33\n\x07\x61ttempt\x18\x01 \x01(\x0b\x32\x19.mindclade.job.v1.AttemptR\x07\x61ttempt\x12\x32\n\x05\x66\x65nce\x18\x02 \x01(\x0b\x32\x1c.mindclade.job.v1.LeaseFenceR\x05\x66\x65nce\"\x8a\x02\n\x17HeartbeatAttemptRequest\x12=\n\x07\x63ontext\x18\x01 \x01(\x0b\x32#.mindclade.common.v1.CommandContextR\x07\x63ontext\x12\x32\n\x05\x66\x65nce\x18\x02 \x01(\x0b\x32\x1c.mindclade.job.v1.LeaseFenceR\x05\x66\x65nce\x12@\n\x0elease_duration\x18\x03 \x01(\x0b\x32\x19.google.protobuf.DurationR\rleaseDuration\x12:\n\x19\x65xpected_resource_version\x18\x04 \x01(\x03R\x17\x65xpectedResourceVersion\"\xc0\x01\n\x18HeartbeatAttemptResponse\x12\x33\n\x07\x61ttempt\x18\x01 \x01(\x0b\x32\x19.mindclade.job.v1.AttemptR\x07\x61ttempt\x12\x32\n\x05\x66\x65nce\x18\x02 \x01(\x0b\x32\x1c.mindclade.job.v1.LeaseFenceR\x05\x66\x65nce\x12;\n\x0bobserved_at\x18\x03 \x01(\x0b\x32\x1a.google.protobuf.TimestampR\nobservedAt\"\xdd\x01\n\x14\x43\x61ncelAttemptRequest\x12=\n\x07\x63ontext\x18\x01 \x01(\x0b\x32#.mindclade.common.v1.CommandContextR\x07\x63ontext\x12\x32\n\x05\x66\x65nce\x18\x02 \x01(\x0b\x32\x1c.mindclade.job.v1.LeaseFenceR\x05\x66\x65nce\x12:\n\x19\x65xpected_resource_version\x18\x03 \x01(\x03R\x17\x65xpectedResourceVersion\x12\x16\n\x06reason\x18\x04 \x01(\tR\x06reason\"u\n\x15\x43\x61ncelAttemptResponse\x12\x33\n\x07\x61ttempt\x18\x01 \x01(\x0b\x32\x19.mindclade.job.v1.AttemptR\x07\x61ttempt\x12\'\n\x03run\x18\x02 \x01(\x0b\x32\x15.mindclade.job.v1.RunR\x03run\"\x89\x01\n\x1a\x45xpireAttemptLeasesRequest\x12=\n\x07\x63ontext\x18\x01 \x01(\x0b\x32#.mindclade.common.v1.CommandContextR\x07\x63ontext\x12\x16\n\x06parent\x18\x02 \x01(\tR\x06parent\x12\x14\n\x05limit\x18\x03 \x01(\rR\x05limit\"\x91\x01\n\x1b\x45xpireAttemptLeasesResponse\x12\x35\n\x08\x61ttempts\x18\x01 \x03(\x0b\x32\x19.mindclade.job.v1.AttemptR\x08\x61ttempts\x12;\n\x0bobserved_at\x18\x02 \x01(\x0b\x32\x1a.google.protobuf.TimestampR\nobservedAt\"\xae\x04\n\x14\x43ommitAttemptRequest\x12=\n\x07\x63ontext\x18\x01 \x01(\x0b\x32#.mindclade.common.v1.CommandContextR\x07\x63ontext\x12\x33\n\x07\x61ttempt\x18\x02 \x01(\x0b\x32\x19.mindclade.job.v1.AttemptR\x07\x61ttempt\x12\x32\n\x05\x66\x65nce\x18\x03 \x01(\x0b\x32\x1c.mindclade.job.v1.LeaseFenceR\x05\x66\x65nce\x12;\n\x0bupdate_mask\x18\x04 \x01(\x0b\x32\x1a.google.protobuf.FieldMaskR\nupdateMask\x12:\n\x19\x65xpected_resource_version\x18\x05 \x01(\x03R\x17\x65xpectedResourceVersion\x12t\n\x17\x66\x65\x61ture_materialization\x18\x06 \x01(\x0b\x32\x39.mindclade.feature.v1.CommitFeatureMaterializationCommandH\x00R\x16\x66\x65\x61tureMaterialization\x12j\n\x13transform_execution\x18\x07 \x01(\x0b\x32\x37.mindclade.transform.v1.CommitTransformExecutionCommandH\x00R\x12transformExecutionB\x13\n\x11\x64omain_completion\"u\n\x15\x43ommitAttemptResponse\x12\x33\n\x07\x61ttempt\x18\x01 \x01(\x0b\x32\x19.mindclade.job.v1.AttemptR\x07\x61ttempt\x12\'\n\x03run\x18\x02 \x01(\x0b\x32\x15.mindclade.job.v1.RunR\x03run2\xed\x03\n\x10OperationService\x12o\n\x0cGetOperation\x12..mindclade.internal.job.v1.GetOperationRequest\x1a/.mindclade.internal.job.v1.GetOperationResponse\x12u\n\x0eListOperations\x12\x30.mindclade.internal.job.v1.ListOperationsRequest\x1a\x31.mindclade.internal.job.v1.ListOperationsResponse\x12x\n\x0f\x43\x61ncelOperation\x12\x31.mindclade.internal.job.v1.CancelOperationRequest\x1a\x32.mindclade.internal.job.v1.CancelOperationResponse\x12w\n\x0eWatchOperation\x12\x30.mindclade.internal.job.v1.WatchOperationRequest\x1a\x31.mindclade.internal.job.v1.WatchOperationResponse0\x01\x32\xa3\x03\n\nJobService\x12i\n\nRequestJob\x12,.mindclade.internal.job.v1.RequestJobRequest\x1a-.mindclade.internal.job.v1.RequestJobResponse\x12]\n\x06GetJob\x12(.mindclade.internal.job.v1.GetJobRequest\x1a).mindclade.internal.job.v1.GetJobResponse\x12\x63\n\x08ListJobs\x12*.mindclade.internal.job.v1.ListJobsRequest\x1a+.mindclade.internal.job.v1.ListJobsResponse\x12\x66\n\tCancelJob\x12+.mindclade.internal.job.v1.CancelJobRequest\x1a,.mindclade.internal.job.v1.CancelJobResponse2\x9f\t\n\nRunService\x12]\n\x06GetRun\x12(.mindclade.internal.job.v1.GetRunRequest\x1a).mindclade.internal.job.v1.GetRunResponse\x12\x63\n\x08ListRuns\x12*.mindclade.internal.job.v1.ListRunsRequest\x1a+.mindclade.internal.job.v1.ListRunsResponse\x12i\n\nGetAttempt\x12,.mindclade.internal.job.v1.GetAttemptRequest\x1a-.mindclade.internal.job.v1.GetAttemptResponse\x12o\n\x0cListAttempts\x12..mindclade.internal.job.v1.ListAttemptsRequest\x1a/.mindclade.internal.job.v1.ListAttemptsResponse\x12\x84\x01\n\x13\x41\x63quireAttemptLease\x12\x35.mindclade.internal.job.v1.AcquireAttemptLeaseRequest\x1a\x36.mindclade.internal.job.v1.AcquireAttemptLeaseResponse\x12~\n\x11RenewAttemptLease\x12\x33.mindclade.internal.job.v1.RenewAttemptLeaseRequest\x1a\x34.mindclade.internal.job.v1.RenewAttemptLeaseResponse\x12{\n\x10HeartbeatAttempt\x12\x32.mindclade.internal.job.v1.HeartbeatAttemptRequest\x1a\x33.mindclade.internal.job.v1.HeartbeatAttemptResponse\x12r\n\rCancelAttempt\x12/.mindclade.internal.job.v1.CancelAttemptRequest\x1a\x30.mindclade.internal.job.v1.CancelAttemptResponse\x12\x84\x01\n\x13\x45xpireAttemptLeases\x12\x35.mindclade.internal.job.v1.ExpireAttemptLeasesRequest\x1a\x36.mindclade.internal.job.v1.ExpireAttemptLeasesResponse\x12r\n\rCommitAttempt\x12/.mindclade.internal.job.v1.CommitAttemptRequest\x1a\x30.mindclade.internal.job.v1.CommitAttemptResponseBXZVgithub.com/mindclade/mindclade/protocols/generated/go/internalrpc/job/v1;internaljobv1b\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n1proto/mindclade/internal/job/v1/job_service.proto\x12\x19mindclade.internal.job.v1\x1a google/protobuf/field_mask.proto\x1a\x1egoogle/protobuf/duration.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a/proto/mindclade/common/v1/command_context.proto\x1a*proto/mindclade/common/v1/pagination.proto\x1a\x31proto/mindclade/feature/v1/feature_commands.proto\x1a$proto/mindclade/job/v1/attempt.proto\x1a proto/mindclade/job/v1/job.proto\x1a)proto/mindclade/job/v1/job_commands.proto\x1a*proto/mindclade/job/v1/lease_fencing.proto\x1a,proto/mindclade/operation/v1/operation.proto\x1a proto/mindclade/job/v1/run.proto\x1a\x35proto/mindclade/transform/v1/transform_commands.proto\"M\n\x13GetOperationRequest\x12\x12\n\x04name\x18\x01 \x01(\tR\x04name\x12\"\n\rif_none_match\x18\x02 \x01(\tR\x0bifNoneMatch\"W\n\x14GetOperationResponse\x12?\n\toperation\x18\x01 \x01(\x0b\x32!.mindclade.operation.v1.OperationR\toperation\"\x98\x01\n\x15ListOperationsRequest\x12\x16\n\x06parent\x18\x01 \x01(\tR\x06parent\x12\x34\n\x04page\x18\x02 \x01(\x0b\x32 .mindclade.common.v1.PageRequestR\x04page\x12\x16\n\x06\x66ilter\x18\x03 \x01(\tR\x06\x66ilter\x12\x19\n\x08order_by\x18\x04 \x01(\tR\x07orderBy\"\xcb\x01\n\x16ListOperationsResponse\x12\x41\n\noperations\x18\x01 \x03(\x0b\x32!.mindclade.operation.v1.OperationR\noperations\x12\x35\n\x04page\x18\x02 \x01(\x0b\x32!.mindclade.common.v1.PageResponseR\x04page\x12\x37\n\tread_time\x18\x03 \x01(\x0b\x32\x1a.google.protobuf.TimestampR\x08readTime\"\x97\x01\n\x16\x43\x61ncelOperationRequest\x12=\n\x07\x63ontext\x18\x01 \x01(\x0b\x32#.mindclade.common.v1.CommandContextR\x07\x63ontext\x12\x12\n\x04name\x18\x02 \x01(\tR\x04name\x12\x12\n\x04\x65tag\x18\x03 \x01(\tR\x04\x65tag\x12\x16\n\x06reason\x18\x04 \x01(\tR\x06reason\"Z\n\x17\x43\x61ncelOperationResponse\x12?\n\toperation\x18\x01 \x01(\x0b\x32!.mindclade.operation.v1.OperationR\toperation\"\x8a\x01\n\x15WatchOperationRequest\x12\x12\n\x04name\x18\x01 \x01(\tR\x04name\x12%\n\x0e\x61\x66ter_sequence\x18\x02 \x01(\x04R\rafterSequence\x12\x36\n\x08\x64\x65\x61\x64line\x18\x03 \x01(\x0b\x32\x1a.google.protobuf.TimestampR\x08\x64\x65\x61\x64line\"\xb2\x01\n\x16WatchOperationResponse\x12?\n\toperation\x18\x01 \x01(\x0b\x32!.mindclade.operation.v1.OperationR\toperation\x12\x1a\n\x08sequence\x18\x02 \x01(\x04R\x08sequence\x12;\n\x0bobserved_at\x18\x03 \x01(\x0b\x32\x1a.google.protobuf.TimestampR\nobservedAt\"R\n\x11RequestJobRequest\x12=\n\x07\x63ommand\x18\x01 \x01(\x0b\x32#.mindclade.job.v1.RequestJobCommandR\x07\x63ommand\"~\n\x12RequestJobResponse\x12\'\n\x03job\x18\x01 \x01(\x0b\x32\x15.mindclade.job.v1.JobR\x03job\x12?\n\toperation\x18\x02 \x01(\x0b\x32!.mindclade.operation.v1.OperationR\toperation\"G\n\rGetJobRequest\x12\x12\n\x04name\x18\x01 \x01(\tR\x04name\x12\"\n\rif_none_match\x18\x02 \x01(\tR\x0bifNoneMatch\"9\n\x0eGetJobResponse\x12\'\n\x03job\x18\x01 \x01(\x0b\x32\x15.mindclade.job.v1.JobR\x03job\"\x92\x01\n\x0fListJobsRequest\x12\x16\n\x06parent\x18\x01 \x01(\tR\x06parent\x12\x34\n\x04page\x18\x02 \x01(\x0b\x32 .mindclade.common.v1.PageRequestR\x04page\x12\x16\n\x06\x66ilter\x18\x03 \x01(\tR\x06\x66ilter\x12\x19\n\x08order_by\x18\x04 \x01(\tR\x07orderBy\"\xad\x01\n\x10ListJobsResponse\x12)\n\x04jobs\x18\x01 \x03(\x0b\x32\x15.mindclade.job.v1.JobR\x04jobs\x12\x35\n\x04page\x18\x02 \x01(\x0b\x32!.mindclade.common.v1.PageResponseR\x04page\x12\x37\n\tread_time\x18\x03 \x01(\x0b\x32\x1a.google.protobuf.TimestampR\x08readTime\"\x91\x01\n\x10\x43\x61ncelJobRequest\x12=\n\x07\x63ontext\x18\x01 \x01(\x0b\x32#.mindclade.common.v1.CommandContextR\x07\x63ontext\x12\x12\n\x04name\x18\x02 \x01(\tR\x04name\x12\x12\n\x04\x65tag\x18\x03 \x01(\tR\x04\x65tag\x12\x16\n\x06reason\x18\x04 \x01(\tR\x06reason\"T\n\x11\x43\x61ncelJobResponse\x12?\n\toperation\x18\x01 \x01(\x0b\x32!.mindclade.operation.v1.OperationR\toperation\"#\n\rGetRunRequest\x12\x12\n\x04name\x18\x01 \x01(\tR\x04name\"9\n\x0eGetRunResponse\x12\'\n\x03run\x18\x01 \x01(\x0b\x32\x15.mindclade.job.v1.RunR\x03run\"w\n\x0fListRunsRequest\x12\x16\n\x06parent\x18\x01 \x01(\tR\x06parent\x12\x34\n\x04page\x18\x02 \x01(\x0b\x32 .mindclade.common.v1.PageRequestR\x04page\x12\x16\n\x06\x66ilter\x18\x03 \x01(\tR\x06\x66ilter\"\xad\x01\n\x10ListRunsResponse\x12)\n\x04runs\x18\x01 \x03(\x0b\x32\x15.mindclade.job.v1.RunR\x04runs\x12\x35\n\x04page\x18\x02 \x01(\x0b\x32!.mindclade.common.v1.PageResponseR\x04page\x12\x37\n\tread_time\x18\x03 \x01(\x0b\x32\x1a.google.protobuf.TimestampR\x08readTime\"\'\n\x11GetAttemptRequest\x12\x12\n\x04name\x18\x01 \x01(\tR\x04name\"I\n\x12GetAttemptResponse\x12\x33\n\x07\x61ttempt\x18\x01 \x01(\x0b\x32\x19.mindclade.job.v1.AttemptR\x07\x61ttempt\"c\n\x13ListAttemptsRequest\x12\x16\n\x06parent\x18\x01 \x01(\tR\x06parent\x12\x34\n\x04page\x18\x02 \x01(\x0b\x32 .mindclade.common.v1.PageRequestR\x04page\"\xbd\x01\n\x14ListAttemptsResponse\x12\x35\n\x08\x61ttempts\x18\x01 \x03(\x0b\x32\x19.mindclade.job.v1.AttemptR\x08\x61ttempts\x12\x35\n\x04page\x18\x02 \x01(\x0b\x32!.mindclade.common.v1.PageResponseR\x04page\x12\x37\n\tread_time\x18\x03 \x01(\x0b\x32\x1a.google.protobuf.TimestampR\x08readTime\"\xd7\x01\n\x1a\x41\x63quireAttemptLeaseRequest\x12=\n\x07\x63ontext\x18\x01 \x01(\x0b\x32#.mindclade.common.v1.CommandContextR\x07\x63ontext\x12\x19\n\x08run_name\x18\x02 \x01(\tR\x07runName\x12\x1d\n\nattempt_id\x18\x03 \x01(\tR\tattemptId\x12@\n\x0elease_duration\x18\x04 \x01(\x0b\x32\x19.google.protobuf.DurationR\rleaseDuration\"\x86\x01\n\x1b\x41\x63quireAttemptLeaseResponse\x12\x33\n\x07\x61ttempt\x18\x01 \x01(\x0b\x32\x19.mindclade.job.v1.AttemptR\x07\x61ttempt\x12\x32\n\x05\x66\x65nce\x18\x02 \x01(\x0b\x32\x1c.mindclade.job.v1.LeaseFenceR\x05\x66\x65nce\"\x8b\x02\n\x18RenewAttemptLeaseRequest\x12=\n\x07\x63ontext\x18\x01 \x01(\x0b\x32#.mindclade.common.v1.CommandContextR\x07\x63ontext\x12\x32\n\x05\x66\x65nce\x18\x02 \x01(\x0b\x32\x1c.mindclade.job.v1.LeaseFenceR\x05\x66\x65nce\x12@\n\x0elease_duration\x18\x03 \x01(\x0b\x32\x19.google.protobuf.DurationR\rleaseDuration\x12:\n\x19\x65xpected_resource_version\x18\x04 \x01(\x03R\x17\x65xpectedResourceVersion\"\x84\x01\n\x19RenewAttemptLeaseResponse\x12\x33\n\x07\x61ttempt\x18\x01 \x01(\x0b\x32\x19.mindclade.job.v1.AttemptR\x07\x61ttempt\x12\x32\n\x05\x66\x65nce\x18\x02 \x01(\x0b\x32\x1c.mindclade.job.v1.LeaseFenceR\x05\x66\x65nce\"\x8a\x02\n\x17HeartbeatAttemptRequest\x12=\n\x07\x63ontext\x18\x01 \x01(\x0b\x32#.mindclade.common.v1.CommandContextR\x07\x63ontext\x12\x32\n\x05\x66\x65nce\x18\x02 \x01(\x0b\x32\x1c.mindclade.job.v1.LeaseFenceR\x05\x66\x65nce\x12@\n\x0elease_duration\x18\x03 \x01(\x0b\x32\x19.google.protobuf.DurationR\rleaseDuration\x12:\n\x19\x65xpected_resource_version\x18\x04 \x01(\x03R\x17\x65xpectedResourceVersion\"\xc0\x01\n\x18HeartbeatAttemptResponse\x12\x33\n\x07\x61ttempt\x18\x01 \x01(\x0b\x32\x19.mindclade.job.v1.AttemptR\x07\x61ttempt\x12\x32\n\x05\x66\x65nce\x18\x02 \x01(\x0b\x32\x1c.mindclade.job.v1.LeaseFenceR\x05\x66\x65nce\x12;\n\x0bobserved_at\x18\x03 \x01(\x0b\x32\x1a.google.protobuf.TimestampR\nobservedAt\"\xdd\x01\n\x14\x43\x61ncelAttemptRequest\x12=\n\x07\x63ontext\x18\x01 \x01(\x0b\x32#.mindclade.common.v1.CommandContextR\x07\x63ontext\x12\x32\n\x05\x66\x65nce\x18\x02 \x01(\x0b\x32\x1c.mindclade.job.v1.LeaseFenceR\x05\x66\x65nce\x12:\n\x19\x65xpected_resource_version\x18\x03 \x01(\x03R\x17\x65xpectedResourceVersion\x12\x16\n\x06reason\x18\x04 \x01(\tR\x06reason\"u\n\x15\x43\x61ncelAttemptResponse\x12\x33\n\x07\x61ttempt\x18\x01 \x01(\x0b\x32\x19.mindclade.job.v1.AttemptR\x07\x61ttempt\x12\'\n\x03run\x18\x02 \x01(\x0b\x32\x15.mindclade.job.v1.RunR\x03run\"\x89\x01\n\x1a\x45xpireAttemptLeasesRequest\x12=\n\x07\x63ontext\x18\x01 \x01(\x0b\x32#.mindclade.common.v1.CommandContextR\x07\x63ontext\x12\x16\n\x06parent\x18\x02 \x01(\tR\x06parent\x12\x14\n\x05limit\x18\x03 \x01(\rR\x05limit\"\x91\x01\n\x1b\x45xpireAttemptLeasesResponse\x12\x35\n\x08\x61ttempts\x18\x01 \x03(\x0b\x32\x19.mindclade.job.v1.AttemptR\x08\x61ttempts\x12;\n\x0bobserved_at\x18\x02 \x01(\x0b\x32\x1a.google.protobuf.TimestampR\nobservedAt\"\xae\x04\n\x14\x43ommitAttemptRequest\x12=\n\x07\x63ontext\x18\x01 \x01(\x0b\x32#.mindclade.common.v1.CommandContextR\x07\x63ontext\x12\x33\n\x07\x61ttempt\x18\x02 \x01(\x0b\x32\x19.mindclade.job.v1.AttemptR\x07\x61ttempt\x12\x32\n\x05\x66\x65nce\x18\x03 \x01(\x0b\x32\x1c.mindclade.job.v1.LeaseFenceR\x05\x66\x65nce\x12;\n\x0bupdate_mask\x18\x04 \x01(\x0b\x32\x1a.google.protobuf.FieldMaskR\nupdateMask\x12:\n\x19\x65xpected_resource_version\x18\x05 \x01(\x03R\x17\x65xpectedResourceVersion\x12t\n\x17\x66\x65\x61ture_materialization\x18\x06 \x01(\x0b\x32\x39.mindclade.feature.v1.CommitFeatureMaterializationCommandH\x00R\x16\x66\x65\x61tureMaterialization\x12j\n\x13transform_execution\x18\x07 \x01(\x0b\x32\x37.mindclade.transform.v1.CommitTransformExecutionCommandH\x00R\x12transformExecutionB\x13\n\x11\x64omain_completion\"u\n\x15\x43ommitAttemptResponse\x12\x33\n\x07\x61ttempt\x18\x01 \x01(\x0b\x32\x19.mindclade.job.v1.AttemptR\x07\x61ttempt\x12\'\n\x03run\x18\x02 \x01(\x0b\x32\x15.mindclade.job.v1.RunR\x03run2\xed\x03\n\x10OperationService\x12o\n\x0cGetOperation\x12..mindclade.internal.job.v1.GetOperationRequest\x1a/.mindclade.internal.job.v1.GetOperationResponse\x12u\n\x0eListOperations\x12\x30.mindclade.internal.job.v1.ListOperationsRequest\x1a\x31.mindclade.internal.job.v1.ListOperationsResponse\x12x\n\x0f\x43\x61ncelOperation\x12\x31.mindclade.internal.job.v1.CancelOperationRequest\x1a\x32.mindclade.internal.job.v1.CancelOperationResponse\x12w\n\x0eWatchOperation\x12\x30.mindclade.internal.job.v1.WatchOperationRequest\x1a\x31.mindclade.internal.job.v1.WatchOperationResponse0\x01\x32\xa3\x03\n\nJobService\x12i\n\nRequestJob\x12,.mindclade.internal.job.v1.RequestJobRequest\x1a-.mindclade.internal.job.v1.RequestJobResponse\x12]\n\x06GetJob\x12(.mindclade.internal.job.v1.GetJobRequest\x1a).mindclade.internal.job.v1.GetJobResponse\x12\x63\n\x08ListJobs\x12*.mindclade.internal.job.v1.ListJobsRequest\x1a+.mindclade.internal.job.v1.ListJobsResponse\x12\x66\n\tCancelJob\x12+.mindclade.internal.job.v1.CancelJobRequest\x1a,.mindclade.internal.job.v1.CancelJobResponse2\x9f\t\n\nRunService\x12]\n\x06GetRun\x12(.mindclade.internal.job.v1.GetRunRequest\x1a).mindclade.internal.job.v1.GetRunResponse\x12\x63\n\x08ListRuns\x12*.mindclade.internal.job.v1.ListRunsRequest\x1a+.mindclade.internal.job.v1.ListRunsResponse\x12i\n\nGetAttempt\x12,.mindclade.internal.job.v1.GetAttemptRequest\x1a-.mindclade.internal.job.v1.GetAttemptResponse\x12o\n\x0cListAttempts\x12..mindclade.internal.job.v1.ListAttemptsRequest\x1a/.mindclade.internal.job.v1.ListAttemptsResponse\x12\x84\x01\n\x13\x41\x63quireAttemptLease\x12\x35.mindclade.internal.job.v1.AcquireAttemptLeaseRequest\x1a\x36.mindclade.internal.job.v1.AcquireAttemptLeaseResponse\x12~\n\x11RenewAttemptLease\x12\x33.mindclade.internal.job.v1.RenewAttemptLeaseRequest\x1a\x34.mindclade.internal.job.v1.RenewAttemptLeaseResponse\x12{\n\x10HeartbeatAttempt\x12\x32.mindclade.internal.job.v1.HeartbeatAttemptRequest\x1a\x33.mindclade.internal.job.v1.HeartbeatAttemptResponse\x12r\n\rCancelAttempt\x12/.mindclade.internal.job.v1.CancelAttemptRequest\x1a\x30.mindclade.internal.job.v1.CancelAttemptResponse\x12\x84\x01\n\x13\x45xpireAttemptLeases\x12\x35.mindclade.internal.job.v1.ExpireAttemptLeasesRequest\x1a\x36.mindclade.internal.job.v1.ExpireAttemptLeasesResponse\x12r\n\rCommitAttempt\x12/.mindclade.internal.job.v1.CommitAttemptRequest\x1a\x30.mindclade.internal.job.v1.CommitAttemptResponseBXZVgithub.com/mindclade/mindclade/protocols/generated/go/internalrpc/job/v1;internaljobv1b\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -45,82 +45,82 @@ _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'mindclade.internal.job.v1.j
 if not _descriptor._USE_C_DESCRIPTORS:
   _globals['DESCRIPTOR']._loaded_options = None
   _globals['DESCRIPTOR']._serialized_options = b'ZVgithub.com/mindclade/mindclade/protocols/generated/go/internalrpc/job/v1;internaljobv1'
-  _globals['_GETOPERATIONREQUEST']._serialized_start=611
-  _globals['_GETOPERATIONREQUEST']._serialized_end=688
-  _globals['_GETOPERATIONRESPONSE']._serialized_start=690
-  _globals['_GETOPERATIONRESPONSE']._serialized_end=771
-  _globals['_LISTOPERATIONSREQUEST']._serialized_start=774
-  _globals['_LISTOPERATIONSREQUEST']._serialized_end=926
-  _globals['_LISTOPERATIONSRESPONSE']._serialized_start=929
-  _globals['_LISTOPERATIONSRESPONSE']._serialized_end=1126
-  _globals['_CANCELOPERATIONREQUEST']._serialized_start=1129
-  _globals['_CANCELOPERATIONREQUEST']._serialized_end=1280
-  _globals['_CANCELOPERATIONRESPONSE']._serialized_start=1282
-  _globals['_CANCELOPERATIONRESPONSE']._serialized_end=1366
-  _globals['_WATCHOPERATIONREQUEST']._serialized_start=1369
-  _globals['_WATCHOPERATIONREQUEST']._serialized_end=1507
-  _globals['_WATCHOPERATIONRESPONSE']._serialized_start=1510
-  _globals['_WATCHOPERATIONRESPONSE']._serialized_end=1682
-  _globals['_REQUESTJOBREQUEST']._serialized_start=1684
-  _globals['_REQUESTJOBREQUEST']._serialized_end=1766
-  _globals['_REQUESTJOBRESPONSE']._serialized_start=1768
-  _globals['_REQUESTJOBRESPONSE']._serialized_end=1888
-  _globals['_GETJOBREQUEST']._serialized_start=1890
-  _globals['_GETJOBREQUEST']._serialized_end=1961
-  _globals['_GETJOBRESPONSE']._serialized_start=1963
-  _globals['_GETJOBRESPONSE']._serialized_end=2020
-  _globals['_LISTJOBSREQUEST']._serialized_start=2023
-  _globals['_LISTJOBSREQUEST']._serialized_end=2169
-  _globals['_LISTJOBSRESPONSE']._serialized_start=2172
-  _globals['_LISTJOBSRESPONSE']._serialized_end=2345
-  _globals['_CANCELJOBREQUEST']._serialized_start=2348
-  _globals['_CANCELJOBREQUEST']._serialized_end=2493
-  _globals['_CANCELJOBRESPONSE']._serialized_start=2495
-  _globals['_CANCELJOBRESPONSE']._serialized_end=2573
-  _globals['_GETRUNREQUEST']._serialized_start=2575
-  _globals['_GETRUNREQUEST']._serialized_end=2610
-  _globals['_GETRUNRESPONSE']._serialized_start=2612
-  _globals['_GETRUNRESPONSE']._serialized_end=2669
-  _globals['_LISTRUNSREQUEST']._serialized_start=2671
-  _globals['_LISTRUNSREQUEST']._serialized_end=2790
-  _globals['_LISTRUNSRESPONSE']._serialized_start=2793
-  _globals['_LISTRUNSRESPONSE']._serialized_end=2966
-  _globals['_GETATTEMPTREQUEST']._serialized_start=2968
-  _globals['_GETATTEMPTREQUEST']._serialized_end=3007
-  _globals['_GETATTEMPTRESPONSE']._serialized_start=3009
-  _globals['_GETATTEMPTRESPONSE']._serialized_end=3082
-  _globals['_LISTATTEMPTSREQUEST']._serialized_start=3084
-  _globals['_LISTATTEMPTSREQUEST']._serialized_end=3183
-  _globals['_LISTATTEMPTSRESPONSE']._serialized_start=3186
-  _globals['_LISTATTEMPTSRESPONSE']._serialized_end=3375
-  _globals['_ACQUIREATTEMPTLEASEREQUEST']._serialized_start=3378
-  _globals['_ACQUIREATTEMPTLEASEREQUEST']._serialized_end=3593
-  _globals['_ACQUIREATTEMPTLEASERESPONSE']._serialized_start=3596
-  _globals['_ACQUIREATTEMPTLEASERESPONSE']._serialized_end=3730
-  _globals['_RENEWATTEMPTLEASEREQUEST']._serialized_start=3733
-  _globals['_RENEWATTEMPTLEASEREQUEST']._serialized_end=4000
-  _globals['_RENEWATTEMPTLEASERESPONSE']._serialized_start=4003
-  _globals['_RENEWATTEMPTLEASERESPONSE']._serialized_end=4135
-  _globals['_HEARTBEATATTEMPTREQUEST']._serialized_start=4138
-  _globals['_HEARTBEATATTEMPTREQUEST']._serialized_end=4404
-  _globals['_HEARTBEATATTEMPTRESPONSE']._serialized_start=4407
-  _globals['_HEARTBEATATTEMPTRESPONSE']._serialized_end=4599
-  _globals['_CANCELATTEMPTREQUEST']._serialized_start=4602
-  _globals['_CANCELATTEMPTREQUEST']._serialized_end=4823
-  _globals['_CANCELATTEMPTRESPONSE']._serialized_start=4825
-  _globals['_CANCELATTEMPTRESPONSE']._serialized_end=4942
-  _globals['_EXPIREATTEMPTLEASESREQUEST']._serialized_start=4945
-  _globals['_EXPIREATTEMPTLEASESREQUEST']._serialized_end=5082
-  _globals['_EXPIREATTEMPTLEASESRESPONSE']._serialized_start=5085
-  _globals['_EXPIREATTEMPTLEASESRESPONSE']._serialized_end=5230
-  _globals['_COMMITATTEMPTREQUEST']._serialized_start=5233
-  _globals['_COMMITATTEMPTREQUEST']._serialized_end=5791
-  _globals['_COMMITATTEMPTRESPONSE']._serialized_start=5793
-  _globals['_COMMITATTEMPTRESPONSE']._serialized_end=5910
-  _globals['_OPERATIONSERVICE']._serialized_start=5913
-  _globals['_OPERATIONSERVICE']._serialized_end=6406
-  _globals['_JOBSERVICE']._serialized_start=6409
-  _globals['_JOBSERVICE']._serialized_end=6828
-  _globals['_RUNSERVICE']._serialized_start=6831
-  _globals['_RUNSERVICE']._serialized_end=8014
+  _globals['_GETOPERATIONREQUEST']._serialized_start=617
+  _globals['_GETOPERATIONREQUEST']._serialized_end=694
+  _globals['_GETOPERATIONRESPONSE']._serialized_start=696
+  _globals['_GETOPERATIONRESPONSE']._serialized_end=783
+  _globals['_LISTOPERATIONSREQUEST']._serialized_start=786
+  _globals['_LISTOPERATIONSREQUEST']._serialized_end=938
+  _globals['_LISTOPERATIONSRESPONSE']._serialized_start=941
+  _globals['_LISTOPERATIONSRESPONSE']._serialized_end=1144
+  _globals['_CANCELOPERATIONREQUEST']._serialized_start=1147
+  _globals['_CANCELOPERATIONREQUEST']._serialized_end=1298
+  _globals['_CANCELOPERATIONRESPONSE']._serialized_start=1300
+  _globals['_CANCELOPERATIONRESPONSE']._serialized_end=1390
+  _globals['_WATCHOPERATIONREQUEST']._serialized_start=1393
+  _globals['_WATCHOPERATIONREQUEST']._serialized_end=1531
+  _globals['_WATCHOPERATIONRESPONSE']._serialized_start=1534
+  _globals['_WATCHOPERATIONRESPONSE']._serialized_end=1712
+  _globals['_REQUESTJOBREQUEST']._serialized_start=1714
+  _globals['_REQUESTJOBREQUEST']._serialized_end=1796
+  _globals['_REQUESTJOBRESPONSE']._serialized_start=1798
+  _globals['_REQUESTJOBRESPONSE']._serialized_end=1924
+  _globals['_GETJOBREQUEST']._serialized_start=1926
+  _globals['_GETJOBREQUEST']._serialized_end=1997
+  _globals['_GETJOBRESPONSE']._serialized_start=1999
+  _globals['_GETJOBRESPONSE']._serialized_end=2056
+  _globals['_LISTJOBSREQUEST']._serialized_start=2059
+  _globals['_LISTJOBSREQUEST']._serialized_end=2205
+  _globals['_LISTJOBSRESPONSE']._serialized_start=2208
+  _globals['_LISTJOBSRESPONSE']._serialized_end=2381
+  _globals['_CANCELJOBREQUEST']._serialized_start=2384
+  _globals['_CANCELJOBREQUEST']._serialized_end=2529
+  _globals['_CANCELJOBRESPONSE']._serialized_start=2531
+  _globals['_CANCELJOBRESPONSE']._serialized_end=2615
+  _globals['_GETRUNREQUEST']._serialized_start=2617
+  _globals['_GETRUNREQUEST']._serialized_end=2652
+  _globals['_GETRUNRESPONSE']._serialized_start=2654
+  _globals['_GETRUNRESPONSE']._serialized_end=2711
+  _globals['_LISTRUNSREQUEST']._serialized_start=2713
+  _globals['_LISTRUNSREQUEST']._serialized_end=2832
+  _globals['_LISTRUNSRESPONSE']._serialized_start=2835
+  _globals['_LISTRUNSRESPONSE']._serialized_end=3008
+  _globals['_GETATTEMPTREQUEST']._serialized_start=3010
+  _globals['_GETATTEMPTREQUEST']._serialized_end=3049
+  _globals['_GETATTEMPTRESPONSE']._serialized_start=3051
+  _globals['_GETATTEMPTRESPONSE']._serialized_end=3124
+  _globals['_LISTATTEMPTSREQUEST']._serialized_start=3126
+  _globals['_LISTATTEMPTSREQUEST']._serialized_end=3225
+  _globals['_LISTATTEMPTSRESPONSE']._serialized_start=3228
+  _globals['_LISTATTEMPTSRESPONSE']._serialized_end=3417
+  _globals['_ACQUIREATTEMPTLEASEREQUEST']._serialized_start=3420
+  _globals['_ACQUIREATTEMPTLEASEREQUEST']._serialized_end=3635
+  _globals['_ACQUIREATTEMPTLEASERESPONSE']._serialized_start=3638
+  _globals['_ACQUIREATTEMPTLEASERESPONSE']._serialized_end=3772
+  _globals['_RENEWATTEMPTLEASEREQUEST']._serialized_start=3775
+  _globals['_RENEWATTEMPTLEASEREQUEST']._serialized_end=4042
+  _globals['_RENEWATTEMPTLEASERESPONSE']._serialized_start=4045
+  _globals['_RENEWATTEMPTLEASERESPONSE']._serialized_end=4177
+  _globals['_HEARTBEATATTEMPTREQUEST']._serialized_start=4180
+  _globals['_HEARTBEATATTEMPTREQUEST']._serialized_end=4446
+  _globals['_HEARTBEATATTEMPTRESPONSE']._serialized_start=4449
+  _globals['_HEARTBEATATTEMPTRESPONSE']._serialized_end=4641
+  _globals['_CANCELATTEMPTREQUEST']._serialized_start=4644
+  _globals['_CANCELATTEMPTREQUEST']._serialized_end=4865
+  _globals['_CANCELATTEMPTRESPONSE']._serialized_start=4867
+  _globals['_CANCELATTEMPTRESPONSE']._serialized_end=4984
+  _globals['_EXPIREATTEMPTLEASESREQUEST']._serialized_start=4987
+  _globals['_EXPIREATTEMPTLEASESREQUEST']._serialized_end=5124
+  _globals['_EXPIREATTEMPTLEASESRESPONSE']._serialized_start=5127
+  _globals['_EXPIREATTEMPTLEASESRESPONSE']._serialized_end=5272
+  _globals['_COMMITATTEMPTREQUEST']._serialized_start=5275
+  _globals['_COMMITATTEMPTREQUEST']._serialized_end=5833
+  _globals['_COMMITATTEMPTRESPONSE']._serialized_start=5835
+  _globals['_COMMITATTEMPTRESPONSE']._serialized_end=5952
+  _globals['_OPERATIONSERVICE']._serialized_start=5955
+  _globals['_OPERATIONSERVICE']._serialized_end=6448
+  _globals['_JOBSERVICE']._serialized_start=6451
+  _globals['_JOBSERVICE']._serialized_end=6870
+  _globals['_RUNSERVICE']._serialized_start=6873
+  _globals['_RUNSERVICE']._serialized_end=8056
 # @@protoc_insertion_point(module_scope)

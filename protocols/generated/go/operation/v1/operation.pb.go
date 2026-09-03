@@ -2,9 +2,9 @@
 // versions:
 // 	protoc-gen-go v1.36.12
 // 	protoc        (unknown)
-// source: proto/mindclade/job/v1/operation.proto
+// source: proto/mindclade/operation/v1/operation.proto
 
-package jobv1
+package operationv1
 
 import (
 	v1 "github.com/mindclade/mindclade/protocols/generated/go/artifact/v1"
@@ -69,11 +69,11 @@ func (x OperationState) String() string {
 }
 
 func (OperationState) Descriptor() protoreflect.EnumDescriptor {
-	return file_proto_mindclade_job_v1_operation_proto_enumTypes[0].Descriptor()
+	return file_proto_mindclade_operation_v1_operation_proto_enumTypes[0].Descriptor()
 }
 
 func (OperationState) Type() protoreflect.EnumType {
-	return &file_proto_mindclade_job_v1_operation_proto_enumTypes[0]
+	return &file_proto_mindclade_operation_v1_operation_proto_enumTypes[0]
 }
 
 func (x OperationState) Number() protoreflect.EnumNumber {
@@ -82,7 +82,7 @@ func (x OperationState) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use OperationState.Descriptor instead.
 func (OperationState) EnumDescriptor() ([]byte, []int) {
-	return file_proto_mindclade_job_v1_operation_proto_rawDescGZIP(), []int{0}
+	return file_proto_mindclade_operation_v1_operation_proto_rawDescGZIP(), []int{0}
 }
 
 // Client-visible long-running command record.
@@ -90,7 +90,7 @@ type Operation struct {
 	state           protoimpl.MessageState `protogen:"open.v1"`
 	OperationId     string                 `protobuf:"bytes,1,opt,name=operation_id,json=operationId,proto3" json:"operation_id,omitempty"`
 	TenantId        string                 `protobuf:"bytes,2,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
-	State           OperationState         `protobuf:"varint,3,opt,name=state,proto3,enum=mindclade.job.v1.OperationState" json:"state,omitempty"`
+	State           OperationState         `protobuf:"varint,3,opt,name=state,proto3,enum=mindclade.operation.v1.OperationState" json:"state,omitempty"`
 	ResourceVersion int64                  `protobuf:"varint,4,opt,name=resource_version,json=resourceVersion,proto3" json:"resource_version,omitempty"`
 	Result          *v1.ArtifactRef        `protobuf:"bytes,5,opt,name=result,proto3" json:"result,omitempty"`
 	Error           *v11.ErrorDetail       `protobuf:"bytes,6,opt,name=error,proto3" json:"error,omitempty"`
@@ -110,7 +110,7 @@ type Operation struct {
 
 func (x *Operation) Reset() {
 	*x = Operation{}
-	mi := &file_proto_mindclade_job_v1_operation_proto_msgTypes[0]
+	mi := &file_proto_mindclade_operation_v1_operation_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -122,7 +122,7 @@ func (x *Operation) String() string {
 func (*Operation) ProtoMessage() {}
 
 func (x *Operation) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_mindclade_job_v1_operation_proto_msgTypes[0]
+	mi := &file_proto_mindclade_operation_v1_operation_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -135,7 +135,7 @@ func (x *Operation) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Operation.ProtoReflect.Descriptor instead.
 func (*Operation) Descriptor() ([]byte, []int) {
-	return file_proto_mindclade_job_v1_operation_proto_rawDescGZIP(), []int{0}
+	return file_proto_mindclade_operation_v1_operation_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *Operation) GetOperationId() string {
@@ -229,15 +229,15 @@ func (x *Operation) GetTarget() *v11.ResourceRef {
 	return nil
 }
 
-var File_proto_mindclade_job_v1_operation_proto protoreflect.FileDescriptor
+var File_proto_mindclade_operation_v1_operation_proto protoreflect.FileDescriptor
 
-const file_proto_mindclade_job_v1_operation_proto_rawDesc = "" +
+const file_proto_mindclade_operation_v1_operation_proto_rawDesc = "" +
 	"\n" +
-	"&proto/mindclade/job/v1/operation.proto\x12\x10mindclade.job.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a4proto/mindclade/artifact/v1/artifact_reference.proto\x1a,proto/mindclade/common/v1/error_detail.proto\x1a2proto/mindclade/common/v1/resource_reference.proto\"\xb0\x04\n" +
+	",proto/mindclade/operation/v1/operation.proto\x12\x16mindclade.operation.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a4proto/mindclade/artifact/v1/artifact_reference.proto\x1a,proto/mindclade/common/v1/error_detail.proto\x1a2proto/mindclade/common/v1/resource_reference.proto\"\xb6\x04\n" +
 	"\tOperation\x12!\n" +
 	"\foperation_id\x18\x01 \x01(\tR\voperationId\x12\x1b\n" +
-	"\ttenant_id\x18\x02 \x01(\tR\btenantId\x126\n" +
-	"\x05state\x18\x03 \x01(\x0e2 .mindclade.job.v1.OperationStateR\x05state\x12)\n" +
+	"\ttenant_id\x18\x02 \x01(\tR\btenantId\x12<\n" +
+	"\x05state\x18\x03 \x01(\x0e2&.mindclade.operation.v1.OperationStateR\x05state\x12)\n" +
 	"\x10resource_version\x18\x04 \x01(\x03R\x0fresourceVersion\x12:\n" +
 	"\x06result\x18\x05 \x01(\v2\".mindclade.artifact.v1.ArtifactRefR\x06result\x126\n" +
 	"\x05error\x18\x06 \x01(\v2 .mindclade.common.v1.ErrorDetailR\x05error\x12\x1d\n" +
@@ -259,37 +259,37 @@ const file_proto_mindclade_job_v1_operation_proto_rawDesc = "" +
 	"\x19OPERATION_STATE_SUCCEEDED\x10\x03\x12\x1a\n" +
 	"\x16OPERATION_STATE_FAILED\x10\x04\x12\x1e\n" +
 	"\x1aOPERATION_STATE_CANCELLING\x10\x05\x12\x1d\n" +
-	"\x19OPERATION_STATE_CANCELLED\x10\x06BDZBgithub.com/mindclade/mindclade/protocols/generated/go/job/v1;jobv1b\x06proto3"
+	"\x19OPERATION_STATE_CANCELLED\x10\x06BPZNgithub.com/mindclade/mindclade/protocols/generated/go/operation/v1;operationv1b\x06proto3"
 
 var (
-	file_proto_mindclade_job_v1_operation_proto_rawDescOnce sync.Once
-	file_proto_mindclade_job_v1_operation_proto_rawDescData []byte
+	file_proto_mindclade_operation_v1_operation_proto_rawDescOnce sync.Once
+	file_proto_mindclade_operation_v1_operation_proto_rawDescData []byte
 )
 
-func file_proto_mindclade_job_v1_operation_proto_rawDescGZIP() []byte {
-	file_proto_mindclade_job_v1_operation_proto_rawDescOnce.Do(func() {
-		file_proto_mindclade_job_v1_operation_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_proto_mindclade_job_v1_operation_proto_rawDesc), len(file_proto_mindclade_job_v1_operation_proto_rawDesc)))
+func file_proto_mindclade_operation_v1_operation_proto_rawDescGZIP() []byte {
+	file_proto_mindclade_operation_v1_operation_proto_rawDescOnce.Do(func() {
+		file_proto_mindclade_operation_v1_operation_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_proto_mindclade_operation_v1_operation_proto_rawDesc), len(file_proto_mindclade_operation_v1_operation_proto_rawDesc)))
 	})
-	return file_proto_mindclade_job_v1_operation_proto_rawDescData
+	return file_proto_mindclade_operation_v1_operation_proto_rawDescData
 }
 
-var file_proto_mindclade_job_v1_operation_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_proto_mindclade_job_v1_operation_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
-var file_proto_mindclade_job_v1_operation_proto_goTypes = []any{
-	(OperationState)(0),           // 0: mindclade.job.v1.OperationState
-	(*Operation)(nil),             // 1: mindclade.job.v1.Operation
+var file_proto_mindclade_operation_v1_operation_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
+var file_proto_mindclade_operation_v1_operation_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_proto_mindclade_operation_v1_operation_proto_goTypes = []any{
+	(OperationState)(0),           // 0: mindclade.operation.v1.OperationState
+	(*Operation)(nil),             // 1: mindclade.operation.v1.Operation
 	(*v1.ArtifactRef)(nil),        // 2: mindclade.artifact.v1.ArtifactRef
 	(*v11.ErrorDetail)(nil),       // 3: mindclade.common.v1.ErrorDetail
 	(*timestamppb.Timestamp)(nil), // 4: google.protobuf.Timestamp
 	(*v11.ResourceRef)(nil),       // 5: mindclade.common.v1.ResourceRef
 }
-var file_proto_mindclade_job_v1_operation_proto_depIdxs = []int32{
-	0, // 0: mindclade.job.v1.Operation.state:type_name -> mindclade.job.v1.OperationState
-	2, // 1: mindclade.job.v1.Operation.result:type_name -> mindclade.artifact.v1.ArtifactRef
-	3, // 2: mindclade.job.v1.Operation.error:type_name -> mindclade.common.v1.ErrorDetail
-	4, // 3: mindclade.job.v1.Operation.created_at:type_name -> google.protobuf.Timestamp
-	4, // 4: mindclade.job.v1.Operation.updated_at:type_name -> google.protobuf.Timestamp
-	5, // 5: mindclade.job.v1.Operation.target:type_name -> mindclade.common.v1.ResourceRef
+var file_proto_mindclade_operation_v1_operation_proto_depIdxs = []int32{
+	0, // 0: mindclade.operation.v1.Operation.state:type_name -> mindclade.operation.v1.OperationState
+	2, // 1: mindclade.operation.v1.Operation.result:type_name -> mindclade.artifact.v1.ArtifactRef
+	3, // 2: mindclade.operation.v1.Operation.error:type_name -> mindclade.common.v1.ErrorDetail
+	4, // 3: mindclade.operation.v1.Operation.created_at:type_name -> google.protobuf.Timestamp
+	4, // 4: mindclade.operation.v1.Operation.updated_at:type_name -> google.protobuf.Timestamp
+	5, // 5: mindclade.operation.v1.Operation.target:type_name -> mindclade.common.v1.ResourceRef
 	6, // [6:6] is the sub-list for method output_type
 	6, // [6:6] is the sub-list for method input_type
 	6, // [6:6] is the sub-list for extension type_name
@@ -297,27 +297,27 @@ var file_proto_mindclade_job_v1_operation_proto_depIdxs = []int32{
 	0, // [0:6] is the sub-list for field type_name
 }
 
-func init() { file_proto_mindclade_job_v1_operation_proto_init() }
-func file_proto_mindclade_job_v1_operation_proto_init() {
-	if File_proto_mindclade_job_v1_operation_proto != nil {
+func init() { file_proto_mindclade_operation_v1_operation_proto_init() }
+func file_proto_mindclade_operation_v1_operation_proto_init() {
+	if File_proto_mindclade_operation_v1_operation_proto != nil {
 		return
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_mindclade_job_v1_operation_proto_rawDesc), len(file_proto_mindclade_job_v1_operation_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_mindclade_operation_v1_operation_proto_rawDesc), len(file_proto_mindclade_operation_v1_operation_proto_rawDesc)),
 			NumEnums:      1,
 			NumMessages:   1,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
-		GoTypes:           file_proto_mindclade_job_v1_operation_proto_goTypes,
-		DependencyIndexes: file_proto_mindclade_job_v1_operation_proto_depIdxs,
-		EnumInfos:         file_proto_mindclade_job_v1_operation_proto_enumTypes,
-		MessageInfos:      file_proto_mindclade_job_v1_operation_proto_msgTypes,
+		GoTypes:           file_proto_mindclade_operation_v1_operation_proto_goTypes,
+		DependencyIndexes: file_proto_mindclade_operation_v1_operation_proto_depIdxs,
+		EnumInfos:         file_proto_mindclade_operation_v1_operation_proto_enumTypes,
+		MessageInfos:      file_proto_mindclade_operation_v1_operation_proto_msgTypes,
 	}.Build()
-	File_proto_mindclade_job_v1_operation_proto = out.File
-	file_proto_mindclade_job_v1_operation_proto_goTypes = nil
-	file_proto_mindclade_job_v1_operation_proto_depIdxs = nil
+	File_proto_mindclade_operation_v1_operation_proto = out.File
+	file_proto_mindclade_operation_v1_operation_proto_goTypes = nil
+	file_proto_mindclade_operation_v1_operation_proto_depIdxs = nil
 }

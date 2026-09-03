@@ -10,7 +10,7 @@ pub struct RegisterModelRequest {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RegisterModelResponse {
     #[prost(message, optional, tag = "1")]
-    pub operation: ::core::option::Option<crate::job::v1::Operation>,
+    pub operation: ::core::option::Option<crate::operation::v1::Operation>,
 }
 /// GetModelRequest identifies one model and optional cache validator.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
@@ -58,7 +58,7 @@ pub struct RegisterModelReleaseRequest {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RegisterModelReleaseResponse {
     #[prost(message, optional, tag = "1")]
-    pub operation: ::core::option::Option<crate::job::v1::Operation>,
+    pub operation: ::core::option::Option<crate::operation::v1::Operation>,
 }
 /// GetModelReleaseRequest identifies one immutable model release.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
@@ -104,7 +104,7 @@ pub struct PromoteModelReleaseRequest {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct PromoteModelReleaseResponse {
     #[prost(message, optional, tag = "1")]
-    pub operation: ::core::option::Option<crate::job::v1::Operation>,
+    pub operation: ::core::option::Option<crate::operation::v1::Operation>,
 }
 /// RevokeModelReleaseRequest wraps evidence-bound revocation intent.
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -116,6 +116,6 @@ pub struct RevokeModelReleaseRequest {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RevokeModelReleaseResponse {
     #[prost(message, optional, tag = "1")]
-    pub operation: ::core::option::Option<crate::job::v1::Operation>,
+    pub operation: ::core::option::Option<crate::operation::v1::Operation>,
 }
 // @@protoc_insertion_point(module)

@@ -13,6 +13,7 @@ go_library(
     deps = [
         "//protocols/generated/go/common/v1:bindings",
         "//protocols/generated/go/job/v1:bindings",
+        "//protocols/generated/go/operation/v1:bindings",
         "//protocols/generated/go/workflow/v1:bindings",
         "@org_golang_google_grpc//:grpc",
         "@org_golang_google_grpc//codes",

@@ -48,6 +48,7 @@ architecture test rejects the rest.
 | `internalrpc/workflow/v1` | `//protocols/generated/go/internalrpc/workflow/v1:bindings` |
 | `job/v1` | `//protocols/generated/go/job/v1:bindings` |
 | `model/v1` | `//protocols/generated/go/model/v1:bindings` |
+| `operation/v1` | `//protocols/generated/go/operation/v1:bindings` |
 | `policy/v1` | `//protocols/generated/go/policy/v1:bindings` |
 | `schema/v1` | `//protocols/generated/go/schema/v1:bindings` |
 | `training/v1` | `//protocols/generated/go/training/v1:bindings` |

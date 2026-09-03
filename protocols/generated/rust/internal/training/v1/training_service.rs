@@ -10,7 +10,7 @@ pub struct CreateTrainingRunRequest {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CreateTrainingRunResponse {
     #[prost(message, optional, tag = "1")]
-    pub operation: ::core::option::Option<crate::job::v1::Operation>,
+    pub operation: ::core::option::Option<crate::operation::v1::Operation>,
 }
 /// GetTrainingRunRequest identifies one scientific run and optional cache validator.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]

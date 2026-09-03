@@ -8,8 +8,8 @@ package internalmodelv1
 
 import (
 	v12 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
-	v11 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
 	v1 "github.com/mindclade/mindclade/protocols/generated/go/model/v1"
+	v11 "github.com/mindclade/mindclade/protocols/generated/go/operation/v1"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
@@ -837,11 +837,11 @@ var File_proto_mindclade_internal_model_v1_model_service_proto protoreflect.File
 
 const file_proto_mindclade_internal_model_v1_model_service_proto_rawDesc = "" +
 	"\n" +
-	"5proto/mindclade/internal/model/v1/model_service.proto\x12\x1bmindclade.internal.model.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a*proto/mindclade/common/v1/pagination.proto\x1a&proto/mindclade/job/v1/operation.proto\x1a$proto/mindclade/model/v1/model.proto\x1a-proto/mindclade/model/v1/model_commands.proto\x1a,proto/mindclade/model/v1/model_release.proto\"Z\n" +
+	"5proto/mindclade/internal/model/v1/model_service.proto\x12\x1bmindclade.internal.model.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a*proto/mindclade/common/v1/pagination.proto\x1a,proto/mindclade/operation/v1/operation.proto\x1a$proto/mindclade/model/v1/model.proto\x1a-proto/mindclade/model/v1/model_commands.proto\x1a,proto/mindclade/model/v1/model_release.proto\"Z\n" +
 	"\x14RegisterModelRequest\x12B\n" +
-	"\acommand\x18\x01 \x01(\v2(.mindclade.model.v1.RegisterModelCommandR\acommand\"R\n" +
-	"\x15RegisterModelResponse\x129\n" +
-	"\toperation\x18\x01 \x01(\v2\x1b.mindclade.job.v1.OperationR\toperation\"I\n" +
+	"\acommand\x18\x01 \x01(\v2(.mindclade.model.v1.RegisterModelCommandR\acommand\"X\n" +
+	"\x15RegisterModelResponse\x12?\n" +
+	"\toperation\x18\x01 \x01(\v2!.mindclade.operation.v1.OperationR\toperation\"I\n" +
 	"\x0fGetModelRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\"\n" +
 	"\rif_none_match\x18\x02 \x01(\tR\vifNoneMatch\"C\n" +
@@ -857,9 +857,9 @@ const file_proto_mindclade_internal_model_v1_model_service_proto_rawDesc = "" +
 	"\x04page\x18\x02 \x01(\v2!.mindclade.common.v1.PageResponseR\x04page\x127\n" +
 	"\tread_time\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\breadTime\"h\n" +
 	"\x1bRegisterModelReleaseRequest\x12I\n" +
-	"\acommand\x18\x01 \x01(\v2/.mindclade.model.v1.RegisterModelReleaseCommandR\acommand\"Y\n" +
-	"\x1cRegisterModelReleaseResponse\x129\n" +
-	"\toperation\x18\x01 \x01(\v2\x1b.mindclade.job.v1.OperationR\toperation\",\n" +
+	"\acommand\x18\x01 \x01(\v2/.mindclade.model.v1.RegisterModelReleaseCommandR\acommand\"_\n" +
+	"\x1cRegisterModelReleaseResponse\x12?\n" +
+	"\toperation\x18\x01 \x01(\v2!.mindclade.operation.v1.OperationR\toperation\",\n" +
 	"\x16GetModelReleaseRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\"`\n" +
 	"\x17GetModelReleaseResponse\x12E\n" +
@@ -874,13 +874,13 @@ const file_proto_mindclade_internal_model_v1_model_service_proto_rawDesc = "" +
 	"\x04page\x18\x02 \x01(\v2!.mindclade.common.v1.PageResponseR\x04page\x127\n" +
 	"\tread_time\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\breadTime\"f\n" +
 	"\x1aPromoteModelReleaseRequest\x12H\n" +
-	"\acommand\x18\x01 \x01(\v2..mindclade.model.v1.PromoteModelReleaseCommandR\acommand\"X\n" +
-	"\x1bPromoteModelReleaseResponse\x129\n" +
-	"\toperation\x18\x01 \x01(\v2\x1b.mindclade.job.v1.OperationR\toperation\"d\n" +
+	"\acommand\x18\x01 \x01(\v2..mindclade.model.v1.PromoteModelReleaseCommandR\acommand\"^\n" +
+	"\x1bPromoteModelReleaseResponse\x12?\n" +
+	"\toperation\x18\x01 \x01(\v2!.mindclade.operation.v1.OperationR\toperation\"d\n" +
 	"\x19RevokeModelReleaseRequest\x12G\n" +
-	"\acommand\x18\x01 \x01(\v2-.mindclade.model.v1.RevokeModelReleaseCommandR\acommand\"W\n" +
-	"\x1aRevokeModelReleaseResponse\x129\n" +
-	"\toperation\x18\x01 \x01(\v2\x1b.mindclade.job.v1.OperationR\toperation2\x82\b\n" +
+	"\acommand\x18\x01 \x01(\v2-.mindclade.model.v1.RevokeModelReleaseCommandR\acommand\"]\n" +
+	"\x1aRevokeModelReleaseResponse\x12?\n" +
+	"\toperation\x18\x01 \x01(\v2!.mindclade.operation.v1.OperationR\toperation2\x82\b\n" +
 	"\fModelService\x12v\n" +
 	"\rRegisterModel\x121.mindclade.internal.model.v1.RegisterModelRequest\x1a2.mindclade.internal.model.v1.RegisterModelResponse\x12g\n" +
 	"\bGetModel\x12,.mindclade.internal.model.v1.GetModelRequest\x1a-.mindclade.internal.model.v1.GetModelResponse\x12m\n" +
@@ -923,7 +923,7 @@ var file_proto_mindclade_internal_model_v1_model_service_proto_goTypes = []any{
 	(*RevokeModelReleaseRequest)(nil),      // 14: mindclade.internal.model.v1.RevokeModelReleaseRequest
 	(*RevokeModelReleaseResponse)(nil),     // 15: mindclade.internal.model.v1.RevokeModelReleaseResponse
 	(*v1.RegisterModelCommand)(nil),        // 16: mindclade.model.v1.RegisterModelCommand
-	(*v11.Operation)(nil),                  // 17: mindclade.job.v1.Operation
+	(*v11.Operation)(nil),                  // 17: mindclade.operation.v1.Operation
 	(*v1.Model)(nil),                       // 18: mindclade.model.v1.Model
 	(*v12.PageRequest)(nil),                // 19: mindclade.common.v1.PageRequest
 	(*v12.PageResponse)(nil),               // 20: mindclade.common.v1.PageResponse
@@ -935,23 +935,23 @@ var file_proto_mindclade_internal_model_v1_model_service_proto_goTypes = []any{
 }
 var file_proto_mindclade_internal_model_v1_model_service_proto_depIdxs = []int32{
 	16, // 0: mindclade.internal.model.v1.RegisterModelRequest.command:type_name -> mindclade.model.v1.RegisterModelCommand
-	17, // 1: mindclade.internal.model.v1.RegisterModelResponse.operation:type_name -> mindclade.job.v1.Operation
+	17, // 1: mindclade.internal.model.v1.RegisterModelResponse.operation:type_name -> mindclade.operation.v1.Operation
 	18, // 2: mindclade.internal.model.v1.GetModelResponse.model:type_name -> mindclade.model.v1.Model
 	19, // 3: mindclade.internal.model.v1.ListModelsRequest.page:type_name -> mindclade.common.v1.PageRequest
 	18, // 4: mindclade.internal.model.v1.ListModelsResponse.models:type_name -> mindclade.model.v1.Model
 	20, // 5: mindclade.internal.model.v1.ListModelsResponse.page:type_name -> mindclade.common.v1.PageResponse
 	21, // 6: mindclade.internal.model.v1.ListModelsResponse.read_time:type_name -> google.protobuf.Timestamp
 	22, // 7: mindclade.internal.model.v1.RegisterModelReleaseRequest.command:type_name -> mindclade.model.v1.RegisterModelReleaseCommand
-	17, // 8: mindclade.internal.model.v1.RegisterModelReleaseResponse.operation:type_name -> mindclade.job.v1.Operation
+	17, // 8: mindclade.internal.model.v1.RegisterModelReleaseResponse.operation:type_name -> mindclade.operation.v1.Operation
 	23, // 9: mindclade.internal.model.v1.GetModelReleaseResponse.model_release:type_name -> mindclade.model.v1.ModelRelease
 	19, // 10: mindclade.internal.model.v1.ListModelReleasesRequest.page:type_name -> mindclade.common.v1.PageRequest
 	23, // 11: mindclade.internal.model.v1.ListModelReleasesResponse.model_releases:type_name -> mindclade.model.v1.ModelRelease
 	20, // 12: mindclade.internal.model.v1.ListModelReleasesResponse.page:type_name -> mindclade.common.v1.PageResponse
 	21, // 13: mindclade.internal.model.v1.ListModelReleasesResponse.read_time:type_name -> google.protobuf.Timestamp
 	24, // 14: mindclade.internal.model.v1.PromoteModelReleaseRequest.command:type_name -> mindclade.model.v1.PromoteModelReleaseCommand
-	17, // 15: mindclade.internal.model.v1.PromoteModelReleaseResponse.operation:type_name -> mindclade.job.v1.Operation
+	17, // 15: mindclade.internal.model.v1.PromoteModelReleaseResponse.operation:type_name -> mindclade.operation.v1.Operation
 	25, // 16: mindclade.internal.model.v1.RevokeModelReleaseRequest.command:type_name -> mindclade.model.v1.RevokeModelReleaseCommand
-	17, // 17: mindclade.internal.model.v1.RevokeModelReleaseResponse.operation:type_name -> mindclade.job.v1.Operation
+	17, // 17: mindclade.internal.model.v1.RevokeModelReleaseResponse.operation:type_name -> mindclade.operation.v1.Operation
 	0,  // 18: mindclade.internal.model.v1.ModelService.RegisterModel:input_type -> mindclade.internal.model.v1.RegisterModelRequest
 	2,  // 19: mindclade.internal.model.v1.ModelService.GetModel:input_type -> mindclade.internal.model.v1.GetModelRequest
 	4,  // 20: mindclade.internal.model.v1.ModelService.ListModels:input_type -> mindclade.internal.model.v1.ListModelsRequest

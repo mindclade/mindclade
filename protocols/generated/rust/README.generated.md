@@ -48,6 +48,7 @@ architecture test rejects the rest.
 | `internal::workflow::v1` | `//protocols/generated/rust:bindings` |
 | `job::v1` | `//protocols/generated/rust:bindings` |
 | `model::v1` | `//protocols/generated/rust:bindings` |
+| `operation::v1` | `//protocols/generated/rust:bindings` |
 | `policy::v1` | `//protocols/generated/rust:bindings` |
 | `training::v1` | `//protocols/generated/rust:bindings` |
 | `transform::v1` | `//protocols/generated/rust:bindings` |

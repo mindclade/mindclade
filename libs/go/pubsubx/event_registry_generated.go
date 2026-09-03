@@ -3,7 +3,7 @@
 
 package pubsubx
 
-const authoritativeEventDescriptorDigest = "sha256:46514bdee27df6f41f03b63f050b2cfcb95867fc8f291fe943eaf2019693c0ed"
+const authoritativeEventDescriptorDigest = "sha256:f9a9dfd1eb8cbc6960f8f7e59f2dc5ec6191b7104e07ac9614db20945ffccccd"
 
 var authoritativeEventRegistrations = []EventRegistration{
 	{FullName: "mindclade.events.admin.v1.AuditExportCompleted", Version: 1, ContentType: "application/x-protobuf; deterministic=true", Source: "events/mindclade/admin/v1/audit_export_completed.proto", Owner: "control-plane/admin", LifecycleState: "active", CompatibilityPolicy: "exact-version", Fixture: EventFixtureEvidence{Status: "verified", Source: "services/control_plane/internal/admin/admin_test.go", Target: "//services/control_plane/internal/admin:admin_test", Mode: "populated-protobuf-roundtrip", Reason: ""}, Producers: []EventEvidenceEndpoint{{ID: "control-plane/admin", Source: "services/control_plane/internal/admin/events.go", Target: "//services/control_plane/internal/admin:admin", Mode: "transactional-outbox"}}, Consumers: []EventEvidenceEndpoint{{ID: "control-plane/event-audit-projection", Source: "libs/go/eventruntime/projection.go", Target: "//libs/go/eventruntime:eventruntime", Mode: "semantic-inbox"}}, ActivationGaps: nil},
