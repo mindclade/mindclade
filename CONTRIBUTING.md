@@ -27,6 +27,29 @@ change their source or generator and regenerate the complete output family.
 Lint suppressions must name the exact rule and explain why the exception is
 safe.
 
+## Working copy and branches
+
+Set the clone up once as `AGENTS.md` describes: install the declared hooks,
+disable `rerere`, and run Git from inside the pinned Nix shell. Include the
+regenerated drift baseline in any commit that changes tracked content.
+
+Before creating a handoff or hand-off-style branch, check that its work is not
+already contained in `main`:
+
+```text
+git rev-list --left-right --count origin/main...<branch>
+```
+
+A branch reporting `0` on the right carries nothing and should be deleted rather
+than kept, rebased, or re-reviewed. Several branches in this estate were fully
+contained and still attracted repeated attention. Check the same before opening
+a worktree, and remove the worktree when its branch is retired.
+
+Local build state grows quickly and is regenerable: `target/` from Cargo, the
+Bazel output roots, and the Nix store. When the disk fills, remove `target/`
+first, then reclaim the store with `nix store gc`. The store reclamation is
+large but not free — the next `nix develop` re-downloads the pinned toolchain.
+
 ## Pull-request evidence
 
 Describe affected components, compatibility, risk, data classification,
