@@ -13,11 +13,11 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/mindclade/mindclade/libs/go/numconv"
+	platformdb "github.com/mindclade/mindclade/libs/go/persistence"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	internalworkflowv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/workflow/v1"
 	policyv1 "github.com/mindclade/mindclade/protocols/generated/go/policy/v1"
 	workflowv1 "github.com/mindclade/mindclade/protocols/generated/go/workflow/v1"
-	platformdb "github.com/mindclade/mindclade/services/control_plane/internal/platform/database"
 )
 
 const maximumApprovalLifetime = 30 * 24 * time.Hour

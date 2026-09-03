@@ -24,13 +24,13 @@ _sym_db = _symbol_database.Default()
 
 from google.protobuf import timestamp_pb2 as google_dot_protobuf_dot_timestamp__pb2
 from mindclade.common.v1 import pagination_pb2 as proto_dot_mindclade_dot_common_dot_v1_dot_pagination__pb2
-from mindclade.job.v1 import operation_pb2 as proto_dot_mindclade_dot_job_dot_v1_dot_operation__pb2
+from mindclade.operation.v1 import operation_pb2 as proto_dot_mindclade_dot_operation_dot_v1_dot_operation__pb2
 from mindclade.model.v1 import model_pb2 as proto_dot_mindclade_dot_model_dot_v1_dot_model__pb2
 from mindclade.model.v1 import model_commands_pb2 as proto_dot_mindclade_dot_model_dot_v1_dot_model__commands__pb2
 from mindclade.model.v1 import model_release_pb2 as proto_dot_mindclade_dot_model_dot_v1_dot_model__release__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n5proto/mindclade/internal/model/v1/model_service.proto\x12\x1bmindclade.internal.model.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a*proto/mindclade/common/v1/pagination.proto\x1a&proto/mindclade/job/v1/operation.proto\x1a$proto/mindclade/model/v1/model.proto\x1a-proto/mindclade/model/v1/model_commands.proto\x1a,proto/mindclade/model/v1/model_release.proto\"Z\n\x14RegisterModelRequest\x12\x42\n\x07\x63ommand\x18\x01 \x01(\x0b\x32(.mindclade.model.v1.RegisterModelCommandR\x07\x63ommand\"R\n\x15RegisterModelResponse\x12\x39\n\toperation\x18\x01 \x01(\x0b\x32\x1b.mindclade.job.v1.OperationR\toperation\"I\n\x0fGetModelRequest\x12\x12\n\x04name\x18\x01 \x01(\tR\x04name\x12\"\n\rif_none_match\x18\x02 \x01(\tR\x0bifNoneMatch\"C\n\x10GetModelResponse\x12/\n\x05model\x18\x01 \x01(\x0b\x32\x19.mindclade.model.v1.ModelR\x05model\"\x94\x01\n\x11ListModelsRequest\x12\x16\n\x06parent\x18\x01 \x01(\tR\x06parent\x12\x34\n\x04page\x18\x02 \x01(\x0b\x32 .mindclade.common.v1.PageRequestR\x04page\x12\x16\n\x06\x66ilter\x18\x03 \x01(\tR\x06\x66ilter\x12\x19\n\x08order_by\x18\x04 \x01(\tR\x07orderBy\"\xb7\x01\n\x12ListModelsResponse\x12\x31\n\x06models\x18\x01 \x03(\x0b\x32\x19.mindclade.model.v1.ModelR\x06models\x12\x35\n\x04page\x18\x02 \x01(\x0b\x32!.mindclade.common.v1.PageResponseR\x04page\x12\x37\n\tread_time\x18\x03 \x01(\x0b\x32\x1a.google.protobuf.TimestampR\x08readTime\"h\n\x1bRegisterModelReleaseRequest\x12I\n\x07\x63ommand\x18\x01 \x01(\x0b\x32/.mindclade.model.v1.RegisterModelReleaseCommandR\x07\x63ommand\"Y\n\x1cRegisterModelReleaseResponse\x12\x39\n\toperation\x18\x01 \x01(\x0b\x32\x1b.mindclade.job.v1.OperationR\toperation\",\n\x16GetModelReleaseRequest\x12\x12\n\x04name\x18\x01 \x01(\tR\x04name\"`\n\x17GetModelReleaseResponse\x12\x45\n\rmodel_release\x18\x01 \x01(\x0b\x32 .mindclade.model.v1.ModelReleaseR\x0cmodelRelease\"\x9b\x01\n\x18ListModelReleasesRequest\x12\x16\n\x06parent\x18\x01 \x01(\tR\x06parent\x12\x34\n\x04page\x18\x02 \x01(\x0b\x32 .mindclade.common.v1.PageRequestR\x04page\x12\x16\n\x06\x66ilter\x18\x03 \x01(\tR\x06\x66ilter\x12\x19\n\x08order_by\x18\x04 \x01(\tR\x07orderBy\"\xd4\x01\n\x19ListModelReleasesResponse\x12G\n\x0emodel_releases\x18\x01 \x03(\x0b\x32 .mindclade.model.v1.ModelReleaseR\rmodelReleases\x12\x35\n\x04page\x18\x02 \x01(\x0b\x32!.mindclade.common.v1.PageResponseR\x04page\x12\x37\n\tread_time\x18\x03 \x01(\x0b\x32\x1a.google.protobuf.TimestampR\x08readTime\"f\n\x1aPromoteModelReleaseRequest\x12H\n\x07\x63ommand\x18\x01 \x01(\x0b\x32..mindclade.model.v1.PromoteModelReleaseCommandR\x07\x63ommand\"X\n\x1bPromoteModelReleaseResponse\x12\x39\n\toperation\x18\x01 \x01(\x0b\x32\x1b.mindclade.job.v1.OperationR\toperation\"d\n\x19RevokeModelReleaseRequest\x12G\n\x07\x63ommand\x18\x01 \x01(\x0b\x32-.mindclade.model.v1.RevokeModelReleaseCommandR\x07\x63ommand\"W\n\x1aRevokeModelReleaseResponse\x12\x39\n\toperation\x18\x01 \x01(\x0b\x32\x1b.mindclade.job.v1.OperationR\toperation2\x82\x08\n\x0cModelService\x12v\n\rRegisterModel\x12\x31.mindclade.internal.model.v1.RegisterModelRequest\x1a\x32.mindclade.internal.model.v1.RegisterModelResponse\x12g\n\x08GetModel\x12,.mindclade.internal.model.v1.GetModelRequest\x1a-.mindclade.internal.model.v1.GetModelResponse\x12m\n\nListModels\x12..mindclade.internal.model.v1.ListModelsRequest\x1a/.mindclade.internal.model.v1.ListModelsResponse\x12\x8b\x01\n\x14RegisterModelRelease\x12\x38.mindclade.internal.model.v1.RegisterModelReleaseRequest\x1a\x39.mindclade.internal.model.v1.RegisterModelReleaseResponse\x12|\n\x0fGetModelRelease\x12\x33.mindclade.internal.model.v1.GetModelReleaseRequest\x1a\x34.mindclade.internal.model.v1.GetModelReleaseResponse\x12\x82\x01\n\x11ListModelReleases\x12\x35.mindclade.internal.model.v1.ListModelReleasesRequest\x1a\x36.mindclade.internal.model.v1.ListModelReleasesResponse\x12\x88\x01\n\x13PromoteModelRelease\x12\x37.mindclade.internal.model.v1.PromoteModelReleaseRequest\x1a\x38.mindclade.internal.model.v1.PromoteModelReleaseResponse\x12\x85\x01\n\x12RevokeModelRelease\x12\x36.mindclade.internal.model.v1.RevokeModelReleaseRequest\x1a\x37.mindclade.internal.model.v1.RevokeModelReleaseResponseB\\ZZgithub.com/mindclade/mindclade/protocols/generated/go/internalrpc/model/v1;internalmodelv1b\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n5proto/mindclade/internal/model/v1/model_service.proto\x12\x1bmindclade.internal.model.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a*proto/mindclade/common/v1/pagination.proto\x1a,proto/mindclade/operation/v1/operation.proto\x1a$proto/mindclade/model/v1/model.proto\x1a-proto/mindclade/model/v1/model_commands.proto\x1a,proto/mindclade/model/v1/model_release.proto\"Z\n\x14RegisterModelRequest\x12\x42\n\x07\x63ommand\x18\x01 \x01(\x0b\x32(.mindclade.model.v1.RegisterModelCommandR\x07\x63ommand\"X\n\x15RegisterModelResponse\x12?\n\toperation\x18\x01 \x01(\x0b\x32!.mindclade.operation.v1.OperationR\toperation\"I\n\x0fGetModelRequest\x12\x12\n\x04name\x18\x01 \x01(\tR\x04name\x12\"\n\rif_none_match\x18\x02 \x01(\tR\x0bifNoneMatch\"C\n\x10GetModelResponse\x12/\n\x05model\x18\x01 \x01(\x0b\x32\x19.mindclade.model.v1.ModelR\x05model\"\x94\x01\n\x11ListModelsRequest\x12\x16\n\x06parent\x18\x01 \x01(\tR\x06parent\x12\x34\n\x04page\x18\x02 \x01(\x0b\x32 .mindclade.common.v1.PageRequestR\x04page\x12\x16\n\x06\x66ilter\x18\x03 \x01(\tR\x06\x66ilter\x12\x19\n\x08order_by\x18\x04 \x01(\tR\x07orderBy\"\xb7\x01\n\x12ListModelsResponse\x12\x31\n\x06models\x18\x01 \x03(\x0b\x32\x19.mindclade.model.v1.ModelR\x06models\x12\x35\n\x04page\x18\x02 \x01(\x0b\x32!.mindclade.common.v1.PageResponseR\x04page\x12\x37\n\tread_time\x18\x03 \x01(\x0b\x32\x1a.google.protobuf.TimestampR\x08readTime\"h\n\x1bRegisterModelReleaseRequest\x12I\n\x07\x63ommand\x18\x01 \x01(\x0b\x32/.mindclade.model.v1.RegisterModelReleaseCommandR\x07\x63ommand\"_\n\x1cRegisterModelReleaseResponse\x12?\n\toperation\x18\x01 \x01(\x0b\x32!.mindclade.operation.v1.OperationR\toperation\",\n\x16GetModelReleaseRequest\x12\x12\n\x04name\x18\x01 \x01(\tR\x04name\"`\n\x17GetModelReleaseResponse\x12\x45\n\rmodel_release\x18\x01 \x01(\x0b\x32 .mindclade.model.v1.ModelReleaseR\x0cmodelRelease\"\x9b\x01\n\x18ListModelReleasesRequest\x12\x16\n\x06parent\x18\x01 \x01(\tR\x06parent\x12\x34\n\x04page\x18\x02 \x01(\x0b\x32 .mindclade.common.v1.PageRequestR\x04page\x12\x16\n\x06\x66ilter\x18\x03 \x01(\tR\x06\x66ilter\x12\x19\n\x08order_by\x18\x04 \x01(\tR\x07orderBy\"\xd4\x01\n\x19ListModelReleasesResponse\x12G\n\x0emodel_releases\x18\x01 \x03(\x0b\x32 .mindclade.model.v1.ModelReleaseR\rmodelReleases\x12\x35\n\x04page\x18\x02 \x01(\x0b\x32!.mindclade.common.v1.PageResponseR\x04page\x12\x37\n\tread_time\x18\x03 \x01(\x0b\x32\x1a.google.protobuf.TimestampR\x08readTime\"f\n\x1aPromoteModelReleaseRequest\x12H\n\x07\x63ommand\x18\x01 \x01(\x0b\x32..mindclade.model.v1.PromoteModelReleaseCommandR\x07\x63ommand\"^\n\x1bPromoteModelReleaseResponse\x12?\n\toperation\x18\x01 \x01(\x0b\x32!.mindclade.operation.v1.OperationR\toperation\"d\n\x19RevokeModelReleaseRequest\x12G\n\x07\x63ommand\x18\x01 \x01(\x0b\x32-.mindclade.model.v1.RevokeModelReleaseCommandR\x07\x63ommand\"]\n\x1aRevokeModelReleaseResponse\x12?\n\toperation\x18\x01 \x01(\x0b\x32!.mindclade.operation.v1.OperationR\toperation2\x82\x08\n\x0cModelService\x12v\n\rRegisterModel\x12\x31.mindclade.internal.model.v1.RegisterModelRequest\x1a\x32.mindclade.internal.model.v1.RegisterModelResponse\x12g\n\x08GetModel\x12,.mindclade.internal.model.v1.GetModelRequest\x1a-.mindclade.internal.model.v1.GetModelResponse\x12m\n\nListModels\x12..mindclade.internal.model.v1.ListModelsRequest\x1a/.mindclade.internal.model.v1.ListModelsResponse\x12\x8b\x01\n\x14RegisterModelRelease\x12\x38.mindclade.internal.model.v1.RegisterModelReleaseRequest\x1a\x39.mindclade.internal.model.v1.RegisterModelReleaseResponse\x12|\n\x0fGetModelRelease\x12\x33.mindclade.internal.model.v1.GetModelReleaseRequest\x1a\x34.mindclade.internal.model.v1.GetModelReleaseResponse\x12\x82\x01\n\x11ListModelReleases\x12\x35.mindclade.internal.model.v1.ListModelReleasesRequest\x1a\x36.mindclade.internal.model.v1.ListModelReleasesResponse\x12\x88\x01\n\x13PromoteModelRelease\x12\x37.mindclade.internal.model.v1.PromoteModelReleaseRequest\x1a\x38.mindclade.internal.model.v1.PromoteModelReleaseResponse\x12\x85\x01\n\x12RevokeModelRelease\x12\x36.mindclade.internal.model.v1.RevokeModelReleaseRequest\x1a\x37.mindclade.internal.model.v1.RevokeModelReleaseResponseB\\ZZgithub.com/mindclade/mindclade/protocols/generated/go/internalrpc/model/v1;internalmodelv1b\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -38,38 +38,38 @@ _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'mindclade.internal.model.v1
 if not _descriptor._USE_C_DESCRIPTORS:
   _globals['DESCRIPTOR']._loaded_options = None
   _globals['DESCRIPTOR']._serialized_options = b'ZZgithub.com/mindclade/mindclade/protocols/generated/go/internalrpc/model/v1;internalmodelv1'
-  _globals['_REGISTERMODELREQUEST']._serialized_start=334
-  _globals['_REGISTERMODELREQUEST']._serialized_end=424
-  _globals['_REGISTERMODELRESPONSE']._serialized_start=426
-  _globals['_REGISTERMODELRESPONSE']._serialized_end=508
-  _globals['_GETMODELREQUEST']._serialized_start=510
-  _globals['_GETMODELREQUEST']._serialized_end=583
-  _globals['_GETMODELRESPONSE']._serialized_start=585
-  _globals['_GETMODELRESPONSE']._serialized_end=652
-  _globals['_LISTMODELSREQUEST']._serialized_start=655
-  _globals['_LISTMODELSREQUEST']._serialized_end=803
-  _globals['_LISTMODELSRESPONSE']._serialized_start=806
-  _globals['_LISTMODELSRESPONSE']._serialized_end=989
-  _globals['_REGISTERMODELRELEASEREQUEST']._serialized_start=991
-  _globals['_REGISTERMODELRELEASEREQUEST']._serialized_end=1095
-  _globals['_REGISTERMODELRELEASERESPONSE']._serialized_start=1097
-  _globals['_REGISTERMODELRELEASERESPONSE']._serialized_end=1186
-  _globals['_GETMODELRELEASEREQUEST']._serialized_start=1188
-  _globals['_GETMODELRELEASEREQUEST']._serialized_end=1232
-  _globals['_GETMODELRELEASERESPONSE']._serialized_start=1234
-  _globals['_GETMODELRELEASERESPONSE']._serialized_end=1330
-  _globals['_LISTMODELRELEASESREQUEST']._serialized_start=1333
-  _globals['_LISTMODELRELEASESREQUEST']._serialized_end=1488
-  _globals['_LISTMODELRELEASESRESPONSE']._serialized_start=1491
-  _globals['_LISTMODELRELEASESRESPONSE']._serialized_end=1703
-  _globals['_PROMOTEMODELRELEASEREQUEST']._serialized_start=1705
-  _globals['_PROMOTEMODELRELEASEREQUEST']._serialized_end=1807
-  _globals['_PROMOTEMODELRELEASERESPONSE']._serialized_start=1809
-  _globals['_PROMOTEMODELRELEASERESPONSE']._serialized_end=1897
-  _globals['_REVOKEMODELRELEASEREQUEST']._serialized_start=1899
-  _globals['_REVOKEMODELRELEASEREQUEST']._serialized_end=1999
-  _globals['_REVOKEMODELRELEASERESPONSE']._serialized_start=2001
-  _globals['_REVOKEMODELRELEASERESPONSE']._serialized_end=2088
-  _globals['_MODELSERVICE']._serialized_start=2091
-  _globals['_MODELSERVICE']._serialized_end=3117
+  _globals['_REGISTERMODELREQUEST']._serialized_start=340
+  _globals['_REGISTERMODELREQUEST']._serialized_end=430
+  _globals['_REGISTERMODELRESPONSE']._serialized_start=432
+  _globals['_REGISTERMODELRESPONSE']._serialized_end=520
+  _globals['_GETMODELREQUEST']._serialized_start=522
+  _globals['_GETMODELREQUEST']._serialized_end=595
+  _globals['_GETMODELRESPONSE']._serialized_start=597
+  _globals['_GETMODELRESPONSE']._serialized_end=664
+  _globals['_LISTMODELSREQUEST']._serialized_start=667
+  _globals['_LISTMODELSREQUEST']._serialized_end=815
+  _globals['_LISTMODELSRESPONSE']._serialized_start=818
+  _globals['_LISTMODELSRESPONSE']._serialized_end=1001
+  _globals['_REGISTERMODELRELEASEREQUEST']._serialized_start=1003
+  _globals['_REGISTERMODELRELEASEREQUEST']._serialized_end=1107
+  _globals['_REGISTERMODELRELEASERESPONSE']._serialized_start=1109
+  _globals['_REGISTERMODELRELEASERESPONSE']._serialized_end=1204
+  _globals['_GETMODELRELEASEREQUEST']._serialized_start=1206
+  _globals['_GETMODELRELEASEREQUEST']._serialized_end=1250
+  _globals['_GETMODELRELEASERESPONSE']._serialized_start=1252
+  _globals['_GETMODELRELEASERESPONSE']._serialized_end=1348
+  _globals['_LISTMODELRELEASESREQUEST']._serialized_start=1351
+  _globals['_LISTMODELRELEASESREQUEST']._serialized_end=1506
+  _globals['_LISTMODELRELEASESRESPONSE']._serialized_start=1509
+  _globals['_LISTMODELRELEASESRESPONSE']._serialized_end=1721
+  _globals['_PROMOTEMODELRELEASEREQUEST']._serialized_start=1723
+  _globals['_PROMOTEMODELRELEASEREQUEST']._serialized_end=1825
+  _globals['_PROMOTEMODELRELEASERESPONSE']._serialized_start=1827
+  _globals['_PROMOTEMODELRELEASERESPONSE']._serialized_end=1921
+  _globals['_REVOKEMODELRELEASEREQUEST']._serialized_start=1923
+  _globals['_REVOKEMODELRELEASEREQUEST']._serialized_end=2023
+  _globals['_REVOKEMODELRELEASERESPONSE']._serialized_start=2025
+  _globals['_REVOKEMODELRELEASERESPONSE']._serialized_end=2118
+  _globals['_MODELSERVICE']._serialized_start=2121
+  _globals['_MODELSERVICE']._serialized_end=3147
 # @@protoc_insertion_point(module_scope)

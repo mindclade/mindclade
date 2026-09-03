@@ -10,7 +10,8 @@ import (
 	v11 "github.com/mindclade/mindclade/protocols/generated/go/artifact/v1"
 	v1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	v14 "github.com/mindclade/mindclade/protocols/generated/go/evaluation/v1"
-	v13 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
+	v15 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
+	v13 "github.com/mindclade/mindclade/protocols/generated/go/operation/v1"
 	v12 "github.com/mindclade/mindclade/protocols/generated/go/policy/v1"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
@@ -552,7 +553,7 @@ type CommitEvaluationResultRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Context       *v1.CommandContext     `protobuf:"bytes,1,opt,name=context,proto3" json:"context,omitempty"`
 	EvaluationRun *v1.ResourceRef        `protobuf:"bytes,2,opt,name=evaluation_run,json=evaluationRun,proto3" json:"evaluation_run,omitempty"`
-	Fence         *v13.LeaseFence        `protobuf:"bytes,3,opt,name=fence,proto3" json:"fence,omitempty"`
+	Fence         *v15.LeaseFence        `protobuf:"bytes,3,opt,name=fence,proto3" json:"fence,omitempty"`
 	Result        *v14.EvaluationResult  `protobuf:"bytes,4,opt,name=result,proto3" json:"result,omitempty"`
 	Etag          string                 `protobuf:"bytes,5,opt,name=etag,proto3" json:"etag,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -603,7 +604,7 @@ func (x *CommitEvaluationResultRequest) GetEvaluationRun() *v1.ResourceRef {
 	return nil
 }
 
-func (x *CommitEvaluationResultRequest) GetFence() *v13.LeaseFence {
+func (x *CommitEvaluationResultRequest) GetFence() *v15.LeaseFence {
 	if x != nil {
 		return x.Fence
 	}
@@ -959,7 +960,7 @@ var File_proto_mindclade_internal_evaluation_v1_evaluation_service_proto protore
 
 const file_proto_mindclade_internal_evaluation_v1_evaluation_service_proto_rawDesc = "" +
 	"\n" +
-	"?proto/mindclade/internal/evaluation/v1/evaluation_service.proto\x12 mindclade.internal.evaluation.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a4proto/mindclade/artifact/v1/artifact_reference.proto\x1a/proto/mindclade/common/v1/command_context.proto\x1a*proto/mindclade/common/v1/pagination.proto\x1a2proto/mindclade/common/v1/resource_reference.proto\x1a5proto/mindclade/evaluation/v1/evaluation_result.proto\x1a2proto/mindclade/evaluation/v1/evaluation_run.proto\x1a6proto/mindclade/evaluation/v1/promotion_decision.proto\x1a*proto/mindclade/job/v1/lease_fencing.proto\x1a&proto/mindclade/job/v1/operation.proto\x1a0proto/mindclade/policy/v1/policy_reference.proto\"\xb9\x06\n" +
+	"?proto/mindclade/internal/evaluation/v1/evaluation_service.proto\x12 mindclade.internal.evaluation.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a4proto/mindclade/artifact/v1/artifact_reference.proto\x1a/proto/mindclade/common/v1/command_context.proto\x1a*proto/mindclade/common/v1/pagination.proto\x1a2proto/mindclade/common/v1/resource_reference.proto\x1a5proto/mindclade/evaluation/v1/evaluation_result.proto\x1a2proto/mindclade/evaluation/v1/evaluation_run.proto\x1a6proto/mindclade/evaluation/v1/promotion_decision.proto\x1a*proto/mindclade/job/v1/lease_fencing.proto\x1a,proto/mindclade/operation/v1/operation.proto\x1a0proto/mindclade/policy/v1/policy_reference.proto\"\xb9\x06\n" +
 	"\x1aCreateEvaluationRunRequest\x12=\n" +
 	"\acontext\x18\x01 \x01(\v2#.mindclade.common.v1.CommandContextR\acontext\x12\x16\n" +
 	"\x06parent\x18\x02 \x01(\tR\x06parent\x12*\n" +
@@ -973,9 +974,9 @@ const file_proto_mindclade_internal_evaluation_v1_evaluation_service_proto_rawDe
 	"\x11provider_manifest\x18\n" +
 	" \x01(\v2\".mindclade.artifact.v1.ArtifactRefR\x10providerManifest\x12U\n" +
 	"\x14kernel_qualification\x18\v \x01(\v2\".mindclade.artifact.v1.ArtifactRefR\x13kernelQualification\x12O\n" +
-	"\x10policy_snapshots\x18\f \x03(\v2$.mindclade.policy.v1.PolicyReferenceR\x0fpolicySnapshots\"X\n" +
-	"\x1bCreateEvaluationRunResponse\x129\n" +
-	"\toperation\x18\x01 \x01(\v2\x1b.mindclade.job.v1.OperationR\toperation\"Q\n" +
+	"\x10policy_snapshots\x18\f \x03(\v2$.mindclade.policy.v1.PolicyReferenceR\x0fpolicySnapshots\"^\n" +
+	"\x1bCreateEvaluationRunResponse\x12?\n" +
+	"\toperation\x18\x01 \x01(\v2!.mindclade.operation.v1.OperationR\toperation\"Q\n" +
 	"\x17GetEvaluationRunRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\"\n" +
 	"\rif_none_match\x18\x02 \x01(\tR\vifNoneMatch\"i\n" +
@@ -994,9 +995,9 @@ const file_proto_mindclade_internal_evaluation_v1_evaluation_service_proto_rawDe
 	"\acontext\x18\x01 \x01(\v2#.mindclade.common.v1.CommandContextR\acontext\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x12\n" +
 	"\x04etag\x18\x03 \x01(\tR\x04etag\x12\x16\n" +
-	"\x06reason\x18\x04 \x01(\tR\x06reason\"X\n" +
-	"\x1bCancelEvaluationRunResponse\x129\n" +
-	"\toperation\x18\x01 \x01(\v2\x1b.mindclade.job.v1.OperationR\toperation\"\xb2\x02\n" +
+	"\x06reason\x18\x04 \x01(\tR\x06reason\"^\n" +
+	"\x1bCancelEvaluationRunResponse\x12?\n" +
+	"\toperation\x18\x01 \x01(\v2!.mindclade.operation.v1.OperationR\toperation\"\xb2\x02\n" +
 	"\x1dCommitEvaluationResultRequest\x12=\n" +
 	"\acontext\x18\x01 \x01(\v2#.mindclade.common.v1.CommandContextR\acontext\x12G\n" +
 	"\x0eevaluation_run\x18\x02 \x01(\v2 .mindclade.common.v1.ResourceRefR\revaluationRun\x122\n" +
@@ -1012,9 +1013,9 @@ const file_proto_mindclade_internal_evaluation_v1_evaluation_service_proto_rawDe
 	"\x06result\x18\x01 \x01(\v2).mindclade.evaluation.v1.EvaluationResultR\x06result\"\xba\x01\n" +
 	"\x1eCreatePromotionDecisionRequest\x12=\n" +
 	"\acontext\x18\x01 \x01(\v2#.mindclade.common.v1.CommandContextR\acontext\x12Y\n" +
-	"\x12promotion_decision\x18\x02 \x01(\v2*.mindclade.evaluation.v1.PromotionDecisionR\x11promotionDecision\"\\\n" +
-	"\x1fCreatePromotionDecisionResponse\x129\n" +
-	"\toperation\x18\x01 \x01(\v2\x1b.mindclade.job.v1.OperationR\toperation\"1\n" +
+	"\x12promotion_decision\x18\x02 \x01(\v2*.mindclade.evaluation.v1.PromotionDecisionR\x11promotionDecision\"b\n" +
+	"\x1fCreatePromotionDecisionResponse\x12?\n" +
+	"\toperation\x18\x01 \x01(\v2!.mindclade.operation.v1.OperationR\toperation\"1\n" +
 	"\x1bGetPromotionDecisionRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\"y\n" +
 	"\x1cGetPromotionDecisionResponse\x12Y\n" +
@@ -1063,12 +1064,12 @@ var file_proto_mindclade_internal_evaluation_v1_evaluation_service_proto_goTypes
 	(*v11.ArtifactRef)(nil),                 // 17: mindclade.artifact.v1.ArtifactRef
 	(*v1.ResourceRef)(nil),                  // 18: mindclade.common.v1.ResourceRef
 	(*v12.PolicyReference)(nil),             // 19: mindclade.policy.v1.PolicyReference
-	(*v13.Operation)(nil),                   // 20: mindclade.job.v1.Operation
+	(*v13.Operation)(nil),                   // 20: mindclade.operation.v1.Operation
 	(*v14.EvaluationRun)(nil),               // 21: mindclade.evaluation.v1.EvaluationRun
 	(*v1.PageRequest)(nil),                  // 22: mindclade.common.v1.PageRequest
 	(*v1.PageResponse)(nil),                 // 23: mindclade.common.v1.PageResponse
 	(*timestamppb.Timestamp)(nil),           // 24: google.protobuf.Timestamp
-	(*v13.LeaseFence)(nil),                  // 25: mindclade.job.v1.LeaseFence
+	(*v15.LeaseFence)(nil),                  // 25: mindclade.job.v1.LeaseFence
 	(*v14.EvaluationResult)(nil),            // 26: mindclade.evaluation.v1.EvaluationResult
 	(*v14.PromotionDecision)(nil),           // 27: mindclade.evaluation.v1.PromotionDecision
 }
@@ -1083,14 +1084,14 @@ var file_proto_mindclade_internal_evaluation_v1_evaluation_service_proto_depIdxs
 	17, // 7: mindclade.internal.evaluation.v1.CreateEvaluationRunRequest.provider_manifest:type_name -> mindclade.artifact.v1.ArtifactRef
 	17, // 8: mindclade.internal.evaluation.v1.CreateEvaluationRunRequest.kernel_qualification:type_name -> mindclade.artifact.v1.ArtifactRef
 	19, // 9: mindclade.internal.evaluation.v1.CreateEvaluationRunRequest.policy_snapshots:type_name -> mindclade.policy.v1.PolicyReference
-	20, // 10: mindclade.internal.evaluation.v1.CreateEvaluationRunResponse.operation:type_name -> mindclade.job.v1.Operation
+	20, // 10: mindclade.internal.evaluation.v1.CreateEvaluationRunResponse.operation:type_name -> mindclade.operation.v1.Operation
 	21, // 11: mindclade.internal.evaluation.v1.GetEvaluationRunResponse.evaluation_run:type_name -> mindclade.evaluation.v1.EvaluationRun
 	22, // 12: mindclade.internal.evaluation.v1.ListEvaluationRunsRequest.page:type_name -> mindclade.common.v1.PageRequest
 	21, // 13: mindclade.internal.evaluation.v1.ListEvaluationRunsResponse.evaluation_runs:type_name -> mindclade.evaluation.v1.EvaluationRun
 	23, // 14: mindclade.internal.evaluation.v1.ListEvaluationRunsResponse.page:type_name -> mindclade.common.v1.PageResponse
 	24, // 15: mindclade.internal.evaluation.v1.ListEvaluationRunsResponse.read_time:type_name -> google.protobuf.Timestamp
 	16, // 16: mindclade.internal.evaluation.v1.CancelEvaluationRunRequest.context:type_name -> mindclade.common.v1.CommandContext
-	20, // 17: mindclade.internal.evaluation.v1.CancelEvaluationRunResponse.operation:type_name -> mindclade.job.v1.Operation
+	20, // 17: mindclade.internal.evaluation.v1.CancelEvaluationRunResponse.operation:type_name -> mindclade.operation.v1.Operation
 	16, // 18: mindclade.internal.evaluation.v1.CommitEvaluationResultRequest.context:type_name -> mindclade.common.v1.CommandContext
 	18, // 19: mindclade.internal.evaluation.v1.CommitEvaluationResultRequest.evaluation_run:type_name -> mindclade.common.v1.ResourceRef
 	25, // 20: mindclade.internal.evaluation.v1.CommitEvaluationResultRequest.fence:type_name -> mindclade.job.v1.LeaseFence
@@ -1100,7 +1101,7 @@ var file_proto_mindclade_internal_evaluation_v1_evaluation_service_proto_depIdxs
 	26, // 24: mindclade.internal.evaluation.v1.GetEvaluationResultResponse.result:type_name -> mindclade.evaluation.v1.EvaluationResult
 	16, // 25: mindclade.internal.evaluation.v1.CreatePromotionDecisionRequest.context:type_name -> mindclade.common.v1.CommandContext
 	27, // 26: mindclade.internal.evaluation.v1.CreatePromotionDecisionRequest.promotion_decision:type_name -> mindclade.evaluation.v1.PromotionDecision
-	20, // 27: mindclade.internal.evaluation.v1.CreatePromotionDecisionResponse.operation:type_name -> mindclade.job.v1.Operation
+	20, // 27: mindclade.internal.evaluation.v1.CreatePromotionDecisionResponse.operation:type_name -> mindclade.operation.v1.Operation
 	27, // 28: mindclade.internal.evaluation.v1.GetPromotionDecisionResponse.promotion_decision:type_name -> mindclade.evaluation.v1.PromotionDecision
 	0,  // 29: mindclade.internal.evaluation.v1.EvaluationService.CreateEvaluationRun:input_type -> mindclade.internal.evaluation.v1.CreateEvaluationRunRequest
 	2,  // 30: mindclade.internal.evaluation.v1.EvaluationService.GetEvaluationRun:input_type -> mindclade.internal.evaluation.v1.GetEvaluationRunRequest

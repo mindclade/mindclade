@@ -13,13 +13,13 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	platformdb "github.com/mindclade/mindclade/libs/go/persistence"
+	"github.com/mindclade/mindclade/libs/go/pubsubx"
 	artifactv1 "github.com/mindclade/mindclade/protocols/generated/go/artifact/v1"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	featurev1 "github.com/mindclade/mindclade/protocols/generated/go/feature/v1"
 	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
 	transformv1 "github.com/mindclade/mindclade/protocols/generated/go/transform/v1"
-	platformdb "github.com/mindclade/mindclade/services/control_plane/internal/platform/database"
-	"github.com/mindclade/mindclade/services/control_plane/internal/platform/queue"
 )
 
 func TestPostgresDomainCompletionIsFencedTypedAndTransactional(t *testing.T) {
@@ -151,11 +151,11 @@ func TestPostgresDomainCompletionIsFencedTypedAndTransactional(t *testing.T) {
 		if err = db.QueryRowContext(ctx, `SELECT envelope_bytes FROM outbox_messages WHERE tenant_id=$1 AND event_type=$2`, tenantID, fixture.eventType).Scan(&encoded); err != nil {
 			t.Fatalf("read %s transactional outbox event: %v", fixture.eventType, err)
 		}
-		envelope, decodeErr := queue.UnmarshalEnvelope(encoded)
+		envelope, decodeErr := pubsubx.UnmarshalEnvelope(encoded)
 		if decodeErr != nil {
 			t.Fatal(decodeErr)
 		}
-		payload, decodeErr := queue.UnmarshalRegisteredPayload(envelope)
+		payload, decodeErr := pubsubx.UnmarshalRegisteredPayload(envelope)
 		if decodeErr != nil {
 			t.Fatal(decodeErr)
 		}

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import os
 import re
 import tempfile
@@ -292,7 +293,11 @@ class AssignmentMaterializerTest(unittest.IsolatedAsyncioTestCase):
         transport.unary_handlers[GET_JOB] = get_job
         client = AsyncClient(_config(), transport=transport)
         with tempfile.TemporaryDirectory() as directory:
-            published = Path(directory) / "job-1" / "configuration.artifact"
+            # The materializer publishes under `destination.resolve()`, so the
+            # expectation is resolved as well: on macOS tempfile returns /tmp,
+            # a symlink to /private/tmp, and an unresolved expectation compares
+            # two spellings of the same file.
+            published = Path(directory).resolve() / "job-1" / "configuration.artifact"
 
             async def download(
                 request: Message, timeout: float, metadata: Metadata
@@ -396,7 +401,41 @@ class WorkerBoundaryTest(unittest.TestCase):
             with self.subTest(source=path.name):
                 self.assertIsNone(direct.search(path.read_text()))
 
-    def test_worker_build_configuration_never_exposes_generated_protocols(self) -> None:
-        for name in ("pyrightconfig.json", "BUILD.bazel", "component.yaml"):
+    def test_worker_build_configuration_never_depends_on_generated_protocols(self) -> None:
+        """No declared dependency edge may reach the generated bindings directly.
+
+        BUILD.bazel and component.yaml are where such an edge would be written,
+        so they must not name the generated tree at all. The worker reaches those
+        bindings only transitively, through
+        ``//sdks/python:mindclade_internal_sdk``, which is the sanctioned
+        direction.
+        """
+
+        for name in ("BUILD.bazel", "component.yaml"):
             with self.subTest(configuration=name):
                 self.assertNotIn("protocols/generated", (_WORKER_ROOT / name).read_text())
+
+    def test_the_type_checker_resolves_generated_types_only_through_the_facade(self) -> None:
+        """The type checker may resolve generated types; it may not add a dependency.
+
+        The facade's public signatures return generated protobuf messages -- the
+        SDK README is explicit that those types *are* the models -- so a strict
+        type check of a consumer cannot resolve its own call sites without the
+        generated root on the search path. That path is a resolution detail, not
+        a dependency: it grants no import (``test_worker_never_imports_generated
+        _protocol_packages`` still forbids one) and no build edge. It is pinned
+        to exactly the one search-path entry so that a future edit cannot smuggle
+        a real dependency into this file.
+        """
+
+        configuration = json.loads((_WORKER_ROOT / "pyrightconfig.json").read_text())
+        generated = [
+            value
+            for key, value in configuration.items()
+            if key != "extraPaths" and "protocols/generated" in json.dumps(value)
+        ]
+        self.assertEqual(generated, [])
+        self.assertEqual(
+            [path for path in configuration["extraPaths"] if "protocols/generated" in path],
+            ["../../protocols/generated/python"],
+        )

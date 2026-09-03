@@ -31,7 +31,7 @@ POSTGRES_TARGETS = (
     "//services/control_plane/internal/experiments:experiments_test",
     "//services/control_plane/internal/inference:inference_test",
     "//services/control_plane/internal/models:models_test",
-    "//services/control_plane/internal/platform/eventprojection:event_projection_test",
+    "//libs/go/eventruntime:eventruntime_test",
     "//services/control_plane/internal/policies:policies_test",
     "//services/control_plane/internal/training:training_test",
     "//services/control_plane/internal/workflows:workflows_test",
@@ -175,7 +175,7 @@ def build_receipt(
         "generated_manifest": root / "protocols/generated/generated-files.manifest.json",
         "grpc_coverage": root / "services/control_plane/grpc-implementation.generated.json",
         "openapi": root / "protocols/openapi/published/mindclade.openapi.yaml",
-        "sdk_coverage": root / "internal/sdk/rpc-coverage.generated.json",
+        "sdk_coverage": root / "sdks/rpc-coverage.generated.json",
         "toolchain": root / "tools/codegen/toolchain.lock.json",
     }
     missing_files = [name for name, path in required.items() if not path.is_file()]
@@ -195,7 +195,7 @@ def build_receipt(
         raise ValueError("the migration set is empty")
     sdk_digests: JsonObject = {}
     for language in SDK_LANGUAGES:
-        prefix = (root / "internal/sdk" / language).resolve()
+        prefix = (root / "sdks" / language).resolve()
         language_paths = [path for path in source_paths if path.resolve().is_relative_to(prefix)]
         if not language_paths:
             raise ValueError(f"the {language} SDK package is empty")

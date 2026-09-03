@@ -7,5 +7,4 @@ export * from './job_commands_pb.js';
 export * from './job_pb.js';
 export * from './job_requested_pb.js';
 export * from './lease_fencing_pb.js';
-export * from './operation_pb.js';
 export * from './run_pb.js';

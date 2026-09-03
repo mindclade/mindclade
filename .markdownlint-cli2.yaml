@@ -19,6 +19,12 @@ ignores:
   # Immutable v3.4.0 and MONOREPO_TREE provenance is verified by SHA-256; lint
   # the corrected editable sources instead of requesting changes to evidence.
   - "docs/architecture/blueprint/provenance/**"
+  # Local agent session state, like .venv and build. Git already ignores it
+  # (the plugin ships its own .gitignore), but markdownlint globs the
+  # filesystem, so it has to be named here or `just docs` fails on notes
+  # that are not repository content.
+  - ".superpowers/**"
+  - ".claude/**"
   - ".venv/**"
   - "**/node_modules/**"
   - "bazel-*/**"

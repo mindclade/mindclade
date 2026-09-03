@@ -60,6 +60,35 @@ func TestInt64ToUint32(t *testing.T) {
 	}
 }
 
+func TestInt64ToInt32(t *testing.T) {
+	t.Parallel()
+	for _, test := range []struct {
+		name    string
+		input   int64
+		want    int32
+		wantErr bool
+	}{
+		{name: "zero", input: 0, want: 0},
+		{name: "negative", input: -1, want: -1},
+		{name: "minimum", input: math.MinInt32, want: math.MinInt32},
+		{name: "maximum", input: math.MaxInt32, want: math.MaxInt32},
+		{name: "underflow", input: int64(math.MinInt32) - 1, wantErr: true},
+		{name: "overflow", input: int64(math.MaxInt32) + 1, wantErr: true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			got, err := Int64ToInt32(test.input)
+			if test.wantErr {
+				assertRangeError(t, err, "int64", "int32")
+				return
+			}
+			if err != nil || got != test.want {
+				t.Fatalf("got (%d, %v), want (%d, nil)", got, err, test.want)
+			}
+		})
+	}
+}
+
 func TestIntToUint32(t *testing.T) {
 	t.Parallel()
 	for _, test := range []struct {
@@ -145,6 +174,33 @@ func TestUint64ToInt64(t *testing.T) {
 			got, err := Uint64ToInt64(test.input)
 			if test.wantErr {
 				assertRangeError(t, err, "uint64", "int64")
+				return
+			}
+			if err != nil || got != test.want {
+				t.Fatalf("got (%d, %v), want (%d, nil)", got, err, test.want)
+			}
+		})
+	}
+}
+
+func TestUint64ToUint32(t *testing.T) {
+	t.Parallel()
+	for _, test := range []struct {
+		name    string
+		input   uint64
+		want    uint32
+		wantErr bool
+	}{
+		{name: "zero", input: 0, want: 0},
+		{name: "maximum", input: math.MaxUint32, want: math.MaxUint32},
+		{name: "overflow", input: uint64(math.MaxUint32) + 1, wantErr: true},
+		{name: "uint64 maximum", input: math.MaxUint64, wantErr: true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			got, err := Uint64ToUint32(test.input)
+			if test.wantErr {
+				assertRangeError(t, err, "uint64", "uint32")
 				return
 			}
 			if err != nil || got != test.want {

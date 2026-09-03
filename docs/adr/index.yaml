@@ -166,14 +166,35 @@ spec:
     - id: ADR-0024
       title: Vendored contract import closure
       status: accepted-in-specification
-      connectedRatification: not-required
+      connectedRatification: pending
       path: docs/adr/0024-vendored-contract-import-closure.md
       owners: [contract-governance, developer-platform]
       specificationAccepted: "2026-09-02"
     - id: ADR-0025
       title: Cross-field constraints as a transitional side-car
       status: accepted-in-specification
-      connectedRatification: not-required
+      connectedRatification: pending
       path: docs/adr/0025-cross-field-constraints-as-a-transitional-side-car.md
       owners: [contract-governance, developer-platform]
       specificationAccepted: "2026-09-03"
+    - id: ADR-0026
+      title: "Internal SDK roots move to `sdks/<language>`"
+      status: accepted-in-specification
+      connectedRatification: pending
+      path: docs/adr/0026-internal-sdk-roots-move-to-sdks.md
+      owners: [developer-experience, architecture]
+      specificationAccepted: "2026-09-02"
+    - id: ADR-0027
+      title: The control-plane platform runtime becomes shared Go libraries
+      status: accepted-in-specification
+      connectedRatification: pending
+      path: docs/adr/0027-control-plane-platform-runtime-becomes-shared-go-libraries.md
+      owners: [platform-control-plane, developer-platform]
+      specificationAccepted: "2026-09-02"
+    - id: ADR-0028
+      title: Long-running operations become a first-class namespace
+      status: accepted-in-specification
+      connectedRatification: pending
+      path: docs/adr/0028-operations-become-a-first-class-namespace.md
+      owners: [architecture, contract-governance]
+      specificationAccepted: "2026-09-02"

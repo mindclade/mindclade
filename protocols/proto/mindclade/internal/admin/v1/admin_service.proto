@@ -9,7 +9,7 @@ import "proto/mindclade/admin/v1/project.proto";
 import "proto/mindclade/admin/v1/tenant.proto";
 import "proto/mindclade/common/v1/command_context.proto";
 import "proto/mindclade/common/v1/pagination.proto";
-import "proto/mindclade/job/v1/operation.proto";
+import "proto/mindclade/operation/v1/operation.proto";
 
 option go_package = "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/admin/v1;internaladminv1";
 
@@ -34,7 +34,7 @@ message UpdateTenantRequest {
 
 // UpdateTenantResponse returns the durable update operation.
 message UpdateTenantResponse {
-  mindclade.job.v1.Operation operation = 1;
+  mindclade.operation.v1.Operation operation = 1;
 }
 
 // CreateProjectRequest creates a tenant-scoped policy and workload boundary.
@@ -47,7 +47,7 @@ message CreateProjectRequest {
 
 // CreateProjectResponse returns the durable creation operation.
 message CreateProjectResponse {
-  mindclade.job.v1.Operation operation = 1;
+  mindclade.operation.v1.Operation operation = 1;
 }
 
 // GetProjectRequest identifies one project revision.
@@ -86,7 +86,7 @@ message UpdateProjectRequest {
 
 // UpdateProjectResponse returns the durable update operation.
 message UpdateProjectResponse {
-  mindclade.job.v1.Operation operation = 1;
+  mindclade.operation.v1.Operation operation = 1;
 }
 
 // QueryAuditRecordsRequest wraps a bounded payload-minimized query.
@@ -107,7 +107,7 @@ message ExportAuditRecordsRequest {
 
 // ExportAuditRecordsResponse returns the durable export operation.
 message ExportAuditRecordsResponse {
-  mindclade.job.v1.Operation operation = 1;
+  mindclade.operation.v1.Operation operation = 1;
 }
 
 // GetAuditExportRequest identifies one completed immutable export.

@@ -17,7 +17,7 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/structpb"
 
-	"github.com/mindclade/mindclade/internal/sdk/go/mindclade"
+	"github.com/mindclade/mindclade/sdks/go/mindclade"
 )
 
 type recordedCall struct {
@@ -265,7 +265,7 @@ func TestCommandValidationFailsBeforeCallingSDK(t *testing.T) {
 // shape: the SDK page's own generated response is the unit of output and the
 // opaque cursor is reported for resumption rather than reconstructed.
 func TestExperimentListSinglePageReportsTheSDKCursor(t *testing.T) {
-	backend := &fakeBackend{listing: Listing{
+	backend := &fakeBackend{listing: Listing{ //nolint:gosec // Opaque cursor fixture, not a credential.
 		Page:          message(t, "page-1"),
 		NextPageToken: "opaque-next",
 		HasNextPage:   true,

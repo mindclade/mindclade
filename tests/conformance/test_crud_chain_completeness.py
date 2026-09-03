@@ -289,7 +289,10 @@ class CrudChainCompletenessTest(unittest.TestCase):
         """
 
         stripped = parse(self.raw)
-        operation = stripped.messages["mindclade.job.v1.Operation"]
+        # ADR-0028 moved Operation out of the job domain into its own
+        # namespace; mindclade.api.v1.Operation is the unratified candidate
+        # projection and is not the internal message the chains return.
+        operation = stripped.messages["mindclade.operation.v1.Operation"]
         retained = [field for field in operation.field if field.name != "target"]
         self.assertEqual(len(retained), len(operation.field) - 1)
         del operation.field[:]

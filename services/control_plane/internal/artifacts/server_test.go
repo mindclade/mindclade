@@ -25,7 +25,7 @@ import (
 	artifactv1 "github.com/mindclade/mindclade/protocols/generated/go/artifact/v1"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	internalartifactv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/artifact/v1"
-	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
+	operationv1 "github.com/mindclade/mindclade/protocols/generated/go/operation/v1"
 )
 
 type staticIdentityResolver struct {
@@ -161,7 +161,7 @@ func (r *fakeServiceRepository) CommitArtifact(_ context.Context, identity Ident
 	return clone(r.artifact), false, nil
 }
 
-func (r *fakeServiceRepository) QuarantineArtifact(_ context.Context, identity Identity, request *internalartifactv1.QuarantineArtifactRequest, _ string, at time.Time) (*jobv1.Operation, bool, error) {
+func (r *fakeServiceRepository) QuarantineArtifact(_ context.Context, identity Identity, request *internalartifactv1.QuarantineArtifactRequest, _ string, at time.Time) (*operationv1.Operation, bool, error) {
 	return completedQuarantineOperation(identity, operationID(identity, request.GetContext().GetIdempotencyKey()), request.GetArtifact(), at), false, nil
 }
 

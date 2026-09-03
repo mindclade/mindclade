@@ -6,10 +6,10 @@ import (
 	"errors"
 	"time"
 
+	platformdb "github.com/mindclade/mindclade/libs/go/persistence"
 	internaljobv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/job/v1"
-	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
+	operationv1 "github.com/mindclade/mindclade/protocols/generated/go/operation/v1"
 	trainingv1 "github.com/mindclade/mindclade/protocols/generated/go/training/v1"
-	platformdb "github.com/mindclade/mindclade/services/control_plane/internal/platform/database"
 )
 
 // reconcileSchedulerCancellation applies cancellation intent monotonically to
@@ -164,7 +164,7 @@ func (r SQLRepository) CancelTrainingRun(ctx context.Context, identity Identity,
 	return clone(run), false, nil
 }
 
-func (r SQLRepository) CancelOperation(ctx context.Context, identity Identity, request *internaljobv1.CancelOperationRequest, digest string, at time.Time) (*jobv1.Operation, bool, error) {
+func (r SQLRepository) CancelOperation(ctx context.Context, identity Identity, request *internaljobv1.CancelOperationRequest, digest string, at time.Time) (*operationv1.Operation, bool, error) {
 	if err := r.validate(); err != nil {
 		return nil, false, err
 	}
@@ -216,7 +216,7 @@ func (r SQLRepository) CancelOperation(ctx context.Context, identity Identity, r
 	if operation.GetEtag() != request.GetEtag() {
 		return nil, false, ErrRevisionConflict
 	}
-	if operation.GetState() == jobv1.OperationState_OPERATION_STATE_CANCELLING {
+	if operation.GetState() == operationv1.OperationState_OPERATION_STATE_CANCELLING {
 		if err = insertAudit(ctx, tx, identity, "operations.cancel.noop", operation.GetOperationId(), digest, at); err != nil {
 			return nil, false, err
 		}

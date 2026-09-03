@@ -13,7 +13,7 @@ py_library(
         "agent_workflow/workflow.yaml",
     ],
     imports = [".."],
-    deps = ["//internal/sdk/python:mindclade_internal_sdk"],
+    deps = ["//sdks/python:mindclade_internal_sdk"],
 )
 
 py_test(
@@ -27,7 +27,7 @@ py_test(
     main = "agent_workflow/test_simulate.py",
     deps = [
         ":bounded_agent_workflow",
-        "//internal/sdk/python:mindclade_internal_sdk",
+        "//sdks/python:mindclade_internal_sdk",
     ],
 )
 

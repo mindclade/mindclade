@@ -1302,15 +1302,31 @@ def generated_binding_outputs(root: Path) -> dict[Path, bytes]:
     if not isinstance(rustfmt, Mapping):
         raise CatalogError(f"{TOOLCHAIN_LOCK} has no pinned rustfmt")
     rustfmt = cast(Mapping[str, object], rustfmt)
-    if not isinstance(rustfmt.get("version_output"), str):
+    if not isinstance(rustfmt.get("version_output"), str) or not isinstance(
+        rustfmt.get("version"), str
+    ):
         raise CatalogError(f"{TOOLCHAIN_LOCK} has no pinned rustfmt")
+    # The same binder the contract generator uses, rather than a second copy of
+    # the comparison: two independent spellings of one pin is how they drift.
+    # generate_protocols imports this module lazily, so importing it back here
+    # (also lazily) closes no cycle.
+    if __package__:
+        from tools.codegen.generate_protocols import rustfmt_version_matches_lock
+    else:
+        from generate_protocols import rustfmt_version_matches_lock
+
     rustfmt_version = subprocess.run(
         ["rustfmt", "--version"],
         check=True,
         stdout=subprocess.PIPE,
         text=True,
     ).stdout.strip()
-    if rustfmt_version != rustfmt["version_output"]:
+    if not rustfmt_version_matches_lock(
+        actual=rustfmt_version,
+        expected=cast(str, rustfmt["version_output"]),
+        version=cast(str, rustfmt["version"]),
+        root=root,
+    ):
         raise CatalogError(
             "rustfmt version mismatch: "
             f"expected {rustfmt['version_output']!r}, got {rustfmt_version!r}"

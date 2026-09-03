@@ -14,13 +14,14 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	platformdb "github.com/mindclade/mindclade/libs/go/persistence"
+	"github.com/mindclade/mindclade/libs/go/pubsubx"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
+	operationv1 "github.com/mindclade/mindclade/protocols/generated/go/operation/v1"
 	trainingv1 "github.com/mindclade/mindclade/protocols/generated/go/training/v1"
 	"github.com/mindclade/mindclade/services/control_plane/internal/jobs"
 	operationsapp "github.com/mindclade/mindclade/services/control_plane/internal/operations"
-	platformdb "github.com/mindclade/mindclade/services/control_plane/internal/platform/database"
-	"github.com/mindclade/mindclade/services/control_plane/internal/platform/queue"
 )
 
 func integrationDB(t *testing.T) *sql.DB {
@@ -92,7 +93,7 @@ func TestPostgresProjectScopedSchedulerIdentitiesAndOperationHistory(t *testing.
 		if createErr != nil || job.GetProjectId() != projectID {
 			t.Fatalf("create project %s job=%v err=%v", projectID, job, createErr)
 		}
-		operation, replay, createErr := operationRepository.CreateAtomicallySQL(ctx, &jobv1.Operation{
+		operation, replay, createErr := operationRepository.CreateAtomicallySQL(ctx, &operationv1.Operation{
 			OperationId: operationID, TenantId: tenantID, ProjectId: projectID, JobId: jobID, Etag: "operation-etag-1",
 		}, requestDigest, "shared-command-key", "scope-test-principal")
 		if createErr != nil || replay || operation.GetProjectId() != projectID {
@@ -126,9 +127,9 @@ func TestPostgresProjectScopedSchedulerIdentitiesAndOperationHistory(t *testing.
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, state := range []jobv1.OperationState{
-		jobv1.OperationState_OPERATION_STATE_CANCELLING,
-		jobv1.OperationState_OPERATION_STATE_CANCELLED,
+	for _, state := range []operationv1.OperationState{
+		operationv1.OperationState_OPERATION_STATE_CANCELLING,
+		operationv1.OperationState_OPERATION_STATE_CANCELLED,
 	} {
 		operation, err = operationRepository.AdvanceSQL(ctx, tenantID, projects[0], operationID, operation.GetResourceVersion(), operation.GetEtag(), state)
 		if err != nil {
@@ -484,7 +485,7 @@ WHERE runs.tenant_id=$1 AND runs.project_id=$2 AND runs.id=$3`, identity.TenantI
 	if err = readTx.Commit(); err != nil {
 		t.Fatal(err)
 	}
-	if _, err = queue.UnmarshalEnvelope(envelopeBytes); err != nil {
+	if _, err = pubsubx.UnmarshalEnvelope(envelopeBytes); err != nil {
 		t.Fatalf("invalid durable event: %v", err)
 	}
 	var jobEnvelopeBytes []byte
@@ -499,11 +500,11 @@ WHERE runs.tenant_id=$1 AND runs.project_id=$2 AND runs.id=$3`, identity.TenantI
 	if err = readJobTx.Commit(); err != nil {
 		t.Fatal(err)
 	}
-	jobEnvelope, err := queue.UnmarshalEnvelope(jobEnvelopeBytes)
+	jobEnvelope, err := pubsubx.UnmarshalEnvelope(jobEnvelopeBytes)
 	if err != nil {
 		t.Fatal(err)
 	}
-	jobPayload, err := queue.UnmarshalRegisteredPayload(jobEnvelope)
+	jobPayload, err := pubsubx.UnmarshalRegisteredPayload(jobEnvelope)
 	if err != nil {
 		t.Fatal(err)
 	}

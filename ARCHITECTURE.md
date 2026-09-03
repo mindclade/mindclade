@@ -55,7 +55,7 @@ business-state authority; immutable Protobuf bytes are limited to outbox,
 inbox, audit, and dead-letter evidence boundaries. Buf and pinned native
 plugins generate the internal Go, Python, Rust, and TypeScript
 Protobuf/gRPC/Connect transport. Thin Mindclade-owned facades under
-`internal/sdk` add client ergonomics while reusing generated wire types.
+`sdks` add client ergonomics while reusing generated wire types.
 Client-side services, workers, training code, tools, and internal applications
 consume those facades. Fern and Speakeasy are optional HTTP/JSON comparison
 tools only; provider state never owns an internal transport, contract, or

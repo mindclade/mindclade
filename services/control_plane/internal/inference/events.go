@@ -15,17 +15,18 @@ import (
 
 	foundationaudit "github.com/mindclade/mindclade/libs/go/audit"
 	"github.com/mindclade/mindclade/libs/go/numconv"
+	"github.com/mindclade/mindclade/libs/go/pubsubx"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	inferencev1 "github.com/mindclade/mindclade/protocols/generated/go/inference/v1"
 	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
-	"github.com/mindclade/mindclade/services/control_plane/internal/platform/queue"
+	operationv1 "github.com/mindclade/mindclade/protocols/generated/go/operation/v1"
 )
 
 const protobufEventContentType = "application/x-protobuf; deterministic=true"
 
 type GeneratedEventFactory struct{}
 
-func (GeneratedEventFactory) Requested(identity Identity, request *inferencev1.InferenceRequest, operation *jobv1.Operation, digest string, at time.Time) (*commonv1.EventEnvelope, error) {
+func (GeneratedEventFactory) Requested(identity Identity, request *inferencev1.InferenceRequest, operation *operationv1.Operation, digest string, at time.Time) (*commonv1.EventEnvelope, error) {
 	if request == nil || operation == nil || !validSHA256(digest) {
 		return nil, ErrInvalidArgument
 	}
@@ -41,7 +42,7 @@ func (GeneratedEventFactory) Requested(identity Identity, request *inferencev1.I
 	return eventEnvelope(identity, requestResource(identity, request, digest), payload, 1, request.GetContext(), at, "inference")
 }
 
-func (GeneratedEventFactory) ResultCommitted(identity Identity, request *inferencev1.InferenceRequest, result *inferencev1.InferenceResult, operation *jobv1.Operation, command *commonv1.CommandContext, at time.Time) (*commonv1.EventEnvelope, error) {
+func (GeneratedEventFactory) ResultCommitted(identity Identity, request *inferencev1.InferenceRequest, result *inferencev1.InferenceResult, operation *operationv1.Operation, command *commonv1.CommandContext, at time.Time) (*commonv1.EventEnvelope, error) {
 	if request == nil || result == nil || operation == nil {
 		return nil, ErrInvalidArgument
 	}
@@ -53,7 +54,7 @@ func (GeneratedEventFactory) ResultCommitted(identity Identity, request *inferen
 	return eventEnvelope(identity, requestResource(identity, request, result.GetRequestDigest()), payload, operation.GetResourceVersion(), command, at, "inference")
 }
 
-func (GeneratedEventFactory) JobRequested(identity Identity, operation *jobv1.Operation, configurationDigest string, command *commonv1.CommandContext, at time.Time) (*commonv1.EventEnvelope, error) {
+func (GeneratedEventFactory) JobRequested(identity Identity, operation *operationv1.Operation, configurationDigest string, command *commonv1.CommandContext, at time.Time) (*commonv1.EventEnvelope, error) {
 	if operation == nil || !validSHA256(configurationDigest) {
 		return nil, ErrInvalidArgument
 	}
@@ -90,14 +91,14 @@ func eventEnvelope(identity Identity, subject *commonv1.ResourceRef, payload pro
 	if requested, ok := payload.(*jobv1.JobRequested); ok {
 		envelope.JobId = requested.GetJobId()
 	}
-	if err = queue.ValidateEnvelope(envelope); err != nil {
+	if err = pubsubx.ValidateEnvelope(envelope); err != nil {
 		return nil, err
 	}
 	return envelope, nil
 }
 
 func insertOutbox(ctx context.Context, tx *sql.Tx, event *commonv1.EventEnvelope, at time.Time) error {
-	return queue.InsertOutboxMessage(ctx, tx, event, at)
+	return pubsubx.InsertOutboxMessage(ctx, tx, event, at)
 }
 
 func insertAudit(ctx context.Context, tx *sql.Tx, identity Identity, action, subject, digest string, at time.Time) error {
@@ -105,7 +106,7 @@ func insertAudit(ctx context.Context, tx *sql.Tx, identity Identity, action, sub
 	if err != nil {
 		return err
 	}
-	encoded, err := queue.MarshalEnvelope(event)
+	encoded, err := pubsubx.MarshalEnvelope(event)
 	if err != nil {
 		return err
 	}

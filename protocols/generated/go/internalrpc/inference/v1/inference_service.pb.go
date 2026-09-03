@@ -9,7 +9,8 @@ package internalinferencev1
 import (
 	v12 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	v1 "github.com/mindclade/mindclade/protocols/generated/go/inference/v1"
-	v11 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
+	v13 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
+	v11 "github.com/mindclade/mindclade/protocols/generated/go/operation/v1"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
@@ -414,7 +415,7 @@ type CommitInferenceResultRequest struct {
 	state            protoimpl.MessageState `protogen:"open.v1"`
 	Context          *v12.CommandContext    `protobuf:"bytes,1,opt,name=context,proto3" json:"context,omitempty"`
 	InferenceRequest *v12.ResourceRef       `protobuf:"bytes,2,opt,name=inference_request,json=inferenceRequest,proto3" json:"inference_request,omitempty"`
-	Fence            *v11.LeaseFence        `protobuf:"bytes,3,opt,name=fence,proto3" json:"fence,omitempty"`
+	Fence            *v13.LeaseFence        `protobuf:"bytes,3,opt,name=fence,proto3" json:"fence,omitempty"`
 	Result           *v1.InferenceResult    `protobuf:"bytes,4,opt,name=result,proto3" json:"result,omitempty"`
 	RequestDigest    string                 `protobuf:"bytes,5,opt,name=request_digest,json=requestDigest,proto3" json:"request_digest,omitempty"`
 	unknownFields    protoimpl.UnknownFields
@@ -465,7 +466,7 @@ func (x *CommitInferenceResultRequest) GetInferenceRequest() *v12.ResourceRef {
 	return nil
 }
 
-func (x *CommitInferenceResultRequest) GetFence() *v11.LeaseFence {
+func (x *CommitInferenceResultRequest) GetFence() *v13.LeaseFence {
 	if x != nil {
 		return x.Fence
 	}
@@ -543,20 +544,20 @@ var File_proto_mindclade_internal_inference_v1_inference_service_proto protorefl
 
 const file_proto_mindclade_internal_inference_v1_inference_service_proto_rawDesc = "" +
 	"\n" +
-	"=proto/mindclade/internal/inference/v1/inference_service.proto\x12\x1fmindclade.internal.inference.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a/proto/mindclade/common/v1/command_context.proto\x1a2proto/mindclade/common/v1/resource_reference.proto\x1a4proto/mindclade/inference/v1/inference_request.proto\x1a3proto/mindclade/inference/v1/inference_result.proto\x1a3proto/mindclade/inference/v1/inference_stream.proto\x1a*proto/mindclade/job/v1/lease_fencing.proto\x1a&proto/mindclade/job/v1/operation.proto\"o\n" +
+	"=proto/mindclade/internal/inference/v1/inference_service.proto\x12\x1fmindclade.internal.inference.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a/proto/mindclade/common/v1/command_context.proto\x1a2proto/mindclade/common/v1/resource_reference.proto\x1a4proto/mindclade/inference/v1/inference_request.proto\x1a3proto/mindclade/inference/v1/inference_result.proto\x1a3proto/mindclade/inference/v1/inference_stream.proto\x1a*proto/mindclade/job/v1/lease_fencing.proto\x1a,proto/mindclade/operation/v1/operation.proto\"o\n" +
 	"\x16SubmitInferenceRequest\x12U\n" +
-	"\x11inference_request\x18\x01 \x01(\v2(.mindclade.inference.v1.InferenceRequestR\x10inferenceRequest\"T\n" +
-	"\x17SubmitInferenceResponse\x129\n" +
-	"\toperation\x18\x01 \x01(\v2\x1b.mindclade.job.v1.OperationR\toperation\"0\n" +
+	"\x11inference_request\x18\x01 \x01(\v2(.mindclade.inference.v1.InferenceRequestR\x10inferenceRequest\"Z\n" +
+	"\x17SubmitInferenceResponse\x12?\n" +
+	"\toperation\x18\x01 \x01(\v2!.mindclade.operation.v1.OperationR\toperation\"0\n" +
 	"\x1aGetInferenceRequestRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\"t\n" +
 	"\x1bGetInferenceRequestResponse\x12U\n" +
 	"\x11inference_request\x18\x01 \x01(\v2(.mindclade.inference.v1.InferenceRequestR\x10inferenceRequest\"B\n" +
 	"\x19GetInferenceResultRequest\x12%\n" +
-	"\x0eoperation_name\x18\x01 \x01(\tR\roperationName\"\x98\x01\n" +
+	"\x0eoperation_name\x18\x01 \x01(\tR\roperationName\"\x9e\x01\n" +
 	"\x1aGetInferenceResultResponse\x12?\n" +
-	"\x06result\x18\x01 \x01(\v2'.mindclade.inference.v1.InferenceResultR\x06result\x129\n" +
-	"\toperation\x18\x02 \x01(\v2\x1b.mindclade.job.v1.OperationR\toperation\"\xbd\x01\n" +
+	"\x06result\x18\x01 \x01(\v2'.mindclade.inference.v1.InferenceResultR\x06result\x12?\n" +
+	"\toperation\x18\x02 \x01(\v2!.mindclade.operation.v1.OperationR\toperation\"\xbd\x01\n" +
 	"\x15WatchInferenceRequest\x12%\n" +
 	"\x0eoperation_name\x18\x01 \x01(\tR\roperationName\x12E\n" +
 	"\x06cursor\x18\x02 \x01(\v2-.mindclade.inference.v1.InferenceStreamCursorR\x06cursor\x126\n" +
@@ -568,10 +569,10 @@ const file_proto_mindclade_internal_inference_v1_inference_service_proto_rawDesc
 	"\x11inference_request\x18\x02 \x01(\v2 .mindclade.common.v1.ResourceRefR\x10inferenceRequest\x122\n" +
 	"\x05fence\x18\x03 \x01(\v2\x1c.mindclade.job.v1.LeaseFenceR\x05fence\x12?\n" +
 	"\x06result\x18\x04 \x01(\v2'.mindclade.inference.v1.InferenceResultR\x06result\x12%\n" +
-	"\x0erequest_digest\x18\x05 \x01(\tR\rrequestDigest\"\x9b\x01\n" +
+	"\x0erequest_digest\x18\x05 \x01(\tR\rrequestDigest\"\xa1\x01\n" +
 	"\x1dCommitInferenceResultResponse\x12?\n" +
-	"\x06result\x18\x01 \x01(\v2'.mindclade.inference.v1.InferenceResultR\x06result\x129\n" +
-	"\toperation\x18\x02 \x01(\v2\x1b.mindclade.job.v1.OperationR\toperation2\xdb\x05\n" +
+	"\x06result\x18\x01 \x01(\v2'.mindclade.inference.v1.InferenceResultR\x06result\x12?\n" +
+	"\toperation\x18\x02 \x01(\v2!.mindclade.operation.v1.OperationR\toperation2\xdb\x05\n" +
 	"\x10InferenceService\x12\x84\x01\n" +
 	"\x0fSubmitInference\x127.mindclade.internal.inference.v1.SubmitInferenceRequest\x1a8.mindclade.internal.inference.v1.SubmitInferenceResponse\x12\x90\x01\n" +
 	"\x13GetInferenceRequest\x12;.mindclade.internal.inference.v1.GetInferenceRequestRequest\x1a<.mindclade.internal.inference.v1.GetInferenceRequestResponse\x12\x8d\x01\n" +
@@ -604,21 +605,21 @@ var file_proto_mindclade_internal_inference_v1_inference_service_proto_goTypes =
 	(*CommitInferenceResultRequest)(nil),  // 8: mindclade.internal.inference.v1.CommitInferenceResultRequest
 	(*CommitInferenceResultResponse)(nil), // 9: mindclade.internal.inference.v1.CommitInferenceResultResponse
 	(*v1.InferenceRequest)(nil),           // 10: mindclade.inference.v1.InferenceRequest
-	(*v11.Operation)(nil),                 // 11: mindclade.job.v1.Operation
+	(*v11.Operation)(nil),                 // 11: mindclade.operation.v1.Operation
 	(*v1.InferenceResult)(nil),            // 12: mindclade.inference.v1.InferenceResult
 	(*v1.InferenceStreamCursor)(nil),      // 13: mindclade.inference.v1.InferenceStreamCursor
 	(*timestamppb.Timestamp)(nil),         // 14: google.protobuf.Timestamp
 	(*v1.InferenceStreamMessage)(nil),     // 15: mindclade.inference.v1.InferenceStreamMessage
 	(*v12.CommandContext)(nil),            // 16: mindclade.common.v1.CommandContext
 	(*v12.ResourceRef)(nil),               // 17: mindclade.common.v1.ResourceRef
-	(*v11.LeaseFence)(nil),                // 18: mindclade.job.v1.LeaseFence
+	(*v13.LeaseFence)(nil),                // 18: mindclade.job.v1.LeaseFence
 }
 var file_proto_mindclade_internal_inference_v1_inference_service_proto_depIdxs = []int32{
 	10, // 0: mindclade.internal.inference.v1.SubmitInferenceRequest.inference_request:type_name -> mindclade.inference.v1.InferenceRequest
-	11, // 1: mindclade.internal.inference.v1.SubmitInferenceResponse.operation:type_name -> mindclade.job.v1.Operation
+	11, // 1: mindclade.internal.inference.v1.SubmitInferenceResponse.operation:type_name -> mindclade.operation.v1.Operation
 	10, // 2: mindclade.internal.inference.v1.GetInferenceRequestResponse.inference_request:type_name -> mindclade.inference.v1.InferenceRequest
 	12, // 3: mindclade.internal.inference.v1.GetInferenceResultResponse.result:type_name -> mindclade.inference.v1.InferenceResult
-	11, // 4: mindclade.internal.inference.v1.GetInferenceResultResponse.operation:type_name -> mindclade.job.v1.Operation
+	11, // 4: mindclade.internal.inference.v1.GetInferenceResultResponse.operation:type_name -> mindclade.operation.v1.Operation
 	13, // 5: mindclade.internal.inference.v1.WatchInferenceRequest.cursor:type_name -> mindclade.inference.v1.InferenceStreamCursor
 	14, // 6: mindclade.internal.inference.v1.WatchInferenceRequest.deadline:type_name -> google.protobuf.Timestamp
 	15, // 7: mindclade.internal.inference.v1.WatchInferenceResponse.message:type_name -> mindclade.inference.v1.InferenceStreamMessage
@@ -627,7 +628,7 @@ var file_proto_mindclade_internal_inference_v1_inference_service_proto_depIdxs =
 	18, // 10: mindclade.internal.inference.v1.CommitInferenceResultRequest.fence:type_name -> mindclade.job.v1.LeaseFence
 	12, // 11: mindclade.internal.inference.v1.CommitInferenceResultRequest.result:type_name -> mindclade.inference.v1.InferenceResult
 	12, // 12: mindclade.internal.inference.v1.CommitInferenceResultResponse.result:type_name -> mindclade.inference.v1.InferenceResult
-	11, // 13: mindclade.internal.inference.v1.CommitInferenceResultResponse.operation:type_name -> mindclade.job.v1.Operation
+	11, // 13: mindclade.internal.inference.v1.CommitInferenceResultResponse.operation:type_name -> mindclade.operation.v1.Operation
 	0,  // 14: mindclade.internal.inference.v1.InferenceService.SubmitInference:input_type -> mindclade.internal.inference.v1.SubmitInferenceRequest
 	2,  // 15: mindclade.internal.inference.v1.InferenceService.GetInferenceRequest:input_type -> mindclade.internal.inference.v1.GetInferenceRequestRequest
 	4,  // 16: mindclade.internal.inference.v1.InferenceService.GetInferenceResult:input_type -> mindclade.internal.inference.v1.GetInferenceResultRequest

@@ -8,9 +8,10 @@ package internaljobv1
 
 import (
 	v11 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
-	v12 "github.com/mindclade/mindclade/protocols/generated/go/feature/v1"
-	v1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
-	v13 "github.com/mindclade/mindclade/protocols/generated/go/transform/v1"
+	v13 "github.com/mindclade/mindclade/protocols/generated/go/feature/v1"
+	v12 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
+	v1 "github.com/mindclade/mindclade/protocols/generated/go/operation/v1"
+	v14 "github.com/mindclade/mindclade/protocols/generated/go/transform/v1"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	durationpb "google.golang.org/protobuf/types/known/durationpb"
@@ -495,7 +496,7 @@ func (x *WatchOperationResponse) GetObservedAt() *timestamppb.Timestamp {
 // RequestJobRequest wraps the canonical idempotent durable-work command.
 type RequestJobRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Command       *v1.RequestJobCommand  `protobuf:"bytes,1,opt,name=command,proto3" json:"command,omitempty"`
+	Command       *v12.RequestJobCommand `protobuf:"bytes,1,opt,name=command,proto3" json:"command,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -530,7 +531,7 @@ func (*RequestJobRequest) Descriptor() ([]byte, []int) {
 	return file_proto_mindclade_internal_job_v1_job_service_proto_rawDescGZIP(), []int{8}
 }
 
-func (x *RequestJobRequest) GetCommand() *v1.RequestJobCommand {
+func (x *RequestJobRequest) GetCommand() *v12.RequestJobCommand {
 	if x != nil {
 		return x.Command
 	}
@@ -540,7 +541,7 @@ func (x *RequestJobRequest) GetCommand() *v1.RequestJobCommand {
 // RequestJobResponse returns both durable job and client-visible operation identities.
 type RequestJobResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Job           *v1.Job                `protobuf:"bytes,1,opt,name=job,proto3" json:"job,omitempty"`
+	Job           *v12.Job               `protobuf:"bytes,1,opt,name=job,proto3" json:"job,omitempty"`
 	Operation     *v1.Operation          `protobuf:"bytes,2,opt,name=operation,proto3" json:"operation,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -576,7 +577,7 @@ func (*RequestJobResponse) Descriptor() ([]byte, []int) {
 	return file_proto_mindclade_internal_job_v1_job_service_proto_rawDescGZIP(), []int{9}
 }
 
-func (x *RequestJobResponse) GetJob() *v1.Job {
+func (x *RequestJobResponse) GetJob() *v12.Job {
 	if x != nil {
 		return x.Job
 	}
@@ -646,7 +647,7 @@ func (x *GetJobRequest) GetIfNoneMatch() string {
 // GetJobResponse returns the latest job revision.
 type GetJobResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Job           *v1.Job                `protobuf:"bytes,1,opt,name=job,proto3" json:"job,omitempty"`
+	Job           *v12.Job               `protobuf:"bytes,1,opt,name=job,proto3" json:"job,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -681,7 +682,7 @@ func (*GetJobResponse) Descriptor() ([]byte, []int) {
 	return file_proto_mindclade_internal_job_v1_job_service_proto_rawDescGZIP(), []int{11}
 }
 
-func (x *GetJobResponse) GetJob() *v1.Job {
+func (x *GetJobResponse) GetJob() *v12.Job {
 	if x != nil {
 		return x.Job
 	}
@@ -760,7 +761,7 @@ func (x *ListJobsRequest) GetOrderBy() string {
 // ListJobsResponse returns one stable page of jobs.
 type ListJobsResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Jobs          []*v1.Job              `protobuf:"bytes,1,rep,name=jobs,proto3" json:"jobs,omitempty"`
+	Jobs          []*v12.Job             `protobuf:"bytes,1,rep,name=jobs,proto3" json:"jobs,omitempty"`
 	Page          *v11.PageResponse      `protobuf:"bytes,2,opt,name=page,proto3" json:"page,omitempty"`
 	ReadTime      *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=read_time,json=readTime,proto3" json:"read_time,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -797,7 +798,7 @@ func (*ListJobsResponse) Descriptor() ([]byte, []int) {
 	return file_proto_mindclade_internal_job_v1_job_service_proto_rawDescGZIP(), []int{13}
 }
 
-func (x *ListJobsResponse) GetJobs() []*v1.Job {
+func (x *ListJobsResponse) GetJobs() []*v12.Job {
 	if x != nil {
 		return x.Jobs
 	}
@@ -980,7 +981,7 @@ func (x *GetRunRequest) GetName() string {
 // GetRunResponse returns the requested run.
 type GetRunResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Run           *v1.Run                `protobuf:"bytes,1,opt,name=run,proto3" json:"run,omitempty"`
+	Run           *v12.Run               `protobuf:"bytes,1,opt,name=run,proto3" json:"run,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1015,7 +1016,7 @@ func (*GetRunResponse) Descriptor() ([]byte, []int) {
 	return file_proto_mindclade_internal_job_v1_job_service_proto_rawDescGZIP(), []int{17}
 }
 
-func (x *GetRunResponse) GetRun() *v1.Run {
+func (x *GetRunResponse) GetRun() *v12.Run {
 	if x != nil {
 		return x.Run
 	}
@@ -1086,7 +1087,7 @@ func (x *ListRunsRequest) GetFilter() string {
 // ListRunsResponse returns one stable run page.
 type ListRunsResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Runs          []*v1.Run              `protobuf:"bytes,1,rep,name=runs,proto3" json:"runs,omitempty"`
+	Runs          []*v12.Run             `protobuf:"bytes,1,rep,name=runs,proto3" json:"runs,omitempty"`
 	Page          *v11.PageResponse      `protobuf:"bytes,2,opt,name=page,proto3" json:"page,omitempty"`
 	ReadTime      *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=read_time,json=readTime,proto3" json:"read_time,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -1123,7 +1124,7 @@ func (*ListRunsResponse) Descriptor() ([]byte, []int) {
 	return file_proto_mindclade_internal_job_v1_job_service_proto_rawDescGZIP(), []int{19}
 }
 
-func (x *ListRunsResponse) GetRuns() []*v1.Run {
+func (x *ListRunsResponse) GetRuns() []*v12.Run {
 	if x != nil {
 		return x.Runs
 	}
@@ -1192,7 +1193,7 @@ func (x *GetAttemptRequest) GetName() string {
 // GetAttemptResponse returns the requested attempt.
 type GetAttemptResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Attempt       *v1.Attempt            `protobuf:"bytes,1,opt,name=attempt,proto3" json:"attempt,omitempty"`
+	Attempt       *v12.Attempt           `protobuf:"bytes,1,opt,name=attempt,proto3" json:"attempt,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1227,7 +1228,7 @@ func (*GetAttemptResponse) Descriptor() ([]byte, []int) {
 	return file_proto_mindclade_internal_job_v1_job_service_proto_rawDescGZIP(), []int{21}
 }
 
-func (x *GetAttemptResponse) GetAttempt() *v1.Attempt {
+func (x *GetAttemptResponse) GetAttempt() *v12.Attempt {
 	if x != nil {
 		return x.Attempt
 	}
@@ -1290,7 +1291,7 @@ func (x *ListAttemptsRequest) GetPage() *v11.PageRequest {
 // ListAttemptsResponse returns one stable attempt page.
 type ListAttemptsResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Attempts      []*v1.Attempt          `protobuf:"bytes,1,rep,name=attempts,proto3" json:"attempts,omitempty"`
+	Attempts      []*v12.Attempt         `protobuf:"bytes,1,rep,name=attempts,proto3" json:"attempts,omitempty"`
 	Page          *v11.PageResponse      `protobuf:"bytes,2,opt,name=page,proto3" json:"page,omitempty"`
 	ReadTime      *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=read_time,json=readTime,proto3" json:"read_time,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -1327,7 +1328,7 @@ func (*ListAttemptsResponse) Descriptor() ([]byte, []int) {
 	return file_proto_mindclade_internal_job_v1_job_service_proto_rawDescGZIP(), []int{23}
 }
 
-func (x *ListAttemptsResponse) GetAttempts() []*v1.Attempt {
+func (x *ListAttemptsResponse) GetAttempts() []*v12.Attempt {
 	if x != nil {
 		return x.Attempts
 	}
@@ -1422,8 +1423,8 @@ func (x *AcquireAttemptLeaseRequest) GetLeaseDuration() *durationpb.Duration {
 // AcquireAttemptLeaseResponse returns the durable attempt and non-secret fence.
 type AcquireAttemptLeaseResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Attempt       *v1.Attempt            `protobuf:"bytes,1,opt,name=attempt,proto3" json:"attempt,omitempty"`
-	Fence         *v1.LeaseFence         `protobuf:"bytes,2,opt,name=fence,proto3" json:"fence,omitempty"`
+	Attempt       *v12.Attempt           `protobuf:"bytes,1,opt,name=attempt,proto3" json:"attempt,omitempty"`
+	Fence         *v12.LeaseFence        `protobuf:"bytes,2,opt,name=fence,proto3" json:"fence,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1458,14 +1459,14 @@ func (*AcquireAttemptLeaseResponse) Descriptor() ([]byte, []int) {
 	return file_proto_mindclade_internal_job_v1_job_service_proto_rawDescGZIP(), []int{25}
 }
 
-func (x *AcquireAttemptLeaseResponse) GetAttempt() *v1.Attempt {
+func (x *AcquireAttemptLeaseResponse) GetAttempt() *v12.Attempt {
 	if x != nil {
 		return x.Attempt
 	}
 	return nil
 }
 
-func (x *AcquireAttemptLeaseResponse) GetFence() *v1.LeaseFence {
+func (x *AcquireAttemptLeaseResponse) GetFence() *v12.LeaseFence {
 	if x != nil {
 		return x.Fence
 	}
@@ -1476,7 +1477,7 @@ func (x *AcquireAttemptLeaseResponse) GetFence() *v1.LeaseFence {
 type RenewAttemptLeaseRequest struct {
 	state                   protoimpl.MessageState `protogen:"open.v1"`
 	Context                 *v11.CommandContext    `protobuf:"bytes,1,opt,name=context,proto3" json:"context,omitempty"`
-	Fence                   *v1.LeaseFence         `protobuf:"bytes,2,opt,name=fence,proto3" json:"fence,omitempty"`
+	Fence                   *v12.LeaseFence        `protobuf:"bytes,2,opt,name=fence,proto3" json:"fence,omitempty"`
 	LeaseDuration           *durationpb.Duration   `protobuf:"bytes,3,opt,name=lease_duration,json=leaseDuration,proto3" json:"lease_duration,omitempty"`
 	ExpectedResourceVersion int64                  `protobuf:"varint,4,opt,name=expected_resource_version,json=expectedResourceVersion,proto3" json:"expected_resource_version,omitempty"`
 	unknownFields           protoimpl.UnknownFields
@@ -1520,7 +1521,7 @@ func (x *RenewAttemptLeaseRequest) GetContext() *v11.CommandContext {
 	return nil
 }
 
-func (x *RenewAttemptLeaseRequest) GetFence() *v1.LeaseFence {
+func (x *RenewAttemptLeaseRequest) GetFence() *v12.LeaseFence {
 	if x != nil {
 		return x.Fence
 	}
@@ -1544,8 +1545,8 @@ func (x *RenewAttemptLeaseRequest) GetExpectedResourceVersion() int64 {
 // RenewAttemptLeaseResponse returns the renewed attempt and fence deadline.
 type RenewAttemptLeaseResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Attempt       *v1.Attempt            `protobuf:"bytes,1,opt,name=attempt,proto3" json:"attempt,omitempty"`
-	Fence         *v1.LeaseFence         `protobuf:"bytes,2,opt,name=fence,proto3" json:"fence,omitempty"`
+	Attempt       *v12.Attempt           `protobuf:"bytes,1,opt,name=attempt,proto3" json:"attempt,omitempty"`
+	Fence         *v12.LeaseFence        `protobuf:"bytes,2,opt,name=fence,proto3" json:"fence,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1580,14 +1581,14 @@ func (*RenewAttemptLeaseResponse) Descriptor() ([]byte, []int) {
 	return file_proto_mindclade_internal_job_v1_job_service_proto_rawDescGZIP(), []int{27}
 }
 
-func (x *RenewAttemptLeaseResponse) GetAttempt() *v1.Attempt {
+func (x *RenewAttemptLeaseResponse) GetAttempt() *v12.Attempt {
 	if x != nil {
 		return x.Attempt
 	}
 	return nil
 }
 
-func (x *RenewAttemptLeaseResponse) GetFence() *v1.LeaseFence {
+func (x *RenewAttemptLeaseResponse) GetFence() *v12.LeaseFence {
 	if x != nil {
 		return x.Fence
 	}
@@ -1598,7 +1599,7 @@ func (x *RenewAttemptLeaseResponse) GetFence() *v1.LeaseFence {
 type HeartbeatAttemptRequest struct {
 	state                   protoimpl.MessageState `protogen:"open.v1"`
 	Context                 *v11.CommandContext    `protobuf:"bytes,1,opt,name=context,proto3" json:"context,omitempty"`
-	Fence                   *v1.LeaseFence         `protobuf:"bytes,2,opt,name=fence,proto3" json:"fence,omitempty"`
+	Fence                   *v12.LeaseFence        `protobuf:"bytes,2,opt,name=fence,proto3" json:"fence,omitempty"`
 	LeaseDuration           *durationpb.Duration   `protobuf:"bytes,3,opt,name=lease_duration,json=leaseDuration,proto3" json:"lease_duration,omitempty"`
 	ExpectedResourceVersion int64                  `protobuf:"varint,4,opt,name=expected_resource_version,json=expectedResourceVersion,proto3" json:"expected_resource_version,omitempty"`
 	unknownFields           protoimpl.UnknownFields
@@ -1642,7 +1643,7 @@ func (x *HeartbeatAttemptRequest) GetContext() *v11.CommandContext {
 	return nil
 }
 
-func (x *HeartbeatAttemptRequest) GetFence() *v1.LeaseFence {
+func (x *HeartbeatAttemptRequest) GetFence() *v12.LeaseFence {
 	if x != nil {
 		return x.Fence
 	}
@@ -1666,8 +1667,8 @@ func (x *HeartbeatAttemptRequest) GetExpectedResourceVersion() int64 {
 // HeartbeatAttemptResponse returns the server-clock lease state.
 type HeartbeatAttemptResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Attempt       *v1.Attempt            `protobuf:"bytes,1,opt,name=attempt,proto3" json:"attempt,omitempty"`
-	Fence         *v1.LeaseFence         `protobuf:"bytes,2,opt,name=fence,proto3" json:"fence,omitempty"`
+	Attempt       *v12.Attempt           `protobuf:"bytes,1,opt,name=attempt,proto3" json:"attempt,omitempty"`
+	Fence         *v12.LeaseFence        `protobuf:"bytes,2,opt,name=fence,proto3" json:"fence,omitempty"`
 	ObservedAt    *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=observed_at,json=observedAt,proto3" json:"observed_at,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -1703,14 +1704,14 @@ func (*HeartbeatAttemptResponse) Descriptor() ([]byte, []int) {
 	return file_proto_mindclade_internal_job_v1_job_service_proto_rawDescGZIP(), []int{29}
 }
 
-func (x *HeartbeatAttemptResponse) GetAttempt() *v1.Attempt {
+func (x *HeartbeatAttemptResponse) GetAttempt() *v12.Attempt {
 	if x != nil {
 		return x.Attempt
 	}
 	return nil
 }
 
-func (x *HeartbeatAttemptResponse) GetFence() *v1.LeaseFence {
+func (x *HeartbeatAttemptResponse) GetFence() *v12.LeaseFence {
 	if x != nil {
 		return x.Fence
 	}
@@ -1728,7 +1729,7 @@ func (x *HeartbeatAttemptResponse) GetObservedAt() *timestamppb.Timestamp {
 type CancelAttemptRequest struct {
 	state                   protoimpl.MessageState `protogen:"open.v1"`
 	Context                 *v11.CommandContext    `protobuf:"bytes,1,opt,name=context,proto3" json:"context,omitempty"`
-	Fence                   *v1.LeaseFence         `protobuf:"bytes,2,opt,name=fence,proto3" json:"fence,omitempty"`
+	Fence                   *v12.LeaseFence        `protobuf:"bytes,2,opt,name=fence,proto3" json:"fence,omitempty"`
 	ExpectedResourceVersion int64                  `protobuf:"varint,3,opt,name=expected_resource_version,json=expectedResourceVersion,proto3" json:"expected_resource_version,omitempty"`
 	Reason                  string                 `protobuf:"bytes,4,opt,name=reason,proto3" json:"reason,omitempty"`
 	unknownFields           protoimpl.UnknownFields
@@ -1772,7 +1773,7 @@ func (x *CancelAttemptRequest) GetContext() *v11.CommandContext {
 	return nil
 }
 
-func (x *CancelAttemptRequest) GetFence() *v1.LeaseFence {
+func (x *CancelAttemptRequest) GetFence() *v12.LeaseFence {
 	if x != nil {
 		return x.Fence
 	}
@@ -1796,8 +1797,8 @@ func (x *CancelAttemptRequest) GetReason() string {
 // CancelAttemptResponse returns the terminal attempt and reconciled run.
 type CancelAttemptResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Attempt       *v1.Attempt            `protobuf:"bytes,1,opt,name=attempt,proto3" json:"attempt,omitempty"`
-	Run           *v1.Run                `protobuf:"bytes,2,opt,name=run,proto3" json:"run,omitempty"`
+	Attempt       *v12.Attempt           `protobuf:"bytes,1,opt,name=attempt,proto3" json:"attempt,omitempty"`
+	Run           *v12.Run               `protobuf:"bytes,2,opt,name=run,proto3" json:"run,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1832,14 +1833,14 @@ func (*CancelAttemptResponse) Descriptor() ([]byte, []int) {
 	return file_proto_mindclade_internal_job_v1_job_service_proto_rawDescGZIP(), []int{31}
 }
 
-func (x *CancelAttemptResponse) GetAttempt() *v1.Attempt {
+func (x *CancelAttemptResponse) GetAttempt() *v12.Attempt {
 	if x != nil {
 		return x.Attempt
 	}
 	return nil
 }
 
-func (x *CancelAttemptResponse) GetRun() *v1.Run {
+func (x *CancelAttemptResponse) GetRun() *v12.Run {
 	if x != nil {
 		return x.Run
 	}
@@ -1910,7 +1911,7 @@ func (x *ExpireAttemptLeasesRequest) GetLimit() uint32 {
 // ExpireAttemptLeasesResponse returns attempts fenced by this reconciliation.
 type ExpireAttemptLeasesResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Attempts      []*v1.Attempt          `protobuf:"bytes,1,rep,name=attempts,proto3" json:"attempts,omitempty"`
+	Attempts      []*v12.Attempt         `protobuf:"bytes,1,rep,name=attempts,proto3" json:"attempts,omitempty"`
 	ObservedAt    *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=observed_at,json=observedAt,proto3" json:"observed_at,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -1946,7 +1947,7 @@ func (*ExpireAttemptLeasesResponse) Descriptor() ([]byte, []int) {
 	return file_proto_mindclade_internal_job_v1_job_service_proto_rawDescGZIP(), []int{33}
 }
 
-func (x *ExpireAttemptLeasesResponse) GetAttempts() []*v1.Attempt {
+func (x *ExpireAttemptLeasesResponse) GetAttempts() []*v12.Attempt {
 	if x != nil {
 		return x.Attempts
 	}
@@ -1964,8 +1965,8 @@ func (x *ExpireAttemptLeasesResponse) GetObservedAt() *timestamppb.Timestamp {
 type CommitAttemptRequest struct {
 	state                   protoimpl.MessageState `protogen:"open.v1"`
 	Context                 *v11.CommandContext    `protobuf:"bytes,1,opt,name=context,proto3" json:"context,omitempty"`
-	Attempt                 *v1.Attempt            `protobuf:"bytes,2,opt,name=attempt,proto3" json:"attempt,omitempty"`
-	Fence                   *v1.LeaseFence         `protobuf:"bytes,3,opt,name=fence,proto3" json:"fence,omitempty"`
+	Attempt                 *v12.Attempt           `protobuf:"bytes,2,opt,name=attempt,proto3" json:"attempt,omitempty"`
+	Fence                   *v12.LeaseFence        `protobuf:"bytes,3,opt,name=fence,proto3" json:"fence,omitempty"`
 	UpdateMask              *fieldmaskpb.FieldMask `protobuf:"bytes,4,opt,name=update_mask,json=updateMask,proto3" json:"update_mask,omitempty"`
 	ExpectedResourceVersion int64                  `protobuf:"varint,5,opt,name=expected_resource_version,json=expectedResourceVersion,proto3" json:"expected_resource_version,omitempty"`
 	// Domain completion is required for job kinds whose authoritative terminal
@@ -2019,14 +2020,14 @@ func (x *CommitAttemptRequest) GetContext() *v11.CommandContext {
 	return nil
 }
 
-func (x *CommitAttemptRequest) GetAttempt() *v1.Attempt {
+func (x *CommitAttemptRequest) GetAttempt() *v12.Attempt {
 	if x != nil {
 		return x.Attempt
 	}
 	return nil
 }
 
-func (x *CommitAttemptRequest) GetFence() *v1.LeaseFence {
+func (x *CommitAttemptRequest) GetFence() *v12.LeaseFence {
 	if x != nil {
 		return x.Fence
 	}
@@ -2054,7 +2055,7 @@ func (x *CommitAttemptRequest) GetDomainCompletion() isCommitAttemptRequest_Doma
 	return nil
 }
 
-func (x *CommitAttemptRequest) GetFeatureMaterialization() *v12.CommitFeatureMaterializationCommand {
+func (x *CommitAttemptRequest) GetFeatureMaterialization() *v13.CommitFeatureMaterializationCommand {
 	if x != nil {
 		if x, ok := x.DomainCompletion.(*CommitAttemptRequest_FeatureMaterialization); ok {
 			return x.FeatureMaterialization
@@ -2063,7 +2064,7 @@ func (x *CommitAttemptRequest) GetFeatureMaterialization() *v12.CommitFeatureMat
 	return nil
 }
 
-func (x *CommitAttemptRequest) GetTransformExecution() *v13.CommitTransformExecutionCommand {
+func (x *CommitAttemptRequest) GetTransformExecution() *v14.CommitTransformExecutionCommand {
 	if x != nil {
 		if x, ok := x.DomainCompletion.(*CommitAttemptRequest_TransformExecution); ok {
 			return x.TransformExecution
@@ -2077,11 +2078,11 @@ type isCommitAttemptRequest_DomainCompletion interface {
 }
 
 type CommitAttemptRequest_FeatureMaterialization struct {
-	FeatureMaterialization *v12.CommitFeatureMaterializationCommand `protobuf:"bytes,6,opt,name=feature_materialization,json=featureMaterialization,proto3,oneof"`
+	FeatureMaterialization *v13.CommitFeatureMaterializationCommand `protobuf:"bytes,6,opt,name=feature_materialization,json=featureMaterialization,proto3,oneof"`
 }
 
 type CommitAttemptRequest_TransformExecution struct {
-	TransformExecution *v13.CommitTransformExecutionCommand `protobuf:"bytes,7,opt,name=transform_execution,json=transformExecution,proto3,oneof"`
+	TransformExecution *v14.CommitTransformExecutionCommand `protobuf:"bytes,7,opt,name=transform_execution,json=transformExecution,proto3,oneof"`
 }
 
 func (*CommitAttemptRequest_FeatureMaterialization) isCommitAttemptRequest_DomainCompletion() {}
@@ -2091,8 +2092,8 @@ func (*CommitAttemptRequest_TransformExecution) isCommitAttemptRequest_DomainCom
 // CommitAttemptResponse returns the accepted attempt and reconciled run state.
 type CommitAttemptResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Attempt       *v1.Attempt            `protobuf:"bytes,1,opt,name=attempt,proto3" json:"attempt,omitempty"`
-	Run           *v1.Run                `protobuf:"bytes,2,opt,name=run,proto3" json:"run,omitempty"`
+	Attempt       *v12.Attempt           `protobuf:"bytes,1,opt,name=attempt,proto3" json:"attempt,omitempty"`
+	Run           *v12.Run               `protobuf:"bytes,2,opt,name=run,proto3" json:"run,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2127,14 +2128,14 @@ func (*CommitAttemptResponse) Descriptor() ([]byte, []int) {
 	return file_proto_mindclade_internal_job_v1_job_service_proto_rawDescGZIP(), []int{35}
 }
 
-func (x *CommitAttemptResponse) GetAttempt() *v1.Attempt {
+func (x *CommitAttemptResponse) GetAttempt() *v12.Attempt {
 	if x != nil {
 		return x.Attempt
 	}
 	return nil
 }
 
-func (x *CommitAttemptResponse) GetRun() *v1.Run {
+func (x *CommitAttemptResponse) GetRun() *v12.Run {
 	if x != nil {
 		return x.Run
 	}
@@ -2145,20 +2146,20 @@ var File_proto_mindclade_internal_job_v1_job_service_proto protoreflect.FileDesc
 
 const file_proto_mindclade_internal_job_v1_job_service_proto_rawDesc = "" +
 	"\n" +
-	"1proto/mindclade/internal/job/v1/job_service.proto\x12\x19mindclade.internal.job.v1\x1a google/protobuf/field_mask.proto\x1a\x1egoogle/protobuf/duration.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a/proto/mindclade/common/v1/command_context.proto\x1a*proto/mindclade/common/v1/pagination.proto\x1a1proto/mindclade/feature/v1/feature_commands.proto\x1a$proto/mindclade/job/v1/attempt.proto\x1a proto/mindclade/job/v1/job.proto\x1a)proto/mindclade/job/v1/job_commands.proto\x1a*proto/mindclade/job/v1/lease_fencing.proto\x1a&proto/mindclade/job/v1/operation.proto\x1a proto/mindclade/job/v1/run.proto\x1a5proto/mindclade/transform/v1/transform_commands.proto\"M\n" +
+	"1proto/mindclade/internal/job/v1/job_service.proto\x12\x19mindclade.internal.job.v1\x1a google/protobuf/field_mask.proto\x1a\x1egoogle/protobuf/duration.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a/proto/mindclade/common/v1/command_context.proto\x1a*proto/mindclade/common/v1/pagination.proto\x1a1proto/mindclade/feature/v1/feature_commands.proto\x1a$proto/mindclade/job/v1/attempt.proto\x1a proto/mindclade/job/v1/job.proto\x1a)proto/mindclade/job/v1/job_commands.proto\x1a*proto/mindclade/job/v1/lease_fencing.proto\x1a,proto/mindclade/operation/v1/operation.proto\x1a proto/mindclade/job/v1/run.proto\x1a5proto/mindclade/transform/v1/transform_commands.proto\"M\n" +
 	"\x13GetOperationRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\"\n" +
-	"\rif_none_match\x18\x02 \x01(\tR\vifNoneMatch\"Q\n" +
-	"\x14GetOperationResponse\x129\n" +
-	"\toperation\x18\x01 \x01(\v2\x1b.mindclade.job.v1.OperationR\toperation\"\x98\x01\n" +
+	"\rif_none_match\x18\x02 \x01(\tR\vifNoneMatch\"W\n" +
+	"\x14GetOperationResponse\x12?\n" +
+	"\toperation\x18\x01 \x01(\v2!.mindclade.operation.v1.OperationR\toperation\"\x98\x01\n" +
 	"\x15ListOperationsRequest\x12\x16\n" +
 	"\x06parent\x18\x01 \x01(\tR\x06parent\x124\n" +
 	"\x04page\x18\x02 \x01(\v2 .mindclade.common.v1.PageRequestR\x04page\x12\x16\n" +
 	"\x06filter\x18\x03 \x01(\tR\x06filter\x12\x19\n" +
-	"\border_by\x18\x04 \x01(\tR\aorderBy\"\xc5\x01\n" +
-	"\x16ListOperationsResponse\x12;\n" +
+	"\border_by\x18\x04 \x01(\tR\aorderBy\"\xcb\x01\n" +
+	"\x16ListOperationsResponse\x12A\n" +
 	"\n" +
-	"operations\x18\x01 \x03(\v2\x1b.mindclade.job.v1.OperationR\n" +
+	"operations\x18\x01 \x03(\v2!.mindclade.operation.v1.OperationR\n" +
 	"operations\x125\n" +
 	"\x04page\x18\x02 \x01(\v2!.mindclade.common.v1.PageResponseR\x04page\x127\n" +
 	"\tread_time\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\breadTime\"\x97\x01\n" +
@@ -2166,23 +2167,23 @@ const file_proto_mindclade_internal_job_v1_job_service_proto_rawDesc = "" +
 	"\acontext\x18\x01 \x01(\v2#.mindclade.common.v1.CommandContextR\acontext\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x12\n" +
 	"\x04etag\x18\x03 \x01(\tR\x04etag\x12\x16\n" +
-	"\x06reason\x18\x04 \x01(\tR\x06reason\"T\n" +
-	"\x17CancelOperationResponse\x129\n" +
-	"\toperation\x18\x01 \x01(\v2\x1b.mindclade.job.v1.OperationR\toperation\"\x8a\x01\n" +
+	"\x06reason\x18\x04 \x01(\tR\x06reason\"Z\n" +
+	"\x17CancelOperationResponse\x12?\n" +
+	"\toperation\x18\x01 \x01(\v2!.mindclade.operation.v1.OperationR\toperation\"\x8a\x01\n" +
 	"\x15WatchOperationRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12%\n" +
 	"\x0eafter_sequence\x18\x02 \x01(\x04R\rafterSequence\x126\n" +
-	"\bdeadline\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\bdeadline\"\xac\x01\n" +
-	"\x16WatchOperationResponse\x129\n" +
-	"\toperation\x18\x01 \x01(\v2\x1b.mindclade.job.v1.OperationR\toperation\x12\x1a\n" +
+	"\bdeadline\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\bdeadline\"\xb2\x01\n" +
+	"\x16WatchOperationResponse\x12?\n" +
+	"\toperation\x18\x01 \x01(\v2!.mindclade.operation.v1.OperationR\toperation\x12\x1a\n" +
 	"\bsequence\x18\x02 \x01(\x04R\bsequence\x12;\n" +
 	"\vobserved_at\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
 	"observedAt\"R\n" +
 	"\x11RequestJobRequest\x12=\n" +
-	"\acommand\x18\x01 \x01(\v2#.mindclade.job.v1.RequestJobCommandR\acommand\"x\n" +
+	"\acommand\x18\x01 \x01(\v2#.mindclade.job.v1.RequestJobCommandR\acommand\"~\n" +
 	"\x12RequestJobResponse\x12'\n" +
-	"\x03job\x18\x01 \x01(\v2\x15.mindclade.job.v1.JobR\x03job\x129\n" +
-	"\toperation\x18\x02 \x01(\v2\x1b.mindclade.job.v1.OperationR\toperation\"G\n" +
+	"\x03job\x18\x01 \x01(\v2\x15.mindclade.job.v1.JobR\x03job\x12?\n" +
+	"\toperation\x18\x02 \x01(\v2!.mindclade.operation.v1.OperationR\toperation\"G\n" +
 	"\rGetJobRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\"\n" +
 	"\rif_none_match\x18\x02 \x01(\tR\vifNoneMatch\"9\n" +
@@ -2201,9 +2202,9 @@ const file_proto_mindclade_internal_job_v1_job_service_proto_rawDesc = "" +
 	"\acontext\x18\x01 \x01(\v2#.mindclade.common.v1.CommandContextR\acontext\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x12\n" +
 	"\x04etag\x18\x03 \x01(\tR\x04etag\x12\x16\n" +
-	"\x06reason\x18\x04 \x01(\tR\x06reason\"N\n" +
-	"\x11CancelJobResponse\x129\n" +
-	"\toperation\x18\x01 \x01(\v2\x1b.mindclade.job.v1.OperationR\toperation\"#\n" +
+	"\x06reason\x18\x04 \x01(\tR\x06reason\"T\n" +
+	"\x11CancelJobResponse\x12?\n" +
+	"\toperation\x18\x01 \x01(\v2!.mindclade.operation.v1.OperationR\toperation\"#\n" +
 	"\rGetRunRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\"9\n" +
 	"\x0eGetRunResponse\x12'\n" +
@@ -2359,42 +2360,42 @@ var file_proto_mindclade_internal_job_v1_job_service_proto_goTypes = []any{
 	(*ExpireAttemptLeasesResponse)(nil),             // 33: mindclade.internal.job.v1.ExpireAttemptLeasesResponse
 	(*CommitAttemptRequest)(nil),                    // 34: mindclade.internal.job.v1.CommitAttemptRequest
 	(*CommitAttemptResponse)(nil),                   // 35: mindclade.internal.job.v1.CommitAttemptResponse
-	(*v1.Operation)(nil),                            // 36: mindclade.job.v1.Operation
+	(*v1.Operation)(nil),                            // 36: mindclade.operation.v1.Operation
 	(*v11.PageRequest)(nil),                         // 37: mindclade.common.v1.PageRequest
 	(*v11.PageResponse)(nil),                        // 38: mindclade.common.v1.PageResponse
 	(*timestamppb.Timestamp)(nil),                   // 39: google.protobuf.Timestamp
 	(*v11.CommandContext)(nil),                      // 40: mindclade.common.v1.CommandContext
-	(*v1.RequestJobCommand)(nil),                    // 41: mindclade.job.v1.RequestJobCommand
-	(*v1.Job)(nil),                                  // 42: mindclade.job.v1.Job
-	(*v1.Run)(nil),                                  // 43: mindclade.job.v1.Run
-	(*v1.Attempt)(nil),                              // 44: mindclade.job.v1.Attempt
+	(*v12.RequestJobCommand)(nil),                   // 41: mindclade.job.v1.RequestJobCommand
+	(*v12.Job)(nil),                                 // 42: mindclade.job.v1.Job
+	(*v12.Run)(nil),                                 // 43: mindclade.job.v1.Run
+	(*v12.Attempt)(nil),                             // 44: mindclade.job.v1.Attempt
 	(*durationpb.Duration)(nil),                     // 45: google.protobuf.Duration
-	(*v1.LeaseFence)(nil),                           // 46: mindclade.job.v1.LeaseFence
+	(*v12.LeaseFence)(nil),                          // 46: mindclade.job.v1.LeaseFence
 	(*fieldmaskpb.FieldMask)(nil),                   // 47: google.protobuf.FieldMask
-	(*v12.CommitFeatureMaterializationCommand)(nil), // 48: mindclade.feature.v1.CommitFeatureMaterializationCommand
-	(*v13.CommitTransformExecutionCommand)(nil),     // 49: mindclade.transform.v1.CommitTransformExecutionCommand
+	(*v13.CommitFeatureMaterializationCommand)(nil), // 48: mindclade.feature.v1.CommitFeatureMaterializationCommand
+	(*v14.CommitTransformExecutionCommand)(nil),     // 49: mindclade.transform.v1.CommitTransformExecutionCommand
 }
 var file_proto_mindclade_internal_job_v1_job_service_proto_depIdxs = []int32{
-	36, // 0: mindclade.internal.job.v1.GetOperationResponse.operation:type_name -> mindclade.job.v1.Operation
+	36, // 0: mindclade.internal.job.v1.GetOperationResponse.operation:type_name -> mindclade.operation.v1.Operation
 	37, // 1: mindclade.internal.job.v1.ListOperationsRequest.page:type_name -> mindclade.common.v1.PageRequest
-	36, // 2: mindclade.internal.job.v1.ListOperationsResponse.operations:type_name -> mindclade.job.v1.Operation
+	36, // 2: mindclade.internal.job.v1.ListOperationsResponse.operations:type_name -> mindclade.operation.v1.Operation
 	38, // 3: mindclade.internal.job.v1.ListOperationsResponse.page:type_name -> mindclade.common.v1.PageResponse
 	39, // 4: mindclade.internal.job.v1.ListOperationsResponse.read_time:type_name -> google.protobuf.Timestamp
 	40, // 5: mindclade.internal.job.v1.CancelOperationRequest.context:type_name -> mindclade.common.v1.CommandContext
-	36, // 6: mindclade.internal.job.v1.CancelOperationResponse.operation:type_name -> mindclade.job.v1.Operation
+	36, // 6: mindclade.internal.job.v1.CancelOperationResponse.operation:type_name -> mindclade.operation.v1.Operation
 	39, // 7: mindclade.internal.job.v1.WatchOperationRequest.deadline:type_name -> google.protobuf.Timestamp
-	36, // 8: mindclade.internal.job.v1.WatchOperationResponse.operation:type_name -> mindclade.job.v1.Operation
+	36, // 8: mindclade.internal.job.v1.WatchOperationResponse.operation:type_name -> mindclade.operation.v1.Operation
 	39, // 9: mindclade.internal.job.v1.WatchOperationResponse.observed_at:type_name -> google.protobuf.Timestamp
 	41, // 10: mindclade.internal.job.v1.RequestJobRequest.command:type_name -> mindclade.job.v1.RequestJobCommand
 	42, // 11: mindclade.internal.job.v1.RequestJobResponse.job:type_name -> mindclade.job.v1.Job
-	36, // 12: mindclade.internal.job.v1.RequestJobResponse.operation:type_name -> mindclade.job.v1.Operation
+	36, // 12: mindclade.internal.job.v1.RequestJobResponse.operation:type_name -> mindclade.operation.v1.Operation
 	42, // 13: mindclade.internal.job.v1.GetJobResponse.job:type_name -> mindclade.job.v1.Job
 	37, // 14: mindclade.internal.job.v1.ListJobsRequest.page:type_name -> mindclade.common.v1.PageRequest
 	42, // 15: mindclade.internal.job.v1.ListJobsResponse.jobs:type_name -> mindclade.job.v1.Job
 	38, // 16: mindclade.internal.job.v1.ListJobsResponse.page:type_name -> mindclade.common.v1.PageResponse
 	39, // 17: mindclade.internal.job.v1.ListJobsResponse.read_time:type_name -> google.protobuf.Timestamp
 	40, // 18: mindclade.internal.job.v1.CancelJobRequest.context:type_name -> mindclade.common.v1.CommandContext
-	36, // 19: mindclade.internal.job.v1.CancelJobResponse.operation:type_name -> mindclade.job.v1.Operation
+	36, // 19: mindclade.internal.job.v1.CancelJobResponse.operation:type_name -> mindclade.operation.v1.Operation
 	43, // 20: mindclade.internal.job.v1.GetRunResponse.run:type_name -> mindclade.job.v1.Run
 	37, // 21: mindclade.internal.job.v1.ListRunsRequest.page:type_name -> mindclade.common.v1.PageRequest
 	43, // 22: mindclade.internal.job.v1.ListRunsResponse.runs:type_name -> mindclade.job.v1.Run

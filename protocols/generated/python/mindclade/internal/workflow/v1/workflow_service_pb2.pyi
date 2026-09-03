@@ -5,7 +5,7 @@ from google.protobuf import field_mask_pb2 as _field_mask_pb2
 from google.protobuf import timestamp_pb2 as _timestamp_pb2
 from mindclade.common.v1 import command_context_pb2 as _command_context_pb2
 from mindclade.common.v1 import pagination_pb2 as _pagination_pb2
-from mindclade.job.v1 import operation_pb2 as _operation_pb2
+from mindclade.operation.v1 import operation_pb2 as _operation_pb2
 from mindclade.job.v1 import lease_fencing_pb2 as _lease_fencing_pb2
 from mindclade.workflow.v1 import approval_pb2 as _approval_pb2
 from mindclade.workflow.v1 import workflow_definition_pb2 as _workflow_definition_pb2

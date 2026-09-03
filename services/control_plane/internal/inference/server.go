@@ -14,7 +14,7 @@ import (
 	"github.com/mindclade/mindclade/libs/go/numconv"
 	inferencev1 "github.com/mindclade/mindclade/protocols/generated/go/inference/v1"
 	internalinferencev1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/inference/v1"
-	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
+	operationv1 "github.com/mindclade/mindclade/protocols/generated/go/operation/v1"
 )
 
 type Server struct {
@@ -248,7 +248,7 @@ func watchDeadline(ctx context.Context, requested *timestamppb.Timestamp, now ti
 	return deadline, nil
 }
 
-func (server *Server) streamMessage(ctx context.Context, identity Identity, requestName string, operation *jobv1.Operation) (*inferencev1.InferenceStreamMessage, error) {
+func (server *Server) streamMessage(ctx context.Context, identity Identity, requestName string, operation *operationv1.Operation) (*inferencev1.InferenceStreamMessage, error) {
 	if operation == nil || operation.GetResourceVersion() <= 0 || operation.GetUpdatedAt() == nil {
 		return nil, ErrHistoryGap
 	}
@@ -267,9 +267,9 @@ func (server *Server) streamMessage(ctx context.Context, identity Identity, requ
 	}
 	progress := &inferencev1.InferenceProgress{LifecycleState: operation.GetState().String(), StatusCode: operation.GetState().String()}
 	switch operation.GetState() {
-	case jobv1.OperationState_OPERATION_STATE_RUNNING:
+	case operationv1.OperationState_OPERATION_STATE_RUNNING:
 		progress.CompletionBasisPoints = 5000
-	case jobv1.OperationState_OPERATION_STATE_CANCELLING:
+	case operationv1.OperationState_OPERATION_STATE_CANCELLING:
 		progress.CompletionBasisPoints = 9000
 	}
 	message.Update = &inferencev1.InferenceStreamMessage_Progress{Progress: progress}

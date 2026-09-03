@@ -16,7 +16,7 @@ candidate; the blueprint waves remain design-sequencing provenance.
   and `openapi/published` is byte-identical to that validated candidate. This
   creates no supported public API or SDK release authority.
 - `generated/{go,python,rust,typescript}` contains deterministic committed
-  projections. Mindclade-owned facades under `internal/sdk` reuse those wire
+  projections. Mindclade-owned facades under `sdks` reuse those wire
   types and are the client-side boundary for services, workers, training,
   tools, and internal applications. Server adapters, persistence mappers, and
   contract tests are the narrow direct-import exceptions.

@@ -80,7 +80,7 @@ pub struct QuarantineArtifactRequest {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct QuarantineArtifactResponse {
     #[prost(message, optional, tag = "1")]
-    pub operation: ::core::option::Option<crate::job::v1::Operation>,
+    pub operation: ::core::option::Option<crate::operation::v1::Operation>,
 }
 /// AcquireArtifactLeaseRequest requests bounded retention for immutable content.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]

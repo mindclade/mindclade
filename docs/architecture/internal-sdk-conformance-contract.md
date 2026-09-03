@@ -1,7 +1,7 @@
 # Internal SDK conformance contract
 
 Status: implemented source. This document records the behaviour the four handwritten
-façades under `internal/sdk/{go,python,rust,typescript}` are held to, and the gates that
+façades under `sdks/{go,python,rust,typescript}` are held to, and the gates that
 prove it. It is subordinate to `AGENTS.md`, `ARCHITECTURE.md`, the accepted ADRs, and the
 repository-path manifest; where it disagrees with those, they win.
 
@@ -12,7 +12,7 @@ protocols/proto                     canonical meaning
       |
       +--> protocols/generated      wire types, RPC machinery, streaming mechanics
       |         |
-      |         +--> internal/sdk   ergonomics and policy, no second wire model
+      |         +--> sdks   ergonomics and policy, no second wire model
       |         |         |
       |         |         +-------> console, CLI, examples, workers
       |         +-------> service implementations, event consumers
@@ -20,7 +20,7 @@ protocols/proto                     canonical meaning
       +--> optional OpenAPI projection
 ```
 
-`internal/sdk` is the physical path because Go reserves an `internal` path segment for
+`sdks` is the physical path because Go reserves an `internal` path segment for
 import visibility: placing the tree at the repository root makes it importable by every
 Mindclade package while making it unimportable from outside the module. That property is
 load-bearing and is verified — a package outside the module fails to compile with
@@ -68,7 +68,7 @@ language calling it. Three classes, identical everywhere:
   Never retried under any override.
 
 `tests/conformance/test_sdk_retry_safety_parity.py` binds all four tables to
-`internal/sdk/rpc-coverage.generated.json`, which the atomic contract transaction derives
+`sdks/rpc-coverage.generated.json`, which the atomic contract transaction derives
 from the candidate descriptor. It asserts that every declared RPC is classified in every
 language, that no language classifies an unknown identity, that no two languages disagree,
 that the never-retry tier contains exactly the projection's raw-only RPC, and that no read
@@ -207,7 +207,7 @@ database: the in-memory repository has no truncation step, so the defect only ap
 | API reference matches the descriptor | `//tools:sdk_api_reference_test` |
 | Distributed failure modes | `TestPostgresReliabilityHarness`, 11 scenarios against real PostgreSQL |
 
-The per-language API reference at `internal/sdk/<language>/api.md` is rendered from the
+The per-language API reference at `sdks/<language>/api.md` is rendered from the
 coverage projection by `tools/docs/render_sdk_api_reference.py`, written by `just generate`
 and drift-checked by `just docs`. It reads no SDK source, so a reference cannot name a
 method the descriptor does not declare.

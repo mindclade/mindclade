@@ -448,12 +448,10 @@ def validate_contract(
         raise SdkGeneratorError("Protobuf proto/event sources must remain authoritative")
     if (
         authority.get("generatedRoot") != "protocols/generated"
-        or authority.get("facadeRoot") != "internal/sdk"
+        or authority.get("facadeRoot") != "sdks"
         or authority.get("generator") != "buf.gen.yaml"
     ):
-        raise SdkGeneratorError(
-            "internal SDK direction must be protobuf -> generated -> internal/sdk"
-        )
+        raise SdkGeneratorError("internal SDK direction must be protobuf -> generated -> sdks")
 
     native = require_mapping(spec.get("nativeGeneration"), "nativeGeneration")
     if native.get("implementation") != "buf-and-pinned-native-generators":
@@ -465,7 +463,7 @@ def validate_contract(
         config = require_mapping(languages[language], f"nativeGeneration.{language}")
         if config.get("output") != f"protocols/generated/{language}":
             raise SdkGeneratorError(f"{language} generated output is not canonical")
-        if config.get("facade") != f"internal/sdk/{language}":
+        if config.get("facade") != f"sdks/{language}":
             raise SdkGeneratorError(f"{language} internal SDK facade is not canonical")
 
     pipeline = require_mapping(spec.get("pipeline"), "generation.spec.pipeline")
@@ -662,7 +660,7 @@ def build_plan(
         "authority": {
             "protobufSources": ["protocols/proto", "protocols/events"],
             "generatedRoot": "protocols/generated",
-            "internalSdkRoot": "internal/sdk",
+            "internalSdkRoot": "sdks",
             "nativeGenerator": "buf.gen.yaml",
             "openapiProjection": DEFAULT_OPENAPI.as_posix(),
             "openapiSha256": openapi_digest,

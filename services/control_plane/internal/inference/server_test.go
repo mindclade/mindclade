@@ -25,7 +25,7 @@ import (
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	inferencev1 "github.com/mindclade/mindclade/protocols/generated/go/inference/v1"
 	internalinferencev1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/inference/v1"
-	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
+	operationv1 "github.com/mindclade/mindclade/protocols/generated/go/operation/v1"
 	policyv1 "github.com/mindclade/mindclade/protocols/generated/go/policy/v1"
 )
 
@@ -40,15 +40,15 @@ type fixedClock struct{ now time.Time }
 func (clock fixedClock) Now() time.Time { return clock.now }
 
 type fakeRepository struct {
-	submit      func(context.Context, Identity, *inferencev1.InferenceRequest, string, time.Time) (*jobv1.Operation, bool, error)
+	submit      func(context.Context, Identity, *inferencev1.InferenceRequest, string, time.Time) (*operationv1.Operation, bool, error)
 	request     *inferencev1.InferenceRequest
 	result      *inferencev1.InferenceResult
-	operation   *jobv1.Operation
-	revisions   []*jobv1.Operation
+	operation   *operationv1.Operation
+	revisions   []*operationv1.Operation
 	requestName string
 }
 
-func (repository *fakeRepository) Submit(ctx context.Context, identity Identity, request *inferencev1.InferenceRequest, digest string, at time.Time) (*jobv1.Operation, bool, error) {
+func (repository *fakeRepository) Submit(ctx context.Context, identity Identity, request *inferencev1.InferenceRequest, digest string, at time.Time) (*operationv1.Operation, bool, error) {
 	if repository.submit != nil {
 		return repository.submit(ctx, identity, request, digest, at)
 	}
@@ -62,19 +62,19 @@ func (repository *fakeRepository) GetRequest(context.Context, Identity, string) 
 	return clone(repository.request), nil
 }
 
-func (repository *fakeRepository) GetResult(context.Context, Identity, string) (*inferencev1.InferenceResult, *jobv1.Operation, error) {
+func (repository *fakeRepository) GetResult(context.Context, Identity, string) (*inferencev1.InferenceResult, *operationv1.Operation, error) {
 	if repository.result == nil || repository.operation == nil {
 		return nil, nil, ErrNotFound
 	}
 	return clone(repository.result), clone(repository.operation), nil
 }
 
-func (repository *fakeRepository) CommitResult(_ context.Context, _ Identity, _ *internalinferencev1.CommitInferenceResultRequest, _ string, _ time.Time) (*inferencev1.InferenceResult, *jobv1.Operation, bool, error) {
+func (repository *fakeRepository) CommitResult(_ context.Context, _ Identity, _ *internalinferencev1.CommitInferenceResultRequest, _ string, _ time.Time) (*inferencev1.InferenceResult, *operationv1.Operation, bool, error) {
 	return clone(repository.result), clone(repository.operation), false, nil
 }
 
-func (repository *fakeRepository) ReadOperationRevisions(_ context.Context, _ Identity, _ string, after uint64, limit int) (string, []*jobv1.Operation, bool, error) {
-	var values []*jobv1.Operation
+func (repository *fakeRepository) ReadOperationRevisions(_ context.Context, _ Identity, _ string, after uint64, limit int) (string, []*operationv1.Operation, bool, error) {
+	var values []*operationv1.Operation
 	for _, revision := range repository.revisions {
 		sequence, err := numconv.Int64ToUint64(revision.GetResourceVersion())
 		if err != nil {
@@ -150,11 +150,11 @@ func rawDigest(value []byte) string {
 
 func pointer(value float64) *float64 { return &value }
 
-func operationFixture(identity Identity, request *inferencev1.InferenceRequest, revision int64, state jobv1.OperationState, done bool, now time.Time) *jobv1.Operation {
-	return &jobv1.Operation{OperationId: "operations/op-1", TenantId: identity.TenantID, ProjectId: identity.ProjectID, JobId: "jobs/job-1", State: state, ResourceVersion: revision, Done: done, Etag: resourceETag("operations/op-1", revision), Target: requestResource(identity, request, request.GetContext().GetCanonicalRequestDigest()), CreatedAt: timestamppb.New(now), UpdatedAt: timestamppb.New(now.Add(time.Duration(revision) * time.Second))}
+func operationFixture(identity Identity, request *inferencev1.InferenceRequest, revision int64, state operationv1.OperationState, done bool, now time.Time) *operationv1.Operation {
+	return &operationv1.Operation{OperationId: "operations/op-1", TenantId: identity.TenantID, ProjectId: identity.ProjectID, JobId: "jobs/job-1", State: state, ResourceVersion: revision, Done: done, Etag: resourceETag("operations/op-1", revision), Target: requestResource(identity, request, request.GetContext().GetCanonicalRequestDigest()), CreatedAt: timestamppb.New(now), UpdatedAt: timestamppb.New(now.Add(time.Duration(revision) * time.Second))}
 }
 
-func resultFixture(identity Identity, request *inferencev1.InferenceRequest, operation *jobv1.Operation, now time.Time) *inferencev1.InferenceResult {
+func resultFixture(identity Identity, request *inferencev1.InferenceRequest, operation *operationv1.Operation, now time.Time) *inferencev1.InferenceResult {
 	return &inferencev1.InferenceResult{Name: projectParent(identity) + "/inferenceResults/result-1", Uid: "result-uid-1", Request: requestResource(identity, request, request.GetContext().GetCanonicalRequestDigest()), RequestDigest: request.GetContext().GetCanonicalRequestDigest(), Operation: operationResource(operation), JobId: operation.GetJobId(), RunId: "runs/run-1", AttemptId: "attempts/attempt-1", LeaseEpoch: 1, Outcome: inferencev1.InferenceResultOutcome_INFERENCE_RESULT_OUTCOME_SUCCEEDED, ResultManifest: artifactFixture("2"), ModelBundle: clone(request.GetResolvedModelBundle()), Candidates: []*inferencev1.InferenceCandidateResult{{CandidateId: "candidate-1", SampleIndex: 0, Output: artifactFixture("3"), Confidence: pointer(0.9), Selected: true}}, SelectedCandidateId: "candidate-1", SourceRevision: "revision-1", CompletedAt: timestamppb.New(now.Add(time.Minute)), ResultDigest: digestFixture("4")}
 }
 
@@ -184,12 +184,12 @@ func TestNetworkInferenceGeneratedServiceAndResumableTerminalWatch(t *testing.T)
 		t.Fatal(err)
 	}
 	materializeContext(identity, request, digest)
-	pending := operationFixture(identity, request, 1, jobv1.OperationState_OPERATION_STATE_PENDING, false, now)
-	terminal := operationFixture(identity, request, 2, jobv1.OperationState_OPERATION_STATE_SUCCEEDED, true, now)
+	pending := operationFixture(identity, request, 1, operationv1.OperationState_OPERATION_STATE_PENDING, false, now)
+	terminal := operationFixture(identity, request, 2, operationv1.OperationState_OPERATION_STATE_SUCCEEDED, true, now)
 	result := resultFixture(identity, request, terminal, now)
 	called := false
-	repository := &fakeRepository{request: request, result: result, operation: terminal, revisions: []*jobv1.Operation{pending, terminal}, requestName: request.GetName()}
-	repository.submit = func(_ context.Context, got Identity, value *inferencev1.InferenceRequest, supplied string, at time.Time) (*jobv1.Operation, bool, error) {
+	repository := &fakeRepository{request: request, result: result, operation: terminal, revisions: []*operationv1.Operation{pending, terminal}, requestName: request.GetName()}
+	repository.submit = func(_ context.Context, got Identity, value *inferencev1.InferenceRequest, supplied string, at time.Time) (*operationv1.Operation, bool, error) {
 		called = true
 		if got != identity || supplied != digest || !at.Equal(now) || value.GetContext().GetPrincipalId() != identity.Principal {
 			t.Fatalf("submit identity=%+v digest=%q at=%s value=%v", got, supplied, at, value)
@@ -277,7 +277,7 @@ func TestSubmitRejectsCallerSelectedScope(t *testing.T) {
 	now := time.Date(2026, 9, 2, 12, 0, 0, 0, time.UTC)
 	identity := Identity{TenantID: "tenant-1", ProjectID: "project-1", Principal: "principal-1"}
 	codec, _ := NewCursorCodec([]byte(strings.Repeat("cursor-key-", 4)), time.Hour)
-	repository := &fakeRepository{submit: func(context.Context, Identity, *inferencev1.InferenceRequest, string, time.Time) (*jobv1.Operation, bool, error) {
+	repository := &fakeRepository{submit: func(context.Context, Identity, *inferencev1.InferenceRequest, string, time.Time) (*operationv1.Operation, bool, error) {
 		t.Fatal("repository must not be called")
 		return nil, false, nil
 	}}

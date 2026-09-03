@@ -27,10 +27,10 @@ from mindclade.common.v1 import pagination_pb2 as proto_dot_mindclade_dot_common
 from mindclade.dataset.v1 import dataset_pb2 as proto_dot_mindclade_dot_dataset_dot_v1_dot_dataset__pb2
 from mindclade.dataset.v1 import dataset_commands_pb2 as proto_dot_mindclade_dot_dataset_dot_v1_dot_dataset__commands__pb2
 from mindclade.dataset.v1 import dataset_release_pb2 as proto_dot_mindclade_dot_dataset_dot_v1_dot_dataset__release__pb2
-from mindclade.job.v1 import operation_pb2 as proto_dot_mindclade_dot_job_dot_v1_dot_operation__pb2
+from mindclade.operation.v1 import operation_pb2 as proto_dot_mindclade_dot_operation_dot_v1_dot_operation__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n9proto/mindclade/internal/dataset/v1/dataset_service.proto\x12\x1dmindclade.internal.dataset.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a*proto/mindclade/common/v1/pagination.proto\x1a(proto/mindclade/dataset/v1/dataset.proto\x1a\x31proto/mindclade/dataset/v1/dataset_commands.proto\x1a\x30proto/mindclade/dataset/v1/dataset_release.proto\x1a&proto/mindclade/job/v1/operation.proto\"\\\n\x14\x43reateDatasetRequest\x12\x44\n\x07\x63ommand\x18\x01 \x01(\x0b\x32*.mindclade.dataset.v1.CreateDatasetCommandR\x07\x63ommand\"R\n\x15\x43reateDatasetResponse\x12\x39\n\toperation\x18\x01 \x01(\x0b\x32\x1b.mindclade.job.v1.OperationR\toperation\"K\n\x11GetDatasetRequest\x12\x12\n\x04name\x18\x01 \x01(\tR\x04name\x12\"\n\rif_none_match\x18\x02 \x01(\tR\x0bifNoneMatch\"M\n\x12GetDatasetResponse\x12\x37\n\x07\x64\x61taset\x18\x01 \x01(\x0b\x32\x1d.mindclade.dataset.v1.DatasetR\x07\x64\x61taset\"\x96\x01\n\x13ListDatasetsRequest\x12\x16\n\x06parent\x18\x01 \x01(\tR\x06parent\x12\x34\n\x04page\x18\x02 \x01(\x0b\x32 .mindclade.common.v1.PageRequestR\x04page\x12\x16\n\x06\x66ilter\x18\x03 \x01(\tR\x06\x66ilter\x12\x19\n\x08order_by\x18\x04 \x01(\tR\x07orderBy\"\xc1\x01\n\x14ListDatasetsResponse\x12\x39\n\x08\x64\x61tasets\x18\x01 \x03(\x0b\x32\x1d.mindclade.dataset.v1.DatasetR\x08\x64\x61tasets\x12\x35\n\x04page\x18\x02 \x01(\x0b\x32!.mindclade.common.v1.PageResponseR\x04page\x12\x37\n\tread_time\x18\x03 \x01(\x0b\x32\x1a.google.protobuf.TimestampR\x08readTime\"\\\n\x14UpdateDatasetRequest\x12\x44\n\x07\x63ommand\x18\x01 \x01(\x0b\x32*.mindclade.dataset.v1.UpdateDatasetCommandR\x07\x63ommand\"R\n\x15UpdateDatasetResponse\x12\x39\n\toperation\x18\x01 \x01(\x0b\x32\x1b.mindclade.job.v1.OperationR\toperation\"l\n\x1cPublishDatasetReleaseRequest\x12L\n\x07\x63ommand\x18\x01 \x01(\x0b\x32\x32.mindclade.dataset.v1.PublishDatasetReleaseCommandR\x07\x63ommand\"Z\n\x1dPublishDatasetReleaseResponse\x12\x39\n\toperation\x18\x01 \x01(\x0b\x32\x1b.mindclade.job.v1.OperationR\toperation\"j\n\x1bRevokeDatasetReleaseRequest\x12K\n\x07\x63ommand\x18\x01 \x01(\x0b\x32\x31.mindclade.dataset.v1.RevokeDatasetReleaseCommandR\x07\x63ommand\"Y\n\x1cRevokeDatasetReleaseResponse\x12\x39\n\toperation\x18\x01 \x01(\x0b\x32\x1b.mindclade.job.v1.OperationR\toperation\".\n\x18GetDatasetReleaseRequest\x12\x12\n\x04name\x18\x01 \x01(\tR\x04name\"j\n\x19GetDatasetReleaseResponse\x12M\n\x0f\x64\x61taset_release\x18\x01 \x01(\x0b\x32$.mindclade.dataset.v1.DatasetReleaseR\x0e\x64\x61tasetRelease\"\x9d\x01\n\x1aListDatasetReleasesRequest\x12\x16\n\x06parent\x18\x01 \x01(\tR\x06parent\x12\x34\n\x04page\x18\x02 \x01(\x0b\x32 .mindclade.common.v1.PageRequestR\x04page\x12\x16\n\x06\x66ilter\x18\x03 \x01(\tR\x06\x66ilter\x12\x19\n\x08order_by\x18\x04 \x01(\tR\x07orderBy\"\xde\x01\n\x1bListDatasetReleasesResponse\x12O\n\x10\x64\x61taset_releases\x18\x01 \x03(\x0b\x32$.mindclade.dataset.v1.DatasetReleaseR\x0f\x64\x61tasetReleases\x12\x35\n\x04page\x18\x02 \x01(\x0b\x32!.mindclade.common.v1.PageResponseR\x04page\x12\x37\n\tread_time\x18\x03 \x01(\x0b\x32\x1a.google.protobuf.TimestampR\x08readTime2\xb3\x08\n\x0e\x44\x61tasetService\x12z\n\rCreateDataset\x12\x33.mindclade.internal.dataset.v1.CreateDatasetRequest\x1a\x34.mindclade.internal.dataset.v1.CreateDatasetResponse\x12q\n\nGetDataset\x12\x30.mindclade.internal.dataset.v1.GetDatasetRequest\x1a\x31.mindclade.internal.dataset.v1.GetDatasetResponse\x12w\n\x0cListDatasets\x12\x32.mindclade.internal.dataset.v1.ListDatasetsRequest\x1a\x33.mindclade.internal.dataset.v1.ListDatasetsResponse\x12z\n\rUpdateDataset\x12\x33.mindclade.internal.dataset.v1.UpdateDatasetRequest\x1a\x34.mindclade.internal.dataset.v1.UpdateDatasetResponse\x12\x92\x01\n\x15PublishDatasetRelease\x12;.mindclade.internal.dataset.v1.PublishDatasetReleaseRequest\x1a<.mindclade.internal.dataset.v1.PublishDatasetReleaseResponse\x12\x8f\x01\n\x14RevokeDatasetRelease\x12:.mindclade.internal.dataset.v1.RevokeDatasetReleaseRequest\x1a;.mindclade.internal.dataset.v1.RevokeDatasetReleaseResponse\x12\x86\x01\n\x11GetDatasetRelease\x12\x37.mindclade.internal.dataset.v1.GetDatasetReleaseRequest\x1a\x38.mindclade.internal.dataset.v1.GetDatasetReleaseResponse\x12\x8c\x01\n\x13ListDatasetReleases\x12\x39.mindclade.internal.dataset.v1.ListDatasetReleasesRequest\x1a:.mindclade.internal.dataset.v1.ListDatasetReleasesResponseB`Z^github.com/mindclade/mindclade/protocols/generated/go/internalrpc/dataset/v1;internaldatasetv1b\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n9proto/mindclade/internal/dataset/v1/dataset_service.proto\x12\x1dmindclade.internal.dataset.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a*proto/mindclade/common/v1/pagination.proto\x1a(proto/mindclade/dataset/v1/dataset.proto\x1a\x31proto/mindclade/dataset/v1/dataset_commands.proto\x1a\x30proto/mindclade/dataset/v1/dataset_release.proto\x1a,proto/mindclade/operation/v1/operation.proto\"\\\n\x14\x43reateDatasetRequest\x12\x44\n\x07\x63ommand\x18\x01 \x01(\x0b\x32*.mindclade.dataset.v1.CreateDatasetCommandR\x07\x63ommand\"X\n\x15\x43reateDatasetResponse\x12?\n\toperation\x18\x01 \x01(\x0b\x32!.mindclade.operation.v1.OperationR\toperation\"K\n\x11GetDatasetRequest\x12\x12\n\x04name\x18\x01 \x01(\tR\x04name\x12\"\n\rif_none_match\x18\x02 \x01(\tR\x0bifNoneMatch\"M\n\x12GetDatasetResponse\x12\x37\n\x07\x64\x61taset\x18\x01 \x01(\x0b\x32\x1d.mindclade.dataset.v1.DatasetR\x07\x64\x61taset\"\x96\x01\n\x13ListDatasetsRequest\x12\x16\n\x06parent\x18\x01 \x01(\tR\x06parent\x12\x34\n\x04page\x18\x02 \x01(\x0b\x32 .mindclade.common.v1.PageRequestR\x04page\x12\x16\n\x06\x66ilter\x18\x03 \x01(\tR\x06\x66ilter\x12\x19\n\x08order_by\x18\x04 \x01(\tR\x07orderBy\"\xc1\x01\n\x14ListDatasetsResponse\x12\x39\n\x08\x64\x61tasets\x18\x01 \x03(\x0b\x32\x1d.mindclade.dataset.v1.DatasetR\x08\x64\x61tasets\x12\x35\n\x04page\x18\x02 \x01(\x0b\x32!.mindclade.common.v1.PageResponseR\x04page\x12\x37\n\tread_time\x18\x03 \x01(\x0b\x32\x1a.google.protobuf.TimestampR\x08readTime\"\\\n\x14UpdateDatasetRequest\x12\x44\n\x07\x63ommand\x18\x01 \x01(\x0b\x32*.mindclade.dataset.v1.UpdateDatasetCommandR\x07\x63ommand\"X\n\x15UpdateDatasetResponse\x12?\n\toperation\x18\x01 \x01(\x0b\x32!.mindclade.operation.v1.OperationR\toperation\"l\n\x1cPublishDatasetReleaseRequest\x12L\n\x07\x63ommand\x18\x01 \x01(\x0b\x32\x32.mindclade.dataset.v1.PublishDatasetReleaseCommandR\x07\x63ommand\"`\n\x1dPublishDatasetReleaseResponse\x12?\n\toperation\x18\x01 \x01(\x0b\x32!.mindclade.operation.v1.OperationR\toperation\"j\n\x1bRevokeDatasetReleaseRequest\x12K\n\x07\x63ommand\x18\x01 \x01(\x0b\x32\x31.mindclade.dataset.v1.RevokeDatasetReleaseCommandR\x07\x63ommand\"_\n\x1cRevokeDatasetReleaseResponse\x12?\n\toperation\x18\x01 \x01(\x0b\x32!.mindclade.operation.v1.OperationR\toperation\".\n\x18GetDatasetReleaseRequest\x12\x12\n\x04name\x18\x01 \x01(\tR\x04name\"j\n\x19GetDatasetReleaseResponse\x12M\n\x0f\x64\x61taset_release\x18\x01 \x01(\x0b\x32$.mindclade.dataset.v1.DatasetReleaseR\x0e\x64\x61tasetRelease\"\x9d\x01\n\x1aListDatasetReleasesRequest\x12\x16\n\x06parent\x18\x01 \x01(\tR\x06parent\x12\x34\n\x04page\x18\x02 \x01(\x0b\x32 .mindclade.common.v1.PageRequestR\x04page\x12\x16\n\x06\x66ilter\x18\x03 \x01(\tR\x06\x66ilter\x12\x19\n\x08order_by\x18\x04 \x01(\tR\x07orderBy\"\xde\x01\n\x1bListDatasetReleasesResponse\x12O\n\x10\x64\x61taset_releases\x18\x01 \x03(\x0b\x32$.mindclade.dataset.v1.DatasetReleaseR\x0f\x64\x61tasetReleases\x12\x35\n\x04page\x18\x02 \x01(\x0b\x32!.mindclade.common.v1.PageResponseR\x04page\x12\x37\n\tread_time\x18\x03 \x01(\x0b\x32\x1a.google.protobuf.TimestampR\x08readTime2\xb3\x08\n\x0e\x44\x61tasetService\x12z\n\rCreateDataset\x12\x33.mindclade.internal.dataset.v1.CreateDatasetRequest\x1a\x34.mindclade.internal.dataset.v1.CreateDatasetResponse\x12q\n\nGetDataset\x12\x30.mindclade.internal.dataset.v1.GetDatasetRequest\x1a\x31.mindclade.internal.dataset.v1.GetDatasetResponse\x12w\n\x0cListDatasets\x12\x32.mindclade.internal.dataset.v1.ListDatasetsRequest\x1a\x33.mindclade.internal.dataset.v1.ListDatasetsResponse\x12z\n\rUpdateDataset\x12\x33.mindclade.internal.dataset.v1.UpdateDatasetRequest\x1a\x34.mindclade.internal.dataset.v1.UpdateDatasetResponse\x12\x92\x01\n\x15PublishDatasetRelease\x12;.mindclade.internal.dataset.v1.PublishDatasetReleaseRequest\x1a<.mindclade.internal.dataset.v1.PublishDatasetReleaseResponse\x12\x8f\x01\n\x14RevokeDatasetRelease\x12:.mindclade.internal.dataset.v1.RevokeDatasetReleaseRequest\x1a;.mindclade.internal.dataset.v1.RevokeDatasetReleaseResponse\x12\x86\x01\n\x11GetDatasetRelease\x12\x37.mindclade.internal.dataset.v1.GetDatasetReleaseRequest\x1a\x38.mindclade.internal.dataset.v1.GetDatasetReleaseResponse\x12\x8c\x01\n\x13ListDatasetReleases\x12\x39.mindclade.internal.dataset.v1.ListDatasetReleasesRequest\x1a:.mindclade.internal.dataset.v1.ListDatasetReleasesResponseB`Z^github.com/mindclade/mindclade/protocols/generated/go/internalrpc/dataset/v1;internaldatasetv1b\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -38,38 +38,38 @@ _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'mindclade.internal.dataset.
 if not _descriptor._USE_C_DESCRIPTORS:
   _globals['DESCRIPTOR']._loaded_options = None
   _globals['DESCRIPTOR']._serialized_options = b'Z^github.com/mindclade/mindclade/protocols/generated/go/internalrpc/dataset/v1;internaldatasetv1'
-  _globals['_CREATEDATASETREQUEST']._serialized_start=352
-  _globals['_CREATEDATASETREQUEST']._serialized_end=444
-  _globals['_CREATEDATASETRESPONSE']._serialized_start=446
-  _globals['_CREATEDATASETRESPONSE']._serialized_end=528
-  _globals['_GETDATASETREQUEST']._serialized_start=530
-  _globals['_GETDATASETREQUEST']._serialized_end=605
-  _globals['_GETDATASETRESPONSE']._serialized_start=607
-  _globals['_GETDATASETRESPONSE']._serialized_end=684
-  _globals['_LISTDATASETSREQUEST']._serialized_start=687
-  _globals['_LISTDATASETSREQUEST']._serialized_end=837
-  _globals['_LISTDATASETSRESPONSE']._serialized_start=840
-  _globals['_LISTDATASETSRESPONSE']._serialized_end=1033
-  _globals['_UPDATEDATASETREQUEST']._serialized_start=1035
-  _globals['_UPDATEDATASETREQUEST']._serialized_end=1127
-  _globals['_UPDATEDATASETRESPONSE']._serialized_start=1129
-  _globals['_UPDATEDATASETRESPONSE']._serialized_end=1211
-  _globals['_PUBLISHDATASETRELEASEREQUEST']._serialized_start=1213
-  _globals['_PUBLISHDATASETRELEASEREQUEST']._serialized_end=1321
-  _globals['_PUBLISHDATASETRELEASERESPONSE']._serialized_start=1323
-  _globals['_PUBLISHDATASETRELEASERESPONSE']._serialized_end=1413
-  _globals['_REVOKEDATASETRELEASEREQUEST']._serialized_start=1415
-  _globals['_REVOKEDATASETRELEASEREQUEST']._serialized_end=1521
-  _globals['_REVOKEDATASETRELEASERESPONSE']._serialized_start=1523
-  _globals['_REVOKEDATASETRELEASERESPONSE']._serialized_end=1612
-  _globals['_GETDATASETRELEASEREQUEST']._serialized_start=1614
-  _globals['_GETDATASETRELEASEREQUEST']._serialized_end=1660
-  _globals['_GETDATASETRELEASERESPONSE']._serialized_start=1662
-  _globals['_GETDATASETRELEASERESPONSE']._serialized_end=1768
-  _globals['_LISTDATASETRELEASESREQUEST']._serialized_start=1771
-  _globals['_LISTDATASETRELEASESREQUEST']._serialized_end=1928
-  _globals['_LISTDATASETRELEASESRESPONSE']._serialized_start=1931
-  _globals['_LISTDATASETRELEASESRESPONSE']._serialized_end=2153
-  _globals['_DATASETSERVICE']._serialized_start=2156
-  _globals['_DATASETSERVICE']._serialized_end=3231
+  _globals['_CREATEDATASETREQUEST']._serialized_start=358
+  _globals['_CREATEDATASETREQUEST']._serialized_end=450
+  _globals['_CREATEDATASETRESPONSE']._serialized_start=452
+  _globals['_CREATEDATASETRESPONSE']._serialized_end=540
+  _globals['_GETDATASETREQUEST']._serialized_start=542
+  _globals['_GETDATASETREQUEST']._serialized_end=617
+  _globals['_GETDATASETRESPONSE']._serialized_start=619
+  _globals['_GETDATASETRESPONSE']._serialized_end=696
+  _globals['_LISTDATASETSREQUEST']._serialized_start=699
+  _globals['_LISTDATASETSREQUEST']._serialized_end=849
+  _globals['_LISTDATASETSRESPONSE']._serialized_start=852
+  _globals['_LISTDATASETSRESPONSE']._serialized_end=1045
+  _globals['_UPDATEDATASETREQUEST']._serialized_start=1047
+  _globals['_UPDATEDATASETREQUEST']._serialized_end=1139
+  _globals['_UPDATEDATASETRESPONSE']._serialized_start=1141
+  _globals['_UPDATEDATASETRESPONSE']._serialized_end=1229
+  _globals['_PUBLISHDATASETRELEASEREQUEST']._serialized_start=1231
+  _globals['_PUBLISHDATASETRELEASEREQUEST']._serialized_end=1339
+  _globals['_PUBLISHDATASETRELEASERESPONSE']._serialized_start=1341
+  _globals['_PUBLISHDATASETRELEASERESPONSE']._serialized_end=1437
+  _globals['_REVOKEDATASETRELEASEREQUEST']._serialized_start=1439
+  _globals['_REVOKEDATASETRELEASEREQUEST']._serialized_end=1545
+  _globals['_REVOKEDATASETRELEASERESPONSE']._serialized_start=1547
+  _globals['_REVOKEDATASETRELEASERESPONSE']._serialized_end=1642
+  _globals['_GETDATASETRELEASEREQUEST']._serialized_start=1644
+  _globals['_GETDATASETRELEASEREQUEST']._serialized_end=1690
+  _globals['_GETDATASETRELEASERESPONSE']._serialized_start=1692
+  _globals['_GETDATASETRELEASERESPONSE']._serialized_end=1798
+  _globals['_LISTDATASETRELEASESREQUEST']._serialized_start=1801
+  _globals['_LISTDATASETRELEASESREQUEST']._serialized_end=1958
+  _globals['_LISTDATASETRELEASESRESPONSE']._serialized_start=1961
+  _globals['_LISTDATASETRELEASESRESPONSE']._serialized_end=2183
+  _globals['_DATASETSERVICE']._serialized_start=2186
+  _globals['_DATASETSERVICE']._serialized_end=3261
 # @@protoc_insertion_point(module_scope)

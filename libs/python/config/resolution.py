@@ -59,6 +59,29 @@ class Resolution:
     digest: str
 
 
+def _combine(
+    spec: FieldSpec,
+    existing: JsonValue | SecretRef | None,
+    incoming: JsonValue | SecretRef,
+) -> JsonValue | SecretRef:
+    """Fold one layer's value into the value the lower layers resolved to.
+
+    A field carries a merge mode precisely so that a later layer can refine an
+    earlier one rather than discard it.  Replacement is the default and stays
+    the behaviour for every field that does not ask for something else.
+    """
+
+    if existing is None or spec.merge is MergeMode.REPLACE:
+        return incoming
+    if spec.merge is MergeMode.MAP_MERGE:
+        if not isinstance(existing, dict) or not isinstance(incoming, dict):
+            raise TypeError("map_merge requires mapping values")
+        return {**cast(dict[str, JsonValue], existing), **cast(dict[str, JsonValue], incoming)}
+    if not isinstance(existing, list) or not isinstance(incoming, list):
+        raise TypeError("append requires sequence values")
+    return [*cast(list[JsonValue], existing), *cast(list[JsonValue], incoming)]
+
+
 def resolve(
     schema_version: str, specs: Mapping[str, FieldSpec], layers: list[ConfigLayer]
 ) -> Resolution:
@@ -70,8 +93,11 @@ def resolve(
                 raise ValueError("unknown field")
             if specs[key].kind is FieldKind.SECRET_REF and not isinstance(value, SecretRef):
                 raise TypeError("secret fields require SecretRef")
-            effective[key] = value
+            effective[key] = _combine(specs[key], effective.get(key), value)
             provenance[key] = layer.name
+    missing = sorted(key for key, spec in specs.items() if spec.required and key not in effective)
+    if missing:
+        raise ValueError(f"required fields are unset: {', '.join(missing)}")
     redacted: dict[str, JsonValue] = {
         key: cast(JsonValue, redact(value)) if isinstance(value, SecretRef) else value
         for key, value in effective.items()

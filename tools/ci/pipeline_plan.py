@@ -334,7 +334,7 @@ def _assert_evidence_gate_sets_are_consistent() -> None:
     """Gate the readiness report wherever the fresh-database check is gated.
 
     `just integration-ci` writes both `integration-ci.v1.json` and
-    `authoritative-integration-readiness.v2.json` unconditionally, and
+    `authoritative-integration-readiness.v3.json` unconditionally, and
     `just ci-evidence` passes every report present on disk.
     `evidence_bundle.build_evidence` then rejects a bundle whose report set
     differs from the planned gate set. A class planning the fresh-database
@@ -487,7 +487,7 @@ def readiness_self_test() -> None:
             "criterion_map_digest": "sha256:" + "1" * 64,
             "plan_digest": "sha256:" + "2" * 64,
             "ratification_authorized": False,
-            "schema_version": "mindclade.authoritative-integration-readiness/v2",
+            "schema_version": "mindclade.authoritative-integration-readiness/v3",
             "source_revision": source_revision,
             "summary": {"evidence-present-unverified": 1},
         }
@@ -495,7 +495,7 @@ def readiness_self_test() -> None:
 
     def check(payload: object) -> None:
         with tempfile.TemporaryDirectory() as directory:
-            path = Path(directory) / "authoritative-integration-readiness.v2.json"
+            path = Path(directory) / "authoritative-integration-readiness.v3.json"
             path.write_text(
                 json.dumps(payload, sort_keys=True, separators=(",", ":")) + "\n",
                 encoding="utf-8",

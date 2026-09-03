@@ -12,7 +12,7 @@ import "proto/mindclade/job/v1/attempt.proto";
 import "proto/mindclade/job/v1/job.proto";
 import "proto/mindclade/job/v1/job_commands.proto";
 import "proto/mindclade/job/v1/lease_fencing.proto";
-import "proto/mindclade/job/v1/operation.proto";
+import "proto/mindclade/operation/v1/operation.proto";
 import "proto/mindclade/job/v1/run.proto";
 import "proto/mindclade/transform/v1/transform_commands.proto";
 
@@ -26,7 +26,7 @@ message GetOperationRequest {
 
 // GetOperationResponse returns the latest durable operation representation.
 message GetOperationResponse {
-  mindclade.job.v1.Operation operation = 1;
+  mindclade.operation.v1.Operation operation = 1;
 }
 
 // ListOperationsRequest defines a bounded project-scoped operation query.
@@ -39,7 +39,7 @@ message ListOperationsRequest {
 
 // ListOperationsResponse returns one revision-consistent page.
 message ListOperationsResponse {
-  repeated mindclade.job.v1.Operation operations = 1;
+  repeated mindclade.operation.v1.Operation operations = 1;
   mindclade.common.v1.PageResponse page = 2;
   google.protobuf.Timestamp read_time = 3;
 }
@@ -54,7 +54,7 @@ message CancelOperationRequest {
 
 // CancelOperationResponse returns the current operation after recording intent.
 message CancelOperationResponse {
-  mindclade.job.v1.Operation operation = 1;
+  mindclade.operation.v1.Operation operation = 1;
 }
 
 // WatchOperationRequest resumes a bounded stream after an acknowledged sequence.
@@ -66,7 +66,7 @@ message WatchOperationRequest {
 
 // WatchOperationResponse carries a resumable snapshot or subsequent revision.
 message WatchOperationResponse {
-  mindclade.job.v1.Operation operation = 1;
+  mindclade.operation.v1.Operation operation = 1;
   uint64 sequence = 2;
   google.protobuf.Timestamp observed_at = 3;
 }
@@ -79,7 +79,7 @@ message RequestJobRequest {
 // RequestJobResponse returns both durable job and client-visible operation identities.
 message RequestJobResponse {
   mindclade.job.v1.Job job = 1;
-  mindclade.job.v1.Operation operation = 2;
+  mindclade.operation.v1.Operation operation = 2;
 }
 
 // GetJobRequest identifies a durable job.
@@ -118,7 +118,7 @@ message CancelJobRequest {
 
 // CancelJobResponse returns the operation tracking cancellation.
 message CancelJobResponse {
-  mindclade.job.v1.Operation operation = 1;
+  mindclade.operation.v1.Operation operation = 1;
 }
 
 // GetRunRequest identifies one frozen logical execution.

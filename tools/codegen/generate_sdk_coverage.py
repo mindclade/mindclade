@@ -29,8 +29,8 @@ SCHEMA_VERSION = "mindclade.internal-sdk-rpc-coverage/v2"
 GENERATED_SCHEMA_VERSION = "mindclade.internal-sdk-rpc-coverage-projection/v2"
 LANGUAGES = ("go", "python", "rust", "typescript")
 CLASSIFICATIONS = frozenset({"ergonomic", "raw-only", "unsupported"})
-POLICY_PATH = Path("internal/sdk/rpc-coverage.yaml")
-OUTPUT_PATH = Path("internal/sdk/rpc-coverage.generated.json")
+POLICY_PATH = Path("sdks/rpc-coverage.yaml")
+OUTPUT_PATH = Path("sdks/rpc-coverage.generated.json")
 CANDIDATE_PATH = Path("protocols/compatibility/baselines/protobuf.candidate.json")
 ROUTE_PATTERN = re.compile(r"/mindclade\.internal\.[A-Za-z0-9_.]+/[A-Za-z0-9_]+")
 
@@ -102,38 +102,38 @@ def _typescript_tests(root: Path) -> list[Path]:
 
 LAYOUTS = {
     "go": LanguageLayout(
-        source_root=Path("internal/sdk/go/mindclade"),
+        source_root=Path("sdks/go/mindclade"),
         generated_root=Path("protocols/generated/go"),
-        build_file=Path("internal/sdk/go/mindclade/BUILD.bazel"),
-        library_target="//internal/sdk/go/mindclade:mindclade",
-        test_target="//internal/sdk/go/mindclade:mindclade_test",
+        build_file=Path("sdks/go/mindclade/BUILD.bazel"),
+        library_target="//sdks/go/mindclade:mindclade",
+        test_target="//sdks/go/mindclade:mindclade_test",
         source_files=_go_sources,
         test_files=_go_tests,
     ),
     "python": LanguageLayout(
-        source_root=Path("internal/sdk/python"),
+        source_root=Path("sdks/python"),
         generated_root=Path("protocols/generated/python"),
-        build_file=Path("internal/sdk/python/BUILD.bazel"),
-        library_target="//internal/sdk/python:mindclade_internal_sdk",
-        test_target="//internal/sdk/python:tests",
+        build_file=Path("sdks/python/BUILD.bazel"),
+        library_target="//sdks/python:mindclade_internal_sdk",
+        test_target="//sdks/python:tests",
         source_files=_python_sources,
         test_files=_python_tests,
     ),
     "rust": LanguageLayout(
-        source_root=Path("internal/sdk/rust"),
+        source_root=Path("sdks/rust"),
         generated_root=Path("protocols/generated/rust"),
-        build_file=Path("internal/sdk/rust/BUILD.bazel"),
-        library_target="//internal/sdk/rust:mindclade_internal_sdk",
-        test_target="//internal/sdk/rust:mindclade_internal_sdk_test",
+        build_file=Path("sdks/rust/BUILD.bazel"),
+        library_target="//sdks/rust:mindclade_internal_sdk",
+        test_target="//sdks/rust:mindclade_internal_sdk_test",
         source_files=_rust_sources,
         test_files=_rust_tests,
     ),
     "typescript": LanguageLayout(
-        source_root=Path("internal/sdk/typescript"),
+        source_root=Path("sdks/typescript"),
         generated_root=Path("protocols/generated/typescript"),
-        build_file=Path("internal/sdk/typescript/BUILD.bazel"),
-        library_target="//internal/sdk/typescript:mindclade_internal_sdk",
-        test_target="//internal/sdk/typescript:tests",
+        build_file=Path("sdks/typescript/BUILD.bazel"),
+        library_target="//sdks/typescript:mindclade_internal_sdk",
+        test_target="//sdks/typescript:tests",
         source_files=_typescript_sources,
         test_files=_typescript_tests,
     ),

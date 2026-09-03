@@ -11,7 +11,7 @@ import (
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	inferencev1 "github.com/mindclade/mindclade/protocols/generated/go/inference/v1"
 	internalinferencev1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/inference/v1"
-	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
+	operationv1 "github.com/mindclade/mindclade/protocols/generated/go/operation/v1"
 )
 
 var (
@@ -59,18 +59,18 @@ func (realClock) Now() time.Time { return time.Now().UTC().Truncate(time.Microse
 // Repository accepts and returns generated protobuf values only. Implementors
 // clone every input and output so mutable aliases cannot cross the boundary.
 type Repository interface {
-	Submit(context.Context, Identity, *inferencev1.InferenceRequest, string, time.Time) (*jobv1.Operation, bool, error)
+	Submit(context.Context, Identity, *inferencev1.InferenceRequest, string, time.Time) (*operationv1.Operation, bool, error)
 	GetRequest(context.Context, Identity, string) (*inferencev1.InferenceRequest, error)
-	GetResult(context.Context, Identity, string) (*inferencev1.InferenceResult, *jobv1.Operation, error)
-	CommitResult(context.Context, Identity, *internalinferencev1.CommitInferenceResultRequest, string, time.Time) (*inferencev1.InferenceResult, *jobv1.Operation, bool, error)
-	ReadOperationRevisions(context.Context, Identity, string, uint64, int) (string, []*jobv1.Operation, bool, error)
+	GetResult(context.Context, Identity, string) (*inferencev1.InferenceResult, *operationv1.Operation, error)
+	CommitResult(context.Context, Identity, *internalinferencev1.CommitInferenceResultRequest, string, time.Time) (*inferencev1.InferenceResult, *operationv1.Operation, bool, error)
+	ReadOperationRevisions(context.Context, Identity, string, uint64, int) (string, []*operationv1.Operation, bool, error)
 	GetResultByRequest(context.Context, Identity, string) (*inferencev1.InferenceResult, error)
 }
 
 type EventFactory interface {
-	Requested(Identity, *inferencev1.InferenceRequest, *jobv1.Operation, string, time.Time) (*commonv1.EventEnvelope, error)
-	ResultCommitted(Identity, *inferencev1.InferenceRequest, *inferencev1.InferenceResult, *jobv1.Operation, *commonv1.CommandContext, time.Time) (*commonv1.EventEnvelope, error)
-	JobRequested(Identity, *jobv1.Operation, string, *commonv1.CommandContext, time.Time) (*commonv1.EventEnvelope, error)
+	Requested(Identity, *inferencev1.InferenceRequest, *operationv1.Operation, string, time.Time) (*commonv1.EventEnvelope, error)
+	ResultCommitted(Identity, *inferencev1.InferenceRequest, *inferencev1.InferenceResult, *operationv1.Operation, *commonv1.CommandContext, time.Time) (*commonv1.EventEnvelope, error)
+	JobRequested(Identity, *operationv1.Operation, string, *commonv1.CommandContext, time.Time) (*commonv1.EventEnvelope, error)
 }
 
 type SQLRepository struct {

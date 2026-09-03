@@ -1,0 +1,25 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "persistence",
+    srcs = glob(
+        ["*.go"],
+        exclude = ["*_test.go"],
+    ),
+    importpath = "github.com/mindclade/mindclade/libs/go/persistence",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//protocols/generated/go/artifact/v1:bindings",
+        "//protocols/generated/go/common/v1:bindings",
+        "@org_golang_google_protobuf//types/known/durationpb",
+    ],
+)
+
+filegroup(
+    name = "governed_sources",
+    srcs = ["BUILD.bazel"] + glob(
+        ["**"],
+        exclude = ["BUILD.bazel"],
+    ),
+    visibility = ["//visibility:public"],
+)

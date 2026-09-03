@@ -9,7 +9,7 @@ import "proto/mindclade/artifact/v1/evidence_reference.proto";
 import "proto/mindclade/common/v1/command_context.proto";
 import "proto/mindclade/common/v1/pagination.proto";
 import "proto/mindclade/common/v1/resource_reference.proto";
-import "proto/mindclade/job/v1/operation.proto";
+import "proto/mindclade/operation/v1/operation.proto";
 
 option go_package = "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/artifact/v1;internalartifactv1";
 
@@ -71,7 +71,7 @@ message QuarantineArtifactRequest {
 
 // QuarantineArtifactResponse returns the durable operation tracking the transition.
 message QuarantineArtifactResponse {
-  mindclade.job.v1.Operation operation = 1;
+  mindclade.operation.v1.Operation operation = 1;
 }
 
 // AcquireArtifactLeaseRequest requests bounded retention for immutable content.

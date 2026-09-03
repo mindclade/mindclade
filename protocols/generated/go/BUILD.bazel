@@ -30,6 +30,7 @@ filegroup(
         "//protocols/generated/go/internalrpc/workflow/v1:generated_sources",
         "//protocols/generated/go/job/v1:generated_sources",
         "//protocols/generated/go/model/v1:generated_sources",
+        "//protocols/generated/go/operation/v1:generated_sources",
         "//protocols/generated/go/policy/v1:generated_sources",
         "//protocols/generated/go/schema/v1:generated_sources",
         "//protocols/generated/go/training/v1:generated_sources",

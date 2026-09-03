@@ -19,11 +19,11 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	objectstorage "github.com/mindclade/mindclade/libs/go/storage"
 	artifactv1 "github.com/mindclade/mindclade/protocols/generated/go/artifact/v1"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	internalartifactv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/artifact/v1"
-	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
-	objectstorage "github.com/mindclade/mindclade/services/control_plane/internal/platform/storage"
+	operationv1 "github.com/mindclade/mindclade/protocols/generated/go/operation/v1"
 )
 
 var (
@@ -112,7 +112,7 @@ type ServiceRepository interface {
 	ListArtifacts(context.Context, Identity, ArtifactPage) ([]*artifactv1.ArtifactRef, *ArtifactCursor, time.Time, error)
 	ResolveArtifactAlias(context.Context, Identity, string) (*artifactv1.ArtifactRef, error)
 	CommitArtifact(context.Context, Identity, *artifactv1.CommitArtifactCommand, string, time.Time) (*artifactv1.ArtifactRef, bool, error)
-	QuarantineArtifact(context.Context, Identity, *internalartifactv1.QuarantineArtifactRequest, string, time.Time) (*jobv1.Operation, bool, error)
+	QuarantineArtifact(context.Context, Identity, *internalartifactv1.QuarantineArtifactRequest, string, time.Time) (*operationv1.Operation, bool, error)
 	AcquireArtifactLease(context.Context, Identity, *internalartifactv1.AcquireArtifactLeaseRequest, string, time.Time) (*commonv1.ResourceRef, bool, error)
 	ReleaseArtifactLease(context.Context, Identity, *internalartifactv1.ReleaseArtifactLeaseRequest, string, time.Time) (bool, error)
 }
@@ -371,11 +371,11 @@ func leaseID(identity Identity, digest string) string {
 	return hex.EncodeToString(value[:16])
 }
 
-func completedQuarantineOperation(identity Identity, id string, artifact *artifactv1.ArtifactRef, at time.Time) *jobv1.Operation {
+func completedQuarantineOperation(identity Identity, id string, artifact *artifactv1.ArtifactRef, at time.Time) *operationv1.Operation {
 	targetName := canonicalArtifactName(identity, artifact.GetDigest())
-	return &jobv1.Operation{
+	return &operationv1.Operation{
 		OperationId: id, TenantId: identity.TenantID, ProjectId: identity.ProjectID,
-		State: jobv1.OperationState_OPERATION_STATE_SUCCEEDED, ResourceVersion: 1,
+		State: operationv1.OperationState_OPERATION_STATE_SUCCEEDED, ResourceVersion: 1,
 		CreatedAt: timestamppb.New(at.UTC()), UpdatedAt: timestamppb.New(at.UTC()), Done: true,
 		Etag:   etag("artifact-operation", identity.TenantID, identity.ProjectID, id, 1),
 		Target: &commonv1.ResourceRef{ResourceType: "artifact", ResourceId: artifact.GetDigest(), TenantId: identity.TenantID, ProjectId: identity.ProjectID, ResourceVersion: 1, Name: targetName, Etag: etag("artifact", identity.TenantID, identity.ProjectID, artifact.GetDigest(), 1)},

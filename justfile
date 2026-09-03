@@ -28,9 +28,9 @@ doctor:
 
 # Apply native formatters to editable source and configuration files.
 format:
-    ruff format .buildkite tools libs/python tests internal/sdk/python workers/training_worker examples
+    ruff format .buildkite tools libs/python tests sdks/python workers/training_worker examples
     find libs/rust -type f -name '*.rs' -print0 | xargs -0 rustfmt --edition 2024
-    golangci-lint fmt ./libs/go/... ./services/control_plane/... ./internal/sdk/go/... ./tools/mindcladectl/...
+    golangci-lint fmt ./libs/go/... ./services/control_plane/... ./sdks/go/... ./tools/mindcladectl/...
     pnpm run format
     find . -type d \( -name .git -o -name node_modules -o -name build -o -name 'bazel-*' -o -path './third_party/bazel_vendor' \) -prune -o -type f \( -name BUILD -o -name BUILD.bazel -o -name MODULE.bazel -o -name '*.bzl' \) ! -path './protocols/generated/*' ! -path './kernels/native/generated/*' -print0 | xargs -0 buildifier -mode=fix
     nixfmt flake.nix third_party/packages/deep_ep/package.nix
@@ -39,9 +39,9 @@ format:
 
 # Prove that every editable and generated source matches its owning formatter.
 format-check:
-    ruff format --check .buildkite tools libs/python tests internal/sdk/python workers/training_worker examples
+    ruff format --check .buildkite tools libs/python tests sdks/python workers/training_worker examples
     cargo fmt --all --check
-    golangci-lint fmt --diff ./libs/go/... ./services/control_plane/... ./internal/sdk/go/... ./tools/mindcladectl/... ./protocols/generated/go/...
+    golangci-lint fmt --diff ./libs/go/... ./services/control_plane/... ./sdks/go/... ./tools/mindcladectl/... ./protocols/generated/go/...
     pnpm run format:check
     find . -type d \( -name .git -o -name node_modules -o -name build -o -name 'bazel-*' -o -path './third_party/bazel_vendor' \) -prune -o -type f \( -name BUILD -o -name BUILD.bazel -o -name MODULE.bazel -o -name '*.bzl' \) -print0 | xargs -0 buildifier -mode=check -lint=warn
     nixfmt --check flake.nix third_party/packages/deep_ep/package.nix
@@ -50,12 +50,12 @@ format-check:
 
 # Run static analysis for every activated language and repository text surface.
 lint:
-    ruff check .buildkite tools libs/python tests internal/sdk/python workers/training_worker examples
+    ruff check .buildkite tools libs/python tests sdks/python workers/training_worker examples
     {{ uv }} run pyright --project pyproject.toml
-    {{ uv }} run pyright --project internal/sdk/python/pyproject.toml
+    {{ uv }} run pyright --project sdks/python/pyproject.toml
     {{ uv }} run pyright --project workers/training_worker/pyrightconfig.json
     cargo clippy --workspace --all-targets --locked --no-deps -- -D warnings
-    golangci-lint run ./libs/go/... ./services/control_plane/... ./internal/sdk/go/... ./tools/mindcladectl/... ./protocols/generated/go/...
+    golangci-lint run ./libs/go/... ./services/control_plane/... ./sdks/go/... ./tools/mindcladectl/... ./protocols/generated/go/...
     pnpm run lint
     shellcheck .buildkite/hooks/environment .buildkite/hooks/pre-command
     actionlint -no-color
@@ -340,9 +340,14 @@ check: bootstrap
     just check-contract-drift
     just format-check
     just lint
-    go test ./libs/go/... ./services/control_plane/... ./internal/sdk/go/... ./tools/mindcladectl/...
-    PYTHONPATH=internal/sdk/python:protocols/generated/python {{ uv }} run python -m unittest discover -s internal/sdk/python/tests -v
-    PYTHONPATH=workers/training_worker/python:internal/sdk/python:protocols/generated/python {{ uv }} run python -m unittest discover -s workers/training_worker/tests -v
+    go test ./libs/go/... ./services/control_plane/... ./sdks/go/... ./tools/mindcladectl/...
+    PYTHONPATH=sdks/python:protocols/generated/python {{ uv }} run python -m unittest discover -s sdks/python/tests -v
+    PYTHONPATH=workers/training_worker/python:sdks/python:protocols/generated/python {{ uv }} run python -m unittest discover -s workers/training_worker/tests -v
+    # The conformance suites were reachable only through Bazel, so a developer
+    # without it never saw them and `test-affected` skipped them for any change
+    # outside their closure. `-p` is left at the default so a new suite is picked
+    # up by existing here rather than by being listed somewhere.
+    PYTHONPATH=.:libs/python:sdks/python:protocols/generated/python {{ uv }} run python -m unittest discover -s tests/conformance -v
     cargo test --workspace --locked
     pnpm --recursive --if-present run typecheck
     pnpm --recursive --if-present run test
@@ -611,11 +616,10 @@ ci-evidence:
       "secret-scan={{ evidence_dir }}/secret-scan.v1.json" \
       "bazel-native-agreement={{ evidence_dir }}/bazel-native-agreement.v2.json" \
       "fresh-database-integration={{ evidence_dir }}/integration-ci.v1.json" \
-      "authoritative-integration-readiness={{ evidence_dir }}/authoritative-integration-readiness.v2.json" \
       "source-check={{ evidence_dir }}/source-check.v1.json" \
       "wave1-full={{ evidence_dir }}/wave1-full.v1.json" \
       "cacheless-reproducibility={{ evidence_dir }}/cacheless-reproducibility.v1.json" \
-      "authoritative-integration-readiness={{ evidence_dir }}/authoritative-integration-readiness.v2.json"; do
+      "authoritative-integration-readiness={{ evidence_dir }}/authoritative-integration-readiness.v3.json"; do
       report="${item#*=}"
       [[ -f "${report}" ]] && checks+=(--check "${item}")
     done
@@ -754,7 +758,7 @@ integration-ci:
       --source-revision "${source_revision}" \
       --passed-check cross_language=//:all_contract_tests \
       --passed-check database=//services/control_plane:control_plane_test \
-      --passed-check event=//services/control_plane/internal/platform/eventprojection:event_projection_test \
+      --passed-check event=//libs/go/eventruntime:eventruntime_test \
       --passed-check gateway=//services/control_plane:control_plane_grpc_registration_test \
       --passed-check grpc=//services/control_plane:control_plane_grpc_registration_test \
       --passed-check sdk=//:all_contract_tests \
@@ -766,7 +770,7 @@ integration-ci:
       --criterion-map tools/qualification/authoritative-integration-criteria.v1.json \
       --rehearsal {{ evidence_dir }}/training-vertical-rehearsal.v1.json \
       --expected-source-revision "${source_revision}" \
-      --output {{ evidence_dir }}/authoritative-integration-readiness.v2.json
+      --output {{ evidence_dir }}/authoritative-integration-readiness.v3.json
 
 integration-down:
     docker compose -f deploy/local/compose.yaml down --volumes --remove-orphans

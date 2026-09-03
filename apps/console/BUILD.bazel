@@ -9,7 +9,7 @@ ts_config(
     src = "tsconfig.json",
     deps = [
         "package.json",
-        "//internal/sdk/typescript:mindclade_internal_sdk",
+        "//sdks/typescript:mindclade_internal_sdk",
     ],
 )
 
@@ -25,7 +25,7 @@ ts_project(
     visibility = ["//visibility:public"],
     deps = [
         ":node_modules/@mindclade/internal-sdk",
-        "//internal/sdk/typescript:mindclade_internal_sdk",
+        "//sdks/typescript:mindclade_internal_sdk",
     ],
 )
 
@@ -38,7 +38,7 @@ js_test(
         ":node_modules/@bufbuild/protobuf",
         ":node_modules/@connectrpc/connect",
         ":node_modules/@mindclade/internal-sdk",
-        "//internal/sdk/typescript:mindclade_internal_sdk",
+        "//sdks/typescript:mindclade_internal_sdk",
     ],
     entry_point = "tests/operation-flow.test.ts",
 )

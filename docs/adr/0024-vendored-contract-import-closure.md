@@ -1,14 +1,24 @@
 # ADR-0024: Vendored contract import closure
 
 - Status: Accepted in blueprint specification
-- Connected ratification: Not required; the descriptor digest is unchanged
+- Connected ratification: Pending independent review on protected infrastructure
 - Specification date: 2026-09-02
-- Effective date: 2026-09-02
+- Effective date: Pending connected ratification; source-only implementation authorized 2026-09-02
 - Compatibility window: None required; no contract surface changes
 - Supersedes: None
 - Superseded by: None
 - Owners: Contract Governance, Developer Platform
 - Reviewers: Architecture, Security
+
+## Decision record metadata
+
+- Affected invariants: the contract build resolves every import from repository content; `buf.lock` declares zero registry dependencies; the descriptor digest is unchanged by the vendoring
+- Affected paths: `protocols/google/api/annotations.proto`; `protocols/google/api/http.proto`; `buf.yaml`; `buf.lock`; `tools/codegen/generate_protocols.py`; `protocols/generated/generated-files.manifest.json`
+- Affected contracts: none; the descriptor set is byte-identical at `sha256:46514bdee27df6f41f03b63f050b2cfcb95867fc8f291fe943eaf2019693c0ed`
+- Security and safety impact: removes a live third-party network service from the build path and pins the third-party closure by content digest rather than by registry pointer; both vendored files are Apache-2.0 with headers intact
+- Migration: none; the import statement `google/api/annotations.proto` resolves unchanged, so no consumer, binding, or generated output moves
+- Rollback: restore the `deps` entry in `buf.yaml` and the previous `buf.lock`, and delete the two vendored files; the descriptor digest is unchanged either way
+- Required evidence: descriptor digest equality before and after; `just generate-contracts` completing with no network access; the generated-files manifest recording both vendored proto digests
 
 ## Context
 

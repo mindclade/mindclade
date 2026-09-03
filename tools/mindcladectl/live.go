@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mindclade/mindclade/internal/sdk/go/mindclade"
+	"github.com/mindclade/mindclade/sdks/go/mindclade"
 )
 
 type liveBackend struct {

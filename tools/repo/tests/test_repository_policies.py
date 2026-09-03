@@ -6,7 +6,7 @@ import tempfile
 import unittest
 from pathlib import Path
 from typing import Any
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 from urllib.parse import urlsplit
 
 from jsonschema import Draft202012Validator, FormatChecker
@@ -64,10 +64,7 @@ from render_repository_tree import (  # noqa: E402
     render_tree,
     replace_generated_region,
 )
-from verify_repository_path_manifest import (  # noqa: E402
-    bazel_failure_detail,
-    validate_declared_targets,
-)
+from verify_repository_path_manifest import validate_declared_targets  # noqa: E402
 
 
 class RepositoryPolicyTest(unittest.TestCase):
@@ -83,7 +80,7 @@ class RepositoryPolicyTest(unittest.TestCase):
         self.assertEqual(validate_manifest(self.manifest), [])
         self.assertEqual(len(self.manifest["paths"]), CANONICAL_FILE_COUNT)
         wave_one = [entry for entry in self.manifest["paths"] if entry["activation_wave"] == "1"]
-        self.assertEqual(len(wave_one), 881)
+        self.assertEqual(len(wave_one), 888)
         for entry in wave_one:
             with self.subTest(path=entry["path"]):
                 status = entry["status"]
@@ -176,40 +173,15 @@ class RepositoryPolicyTest(unittest.TestCase):
                 flattened = f"protocols/generated/go/{domain}/v1/{stem}.pb.go"
                 self.assertNotIn(flattened, entries)
 
-    def test_target_validation_never_falls_back_to_bazelisk(self) -> None:
-        manifest = {
-            "paths": [
-                {
-                    "path": "README.md",
-                    "status": "active",
-                    "build_targets": ["//:wave0"],
-                    "test_targets": [],
-                }
-            ]
-        }
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            (root / "BUILD.bazel").write_text('filegroup(name = "wave0")\n', encoding="utf-8")
-            with patch("verify_repository_path_manifest.shutil.which", return_value=None):
-                errors = validate_declared_targets(manifest, root)
-        self.assertEqual(
-            errors,
-            ["cannot prove target source membership without the pinned direct Bazel: //:wave0"],
-        )
+    def test_target_validation_reads_build_files_without_bazel(self) -> None:
+        """Membership is provable in a checkout that has no Bazel at all.
 
-    def test_target_validation_reports_actionable_bazel_lock_error(self) -> None:
-        detail = bazel_failure_detail(
-            "FATAL: bazel crashed\n"
-            "java.lang.IllegalStateException\n"
-            "MODULE.bazel.lock is no longer up-to-date; run bazel mod deps\n"
-            "at java.base/java.util.concurrent.ForkJoinWorkerThread.run\n"
-        )
-        self.assertEqual(
-            detail,
-            "MODULE.bazel.lock is no longer up-to-date; run bazel mod deps",
-        )
+        This check used to shell out to `bazel query`, so an offline checkout
+        could not prove that a declared target actually contains the path that
+        claims it -- the half of the manifest's contract that a typo in a
+        BUILD file breaks.
+        """
 
-    def test_target_validation_does_not_follow_external_dependencies(self) -> None:
         manifest = {
             "paths": [
                 {
@@ -222,29 +194,94 @@ class RepositoryPolicyTest(unittest.TestCase):
         }
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            (root / "BUILD.bazel").write_text('filegroup(name = "aggregate")\n', encoding="utf-8")
+            (root / "BUILD.bazel").write_text(
+                'filegroup(name = "aggregate", srcs = ["//nested:sources"])\n', encoding="utf-8"
+            )
             (root / "nested").mkdir()
             (root / "nested/source.py").write_text("pass\n", encoding="utf-8")
-            query_results = [
-                Mock(
-                    returncode=0,
-                    stdout="//nested:nested_sources\n@crate//:external\n",
-                    stderr="",
-                ),
-                Mock(returncode=0, stdout="//nested:source.py\n", stderr=""),
+            (root / "nested/BUILD.bazel").write_text(
+                'filegroup(name = "sources", srcs = glob(["*.py"]))\n', encoding="utf-8"
+            )
+            self.assertEqual(validate_declared_targets(manifest, root), [])
+
+    def test_target_validation_does_not_follow_external_dependencies(self) -> None:
+        """An `@external` label names no repository path and must terminate the walk."""
+
+        manifest = {
+            "paths": [
+                {
+                    "path": "source.py",
+                    "status": "active",
+                    "build_targets": ["//:aggregate"],
+                    "test_targets": [],
+                }
             ]
-            with (
-                patch("verify_repository_path_manifest.shutil.which", return_value="/bin/bazel"),
-                patch(
-                    "verify_repository_path_manifest.subprocess.run",
-                    side_effect=query_results,
-                ) as query,
-            ):
-                errors = validate_declared_targets(manifest, root)
-        self.assertEqual(errors, [])
-        self.assertEqual(query.call_count, 2)
-        first_query = query.call_args_list[0].args[0]
-        self.assertGreater(first_query.index("--repo_contents_cache="), first_query.index("query"))
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "BUILD.bazel").write_text(
+                'py_library(name = "aggregate", srcs = ["source.py"], '
+                'deps = ["@crate//:external", "//:node_modules/@scope/name"])\n',
+                encoding="utf-8",
+            )
+            (root / "source.py").write_text("pass\n", encoding="utf-8")
+            self.assertEqual(validate_declared_targets(manifest, root), [])
+
+    def test_target_validation_reports_unmodelled_starlark_rather_than_passing(self) -> None:
+        """The property that makes this reader safe to trust.
+
+        A textual reader that shrugs at a construct it does not understand
+        returns a short source set, and a short source set reads as "this
+        target does not contain your path" -- or worse, where the path happens
+        to be listed twice, as silent success. Every unmodelled construct is
+        reported instead.
+        """
+
+        manifest = {
+            "paths": [
+                {
+                    "path": "source.py",
+                    "status": "active",
+                    "build_targets": ["//:aggregate"],
+                    "test_targets": [],
+                }
+            ]
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "BUILD.bazel").write_text(
+                'py_library(name = "aggregate", srcs = select({"//conditions:default": []}))\n',
+                encoding="utf-8",
+            )
+            (root / "source.py").write_text("pass\n", encoding="utf-8")
+            errors = validate_declared_targets(manifest, root)
+        self.assertEqual(len(errors), 1, errors)
+        self.assertIn("cannot resolve target source membership", errors[0])
+        self.assertIn("select", errors[0])
+
+    def test_a_glob_stops_at_a_sub_package_boundary(self) -> None:
+        """A directory with its own BUILD.bazel belongs to that package, not this one."""
+
+        manifest = {
+            "paths": [
+                {
+                    "path": "child/owned.py",
+                    "status": "active",
+                    "build_targets": ["//:everything"],
+                    "test_targets": [],
+                }
+            ]
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "BUILD.bazel").write_text(
+                'filegroup(name = "everything", srcs = glob(["**/*.py"]))\n', encoding="utf-8"
+            )
+            (root / "child").mkdir()
+            (root / "child/BUILD.bazel").write_text('filegroup(name = "child")\n', encoding="utf-8")
+            (root / "child/owned.py").write_text("pass\n", encoding="utf-8")
+            errors = validate_declared_targets(manifest, root)
+        self.assertEqual(errors, ["//:everything does not cover active path: child/owned.py"])
 
     def test_schema_validates_manifest(self) -> None:
         schema = json.loads(
@@ -547,10 +584,10 @@ class RepositoryPolicyTest(unittest.TestCase):
 
     def test_internal_sdk_documentation_matches_the_activated_surface(self) -> None:
         readmes = {
-            "go": REPO_ROOT / "internal/sdk/go/mindclade/README.md",
-            "python": REPO_ROOT / "internal/sdk/python/README.md",
-            "rust": REPO_ROOT / "internal/sdk/rust/README.md",
-            "typescript": REPO_ROOT / "internal/sdk/typescript/README.md",
+            "go": REPO_ROOT / "sdks/go/mindclade/README.md",
+            "python": REPO_ROOT / "sdks/python/README.md",
+            "rust": REPO_ROOT / "sdks/rust/README.md",
+            "typescript": REPO_ROOT / "sdks/typescript/README.md",
         }
         required_markers = {
             "go": (

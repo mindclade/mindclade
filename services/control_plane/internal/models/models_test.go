@@ -12,12 +12,12 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	"github.com/mindclade/mindclade/libs/go/pubsubx"
 	artifactv1 "github.com/mindclade/mindclade/protocols/generated/go/artifact/v1"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	internalmodelv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/model/v1"
-	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
 	modelv1 "github.com/mindclade/mindclade/protocols/generated/go/model/v1"
-	"github.com/mindclade/mindclade/services/control_plane/internal/platform/queue"
+	operationv1 "github.com/mindclade/mindclade/protocols/generated/go/operation/v1"
 )
 
 var fixtureTime = time.Date(2026, 9, 1, 12, 0, 0, 0, time.UTC)
@@ -35,12 +35,12 @@ func (c fixedClock) Now() time.Time { return c.at }
 
 type fakeRepository struct {
 	command   *modelv1.RegisterModelCommand
-	operation *jobv1.Operation
+	operation *operationv1.Operation
 	model     *modelv1.Model
 	release   *modelv1.ModelRelease
 }
 
-func (r *fakeRepository) RegisterModel(_ context.Context, _ Identity, command *modelv1.RegisterModelCommand, _ string, _ time.Time) (*jobv1.Operation, bool, error) {
+func (r *fakeRepository) RegisterModel(_ context.Context, _ Identity, command *modelv1.RegisterModelCommand, _ string, _ time.Time) (*operationv1.Operation, bool, error) {
 	r.command = clone(command)
 	return clone(r.operation), false, nil
 }
@@ -56,7 +56,7 @@ func (r *fakeRepository) ListModels(context.Context, Identity, ModelPage) ([]*mo
 	return []*modelv1.Model{clone(r.model)}, "", fixtureTime, nil
 }
 
-func (*fakeRepository) RegisterModelRelease(context.Context, Identity, *modelv1.RegisterModelReleaseCommand, string, time.Time) (*jobv1.Operation, bool, error) {
+func (*fakeRepository) RegisterModelRelease(context.Context, Identity, *modelv1.RegisterModelReleaseCommand, string, time.Time) (*operationv1.Operation, bool, error) {
 	return nil, false, missingEvent(RegisterReleaseEventContract)
 }
 
@@ -71,11 +71,11 @@ func (r *fakeRepository) ListModelReleases(context.Context, Identity, ReleasePag
 	return []*modelv1.ModelRelease{clone(r.release)}, "", fixtureTime, nil
 }
 
-func (*fakeRepository) PromoteModelRelease(context.Context, Identity, *modelv1.PromoteModelReleaseCommand, string, time.Time) (*jobv1.Operation, bool, error) {
+func (*fakeRepository) PromoteModelRelease(context.Context, Identity, *modelv1.PromoteModelReleaseCommand, string, time.Time) (*operationv1.Operation, bool, error) {
 	return nil, false, ErrNotFound
 }
 
-func (*fakeRepository) RevokeModelRelease(context.Context, Identity, *modelv1.RevokeModelReleaseCommand, string, time.Time) (*jobv1.Operation, bool, error) {
+func (*fakeRepository) RevokeModelRelease(context.Context, Identity, *modelv1.RevokeModelReleaseCommand, string, time.Time) (*operationv1.Operation, bool, error) {
 	return nil, false, ErrNotFound
 }
 
@@ -114,7 +114,7 @@ func serverFixture(t *testing.T, repository Repository) *Server {
 
 func TestRegisterModelUsesGeneratedCloneAndAuthenticatedContext(t *testing.T) {
 	identity := identityFixture()
-	operation := &jobv1.Operation{OperationId: "operations/1", TenantId: identity.TenantID, ProjectId: identity.ProjectID, State: jobv1.OperationState_OPERATION_STATE_SUCCEEDED, Done: true}
+	operation := &operationv1.Operation{OperationId: "operations/1", TenantId: identity.TenantID, ProjectId: identity.ProjectID, State: operationv1.OperationState_OPERATION_STATE_SUCCEEDED, Done: true}
 	repository := &fakeRepository{operation: operation}
 	server := serverFixture(t, repository)
 	command := &modelv1.RegisterModelCommand{Project: &commonv1.ResourceRef{ResourceType: "project", ResourceId: identity.ProjectID, TenantId: identity.TenantID, ProjectId: identity.ProjectID, Name: projectParent(identity)}, ModelId: "nova", DisplayName: "Nova", Family: "clade", DefinitionManifest: artifactFixture("a"), FeatureRequirementSet: artifactFixture("b"), ModelFeatureView: artifactFixture("c"), InputContract: artifactFixture("d"), OutputContract: artifactFixture("e")}
@@ -150,7 +150,7 @@ func TestGeneratedModelEventsAreRegistryValidatedAndDecodable(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	decoded, err := queue.UnmarshalRegisteredPayload(event)
+	decoded, err := pubsubx.UnmarshalRegisteredPayload(event)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -169,12 +169,12 @@ func TestGeneratedModelEventsAreRegistryValidatedAndDecodable(t *testing.T) {
 	release.ModelFeatureView = artifactFixture("e")
 	release.ReleasePolicy = &commonv1.ResourceRef{ResourceType: "release_policy", ResourceId: "policy-1", TenantId: identity.TenantID, ProjectId: identity.ProjectID, ResourceVersion: 1, Name: projectParent(identity) + "/releasePolicies/policy-1", Etag: "policy-etag"}
 	release.CreateTime = timestamppb.New(fixtureTime)
-	operation := &jobv1.Operation{OperationId: "operations/op-1", TenantId: identity.TenantID, ProjectId: identity.ProjectID, ResourceVersion: 1, Etag: resourceETag("operations/op-1", 1)}
+	operation := &operationv1.Operation{OperationId: "operations/op-1", TenantId: identity.TenantID, ProjectId: identity.ProjectID, ResourceVersion: 1, Etag: resourceETag("operations/op-1", 1)}
 	releaseRegistered, err := (GeneratedEventFactory{}).ReleaseRegistered(identity, release, operation, context, fixtureTime)
 	if err != nil {
 		t.Fatal(err)
 	}
-	decoded, err = queue.UnmarshalRegisteredPayload(releaseRegistered)
+	decoded, err = pubsubx.UnmarshalRegisteredPayload(releaseRegistered)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -188,7 +188,7 @@ func TestGeneratedModelEventsAreRegistryValidatedAndDecodable(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err = queue.UnmarshalRegisteredPayload(promoted); err != nil {
+	if _, err = pubsubx.UnmarshalRegisteredPayload(promoted); err != nil {
 		t.Fatal(err)
 	}
 	release.Revision = 3
@@ -198,7 +198,7 @@ func TestGeneratedModelEventsAreRegistryValidatedAndDecodable(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err = queue.UnmarshalRegisteredPayload(revoked); err != nil {
+	if _, err = pubsubx.UnmarshalRegisteredPayload(revoked); err != nil {
 		t.Fatal(err)
 	}
 }

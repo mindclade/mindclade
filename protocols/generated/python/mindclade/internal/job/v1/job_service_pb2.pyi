@@ -11,7 +11,7 @@ from mindclade.job.v1 import attempt_pb2 as _attempt_pb2
 from mindclade.job.v1 import job_pb2 as _job_pb2
 from mindclade.job.v1 import job_commands_pb2 as _job_commands_pb2
 from mindclade.job.v1 import lease_fencing_pb2 as _lease_fencing_pb2
-from mindclade.job.v1 import operation_pb2 as _operation_pb2
+from mindclade.operation.v1 import operation_pb2 as _operation_pb2
 from mindclade.job.v1 import run_pb2 as _run_pb2
 from mindclade.transform.v1 import transform_commands_pb2 as _transform_commands_pb2
 from google.protobuf.internal import containers as _containers

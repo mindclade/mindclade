@@ -16,11 +16,11 @@ import (
 	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 
+	platformdb "github.com/mindclade/mindclade/libs/go/persistence"
+	"github.com/mindclade/mindclade/libs/go/pubsubx"
 	artifactv1 "github.com/mindclade/mindclade/protocols/generated/go/artifact/v1"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	experimentv1 "github.com/mindclade/mindclade/protocols/generated/go/experiment/v1"
-	platformdb "github.com/mindclade/mindclade/services/control_plane/internal/platform/database"
-	"github.com/mindclade/mindclade/services/control_plane/internal/platform/queue"
 )
 
 var experimentEventTypes = []string{
@@ -223,11 +223,11 @@ func verifyExperimentEventsAndIsolation(t *testing.T, ctx context.Context, db *s
 		if err = rows.Scan(&encoded); err != nil {
 			t.Fatal(err)
 		}
-		envelope, decodeErr := queue.UnmarshalEnvelope(encoded)
+		envelope, decodeErr := pubsubx.UnmarshalEnvelope(encoded)
 		if decodeErr != nil {
 			t.Fatal(decodeErr)
 		}
-		if _, decodeErr = queue.UnmarshalRegisteredPayload(envelope); decodeErr != nil {
+		if _, decodeErr = pubsubx.UnmarshalRegisteredPayload(envelope); decodeErr != nil {
 			t.Fatalf("registered event %s: %v", envelope.GetEventType(), decodeErr)
 		}
 		seen[envelope.GetEventType()]++

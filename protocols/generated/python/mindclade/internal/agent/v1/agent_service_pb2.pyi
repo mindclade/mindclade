@@ -9,7 +9,7 @@ from mindclade.agent.v1 import agent_step_pb2 as _agent_step_pb2
 from mindclade.agent.v1 import tool_receipt_pb2 as _tool_receipt_pb2
 from mindclade.common.v1 import command_context_pb2 as _command_context_pb2
 from mindclade.common.v1 import pagination_pb2 as _pagination_pb2
-from mindclade.job.v1 import operation_pb2 as _operation_pb2
+from mindclade.operation.v1 import operation_pb2 as _operation_pb2
 from mindclade.job.v1 import lease_fencing_pb2 as _lease_fencing_pb2
 from google.protobuf.internal import containers as _containers
 from google.protobuf import descriptor as _descriptor

@@ -632,6 +632,7 @@ ALL_CONTRACT_BASELINE_DOMAINS = frozenset(
         "inference",
         "job",
         "model",
+        "operation",
         "policy",
         "training",
         "transform",
@@ -858,8 +859,8 @@ WAVE_ONE_DURABILITY_ADDITIONS = (
     "services/control_plane/internal/operations/operation_commands.go",
     "services/control_plane/internal/operations/operation_repository.go",
     "services/control_plane/internal/operations/operation_reconciler.go",
-    "services/control_plane/internal/platform/audit/audit_store.go",
-    "services/control_plane/internal/platform/inbox/inbox_store.go",
+    "libs/go/servicekit/audit_store.go",
+    "libs/go/inbox/inbox_store.go",
     "tools/release/sign_release.py",
     "tests/conformance/test_configuration_resolution.py",
     "tests/conformance/test_release_signing.py",
@@ -967,21 +968,21 @@ WAVE_ONE_REWAVE_PATHS = frozenset(
         "services/control_plane/internal/jobs/job_reconciler.go",
         "services/control_plane/internal/jobs/job_repository.go",
         "services/control_plane/internal/jobs/lease_fencing.go",
-        "services/control_plane/internal/platform/database/migration_guard.go",
-        "services/control_plane/internal/platform/database/transactions.go",
-        "services/control_plane/internal/platform/idempotency/command_keys.go",
-        "services/control_plane/internal/platform/idempotency/idempotency_store.go",
-        "services/control_plane/internal/platform/outbox/delivery_fencing.go",
-        "services/control_plane/internal/platform/outbox/dispatcher.go",
-        "services/control_plane/internal/platform/outbox/outbox_store.go",
-        "services/control_plane/internal/platform/queue/dead_letter.go",
-        "services/control_plane/internal/platform/queue/delivery.go",
-        "services/control_plane/internal/platform/queue/event_registry_generated.go",
-        "services/control_plane/internal/platform/queue/outbox_producer.go",
-        "services/control_plane/internal/platform/queue/transport.go",
-        "services/control_plane/internal/platform/storage/artifact_catalog.go",
-        "services/control_plane/internal/platform/storage/object_store.go",
-        "services/control_plane/internal/platform/telemetry/audit_events.go",
+        "libs/go/persistence/migration_guard.go",
+        "libs/go/persistence/transactions.go",
+        "libs/go/idempotency/command_keys.go",
+        "libs/go/idempotency/idempotency_store.go",
+        "libs/go/fencing/delivery_fencing.go",
+        "libs/go/outbox/dispatcher.go",
+        "libs/go/outbox/outbox_store.go",
+        "libs/go/pubsubx/dead_letter.go",
+        "libs/go/pubsubx/delivery.go",
+        "libs/go/pubsubx/event_registry_generated.go",
+        "libs/go/pubsubx/outbox_producer.go",
+        "libs/go/pubsubx/transport.go",
+        "libs/go/storage/artifact_catalog.go",
+        "libs/go/storage/object_store.go",
+        "libs/go/servicekit/audit_events.go",
         "services/control_plane/internal/policies/authorization.go",
         "services/control_plane/internal/policies/decision_audit.go",
         "services/control_plane/internal/tenants/tenant_isolation.go",
@@ -1242,6 +1243,7 @@ def reconcile_authority_paths(source_paths: Sequence[str]) -> list[str]:
         and path not in repository_additions
     )
     result: list[str] = []
+    relocated: list[str] = []
     retired = set(RETIRED_PATHS)
     for path in source_paths:
         if path in retired:
@@ -1254,7 +1256,17 @@ def reconcile_authority_paths(source_paths: Sequence[str]) -> list[str]:
             "protocols/generated/python/pyproject.toml",
         }:
             reconciled = python_prefix + "mindclade/" + reconciled.removeprefix(python_prefix)
-        result.append(reconciled)
+        if PurePosixPath(reconciled).parent != PurePosixPath(path).parent:
+            # A replacement that changes directory is a relocation, not a rename.
+            # Appending it at the source path's position leaves it sitting among
+            # the siblings it left -- `libs/go/servicekit/audit_events.go` in the
+            # middle of `services/control_plane/` -- and the authority tree then
+            # no longer round-trips, because rendering groups by directory and
+            # reading back yields tree order. Defer it to the sibling-locality
+            # pass below, which is what places every other new path.
+            relocated.append(reconciled)
+        else:
+            result.append(reconciled)
         if path == "MODULE.bazel":
             result.append("MODULE.bazel.lock")
         if path == ".bazelversion":
@@ -1263,7 +1275,7 @@ def reconcile_authority_paths(source_paths: Sequence[str]) -> list[str]:
             result.extend(provenance_additions)
         if path == "tools/repo/verify_repository_path_manifest.py":
             result.extend(repository_additions)
-    for path in contextual_additions:
+    for path in (*contextual_additions, *relocated):
         parent = PurePosixPath(path).parent
         insert_at = len(result)
         while str(parent) != ".":
@@ -1300,7 +1312,7 @@ def infer_owner(path: str) -> str:
         return "computational-biology"
     if path.startswith(("docs/architecture/", "docs/adr/", "docs/governance/", "docs/policies/")):
         return "architecture"
-    if path.startswith("internal/sdk/"):
+    if path.startswith("sdks/"):
         return "developer-experience"
     if path.startswith("workers/"):
         worker = PurePosixPath(path).parts[1]
@@ -1349,11 +1361,11 @@ def infer_component(path: str) -> str:
     if path == "component.yaml":
         return "mindclade"
     declared_component_roots = (
-        ("internal/sdk/go", "internal-sdk-go"),
-        ("internal/sdk/python", "internal-sdk-python"),
-        ("internal/sdk/rust", "internal-sdk-rust"),
-        ("internal/sdk/typescript", "internal-sdk-typescript"),
-        ("internal/sdk", "internal-sdk"),
+        ("sdks/go", "internal-sdk-go"),
+        ("sdks/python", "internal-sdk-python"),
+        ("sdks/rust", "internal-sdk-rust"),
+        ("sdks/typescript", "internal-sdk-typescript"),
+        ("sdks", "internal-sdk"),
         ("models/families/clade/cladefold", "model-family-clade-cladefold"),
         ("services/control_plane", "services-control-plane"),
         ("services/runtime_gateway", "services-runtime-gateway"),
@@ -3333,6 +3345,18 @@ CANONICAL_PATH_SET_SHA256 = (  # pyright: ignore[reportConstantRedefinition]
     "7d39a90b849df78856af43adc5d8ac17017f22ac79b00e65064dfc53d890d613"
 )
 
+# The internal SDK roots move from internal/sdk/<language> to sdks/<language>
+# (ADR-0025). Go forbids importing a package under an "internal" directory from
+# outside that directory's parent, so the blueprint's sdks/internal/<language>
+# spelling would have made the Go facade unusable from tools/mindcladectl and
+# every other consumer outside sdks/. Internality stays a governed property of
+# the manifest, CODEOWNERS, and the layering tests rather than a Go path rule.
+# The move renames paths one-for-one, so the canonical file count is unchanged
+# and only the path-set digest moves.
+CANONICAL_PATH_SET_SHA256 = (  # pyright: ignore[reportConstantRedefinition]
+    "8e5d52707bb40162e275b52c927a5070c1d7eecf0de843e425b12d68b2d113ba"
+)
+
 _adr0023_reconciliation_addition_reason = _reconciliation_addition_reason
 
 
@@ -3356,10 +3380,10 @@ SDK_API_REFERENCE_TOOLING_PATHS: tuple[str, ...] = (
     "tools/docs/tests/test_render_sdk_api_reference.py",
 )
 SDK_API_REFERENCE_DOCUMENT_PATHS: tuple[str, ...] = (
-    "internal/sdk/go/api.md",
-    "internal/sdk/python/api.md",
-    "internal/sdk/rust/api.md",
-    "internal/sdk/typescript/api.md",
+    "sdks/go/api.md",
+    "sdks/python/api.md",
+    "sdks/rust/api.md",
+    "sdks/typescript/api.md",
 )
 SDK_API_REFERENCE_PATHS: tuple[str, ...] = (
     *SDK_API_REFERENCE_TOOLING_PATHS,
@@ -3473,12 +3497,12 @@ def _reconciliation_addition_reason(path: str) -> str:  # pyright: ignore[report
 # REQUIRED_ADDITIONS through the internal-sdk activation bundle, so only the
 # canonical count and digest move here.
 SDK_RUST_PACKAGING_SCRIPT_PATHS: tuple[str, ...] = (
-    "internal/sdk/rust/scripts/bootstrap",
-    "internal/sdk/rust/scripts/build",
-    "internal/sdk/rust/scripts/common.sh",
-    "internal/sdk/rust/scripts/format",
-    "internal/sdk/rust/scripts/lint",
-    "internal/sdk/rust/scripts/test",
+    "sdks/rust/scripts/bootstrap",
+    "sdks/rust/scripts/build.sh",
+    "sdks/rust/scripts/common.sh",
+    "sdks/rust/scripts/format",
+    "sdks/rust/scripts/lint",
+    "sdks/rust/scripts/test",
 )
 CANONICAL_FILE_COUNT = (  # pyright: ignore[reportConstantRedefinition]
     CANONICAL_FILE_COUNT + len(SDK_RUST_PACKAGING_SCRIPT_PATHS)
@@ -3536,7 +3560,7 @@ def _reconciliation_addition_reason(path: str) -> str:  # pyright: ignore[report
 # Both sit beside files already named in WAVE_ONE_REWAVE_PATHS, which is where
 # they are waved; this block only carries them into the canonical path set.
 OUTBOX_PRODUCER_PATHS: tuple[str, ...] = (
-    "services/control_plane/internal/platform/queue/outbox_producer.go",
+    "libs/go/pubsubx/outbox_producer.go",
     "services/control_plane/tests/outbox_producer_test.go",
 )
 REQUIRED_ADDITIONS = (  # pyright: ignore[reportConstantRedefinition]
@@ -3611,8 +3635,8 @@ def _reconciliation_addition_reason(path: str) -> str:  # pyright: ignore[report
 # declared one; Rust did not, so `internal-sdk-rust` was a name no component
 # answered to -- and the ingestion worker, whose only first-party Cargo
 # dependency is that facade, carried a dependency edge the graph could not
-# resolve. It reaches Bazel through the `internal/sdk/rust` glob already.
-SDK_RUST_COMPONENT_PATHS: tuple[str, ...] = ("internal/sdk/rust/component.yaml",)
+# resolve. It reaches Bazel through the `sdks/rust` glob already.
+SDK_RUST_COMPONENT_PATHS: tuple[str, ...] = ("sdks/rust/component.yaml",)
 REQUIRED_ADDITIONS = (  # pyright: ignore[reportConstantRedefinition]
     *REQUIRED_ADDITIONS,
     *SDK_RUST_COMPONENT_PATHS,
@@ -3657,13 +3681,13 @@ CROSS_FIELD_CONSTRAINT_PATHS: tuple[str, ...] = (
     "protocols/constraints/cross-field.yaml",
     "protocols/constraints/cross-field.schema.json",
     "tools/codegen/generate_cross_field_constraints.py",
-    "services/control_plane/internal/platform/validation/cross_field.generated.go",
-    "internal/sdk/go/mindclade/cross_field.generated.go",
-    "internal/sdk/python/mindclade_internal_sdk/cross_field_generated.py",
-    "internal/sdk/typescript/src/crossField.generated.ts",
-    "internal/sdk/rust/src/cross_field_generated.rs",
+    "services/control_plane/internal/validation/cross_field.generated.go",
+    "sdks/go/mindclade/cross_field.generated.go",
+    "sdks/python/mindclade_internal_sdk/cross_field_generated.py",
+    "sdks/typescript/src/crossField.generated.ts",
+    "sdks/rust/src/cross_field_generated.rs",
     "tests/conformance/test_cross_field_constraints.py",
-    "internal/sdk/typescript/tests/cross_field.test.ts",
+    "sdks/typescript/tests/cross_field.test.ts",
 )
 # ADR-0025 records that the side-car is transitional and names the trigger
 # that retires it, so "transitional" cannot quietly become the permanent shape.
@@ -3695,7 +3719,7 @@ CANONICAL_PATH_SET_SHA256 = (  # pyright: ignore[reportConstantRedefinition]
 _cross_field_constraint_addition_reason = _reconciliation_addition_reason
 
 
-def _reconciliation_addition_reason(path: str) -> str:
+def _reconciliation_addition_reason(path: str) -> str:  # pyright: ignore[reportRedeclaration]
     if path in CROSS_FIELD_CONSTRAINT_ADR:
         return (
             "ADR-0025 records why cross-field constraints live in a side-car rather "
@@ -3708,6 +3732,275 @@ def _reconciliation_addition_reason(path: str) -> str:
             "cannot be enforced in one language and forgotten in another."
         )
     return _cross_field_constraint_addition_reason(path)
+
+
+# Target-membership validation used to shell out to `bazel query`, so wherever
+# Bazel could not run the manifest's second claim about every governed path --
+# that the target it declares actually contains it -- went unproven. Reading the
+# BUILD files instead makes that claim checkable in any checkout. It is a wave-0
+# governance source beside the policy modules it serves, and it earned its place
+# immediately: it found four paths declaring targets whose closure did not
+# contain them.
+BUILD_GRAPH_READER_PATHS: tuple[str, ...] = ("tools/repo/build_graph.py",)
+REQUIRED_ADDITIONS = (  # pyright: ignore[reportConstantRedefinition]
+    *REQUIRED_ADDITIONS,
+    *BUILD_GRAPH_READER_PATHS,
+)
+CANONICAL_FILE_COUNT = (  # pyright: ignore[reportConstantRedefinition]
+    CANONICAL_FILE_COUNT + len(BUILD_GRAPH_READER_PATHS)
+)
+CANONICAL_PATH_SET_SHA256 = (  # pyright: ignore[reportConstantRedefinition]
+    "99ce99f615b1a66d12cdb4754d5d7ec18108d678f088c6887de2f9af148a2968"
+)
+
+_build_graph_reader_addition_reason = _reconciliation_addition_reason
+
+
+def _reconciliation_addition_reason(path: str) -> str:  # pyright: ignore[reportRedeclaration]
+    if path in BUILD_GRAPH_READER_PATHS:
+        return (
+            "Resolves Bazel target source membership by reading BUILD files, so the "
+            "manifest's target claims are provable without Bazel rather than skipped."
+        )
+    return _build_graph_reader_addition_reason(path)
+
+
+# Both peer path sets are declared as reconciliation additions but never reached
+# the wave sets that make a populated path active, so a rebuilt manifest marked
+# them premature while the committed manifest called them active. Bind them to
+# the waves the committed manifest asserts: the worked SDK examples and the
+# retry-safety gate are Wave 1 alongside the facades they exercise, and the
+# vendored import closure is the Wave 4 contract surface the descriptor needs.
+#
+# The internal-SDK conformance contract is deliberately not in this set. It is
+# an architecture document, and `is_wave_zero_path` already makes it active in
+# wave 0 beside `dependency-law.md` and `trust-boundaries.md`. Re-waving it to 1
+# assigned it `//:wave1_sources`, which reaches no documentation at all, while
+# the governance lane it belongs to already carries it through the
+# `docs/architecture/**` glob in `//docs:architecture_governance`.
+WAVE_ONE_REWAVE_PATHS = frozenset(  # pyright: ignore[reportConstantRedefinition]
+    {
+        *WAVE_ONE_REWAVE_PATHS,
+        *SDK_PARITY_PATHS,
+        *CONTRACT_VENDORED_IMPORT_PATHS,
+    }
+)
+
+
+# The internal SDK roots move from internal/sdk/<language> to sdks/<language>
+# (ADR-0026). The relocated files are renames already reconciled above; only the
+# decision record itself is a new canonical path.
+INTERNAL_SDK_ROOT_ADR = "docs/adr/0026-internal-sdk-roots-move-to-sdks.md"
+REQUIRED_ADDITIONS = (  # pyright: ignore[reportConstantRedefinition]
+    *REQUIRED_ADDITIONS,
+    INTERNAL_SDK_ROOT_ADR,
+)
+CANONICAL_FILE_COUNT = CANONICAL_FILE_COUNT + 1  # pyright: ignore[reportConstantRedefinition]
+CANONICAL_PATH_SET_SHA256 = (  # pyright: ignore[reportConstantRedefinition]
+    "f2f311f029bd594a1828eb776aa72b4598a31cf04f4f9c161c797b9c6c33ebf2"
+)
+
+_adr0025_reconciliation_addition_reason = _reconciliation_addition_reason
+
+
+def _reconciliation_addition_reason(path: str) -> str:  # pyright: ignore[reportRedeclaration]
+    if path == INTERNAL_SDK_ROOT_ADR:
+        return (
+            "ADR-0026 records the internal SDK root relocation and why the "
+            "blueprint's sdks/internal/<language> spelling cannot be used for Go."
+        )
+    return _adr0025_reconciliation_addition_reason(path)
+
+
+# The control-plane platform runtime becomes the eight blueprint Go libraries
+# (ADR-0027). services/control_plane/internal/platform held durable-state,
+# outbox, inbox, Pub/Sub, projection, idempotency, fencing, and service-runtime
+# code behind a service-private path, so no other service could depend on it.
+PLATFORM_RUNTIME_LIBRARY_ROOT = "services/control_plane/internal/platform"
+PLATFORM_RUNTIME_LIBRARY_REPLACEMENTS = {
+    f"{PLATFORM_RUNTIME_LIBRARY_ROOT}/{old}": new
+    for old, new in (
+        ("database/migration_guard.go", "libs/go/persistence/migration_guard.go"),
+        ("database/transactions.go", "libs/go/persistence/transactions.go"),
+        ("idempotency/command_keys.go", "libs/go/idempotency/command_keys.go"),
+        ("idempotency/idempotency_store.go", "libs/go/idempotency/idempotency_store.go"),
+        ("outbox/delivery_fencing.go", "libs/go/fencing/delivery_fencing.go"),
+        ("outbox/dispatcher.go", "libs/go/outbox/dispatcher.go"),
+        ("outbox/outbox_store.go", "libs/go/outbox/outbox_store.go"),
+        ("queue/dead_letter.go", "libs/go/pubsubx/dead_letter.go"),
+        ("queue/delivery.go", "libs/go/pubsubx/delivery.go"),
+        ("queue/transport.go", "libs/go/pubsubx/transport.go"),
+        ("storage/artifact_catalog.go", "libs/go/storage/artifact_catalog.go"),
+        ("storage/object_store.go", "libs/go/storage/object_store.go"),
+        ("telemetry/audit_events.go", "libs/go/servicekit/audit_events.go"),
+    )
+}
+# The reviewed activation bundle carries all seven Bazel packages; only six are
+# reconciliation additions because libs/go/servicekit/BUILD.bazel is already a
+# canonical authority path that this change populates.
+PLATFORM_RUNTIME_LIBRARY_ADR = (
+    "docs/adr/0027-control-plane-platform-runtime-becomes-shared-go-libraries.md"
+)
+PLATFORM_RUNTIME_LIBRARY_BUILD_FILES = activation_bundle_paths("PLATFORM_RUNTIME_LIBRARY_ADDITIONS")
+PATH_REPLACEMENTS = {  # pyright: ignore[reportConstantRedefinition]
+    **PATH_REPLACEMENTS,
+    **PLATFORM_RUNTIME_LIBRARY_REPLACEMENTS,
+}
+REQUIRED_ADDITIONS = (  # pyright: ignore[reportConstantRedefinition]
+    *REQUIRED_ADDITIONS,
+    PLATFORM_RUNTIME_LIBRARY_ADR,
+    *PLATFORM_RUNTIME_LIBRARY_BUILD_FILES,
+)
+CANONICAL_FILE_COUNT = (  # pyright: ignore[reportConstantRedefinition]
+    CANONICAL_FILE_COUNT + len(PLATFORM_RUNTIME_LIBRARY_BUILD_FILES) + 1
+)
+CANONICAL_PATH_SET_SHA256 = (  # pyright: ignore[reportConstantRedefinition]
+    "22542b8499e718c14232ae61b0ac71c8329f3ddc7e38a1e5618ba7b93c05f383"
+)
+
+_PLATFORM_RUNTIME_LIBRARY_REASON = (
+    "ADR-0027 moves the control-plane platform runtime into the eight blueprint "
+    "Go libraries so services, workers, and tools share one persistence, "
+    "eventing, and fencing runtime."
+)
+
+_adr0026_reconciliation_addition_reason = _reconciliation_addition_reason
+
+
+def _reconciliation_addition_reason(path: str) -> str:  # pyright: ignore[reportRedeclaration]
+    if path == PLATFORM_RUNTIME_LIBRARY_ADR:
+        return _PLATFORM_RUNTIME_LIBRARY_REASON
+    if path in PLATFORM_RUNTIME_LIBRARY_BUILD_FILES:
+        return (
+            "ADR-0027 gives each relocated control-plane runtime library its own "
+            "Bazel package so the eight blueprint libraries build independently."
+        )
+    return _adr0026_reconciliation_addition_reason(path)
+
+
+REPLACEMENT_REASONS = {  # pyright: ignore[reportConstantRedefinition]
+    **REPLACEMENT_REASONS,
+    **dict.fromkeys(PLATFORM_RUNTIME_LIBRARY_REPLACEMENTS, _PLATFORM_RUNTIME_LIBRARY_REASON),
+}
+
+
+# Long-running operations become a first-class namespace, mindclade.operation.v1,
+# instead of a message inside the job domain (ADR-0028). The proto and its four
+# generated bindings move package-for-package; the Python reconciliation adds the
+# mindclade/ prefix after this replacement, so the value stays prefix-free.
+OPERATION_NAMESPACE_ADR = "docs/adr/0028-operations-become-a-first-class-namespace.md"
+OPERATION_NAMESPACE_REPLACEMENTS = {
+    f"{old}": new
+    for old, new in (
+        (
+            "protocols/proto/mindclade/job/v1/operation.proto",
+            "protocols/proto/mindclade/operation/v1/operation.proto",
+        ),
+        (
+            "protocols/generated/go/job/v1/operation.pb.go",
+            "protocols/generated/go/operation/v1/operation.pb.go",
+        ),
+        (
+            "protocols/generated/python/job/v1/operation_pb2.py",
+            "protocols/generated/python/operation/v1/operation_pb2.py",
+        ),
+        (
+            "protocols/generated/rust/job/v1/operation.rs",
+            "protocols/generated/rust/operation/v1/operation.rs",
+        ),
+        (
+            "protocols/generated/typescript/job/v1/operation_pb.ts",
+            "protocols/generated/typescript/operation/v1/operation_pb.ts",
+        ),
+    )
+}
+# Each generated language keeps one package scaffold file that the job package
+# already had and the new operation package must gain.
+OPERATION_NAMESPACE_SCAFFOLD = (
+    "protocols/generated/go/operation/v1/BUILD.bazel",
+    "protocols/generated/python/mindclade/operation/v1/__init__.py",
+    "protocols/generated/rust/operation/v1/mod.rs",
+    "protocols/generated/typescript/operation/v1/index.ts",
+)
+PATH_REPLACEMENTS = {  # pyright: ignore[reportConstantRedefinition]
+    **PATH_REPLACEMENTS,
+    **OPERATION_NAMESPACE_REPLACEMENTS,
+}
+REQUIRED_ADDITIONS = (  # pyright: ignore[reportConstantRedefinition]
+    *(
+        "protocols/generated/python/mindclade/operation/v1/operation_pb2.pyi"
+        if path == "protocols/generated/python/mindclade/job/v1/operation_pb2.pyi"
+        else path
+        for path in REQUIRED_ADDITIONS
+    ),
+    OPERATION_NAMESPACE_ADR,
+    *OPERATION_NAMESPACE_SCAFFOLD,
+)
+CANONICAL_FILE_COUNT = (  # pyright: ignore[reportConstantRedefinition]
+    CANONICAL_FILE_COUNT + len(OPERATION_NAMESPACE_SCAFFOLD) + 1
+)
+CANONICAL_PATH_SET_SHA256 = (  # pyright: ignore[reportConstantRedefinition]
+    "7d04c2fa3de90a8474e1f480c5311f57df74b74b582eea3f80ac572b18bf6459"
+)
+
+_OPERATION_NAMESPACE_REASON = (
+    "ADR-0028 gives long-running operations their own mindclade.operation.v1 "
+    "namespace so every domain service references one canonical operation "
+    "resource instead of a message owned by the job domain."
+)
+
+_adr0027_reconciliation_addition_reason = _reconciliation_addition_reason
+
+
+def _reconciliation_addition_reason(path: str) -> str:
+    if path == OPERATION_NAMESPACE_ADR or path.startswith("protocols/generated/go/operation/v1/"):
+        return _OPERATION_NAMESPACE_REASON
+    return _adr0027_reconciliation_addition_reason(path)
+
+
+REPLACEMENT_REASONS = {  # pyright: ignore[reportConstantRedefinition]
+    **REPLACEMENT_REASONS,
+    **dict.fromkeys(OPERATION_NAMESPACE_REPLACEMENTS, _OPERATION_NAMESPACE_REASON),
+}
+
+
+# Splitting the namespace moved four of those files out from under the wave rule
+# that covered `job/v1` and under none at all, so they inferred wave 0 and were
+# assigned `//:wave0_governance_sources` -- a governance lane -- while every
+# sibling in the same generated package kept `//:all_contract_sources`. The
+# fifth, the Python projection, is unaffected: it infers wave 8 exactly as its
+# `job/v1` original does. Re-wave the four to the wave the files they were split
+# from carry. This adds no path, so the canonical count and path-set digest are
+# unchanged; only the wave label and the Bazel lane move.
+OPERATION_NAMESPACE_WAVE_ONE_PATHS: tuple[str, ...] = (
+    "protocols/proto/mindclade/operation/v1/operation.proto",
+    "protocols/generated/go/operation/v1/operation.pb.go",
+    "protocols/generated/rust/operation/v1/operation.rs",
+    "protocols/generated/typescript/operation/v1/operation_pb.ts",
+)
+LATE_ACTIVATION_WAVE_ONE_PATHS = (  # pyright: ignore[reportConstantRedefinition]
+    *LATE_ACTIVATION_WAVE_ONE_PATHS,
+    *OPERATION_NAMESPACE_WAVE_ONE_PATHS,
+)
+LATE_ACTIVATION_ALL_CONTRACT_PATHS = (  # pyright: ignore[reportConstantRedefinition]
+    *LATE_ACTIVATION_ALL_CONTRACT_PATHS,
+    *OPERATION_NAMESPACE_WAVE_ONE_PATHS,
+)
+
+
+# Two independent lines of work reached this ledger: the contract program added
+# a single outbox producer, a CRUD-chain gate, the Rust facade's component
+# declaration, the cross-field side-car projections, and the BUILD-file graph
+# reader; the blueprint realignment relocated the internal SDK roots, the
+# control-plane platform runtime, and the operation namespace. Each layer above
+# re-pinned the digest for the path set it could see, so none of those pins
+# describes the union. The count is unchanged -- every layer's own increment
+# still applies, and the relocations rename one-for-one -- so only the path-set
+# digest moves, and it is pinned here rather than by editing a layer that was
+# correct when it was written.
+CANONICAL_PATH_SET_SHA256 = (  # pyright: ignore[reportConstantRedefinition]
+    "d9e13620b5d3a9650ed340ae798a5796a7e0a37e71effb0f920495c6d4ff3cd8"
+)
 
 
 if __name__ == "__main__":

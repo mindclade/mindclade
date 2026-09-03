@@ -6,7 +6,7 @@ py_library(
     imports = ["python"],
     visibility = ["//visibility:public"],
     deps = [
-        "//internal/sdk/python:mindclade_internal_sdk",
+        "//sdks/python:mindclade_internal_sdk",
     ],
 )
 
@@ -17,7 +17,7 @@ py_binary(
     main = "python/main.py",
     deps = [
         ":training_worker",
-        "//internal/sdk/python:mindclade_internal_sdk",
+        "//sdks/python:mindclade_internal_sdk",
     ],
 )
 
@@ -32,7 +32,7 @@ py_test(
     main = "tests/test_control_plane.py",
     deps = [
         ":training_worker",
-        "//internal/sdk/python:mindclade_internal_sdk",
+        "//sdks/python:mindclade_internal_sdk",
         "@mindclade_pypi//protobuf",
     ],
 )

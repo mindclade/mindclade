@@ -12,11 +12,11 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"google.golang.org/protobuf/proto"
 
+	platformdb "github.com/mindclade/mindclade/libs/go/persistence"
+	"github.com/mindclade/mindclade/libs/go/pubsubx"
 	artifactv1 "github.com/mindclade/mindclade/protocols/generated/go/artifact/v1"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	modelv1 "github.com/mindclade/mindclade/protocols/generated/go/model/v1"
-	platformdb "github.com/mindclade/mindclade/services/control_plane/internal/platform/database"
-	"github.com/mindclade/mindclade/services/control_plane/internal/platform/queue"
 )
 
 func integrationDB(t *testing.T) *sql.DB {
@@ -106,11 +106,11 @@ func TestPostgresModelRegistrationIsAtomicIdempotentAndEventBacked(t *testing.T)
 	if err = tx.QueryRowContext(ctx, `SELECT envelope_bytes FROM outbox_messages WHERE tenant_id=$1`, identity.TenantID).Scan(&encoded); err != nil {
 		t.Fatal(err)
 	}
-	envelope, err := queue.UnmarshalEnvelope(encoded)
+	envelope, err := pubsubx.UnmarshalEnvelope(encoded)
 	if err != nil {
 		t.Fatal(err)
 	}
-	payload, err := queue.UnmarshalRegisteredPayload(envelope)
+	payload, err := pubsubx.UnmarshalRegisteredPayload(envelope)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -235,11 +235,11 @@ func TestPostgresModelRegistrationIsAtomicIdempotentAndEventBacked(t *testing.T)
 		if err = rows.Scan(&encoded); err != nil {
 			t.Fatal(err)
 		}
-		envelope, decodeErr := queue.UnmarshalEnvelope(encoded)
+		envelope, decodeErr := pubsubx.UnmarshalEnvelope(encoded)
 		if decodeErr != nil {
 			t.Fatal(decodeErr)
 		}
-		if _, decodeErr = queue.UnmarshalRegisteredPayload(envelope); decodeErr != nil {
+		if _, decodeErr = pubsubx.UnmarshalRegisteredPayload(envelope); decodeErr != nil {
 			t.Fatal(decodeErr)
 		}
 		seen[envelope.GetEventType()]++

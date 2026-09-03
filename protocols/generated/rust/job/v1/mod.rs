@@ -7,5 +7,4 @@ include!("job.rs");
 include!("job_commands.rs");
 include!("job_requested.rs");
 include!("lease_fencing.rs");
-include!("operation.rs");
 include!("run.rs");

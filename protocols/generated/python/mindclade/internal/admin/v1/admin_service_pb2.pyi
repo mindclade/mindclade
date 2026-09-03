@@ -8,7 +8,7 @@ from mindclade.admin.v1 import project_pb2 as _project_pb2
 from mindclade.admin.v1 import tenant_pb2 as _tenant_pb2
 from mindclade.common.v1 import command_context_pb2 as _command_context_pb2
 from mindclade.common.v1 import pagination_pb2 as _pagination_pb2
-from mindclade.job.v1 import operation_pb2 as _operation_pb2
+from mindclade.operation.v1 import operation_pb2 as _operation_pb2
 from google.protobuf.internal import containers as _containers
 from google.protobuf import descriptor as _descriptor
 from google.protobuf import message as _message

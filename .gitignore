@@ -53,3 +53,9 @@ docs/architecture/blueprint/generated/*.tmp
 # Claude Code agent worktrees and local session state. These are live git
 # worktrees, so committing them would add unresolvable gitlinks to the tree.
 .claude/
+# Signed-receipt logs written by local agent tool hooks. They record which tool
+# calls a session made, not repository content, and they are rewritten on every
+# call -- so an ignored path here is what keeps the governance worktree scan
+# reporting real unknown paths instead of this session's own exhaust.
+/receipts/
+/review-receipts/

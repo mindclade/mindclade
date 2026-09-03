@@ -8,7 +8,7 @@ from mindclade.inference.v1 import inference_request_pb2 as _inference_request_p
 from mindclade.inference.v1 import inference_result_pb2 as _inference_result_pb2
 from mindclade.inference.v1 import inference_stream_pb2 as _inference_stream_pb2
 from mindclade.job.v1 import lease_fencing_pb2 as _lease_fencing_pb2
-from mindclade.job.v1 import operation_pb2 as _operation_pb2
+from mindclade.operation.v1 import operation_pb2 as _operation_pb2
 from google.protobuf import descriptor as _descriptor
 from google.protobuf import message as _message
 from collections.abc import Mapping as _Mapping

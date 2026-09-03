@@ -20,7 +20,7 @@ py_library(
         "submit_operation.py",
     ],
     imports = ["../.."],
-    deps = ["//internal/sdk/python:mindclade_internal_sdk"],
+    deps = ["//sdks/python:mindclade_internal_sdk"],
 )
 
 py_test(
@@ -30,7 +30,7 @@ py_test(
     main = "test_sdk_examples.py",
     deps = [
         ":python_examples",
-        "//internal/sdk/python:mindclade_internal_sdk",
+        "//sdks/python:mindclade_internal_sdk",
     ],
 )
 
@@ -39,7 +39,7 @@ ts_config(
     src = "tsconfig.json",
     deps = [
         "package.json",
-        "//internal/sdk/typescript:mindclade_internal_sdk",
+        "//sdks/typescript:mindclade_internal_sdk",
     ],
 )
 
@@ -58,7 +58,7 @@ ts_project(
     deps = [
         ":node_modules/@mindclade/internal-sdk",
         ":node_modules/@types/node",
-        "//internal/sdk/typescript:mindclade_internal_sdk",
+        "//sdks/typescript:mindclade_internal_sdk",
     ],
 )
 
@@ -67,7 +67,7 @@ js_test(
     data = [
         ":node_modules/@mindclade/internal-sdk",
         ":typescript_examples",
-        "//internal/sdk/typescript:mindclade_internal_sdk",
+        "//sdks/typescript:mindclade_internal_sdk",
     ],
     entry_point = "follow_operation.test.ts",
 )
@@ -77,7 +77,7 @@ js_test(
     data = [
         ":node_modules/@mindclade/internal-sdk",
         ":typescript_examples",
-        "//internal/sdk/typescript:mindclade_internal_sdk",
+        "//sdks/typescript:mindclade_internal_sdk",
     ],
     entry_point = "sdk_examples.test.ts",
 )

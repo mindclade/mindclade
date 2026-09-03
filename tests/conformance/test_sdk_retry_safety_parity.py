@@ -1,7 +1,7 @@
 #!/usr/bin/env python3.12
 """Bind the four SDK retry-safety tables to the descriptor-derived RPC estate.
 
-`internal/sdk/go/mindclade/method_policy.go` has long carried the comment "A
+`sdks/go/mindclade/method_policy.go` has long carried the comment "A
 descriptor-conformance test keeps these identities tied to the generated service
 estate." No such test existed. The tables were referenced nowhere outside their own
 modules, and they drifted exactly as an unchecked table does: at the revision this
@@ -23,7 +23,7 @@ import unittest
 from pathlib import Path
 
 REPOSITORY = Path(__file__).resolve().parents[2]
-COVERAGE = REPOSITORY / "internal/sdk/rpc-coverage.generated.json"
+COVERAGE = REPOSITORY / "sdks/rpc-coverage.generated.json"
 PROJECTION_SCHEMA = "mindclade.internal-sdk-rpc-coverage-projection/v2"
 
 ROUTE = re.compile(r'"(/mindclade\.[A-Za-z0-9_.]+/[A-Za-z0-9_]+)"')
@@ -46,7 +46,7 @@ def _routes_between(text: str, start: str, end: str) -> set[str]:
 
 
 def go_policy() -> dict[str, str]:
-    text = (REPOSITORY / "internal/sdk/go/mindclade/method_policy.go").read_text(encoding="utf-8")
+    text = (REPOSITORY / "sdks/go/mindclade/method_policy.go").read_text(encoding="utf-8")
     policy: dict[str, str] = {}
     for marker, classification in (
         ("var safeMethods", SAFE),
@@ -59,7 +59,7 @@ def go_policy() -> dict[str, str]:
 
 
 def python_policy() -> dict[str, str]:
-    text = (REPOSITORY / "internal/sdk/python/mindclade_internal_sdk/method_policy.py").read_text(
+    text = (REPOSITORY / "sdks/python/mindclade_internal_sdk/method_policy.py").read_text(
         encoding="utf-8"
     )
     policy: dict[str, str] = {}
@@ -74,7 +74,7 @@ def python_policy() -> dict[str, str]:
 
 
 def rust_policy() -> dict[str, str]:
-    text = (REPOSITORY / "internal/sdk/rust/src/retry.rs").read_text(encoding="utf-8")
+    text = (REPOSITORY / "sdks/rust/src/retry.rs").read_text(encoding="utf-8")
     policy: dict[str, str] = {}
     for marker, classification in (
         ("fn safe_method", SAFE),
@@ -87,7 +87,7 @@ def rust_policy() -> dict[str, str]:
 
 
 def typescript_policy() -> dict[str, str]:
-    text = (REPOSITORY / "internal/sdk/typescript/src/safety.ts").read_text(encoding="utf-8")
+    text = (REPOSITORY / "sdks/typescript/src/safety.ts").read_text(encoding="utf-8")
     return {
         match.group(1): match.group(2)
         for match in re.finditer(r'"(/mindclade\.[^"]+)",\s*"(safe|idempotent|never|unsafe)"', text)

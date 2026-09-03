@@ -6,7 +6,7 @@ import "google/protobuf/field_mask.proto";
 import "google/protobuf/timestamp.proto";
 import "proto/mindclade/common/v1/command_context.proto";
 import "proto/mindclade/common/v1/pagination.proto";
-import "proto/mindclade/job/v1/operation.proto";
+import "proto/mindclade/operation/v1/operation.proto";
 import "proto/mindclade/job/v1/lease_fencing.proto";
 import "proto/mindclade/workflow/v1/approval.proto";
 import "proto/mindclade/workflow/v1/workflow_definition.proto";
@@ -24,7 +24,7 @@ message CreateWorkflowDefinitionRequest {
 
 // CreateWorkflowDefinitionResponse returns the durable creation operation.
 message CreateWorkflowDefinitionResponse {
-  mindclade.job.v1.Operation operation = 1;
+  mindclade.operation.v1.Operation operation = 1;
 }
 
 // UpdateWorkflowDefinitionRequest applies selected mutable metadata under an ETag.
@@ -37,7 +37,7 @@ message UpdateWorkflowDefinitionRequest {
 
 // UpdateWorkflowDefinitionResponse returns the durable update operation.
 message UpdateWorkflowDefinitionResponse {
-  mindclade.job.v1.Operation operation = 1;
+  mindclade.operation.v1.Operation operation = 1;
 }
 
 // GetWorkflowDefinitionRequest identifies one definition revision.
@@ -76,7 +76,7 @@ message StartWorkflowRunRequest {
 
 // StartWorkflowRunResponse returns the durable operation tracking the run.
 message StartWorkflowRunResponse {
-  mindclade.job.v1.Operation operation = 1;
+  mindclade.operation.v1.Operation operation = 1;
 }
 
 // GetWorkflowRunRequest identifies one durable workflow run.
@@ -115,7 +115,7 @@ message CancelWorkflowRunRequest {
 
 // CancelWorkflowRunResponse returns the durable cancellation operation.
 message CancelWorkflowRunResponse {
-  mindclade.job.v1.Operation operation = 1;
+  mindclade.operation.v1.Operation operation = 1;
 }
 
 // CommitWorkflowTransitionRequest appends one fenced deterministic transition.

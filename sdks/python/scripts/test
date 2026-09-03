@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# Run this package's tests.
+#
+# The default run mirrors the Python half of `just _governance-source`,
+# narrowed to the SDK. PYTHONPATH names the package and the generated bindings
+# it wraps, in that order, because the tests import both and neither is
+# installed. Arguments are forwarded to unittest, so a contributor can run
+# `scripts/test -k retry -v` without leaving the wrapper.
+
+set -euo pipefail
+
+# shellcheck source=sdks/python/scripts/common.sh
+source "$(dirname -- "${BASH_SOURCE[0]}")/common.sh"
+cd -- "$(repository_root)"
+
+PYTHONPATH="${SDK_PYTHONPATH}" uv_run python -m unittest discover -s "${SDK_TEST_DIR}" -v "$@"
+
+if bazel_requested; then
+  require_tool bazel "install Bazelisk, or unset MINDCLADE_BAZEL to use the native toolchain."
+  announce "bazel test ${SDK_BAZEL_TEST}"
+  bazel test "${SDK_BAZEL_TEST}"
+fi
