@@ -361,6 +361,7 @@ test_suite(
         "//internal/sdk/python:tests",
         "//internal/sdk/rust:mindclade_internal_sdk_test",
         "//internal/sdk/typescript:tests",
+        "//libs/go/numconv:conversion_test",
         "//libs/python/artifacts:schema_binding_test",
         "//libs/rust/artifact:artifact_test",
         "//libs/typescript/config:tests",
