@@ -3439,7 +3439,7 @@ def _reconciliation_addition_reason(path: str) -> str:  # pyright: ignore[report
 # canonical count and digest move here.
 SDK_RUST_PACKAGING_SCRIPT_PATHS: tuple[str, ...] = (
     "sdks/rust/scripts/bootstrap",
-    "sdks/rust/scripts/build",
+    "sdks/rust/scripts/build.sh",
     "sdks/rust/scripts/common.sh",
     "sdks/rust/scripts/format",
     "sdks/rust/scripts/lint",
@@ -3660,7 +3660,7 @@ CANONICAL_FILE_COUNT = (  # pyright: ignore[reportConstantRedefinition]
     CANONICAL_FILE_COUNT + len(OPERATION_NAMESPACE_SCAFFOLD) + 1
 )
 CANONICAL_PATH_SET_SHA256 = (  # pyright: ignore[reportConstantRedefinition]
-    "afe3d6da732de6fbad49dcb71e3d48daa183ed26e025a6a6d46046fe1e1192aa"
+    "7d04c2fa3de90a8474e1f480c5311f57df74b74b582eea3f80ac572b18bf6459"
 )
 
 _OPERATION_NAMESPACE_REASON = (

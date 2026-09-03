@@ -48,7 +48,7 @@ in review.
 - `component.yaml` registering component `internal-sdk-typescript` (owner
   `developer-experience`). `apps-console` already declared a dependency on this
   component name; the metadata now exists for it to resolve against.
-- `scripts/bootstrap`, `scripts/build`, `scripts/lint`, `scripts/format`, and
+- `scripts/bootstrap`, `scripts/build.sh`, `scripts/lint`, `scripts/format`, and
   `scripts/test` — thin wrappers over the `package.json` scripts, so the package
   presents the same five entry points as every other maintained package. `just
   format` and `just lint` remain the repository-wide authority.

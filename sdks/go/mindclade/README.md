@@ -492,7 +492,7 @@ classification. Classify the destination accordingly; the SDK cannot.
 | Command | Runs |
 | --- | --- |
 | `scripts/bootstrap` | `go mod download`, `go mod verify`, then `just bootstrap` |
-| `scripts/build` | `go build` and `go vet` over `./sdks/go/...` |
+| `scripts/build.sh` | `go build` and `go vet` over `./sdks/go/...` |
 | `scripts/format` | `golangci-lint fmt` |
 | `scripts/lint` | `golangci-lint fmt --diff` and `golangci-lint run` |
 | `scripts/test` | `go test -count=1 ./sdks/go/...`, arguments forwarded |

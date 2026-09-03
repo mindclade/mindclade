@@ -59,7 +59,7 @@ configuration and escape hatches, observability, packaging, and documentation.
 - `component.yaml` registering component `internal-sdk-python` (owner
   `developer-experience`). `workers-training-worker` already declared a
   dependency on this component name; the metadata now exists to resolve against.
-- `scripts/bootstrap`, `scripts/build`, `scripts/lint`, `scripts/format`, and
+- `scripts/bootstrap`, `scripts/build.sh`, `scripts/lint`, `scripts/format`, and
   `scripts/test` — thin wrappers over the `just` recipes, so the package
   presents the same five entry points as every other maintained package. `just
   format` and `just lint` remain the repository-wide authority.

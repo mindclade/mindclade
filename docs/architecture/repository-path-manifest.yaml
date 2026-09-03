@@ -5223,7 +5223,7 @@
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "sdks/go/mindclade/scripts/build",
+          "path": "sdks/go/mindclade/scripts/build.sh",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
@@ -5419,7 +5419,7 @@
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "sdks/python/scripts/build",
+          "path": "sdks/python/scripts/build.sh",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
@@ -5511,7 +5511,7 @@
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "sdks/rust/scripts/build",
+          "path": "sdks/rust/scripts/build.sh",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
@@ -5663,7 +5663,7 @@
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "sdks/typescript/scripts/build",
+          "path": "sdks/typescript/scripts/build.sh",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
@@ -7410,7 +7410,7 @@
         }
       ],
       "canonical_file_count": 3652,
-      "canonical_path_set_sha256": "afe3d6da732de6fbad49dcb71e3d48daa183ed26e025a6a6d46046fe1e1192aa"
+      "canonical_path_set_sha256": "7d04c2fa3de90a8474e1f480c5311f57df74b74b582eea3f80ac572b18bf6459"
     },
     "owners": {
       "agent-platform": {
@@ -60112,7 +60112,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "sdks/go/mindclade/scripts/build",
+      "path": "sdks/go/mindclade/scripts/build.sh",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-go",
@@ -61166,7 +61166,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "sdks/python/scripts/build",
+      "path": "sdks/python/scripts/build.sh",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-python",
@@ -61642,7 +61642,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "sdks/rust/scripts/build",
+      "path": "sdks/rust/scripts/build.sh",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-rust",
@@ -62441,7 +62441,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "sdks/typescript/scripts/build",
+      "path": "sdks/typescript/scripts/build.sh",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-typescript",

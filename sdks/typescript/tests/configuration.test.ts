@@ -584,7 +584,7 @@ describe("packaging", () => {
 
 	test("every packaging script wraps the native commands the same way", async () => {
 		const root = packageRoot();
-		for (const name of ["bootstrap", "build", "format", "lint", "test"]) {
+		for (const name of ["bootstrap", "build.sh", "format", "lint", "test"]) {
 			const path = join(root, "scripts", name);
 			const stats = await stat(path);
 			assert.equal(stats.isFile(), true, `${name} is missing`);

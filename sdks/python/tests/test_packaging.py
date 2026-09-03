@@ -44,7 +44,7 @@ SCRIPTS_DIR = PACKAGE_DIR / "scripts"
 REPOSITORY_ROOT = PACKAGE_DIR.parent.parent.parent
 
 # The five entry points every maintained package in this repository presents.
-PACKAGING_SCRIPTS = ("bootstrap", "build", "format", "lint", "test")
+PACKAGING_SCRIPTS = ("bootstrap", "build.sh", "format", "lint", "test")
 
 # The Stainless section order the four internal SDK READMEs share, followed by
 # the repository's appendix-A08 package contract.
@@ -339,7 +339,7 @@ class PackagingScriptsTest(unittest.TestCase):
             "format": "ruff format",
             "lint": "pyright",
             "test": "unittest discover",
-            "build": "compileall",
+            "build.sh": "compileall",
         }
         for name, fragment in expected.items():
             with self.subTest(script=name):

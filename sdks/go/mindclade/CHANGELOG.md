@@ -65,7 +65,7 @@ Packaging (WS2.8). No runtime behaviour changes.
   `developer-experience`, data classification `internal`. `tools-mindcladectl`
   already declared a `compile-api` dependency on this component name; the
   metadata now exists for that edge to resolve against.
-- `scripts/bootstrap`, `scripts/build`, `scripts/format`, `scripts/lint`, and
+- `scripts/bootstrap`, `scripts/build.sh`, `scripts/format`, `scripts/lint`, and
   `scripts/test`, with `scripts/common.sh` as their shared preamble. Each is a
   thin wrapper that narrows an existing `just` recipe or native command to this
   one package; none of them reimplements build, lint, or test policy. The native
