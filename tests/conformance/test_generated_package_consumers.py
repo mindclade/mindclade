@@ -465,8 +465,8 @@ class GeneratedPackageConsumerTest(unittest.TestCase):
     def test_pubsub_clients_are_confined_to_delivery_runtime_and_wiring(self) -> None:
         allowed = {
             "services/control_plane/cmd/control-plane/main.go",
-            "services/control_plane/internal/platform/inbox/inbox_store.go",
-            "services/control_plane/internal/platform/outbox/dispatcher.go",
+            "libs/go/inbox/inbox_store.go",
+            "libs/go/outbox/dispatcher.go",
         }
         violations: list[str] = []
         control_plane = self.repository / "services/control_plane"
@@ -534,7 +534,7 @@ class GeneratedPackageConsumerTest(unittest.TestCase):
 # rather than a shared spelling.
 EVENT_REGISTRY_PROJECTIONS = {
     "go": (
-        "services/control_plane/internal/platform/queue/event_registry_generated.go",
+        "libs/go/pubsubx/event_registry_generated.go",
         re.compile(r'FullName: "(mindclade\.events\.[A-Za-z0-9_.]+)"'),
     ),
     "python": (

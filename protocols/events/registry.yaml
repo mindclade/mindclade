@@ -19,8 +19,8 @@ events:
         mode: transactional-outbox
     consumers:
       - id: control-plane/event-audit-projection
-        source: services/control_plane/internal/platform/eventprojection/projection.go
-        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        source: libs/go/eventruntime/projection.go
+        target: //libs/go/eventruntime:eventruntime
         mode: semantic-inbox
     activation_gaps: []
   - full_name: mindclade.events.admin.v1.AuditExportRequested
@@ -32,8 +32,8 @@ events:
     compatibility_policy: exact-version
     fixture:
       status: verified
-      source: services/control_plane/internal/platform/eventprojection/projection_test.go
-      target: //services/control_plane/internal/platform/eventprojection:event_projection_test
+      source: libs/go/eventruntime/projection_test.go
+      target: //libs/go/eventruntime:eventruntime_test
       mode: populated-protobuf-roundtrip
     producers:
       - id: control-plane/admin
@@ -42,8 +42,8 @@ events:
         mode: transactional-outbox
     consumers:
       - id: control-plane/event-audit-projection
-        source: services/control_plane/internal/platform/eventprojection/projection.go
-        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        source: libs/go/eventruntime/projection.go
+        target: //libs/go/eventruntime:eventruntime
         mode: semantic-inbox
     activation_gaps: []
   - full_name: mindclade.events.admin.v1.ProjectCreated
@@ -65,8 +65,8 @@ events:
         mode: transactional-outbox
     consumers:
       - id: control-plane/event-audit-projection
-        source: services/control_plane/internal/platform/eventprojection/projection.go
-        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        source: libs/go/eventruntime/projection.go
+        target: //libs/go/eventruntime:eventruntime
         mode: semantic-inbox
     activation_gaps: []
   - full_name: mindclade.events.admin.v1.ProjectUpdated
@@ -78,8 +78,8 @@ events:
     compatibility_policy: exact-version
     fixture:
       status: verified
-      source: services/control_plane/internal/platform/eventprojection/projection_test.go
-      target: //services/control_plane/internal/platform/eventprojection:event_projection_test
+      source: libs/go/eventruntime/projection_test.go
+      target: //libs/go/eventruntime:eventruntime_test
       mode: populated-protobuf-roundtrip
     producers:
       - id: control-plane/admin
@@ -88,8 +88,8 @@ events:
         mode: transactional-outbox
     consumers:
       - id: control-plane/event-audit-projection
-        source: services/control_plane/internal/platform/eventprojection/projection.go
-        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        source: libs/go/eventruntime/projection.go
+        target: //libs/go/eventruntime:eventruntime
         mode: semantic-inbox
     activation_gaps: []
   - full_name: mindclade.events.admin.v1.TenantUpdated
@@ -101,8 +101,8 @@ events:
     compatibility_policy: exact-version
     fixture:
       status: verified
-      source: services/control_plane/internal/platform/eventprojection/projection_test.go
-      target: //services/control_plane/internal/platform/eventprojection:event_projection_test
+      source: libs/go/eventruntime/projection_test.go
+      target: //libs/go/eventruntime:eventruntime_test
       mode: populated-protobuf-roundtrip
     producers:
       - id: control-plane/admin
@@ -111,8 +111,8 @@ events:
         mode: transactional-outbox
     consumers:
       - id: control-plane/event-audit-projection
-        source: services/control_plane/internal/platform/eventprojection/projection.go
-        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        source: libs/go/eventruntime/projection.go
+        target: //libs/go/eventruntime:eventruntime
         mode: semantic-inbox
     activation_gaps: []
   - full_name: mindclade.events.agent.v1.AgentCancellationRequested
@@ -134,8 +134,8 @@ events:
         mode: transactional-outbox
     consumers:
       - id: control-plane/event-audit-projection
-        source: services/control_plane/internal/platform/eventprojection/projection.go
-        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        source: libs/go/eventruntime/projection.go
+        target: //libs/go/eventruntime:eventruntime
         mode: semantic-inbox
     activation_gaps: []
   - full_name: mindclade.events.agent.v1.AgentDefinitionCreated
@@ -157,8 +157,8 @@ events:
         mode: transactional-outbox
     consumers:
       - id: control-plane/event-audit-projection
-        source: services/control_plane/internal/platform/eventprojection/projection.go
-        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        source: libs/go/eventruntime/projection.go
+        target: //libs/go/eventruntime:eventruntime
         mode: semantic-inbox
     activation_gaps: []
   - full_name: mindclade.events.agent.v1.AgentDefinitionUpdated
@@ -180,8 +180,8 @@ events:
         mode: transactional-outbox
     consumers:
       - id: control-plane/event-audit-projection
-        source: services/control_plane/internal/platform/eventprojection/projection.go
-        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        source: libs/go/eventruntime/projection.go
+        target: //libs/go/eventruntime:eventruntime
         mode: semantic-inbox
     activation_gaps: []
   - full_name: mindclade.events.agent.v1.AgentRunCompleted
@@ -203,8 +203,8 @@ events:
         mode: transactional-outbox
     consumers:
       - id: control-plane/event-audit-projection
-        source: services/control_plane/internal/platform/eventprojection/projection.go
-        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        source: libs/go/eventruntime/projection.go
+        target: //libs/go/eventruntime:eventruntime
         mode: semantic-inbox
     activation_gaps: []
   - full_name: mindclade.events.agent.v1.AgentRunStarted
@@ -226,8 +226,8 @@ events:
         mode: transactional-outbox
     consumers:
       - id: control-plane/event-audit-projection
-        source: services/control_plane/internal/platform/eventprojection/projection.go
-        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        source: libs/go/eventruntime/projection.go
+        target: //libs/go/eventruntime:eventruntime
         mode: semantic-inbox
     activation_gaps: []
   - full_name: mindclade.events.agent.v1.AgentStepCommitted
@@ -249,8 +249,8 @@ events:
         mode: transactional-outbox
     consumers:
       - id: control-plane/event-audit-projection
-        source: services/control_plane/internal/platform/eventprojection/projection.go
-        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        source: libs/go/eventruntime/projection.go
+        target: //libs/go/eventruntime:eventruntime
         mode: semantic-inbox
     activation_gaps: []
   - full_name: mindclade.events.agent.v1.AgentStepDispatched
@@ -272,8 +272,8 @@ events:
         mode: transactional-outbox
     consumers:
       - id: control-plane/event-audit-projection
-        source: services/control_plane/internal/platform/eventprojection/projection.go
-        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        source: libs/go/eventruntime/projection.go
+        target: //libs/go/eventruntime:eventruntime
         mode: semantic-inbox
     activation_gaps: []
   - full_name: mindclade.events.agent.v1.ToolReceiptCommitted
@@ -295,8 +295,8 @@ events:
         mode: transactional-outbox
     consumers:
       - id: control-plane/event-audit-projection
-        source: services/control_plane/internal/platform/eventprojection/projection.go
-        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        source: libs/go/eventruntime/projection.go
+        target: //libs/go/eventruntime:eventruntime
         mode: semantic-inbox
     activation_gaps: []
   - full_name: mindclade.events.artifact.v1.ArtifactCommitted
@@ -318,8 +318,8 @@ events:
         mode: transactional-outbox
     consumers:
       - id: control-plane/event-audit-projection
-        source: services/control_plane/internal/platform/eventprojection/projection.go
-        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        source: libs/go/eventruntime/projection.go
+        target: //libs/go/eventruntime:eventruntime
         mode: semantic-inbox
     activation_gaps: []
   - full_name: mindclade.events.artifact.v1.ArtifactQuarantined
@@ -341,8 +341,8 @@ events:
         mode: transactional-outbox
     consumers:
       - id: control-plane/event-audit-projection
-        source: services/control_plane/internal/platform/eventprojection/projection.go
-        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        source: libs/go/eventruntime/projection.go
+        target: //libs/go/eventruntime:eventruntime
         mode: semantic-inbox
     activation_gaps: []
   - full_name: mindclade.events.artifact.v1.ArtifactStagingFinalized
@@ -354,8 +354,8 @@ events:
     compatibility_policy: exact-version
     fixture:
       status: verified
-      source: services/control_plane/internal/platform/eventprojection/projection_test.go
-      target: //services/control_plane/internal/platform/eventprojection:event_projection_test
+      source: libs/go/eventruntime/projection_test.go
+      target: //libs/go/eventruntime:eventruntime_test
       mode: populated-protobuf-roundtrip
     producers:
       - id: control-plane/artifacts
@@ -364,8 +364,8 @@ events:
         mode: transactional-outbox
     consumers:
       - id: control-plane/event-audit-projection
-        source: services/control_plane/internal/platform/eventprojection/projection.go
-        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        source: libs/go/eventruntime/projection.go
+        target: //libs/go/eventruntime:eventruntime
         mode: semantic-inbox
     activation_gaps: []
   - full_name: mindclade.events.audit.v1.AuditEvent
@@ -377,8 +377,8 @@ events:
     compatibility_policy: exact-version
     fixture:
       status: verified
-      source: services/control_plane/internal/platform/eventprojection/projection_test.go
-      target: //services/control_plane/internal/platform/eventprojection:event_projection_test
+      source: libs/go/eventruntime/projection_test.go
+      target: //libs/go/eventruntime:eventruntime_test
       mode: populated-protobuf-roundtrip
     producers:
       - id: platform/audit
@@ -387,8 +387,8 @@ events:
         mode: durable-audit
     consumers:
       - id: control-plane/event-audit-projection
-        source: services/control_plane/internal/platform/eventprojection/projection.go
-        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        source: libs/go/eventruntime/projection.go
+        target: //libs/go/eventruntime:eventruntime
         mode: semantic-inbox
     activation_gaps: []
   - full_name: mindclade.events.audit.v1.SecurityEvent
@@ -410,8 +410,8 @@ events:
         mode: transactional-outbox
     consumers:
       - id: control-plane/event-audit-projection
-        source: services/control_plane/internal/platform/eventprojection/projection.go
-        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        source: libs/go/eventruntime/projection.go
+        target: //libs/go/eventruntime:eventruntime
         mode: semantic-inbox
     activation_gaps: []
   - full_name: mindclade.events.dataset.v1.DatasetCreated
@@ -433,8 +433,8 @@ events:
         mode: transactional-outbox
     consumers:
       - id: control-plane/event-audit-projection
-        source: services/control_plane/internal/platform/eventprojection/projection.go
-        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        source: libs/go/eventruntime/projection.go
+        target: //libs/go/eventruntime:eventruntime
         mode: semantic-inbox
     activation_gaps: []
   - full_name: mindclade.events.dataset.v1.DatasetReleasePublished
@@ -456,8 +456,8 @@ events:
         mode: transactional-outbox
     consumers:
       - id: control-plane/event-audit-projection
-        source: services/control_plane/internal/platform/eventprojection/projection.go
-        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        source: libs/go/eventruntime/projection.go
+        target: //libs/go/eventruntime:eventruntime
         mode: semantic-inbox
     activation_gaps: []
   - full_name: mindclade.events.dataset.v1.DatasetReleaseRevoked
@@ -479,8 +479,8 @@ events:
         mode: transactional-outbox
     consumers:
       - id: control-plane/event-audit-projection
-        source: services/control_plane/internal/platform/eventprojection/projection.go
-        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        source: libs/go/eventruntime/projection.go
+        target: //libs/go/eventruntime:eventruntime
         mode: semantic-inbox
     activation_gaps: []
   - full_name: mindclade.events.dataset.v1.DatasetUpdated
@@ -502,8 +502,8 @@ events:
         mode: transactional-outbox
     consumers:
       - id: control-plane/event-audit-projection
-        source: services/control_plane/internal/platform/eventprojection/projection.go
-        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        source: libs/go/eventruntime/projection.go
+        target: //libs/go/eventruntime:eventruntime
         mode: semantic-inbox
     activation_gaps: []
   - full_name: mindclade.events.evaluation.v1.EvaluationCancellationRequested
@@ -525,8 +525,8 @@ events:
         mode: transactional-outbox
     consumers:
       - id: control-plane/event-audit-projection
-        source: services/control_plane/internal/platform/eventprojection/projection.go
-        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        source: libs/go/eventruntime/projection.go
+        target: //libs/go/eventruntime:eventruntime
         mode: semantic-inbox
     activation_gaps: []
   - full_name: mindclade.events.evaluation.v1.EvaluationResultCommitted
@@ -548,8 +548,8 @@ events:
         mode: transactional-outbox
     consumers:
       - id: control-plane/event-audit-projection
-        source: services/control_plane/internal/platform/eventprojection/projection.go
-        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        source: libs/go/eventruntime/projection.go
+        target: //libs/go/eventruntime:eventruntime
         mode: semantic-inbox
     activation_gaps: []
   - full_name: mindclade.events.evaluation.v1.EvaluationRunCreated
@@ -571,8 +571,8 @@ events:
         mode: transactional-outbox
     consumers:
       - id: control-plane/event-audit-projection
-        source: services/control_plane/internal/platform/eventprojection/projection.go
-        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        source: libs/go/eventruntime/projection.go
+        target: //libs/go/eventruntime:eventruntime
         mode: semantic-inbox
     activation_gaps: []
   - full_name: mindclade.events.evaluation.v1.PromotionDecisionRecorded
@@ -594,8 +594,8 @@ events:
         mode: transactional-outbox
     consumers:
       - id: control-plane/event-audit-projection
-        source: services/control_plane/internal/platform/eventprojection/projection.go
-        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        source: libs/go/eventruntime/projection.go
+        target: //libs/go/eventruntime:eventruntime
         mode: semantic-inbox
     activation_gaps: []
   - full_name: mindclade.events.experiment.v1.ExperimentCreated
@@ -617,8 +617,8 @@ events:
         mode: transactional-outbox
     consumers:
       - id: control-plane/event-audit-projection
-        source: services/control_plane/internal/platform/eventprojection/projection.go
-        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        source: libs/go/eventruntime/projection.go
+        target: //libs/go/eventruntime:eventruntime
         mode: semantic-inbox
     activation_gaps: []
   - full_name: mindclade.events.experiment.v1.ExperimentStateChanged
@@ -640,8 +640,8 @@ events:
         mode: transactional-outbox
     consumers:
       - id: control-plane/event-audit-projection
-        source: services/control_plane/internal/platform/eventprojection/projection.go
-        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        source: libs/go/eventruntime/projection.go
+        target: //libs/go/eventruntime:eventruntime
         mode: semantic-inbox
     activation_gaps: []
   - full_name: mindclade.events.experiment.v1.ExperimentUpdated
@@ -663,8 +663,8 @@ events:
         mode: transactional-outbox
     consumers:
       - id: control-plane/event-audit-projection
-        source: services/control_plane/internal/platform/eventprojection/projection.go
-        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        source: libs/go/eventruntime/projection.go
+        target: //libs/go/eventruntime:eventruntime
         mode: semantic-inbox
     activation_gaps: []
   - full_name: mindclade.events.experiment.v1.StudyCreated
@@ -686,8 +686,8 @@ events:
         mode: transactional-outbox
     consumers:
       - id: control-plane/event-audit-projection
-        source: services/control_plane/internal/platform/eventprojection/projection.go
-        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        source: libs/go/eventruntime/projection.go
+        target: //libs/go/eventruntime:eventruntime
         mode: semantic-inbox
     activation_gaps: []
   - full_name: mindclade.events.experiment.v1.StudyStateChanged
@@ -709,8 +709,8 @@ events:
         mode: transactional-outbox
     consumers:
       - id: control-plane/event-audit-projection
-        source: services/control_plane/internal/platform/eventprojection/projection.go
-        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        source: libs/go/eventruntime/projection.go
+        target: //libs/go/eventruntime:eventruntime
         mode: semantic-inbox
     activation_gaps: []
   - full_name: mindclade.events.experiment.v1.TrialCompleted
@@ -732,8 +732,8 @@ events:
         mode: transactional-outbox
     consumers:
       - id: control-plane/event-audit-projection
-        source: services/control_plane/internal/platform/eventprojection/projection.go
-        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        source: libs/go/eventruntime/projection.go
+        target: //libs/go/eventruntime:eventruntime
         mode: semantic-inbox
     activation_gaps: []
   - full_name: mindclade.events.experiment.v1.TrialCreated
@@ -755,8 +755,8 @@ events:
         mode: transactional-outbox
     consumers:
       - id: control-plane/event-audit-projection
-        source: services/control_plane/internal/platform/eventprojection/projection.go
-        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        source: libs/go/eventruntime/projection.go
+        target: //libs/go/eventruntime:eventruntime
         mode: semantic-inbox
     activation_gaps: []
   - full_name: mindclade.events.experiment.v1.TrialStateChanged
@@ -778,8 +778,8 @@ events:
         mode: transactional-outbox
     consumers:
       - id: control-plane/event-audit-projection
-        source: services/control_plane/internal/platform/eventprojection/projection.go
-        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        source: libs/go/eventruntime/projection.go
+        target: //libs/go/eventruntime:eventruntime
         mode: semantic-inbox
     activation_gaps: []
   - full_name: mindclade.events.feature.v1.FeatureMaterializationCompleted
@@ -801,8 +801,8 @@ events:
         mode: transactional-outbox
     consumers:
       - id: control-plane/event-audit-projection
-        source: services/control_plane/internal/platform/eventprojection/projection.go
-        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        source: libs/go/eventruntime/projection.go
+        target: //libs/go/eventruntime:eventruntime
         mode: semantic-inbox
     activation_gaps: []
   - full_name: mindclade.events.inference.v1.InferenceRequested
@@ -824,8 +824,8 @@ events:
         mode: transactional-outbox
     consumers:
       - id: control-plane/event-audit-projection
-        source: services/control_plane/internal/platform/eventprojection/projection.go
-        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        source: libs/go/eventruntime/projection.go
+        target: //libs/go/eventruntime:eventruntime
         mode: semantic-inbox
     activation_gaps: []
   - full_name: mindclade.events.inference.v1.InferenceResultCommitted
@@ -847,8 +847,8 @@ events:
         mode: transactional-outbox
     consumers:
       - id: control-plane/event-audit-projection
-        source: services/control_plane/internal/platform/eventprojection/projection.go
-        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        source: libs/go/eventruntime/projection.go
+        target: //libs/go/eventruntime:eventruntime
         mode: semantic-inbox
     activation_gaps: []
   - full_name: mindclade.events.job.v1.AttemptCompleted
@@ -870,8 +870,8 @@ events:
         mode: transactional-outbox
     consumers:
       - id: control-plane/event-audit-projection
-        source: services/control_plane/internal/platform/eventprojection/projection.go
-        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        source: libs/go/eventruntime/projection.go
+        target: //libs/go/eventruntime:eventruntime
         mode: semantic-inbox
     activation_gaps: []
   - full_name: mindclade.events.job.v1.AttemptLeased
@@ -893,8 +893,8 @@ events:
         mode: transactional-outbox
     consumers:
       - id: control-plane/event-audit-projection
-        source: services/control_plane/internal/platform/eventprojection/projection.go
-        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        source: libs/go/eventruntime/projection.go
+        target: //libs/go/eventruntime:eventruntime
         mode: semantic-inbox
     activation_gaps: []
   - full_name: mindclade.events.job.v1.JobRequested
@@ -936,8 +936,8 @@ events:
         mode: transactional-outbox
     consumers:
       - id: control-plane/event-audit-projection
-        source: services/control_plane/internal/platform/eventprojection/projection.go
-        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        source: libs/go/eventruntime/projection.go
+        target: //libs/go/eventruntime:eventruntime
         mode: semantic-inbox
       - id: control-plane/job-requested-reconciler
         source: services/control_plane/internal/jobs/job_reconciler.go
@@ -963,8 +963,8 @@ events:
         mode: transactional-outbox
     consumers:
       - id: control-plane/event-audit-projection
-        source: services/control_plane/internal/platform/eventprojection/projection.go
-        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        source: libs/go/eventruntime/projection.go
+        target: //libs/go/eventruntime:eventruntime
         mode: semantic-inbox
     activation_gaps: []
   - full_name: mindclade.events.model.v1.ModelRegistered
@@ -986,8 +986,8 @@ events:
         mode: transactional-outbox
     consumers:
       - id: control-plane/event-audit-projection
-        source: services/control_plane/internal/platform/eventprojection/projection.go
-        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        source: libs/go/eventruntime/projection.go
+        target: //libs/go/eventruntime:eventruntime
         mode: semantic-inbox
     activation_gaps: []
   - full_name: mindclade.events.model.v1.ModelReleaseRegistered
@@ -1009,8 +1009,8 @@ events:
         mode: transactional-outbox
     consumers:
       - id: control-plane/event-audit-projection
-        source: services/control_plane/internal/platform/eventprojection/projection.go
-        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        source: libs/go/eventruntime/projection.go
+        target: //libs/go/eventruntime:eventruntime
         mode: semantic-inbox
     activation_gaps: []
   - full_name: mindclade.events.model.v1.ModelRevoked
@@ -1032,8 +1032,8 @@ events:
         mode: transactional-outbox
     consumers:
       - id: control-plane/event-audit-projection
-        source: services/control_plane/internal/platform/eventprojection/projection.go
-        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        source: libs/go/eventruntime/projection.go
+        target: //libs/go/eventruntime:eventruntime
         mode: semantic-inbox
     activation_gaps: []
   - full_name: mindclade.events.policy.v1.AuthorizationDecisionRecorded
@@ -1055,8 +1055,8 @@ events:
         mode: transactional-outbox
     consumers:
       - id: control-plane/event-audit-projection
-        source: services/control_plane/internal/platform/eventprojection/projection.go
-        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        source: libs/go/eventruntime/projection.go
+        target: //libs/go/eventruntime:eventruntime
         mode: semantic-inbox
     activation_gaps: []
   - full_name: mindclade.events.policy.v1.UsePolicyActivated
@@ -1068,8 +1068,8 @@ events:
     compatibility_policy: exact-version
     fixture:
       status: verified
-      source: services/control_plane/internal/platform/eventprojection/projection_test.go
-      target: //services/control_plane/internal/platform/eventprojection:event_projection_test
+      source: libs/go/eventruntime/projection_test.go
+      target: //libs/go/eventruntime:eventruntime_test
       mode: populated-protobuf-roundtrip
     producers:
       - id: control-plane/policies
@@ -1078,8 +1078,8 @@ events:
         mode: transactional-outbox
     consumers:
       - id: control-plane/event-audit-projection
-        source: services/control_plane/internal/platform/eventprojection/projection.go
-        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        source: libs/go/eventruntime/projection.go
+        target: //libs/go/eventruntime:eventruntime
         mode: semantic-inbox
     activation_gaps: []
   - full_name: mindclade.events.policy.v1.UsePolicyCreated
@@ -1101,8 +1101,8 @@ events:
         mode: transactional-outbox
     consumers:
       - id: control-plane/event-audit-projection
-        source: services/control_plane/internal/platform/eventprojection/projection.go
-        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        source: libs/go/eventruntime/projection.go
+        target: //libs/go/eventruntime:eventruntime
         mode: semantic-inbox
     activation_gaps: []
   - full_name: mindclade.events.policy.v1.UsePolicyRevoked
@@ -1114,8 +1114,8 @@ events:
     compatibility_policy: exact-version
     fixture:
       status: verified
-      source: services/control_plane/internal/platform/eventprojection/projection_test.go
-      target: //services/control_plane/internal/platform/eventprojection:event_projection_test
+      source: libs/go/eventruntime/projection_test.go
+      target: //libs/go/eventruntime:eventruntime_test
       mode: populated-protobuf-roundtrip
     producers:
       - id: control-plane/policies
@@ -1124,8 +1124,8 @@ events:
         mode: transactional-outbox
     consumers:
       - id: control-plane/event-audit-projection
-        source: services/control_plane/internal/platform/eventprojection/projection.go
-        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        source: libs/go/eventruntime/projection.go
+        target: //libs/go/eventruntime:eventruntime
         mode: semantic-inbox
     activation_gaps: []
   - full_name: mindclade.events.policy.v1.UsePolicyUpdated
@@ -1137,8 +1137,8 @@ events:
     compatibility_policy: exact-version
     fixture:
       status: verified
-      source: services/control_plane/internal/platform/eventprojection/projection_test.go
-      target: //services/control_plane/internal/platform/eventprojection:event_projection_test
+      source: libs/go/eventruntime/projection_test.go
+      target: //libs/go/eventruntime:eventruntime_test
       mode: populated-protobuf-roundtrip
     producers:
       - id: control-plane/policies
@@ -1147,8 +1147,8 @@ events:
         mode: transactional-outbox
     consumers:
       - id: control-plane/event-audit-projection
-        source: services/control_plane/internal/platform/eventprojection/projection.go
-        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        source: libs/go/eventruntime/projection.go
+        target: //libs/go/eventruntime:eventruntime
         mode: semantic-inbox
     activation_gaps: []
   - full_name: mindclade.events.training.v1.CheckpointCommitted
@@ -1170,8 +1170,8 @@ events:
         mode: transactional-outbox
     consumers:
       - id: control-plane/event-audit-projection
-        source: services/control_plane/internal/platform/eventprojection/projection.go
-        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        source: libs/go/eventruntime/projection.go
+        target: //libs/go/eventruntime:eventruntime
         mode: semantic-inbox
     activation_gaps: []
   - full_name: mindclade.events.training.v1.ProgressCommitted
@@ -1193,8 +1193,8 @@ events:
         mode: transactional-outbox
     consumers:
       - id: control-plane/event-audit-projection
-        source: services/control_plane/internal/platform/eventprojection/projection.go
-        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        source: libs/go/eventruntime/projection.go
+        target: //libs/go/eventruntime:eventruntime
         mode: semantic-inbox
     activation_gaps: []
   - full_name: mindclade.events.training.v1.TrainingCancellationRequested
@@ -1216,8 +1216,8 @@ events:
         mode: transactional-outbox
     consumers:
       - id: control-plane/event-audit-projection
-        source: services/control_plane/internal/platform/eventprojection/projection.go
-        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        source: libs/go/eventruntime/projection.go
+        target: //libs/go/eventruntime:eventruntime
         mode: semantic-inbox
     activation_gaps: []
   - full_name: mindclade.events.training.v1.TrainingCompleted
@@ -1239,8 +1239,8 @@ events:
         mode: transactional-outbox
     consumers:
       - id: control-plane/event-audit-projection
-        source: services/control_plane/internal/platform/eventprojection/projection.go
-        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        source: libs/go/eventruntime/projection.go
+        target: //libs/go/eventruntime:eventruntime
         mode: semantic-inbox
     activation_gaps: []
   - full_name: mindclade.events.training.v1.TrainingRunCreated
@@ -1262,8 +1262,8 @@ events:
         mode: transactional-outbox
     consumers:
       - id: control-plane/event-audit-projection
-        source: services/control_plane/internal/platform/eventprojection/projection.go
-        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        source: libs/go/eventruntime/projection.go
+        target: //libs/go/eventruntime:eventruntime
         mode: semantic-inbox
     activation_gaps: []
   - full_name: mindclade.events.training.v1.TrainingStarted
@@ -1285,8 +1285,8 @@ events:
         mode: transactional-outbox
     consumers:
       - id: control-plane/event-audit-projection
-        source: services/control_plane/internal/platform/eventprojection/projection.go
-        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        source: libs/go/eventruntime/projection.go
+        target: //libs/go/eventruntime:eventruntime
         mode: semantic-inbox
     activation_gaps: []
   - full_name: mindclade.events.transform.v1.TransformExecutionCompleted
@@ -1308,8 +1308,8 @@ events:
         mode: transactional-outbox
     consumers:
       - id: control-plane/event-audit-projection
-        source: services/control_plane/internal/platform/eventprojection/projection.go
-        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        source: libs/go/eventruntime/projection.go
+        target: //libs/go/eventruntime:eventruntime
         mode: semantic-inbox
     activation_gaps: []
   - full_name: mindclade.events.workflow.v1.ApprovalConsumed
@@ -1331,8 +1331,8 @@ events:
         mode: transactional-outbox
     consumers:
       - id: control-plane/event-audit-projection
-        source: services/control_plane/internal/platform/eventprojection/projection.go
-        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        source: libs/go/eventruntime/projection.go
+        target: //libs/go/eventruntime:eventruntime
         mode: semantic-inbox
     activation_gaps: []
   - full_name: mindclade.events.workflow.v1.ApprovalRecorded
@@ -1354,8 +1354,8 @@ events:
         mode: transactional-outbox
     consumers:
       - id: control-plane/event-audit-projection
-        source: services/control_plane/internal/platform/eventprojection/projection.go
-        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        source: libs/go/eventruntime/projection.go
+        target: //libs/go/eventruntime:eventruntime
         mode: semantic-inbox
     activation_gaps: []
   - full_name: mindclade.events.workflow.v1.ApprovalRequested
@@ -1377,8 +1377,8 @@ events:
         mode: transactional-outbox
     consumers:
       - id: control-plane/event-audit-projection
-        source: services/control_plane/internal/platform/eventprojection/projection.go
-        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        source: libs/go/eventruntime/projection.go
+        target: //libs/go/eventruntime:eventruntime
         mode: semantic-inbox
     activation_gaps: []
   - full_name: mindclade.events.workflow.v1.WorkflowCancellationRequested
@@ -1390,8 +1390,8 @@ events:
     compatibility_policy: exact-version
     fixture:
       status: verified
-      source: services/control_plane/internal/platform/eventprojection/projection_test.go
-      target: //services/control_plane/internal/platform/eventprojection:event_projection_test
+      source: libs/go/eventruntime/projection_test.go
+      target: //libs/go/eventruntime:eventruntime_test
       mode: populated-protobuf-roundtrip
     producers:
       - id: control-plane/workflows
@@ -1400,8 +1400,8 @@ events:
         mode: transactional-outbox
     consumers:
       - id: control-plane/event-audit-projection
-        source: services/control_plane/internal/platform/eventprojection/projection.go
-        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        source: libs/go/eventruntime/projection.go
+        target: //libs/go/eventruntime:eventruntime
         mode: semantic-inbox
     activation_gaps: []
   - full_name: mindclade.events.workflow.v1.WorkflowDefinitionCreated
@@ -1413,8 +1413,8 @@ events:
     compatibility_policy: exact-version
     fixture:
       status: verified
-      source: services/control_plane/internal/platform/eventprojection/projection_test.go
-      target: //services/control_plane/internal/platform/eventprojection:event_projection_test
+      source: libs/go/eventruntime/projection_test.go
+      target: //libs/go/eventruntime:eventruntime_test
       mode: populated-protobuf-roundtrip
     producers:
       - id: control-plane/workflows
@@ -1423,8 +1423,8 @@ events:
         mode: transactional-outbox
     consumers:
       - id: control-plane/event-audit-projection
-        source: services/control_plane/internal/platform/eventprojection/projection.go
-        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        source: libs/go/eventruntime/projection.go
+        target: //libs/go/eventruntime:eventruntime
         mode: semantic-inbox
     activation_gaps: []
   - full_name: mindclade.events.workflow.v1.WorkflowDefinitionUpdated
@@ -1436,8 +1436,8 @@ events:
     compatibility_policy: exact-version
     fixture:
       status: verified
-      source: services/control_plane/internal/platform/eventprojection/projection_test.go
-      target: //services/control_plane/internal/platform/eventprojection:event_projection_test
+      source: libs/go/eventruntime/projection_test.go
+      target: //libs/go/eventruntime:eventruntime_test
       mode: populated-protobuf-roundtrip
     producers:
       - id: control-plane/workflows
@@ -1446,8 +1446,8 @@ events:
         mode: transactional-outbox
     consumers:
       - id: control-plane/event-audit-projection
-        source: services/control_plane/internal/platform/eventprojection/projection.go
-        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        source: libs/go/eventruntime/projection.go
+        target: //libs/go/eventruntime:eventruntime
         mode: semantic-inbox
     activation_gaps: []
   - full_name: mindclade.events.workflow.v1.WorkflowRunStarted
@@ -1459,8 +1459,8 @@ events:
     compatibility_policy: exact-version
     fixture:
       status: verified
-      source: services/control_plane/internal/platform/eventprojection/projection_test.go
-      target: //services/control_plane/internal/platform/eventprojection:event_projection_test
+      source: libs/go/eventruntime/projection_test.go
+      target: //libs/go/eventruntime:eventruntime_test
       mode: populated-protobuf-roundtrip
     producers:
       - id: control-plane/workflows
@@ -1469,8 +1469,8 @@ events:
         mode: transactional-outbox
     consumers:
       - id: control-plane/event-audit-projection
-        source: services/control_plane/internal/platform/eventprojection/projection.go
-        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        source: libs/go/eventruntime/projection.go
+        target: //libs/go/eventruntime:eventruntime
         mode: semantic-inbox
     activation_gaps: []
   - full_name: mindclade.events.workflow.v1.WorkflowTransitioned
@@ -1482,8 +1482,8 @@ events:
     compatibility_policy: exact-version
     fixture:
       status: verified
-      source: services/control_plane/internal/platform/eventprojection/projection_test.go
-      target: //services/control_plane/internal/platform/eventprojection:event_projection_test
+      source: libs/go/eventruntime/projection_test.go
+      target: //libs/go/eventruntime:eventruntime_test
       mode: populated-protobuf-roundtrip
     producers:
       - id: control-plane/workflows
@@ -1492,7 +1492,7 @@ events:
         mode: transactional-outbox
     consumers:
       - id: control-plane/event-audit-projection
-        source: services/control_plane/internal/platform/eventprojection/projection.go
-        target: //services/control_plane/internal/platform/eventprojection:event_projection
+        source: libs/go/eventruntime/projection.go
+        target: //libs/go/eventruntime:eventruntime
         mode: semantic-inbox
     activation_gaps: []

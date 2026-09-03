@@ -14,9 +14,9 @@ import (
 	gcppubsub "cloud.google.com/go/pubsub/v2"
 	"google.golang.org/protobuf/proto"
 
+	platformdb "github.com/mindclade/mindclade/libs/go/persistence"
+	"github.com/mindclade/mindclade/libs/go/pubsubx"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
-	platformdb "github.com/mindclade/mindclade/services/control_plane/internal/platform/database"
-	"github.com/mindclade/mindclade/services/control_plane/internal/platform/queue"
 )
 
 type Store struct {
@@ -114,7 +114,7 @@ func (p Processor) validate() error {
 		return errors.New("inbox processor requires an explicit registered event allowlist")
 	}
 	for fullName, version := range p.AcceptedEvents {
-		registration, ok := queue.RegisteredEvent(fullName, version)
+		registration, ok := pubsubx.RegisteredEvent(fullName, version)
 		if fullName == "" || version == 0 || !ok || registration.LifecycleState != "active" {
 			return fmt.Errorf("inbox processor event allowlist contains inactive or unknown identity %s@%d", fullName, version)
 		}
@@ -139,14 +139,14 @@ func (p Processor) ProcessDelivery(ctx context.Context, encoded []byte, attribut
 	if err := p.validate(); err != nil {
 		return DeliveryNack, err
 	}
-	envelope, err := queue.UnmarshalEnvelope(encoded)
+	envelope, err := pubsubx.UnmarshalEnvelope(encoded)
 	if err != nil {
 		if quarantineErr := quarantineInboxSQL(ctx, p.DB, p.Consumer, nil, p.QuarantineTenantID, encoded, 1, err); quarantineErr != nil {
 			return DeliveryNack, errors.Join(err, quarantineErr)
 		}
 		return DeliveryAck, fmt.Errorf("quarantined unreadable Pub/Sub envelope: %w", err)
 	}
-	if err = queue.ValidateTransportAttributes(envelope, attributes, orderingKey); err != nil {
+	if err = pubsubx.ValidateTransportAttributes(envelope, attributes, orderingKey); err != nil {
 		if quarantineErr := quarantineInboxSQL(ctx, p.DB, p.Consumer, envelope, "", encoded, 1, err); quarantineErr != nil {
 			return DeliveryNack, errors.Join(err, quarantineErr)
 		}
@@ -160,7 +160,7 @@ func (p Processor) ProcessDelivery(ctx context.Context, encoded []byte, attribut
 		// other subscriptions retain their independent delivery.
 		return DeliveryAck, nil
 	}
-	payload, err := queue.UnmarshalRegisteredPayload(envelope)
+	payload, err := pubsubx.UnmarshalRegisteredPayload(envelope)
 	if err != nil {
 		if quarantineErr := quarantineInboxSQL(ctx, p.DB, p.Consumer, envelope, "", encoded, 1, err); quarantineErr != nil {
 			return DeliveryNack, errors.Join(err, quarantineErr)
@@ -196,7 +196,7 @@ func (p Processor) ProcessDelivery(ctx context.Context, encoded []byte, attribut
 // AcceptSQL validates the authoritative registry identity and atomically
 // deduplicates an at-least-once event for one tenant-scoped consumer.
 func AcceptSQL(ctx context.Context, db *sql.DB, consumer string, envelope *commonv1.EventEnvelope) (bool, error) {
-	payload, err := queue.UnmarshalRegisteredPayload(envelope)
+	payload, err := pubsubx.UnmarshalRegisteredPayload(envelope)
 	if err != nil {
 		return false, err
 	}
@@ -210,12 +210,12 @@ func AcceptAndHandleSQL(ctx context.Context, db *sql.DB, consumer string, envelo
 	if !validConsumer(consumer) {
 		return false, ErrInvalidConsumer
 	}
-	authoritativePayload, err := queue.UnmarshalRegisteredPayload(envelope)
+	authoritativePayload, err := pubsubx.UnmarshalRegisteredPayload(envelope)
 	if err != nil {
 		return false, err
 	}
 	if payload == nil || !proto.Equal(authoritativePayload, payload) {
-		return false, queue.ErrInvalidEnvelope
+		return false, pubsubx.ErrInvalidEnvelope
 	}
 	tx, err := platformdb.BeginTenantTx(ctx, db, envelope.GetTenantId(), nil)
 	if err != nil {
@@ -234,7 +234,7 @@ func AcceptAndHandleSQL(ctx context.Context, db *sql.DB, consumer string, envelo
 		if _, err = tx.ExecContext(ctx, `DELETE FROM inbox_delivery_failures WHERE tenant_id=$1 AND consumer=$2 AND event_id=$3`, envelope.GetTenantId(), consumer, envelope.GetEventId()); err != nil {
 			return false, err
 		}
-		if err = queue.CompleteInboxReplayTx(ctx, tx, envelope.GetTenantId(), consumer, envelope.GetEventId(), time.Now().UTC()); err != nil {
+		if err = pubsubx.CompleteInboxReplayTx(ctx, tx, envelope.GetTenantId(), consumer, envelope.GetEventId(), time.Now().UTC()); err != nil {
 			return false, err
 		}
 		if err = tx.Commit(); err != nil {
@@ -247,7 +247,7 @@ func AcceptAndHandleSQL(ctx context.Context, db *sql.DB, consumer string, envelo
 			return false, err
 		}
 	}
-	if err = queue.CompleteInboxReplayTx(ctx, tx, envelope.GetTenantId(), consumer, envelope.GetEventId(), time.Now().UTC()); err != nil {
+	if err = pubsubx.CompleteInboxReplayTx(ctx, tx, envelope.GetTenantId(), consumer, envelope.GetEventId(), time.Now().UTC()); err != nil {
 		return false, err
 	}
 	if _, err = tx.ExecContext(ctx, `DELETE FROM inbox_delivery_failures WHERE tenant_id=$1 AND consumer=$2 AND event_id=$3`, envelope.GetTenantId(), consumer, envelope.GetEventId()); err != nil {
@@ -274,7 +274,7 @@ SELECT EXISTS (
   SELECT 1 FROM dead_letter_messages
   WHERE tenant_id=$1 AND id=$4
     AND replay_state IN ('QUARANTINED','PENDING','REPLAYED')
-)`, envelope.GetTenantId(), consumer, envelope.GetEventId(), queue.InboxDeadLetterID(envelope.GetTenantId(), consumer, envelope.GetEventId())).Scan(&alreadyProcessed); err != nil {
+)`, envelope.GetTenantId(), consumer, envelope.GetEventId(), pubsubx.InboxDeadLetterID(envelope.GetTenantId(), consumer, envelope.GetEventId())).Scan(&alreadyProcessed); err != nil {
 		return 0, false, err
 	}
 	if alreadyProcessed {
@@ -347,7 +347,7 @@ SET attempts=GREATEST(dead_letter_messages.attempts,EXCLUDED.attempts),
     consumer=EXCLUDED.consumer,replay_state='QUARANTINED',
     replay_claim_expires_at=NULL,replay_next_attempt_at=NULL,
     replay_published_at=NULL,replayed_at=NULL,replay_last_error='',updated_at=now()`,
-		queue.InboxDeadLetterID(tenantID, consumer, eventID), tenantID, eventID, consumer, eventType, eventVersion, attempts, boundedReason(cause), payloadDigest, encoded)
+		pubsubx.InboxDeadLetterID(tenantID, consumer, eventID), tenantID, eventID, consumer, eventType, eventVersion, attempts, boundedReason(cause), payloadDigest, encoded)
 	if err != nil {
 		return err
 	}
@@ -381,7 +381,7 @@ func NewStore() *Store { return &Store{seen: make(map[string]struct{})} }
 
 // Accept returns false for an invalid or already committed delivery.
 func (s *Store) Accept(consumer string, envelope *commonv1.EventEnvelope) bool {
-	if consumer == "" || queue.ValidateEnvelope(envelope) != nil {
+	if consumer == "" || pubsubx.ValidateEnvelope(envelope) != nil {
 		return false
 	}
 	key := consumer + "\x00" + envelope.GetTenantId() + "\x00" + envelope.GetEventId()

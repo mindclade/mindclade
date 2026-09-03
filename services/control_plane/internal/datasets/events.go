@@ -11,11 +11,11 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/mindclade/mindclade/libs/go/numconv"
+	"github.com/mindclade/mindclade/libs/go/pubsubx"
 	artifactv1 "github.com/mindclade/mindclade/protocols/generated/go/artifact/v1"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	datasetv1 "github.com/mindclade/mindclade/protocols/generated/go/dataset/v1"
 	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
-	"github.com/mindclade/mindclade/services/control_plane/internal/platform/queue"
 )
 
 const protobufEventContentType = "application/x-protobuf; deterministic=true"
@@ -59,7 +59,7 @@ func newEvent(identity Identity, subject *commonv1.ResourceRef, payload proto.Me
 	identityDigest := sha256.Sum256([]byte(eventType + "\x00" + subject.GetName() + "\x00" + strconv.FormatUint(sequence, 10) + "\x00" + command.GetRequestId()))
 	id := "dataset:" + hex.EncodeToString(identityDigest[:])
 	envelope := &commonv1.EventEnvelope{EventId: id, EventType: eventType, EventVersion: 1, OccurredAt: timestamppb.New(at.UTC()), RecordedAt: timestamppb.New(at.UTC()), TenantId: identity.TenantID, ProjectId: identity.ProjectID, TraceId: command.GetTraceId(), Subject: clone(subject), PayloadDigest: "sha256:" + hex.EncodeToString(payloadDigest[:]), Payload: encoded, Producer: "services/control_plane/internal/datasets", AggregateSequence: sequence, RequestId: command.GetRequestId(), CorrelationId: command.GetCorrelationId(), CausationId: command.GetCausationId(), DeduplicationKey: id, PayloadContentType: protobufEventContentType, Classification: commonv1.DataClassification_DATA_CLASSIFICATION_INTERNAL}
-	if err = queue.ValidateEnvelope(envelope); err != nil {
+	if err = pubsubx.ValidateEnvelope(envelope); err != nil {
 		return nil, err
 	}
 	return envelope, nil

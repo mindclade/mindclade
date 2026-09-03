@@ -9,12 +9,12 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	"github.com/mindclade/mindclade/libs/go/pubsubx"
 	artifactv1 "github.com/mindclade/mindclade/protocols/generated/go/artifact/v1"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	featurev1 "github.com/mindclade/mindclade/protocols/generated/go/feature/v1"
 	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
 	transformv1 "github.com/mindclade/mindclade/protocols/generated/go/transform/v1"
-	"github.com/mindclade/mindclade/services/control_plane/internal/platform/queue"
 )
 
 func TestAttemptEventsAreRegisteredDeterministicGeneratedFacts(t *testing.T) {
@@ -51,7 +51,7 @@ func TestAttemptEventsAreRegisteredDeterministicGeneratedFacts(t *testing.T) {
 		first.GetJobId() != attempt.GetJobId() || first.GetRunId() != attempt.GetRunId() {
 		t.Fatalf("lease envelope lost authoritative metadata: %v", first)
 	}
-	decoded, err := queue.UnmarshalRegisteredPayload(first)
+	decoded, err := pubsubx.UnmarshalRegisteredPayload(first)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -79,7 +79,7 @@ func TestAttemptEventsAreRegisteredDeterministicGeneratedFacts(t *testing.T) {
 		completed.GetSubject().GetResourceVersion() != 4 {
 		t.Fatalf("completion envelope lost semantic ordering or authoritative revision: %v", completed)
 	}
-	decoded, err = queue.UnmarshalRegisteredPayload(completed)
+	decoded, err = pubsubx.UnmarshalRegisteredPayload(completed)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -175,7 +175,7 @@ func TestDomainCompletionEventsUseTypedCommandsAndExactJobKinds(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	decoded, err := queue.UnmarshalRegisteredPayload(featureEnvelope)
+	decoded, err := pubsubx.UnmarshalRegisteredPayload(featureEnvelope)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -198,7 +198,7 @@ func TestDomainCompletionEventsUseTypedCommandsAndExactJobKinds(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	decoded, err = queue.UnmarshalRegisteredPayload(transformEnvelope)
+	decoded, err = pubsubx.UnmarshalRegisteredPayload(transformEnvelope)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -259,10 +259,10 @@ func TestJobCancellationAuditUsesStandaloneSemanticAggregate(t *testing.T) {
 		envelope.GetSubject().GetEtag() != job.GetEtag() {
 		t.Fatalf("cancellation audit conflated event sequence with job revision: %v", envelope)
 	}
-	if _, err = queue.UnmarshalRegisteredPayload(envelope); err != nil {
+	if _, err = pubsubx.UnmarshalRegisteredPayload(envelope); err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err = queue.AggregateIdentity(envelope); err != nil {
+	if _, _, err = pubsubx.AggregateIdentity(envelope); err != nil {
 		t.Fatal(err)
 	}
 	if _, err = newJobCancellationAuditEnvelope(&jobv1.Job{}, "principal-1", at); !errors.Is(err, ErrInvalidJobCommand) {

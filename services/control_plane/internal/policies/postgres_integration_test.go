@@ -12,13 +12,13 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 
+	platformdb "github.com/mindclade/mindclade/libs/go/persistence"
+	"github.com/mindclade/mindclade/libs/go/pubsubx"
 	artifactv1 "github.com/mindclade/mindclade/protocols/generated/go/artifact/v1"
 	auditv1 "github.com/mindclade/mindclade/protocols/generated/go/audit/v1"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	internalpolicyv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/policy/v1"
 	policyv1 "github.com/mindclade/mindclade/protocols/generated/go/policy/v1"
-	platformdb "github.com/mindclade/mindclade/services/control_plane/internal/platform/database"
-	"github.com/mindclade/mindclade/services/control_plane/internal/platform/queue"
 )
 
 func integrationDB(t *testing.T) *sql.DB {
@@ -182,11 +182,11 @@ func TestPostgresPolicyLifecycleDecisionAndRLS(t *testing.T) {
 		if err = rows.Scan(&encoded); err != nil {
 			t.Fatal(err)
 		}
-		envelope, decodeErr := queue.UnmarshalEnvelope(encoded)
+		envelope, decodeErr := pubsubx.UnmarshalEnvelope(encoded)
 		if decodeErr != nil {
 			t.Fatal(decodeErr)
 		}
-		payload, decodeErr := queue.UnmarshalRegisteredPayload(envelope)
+		payload, decodeErr := pubsubx.UnmarshalRegisteredPayload(envelope)
 		if decodeErr != nil {
 			t.Fatal(decodeErr)
 		}
@@ -276,11 +276,11 @@ func TestPostgresDeniedCommandsProduceDistinctTransactionalSecurityFacts(t *test
 		if err = rows.Scan(&encoded); err != nil {
 			t.Fatal(err)
 		}
-		envelope, decodeErr := queue.UnmarshalEnvelope(encoded)
+		envelope, decodeErr := pubsubx.UnmarshalEnvelope(encoded)
 		if decodeErr != nil {
 			t.Fatal(decodeErr)
 		}
-		if _, decodeErr = queue.UnmarshalRegisteredPayload(envelope); decodeErr != nil {
+		if _, decodeErr = pubsubx.UnmarshalRegisteredPayload(envelope); decodeErr != nil {
 			t.Fatal(decodeErr)
 		}
 		eventIDs[envelope.GetEventId()] = struct{}{}

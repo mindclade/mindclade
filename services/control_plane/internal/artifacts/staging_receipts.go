@@ -8,9 +8,9 @@ import (
 	"fmt"
 	"time"
 
+	platformdb "github.com/mindclade/mindclade/libs/go/persistence"
+	objectstorage "github.com/mindclade/mindclade/libs/go/storage"
 	artifactv1 "github.com/mindclade/mindclade/protocols/generated/go/artifact/v1"
-	platformdb "github.com/mindclade/mindclade/services/control_plane/internal/platform/database"
-	objectstorage "github.com/mindclade/mindclade/services/control_plane/internal/platform/storage"
 )
 
 const maxStagingReceiptLifetime = 7 * 24 * time.Hour

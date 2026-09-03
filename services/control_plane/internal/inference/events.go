@@ -15,10 +15,10 @@ import (
 
 	foundationaudit "github.com/mindclade/mindclade/libs/go/audit"
 	"github.com/mindclade/mindclade/libs/go/numconv"
+	"github.com/mindclade/mindclade/libs/go/pubsubx"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	inferencev1 "github.com/mindclade/mindclade/protocols/generated/go/inference/v1"
 	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
-	"github.com/mindclade/mindclade/services/control_plane/internal/platform/queue"
 )
 
 const protobufEventContentType = "application/x-protobuf; deterministic=true"
@@ -90,18 +90,18 @@ func eventEnvelope(identity Identity, subject *commonv1.ResourceRef, payload pro
 	if requested, ok := payload.(*jobv1.JobRequested); ok {
 		envelope.JobId = requested.GetJobId()
 	}
-	if err = queue.ValidateEnvelope(envelope); err != nil {
+	if err = pubsubx.ValidateEnvelope(envelope); err != nil {
 		return nil, err
 	}
 	return envelope, nil
 }
 
 func insertOutbox(ctx context.Context, tx sqlExecutor, event *commonv1.EventEnvelope, at time.Time) error {
-	encoded, err := queue.MarshalEnvelope(event)
+	encoded, err := pubsubx.MarshalEnvelope(event)
 	if err != nil {
 		return err
 	}
-	aggregateType, aggregateID, err := queue.AggregateIdentity(event)
+	aggregateType, aggregateID, err := pubsubx.AggregateIdentity(event)
 	if err != nil {
 		return err
 	}
@@ -117,7 +117,7 @@ func insertAudit(ctx context.Context, tx sqlExecutor, identity Identity, action,
 	if err != nil {
 		return err
 	}
-	encoded, err := queue.MarshalEnvelope(event)
+	encoded, err := pubsubx.MarshalEnvelope(event)
 	if err != nil {
 		return err
 	}

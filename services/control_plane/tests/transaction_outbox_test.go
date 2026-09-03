@@ -17,16 +17,16 @@ import (
 	"google.golang.org/protobuf/types/known/durationpb"
 
 	foundationaudit "github.com/mindclade/mindclade/libs/go/audit"
+	"github.com/mindclade/mindclade/libs/go/inbox"
+	"github.com/mindclade/mindclade/libs/go/outbox"
+	"github.com/mindclade/mindclade/libs/go/pubsubx"
+	"github.com/mindclade/mindclade/libs/go/storage"
 	artifactv1 "github.com/mindclade/mindclade/protocols/generated/go/artifact/v1"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
 	"github.com/mindclade/mindclade/services/control_plane/internal/artifacts"
 	"github.com/mindclade/mindclade/services/control_plane/internal/jobs"
 	"github.com/mindclade/mindclade/services/control_plane/internal/operations"
-	"github.com/mindclade/mindclade/services/control_plane/internal/platform/inbox"
-	"github.com/mindclade/mindclade/services/control_plane/internal/platform/outbox"
-	"github.com/mindclade/mindclade/services/control_plane/internal/platform/queue"
-	"github.com/mindclade/mindclade/services/control_plane/internal/platform/storage"
 	"github.com/mindclade/mindclade/services/control_plane/internal/policies"
 )
 
@@ -124,11 +124,11 @@ func TestOperationAcceptanceCommitsAuditAndOutboxAtomically(t *testing.T) {
 	if err != nil || auditPayload.GetAction() != operations.CreateAction {
 		t.Fatalf("validate authoritative audit envelope: payload=%v err=%v", auditPayload, err)
 	}
-	encoded, err := queue.MarshalEnvelope(envelopes[0])
+	encoded, err := pubsubx.MarshalEnvelope(envelopes[0])
 	if err != nil {
 		t.Fatalf("marshal authoritative envelope: %v", err)
 	}
-	decoded, err := queue.UnmarshalEnvelope(encoded)
+	decoded, err := pubsubx.UnmarshalEnvelope(encoded)
 	if err != nil || decoded.GetJobId() != "job-1" {
 		t.Fatalf("round-trip authoritative envelope: envelope=%v err=%v", decoded, err)
 	}
@@ -167,10 +167,10 @@ func TestOutboxDispatcherRetriesThenAcknowledgesRegisteredEvent(t *testing.T) {
 	}
 	unknownVersion := proto.Clone(envelope).(*commonv1.EventEnvelope)
 	unknownVersion.EventVersion++
-	if validationErr := queue.ValidateEnvelope(unknownVersion); !errors.Is(validationErr, queue.ErrInvalidEnvelope) {
+	if validationErr := pubsubx.ValidateEnvelope(unknownVersion); !errors.Is(validationErr, pubsubx.ErrInvalidEnvelope) {
 		t.Fatalf("consumer must reject an unregistered event version: %v", validationErr)
 	}
-	payload, decodeErr := queue.UnmarshalRegisteredPayload(envelope)
+	payload, decodeErr := pubsubx.UnmarshalRegisteredPayload(envelope)
 	if decodeErr != nil {
 		t.Fatalf("decode exact generated event payload: %v", decodeErr)
 	}
@@ -424,7 +424,7 @@ func TestPostgresKernelJourney(t *testing.T) {
 	if queryErr := db.QueryRowContext(testContext, `SELECT envelope_bytes FROM audit_events WHERE tenant_id = $1 AND subject_id = $2`, tenantID, operationID).Scan(&auditEnvelopeBytes); queryErr != nil {
 		t.Fatalf("read PostgreSQL generated audit envelope: %v", queryErr)
 	}
-	auditEnvelope, err := queue.UnmarshalEnvelope(auditEnvelopeBytes)
+	auditEnvelope, err := pubsubx.UnmarshalEnvelope(auditEnvelopeBytes)
 	if err != nil {
 		t.Fatalf("decode PostgreSQL generated audit envelope: %v", err)
 	}
@@ -450,7 +450,7 @@ func TestPostgresKernelJourney(t *testing.T) {
 	if queryErr := db.QueryRowContext(testContext, `SELECT envelope_bytes FROM outbox_messages WHERE tenant_id = $1 AND aggregate_type = 'operation' AND aggregate_id = $2`, tenantID, "tenants/"+tenantID+"/projects/project-integration/operations/"+operationID).Scan(&outboxEnvelopeBytes); queryErr != nil {
 		t.Fatalf("read PostgreSQL outbox envelope: %v", queryErr)
 	}
-	outboxEnvelope, err := queue.UnmarshalEnvelope(outboxEnvelopeBytes)
+	outboxEnvelope, err := pubsubx.UnmarshalEnvelope(outboxEnvelopeBytes)
 	if err != nil {
 		t.Fatalf("decode PostgreSQL outbox envelope: %v", err)
 	}
@@ -464,7 +464,7 @@ func TestPostgresKernelJourney(t *testing.T) {
 	if accepted, acceptErr := inbox.AcceptSQL(testContext, db, "integration-worker", outboxEnvelope); acceptErr != nil || accepted {
 		t.Fatalf("PostgreSQL inbox duplicate was not rejected: accepted=%v err=%v", accepted, acceptErr)
 	}
-	registeredPayload, err := queue.UnmarshalRegisteredPayload(outboxEnvelope)
+	registeredPayload, err := pubsubx.UnmarshalRegisteredPayload(outboxEnvelope)
 	if err != nil {
 		t.Fatalf("decode registered PostgreSQL payload: %v", err)
 	}
@@ -520,15 +520,15 @@ func TestPostgresKernelJourney(t *testing.T) {
 	poison.EventId = "poison:" + unique
 	poison.DeduplicationKey = poison.EventId
 	poison.Subject.ResourceId = "poison-" + operationID
-	poisonBytes, err := queue.MarshalEnvelope(poison)
+	poisonBytes, err := pubsubx.MarshalEnvelope(poison)
 	if err != nil {
 		t.Fatal(err)
 	}
-	poisonAttributes, err := queue.TransportAttributes(poison)
+	poisonAttributes, err := pubsubx.TransportAttributes(poison)
 	if err != nil {
 		t.Fatal(err)
 	}
-	poisonOrderingKey, err := queue.OrderingKey(poison)
+	poisonOrderingKey, err := pubsubx.OrderingKey(poison)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -541,15 +541,15 @@ func TestPostgresKernelJourney(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	misroutedBytes, err := queue.MarshalEnvelope(misrouted)
+	misroutedBytes, err := pubsubx.MarshalEnvelope(misrouted)
 	if err != nil {
 		t.Fatal(err)
 	}
-	misroutedAttributes, err := queue.TransportAttributes(misrouted)
+	misroutedAttributes, err := pubsubx.TransportAttributes(misrouted)
 	if err != nil {
 		t.Fatal(err)
 	}
-	misroutedOrderingKey, err := queue.OrderingKey(misrouted)
+	misroutedOrderingKey, err := pubsubx.OrderingKey(misrouted)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -592,7 +592,7 @@ func TestPostgresKernelJourney(t *testing.T) {
 	validAfterCorrupt.Subject.ResourceId = "valid-after-corrupt-" + operationID
 	validAfterCorrupt.Subject.Name = "tenants/" + tenantID + "/projects/project-integration/operations/valid-after-corrupt-" + operationID
 	validAfterCorrupt.AggregateSequence = 1
-	validBytes, err := queue.MarshalEnvelope(validAfterCorrupt)
+	validBytes, err := pubsubx.MarshalEnvelope(validAfterCorrupt)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -632,7 +632,7 @@ func TestPostgresKernelJourney(t *testing.T) {
 	gapSecond.AggregateSequence = 2
 	insertGapEnvelope := func(envelope *commonv1.EventEnvelope) {
 		t.Helper()
-		encoded, encodeErr := queue.MarshalEnvelope(envelope)
+		encoded, encodeErr := pubsubx.MarshalEnvelope(envelope)
 		if encodeErr != nil {
 			t.Fatal(encodeErr)
 		}
@@ -693,11 +693,11 @@ func TestPostgresKernelJourney(t *testing.T) {
 	if queryErr := db.QueryRowContext(testContext, `SELECT envelope_bytes FROM outbox_messages WHERE tenant_id=$1 AND aggregate_type='attempt' AND aggregate_id=$2 AND aggregate_sequence=2 AND event_type='mindclade.events.job.v1.AttemptCompleted'`, tenantID, firstAttemptName).Scan(&timedOutEnvelopeBytes); queryErr != nil {
 		t.Fatalf("replacement lease did not atomically record the expired attempt: %v", queryErr)
 	}
-	timedOutEnvelope, decodeErr := queue.UnmarshalEnvelope(timedOutEnvelopeBytes)
+	timedOutEnvelope, decodeErr := pubsubx.UnmarshalEnvelope(timedOutEnvelopeBytes)
 	if decodeErr != nil {
 		t.Fatal(decodeErr)
 	}
-	timedOutPayload, decodeErr := queue.UnmarshalRegisteredPayload(timedOutEnvelope)
+	timedOutPayload, decodeErr := pubsubx.UnmarshalRegisteredPayload(timedOutEnvelope)
 	if decodeErr != nil {
 		t.Fatal(decodeErr)
 	}
@@ -793,11 +793,11 @@ func TestPostgresKernelJourney(t *testing.T) {
 	if queryErr := db.QueryRowContext(testContext, `SELECT envelope_bytes FROM outbox_messages WHERE tenant_id=$1 AND aggregate_id=$2 AND event_type='mindclade.events.job.v1.AttemptCompleted'`, tenantID, secondAttemptName).Scan(&completedEnvelopeBytes); queryErr != nil {
 		t.Fatal(queryErr)
 	}
-	leasedEnvelope, decodeErr := queue.UnmarshalEnvelope(leasedEnvelopeBytes)
+	leasedEnvelope, decodeErr := pubsubx.UnmarshalEnvelope(leasedEnvelopeBytes)
 	if decodeErr != nil {
 		t.Fatal(decodeErr)
 	}
-	leasedPayload, decodeErr := queue.UnmarshalRegisteredPayload(leasedEnvelope)
+	leasedPayload, decodeErr := pubsubx.UnmarshalRegisteredPayload(leasedEnvelope)
 	if decodeErr != nil {
 		t.Fatal(decodeErr)
 	}
@@ -805,11 +805,11 @@ func TestPostgresKernelJourney(t *testing.T) {
 	if !ok || !proto.Equal(leasedFact.GetAttempt(), second) || leasedFact.GetFence().GetLeaseTokenDigest() == "" || leasedFact.GetLeaseExpiresAt() == nil {
 		t.Fatalf("invalid generated AttemptLeased outbox fact: %T %v", leasedPayload, leasedPayload)
 	}
-	completedEnvelope, decodeErr := queue.UnmarshalEnvelope(completedEnvelopeBytes)
+	completedEnvelope, decodeErr := pubsubx.UnmarshalEnvelope(completedEnvelopeBytes)
 	if decodeErr != nil {
 		t.Fatal(decodeErr)
 	}
-	completedPayload, decodeErr := queue.UnmarshalRegisteredPayload(completedEnvelope)
+	completedPayload, decodeErr := pubsubx.UnmarshalRegisteredPayload(completedEnvelope)
 	if decodeErr != nil {
 		t.Fatal(decodeErr)
 	}
@@ -873,11 +873,11 @@ func TestPostgresGenericJobSchedulerLifecycle(t *testing.T) {
 	if err = db.QueryRowContext(ctx, `SELECT envelope_bytes FROM outbox_messages WHERE tenant_id=$1 AND event_type='mindclade.events.job.v1.JobRequested'`, tenantID).Scan(&encoded); err != nil {
 		t.Fatal(err)
 	}
-	envelope, err := queue.UnmarshalEnvelope(encoded)
+	envelope, err := pubsubx.UnmarshalEnvelope(encoded)
 	if err != nil {
 		t.Fatal(err)
 	}
-	payload, err := queue.UnmarshalRegisteredPayload(envelope)
+	payload, err := pubsubx.UnmarshalRegisteredPayload(envelope)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1024,11 +1024,11 @@ func TestPostgresCancellationExpiryFinalizesSchedulerLifecycle(t *testing.T) {
 	if err = db.QueryRowContext(ctx, `SELECT envelope_bytes FROM outbox_messages WHERE tenant_id=$1 AND event_type='mindclade.events.job.v1.JobRequested'`, tenantID).Scan(&encoded); err != nil {
 		t.Fatal(err)
 	}
-	envelope, err := queue.UnmarshalEnvelope(encoded)
+	envelope, err := pubsubx.UnmarshalEnvelope(encoded)
 	if err != nil {
 		t.Fatal(err)
 	}
-	payload, err := queue.UnmarshalRegisteredPayload(envelope)
+	payload, err := pubsubx.UnmarshalRegisteredPayload(envelope)
 	if err != nil {
 		t.Fatal(err)
 	}

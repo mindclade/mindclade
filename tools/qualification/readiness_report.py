@@ -82,7 +82,7 @@ REHEARSAL_BINDING_FIELDS = frozenset(
 REHEARSAL_CHECK_TARGETS = {
     "cross_language": "//:all_contract_tests",
     "database": "//services/control_plane:control_plane_test",
-    "event": "//services/control_plane/internal/platform/eventprojection:event_projection_test",
+    "event": "//libs/go/eventruntime:eventruntime_test",
     "gateway": "//services/control_plane:control_plane_grpc_registration_test",
     "grpc": "//services/control_plane:control_plane_grpc_registration_test",
     "sdk": "//:all_contract_tests",

@@ -6,9 +6,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/mindclade/mindclade/libs/go/pubsubx"
 	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
 	"github.com/mindclade/mindclade/services/control_plane/internal/operations"
-	"github.com/mindclade/mindclade/services/control_plane/internal/platform/queue"
 )
 
 func TestIdempotencyReturnsReplayAndRejectsHashChange(t *testing.T) {
@@ -60,11 +60,11 @@ func TestOperationRepositoryScopesAliasesAndConditionalAdvances(t *testing.T) {
 	if events[0].GetSubject().GetName() != "tenants/tenant-a/projects/project-a/operations/operation-shared" || events[1].GetSubject().GetName() != "tenants/tenant-a/projects/project-b/operations/operation-shared" {
 		t.Fatalf("event subjects are not canonical project-scoped names: %v", events)
 	}
-	firstOrderingKey, err := queue.OrderingKey(events[0])
+	firstOrderingKey, err := pubsubx.OrderingKey(events[0])
 	if err != nil {
 		t.Fatal(err)
 	}
-	secondOrderingKey, err := queue.OrderingKey(events[1])
+	secondOrderingKey, err := pubsubx.OrderingKey(events[1])
 	if err != nil {
 		t.Fatal(err)
 	}

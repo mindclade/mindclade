@@ -1,4 +1,4 @@
-package telemetry
+package servicekit
 
 import (
 	"errors"

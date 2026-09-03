@@ -1,4 +1,4 @@
-package queue
+package pubsubx
 
 import (
 	"context"
@@ -11,8 +11,8 @@ import (
 	"strings"
 	"time"
 
+	platformdb "github.com/mindclade/mindclade/libs/go/persistence"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
-	platformdb "github.com/mindclade/mindclade/services/control_plane/internal/platform/database"
 )
 
 type DeadLetterSource string

@@ -17,12 +17,12 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	foundationaudit "github.com/mindclade/mindclade/libs/go/audit"
+	platformdb "github.com/mindclade/mindclade/libs/go/persistence"
+	"github.com/mindclade/mindclade/libs/go/pubsubx"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	internalpolicyv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/policy/v1"
 	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
 	policyv1 "github.com/mindclade/mindclade/protocols/generated/go/policy/v1"
-	platformdb "github.com/mindclade/mindclade/services/control_plane/internal/platform/database"
-	"github.com/mindclade/mindclade/services/control_plane/internal/platform/queue"
 )
 
 func (r SQLRepository) validate() error {
@@ -73,11 +73,11 @@ func insertReceipt(ctx context.Context, tx *sql.Tx, identity Identity, action, k
 }
 
 func insertOutbox(ctx context.Context, tx *sql.Tx, event *commonv1.EventEnvelope, at time.Time) error {
-	encoded, err := queue.MarshalEnvelope(event)
+	encoded, err := pubsubx.MarshalEnvelope(event)
 	if err != nil {
 		return err
 	}
-	kind, id, err := queue.AggregateIdentity(event)
+	kind, id, err := pubsubx.AggregateIdentity(event)
 	if err != nil {
 		return err
 	}
@@ -111,7 +111,7 @@ func insertPolicyAudit(ctx context.Context, tx *sql.Tx, identity Identity, actio
 	if err != nil {
 		return err
 	}
-	encoded, err := queue.MarshalEnvelope(event)
+	encoded, err := pubsubx.MarshalEnvelope(event)
 	if err != nil {
 		return err
 	}
@@ -127,7 +127,7 @@ func insertPolicyAudit(ctx context.Context, tx *sql.Tx, identity Identity, actio
 		if securityErr != nil {
 			return securityErr
 		}
-		securityBytes, marshalErr := queue.MarshalEnvelope(securityEvent)
+		securityBytes, marshalErr := pubsubx.MarshalEnvelope(securityEvent)
 		if marshalErr != nil {
 			return marshalErr
 		}

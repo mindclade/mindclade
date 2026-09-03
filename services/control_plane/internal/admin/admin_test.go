@@ -14,12 +14,12 @@ import (
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	"github.com/mindclade/mindclade/libs/go/pubsubx"
 	adminv1 "github.com/mindclade/mindclade/protocols/generated/go/admin/v1"
 	artifactv1 "github.com/mindclade/mindclade/protocols/generated/go/artifact/v1"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	internaladminv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/admin/v1"
 	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
-	"github.com/mindclade/mindclade/services/control_plane/internal/platform/queue"
 )
 
 var fixtureTime = time.Date(2026, 9, 2, 12, 0, 0, 0, time.UTC)
@@ -150,7 +150,7 @@ func TestGeneratedAdminEventsAreRegisteredAndDecodable(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	payload, err := queue.UnmarshalRegisteredPayload(created)
+	payload, err := pubsubx.UnmarshalRegisteredPayload(created)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -165,7 +165,7 @@ func TestGeneratedAdminEventsAreRegisteredAndDecodable(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err = queue.UnmarshalRegisteredPayload(completed); err != nil {
+	if _, err = pubsubx.UnmarshalRegisteredPayload(completed); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -183,7 +183,7 @@ func TestTenantUpdateEventSeparatesSemanticSequenceFromResourceRevision(t *testi
 	if first.GetAggregateSequence() != 1 || first.GetSubject().GetResourceVersion() != 2 {
 		t.Fatalf("first update sequence=%d resource revision=%d", first.GetAggregateSequence(), first.GetSubject().GetResourceVersion())
 	}
-	if _, err = queue.UnmarshalRegisteredPayload(first); err != nil {
+	if _, err = pubsubx.UnmarshalRegisteredPayload(first); err != nil {
 		t.Fatal(err)
 	}
 

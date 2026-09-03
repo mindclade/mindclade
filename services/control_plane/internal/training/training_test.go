@@ -17,13 +17,13 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/mindclade/mindclade/libs/go/numconv"
+	"github.com/mindclade/mindclade/libs/go/pubsubx"
 	artifactv1 "github.com/mindclade/mindclade/protocols/generated/go/artifact/v1"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	internaljobv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/job/v1"
 	internaltrainingv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/training/v1"
 	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
 	trainingv1 "github.com/mindclade/mindclade/protocols/generated/go/training/v1"
-	"github.com/mindclade/mindclade/services/control_plane/internal/platform/queue"
 )
 
 var fixtureTime = time.Date(2026, 9, 1, 12, 0, 0, 0, time.UTC)
@@ -411,7 +411,7 @@ func TestGeneratedTrainingEventsAreRegisteredAndPayloadSafe(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if err = queue.ValidateEnvelope(envelope); err != nil {
+			if err = pubsubx.ValidateEnvelope(envelope); err != nil {
 				t.Fatal(err)
 			}
 			if strings.Contains(string(envelope.GetPayload()), identity.LeaseToken) {

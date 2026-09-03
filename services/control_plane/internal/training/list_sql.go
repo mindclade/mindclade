@@ -6,9 +6,9 @@ import (
 	"strconv"
 	"time"
 
+	platformdb "github.com/mindclade/mindclade/libs/go/persistence"
 	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
 	trainingv1 "github.com/mindclade/mindclade/protocols/generated/go/training/v1"
-	platformdb "github.com/mindclade/mindclade/services/control_plane/internal/platform/database"
 )
 
 func (r SQLRepository) ListTrainingRuns(ctx context.Context, identity Identity, page RunPage) ([]*trainingv1.TrainingRun, string, time.Time, error) {

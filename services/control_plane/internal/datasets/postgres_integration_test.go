@@ -13,11 +13,11 @@ import (
 
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 
+	platformdb "github.com/mindclade/mindclade/libs/go/persistence"
+	"github.com/mindclade/mindclade/libs/go/pubsubx"
 	artifactv1 "github.com/mindclade/mindclade/protocols/generated/go/artifact/v1"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	datasetv1 "github.com/mindclade/mindclade/protocols/generated/go/dataset/v1"
-	platformdb "github.com/mindclade/mindclade/services/control_plane/internal/platform/database"
-	"github.com/mindclade/mindclade/services/control_plane/internal/platform/queue"
 )
 
 func integrationDB(t *testing.T) *sql.DB {
@@ -309,11 +309,11 @@ func TestPostgresDatasetLifecycleIsAtomicIdempotentAndEventBacked(t *testing.T) 
 		if err = rows.Scan(&encoded); err != nil {
 			t.Fatal(err)
 		}
-		envelope, decodeErr := queue.UnmarshalEnvelope(encoded)
+		envelope, decodeErr := pubsubx.UnmarshalEnvelope(encoded)
 		if decodeErr != nil {
 			t.Fatal(decodeErr)
 		}
-		if _, decodeErr = queue.UnmarshalRegisteredPayload(envelope); decodeErr != nil {
+		if _, decodeErr = pubsubx.UnmarshalRegisteredPayload(envelope); decodeErr != nil {
 			t.Fatal(decodeErr)
 		}
 		seen[envelope.GetEventType()]++

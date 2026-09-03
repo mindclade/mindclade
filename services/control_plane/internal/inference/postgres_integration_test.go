@@ -13,14 +13,14 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	platformdb "github.com/mindclade/mindclade/libs/go/persistence"
+	"github.com/mindclade/mindclade/libs/go/pubsubx"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	inferencev1 "github.com/mindclade/mindclade/protocols/generated/go/inference/v1"
 	internalinferencev1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/inference/v1"
 	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
 	policyv1 "github.com/mindclade/mindclade/protocols/generated/go/policy/v1"
 	"github.com/mindclade/mindclade/services/control_plane/internal/jobs"
-	platformdb "github.com/mindclade/mindclade/services/control_plane/internal/platform/database"
-	"github.com/mindclade/mindclade/services/control_plane/internal/platform/queue"
 )
 
 func inferenceIntegrationDB(t *testing.T) *sql.DB {
@@ -235,12 +235,12 @@ func TestPostgresInferenceJourneyIsNormalizedFencedResumableAndEventBacked(t *te
 			_ = platformdb.CloseRows(rows)
 			t.Fatal(err)
 		}
-		envelope, decodeErr := queue.UnmarshalEnvelope(encoded)
+		envelope, decodeErr := pubsubx.UnmarshalEnvelope(encoded)
 		if decodeErr != nil {
 			_ = platformdb.CloseRows(rows)
 			t.Fatal(decodeErr)
 		}
-		payload, decodeErr := queue.UnmarshalRegisteredPayload(envelope)
+		payload, decodeErr := pubsubx.UnmarshalRegisteredPayload(envelope)
 		if decodeErr != nil {
 			_ = platformdb.CloseRows(rows)
 			t.Fatal(decodeErr)

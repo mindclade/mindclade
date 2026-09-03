@@ -743,7 +743,7 @@ integration-ci:
       --source-revision "${source_revision}" \
       --passed-check cross_language=//:all_contract_tests \
       --passed-check database=//services/control_plane:control_plane_test \
-      --passed-check event=//services/control_plane/internal/platform/eventprojection:event_projection_test \
+      --passed-check event=//libs/go/eventruntime:eventruntime_test \
       --passed-check gateway=//services/control_plane:control_plane_grpc_registration_test \
       --passed-check grpc=//services/control_plane:control_plane_grpc_registration_test \
       --passed-check sdk=//:all_contract_tests \

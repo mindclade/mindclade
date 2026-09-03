@@ -1,4 +1,4 @@
-package audit
+package servicekit
 
 import (
 	"encoding/hex"
@@ -10,9 +10,9 @@ import (
 
 	"google.golang.org/protobuf/proto"
 
+	"github.com/mindclade/mindclade/libs/go/pubsubx"
 	auditv1 "github.com/mindclade/mindclade/protocols/generated/go/audit/v1"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
-	"github.com/mindclade/mindclade/services/control_plane/internal/platform/queue"
 )
 
 // eventRow represents normalized audit columns plus the immutable protobuf
@@ -31,7 +31,7 @@ type Store struct {
 }
 
 func (s *Store) Append(envelope *commonv1.EventEnvelope) error {
-	if err := queue.ValidateEnvelope(envelope); err != nil {
+	if err := pubsubx.ValidateEnvelope(envelope); err != nil {
 		return err
 	}
 	payload := new(auditv1.AuditEvent)
@@ -77,7 +77,7 @@ func (s *Store) Events(tenantID string) ([]*commonv1.EventEnvelope, error) {
 		if row.tenantID != tenantID {
 			continue
 		}
-		envelope, err := queue.UnmarshalEnvelope(row.envelopeBytes)
+		envelope, err := pubsubx.UnmarshalEnvelope(row.envelopeBytes)
 		if err != nil {
 			return nil, err
 		}

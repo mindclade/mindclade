@@ -1,4 +1,4 @@
-package eventprojection
+package eventruntime
 
 import (
 	"context"
@@ -21,14 +21,12 @@ import (
 	"google.golang.org/protobuf/reflect/protoregistry"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	"github.com/mindclade/mindclade/libs/go/inbox"
 	"github.com/mindclade/mindclade/libs/go/numconv"
-	adminv1 "github.com/mindclade/mindclade/protocols/generated/go/admin/v1"
+	platformdb "github.com/mindclade/mindclade/libs/go/persistence"
+	"github.com/mindclade/mindclade/libs/go/pubsubx"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
-	adminapp "github.com/mindclade/mindclade/services/control_plane/internal/admin"
-	platformdb "github.com/mindclade/mindclade/services/control_plane/internal/platform/database"
-	"github.com/mindclade/mindclade/services/control_plane/internal/platform/inbox"
-	"github.com/mindclade/mindclade/services/control_plane/internal/platform/queue"
 )
 
 // These contracts originally had no populated fixture evidence. Naming the
@@ -69,7 +67,7 @@ func TestPopulatedEventFixturesCoverRegistry(t *testing.T) {
 	}
 	for fullName := range semanticDefinitions {
 		t.Run(fullName, func(t *testing.T) {
-			registration, ok := queue.RegisteredEvent(fullName, 1)
+			registration, ok := pubsubx.RegisteredEvent(fullName, 1)
 			if !ok || registration.CompatibilityPolicy != "exact-version" {
 				t.Fatalf("missing exact-version registry entry for %s", fullName)
 			}
@@ -83,7 +81,7 @@ func TestPopulatedEventFixturesCoverRegistry(t *testing.T) {
 				t.Fatal("populated fixture encoded to an empty payload")
 			}
 			envelope := fixtureEnvelope(t, fullName, payload, "tenant-fixture", "project-fixture", "fixture-aggregate", "fixture-event", 1)
-			decoded, err := queue.UnmarshalRegisteredPayload(envelope)
+			decoded, err := pubsubx.UnmarshalRegisteredPayload(envelope)
 			if err != nil {
 				t.Fatalf("exact-version fixture decode: %v", err)
 			}
@@ -100,11 +98,11 @@ func TestPopulatedEventFixturesCoverRegistry(t *testing.T) {
 		})
 	}
 	for fullName := range projectionOwnedFixtureEvents {
-		registration, ok := queue.RegisteredEvent(fullName, 1)
+		registration, ok := pubsubx.RegisteredEvent(fullName, 1)
 		if !ok {
 			t.Fatalf("projection-owned populated fixture is not registered: %s", fullName)
 		}
-		if registration.Fixture.Source != "services/control_plane/internal/platform/eventprojection/projection_test.go" ||
+		if registration.Fixture.Source != "libs/go/eventruntime/projection_test.go" ||
 			registration.Fixture.Mode != "populated-protobuf-roundtrip" {
 			t.Fatalf("projection-owned fixture evidence drift for %s: %#v", fullName, registration.Fixture)
 		}
@@ -117,7 +115,7 @@ func TestAcceptedEventsFollowActiveRegistryLifecycle(t *testing.T) {
 		t.Fatal(err)
 	}
 	for fullName := range semanticDefinitions {
-		registration, ok := queue.RegisteredEvent(fullName, 1)
+		registration, ok := pubsubx.RegisteredEvent(fullName, 1)
 		if !ok {
 			t.Fatalf("semantic event %s is not registered", fullName)
 		}
@@ -160,31 +158,37 @@ func TestEventProjectionAtomicityOrderingAndExactVersion(t *testing.T) {
 		if action != envelope.GetEventType() || detailDigest != envelope.GetPayloadDigest() {
 			t.Fatalf("admin audit query projection action=%q detail=%q", action, detailDigest)
 		}
-		query := &adminv1.AuditQuery{
-			Parent:    "tenants/" + tenantID + "/projects/" + projectID,
-			StartTime: timestamppb.New(now.Add(-time.Minute)),
-			EndTime:   timestamppb.New(now.Add(time.Minute)),
-			Actions:   []string{envelope.GetEventType()},
-		}
-		codec, err := adminapp.NewPageTokenCodec([]byte("event-projection-admin-query-test-key"))
-		if err != nil {
-			t.Fatal(err)
-		}
-		repository := adminapp.SQLRepository{DB: db, Pagination: codec, Events: adminapp.GeneratedEventFactory{}}
-		records, _, err := repository.QueryAuditRecords(ctx, adminapp.Identity{
-			TenantID: tenantID, ProjectID: projectID, Principal: "principal/event-projection-test",
-		}, query, adminapp.AuditPage{Limit: 50, ProjectID: projectID, QueryDigest: protobufDigest(t, query)})
-		if err != nil {
-			t.Fatalf("existing Admin query rejected projected event fact: %v", err)
-		}
-		if len(records) != 1 || records[0].GetEventId() != envelope.GetEventId() || records[0].GetAction() != envelope.GetEventType() {
-			t.Fatalf("existing Admin query did not return projected event fact: %v", records)
+		// The Admin audit query narrows administrative_audit_records by tenant,
+		// project, action, and occurrence window. This library cannot import the
+		// control plane's private admin package to run that query, so it asserts
+		// the same predicate directly: a fact the projection writes must satisfy
+		// every clause the Admin query applies, or the projection has written a
+		// row the service can never return.
+		var visible int
+		withTenantTx(t, ctx, db, tenantID, func(tx *sql.Tx) {
+			if err := tx.QueryRowContext(
+				ctx,
+				`SELECT count(*) FROM administrative_audit_records
+				 WHERE tenant_id=$1 AND project_id=$2 AND action=$3
+				   AND occurred_at BETWEEN $4 AND $5 AND event_id=$6`,
+				tenantID,
+				projectID,
+				envelope.GetEventType(),
+				now.Add(-time.Minute),
+				now.Add(time.Minute),
+				envelope.GetEventId(),
+			).Scan(&visible); err != nil {
+				t.Fatal(err)
+			}
+		})
+		if visible != 1 {
+			t.Fatalf("Admin audit query predicate did not match the projected event fact: %d rows", visible)
 		}
 	})
 
 	t.Run("handler failure rolls inbox and projection back", func(t *testing.T) {
 		envelope := jobEnvelope(t, tenantID, projectID, "rollback", "event-rollback", 1, now)
-		payload, err := queue.UnmarshalRegisteredPayload(envelope)
+		payload, err := pubsubx.UnmarshalRegisteredPayload(envelope)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -382,7 +386,7 @@ WHERE tenant_id=$1 AND aggregate_type=$2 AND aggregate_id=$3`, tenantID, "fixtur
 		payload := &jobv1.JobRequested{JobId: "job-unknown-version", ConfigurationDigest: fixtureDigest("unknown")}
 		envelope.EventVersion = 2
 		accepted, err := inbox.AcceptAndHandleSQL(ctx, db, ConsumerName, envelope, payload, Handler{})
-		if accepted || !errors.Is(err, queue.ErrInvalidEnvelope) {
+		if accepted || !errors.Is(err, pubsubx.ErrInvalidEnvelope) {
 			t.Fatalf("unknown version accepted=%t err=%v", accepted, err)
 		}
 		assertTenantCount(t, ctx, db, tenantID, "event_audit_projection", "event_id", envelope.GetEventId(), 0)
@@ -580,15 +584,15 @@ func processOK(t *testing.T, ctx context.Context, processor inbox.Processor, env
 }
 
 func process(ctx context.Context, processor inbox.Processor, envelope *commonv1.EventEnvelope) (inbox.DeliveryDisposition, error) {
-	encoded, err := queue.MarshalEnvelope(envelope)
+	encoded, err := pubsubx.MarshalEnvelope(envelope)
 	if err != nil {
 		return inbox.DeliveryNack, err
 	}
-	attributes, err := queue.TransportAttributes(envelope)
+	attributes, err := pubsubx.TransportAttributes(envelope)
 	if err != nil {
 		return inbox.DeliveryNack, err
 	}
-	orderingKey, err := queue.OrderingKey(envelope)
+	orderingKey, err := pubsubx.OrderingKey(envelope)
 	if err != nil {
 		return inbox.DeliveryNack, err
 	}
@@ -625,7 +629,7 @@ func fixtureEnvelope(t *testing.T, eventType string, payload proto.Message, tena
 		DeduplicationKey: eventID, PayloadContentType: "application/x-protobuf; deterministic=true",
 		Classification: commonv1.DataClassification_DATA_CLASSIFICATION_INTERNAL,
 	}
-	if err = queue.ValidateEnvelope(envelope); err != nil {
+	if err = pubsubx.ValidateEnvelope(envelope); err != nil {
 		t.Fatalf("fixture envelope: %v", err)
 	}
 	return envelope
@@ -712,16 +716,6 @@ func fixtureMapKey(field protoreflect.FieldDescriptor) protoreflect.MapKey {
 
 func fixtureDigest(value string) string {
 	digest := sha256.Sum256([]byte(value))
-	return "sha256:" + hex.EncodeToString(digest[:])
-}
-
-func protobufDigest(t *testing.T, message proto.Message) string {
-	t.Helper()
-	encoded, err := proto.MarshalOptions{Deterministic: true}.Marshal(message)
-	if err != nil {
-		t.Fatal(err)
-	}
-	digest := sha256.Sum256(encoded)
 	return "sha256:" + hex.EncodeToString(digest[:])
 }
 

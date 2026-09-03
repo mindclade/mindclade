@@ -12,10 +12,10 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/mindclade/mindclade/libs/go/numconv"
+	"github.com/mindclade/mindclade/libs/go/pubsubx"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
 	trainingv1 "github.com/mindclade/mindclade/protocols/generated/go/training/v1"
-	"github.com/mindclade/mindclade/services/control_plane/internal/platform/queue"
 )
 
 const protobufEventContentType = "application/x-protobuf; deterministic=true"
@@ -126,7 +126,7 @@ func newEventEnvelope(identity Identity, subject *commonv1.ResourceRef, payloadM
 	if requested, ok := payloadMessage.(*jobv1.JobRequested); ok {
 		envelope.JobId = requested.GetJobId()
 	}
-	if err := queue.ValidateEnvelope(envelope); err != nil {
+	if err := pubsubx.ValidateEnvelope(envelope); err != nil {
 		return nil, err
 	}
 	return envelope, nil

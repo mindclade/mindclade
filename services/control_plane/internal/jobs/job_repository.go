@@ -18,14 +18,14 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	foundationaudit "github.com/mindclade/mindclade/libs/go/audit"
+	platformdb "github.com/mindclade/mindclade/libs/go/persistence"
+	"github.com/mindclade/mindclade/libs/go/pubsubx"
 	artifactv1 "github.com/mindclade/mindclade/protocols/generated/go/artifact/v1"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	featurev1 "github.com/mindclade/mindclade/protocols/generated/go/feature/v1"
 	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
 	transformv1 "github.com/mindclade/mindclade/protocols/generated/go/transform/v1"
 	operationsapp "github.com/mindclade/mindclade/services/control_plane/internal/operations"
-	platformdb "github.com/mindclade/mindclade/services/control_plane/internal/platform/database"
-	"github.com/mindclade/mindclade/services/control_plane/internal/platform/queue"
 	"github.com/mindclade/mindclade/services/control_plane/internal/tenants"
 )
 
@@ -896,11 +896,11 @@ func (r SQLRepository) CancelJobSQL(ctx context.Context, jobID, expectedETag, re
 	if err != nil {
 		return nil, err
 	}
-	envelopeBytes, err := queue.MarshalEnvelope(auditEnvelope)
+	envelopeBytes, err := pubsubx.MarshalEnvelope(auditEnvelope)
 	if err != nil {
 		return nil, err
 	}
-	aggregateType, aggregateID, err := queue.AggregateIdentity(auditEnvelope)
+	aggregateType, aggregateID, err := pubsubx.AggregateIdentity(auditEnvelope)
 	if err != nil {
 		return nil, err
 	}
@@ -941,7 +941,7 @@ func newJobCancellationAuditEnvelope(job *jobv1.Job, principalID string, at time
 	envelope.Subject.ResourceVersion = job.GetResourceVersion()
 	envelope.Subject.Name = "tenants/" + job.GetTenantId() + "/projects/" + job.GetProjectId() + "/" + strings.TrimPrefix(job.GetJobId(), "/") + "/auditEvents/" + envelope.Subject.GetResourceId()
 	envelope.Subject.Etag = job.GetEtag()
-	return envelope, queue.ValidateEnvelope(envelope)
+	return envelope, pubsubx.ValidateEnvelope(envelope)
 }
 
 func mapOperationError(err error) error {

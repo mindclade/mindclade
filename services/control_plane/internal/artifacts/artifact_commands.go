@@ -7,9 +7,9 @@ import (
 	"os"
 	"strings"
 
+	"github.com/mindclade/mindclade/libs/go/storage"
 	artifactv1 "github.com/mindclade/mindclade/protocols/generated/go/artifact/v1"
 	schemav1 "github.com/mindclade/mindclade/protocols/generated/go/schema/v1"
-	"github.com/mindclade/mindclade/services/control_plane/internal/platform/storage"
 	"github.com/mindclade/mindclade/services/control_plane/internal/policies"
 )
 

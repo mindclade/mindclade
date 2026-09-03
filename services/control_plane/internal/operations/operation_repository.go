@@ -16,11 +16,11 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	foundationaudit "github.com/mindclade/mindclade/libs/go/audit"
+	platformdb "github.com/mindclade/mindclade/libs/go/persistence"
+	"github.com/mindclade/mindclade/libs/go/pubsubx"
 	artifactv1 "github.com/mindclade/mindclade/protocols/generated/go/artifact/v1"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
-	platformdb "github.com/mindclade/mindclade/services/control_plane/internal/platform/database"
-	"github.com/mindclade/mindclade/services/control_plane/internal/platform/queue"
 	"github.com/mindclade/mindclade/services/control_plane/internal/tenants"
 )
 
@@ -88,15 +88,15 @@ func (r SQLRepository) CreateAtomicallySQL(ctx context.Context, operation *jobv1
 	if err != nil {
 		return nil, false, err
 	}
-	envelopeBytes, err := queue.MarshalEnvelope(envelope)
+	envelopeBytes, err := pubsubx.MarshalEnvelope(envelope)
 	if err != nil {
 		return nil, false, fmt.Errorf("marshal outbox envelope: %w", err)
 	}
-	aggregateType, aggregateID, err := queue.AggregateIdentity(envelope)
+	aggregateType, aggregateID, err := pubsubx.AggregateIdentity(envelope)
 	if err != nil {
 		return nil, false, fmt.Errorf("resolve outbox aggregate identity: %w", err)
 	}
-	auditEnvelopeBytes, err := queue.MarshalEnvelope(auditEnvelope)
+	auditEnvelopeBytes, err := pubsubx.MarshalEnvelope(auditEnvelope)
 	if err != nil {
 		return nil, false, fmt.Errorf("marshal audit envelope: %w", err)
 	}
@@ -234,15 +234,15 @@ input_ref_id,configuration_ref_id,configuration_digest,etag,created_at,updated_a
 	if err != nil {
 		return nil, false, err
 	}
-	envelopeBytes, err := queue.MarshalEnvelope(envelope)
+	envelopeBytes, err := pubsubx.MarshalEnvelope(envelope)
 	if err != nil {
 		return nil, false, fmt.Errorf("marshal outbox envelope: %w", err)
 	}
-	aggregateType, aggregateID, err := queue.AggregateIdentity(envelope)
+	aggregateType, aggregateID, err := pubsubx.AggregateIdentity(envelope)
 	if err != nil {
 		return nil, false, fmt.Errorf("resolve outbox aggregate identity: %w", err)
 	}
-	auditEnvelopeBytes, err := queue.MarshalEnvelope(auditEnvelope)
+	auditEnvelopeBytes, err := pubsubx.MarshalEnvelope(auditEnvelope)
 	if err != nil {
 		return nil, false, fmt.Errorf("marshal audit envelope: %w", err)
 	}

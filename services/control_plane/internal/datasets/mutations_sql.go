@@ -14,11 +14,11 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	foundationaudit "github.com/mindclade/mindclade/libs/go/audit"
+	platformdb "github.com/mindclade/mindclade/libs/go/persistence"
+	"github.com/mindclade/mindclade/libs/go/pubsubx"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	datasetv1 "github.com/mindclade/mindclade/protocols/generated/go/dataset/v1"
 	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
-	platformdb "github.com/mindclade/mindclade/services/control_plane/internal/platform/database"
-	"github.com/mindclade/mindclade/services/control_plane/internal/platform/queue"
 )
 
 func (r SQLRepository) validateMutation() error {
@@ -151,7 +151,7 @@ func recordMutation(ctx context.Context, tx *sql.Tx, identity Identity, action, 
 	if err != nil {
 		return err
 	}
-	encodedAudit, err := queue.MarshalEnvelope(audit)
+	encodedAudit, err := pubsubx.MarshalEnvelope(audit)
 	if err != nil {
 		return err
 	}
@@ -159,11 +159,11 @@ func recordMutation(ctx context.Context, tx *sql.Tx, identity Identity, action, 
 		return err
 	}
 	for _, event := range events {
-		encoded, marshalErr := queue.MarshalEnvelope(event)
+		encoded, marshalErr := pubsubx.MarshalEnvelope(event)
 		if marshalErr != nil {
 			return marshalErr
 		}
-		kind, id, identityErr := queue.AggregateIdentity(event)
+		kind, id, identityErr := pubsubx.AggregateIdentity(event)
 		if identityErr != nil {
 			return identityErr
 		}

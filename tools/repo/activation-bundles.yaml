@@ -525,7 +525,7 @@
         "protocols/generated/python/mindclade/events/registry.py",
         "protocols/generated/typescript/google/api/annotations_pb.ts",
         "protocols/generated/typescript/google/api/http_pb.ts",
-        "services/control_plane/internal/platform/queue/event_registry_generated.go"
+        "libs/go/pubsubx/event_registry_generated.go"
       ]
     },
     {
@@ -775,8 +775,8 @@
         "services/control_plane/internal/artifacts/server.go",
         "services/control_plane/internal/artifacts/server_test.go",
         "services/control_plane/internal/artifacts/staging_receipts.go",
-        "services/control_plane/internal/platform/storage/gcs_object_store.go",
-        "services/control_plane/internal/platform/storage/gcs_object_store_test.go",
+        "libs/go/storage/gcs_object_store.go",
+        "libs/go/storage/gcs_object_store_test.go",
         "services/control_plane/migrations/000002_artifacts.down.sql",
         "services/control_plane/migrations/000002_artifacts.up.sql"
       ]
@@ -1031,11 +1031,32 @@
       "status": "active",
       "reason": "A separate exact-version Pub/Sub consumer atomically projects registered protobuf events with inbox deduplication into tenant-isolated immutable audit facts.",
       "paths": [
-        "services/control_plane/internal/platform/eventprojection/BUILD.bazel",
-        "services/control_plane/internal/platform/eventprojection/projection.go",
-        "services/control_plane/internal/platform/eventprojection/projection_test.go",
+        "libs/go/eventruntime/BUILD.bazel",
+        "libs/go/eventruntime/projection.go",
+        "libs/go/eventruntime/projection_test.go",
         "services/control_plane/migrations/000009_event_audit_projection.down.sql",
         "services/control_plane/migrations/000009_event_audit_projection.up.sql"
+      ]
+    },
+    {
+      "id": "platform-runtime-libraries",
+      "constant": "PLATFORM_RUNTIME_LIBRARY_ADDITIONS",
+      "authority": "docs/adr/0015-all-contracts-clean-v1-baseline.md",
+      "owner": "platform-control-plane",
+      "activation_wave": "1",
+      "status": "active",
+      "reason": "The durable-state, outbox, inbox, Pub/Sub, projection, idempotency, fencing, and service-runtime code that every service shares moves out of one service's private tree into eight independently buildable Go libraries.",
+      "paths": [
+        "libs/go/fencing/BUILD.bazel",
+        "libs/go/idempotency/BUILD.bazel",
+        "libs/go/inbox/BUILD.bazel",
+        "libs/go/outbox/BUILD.bazel",
+        "libs/go/persistence/BUILD.bazel",
+        "libs/go/pubsubx/BUILD.bazel",
+        "libs/go/servicekit/BUILD.bazel"
+      ],
+      "predeclared_paths": [
+        "libs/go/servicekit/BUILD.bazel"
       ]
     },
     {

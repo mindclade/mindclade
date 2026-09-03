@@ -835,7 +835,7 @@ def _validate_fresh_database_integration(path: Path, source_revision: str) -> No
         "//services/control_plane/internal/experiments:experiments_test",
         "//services/control_plane/internal/inference:inference_test",
         "//services/control_plane/internal/models:models_test",
-        "//services/control_plane/internal/platform/eventprojection:event_projection_test",
+        "//libs/go/eventruntime:eventruntime_test",
         "//services/control_plane/internal/policies:policies_test",
         "//services/control_plane/internal/training:training_test",
         "//services/control_plane/internal/workflows:workflows_test",

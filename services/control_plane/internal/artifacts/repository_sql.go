@@ -16,13 +16,13 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/mindclade/mindclade/libs/go/numconv"
+	platformdb "github.com/mindclade/mindclade/libs/go/persistence"
+	"github.com/mindclade/mindclade/libs/go/pubsubx"
+	objectstorage "github.com/mindclade/mindclade/libs/go/storage"
 	artifactv1 "github.com/mindclade/mindclade/protocols/generated/go/artifact/v1"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	internalartifactv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/artifact/v1"
 	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
-	platformdb "github.com/mindclade/mindclade/services/control_plane/internal/platform/database"
-	"github.com/mindclade/mindclade/services/control_plane/internal/platform/queue"
-	objectstorage "github.com/mindclade/mindclade/services/control_plane/internal/platform/storage"
 )
 
 const artifactEventContentType = "application/x-protobuf; deterministic=true"
@@ -74,7 +74,7 @@ func (GeneratedEventFactory) StagingFinalized(identity Identity, uploadName stri
 		DeduplicationKey: identifier, PayloadContentType: artifactEventContentType,
 		Classification: commonv1.DataClassification_DATA_CLASSIFICATION_INTERNAL,
 	}
-	if err = queue.ValidateEnvelope(envelope); err != nil {
+	if err = pubsubx.ValidateEnvelope(envelope); err != nil {
 		return nil, err
 	}
 	return envelope, nil
@@ -108,7 +108,7 @@ func newArtifactEnvelope(identity Identity, artifact *artifactv1.ArtifactRef, pa
 		DeduplicationKey: identifier, PayloadContentType: artifactEventContentType,
 		Classification: commonv1.DataClassification_DATA_CLASSIFICATION_INTERNAL,
 	}
-	if err = queue.ValidateEnvelope(envelope); err != nil {
+	if err = pubsubx.ValidateEnvelope(envelope); err != nil {
 		return nil, err
 	}
 	return envelope, nil
@@ -1200,7 +1200,7 @@ func (r SQLRepository) OpenArtifact(ctx context.Context, identity Identity, dige
 }
 
 func insertArtifactOutbox(ctx context.Context, tx *sql.Tx, envelope *commonv1.EventEnvelope, at time.Time) error {
-	encoded, err := queue.MarshalEnvelope(envelope)
+	encoded, err := pubsubx.MarshalEnvelope(envelope)
 	if err != nil {
 		return err
 	}

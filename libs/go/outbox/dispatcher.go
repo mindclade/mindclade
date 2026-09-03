@@ -8,8 +8,8 @@ import (
 
 	gcppubsub "cloud.google.com/go/pubsub/v2"
 
+	"github.com/mindclade/mindclade/libs/go/pubsubx"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
-	"github.com/mindclade/mindclade/services/control_plane/internal/platform/queue"
 )
 
 var ErrDeliveryClaimLost = errors.New("outbox delivery claim lost")
@@ -69,7 +69,7 @@ func (d Dispatcher) DeliverBatch(ctx context.Context, tenantID string, limit int
 		if record.DecodeError != nil || record.Envelope == nil {
 			cause := record.DecodeError
 			if cause == nil {
-				cause = queue.ErrInvalidEnvelope
+				cause = pubsubx.ErrInvalidEnvelope
 			}
 			quarantined, quarantineErr := d.Store.Quarantine(ctx, record.TenantID, record.ID, record.DeliveryEpoch, nowFn().UTC(), cause)
 			switch {
@@ -159,15 +159,15 @@ func (p *PubSubPublisher) Publish(ctx context.Context, envelope *commonv1.EventE
 	if p == nil || p.publisher == nil {
 		return errors.New("Pub/Sub publisher is not initialized")
 	}
-	encoded, err := queue.MarshalEnvelope(envelope)
+	encoded, err := pubsubx.MarshalEnvelope(envelope)
 	if err != nil {
 		return err
 	}
-	orderingKey, err := queue.OrderingKey(envelope)
+	orderingKey, err := pubsubx.OrderingKey(envelope)
 	if err != nil {
 		return err
 	}
-	attributes, err := queue.TransportAttributes(envelope)
+	attributes, err := pubsubx.TransportAttributes(envelope)
 	if err != nil {
 		return err
 	}

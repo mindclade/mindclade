@@ -12,13 +12,13 @@ import (
 
 	"google.golang.org/protobuf/proto"
 
+	platformdb "github.com/mindclade/mindclade/libs/go/persistence"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	evaluationv1 "github.com/mindclade/mindclade/protocols/generated/go/evaluation/v1"
 	internalevaluationv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/evaluation/v1"
 	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
 	jobsapp "github.com/mindclade/mindclade/services/control_plane/internal/jobs"
 	operationsapp "github.com/mindclade/mindclade/services/control_plane/internal/operations"
-	platformdb "github.com/mindclade/mindclade/services/control_plane/internal/platform/database"
 )
 
 func (repository SQLRepository) CreateRun(ctx context.Context, identity Identity, request *internalevaluationv1.CreateEvaluationRunRequest, digest string, at time.Time) (*jobv1.Operation, bool, error) {

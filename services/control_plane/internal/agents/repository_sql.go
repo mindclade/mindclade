@@ -13,12 +13,12 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/mindclade/mindclade/libs/go/numconv"
+	platformdb "github.com/mindclade/mindclade/libs/go/persistence"
 	agentv1 "github.com/mindclade/mindclade/protocols/generated/go/agent/v1"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	internalagentv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/agent/v1"
 	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
 	jobsapp "github.com/mindclade/mindclade/services/control_plane/internal/jobs"
-	platformdb "github.com/mindclade/mindclade/services/control_plane/internal/platform/database"
 )
 
 func (repository SQLRepository) CreateDefinition(ctx context.Context, identity Identity, request *internalagentv1.CreateAgentDefinitionRequest, digest string, at time.Time) (*jobv1.Operation, bool, error) {

@@ -12,12 +12,12 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	"github.com/mindclade/mindclade/libs/go/pubsubx"
 	artifactv1 "github.com/mindclade/mindclade/protocols/generated/go/artifact/v1"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	internalmodelv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/model/v1"
 	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
 	modelv1 "github.com/mindclade/mindclade/protocols/generated/go/model/v1"
-	"github.com/mindclade/mindclade/services/control_plane/internal/platform/queue"
 )
 
 var fixtureTime = time.Date(2026, 9, 1, 12, 0, 0, 0, time.UTC)
@@ -150,7 +150,7 @@ func TestGeneratedModelEventsAreRegistryValidatedAndDecodable(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	decoded, err := queue.UnmarshalRegisteredPayload(event)
+	decoded, err := pubsubx.UnmarshalRegisteredPayload(event)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -174,7 +174,7 @@ func TestGeneratedModelEventsAreRegistryValidatedAndDecodable(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	decoded, err = queue.UnmarshalRegisteredPayload(releaseRegistered)
+	decoded, err = pubsubx.UnmarshalRegisteredPayload(releaseRegistered)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -188,7 +188,7 @@ func TestGeneratedModelEventsAreRegistryValidatedAndDecodable(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err = queue.UnmarshalRegisteredPayload(promoted); err != nil {
+	if _, err = pubsubx.UnmarshalRegisteredPayload(promoted); err != nil {
 		t.Fatal(err)
 	}
 	release.Revision = 3
@@ -198,7 +198,7 @@ func TestGeneratedModelEventsAreRegistryValidatedAndDecodable(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err = queue.UnmarshalRegisteredPayload(revoked); err != nil {
+	if _, err = pubsubx.UnmarshalRegisteredPayload(revoked); err != nil {
 		t.Fatal(err)
 	}
 }

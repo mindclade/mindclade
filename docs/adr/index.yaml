@@ -170,3 +170,10 @@ spec:
       path: docs/adr/0024-internal-sdk-roots-move-to-sdks.md
       owners: [developer-experience, architecture]
       specificationAccepted: "2026-09-02"
+    - id: ADR-0025
+      title: The control-plane platform runtime becomes shared Go libraries
+      status: accepted-in-specification
+      connectedRatification: pending
+      path: docs/adr/0025-control-plane-platform-runtime-becomes-shared-go-libraries.md
+      owners: [platform-control-plane, developer-platform]
+      specificationAccepted: "2026-09-02"

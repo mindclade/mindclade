@@ -14,11 +14,11 @@ import (
 
 	foundationaudit "github.com/mindclade/mindclade/libs/go/audit"
 	"github.com/mindclade/mindclade/libs/go/numconv"
+	platformdb "github.com/mindclade/mindclade/libs/go/persistence"
+	"github.com/mindclade/mindclade/libs/go/pubsubx"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
 	trainingv1 "github.com/mindclade/mindclade/protocols/generated/go/training/v1"
-	platformdb "github.com/mindclade/mindclade/services/control_plane/internal/platform/database"
-	"github.com/mindclade/mindclade/services/control_plane/internal/platform/queue"
 )
 
 func (r SQLRepository) validate() error {
@@ -81,7 +81,7 @@ func insertAudit(ctx context.Context, tx *sql.Tx, identity Identity, action, sub
 	if err != nil {
 		return err
 	}
-	encoded, err := queue.MarshalEnvelope(envelope)
+	encoded, err := pubsubx.MarshalEnvelope(envelope)
 	if err != nil {
 		return err
 	}
@@ -91,7 +91,7 @@ func insertAudit(ctx context.Context, tx *sql.Tx, identity Identity, action, sub
 }
 
 func insertOutbox(ctx context.Context, tx *sql.Tx, envelope *commonv1.EventEnvelope, at time.Time) error {
-	encoded, err := queue.MarshalEnvelope(envelope)
+	encoded, err := pubsubx.MarshalEnvelope(envelope)
 	if err != nil {
 		return err
 	}

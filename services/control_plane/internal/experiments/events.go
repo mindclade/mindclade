@@ -11,9 +11,9 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/mindclade/mindclade/libs/go/numconv"
+	"github.com/mindclade/mindclade/libs/go/pubsubx"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	experimentv1 "github.com/mindclade/mindclade/protocols/generated/go/experiment/v1"
-	"github.com/mindclade/mindclade/services/control_plane/internal/platform/queue"
 )
 
 const protobufEventContentType = "application/x-protobuf; deterministic=true"
@@ -86,7 +86,7 @@ func newEvent(identity Identity, subject *commonv1.ResourceRef, payload proto.Me
 		DeduplicationKey: id, PayloadContentType: protobufEventContentType,
 		Classification: commonv1.DataClassification_DATA_CLASSIFICATION_INTERNAL,
 	}
-	if err = queue.ValidateEnvelope(envelope); err != nil {
+	if err = pubsubx.ValidateEnvelope(envelope); err != nil {
 		return nil, err
 	}
 	return envelope, nil

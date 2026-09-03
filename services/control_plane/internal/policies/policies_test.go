@@ -14,12 +14,12 @@ import (
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	"github.com/mindclade/mindclade/libs/go/pubsubx"
 	artifactv1 "github.com/mindclade/mindclade/protocols/generated/go/artifact/v1"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	internalpolicyv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/policy/v1"
 	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
 	policyv1 "github.com/mindclade/mindclade/protocols/generated/go/policy/v1"
-	"github.com/mindclade/mindclade/services/control_plane/internal/platform/queue"
 )
 
 var fixtureTime = time.Date(2026, 9, 2, 12, 0, 0, 0, time.UTC)
@@ -174,7 +174,7 @@ func TestGeneratedPolicyEventsAreRegisteredAndDecodable(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	payload, err := queue.UnmarshalRegisteredPayload(created)
+	payload, err := pubsubx.UnmarshalRegisteredPayload(created)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -186,7 +186,7 @@ func TestGeneratedPolicyEventsAreRegisteredAndDecodable(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err = queue.UnmarshalRegisteredPayload(recorded); err != nil {
+	if _, err = pubsubx.UnmarshalRegisteredPayload(recorded); err != nil {
 		t.Fatal(err)
 	}
 }

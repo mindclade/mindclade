@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
+	platformdb "github.com/mindclade/mindclade/libs/go/persistence"
 	experimentv1 "github.com/mindclade/mindclade/protocols/generated/go/experiment/v1"
-	platformdb "github.com/mindclade/mindclade/services/control_plane/internal/platform/database"
 )
 
 func (repository SQLRepository) CreateStudy(ctx context.Context, identity Identity, command *experimentv1.CreateStudyCommand, digest string, at time.Time) (*experimentv1.Study, bool, error) {

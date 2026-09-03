@@ -11,8 +11,8 @@ import (
 	"time"
 
 	foundationaudit "github.com/mindclade/mindclade/libs/go/audit"
+	"github.com/mindclade/mindclade/libs/go/pubsubx"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
-	"github.com/mindclade/mindclade/services/control_plane/internal/platform/queue"
 )
 
 type receipt struct {
@@ -64,18 +64,18 @@ func recordMutation(ctx context.Context, tx *sql.Tx, identity Identity, action, 
 	if err != nil {
 		return err
 	}
-	auditBytes, err := queue.MarshalEnvelope(auditEvent)
+	auditBytes, err := pubsubx.MarshalEnvelope(auditEvent)
 	if err != nil {
 		return err
 	}
 	if _, err = tx.ExecContext(ctx, `INSERT INTO audit_events(id,tenant_id,actor_id,action,subject_id,occurred_at,details_digest,event_version,payload_digest,envelope_bytes) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`, auditEvent.GetEventId(), identity.TenantID, identity.Principal, action, resourceName, at.UTC(), digest, auditEvent.GetEventVersion(), auditEvent.GetPayloadDigest(), auditBytes); err != nil {
 		return err
 	}
-	eventBytes, err := queue.MarshalEnvelope(event)
+	eventBytes, err := pubsubx.MarshalEnvelope(event)
 	if err != nil {
 		return err
 	}
-	aggregateType, aggregateID, err := queue.AggregateIdentity(event)
+	aggregateType, aggregateID, err := pubsubx.AggregateIdentity(event)
 	if err != nil {
 		return err
 	}

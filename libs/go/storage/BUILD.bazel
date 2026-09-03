@@ -1,4 +1,4 @@
-load("@rules_go//go:def.bzl", "go_library")
+load("@rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
     name = "storage",
@@ -7,10 +7,23 @@ go_library(
         exclude = ["*_test.go"],
     ),
     importpath = "github.com/mindclade/mindclade/libs/go/storage",
+    visibility = ["//visibility:public"],
     deps = [
         "//protocols/generated/go/common/v1:bindings",
+        "@com_google_cloud_go_storage//:storage",
+        "@org_golang_google_api//googleapi",
+        "@org_golang_google_grpc//codes",
+        "@org_golang_google_grpc//status",
         "@org_golang_google_protobuf//proto",
     ],
+)
+
+go_test(
+    name = "gcs_object_store_test",
+    srcs = ["gcs_object_store_test.go"],
+    embed = [":storage"],
+    pure = "on",
+    visibility = ["//tests:__pkg__"],
 )
 
 filegroup(

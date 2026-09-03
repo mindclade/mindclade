@@ -10,9 +10,9 @@ import (
 
 	"google.golang.org/protobuf/proto"
 
+	platformdb "github.com/mindclade/mindclade/libs/go/persistence"
+	"github.com/mindclade/mindclade/libs/go/pubsubx"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
-	platformdb "github.com/mindclade/mindclade/services/control_plane/internal/platform/database"
-	"github.com/mindclade/mindclade/services/control_plane/internal/platform/queue"
 )
 
 type SQLStore struct{ DB *sql.DB }
@@ -90,9 +90,9 @@ RETURNING message.id, message.event_type, message.event_version,
 		); scanErr != nil {
 			return nil, scanErr
 		}
-		record.Envelope, record.DecodeError = queue.UnmarshalEnvelope(encoded)
+		record.Envelope, record.DecodeError = pubsubx.UnmarshalEnvelope(encoded)
 		if record.DecodeError == nil {
-			aggregateType, aggregateID, identityErr := queue.AggregateIdentity(record.Envelope)
+			aggregateType, aggregateID, identityErr := pubsubx.AggregateIdentity(record.Envelope)
 			if identityErr != nil {
 				record.DecodeError = identityErr
 			} else if record.Envelope.GetTenantId() != tenantID ||
@@ -137,7 +137,7 @@ func (s SQLStore) AcknowledgeSQL(ctx context.Context, tenantID, id string, epoch
 		return false, err
 	}
 	if count == 1 {
-		if err = queue.CompleteOutboxReplayTx(ctx, tx, tenantID, id, at.UTC()); err != nil {
+		if err = pubsubx.CompleteOutboxReplayTx(ctx, tx, tenantID, id, at.UTC()); err != nil {
 			return false, err
 		}
 	}
@@ -271,7 +271,7 @@ type Store struct {
 func NewStore() *Store { return &Store{records: make(map[string]DeliveryRecord)} }
 
 func (s *Store) Insert(record DeliveryRecord) error {
-	aggregateType, aggregateID, err := queue.AggregateIdentity(record.Envelope)
+	aggregateType, aggregateID, err := pubsubx.AggregateIdentity(record.Envelope)
 	if err != nil {
 		return err
 	}

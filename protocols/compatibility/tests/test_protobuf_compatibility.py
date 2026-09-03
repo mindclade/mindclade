@@ -1218,7 +1218,7 @@ class ProtobufCompatibilityTest(unittest.TestCase):
             "protocols/generated/python/mindclade/events/registry.py",
             "protocols/generated/rust/lib.rs",
             "protocols/generated/typescript/common/v1/index.ts",
-            "services/control_plane/internal/platform/queue/event_registry_generated.go",
+            "libs/go/pubsubx/event_registry_generated.go",
         ):
             self.assertIn(digest, (repository / generated_path).read_text())
 

@@ -2,7 +2,7 @@
 // projection from exact-version protobuf events. It performs no external side
 // effects; inbox deduplication and projection updates commit in one SQL
 // transaction.
-package eventprojection
+package eventruntime
 
 import (
 	"context"
@@ -16,6 +16,8 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 
+	platformdb "github.com/mindclade/mindclade/libs/go/persistence"
+	"github.com/mindclade/mindclade/libs/go/pubsubx"
 	adminv1 "github.com/mindclade/mindclade/protocols/generated/go/admin/v1"
 	_ "github.com/mindclade/mindclade/protocols/generated/go/agent/v1"    // link registered event payloads
 	_ "github.com/mindclade/mindclade/protocols/generated/go/artifact/v1" // link registered event payloads
@@ -32,8 +34,6 @@ import (
 	_ "github.com/mindclade/mindclade/protocols/generated/go/training/v1"   // link registered event payloads
 	_ "github.com/mindclade/mindclade/protocols/generated/go/transform/v1"  // link registered event payloads
 	_ "github.com/mindclade/mindclade/protocols/generated/go/workflow/v1"   // link registered event payloads
-	platformdb "github.com/mindclade/mindclade/services/control_plane/internal/platform/database"
-	"github.com/mindclade/mindclade/services/control_plane/internal/platform/queue"
 )
 
 const ConsumerName = "control-plane-event-audit-projection-v1"
@@ -131,7 +131,7 @@ var semanticDefinitions = map[string]semanticKind{
 func AcceptedEvents() (map[string]uint32, error) {
 	accepted := make(map[string]uint32, len(semanticDefinitions))
 	for fullName := range semanticDefinitions {
-		registration, ok := queue.RegisteredEvent(fullName, 1)
+		registration, ok := pubsubx.RegisteredEvent(fullName, 1)
 		if !ok {
 			return nil, fmt.Errorf("%w: %s@1 is absent from the authoritative registry", ErrUnsupportedType, fullName)
 		}
@@ -156,18 +156,18 @@ func (h Handler) HandleEvent(ctx context.Context, tx *sql.Tx, envelope *commonv1
 	if tx == nil || envelope == nil || payload == nil {
 		return errors.New("event projection requires transaction, envelope, and payload")
 	}
-	authoritative, err := queue.UnmarshalRegisteredPayload(envelope)
+	authoritative, err := pubsubx.UnmarshalRegisteredPayload(envelope)
 	if err != nil {
 		return err
 	}
 	if !proto.Equal(authoritative, payload) || string(payload.ProtoReflect().Descriptor().FullName()) != envelope.GetEventType() {
-		return fmt.Errorf("%w: handler payload does not match the authoritative envelope", queue.ErrInvalidEnvelope)
+		return fmt.Errorf("%w: handler payload does not match the authoritative envelope", pubsubx.ErrInvalidEnvelope)
 	}
 	kind, ok := semanticDefinitions[envelope.GetEventType()]
 	if !ok {
 		return fmt.Errorf("%w: %s", ErrUnsupportedType, envelope.GetEventType())
 	}
-	registration, registered := queue.RegisteredEvent(envelope.GetEventType(), envelope.GetEventVersion())
+	registration, registered := pubsubx.RegisteredEvent(envelope.GetEventType(), envelope.GetEventVersion())
 	if !registered || registration.LifecycleState != "active" {
 		return fmt.Errorf("%w: %s@%d is not active", ErrUnsupportedType, envelope.GetEventType(), envelope.GetEventVersion())
 	}
@@ -247,10 +247,10 @@ ON CONFLICT (tenant_id,event_id) DO NOTHING`, envelope.GetTenantId(), envelope.G
 
 func validateProjectionEnvelope(envelope *commonv1.EventEnvelope) error {
 	if envelope.GetAggregateSequence() > uint64(1<<63-1) {
-		return fmt.Errorf("%w: aggregate sequence exceeds PostgreSQL bigint", queue.ErrInvalidEnvelope)
+		return fmt.Errorf("%w: aggregate sequence exceeds PostgreSQL bigint", pubsubx.ErrInvalidEnvelope)
 	}
 	if envelope.GetRecordedAt().AsTime().Before(envelope.GetOccurredAt().AsTime()) {
-		return fmt.Errorf("%w: recorded time precedes occurrence time", queue.ErrInvalidEnvelope)
+		return fmt.Errorf("%w: recorded time precedes occurrence time", pubsubx.ErrInvalidEnvelope)
 	}
 	limits := []struct {
 		name  string
@@ -273,11 +273,11 @@ func validateProjectionEnvelope(envelope *commonv1.EventEnvelope) error {
 	}
 	for _, item := range limits {
 		if len(item.value) > item.limit || strings.ContainsRune(item.value, '\x00') {
-			return fmt.Errorf("%w: %s exceeds its storage boundary", queue.ErrInvalidEnvelope, item.name)
+			return fmt.Errorf("%w: %s exceeds its storage boundary", pubsubx.ErrInvalidEnvelope, item.name)
 		}
 	}
 	if classification := envelope.GetClassification(); classification < commonv1.DataClassification_DATA_CLASSIFICATION_PUBLIC || classification > commonv1.DataClassification_DATA_CLASSIFICATION_RESTRICTED {
-		return fmt.Errorf("%w: classification is outside the registered storage domain", queue.ErrInvalidEnvelope)
+		return fmt.Errorf("%w: classification is outside the registered storage domain", pubsubx.ErrInvalidEnvelope)
 	}
 	return nil
 }
@@ -297,7 +297,7 @@ func validateSemanticFact(fact semanticFactValue) error {
 	}
 	for _, value := range values {
 		if (value.required && value.value == "") || len(value.value) > value.limit || strings.ContainsRune(value.value, '\x00') {
-			return fmt.Errorf("%w: %s is outside its storage boundary", queue.ErrInvalidEnvelope, value.name)
+			return fmt.Errorf("%w: %s is outside its storage boundary", pubsubx.ErrInvalidEnvelope, value.name)
 		}
 	}
 	return nil
@@ -366,7 +366,7 @@ INSERT INTO event_audit_projection_heads (
 }
 
 func projectionAggregateIdentity(envelope *commonv1.EventEnvelope) (string, string, error) {
-	aggregateType, aggregateID, err := queue.AggregateIdentity(envelope)
+	aggregateType, aggregateID, err := pubsubx.AggregateIdentity(envelope)
 	if err != nil {
 		return "", "", err
 	}

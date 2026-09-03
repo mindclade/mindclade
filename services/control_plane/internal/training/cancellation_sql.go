@@ -6,10 +6,10 @@ import (
 	"errors"
 	"time"
 
+	platformdb "github.com/mindclade/mindclade/libs/go/persistence"
 	internaljobv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/job/v1"
 	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
 	trainingv1 "github.com/mindclade/mindclade/protocols/generated/go/training/v1"
-	platformdb "github.com/mindclade/mindclade/services/control_plane/internal/platform/database"
 )
 
 // reconcileSchedulerCancellation applies cancellation intent monotonically to

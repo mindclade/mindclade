@@ -160,7 +160,7 @@ RECEIPT_CONTRACTS = {
             }
         ),
         (
-            "//services/control_plane/internal/platform/eventprojection:event_projection_test",
+            "//libs/go/eventruntime:eventruntime_test",
             "//services/control_plane:control_plane_test",
             "//services/control_plane:jobs_server_test",
         ),

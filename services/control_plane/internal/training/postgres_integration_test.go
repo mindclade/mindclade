@@ -14,13 +14,13 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	platformdb "github.com/mindclade/mindclade/libs/go/persistence"
+	"github.com/mindclade/mindclade/libs/go/pubsubx"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
 	trainingv1 "github.com/mindclade/mindclade/protocols/generated/go/training/v1"
 	"github.com/mindclade/mindclade/services/control_plane/internal/jobs"
 	operationsapp "github.com/mindclade/mindclade/services/control_plane/internal/operations"
-	platformdb "github.com/mindclade/mindclade/services/control_plane/internal/platform/database"
-	"github.com/mindclade/mindclade/services/control_plane/internal/platform/queue"
 )
 
 func integrationDB(t *testing.T) *sql.DB {
@@ -484,7 +484,7 @@ WHERE runs.tenant_id=$1 AND runs.project_id=$2 AND runs.id=$3`, identity.TenantI
 	if err = readTx.Commit(); err != nil {
 		t.Fatal(err)
 	}
-	if _, err = queue.UnmarshalEnvelope(envelopeBytes); err != nil {
+	if _, err = pubsubx.UnmarshalEnvelope(envelopeBytes); err != nil {
 		t.Fatalf("invalid durable event: %v", err)
 	}
 	var jobEnvelopeBytes []byte
@@ -499,11 +499,11 @@ WHERE runs.tenant_id=$1 AND runs.project_id=$2 AND runs.id=$3`, identity.TenantI
 	if err = readJobTx.Commit(); err != nil {
 		t.Fatal(err)
 	}
-	jobEnvelope, err := queue.UnmarshalEnvelope(jobEnvelopeBytes)
+	jobEnvelope, err := pubsubx.UnmarshalEnvelope(jobEnvelopeBytes)
 	if err != nil {
 		t.Fatal(err)
 	}
-	jobPayload, err := queue.UnmarshalRegisteredPayload(jobEnvelope)
+	jobPayload, err := pubsubx.UnmarshalRegisteredPayload(jobEnvelope)
 	if err != nil {
 		t.Fatal(err)
 	}

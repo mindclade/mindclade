@@ -858,8 +858,8 @@ WAVE_ONE_DURABILITY_ADDITIONS = (
     "services/control_plane/internal/operations/operation_commands.go",
     "services/control_plane/internal/operations/operation_repository.go",
     "services/control_plane/internal/operations/operation_reconciler.go",
-    "services/control_plane/internal/platform/audit/audit_store.go",
-    "services/control_plane/internal/platform/inbox/inbox_store.go",
+    "libs/go/servicekit/audit_store.go",
+    "libs/go/inbox/inbox_store.go",
     "tools/release/sign_release.py",
     "tests/conformance/test_configuration_resolution.py",
     "tests/conformance/test_release_signing.py",
@@ -967,20 +967,20 @@ WAVE_ONE_REWAVE_PATHS = frozenset(
         "services/control_plane/internal/jobs/job_reconciler.go",
         "services/control_plane/internal/jobs/job_repository.go",
         "services/control_plane/internal/jobs/lease_fencing.go",
-        "services/control_plane/internal/platform/database/migration_guard.go",
-        "services/control_plane/internal/platform/database/transactions.go",
-        "services/control_plane/internal/platform/idempotency/command_keys.go",
-        "services/control_plane/internal/platform/idempotency/idempotency_store.go",
-        "services/control_plane/internal/platform/outbox/delivery_fencing.go",
-        "services/control_plane/internal/platform/outbox/dispatcher.go",
-        "services/control_plane/internal/platform/outbox/outbox_store.go",
-        "services/control_plane/internal/platform/queue/dead_letter.go",
-        "services/control_plane/internal/platform/queue/delivery.go",
-        "services/control_plane/internal/platform/queue/event_registry_generated.go",
-        "services/control_plane/internal/platform/queue/transport.go",
-        "services/control_plane/internal/platform/storage/artifact_catalog.go",
-        "services/control_plane/internal/platform/storage/object_store.go",
-        "services/control_plane/internal/platform/telemetry/audit_events.go",
+        "libs/go/persistence/migration_guard.go",
+        "libs/go/persistence/transactions.go",
+        "libs/go/idempotency/command_keys.go",
+        "libs/go/idempotency/idempotency_store.go",
+        "libs/go/fencing/delivery_fencing.go",
+        "libs/go/outbox/dispatcher.go",
+        "libs/go/outbox/outbox_store.go",
+        "libs/go/pubsubx/dead_letter.go",
+        "libs/go/pubsubx/delivery.go",
+        "libs/go/pubsubx/event_registry_generated.go",
+        "libs/go/pubsubx/transport.go",
+        "libs/go/storage/artifact_catalog.go",
+        "libs/go/storage/object_store.go",
+        "libs/go/servicekit/audit_events.go",
         "services/control_plane/internal/policies/authorization.go",
         "services/control_plane/internal/policies/decision_audit.go",
         "services/control_plane/internal/tenants/tenant_isolation.go",
@@ -2116,7 +2116,7 @@ def infer_source_authority(path: str) -> str:
         "protocols/compatibility/baselines/openapi.lock.json",
         "protocols/compatibility/baselines/protobuf.candidate.json",
         "protocols/compatibility/baselines/protobuf.lock.json",
-        "services/control_plane/internal/platform/queue/event_registry_generated.go",
+        "libs/go/pubsubx/event_registry_generated.go",
         *OPENAPI_STAGE_ARTIFACT_ADDITIONS,
     }:
         return "reviewed-generated"
@@ -3338,13 +3338,85 @@ CANONICAL_PATH_SET_SHA256 = (  # pyright: ignore[reportConstantRedefinition]
 _adr0024_reconciliation_addition_reason = _reconciliation_addition_reason
 
 
-def _reconciliation_addition_reason(path: str) -> str:
+def _reconciliation_addition_reason(path: str) -> str:  # pyright: ignore[reportRedeclaration]
     if path == INTERNAL_SDK_ROOT_ADR:
         return (
             "ADR-0024 records the internal SDK root relocation and why the "
             "blueprint's sdks/internal/<language> spelling cannot be used for Go."
         )
     return _adr0024_reconciliation_addition_reason(path)
+
+
+# The control-plane platform runtime becomes the eight blueprint Go libraries
+# (ADR-0025). services/control_plane/internal/platform held durable-state,
+# outbox, inbox, Pub/Sub, projection, idempotency, fencing, and service-runtime
+# code behind a service-private path, so no other service could depend on it.
+PLATFORM_RUNTIME_LIBRARY_ROOT = "services/control_plane/internal/platform"
+PLATFORM_RUNTIME_LIBRARY_REPLACEMENTS = {
+    f"{PLATFORM_RUNTIME_LIBRARY_ROOT}/{old}": new
+    for old, new in (
+        ("database/migration_guard.go", "libs/go/persistence/migration_guard.go"),
+        ("database/transactions.go", "libs/go/persistence/transactions.go"),
+        ("idempotency/command_keys.go", "libs/go/idempotency/command_keys.go"),
+        ("idempotency/idempotency_store.go", "libs/go/idempotency/idempotency_store.go"),
+        ("outbox/delivery_fencing.go", "libs/go/fencing/delivery_fencing.go"),
+        ("outbox/dispatcher.go", "libs/go/outbox/dispatcher.go"),
+        ("outbox/outbox_store.go", "libs/go/outbox/outbox_store.go"),
+        ("queue/dead_letter.go", "libs/go/pubsubx/dead_letter.go"),
+        ("queue/delivery.go", "libs/go/pubsubx/delivery.go"),
+        ("queue/transport.go", "libs/go/pubsubx/transport.go"),
+        ("storage/artifact_catalog.go", "libs/go/storage/artifact_catalog.go"),
+        ("storage/object_store.go", "libs/go/storage/object_store.go"),
+        ("telemetry/audit_events.go", "libs/go/servicekit/audit_events.go"),
+    )
+}
+# The reviewed activation bundle carries all seven Bazel packages; only six are
+# reconciliation additions because libs/go/servicekit/BUILD.bazel is already a
+# canonical authority path that this change populates.
+PLATFORM_RUNTIME_LIBRARY_ADR = (
+    "docs/adr/0025-control-plane-platform-runtime-becomes-shared-go-libraries.md"
+)
+PLATFORM_RUNTIME_LIBRARY_BUILD_FILES = activation_bundle_paths("PLATFORM_RUNTIME_LIBRARY_ADDITIONS")
+PATH_REPLACEMENTS = {  # pyright: ignore[reportConstantRedefinition]
+    **PATH_REPLACEMENTS,
+    **PLATFORM_RUNTIME_LIBRARY_REPLACEMENTS,
+}
+REQUIRED_ADDITIONS = (  # pyright: ignore[reportConstantRedefinition]
+    *REQUIRED_ADDITIONS,
+    PLATFORM_RUNTIME_LIBRARY_ADR,
+    *PLATFORM_RUNTIME_LIBRARY_BUILD_FILES,
+)
+CANONICAL_FILE_COUNT = (  # pyright: ignore[reportConstantRedefinition]
+    CANONICAL_FILE_COUNT + len(PLATFORM_RUNTIME_LIBRARY_BUILD_FILES) + 1
+)
+CANONICAL_PATH_SET_SHA256 = (  # pyright: ignore[reportConstantRedefinition]
+    "22542b8499e718c14232ae61b0ac71c8329f3ddc7e38a1e5618ba7b93c05f383"
+)
+
+_PLATFORM_RUNTIME_LIBRARY_REASON = (
+    "ADR-0025 moves the control-plane platform runtime into the eight blueprint "
+    "Go libraries so services, workers, and tools share one persistence, "
+    "eventing, and fencing runtime."
+)
+
+_adr0025_reconciliation_addition_reason = _reconciliation_addition_reason
+
+
+def _reconciliation_addition_reason(path: str) -> str:
+    if path == PLATFORM_RUNTIME_LIBRARY_ADR:
+        return _PLATFORM_RUNTIME_LIBRARY_REASON
+    if path in PLATFORM_RUNTIME_LIBRARY_BUILD_FILES:
+        return (
+            "ADR-0025 gives each relocated control-plane runtime library its own "
+            "Bazel package so the eight blueprint libraries build independently."
+        )
+    return _adr0025_reconciliation_addition_reason(path)
+
+
+REPLACEMENT_REASONS = {  # pyright: ignore[reportConstantRedefinition]
+    **REPLACEMENT_REASONS,
+    **dict.fromkeys(PLATFORM_RUNTIME_LIBRARY_REPLACEMENTS, _PLATFORM_RUNTIME_LIBRARY_REASON),
+}
 
 
 if __name__ == "__main__":

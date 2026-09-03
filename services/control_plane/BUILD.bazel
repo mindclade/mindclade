@@ -48,11 +48,12 @@ go_binary(
     ],
     deps = _CONTROL_PLANE_GRPC_DEPS + [
         ":artifacts",
-        ":inbox",
         ":jobs",
-        ":outbox",
-        ":storage",
+        "//libs/go/eventruntime",
+        "//libs/go/inbox",
         "//libs/go/numconv",
+        "//libs/go/outbox",
+        "//libs/go/storage",
         "//services/control_plane/internal/admin",
         "//services/control_plane/internal/agents",
         "//services/control_plane/internal/datasets",
@@ -60,7 +61,6 @@ go_binary(
         "//services/control_plane/internal/experiments",
         "//services/control_plane/internal/inference",
         "//services/control_plane/internal/models",
-        "//services/control_plane/internal/platform/eventprojection:event_projection",
         "//services/control_plane/internal/policies",
         "//services/control_plane/internal/workflows",
         "@com_github_jackc_pgx_v5//stdlib",
@@ -116,12 +116,12 @@ go_library(
         "//services/control_plane/internal/workflows:__pkg__",
     ],
     deps = [
-        ":database",
         ":operations",
-        ":queue",
         ":tenants",
         "//libs/go/audit",
         "//libs/go/numconv",
+        "//libs/go/persistence",
+        "//libs/go/pubsubx",
         "//protocols/generated/go/artifact/v1:bindings",
         "//protocols/generated/go/common/v1:bindings",
         "//protocols/generated/go/feature/v1:bindings",
@@ -149,7 +149,8 @@ go_test(
     embed = [":jobs"],
     visibility = ["//tests:__pkg__"],
     deps = [
-        ":database",
+        "//libs/go/persistence",
+        "//libs/go/pubsubx",
         "//protocols/generated/go/artifact/v1:bindings",
         "//protocols/generated/go/common/v1:bindings",
         "//protocols/generated/go/feature/v1:bindings",
@@ -184,10 +185,10 @@ go_library(
         "//services/control_plane/internal/training:__pkg__",
     ],
     deps = [
-        ":database",
-        ":queue",
         ":tenants",
         "//libs/go/audit",
+        "//libs/go/persistence",
+        "//libs/go/pubsubx",
         "//protocols/generated/go/artifact/v1:bindings",
         "//protocols/generated/go/common/v1:bindings",
         "//protocols/generated/go/job/v1:bindings",
@@ -195,30 +196,6 @@ go_library(
         "@org_golang_google_protobuf//proto",
         "@org_golang_google_protobuf//types/known/timestamppb",
     ],
-)
-
-go_library(
-    name = "storage",
-    srcs = [
-        "internal/platform/storage/artifact_catalog.go",
-        "internal/platform/storage/gcs_object_store.go",
-        "internal/platform/storage/object_store.go",
-    ],
-    importpath = "github.com/mindclade/mindclade/services/control_plane/internal/platform/storage",
-    deps = [
-        "@com_google_cloud_go_storage//:storage",
-        "@org_golang_google_api//googleapi",
-        "@org_golang_google_grpc//codes",
-        "@org_golang_google_grpc//status",
-    ],
-)
-
-go_test(
-    name = "storage_test",
-    srcs = ["internal/platform/storage/gcs_object_store_test.go"],
-    embed = [":storage"],
-    pure = "on",
-    visibility = ["//tests:__pkg__"],
 )
 
 go_library(
@@ -234,11 +211,11 @@ go_library(
     ],
     importpath = "github.com/mindclade/mindclade/services/control_plane/internal/artifacts",
     deps = [
-        ":database",
-        ":queue",
-        ":storage",
         ":tenants",
         "//libs/go/numconv",
+        "//libs/go/persistence",
+        "//libs/go/pubsubx",
+        "//libs/go/storage",
         "//protocols/generated/go/artifact/v1:bindings",
         "//protocols/generated/go/common/v1:bindings",
         "//protocols/generated/go/internalrpc/artifact/v1:bindings",
@@ -263,8 +240,9 @@ go_test(
     pure = "on",
     visibility = ["//tests:__pkg__"],
     deps = [
-        ":database",
-        ":queue",
+        "//libs/go/persistence",
+        "//libs/go/pubsubx",
+        "//libs/go/storage",
         "//protocols/generated/go/artifact/v1:bindings",
         "//protocols/generated/go/common/v1:bindings",
         "//protocols/generated/go/internalrpc/artifact/v1:bindings",
@@ -277,129 +255,6 @@ go_test(
         "@org_golang_google_grpc//test/bufconn",
         "@org_golang_google_protobuf//proto",
         "@org_golang_google_protobuf//types/known/timestamppb",
-    ],
-)
-
-go_library(
-    name = "audit",
-    srcs = ["internal/platform/audit/audit_store.go"],
-    importpath = "github.com/mindclade/mindclade/services/control_plane/internal/platform/audit",
-    deps = [
-        ":queue",
-        "//protocols/generated/go/audit/v1:bindings",
-        "//protocols/generated/go/common/v1:bindings",
-        "@org_golang_google_protobuf//proto",
-    ],
-)
-
-go_library(
-    name = "database",
-    srcs = [
-        "internal/platform/database/migration_guard.go",
-        "internal/platform/database/transactions.go",
-    ],
-    importpath = "github.com/mindclade/mindclade/services/control_plane/internal/platform/database",
-    visibility = [
-        "//services/control_plane/internal/admin:__pkg__",
-        "//services/control_plane/internal/agents:__pkg__",
-        "//services/control_plane/internal/artifacts:__pkg__",
-        "//services/control_plane/internal/datasets:__pkg__",
-        "//services/control_plane/internal/evaluations:__pkg__",
-        "//services/control_plane/internal/experiments:__pkg__",
-        "//services/control_plane/internal/inference:__pkg__",
-        "//services/control_plane/internal/models:__pkg__",
-        "//services/control_plane/internal/platform/eventprojection:__pkg__",
-        "//services/control_plane/internal/policies:__pkg__",
-        "//services/control_plane/internal/training:__pkg__",
-        "//services/control_plane/internal/workflows:__pkg__",
-    ],
-    deps = [
-        "//protocols/generated/go/artifact/v1:bindings",
-        "//protocols/generated/go/common/v1:bindings",
-        "@org_golang_google_protobuf//types/known/durationpb",
-    ],
-)
-
-go_library(
-    name = "idempotency",
-    srcs = [
-        "internal/platform/idempotency/command_keys.go",
-        "internal/platform/idempotency/idempotency_store.go",
-    ],
-    importpath = "github.com/mindclade/mindclade/services/control_plane/internal/platform/idempotency",
-)
-
-go_library(
-    name = "inbox",
-    srcs = ["internal/platform/inbox/inbox_store.go"],
-    importpath = "github.com/mindclade/mindclade/services/control_plane/internal/platform/inbox",
-    visibility = ["//services/control_plane/internal/platform/eventprojection:__pkg__"],
-    deps = [
-        ":database",
-        ":queue",
-        "//protocols/generated/go/common/v1:bindings",
-        "@com_google_cloud_go_pubsub_v2//:pubsub",
-        "@org_golang_google_protobuf//proto",
-    ],
-)
-
-go_library(
-    name = "outbox",
-    srcs = [
-        "internal/platform/outbox/delivery_fencing.go",
-        "internal/platform/outbox/dispatcher.go",
-        "internal/platform/outbox/outbox_store.go",
-    ],
-    importpath = "github.com/mindclade/mindclade/services/control_plane/internal/platform/outbox",
-    deps = [
-        ":database",
-        ":queue",
-        "//protocols/generated/go/common/v1:bindings",
-        "@com_google_cloud_go_pubsub_v2//:pubsub",
-        "@org_golang_google_protobuf//proto",
-    ],
-)
-
-go_library(
-    name = "queue",
-    srcs = [
-        "internal/platform/queue/dead_letter.go",
-        "internal/platform/queue/delivery.go",
-        "internal/platform/queue/event_registry_generated.go",
-        "internal/platform/queue/transport.go",
-    ],
-    importpath = "github.com/mindclade/mindclade/services/control_plane/internal/platform/queue",
-    visibility = [
-        "//services/control_plane/internal/admin:__pkg__",
-        "//services/control_plane/internal/agents:__pkg__",
-        "//services/control_plane/internal/artifacts:__pkg__",
-        "//services/control_plane/internal/datasets:__pkg__",
-        "//services/control_plane/internal/evaluations:__pkg__",
-        "//services/control_plane/internal/experiments:__pkg__",
-        "//services/control_plane/internal/inference:__pkg__",
-        "//services/control_plane/internal/models:__pkg__",
-        "//services/control_plane/internal/platform/eventprojection:__pkg__",
-        "//services/control_plane/internal/policies:__pkg__",
-        "//services/control_plane/internal/training:__pkg__",
-        "//services/control_plane/internal/workflows:__pkg__",
-    ],
-    deps = [
-        ":database",
-        "//protocols/generated/go/common/v1:bindings",
-        "@org_golang_google_protobuf//proto",
-        "@org_golang_google_protobuf//reflect/protoreflect",
-        "@org_golang_google_protobuf//reflect/protoregistry",
-    ],
-)
-
-go_library(
-    name = "telemetry",
-    srcs = ["internal/platform/telemetry/audit_events.go"],
-    importpath = "github.com/mindclade/mindclade/services/control_plane/internal/platform/telemetry",
-    deps = [
-        "//protocols/generated/go/audit/v1:bindings",
-        "//protocols/generated/go/common/v1:bindings",
-        "@org_golang_google_protobuf//proto",
     ],
 )
 
@@ -431,7 +286,7 @@ filegroup(
         "migrations/000010_experiment_vertical.up.sql",
         "migrations/migration_policy.yaml",
     ],
-    visibility = ["//services/control_plane/internal/platform/eventprojection:__pkg__"],
+    visibility = ["//libs/go/eventruntime:__pkg__"],
 )
 
 filegroup(
@@ -453,13 +308,14 @@ go_test(
     visibility = ["//tests:__pkg__"],
     deps = [
         ":artifacts",
-        ":inbox",
         ":jobs",
         ":operations",
-        ":outbox",
-        ":queue",
-        ":storage",
         "//libs/go/audit",
+        "//libs/go/inbox",
+        "//libs/go/numconv",
+        "//libs/go/outbox",
+        "//libs/go/pubsubx",
+        "//libs/go/storage",
         "//protocols/generated/go/artifact/v1:bindings",
         "//protocols/generated/go/common/v1:bindings",
         "//protocols/generated/go/job/v1:bindings",
@@ -477,7 +333,6 @@ test_suite(
         ":control_plane_grpc_registration_test",
         ":control_plane_test",
         ":jobs_server_test",
-        ":storage_test",
         "//services/control_plane/internal/admin:admin_test",
         "//services/control_plane/internal/agents:agents_test",
         "//services/control_plane/internal/datasets:datasets_test",
@@ -485,7 +340,6 @@ test_suite(
         "//services/control_plane/internal/experiments:experiments_test",
         "//services/control_plane/internal/inference:inference_test",
         "//services/control_plane/internal/models:models_test",
-        "//services/control_plane/internal/platform/eventprojection:event_projection_test",
         "//services/control_plane/internal/policies:policies_test",
         "//services/control_plane/internal/training:training_test",
         "//services/control_plane/internal/workflows:workflows_test",
@@ -504,21 +358,12 @@ filegroup(
         "internal/jobs/domain_completion_postgres_test.go",
         "internal/jobs/events_test.go",
         "internal/jobs/server_test.go",
-        "internal/platform/storage/gcs_object_store_test.go",
         ":artifacts",
-        ":audit",
         ":control-plane",
         ":control_plane_test_sources",
-        ":database",
         ":governed_inputs",
-        ":idempotency",
-        ":inbox",
         ":jobs",
         ":operations",
-        ":outbox",
-        ":queue",
-        ":storage",
-        ":telemetry",
         ":tenants",
         "//services/control_plane/internal/admin:governed_sources",
         "//services/control_plane/internal/agents:governed_sources",
@@ -527,7 +372,6 @@ filegroup(
         "//services/control_plane/internal/experiments:governed_sources",
         "//services/control_plane/internal/inference:governed_sources",
         "//services/control_plane/internal/models:governed_sources",
-        "//services/control_plane/internal/platform/eventprojection:governed_sources",
         "//services/control_plane/internal/policies:governed_sources",
         "//services/control_plane/internal/training:governed_sources",
         "//services/control_plane/internal/workflows:governed_sources",
