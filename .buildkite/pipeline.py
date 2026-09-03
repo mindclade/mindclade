@@ -147,14 +147,23 @@ def self_test() -> None:
     if dependency_install not in justfile:
         raise AssertionError("canonical source checks do not hydrate frozen pnpm dependencies")
     workflow_root = BUILDKITE_ROOT.parent / ".github/workflows"
-    implementation_pin = "@fc5af9efc19b47078fe446feee750d7f4973195b"
+    implementation_pin = "@cdfc7303e8f14d647528774768c144e4dbf67b86"
     organization_references: list[str] = []
-    for workflow_path in sorted(workflow_root.glob("*.yml")):
-        lines = workflow_path.read_text(encoding="utf-8").splitlines()
+    workflows_naming_organization: set[str] = set()
+    workflows_contributing_references: set[str] = set()
+    workflow_paths = sorted(
+        path for pattern in ("*.yml", "*.yaml") for path in workflow_root.glob(pattern)
+    )
+    for workflow_path in workflow_paths:
+        source = workflow_path.read_text(encoding="utf-8")
+        if "mindclade/.github/" in source:
+            workflows_naming_organization.add(workflow_path.name)
+        lines = source.splitlines()
         for index, line in enumerate(lines):
             if "uses: mindclade/.github/.github/workflows/" not in line:
                 continue
             organization_references.append(line.strip())
+            workflows_contributing_references.add(workflow_path.name)
             if not line.endswith(implementation_pin):
                 raise AssertionError(f"{workflow_path.name} uses an unreviewed workflow revision")
             if "reusable-buildkite-dispatch.yml" not in line:
@@ -166,8 +175,21 @@ def self_test() -> None:
                     raise AssertionError(
                         f"{workflow_path.name} supplies a source-controlled pipeline revision"
                     )
-    if len(organization_references) != 12:
-        raise AssertionError("organization workflow caller inventory is incomplete")
+    # A coverage floor, not a hand-maintained count. A count derived from the same
+    # files it counts is a tautology: delete or rename every caller and it passes
+    # while the revision pin above has asserted nothing. The pin stays the single
+    # reviewed constant, so re-pinning all references still forces a second,
+    # visible edit here.
+    if not organization_references:
+        raise AssertionError(
+            "organization workflow caller inventory is empty; the revision pin asserted nothing"
+        )
+    uncovered = sorted(workflows_naming_organization - workflows_contributing_references)
+    if uncovered:
+        raise AssertionError(
+            "workflows name mindclade/.github without a checked reusable-workflow "
+            f"reference: {uncovered}"
+        )
     permission_boundaries = {
         ("buildkite-dispatch.yml", "verify"): (
             "      actions: read\n      contents: read\n      id-token: write\n"

@@ -113,7 +113,7 @@ _governance-source:
 
 # Render one estate-bound repository report. Protected CI supplies immutable,
 # signed connected observations; local unsigned assertions remain diagnostic only.
-_governance-report observation_scope allow_inconclusive:
+_governance-report observation_scope allow_inconclusive write_baseline="false":
     #!/usr/bin/env bash
     set -euo pipefail
     mkdir -p {{ evidence_dir }}
@@ -190,7 +190,12 @@ _governance-report observation_scope allow_inconclusive:
         report_arguments+=(--reference-check "gitops=${gitops_worktree_check}")
       fi
     fi
-    if [[ "{{ allow_inconclusive }}" == true ]]; then
+    if [[ "{{ write_baseline }}" == true ]]; then
+      report_arguments+=(
+        --output-markdown docs/architecture/repository-drift-baseline.md
+        --allow-inconclusive
+      )
+    elif [[ "{{ allow_inconclusive }}" == true ]]; then
       report_arguments+=(
         --output-markdown docs/architecture/repository-drift-baseline.md
         --check
@@ -206,6 +211,13 @@ _governance-report observation_scope allow_inconclusive:
 # worktree observation committed for review.
 governance: _governance-source
     just _governance-report working-tree true
+
+# Rewrite the reviewed drift baseline. Its content snapshot digests every
+# populated path, so any tracked content change makes `just governance` report
+# stale outputs until this recipe regenerates it. Run it in the same commit as
+# the change; the baseline lives under a protected path.
+governance-refresh:
+    just _governance-report working-tree true true
 
 # Protected Buildkite must bind a clean commit and every immutable estate
 # source check. INCONCLUSIVE is a hard failure in this recipe.
