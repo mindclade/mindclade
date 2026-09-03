@@ -48,6 +48,7 @@ from path_policy import (  # noqa: E402
     CANONICAL_FILE_COUNT,
     OPTIONAL_PENDING_RATIFICATION_ARTIFACT_PATHS,
     PolicyError,
+    build_manifest,
     discover_actual_paths,
     is_all_contract_baseline_path,
     normalize_path,
@@ -605,6 +606,49 @@ class RepositoryPolicyTest(unittest.TestCase):
         for path in ("/absolute", "a/../b", "a/{b}.py", "a/<domain>.py", "a\\b"):
             with self.subTest(path=path), self.assertRaises(PolicyError):
                 normalize_path(path)
+
+    def test_the_committed_manifest_is_exactly_what_the_generator_produces(self) -> None:
+        """The manifest is a generated artifact; nothing may be true of it by hand.
+
+        Every other check here reads the committed document, so a hand-edit that
+        satisfies them survives -- and hand-edits did survive: fourteen entries
+        had drifted from what `--build-manifest` produces, six of them into an
+        owner and component that contradicted CODEOWNERS, and eight into a status
+        that dropped an existing, built, tested file out of every Bazel closure.
+        This test is the one that cannot be satisfied by editing the output.
+        """
+
+        generated = build_manifest(
+            REPO_ROOT / "docs/architecture/blueprint/provenance/MONOREPO_TREE.md",
+            REPO_ROOT
+            / "docs/architecture/blueprint/provenance"
+            / "MINDCLADE_MONOREPO_BLUEPRINT_v3.4.0_OPTIMIZED.md",
+        )
+        committed_paths = {entry["path"]: entry for entry in self.manifest["paths"]}
+        generated_paths = {entry["path"]: entry for entry in generated["paths"]}
+        self.assertEqual(sorted(generated_paths), sorted(committed_paths))
+        for path, entry in generated_paths.items():
+            with self.subTest(path=path):
+                self.assertEqual(committed_paths[path], entry)
+        self.assertEqual(generated, self.manifest)
+
+    def test_the_working_tree_declares_no_premature_or_unknown_path(self) -> None:
+        """A registered path must also be activated, and the checkout must match.
+
+        `REQUIRED_ADDITIONS` only puts a path into the canonical set. A block that
+        registers a file without waving it leaves the generator calling an
+        existing file an unactivated `target`, which carries no build or test
+        target -- so the file is governed on paper and built nowhere. That is
+        what `premature_paths` reports, and until this test existed it was
+        reported only by a verifier that cannot run without Bazel.
+        """
+
+        drift = validate_populated_paths(self.manifest, REPO_ROOT)
+        self.assertEqual(drift["premature_paths"], [])
+        self.assertEqual(drift["unknown_paths"], [])
+        self.assertEqual(drift["missing_active_paths"], [])
+        self.assertEqual(drift["restricted_artifacts"], [])
+        self.assertEqual(drift["oversized_files"], [])
 
     def test_populated_target_is_premature_and_unknown_is_rejected(self) -> None:
         manifest = json.loads(json.dumps(self.manifest))

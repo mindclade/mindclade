@@ -977,6 +977,7 @@ WAVE_ONE_REWAVE_PATHS = frozenset(
         "services/control_plane/internal/platform/queue/dead_letter.go",
         "services/control_plane/internal/platform/queue/delivery.go",
         "services/control_plane/internal/platform/queue/event_registry_generated.go",
+        "services/control_plane/internal/platform/queue/outbox_producer.go",
         "services/control_plane/internal/platform/queue/transport.go",
         "services/control_plane/internal/platform/storage/artifact_catalog.go",
         "services/control_plane/internal/platform/storage/object_store.go",
@@ -991,6 +992,7 @@ WAVE_ONE_REWAVE_PATHS = frozenset(
         "services/control_plane/migrations/migration_policy.yaml",
         "services/control_plane/tests/idempotency_test.go",
         "services/control_plane/tests/lease_fencing_test.go",
+        "services/control_plane/tests/outbox_producer_test.go",
         "services/control_plane/tests/tenant_isolation_test.go",
         "services/control_plane/tests/transaction_outbox_test.go",
         "protocols/events/registry.yaml",
@@ -1005,6 +1007,20 @@ WAVE_ONE_REQUIRED_ADDITIONS = (
     *GENERATED_PACKAGE_AUTHORITY_ADDITIONS,
     *SDK_GENERATOR_ADDITIONS,
 )
+
+# Paths activated into wave one by a reconciliation block declared further down
+# this module. `REQUIRED_ADDITIONS` only puts a path into the canonical set; it
+# says nothing about the path's wave, so a block that registers a file without
+# also naming it here leaves the generator classifying an existing, built,
+# tested file as an unactivated `target`. That is not a harmless label: a target
+# entry carries no build or test target, so the file drops out of every Bazel
+# closure, and `validate_populated_paths` reports it as premature. Fourteen
+# entries had drifted that way before this register existed, and were being kept
+# correct only by editing the generated manifest -- which is exactly the failure
+# the manifest exists to prevent.
+# `test_the_working_tree_declares_no_premature_or_unknown_path` is the gate that
+# keeps this list complete.
+LATE_ACTIVATION_WAVE_ONE_PATHS: tuple[str, ...] = ()
 
 REQUIRED_ADDITIONS = (
     *WAVE_ZERO_REQUIRED_ADDITIONS,
@@ -1422,7 +1438,12 @@ def infer_kind(path: str) -> str:
         return "configuration"
     if suffix in {".bzl", ".bazel"} or name in {"BUILD", "BUILD.bazel", "MODULE.bazel"}:
         return "build"
-    if "/tests/" in f"/{path}/" or name.startswith("test_") or "_test." in name:
+    if (
+        "/tests/" in f"/{path}/"
+        or name.startswith("test_")
+        or "_test." in name
+        or ".test." in name
+    ):
         return "test"
     if suffix in {".md", ".rst"}:
         return "documentation"
@@ -1447,9 +1468,14 @@ def infer_wave(path: str) -> str:
         return activation_bundle.activation_wave
     if path == "buf.lock":
         return "0"
+    if path in CONTRACT_VENDORED_IMPORT_PATHS:
+        # The vendored closure is waved with the contract that imports it, not
+        # with its own `protocols/google/...` prefix, which no wave rule covers.
+        return "4"
     if (
         path in WAVE_ONE_REWAVE_PATHS
         or path in WAVE_ONE_REQUIRED_ADDITIONS
+        or path in LATE_ACTIVATION_WAVE_ONE_PATHS
         or path in CONTRACT_RUNTIME_ADDITIONS
         or path in SCHEMA_BINDING_ADDITIONS
         or path in ALL_CONTRACT_CONSUMER_ADDITIONS
@@ -2116,6 +2142,7 @@ def infer_source_authority(path: str) -> str:
         "protocols/compatibility/baselines/protobuf.lock.json",
         "services/control_plane/internal/platform/queue/event_registry_generated.go",
         *OPENAPI_STAGE_ARTIFACT_ADDITIONS,
+        *SDK_API_REFERENCE_DOCUMENT_PATHS,
     }:
         return "reviewed-generated"
     generated_markers = (
@@ -2294,6 +2321,8 @@ def is_all_contract_baseline_path(path: str) -> bool:
     if path in ALL_CONTRACT_RUST_PLUGIN_PATHS:
         return True
     if path in ALL_CONTRACT_GRPC_ADDITIONS:
+        return True
+    if path in CONTRACT_VENDORED_IMPORT_PATHS:
         return True
     parts = PurePosixPath(path).parts
     if len(parts) >= 3 and parts[:2] in {
@@ -3368,6 +3397,10 @@ REQUIRED_ADDITIONS = (  # pyright: ignore[reportConstantRedefinition]
     *REQUIRED_ADDITIONS,
     *SDK_PARITY_PATHS,
 )
+LATE_ACTIVATION_WAVE_ONE_PATHS = (  # pyright: ignore[reportConstantRedefinition]
+    *LATE_ACTIVATION_WAVE_ONE_PATHS,
+    *SDK_PARITY_PATHS,
+)
 CANONICAL_FILE_COUNT = (  # pyright: ignore[reportConstantRedefinition]
     CANONICAL_FILE_COUNT + 58
 )
@@ -3396,6 +3429,10 @@ SDK_CONFORMANCE_CONTRACT_PATHS: tuple[str, ...] = (
 )
 REQUIRED_ADDITIONS = (  # pyright: ignore[reportConstantRedefinition]
     *REQUIRED_ADDITIONS,
+    *SDK_CONFORMANCE_CONTRACT_PATHS,
+)
+LATE_ACTIVATION_WAVE_ONE_PATHS = (  # pyright: ignore[reportConstantRedefinition]
+    *LATE_ACTIVATION_WAVE_ONE_PATHS,
     *SDK_CONFORMANCE_CONTRACT_PATHS,
 )
 CANONICAL_FILE_COUNT = (  # pyright: ignore[reportConstantRedefinition]
@@ -3483,6 +3520,8 @@ def _reconciliation_addition_reason(path: str) -> str:  # pyright: ignore[report
 # carries, and none bounded the envelope size, so an oversized event failed at
 # the relay -- asynchronously, in quarantine -- instead of at the write that
 # produced it. One producer makes those three properties structural.
+# Both sit beside files already named in WAVE_ONE_REWAVE_PATHS, which is where
+# they are waved; this block only carries them into the canonical path set.
 OUTBOX_PRODUCER_PATHS: tuple[str, ...] = (
     "services/control_plane/internal/platform/queue/outbox_producer.go",
     "services/control_plane/tests/outbox_producer_test.go",
