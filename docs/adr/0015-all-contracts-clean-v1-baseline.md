@@ -99,7 +99,7 @@ typed commands, events, and gRPC boundaries.
 
 Buf plus pinned language-native plugins generate the internal Go, Python,
 Rust, and TypeScript Protobuf/gRPC/Connect transport. Mindclade-owned facades
-under `internal/sdk` own authentication metadata, deadlines, retries,
+under `sdks` own authentication metadata, deadlines, retries,
 pagination, operation lifecycle helpers, artifact verification, and stable
 error mapping while intentionally exporting generated wire types. Client-side
 services, workers, training code, tools, and internal applications consume the

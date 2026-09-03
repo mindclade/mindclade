@@ -12,13 +12,13 @@ import (
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	platformdb "github.com/mindclade/mindclade/libs/go/persistence"
+	"github.com/mindclade/mindclade/libs/go/pubsubx"
 	adminv1 "github.com/mindclade/mindclade/protocols/generated/go/admin/v1"
 	artifactv1 "github.com/mindclade/mindclade/protocols/generated/go/artifact/v1"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	internaladminv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/admin/v1"
-	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
-	platformdb "github.com/mindclade/mindclade/services/control_plane/internal/platform/database"
-	"github.com/mindclade/mindclade/services/control_plane/internal/platform/queue"
+	operationv1 "github.com/mindclade/mindclade/protocols/generated/go/operation/v1"
 )
 
 func integrationDB(t *testing.T) *sql.DB {
@@ -142,7 +142,7 @@ func TestPostgresAdminLifecycleAuditExportAndRLS(t *testing.T) {
 	}
 	failExport.Context.CanonicalRequestDigest = failDigest
 	failedOperation, replay, err := repository.ExportAuditRecords(ctx, identity, failExport, failDigest, at.Add(5*time.Second))
-	if err != nil || replay || !failedOperation.GetDone() || failedOperation.GetState() != jobv1.OperationState_OPERATION_STATE_FAILED || failedOperation.GetError().GetCode() != commonv1.ErrorCode_ERROR_CODE_UNAVAILABLE {
+	if err != nil || replay || !failedOperation.GetDone() || failedOperation.GetState() != operationv1.OperationState_OPERATION_STATE_FAILED || failedOperation.GetError().GetCode() != commonv1.ErrorCode_ERROR_CODE_UNAVAILABLE {
 		t.Fatalf("failed operation=%v replay=%v err=%v", failedOperation, replay, err)
 	}
 	failedExport, err := repository.GetAuditExport(ctx, identity, failedOperation.GetTarget().GetName())
@@ -159,7 +159,7 @@ func TestPostgresAdminLifecycleAuditExportAndRLS(t *testing.T) {
 	}
 	requestExport.Context.CanonicalRequestDigest = requestDigest
 	pendingOperation, replay, err := configured.ExportAuditRecords(ctx, identity, requestExport, requestDigest, at.Add(6*time.Second))
-	if err != nil || replay || pendingOperation.GetDone() || pendingOperation.GetState() != jobv1.OperationState_OPERATION_STATE_PENDING {
+	if err != nil || replay || pendingOperation.GetDone() || pendingOperation.GetState() != operationv1.OperationState_OPERATION_STATE_PENDING {
 		t.Fatalf("pending operation=%v replay=%v err=%v", pendingOperation, replay, err)
 	}
 	pendingExport, err := configured.GetAuditExport(ctx, identity, pendingOperation.GetTarget().GetName())
@@ -195,11 +195,11 @@ func TestPostgresAdminLifecycleAuditExportAndRLS(t *testing.T) {
 		if err = rows.Scan(&encoded); err != nil {
 			t.Fatal(err)
 		}
-		envelope, decodeErr := queue.UnmarshalEnvelope(encoded)
+		envelope, decodeErr := pubsubx.UnmarshalEnvelope(encoded)
 		if decodeErr != nil {
 			t.Fatal(decodeErr)
 		}
-		payload, decodeErr := queue.UnmarshalRegisteredPayload(envelope)
+		payload, decodeErr := pubsubx.UnmarshalRegisteredPayload(envelope)
 		if decodeErr != nil {
 			t.Fatal(decodeErr)
 		}

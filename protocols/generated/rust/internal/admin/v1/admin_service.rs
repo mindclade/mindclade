@@ -30,7 +30,7 @@ pub struct UpdateTenantRequest {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct UpdateTenantResponse {
     #[prost(message, optional, tag = "1")]
-    pub operation: ::core::option::Option<crate::job::v1::Operation>,
+    pub operation: ::core::option::Option<crate::operation::v1::Operation>,
 }
 /// CreateProjectRequest creates a tenant-scoped policy and workload boundary.
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -48,7 +48,7 @@ pub struct CreateProjectRequest {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CreateProjectResponse {
     #[prost(message, optional, tag = "1")]
-    pub operation: ::core::option::Option<crate::job::v1::Operation>,
+    pub operation: ::core::option::Option<crate::operation::v1::Operation>,
 }
 /// GetProjectRequest identifies one project revision.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
@@ -102,7 +102,7 @@ pub struct UpdateProjectRequest {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct UpdateProjectResponse {
     #[prost(message, optional, tag = "1")]
-    pub operation: ::core::option::Option<crate::job::v1::Operation>,
+    pub operation: ::core::option::Option<crate::operation::v1::Operation>,
 }
 /// QueryAuditRecordsRequest wraps a bounded payload-minimized query.
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -128,7 +128,7 @@ pub struct ExportAuditRecordsRequest {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ExportAuditRecordsResponse {
     #[prost(message, optional, tag = "1")]
-    pub operation: ::core::option::Option<crate::job::v1::Operation>,
+    pub operation: ::core::option::Option<crate::operation::v1::Operation>,
 }
 /// GetAuditExportRequest identifies one completed immutable export.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]

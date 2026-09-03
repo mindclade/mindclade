@@ -10,7 +10,7 @@ import "proto/mindclade/agent/v1/agent_step.proto";
 import "proto/mindclade/agent/v1/tool_receipt.proto";
 import "proto/mindclade/common/v1/command_context.proto";
 import "proto/mindclade/common/v1/pagination.proto";
-import "proto/mindclade/job/v1/operation.proto";
+import "proto/mindclade/operation/v1/operation.proto";
 import "proto/mindclade/job/v1/lease_fencing.proto";
 
 option go_package = "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/agent/v1;internalagentv1";
@@ -25,7 +25,7 @@ message CreateAgentDefinitionRequest {
 
 // CreateAgentDefinitionResponse returns the durable creation operation.
 message CreateAgentDefinitionResponse {
-  mindclade.job.v1.Operation operation = 1;
+  mindclade.operation.v1.Operation operation = 1;
 }
 
 // UpdateAgentDefinitionRequest applies a field mask under an ETag precondition.
@@ -38,7 +38,7 @@ message UpdateAgentDefinitionRequest {
 
 // UpdateAgentDefinitionResponse returns the durable update operation.
 message UpdateAgentDefinitionResponse {
-  mindclade.job.v1.Operation operation = 1;
+  mindclade.operation.v1.Operation operation = 1;
 }
 
 // GetAgentDefinitionRequest identifies one versioned agent definition.
@@ -77,7 +77,7 @@ message StartAgentRunRequest {
 
 // StartAgentRunResponse returns the durable operation tracking the run.
 message StartAgentRunResponse {
-  mindclade.job.v1.Operation operation = 1;
+  mindclade.operation.v1.Operation operation = 1;
 }
 
 // GetAgentRunRequest identifies one durable agent run.
@@ -116,7 +116,7 @@ message CancelAgentRunRequest {
 
 // CancelAgentRunResponse returns the durable cancellation operation.
 message CancelAgentRunResponse {
-  mindclade.job.v1.Operation operation = 1;
+  mindclade.operation.v1.Operation operation = 1;
 }
 
 // GetAgentStepRequest identifies one append-only run step.

@@ -21,12 +21,12 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	platformdb "github.com/mindclade/mindclade/libs/go/persistence"
+	"github.com/mindclade/mindclade/libs/go/pubsubx"
+	objectstorage "github.com/mindclade/mindclade/libs/go/storage"
 	artifactv1 "github.com/mindclade/mindclade/protocols/generated/go/artifact/v1"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	internalartifactv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/artifact/v1"
-	platformdb "github.com/mindclade/mindclade/services/control_plane/internal/platform/database"
-	"github.com/mindclade/mindclade/services/control_plane/internal/platform/queue"
-	objectstorage "github.com/mindclade/mindclade/services/control_plane/internal/platform/storage"
 )
 
 type fixtureObjectStore struct {
@@ -285,11 +285,11 @@ func TestPostgresArtifactCommitReplayLeaseQuarantineAndRLS(t *testing.T) {
 		if err = rows.Scan(&encoded); err != nil {
 			t.Fatal(err)
 		}
-		envelope, decodeErr := queue.UnmarshalEnvelope(encoded)
+		envelope, decodeErr := pubsubx.UnmarshalEnvelope(encoded)
 		if decodeErr != nil {
 			t.Fatal(decodeErr)
 		}
-		payload, decodeErr := queue.UnmarshalRegisteredPayload(envelope)
+		payload, decodeErr := pubsubx.UnmarshalRegisteredPayload(envelope)
 		if decodeErr != nil {
 			t.Fatal(decodeErr)
 		}

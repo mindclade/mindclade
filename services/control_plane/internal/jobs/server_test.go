@@ -22,12 +22,13 @@ import (
 	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	platformdb "github.com/mindclade/mindclade/libs/go/persistence"
 	artifactv1 "github.com/mindclade/mindclade/protocols/generated/go/artifact/v1"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	featurev1 "github.com/mindclade/mindclade/protocols/generated/go/feature/v1"
 	internaljobv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/job/v1"
 	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
-	platformdb "github.com/mindclade/mindclade/services/control_plane/internal/platform/database"
+	operationv1 "github.com/mindclade/mindclade/protocols/generated/go/operation/v1"
 )
 
 type metadataWorkerResolver struct{}
@@ -268,7 +269,7 @@ func (c fixedRunClock) Now() time.Time { return c.now }
 type jobReceipt struct {
 	digest    string
 	job       *jobv1.Job
-	operation *jobv1.Operation
+	operation *operationv1.Operation
 }
 
 type jobRepositoryFixture struct {
@@ -280,12 +281,12 @@ func newJobRepositoryFixture() *jobRepositoryFixture {
 	return &jobRepositoryFixture{jobs: make(map[string]*jobv1.Job), receipts: make(map[string]jobReceipt)}
 }
 
-func (r *jobRepositoryFixture) RequestJobSQL(_ context.Context, job *jobv1.Job, operation *jobv1.Operation, command JobCommandMetadata) (*JobMutationResult, error) {
+func (r *jobRepositoryFixture) RequestJobSQL(_ context.Context, job *jobv1.Job, operation *operationv1.Operation, command JobCommandMetadata) (*JobMutationResult, error) {
 	if receipt, ok := r.receipts[command.IdempotencyKey]; ok {
 		if receipt.digest != command.RequestDigest {
 			return nil, ErrIdempotencyConflict
 		}
-		return &JobMutationResult{Job: cloneJob(receipt.job), Operation: proto.Clone(receipt.operation).(*jobv1.Operation), Replay: true}, nil
+		return &JobMutationResult{Job: cloneJob(receipt.job), Operation: proto.Clone(receipt.operation).(*operationv1.Operation), Replay: true}, nil
 	}
 	if _, ok := r.jobs[job.GetJobId()]; ok {
 		return nil, ErrAlreadyExists
@@ -295,9 +296,9 @@ func (r *jobRepositoryFixture) RequestJobSQL(_ context.Context, job *jobv1.Job, 
 	persisted.ResourceVersion = 2
 	persisted.Etag = resourceETag(job.GetTenantId(), job.GetProjectId(), job.GetJobId(), 2)
 	r.jobs[persisted.GetJobId()] = cloneJob(persisted)
-	receipt := jobReceipt{digest: command.RequestDigest, job: cloneJob(persisted), operation: proto.Clone(operation).(*jobv1.Operation)}
+	receipt := jobReceipt{digest: command.RequestDigest, job: cloneJob(persisted), operation: proto.Clone(operation).(*operationv1.Operation)}
 	r.receipts[command.IdempotencyKey] = receipt
-	return &JobMutationResult{Job: cloneJob(persisted), Operation: proto.Clone(operation).(*jobv1.Operation)}, nil
+	return &JobMutationResult{Job: cloneJob(persisted), Operation: proto.Clone(operation).(*operationv1.Operation)}, nil
 }
 
 func (r *jobRepositoryFixture) GetJobSQL(_ context.Context, tenantID, projectID, jobID string) (*jobv1.Job, error) {
@@ -332,7 +333,7 @@ func (r *jobRepositoryFixture) CancelJobSQL(_ context.Context, jobID, expectedET
 		if receipt.digest != command.RequestDigest {
 			return nil, ErrIdempotencyConflict
 		}
-		return &JobMutationResult{Job: cloneJob(receipt.job), Operation: proto.Clone(receipt.operation).(*jobv1.Operation), Replay: true}, nil
+		return &JobMutationResult{Job: cloneJob(receipt.job), Operation: proto.Clone(receipt.operation).(*operationv1.Operation), Replay: true}, nil
 	}
 	job, ok := r.jobs[jobID]
 	if !ok || job.GetTenantId() != command.TenantID || job.GetProjectId() != command.ProjectID {
@@ -349,12 +350,12 @@ func (r *jobRepositoryFixture) CancelJobSQL(_ context.Context, jobID, expectedET
 	job.ResourceVersion++
 	job.Etag = resourceETag(job.GetTenantId(), job.GetProjectId(), job.GetJobId(), job.GetResourceVersion())
 	r.jobs[jobID] = cloneJob(job)
-	operation := &jobv1.Operation{
+	operation := &operationv1.Operation{
 		OperationId: job.GetOperationId(), JobId: jobID, TenantId: job.GetTenantId(), ProjectId: job.GetProjectId(),
-		State: jobv1.OperationState_OPERATION_STATE_CANCELLING, ResourceVersion: 2,
+		State: operationv1.OperationState_OPERATION_STATE_CANCELLING, ResourceVersion: 2,
 		Etag: resourceETag(job.GetTenantId(), job.GetProjectId(), job.GetOperationId(), 2),
 	}
-	r.receipts[command.IdempotencyKey] = jobReceipt{digest: command.RequestDigest, job: cloneJob(job), operation: proto.Clone(operation).(*jobv1.Operation)}
+	r.receipts[command.IdempotencyKey] = jobReceipt{digest: command.RequestDigest, job: cloneJob(job), operation: proto.Clone(operation).(*operationv1.Operation)}
 	return &JobMutationResult{Job: cloneJob(job), Operation: operation}, nil
 }
 
@@ -456,7 +457,7 @@ func TestJobServiceNetworkLifecycleIdempotencyAndPagination(t *testing.T) {
 	}
 	cancel.Etag = loaded.GetJob().GetEtag()
 	cancelled, err := client.CancelJob(context.Background(), cancel)
-	if err != nil || cancelled.GetOperation().GetState() != jobv1.OperationState_OPERATION_STATE_CANCELLING {
+	if err != nil || cancelled.GetOperation().GetState() != operationv1.OperationState_OPERATION_STATE_CANCELLING {
 		t.Fatalf("cancel job: response=%v err=%v", cancelled, err)
 	}
 	cancelReplay := proto.Clone(cancel).(*internaljobv1.CancelJobRequest)
@@ -575,7 +576,7 @@ func TestJobServicePostgresNetworkAtomicLifecycle(t *testing.T) {
 		Name: "jobs/shared", Etag: loaded.GetJob().GetEtag(), Reason: "qualification",
 	}
 	cancelled, err := client.CancelJob(ctx, cancelRequest)
-	if err != nil || cancelled.GetOperation().GetState() != jobv1.OperationState_OPERATION_STATE_CANCELLING || cancelled.GetOperation().GetResourceVersion() != 2 {
+	if err != nil || cancelled.GetOperation().GetState() != operationv1.OperationState_OPERATION_STATE_CANCELLING || cancelled.GetOperation().GetResourceVersion() != 2 {
 		t.Fatalf("cancel PostgreSQL job: response=%v err=%v", cancelled, err)
 	}
 	replayedCancel, err := client.CancelJob(ctx, proto.Clone(cancelRequest).(*internaljobv1.CancelJobRequest))

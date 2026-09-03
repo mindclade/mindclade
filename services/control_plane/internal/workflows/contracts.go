@@ -9,7 +9,7 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	internalworkflowv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/workflow/v1"
-	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
+	operationv1 "github.com/mindclade/mindclade/protocols/generated/go/operation/v1"
 	workflowv1 "github.com/mindclade/mindclade/protocols/generated/go/workflow/v1"
 )
 
@@ -84,14 +84,14 @@ type ApprovalPage struct {
 // Repository boundaries use generated protobuf values and clone at both sides.
 // Private SQL row types never leave this package.
 type Repository interface {
-	CreateDefinition(context.Context, Identity, *internalworkflowv1.CreateWorkflowDefinitionRequest, string, time.Time) (*jobv1.Operation, bool, error)
-	UpdateDefinition(context.Context, Identity, *internalworkflowv1.UpdateWorkflowDefinitionRequest, string, time.Time) (*jobv1.Operation, bool, error)
+	CreateDefinition(context.Context, Identity, *internalworkflowv1.CreateWorkflowDefinitionRequest, string, time.Time) (*operationv1.Operation, bool, error)
+	UpdateDefinition(context.Context, Identity, *internalworkflowv1.UpdateWorkflowDefinitionRequest, string, time.Time) (*operationv1.Operation, bool, error)
 	GetDefinition(context.Context, Identity, string) (*workflowv1.WorkflowDefinition, error)
 	ListDefinitions(context.Context, Identity, DefinitionPage) ([]*workflowv1.WorkflowDefinition, string, time.Time, error)
-	StartRun(context.Context, Identity, *internalworkflowv1.StartWorkflowRunRequest, string, time.Time) (*jobv1.Operation, bool, error)
+	StartRun(context.Context, Identity, *internalworkflowv1.StartWorkflowRunRequest, string, time.Time) (*operationv1.Operation, bool, error)
 	GetRun(context.Context, Identity, string) (*workflowv1.WorkflowRun, error)
 	ListRuns(context.Context, Identity, RunPage) ([]*workflowv1.WorkflowRun, string, time.Time, error)
-	CancelRun(context.Context, Identity, *internalworkflowv1.CancelWorkflowRunRequest, string, time.Time) (*jobv1.Operation, bool, error)
+	CancelRun(context.Context, Identity, *internalworkflowv1.CancelWorkflowRunRequest, string, time.Time) (*operationv1.Operation, bool, error)
 	CommitTransition(context.Context, Identity, *internalworkflowv1.CommitWorkflowTransitionRequest, string, time.Time) (*workflowv1.WorkflowRun, bool, error)
 	ListTransitions(context.Context, Identity, string, uint64, int) ([]*workflowv1.WorkflowRun, error)
 	RequestApproval(context.Context, Identity, *workflowv1.ApprovalRequest, string, time.Time) (*workflowv1.ApprovalRequest, bool, error)

@@ -18,7 +18,7 @@ import (
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	evaluationv1 "github.com/mindclade/mindclade/protocols/generated/go/evaluation/v1"
 	internalevaluationv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/evaluation/v1"
-	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
+	operationv1 "github.com/mindclade/mindclade/protocols/generated/go/operation/v1"
 	policyv1 "github.com/mindclade/mindclade/protocols/generated/go/policy/v1"
 )
 
@@ -33,11 +33,11 @@ type fixedClock struct{ now time.Time }
 func (clock fixedClock) Now() time.Time { return clock.now }
 
 type fakeRepository struct {
-	create  func(context.Context, Identity, *internalevaluationv1.CreateEvaluationRunRequest, string, time.Time) (*jobv1.Operation, bool, error)
-	promote func(context.Context, Identity, *internalevaluationv1.CreatePromotionDecisionRequest, string, time.Time) (*jobv1.Operation, bool, error)
+	create  func(context.Context, Identity, *internalevaluationv1.CreateEvaluationRunRequest, string, time.Time) (*operationv1.Operation, bool, error)
+	promote func(context.Context, Identity, *internalevaluationv1.CreatePromotionDecisionRequest, string, time.Time) (*operationv1.Operation, bool, error)
 }
 
-func (repository fakeRepository) CreateRun(ctx context.Context, identity Identity, request *internalevaluationv1.CreateEvaluationRunRequest, digest string, at time.Time) (*jobv1.Operation, bool, error) {
+func (repository fakeRepository) CreateRun(ctx context.Context, identity Identity, request *internalevaluationv1.CreateEvaluationRunRequest, digest string, at time.Time) (*operationv1.Operation, bool, error) {
 	return repository.create(ctx, identity, request, digest, at)
 }
 
@@ -49,7 +49,7 @@ func (fakeRepository) ListRuns(context.Context, Identity, RunPage) ([]*evaluatio
 	return nil, "", time.Unix(1, 0).UTC(), nil
 }
 
-func (fakeRepository) CancelRun(context.Context, Identity, *internalevaluationv1.CancelEvaluationRunRequest, string, time.Time) (*jobv1.Operation, bool, error) {
+func (fakeRepository) CancelRun(context.Context, Identity, *internalevaluationv1.CancelEvaluationRunRequest, string, time.Time) (*operationv1.Operation, bool, error) {
 	return nil, false, ErrNotFound
 }
 
@@ -61,7 +61,7 @@ func (fakeRepository) GetResult(context.Context, Identity, string) (*evaluationv
 	return nil, ErrNotFound
 }
 
-func (repository fakeRepository) CreatePromotionDecision(ctx context.Context, identity Identity, request *internalevaluationv1.CreatePromotionDecisionRequest, digest string, at time.Time) (*jobv1.Operation, bool, error) {
+func (repository fakeRepository) CreatePromotionDecision(ctx context.Context, identity Identity, request *internalevaluationv1.CreatePromotionDecisionRequest, digest string, at time.Time) (*operationv1.Operation, bool, error) {
 	if repository.promote == nil {
 		return nil, false, ErrNotFound
 	}
@@ -101,7 +101,7 @@ func TestNetworkCreateEvaluationRunUsesGeneratedServiceAndAuthoritativeDigest(t 
 	now := time.Date(2026, 9, 2, 12, 0, 0, 0, time.UTC)
 	identity := Identity{TenantID: "tenant-1", ProjectID: "project-1", Principal: "principal-1"}
 	called := false
-	repository := fakeRepository{create: func(_ context.Context, got Identity, request *internalevaluationv1.CreateEvaluationRunRequest, digest string, at time.Time) (*jobv1.Operation, bool, error) {
+	repository := fakeRepository{create: func(_ context.Context, got Identity, request *internalevaluationv1.CreateEvaluationRunRequest, digest string, at time.Time) (*operationv1.Operation, bool, error) {
 		called = true
 		if got != identity {
 			t.Fatalf("identity=%+v", got)
@@ -113,7 +113,7 @@ func TestNetworkCreateEvaluationRunUsesGeneratedServiceAndAuthoritativeDigest(t 
 			t.Fatalf("at=%s", at)
 		}
 		request.EvaluationRunId = "mutated"
-		return &jobv1.Operation{OperationId: "operations/op-1", TenantId: identity.TenantID, ProjectId: identity.ProjectID, JobId: "jobs/job-1", State: jobv1.OperationState_OPERATION_STATE_PENDING, ResourceVersion: 1, Etag: "sha256:" + strings64("9"), CreatedAt: timestamppb.New(now), UpdatedAt: timestamppb.New(now)}, false, nil
+		return &operationv1.Operation{OperationId: "operations/op-1", TenantId: identity.TenantID, ProjectId: identity.ProjectID, JobId: "jobs/job-1", State: operationv1.OperationState_OPERATION_STATE_PENDING, ResourceVersion: 1, Etag: "sha256:" + strings64("9"), CreatedAt: timestamppb.New(now), UpdatedAt: timestamppb.New(now)}, false, nil
 	}}
 	codec, err := NewPageTokenCodec([]byte("0123456789abcdef0123456789abcdef"))
 	if err != nil {
@@ -154,7 +154,7 @@ func TestCreateEvaluationRunRejectsCallerSuppliedCrossTenantContext(t *testing.T
 	now := time.Date(2026, 9, 2, 12, 0, 0, 0, time.UTC)
 	identity := Identity{TenantID: "tenant-1", ProjectID: "project-1", Principal: "principal-1"}
 	codec, _ := NewPageTokenCodec([]byte("0123456789abcdef0123456789abcdef"))
-	repository := fakeRepository{create: func(context.Context, Identity, *internalevaluationv1.CreateEvaluationRunRequest, string, time.Time) (*jobv1.Operation, bool, error) {
+	repository := fakeRepository{create: func(context.Context, Identity, *internalevaluationv1.CreateEvaluationRunRequest, string, time.Time) (*operationv1.Operation, bool, error) {
 		t.Fatal("repository must not be called")
 		return nil, false, nil
 	}}
@@ -225,12 +225,12 @@ func TestCreatePromotionDecisionAcceptsACallerNamedDecision(t *testing.T) {
 	now := time.Date(2026, 9, 2, 12, 0, 0, 0, time.UTC)
 	identity := Identity{TenantID: "tenant-1", ProjectID: "project-1", Principal: "principal-1"}
 	called := false
-	repository := fakeRepository{promote: func(_ context.Context, _ Identity, _ *internalevaluationv1.CreatePromotionDecisionRequest, digest string, _ time.Time) (*jobv1.Operation, bool, error) {
+	repository := fakeRepository{promote: func(_ context.Context, _ Identity, _ *internalevaluationv1.CreatePromotionDecisionRequest, digest string, _ time.Time) (*operationv1.Operation, bool, error) {
 		called = true
 		if !validSHA256(digest) {
 			t.Fatalf("digest=%q", digest)
 		}
-		return &jobv1.Operation{OperationId: "operations/op-1", TenantId: identity.TenantID, ProjectId: identity.ProjectID, JobId: "jobs/job-1", State: jobv1.OperationState_OPERATION_STATE_SUCCEEDED, ResourceVersion: 1, Done: true, Etag: "sha256:" + strings64("9"), CreatedAt: timestamppb.New(now), UpdatedAt: timestamppb.New(now)}, false, nil
+		return &operationv1.Operation{OperationId: "operations/op-1", TenantId: identity.TenantID, ProjectId: identity.ProjectID, JobId: "jobs/job-1", State: operationv1.OperationState_OPERATION_STATE_SUCCEEDED, ResourceVersion: 1, Done: true, Etag: "sha256:" + strings64("9"), CreatedAt: timestamppb.New(now), UpdatedAt: timestamppb.New(now)}, false, nil
 	}}
 	codec, err := NewPageTokenCodec([]byte("0123456789abcdef0123456789abcdef"))
 	if err != nil {

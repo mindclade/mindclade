@@ -9,7 +9,7 @@ package internaldatasetv1
 import (
 	v12 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	v1 "github.com/mindclade/mindclade/protocols/generated/go/dataset/v1"
-	v11 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
+	v11 "github.com/mindclade/mindclade/protocols/generated/go/operation/v1"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
@@ -837,11 +837,11 @@ var File_proto_mindclade_internal_dataset_v1_dataset_service_proto protoreflect.
 
 const file_proto_mindclade_internal_dataset_v1_dataset_service_proto_rawDesc = "" +
 	"\n" +
-	"9proto/mindclade/internal/dataset/v1/dataset_service.proto\x12\x1dmindclade.internal.dataset.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a*proto/mindclade/common/v1/pagination.proto\x1a(proto/mindclade/dataset/v1/dataset.proto\x1a1proto/mindclade/dataset/v1/dataset_commands.proto\x1a0proto/mindclade/dataset/v1/dataset_release.proto\x1a&proto/mindclade/job/v1/operation.proto\"\\\n" +
+	"9proto/mindclade/internal/dataset/v1/dataset_service.proto\x12\x1dmindclade.internal.dataset.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a*proto/mindclade/common/v1/pagination.proto\x1a(proto/mindclade/dataset/v1/dataset.proto\x1a1proto/mindclade/dataset/v1/dataset_commands.proto\x1a0proto/mindclade/dataset/v1/dataset_release.proto\x1a,proto/mindclade/operation/v1/operation.proto\"\\\n" +
 	"\x14CreateDatasetRequest\x12D\n" +
-	"\acommand\x18\x01 \x01(\v2*.mindclade.dataset.v1.CreateDatasetCommandR\acommand\"R\n" +
-	"\x15CreateDatasetResponse\x129\n" +
-	"\toperation\x18\x01 \x01(\v2\x1b.mindclade.job.v1.OperationR\toperation\"K\n" +
+	"\acommand\x18\x01 \x01(\v2*.mindclade.dataset.v1.CreateDatasetCommandR\acommand\"X\n" +
+	"\x15CreateDatasetResponse\x12?\n" +
+	"\toperation\x18\x01 \x01(\v2!.mindclade.operation.v1.OperationR\toperation\"K\n" +
 	"\x11GetDatasetRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\"\n" +
 	"\rif_none_match\x18\x02 \x01(\tR\vifNoneMatch\"M\n" +
@@ -857,17 +857,17 @@ const file_proto_mindclade_internal_dataset_v1_dataset_service_proto_rawDesc = "
 	"\x04page\x18\x02 \x01(\v2!.mindclade.common.v1.PageResponseR\x04page\x127\n" +
 	"\tread_time\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\breadTime\"\\\n" +
 	"\x14UpdateDatasetRequest\x12D\n" +
-	"\acommand\x18\x01 \x01(\v2*.mindclade.dataset.v1.UpdateDatasetCommandR\acommand\"R\n" +
-	"\x15UpdateDatasetResponse\x129\n" +
-	"\toperation\x18\x01 \x01(\v2\x1b.mindclade.job.v1.OperationR\toperation\"l\n" +
+	"\acommand\x18\x01 \x01(\v2*.mindclade.dataset.v1.UpdateDatasetCommandR\acommand\"X\n" +
+	"\x15UpdateDatasetResponse\x12?\n" +
+	"\toperation\x18\x01 \x01(\v2!.mindclade.operation.v1.OperationR\toperation\"l\n" +
 	"\x1cPublishDatasetReleaseRequest\x12L\n" +
-	"\acommand\x18\x01 \x01(\v22.mindclade.dataset.v1.PublishDatasetReleaseCommandR\acommand\"Z\n" +
-	"\x1dPublishDatasetReleaseResponse\x129\n" +
-	"\toperation\x18\x01 \x01(\v2\x1b.mindclade.job.v1.OperationR\toperation\"j\n" +
+	"\acommand\x18\x01 \x01(\v22.mindclade.dataset.v1.PublishDatasetReleaseCommandR\acommand\"`\n" +
+	"\x1dPublishDatasetReleaseResponse\x12?\n" +
+	"\toperation\x18\x01 \x01(\v2!.mindclade.operation.v1.OperationR\toperation\"j\n" +
 	"\x1bRevokeDatasetReleaseRequest\x12K\n" +
-	"\acommand\x18\x01 \x01(\v21.mindclade.dataset.v1.RevokeDatasetReleaseCommandR\acommand\"Y\n" +
-	"\x1cRevokeDatasetReleaseResponse\x129\n" +
-	"\toperation\x18\x01 \x01(\v2\x1b.mindclade.job.v1.OperationR\toperation\".\n" +
+	"\acommand\x18\x01 \x01(\v21.mindclade.dataset.v1.RevokeDatasetReleaseCommandR\acommand\"_\n" +
+	"\x1cRevokeDatasetReleaseResponse\x12?\n" +
+	"\toperation\x18\x01 \x01(\v2!.mindclade.operation.v1.OperationR\toperation\".\n" +
 	"\x18GetDatasetReleaseRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\"j\n" +
 	"\x19GetDatasetReleaseResponse\x12M\n" +
@@ -923,7 +923,7 @@ var file_proto_mindclade_internal_dataset_v1_dataset_service_proto_goTypes = []a
 	(*ListDatasetReleasesRequest)(nil),      // 14: mindclade.internal.dataset.v1.ListDatasetReleasesRequest
 	(*ListDatasetReleasesResponse)(nil),     // 15: mindclade.internal.dataset.v1.ListDatasetReleasesResponse
 	(*v1.CreateDatasetCommand)(nil),         // 16: mindclade.dataset.v1.CreateDatasetCommand
-	(*v11.Operation)(nil),                   // 17: mindclade.job.v1.Operation
+	(*v11.Operation)(nil),                   // 17: mindclade.operation.v1.Operation
 	(*v1.Dataset)(nil),                      // 18: mindclade.dataset.v1.Dataset
 	(*v12.PageRequest)(nil),                 // 19: mindclade.common.v1.PageRequest
 	(*v12.PageResponse)(nil),                // 20: mindclade.common.v1.PageResponse
@@ -935,18 +935,18 @@ var file_proto_mindclade_internal_dataset_v1_dataset_service_proto_goTypes = []a
 }
 var file_proto_mindclade_internal_dataset_v1_dataset_service_proto_depIdxs = []int32{
 	16, // 0: mindclade.internal.dataset.v1.CreateDatasetRequest.command:type_name -> mindclade.dataset.v1.CreateDatasetCommand
-	17, // 1: mindclade.internal.dataset.v1.CreateDatasetResponse.operation:type_name -> mindclade.job.v1.Operation
+	17, // 1: mindclade.internal.dataset.v1.CreateDatasetResponse.operation:type_name -> mindclade.operation.v1.Operation
 	18, // 2: mindclade.internal.dataset.v1.GetDatasetResponse.dataset:type_name -> mindclade.dataset.v1.Dataset
 	19, // 3: mindclade.internal.dataset.v1.ListDatasetsRequest.page:type_name -> mindclade.common.v1.PageRequest
 	18, // 4: mindclade.internal.dataset.v1.ListDatasetsResponse.datasets:type_name -> mindclade.dataset.v1.Dataset
 	20, // 5: mindclade.internal.dataset.v1.ListDatasetsResponse.page:type_name -> mindclade.common.v1.PageResponse
 	21, // 6: mindclade.internal.dataset.v1.ListDatasetsResponse.read_time:type_name -> google.protobuf.Timestamp
 	22, // 7: mindclade.internal.dataset.v1.UpdateDatasetRequest.command:type_name -> mindclade.dataset.v1.UpdateDatasetCommand
-	17, // 8: mindclade.internal.dataset.v1.UpdateDatasetResponse.operation:type_name -> mindclade.job.v1.Operation
+	17, // 8: mindclade.internal.dataset.v1.UpdateDatasetResponse.operation:type_name -> mindclade.operation.v1.Operation
 	23, // 9: mindclade.internal.dataset.v1.PublishDatasetReleaseRequest.command:type_name -> mindclade.dataset.v1.PublishDatasetReleaseCommand
-	17, // 10: mindclade.internal.dataset.v1.PublishDatasetReleaseResponse.operation:type_name -> mindclade.job.v1.Operation
+	17, // 10: mindclade.internal.dataset.v1.PublishDatasetReleaseResponse.operation:type_name -> mindclade.operation.v1.Operation
 	24, // 11: mindclade.internal.dataset.v1.RevokeDatasetReleaseRequest.command:type_name -> mindclade.dataset.v1.RevokeDatasetReleaseCommand
-	17, // 12: mindclade.internal.dataset.v1.RevokeDatasetReleaseResponse.operation:type_name -> mindclade.job.v1.Operation
+	17, // 12: mindclade.internal.dataset.v1.RevokeDatasetReleaseResponse.operation:type_name -> mindclade.operation.v1.Operation
 	25, // 13: mindclade.internal.dataset.v1.GetDatasetReleaseResponse.dataset_release:type_name -> mindclade.dataset.v1.DatasetRelease
 	19, // 14: mindclade.internal.dataset.v1.ListDatasetReleasesRequest.page:type_name -> mindclade.common.v1.PageRequest
 	25, // 15: mindclade.internal.dataset.v1.ListDatasetReleasesResponse.dataset_releases:type_name -> mindclade.dataset.v1.DatasetRelease

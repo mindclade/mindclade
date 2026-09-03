@@ -9,9 +9,9 @@ import (
 
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	platformdb "github.com/mindclade/mindclade/libs/go/persistence"
 	artifactv1 "github.com/mindclade/mindclade/protocols/generated/go/artifact/v1"
 	datasetv1 "github.com/mindclade/mindclade/protocols/generated/go/dataset/v1"
-	platformdb "github.com/mindclade/mindclade/services/control_plane/internal/platform/database"
 )
 
 func (r SQLRepository) validate() error {

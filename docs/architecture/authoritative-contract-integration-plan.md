@@ -10,7 +10,7 @@ exit criteria are evidenced.
 Protobuf resources, services, and events
   ├─> generated internal Go/Python/Rust/TypeScript clients and servers
   │    ├─> allowlisted server adapters and persistence protobuf mappers
-  │    └─> internal/sdk/{go,python,rust,typescript}
+  │    └─> sdks/{go,python,rust,typescript}
   │         └─> client-side services, workers, training, tools, console, CLI, and apps
   ├─> normalized PostgreSQL durable state through private row mappers
   ├─> transactional outbox -> immutable protobuf Pub/Sub delivery
@@ -32,7 +32,7 @@ Mindclade-owned code above those bindings is a deliberately thin behavior façad
 ```text
 protocols/proto
   -> protocols/generated/{go,python,rust,typescript}
-  -> internal/sdk/{go,python,rust,typescript}
+  -> sdks/{go,python,rust,typescript}
   -> client-side services, workers, training, tools, console, CLI, and internal apps
 
 server request
@@ -120,7 +120,7 @@ exist only as a future-public escape hatch.
   immutable manifests and domain runs rather than becoming a provider-owned experiment store.
 - [ ] Stage 7 — Treat Buf plus pinned native Protobuf, gRPC, and Connect generators as the
   authoritative internal transport SDK for Go, Python, Rust, and TypeScript. Build thin
-  handwritten internal facades in `internal/sdk/{go,python,rust,typescript}` above generated
+  handwritten internal facades in `sdks/{go,python,rust,typescript}` above generated
   transports for endpoints, workload identity, tracing, retries, idempotency, pagination,
   operation polling, artifact transfer, errors, and test fakes. Fern is optional only for
   internal HTTP-native clients; Speakeasy is optional for specialized hooks, CLIs, or Terraform
@@ -155,7 +155,7 @@ exist only as a future-public escape hatch.
 - Generated transport code owns wire types and RPC signatures only. Internal SDK facades own
   ergonomic behavior and may not duplicate wire models. Provider-backed REST generation remains
   optional and can never become contract, build, release, or availability authority.
-- The default dependency direction is `protocols/proto -> protocols/generated -> internal/sdk
+- The default dependency direction is `protocols/proto -> protocols/generated -> sdks
   -> client-side services/workers/training/tools/internal applications`. Direct generated imports
   are restricted to SDK implementations, server transport adapters, persistence protobuf mappers,
   and contract tests; every other raw generated import fails architecture tests.
@@ -163,7 +163,7 @@ exist only as a future-public escape hatch.
   deliveries, resolve artifact references through generated artifact RPCs, and commit outcomes
   through the generated fenced job/run protocol. Large graphs, arrays, lineage maps, and receipts
   remain JSON-Schema-authoritative artifacts; neither the SDK nor Pub/Sub payloads embed them.
-- `internal/sdk` is the physical repository path because Go's compiler reserves an `internal`
+- `sdks` is the physical repository path because Go's compiler reserves an `internal`
   path segment for import visibility. Placing it at the repository root makes it importable by all
   Mindclade packages while preventing external Go modules from importing it. Python, Rust, and
   TypeScript packages at the same boundary are explicitly private and unpublished.

@@ -17,7 +17,7 @@ import (
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	internaljobv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/job/v1"
 	internaltrainingv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/training/v1"
-	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
+	operationv1 "github.com/mindclade/mindclade/protocols/generated/go/operation/v1"
 	trainingv1 "github.com/mindclade/mindclade/protocols/generated/go/training/v1"
 )
 
@@ -663,7 +663,7 @@ func parseCheckpointState(filter string) (trainingv1.CheckpointState, error) {
 	return trainingv1.CheckpointState(number), nil
 }
 
-func parseOperationState(filter string) (jobv1.OperationState, error) {
+func parseOperationState(filter string) (operationv1.OperationState, error) {
 	value, err := filterValue(filter)
 	if err != nil || value == "" {
 		return 0, err
@@ -671,11 +671,11 @@ func parseOperationState(filter string) (jobv1.OperationState, error) {
 	if !strings.HasPrefix(value, "OPERATION_STATE_") {
 		value = "OPERATION_STATE_" + value
 	}
-	number, ok := jobv1.OperationState_value[value]
+	number, ok := operationv1.OperationState_value[value]
 	if !ok || number == 0 {
 		return 0, ErrInvalidArgument
 	}
-	return jobv1.OperationState(number), nil
+	return operationv1.OperationState(number), nil
 }
 
 func rpcError(err error) error {

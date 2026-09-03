@@ -31,7 +31,8 @@ import (
 	"google.golang.org/protobuf/types/dynamicpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	"github.com/mindclade/mindclade/services/control_plane/internal/platform/validation"
+	"github.com/mindclade/mindclade/libs/go/numconv"
+	"github.com/mindclade/mindclade/services/control_plane/internal/validation"
 
 	apiv1 "github.com/mindclade/mindclade/protocols/generated/go/api/v1"
 	internaladminv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/admin/v1"
@@ -1693,9 +1694,17 @@ func publicProtoJSONDefault(field protoreflect.FieldDescriptor) (any, error) {
 	case protoreflect.Uint64Kind, protoreflect.Fixed64Kind:
 		return strconv.FormatUint(value.Uint(), 10), nil
 	case protoreflect.Int32Kind, protoreflect.Sint32Kind, protoreflect.Sfixed32Kind:
-		return int32(value.Int()), nil
+		narrowed, err := numconv.Int64ToInt32(value.Int())
+		if err != nil {
+			return nil, fmt.Errorf("%s has an out-of-range public ProtoJSON default: %w", field.FullName(), err)
+		}
+		return narrowed, nil
 	case protoreflect.Uint32Kind, protoreflect.Fixed32Kind:
-		return uint32(value.Uint()), nil
+		narrowed, err := numconv.Uint64ToUint32(value.Uint())
+		if err != nil {
+			return nil, fmt.Errorf("%s has an out-of-range public ProtoJSON default: %w", field.FullName(), err)
+		}
+		return narrowed, nil
 	case protoreflect.FloatKind, protoreflect.DoubleKind:
 		return value.Float(), nil
 	default:

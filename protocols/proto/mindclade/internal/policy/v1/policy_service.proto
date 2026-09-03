@@ -7,7 +7,7 @@ import "google/protobuf/timestamp.proto";
 import "proto/mindclade/common/v1/command_context.proto";
 import "proto/mindclade/common/v1/pagination.proto";
 import "proto/mindclade/common/v1/resource_reference.proto";
-import "proto/mindclade/job/v1/operation.proto";
+import "proto/mindclade/operation/v1/operation.proto";
 import "proto/mindclade/policy/v1/authorization_decision.proto";
 import "proto/mindclade/policy/v1/policy_reference.proto";
 import "proto/mindclade/policy/v1/use_policy.proto";
@@ -43,7 +43,7 @@ message CreateUsePolicyRequest {
 
 // CreateUsePolicyResponse returns the durable creation operation.
 message CreateUsePolicyResponse {
-  mindclade.job.v1.Operation operation = 1;
+  mindclade.operation.v1.Operation operation = 1;
 }
 
 // UpdateUsePolicyRequest applies selected mutable metadata under an ETag.
@@ -56,7 +56,7 @@ message UpdateUsePolicyRequest {
 
 // UpdateUsePolicyResponse returns the durable update operation.
 message UpdateUsePolicyResponse {
-  mindclade.job.v1.Operation operation = 1;
+  mindclade.operation.v1.Operation operation = 1;
 }
 
 // GetUsePolicyRequest identifies one use-policy revision.
@@ -94,7 +94,7 @@ message ActivateUsePolicyRequest {
 
 // ActivateUsePolicyResponse returns the durable activation operation.
 message ActivateUsePolicyResponse {
-  mindclade.job.v1.Operation operation = 1;
+  mindclade.operation.v1.Operation operation = 1;
 }
 
 // RevokeUsePolicyRequest records a fail-closed revocation under an ETag.
@@ -107,7 +107,7 @@ message RevokeUsePolicyRequest {
 
 // RevokeUsePolicyResponse returns the durable revocation operation.
 message RevokeUsePolicyResponse {
-  mindclade.job.v1.Operation operation = 1;
+  mindclade.operation.v1.Operation operation = 1;
 }
 
 // ResolvePolicySnapshotRequest resolves an exact effective snapshot at a point in time.

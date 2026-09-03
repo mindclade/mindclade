@@ -17,8 +17,8 @@ import (
 	artifactv1 "github.com/mindclade/mindclade/protocols/generated/go/artifact/v1"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	internalmodelv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/model/v1"
-	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
 	modelv1 "github.com/mindclade/mindclade/protocols/generated/go/model/v1"
+	operationv1 "github.com/mindclade/mindclade/protocols/generated/go/operation/v1"
 )
 
 var (
@@ -68,14 +68,14 @@ type ReleasePage struct {
 }
 
 type Repository interface {
-	RegisterModel(context.Context, Identity, *modelv1.RegisterModelCommand, string, time.Time) (*jobv1.Operation, bool, error)
+	RegisterModel(context.Context, Identity, *modelv1.RegisterModelCommand, string, time.Time) (*operationv1.Operation, bool, error)
 	GetModel(context.Context, Identity, string) (*modelv1.Model, error)
 	ListModels(context.Context, Identity, ModelPage) ([]*modelv1.Model, string, time.Time, error)
-	RegisterModelRelease(context.Context, Identity, *modelv1.RegisterModelReleaseCommand, string, time.Time) (*jobv1.Operation, bool, error)
+	RegisterModelRelease(context.Context, Identity, *modelv1.RegisterModelReleaseCommand, string, time.Time) (*operationv1.Operation, bool, error)
 	GetModelRelease(context.Context, Identity, string) (*modelv1.ModelRelease, error)
 	ListModelReleases(context.Context, Identity, ReleasePage) ([]*modelv1.ModelRelease, string, time.Time, error)
-	PromoteModelRelease(context.Context, Identity, *modelv1.PromoteModelReleaseCommand, string, time.Time) (*jobv1.Operation, bool, error)
-	RevokeModelRelease(context.Context, Identity, *modelv1.RevokeModelReleaseCommand, string, time.Time) (*jobv1.Operation, bool, error)
+	PromoteModelRelease(context.Context, Identity, *modelv1.PromoteModelReleaseCommand, string, time.Time) (*operationv1.Operation, bool, error)
+	RevokeModelRelease(context.Context, Identity, *modelv1.RevokeModelReleaseCommand, string, time.Time) (*operationv1.Operation, bool, error)
 }
 
 type EventFactory interface {
@@ -87,7 +87,7 @@ type EventFactory interface {
 // ModelReleaseEventFactory is kept separate so alternate EventFactory
 // implementations must explicitly opt into immutable release admission.
 type ModelReleaseEventFactory interface {
-	ReleaseRegistered(Identity, *modelv1.ModelRelease, *jobv1.Operation, *commonv1.CommandContext, time.Time) (*commonv1.EventEnvelope, error)
+	ReleaseRegistered(Identity, *modelv1.ModelRelease, *operationv1.Operation, *commonv1.CommandContext, time.Time) (*commonv1.EventEnvelope, error)
 }
 
 type SQLRepository struct {

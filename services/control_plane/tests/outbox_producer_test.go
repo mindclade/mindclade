@@ -13,9 +13,9 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	foundationaudit "github.com/mindclade/mindclade/libs/go/audit"
+	"github.com/mindclade/mindclade/libs/go/pubsubx"
 	auditv1 "github.com/mindclade/mindclade/protocols/generated/go/audit/v1"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
-	"github.com/mindclade/mindclade/services/control_plane/internal/platform/queue"
 )
 
 // recordingExecutor stands in for the caller's *sql.Tx. Recording the
@@ -63,17 +63,17 @@ func producerEnvelope(t *testing.T) *commonv1.EventEnvelope {
 // the envelope, so no caller-held tenant or aggregate value can shadow it.
 func TestInsertOutboxMessageDerivesEveryColumnFromTheEnvelope(t *testing.T) {
 	envelope := producerEnvelope(t)
-	encoded, err := queue.MarshalEnvelope(envelope)
+	encoded, err := pubsubx.MarshalEnvelope(envelope)
 	if err != nil {
 		t.Fatalf("marshal envelope: %v", err)
 	}
-	aggregateType, aggregateID, err := queue.AggregateIdentity(envelope)
+	aggregateType, aggregateID, err := pubsubx.AggregateIdentity(envelope)
 	if err != nil {
 		t.Fatalf("resolve aggregate identity: %v", err)
 	}
 	executor := new(recordingExecutor)
 	at := time.Date(2026, 9, 2, 12, 30, 0, 0, time.FixedZone("UTC+2", 2*60*60))
-	if err = queue.InsertOutboxMessage(context.Background(), executor, envelope, at); err != nil {
+	if err = pubsubx.InsertOutboxMessage(context.Background(), executor, envelope, at); err != nil {
 		t.Fatalf("insert outbox message: %v", err)
 	}
 	if len(executor.statements) != 1 {
@@ -129,8 +129,8 @@ func TestInsertOutboxMessageRejectsAnInvalidEnvelopeBeforeWriting(t *testing.T) 
 				mutate(envelope)
 			}
 			executor := new(recordingExecutor)
-			err := queue.InsertOutboxMessage(context.Background(), executor, envelope, time.Now().UTC())
-			if !errors.Is(err, queue.ErrInvalidEnvelope) {
+			err := pubsubx.InsertOutboxMessage(context.Background(), executor, envelope, time.Now().UTC())
+			if !errors.Is(err, pubsubx.ErrInvalidEnvelope) {
 				t.Fatalf("expected ErrInvalidEnvelope, got %v", err)
 			}
 			if len(executor.statements) != 0 {
@@ -148,7 +148,7 @@ func TestInsertOutboxMessageRejectsAnOversizedEnvelope(t *testing.T) {
 	envelope := producerEnvelope(t)
 	payload, err := proto.MarshalOptions{Deterministic: true}.Marshal(&auditv1.AuditEvent{
 		ActorPrincipalId: "producer-principal",
-		Action:           strings.Repeat("o", queue.MaxOutboxEnvelopeBytes+1),
+		Action:           strings.Repeat("o", pubsubx.MaxOutboxEnvelopeBytes+1),
 		Decision:         "allowed",
 	})
 	if err != nil {
@@ -158,8 +158,8 @@ func TestInsertOutboxMessageRejectsAnOversizedEnvelope(t *testing.T) {
 	envelope.Payload = payload
 	envelope.PayloadDigest = "sha256:" + hex.EncodeToString(digest[:])
 	executor := new(recordingExecutor)
-	err = queue.InsertOutboxMessage(context.Background(), executor, envelope, time.Now().UTC())
-	if !errors.Is(err, queue.ErrInvalidEnvelope) {
+	err = pubsubx.InsertOutboxMessage(context.Background(), executor, envelope, time.Now().UTC())
+	if !errors.Is(err, pubsubx.ErrInvalidEnvelope) {
 		t.Fatalf("expected ErrInvalidEnvelope, got %v", err)
 	}
 	if !strings.Contains(err.Error(), "outbox limit") {
@@ -175,7 +175,7 @@ func TestInsertOutboxMessageRejectsAnOversizedEnvelope(t *testing.T) {
 func TestInsertOutboxMessageSurfacesTheDatabaseError(t *testing.T) {
 	failure := errors.New("duplicate key value violates unique constraint")
 	executor := &recordingExecutor{err: failure}
-	err := queue.InsertOutboxMessage(context.Background(), executor, producerEnvelope(t), time.Now().UTC())
+	err := pubsubx.InsertOutboxMessage(context.Background(), executor, producerEnvelope(t), time.Now().UTC())
 	if !errors.Is(err, failure) {
 		t.Fatalf("expected the database error to surface unchanged, got %v", err)
 	}

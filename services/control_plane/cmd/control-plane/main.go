@@ -18,6 +18,10 @@ import (
 	gcppubsub "cloud.google.com/go/pubsub/v2"
 	_ "github.com/jackc/pgx/v5/stdlib"
 
+	"github.com/mindclade/mindclade/libs/go/eventruntime"
+	"github.com/mindclade/mindclade/libs/go/inbox"
+	"github.com/mindclade/mindclade/libs/go/outbox"
+	objectstorage "github.com/mindclade/mindclade/libs/go/storage"
 	adminapp "github.com/mindclade/mindclade/services/control_plane/internal/admin"
 	agentsapp "github.com/mindclade/mindclade/services/control_plane/internal/agents"
 	artifactsapp "github.com/mindclade/mindclade/services/control_plane/internal/artifacts"
@@ -27,10 +31,6 @@ import (
 	inferenceapp "github.com/mindclade/mindclade/services/control_plane/internal/inference"
 	jobsapp "github.com/mindclade/mindclade/services/control_plane/internal/jobs"
 	modelsapp "github.com/mindclade/mindclade/services/control_plane/internal/models"
-	"github.com/mindclade/mindclade/services/control_plane/internal/platform/eventprojection"
-	"github.com/mindclade/mindclade/services/control_plane/internal/platform/inbox"
-	"github.com/mindclade/mindclade/services/control_plane/internal/platform/outbox"
-	objectstorage "github.com/mindclade/mindclade/services/control_plane/internal/platform/storage"
 	policiesapp "github.com/mindclade/mindclade/services/control_plane/internal/policies"
 	trainingapp "github.com/mindclade/mindclade/services/control_plane/internal/training"
 	workflowsapp "github.com/mindclade/mindclade/services/control_plane/internal/workflows"
@@ -515,7 +515,7 @@ func newProductionResources(ctx context.Context) (*productionResources, error) {
 	jobConsumer.OnError = func(_ context.Context, eventErr error) {
 		slog.Warn("JobRequested delivery was not processed normally", "error", eventErr)
 	}
-	projectedEvents, err := eventprojection.AcceptedEvents()
+	projectedEvents, err := eventruntime.AcceptedEvents()
 	if err != nil {
 		publisher.Close()
 		_ = pubsubClient.Close()
@@ -523,7 +523,7 @@ func newProductionResources(ctx context.Context) (*productionResources, error) {
 		return nil, fmt.Errorf("configure event audit projection registry: %w", err)
 	}
 	auditConsumer, err := inbox.NewPubSubConsumer(pubsubClient, auditSubscription, inbox.Processor{
-		DB: db, Consumer: eventprojection.ConsumerName, Handler: eventprojection.Handler{},
+		DB: db, Consumer: eventruntime.ConsumerName, Handler: eventruntime.Handler{},
 		AcceptedEvents: projectedEvents, QuarantineTenantID: quarantineTenantID,
 	})
 	if err != nil {

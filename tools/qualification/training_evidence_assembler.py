@@ -160,7 +160,7 @@ RECEIPT_CONTRACTS = {
             }
         ),
         (
-            "//services/control_plane/internal/platform/eventprojection:event_projection_test",
+            "//libs/go/eventruntime:eventruntime_test",
             "//services/control_plane:control_plane_test",
             "//services/control_plane:jobs_server_test",
         ),
@@ -212,10 +212,10 @@ RECEIPT_CONTRACTS = {
             }
         ),
         (
-            "//internal/sdk/go/mindclade:mindclade_test",
-            "//internal/sdk/python:tests",
-            "//internal/sdk/rust:mindclade_internal_sdk_test",
-            "//internal/sdk/typescript:tests",
+            "//sdks/go/mindclade:mindclade_test",
+            "//sdks/python:tests",
+            "//sdks/rust:mindclade_internal_sdk_test",
+            "//sdks/typescript:tests",
         ),
         "principal://mindclade/qualification/sdk",
     ),

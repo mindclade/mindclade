@@ -9,6 +9,7 @@ import unittest
 from collections import defaultdict
 from pathlib import Path
 from typing import Any
+from unittest import mock
 
 PACKAGE_PATTERN = re.compile(r"^package\s+(mindclade\.[A-Za-z0-9_.]+)\s*;", re.MULTILINE)
 SERVICE_PATTERN = re.compile(r"^service\s+[A-Za-z][A-Za-z0-9_]*\s*\{", re.MULTILINE)
@@ -225,7 +226,7 @@ class GeneratedPackageConsumerTest(unittest.TestCase):
     def test_internal_sdk_is_the_owned_client_facade_over_generated_transport(
         self,
     ) -> None:
-        sdk = self.repository / "internal/sdk"
+        sdk = self.repository / "sdks"
         required = {
             "go": sdk / "go/mindclade/BUILD.bazel",
             "python": sdk / "python/BUILD.bazel",
@@ -252,7 +253,7 @@ class GeneratedPackageConsumerTest(unittest.TestCase):
                 )
 
     def test_internal_sdk_rpc_coverage_is_descriptor_bound_and_explicit(self) -> None:
-        coverage_path = self.repository / "internal/sdk/rpc-coverage.generated.json"
+        coverage_path = self.repository / "sdks/rpc-coverage.generated.json"
         coverage = json.loads(coverage_path.read_text())
         self.assertEqual(
             coverage["schema_version"],
@@ -287,8 +288,8 @@ class GeneratedPackageConsumerTest(unittest.TestCase):
                     self.assertTrue(entry["reason"])
                 self.assertEqual(set(entry["evidence"]), set(coverage["languages"]))
                 for language, evidence in entry["evidence"].items():
-                    self.assertTrue(evidence["library_target"].startswith("//internal/sdk/"))
-                    self.assertTrue(evidence["test_target"].startswith("//internal/sdk/"))
+                    self.assertTrue(evidence["library_target"].startswith("//sdks/"))
+                    self.assertTrue(evidence["test_target"].startswith("//sdks/"))
                     self.assertTrue(evidence["raw_transport"], language)
                     if entry["classification"] == "ergonomic":
                         self.assertTrue(evidence["implementation"], language)
@@ -405,14 +406,14 @@ class GeneratedPackageConsumerTest(unittest.TestCase):
         self.assertEqual(
             violations,
             [],
-            "client-side code must import internal/sdk; direct generated imports "
+            "client-side code must import sdks; direct generated imports "
             "are limited to SDK implementations, server adapters, persistence "
             f"mappers, and contract tests: {violations}",
         )
 
     def test_internal_sdk_cannot_access_durable_backend_capabilities(self) -> None:
         violations: list[str] = []
-        sdk_root = self.repository / "internal/sdk"
+        sdk_root = self.repository / "sdks"
         for path in sorted(sdk_root.glob("**/*")):
             matcher = FORBIDDEN_SDK_CAPABILITIES.get(path.suffix)
             if matcher is None or not path.is_file():
@@ -437,7 +438,7 @@ class GeneratedPackageConsumerTest(unittest.TestCase):
             for path in sorted(source_root.glob("**/*")):
                 if path.suffix not in {".go", ".py", ".rs", ".ts"} or not path.is_file():
                     continue
-                if "internal/sdk" in path.read_text():
+                if "sdks" in path.read_text():
                     violations.append(path.relative_to(self.repository).as_posix())
         self.assertEqual(
             violations,
@@ -464,8 +465,8 @@ class GeneratedPackageConsumerTest(unittest.TestCase):
     def test_pubsub_clients_are_confined_to_delivery_runtime_and_wiring(self) -> None:
         allowed = {
             "services/control_plane/cmd/control-plane/main.go",
-            "services/control_plane/internal/platform/inbox/inbox_store.go",
-            "services/control_plane/internal/platform/outbox/dispatcher.go",
+            "libs/go/inbox/inbox_store.go",
+            "libs/go/outbox/dispatcher.go",
         }
         violations: list[str] = []
         control_plane = self.repository / "services/control_plane"
@@ -526,6 +527,162 @@ class GeneratedPackageConsumerTest(unittest.TestCase):
             "protobuf owns shared resource/event wire models; handwritten "
             f"duplicates are forbidden: {violations}",
         )
+
+
+# Each language names the registry's event-identity field by its own convention,
+# so the committed projections are compared through per-language field prefixes
+# rather than a shared spelling.
+EVENT_REGISTRY_PROJECTIONS = {
+    "go": (
+        "libs/go/pubsubx/event_registry_generated.go",
+        re.compile(r'FullName: "(mindclade\.events\.[A-Za-z0-9_.]+)"'),
+    ),
+    "python": (
+        "protocols/generated/python/mindclade/events/registry.py",
+        re.compile(r'full_name="(mindclade\.events\.[A-Za-z0-9_.]+)"'),
+    ),
+    "rust": (
+        "protocols/generated/rust/lib.rs",
+        re.compile(r'full_name: "(mindclade\.events\.[A-Za-z0-9_.]+)"'),
+    ),
+    "typescript": (
+        "protocols/generated/typescript/common/v1/index.ts",
+        re.compile(r'"fullName":"(mindclade\.events\.[A-Za-z0-9_.]+)"'),
+    ),
+}
+
+
+def load_generator() -> Any:
+    """Import the contract generator without requiring a package context."""
+
+    repository = root()
+    if str(repository) not in sys.path:
+        sys.path.insert(0, str(repository))
+    return importlib.import_module("tools.codegen.generate_protocols")
+
+
+def sample_registry_entries(generator: Any) -> list[Any]:
+    """Return entries spanning the registry's whole field space.
+
+    The committed registry has no deprecated event, no activation gap, and never
+    more than one producer or consumer, so the shipped data alone would leave
+    those projection paths unexercised.
+    """
+
+    endpoint = generator.EventEvidenceEndpoint
+    fixture = generator.EventFixtureEvidence
+    entry = generator.EventRegistryEntry
+    return [
+        entry(
+            full_name="mindclade.events.sample.v1.Minimal",
+            version=1,
+            content_type="application/x-protobuf; deterministic=true",
+            source="events/mindclade/sample/v1/minimal.proto",
+            owner="platform/sample",
+            lifecycle_state="active",
+            compatibility_policy="exact-version",
+            fixture=fixture(
+                status="verified",
+                source="services/sample/sample_test.go",
+                target="//services/sample:sample_test",
+                mode="populated-protobuf-roundtrip",
+                reason="",
+            ),
+            producers=(endpoint("platform/sample", "p.go", "//p:p", "transactional-outbox"),),
+            consumers=(),
+            activation_gaps=(),
+        ),
+        entry(
+            full_name="mindclade.events.sample.v1.Populated",
+            version=7,
+            content_type="application/x-protobuf; deterministic=true",
+            source="events/mindclade/sample/v1/populated.proto",
+            owner="platform/sample",
+            lifecycle_state="deprecated",
+            compatibility_policy="exact-version",
+            fixture=fixture(status="absent", reason="no populated fixture yet"),
+            producers=(
+                endpoint("platform/one", "a.go", "//a:a", "transactional-outbox"),
+                endpoint("platform/two", "b.go", "//b:b", "transactional-outbox"),
+            ),
+            consumers=(
+                endpoint("platform/three", "c.go", "//c:c", "semantic-inbox"),
+                endpoint("platform/four", "d.go", "//d:d", "semantic-inbox"),
+            ),
+            activation_gaps=("no-consumer", "no-fixture"),
+        ),
+        entry(
+            full_name="mindclade.events.sample.v1.Repeated",
+            version=2,
+            content_type="repeated",
+            source="repeated",
+            owner="platform/repeated",
+            lifecycle_state="active",
+            compatibility_policy="repeated",
+            fixture=fixture(
+                status="repeated",
+                source="repeated",
+                target="repeated",
+                mode="repeated",
+                reason="repeated",
+            ),
+            producers=(endpoint("repeated", "repeated", "repeated", "repeated"),),
+            consumers=(endpoint("repeated", "repeated", "repeated", "repeated"),),
+            activation_gaps=("repeated",),
+        ),
+    ]
+
+
+class EventRegistryProjectionTest(unittest.TestCase):
+    """The four generated event registries must project one registry entry alike."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.repository = root()
+        cls.generator = load_generator()
+
+    def test_language_projections_agree_across_the_whole_field_space(self) -> None:
+        entries = sample_registry_entries(self.generator)
+        self.assertEqual(
+            self.generator.event_registry_projection_disagreements(entries),
+            [],
+        )
+
+    def test_a_field_dropped_from_one_language_is_reported(self) -> None:
+        entries = sample_registry_entries(self.generator)
+        original = self.generator._event_registry_go_row
+
+        def without_owner(entry: Any) -> str:
+            return str(original(entry)).replace(f', Owner: "{entry.owner}"', "")
+
+        with mock.patch.object(self.generator, "_event_registry_go_row", without_owner):
+            disagreements = self.generator.event_registry_projection_disagreements(entries)
+        self.assertEqual(len(disagreements), len(entries))
+        for report in disagreements:
+            self.assertIn("go omits", report)
+
+    def test_a_field_added_to_one_language_is_reported(self) -> None:
+        entries = sample_registry_entries(self.generator)
+        original = self.generator._event_registry_python_row
+
+        def with_extra(entry: Any) -> str:
+            return str(original(entry)).replace("    ),", '        note="extra",\n    ),')
+
+        with mock.patch.object(self.generator, "_event_registry_python_row", with_extra):
+            disagreements = self.generator.event_registry_projection_disagreements(entries)
+        self.assertEqual(len(disagreements), len(entries))
+        for report in disagreements:
+            self.assertIn("python adds s:extra", report)
+
+    def test_committed_projections_register_the_governed_event_set(self) -> None:
+        registry = (self.repository / "protocols/events/registry.yaml").read_text()
+        governed = re.findall(r'^  - full_name: "?([A-Za-z0-9_.]+)"?$', registry, re.MULTILINE)
+        self.assertNotEqual(governed, [])
+        self.assertEqual(len(governed), len(set(governed)))
+        for language, (relative, pattern) in sorted(EVENT_REGISTRY_PROJECTIONS.items()):
+            with self.subTest(language=language):
+                projected = pattern.findall((self.repository / relative).read_text())
+                self.assertEqual(sorted(projected), sorted(governed))
 
 
 if __name__ == "__main__":

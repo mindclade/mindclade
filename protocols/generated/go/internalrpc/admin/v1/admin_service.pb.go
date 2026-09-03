@@ -9,7 +9,7 @@ package internaladminv1
 import (
 	v1 "github.com/mindclade/mindclade/protocols/generated/go/admin/v1"
 	v11 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
-	v12 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
+	v12 "github.com/mindclade/mindclade/protocols/generated/go/operation/v1"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	fieldmaskpb "google.golang.org/protobuf/types/known/fieldmaskpb"
@@ -976,7 +976,7 @@ var File_proto_mindclade_internal_admin_v1_admin_service_proto protoreflect.File
 
 const file_proto_mindclade_internal_admin_v1_admin_service_proto_rawDesc = "" +
 	"\n" +
-	"5proto/mindclade/internal/admin/v1/admin_service.proto\x12\x1bmindclade.internal.admin.v1\x1a google/protobuf/field_mask.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a*proto/mindclade/admin/v1/audit_query.proto\x1a&proto/mindclade/admin/v1/project.proto\x1a%proto/mindclade/admin/v1/tenant.proto\x1a/proto/mindclade/common/v1/command_context.proto\x1a*proto/mindclade/common/v1/pagination.proto\x1a&proto/mindclade/job/v1/operation.proto\"J\n" +
+	"5proto/mindclade/internal/admin/v1/admin_service.proto\x12\x1bmindclade.internal.admin.v1\x1a google/protobuf/field_mask.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a*proto/mindclade/admin/v1/audit_query.proto\x1a&proto/mindclade/admin/v1/project.proto\x1a%proto/mindclade/admin/v1/tenant.proto\x1a/proto/mindclade/common/v1/command_context.proto\x1a*proto/mindclade/common/v1/pagination.proto\x1a,proto/mindclade/operation/v1/operation.proto\"J\n" +
 	"\x10GetTenantRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\"\n" +
 	"\rif_none_match\x18\x02 \x01(\tR\vifNoneMatch\"G\n" +
@@ -987,17 +987,17 @@ const file_proto_mindclade_internal_admin_v1_admin_service_proto_rawDesc = "" +
 	"\x06tenant\x18\x02 \x01(\v2\x1a.mindclade.admin.v1.TenantR\x06tenant\x12;\n" +
 	"\vupdate_mask\x18\x03 \x01(\v2\x1a.google.protobuf.FieldMaskR\n" +
 	"updateMask\x12\x12\n" +
-	"\x04etag\x18\x04 \x01(\tR\x04etag\"Q\n" +
-	"\x14UpdateTenantResponse\x129\n" +
-	"\toperation\x18\x01 \x01(\v2\x1b.mindclade.job.v1.OperationR\toperation\"\xc3\x01\n" +
+	"\x04etag\x18\x04 \x01(\tR\x04etag\"W\n" +
+	"\x14UpdateTenantResponse\x12?\n" +
+	"\toperation\x18\x01 \x01(\v2!.mindclade.operation.v1.OperationR\toperation\"\xc3\x01\n" +
 	"\x14CreateProjectRequest\x12=\n" +
 	"\acontext\x18\x01 \x01(\v2#.mindclade.common.v1.CommandContextR\acontext\x12\x16\n" +
 	"\x06parent\x18\x02 \x01(\tR\x06parent\x12\x1d\n" +
 	"\n" +
 	"project_id\x18\x03 \x01(\tR\tprojectId\x125\n" +
-	"\aproject\x18\x04 \x01(\v2\x1b.mindclade.admin.v1.ProjectR\aproject\"R\n" +
-	"\x15CreateProjectResponse\x129\n" +
-	"\toperation\x18\x01 \x01(\v2\x1b.mindclade.job.v1.OperationR\toperation\"K\n" +
+	"\aproject\x18\x04 \x01(\v2\x1b.mindclade.admin.v1.ProjectR\aproject\"X\n" +
+	"\x15CreateProjectResponse\x12?\n" +
+	"\toperation\x18\x01 \x01(\v2!.mindclade.operation.v1.OperationR\toperation\"K\n" +
 	"\x11GetProjectRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\"\n" +
 	"\rif_none_match\x18\x02 \x01(\tR\vifNoneMatch\"K\n" +
@@ -1017,18 +1017,18 @@ const file_proto_mindclade_internal_admin_v1_admin_service_proto_rawDesc = "" +
 	"\aproject\x18\x02 \x01(\v2\x1b.mindclade.admin.v1.ProjectR\aproject\x12;\n" +
 	"\vupdate_mask\x18\x03 \x01(\v2\x1a.google.protobuf.FieldMaskR\n" +
 	"updateMask\x12\x12\n" +
-	"\x04etag\x18\x04 \x01(\tR\x04etag\"R\n" +
-	"\x15UpdateProjectResponse\x129\n" +
-	"\toperation\x18\x01 \x01(\v2\x1b.mindclade.job.v1.OperationR\toperation\"P\n" +
+	"\x04etag\x18\x04 \x01(\tR\x04etag\"X\n" +
+	"\x15UpdateProjectResponse\x12?\n" +
+	"\toperation\x18\x01 \x01(\v2!.mindclade.operation.v1.OperationR\toperation\"P\n" +
 	"\x18QueryAuditRecordsRequest\x124\n" +
 	"\x05query\x18\x01 \x01(\v2\x1e.mindclade.admin.v1.AuditQueryR\x05query\"W\n" +
 	"\x19QueryAuditRecordsResponse\x12:\n" +
 	"\x06result\x18\x01 \x01(\v2\".mindclade.admin.v1.AuditQueryPageR\x06result\"\x90\x01\n" +
 	"\x19ExportAuditRecordsRequest\x12=\n" +
 	"\acontext\x18\x01 \x01(\v2#.mindclade.common.v1.CommandContextR\acontext\x124\n" +
-	"\x05query\x18\x02 \x01(\v2\x1e.mindclade.admin.v1.AuditQueryR\x05query\"W\n" +
-	"\x1aExportAuditRecordsResponse\x129\n" +
-	"\toperation\x18\x01 \x01(\v2\x1b.mindclade.job.v1.OperationR\toperation\"+\n" +
+	"\x05query\x18\x02 \x01(\v2\x1e.mindclade.admin.v1.AuditQueryR\x05query\"]\n" +
+	"\x1aExportAuditRecordsResponse\x12?\n" +
+	"\toperation\x18\x01 \x01(\v2!.mindclade.operation.v1.OperationR\toperation\"+\n" +
 	"\x15GetAuditExportRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\"\\\n" +
 	"\x16GetAuditExportResponse\x12B\n" +
@@ -1080,7 +1080,7 @@ var file_proto_mindclade_internal_admin_v1_admin_service_proto_goTypes = []any{
 	(*v1.Tenant)(nil),                  // 18: mindclade.admin.v1.Tenant
 	(*v11.CommandContext)(nil),         // 19: mindclade.common.v1.CommandContext
 	(*fieldmaskpb.FieldMask)(nil),      // 20: google.protobuf.FieldMask
-	(*v12.Operation)(nil),              // 21: mindclade.job.v1.Operation
+	(*v12.Operation)(nil),              // 21: mindclade.operation.v1.Operation
 	(*v1.Project)(nil),                 // 22: mindclade.admin.v1.Project
 	(*v11.PageRequest)(nil),            // 23: mindclade.common.v1.PageRequest
 	(*v11.PageResponse)(nil),           // 24: mindclade.common.v1.PageResponse
@@ -1094,10 +1094,10 @@ var file_proto_mindclade_internal_admin_v1_admin_service_proto_depIdxs = []int32
 	19, // 1: mindclade.internal.admin.v1.UpdateTenantRequest.context:type_name -> mindclade.common.v1.CommandContext
 	18, // 2: mindclade.internal.admin.v1.UpdateTenantRequest.tenant:type_name -> mindclade.admin.v1.Tenant
 	20, // 3: mindclade.internal.admin.v1.UpdateTenantRequest.update_mask:type_name -> google.protobuf.FieldMask
-	21, // 4: mindclade.internal.admin.v1.UpdateTenantResponse.operation:type_name -> mindclade.job.v1.Operation
+	21, // 4: mindclade.internal.admin.v1.UpdateTenantResponse.operation:type_name -> mindclade.operation.v1.Operation
 	19, // 5: mindclade.internal.admin.v1.CreateProjectRequest.context:type_name -> mindclade.common.v1.CommandContext
 	22, // 6: mindclade.internal.admin.v1.CreateProjectRequest.project:type_name -> mindclade.admin.v1.Project
-	21, // 7: mindclade.internal.admin.v1.CreateProjectResponse.operation:type_name -> mindclade.job.v1.Operation
+	21, // 7: mindclade.internal.admin.v1.CreateProjectResponse.operation:type_name -> mindclade.operation.v1.Operation
 	22, // 8: mindclade.internal.admin.v1.GetProjectResponse.project:type_name -> mindclade.admin.v1.Project
 	23, // 9: mindclade.internal.admin.v1.ListProjectsRequest.page:type_name -> mindclade.common.v1.PageRequest
 	22, // 10: mindclade.internal.admin.v1.ListProjectsResponse.projects:type_name -> mindclade.admin.v1.Project
@@ -1106,12 +1106,12 @@ var file_proto_mindclade_internal_admin_v1_admin_service_proto_depIdxs = []int32
 	19, // 13: mindclade.internal.admin.v1.UpdateProjectRequest.context:type_name -> mindclade.common.v1.CommandContext
 	22, // 14: mindclade.internal.admin.v1.UpdateProjectRequest.project:type_name -> mindclade.admin.v1.Project
 	20, // 15: mindclade.internal.admin.v1.UpdateProjectRequest.update_mask:type_name -> google.protobuf.FieldMask
-	21, // 16: mindclade.internal.admin.v1.UpdateProjectResponse.operation:type_name -> mindclade.job.v1.Operation
+	21, // 16: mindclade.internal.admin.v1.UpdateProjectResponse.operation:type_name -> mindclade.operation.v1.Operation
 	26, // 17: mindclade.internal.admin.v1.QueryAuditRecordsRequest.query:type_name -> mindclade.admin.v1.AuditQuery
 	27, // 18: mindclade.internal.admin.v1.QueryAuditRecordsResponse.result:type_name -> mindclade.admin.v1.AuditQueryPage
 	19, // 19: mindclade.internal.admin.v1.ExportAuditRecordsRequest.context:type_name -> mindclade.common.v1.CommandContext
 	26, // 20: mindclade.internal.admin.v1.ExportAuditRecordsRequest.query:type_name -> mindclade.admin.v1.AuditQuery
-	21, // 21: mindclade.internal.admin.v1.ExportAuditRecordsResponse.operation:type_name -> mindclade.job.v1.Operation
+	21, // 21: mindclade.internal.admin.v1.ExportAuditRecordsResponse.operation:type_name -> mindclade.operation.v1.Operation
 	28, // 22: mindclade.internal.admin.v1.GetAuditExportResponse.audit_export:type_name -> mindclade.admin.v1.AuditExport
 	0,  // 23: mindclade.internal.admin.v1.AdminService.GetTenant:input_type -> mindclade.internal.admin.v1.GetTenantRequest
 	2,  // 24: mindclade.internal.admin.v1.AdminService.UpdateTenant:input_type -> mindclade.internal.admin.v1.UpdateTenantRequest

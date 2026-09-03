@@ -1,0 +1,12 @@
+{
+  "name": "@mindclade/internal-sdk",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./sdks/typescript/src/index.d.ts",
+      "default": "./sdks/typescript/src/index.js"
+    }
+  }
+}

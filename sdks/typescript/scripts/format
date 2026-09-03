@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# Rewrite this package's sources with the repository formatter.
+#
+# `just format` stays the repository-wide authority; this wrapper narrows the
+# same Biome configuration to the SDK so a focused change does not reformat
+# unrelated packages.
+set -euo pipefail
+
+cd "$(dirname "$0")/../../.."
+
+"${PNPM:-pnpm}" --filter ./sdks/typescript run format

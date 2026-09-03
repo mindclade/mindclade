@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
+	operationv1 "github.com/mindclade/mindclade/protocols/generated/go/operation/v1"
 	"github.com/mindclade/mindclade/services/control_plane/internal/operations"
 	"github.com/mindclade/mindclade/services/control_plane/internal/policies"
 )
@@ -23,7 +23,7 @@ func TestTenantIsolationAndDefaultDeny(t *testing.T) {
 		Principal:      policies.Principal{ID: "principal-a", TenantID: "tenant-a", Actions: map[string]bool{operations.CreateAction: true}},
 		IdempotencyKey: "key-1",
 		RequestDigest:  "sha256:" + strings.Repeat("a", 64),
-		Operation:      &jobv1.Operation{OperationId: "operation-1", TenantId: "tenant-b", ProjectId: "project-a", JobId: "job-1", Etag: "operation-etag-1"},
+		Operation:      &operationv1.Operation{OperationId: "operation-1", TenantId: "tenant-b", ProjectId: "project-a", JobId: "job-1", Etag: "operation-etag-1"},
 	})
 	if !errors.Is(err, policies.ErrDenied) {
 		t.Fatalf("expected tenant denial, got %v", err)
@@ -32,7 +32,7 @@ func TestTenantIsolationAndDefaultDeny(t *testing.T) {
 		Principal:      policies.Principal{ID: "principal-a", TenantID: "tenant-a"},
 		IdempotencyKey: "key-2",
 		RequestDigest:  "sha256:" + strings.Repeat("a", 64),
-		Operation:      &jobv1.Operation{OperationId: "operation-2", TenantId: "tenant-a", ProjectId: "project-a", JobId: "job-1", Etag: "operation-etag-1"},
+		Operation:      &operationv1.Operation{OperationId: "operation-2", TenantId: "tenant-a", ProjectId: "project-a", JobId: "job-1", Etag: "operation-etag-1"},
 	})
 	if !errors.Is(err, policies.ErrDenied) {
 		t.Fatalf("expected default deny, got %v", err)

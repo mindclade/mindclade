@@ -205,6 +205,24 @@ ADR_REGISTRY = (
         "accepted",
         "Cross-field constraints as a transitional side-car",
     ),
+    AdrContract(
+        "ADR-0026",
+        "0026-internal-sdk-roots-move-to-sdks.md",
+        "accepted",
+        "Internal SDK roots move to `sdks/<language>`",
+    ),
+    AdrContract(
+        "ADR-0027",
+        "0027-control-plane-platform-runtime-becomes-shared-go-libraries.md",
+        "accepted",
+        "The control-plane platform runtime becomes shared Go libraries",
+    ),
+    AdrContract(
+        "ADR-0028",
+        "0028-operations-become-a-first-class-namespace.md",
+        "accepted",
+        "Long-running operations become a first-class namespace",
+    ),
 )
 ADR_PATHS = tuple(contract.filename for contract in ADR_REGISTRY)
 ADR_METADATA_FIELDS = {
@@ -1093,6 +1111,9 @@ def _self_test_adr_ratification_contract() -> None:
         "ADR-0023",
         "ADR-0024",
         "ADR-0025",
+        "ADR-0026",
+        "ADR-0027",
+        "ADR-0028",
     ]:
         raise AssertionError("ADR registry order drifted")
     for contract in ADR_REGISTRY:

@@ -14,11 +14,11 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	"github.com/mindclade/mindclade/libs/go/pubsubx"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	featurev1 "github.com/mindclade/mindclade/protocols/generated/go/feature/v1"
 	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
 	transformv1 "github.com/mindclade/mindclade/protocols/generated/go/transform/v1"
-	"github.com/mindclade/mindclade/services/control_plane/internal/platform/queue"
 )
 
 const jobEventContentType = "application/x-protobuf; deterministic=true"
@@ -150,7 +150,7 @@ func newDomainCompletionEvent(
 		PayloadContentType: jobEventContentType,
 		Classification:     commonv1.DataClassification_DATA_CLASSIFICATION_INTERNAL,
 	}
-	if err = queue.ValidateEnvelope(envelope); err != nil {
+	if err = pubsubx.ValidateEnvelope(envelope); err != nil {
 		return nil, err
 	}
 	return envelope, nil
@@ -211,14 +211,14 @@ func newAttemptEvent(
 		PayloadContentType: jobEventContentType,
 		Classification:     commonv1.DataClassification_DATA_CLASSIFICATION_INTERNAL,
 	}
-	if err = queue.ValidateEnvelope(envelope); err != nil {
+	if err = pubsubx.ValidateEnvelope(envelope); err != nil {
 		return nil, err
 	}
 	return envelope, nil
 }
 
 func insertAttemptOutbox(ctx context.Context, tx *sql.Tx, envelope *commonv1.EventEnvelope, at time.Time) error {
-	return queue.InsertOutboxMessage(ctx, tx, envelope, at)
+	return pubsubx.InsertOutboxMessage(ctx, tx, envelope, at)
 }
 
 func attemptResourceName(attempt *jobv1.Attempt) string {

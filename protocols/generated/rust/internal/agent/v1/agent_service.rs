@@ -16,7 +16,7 @@ pub struct CreateAgentDefinitionRequest {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CreateAgentDefinitionResponse {
     #[prost(message, optional, tag = "1")]
-    pub operation: ::core::option::Option<crate::job::v1::Operation>,
+    pub operation: ::core::option::Option<crate::operation::v1::Operation>,
 }
 /// UpdateAgentDefinitionRequest applies a field mask under an ETag precondition.
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -34,7 +34,7 @@ pub struct UpdateAgentDefinitionRequest {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct UpdateAgentDefinitionResponse {
     #[prost(message, optional, tag = "1")]
-    pub operation: ::core::option::Option<crate::job::v1::Operation>,
+    pub operation: ::core::option::Option<crate::operation::v1::Operation>,
 }
 /// GetAgentDefinitionRequest identifies one versioned agent definition.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
@@ -88,7 +88,7 @@ pub struct StartAgentRunRequest {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct StartAgentRunResponse {
     #[prost(message, optional, tag = "1")]
-    pub operation: ::core::option::Option<crate::job::v1::Operation>,
+    pub operation: ::core::option::Option<crate::operation::v1::Operation>,
 }
 /// GetAgentRunRequest identifies one durable agent run.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
@@ -142,7 +142,7 @@ pub struct CancelAgentRunRequest {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CancelAgentRunResponse {
     #[prost(message, optional, tag = "1")]
-    pub operation: ::core::option::Option<crate::job::v1::Operation>,
+    pub operation: ::core::option::Option<crate::operation::v1::Operation>,
 }
 /// GetAgentStepRequest identifies one append-only run step.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]

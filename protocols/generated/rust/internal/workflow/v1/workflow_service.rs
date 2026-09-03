@@ -16,7 +16,7 @@ pub struct CreateWorkflowDefinitionRequest {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CreateWorkflowDefinitionResponse {
     #[prost(message, optional, tag = "1")]
-    pub operation: ::core::option::Option<crate::job::v1::Operation>,
+    pub operation: ::core::option::Option<crate::operation::v1::Operation>,
 }
 /// UpdateWorkflowDefinitionRequest applies selected mutable metadata under an ETag.
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -34,7 +34,7 @@ pub struct UpdateWorkflowDefinitionRequest {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct UpdateWorkflowDefinitionResponse {
     #[prost(message, optional, tag = "1")]
-    pub operation: ::core::option::Option<crate::job::v1::Operation>,
+    pub operation: ::core::option::Option<crate::operation::v1::Operation>,
 }
 /// GetWorkflowDefinitionRequest identifies one definition revision.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
@@ -88,7 +88,7 @@ pub struct StartWorkflowRunRequest {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct StartWorkflowRunResponse {
     #[prost(message, optional, tag = "1")]
-    pub operation: ::core::option::Option<crate::job::v1::Operation>,
+    pub operation: ::core::option::Option<crate::operation::v1::Operation>,
 }
 /// GetWorkflowRunRequest identifies one durable workflow run.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
@@ -142,7 +142,7 @@ pub struct CancelWorkflowRunRequest {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CancelWorkflowRunResponse {
     #[prost(message, optional, tag = "1")]
-    pub operation: ::core::option::Option<crate::job::v1::Operation>,
+    pub operation: ::core::option::Option<crate::operation::v1::Operation>,
 }
 /// CommitWorkflowTransitionRequest appends one fenced deterministic transition.
 #[derive(Clone, PartialEq, ::prost::Message)]

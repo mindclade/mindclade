@@ -93,7 +93,7 @@ spec:
     authority: protobuf
     generator: buf-and-pinned-native
     generatedRoot: protocols/generated
-    facadeRoot: internal/sdk
+    facadeRoot: sdks
     languages: [go, python, rust, typescript]
     generatedTransportIsAuthoritative: true
     handwrittenWireModelsAllowed: false

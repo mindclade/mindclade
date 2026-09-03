@@ -27,6 +27,7 @@ import (
 	featurev1 "github.com/mindclade/mindclade/protocols/generated/go/feature/v1"
 	internaljobv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/job/v1"
 	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
+	operationv1 "github.com/mindclade/mindclade/protocols/generated/go/operation/v1"
 	transformv1 "github.com/mindclade/mindclade/protocols/generated/go/transform/v1"
 )
 
@@ -63,7 +64,7 @@ type JobIdentityResolver interface {
 // JobService. Implementations return fresh protobuf values and make Job,
 // Operation, audit, idempotency, history, and outbox mutations atomic.
 type JobRepository interface {
-	RequestJobSQL(context.Context, *jobv1.Job, *jobv1.Operation, JobCommandMetadata) (*JobMutationResult, error)
+	RequestJobSQL(context.Context, *jobv1.Job, *operationv1.Operation, JobCommandMetadata) (*JobMutationResult, error)
 	GetJobSQL(context.Context, string, string, string) (*jobv1.Job, error)
 	ListJobsSQL(context.Context, string, string, string, int) ([]*jobv1.Job, bool, time.Time, error)
 	CancelJobSQL(context.Context, string, string, string, JobCommandMetadata) (*JobMutationResult, error)
@@ -241,9 +242,9 @@ func (s *JobServer) RequestJob(ctx context.Context, request *internaljobv1.Reque
 		Input: cloneArtifactReference(command.GetInput()), Configuration: cloneArtifactReference(command.GetConfiguration()),
 		CreatedAt: timestamppb.New(now), UpdatedAt: timestamppb.New(now), Etag: resourceETag(identity.TenantID, identity.ProjectID, jobID, 1),
 	}
-	operation := &jobv1.Operation{
+	operation := &operationv1.Operation{
 		OperationId: operationID, TenantId: identity.TenantID, ProjectId: identity.ProjectID, JobId: jobID,
-		State: jobv1.OperationState_OPERATION_STATE_PENDING, ResourceVersion: 1,
+		State: operationv1.OperationState_OPERATION_STATE_PENDING, ResourceVersion: 1,
 		CreatedAt: timestamppb.New(now), UpdatedAt: timestamppb.New(now), Etag: resourceETag(identity.TenantID, identity.ProjectID, operationID, 1),
 	}
 	result, err := s.repository.RequestJobSQL(ctx, job, operation, metadata)
@@ -254,7 +255,7 @@ func (s *JobServer) RequestJob(ctx context.Context, request *internaljobv1.Reque
 		requireJobScope(identity, result.Operation.GetTenantId(), result.Operation.GetProjectId()) != nil {
 		return nil, status.Error(codes.Internal, "job persistence returned an invalid scoped result")
 	}
-	return &internaljobv1.RequestJobResponse{Job: cloneJob(result.Job), Operation: proto.Clone(result.Operation).(*jobv1.Operation)}, nil
+	return &internaljobv1.RequestJobResponse{Job: cloneJob(result.Job), Operation: proto.Clone(result.Operation).(*operationv1.Operation)}, nil
 }
 
 func (s *JobServer) GetJob(ctx context.Context, request *internaljobv1.GetJobRequest) (*internaljobv1.GetJobResponse, error) {
@@ -345,7 +346,7 @@ func (s *JobServer) CancelJob(ctx context.Context, request *internaljobv1.Cancel
 	if result == nil || result.Operation == nil || requireJobScope(identity, result.Operation.GetTenantId(), result.Operation.GetProjectId()) != nil {
 		return nil, status.Error(codes.Internal, "job persistence returned an invalid scoped operation")
 	}
-	return &internaljobv1.CancelJobResponse{Operation: proto.Clone(result.Operation).(*jobv1.Operation)}, nil
+	return &internaljobv1.CancelJobResponse{Operation: proto.Clone(result.Operation).(*operationv1.Operation)}, nil
 }
 
 func validArtifactReference(value interface {

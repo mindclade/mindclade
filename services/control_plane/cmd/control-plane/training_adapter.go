@@ -24,7 +24,7 @@ import (
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	internaljobv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/job/v1"
 	internaltrainingv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/training/v1"
-	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
+	operationv1 "github.com/mindclade/mindclade/protocols/generated/go/operation/v1"
 	trainingv1 "github.com/mindclade/mindclade/protocols/generated/go/training/v1"
 	jobsapp "github.com/mindclade/mindclade/services/control_plane/internal/jobs"
 	trainingapp "github.com/mindclade/mindclade/services/control_plane/internal/training"
@@ -398,7 +398,7 @@ func randomPublicID(prefix string) (string, error) {
 	return prefix + hex.EncodeToString(value), nil
 }
 
-func publicOperation(value *jobv1.Operation) (*apiv1.Operation, error) {
+func publicOperation(value *operationv1.Operation) (*apiv1.Operation, error) {
 	if value == nil {
 		return nil, nil
 	}
@@ -430,7 +430,7 @@ func publicOperation(value *jobv1.Operation) (*apiv1.Operation, error) {
 	return result, nil
 }
 
-func publicOperationName(value *jobv1.Operation) string {
+func publicOperationName(value *operationv1.Operation) string {
 	if value == nil {
 		return ""
 	}

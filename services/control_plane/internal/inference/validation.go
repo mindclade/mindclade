@@ -17,6 +17,7 @@ import (
 	inferencev1 "github.com/mindclade/mindclade/protocols/generated/go/inference/v1"
 	internalinferencev1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/inference/v1"
 	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
+	operationv1 "github.com/mindclade/mindclade/protocols/generated/go/operation/v1"
 	policyv1 "github.com/mindclade/mindclade/protocols/generated/go/policy/v1"
 )
 
@@ -354,7 +355,7 @@ func resultResource(identity Identity, result *inferencev1.InferenceResult) *com
 	return &commonv1.ResourceRef{ResourceType: "inference_result", ResourceId: resourceID(result.GetName()), TenantId: identity.TenantID, ProjectId: identity.ProjectID, ResourceVersion: 1, Name: result.GetName(), Etag: result.GetResultDigest()}
 }
 
-func operationResource(value *jobv1.Operation) *commonv1.ResourceRef {
+func operationResource(value *operationv1.Operation) *commonv1.ResourceRef {
 	if value == nil {
 		return nil
 	}
@@ -368,15 +369,15 @@ func resourceID(name string) string {
 	return name
 }
 
-func terminalOperationState(outcome inferencev1.InferenceResultOutcome) jobv1.OperationState {
+func terminalOperationState(outcome inferencev1.InferenceResultOutcome) operationv1.OperationState {
 	switch outcome {
 	case inferencev1.InferenceResultOutcome_INFERENCE_RESULT_OUTCOME_CANCELLED:
-		return jobv1.OperationState_OPERATION_STATE_CANCELLED
+		return operationv1.OperationState_OPERATION_STATE_CANCELLED
 	case inferencev1.InferenceResultOutcome_INFERENCE_RESULT_OUTCOME_FAILED,
 		inferencev1.InferenceResultOutcome_INFERENCE_RESULT_OUTCOME_EXPIRED,
 		inferencev1.InferenceResultOutcome_INFERENCE_RESULT_OUTCOME_POLICY_DENIED:
-		return jobv1.OperationState_OPERATION_STATE_FAILED
+		return operationv1.OperationState_OPERATION_STATE_FAILED
 	default:
-		return jobv1.OperationState_OPERATION_STATE_SUCCEEDED
+		return operationv1.OperationState_OPERATION_STATE_SUCCEEDED
 	}
 }

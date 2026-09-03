@@ -12,6 +12,15 @@ lint:
     - STANDARD
   except:
     - PACKAGE_DIRECTORY_MATCH
+  # The vendored googleapis files must stay in the module -- that is what makes
+  # `google/api/annotations.proto` resolve from the working tree -- but they are
+  # upstream bytes committed verbatim, not Mindclade API design. Linting them
+  # asks Google's package naming to follow this estate's conventions, which it
+  # never will, so the whole vendored root is exempt from lint rather than one
+  # rule being enumerated per upstream style difference. They remain in the
+  # descriptor and under breaking-change detection; only style rules are waived.
+  ignore:
+    - protocols/google
   ignore_only:
     RPC_REQUEST_RESPONSE_UNIQUE:
       - protocols/proto/mindclade/api/v1/mindclade_service.proto

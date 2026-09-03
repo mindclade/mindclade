@@ -11,12 +11,12 @@ import (
 	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	platformdb "github.com/mindclade/mindclade/libs/go/persistence"
 	artifactv1 "github.com/mindclade/mindclade/protocols/generated/go/artifact/v1"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	inferencev1 "github.com/mindclade/mindclade/protocols/generated/go/inference/v1"
-	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
+	operationv1 "github.com/mindclade/mindclade/protocols/generated/go/operation/v1"
 	policyv1 "github.com/mindclade/mindclade/protocols/generated/go/policy/v1"
-	platformdb "github.com/mindclade/mindclade/services/control_plane/internal/platform/database"
 )
 
 type scanner interface{ Scan(...any) error }
@@ -696,7 +696,7 @@ func scanOperation(row scanner) (operationRow, error) {
 	return value, err
 }
 
-func operationProto(ctx context.Context, tx *sql.Tx, row operationRow) (*jobv1.Operation, error) {
+func operationProto(ctx context.Context, tx *sql.Tx, row operationRow) (*operationv1.Operation, error) {
 	result, err := platformdb.LoadArtifactRef(ctx, tx, row.tenant, row.result)
 	if err != nil {
 		return nil, err
@@ -705,19 +705,19 @@ func operationProto(ctx context.Context, tx *sql.Tx, row operationRow) (*jobv1.O
 	if err != nil {
 		return nil, err
 	}
-	states := map[string]jobv1.OperationState{"PENDING": jobv1.OperationState_OPERATION_STATE_PENDING, "RUNNING": jobv1.OperationState_OPERATION_STATE_RUNNING, "SUCCEEDED": jobv1.OperationState_OPERATION_STATE_SUCCEEDED, "FAILED": jobv1.OperationState_OPERATION_STATE_FAILED, "CANCELLING": jobv1.OperationState_OPERATION_STATE_CANCELLING, "CANCELLED": jobv1.OperationState_OPERATION_STATE_CANCELLED}
+	states := map[string]operationv1.OperationState{"PENDING": operationv1.OperationState_OPERATION_STATE_PENDING, "RUNNING": operationv1.OperationState_OPERATION_STATE_RUNNING, "SUCCEEDED": operationv1.OperationState_OPERATION_STATE_SUCCEEDED, "FAILED": operationv1.OperationState_OPERATION_STATE_FAILED, "CANCELLING": operationv1.OperationState_OPERATION_STATE_CANCELLING, "CANCELLED": operationv1.OperationState_OPERATION_STATE_CANCELLED}
 	state, ok := states[row.status]
 	if !ok {
 		return nil, ErrInvalidTransition
 	}
-	value := &jobv1.Operation{OperationId: row.id, TenantId: row.tenant, ProjectId: row.project, JobId: row.job, State: state, ResourceVersion: row.version, Done: row.done, Etag: row.etag, Result: result, Error: detail, CreatedAt: timestamppb.New(row.created.UTC()), UpdatedAt: timestamppb.New(row.updated.UTC())}
+	value := &operationv1.Operation{OperationId: row.id, TenantId: row.tenant, ProjectId: row.project, JobId: row.job, State: state, ResourceVersion: row.version, Done: row.done, Etag: row.etag, Result: result, Error: detail, CreatedAt: timestamppb.New(row.created.UTC()), UpdatedAt: timestamppb.New(row.updated.UTC())}
 	if row.targetPresent {
 		value.Target = &commonv1.ResourceRef{ResourceType: row.targetType, ResourceId: row.targetID, TenantId: row.targetTenant, ProjectId: row.targetProject, ResourceVersion: row.targetVersion, Name: row.targetName, Etag: row.targetETag}
 	}
 	return value, nil
 }
 
-func loadOperationTx(ctx context.Context, tx *sql.Tx, identity Identity, id string) (*jobv1.Operation, error) {
+func loadOperationTx(ctx context.Context, tx *sql.Tx, identity Identity, id string) (*operationv1.Operation, error) {
 	row, err := scanOperation(tx.QueryRowContext(ctx, `SELECT `+operationColumns+` FROM operations WHERE tenant_id=$1 AND project_id=$2 AND id=$3`, identity.TenantID, identity.ProjectID, id))
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNotFound

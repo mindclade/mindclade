@@ -2293,7 +2293,7 @@ x-mindclade-binding-contracts:
       heartbeatIntervalSeconds: 15
       heartbeatReusesLastDurableEventId: true
       replayAcknowledgedTerminalEvent: false
-x-mindclade-descriptor-digest: sha256:46514bdee27df6f41f03b63f050b2cfcb95867fc8f291fe943eaf2019693c0ed
+x-mindclade-descriptor-digest: sha256:f9a9dfd1eb8cbc6960f8f7e59f2dc5ec6191b7104e07ac9614db20945ffccccd
 x-mindclade-schema-version: mindclade.raw-openapi-projection/v4
 x-mindclade-generator:
   name: mindclade-contract-codegen 3.1.0

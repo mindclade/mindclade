@@ -21,6 +21,7 @@ import (
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	internalagentv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/agent/v1"
 	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
+	operationv1 "github.com/mindclade/mindclade/protocols/generated/go/operation/v1"
 	policyv1 "github.com/mindclade/mindclade/protocols/generated/go/policy/v1"
 )
 
@@ -35,15 +36,15 @@ type fixedClock struct{ now time.Time }
 func (clock fixedClock) Now() time.Time { return clock.now }
 
 type fakeRepository struct {
-	createDefinition func(context.Context, Identity, *internalagentv1.CreateAgentDefinitionRequest, string, time.Time) (*jobv1.Operation, bool, error)
+	createDefinition func(context.Context, Identity, *internalagentv1.CreateAgentDefinitionRequest, string, time.Time) (*operationv1.Operation, bool, error)
 	commitStep       func(context.Context, Identity, *internalagentv1.CommitAgentStepRequest, string, time.Time) (*agentv1.AgentStep, *agentv1.AgentRun, bool, error)
 }
 
-func (repository fakeRepository) CreateDefinition(ctx context.Context, i Identity, r *internalagentv1.CreateAgentDefinitionRequest, d string, t time.Time) (*jobv1.Operation, bool, error) {
+func (repository fakeRepository) CreateDefinition(ctx context.Context, i Identity, r *internalagentv1.CreateAgentDefinitionRequest, d string, t time.Time) (*operationv1.Operation, bool, error) {
 	return repository.createDefinition(ctx, i, r, d, t)
 }
 
-func (fakeRepository) UpdateDefinition(context.Context, Identity, *internalagentv1.UpdateAgentDefinitionRequest, string, time.Time) (*jobv1.Operation, bool, error) {
+func (fakeRepository) UpdateDefinition(context.Context, Identity, *internalagentv1.UpdateAgentDefinitionRequest, string, time.Time) (*operationv1.Operation, bool, error) {
 	return nil, false, ErrNotFound
 }
 
@@ -55,7 +56,7 @@ func (fakeRepository) ListDefinitions(context.Context, Identity, DefinitionPage)
 	return nil, "", time.Unix(1, 0).UTC(), nil
 }
 
-func (fakeRepository) StartRun(context.Context, Identity, *internalagentv1.StartAgentRunRequest, string, time.Time) (*jobv1.Operation, bool, error) {
+func (fakeRepository) StartRun(context.Context, Identity, *internalagentv1.StartAgentRunRequest, string, time.Time) (*operationv1.Operation, bool, error) {
 	return nil, false, ErrNotFound
 }
 
@@ -67,7 +68,7 @@ func (fakeRepository) ListRuns(context.Context, Identity, RunPage) ([]*agentv1.A
 	return nil, "", time.Unix(1, 0).UTC(), nil
 }
 
-func (fakeRepository) CancelRun(context.Context, Identity, *internalagentv1.CancelAgentRunRequest, string, time.Time) (*jobv1.Operation, bool, error) {
+func (fakeRepository) CancelRun(context.Context, Identity, *internalagentv1.CancelAgentRunRequest, string, time.Time) (*operationv1.Operation, bool, error) {
 	return nil, false, ErrNotFound
 }
 
@@ -108,7 +109,7 @@ func TestNetworkCreateAgentDefinitionUsesGeneratedServiceAndClones(t *testing.T)
 	now := time.Date(2026, 9, 2, 12, 0, 0, 0, time.UTC)
 	identity := Identity{TenantID: "tenant-1", ProjectID: "project-1", Principal: "principal-1", Roles: map[string]struct{}{"agent-admin": {}}}
 	called := false
-	repository := fakeRepository{createDefinition: func(_ context.Context, got Identity, request *internalagentv1.CreateAgentDefinitionRequest, digest string, at time.Time) (*jobv1.Operation, bool, error) {
+	repository := fakeRepository{createDefinition: func(_ context.Context, got Identity, request *internalagentv1.CreateAgentDefinitionRequest, digest string, at time.Time) (*operationv1.Operation, bool, error) {
 		called = true
 		if got.TenantID != identity.TenantID || got.ProjectID != identity.ProjectID || got.Principal != identity.Principal {
 			t.Fatalf("identity=%+v", got)
@@ -120,7 +121,7 @@ func TestNetworkCreateAgentDefinitionUsesGeneratedServiceAndClones(t *testing.T)
 			t.Fatalf("at=%s", at)
 		}
 		request.AgentDefinitionId = "mutated"
-		return &jobv1.Operation{OperationId: "operations/op-1", TenantId: identity.TenantID, ProjectId: identity.ProjectID, JobId: "jobs/job-1", State: jobv1.OperationState_OPERATION_STATE_SUCCEEDED, ResourceVersion: 1, Done: true, Etag: "sha256:" + strings64("9"), CreatedAt: timestamppb.New(now), UpdatedAt: timestamppb.New(now)}, false, nil
+		return &operationv1.Operation{OperationId: "operations/op-1", TenantId: identity.TenantID, ProjectId: identity.ProjectID, JobId: "jobs/job-1", State: operationv1.OperationState_OPERATION_STATE_SUCCEEDED, ResourceVersion: 1, Done: true, Etag: "sha256:" + strings64("9"), CreatedAt: timestamppb.New(now), UpdatedAt: timestamppb.New(now)}, false, nil
 	}}
 	codec, err := NewPageTokenCodec([]byte("0123456789abcdef0123456789abcdef"))
 	if err != nil {
@@ -161,7 +162,7 @@ func TestCreateAgentDefinitionRejectsIdentityOverrideAndMissingRole(t *testing.T
 	now := time.Date(2026, 9, 2, 12, 0, 0, 0, time.UTC)
 	identity := Identity{TenantID: "tenant-1", ProjectID: "project-1", Principal: "principal-1", Roles: map[string]struct{}{"agent-admin": {}}}
 	codec, _ := NewPageTokenCodec([]byte("0123456789abcdef0123456789abcdef"))
-	repository := fakeRepository{createDefinition: func(context.Context, Identity, *internalagentv1.CreateAgentDefinitionRequest, string, time.Time) (*jobv1.Operation, bool, error) {
+	repository := fakeRepository{createDefinition: func(context.Context, Identity, *internalagentv1.CreateAgentDefinitionRequest, string, time.Time) (*operationv1.Operation, bool, error) {
 		t.Fatal("repository called")
 		return nil, false, nil
 	}}
@@ -216,7 +217,7 @@ func TestCommitAgentStepRequiresWorkerTransportAuthority(t *testing.T) {
 	identity := Identity{TenantID: "tenant-1", ProjectID: "project-1", Principal: "worker-principal", WorkerID: "worker-1", LeaseToken: "lease-token", Roles: map[string]struct{}{"agent-worker": {}}}
 	codec, _ := NewPageTokenCodec([]byte("0123456789abcdef0123456789abcdef"))
 	called := false
-	repository := fakeRepository{createDefinition: func(context.Context, Identity, *internalagentv1.CreateAgentDefinitionRequest, string, time.Time) (*jobv1.Operation, bool, error) {
+	repository := fakeRepository{createDefinition: func(context.Context, Identity, *internalagentv1.CreateAgentDefinitionRequest, string, time.Time) (*operationv1.Operation, bool, error) {
 		return nil, false, ErrNotFound
 	}, commitStep: func(_ context.Context, got Identity, request *internalagentv1.CommitAgentStepRequest, digest string, at time.Time) (*agentv1.AgentStep, *agentv1.AgentRun, bool, error) {
 		called = true

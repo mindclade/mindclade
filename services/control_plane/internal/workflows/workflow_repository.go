@@ -15,14 +15,14 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/mindclade/mindclade/libs/go/numconv"
+	platformdb "github.com/mindclade/mindclade/libs/go/persistence"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	internalworkflowv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/workflow/v1"
-	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
+	operationv1 "github.com/mindclade/mindclade/protocols/generated/go/operation/v1"
 	workflowv1 "github.com/mindclade/mindclade/protocols/generated/go/workflow/v1"
-	platformdb "github.com/mindclade/mindclade/services/control_plane/internal/platform/database"
 )
 
-func (repository SQLRepository) CreateDefinition(ctx context.Context, identity Identity, request *internalworkflowv1.CreateWorkflowDefinitionRequest, digest string, at time.Time) (*jobv1.Operation, bool, error) {
+func (repository SQLRepository) CreateDefinition(ctx context.Context, identity Identity, request *internalworkflowv1.CreateWorkflowDefinitionRequest, digest string, at time.Time) (*operationv1.Operation, bool, error) {
 	if err := repository.validate(); err != nil {
 		return nil, false, err
 	}
@@ -118,7 +118,7 @@ func validDefinitionTransition(from, to workflowv1.WorkflowDefinitionState) bool
 	}
 }
 
-func (repository SQLRepository) UpdateDefinition(ctx context.Context, identity Identity, request *internalworkflowv1.UpdateWorkflowDefinitionRequest, digest string, at time.Time) (*jobv1.Operation, bool, error) {
+func (repository SQLRepository) UpdateDefinition(ctx context.Context, identity Identity, request *internalworkflowv1.UpdateWorkflowDefinitionRequest, digest string, at time.Time) (*operationv1.Operation, bool, error) {
 	if err := repository.validate(); err != nil {
 		return nil, false, err
 	}
@@ -303,7 +303,7 @@ func (repository SQLRepository) ListDefinitions(ctx context.Context, identity Id
 	return cloneSlice(values), token, readAt.UTC(), nil
 }
 
-func (repository SQLRepository) StartRun(ctx context.Context, identity Identity, request *internalworkflowv1.StartWorkflowRunRequest, digest string, at time.Time) (*jobv1.Operation, bool, error) {
+func (repository SQLRepository) StartRun(ctx context.Context, identity Identity, request *internalworkflowv1.StartWorkflowRunRequest, digest string, at time.Time) (*operationv1.Operation, bool, error) {
 	if err := repository.validate(); err != nil {
 		return nil, false, err
 	}
@@ -479,7 +479,7 @@ func (repository SQLRepository) ListRuns(ctx context.Context, identity Identity,
 	return cloneSlice(values), token, readAt.UTC(), nil
 }
 
-func (repository SQLRepository) CancelRun(ctx context.Context, identity Identity, request *internalworkflowv1.CancelWorkflowRunRequest, digest string, at time.Time) (*jobv1.Operation, bool, error) {
+func (repository SQLRepository) CancelRun(ctx context.Context, identity Identity, request *internalworkflowv1.CancelWorkflowRunRequest, digest string, at time.Time) (*operationv1.Operation, bool, error) {
 	if err := repository.validate(); err != nil {
 		return nil, false, err
 	}
@@ -528,7 +528,7 @@ func (repository SQLRepository) CancelRun(ctx context.Context, identity Identity
 	if err = advanceSchedulerRows(ctx, tx, identity, row.jobID, row.schedulerRunID, "CANCELLING", "CANCELLING", at); err != nil {
 		return nil, false, err
 	}
-	if err = advanceOperation(ctx, tx, identity, row.operationID, workflowRunResource(after), jobv1.OperationState_OPERATION_STATE_CANCELLING, at); err != nil {
+	if err = advanceOperation(ctx, tx, identity, row.operationID, workflowRunResource(after), operationv1.OperationState_OPERATION_STATE_CANCELLING, at); err != nil {
 		return nil, false, err
 	}
 	cancelOperation, err := insertCompletedOperation(ctx, tx, identity, workflowRunResource(after), "workflow.run.cancel", digest, at)
@@ -734,16 +734,16 @@ func (repository SQLRepository) CommitTransition(ctx context.Context, identity I
 			return nil, false, err
 		}
 	}
-	jobState, schedulerState, operationState := "RUNNING", "EXECUTING", jobv1.OperationState_OPERATION_STATE_RUNNING
+	jobState, schedulerState, operationState := "RUNNING", "EXECUTING", operationv1.OperationState_OPERATION_STATE_RUNNING
 	switch after.GetState() {
 	case workflowv1.WorkflowRunState_WORKFLOW_RUN_STATE_SUCCEEDED:
-		jobState, schedulerState, operationState = "SUCCEEDED", "SUCCEEDED", jobv1.OperationState_OPERATION_STATE_SUCCEEDED
+		jobState, schedulerState, operationState = "SUCCEEDED", "SUCCEEDED", operationv1.OperationState_OPERATION_STATE_SUCCEEDED
 	case workflowv1.WorkflowRunState_WORKFLOW_RUN_STATE_FAILED, workflowv1.WorkflowRunState_WORKFLOW_RUN_STATE_EXPIRED:
-		jobState, schedulerState, operationState = "FAILED", "FAILED", jobv1.OperationState_OPERATION_STATE_FAILED
+		jobState, schedulerState, operationState = "FAILED", "FAILED", operationv1.OperationState_OPERATION_STATE_FAILED
 	case workflowv1.WorkflowRunState_WORKFLOW_RUN_STATE_CANCELLING:
-		jobState, schedulerState, operationState = "CANCELLING", "CANCELLING", jobv1.OperationState_OPERATION_STATE_CANCELLING
+		jobState, schedulerState, operationState = "CANCELLING", "CANCELLING", operationv1.OperationState_OPERATION_STATE_CANCELLING
 	case workflowv1.WorkflowRunState_WORKFLOW_RUN_STATE_CANCELLED:
-		jobState, schedulerState, operationState = "CANCELLED", "CANCELLED", jobv1.OperationState_OPERATION_STATE_CANCELLED
+		jobState, schedulerState, operationState = "CANCELLED", "CANCELLED", operationv1.OperationState_OPERATION_STATE_CANCELLED
 	}
 	if err = advanceSchedulerRows(ctx, tx, identity, row.jobID, row.schedulerRunID, jobState, schedulerState, at); err != nil {
 		return nil, false, err

@@ -13,34 +13,35 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/mindclade/mindclade/libs/go/numconv"
+	"github.com/mindclade/mindclade/libs/go/pubsubx"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
+	operationv1 "github.com/mindclade/mindclade/protocols/generated/go/operation/v1"
 	workflowv1 "github.com/mindclade/mindclade/protocols/generated/go/workflow/v1"
-	"github.com/mindclade/mindclade/services/control_plane/internal/platform/queue"
 )
 
 const protobufEventContentType = "application/x-protobuf; deterministic=true"
 
 type EventFactory interface {
-	DefinitionCreated(Identity, *workflowv1.WorkflowDefinition, *jobv1.Operation, *commonv1.CommandContext, time.Time) (*commonv1.EventEnvelope, error)
-	DefinitionUpdated(Identity, *workflowv1.WorkflowDefinition, int64, []string, *jobv1.Operation, *commonv1.CommandContext, time.Time) (*commonv1.EventEnvelope, error)
-	RunStarted(Identity, *workflowv1.WorkflowRun, *jobv1.Operation, *commonv1.CommandContext, time.Time) (*commonv1.EventEnvelope, error)
-	RunCancelled(Identity, *workflowv1.WorkflowRun, *jobv1.Operation, string, *commonv1.CommandContext, time.Time) (*commonv1.EventEnvelope, error)
+	DefinitionCreated(Identity, *workflowv1.WorkflowDefinition, *operationv1.Operation, *commonv1.CommandContext, time.Time) (*commonv1.EventEnvelope, error)
+	DefinitionUpdated(Identity, *workflowv1.WorkflowDefinition, int64, []string, *operationv1.Operation, *commonv1.CommandContext, time.Time) (*commonv1.EventEnvelope, error)
+	RunStarted(Identity, *workflowv1.WorkflowRun, *operationv1.Operation, *commonv1.CommandContext, time.Time) (*commonv1.EventEnvelope, error)
+	RunCancelled(Identity, *workflowv1.WorkflowRun, *operationv1.Operation, string, *commonv1.CommandContext, time.Time) (*commonv1.EventEnvelope, error)
 	Transitioned(Identity, *workflowv1.WorkflowRun, *workflowv1.WorkflowRun, *commonv1.CommandContext, time.Time) (*commonv1.EventEnvelope, error)
 	ApprovalRequested(Identity, *workflowv1.ApprovalRequest, time.Time) (*commonv1.EventEnvelope, error)
 	ApprovalRecorded(Identity, *workflowv1.ApprovalRequest, *workflowv1.ApprovalReceipt, time.Time) (*commonv1.EventEnvelope, error)
 	ApprovalConsumed(Identity, *workflowv1.ApprovalReceipt, string, uint64, *commonv1.CommandContext, time.Time) (*commonv1.EventEnvelope, error)
-	JobRequested(Identity, *jobv1.Operation, string, *commonv1.CommandContext, time.Time) (*commonv1.EventEnvelope, error)
+	JobRequested(Identity, *operationv1.Operation, string, *commonv1.CommandContext, time.Time) (*commonv1.EventEnvelope, error)
 }
 
 type GeneratedEventFactory struct{}
 
-func (GeneratedEventFactory) DefinitionCreated(identity Identity, value *workflowv1.WorkflowDefinition, operation *jobv1.Operation, command *commonv1.CommandContext, at time.Time) (*commonv1.EventEnvelope, error) {
+func (GeneratedEventFactory) DefinitionCreated(identity Identity, value *workflowv1.WorkflowDefinition, operation *operationv1.Operation, command *commonv1.CommandContext, at time.Time) (*commonv1.EventEnvelope, error) {
 	payload := &workflowv1.WorkflowDefinitionCreated{WorkflowDefinition: clone(value), Operation: operationResource(operation), CreatedAt: timestamppb.New(at)}
 	return eventEnvelopeRevision(identity, workflowDefinitionResource(value), payload, value.GetRevision(), command, at, "workflow-control-plane")
 }
 
-func (GeneratedEventFactory) DefinitionUpdated(identity Identity, value *workflowv1.WorkflowDefinition, previous int64, paths []string, operation *jobv1.Operation, command *commonv1.CommandContext, at time.Time) (*commonv1.EventEnvelope, error) {
+func (GeneratedEventFactory) DefinitionUpdated(identity Identity, value *workflowv1.WorkflowDefinition, previous int64, paths []string, operation *operationv1.Operation, command *commonv1.CommandContext, at time.Time) (*commonv1.EventEnvelope, error) {
 	payload := &workflowv1.WorkflowDefinitionUpdated{WorkflowDefinition: clone(value), PreviousRevision: previous, UpdateMask: &fieldMask{Paths: append([]string(nil), paths...)}, Operation: operationResource(operation), UpdatedAt: timestamppb.New(at)}
 	return eventEnvelopeRevision(identity, workflowDefinitionResource(value), payload, value.GetRevision(), command, at, "workflow-control-plane")
 }
@@ -49,12 +50,12 @@ func (GeneratedEventFactory) DefinitionUpdated(identity Identity, value *workflo
 // event construction explicit without accepting caller-owned mutable aliases.
 type fieldMask = fieldmaskpb.FieldMask
 
-func (GeneratedEventFactory) RunStarted(identity Identity, value *workflowv1.WorkflowRun, operation *jobv1.Operation, command *commonv1.CommandContext, at time.Time) (*commonv1.EventEnvelope, error) {
+func (GeneratedEventFactory) RunStarted(identity Identity, value *workflowv1.WorkflowRun, operation *operationv1.Operation, command *commonv1.CommandContext, at time.Time) (*commonv1.EventEnvelope, error) {
 	payload := &workflowv1.WorkflowRunStarted{WorkflowRun: clone(value), Operation: operationResource(operation), StartedAt: timestamppb.New(at)}
 	return eventEnvelopeRevision(identity, workflowRunResource(value), payload, value.GetRevision(), command, at, "workflow-control-plane")
 }
 
-func (GeneratedEventFactory) RunCancelled(identity Identity, value *workflowv1.WorkflowRun, operation *jobv1.Operation, reason string, command *commonv1.CommandContext, at time.Time) (*commonv1.EventEnvelope, error) {
+func (GeneratedEventFactory) RunCancelled(identity Identity, value *workflowv1.WorkflowRun, operation *operationv1.Operation, reason string, command *commonv1.CommandContext, at time.Time) (*commonv1.EventEnvelope, error) {
 	payload := &workflowv1.WorkflowCancellationRequested{WorkflowRun: workflowRunResource(value), Reason: reason, Operation: operationResource(operation), RequestedAt: timestamppb.New(at)}
 	return eventEnvelopeRevision(identity, workflowRunResource(value), payload, value.GetRevision(), command, at, "workflow-control-plane")
 }
@@ -84,7 +85,7 @@ func (GeneratedEventFactory) ApprovalConsumed(identity Identity, receipt *workfl
 	return eventEnvelope(identity, approvalReceiptResource(identity, receipt), payload, sequence, command, at, "approval-authority")
 }
 
-func (GeneratedEventFactory) JobRequested(identity Identity, operation *jobv1.Operation, configurationDigest string, command *commonv1.CommandContext, at time.Time) (*commonv1.EventEnvelope, error) {
+func (GeneratedEventFactory) JobRequested(identity Identity, operation *operationv1.Operation, configurationDigest string, command *commonv1.CommandContext, at time.Time) (*commonv1.EventEnvelope, error) {
 	if operation == nil || !validSHA256(configurationDigest) {
 		return nil, ErrInvalidArgument
 	}
@@ -124,7 +125,7 @@ func eventEnvelope(identity Identity, subject *commonv1.ResourceRef, payloadMess
 		DeduplicationKey: "sha256:" + hex.EncodeToString(dedupDigest[:]), PayloadContentType: protobufEventContentType,
 		Classification: commonv1.DataClassification_DATA_CLASSIFICATION_INTERNAL,
 	}
-	if err = queue.ValidateEnvelope(envelope); err != nil {
+	if err = pubsubx.ValidateEnvelope(envelope); err != nil {
 		return nil, err
 	}
 	return envelope, nil
@@ -138,7 +139,7 @@ func randomID(prefix string) (string, error) {
 	return prefix + base64.RawURLEncoding.EncodeToString(value), nil
 }
 
-func operationResource(value *jobv1.Operation) *commonv1.ResourceRef {
+func operationResource(value *operationv1.Operation) *commonv1.ResourceRef {
 	if value == nil {
 		return nil
 	}

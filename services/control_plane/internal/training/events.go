@@ -12,27 +12,28 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/mindclade/mindclade/libs/go/numconv"
+	"github.com/mindclade/mindclade/libs/go/pubsubx"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
+	operationv1 "github.com/mindclade/mindclade/protocols/generated/go/operation/v1"
 	trainingv1 "github.com/mindclade/mindclade/protocols/generated/go/training/v1"
-	"github.com/mindclade/mindclade/services/control_plane/internal/platform/queue"
 )
 
 const protobufEventContentType = "application/x-protobuf; deterministic=true"
 
 type EventFactory interface {
-	Created(Identity, *trainingv1.TrainingRun, *jobv1.Operation, *commonv1.CommandContext, time.Time) (*commonv1.EventEnvelope, error)
-	JobRequested(Identity, *jobv1.Operation, string, *commonv1.CommandContext, time.Time) (*commonv1.EventEnvelope, error)
+	Created(Identity, *trainingv1.TrainingRun, *operationv1.Operation, *commonv1.CommandContext, time.Time) (*commonv1.EventEnvelope, error)
+	JobRequested(Identity, *operationv1.Operation, string, *commonv1.CommandContext, time.Time) (*commonv1.EventEnvelope, error)
 	Started(Identity, *trainingv1.TrainingRun, *jobv1.LeaseFence, *commonv1.CommandContext, time.Time) (*commonv1.EventEnvelope, error)
 	Progress(Identity, *trainingv1.TrainingRun, *trainingv1.TrainingProgress, *jobv1.LeaseFence, *commonv1.CommandContext, time.Time) (*commonv1.EventEnvelope, error)
 	Checkpoint(Identity, *trainingv1.TrainingRun, *trainingv1.Checkpoint, *jobv1.LeaseFence, *commonv1.CommandContext, time.Time) (*commonv1.EventEnvelope, error)
 	Completed(Identity, *trainingv1.TrainingRun, *jobv1.LeaseFence, *commonv1.CommandContext, time.Time) (*commonv1.EventEnvelope, error)
-	CancellationRequested(Identity, *trainingv1.TrainingRun, *jobv1.Operation, string, *commonv1.CommandContext, time.Time) (*commonv1.EventEnvelope, error)
+	CancellationRequested(Identity, *trainingv1.TrainingRun, *operationv1.Operation, string, *commonv1.CommandContext, time.Time) (*commonv1.EventEnvelope, error)
 }
 
 type GeneratedEventFactory struct{}
 
-func (GeneratedEventFactory) Created(identity Identity, run *trainingv1.TrainingRun, operation *jobv1.Operation, command *commonv1.CommandContext, at time.Time) (*commonv1.EventEnvelope, error) {
+func (GeneratedEventFactory) Created(identity Identity, run *trainingv1.TrainingRun, operation *operationv1.Operation, command *commonv1.CommandContext, at time.Time) (*commonv1.EventEnvelope, error) {
 	payload := &trainingv1.TrainingRunCreated{
 		TrainingRunName: run.GetName(), TrainingRunRevision: run.GetRevision(),
 		TrainingRecipe: clone(run.GetTrainingRecipe()), DatasetRelease: clone(run.GetDatasetRelease()),
@@ -42,7 +43,7 @@ func (GeneratedEventFactory) Created(identity Identity, run *trainingv1.Training
 	return newEventEnvelope(identity, runResource(run), payload, run.GetRevision(), command, at)
 }
 
-func (GeneratedEventFactory) JobRequested(identity Identity, operation *jobv1.Operation, configurationDigest string, command *commonv1.CommandContext, at time.Time) (*commonv1.EventEnvelope, error) {
+func (GeneratedEventFactory) JobRequested(identity Identity, operation *operationv1.Operation, configurationDigest string, command *commonv1.CommandContext, at time.Time) (*commonv1.EventEnvelope, error) {
 	if operation == nil || !validSHA256Digest(configurationDigest) {
 		return nil, ErrInvalidArgument
 	}
@@ -89,7 +90,7 @@ func (GeneratedEventFactory) Completed(identity Identity, run *trainingv1.Traini
 	return newEventEnvelope(identity, runResource(run), payload, run.GetRevision(), command, at)
 }
 
-func (GeneratedEventFactory) CancellationRequested(identity Identity, run *trainingv1.TrainingRun, operation *jobv1.Operation, reason string, command *commonv1.CommandContext, at time.Time) (*commonv1.EventEnvelope, error) {
+func (GeneratedEventFactory) CancellationRequested(identity Identity, run *trainingv1.TrainingRun, operation *operationv1.Operation, reason string, command *commonv1.CommandContext, at time.Time) (*commonv1.EventEnvelope, error) {
 	payload := &trainingv1.TrainingCancellationRequested{
 		TrainingRunName: run.GetName(), TrainingRunRevision: run.GetRevision(),
 		Operation: operationResource(operation), Reason: reason, RequestedAt: timestamppb.New(at.UTC()),
@@ -126,7 +127,7 @@ func newEventEnvelope(identity Identity, subject *commonv1.ResourceRef, payloadM
 	if requested, ok := payloadMessage.(*jobv1.JobRequested); ok {
 		envelope.JobId = requested.GetJobId()
 	}
-	if err := queue.ValidateEnvelope(envelope); err != nil {
+	if err := pubsubx.ValidateEnvelope(envelope); err != nil {
 		return nil, err
 	}
 	return envelope, nil
@@ -139,7 +140,7 @@ func runResource(run *trainingv1.TrainingRun) *commonv1.ResourceRef {
 	}
 }
 
-func operationResource(operation *jobv1.Operation) *commonv1.ResourceRef {
+func operationResource(operation *operationv1.Operation) *commonv1.ResourceRef {
 	return &commonv1.ResourceRef{
 		ResourceType: "operation", ResourceId: resourceID(operation.GetOperationId()), TenantId: operation.GetTenantId(),
 		ProjectId: operation.GetProjectId(), ResourceVersion: operation.GetResourceVersion(),

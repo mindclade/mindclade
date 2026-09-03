@@ -13,12 +13,12 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	foundationaudit "github.com/mindclade/mindclade/libs/go/audit"
+	platformdb "github.com/mindclade/mindclade/libs/go/persistence"
+	"github.com/mindclade/mindclade/libs/go/pubsubx"
 	artifactv1 "github.com/mindclade/mindclade/protocols/generated/go/artifact/v1"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
-	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
 	modelv1 "github.com/mindclade/mindclade/protocols/generated/go/model/v1"
-	platformdb "github.com/mindclade/mindclade/services/control_plane/internal/platform/database"
-	"github.com/mindclade/mindclade/services/control_plane/internal/platform/queue"
+	operationv1 "github.com/mindclade/mindclade/protocols/generated/go/operation/v1"
 )
 
 func (r SQLRepository) validate() error {
@@ -55,7 +55,7 @@ func checkReceipt(ctx context.Context, tx *sql.Tx, identity Identity, action, ke
 	return id, true, nil
 }
 
-func replayOperation(ctx context.Context, tx *sql.Tx, identity Identity, id string) (*jobv1.Operation, bool, error) {
+func replayOperation(ctx context.Context, tx *sql.Tx, identity Identity, id string) (*operationv1.Operation, bool, error) {
 	operation, err := getOperationTx(ctx, tx, identity, id)
 	if err != nil {
 		return nil, false, err
@@ -71,7 +71,7 @@ func insertAudit(ctx context.Context, tx *sql.Tx, identity Identity, action, sub
 	if err != nil {
 		return err
 	}
-	encoded, err := queue.MarshalEnvelope(event)
+	encoded, err := pubsubx.MarshalEnvelope(event)
 	if err != nil {
 		return err
 	}
@@ -79,7 +79,7 @@ func insertAudit(ctx context.Context, tx *sql.Tx, identity Identity, action, sub
 	return err
 }
 
-func insertCompletedOperation(ctx context.Context, tx *sql.Tx, identity Identity, digest string, target *commonv1.ResourceRef, at time.Time) (*jobv1.Operation, error) {
+func insertCompletedOperation(ctx context.Context, tx *sql.Tx, identity Identity, digest string, target *commonv1.ResourceRef, at time.Time) (*operationv1.Operation, error) {
 	jobID, err := randomID("jobs/")
 	if err != nil {
 		return nil, err
@@ -99,10 +99,10 @@ func insertCompletedOperation(ctx context.Context, tx *sql.Tx, identity Identity
 	if _, err = tx.ExecContext(ctx, `INSERT INTO operation_revisions(operation_id,tenant_id,project_id,revision,job_id,target_present,target_resource_type,target_resource_id,target_tenant_id,target_project_id,target_resource_version,target_name,target_etag,status,done,etag,result_ref_id,error_detail_id,created_at,updated_at,recorded_at) VALUES($1,$2,$3,1,$4,true,$5,$6,$2,$3,$7,$8,$9,'SUCCEEDED',true,$10,NULL,NULL,$11,$11,$11)`, operationID, identity.TenantID, identity.ProjectID, jobID, target.GetResourceType(), target.GetResourceId(), target.GetResourceVersion(), target.GetName(), target.GetEtag(), operationETag, at.UTC()); err != nil {
 		return nil, err
 	}
-	return &jobv1.Operation{OperationId: operationID, TenantId: identity.TenantID, ProjectId: identity.ProjectID, JobId: jobID, State: jobv1.OperationState_OPERATION_STATE_SUCCEEDED, ResourceVersion: 1, Done: true, Etag: operationETag, Target: clone(target), CreatedAt: timestamppb.New(at.UTC()), UpdatedAt: timestamppb.New(at.UTC())}, nil
+	return &operationv1.Operation{OperationId: operationID, TenantId: identity.TenantID, ProjectId: identity.ProjectID, JobId: jobID, State: operationv1.OperationState_OPERATION_STATE_SUCCEEDED, ResourceVersion: 1, Done: true, Etag: operationETag, Target: clone(target), CreatedAt: timestamppb.New(at.UTC()), UpdatedAt: timestamppb.New(at.UTC())}, nil
 }
 
-func recordMutation(ctx context.Context, tx *sql.Tx, identity Identity, action, key, digest string, operation *jobv1.Operation, events []*commonv1.EventEnvelope, at time.Time) error {
+func recordMutation(ctx context.Context, tx *sql.Tx, identity Identity, action, key, digest string, operation *operationv1.Operation, events []*commonv1.EventEnvelope, at time.Time) error {
 	if operation == nil || operation.GetTarget() == nil || len(events) == 0 {
 		return ErrInvalidArgument
 	}
@@ -110,7 +110,7 @@ func recordMutation(ctx context.Context, tx *sql.Tx, identity Identity, action, 
 		return err
 	}
 	for _, event := range events {
-		if err := queue.InsertOutboxMessage(ctx, tx, event, at); err != nil {
+		if err := pubsubx.InsertOutboxMessage(ctx, tx, event, at); err != nil {
 			return err
 		}
 	}
@@ -118,7 +118,7 @@ func recordMutation(ctx context.Context, tx *sql.Tx, identity Identity, action, 
 	return err
 }
 
-func finishMutation(ctx context.Context, tx *sql.Tx, identity Identity, action, key, digest string, target *commonv1.ResourceRef, event *commonv1.EventEnvelope, at time.Time) (*jobv1.Operation, error) {
+func finishMutation(ctx context.Context, tx *sql.Tx, identity Identity, action, key, digest string, target *commonv1.ResourceRef, event *commonv1.EventEnvelope, at time.Time) (*operationv1.Operation, error) {
 	operation, err := insertCompletedOperation(ctx, tx, identity, digest, target, at)
 	if err != nil {
 		return nil, err
@@ -129,7 +129,7 @@ func finishMutation(ctx context.Context, tx *sql.Tx, identity Identity, action, 
 	return operation, nil
 }
 
-func (r SQLRepository) RegisterModel(ctx context.Context, identity Identity, command *modelv1.RegisterModelCommand, digest string, at time.Time) (*jobv1.Operation, bool, error) {
+func (r SQLRepository) RegisterModel(ctx context.Context, identity Identity, command *modelv1.RegisterModelCommand, digest string, at time.Time) (*operationv1.Operation, bool, error) {
 	if err := r.validate(); err != nil {
 		return nil, false, err
 	}
@@ -248,7 +248,7 @@ func (r SQLRepository) RegisterModel(ctx context.Context, identity Identity, com
 	return clone(operation), false, nil
 }
 
-func (r SQLRepository) RegisterModelRelease(ctx context.Context, identity Identity, command *modelv1.RegisterModelReleaseCommand, digest string, at time.Time) (*jobv1.Operation, bool, error) {
+func (r SQLRepository) RegisterModelRelease(ctx context.Context, identity Identity, command *modelv1.RegisterModelReleaseCommand, digest string, at time.Time) (*operationv1.Operation, bool, error) {
 	factory, available := r.Events.(ModelReleaseEventFactory)
 	if !available {
 		return nil, false, missingEvent(RegisterReleaseEventContract)
@@ -420,7 +420,7 @@ func storeTransitionEvidence(ctx context.Context, tx *sql.Tx, identity Identity,
 	return nil
 }
 
-func (r SQLRepository) PromoteModelRelease(ctx context.Context, identity Identity, command *modelv1.PromoteModelReleaseCommand, digest string, at time.Time) (*jobv1.Operation, bool, error) {
+func (r SQLRepository) PromoteModelRelease(ctx context.Context, identity Identity, command *modelv1.PromoteModelReleaseCommand, digest string, at time.Time) (*operationv1.Operation, bool, error) {
 	if err := r.validate(); err != nil {
 		return nil, false, err
 	}
@@ -512,7 +512,7 @@ func (r SQLRepository) PromoteModelRelease(ctx context.Context, identity Identit
 	return clone(operation), false, nil
 }
 
-func (r SQLRepository) RevokeModelRelease(ctx context.Context, identity Identity, command *modelv1.RevokeModelReleaseCommand, digest string, at time.Time) (*jobv1.Operation, bool, error) {
+func (r SQLRepository) RevokeModelRelease(ctx context.Context, identity Identity, command *modelv1.RevokeModelReleaseCommand, digest string, at time.Time) (*operationv1.Operation, bool, error) {
 	if err := r.validate(); err != nil {
 		return nil, false, err
 	}

@@ -32,7 +32,7 @@ pub struct CreateEvaluationRunRequest {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CreateEvaluationRunResponse {
     #[prost(message, optional, tag = "1")]
-    pub operation: ::core::option::Option<crate::job::v1::Operation>,
+    pub operation: ::core::option::Option<crate::operation::v1::Operation>,
 }
 /// GetEvaluationRunRequest identifies one evaluation run and optional cache validator.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
@@ -86,7 +86,7 @@ pub struct CancelEvaluationRunRequest {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CancelEvaluationRunResponse {
     #[prost(message, optional, tag = "1")]
-    pub operation: ::core::option::Option<crate::job::v1::Operation>,
+    pub operation: ::core::option::Option<crate::operation::v1::Operation>,
 }
 /// CommitEvaluationResultRequest binds one immutable result to the current fenced attempt.
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -134,7 +134,7 @@ pub struct CreatePromotionDecisionRequest {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CreatePromotionDecisionResponse {
     #[prost(message, optional, tag = "1")]
-    pub operation: ::core::option::Option<crate::job::v1::Operation>,
+    pub operation: ::core::option::Option<crate::operation::v1::Operation>,
 }
 /// GetPromotionDecisionRequest identifies one immutable promotion decision.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]

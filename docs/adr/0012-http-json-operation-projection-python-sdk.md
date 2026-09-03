@@ -2,7 +2,7 @@
 
 > Partially superseded by ADR-0015: Protobuf plus Buf-generated native
 > Protobuf/gRPC/Connect bindings are the internal transport authority.
-> Mindclade-owned facades under `internal/sdk` add ergonomics without
+> Mindclade-owned facades under `sdks` add ergonomics without
 > redefining wire models. The curated OpenAPI document remains an HTTP/JSON
 > projection; Fern and Speakeasy may be evaluated only as optional internal
 > REST generators and never become foundational dependencies. This proposed

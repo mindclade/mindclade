@@ -8,7 +8,7 @@ package internalpolicyv1
 
 import (
 	v1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
-	v12 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
+	v12 "github.com/mindclade/mindclade/protocols/generated/go/operation/v1"
 	v11 "github.com/mindclade/mindclade/protocols/generated/go/policy/v1"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
@@ -959,7 +959,7 @@ var File_proto_mindclade_internal_policy_v1_policy_service_proto protoreflect.Fi
 
 const file_proto_mindclade_internal_policy_v1_policy_service_proto_rawDesc = "" +
 	"\n" +
-	"7proto/mindclade/internal/policy/v1/policy_service.proto\x12\x1cmindclade.internal.policy.v1\x1a google/protobuf/field_mask.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a/proto/mindclade/common/v1/command_context.proto\x1a*proto/mindclade/common/v1/pagination.proto\x1a2proto/mindclade/common/v1/resource_reference.proto\x1a&proto/mindclade/job/v1/operation.proto\x1a6proto/mindclade/policy/v1/authorization_decision.proto\x1a0proto/mindclade/policy/v1/policy_reference.proto\x1a*proto/mindclade/policy/v1/use_policy.proto\"\xc2\x03\n" +
+	"7proto/mindclade/internal/policy/v1/policy_service.proto\x12\x1cmindclade.internal.policy.v1\x1a google/protobuf/field_mask.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a/proto/mindclade/common/v1/command_context.proto\x1a*proto/mindclade/common/v1/pagination.proto\x1a2proto/mindclade/common/v1/resource_reference.proto\x1a,proto/mindclade/operation/v1/operation.proto\x1a6proto/mindclade/policy/v1/authorization_decision.proto\x1a0proto/mindclade/policy/v1/policy_reference.proto\x1a*proto/mindclade/policy/v1/use_policy.proto\"\xc2\x03\n" +
 	"\x1cEvaluateAuthorizationRequest\x12\x1b\n" +
 	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12\x1d\n" +
 	"\n" +
@@ -978,18 +978,18 @@ const file_proto_mindclade_internal_policy_v1_policy_service_proto_rawDesc = "" 
 	"\x06parent\x18\x02 \x01(\tR\x06parent\x12\"\n" +
 	"\ruse_policy_id\x18\x03 \x01(\tR\vusePolicyId\x12=\n" +
 	"\n" +
-	"use_policy\x18\x04 \x01(\v2\x1e.mindclade.policy.v1.UsePolicyR\tusePolicy\"T\n" +
-	"\x17CreateUsePolicyResponse\x129\n" +
-	"\toperation\x18\x01 \x01(\v2\x1b.mindclade.job.v1.OperationR\toperation\"\xe7\x01\n" +
+	"use_policy\x18\x04 \x01(\v2\x1e.mindclade.policy.v1.UsePolicyR\tusePolicy\"Z\n" +
+	"\x17CreateUsePolicyResponse\x12?\n" +
+	"\toperation\x18\x01 \x01(\v2!.mindclade.operation.v1.OperationR\toperation\"\xe7\x01\n" +
 	"\x16UpdateUsePolicyRequest\x12=\n" +
 	"\acontext\x18\x01 \x01(\v2#.mindclade.common.v1.CommandContextR\acontext\x12=\n" +
 	"\n" +
 	"use_policy\x18\x02 \x01(\v2\x1e.mindclade.policy.v1.UsePolicyR\tusePolicy\x12;\n" +
 	"\vupdate_mask\x18\x03 \x01(\v2\x1a.google.protobuf.FieldMaskR\n" +
 	"updateMask\x12\x12\n" +
-	"\x04etag\x18\x04 \x01(\tR\x04etag\"T\n" +
-	"\x17UpdateUsePolicyResponse\x129\n" +
-	"\toperation\x18\x01 \x01(\v2\x1b.mindclade.job.v1.OperationR\toperation\"M\n" +
+	"\x04etag\x18\x04 \x01(\tR\x04etag\"Z\n" +
+	"\x17UpdateUsePolicyResponse\x12?\n" +
+	"\toperation\x18\x01 \x01(\v2!.mindclade.operation.v1.OperationR\toperation\"M\n" +
 	"\x13GetUsePolicyRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\"\n" +
 	"\rif_none_match\x18\x02 \x01(\tR\vifNoneMatch\"U\n" +
@@ -1008,17 +1008,17 @@ const file_proto_mindclade_internal_policy_v1_policy_service_proto_rawDesc = "" 
 	"\x18ActivateUsePolicyRequest\x12=\n" +
 	"\acontext\x18\x01 \x01(\v2#.mindclade.common.v1.CommandContextR\acontext\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x12\n" +
-	"\x04etag\x18\x03 \x01(\tR\x04etag\"V\n" +
-	"\x19ActivateUsePolicyResponse\x129\n" +
-	"\toperation\x18\x01 \x01(\v2\x1b.mindclade.job.v1.OperationR\toperation\"\xa0\x01\n" +
+	"\x04etag\x18\x03 \x01(\tR\x04etag\"\\\n" +
+	"\x19ActivateUsePolicyResponse\x12?\n" +
+	"\toperation\x18\x01 \x01(\v2!.mindclade.operation.v1.OperationR\toperation\"\xa0\x01\n" +
 	"\x16RevokeUsePolicyRequest\x12=\n" +
 	"\acontext\x18\x01 \x01(\v2#.mindclade.common.v1.CommandContextR\acontext\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x12\n" +
 	"\x04etag\x18\x03 \x01(\tR\x04etag\x12\x1f\n" +
 	"\vreason_code\x18\x04 \x01(\tR\n" +
-	"reasonCode\"T\n" +
-	"\x17RevokeUsePolicyResponse\x129\n" +
-	"\toperation\x18\x01 \x01(\v2\x1b.mindclade.job.v1.OperationR\toperation\"u\n" +
+	"reasonCode\"Z\n" +
+	"\x17RevokeUsePolicyResponse\x12?\n" +
+	"\toperation\x18\x01 \x01(\v2!.mindclade.operation.v1.OperationR\toperation\"u\n" +
 	"\x1cResolvePolicySnapshotRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12A\n" +
 	"\x0eeffective_time\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\reffectiveTime\"n\n" +
@@ -1070,7 +1070,7 @@ var file_proto_mindclade_internal_policy_v1_policy_service_proto_goTypes = []any
 	(*v1.CommandContext)(nil),             // 19: mindclade.common.v1.CommandContext
 	(*v11.AuthorizationDecision)(nil),     // 20: mindclade.policy.v1.AuthorizationDecision
 	(*v11.UsePolicy)(nil),                 // 21: mindclade.policy.v1.UsePolicy
-	(*v12.Operation)(nil),                 // 22: mindclade.job.v1.Operation
+	(*v12.Operation)(nil),                 // 22: mindclade.operation.v1.Operation
 	(*fieldmaskpb.FieldMask)(nil),         // 23: google.protobuf.FieldMask
 	(*v1.PageRequest)(nil),                // 24: mindclade.common.v1.PageRequest
 	(*v1.PageResponse)(nil),               // 25: mindclade.common.v1.PageResponse
@@ -1083,20 +1083,20 @@ var file_proto_mindclade_internal_policy_v1_policy_service_proto_depIdxs = []int
 	20, // 4: mindclade.internal.policy.v1.EvaluateAuthorizationResponse.decision:type_name -> mindclade.policy.v1.AuthorizationDecision
 	19, // 5: mindclade.internal.policy.v1.CreateUsePolicyRequest.context:type_name -> mindclade.common.v1.CommandContext
 	21, // 6: mindclade.internal.policy.v1.CreateUsePolicyRequest.use_policy:type_name -> mindclade.policy.v1.UsePolicy
-	22, // 7: mindclade.internal.policy.v1.CreateUsePolicyResponse.operation:type_name -> mindclade.job.v1.Operation
+	22, // 7: mindclade.internal.policy.v1.CreateUsePolicyResponse.operation:type_name -> mindclade.operation.v1.Operation
 	19, // 8: mindclade.internal.policy.v1.UpdateUsePolicyRequest.context:type_name -> mindclade.common.v1.CommandContext
 	21, // 9: mindclade.internal.policy.v1.UpdateUsePolicyRequest.use_policy:type_name -> mindclade.policy.v1.UsePolicy
 	23, // 10: mindclade.internal.policy.v1.UpdateUsePolicyRequest.update_mask:type_name -> google.protobuf.FieldMask
-	22, // 11: mindclade.internal.policy.v1.UpdateUsePolicyResponse.operation:type_name -> mindclade.job.v1.Operation
+	22, // 11: mindclade.internal.policy.v1.UpdateUsePolicyResponse.operation:type_name -> mindclade.operation.v1.Operation
 	21, // 12: mindclade.internal.policy.v1.GetUsePolicyResponse.use_policy:type_name -> mindclade.policy.v1.UsePolicy
 	24, // 13: mindclade.internal.policy.v1.ListUsePoliciesRequest.page:type_name -> mindclade.common.v1.PageRequest
 	21, // 14: mindclade.internal.policy.v1.ListUsePoliciesResponse.use_policies:type_name -> mindclade.policy.v1.UsePolicy
 	25, // 15: mindclade.internal.policy.v1.ListUsePoliciesResponse.page:type_name -> mindclade.common.v1.PageResponse
 	18, // 16: mindclade.internal.policy.v1.ListUsePoliciesResponse.read_time:type_name -> google.protobuf.Timestamp
 	19, // 17: mindclade.internal.policy.v1.ActivateUsePolicyRequest.context:type_name -> mindclade.common.v1.CommandContext
-	22, // 18: mindclade.internal.policy.v1.ActivateUsePolicyResponse.operation:type_name -> mindclade.job.v1.Operation
+	22, // 18: mindclade.internal.policy.v1.ActivateUsePolicyResponse.operation:type_name -> mindclade.operation.v1.Operation
 	19, // 19: mindclade.internal.policy.v1.RevokeUsePolicyRequest.context:type_name -> mindclade.common.v1.CommandContext
-	22, // 20: mindclade.internal.policy.v1.RevokeUsePolicyResponse.operation:type_name -> mindclade.job.v1.Operation
+	22, // 20: mindclade.internal.policy.v1.RevokeUsePolicyResponse.operation:type_name -> mindclade.operation.v1.Operation
 	18, // 21: mindclade.internal.policy.v1.ResolvePolicySnapshotRequest.effective_time:type_name -> google.protobuf.Timestamp
 	17, // 22: mindclade.internal.policy.v1.ResolvePolicySnapshotResponse.policy_snapshot:type_name -> mindclade.policy.v1.PolicyReference
 	0,  // 23: mindclade.internal.policy.v1.PolicyService.EvaluateAuthorization:input_type -> mindclade.internal.policy.v1.EvaluateAuthorizationRequest

@@ -29,10 +29,10 @@ from mindclade.inference.v1 import inference_request_pb2 as proto_dot_mindclade_
 from mindclade.inference.v1 import inference_result_pb2 as proto_dot_mindclade_dot_inference_dot_v1_dot_inference__result__pb2
 from mindclade.inference.v1 import inference_stream_pb2 as proto_dot_mindclade_dot_inference_dot_v1_dot_inference__stream__pb2
 from mindclade.job.v1 import lease_fencing_pb2 as proto_dot_mindclade_dot_job_dot_v1_dot_lease__fencing__pb2
-from mindclade.job.v1 import operation_pb2 as proto_dot_mindclade_dot_job_dot_v1_dot_operation__pb2
+from mindclade.operation.v1 import operation_pb2 as proto_dot_mindclade_dot_operation_dot_v1_dot_operation__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n=proto/mindclade/internal/inference/v1/inference_service.proto\x12\x1fmindclade.internal.inference.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a/proto/mindclade/common/v1/command_context.proto\x1a\x32proto/mindclade/common/v1/resource_reference.proto\x1a\x34proto/mindclade/inference/v1/inference_request.proto\x1a\x33proto/mindclade/inference/v1/inference_result.proto\x1a\x33proto/mindclade/inference/v1/inference_stream.proto\x1a*proto/mindclade/job/v1/lease_fencing.proto\x1a&proto/mindclade/job/v1/operation.proto\"o\n\x16SubmitInferenceRequest\x12U\n\x11inference_request\x18\x01 \x01(\x0b\x32(.mindclade.inference.v1.InferenceRequestR\x10inferenceRequest\"T\n\x17SubmitInferenceResponse\x12\x39\n\toperation\x18\x01 \x01(\x0b\x32\x1b.mindclade.job.v1.OperationR\toperation\"0\n\x1aGetInferenceRequestRequest\x12\x12\n\x04name\x18\x01 \x01(\tR\x04name\"t\n\x1bGetInferenceRequestResponse\x12U\n\x11inference_request\x18\x01 \x01(\x0b\x32(.mindclade.inference.v1.InferenceRequestR\x10inferenceRequest\"B\n\x19GetInferenceResultRequest\x12%\n\x0eoperation_name\x18\x01 \x01(\tR\roperationName\"\x98\x01\n\x1aGetInferenceResultResponse\x12?\n\x06result\x18\x01 \x01(\x0b\x32\'.mindclade.inference.v1.InferenceResultR\x06result\x12\x39\n\toperation\x18\x02 \x01(\x0b\x32\x1b.mindclade.job.v1.OperationR\toperation\"\xbd\x01\n\x15WatchInferenceRequest\x12%\n\x0eoperation_name\x18\x01 \x01(\tR\roperationName\x12\x45\n\x06\x63ursor\x18\x02 \x01(\x0b\x32-.mindclade.inference.v1.InferenceStreamCursorR\x06\x63ursor\x12\x36\n\x08\x64\x65\x61\x64line\x18\x03 \x01(\x0b\x32\x1a.google.protobuf.TimestampR\x08\x64\x65\x61\x64line\"b\n\x16WatchInferenceResponse\x12H\n\x07message\x18\x01 \x01(\x0b\x32..mindclade.inference.v1.InferenceStreamMessageR\x07message\"\xc8\x02\n\x1c\x43ommitInferenceResultRequest\x12=\n\x07\x63ontext\x18\x01 \x01(\x0b\x32#.mindclade.common.v1.CommandContextR\x07\x63ontext\x12M\n\x11inference_request\x18\x02 \x01(\x0b\x32 .mindclade.common.v1.ResourceRefR\x10inferenceRequest\x12\x32\n\x05\x66\x65nce\x18\x03 \x01(\x0b\x32\x1c.mindclade.job.v1.LeaseFenceR\x05\x66\x65nce\x12?\n\x06result\x18\x04 \x01(\x0b\x32\'.mindclade.inference.v1.InferenceResultR\x06result\x12%\n\x0erequest_digest\x18\x05 \x01(\tR\rrequestDigest\"\x9b\x01\n\x1d\x43ommitInferenceResultResponse\x12?\n\x06result\x18\x01 \x01(\x0b\x32\'.mindclade.inference.v1.InferenceResultR\x06result\x12\x39\n\toperation\x18\x02 \x01(\x0b\x32\x1b.mindclade.job.v1.OperationR\toperation2\xdb\x05\n\x10InferenceService\x12\x84\x01\n\x0fSubmitInference\x12\x37.mindclade.internal.inference.v1.SubmitInferenceRequest\x1a\x38.mindclade.internal.inference.v1.SubmitInferenceResponse\x12\x90\x01\n\x13GetInferenceRequest\x12;.mindclade.internal.inference.v1.GetInferenceRequestRequest\x1a<.mindclade.internal.inference.v1.GetInferenceRequestResponse\x12\x8d\x01\n\x12GetInferenceResult\x12:.mindclade.internal.inference.v1.GetInferenceResultRequest\x1a;.mindclade.internal.inference.v1.GetInferenceResultResponse\x12\x96\x01\n\x15\x43ommitInferenceResult\x12=.mindclade.internal.inference.v1.CommitInferenceResultRequest\x1a>.mindclade.internal.inference.v1.CommitInferenceResultResponse\x12\x83\x01\n\x0eWatchInference\x12\x36.mindclade.internal.inference.v1.WatchInferenceRequest\x1a\x37.mindclade.internal.inference.v1.WatchInferenceResponse0\x01\x42\x64Zbgithub.com/mindclade/mindclade/protocols/generated/go/internalrpc/inference/v1;internalinferencev1b\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n=proto/mindclade/internal/inference/v1/inference_service.proto\x12\x1fmindclade.internal.inference.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a/proto/mindclade/common/v1/command_context.proto\x1a\x32proto/mindclade/common/v1/resource_reference.proto\x1a\x34proto/mindclade/inference/v1/inference_request.proto\x1a\x33proto/mindclade/inference/v1/inference_result.proto\x1a\x33proto/mindclade/inference/v1/inference_stream.proto\x1a*proto/mindclade/job/v1/lease_fencing.proto\x1a,proto/mindclade/operation/v1/operation.proto\"o\n\x16SubmitInferenceRequest\x12U\n\x11inference_request\x18\x01 \x01(\x0b\x32(.mindclade.inference.v1.InferenceRequestR\x10inferenceRequest\"Z\n\x17SubmitInferenceResponse\x12?\n\toperation\x18\x01 \x01(\x0b\x32!.mindclade.operation.v1.OperationR\toperation\"0\n\x1aGetInferenceRequestRequest\x12\x12\n\x04name\x18\x01 \x01(\tR\x04name\"t\n\x1bGetInferenceRequestResponse\x12U\n\x11inference_request\x18\x01 \x01(\x0b\x32(.mindclade.inference.v1.InferenceRequestR\x10inferenceRequest\"B\n\x19GetInferenceResultRequest\x12%\n\x0eoperation_name\x18\x01 \x01(\tR\roperationName\"\x9e\x01\n\x1aGetInferenceResultResponse\x12?\n\x06result\x18\x01 \x01(\x0b\x32\'.mindclade.inference.v1.InferenceResultR\x06result\x12?\n\toperation\x18\x02 \x01(\x0b\x32!.mindclade.operation.v1.OperationR\toperation\"\xbd\x01\n\x15WatchInferenceRequest\x12%\n\x0eoperation_name\x18\x01 \x01(\tR\roperationName\x12\x45\n\x06\x63ursor\x18\x02 \x01(\x0b\x32-.mindclade.inference.v1.InferenceStreamCursorR\x06\x63ursor\x12\x36\n\x08\x64\x65\x61\x64line\x18\x03 \x01(\x0b\x32\x1a.google.protobuf.TimestampR\x08\x64\x65\x61\x64line\"b\n\x16WatchInferenceResponse\x12H\n\x07message\x18\x01 \x01(\x0b\x32..mindclade.inference.v1.InferenceStreamMessageR\x07message\"\xc8\x02\n\x1c\x43ommitInferenceResultRequest\x12=\n\x07\x63ontext\x18\x01 \x01(\x0b\x32#.mindclade.common.v1.CommandContextR\x07\x63ontext\x12M\n\x11inference_request\x18\x02 \x01(\x0b\x32 .mindclade.common.v1.ResourceRefR\x10inferenceRequest\x12\x32\n\x05\x66\x65nce\x18\x03 \x01(\x0b\x32\x1c.mindclade.job.v1.LeaseFenceR\x05\x66\x65nce\x12?\n\x06result\x18\x04 \x01(\x0b\x32\'.mindclade.inference.v1.InferenceResultR\x06result\x12%\n\x0erequest_digest\x18\x05 \x01(\tR\rrequestDigest\"\xa1\x01\n\x1d\x43ommitInferenceResultResponse\x12?\n\x06result\x18\x01 \x01(\x0b\x32\'.mindclade.inference.v1.InferenceResultR\x06result\x12?\n\toperation\x18\x02 \x01(\x0b\x32!.mindclade.operation.v1.OperationR\toperation2\xdb\x05\n\x10InferenceService\x12\x84\x01\n\x0fSubmitInference\x12\x37.mindclade.internal.inference.v1.SubmitInferenceRequest\x1a\x38.mindclade.internal.inference.v1.SubmitInferenceResponse\x12\x90\x01\n\x13GetInferenceRequest\x12;.mindclade.internal.inference.v1.GetInferenceRequestRequest\x1a<.mindclade.internal.inference.v1.GetInferenceRequestResponse\x12\x8d\x01\n\x12GetInferenceResult\x12:.mindclade.internal.inference.v1.GetInferenceResultRequest\x1a;.mindclade.internal.inference.v1.GetInferenceResultResponse\x12\x96\x01\n\x15\x43ommitInferenceResult\x12=.mindclade.internal.inference.v1.CommitInferenceResultRequest\x1a>.mindclade.internal.inference.v1.CommitInferenceResultResponse\x12\x83\x01\n\x0eWatchInference\x12\x36.mindclade.internal.inference.v1.WatchInferenceRequest\x1a\x37.mindclade.internal.inference.v1.WatchInferenceResponse0\x01\x42\x64Zbgithub.com/mindclade/mindclade/protocols/generated/go/internalrpc/inference/v1;internalinferencev1b\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -40,26 +40,26 @@ _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'mindclade.internal.inferenc
 if not _descriptor._USE_C_DESCRIPTORS:
   _globals['DESCRIPTOR']._loaded_options = None
   _globals['DESCRIPTOR']._serialized_options = b'Zbgithub.com/mindclade/mindclade/protocols/generated/go/internalrpc/inference/v1;internalinferencev1'
-  _globals['_SUBMITINFERENCEREQUEST']._serialized_start=476
-  _globals['_SUBMITINFERENCEREQUEST']._serialized_end=587
-  _globals['_SUBMITINFERENCERESPONSE']._serialized_start=589
-  _globals['_SUBMITINFERENCERESPONSE']._serialized_end=673
-  _globals['_GETINFERENCEREQUESTREQUEST']._serialized_start=675
-  _globals['_GETINFERENCEREQUESTREQUEST']._serialized_end=723
-  _globals['_GETINFERENCEREQUESTRESPONSE']._serialized_start=725
-  _globals['_GETINFERENCEREQUESTRESPONSE']._serialized_end=841
-  _globals['_GETINFERENCERESULTREQUEST']._serialized_start=843
-  _globals['_GETINFERENCERESULTREQUEST']._serialized_end=909
-  _globals['_GETINFERENCERESULTRESPONSE']._serialized_start=912
-  _globals['_GETINFERENCERESULTRESPONSE']._serialized_end=1064
-  _globals['_WATCHINFERENCEREQUEST']._serialized_start=1067
-  _globals['_WATCHINFERENCEREQUEST']._serialized_end=1256
-  _globals['_WATCHINFERENCERESPONSE']._serialized_start=1258
-  _globals['_WATCHINFERENCERESPONSE']._serialized_end=1356
-  _globals['_COMMITINFERENCERESULTREQUEST']._serialized_start=1359
-  _globals['_COMMITINFERENCERESULTREQUEST']._serialized_end=1687
-  _globals['_COMMITINFERENCERESULTRESPONSE']._serialized_start=1690
-  _globals['_COMMITINFERENCERESULTRESPONSE']._serialized_end=1845
-  _globals['_INFERENCESERVICE']._serialized_start=1848
-  _globals['_INFERENCESERVICE']._serialized_end=2579
+  _globals['_SUBMITINFERENCEREQUEST']._serialized_start=482
+  _globals['_SUBMITINFERENCEREQUEST']._serialized_end=593
+  _globals['_SUBMITINFERENCERESPONSE']._serialized_start=595
+  _globals['_SUBMITINFERENCERESPONSE']._serialized_end=685
+  _globals['_GETINFERENCEREQUESTREQUEST']._serialized_start=687
+  _globals['_GETINFERENCEREQUESTREQUEST']._serialized_end=735
+  _globals['_GETINFERENCEREQUESTRESPONSE']._serialized_start=737
+  _globals['_GETINFERENCEREQUESTRESPONSE']._serialized_end=853
+  _globals['_GETINFERENCERESULTREQUEST']._serialized_start=855
+  _globals['_GETINFERENCERESULTREQUEST']._serialized_end=921
+  _globals['_GETINFERENCERESULTRESPONSE']._serialized_start=924
+  _globals['_GETINFERENCERESULTRESPONSE']._serialized_end=1082
+  _globals['_WATCHINFERENCEREQUEST']._serialized_start=1085
+  _globals['_WATCHINFERENCEREQUEST']._serialized_end=1274
+  _globals['_WATCHINFERENCERESPONSE']._serialized_start=1276
+  _globals['_WATCHINFERENCERESPONSE']._serialized_end=1374
+  _globals['_COMMITINFERENCERESULTREQUEST']._serialized_start=1377
+  _globals['_COMMITINFERENCERESULTREQUEST']._serialized_end=1705
+  _globals['_COMMITINFERENCERESULTRESPONSE']._serialized_start=1708
+  _globals['_COMMITINFERENCERESULTRESPONSE']._serialized_end=1869
+  _globals['_INFERENCESERVICE']._serialized_start=1872
+  _globals['_INFERENCESERVICE']._serialized_end=2603
 # @@protoc_insertion_point(module_scope)

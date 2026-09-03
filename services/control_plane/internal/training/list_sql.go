@@ -6,9 +6,9 @@ import (
 	"strconv"
 	"time"
 
-	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
+	platformdb "github.com/mindclade/mindclade/libs/go/persistence"
+	operationv1 "github.com/mindclade/mindclade/protocols/generated/go/operation/v1"
 	trainingv1 "github.com/mindclade/mindclade/protocols/generated/go/training/v1"
-	platformdb "github.com/mindclade/mindclade/services/control_plane/internal/platform/database"
 )
 
 func (r SQLRepository) ListTrainingRuns(ctx context.Context, identity Identity, page RunPage) ([]*trainingv1.TrainingRun, string, time.Time, error) {
@@ -155,7 +155,7 @@ func (r SQLRepository) ListCheckpoints(ctx context.Context, identity Identity, p
 	return values, nextToken, readTime.UTC(), nil
 }
 
-func (r SQLRepository) ListOperations(ctx context.Context, identity Identity, page OperationPage) ([]*jobv1.Operation, string, time.Time, error) {
+func (r SQLRepository) ListOperations(ctx context.Context, identity Identity, page OperationPage) ([]*operationv1.Operation, string, time.Time, error) {
 	if err := r.validate(); err != nil {
 		return nil, "", time.Time{}, err
 	}
@@ -171,7 +171,7 @@ func (r SQLRepository) ListOperations(ctx context.Context, identity Identity, pa
 	query := `SELECT ` + operationColumns + ` FROM operations WHERE tenant_id=$1 AND project_id=$2`
 	args := []any{identity.TenantID, identity.ProjectID}
 	next := 3
-	if page.State != jobv1.OperationState_OPERATION_STATE_UNSPECIFIED {
+	if page.State != operationv1.OperationState_OPERATION_STATE_UNSPECIFIED {
 		query += ` AND status=$` + itoa(next)
 		args = append(args, operationStateDatabase(page.State))
 		next++
@@ -205,7 +205,7 @@ func (r SQLRepository) ListOperations(ctx context.Context, identity Identity, pa
 	if hasMore {
 		raw = raw[:page.Limit]
 	}
-	values := make([]*jobv1.Operation, 0, len(raw))
+	values := make([]*operationv1.Operation, 0, len(raw))
 	for _, row := range raw {
 		value, loadErr := operationRowProto(ctx, tx, row)
 		if loadErr != nil {
@@ -227,19 +227,19 @@ func (r SQLRepository) ListOperations(ctx context.Context, identity Identity, pa
 	return values, nextToken, readTime.UTC(), nil
 }
 
-func operationStateDatabase(state jobv1.OperationState) string {
+func operationStateDatabase(state operationv1.OperationState) string {
 	switch state {
-	case jobv1.OperationState_OPERATION_STATE_PENDING:
+	case operationv1.OperationState_OPERATION_STATE_PENDING:
 		return "PENDING"
-	case jobv1.OperationState_OPERATION_STATE_RUNNING:
+	case operationv1.OperationState_OPERATION_STATE_RUNNING:
 		return "RUNNING"
-	case jobv1.OperationState_OPERATION_STATE_SUCCEEDED:
+	case operationv1.OperationState_OPERATION_STATE_SUCCEEDED:
 		return "SUCCEEDED"
-	case jobv1.OperationState_OPERATION_STATE_FAILED:
+	case operationv1.OperationState_OPERATION_STATE_FAILED:
 		return "FAILED"
-	case jobv1.OperationState_OPERATION_STATE_CANCELLING:
+	case operationv1.OperationState_OPERATION_STATE_CANCELLING:
 		return "CANCELLING"
-	case jobv1.OperationState_OPERATION_STATE_CANCELLED:
+	case operationv1.OperationState_OPERATION_STATE_CANCELLED:
 		return "CANCELLED"
 	default:
 		return ""

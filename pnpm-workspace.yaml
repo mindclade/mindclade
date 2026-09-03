@@ -1,7 +1,7 @@
 packages:
   - apps/console
   - examples/sdk
-  - internal/sdk/typescript
+  - sdks/typescript
   - libs/typescript/config
   - libs/typescript/observability
   - libs/typescript/testing

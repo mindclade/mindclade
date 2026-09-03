@@ -6,7 +6,7 @@ from mindclade.common.v1 import pagination_pb2 as _pagination_pb2
 from mindclade.dataset.v1 import dataset_pb2 as _dataset_pb2
 from mindclade.dataset.v1 import dataset_commands_pb2 as _dataset_commands_pb2
 from mindclade.dataset.v1 import dataset_release_pb2 as _dataset_release_pb2
-from mindclade.job.v1 import operation_pb2 as _operation_pb2
+from mindclade.operation.v1 import operation_pb2 as _operation_pb2
 from google.protobuf.internal import containers as _containers
 from google.protobuf import descriptor as _descriptor
 from google.protobuf import message as _message

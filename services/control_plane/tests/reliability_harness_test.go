@@ -12,14 +12,15 @@ import (
 
 	"google.golang.org/protobuf/proto"
 
+	"github.com/mindclade/mindclade/libs/go/inbox"
+	"github.com/mindclade/mindclade/libs/go/outbox"
+	"github.com/mindclade/mindclade/libs/go/pubsubx"
 	artifactv1 "github.com/mindclade/mindclade/protocols/generated/go/artifact/v1"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
+	operationv1 "github.com/mindclade/mindclade/protocols/generated/go/operation/v1"
 	"github.com/mindclade/mindclade/services/control_plane/internal/jobs"
 	"github.com/mindclade/mindclade/services/control_plane/internal/operations"
-	"github.com/mindclade/mindclade/services/control_plane/internal/platform/inbox"
-	"github.com/mindclade/mindclade/services/control_plane/internal/platform/outbox"
-	"github.com/mindclade/mindclade/services/control_plane/internal/platform/queue"
 	"github.com/mindclade/mindclade/services/control_plane/internal/policies"
 )
 
@@ -72,7 +73,7 @@ func (h *reliabilityHarness) envelope(id string) *commonv1.EventEnvelope {
 		IdempotencyKey:      "create-" + id,
 		RequestDigest:       digestFor("1"),
 		ConfigurationDigest: digestFor("2"),
-		Operation: &jobv1.Operation{
+		Operation: &operationv1.Operation{
 			OperationId: "operation-" + id, TenantId: h.tenant, ProjectId: h.project,
 			JobId: "job-" + id, Etag: "operation-etag-1",
 		},
@@ -96,7 +97,7 @@ func (h *reliabilityHarness) insertOutbox(envelope *commonv1.EventEnvelope, at t
 	if err != nil {
 		h.t.Fatalf("begin reliability outbox transaction: %v", err)
 	}
-	if err = queue.InsertOutboxMessage(h.context(), transaction, envelope, at.UTC()); err != nil {
+	if err = pubsubx.InsertOutboxMessage(h.context(), transaction, envelope, at.UTC()); err != nil {
 		_ = transaction.Rollback()
 		h.t.Fatalf("insert reliability outbox envelope: %v", err)
 	}
@@ -128,7 +129,7 @@ func (h *reliabilityHarness) runPublishBeforeAckCrash() {
 
 func (h *reliabilityHarness) runDuplicateAndInboxRollback() {
 	envelope := h.envelope("inbox-atomicity")
-	payload, err := queue.UnmarshalRegisteredPayload(envelope)
+	payload, err := pubsubx.UnmarshalRegisteredPayload(envelope)
 	if err != nil {
 		h.t.Fatal(err)
 	}
@@ -193,15 +194,15 @@ func (h *reliabilityHarness) runReorderedSequenceGap() {
 
 func (h *reliabilityHarness) runPoisonAndInboxReplay() {
 	envelope := h.envelope("inbox-replay")
-	encoded, err := queue.MarshalEnvelope(envelope)
+	encoded, err := pubsubx.MarshalEnvelope(envelope)
 	if err != nil {
 		h.t.Fatal(err)
 	}
-	attributes, err := queue.TransportAttributes(envelope)
+	attributes, err := pubsubx.TransportAttributes(envelope)
 	if err != nil {
 		h.t.Fatal(err)
 	}
-	orderingKey, err := queue.OrderingKey(envelope)
+	orderingKey, err := pubsubx.OrderingKey(envelope)
 	if err != nil {
 		h.t.Fatal(err)
 	}
@@ -217,23 +218,23 @@ func (h *reliabilityHarness) runPoisonAndInboxReplay() {
 	if disposition, processErr := poison.ProcessDelivery(h.context(), encoded, attributes, orderingKey); disposition != inbox.DeliveryAck || processErr == nil {
 		h.t.Fatalf("poison delivery must be quarantined and acknowledged: disposition=%v err=%v", disposition, processErr)
 	}
-	id := queue.InboxDeadLetterID(h.tenant, consumer, envelope.GetEventId())
-	store := queue.DeadLetterSQLStore{DB: h.db}
-	command := queue.ReplayCommand{
+	id := pubsubx.InboxDeadLetterID(h.tenant, consumer, envelope.GetEventId())
+	store := pubsubx.DeadLetterSQLStore{DB: h.db}
+	command := pubsubx.ReplayCommand{
 		TenantID: h.tenant, DeadLetterID: id, IdempotencyKey: "replay-inbox",
 		RequestDigest: digestFor("4"), RequestedBy: "reliability-operator", RequestedAt: h.now,
 	}
 	requested, err := store.RequestReplay(h.context(), command)
-	if err != nil || requested.IdempotentReplay || requested.ReplayGeneration != 1 || requested.DeadLetter.ReplayState != queue.ReplayStatePending {
+	if err != nil || requested.IdempotentReplay || requested.ReplayGeneration != 1 || requested.DeadLetter.ReplayState != pubsubx.ReplayStatePending {
 		h.t.Fatalf("request inbox replay: result=%v err=%v", requested, err)
 	}
-	if _, err = store.RequestReplay(h.context(), queue.ReplayCommand{TenantID: "another-tenant", DeadLetterID: id, IdempotencyKey: "cross-tenant", RequestDigest: digestFor("5"), RequestedBy: "reliability-operator", RequestedAt: h.now}); !errors.Is(err, queue.ErrDeadLetterNotFound) {
+	if _, err = store.RequestReplay(h.context(), pubsubx.ReplayCommand{TenantID: "another-tenant", DeadLetterID: id, IdempotencyKey: "cross-tenant", RequestDigest: digestFor("5"), RequestedBy: "reliability-operator", RequestedAt: h.now}); !errors.Is(err, pubsubx.ErrDeadLetterNotFound) {
 		h.t.Fatalf("cross-tenant replay lookup must fail closed: %v", err)
 	}
 	publisher := &recordingPublisher{}
 	replayAt := h.now
 	ackStore := &failingReplayAcknowledgeStore{delegate: store, remaining: 1}
-	replayer := queue.ReplayDispatcher{Store: ackStore, Publisher: publisher, Now: func() time.Time { return replayAt }, ClaimTTL: time.Second}
+	replayer := pubsubx.ReplayDispatcher{Store: ackStore, Publisher: publisher, Now: func() time.Time { return replayAt }, ClaimTTL: time.Second}
 	if published, replayErr := replayer.DeliverBatch(h.context(), h.tenant, 1); published != 0 || replayErr == nil || len(publisher.published) != 1 {
 		h.t.Fatalf("crash before replay acknowledgement: published=%d events=%d err=%v", published, len(publisher.published), replayErr)
 	}
@@ -260,8 +261,8 @@ func (h *reliabilityHarness) runPoisonAndInboxReplay() {
 	if disposition, processErr := success.ProcessDelivery(h.context(), encoded, attributes, orderingKey); disposition != inbox.DeliveryAck || processErr != nil || calls != 1 {
 		h.t.Fatalf("replayed duplicate must be deduplicated: disposition=%v calls=%d err=%v", disposition, calls, processErr)
 	}
-	var state queue.ReplayState
-	if err = h.db.QueryRowContext(h.context(), `SELECT replay_state FROM dead_letter_messages WHERE tenant_id=$1 AND id=$2`, h.tenant, id).Scan(&state); err != nil || state != queue.ReplayStateReplayed {
+	var state pubsubx.ReplayState
+	if err = h.db.QueryRowContext(h.context(), `SELECT replay_state FROM dead_letter_messages WHERE tenant_id=$1 AND id=$2`, h.tenant, id).Scan(&state); err != nil || state != pubsubx.ReplayStateReplayed {
 		h.t.Fatalf("terminal inbox replay state=%s err=%v", state, err)
 	}
 	if repeated, replayErr := store.RequestReplay(h.context(), command); replayErr != nil || !repeated.IdempotentReplay || repeated.ReplayGeneration != 1 {
@@ -269,11 +270,11 @@ func (h *reliabilityHarness) runPoisonAndInboxReplay() {
 	}
 	changed := command
 	changed.RequestDigest = digestFor("6")
-	if _, replayErr := store.RequestReplay(h.context(), changed); !errors.Is(replayErr, queue.ErrReplayConflict) {
+	if _, replayErr := store.RequestReplay(h.context(), changed); !errors.Is(replayErr, pubsubx.ErrReplayConflict) {
 		h.t.Fatalf("changed replay request must conflict: %v", replayErr)
 	}
 	command.IdempotencyKey = "replay-inbox-again"
-	if _, replayErr := store.RequestReplay(h.context(), command); !errors.Is(replayErr, queue.ErrAlreadyReplayed) {
+	if _, replayErr := store.RequestReplay(h.context(), command); !errors.Is(replayErr, pubsubx.ErrAlreadyReplayed) {
 		h.t.Fatalf("new replay after terminal success must be rejected: %v", replayErr)
 	}
 }
@@ -289,12 +290,12 @@ func (h *reliabilityHarness) runOutboxQuarantineReplay() {
 	if delivered, err := failing.DeliverBatch(h.context(), h.tenant, 1); delivered != 0 || err == nil {
 		h.t.Fatalf("exhausted outbox delivery must quarantine: delivered=%d err=%v", delivered, err)
 	}
-	replayStore := queue.DeadLetterSQLStore{DB: h.db}
-	command := queue.ReplayCommand{
+	replayStore := pubsubx.DeadLetterSQLStore{DB: h.db}
+	command := pubsubx.ReplayCommand{
 		TenantID: h.tenant, DeadLetterID: "outbox:" + envelope.GetEventId(), IdempotencyKey: "replay-outbox",
 		RequestDigest: digestFor("7"), RequestedBy: "reliability-operator", RequestedAt: h.now.Add(time.Second),
 	}
-	if result, err := replayStore.RequestReplay(h.context(), command); err != nil || result.IdempotentReplay || result.ReplayGeneration != 1 || result.DeadLetter.ReplayState != queue.ReplayStatePending {
+	if result, err := replayStore.RequestReplay(h.context(), command); err != nil || result.IdempotentReplay || result.ReplayGeneration != 1 || result.DeadLetter.ReplayState != pubsubx.ReplayStatePending {
 		h.t.Fatalf("request outbox replay: result=%v err=%v", result, err)
 	}
 	publisher := &recordingPublisher{}
@@ -303,8 +304,8 @@ func (h *reliabilityHarness) runOutboxQuarantineReplay() {
 	if delivered, err := dispatcher.DeliverBatch(h.context(), h.tenant, 1); delivered != 1 || err != nil || len(publisher.published) != 1 {
 		h.t.Fatalf("deliver outbox replay: delivered=%d published=%d err=%v", delivered, len(publisher.published), err)
 	}
-	var state queue.ReplayState
-	if err := h.db.QueryRowContext(h.context(), `SELECT replay_state FROM dead_letter_messages WHERE tenant_id=$1 AND id=$2`, h.tenant, command.DeadLetterID).Scan(&state); err != nil || state != queue.ReplayStateReplayed {
+	var state pubsubx.ReplayState
+	if err := h.db.QueryRowContext(h.context(), `SELECT replay_state FROM dead_letter_messages WHERE tenant_id=$1 AND id=$2`, h.tenant, command.DeadLetterID).Scan(&state); err != nil || state != pubsubx.ReplayStateReplayed {
 		h.t.Fatalf("terminal outbox replay state=%s err=%v", state, err)
 	}
 }
@@ -371,7 +372,7 @@ func (h *reliabilityHarness) runLeaseExpiryDelivery() {
 			h.t.Fatalf("expiry lifecycle sequence=%d want=%d", envelope.GetAggregateSequence(), expected)
 		}
 		if expected == 2 {
-			payload, decodeErr := queue.UnmarshalRegisteredPayload(envelope)
+			payload, decodeErr := pubsubx.UnmarshalRegisteredPayload(envelope)
 			fact, ok := payload.(*jobv1.AttemptCompleted)
 			if decodeErr != nil || !ok || !proto.Equal(fact.GetAttempt(), attempt) || fact.GetRun().GetState() != jobv1.RunState_RUN_STATE_READY {
 				h.t.Fatalf("invalid delivered expiry fact: payload=%T %v err=%v", payload, payload, decodeErr)
@@ -426,7 +427,7 @@ func (h *reliabilityHarness) runAttemptCancellationDelivery() {
 			h.t.Fatalf("cancellation lifecycle sequence=%d want=%d", envelope.GetAggregateSequence(), expected)
 		}
 		if expected == 2 {
-			payload, decodeErr := queue.UnmarshalRegisteredPayload(envelope)
+			payload, decodeErr := pubsubx.UnmarshalRegisteredPayload(envelope)
 			fact, ok := payload.(*jobv1.AttemptCompleted)
 			if decodeErr != nil || !ok || fact.GetAttempt().GetError().GetMessage() != reason || !proto.Equal(fact.GetAttempt(), cancelled.Attempt) || !proto.Equal(fact.GetRun(), cancelled.Run) {
 				h.t.Fatalf("invalid delivered cancellation fact: payload=%T %v err=%v", payload, payload, decodeErr)
@@ -498,7 +499,7 @@ func (h *reliabilityHarness) runJobCancellationDelivery() {
 	requested, err := repository.RequestJobSQL(h.context(), &jobv1.Job{
 		JobId: jobID, TenantId: h.tenant, ProjectId: h.project,
 		Configuration: configuration, Etag: "job-etag-1",
-	}, &jobv1.Operation{
+	}, &operationv1.Operation{
 		OperationId: operationID, TenantId: h.tenant, ProjectId: h.project,
 		JobId: jobID, Etag: "operation-etag-1",
 	}, jobs.JobCommandMetadata{
@@ -656,11 +657,11 @@ type failingAcknowledgeStore struct {
 }
 
 type failingReplayAcknowledgeStore struct {
-	delegate  queue.DeadLetterReplayStore
+	delegate  pubsubx.DeadLetterReplayStore
 	remaining int
 }
 
-func (s *failingReplayAcknowledgeStore) ClaimInboxReplays(ctx context.Context, tenantID string, limit int, now time.Time, ttl time.Duration) ([]queue.DeadLetter, error) {
+func (s *failingReplayAcknowledgeStore) ClaimInboxReplays(ctx context.Context, tenantID string, limit int, now time.Time, ttl time.Duration) ([]pubsubx.DeadLetter, error) {
 	return s.delegate.ClaimInboxReplays(ctx, tenantID, limit, now, ttl)
 }
 

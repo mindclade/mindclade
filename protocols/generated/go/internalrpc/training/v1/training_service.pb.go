@@ -8,7 +8,7 @@ package internaltrainingv1
 
 import (
 	v12 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
-	v11 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
+	v11 "github.com/mindclade/mindclade/protocols/generated/go/operation/v1"
 	v1 "github.com/mindclade/mindclade/protocols/generated/go/training/v1"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
@@ -1343,11 +1343,11 @@ var File_proto_mindclade_internal_training_v1_training_service_proto protoreflec
 
 const file_proto_mindclade_internal_training_v1_training_service_proto_rawDesc = "" +
 	"\n" +
-	";proto/mindclade/internal/training/v1/training_service.proto\x12\x1emindclade.internal.training.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a*proto/mindclade/common/v1/pagination.proto\x1a&proto/mindclade/job/v1/operation.proto\x1a,proto/mindclade/training/v1/checkpoint.proto\x1a3proto/mindclade/training/v1/training_commands.proto\x1a3proto/mindclade/training/v1/training_progress.proto\x1a.proto/mindclade/training/v1/training_run.proto\"e\n" +
+	";proto/mindclade/internal/training/v1/training_service.proto\x12\x1emindclade.internal.training.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a*proto/mindclade/common/v1/pagination.proto\x1a,proto/mindclade/operation/v1/operation.proto\x1a,proto/mindclade/training/v1/checkpoint.proto\x1a3proto/mindclade/training/v1/training_commands.proto\x1a3proto/mindclade/training/v1/training_progress.proto\x1a.proto/mindclade/training/v1/training_run.proto\"e\n" +
 	"\x18CreateTrainingRunRequest\x12I\n" +
-	"\acommand\x18\x01 \x01(\v2/.mindclade.training.v1.CreateTrainingRunCommandR\acommand\"V\n" +
-	"\x19CreateTrainingRunResponse\x129\n" +
-	"\toperation\x18\x01 \x01(\v2\x1b.mindclade.job.v1.OperationR\toperation\"O\n" +
+	"\acommand\x18\x01 \x01(\v2/.mindclade.training.v1.CreateTrainingRunCommandR\acommand\"\\\n" +
+	"\x19CreateTrainingRunResponse\x12?\n" +
+	"\toperation\x18\x01 \x01(\v2!.mindclade.operation.v1.OperationR\toperation\"O\n" +
 	"\x15GetTrainingRunRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\"\n" +
 	"\rif_none_match\x18\x02 \x01(\tR\vifNoneMatch\"_\n" +
@@ -1477,7 +1477,7 @@ var file_proto_mindclade_internal_training_v1_training_service_proto_goTypes = [
 	(*WatchTrainingRunRequest)(nil),          // 24: mindclade.internal.training.v1.WatchTrainingRunRequest
 	(*WatchTrainingRunResponse)(nil),         // 25: mindclade.internal.training.v1.WatchTrainingRunResponse
 	(*v1.CreateTrainingRunCommand)(nil),      // 26: mindclade.training.v1.CreateTrainingRunCommand
-	(*v11.Operation)(nil),                    // 27: mindclade.job.v1.Operation
+	(*v11.Operation)(nil),                    // 27: mindclade.operation.v1.Operation
 	(*v1.TrainingRun)(nil),                   // 28: mindclade.training.v1.TrainingRun
 	(*v12.PageRequest)(nil),                  // 29: mindclade.common.v1.PageRequest
 	(*v12.PageResponse)(nil),                 // 30: mindclade.common.v1.PageResponse
@@ -1494,7 +1494,7 @@ var file_proto_mindclade_internal_training_v1_training_service_proto_goTypes = [
 }
 var file_proto_mindclade_internal_training_v1_training_service_proto_depIdxs = []int32{
 	26, // 0: mindclade.internal.training.v1.CreateTrainingRunRequest.command:type_name -> mindclade.training.v1.CreateTrainingRunCommand
-	27, // 1: mindclade.internal.training.v1.CreateTrainingRunResponse.operation:type_name -> mindclade.job.v1.Operation
+	27, // 1: mindclade.internal.training.v1.CreateTrainingRunResponse.operation:type_name -> mindclade.operation.v1.Operation
 	28, // 2: mindclade.internal.training.v1.GetTrainingRunResponse.training_run:type_name -> mindclade.training.v1.TrainingRun
 	29, // 3: mindclade.internal.training.v1.ListTrainingRunsRequest.page:type_name -> mindclade.common.v1.PageRequest
 	28, // 4: mindclade.internal.training.v1.ListTrainingRunsResponse.training_runs:type_name -> mindclade.training.v1.TrainingRun

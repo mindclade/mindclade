@@ -10,7 +10,7 @@ pub struct CreateDatasetRequest {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CreateDatasetResponse {
     #[prost(message, optional, tag = "1")]
-    pub operation: ::core::option::Option<crate::job::v1::Operation>,
+    pub operation: ::core::option::Option<crate::operation::v1::Operation>,
 }
 /// GetDatasetRequest identifies a dataset and optional cache validator.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
@@ -58,7 +58,7 @@ pub struct UpdateDatasetRequest {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct UpdateDatasetResponse {
     #[prost(message, optional, tag = "1")]
-    pub operation: ::core::option::Option<crate::job::v1::Operation>,
+    pub operation: ::core::option::Option<crate::operation::v1::Operation>,
 }
 /// PublishDatasetReleaseRequest wraps immutable-manifest publication intent.
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -70,7 +70,7 @@ pub struct PublishDatasetReleaseRequest {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct PublishDatasetReleaseResponse {
     #[prost(message, optional, tag = "1")]
-    pub operation: ::core::option::Option<crate::job::v1::Operation>,
+    pub operation: ::core::option::Option<crate::operation::v1::Operation>,
 }
 /// RevokeDatasetReleaseRequest wraps an evidence-bound revocation command.
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -82,7 +82,7 @@ pub struct RevokeDatasetReleaseRequest {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RevokeDatasetReleaseResponse {
     #[prost(message, optional, tag = "1")]
-    pub operation: ::core::option::Option<crate::job::v1::Operation>,
+    pub operation: ::core::option::Option<crate::operation::v1::Operation>,
 }
 /// GetDatasetReleaseRequest identifies one immutable dataset release resource.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]

@@ -6,7 +6,7 @@ from google.protobuf import timestamp_pb2 as _timestamp_pb2
 from mindclade.common.v1 import command_context_pb2 as _command_context_pb2
 from mindclade.common.v1 import pagination_pb2 as _pagination_pb2
 from mindclade.common.v1 import resource_reference_pb2 as _resource_reference_pb2
-from mindclade.job.v1 import operation_pb2 as _operation_pb2
+from mindclade.operation.v1 import operation_pb2 as _operation_pb2
 from mindclade.policy.v1 import authorization_decision_pb2 as _authorization_decision_pb2
 from mindclade.policy.v1 import policy_reference_pb2 as _policy_reference_pb2
 from mindclade.policy.v1 import use_policy_pb2 as _use_policy_pb2

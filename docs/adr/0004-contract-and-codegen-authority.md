@@ -1,7 +1,7 @@
 # ADR-0004: Contract and Code-Generation Authority
 
 > Clarified by ADR-0015: Buf-generated native Protobuf/gRPC/Connect bindings
-> and Mindclade-owned `internal/sdk` facades are the internal SDK path. The
+> and Mindclade-owned `sdks` facades are the internal SDK path. The
 > curated OpenAPI document and `mindclade.api.v1` remain an unratified,
 > public-safe candidate projection; they create no supported public SDK or
 > release authority.

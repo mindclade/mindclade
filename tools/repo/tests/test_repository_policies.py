@@ -80,7 +80,7 @@ class RepositoryPolicyTest(unittest.TestCase):
         self.assertEqual(validate_manifest(self.manifest), [])
         self.assertEqual(len(self.manifest["paths"]), CANONICAL_FILE_COUNT)
         wave_one = [entry for entry in self.manifest["paths"] if entry["activation_wave"] == "1"]
-        self.assertEqual(len(wave_one), 881)
+        self.assertEqual(len(wave_one), 888)
         for entry in wave_one:
             with self.subTest(path=entry["path"]):
                 status = entry["status"]
@@ -584,10 +584,10 @@ class RepositoryPolicyTest(unittest.TestCase):
 
     def test_internal_sdk_documentation_matches_the_activated_surface(self) -> None:
         readmes = {
-            "go": REPO_ROOT / "internal/sdk/go/mindclade/README.md",
-            "python": REPO_ROOT / "internal/sdk/python/README.md",
-            "rust": REPO_ROOT / "internal/sdk/rust/README.md",
-            "typescript": REPO_ROOT / "internal/sdk/typescript/README.md",
+            "go": REPO_ROOT / "sdks/go/mindclade/README.md",
+            "python": REPO_ROOT / "sdks/python/README.md",
+            "rust": REPO_ROOT / "sdks/rust/README.md",
+            "typescript": REPO_ROOT / "sdks/typescript/README.md",
         }
         required_markers = {
             "go": (

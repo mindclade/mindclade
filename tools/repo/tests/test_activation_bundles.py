@@ -50,16 +50,16 @@ class ActivationBundlePolicyTest(unittest.TestCase):
 
     def test_reviewed_projection_is_current_and_fully_bound(self) -> None:
         self.assertEqual(validate_activation_bundle_projection(), [])
-        self.assertEqual(len(ACTIVATION_BUNDLES), 27)
-        self.assertEqual(ACTIVATION_BUNDLE_PROJECTION["bundle_count"], 27)
-        self.assertEqual(ACTIVATION_BUNDLE_PROJECTION["path_count"], 975)
+        self.assertEqual(len(ACTIVATION_BUNDLES), 28)
+        self.assertEqual(ACTIVATION_BUNDLE_PROJECTION["bundle_count"], 28)
+        self.assertEqual(ACTIVATION_BUNDLE_PROJECTION["path_count"], 982)
         self.assertEqual(
             ACTIVATION_BUNDLE_PROJECTION["source_digest"],
-            "sha256:a4bbd6c3ae74a865cb350cef0f0718601f2b407b7cc7ac89d07c8d1b647da8e1",
+            "sha256:a2d677f03eb2b5eb42f82c570d9971caa1c7d22b351218da2164b3c3b97040bc",
         )
         self.assertEqual(
             ACTIVATION_BUNDLE_PROJECTION["path_set_digest"],
-            "sha256:4311aed9d53e82269d428c1408fa5164c54e04550407a7e29f9a5c8914ace42c",
+            "sha256:723ae1b37308acba458b866cf3c563add91f93bda17468d3a6ae9c790afdb039",
         )
 
         paths = [path for bundle in ACTIVATION_BUNDLES for path in bundle.paths]
@@ -164,7 +164,7 @@ class ActivationBundlePolicyTest(unittest.TestCase):
 
     def test_schema_unknown_field_and_authority_mismatch_fail_closed(self) -> None:
         invalid_field = copy.deepcopy(self.document)
-        invalid_field["bundles"][0]["implicit_prefix"] = "internal/sdk/"
+        invalid_field["bundles"][0]["implicit_prefix"] = "sdks/"
         mismatch = copy.deepcopy(self.document)
         mismatch["bundles"][0]["authority"] = "docs/adr/0004-contract-and-codegen-authority.md"
         for invalid, finding in (

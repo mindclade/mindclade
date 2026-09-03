@@ -24,7 +24,7 @@
 #                rejected, so each one names why the estate was inconsistent
 #                without it.
 schema_version: mindclade.cross-field-constraints/v1
-descriptor_digest: sha256:46514bdee27df6f41f03b63f050b2cfcb95867fc8f291fe943eaf2019693c0ed
+descriptor_digest: sha256:f9a9dfd1eb8cbc6960f8f7e59f2dc5ec6191b7104e07ac9614db20945ffccccd
 constraints:
   - id: agent-definition-create-rejects-output-only-fields
     message: mindclade.internal.agent.v1.CreateAgentDefinitionRequest

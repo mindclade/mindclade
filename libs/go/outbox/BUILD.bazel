@@ -1,0 +1,27 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "outbox",
+    srcs = glob(
+        ["*.go"],
+        exclude = ["*_test.go"],
+    ),
+    importpath = "github.com/mindclade/mindclade/libs/go/outbox",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//libs/go/persistence",
+        "//libs/go/pubsubx",
+        "//protocols/generated/go/common/v1:bindings",
+        "@com_google_cloud_go_pubsub_v2//:pubsub",
+        "@org_golang_google_protobuf//proto",
+    ],
+)
+
+filegroup(
+    name = "governed_sources",
+    srcs = ["BUILD.bazel"] + glob(
+        ["**"],
+        exclude = ["BUILD.bazel"],
+    ),
+    visibility = ["//visibility:public"],
+)

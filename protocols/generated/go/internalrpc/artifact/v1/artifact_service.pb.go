@@ -9,7 +9,7 @@ package internalartifactv1
 import (
 	v1 "github.com/mindclade/mindclade/protocols/generated/go/artifact/v1"
 	v11 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
-	v12 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
+	v12 "github.com/mindclade/mindclade/protocols/generated/go/operation/v1"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
@@ -1872,7 +1872,7 @@ var File_proto_mindclade_internal_artifact_v1_artifact_service_proto protoreflec
 
 const file_proto_mindclade_internal_artifact_v1_artifact_service_proto_rawDesc = "" +
 	"\n" +
-	";proto/mindclade/internal/artifact/v1/artifact_service.proto\x12\x1emindclade.internal.artifact.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a3proto/mindclade/artifact/v1/artifact_commands.proto\x1a4proto/mindclade/artifact/v1/artifact_reference.proto\x1a4proto/mindclade/artifact/v1/evidence_reference.proto\x1a/proto/mindclade/common/v1/command_context.proto\x1a*proto/mindclade/common/v1/pagination.proto\x1a2proto/mindclade/common/v1/resource_reference.proto\x1a&proto/mindclade/job/v1/operation.proto\"@\n" +
+	";proto/mindclade/internal/artifact/v1/artifact_service.proto\x12\x1emindclade.internal.artifact.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a3proto/mindclade/artifact/v1/artifact_commands.proto\x1a4proto/mindclade/artifact/v1/artifact_reference.proto\x1a4proto/mindclade/artifact/v1/evidence_reference.proto\x1a/proto/mindclade/common/v1/command_context.proto\x1a*proto/mindclade/common/v1/pagination.proto\x1a2proto/mindclade/common/v1/resource_reference.proto\x1a,proto/mindclade/operation/v1/operation.proto\"@\n" +
 	"\x12GetArtifactRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x16\n" +
 	"\x06digest\x18\x02 \x01(\tR\x06digest\"\x92\x01\n" +
@@ -1903,9 +1903,9 @@ const file_proto_mindclade_internal_artifact_v1_artifact_service_proto_rawDesc =
 	"\bartifact\x18\x02 \x01(\v2\".mindclade.artifact.v1.ArtifactRefR\bartifact\x12\x1f\n" +
 	"\vreason_code\x18\x03 \x01(\tR\n" +
 	"reasonCode\x12>\n" +
-	"\bevidence\x18\x04 \x03(\v2\".mindclade.artifact.v1.EvidenceRefR\bevidence\"W\n" +
-	"\x1aQuarantineArtifactResponse\x129\n" +
-	"\toperation\x18\x01 \x01(\v2\x1b.mindclade.job.v1.OperationR\toperation\"\xd9\x01\n" +
+	"\bevidence\x18\x04 \x03(\v2\".mindclade.artifact.v1.EvidenceRefR\bevidence\"]\n" +
+	"\x1aQuarantineArtifactResponse\x12?\n" +
+	"\toperation\x18\x01 \x01(\v2!.mindclade.operation.v1.OperationR\toperation\"\xd9\x01\n" +
 	"\x1bAcquireArtifactLeaseRequest\x12=\n" +
 	"\acontext\x18\x01 \x01(\v2#.mindclade.common.v1.CommandContextR\acontext\x12>\n" +
 	"\bartifact\x18\x02 \x01(\v2\".mindclade.artifact.v1.ArtifactRefR\bartifact\x12;\n" +
@@ -2077,7 +2077,7 @@ var file_proto_mindclade_internal_artifact_v1_artifact_service_proto_goTypes = [
 	(*v1.CommitArtifactCommand)(nil),         // 35: mindclade.artifact.v1.CommitArtifactCommand
 	(*v11.CommandContext)(nil),               // 36: mindclade.common.v1.CommandContext
 	(*v1.EvidenceRef)(nil),                   // 37: mindclade.artifact.v1.EvidenceRef
-	(*v12.Operation)(nil),                    // 38: mindclade.job.v1.Operation
+	(*v12.Operation)(nil),                    // 38: mindclade.operation.v1.Operation
 	(*v11.ResourceRef)(nil),                  // 39: mindclade.common.v1.ResourceRef
 }
 var file_proto_mindclade_internal_artifact_v1_artifact_service_proto_depIdxs = []int32{
@@ -2093,7 +2093,7 @@ var file_proto_mindclade_internal_artifact_v1_artifact_service_proto_depIdxs = [
 	36, // 9: mindclade.internal.artifact.v1.QuarantineArtifactRequest.context:type_name -> mindclade.common.v1.CommandContext
 	31, // 10: mindclade.internal.artifact.v1.QuarantineArtifactRequest.artifact:type_name -> mindclade.artifact.v1.ArtifactRef
 	37, // 11: mindclade.internal.artifact.v1.QuarantineArtifactRequest.evidence:type_name -> mindclade.artifact.v1.EvidenceRef
-	38, // 12: mindclade.internal.artifact.v1.QuarantineArtifactResponse.operation:type_name -> mindclade.job.v1.Operation
+	38, // 12: mindclade.internal.artifact.v1.QuarantineArtifactResponse.operation:type_name -> mindclade.operation.v1.Operation
 	36, // 13: mindclade.internal.artifact.v1.AcquireArtifactLeaseRequest.context:type_name -> mindclade.common.v1.CommandContext
 	31, // 14: mindclade.internal.artifact.v1.AcquireArtifactLeaseRequest.artifact:type_name -> mindclade.artifact.v1.ArtifactRef
 	32, // 15: mindclade.internal.artifact.v1.AcquireArtifactLeaseRequest.expire_time:type_name -> google.protobuf.Timestamp

@@ -52,8 +52,19 @@ WAVE2P_PREFIXES = (
 )
 
 WAVE2P_CONTROL_PLANE_PREFIXES = (
+    # The control-plane runtime libraries moved out of services/control_plane
+    # into libs/go, but they are still what the wave-2 protected control-plane
+    # suite exercises, so a change to any of them must keep selecting it.
+    "libs/go/eventruntime/",
+    "libs/go/fencing/",
+    "libs/go/idempotency/",
+    "libs/go/inbox/",
+    "libs/go/outbox/",
+    "libs/go/persistence/",
+    "libs/go/pubsubx/",
+    "libs/go/servicekit/",
+    "libs/go/storage/",
     "services/control_plane/cmd/control-plane/",
-    "services/control_plane/internal/platform/",
     "services/control_plane/internal/policies/",
     "services/control_plane/internal/projects/",
     "services/control_plane/internal/tenants/",

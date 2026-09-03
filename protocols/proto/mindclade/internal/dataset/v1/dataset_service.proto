@@ -7,7 +7,7 @@ import "proto/mindclade/common/v1/pagination.proto";
 import "proto/mindclade/dataset/v1/dataset.proto";
 import "proto/mindclade/dataset/v1/dataset_commands.proto";
 import "proto/mindclade/dataset/v1/dataset_release.proto";
-import "proto/mindclade/job/v1/operation.proto";
+import "proto/mindclade/operation/v1/operation.proto";
 
 option go_package = "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/dataset/v1;internaldatasetv1";
 
@@ -18,7 +18,7 @@ message CreateDatasetRequest {
 
 // CreateDatasetResponse returns the durable operation for dataset creation.
 message CreateDatasetResponse {
-  mindclade.job.v1.Operation operation = 1;
+  mindclade.operation.v1.Operation operation = 1;
 }
 
 // GetDatasetRequest identifies a dataset and optional cache validator.
@@ -54,7 +54,7 @@ message UpdateDatasetRequest {
 
 // UpdateDatasetResponse returns the durable update operation.
 message UpdateDatasetResponse {
-  mindclade.job.v1.Operation operation = 1;
+  mindclade.operation.v1.Operation operation = 1;
 }
 
 // PublishDatasetReleaseRequest wraps immutable-manifest publication intent.
@@ -64,7 +64,7 @@ message PublishDatasetReleaseRequest {
 
 // PublishDatasetReleaseResponse returns the durable publication operation.
 message PublishDatasetReleaseResponse {
-  mindclade.job.v1.Operation operation = 1;
+  mindclade.operation.v1.Operation operation = 1;
 }
 
 // RevokeDatasetReleaseRequest wraps an evidence-bound revocation command.
@@ -74,7 +74,7 @@ message RevokeDatasetReleaseRequest {
 
 // RevokeDatasetReleaseResponse returns the durable revocation operation.
 message RevokeDatasetReleaseResponse {
-  mindclade.job.v1.Operation operation = 1;
+  mindclade.operation.v1.Operation operation = 1;
 }
 
 // GetDatasetReleaseRequest identifies one immutable dataset release resource.

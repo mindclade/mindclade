@@ -11,7 +11,7 @@ import "proto/mindclade/evaluation/v1/evaluation_result.proto";
 import "proto/mindclade/evaluation/v1/evaluation_run.proto";
 import "proto/mindclade/evaluation/v1/promotion_decision.proto";
 import "proto/mindclade/job/v1/lease_fencing.proto";
-import "proto/mindclade/job/v1/operation.proto";
+import "proto/mindclade/operation/v1/operation.proto";
 import "proto/mindclade/policy/v1/policy_reference.proto";
 
 option go_package = "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/evaluation/v1;internalevaluationv1";
@@ -34,7 +34,7 @@ message CreateEvaluationRunRequest {
 
 // CreateEvaluationRunResponse returns the durable operation for validation and execution.
 message CreateEvaluationRunResponse {
-  mindclade.job.v1.Operation operation = 1;
+  mindclade.operation.v1.Operation operation = 1;
 }
 
 // GetEvaluationRunRequest identifies one evaluation run and optional cache validator.
@@ -73,7 +73,7 @@ message CancelEvaluationRunRequest {
 
 // CancelEvaluationRunResponse returns the durable cancellation operation.
 message CancelEvaluationRunResponse {
-  mindclade.job.v1.Operation operation = 1;
+  mindclade.operation.v1.Operation operation = 1;
 }
 
 // CommitEvaluationResultRequest binds one immutable result to the current fenced attempt.
@@ -109,7 +109,7 @@ message CreatePromotionDecisionRequest {
 
 // CreatePromotionDecisionResponse returns the durable decision operation.
 message CreatePromotionDecisionResponse {
-  mindclade.job.v1.Operation operation = 1;
+  mindclade.operation.v1.Operation operation = 1;
 }
 
 // GetPromotionDecisionRequest identifies one immutable promotion decision.

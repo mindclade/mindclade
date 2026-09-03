@@ -53,7 +53,7 @@ MEMBERSHIP_ATTRIBUTES = (
 # Directories Bazel itself is told to ignore. The entries in .bazelignore are
 # repository-root-relative paths, not bare names, and the distinction matters:
 # the root `build/` holds Bazel's own install cache (62 further BUILD files of
-# embedded_tools), while `internal/sdk/python/scripts/build` is an ordinary
+# embedded_tools), while `sdks/python/scripts/build` is an ordinary
 # governed file that happens to share the name. Matching by name alone silently
 # drops it from its own package.
 IGNORED_ROOTS = frozenset({".direnv", ".git", "build", "node_modules", "result", "target"})

@@ -8,7 +8,8 @@ package internalworkflowv1
 
 import (
 	v1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
-	v12 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
+	v13 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
+	v12 "github.com/mindclade/mindclade/protocols/generated/go/operation/v1"
 	v11 "github.com/mindclade/mindclade/protocols/generated/go/workflow/v1"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
@@ -945,7 +946,7 @@ type CommitWorkflowTransitionRequest struct {
 	WorkflowRun                *v11.WorkflowRun       `protobuf:"bytes,2,opt,name=workflow_run,json=workflowRun,proto3" json:"workflow_run,omitempty"`
 	ExpectedTransitionSequence uint64                 `protobuf:"varint,3,opt,name=expected_transition_sequence,json=expectedTransitionSequence,proto3" json:"expected_transition_sequence,omitempty"`
 	// Current scheduler-issued fence; the raw lease token remains transport metadata.
-	Fence         *v12.LeaseFence `protobuf:"bytes,4,opt,name=fence,proto3" json:"fence,omitempty"`
+	Fence         *v13.LeaseFence `protobuf:"bytes,4,opt,name=fence,proto3" json:"fence,omitempty"`
 	Etag          string          `protobuf:"bytes,6,opt,name=etag,proto3" json:"etag,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -1002,7 +1003,7 @@ func (x *CommitWorkflowTransitionRequest) GetExpectedTransitionSequence() uint64
 	return 0
 }
 
-func (x *CommitWorkflowTransitionRequest) GetFence() *v12.LeaseFence {
+func (x *CommitWorkflowTransitionRequest) GetFence() *v13.LeaseFence {
 	if x != nil {
 		return x.Fence
 	}
@@ -1717,22 +1718,22 @@ var File_proto_mindclade_internal_workflow_v1_workflow_service_proto protoreflec
 
 const file_proto_mindclade_internal_workflow_v1_workflow_service_proto_rawDesc = "" +
 	"\n" +
-	";proto/mindclade/internal/workflow/v1/workflow_service.proto\x12\x1emindclade.internal.workflow.v1\x1a google/protobuf/field_mask.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a/proto/mindclade/common/v1/command_context.proto\x1a*proto/mindclade/common/v1/pagination.proto\x1a&proto/mindclade/job/v1/operation.proto\x1a*proto/mindclade/job/v1/lease_fencing.proto\x1a*proto/mindclade/workflow/v1/approval.proto\x1a5proto/mindclade/workflow/v1/workflow_definition.proto\x1a.proto/mindclade/workflow/v1/workflow_run.proto\"\x8a\x02\n" +
+	";proto/mindclade/internal/workflow/v1/workflow_service.proto\x12\x1emindclade.internal.workflow.v1\x1a google/protobuf/field_mask.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a/proto/mindclade/common/v1/command_context.proto\x1a*proto/mindclade/common/v1/pagination.proto\x1a,proto/mindclade/operation/v1/operation.proto\x1a*proto/mindclade/job/v1/lease_fencing.proto\x1a*proto/mindclade/workflow/v1/approval.proto\x1a5proto/mindclade/workflow/v1/workflow_definition.proto\x1a.proto/mindclade/workflow/v1/workflow_run.proto\"\x8a\x02\n" +
 	"\x1fCreateWorkflowDefinitionRequest\x12=\n" +
 	"\acontext\x18\x01 \x01(\v2#.mindclade.common.v1.CommandContextR\acontext\x12\x16\n" +
 	"\x06parent\x18\x02 \x01(\tR\x06parent\x124\n" +
 	"\x16workflow_definition_id\x18\x03 \x01(\tR\x14workflowDefinitionId\x12Z\n" +
-	"\x13workflow_definition\x18\x04 \x01(\v2).mindclade.workflow.v1.WorkflowDefinitionR\x12workflowDefinition\"]\n" +
-	" CreateWorkflowDefinitionResponse\x129\n" +
-	"\toperation\x18\x01 \x01(\v2\x1b.mindclade.job.v1.OperationR\toperation\"\x8d\x02\n" +
+	"\x13workflow_definition\x18\x04 \x01(\v2).mindclade.workflow.v1.WorkflowDefinitionR\x12workflowDefinition\"c\n" +
+	" CreateWorkflowDefinitionResponse\x12?\n" +
+	"\toperation\x18\x01 \x01(\v2!.mindclade.operation.v1.OperationR\toperation\"\x8d\x02\n" +
 	"\x1fUpdateWorkflowDefinitionRequest\x12=\n" +
 	"\acontext\x18\x01 \x01(\v2#.mindclade.common.v1.CommandContextR\acontext\x12Z\n" +
 	"\x13workflow_definition\x18\x02 \x01(\v2).mindclade.workflow.v1.WorkflowDefinitionR\x12workflowDefinition\x12;\n" +
 	"\vupdate_mask\x18\x03 \x01(\v2\x1a.google.protobuf.FieldMaskR\n" +
 	"updateMask\x12\x12\n" +
-	"\x04etag\x18\x04 \x01(\tR\x04etag\"]\n" +
-	" UpdateWorkflowDefinitionResponse\x129\n" +
-	"\toperation\x18\x01 \x01(\v2\x1b.mindclade.job.v1.OperationR\toperation\"V\n" +
+	"\x04etag\x18\x04 \x01(\tR\x04etag\"c\n" +
+	" UpdateWorkflowDefinitionResponse\x12?\n" +
+	"\toperation\x18\x01 \x01(\v2!.mindclade.operation.v1.OperationR\toperation\"V\n" +
 	"\x1cGetWorkflowDefinitionRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\"\n" +
 	"\rif_none_match\x18\x02 \x01(\tR\vifNoneMatch\"{\n" +
@@ -1751,9 +1752,9 @@ const file_proto_mindclade_internal_workflow_v1_workflow_service_proto_rawDesc =
 	"\acontext\x18\x01 \x01(\v2#.mindclade.common.v1.CommandContextR\acontext\x12\x16\n" +
 	"\x06parent\x18\x02 \x01(\tR\x06parent\x12&\n" +
 	"\x0fworkflow_run_id\x18\x03 \x01(\tR\rworkflowRunId\x12E\n" +
-	"\fworkflow_run\x18\x04 \x01(\v2\".mindclade.workflow.v1.WorkflowRunR\vworkflowRun\"U\n" +
-	"\x18StartWorkflowRunResponse\x129\n" +
-	"\toperation\x18\x01 \x01(\v2\x1b.mindclade.job.v1.OperationR\toperation\"O\n" +
+	"\fworkflow_run\x18\x04 \x01(\v2\".mindclade.workflow.v1.WorkflowRunR\vworkflowRun\"[\n" +
+	"\x18StartWorkflowRunResponse\x12?\n" +
+	"\toperation\x18\x01 \x01(\v2!.mindclade.operation.v1.OperationR\toperation\"O\n" +
 	"\x15GetWorkflowRunRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\"\n" +
 	"\rif_none_match\x18\x02 \x01(\tR\vifNoneMatch\"_\n" +
@@ -1772,9 +1773,9 @@ const file_proto_mindclade_internal_workflow_v1_workflow_service_proto_rawDesc =
 	"\acontext\x18\x01 \x01(\v2#.mindclade.common.v1.CommandContextR\acontext\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x12\n" +
 	"\x04etag\x18\x03 \x01(\tR\x04etag\x12\x16\n" +
-	"\x06reason\x18\x04 \x01(\tR\x06reason\"V\n" +
-	"\x19CancelWorkflowRunResponse\x129\n" +
-	"\toperation\x18\x01 \x01(\v2\x1b.mindclade.job.v1.OperationR\toperation\"\xb7\x02\n" +
+	"\x06reason\x18\x04 \x01(\tR\x06reason\"\\\n" +
+	"\x19CancelWorkflowRunResponse\x12?\n" +
+	"\toperation\x18\x01 \x01(\v2!.mindclade.operation.v1.OperationR\toperation\"\xb7\x02\n" +
 	"\x1fCommitWorkflowTransitionRequest\x12=\n" +
 	"\acontext\x18\x01 \x01(\v2#.mindclade.common.v1.CommandContextR\acontext\x12E\n" +
 	"\fworkflow_run\x18\x02 \x01(\v2\".mindclade.workflow.v1.WorkflowRunR\vworkflowRun\x12@\n" +
@@ -1887,13 +1888,13 @@ var file_proto_mindclade_internal_workflow_v1_workflow_service_proto_goTypes = [
 	(*ConsumeApprovalResponse)(nil),          // 29: mindclade.internal.workflow.v1.ConsumeApprovalResponse
 	(*v1.CommandContext)(nil),                // 30: mindclade.common.v1.CommandContext
 	(*v11.WorkflowDefinition)(nil),           // 31: mindclade.workflow.v1.WorkflowDefinition
-	(*v12.Operation)(nil),                    // 32: mindclade.job.v1.Operation
+	(*v12.Operation)(nil),                    // 32: mindclade.operation.v1.Operation
 	(*fieldmaskpb.FieldMask)(nil),            // 33: google.protobuf.FieldMask
 	(*v1.PageRequest)(nil),                   // 34: mindclade.common.v1.PageRequest
 	(*v1.PageResponse)(nil),                  // 35: mindclade.common.v1.PageResponse
 	(*timestamppb.Timestamp)(nil),            // 36: google.protobuf.Timestamp
 	(*v11.WorkflowRun)(nil),                  // 37: mindclade.workflow.v1.WorkflowRun
-	(*v12.LeaseFence)(nil),                   // 38: mindclade.job.v1.LeaseFence
+	(*v13.LeaseFence)(nil),                   // 38: mindclade.job.v1.LeaseFence
 	(*v11.ApprovalRequest)(nil),              // 39: mindclade.workflow.v1.ApprovalRequest
 	(v11.ApprovalDecisionValue)(0),           // 40: mindclade.workflow.v1.ApprovalDecisionValue
 	(*v11.ApprovalReceipt)(nil),              // 41: mindclade.workflow.v1.ApprovalReceipt
@@ -1901,11 +1902,11 @@ var file_proto_mindclade_internal_workflow_v1_workflow_service_proto_goTypes = [
 var file_proto_mindclade_internal_workflow_v1_workflow_service_proto_depIdxs = []int32{
 	30, // 0: mindclade.internal.workflow.v1.CreateWorkflowDefinitionRequest.context:type_name -> mindclade.common.v1.CommandContext
 	31, // 1: mindclade.internal.workflow.v1.CreateWorkflowDefinitionRequest.workflow_definition:type_name -> mindclade.workflow.v1.WorkflowDefinition
-	32, // 2: mindclade.internal.workflow.v1.CreateWorkflowDefinitionResponse.operation:type_name -> mindclade.job.v1.Operation
+	32, // 2: mindclade.internal.workflow.v1.CreateWorkflowDefinitionResponse.operation:type_name -> mindclade.operation.v1.Operation
 	30, // 3: mindclade.internal.workflow.v1.UpdateWorkflowDefinitionRequest.context:type_name -> mindclade.common.v1.CommandContext
 	31, // 4: mindclade.internal.workflow.v1.UpdateWorkflowDefinitionRequest.workflow_definition:type_name -> mindclade.workflow.v1.WorkflowDefinition
 	33, // 5: mindclade.internal.workflow.v1.UpdateWorkflowDefinitionRequest.update_mask:type_name -> google.protobuf.FieldMask
-	32, // 6: mindclade.internal.workflow.v1.UpdateWorkflowDefinitionResponse.operation:type_name -> mindclade.job.v1.Operation
+	32, // 6: mindclade.internal.workflow.v1.UpdateWorkflowDefinitionResponse.operation:type_name -> mindclade.operation.v1.Operation
 	31, // 7: mindclade.internal.workflow.v1.GetWorkflowDefinitionResponse.workflow_definition:type_name -> mindclade.workflow.v1.WorkflowDefinition
 	34, // 8: mindclade.internal.workflow.v1.ListWorkflowDefinitionsRequest.page:type_name -> mindclade.common.v1.PageRequest
 	31, // 9: mindclade.internal.workflow.v1.ListWorkflowDefinitionsResponse.workflow_definitions:type_name -> mindclade.workflow.v1.WorkflowDefinition
@@ -1913,14 +1914,14 @@ var file_proto_mindclade_internal_workflow_v1_workflow_service_proto_depIdxs = [
 	36, // 11: mindclade.internal.workflow.v1.ListWorkflowDefinitionsResponse.read_time:type_name -> google.protobuf.Timestamp
 	30, // 12: mindclade.internal.workflow.v1.StartWorkflowRunRequest.context:type_name -> mindclade.common.v1.CommandContext
 	37, // 13: mindclade.internal.workflow.v1.StartWorkflowRunRequest.workflow_run:type_name -> mindclade.workflow.v1.WorkflowRun
-	32, // 14: mindclade.internal.workflow.v1.StartWorkflowRunResponse.operation:type_name -> mindclade.job.v1.Operation
+	32, // 14: mindclade.internal.workflow.v1.StartWorkflowRunResponse.operation:type_name -> mindclade.operation.v1.Operation
 	37, // 15: mindclade.internal.workflow.v1.GetWorkflowRunResponse.workflow_run:type_name -> mindclade.workflow.v1.WorkflowRun
 	34, // 16: mindclade.internal.workflow.v1.ListWorkflowRunsRequest.page:type_name -> mindclade.common.v1.PageRequest
 	37, // 17: mindclade.internal.workflow.v1.ListWorkflowRunsResponse.workflow_runs:type_name -> mindclade.workflow.v1.WorkflowRun
 	35, // 18: mindclade.internal.workflow.v1.ListWorkflowRunsResponse.page:type_name -> mindclade.common.v1.PageResponse
 	36, // 19: mindclade.internal.workflow.v1.ListWorkflowRunsResponse.read_time:type_name -> google.protobuf.Timestamp
 	30, // 20: mindclade.internal.workflow.v1.CancelWorkflowRunRequest.context:type_name -> mindclade.common.v1.CommandContext
-	32, // 21: mindclade.internal.workflow.v1.CancelWorkflowRunResponse.operation:type_name -> mindclade.job.v1.Operation
+	32, // 21: mindclade.internal.workflow.v1.CancelWorkflowRunResponse.operation:type_name -> mindclade.operation.v1.Operation
 	30, // 22: mindclade.internal.workflow.v1.CommitWorkflowTransitionRequest.context:type_name -> mindclade.common.v1.CommandContext
 	37, // 23: mindclade.internal.workflow.v1.CommitWorkflowTransitionRequest.workflow_run:type_name -> mindclade.workflow.v1.WorkflowRun
 	38, // 24: mindclade.internal.workflow.v1.CommitWorkflowTransitionRequest.fence:type_name -> mindclade.job.v1.LeaseFence

@@ -7,14 +7,15 @@ import (
 	"fmt"
 	"io"
 	"iter"
+	"strconv"
 	"strings"
 	"time"
 
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/reflect/protoreflect"
 
-	"github.com/mindclade/mindclade/internal/sdk/go/mindclade"
 	"github.com/mindclade/mindclade/libs/go/numconv"
+	"github.com/mindclade/mindclade/sdks/go/mindclade"
 )
 
 const (
@@ -364,10 +365,10 @@ func writeResponseIdentity(writer io.Writer, response mindclade.ResponseMetadata
 		fields = append(fields, fmt.Sprintf("status=%s", response.Status))
 	}
 	if response.RequestID != "" {
-		fields = append(fields, fmt.Sprintf("request_id=%s", response.RequestID))
+		fields = append(fields, "request_id="+response.RequestID)
 	}
 	if response.TraceID != "" {
-		fields = append(fields, fmt.Sprintf("trace_id=%s", response.TraceID))
+		fields = append(fields, "trace_id="+response.TraceID)
 	}
 	if len(fields) == 0 {
 		return
@@ -462,28 +463,28 @@ func WriteErrorDiagnostics(writer io.Writer, err error) {
 	}
 	requestID, traceID := sdkError.RequestIdentity()
 	if requestID != "" {
-		fields = append(fields, fmt.Sprintf("request_id=%s", requestID))
+		fields = append(fields, "request_id="+requestID)
 	}
 	if traceID != "" {
-		fields = append(fields, fmt.Sprintf("trace_id=%s", traceID))
+		fields = append(fields, "trace_id="+traceID)
 	}
 	if operationID := sdkError.OperationIdentity(); operationID != "" {
-		fields = append(fields, fmt.Sprintf("operation_id=%s", operationID))
+		fields = append(fields, "operation_id="+operationID)
 	}
 	if retryAfter, hinted := sdkError.RetryAfterHint(); hinted {
 		fields = append(fields, fmt.Sprintf("retry_after=%s", retryAfter))
 	}
 	if revision := sdkError.Revision(); revision != "" {
-		fields = append(fields, fmt.Sprintf("revision=%s", revision))
+		fields = append(fields, "revision="+revision)
 	}
 	if attempts, cumulative := sdkError.RetryOutcome(); attempts > 0 {
 		fields = append(fields, fmt.Sprintf("attempts=%d", attempts), fmt.Sprintf("retry_delay=%s", cumulative))
 	}
 	if quota := sdkError.QuotaTelemetry(); quota != nil && quota.Subject != "" {
-		fields = append(fields, fmt.Sprintf("quota_subject=%s", quota.Subject), fmt.Sprintf("quota_remaining=%d", quota.Remaining))
+		fields = append(fields, "quota_subject="+quota.Subject, "quota_remaining="+strconv.FormatInt(quota.Remaining, 10))
 	}
 	if diagnostic := sdkError.Diagnostic(); diagnostic != "" {
-		fields = append(fields, fmt.Sprintf("diagnostic=%s", diagnostic))
+		fields = append(fields, "diagnostic="+diagnostic)
 	}
 	_, _ = fmt.Fprintf(writer, "mindcladectl: %s\n", strings.Join(fields, " "))
 	fieldViolations, preconditionViolations := sdkError.Violations()

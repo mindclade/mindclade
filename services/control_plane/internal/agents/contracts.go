@@ -10,7 +10,7 @@ import (
 
 	agentv1 "github.com/mindclade/mindclade/protocols/generated/go/agent/v1"
 	internalagentv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/agent/v1"
-	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
+	operationv1 "github.com/mindclade/mindclade/protocols/generated/go/operation/v1"
 )
 
 var (
@@ -82,14 +82,14 @@ type StepPage struct {
 // Repository uses generated protobuf resources at its boundary and clones all
 // incoming and outgoing messages. SQL row representations remain private.
 type Repository interface {
-	CreateDefinition(context.Context, Identity, *internalagentv1.CreateAgentDefinitionRequest, string, time.Time) (*jobv1.Operation, bool, error)
-	UpdateDefinition(context.Context, Identity, *internalagentv1.UpdateAgentDefinitionRequest, string, time.Time) (*jobv1.Operation, bool, error)
+	CreateDefinition(context.Context, Identity, *internalagentv1.CreateAgentDefinitionRequest, string, time.Time) (*operationv1.Operation, bool, error)
+	UpdateDefinition(context.Context, Identity, *internalagentv1.UpdateAgentDefinitionRequest, string, time.Time) (*operationv1.Operation, bool, error)
 	GetDefinition(context.Context, Identity, string) (*agentv1.AgentDefinition, error)
 	ListDefinitions(context.Context, Identity, DefinitionPage) ([]*agentv1.AgentDefinition, string, time.Time, error)
-	StartRun(context.Context, Identity, *internalagentv1.StartAgentRunRequest, string, time.Time) (*jobv1.Operation, bool, error)
+	StartRun(context.Context, Identity, *internalagentv1.StartAgentRunRequest, string, time.Time) (*operationv1.Operation, bool, error)
 	GetRun(context.Context, Identity, string) (*agentv1.AgentRun, error)
 	ListRuns(context.Context, Identity, RunPage) ([]*agentv1.AgentRun, string, time.Time, error)
-	CancelRun(context.Context, Identity, *internalagentv1.CancelAgentRunRequest, string, time.Time) (*jobv1.Operation, bool, error)
+	CancelRun(context.Context, Identity, *internalagentv1.CancelAgentRunRequest, string, time.Time) (*operationv1.Operation, bool, error)
 	GetStep(context.Context, Identity, string) (*agentv1.AgentStep, error)
 	ListSteps(context.Context, Identity, StepPage) ([]*agentv1.AgentStep, string, time.Time, error)
 	CommitStep(context.Context, Identity, *internalagentv1.CommitAgentStepRequest, string, time.Time) (*agentv1.AgentStep, *agentv1.AgentRun, bool, error)

@@ -11,8 +11,8 @@ import (
 	"time"
 
 	foundationaudit "github.com/mindclade/mindclade/libs/go/audit"
+	"github.com/mindclade/mindclade/libs/go/pubsubx"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
-	"github.com/mindclade/mindclade/services/control_plane/internal/platform/queue"
 )
 
 type receipt struct {
@@ -64,14 +64,14 @@ func recordMutation(ctx context.Context, tx *sql.Tx, identity Identity, action, 
 	if err != nil {
 		return err
 	}
-	auditBytes, err := queue.MarshalEnvelope(auditEvent)
+	auditBytes, err := pubsubx.MarshalEnvelope(auditEvent)
 	if err != nil {
 		return err
 	}
 	if _, err = tx.ExecContext(ctx, `INSERT INTO audit_events(id,tenant_id,actor_id,action,subject_id,occurred_at,details_digest,event_version,payload_digest,envelope_bytes) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`, auditEvent.GetEventId(), identity.TenantID, identity.Principal, action, resourceName, at.UTC(), digest, auditEvent.GetEventVersion(), auditEvent.GetPayloadDigest(), auditBytes); err != nil {
 		return err
 	}
-	if err := queue.InsertOutboxMessage(ctx, tx, event, at); err != nil {
+	if err = pubsubx.InsertOutboxMessage(ctx, tx, event, at); err != nil {
 		return err
 	}
 	_, err = tx.ExecContext(ctx, `INSERT INTO experiment_command_receipts(tenant_id,project_id,principal_id,action,idempotency_key,request_digest,resource_type,resource_name,resource_revision,created_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`, identity.TenantID, identity.ProjectID, identity.Principal, action, key, digest, resourceType, resourceName, revision, at.UTC())

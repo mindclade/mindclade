@@ -18,13 +18,13 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	foundationaudit "github.com/mindclade/mindclade/libs/go/audit"
+	platformdb "github.com/mindclade/mindclade/libs/go/persistence"
+	"github.com/mindclade/mindclade/libs/go/pubsubx"
 	adminv1 "github.com/mindclade/mindclade/protocols/generated/go/admin/v1"
 	artifactv1 "github.com/mindclade/mindclade/protocols/generated/go/artifact/v1"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	internaladminv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/admin/v1"
-	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
-	platformdb "github.com/mindclade/mindclade/services/control_plane/internal/platform/database"
-	"github.com/mindclade/mindclade/services/control_plane/internal/platform/queue"
+	operationv1 "github.com/mindclade/mindclade/protocols/generated/go/operation/v1"
 )
 
 const (
@@ -72,7 +72,7 @@ func insertReceipt(ctx context.Context, tx *sql.Tx, identity Identity, projectID
 }
 
 func insertOutbox(ctx context.Context, tx *sql.Tx, event *commonv1.EventEnvelope, at time.Time) error {
-	return queue.InsertOutboxMessage(ctx, tx, event, at)
+	return pubsubx.InsertOutboxMessage(ctx, tx, event, at)
 }
 
 func insertAdminAudit(ctx context.Context, tx *sql.Tx, identity Identity, projectID, action string, subject *commonv1.ResourceRef, result adminv1.AuditActionResult, failure, beforeRevision, afterRevision, detailDigest string, command *commonv1.CommandContext, at time.Time) error {
@@ -84,7 +84,7 @@ func insertAdminAudit(ctx context.Context, tx *sql.Tx, identity Identity, projec
 	if err != nil {
 		return err
 	}
-	encoded, err := queue.MarshalEnvelope(event)
+	encoded, err := pubsubx.MarshalEnvelope(event)
 	if err != nil {
 		return err
 	}
@@ -103,7 +103,7 @@ func insertAdminAudit(ctx context.Context, tx *sql.Tx, identity Identity, projec
 	return err
 }
 
-func insertOperation(ctx context.Context, tx *sql.Tx, identity Identity, projectID, digest, kind string, target *commonv1.ResourceRef, state jobv1.OperationState, detail *commonv1.ErrorDetail, at time.Time) (*jobv1.Operation, error) {
+func insertOperation(ctx context.Context, tx *sql.Tx, identity Identity, projectID, digest, kind string, target *commonv1.ResourceRef, state operationv1.OperationState, detail *commonv1.ErrorDetail, at time.Time) (*operationv1.Operation, error) {
 	jobID, err := randomID("jobs/")
 	if err != nil {
 		return nil, err
@@ -112,10 +112,10 @@ func insertOperation(ctx context.Context, tx *sql.Tx, identity Identity, project
 	if err != nil {
 		return nil, err
 	}
-	status := map[jobv1.OperationState]string{
-		jobv1.OperationState_OPERATION_STATE_PENDING:   "PENDING",
-		jobv1.OperationState_OPERATION_STATE_SUCCEEDED: "SUCCEEDED",
-		jobv1.OperationState_OPERATION_STATE_FAILED:    "FAILED",
+	status := map[operationv1.OperationState]string{
+		operationv1.OperationState_OPERATION_STATE_PENDING:   "PENDING",
+		operationv1.OperationState_OPERATION_STATE_SUCCEEDED: "SUCCEEDED",
+		operationv1.OperationState_OPERATION_STATE_FAILED:    "FAILED",
 	}[state]
 	if status == "" {
 		return nil, ErrInvalidArgument
@@ -123,9 +123,9 @@ func insertOperation(ctx context.Context, tx *sql.Tx, identity Identity, project
 	desired := "ACCEPTED"
 	done := false
 	switch state {
-	case jobv1.OperationState_OPERATION_STATE_SUCCEEDED:
+	case operationv1.OperationState_OPERATION_STATE_SUCCEEDED:
 		desired, done = "SUCCEEDED", true
-	case jobv1.OperationState_OPERATION_STATE_FAILED:
+	case operationv1.OperationState_OPERATION_STATE_FAILED:
 		desired, done = "FAILED", true
 	}
 	jobETag, operationETag := resourceETag(jobID, 1), resourceETag(operationID, 1)
@@ -142,11 +142,11 @@ func insertOperation(ctx context.Context, tx *sql.Tx, identity Identity, project
 	if _, err = tx.ExecContext(ctx, `INSERT INTO operation_revisions(operation_id,tenant_id,project_id,revision,job_id,target_present,target_resource_type,target_resource_id,target_tenant_id,target_project_id,target_resource_version,target_name,target_etag,status,done,etag,result_ref_id,error_detail_id,created_at,updated_at,recorded_at) VALUES($1,$2,$3,1,$4,true,$5,$6,$2,$3,$7,$8,$9,$10,$11,$12,NULL,$13,$14,$14,$14)`, operationID, identity.TenantID, projectID, jobID, target.GetResourceType(), target.GetResourceId(), target.GetResourceVersion(), target.GetName(), target.GetEtag(), status, done, operationETag, errorID, at.UTC()); err != nil {
 		return nil, err
 	}
-	return &jobv1.Operation{OperationId: operationID, TenantId: identity.TenantID, ProjectId: projectID, JobId: jobID, State: state, ResourceVersion: 1, Done: done, Etag: operationETag, Target: clone(target), Error: clone(detail), CreatedAt: timestamppb.New(at.UTC()), UpdatedAt: timestamppb.New(at.UTC())}, nil
+	return &operationv1.Operation{OperationId: operationID, TenantId: identity.TenantID, ProjectId: projectID, JobId: jobID, State: state, ResourceVersion: 1, Done: done, Etag: operationETag, Target: clone(target), Error: clone(detail), CreatedAt: timestamppb.New(at.UTC()), UpdatedAt: timestamppb.New(at.UTC())}, nil
 }
 
-func finishAdminMutation(ctx context.Context, tx *sql.Tx, identity Identity, projectID, action, key, digest string, target *commonv1.ResourceRef, event func(*jobv1.Operation) (*commonv1.EventEnvelope, error), beforeRevision string, command *commonv1.CommandContext, at time.Time) (*jobv1.Operation, error) {
-	operation, err := insertOperation(ctx, tx, identity, projectID, digest, "admin.lifecycle", target, jobv1.OperationState_OPERATION_STATE_SUCCEEDED, nil, at)
+func finishAdminMutation(ctx context.Context, tx *sql.Tx, identity Identity, projectID, action, key, digest string, target *commonv1.ResourceRef, event func(*operationv1.Operation) (*commonv1.EventEnvelope, error), beforeRevision string, command *commonv1.CommandContext, at time.Time) (*operationv1.Operation, error) {
+	operation, err := insertOperation(ctx, tx, identity, projectID, digest, "admin.lifecycle", target, operationv1.OperationState_OPERATION_STATE_SUCCEEDED, nil, at)
 	if err != nil {
 		return nil, err
 	}
@@ -235,7 +235,7 @@ func validTenantTransition(from, to adminv1.TenantState) bool {
 	}
 }
 
-func (r SQLRepository) UpdateTenant(ctx context.Context, identity Identity, request *internaladminv1.UpdateTenantRequest, digest string, at time.Time) (*jobv1.Operation, bool, error) {
+func (r SQLRepository) UpdateTenant(ctx context.Context, identity Identity, request *internaladminv1.UpdateTenantRequest, digest string, at time.Time) (*operationv1.Operation, bool, error) {
 	if err := r.validate(); err != nil {
 		return nil, false, err
 	}
@@ -343,7 +343,7 @@ func (r SQLRepository) UpdateTenant(ctx context.Context, identity Identity, requ
 		return nil, false, err
 	}
 	target := tenantResource(identity, value)
-	operation, err := finishAdminMutation(ctx, tx, identity, "", "admin.tenant.update", request.GetContext().GetIdempotencyKey(), digest, target, func(operation *jobv1.Operation) (*commonv1.EventEnvelope, error) {
+	operation, err := finishAdminMutation(ctx, tx, identity, "", "admin.tenant.update", request.GetContext().GetIdempotencyKey(), digest, target, func(operation *operationv1.Operation) (*commonv1.EventEnvelope, error) {
 		return r.Events.TenantUpdated(identity, value, paths, operation, request.GetContext(), at)
 	}, strconv.FormatInt(row.revision, 10), request.GetContext(), at)
 	if err != nil {
@@ -373,7 +373,7 @@ func validateProject(value *adminv1.Project, tenantID string) error {
 	return validateResource(value.GetTenant(), tenantID)
 }
 
-func (r SQLRepository) CreateProject(ctx context.Context, identity Identity, request *internaladminv1.CreateProjectRequest, digest string, at time.Time) (*jobv1.Operation, bool, error) {
+func (r SQLRepository) CreateProject(ctx context.Context, identity Identity, request *internaladminv1.CreateProjectRequest, digest string, at time.Time) (*operationv1.Operation, bool, error) {
 	if err := r.validate(); err != nil {
 		return nil, false, err
 	}
@@ -459,7 +459,7 @@ func (r SQLRepository) CreateProject(ctx context.Context, identity Identity, req
 		return nil, false, err
 	}
 	target := projectResource(identity, created)
-	operation, err := finishAdminMutation(ctx, tx, identity, projectID, "admin.project.create", request.GetContext().GetIdempotencyKey(), digest, target, func(operation *jobv1.Operation) (*commonv1.EventEnvelope, error) {
+	operation, err := finishAdminMutation(ctx, tx, identity, projectID, "admin.project.create", request.GetContext().GetIdempotencyKey(), digest, target, func(operation *operationv1.Operation) (*commonv1.EventEnvelope, error) {
 		return r.Events.ProjectCreated(identity, created, operation, request.GetContext(), at)
 	}, "", request.GetContext(), at)
 	if err != nil {
@@ -598,7 +598,7 @@ func validProjectTransition(from, to adminv1.ProjectState) bool {
 	}
 }
 
-func (r SQLRepository) UpdateProject(ctx context.Context, identity Identity, request *internaladminv1.UpdateProjectRequest, digest string, at time.Time) (*jobv1.Operation, bool, error) {
+func (r SQLRepository) UpdateProject(ctx context.Context, identity Identity, request *internaladminv1.UpdateProjectRequest, digest string, at time.Time) (*operationv1.Operation, bool, error) {
 	if err := r.validate(); err != nil {
 		return nil, false, err
 	}
@@ -701,7 +701,7 @@ func (r SQLRepository) UpdateProject(ctx context.Context, identity Identity, req
 		return nil, false, err
 	}
 	target := projectResource(identity, value)
-	operation, err := finishAdminMutation(ctx, tx, identity, projectID, "admin.project.update", request.GetContext().GetIdempotencyKey(), digest, target, func(operation *jobv1.Operation) (*commonv1.EventEnvelope, error) {
+	operation, err := finishAdminMutation(ctx, tx, identity, projectID, "admin.project.update", request.GetContext().GetIdempotencyKey(), digest, target, func(operation *operationv1.Operation) (*commonv1.EventEnvelope, error) {
 		return r.Events.ProjectUpdated(identity, value, paths, operation, request.GetContext(), at)
 	}, strconv.FormatInt(row.revision, 10), request.GetContext(), at)
 	if err != nil {
@@ -873,7 +873,7 @@ func (r SQLRepository) QueryAuditRecords(ctx context.Context, identity Identity,
 	return values, nextToken, nil
 }
 
-func (r SQLRepository) ExportAuditRecords(ctx context.Context, identity Identity, request *internaladminv1.ExportAuditRecordsRequest, digest string, at time.Time) (*jobv1.Operation, bool, error) {
+func (r SQLRepository) ExportAuditRecords(ctx context.Context, identity Identity, request *internaladminv1.ExportAuditRecordsRequest, digest string, at time.Time) (*operationv1.Operation, bool, error) {
 	if err := r.validate(); err != nil {
 		return nil, false, err
 	}
@@ -925,12 +925,12 @@ func (r SQLRepository) ExportAuditRecords(ctx context.Context, identity Identity
 		return nil, false, err
 	}
 	state := adminv1.AuditExportState_AUDIT_EXPORT_STATE_REQUESTED
-	operationState := jobv1.OperationState_OPERATION_STATE_PENDING
+	operationState := operationv1.OperationState_OPERATION_STATE_PENDING
 	failure := ""
 	var detail *commonv1.ErrorDetail
 	if !r.ExporterConfigured {
 		state = adminv1.AuditExportState_AUDIT_EXPORT_STATE_FAILED
-		operationState = jobv1.OperationState_OPERATION_STATE_FAILED
+		operationState = operationv1.OperationState_OPERATION_STATE_FAILED
 		failure = "EXPORTER_NOT_CONFIGURED"
 		detail = &commonv1.ErrorDetail{Code: commonv1.ErrorCode_ERROR_CODE_UNAVAILABLE, Message: "audit exporter is not configured", RetryClass: commonv1.RetryClass_RETRY_CLASS_AFTER_RECONCILIATION, ErrorId: uid}
 	}

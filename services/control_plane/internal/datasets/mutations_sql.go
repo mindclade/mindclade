@@ -14,11 +14,11 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	foundationaudit "github.com/mindclade/mindclade/libs/go/audit"
+	platformdb "github.com/mindclade/mindclade/libs/go/persistence"
+	"github.com/mindclade/mindclade/libs/go/pubsubx"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	datasetv1 "github.com/mindclade/mindclade/protocols/generated/go/dataset/v1"
-	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
-	platformdb "github.com/mindclade/mindclade/services/control_plane/internal/platform/database"
-	"github.com/mindclade/mindclade/services/control_plane/internal/platform/queue"
+	operationv1 "github.com/mindclade/mindclade/protocols/generated/go/operation/v1"
 )
 
 func (r SQLRepository) validateMutation() error {
@@ -76,7 +76,7 @@ func scanOperation(row scanner) (operationRow, error) {
 	return value, err
 }
 
-func operationProto(ctx context.Context, tx *sql.Tx, row operationRow) (*jobv1.Operation, error) {
+func operationProto(ctx context.Context, tx *sql.Tx, row operationRow) (*operationv1.Operation, error) {
 	result, err := platformdb.LoadArtifactRef(ctx, tx, row.tenant, row.result)
 	if err != nil {
 		return nil, err
@@ -85,31 +85,31 @@ func operationProto(ctx context.Context, tx *sql.Tx, row operationRow) (*jobv1.O
 	if err != nil {
 		return nil, err
 	}
-	var state jobv1.OperationState
+	var state operationv1.OperationState
 	switch row.status {
 	case "PENDING":
-		state = jobv1.OperationState_OPERATION_STATE_PENDING
+		state = operationv1.OperationState_OPERATION_STATE_PENDING
 	case "RUNNING":
-		state = jobv1.OperationState_OPERATION_STATE_RUNNING
+		state = operationv1.OperationState_OPERATION_STATE_RUNNING
 	case "SUCCEEDED":
-		state = jobv1.OperationState_OPERATION_STATE_SUCCEEDED
+		state = operationv1.OperationState_OPERATION_STATE_SUCCEEDED
 	case "FAILED":
-		state = jobv1.OperationState_OPERATION_STATE_FAILED
+		state = operationv1.OperationState_OPERATION_STATE_FAILED
 	case "CANCELLING":
-		state = jobv1.OperationState_OPERATION_STATE_CANCELLING
+		state = operationv1.OperationState_OPERATION_STATE_CANCELLING
 	case "CANCELLED":
-		state = jobv1.OperationState_OPERATION_STATE_CANCELLED
+		state = operationv1.OperationState_OPERATION_STATE_CANCELLED
 	default:
 		return nil, ErrInvalidArgument
 	}
-	value := &jobv1.Operation{OperationId: row.id, TenantId: row.tenant, ProjectId: row.project, JobId: row.job, State: state, ResourceVersion: row.version, Done: row.done, Etag: row.etag, Result: result, Error: detail, CreatedAt: timestamppb.New(row.created.UTC()), UpdatedAt: timestamppb.New(row.updated.UTC())}
+	value := &operationv1.Operation{OperationId: row.id, TenantId: row.tenant, ProjectId: row.project, JobId: row.job, State: state, ResourceVersion: row.version, Done: row.done, Etag: row.etag, Result: result, Error: detail, CreatedAt: timestamppb.New(row.created.UTC()), UpdatedAt: timestamppb.New(row.updated.UTC())}
 	if row.targetPresent {
 		value.Target = &commonv1.ResourceRef{ResourceType: row.targetType, ResourceId: row.targetID, TenantId: row.targetTenant, ProjectId: row.targetProject, ResourceVersion: row.targetVersion, Name: row.targetName, Etag: row.targetETag}
 	}
 	return value, nil
 }
 
-func replayOperation(ctx context.Context, tx *sql.Tx, identity Identity, operationID string) (*jobv1.Operation, bool, error) {
+func replayOperation(ctx context.Context, tx *sql.Tx, identity Identity, operationID string) (*operationv1.Operation, bool, error) {
 	row, err := scanOperation(tx.QueryRowContext(ctx, `SELECT `+operationColumns+` FROM operations WHERE tenant_id=$1 AND project_id=$2 AND id=$3`, identity.TenantID, identity.ProjectID, operationID))
 	if err != nil {
 		return nil, false, err
@@ -124,7 +124,7 @@ func replayOperation(ctx context.Context, tx *sql.Tx, identity Identity, operati
 	return clone(operation), true, nil
 }
 
-func insertCompletedOperation(ctx context.Context, tx *sql.Tx, identity Identity, digest string, target *commonv1.ResourceRef, at time.Time) (*jobv1.Operation, error) {
+func insertCompletedOperation(ctx context.Context, tx *sql.Tx, identity Identity, digest string, target *commonv1.ResourceRef, at time.Time) (*operationv1.Operation, error) {
 	jobID, err := randomID("jobs/")
 	if err != nil {
 		return nil, err
@@ -143,15 +143,15 @@ func insertCompletedOperation(ctx context.Context, tx *sql.Tx, identity Identity
 	if _, err = tx.ExecContext(ctx, `INSERT INTO operation_revisions(operation_id,tenant_id,project_id,revision,job_id,target_present,target_resource_type,target_resource_id,target_tenant_id,target_project_id,target_resource_version,target_name,target_etag,status,done,etag,result_ref_id,error_detail_id,created_at,updated_at,recorded_at) VALUES($1,$2,$3,1,$4,true,$5,$6,$2,$3,$7,$8,$9,'SUCCEEDED',true,$10,NULL,NULL,$11,$11,$11)`, operationID, identity.TenantID, identity.ProjectID, jobID, target.GetResourceType(), target.GetResourceId(), target.GetResourceVersion(), target.GetName(), target.GetEtag(), operationETag, at.UTC()); err != nil {
 		return nil, err
 	}
-	return &jobv1.Operation{OperationId: operationID, TenantId: identity.TenantID, ProjectId: identity.ProjectID, JobId: jobID, State: jobv1.OperationState_OPERATION_STATE_SUCCEEDED, ResourceVersion: 1, Done: true, Etag: operationETag, Target: clone(target), CreatedAt: timestamppb.New(at.UTC()), UpdatedAt: timestamppb.New(at.UTC())}, nil
+	return &operationv1.Operation{OperationId: operationID, TenantId: identity.TenantID, ProjectId: identity.ProjectID, JobId: jobID, State: operationv1.OperationState_OPERATION_STATE_SUCCEEDED, ResourceVersion: 1, Done: true, Etag: operationETag, Target: clone(target), CreatedAt: timestamppb.New(at.UTC()), UpdatedAt: timestamppb.New(at.UTC())}, nil
 }
 
-func recordMutation(ctx context.Context, tx *sql.Tx, identity Identity, action, key, digest string, operation *jobv1.Operation, events []*commonv1.EventEnvelope, at time.Time) error {
+func recordMutation(ctx context.Context, tx *sql.Tx, identity Identity, action, key, digest string, operation *operationv1.Operation, events []*commonv1.EventEnvelope, at time.Time) error {
 	audit, err := foundationaudit.NewEvent(identity.TenantID, identity.Principal, action, operation.GetTarget().GetName(), "allowed", at.UTC(), nil)
 	if err != nil {
 		return err
 	}
-	encodedAudit, err := queue.MarshalEnvelope(audit)
+	encodedAudit, err := pubsubx.MarshalEnvelope(audit)
 	if err != nil {
 		return err
 	}
@@ -159,7 +159,7 @@ func recordMutation(ctx context.Context, tx *sql.Tx, identity Identity, action, 
 		return err
 	}
 	for _, event := range events {
-		if err = queue.InsertOutboxMessage(ctx, tx, event, at); err != nil {
+		if err = pubsubx.InsertOutboxMessage(ctx, tx, event, at); err != nil {
 			return err
 		}
 	}
@@ -176,7 +176,7 @@ func validateMap(values map[string]string, maximumValue int) error {
 	return nil
 }
 
-func (r SQLRepository) CreateDataset(ctx context.Context, identity Identity, command *datasetv1.CreateDatasetCommand, digest string, at time.Time) (*jobv1.Operation, bool, error) {
+func (r SQLRepository) CreateDataset(ctx context.Context, identity Identity, command *datasetv1.CreateDatasetCommand, digest string, at time.Time) (*operationv1.Operation, bool, error) {
 	if err := r.validateMutation(); err != nil {
 		return nil, false, err
 	}
@@ -281,7 +281,7 @@ func validDatasetTransition(from, to datasetv1.DatasetState) bool {
 	return (from == datasetv1.DatasetState_DATASET_STATE_DRAFT && to == datasetv1.DatasetState_DATASET_STATE_ACTIVE) || (from == datasetv1.DatasetState_DATASET_STATE_ACTIVE && to == datasetv1.DatasetState_DATASET_STATE_DEPRECATED) || ((from == datasetv1.DatasetState_DATASET_STATE_ACTIVE || from == datasetv1.DatasetState_DATASET_STATE_DEPRECATED) && to == datasetv1.DatasetState_DATASET_STATE_REVOKED)
 }
 
-func (r SQLRepository) UpdateDataset(ctx context.Context, identity Identity, command *datasetv1.UpdateDatasetCommand, digest string, at time.Time) (*jobv1.Operation, bool, error) {
+func (r SQLRepository) UpdateDataset(ctx context.Context, identity Identity, command *datasetv1.UpdateDatasetCommand, digest string, at time.Time) (*operationv1.Operation, bool, error) {
 	if err := r.validateMutation(); err != nil {
 		return nil, false, err
 	}
@@ -424,7 +424,7 @@ func cloneMap(values map[string]string) map[string]string {
 	return result
 }
 
-func (r SQLRepository) PublishDatasetRelease(ctx context.Context, identity Identity, command *datasetv1.PublishDatasetReleaseCommand, digest string, at time.Time) (*jobv1.Operation, bool, error) {
+func (r SQLRepository) PublishDatasetRelease(ctx context.Context, identity Identity, command *datasetv1.PublishDatasetReleaseCommand, digest string, at time.Time) (*operationv1.Operation, bool, error) {
 	if err := r.validateMutation(); err != nil {
 		return nil, false, err
 	}
@@ -583,7 +583,7 @@ func (r SQLRepository) PublishDatasetRelease(ctx context.Context, identity Ident
 	return clone(operation), false, nil
 }
 
-func (r SQLRepository) RevokeDatasetRelease(ctx context.Context, identity Identity, command *datasetv1.RevokeDatasetReleaseCommand, digest string, at time.Time) (*jobv1.Operation, bool, error) {
+func (r SQLRepository) RevokeDatasetRelease(ctx context.Context, identity Identity, command *datasetv1.RevokeDatasetReleaseCommand, digest string, at time.Time) (*operationv1.Operation, bool, error) {
 	if err := r.validateMutation(); err != nil {
 		return nil, false, err
 	}

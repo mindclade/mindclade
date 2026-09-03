@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"time"
 
+	platformdb "github.com/mindclade/mindclade/libs/go/persistence"
 	modelv1 "github.com/mindclade/mindclade/protocols/generated/go/model/v1"
-	platformdb "github.com/mindclade/mindclade/services/control_plane/internal/platform/database"
 )
 
 func (r SQLRepository) GetModel(ctx context.Context, identity Identity, name string) (*modelv1.Model, error) {

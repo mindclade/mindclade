@@ -8,7 +8,7 @@ from mindclade.artifact.v1 import evidence_reference_pb2 as _evidence_reference_
 from mindclade.common.v1 import command_context_pb2 as _command_context_pb2
 from mindclade.common.v1 import pagination_pb2 as _pagination_pb2
 from mindclade.common.v1 import resource_reference_pb2 as _resource_reference_pb2
-from mindclade.job.v1 import operation_pb2 as _operation_pb2
+from mindclade.operation.v1 import operation_pb2 as _operation_pb2
 from google.protobuf.internal import containers as _containers
 from google.protobuf.internal import enum_type_wrapper as _enum_type_wrapper
 from google.protobuf import descriptor as _descriptor

@@ -9,7 +9,8 @@ package internalagentv1
 import (
 	v11 "github.com/mindclade/mindclade/protocols/generated/go/agent/v1"
 	v1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
-	v12 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
+	v13 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
+	v12 "github.com/mindclade/mindclade/protocols/generated/go/operation/v1"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	fieldmaskpb "google.golang.org/protobuf/types/known/fieldmaskpb"
@@ -1155,7 +1156,7 @@ type CommitAgentStepRequest struct {
 	state                    protoimpl.MessageState `protogen:"open.v1"`
 	Context                  *v1.CommandContext     `protobuf:"bytes,1,opt,name=context,proto3" json:"context,omitempty"`
 	AgentStep                *v11.AgentStep         `protobuf:"bytes,2,opt,name=agent_step,json=agentStep,proto3" json:"agent_step,omitempty"`
-	Fence                    *v12.LeaseFence        `protobuf:"bytes,3,opt,name=fence,proto3" json:"fence,omitempty"`
+	Fence                    *v13.LeaseFence        `protobuf:"bytes,3,opt,name=fence,proto3" json:"fence,omitempty"`
 	RunEtag                  string                 `protobuf:"bytes,4,opt,name=run_etag,json=runEtag,proto3" json:"run_etag,omitempty"`
 	ExpectedNextStepSequence uint64                 `protobuf:"varint,5,opt,name=expected_next_step_sequence,json=expectedNextStepSequence,proto3" json:"expected_next_step_sequence,omitempty"`
 	unknownFields            protoimpl.UnknownFields
@@ -1206,7 +1207,7 @@ func (x *CommitAgentStepRequest) GetAgentStep() *v11.AgentStep {
 	return nil
 }
 
-func (x *CommitAgentStepRequest) GetFence() *v12.LeaseFence {
+func (x *CommitAgentStepRequest) GetFence() *v13.LeaseFence {
 	if x != nil {
 		return x.Fence
 	}
@@ -1286,7 +1287,7 @@ type CommitToolReceiptRequest struct {
 	Context       *v1.CommandContext     `protobuf:"bytes,1,opt,name=context,proto3" json:"context,omitempty"`
 	ToolReceipt   *v11.ToolReceipt       `protobuf:"bytes,2,opt,name=tool_receipt,json=toolReceipt,proto3" json:"tool_receipt,omitempty"`
 	RunEtag       string                 `protobuf:"bytes,3,opt,name=run_etag,json=runEtag,proto3" json:"run_etag,omitempty"`
-	Fence         *v12.LeaseFence        `protobuf:"bytes,4,opt,name=fence,proto3" json:"fence,omitempty"`
+	Fence         *v13.LeaseFence        `protobuf:"bytes,4,opt,name=fence,proto3" json:"fence,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1342,7 +1343,7 @@ func (x *CommitToolReceiptRequest) GetRunEtag() string {
 	return ""
 }
 
-func (x *CommitToolReceiptRequest) GetFence() *v12.LeaseFence {
+func (x *CommitToolReceiptRequest) GetFence() *v13.LeaseFence {
 	if x != nil {
 		return x.Fence
 	}
@@ -1406,22 +1407,22 @@ var File_proto_mindclade_internal_agent_v1_agent_service_proto protoreflect.File
 
 const file_proto_mindclade_internal_agent_v1_agent_service_proto_rawDesc = "" +
 	"\n" +
-	"5proto/mindclade/internal/agent/v1/agent_service.proto\x12\x1bmindclade.internal.agent.v1\x1a google/protobuf/field_mask.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a/proto/mindclade/agent/v1/agent_definition.proto\x1a(proto/mindclade/agent/v1/agent_run.proto\x1a)proto/mindclade/agent/v1/agent_step.proto\x1a+proto/mindclade/agent/v1/tool_receipt.proto\x1a/proto/mindclade/common/v1/command_context.proto\x1a*proto/mindclade/common/v1/pagination.proto\x1a&proto/mindclade/job/v1/operation.proto\x1a*proto/mindclade/job/v1/lease_fencing.proto\"\xf5\x01\n" +
+	"5proto/mindclade/internal/agent/v1/agent_service.proto\x12\x1bmindclade.internal.agent.v1\x1a google/protobuf/field_mask.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a/proto/mindclade/agent/v1/agent_definition.proto\x1a(proto/mindclade/agent/v1/agent_run.proto\x1a)proto/mindclade/agent/v1/agent_step.proto\x1a+proto/mindclade/agent/v1/tool_receipt.proto\x1a/proto/mindclade/common/v1/command_context.proto\x1a*proto/mindclade/common/v1/pagination.proto\x1a,proto/mindclade/operation/v1/operation.proto\x1a*proto/mindclade/job/v1/lease_fencing.proto\"\xf5\x01\n" +
 	"\x1cCreateAgentDefinitionRequest\x12=\n" +
 	"\acontext\x18\x01 \x01(\v2#.mindclade.common.v1.CommandContextR\acontext\x12\x16\n" +
 	"\x06parent\x18\x02 \x01(\tR\x06parent\x12.\n" +
 	"\x13agent_definition_id\x18\x03 \x01(\tR\x11agentDefinitionId\x12N\n" +
-	"\x10agent_definition\x18\x04 \x01(\v2#.mindclade.agent.v1.AgentDefinitionR\x0fagentDefinition\"Z\n" +
-	"\x1dCreateAgentDefinitionResponse\x129\n" +
-	"\toperation\x18\x01 \x01(\v2\x1b.mindclade.job.v1.OperationR\toperation\"\xfe\x01\n" +
+	"\x10agent_definition\x18\x04 \x01(\v2#.mindclade.agent.v1.AgentDefinitionR\x0fagentDefinition\"`\n" +
+	"\x1dCreateAgentDefinitionResponse\x12?\n" +
+	"\toperation\x18\x01 \x01(\v2!.mindclade.operation.v1.OperationR\toperation\"\xfe\x01\n" +
 	"\x1cUpdateAgentDefinitionRequest\x12=\n" +
 	"\acontext\x18\x01 \x01(\v2#.mindclade.common.v1.CommandContextR\acontext\x12N\n" +
 	"\x10agent_definition\x18\x02 \x01(\v2#.mindclade.agent.v1.AgentDefinitionR\x0fagentDefinition\x12;\n" +
 	"\vupdate_mask\x18\x03 \x01(\v2\x1a.google.protobuf.FieldMaskR\n" +
 	"updateMask\x12\x12\n" +
-	"\x04etag\x18\x04 \x01(\tR\x04etag\"Z\n" +
-	"\x1dUpdateAgentDefinitionResponse\x129\n" +
-	"\toperation\x18\x01 \x01(\v2\x1b.mindclade.job.v1.OperationR\toperation\"S\n" +
+	"\x04etag\x18\x04 \x01(\tR\x04etag\"`\n" +
+	"\x1dUpdateAgentDefinitionResponse\x12?\n" +
+	"\toperation\x18\x01 \x01(\v2!.mindclade.operation.v1.OperationR\toperation\"S\n" +
 	"\x19GetAgentDefinitionRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\"\n" +
 	"\rif_none_match\x18\x02 \x01(\tR\vifNoneMatch\"l\n" +
@@ -1441,9 +1442,9 @@ const file_proto_mindclade_internal_agent_v1_agent_service_proto_rawDesc = "" +
 	"\x06parent\x18\x02 \x01(\tR\x06parent\x12 \n" +
 	"\fagent_run_id\x18\x03 \x01(\tR\n" +
 	"agentRunId\x129\n" +
-	"\tagent_run\x18\x04 \x01(\v2\x1c.mindclade.agent.v1.AgentRunR\bagentRun\"R\n" +
-	"\x15StartAgentRunResponse\x129\n" +
-	"\toperation\x18\x01 \x01(\v2\x1b.mindclade.job.v1.OperationR\toperation\"L\n" +
+	"\tagent_run\x18\x04 \x01(\v2\x1c.mindclade.agent.v1.AgentRunR\bagentRun\"X\n" +
+	"\x15StartAgentRunResponse\x12?\n" +
+	"\toperation\x18\x01 \x01(\v2!.mindclade.operation.v1.OperationR\toperation\"L\n" +
 	"\x12GetAgentRunRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\"\n" +
 	"\rif_none_match\x18\x02 \x01(\tR\vifNoneMatch\"P\n" +
@@ -1463,9 +1464,9 @@ const file_proto_mindclade_internal_agent_v1_agent_service_proto_rawDesc = "" +
 	"\acontext\x18\x01 \x01(\v2#.mindclade.common.v1.CommandContextR\acontext\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x12\n" +
 	"\x04etag\x18\x03 \x01(\tR\x04etag\x12\x16\n" +
-	"\x06reason\x18\x04 \x01(\tR\x06reason\"S\n" +
-	"\x16CancelAgentRunResponse\x129\n" +
-	"\toperation\x18\x01 \x01(\v2\x1b.mindclade.job.v1.OperationR\toperation\")\n" +
+	"\x06reason\x18\x04 \x01(\tR\x06reason\"Y\n" +
+	"\x16CancelAgentRunResponse\x12?\n" +
+	"\toperation\x18\x01 \x01(\v2!.mindclade.operation.v1.OperationR\toperation\")\n" +
 	"\x13GetAgentStepRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\"T\n" +
 	"\x14GetAgentStepResponse\x12<\n" +
@@ -1553,24 +1554,24 @@ var file_proto_mindclade_internal_agent_v1_agent_service_proto_goTypes = []any{
 	(*CommitToolReceiptResponse)(nil),     // 23: mindclade.internal.agent.v1.CommitToolReceiptResponse
 	(*v1.CommandContext)(nil),             // 24: mindclade.common.v1.CommandContext
 	(*v11.AgentDefinition)(nil),           // 25: mindclade.agent.v1.AgentDefinition
-	(*v12.Operation)(nil),                 // 26: mindclade.job.v1.Operation
+	(*v12.Operation)(nil),                 // 26: mindclade.operation.v1.Operation
 	(*fieldmaskpb.FieldMask)(nil),         // 27: google.protobuf.FieldMask
 	(*v1.PageRequest)(nil),                // 28: mindclade.common.v1.PageRequest
 	(*v1.PageResponse)(nil),               // 29: mindclade.common.v1.PageResponse
 	(*timestamppb.Timestamp)(nil),         // 30: google.protobuf.Timestamp
 	(*v11.AgentRun)(nil),                  // 31: mindclade.agent.v1.AgentRun
 	(*v11.AgentStep)(nil),                 // 32: mindclade.agent.v1.AgentStep
-	(*v12.LeaseFence)(nil),                // 33: mindclade.job.v1.LeaseFence
+	(*v13.LeaseFence)(nil),                // 33: mindclade.job.v1.LeaseFence
 	(*v11.ToolReceipt)(nil),               // 34: mindclade.agent.v1.ToolReceipt
 }
 var file_proto_mindclade_internal_agent_v1_agent_service_proto_depIdxs = []int32{
 	24, // 0: mindclade.internal.agent.v1.CreateAgentDefinitionRequest.context:type_name -> mindclade.common.v1.CommandContext
 	25, // 1: mindclade.internal.agent.v1.CreateAgentDefinitionRequest.agent_definition:type_name -> mindclade.agent.v1.AgentDefinition
-	26, // 2: mindclade.internal.agent.v1.CreateAgentDefinitionResponse.operation:type_name -> mindclade.job.v1.Operation
+	26, // 2: mindclade.internal.agent.v1.CreateAgentDefinitionResponse.operation:type_name -> mindclade.operation.v1.Operation
 	24, // 3: mindclade.internal.agent.v1.UpdateAgentDefinitionRequest.context:type_name -> mindclade.common.v1.CommandContext
 	25, // 4: mindclade.internal.agent.v1.UpdateAgentDefinitionRequest.agent_definition:type_name -> mindclade.agent.v1.AgentDefinition
 	27, // 5: mindclade.internal.agent.v1.UpdateAgentDefinitionRequest.update_mask:type_name -> google.protobuf.FieldMask
-	26, // 6: mindclade.internal.agent.v1.UpdateAgentDefinitionResponse.operation:type_name -> mindclade.job.v1.Operation
+	26, // 6: mindclade.internal.agent.v1.UpdateAgentDefinitionResponse.operation:type_name -> mindclade.operation.v1.Operation
 	25, // 7: mindclade.internal.agent.v1.GetAgentDefinitionResponse.agent_definition:type_name -> mindclade.agent.v1.AgentDefinition
 	28, // 8: mindclade.internal.agent.v1.ListAgentDefinitionsRequest.page:type_name -> mindclade.common.v1.PageRequest
 	25, // 9: mindclade.internal.agent.v1.ListAgentDefinitionsResponse.agent_definitions:type_name -> mindclade.agent.v1.AgentDefinition
@@ -1578,14 +1579,14 @@ var file_proto_mindclade_internal_agent_v1_agent_service_proto_depIdxs = []int32
 	30, // 11: mindclade.internal.agent.v1.ListAgentDefinitionsResponse.read_time:type_name -> google.protobuf.Timestamp
 	24, // 12: mindclade.internal.agent.v1.StartAgentRunRequest.context:type_name -> mindclade.common.v1.CommandContext
 	31, // 13: mindclade.internal.agent.v1.StartAgentRunRequest.agent_run:type_name -> mindclade.agent.v1.AgentRun
-	26, // 14: mindclade.internal.agent.v1.StartAgentRunResponse.operation:type_name -> mindclade.job.v1.Operation
+	26, // 14: mindclade.internal.agent.v1.StartAgentRunResponse.operation:type_name -> mindclade.operation.v1.Operation
 	31, // 15: mindclade.internal.agent.v1.GetAgentRunResponse.agent_run:type_name -> mindclade.agent.v1.AgentRun
 	28, // 16: mindclade.internal.agent.v1.ListAgentRunsRequest.page:type_name -> mindclade.common.v1.PageRequest
 	31, // 17: mindclade.internal.agent.v1.ListAgentRunsResponse.agent_runs:type_name -> mindclade.agent.v1.AgentRun
 	29, // 18: mindclade.internal.agent.v1.ListAgentRunsResponse.page:type_name -> mindclade.common.v1.PageResponse
 	30, // 19: mindclade.internal.agent.v1.ListAgentRunsResponse.read_time:type_name -> google.protobuf.Timestamp
 	24, // 20: mindclade.internal.agent.v1.CancelAgentRunRequest.context:type_name -> mindclade.common.v1.CommandContext
-	26, // 21: mindclade.internal.agent.v1.CancelAgentRunResponse.operation:type_name -> mindclade.job.v1.Operation
+	26, // 21: mindclade.internal.agent.v1.CancelAgentRunResponse.operation:type_name -> mindclade.operation.v1.Operation
 	32, // 22: mindclade.internal.agent.v1.GetAgentStepResponse.agent_step:type_name -> mindclade.agent.v1.AgentStep
 	28, // 23: mindclade.internal.agent.v1.ListAgentStepsRequest.page:type_name -> mindclade.common.v1.PageRequest
 	32, // 24: mindclade.internal.agent.v1.ListAgentStepsResponse.agent_steps:type_name -> mindclade.agent.v1.AgentStep

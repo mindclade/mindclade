@@ -8,10 +8,10 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	"github.com/mindclade/mindclade/libs/go/pubsubx"
 	agentv1 "github.com/mindclade/mindclade/protocols/generated/go/agent/v1"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
-	"github.com/mindclade/mindclade/services/control_plane/internal/platform/queue"
 )
 
 func TestAgentStepDispatchedIsPopulatedFencedRegisteredFact(t *testing.T) {
@@ -43,7 +43,7 @@ func TestAgentStepDispatchedIsPopulatedFencedRegisteredFact(t *testing.T) {
 	if !proto.Equal(first, second) || first.GetEventType() != "mindclade.events.agent.v1.AgentStepDispatched" || first.GetAggregateSequence() != 1 {
 		t.Fatalf("dispatch envelope is not deterministic and revision ordered: %v", first)
 	}
-	decoded, err := queue.UnmarshalRegisteredPayload(first)
+	decoded, err := pubsubx.UnmarshalRegisteredPayload(first)
 	if err != nil {
 		t.Fatal(err)
 	}
