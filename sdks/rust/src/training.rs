@@ -1,17 +1,24 @@
 use std::{
     sync::Arc,
-    time::{Duration, Instant, SystemTime, UNIX_EPOCH},
+    time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
+use crate::{
+    CallOptions, CancellationToken, ClientCore, Error, Page, Pages, SubmitOptions, WatchNext,
+    WatchOptions, WatchStream,
+    operations::{NextUpdate, OpenFuture, ResumableWatch, WatchAction, Watcher},
+    request::{PreparedCall, initial_page_token, page_request},
+    retry::registered_method_policy,
+    workflows::{command_context, normalize_parent, project_name, valid_sha256, validate_page},
+};
 use mindclade_protocols::{
     common::v1::ResourceRef,
     internal::training::v1::{
         CancelTrainingRunRequest, CommitCheckpointRequest, CommitTrainingProgressRequest,
         CompleteTrainingRunRequest, CreateTrainingRunRequest, CreateTrainingRunResponse,
         GetCheckpointRequest, GetTrainingRunRequest, ListCheckpointsRequest,
-        ListCheckpointsResponse, ListTrainingRunsRequest, ListTrainingRunsResponse,
-        PrepareCheckpointRequest, ResumeTrainingAttemptRequest, StartTrainingAttemptRequest,
-        WatchTrainingRunRequest, WatchTrainingRunResponse,
+        ListTrainingRunsRequest, PrepareCheckpointRequest, ResumeTrainingAttemptRequest,
+        StartTrainingAttemptRequest, WatchTrainingRunRequest, WatchTrainingRunResponse,
     },
     job::v1::LeaseFence,
     operation::v1::Operation,
@@ -21,14 +28,6 @@ use mindclade_protocols::{
         PrepareCheckpointCommand, ResumeTrainingAttemptCommand, StartTrainingAttemptCommand,
         TrainingProgress, TrainingRun, TrainingRunState, TrainingTerminalClassification,
     },
-};
-use tonic::codegen::tokio_stream::StreamExt;
-
-use crate::{
-    CallOptions, CancellationToken, ClientCore, Error, SubmitOptions, TrainingStream,
-    request::PreparedCall,
-    retry::{CallSafety, registered_method_safety},
-    workflows::{command_context, normalize_parent, project_name, valid_sha256, validate_page},
 };
 
 const CREATE: &str = "/mindclade.internal.training.v1.TrainingService/CreateTrainingRun";
@@ -92,6 +91,117 @@ impl Default for TrainingWatchOptions {
     }
 }
 
+impl From<TrainingWatchOptions> for WatchOptions {
+    fn from(value: TrainingWatchOptions) -> Self {
+        Self::new()
+            .with_call_options(value.call)
+            .with_timeout(value.timeout)
+            .unwrap_or_else(|_| Self::new())
+    }
+}
+
+/// A generated training run that reached a non-success terminal state.
+///
+/// Debug and display intentionally omit the server's failure payload; the
+/// generated run stays available for programmatic inspection.
+pub struct TrainingRunFailure {
+    run: TrainingRun,
+}
+
+impl TrainingRunFailure {
+    #[must_use]
+    pub fn run(&self) -> &TrainingRun {
+        &self.run
+    }
+
+    #[must_use]
+    pub fn into_run(self) -> TrainingRun {
+        self.run
+    }
+
+    /// Projects this durable failure onto the sanitized SDK error hierarchy.
+    ///
+    /// Only bounded, non-secret fields of the structured detail are copied
+    /// out; the server's own message text is never used.
+    #[must_use]
+    pub fn as_error(&self) -> Error {
+        Error::operation_failed("", self.run.error.as_ref())
+    }
+}
+
+impl std::fmt::Debug for TrainingRunFailure {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter
+            .debug_struct("TrainingRunFailure")
+            .field("name", &self.run.name)
+            .field("state", &self.run.state)
+            .field("error", &self.run.error.as_ref().map(|_| "<redacted>"))
+            .finish()
+    }
+}
+
+impl std::fmt::Display for TrainingRunFailure {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            formatter,
+            "mindclade training run {} terminated unsuccessfully (state={})",
+            self.run.name, self.run.state
+        )
+    }
+}
+
+impl std::error::Error for TrainingRunFailure {}
+
+/// Terminal wait error preserving either normalized SDK state or a generated
+/// failed training run.
+#[derive(Debug)]
+pub enum TrainingWaitError {
+    Sdk(Error),
+    Training(Box<TrainingRunFailure>),
+}
+
+impl TrainingWaitError {
+    #[must_use]
+    pub fn training_failure(&self) -> Option<&TrainingRunFailure> {
+        match self {
+            Self::Sdk(_) => None,
+            Self::Training(failure) => Some(failure),
+        }
+    }
+
+    #[must_use]
+    pub fn sdk_error(&self) -> Option<&Error> {
+        match self {
+            Self::Sdk(error) => Some(error),
+            Self::Training(_) => None,
+        }
+    }
+}
+
+impl From<Error> for TrainingWaitError {
+    fn from(value: Error) -> Self {
+        Self::Sdk(value)
+    }
+}
+
+impl std::fmt::Display for TrainingWaitError {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Sdk(value) => value.fmt(formatter),
+            Self::Training(value) => value.fmt(formatter),
+        }
+    }
+}
+
+impl std::error::Error for TrainingWaitError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Self::Sdk(error) => Some(error),
+            Self::Training(error) => Some(error),
+        }
+    }
+}
+
 /// Ergonomic private training lifecycle over authoritative generated clients.
 #[derive(Clone)]
 pub struct Training {
@@ -124,7 +234,7 @@ impl Training {
                     command: Some(command),
                 },
                 &prepared,
-                registered_method_safety(CREATE),
+                registered_method_policy(CREATE),
                 Some(&key),
                 |transport, request| {
                     Box::pin(async move { transport.create_training_run(request).await })
@@ -155,7 +265,7 @@ impl Training {
                     if_none_match: if_none_match.into(),
                 },
                 &prepared,
-                registered_method_safety(GET),
+                registered_method_policy(GET),
                 None,
                 |transport, request| {
                     Box::pin(async move { transport.get_training_run(request).await })
@@ -171,27 +281,46 @@ impl Training {
     /// # Errors
     ///
     /// Returns an error for invalid pagination, transport failure, or an invalid project scope.
-    pub async fn list_runs(
+    pub fn list_runs(
         &self,
         mut request: ListTrainingRunsRequest,
         options: CallOptions,
-    ) -> Result<ListTrainingRunsResponse, Error> {
+    ) -> Result<Pages<TrainingRun>, Error> {
         normalize_parent(&self.core, &mut request.parent)?;
         validate_page(request.page.as_ref())?;
-        let prepared = options.prepare(&self.core.config);
-        Ok(self
-            .core
-            .unary(
-                request,
-                &prepared,
-                registered_method_safety(LIST),
-                None,
-                |transport, request| {
-                    Box::pin(async move { transport.list_training_runs(request).await })
-                },
-            )
-            .await?
-            .into_inner())
+        let core = Arc::clone(&self.core);
+        let token = initial_page_token(request.page.as_ref());
+        Ok(Pages::new(
+            move |page_token| {
+                let core = Arc::clone(&core);
+                let options = options.clone();
+                let mut request = request.clone();
+                async move {
+                    request.page = Some(page_request(request.page.as_ref(), page_token));
+                    let prepared = options.prepare(&core.config);
+                    let response = core
+                        .unary(
+                            request,
+                            &prepared,
+                            registered_method_policy(LIST),
+                            None,
+                            |transport, request| {
+                                Box::pin(async move { transport.list_training_runs(request).await })
+                            },
+                        )
+                        .await?;
+                    let request_id = response.request_id().map(str::to_owned);
+                    let response = response.into_inner();
+                    Ok(Page::new(
+                        response.training_runs,
+                        response.page,
+                        response.read_time,
+                        request_id,
+                    ))
+                }
+            },
+            token,
+        ))
     }
 
     /// Starts a fresh worker attempt under the current scheduler fence.
@@ -218,7 +347,7 @@ impl Training {
                     command: Some(command),
                 },
                 &prepared,
-                registered_method_safety(START),
+                registered_method_policy(START),
                 Some(&key),
                 |transport, request| {
                     Box::pin(async move { transport.start_training_attempt(request).await })
@@ -254,7 +383,7 @@ impl Training {
                     command: Some(command),
                 },
                 &prepared,
-                registered_method_safety(RESUME),
+                registered_method_policy(RESUME),
                 Some(&key),
                 |transport, request| {
                     Box::pin(async move { transport.resume_training_attempt(request).await })
@@ -297,7 +426,7 @@ impl Training {
                     command: Some(command),
                 },
                 &prepared,
-                registered_method_safety(COMMIT_PROGRESS),
+                registered_method_policy(COMMIT_PROGRESS),
                 Some(&key),
                 |transport, request| {
                     Box::pin(async move { transport.commit_training_progress(request).await })
@@ -351,7 +480,7 @@ impl Training {
                     command: Some(command),
                 },
                 &prepared,
-                registered_method_safety(PREPARE_CHECKPOINT),
+                registered_method_policy(PREPARE_CHECKPOINT),
                 Some(&key),
                 |transport, request| {
                     Box::pin(async move { transport.prepare_checkpoint(request).await })
@@ -397,7 +526,7 @@ impl Training {
                     command: Some(command),
                 },
                 &prepared,
-                registered_method_safety(COMMIT_CHECKPOINT),
+                registered_method_policy(COMMIT_CHECKPOINT),
                 Some(&key),
                 |transport, request| {
                     Box::pin(async move { transport.commit_checkpoint(request).await })
@@ -443,7 +572,7 @@ impl Training {
                     command: Some(command),
                 },
                 &prepared,
-                registered_method_safety(COMPLETE),
+                registered_method_policy(COMPLETE),
                 Some(&key),
                 |transport, request| {
                     Box::pin(async move { transport.complete_training_run(request).await })
@@ -484,7 +613,7 @@ impl Training {
                     command: Some(command),
                 },
                 &prepared,
-                registered_method_safety(CANCEL),
+                registered_method_policy(CANCEL),
                 Some(&key),
                 |transport, request| {
                     Box::pin(async move { transport.cancel_training_run(request).await })
@@ -512,7 +641,7 @@ impl Training {
             .unary(
                 GetCheckpointRequest { name },
                 &prepared,
-                registered_method_safety(GET_CHECKPOINT),
+                registered_method_policy(GET_CHECKPOINT),
                 None,
                 |transport, request| {
                     Box::pin(async move { transport.get_checkpoint(request).await })
@@ -530,27 +659,46 @@ impl Training {
     /// # Errors
     ///
     /// Returns an error for invalid pagination or parent scope, or for transport failure.
-    pub async fn list_checkpoints(
+    pub fn list_checkpoints(
         &self,
         mut request: ListCheckpointsRequest,
         options: CallOptions,
-    ) -> Result<ListCheckpointsResponse, Error> {
+    ) -> Result<Pages<Checkpoint>, Error> {
         request.parent = training_run_name(&self.core, &request.parent)?;
         validate_page(request.page.as_ref())?;
-        let prepared = options.prepare(&self.core.config);
-        Ok(self
-            .core
-            .unary(
-                request,
-                &prepared,
-                registered_method_safety(LIST_CHECKPOINTS),
-                None,
-                |transport, request| {
-                    Box::pin(async move { transport.list_checkpoints(request).await })
-                },
-            )
-            .await?
-            .into_inner())
+        let core = Arc::clone(&self.core);
+        let token = initial_page_token(request.page.as_ref());
+        Ok(Pages::new(
+            move |page_token| {
+                let core = Arc::clone(&core);
+                let options = options.clone();
+                let mut request = request.clone();
+                async move {
+                    request.page = Some(page_request(request.page.as_ref(), page_token));
+                    let prepared = options.prepare(&core.config);
+                    let response = core
+                        .unary(
+                            request,
+                            &prepared,
+                            registered_method_policy(LIST_CHECKPOINTS),
+                            None,
+                            |transport, request| {
+                                Box::pin(async move { transport.list_checkpoints(request).await })
+                            },
+                        )
+                        .await?;
+                    let request_id = response.request_id().map(str::to_owned);
+                    let response = response.into_inner();
+                    Ok(Page::new(
+                        response.checkpoints,
+                        response.page,
+                        response.read_time,
+                        request_id,
+                    ))
+                }
+            },
+            token,
+        ))
     }
 
     /// Opens a cancellation-aware, reconnecting generated update stream.
@@ -568,28 +716,80 @@ impl Training {
         let name = training_run_name(&self.core, &name.into())?;
         let call = options.call.bounded_by(options.timeout);
         Ok(TrainingWatch {
-            core: Arc::clone(&self.core),
-            name,
-            prepared: call.prepare(&self.core.config),
-            stream: None,
-            cancellation,
-            last_sequence: after_sequence,
-            consecutive_failures: 0,
-            terminal: false,
+            inner: Watcher::new(
+                Arc::clone(&self.core),
+                call.prepare(&self.core.config),
+                cancellation,
+                TrainingWatchState {
+                    name,
+                    last_sequence: after_sequence,
+                },
+            ),
         })
     }
+
+    /// Resumes a watch from a previously acknowledged revision sequence.
+    ///
+    /// This is the uniform long-running-operation resume verb: it is exactly
+    /// [`Training::watch`] with the caller's durable cursor made explicit.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the run name is outside the configured project.
+    pub fn resume_watch(
+        &self,
+        name: impl Into<String>,
+        after_sequence: u64,
+        options: &TrainingWatchOptions,
+        cancellation: CancellationToken,
+    ) -> Result<TrainingWatch, Error> {
+        self.watch(name, after_sequence, options, cancellation)
+    }
+
+    /// Watches until the generated run reaches a terminal state.
+    ///
+    /// This is the uniform long-running-operation wait verb. A run that ends
+    /// in `FAILED` or `CANCELLED` is reported as a typed generated failure,
+    /// never as an opaque SDK error.
+    ///
+    /// # Errors
+    ///
+    /// Returns a typed generated failure, or a normalized SDK error for
+    /// cancellation, deadline exhaustion, a transport failure, or a stream
+    /// that ended before terminal truth.
+    pub async fn wait(
+        &self,
+        name: impl Into<String>,
+        after_sequence: u64,
+        options: &TrainingWatchOptions,
+        cancellation: CancellationToken,
+    ) -> Result<TrainingRun, TrainingWaitError> {
+        let mut watch = self.watch(name, after_sequence, options, cancellation)?;
+        while let Some(update) = watch.next().await? {
+            let run = update
+                .training_run
+                .ok_or_else(|| Error::protocol("training watch response omitted its run"))?;
+            if terminal(run.state) {
+                return terminal_training_success(run);
+            }
+        }
+        Err(Error::protocol("training watch ended before a terminal revision").into())
+    }
+}
+
+/// Requires a terminal run to have actually succeeded.
+fn terminal_training_success(run: TrainingRun) -> Result<TrainingRun, TrainingWaitError> {
+    if run.state == TrainingRunState::Completed as i32 && run.error.is_none() {
+        return Ok(run);
+    }
+    Err(TrainingWaitError::Training(Box::new(TrainingRunFailure {
+        run,
+    })))
 }
 
 /// Strictly ordered generated training updates with transparent reconnect.
 pub struct TrainingWatch {
-    core: Arc<ClientCore>,
-    name: String,
-    prepared: PreparedCall,
-    stream: Option<TrainingStream>,
-    cancellation: CancellationToken,
-    last_sequence: u64,
-    consecutive_failures: u8,
-    terminal: bool,
+    inner: Watcher<TrainingWatchState>,
 }
 
 impl TrainingWatch {
@@ -599,121 +799,111 @@ impl TrainingWatch {
     ///
     /// Returns an error for cancellation, timeout, non-contiguous updates, or transport failure.
     pub async fn next(&mut self) -> Result<Option<WatchTrainingRunResponse>, Error> {
-        loop {
-            if self.terminal {
-                return Ok(None);
-            }
-            if self.cancellation.is_cancelled() {
-                return Err(Error::cancelled());
-            }
-            if self.stream.is_none() {
-                match self.connect().await {
-                    Ok(stream) => self.stream = Some(stream),
-                    Err(error) => {
-                        self.retry_or_fail(error).await?;
-                        continue;
-                    }
-                }
-            }
-            let stream = self
-                .stream
-                .as_mut()
-                .ok_or_else(|| Error::protocol("training watch stream was not established"))?;
-            let update = tokio::select! {
-                biased;
-                () = self.cancellation.cancelled() => return Err(Error::cancelled()),
-                update = stream.next() => update,
-            };
-            match update {
-                None => {
-                    self.stream = None;
-                    self.retry_or_fail(Error::from_status(&tonic::Status::unavailable(
-                        "training watch ended before terminal state",
-                    )))
-                    .await?;
-                }
-                Some(Err(status)) => {
-                    self.stream = None;
-                    self.retry_or_fail(Error::from_status(&status)).await?;
-                }
-                Some(Ok(response)) => {
-                    let run = response.training_run.as_ref().ok_or_else(|| {
-                        Error::protocol("training watch response omitted its run")
-                    })?;
-                    if run.name != self.name {
-                        return Err(Error::protocol("training watch returned a different run"));
-                    }
-                    if response.sequence <= self.last_sequence {
-                        continue;
-                    }
-                    if response.sequence != self.last_sequence.saturating_add(1) {
-                        return Err(Error::protocol(
-                            "training watch returned a non-contiguous sequence",
-                        ));
-                    }
-                    self.last_sequence = response.sequence;
-                    self.consecutive_failures = 0;
-                    self.terminal = terminal(run.state);
-                    return Ok(Some(response));
-                }
-            }
-        }
+        self.inner.next().await
     }
 
+    /// The last acknowledged revision sequence. A reconnect resumes here.
     #[must_use]
     pub fn last_sequence(&self) -> u64 {
+        self.inner.cursor()
+    }
+
+    /// Consumes the watcher and yields its updates as a `Stream`.
+    #[must_use]
+    pub fn into_stream(self) -> WatchStream<Self> {
+        WatchStream::new(self)
+    }
+}
+
+impl WatchNext for TrainingWatch {
+    type Update = WatchTrainingRunResponse;
+
+    fn next_update(&mut self) -> NextUpdate<'_, Self::Update> {
+        Box::pin(self.next())
+    }
+}
+
+/// Training-specific watch rules: stable run identity and strictly contiguous
+/// revision sequences.
+struct TrainingWatchState {
+    name: String,
+    last_sequence: u64,
+}
+
+impl ResumableWatch for TrainingWatchState {
+    type Update = WatchTrainingRunResponse;
+    type Cursor = u64;
+
+    fn route(&self) -> &'static str {
+        WATCH
+    }
+
+    fn label(&self) -> &'static str {
+        "training"
+    }
+
+    fn stream_ended_message(&self) -> &'static str {
+        "training watch ended before terminal state"
+    }
+
+    fn cursor(&self) -> u64 {
         self.last_sequence
     }
 
-    async fn connect(&self) -> Result<TrainingStream, Error> {
-        if !matches!(registered_method_safety(WATCH), CallSafety::Safe) {
-            return Err(Error::protocol("training watch safety policy is missing"));
-        }
-        let request = WatchTrainingRunRequest {
-            name: self.name.clone(),
-            after_sequence: self.last_sequence,
-            deadline: Some(self.prepared.deadline_timestamp()?),
-        };
-        let request = tokio::select! {
-            biased;
-            () = self.cancellation.cancelled() => return Err(Error::cancelled()),
-            result = self.core.request(request, &self.prepared, None) => result?,
-        };
-        let remaining = self
-            .prepared
-            .deadline
-            .checked_duration_since(Instant::now())
-            .ok_or_else(Error::deadline_exceeded)?;
-        let response = tokio::select! {
-            biased;
-            () = self.cancellation.cancelled() => return Err(Error::cancelled()),
-            result = tokio::time::timeout(remaining, self.core.transport.watch_training_run(request)) =>
-                result.map_err(|_| Error::deadline_exceeded())?.map_err(|status| Error::from_status(&status))?,
-        };
-        Ok(response.into_inner())
+    fn open(
+        &self,
+        core: &Arc<ClientCore>,
+        prepared: &PreparedCall,
+        attempt: u8,
+    ) -> OpenFuture<Self::Update> {
+        let core = Arc::clone(core);
+        let prepared = prepared.clone();
+        let name = self.name.clone();
+        let after_sequence = self.last_sequence;
+        Box::pin(async move {
+            let request = WatchTrainingRunRequest {
+                name,
+                after_sequence,
+                deadline: Some(prepared.deadline_timestamp()?),
+            };
+            let request = core
+                .request(request, &prepared, None, attempt, WATCH)
+                .await?;
+            let remaining = prepared.remaining()?;
+            let response =
+                tokio::time::timeout(remaining, core.transport.watch_training_run(request))
+                    .await
+                    .map_err(|_| Error::deadline_exceeded())?
+                    .map_err(|status| Error::from_status(&status))?;
+            Ok(response.into_inner())
+        })
     }
 
-    async fn retry_or_fail(&mut self, error: Error) -> Result<(), Error> {
-        self.consecutive_failures = self.consecutive_failures.saturating_add(1);
-        if !error.is_retryable() || self.consecutive_failures >= self.core.config.retry.max_attempts
-        {
-            return Err(error);
+    fn accept(
+        &mut self,
+        response: WatchTrainingRunResponse,
+    ) -> Result<WatchAction<WatchTrainingRunResponse>, Error> {
+        let run = response
+            .training_run
+            .as_ref()
+            .ok_or_else(|| Error::protocol("training watch response omitted its run"))?;
+        if run.name != self.name {
+            return Err(Error::protocol("training watch returned a different run"));
         }
-        let remaining = self
-            .prepared
-            .deadline
-            .checked_duration_since(Instant::now())
-            .ok_or_else(Error::deadline_exceeded)?;
-        let delay = error
-            .retry_after()
-            .unwrap_or_else(|| self.core.backoff(self.consecutive_failures));
-        if delay >= remaining {
-            return Err(Error::deadline_exceeded());
+        if response.sequence <= self.last_sequence {
+            return Ok(WatchAction::Skip);
         }
-        tokio::select! {
-            biased;
-            () = self.cancellation.cancelled() => Err(Error::cancelled()),
-            () = self.core.sleeper.sleep(delay) => Ok(()),
+        if response.sequence != self.last_sequence.saturating_add(1) {
+            return Err(Error::protocol(
+                "training watch returned a non-contiguous sequence",
+            ));
+        }
+        let terminal = terminal(run.state);
+        self.last_sequence = response.sequence;
+        if terminal {
+            Ok(WatchAction::Terminal(response))
+        } else {
+            Ok(WatchAction::Emit(response))
         }
     }
 }

@@ -388,11 +388,12 @@ async fn agent_facade_covers_every_rpc_and_fenced_metadata() {
                 },
                 CallOptions::new(),
             )
+            .unwrap()
+            .next_page()
             .await
             .unwrap()
-            .page
             .unwrap()
-            .next_page_token,
+            .next_page_token(),
         "next-definition"
     );
 
@@ -430,11 +431,12 @@ async fn agent_facade_covers_every_rpc_and_fenced_metadata() {
     assert_eq!(
         agents
             .list_runs(ListAgentRunsRequest::default(), CallOptions::new())
+            .unwrap()
+            .next_page()
             .await
             .unwrap()
-            .page
             .unwrap()
-            .next_page_token,
+            .next_page_token(),
         "next-run"
     );
     agents
@@ -466,11 +468,12 @@ async fn agent_facade_covers_every_rpc_and_fenced_metadata() {
                 },
                 CallOptions::new(),
             )
+            .unwrap()
+            .next_page()
             .await
             .unwrap()
-            .page
             .unwrap()
-            .next_page_token,
+            .next_page_token(),
         "next-step"
     );
 
@@ -576,7 +579,6 @@ async fn fenced_agent_commit_requires_token_and_pages_are_bounded() {
                 },
                 CallOptions::new(),
             )
-            .await
             .is_err()
     );
     assert!(CallOptions::new().with_lease_token("bad token").is_err());

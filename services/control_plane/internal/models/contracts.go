@@ -48,7 +48,10 @@ type (
 	realClock struct{}
 )
 
-func (realClock) Now() time.Time { return time.Now().UTC() }
+// PostgreSQL timestamptz resolves to microseconds. Truncating here keeps an
+// accepted command and its idempotent replay byte-identical: without it a
+// response built in memory keeps nanosecond digits the database drops.
+func (realClock) Now() time.Time { return time.Now().UTC().Truncate(time.Microsecond) }
 
 type ModelPage struct {
 	Limit                    int

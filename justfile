@@ -216,6 +216,7 @@ governance-ci: _governance-source
 docs:
     {{ python }} tools/docs/validate_blueprint_sources.py --manifest docs/architecture/blueprint/manifest.yaml
     {{ python }} tools/docs/render_architecture_blueprint.py --manifest docs/architecture/blueprint/manifest.yaml --check
+    {{ python }} tools/docs/render_sdk_api_reference.py --root . --check
     markdownlint-cli2
 
 # Local cleanup at different aggressiveness levels.
@@ -287,6 +288,7 @@ generate:
       --appendix-a6 docs/architecture/blueprint/appendices/A06-authoritative-repository-tree.md \
       --write
     {{ python }} tools/docs/render_architecture_blueprint.py --manifest docs/architecture/blueprint/manifest.yaml
+    {{ python }} tools/docs/render_sdk_api_reference.py --root .
 
 # Atomically generate descriptor, transports, OpenAPI, registries, coverage, and manifest.
 generate-contracts:
@@ -601,6 +603,7 @@ ci-evidence:
       "secret-scan={{ evidence_dir }}/secret-scan.v1.json" \
       "bazel-native-agreement={{ evidence_dir }}/bazel-native-agreement.v2.json" \
       "fresh-database-integration={{ evidence_dir }}/integration-ci.v1.json" \
+      "authoritative-integration-readiness={{ evidence_dir }}/authoritative-integration-readiness.v2.json" \
       "source-check={{ evidence_dir }}/source-check.v1.json" \
       "wave1-full={{ evidence_dir }}/wave1-full.v1.json" \
       "cacheless-reproducibility={{ evidence_dir }}/cacheless-reproducibility.v1.json" \

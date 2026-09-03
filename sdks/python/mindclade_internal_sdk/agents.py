@@ -20,9 +20,19 @@ from mindclade.internal.agent.v1 import agent_service_pb2
 from mindclade.operation.v1 import operation_pb2
 
 from ._invocation import AsyncInvoker, SyncInvoker, canonical_digest, command_context
+from ._raw import AsyncWithRawResponse, WithRawResponse
 from ._validation import required_response_message, required_text
 from .calls import CallOptions, PreparedCall, prepare_call
 from .errors import ProtocolError
+from .pagination import (
+    AsyncPage,
+    Page,
+    PaginationLimits,
+    apply_default_page_size,
+    async_page,
+    next_request,
+    sync_page,
+)
 
 CREATE_AGENT_DEFINITION = "/mindclade.internal.agent.v1.AgentService/CreateAgentDefinition"
 UPDATE_AGENT_DEFINITION = "/mindclade.internal.agent.v1.AgentService/UpdateAgentDefinition"
@@ -365,7 +375,7 @@ def _commit_receipt_request(
     return value
 
 
-class Agents:
+class Agents(WithRawResponse):
     """Synchronous generated-type-only AgentService API."""
 
     def __init__(self, invoker: SyncInvoker) -> None:
@@ -427,19 +437,28 @@ class Agents:
         request: agent_service_pb2.ListAgentDefinitionsRequest | None = None,
         *,
         options: CallOptions | None = None,
-    ) -> agent_service_pb2.ListAgentDefinitionsResponse:
+        limits: PaginationLimits | None = None,
+    ) -> Page[agent_definition_pb2.AgentDefinition]:
         value = (
             copy.deepcopy(request) if request else agent_service_pb2.ListAgentDefinitionsRequest()
         )
         value.parent = _parent(self._invoker, value.parent, "agent definition list")
         _normalize_page(value)
+        apply_default_page_size(value, limits)
         call = prepare_call(
             options, default_timeout=self._invoker.config.default_timeout, require_idempotency=False
         )
-        return cast(
+        response = cast(
             agent_service_pb2.ListAgentDefinitionsResponse,
             self._invoker.unary(LIST_AGENT_DEFINITIONS, value, call=call, retry_safe=True),
         )
+
+        def follow(page_token: str) -> Page[agent_definition_pb2.AgentDefinition]:
+            return self.list_definitions(
+                next_request(value, page_token), options=options, limits=limits
+            )
+
+        return sync_page(response, items_field="agent_definitions", fetch=follow, limits=limits)
 
     def start_run(
         self,
@@ -477,17 +496,24 @@ class Agents:
         request: agent_service_pb2.ListAgentRunsRequest | None = None,
         *,
         options: CallOptions | None = None,
-    ) -> agent_service_pb2.ListAgentRunsResponse:
+        limits: PaginationLimits | None = None,
+    ) -> Page[agent_run_pb2.AgentRun]:
         value = copy.deepcopy(request) if request else agent_service_pb2.ListAgentRunsRequest()
         value.parent = _parent(self._invoker, value.parent, "agent run list")
         _normalize_page(value)
+        apply_default_page_size(value, limits)
         call = prepare_call(
             options, default_timeout=self._invoker.config.default_timeout, require_idempotency=False
         )
-        return cast(
+        response = cast(
             agent_service_pb2.ListAgentRunsResponse,
             self._invoker.unary(LIST_AGENT_RUNS, value, call=call, retry_safe=True),
         )
+
+        def follow(page_token: str) -> Page[agent_run_pb2.AgentRun]:
+            return self.list_runs(next_request(value, page_token), options=options, limits=limits)
+
+        return sync_page(response, items_field="agent_runs", fetch=follow, limits=limits)
 
     def cancel_run(
         self,
@@ -525,17 +551,24 @@ class Agents:
         request: agent_service_pb2.ListAgentStepsRequest,
         *,
         options: CallOptions | None = None,
-    ) -> agent_service_pb2.ListAgentStepsResponse:
+        limits: PaginationLimits | None = None,
+    ) -> Page[agent_step_pb2.AgentStep]:
         value = copy.deepcopy(request)
         _scoped_name(self._invoker, value.parent, "agentRuns")
         _normalize_page(value)
+        apply_default_page_size(value, limits)
         call = prepare_call(
             options, default_timeout=self._invoker.config.default_timeout, require_idempotency=False
         )
-        return cast(
+        response = cast(
             agent_service_pb2.ListAgentStepsResponse,
             self._invoker.unary(LIST_AGENT_STEPS, value, call=call, retry_safe=True),
         )
+
+        def follow(page_token: str) -> Page[agent_step_pb2.AgentStep]:
+            return self.list_steps(next_request(value, page_token), options=options, limits=limits)
+
+        return sync_page(response, items_field="agent_steps", fetch=follow, limits=limits)
 
     def commit_step(
         self,
@@ -591,7 +624,7 @@ class Agents:
         return receipt, run
 
 
-class AsyncAgents:
+class AsyncAgents(AsyncWithRawResponse):
     """Asyncio generated-type-only AgentService API."""
 
     def __init__(self, invoker: AsyncInvoker) -> None:
@@ -647,19 +680,28 @@ class AsyncAgents:
         request: agent_service_pb2.ListAgentDefinitionsRequest | None = None,
         *,
         options: CallOptions | None = None,
-    ) -> agent_service_pb2.ListAgentDefinitionsResponse:
+        limits: PaginationLimits | None = None,
+    ) -> AsyncPage[agent_definition_pb2.AgentDefinition]:
         value = (
             copy.deepcopy(request) if request else agent_service_pb2.ListAgentDefinitionsRequest()
         )
         value.parent = _parent(self._invoker, value.parent, "agent definition list")
         _normalize_page(value)
+        apply_default_page_size(value, limits)
         call = prepare_call(
             options, default_timeout=self._invoker.config.default_timeout, require_idempotency=False
         )
-        return cast(
+        response = cast(
             agent_service_pb2.ListAgentDefinitionsResponse,
             await self._invoker.unary(LIST_AGENT_DEFINITIONS, value, call=call, retry_safe=True),
         )
+
+        async def follow(page_token: str) -> AsyncPage[agent_definition_pb2.AgentDefinition]:
+            return await self.list_definitions(
+                next_request(value, page_token), options=options, limits=limits
+            )
+
+        return async_page(response, items_field="agent_definitions", fetch=follow, limits=limits)
 
     async def start_run(
         self, request: agent_service_pb2.StartAgentRunRequest, *, options: CallOptions | None = None
@@ -694,17 +736,26 @@ class AsyncAgents:
         request: agent_service_pb2.ListAgentRunsRequest | None = None,
         *,
         options: CallOptions | None = None,
-    ) -> agent_service_pb2.ListAgentRunsResponse:
+        limits: PaginationLimits | None = None,
+    ) -> AsyncPage[agent_run_pb2.AgentRun]:
         value = copy.deepcopy(request) if request else agent_service_pb2.ListAgentRunsRequest()
         value.parent = _parent(self._invoker, value.parent, "agent run list")
         _normalize_page(value)
+        apply_default_page_size(value, limits)
         call = prepare_call(
             options, default_timeout=self._invoker.config.default_timeout, require_idempotency=False
         )
-        return cast(
+        response = cast(
             agent_service_pb2.ListAgentRunsResponse,
             await self._invoker.unary(LIST_AGENT_RUNS, value, call=call, retry_safe=True),
         )
+
+        async def follow(page_token: str) -> AsyncPage[agent_run_pb2.AgentRun]:
+            return await self.list_runs(
+                next_request(value, page_token), options=options, limits=limits
+            )
+
+        return async_page(response, items_field="agent_runs", fetch=follow, limits=limits)
 
     async def cancel_run(
         self,
@@ -742,17 +793,26 @@ class AsyncAgents:
         request: agent_service_pb2.ListAgentStepsRequest,
         *,
         options: CallOptions | None = None,
-    ) -> agent_service_pb2.ListAgentStepsResponse:
+        limits: PaginationLimits | None = None,
+    ) -> AsyncPage[agent_step_pb2.AgentStep]:
         value = copy.deepcopy(request)
         _scoped_name(self._invoker, value.parent, "agentRuns")
         _normalize_page(value)
+        apply_default_page_size(value, limits)
         call = prepare_call(
             options, default_timeout=self._invoker.config.default_timeout, require_idempotency=False
         )
-        return cast(
+        response = cast(
             agent_service_pb2.ListAgentStepsResponse,
             await self._invoker.unary(LIST_AGENT_STEPS, value, call=call, retry_safe=True),
         )
+
+        async def follow(page_token: str) -> AsyncPage[agent_step_pb2.AgentStep]:
+            return await self.list_steps(
+                next_request(value, page_token), options=options, limits=limits
+            )
+
+        return async_page(response, items_field="agent_steps", fetch=follow, limits=limits)
 
     async def commit_step(
         self,

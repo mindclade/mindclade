@@ -8,14 +8,17 @@ use mindclade_protocols::{
     },
     internal::dataset::v1::{
         CreateDatasetRequest, GetDatasetReleaseRequest, GetDatasetRequest,
-        ListDatasetReleasesRequest, ListDatasetReleasesResponse, ListDatasetsRequest,
-        ListDatasetsResponse, PublishDatasetReleaseRequest, RevokeDatasetReleaseRequest,
-        UpdateDatasetRequest,
+        ListDatasetReleasesRequest, ListDatasetsRequest, PublishDatasetReleaseRequest,
+        RevokeDatasetReleaseRequest, UpdateDatasetRequest,
     },
     operation::v1::Operation,
 };
 
-use crate::{CallOptions, ClientCore, Error, SubmitOptions, retry::registered_method_safety};
+use crate::{
+    CallOptions, ClientCore, Error, Page, Pages, SubmitOptions,
+    request::{initial_page_token, page_request},
+    retry::registered_method_policy,
+};
 
 const CREATE: &str = "/mindclade.internal.dataset.v1.DatasetService/CreateDataset";
 const GET: &str = "/mindclade.internal.dataset.v1.DatasetService/GetDataset";
@@ -68,7 +71,7 @@ impl Datasets {
                     command: Some(command),
                 },
                 &prepared,
-                registered_method_safety(CREATE),
+                registered_method_policy(CREATE),
                 Some(&key),
                 |transport, request| {
                     Box::pin(async move { transport.create_dataset(request).await })
@@ -100,7 +103,7 @@ impl Datasets {
                     if_none_match: if_none_match.into(),
                 },
                 &prepared,
-                registered_method_safety(GET),
+                registered_method_policy(GET),
                 None,
                 |transport, request| Box::pin(async move { transport.get_dataset(request).await }),
             )
@@ -116,11 +119,11 @@ impl Datasets {
     /// # Errors
     ///
     /// Returns an error for invalid scope or pagination, credentials, or transport failure.
-    pub async fn list(
+    pub fn list(
         &self,
         mut request: ListDatasetsRequest,
         options: CallOptions,
-    ) -> Result<ListDatasetsResponse, Error> {
+    ) -> Result<Pages<Dataset>, Error> {
         let parent = project_name(&self.core);
         if !request.parent.is_empty() && request.parent != parent {
             return Err(Error::invalid_argument(
@@ -129,20 +132,39 @@ impl Datasets {
         }
         request.parent = parent;
         validate_page(request.page.as_ref())?;
-        let prepared = options.prepare(&self.core.config);
-        Ok(self
-            .core
-            .unary(
-                request,
-                &prepared,
-                registered_method_safety(LIST),
-                None,
-                |transport, request| {
-                    Box::pin(async move { transport.list_datasets(request).await })
-                },
-            )
-            .await?
-            .into_inner())
+        let core = Arc::clone(&self.core);
+        let token = initial_page_token(request.page.as_ref());
+        Ok(Pages::new(
+            move |page_token| {
+                let core = Arc::clone(&core);
+                let options = options.clone();
+                let mut request = request.clone();
+                async move {
+                    request.page = Some(page_request(request.page.as_ref(), page_token));
+                    let prepared = options.prepare(&core.config);
+                    let response = core
+                        .unary(
+                            request,
+                            &prepared,
+                            registered_method_policy(LIST),
+                            None,
+                            |transport, request| {
+                                Box::pin(async move { transport.list_datasets(request).await })
+                            },
+                        )
+                        .await?;
+                    let request_id = response.request_id().map(str::to_owned);
+                    let response = response.into_inner();
+                    Ok(Page::new(
+                        response.datasets,
+                        response.page,
+                        response.read_time,
+                        request_id,
+                    ))
+                }
+            },
+            token,
+        ))
     }
 
     /// Applies a generated optimistic dataset update command.
@@ -174,7 +196,7 @@ impl Datasets {
                     command: Some(command),
                 },
                 &prepared,
-                registered_method_safety(UPDATE),
+                registered_method_policy(UPDATE),
                 Some(&key),
                 |transport, request| {
                     Box::pin(async move { transport.update_dataset(request).await })
@@ -214,7 +236,7 @@ impl Datasets {
                     command: Some(command),
                 },
                 &prepared,
-                registered_method_safety(PUBLISH),
+                registered_method_policy(PUBLISH),
                 Some(&key),
                 |transport, request| {
                     Box::pin(async move { transport.publish_dataset_release(request).await })
@@ -254,7 +276,7 @@ impl Datasets {
                     command: Some(command),
                 },
                 &prepared,
-                registered_method_safety(REVOKE),
+                registered_method_policy(REVOKE),
                 Some(&key),
                 |transport, request| {
                     Box::pin(async move { transport.revoke_dataset_release(request).await })
@@ -282,7 +304,7 @@ impl Datasets {
             .unary(
                 GetDatasetReleaseRequest { name },
                 &prepared,
-                registered_method_safety(GET_RELEASE),
+                registered_method_policy(GET_RELEASE),
                 None,
                 |transport, request| {
                     Box::pin(async move { transport.get_dataset_release(request).await })
@@ -300,27 +322,48 @@ impl Datasets {
     /// # Errors
     ///
     /// Returns an error for invalid scope or pagination, credentials, or transport failure.
-    pub async fn list_releases(
+    pub fn list_releases(
         &self,
         request: ListDatasetReleasesRequest,
         options: CallOptions,
-    ) -> Result<ListDatasetReleasesResponse, Error> {
+    ) -> Result<Pages<DatasetRelease>, Error> {
         dataset_name(&self.core, &request.parent)?;
         validate_page(request.page.as_ref())?;
-        let prepared = options.prepare(&self.core.config);
-        Ok(self
-            .core
-            .unary(
-                request,
-                &prepared,
-                registered_method_safety(LIST_RELEASES),
-                None,
-                |transport, request| {
-                    Box::pin(async move { transport.list_dataset_releases(request).await })
-                },
-            )
-            .await?
-            .into_inner())
+        let core = Arc::clone(&self.core);
+        let token = initial_page_token(request.page.as_ref());
+        Ok(Pages::new(
+            move |page_token| {
+                let core = Arc::clone(&core);
+                let options = options.clone();
+                let mut request = request.clone();
+                async move {
+                    request.page = Some(page_request(request.page.as_ref(), page_token));
+                    let prepared = options.prepare(&core.config);
+                    let response = core
+                        .unary(
+                            request,
+                            &prepared,
+                            registered_method_policy(LIST_RELEASES),
+                            None,
+                            |transport, request| {
+                                Box::pin(
+                                    async move { transport.list_dataset_releases(request).await },
+                                )
+                            },
+                        )
+                        .await?;
+                    let request_id = response.request_id().map(str::to_owned);
+                    let response = response.into_inner();
+                    Ok(Page::new(
+                        response.dataset_releases,
+                        response.page,
+                        response.read_time,
+                        request_id,
+                    ))
+                }
+            },
+            token,
+        ))
     }
 }
 

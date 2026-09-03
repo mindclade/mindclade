@@ -4,15 +4,19 @@ use mindclade_protocols::{
     common::v1::{PageRequest, ResourceRef},
     internal::policy::v1::{
         ActivateUsePolicyRequest, CreateUsePolicyRequest, EvaluateAuthorizationRequest,
-        GetUsePolicyRequest, ListUsePoliciesRequest, ListUsePoliciesResponse,
-        ResolvePolicySnapshotRequest, RevokeUsePolicyRequest, UpdateUsePolicyRequest,
+        GetUsePolicyRequest, ListUsePoliciesRequest, ResolvePolicySnapshotRequest,
+        RevokeUsePolicyRequest, UpdateUsePolicyRequest,
     },
     operation::v1::Operation,
     policy::v1::{AuthorizationDecision, PolicyReference, UsePolicy},
 };
 use prost_types::Timestamp;
 
-use crate::{CallOptions, ClientCore, Error, SubmitOptions, retry::registered_method_safety};
+use crate::{
+    CallOptions, ClientCore, Error, Page, Pages, SubmitOptions,
+    request::{initial_page_token, page_request},
+    retry::registered_method_policy,
+};
 
 const EVALUATE: &str = "/mindclade.internal.policy.v1.PolicyService/EvaluateAuthorization";
 const CREATE: &str = "/mindclade.internal.policy.v1.PolicyService/CreateUsePolicy";
@@ -68,7 +72,7 @@ impl Policies {
             .unary(
                 request,
                 &prepared,
-                registered_method_safety(EVALUATE),
+                registered_method_policy(EVALUATE),
                 Some(&key),
                 |transport, request| {
                     Box::pin(async move { transport.evaluate_authorization(request).await })
@@ -161,7 +165,7 @@ impl Policies {
                     if_none_match: if_none_match.into(),
                 },
                 &prepared,
-                registered_method_safety(GET),
+                registered_method_policy(GET),
                 None,
                 |transport, request| {
                     Box::pin(async move { transport.get_use_policy(request).await })
@@ -179,11 +183,11 @@ impl Policies {
     /// # Errors
     ///
     /// Returns an error for invalid scope or pagination and for transport failures.
-    pub async fn list(
+    pub fn list(
         &self,
         mut request: ListUsePoliciesRequest,
         options: CallOptions,
-    ) -> Result<ListUsePoliciesResponse, Error> {
+    ) -> Result<Pages<UsePolicy>, Error> {
         let parent = project_name(&self.core);
         if !request.parent.is_empty() && request.parent != parent {
             return Err(Error::invalid_argument(
@@ -192,20 +196,39 @@ impl Policies {
         }
         validate_page(request.page.as_ref())?;
         request.parent = parent;
-        let prepared = options.prepare(&self.core.config);
-        Ok(self
-            .core
-            .unary(
-                request,
-                &prepared,
-                registered_method_safety(LIST),
-                None,
-                |transport, request| {
-                    Box::pin(async move { transport.list_use_policies(request).await })
-                },
-            )
-            .await?
-            .into_inner())
+        let core = Arc::clone(&self.core);
+        let token = initial_page_token(request.page.as_ref());
+        Ok(Pages::new(
+            move |page_token| {
+                let core = Arc::clone(&core);
+                let options = options.clone();
+                let mut request = request.clone();
+                async move {
+                    request.page = Some(page_request(request.page.as_ref(), page_token));
+                    let prepared = options.prepare(&core.config);
+                    let response = core
+                        .unary(
+                            request,
+                            &prepared,
+                            registered_method_policy(LIST),
+                            None,
+                            |transport, request| {
+                                Box::pin(async move { transport.list_use_policies(request).await })
+                            },
+                        )
+                        .await?;
+                    let request_id = response.request_id().map(str::to_owned);
+                    let response = response.into_inner();
+                    Ok(Page::new(
+                        response.use_policies,
+                        response.page,
+                        response.read_time,
+                        request_id,
+                    ))
+                }
+            },
+            token,
+        ))
     }
 
     /// Activates the exact policy snapshot under optimistic concurrency.
@@ -297,7 +320,7 @@ impl Policies {
                     effective_time: Some(effective_time),
                 },
                 &prepared,
-                registered_method_safety(RESOLVE),
+                registered_method_policy(RESOLVE),
                 None,
                 |transport, request| {
                     Box::pin(async move { transport.resolve_policy_snapshot(request).await })
@@ -330,7 +353,7 @@ impl Policies {
             .unary(
                 request,
                 &prepared,
-                registered_method_safety(method),
+                registered_method_policy(method),
                 Some(&key),
                 assign,
             )

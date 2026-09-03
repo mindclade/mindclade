@@ -27,9 +27,15 @@ import {
 import type { Operation } from "../../../protocols/generated/typescript/operation/v1/operation_pb.js";
 import type { ClientCore } from "./core.js";
 import { MindcladeError } from "./error.js";
-import { commandContext, prepareCall, type SdkCallOptions, type SubmitOptions } from "./request.js";
+import { listPage, type Page, withPageToken } from "./pagination.js";
+import {
+	commandContext,
+	type ListOptions,
+	prepareCall,
+	type SdkCallOptions,
+	type SubmitOptions,
+} from "./request.js";
 import { invokeUnary } from "./retry.js";
-import { registeredMethodSafety } from "./safety.js";
 
 const CREATE = "/mindclade.internal.dataset.v1.DatasetService/CreateDataset";
 const GET = "/mindclade.internal.dataset.v1.DatasetService/GetDataset";
@@ -67,7 +73,7 @@ export class Datasets {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			registeredMethodSafety(CREATE),
+			CREATE,
 			options.idempotencyKey,
 			(call) =>
 				this.#core.raw.datasets.createDataset(
@@ -85,36 +91,41 @@ export class Datasets {
 		const generated = create(GetDatasetRequestSchema, request);
 		generated.name = datasetName(this.#core, generated.name);
 		const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
-		const response = await invokeUnary(
-			this.#core,
-			prepared,
-			registeredMethodSafety(GET),
-			undefined,
-			(call) => this.#core.raw.datasets.getDataset(generated, call),
+		const response = await invokeUnary(this.#core, prepared, GET, undefined, (call) =>
+			this.#core.raw.datasets.getDataset(generated, call),
 		);
 		if (response.dataset === undefined)
 			throw MindcladeError.protocol("GetDataset response omitted its dataset");
 		return response.dataset;
 	}
 
+	/** Returns the first page, which also iterates the whole cursor. */
 	async list(
 		request: MessageInitShape<typeof ListDatasetsRequestSchema> = {},
-		options: SdkCallOptions = {},
-	): Promise<ListDatasetsResponse> {
+		options: ListOptions = {},
+	): Promise<Page<Dataset, ListDatasetsResponse>> {
 		const generated = create(ListDatasetsRequestSchema, request);
 		const parent = projectName(this.#core);
 		if (generated.parent !== "" && generated.parent !== parent)
 			throw MindcladeError.invalidArgument("dataset list parent does not match client scope");
 		generated.parent = parent;
 		validatePage(generated.page?.pageSize);
-		const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
-		return await invokeUnary(
-			this.#core,
-			prepared,
-			registeredMethodSafety(LIST),
-			undefined,
-			(call) => this.#core.raw.datasets.listDatasets(generated, call),
-		);
+		return await listPage({
+			cursor: (response) => response.page?.nextPageToken ?? "",
+			fetch: async (pageToken) => {
+				const paged = withPageToken(ListDatasetsRequestSchema, generated, pageToken);
+				const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
+				const response = await invokeUnary(this.#core, prepared, LIST, undefined, (call) =>
+					this.#core.raw.datasets.listDatasets(paged, call),
+				);
+				return { requestId: prepared.requestId, response };
+			},
+			items: (response) => response.datasets,
+			limits: options.limits,
+			pageSize: generated.page?.pageSize ?? 0,
+			pageToken: generated.page?.pageToken ?? "",
+			signal: options.signal,
+		});
 	}
 
 	async update(
@@ -131,7 +142,7 @@ export class Datasets {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			registeredMethodSafety(UPDATE),
+			UPDATE,
 			options.idempotencyKey,
 			(call) =>
 				this.#core.raw.datasets.updateDataset(
@@ -159,7 +170,7 @@ export class Datasets {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			registeredMethodSafety(PUBLISH),
+			PUBLISH,
 			options.idempotencyKey,
 			(call) =>
 				this.#core.raw.datasets.publishDatasetRelease(
@@ -191,7 +202,7 @@ export class Datasets {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			registeredMethodSafety(REVOKE),
+			REVOKE,
 			options.idempotencyKey,
 			(call) =>
 				this.#core.raw.datasets.revokeDatasetRelease(
@@ -209,33 +220,38 @@ export class Datasets {
 		const generated = create(GetDatasetReleaseRequestSchema, request);
 		generated.name = releaseName(this.#core, generated.name);
 		const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
-		const response = await invokeUnary(
-			this.#core,
-			prepared,
-			registeredMethodSafety(GET_RELEASE),
-			undefined,
-			(call) => this.#core.raw.datasets.getDatasetRelease(generated, call),
+		const response = await invokeUnary(this.#core, prepared, GET_RELEASE, undefined, (call) =>
+			this.#core.raw.datasets.getDatasetRelease(generated, call),
 		);
 		if (response.datasetRelease === undefined)
 			throw MindcladeError.protocol("GetDatasetRelease response omitted its release");
 		return response.datasetRelease;
 	}
 
+	/** Returns the first page, which also iterates the whole cursor. */
 	async listReleases(
 		request: MessageInitShape<typeof ListDatasetReleasesRequestSchema>,
-		options: SdkCallOptions = {},
-	): Promise<ListDatasetReleasesResponse> {
+		options: ListOptions = {},
+	): Promise<Page<DatasetRelease, ListDatasetReleasesResponse>> {
 		const generated = create(ListDatasetReleasesRequestSchema, request);
 		generated.parent = datasetName(this.#core, generated.parent);
 		validatePage(generated.page?.pageSize);
-		const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
-		return await invokeUnary(
-			this.#core,
-			prepared,
-			registeredMethodSafety(LIST_RELEASES),
-			undefined,
-			(call) => this.#core.raw.datasets.listDatasetReleases(generated, call),
-		);
+		return await listPage({
+			cursor: (response) => response.page?.nextPageToken ?? "",
+			fetch: async (pageToken) => {
+				const paged = withPageToken(ListDatasetReleasesRequestSchema, generated, pageToken);
+				const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
+				const response = await invokeUnary(this.#core, prepared, LIST_RELEASES, undefined, (call) =>
+					this.#core.raw.datasets.listDatasetReleases(paged, call),
+				);
+				return { requestId: prepared.requestId, response };
+			},
+			items: (response) => response.datasetReleases,
+			limits: options.limits,
+			pageSize: generated.page?.pageSize ?? 0,
+			pageToken: generated.page?.pageToken ?? "",
+			signal: options.signal,
+		});
 	}
 }
 

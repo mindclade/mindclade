@@ -3295,7 +3295,7 @@ CANONICAL_PATH_SET_SHA256 = (  # pyright: ignore[reportConstantRedefinition]
 )
 
 # The internal SDK roots move from internal/sdk/<language> to sdks/<language>
-# (ADR-0024). Go forbids importing a package under an "internal" directory from
+# (ADR-0025). Go forbids importing a package under an "internal" directory from
 # outside that directory's parent, so the blueprint's sdks/internal/<language>
 # spelling would have made the Go facade unusable from tools/mindcladectl and
 # every other consumer outside sdks/. Internality stays a governed property of
@@ -3323,10 +3323,194 @@ def _reconciliation_addition_reason(path: str) -> str:  # pyright: ignore[report
     return _adr0023_reconciliation_addition_reason(path)
 
 
+# Descriptor-derived internal SDK API reference (completion work-queue item 15).
+SDK_API_REFERENCE_TOOLING_PATHS: tuple[str, ...] = (
+    "tools/docs/render_sdk_api_reference.py",
+    "tools/docs/tests/test_render_sdk_api_reference.py",
+)
+SDK_API_REFERENCE_DOCUMENT_PATHS: tuple[str, ...] = (
+    "sdks/go/api.md",
+    "sdks/python/api.md",
+    "sdks/rust/api.md",
+    "sdks/typescript/api.md",
+)
+SDK_API_REFERENCE_PATHS: tuple[str, ...] = (
+    *SDK_API_REFERENCE_TOOLING_PATHS,
+    *SDK_API_REFERENCE_DOCUMENT_PATHS,
+)
+# The four api.md documents already reach REQUIRED_ADDITIONS through the
+# internal-sdk activation bundle, so only the renderer and its test are added
+# here; the canonical count still grows by every new path.
+REQUIRED_ADDITIONS = (  # pyright: ignore[reportConstantRedefinition]
+    *REQUIRED_ADDITIONS,
+    *SDK_API_REFERENCE_TOOLING_PATHS,
+)
+CANONICAL_FILE_COUNT = (  # pyright: ignore[reportConstantRedefinition]
+    CANONICAL_FILE_COUNT + len(SDK_API_REFERENCE_PATHS)
+)
+CANONICAL_PATH_SET_SHA256 = (  # pyright: ignore[reportConstantRedefinition]
+    "245d569473e5d389a7062c2a299823392c4e9fe8108d211c8480a13e7c96752a"
+)
+
+_sdk_api_reference_addition_reason = _reconciliation_addition_reason
+
+
+def _reconciliation_addition_reason(path: str) -> str:  # pyright: ignore[reportRedeclaration]
+    if path in SDK_API_REFERENCE_TOOLING_PATHS:
+        return (
+            "The internal SDK API reference is rendered from the governed RPC-coverage "
+            "projection so a facade cannot document a method the descriptor never declared."
+        )
+    if path in SDK_API_REFERENCE_DOCUMENT_PATHS:
+        return (
+            "Committed per-language API reference derived from the candidate descriptor "
+            "and drift-checked by `just docs`."
+        )
+    return _sdk_api_reference_addition_reason(path)
+
+
+# Four-language SDK parity: packaging, worked examples, and the descriptor-bound
+# retry-safety parity gate (Stage 7 and Stage 8).
+SDK_PARITY_PATHS: tuple[str, ...] = (
+    "examples/sdk/configure_client.ts",
+    "examples/sdk/handle_errors.py",
+    "examples/sdk/list_operations.py",
+    "examples/sdk/read_request_id.ts",
+    "examples/sdk/sdk_examples.test.ts",
+    "tests/conformance/test_sdk_retry_safety_parity.py",
+)
+REQUIRED_ADDITIONS = (  # pyright: ignore[reportConstantRedefinition]
+    *REQUIRED_ADDITIONS,
+    *SDK_PARITY_PATHS,
+)
+CANONICAL_FILE_COUNT = (  # pyright: ignore[reportConstantRedefinition]
+    CANONICAL_FILE_COUNT + 58
+)
+CANONICAL_PATH_SET_SHA256 = (  # pyright: ignore[reportConstantRedefinition]
+    "e4db9ee4ed697d09aa7b3e21174c24e2c3a7aabb59d63281af64202edb65dff4"
+)
+
+_sdk_parity_addition_reason = _reconciliation_addition_reason
+
+
+def _reconciliation_addition_reason(path: str) -> str:  # pyright: ignore[reportRedeclaration]
+    if path in SDK_PARITY_PATHS:
+        return (
+            "Stage 7 four-language SDK parity and its Stage 8 worked consumers: "
+            "packaging scripts, revision-keyed changelogs, and the conformance gate "
+            "binding every SDK retry-safety table to the descriptor."
+        )
+    return _sdk_parity_addition_reason(path)
+
+
+# The conformance contract the four handwritten facades are held to: what the
+# SDKs guarantee, which divergences from the reference bar are deliberate, and
+# which gate proves each property.
+SDK_CONFORMANCE_CONTRACT_PATHS: tuple[str, ...] = (
+    "docs/architecture/internal-sdk-conformance-contract.md",
+)
+REQUIRED_ADDITIONS = (  # pyright: ignore[reportConstantRedefinition]
+    *REQUIRED_ADDITIONS,
+    *SDK_CONFORMANCE_CONTRACT_PATHS,
+)
+CANONICAL_FILE_COUNT = (  # pyright: ignore[reportConstantRedefinition]
+    CANONICAL_FILE_COUNT + len(SDK_CONFORMANCE_CONTRACT_PATHS)
+)
+CANONICAL_PATH_SET_SHA256 = (  # pyright: ignore[reportConstantRedefinition]
+    "426d2955d5fe7d8df80b814d275c625ef1399f1d8ae9656ced54a0aac75bd8fc"
+)
+
+_sdk_conformance_contract_addition_reason = _reconciliation_addition_reason
+
+
+def _reconciliation_addition_reason(path: str) -> str:  # pyright: ignore[reportRedeclaration]
+    if path in SDK_CONFORMANCE_CONTRACT_PATHS:
+        return (
+            "The behaviour contract the four internal SDK facades are held to, naming "
+            "the gate that proves each property so a claim cannot outlive its check."
+        )
+    return _sdk_conformance_contract_addition_reason(path)
+
+
+# The Rust facade's five packaging entry points and their shared helper, which
+# complete the four-language set: every internal SDK now presents the same
+# bootstrap/build/format/lint/test surface over its own toolchain. These reach
+# REQUIRED_ADDITIONS through the internal-sdk activation bundle, so only the
+# canonical count and digest move here.
+SDK_RUST_PACKAGING_SCRIPT_PATHS: tuple[str, ...] = (
+    "sdks/rust/scripts/bootstrap",
+    "sdks/rust/scripts/build",
+    "sdks/rust/scripts/common.sh",
+    "sdks/rust/scripts/format",
+    "sdks/rust/scripts/lint",
+    "sdks/rust/scripts/test",
+)
+CANONICAL_FILE_COUNT = (  # pyright: ignore[reportConstantRedefinition]
+    CANONICAL_FILE_COUNT + len(SDK_RUST_PACKAGING_SCRIPT_PATHS)
+)
+CANONICAL_PATH_SET_SHA256 = (  # pyright: ignore[reportConstantRedefinition]
+    "66f3677b01d1f7c6c0d9143d15c56abcdb24aa4bb589f0fc12200326478b83e0"
+)
+
+
+# The contract build's only third-party import closure, vendored so the
+# descriptor resolves entirely from the working tree. Before this, `buf build`
+# reached a schema registry for exactly one import -- google/api/annotations.proto,
+# used by seven google.api.http annotations on the public API service -- which
+# made a "hermetic" pipeline depend on a live network service. Vendoring these two
+# files produces a byte-identical descriptor, so the contract is provably unchanged.
+CONTRACT_VENDORED_IMPORT_PATHS: tuple[str, ...] = (
+    "protocols/google/api/annotations.proto",
+    "protocols/google/api/http.proto",
+)
+CONTRACT_VENDORED_IMPORT_ADR = "docs/adr/0024-vendored-contract-import-closure.md"
+REQUIRED_ADDITIONS = (  # pyright: ignore[reportConstantRedefinition]
+    *REQUIRED_ADDITIONS,
+    *CONTRACT_VENDORED_IMPORT_PATHS,
+    CONTRACT_VENDORED_IMPORT_ADR,
+)
+CANONICAL_FILE_COUNT = (  # pyright: ignore[reportConstantRedefinition]
+    CANONICAL_FILE_COUNT + len(CONTRACT_VENDORED_IMPORT_PATHS) + 1
+)
+CANONICAL_PATH_SET_SHA256 = (  # pyright: ignore[reportConstantRedefinition]
+    "4ea057c0574249516036099dceaff5b0ea4e03e25c2a43215c1caf422c50de17"
+)
+
+_contract_vendored_import_addition_reason = _reconciliation_addition_reason
+
+
+def _reconciliation_addition_reason(path: str) -> str:  # pyright: ignore[reportRedeclaration]
+    if path == CONTRACT_VENDORED_IMPORT_ADR:
+        return "ADR-0024 records why the contract build vendors its third-party import closure."
+    if path in CONTRACT_VENDORED_IMPORT_PATHS:
+        return (
+            "Apache-2.0 upstream proto vendored so the contract descriptor resolves "
+            "every import from the working tree; it removes the contract build's only "
+            "schema-registry dependency without changing the descriptor digest."
+        )
+    return _contract_vendored_import_addition_reason(path)
+
+
+# Both peer path sets are declared as reconciliation additions but never reached
+# the wave sets that make a populated path active, so a rebuilt manifest marked
+# them premature while the committed manifest called them active. Bind them to
+# the waves the committed manifest asserts: the worked SDK examples and the
+# retry-safety gate are Wave 1 alongside the facades they exercise, and the
+# vendored import closure is the Wave 4 contract surface the descriptor needs.
+WAVE_ONE_REWAVE_PATHS = frozenset(  # pyright: ignore[reportConstantRedefinition]
+    {
+        *WAVE_ONE_REWAVE_PATHS,
+        *SDK_PARITY_PATHS,
+        *SDK_CONFORMANCE_CONTRACT_PATHS,
+        *CONTRACT_VENDORED_IMPORT_PATHS,
+    }
+)
+
+
 # The internal SDK roots move from internal/sdk/<language> to sdks/<language>
-# (ADR-0024). The relocated files are renames already reconciled above; only the
+# (ADR-0025). The relocated files are renames already reconciled above; only the
 # decision record itself is a new canonical path.
-INTERNAL_SDK_ROOT_ADR = "docs/adr/0024-internal-sdk-roots-move-to-sdks.md"
+INTERNAL_SDK_ROOT_ADR = "docs/adr/0025-internal-sdk-roots-move-to-sdks.md"
 REQUIRED_ADDITIONS = (  # pyright: ignore[reportConstantRedefinition]
     *REQUIRED_ADDITIONS,
     INTERNAL_SDK_ROOT_ADR,
@@ -3336,20 +3520,20 @@ CANONICAL_PATH_SET_SHA256 = (  # pyright: ignore[reportConstantRedefinition]
     "f2f311f029bd594a1828eb776aa72b4598a31cf04f4f9c161c797b9c6c33ebf2"
 )
 
-_adr0024_reconciliation_addition_reason = _reconciliation_addition_reason
+_adr0025_reconciliation_addition_reason = _reconciliation_addition_reason
 
 
 def _reconciliation_addition_reason(path: str) -> str:  # pyright: ignore[reportRedeclaration]
     if path == INTERNAL_SDK_ROOT_ADR:
         return (
-            "ADR-0024 records the internal SDK root relocation and why the "
+            "ADR-0025 records the internal SDK root relocation and why the "
             "blueprint's sdks/internal/<language> spelling cannot be used for Go."
         )
-    return _adr0024_reconciliation_addition_reason(path)
+    return _adr0025_reconciliation_addition_reason(path)
 
 
 # The control-plane platform runtime becomes the eight blueprint Go libraries
-# (ADR-0025). services/control_plane/internal/platform held durable-state,
+# (ADR-0026). services/control_plane/internal/platform held durable-state,
 # outbox, inbox, Pub/Sub, projection, idempotency, fencing, and service-runtime
 # code behind a service-private path, so no other service could depend on it.
 PLATFORM_RUNTIME_LIBRARY_ROOT = "services/control_plane/internal/platform"
@@ -3375,7 +3559,7 @@ PLATFORM_RUNTIME_LIBRARY_REPLACEMENTS = {
 # reconciliation additions because libs/go/servicekit/BUILD.bazel is already a
 # canonical authority path that this change populates.
 PLATFORM_RUNTIME_LIBRARY_ADR = (
-    "docs/adr/0025-control-plane-platform-runtime-becomes-shared-go-libraries.md"
+    "docs/adr/0026-control-plane-platform-runtime-becomes-shared-go-libraries.md"
 )
 PLATFORM_RUNTIME_LIBRARY_BUILD_FILES = activation_bundle_paths("PLATFORM_RUNTIME_LIBRARY_ADDITIONS")
 PATH_REPLACEMENTS = {  # pyright: ignore[reportConstantRedefinition]
@@ -3395,12 +3579,12 @@ CANONICAL_PATH_SET_SHA256 = (  # pyright: ignore[reportConstantRedefinition]
 )
 
 _PLATFORM_RUNTIME_LIBRARY_REASON = (
-    "ADR-0025 moves the control-plane platform runtime into the eight blueprint "
+    "ADR-0026 moves the control-plane platform runtime into the eight blueprint "
     "Go libraries so services, workers, and tools share one persistence, "
     "eventing, and fencing runtime."
 )
 
-_adr0025_reconciliation_addition_reason = _reconciliation_addition_reason
+_adr0026_reconciliation_addition_reason = _reconciliation_addition_reason
 
 
 def _reconciliation_addition_reason(path: str) -> str:  # pyright: ignore[reportRedeclaration]
@@ -3408,10 +3592,10 @@ def _reconciliation_addition_reason(path: str) -> str:  # pyright: ignore[report
         return _PLATFORM_RUNTIME_LIBRARY_REASON
     if path in PLATFORM_RUNTIME_LIBRARY_BUILD_FILES:
         return (
-            "ADR-0025 gives each relocated control-plane runtime library its own "
+            "ADR-0026 gives each relocated control-plane runtime library its own "
             "Bazel package so the eight blueprint libraries build independently."
         )
-    return _adr0025_reconciliation_addition_reason(path)
+    return _adr0026_reconciliation_addition_reason(path)
 
 
 REPLACEMENT_REASONS = {  # pyright: ignore[reportConstantRedefinition]
@@ -3421,10 +3605,10 @@ REPLACEMENT_REASONS = {  # pyright: ignore[reportConstantRedefinition]
 
 
 # Long-running operations become a first-class namespace, mindclade.operation.v1,
-# instead of a message inside the job domain (ADR-0026). The proto and its four
+# instead of a message inside the job domain (ADR-0027). The proto and its four
 # generated bindings move package-for-package; the Python reconciliation adds the
 # mindclade/ prefix after this replacement, so the value stays prefix-free.
-OPERATION_NAMESPACE_ADR = "docs/adr/0026-operations-become-a-first-class-namespace.md"
+OPERATION_NAMESPACE_ADR = "docs/adr/0027-operations-become-a-first-class-namespace.md"
 OPERATION_NAMESPACE_REPLACEMENTS = {
     f"{old}": new
     for old, new in (
@@ -3476,22 +3660,22 @@ CANONICAL_FILE_COUNT = (  # pyright: ignore[reportConstantRedefinition]
     CANONICAL_FILE_COUNT + len(OPERATION_NAMESPACE_SCAFFOLD) + 1
 )
 CANONICAL_PATH_SET_SHA256 = (  # pyright: ignore[reportConstantRedefinition]
-    "109d9b8b7acb37fe2b02affc9acf126c218f96c4c0fd12777848a80b60622952"
+    "afe3d6da732de6fbad49dcb71e3d48daa183ed26e025a6a6d46046fe1e1192aa"
 )
 
 _OPERATION_NAMESPACE_REASON = (
-    "ADR-0026 gives long-running operations their own mindclade.operation.v1 "
+    "ADR-0027 gives long-running operations their own mindclade.operation.v1 "
     "namespace so every domain service references one canonical operation "
     "resource instead of a message owned by the job domain."
 )
 
-_adr0026_reconciliation_addition_reason = _reconciliation_addition_reason
+_adr0027_reconciliation_addition_reason = _reconciliation_addition_reason
 
 
 def _reconciliation_addition_reason(path: str) -> str:
     if path == OPERATION_NAMESPACE_ADR or path.startswith("protocols/generated/go/operation/v1/"):
         return _OPERATION_NAMESPACE_REASON
-    return _adr0026_reconciliation_addition_reason(path)
+    return _adr0027_reconciliation_addition_reason(path)
 
 
 REPLACEMENT_REASONS = {  # pyright: ignore[reportConstantRedefinition]

@@ -61,7 +61,18 @@ func (service *ModelService) Get(ctx context.Context, name, ifNoneMatch string, 
 	return cloneGenerated(response.GetModel()), nil
 }
 
-func (service *ModelService) List(ctx context.Context, request *internalmodelv1.ListModelsRequest, options ...RequestOption) (*internalmodelv1.ListModelsResponse, error) {
+// ModelPage is one bounded list response plus cursor-scheme traversal. The
+// embedded generated response remains the authoritative model; the wrapper
+// adds only the opaque-cursor mechanics.
+type ModelPage struct {
+	*internalmodelv1.ListModelsResponse
+	pageBase[*modelv1.Model, *ModelPage]
+}
+
+// Items returns this page's models without traversing any further page.
+func (page *ModelPage) Items() []*modelv1.Model { return page.GetModels() }
+
+func (service *ModelService) List(ctx context.Context, request *internalmodelv1.ListModelsRequest, options ...RequestOption) (*ModelPage, error) {
 	materialized := cloneGenerated(request)
 	if materialized == nil {
 		materialized = &internalmodelv1.ListModelsRequest{}
@@ -84,7 +95,14 @@ func (service *ModelService) List(ctx context.Context, request *internalmodelv1.
 	if err != nil {
 		return nil, normalizeError(err)
 	}
-	return cloneGenerated(response), nil
+	detached := cloneGenerated(response)
+	page := &ModelPage{ListModelsResponse: detached}
+	page.pageBase = newPage[*modelv1.Model](page, detached.GetPage(), paginationLimitsFrom(options), func(ctx context.Context, token string) (*ModelPage, error) {
+		successor := cloneGenerated(materialized)
+		successor.Page = pageRequestWithToken(materialized.GetPage(), token)
+		return service.List(ctx, successor, options...)
+	})
+	return page, nil
 }
 
 func (service *ModelService) RegisterRelease(ctx context.Context, command *modelv1.RegisterModelReleaseCommand, options ...RequestOption) (*operationv1.Operation, error) {
@@ -134,7 +152,18 @@ func (service *ModelService) GetRelease(ctx context.Context, name string, option
 	return cloneGenerated(response.GetModelRelease()), nil
 }
 
-func (service *ModelService) ListReleases(ctx context.Context, request *internalmodelv1.ListModelReleasesRequest, options ...RequestOption) (*internalmodelv1.ListModelReleasesResponse, error) {
+// ModelReleasePage is one bounded list response plus cursor-scheme traversal. The
+// embedded generated response remains the authoritative model; the wrapper
+// adds only the opaque-cursor mechanics.
+type ModelReleasePage struct {
+	*internalmodelv1.ListModelReleasesResponse
+	pageBase[*modelv1.ModelRelease, *ModelReleasePage]
+}
+
+// Items returns this page's model releases without traversing any further page.
+func (page *ModelReleasePage) Items() []*modelv1.ModelRelease { return page.GetModelReleases() }
+
+func (service *ModelService) ListReleases(ctx context.Context, request *internalmodelv1.ListModelReleasesRequest, options ...RequestOption) (*ModelReleasePage, error) {
 	if request == nil || !scopedResourceName(service.client.config, request.GetParent(), "models") {
 		return nil, invalidArgument("model release parent must be a model in the configured project")
 	}
@@ -151,7 +180,14 @@ func (service *ModelService) ListReleases(ctx context.Context, request *internal
 	if err != nil {
 		return nil, normalizeError(err)
 	}
-	return cloneGenerated(response), nil
+	detached := cloneGenerated(response)
+	page := &ModelReleasePage{ListModelReleasesResponse: detached}
+	page.pageBase = newPage[*modelv1.ModelRelease](page, detached.GetPage(), paginationLimitsFrom(options), func(ctx context.Context, token string) (*ModelReleasePage, error) {
+		successor := cloneGenerated(materialized)
+		successor.Page = pageRequestWithToken(materialized.GetPage(), token)
+		return service.ListReleases(ctx, successor, options...)
+	})
+	return page, nil
 }
 
 func (service *ModelService) PromoteRelease(ctx context.Context, command *modelv1.PromoteModelReleaseCommand, options ...RequestOption) (*operationv1.Operation, error) {

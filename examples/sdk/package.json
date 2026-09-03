@@ -6,7 +6,7 @@
 	"scripts": {
 		"lint": "cd ../.. && biome check --config-path examples/sdk/biome.json examples/sdk",
 		"typecheck": "tsc -p tsconfig.json --noEmit",
-		"test": "tsc -p tsconfig.json --noEmit false --rootDir ../.. --outDir dist/native && node --test dist/native/examples/sdk/follow_operation.test.js"
+		"test": "pnpm --filter @mindclade/internal-sdk run build && tsc -p tsconfig.json --noEmit false --rootDir ../.. --outDir dist/native && node --test dist/native/examples/sdk/*.test.js"
 	},
 	"dependencies": {
 		"@mindclade/internal-sdk": "workspace:*"

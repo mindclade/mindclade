@@ -13,7 +13,8 @@
 		"build": "rm -rf dist/native && tsc -p tsconfig.json --noEmit false --rootDir ../.. --outDir dist/native",
 		"typecheck": "tsc -p tsconfig.json --noEmit",
 		"test": "pnpm run build && node --test dist/native/sdks/typescript/tests/*.test.js",
-		"lint": "cd ../.. && biome check --config-path sdks/typescript/biome.json sdks/typescript"
+		"lint": "cd ../.. && biome check --config-path sdks/typescript/biome.json sdks/typescript",
+		"format": "cd ../.. && biome format --write --config-path sdks/typescript/biome.json sdks/typescript"
 	},
 	"dependencies": {
 		"@bufbuild/protobuf": "2.11.0",

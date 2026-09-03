@@ -251,9 +251,12 @@ async fn exercise_artifact_gap_methods(sdk: &Client) {
             },
             CallOptions::new(),
         )
+        .unwrap()
+        .next_page()
         .await
+        .unwrap()
         .unwrap();
-    assert_eq!(artifact_page.page.unwrap().next_page_token, "artifact-next");
+    assert_eq!(artifact_page.next_page_token(), "artifact-next");
 
     let forged = CommandContext {
         tenant_id: "attacker".to_owned(),
@@ -322,12 +325,12 @@ async fn exercise_operation_gap_method(sdk: &Client) {
             },
             CallOptions::new(),
         )
+        .unwrap()
+        .next_page()
         .await
+        .unwrap()
         .unwrap();
-    assert_eq!(
-        operation_page.page.unwrap().next_page_token,
-        "operation-next"
-    );
+    assert_eq!(operation_page.next_page_token(), "operation-next");
 }
 
 fn assert_recorded_methods(recording: &RecordingTransport<GapTransport>) {

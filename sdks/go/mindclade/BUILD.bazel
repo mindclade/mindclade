@@ -142,7 +142,9 @@ filegroup(
     name = "governed_sources",
     srcs = [
         "BUILD.bazel",
+        "CHANGELOG.md",
         "README.md",
-    ] + glob(["*.go"]),
+        "component.yaml",
+    ] + glob(["*.go"]) + glob(["scripts/*"]),
     visibility = ["//visibility:public"],
 )

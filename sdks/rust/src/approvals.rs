@@ -3,7 +3,7 @@ use std::sync::Arc;
 use mindclade_protocols::{
     internal::workflow::v1::{
         ConsumeApprovalRequest, DecideApprovalRequest, GetApprovalRequestRequest,
-        ListApprovalRequestsRequest, ListApprovalRequestsResponse, RequestApprovalRequest,
+        ListApprovalRequestsRequest, RequestApprovalRequest,
     },
     workflow::v1::{ApprovalBinding, ApprovalDecisionValue, ApprovalReceipt, ApprovalRequest},
 };
@@ -11,8 +11,9 @@ use prost::Message;
 use sha2::{Digest, Sha256};
 
 use crate::{
-    CallOptions, ClientCore, Error, SubmitOptions,
-    retry::registered_method_safety,
+    CallOptions, ClientCore, Error, Page, Pages, SubmitOptions,
+    request::{initial_page_token, page_request},
+    retry::registered_method_policy,
     workflows::{command_context, normalize_parent, valid_sha256, validate_page, workflow_name},
 };
 
@@ -77,7 +78,7 @@ impl Approvals {
                     approval_request: Some(approval),
                 },
                 &prepared,
-                registered_method_safety(REQUEST),
+                registered_method_policy(REQUEST),
                 Some(&key),
                 |transport, request| {
                     Box::pin(async move { transport.request_approval(request).await })
@@ -117,7 +118,7 @@ impl Approvals {
             .unary(
                 GetApprovalRequestRequest { name },
                 &prepared,
-                registered_method_safety(GET),
+                registered_method_policy(GET),
                 None,
                 |transport, request| {
                     Box::pin(async move { transport.get_approval_request(request).await })
@@ -135,27 +136,48 @@ impl Approvals {
     /// # Errors
     ///
     /// Returns an error for invalid scope/pagination or RPC failure.
-    pub async fn list(
+    pub fn list(
         &self,
         mut request: ListApprovalRequestsRequest,
         options: CallOptions,
-    ) -> Result<ListApprovalRequestsResponse, Error> {
+    ) -> Result<Pages<ApprovalRequest>, Error> {
         normalize_parent(&self.core, &mut request.parent)?;
         validate_page(request.page.as_ref())?;
-        let prepared = options.prepare(&self.core.config);
-        Ok(self
-            .core
-            .unary(
-                request,
-                &prepared,
-                registered_method_safety(LIST),
-                None,
-                |transport, request| {
-                    Box::pin(async move { transport.list_approval_requests(request).await })
-                },
-            )
-            .await?
-            .into_inner())
+        let core = Arc::clone(&self.core);
+        let token = initial_page_token(request.page.as_ref());
+        Ok(Pages::new(
+            move |page_token| {
+                let core = Arc::clone(&core);
+                let options = options.clone();
+                let mut request = request.clone();
+                async move {
+                    request.page = Some(page_request(request.page.as_ref(), page_token));
+                    let prepared = options.prepare(&core.config);
+                    let response = core
+                        .unary(
+                            request,
+                            &prepared,
+                            registered_method_policy(LIST),
+                            None,
+                            |transport, request| {
+                                Box::pin(
+                                    async move { transport.list_approval_requests(request).await },
+                                )
+                            },
+                        )
+                        .await?;
+                    let request_id = response.request_id().map(str::to_owned);
+                    let response = response.into_inner();
+                    Ok(Page::new(
+                        response.approval_requests,
+                        response.page,
+                        response.read_time,
+                        request_id,
+                    ))
+                }
+            },
+            token,
+        ))
     }
 
     /// Records an independently authenticated decision under optimistic
@@ -192,7 +214,7 @@ impl Approvals {
             .unary(
                 request,
                 &prepared,
-                registered_method_safety(DECIDE),
+                registered_method_policy(DECIDE),
                 Some(&key),
                 |transport, request| {
                     Box::pin(async move { transport.decide_approval(request).await })
@@ -254,7 +276,7 @@ impl Approvals {
             .unary(
                 request,
                 &prepared,
-                registered_method_safety(CONSUME),
+                registered_method_policy(CONSUME),
                 Some(&key),
                 |transport, request| {
                     Box::pin(async move { transport.consume_approval(request).await })

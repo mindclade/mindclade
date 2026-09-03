@@ -3,13 +3,29 @@ from __future__ import annotations
 import hashlib
 import tempfile
 import unittest
+from collections.abc import Sequence
 from pathlib import Path
 from typing import cast
 
-from mindclade_internal_sdk import CallOptions, Client, ProtocolError
+from google.protobuf.message import Message
+from mindclade_internal_sdk import (
+    AuthorizationError,
+    CallOptions,
+    Client,
+    FieldViolation,
+    NotFoundError,
+    Page,
+    PageBudget,
+    PaginationLimitError,
+    PaginationLimits,
+    ProtocolError,
+    ValidationError,
+)
 from mindclade_internal_sdk.resources import ArtifactRef, Operation, artifact_reference
 
 from examples.sdk.download_artifact import download_verified_artifact
+from examples.sdk.handle_errors import failure_report, operation_if_present
+from examples.sdk.list_operations import collect_operations, first_operation_page
 from examples.sdk.submit_operation import submit_training_operation
 
 
@@ -20,6 +36,63 @@ class _FakeTraining:
     def submit(self, training_run_id: str, **arguments: object) -> Operation:
         self.arguments = {"training_run_id": training_run_id, **arguments}
         return Operation(operation_id="operations/training-1")
+
+
+class _FakeOperations:
+    """List namespace returning the SDK's own auto-paginating page type."""
+
+    def __init__(
+        self,
+        pages: Sequence[Sequence[Operation]] = (),
+        *,
+        get_error: Exception | None = None,
+    ) -> None:
+        self._pages = tuple(tuple(page) for page in pages)
+        self._get_error = get_error
+        self.limits: list[PaginationLimits | None] = []
+        self.options: list[CallOptions | None] = []
+        self.names: list[str] = []
+
+    def get(
+        self,
+        name: str,
+        *,
+        if_none_match: str = "",
+        options: CallOptions | None = None,
+    ) -> Operation:
+        del if_none_match
+        self.names.append(name)
+        self.options.append(options)
+        if self._get_error is not None:
+            raise self._get_error
+        return Operation(operation_id=name)
+
+    def list(
+        self,
+        request: object | None = None,
+        *,
+        options: CallOptions | None = None,
+        limits: PaginationLimits | None = None,
+    ) -> Page[Operation]:
+        del request
+        self.options.append(options)
+        self.limits.append(limits)
+        return self._page(0, limits)
+
+    def _page(self, index: int, limits: PaginationLimits | None) -> Page[Operation]:
+        token = "" if index + 1 == len(self._pages) else f"operations-page-{index + 1}"
+        return Page(
+            items=self._pages[index],
+            next_page_token=token,
+            # The SDK carries the generated ListOperationsResponse here. A
+            # consumer cannot build one without importing a generated package,
+            # which the boundary forbids, and these examples read items and
+            # cursors only, so the fake declines to fabricate a wire model.
+            response=cast(Message, None),
+            fetch=lambda following: self._page(int(following.rsplit("-", 1)[1]), limits),
+            budget=PageBudget(limits=limits or PaginationLimits()),
+            seen=frozenset({token}) if token else frozenset(),
+        )
 
 
 class _FakeArtifacts:
@@ -64,9 +137,19 @@ class _FakeArtifacts:
 
 
 class _FakeClient:
-    def __init__(self, content: bytes = b"") -> None:
+    def __init__(
+        self,
+        content: bytes = b"",
+        *,
+        operation_pages: Sequence[Sequence[Operation]] = (),
+    ) -> None:
         self.training = _FakeTraining()
         self.artifacts = _FakeArtifacts(content)
+        self.operations = _FakeOperations(operation_pages)
+
+
+def _operations(*identifiers: str) -> tuple[Operation, ...]:
+    return tuple(Operation(operation_id=identifier) for identifier in identifiers)
 
 
 class SdkExamplesTest(unittest.TestCase):
@@ -137,6 +220,103 @@ class SdkExamplesTest(unittest.TestCase):
                     cast(Client, fake), alias="latest", destination=destination
                 )
             self.assertEqual(destination.read_bytes(), b"existing")
+
+
+class ListOperationsExampleTest(unittest.TestCase):
+    def test_collection_crosses_page_boundaries_under_a_declared_budget(self) -> None:
+        fake = _FakeClient(
+            operation_pages=(
+                _operations("operations/op-1", "operations/op-2"),
+                _operations("operations/op-3", "operations/op-4"),
+                _operations("operations/op-5"),
+            )
+        )
+        options = CallOptions(request_id="operation-list-01")
+        operations = collect_operations(
+            cast(Client, fake), max_items=10, page_size=2, options=options
+        )
+        self.assertEqual(
+            [operation.operation_id for operation in operations],
+            [
+                "operations/op-1",
+                "operations/op-2",
+                "operations/op-3",
+                "operations/op-4",
+                "operations/op-5",
+            ],
+        )
+        self.assertEqual(fake.operations.options, [options])
+        self.assertEqual(fake.operations.limits, [PaginationLimits(max_items=10, page_size=2)])
+
+    def test_a_spent_item_budget_fails_instead_of_truncating_silently(self) -> None:
+        fake = _FakeClient(
+            operation_pages=(
+                _operations("operations/op-1", "operations/op-2"),
+                _operations("operations/op-3"),
+            )
+        )
+        with self.assertRaises(PaginationLimitError):
+            collect_operations(cast(Client, fake), max_items=2, page_size=2)
+
+    def test_page_level_access_keeps_the_opaque_cursor(self) -> None:
+        fake = _FakeClient(
+            operation_pages=(
+                _operations("operations/op-1"),
+                _operations("operations/op-2"),
+            )
+        )
+        page = first_operation_page(cast(Client, fake), page_size=1)
+        self.assertEqual([operation.operation_id for operation in page.items], ["operations/op-1"])
+        self.assertTrue(page.has_next_page)
+        self.assertEqual(page.next_page_token, "operations-page-1")
+        following = page.next_page()
+        self.assertEqual(
+            [operation.operation_id for operation in following.items], ["operations/op-2"]
+        )
+        self.assertFalse(following.has_next_page)
+
+
+class HandleErrorsExampleTest(unittest.TestCase):
+    def test_a_present_operation_is_returned_unchanged(self) -> None:
+        fake = _FakeClient()
+        options = CallOptions(request_id="operation-get-01")
+        operation = operation_if_present(cast(Client, fake), "operations/op-1", options=options)
+        self.assertIsNotNone(operation)
+        assert operation is not None
+        self.assertEqual(operation.operation_id, "operations/op-1")
+        self.assertEqual(fake.operations.names, ["operations/op-1"])
+        self.assertEqual(fake.operations.options, [options])
+
+    def test_a_missing_operation_is_absence_and_not_a_failure(self) -> None:
+        fake = _FakeClient()
+        fake.operations = _FakeOperations(get_error=NotFoundError("operation does not exist"))
+        self.assertIsNone(operation_if_present(cast(Client, fake), "operations/op-1"))
+
+    def test_every_other_sdk_error_keeps_its_class(self) -> None:
+        fake = _FakeClient()
+        fake.operations = _FakeOperations(
+            get_error=AuthorizationError("caller may not read this operation")
+        )
+        with self.assertRaises(AuthorizationError):
+            operation_if_present(cast(Client, fake), "operations/op-1")
+
+    def test_failure_report_carries_only_the_sdk_errors_own_fields(self) -> None:
+        error = ValidationError(
+            "training submission was rejected",
+            code="validation",
+            request_id="request-9",
+            trace_id="trace-9",
+            retryable=False,
+            retry_after=1.5,
+            field_violations=(FieldViolation(field="training_recipe.digest", description="bad"),),
+        )
+        report = failure_report(error)
+        self.assertEqual(report.code, "validation")
+        self.assertFalse(report.retryable)
+        self.assertEqual(report.retry_after_seconds, 1.5)
+        self.assertEqual(report.request_id, "request-9")
+        self.assertEqual(report.trace_id, "trace-9")
+        self.assertEqual(report.invalid_fields, ("training_recipe.digest",))
 
 
 if __name__ == "__main__":

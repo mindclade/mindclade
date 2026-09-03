@@ -138,7 +138,11 @@ type runClock interface{ Now() time.Time }
 
 type systemRunClock struct{}
 
-func (systemRunClock) Now() time.Time { return time.Now().UTC() }
+// PostgreSQL timestamptz resolves to microseconds, so the clock truncates to
+// match. Without this an accepted command and its idempotent replay differ:
+// the job comes back re-read from the database while the operation is returned
+// from memory, so the operation kept nanosecond digits the database dropped.
+func (systemRunClock) Now() time.Time { return time.Now().UTC().Truncate(time.Microsecond) }
 
 // JobServer implements the generated durable-work API. It accepts identity
 // only from the authenticated transport context, canonicalizes every command

@@ -1,4 +1,4 @@
-# ADR-0025: The control-plane platform runtime becomes shared Go libraries
+# ADR-0026: The control-plane platform runtime becomes shared Go libraries
 
 - Status: Accepted in blueprint specification
 - Connected ratification: Pending independent review on protected infrastructure

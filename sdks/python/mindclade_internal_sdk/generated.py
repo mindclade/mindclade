@@ -7,12 +7,13 @@ from collections.abc import AsyncIterator, Iterator
 from google.protobuf.message import Message
 
 from ._invocation import AsyncInvoker, SyncInvoker
+from ._raw import AsyncWithRawResponse, WithRawResponse
 from .calls import CallOptions, prepare_call
 from .method_policy import retry_permitted
 from .transport import INTERNAL_STREAM_METHODS, INTERNAL_UNARY_METHODS
 
 
-class GeneratedRPCs:
+class GeneratedRPCs(WithRawResponse):
     """Advanced generated-type escape hatch with SDK auth/deadline policy."""
 
     def __init__(self, invoker: SyncInvoker) -> None:
@@ -60,7 +61,7 @@ class GeneratedRPCs:
         yield from self._invoker.stream(method, request, call=call)
 
 
-class AsyncGeneratedRPCs:
+class AsyncGeneratedRPCs(AsyncWithRawResponse):
     """Asyncio variant of the policy-preserving generated RPC escape hatch."""
 
     def __init__(self, invoker: AsyncInvoker) -> None:

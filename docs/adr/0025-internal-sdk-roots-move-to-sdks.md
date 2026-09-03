@@ -1,4 +1,4 @@
-# ADR-0024: Internal SDK roots move to `sdks/<language>`
+# ADR-0025: Internal SDK roots move to `sdks/<language>`
 
 - Status: Accepted in blueprint specification
 - Connected ratification: Pending independent review on protected infrastructure

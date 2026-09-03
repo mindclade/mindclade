@@ -5,9 +5,9 @@ from __future__ import annotations
 import asyncio
 import threading
 import time
-from collections.abc import AsyncIterator, Iterator
 from typing import cast
 
+from google.protobuf.message import Message
 from google.protobuf.timestamp_pb2 import Timestamp
 from mindclade.inference.v1 import (
     inference_request_pb2,
@@ -17,10 +17,12 @@ from mindclade.inference.v1 import (
 from mindclade.internal.inference.v1 import inference_service_pb2
 from mindclade.operation.v1 import operation_pb2
 
-from ._invocation import AsyncInvoker, SyncInvoker, canonical_digest, command_context, retry_delay
+from ._invocation import AsyncInvoker, SyncInvoker, canonical_digest, command_context
+from ._raw import AsyncWithRawResponse, WithRawResponse, streaming_method
 from ._validation import required_response_message, required_text
+from ._watch import AsyncWatchStream, WatchSpec, WatchStream, watch_budget
 from .calls import CallOptions, PreparedCall, prepare_call
-from .errors import CancelledError, MindcladeError, ProtocolError, UnavailableError
+from .errors import CancelledError, ProtocolError, UnavailableError
 from .transport import (
     COMMIT_INFERENCE_RESULT,
     GET_INFERENCE_REQUEST,
@@ -86,13 +88,16 @@ def _materialize_commit(
     return value, call
 
 
-def _watch_call(base: PreparedCall, remaining: float) -> PreparedCall:
-    return PreparedCall(
-        timeout=max(0.001, min(remaining, 300.0)),
-        request_id=base.request_id,
-        trace_id=base.trace_id,
-        idempotency_key=None,
-    )
+def _copied_cursor(
+    cursor: inference_stream_pb2.InferenceStreamCursor | None,
+) -> inference_stream_pb2.InferenceStreamCursor | None:
+    """Copy a caller's cursor so the watch cannot mutate what it was handed."""
+
+    if cursor is None:
+        return None
+    copy = inference_stream_pb2.InferenceStreamCursor()
+    copy.CopyFrom(cursor)
+    return copy
 
 
 def _watch_request(
@@ -146,7 +151,46 @@ def _accept_message(
     )
 
 
-class Inference:
+type InferenceCursor = inference_stream_pb2.InferenceStreamCursor | None
+type InferenceWatchSpec = WatchSpec[
+    inference_stream_pb2.InferenceStreamMessage,
+    InferenceCursor,
+]
+
+_TERMINAL_UPDATES = frozenset({"final_result", "failure"})
+
+
+def _inference_watch_spec(operation_name: str) -> InferenceWatchSpec:
+    """Describe the inference watch to the shared resumable watcher."""
+
+    name = required_text("inference operation name", operation_name)
+
+    def build(cursor: InferenceCursor, remaining: float) -> Message:
+        return _watch_request(name, cursor, remaining)
+
+    def accept(
+        raw: Message,
+        cursor: InferenceCursor,
+    ) -> tuple[inference_stream_pb2.InferenceStreamMessage, InferenceCursor, bool]:
+        response = cast(inference_service_pb2.WatchInferenceResponse, raw)
+        message, advanced = _accept_message(response, cursor)
+        terminal = message.WhichOneof("update") in _TERMINAL_UPDATES
+        return message, advanced, terminal
+
+    return WatchSpec(
+        method=WATCH_INFERENCE,
+        build_request=build,
+        accept=accept,
+        closed_error=lambda: UnavailableError(
+            "inference watch closed before terminal durable truth",
+            retryable=True,
+        ),
+        timeout_error=lambda: TimeoutError("inference watch deadline expired"),
+        cancelled_error=lambda: CancelledError("inference watch was cancelled"),
+    )
+
+
+class Inference(WithRawResponse):
     def __init__(self, invoker: SyncInvoker) -> None:
         self._invoker = invoker
 
@@ -258,6 +302,7 @@ class Inference:
             ),
         )
 
+    @streaming_method
     def watch(
         self,
         operation_name: str,
@@ -266,64 +311,20 @@ class Inference:
         timeout: float = 300.0,
         cancellation: threading.Event | None = None,
         options: CallOptions | None = None,
-    ) -> Iterator[inference_stream_pb2.InferenceStreamMessage]:
-        if timeout <= 0:
-            raise ValueError("watch timeout must be positive")
-        base = prepare_call(
-            options or CallOptions(timeout=min(timeout, 300.0)),
-            default_timeout=min(timeout, 300.0),
-            require_idempotency=False,
+    ) -> WatchStream[inference_stream_pb2.InferenceStreamMessage, InferenceCursor]:
+        """Follow one inference stream, resuming from its durable cursor."""
+
+        if cancellation is not None and cancellation.is_set():
+            raise CancelledError("inference watch was cancelled")
+        base, total = watch_budget(timeout, options)
+        return WatchStream(
+            self._invoker,
+            _inference_watch_spec(operation_name),
+            cursor=_copied_cursor(cursor),
+            call=base,
+            total=total,
+            cancellation=cancellation,
         )
-        current = None
-        if cursor is not None:
-            current = inference_stream_pb2.InferenceStreamCursor()
-            current.CopyFrom(cursor)
-        deadline = time.monotonic() + base.timeout
-        failures = 0
-        while True:
-            if cancellation is not None and cancellation.is_set():
-                raise CancelledError("inference watch was cancelled")
-            remaining = deadline - time.monotonic()
-            if remaining <= 0:
-                raise TimeoutError("inference watch deadline expired")
-            try:
-                for raw in self._invoker.stream(
-                    WATCH_INFERENCE,
-                    _watch_request(operation_name, current, remaining),
-                    call=_watch_call(base, remaining),
-                    cancellation=cancellation,
-                ):
-                    response = cast(inference_service_pb2.WatchInferenceResponse, raw)
-                    message, current = _accept_message(response, current)
-                    failures = 0
-                    yield message
-                    if message.WhichOneof("update") in {"final_result", "failure"}:
-                        return
-                stream_error: MindcladeError = UnavailableError(
-                    "inference watch closed before terminal durable truth",
-                    retryable=True,
-                )
-            except MindcladeError as error:
-                if not error.retryable:
-                    raise
-                stream_error = error
-            failures += 1
-            if failures >= self._invoker.config.retry.max_attempts:
-                raise stream_error
-            retry_remaining = deadline - time.monotonic()
-            if retry_remaining <= 0:
-                raise TimeoutError("inference watch deadline expired") from stream_error
-            delay = retry_delay(
-                self._invoker.config,
-                failures,
-                retry_remaining,
-                retry_after=stream_error.retry_after,
-            )
-            if cancellation is not None:
-                if cancellation.wait(delay):
-                    raise CancelledError("inference watch was cancelled")
-            elif delay > 0:
-                time.sleep(delay)
 
     def wait(
         self,
@@ -341,7 +342,7 @@ class Inference:
         raise ProtocolError("inference watch ended before terminal truth")
 
 
-class AsyncInference:
+class AsyncInference(AsyncWithRawResponse):
     def __init__(self, invoker: AsyncInvoker) -> None:
         self._invoker = invoker
 
@@ -451,7 +452,8 @@ class AsyncInference:
             ),
         )
 
-    async def watch(
+    @streaming_method
+    def watch(
         self,
         operation_name: str,
         *,
@@ -459,70 +461,20 @@ class AsyncInference:
         timeout: float = 300.0,
         cancellation: asyncio.Event | None = None,
         options: CallOptions | None = None,
-    ) -> AsyncIterator[inference_stream_pb2.InferenceStreamMessage]:
-        if timeout <= 0:
-            raise ValueError("watch timeout must be positive")
-        base = prepare_call(
-            options or CallOptions(timeout=min(timeout, 300.0)),
-            default_timeout=min(timeout, 300.0),
-            require_idempotency=False,
+    ) -> AsyncWatchStream[inference_stream_pb2.InferenceStreamMessage, InferenceCursor]:
+        """Follow one inference stream, resuming from its durable cursor."""
+
+        if cancellation is not None and cancellation.is_set():
+            raise CancelledError("inference watch was cancelled")
+        base, total = watch_budget(timeout, options)
+        return AsyncWatchStream(
+            self._invoker,
+            _inference_watch_spec(operation_name),
+            cursor=_copied_cursor(cursor),
+            call=base,
+            total=total,
+            cancellation=cancellation,
         )
-        current = None
-        if cursor is not None:
-            current = inference_stream_pb2.InferenceStreamCursor()
-            current.CopyFrom(cursor)
-        loop = asyncio.get_running_loop()
-        deadline = loop.time() + base.timeout
-        failures = 0
-        while True:
-            if cancellation is not None and cancellation.is_set():
-                raise CancelledError("inference watch was cancelled")
-            remaining = deadline - loop.time()
-            if remaining <= 0:
-                raise TimeoutError("inference watch deadline expired")
-            try:
-                async for raw in self._invoker.stream(
-                    WATCH_INFERENCE,
-                    _watch_request(operation_name, current, remaining),
-                    call=_watch_call(base, remaining),
-                    cancellation=cancellation,
-                ):
-                    response = cast(inference_service_pb2.WatchInferenceResponse, raw)
-                    message, current = _accept_message(response, current)
-                    failures = 0
-                    yield message
-                    if message.WhichOneof("update") in {"final_result", "failure"}:
-                        return
-                stream_error: MindcladeError = UnavailableError(
-                    "inference watch closed before terminal durable truth",
-                    retryable=True,
-                )
-            except MindcladeError as error:
-                if not error.retryable:
-                    raise
-                stream_error = error
-            failures += 1
-            if failures >= self._invoker.config.retry.max_attempts:
-                raise stream_error
-            retry_remaining = deadline - loop.time()
-            if retry_remaining <= 0:
-                raise TimeoutError("inference watch deadline expired") from stream_error
-            delay = retry_delay(
-                self._invoker.config,
-                failures,
-                retry_remaining,
-                retry_after=stream_error.retry_after,
-            )
-            if cancellation is None:
-                if delay > 0:
-                    await asyncio.sleep(delay)
-            else:
-                try:
-                    await asyncio.wait_for(cancellation.wait(), timeout=delay)
-                except TimeoutError:
-                    pass
-                else:
-                    raise CancelledError("inference watch was cancelled")
 
     async def wait(
         self,

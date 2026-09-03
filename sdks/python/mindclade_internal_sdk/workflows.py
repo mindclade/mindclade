@@ -7,8 +7,6 @@ import copy
 import hmac
 import re
 import threading
-import time
-from collections.abc import AsyncIterator, Iterator
 from dataclasses import replace
 from datetime import UTC, datetime
 from typing import Any, cast
@@ -19,10 +17,26 @@ from mindclade.internal.workflow.v1 import workflow_service_pb2
 from mindclade.operation.v1 import operation_pb2
 from mindclade.workflow.v1 import approval_pb2, workflow_definition_pb2, workflow_run_pb2
 
-from ._invocation import AsyncInvoker, SyncInvoker, canonical_digest, command_context, retry_delay
+from ._invocation import AsyncInvoker, SyncInvoker, canonical_digest, command_context
+from ._raw import AsyncWithRawResponse, WithRawResponse, streaming_method
 from ._validation import required_response_message, required_text
+from ._watch import AsyncWatchStream, WatchSpec, WatchStream, watch_budget
 from .calls import CallOptions, PreparedCall, prepare_call
-from .errors import CancelledError, MindcladeError, ProtocolError, WorkflowRunFailedError
+from .errors import (
+    CancelledError,
+    ProtocolError,
+    UnavailableError,
+    WorkflowRunFailedError,
+)
+from .pagination import (
+    AsyncPage,
+    Page,
+    PaginationLimits,
+    apply_default_page_size,
+    async_page,
+    next_request,
+    sync_page,
+)
 from .transport import (
     CANCEL_WORKFLOW_RUN,
     COMMIT_WORKFLOW_TRANSITION,
@@ -274,27 +288,46 @@ def _response_run(
     )
 
 
-def _watch_call(base: PreparedCall, remaining: float) -> PreparedCall:
-    return replace(base, timeout=max(0.001, min(remaining, 300.0)))
+type WorkflowWatchSpec = WatchSpec[workflow_run_pb2.WorkflowRun, int]
 
 
-def _watch_budget(
-    invoker: SyncInvoker | AsyncInvoker,
-    timeout: float,
-    options: CallOptions | None,
-) -> tuple[PreparedCall, float]:
-    if not 0 < timeout <= 86_400:
-        raise ValueError("watch timeout must be in (0, 86400] seconds")
-    base = prepare_call(
-        options,
-        default_timeout=min(timeout, 300.0),
-        require_idempotency=False,
+def _workflow_watch_spec(run_name: str) -> WorkflowWatchSpec:
+    """Describe the workflow-run watch to the shared resumable watcher."""
+
+    def build(cursor: int, remaining: float) -> Message:
+        del remaining
+        return workflow_service_pb2.WatchWorkflowRunRequest(
+            name=run_name,
+            after_transition_sequence=cursor,
+        )
+
+    def accept(raw: Message, cursor: int) -> tuple[workflow_run_pb2.WorkflowRun, int, bool]:
+        response = cast(workflow_service_pb2.WatchWorkflowRunResponse, raw)
+        run = _response_run(response, label="workflow watch")
+        if run.name != run_name or run.transition_sequence != cursor + 1:
+            raise ProtocolError(
+                "workflow watch returned an invalid identity or non-contiguous sequence"
+            )
+        return run, run.transition_sequence, run.state in _TERMINAL_STATES
+
+    return WatchSpec(
+        method=WATCH_WORKFLOW_RUN,
+        build_request=build,
+        accept=accept,
+        # The watcher surfaces this only after the retry budget is spent, and
+        # surfaces the real transport failure instead when there was one. The
+        # previous loop discarded that cause and always reported a protocol
+        # violation, which sent operators looking in the wrong place.
+        closed_error=lambda: UnavailableError(
+            "workflow watch ended before terminal durable state",
+            retryable=True,
+        ),
+        timeout_error=lambda: TimeoutError("workflow watch deadline expired"),
+        cancelled_error=lambda: CancelledError("workflow watch was cancelled"),
     )
-    total = min(timeout, options.timeout) if options and options.timeout else timeout
-    return base, total
 
 
-class Workflows:
+class Workflows(WithRawResponse):
     """Synchronous generated-type-only Workflow API."""
 
     def __init__(self, invoker: SyncInvoker) -> None:
@@ -377,7 +410,8 @@ class Workflows:
         request: workflow_service_pb2.ListWorkflowDefinitionsRequest | None = None,
         *,
         options: CallOptions | None = None,
-    ) -> workflow_service_pb2.ListWorkflowDefinitionsResponse:
+        limits: PaginationLimits | None = None,
+    ) -> Page[workflow_definition_pb2.WorkflowDefinition]:
         value = (
             copy.deepcopy(request)
             if request
@@ -385,15 +419,23 @@ class Workflows:
         )
         value.parent = _parent(self._invoker, value.parent, "workflow definition list")
         _normalize_page(value)
+        apply_default_page_size(value, limits)
         call = prepare_call(
             options,
             default_timeout=self._invoker.config.default_timeout,
             require_idempotency=False,
         )
-        return cast(
+        response = cast(
             workflow_service_pb2.ListWorkflowDefinitionsResponse,
             self._invoker.unary(LIST_WORKFLOW_DEFINITIONS, value, call=call, retry_safe=True),
         )
+
+        def follow(page_token: str) -> Page[workflow_definition_pb2.WorkflowDefinition]:
+            return self.list_definitions(
+                next_request(value, page_token), options=options, limits=limits
+            )
+
+        return sync_page(response, items_field="workflow_definitions", fetch=follow, limits=limits)
 
     def start_run(
         self,
@@ -440,21 +482,28 @@ class Workflows:
         request: workflow_service_pb2.ListWorkflowRunsRequest | None = None,
         *,
         options: CallOptions | None = None,
-    ) -> workflow_service_pb2.ListWorkflowRunsResponse:
+        limits: PaginationLimits | None = None,
+    ) -> Page[workflow_run_pb2.WorkflowRun]:
         value = (
             copy.deepcopy(request) if request else workflow_service_pb2.ListWorkflowRunsRequest()
         )
         value.parent = _parent(self._invoker, value.parent, "workflow run list")
         _normalize_page(value)
+        apply_default_page_size(value, limits)
         call = prepare_call(
             options,
             default_timeout=self._invoker.config.default_timeout,
             require_idempotency=False,
         )
-        return cast(
+        response = cast(
             workflow_service_pb2.ListWorkflowRunsResponse,
             self._invoker.unary(LIST_WORKFLOW_RUNS, value, call=call, retry_safe=True),
         )
+
+        def follow(page_token: str) -> Page[workflow_run_pb2.WorkflowRun]:
+            return self.list_runs(next_request(value, page_token), options=options, limits=limits)
+
+        return sync_page(response, items_field="workflow_runs", fetch=follow, limits=limits)
 
     def cancel_run(
         self,
@@ -498,6 +547,7 @@ class Workflows:
             raise ProtocolError("workflow transition returned inconsistent durable state")
         return run
 
+    @streaming_method
     def watch(
         self,
         name: str,
@@ -506,63 +556,23 @@ class Workflows:
         timeout: float = 300.0,
         cancellation: threading.Event | None = None,
         options: CallOptions | None = None,
-    ) -> Iterator[workflow_run_pb2.WorkflowRun]:
+    ) -> WatchStream[workflow_run_pb2.WorkflowRun, int]:
+        """Follow one workflow run's transitions, reconnecting inside the deadline."""
+
         run_name = _scoped_name(self._invoker, name, "workflowRuns")
         if after_transition_sequence < 0:
             raise ValueError("workflow watch cursor cannot be negative")
-        base, total = _watch_budget(self._invoker, timeout, options)
-        deadline = time.monotonic() + total
-        cursor = after_transition_sequence
-        failures = 0
-        while True:
-            retry_after: float | None = None
-            if cancellation is not None and cancellation.is_set():
-                raise CancelledError("workflow watch was cancelled")
-            remaining = deadline - time.monotonic()
-            if remaining <= 0:
-                raise TimeoutError("workflow watch deadline expired")
-            try:
-                for raw in self._invoker.stream(
-                    WATCH_WORKFLOW_RUN,
-                    workflow_service_pb2.WatchWorkflowRunRequest(
-                        name=run_name, after_transition_sequence=cursor
-                    ),
-                    call=_watch_call(base, remaining),
-                    cancellation=cancellation,
-                ):
-                    if cancellation is not None and cancellation.is_set():
-                        raise CancelledError("workflow watch was cancelled")
-                    response = cast(workflow_service_pb2.WatchWorkflowRunResponse, raw)
-                    run = _response_run(response, label="workflow watch")
-                    if run.name != run_name or run.transition_sequence != cursor + 1:
-                        raise ProtocolError(
-                            "workflow watch returned an invalid identity or non-contiguous sequence"
-                        )
-                    cursor = run.transition_sequence
-                    failures = 0
-                    yield run
-                    if run.state in _TERMINAL_STATES:
-                        return
-            except MindcladeError as error:
-                if not error.retryable:
-                    raise
-                retry_after = error.retry_after
-            failures += 1
-            if failures >= self._invoker.config.retry.max_attempts:
-                raise ProtocolError("workflow watch ended before terminal durable state")
-            retry_remaining = deadline - time.monotonic()
-            if retry_remaining <= 0:
-                raise TimeoutError("workflow watch deadline expired")
-            delay = retry_delay(
-                self._invoker.config,
-                failures,
-                retry_remaining,
-                retry_after=retry_after,
-            )
-            if delay > 0 and cancellation is not None and cancellation.wait(delay):
-                raise CancelledError("workflow watch was cancelled")
-            if delay > 0 and cancellation is None:
-                time.sleep(delay)
+        if cancellation is not None and cancellation.is_set():
+            raise CancelledError("workflow watch was cancelled")
+        base, total = watch_budget(timeout, options)
+        return WatchStream(
+            self._invoker,
+            _workflow_watch_spec(run_name),
+            cursor=after_transition_sequence,
+            call=base,
+            total=total,
+            cancellation=cancellation,
+        )
 
     def wait(
         self,
@@ -588,7 +598,7 @@ class Workflows:
         raise ProtocolError("workflow watch ended before terminal durable state")
 
 
-class AsyncWorkflows:
+class AsyncWorkflows(AsyncWithRawResponse):
     """Asyncio generated-type-only Workflow API."""
 
     def __init__(self, invoker: AsyncInvoker) -> None:
@@ -675,7 +685,8 @@ class AsyncWorkflows:
         request: workflow_service_pb2.ListWorkflowDefinitionsRequest | None = None,
         *,
         options: CallOptions | None = None,
-    ) -> workflow_service_pb2.ListWorkflowDefinitionsResponse:
+        limits: PaginationLimits | None = None,
+    ) -> AsyncPage[workflow_definition_pb2.WorkflowDefinition]:
         value = (
             copy.deepcopy(request)
             if request
@@ -683,15 +694,23 @@ class AsyncWorkflows:
         )
         value.parent = _parent(self._invoker, value.parent, "workflow definition list")
         _normalize_page(value)
+        apply_default_page_size(value, limits)
         call = prepare_call(
             options,
             default_timeout=self._invoker.config.default_timeout,
             require_idempotency=False,
         )
-        return cast(
+        response = cast(
             workflow_service_pb2.ListWorkflowDefinitionsResponse,
             await self._invoker.unary(LIST_WORKFLOW_DEFINITIONS, value, call=call, retry_safe=True),
         )
+
+        async def follow(page_token: str) -> AsyncPage[workflow_definition_pb2.WorkflowDefinition]:
+            return await self.list_definitions(
+                next_request(value, page_token), options=options, limits=limits
+            )
+
+        return async_page(response, items_field="workflow_definitions", fetch=follow, limits=limits)
 
     async def start_run(
         self,
@@ -738,21 +757,30 @@ class AsyncWorkflows:
         request: workflow_service_pb2.ListWorkflowRunsRequest | None = None,
         *,
         options: CallOptions | None = None,
-    ) -> workflow_service_pb2.ListWorkflowRunsResponse:
+        limits: PaginationLimits | None = None,
+    ) -> AsyncPage[workflow_run_pb2.WorkflowRun]:
         value = (
             copy.deepcopy(request) if request else workflow_service_pb2.ListWorkflowRunsRequest()
         )
         value.parent = _parent(self._invoker, value.parent, "workflow run list")
         _normalize_page(value)
+        apply_default_page_size(value, limits)
         call = prepare_call(
             options,
             default_timeout=self._invoker.config.default_timeout,
             require_idempotency=False,
         )
-        return cast(
+        response = cast(
             workflow_service_pb2.ListWorkflowRunsResponse,
             await self._invoker.unary(LIST_WORKFLOW_RUNS, value, call=call, retry_safe=True),
         )
+
+        async def follow(page_token: str) -> AsyncPage[workflow_run_pb2.WorkflowRun]:
+            return await self.list_runs(
+                next_request(value, page_token), options=options, limits=limits
+            )
+
+        return async_page(response, items_field="workflow_runs", fetch=follow, limits=limits)
 
     async def cancel_run(
         self,
@@ -798,7 +826,8 @@ class AsyncWorkflows:
             raise ProtocolError("workflow transition returned inconsistent durable state")
         return run
 
-    async def watch(
+    @streaming_method
+    def watch(
         self,
         name: str,
         *,
@@ -806,71 +835,23 @@ class AsyncWorkflows:
         timeout: float = 300.0,
         cancellation: asyncio.Event | None = None,
         options: CallOptions | None = None,
-    ) -> AsyncIterator[workflow_run_pb2.WorkflowRun]:
+    ) -> AsyncWatchStream[workflow_run_pb2.WorkflowRun, int]:
+        """Follow one workflow run's transitions, reconnecting inside the deadline."""
+
         run_name = _scoped_name(self._invoker, name, "workflowRuns")
         if after_transition_sequence < 0:
             raise ValueError("workflow watch cursor cannot be negative")
-        base, total = _watch_budget(self._invoker, timeout, options)
-        loop = asyncio.get_running_loop()
-        deadline = loop.time() + total
-        cursor = after_transition_sequence
-        failures = 0
-        while True:
-            retry_after: float | None = None
-            if cancellation is not None and cancellation.is_set():
-                raise CancelledError("workflow watch was cancelled")
-            remaining = deadline - loop.time()
-            if remaining <= 0:
-                raise TimeoutError("workflow watch deadline expired")
-            try:
-                async for raw in self._invoker.stream(
-                    WATCH_WORKFLOW_RUN,
-                    workflow_service_pb2.WatchWorkflowRunRequest(
-                        name=run_name, after_transition_sequence=cursor
-                    ),
-                    call=_watch_call(base, remaining),
-                    cancellation=cancellation,
-                ):
-                    if cancellation is not None and cancellation.is_set():
-                        raise CancelledError("workflow watch was cancelled")
-                    response = cast(workflow_service_pb2.WatchWorkflowRunResponse, raw)
-                    run = _response_run(response, label="workflow watch")
-                    if run.name != run_name or run.transition_sequence != cursor + 1:
-                        raise ProtocolError(
-                            "workflow watch returned an invalid identity or non-contiguous sequence"
-                        )
-                    cursor = run.transition_sequence
-                    failures = 0
-                    yield run
-                    if run.state in _TERMINAL_STATES:
-                        return
-            except MindcladeError as error:
-                if not error.retryable:
-                    raise
-                retry_after = error.retry_after
-            failures += 1
-            if failures >= self._invoker.config.retry.max_attempts:
-                raise ProtocolError("workflow watch ended before terminal durable state")
-            retry_remaining = deadline - loop.time()
-            if retry_remaining <= 0:
-                raise TimeoutError("workflow watch deadline expired")
-            delay = retry_delay(
-                self._invoker.config,
-                failures,
-                retry_remaining,
-                retry_after=retry_after,
-            )
-            if delay <= 0:
-                continue
-            if cancellation is None:
-                await asyncio.sleep(delay)
-            else:
-                try:
-                    await asyncio.wait_for(cancellation.wait(), timeout=delay)
-                except TimeoutError:
-                    pass
-                else:
-                    raise CancelledError("workflow watch was cancelled")
+        if cancellation is not None and cancellation.is_set():
+            raise CancelledError("workflow watch was cancelled")
+        base, total = watch_budget(timeout, options)
+        return AsyncWatchStream(
+            self._invoker,
+            _workflow_watch_spec(run_name),
+            cursor=after_transition_sequence,
+            call=base,
+            total=total,
+            cancellation=cancellation,
+        )
 
     async def wait(
         self,
@@ -902,7 +883,7 @@ def _validate_receipt_digest(receipt: approval_pb2.ApprovalReceipt) -> None:
         raise ProtocolError("approval receipt omitted its binding")
 
 
-class Approvals:
+class Approvals(WithRawResponse):
     """Synchronous generated-type-only exact-intent Approval API."""
 
     def __init__(self, invoker: SyncInvoker) -> None:
@@ -976,7 +957,8 @@ class Approvals:
         request: workflow_service_pb2.ListApprovalRequestsRequest | None = None,
         *,
         options: CallOptions | None = None,
-    ) -> workflow_service_pb2.ListApprovalRequestsResponse:
+        limits: PaginationLimits | None = None,
+    ) -> Page[approval_pb2.ApprovalRequest]:
         value = (
             copy.deepcopy(request)
             if request
@@ -984,15 +966,21 @@ class Approvals:
         )
         value.parent = _parent(self._invoker, value.parent, "approval list")
         _normalize_page(value)
+        apply_default_page_size(value, limits)
         call = prepare_call(
             options,
             default_timeout=self._invoker.config.default_timeout,
             require_idempotency=False,
         )
-        return cast(
+        response = cast(
             workflow_service_pb2.ListApprovalRequestsResponse,
             self._invoker.unary(LIST_APPROVAL_REQUESTS, value, call=call, retry_safe=True),
         )
+
+        def follow(page_token: str) -> Page[approval_pb2.ApprovalRequest]:
+            return self.list(next_request(value, page_token), options=options, limits=limits)
+
+        return sync_page(response, items_field="approval_requests", fetch=follow, limits=limits)
 
     def decide(
         self,
@@ -1065,7 +1053,7 @@ class Approvals:
         return receipt
 
 
-class AsyncApprovals:
+class AsyncApprovals(AsyncWithRawResponse):
     """Asyncio generated-type-only exact-intent Approval API."""
 
     def __init__(self, invoker: AsyncInvoker) -> None:
@@ -1141,7 +1129,8 @@ class AsyncApprovals:
         request: workflow_service_pb2.ListApprovalRequestsRequest | None = None,
         *,
         options: CallOptions | None = None,
-    ) -> workflow_service_pb2.ListApprovalRequestsResponse:
+        limits: PaginationLimits | None = None,
+    ) -> AsyncPage[approval_pb2.ApprovalRequest]:
         value = (
             copy.deepcopy(request)
             if request
@@ -1149,15 +1138,21 @@ class AsyncApprovals:
         )
         value.parent = _parent(self._invoker, value.parent, "approval list")
         _normalize_page(value)
+        apply_default_page_size(value, limits)
         call = prepare_call(
             options,
             default_timeout=self._invoker.config.default_timeout,
             require_idempotency=False,
         )
-        return cast(
+        response = cast(
             workflow_service_pb2.ListApprovalRequestsResponse,
             await self._invoker.unary(LIST_APPROVAL_REQUESTS, value, call=call, retry_safe=True),
         )
+
+        async def follow(page_token: str) -> AsyncPage[approval_pb2.ApprovalRequest]:
+            return await self.list(next_request(value, page_token), options=options, limits=limits)
+
+        return async_page(response, items_field="approval_requests", fetch=follow, limits=limits)
 
     async def decide(
         self,

@@ -1,4 +1,4 @@
-# ADR-0026: Long-running operations become a first-class namespace
+# ADR-0027: Long-running operations become a first-class namespace
 
 - Status: Accepted in blueprint specification
 - Connected ratification: Pending independent review on protected infrastructure

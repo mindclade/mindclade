@@ -1,7 +1,17 @@
 name: CodeQL
 
 on:
+  # CodeQL on a pull request that changes no analysed source is pure cost. Main
+  # pushes and the weekly cron remain unfiltered, so nothing goes unanalysed.
   pull_request:
+    paths:
+      - "**/*.py"
+      - "**/*.go"
+      - "**/*.ts"
+      - "**/*.tsx"
+      - "**/*.js"
+      - "**/*.jsx"
+      - ".github/workflows/codeql.yml"
   push:
     branches: [main]
   schedule:
@@ -19,8 +29,31 @@ jobs:
     permissions:
       contents: read
       security-events: write
-    uses: mindclade/.github/.github/workflows/reusable-codeql.yml@55687ae97dbf6073d61a085c21542637a551ed00
+    uses: mindclade/.github/.github/workflows/reusable-codeql.yml@cdfc7303e8f14d647528774768c144e4dbf67b86
     with:
       source_revision: ${{ github.event.pull_request.head.sha || github.sha }}
       languages: '["python"]'
+      build_mode: none
+
+  # The reusable workflow analyses exactly one language per call and requires the
+  # build mode each language mandates: interpreted languages must use none,
+  # compiled languages must use autobuild.
+  go:
+    permissions:
+      contents: read
+      security-events: write
+    uses: mindclade/.github/.github/workflows/reusable-codeql.yml@cdfc7303e8f14d647528774768c144e4dbf67b86
+    with:
+      source_revision: ${{ github.event.pull_request.head.sha || github.sha }}
+      languages: '["go"]'
+      build_mode: autobuild
+
+  javascript:
+    permissions:
+      contents: read
+      security-events: write
+    uses: mindclade/.github/.github/workflows/reusable-codeql.yml@cdfc7303e8f14d647528774768c144e4dbf67b86
+    with:
+      source_revision: ${{ github.event.pull_request.head.sha || github.sha }}
+      languages: '["javascript-typescript"]'
       build_mode: none

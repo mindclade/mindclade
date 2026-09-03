@@ -25,6 +25,8 @@ py_test(
     name = "training_worker_test",
     size = "small",
     srcs = ["tests/test_control_plane.py"],
+    # The boundary tests read this slice's own sources and build configuration.
+    data = [":governed_sources"],
     imports = ["python"],
     legacy_create_init = 0,
     main = "tests/test_control_plane.py",

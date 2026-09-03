@@ -83,9 +83,20 @@ func (service *EvaluationService) GetRun(ctx context.Context, name, ifNoneMatch 
 	return cloneGenerated(response.GetEvaluationRun()), nil
 }
 
+// EvaluationRunPage is one bounded list response plus cursor-scheme traversal. The
+// embedded generated response remains the authoritative model; the wrapper
+// adds only the opaque-cursor mechanics.
+type EvaluationRunPage struct {
+	*internalevaluationv1.ListEvaluationRunsResponse
+	pageBase[*evaluationv1.EvaluationRun, *EvaluationRunPage]
+}
+
+// Items returns this page's evaluation runs without traversing any further page.
+func (page *EvaluationRunPage) Items() []*evaluationv1.EvaluationRun { return page.GetEvaluationRuns() }
+
 // ListRuns returns one bounded project-scoped page while preserving opaque
 // server-issued pagination tokens.
-func (service *EvaluationService) ListRuns(ctx context.Context, request *internalevaluationv1.ListEvaluationRunsRequest, options ...RequestOption) (*internalevaluationv1.ListEvaluationRunsResponse, error) {
+func (service *EvaluationService) ListRuns(ctx context.Context, request *internalevaluationv1.ListEvaluationRunsRequest, options ...RequestOption) (*EvaluationRunPage, error) {
 	if !service.configured() {
 		return nil, invalidArgument("evaluation service is not configured")
 	}
@@ -110,7 +121,14 @@ func (service *EvaluationService) ListRuns(ctx context.Context, request *interna
 	if err != nil {
 		return nil, normalizeError(err)
 	}
-	return cloneGenerated(response), nil
+	detached := cloneGenerated(response)
+	page := &EvaluationRunPage{ListEvaluationRunsResponse: detached}
+	page.pageBase = newPage[*evaluationv1.EvaluationRun](page, detached.GetPage(), paginationLimitsFrom(options), func(ctx context.Context, token string) (*EvaluationRunPage, error) {
+		successor := cloneGenerated(value)
+		successor.Page = pageRequestWithToken(value.GetPage(), token)
+		return service.ListRuns(ctx, successor, options...)
+	})
+	return page, nil
 }
 
 // CancelRun records monotonic cancellation under an ETag precondition.

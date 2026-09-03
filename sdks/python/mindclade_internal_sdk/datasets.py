@@ -12,8 +12,18 @@ from mindclade.internal.dataset.v1 import dataset_service_pb2
 from mindclade.operation.v1 import operation_pb2
 
 from ._invocation import AsyncInvoker, SyncInvoker, canonical_digest, command_context
+from ._raw import AsyncWithRawResponse, WithRawResponse
 from ._validation import required_response_message, required_text
 from .calls import CallOptions, PreparedCall, prepare_call
+from .pagination import (
+    AsyncPage,
+    Page,
+    PaginationLimits,
+    apply_default_page_size,
+    async_page,
+    next_request,
+    sync_page,
+)
 from .transport import (
     CREATE_DATASET,
     GET_DATASET,
@@ -140,7 +150,7 @@ def _prepare_command[
     return materialized, call
 
 
-class Datasets:
+class Datasets(WithRawResponse):
     """Synchronous generated-type-only Dataset lifecycle API."""
 
     def __init__(self, invoker: SyncInvoker) -> None:
@@ -194,7 +204,8 @@ class Datasets:
         request: dataset_service_pb2.ListDatasetsRequest | None = None,
         *,
         options: CallOptions | None = None,
-    ) -> dataset_service_pb2.ListDatasetsResponse:
+        limits: PaginationLimits | None = None,
+    ) -> Page[dataset_pb2.Dataset]:
         materialized = dataset_service_pb2.ListDatasetsRequest()
         if request is not None:
             materialized.CopyFrom(request)
@@ -204,13 +215,19 @@ class Datasets:
         materialized.parent = parent
         if materialized.HasField("page") and materialized.page.page_size > 1000:
             raise ValueError("dataset page size cannot exceed 1000")
+        apply_default_page_size(materialized, limits)
         call = prepare_call(
             options, default_timeout=self._invoker.config.default_timeout, require_idempotency=False
         )
-        return cast(
+        response = cast(
             dataset_service_pb2.ListDatasetsResponse,
             self._invoker.unary(LIST_DATASETS, materialized, call=call, retry_safe=True),
         )
+
+        def follow(page_token: str) -> Page[dataset_pb2.Dataset]:
+            return self.list(next_request(materialized, page_token), options=options, limits=limits)
+
+        return sync_page(response, items_field="datasets", fetch=follow, limits=limits)
 
     def update(
         self,
@@ -304,22 +321,31 @@ class Datasets:
         request: dataset_service_pb2.ListDatasetReleasesRequest,
         *,
         options: CallOptions | None = None,
-    ) -> dataset_service_pb2.ListDatasetReleasesResponse:
+        limits: PaginationLimits | None = None,
+    ) -> Page[dataset_release_pb2.DatasetRelease]:
         materialized = dataset_service_pb2.ListDatasetReleasesRequest()
         materialized.CopyFrom(request)
         _dataset_name(self._invoker, materialized.parent)
         if materialized.HasField("page") and materialized.page.page_size > 1000:
             raise ValueError("dataset release page size cannot exceed 1000")
+        apply_default_page_size(materialized, limits)
         call = prepare_call(
             options, default_timeout=self._invoker.config.default_timeout, require_idempotency=False
         )
-        return cast(
+        response = cast(
             dataset_service_pb2.ListDatasetReleasesResponse,
             self._invoker.unary(LIST_DATASET_RELEASES, materialized, call=call, retry_safe=True),
         )
 
+        def follow(page_token: str) -> Page[dataset_release_pb2.DatasetRelease]:
+            return self.list_releases(
+                next_request(materialized, page_token), options=options, limits=limits
+            )
 
-class AsyncDatasets:
+        return sync_page(response, items_field="dataset_releases", fetch=follow, limits=limits)
+
+
+class AsyncDatasets(AsyncWithRawResponse):
     """Asyncio generated-type-only Dataset lifecycle API."""
 
     def __init__(self, invoker: AsyncInvoker) -> None:
@@ -376,7 +402,8 @@ class AsyncDatasets:
         request: dataset_service_pb2.ListDatasetsRequest | None = None,
         *,
         options: CallOptions | None = None,
-    ) -> dataset_service_pb2.ListDatasetsResponse:
+        limits: PaginationLimits | None = None,
+    ) -> AsyncPage[dataset_pb2.Dataset]:
         materialized = dataset_service_pb2.ListDatasetsRequest()
         materialized.CopyFrom(request or dataset_service_pb2.ListDatasetsRequest())
         parent = _project_name(self._invoker)
@@ -385,13 +412,21 @@ class AsyncDatasets:
         materialized.parent = parent
         if materialized.HasField("page") and materialized.page.page_size > 1000:
             raise ValueError("dataset page size cannot exceed 1000")
+        apply_default_page_size(materialized, limits)
         call = prepare_call(
             options, default_timeout=self._invoker.config.default_timeout, require_idempotency=False
         )
-        return cast(
+        response = cast(
             dataset_service_pb2.ListDatasetsResponse,
             await self._invoker.unary(LIST_DATASETS, materialized, call=call, retry_safe=True),
         )
+
+        async def follow(page_token: str) -> AsyncPage[dataset_pb2.Dataset]:
+            return await self.list(
+                next_request(materialized, page_token), options=options, limits=limits
+            )
+
+        return async_page(response, items_field="datasets", fetch=follow, limits=limits)
 
     async def update(
         self,
@@ -491,18 +526,27 @@ class AsyncDatasets:
         request: dataset_service_pb2.ListDatasetReleasesRequest,
         *,
         options: CallOptions | None = None,
-    ) -> dataset_service_pb2.ListDatasetReleasesResponse:
+        limits: PaginationLimits | None = None,
+    ) -> AsyncPage[dataset_release_pb2.DatasetRelease]:
         materialized = dataset_service_pb2.ListDatasetReleasesRequest()
         materialized.CopyFrom(request)
         _dataset_name(self._invoker, materialized.parent)
         if materialized.HasField("page") and materialized.page.page_size > 1000:
             raise ValueError("dataset release page size cannot exceed 1000")
+        apply_default_page_size(materialized, limits)
         call = prepare_call(
             options, default_timeout=self._invoker.config.default_timeout, require_idempotency=False
         )
-        return cast(
+        response = cast(
             dataset_service_pb2.ListDatasetReleasesResponse,
             await self._invoker.unary(
                 LIST_DATASET_RELEASES, materialized, call=call, retry_safe=True
             ),
         )
+
+        async def follow(page_token: str) -> AsyncPage[dataset_release_pb2.DatasetRelease]:
+            return await self.list_releases(
+                next_request(materialized, page_token), options=options, limits=limits
+            )
+
+        return async_page(response, items_field="dataset_releases", fetch=follow, limits=limits)

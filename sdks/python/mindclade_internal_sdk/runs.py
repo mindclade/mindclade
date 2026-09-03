@@ -18,9 +18,19 @@ from mindclade.internal.job.v1 import job_service_pb2
 from mindclade.job.v1 import attempt_pb2, lease_fencing_pb2, run_pb2
 
 from ._invocation import AsyncInvoker, SyncInvoker, canonical_digest, command_context
+from ._raw import AsyncWithRawResponse, WithRawResponse
 from .calls import CallOptions, PreparedCall, prepare_call
 from .errors import ProtocolError
 from .jobs import canonical_resource
+from .pagination import (
+    AsyncPage,
+    Page,
+    PaginationLimits,
+    apply_default_page_size,
+    async_page,
+    next_request,
+    sync_page,
+)
 from .transport import (
     ACQUIRE_ATTEMPT_LEASE,
     CANCEL_ATTEMPT,
@@ -345,7 +355,7 @@ def _fenced[RequestT: _FencedMutation](
     return _prepare_mutation(invoker, value, options, credential=credential)
 
 
-class Runs:
+class Runs(WithRawResponse):
     """Synchronous generated Run and fenced Attempt lifecycle API."""
 
     def __init__(self, invoker: SyncInvoker) -> None:
@@ -383,8 +393,10 @@ class Runs:
         request: job_service_pb2.ListRunsRequest,
         *,
         options: CallOptions | None = None,
-    ) -> job_service_pb2.ListRunsResponse:
+        limits: PaginationLimits | None = None,
+    ) -> Page[run_pb2.Run]:
         materialized = _list_runs_request(self._invoker, request)
+        apply_default_page_size(materialized, limits)
         call = prepare_call(
             options, default_timeout=self._invoker.config.default_timeout, require_idempotency=False
         )
@@ -400,7 +412,13 @@ class Runs:
             raise ProtocolError(
                 "run list escaped requested scope", status=grpc.StatusCode.DATA_LOSS
             )
-        return response
+
+        def follow(page_token: str) -> Page[run_pb2.Run]:
+            return self.list_runs(
+                next_request(materialized, page_token), options=options, limits=limits
+            )
+
+        return sync_page(response, items_field="runs", fetch=follow, limits=limits)
 
     def get_attempt(self, name: str, *, options: CallOptions | None = None) -> attempt_pb2.Attempt:
         canonical = canonical_resource(self._invoker, name, "attempts")
@@ -432,8 +450,10 @@ class Runs:
         request: job_service_pb2.ListAttemptsRequest,
         *,
         options: CallOptions | None = None,
-    ) -> job_service_pb2.ListAttemptsResponse:
+        limits: PaginationLimits | None = None,
+    ) -> Page[attempt_pb2.Attempt]:
         materialized = _list_attempts_request(self._invoker, request)
+        apply_default_page_size(materialized, limits)
         call = prepare_call(
             options, default_timeout=self._invoker.config.default_timeout, require_idempotency=False
         )
@@ -449,7 +469,13 @@ class Runs:
             raise ProtocolError(
                 "attempt list escaped requested scope", status=grpc.StatusCode.DATA_LOSS
             )
-        return response
+
+        def follow(page_token: str) -> Page[attempt_pb2.Attempt]:
+            return self.list_attempts(
+                next_request(materialized, page_token), options=options, limits=limits
+            )
+
+        return sync_page(response, items_field="attempts", fetch=follow, limits=limits)
 
     def acquire_lease(
         self,
@@ -621,7 +647,7 @@ class Runs:
         return response
 
 
-class AsyncRuns:
+class AsyncRuns(AsyncWithRawResponse):
     """Asyncio-native generated Run and fenced Attempt lifecycle API."""
 
     def __init__(self, invoker: AsyncInvoker) -> None:
@@ -650,9 +676,14 @@ class AsyncRuns:
         return copy.deepcopy(response.run)
 
     async def list_runs(
-        self, request: job_service_pb2.ListRunsRequest, *, options: CallOptions | None = None
-    ) -> job_service_pb2.ListRunsResponse:
+        self,
+        request: job_service_pb2.ListRunsRequest,
+        *,
+        options: CallOptions | None = None,
+        limits: PaginationLimits | None = None,
+    ) -> AsyncPage[run_pb2.Run]:
         materialized = _list_runs_request(self._invoker, request)
+        apply_default_page_size(materialized, limits)
         call = prepare_call(
             options, default_timeout=self._invoker.config.default_timeout, require_idempotency=False
         )
@@ -668,7 +699,13 @@ class AsyncRuns:
             raise ProtocolError(
                 "run list escaped requested scope", status=grpc.StatusCode.DATA_LOSS
             )
-        return response
+
+        async def follow(page_token: str) -> AsyncPage[run_pb2.Run]:
+            return await self.list_runs(
+                next_request(materialized, page_token), options=options, limits=limits
+            )
+
+        return async_page(response, items_field="runs", fetch=follow, limits=limits)
 
     async def get_attempt(
         self, name: str, *, options: CallOptions | None = None
@@ -698,9 +735,14 @@ class AsyncRuns:
         return copy.deepcopy(response.attempt)
 
     async def list_attempts(
-        self, request: job_service_pb2.ListAttemptsRequest, *, options: CallOptions | None = None
-    ) -> job_service_pb2.ListAttemptsResponse:
+        self,
+        request: job_service_pb2.ListAttemptsRequest,
+        *,
+        options: CallOptions | None = None,
+        limits: PaginationLimits | None = None,
+    ) -> AsyncPage[attempt_pb2.Attempt]:
         materialized = _list_attempts_request(self._invoker, request)
+        apply_default_page_size(materialized, limits)
         call = prepare_call(
             options, default_timeout=self._invoker.config.default_timeout, require_idempotency=False
         )
@@ -716,7 +758,13 @@ class AsyncRuns:
             raise ProtocolError(
                 "attempt list escaped requested scope", status=grpc.StatusCode.DATA_LOSS
             )
-        return response
+
+        async def follow(page_token: str) -> AsyncPage[attempt_pb2.Attempt]:
+            return await self.list_attempts(
+                next_request(materialized, page_token), options=options, limits=limits
+            )
+
+        return async_page(response, items_field="attempts", fetch=follow, limits=limits)
 
     async def acquire_lease(
         self,

@@ -1,12 +1,20 @@
 use std::{
-    collections::{HashSet, VecDeque},
+    collections::{BTreeMap, HashSet, VecDeque},
     fmt,
     future::Future,
+    pin::Pin,
     sync::atomic::{AtomicU64, Ordering},
+    task::{Context, Poll},
     time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
 
+use mindclade_protocols::common::v1::{PageRequest, PageResponse};
 use prost_types::Timestamp;
+use tonic::{
+    Code,
+    codegen::tokio_stream::Stream,
+    metadata::{AsciiMetadataKey, KeyRef, MetadataMap},
+};
 
 use crate::{Config, Error, config::validate_metadata_value};
 
@@ -179,6 +187,771 @@ impl<T, Fetch> Paginator<T, Fetch> {
     }
 }
 
+/// Allowlisted response metadata keys exposed through [`SafeMetadata`].
+///
+/// Membership is a cross-language invariant: the Go, Python, Rust, and
+/// TypeScript internal SDKs expose exactly this set. Nothing credential
+/// bearing may ever be added, and [`is_credential_bearing`] is asserted over
+/// the list by a unit test so the two can never drift apart.
+pub const SAFE_RESPONSE_METADATA: [&str; 8] = [
+    "content-type",
+    "date",
+    "grpc-status",
+    "retry-after-ms",
+    "x-mindclade-sdk",
+    "x-mindclade-should-retry",
+    "x-request-id",
+    "x-trace-id",
+];
+
+/// Metadata keys the SDK refuses to expose, accept, or forward.
+///
+/// The same predicate gates the response projection in [`SafeMetadata`] and
+/// caller-supplied request metadata, so a credential can neither leak out of a
+/// response nor be smuggled into a request.
+const CREDENTIAL_METADATA_KEYS: [&str; 7] = [
+    "authorization",
+    "cookie",
+    "proxy-authorization",
+    "set-cookie",
+    "x-api-key",
+    "x-goog-api-key",
+    "x-mindclade-lease-token",
+];
+
+const CREDENTIAL_METADATA_PATTERNS: [&str; 6] =
+    ["auth", "credential", "key", "password", "secret", "token"];
+
+/// Reports whether a metadata key may carry a credential.
+///
+/// Exact matches cover the keys this SDK and its gateways actually use;
+/// the substring patterns fail closed for anything a caller invents.
+#[must_use]
+pub fn is_credential_bearing(key: &str) -> bool {
+    let key = key.trim().to_ascii_lowercase();
+    CREDENTIAL_METADATA_KEYS.contains(&key.as_str())
+        || CREDENTIAL_METADATA_PATTERNS
+            .iter()
+            .any(|pattern| key.contains(pattern))
+}
+
+/// Metadata keys the SDK owns outright. A caller may never set, replace, or
+/// remove one, through configuration, per-request metadata, or an interceptor.
+const RESERVED_METADATA_KEYS: [&str; 3] = ["content-type", "idempotency-key", "te"];
+
+/// Reserved key prefixes. `x-mindclade-` covers every current and future SDK
+/// control key, including the correlation and retry-accounting keys.
+const RESERVED_METADATA_PREFIXES: [&str; 3] = ["grpc-", "x-mindclade-", ":"];
+
+/// Maximum number of caller-supplied metadata entries on one request.
+pub const MAX_CUSTOM_METADATA_ENTRIES: usize = 16;
+
+/// Validates a caller-supplied metadata key.
+///
+/// Keys must be lowercase gRPC-safe tokens that are neither credential
+/// bearing nor reserved by the SDK, so pass-through metadata can never
+/// smuggle a credential or displace SDK identity.
+///
+/// # Errors
+///
+/// Returns an error for an empty, oversized, non-canonical, credential
+/// bearing, or reserved key.
+pub fn validate_custom_metadata_key(key: &str) -> Result<(), Error> {
+    if key.is_empty() || key.len() > 64 {
+        return Err(Error::invalid_argument(
+            "custom metadata key must contain one through sixty-four characters",
+        ));
+    }
+    if !key.bytes().all(|byte| {
+        byte.is_ascii_lowercase() || byte.is_ascii_digit() || matches!(byte, b'-' | b'_' | b'.')
+    }) {
+        return Err(Error::invalid_argument(
+            "custom metadata key must be lowercase ASCII letters, digits, '-', '_', or '.'",
+        ));
+    }
+    if is_credential_bearing(key) {
+        return Err(Error::invalid_argument(
+            "custom metadata key may carry a credential and is refused",
+        ));
+    }
+    if RESERVED_METADATA_KEYS.contains(&key)
+        || key == crate::error::REQUEST_ID_METADATA
+        || key == crate::error::TRACE_ID_METADATA
+        || RESERVED_METADATA_PREFIXES
+            .iter()
+            .any(|prefix| key.starts_with(prefix))
+    {
+        return Err(Error::invalid_argument(
+            "custom metadata key is reserved by the SDK",
+        ));
+    }
+    Ok(())
+}
+
+/// Validates a caller-supplied metadata key and value together.
+///
+/// # Errors
+///
+/// Returns an error for an invalid key or a value that is not bounded
+/// visible ASCII.
+pub fn validate_custom_metadata(key: &str, value: &str) -> Result<(), Error> {
+    validate_custom_metadata_key(key)?;
+    validate_metadata_value("custom metadata value", value, true)
+}
+
+/// Immutable context handed to every [`Interceptor`] on every attempt.
+///
+/// It carries correlation identity and attempt accounting, never the request
+/// payload and never a credential.
+#[derive(Clone, Copy, Debug)]
+#[non_exhaustive]
+pub struct InterceptContext<'a> {
+    /// Fully qualified gRPC route, or an empty string for the raw metadata
+    /// helper that is not bound to one route.
+    pub method: &'a str,
+    /// Zero-based attempt index within the caller's retry budget.
+    pub attempt: u8,
+    /// The correlation identifier the SDK will send.
+    pub request_id: &'a str,
+    /// The distributed trace identifier the SDK will send.
+    pub trace_id: &'a str,
+    /// Budget still available to the whole call, retries included.
+    pub remaining: Duration,
+}
+
+/// A write-only view of outbound request metadata.
+///
+/// Values are deliberately not readable and reserved or credential-bearing
+/// keys are refused, so an interceptor can annotate a request but can never
+/// observe, replace, or strip the SDK's own credential.
+pub struct InterceptorMetadata<'a> {
+    metadata: &'a mut MetadataMap,
+}
+
+impl<'a> InterceptorMetadata<'a> {
+    pub(crate) fn new(metadata: &'a mut MetadataMap) -> Self {
+        Self { metadata }
+    }
+
+    /// Sets one caller metadata entry.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error for a reserved or credential-bearing key, or for a
+    /// value that is not bounded visible ASCII.
+    pub fn insert(&mut self, key: &str, value: &str) -> Result<(), Error> {
+        validate_custom_metadata(key, value)?;
+        let key = AsciiMetadataKey::from_bytes(key.as_bytes())
+            .map_err(|_| Error::invalid_argument("custom metadata key is not valid"))?;
+        let value = tonic::metadata::MetadataValue::try_from(value)
+            .map_err(|_| Error::invalid_argument("custom metadata value is not valid ASCII"))?;
+        self.metadata.insert(key, value);
+        Ok(())
+    }
+
+    /// Removes one caller metadata entry.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error for a reserved or credential-bearing key, so the
+    /// SDK's own metadata cannot be stripped.
+    pub fn remove(&mut self, key: &str) -> Result<(), Error> {
+        validate_custom_metadata_key(key)?;
+        let key = AsciiMetadataKey::from_bytes(key.as_bytes())
+            .map_err(|_| Error::invalid_argument("custom metadata key is not valid"))?;
+        self.metadata.remove(key);
+        Ok(())
+    }
+
+    /// Lists the metadata key names currently on the request.
+    ///
+    /// Key names only: values are never exposed through this seam.
+    #[must_use]
+    pub fn keys(&self) -> Vec<&str> {
+        self.metadata
+            .keys()
+            .filter_map(|key| match key {
+                KeyRef::Ascii(key) => Some(key.as_str()),
+                KeyRef::Binary(_) => None,
+            })
+            .collect()
+    }
+}
+
+impl fmt::Debug for InterceptorMetadata<'_> {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("InterceptorMetadata")
+            .field("keys", &self.keys())
+            .finish()
+    }
+}
+
+/// A caller-supplied hook over outbound request metadata.
+///
+/// Interceptors run after the SDK has installed its own identity, correlation,
+/// and retry-accounting metadata and before the credential is attached.
+/// Credential injection therefore stays inside the SDK and is not reachable
+/// from this seam.
+pub trait Interceptor: Send + Sync + fmt::Debug {
+    /// Inspects and annotates one outbound attempt.
+    ///
+    /// # Errors
+    ///
+    /// Returning an error fails the call without issuing the attempt.
+    fn intercept(
+        &self,
+        context: &InterceptContext<'_>,
+        metadata: &mut InterceptorMetadata<'_>,
+    ) -> Result<(), Error>;
+}
+
+/// Credential-free projection of response metadata.
+///
+/// Only [`SAFE_RESPONSE_METADATA`] keys are retained, and only when the value
+/// is bounded visible ASCII. Header values are never copied wholesale.
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct SafeMetadata {
+    entries: BTreeMap<String, String>,
+}
+
+impl SafeMetadata {
+    /// Returns the allowlisted value recorded under `key`, if any.
+    #[must_use]
+    pub fn get(&self, key: &str) -> Option<&str> {
+        self.entries.get(key).map(String::as_str)
+    }
+
+    /// Iterates the retained key names in stable order.
+    pub fn keys(&self) -> impl Iterator<Item = &str> {
+        self.entries.keys().map(String::as_str)
+    }
+
+    /// Iterates the retained pairs in stable order.
+    pub fn iter(&self) -> impl Iterator<Item = (&str, &str)> {
+        self.entries
+            .iter()
+            .map(|(key, value)| (key.as_str(), value.as_str()))
+    }
+
+    /// Reports whether the server sent no allowlisted metadata at all.
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.entries.is_empty()
+    }
+
+    /// Number of retained entries.
+    #[must_use]
+    pub fn len(&self) -> usize {
+        self.entries.len()
+    }
+
+    fn project(metadata: &MetadataMap) -> Self {
+        let mut entries = BTreeMap::new();
+        for key in SAFE_RESPONSE_METADATA {
+            if is_credential_bearing(key) {
+                continue;
+            }
+            if let Some(value) = bounded_ascii(metadata, key) {
+                entries.insert(key.to_owned(), value);
+            }
+        }
+        Self { entries }
+    }
+}
+
+fn bounded_ascii(metadata: &MetadataMap, key: &str) -> Option<String> {
+    let value = metadata.get(key)?.to_str().ok()?;
+    if value.is_empty()
+        || value.len() > 512
+        || !value.bytes().all(|byte| (0x20..=0x7e).contains(&byte))
+    {
+        None
+    } else {
+        Some(value.to_owned())
+    }
+}
+
+/// A successful RPC together with its correlation identity and an
+/// allowlisted, credential-free metadata projection.
+///
+/// This is the SDK's raw-response wrapper: it is what
+/// [`crate::Client::send_with_metadata`] returns and what every ergonomic
+/// facade unwraps internally.
+pub struct Response<T> {
+    inner: T,
+    status: Code,
+    request_id: Option<String>,
+    trace_id: Option<String>,
+    safe: SafeMetadata,
+    raw: MetadataMap,
+}
+
+impl<T> Response<T> {
+    /// Consumes the wrapper and returns the generated response message.
+    #[must_use]
+    pub fn into_inner(self) -> T {
+        self.inner
+    }
+
+    /// Borrows the generated response message.
+    #[must_use]
+    pub fn get_ref(&self) -> &T {
+        &self.inner
+    }
+
+    /// The gRPC status of a successful call, always [`Code::Ok`].
+    #[must_use]
+    pub fn status(&self) -> Code {
+        self.status
+    }
+
+    /// The server-echoed `x-request-id`, when it was well formed.
+    #[must_use]
+    pub fn request_id(&self) -> Option<&str> {
+        self.request_id.as_deref()
+    }
+
+    /// The server-echoed `x-trace-id`, when it was well formed.
+    #[must_use]
+    pub fn trace_id(&self) -> Option<&str> {
+        self.trace_id.as_deref()
+    }
+
+    /// The allowlisted, credential-free response metadata.
+    #[must_use]
+    pub fn safe_metadata(&self) -> &SafeMetadata {
+        &self.safe
+    }
+
+    /// Applies `transform` to the message, preserving response identity.
+    #[must_use]
+    pub fn map<U>(self, transform: impl FnOnce(T) -> U) -> Response<U> {
+        Response {
+            inner: transform(self.inner),
+            status: self.status,
+            request_id: self.request_id,
+            trace_id: self.trace_id,
+            safe: self.safe,
+            raw: self.raw,
+        }
+    }
+
+    /// Crate-private access to unfiltered response metadata.
+    ///
+    /// Exactly one caller needs this: fenced lease acquisition, which reads
+    /// the deliberately denylisted `x-mindclade-lease-token` capability and
+    /// immediately wraps it in a redacting handle.
+    pub(crate) fn raw_metadata(&self) -> &MetadataMap {
+        &self.raw
+    }
+
+    pub(crate) fn from_tonic(response: tonic::Response<T>) -> Self {
+        let safe = SafeMetadata::project(response.metadata());
+        let request_id = bounded_ascii(response.metadata(), crate::error::REQUEST_ID_METADATA);
+        let trace_id = bounded_ascii(response.metadata(), crate::error::TRACE_ID_METADATA);
+        let (metadata, inner, _extensions) = response.into_parts();
+        Self {
+            inner,
+            status: Code::Ok,
+            request_id,
+            trace_id,
+            safe,
+            raw: metadata,
+        }
+    }
+}
+
+impl<T: fmt::Debug> fmt::Debug for Response<T> {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("Response")
+            .field("status", &self.status)
+            .field("request_id", &self.request_id)
+            .field("trace_id", &self.trace_id)
+            .field("safe_metadata", &self.safe)
+            .field("inner", &self.inner)
+            .finish_non_exhaustive()
+    }
+}
+
+/// Default page size the SDK requests when a caller leaves it unset.
+pub const DEFAULT_PAGE_SIZE: u32 = 100;
+/// Absolute page-size ceiling. Each facade may impose a stricter cap.
+pub const HARD_PAGE_SIZE_CEILING: u32 = 1_000;
+
+/// Builds the outbound page request for one hop of an automatic traversal.
+///
+/// The caller's opaque cursor is carried verbatim; the page size is filled
+/// with the SDK default when unset and clamped to the SDK-wide ceiling. Each
+/// facade's own, stricter cap has already rejected an oversized request before
+/// this runs.
+pub(crate) fn page_request(page: Option<&PageRequest>, page_token: String) -> PageRequest {
+    let requested = page.map_or(0, |value| value.page_size);
+    let page_size = if requested == 0 {
+        DEFAULT_PAGE_SIZE
+    } else {
+        requested.min(HARD_PAGE_SIZE_CEILING)
+    };
+    PageRequest {
+        page_token,
+        page_size,
+    }
+}
+
+/// Reads the caller's initial opaque cursor without normalizing it.
+pub(crate) fn initial_page_token(page: Option<&PageRequest>) -> String {
+    page.map_or_else(String::new, |value| value.page_token.clone())
+}
+
+/// One list page together with its page-level metadata.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Page<T> {
+    items: Vec<T>,
+    next_page_token: String,
+    request_id: Option<String>,
+    read_time: Option<Timestamp>,
+}
+
+impl<T> Page<T> {
+    pub(crate) fn new(
+        items: Vec<T>,
+        page: Option<PageResponse>,
+        read_time: Option<Timestamp>,
+        request_id: Option<String>,
+    ) -> Self {
+        Self {
+            items,
+            next_page_token: page.map_or_else(String::new, |value| value.next_page_token),
+            request_id,
+            read_time,
+        }
+    }
+
+    /// Borrows this page's items.
+    #[must_use]
+    pub fn items(&self) -> &[T] {
+        &self.items
+    }
+
+    /// Consumes the page and returns its items.
+    #[must_use]
+    pub fn into_items(self) -> Vec<T> {
+        self.items
+    }
+
+    /// The opaque cursor for the following page, empty when this is the last.
+    #[must_use]
+    pub fn next_page_token(&self) -> &str {
+        &self.next_page_token
+    }
+
+    /// Reports whether the server offered another page.
+    #[must_use]
+    pub fn has_next_page(&self) -> bool {
+        !self.next_page_token.is_empty()
+    }
+
+    /// The request identifier of the RPC that produced this page.
+    #[must_use]
+    pub fn request_id(&self) -> Option<&str> {
+        self.request_id.as_deref()
+    }
+
+    /// The revision-consistent read time the server reported for this page.
+    #[must_use]
+    pub fn read_time(&self) -> Option<&Timestamp> {
+        self.read_time.as_ref()
+    }
+
+    /// Number of items on this page.
+    #[must_use]
+    pub fn len(&self) -> usize {
+        self.items.len()
+    }
+
+    /// Reports whether the server returned an empty page.
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.items.is_empty()
+    }
+}
+
+type PageFuture<T> = Pin<Box<dyn Future<Output = Result<Page<T>, Error>> + Send + 'static>>;
+type PageFetch<T> = Box<dyn FnMut(String) -> PageFuture<T> + Send>;
+
+/// A lazy, bounded cursor over an ergonomic list method.
+///
+/// It iterates items transparently across pages through
+/// [`Pages::try_next`] while keeping page-level access through
+/// [`Pages::next_page`]. Opaque cursors are never normalized, a repeated
+/// cursor is a protocol failure rather than an infinite loop, and both the
+/// page and item budgets fail closed instead of presenting a truncated
+/// traversal as complete.
+#[must_use = "a page cursor performs no work until it is advanced"]
+pub struct Pages<T> {
+    fetch: PageFetch<T>,
+    token: String,
+    seen: HashSet<String>,
+    pending: VecDeque<T>,
+    pending_next_token: String,
+    pending_request_id: Option<String>,
+    pending_read_time: Option<Timestamp>,
+    limits: PaginationLimits,
+    page_hops: usize,
+    items: usize,
+    finished: bool,
+    failed: bool,
+    in_flight: Option<PageFuture<T>>,
+}
+
+impl<T> Pages<T> {
+    /// Builds a cursor over `fetch`, starting at the caller's opaque token.
+    pub(crate) fn new<Fetch, Fut>(fetch: Fetch, initial_page_token: String) -> Self
+    where
+        Fetch: FnMut(String) -> Fut + Send + 'static,
+        Fut: Future<Output = Result<Page<T>, Error>> + Send + 'static,
+    {
+        let mut fetch = fetch;
+        let seen = if initial_page_token.is_empty() {
+            HashSet::new()
+        } else {
+            HashSet::from([initial_page_token.clone()])
+        };
+        Self {
+            fetch: Box::new(move |token| Box::pin(fetch(token))),
+            token: initial_page_token,
+            seen,
+            pending: VecDeque::new(),
+            pending_next_token: String::new(),
+            pending_request_id: None,
+            pending_read_time: None,
+            limits: PaginationLimits::default(),
+            page_hops: 0,
+            items: 0,
+            finished: false,
+            failed: false,
+            in_flight: None,
+        }
+    }
+
+    /// Replaces the traversal budgets for this cursor.
+    pub fn with_limits(mut self, limits: PaginationLimits) -> Self {
+        self.limits = limits;
+        self
+    }
+
+    /// Reports whether another page may still be fetched.
+    #[must_use]
+    pub fn has_next_page(&self) -> bool {
+        !self.finished && !self.failed
+    }
+
+    /// Pages fetched so far.
+    #[must_use]
+    pub fn page_count(&self) -> usize {
+        self.page_hops
+    }
+
+    /// Items yielded so far.
+    #[must_use]
+    pub fn item_count(&self) -> usize {
+        self.items
+    }
+
+    /// Returns the next item, fetching pages only as needed.
+    ///
+    /// # Errors
+    ///
+    /// Returns the underlying list failure, a protocol error when the server
+    /// repeats an opaque cursor, or a non-retryable resource-exhausted error
+    /// when a budget is reached.
+    pub async fn try_next(&mut self) -> Result<Option<T>, Error> {
+        loop {
+            if self.failed {
+                return Ok(None);
+            }
+            if let Some(item) = self.pending.pop_front() {
+                if self.items >= self.limits.max_items {
+                    return Err(self.exhausted("item"));
+                }
+                self.items += 1;
+                return Ok(Some(item));
+            }
+            if self.finished {
+                return Ok(None);
+            }
+            if self.items >= self.limits.max_items {
+                return Err(self.exhausted("item"));
+            }
+            let page = self.fetch_page().await?;
+            self.buffer(page);
+        }
+    }
+
+    /// Returns the next whole page together with its page-level metadata.
+    ///
+    /// Items already buffered by [`Pages::try_next`] are returned first, so
+    /// the two accessors can be mixed without losing or repeating an item.
+    ///
+    /// # Errors
+    ///
+    /// Returns the underlying list failure, a protocol error when the server
+    /// repeats an opaque cursor, or a non-retryable resource-exhausted error
+    /// when a budget is reached.
+    pub async fn next_page(&mut self) -> Result<Option<Page<T>>, Error> {
+        if self.failed {
+            return Ok(None);
+        }
+        if !self.pending.is_empty() {
+            let items: Vec<T> = std::mem::take(&mut self.pending).into();
+            self.charge_items(items.len())?;
+            return Ok(Some(Page {
+                items,
+                next_page_token: std::mem::take(&mut self.pending_next_token),
+                request_id: self.pending_request_id.take(),
+                read_time: self.pending_read_time.take(),
+            }));
+        }
+        if self.finished {
+            return Ok(None);
+        }
+        let page = self.fetch_page().await?;
+        self.charge_items(page.items.len())?;
+        Ok(Some(page))
+    }
+
+    /// Collects every remaining item under the configured budgets.
+    ///
+    /// # Errors
+    ///
+    /// Returns the same failures as [`Pages::try_next`].
+    pub async fn try_collect(&mut self) -> Result<Vec<T>, Error> {
+        let mut collected = Vec::new();
+        while let Some(item) = self.try_next().await? {
+            collected.push(item);
+        }
+        Ok(collected)
+    }
+
+    async fn fetch_page(&mut self) -> Result<Page<T>, Error> {
+        // A page already in flight from a `Stream` poll is adopted rather than
+        // re-issued, so the async accessors and the stream adapter can be
+        // mixed without duplicating an RPC.
+        let future = if let Some(future) = self.in_flight.take() {
+            future
+        } else {
+            if self.page_hops >= self.limits.max_pages {
+                return Err(self.exhausted("page"));
+            }
+            (self.fetch)(self.token.clone())
+        };
+        let result = future.await;
+        self.accept_page(result)
+    }
+
+    /// Applies the cursor bookkeeping that every fetched page must survive:
+    /// the hop count, the repeated-token guard, and the terminal condition.
+    fn accept_page(&mut self, result: Result<Page<T>, Error>) -> Result<Page<T>, Error> {
+        let page = match result {
+            Ok(page) => page,
+            Err(error) => {
+                self.failed = true;
+                return Err(error);
+            }
+        };
+        self.page_hops += 1;
+        if !page.next_page_token.is_empty() && !self.seen.insert(page.next_page_token.clone()) {
+            self.failed = true;
+            return Err(Error::protocol(
+                "list response repeated an opaque page token",
+            ));
+        }
+        self.finished = page.next_page_token.is_empty();
+        self.token.clone_from(&page.next_page_token);
+        Ok(page)
+    }
+
+    fn buffer(&mut self, page: Page<T>) {
+        self.pending = page.items.into();
+        self.pending_next_token = page.next_page_token;
+        self.pending_request_id = page.request_id;
+        self.pending_read_time = page.read_time;
+    }
+
+    fn charge_items(&mut self, count: usize) -> Result<(), Error> {
+        if self.items.saturating_add(count) > self.limits.max_items {
+            return Err(self.exhausted("item"));
+        }
+        self.items += count;
+        Ok(())
+    }
+
+    fn exhausted(&mut self, budget: &str) -> Error {
+        self.failed = true;
+        Error::pagination_limit(format!("automatic pagination exceeded its {budget} budget"))
+    }
+}
+
+impl<T> fmt::Debug for Pages<T> {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("Pages")
+            .field("page_hops", &self.page_hops)
+            .field("items", &self.items)
+            .field("has_next_page", &self.has_next_page())
+            .finish_non_exhaustive()
+    }
+}
+
+/// A page cursor is also a `Stream` of items.
+///
+/// The in-flight page future is owned by the cursor rather than borrowed from
+/// it, so the adapter needs no self-referential state and no unsafe code. The
+/// same budgets, repeated-cursor guard, and fail-closed latch apply as when
+/// the cursor is advanced with [`Pages::try_next`].
+impl<T: Send + Unpin + 'static> Stream for Pages<T> {
+    type Item = Result<T, Error>;
+
+    fn poll_next(self: Pin<&mut Self>, context: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        let cursor = self.get_mut();
+        loop {
+            if cursor.failed {
+                return Poll::Ready(None);
+            }
+            if let Some(item) = cursor.pending.pop_front() {
+                if cursor.items >= cursor.limits.max_items {
+                    return Poll::Ready(Some(Err(cursor.exhausted("item"))));
+                }
+                cursor.items += 1;
+                return Poll::Ready(Some(Ok(item)));
+            }
+            if let Some(future) = cursor.in_flight.as_mut() {
+                let result = match future.as_mut().poll(context) {
+                    Poll::Pending => return Poll::Pending,
+                    Poll::Ready(result) => result,
+                };
+                cursor.in_flight = None;
+                match cursor.accept_page(result) {
+                    Ok(page) => cursor.buffer(page),
+                    Err(error) => return Poll::Ready(Some(Err(error))),
+                }
+                continue;
+            }
+            if cursor.finished {
+                return Poll::Ready(None);
+            }
+            if cursor.items >= cursor.limits.max_items {
+                return Poll::Ready(Some(Err(cursor.exhausted("item"))));
+            }
+            if cursor.page_hops >= cursor.limits.max_pages {
+                return Poll::Ready(Some(Err(cursor.exhausted("page"))));
+            }
+            cursor.in_flight = Some((cursor.fetch)(cursor.token.clone()));
+        }
+    }
+}
+
 /// Per-RPC behavior and correlation metadata. It does not redefine the wire
 /// request.
 #[derive(Clone, Debug, Default)]
@@ -187,12 +960,44 @@ pub struct CallOptions {
     trace_id: Option<String>,
     timeout: Option<Duration>,
     lease_token: Option<SensitiveLeaseToken>,
+    max_attempts: Option<u8>,
+    unsafe_retry_acknowledged: bool,
+    metadata: Vec<(String, String)>,
 }
 
 impl CallOptions {
     #[must_use]
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// Adds one caller-supplied metadata entry to this call.
+    ///
+    /// Entries are sent ahead of the SDK's own metadata, so an SDK-owned key
+    /// can never be displaced. Credential-bearing and reserved keys are
+    /// refused by the same predicate that filters response metadata.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error for a reserved or credential-bearing key, a value
+    /// that is not bounded visible ASCII, or more than
+    /// [`MAX_CUSTOM_METADATA_ENTRIES`] entries.
+    pub fn with_metadata(
+        mut self,
+        key: impl Into<String>,
+        value: impl Into<String>,
+    ) -> Result<Self, Error> {
+        let key = key.into();
+        let value = value.into();
+        validate_custom_metadata(&key, &value)?;
+        self.metadata.retain(|(existing, _)| existing != &key);
+        if self.metadata.len() >= MAX_CUSTOM_METADATA_ENTRIES {
+            return Err(Error::invalid_argument(
+                "a call may carry at most sixteen custom metadata entries",
+            ));
+        }
+        self.metadata.push((key, value));
+        Ok(self)
     }
 
     /// Sets a caller-provided request identifier.
@@ -234,6 +1039,42 @@ impl CallOptions {
         Ok(self)
     }
 
+    /// Overrides the configured attempt budget for this call only.
+    ///
+    /// The timeout remains a total budget across every attempt, so a larger
+    /// attempt count never extends the caller's deadline.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error unless the count is between one and eight, matching
+    /// the bound [`crate::RetryPolicy`] enforces.
+    pub fn with_max_attempts(mut self, attempts: u8) -> Result<Self, Error> {
+        if !(1..=8).contains(&attempts) {
+            return Err(Error::invalid_argument(
+                "per-request retry attempts must be between one and eight",
+            ));
+        }
+        self.max_attempts = Some(attempts);
+        Ok(self)
+    }
+
+    /// Retries an RPC this SDK classifies as non-idempotent.
+    ///
+    /// The name is deliberate and there is no bare boolean equivalent: the
+    /// caller asserts that the RPC is externally deduplicated, and accepts
+    /// that a retry may produce a second durable effect. It cannot be applied
+    /// to an RPC that is already retryable, and it can never make a raw-only
+    /// never-retry RPC retryable.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error unless the count is between one and eight.
+    pub fn with_unsafe_retry_of_non_idempotent_rpc(mut self, attempts: u8) -> Result<Self, Error> {
+        self = self.with_max_attempts(attempts)?;
+        self.unsafe_retry_acknowledged = true;
+        Ok(self)
+    }
+
     /// Selects the raw scheduler-issued lease credential for a fenced worker
     /// command. Ordinary RPCs deliberately ignore this field; only a fenced
     /// facade can activate it through `prepare_fenced`.
@@ -271,6 +1112,9 @@ impl CallOptions {
             deadline: Instant::now() + timeout,
             wall_deadline: SystemTime::now() + timeout,
             lease_token: None,
+            max_attempts: self.max_attempts,
+            unsafe_retry_acknowledged: self.unsafe_retry_acknowledged,
+            metadata: self.metadata.clone(),
         }
     }
 
@@ -378,6 +1222,9 @@ pub(crate) struct PreparedCall {
     pub(crate) deadline: Instant,
     pub(crate) wall_deadline: SystemTime,
     pub(crate) lease_token: Option<SensitiveLeaseToken>,
+    pub(crate) max_attempts: Option<u8>,
+    pub(crate) unsafe_retry_acknowledged: bool,
+    pub(crate) metadata: Vec<(String, String)>,
 }
 
 #[derive(Clone)]
@@ -408,6 +1255,16 @@ impl fmt::Debug for SensitiveLeaseToken {
 }
 
 impl PreparedCall {
+    /// Returns the budget still available to this call.
+    ///
+    /// The deadline is a total budget spanning credential acquisition and
+    /// every retry, so each consumer reads it through this one accessor.
+    pub(crate) fn remaining(&self) -> Result<Duration, Error> {
+        self.deadline
+            .checked_duration_since(Instant::now())
+            .ok_or_else(Error::deadline_exceeded)
+    }
+
     pub(crate) fn deadline_timestamp(&self) -> Result<Timestamp, Error> {
         let value = self
             .wall_deadline

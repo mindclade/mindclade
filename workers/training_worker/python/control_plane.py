@@ -5,24 +5,70 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import hmac
-import os
 import re
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 from mindclade_internal_sdk import (
+    AccessToken,
     ArtifactRef,
     AsyncClient,
+    AsyncGoogleWorkloadIdentityProvider,
     CallOptions,
+    ConflictError,
+    DeadlineExceededError,
+    Environment,
     EventRejectedError,
     JobRequestedDelivery,
-    MindcladeError,
+    config_from_env,
     decode_job_requested_delivery,
 )
 
-_DIGEST = re.compile(r"sha256:[0-9a-f]{64}\Z")
 _JOB_NAME = re.compile(r"jobs/([A-Za-z0-9][A-Za-z0-9_-]{0,127})\Z")
 _DEFAULT_ARTIFACT_LIMIT = 16 << 20
+_USER_AGENT = "mindclade-training-worker/0.1"
+
+
+class _ConfigurationProbe:
+    """Placeholder provider that exists only so the SDK can resolve configuration.
+
+    ``config_from_env`` refuses to build a secure configuration without a token
+    provider, yet the real workload-identity provider has to be bound to the
+    very audience that same configuration resolves. This probe closes that
+    ordering gap without the worker reading one environment variable itself,
+    and it can never mint a credential.
+    """
+
+    async def get_token(self, *, timeout: float) -> AccessToken:
+        del timeout
+        raise RuntimeError("the training-worker configuration probe never mints a credential")
+
+
+def client_options() -> dict[str, Any]:
+    """Resolve this worker's ``from_env`` overrides without reading the environment.
+
+    Every ``MINDCLADE_*`` variable is read by the SDK's own environment reader,
+    which owns their names, defaults and failure messages. The worker adds only
+    what no environment variable may ever supply: its user agent and the
+    workload-identity provider bound to the audience the SDK resolved.
+    """
+
+    probe = config_from_env(token_provider=_ConfigurationProbe(), user_agent=_USER_AGENT)
+    if probe.environment is Environment.LOCAL:
+        # Loopback development: the SDK forbids credentials over insecure transport.
+        return {"user_agent": _USER_AGENT, "insecure_for_testing": True}
+    audience = probe.audience
+    if audience is None:
+        # ClientConfig derives the audience from the endpoint whenever it is not
+        # supplied, so this is unreachable; the field stays optional for callers
+        # that construct a configuration directly.
+        raise RuntimeError("the SDK resolved a configuration without a workload-identity audience")
+    return {
+        "user_agent": _USER_AGENT,
+        "audience": audience,
+        "token_provider": AsyncGoogleWorkloadIdentityProvider(audience),
+    }
 
 
 class AssignmentRejectedError(ValueError):
@@ -30,7 +76,12 @@ class AssignmentRejectedError(ValueError):
 
 
 class AssignmentDeadlineError(TimeoutError):
-    """The bounded worker intake deadline elapsed."""
+    """The bounded worker intake deadline elapsed.
+
+    Both deadline surfaces end here: the SDK's own per-call
+    :class:`~mindclade_internal_sdk.DeadlineExceededError` and the single
+    worker budget that spans the whole multi-call intake.
+    """
 
 
 @dataclass(frozen=True, slots=True)
@@ -93,8 +144,11 @@ class AssignmentMaterializer:
             tenant_id=self._client.config.tenant_id,
             project_id=self._client.config.project_id,
         )
+        # Per-call deadlines, retries, idempotency and correlation metadata are
+        # the SDK's job; the worker states its per-call budget once and owns
+        # only the single budget that spans this multi-call intake.
         options = CallOptions(
-            timeout=min(self._rpc_timeout, timeout),
+            timeout=self._rpc_timeout,
             request_id=decoded.request_id,
             trace_id=decoded.trace_id,
         )
@@ -122,7 +176,7 @@ class AssignmentMaterializer:
                     configuration_path=configuration_path,
                     input_path=input_path,
                 )
-        except TimeoutError as error:
+        except (DeadlineExceededError, TimeoutError) as error:
             raise AssignmentDeadlineError("training-worker intake deadline expired") from error
 
     async def _download(
@@ -131,30 +185,34 @@ class AssignmentMaterializer:
         destination: Path,
         options: CallOptions,
     ) -> None:
-        size_bytes = artifact.size_bytes
-        digest = artifact.digest
-        if (
-            size_bytes < 0
-            or size_bytes > self._maximum_artifact_bytes
-            or _DIGEST.fullmatch(digest) is None
-        ):
+        # Digest shape and stream integrity are verified by the SDK download
+        # path. The only policy the SDK cannot know is this worker's intake
+        # ceiling on how many bytes a single assignment may materialize.
+        if artifact.size_bytes > self._maximum_artifact_bytes:
             raise AssignmentRejectedError("worker artifact exceeds the bounded intake policy")
-        if destination.exists():
-            existing_digest = await asyncio.to_thread(_file_digest, destination)
-            if hmac.compare_digest(existing_digest, digest):
-                return
-            raise AssignmentRejectedError("existing worker artifact has a different digest")
-        content = bytearray()
+        if await self._already_materialized(destination, artifact.digest):
+            return
         try:
-            async for chunk in self._client.artifacts.iter_download(artifact, options=options):
-                if len(content) + len(chunk) > self._maximum_artifact_bytes:
-                    raise AssignmentRejectedError("artifact stream exceeded the worker byte limit")
-                content.extend(chunk)
-        except MindcladeError:
-            raise
-        if len(content) != size_bytes:
-            raise AssignmentRejectedError("artifact stream size changed after SDK verification")
-        await asyncio.to_thread(_write_exclusive, destination, bytes(content))
+            # The SDK downloads, verifies and atomically publishes a create-only
+            # mode-0600 file; it never overwrites an existing destination.
+            await self._client.artifacts.download_file(artifact, destination, options=options)
+        except ConflictError:
+            # A concurrent delivery may have published this destination while
+            # the download was in flight, which is idempotent exactly when the
+            # bytes now on disk carry the same immutable digest. Any other
+            # conflict stays an SDK error and is reported as one.
+            if not await self._already_materialized(destination, artifact.digest):
+                raise
+
+    async def _already_materialized(self, destination: Path, digest: str) -> bool:
+        """Report whether a verified local copy already satisfies this artifact."""
+
+        if not destination.exists():
+            return False
+        existing_digest = await asyncio.to_thread(_file_digest, destination)
+        if not hmac.compare_digest(existing_digest, digest):
+            raise AssignmentRejectedError("existing worker artifact has a different digest")
+        return True
 
 
 def _file_digest(path: Path) -> str:
@@ -170,15 +228,3 @@ def _canonical_job_leaf(job_id: str) -> str:
     if match is None:
         raise AssignmentRejectedError("job identity is not a canonical resource name")
     return match.group(1)
-
-
-def _write_exclusive(path: Path, content: bytes) -> None:
-    descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-    try:
-        with os.fdopen(descriptor, "wb", closefd=True) as destination:
-            destination.write(content)
-            destination.flush()
-            os.fsync(destination.fileno())
-    except BaseException:
-        path.unlink(missing_ok=True)
-        raise

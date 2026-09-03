@@ -230,6 +230,21 @@ py_test(
     deps = ["@mindclade_pypi//jsonschema"],
 )
 
+py_test(
+    name = "sdk_api_reference_test",
+    srcs = [
+        "docs/render_sdk_api_reference.py",
+        "docs/tests/test_render_sdk_api_reference.py",
+    ],
+    data = [
+        "//:all_contract_sources",
+    ],
+    imports = ["docs"],
+    legacy_create_init = 0,
+    main = "docs/tests/test_render_sdk_api_reference.py",
+    python_version = "PY3",
+)
+
 test_suite(
     name = "repository_governance_tests",
     tests = [
@@ -243,6 +258,7 @@ test_suite(
         ":repository_drift_report_test",
         ":repository_policies_test",
         ":required_check_contract_test",
+        ":sdk_api_reference_test",
         ":training_evidence_test",
     ],
     visibility = ["//visibility:public"],

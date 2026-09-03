@@ -441,7 +441,10 @@ async fn job_and_run_facades_cover_every_ergonomic_rpc_and_hide_lease_tokens() {
             },
             CallOptions::new(),
         )
+        .unwrap()
+        .next_page()
         .await
+        .unwrap()
         .unwrap();
     sdk.jobs()
         .cancel(
@@ -468,7 +471,10 @@ async fn job_and_run_facades_cover_every_ergonomic_rpc_and_hide_lease_tokens() {
             },
             CallOptions::new(),
         )
+        .unwrap()
+        .next_page()
         .await
+        .unwrap()
         .unwrap();
     sdk.runs()
         .get_attempt("attempt-1", CallOptions::new())
@@ -482,7 +488,10 @@ async fn job_and_run_facades_cover_every_ergonomic_rpc_and_hide_lease_tokens() {
             },
             CallOptions::new(),
         )
+        .unwrap()
+        .next_page()
         .await
+        .unwrap()
         .unwrap();
 
     let acquired = sdk
@@ -596,4 +605,75 @@ async fn job_and_run_facades_cover_every_ergonomic_rpc_and_hide_lease_tokens() {
     assert!(recording.calls().iter().all(|call| {
         call.method != "/mindclade.internal.job.v1.RunService/ExpireAttemptLeases"
     }));
+}
+
+#[tokio::test]
+async fn lease_token_response_metadata_is_never_visible_through_safe_metadata() {
+    let transport = Arc::new(JobRunTransport::default());
+    let sdk = client(Arc::clone(&transport) as Arc<dyn RpcTransport>);
+    let request = AcquireAttemptLeaseRequest {
+        run_name: "run-1".to_owned(),
+        attempt_id: "attempt-1".to_owned(),
+        lease_duration: Some(prost_types::Duration {
+            seconds: 120,
+            nanos: 0,
+        }),
+        ..AcquireAttemptLeaseRequest::default()
+    };
+
+    // The ergonomic facade still captures the raw scheduler capability.
+    let lease = sdk
+        .runs()
+        .acquire(request.clone(), submit("acquire-lease-safe-metadata"))
+        .await
+        .unwrap();
+    // Acquisition fails closed when the capability header is missing, so a
+    // successful lease proves the raw token was captured. It is still
+    // redacted from every rendering the caller can reach.
+    assert_eq!(lease.attempt().state, AttemptState::Leased as i32);
+    assert!(!format!("{lease:?}").contains(TOKEN));
+    assert!(!format!("{:?}", lease.credential()).contains(TOKEN));
+    assert!(transport.lease_headers.lock().unwrap().is_empty());
+
+    // The raw escape hatch sees the same response, but the credential is
+    // denylisted out of every projection the caller can read.
+    let mut context = CommandContext {
+        request_id: "raw-acquire-1".to_owned(),
+        idempotency_key: "acquire-lease-raw".to_owned(),
+        principal_id: "worker-1".to_owned(),
+        trace_id: "raw-acquire-1".to_owned(),
+        tenant_id: TENANT.to_owned(),
+        project_id: PROJECT.to_owned(),
+        deadline: Some(Timestamp {
+            seconds: 4_102_444_800,
+            nanos: 0,
+        }),
+        ..CommandContext::default()
+    };
+    let mut raw = AcquireAttemptLeaseRequest {
+        run_name: "runs/run-1".to_owned(),
+        context: None,
+        ..request
+    };
+    context.canonical_request_digest = format!("sha256:{:x}", Sha256::digest(raw.encode_to_vec()));
+    raw.context = Some(context);
+    let response = sdk
+        .send_with_metadata(raw, &CallOptions::new(), Some("acquire-lease-raw"))
+        .await
+        .unwrap();
+
+    assert!(response.safe_metadata().is_empty());
+    assert!(
+        response
+            .safe_metadata()
+            .get("x-mindclade-lease-token")
+            .is_none()
+    );
+    assert!(!format!("{:?}", response.safe_metadata()).contains(TOKEN));
+    assert!(
+        response
+            .into_inner()
+            .attempt
+            .is_some_and(|attempt| attempt.state == AttemptState::Leased as i32)
+    );
 }

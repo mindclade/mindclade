@@ -4,8 +4,7 @@
   "include": ["python", "tests"],
   "extraPaths": [
     "python",
-    "../../sdks/python",
-    "../../protocols/generated/python"
+    "../../sdks/python"
   ],
   "venvPath": "../..",
   "venv": ".venv",

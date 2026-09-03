@@ -27,9 +27,15 @@ import type { Model } from "../../../protocols/generated/typescript/model/v1/mod
 import type { ModelRelease } from "../../../protocols/generated/typescript/model/v1/model_release_pb.js";
 import type { ClientCore } from "./core.js";
 import { MindcladeError } from "./error.js";
-import { commandContext, prepareCall, type SdkCallOptions, type SubmitOptions } from "./request.js";
+import { listPage, type Page, withPageToken } from "./pagination.js";
+import {
+	commandContext,
+	type ListOptions,
+	prepareCall,
+	type SdkCallOptions,
+	type SubmitOptions,
+} from "./request.js";
 import { invokeUnary } from "./retry.js";
-import { registeredMethodSafety } from "./safety.js";
 
 const REGISTER = "/mindclade.internal.model.v1.ModelService/RegisterModel";
 const GET = "/mindclade.internal.model.v1.ModelService/GetModel";
@@ -66,7 +72,7 @@ export class Models {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			registeredMethodSafety(REGISTER),
+			REGISTER,
 			options.idempotencyKey,
 			(call) =>
 				this.#core.raw.models.registerModel(
@@ -84,36 +90,41 @@ export class Models {
 		const generated = create(GetModelRequestSchema, request);
 		generated.name = modelName(this.#core, generated.name);
 		const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
-		const response = await invokeUnary(
-			this.#core,
-			prepared,
-			registeredMethodSafety(GET),
-			undefined,
-			(call) => this.#core.raw.models.getModel(generated, call),
+		const response = await invokeUnary(this.#core, prepared, GET, undefined, (call) =>
+			this.#core.raw.models.getModel(generated, call),
 		);
 		if (response.model === undefined)
 			throw MindcladeError.protocol("GetModel response omitted its model");
 		return response.model;
 	}
 
+	/** Returns the first page, which also iterates the whole cursor. */
 	async list(
 		request: MessageInitShape<typeof ListModelsRequestSchema> = {},
-		options: SdkCallOptions = {},
-	): Promise<ListModelsResponse> {
+		options: ListOptions = {},
+	): Promise<Page<Model, ListModelsResponse>> {
 		const generated = create(ListModelsRequestSchema, request);
 		const parent = projectName(this.#core);
 		if (generated.parent !== "" && generated.parent !== parent)
 			throw MindcladeError.invalidArgument("model list parent does not match client scope");
 		generated.parent = parent;
 		validatePage(generated.page?.pageSize);
-		const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
-		return await invokeUnary(
-			this.#core,
-			prepared,
-			registeredMethodSafety(LIST),
-			undefined,
-			(call) => this.#core.raw.models.listModels(generated, call),
-		);
+		return await listPage({
+			cursor: (response) => response.page?.nextPageToken ?? "",
+			fetch: async (pageToken) => {
+				const paged = withPageToken(ListModelsRequestSchema, generated, pageToken);
+				const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
+				const response = await invokeUnary(this.#core, prepared, LIST, undefined, (call) =>
+					this.#core.raw.models.listModels(paged, call),
+				);
+				return { requestId: prepared.requestId, response };
+			},
+			items: (response) => response.models,
+			limits: options.limits,
+			pageSize: generated.page?.pageSize ?? 0,
+			pageToken: generated.page?.pageToken ?? "",
+			signal: options.signal,
+		});
 	}
 
 	async registerRelease(
@@ -133,7 +144,7 @@ export class Models {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			registeredMethodSafety(REGISTER_RELEASE),
+			REGISTER_RELEASE,
 			options.idempotencyKey,
 			(call) =>
 				this.#core.raw.models.registerModelRelease(
@@ -151,33 +162,38 @@ export class Models {
 		const generated = create(GetModelReleaseRequestSchema, request);
 		generated.name = releaseName(this.#core, generated.name);
 		const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
-		const response = await invokeUnary(
-			this.#core,
-			prepared,
-			registeredMethodSafety(GET_RELEASE),
-			undefined,
-			(call) => this.#core.raw.models.getModelRelease(generated, call),
+		const response = await invokeUnary(this.#core, prepared, GET_RELEASE, undefined, (call) =>
+			this.#core.raw.models.getModelRelease(generated, call),
 		);
 		if (response.modelRelease === undefined)
 			throw MindcladeError.protocol("GetModelRelease response omitted its release");
 		return response.modelRelease;
 	}
 
+	/** Returns the first page, which also iterates the whole cursor. */
 	async listReleases(
 		request: MessageInitShape<typeof ListModelReleasesRequestSchema>,
-		options: SdkCallOptions = {},
-	): Promise<ListModelReleasesResponse> {
+		options: ListOptions = {},
+	): Promise<Page<ModelRelease, ListModelReleasesResponse>> {
 		const generated = create(ListModelReleasesRequestSchema, request);
 		generated.parent = modelName(this.#core, generated.parent);
 		validatePage(generated.page?.pageSize);
-		const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
-		return await invokeUnary(
-			this.#core,
-			prepared,
-			registeredMethodSafety(LIST_RELEASES),
-			undefined,
-			(call) => this.#core.raw.models.listModelReleases(generated, call),
-		);
+		return await listPage({
+			cursor: (response) => response.page?.nextPageToken ?? "",
+			fetch: async (pageToken) => {
+				const paged = withPageToken(ListModelReleasesRequestSchema, generated, pageToken);
+				const prepared = prepareCall(this.#core.config, this.#core.runtime, options);
+				const response = await invokeUnary(this.#core, prepared, LIST_RELEASES, undefined, (call) =>
+					this.#core.raw.models.listModelReleases(paged, call),
+				);
+				return { requestId: prepared.requestId, response };
+			},
+			items: (response) => response.modelReleases,
+			limits: options.limits,
+			pageSize: generated.page?.pageSize ?? 0,
+			pageToken: generated.page?.pageToken ?? "",
+			signal: options.signal,
+		});
 	}
 
 	async promoteRelease(
@@ -201,7 +217,7 @@ export class Models {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			registeredMethodSafety(PROMOTE),
+			PROMOTE,
 			options.idempotencyKey,
 			(call) =>
 				this.#core.raw.models.promoteModelRelease(
@@ -233,7 +249,7 @@ export class Models {
 		const response = await invokeUnary(
 			this.#core,
 			prepared,
-			registeredMethodSafety(REVOKE),
+			REVOKE,
 			options.idempotencyKey,
 			(call) =>
 				this.#core.raw.models.revokeModelRelease(

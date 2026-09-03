@@ -20,6 +20,6 @@ jobs:
     permissions:
       contents: read
       security-events: write
-    uses: mindclade/.github/.github/workflows/reusable-scorecard.yml@55687ae97dbf6073d61a085c21542637a551ed00
+    uses: mindclade/.github/.github/workflows/reusable-scorecard.yml@cdfc7303e8f14d647528774768c144e4dbf67b86
     with:
       source_revision: ${{ github.sha }}

@@ -281,3 +281,46 @@ func TestExperimentFacadeRejectsScopeAndBoundsBeforeTransport(t *testing.T) {
 		t.Fatalf("invalid requests reached transport: %d", len(server.requests))
 	}
 }
+
+func TestExperimentListMethodsShareOnePageTypeAndPreserveOpaqueCursors(t *testing.T) {
+	service, server, _ := experimentSDKFixture(t)
+	ctx := context.Background()
+
+	// Both entry points must produce the same page type, so a caller that
+	// starts with the ergonomic ListPage keeps the full traversal surface.
+	var page *ExperimentPage
+	page, err := service.ListPage(ctx, 20, " opaque-token== ")
+	if err != nil {
+		t.Fatalf("ListPage: %v", err)
+	}
+	direct, err := service.List(ctx, &internalexperimentv1.ListExperimentsRequest{
+		Page: &commonv1.PageRequest{PageSize: 20, PageToken: " opaque-token== "},
+	})
+	if err != nil {
+		t.Fatalf("List: %v", err)
+	}
+	if len(page.Items()) != 1 || len(direct.Items()) != len(page.Items()) {
+		t.Fatalf("page items = %d and %d, want one experiment each", len(page.Items()), len(direct.Items()))
+	}
+	if !page.HasNextPage() || page.PageMetadata().GetNextPageToken() != "experiment-next" {
+		t.Fatalf("page cursor = %q, want experiment-next", page.PageMetadata().GetNextPageToken())
+	}
+
+	if _, err = page.NextPage(ctx); err != nil {
+		t.Fatalf("NextPage: %v", err)
+	}
+	server.mu.Lock()
+	requests := append([]proto.Message(nil), server.requests...)
+	server.mu.Unlock()
+	if len(requests) != 3 {
+		t.Fatalf("received %d list RPCs, want three", len(requests))
+	}
+	for index, want := range []string{" opaque-token== ", " opaque-token== ", "experiment-next"} {
+		if cursor := requests[index].(*internalexperimentv1.ListExperimentsRequest).GetPage().GetPageToken(); cursor != want {
+			t.Fatalf("list request %d carried cursor %q, want %q verbatim", index, cursor, want)
+		}
+	}
+	if size := requests[2].(*internalexperimentv1.ListExperimentsRequest).GetPage().GetPageSize(); size != 20 {
+		t.Fatalf("retraversal page size = %d, want the original 20", size)
+	}
+}

@@ -170,3 +170,34 @@ func TestArtifactLifecycleAndOperationListUseExactGeneratedRequests(t *testing.T
 		}
 	}
 }
+
+func TestArtifactPageRetraversalReusesTheOpaqueCursorAndScope(t *testing.T) {
+	client, _, _ := testClient(t)
+	parent := projectName(client.config.TenantID, client.config.ProjectID)
+	artifacts := &artifactGapClient{artifact: fixtureArtifact()}
+	client.Artifacts.transport = artifacts
+
+	page, err := client.Artifacts.List(context.Background(), &internalartifactv1.ListArtifactsRequest{
+		Page: &commonv1.PageRequest{PageSize: 25, PageToken: "artifact-page"},
+	})
+	if err != nil {
+		t.Fatalf("List: %v", err)
+	}
+	if !page.HasNextPage() || len(page.Items()) != 1 {
+		t.Fatalf("first page = %d items, next=%v", len(page.Items()), page.HasNextPage())
+	}
+	next, err := page.NextPage(context.Background())
+	if err != nil || next == nil {
+		t.Fatalf("NextPage: page=%v err=%v", next, err)
+	}
+	if len(artifacts.requests) != 2 {
+		t.Fatalf("issued %d list requests, want two", len(artifacts.requests))
+	}
+	successor := artifacts.requests[1].(*internalartifactv1.ListArtifactsRequest)
+	if successor.GetPage().GetPageToken() != "artifact-next" {
+		t.Fatalf("successor cursor = %q, want the opaque artifact-next token verbatim", successor.GetPage().GetPageToken())
+	}
+	if successor.GetPage().GetPageSize() != 25 || successor.GetParent() != parent {
+		t.Fatalf("retraversal dropped the original page size or project scope: %v", successor)
+	}
+}

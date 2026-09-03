@@ -1,12 +1,87 @@
-use std::{fmt, net::IpAddr, sync::Arc, time::Duration};
+use std::{fmt, net::IpAddr, sync::Arc, sync::OnceLock, time::Duration};
 
 use tonic::codegen::http::Uri;
 
-use crate::{Error, TokenProvider};
+use crate::{
+    Error, TokenProvider,
+    request::{Interceptor, validate_custom_metadata},
+    retry::{JitterSource, LogLevel, LoggingObserver, Observer, SystemJitter},
+};
 
 const DEFAULT_RPC_TIMEOUT: Duration = Duration::from_secs(20);
 const DEFAULT_POLL_INTERVAL: Duration = Duration::from_millis(500);
 const DEFAULT_CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
+
+/// Stable product name reported in `x-mindclade-sdk`.
+pub const SDK_NAME: &str = "mindclade-internal-rust-sdk";
+
+/// The single version source for this SDK.
+///
+/// It is stamped into `x-mindclade-sdk` and is asserted against the crate
+/// manifest by a unit test, so the wire value can never drift from the
+/// package version.
+pub const SDK_VERSION: &str = "0.1.0";
+
+/// Upper bound on the `x-mindclade-sdk` value, so platform metadata can never
+/// become an unbounded header.
+const MAX_SDK_METADATA_BYTES: usize = 256;
+
+/// The exhaustive set of environment variables the SDK recognises. No entry
+/// is or may become a credential.
+pub const RECOGNISED_ENVIRONMENT_VARIABLES: [&str; 7] = [
+    "MINDCLADE_AUDIENCE",
+    "MINDCLADE_ENDPOINT",
+    "MINDCLADE_ENVIRONMENT",
+    "MINDCLADE_LOG",
+    "MINDCLADE_PRINCIPAL_ID",
+    "MINDCLADE_PROJECT_ID",
+    "MINDCLADE_TENANT_ID",
+];
+
+static SDK_METADATA_FULL: OnceLock<String> = OnceLock::new();
+static SDK_METADATA_MINIMAL: OnceLock<String> = OnceLock::new();
+
+/// Returns the exact `x-mindclade-sdk` value for this build.
+///
+/// With platform metadata enabled the value carries language, SDK version,
+/// operating system, architecture, async runtime, and runtime version, each
+/// component sanitized to a bounded visible-ASCII token. The compile-time
+/// constants `std::env::consts::{OS, ARCH}` are not environment variables and
+/// are unaffected by the single-env-path rule.
+pub(crate) fn sdk_metadata_value(omit_platform: bool) -> &'static str {
+    if omit_platform {
+        return SDK_METADATA_MINIMAL.get_or_init(|| format!("{SDK_NAME}/{SDK_VERSION}"));
+    }
+    SDK_METADATA_FULL.get_or_init(|| {
+        let value = format!(
+            "{SDK_NAME}/{SDK_VERSION} lang=rust os={} arch={} rt=tokio rtver={}",
+            sdk_metadata_token(std::env::consts::OS),
+            sdk_metadata_token(std::env::consts::ARCH),
+            sdk_metadata_token(option_env!("CARGO_PKG_RUST_VERSION").unwrap_or("unknown")),
+        );
+        if value.len() > MAX_SDK_METADATA_BYTES {
+            format!("{SDK_NAME}/{SDK_VERSION}")
+        } else {
+            value
+        }
+    })
+}
+
+/// Reduces one platform component to a short, bounded, visible-ASCII token.
+fn sdk_metadata_token(value: &str) -> String {
+    let token: String = value
+        .chars()
+        .filter(|character| {
+            character.is_ascii_alphanumeric() || matches!(character, '-' | '.' | '_')
+        })
+        .take(32)
+        .collect();
+    if token.is_empty() {
+        "unknown".to_owned()
+    } else {
+        token
+    }
+}
 
 /// A governed Mindclade runtime environment.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -18,6 +93,37 @@ pub enum Environment {
 }
 
 impl Environment {
+    /// Parses a `MINDCLADE_ENVIRONMENT` value.
+    ///
+    /// Recognises `development`, `staging`, and `production`, plus `local`
+    /// for the explicit loopback testing profile.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error for an unrecognized environment name.
+    pub fn parse(value: &str) -> Result<Self, Error> {
+        match value.trim().to_ascii_lowercase().as_str() {
+            "local" => Ok(Self::Local),
+            "development" | "dev" => Ok(Self::Development),
+            "staging" => Ok(Self::Staging),
+            "production" | "prod" => Ok(Self::Production),
+            _ => Err(Error::configuration(
+                "MINDCLADE_ENVIRONMENT must be development, staging, production, or local",
+            )),
+        }
+    }
+
+    /// The canonical lowercase name of this environment.
+    #[must_use]
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Local => "local",
+            Self::Development => "development",
+            Self::Staging => "staging",
+            Self::Production => "production",
+        }
+    }
+
     fn endpoint(self) -> &'static str {
         match self {
             Self::Local => "https://127.0.0.1:9443",
@@ -158,6 +264,12 @@ pub struct Config {
     pub(crate) server_name: Option<String>,
     pub(crate) trust_roots: TrustRoots,
     pub(crate) insecure_loopback: bool,
+    pub(crate) jitter: Arc<dyn JitterSource>,
+    pub(crate) custom_metadata: Arc<[(String, String)]>,
+    pub(crate) interceptors: Arc<[Arc<dyn Interceptor>]>,
+    pub(crate) observers: Arc<[Arc<dyn Observer>]>,
+    pub(crate) log_level: LogLevel,
+    pub(crate) omit_platform_metadata: bool,
 }
 
 impl Config {
@@ -182,6 +294,12 @@ impl Config {
             server_name: None,
             custom_ca: None,
             insecure_loopback: false,
+            jitter: Arc::new(SystemJitter::new()),
+            custom_metadata: Vec::new(),
+            interceptors: Vec::new(),
+            observers: Vec::new(),
+            log_level: LogLevel::Off,
+            omit_platform_metadata: false,
         }
     }
 
@@ -202,7 +320,71 @@ impl Config {
             server_name: None,
             custom_ca: None,
             insecure_loopback: true,
+            jitter: Arc::new(SystemJitter::new()),
+            custom_metadata: Vec::new(),
+            interceptors: Vec::new(),
+            observers: Vec::new(),
+            log_level: LogLevel::Off,
+            omit_platform_metadata: false,
         }
+    }
+
+    /// Reads runtime policy from the process environment.
+    ///
+    /// This is the ONLY place the SDK consults environment variables; the
+    /// ordinary constructors never do. No credential is ever read from the
+    /// environment, and no variable that could carry one is recognised.
+    ///
+    /// Recognised variables: `MINDCLADE_ENVIRONMENT` (required),
+    /// `MINDCLADE_TENANT_ID`, `MINDCLADE_PROJECT_ID`,
+    /// `MINDCLADE_PRINCIPAL_ID` (all required), and the optional
+    /// `MINDCLADE_ENDPOINT`, `MINDCLADE_AUDIENCE`, and `MINDCLADE_LOG`.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error for a missing required variable or an invalid value.
+    pub fn from_env(token_provider: Arc<dyn TokenProvider>) -> Result<ConfigBuilder, Error> {
+        Self::from_env_source(token_provider, |key| std::env::var(key).ok())
+    }
+
+    /// The environment-reading logic, over an injectable lookup.
+    ///
+    /// `from_env` is the only caller that binds this to `std::env::var`; tests
+    /// drive it with a scripted lookup so no test ever mutates the process
+    /// environment.
+    pub(crate) fn from_env_source(
+        token_provider: Arc<dyn TokenProvider>,
+        lookup: impl Fn(&str) -> Option<String>,
+    ) -> Result<ConfigBuilder, Error> {
+        let required = |key: &str| -> Result<String, Error> {
+            lookup(key)
+                .map(|value| value.trim().to_owned())
+                .filter(|value| !value.is_empty())
+                .ok_or_else(|| Error::configuration(format!("{key} is required")))
+        };
+        let environment = Environment::parse(&required("MINDCLADE_ENVIRONMENT")?)?;
+        let identity = Identity::new(
+            required("MINDCLADE_TENANT_ID")?,
+            required("MINDCLADE_PROJECT_ID")?,
+            required("MINDCLADE_PRINCIPAL_ID")?,
+        )?;
+        let mut builder = Self::builder(environment, identity, token_provider);
+        if let Some(endpoint) = lookup("MINDCLADE_ENDPOINT")
+            .map(|value| value.trim().to_owned())
+            .filter(|value| !value.is_empty())
+        {
+            builder = builder.endpoint(endpoint);
+        }
+        if let Some(audience) = lookup("MINDCLADE_AUDIENCE")
+            .map(|value| value.trim().to_owned())
+            .filter(|value| !value.is_empty())
+        {
+            builder = builder.audience(audience);
+        }
+        if let Some(level) = lookup("MINDCLADE_LOG") {
+            builder = builder.log_level(LogLevel::parse(&level)?);
+        }
+        Ok(builder)
     }
 
     #[must_use]
@@ -235,6 +417,27 @@ impl Config {
     pub fn retry_policy(&self) -> RetryPolicy {
         self.retry
     }
+
+    /// The diagnostic verbosity this client was configured with.
+    ///
+    /// `MINDCLADE_LOG` is captured once by [`Config::from_env`]; nothing else
+    /// in the SDK consults the process environment.
+    #[must_use]
+    pub fn log_level(&self) -> LogLevel {
+        self.log_level
+    }
+
+    /// The exact `x-mindclade-sdk` value this client sends.
+    #[must_use]
+    pub fn sdk_metadata(&self) -> &'static str {
+        sdk_metadata_value(self.omit_platform_metadata)
+    }
+
+    /// Caller-supplied metadata applied to every request from this client.
+    #[must_use]
+    pub fn custom_metadata(&self) -> &[(String, String)] {
+        &self.custom_metadata
+    }
 }
 
 impl fmt::Debug for Config {
@@ -252,6 +455,19 @@ impl fmt::Debug for Config {
             .field("retry", &self.retry)
             .field("server_name", &self.server_name)
             .field("insecure_loopback", &self.insecure_loopback)
+            .field("jitter", &self.jitter)
+            .field(
+                "custom_metadata_keys",
+                &self
+                    .custom_metadata
+                    .iter()
+                    .map(|(key, _)| key.as_str())
+                    .collect::<Vec<&str>>(),
+            )
+            .field("interceptors", &self.interceptors.len())
+            .field("observers", &self.observers.len())
+            .field("log_level", &self.log_level)
+            .field("omit_platform_metadata", &self.omit_platform_metadata)
             .finish_non_exhaustive()
     }
 }
@@ -270,6 +486,12 @@ pub struct ConfigBuilder {
     server_name: Option<String>,
     custom_ca: Option<Vec<u8>>,
     insecure_loopback: bool,
+    jitter: Arc<dyn JitterSource>,
+    custom_metadata: Vec<(String, String)>,
+    interceptors: Vec<Arc<dyn Interceptor>>,
+    observers: Vec<Arc<dyn Observer>>,
+    log_level: LogLevel,
+    omit_platform_metadata: bool,
 }
 
 impl ConfigBuilder {
@@ -306,6 +528,79 @@ impl ConfigBuilder {
     #[must_use]
     pub fn retry_policy(mut self, policy: RetryPolicy) -> Self {
         self.retry = policy;
+        self
+    }
+
+    /// Replaces the source of retry jitter.
+    ///
+    /// The default draws from operating-system entropy. Tests inject
+    /// [`crate::testing::ScriptedJitter`] so every backoff is deterministic.
+    #[must_use]
+    pub fn jitter_source(mut self, source: Arc<dyn JitterSource>) -> Self {
+        self.jitter = source;
+        self
+    }
+
+    /// Adds one caller-supplied metadata entry to every request.
+    ///
+    /// The key is checked against the same credential denylist that filters
+    /// response metadata, and against the SDK's reserved key set, so
+    /// pass-through metadata can neither leak nor displace a credential.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error for a reserved or credential-bearing key, an invalid
+    /// value, or more than [`crate::MAX_CUSTOM_METADATA_ENTRIES`] entries.
+    pub fn custom_metadata(
+        mut self,
+        key: impl Into<String>,
+        value: impl Into<String>,
+    ) -> Result<Self, Error> {
+        let key = key.into();
+        let value = value.into();
+        validate_custom_metadata(&key, &value)?;
+        self.custom_metadata
+            .retain(|(existing, _)| existing != &key);
+        if self.custom_metadata.len() >= crate::MAX_CUSTOM_METADATA_ENTRIES {
+            return Err(Error::configuration(
+                "a client may carry at most sixteen custom metadata entries",
+            ));
+        }
+        self.custom_metadata.push((key, value));
+        Ok(self)
+    }
+
+    /// Reduces `x-mindclade-sdk` to the SDK name and version alone.
+    #[must_use]
+    pub fn omit_platform_metadata(mut self) -> Self {
+        self.omit_platform_metadata = true;
+        self
+    }
+
+    /// Appends a caller interceptor. Interceptors run in the order added,
+    /// after the SDK's own metadata and before the credential is attached.
+    #[must_use]
+    pub fn interceptor(mut self, interceptor: Arc<dyn Interceptor>) -> Self {
+        self.interceptors.push(interceptor);
+        self
+    }
+
+    /// Appends a telemetry observer. Observers receive method, attempt,
+    /// elapsed, status, correlation identity, and metadata key names only.
+    #[must_use]
+    pub fn observer(mut self, observer: Arc<dyn Observer>) -> Self {
+        self.observers.push(observer);
+        self
+    }
+
+    /// Sets the diagnostic verbosity and installs the built-in logging
+    /// observer at that level. [`LogLevel::Off`] installs nothing.
+    #[must_use]
+    pub fn log_level(mut self, level: LogLevel) -> Self {
+        self.log_level = level;
+        if level != LogLevel::Off {
+            self.observers.push(Arc::new(LoggingObserver::new(level)));
+        }
         self
     }
 
@@ -398,6 +693,12 @@ impl ConfigBuilder {
             server_name,
             trust_roots,
             insecure_loopback: self.insecure_loopback,
+            jitter: self.jitter,
+            custom_metadata: Arc::from(self.custom_metadata),
+            interceptors: Arc::from(self.interceptors),
+            observers: Arc::from(self.observers),
+            log_level: self.log_level,
+            omit_platform_metadata: self.omit_platform_metadata,
         })
     }
 }

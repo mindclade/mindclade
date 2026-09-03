@@ -90,16 +90,55 @@ export type {
 } from "./artifacts.js";
 export { Artifacts } from "./artifacts.js";
 export { AccessToken, type TokenProvider } from "./auth.js";
-export { MindcladeClient } from "./client.js";
+export {
+	type ErgonomicNamespace,
+	MindcladeClient,
+	type RawResponseNamespaces,
+} from "./client.js";
 export {
 	ClientConfig,
 	type ClientConfigInput,
 	Environment,
 	type Identity,
+	isReservedMetadata,
+	RESERVED_REQUEST_METADATA,
 	type RetryPolicy,
+	validateAttempts,
 } from "./config.js";
 export { Datasets } from "./datasets.js";
-export { type ErrorKind, MindcladeError, OperationFailure } from "./error.js";
+export {
+	clientConfigFromEnvironment,
+	type EnvironmentOverrides,
+	type EnvironmentSource,
+	RECOGNISED_ENVIRONMENT_VARIABLES,
+} from "./environment.js";
+export {
+	AuthenticationError,
+	AuthorizationError,
+	CancelledError,
+	ConflictError,
+	type ErrorContext,
+	type ErrorKind,
+	type FenceState,
+	MindcladeError,
+	type MindcladeErrorOptions,
+	NotFoundError,
+	OperationFailedError,
+	OperationFailure,
+	QuotaError,
+	type QuotaState,
+	RateLimitError,
+	REQUEST_ID_HEADER,
+	RETRY_AFTER_TRAILER,
+	RetryableServiceError,
+	type RetryState,
+	SHOULD_RETRY_TRAILER,
+	type StableErrorCode,
+	shouldRetry,
+	TRACE_ID_HEADER,
+	TransportError,
+	ValidationError,
+} from "./error.js";
 export { Evaluations } from "./evaluations.js";
 export { Experiments } from "./experiments.js";
 export {
@@ -110,20 +149,67 @@ export {
 export { Inference, inferenceRequest } from "./inference.js";
 export { Jobs } from "./jobs.js";
 export { Models } from "./models.js";
+export {
+	consoleLogger,
+	LOG_LEVELS,
+	type LogFields,
+	type Logger,
+	type LogLevel,
+	levelFromEnvironment,
+	metadataKeyNames,
+	type ObservabilityPolicy,
+	type ObservedCall,
+	type Observer,
+	observeCall,
+} from "./observability.js";
 export { Operations } from "./operations.js";
+export {
+	listPage,
+	Page,
+	type PageFetch,
+	type PageInit,
+	type PageSource,
+	type SdkPageInfo,
+	withPageToken,
+} from "./pagination.js";
+export { platformMetadata, SDK_NAME, SDK_VERSION } from "./platform.js";
 export { Policies } from "./policies.js";
 export { RawInternalClients } from "./raw.js";
 export type {
+	ListOptions,
 	PaginationLimits,
 	PaginationOptions,
 	PaginationPage,
+	RetryAttemptState,
 	SdkCallOptions,
 	SubmitOptions,
+	UnsafeRetryOfNonIdempotent,
 	WaitOptions,
 } from "./request.js";
-export { paginate } from "./request.js";
+export { paginate, withUnsafeRetryOfNonIdempotent } from "./request.js";
+export {
+	isCredentialBearing,
+	type RawResponse,
+	type ResponseStatus,
+	SAFE_RESPONSE_METADATA,
+	type WithResponse,
+} from "./response.js";
+export type { RetrySafety } from "./retry.js";
 export { AttemptLease, LeaseCredential, Runs } from "./runs.js";
 export type { Runtime } from "./runtime.js";
+export { isNeverRetryable, REGISTERED_ROUTES, registeredMethodSafety } from "./safety.js";
 export { FakeRuntime, type RecordedTransportCall, RecordingTransport } from "./testing.js";
-export { Training, type TrainingUpdate } from "./training.js";
+export { Training, TrainingRunFailure, type TrainingUpdate } from "./training.js";
+export {
+	AuthenticatedTransport,
+	createNodeTransport,
+	MAX_MESSAGE_BYTES,
+} from "./transport.js";
+export {
+	DEFAULT_WAIT_TIMEOUT_MS,
+	type WatchCall,
+	type WatchDecision,
+	type WatchSource,
+	watchStream,
+} from "./watch.js";
 export { WorkflowRunFailure, Workflows } from "./workflows.js";

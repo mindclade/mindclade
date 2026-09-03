@@ -95,7 +95,18 @@ func (service *RunService) GetRun(ctx context.Context, name string, options ...R
 	return cloneGenerated(response.GetRun()), nil
 }
 
-func (service *RunService) ListRuns(ctx context.Context, request *internaljobv1.ListRunsRequest, options ...RequestOption) (*internaljobv1.ListRunsResponse, error) {
+// RunPage is one bounded list response plus cursor-scheme traversal. The
+// embedded generated response remains the authoritative model; the wrapper
+// adds only the opaque-cursor mechanics.
+type RunPage struct {
+	*internaljobv1.ListRunsResponse
+	pageBase[*jobv1.Run, *RunPage]
+}
+
+// Items returns this page's runs without traversing any further page.
+func (page *RunPage) Items() []*jobv1.Run { return page.GetRuns() }
+
+func (service *RunService) ListRuns(ctx context.Context, request *internaljobv1.ListRunsRequest, options ...RequestOption) (*RunPage, error) {
 	if !service.configured() {
 		return nil, invalidArgument("run service is not configured")
 	}
@@ -125,7 +136,14 @@ func (service *RunService) ListRuns(ctx context.Context, request *internaljobv1.
 			return nil, protocolDataLoss("ListRuns returned inconsistent scope")
 		}
 	}
-	return cloneGenerated(response), nil
+	detached := cloneGenerated(response)
+	page := &RunPage{ListRunsResponse: detached}
+	page.pageBase = newPage[*jobv1.Run](page, detached.GetPage(), paginationLimitsFrom(options), func(ctx context.Context, token string) (*RunPage, error) {
+		successor := cloneGenerated(value)
+		successor.Page = pageRequestWithToken(value.GetPage(), token)
+		return service.ListRuns(ctx, successor, options...)
+	})
+	return page, nil
 }
 
 func (service *RunService) GetAttempt(ctx context.Context, name string, options ...RequestOption) (*jobv1.Attempt, error) {
@@ -148,7 +166,18 @@ func (service *RunService) GetAttempt(ctx context.Context, name string, options 
 	return cloneGenerated(response.GetAttempt()), nil
 }
 
-func (service *RunService) ListAttempts(ctx context.Context, request *internaljobv1.ListAttemptsRequest, options ...RequestOption) (*internaljobv1.ListAttemptsResponse, error) {
+// AttemptPage is one bounded list response plus cursor-scheme traversal. The
+// embedded generated response remains the authoritative model; the wrapper
+// adds only the opaque-cursor mechanics.
+type AttemptPage struct {
+	*internaljobv1.ListAttemptsResponse
+	pageBase[*jobv1.Attempt, *AttemptPage]
+}
+
+// Items returns this page's attempts without traversing any further page.
+func (page *AttemptPage) Items() []*jobv1.Attempt { return page.GetAttempts() }
+
+func (service *RunService) ListAttempts(ctx context.Context, request *internaljobv1.ListAttemptsRequest, options ...RequestOption) (*AttemptPage, error) {
 	if !service.configured() {
 		return nil, invalidArgument("run service is not configured")
 	}
@@ -178,7 +207,14 @@ func (service *RunService) ListAttempts(ctx context.Context, request *internaljo
 			return nil, protocolDataLoss("ListAttempts returned inconsistent scope")
 		}
 	}
-	return cloneGenerated(response), nil
+	detached := cloneGenerated(response)
+	page := &AttemptPage{ListAttemptsResponse: detached}
+	page.pageBase = newPage[*jobv1.Attempt](page, detached.GetPage(), paginationLimitsFrom(options), func(ctx context.Context, token string) (*AttemptPage, error) {
+		successor := cloneGenerated(value)
+		successor.Page = pageRequestWithToken(value.GetPage(), token)
+		return service.ListAttempts(ctx, successor, options...)
+	})
+	return page, nil
 }
 
 // AcquireAttemptLease atomically obtains a generated attempt/fence and captures

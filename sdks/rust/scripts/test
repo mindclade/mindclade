@@ -1,0 +1,23 @@
+#!/bin/sh
+# Run this crate's tests.
+#
+# The default run mirrors the Rust half of `just check`, narrowed to the SDK.
+# The suite is hermetic: it drives injected transports and an injected jitter
+# source, opens no socket, reads no ambient configuration, and needs no running
+# control plane. Arguments are forwarded to cargo test, so `scripts/test retry`
+# or `scripts/test -- --nocapture` work without leaving the wrapper.
+#
+# MINDCLADE_BAZEL=1 additionally runs the Bazel test target, which is the
+# authority CI uses.
+
+set -eu
+
+. "$(dirname -- "$0")/common.sh"
+
+cargo_run test --package "${SDK_CARGO_PACKAGE}" --locked "$@"
+
+if bazel_requested; then
+  require_tool bazel "install Bazelisk, or unset MINDCLADE_BAZEL to use the native toolchain."
+  announce "bazel test ${SDK_BAZEL_TEST}"
+  bazel test "${SDK_BAZEL_TEST}"
+fi

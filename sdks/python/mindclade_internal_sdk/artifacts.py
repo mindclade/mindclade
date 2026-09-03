@@ -24,9 +24,19 @@ from mindclade.internal.artifact.v1 import artifact_service_pb2
 from mindclade.operation.v1 import operation_pb2
 
 from ._invocation import AsyncInvoker, SyncInvoker, canonical_digest, command_context
+from ._raw import AsyncWithRawResponse, WithRawResponse
 from ._validation import artifact_ref, required_response_message, required_text
 from .calls import CallOptions, PreparedCall, prepare_call
 from .errors import ConflictError, NotFoundError, ProtocolError
+from .pagination import (
+    AsyncPage,
+    Page,
+    PaginationLimits,
+    apply_default_page_size,
+    async_page,
+    next_request,
+    sync_page,
+)
 from .transport import (
     ABORT_ARTIFACT_UPLOAD,
     ACQUIRE_ARTIFACT_LEASE,
@@ -504,7 +514,7 @@ def _verify_download_response(
     return bytes(response.data)
 
 
-class Artifacts:
+class Artifacts(WithRawResponse):
     def __init__(self, invoker: SyncInvoker) -> None:
         self._invoker = invoker
 
@@ -552,7 +562,8 @@ class Artifacts:
         request: artifact_service_pb2.ListArtifactsRequest | None = None,
         *,
         options: CallOptions | None = None,
-    ) -> artifact_service_pb2.ListArtifactsResponse:
+        limits: PaginationLimits | None = None,
+    ) -> Page[artifact_reference_pb2.ArtifactRef]:
         value = (
             artifact_service_pb2.ListArtifactsRequest()
             if request is None
@@ -564,6 +575,7 @@ class Artifacts:
         if value.page.page_size > _MAX_ARTIFACT_PAGE_SIZE:
             raise ValueError("artifact page size cannot exceed 100")
         value.parent = parent
+        apply_default_page_size(value, limits)
         call = prepare_call(
             options,
             default_timeout=self._invoker.config.default_timeout,
@@ -578,7 +590,11 @@ class Artifacts:
         result = _clone(raw, artifact_service_pb2.ListArtifactsResponse)
         for item in result.artifacts:
             _response_artifact(item, label="ListArtifacts")
-        return result
+
+        def follow(page_token: str) -> Page[artifact_reference_pb2.ArtifactRef]:
+            return self.list(next_request(value, page_token), options=options, limits=limits)
+
+        return sync_page(result, items_field="artifacts", fetch=follow, limits=limits)
 
     def quarantine(
         self,
@@ -1108,7 +1124,7 @@ class Artifacts:
                 staging.unlink()
 
 
-class AsyncArtifacts:
+class AsyncArtifacts(AsyncWithRawResponse):
     def __init__(self, invoker: AsyncInvoker) -> None:
         self._invoker = invoker
 
@@ -1156,7 +1172,8 @@ class AsyncArtifacts:
         request: artifact_service_pb2.ListArtifactsRequest | None = None,
         *,
         options: CallOptions | None = None,
-    ) -> artifact_service_pb2.ListArtifactsResponse:
+        limits: PaginationLimits | None = None,
+    ) -> AsyncPage[artifact_reference_pb2.ArtifactRef]:
         value = (
             artifact_service_pb2.ListArtifactsRequest()
             if request is None
@@ -1168,6 +1185,7 @@ class AsyncArtifacts:
         if value.page.page_size > _MAX_ARTIFACT_PAGE_SIZE:
             raise ValueError("artifact page size cannot exceed 100")
         value.parent = parent
+        apply_default_page_size(value, limits)
         call = prepare_call(
             options,
             default_timeout=self._invoker.config.default_timeout,
@@ -1182,7 +1200,11 @@ class AsyncArtifacts:
         result = _clone(raw, artifact_service_pb2.ListArtifactsResponse)
         for item in result.artifacts:
             _response_artifact(item, label="ListArtifacts")
-        return result
+
+        async def follow(page_token: str) -> AsyncPage[artifact_reference_pb2.ArtifactRef]:
+            return await self.list(next_request(value, page_token), options=options, limits=limits)
+
+        return async_page(result, items_field="artifacts", fetch=follow, limits=limits)
 
     async def quarantine(
         self,

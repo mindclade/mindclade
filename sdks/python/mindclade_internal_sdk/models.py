@@ -12,8 +12,18 @@ from mindclade.model.v1 import model_commands_pb2, model_pb2, model_release_pb2
 from mindclade.operation.v1 import operation_pb2
 
 from ._invocation import AsyncInvoker, SyncInvoker, canonical_digest, command_context
+from ._raw import AsyncWithRawResponse, WithRawResponse
 from ._validation import required_response_message, required_text
 from .calls import CallOptions, PreparedCall, prepare_call
+from .pagination import (
+    AsyncPage,
+    Page,
+    PaginationLimits,
+    apply_default_page_size,
+    async_page,
+    next_request,
+    sync_page,
+)
 from .transport import (
     GET_MODEL,
     GET_MODEL_RELEASE,
@@ -138,7 +148,7 @@ def _prepare_command[
     return materialized, call
 
 
-class Models:
+class Models(WithRawResponse):
     """Synchronous generated-type-only Model lifecycle API."""
 
     def __init__(self, invoker: SyncInvoker) -> None:
@@ -193,7 +203,8 @@ class Models:
         request: model_service_pb2.ListModelsRequest | None = None,
         *,
         options: CallOptions | None = None,
-    ) -> model_service_pb2.ListModelsResponse:
+        limits: PaginationLimits | None = None,
+    ) -> Page[model_pb2.Model]:
         materialized = model_service_pb2.ListModelsRequest()
         materialized.CopyFrom(request or model_service_pb2.ListModelsRequest())
         parent = _project_name(self._invoker)
@@ -202,13 +213,19 @@ class Models:
         materialized.parent = parent
         if materialized.HasField("page") and materialized.page.page_size > 1000:
             raise ValueError("model page size cannot exceed 1000")
+        apply_default_page_size(materialized, limits)
         call = prepare_call(
             options, default_timeout=self._invoker.config.default_timeout, require_idempotency=False
         )
-        return cast(
+        response = cast(
             model_service_pb2.ListModelsResponse,
             self._invoker.unary(LIST_MODELS, materialized, call=call, retry_safe=True),
         )
+
+        def follow(page_token: str) -> Page[model_pb2.Model]:
+            return self.list(next_request(materialized, page_token), options=options, limits=limits)
+
+        return sync_page(response, items_field="models", fetch=follow, limits=limits)
 
     def register_release(
         self,
@@ -257,19 +274,28 @@ class Models:
         request: model_service_pb2.ListModelReleasesRequest,
         *,
         options: CallOptions | None = None,
-    ) -> model_service_pb2.ListModelReleasesResponse:
+        limits: PaginationLimits | None = None,
+    ) -> Page[model_release_pb2.ModelRelease]:
         materialized = model_service_pb2.ListModelReleasesRequest()
         materialized.CopyFrom(request)
         _model_name(self._invoker, materialized.parent)
         if materialized.HasField("page") and materialized.page.page_size > 1000:
             raise ValueError("model release page size cannot exceed 1000")
+        apply_default_page_size(materialized, limits)
         call = prepare_call(
             options, default_timeout=self._invoker.config.default_timeout, require_idempotency=False
         )
-        return cast(
+        response = cast(
             model_service_pb2.ListModelReleasesResponse,
             self._invoker.unary(LIST_MODEL_RELEASES, materialized, call=call, retry_safe=True),
         )
+
+        def follow(page_token: str) -> Page[model_release_pb2.ModelRelease]:
+            return self.list_releases(
+                next_request(materialized, page_token), options=options, limits=limits
+            )
+
+        return sync_page(response, items_field="model_releases", fetch=follow, limits=limits)
 
     def promote_release(
         self,
@@ -324,7 +350,7 @@ class Models:
         )
 
 
-class AsyncModels:
+class AsyncModels(AsyncWithRawResponse):
     """Asyncio generated-type-only Model lifecycle API."""
 
     def __init__(self, invoker: AsyncInvoker) -> None:
@@ -379,7 +405,8 @@ class AsyncModels:
         request: model_service_pb2.ListModelsRequest | None = None,
         *,
         options: CallOptions | None = None,
-    ) -> model_service_pb2.ListModelsResponse:
+        limits: PaginationLimits | None = None,
+    ) -> AsyncPage[model_pb2.Model]:
         materialized = model_service_pb2.ListModelsRequest()
         materialized.CopyFrom(request or model_service_pb2.ListModelsRequest())
         parent = _project_name(self._invoker)
@@ -388,13 +415,21 @@ class AsyncModels:
         materialized.parent = parent
         if materialized.HasField("page") and materialized.page.page_size > 1000:
             raise ValueError("model page size cannot exceed 1000")
+        apply_default_page_size(materialized, limits)
         call = prepare_call(
             options, default_timeout=self._invoker.config.default_timeout, require_idempotency=False
         )
-        return cast(
+        response = cast(
             model_service_pb2.ListModelsResponse,
             await self._invoker.unary(LIST_MODELS, materialized, call=call, retry_safe=True),
         )
+
+        async def follow(page_token: str) -> AsyncPage[model_pb2.Model]:
+            return await self.list(
+                next_request(materialized, page_token), options=options, limits=limits
+            )
+
+        return async_page(response, items_field="models", fetch=follow, limits=limits)
 
     async def register_release(
         self,
@@ -443,21 +478,30 @@ class AsyncModels:
         request: model_service_pb2.ListModelReleasesRequest,
         *,
         options: CallOptions | None = None,
-    ) -> model_service_pb2.ListModelReleasesResponse:
+        limits: PaginationLimits | None = None,
+    ) -> AsyncPage[model_release_pb2.ModelRelease]:
         materialized = model_service_pb2.ListModelReleasesRequest()
         materialized.CopyFrom(request)
         _model_name(self._invoker, materialized.parent)
         if materialized.HasField("page") and materialized.page.page_size > 1000:
             raise ValueError("model release page size cannot exceed 1000")
+        apply_default_page_size(materialized, limits)
         call = prepare_call(
             options, default_timeout=self._invoker.config.default_timeout, require_idempotency=False
         )
-        return cast(
+        response = cast(
             model_service_pb2.ListModelReleasesResponse,
             await self._invoker.unary(
                 LIST_MODEL_RELEASES, materialized, call=call, retry_safe=True
             ),
         )
+
+        async def follow(page_token: str) -> AsyncPage[model_release_pb2.ModelRelease]:
+            return await self.list_releases(
+                next_request(materialized, page_token), options=options, limits=limits
+            )
+
+        return async_page(response, items_field="model_releases", fetch=follow, limits=limits)
 
     async def promote_release(
         self,

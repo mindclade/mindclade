@@ -759,33 +759,10 @@ def generate_language(
             if descriptor.get("service")
         ]
         if grpc_sources:
-            raw_buf_lock: object = yaml.safe_load((root / "buf.lock").read_text(encoding="utf-8"))
-            if not isinstance(raw_buf_lock, dict):
-                raise ValueError("buf.lock has no dependency closure")
-            buf_lock = cast(dict[str, object], raw_buf_lock)
-            dependencies = buf_lock.get("deps")
-            if not isinstance(dependencies, list):
-                raise ValueError("buf.lock has no dependency closure")
-            googleapis = next(
-                dependency
-                for dependency in cast(list[dict[str, str]], dependencies)
-                if dependency.get("name") == "buf.build/googleapis/googleapis"
-            )
-            googleapis_root = staging / "external" / "googleapis"
-            run(
-                [
-                    "buf",
-                    "export",
-                    f"{googleapis['name']}:{googleapis['commit']}",
-                    "--path",
-                    "google/api/annotations.proto",
-                    "--path",
-                    "google/api/http.proto",
-                    "--output",
-                    str(googleapis_root),
-                ],
-                cwd=root,
-            )
+            # google/api/{annotations,http}.proto are vendored under
+            # protocols/google/api, so -Iprotocols already resolves them and no
+            # registry export is needed. This is the whole reason the contract
+            # build runs without network access to a schema registry.
             python_bin = Path(sys.executable).parent
             mypy_grpc = shutil.which("protoc-gen-mypy_grpc", path=str(python_bin))
             if mypy_grpc is None:
@@ -796,7 +773,6 @@ def generate_language(
                     "-m",
                     "grpc_tools.protoc",
                     "-Iprotocols",
-                    f"-I{googleapis_root}",
                     f"--grpc_python_out={raw_root}",
                     f"--mypy_grpc_out={raw_root}",
                     f"--plugin=protoc-gen-mypy_grpc={mypy_grpc}",
@@ -5635,6 +5611,8 @@ def generated_outputs(root: Path) -> tuple[dict[Path, bytes], bytes, list[dict[s
                             "pnpm-workspace.yaml",
                             "pyproject.toml",
                             "protocols/events/registry.yaml",
+                            "protocols/google/api/annotations.proto",
+                            "protocols/google/api/http.proto",
                             "protocols/openapi/compatibility-policy.yaml",
                             "protocols/openapi/external-api.yaml",
                             "protocols/openapi/generation.yaml",

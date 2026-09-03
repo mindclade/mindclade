@@ -64,9 +64,20 @@ func (service *DatasetService) Get(ctx context.Context, name, ifNoneMatch string
 	return cloneGenerated(response.GetDataset()), nil
 }
 
+// DatasetPage is one bounded list response plus cursor-scheme traversal. The
+// embedded generated response remains the authoritative model; the wrapper
+// adds only the opaque-cursor mechanics.
+type DatasetPage struct {
+	*internaldatasetv1.ListDatasetsResponse
+	pageBase[*datasetv1.Dataset, *DatasetPage]
+}
+
+// Items returns this page's datasets without traversing any further page.
+func (page *DatasetPage) Items() []*datasetv1.Dataset { return page.GetDatasets() }
+
 // List returns one generated, opaque-token page. The configured project is
 // authoritative; a missing parent is filled and a mismatched parent is rejected.
-func (service *DatasetService) List(ctx context.Context, request *internaldatasetv1.ListDatasetsRequest, options ...RequestOption) (*internaldatasetv1.ListDatasetsResponse, error) {
+func (service *DatasetService) List(ctx context.Context, request *internaldatasetv1.ListDatasetsRequest, options ...RequestOption) (*DatasetPage, error) {
 	materialized := cloneGenerated(request)
 	if materialized == nil {
 		materialized = &internaldatasetv1.ListDatasetsRequest{}
@@ -89,7 +100,14 @@ func (service *DatasetService) List(ctx context.Context, request *internaldatase
 	if err != nil {
 		return nil, normalizeError(err)
 	}
-	return cloneGenerated(response), nil
+	detached := cloneGenerated(response)
+	page := &DatasetPage{ListDatasetsResponse: detached}
+	page.pageBase = newPage[*datasetv1.Dataset](page, detached.GetPage(), paginationLimitsFrom(options), func(ctx context.Context, token string) (*DatasetPage, error) {
+		successor := cloneGenerated(materialized)
+		successor.Page = pageRequestWithToken(materialized.GetPage(), token)
+		return service.List(ctx, successor, options...)
+	})
+	return page, nil
 }
 
 func (service *DatasetService) Update(ctx context.Context, command *datasetv1.UpdateDatasetCommand, options ...RequestOption) (*operationv1.Operation, error) {
@@ -186,7 +204,18 @@ func (service *DatasetService) GetRelease(ctx context.Context, name string, opti
 	return cloneGenerated(response.GetDatasetRelease()), nil
 }
 
-func (service *DatasetService) ListReleases(ctx context.Context, request *internaldatasetv1.ListDatasetReleasesRequest, options ...RequestOption) (*internaldatasetv1.ListDatasetReleasesResponse, error) {
+// DatasetReleasePage is one bounded list response plus cursor-scheme traversal. The
+// embedded generated response remains the authoritative model; the wrapper
+// adds only the opaque-cursor mechanics.
+type DatasetReleasePage struct {
+	*internaldatasetv1.ListDatasetReleasesResponse
+	pageBase[*datasetv1.DatasetRelease, *DatasetReleasePage]
+}
+
+// Items returns this page's dataset releases without traversing any further page.
+func (page *DatasetReleasePage) Items() []*datasetv1.DatasetRelease { return page.GetDatasetReleases() }
+
+func (service *DatasetService) ListReleases(ctx context.Context, request *internaldatasetv1.ListDatasetReleasesRequest, options ...RequestOption) (*DatasetReleasePage, error) {
 	if request == nil || !scopedResourceName(service.client.config, request.GetParent(), "datasets") {
 		return nil, invalidArgument("dataset release parent must be a dataset in the configured project")
 	}
@@ -203,7 +232,14 @@ func (service *DatasetService) ListReleases(ctx context.Context, request *intern
 	if err != nil {
 		return nil, normalizeError(err)
 	}
-	return cloneGenerated(response), nil
+	detached := cloneGenerated(response)
+	page := &DatasetReleasePage{ListDatasetReleasesResponse: detached}
+	page.pageBase = newPage[*datasetv1.DatasetRelease](page, detached.GetPage(), paginationLimitsFrom(options), func(ctx context.Context, token string) (*DatasetReleasePage, error) {
+		successor := cloneGenerated(materialized)
+		successor.Page = pageRequestWithToken(materialized.GetPage(), token)
+		return service.ListReleases(ctx, successor, options...)
+	})
+	return page, nil
 }
 
 func projectResource(config Config) *commonv1.ResourceRef {

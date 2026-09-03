@@ -252,8 +252,8 @@ describe("Workflow and Approval generated-contract facades", () => {
 		);
 		assert.equal((await workflows.getDefinition(DEFINITION)).name, DEFINITION);
 		assert.equal(
-			(await workflows.listDefinitions({ page: { pageToken: "opaque-definition" } })).page
-				?.nextPageToken,
+			(await workflows.listDefinitions({ page: { pageToken: "opaque-definition" } })).metadata
+				.nextPageToken,
 			"next-definition",
 		);
 		await workflows.startRun(
@@ -265,7 +265,7 @@ describe("Workflow and Approval generated-contract facades", () => {
 		);
 		assert.equal((await workflows.getRun(RUN)).name, RUN);
 		assert.equal(
-			(await workflows.listRuns({ page: { pageToken: "opaque-run" } })).page?.nextPageToken,
+			(await workflows.listRuns({ page: { pageToken: "opaque-run" } })).metadata.nextPageToken,
 			"next-run",
 		);
 		await workflows.cancelRun(
@@ -307,7 +307,7 @@ describe("Workflow and Approval generated-contract facades", () => {
 		assert.equal(approval.requestedByPrincipalRef, "principals/worker-1");
 		assert.equal((await approvals.get(APPROVAL)).name, APPROVAL);
 		assert.equal(
-			(await approvals.list({ page: { pageToken: "opaque-approval" } })).page?.nextPageToken,
+			(await approvals.list({ page: { pageToken: "opaque-approval" } })).metadata.nextPageToken,
 			"next-approval",
 		);
 		const receipt = await approvals.decide(

@@ -2,6 +2,14 @@ import type { RetrySafety } from "./retry.js";
 
 const policies = new Map<string, RetrySafety>([
 	["/mindclade.internal.artifact.v1.ArtifactService/GetArtifact", "safe"],
+	["/mindclade.internal.artifact.v1.ArtifactService/GetArtifactUpload", "safe"],
+	["/mindclade.internal.artifact.v1.ArtifactService/DownloadArtifact", "safe"],
+	["/mindclade.internal.artifact.v1.ArtifactService/BeginArtifactUpload", "idempotent"],
+	["/mindclade.internal.artifact.v1.ArtifactService/UploadArtifactChunk", "idempotent"],
+	["/mindclade.internal.artifact.v1.ArtifactService/FinalizeArtifactUpload", "idempotent"],
+	["/mindclade.internal.artifact.v1.ArtifactService/AbortArtifactUpload", "idempotent"],
+	["/mindclade.internal.artifact.v1.ArtifactService/QuarantineArtifactUpload", "idempotent"],
+	["/mindclade.internal.artifact.v1.ArtifactService/CommitArtifact", "idempotent"],
 	["/mindclade.internal.artifact.v1.ArtifactService/ListArtifacts", "safe"],
 	["/mindclade.internal.artifact.v1.ArtifactService/QuarantineArtifact", "idempotent"],
 	["/mindclade.internal.artifact.v1.ArtifactService/AcquireArtifactLease", "idempotent"],
@@ -9,6 +17,7 @@ const policies = new Map<string, RetrySafety>([
 	["/mindclade.internal.artifact.v1.ArtifactService/ResolveArtifactAlias", "safe"],
 	["/mindclade.internal.job.v1.OperationService/CancelOperation", "idempotent"],
 	["/mindclade.internal.job.v1.OperationService/GetOperation", "safe"],
+	["/mindclade.internal.job.v1.OperationService/WatchOperation", "safe"],
 	["/mindclade.internal.job.v1.OperationService/ListOperations", "safe"],
 	["/mindclade.internal.job.v1.JobService/RequestJob", "idempotent"],
 	["/mindclade.internal.job.v1.JobService/GetJob", "safe"],
@@ -23,6 +32,9 @@ const policies = new Map<string, RetrySafety>([
 	["/mindclade.internal.job.v1.RunService/HeartbeatAttempt", "idempotent"],
 	["/mindclade.internal.job.v1.RunService/CancelAttempt", "idempotent"],
 	["/mindclade.internal.job.v1.RunService/CommitAttempt", "idempotent"],
+	// Raw-only reconciliation sweep. Never retried implicitly, and never
+	// retryable through a named override either; see `isNeverRetryable`.
+	["/mindclade.internal.job.v1.RunService/ExpireAttemptLeases", "never"],
 	["/mindclade.internal.training.v1.TrainingService/CreateTrainingRun", "idempotent"],
 	["/mindclade.internal.training.v1.TrainingService/GetTrainingRun", "safe"],
 	["/mindclade.internal.training.v1.TrainingService/ListTrainingRuns", "safe"],
@@ -125,6 +137,25 @@ const policies = new Map<string, RetrySafety>([
 	["/mindclade.internal.workflow.v1.ApprovalService/ConsumeApproval", "idempotent"],
 ]);
 
+/**
+ * True for routes that must never be retried, not even under an explicit
+ * `withUnsafeRetryOfNonIdempotent` override. Membership is a contract decision,
+ * not a heuristic: a duplicated lease-expiry sweep can revoke a lease a healthy
+ * worker still holds. The pin lives in the table above so there is exactly one
+ * source of truth per route.
+ */
+export const isNeverRetryable = (method: string): boolean => policies.get(method) === "never";
+
 /** Unknown methods are unsafe and therefore receive exactly one attempt. */
 export const registeredMethodSafety = (method: string): RetrySafety =>
 	policies.get(method) ?? "unsafe";
+
+/**
+ * Every route this hand-maintained table classifies, sorted.
+ *
+ * The table is deliberately hand-written rather than generated, so this export
+ * is how a test proves it still covers the whole descriptor surface: an RPC
+ * that is added upstream and forgotten here would silently fall back to the
+ * unknown-route default instead of failing loudly.
+ */
+export const REGISTERED_ROUTES: readonly string[] = Object.freeze([...policies.keys()].sort());

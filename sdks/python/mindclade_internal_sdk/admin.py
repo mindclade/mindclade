@@ -12,8 +12,18 @@ from mindclade.internal.admin.v1 import admin_service_pb2
 from mindclade.operation.v1 import operation_pb2
 
 from ._invocation import AsyncInvoker, SyncInvoker, canonical_digest, command_context
+from ._raw import AsyncWithRawResponse, WithRawResponse
 from ._validation import required_response_message, required_text
 from .calls import CallOptions, PreparedCall, prepare_call
+from .pagination import (
+    AsyncPage,
+    Page,
+    PaginationLimits,
+    apply_default_page_size,
+    async_page,
+    next_request,
+    sync_page,
+)
 from .transport import (
     CREATE_PROJECT,
     EXPORT_AUDIT_RECORDS,
@@ -133,7 +143,7 @@ def _validate_audit_query(
     return materialized
 
 
-class Admin:
+class Admin(WithRawResponse):
     """Synchronous generated-type-only administration API."""
 
     def __init__(self, invoker: SyncInvoker) -> None:
@@ -237,7 +247,8 @@ class Admin:
         request: admin_service_pb2.ListProjectsRequest | None = None,
         *,
         options: CallOptions | None = None,
-    ) -> admin_service_pb2.ListProjectsResponse:
+        limits: PaginationLimits | None = None,
+    ) -> Page[project_pb2.Project]:
         materialized = admin_service_pb2.ListProjectsRequest()
         if request is not None:
             materialized.CopyFrom(request)
@@ -246,13 +257,21 @@ class Admin:
         materialized.parent = _tenant(self._invoker)
         if materialized.HasField("page") and materialized.page.page_size > 1000:
             raise ValueError("project page size cannot exceed 1000")
+        apply_default_page_size(materialized, limits)
         call = prepare_call(
             options, default_timeout=self._invoker.config.default_timeout, require_idempotency=False
         )
-        return cast(
+        response = cast(
             admin_service_pb2.ListProjectsResponse,
             self._invoker.unary(LIST_PROJECTS, materialized, call=call, retry_safe=True),
         )
+
+        def follow(page_token: str) -> Page[project_pb2.Project]:
+            return self.list_projects(
+                next_request(materialized, page_token), options=options, limits=limits
+            )
+
+        return sync_page(response, items_field="projects", fetch=follow, limits=limits)
 
     def update_project(
         self,
@@ -283,8 +302,10 @@ class Admin:
         query: audit_query_pb2.AuditQuery,
         *,
         options: CallOptions | None = None,
-    ) -> audit_query_pb2.AuditQueryPage:
+        limits: PaginationLimits | None = None,
+    ) -> Page[audit_query_pb2.AuditRecord]:
         materialized = _validate_audit_query(self._invoker, query)
+        apply_default_page_size(materialized, limits)
         call = prepare_call(
             options, default_timeout=self._invoker.config.default_timeout, require_idempotency=False
         )
@@ -297,9 +318,16 @@ class Admin:
                 retry_safe=True,
             ),
         )
-        return required_response_message(
+        result = required_response_message(
             response, "result", audit_query_pb2.AuditQueryPage, label="audit query"
         )
+
+        def follow(page_token: str) -> Page[audit_query_pb2.AuditRecord]:
+            return self.query_audit(
+                next_request(materialized, page_token), options=options, limits=limits
+            )
+
+        return sync_page(result, items_field="records", fetch=follow, limits=limits)
 
     def export_audit(
         self,
@@ -349,7 +377,7 @@ class Admin:
         )
 
 
-class AsyncAdmin:
+class AsyncAdmin(AsyncWithRawResponse):
     """Asyncio variant of the generated-type-only administration API."""
 
     def __init__(self, invoker: AsyncInvoker) -> None:
@@ -444,7 +472,8 @@ class AsyncAdmin:
         request: admin_service_pb2.ListProjectsRequest | None = None,
         *,
         options: CallOptions | None = None,
-    ) -> admin_service_pb2.ListProjectsResponse:
+        limits: PaginationLimits | None = None,
+    ) -> AsyncPage[project_pb2.Project]:
         materialized = admin_service_pb2.ListProjectsRequest()
         if request is not None:
             materialized.CopyFrom(request)
@@ -453,13 +482,21 @@ class AsyncAdmin:
         materialized.parent = _tenant(self._invoker)
         if materialized.HasField("page") and materialized.page.page_size > 1000:
             raise ValueError("project page size cannot exceed 1000")
+        apply_default_page_size(materialized, limits)
         call = prepare_call(
             options, default_timeout=self._invoker.config.default_timeout, require_idempotency=False
         )
-        return cast(
+        response = cast(
             admin_service_pb2.ListProjectsResponse,
             await self._invoker.unary(LIST_PROJECTS, materialized, call=call, retry_safe=True),
         )
+
+        async def follow(page_token: str) -> AsyncPage[project_pb2.Project]:
+            return await self.list_projects(
+                next_request(materialized, page_token), options=options, limits=limits
+            )
+
+        return async_page(response, items_field="projects", fetch=follow, limits=limits)
 
     async def update_project(
         self, request: admin_service_pb2.UpdateProjectRequest, *, options: CallOptions | None = None
@@ -480,9 +517,14 @@ class AsyncAdmin:
         )
 
     async def query_audit(
-        self, query: audit_query_pb2.AuditQuery, *, options: CallOptions | None = None
-    ) -> audit_query_pb2.AuditQueryPage:
+        self,
+        query: audit_query_pb2.AuditQuery,
+        *,
+        options: CallOptions | None = None,
+        limits: PaginationLimits | None = None,
+    ) -> AsyncPage[audit_query_pb2.AuditRecord]:
         materialized = _validate_audit_query(self._invoker, query)
+        apply_default_page_size(materialized, limits)
         call = prepare_call(
             options, default_timeout=self._invoker.config.default_timeout, require_idempotency=False
         )
@@ -495,9 +537,16 @@ class AsyncAdmin:
                 retry_safe=True,
             ),
         )
-        return required_response_message(
+        result = required_response_message(
             response, "result", audit_query_pb2.AuditQueryPage, label="audit query"
         )
+
+        async def follow(page_token: str) -> AsyncPage[audit_query_pb2.AuditRecord]:
+            return await self.query_audit(
+                next_request(materialized, page_token), options=options, limits=limits
+            )
+
+        return async_page(result, items_field="records", fetch=follow, limits=limits)
 
     async def export_audit(
         self, query: audit_query_pb2.AuditQuery, *, options: CallOptions | None = None

@@ -22,9 +22,19 @@ from mindclade.job.v1 import lease_fencing_pb2
 from mindclade.operation.v1 import operation_pb2
 
 from ._invocation import AsyncInvoker, SyncInvoker, canonical_digest, command_context
+from ._raw import AsyncWithRawResponse, WithRawResponse
 from ._validation import artifact_ref, required_response_message, required_text
 from .calls import CallOptions, PreparedCall, prepare_call
 from .errors import ProtocolError
+from .pagination import (
+    AsyncPage,
+    Page,
+    PaginationLimits,
+    apply_default_page_size,
+    async_page,
+    next_request,
+    sync_page,
+)
 from .transport import (
     CANCEL_EVALUATION_RUN,
     COMMIT_EVALUATION_RESULT,
@@ -310,7 +320,7 @@ def _validate_decision(
     decision.decided_by_principal_ref = config.principal_id
 
 
-class Evaluations:
+class Evaluations(WithRawResponse):
     """Synchronous evaluation execution and evidence-governance API."""
 
     def __init__(self, invoker: SyncInvoker) -> None:
@@ -370,7 +380,8 @@ class Evaluations:
         request: evaluation_service_pb2.ListEvaluationRunsRequest | None = None,
         *,
         options: CallOptions | None = None,
-    ) -> evaluation_service_pb2.ListEvaluationRunsResponse:
+        limits: PaginationLimits | None = None,
+    ) -> Page[evaluation_run_pb2.EvaluationRun]:
         materialized = evaluation_service_pb2.ListEvaluationRunsRequest()
         if request is not None:
             materialized.CopyFrom(request)
@@ -380,15 +391,23 @@ class Evaluations:
         if materialized.HasField("page") and materialized.page.page_size > 200:
             raise ValueError("evaluation page size cannot exceed 200")
         materialized.parent = parent
+        apply_default_page_size(materialized, limits)
         call = prepare_call(
             options,
             default_timeout=self._invoker.config.default_timeout,
             require_idempotency=False,
         )
-        return cast(
+        response = cast(
             evaluation_service_pb2.ListEvaluationRunsResponse,
             self._invoker.unary(LIST_EVALUATION_RUNS, materialized, call=call, retry_safe=True),
         )
+
+        def follow(page_token: str) -> Page[evaluation_run_pb2.EvaluationRun]:
+            return self.list_runs(
+                next_request(materialized, page_token), options=options, limits=limits
+            )
+
+        return sync_page(response, items_field="evaluation_runs", fetch=follow, limits=limits)
 
     def cancel_run(
         self,
@@ -512,7 +531,7 @@ class Evaluations:
         return decision
 
 
-class AsyncEvaluations:
+class AsyncEvaluations(AsyncWithRawResponse):
     """Asyncio-native evaluation execution and evidence-governance API."""
 
     def __init__(self, invoker: AsyncInvoker) -> None:
@@ -574,7 +593,8 @@ class AsyncEvaluations:
         request: evaluation_service_pb2.ListEvaluationRunsRequest | None = None,
         *,
         options: CallOptions | None = None,
-    ) -> evaluation_service_pb2.ListEvaluationRunsResponse:
+        limits: PaginationLimits | None = None,
+    ) -> AsyncPage[evaluation_run_pb2.EvaluationRun]:
         materialized = evaluation_service_pb2.ListEvaluationRunsRequest()
         if request is not None:
             materialized.CopyFrom(request)
@@ -584,17 +604,25 @@ class AsyncEvaluations:
         if materialized.HasField("page") and materialized.page.page_size > 200:
             raise ValueError("evaluation page size cannot exceed 200")
         materialized.parent = parent
+        apply_default_page_size(materialized, limits)
         call = prepare_call(
             options,
             default_timeout=self._invoker.config.default_timeout,
             require_idempotency=False,
         )
-        return cast(
+        response = cast(
             evaluation_service_pb2.ListEvaluationRunsResponse,
             await self._invoker.unary(
                 LIST_EVALUATION_RUNS, materialized, call=call, retry_safe=True
             ),
         )
+
+        async def follow(page_token: str) -> AsyncPage[evaluation_run_pb2.EvaluationRun]:
+            return await self.list_runs(
+                next_request(materialized, page_token), options=options, limits=limits
+            )
+
+        return async_page(response, items_field="evaluation_runs", fetch=follow, limits=limits)
 
     async def cancel_run(
         self,

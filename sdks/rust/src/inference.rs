@@ -1,7 +1,4 @@
-use std::{
-    sync::Arc,
-    time::{Duration, Instant},
-};
+use std::{sync::Arc, time::Duration};
 
 use mindclade_protocols::{
     inference::v1::{
@@ -10,18 +7,19 @@ use mindclade_protocols::{
     },
     internal::inference::v1::{
         CommitInferenceResultRequest, GetInferenceRequestRequest, GetInferenceResultRequest,
-        SubmitInferenceRequest, WatchInferenceRequest,
+        SubmitInferenceRequest, WatchInferenceRequest, WatchInferenceResponse,
     },
     operation::v1::Operation,
 };
 use prost::Message;
 use sha2::{Digest, Sha256};
-use tonic::codegen::tokio_stream::StreamExt;
 
 use crate::{
-    CallOptions, CancellationToken, ClientCore, Error, InferenceStream, SubmitOptions,
+    CallOptions, CancellationToken, ClientCore, Error, SubmitOptions, WatchNext, WatchOptions,
+    WatchStream,
+    operations::{NextUpdate, OpenFuture, ResumableWatch, WatchAction, Watcher},
     request::{PreparedCall, validate_resource_value},
-    retry::registered_method_safety,
+    retry::registered_method_policy,
 };
 
 const DEFAULT_WAIT_TIMEOUT: Duration = Duration::from_mins(30);
@@ -77,6 +75,15 @@ impl Default for InferenceWaitOptions {
     }
 }
 
+impl From<InferenceWaitOptions> for WatchOptions {
+    fn from(value: InferenceWaitOptions) -> Self {
+        Self::new()
+            .with_call_options(value.call)
+            .with_timeout(value.timeout)
+            .unwrap_or_else(|_| Self::new())
+    }
+}
+
 /// Generated-type-only inference façade.
 #[derive(Clone)]
 pub struct Inference {
@@ -117,7 +124,7 @@ impl Inference {
                     inference_request: Some(inference_request),
                 },
                 &prepared,
-                registered_method_safety(SUBMIT),
+                registered_method_policy(SUBMIT),
                 Some(&key),
                 |transport, request| {
                     Box::pin(async move { transport.submit_inference(request).await })
@@ -150,7 +157,7 @@ impl Inference {
             .unary(
                 GetInferenceRequestRequest { name },
                 &prepared,
-                registered_method_safety(GET_REQUEST),
+                registered_method_policy(GET_REQUEST),
                 None,
                 |transport, request| {
                     Box::pin(async move { transport.get_inference_request(request).await })
@@ -181,7 +188,7 @@ impl Inference {
             .unary(
                 GetInferenceResultRequest { operation_name },
                 &prepared,
-                registered_method_safety(GET_RESULT),
+                registered_method_policy(GET_RESULT),
                 None,
                 |transport, request| {
                     Box::pin(async move { transport.get_inference_result(request).await })
@@ -232,7 +239,7 @@ impl Inference {
             .unary(
                 command,
                 &prepared,
-                registered_method_safety(COMMIT_RESULT),
+                registered_method_policy(COMMIT_RESULT),
                 Some(&key),
                 |transport, request| {
                     Box::pin(async move { transport.commit_inference_result(request).await })
@@ -278,15 +285,35 @@ impl Inference {
         }
         let call = options.call.bounded_by(options.timeout);
         Ok(InferenceWatch {
-            core: Arc::clone(&self.core),
-            operation_name,
-            prepared: call.prepare(&self.core.config),
-            cursor,
-            stream: None,
-            cancellation,
-            consecutive_failures: 0,
-            terminal: false,
+            inner: Watcher::new(
+                Arc::clone(&self.core),
+                call.prepare(&self.core.config),
+                cancellation,
+                InferenceWatchState {
+                    operation_name,
+                    cursor,
+                },
+            ),
         })
+    }
+
+    /// Resumes a watch from a previously issued durable cursor.
+    ///
+    /// This is the uniform long-running-operation resume verb: it is exactly
+    /// [`Inference::watch`] with the caller's durable cursor made explicit,
+    /// and only a complete server-issued cursor is accepted.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error for an invalid operation name, cursor, or wait policy.
+    pub fn resume_watch(
+        &self,
+        operation_name: impl Into<String>,
+        cursor: InferenceStreamCursor,
+        options: &InferenceWaitOptions,
+        cancellation: CancellationToken,
+    ) -> Result<InferenceWatch, Error> {
+        self.watch(operation_name, Some(cursor), options, cancellation)
     }
 
     /// Waits for terminal stream truth and then reads the immutable result.
@@ -312,11 +339,7 @@ impl Inference {
                     return Err(Error::protocol("inference watch reported durable failure"));
                 }
                 Some(Update::FinalResult(_)) => {
-                    let remaining = watch
-                        .prepared
-                        .deadline
-                        .checked_duration_since(Instant::now())
-                        .ok_or_else(Error::deadline_exceeded)?;
+                    let remaining = watch.remaining()?;
                     return self
                         .get_result(operation_name, call.bounded_by(remaining))
                         .await;
@@ -333,14 +356,7 @@ impl Inference {
 /// Cancellation-aware resumable wrapper around the generated inference
 /// response stream.
 pub struct InferenceWatch {
-    core: Arc<ClientCore>,
-    operation_name: String,
-    prepared: PreparedCall,
-    cursor: Option<InferenceStreamCursor>,
-    stream: Option<InferenceStream>,
-    cancellation: CancellationToken,
-    consecutive_failures: u8,
-    terminal: bool,
+    inner: Watcher<InferenceWatchState>,
 }
 
 impl InferenceWatch {
@@ -352,63 +368,103 @@ impl InferenceWatch {
     /// Returns an error for cancellation, deadline exhaustion, a non-retryable
     /// transport failure, or any cursor/message invariant violation.
     pub async fn next(&mut self) -> Result<Option<InferenceStreamMessage>, Error> {
-        loop {
-            if self.terminal {
-                return Ok(None);
-            }
-            if self.cancellation.is_cancelled() {
-                return Err(Error::cancelled());
-            }
-            if self.stream.is_none() {
-                match self.connect().await {
-                    Ok(stream) => self.stream = Some(stream),
-                    Err(error) => {
-                        self.retry_or_fail(error).await?;
-                        continue;
-                    }
-                }
-            }
-            let next = {
-                let stream = self
-                    .stream
-                    .as_mut()
-                    .ok_or_else(|| Error::protocol("inference watch stream was not established"))?;
-                tokio::select! {
-                    biased;
-                    () = self.cancellation.cancelled() => return Err(Error::cancelled()),
-                    update = stream.next() => update,
-                }
-            };
-            match next {
-                None => {
-                    self.stream = None;
-                    self.retry_or_fail(Error::from_status(&tonic::Status::unavailable(
-                        "inference watch ended before terminal truth",
-                    )))
-                    .await?;
-                }
-                Some(Err(status)) => {
-                    self.stream = None;
-                    self.retry_or_fail(Error::from_status(&status)).await?;
-                }
-                Some(Ok(response)) => {
-                    let message = response.message.ok_or_else(|| {
-                        Error::protocol("inference watch response omitted its message")
-                    })?;
-                    self.accept(message.clone())?;
-                    self.consecutive_failures = 0;
-                    return Ok(Some(message));
-                }
-            }
-        }
+        let Some(response) = self.inner.next().await? else {
+            return Ok(None);
+        };
+        response
+            .message
+            .map(Some)
+            .ok_or_else(|| Error::protocol("inference watch response omitted its message"))
     }
 
+    /// The last durable server-issued cursor. A reconnect resumes here.
     #[must_use]
     pub fn cursor(&self) -> Option<InferenceStreamCursor> {
+        self.inner.cursor()
+    }
+
+    /// Consumes the watcher and yields its messages as a `Stream`.
+    #[must_use]
+    pub fn into_stream(self) -> WatchStream<Self> {
+        WatchStream::new(self)
+    }
+
+    pub(crate) fn remaining(&self) -> Result<Duration, Error> {
+        self.inner.remaining()
+    }
+}
+
+impl WatchNext for InferenceWatch {
+    type Update = InferenceStreamMessage;
+
+    fn next_update(&mut self) -> NextUpdate<'_, Self::Update> {
+        Box::pin(self.next())
+    }
+}
+
+/// Inference-specific watch rules: server-issued durable cursors only,
+/// heartbeats pinned to the last cursor, and contiguous data sequences.
+struct InferenceWatchState {
+    operation_name: String,
+    cursor: Option<InferenceStreamCursor>,
+}
+
+impl ResumableWatch for InferenceWatchState {
+    type Update = WatchInferenceResponse;
+    type Cursor = Option<InferenceStreamCursor>;
+
+    fn route(&self) -> &'static str {
+        WATCH
+    }
+
+    fn label(&self) -> &'static str {
+        "inference"
+    }
+
+    fn stream_ended_message(&self) -> &'static str {
+        "inference watch ended before terminal truth"
+    }
+
+    fn cursor(&self) -> Option<InferenceStreamCursor> {
         self.cursor.clone()
     }
 
-    fn accept(&mut self, message: InferenceStreamMessage) -> Result<(), Error> {
+    fn open(
+        &self,
+        core: &Arc<ClientCore>,
+        prepared: &PreparedCall,
+        attempt: u8,
+    ) -> OpenFuture<Self::Update> {
+        let core = Arc::clone(core);
+        let prepared = prepared.clone();
+        let operation_name = self.operation_name.clone();
+        let cursor = self.cursor.clone();
+        Box::pin(async move {
+            let request = WatchInferenceRequest {
+                operation_name,
+                cursor,
+                deadline: Some(prepared.deadline_timestamp()?),
+            };
+            let request = core
+                .request(request, &prepared, None, attempt, WATCH)
+                .await?;
+            let remaining = prepared.remaining()?;
+            let response = tokio::time::timeout(remaining, core.transport.watch_inference(request))
+                .await
+                .map_err(|_| Error::deadline_exceeded())?
+                .map_err(|status| Error::from_status(&status))?;
+            Ok(response.into_inner())
+        })
+    }
+
+    fn accept(
+        &mut self,
+        response: WatchInferenceResponse,
+    ) -> Result<WatchAction<WatchInferenceResponse>, Error> {
+        let message = response
+            .message
+            .as_ref()
+            .ok_or_else(|| Error::protocol("inference watch response omitted its message"))?;
         validate_required("inference stream request name", &message.request_name)?;
         validate_required("inference stream resume token", &message.resume_token)?;
         if message.sequence == 0 || message.update.is_none() {
@@ -428,7 +484,9 @@ impl InferenceWatch {
                     "inference heartbeat is not bound to the last durable cursor",
                 ));
             }
-            return Ok(());
+            // A heartbeat is surfaced to the caller but never advances the
+            // durable cursor.
+            return Ok(WatchAction::Emit(response));
         }
         let expected = self
             .cursor
@@ -444,73 +502,19 @@ impl InferenceWatch {
                 "inference watch sequence is not contiguous",
             ));
         }
-        self.cursor = Some(InferenceStreamCursor {
-            request_name: message.request_name,
-            after_sequence: message.sequence,
-            resume_token: message.resume_token,
-        });
-        self.terminal = matches!(
+        let terminal = matches!(
             message.update,
             Some(Update::FinalResult(_) | Update::Failure(_))
         );
-        Ok(())
-    }
-
-    async fn connect(&self) -> Result<InferenceStream, Error> {
-        if !matches!(
-            registered_method_safety(WATCH),
-            crate::retry::CallSafety::Safe
-        ) {
-            return Err(Error::protocol("inference watch safety policy is missing"));
-        }
-        let request = WatchInferenceRequest {
-            operation_name: self.operation_name.clone(),
-            cursor: self.cursor.clone(),
-            deadline: Some(self.prepared.deadline_timestamp()?),
-        };
-        let request = tokio::select! {
-            biased;
-            () = self.cancellation.cancelled() => return Err(Error::cancelled()),
-            result = self.core.request(request, &self.prepared, None) => result?,
-        };
-        let remaining = self
-            .prepared
-            .deadline
-            .checked_duration_since(Instant::now())
-            .ok_or_else(Error::deadline_exceeded)?;
-        let response = tokio::select! {
-            biased;
-            () = self.cancellation.cancelled() => return Err(Error::cancelled()),
-            result = tokio::time::timeout(remaining, self.core.transport.watch_inference(request)) => {
-                result
-                    .map_err(|_| Error::deadline_exceeded())?
-                    .map_err(|status| Error::from_status(&status))?
-            },
-        };
-        Ok(response.into_inner())
-    }
-
-    async fn retry_or_fail(&mut self, error: Error) -> Result<(), Error> {
-        self.consecutive_failures = self.consecutive_failures.saturating_add(1);
-        if !error.is_retryable() || self.consecutive_failures >= self.core.config.retry.max_attempts
-        {
-            return Err(error);
-        }
-        let remaining = self
-            .prepared
-            .deadline
-            .checked_duration_since(Instant::now())
-            .ok_or_else(Error::deadline_exceeded)?;
-        let delay = error
-            .retry_after()
-            .unwrap_or_else(|| self.core.backoff(self.consecutive_failures));
-        if delay >= remaining {
-            return Err(Error::deadline_exceeded());
-        }
-        tokio::select! {
-            biased;
-            () = self.cancellation.cancelled() => Err(Error::cancelled()),
-            () = self.core.sleeper.sleep(delay) => Ok(()),
+        self.cursor = Some(InferenceStreamCursor {
+            request_name: message.request_name.clone(),
+            after_sequence: message.sequence,
+            resume_token: message.resume_token.clone(),
+        });
+        if terminal {
+            Ok(WatchAction::Terminal(response))
+        } else {
+            Ok(WatchAction::Emit(response))
         }
     }
 }

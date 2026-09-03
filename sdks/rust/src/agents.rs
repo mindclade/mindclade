@@ -6,9 +6,8 @@ use mindclade_protocols::{
     internal::agent::v1::{
         CancelAgentRunRequest, CommitAgentStepRequest, CommitToolReceiptRequest,
         CreateAgentDefinitionRequest, GetAgentDefinitionRequest, GetAgentRunRequest,
-        GetAgentStepRequest, ListAgentDefinitionsRequest, ListAgentDefinitionsResponse,
-        ListAgentRunsRequest, ListAgentRunsResponse, ListAgentStepsRequest, ListAgentStepsResponse,
-        StartAgentRunRequest, UpdateAgentDefinitionRequest,
+        GetAgentStepRequest, ListAgentDefinitionsRequest, ListAgentRunsRequest,
+        ListAgentStepsRequest, StartAgentRunRequest, UpdateAgentDefinitionRequest,
     },
     job::v1::LeaseFence,
     operation::v1::Operation,
@@ -16,7 +15,11 @@ use mindclade_protocols::{
 use prost::Message;
 use sha2::{Digest, Sha256};
 
-use crate::{CallOptions, ClientCore, Error, SubmitOptions, retry::registered_method_safety};
+use crate::{
+    CallOptions, ClientCore, Error, Page, Pages, SubmitOptions,
+    request::{initial_page_token, page_request},
+    retry::registered_method_policy,
+};
 
 const MAXIMUM_PAGE_SIZE: u32 = 200;
 const CREATE_DEFINITION: &str = "/mindclade.internal.agent.v1.AgentService/CreateAgentDefinition";
@@ -73,7 +76,7 @@ impl Agents {
             .unary(
                 request,
                 &prepared,
-                registered_method_safety(CREATE_DEFINITION),
+                registered_method_policy(CREATE_DEFINITION),
                 Some(&key),
                 |transport, request| {
                     Box::pin(async move { transport.create_agent_definition(request).await })
@@ -119,7 +122,7 @@ impl Agents {
             .unary(
                 request,
                 &prepared,
-                registered_method_safety(UPDATE_DEFINITION),
+                registered_method_policy(UPDATE_DEFINITION),
                 Some(&key),
                 |transport, request| {
                     Box::pin(async move { transport.update_agent_definition(request).await })
@@ -152,7 +155,7 @@ impl Agents {
                     if_none_match: if_none_match.into().trim().to_owned(),
                 },
                 &prepared,
-                registered_method_safety(GET_DEFINITION),
+                registered_method_policy(GET_DEFINITION),
                 None,
                 |transport, request| {
                     Box::pin(async move { transport.get_agent_definition(request).await })
@@ -176,27 +179,48 @@ impl Agents {
     /// # Errors
     ///
     /// Returns an error for invalid scope/page policy or transport failure.
-    pub async fn list_definitions(
+    pub fn list_definitions(
         &self,
         mut request: ListAgentDefinitionsRequest,
         options: CallOptions,
-    ) -> Result<ListAgentDefinitionsResponse, Error> {
+    ) -> Result<Pages<AgentDefinition>, Error> {
         request.parent = self.parent(&request.parent, "agent definition list")?;
         validate_page(request.page.as_ref())?;
-        let prepared = options.prepare(&self.core.config);
-        Ok(self
-            .core
-            .unary(
-                request,
-                &prepared,
-                registered_method_safety(LIST_DEFINITIONS),
-                None,
-                |transport, request| {
-                    Box::pin(async move { transport.list_agent_definitions(request).await })
-                },
-            )
-            .await?
-            .into_inner())
+        let core = Arc::clone(&self.core);
+        let token = initial_page_token(request.page.as_ref());
+        Ok(Pages::new(
+            move |page_token| {
+                let core = Arc::clone(&core);
+                let options = options.clone();
+                let mut request = request.clone();
+                async move {
+                    request.page = Some(page_request(request.page.as_ref(), page_token));
+                    let prepared = options.prepare(&core.config);
+                    let response = core
+                        .unary(
+                            request,
+                            &prepared,
+                            registered_method_policy(LIST_DEFINITIONS),
+                            None,
+                            |transport, request| {
+                                Box::pin(
+                                    async move { transport.list_agent_definitions(request).await },
+                                )
+                            },
+                        )
+                        .await?;
+                    let request_id = response.request_id().map(str::to_owned);
+                    let response = response.into_inner();
+                    Ok(Page::new(
+                        response.agent_definitions,
+                        response.page,
+                        response.read_time,
+                        request_id,
+                    ))
+                }
+            },
+            token,
+        ))
     }
 
     /// Starts a generated durable agent run and returns its operation.
@@ -242,7 +266,7 @@ impl Agents {
             .unary(
                 request,
                 &prepared,
-                registered_method_safety(START_RUN),
+                registered_method_policy(START_RUN),
                 Some(&key),
                 |transport, request| {
                     Box::pin(async move { transport.start_agent_run(request).await })
@@ -275,7 +299,7 @@ impl Agents {
                     if_none_match: if_none_match.into().trim().to_owned(),
                 },
                 &prepared,
-                registered_method_safety(GET_RUN),
+                registered_method_policy(GET_RUN),
                 None,
                 |transport, request| {
                     Box::pin(async move { transport.get_agent_run(request).await })
@@ -291,27 +315,46 @@ impl Agents {
     /// # Errors
     ///
     /// Returns an error for invalid scope/page policy or transport failure.
-    pub async fn list_runs(
+    pub fn list_runs(
         &self,
         mut request: ListAgentRunsRequest,
         options: CallOptions,
-    ) -> Result<ListAgentRunsResponse, Error> {
+    ) -> Result<Pages<AgentRun>, Error> {
         request.parent = self.parent(&request.parent, "agent run list")?;
         validate_page(request.page.as_ref())?;
-        let prepared = options.prepare(&self.core.config);
-        Ok(self
-            .core
-            .unary(
-                request,
-                &prepared,
-                registered_method_safety(LIST_RUNS),
-                None,
-                |transport, request| {
-                    Box::pin(async move { transport.list_agent_runs(request).await })
-                },
-            )
-            .await?
-            .into_inner())
+        let core = Arc::clone(&self.core);
+        let token = initial_page_token(request.page.as_ref());
+        Ok(Pages::new(
+            move |page_token| {
+                let core = Arc::clone(&core);
+                let options = options.clone();
+                let mut request = request.clone();
+                async move {
+                    request.page = Some(page_request(request.page.as_ref(), page_token));
+                    let prepared = options.prepare(&core.config);
+                    let response = core
+                        .unary(
+                            request,
+                            &prepared,
+                            registered_method_policy(LIST_RUNS),
+                            None,
+                            |transport, request| {
+                                Box::pin(async move { transport.list_agent_runs(request).await })
+                            },
+                        )
+                        .await?;
+                    let request_id = response.request_id().map(str::to_owned);
+                    let response = response.into_inner();
+                    Ok(Page::new(
+                        response.agent_runs,
+                        response.page,
+                        response.read_time,
+                        request_id,
+                    ))
+                }
+            },
+            token,
+        ))
     }
 
     /// Records monotonic cancellation under an explicit `ETag`.
@@ -343,7 +386,7 @@ impl Agents {
             .unary(
                 request,
                 &prepared,
-                registered_method_safety(CANCEL_RUN),
+                registered_method_policy(CANCEL_RUN),
                 Some(&key),
                 |transport, request| {
                     Box::pin(async move { transport.cancel_agent_run(request).await })
@@ -372,7 +415,7 @@ impl Agents {
             .unary(
                 GetAgentStepRequest { name: name.clone() },
                 &prepared,
-                registered_method_safety(GET_STEP),
+                registered_method_policy(GET_STEP),
                 None,
                 |transport, request| {
                     Box::pin(async move { transport.get_agent_step(request).await })
@@ -396,27 +439,46 @@ impl Agents {
     /// # Errors
     ///
     /// Returns an error for invalid scope/page policy or transport failure.
-    pub async fn list_steps(
+    pub fn list_steps(
         &self,
         request: ListAgentStepsRequest,
         options: CallOptions,
-    ) -> Result<ListAgentStepsResponse, Error> {
+    ) -> Result<Pages<AgentStep>, Error> {
         self.scoped_name(request.parent.clone(), "agentRuns")?;
         validate_page(request.page.as_ref())?;
-        let prepared = options.prepare(&self.core.config);
-        Ok(self
-            .core
-            .unary(
-                request,
-                &prepared,
-                registered_method_safety(LIST_STEPS),
-                None,
-                |transport, request| {
-                    Box::pin(async move { transport.list_agent_steps(request).await })
-                },
-            )
-            .await?
-            .into_inner())
+        let core = Arc::clone(&self.core);
+        let token = initial_page_token(request.page.as_ref());
+        Ok(Pages::new(
+            move |page_token| {
+                let core = Arc::clone(&core);
+                let options = options.clone();
+                let mut request = request.clone();
+                async move {
+                    request.page = Some(page_request(request.page.as_ref(), page_token));
+                    let prepared = options.prepare(&core.config);
+                    let response = core
+                        .unary(
+                            request,
+                            &prepared,
+                            registered_method_policy(LIST_STEPS),
+                            None,
+                            |transport, request| {
+                                Box::pin(async move { transport.list_agent_steps(request).await })
+                            },
+                        )
+                        .await?;
+                    let request_id = response.request_id().map(str::to_owned);
+                    let response = response.into_inner();
+                    Ok(Page::new(
+                        response.agent_steps,
+                        response.page,
+                        response.read_time,
+                        request_id,
+                    ))
+                }
+            },
+            token,
+        ))
     }
 
     /// Appends one generated step under an authenticated raw lease credential
@@ -469,7 +531,7 @@ impl Agents {
             .unary(
                 request,
                 &prepared,
-                registered_method_safety(COMMIT_STEP),
+                registered_method_policy(COMMIT_STEP),
                 Some(&key),
                 |transport, request| {
                     Box::pin(async move { transport.commit_agent_step(request).await })
@@ -539,7 +601,7 @@ impl Agents {
             .unary(
                 request,
                 &prepared,
-                registered_method_safety(COMMIT_RECEIPT),
+                registered_method_policy(COMMIT_RECEIPT),
                 Some(&key),
                 |transport, request| {
                     Box::pin(async move { transport.commit_tool_receipt(request).await })
