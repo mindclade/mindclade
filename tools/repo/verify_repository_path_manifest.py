@@ -23,6 +23,83 @@ from path_policy import (
 
 GENERATED_MARKERS = ("generated", "do not edit", "begin generated: repository-path-manifest")
 
+# Every generated family, and the gate that proves it matches its generator.
+#
+# This is an explicit map because `source_authority` cannot supply one: it is
+# perfectly correlated with `status` and therefore carries no information, and
+# validate_generated_files only checks that `reviewed-generated` entries HAVE a
+# marker -- never that `hand-authored` entries lack one. A covered set derived from
+# that field looks rigorous and misses the path manifest itself, NOTICE, and the
+# cross-field constraint source, all of which are generator outputs labelled
+# hand-authored.
+#
+# Longest prefix wins, so a more specific family may precede a broader one.
+REGENERATION_GATES: tuple[tuple[str, str], ...] = (
+    (
+        "docs/architecture/repository-path-manifest.yaml",
+        "tools/repo/tests: manifest reproducibility",
+    ),
+    ("docs/architecture/repository-drift-baseline.md", "just governance (--check)"),
+    ("docs/architecture/blueprint/", "just docs: render_architecture_blueprint.py --check"),
+    ("protocols/generated/", "just check-contract-drift"),
+    ("protocols/openapi/", "just check-contract-drift"),
+    ("protocols/compatibility/", "just check-contract-drift"),
+    ("protocols/constraints/", "just check-cross-field-drift"),
+    ("libs/go/pubsubx/", "just check-contract-drift"),
+    ("sdks/rpc-coverage.generated.json", "just check-sdk-plan"),
+    ("services/control_plane/grpc-implementation.generated.json", "just check-sdk-plan"),
+    ("sdks/go/api.md", "just docs: render_sdk_api_reference.py --check"),
+    ("sdks/python/api.md", "just docs: render_sdk_api_reference.py --check"),
+    ("sdks/rust/api.md", "just docs: render_sdk_api_reference.py --check"),
+    ("sdks/typescript/api.md", "just docs: render_sdk_api_reference.py --check"),
+    ("sdks/go/mindclade/cross_field", "just check-cross-field-drift"),
+    ("sdks/python/mindclade_internal_sdk/cross_field", "just check-cross-field-drift"),
+    ("sdks/rust/src/cross_field", "just check-cross-field-drift"),
+    ("sdks/typescript/src/crossField", "just check-cross-field-drift"),
+    ("services/control_plane/internal/validation/cross_field", "just check-cross-field-drift"),
+    ("third_party/notices/", "just security: generate_notices.py + cmp"),
+    ("tools/repo/activation-bundles.generated.json", "tools/repo/tests: activation projection"),
+)
+
+# Generated families with no drift gate reachable from `just check`, each with the
+# reason it cannot have one. An entry here records a known gap; it is not an
+# approval, and nothing may be added without stating why the gate is impossible.
+UNGATED_GENERATED_FAMILIES: dict[str, str] = {
+    "kernels/native/generated/": (
+        "kernels/native/tests/test_codegen_drift.py exists but imports torch, which the "
+        "pinned source toolchain does not carry, and kernels/native/tests has no "
+        "BUILD.bazel -- so no runner reaches it"
+    ),
+    "generated/": "vendored from mindclade/.github; no generator in this repository",
+    "MODULE.bazel.lock": "produced by Bazel itself; no generator in this repository",
+}
+
+
+def _assert_generated_families_are_gated(manifest: Mapping[str, Any]) -> list[str]:
+    """Every generated path belongs to a family whose drift gate is named.
+
+    R11 asks that the covered set come from an explicit map. This is the assertion
+    that makes the word "every" checkable: a new generated family that nobody wires
+    a gate for fails here instead of being silently trusted.
+    """
+    generated = sorted(
+        str(entry["path"])
+        for entry in manifest["paths"]
+        if entry.get("status") == "generated"
+        or entry.get("source_authority") == "reviewed-generated"
+    )
+    if not generated:
+        return ["no generated paths found; the regeneration-map check asserted nothing"]
+
+    known = tuple(prefix for prefix, _ in REGENERATION_GATES) + tuple(UNGATED_GENERATED_FAMILIES)
+    uncovered = sorted({path for path in generated if not path.startswith(known)})
+    if uncovered:
+        return [
+            "generated path belongs to no family in REGENERATION_GATES and is not a "
+            f"recorded gap, so nothing proves it current: {uncovered[:8]}"
+        ]
+    return []
+
 
 def validate_generated_files(manifest: Mapping[str, Any], root: Path) -> list[str]:
     errors: list[str] = []
@@ -156,6 +233,7 @@ def run_checks(
     graph_errors, edges = validate_dependency_graph(components)
     errors.extend(graph_errors)
     errors.extend(validate_generated_files(manifest, root))
+    errors.extend(_assert_generated_families_are_gated(manifest))
     if check_targets:
         errors.extend(validate_declared_targets(manifest, root))
     return {

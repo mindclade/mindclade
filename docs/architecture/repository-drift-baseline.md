@@ -8,11 +8,11 @@ operational repositories are inputs for comparison only and are not migration so
 
 - Anchor commit: `292b71f47b1b29cc9ba7cf760a9bd07cd5e0ffa7`
 - Observation scope: `working-tree`
-- Base commit: `d25de463ea55f081a8425210b6f3ced7d1320974`
+- Base commit: `7f085dd2480b2c9866b54f00ce52fe0ea24c123f`
 - Observed immutable commit: `not commit-bound`
 - Working tree state: `dirty`
 - Populated path-set SHA-256: `2fc8bb2d71b0ceafb731450081d7013de6d072a27b31a4eec16d8d47de3ddf22`
-- Content snapshot SHA-256: `2e3f1bd801cb7f9733e313ad7fe1e3d6df3b18086d4b19777dc034cb54ae6ec6`
+- Content snapshot SHA-256: `eb18b6391bc80e16ef15b35269ce9d660f601066a70aba849cdcf4149fe05ce1`
 - Evidence outputs excluded from content snapshot: `build/evidence/repository_drift.v1.json`, `docs/architecture/repository-drift-baseline.md`
 - Canonical target paths: 3668
 - Populated paths: 2228
