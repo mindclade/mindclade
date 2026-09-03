@@ -305,6 +305,7 @@ filegroup(
         "BUILD.bazel",
         "CHANGELOG.md",
         "README.md",
+        "api.md",
         "component.yaml",
         "pyproject.toml",
     ] + glob(

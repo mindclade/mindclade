@@ -32,6 +32,29 @@ import (
 
 type standardContext = context.Context
 
+// insertOutboxFixture seeds one valid outbox row through the shared producer.
+//
+// A test that spells the INSERT out itself agrees with itself no matter what
+// the services do, so these fixtures went through the producer once it existed.
+// The producer requires a transaction by design -- *sql.DB does not satisfy
+// OutboxExecutor -- which is also how the row is written in production.
+func insertOutboxFixture(
+	ctx standardContext, t *testing.T, db *sql.DB, envelope *commonv1.EventEnvelope, at time.Time,
+) {
+	t.Helper()
+	transaction, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		t.Fatalf("begin outbox fixture transaction: %v", err)
+	}
+	if err = queue.InsertOutboxMessage(ctx, transaction, envelope, at); err != nil {
+		_ = transaction.Rollback()
+		t.Fatalf("insert outbox fixture %q: %v", envelope.GetEventId(), err)
+	}
+	if err = transaction.Commit(); err != nil {
+		t.Fatalf("commit outbox fixture %q: %v", envelope.GetEventId(), err)
+	}
+}
+
 func postgresDB(t *testing.T) *sql.DB {
 	t.Helper()
 	dsn := os.Getenv("MINDCLADE_TEST_POSTGRES_DSN")
@@ -372,7 +395,7 @@ func TestArtifactOrphanCleanup(t *testing.T) {
 func TestPostgresKernelJourney(t *testing.T) {
 	db := postgresDB(t)
 	if db == nil {
-		return
+		t.Skip("PostgreSQL kernel journey requires MINDCLADE_TEST_POSTGRES_DSN")
 	}
 	testContext := context.Background()
 	unique := time.Now().UTC().Format("20060102150405.000000000")
@@ -592,14 +615,12 @@ func TestPostgresKernelJourney(t *testing.T) {
 	validAfterCorrupt.Subject.ResourceId = "valid-after-corrupt-" + operationID
 	validAfterCorrupt.Subject.Name = "tenants/" + tenantID + "/projects/project-integration/operations/valid-after-corrupt-" + operationID
 	validAfterCorrupt.AggregateSequence = 1
-	validBytes, err := queue.MarshalEnvelope(validAfterCorrupt)
-	if err != nil {
-		t.Fatal(err)
-	}
 	isolationTime := time.Now().UTC()
-	if _, insertErr := db.ExecContext(testContext, `INSERT INTO outbox_messages (id,tenant_id,event_type,event_version,aggregate_type,aggregate_id,aggregate_sequence,payload_digest,envelope_bytes,next_attempt_at,created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$10)`, validAfterCorrupt.GetEventId(), tenantID, validAfterCorrupt.GetEventType(), validAfterCorrupt.GetEventVersion(), validAfterCorrupt.GetSubject().GetResourceType(), validAfterCorrupt.GetSubject().GetName(), validAfterCorrupt.GetAggregateSequence(), validAfterCorrupt.GetPayloadDigest(), validBytes, isolationTime); insertErr != nil {
-		t.Fatalf("insert valid isolation fixture: %v", insertErr)
-	}
+	insertOutboxFixture(testContext, t, db, validAfterCorrupt, isolationTime)
+	// The corrupt row cannot go through the producer, and that is the point of
+	// the fixture: the producer marshals a valid envelope, and this row must
+	// carry bytes no consumer can parse so the dispatcher has something to
+	// quarantine. It stays hand-written for exactly that reason.
 	corruptID := "a-corrupt:" + unique
 	if _, insertErr := db.ExecContext(testContext, `INSERT INTO outbox_messages (id,tenant_id,event_type,event_version,aggregate_type,aggregate_id,aggregate_sequence,payload_digest,envelope_bytes,next_attempt_at,created_at) VALUES ($1,$2,$3,$4,$5,$6,1,$7,$8,$9,$9)`, corruptID, tenantID, outboxEnvelope.GetEventType(), outboxEnvelope.GetEventVersion(), "operation", "corrupt-"+operationID, outboxEnvelope.GetPayloadDigest(), []byte{0xff}, isolationTime); insertErr != nil {
 		t.Fatalf("insert corrupt isolation fixture: %v", insertErr)
@@ -632,13 +653,7 @@ func TestPostgresKernelJourney(t *testing.T) {
 	gapSecond.AggregateSequence = 2
 	insertGapEnvelope := func(envelope *commonv1.EventEnvelope) {
 		t.Helper()
-		encoded, encodeErr := queue.MarshalEnvelope(envelope)
-		if encodeErr != nil {
-			t.Fatal(encodeErr)
-		}
-		if _, insertErr := db.ExecContext(testContext, `INSERT INTO outbox_messages (id,tenant_id,event_type,event_version,aggregate_type,aggregate_id,aggregate_sequence,payload_digest,envelope_bytes,next_attempt_at,created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$10)`, envelope.GetEventId(), tenantID, envelope.GetEventType(), envelope.GetEventVersion(), envelope.GetSubject().GetResourceType(), envelope.GetSubject().GetName(), envelope.GetAggregateSequence(), envelope.GetPayloadDigest(), encoded, isolationTime); insertErr != nil {
-			t.Fatalf("insert aggregate-gap fixture %q: %v", envelope.GetEventId(), insertErr)
-		}
+		insertOutboxFixture(testContext, t, db, envelope, isolationTime)
 	}
 	insertGapEnvelope(gapSecond)
 	gapPublisher := &recordingPublisher{}
@@ -822,7 +837,7 @@ func TestPostgresKernelJourney(t *testing.T) {
 func TestPostgresGenericJobSchedulerLifecycle(t *testing.T) {
 	db := postgresDB(t)
 	if db == nil {
-		return
+		t.Skip("PostgreSQL generic job scheduler lifecycle requires MINDCLADE_TEST_POSTGRES_DSN")
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
@@ -977,7 +992,7 @@ func TestPostgresGenericJobSchedulerLifecycle(t *testing.T) {
 func TestPostgresCancellationExpiryFinalizesSchedulerLifecycle(t *testing.T) {
 	db := postgresDB(t)
 	if db == nil {
-		return
+		t.Skip("PostgreSQL cancellation-expiry lifecycle requires MINDCLADE_TEST_POSTGRES_DSN")
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()

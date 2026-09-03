@@ -8101,13 +8101,14 @@ mindclade/
 │   │   ├── activation-bundles.schema.json
 │   │   ├── activation-bundles.yaml
 │   │   ├── activation-bundles.generated.json
-│   │   └── tests/
-│   │       ├── test_activation_bundles.py
-│   │       ├── test_build_repository_drift_report.py
-│   │       ├── test_monorepo_tree_authority.py
-│   │       ├── test_repository_policies.py
-│   │       └── golden/
-│   │           └── repository_drift.v1.json
+│   │   ├── tests/
+│   │   │   ├── test_activation_bundles.py
+│   │   │   ├── test_build_repository_drift_report.py
+│   │   │   ├── test_monorepo_tree_authority.py
+│   │   │   ├── test_repository_policies.py
+│   │   │   └── golden/
+│   │   │       └── repository_drift.v1.json
+│   │   └── build_graph.py
 │   ├── release/
 │   │   ├── build_release_manifest.py
 │   │   ├── verify_release.py

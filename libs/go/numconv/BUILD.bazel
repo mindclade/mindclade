@@ -10,6 +10,7 @@ go_library(
 go_test(
     name = "conversion_test",
     srcs = ["conversion_test.go"],
+    data = [":governed_sources"],
     embed = [":numconv"],
     pure = "on",
 )

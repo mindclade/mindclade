@@ -6,13 +6,12 @@ from __future__ import annotations
 import argparse
 import json
 import re
-import shutil
-import subprocess
 import sys
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Any, cast
 
+from build_graph import target_sources as read_target_sources
 from dependency_policy import validate_dependency_graph
 from owner_policy import discover_components, validate_owners
 from path_policy import (
@@ -23,27 +22,6 @@ from path_policy import (
 )
 
 GENERATED_MARKERS = ("generated", "do not edit", "begin generated: repository-path-manifest")
-TARGET_MEMBERSHIP_ATTRIBUTES = (
-    "srcs",
-    "hdrs",
-    "textual_hdrs",
-    "tests",
-    "data",
-    "deps",
-    "runtime_deps",
-    "exports",
-    "actual",
-    "embed",
-)
-
-
-def bazel_failure_detail(stderr: str) -> str:
-    details = [line.strip() for line in stderr.splitlines() if line.strip()]
-    for marker in ("MODULE.bazel.lock", "ERROR:", "FATAL:"):
-        for detail in details:
-            if marker in detail:
-                return detail
-    return details[-1] if details else "unknown Bazel failure"
 
 
 def validate_generated_files(manifest: Mapping[str, Any], root: Path) -> list[str]:
@@ -111,59 +89,6 @@ def validate_generated_files(manifest: Mapping[str, Any], root: Path) -> list[st
     return errors
 
 
-def _repository_target_sources(bazel: str, root: Path, label: str) -> tuple[set[str], str | None]:
-    sources: set[str] = set()
-    visited: set[str] = set()
-    pending: set[str] = {label}
-    while pending:
-        frontier = sorted(pending - visited)
-        if not frontier:
-            break
-        visited.update(frontier)
-        target_set = f"set({' '.join(frontier)})"
-        expression = " union ".join(
-            f"labels({attribute}, {target_set})" for attribute in TARGET_MEMBERSHIP_ATTRIBUTES
-        )
-        result = subprocess.run(
-            [
-                bazel,
-                "--nohome_rc",
-                "--noworkspace_rc",
-                f"--output_user_root={root.resolve() / 'build/bazel-user-root'}",
-                f"--bazelrc={root.resolve() / '.bazelrc'}",
-                "query",
-                "--repo_contents_cache=",
-                "--noshow_progress",
-                expression,
-                "--output=label",
-            ],
-            cwd=root,
-            check=False,
-            capture_output=True,
-            text=True,
-        )
-        if result.returncode != 0:
-            return sources, bazel_failure_detail(result.stderr)
-        pending = set[str]()
-        for member in result.stdout.splitlines():
-            member = member.strip()
-            if member.startswith("@@//"):
-                member = member[2:]
-            elif member.startswith("@//"):
-                member = member[1:]
-            elif member.startswith("@"):
-                continue
-            if not member.startswith("//") or ":" not in member:
-                continue
-            package, name = member[2:].split(":", 1)
-            path = f"{package}/{name}" if package else name
-            if (root / path).is_file():
-                sources.add(path)
-            elif member not in visited:
-                pending.add(member)
-    return sources, None
-
-
 def validate_declared_targets(manifest: Mapping[str, Any], root: Path) -> list[str]:
     labels = {
         label
@@ -188,15 +113,9 @@ def validate_declared_targets(manifest: Mapping[str, Any], root: Path) -> list[s
         if re.search(rf"\bname\s*=\s*[\"']{name}[\"']", text) is None:
             errors.append(f"declared target does not exist: {label}")
             continue
-        bazel = shutil.which("bazel")
-        if bazel is None:
-            errors.append(
-                f"cannot prove target source membership without the pinned direct Bazel: {label}"
-            )
-            continue
-        sources, detail = _repository_target_sources(bazel, root, label)
+        sources, detail = read_target_sources(root, label)
         if detail is not None:
-            errors.append(f"cannot query target source membership for {label}: {detail}")
+            errors.append(f"cannot resolve target source membership for {label}: {detail}")
             continue
         target_sources[label] = sources
 

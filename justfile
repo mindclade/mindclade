@@ -343,6 +343,11 @@ check: bootstrap
     go test ./libs/go/... ./services/control_plane/... ./internal/sdk/go/... ./tools/mindcladectl/...
     PYTHONPATH=internal/sdk/python:protocols/generated/python {{ uv }} run python -m unittest discover -s internal/sdk/python/tests -v
     PYTHONPATH=workers/training_worker/python:internal/sdk/python:protocols/generated/python {{ uv }} run python -m unittest discover -s workers/training_worker/tests -v
+    # The conformance suites were reachable only through Bazel, so a developer
+    # without it never saw them and `test-affected` skipped them for any change
+    # outside their closure. `-p` is left at the default so a new suite is picked
+    # up by existing here rather than by being listed somewhere.
+    PYTHONPATH=.:libs/python:internal/sdk/python:protocols/generated/python {{ uv }} run python -m unittest discover -s tests/conformance -v
     cargo test --workspace --locked
     pnpm --recursive --if-present run typecheck
     pnpm --recursive --if-present run test

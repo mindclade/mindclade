@@ -280,12 +280,52 @@ def buildifier_version_matches_lock(
     return nix_path is not None or homebrew_path is not None
 
 
+def rustfmt_version_matches_lock(*, actual: str, expected: str, version: str, root: Path) -> bool:
+    """Accept a rustup-built rustfmt only when the toolchain owning it is pinned.
+
+    Nixpkgs builds rustfmt as a standalone package that prints the bare
+    ``rustfmt 1.9.0``.  A rustup build prints ``rustfmt 1.9.0-stable (<hash>
+    <date>)`` and no rustup build can ever produce the pinned form, so where
+    the Nix toolchain is absent the exact-string comparison can never succeed
+    and the whole contract pipeline is unreachable.
+
+    Buildifier binds its version through the resolved executable path.  That
+    cannot work here: the rustfmt on PATH is a rustup shim that resolves to
+    ``rustup`` itself and names no version.  The binding is taken instead from
+    the toolchain directory ``rustup which`` resolves to, which must name the
+    channel ``rust-toolchain.toml`` pins.  An arbitrary PATH binary, and a
+    rustfmt from any other installed toolchain, cannot satisfy this fallback.
+
+    This is the developer-machine affordance.  CI takes the bare version string
+    from the pinned Nix shell and never reaches this branch.
+    """
+
+    if actual == expected:
+        return True
+    upstream = rf"rustfmt {re.escape(version)}-stable \([0-9a-f]+ \d{{4}}-\d{{2}}-\d{{2}}\)"
+    if re.fullmatch(upstream, actual) is None:
+        return False
+    channel = cast(
+        str,
+        tomllib.loads((root / "rust-toolchain.toml").read_text(encoding="utf-8"))["toolchain"][
+            "channel"
+        ],
+    )
+    try:
+        resolved = run(["rustup", "which", "rustfmt"], cwd=root).stdout.decode("utf-8").strip()
+    except (OSError, RuntimeError):
+        return False
+    directory = Path(resolved).parent.parent.name
+    return re.fullmatch(rf"{re.escape(channel)}-[0-9a-z_]+-[0-9a-z.-]+", directory) is not None
+
+
 def rust_plugin_cache_digest(
     root: Path, lock: Mapping[str, Any], rust_toolchain: Mapping[str, str]
 ) -> str:
     inputs = (
         Path("Cargo.toml"),
         Path("Cargo.lock"),
+        Path("rust-toolchain.toml"),
         Path("tools/codegen/rust_plugins/Cargo.toml"),
         Path("tools/codegen/rust_plugins/src/bin/protoc-gen-prost.rs"),
         Path("tools/codegen/rust_plugins/src/bin/protoc-gen-tonic.rs"),
@@ -405,6 +445,13 @@ def ensure_toolchain(root: Path, staging: Path, lock: Mapping[str, Any]) -> Path
                 executable=Path(executable),
             ):
                 continue
+        if name == "rustfmt" and rustfmt_version_matches_lock(
+            actual=actual,
+            expected=wanted,
+            version=tools[name]["version"],
+            root=root,
+        ):
+            continue
         if actual != wanted:
             raise RuntimeError(f"{name} version mismatch: expected {wanted!r}, got {actual!r}")
 

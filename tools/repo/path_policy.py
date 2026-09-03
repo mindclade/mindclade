@@ -3695,7 +3695,7 @@ CANONICAL_PATH_SET_SHA256 = (  # pyright: ignore[reportConstantRedefinition]
 _cross_field_constraint_addition_reason = _reconciliation_addition_reason
 
 
-def _reconciliation_addition_reason(path: str) -> str:
+def _reconciliation_addition_reason(path: str) -> str:  # pyright: ignore[reportRedeclaration]
     if path in CROSS_FIELD_CONSTRAINT_ADR:
         return (
             "ADR-0025 records why cross-field constraints live in a side-car rather "
@@ -3708,6 +3708,37 @@ def _reconciliation_addition_reason(path: str) -> str:
             "cannot be enforced in one language and forgotten in another."
         )
     return _cross_field_constraint_addition_reason(path)
+
+
+# Target-membership validation used to shell out to `bazel query`, so wherever
+# Bazel could not run the manifest's second claim about every governed path --
+# that the target it declares actually contains it -- went unproven. Reading the
+# BUILD files instead makes that claim checkable in any checkout. It is a wave-0
+# governance source beside the policy modules it serves, and it earned its place
+# immediately: it found four paths declaring targets whose closure did not
+# contain them.
+BUILD_GRAPH_READER_PATHS: tuple[str, ...] = ("tools/repo/build_graph.py",)
+REQUIRED_ADDITIONS = (  # pyright: ignore[reportConstantRedefinition]
+    *REQUIRED_ADDITIONS,
+    *BUILD_GRAPH_READER_PATHS,
+)
+CANONICAL_FILE_COUNT = (  # pyright: ignore[reportConstantRedefinition]
+    CANONICAL_FILE_COUNT + len(BUILD_GRAPH_READER_PATHS)
+)
+CANONICAL_PATH_SET_SHA256 = (  # pyright: ignore[reportConstantRedefinition]
+    "99ce99f615b1a66d12cdb4754d5d7ec18108d678f088c6887de2f9af148a2968"
+)
+
+_build_graph_reader_addition_reason = _reconciliation_addition_reason
+
+
+def _reconciliation_addition_reason(path: str) -> str:
+    if path in BUILD_GRAPH_READER_PATHS:
+        return (
+            "Resolves Bazel target source membership by reading BUILD files, so the "
+            "manifest's target claims are provable without Bazel rather than skipped."
+        )
+    return _build_graph_reader_addition_reason(path)
 
 
 if __name__ == "__main__":

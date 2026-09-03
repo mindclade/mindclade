@@ -136,6 +136,7 @@ filegroup(
     name = "internal_sdk_root_sources",
     srcs = [
         "internal/sdk/README.md",
+        "internal/sdk/go/api.md",
         "internal/sdk/rpc-coverage.generated.json",
         "internal/sdk/rpc-coverage.yaml",
     ],

@@ -220,6 +220,7 @@ filegroup(
         "BUILD.bazel",
         "CHANGELOG.md",
         "README.md",
+        "api.md",
         "bazel/package.json",
         "biome.json",
         "component.yaml",
