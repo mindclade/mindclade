@@ -205,7 +205,7 @@
     },
     {
       "criterion_id": "stages-and-exit-criteria-08",
-      "criterion": "Stage 7 — Treat Buf plus pinned native Protobuf, gRPC, and Connect generators as the authoritative internal transport SDK for Go, Python, Rust, and TypeScript. Build thin handwritten internal facades in `internal/sdk/{go,python,rust,typescript}` above generated transports for endpoints, workload identity, tracing, retries, idempotency, pagination, operation polling, artifact transfer, errors, and test fakes. Fern is optional only for internal HTTP-native clients; Speakeasy is optional for specialized hooks, CLIs, or Terraform generation. Neither is authority, and Stainless is not adopted.",
+      "criterion": "Stage 7 — Treat Buf plus pinned native Protobuf, gRPC, and Connect generators as the authoritative internal transport SDK for Go, Python, Rust, and TypeScript. Build thin handwritten internal facades in `sdks/{go,python,rust,typescript}` above generated transports for endpoints, workload identity, tracing, retries, idempotency, pagination, operation polling, artifact transfer, errors, and test fakes. Fern is optional only for internal HTTP-native clients; Speakeasy is optional for specialized hooks, CLIs, or Terraform generation. Neither is authority, and Stainless is not adopted.",
       "stage": "stage-7",
       "owner": "developer-experience",
       "bazel_targets": ["//:all_contract_tests"],

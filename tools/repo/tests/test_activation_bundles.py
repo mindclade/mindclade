@@ -164,7 +164,7 @@ class ActivationBundlePolicyTest(unittest.TestCase):
 
     def test_schema_unknown_field_and_authority_mismatch_fail_closed(self) -> None:
         invalid_field = copy.deepcopy(self.document)
-        invalid_field["bundles"][0]["implicit_prefix"] = "internal/sdk/"
+        invalid_field["bundles"][0]["implicit_prefix"] = "sdks/"
         mismatch = copy.deepcopy(self.document)
         mismatch["bundles"][0]["authority"] = "docs/adr/0004-contract-and-codegen-authority.md"
         for invalid, finding in (

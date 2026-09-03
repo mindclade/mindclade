@@ -14,13 +14,13 @@ spec:
     generatedRoot: protocols/generated
     generator: buf.gen.yaml
     toolchainLock: tools/codegen/toolchain.lock.json
-    facadeRoot: internal/sdk
+    facadeRoot: sdks
     openapiProjection: protocols/openapi/published/mindclade.openapi.yaml
     rule: Protobuf owns internal resource, RPC, and event meaning; generated native bindings own transport mechanics; Mindclade-owned internal facades own client ergonomics.
     dependencyDirection:
       - protocols/proto-and-events
       - protocols/generated
-      - internal/sdk
+      - sdks
       - services-workers-training-tools-and-internal-apps
     forbiddenAuthorities:
       - openapi-for-native-internal-rpcs
@@ -39,22 +39,22 @@ spec:
         messages: protoc-gen-go
         grpc: protoc-gen-go-grpc
         output: protocols/generated/go
-        facade: internal/sdk/go
+        facade: sdks/go
       python:
         messages: protoc-python-and-pyi
         grpc: grpcio-tools
         output: protocols/generated/python
-        facade: internal/sdk/python
+        facade: sdks/python
       rust:
         messages: prost
         grpc: tonic
         output: protocols/generated/rust
-        facade: internal/sdk/rust
+        facade: sdks/rust
       typescript:
         messages: protobuf-es
         grpc: connect-runtime-clients  # Connect clients are created at runtime from protobuf-ES service descriptors; no connect-es plugin runs.
         output: protocols/generated/typescript
-        facade: internal/sdk/typescript
+        facade: sdks/typescript
     guarantees:
       - generated-code-is-never-hand-edited
       - generated-wire-types-are-reused-not-redeclared
@@ -68,10 +68,10 @@ spec:
     canonicalization: canonical-json-sorted-keys
     visibility: repository-internal
     roots:
-      go: internal/sdk/go
-      python: internal/sdk/python
-      rust: internal/sdk/rust
-      typescript: internal/sdk/typescript
+      go: sdks/go
+      python: sdks/python
+      rust: sdks/rust
+      typescript: sdks/typescript
     models: intentionally-exported-generated-protobuf-types
     handwrittenWireModels: forbidden
     facadeResponsibilities:
@@ -90,7 +90,7 @@ spec:
         - generated-server-transport-adapter-or-registration
         - persistence-protobuf-mapper
         - contract-or-conformance-test
-      clientConsumerRule: Services, workers, training code, tools, and internal applications acting as clients import internal/sdk rather than protocols/generated.
+      clientConsumerRule: Services, workers, training code, tools, and internal applications acting as clients import sdks rather than protocols/generated.
     productionQuality:
       codegen:
         - atomic-staged-generation

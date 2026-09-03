@@ -28,9 +28,9 @@ doctor:
 
 # Apply native formatters to editable source and configuration files.
 format:
-    ruff format .buildkite tools libs/python tests internal/sdk/python workers/training_worker examples
+    ruff format .buildkite tools libs/python tests sdks/python workers/training_worker examples
     find libs/rust -type f -name '*.rs' -print0 | xargs -0 rustfmt --edition 2024
-    golangci-lint fmt ./libs/go/... ./services/control_plane/... ./internal/sdk/go/... ./tools/mindcladectl/...
+    golangci-lint fmt ./libs/go/... ./services/control_plane/... ./sdks/go/... ./tools/mindcladectl/...
     pnpm run format
     find . -type d \( -name .git -o -name node_modules -o -name build -o -name 'bazel-*' -o -path './third_party/bazel_vendor' \) -prune -o -type f \( -name BUILD -o -name BUILD.bazel -o -name MODULE.bazel -o -name '*.bzl' \) ! -path './protocols/generated/*' ! -path './kernels/native/generated/*' -print0 | xargs -0 buildifier -mode=fix
     nixfmt flake.nix third_party/packages/deep_ep/package.nix
@@ -39,9 +39,9 @@ format:
 
 # Prove that every editable and generated source matches its owning formatter.
 format-check:
-    ruff format --check .buildkite tools libs/python tests internal/sdk/python workers/training_worker examples
+    ruff format --check .buildkite tools libs/python tests sdks/python workers/training_worker examples
     cargo fmt --all --check
-    golangci-lint fmt --diff ./libs/go/... ./services/control_plane/... ./internal/sdk/go/... ./tools/mindcladectl/... ./protocols/generated/go/...
+    golangci-lint fmt --diff ./libs/go/... ./services/control_plane/... ./sdks/go/... ./tools/mindcladectl/... ./protocols/generated/go/...
     pnpm run format:check
     find . -type d \( -name .git -o -name node_modules -o -name build -o -name 'bazel-*' -o -path './third_party/bazel_vendor' \) -prune -o -type f \( -name BUILD -o -name BUILD.bazel -o -name MODULE.bazel -o -name '*.bzl' \) -print0 | xargs -0 buildifier -mode=check -lint=warn
     nixfmt --check flake.nix third_party/packages/deep_ep/package.nix
@@ -50,12 +50,12 @@ format-check:
 
 # Run static analysis for every activated language and repository text surface.
 lint:
-    ruff check .buildkite tools libs/python tests internal/sdk/python workers/training_worker examples
+    ruff check .buildkite tools libs/python tests sdks/python workers/training_worker examples
     {{ uv }} run pyright --project pyproject.toml
-    {{ uv }} run pyright --project internal/sdk/python/pyproject.toml
+    {{ uv }} run pyright --project sdks/python/pyproject.toml
     {{ uv }} run pyright --project workers/training_worker/pyrightconfig.json
     cargo clippy --workspace --all-targets --locked --no-deps -- -D warnings
-    golangci-lint run ./libs/go/... ./services/control_plane/... ./internal/sdk/go/... ./tools/mindcladectl/... ./protocols/generated/go/...
+    golangci-lint run ./libs/go/... ./services/control_plane/... ./sdks/go/... ./tools/mindcladectl/... ./protocols/generated/go/...
     pnpm run lint
     shellcheck .buildkite/hooks/environment .buildkite/hooks/pre-command
     actionlint -no-color
@@ -330,9 +330,9 @@ check: bootstrap
     just check-contract-drift
     just format-check
     just lint
-    go test ./libs/go/... ./services/control_plane/... ./internal/sdk/go/... ./tools/mindcladectl/...
-    PYTHONPATH=internal/sdk/python:protocols/generated/python {{ uv }} run python -m unittest discover -s internal/sdk/python/tests -v
-    PYTHONPATH=workers/training_worker/python:internal/sdk/python:protocols/generated/python {{ uv }} run python -m unittest discover -s workers/training_worker/tests -v
+    go test ./libs/go/... ./services/control_plane/... ./sdks/go/... ./tools/mindcladectl/...
+    PYTHONPATH=sdks/python:protocols/generated/python {{ uv }} run python -m unittest discover -s sdks/python/tests -v
+    PYTHONPATH=workers/training_worker/python:sdks/python:protocols/generated/python {{ uv }} run python -m unittest discover -s workers/training_worker/tests -v
     cargo test --workspace --locked
     pnpm --recursive --if-present run typecheck
     pnpm --recursive --if-present run test

@@ -226,7 +226,7 @@ class GeneratedPackageConsumerTest(unittest.TestCase):
     def test_internal_sdk_is_the_owned_client_facade_over_generated_transport(
         self,
     ) -> None:
-        sdk = self.repository / "internal/sdk"
+        sdk = self.repository / "sdks"
         required = {
             "go": sdk / "go/mindclade/BUILD.bazel",
             "python": sdk / "python/BUILD.bazel",
@@ -253,7 +253,7 @@ class GeneratedPackageConsumerTest(unittest.TestCase):
                 )
 
     def test_internal_sdk_rpc_coverage_is_descriptor_bound_and_explicit(self) -> None:
-        coverage_path = self.repository / "internal/sdk/rpc-coverage.generated.json"
+        coverage_path = self.repository / "sdks/rpc-coverage.generated.json"
         coverage = json.loads(coverage_path.read_text())
         self.assertEqual(
             coverage["schema_version"],
@@ -288,8 +288,8 @@ class GeneratedPackageConsumerTest(unittest.TestCase):
                     self.assertTrue(entry["reason"])
                 self.assertEqual(set(entry["evidence"]), set(coverage["languages"]))
                 for language, evidence in entry["evidence"].items():
-                    self.assertTrue(evidence["library_target"].startswith("//internal/sdk/"))
-                    self.assertTrue(evidence["test_target"].startswith("//internal/sdk/"))
+                    self.assertTrue(evidence["library_target"].startswith("//sdks/"))
+                    self.assertTrue(evidence["test_target"].startswith("//sdks/"))
                     self.assertTrue(evidence["raw_transport"], language)
                     if entry["classification"] == "ergonomic":
                         self.assertTrue(evidence["implementation"], language)
@@ -406,14 +406,14 @@ class GeneratedPackageConsumerTest(unittest.TestCase):
         self.assertEqual(
             violations,
             [],
-            "client-side code must import internal/sdk; direct generated imports "
+            "client-side code must import sdks; direct generated imports "
             "are limited to SDK implementations, server adapters, persistence "
             f"mappers, and contract tests: {violations}",
         )
 
     def test_internal_sdk_cannot_access_durable_backend_capabilities(self) -> None:
         violations: list[str] = []
-        sdk_root = self.repository / "internal/sdk"
+        sdk_root = self.repository / "sdks"
         for path in sorted(sdk_root.glob("**/*")):
             matcher = FORBIDDEN_SDK_CAPABILITIES.get(path.suffix)
             if matcher is None or not path.is_file():
@@ -438,7 +438,7 @@ class GeneratedPackageConsumerTest(unittest.TestCase):
             for path in sorted(source_root.glob("**/*")):
                 if path.suffix not in {".go", ".py", ".rs", ".ts"} or not path.is_file():
                     continue
-                if "internal/sdk" in path.read_text():
+                if "sdks" in path.read_text():
                     violations.append(path.relative_to(self.repository).as_posix())
         self.assertEqual(
             violations,

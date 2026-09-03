@@ -1,7 +1,7 @@
 load("@rules_rust//rust:defs.bzl", "rust_binary", "rust_library", "rust_test")
 
 WORKER_DEPS = [
-    "//internal/sdk/rust:mindclade_internal_sdk",
+    "//sdks/rust:mindclade_internal_sdk",
     "@crate_index//:sha2",
     "@crate_index//:tokio",
 ]
@@ -25,7 +25,7 @@ rust_binary(
     edition = "2024",
     deps = [
         ":ingestion_worker",
-        "//internal/sdk/rust:mindclade_internal_sdk",
+        "//sdks/rust:mindclade_internal_sdk",
         "@crate_index//:tokio",
     ],
 )

@@ -46,7 +46,7 @@ PUBLISHED_OPENAPI = Path("protocols/openapi/published/mindclade.openapi.yaml")
 EVENT_REGISTRY = Path("protocols/events/registry.yaml")
 TOOLCHAIN_LOCK = Path("tools/codegen/toolchain.lock.json")
 GENERATED_MANIFEST = Path("protocols/generated/generated-files.manifest.json")
-SDK_RPC_COVERAGE = Path("internal/sdk/rpc-coverage.generated.json")
+SDK_RPC_COVERAGE = Path("sdks/rpc-coverage.generated.json")
 GRPC_IMPLEMENTATION_COVERAGE = Path("services/control_plane/grpc-implementation.generated.json")
 PREDECESSOR_ARTIFACT_DIGEST = (
     "sha256:07d7ee37e68211870861b7fc1ec5118c423447319603523bd9589c1c5dea6aaf"
@@ -1139,10 +1139,10 @@ def generated_readme(
         "## Who may import this tree",
         "",
         "The dependency direction is one way: `protocols/proto` -> `protocols/generated` ->",
-        "`internal/sdk` -> services, workers, training, tools and internal applications. Direct",
+        "`sdks` -> services, workers, training, tools and internal applications. Direct",
         "imports of this tree are limited to internal SDK implementations, generated server",
         "transport adapters and registration, persistence protobuf mappers, and contract or",
-        "conformance tests. Every other consumer imports `internal/sdk` instead, and an",
+        "conformance tests. Every other consumer imports `sdks` instead, and an",
         "architecture test rejects the rest.",
         "",
         "## Packages",
@@ -2925,7 +2925,7 @@ def ratification_bindings(
     if any(path.suffix != ".sql" for path in migration_paths):
         raise RuntimeError("the tracked migration set contains a non-SQL file")
     sdk_package_digests = {
-        language: _inventory_digest(root, _tracked_paths(root, f"internal/sdk/{language}"))
+        language: _inventory_digest(root, _tracked_paths(root, f"sdks/{language}"))
         for language in LANGUAGES
     }
     return {
@@ -5638,7 +5638,7 @@ def generated_outputs(root: Path) -> tuple[dict[Path, bytes], bytes, list[dict[s
                             "protocols/openapi/compatibility-policy.yaml",
                             "protocols/openapi/external-api.yaml",
                             "protocols/openapi/generation.yaml",
-                            "internal/sdk/rpc-coverage.yaml",
+                            "sdks/rpc-coverage.yaml",
                             "services/control_plane/grpc-implementation.yaml",
                             "protocols/generated/python/pyproject.toml",
                             "protocols/generated/rust/Cargo.toml",

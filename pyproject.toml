@@ -42,8 +42,8 @@ include = [
   "tools",
   "libs/python",
   "tests",
-  "internal/sdk/python/mindclade_internal_sdk",
-  "internal/sdk/python/tests",
+  "sdks/python/mindclade_internal_sdk",
+  "sdks/python/tests",
   "workers/training_worker/python",
   "workers/training_worker/tests",
   "examples/sdk",
@@ -52,7 +52,7 @@ include = [
 exclude = ["docs/architecture/blueprint/generated"]
 extraPaths = [
   "libs/python",
-  "internal/sdk/python",
+  "sdks/python",
   "protocols/generated/python",
   "tools/ci",
   ".buildkite/lib",

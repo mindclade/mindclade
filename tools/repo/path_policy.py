@@ -1277,7 +1277,7 @@ def infer_owner(path: str) -> str:
         return "computational-biology"
     if path.startswith(("docs/architecture/", "docs/adr/", "docs/governance/", "docs/policies/")):
         return "architecture"
-    if path.startswith("internal/sdk/"):
+    if path.startswith("sdks/"):
         return "developer-experience"
     if path.startswith("workers/"):
         worker = PurePosixPath(path).parts[1]
@@ -1326,11 +1326,11 @@ def infer_component(path: str) -> str:
     if path == "component.yaml":
         return "mindclade"
     declared_component_roots = (
-        ("internal/sdk/go", "internal-sdk-go"),
-        ("internal/sdk/python", "internal-sdk-python"),
-        ("internal/sdk/rust", "internal-sdk-rust"),
-        ("internal/sdk/typescript", "internal-sdk-typescript"),
-        ("internal/sdk", "internal-sdk"),
+        ("sdks/go", "internal-sdk-go"),
+        ("sdks/python", "internal-sdk-python"),
+        ("sdks/rust", "internal-sdk-rust"),
+        ("sdks/typescript", "internal-sdk-typescript"),
+        ("sdks", "internal-sdk"),
         ("models/families/clade/cladefold", "model-family-clade-cladefold"),
         ("services/control_plane", "services-control-plane"),
         ("services/runtime_gateway", "services-runtime-gateway"),
@@ -3293,10 +3293,22 @@ CANONICAL_PATH_SET_SHA256 = (  # pyright: ignore[reportConstantRedefinition]
     "7d39a90b849df78856af43adc5d8ac17017f22ac79b00e65064dfc53d890d613"
 )
 
+# The internal SDK roots move from internal/sdk/<language> to sdks/<language>
+# (ADR-0024). Go forbids importing a package under an "internal" directory from
+# outside that directory's parent, so the blueprint's sdks/internal/<language>
+# spelling would have made the Go facade unusable from tools/mindcladectl and
+# every other consumer outside sdks/. Internality stays a governed property of
+# the manifest, CODEOWNERS, and the layering tests rather than a Go path rule.
+# The move renames paths one-for-one, so the canonical file count is unchanged
+# and only the path-set digest moves.
+CANONICAL_PATH_SET_SHA256 = (  # pyright: ignore[reportConstantRedefinition]
+    "8e5d52707bb40162e275b52c927a5070c1d7eecf0de843e425b12d68b2d113ba"
+)
+
 _adr0023_reconciliation_addition_reason = _reconciliation_addition_reason
 
 
-def _reconciliation_addition_reason(path: str) -> str:
+def _reconciliation_addition_reason(path: str) -> str:  # pyright: ignore[reportRedeclaration]
     if path == ESTATE_BUILD_OPTIMIZATION_ADR:
         return (
             "ADR-0023 records the source-only hermetic toolchain, offline vendor, "
@@ -3308,6 +3320,31 @@ def _reconciliation_addition_reason(path: str) -> str:
             "connected cache writes and remote execution fail closed."
         )
     return _adr0023_reconciliation_addition_reason(path)
+
+
+# The internal SDK roots move from internal/sdk/<language> to sdks/<language>
+# (ADR-0024). The relocated files are renames already reconciled above; only the
+# decision record itself is a new canonical path.
+INTERNAL_SDK_ROOT_ADR = "docs/adr/0024-internal-sdk-roots-move-to-sdks.md"
+REQUIRED_ADDITIONS = (  # pyright: ignore[reportConstantRedefinition]
+    *REQUIRED_ADDITIONS,
+    INTERNAL_SDK_ROOT_ADR,
+)
+CANONICAL_FILE_COUNT = CANONICAL_FILE_COUNT + 1  # pyright: ignore[reportConstantRedefinition]
+CANONICAL_PATH_SET_SHA256 = (  # pyright: ignore[reportConstantRedefinition]
+    "f2f311f029bd594a1828eb776aa72b4598a31cf04f4f9c161c797b9c6c33ebf2"
+)
+
+_adr0024_reconciliation_addition_reason = _reconciliation_addition_reason
+
+
+def _reconciliation_addition_reason(path: str) -> str:
+    if path == INTERNAL_SDK_ROOT_ADR:
+        return (
+            "ADR-0024 records the internal SDK root relocation and why the "
+            "blueprint's sdks/internal/<language> spelling cannot be used for Go."
+        )
+    return _adr0024_reconciliation_addition_reason(path)
 
 
 if __name__ == "__main__":

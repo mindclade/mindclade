@@ -746,13 +746,13 @@ class OpenApiCompatibilityTest(unittest.TestCase):
         self.assertEqual(spec["authority"]["contracts"], ["protocols/proto", "protocols/events"])
         self.assertEqual(spec["authority"]["generatedRoot"], "protocols/generated")
         self.assertEqual(spec["authority"]["generator"], "buf.gen.yaml")
-        self.assertEqual(spec["authority"]["facadeRoot"], "internal/sdk")
+        self.assertEqual(spec["authority"]["facadeRoot"], "sdks")
         self.assertEqual(
             spec["authority"]["dependencyDirection"],
             [
                 "protocols/proto-and-events",
                 "protocols/generated",
-                "internal/sdk",
+                "sdks",
                 "services-workers-training-tools-and-internal-apps",
             ],
         )
@@ -764,7 +764,7 @@ class OpenApiCompatibilityTest(unittest.TestCase):
         self.assertEqual(set(native["languages"]), {"go", "python", "rust", "typescript"})
         for language, configuration in native["languages"].items():
             self.assertEqual(configuration["output"], f"protocols/generated/{language}")
-            self.assertEqual(configuration["facade"], f"internal/sdk/{language}")
+            self.assertEqual(configuration["facade"], f"sdks/{language}")
         self.assertEqual(
             spec["internalSdkPolicy"]["models"],
             "intentionally-exported-generated-protobuf-types",
@@ -939,7 +939,7 @@ class OpenApiCompatibilityTest(unittest.TestCase):
                 ["protocols/proto", "protocols/events"],
             )
             self.assertEqual(plan["authority"]["generatedRoot"], "protocols/generated")
-            self.assertEqual(plan["authority"]["internalSdkRoot"], "internal/sdk")
+            self.assertEqual(plan["authority"]["internalSdkRoot"], "sdks")
             self.assertEqual(plan["authority"]["nativeGenerator"], "buf.gen.yaml")
             self.assertRegex(plan["authority"]["optionalPolicySha256"], r"^sha256:[0-9a-f]{64}$")
             self.assertNotEqual(
@@ -1167,7 +1167,7 @@ class OpenApiCompatibilityTest(unittest.TestCase):
         self.assertIn("mutations-have-explicit-idempotency-semantics", spec["publicInvariants"])
         self.assertEqual(spec["internalSdk"]["authority"], "protobuf")
         self.assertEqual(spec["internalSdk"]["generator"], "buf-and-pinned-native")
-        self.assertEqual(spec["internalSdk"]["facadeRoot"], "internal/sdk")
+        self.assertEqual(spec["internalSdk"]["facadeRoot"], "sdks")
         self.assertEqual(
             set(spec["internalSdk"]["languages"]),
             {"go", "python", "rust", "typescript"},

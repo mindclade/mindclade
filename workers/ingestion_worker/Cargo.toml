@@ -14,7 +14,7 @@ name = "mindclade-ingestion-worker-client"
 path = "rust/src/main.rs"
 
 [dependencies]
-mindclade-internal-sdk = { path = "../../internal/sdk/rust" }
+mindclade-internal-sdk = { path = "../../sdks/rust" }
 sha2.workspace = true
 tokio = { workspace = true, features = ["fs", "io-util", "macros", "rt-multi-thread", "time"] }
 

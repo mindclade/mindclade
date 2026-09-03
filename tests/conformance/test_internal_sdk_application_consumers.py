@@ -8,7 +8,7 @@ from pathlib import Path
 
 def repository_root() -> Path:
     for candidate in Path(__file__).resolve().parents:
-        if (candidate / "internal/sdk").is_dir() and (candidate / "protocols").is_dir():
+        if (candidate / "sdks").is_dir() and (candidate / "protocols").is_dir():
             return candidate
     raise RuntimeError("cannot locate repository root")
 
@@ -60,7 +60,7 @@ class InternalSdkApplicationConsumerTest(unittest.TestCase):
 
     def test_every_runtime_path_imports_only_its_private_sdk(self) -> None:
         expected = {
-            "go": "internal/sdk/go/mindclade",
+            "go": "sdks/go/mindclade",
             "python": "mindclade_internal_sdk",
             "rust": "mindclade_internal_sdk",
             "typescript": "@mindclade/internal-sdk",
@@ -102,7 +102,7 @@ class InternalSdkApplicationConsumerTest(unittest.TestCase):
         for path in build_files:
             source = (self.repository / path).read_text()
             with self.subTest(path=path.as_posix()):
-                self.assertIn("internal/sdk", source)
+                self.assertIn("sdks", source)
                 self.assertNotIn("protocols/generated", source)
 
     def test_consumer_packages_are_private_and_provider_independent(self) -> None:

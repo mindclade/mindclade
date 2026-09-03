@@ -135,9 +135,9 @@ test_suite(
 filegroup(
     name = "internal_sdk_root_sources",
     srcs = [
-        "internal/sdk/README.md",
-        "internal/sdk/rpc-coverage.generated.json",
-        "internal/sdk/rpc-coverage.yaml",
+        "sdks/README.md",
+        "sdks/rpc-coverage.generated.json",
+        "sdks/rpc-coverage.yaml",
     ],
     visibility = ["//visibility:public"],
 )
@@ -149,11 +149,11 @@ filegroup(
         ":wave1_contract_sources",
         "//apps/console:governed_sources",
         "//examples:governed_sources",
-        "//internal/sdk/go/mindclade:governed_sources",
-        "//internal/sdk/python:governed_sources",
-        "//internal/sdk/rust:governed_sources",
-        "//internal/sdk/typescript:governed_sources",
         "//libs/go/numconv:governed_sources",
+        "//sdks/go/mindclade:governed_sources",
+        "//sdks/python:governed_sources",
+        "//sdks/rust:governed_sources",
+        "//sdks/typescript:governed_sources",
         "//services/control_plane:control_plane_sources",
         "//tests:all_contract_sources",
         "//tools/mindcladectl:governed_sources",

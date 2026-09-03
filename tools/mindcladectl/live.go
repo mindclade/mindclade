@@ -12,8 +12,8 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/reflect/protoreflect"
 
-	"github.com/mindclade/mindclade/internal/sdk/go/mindclade"
 	"github.com/mindclade/mindclade/libs/go/numconv"
+	"github.com/mindclade/mindclade/sdks/go/mindclade"
 )
 
 type liveBackend struct {
