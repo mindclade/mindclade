@@ -10,6 +10,7 @@ go_library(
         "auth.go",
         "client.go",
         "config.go",
+        "cross_field.generated.go",
         "datasets.go",
         "error.go",
         "evaluations.go",

@@ -91,6 +91,24 @@ py_test(
 )
 
 py_test(
+    name = "cross_field_constraints_test",
+    srcs = ["conformance/test_cross_field_constraints.py"],
+    data = [
+        "//protocols:wave1_contract_sources",
+        "//tools:wave1_codegen_sources",
+    ],
+    imports = [".."],
+    legacy_create_init = 0,
+    main = "conformance/test_cross_field_constraints.py",
+    python_version = "PY3",
+    deps = [
+        "@mindclade_pypi//jsonschema",
+        "@mindclade_pypi//protobuf",
+        "@mindclade_pypi//pyyaml",
+    ],
+)
+
+py_test(
     name = "crud_chain_completeness_test",
     srcs = ["conformance/test_crud_chain_completeness.py"],
     data = ["//protocols:wave1_contract_sources"],
@@ -296,6 +314,7 @@ filegroup(
         "conformance/generated_go_roundtrip_test.go",
         "conformance/generated_rust_roundtrip_test.rs",
         "conformance/generated_typescript_roundtrip_test.ts",
+        "conformance/test_cross_field_constraints.py",
         "conformance/test_crud_chain_completeness.py",
         "conformance/test_generated_package_consumers.py",
         "conformance/test_internal_sdk_application_consumers.py",
@@ -321,6 +340,7 @@ test_suite(
 test_suite(
     name = "all_contract_tests",
     tests = [
+        ":cross_field_constraints_test",
         ":crud_chain_completeness_test",
         ":generated_go_roundtrip_test",
         ":generated_package_consumers_test",

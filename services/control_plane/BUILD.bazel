@@ -361,6 +361,23 @@ go_library(
 )
 
 go_library(
+    name = "validation",
+    srcs = ["internal/platform/validation/cross_field.generated.go"],
+    importpath = "github.com/mindclade/mindclade/services/control_plane/internal/platform/validation",
+    visibility = [
+        "//services/control_plane/internal/admin:__pkg__",
+        "//services/control_plane/internal/agents:__pkg__",
+        "//services/control_plane/internal/evaluations:__pkg__",
+        "//services/control_plane/internal/policies:__pkg__",
+        "//services/control_plane/internal/workflows:__pkg__",
+    ],
+    deps = [
+        "@org_golang_google_protobuf//proto",
+        "@org_golang_google_protobuf//reflect/protoreflect",
+    ],
+)
+
+go_library(
     name = "queue",
     srcs = [
         "internal/platform/queue/dead_letter.go",
@@ -523,6 +540,7 @@ filegroup(
         ":storage",
         ":telemetry",
         ":tenants",
+        ":validation",
         "//services/control_plane/internal/admin:governed_sources",
         "//services/control_plane/internal/agents:governed_sources",
         "//services/control_plane/internal/datasets:governed_sources",

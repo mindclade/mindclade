@@ -16,6 +16,8 @@ filegroup(
         "events/**/*.yaml",
         "schemas/**/*.json",
         "openapi/**/*.yaml",
+        "constraints/*.json",
+        "constraints/*.yaml",
         "compatibility/baselines/*.json",
         "compatibility/tests/*.py",
     ]) + ["//protocols/generated:generated_sources"],

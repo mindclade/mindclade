@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mindclade.dev/schemas/cross-field-constraints/v1",
+  "title": "Cross-field constraints",
+  "description": "Invariants relating two or more sibling fields of one request message, resolved against the committed contract descriptor.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "descriptor_digest", "constraints"],
+  "properties": {
+    "schema_version": {
+      "const": "mindclade.cross-field-constraints/v1"
+    },
+    "descriptor_digest": {
+      "description": "The candidate descriptor every message and field path below resolves against.",
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "constraints": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/constraint" }
+    }
+  },
+  "$defs": {
+    "constraint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "message", "rule", "fields", "origin", "reason"],
+      "properties": {
+        "id": {
+          "description": "Stable identity, named in every generated error.",
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$",
+          "maxLength": 96
+        },
+        "message": {
+          "description": "Fully qualified request message the constraint is checked on.",
+          "type": "string",
+          "pattern": "^[a-z][A-Za-z0-9_]*(\\.[A-Za-z_][A-Za-z0-9_]*)+$"
+        },
+        "rule": {
+          "description": "output-only: none may be set. conflicts-with: at most one. xor-with: exactly one. required-with: all or none.",
+          "enum": ["output-only", "conflicts-with", "xor-with", "required-with"]
+        },
+        "fields": {
+          "description": "Dot-separated field paths relative to the message, each resolving to a scalar or message field.",
+          "type": "array",
+          "minItems": 2,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)*$"
+          }
+        },
+        "origin": {
+          "description": "extracted mirrors validation that already existed; introduced is new enforcement.",
+          "enum": ["extracted", "introduced"]
+        },
+        "evidence": {
+          "description": "Required for an extracted constraint: where the invariant was already enforced.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["source", "symbol"],
+          "properties": {
+            "source": { "type": "string", "minLength": 1 },
+            "symbol": { "type": "string", "minLength": 1 }
+          }
+        },
+        "reason": { "type": "string", "minLength": 24 }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "origin": { "const": "extracted" } }, "required": ["origin"] },
+          "then": { "required": ["evidence"] }
+        },
+        {
+          "if": { "properties": { "origin": { "const": "introduced" } }, "required": ["origin"] },
+          "then": { "not": { "required": ["evidence"] } }
+        }
+      ]
+    }
+  }
+}

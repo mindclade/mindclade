@@ -7225,6 +7225,42 @@
           "reason": "The Rust facade's component declaration, so the fourth internal SDK is a resolvable dependency-graph identity like the other three."
         },
         {
+          "path": "protocols/constraints/cross-field.yaml",
+          "reason": "The single cross-field constraint table, its generator, and the five validators it projects, so an invariant relating two sibling fields cannot be enforced in one language and forgotten in another."
+        },
+        {
+          "path": "protocols/constraints/cross-field.schema.json",
+          "reason": "The single cross-field constraint table, its generator, and the five validators it projects, so an invariant relating two sibling fields cannot be enforced in one language and forgotten in another."
+        },
+        {
+          "path": "tools/codegen/generate_cross_field_constraints.py",
+          "reason": "The single cross-field constraint table, its generator, and the five validators it projects, so an invariant relating two sibling fields cannot be enforced in one language and forgotten in another."
+        },
+        {
+          "path": "services/control_plane/internal/platform/validation/cross_field.generated.go",
+          "reason": "The single cross-field constraint table, its generator, and the five validators it projects, so an invariant relating two sibling fields cannot be enforced in one language and forgotten in another."
+        },
+        {
+          "path": "internal/sdk/go/mindclade/cross_field.generated.go",
+          "reason": "The single cross-field constraint table, its generator, and the five validators it projects, so an invariant relating two sibling fields cannot be enforced in one language and forgotten in another."
+        },
+        {
+          "path": "internal/sdk/python/mindclade_internal_sdk/cross_field_generated.py",
+          "reason": "The single cross-field constraint table, its generator, and the five validators it projects, so an invariant relating two sibling fields cannot be enforced in one language and forgotten in another."
+        },
+        {
+          "path": "internal/sdk/typescript/src/crossField.generated.ts",
+          "reason": "The single cross-field constraint table, its generator, and the five validators it projects, so an invariant relating two sibling fields cannot be enforced in one language and forgotten in another."
+        },
+        {
+          "path": "internal/sdk/rust/src/cross_field_generated.rs",
+          "reason": "The single cross-field constraint table, its generator, and the five validators it projects, so an invariant relating two sibling fields cannot be enforced in one language and forgotten in another."
+        },
+        {
+          "path": "tests/conformance/test_cross_field_constraints.py",
+          "reason": "The single cross-field constraint table, its generator, and the five validators it projects, so an invariant relating two sibling fields cannot be enforced in one language and forgotten in another."
+        },
+        {
           "path": "docs/adr/0001-repository-identity-and-ownership.md",
           "replaces": "docs/adr/0001-repository-identity.md",
           "reason": "Sections 1-18 and Section 14.1 take precedence over the stale A6 short ADR name."
@@ -7265,8 +7301,8 @@
           "reason": "Dependabot is retired estate-wide; Renovate configuration extending the organization preset in mindclade/.github replaces it."
         }
       ],
-      "canonical_file_count": 3643,
-      "canonical_path_set_sha256": "9f16310364fdbf5a4519135c28740b196090c5c6400a1fba58e86952834cf07c"
+      "canonical_file_count": 3652,
+      "canonical_path_set_sha256": "a041653279365a613c458a74ad05dc90e0113d49c1efae55c096fb417bbab2c6"
     },
     "owners": {
       "agent-platform": {
@@ -27445,6 +27481,40 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
+      "path": "protocols/constraints/cross-field.yaml",
+      "kind": "configuration",
+      "owner": "contract-governance",
+      "component": "protocols-constraints",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": true,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/constraints/cross-field.schema.json",
+      "kind": "schema",
+      "owner": "contract-governance",
+      "component": "protocols-constraints",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": true,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
       "path": "libs/python/artifacts/__init__.py",
       "kind": "source",
       "owner": "developer-platform",
@@ -47172,6 +47242,23 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
+      "path": "services/control_plane/internal/platform/validation/cross_field.generated.go",
+      "kind": "source",
+      "owner": "platform-control-plane",
+      "component": "services-control-plane",
+      "status": "generated",
+      "activation_wave": "1",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
       "path": "services/control_plane/internal/operations/operation_commands.go",
       "kind": "source",
       "owner": "platform-control-plane",
@@ -53476,6 +53563,23 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
+      "path": "tests/conformance/test_cross_field_constraints.py",
+      "kind": "test",
+      "owner": "developer-platform",
+      "component": "tests-conformance",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
       "path": "tests/integration/local_stack_test.py",
       "kind": "test",
       "owner": "developer-platform",
@@ -54434,6 +54538,23 @@
     },
     {
       "path": "tools/codegen/generate_grpc_implementation_coverage.py",
+      "kind": "source",
+      "owner": "developer-platform",
+      "component": "tools-codegen",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "tools/codegen/generate_cross_field_constraints.py",
       "kind": "source",
       "owner": "developer-platform",
       "component": "tools-codegen",
@@ -60068,6 +60189,23 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
+      "path": "internal/sdk/go/mindclade/cross_field.generated.go",
+      "kind": "source",
+      "owner": "developer-experience",
+      "component": "internal-sdk-go",
+      "status": "generated",
+      "activation_wave": "1",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
       "path": "internal/sdk/go/api.md",
       "kind": "documentation",
       "owner": "developer-experience",
@@ -60814,6 +60952,23 @@
       ],
       "public_surface": false,
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "internal/sdk/python/mindclade_internal_sdk/cross_field_generated.py",
+      "kind": "source",
+      "owner": "developer-experience",
+      "component": "internal-sdk-python",
+      "status": "generated",
+      "activation_wave": "1",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
       "path": "internal/sdk/python/pyproject.toml",
@@ -61972,6 +62127,23 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
+      "path": "internal/sdk/rust/src/cross_field_generated.rs",
+      "kind": "source",
+      "owner": "developer-experience",
+      "component": "internal-sdk-rust",
+      "status": "generated",
+      "activation_wave": "1",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
       "path": "internal/sdk/rust/component.yaml",
       "kind": "configuration",
       "owner": "developer-experience",
@@ -62803,6 +62975,23 @@
       ],
       "public_surface": false,
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "internal/sdk/typescript/src/crossField.generated.ts",
+      "kind": "source",
+      "owner": "developer-experience",
+      "component": "internal-sdk-typescript",
+      "status": "generated",
+      "activation_wave": "1",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
       "path": "internal/sdk/typescript/tests/configuration.test.ts",

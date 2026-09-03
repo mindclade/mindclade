@@ -15,6 +15,7 @@ import (
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	internalworkflowv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/workflow/v1"
 	workflowv1 "github.com/mindclade/mindclade/protocols/generated/go/workflow/v1"
+	"github.com/mindclade/mindclade/services/control_plane/internal/platform/validation"
 )
 
 type Server struct {
@@ -80,6 +81,9 @@ func (server *Server) CreateWorkflowDefinition(ctx context.Context, request *int
 	}
 	request = clone(request)
 	if request == nil || request.GetContext() == nil || request.GetParent() != projectParent(identity) || !validID(request.GetWorkflowDefinitionId()) {
+		return nil, rpcError(ErrInvalidArgument)
+	}
+	if err = validation.ValidateCrossField(request); err != nil {
 		return nil, rpcError(ErrInvalidArgument)
 	}
 	if err = validateWorkflowDefinition(identity, request.GetWorkflowDefinition(), true); err != nil {
@@ -318,6 +322,9 @@ func (server *ApprovalServer) RequestApproval(ctx context.Context, request *inte
 	}
 	request = clone(request)
 	value := request.GetApprovalRequest()
+	if err = validation.ValidateCrossField(request); err != nil {
+		return nil, rpcError(ErrInvalidArgument)
+	}
 	if err = validateApproval(identity, value, true); err != nil {
 		return nil, rpcError(err)
 	}

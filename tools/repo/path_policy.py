@@ -2146,6 +2146,11 @@ def infer_source_authority(path: str) -> str:
         "protocols/compatibility/baselines/protobuf.candidate.json",
         "protocols/compatibility/baselines/protobuf.lock.json",
         "services/control_plane/internal/platform/queue/event_registry_generated.go",
+        # Python modules and Rust modules cannot carry a dot, so these two cannot
+        # use the `.generated.` marker their three siblings do. Naming them here
+        # is what keeps all five projections of one table classified alike.
+        "internal/sdk/python/mindclade_internal_sdk/cross_field_generated.py",
+        "internal/sdk/rust/src/cross_field_generated.rs",
         *OPENAPI_STAGE_ARTIFACT_ADDITIONS,
         *SDK_API_REFERENCE_DOCUMENT_PATHS,
     }:
@@ -3630,13 +3635,66 @@ CANONICAL_PATH_SET_SHA256 = (  # pyright: ignore[reportConstantRedefinition]
 _sdk_rust_component_addition_reason = _reconciliation_addition_reason
 
 
-def _reconciliation_addition_reason(path: str) -> str:
+def _reconciliation_addition_reason(path: str) -> str:  # pyright: ignore[reportRedeclaration]
     if path in SDK_RUST_COMPONENT_PATHS:
         return (
             "The Rust facade's component declaration, so the fourth internal SDK is a "
             "resolvable dependency-graph identity like the other three."
         )
     return _sdk_rust_component_addition_reason(path)
+
+
+# One definition for the invariants that relate two or more sibling fields of a
+# request. Single-field validation belongs to each server validator, but a rule
+# spanning two fields has no field to live on, so it was written into whichever
+# validator noticed it first and then copied: three services enumerated the
+# fields a caller may not set on a create, and three more create requests
+# embedding a resource had no such check at all. The table is resolved against
+# the committed descriptor and projected into the server and all four facades,
+# so a rule cannot be enforced in one language and forgotten in another.
+CROSS_FIELD_CONSTRAINT_PATHS: tuple[str, ...] = (
+    "protocols/constraints/cross-field.yaml",
+    "protocols/constraints/cross-field.schema.json",
+    "tools/codegen/generate_cross_field_constraints.py",
+    "services/control_plane/internal/platform/validation/cross_field.generated.go",
+    "internal/sdk/go/mindclade/cross_field.generated.go",
+    "internal/sdk/python/mindclade_internal_sdk/cross_field_generated.py",
+    "internal/sdk/typescript/src/crossField.generated.ts",
+    "internal/sdk/rust/src/cross_field_generated.rs",
+    "tests/conformance/test_cross_field_constraints.py",
+)
+REQUIRED_ADDITIONS = (  # pyright: ignore[reportConstantRedefinition]
+    *REQUIRED_ADDITIONS,
+    *CROSS_FIELD_CONSTRAINT_PATHS,
+)
+# The table is bound to the candidate descriptor, so it belongs to the
+# all-contract lane beside the other descriptor-bound gates.
+LATE_ACTIVATION_WAVE_ONE_PATHS = (  # pyright: ignore[reportConstantRedefinition]
+    *LATE_ACTIVATION_WAVE_ONE_PATHS,
+    *CROSS_FIELD_CONSTRAINT_PATHS,
+)
+LATE_ACTIVATION_ALL_CONTRACT_PATHS = (  # pyright: ignore[reportConstantRedefinition]
+    *LATE_ACTIVATION_ALL_CONTRACT_PATHS,
+    *CROSS_FIELD_CONSTRAINT_PATHS,
+)
+CANONICAL_FILE_COUNT = (  # pyright: ignore[reportConstantRedefinition]
+    CANONICAL_FILE_COUNT + len(CROSS_FIELD_CONSTRAINT_PATHS)
+)
+CANONICAL_PATH_SET_SHA256 = (  # pyright: ignore[reportConstantRedefinition]
+    "a041653279365a613c458a74ad05dc90e0113d49c1efae55c096fb417bbab2c6"
+)
+
+_cross_field_constraint_addition_reason = _reconciliation_addition_reason
+
+
+def _reconciliation_addition_reason(path: str) -> str:
+    if path in CROSS_FIELD_CONSTRAINT_PATHS:
+        return (
+            "The single cross-field constraint table, its generator, and the five "
+            "validators it projects, so an invariant relating two sibling fields "
+            "cannot be enforced in one language and forgotten in another."
+        )
+    return _cross_field_constraint_addition_reason(path)
 
 
 if __name__ == "__main__":

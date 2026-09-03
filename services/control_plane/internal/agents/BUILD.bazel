@@ -28,6 +28,7 @@ go_library(
         "//services/control_plane:database",
         "//services/control_plane:jobs",
         "//services/control_plane:queue",
+        "//services/control_plane:validation",
         "//services/control_plane/internal/workflows",
         "@org_golang_google_grpc//:grpc",
         "@org_golang_google_grpc//codes",

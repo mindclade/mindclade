@@ -11,6 +11,7 @@ import (
 
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	internalagentv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/agent/v1"
+	"github.com/mindclade/mindclade/services/control_plane/internal/platform/validation"
 )
 
 type Server struct {
@@ -61,6 +62,9 @@ func (server *Server) CreateAgentDefinition(ctx context.Context, request *intern
 	}
 	request = clone(request)
 	if request == nil || request.GetContext() == nil || request.GetParent() != projectParent(identity) || !validID(request.GetAgentDefinitionId()) {
+		return nil, rpcError(ErrInvalidArgument)
+	}
+	if err = validation.ValidateCrossField(request); err != nil {
 		return nil, rpcError(ErrInvalidArgument)
 	}
 	if err = validateDefinition(identity, request.GetAgentDefinition(), true); err != nil {
