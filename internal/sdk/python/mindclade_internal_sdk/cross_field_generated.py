@@ -73,15 +73,6 @@ CROSS_FIELD_RULES: Final[tuple[CrossFieldRule, ...]] = (
         ),
     ),
     (
-        "promotion-decision-create-rejects-output-only-fields",
-        "mindclade.internal.evaluation.v1.CreatePromotionDecisionRequest",
-        "output-only",
-        (
-            ("promotion_decision", "name"),
-            ("promotion_decision", "uid"),
-        ),
-    ),
-    (
         "use-policy-create-rejects-output-only-fields",
         "mindclade.internal.policy.v1.CreateUsePolicyRequest",
         "output-only",

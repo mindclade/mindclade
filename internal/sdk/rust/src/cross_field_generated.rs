@@ -50,7 +50,7 @@ pub struct CrossFieldRule {
 /// The generated projection of `protocols/constraints/cross-field.yaml`.
 /// Nothing may add to it by hand: a rule present in one language and absent
 /// in another is the failure this table exists to prevent.
-pub const CROSS_FIELD_RULES: [CrossFieldRule; 6] = [
+pub const CROSS_FIELD_RULES: [CrossFieldRule; 5] = [
     CrossFieldRule {
         constraint: "agent-definition-create-rejects-output-only-fields",
         message: "mindclade.internal.agent.v1.CreateAgentDefinitionRequest",
@@ -94,12 +94,6 @@ pub const CROSS_FIELD_RULES: [CrossFieldRule; 6] = [
             "project.update_time",
             "project.delete_time",
         ],
-    },
-    CrossFieldRule {
-        constraint: "promotion-decision-create-rejects-output-only-fields",
-        message: "mindclade.internal.evaluation.v1.CreatePromotionDecisionRequest",
-        rule: "output-only",
-        fields: &["promotion_decision.name", "promotion_decision.uid"],
     },
     CrossFieldRule {
         constraint: "use-policy-create-rejects-output-only-fields",

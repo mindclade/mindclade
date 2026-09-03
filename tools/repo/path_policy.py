@@ -3662,6 +3662,7 @@ CROSS_FIELD_CONSTRAINT_PATHS: tuple[str, ...] = (
     "internal/sdk/typescript/src/crossField.generated.ts",
     "internal/sdk/rust/src/cross_field_generated.rs",
     "tests/conformance/test_cross_field_constraints.py",
+    "internal/sdk/typescript/tests/cross_field.test.ts",
 )
 REQUIRED_ADDITIONS = (  # pyright: ignore[reportConstantRedefinition]
     *REQUIRED_ADDITIONS,
@@ -3681,7 +3682,7 @@ CANONICAL_FILE_COUNT = (  # pyright: ignore[reportConstantRedefinition]
     CANONICAL_FILE_COUNT + len(CROSS_FIELD_CONSTRAINT_PATHS)
 )
 CANONICAL_PATH_SET_SHA256 = (  # pyright: ignore[reportConstantRedefinition]
-    "a041653279365a613c458a74ad05dc90e0113d49c1efae55c096fb417bbab2c6"
+    "680671c071bf2f4b87c957bd7df9ba9a83fc96d1babf837fd5fb960f38d431df"
 )
 
 _cross_field_constraint_addition_reason = _reconciliation_addition_reason

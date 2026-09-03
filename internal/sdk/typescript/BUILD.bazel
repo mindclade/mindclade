@@ -64,6 +64,16 @@ js_test(
 )
 
 js_test(
+    name = "cross_field_test",
+    data = [
+        "package.json",
+        ":governed_sources",
+        ":mindclade_internal_sdk",
+    ],
+    entry_point = "tests/cross_field.test.ts",
+)
+
+js_test(
     name = "agent_test",
     data = [
         "package.json",
@@ -188,6 +198,7 @@ test_suite(
     tests = [
         ":agent_test",
         ":configuration_test",
+        ":cross_field_test",
         ":errors_test",
         ":evaluation_test",
         ":experiment_test",

@@ -93,8 +93,14 @@ py_test(
 py_test(
     name = "cross_field_constraints_test",
     srcs = ["conformance/test_cross_field_constraints.py"],
+    # The test reads all five emitted validators, so all five must be inputs.
     data = [
+        "//internal/sdk/go/mindclade:governed_sources",
+        "//internal/sdk/python:governed_sources",
+        "//internal/sdk/rust:governed_sources",
+        "//internal/sdk/typescript:governed_sources",
         "//protocols:wave1_contract_sources",
+        "//services/control_plane:control_plane_sources",
         "//tools:wave1_codegen_sources",
     ],
     imports = [".."],

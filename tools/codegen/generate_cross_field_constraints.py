@@ -525,6 +525,18 @@ def render_python(constraints: Sequence[Constraint], digest: str) -> str:
     return "\n".join(lines)
 
 
+def camel(segment: str) -> str:
+    """Field name as protobuf-es emits it.
+
+    The descriptor names fields in snake_case and protobuf-es generates
+    camelCase properties, so a TypeScript walker fed descriptor names finds
+    nothing at all -- a validator that reports no violation on every message.
+    """
+
+    head, *rest = segment.split("_")
+    return head + "".join(part[:1].upper() + part[1:] for part in rest)
+
+
 def render_typescript(constraints: Sequence[Constraint], digest: str) -> str:
     lines = banner_lines(digest, "// ")
     lines += [
@@ -535,102 +547,112 @@ def render_typescript(constraints: Sequence[Constraint], digest: str) -> str:
         " * facade error and a server error name the same rule.",
         " */",
         "export class CrossFieldError extends Error {",
-        "  readonly constraint: string;",
-        "  readonly messageType: string;",
-        "  readonly rule: string;",
-        "  readonly fields: readonly string[];",
+        "\treadonly constraint: string;",
+        "\treadonly messageType: string;",
+        "\treadonly rule: string;",
+        "\treadonly fields: readonly string[];",
         "",
-        "  constructor(",
-        "    constraint: string,",
-        "    messageType: string,",
-        "    rule: string,",
-        "    fields: readonly string[],",
-        "  ) {",
-        "    super(`${constraint}: ${rule} on ${messageType}: ${fields.join(', ')}`);",
-        "    this.name = 'CrossFieldError';",
-        "    this.constraint = constraint;",
-        "    this.messageType = messageType;",
-        "    this.rule = rule;",
-        "    this.fields = fields;",
-        "  }",
+        "\tconstructor("
+        + "constraint: string, messageType: string, "
+        + "rule: string, fields: readonly string[]"
+        + ") {",
+        '\t\tsuper(`${constraint}: ${rule} on ${messageType}: ${fields.join(", ")}`);',
+        '\t\tthis.name = "CrossFieldError";',
+        "\t\tthis.constraint = constraint;",
+        "\t\tthis.messageType = messageType;",
+        "\t\tthis.rule = rule;",
+        "\t\tthis.fields = fields;",
+        "\t}",
         "}",
         "",
         "export interface CrossFieldRule {",
-        "  readonly constraint: string;",
-        "  readonly message: string;",
-        "  readonly rule: string;",
-        "  readonly fields: readonly (readonly string[])[];",
+        "\treadonly constraint: string;",
+        "\treadonly message: string;",
+        "\treadonly rule: string;",
+        "\treadonly fields: readonly (readonly string[])[];",
         "}",
         "",
         "// The generated projection of protocols/constraints/cross-field.yaml. Nothing",
         "// may add to it by hand: a rule present in one language and absent in another",
         "// is the failure this table exists to prevent.",
+        "//",
+        "// Paths are the camelCase names protobuf-es generates, not the snake_case the",
+        "// descriptor declares -- a walker fed descriptor names finds nothing and",
+        "// reports no violation on every message.",
         "export const CROSS_FIELD_RULES: readonly CrossFieldRule[] = [",
     ]
     for constraint in constraints:
         lines += [
-            "  {",
-            f"    constraint: '{constraint.identifier}',",
-            f"    message: '{constraint.message}',",
-            f"    rule: '{constraint.rule}',",
-            "    fields: [",
+            "\t{",
+            f'\t\tconstraint: "{constraint.identifier}",',
+            f'\t\tmessage: "{constraint.message}",',
+            f'\t\trule: "{constraint.rule}",',
+            "\t\tfields: [",
         ]
         for field in constraint.fields:
-            segments = ", ".join(f"'{segment}'" for segment in field.segments)
-            lines.append(f"      [{segments}],")
-        lines += ["    ],", "  },"]
+            segments = ", ".join(f'"{camel(segment)}"' for segment in field.segments)
+            lines.append(f"\t\t\t[{segments}],")
+        lines += ["\t\t],", "\t},"]
     lines += [
         "];",
         "",
         "// Proto3 presence: set means not the zero value. A path that stops at an",
         "// absent message is unset rather than an error.",
         "function isSet(message: unknown, path: readonly string[]): boolean {",
-        "  let current: unknown = message;",
-        "  for (let index = 0; index < path.length; index += 1) {",
-        "    if (current === null || current === undefined || typeof current !== 'object') {",
-        "      return false;",
-        "    }",
-        "    const value = (current as Record<string, unknown>)[path[index]!];",
-        "    if (index === path.length - 1) {",
-        "      if (value === null || value === undefined) return false;",
-        "      if (typeof value === 'string') return value.length > 0;",
-        "      if (typeof value === 'number') return value !== 0;",
-        "      if (typeof value === 'bigint') return value !== 0n;",
-        "      if (typeof value === 'boolean') return value;",
-        "      return true;",
-        "    }",
-        "    current = value;",
-        "  }",
-        "  return false;",
+        "\tlet current: unknown = message;",
+        "\tfor (const [index, segment] of path.entries()) {",
+        "\t\tif (current === null || current === undefined) {",
+        "\t\t\treturn false;",
+        "\t\t}",
+        '\t\tif (typeof current !== "object") {',
+        "\t\t\treturn false;",
+        "\t\t}",
+        "\t\tconst value = (current as Record<string, unknown>)[segment];",
+        "\t\tif (index === path.length - 1) {",
+        "\t\t\tif (value === null || value === undefined) return false;",
+        '\t\t\tif (typeof value === "string") return value.length > 0;',
+        '\t\t\tif (typeof value === "number") return value !== 0;',
+        '\t\t\tif (typeof value === "bigint") return value !== 0n;',
+        '\t\t\tif (typeof value === "boolean") return value;',
+        "\t\t\treturn true;",
+        "\t\t}",
+        "\t\tcurrent = value;",
+        "\t}",
+        "\treturn false;",
         "}",
         "",
         "function violated(rule: string, count: number, total: number): boolean {",
-        "  switch (rule) {",
-        "    case 'output-only':",
-        "      return count > 0;",
-        "    case 'conflicts-with':",
-        "      return count > 1;",
-        "    case 'xor-with':",
-        "      return count !== 1;",
-        "    case 'required-with':",
-        "      return count !== 0 && count !== total;",
-        "    default:",
-        "      return false;",
-        "  }",
+        "\tswitch (rule) {",
+        '\t\tcase "output-only":',
+        "\t\t\treturn count > 0;",
+        '\t\tcase "conflicts-with":',
+        "\t\t\treturn count > 1;",
+        '\t\tcase "xor-with":',
+        "\t\t\treturn count !== 1;",
+        '\t\tcase "required-with":',
+        "\t\t\treturn count !== 0 && count !== total;",
+        "\t\tdefault:",
+        "\t\t\treturn false;",
+        "\t}",
         "}",
         "",
         "/** Check every constraint declared for `messageType`. */",
-        "export function validateCrossField(messageType: string, message: unknown): void {",
-        "  for (const rule of CROSS_FIELD_RULES) {",
-        "    if (rule.message !== messageType) continue;",
-        "    const present = rule.fields"
-        + ".filter((path) => isSet(message, path))"
-        + ".map((p) => p.join('.'));",
-        "    if (violated(rule.rule, present.length, rule.fields.length)) {",
-        "      const named = present.length > 0 ? present : rule.fields.map((p) => p.join('.'));",
-        "      throw new CrossFieldError(rule.constraint, rule.message, rule.rule, named);",
-        "    }",
-        "  }",
+        "export function validateCrossField("
+        + "messageType: string, message: unknown"
+        + "): void {",
+        "\tfor (const rule of CROSS_FIELD_RULES) {",
+        "\t\tif (rule.message !== messageType) continue;",
+        "\t\tconst present = rule.fields",
+        "\t\t\t.filter((path) => isSet(message, path))",
+        '\t\t\t.map((path) => path.join("."));',
+        "\t\tif (violated(rule.rule, present.length, rule.fields.length)) {",
+        "\t\t\tconst named = present.length > 0 ? present : "
+        + 'rule.fields.map((path) => path.join("."));',
+        "\t\t\tthrow new CrossFieldError("
+        + "rule.constraint, rule.message, rule.rule, named"
+        + ");",
+        "\t\t}",
+        "\t}",
         "}",
         "",
     ]

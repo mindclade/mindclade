@@ -86,15 +86,6 @@ var crossFieldRules = []crossFieldRule{
 		},
 	},
 	{
-		constraint: "promotion-decision-create-rejects-output-only-fields",
-		message:    "mindclade.internal.evaluation.v1.CreatePromotionDecisionRequest",
-		rule:       "output-only",
-		fields: [][]string{
-			{"promotion_decision", "name"},
-			{"promotion_decision", "uid"},
-		},
-	},
-	{
 		constraint: "use-policy-create-rejects-output-only-fields",
 		message:    "mindclade.internal.policy.v1.CreateUsePolicyRequest",
 		rule:       "output-only",

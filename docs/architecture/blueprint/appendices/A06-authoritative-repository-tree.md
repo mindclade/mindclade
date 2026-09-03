@@ -4737,7 +4737,8 @@ mindclade/
 │       │   │   ├── evaluations.test.ts
 │       │   │   ├── job_run.test.ts
 │       │   │   ├── training.test.ts
-│       │   │   └── experiments.test.ts
+│       │   │   ├── experiments.test.ts
+│       │   │   └── cross_field.test.ts
 │       │   └── tsconfig.json
 │       ├── rpc-coverage.yaml
 │       └── rpc-coverage.generated.json

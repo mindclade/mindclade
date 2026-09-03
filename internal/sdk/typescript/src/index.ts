@@ -105,6 +105,12 @@ export {
 	type RetryPolicy,
 	validateAttempts,
 } from "./config.js";
+export {
+	CROSS_FIELD_RULES,
+	CrossFieldError,
+	type CrossFieldRule,
+	validateCrossField,
+} from "./crossField.generated.js";
 export { Datasets } from "./datasets.js";
 export {
 	clientConfigFromEnvironment,
@@ -195,12 +201,6 @@ export {
 	type WithResponse,
 } from "./response.js";
 export type { RetrySafety } from "./retry.js";
-export {
-  CROSS_FIELD_RULES,
-  type CrossFieldRule,
-  CrossFieldError,
-  validateCrossField,
-} from "./crossField.generated.js";
 export { AttemptLease, LeaseCredential, Runs } from "./runs.js";
 export type { Runtime } from "./runtime.js";
 export { isNeverRetryable, REGISTERED_ROUTES, registeredMethodSafety } from "./safety.js";

@@ -33,7 +33,8 @@ type fixedClock struct{ now time.Time }
 func (clock fixedClock) Now() time.Time { return clock.now }
 
 type fakeRepository struct {
-	create func(context.Context, Identity, *internalevaluationv1.CreateEvaluationRunRequest, string, time.Time) (*jobv1.Operation, bool, error)
+	create  func(context.Context, Identity, *internalevaluationv1.CreateEvaluationRunRequest, string, time.Time) (*jobv1.Operation, bool, error)
+	promote func(context.Context, Identity, *internalevaluationv1.CreatePromotionDecisionRequest, string, time.Time) (*jobv1.Operation, bool, error)
 }
 
 func (repository fakeRepository) CreateRun(ctx context.Context, identity Identity, request *internalevaluationv1.CreateEvaluationRunRequest, digest string, at time.Time) (*jobv1.Operation, bool, error) {
@@ -60,8 +61,11 @@ func (fakeRepository) GetResult(context.Context, Identity, string) (*evaluationv
 	return nil, ErrNotFound
 }
 
-func (fakeRepository) CreatePromotionDecision(context.Context, Identity, *internalevaluationv1.CreatePromotionDecisionRequest, string, time.Time) (*jobv1.Operation, bool, error) {
-	return nil, false, ErrNotFound
+func (repository fakeRepository) CreatePromotionDecision(ctx context.Context, identity Identity, request *internalevaluationv1.CreatePromotionDecisionRequest, digest string, at time.Time) (*jobv1.Operation, bool, error) {
+	if repository.promote == nil {
+		return nil, false, ErrNotFound
+	}
+	return repository.promote(ctx, identity, request, digest, at)
 }
 
 func (fakeRepository) GetPromotionDecision(context.Context, Identity, string) (*evaluationv1.PromotionDecision, error) {
@@ -204,5 +208,65 @@ func TestPersistenceTimestampPrecisionIsExplicit(t *testing.T) {
 	overPrecise := timestamppb.New(time.Unix(10, 123_456_789).UTC())
 	if _, err := requireTimestamp(overPrecise, "over-precise"); !errors.Is(err, ErrInvalidArgument) {
 		t.Fatalf("nanosecond timestamp err=%v", err)
+	}
+}
+
+// TestCreatePromotionDecisionAcceptsACallerNamedDecision covers the one create
+// in this estate that names its own resource.
+//
+// CreatePromotionDecisionRequest carries no `promotion_decision_id`, so unlike
+// a project or a use policy the server cannot derive the name and requires the
+// caller to supply it -- along with `uid`. A generated cross-field rule that
+// forbade both, written from the request's shape rather than from the
+// validator, made every call to this RPC return InvalidArgument, and no test
+// noticed: the only coverage was an integration test that skips without
+// PostgreSQL. This is that missing coverage.
+func TestCreatePromotionDecisionAcceptsACallerNamedDecision(t *testing.T) {
+	now := time.Date(2026, 9, 2, 12, 0, 0, 0, time.UTC)
+	identity := Identity{TenantID: "tenant-1", ProjectID: "project-1", Principal: "principal-1"}
+	called := false
+	repository := fakeRepository{promote: func(_ context.Context, _ Identity, _ *internalevaluationv1.CreatePromotionDecisionRequest, digest string, _ time.Time) (*jobv1.Operation, bool, error) {
+		called = true
+		if !validSHA256(digest) {
+			t.Fatalf("digest=%q", digest)
+		}
+		return &jobv1.Operation{OperationId: "operations/op-1", TenantId: identity.TenantID, ProjectId: identity.ProjectID, JobId: "jobs/job-1", State: jobv1.OperationState_OPERATION_STATE_SUCCEEDED, ResourceVersion: 1, Done: true, Etag: "sha256:" + strings64("9"), CreatedAt: timestamppb.New(now), UpdatedAt: timestamppb.New(now)}, false, nil
+	}}
+	codec, err := NewPageTokenCodec([]byte("0123456789abcdef0123456789abcdef"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	server, err := NewServer(repository, staticIdentityResolver{identity}, codec)
+	if err != nil {
+		t.Fatal(err)
+	}
+	server = server.withClock(fixedClock{now: now})
+
+	request := validPromotionRequest(identity, now)
+	if _, err = server.CreatePromotionDecision(context.Background(), request); err != nil {
+		t.Fatalf("a valid caller-named promotion decision was rejected: %v", err)
+	}
+	if !called {
+		t.Fatal("the request never reached the repository")
+	}
+}
+
+func validPromotionRequest(identity Identity, now time.Time) *internalevaluationv1.CreatePromotionDecisionRequest {
+	decision := &evaluationv1.PromotionDecision{
+		Name: projectParent(identity) + "/promotionDecisions/promotion-1", Uid: "promotion-1",
+		CandidateRelease: testReference(identity, "model_release", "release-1"),
+		CandidateDigest:  "sha256:" + strings64("5"), TargetProfile: "staging",
+		EvaluationResults:     []*commonv1.ResourceRef{testReference(identity, "evaluation_result", "result-1")},
+		Outcome:               evaluationv1.PromotionOutcome_PROMOTION_OUTCOME_APPROVE,
+		ReasonCode:            "qualification-passed",
+		SafeReason:            "qualification evidence passed",
+		DecidedByPrincipalRef: identity.Principal,
+		DecidedAt:             timestamppb.New(now),
+		SourceRevision:        "git:def456",
+		DecisionDigest:        "sha256:" + strings64("9"),
+	}
+	return &internalevaluationv1.CreatePromotionDecisionRequest{
+		Context:           &commonv1.CommandContext{RequestId: "promotion-request", IdempotencyKey: "promotion-key", TenantId: identity.TenantID, ProjectId: identity.ProjectID, PrincipalId: identity.Principal, Deadline: timestamppb.New(now.Add(time.Minute))},
+		PromotionDecision: decision,
 	}
 }

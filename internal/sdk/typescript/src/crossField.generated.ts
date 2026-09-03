@@ -8,169 +8,164 @@
  * facade error and a server error name the same rule.
  */
 export class CrossFieldError extends Error {
-  readonly constraint: string;
-  readonly messageType: string;
-  readonly rule: string;
-  readonly fields: readonly string[];
+	readonly constraint: string;
+	readonly messageType: string;
+	readonly rule: string;
+	readonly fields: readonly string[];
 
-  constructor(
-    constraint: string,
-    messageType: string,
-    rule: string,
-    fields: readonly string[],
-  ) {
-    super(`${constraint}: ${rule} on ${messageType}: ${fields.join(', ')}`);
-    this.name = 'CrossFieldError';
-    this.constraint = constraint;
-    this.messageType = messageType;
-    this.rule = rule;
-    this.fields = fields;
-  }
+	constructor(constraint: string, messageType: string, rule: string, fields: readonly string[]) {
+		super(`${constraint}: ${rule} on ${messageType}: ${fields.join(", ")}`);
+		this.name = "CrossFieldError";
+		this.constraint = constraint;
+		this.messageType = messageType;
+		this.rule = rule;
+		this.fields = fields;
+	}
 }
 
 export interface CrossFieldRule {
-  readonly constraint: string;
-  readonly message: string;
-  readonly rule: string;
-  readonly fields: readonly (readonly string[])[];
+	readonly constraint: string;
+	readonly message: string;
+	readonly rule: string;
+	readonly fields: readonly (readonly string[])[];
 }
 
 // The generated projection of protocols/constraints/cross-field.yaml. Nothing
 // may add to it by hand: a rule present in one language and absent in another
 // is the failure this table exists to prevent.
+//
+// Paths are the camelCase names protobuf-es generates, not the snake_case the
+// descriptor declares -- a walker fed descriptor names finds nothing and
+// reports no violation on every message.
 export const CROSS_FIELD_RULES: readonly CrossFieldRule[] = [
-  {
-    constraint: 'agent-definition-create-rejects-output-only-fields',
-    message: 'mindclade.internal.agent.v1.CreateAgentDefinitionRequest',
-    rule: 'output-only',
-    fields: [
-      ['agent_definition', 'name'],
-      ['agent_definition', 'uid'],
-      ['agent_definition', 'revision'],
-      ['agent_definition', 'etag'],
-      ['agent_definition', 'tenant_id'],
-      ['agent_definition', 'project_id'],
-      ['agent_definition', 'create_time'],
-      ['agent_definition', 'update_time'],
-      ['agent_definition', 'delete_time'],
-    ],
-  },
-  {
-    constraint: 'approval-request-create-rejects-output-only-fields',
-    message: 'mindclade.internal.workflow.v1.RequestApprovalRequest',
-    rule: 'output-only',
-    fields: [
-      ['approval_request', 'name'],
-      ['approval_request', 'uid'],
-      ['approval_request', 'revision'],
-      ['approval_request', 'etag'],
-      ['approval_request', 'tenant_id'],
-      ['approval_request', 'project_id'],
-      ['approval_request', 'requested_at'],
-    ],
-  },
-  {
-    constraint: 'project-create-rejects-output-only-fields',
-    message: 'mindclade.internal.admin.v1.CreateProjectRequest',
-    rule: 'output-only',
-    fields: [
-      ['project', 'name'],
-      ['project', 'uid'],
-      ['project', 'revision'],
-      ['project', 'etag'],
-      ['project', 'create_time'],
-      ['project', 'update_time'],
-      ['project', 'delete_time'],
-    ],
-  },
-  {
-    constraint: 'promotion-decision-create-rejects-output-only-fields',
-    message: 'mindclade.internal.evaluation.v1.CreatePromotionDecisionRequest',
-    rule: 'output-only',
-    fields: [
-      ['promotion_decision', 'name'],
-      ['promotion_decision', 'uid'],
-    ],
-  },
-  {
-    constraint: 'use-policy-create-rejects-output-only-fields',
-    message: 'mindclade.internal.policy.v1.CreateUsePolicyRequest',
-    rule: 'output-only',
-    fields: [
-      ['use_policy', 'name'],
-      ['use_policy', 'uid'],
-      ['use_policy', 'revision'],
-      ['use_policy', 'etag'],
-      ['use_policy', 'tenant_id'],
-      ['use_policy', 'project_id'],
-      ['use_policy', 'create_time'],
-      ['use_policy', 'update_time'],
-      ['use_policy', 'delete_time'],
-    ],
-  },
-  {
-    constraint: 'workflow-definition-create-rejects-output-only-fields',
-    message: 'mindclade.internal.workflow.v1.CreateWorkflowDefinitionRequest',
-    rule: 'output-only',
-    fields: [
-      ['workflow_definition', 'name'],
-      ['workflow_definition', 'uid'],
-      ['workflow_definition', 'revision'],
-      ['workflow_definition', 'etag'],
-      ['workflow_definition', 'tenant_id'],
-      ['workflow_definition', 'project_id'],
-      ['workflow_definition', 'create_time'],
-      ['workflow_definition', 'update_time'],
-      ['workflow_definition', 'delete_time'],
-    ],
-  },
+	{
+		constraint: "agent-definition-create-rejects-output-only-fields",
+		message: "mindclade.internal.agent.v1.CreateAgentDefinitionRequest",
+		rule: "output-only",
+		fields: [
+			["agentDefinition", "name"],
+			["agentDefinition", "uid"],
+			["agentDefinition", "revision"],
+			["agentDefinition", "etag"],
+			["agentDefinition", "tenantId"],
+			["agentDefinition", "projectId"],
+			["agentDefinition", "createTime"],
+			["agentDefinition", "updateTime"],
+			["agentDefinition", "deleteTime"],
+		],
+	},
+	{
+		constraint: "approval-request-create-rejects-output-only-fields",
+		message: "mindclade.internal.workflow.v1.RequestApprovalRequest",
+		rule: "output-only",
+		fields: [
+			["approvalRequest", "name"],
+			["approvalRequest", "uid"],
+			["approvalRequest", "revision"],
+			["approvalRequest", "etag"],
+			["approvalRequest", "tenantId"],
+			["approvalRequest", "projectId"],
+			["approvalRequest", "requestedAt"],
+		],
+	},
+	{
+		constraint: "project-create-rejects-output-only-fields",
+		message: "mindclade.internal.admin.v1.CreateProjectRequest",
+		rule: "output-only",
+		fields: [
+			["project", "name"],
+			["project", "uid"],
+			["project", "revision"],
+			["project", "etag"],
+			["project", "createTime"],
+			["project", "updateTime"],
+			["project", "deleteTime"],
+		],
+	},
+	{
+		constraint: "use-policy-create-rejects-output-only-fields",
+		message: "mindclade.internal.policy.v1.CreateUsePolicyRequest",
+		rule: "output-only",
+		fields: [
+			["usePolicy", "name"],
+			["usePolicy", "uid"],
+			["usePolicy", "revision"],
+			["usePolicy", "etag"],
+			["usePolicy", "tenantId"],
+			["usePolicy", "projectId"],
+			["usePolicy", "createTime"],
+			["usePolicy", "updateTime"],
+			["usePolicy", "deleteTime"],
+		],
+	},
+	{
+		constraint: "workflow-definition-create-rejects-output-only-fields",
+		message: "mindclade.internal.workflow.v1.CreateWorkflowDefinitionRequest",
+		rule: "output-only",
+		fields: [
+			["workflowDefinition", "name"],
+			["workflowDefinition", "uid"],
+			["workflowDefinition", "revision"],
+			["workflowDefinition", "etag"],
+			["workflowDefinition", "tenantId"],
+			["workflowDefinition", "projectId"],
+			["workflowDefinition", "createTime"],
+			["workflowDefinition", "updateTime"],
+			["workflowDefinition", "deleteTime"],
+		],
+	},
 ];
 
 // Proto3 presence: set means not the zero value. A path that stops at an
 // absent message is unset rather than an error.
 function isSet(message: unknown, path: readonly string[]): boolean {
-  let current: unknown = message;
-  for (let index = 0; index < path.length; index += 1) {
-    if (current === null || current === undefined || typeof current !== 'object') {
-      return false;
-    }
-    const value = (current as Record<string, unknown>)[path[index]!];
-    if (index === path.length - 1) {
-      if (value === null || value === undefined) return false;
-      if (typeof value === 'string') return value.length > 0;
-      if (typeof value === 'number') return value !== 0;
-      if (typeof value === 'bigint') return value !== 0n;
-      if (typeof value === 'boolean') return value;
-      return true;
-    }
-    current = value;
-  }
-  return false;
+	let current: unknown = message;
+	for (const [index, segment] of path.entries()) {
+		if (current === null || current === undefined) {
+			return false;
+		}
+		if (typeof current !== "object") {
+			return false;
+		}
+		const value = (current as Record<string, unknown>)[segment];
+		if (index === path.length - 1) {
+			if (value === null || value === undefined) return false;
+			if (typeof value === "string") return value.length > 0;
+			if (typeof value === "number") return value !== 0;
+			if (typeof value === "bigint") return value !== 0n;
+			if (typeof value === "boolean") return value;
+			return true;
+		}
+		current = value;
+	}
+	return false;
 }
 
 function violated(rule: string, count: number, total: number): boolean {
-  switch (rule) {
-    case 'output-only':
-      return count > 0;
-    case 'conflicts-with':
-      return count > 1;
-    case 'xor-with':
-      return count !== 1;
-    case 'required-with':
-      return count !== 0 && count !== total;
-    default:
-      return false;
-  }
+	switch (rule) {
+		case "output-only":
+			return count > 0;
+		case "conflicts-with":
+			return count > 1;
+		case "xor-with":
+			return count !== 1;
+		case "required-with":
+			return count !== 0 && count !== total;
+		default:
+			return false;
+	}
 }
 
 /** Check every constraint declared for `messageType`. */
 export function validateCrossField(messageType: string, message: unknown): void {
-  for (const rule of CROSS_FIELD_RULES) {
-    if (rule.message !== messageType) continue;
-    const present = rule.fields.filter((path) => isSet(message, path)).map((p) => p.join('.'));
-    if (violated(rule.rule, present.length, rule.fields.length)) {
-      const named = present.length > 0 ? present : rule.fields.map((p) => p.join('.'));
-      throw new CrossFieldError(rule.constraint, rule.message, rule.rule, named);
-    }
-  }
+	for (const rule of CROSS_FIELD_RULES) {
+		if (rule.message !== messageType) continue;
+		const present = rule.fields
+			.filter((path) => isSet(message, path))
+			.map((path) => path.join("."));
+		if (violated(rule.rule, present.length, rule.fields.length)) {
+			const named = present.length > 0 ? present : rule.fields.map((path) => path.join("."));
+			throw new CrossFieldError(rule.constraint, rule.message, rule.rule, named);
+		}
+	}
 }

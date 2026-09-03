@@ -10,11 +10,14 @@ differed from the other two. Correctly, as it happens -- an approval request
 carries `requested_at` rather than the create/update/delete triple -- but
 nothing could establish that, because nothing compared them.
 
-Three more create requests embed a resource the same way and had no such check
-at all: `CreateProjectRequest`, `CreateUsePolicyRequest` and
-`CreatePromotionDecisionRequest`. A caller that named its own project was told
-nothing; the server derived the name from `parent` and `project_id` and
-discarded what it was sent.
+Two more create requests embed a resource the same way and had no such check at
+all: `CreateProjectRequest` and `CreateUsePolicyRequest`. Both take a `parent`
+and a client-chosen id and derive the resource name from them, so a caller that
+named its own project was told nothing -- the server discarded the field.
+`CreatePromotionDecisionRequest` looks structurally identical and is not: it
+carries no id, so the caller names the decision and the server requires it.
+Assuming the shape rather than reading the validator is how a constraint that
+would have rejected every call got as far as a test run.
 
 `protocols/constraints/cross-field.yaml` is now the single definition, and this
 gate holds it to three things: it resolves against the committed descriptor,
@@ -30,6 +33,7 @@ import json
 import re
 import subprocess
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 from typing import Any, ClassVar
@@ -58,7 +62,7 @@ GENERATOR = REPOSITORY / "tools/codegen/generate_cross_field_constraints.py"
 EMITTED = (GO_SERVER, GO_FACADE, PYTHON_FACADE, TYPESCRIPT_FACADE, RUST_FACADE)
 
 # Pinned so a constraint deleted by accident cannot shrink the gate silently.
-EXPECTED_CONSTRAINTS = 6
+EXPECTED_CONSTRAINTS = 5
 EXPECTED_LANGUAGES = 5
 
 
@@ -176,10 +180,10 @@ class CrossFieldConstraintTest(unittest.TestCase):
                     }
                 ]
                 with (
-                    TemporaryConstraints(broken),
+                    TemporaryConstraints(broken) as fixture_root,
                     self.assertRaises(GenerationError) as raised,
                 ):
-                    load_constraints(REPOSITORY)
+                    load_constraints(fixture_root)
                 self.assertIn(expected, str(raised.exception))
 
     def test_a_stale_descriptor_digest_is_rejected(self) -> None:
@@ -187,23 +191,47 @@ class CrossFieldConstraintTest(unittest.TestCase):
 
         broken = document()
         broken["descriptor_digest"] = "sha256:" + "0" * 64
-        with TemporaryConstraints(broken), self.assertRaises(GenerationError) as raised:
-            load_constraints(REPOSITORY)
+        with (
+            TemporaryConstraints(broken) as fixture_root,
+            self.assertRaises(GenerationError) as raised,
+        ):
+            load_constraints(fixture_root)
         self.assertIn("was written against", str(raised.exception))
 
 
 class TemporaryConstraints:
-    """Swap the governed table for a fixture, and always put it back."""
+    """Load a fixture table without touching the governed one.
+
+    An earlier version wrote the fixture over
+    `protocols/constraints/cross-field.yaml` and restored it afterwards. That
+    leaves the real contract file as a one-constraint stub whenever a run is
+    interrupted, and it cannot be run twice at once. This builds a throwaway
+    root instead: the fixture is a real file, and everything else the loader
+    reads is a symlink to the committed article.
+    """
+
+    LINKED = (
+        "protocols/constraints/cross-field.schema.json",
+        "protocols/compatibility/baselines/protobuf.candidate.json",
+        "protocols/generated/generated-files.manifest.json",
+    )
 
     def __init__(self, replacement: dict[str, Any]) -> None:
         self._replacement = replacement
-        self._original = CONSTRAINTS.read_bytes()
+        self._directory = tempfile.TemporaryDirectory(prefix="cross-field-fixture-")
 
-    def __enter__(self) -> None:
-        CONSTRAINTS.write_text(yaml.safe_dump(self._replacement, sort_keys=False), encoding="utf-8")
+    def __enter__(self) -> Path:
+        root = Path(self._directory.name)
+        for relative in self.LINKED:
+            target = root / relative
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.symlink_to(REPOSITORY / relative)
+        fixture = root / "protocols/constraints/cross-field.yaml"
+        fixture.write_text(yaml.safe_dump(self._replacement, sort_keys=False), encoding="utf-8")
+        return root
 
     def __exit__(self, *_: object) -> None:
-        CONSTRAINTS.write_bytes(self._original)
+        self._directory.cleanup()
 
 
 if __name__ == "__main__":

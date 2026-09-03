@@ -130,16 +130,3 @@ constraints:
       no output-only check. A use policy is an authorization object, so a
       caller that believes it supplied the policy's identity has the most to
       lose from being told nothing.
-
-  - id: promotion-decision-create-rejects-output-only-fields
-    message: mindclade.internal.evaluation.v1.CreatePromotionDecisionRequest
-    rule: output-only
-    fields:
-      - promotion_decision.name
-      - promotion_decision.uid
-    origin: introduced
-    reason: >
-      The last create request embedding a resource. `PromotionDecision` carries
-      only server-assigned identity and no revision or timestamps, so the rule
-      is two fields rather than seven -- which is exactly the kind of per-message
-      difference a hand-written list gets wrong.
