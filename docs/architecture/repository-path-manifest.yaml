@@ -2489,6 +2489,19 @@
         "docs/adr/0006-durable-work.md",
         "docs/adr/0007-training-state.md",
         ".github/dependabot.yml",
+        "services/control_plane/internal/platform/database/migration_guard.go",
+        "services/control_plane/internal/platform/database/transactions.go",
+        "services/control_plane/internal/platform/idempotency/command_keys.go",
+        "services/control_plane/internal/platform/idempotency/idempotency_store.go",
+        "services/control_plane/internal/platform/outbox/delivery_fencing.go",
+        "services/control_plane/internal/platform/outbox/dispatcher.go",
+        "services/control_plane/internal/platform/outbox/outbox_store.go",
+        "services/control_plane/internal/platform/queue/dead_letter.go",
+        "services/control_plane/internal/platform/queue/delivery.go",
+        "services/control_plane/internal/platform/queue/transport.go",
+        "services/control_plane/internal/platform/storage/artifact_catalog.go",
+        "services/control_plane/internal/platform/storage/object_store.go",
+        "services/control_plane/internal/platform/telemetry/audit_events.go",
         ".github/workflows/pr-metadata.yml"
       ],
       "additions": [
@@ -2649,11 +2662,11 @@
           "reason": "Required Wave 1 durability, reconciliation, configuration, or release-signing interface omitted by A6."
         },
         {
-          "path": "services/control_plane/internal/platform/audit/audit_store.go",
+          "path": "libs/go/servicekit/audit_store.go",
           "reason": "Required Wave 1 durability, reconciliation, configuration, or release-signing interface omitted by A6."
         },
         {
-          "path": "services/control_plane/internal/platform/inbox/inbox_store.go",
+          "path": "libs/go/inbox/inbox_store.go",
           "reason": "Required Wave 1 durability, reconciliation, configuration, or release-signing interface omitted by A6."
         },
         {
@@ -5045,7 +5058,7 @@
           "reason": "Runtime registries, compatibility candidates, and annotation dependencies enforce generated contract behavior."
         },
         {
-          "path": "services/control_plane/internal/platform/queue/event_registry_generated.go",
+          "path": "libs/go/pubsubx/event_registry_generated.go",
           "reason": "Runtime registries, compatibility candidates, and annotation dependencies enforce generated contract behavior."
         },
         {
@@ -5845,11 +5858,11 @@
           "reason": "Artifact services bind generated contracts to normalized metadata and durable object-storage adapters."
         },
         {
-          "path": "services/control_plane/internal/platform/storage/gcs_object_store.go",
+          "path": "libs/go/storage/gcs_object_store.go",
           "reason": "Artifact services bind generated contracts to normalized metadata and durable object-storage adapters."
         },
         {
-          "path": "services/control_plane/internal/platform/storage/gcs_object_store_test.go",
+          "path": "libs/go/storage/gcs_object_store_test.go",
           "reason": "Artifact services bind generated contracts to normalized metadata and durable object-storage adapters."
         },
         {
@@ -6305,15 +6318,15 @@
           "reason": "Migration-managed dead-letter replay and reliability tests exercise immutable event recovery and fenced cancellation races."
         },
         {
-          "path": "services/control_plane/internal/platform/eventprojection/BUILD.bazel",
+          "path": "libs/go/eventruntime/BUILD.bazel",
           "reason": "A separate exact-version Pub/Sub consumer atomically projects registered protobuf events with inbox deduplication into tenant-isolated immutable audit facts."
         },
         {
-          "path": "services/control_plane/internal/platform/eventprojection/projection.go",
+          "path": "libs/go/eventruntime/projection.go",
           "reason": "A separate exact-version Pub/Sub consumer atomically projects registered protobuf events with inbox deduplication into tenant-isolated immutable audit facts."
         },
         {
-          "path": "services/control_plane/internal/platform/eventprojection/projection_test.go",
+          "path": "libs/go/eventruntime/projection_test.go",
           "reason": "A separate exact-version Pub/Sub consumer atomically projects registered protobuf events with inbox deduplication into tenant-isolated immutable audit facts."
         },
         {
@@ -6917,6 +6930,34 @@
           "reason": "ADR-0024 records the internal SDK root relocation and why the blueprint's sdks/internal/<language> spelling cannot be used for Go."
         },
         {
+          "path": "docs/adr/0025-control-plane-platform-runtime-becomes-shared-go-libraries.md",
+          "reason": "ADR-0025 moves the control-plane platform runtime into the eight blueprint Go libraries so services, workers, and tools share one persistence, eventing, and fencing runtime."
+        },
+        {
+          "path": "libs/go/fencing/BUILD.bazel",
+          "reason": "ADR-0025 gives each relocated control-plane runtime library its own Bazel package so the eight blueprint libraries build independently."
+        },
+        {
+          "path": "libs/go/idempotency/BUILD.bazel",
+          "reason": "ADR-0025 gives each relocated control-plane runtime library its own Bazel package so the eight blueprint libraries build independently."
+        },
+        {
+          "path": "libs/go/inbox/BUILD.bazel",
+          "reason": "ADR-0025 gives each relocated control-plane runtime library its own Bazel package so the eight blueprint libraries build independently."
+        },
+        {
+          "path": "libs/go/outbox/BUILD.bazel",
+          "reason": "ADR-0025 gives each relocated control-plane runtime library its own Bazel package so the eight blueprint libraries build independently."
+        },
+        {
+          "path": "libs/go/persistence/BUILD.bazel",
+          "reason": "ADR-0025 gives each relocated control-plane runtime library its own Bazel package so the eight blueprint libraries build independently."
+        },
+        {
+          "path": "libs/go/pubsubx/BUILD.bazel",
+          "reason": "ADR-0025 gives each relocated control-plane runtime library its own Bazel package so the eight blueprint libraries build independently."
+        },
+        {
           "path": "docs/adr/0001-repository-identity-and-ownership.md",
           "replaces": "docs/adr/0001-repository-identity.md",
           "reason": "Sections 1-18 and Section 14.1 take precedence over the stale A6 short ADR name."
@@ -6955,10 +6996,75 @@
           "path": ".github/renovate.json",
           "replaces": ".github/dependabot.yml",
           "reason": "Dependabot is retired estate-wide; Renovate configuration extending the organization preset in mindclade/.github replaces it."
+        },
+        {
+          "path": "libs/go/persistence/migration_guard.go",
+          "replaces": "services/control_plane/internal/platform/database/migration_guard.go",
+          "reason": "ADR-0025 moves the control-plane platform runtime into the eight blueprint Go libraries so services, workers, and tools share one persistence, eventing, and fencing runtime."
+        },
+        {
+          "path": "libs/go/persistence/transactions.go",
+          "replaces": "services/control_plane/internal/platform/database/transactions.go",
+          "reason": "ADR-0025 moves the control-plane platform runtime into the eight blueprint Go libraries so services, workers, and tools share one persistence, eventing, and fencing runtime."
+        },
+        {
+          "path": "libs/go/idempotency/command_keys.go",
+          "replaces": "services/control_plane/internal/platform/idempotency/command_keys.go",
+          "reason": "ADR-0025 moves the control-plane platform runtime into the eight blueprint Go libraries so services, workers, and tools share one persistence, eventing, and fencing runtime."
+        },
+        {
+          "path": "libs/go/idempotency/idempotency_store.go",
+          "replaces": "services/control_plane/internal/platform/idempotency/idempotency_store.go",
+          "reason": "ADR-0025 moves the control-plane platform runtime into the eight blueprint Go libraries so services, workers, and tools share one persistence, eventing, and fencing runtime."
+        },
+        {
+          "path": "libs/go/fencing/delivery_fencing.go",
+          "replaces": "services/control_plane/internal/platform/outbox/delivery_fencing.go",
+          "reason": "ADR-0025 moves the control-plane platform runtime into the eight blueprint Go libraries so services, workers, and tools share one persistence, eventing, and fencing runtime."
+        },
+        {
+          "path": "libs/go/outbox/dispatcher.go",
+          "replaces": "services/control_plane/internal/platform/outbox/dispatcher.go",
+          "reason": "ADR-0025 moves the control-plane platform runtime into the eight blueprint Go libraries so services, workers, and tools share one persistence, eventing, and fencing runtime."
+        },
+        {
+          "path": "libs/go/outbox/outbox_store.go",
+          "replaces": "services/control_plane/internal/platform/outbox/outbox_store.go",
+          "reason": "ADR-0025 moves the control-plane platform runtime into the eight blueprint Go libraries so services, workers, and tools share one persistence, eventing, and fencing runtime."
+        },
+        {
+          "path": "libs/go/pubsubx/dead_letter.go",
+          "replaces": "services/control_plane/internal/platform/queue/dead_letter.go",
+          "reason": "ADR-0025 moves the control-plane platform runtime into the eight blueprint Go libraries so services, workers, and tools share one persistence, eventing, and fencing runtime."
+        },
+        {
+          "path": "libs/go/pubsubx/delivery.go",
+          "replaces": "services/control_plane/internal/platform/queue/delivery.go",
+          "reason": "ADR-0025 moves the control-plane platform runtime into the eight blueprint Go libraries so services, workers, and tools share one persistence, eventing, and fencing runtime."
+        },
+        {
+          "path": "libs/go/pubsubx/transport.go",
+          "replaces": "services/control_plane/internal/platform/queue/transport.go",
+          "reason": "ADR-0025 moves the control-plane platform runtime into the eight blueprint Go libraries so services, workers, and tools share one persistence, eventing, and fencing runtime."
+        },
+        {
+          "path": "libs/go/storage/artifact_catalog.go",
+          "replaces": "services/control_plane/internal/platform/storage/artifact_catalog.go",
+          "reason": "ADR-0025 moves the control-plane platform runtime into the eight blueprint Go libraries so services, workers, and tools share one persistence, eventing, and fencing runtime."
+        },
+        {
+          "path": "libs/go/storage/object_store.go",
+          "replaces": "services/control_plane/internal/platform/storage/object_store.go",
+          "reason": "ADR-0025 moves the control-plane platform runtime into the eight blueprint Go libraries so services, workers, and tools share one persistence, eventing, and fencing runtime."
+        },
+        {
+          "path": "libs/go/servicekit/audit_events.go",
+          "replaces": "services/control_plane/internal/platform/telemetry/audit_events.go",
+          "reason": "ADR-0025 moves the control-plane platform runtime into the eight blueprint Go libraries so services, workers, and tools share one persistence, eventing, and fencing runtime."
         }
       ],
-      "canonical_file_count": 3566,
-      "canonical_path_set_sha256": "f2f311f029bd594a1828eb776aa72b4598a31cf04f4f9c161c797b9c6c33ebf2"
+      "canonical_file_count": 3573,
+      "canonical_path_set_sha256": "22542b8499e718c14232ae61b0ac71c8329f3ddc7e38a1e5618ba7b93c05f383"
     },
     "owners": {
       "agent-platform": {
@@ -29455,11 +29561,15 @@
       "kind": "build",
       "owner": "developer-platform",
       "component": "libs-go",
-      "status": "target",
-      "activation_wave": "4",
+      "status": "active",
+      "activation_wave": "1",
       "source_authority": "hand-authored",
-      "build_targets": [],
-      "test_targets": [],
+      "build_targets": [
+        "//:wave1_sources"
+      ],
+      "test_targets": [
+        "//:wave1_tests"
+      ],
       "public_surface": false,
       "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
     },
@@ -29632,57 +29742,6 @@
       ],
       "public_surface": false,
       "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
-    },
-    {
-      "path": "libs/go/numconv/BUILD.bazel",
-      "kind": "build",
-      "owner": "developer-platform",
-      "component": "libs-go",
-      "status": "active",
-      "activation_wave": "1",
-      "source_authority": "hand-authored",
-      "build_targets": [
-        "//:all_contract_sources"
-      ],
-      "test_targets": [
-        "//:all_contract_tests"
-      ],
-      "public_surface": false,
-      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
-    },
-    {
-      "path": "libs/go/numconv/conversion.go",
-      "kind": "source",
-      "owner": "developer-platform",
-      "component": "libs-go",
-      "status": "active",
-      "activation_wave": "1",
-      "source_authority": "hand-authored",
-      "build_targets": [
-        "//:all_contract_sources"
-      ],
-      "test_targets": [
-        "//:all_contract_tests"
-      ],
-      "public_surface": false,
-      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
-    },
-    {
-      "path": "libs/go/numconv/conversion_test.go",
-      "kind": "test",
-      "owner": "developer-platform",
-      "component": "libs-go",
-      "status": "active",
-      "activation_wave": "1",
-      "source_authority": "hand-authored",
-      "build_targets": [
-        "//:all_contract_sources"
-      ],
-      "test_targets": [
-        "//:all_contract_tests"
-      ],
-      "public_surface": false,
-      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
       "path": "libs/typescript/config/package.json",
@@ -46417,10 +46476,10 @@
       "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
     },
     {
-      "path": "services/control_plane/internal/platform/database/transactions.go",
+      "path": "libs/go/persistence/transactions.go",
       "kind": "source",
-      "owner": "platform-control-plane",
-      "component": "services-control-plane",
+      "owner": "developer-platform",
+      "component": "libs-go",
       "status": "active",
       "activation_wave": "1",
       "source_authority": "hand-authored",
@@ -46434,10 +46493,27 @@
       "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
     },
     {
-      "path": "services/control_plane/internal/platform/database/migration_guard.go",
+      "path": "libs/go/persistence/migration_guard.go",
       "kind": "source",
-      "owner": "platform-control-plane",
-      "component": "services-control-plane",
+      "owner": "developer-platform",
+      "component": "libs-go",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:wave1_sources"
+      ],
+      "test_targets": [
+        "//:wave1_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
+    },
+    {
+      "path": "libs/go/persistence/BUILD.bazel",
+      "kind": "build",
+      "owner": "developer-platform",
+      "component": "libs-go",
       "status": "active",
       "activation_wave": "1",
       "source_authority": "hand-authored",
@@ -46464,10 +46540,10 @@
       "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
     },
     {
-      "path": "services/control_plane/internal/platform/idempotency/command_keys.go",
+      "path": "libs/go/idempotency/command_keys.go",
       "kind": "source",
-      "owner": "platform-control-plane",
-      "component": "services-control-plane",
+      "owner": "developer-platform",
+      "component": "libs-go",
       "status": "active",
       "activation_wave": "1",
       "source_authority": "hand-authored",
@@ -46481,10 +46557,10 @@
       "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
     },
     {
-      "path": "services/control_plane/internal/platform/idempotency/idempotency_store.go",
+      "path": "libs/go/idempotency/idempotency_store.go",
       "kind": "source",
-      "owner": "platform-control-plane",
-      "component": "services-control-plane",
+      "owner": "developer-platform",
+      "component": "libs-go",
       "status": "active",
       "activation_wave": "1",
       "source_authority": "hand-authored",
@@ -46498,10 +46574,10 @@
       "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
     },
     {
-      "path": "services/control_plane/internal/platform/outbox/outbox_store.go",
-      "kind": "source",
-      "owner": "platform-control-plane",
-      "component": "services-control-plane",
+      "path": "libs/go/idempotency/BUILD.bazel",
+      "kind": "build",
+      "owner": "developer-platform",
+      "component": "libs-go",
       "status": "active",
       "activation_wave": "1",
       "source_authority": "hand-authored",
@@ -46515,10 +46591,10 @@
       "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
     },
     {
-      "path": "services/control_plane/internal/platform/outbox/dispatcher.go",
+      "path": "libs/go/outbox/outbox_store.go",
       "kind": "source",
-      "owner": "platform-control-plane",
-      "component": "services-control-plane",
+      "owner": "developer-platform",
+      "component": "libs-go",
       "status": "active",
       "activation_wave": "1",
       "source_authority": "hand-authored",
@@ -46532,10 +46608,10 @@
       "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
     },
     {
-      "path": "services/control_plane/internal/platform/outbox/delivery_fencing.go",
+      "path": "libs/go/outbox/dispatcher.go",
       "kind": "source",
-      "owner": "platform-control-plane",
-      "component": "services-control-plane",
+      "owner": "developer-platform",
+      "component": "libs-go",
       "status": "active",
       "activation_wave": "1",
       "source_authority": "hand-authored",
@@ -46549,10 +46625,10 @@
       "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
     },
     {
-      "path": "services/control_plane/internal/platform/queue/transport.go",
-      "kind": "source",
-      "owner": "platform-control-plane",
-      "component": "services-control-plane",
+      "path": "libs/go/outbox/BUILD.bazel",
+      "kind": "build",
+      "owner": "developer-platform",
+      "component": "libs-go",
       "status": "active",
       "activation_wave": "1",
       "source_authority": "hand-authored",
@@ -46566,10 +46642,10 @@
       "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
     },
     {
-      "path": "services/control_plane/internal/platform/queue/delivery.go",
+      "path": "libs/go/fencing/delivery_fencing.go",
       "kind": "source",
-      "owner": "platform-control-plane",
-      "component": "services-control-plane",
+      "owner": "developer-platform",
+      "component": "libs-go",
       "status": "active",
       "activation_wave": "1",
       "source_authority": "hand-authored",
@@ -46583,10 +46659,10 @@
       "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
     },
     {
-      "path": "services/control_plane/internal/platform/queue/dead_letter.go",
-      "kind": "source",
-      "owner": "platform-control-plane",
-      "component": "services-control-plane",
+      "path": "libs/go/fencing/BUILD.bazel",
+      "kind": "build",
+      "owner": "developer-platform",
+      "component": "libs-go",
       "status": "active",
       "activation_wave": "1",
       "source_authority": "hand-authored",
@@ -46600,10 +46676,61 @@
       "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
     },
     {
-      "path": "services/control_plane/internal/platform/queue/event_registry_generated.go",
+      "path": "libs/go/pubsubx/transport.go",
       "kind": "source",
-      "owner": "platform-control-plane",
-      "component": "services-control-plane",
+      "owner": "developer-platform",
+      "component": "libs-go",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:wave1_sources"
+      ],
+      "test_targets": [
+        "//:wave1_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
+    },
+    {
+      "path": "libs/go/pubsubx/delivery.go",
+      "kind": "source",
+      "owner": "developer-platform",
+      "component": "libs-go",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:wave1_sources"
+      ],
+      "test_targets": [
+        "//:wave1_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
+    },
+    {
+      "path": "libs/go/pubsubx/dead_letter.go",
+      "kind": "source",
+      "owner": "developer-platform",
+      "component": "libs-go",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:wave1_sources"
+      ],
+      "test_targets": [
+        "//:wave1_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
+    },
+    {
+      "path": "libs/go/pubsubx/event_registry_generated.go",
+      "kind": "source",
+      "owner": "developer-platform",
+      "component": "libs-go",
       "status": "generated",
       "activation_wave": "1",
       "source_authority": "reviewed-generated",
@@ -46617,10 +46744,10 @@
       "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
     },
     {
-      "path": "services/control_plane/internal/platform/storage/artifact_catalog.go",
-      "kind": "source",
-      "owner": "platform-control-plane",
-      "component": "services-control-plane",
+      "path": "libs/go/pubsubx/BUILD.bazel",
+      "kind": "build",
+      "owner": "developer-platform",
+      "component": "libs-go",
       "status": "active",
       "activation_wave": "1",
       "source_authority": "hand-authored",
@@ -46634,10 +46761,10 @@
       "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
     },
     {
-      "path": "services/control_plane/internal/platform/storage/object_store.go",
+      "path": "libs/go/storage/artifact_catalog.go",
       "kind": "source",
-      "owner": "platform-control-plane",
-      "component": "services-control-plane",
+      "owner": "developer-platform",
+      "component": "libs-go",
       "status": "active",
       "activation_wave": "1",
       "source_authority": "hand-authored",
@@ -46651,10 +46778,27 @@
       "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
     },
     {
-      "path": "services/control_plane/internal/platform/storage/gcs_object_store.go",
+      "path": "libs/go/storage/object_store.go",
       "kind": "source",
-      "owner": "platform-control-plane",
-      "component": "services-control-plane",
+      "owner": "developer-platform",
+      "component": "libs-go",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:wave1_sources"
+      ],
+      "test_targets": [
+        "//:wave1_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
+    },
+    {
+      "path": "libs/go/storage/gcs_object_store.go",
+      "kind": "source",
+      "owner": "developer-platform",
+      "component": "libs-go",
       "status": "active",
       "activation_wave": "1",
       "source_authority": "hand-authored",
@@ -46668,10 +46812,10 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "services/control_plane/internal/platform/storage/gcs_object_store_test.go",
+      "path": "libs/go/storage/gcs_object_store_test.go",
       "kind": "test",
-      "owner": "platform-control-plane",
-      "component": "services-control-plane",
+      "owner": "developer-platform",
+      "component": "libs-go",
       "status": "active",
       "activation_wave": "1",
       "source_authority": "hand-authored",
@@ -46709,108 +46853,6 @@
       "test_targets": [],
       "public_surface": false,
       "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
-    },
-    {
-      "path": "services/control_plane/internal/platform/telemetry/audit_events.go",
-      "kind": "source",
-      "owner": "platform-control-plane",
-      "component": "services-control-plane",
-      "status": "active",
-      "activation_wave": "1",
-      "source_authority": "hand-authored",
-      "build_targets": [
-        "//:wave1_sources"
-      ],
-      "test_targets": [
-        "//:wave1_tests"
-      ],
-      "public_surface": false,
-      "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
-    },
-    {
-      "path": "services/control_plane/internal/platform/audit/audit_store.go",
-      "kind": "source",
-      "owner": "platform-control-plane",
-      "component": "services-control-plane",
-      "status": "active",
-      "activation_wave": "1",
-      "source_authority": "hand-authored",
-      "build_targets": [
-        "//:wave1_sources"
-      ],
-      "test_targets": [
-        "//:wave1_tests"
-      ],
-      "public_surface": false,
-      "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
-    },
-    {
-      "path": "services/control_plane/internal/platform/inbox/inbox_store.go",
-      "kind": "source",
-      "owner": "platform-control-plane",
-      "component": "services-control-plane",
-      "status": "active",
-      "activation_wave": "1",
-      "source_authority": "hand-authored",
-      "build_targets": [
-        "//:wave1_sources"
-      ],
-      "test_targets": [
-        "//:wave1_tests"
-      ],
-      "public_surface": false,
-      "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
-    },
-    {
-      "path": "services/control_plane/internal/platform/eventprojection/BUILD.bazel",
-      "kind": "build",
-      "owner": "platform-control-plane",
-      "component": "services-control-plane",
-      "status": "active",
-      "activation_wave": "1",
-      "source_authority": "hand-authored",
-      "build_targets": [
-        "//:all_contract_sources"
-      ],
-      "test_targets": [
-        "//:all_contract_tests"
-      ],
-      "public_surface": false,
-      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
-    },
-    {
-      "path": "services/control_plane/internal/platform/eventprojection/projection.go",
-      "kind": "source",
-      "owner": "platform-control-plane",
-      "component": "services-control-plane",
-      "status": "active",
-      "activation_wave": "1",
-      "source_authority": "hand-authored",
-      "build_targets": [
-        "//:all_contract_sources"
-      ],
-      "test_targets": [
-        "//:all_contract_tests"
-      ],
-      "public_surface": false,
-      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
-    },
-    {
-      "path": "services/control_plane/internal/platform/eventprojection/projection_test.go",
-      "kind": "test",
-      "owner": "platform-control-plane",
-      "component": "services-control-plane",
-      "status": "active",
-      "activation_wave": "1",
-      "source_authority": "hand-authored",
-      "build_targets": [
-        "//:all_contract_sources"
-      ],
-      "test_targets": [
-        "//:all_contract_tests"
-      ],
-      "public_surface": false,
-      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
       "path": "services/control_plane/internal/operations/operation_commands.go",
@@ -47565,6 +47607,176 @@
       "kind": "source",
       "owner": "platform-control-plane",
       "component": "services-control-plane",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "libs/go/servicekit/audit_events.go",
+      "kind": "source",
+      "owner": "developer-platform",
+      "component": "libs-go",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:wave1_sources"
+      ],
+      "test_targets": [
+        "//:wave1_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
+    },
+    {
+      "path": "libs/go/servicekit/audit_store.go",
+      "kind": "source",
+      "owner": "developer-platform",
+      "component": "libs-go",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:wave1_sources"
+      ],
+      "test_targets": [
+        "//:wave1_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
+    },
+    {
+      "path": "libs/go/inbox/inbox_store.go",
+      "kind": "source",
+      "owner": "developer-platform",
+      "component": "libs-go",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:wave1_sources"
+      ],
+      "test_targets": [
+        "//:wave1_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
+    },
+    {
+      "path": "libs/go/inbox/BUILD.bazel",
+      "kind": "build",
+      "owner": "developer-platform",
+      "component": "libs-go",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:wave1_sources"
+      ],
+      "test_targets": [
+        "//:wave1_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
+    },
+    {
+      "path": "libs/go/numconv/BUILD.bazel",
+      "kind": "build",
+      "owner": "developer-platform",
+      "component": "libs-go",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "libs/go/numconv/conversion.go",
+      "kind": "source",
+      "owner": "developer-platform",
+      "component": "libs-go",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "libs/go/numconv/conversion_test.go",
+      "kind": "test",
+      "owner": "developer-platform",
+      "component": "libs-go",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "libs/go/eventruntime/BUILD.bazel",
+      "kind": "build",
+      "owner": "developer-platform",
+      "component": "libs-go",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "libs/go/eventruntime/projection.go",
+      "kind": "source",
+      "owner": "developer-platform",
+      "component": "libs-go",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "libs/go/eventruntime/projection_test.go",
+      "kind": "test",
+      "owner": "developer-platform",
+      "component": "libs-go",
       "status": "active",
       "activation_wave": "1",
       "source_authority": "hand-authored",
@@ -57077,6 +57289,22 @@
     },
     {
       "path": "docs/adr/0024-internal-sdk-roots-move-to-sdks.md",
+      "kind": "documentation",
+      "owner": "architecture",
+      "component": "docs-adr",
+      "status": "active",
+      "activation_wave": "0",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:wave0_governance_sources"
+      ],
+      "test_targets": [
+        "//:wave0_tests"
+      ],
+      "public_surface": false
+    },
+    {
+      "path": "docs/adr/0025-control-plane-platform-runtime-becomes-shared-go-libraries.md",
       "kind": "documentation",
       "owner": "architecture",
       "component": "docs-adr",

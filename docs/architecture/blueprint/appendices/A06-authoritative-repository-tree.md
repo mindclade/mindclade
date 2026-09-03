@@ -1841,12 +1841,18 @@ mindclade/
 │   │   │   ├── lifecycle.go
 │   │   │   ├── health.go
 │   │   │   ├── shutdown.go
-│   │   │   └── BUILD.bazel
+│   │   │   ├── BUILD.bazel
+│   │   │   ├── audit_events.go
+│   │   │   └── audit_store.go
 │   │   ├── storage/
 │   │   │   ├── transaction.go
 │   │   │   ├── outbox.go
 │   │   │   ├── leases.go
-│   │   │   └── BUILD.bazel
+│   │   │   ├── BUILD.bazel
+│   │   │   ├── artifact_catalog.go
+│   │   │   ├── object_store.go
+│   │   │   ├── gcs_object_store.go
+│   │   │   └── gcs_object_store_test.go
 │   │   ├── testing/
 │   │   │   ├── database.go
 │   │   │   ├── queue.go
@@ -1854,10 +1860,38 @@ mindclade/
 │   │   │   └── BUILD.bazel
 │   │   ├── component.yaml
 │   │   ├── README.md
-│   │   └── numconv/
+│   │   ├── persistence/
+│   │   │   ├── transactions.go
+│   │   │   ├── migration_guard.go
+│   │   │   └── BUILD.bazel
+│   │   ├── idempotency/
+│   │   │   ├── command_keys.go
+│   │   │   ├── idempotency_store.go
+│   │   │   └── BUILD.bazel
+│   │   ├── outbox/
+│   │   │   ├── outbox_store.go
+│   │   │   ├── dispatcher.go
+│   │   │   └── BUILD.bazel
+│   │   ├── fencing/
+│   │   │   ├── delivery_fencing.go
+│   │   │   └── BUILD.bazel
+│   │   ├── pubsubx/
+│   │   │   ├── transport.go
+│   │   │   ├── delivery.go
+│   │   │   ├── dead_letter.go
+│   │   │   ├── event_registry_generated.go
+│   │   │   └── BUILD.bazel
+│   │   ├── inbox/
+│   │   │   ├── inbox_store.go
+│   │   │   └── BUILD.bazel
+│   │   ├── numconv/
+│   │   │   ├── BUILD.bazel
+│   │   │   ├── conversion.go
+│   │   │   └── conversion_test.go
+│   │   └── eventruntime/
 │   │       ├── BUILD.bazel
-│   │       ├── conversion.go
-│   │       └── conversion_test.go
+│   │       ├── projection.go
+│   │       └── projection_test.go
 │   ├── typescript/
 │   │   ├── config/
 │   │   │   ├── package.json
@@ -3423,38 +3457,10 @@ mindclade/
 │   │   │   │   └── principal_mapping.go
 │   │   │   ├── platform/
 │   │   │   │   ├── database/
-│   │   │   │   │   ├── transactions.go
-│   │   │   │   │   ├── migration_guard.go
 │   │   │   │   │   └── health.go
-│   │   │   │   ├── idempotency/
-│   │   │   │   │   ├── command_keys.go
-│   │   │   │   │   └── idempotency_store.go
-│   │   │   │   ├── outbox/
-│   │   │   │   │   ├── outbox_store.go
-│   │   │   │   │   ├── dispatcher.go
-│   │   │   │   │   └── delivery_fencing.go
-│   │   │   │   ├── queue/
-│   │   │   │   │   ├── transport.go
-│   │   │   │   │   ├── delivery.go
-│   │   │   │   │   ├── dead_letter.go
-│   │   │   │   │   └── event_registry_generated.go
-│   │   │   │   ├── storage/
-│   │   │   │   │   ├── artifact_catalog.go
-│   │   │   │   │   ├── object_store.go
-│   │   │   │   │   ├── gcs_object_store.go
-│   │   │   │   │   └── gcs_object_store_test.go
-│   │   │   │   ├── telemetry/
-│   │   │   │   │   ├── metrics.go
-│   │   │   │   │   ├── tracing.go
-│   │   │   │   │   └── audit_events.go
-│   │   │   │   ├── audit/
-│   │   │   │   │   └── audit_store.go
-│   │   │   │   ├── inbox/
-│   │   │   │   │   └── inbox_store.go
-│   │   │   │   └── eventprojection/
-│   │   │   │       ├── BUILD.bazel
-│   │   │   │       ├── projection.go
-│   │   │   │       └── projection_test.go
+│   │   │   │   └── telemetry/
+│   │   │   │       ├── metrics.go
+│   │   │   │       └── tracing.go
 │   │   │   ├── operations/
 │   │   │   │   ├── operation_commands.go
 │   │   │   │   ├── operation_repository.go
@@ -4335,7 +4341,8 @@ mindclade/
 │   │   ├── 0021-jit-06-triangle-multiplication-sm90a-sm100a.md
 │   │   ├── 0022-native-signed-qualification-and-production-admission-source-activation.md
 │   │   ├── 0023-estate-nix-bazel-hermeticity-and-cache-preparation.md
-│   │   └── 0024-internal-sdk-roots-move-to-sdks.md
+│   │   ├── 0024-internal-sdk-roots-move-to-sdks.md
+│   │   └── 0025-control-plane-platform-runtime-becomes-shared-go-libraries.md
 │   ├── domains/
 │   │   ├── bio.md
 │   │   ├── data.md

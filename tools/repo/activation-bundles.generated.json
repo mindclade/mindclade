@@ -1,9 +1,9 @@
 {
   "schema_version": "mindclade.activation-bundle-projection/v1",
-  "source_digest": "sha256:2d7de2ea1b3afe231dba9c75e39229e88eecb1dac8de63447d77041caa21dd16",
-  "bundle_count": 27,
-  "path_count": 913,
-  "path_set_digest": "sha256:49610e42db997e0f409e8f5570e4581d9e71d1db3de2ed5543bdd24b43c8bb44",
+  "source_digest": "sha256:ea1e4c7dbfdff5c43ae673b5d49e285c9e68c2935882ed993e6b723cf76d25dc",
+  "bundle_count": 28,
+  "path_count": 920,
+  "path_set_digest": "sha256:79aa801234586c20b042b7a41ac7909d0f19ff84ae25b9cae3fad64847be208c",
   "bundles": [
     {
       "id": "activation-bundle-governance",
@@ -56,8 +56,8 @@
       "path_count": 8,
       "addition_count": 8,
       "predeclared_count": 0,
-      "sequence_digest": "sha256:31eb58aa3df3f05af81d92d1f11383d4e91adcbd7cc487a9d9e0f94e7185e8f6",
-      "path_set_digest": "sha256:c459a3b7a91f29035480cbb6607b079f717fe35d5aaf559897481a41640d6479"
+      "sequence_digest": "sha256:337800e5892a97fc3d9916fc9da55ea1d36fe9bce22e53787d9489ad5eead774",
+      "path_set_digest": "sha256:07174aea53bb45a5837b3b88c7292c792cb1b4edf68c56b81afc245c6fa003a8"
     },
     {
       "id": "schema-bindings",
@@ -110,8 +110,8 @@
       "path_count": 10,
       "addition_count": 10,
       "predeclared_count": 0,
-      "sequence_digest": "sha256:cba2c3aeeaf0bb7a5e5aef8a6dce110c2f4bdc06a0f3aa5dbcee78b12eb637e2",
-      "path_set_digest": "sha256:cba2c3aeeaf0bb7a5e5aef8a6dce110c2f4bdc06a0f3aa5dbcee78b12eb637e2"
+      "sequence_digest": "sha256:0e9c2f22fde5d687f450c50b694c99f1a5cd351faa00b449dae486d3508eb81c",
+      "path_set_digest": "sha256:36d86d273ed0efb37b956c608faf164b8a217c8a535beb27868b72ef14e5552c"
     },
     {
       "id": "data-model-control-plane",
@@ -218,8 +218,17 @@
       "path_count": 5,
       "addition_count": 5,
       "predeclared_count": 0,
-      "sequence_digest": "sha256:bfd703f517f7cab691e45181eb77d9a7450c99e1eb02b1c3751dbf31da33dda2",
-      "path_set_digest": "sha256:bfd703f517f7cab691e45181eb77d9a7450c99e1eb02b1c3751dbf31da33dda2"
+      "sequence_digest": "sha256:ad1c9c64be5036030fab8668900c86aadf35242ec12838e268936eb0cf0185e5",
+      "path_set_digest": "sha256:ad1c9c64be5036030fab8668900c86aadf35242ec12838e268936eb0cf0185e5"
+    },
+    {
+      "id": "platform-runtime-libraries",
+      "constant": "PLATFORM_RUNTIME_LIBRARY_ADDITIONS",
+      "path_count": 7,
+      "addition_count": 6,
+      "predeclared_count": 1,
+      "sequence_digest": "sha256:04e0f7c5c978945d39b479883a74b40e2cd2bc2c2cd2a64b65d569699ef1d907",
+      "path_set_digest": "sha256:04e0f7c5c978945d39b479883a74b40e2cd2bc2c2cd2a64b65d569699ef1d907"
     },
     {
       "id": "sdk-runtime-consumers",
