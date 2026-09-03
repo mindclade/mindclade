@@ -2145,15 +2145,16 @@ def infer_source_authority(path: str) -> str:
         "protocols/compatibility/baselines/openapi.lock.json",
         "protocols/compatibility/baselines/protobuf.candidate.json",
         "protocols/compatibility/baselines/protobuf.lock.json",
-        "services/control_plane/internal/platform/queue/event_registry_generated.go",
-        # Python modules and Rust modules cannot carry a dot, so these two cannot
-        # use the `.generated.` marker their three siblings do. Naming them here
-        # is what keeps all five projections of one table classified alike.
-        "internal/sdk/python/mindclade_internal_sdk/cross_field_generated.py",
-        "internal/sdk/rust/src/cross_field_generated.rs",
         *OPENAPI_STAGE_ARTIFACT_ADDITIONS,
         *SDK_API_REFERENCE_DOCUMENT_PATHS,
     }:
+        return "reviewed-generated"
+    # A Python module name and a Rust `mod` name cannot contain a dot, so the
+    # `.generated.` marker their siblings use is unspellable in those two
+    # languages. Accepting a `_generated` stem as the same marker covers every
+    # such projection rather than naming each file as it appears -- which is how
+    # `event_registry_generated.go` came to be a hand-listed exception.
+    if PurePosixPath(path).stem.endswith("_generated"):
         return "reviewed-generated"
     generated_markers = (
         "/generated/",
@@ -3664,9 +3665,15 @@ CROSS_FIELD_CONSTRAINT_PATHS: tuple[str, ...] = (
     "tests/conformance/test_cross_field_constraints.py",
     "internal/sdk/typescript/tests/cross_field.test.ts",
 )
+# ADR-0025 records that the side-car is transitional and names the trigger
+# that retires it, so "transitional" cannot quietly become the permanent shape.
+CROSS_FIELD_CONSTRAINT_ADR = (
+    "docs/adr/0025-cross-field-constraints-as-a-transitional-side-car.md",
+)
 REQUIRED_ADDITIONS = (  # pyright: ignore[reportConstantRedefinition]
     *REQUIRED_ADDITIONS,
     *CROSS_FIELD_CONSTRAINT_PATHS,
+    *CROSS_FIELD_CONSTRAINT_ADR,
 )
 # The table is bound to the candidate descriptor, so it belongs to the
 # all-contract lane beside the other descriptor-bound gates.
@@ -3679,16 +3686,21 @@ LATE_ACTIVATION_ALL_CONTRACT_PATHS = (  # pyright: ignore[reportConstantRedefini
     *CROSS_FIELD_CONSTRAINT_PATHS,
 )
 CANONICAL_FILE_COUNT = (  # pyright: ignore[reportConstantRedefinition]
-    CANONICAL_FILE_COUNT + len(CROSS_FIELD_CONSTRAINT_PATHS)
+    CANONICAL_FILE_COUNT + len(CROSS_FIELD_CONSTRAINT_PATHS) + len(CROSS_FIELD_CONSTRAINT_ADR)
 )
 CANONICAL_PATH_SET_SHA256 = (  # pyright: ignore[reportConstantRedefinition]
-    "680671c071bf2f4b87c957bd7df9ba9a83fc96d1babf837fd5fb960f38d431df"
+    "70c4d496424a6377a3d80037612607fc2470e06a9a05f6d61921a5ac1ca517a8"
 )
 
 _cross_field_constraint_addition_reason = _reconciliation_addition_reason
 
 
 def _reconciliation_addition_reason(path: str) -> str:
+    if path in CROSS_FIELD_CONSTRAINT_ADR:
+        return (
+            "ADR-0025 records why cross-field constraints live in a side-car rather "
+            "than the descriptor, and names the trigger that retires it."
+        )
     if path in CROSS_FIELD_CONSTRAINT_PATHS:
         return (
             "The single cross-field constraint table, its generator, and the five "

@@ -205,11 +205,8 @@ func validateFence(identity Identity, value *jobv1.LeaseFence, now time.Time) er
 	return nil
 }
 
-func validateWorkflowDefinition(identity Identity, value *workflowv1.WorkflowDefinition, creating bool) error {
+func validateWorkflowDefinition(identity Identity, value *workflowv1.WorkflowDefinition) error {
 	if value == nil || value.GetDisplayName() == "" || value.GetSemanticVersion() == "" || value.GetState() == workflowv1.WorkflowDefinitionState_WORKFLOW_DEFINITION_STATE_UNSPECIFIED || !validSHA256(value.GetResolvedGraphDigest()) || value.GetLimits() == nil || value.GetLimits().GetMaximumIterations() == 0 || value.GetLimits().GetMaximumFanOut() == 0 || value.GetLimits().GetMaximumParallelNodes() == 0 || value.GetLimits().GetMaximumWallTime() == nil || value.GetLimits().GetMaximumWallTime().CheckValid() != nil || value.GetLimits().GetMaximumWallTime().AsDuration() <= 0 || len(value.GetEligibleTools()) > 256 || len(value.GetPolicySnapshots()) > 64 {
-		return ErrInvalidArgument
-	}
-	if creating && (value.GetName() != "" || value.GetUid() != "" || value.GetRevision() != 0 || value.GetEtag() != "" || value.GetTenantId() != "" || value.GetProjectId() != "" || value.GetCreateTime() != nil || value.GetUpdateTime() != nil || value.GetDeleteTime() != nil) {
 		return ErrInvalidArgument
 	}
 	if err := validateArtifact(value.GetDefinition(), "workflow definition", true); err != nil {
@@ -264,9 +261,6 @@ func validateStartRun(identity Identity, request *internalworkflowv1.StartWorkfl
 
 func validateApproval(identity Identity, value *workflowv1.ApprovalRequest, creating bool) error {
 	if value == nil || value.GetContext() == nil || value.GetBinding() == nil || value.GetRequestedByPrincipalRef() != identity.Principal || value.GetMinimumIndependentApprovers() == 0 || value.GetMinimumIndependentApprovers() > 32 || value.GetReusePolicy() == workflowv1.ApprovalReusePolicy_APPROVAL_REUSE_POLICY_UNSPECIFIED || value.GetState() != workflowv1.ApprovalState_APPROVAL_STATE_UNSPECIFIED && creating || value.GetExpireTime() == nil || value.GetExpireTime().CheckValid() != nil || len(value.GetPolicyDecisions()) == 0 || len(value.GetPolicyDecisions()) > 64 {
-		return ErrInvalidArgument
-	}
-	if creating && (value.GetName() != "" || value.GetUid() != "" || value.GetRevision() != 0 || value.GetEtag() != "" || value.GetTenantId() != "" || value.GetProjectId() != "" || value.GetRequestedAt() != nil) {
 		return ErrInvalidArgument
 	}
 	binding := value.GetBinding()

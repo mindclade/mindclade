@@ -7265,6 +7265,10 @@
           "reason": "The single cross-field constraint table, its generator, and the five validators it projects, so an invariant relating two sibling fields cannot be enforced in one language and forgotten in another."
         },
         {
+          "path": "docs/adr/0025-cross-field-constraints-as-a-transitional-side-car.md",
+          "reason": "ADR-0025 records why cross-field constraints live in a side-car rather than the descriptor, and names the trigger that retires it."
+        },
+        {
           "path": "docs/adr/0001-repository-identity-and-ownership.md",
           "replaces": "docs/adr/0001-repository-identity.md",
           "reason": "Sections 1-18 and Section 14.1 take precedence over the stale A6 short ADR name."
@@ -7305,8 +7309,8 @@
           "reason": "Dependabot is retired estate-wide; Renovate configuration extending the organization preset in mindclade/.github replaces it."
         }
       ],
-      "canonical_file_count": 3653,
-      "canonical_path_set_sha256": "680671c071bf2f4b87c957bd7df9ba9a83fc96d1babf837fd5fb960f38d431df"
+      "canonical_file_count": 3654,
+      "canonical_path_set_sha256": "70c4d496424a6377a3d80037612607fc2470e06a9a05f6d61921a5ac1ca517a8"
     },
     "owners": {
       "agent-platform": {
@@ -57660,6 +57664,22 @@
     },
     {
       "path": "docs/adr/0024-vendored-contract-import-closure.md",
+      "kind": "documentation",
+      "owner": "architecture",
+      "component": "docs-adr",
+      "status": "active",
+      "activation_wave": "0",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:wave0_governance_sources"
+      ],
+      "test_targets": [
+        "//:wave0_tests"
+      ],
+      "public_surface": false
+    },
+    {
+      "path": "docs/adr/0025-cross-field-constraints-as-a-transitional-side-car.md",
       "kind": "documentation",
       "owner": "architecture",
       "component": "docs-adr",

@@ -906,7 +906,7 @@ func (r SQLRepository) CancelJobSQL(ctx context.Context, jobID, expectedETag, re
 	if _, err = tx.ExecContext(ctx, `INSERT INTO audit_events (id,tenant_id,actor_id,action,subject_id,occurred_at,details_digest,event_version,payload_digest,envelope_bytes) VALUES ($1,$2,$3,'jobs.cancel',$4,$5,$6,$7,$8,$9)`, auditEnvelope.GetEventId(), command.TenantID, command.PrincipalID, jobID, command.ObservedAt.UTC(), command.RequestDigest, auditEnvelope.GetEventVersion(), auditEnvelope.GetPayloadDigest(), envelopeBytes); err != nil {
 		return nil, err
 	}
-	if err = queue.InsertOutboxMessage(ctx, tx, auditEnvelope, command.ObservedAt.UTC()); err != nil {
+	if err = queue.InsertOutboxMessage(ctx, tx, auditEnvelope, command.ObservedAt); err != nil {
 		return nil, err
 	}
 	if err = tx.Commit(); err != nil {

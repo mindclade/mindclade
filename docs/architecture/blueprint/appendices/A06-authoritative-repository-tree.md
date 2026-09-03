@@ -4353,7 +4353,8 @@ mindclade/
 │   │   ├── 0021-jit-06-triangle-multiplication-sm90a-sm100a.md
 │   │   ├── 0022-native-signed-qualification-and-production-admission-source-activation.md
 │   │   ├── 0023-estate-nix-bazel-hermeticity-and-cache-preparation.md
-│   │   └── 0024-vendored-contract-import-closure.md
+│   │   ├── 0024-vendored-contract-import-closure.md
+│   │   └── 0025-cross-field-constraints-as-a-transitional-side-car.md
 │   ├── domains/
 │   │   ├── bio.md
 │   │   ├── data.md

@@ -26,6 +26,7 @@ import (
 	"google.golang.org/protobuf/types/dynamicpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	adminv1 "github.com/mindclade/mindclade/protocols/generated/go/admin/v1"
 	apiv1 "github.com/mindclade/mindclade/protocols/generated/go/api/v1"
 	artifactv1 "github.com/mindclade/mindclade/protocols/generated/go/artifact/v1"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
@@ -1651,5 +1652,73 @@ func TestSSEUsesDescriptorHeartbeatPolicyAndCleansUpOnCancellation(t *testing.T)
 		!strings.Contains(body, "id: cursor-2\nevent: heartbeat\n") ||
 		!strings.Contains(body, `"operationRevision":"2"`) {
 		t.Fatalf("descriptor-owned SSE frames = %q", body)
+	}
+}
+
+// TestAuthenticationInterceptorEnforcesCrossFieldConstraints covers the one
+// place the generated constraint table is applied.
+//
+// The rules used to be pasted into five create handlers, which made their reach
+// per-handler opt-in: a rule declared for a message whose handler lacked the
+// call was generated into four SDK facades and enforced by the server nowhere.
+// Applying them in the interceptor makes reach follow the table, and this is
+// the test that holds it there -- handler unit tests call the method directly
+// and never see this code.
+func TestAuthenticationInterceptorEnforcesCrossFieldConstraints(t *testing.T) {
+	t.Parallel()
+	authorizer := bearerAuthorizer{
+		token: "0123456789abcdef0123456789abcdef",
+		claims: verifiedIdentityClaims{
+			tenantID: "tenant-01", projectID: "project-01", principalID: "principal-01",
+			roles: map[string]struct{}{"platform-admin": {}},
+		},
+	}
+	ctx := metadata.NewIncomingContext(context.Background(), metadata.Pairs(
+		"authorization", "Bearer 0123456789abcdef0123456789abcdef",
+	))
+	reached := false
+	handler := func(context.Context, any) (any, error) {
+		reached = true
+		return struct{}{}, nil
+	}
+	info := &grpc.UnaryServerInfo{
+		FullMethod: "/mindclade.internal.admin.v1.AdminService/CreateProject",
+	}
+
+	compliant := &internaladminv1.CreateProjectRequest{
+		Parent:    "tenants/tenant-01",
+		ProjectId: "project-02",
+		Project:   &adminv1.Project{DisplayName: "Research", Purpose: "research"},
+	}
+	if _, err := authorizer.unary(ctx, compliant, info, handler); err != nil {
+		t.Fatalf("a create carrying no server-assigned identity was rejected: %v", err)
+	}
+	if !reached {
+		t.Fatal("the compliant request never reached the handler")
+	}
+
+	reached = false
+	violating := &internaladminv1.CreateProjectRequest{
+		Parent:    "tenants/tenant-01",
+		ProjectId: "project-02",
+		Project: &adminv1.Project{
+			DisplayName: "Research",
+			Purpose:     "research",
+			Name:        "tenants/tenant-01/projects/hijack",
+		},
+	}
+	_, err := authorizer.unary(ctx, violating, info, handler)
+	if status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("violating create code = %s, want %s: %v", status.Code(err), codes.InvalidArgument, err)
+	}
+	if reached {
+		t.Fatal("a violating request reached the handler")
+	}
+	// The status names the rule, so an SDK caller can match the server's
+	// rejection to the constraint its own facade would have raised.
+	if message := status.Convert(err).Message(); !strings.Contains(
+		message, "project-create-rejects-output-only-fields",
+	) || !strings.Contains(message, "project.name") {
+		t.Fatalf("status message does not name the violated rule: %q", message)
 	}
 }

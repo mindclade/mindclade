@@ -79,10 +79,6 @@ func insertAudit(ctx context.Context, tx *sql.Tx, identity Identity, action, sub
 	return err
 }
 
-func insertOutbox(ctx context.Context, tx *sql.Tx, event *commonv1.EventEnvelope, at time.Time) error {
-	return queue.InsertOutboxMessage(ctx, tx, event, at)
-}
-
 func insertCompletedOperation(ctx context.Context, tx *sql.Tx, identity Identity, digest string, target *commonv1.ResourceRef, at time.Time) (*jobv1.Operation, error) {
 	jobID, err := randomID("jobs/")
 	if err != nil {
@@ -114,7 +110,7 @@ func recordMutation(ctx context.Context, tx *sql.Tx, identity Identity, action, 
 		return err
 	}
 	for _, event := range events {
-		if err := insertOutbox(ctx, tx, event, at); err != nil {
+		if err := queue.InsertOutboxMessage(ctx, tx, event, at); err != nil {
 			return err
 		}
 	}

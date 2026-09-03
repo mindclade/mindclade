@@ -28,6 +28,10 @@ type recordingExecutor struct {
 	err        error
 }
 
+// Rollback satisfies OutboxExecutor and is never called; the interface requires
+// it so that only a transaction can be passed.
+func (*recordingExecutor) Rollback() error { return nil }
+
 func (e *recordingExecutor) ExecContext(_ context.Context, statement string, arguments ...any) (sql.Result, error) {
 	e.statements = append(e.statements, statement)
 	e.arguments = append(e.arguments, arguments)

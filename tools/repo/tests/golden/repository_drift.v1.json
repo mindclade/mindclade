@@ -24,11 +24,11 @@
     "blueprint_sha256": "d099074e755168bbdce076d50918bf06aff677f9e5d620fdfe53cb7cef745803",
     "original_file_count": 2461,
     "reconciliation_version": "3.4.3",
-    "canonical_file_count": 3653,
-    "canonical_path_set_sha256": "680671c071bf2f4b87c957bd7df9ba9a83fc96d1babf837fd5fb960f38d431df"
+    "canonical_file_count": 3654,
+    "canonical_path_set_sha256": "70c4d496424a6377a3d80037612607fc2470e06a9a05f6d61921a5ac1ca517a8"
   },
   "summary": {
-    "canonical_target_paths": 3653,
+    "canonical_target_paths": 3654,
     "populated_paths": 2,
     "unknown_paths": 0,
     "premature_paths": 0,

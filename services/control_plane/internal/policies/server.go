@@ -15,7 +15,6 @@ import (
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	internalpolicyv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/policy/v1"
 	policyv1 "github.com/mindclade/mindclade/protocols/generated/go/policy/v1"
-	"github.com/mindclade/mindclade/services/control_plane/internal/platform/validation"
 )
 
 type Server struct {
@@ -95,9 +94,6 @@ func (s *Server) CreateUsePolicy(ctx context.Context, request *internalpolicyv1.
 		return nil, rpcError(ErrInvalidArgument)
 	}
 	request = clone(request)
-	if crossFieldErr := validation.ValidateCrossField(request); crossFieldErr != nil {
-		return nil, rpcError(ErrInvalidArgument)
-	}
 	digest, err := s.digest(identity, request, request.GetContext())
 	if err != nil {
 		return nil, err

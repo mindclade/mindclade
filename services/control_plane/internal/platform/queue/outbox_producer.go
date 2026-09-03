@@ -38,6 +38,12 @@ const insertOutboxMessage = `INSERT INTO outbox_messages` +
 // enqueued if and only if the business change commits.
 type OutboxExecutor interface {
 	ExecContext(context.Context, string, ...any) (sql.Result, error)
+	// Rollback is never called here. It is in the interface because *sql.Tx has
+	// it and *sql.DB does not, which is what makes "must run in the caller's
+	// transaction" a thing the compiler checks rather than a comment. A
+	// *sql.DB passed here would insert the row whether or not the business
+	// change committed -- the one guarantee the outbox exists to provide.
+	Rollback() error
 }
 
 // InsertOutboxMessage enqueues one event envelope for delivery.
@@ -54,26 +60,25 @@ type OutboxExecutor interface {
 // envelope.tenant_id the envelope is wrong, and writing the caller's value
 // would hide that rather than surface it.
 func InsertOutboxMessage(ctx context.Context, exec OutboxExecutor, envelope *commonv1.EventEnvelope, at time.Time) error {
-	// AggregateIdentity is the one definition of the routing identity, and it
-	// validates before deriving. Deriving it inline is what let one variant
-	// read only subject.name and drop the resource_id fallback, which would
-	// have written an empty aggregate_id -- and so a broken ordering key --
-	// for any subject that carried an id but no name.
-	aggregateType, aggregateID, err := AggregateIdentity(envelope)
-	if err != nil {
-		return err
-	}
+	// MarshalEnvelope validates, so it runs first and this function validates
+	// exactly once. `aggregateIdentity` then derives from the validated
+	// envelope through the same definition `AggregateIdentity` exports.
+	// Deriving it inline instead is what let one variant read only subject.name
+	// and drop the resource_id fallback, which would have written an empty
+	// aggregate_id -- and so a broken ordering key -- for any subject that
+	// carried an id but no name.
 	encoded, err := MarshalEnvelope(envelope)
 	if err != nil {
 		return err
 	}
+	aggregateType, aggregateID := aggregateIdentity(envelope)
 	if len(encoded) > MaxOutboxEnvelopeBytes {
 		return fmt.Errorf(
 			"%w: envelope for %s is %d bytes, over the %d byte outbox limit",
 			ErrInvalidEnvelope, envelope.GetEventType(), len(encoded), MaxOutboxEnvelopeBytes,
 		)
 	}
-	if _, err = exec.ExecContext(
+	_, err = exec.ExecContext(
 		ctx, insertOutboxMessage,
 		envelope.GetEventId(),
 		envelope.GetTenantId(),
@@ -85,8 +90,6 @@ func InsertOutboxMessage(ctx context.Context, exec OutboxExecutor, envelope *com
 		envelope.GetPayloadDigest(),
 		encoded,
 		at.UTC(),
-	); err != nil {
-		return err
-	}
-	return nil
+	)
+	return err
 }

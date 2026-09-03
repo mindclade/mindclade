@@ -15,7 +15,6 @@ import (
 	adminv1 "github.com/mindclade/mindclade/protocols/generated/go/admin/v1"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	internaladminv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/admin/v1"
-	"github.com/mindclade/mindclade/services/control_plane/internal/platform/validation"
 )
 
 type Server struct {
@@ -110,9 +109,6 @@ func (s *Server) CreateProject(ctx context.Context, request *internaladminv1.Cre
 		return nil, rpcError(ErrInvalidArgument)
 	}
 	request = clone(request)
-	if crossFieldErr := validation.ValidateCrossField(request); crossFieldErr != nil {
-		return nil, rpcError(ErrInvalidArgument)
-	}
 	digest, err := s.digest(identity, request.GetProjectId(), request, request.GetContext())
 	if err != nil {
 		return nil, err

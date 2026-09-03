@@ -115,11 +115,7 @@ class Descriptor:
         """The identity the caller must supply to invoke this method."""
 
         fields = self.surface(request_type)
-        required = {
-            field.name
-            for field in fields
-            if field.type != TYPE_MESSAGE and identity_field(field.name)
-        }
+        required = self.caller_supplied(request_type)
         for field in fields:
             if field.type != TYPE_MESSAGE or field.label == LABEL_REPEATED:
                 continue
@@ -269,9 +265,7 @@ class CrudChainCompletenessTest(unittest.TestCase):
     def test_an_unreachable_obligation_is_detected(self) -> None:
         """The gate must fail when a chain is genuinely broken."""
 
-        file_set = descriptor_pb2.FileDescriptorSet()
-        file_set.ParseFromString(self.raw)
-        broken = Descriptor(file_set)
+        broken = parse(self.raw)
         request = broken.messages["mindclade.internal.admin.v1.GetProjectRequest"]
         added = request.field.add()
         added.name = "workspace_id"
@@ -294,9 +288,7 @@ class CrudChainCompletenessTest(unittest.TestCase):
         weight rather than decorating the walk.
         """
 
-        file_set = descriptor_pb2.FileDescriptorSet()
-        file_set.ParseFromString(self.raw)
-        stripped = Descriptor(file_set)
+        stripped = parse(self.raw)
         operation = stripped.messages["mindclade.job.v1.Operation"]
         retained = [field for field in operation.field if field.name != "target"]
         self.assertEqual(len(retained), len(operation.field) - 1)

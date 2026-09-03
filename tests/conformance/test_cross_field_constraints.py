@@ -29,7 +29,6 @@ from __future__ import annotations
 
 import base64
 import hashlib
-import json
 import re
 import subprocess
 import sys
@@ -41,14 +40,10 @@ from typing import Any, ClassVar
 import yaml
 
 from tools.codegen.generate_cross_field_constraints import (
-    GO_FACADE,
-    GO_SERVER,
-    PYTHON_FACADE,
-    RUST_FACADE,
-    TYPESCRIPT_FACADE,
     Constraint,
     GenerationError,
     load_constraints,
+    load_json,
     outputs,
 )
 
@@ -58,8 +53,6 @@ CONSTRAINTS = REPOSITORY / "protocols/constraints/cross-field.yaml"
 CANDIDATE = REPOSITORY / "protocols/compatibility/baselines/protobuf.candidate.json"
 GENERATED_FILES = REPOSITORY / "protocols/generated/generated-files.manifest.json"
 GENERATOR = REPOSITORY / "tools/codegen/generate_cross_field_constraints.py"
-
-EMITTED = (GO_SERVER, GO_FACADE, PYTHON_FACADE, TYPESCRIPT_FACADE, RUST_FACADE)
 
 # Pinned so a constraint deleted by accident cannot shrink the gate silently.
 EXPECTED_CONSTRAINTS = 5
@@ -83,11 +76,11 @@ class CrossFieldConstraintTest(unittest.TestCase):
     def test_the_table_is_bound_to_the_committed_descriptor(self) -> None:
         """The digest is the join key; three parties must agree on it."""
 
-        raw = base64.b64decode(json.loads(CANDIDATE.read_text())["descriptor_set"]["base64"])
+        raw = base64.b64decode(load_json(CANDIDATE)["descriptor_set"]["base64"])
         digest = "sha256:" + hashlib.sha256(raw).hexdigest()
         self.assertEqual(self.digest, digest)
         self.assertEqual(document()["descriptor_digest"], digest)
-        self.assertEqual(json.loads(GENERATED_FILES.read_text())["descriptor_digest"], digest)
+        self.assertEqual(load_json(GENERATED_FILES)["descriptor_digest"], digest)
 
     def test_the_declared_estate_is_the_expected_size(self) -> None:
         self.assertEqual(len(self.constraints), EXPECTED_CONSTRAINTS)

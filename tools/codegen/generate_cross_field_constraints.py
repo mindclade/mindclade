@@ -26,6 +26,7 @@ import argparse
 import base64
 import hashlib
 import json
+import re
 import sys
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
@@ -41,17 +42,8 @@ CONSTRAINTS_SCHEMA = Path("protocols/constraints/cross-field.schema.json")
 CANDIDATE = Path("protocols/compatibility/baselines/protobuf.candidate.json")
 GENERATED_FILES = Path("protocols/generated/generated-files.manifest.json")
 
-SCHEMA_VERSION = "mindclade.cross-field-constraints/v1"
-
 TYPE_MESSAGE = descriptor_pb2.FieldDescriptorProto.TYPE_MESSAGE
 LABEL_REPEATED = descriptor_pb2.FieldDescriptorProto.LABEL_REPEATED
-
-RULE_TEXT = {
-    "output-only": "is assigned by the server and must not be set on this request",
-    "conflicts-with": "may not be set together",
-    "xor-with": "requires exactly one to be set",
-    "required-with": "must be set together or not at all",
-}
 
 GO_SERVER = Path("services/control_plane/internal/platform/validation/cross_field.generated.go")
 GO_FACADE = Path("internal/sdk/go/mindclade/cross_field.generated.go")
@@ -72,12 +64,14 @@ class GenerationError(RuntimeError):
 
 @dataclass(frozen=True)
 class FieldPath:
-    """One resolved dot path, with the presence test its leaf kind implies."""
+    """One dot path that resolved against the descriptor.
+
+    Presence is uniform across leaf kinds -- set means "not the zero value" --
+    so the resolved kind steers nothing and is not carried.
+    """
 
     path: str
     segments: tuple[str, ...]
-    leaf_kind: str  # "message" | "string" | "bytes" | "bool" | "numeric" | "enum"
-    repeated: bool
 
 
 @dataclass(frozen=True)
@@ -88,10 +82,6 @@ class Constraint:
     fields: tuple[FieldPath, ...]
     origin: str
     reason: str
-
-    @property
-    def sentence(self) -> str:
-        return f"{self.identifier}: {RULE_TEXT[self.rule]}"
 
 
 def load_json(path: Path) -> dict[str, Any]:
@@ -136,21 +126,6 @@ def descriptor_bytes(root: Path) -> bytes:
     return raw
 
 
-def leaf_kind(field: descriptor_pb2.FieldDescriptorProto) -> str:
-    proto = descriptor_pb2.FieldDescriptorProto
-    if field.type == TYPE_MESSAGE:
-        return "message"
-    if field.type == proto.TYPE_STRING:
-        return "string"
-    if field.type == proto.TYPE_BYTES:
-        return "bytes"
-    if field.type == proto.TYPE_BOOL:
-        return "bool"
-    if field.type == proto.TYPE_ENUM:
-        return "enum"
-    return "numeric"
-
-
 def resolve_path(
     messages: Mapping[str, descriptor_pb2.DescriptorProto],
     message: str,
@@ -187,12 +162,7 @@ def resolve_path(
                 )
             current = field.type_name.lstrip(".")
     assert field is not None
-    return FieldPath(
-        path=path,
-        segments=segments,
-        leaf_kind=leaf_kind(field),
-        repeated=False,
-    )
+    return FieldPath(path=path, segments=segments)
 
 
 def load_constraints(root: Path) -> tuple[list[Constraint], str]:
@@ -798,6 +768,30 @@ def outputs(constraints: Sequence[Constraint], digest: str) -> dict[Path, str]:
     }
 
 
+def refresh_descriptor_digest(root: Path) -> str:
+    """Rewrite the table's pin to the committed descriptor, in place.
+
+    Only the one line changes; the surrounding comments and constraints are
+    untouched, so the diff shows exactly which contract the table was re-pinned
+    to and a reviewer sees the re-pin as its own act.
+    """
+
+    digest = "sha256:" + hashlib.sha256(descriptor_bytes(root)).hexdigest()
+    path = root / CONSTRAINTS
+    text = path.read_text(encoding="utf-8")
+    updated, count = re.subn(
+        r"^descriptor_digest: sha256:[0-9a-f]{64}$",
+        f"descriptor_digest: {digest}",
+        text,
+        count=1,
+        flags=re.MULTILINE,
+    )
+    if count != 1:
+        raise GenerationError(f"{CONSTRAINTS} has no descriptor_digest line to update")
+    path.write_text(updated, encoding="utf-8")
+    return digest
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", type=Path, default=Path.cwd())
@@ -806,8 +800,27 @@ def main(argv: Sequence[str] | None = None) -> int:
         action="store_true",
         help="fail when a committed validator differs from what this table generates",
     )
+    parser.add_argument(
+        "--update-digest",
+        action="store_true",
+        help=(
+            "rewrite the table's descriptor_digest to the committed descriptor, then"
+            " regenerate. The pin records which contract a human reviewed the table"
+            " against, so refreshing it stays a deliberate act -- but any proto change"
+            " anywhere flips the digest, and that should cost one command, not a"
+            " hand-edit."
+        ),
+    )
     args = parser.parse_args(argv)
     root = args.root.resolve()
+
+    if args.update_digest:
+        try:
+            refreshed = refresh_descriptor_digest(root)
+        except GenerationError as error:
+            print(f"cross-field constraints: {error}", file=sys.stderr)
+            return 1
+        print(f"descriptor_digest is now {refreshed}")
 
     try:
         constraints, digest = load_constraints(root)

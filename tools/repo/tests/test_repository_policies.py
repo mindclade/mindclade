@@ -46,6 +46,8 @@ from path_policy import (  # noqa: E402
     ALL_CONTRACT_GRPC_SERVICES,
     ALL_CONTRACT_RUST_PLUGIN_PATHS,
     CANONICAL_FILE_COUNT,
+    LATE_ACTIVATION_ALL_CONTRACT_PATHS,
+    LATE_ACTIVATION_WAVE_ONE_PATHS,
     OPTIONAL_PENDING_RATIFICATION_ARTIFACT_PATHS,
     PolicyError,
     build_manifest,
@@ -631,6 +633,22 @@ class RepositoryPolicyTest(unittest.TestCase):
             with self.subTest(path=path):
                 self.assertEqual(committed_paths[path], entry)
         self.assertEqual(generated, self.manifest)
+
+    def test_the_two_late_activation_registers_stay_in_step(self) -> None:
+        """A block that extends one register and forgets the other drifts silently.
+
+        The registers answer different questions -- one sets the wave label, the
+        other the Bazel lane -- so they are kept separate rather than merged.
+        But every block so far sets both, and a block that set only one would
+        produce a path waved into a lane it is not in, with the manifest and the
+        generator agreeing on the wrong answer. Split them the day a block
+        genuinely needs one, and delete this test in the same change.
+        """
+
+        self.assertEqual(
+            set(LATE_ACTIVATION_WAVE_ONE_PATHS),
+            set(LATE_ACTIVATION_ALL_CONTRACT_PATHS),
+        )
 
     def test_the_working_tree_declares_no_premature_or_unknown_path(self) -> None:
         """A registered path must also be activated, and the checkout must match.

@@ -14,7 +14,6 @@ import (
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	evaluationv1 "github.com/mindclade/mindclade/protocols/generated/go/evaluation/v1"
 	internalevaluationv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/evaluation/v1"
-	"github.com/mindclade/mindclade/services/control_plane/internal/platform/validation"
 )
 
 type Server struct {
@@ -203,9 +202,6 @@ func (server *Server) CreatePromotionDecision(ctx context.Context, request *inte
 	}
 	request = clone(request)
 	if request == nil || request.GetContext() == nil {
-		return nil, rpcError(ErrInvalidArgument)
-	}
-	if err = validation.ValidateCrossField(request); err != nil {
 		return nil, rpcError(ErrInvalidArgument)
 	}
 	if err = validatePromotionDecision(identity, request.GetPromotionDecision()); err != nil {

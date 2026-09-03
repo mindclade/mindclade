@@ -182,10 +182,6 @@ func insertCompletedOperation(ctx context.Context, tx *sql.Tx, identity Identity
 	return operation, nil
 }
 
-func insertOutbox(ctx context.Context, tx *sql.Tx, event *commonv1.EventEnvelope, at time.Time) error {
-	return queue.InsertOutboxMessage(ctx, tx, event, at)
-}
-
 func insertAudit(ctx context.Context, tx *sql.Tx, identity Identity, action, subject, digest string, at time.Time) error {
 	event, err := foundationaudit.NewEvent(identity.TenantID, identity.Principal, action, subject, "allowed", at.UTC(), nil)
 	if err != nil {
@@ -207,7 +203,7 @@ func recordMutation(ctx context.Context, tx *sql.Tx, identity Identity, action, 
 		return err
 	}
 	for _, event := range events {
-		if err := insertOutbox(ctx, tx, event, at); err != nil {
+		if err := queue.InsertOutboxMessage(ctx, tx, event, at); err != nil {
 			return err
 		}
 	}
