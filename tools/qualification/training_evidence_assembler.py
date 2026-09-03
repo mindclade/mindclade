@@ -1054,6 +1054,104 @@ def validate_assembled_evidence_payload(
     )
 
 
+@dataclass(frozen=True)
+class ConsistentReceipt:
+    """Facts proved by one internally consistent qualification receipt.
+
+    Internal consistency is deliberately not qualification. The protected build
+    identity is read from the receipt itself, so it stays merely self-declared
+    until a trusted detached signature over these exact bytes verifies.
+    """
+
+    name: str
+    bindings: JsonObject
+    receipt_digest: str
+    result_artifact_digest: str
+    result_artifact_path: Path
+    self_declared_build_identity: str
+    required_targets: frozenset[str]
+
+
+def validate_receipt_internal_consistency(
+    name: str,
+    encoded: bytes,
+    path: Path,
+    *,
+    root: Path,
+    trusted_source_revision: str,
+) -> ConsistentReceipt:
+    """Prove one receipt binds its own canonical content and its exact result artifact.
+
+    This is the unsigned half of receipt verification: the receipt must exist, its
+    `receipt_digest` must recompute over its canonical content, and its declared
+    `result_artifact_path` must be a repository-owned file whose digest equals
+    `result_artifact_digest`. Signer trust is verified separately and is the only
+    thing that can turn these facts into a protected qualification.
+    """
+
+    if name not in RECEIPT_CONTRACTS:
+        raise ValueError(f"unsupported qualification receipt name: {name}")
+    receipt = decode_object(encoded, f"{name} receipt")
+    # Read back the receipt's own protected build identity so that the exact-contract
+    # validator can prove the receipt and its result artifact agree. The identity is
+    # producer-attested only once a trusted signature covers these bytes.
+    self_declared_build_identity = _require_string(
+        receipt.get("protected_build_identity"),
+        f"{name} receipt protected_build_identity",
+        BUILDKITE_IDENTITY_RE,
+    )
+    bindings, receipt_digest, result_digest, _, result_path = _validate_receipt(
+        name,
+        encoded,
+        path,
+        root=root,
+        trusted_source_revision=trusted_source_revision,
+        trusted_build_identity=self_declared_build_identity,
+    )
+    return ConsistentReceipt(
+        name=name,
+        bindings=bindings,
+        receipt_digest=receipt_digest,
+        result_artifact_digest=result_digest,
+        result_artifact_path=result_path,
+        self_declared_build_identity=self_declared_build_identity,
+        required_targets=frozenset(RECEIPT_CONTRACTS[name].required_targets),
+    )
+
+
+def receipt_signer_trust_activated(
+    name: str,
+    trust_policy: SignerTrustPolicy = GOVERNED_SIGNER_TRUST_POLICY,
+) -> bool:
+    """Report whether connected authority has activated any signer key for one lane."""
+
+    if name not in RECEIPT_CONTRACTS:
+        raise ValueError(f"unsupported qualification receipt name: {name}")
+    return bool(trust_policy.receipt_signer_key_ids[name])
+
+
+def verify_receipt_attestation(
+    name: str,
+    artifact: AttestedArtifact,
+    *,
+    payload: bytes,
+    trust_policy: SignerTrustPolicy = GOVERNED_SIGNER_TRUST_POLICY,
+) -> VerifiedAttestation:
+    """Verify one detached receipt signature against repository-owned signer trust."""
+
+    if name not in RECEIPT_CONTRACTS:
+        raise ValueError(f"unsupported qualification receipt name: {name}")
+    _validate_signer_trust_policy(trust_policy)
+    return _verify_attestation(
+        artifact,
+        label=f"{name} receipt",
+        payload_type=receipt_payload_type(name),
+        principal_identity=RECEIPT_CONTRACTS[name].producer_identity,
+        authorized_key_ids=trust_policy.receipt_signer_key_ids[name],
+        payload=payload,
+    )
+
+
 def parse_receipt(value: str) -> tuple[str, Path]:
     name, separator, path = value.partition("=")
     if not separator or not name or not path:

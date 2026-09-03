@@ -1288,17 +1288,48 @@ def _self_test(org_schema: Path | None) -> None:
                 }
             )
         )
-        readiness_path = root / "authoritative-integration-readiness.v2.json"
+        readiness_path = root / "authoritative-integration-readiness.v3.json"
+        # The fixture carries the full report contract, not just the two fields
+        # the self-test reads. `_validate_authoritative_readiness` requires the
+        # source revision, the ratification flag, both digests, a summary, and a
+        # `report_digest` that recomputes over the rest -- so a fixture missing
+        # any of them makes the self-test fail on the fixture rather than on the
+        # behaviour under test, which is how this gate came to be red.
+        readiness_criteria: list[dict[str, object]] = [
+            {
+                "criterion_id": "stages-and-exit-criteria-01",
+                "criterion": "Stage and exit criteria are declared and bound to targets.",
+                "stage": "stage-1",
+                "owner": "architecture",
+                "qualification_class": "source",
+                "status": "completion-verified",
+                "bazel_targets": ["//:wave1_tests"],
+            },
+            {
+                "criterion_id": "stages-and-exit-criteria-02",
+                "criterion": "Connected qualification evidence is not yet present.",
+                "stage": "stage-2",
+                "owner": "architecture",
+                "qualification_class": "connected",
+                "status": "candidate-evidence-incomplete",
+                "bazel_targets": [],
+            },
+        ]
         readiness_report: dict[str, object] = {
-            "schema_version": "mindclade.authoritative-integration-readiness/v2",
-            "criteria": [
-                {"criterion_id": "stages-and-exit-criteria-01", "status": "completion-verified"},
-                {
-                    "criterion_id": "stages-and-exit-criteria-02",
-                    "status": "candidate-evidence-incomplete",
-                },
-            ],
+            "schema_version": "mindclade.authoritative-integration-readiness/v3",
+            "source_revision": source_revision,
+            "ratification_authorized": False,
+            "plan_digest": "sha256:" + "5" * 64,
+            "criterion_map_digest": "sha256:" + "6" * 64,
+            "criteria": readiness_criteria,
+            "summary": {"completion-verified": 1, "candidate-evidence-incomplete": 1},
         }
+        # readiness_report.py escapes non-ASCII and terminates with a newline, so
+        # the self-digest reproduces only under that encoding -- not under
+        # `canonical_json`, which sets ensure_ascii=False and omits the newline.
+        readiness_report["report_digest"] = sha256_bytes(
+            (json.dumps(readiness_report, sort_keys=True, separators=(",", ":")) + "\n").encode()
+        )
         readiness_path.write_bytes(canonical_json(readiness_report))
         reference_revisions = {
             "bootstrap": "d" * 40,

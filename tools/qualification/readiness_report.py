@@ -15,7 +15,16 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import cast
 
-from training_evidence_assembler import validate_assembled_evidence_payload
+from training_evidence_assembler import (
+    GOVERNED_SIGNER_TRUST_POLICY,
+    RECEIPT_CONTRACTS,
+    AttestedArtifact,
+    SignerTrustPolicy,
+    receipt_signer_trust_activated,
+    validate_assembled_evidence_payload,
+    validate_receipt_internal_consistency,
+    verify_receipt_attestation,
+)
 
 type JsonScalar = bool | float | int | str | None
 type JsonValue = JsonScalar | list[JsonValue] | dict[str, JsonValue]
@@ -54,7 +63,7 @@ KNOWN_OWNERS = frozenset(
     }
 )
 CRITERION_MAP_SCHEMA = "mindclade.authoritative-integration-criterion-map/v1"
-READINESS_SCHEMA = "mindclade.authoritative-integration-readiness/v2"
+READINESS_SCHEMA = "mindclade.authoritative-integration-readiness/v3"
 REHEARSAL_SCHEMA = "mindclade.training-vertical-rehearsal/v1"
 TRAINING_EVIDENCE_SCHEMA = "mindclade.training-vertical-evidence/v2"
 DEFAULT_MAPPING_PATH = Path(__file__).with_name("authoritative-integration-criteria.v1.json")
@@ -87,6 +96,34 @@ REHEARSAL_CHECK_TARGETS = {
     "grpc": "//services/control_plane:control_plane_grpc_registration_test",
     "sdk": "//:all_contract_tests",
 }
+# Qualification is a four-step proof: the receipt exists at its declared path, its
+# `receipt_digest` recomputes over its canonical content, its `result_artifact_path`
+# is a repository-owned file whose digest matches `result_artifact_digest`, and a
+# signer key authorized by repository-owned policy signed those exact bytes. The
+# first three steps are enforced fail-closed by the governed receipt validators, so
+# reaching any state below means they held. Only the fourth step distinguishes them.
+QUALIFICATION_NO_RECEIPT = "no-receipt"
+# The receipt contract carries no result artifact, so this report cannot obtain
+# execution proof from it. Source rehearsal assertions and the unsigned assembled
+# Stage 5 payload both land here; neither is a protected qualification.
+QUALIFICATION_EXECUTION_PROOF_UNAVAILABLE = "execution-proof-unavailable"
+# Evidence is present and internally consistent, but connected authority has not
+# activated any signer key for this lane, so no signature can verify yet. This is
+# strictly weaker than verification and never contributes to completion.
+QUALIFICATION_SIGNATURE_PENDING = "signature-pending-connected-authority"
+# Signer trust is activated but no detached attestation was supplied.
+QUALIFICATION_SIGNATURE_UNATTESTED = "signature-unattested"
+QUALIFICATION_VERIFIED = "verified"
+QUALIFICATION_STATES = frozenset(
+    {
+        QUALIFICATION_NO_RECEIPT,
+        QUALIFICATION_EXECUTION_PROOF_UNAVAILABLE,
+        QUALIFICATION_SIGNATURE_PENDING,
+        QUALIFICATION_SIGNATURE_UNATTESTED,
+        QUALIFICATION_VERIFIED,
+    }
+)
+SIGNATURE_PENDING_STATUS = "evidence-consistent-signature-pending"
 
 
 @dataclass(frozen=True)
@@ -95,6 +132,23 @@ class ValidatedReceipt:
     payload: JsonObject
     bound_targets: frozenset[str]
     verification_class: str
+    qualification_state: str
+    execution_proof: bool
+    signer_key_id: str | None
+
+
+@dataclass(frozen=True)
+class ReceiptInputs:
+    """Everything one governed receipt verifier may consider, and nothing else."""
+
+    name: str
+    path: Path
+    encoded: bytes
+    payload: JsonObject
+    expected_revision: str
+    root: Path
+    attestation: AttestedArtifact | None
+    trust_policy: SignerTrustPolicy
 
 
 def canonical_json(value: JsonValue) -> bytes:
@@ -391,11 +445,10 @@ def _validate_required_bindings(
             raise ValueError(f"{path} is missing canonical digest binding {name}")
 
 
-def _validate_rehearsal(
-    path: Path,
-    receipt: JsonObject,
-    expected_revision: str,
-) -> ValidatedReceipt:
+def _validate_rehearsal(inputs: ReceiptInputs) -> ValidatedReceipt:
+    path = inputs.path
+    receipt = inputs.payload
+    expected_revision = inputs.expected_revision
     if set(receipt) != set(REHEARSAL_FIELDS):
         raise ValueError(f"{path} fields differ from the exact rehearsal contract")
     if receipt.get("status") != "passed":
@@ -446,34 +499,85 @@ def _validate_rehearsal(
         # `training_rehearsal.py` records caller-provided passed-check assertions;
         # it is not a BEP/result-artifact verifier and cannot prove execution.
         verification_class="source-assertion-validated",
+        qualification_state=QUALIFICATION_EXECUTION_PROOF_UNAVAILABLE,
+        execution_proof=False,
+        signer_key_id=None,
     )
 
 
-def _validate_training_payload(
-    path: Path,
-    receipt: JsonObject,
-    expected_revision: str,
-) -> ValidatedReceipt:
+def _validate_training_payload(inputs: ReceiptInputs) -> ValidatedReceipt:
     bound_targets = validate_assembled_evidence_payload(
-        receipt,
-        expected_source_revision=expected_revision,
-        encoded=path.read_bytes(),
+        inputs.payload,
+        expected_source_revision=inputs.expected_revision,
+        encoded=inputs.encoded,
     )
     return ValidatedReceipt(
-        digest=digest_bytes(path.read_bytes()),
-        payload=receipt,
+        digest=digest_bytes(inputs.encoded),
+        payload=inputs.payload,
         bound_targets=bound_targets,
         # The detached signature and ratification authority are deliberately not
         # inputs to this source-readiness report. A valid payload is not a
-        # protected qualification by itself.
+        # protected qualification by itself, and its per-lane result artifacts are
+        # referenced by digest only, so this report cannot re-prove execution.
         verification_class="protected-payload-unverified",
+        qualification_state=QUALIFICATION_EXECUTION_PROOF_UNAVAILABLE,
+        execution_proof=False,
+        signer_key_id=None,
     )
 
 
-type ReceiptVerifier = Callable[[Path, JsonObject, str], ValidatedReceipt]
+def _receipt_signature_state(inputs: ReceiptInputs) -> tuple[str, str | None]:
+    """Resolve step four: does a repository-authorized key sign these exact bytes?"""
+
+    if not receipt_signer_trust_activated(inputs.name, inputs.trust_policy):
+        # Zero signer keys are authorized until connected authority activates them
+        # in reviewed protected source. Supplying attestation material cannot change
+        # that, so the receipt is consistent evidence and nothing more.
+        return QUALIFICATION_SIGNATURE_PENDING, None
+    if inputs.attestation is None:
+        return QUALIFICATION_SIGNATURE_UNATTESTED, None
+    # A supplied attestation that fails to verify is an integrity violation, not a
+    # reportable state: `verify_receipt_attestation` raises and the report fails closed.
+    attestation = verify_receipt_attestation(
+        inputs.name,
+        inputs.attestation,
+        payload=inputs.encoded,
+        trust_policy=inputs.trust_policy,
+    )
+    return QUALIFICATION_VERIFIED, attestation.key_id
+
+
+def _validate_qualification_receipt(inputs: ReceiptInputs) -> ValidatedReceipt:
+    consistent = validate_receipt_internal_consistency(
+        inputs.name,
+        inputs.encoded,
+        inputs.path,
+        root=inputs.root,
+        trusted_source_revision=inputs.expected_revision,
+    )
+    qualification_state, signer_key_id = _receipt_signature_state(inputs)
+    return ValidatedReceipt(
+        digest=consistent.receipt_digest,
+        payload=inputs.payload,
+        bound_targets=consistent.required_targets,
+        # The receipt binds its own canonical content and an existing result artifact
+        # of the exact declared digest. That proves execution was recorded; it does
+        # not prove who recorded it, which is what the signature step is for.
+        verification_class="protected-receipt-result-verified",
+        qualification_state=qualification_state,
+        execution_proof=True,
+        signer_key_id=signer_key_id,
+    )
+
+
+type ReceiptVerifier = Callable[[ReceiptInputs], ValidatedReceipt]
 RECEIPT_VERIFIERS: Mapping[tuple[str, str], ReceiptVerifier] = {
     ("training_rehearsal", REHEARSAL_SCHEMA): _validate_rehearsal,
     ("training_vertical", TRAINING_EVIDENCE_SCHEMA): _validate_training_payload,
+    **{
+        (name, contract.schema_version): _validate_qualification_receipt
+        for name, contract in RECEIPT_CONTRACTS.items()
+    },
 }
 
 
@@ -484,7 +588,15 @@ def validate_receipt(
     expected_schema: str,
     expected_revision: str,
     required_digests: Sequence[str],
+    root: Path,
+    attestation: AttestedArtifact | None = None,
+    trust_policy: SignerTrustPolicy = GOVERNED_SIGNER_TRUST_POLICY,
 ) -> ValidatedReceipt:
+    # Step one: the receipt must exist at its declared path as a regular file.
+    if path.is_symlink() or not path.is_file():
+        raise ValueError(f"{path} is not an existing regular receipt file")
+    if attestation is not None and receipt_name not in RECEIPT_CONTRACTS:
+        raise ValueError(f"no governed receipt signer is registered for {receipt_name}")
     receipt = load_object(path)
     if receipt.get("schema_version") != expected_schema:
         raise ValueError(f"{path} schema_version is not the required {expected_schema}")
@@ -493,7 +605,20 @@ def validate_receipt(
         raise ValueError(
             f"no governed receipt verifier is registered for {receipt_name} ({expected_schema})"
         )
-    validated = verifier(path, receipt, expected_revision)
+    validated = verifier(
+        ReceiptInputs(
+            name=receipt_name,
+            path=path,
+            encoded=path.read_bytes(),
+            payload=receipt,
+            expected_revision=expected_revision,
+            root=root,
+            attestation=attestation,
+            trust_policy=trust_policy,
+        )
+    )
+    if validated.qualification_state not in QUALIFICATION_STATES:
+        raise ValueError(f"{path} produced an ungoverned qualification state")
     _validate_required_bindings(validated.payload, path, required_digests)
     return validated
 
@@ -519,6 +644,26 @@ def parse_receipt(value: str) -> tuple[str, Path]:
     return name, Path(path)
 
 
+def _receipt_attestations(
+    receipt_paths: Mapping[str, Path],
+    signature_paths: Mapping[str, Path],
+    public_key_paths: Mapping[str, Path],
+) -> dict[str, AttestedArtifact]:
+    if set(signature_paths) != set(public_key_paths):
+        raise ValueError("receipt signatures and public keys must be declared in exact pairs")
+    undeclared = sorted(set(signature_paths) - set(receipt_paths))
+    if undeclared:
+        raise ValueError(f"receipt attestations name undeclared receipts: {undeclared}")
+    return {
+        name: AttestedArtifact(
+            payload_path=receipt_paths[name],
+            signature_envelope_path=signature_paths[name],
+            public_key_path=public_key_paths[name],
+        )
+        for name in sorted(signature_paths)
+    }
+
+
 def build_report(
     plan_path: Path,
     rehearsal_path: Path,
@@ -526,7 +671,13 @@ def build_report(
     mapping_path: Path = DEFAULT_MAPPING_PATH,
     root: Path | None = None,
     receipt_paths: Mapping[str, Path] | None = None,
+    receipt_signature_paths: Mapping[str, Path] | None = None,
+    receipt_public_key_paths: Mapping[str, Path] | None = None,
     expected_source_revision: str | None = None,
+    # Repository-owned signer trust is the default and the only trust the command
+    # line can select. The parameter exists so isolated tests can prove the verified
+    # path without waiting on connected authority to activate a real key.
+    trust_policy: SignerTrustPolicy = GOVERNED_SIGNER_TRUST_POLICY,
 ) -> JsonObject:
     root = (root or plan_path.resolve().parents[2]).resolve()
     plan_source = plan_path.read_text(encoding="utf-8")
@@ -549,6 +700,11 @@ def build_report(
     unexpected_receipts = sorted(set(paths) - used_receipts)
     if unexpected_receipts:
         raise ValueError(f"readiness receipts are not mapped to criteria: {unexpected_receipts}")
+    attestations = _receipt_attestations(
+        paths,
+        dict(receipt_signature_paths or {}),
+        dict(receipt_public_key_paths or {}),
+    )
 
     validated: dict[tuple[str, str, tuple[str, ...]], ValidatedReceipt] = {}
     evidence_by_id: dict[str, dict[str, object]] = {}
@@ -569,6 +725,9 @@ def build_report(
                     expected_schema=expected_schema,
                     expected_revision=expected_revision,
                     required_digests=required_digests,
+                    root=root,
+                    attestation=attestations.get(receipt_name),
+                    trust_policy=trust_policy,
                 )
             validated_receipt = validated[key]
         targets = cast(list[str], entry["bazel_targets"])
@@ -580,10 +739,15 @@ def build_report(
         verification_class = (
             validated_receipt.verification_class if validated_receipt is not None else None
         )
-        # Source rehearsal evidence can establish only source readiness. An unsigned
-        # protected payload is structurally validated but cannot satisfy protected,
-        # connected, or scientific qualification.
-        qualification_verified = False
+        qualification_state = (
+            validated_receipt.qualification_state
+            if validated_receipt is not None
+            else QUALIFICATION_NO_RECEIPT
+        )
+        # Qualification is exactly the four-step receipt proof, and its last step is a
+        # signature by a key that repository-owned policy authorizes. Source rehearsal
+        # assertions and unsigned protected payloads never reach it.
+        qualification_verified = qualification_state == QUALIFICATION_VERIFIED
         evidence_verified = (
             validated_receipt is not None and target_binding_validated and qualification_verified
         )
@@ -593,6 +757,7 @@ def build_report(
             "evidence_present": evidence_present,
             "evidence_verified": evidence_verified,
             "qualification_class": qualification_class,
+            "qualification_state": qualification_state,
             "qualification_verified": qualification_verified,
             "receipt": validated_receipt,
             "target_binding_validated": target_binding_validated,
@@ -631,11 +796,18 @@ def build_report(
             dependency for dependency in dependencies if not completion_by_id[dependency]
         ]
         qualification_class = cast(str, state["qualification_class"])
+        qualification_state = cast(str, state["qualification_state"])
         evidence_present = bool(state["evidence_present"])
         evidence_verified = bool(state["evidence_verified"])
         target_binding_validated = bool(state["target_binding_validated"])
         if completion_by_id[criterion_id]:
             status = "completion-verified"
+        elif qualification_state == QUALIFICATION_SIGNATURE_PENDING and target_binding_validated:
+            # Distinct from both "no evidence" and "verified": the receipt exists,
+            # recomputes, binds its result artifact, and covers this criterion's
+            # targets, but no signer key is activated yet. Completion still requires
+            # the trusted signature, so this branch can never imply completion.
+            status = SIGNATURE_PENDING_STATUS
         elif qualification_class == "protected":
             status = "pending-protected-qualification"
         elif qualification_class == "connected":
@@ -672,13 +844,16 @@ def build_report(
                     "owner": entry["owner"],
                     "plan_checked": checked,
                     "qualification_class": qualification_class,
+                    "qualification_state": qualification_state,
                     "qualification_verified": bool(state["qualification_verified"]),
                     "receipt": {
                         "digest": (
                             validated_receipt.digest if validated_receipt is not None else None
                         ),
                         "name": entry["receipt_name"],
-                        "execution_proof_available": False,
+                        "execution_proof_available": (
+                            validated_receipt is not None and validated_receipt.execution_proof
+                        ),
                         "present": evidence_present,
                         "producer_available": entry["receipt_name"] == "training_rehearsal",
                         "bound_bazel_targets": (
@@ -687,6 +862,12 @@ def build_report(
                             else []
                         ),
                         "schema_version": entry["receipt_schema_version"],
+                        "signature_verified": qualification_state == QUALIFICATION_VERIFIED,
+                        "signer_key_id": (
+                            validated_receipt.signer_key_id
+                            if validated_receipt is not None
+                            else None
+                        ),
                         "validated": validated_receipt is not None,
                         "verification_class": state["verification_class"],
                     },
@@ -704,6 +885,11 @@ def build_report(
         "plan_digest": digest_bytes(plan_source.encode()),
         "ratification_authorized": False,
         "schema_version": READINESS_SCHEMA,
+        # False while connected authority has activated no signer key, which is why
+        # every internally consistent receipt reports only as signature-pending.
+        "signer_trust_activated": any(
+            receipt_signer_trust_activated(name, trust_policy) for name in sorted(RECEIPT_CONTRACTS)
+        ),
         "source_revision": expected_revision,
         "summary": summary_json,
     }
@@ -730,13 +916,25 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--criterion-map", type=Path, default=DEFAULT_MAPPING_PATH)
     parser.add_argument("--rehearsal", type=Path, required=True)
     parser.add_argument("--receipt", action="append", type=parse_receipt, default=[])
+    parser.add_argument("--receipt-signature", action="append", type=parse_receipt, default=[])
+    parser.add_argument("--receipt-public-key", action="append", type=parse_receipt, default=[])
     parser.add_argument("--expected-source-revision")
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args(argv)
-    raw_receipts = cast(list[tuple[str, Path]], args.receipt)
-    receipts = dict(raw_receipts)
-    if len(receipts) != len(raw_receipts):
-        raise SystemExit("readiness report failed: duplicate receipt name")
+
+    def exact_named_paths(raw_values: list[tuple[str, Path]], label: str) -> dict[str, Path]:
+        values = dict(raw_values)
+        if len(values) != len(raw_values):
+            raise SystemExit(f"readiness report failed: duplicate {label} name")
+        return values
+
+    receipts = exact_named_paths(cast(list[tuple[str, Path]], args.receipt), "receipt")
+    signatures = exact_named_paths(
+        cast(list[tuple[str, Path]], args.receipt_signature), "receipt signature"
+    )
+    public_keys = exact_named_paths(
+        cast(list[tuple[str, Path]], args.receipt_public_key), "receipt public key"
+    )
     try:
         report = build_report(
             cast(Path, args.plan),
@@ -744,6 +942,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             mapping_path=cast(Path, args.criterion_map),
             root=cast(Path, args.root),
             receipt_paths=receipts,
+            receipt_signature_paths=signatures,
+            receipt_public_key_paths=public_keys,
             expected_source_revision=cast(str | None, args.expected_source_revision),
         )
         atomic_write(cast(Path, args.output), report)

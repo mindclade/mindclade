@@ -890,7 +890,7 @@ def _validate_authoritative_readiness(path: Path, source_revision: str) -> None:
     criteria = report.get("criteria")
     summary = report.get("summary")
     if (
-        report.get("schema_version") != "mindclade.authoritative-integration-readiness/v2"
+        report.get("schema_version") != "mindclade.authoritative-integration-readiness/v3"
         or report.get("source_revision") != source_revision
         or report.get("ratification_authorized") is not False
         or not isinstance(criteria, list)
@@ -1011,8 +1011,8 @@ def validate_check_report(
         ):
             raise ValueError("cacheless canary lacks matching independent output digests")
     elif name == "authoritative-integration-readiness":
-        report = read_object(path, "mindclade.authoritative-integration-readiness/v2")
-        if report.get("schema_version") != "mindclade.authoritative-integration-readiness/v2":
+        report = read_object(path, "mindclade.authoritative-integration-readiness/v3")
+        if report.get("schema_version") != "mindclade.authoritative-integration-readiness/v3":
             raise ValueError("authoritative integration readiness report has the wrong schema")
         # This report is an inventory of evidence state, not a stage-completion
         # signal, so PASS here must never be derived from criterion statuses.

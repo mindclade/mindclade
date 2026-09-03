@@ -18,6 +18,7 @@ from readiness_report import (
     build_report,
     digest_bytes,
     plan_criteria,
+    validate_receipt,
 )
 from readiness_report import (
     JsonValue as ReadinessJsonValue,
@@ -545,6 +546,37 @@ class ReadinessReportTest(unittest.TestCase):
                 )
 
     def test_unregistered_receipt_verifier_fails_closed(self) -> None:
+        """A receipt whose (name, schema) pair has no verifier is refused.
+
+        Every name in ``RECEIPT_CONTRACTS`` now has a generic qualification
+        verifier, so this reaches the guard through ``validate_receipt``, which
+        owns it, rather than through a fixture that happened to be unregistered.
+        """
+
+        with tempfile.TemporaryDirectory() as directory:
+            receipt = Path(directory) / "unregistered.json"
+            receipt.write_text(
+                json.dumps({"schema_version": "mindclade.not-a-governed-lane/v1"}),
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(ValueError, "no governed receipt verifier"):
+                validate_receipt(
+                    receipt,
+                    receipt_name="not_a_governed_lane",
+                    expected_schema="mindclade.not-a-governed-lane/v1",
+                    expected_revision="a" * 40,
+                    required_digests=(),
+                    root=Path(directory),
+                )
+
+    def test_registered_receipt_missing_its_contract_fields_fails_closed(self) -> None:
+        """A registered lane still refuses a receipt that omits bound identity.
+
+        This is the fixture the unregistered test used to carry. Now that
+        ``cross_language`` has a verifier, it proves the second half of the
+        contract: reaching a verifier is not the same as satisfying it.
+        """
+
         with tempfile.TemporaryDirectory() as directory:
             root, plan, mapping, rehearsal, revision = self._fixture(directory)
             receipt = Path(directory) / "cross-language.json"
@@ -557,7 +589,7 @@ class ReadinessReportTest(unittest.TestCase):
                 ),
                 encoding="utf-8",
             )
-            with self.assertRaisesRegex(ValueError, "no governed receipt verifier"):
+            with self.assertRaisesRegex(ValueError, "protected_build_identity"):
                 build_report(
                     plan,
                     rehearsal,
