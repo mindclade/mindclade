@@ -5077,603 +5077,603 @@
           "reason": "Generated bindings and validators make authoritative JSON Schemas executable in all four internal languages."
         },
         {
-          "path": "internal/sdk/README.md",
+          "path": "sdks/README.md",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/go/mindclade/BUILD.bazel",
+          "path": "sdks/go/mindclade/BUILD.bazel",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/go/mindclade/README.md",
+          "path": "sdks/go/mindclade/README.md",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/go/mindclade/admin.go",
+          "path": "sdks/go/mindclade/admin.go",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/go/mindclade/agent_test.go",
+          "path": "sdks/go/mindclade/agent_test.go",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/go/mindclade/agents.go",
+          "path": "sdks/go/mindclade/agents.go",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/go/mindclade/approvals.go",
+          "path": "sdks/go/mindclade/approvals.go",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/go/mindclade/artifacts.go",
+          "path": "sdks/go/mindclade/artifacts.go",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/go/mindclade/auth.go",
+          "path": "sdks/go/mindclade/auth.go",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/go/mindclade/auth_test.go",
+          "path": "sdks/go/mindclade/auth_test.go",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/go/mindclade/client.go",
+          "path": "sdks/go/mindclade/client.go",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/go/mindclade/client_test.go",
+          "path": "sdks/go/mindclade/client_test.go",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/go/mindclade/config.go",
+          "path": "sdks/go/mindclade/config.go",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/go/mindclade/datasets.go",
+          "path": "sdks/go/mindclade/datasets.go",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/go/mindclade/error.go",
+          "path": "sdks/go/mindclade/error.go",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/go/mindclade/evaluations.go",
+          "path": "sdks/go/mindclade/evaluations.go",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/go/mindclade/evaluations_test.go",
+          "path": "sdks/go/mindclade/evaluations_test.go",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/go/mindclade/interceptors.go",
+          "path": "sdks/go/mindclade/interceptors.go",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/go/mindclade/inference.go",
+          "path": "sdks/go/mindclade/inference.go",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/go/mindclade/inference_test.go",
+          "path": "sdks/go/mindclade/inference_test.go",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/go/mindclade/lifecycle_test.go",
+          "path": "sdks/go/mindclade/lifecycle_test.go",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/go/mindclade/method_policy.go",
+          "path": "sdks/go/mindclade/method_policy.go",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/go/mindclade/models.go",
+          "path": "sdks/go/mindclade/models.go",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/go/mindclade/operations.go",
+          "path": "sdks/go/mindclade/operations.go",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/go/mindclade/policy_test.go",
+          "path": "sdks/go/mindclade/policy_test.go",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/go/mindclade/policies.go",
+          "path": "sdks/go/mindclade/policies.go",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/go/mindclade/policy_admin_test.go",
+          "path": "sdks/go/mindclade/policy_admin_test.go",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/go/mindclade/request.go",
+          "path": "sdks/go/mindclade/request.go",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/go/mindclade/training.go",
+          "path": "sdks/go/mindclade/training.go",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/go/mindclade/transport.go",
+          "path": "sdks/go/mindclade/transport.go",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/go/mindclade/workflow_test.go",
+          "path": "sdks/go/mindclade/workflow_test.go",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/go/mindclade/workflows.go",
+          "path": "sdks/go/mindclade/workflows.go",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/python/BUILD.bazel",
+          "path": "sdks/python/BUILD.bazel",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/python/README.md",
+          "path": "sdks/python/README.md",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/python/mindclade_internal_sdk/__init__.py",
+          "path": "sdks/python/mindclade_internal_sdk/__init__.py",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/python/mindclade_internal_sdk/_invocation.py",
+          "path": "sdks/python/mindclade_internal_sdk/_invocation.py",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/python/mindclade_internal_sdk/_validation.py",
+          "path": "sdks/python/mindclade_internal_sdk/_validation.py",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/python/mindclade_internal_sdk/admin.py",
+          "path": "sdks/python/mindclade_internal_sdk/admin.py",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/python/mindclade_internal_sdk/agents.py",
+          "path": "sdks/python/mindclade_internal_sdk/agents.py",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/python/mindclade_internal_sdk/artifacts.py",
+          "path": "sdks/python/mindclade_internal_sdk/artifacts.py",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/python/mindclade_internal_sdk/auth.py",
+          "path": "sdks/python/mindclade_internal_sdk/auth.py",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/python/mindclade_internal_sdk/calls.py",
+          "path": "sdks/python/mindclade_internal_sdk/calls.py",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/python/mindclade_internal_sdk/client.py",
+          "path": "sdks/python/mindclade_internal_sdk/client.py",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/python/mindclade_internal_sdk/config.py",
+          "path": "sdks/python/mindclade_internal_sdk/config.py",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/python/mindclade_internal_sdk/datasets.py",
+          "path": "sdks/python/mindclade_internal_sdk/datasets.py",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/python/mindclade_internal_sdk/errors.py",
+          "path": "sdks/python/mindclade_internal_sdk/errors.py",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/python/mindclade_internal_sdk/events.py",
+          "path": "sdks/python/mindclade_internal_sdk/events.py",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/python/mindclade_internal_sdk/generated.py",
+          "path": "sdks/python/mindclade_internal_sdk/generated.py",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/python/mindclade_internal_sdk/inference.py",
+          "path": "sdks/python/mindclade_internal_sdk/inference.py",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/python/mindclade_internal_sdk/method_policy.py",
+          "path": "sdks/python/mindclade_internal_sdk/method_policy.py",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/python/mindclade_internal_sdk/models.py",
+          "path": "sdks/python/mindclade_internal_sdk/models.py",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/python/mindclade_internal_sdk/operations.py",
+          "path": "sdks/python/mindclade_internal_sdk/operations.py",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/python/mindclade_internal_sdk/policies.py",
+          "path": "sdks/python/mindclade_internal_sdk/policies.py",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/python/mindclade_internal_sdk/testing.py",
+          "path": "sdks/python/mindclade_internal_sdk/testing.py",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/python/mindclade_internal_sdk/training.py",
+          "path": "sdks/python/mindclade_internal_sdk/training.py",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/python/mindclade_internal_sdk/transport.py",
+          "path": "sdks/python/mindclade_internal_sdk/transport.py",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/python/mindclade_internal_sdk/workflows.py",
+          "path": "sdks/python/mindclade_internal_sdk/workflows.py",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/python/pyproject.toml",
+          "path": "sdks/python/pyproject.toml",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/python/tests/test_internal_sdk.py",
+          "path": "sdks/python/tests/test_internal_sdk.py",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/python/tests/test_agents.py",
+          "path": "sdks/python/tests/test_agents.py",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/python/tests/test_inference.py",
+          "path": "sdks/python/tests/test_inference.py",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/python/tests/test_policy_admin.py",
+          "path": "sdks/python/tests/test_policy_admin.py",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/python/tests/test_workflows.py",
+          "path": "sdks/python/tests/test_workflows.py",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/rust/BUILD.bazel",
+          "path": "sdks/rust/BUILD.bazel",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/rust/Cargo.toml",
+          "path": "sdks/rust/Cargo.toml",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/rust/README.md",
+          "path": "sdks/rust/README.md",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/rust/src/admin.rs",
+          "path": "sdks/rust/src/admin.rs",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/rust/src/agent_tests.rs",
+          "path": "sdks/rust/src/agent_tests.rs",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/rust/src/agents.rs",
+          "path": "sdks/rust/src/agents.rs",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/rust/src/approvals.rs",
+          "path": "sdks/rust/src/approvals.rs",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/rust/src/artifacts.rs",
+          "path": "sdks/rust/src/artifacts.rs",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/rust/src/auth.rs",
+          "path": "sdks/rust/src/auth.rs",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/rust/src/config.rs",
+          "path": "sdks/rust/src/config.rs",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/rust/src/datasets.rs",
+          "path": "sdks/rust/src/datasets.rs",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/rust/src/error.rs",
+          "path": "sdks/rust/src/error.rs",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/rust/src/events.rs",
+          "path": "sdks/rust/src/events.rs",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/rust/src/inference.rs",
+          "path": "sdks/rust/src/inference.rs",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/rust/src/lib.rs",
+          "path": "sdks/rust/src/lib.rs",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/rust/src/models.rs",
+          "path": "sdks/rust/src/models.rs",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/rust/src/operations.rs",
+          "path": "sdks/rust/src/operations.rs",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/rust/src/policies.rs",
+          "path": "sdks/rust/src/policies.rs",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/rust/src/policy_admin_tests.rs",
+          "path": "sdks/rust/src/policy_admin_tests.rs",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/rust/src/request.rs",
+          "path": "sdks/rust/src/request.rs",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/rust/src/retry.rs",
+          "path": "sdks/rust/src/retry.rs",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/rust/src/tests.rs",
+          "path": "sdks/rust/src/tests.rs",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/rust/src/testing.rs",
+          "path": "sdks/rust/src/testing.rs",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/rust/src/training.rs",
+          "path": "sdks/rust/src/training.rs",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/rust/src/transport.rs",
+          "path": "sdks/rust/src/transport.rs",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/rust/src/workflow_tests.rs",
+          "path": "sdks/rust/src/workflow_tests.rs",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/rust/src/workflows.rs",
+          "path": "sdks/rust/src/workflows.rs",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/typescript/BUILD.bazel",
+          "path": "sdks/typescript/BUILD.bazel",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/typescript/README.md",
+          "path": "sdks/typescript/README.md",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/typescript/bazel/package.json",
+          "path": "sdks/typescript/bazel/package.json",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/typescript/biome.json",
+          "path": "sdks/typescript/biome.json",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/typescript/package.json",
+          "path": "sdks/typescript/package.json",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/typescript/src/admin.ts",
+          "path": "sdks/typescript/src/admin.ts",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/typescript/src/agents.ts",
+          "path": "sdks/typescript/src/agents.ts",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/typescript/src/approvals.ts",
+          "path": "sdks/typescript/src/approvals.ts",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/typescript/src/artifacts.ts",
+          "path": "sdks/typescript/src/artifacts.ts",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/typescript/src/auth.ts",
+          "path": "sdks/typescript/src/auth.ts",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/typescript/src/client.ts",
+          "path": "sdks/typescript/src/client.ts",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/typescript/src/config.ts",
+          "path": "sdks/typescript/src/config.ts",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/typescript/src/core.ts",
+          "path": "sdks/typescript/src/core.ts",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/typescript/src/datasets.ts",
+          "path": "sdks/typescript/src/datasets.ts",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/typescript/src/error.ts",
+          "path": "sdks/typescript/src/error.ts",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/typescript/src/gcp_auth.ts",
+          "path": "sdks/typescript/src/gcp_auth.ts",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/typescript/src/inference.ts",
+          "path": "sdks/typescript/src/inference.ts",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/typescript/src/index.ts",
+          "path": "sdks/typescript/src/index.ts",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/typescript/src/models.ts",
+          "path": "sdks/typescript/src/models.ts",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/typescript/src/operations.ts",
+          "path": "sdks/typescript/src/operations.ts",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/typescript/src/policies.ts",
+          "path": "sdks/typescript/src/policies.ts",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/typescript/src/raw.ts",
+          "path": "sdks/typescript/src/raw.ts",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/typescript/src/request.ts",
+          "path": "sdks/typescript/src/request.ts",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/typescript/src/retry.ts",
+          "path": "sdks/typescript/src/retry.ts",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/typescript/src/runtime.ts",
+          "path": "sdks/typescript/src/runtime.ts",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/typescript/src/safety.ts",
+          "path": "sdks/typescript/src/safety.ts",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/typescript/src/testing.ts",
+          "path": "sdks/typescript/src/testing.ts",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/typescript/src/training.ts",
+          "path": "sdks/typescript/src/training.ts",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/typescript/src/transport.ts",
+          "path": "sdks/typescript/src/transport.ts",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/typescript/src/workflows.ts",
+          "path": "sdks/typescript/src/workflows.ts",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/typescript/tests/sdk.test.ts",
+          "path": "sdks/typescript/tests/sdk.test.ts",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/typescript/tests/policy_admin.test.ts",
+          "path": "sdks/typescript/tests/policy_admin.test.ts",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/typescript/tests/agents.test.ts",
+          "path": "sdks/typescript/tests/agents.test.ts",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/typescript/tests/workflow_approval.test.ts",
+          "path": "sdks/typescript/tests/workflow_approval.test.ts",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/typescript/tsconfig.json",
+          "path": "sdks/typescript/tsconfig.json",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/go/mindclade/artifact_operation_gap_test.go",
+          "path": "sdks/go/mindclade/artifact_operation_gap_test.go",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/go/mindclade/job_run_test.go",
+          "path": "sdks/go/mindclade/job_run_test.go",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/go/mindclade/jobs.go",
+          "path": "sdks/go/mindclade/jobs.go",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/go/mindclade/runs.go",
+          "path": "sdks/go/mindclade/runs.go",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/go/mindclade/training_lifecycle_test.go",
+          "path": "sdks/go/mindclade/training_lifecycle_test.go",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/python/mindclade_internal_sdk/evaluations.py",
+          "path": "sdks/python/mindclade_internal_sdk/evaluations.py",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/python/mindclade_internal_sdk/jobs.py",
+          "path": "sdks/python/mindclade_internal_sdk/jobs.py",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/python/mindclade_internal_sdk/runs.py",
+          "path": "sdks/python/mindclade_internal_sdk/runs.py",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/python/tests/test_artifact_operation_gaps.py",
+          "path": "sdks/python/tests/test_artifact_operation_gaps.py",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/python/tests/test_evaluations.py",
+          "path": "sdks/python/tests/test_evaluations.py",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/python/tests/test_job_run.py",
+          "path": "sdks/python/tests/test_job_run.py",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/python/tests/test_training_lifecycle.py",
+          "path": "sdks/python/tests/test_training_lifecycle.py",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/rust/src/artifact_operation_gap_tests.rs",
+          "path": "sdks/rust/src/artifact_operation_gap_tests.rs",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/rust/src/evaluation_tests.rs",
+          "path": "sdks/rust/src/evaluation_tests.rs",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/rust/src/evaluations.rs",
+          "path": "sdks/rust/src/evaluations.rs",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/rust/src/job_run_tests.rs",
+          "path": "sdks/rust/src/job_run_tests.rs",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/rust/src/jobs.rs",
+          "path": "sdks/rust/src/jobs.rs",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/rust/src/runs.rs",
+          "path": "sdks/rust/src/runs.rs",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/rust/src/training_tests.rs",
+          "path": "sdks/rust/src/training_tests.rs",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/typescript/src/evaluations.ts",
+          "path": "sdks/typescript/src/evaluations.ts",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/typescript/src/jobs.ts",
+          "path": "sdks/typescript/src/jobs.ts",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/typescript/src/runs.ts",
+          "path": "sdks/typescript/src/runs.ts",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/typescript/tests/evaluations.test.ts",
+          "path": "sdks/typescript/tests/evaluations.test.ts",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/typescript/tests/job_run.test.ts",
+          "path": "sdks/typescript/tests/job_run.test.ts",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
-          "path": "internal/sdk/typescript/tests/training.test.ts",
+          "path": "sdks/typescript/tests/training.test.ts",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
@@ -6249,11 +6249,11 @@
           "reason": "Native interoperability tests, authoritative criterion mapping, readiness reporting, non-ratifying rehearsal, and protected Stage-5 evidence assembly govern contract qualification."
         },
         {
-          "path": "internal/sdk/rpc-coverage.yaml",
+          "path": "sdks/rpc-coverage.yaml",
           "reason": "Descriptor-derived coverage classifies every internal RPC as ergonomic, intentional raw-only, or reviewed unsupported."
         },
         {
-          "path": "internal/sdk/rpc-coverage.generated.json",
+          "path": "sdks/rpc-coverage.generated.json",
           "reason": "Descriptor-derived coverage classifies every internal RPC as ergonomic, intentional raw-only, or reviewed unsupported."
         },
         {
@@ -6657,39 +6657,39 @@
           "reason": "The candidate Experiment, Study, and Trial lifecycle is coupled atomically to generated transports, normalized tenant-isolated persistence, immutable outbox events, four private SDK facades, and an administrative consumer."
         },
         {
-          "path": "internal/sdk/go/mindclade/experiments.go",
+          "path": "sdks/go/mindclade/experiments.go",
           "reason": "The candidate Experiment, Study, and Trial lifecycle is coupled atomically to generated transports, normalized tenant-isolated persistence, immutable outbox events, four private SDK facades, and an administrative consumer."
         },
         {
-          "path": "internal/sdk/go/mindclade/experiments_test.go",
+          "path": "sdks/go/mindclade/experiments_test.go",
           "reason": "The candidate Experiment, Study, and Trial lifecycle is coupled atomically to generated transports, normalized tenant-isolated persistence, immutable outbox events, four private SDK facades, and an administrative consumer."
         },
         {
-          "path": "internal/sdk/python/mindclade_internal_sdk/experiments.py",
+          "path": "sdks/python/mindclade_internal_sdk/experiments.py",
           "reason": "The candidate Experiment, Study, and Trial lifecycle is coupled atomically to generated transports, normalized tenant-isolated persistence, immutable outbox events, four private SDK facades, and an administrative consumer."
         },
         {
-          "path": "internal/sdk/python/tests/test_experiments.py",
+          "path": "sdks/python/tests/test_experiments.py",
           "reason": "The candidate Experiment, Study, and Trial lifecycle is coupled atomically to generated transports, normalized tenant-isolated persistence, immutable outbox events, four private SDK facades, and an administrative consumer."
         },
         {
-          "path": "internal/sdk/rust/src/experiments.rs",
+          "path": "sdks/rust/src/experiments.rs",
           "reason": "The candidate Experiment, Study, and Trial lifecycle is coupled atomically to generated transports, normalized tenant-isolated persistence, immutable outbox events, four private SDK facades, and an administrative consumer."
         },
         {
-          "path": "internal/sdk/rust/src/experiment_tests.rs",
+          "path": "sdks/rust/src/experiment_tests.rs",
           "reason": "The candidate Experiment, Study, and Trial lifecycle is coupled atomically to generated transports, normalized tenant-isolated persistence, immutable outbox events, four private SDK facades, and an administrative consumer."
         },
         {
-          "path": "internal/sdk/typescript/src/experiments.ts",
+          "path": "sdks/typescript/src/experiments.ts",
           "reason": "The candidate Experiment, Study, and Trial lifecycle is coupled atomically to generated transports, normalized tenant-isolated persistence, immutable outbox events, four private SDK facades, and an administrative consumer."
         },
         {
-          "path": "internal/sdk/typescript/tests/experiments.test.ts",
+          "path": "sdks/typescript/tests/experiments.test.ts",
           "reason": "The candidate Experiment, Study, and Trial lifecycle is coupled atomically to generated transports, normalized tenant-isolated persistence, immutable outbox events, four private SDK facades, and an administrative consumer."
         },
         {
-          "path": "internal/sdk/python/mindclade_internal_sdk/resources.py",
+          "path": "sdks/python/mindclade_internal_sdk/resources.py",
           "reason": "Governed examples exercise private-SDK training submission, resumable operation watch, digest-verified atomic artifact download, and approval-bound analysis-agent start/status/cancel without direct generated or backend dependencies."
         },
         {
@@ -6913,6 +6913,10 @@
           "reason": "ADR-0023 activates deterministic build-contract tooling while keeping connected cache writes and remote execution fail closed."
         },
         {
+          "path": "docs/adr/0024-internal-sdk-roots-move-to-sdks.md",
+          "reason": "ADR-0024 records the internal SDK root relocation and why the blueprint's sdks/internal/<language> spelling cannot be used for Go."
+        },
+        {
           "path": "docs/adr/0001-repository-identity-and-ownership.md",
           "replaces": "docs/adr/0001-repository-identity.md",
           "reason": "Sections 1-18 and Section 14.1 take precedence over the stale A6 short ADR name."
@@ -6953,8 +6957,8 @@
           "reason": "Dependabot is retired estate-wide; Renovate configuration extending the organization preset in mindclade/.github replaces it."
         }
       ],
-      "canonical_file_count": 3565,
-      "canonical_path_set_sha256": "7d39a90b849df78856af43adc5d8ac17017f22ac79b00e65064dfc53d890d613"
+      "canonical_file_count": 3566,
+      "canonical_path_set_sha256": "f2f311f029bd594a1828eb776aa72b4598a31cf04f4f9c161c797b9c6c33ebf2"
     },
     "owners": {
       "agent-platform": {
@@ -57072,6 +57076,22 @@
       "public_surface": false
     },
     {
+      "path": "docs/adr/0024-internal-sdk-roots-move-to-sdks.md",
+      "kind": "documentation",
+      "owner": "architecture",
+      "component": "docs-adr",
+      "status": "active",
+      "activation_wave": "0",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:wave0_governance_sources"
+      ],
+      "test_targets": [
+        "//:wave0_tests"
+      ],
+      "public_surface": false
+    },
+    {
       "path": "docs/domains/bio.md",
       "kind": "documentation",
       "owner": "developer-platform",
@@ -58706,7 +58726,7 @@
       "public_surface": false
     },
     {
-      "path": "internal/sdk/README.md",
+      "path": "sdks/README.md",
       "kind": "documentation",
       "owner": "developer-experience",
       "component": "internal-sdk",
@@ -58723,7 +58743,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/go/mindclade/BUILD.bazel",
+      "path": "sdks/go/mindclade/BUILD.bazel",
       "kind": "build",
       "owner": "developer-experience",
       "component": "internal-sdk-go",
@@ -58740,7 +58760,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/go/mindclade/README.md",
+      "path": "sdks/go/mindclade/README.md",
       "kind": "documentation",
       "owner": "developer-experience",
       "component": "internal-sdk-go",
@@ -58757,7 +58777,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/go/mindclade/admin.go",
+      "path": "sdks/go/mindclade/admin.go",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-go",
@@ -58774,7 +58794,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/go/mindclade/agent_test.go",
+      "path": "sdks/go/mindclade/agent_test.go",
       "kind": "test",
       "owner": "developer-experience",
       "component": "internal-sdk-go",
@@ -58791,7 +58811,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/go/mindclade/agents.go",
+      "path": "sdks/go/mindclade/agents.go",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-go",
@@ -58808,7 +58828,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/go/mindclade/approvals.go",
+      "path": "sdks/go/mindclade/approvals.go",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-go",
@@ -58825,7 +58845,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/go/mindclade/artifacts.go",
+      "path": "sdks/go/mindclade/artifacts.go",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-go",
@@ -58842,7 +58862,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/go/mindclade/auth.go",
+      "path": "sdks/go/mindclade/auth.go",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-go",
@@ -58859,7 +58879,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/go/mindclade/auth_test.go",
+      "path": "sdks/go/mindclade/auth_test.go",
       "kind": "test",
       "owner": "developer-experience",
       "component": "internal-sdk-go",
@@ -58876,7 +58896,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/go/mindclade/client.go",
+      "path": "sdks/go/mindclade/client.go",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-go",
@@ -58893,7 +58913,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/go/mindclade/client_test.go",
+      "path": "sdks/go/mindclade/client_test.go",
       "kind": "test",
       "owner": "developer-experience",
       "component": "internal-sdk-go",
@@ -58910,7 +58930,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/go/mindclade/config.go",
+      "path": "sdks/go/mindclade/config.go",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-go",
@@ -58927,7 +58947,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/go/mindclade/datasets.go",
+      "path": "sdks/go/mindclade/datasets.go",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-go",
@@ -58944,7 +58964,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/go/mindclade/error.go",
+      "path": "sdks/go/mindclade/error.go",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-go",
@@ -58961,7 +58981,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/go/mindclade/evaluations.go",
+      "path": "sdks/go/mindclade/evaluations.go",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-go",
@@ -58978,7 +58998,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/go/mindclade/evaluations_test.go",
+      "path": "sdks/go/mindclade/evaluations_test.go",
       "kind": "test",
       "owner": "developer-experience",
       "component": "internal-sdk-go",
@@ -58995,7 +59015,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/go/mindclade/interceptors.go",
+      "path": "sdks/go/mindclade/interceptors.go",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-go",
@@ -59012,7 +59032,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/go/mindclade/inference.go",
+      "path": "sdks/go/mindclade/inference.go",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-go",
@@ -59029,7 +59049,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/go/mindclade/inference_test.go",
+      "path": "sdks/go/mindclade/inference_test.go",
       "kind": "test",
       "owner": "developer-experience",
       "component": "internal-sdk-go",
@@ -59046,7 +59066,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/go/mindclade/lifecycle_test.go",
+      "path": "sdks/go/mindclade/lifecycle_test.go",
       "kind": "test",
       "owner": "developer-experience",
       "component": "internal-sdk-go",
@@ -59063,7 +59083,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/go/mindclade/method_policy.go",
+      "path": "sdks/go/mindclade/method_policy.go",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-go",
@@ -59080,7 +59100,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/go/mindclade/models.go",
+      "path": "sdks/go/mindclade/models.go",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-go",
@@ -59097,7 +59117,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/go/mindclade/operations.go",
+      "path": "sdks/go/mindclade/operations.go",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-go",
@@ -59114,7 +59134,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/go/mindclade/policy_test.go",
+      "path": "sdks/go/mindclade/policy_test.go",
       "kind": "test",
       "owner": "developer-experience",
       "component": "internal-sdk-go",
@@ -59131,7 +59151,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/go/mindclade/policies.go",
+      "path": "sdks/go/mindclade/policies.go",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-go",
@@ -59148,7 +59168,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/go/mindclade/policy_admin_test.go",
+      "path": "sdks/go/mindclade/policy_admin_test.go",
       "kind": "test",
       "owner": "developer-experience",
       "component": "internal-sdk-go",
@@ -59165,7 +59185,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/go/mindclade/request.go",
+      "path": "sdks/go/mindclade/request.go",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-go",
@@ -59182,7 +59202,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/go/mindclade/training.go",
+      "path": "sdks/go/mindclade/training.go",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-go",
@@ -59199,7 +59219,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/go/mindclade/transport.go",
+      "path": "sdks/go/mindclade/transport.go",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-go",
@@ -59216,7 +59236,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/go/mindclade/workflow_test.go",
+      "path": "sdks/go/mindclade/workflow_test.go",
       "kind": "test",
       "owner": "developer-experience",
       "component": "internal-sdk-go",
@@ -59233,7 +59253,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/go/mindclade/workflows.go",
+      "path": "sdks/go/mindclade/workflows.go",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-go",
@@ -59250,7 +59270,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/go/mindclade/artifact_operation_gap_test.go",
+      "path": "sdks/go/mindclade/artifact_operation_gap_test.go",
       "kind": "test",
       "owner": "developer-experience",
       "component": "internal-sdk-go",
@@ -59267,7 +59287,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/go/mindclade/job_run_test.go",
+      "path": "sdks/go/mindclade/job_run_test.go",
       "kind": "test",
       "owner": "developer-experience",
       "component": "internal-sdk-go",
@@ -59284,7 +59304,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/go/mindclade/jobs.go",
+      "path": "sdks/go/mindclade/jobs.go",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-go",
@@ -59301,7 +59321,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/go/mindclade/runs.go",
+      "path": "sdks/go/mindclade/runs.go",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-go",
@@ -59318,7 +59338,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/go/mindclade/training_lifecycle_test.go",
+      "path": "sdks/go/mindclade/training_lifecycle_test.go",
       "kind": "test",
       "owner": "developer-experience",
       "component": "internal-sdk-go",
@@ -59335,7 +59355,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/go/mindclade/experiments.go",
+      "path": "sdks/go/mindclade/experiments.go",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-go",
@@ -59352,7 +59372,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/go/mindclade/experiments_test.go",
+      "path": "sdks/go/mindclade/experiments_test.go",
       "kind": "test",
       "owner": "developer-experience",
       "component": "internal-sdk-go",
@@ -59369,7 +59389,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/python/BUILD.bazel",
+      "path": "sdks/python/BUILD.bazel",
       "kind": "build",
       "owner": "developer-experience",
       "component": "internal-sdk-python",
@@ -59386,7 +59406,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/python/README.md",
+      "path": "sdks/python/README.md",
       "kind": "documentation",
       "owner": "developer-experience",
       "component": "internal-sdk-python",
@@ -59403,7 +59423,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/python/mindclade_internal_sdk/__init__.py",
+      "path": "sdks/python/mindclade_internal_sdk/__init__.py",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-python",
@@ -59420,7 +59440,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/python/mindclade_internal_sdk/_invocation.py",
+      "path": "sdks/python/mindclade_internal_sdk/_invocation.py",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-python",
@@ -59437,7 +59457,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/python/mindclade_internal_sdk/_validation.py",
+      "path": "sdks/python/mindclade_internal_sdk/_validation.py",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-python",
@@ -59454,7 +59474,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/python/mindclade_internal_sdk/admin.py",
+      "path": "sdks/python/mindclade_internal_sdk/admin.py",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-python",
@@ -59471,7 +59491,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/python/mindclade_internal_sdk/agents.py",
+      "path": "sdks/python/mindclade_internal_sdk/agents.py",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-python",
@@ -59488,7 +59508,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/python/mindclade_internal_sdk/artifacts.py",
+      "path": "sdks/python/mindclade_internal_sdk/artifacts.py",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-python",
@@ -59505,7 +59525,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/python/mindclade_internal_sdk/auth.py",
+      "path": "sdks/python/mindclade_internal_sdk/auth.py",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-python",
@@ -59522,7 +59542,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/python/mindclade_internal_sdk/calls.py",
+      "path": "sdks/python/mindclade_internal_sdk/calls.py",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-python",
@@ -59539,7 +59559,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/python/mindclade_internal_sdk/client.py",
+      "path": "sdks/python/mindclade_internal_sdk/client.py",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-python",
@@ -59556,7 +59576,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/python/mindclade_internal_sdk/config.py",
+      "path": "sdks/python/mindclade_internal_sdk/config.py",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-python",
@@ -59573,7 +59593,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/python/mindclade_internal_sdk/datasets.py",
+      "path": "sdks/python/mindclade_internal_sdk/datasets.py",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-python",
@@ -59590,7 +59610,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/python/mindclade_internal_sdk/errors.py",
+      "path": "sdks/python/mindclade_internal_sdk/errors.py",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-python",
@@ -59607,7 +59627,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/python/mindclade_internal_sdk/events.py",
+      "path": "sdks/python/mindclade_internal_sdk/events.py",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-python",
@@ -59624,7 +59644,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/python/mindclade_internal_sdk/generated.py",
+      "path": "sdks/python/mindclade_internal_sdk/generated.py",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-python",
@@ -59641,7 +59661,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/python/mindclade_internal_sdk/inference.py",
+      "path": "sdks/python/mindclade_internal_sdk/inference.py",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-python",
@@ -59658,7 +59678,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/python/mindclade_internal_sdk/method_policy.py",
+      "path": "sdks/python/mindclade_internal_sdk/method_policy.py",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-python",
@@ -59675,7 +59695,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/python/mindclade_internal_sdk/models.py",
+      "path": "sdks/python/mindclade_internal_sdk/models.py",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-python",
@@ -59692,7 +59712,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/python/mindclade_internal_sdk/operations.py",
+      "path": "sdks/python/mindclade_internal_sdk/operations.py",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-python",
@@ -59709,7 +59729,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/python/mindclade_internal_sdk/policies.py",
+      "path": "sdks/python/mindclade_internal_sdk/policies.py",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-python",
@@ -59726,7 +59746,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/python/mindclade_internal_sdk/testing.py",
+      "path": "sdks/python/mindclade_internal_sdk/testing.py",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-python",
@@ -59743,7 +59763,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/python/mindclade_internal_sdk/training.py",
+      "path": "sdks/python/mindclade_internal_sdk/training.py",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-python",
@@ -59760,7 +59780,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/python/mindclade_internal_sdk/transport.py",
+      "path": "sdks/python/mindclade_internal_sdk/transport.py",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-python",
@@ -59777,7 +59797,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/python/mindclade_internal_sdk/workflows.py",
+      "path": "sdks/python/mindclade_internal_sdk/workflows.py",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-python",
@@ -59794,7 +59814,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/python/mindclade_internal_sdk/evaluations.py",
+      "path": "sdks/python/mindclade_internal_sdk/evaluations.py",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-python",
@@ -59811,7 +59831,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/python/mindclade_internal_sdk/jobs.py",
+      "path": "sdks/python/mindclade_internal_sdk/jobs.py",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-python",
@@ -59828,7 +59848,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/python/mindclade_internal_sdk/runs.py",
+      "path": "sdks/python/mindclade_internal_sdk/runs.py",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-python",
@@ -59845,7 +59865,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/python/mindclade_internal_sdk/experiments.py",
+      "path": "sdks/python/mindclade_internal_sdk/experiments.py",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-python",
@@ -59862,7 +59882,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/python/mindclade_internal_sdk/resources.py",
+      "path": "sdks/python/mindclade_internal_sdk/resources.py",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-python",
@@ -59879,7 +59899,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/python/pyproject.toml",
+      "path": "sdks/python/pyproject.toml",
       "kind": "configuration",
       "owner": "developer-experience",
       "component": "internal-sdk-python",
@@ -59896,7 +59916,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/python/tests/test_internal_sdk.py",
+      "path": "sdks/python/tests/test_internal_sdk.py",
       "kind": "test",
       "owner": "developer-experience",
       "component": "internal-sdk-python",
@@ -59913,7 +59933,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/python/tests/test_agents.py",
+      "path": "sdks/python/tests/test_agents.py",
       "kind": "test",
       "owner": "developer-experience",
       "component": "internal-sdk-python",
@@ -59930,7 +59950,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/python/tests/test_inference.py",
+      "path": "sdks/python/tests/test_inference.py",
       "kind": "test",
       "owner": "developer-experience",
       "component": "internal-sdk-python",
@@ -59947,7 +59967,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/python/tests/test_policy_admin.py",
+      "path": "sdks/python/tests/test_policy_admin.py",
       "kind": "test",
       "owner": "developer-experience",
       "component": "internal-sdk-python",
@@ -59964,7 +59984,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/python/tests/test_workflows.py",
+      "path": "sdks/python/tests/test_workflows.py",
       "kind": "test",
       "owner": "developer-experience",
       "component": "internal-sdk-python",
@@ -59981,7 +60001,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/python/tests/test_artifact_operation_gaps.py",
+      "path": "sdks/python/tests/test_artifact_operation_gaps.py",
       "kind": "test",
       "owner": "developer-experience",
       "component": "internal-sdk-python",
@@ -59998,7 +60018,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/python/tests/test_evaluations.py",
+      "path": "sdks/python/tests/test_evaluations.py",
       "kind": "test",
       "owner": "developer-experience",
       "component": "internal-sdk-python",
@@ -60015,7 +60035,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/python/tests/test_job_run.py",
+      "path": "sdks/python/tests/test_job_run.py",
       "kind": "test",
       "owner": "developer-experience",
       "component": "internal-sdk-python",
@@ -60032,7 +60052,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/python/tests/test_training_lifecycle.py",
+      "path": "sdks/python/tests/test_training_lifecycle.py",
       "kind": "test",
       "owner": "developer-experience",
       "component": "internal-sdk-python",
@@ -60049,7 +60069,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/python/tests/test_experiments.py",
+      "path": "sdks/python/tests/test_experiments.py",
       "kind": "test",
       "owner": "developer-experience",
       "component": "internal-sdk-python",
@@ -60066,7 +60086,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/rust/BUILD.bazel",
+      "path": "sdks/rust/BUILD.bazel",
       "kind": "build",
       "owner": "developer-experience",
       "component": "internal-sdk-rust",
@@ -60083,7 +60103,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/rust/Cargo.toml",
+      "path": "sdks/rust/Cargo.toml",
       "kind": "configuration",
       "owner": "developer-experience",
       "component": "internal-sdk-rust",
@@ -60100,7 +60120,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/rust/README.md",
+      "path": "sdks/rust/README.md",
       "kind": "documentation",
       "owner": "developer-experience",
       "component": "internal-sdk-rust",
@@ -60117,7 +60137,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/rust/src/admin.rs",
+      "path": "sdks/rust/src/admin.rs",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-rust",
@@ -60134,7 +60154,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/rust/src/agent_tests.rs",
+      "path": "sdks/rust/src/agent_tests.rs",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-rust",
@@ -60151,7 +60171,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/rust/src/agents.rs",
+      "path": "sdks/rust/src/agents.rs",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-rust",
@@ -60168,7 +60188,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/rust/src/approvals.rs",
+      "path": "sdks/rust/src/approvals.rs",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-rust",
@@ -60185,7 +60205,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/rust/src/artifacts.rs",
+      "path": "sdks/rust/src/artifacts.rs",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-rust",
@@ -60202,7 +60222,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/rust/src/auth.rs",
+      "path": "sdks/rust/src/auth.rs",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-rust",
@@ -60219,7 +60239,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/rust/src/config.rs",
+      "path": "sdks/rust/src/config.rs",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-rust",
@@ -60236,7 +60256,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/rust/src/datasets.rs",
+      "path": "sdks/rust/src/datasets.rs",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-rust",
@@ -60253,7 +60273,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/rust/src/error.rs",
+      "path": "sdks/rust/src/error.rs",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-rust",
@@ -60270,7 +60290,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/rust/src/events.rs",
+      "path": "sdks/rust/src/events.rs",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-rust",
@@ -60287,7 +60307,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/rust/src/inference.rs",
+      "path": "sdks/rust/src/inference.rs",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-rust",
@@ -60304,7 +60324,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/rust/src/lib.rs",
+      "path": "sdks/rust/src/lib.rs",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-rust",
@@ -60321,7 +60341,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/rust/src/models.rs",
+      "path": "sdks/rust/src/models.rs",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-rust",
@@ -60338,7 +60358,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/rust/src/operations.rs",
+      "path": "sdks/rust/src/operations.rs",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-rust",
@@ -60355,7 +60375,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/rust/src/policies.rs",
+      "path": "sdks/rust/src/policies.rs",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-rust",
@@ -60372,7 +60392,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/rust/src/policy_admin_tests.rs",
+      "path": "sdks/rust/src/policy_admin_tests.rs",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-rust",
@@ -60389,7 +60409,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/rust/src/request.rs",
+      "path": "sdks/rust/src/request.rs",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-rust",
@@ -60406,7 +60426,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/rust/src/retry.rs",
+      "path": "sdks/rust/src/retry.rs",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-rust",
@@ -60423,7 +60443,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/rust/src/tests.rs",
+      "path": "sdks/rust/src/tests.rs",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-rust",
@@ -60440,7 +60460,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/rust/src/testing.rs",
+      "path": "sdks/rust/src/testing.rs",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-rust",
@@ -60457,7 +60477,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/rust/src/training.rs",
+      "path": "sdks/rust/src/training.rs",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-rust",
@@ -60474,7 +60494,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/rust/src/transport.rs",
+      "path": "sdks/rust/src/transport.rs",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-rust",
@@ -60491,7 +60511,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/rust/src/workflow_tests.rs",
+      "path": "sdks/rust/src/workflow_tests.rs",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-rust",
@@ -60508,7 +60528,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/rust/src/workflows.rs",
+      "path": "sdks/rust/src/workflows.rs",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-rust",
@@ -60525,7 +60545,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/rust/src/artifact_operation_gap_tests.rs",
+      "path": "sdks/rust/src/artifact_operation_gap_tests.rs",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-rust",
@@ -60542,7 +60562,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/rust/src/evaluation_tests.rs",
+      "path": "sdks/rust/src/evaluation_tests.rs",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-rust",
@@ -60559,7 +60579,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/rust/src/evaluations.rs",
+      "path": "sdks/rust/src/evaluations.rs",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-rust",
@@ -60576,7 +60596,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/rust/src/job_run_tests.rs",
+      "path": "sdks/rust/src/job_run_tests.rs",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-rust",
@@ -60593,7 +60613,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/rust/src/jobs.rs",
+      "path": "sdks/rust/src/jobs.rs",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-rust",
@@ -60610,7 +60630,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/rust/src/runs.rs",
+      "path": "sdks/rust/src/runs.rs",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-rust",
@@ -60627,7 +60647,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/rust/src/training_tests.rs",
+      "path": "sdks/rust/src/training_tests.rs",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-rust",
@@ -60644,7 +60664,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/rust/src/experiments.rs",
+      "path": "sdks/rust/src/experiments.rs",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-rust",
@@ -60661,7 +60681,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/rust/src/experiment_tests.rs",
+      "path": "sdks/rust/src/experiment_tests.rs",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-rust",
@@ -60678,7 +60698,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/typescript/BUILD.bazel",
+      "path": "sdks/typescript/BUILD.bazel",
       "kind": "build",
       "owner": "developer-experience",
       "component": "internal-sdk-typescript",
@@ -60695,7 +60715,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/typescript/README.md",
+      "path": "sdks/typescript/README.md",
       "kind": "documentation",
       "owner": "developer-experience",
       "component": "internal-sdk-typescript",
@@ -60712,7 +60732,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/typescript/bazel/package.json",
+      "path": "sdks/typescript/bazel/package.json",
       "kind": "data",
       "owner": "developer-experience",
       "component": "internal-sdk-typescript",
@@ -60729,7 +60749,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/typescript/biome.json",
+      "path": "sdks/typescript/biome.json",
       "kind": "data",
       "owner": "developer-experience",
       "component": "internal-sdk-typescript",
@@ -60746,7 +60766,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/typescript/package.json",
+      "path": "sdks/typescript/package.json",
       "kind": "data",
       "owner": "developer-experience",
       "component": "internal-sdk-typescript",
@@ -60763,7 +60783,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/typescript/src/admin.ts",
+      "path": "sdks/typescript/src/admin.ts",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-typescript",
@@ -60780,7 +60800,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/typescript/src/agents.ts",
+      "path": "sdks/typescript/src/agents.ts",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-typescript",
@@ -60797,7 +60817,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/typescript/src/approvals.ts",
+      "path": "sdks/typescript/src/approvals.ts",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-typescript",
@@ -60814,7 +60834,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/typescript/src/artifacts.ts",
+      "path": "sdks/typescript/src/artifacts.ts",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-typescript",
@@ -60831,7 +60851,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/typescript/src/auth.ts",
+      "path": "sdks/typescript/src/auth.ts",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-typescript",
@@ -60848,7 +60868,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/typescript/src/client.ts",
+      "path": "sdks/typescript/src/client.ts",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-typescript",
@@ -60865,7 +60885,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/typescript/src/config.ts",
+      "path": "sdks/typescript/src/config.ts",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-typescript",
@@ -60882,7 +60902,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/typescript/src/core.ts",
+      "path": "sdks/typescript/src/core.ts",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-typescript",
@@ -60899,7 +60919,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/typescript/src/datasets.ts",
+      "path": "sdks/typescript/src/datasets.ts",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-typescript",
@@ -60916,7 +60936,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/typescript/src/error.ts",
+      "path": "sdks/typescript/src/error.ts",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-typescript",
@@ -60933,7 +60953,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/typescript/src/gcp_auth.ts",
+      "path": "sdks/typescript/src/gcp_auth.ts",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-typescript",
@@ -60950,7 +60970,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/typescript/src/inference.ts",
+      "path": "sdks/typescript/src/inference.ts",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-typescript",
@@ -60967,7 +60987,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/typescript/src/index.ts",
+      "path": "sdks/typescript/src/index.ts",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-typescript",
@@ -60984,7 +61004,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/typescript/src/models.ts",
+      "path": "sdks/typescript/src/models.ts",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-typescript",
@@ -61001,7 +61021,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/typescript/src/operations.ts",
+      "path": "sdks/typescript/src/operations.ts",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-typescript",
@@ -61018,7 +61038,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/typescript/src/policies.ts",
+      "path": "sdks/typescript/src/policies.ts",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-typescript",
@@ -61035,7 +61055,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/typescript/src/raw.ts",
+      "path": "sdks/typescript/src/raw.ts",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-typescript",
@@ -61052,7 +61072,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/typescript/src/request.ts",
+      "path": "sdks/typescript/src/request.ts",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-typescript",
@@ -61069,7 +61089,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/typescript/src/retry.ts",
+      "path": "sdks/typescript/src/retry.ts",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-typescript",
@@ -61086,7 +61106,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/typescript/src/runtime.ts",
+      "path": "sdks/typescript/src/runtime.ts",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-typescript",
@@ -61103,7 +61123,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/typescript/src/safety.ts",
+      "path": "sdks/typescript/src/safety.ts",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-typescript",
@@ -61120,7 +61140,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/typescript/src/testing.ts",
+      "path": "sdks/typescript/src/testing.ts",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-typescript",
@@ -61137,7 +61157,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/typescript/src/training.ts",
+      "path": "sdks/typescript/src/training.ts",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-typescript",
@@ -61154,7 +61174,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/typescript/src/transport.ts",
+      "path": "sdks/typescript/src/transport.ts",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-typescript",
@@ -61171,7 +61191,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/typescript/src/workflows.ts",
+      "path": "sdks/typescript/src/workflows.ts",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-typescript",
@@ -61188,7 +61208,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/typescript/src/evaluations.ts",
+      "path": "sdks/typescript/src/evaluations.ts",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-typescript",
@@ -61205,7 +61225,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/typescript/src/jobs.ts",
+      "path": "sdks/typescript/src/jobs.ts",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-typescript",
@@ -61222,7 +61242,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/typescript/src/runs.ts",
+      "path": "sdks/typescript/src/runs.ts",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-typescript",
@@ -61239,7 +61259,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/typescript/src/experiments.ts",
+      "path": "sdks/typescript/src/experiments.ts",
       "kind": "source",
       "owner": "developer-experience",
       "component": "internal-sdk-typescript",
@@ -61256,7 +61276,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/typescript/tests/sdk.test.ts",
+      "path": "sdks/typescript/tests/sdk.test.ts",
       "kind": "test",
       "owner": "developer-experience",
       "component": "internal-sdk-typescript",
@@ -61273,7 +61293,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/typescript/tests/policy_admin.test.ts",
+      "path": "sdks/typescript/tests/policy_admin.test.ts",
       "kind": "test",
       "owner": "developer-experience",
       "component": "internal-sdk-typescript",
@@ -61290,7 +61310,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/typescript/tests/agents.test.ts",
+      "path": "sdks/typescript/tests/agents.test.ts",
       "kind": "test",
       "owner": "developer-experience",
       "component": "internal-sdk-typescript",
@@ -61307,7 +61327,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/typescript/tests/workflow_approval.test.ts",
+      "path": "sdks/typescript/tests/workflow_approval.test.ts",
       "kind": "test",
       "owner": "developer-experience",
       "component": "internal-sdk-typescript",
@@ -61324,7 +61344,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/typescript/tests/evaluations.test.ts",
+      "path": "sdks/typescript/tests/evaluations.test.ts",
       "kind": "test",
       "owner": "developer-experience",
       "component": "internal-sdk-typescript",
@@ -61341,7 +61361,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/typescript/tests/job_run.test.ts",
+      "path": "sdks/typescript/tests/job_run.test.ts",
       "kind": "test",
       "owner": "developer-experience",
       "component": "internal-sdk-typescript",
@@ -61358,7 +61378,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/typescript/tests/training.test.ts",
+      "path": "sdks/typescript/tests/training.test.ts",
       "kind": "test",
       "owner": "developer-experience",
       "component": "internal-sdk-typescript",
@@ -61375,7 +61395,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/typescript/tests/experiments.test.ts",
+      "path": "sdks/typescript/tests/experiments.test.ts",
       "kind": "test",
       "owner": "developer-experience",
       "component": "internal-sdk-typescript",
@@ -61392,7 +61412,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/typescript/tsconfig.json",
+      "path": "sdks/typescript/tsconfig.json",
       "kind": "data",
       "owner": "developer-experience",
       "component": "internal-sdk-typescript",
@@ -61409,7 +61429,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/rpc-coverage.yaml",
+      "path": "sdks/rpc-coverage.yaml",
       "kind": "configuration",
       "owner": "developer-experience",
       "component": "internal-sdk",
@@ -61426,7 +61446,7 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
-      "path": "internal/sdk/rpc-coverage.generated.json",
+      "path": "sdks/rpc-coverage.generated.json",
       "kind": "data",
       "owner": "developer-experience",
       "component": "internal-sdk",

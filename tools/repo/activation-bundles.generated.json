@@ -1,9 +1,9 @@
 {
   "schema_version": "mindclade.activation-bundle-projection/v1",
-  "source_digest": "sha256:2db062e0f34eeb9dc7b1a1f166bb3fd6fcbfc7997a23583ee5a4d83c693e7953",
+  "source_digest": "sha256:2d7de2ea1b3afe231dba9c75e39229e88eecb1dac8de63447d77041caa21dd16",
   "bundle_count": 27,
   "path_count": 913,
-  "path_set_digest": "sha256:f0fa8d911a118c0ef7d3d023ca9791744ed3037eb393268f1c6cce3848993895",
+  "path_set_digest": "sha256:49610e42db997e0f409e8f5570e4581d9e71d1db3de2ed5543bdd24b43c8bb44",
   "bundles": [
     {
       "id": "activation-bundle-governance",
@@ -74,8 +74,8 @@
       "path_count": 150,
       "addition_count": 150,
       "predeclared_count": 0,
-      "sequence_digest": "sha256:63e790cd8be4834792d39646ce8124038dbf9228389bf2e4944b193ba281a3d5",
-      "path_set_digest": "sha256:032df05b19961824ca7ad8848f1c8fc45cbe047e9291bd91b8cc97eb3f9fb2b2"
+      "sequence_digest": "sha256:0419661d6ecd714ae517300aed10db4107d842eeb905bf374dd245dceda8e941",
+      "path_set_digest": "sha256:a64896e679eea7fda70749bf2ee5620536b43aa6ff66d8154e0c9fbe393ca939"
     },
     {
       "id": "training-control-plane",
@@ -182,8 +182,8 @@
       "path_count": 3,
       "addition_count": 3,
       "predeclared_count": 0,
-      "sequence_digest": "sha256:1266964207a1740a3faa88b15755445972940021ce70098b4cadc89c65207568",
-      "path_set_digest": "sha256:3b5fcc677201061ec0bee87be2321fe129ae398ec33b55bd77517a7986e36d35"
+      "sequence_digest": "sha256:068612e2543e846d3dcc956ee1dbf243596246e3eeec08c23ddb5c42c3bad8e7",
+      "path_set_digest": "sha256:fe798ad703c7b0dd02b7a507011442c8760cf65673816a297c6bbdad936ac6ef"
     },
     {
       "id": "grpc-implementation-coverage",
@@ -236,8 +236,8 @@
       "path_count": 91,
       "addition_count": 91,
       "predeclared_count": 0,
-      "sequence_digest": "sha256:b4cec44bae04e00a76e0a48d43eb89c93ac71fe3970e16b03dc7d4141bebf6be",
-      "path_set_digest": "sha256:151d230b000392387c8d4cc1b98a0448e609ac47f0da9821d245294553ff6406"
+      "sequence_digest": "sha256:666a4c46965d21409a54a9f3dee67ae7a5c7e94774eaba4e63ea5de3a6335d4f",
+      "path_set_digest": "sha256:9c2fbb3aa6f3b092850afc9ace3ce6bfaa95fe08ce48e026707db1bcd7dae5b5"
     },
     {
       "id": "stage8-private-sdk-examples",
@@ -245,8 +245,8 @@
       "path_count": 19,
       "addition_count": 12,
       "predeclared_count": 7,
-      "sequence_digest": "sha256:dd89027eff3ecf940d2af69fde7d7a3daffd3ff8c7ff712d8a9618c9df21db12",
-      "path_set_digest": "sha256:d1426c8bb4480bd627882d76d5d3fdc4da476900a21ca36369f0daa085ee1466"
+      "sequence_digest": "sha256:2b05f9f16c195121434eb5a2af5db85d3c58480296dfbb8c9db59259d534743a",
+      "path_set_digest": "sha256:e5f4c05fe7f36d7f950e5d3c1a61f1f9e5fda7a51e6274aa31f3b9b2ddd009a5"
     }
   ]
 }

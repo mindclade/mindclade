@@ -13,10 +13,10 @@ next run and fails the drift gate in the meantime.
 ## Who may import this tree
 
 The dependency direction is one way: `protocols/proto` -> `protocols/generated` ->
-`internal/sdk` -> services, workers, training, tools and internal applications. Direct
+`sdks` -> services, workers, training, tools and internal applications. Direct
 imports of this tree are limited to internal SDK implementations, generated server
 transport adapters and registration, persistence protobuf mappers, and contract or
-conformance tests. Every other consumer imports `internal/sdk` instead, and an
+conformance tests. Every other consumer imports `sdks` instead, and an
 architecture test rejects the rest.
 
 ## Packages
