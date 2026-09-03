@@ -7,7 +7,7 @@ import (
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	datasetv1 "github.com/mindclade/mindclade/protocols/generated/go/dataset/v1"
 	internaldatasetv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/dataset/v1"
-	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
+	operationv1 "github.com/mindclade/mindclade/protocols/generated/go/operation/v1"
 )
 
 // DatasetService is the private lifecycle façade over the generated dataset
@@ -19,7 +19,7 @@ type DatasetService struct {
 	transport internaldatasetv1.DatasetServiceClient
 }
 
-func (service *DatasetService) Create(ctx context.Context, command *datasetv1.CreateDatasetCommand, options ...RequestOption) (*jobv1.Operation, error) {
+func (service *DatasetService) Create(ctx context.Context, command *datasetv1.CreateDatasetCommand, options ...RequestOption) (*operationv1.Operation, error) {
 	if command == nil {
 		return nil, invalidArgument("a generated CreateDatasetCommand is required")
 	}
@@ -92,14 +92,14 @@ func (service *DatasetService) List(ctx context.Context, request *internaldatase
 	return cloneGenerated(response), nil
 }
 
-func (service *DatasetService) Update(ctx context.Context, command *datasetv1.UpdateDatasetCommand, options ...RequestOption) (*jobv1.Operation, error) {
+func (service *DatasetService) Update(ctx context.Context, command *datasetv1.UpdateDatasetCommand, options ...RequestOption) (*operationv1.Operation, error) {
 	if command == nil || command.GetDataset() == nil {
 		return nil, invalidArgument("a generated UpdateDatasetCommand and dataset are required")
 	}
 	return service.update(ctx, cloneGenerated(command), options...)
 }
 
-func (service *DatasetService) update(ctx context.Context, command *datasetv1.UpdateDatasetCommand, options ...RequestOption) (*jobv1.Operation, error) {
+func (service *DatasetService) update(ctx context.Context, command *datasetv1.UpdateDatasetCommand, options ...RequestOption) (*operationv1.Operation, error) {
 	key := command.GetContext().GetIdempotencyKey()
 	command.Context = nil
 	if !scopedResourceName(service.client.config, command.GetDataset().GetName(), "datasets") {
@@ -119,7 +119,7 @@ func (service *DatasetService) update(ctx context.Context, command *datasetv1.Up
 	return operationResponse(response.GetOperation(), err, "UpdateDataset")
 }
 
-func (service *DatasetService) PublishRelease(ctx context.Context, command *datasetv1.PublishDatasetReleaseCommand, options ...RequestOption) (*jobv1.Operation, error) {
+func (service *DatasetService) PublishRelease(ctx context.Context, command *datasetv1.PublishDatasetReleaseCommand, options ...RequestOption) (*operationv1.Operation, error) {
 	if command == nil || command.GetDataset() == nil {
 		return nil, invalidArgument("a generated PublishDatasetReleaseCommand is required")
 	}
@@ -143,7 +143,7 @@ func (service *DatasetService) PublishRelease(ctx context.Context, command *data
 	return operationResponse(response.GetOperation(), err, "PublishDatasetRelease")
 }
 
-func (service *DatasetService) RevokeRelease(ctx context.Context, command *datasetv1.RevokeDatasetReleaseCommand, options ...RequestOption) (*jobv1.Operation, error) {
+func (service *DatasetService) RevokeRelease(ctx context.Context, command *datasetv1.RevokeDatasetReleaseCommand, options ...RequestOption) (*operationv1.Operation, error) {
 	if command == nil || command.GetDatasetRelease() == nil {
 		return nil, invalidArgument("a generated RevokeDatasetReleaseCommand is required")
 	}
@@ -211,7 +211,7 @@ func projectResource(config Config) *commonv1.ResourceRef {
 	return &commonv1.ResourceRef{ResourceType: "project", ResourceId: config.ProjectID, TenantId: config.TenantID, ProjectId: config.ProjectID, Name: name}
 }
 
-func operationResponse(operation *jobv1.Operation, err error, method string) (*jobv1.Operation, error) {
+func operationResponse(operation *operationv1.Operation, err error, method string) (*operationv1.Operation, error) {
 	if err != nil {
 		return nil, normalizeError(err)
 	}

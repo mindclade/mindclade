@@ -8,7 +8,7 @@ use mindclade_protocols::{
         GetTenantRequest, ListProjectsRequest, ListProjectsResponse, QueryAuditRecordsRequest,
         UpdateProjectRequest, UpdateTenantRequest,
     },
-    job::v1::Operation,
+    operation::v1::Operation,
 };
 
 use crate::{CallOptions, ClientCore, Error, SubmitOptions, retry::registered_method_safety};

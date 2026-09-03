@@ -15,7 +15,7 @@ use mindclade_protocols::{
         },
         job::v1::{ListOperationsRequest, ListOperationsResponse},
     },
-    job::v1::{Operation, OperationState},
+    operation::v1::{Operation, OperationState},
 };
 use prost_types::Timestamp;
 use tonic::{Request, Response, Status, codegen::async_trait};

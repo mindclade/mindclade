@@ -18,7 +18,7 @@ import (
 	artifactv1 "github.com/mindclade/mindclade/protocols/generated/go/artifact/v1"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	internalpolicyv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/policy/v1"
-	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
+	operationv1 "github.com/mindclade/mindclade/protocols/generated/go/operation/v1"
 	policyv1 "github.com/mindclade/mindclade/protocols/generated/go/policy/v1"
 )
 
@@ -33,7 +33,7 @@ type fixedClock struct{ at time.Time }
 func (c fixedClock) Now() time.Time { return c.at }
 
 type fakeRepository struct {
-	operation *jobv1.Operation
+	operation *operationv1.Operation
 	policy    *policyv1.UsePolicy
 	decision  *policyv1.AuthorizationDecision
 	snapshot  *policyv1.PolicyReference
@@ -45,12 +45,12 @@ func (r *fakeRepository) EvaluateAuthorization(_ context.Context, _ Identity, re
 	return clone(r.decision), false, nil
 }
 
-func (r *fakeRepository) CreateUsePolicy(_ context.Context, _ Identity, request *internalpolicyv1.CreateUsePolicyRequest, _ string, _ time.Time) (*jobv1.Operation, bool, error) {
+func (r *fakeRepository) CreateUsePolicy(_ context.Context, _ Identity, request *internalpolicyv1.CreateUsePolicyRequest, _ string, _ time.Time) (*operationv1.Operation, bool, error) {
 	r.request = clone(request)
 	return clone(r.operation), false, nil
 }
 
-func (r *fakeRepository) UpdateUsePolicy(_ context.Context, _ Identity, request *internalpolicyv1.UpdateUsePolicyRequest, _ string, _ time.Time) (*jobv1.Operation, bool, error) {
+func (r *fakeRepository) UpdateUsePolicy(_ context.Context, _ Identity, request *internalpolicyv1.UpdateUsePolicyRequest, _ string, _ time.Time) (*operationv1.Operation, bool, error) {
 	r.request = clone(request)
 	return clone(r.operation), false, nil
 }
@@ -63,12 +63,12 @@ func (r *fakeRepository) ListUsePolicies(context.Context, Identity, PolicyPage) 
 	return []*policyv1.UsePolicy{clone(r.policy)}, "", fixtureTime, nil
 }
 
-func (r *fakeRepository) ActivateUsePolicy(_ context.Context, _ Identity, request *internalpolicyv1.ActivateUsePolicyRequest, _ string, _ time.Time) (*jobv1.Operation, bool, error) {
+func (r *fakeRepository) ActivateUsePolicy(_ context.Context, _ Identity, request *internalpolicyv1.ActivateUsePolicyRequest, _ string, _ time.Time) (*operationv1.Operation, bool, error) {
 	r.request = clone(request)
 	return clone(r.operation), false, nil
 }
 
-func (r *fakeRepository) RevokeUsePolicy(_ context.Context, _ Identity, request *internalpolicyv1.RevokeUsePolicyRequest, _ string, _ time.Time) (*jobv1.Operation, bool, error) {
+func (r *fakeRepository) RevokeUsePolicy(_ context.Context, _ Identity, request *internalpolicyv1.RevokeUsePolicyRequest, _ string, _ time.Time) (*operationv1.Operation, bool, error) {
 	r.request = clone(request)
 	return clone(r.operation), false, nil
 }
@@ -148,7 +148,7 @@ func serverFixture(t *testing.T, repository Repository) *Server {
 }
 
 func TestPolicyServerClonesAndBindsAuthenticatedCommand(t *testing.T) {
-	operation := &jobv1.Operation{OperationId: "operations/1", TenantId: "tenant-1", ProjectId: "project-1", State: jobv1.OperationState_OPERATION_STATE_SUCCEEDED, Done: true}
+	operation := &operationv1.Operation{OperationId: "operations/1", TenantId: "tenant-1", ProjectId: "project-1", State: operationv1.OperationState_OPERATION_STATE_SUCCEEDED, Done: true}
 	repository := &fakeRepository{operation: operation}
 	server := serverFixture(t, repository)
 	request := &internalpolicyv1.CreateUsePolicyRequest{Parent: projectParent(identityFixture()), UsePolicyId: "safe", UsePolicy: policyFixture()}
@@ -168,7 +168,7 @@ func TestGeneratedPolicyEventsAreRegisteredAndDecodable(t *testing.T) {
 	identity := identityFixture()
 	context := &commonv1.CommandContext{RequestId: "request-1", TraceId: "trace-1"}
 	value := policyFixture()
-	operation := &jobv1.Operation{OperationId: "operations/1", TenantId: identity.TenantID, ProjectId: identity.ProjectID, ResourceVersion: 1, Etag: "etag"}
+	operation := &operationv1.Operation{OperationId: "operations/1", TenantId: identity.TenantID, ProjectId: identity.ProjectID, ResourceVersion: 1, Etag: "etag"}
 	events := GeneratedEventFactory{}
 	created, err := events.PolicyCreated(identity, value, operation, context, fixtureTime)
 	if err != nil {
@@ -218,7 +218,7 @@ func TestPolicyGeneratedNetworkGRPCService(t *testing.T) {
 	policy := policyFixture()
 	snapshot := &policyv1.PolicyReference{Name: policy.GetName() + "/snapshots/2", Uid: "snapshot", PolicyType: "use-policy", Version: "2", Digest: policy.GetPolicyDocument().GetDigest(), Document: clone(policy.GetPolicyDocument()), ResourceRevision: 2, EffectiveTime: timestamppb.New(fixtureTime)}
 	decision := &policyv1.AuthorizationDecision{Name: projectParent(identityFixture()) + "/authorizationDecisions/1", Uid: "decision", TenantId: "tenant-1", ProjectId: "project-1", Outcome: policyv1.AuthorizationOutcome_AUTHORIZATION_OUTCOME_DENY}
-	operation := &jobv1.Operation{OperationId: "operations/1", TenantId: "tenant-1", ProjectId: "project-1", State: jobv1.OperationState_OPERATION_STATE_SUCCEEDED, Done: true}
+	operation := &operationv1.Operation{OperationId: "operations/1", TenantId: "tenant-1", ProjectId: "project-1", State: operationv1.OperationState_OPERATION_STATE_SUCCEEDED, Done: true}
 	server := serverFixture(t, &fakeRepository{policy: policy, snapshot: snapshot, decision: decision, operation: operation})
 	listener := bufconn.Listen(1 << 20)
 	grpcServer := grpc.NewServer()

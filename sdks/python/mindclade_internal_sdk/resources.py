@@ -24,7 +24,7 @@ from mindclade.internal.agent.v1.agent_service_pb2 import (
     CancelAgentRunRequest,
     StartAgentRunRequest,
 )
-from mindclade.job.v1.operation_pb2 import Operation
+from mindclade.operation.v1.operation_pb2 import Operation
 from mindclade.workflow.v1.approval_pb2 import (
     APPROVAL_STATE_APPROVED,
     ApprovalBinding,

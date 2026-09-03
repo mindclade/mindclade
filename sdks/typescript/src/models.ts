@@ -16,7 +16,7 @@ import {
 	RegisterModelRequestSchema,
 	RevokeModelReleaseRequestSchema,
 } from "../../../protocols/generated/typescript/internal/model/v1/model_service_pb.js";
-import type { Operation } from "../../../protocols/generated/typescript/job/v1/operation_pb.js";
+import type { Operation } from "../../../protocols/generated/typescript/operation/v1/operation_pb.js";
 import {
 	PromoteModelReleaseCommandSchema,
 	RegisterModelCommandSchema,

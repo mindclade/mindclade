@@ -12,7 +12,8 @@ use mindclade_protocols::{
         CreatePromotionDecisionRequest, GetEvaluationResultRequest, GetEvaluationRunRequest,
         GetPromotionDecisionRequest, ListEvaluationRunsRequest, ListEvaluationRunsResponse,
     },
-    job::v1::{LeaseFence, Operation},
+    job::v1::LeaseFence,
+    operation::v1::Operation,
 };
 use prost::Message;
 use sha2::{Digest, Sha256};

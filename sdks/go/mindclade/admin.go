@@ -10,7 +10,7 @@ import (
 	adminv1 "github.com/mindclade/mindclade/protocols/generated/go/admin/v1"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	internaladminv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/admin/v1"
-	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
+	operationv1 "github.com/mindclade/mindclade/protocols/generated/go/operation/v1"
 )
 
 // AdminService is the private generated-type-only tenant, project, and audit
@@ -39,7 +39,7 @@ func (service *AdminService) GetTenant(ctx context.Context, name, ifNoneMatch st
 	return cloneGenerated(response.GetTenant()), nil
 }
 
-func (service *AdminService) UpdateTenant(ctx context.Context, request *internaladminv1.UpdateTenantRequest, options ...RequestOption) (*jobv1.Operation, error) {
+func (service *AdminService) UpdateTenant(ctx context.Context, request *internaladminv1.UpdateTenantRequest, options ...RequestOption) (*operationv1.Operation, error) {
 	materialized := cloneGenerated(request)
 	if materialized == nil || materialized.GetTenant() == nil || materialized.GetTenant().GetName() != configuredTenantName(service.client.config) || materialized.GetUpdateMask() == nil || strings.TrimSpace(materialized.GetEtag()) == "" {
 		return nil, invalidArgument("tenant update requires the configured tenant, field mask, and etag")
@@ -53,7 +53,7 @@ func (service *AdminService) UpdateTenant(ctx context.Context, request *internal
 	return operationResponse(response.GetOperation(), rpcErr, "UpdateTenant")
 }
 
-func (service *AdminService) CreateProject(ctx context.Context, request *internaladminv1.CreateProjectRequest, options ...RequestOption) (*jobv1.Operation, error) {
+func (service *AdminService) CreateProject(ctx context.Context, request *internaladminv1.CreateProjectRequest, options ...RequestOption) (*operationv1.Operation, error) {
 	materialized := cloneGenerated(request)
 	projectID := configuredProjectID(service.client.config)
 	if materialized == nil || materialized.GetProject() == nil || (materialized.GetProjectId() != "" && materialized.GetProjectId() != projectID) {
@@ -123,7 +123,7 @@ func (service *AdminService) ListProjects(ctx context.Context, request *internal
 	return cloneGenerated(response), nil
 }
 
-func (service *AdminService) UpdateProject(ctx context.Context, request *internaladminv1.UpdateProjectRequest, options ...RequestOption) (*jobv1.Operation, error) {
+func (service *AdminService) UpdateProject(ctx context.Context, request *internaladminv1.UpdateProjectRequest, options ...RequestOption) (*operationv1.Operation, error) {
 	materialized := cloneGenerated(request)
 	if materialized == nil || materialized.GetProject() == nil || materialized.GetProject().GetName() != projectName(service.client.config.TenantID, service.client.config.ProjectID) || materialized.GetUpdateMask() == nil || strings.TrimSpace(materialized.GetEtag()) == "" {
 		return nil, invalidArgument("project update requires the configured project, field mask, and etag")
@@ -157,7 +157,7 @@ func (service *AdminService) QueryAudit(ctx context.Context, query *adminv1.Audi
 	return cloneGenerated(response.GetResult()), nil
 }
 
-func (service *AdminService) ExportAudit(ctx context.Context, query *adminv1.AuditQuery, options ...RequestOption) (*jobv1.Operation, error) {
+func (service *AdminService) ExportAudit(ctx context.Context, query *adminv1.AuditQuery, options ...RequestOption) (*operationv1.Operation, error) {
 	materializedQuery := cloneGenerated(query)
 	if !validateAuditQueryScope(service.client.config, materializedQuery) {
 		return nil, invalidArgument("audit export query must be bounded to the configured tenant or project")

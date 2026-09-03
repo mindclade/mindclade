@@ -28,7 +28,7 @@ import (
 	internalartifactv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/artifact/v1"
 	internaljobv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/job/v1"
 	internaltrainingv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/training/v1"
-	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
+	operationv1 "github.com/mindclade/mindclade/protocols/generated/go/operation/v1"
 	trainingv1 "github.com/mindclade/mindclade/protocols/generated/go/training/v1"
 )
 
@@ -154,7 +154,7 @@ type trainingServer struct {
 
 type trainingAliasClient struct {
 	internaltrainingv1.TrainingServiceClient
-	operation *jobv1.Operation
+	operation *operationv1.Operation
 	run       *trainingv1.TrainingRun
 }
 
@@ -170,12 +170,12 @@ func (server *trainingServer) CreateTrainingRun(_ context.Context, request *inte
 	server.mu.Lock()
 	server.request = proto.Clone(request).(*internaltrainingv1.CreateTrainingRunRequest)
 	server.mu.Unlock()
-	return &internaltrainingv1.CreateTrainingRunResponse{Operation: &jobv1.Operation{
+	return &internaltrainingv1.CreateTrainingRunResponse{Operation: &operationv1.Operation{
 		OperationId: "operations/operation-1",
 		TenantId:    "tenant-a",
 		ProjectId:   "project-a",
 		JobId:       "jobs/job-1",
-		State:       jobv1.OperationState_OPERATION_STATE_PENDING,
+		State:       operationv1.OperationState_OPERATION_STATE_PENDING,
 		Target:      resourceRef(Config{TenantID: "tenant-a", ProjectID: "project-a"}, "training_run", "trainingRuns/run-1"),
 	}}, nil
 }
@@ -213,13 +213,13 @@ func (server *operationServer) GetOperation(context.Context, *internaljobv1.GetO
 	server.mu.Lock()
 	defer server.mu.Unlock()
 	server.reads++
-	state := jobv1.OperationState_OPERATION_STATE_RUNNING
+	state := operationv1.OperationState_OPERATION_STATE_RUNNING
 	done := false
 	if server.reads > 1 {
-		state = jobv1.OperationState_OPERATION_STATE_SUCCEEDED
+		state = operationv1.OperationState_OPERATION_STATE_SUCCEEDED
 		done = true
 	}
-	return &internaljobv1.GetOperationResponse{Operation: &jobv1.Operation{
+	return &internaljobv1.GetOperationResponse{Operation: &operationv1.Operation{
 		OperationId: "operations/operation-1",
 		State:       state,
 		Done:        done,
@@ -228,16 +228,16 @@ func (server *operationServer) GetOperation(context.Context, *internaljobv1.GetO
 }
 
 func (server *operationServer) WatchOperation(_ *internaljobv1.WatchOperationRequest, stream grpc.ServerStreamingServer[internaljobv1.WatchOperationResponse]) error {
-	for sequence, state := range []jobv1.OperationState{
-		jobv1.OperationState_OPERATION_STATE_RUNNING,
-		jobv1.OperationState_OPERATION_STATE_SUCCEEDED,
+	for sequence, state := range []operationv1.OperationState{
+		operationv1.OperationState_OPERATION_STATE_RUNNING,
+		operationv1.OperationState_OPERATION_STATE_SUCCEEDED,
 	} {
 		if err := stream.Send(&internaljobv1.WatchOperationResponse{
 			Sequence: uint64(sequence + 1),
-			Operation: &jobv1.Operation{
+			Operation: &operationv1.Operation{
 				OperationId: "operations/operation-1",
 				State:       state,
-				Done:        state == jobv1.OperationState_OPERATION_STATE_SUCCEEDED,
+				Done:        state == operationv1.OperationState_OPERATION_STATE_SUCCEEDED,
 			},
 		}); err != nil {
 			return err
@@ -279,7 +279,7 @@ func TestTrainingFacadeDetachesGeneratedTransportValues(t *testing.T) {
 	client, _, _ := testClient(t)
 	parent := projectName(client.config.TenantID, client.config.ProjectID)
 	transport := &trainingAliasClient{
-		operation: &jobv1.Operation{OperationId: parent + "/operations/op-alias", TenantId: client.config.TenantID, ProjectId: client.config.ProjectID, State: jobv1.OperationState_OPERATION_STATE_PENDING},
+		operation: &operationv1.Operation{OperationId: parent + "/operations/op-alias", TenantId: client.config.TenantID, ProjectId: client.config.ProjectID, State: operationv1.OperationState_OPERATION_STATE_PENDING},
 		run:       &trainingv1.TrainingRun{Name: parent + "/trainingRuns/run-alias", State: trainingv1.TrainingRunState_TRAINING_RUN_STATE_CREATED},
 	}
 	client.Training.transport = transport
@@ -340,9 +340,9 @@ func TestOperationWatchRejectsMissingOrCrossResourceIdentity(t *testing.T) {
 		client.Operations.transport = &scriptedOperationClient{stream: &scriptedOperationStream{
 			responses: []*internaljobv1.WatchOperationResponse{{
 				Sequence: 1,
-				Operation: &jobv1.Operation{
+				Operation: &operationv1.Operation{
 					OperationId: operationID,
-					State:       jobv1.OperationState_OPERATION_STATE_RUNNING,
+					State:       operationv1.OperationState_OPERATION_STATE_RUNNING,
 				},
 			}},
 		}}

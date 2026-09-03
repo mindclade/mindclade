@@ -11,7 +11,8 @@ from google.protobuf.timestamp_pb2 import Timestamp
 from mindclade.agent.v1 import agent_definition_pb2, agent_run_pb2, agent_step_pb2, tool_receipt_pb2
 from mindclade.common.v1 import command_context_pb2, pagination_pb2, resource_reference_pb2
 from mindclade.internal.agent.v1 import agent_service_pb2
-from mindclade.job.v1 import lease_fencing_pb2, operation_pb2
+from mindclade.job.v1 import lease_fencing_pb2
+from mindclade.operation.v1 import operation_pb2
 from mindclade_internal_sdk._invocation import AsyncInvoker, SyncInvoker, canonical_digest
 from mindclade_internal_sdk.agents import (
     CANCEL_AGENT_RUN,

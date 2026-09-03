@@ -8,11 +8,11 @@ use mindclade_protocols::{
         PromoteModelReleaseRequest, RegisterModelReleaseRequest, RegisterModelRequest,
         RevokeModelReleaseRequest,
     },
-    job::v1::Operation,
     model::v1::{
         Model, ModelRelease, PromoteModelReleaseCommand, RegisterModelCommand,
         RegisterModelReleaseCommand, RevokeModelReleaseCommand,
     },
+    operation::v1::Operation,
 };
 
 use crate::{CallOptions, ClientCore, Error, SubmitOptions, retry::registered_method_safety};

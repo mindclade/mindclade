@@ -23,6 +23,7 @@ import (
 	internaljobv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/job/v1"
 	internaltrainingv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/training/v1"
 	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
+	operationv1 "github.com/mindclade/mindclade/protocols/generated/go/operation/v1"
 	trainingv1 "github.com/mindclade/mindclade/protocols/generated/go/training/v1"
 )
 
@@ -44,13 +45,13 @@ type fakeRepository struct {
 	identity   Identity
 	command    *trainingv1.CreateTrainingRunCommand
 	digest     string
-	operation  *jobv1.Operation
-	revisions  []*jobv1.Operation
+	operation  *operationv1.Operation
+	revisions  []*operationv1.Operation
 	historyErr error
 	run        *trainingv1.TrainingRun
 }
 
-func (r *fakeRepository) CreateTrainingRun(_ context.Context, identity Identity, command *trainingv1.CreateTrainingRunCommand, digest string, _ time.Time) (*jobv1.Operation, bool, error) {
+func (r *fakeRepository) CreateTrainingRun(_ context.Context, identity Identity, command *trainingv1.CreateTrainingRunCommand, digest string, _ time.Time) (*operationv1.Operation, bool, error) {
 	r.created = true
 	r.identity = identity
 	r.command = clone(command)
@@ -105,22 +106,22 @@ func (*fakeRepository) ListCheckpoints(context.Context, Identity, CheckpointPage
 	return nil, "", fixtureTime, nil
 }
 
-func (r *fakeRepository) GetOperation(context.Context, Identity, string) (*jobv1.Operation, error) {
+func (r *fakeRepository) GetOperation(context.Context, Identity, string) (*operationv1.Operation, error) {
 	if r.operation == nil {
 		return nil, ErrNotFound
 	}
 	return clone(r.operation), nil
 }
 
-func (r *fakeRepository) ReadOperationRevisions(_ context.Context, _ Identity, _ string, after uint64, limit int) ([]*jobv1.Operation, bool, error) {
+func (r *fakeRepository) ReadOperationRevisions(_ context.Context, _ Identity, _ string, after uint64, limit int) ([]*operationv1.Operation, bool, error) {
 	if r.historyErr != nil {
 		return nil, false, r.historyErr
 	}
 	values := r.revisions
 	if len(values) == 0 && r.operation != nil {
-		values = []*jobv1.Operation{r.operation}
+		values = []*operationv1.Operation{r.operation}
 	}
-	result := make([]*jobv1.Operation, 0, limit)
+	result := make([]*operationv1.Operation, 0, limit)
 	terminal := false
 	for _, value := range values {
 		revision, err := numconv.Int64ToUint64(value.GetResourceVersion())
@@ -142,11 +143,11 @@ func (r *fakeRepository) ReadOperationRevisions(_ context.Context, _ Identity, _
 	return result, terminal, nil
 }
 
-func (*fakeRepository) ListOperations(context.Context, Identity, OperationPage) ([]*jobv1.Operation, string, time.Time, error) {
+func (*fakeRepository) ListOperations(context.Context, Identity, OperationPage) ([]*operationv1.Operation, string, time.Time, error) {
 	return nil, "", fixtureTime, nil
 }
 
-func (*fakeRepository) CancelOperation(context.Context, Identity, *internaljobv1.CancelOperationRequest, string, time.Time) (*jobv1.Operation, bool, error) {
+func (*fakeRepository) CancelOperation(context.Context, Identity, *internaljobv1.CancelOperationRequest, string, time.Time) (*operationv1.Operation, bool, error) {
 	return nil, false, ErrNotFound
 }
 
@@ -188,7 +189,7 @@ func (*captureStream[T]) RecvMsg(any) error            { return nil }
 
 func TestServerUsesAuthenticatedIdentityAndGeneratedCommand(t *testing.T) {
 	identity := testIdentity()
-	operation := &jobv1.Operation{OperationId: "operations/01", TenantId: identity.TenantID, ProjectId: identity.ProjectID, ResourceVersion: 1, Etag: "etag-01"}
+	operation := &operationv1.Operation{OperationId: "operations/01", TenantId: identity.TenantID, ProjectId: identity.ProjectID, ResourceVersion: 1, Etag: "etag-01"}
 	repository := &fakeRepository{operation: operation}
 	codec, err := NewPageTokenCodec([]byte(strings.Repeat("p", 32)))
 	if err != nil {
@@ -222,7 +223,7 @@ func TestServerUsesAuthenticatedIdentityAndGeneratedCommand(t *testing.T) {
 
 func TestServerRejectsCommandIdentitySpoofBeforeRepository(t *testing.T) {
 	identity := testIdentity()
-	repository := &fakeRepository{operation: &jobv1.Operation{OperationId: "operations/01"}}
+	repository := &fakeRepository{operation: &operationv1.Operation{OperationId: "operations/01"}}
 	codec, _ := NewPageTokenCodec([]byte(strings.Repeat("p", 32)))
 	server, _ := NewServer(repository, fixedResolver{identity: identity}, codec, 10*time.Millisecond)
 	server.withClock(fixedClock{value: fixtureTime})
@@ -240,7 +241,7 @@ func TestServerRejectsCommandIdentitySpoofBeforeRepository(t *testing.T) {
 
 func TestServerRejectsExpiredCommandBeforeRepository(t *testing.T) {
 	identity := testIdentity()
-	repository := &fakeRepository{operation: &jobv1.Operation{OperationId: "operations/01"}}
+	repository := &fakeRepository{operation: &operationv1.Operation{OperationId: "operations/01"}}
 	codec, _ := NewPageTokenCodec([]byte(strings.Repeat("p", 32)))
 	server, _ := NewServer(repository, fixedResolver{identity: identity}, codec, 10*time.Millisecond)
 	server.withClock(fixedClock{value: fixtureTime})
@@ -385,7 +386,7 @@ func TestGeneratedTrainingEventsAreRegisteredAndPayloadSafe(t *testing.T) {
 	fence := &jobv1.LeaseFence{JobId: "jobs/01", RunId: "runs/01", AttemptId: "attempts/01", LeaseEpoch: 1, Deadline: timestamppb.New(fixtureTime.Add(time.Minute)), TenantId: identity.TenantID, ProjectId: identity.ProjectID, LeaseTokenDigest: "sha256:" + hex.EncodeToString(fenceDigest[:])}
 	progress := &trainingv1.TrainingProgress{TrainingRunName: "trainingRuns/01", ProgressRevision: 1, CommittedAt: timestamppb.New(fixtureTime)}
 	run := &trainingv1.TrainingRun{Name: "trainingRuns/01", Uid: "uid-01", Revision: 4, Etag: "etag-4", TenantName: "tenants/tenant-01", ProjectName: "tenants/tenant-01/projects/project-01", State: trainingv1.TrainingRunState_TRAINING_RUN_STATE_RUNNING, TrainingRecipe: fixtureArtifact("a"), DatasetRelease: fixtureResource("dataset_release", "data-01"), ModelRelease: fixtureResource("model_release", "model-01"), ActiveFence: fence, CommittedProgress: progress, CreateTime: timestamppb.New(fixtureTime), CompleteTime: timestamppb.New(fixtureTime)}
-	operation := &jobv1.Operation{OperationId: "operations/01", TenantId: identity.TenantID, ProjectId: identity.ProjectID, ResourceVersion: 4, Etag: "op-etag"}
+	operation := &operationv1.Operation{OperationId: "operations/01", TenantId: identity.TenantID, ProjectId: identity.ProjectID, ResourceVersion: 4, Etag: "op-etag"}
 	checkpoint := &trainingv1.Checkpoint{Name: "trainingRuns/01/checkpoints/1", Revision: 2, SnapshotEpoch: 1, CheckpointManifest: fixtureArtifact("b"), CommittedProgress: progress, CommitTime: timestamppb.New(fixtureTime)}
 	context := &commonv1.CommandContext{RequestId: "request-01", TraceId: "trace-01", CorrelationId: "correlation-01"}
 	factory := GeneratedEventFactory{}
@@ -466,10 +467,10 @@ func TestWatchTrainingRunResumesAndTerminatesWithoutPolling(t *testing.T) {
 
 func TestWatchOperationStreamsEveryDurableRevisionInOrder(t *testing.T) {
 	identity := testIdentity()
-	revisions := []*jobv1.Operation{
-		{OperationId: "operations/01", TenantId: identity.TenantID, ProjectId: identity.ProjectID, ResourceVersion: 2, State: jobv1.OperationState_OPERATION_STATE_RUNNING},
-		{OperationId: "operations/01", TenantId: identity.TenantID, ProjectId: identity.ProjectID, ResourceVersion: 3, State: jobv1.OperationState_OPERATION_STATE_CANCELLING},
-		{OperationId: "operations/01", TenantId: identity.TenantID, ProjectId: identity.ProjectID, ResourceVersion: 4, State: jobv1.OperationState_OPERATION_STATE_CANCELLED, Done: true},
+	revisions := []*operationv1.Operation{
+		{OperationId: "operations/01", TenantId: identity.TenantID, ProjectId: identity.ProjectID, ResourceVersion: 2, State: operationv1.OperationState_OPERATION_STATE_RUNNING},
+		{OperationId: "operations/01", TenantId: identity.TenantID, ProjectId: identity.ProjectID, ResourceVersion: 3, State: operationv1.OperationState_OPERATION_STATE_CANCELLING},
+		{OperationId: "operations/01", TenantId: identity.TenantID, ProjectId: identity.ProjectID, ResourceVersion: 4, State: operationv1.OperationState_OPERATION_STATE_CANCELLED, Done: true},
 	}
 	codec, _ := NewPageTokenCodec([]byte(strings.Repeat("p", 32)))
 	server, err := NewServer(&fakeRepository{revisions: revisions}, fixedResolver{identity: identity}, codec, time.Second)

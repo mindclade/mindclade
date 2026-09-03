@@ -20,7 +20,8 @@ use mindclade_protocols::{
         StartWorkflowRunRequest, StartWorkflowRunResponse, UpdateWorkflowDefinitionRequest,
         UpdateWorkflowDefinitionResponse, WatchWorkflowRunRequest, WatchWorkflowRunResponse,
     },
-    job::v1::{LeaseFence, Operation},
+    job::v1::LeaseFence,
+    operation::v1::Operation,
     workflow::v1::{
         ApprovalBinding, ApprovalDecisionValue, ApprovalReceipt, ApprovalRequest,
         WorkflowDefinition, WorkflowRun, WorkflowRunState,

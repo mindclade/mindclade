@@ -21,6 +21,7 @@ import (
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	internaljobv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/job/v1"
 	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
+	operationv1 "github.com/mindclade/mindclade/protocols/generated/go/operation/v1"
 )
 
 // #nosec G101 -- deterministic non-secret capability fixture used only by an in-memory transport.
@@ -65,8 +66,8 @@ func (*jobRunFacadeClient) job() *jobv1.Job {
 	return &jobv1.Job{JobId: "jobs/job-1", OperationId: "operations/op-1", TenantId: "tenant-a", ProjectId: "project-a", ResourceVersion: 1, State: jobv1.JobState_JOB_STATE_ACCEPTED}
 }
 
-func (*jobRunFacadeClient) operation() *jobv1.Operation {
-	return &jobv1.Operation{OperationId: "operations/op-1", JobId: "jobs/job-1", TenantId: "tenant-a", ProjectId: "project-a", ResourceVersion: 1, State: jobv1.OperationState_OPERATION_STATE_PENDING}
+func (*jobRunFacadeClient) operation() *operationv1.Operation {
+	return &operationv1.Operation{OperationId: "operations/op-1", JobId: "jobs/job-1", TenantId: "tenant-a", ProjectId: "project-a", ResourceVersion: 1, State: operationv1.OperationState_OPERATION_STATE_PENDING}
 }
 
 func (*jobRunFacadeClient) run() *jobv1.Run {

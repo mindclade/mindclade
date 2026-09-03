@@ -17,40 +17,41 @@ import (
 	agentv1 "github.com/mindclade/mindclade/protocols/generated/go/agent/v1"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
+	operationv1 "github.com/mindclade/mindclade/protocols/generated/go/operation/v1"
 )
 
 const protobufEventContentType = "application/x-protobuf; deterministic=true"
 
 type EventFactory interface {
-	DefinitionCreated(Identity, *agentv1.AgentDefinition, *jobv1.Operation, *commonv1.CommandContext, time.Time) (*commonv1.EventEnvelope, error)
-	DefinitionUpdated(Identity, *agentv1.AgentDefinition, int64, []string, *jobv1.Operation, *commonv1.CommandContext, time.Time) (*commonv1.EventEnvelope, error)
-	RunStarted(Identity, *agentv1.AgentRun, *jobv1.Operation, *commonv1.CommandContext, time.Time) (*commonv1.EventEnvelope, error)
-	CancellationRequested(Identity, *agentv1.AgentRun, *jobv1.Operation, string, *commonv1.CommandContext, time.Time) (*commonv1.EventEnvelope, error)
+	DefinitionCreated(Identity, *agentv1.AgentDefinition, *operationv1.Operation, *commonv1.CommandContext, time.Time) (*commonv1.EventEnvelope, error)
+	DefinitionUpdated(Identity, *agentv1.AgentDefinition, int64, []string, *operationv1.Operation, *commonv1.CommandContext, time.Time) (*commonv1.EventEnvelope, error)
+	RunStarted(Identity, *agentv1.AgentRun, *operationv1.Operation, *commonv1.CommandContext, time.Time) (*commonv1.EventEnvelope, error)
+	CancellationRequested(Identity, *agentv1.AgentRun, *operationv1.Operation, string, *commonv1.CommandContext, time.Time) (*commonv1.EventEnvelope, error)
 	AgentStepDispatched(Identity, *agentv1.AgentStep, *jobv1.LeaseFence, *commonv1.CommandContext, time.Time) (*commonv1.EventEnvelope, error)
 	StepCommitted(Identity, *agentv1.AgentStep, *agentv1.AgentRun, *commonv1.CommandContext, time.Time) (*commonv1.EventEnvelope, error)
 	RunCompleted(Identity, *agentv1.AgentRun, *commonv1.CommandContext, time.Time) (*commonv1.EventEnvelope, error)
 	ToolReceiptCommitted(Identity, *agentv1.ToolReceipt, uint64, *commonv1.CommandContext, time.Time) (*commonv1.EventEnvelope, error)
-	JobRequested(Identity, *jobv1.Operation, string, *commonv1.CommandContext, time.Time) (*commonv1.EventEnvelope, error)
+	JobRequested(Identity, *operationv1.Operation, string, *commonv1.CommandContext, time.Time) (*commonv1.EventEnvelope, error)
 }
 
 type GeneratedEventFactory struct{}
 
-func (GeneratedEventFactory) DefinitionCreated(identity Identity, definition *agentv1.AgentDefinition, operation *jobv1.Operation, command *commonv1.CommandContext, at time.Time) (*commonv1.EventEnvelope, error) {
+func (GeneratedEventFactory) DefinitionCreated(identity Identity, definition *agentv1.AgentDefinition, operation *operationv1.Operation, command *commonv1.CommandContext, at time.Time) (*commonv1.EventEnvelope, error) {
 	payload := &agentv1.AgentDefinitionCreated{AgentDefinition: clone(definition), Operation: operationResource(operation), CreatedAt: timestamppb.New(at.UTC())}
 	return eventEnvelopeRevision(identity, definitionResource(definition), payload, definition.GetRevision(), command, at, "agent")
 }
 
-func (GeneratedEventFactory) DefinitionUpdated(identity Identity, definition *agentv1.AgentDefinition, previous int64, paths []string, operation *jobv1.Operation, command *commonv1.CommandContext, at time.Time) (*commonv1.EventEnvelope, error) {
+func (GeneratedEventFactory) DefinitionUpdated(identity Identity, definition *agentv1.AgentDefinition, previous int64, paths []string, operation *operationv1.Operation, command *commonv1.CommandContext, at time.Time) (*commonv1.EventEnvelope, error) {
 	payload := &agentv1.AgentDefinitionUpdated{AgentDefinition: clone(definition), PreviousRevision: previous, UpdateMask: &fieldmaskpb.FieldMask{Paths: append([]string(nil), paths...)}, Operation: operationResource(operation), UpdatedAt: timestamppb.New(at.UTC())}
 	return eventEnvelopeRevision(identity, definitionResource(definition), payload, definition.GetRevision(), command, at, "agent")
 }
 
-func (GeneratedEventFactory) RunStarted(identity Identity, run *agentv1.AgentRun, operation *jobv1.Operation, command *commonv1.CommandContext, at time.Time) (*commonv1.EventEnvelope, error) {
+func (GeneratedEventFactory) RunStarted(identity Identity, run *agentv1.AgentRun, operation *operationv1.Operation, command *commonv1.CommandContext, at time.Time) (*commonv1.EventEnvelope, error) {
 	payload := &agentv1.AgentRunStarted{AgentRun: clone(run), Operation: operationResource(operation), StartedAt: timestamppb.New(at.UTC())}
 	return eventEnvelopeRevision(identity, runResource(run), payload, run.GetRevision(), command, at, "agent")
 }
 
-func (GeneratedEventFactory) CancellationRequested(identity Identity, run *agentv1.AgentRun, operation *jobv1.Operation, reason string, command *commonv1.CommandContext, at time.Time) (*commonv1.EventEnvelope, error) {
+func (GeneratedEventFactory) CancellationRequested(identity Identity, run *agentv1.AgentRun, operation *operationv1.Operation, reason string, command *commonv1.CommandContext, at time.Time) (*commonv1.EventEnvelope, error) {
 	payload := &agentv1.AgentCancellationRequested{AgentRun: runResource(run), Reason: reason, Operation: operationResource(operation), RequestedAt: timestamppb.New(at.UTC())}
 	return eventEnvelopeRevision(identity, runResource(run), payload, run.GetRevision(), command, at, "agent")
 }
@@ -94,7 +95,7 @@ func (GeneratedEventFactory) ToolReceiptCommitted(identity Identity, receipt *ag
 	return eventEnvelope(identity, toolReceiptResource(identity, receipt), payload, 1, command, at, "agent-worker")
 }
 
-func (GeneratedEventFactory) JobRequested(identity Identity, operation *jobv1.Operation, configurationDigest string, command *commonv1.CommandContext, at time.Time) (*commonv1.EventEnvelope, error) {
+func (GeneratedEventFactory) JobRequested(identity Identity, operation *operationv1.Operation, configurationDigest string, command *commonv1.CommandContext, at time.Time) (*commonv1.EventEnvelope, error) {
 	if operation == nil || !validSHA256(configurationDigest) {
 		return nil, ErrInvalidArgument
 	}
@@ -176,7 +177,7 @@ func toolReceiptResource(identity Identity, value *agentv1.ToolReceipt) *commonv
 	return &commonv1.ResourceRef{ResourceType: "tool_receipt", ResourceId: resourceID(value.GetName()), TenantId: identity.TenantID, ProjectId: identity.ProjectID, ResourceVersion: 1, Name: value.GetName(), Etag: value.GetReceiptDigest()}
 }
 
-func operationResource(operation *jobv1.Operation) *commonv1.ResourceRef {
+func operationResource(operation *operationv1.Operation) *commonv1.ResourceRef {
 	if operation == nil {
 		return nil
 	}

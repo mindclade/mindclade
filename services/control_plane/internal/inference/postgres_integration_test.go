@@ -18,7 +18,7 @@ import (
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	inferencev1 "github.com/mindclade/mindclade/protocols/generated/go/inference/v1"
 	internalinferencev1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/inference/v1"
-	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
+	operationv1 "github.com/mindclade/mindclade/protocols/generated/go/operation/v1"
 	policyv1 "github.com/mindclade/mindclade/protocols/generated/go/policy/v1"
 	"github.com/mindclade/mindclade/services/control_plane/internal/jobs"
 )
@@ -190,9 +190,9 @@ func TestPostgresInferenceJourneyIsNormalizedFencedResumableAndEventBacked(t *te
 	}
 	requestName, history, terminal, err := repository.ReadOperationRevisions(ctx, identity, operation.GetOperationId(), 0, operationWatchBatchSize)
 	if err != nil || requestName != request.GetName() || !terminal || len(history) != 3 ||
-		history[0].GetResourceVersion() != 1 || history[0].GetState() != jobv1.OperationState_OPERATION_STATE_PENDING ||
-		history[1].GetResourceVersion() != 2 || history[1].GetState() != jobv1.OperationState_OPERATION_STATE_RUNNING ||
-		history[2].GetResourceVersion() != 3 || history[2].GetState() != jobv1.OperationState_OPERATION_STATE_SUCCEEDED {
+		history[0].GetResourceVersion() != 1 || history[0].GetState() != operationv1.OperationState_OPERATION_STATE_PENDING ||
+		history[1].GetResourceVersion() != 2 || history[1].GetState() != operationv1.OperationState_OPERATION_STATE_RUNNING ||
+		history[2].GetResourceVersion() != 3 || history[2].GetState() != operationv1.OperationState_OPERATION_STATE_SUCCEEDED {
 		t.Fatalf("history request=%q revisions=%v terminal=%v err=%v", requestName, history, terminal, err)
 	}
 	_, resumed, terminal, err := repository.ReadOperationRevisions(ctx, identity, operation.GetOperationId(), 3, operationWatchBatchSize)

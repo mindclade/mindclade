@@ -11,7 +11,7 @@ import (
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	evaluationv1 "github.com/mindclade/mindclade/protocols/generated/go/evaluation/v1"
 	internalevaluationv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/evaluation/v1"
-	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
+	operationv1 "github.com/mindclade/mindclade/protocols/generated/go/operation/v1"
 )
 
 var (
@@ -60,22 +60,22 @@ type RunPage struct {
 // Repository boundaries accept and return generated protobuf values only.
 // Implementations clone at every boundary so mutable aliases never escape.
 type Repository interface {
-	CreateRun(context.Context, Identity, *internalevaluationv1.CreateEvaluationRunRequest, string, time.Time) (*jobv1.Operation, bool, error)
+	CreateRun(context.Context, Identity, *internalevaluationv1.CreateEvaluationRunRequest, string, time.Time) (*operationv1.Operation, bool, error)
 	GetRun(context.Context, Identity, string) (*evaluationv1.EvaluationRun, error)
 	ListRuns(context.Context, Identity, RunPage) ([]*evaluationv1.EvaluationRun, string, time.Time, error)
-	CancelRun(context.Context, Identity, *internalevaluationv1.CancelEvaluationRunRequest, string, time.Time) (*jobv1.Operation, bool, error)
+	CancelRun(context.Context, Identity, *internalevaluationv1.CancelEvaluationRunRequest, string, time.Time) (*operationv1.Operation, bool, error)
 	CommitResult(context.Context, Identity, *internalevaluationv1.CommitEvaluationResultRequest, string, time.Time) (*evaluationv1.EvaluationResult, *evaluationv1.EvaluationRun, bool, error)
 	GetResult(context.Context, Identity, string) (*evaluationv1.EvaluationResult, error)
-	CreatePromotionDecision(context.Context, Identity, *internalevaluationv1.CreatePromotionDecisionRequest, string, time.Time) (*jobv1.Operation, bool, error)
+	CreatePromotionDecision(context.Context, Identity, *internalevaluationv1.CreatePromotionDecisionRequest, string, time.Time) (*operationv1.Operation, bool, error)
 	GetPromotionDecision(context.Context, Identity, string) (*evaluationv1.PromotionDecision, error)
 }
 
 type EventFactory interface {
-	RunCreated(Identity, *evaluationv1.EvaluationRun, *jobv1.Operation, *commonv1.CommandContext, time.Time) (*commonv1.EventEnvelope, error)
-	CancellationRequested(Identity, *evaluationv1.EvaluationRun, *jobv1.Operation, string, *commonv1.CommandContext, time.Time) (*commonv1.EventEnvelope, error)
-	ResultCommitted(Identity, *evaluationv1.EvaluationResult, *evaluationv1.EvaluationRun, *jobv1.Operation, *commonv1.CommandContext, time.Time) (*commonv1.EventEnvelope, error)
-	PromotionRecorded(Identity, *evaluationv1.PromotionDecision, *jobv1.Operation, *commonv1.CommandContext, time.Time) (*commonv1.EventEnvelope, error)
-	JobRequested(Identity, *jobv1.Operation, string, *commonv1.CommandContext, time.Time) (*commonv1.EventEnvelope, error)
+	RunCreated(Identity, *evaluationv1.EvaluationRun, *operationv1.Operation, *commonv1.CommandContext, time.Time) (*commonv1.EventEnvelope, error)
+	CancellationRequested(Identity, *evaluationv1.EvaluationRun, *operationv1.Operation, string, *commonv1.CommandContext, time.Time) (*commonv1.EventEnvelope, error)
+	ResultCommitted(Identity, *evaluationv1.EvaluationResult, *evaluationv1.EvaluationRun, *operationv1.Operation, *commonv1.CommandContext, time.Time) (*commonv1.EventEnvelope, error)
+	PromotionRecorded(Identity, *evaluationv1.PromotionDecision, *operationv1.Operation, *commonv1.CommandContext, time.Time) (*commonv1.EventEnvelope, error)
+	JobRequested(Identity, *operationv1.Operation, string, *commonv1.CommandContext, time.Time) (*commonv1.EventEnvelope, error)
 }
 
 type SQLRepository struct {

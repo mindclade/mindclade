@@ -19,7 +19,7 @@ import (
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	internaladminv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/admin/v1"
 	internalpolicyv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/policy/v1"
-	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
+	operationv1 "github.com/mindclade/mindclade/protocols/generated/go/operation/v1"
 	policyv1 "github.com/mindclade/mindclade/protocols/generated/go/policy/v1"
 )
 
@@ -132,8 +132,8 @@ func (server *adminSDKServer) GetAuditExport(_ context.Context, request *interna
 	return &internaladminv1.GetAuditExportResponse{AuditExport: &adminv1.AuditExport{Name: request.GetName(), State: adminv1.AuditExportState_AUDIT_EXPORT_STATE_SUCCEEDED}}, nil
 }
 
-func sdkOperation(id string) *jobv1.Operation {
-	return &jobv1.Operation{OperationId: "operations/" + id, State: jobv1.OperationState_OPERATION_STATE_PENDING}
+func sdkOperation(id string) *operationv1.Operation {
+	return &operationv1.Operation{OperationId: "operations/" + id, State: operationv1.OperationState_OPERATION_STATE_PENDING}
 }
 
 func policyAdminSDKClient(t *testing.T) (*Client, *policySDKServer, *adminSDKServer) {

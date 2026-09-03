@@ -24,7 +24,7 @@ use mindclade_protocols::{
             UpdateUsePolicyResponse,
         },
     },
-    job::v1::Operation,
+    operation::v1::Operation,
     policy::v1::{AuthorizationDecision, PolicyReference, UsePolicy},
 };
 use prost_types::{FieldMask, Timestamp};

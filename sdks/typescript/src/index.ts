@@ -65,7 +65,7 @@ export * from "../../../protocols/generated/typescript/job/v1/lease_fencing_pb.j
 export {
 	type Operation,
 	OperationState,
-} from "../../../protocols/generated/typescript/job/v1/operation_pb.js";
+} from "../../../protocols/generated/typescript/operation/v1/operation_pb.js";
 export * from "../../../protocols/generated/typescript/job/v1/run_pb.js";
 export * from "../../../protocols/generated/typescript/model/v1/model_commands_pb.js";
 export * from "../../../protocols/generated/typescript/model/v1/model_pb.js";

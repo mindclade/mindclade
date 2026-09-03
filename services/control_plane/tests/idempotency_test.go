@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/mindclade/mindclade/libs/go/pubsubx"
-	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
+	operationv1 "github.com/mindclade/mindclade/protocols/generated/go/operation/v1"
 	"github.com/mindclade/mindclade/services/control_plane/internal/operations"
 )
 
@@ -18,7 +18,7 @@ func TestIdempotencyReturnsReplayAndRejectsHashChange(t *testing.T) {
 		}
 	}
 	repository := operations.NewRepository()
-	first := &jobv1.Operation{OperationId: "operation-1", TenantId: "tenant-a", ProjectId: "project-a", JobId: "job-1", Etag: "operation-etag-1"}
+	first := &operationv1.Operation{OperationId: "operation-1", TenantId: "tenant-a", ProjectId: "project-a", JobId: "job-1", Etag: "operation-etag-1"}
 	firstDigest := "sha256:" + strings.Repeat("1", 64)
 	configurationDigest := "sha256:" + strings.Repeat("c", 64)
 	if _, replay, err := repository.CreateAtomically(first, firstDigest, configurationDigest, "key-1", "principal-1"); err != nil || replay {
@@ -37,11 +37,11 @@ func TestOperationRepositoryScopesAliasesAndConditionalAdvances(t *testing.T) {
 	repository := operations.NewRepository()
 	digest := "sha256:" + strings.Repeat("1", 64)
 	configurationDigest := "sha256:" + strings.Repeat("c", 64)
-	first := &jobv1.Operation{
+	first := &operationv1.Operation{
 		OperationId: "operation-shared", TenantId: "tenant-a", ProjectId: "project-a",
 		JobId: "job-a", Etag: "operation-etag-a-1",
 	}
-	second := &jobv1.Operation{
+	second := &operationv1.Operation{
 		OperationId: "operation-shared", TenantId: "tenant-a", ProjectId: "project-b",
 		JobId: "job-b", Etag: "operation-etag-b-1",
 	}
@@ -86,7 +86,7 @@ func TestOperationRepositoryScopesAliasesAndConditionalAdvances(t *testing.T) {
 	advanced, err := repository.Advance(
 		"tenant-a", "project-a", "operation-shared",
 		persistedA.GetResourceVersion(), persistedA.GetEtag(),
-		jobv1.OperationState_OPERATION_STATE_RUNNING,
+		operationv1.OperationState_OPERATION_STATE_RUNNING,
 	)
 	if err != nil || advanced.GetResourceVersion() != 2 || advanced.GetEtag() == persistedA.GetEtag() {
 		t.Fatalf("conditional advance: operation=%v err=%v", advanced, err)
@@ -94,7 +94,7 @@ func TestOperationRepositoryScopesAliasesAndConditionalAdvances(t *testing.T) {
 	if _, err = repository.Advance(
 		"tenant-a", "project-a", "operation-shared",
 		persistedA.GetResourceVersion(), persistedA.GetEtag(),
-		jobv1.OperationState_OPERATION_STATE_SUCCEEDED,
+		operationv1.OperationState_OPERATION_STATE_SUCCEEDED,
 	); !errors.Is(err, operations.ErrVersionConflict) {
 		t.Fatalf("stale advance error=%v", err)
 	}

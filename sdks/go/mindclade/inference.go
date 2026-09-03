@@ -12,7 +12,7 @@ import (
 
 	inferencev1 "github.com/mindclade/mindclade/protocols/generated/go/inference/v1"
 	internalinferencev1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/inference/v1"
-	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
+	operationv1 "github.com/mindclade/mindclade/protocols/generated/go/operation/v1"
 )
 
 // InferenceService is a thin ergonomic façade over the generated internal
@@ -26,7 +26,7 @@ type InferenceService struct {
 // Submit freezes authenticated command context and submits generated inference
 // intent. The caller retains ownership of request; the SDK clones before
 // materializing transport identity and the canonical request digest.
-func (service *InferenceService) Submit(ctx context.Context, request *inferencev1.InferenceRequest, options ...RequestOption) (*jobv1.Operation, error) {
+func (service *InferenceService) Submit(ctx context.Context, request *inferencev1.InferenceRequest, options ...RequestOption) (*operationv1.Operation, error) {
 	if request == nil || !validResourceIdentifier(request.GetName()) {
 		return nil, &Error{Code: CodeInvalidArgument, Message: "generated inference request with a valid name is required"}
 	}
@@ -83,7 +83,7 @@ func (service *InferenceService) GetRequest(ctx context.Context, name string, op
 
 // GetResult returns immutable terminal truth and the durable generated
 // operation used to authorize that read.
-func (service *InferenceService) GetResult(ctx context.Context, operationName string, options ...RequestOption) (*inferencev1.InferenceResult, *jobv1.Operation, error) {
+func (service *InferenceService) GetResult(ctx context.Context, operationName string, options ...RequestOption) (*inferencev1.InferenceResult, *operationv1.Operation, error) {
 	if !validResourceIdentifier(operationName) {
 		return nil, nil, &Error{Code: CodeInvalidArgument, Message: "valid inference operation name is required"}
 	}
@@ -104,7 +104,7 @@ func (service *InferenceService) GetResult(ctx context.Context, operationName st
 
 // CommitResult sends a generated fenced terminal command. Authenticated
 // identity and the canonical command digest are always rematerialized.
-func (service *InferenceService) CommitResult(ctx context.Context, command *internalinferencev1.CommitInferenceResultRequest, options ...RequestOption) (*inferencev1.InferenceResult, *jobv1.Operation, error) {
+func (service *InferenceService) CommitResult(ctx context.Context, command *internalinferencev1.CommitInferenceResultRequest, options ...RequestOption) (*inferencev1.InferenceResult, *operationv1.Operation, error) {
 	if command == nil || command.GetInferenceRequest() == nil || command.GetFence() == nil || command.GetResult() == nil || strings.TrimSpace(command.GetRequestDigest()) == "" {
 		return nil, nil, &Error{Code: CodeInvalidArgument, Message: "complete generated inference result command is required"}
 	}
@@ -261,7 +261,7 @@ func (watcher *InferenceWatcher) Close() error {
 
 // Wait consumes resumable typed updates until terminal truth is durable, then
 // returns the authoritative generated result and operation.
-func (service *InferenceService) Wait(ctx context.Context, operationName string, cursor *inferencev1.InferenceStreamCursor) (*inferencev1.InferenceResult, *jobv1.Operation, error) {
+func (service *InferenceService) Wait(ctx context.Context, operationName string, cursor *inferencev1.InferenceStreamCursor) (*inferencev1.InferenceResult, *operationv1.Operation, error) {
 	watcher, err := service.Watch(ctx, operationName, cursor)
 	if err != nil {
 		return nil, nil, err

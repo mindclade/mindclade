@@ -20,6 +20,7 @@ import (
 	inferencev1 "github.com/mindclade/mindclade/protocols/generated/go/inference/v1"
 	internalinferencev1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/inference/v1"
 	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
+	operationv1 "github.com/mindclade/mindclade/protocols/generated/go/operation/v1"
 )
 
 type inferenceSDKServer struct {
@@ -29,7 +30,7 @@ type inferenceSDKServer struct {
 	commit  *internalinferencev1.CommitInferenceResultRequest
 	request *inferencev1.InferenceRequest
 	result  *inferencev1.InferenceResult
-	op      *jobv1.Operation
+	op      *operationv1.Operation
 }
 
 func (server *inferenceSDKServer) SubmitInference(_ context.Context, request *internalinferencev1.SubmitInferenceRequest) (*internalinferencev1.SubmitInferenceResponse, error) {
@@ -90,7 +91,7 @@ func inferenceSDKClient(t *testing.T) (*Client, *InferenceService, *inferenceSDK
 	listener := bufconn.Listen(1 << 20)
 	grpcServer := grpc.NewServer()
 	request := &inferencev1.InferenceRequest{Name: "tenants/tenant-a/projects/project-a/inferenceRequests/request-1", TenantId: "tenant-a", ProjectId: "project-a"}
-	op := &jobv1.Operation{OperationId: "operations/op-1", TenantId: "tenant-a", ProjectId: "project-a", JobId: "jobs/job-1", State: jobv1.OperationState_OPERATION_STATE_SUCCEEDED, ResourceVersion: 2, Done: true}
+	op := &operationv1.Operation{OperationId: "operations/op-1", TenantId: "tenant-a", ProjectId: "project-a", JobId: "jobs/job-1", State: operationv1.OperationState_OPERATION_STATE_SUCCEEDED, ResourceVersion: 2, Done: true}
 	result := &inferencev1.InferenceResult{Name: "tenants/tenant-a/projects/project-a/inferenceResults/result-1", Request: &commonv1.ResourceRef{ResourceType: "inference_request", ResourceId: "request-1", TenantId: "tenant-a", ProjectId: "project-a", Name: request.GetName()}, Outcome: inferencev1.InferenceResultOutcome_INFERENCE_RESULT_OUTCOME_SUCCEEDED, ResultManifest: fixtureArtifact(), ResultDigest: "sha256:" + strings.Repeat("a", 64)}
 	server := &inferenceSDKServer{request: request, result: result, op: op}
 	internalinferencev1.RegisterInferenceServiceServer(grpcServer, server)

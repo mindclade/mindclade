@@ -16,6 +16,7 @@ import (
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	internalworkflowv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/workflow/v1"
 	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
+	operationv1 "github.com/mindclade/mindclade/protocols/generated/go/operation/v1"
 	workflowv1 "github.com/mindclade/mindclade/protocols/generated/go/workflow/v1"
 )
 
@@ -44,7 +45,7 @@ func (err *WorkflowRunError) Error() string {
 
 // CreateDefinition validates scope, replaces caller identity, and returns the
 // generated durable Operation.
-func (service *WorkflowService) CreateDefinition(ctx context.Context, request *internalworkflowv1.CreateWorkflowDefinitionRequest, options ...RequestOption) (*jobv1.Operation, error) {
+func (service *WorkflowService) CreateDefinition(ctx context.Context, request *internalworkflowv1.CreateWorkflowDefinitionRequest, options ...RequestOption) (*operationv1.Operation, error) {
 	if !service.configured() || request == nil || request.GetWorkflowDefinition() == nil || !validResourceIdentifier(request.GetWorkflowDefinitionId()) {
 		return nil, invalidArgument("a configured service and generated workflow definition request are required")
 	}
@@ -61,7 +62,7 @@ func (service *WorkflowService) CreateDefinition(ctx context.Context, request *i
 }
 
 // UpdateDefinition applies a generated field mask under an explicit ETag.
-func (service *WorkflowService) UpdateDefinition(ctx context.Context, request *internalworkflowv1.UpdateWorkflowDefinitionRequest, options ...RequestOption) (*jobv1.Operation, error) {
+func (service *WorkflowService) UpdateDefinition(ctx context.Context, request *internalworkflowv1.UpdateWorkflowDefinitionRequest, options ...RequestOption) (*operationv1.Operation, error) {
 	if !service.configured() || request == nil || request.GetWorkflowDefinition() == nil || !scopedResourceName(service.client.config, request.GetWorkflowDefinition().GetName(), "workflowDefinitions") || strings.TrimSpace(request.GetEtag()) == "" || request.GetUpdateMask() == nil || len(request.GetUpdateMask().GetPaths()) == 0 {
 		return nil, invalidArgument("workflow update requires a scoped definition, field mask, and ETag")
 	}
@@ -125,7 +126,7 @@ func (service *WorkflowService) ListDefinitions(ctx context.Context, request *in
 }
 
 // StartRun freezes generated workflow intent and returns a durable Operation.
-func (service *WorkflowService) StartRun(ctx context.Context, request *internalworkflowv1.StartWorkflowRunRequest, options ...RequestOption) (*jobv1.Operation, error) {
+func (service *WorkflowService) StartRun(ctx context.Context, request *internalworkflowv1.StartWorkflowRunRequest, options ...RequestOption) (*operationv1.Operation, error) {
 	if !service.configured() || request == nil || request.GetWorkflowRun() == nil || !validResourceIdentifier(request.GetWorkflowRunId()) {
 		return nil, invalidArgument("a generated workflow start request and valid run ID are required")
 	}
@@ -190,7 +191,7 @@ func (service *WorkflowService) ListRuns(ctx context.Context, request *internalw
 }
 
 // CancelRun records monotonic cancellation under an explicit ETag.
-func (service *WorkflowService) CancelRun(ctx context.Context, request *internalworkflowv1.CancelWorkflowRunRequest, options ...RequestOption) (*jobv1.Operation, error) {
+func (service *WorkflowService) CancelRun(ctx context.Context, request *internalworkflowv1.CancelWorkflowRunRequest, options ...RequestOption) (*operationv1.Operation, error) {
 	if !service.configured() || request == nil || !scopedResourceName(service.client.config, request.GetName(), "workflowRuns") || strings.TrimSpace(request.GetEtag()) == "" || strings.TrimSpace(request.GetReason()) == "" || len(request.GetReason()) > 1024 {
 		return nil, invalidArgument("workflow cancellation requires a scoped name, ETag, and bounded reason")
 	}
@@ -247,7 +248,7 @@ func (service *WorkflowService) projectParent(parent *string, label string) erro
 	return nil
 }
 
-func (service *WorkflowService) operationMutation(ctx context.Context, supplied *commonv1.CommandContext, request proto.Message, method string, options ...RequestOption) (*jobv1.Operation, error) {
+func (service *WorkflowService) operationMutation(ctx context.Context, supplied *commonv1.CommandContext, request proto.Message, method string, options ...RequestOption) (*operationv1.Operation, error) {
 	key := supplied.GetIdempotencyKey()
 	clearCommandContext(request)
 	callContext, metadata, cancel, err := service.client.workflowMutationContext(ctx, key, false, options...)
@@ -260,7 +261,7 @@ func (service *WorkflowService) operationMutation(ctx context.Context, supplied 
 		return nil, err
 	}
 	setCommandContext(request, commandContext(service.client.config, callContext, metadata, digest))
-	var operation *jobv1.Operation
+	var operation *operationv1.Operation
 	switch value := request.(type) {
 	case *internalworkflowv1.CreateWorkflowDefinitionRequest:
 		response, callErr := service.transport.CreateWorkflowDefinition(callContext, value)

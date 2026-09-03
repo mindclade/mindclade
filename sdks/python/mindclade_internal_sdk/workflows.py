@@ -16,7 +16,7 @@ from typing import Any, cast
 from google.protobuf.message import Message
 from mindclade.common.v1 import resource_reference_pb2
 from mindclade.internal.workflow.v1 import workflow_service_pb2
-from mindclade.job.v1 import operation_pb2
+from mindclade.operation.v1 import operation_pb2
 from mindclade.workflow.v1 import approval_pb2, workflow_definition_pb2, workflow_run_pb2
 
 from ._invocation import AsyncInvoker, SyncInvoker, canonical_digest, command_context, retry_delay

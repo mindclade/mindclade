@@ -5,8 +5,8 @@ import (
 	"strings"
 
 	internalmodelv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/model/v1"
-	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
 	modelv1 "github.com/mindclade/mindclade/protocols/generated/go/model/v1"
+	operationv1 "github.com/mindclade/mindclade/protocols/generated/go/operation/v1"
 )
 
 // ModelService is the private model and immutable-release lifecycle façade.
@@ -16,7 +16,7 @@ type ModelService struct {
 	transport internalmodelv1.ModelServiceClient
 }
 
-func (service *ModelService) Register(ctx context.Context, command *modelv1.RegisterModelCommand, options ...RequestOption) (*jobv1.Operation, error) {
+func (service *ModelService) Register(ctx context.Context, command *modelv1.RegisterModelCommand, options ...RequestOption) (*operationv1.Operation, error) {
 	if command == nil {
 		return nil, invalidArgument("a generated RegisterModelCommand is required")
 	}
@@ -87,11 +87,11 @@ func (service *ModelService) List(ctx context.Context, request *internalmodelv1.
 	return cloneGenerated(response), nil
 }
 
-func (service *ModelService) RegisterRelease(ctx context.Context, command *modelv1.RegisterModelReleaseCommand, options ...RequestOption) (*jobv1.Operation, error) {
+func (service *ModelService) RegisterRelease(ctx context.Context, command *modelv1.RegisterModelReleaseCommand, options ...RequestOption) (*operationv1.Operation, error) {
 	return service.mutateRelease(ctx, command, options...)
 }
 
-func (service *ModelService) mutateRelease(ctx context.Context, command *modelv1.RegisterModelReleaseCommand, options ...RequestOption) (*jobv1.Operation, error) {
+func (service *ModelService) mutateRelease(ctx context.Context, command *modelv1.RegisterModelReleaseCommand, options ...RequestOption) (*operationv1.Operation, error) {
 	if command == nil {
 		return nil, invalidArgument("a generated release command for the configured model project is required")
 	}
@@ -154,7 +154,7 @@ func (service *ModelService) ListReleases(ctx context.Context, request *internal
 	return cloneGenerated(response), nil
 }
 
-func (service *ModelService) PromoteRelease(ctx context.Context, command *modelv1.PromoteModelReleaseCommand, options ...RequestOption) (*jobv1.Operation, error) {
+func (service *ModelService) PromoteRelease(ctx context.Context, command *modelv1.PromoteModelReleaseCommand, options ...RequestOption) (*operationv1.Operation, error) {
 	if command == nil {
 		return nil, invalidArgument("a generated promotion command for the configured project is required")
 	}
@@ -178,7 +178,7 @@ func (service *ModelService) PromoteRelease(ctx context.Context, command *modelv
 	return operationResponse(response.GetOperation(), err, "PromoteModelRelease")
 }
 
-func (service *ModelService) RevokeRelease(ctx context.Context, command *modelv1.RevokeModelReleaseCommand, options ...RequestOption) (*jobv1.Operation, error) {
+func (service *ModelService) RevokeRelease(ctx context.Context, command *modelv1.RevokeModelReleaseCommand, options ...RequestOption) (*operationv1.Operation, error) {
 	if command == nil {
 		return nil, invalidArgument("a generated revocation command for the configured project is required")
 	}

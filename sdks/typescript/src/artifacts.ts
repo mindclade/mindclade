@@ -47,7 +47,7 @@ import {
 	type Operation,
 	OperationSchema,
 	OperationState,
-} from "../../../protocols/generated/typescript/job/v1/operation_pb.js";
+} from "../../../protocols/generated/typescript/operation/v1/operation_pb.js";
 import type { ClientCore } from "./core.js";
 import { MindcladeError } from "./error.js";
 import {

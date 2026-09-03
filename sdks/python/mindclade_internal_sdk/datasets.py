@@ -9,7 +9,7 @@ from typing import cast
 from mindclade.common.v1 import resource_reference_pb2
 from mindclade.dataset.v1 import dataset_commands_pb2, dataset_pb2, dataset_release_pb2
 from mindclade.internal.dataset.v1 import dataset_service_pb2
-from mindclade.job.v1 import operation_pb2
+from mindclade.operation.v1 import operation_pb2
 
 from ._invocation import AsyncInvoker, SyncInvoker, canonical_digest, command_context
 from ._validation import required_response_message, required_text

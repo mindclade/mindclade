@@ -7,6 +7,7 @@ import (
 	artifactv1 "github.com/mindclade/mindclade/protocols/generated/go/artifact/v1"
 	internaljobv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/job/v1"
 	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
+	operationv1 "github.com/mindclade/mindclade/protocols/generated/go/operation/v1"
 )
 
 const jobPageSizeMaximum = 200
@@ -21,7 +22,7 @@ type JobService struct {
 
 // Request admits generated job intent and returns fresh generated Job and
 // Operation values. The caller-owned command is never mutated.
-func (service *JobService) Request(ctx context.Context, command *jobv1.RequestJobCommand, options ...RequestOption) (*jobv1.Job, *jobv1.Operation, error) {
+func (service *JobService) Request(ctx context.Context, command *jobv1.RequestJobCommand, options ...RequestOption) (*jobv1.Job, *operationv1.Operation, error) {
 	if !service.configured() || command == nil || !validResourceLeafSDK(command.GetJobKind()) ||
 		!validJobArtifact(command.GetConfiguration(), true) || !validJobArtifact(command.GetInput(), false) ||
 		(command.GetRequestedJobId() != "" && !validResourceLeafSDK(command.GetRequestedJobId())) {
@@ -108,7 +109,7 @@ func (service *JobService) List(ctx context.Context, request *internaljobv1.List
 }
 
 // Cancel records monotonic cancellation under an ETag precondition.
-func (service *JobService) Cancel(ctx context.Context, request *internaljobv1.CancelJobRequest, options ...RequestOption) (*jobv1.Operation, error) {
+func (service *JobService) Cancel(ctx context.Context, request *internaljobv1.CancelJobRequest, options ...RequestOption) (*operationv1.Operation, error) {
 	if !service.configured() || request == nil {
 		return nil, invalidArgument("configured job service and generated cancellation request are required")
 	}
@@ -150,9 +151,9 @@ func (service *JobService) validJob(value *jobv1.Job) bool {
 		canonicalCollectionID(value.GetJobId(), "jobs") != "" && canonicalCollectionID(value.GetOperationId(), "operations") != "" && value.GetResourceVersion() > 0 && value.GetState() != jobv1.JobState_JOB_STATE_UNSPECIFIED
 }
 
-func (service *JobService) validOperation(value *jobv1.Operation) bool {
+func (service *JobService) validOperation(value *operationv1.Operation) bool {
 	return value != nil && value.GetTenantId() == service.client.config.TenantID && value.GetProjectId() == service.client.config.ProjectID &&
-		canonicalCollectionID(value.GetOperationId(), "operations") != "" && value.GetResourceVersion() > 0 && value.GetState() != jobv1.OperationState_OPERATION_STATE_UNSPECIFIED
+		canonicalCollectionID(value.GetOperationId(), "operations") != "" && value.GetResourceVersion() > 0 && value.GetState() != operationv1.OperationState_OPERATION_STATE_UNSPECIFIED
 }
 
 func validJobArtifact(value *artifactv1.ArtifactRef, required bool) bool {

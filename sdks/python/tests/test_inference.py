@@ -14,7 +14,8 @@ from mindclade.inference.v1 import (
     inference_stream_pb2,
 )
 from mindclade.internal.inference.v1 import inference_service_pb2
-from mindclade.job.v1 import lease_fencing_pb2, operation_pb2
+from mindclade.job.v1 import lease_fencing_pb2
+from mindclade.operation.v1 import operation_pb2
 from mindclade_internal_sdk import (
     AsyncClient,
     CallOptions,

@@ -8,8 +8,8 @@ from typing import cast
 
 from mindclade.common.v1 import resource_reference_pb2
 from mindclade.internal.model.v1 import model_service_pb2
-from mindclade.job.v1 import operation_pb2
 from mindclade.model.v1 import model_commands_pb2, model_pb2, model_release_pb2
+from mindclade.operation.v1 import operation_pb2
 
 from ._invocation import AsyncInvoker, SyncInvoker, canonical_digest, command_context
 from ._validation import required_response_message, required_text

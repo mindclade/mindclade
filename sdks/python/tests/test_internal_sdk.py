@@ -27,8 +27,8 @@ from mindclade.internal.dataset.v1 import dataset_service_pb2
 from mindclade.internal.job.v1 import job_service_pb2
 from mindclade.internal.model.v1 import model_service_pb2
 from mindclade.internal.training.v1 import training_service_pb2
-from mindclade.job.v1 import operation_pb2
 from mindclade.model.v1 import model_commands_pb2, model_pb2, model_release_pb2
+from mindclade.operation.v1 import operation_pb2
 from mindclade.training.v1 import training_commands_pb2, training_run_pb2
 from mindclade_internal_sdk import (
     AccessToken,

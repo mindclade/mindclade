@@ -18,7 +18,8 @@ from mindclade.artifact.v1 import artifact_reference_pb2
 from mindclade.common.v1 import command_context_pb2 as common_context_pb2
 from mindclade.common.v1 import resource_reference_pb2
 from mindclade.internal.training.v1 import training_service_pb2
-from mindclade.job.v1 import lease_fencing_pb2, operation_pb2
+from mindclade.job.v1 import lease_fencing_pb2
+from mindclade.operation.v1 import operation_pb2
 from mindclade.training.v1 import (
     checkpoint_pb2,
     training_commands_pb2,

@@ -17,7 +17,7 @@ from mindclade.agent.v1 import (
 )
 from mindclade.common.v1 import resource_reference_pb2
 from mindclade.internal.agent.v1 import agent_service_pb2
-from mindclade.job.v1 import operation_pb2
+from mindclade.operation.v1 import operation_pb2
 
 from ._invocation import AsyncInvoker, SyncInvoker, canonical_digest, command_context
 from ._validation import required_response_message, required_text

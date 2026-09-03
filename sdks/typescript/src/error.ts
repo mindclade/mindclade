@@ -1,7 +1,7 @@
 import { Code, ConnectError } from "@connectrpc/connect";
 
-import type { Operation } from "../../../protocols/generated/typescript/job/v1/operation_pb.js";
-import { OperationState } from "../../../protocols/generated/typescript/job/v1/operation_pb.js";
+import type { Operation } from "../../../protocols/generated/typescript/operation/v1/operation_pb.js";
+import { OperationState } from "../../../protocols/generated/typescript/operation/v1/operation_pb.js";
 
 export type ErrorKind =
 	| "already_exists"

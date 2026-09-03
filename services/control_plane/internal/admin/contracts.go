@@ -18,7 +18,7 @@ import (
 	artifactv1 "github.com/mindclade/mindclade/protocols/generated/go/artifact/v1"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	internaladminv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/admin/v1"
-	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
+	operationv1 "github.com/mindclade/mindclade/protocols/generated/go/operation/v1"
 	policyv1 "github.com/mindclade/mindclade/protocols/generated/go/policy/v1"
 )
 
@@ -71,13 +71,13 @@ type AuditPage struct {
 
 type Repository interface {
 	GetTenant(context.Context, Identity, string) (*adminv1.Tenant, error)
-	UpdateTenant(context.Context, Identity, *internaladminv1.UpdateTenantRequest, string, time.Time) (*jobv1.Operation, bool, error)
-	CreateProject(context.Context, Identity, *internaladminv1.CreateProjectRequest, string, time.Time) (*jobv1.Operation, bool, error)
+	UpdateTenant(context.Context, Identity, *internaladminv1.UpdateTenantRequest, string, time.Time) (*operationv1.Operation, bool, error)
+	CreateProject(context.Context, Identity, *internaladminv1.CreateProjectRequest, string, time.Time) (*operationv1.Operation, bool, error)
 	GetProject(context.Context, Identity, string) (*adminv1.Project, error)
 	ListProjects(context.Context, Identity, ProjectPage) ([]*adminv1.Project, string, time.Time, error)
-	UpdateProject(context.Context, Identity, *internaladminv1.UpdateProjectRequest, string, time.Time) (*jobv1.Operation, bool, error)
+	UpdateProject(context.Context, Identity, *internaladminv1.UpdateProjectRequest, string, time.Time) (*operationv1.Operation, bool, error)
 	QueryAuditRecords(context.Context, Identity, *adminv1.AuditQuery, AuditPage) ([]*adminv1.AuditRecord, string, error)
-	ExportAuditRecords(context.Context, Identity, *internaladminv1.ExportAuditRecordsRequest, string, time.Time) (*jobv1.Operation, bool, error)
+	ExportAuditRecords(context.Context, Identity, *internaladminv1.ExportAuditRecordsRequest, string, time.Time) (*operationv1.Operation, bool, error)
 	GetAuditExport(context.Context, Identity, string) (*adminv1.AuditExport, error)
 }
 
@@ -88,11 +88,11 @@ type ExportCompletionRepository interface {
 }
 
 type EventFactory interface {
-	TenantUpdated(Identity, *adminv1.Tenant, []string, *jobv1.Operation, *commonv1.CommandContext, time.Time) (*commonv1.EventEnvelope, error)
-	ProjectCreated(Identity, *adminv1.Project, *jobv1.Operation, *commonv1.CommandContext, time.Time) (*commonv1.EventEnvelope, error)
-	ProjectUpdated(Identity, *adminv1.Project, []string, *jobv1.Operation, *commonv1.CommandContext, time.Time) (*commonv1.EventEnvelope, error)
-	AuditExportRequested(Identity, *adminv1.AuditExport, *adminv1.AuditQuery, *jobv1.Operation, *commonv1.CommandContext, time.Time) (*commonv1.EventEnvelope, error)
-	AuditExportCompleted(Identity, *adminv1.AuditExport, *jobv1.Operation, time.Time) (*commonv1.EventEnvelope, error)
+	TenantUpdated(Identity, *adminv1.Tenant, []string, *operationv1.Operation, *commonv1.CommandContext, time.Time) (*commonv1.EventEnvelope, error)
+	ProjectCreated(Identity, *adminv1.Project, *operationv1.Operation, *commonv1.CommandContext, time.Time) (*commonv1.EventEnvelope, error)
+	ProjectUpdated(Identity, *adminv1.Project, []string, *operationv1.Operation, *commonv1.CommandContext, time.Time) (*commonv1.EventEnvelope, error)
+	AuditExportRequested(Identity, *adminv1.AuditExport, *adminv1.AuditQuery, *operationv1.Operation, *commonv1.CommandContext, time.Time) (*commonv1.EventEnvelope, error)
+	AuditExportCompleted(Identity, *adminv1.AuditExport, *operationv1.Operation, time.Time) (*commonv1.EventEnvelope, error)
 }
 
 type SQLRepository struct {
@@ -321,7 +321,7 @@ func exportResource(identity Identity, value *adminv1.AuditExport) *commonv1.Res
 	return &commonv1.ResourceRef{ResourceType: "audit_export", ResourceId: lastSegment(value.GetName()), TenantId: identity.TenantID, ProjectId: identity.ProjectID, ResourceVersion: value.GetRevision(), Name: value.GetName(), Etag: value.GetEtag()}
 }
 
-func operationResource(value *jobv1.Operation) *commonv1.ResourceRef {
+func operationResource(value *operationv1.Operation) *commonv1.ResourceRef {
 	if value == nil {
 		return nil
 	}

@@ -19,7 +19,7 @@ import (
 	artifactv1 "github.com/mindclade/mindclade/protocols/generated/go/artifact/v1"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	internaladminv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/admin/v1"
-	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
+	operationv1 "github.com/mindclade/mindclade/protocols/generated/go/operation/v1"
 )
 
 var fixtureTime = time.Date(2026, 9, 2, 12, 0, 0, 0, time.UTC)
@@ -37,7 +37,7 @@ type fakeRepository struct {
 	project   *adminv1.Project
 	export    *adminv1.AuditExport
 	record    *adminv1.AuditRecord
-	operation *jobv1.Operation
+	operation *operationv1.Operation
 	request   proto.Message
 }
 
@@ -45,12 +45,12 @@ func (r *fakeRepository) GetTenant(context.Context, Identity, string) (*adminv1.
 	return clone(r.tenant), nil
 }
 
-func (r *fakeRepository) UpdateTenant(_ context.Context, _ Identity, request *internaladminv1.UpdateTenantRequest, _ string, _ time.Time) (*jobv1.Operation, bool, error) {
+func (r *fakeRepository) UpdateTenant(_ context.Context, _ Identity, request *internaladminv1.UpdateTenantRequest, _ string, _ time.Time) (*operationv1.Operation, bool, error) {
 	r.request = clone(request)
 	return clone(r.operation), false, nil
 }
 
-func (r *fakeRepository) CreateProject(_ context.Context, _ Identity, request *internaladminv1.CreateProjectRequest, _ string, _ time.Time) (*jobv1.Operation, bool, error) {
+func (r *fakeRepository) CreateProject(_ context.Context, _ Identity, request *internaladminv1.CreateProjectRequest, _ string, _ time.Time) (*operationv1.Operation, bool, error) {
 	r.request = clone(request)
 	return clone(r.operation), false, nil
 }
@@ -63,7 +63,7 @@ func (r *fakeRepository) ListProjects(context.Context, Identity, ProjectPage) ([
 	return []*adminv1.Project{clone(r.project)}, "", fixtureTime, nil
 }
 
-func (r *fakeRepository) UpdateProject(_ context.Context, _ Identity, request *internaladminv1.UpdateProjectRequest, _ string, _ time.Time) (*jobv1.Operation, bool, error) {
+func (r *fakeRepository) UpdateProject(_ context.Context, _ Identity, request *internaladminv1.UpdateProjectRequest, _ string, _ time.Time) (*operationv1.Operation, bool, error) {
 	r.request = clone(request)
 	return clone(r.operation), false, nil
 }
@@ -72,7 +72,7 @@ func (r *fakeRepository) QueryAuditRecords(context.Context, Identity, *adminv1.A
 	return []*adminv1.AuditRecord{clone(r.record)}, "", nil
 }
 
-func (r *fakeRepository) ExportAuditRecords(_ context.Context, _ Identity, request *internaladminv1.ExportAuditRecordsRequest, _ string, _ time.Time) (*jobv1.Operation, bool, error) {
+func (r *fakeRepository) ExportAuditRecords(_ context.Context, _ Identity, request *internaladminv1.ExportAuditRecordsRequest, _ string, _ time.Time) (*operationv1.Operation, bool, error) {
 	r.request = clone(request)
 	return clone(r.operation), false, nil
 }
@@ -124,7 +124,7 @@ func serverFixture(t *testing.T, repository Repository) *Server {
 }
 
 func TestAdminServerClonesAndBindsAuthenticatedCommand(t *testing.T) {
-	operation := &jobv1.Operation{OperationId: "operations/1", TenantId: "tenant-1", ProjectId: "project-1", State: jobv1.OperationState_OPERATION_STATE_SUCCEEDED, Done: true}
+	operation := &operationv1.Operation{OperationId: "operations/1", TenantId: "tenant-1", ProjectId: "project-1", State: operationv1.OperationState_OPERATION_STATE_SUCCEEDED, Done: true}
 	repository := &fakeRepository{operation: operation}
 	server := serverFixture(t, repository)
 	request := &internaladminv1.CreateProjectRequest{Parent: "tenants/tenant-1", ProjectId: "project-1", Project: projectFixture()}
@@ -144,7 +144,7 @@ func TestGeneratedAdminEventsAreRegisteredAndDecodable(t *testing.T) {
 	identity := identityFixture()
 	identity.ProjectID = "project-1"
 	context := &commonv1.CommandContext{RequestId: "request-1", TraceId: "trace-1"}
-	operation := &jobv1.Operation{OperationId: "operations/1", TenantId: identity.TenantID, ProjectId: identity.ProjectID, ResourceVersion: 1, Etag: "etag"}
+	operation := &operationv1.Operation{OperationId: "operations/1", TenantId: identity.TenantID, ProjectId: identity.ProjectID, ResourceVersion: 1, Etag: "etag"}
 	events := GeneratedEventFactory{}
 	created, err := events.ProjectCreated(identity, projectFixture(), operation, context, fixtureTime)
 	if err != nil {
@@ -231,7 +231,7 @@ func TestAdminPageTokenIsTamperEvidentAndQueryBound(t *testing.T) {
 }
 
 func TestAdminGeneratedNetworkGRPCService(t *testing.T) {
-	operation := &jobv1.Operation{OperationId: "operations/1", TenantId: "tenant-1", ProjectId: "project-1", State: jobv1.OperationState_OPERATION_STATE_SUCCEEDED, Done: true}
+	operation := &operationv1.Operation{OperationId: "operations/1", TenantId: "tenant-1", ProjectId: "project-1", State: operationv1.OperationState_OPERATION_STATE_SUCCEEDED, Done: true}
 	repository := &fakeRepository{tenant: tenantFixture(), project: projectFixture(), export: exportFixture(), record: &adminv1.AuditRecord{EventId: "event-1", TenantId: "tenant-1", ProjectId: "project-1", OccurredAt: timestamppb.New(fixtureTime)}, operation: operation}
 	listener := bufconn.Listen(1 << 20)
 	grpcServer := grpc.NewServer()

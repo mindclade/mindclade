@@ -12,7 +12,7 @@ from mindclade.admin.v1 import audit_query_pb2, project_pb2, tenant_pb2
 from mindclade.common.v1 import command_context_pb2, resource_reference_pb2
 from mindclade.internal.admin.v1 import admin_service_pb2
 from mindclade.internal.policy.v1 import policy_service_pb2
-from mindclade.job.v1 import operation_pb2
+from mindclade.operation.v1 import operation_pb2
 from mindclade.policy.v1 import authorization_decision_pb2, policy_reference_pb2, use_policy_pb2
 from mindclade_internal_sdk import AsyncClient, CallOptions, Client, ClientConfig, Environment
 from mindclade_internal_sdk.testing import FakeAsyncTransport, FakeSyncTransport

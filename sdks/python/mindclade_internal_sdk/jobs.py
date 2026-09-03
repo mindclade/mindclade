@@ -11,7 +11,8 @@ import grpc
 from google.protobuf.message import Message
 from mindclade.artifact.v1 import artifact_reference_pb2
 from mindclade.internal.job.v1 import job_service_pb2
-from mindclade.job.v1 import job_commands_pb2, job_pb2, operation_pb2
+from mindclade.job.v1 import job_commands_pb2, job_pb2
+from mindclade.operation.v1 import operation_pb2
 
 from ._invocation import AsyncInvoker, SyncInvoker, canonical_digest, command_context
 from ._validation import artifact_ref, required_response_message, required_text

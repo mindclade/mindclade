@@ -13,7 +13,7 @@ import (
 
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	internaljobv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/job/v1"
-	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
+	operationv1 "github.com/mindclade/mindclade/protocols/generated/go/operation/v1"
 )
 
 type OperationService struct {
@@ -58,8 +58,8 @@ func (service *OperationService) List(ctx context.Context, request *internaljobv
 	return cloneGenerated(response), nil
 }
 
-func validListedOperation(config Config, operation *jobv1.Operation) bool {
-	if operation == nil || strings.TrimSpace(operation.GetOperationId()) == "" || operation.GetTenantId() != config.TenantID || operation.GetProjectId() != config.ProjectID || operation.GetState() == jobv1.OperationState_OPERATION_STATE_UNSPECIFIED {
+func validListedOperation(config Config, operation *operationv1.Operation) bool {
+	if operation == nil || strings.TrimSpace(operation.GetOperationId()) == "" || operation.GetTenantId() != config.TenantID || operation.GetProjectId() != config.ProjectID || operation.GetState() == operationv1.OperationState_OPERATION_STATE_UNSPECIFIED {
 		return false
 	}
 	if operation.GetDone() != terminalOperationState(operation.GetState()) {
@@ -75,7 +75,7 @@ func operationTargetInProject(config Config, target *commonv1.ResourceRef) bool 
 	return target.GetTenantId() == config.TenantID && target.GetProjectId() == config.ProjectID && strings.HasPrefix(target.GetName(), projectName(config.TenantID, config.ProjectID)+"/")
 }
 
-func (service *OperationService) Get(ctx context.Context, name string, options ...RequestOption) (*jobv1.Operation, error) {
+func (service *OperationService) Get(ctx context.Context, name string, options ...RequestOption) (*operationv1.Operation, error) {
 	if strings.TrimSpace(name) == "" {
 		return nil, &Error{Code: CodeInvalidArgument, Message: "operation name is required"}
 	}
@@ -100,7 +100,7 @@ type WaitOptions struct {
 
 // Wait polls durable operation state until terminal or context cancellation.
 // A failed/cancelled operation is returned together with OperationError.
-func (service *OperationService) Wait(ctx context.Context, name string, options WaitOptions) (*jobv1.Operation, error) {
+func (service *OperationService) Wait(ctx context.Context, name string, options WaitOptions) (*operationv1.Operation, error) {
 	operationContext, cancel, err := service.longRunningContext(ctx)
 	if err != nil {
 		return nil, err
@@ -137,7 +137,7 @@ func (service *OperationService) Cancel(
 	ctx context.Context,
 	name, etag, reason string,
 	options ...RequestOption,
-) (*jobv1.Operation, error) {
+) (*operationv1.Operation, error) {
 	reason = strings.TrimSpace(reason)
 	if strings.TrimSpace(name) == "" || strings.TrimSpace(etag) == "" || len(reason) == 0 || len(reason) > 1024 || strings.ContainsAny(reason, "\x00\r\n") {
 		return nil, &Error{Code: CodeInvalidArgument, Message: "operation name, etag, and bounded cancellation reason are required"}
@@ -284,19 +284,19 @@ func (watcher *Watcher) Close() error {
 	return nil
 }
 
-func terminalOperationState(state jobv1.OperationState) bool {
-	return state == jobv1.OperationState_OPERATION_STATE_SUCCEEDED ||
-		state == jobv1.OperationState_OPERATION_STATE_FAILED ||
-		state == jobv1.OperationState_OPERATION_STATE_CANCELLED
+func terminalOperationState(state operationv1.OperationState) bool {
+	return state == operationv1.OperationState_OPERATION_STATE_SUCCEEDED ||
+		state == operationv1.OperationState_OPERATION_STATE_FAILED ||
+		state == operationv1.OperationState_OPERATION_STATE_CANCELLED
 }
 
-func operationFailed(operation *jobv1.Operation) bool {
-	return operation.GetState() == jobv1.OperationState_OPERATION_STATE_FAILED ||
-		operation.GetState() == jobv1.OperationState_OPERATION_STATE_CANCELLED ||
+func operationFailed(operation *operationv1.Operation) bool {
+	return operation.GetState() == operationv1.OperationState_OPERATION_STATE_FAILED ||
+		operation.GetState() == operationv1.OperationState_OPERATION_STATE_CANCELLED ||
 		operation.GetError() != nil
 }
 
-func validateTerminalOperation(operation *jobv1.Operation) error {
+func validateTerminalOperation(operation *operationv1.Operation) error {
 	if operation == nil || strings.TrimSpace(operation.GetOperationId()) == "" {
 		return &Error{Code: CodeDataLoss, Message: "operation service returned an invalid operation"}
 	}

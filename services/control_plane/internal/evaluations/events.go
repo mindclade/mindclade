@@ -16,13 +16,14 @@ import (
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	evaluationv1 "github.com/mindclade/mindclade/protocols/generated/go/evaluation/v1"
 	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
+	operationv1 "github.com/mindclade/mindclade/protocols/generated/go/operation/v1"
 )
 
 const protobufEventContentType = "application/x-protobuf; deterministic=true"
 
 type GeneratedEventFactory struct{}
 
-func (GeneratedEventFactory) RunCreated(identity Identity, run *evaluationv1.EvaluationRun, operation *jobv1.Operation, command *commonv1.CommandContext, at time.Time) (*commonv1.EventEnvelope, error) {
+func (GeneratedEventFactory) RunCreated(identity Identity, run *evaluationv1.EvaluationRun, operation *operationv1.Operation, command *commonv1.CommandContext, at time.Time) (*commonv1.EventEnvelope, error) {
 	payload := &evaluationv1.EvaluationRunCreated{
 		EvaluationRunName: run.GetName(), EvaluationRunRevision: run.GetRevision(),
 		Suite: clone(run.GetSuite()), Datasets: cloneSlice(run.GetDatasets()), Snapshot: clone(run.GetSnapshot()),
@@ -31,7 +32,7 @@ func (GeneratedEventFactory) RunCreated(identity Identity, run *evaluationv1.Eva
 	return eventEnvelope(identity, runResource(run), payload, run.GetRevision(), command, at, "evaluation")
 }
 
-func (GeneratedEventFactory) CancellationRequested(identity Identity, run *evaluationv1.EvaluationRun, operation *jobv1.Operation, reason string, command *commonv1.CommandContext, at time.Time) (*commonv1.EventEnvelope, error) {
+func (GeneratedEventFactory) CancellationRequested(identity Identity, run *evaluationv1.EvaluationRun, operation *operationv1.Operation, reason string, command *commonv1.CommandContext, at time.Time) (*commonv1.EventEnvelope, error) {
 	payload := &evaluationv1.EvaluationCancellationRequested{
 		EvaluationRunName: run.GetName(), EvaluationRunRevision: run.GetRevision(), Reason: reason,
 		Operation: operationResource(operation), RequestedAt: timestamppb.New(at.UTC()),
@@ -39,7 +40,7 @@ func (GeneratedEventFactory) CancellationRequested(identity Identity, run *evalu
 	return eventEnvelope(identity, runResource(run), payload, run.GetRevision(), command, at, "evaluation")
 }
 
-func (GeneratedEventFactory) ResultCommitted(identity Identity, result *evaluationv1.EvaluationResult, run *evaluationv1.EvaluationRun, operation *jobv1.Operation, command *commonv1.CommandContext, at time.Time) (*commonv1.EventEnvelope, error) {
+func (GeneratedEventFactory) ResultCommitted(identity Identity, result *evaluationv1.EvaluationResult, run *evaluationv1.EvaluationRun, operation *operationv1.Operation, command *commonv1.CommandContext, at time.Time) (*commonv1.EventEnvelope, error) {
 	payload := &evaluationv1.EvaluationResultCommitted{
 		EvaluationResultName: result.GetName(), EvaluationRunName: run.GetName(), EvaluationRunRevision: run.GetRevision(),
 		Outcome: result.GetOutcome(), Report: clone(result.GetReport()), ResultDigest: result.GetResultDigest(),
@@ -48,7 +49,7 @@ func (GeneratedEventFactory) ResultCommitted(identity Identity, result *evaluati
 	return eventEnvelope(identity, runResource(run), payload, run.GetRevision(), command, at, "evaluation")
 }
 
-func (GeneratedEventFactory) PromotionRecorded(identity Identity, decision *evaluationv1.PromotionDecision, operation *jobv1.Operation, command *commonv1.CommandContext, at time.Time) (*commonv1.EventEnvelope, error) {
+func (GeneratedEventFactory) PromotionRecorded(identity Identity, decision *evaluationv1.PromotionDecision, operation *operationv1.Operation, command *commonv1.CommandContext, at time.Time) (*commonv1.EventEnvelope, error) {
 	payload := &evaluationv1.PromotionDecisionRecorded{
 		PromotionDecisionName: decision.GetName(), PromotionDecisionUid: decision.GetUid(), CandidateRelease: clone(decision.GetCandidateRelease()),
 		CandidateDigest: decision.GetCandidateDigest(), Outcome: decision.GetOutcome(), DecisionDigest: decision.GetDecisionDigest(),
@@ -57,7 +58,7 @@ func (GeneratedEventFactory) PromotionRecorded(identity Identity, decision *eval
 	return eventEnvelope(identity, decisionResource(identity, decision), payload, 1, command, at, "evaluation")
 }
 
-func (GeneratedEventFactory) JobRequested(identity Identity, operation *jobv1.Operation, configurationDigest string, command *commonv1.CommandContext, at time.Time) (*commonv1.EventEnvelope, error) {
+func (GeneratedEventFactory) JobRequested(identity Identity, operation *operationv1.Operation, configurationDigest string, command *commonv1.CommandContext, at time.Time) (*commonv1.EventEnvelope, error) {
 	if operation == nil || !validSHA256(configurationDigest) {
 		return nil, ErrInvalidArgument
 	}
@@ -115,7 +116,7 @@ func decisionResource(identity Identity, decision *evaluationv1.PromotionDecisio
 	return &commonv1.ResourceRef{ResourceType: "promotion_decision", ResourceId: resourceID(decision.GetName()), TenantId: identity.TenantID, ProjectId: identity.ProjectID, ResourceVersion: 1, Name: decision.GetName(), Etag: decision.GetDecisionDigest()}
 }
 
-func operationResource(operation *jobv1.Operation) *commonv1.ResourceRef {
+func operationResource(operation *operationv1.Operation) *commonv1.ResourceRef {
 	if operation == nil {
 		return nil
 	}

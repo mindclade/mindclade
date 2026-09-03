@@ -20,7 +20,7 @@ use mindclade_protocols::{
         QuarantineArtifactUploadRequest, ReleaseArtifactLeaseRequest, ResolveArtifactAliasRequest,
         UploadArtifactChunkRequest,
     },
-    job::v1::{Operation, OperationState},
+    operation::v1::{Operation, OperationState},
 };
 use prost::Message;
 use prost_types::Timestamp;

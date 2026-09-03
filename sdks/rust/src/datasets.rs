@@ -12,7 +12,7 @@ use mindclade_protocols::{
         ListDatasetsResponse, PublishDatasetReleaseRequest, RevokeDatasetReleaseRequest,
         UpdateDatasetRequest,
     },
-    job::v1::Operation,
+    operation::v1::Operation,
 };
 
 use crate::{CallOptions, ClientCore, Error, SubmitOptions, retry::registered_method_safety};

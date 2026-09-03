@@ -15,7 +15,7 @@ from mindclade.inference.v1 import (
     inference_stream_pb2,
 )
 from mindclade.internal.inference.v1 import inference_service_pb2
-from mindclade.job.v1 import operation_pb2
+from mindclade.operation.v1 import operation_pb2
 
 from ._invocation import AsyncInvoker, SyncInvoker, canonical_digest, command_context, retry_delay
 from ._validation import required_response_message, required_text

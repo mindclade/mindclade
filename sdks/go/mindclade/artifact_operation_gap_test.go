@@ -14,7 +14,7 @@ import (
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	internalartifactv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/artifact/v1"
 	internaljobv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/job/v1"
-	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
+	operationv1 "github.com/mindclade/mindclade/protocols/generated/go/operation/v1"
 )
 
 type artifactGapClient struct {
@@ -24,7 +24,7 @@ type artifactGapClient struct {
 	metadata  []requestMetadata
 	artifact  *artifactv1.ArtifactRef
 	lease     *commonv1.ResourceRef
-	operation *jobv1.Operation
+	operation *operationv1.Operation
 	returned  *artifactv1.ArtifactRef
 }
 
@@ -66,8 +66,8 @@ type operationGapClient struct {
 	calls          []string
 	listRequests   []*internaljobv1.ListOperationsRequest
 	cancelRequests []*internaljobv1.CancelOperationRequest
-	operation      *jobv1.Operation
-	returned       *jobv1.Operation
+	operation      *operationv1.Operation
+	returned       *operationv1.Operation
 }
 
 func (client *operationGapClient) GetOperation(_ context.Context, _ *internaljobv1.GetOperationRequest, _ ...grpc.CallOption) (*internaljobv1.GetOperationResponse, error) {
@@ -79,7 +79,7 @@ func (client *operationGapClient) GetOperation(_ context.Context, _ *internaljob
 func (client *operationGapClient) ListOperations(_ context.Context, request *internaljobv1.ListOperationsRequest, _ ...grpc.CallOption) (*internaljobv1.ListOperationsResponse, error) {
 	client.calls = append(client.calls, "ListOperations")
 	client.listRequests = append(client.listRequests, cloneGenerated(request))
-	return &internaljobv1.ListOperationsResponse{Operations: []*jobv1.Operation{cloneGenerated(client.operation)}, Page: &commonv1.PageResponse{NextPageToken: "operation-next"}}, nil
+	return &internaljobv1.ListOperationsResponse{Operations: []*operationv1.Operation{cloneGenerated(client.operation)}, Page: &commonv1.PageResponse{NextPageToken: "operation-next"}}, nil
 }
 
 func (client *operationGapClient) CancelOperation(_ context.Context, request *internaljobv1.CancelOperationRequest, _ ...grpc.CallOption) (*internaljobv1.CancelOperationResponse, error) {
@@ -93,7 +93,7 @@ func TestArtifactLifecycleAndOperationListUseExactGeneratedRequests(t *testing.T
 	client, _, _ := testClient(t)
 	parent := projectName(client.config.TenantID, client.config.ProjectID)
 	artifact := fixtureArtifact()
-	operation := &jobv1.Operation{OperationId: parent + "/operations/op-1", TenantId: "tenant-a", ProjectId: "project-a", State: jobv1.OperationState_OPERATION_STATE_RUNNING}
+	operation := &operationv1.Operation{OperationId: parent + "/operations/op-1", TenantId: "tenant-a", ProjectId: "project-a", State: operationv1.OperationState_OPERATION_STATE_RUNNING}
 	lease := &commonv1.ResourceRef{ResourceType: "artifact_lease", ResourceId: "lease-1", TenantId: "tenant-a", ProjectId: "project-a", ResourceVersion: 1, Name: parent + "/artifactLeases/lease-1", Etag: "lease-etag-1"}
 	artifacts := &artifactGapClient{artifact: artifact, lease: lease, operation: operation}
 	operations := &operationGapClient{operation: operation}

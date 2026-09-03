@@ -8,7 +8,7 @@ import (
 
 	internaljobv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/job/v1"
 	internaltrainingv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/training/v1"
-	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
+	operationv1 "github.com/mindclade/mindclade/protocols/generated/go/operation/v1"
 	trainingv1 "github.com/mindclade/mindclade/protocols/generated/go/training/v1"
 )
 
@@ -60,7 +60,7 @@ func (realClock) Now() time.Time { return time.Now().UTC() }
 // implementation must clone at its boundary so mutable protobuf aliases never
 // escape persistence.
 type Repository interface {
-	CreateTrainingRun(context.Context, Identity, *trainingv1.CreateTrainingRunCommand, string, time.Time) (*jobv1.Operation, bool, error)
+	CreateTrainingRun(context.Context, Identity, *trainingv1.CreateTrainingRunCommand, string, time.Time) (*operationv1.Operation, bool, error)
 	GetTrainingRun(context.Context, Identity, string) (*trainingv1.TrainingRun, error)
 	ListTrainingRuns(context.Context, Identity, RunPage) ([]*trainingv1.TrainingRun, string, time.Time, error)
 	StartTrainingAttempt(context.Context, Identity, *trainingv1.StartTrainingAttemptCommand, string, time.Time) (*trainingv1.TrainingRun, bool, error)
@@ -72,10 +72,10 @@ type Repository interface {
 	CancelTrainingRun(context.Context, Identity, *trainingv1.CancelTrainingRunCommand, string, time.Time) (*trainingv1.TrainingRun, bool, error)
 	GetCheckpoint(context.Context, Identity, string) (*trainingv1.Checkpoint, error)
 	ListCheckpoints(context.Context, Identity, CheckpointPage) ([]*trainingv1.Checkpoint, string, time.Time, error)
-	GetOperation(context.Context, Identity, string) (*jobv1.Operation, error)
-	ReadOperationRevisions(context.Context, Identity, string, uint64, int) ([]*jobv1.Operation, bool, error)
-	ListOperations(context.Context, Identity, OperationPage) ([]*jobv1.Operation, string, time.Time, error)
-	CancelOperation(context.Context, Identity, *internaljobv1.CancelOperationRequest, string, time.Time) (*jobv1.Operation, bool, error)
+	GetOperation(context.Context, Identity, string) (*operationv1.Operation, error)
+	ReadOperationRevisions(context.Context, Identity, string, uint64, int) ([]*operationv1.Operation, bool, error)
+	ListOperations(context.Context, Identity, OperationPage) ([]*operationv1.Operation, string, time.Time, error)
+	CancelOperation(context.Context, Identity, *internaljobv1.CancelOperationRequest, string, time.Time) (*operationv1.Operation, bool, error)
 }
 
 type RunPage struct {
@@ -103,7 +103,7 @@ type OperationPage struct {
 	AfterName string
 	Order     string
 	Filter    string
-	State     jobv1.OperationState
+	State     operationv1.OperationState
 }
 
 // SQLRepository performs all aggregate writes in tenant-scoped transactions.

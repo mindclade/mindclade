@@ -18,6 +18,7 @@ import (
 	artifactv1 "github.com/mindclade/mindclade/protocols/generated/go/artifact/v1"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
+	operationv1 "github.com/mindclade/mindclade/protocols/generated/go/operation/v1"
 	"github.com/mindclade/mindclade/services/control_plane/internal/jobs"
 	"github.com/mindclade/mindclade/services/control_plane/internal/operations"
 	"github.com/mindclade/mindclade/services/control_plane/internal/policies"
@@ -72,7 +73,7 @@ func (h *reliabilityHarness) envelope(id string) *commonv1.EventEnvelope {
 		IdempotencyKey:      "create-" + id,
 		RequestDigest:       digestFor("1"),
 		ConfigurationDigest: digestFor("2"),
-		Operation: &jobv1.Operation{
+		Operation: &operationv1.Operation{
 			OperationId: "operation-" + id, TenantId: h.tenant, ProjectId: h.project,
 			JobId: "job-" + id, Etag: "operation-etag-1",
 		},
@@ -497,7 +498,7 @@ func (h *reliabilityHarness) runJobCancellationDelivery() {
 	requested, err := repository.RequestJobSQL(h.context(), &jobv1.Job{
 		JobId: jobID, TenantId: h.tenant, ProjectId: h.project,
 		Configuration: configuration, Etag: "job-etag-1",
-	}, &jobv1.Operation{
+	}, &operationv1.Operation{
 		OperationId: operationID, TenantId: h.tenant, ProjectId: h.project,
 		JobId: jobID, Etag: "operation-etag-1",
 	}, jobs.JobCommandMetadata{

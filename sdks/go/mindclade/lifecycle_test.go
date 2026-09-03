@@ -14,8 +14,8 @@ import (
 	datasetv1 "github.com/mindclade/mindclade/protocols/generated/go/dataset/v1"
 	internaldatasetv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/dataset/v1"
 	internalmodelv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/model/v1"
-	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
 	modelv1 "github.com/mindclade/mindclade/protocols/generated/go/model/v1"
+	operationv1 "github.com/mindclade/mindclade/protocols/generated/go/operation/v1"
 )
 
 type datasetLifecycleServer struct {
@@ -23,8 +23,8 @@ type datasetLifecycleServer struct {
 	created *datasetv1.CreateDatasetCommand
 }
 
-func (*datasetLifecycleServer) operation(id string) *jobv1.Operation {
-	return &jobv1.Operation{OperationId: id}
+func (*datasetLifecycleServer) operation(id string) *operationv1.Operation {
+	return &operationv1.Operation{OperationId: id}
 }
 
 func (server *datasetLifecycleServer) CreateDataset(_ context.Context, request *internaldatasetv1.CreateDatasetRequest) (*internaldatasetv1.CreateDatasetResponse, error) {
@@ -65,8 +65,8 @@ type modelLifecycleServer struct {
 	registered *modelv1.RegisterModelCommand
 }
 
-func (*modelLifecycleServer) operation(id string) *jobv1.Operation {
-	return &jobv1.Operation{OperationId: id}
+func (*modelLifecycleServer) operation(id string) *operationv1.Operation {
+	return &operationv1.Operation{OperationId: id}
 }
 
 func (server *modelLifecycleServer) RegisterModel(_ context.Context, request *internalmodelv1.RegisterModelRequest) (*internalmodelv1.RegisterModelResponse, error) {

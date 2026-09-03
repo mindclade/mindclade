@@ -11,7 +11,7 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 
-	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
+	operationv1 "github.com/mindclade/mindclade/protocols/generated/go/operation/v1"
 )
 
 // Code is a transport-neutral failure classification.
@@ -51,7 +51,7 @@ type Error struct {
 // OperationError represents a durable terminal failure. The generated
 // operation remains available for its authoritative state, result, and error.
 type OperationError struct {
-	Operation *jobv1.Operation
+	Operation *operationv1.Operation
 }
 
 func (err *OperationError) Error() string {

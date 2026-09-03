@@ -13,7 +13,7 @@ import {
 	RevokeUsePolicyRequestSchema,
 	UpdateUsePolicyRequestSchema,
 } from "../../../protocols/generated/typescript/internal/policy/v1/policy_service_pb.js";
-import type { Operation } from "../../../protocols/generated/typescript/job/v1/operation_pb.js";
+import type { Operation } from "../../../protocols/generated/typescript/operation/v1/operation_pb.js";
 import type { AuthorizationDecision } from "../../../protocols/generated/typescript/policy/v1/authorization_decision_pb.js";
 import type { PolicyReference } from "../../../protocols/generated/typescript/policy/v1/policy_reference_pb.js";
 import type { UsePolicy } from "../../../protocols/generated/typescript/policy/v1/use_policy_pb.js";

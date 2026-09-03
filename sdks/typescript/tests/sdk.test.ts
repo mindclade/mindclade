@@ -28,7 +28,7 @@ import {
 } from "../../../protocols/generated/typescript/internal/job/v1/job_service_pb.js";
 import { ModelService } from "../../../protocols/generated/typescript/internal/model/v1/model_service_pb.js";
 import { TrainingService } from "../../../protocols/generated/typescript/internal/training/v1/training_service_pb.js";
-import { OperationState } from "../../../protocols/generated/typescript/job/v1/operation_pb.js";
+import { OperationState } from "../../../protocols/generated/typescript/operation/v1/operation_pb.js";
 import {
 	AccessToken,
 	ClientConfig,

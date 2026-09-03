@@ -21,6 +21,7 @@ import (
 	artifactv1 "github.com/mindclade/mindclade/protocols/generated/go/artifact/v1"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
+	operationv1 "github.com/mindclade/mindclade/protocols/generated/go/operation/v1"
 	"github.com/mindclade/mindclade/services/control_plane/internal/tenants"
 )
 
@@ -36,7 +37,7 @@ const operationHistoryRetention = int64(256)
 
 // CreateAtomicallySQL accepts a generated Operation while persisting normalized
 // columns. Immutable outbox and audit envelopes are stored as protobuf bytes.
-func (r SQLRepository) CreateAtomicallySQL(ctx context.Context, operation *jobv1.Operation, requestDigest, commandKey, actorID string) (*jobv1.Operation, bool, error) {
+func (r SQLRepository) CreateAtomicallySQL(ctx context.Context, operation *operationv1.Operation, requestDigest, commandKey, actorID string) (*operationv1.Operation, bool, error) {
 	if err := validateCreate(operation, requestDigest); err != nil {
 		return nil, false, err
 	}
@@ -72,7 +73,7 @@ func (r SQLRepository) CreateAtomicallySQL(ctx context.Context, operation *jobv1
 	}
 	now := time.Now().UTC()
 	row := operationToRow(operation, requestDigest)
-	row.state = jobv1.OperationState_OPERATION_STATE_PENDING
+	row.state = operationv1.OperationState_OPERATION_STATE_PENDING
 	row.resourceVersion = 1
 	row.done = false
 	row.createdAt, row.updatedAt = now, now
@@ -154,7 +155,7 @@ error_detail_id, request_hash, created_at, updated_at
 // It creates the normalized job, operation, first immutable operation revision,
 // idempotency receipt, audit evidence, and JobRequested outbox delivery as one
 // tenant-scoped commit. Replays return the original operation without writes.
-func (r SQLRepository) CreateJobAndOperationSQL(ctx context.Context, job *jobv1.Job, operation *jobv1.Operation, requestDigest, commandKey, actorID string, at time.Time) (*jobv1.Operation, bool, error) {
+func (r SQLRepository) CreateJobAndOperationSQL(ctx context.Context, job *jobv1.Job, operation *operationv1.Operation, requestDigest, commandKey, actorID string, at time.Time) (*operationv1.Operation, bool, error) {
 	if job == nil || job.GetJobId() == "" || job.GetTenantId() == "" || job.GetProjectId() == "" ||
 		job.GetConfiguration() == nil || job.GetConfiguration().GetDigest() == "" || job.GetEtag() == "" ||
 		operation == nil || operation.GetJobId() != job.GetJobId() || operation.GetTenantId() != job.GetTenantId() ||
@@ -222,7 +223,7 @@ input_ref_id,configuration_ref_id,configuration_digest,etag,created_at,updated_a
 		return nil, false, err
 	}
 	row := operationToRow(operation, requestDigest)
-	row.state = jobv1.OperationState_OPERATION_STATE_PENDING
+	row.state = operationv1.OperationState_OPERATION_STATE_PENDING
 	row.resourceVersion = 1
 	row.done = false
 	row.createdAt, row.updatedAt = at, at
@@ -288,7 +289,7 @@ version,done,etag,result_ref_id,error_detail_id,request_hash,created_at,updated_
 	return operationRowToProto(row), false, nil
 }
 
-func (r SQLRepository) GetSQL(ctx context.Context, tenantID, projectID, operationID string) (*jobv1.Operation, error) {
+func (r SQLRepository) GetSQL(ctx context.Context, tenantID, projectID, operationID string) (*operationv1.Operation, error) {
 	tx, err := platformdb.BeginTenantTx(ctx, r.DB, tenantID, &sql.TxOptions{ReadOnly: true})
 	if err != nil {
 		return nil, err
@@ -350,7 +351,7 @@ WHERE tenant_id=$1 AND project_id=$2 AND id=$3 AND version=$5`,
 	return nil
 }
 
-func (r SQLRepository) AdvanceSQL(ctx context.Context, tenantID, projectID, operationID string, expectedVersion int64, expectedETag string, state jobv1.OperationState) (*jobv1.Operation, error) {
+func (r SQLRepository) AdvanceSQL(ctx context.Context, tenantID, projectID, operationID string, expectedVersion int64, expectedETag string, state operationv1.OperationState) (*operationv1.Operation, error) {
 	if !validAdvanceState(state) {
 		return nil, ErrInvalidTransition
 	}
@@ -412,7 +413,7 @@ func (r SQLRepository) AdvanceSQL(ctx context.Context, tenantID, projectID, oper
 // transaction and appends its immutable revision before returning. Callers use
 // this to reconcile a domain aggregate and its client-visible Operation as one
 // commit.
-func AdvanceTxSQL(ctx context.Context, tx *sql.Tx, tenantID, projectID, operationID string, expectedVersion int64, expectedETag string, state jobv1.OperationState, at time.Time) (*jobv1.Operation, error) {
+func AdvanceTxSQL(ctx context.Context, tx *sql.Tx, tenantID, projectID, operationID string, expectedVersion int64, expectedETag string, state operationv1.OperationState, at time.Time) (*operationv1.Operation, error) {
 	if tx == nil || !validAdvanceState(state) || tenantID == "" || projectID == "" || operationID == "" || expectedVersion < 1 || expectedETag == "" || at.IsZero() {
 		return nil, ErrVersionConflict
 	}
@@ -468,7 +469,7 @@ var (
 // EventEnvelope messages own all service and delivery surfaces.
 type operationRow struct {
 	operationID, tenantID, projectID, jobID string
-	state                                   jobv1.OperationState
+	state                                   operationv1.OperationState
 	resourceVersion                         int64
 	done                                    bool
 	etag                                    string
@@ -494,7 +495,7 @@ func NewRepository() *Repository {
 
 // CreateAtomically records idempotency, operation, audit, and an immutable
 // generated envelope under one lock.
-func (r *Repository) CreateAtomically(operation *jobv1.Operation, requestDigest, configurationDigest, commandKey, actorID string) (*jobv1.Operation, bool, error) {
+func (r *Repository) CreateAtomically(operation *operationv1.Operation, requestDigest, configurationDigest, commandKey, actorID string) (*operationv1.Operation, bool, error) {
 	if err := validateCreate(operation, requestDigest); err != nil {
 		return nil, false, err
 	}
@@ -515,7 +516,7 @@ func (r *Repository) CreateAtomically(operation *jobv1.Operation, requestDigest,
 	}
 	now := time.Now().UTC()
 	row := operationToRow(operation, requestDigest)
-	row.state = jobv1.OperationState_OPERATION_STATE_PENDING
+	row.state = operationv1.OperationState_OPERATION_STATE_PENDING
 	row.resourceVersion = 1
 	row.done = false
 	row.createdAt, row.updatedAt = now, now
@@ -537,7 +538,7 @@ func (r *Repository) CreateAtomically(operation *jobv1.Operation, requestDigest,
 	return operationRowToProto(row), false, nil
 }
 
-func (r *Repository) Get(tenantID, projectID, operationID string) (*jobv1.Operation, error) {
+func (r *Repository) Get(tenantID, projectID, operationID string) (*operationv1.Operation, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	row, ok := r.operations[operationScopeKey(tenantID, projectID, operationID)]
@@ -547,7 +548,7 @@ func (r *Repository) Get(tenantID, projectID, operationID string) (*jobv1.Operat
 	return operationRowToProto(row), nil
 }
 
-func (r *Repository) Advance(tenantID, projectID, operationID string, expectedVersion int64, expectedETag string, state jobv1.OperationState) (*jobv1.Operation, error) {
+func (r *Repository) Advance(tenantID, projectID, operationID string, expectedVersion int64, expectedETag string, state operationv1.OperationState) (*operationv1.Operation, error) {
 	if !validAdvanceState(state) {
 		return nil, ErrInvalidTransition
 	}
@@ -599,7 +600,7 @@ func (r *Repository) OutboxEnvelopes() []*commonv1.EventEnvelope {
 	return result
 }
 
-func newJobRequestedEnvelope(operation *jobv1.Operation, configurationDigest string, at time.Time) (*commonv1.EventEnvelope, error) {
+func newJobRequestedEnvelope(operation *operationv1.Operation, configurationDigest string, at time.Time) (*commonv1.EventEnvelope, error) {
 	if err := validateDigest(configurationDigest, "configuration digest"); err != nil {
 		return nil, err
 	}
@@ -633,7 +634,7 @@ func newJobRequestedEnvelope(operation *jobv1.Operation, configurationDigest str
 	}, nil
 }
 
-func operationEventResourceIdentity(operation *jobv1.Operation) (string, string) {
+func operationEventResourceIdentity(operation *operationv1.Operation) (string, string) {
 	operationID := strings.TrimPrefix(operation.GetOperationId(), "/")
 	resourceID := operationID
 	if separator := strings.LastIndexByte(resourceID, '/'); separator >= 0 {
@@ -663,7 +664,7 @@ func newOperationAuditEnvelope(row operationRow, actorID string, at time.Time) (
 	)
 }
 
-func validateCreate(operation *jobv1.Operation, requestDigest string) error {
+func validateCreate(operation *operationv1.Operation, requestDigest string) error {
 	if operation == nil || operation.GetOperationId() == "" || operation.GetTenantId() == "" || operation.GetProjectId() == "" || operation.GetJobId() == "" {
 		return ErrNotFound
 	}
@@ -718,7 +719,7 @@ func validateDigest(value, field string) error {
 	return nil
 }
 
-func operationToRow(operation *jobv1.Operation, requestDigest string) operationRow {
+func operationToRow(operation *operationv1.Operation, requestDigest string) operationRow {
 	return operationRow{
 		operationID: operation.GetOperationId(), tenantID: operation.GetTenantId(), projectID: operation.GetProjectId(), jobID: operation.GetJobId(),
 		state: operation.GetState(), resourceVersion: operation.GetResourceVersion(), done: operation.GetDone(), etag: operation.GetEtag(),
@@ -728,8 +729,8 @@ func operationToRow(operation *jobv1.Operation, requestDigest string) operationR
 	}
 }
 
-func operationRowToProto(row operationRow) *jobv1.Operation {
-	return &jobv1.Operation{
+func operationRowToProto(row operationRow) *operationv1.Operation {
+	return &operationv1.Operation{
 		OperationId: row.operationID, TenantId: row.tenantID, ProjectId: row.projectID, JobId: row.jobID,
 		State: row.state, ResourceVersion: row.resourceVersion, Done: row.done, Etag: row.etag,
 		Result: cloneOperationArtifact(row.result), Error: cloneOperationError(row.error),
@@ -770,7 +771,7 @@ func scanOperationRow(scanner rowScanner) (operationRow, error) {
 	return row, nil
 }
 
-func operationRowToProtoSQL(ctx context.Context, tx *sql.Tx, row operationRow) (*jobv1.Operation, error) {
+func operationRowToProtoSQL(ctx context.Context, tx *sql.Tx, row operationRow) (*operationv1.Operation, error) {
 	result, err := platformdb.LoadArtifactRef(ctx, tx, row.tenantID, row.resultRefID)
 	if err != nil {
 		return nil, err
@@ -783,36 +784,36 @@ func operationRowToProtoSQL(ctx context.Context, tx *sql.Tx, row operationRow) (
 	return operationRowToProto(row), nil
 }
 
-func operationStateDatabase(state jobv1.OperationState) string {
-	return map[jobv1.OperationState]string{
-		jobv1.OperationState_OPERATION_STATE_PENDING:    "PENDING",
-		jobv1.OperationState_OPERATION_STATE_RUNNING:    "RUNNING",
-		jobv1.OperationState_OPERATION_STATE_SUCCEEDED:  "SUCCEEDED",
-		jobv1.OperationState_OPERATION_STATE_FAILED:     "FAILED",
-		jobv1.OperationState_OPERATION_STATE_CANCELLING: "CANCELLING",
-		jobv1.OperationState_OPERATION_STATE_CANCELLED:  "CANCELLED",
+func operationStateDatabase(state operationv1.OperationState) string {
+	return map[operationv1.OperationState]string{
+		operationv1.OperationState_OPERATION_STATE_PENDING:    "PENDING",
+		operationv1.OperationState_OPERATION_STATE_RUNNING:    "RUNNING",
+		operationv1.OperationState_OPERATION_STATE_SUCCEEDED:  "SUCCEEDED",
+		operationv1.OperationState_OPERATION_STATE_FAILED:     "FAILED",
+		operationv1.OperationState_OPERATION_STATE_CANCELLING: "CANCELLING",
+		operationv1.OperationState_OPERATION_STATE_CANCELLED:  "CANCELLED",
 	}[state]
 }
 
-func operationStateFromDatabase(value string) (jobv1.OperationState, error) {
-	states := map[string]jobv1.OperationState{
-		"PENDING": jobv1.OperationState_OPERATION_STATE_PENDING, "RUNNING": jobv1.OperationState_OPERATION_STATE_RUNNING,
-		"SUCCEEDED": jobv1.OperationState_OPERATION_STATE_SUCCEEDED, "FAILED": jobv1.OperationState_OPERATION_STATE_FAILED,
-		"CANCELLING": jobv1.OperationState_OPERATION_STATE_CANCELLING, "CANCELLED": jobv1.OperationState_OPERATION_STATE_CANCELLED,
+func operationStateFromDatabase(value string) (operationv1.OperationState, error) {
+	states := map[string]operationv1.OperationState{
+		"PENDING": operationv1.OperationState_OPERATION_STATE_PENDING, "RUNNING": operationv1.OperationState_OPERATION_STATE_RUNNING,
+		"SUCCEEDED": operationv1.OperationState_OPERATION_STATE_SUCCEEDED, "FAILED": operationv1.OperationState_OPERATION_STATE_FAILED,
+		"CANCELLING": operationv1.OperationState_OPERATION_STATE_CANCELLING, "CANCELLED": operationv1.OperationState_OPERATION_STATE_CANCELLED,
 	}
 	state, ok := states[value]
 	if !ok {
-		return jobv1.OperationState_OPERATION_STATE_UNSPECIFIED, fmt.Errorf("unknown persisted operation state %q", value)
+		return operationv1.OperationState_OPERATION_STATE_UNSPECIFIED, fmt.Errorf("unknown persisted operation state %q", value)
 	}
 	return state, nil
 }
 
-func terminalOperationState(state jobv1.OperationState) bool {
-	return state == jobv1.OperationState_OPERATION_STATE_SUCCEEDED || state == jobv1.OperationState_OPERATION_STATE_FAILED || state == jobv1.OperationState_OPERATION_STATE_CANCELLED
+func terminalOperationState(state operationv1.OperationState) bool {
+	return state == operationv1.OperationState_OPERATION_STATE_SUCCEEDED || state == operationv1.OperationState_OPERATION_STATE_FAILED || state == operationv1.OperationState_OPERATION_STATE_CANCELLED
 }
 
-func validAdvanceState(state jobv1.OperationState) bool {
-	return state == jobv1.OperationState_OPERATION_STATE_RUNNING || state == jobv1.OperationState_OPERATION_STATE_SUCCEEDED || state == jobv1.OperationState_OPERATION_STATE_FAILED || state == jobv1.OperationState_OPERATION_STATE_CANCELLING || state == jobv1.OperationState_OPERATION_STATE_CANCELLED
+func validAdvanceState(state operationv1.OperationState) bool {
+	return state == operationv1.OperationState_OPERATION_STATE_RUNNING || state == operationv1.OperationState_OPERATION_STATE_SUCCEEDED || state == operationv1.OperationState_OPERATION_STATE_FAILED || state == operationv1.OperationState_OPERATION_STATE_CANCELLING || state == operationv1.OperationState_OPERATION_STATE_CANCELLED
 }
 
 func protoTimestampTime(value *timestamppb.Timestamp) time.Time {

@@ -9,7 +9,7 @@ import (
 
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	internalpolicyv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/policy/v1"
-	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
+	operationv1 "github.com/mindclade/mindclade/protocols/generated/go/operation/v1"
 	policyv1 "github.com/mindclade/mindclade/protocols/generated/go/policy/v1"
 )
 
@@ -56,7 +56,7 @@ func (service *PolicyService) Evaluate(ctx context.Context, request *internalpol
 	return cloneGenerated(response.GetDecision()), nil
 }
 
-func (service *PolicyService) Create(ctx context.Context, request *internalpolicyv1.CreateUsePolicyRequest, options ...RequestOption) (*jobv1.Operation, error) {
+func (service *PolicyService) Create(ctx context.Context, request *internalpolicyv1.CreateUsePolicyRequest, options ...RequestOption) (*operationv1.Operation, error) {
 	materialized := cloneGenerated(request)
 	if materialized == nil || materialized.GetUsePolicy() == nil || !validResourceIdentifier(materialized.GetUsePolicyId()) {
 		return nil, invalidArgument("policy create requires a generated policy and valid policy ID")
@@ -75,7 +75,7 @@ func (service *PolicyService) Create(ctx context.Context, request *internalpolic
 	return operationResponse(response.GetOperation(), rpcErr, "CreateUsePolicy")
 }
 
-func (service *PolicyService) Update(ctx context.Context, request *internalpolicyv1.UpdateUsePolicyRequest, options ...RequestOption) (*jobv1.Operation, error) {
+func (service *PolicyService) Update(ctx context.Context, request *internalpolicyv1.UpdateUsePolicyRequest, options ...RequestOption) (*operationv1.Operation, error) {
 	materialized := cloneGenerated(request)
 	if materialized == nil || materialized.GetUsePolicy() == nil || !scopedResourceName(service.client.config, materialized.GetUsePolicy().GetName(), "usePolicies") || materialized.GetUpdateMask() == nil || strings.TrimSpace(materialized.GetEtag()) == "" {
 		return nil, invalidArgument("policy update requires a scoped policy, field mask, and etag")
@@ -133,7 +133,7 @@ func (service *PolicyService) List(ctx context.Context, request *internalpolicyv
 	return cloneGenerated(response), nil
 }
 
-func (service *PolicyService) Activate(ctx context.Context, name, etag string, options ...RequestOption) (*jobv1.Operation, error) {
+func (service *PolicyService) Activate(ctx context.Context, name, etag string, options ...RequestOption) (*operationv1.Operation, error) {
 	if !scopedResourceName(service.client.config, name, "usePolicies") || strings.TrimSpace(etag) == "" {
 		return nil, invalidArgument("policy activation requires a scoped name and etag")
 	}
@@ -147,7 +147,7 @@ func (service *PolicyService) Activate(ctx context.Context, name, etag string, o
 	return operationResponse(response.GetOperation(), rpcErr, "ActivateUsePolicy")
 }
 
-func (service *PolicyService) Revoke(ctx context.Context, name, etag, reasonCode string, options ...RequestOption) (*jobv1.Operation, error) {
+func (service *PolicyService) Revoke(ctx context.Context, name, etag, reasonCode string, options ...RequestOption) (*operationv1.Operation, error) {
 	if !scopedResourceName(service.client.config, name, "usePolicies") || strings.TrimSpace(etag) == "" || strings.TrimSpace(reasonCode) == "" {
 		return nil, invalidArgument("policy revocation requires a scoped name, etag, and reason code")
 	}

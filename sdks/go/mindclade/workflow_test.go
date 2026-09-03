@@ -23,6 +23,7 @@ import (
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	internalworkflowv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/workflow/v1"
 	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
+	operationv1 "github.com/mindclade/mindclade/protocols/generated/go/operation/v1"
 	workflowv1 "github.com/mindclade/mindclade/protocols/generated/go/workflow/v1"
 )
 
@@ -43,7 +44,9 @@ func (server *workflowSDKServer) capture(ctx context.Context, command *commonv1.
 	server.lease = strings.Join(values.Get("x-mindclade-lease-token"), "")
 }
 
-func workflowOperation(id string) *jobv1.Operation { return &jobv1.Operation{OperationId: id} }
+func workflowOperation(id string) *operationv1.Operation {
+	return &operationv1.Operation{OperationId: id}
+}
 
 func (server *workflowSDKServer) CreateWorkflowDefinition(ctx context.Context, request *internalworkflowv1.CreateWorkflowDefinitionRequest) (*internalworkflowv1.CreateWorkflowDefinitionResponse, error) {
 	server.capture(ctx, request.GetContext())

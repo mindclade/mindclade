@@ -18,10 +18,11 @@ import (
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	internalagentv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/agent/v1"
 	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
+	operationv1 "github.com/mindclade/mindclade/protocols/generated/go/operation/v1"
 	jobsapp "github.com/mindclade/mindclade/services/control_plane/internal/jobs"
 )
 
-func (repository SQLRepository) CreateDefinition(ctx context.Context, identity Identity, request *internalagentv1.CreateAgentDefinitionRequest, digest string, at time.Time) (*jobv1.Operation, bool, error) {
+func (repository SQLRepository) CreateDefinition(ctx context.Context, identity Identity, request *internalagentv1.CreateAgentDefinitionRequest, digest string, at time.Time) (*operationv1.Operation, bool, error) {
 	if err := repository.validate(); err != nil {
 		return nil, false, err
 	}
@@ -144,7 +145,7 @@ func validDefinitionTransition(from, to agentv1.AgentDefinitionState) bool {
 	}
 }
 
-func (repository SQLRepository) UpdateDefinition(ctx context.Context, identity Identity, request *internalagentv1.UpdateAgentDefinitionRequest, digest string, at time.Time) (*jobv1.Operation, bool, error) {
+func (repository SQLRepository) UpdateDefinition(ctx context.Context, identity Identity, request *internalagentv1.UpdateAgentDefinitionRequest, digest string, at time.Time) (*operationv1.Operation, bool, error) {
 	if err := repository.validate(); err != nil {
 		return nil, false, err
 	}
@@ -394,7 +395,7 @@ func (repository SQLRepository) ListDefinitions(ctx context.Context, identity Id
 	return cloneSlice(values), token, readAt.UTC(), nil
 }
 
-func (repository SQLRepository) StartRun(ctx context.Context, identity Identity, request *internalagentv1.StartAgentRunRequest, digest string, at time.Time) (*jobv1.Operation, bool, error) {
+func (repository SQLRepository) StartRun(ctx context.Context, identity Identity, request *internalagentv1.StartAgentRunRequest, digest string, at time.Time) (*operationv1.Operation, bool, error) {
 	if err := repository.validate(); err != nil {
 		return nil, false, err
 	}
@@ -595,7 +596,7 @@ func (repository SQLRepository) ListRuns(ctx context.Context, identity Identity,
 	return cloneSlice(values), token, readAt.UTC(), nil
 }
 
-func (repository SQLRepository) CancelRun(ctx context.Context, identity Identity, request *internalagentv1.CancelAgentRunRequest, digest string, at time.Time) (*jobv1.Operation, bool, error) {
+func (repository SQLRepository) CancelRun(ctx context.Context, identity Identity, request *internalagentv1.CancelAgentRunRequest, digest string, at time.Time) (*operationv1.Operation, bool, error) {
 	if err := repository.validate(); err != nil {
 		return nil, false, err
 	}

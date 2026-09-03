@@ -632,6 +632,7 @@ ALL_CONTRACT_BASELINE_DOMAINS = frozenset(
         "inference",
         "job",
         "model",
+        "operation",
         "policy",
         "training",
         "transform",
@@ -3402,7 +3403,7 @@ _PLATFORM_RUNTIME_LIBRARY_REASON = (
 _adr0025_reconciliation_addition_reason = _reconciliation_addition_reason
 
 
-def _reconciliation_addition_reason(path: str) -> str:
+def _reconciliation_addition_reason(path: str) -> str:  # pyright: ignore[reportRedeclaration]
     if path == PLATFORM_RUNTIME_LIBRARY_ADR:
         return _PLATFORM_RUNTIME_LIBRARY_REASON
     if path in PLATFORM_RUNTIME_LIBRARY_BUILD_FILES:
@@ -3416,6 +3417,86 @@ def _reconciliation_addition_reason(path: str) -> str:
 REPLACEMENT_REASONS = {  # pyright: ignore[reportConstantRedefinition]
     **REPLACEMENT_REASONS,
     **dict.fromkeys(PLATFORM_RUNTIME_LIBRARY_REPLACEMENTS, _PLATFORM_RUNTIME_LIBRARY_REASON),
+}
+
+
+# Long-running operations become a first-class namespace, mindclade.operation.v1,
+# instead of a message inside the job domain (ADR-0026). The proto and its four
+# generated bindings move package-for-package; the Python reconciliation adds the
+# mindclade/ prefix after this replacement, so the value stays prefix-free.
+OPERATION_NAMESPACE_ADR = "docs/adr/0026-operations-become-a-first-class-namespace.md"
+OPERATION_NAMESPACE_REPLACEMENTS = {
+    f"{old}": new
+    for old, new in (
+        (
+            "protocols/proto/mindclade/job/v1/operation.proto",
+            "protocols/proto/mindclade/operation/v1/operation.proto",
+        ),
+        (
+            "protocols/generated/go/job/v1/operation.pb.go",
+            "protocols/generated/go/operation/v1/operation.pb.go",
+        ),
+        (
+            "protocols/generated/python/job/v1/operation_pb2.py",
+            "protocols/generated/python/operation/v1/operation_pb2.py",
+        ),
+        (
+            "protocols/generated/rust/job/v1/operation.rs",
+            "protocols/generated/rust/operation/v1/operation.rs",
+        ),
+        (
+            "protocols/generated/typescript/job/v1/operation_pb.ts",
+            "protocols/generated/typescript/operation/v1/operation_pb.ts",
+        ),
+    )
+}
+# Each generated language keeps one package scaffold file that the job package
+# already had and the new operation package must gain.
+OPERATION_NAMESPACE_SCAFFOLD = (
+    "protocols/generated/go/operation/v1/BUILD.bazel",
+    "protocols/generated/python/mindclade/operation/v1/__init__.py",
+    "protocols/generated/rust/operation/v1/mod.rs",
+    "protocols/generated/typescript/operation/v1/index.ts",
+)
+PATH_REPLACEMENTS = {  # pyright: ignore[reportConstantRedefinition]
+    **PATH_REPLACEMENTS,
+    **OPERATION_NAMESPACE_REPLACEMENTS,
+}
+REQUIRED_ADDITIONS = (  # pyright: ignore[reportConstantRedefinition]
+    *(
+        "protocols/generated/python/mindclade/operation/v1/operation_pb2.pyi"
+        if path == "protocols/generated/python/mindclade/job/v1/operation_pb2.pyi"
+        else path
+        for path in REQUIRED_ADDITIONS
+    ),
+    OPERATION_NAMESPACE_ADR,
+    *OPERATION_NAMESPACE_SCAFFOLD,
+)
+CANONICAL_FILE_COUNT = (  # pyright: ignore[reportConstantRedefinition]
+    CANONICAL_FILE_COUNT + len(OPERATION_NAMESPACE_SCAFFOLD) + 1
+)
+CANONICAL_PATH_SET_SHA256 = (  # pyright: ignore[reportConstantRedefinition]
+    "109d9b8b7acb37fe2b02affc9acf126c218f96c4c0fd12777848a80b60622952"
+)
+
+_OPERATION_NAMESPACE_REASON = (
+    "ADR-0026 gives long-running operations their own mindclade.operation.v1 "
+    "namespace so every domain service references one canonical operation "
+    "resource instead of a message owned by the job domain."
+)
+
+_adr0026_reconciliation_addition_reason = _reconciliation_addition_reason
+
+
+def _reconciliation_addition_reason(path: str) -> str:
+    if path == OPERATION_NAMESPACE_ADR or path.startswith("protocols/generated/go/operation/v1/"):
+        return _OPERATION_NAMESPACE_REASON
+    return _adr0026_reconciliation_addition_reason(path)
+
+
+REPLACEMENT_REASONS = {  # pyright: ignore[reportConstantRedefinition]
+    **REPLACEMENT_REASONS,
+    **dict.fromkeys(OPERATION_NAMESPACE_REPLACEMENTS, _OPERATION_NAMESPACE_REASON),
 }
 
 

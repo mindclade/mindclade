@@ -22,7 +22,7 @@ import (
 	artifactv1 "github.com/mindclade/mindclade/protocols/generated/go/artifact/v1"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	internalartifactv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/artifact/v1"
-	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
+	operationv1 "github.com/mindclade/mindclade/protocols/generated/go/operation/v1"
 )
 
 const artifactEventContentType = "application/x-protobuf; deterministic=true"
@@ -398,7 +398,7 @@ func lockStagingReceipt(ctx context.Context, tx *sql.Tx, identity Identity, rece
 	return err
 }
 
-func (r SQLRepository) QuarantineArtifact(ctx context.Context, identity Identity, request *internalartifactv1.QuarantineArtifactRequest, requestDigest string, at time.Time) (*jobv1.Operation, bool, error) {
+func (r SQLRepository) QuarantineArtifact(ctx context.Context, identity Identity, request *internalartifactv1.QuarantineArtifactRequest, requestDigest string, at time.Time) (*operationv1.Operation, bool, error) {
 	if err := r.validate(); err != nil {
 		return nil, false, err
 	}
@@ -1208,8 +1208,8 @@ func insertArtifactOutbox(ctx context.Context, tx *sql.Tx, envelope *commonv1.Ev
 	return err
 }
 
-func loadArtifactOperation(ctx context.Context, tx *sql.Tx, identity Identity, id string) (*jobv1.Operation, error) {
-	var operation jobv1.Operation
+func loadArtifactOperation(ctx context.Context, tx *sql.Tx, identity Identity, id string) (*operationv1.Operation, error) {
+	var operation operationv1.Operation
 	var targetDigest string
 	var state int32
 	var createTime, updateTime time.Time
@@ -1221,7 +1221,7 @@ func loadArtifactOperation(ctx context.Context, tx *sql.Tx, identity Identity, i
 		return nil, err
 	}
 	operation.TenantId, operation.ProjectId = identity.TenantID, identity.ProjectID
-	operation.State = jobv1.OperationState(state)
+	operation.State = operationv1.OperationState(state)
 	operation.CreatedAt, operation.UpdatedAt = timestamppb.New(createTime.UTC()), timestamppb.New(updateTime.UTC())
 	row, err := getCatalogTx(ctx, tx, identity, targetDigest, false)
 	if err != nil {

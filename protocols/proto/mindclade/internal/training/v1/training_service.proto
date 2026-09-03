@@ -4,7 +4,7 @@ package mindclade.internal.training.v1;
 
 import "google/protobuf/timestamp.proto";
 import "proto/mindclade/common/v1/pagination.proto";
-import "proto/mindclade/job/v1/operation.proto";
+import "proto/mindclade/operation/v1/operation.proto";
 import "proto/mindclade/training/v1/checkpoint.proto";
 import "proto/mindclade/training/v1/training_commands.proto";
 import "proto/mindclade/training/v1/training_progress.proto";
@@ -19,7 +19,7 @@ message CreateTrainingRunRequest {
 
 // CreateTrainingRunResponse returns the durable operation tracking validation and admission.
 message CreateTrainingRunResponse {
-  mindclade.job.v1.Operation operation = 1;
+  mindclade.operation.v1.Operation operation = 1;
 }
 
 // GetTrainingRunRequest identifies one scientific run and optional cache validator.

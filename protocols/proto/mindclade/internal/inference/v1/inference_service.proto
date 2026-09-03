@@ -9,7 +9,7 @@ import "proto/mindclade/inference/v1/inference_request.proto";
 import "proto/mindclade/inference/v1/inference_result.proto";
 import "proto/mindclade/inference/v1/inference_stream.proto";
 import "proto/mindclade/job/v1/lease_fencing.proto";
-import "proto/mindclade/job/v1/operation.proto";
+import "proto/mindclade/operation/v1/operation.proto";
 
 option go_package = "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/inference/v1;internalinferencev1";
 
@@ -20,7 +20,7 @@ message SubmitInferenceRequest {
 
 // SubmitInferenceResponse returns the durable operation tracking inference work.
 message SubmitInferenceResponse {
-  mindclade.job.v1.Operation operation = 1;
+  mindclade.operation.v1.Operation operation = 1;
 }
 
 // GetInferenceRequestRequest identifies one admitted authoritative request.
@@ -41,7 +41,7 @@ message GetInferenceResultRequest {
 // GetInferenceResultResponse returns the typed result and durable operation.
 message GetInferenceResultResponse {
   mindclade.inference.v1.InferenceResult result = 1;
-  mindclade.job.v1.Operation operation = 2;
+  mindclade.operation.v1.Operation operation = 2;
 }
 
 // WatchInferenceRequest resumes bounded status/candidate updates from a durable cursor.
@@ -68,7 +68,7 @@ message CommitInferenceResultRequest {
 // CommitInferenceResultResponse returns accepted immutable result and operation.
 message CommitInferenceResultResponse {
   mindclade.inference.v1.InferenceResult result = 1;
-  mindclade.job.v1.Operation operation = 2;
+  mindclade.operation.v1.Operation operation = 2;
 }
 
 // InferenceService owns internal submission, terminal-result, and resumable-stream RPCs.

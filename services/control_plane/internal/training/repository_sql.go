@@ -18,6 +18,7 @@ import (
 	"github.com/mindclade/mindclade/libs/go/pubsubx"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
+	operationv1 "github.com/mindclade/mindclade/protocols/generated/go/operation/v1"
 	trainingv1 "github.com/mindclade/mindclade/protocols/generated/go/training/v1"
 )
 
@@ -104,7 +105,7 @@ func insertOutbox(ctx context.Context, tx *sql.Tx, envelope *commonv1.EventEnvel
 	return err
 }
 
-func (r SQLRepository) CreateTrainingRun(ctx context.Context, identity Identity, command *trainingv1.CreateTrainingRunCommand, digest string, at time.Time) (*jobv1.Operation, bool, error) {
+func (r SQLRepository) CreateTrainingRun(ctx context.Context, identity Identity, command *trainingv1.CreateTrainingRunCommand, digest string, at time.Time) (*operationv1.Operation, bool, error) {
 	if err := r.validate(); err != nil {
 		return nil, false, err
 	}
@@ -325,7 +326,7 @@ func (r SQLRepository) GetCheckpoint(ctx context.Context, identity Identity, nam
 	return clone(value), nil
 }
 
-func (r SQLRepository) GetOperation(ctx context.Context, identity Identity, name string) (*jobv1.Operation, error) {
+func (r SQLRepository) GetOperation(ctx context.Context, identity Identity, name string) (*operationv1.Operation, error) {
 	if err := r.validate(); err != nil {
 		return nil, err
 	}
@@ -347,7 +348,7 @@ func (r SQLRepository) GetOperation(ctx context.Context, identity Identity, name
 // ReadOperationRevisions returns a bounded, contiguous page strictly after
 // afterRevision. It classifies cursor expiry and future cursors before reading
 // history so callers never mistake a lossy resume for an idle stream.
-func (r SQLRepository) ReadOperationRevisions(ctx context.Context, identity Identity, name string, afterRevision uint64, requestedLimit int) ([]*jobv1.Operation, bool, error) {
+func (r SQLRepository) ReadOperationRevisions(ctx context.Context, identity Identity, name string, afterRevision uint64, requestedLimit int) ([]*operationv1.Operation, bool, error) {
 	if err := r.validate(); err != nil {
 		return nil, false, err
 	}
@@ -414,7 +415,7 @@ ORDER BY revision LIMIT $5`, identity.TenantID, identity.ProjectID, name, afterR
 	if err = platformdb.CloseRows(rows); err != nil {
 		return nil, false, err
 	}
-	values := make([]*jobv1.Operation, 0, len(stored))
+	values := make([]*operationv1.Operation, 0, len(stored))
 	for _, row := range stored {
 		value, mapErr := operationRowProto(ctx, tx, row)
 		if mapErr != nil {

@@ -12,6 +12,7 @@ import (
 	evaluationv1 "github.com/mindclade/mindclade/protocols/generated/go/evaluation/v1"
 	internalevaluationv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/evaluation/v1"
 	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
+	operationv1 "github.com/mindclade/mindclade/protocols/generated/go/operation/v1"
 )
 
 // EvaluationService is the private generated-type-only evaluation lifecycle,
@@ -24,7 +25,7 @@ type EvaluationService struct {
 
 // CreateRun submits immutable generated evaluation inputs and returns the
 // durable operation controlling validation and execution.
-func (service *EvaluationService) CreateRun(ctx context.Context, request *internalevaluationv1.CreateEvaluationRunRequest, options ...RequestOption) (*jobv1.Operation, error) {
+func (service *EvaluationService) CreateRun(ctx context.Context, request *internalevaluationv1.CreateEvaluationRunRequest, options ...RequestOption) (*operationv1.Operation, error) {
 	value := cloneGenerated(request)
 	if !service.configured() || value == nil || !validEvaluationID(value.GetEvaluationRunId()) {
 		return nil, invalidArgument("evaluation creation requires a configured service and valid generated run ID")
@@ -113,7 +114,7 @@ func (service *EvaluationService) ListRuns(ctx context.Context, request *interna
 }
 
 // CancelRun records monotonic cancellation under an ETag precondition.
-func (service *EvaluationService) CancelRun(ctx context.Context, request *internalevaluationv1.CancelEvaluationRunRequest, options ...RequestOption) (*jobv1.Operation, error) {
+func (service *EvaluationService) CancelRun(ctx context.Context, request *internalevaluationv1.CancelEvaluationRunRequest, options ...RequestOption) (*operationv1.Operation, error) {
 	value := cloneGenerated(request)
 	if !service.configured() || value == nil || !scopedResourceName(service.client.config, value.GetName(), "evaluationRuns") || strings.TrimSpace(value.GetEtag()) == "" || strings.TrimSpace(value.GetReason()) == "" || len(value.GetReason()) > 1024 {
 		return nil, invalidArgument("evaluation cancellation requires a scoped run, ETag, and bounded reason")
@@ -184,7 +185,7 @@ func (service *EvaluationService) GetResult(ctx context.Context, name string, op
 
 // CreatePromotionDecision records a generated evidence-governance decision.
 // It never deploys, promotes, or mutates the referenced release itself.
-func (service *EvaluationService) CreatePromotionDecision(ctx context.Context, request *internalevaluationv1.CreatePromotionDecisionRequest, options ...RequestOption) (*jobv1.Operation, error) {
+func (service *EvaluationService) CreatePromotionDecision(ctx context.Context, request *internalevaluationv1.CreatePromotionDecisionRequest, options ...RequestOption) (*operationv1.Operation, error) {
 	value := cloneGenerated(request)
 	decision := value.GetPromotionDecision()
 	if !service.configured() || value == nil || decision == nil || !scopedResourceName(service.client.config, decision.GetName(), "promotionDecisions") || !validSHA256Digest(decision.GetCandidateDigest()) || !validSHA256Digest(decision.GetDecisionDigest()) || len(decision.GetEvaluationResults()) == 0 {

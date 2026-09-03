@@ -13,7 +13,7 @@ use mindclade_protocols::{
         ListOperationsRequest, ListOperationsResponse, WatchOperationRequest,
         WatchOperationResponse,
     },
-    job::v1::{Operation, OperationState},
+    operation::v1::{Operation, OperationState},
 };
 use tokio::sync::Notify;
 use tonic::codegen::tokio_stream::StreamExt;

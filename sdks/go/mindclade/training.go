@@ -20,6 +20,7 @@ import (
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	internaltrainingv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/training/v1"
 	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
+	operationv1 "github.com/mindclade/mindclade/protocols/generated/go/operation/v1"
 	trainingv1 "github.com/mindclade/mindclade/protocols/generated/go/training/v1"
 )
 
@@ -56,7 +57,7 @@ type TrainingService struct {
 // Submit resolves mutable artifact aliases, freezes generated command intent,
 // derives its deterministic digest, and returns the generated durable
 // Operation that controls admission and execution.
-func (service *TrainingService) Submit(ctx context.Context, job TrainingJob) (*jobv1.Operation, error) {
+func (service *TrainingService) Submit(ctx context.Context, job TrainingJob) (*operationv1.Operation, error) {
 	if err := service.validateJob(job); err != nil {
 		return nil, err
 	}

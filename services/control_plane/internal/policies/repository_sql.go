@@ -21,7 +21,7 @@ import (
 	"github.com/mindclade/mindclade/libs/go/pubsubx"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	internalpolicyv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/policy/v1"
-	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
+	operationv1 "github.com/mindclade/mindclade/protocols/generated/go/operation/v1"
 	policyv1 "github.com/mindclade/mindclade/protocols/generated/go/policy/v1"
 )
 
@@ -150,7 +150,7 @@ func insertPolicyAudit(ctx context.Context, tx *sql.Tx, identity Identity, actio
 	return err
 }
 
-func insertCompletedOperation(ctx context.Context, tx *sql.Tx, identity Identity, digest string, target *commonv1.ResourceRef, at time.Time) (*jobv1.Operation, error) {
+func insertCompletedOperation(ctx context.Context, tx *sql.Tx, identity Identity, digest string, target *commonv1.ResourceRef, at time.Time) (*operationv1.Operation, error) {
 	jobID, err := randomID("jobs/")
 	if err != nil {
 		return nil, err
@@ -169,14 +169,14 @@ func insertCompletedOperation(ctx context.Context, tx *sql.Tx, identity Identity
 	if _, err = tx.ExecContext(ctx, `INSERT INTO operation_revisions(operation_id,tenant_id,project_id,revision,job_id,target_present,target_resource_type,target_resource_id,target_tenant_id,target_project_id,target_resource_version,target_name,target_etag,status,done,etag,result_ref_id,error_detail_id,created_at,updated_at,recorded_at) VALUES($1,$2,$3,1,$4,true,$5,$6,$2,$3,$7,$8,$9,'SUCCEEDED',true,$10,NULL,NULL,$11,$11,$11)`, operationID, identity.TenantID, identity.ProjectID, jobID, target.GetResourceType(), target.GetResourceId(), target.GetResourceVersion(), target.GetName(), target.GetEtag(), operationETag, at.UTC()); err != nil {
 		return nil, err
 	}
-	return &jobv1.Operation{
+	return &operationv1.Operation{
 		OperationId: operationID, TenantId: identity.TenantID, ProjectId: identity.ProjectID, JobId: jobID,
-		State: jobv1.OperationState_OPERATION_STATE_SUCCEEDED, ResourceVersion: 1, Done: true,
+		State: operationv1.OperationState_OPERATION_STATE_SUCCEEDED, ResourceVersion: 1, Done: true,
 		Etag: operationETag, Target: clone(target), CreatedAt: timestamppb.New(at.UTC()), UpdatedAt: timestamppb.New(at.UTC()),
 	}, nil
 }
 
-func finishPolicyMutation(ctx context.Context, tx *sql.Tx, identity Identity, action, key, digest string, target *commonv1.ResourceRef, event func(*jobv1.Operation) (*commonv1.EventEnvelope, error), beforeRevision string, command *commonv1.CommandContext, at time.Time) (*jobv1.Operation, error) {
+func finishPolicyMutation(ctx context.Context, tx *sql.Tx, identity Identity, action, key, digest string, target *commonv1.ResourceRef, event func(*operationv1.Operation) (*commonv1.EventEnvelope, error), beforeRevision string, command *commonv1.CommandContext, at time.Time) (*operationv1.Operation, error) {
 	operation, err := insertCompletedOperation(ctx, tx, identity, digest, target, at)
 	if err != nil {
 		return nil, err
@@ -339,7 +339,7 @@ func (r SQLRepository) EvaluateAuthorization(ctx context.Context, identity Ident
 	return clone(decision), false, nil
 }
 
-func (r SQLRepository) CreateUsePolicy(ctx context.Context, identity Identity, request *internalpolicyv1.CreateUsePolicyRequest, digest string, at time.Time) (*jobv1.Operation, bool, error) {
+func (r SQLRepository) CreateUsePolicy(ctx context.Context, identity Identity, request *internalpolicyv1.CreateUsePolicyRequest, digest string, at time.Time) (*operationv1.Operation, bool, error) {
 	if err := r.validate(); err != nil {
 		return nil, false, err
 	}
@@ -416,7 +416,7 @@ func (r SQLRepository) CreateUsePolicy(ctx context.Context, identity Identity, r
 		return nil, false, err
 	}
 	target := usePolicyResource(identity, created)
-	operation, err := finishPolicyMutation(ctx, tx, identity, "policy.use.create", request.GetContext().GetIdempotencyKey(), digest, target, func(operation *jobv1.Operation) (*commonv1.EventEnvelope, error) {
+	operation, err := finishPolicyMutation(ctx, tx, identity, "policy.use.create", request.GetContext().GetIdempotencyKey(), digest, target, func(operation *operationv1.Operation) (*commonv1.EventEnvelope, error) {
 		return r.Events.PolicyCreated(identity, created, operation, request.GetContext(), at)
 	}, "", request.GetContext(), at)
 	if err != nil {
@@ -449,7 +449,7 @@ func policyMask(request *internalpolicyv1.UpdateUsePolicyRequest) ([]string, err
 	return result, nil
 }
 
-func (r SQLRepository) UpdateUsePolicy(ctx context.Context, identity Identity, request *internalpolicyv1.UpdateUsePolicyRequest, digest string, at time.Time) (*jobv1.Operation, bool, error) {
+func (r SQLRepository) UpdateUsePolicy(ctx context.Context, identity Identity, request *internalpolicyv1.UpdateUsePolicyRequest, digest string, at time.Time) (*operationv1.Operation, bool, error) {
 	if err := r.validate(); err != nil {
 		return nil, false, err
 	}
@@ -534,7 +534,7 @@ func (r SQLRepository) UpdateUsePolicy(ctx context.Context, identity Identity, r
 		return nil, false, err
 	}
 	target := usePolicyResource(identity, current)
-	operation, err := finishPolicyMutation(ctx, tx, identity, "policy.use.update", request.GetContext().GetIdempotencyKey(), digest, target, func(operation *jobv1.Operation) (*commonv1.EventEnvelope, error) {
+	operation, err := finishPolicyMutation(ctx, tx, identity, "policy.use.update", request.GetContext().GetIdempotencyKey(), digest, target, func(operation *operationv1.Operation) (*commonv1.EventEnvelope, error) {
 		return r.Events.PolicyUpdated(identity, current, paths, operation, request.GetContext(), at)
 	}, strconv.FormatInt(row.revision, 10), request.GetContext(), at)
 	if err != nil {
@@ -646,18 +646,18 @@ func (r SQLRepository) ListUsePolicies(ctx context.Context, identity Identity, p
 	return values, nextToken, readAt.UTC(), nil
 }
 
-func (r SQLRepository) ActivateUsePolicy(ctx context.Context, identity Identity, request *internalpolicyv1.ActivateUsePolicyRequest, digest string, at time.Time) (*jobv1.Operation, bool, error) {
+func (r SQLRepository) ActivateUsePolicy(ctx context.Context, identity Identity, request *internalpolicyv1.ActivateUsePolicyRequest, digest string, at time.Time) (*operationv1.Operation, bool, error) {
 	return r.transitionUsePolicy(ctx, identity, "policy.use.activate", request.GetContext(), request.GetName(), request.GetEtag(), "", digest, at, true)
 }
 
-func (r SQLRepository) RevokeUsePolicy(ctx context.Context, identity Identity, request *internalpolicyv1.RevokeUsePolicyRequest, digest string, at time.Time) (*jobv1.Operation, bool, error) {
+func (r SQLRepository) RevokeUsePolicy(ctx context.Context, identity Identity, request *internalpolicyv1.RevokeUsePolicyRequest, digest string, at time.Time) (*operationv1.Operation, bool, error) {
 	if request == nil || request.GetReasonCode() == "" || len(request.GetReasonCode()) > 128 {
 		return nil, false, ErrInvalidArgument
 	}
 	return r.transitionUsePolicy(ctx, identity, "policy.use.revoke", request.GetContext(), request.GetName(), request.GetEtag(), request.GetReasonCode(), digest, at, false)
 }
 
-func (r SQLRepository) transitionUsePolicy(ctx context.Context, identity Identity, action string, command *commonv1.CommandContext, requestedName, etag, reason, digest string, at time.Time, activate bool) (*jobv1.Operation, bool, error) {
+func (r SQLRepository) transitionUsePolicy(ctx context.Context, identity Identity, action string, command *commonv1.CommandContext, requestedName, etag, reason, digest string, at time.Time, activate bool) (*operationv1.Operation, bool, error) {
 	if err := r.validate(); err != nil {
 		return nil, false, err
 	}
@@ -759,7 +759,7 @@ func (r SQLRepository) transitionUsePolicy(ctx context.Context, identity Identit
 	}
 	value.Revision, value.Etag, value.State, value.UpdateTime = newRevision, newETag, newState, timestamppb.New(at.UTC())
 	target := usePolicyResource(identity, value)
-	operation, err := finishPolicyMutation(ctx, tx, identity, action, command.GetIdempotencyKey(), digest, target, func(operation *jobv1.Operation) (*commonv1.EventEnvelope, error) {
+	operation, err := finishPolicyMutation(ctx, tx, identity, action, command.GetIdempotencyKey(), digest, target, func(operation *operationv1.Operation) (*commonv1.EventEnvelope, error) {
 		if activate {
 			return r.Events.PolicyActivated(identity, value, operation, command, at)
 		}

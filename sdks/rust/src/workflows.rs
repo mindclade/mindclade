@@ -12,7 +12,8 @@ use mindclade_protocols::{
         ListWorkflowDefinitionsResponse, ListWorkflowRunsRequest, ListWorkflowRunsResponse,
         StartWorkflowRunRequest, UpdateWorkflowDefinitionRequest, WatchWorkflowRunRequest,
     },
-    job::v1::{LeaseFence, Operation},
+    job::v1::LeaseFence,
+    operation::v1::Operation,
     workflow::v1::{WorkflowDefinition, WorkflowRun, WorkflowRunState},
 };
 use prost::Message;

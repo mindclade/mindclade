@@ -18,7 +18,7 @@ import (
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	datasetv1 "github.com/mindclade/mindclade/protocols/generated/go/dataset/v1"
 	internaldatasetv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/dataset/v1"
-	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
+	operationv1 "github.com/mindclade/mindclade/protocols/generated/go/operation/v1"
 )
 
 var (
@@ -81,12 +81,12 @@ type ReleasePage struct {
 // Repository boundaries accept and return generated values only. Implementors
 // clone every message so callers cannot mutate persisted state through aliases.
 type Repository interface {
-	CreateDataset(context.Context, Identity, *datasetv1.CreateDatasetCommand, string, time.Time) (*jobv1.Operation, bool, error)
+	CreateDataset(context.Context, Identity, *datasetv1.CreateDatasetCommand, string, time.Time) (*operationv1.Operation, bool, error)
 	GetDataset(context.Context, Identity, string) (*datasetv1.Dataset, error)
 	ListDatasets(context.Context, Identity, DatasetPage) ([]*datasetv1.Dataset, string, time.Time, error)
-	UpdateDataset(context.Context, Identity, *datasetv1.UpdateDatasetCommand, string, time.Time) (*jobv1.Operation, bool, error)
-	PublishDatasetRelease(context.Context, Identity, *datasetv1.PublishDatasetReleaseCommand, string, time.Time) (*jobv1.Operation, bool, error)
-	RevokeDatasetRelease(context.Context, Identity, *datasetv1.RevokeDatasetReleaseCommand, string, time.Time) (*jobv1.Operation, bool, error)
+	UpdateDataset(context.Context, Identity, *datasetv1.UpdateDatasetCommand, string, time.Time) (*operationv1.Operation, bool, error)
+	PublishDatasetRelease(context.Context, Identity, *datasetv1.PublishDatasetReleaseCommand, string, time.Time) (*operationv1.Operation, bool, error)
+	RevokeDatasetRelease(context.Context, Identity, *datasetv1.RevokeDatasetReleaseCommand, string, time.Time) (*operationv1.Operation, bool, error)
 	GetDatasetRelease(context.Context, Identity, string) (*datasetv1.DatasetRelease, error)
 	ListDatasetReleases(context.Context, Identity, ReleasePage) ([]*datasetv1.DatasetRelease, string, time.Time, error)
 }
@@ -95,10 +95,10 @@ type Repository interface {
 // Implementations must construct registered typed protobuf payloads; the
 // repository will never accept handwritten bytes or generic JSON events.
 type EventFactory interface {
-	Created(Identity, *datasetv1.Dataset, *jobv1.Operation, *commonv1.CommandContext, time.Time) (*commonv1.EventEnvelope, error)
-	Updated(Identity, *datasetv1.Dataset, []string, *jobv1.Operation, *commonv1.CommandContext, time.Time) (*commonv1.EventEnvelope, error)
-	Published(Identity, *datasetv1.DatasetRelease, *jobv1.Operation, *commonv1.CommandContext, time.Time) (*commonv1.EventEnvelope, error)
-	Revoked(Identity, *datasetv1.DatasetRelease, []*artifactv1.EvidenceRef, *jobv1.Operation, *commonv1.CommandContext, time.Time) (*commonv1.EventEnvelope, error)
+	Created(Identity, *datasetv1.Dataset, *operationv1.Operation, *commonv1.CommandContext, time.Time) (*commonv1.EventEnvelope, error)
+	Updated(Identity, *datasetv1.Dataset, []string, *operationv1.Operation, *commonv1.CommandContext, time.Time) (*commonv1.EventEnvelope, error)
+	Published(Identity, *datasetv1.DatasetRelease, *operationv1.Operation, *commonv1.CommandContext, time.Time) (*commonv1.EventEnvelope, error)
+	Revoked(Identity, *datasetv1.DatasetRelease, []*artifactv1.EvidenceRef, *operationv1.Operation, *commonv1.CommandContext, time.Time) (*commonv1.EventEnvelope, error)
 }
 
 type SQLRepository struct {

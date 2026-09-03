@@ -4,7 +4,7 @@ package mindclade.internal.model.v1;
 
 import "google/protobuf/timestamp.proto";
 import "proto/mindclade/common/v1/pagination.proto";
-import "proto/mindclade/job/v1/operation.proto";
+import "proto/mindclade/operation/v1/operation.proto";
 import "proto/mindclade/model/v1/model.proto";
 import "proto/mindclade/model/v1/model_commands.proto";
 import "proto/mindclade/model/v1/model_release.proto";
@@ -18,7 +18,7 @@ message RegisterModelRequest {
 
 // RegisterModelResponse returns the durable registration operation.
 message RegisterModelResponse {
-  mindclade.job.v1.Operation operation = 1;
+  mindclade.operation.v1.Operation operation = 1;
 }
 
 // GetModelRequest identifies one model and optional cache validator.
@@ -54,7 +54,7 @@ message RegisterModelReleaseRequest {
 
 // RegisterModelReleaseResponse returns the durable release-registration operation.
 message RegisterModelReleaseResponse {
-  mindclade.job.v1.Operation operation = 1;
+  mindclade.operation.v1.Operation operation = 1;
 }
 
 // GetModelReleaseRequest identifies one immutable model release.
@@ -89,7 +89,7 @@ message PromoteModelReleaseRequest {
 
 // PromoteModelReleaseResponse returns the durable promotion operation.
 message PromoteModelReleaseResponse {
-  mindclade.job.v1.Operation operation = 1;
+  mindclade.operation.v1.Operation operation = 1;
 }
 
 // RevokeModelReleaseRequest wraps evidence-bound revocation intent.
@@ -99,7 +99,7 @@ message RevokeModelReleaseRequest {
 
 // RevokeModelReleaseResponse returns the durable revocation operation.
 message RevokeModelReleaseResponse {
-  mindclade.job.v1.Operation operation = 1;
+  mindclade.operation.v1.Operation operation = 1;
 }
 
 // ModelService owns model registry, release, promotion, and revocation RPCs.

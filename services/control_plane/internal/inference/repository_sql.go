@@ -19,6 +19,7 @@ import (
 	inferencev1 "github.com/mindclade/mindclade/protocols/generated/go/inference/v1"
 	internalinferencev1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/inference/v1"
 	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
+	operationv1 "github.com/mindclade/mindclade/protocols/generated/go/operation/v1"
 	jobsapp "github.com/mindclade/mindclade/services/control_plane/internal/jobs"
 	operationsapp "github.com/mindclade/mindclade/services/control_plane/internal/operations"
 )
@@ -67,7 +68,7 @@ func recordReceipt(ctx context.Context, tx *sql.Tx, identity Identity, action, k
 	return err
 }
 
-func insertOperationRevision(ctx context.Context, tx *sql.Tx, operation *jobv1.Operation, at time.Time) error {
+func insertOperationRevision(ctx context.Context, tx *sql.Tx, operation *operationv1.Operation, at time.Time) error {
 	target := operation.GetTarget()
 	if target == nil {
 		return ErrInvalidArgument
@@ -84,19 +85,19 @@ target_etag,status,done,etag,result_ref_id,error_detail_id,created_at,updated_at
 	return err
 }
 
-func operationStateSQL(state jobv1.OperationState) string {
+func operationStateSQL(state operationv1.OperationState) string {
 	switch state {
-	case jobv1.OperationState_OPERATION_STATE_PENDING:
+	case operationv1.OperationState_OPERATION_STATE_PENDING:
 		return "PENDING"
-	case jobv1.OperationState_OPERATION_STATE_RUNNING:
+	case operationv1.OperationState_OPERATION_STATE_RUNNING:
 		return "RUNNING"
-	case jobv1.OperationState_OPERATION_STATE_SUCCEEDED:
+	case operationv1.OperationState_OPERATION_STATE_SUCCEEDED:
 		return "SUCCEEDED"
-	case jobv1.OperationState_OPERATION_STATE_FAILED:
+	case operationv1.OperationState_OPERATION_STATE_FAILED:
 		return "FAILED"
-	case jobv1.OperationState_OPERATION_STATE_CANCELLING:
+	case operationv1.OperationState_OPERATION_STATE_CANCELLING:
 		return "CANCELLING"
-	case jobv1.OperationState_OPERATION_STATE_CANCELLED:
+	case operationv1.OperationState_OPERATION_STATE_CANCELLED:
 		return "CANCELLED"
 	default:
 		return ""
@@ -215,7 +216,7 @@ data_classification,deadline,create_time,operation_id,job_id,scheduler_run_id
 	return nil
 }
 
-func (repository SQLRepository) Submit(ctx context.Context, identity Identity, request *inferencev1.InferenceRequest, digest string, at time.Time) (*jobv1.Operation, bool, error) {
+func (repository SQLRepository) Submit(ctx context.Context, identity Identity, request *inferencev1.InferenceRequest, digest string, at time.Time) (*operationv1.Operation, bool, error) {
 	if err := repository.validate(); err != nil {
 		return nil, false, err
 	}
@@ -277,7 +278,7 @@ func (repository SQLRepository) Submit(ctx context.Context, identity Identity, r
 		return nil, false, mapUnique(err)
 	}
 	target := requestResource(identity, request, digest)
-	operation := &jobv1.Operation{OperationId: operationID, TenantId: identity.TenantID, ProjectId: identity.ProjectID, JobId: jobID, State: jobv1.OperationState_OPERATION_STATE_PENDING, ResourceVersion: 1, Etag: operationsapp.ResourceETag(identity.TenantID, identity.ProjectID, operationID, 1), Target: target, CreatedAt: timestamppb.New(at.UTC()), UpdatedAt: timestamppb.New(at.UTC())}
+	operation := &operationv1.Operation{OperationId: operationID, TenantId: identity.TenantID, ProjectId: identity.ProjectID, JobId: jobID, State: operationv1.OperationState_OPERATION_STATE_PENDING, ResourceVersion: 1, Etag: operationsapp.ResourceETag(identity.TenantID, identity.ProjectID, operationID, 1), Target: target, CreatedAt: timestamppb.New(at.UTC()), UpdatedAt: timestamppb.New(at.UTC())}
 	if _, err = tx.ExecContext(ctx, `INSERT INTO operations(id,tenant_id,project_id,job_id,target_present,target_resource_type,target_resource_id,target_tenant_id,target_project_id,target_resource_version,target_name,target_etag,status,version,done,etag,result_ref_id,error_detail_id,request_hash,created_at,updated_at) VALUES($1,$2,$3,$4,true,$5,$6,$7,$8,$9,$10,$11,'PENDING',1,false,$12,NULL,NULL,$13,$14,$14)`, operationID, identity.TenantID, identity.ProjectID, jobID, target.GetResourceType(), target.GetResourceId(), target.GetTenantId(), target.GetProjectId(), target.GetResourceVersion(), target.GetName(), target.GetEtag(), operation.GetEtag(), digest, at.UTC()); err != nil {
 		return nil, false, mapUnique(err)
 	}
@@ -406,7 +407,7 @@ func schedulerTerminalStates(outcome inferencev1.InferenceResultOutcome) (run, j
 	}
 }
 
-func (repository SQLRepository) CommitResult(ctx context.Context, identity Identity, command *internalinferencev1.CommitInferenceResultRequest, digest string, at time.Time) (*inferencev1.InferenceResult, *jobv1.Operation, bool, error) {
+func (repository SQLRepository) CommitResult(ctx context.Context, identity Identity, command *internalinferencev1.CommitInferenceResultRequest, digest string, at time.Time) (*inferencev1.InferenceResult, *operationv1.Operation, bool, error) {
 	if err := repository.validate(); err != nil {
 		return nil, nil, false, err
 	}
@@ -518,7 +519,7 @@ func (repository SQLRepository) CommitResult(ctx context.Context, identity Ident
 	return clone(result), clone(operation), false, nil
 }
 
-func (repository SQLRepository) GetResult(ctx context.Context, identity Identity, operationName string) (*inferencev1.InferenceResult, *jobv1.Operation, error) {
+func (repository SQLRepository) GetResult(ctx context.Context, identity Identity, operationName string) (*inferencev1.InferenceResult, *operationv1.Operation, error) {
 	if err := repository.validate(); err != nil {
 		return nil, nil, err
 	}
@@ -572,7 +573,7 @@ func (repository SQLRepository) GetResultByRequest(ctx context.Context, identity
 
 const operationRevisionColumns = `operation_id,tenant_id,project_id,job_id,status,revision,done,etag,target_present,target_resource_type,target_resource_id,target_tenant_id,target_project_id,target_resource_version,target_name,target_etag,result_ref_id,error_detail_id,created_at,updated_at`
 
-func (repository SQLRepository) ReadOperationRevisions(ctx context.Context, identity Identity, operationName string, after uint64, limit int) (string, []*jobv1.Operation, bool, error) {
+func (repository SQLRepository) ReadOperationRevisions(ctx context.Context, identity Identity, operationName string, after uint64, limit int) (string, []*operationv1.Operation, bool, error) {
 	if err := repository.validate(); err != nil {
 		return "", nil, false, err
 	}
@@ -626,7 +627,7 @@ func (repository SQLRepository) ReadOperationRevisions(ctx context.Context, iden
 		stored = stored[:limit]
 	}
 	expected := after + 1
-	revisions := make([]*jobv1.Operation, 0, len(stored))
+	revisions := make([]*operationv1.Operation, 0, len(stored))
 	for _, row := range stored {
 		rowVersion, conversionErr := numconv.Int64ToUint64(row.version)
 		if conversionErr != nil {

@@ -18,7 +18,8 @@ from mindclade.evaluation.v1 import (
     promotion_decision_pb2,
 )
 from mindclade.internal.evaluation.v1 import evaluation_service_pb2
-from mindclade.job.v1 import lease_fencing_pb2, operation_pb2
+from mindclade.job.v1 import lease_fencing_pb2
+from mindclade.operation.v1 import operation_pb2
 
 from ._invocation import AsyncInvoker, SyncInvoker, canonical_digest, command_context
 from ._validation import artifact_ref, required_response_message, required_text

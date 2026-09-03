@@ -19,8 +19,8 @@ import {
 import { RequestJobCommandSchema } from "../../../protocols/generated/typescript/job/v1/job_commands_pb.js";
 import type { Job } from "../../../protocols/generated/typescript/job/v1/job_pb.js";
 import { JobSchema } from "../../../protocols/generated/typescript/job/v1/job_pb.js";
-import type { Operation } from "../../../protocols/generated/typescript/job/v1/operation_pb.js";
-import { OperationSchema } from "../../../protocols/generated/typescript/job/v1/operation_pb.js";
+import type { Operation } from "../../../protocols/generated/typescript/operation/v1/operation_pb.js";
+import { OperationSchema } from "../../../protocols/generated/typescript/operation/v1/operation_pb.js";
 import type { ClientCore } from "./core.js";
 import { MindcladeError } from "./error.js";
 import { commandContext, prepareCall, type SdkCallOptions, type SubmitOptions } from "./request.js";

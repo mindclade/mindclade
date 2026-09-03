@@ -27,7 +27,7 @@ import {
 import { RequestJobCommandSchema } from "../../../protocols/generated/typescript/job/v1/job_commands_pb.js";
 import { JobState } from "../../../protocols/generated/typescript/job/v1/job_pb.js";
 import { LeaseFenceSchema } from "../../../protocols/generated/typescript/job/v1/lease_fencing_pb.js";
-import { OperationState } from "../../../protocols/generated/typescript/job/v1/operation_pb.js";
+import { OperationState } from "../../../protocols/generated/typescript/operation/v1/operation_pb.js";
 import { RunState } from "../../../protocols/generated/typescript/job/v1/run_pb.js";
 import {
 	ClientConfig,

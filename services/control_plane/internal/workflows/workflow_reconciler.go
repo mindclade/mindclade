@@ -13,7 +13,7 @@ import (
 	platformdb "github.com/mindclade/mindclade/libs/go/persistence"
 	"github.com/mindclade/mindclade/libs/go/pubsubx"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
-	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
+	operationv1 "github.com/mindclade/mindclade/protocols/generated/go/operation/v1"
 )
 
 func (repository SQLRepository) validate() error {
@@ -69,7 +69,7 @@ func scanOperation(row scanner) (operationRow, error) {
 	return value, err
 }
 
-func operationProto(ctx context.Context, tx *sql.Tx, row operationRow) (*jobv1.Operation, error) {
+func operationProto(ctx context.Context, tx *sql.Tx, row operationRow) (*operationv1.Operation, error) {
 	result, err := platformdb.LoadArtifactRef(ctx, tx, row.tenant, row.result)
 	if err != nil {
 		return nil, err
@@ -78,19 +78,19 @@ func operationProto(ctx context.Context, tx *sql.Tx, row operationRow) (*jobv1.O
 	if err != nil {
 		return nil, err
 	}
-	states := map[string]jobv1.OperationState{"PENDING": jobv1.OperationState_OPERATION_STATE_PENDING, "RUNNING": jobv1.OperationState_OPERATION_STATE_RUNNING, "SUCCEEDED": jobv1.OperationState_OPERATION_STATE_SUCCEEDED, "FAILED": jobv1.OperationState_OPERATION_STATE_FAILED, "CANCELLING": jobv1.OperationState_OPERATION_STATE_CANCELLING, "CANCELLED": jobv1.OperationState_OPERATION_STATE_CANCELLED}
+	states := map[string]operationv1.OperationState{"PENDING": operationv1.OperationState_OPERATION_STATE_PENDING, "RUNNING": operationv1.OperationState_OPERATION_STATE_RUNNING, "SUCCEEDED": operationv1.OperationState_OPERATION_STATE_SUCCEEDED, "FAILED": operationv1.OperationState_OPERATION_STATE_FAILED, "CANCELLING": operationv1.OperationState_OPERATION_STATE_CANCELLING, "CANCELLED": operationv1.OperationState_OPERATION_STATE_CANCELLED}
 	state, ok := states[row.status]
 	if !ok {
 		return nil, ErrInvalidTransition
 	}
-	value := &jobv1.Operation{OperationId: row.id, TenantId: row.tenant, ProjectId: row.project, JobId: row.job, State: state, ResourceVersion: row.version, Done: row.done, Etag: row.etag, Result: result, Error: detail, CreatedAt: timestamppb.New(row.created.UTC()), UpdatedAt: timestamppb.New(row.updated.UTC())}
+	value := &operationv1.Operation{OperationId: row.id, TenantId: row.tenant, ProjectId: row.project, JobId: row.job, State: state, ResourceVersion: row.version, Done: row.done, Etag: row.etag, Result: result, Error: detail, CreatedAt: timestamppb.New(row.created.UTC()), UpdatedAt: timestamppb.New(row.updated.UTC())}
 	if row.targetPresent {
 		value.Target = &commonv1.ResourceRef{ResourceType: row.targetType, ResourceId: row.targetID, TenantId: row.targetTenant, ProjectId: row.targetProject, ResourceVersion: row.targetVersion, Name: row.targetName, Etag: row.targetETag}
 	}
 	return value, nil
 }
 
-func loadOperationTx(ctx context.Context, tx *sql.Tx, identity Identity, id string) (*jobv1.Operation, error) {
+func loadOperationTx(ctx context.Context, tx *sql.Tx, identity Identity, id string) (*operationv1.Operation, error) {
 	row, err := scanOperation(tx.QueryRowContext(ctx, `SELECT `+operationColumns+` FROM operations WHERE tenant_id=$1 AND project_id=$2 AND id=$3`, identity.TenantID, identity.ProjectID, id))
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNotFound
@@ -101,7 +101,7 @@ func loadOperationTx(ctx context.Context, tx *sql.Tx, identity Identity, id stri
 	return operationProto(ctx, tx, row)
 }
 
-func insertOperationRevision(ctx context.Context, tx *sql.Tx, operation *jobv1.Operation, at time.Time) error {
+func insertOperationRevision(ctx context.Context, tx *sql.Tx, operation *operationv1.Operation, at time.Time) error {
 	target := operation.GetTarget()
 	if target == nil {
 		return ErrInvalidArgument
@@ -110,26 +110,26 @@ func insertOperationRevision(ctx context.Context, tx *sql.Tx, operation *jobv1.O
 	return err
 }
 
-func operationStateSQL(state jobv1.OperationState) string {
+func operationStateSQL(state operationv1.OperationState) string {
 	switch state {
-	case jobv1.OperationState_OPERATION_STATE_PENDING:
+	case operationv1.OperationState_OPERATION_STATE_PENDING:
 		return "PENDING"
-	case jobv1.OperationState_OPERATION_STATE_RUNNING:
+	case operationv1.OperationState_OPERATION_STATE_RUNNING:
 		return "RUNNING"
-	case jobv1.OperationState_OPERATION_STATE_SUCCEEDED:
+	case operationv1.OperationState_OPERATION_STATE_SUCCEEDED:
 		return "SUCCEEDED"
-	case jobv1.OperationState_OPERATION_STATE_FAILED:
+	case operationv1.OperationState_OPERATION_STATE_FAILED:
 		return "FAILED"
-	case jobv1.OperationState_OPERATION_STATE_CANCELLING:
+	case operationv1.OperationState_OPERATION_STATE_CANCELLING:
 		return "CANCELLING"
-	case jobv1.OperationState_OPERATION_STATE_CANCELLED:
+	case operationv1.OperationState_OPERATION_STATE_CANCELLED:
 		return "CANCELLED"
 	default:
 		return ""
 	}
 }
 
-func insertQueuedWork(ctx context.Context, tx *sql.Tx, identity Identity, target *commonv1.ResourceRef, jobKind, requestDigest, configurationDigest string, inputID, configurationID, planID sql.NullInt64, at time.Time) (*jobv1.Operation, string, error) {
+func insertQueuedWork(ctx context.Context, tx *sql.Tx, identity Identity, target *commonv1.ResourceRef, jobKind, requestDigest, configurationDigest string, inputID, configurationID, planID sql.NullInt64, at time.Time) (*operationv1.Operation, string, error) {
 	jobID, err := randomID("jobs/")
 	if err != nil {
 		return nil, "", err
@@ -146,7 +146,7 @@ func insertQueuedWork(ctx context.Context, tx *sql.Tx, identity Identity, target
 	if _, err = tx.ExecContext(ctx, `INSERT INTO jobs(id,tenant_id,operation_id,project_id,desired_state,version,policy_digest,job_kind,input_ref_id,configuration_ref_id,configuration_digest,etag,created_at,updated_at) VALUES($1,$2,$3,$4,'QUEUED',1,'',$5,$6,$7,$8,$9,$10,$10)`, jobID, identity.TenantID, operationID, identity.ProjectID, jobKind, inputID, configurationID, configurationDigest, jobETag, at.UTC()); err != nil {
 		return nil, "", err
 	}
-	operation := &jobv1.Operation{OperationId: operationID, TenantId: identity.TenantID, ProjectId: identity.ProjectID, JobId: jobID, State: jobv1.OperationState_OPERATION_STATE_PENDING, ResourceVersion: 1, Done: false, Etag: operationETag, Target: clone(target), CreatedAt: timestamppb.New(at.UTC()), UpdatedAt: timestamppb.New(at.UTC())}
+	operation := &operationv1.Operation{OperationId: operationID, TenantId: identity.TenantID, ProjectId: identity.ProjectID, JobId: jobID, State: operationv1.OperationState_OPERATION_STATE_PENDING, ResourceVersion: 1, Done: false, Etag: operationETag, Target: clone(target), CreatedAt: timestamppb.New(at.UTC()), UpdatedAt: timestamppb.New(at.UTC())}
 	if _, err = tx.ExecContext(ctx, `INSERT INTO operations(id,tenant_id,project_id,job_id,target_present,target_resource_type,target_resource_id,target_tenant_id,target_project_id,target_resource_version,target_name,target_etag,status,version,done,etag,result_ref_id,error_detail_id,request_hash,created_at,updated_at) VALUES($1,$2,$3,$4,true,$5,$6,$7,$8,$9,$10,$11,'PENDING',1,false,$12,NULL,NULL,$13,$14,$14)`, operationID, identity.TenantID, identity.ProjectID, jobID, target.GetResourceType(), target.GetResourceId(), target.GetTenantId(), target.GetProjectId(), target.GetResourceVersion(), target.GetName(), target.GetEtag(), operationETag, requestDigest, at.UTC()); err != nil {
 		return nil, "", err
 	}
@@ -159,7 +159,7 @@ func insertQueuedWork(ctx context.Context, tx *sql.Tx, identity Identity, target
 	return operation, runID, nil
 }
 
-func insertCompletedOperation(ctx context.Context, tx *sql.Tx, identity Identity, target *commonv1.ResourceRef, jobKind, digest string, at time.Time) (*jobv1.Operation, error) {
+func insertCompletedOperation(ctx context.Context, tx *sql.Tx, identity Identity, target *commonv1.ResourceRef, jobKind, digest string, at time.Time) (*operationv1.Operation, error) {
 	jobID, err := randomID("jobs/")
 	if err != nil {
 		return nil, err
@@ -172,7 +172,7 @@ func insertCompletedOperation(ctx context.Context, tx *sql.Tx, identity Identity
 	if _, err = tx.ExecContext(ctx, `INSERT INTO jobs(id,tenant_id,operation_id,project_id,desired_state,version,policy_digest,job_kind,input_ref_id,configuration_ref_id,configuration_digest,etag,created_at,updated_at) VALUES($1,$2,$3,$4,'SUCCEEDED',1,'',$5,NULL,NULL,$6,$7,$8,$8)`, jobID, identity.TenantID, operationID, identity.ProjectID, jobKind, digest, jobETag, at.UTC()); err != nil {
 		return nil, err
 	}
-	operation := &jobv1.Operation{OperationId: operationID, TenantId: identity.TenantID, ProjectId: identity.ProjectID, JobId: jobID, State: jobv1.OperationState_OPERATION_STATE_SUCCEEDED, ResourceVersion: 1, Done: true, Etag: operationETag, Target: clone(target), CreatedAt: timestamppb.New(at.UTC()), UpdatedAt: timestamppb.New(at.UTC())}
+	operation := &operationv1.Operation{OperationId: operationID, TenantId: identity.TenantID, ProjectId: identity.ProjectID, JobId: jobID, State: operationv1.OperationState_OPERATION_STATE_SUCCEEDED, ResourceVersion: 1, Done: true, Etag: operationETag, Target: clone(target), CreatedAt: timestamppb.New(at.UTC()), UpdatedAt: timestamppb.New(at.UTC())}
 	if _, err = tx.ExecContext(ctx, `INSERT INTO operations(id,tenant_id,project_id,job_id,target_present,target_resource_type,target_resource_id,target_tenant_id,target_project_id,target_resource_version,target_name,target_etag,status,version,done,etag,result_ref_id,error_detail_id,request_hash,created_at,updated_at) VALUES($1,$2,$3,$4,true,$5,$6,$7,$8,$9,$10,$11,'SUCCEEDED',1,true,$12,NULL,NULL,$13,$14,$14)`, operationID, identity.TenantID, identity.ProjectID, jobID, target.GetResourceType(), target.GetResourceId(), target.GetTenantId(), target.GetProjectId(), target.GetResourceVersion(), target.GetName(), target.GetEtag(), operationETag, digest, at.UTC()); err != nil {
 		return nil, err
 	}
@@ -255,7 +255,7 @@ func advanceSchedulerRows(ctx context.Context, tx *sql.Tx, identity Identity, jo
 	return nil
 }
 
-func advanceOperation(ctx context.Context, tx *sql.Tx, identity Identity, operationID string, target *commonv1.ResourceRef, state jobv1.OperationState, at time.Time) error {
+func advanceOperation(ctx context.Context, tx *sql.Tx, identity Identity, operationID string, target *commonv1.ResourceRef, state operationv1.OperationState, at time.Time) error {
 	operation, err := loadOperationTx(ctx, tx, identity, operationID)
 	if err != nil {
 		return err
@@ -268,7 +268,7 @@ func advanceOperation(ctx context.Context, tx *sql.Tx, identity Identity, operat
 	}
 	nextVersion := operation.GetResourceVersion() + 1
 	nextETag := resourceETag(operation.GetOperationId(), nextVersion)
-	done := state == jobv1.OperationState_OPERATION_STATE_SUCCEEDED || state == jobv1.OperationState_OPERATION_STATE_FAILED || state == jobv1.OperationState_OPERATION_STATE_CANCELLED
+	done := state == operationv1.OperationState_OPERATION_STATE_SUCCEEDED || state == operationv1.OperationState_OPERATION_STATE_FAILED || state == operationv1.OperationState_OPERATION_STATE_CANCELLED
 	result, err := tx.ExecContext(ctx, `UPDATE operations SET status=$4,version=$5,done=$6,etag=$7,target_resource_version=$8,target_etag=$9,updated_at=$10 WHERE tenant_id=$1 AND project_id=$2 AND id=$3 AND version=$11 AND done=false`, identity.TenantID, identity.ProjectID, operationID, operationStateSQL(state), nextVersion, done, nextETag, target.GetResourceVersion(), target.GetEtag(), at.UTC(), operation.GetResourceVersion())
 	if err != nil {
 		return err

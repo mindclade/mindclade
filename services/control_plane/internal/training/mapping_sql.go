@@ -13,6 +13,7 @@ import (
 	artifactv1 "github.com/mindclade/mindclade/protocols/generated/go/artifact/v1"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
+	operationv1 "github.com/mindclade/mindclade/protocols/generated/go/operation/v1"
 	trainingv1 "github.com/mindclade/mindclade/protocols/generated/go/training/v1"
 )
 
@@ -395,7 +396,7 @@ func scanOperation(row scanner) (operationRow, error) {
 	return value, err
 }
 
-func getOperationTx(ctx context.Context, tx *sql.Tx, identity Identity, name string, lock bool) (*jobv1.Operation, operationRow, error) {
+func getOperationTx(ctx context.Context, tx *sql.Tx, identity Identity, name string, lock bool) (*operationv1.Operation, operationRow, error) {
 	query := `SELECT ` + operationColumns + ` FROM operations WHERE tenant_id=$1 AND project_id=$2 AND id=$3`
 	if lock {
 		query += ` FOR UPDATE`
@@ -411,7 +412,7 @@ func getOperationTx(ctx context.Context, tx *sql.Tx, identity Identity, name str
 	return value, row, err
 }
 
-func operationRowProto(ctx context.Context, tx *sql.Tx, row operationRow) (*jobv1.Operation, error) {
+func operationRowProto(ctx context.Context, tx *sql.Tx, row operationRow) (*operationv1.Operation, error) {
 	result, err := platformdb.LoadArtifactRef(ctx, tx, row.tenantID, row.result)
 	if err != nil {
 		return nil, err
@@ -424,7 +425,7 @@ func operationRowProto(ctx context.Context, tx *sql.Tx, row operationRow) (*jobv
 	if err != nil {
 		return nil, err
 	}
-	value := &jobv1.Operation{
+	value := &operationv1.Operation{
 		OperationId: row.id, TenantId: row.tenantID, ProjectId: row.projectID, JobId: row.jobID,
 		State: state, ResourceVersion: row.version, Done: row.done, Etag: row.etag, Result: result, Error: errorDetail,
 		CreatedAt: timestamppb.New(row.createdAt.UTC()), UpdatedAt: timestamppb.New(row.updatedAt.UTC()),
@@ -470,20 +471,20 @@ WHERE tenant_id=$1 AND project_id=$2 AND id=$3 AND version=$5`,
 	return requireOne(result)
 }
 
-func operationState(value string) (jobv1.OperationState, error) {
+func operationState(value string) (operationv1.OperationState, error) {
 	switch value {
 	case "PENDING":
-		return jobv1.OperationState_OPERATION_STATE_PENDING, nil
+		return operationv1.OperationState_OPERATION_STATE_PENDING, nil
 	case "RUNNING":
-		return jobv1.OperationState_OPERATION_STATE_RUNNING, nil
+		return operationv1.OperationState_OPERATION_STATE_RUNNING, nil
 	case "SUCCEEDED":
-		return jobv1.OperationState_OPERATION_STATE_SUCCEEDED, nil
+		return operationv1.OperationState_OPERATION_STATE_SUCCEEDED, nil
 	case "FAILED":
-		return jobv1.OperationState_OPERATION_STATE_FAILED, nil
+		return operationv1.OperationState_OPERATION_STATE_FAILED, nil
 	case "CANCELLING":
-		return jobv1.OperationState_OPERATION_STATE_CANCELLING, nil
+		return operationv1.OperationState_OPERATION_STATE_CANCELLING, nil
 	case "CANCELLED":
-		return jobv1.OperationState_OPERATION_STATE_CANCELLED, nil
+		return operationv1.OperationState_OPERATION_STATE_CANCELLED, nil
 	default:
 		return 0, fmt.Errorf("unknown operation state %q", value)
 	}

@@ -177,3 +177,10 @@ spec:
       path: docs/adr/0025-control-plane-platform-runtime-becomes-shared-go-libraries.md
       owners: [platform-control-plane, developer-platform]
       specificationAccepted: "2026-09-02"
+    - id: ADR-0026
+      title: Long-running operations become a first-class namespace
+      status: accepted-in-specification
+      connectedRatification: pending
+      path: docs/adr/0026-operations-become-a-first-class-namespace.md
+      owners: [architecture, contract-governance]
+      specificationAccepted: "2026-09-02"

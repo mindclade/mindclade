@@ -117,13 +117,13 @@ pub use mindclade_protocols::internal::training::v1::{
     ListTrainingRunsResponse, WatchTrainingRunResponse,
 };
 pub use mindclade_protocols::job::v1::{
-    Attempt, AttemptState, Job, JobState, LeaseFence, Operation, OperationState, RequestJobCommand,
-    Run, RunState,
+    Attempt, AttemptState, Job, JobState, LeaseFence, RequestJobCommand, Run, RunState,
 };
 pub use mindclade_protocols::model::v1::{
     Model, ModelRelease, PromoteModelReleaseCommand, RegisterModelCommand,
     RegisterModelReleaseCommand, RevokeModelReleaseCommand,
 };
+pub use mindclade_protocols::operation::v1::{Operation, OperationState};
 pub use mindclade_protocols::policy::v1::{AuthorizationDecision, PolicyReference, UsePolicy};
 pub use mindclade_protocols::training::v1::{
     CancelTrainingRunCommand, Checkpoint, CommitCheckpointCommand, CommitTrainingProgressCommand,

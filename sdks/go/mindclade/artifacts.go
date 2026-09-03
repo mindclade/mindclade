@@ -19,7 +19,7 @@ import (
 	artifactv1 "github.com/mindclade/mindclade/protocols/generated/go/artifact/v1"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	internalartifactv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/artifact/v1"
-	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
+	operationv1 "github.com/mindclade/mindclade/protocols/generated/go/operation/v1"
 )
 
 const defaultArtifactUploadChunkBytes = 1 << 20
@@ -119,7 +119,7 @@ func (service *ArtifactService) List(ctx context.Context, request *internalartif
 // Quarantine records a governed artifact transition and returns its durable
 // generated operation. Identity and digest fields in CommandContext are
 // rebuilt from authenticated client configuration.
-func (service *ArtifactService) Quarantine(ctx context.Context, request *internalartifactv1.QuarantineArtifactRequest, options ...RequestOption) (*jobv1.Operation, error) {
+func (service *ArtifactService) Quarantine(ctx context.Context, request *internalartifactv1.QuarantineArtifactRequest, options ...RequestOption) (*operationv1.Operation, error) {
 	value := cloneGenerated(request)
 	if value == nil || validateUploadArtifact(value.GetArtifact()) != nil || !artifactReasonCodePattern.MatchString(value.GetReasonCode()) || len(value.GetEvidence()) > 100 {
 		return nil, invalidArgument("artifact quarantine requires valid immutable metadata, reason code, and bounded evidence")

@@ -19,9 +19,9 @@ from mindclade.job.v1 import (
     job_commands_pb2,
     job_pb2,
     lease_fencing_pb2,
-    operation_pb2,
     run_pb2,
 )
+from mindclade.operation.v1 import operation_pb2
 from mindclade_internal_sdk import (
     AccessToken,
     AsyncClient,

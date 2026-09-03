@@ -9,7 +9,7 @@ from typing import cast
 
 from google.protobuf.timestamp_pb2 import Timestamp
 from mindclade.internal.policy.v1 import policy_service_pb2
-from mindclade.job.v1 import operation_pb2
+from mindclade.operation.v1 import operation_pb2
 from mindclade.policy.v1 import authorization_decision_pb2, policy_reference_pb2, use_policy_pb2
 
 from ._invocation import AsyncInvoker, SyncInvoker, canonical_digest, command_context

@@ -15,10 +15,8 @@ use mindclade_protocols::{
         ListJobsResponse, ListRunsRequest, ListRunsResponse, RenewAttemptLeaseRequest,
         RenewAttemptLeaseResponse, RequestJobRequest, RequestJobResponse,
     },
-    job::v1::{
-        Attempt, AttemptState, Job, JobState, LeaseFence, Operation, OperationState,
-        RequestJobCommand, Run, RunState,
-    },
+    job::v1::{Attempt, AttemptState, Job, JobState, LeaseFence, RequestJobCommand, Run, RunState},
+    operation::v1::{Operation, OperationState},
 };
 use prost::Message;
 use prost_types::{FieldMask, Timestamp};

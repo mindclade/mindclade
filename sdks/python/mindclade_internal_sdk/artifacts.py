@@ -21,7 +21,7 @@ from google.protobuf.timestamp_pb2 import Timestamp
 from mindclade.artifact.v1 import artifact_commands_pb2, artifact_reference_pb2
 from mindclade.common.v1 import resource_reference_pb2
 from mindclade.internal.artifact.v1 import artifact_service_pb2
-from mindclade.job.v1 import operation_pb2
+from mindclade.operation.v1 import operation_pb2
 
 from ._invocation import AsyncInvoker, SyncInvoker, canonical_digest, command_context
 from ._validation import artifact_ref, required_response_message, required_text

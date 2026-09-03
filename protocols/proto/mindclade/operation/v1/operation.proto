@@ -1,13 +1,13 @@
 syntax = "proto3";
 
-package mindclade.job.v1;
+package mindclade.operation.v1;
 
 import "google/protobuf/timestamp.proto";
 import "proto/mindclade/artifact/v1/artifact_reference.proto";
 import "proto/mindclade/common/v1/error_detail.proto";
 import "proto/mindclade/common/v1/resource_reference.proto";
 
-option go_package = "github.com/mindclade/mindclade/protocols/generated/go/job/v1;jobv1";
+option go_package = "github.com/mindclade/mindclade/protocols/generated/go/operation/v1;operationv1";
 
 enum OperationState {
   OPERATION_STATE_UNSPECIFIED = 0;

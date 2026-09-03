@@ -17,7 +17,8 @@ use mindclade_protocols::{
         ResumeTrainingAttemptResponse, StartTrainingAttemptRequest, StartTrainingAttemptResponse,
         WatchTrainingRunRequest, WatchTrainingRunResponse,
     },
-    job::v1::{LeaseFence, Operation},
+    job::v1::LeaseFence,
+    operation::v1::Operation,
     training::v1::{
         CancelTrainingRunCommand, Checkpoint, CommitCheckpointCommand,
         CommitTrainingProgressCommand, CompleteTrainingRunCommand, CreateTrainingRunCommand,

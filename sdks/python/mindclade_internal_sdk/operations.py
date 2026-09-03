@@ -11,7 +11,7 @@ from typing import cast
 import grpc
 from google.protobuf.message import Message
 from mindclade.internal.job.v1 import job_service_pb2
-from mindclade.job.v1 import operation_pb2
+from mindclade.operation.v1 import operation_pb2
 
 from ._invocation import (
     AsyncInvoker,

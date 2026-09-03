@@ -46,6 +46,7 @@ import (
 	internalworkflowv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/workflow/v1"
 	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
 	modelv1 "github.com/mindclade/mindclade/protocols/generated/go/model/v1"
+	operationv1 "github.com/mindclade/mindclade/protocols/generated/go/operation/v1"
 	trainingv1 "github.com/mindclade/mindclade/protocols/generated/go/training/v1"
 	trainingapp "github.com/mindclade/mindclade/services/control_plane/internal/training"
 )
@@ -562,7 +563,7 @@ func TestTrainingProjectionRejectsUnrepresentableNumericValues(t *testing.T) {
 		{
 			name: "negative operation revision",
 			call: func() error {
-				_, err := publicOperation(&jobv1.Operation{ResourceVersion: -1})
+				_, err := publicOperation(&operationv1.Operation{ResourceVersion: -1})
 				return err
 			},
 			code: codes.Internal,
@@ -997,9 +998,9 @@ func TestOperationSSEEventCarriesVersionedResumeState(t *testing.T) {
 		sent = event
 		return nil
 	}, encode: codec.EncodeOperationCursor}
-	operation := &jobv1.Operation{
+	operation := &operationv1.Operation{
 		OperationId: "operations/op-01", TenantId: "tenant-01", ProjectId: "project-01",
-		ResourceVersion: 9, Etag: "etag-operation", State: jobv1.OperationState_OPERATION_STATE_SUCCEEDED, Done: true,
+		ResourceVersion: 9, Etag: "etag-operation", State: operationv1.OperationState_OPERATION_STATE_SUCCEEDED, Done: true,
 		CreatedAt: timestamppb.New(time.Unix(9, 0).UTC()), UpdatedAt: timestamppb.New(time.Unix(10, 0).UTC()),
 	}
 	if sendErr := bridge.Send(&internaljobv1.WatchOperationResponse{

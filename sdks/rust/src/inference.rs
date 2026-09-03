@@ -12,7 +12,7 @@ use mindclade_protocols::{
         CommitInferenceResultRequest, GetInferenceRequestRequest, GetInferenceResultRequest,
         SubmitInferenceRequest, WatchInferenceRequest,
     },
-    job::v1::Operation,
+    operation::v1::Operation,
 };
 use prost::Message;
 use sha2::{Digest, Sha256};

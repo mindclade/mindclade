@@ -11,6 +11,7 @@ import (
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	internalagentv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/agent/v1"
 	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
+	operationv1 "github.com/mindclade/mindclade/protocols/generated/go/operation/v1"
 )
 
 const agentMaximumPageSize = 200
@@ -26,7 +27,7 @@ type AgentService struct {
 // CreateDefinition admits a generated definition and returns its durable
 // operation. Server-managed fields remain unset and caller identity is always
 // replaced by authenticated SDK configuration in CommandContext.
-func (service *AgentService) CreateDefinition(ctx context.Context, request *internalagentv1.CreateAgentDefinitionRequest, options ...RequestOption) (*jobv1.Operation, error) {
+func (service *AgentService) CreateDefinition(ctx context.Context, request *internalagentv1.CreateAgentDefinitionRequest, options ...RequestOption) (*operationv1.Operation, error) {
 	if !service.configured() || request == nil || request.GetAgentDefinition() == nil || !validResourceIdentifier(request.GetAgentDefinitionId()) {
 		return nil, invalidArgument("a configured service, generated agent definition, and valid definition ID are required")
 	}
@@ -41,7 +42,7 @@ func (service *AgentService) CreateDefinition(ctx context.Context, request *inte
 }
 
 // UpdateDefinition applies a generated field mask under an explicit ETag.
-func (service *AgentService) UpdateDefinition(ctx context.Context, request *internalagentv1.UpdateAgentDefinitionRequest, options ...RequestOption) (*jobv1.Operation, error) {
+func (service *AgentService) UpdateDefinition(ctx context.Context, request *internalagentv1.UpdateAgentDefinitionRequest, options ...RequestOption) (*operationv1.Operation, error) {
 	if !service.configured() || request == nil || request.GetAgentDefinition() == nil || !scopedResourceName(service.client.config, request.GetAgentDefinition().GetName(), "agentDefinitions") || strings.TrimSpace(request.GetEtag()) == "" || request.GetUpdateMask() == nil || len(request.GetUpdateMask().GetPaths()) == 0 || len(request.GetUpdateMask().GetPaths()) > 32 {
 		return nil, invalidArgument("agent definition update requires a scoped definition, bounded field mask, and ETag")
 	}
@@ -102,7 +103,7 @@ func (service *AgentService) ListDefinitions(ctx context.Context, request *inter
 
 // StartRun admits immutable generated run intent and returns the durable
 // operation that owns asynchronous control state.
-func (service *AgentService) StartRun(ctx context.Context, request *internalagentv1.StartAgentRunRequest, options ...RequestOption) (*jobv1.Operation, error) {
+func (service *AgentService) StartRun(ctx context.Context, request *internalagentv1.StartAgentRunRequest, options ...RequestOption) (*operationv1.Operation, error) {
 	if !service.configured() || request == nil || request.GetAgentRun() == nil || !validResourceIdentifier(request.GetAgentRunId()) {
 		return nil, invalidArgument("a configured service, generated agent run, and valid run ID are required")
 	}
@@ -170,7 +171,7 @@ func (service *AgentService) ListRuns(ctx context.Context, request *internalagen
 }
 
 // CancelRun records monotonic cancellation under an explicit ETag.
-func (service *AgentService) CancelRun(ctx context.Context, request *internalagentv1.CancelAgentRunRequest, options ...RequestOption) (*jobv1.Operation, error) {
+func (service *AgentService) CancelRun(ctx context.Context, request *internalagentv1.CancelAgentRunRequest, options ...RequestOption) (*operationv1.Operation, error) {
 	if !service.configured() || request == nil || !scopedResourceName(service.client.config, request.GetName(), "agentRuns") || strings.TrimSpace(request.GetEtag()) == "" || strings.TrimSpace(request.GetReason()) == "" || len(request.GetReason()) > 1024 {
 		return nil, invalidArgument("agent cancellation requires a scoped run name, ETag, and bounded reason")
 	}
@@ -331,7 +332,7 @@ func (service *AgentService) normalizeDefinition(value *agentv1.AgentDefinition,
 	return nil
 }
 
-func (service *AgentService) operationMutation(ctx context.Context, supplied *commonv1.CommandContext, request proto.Message, method string, options ...RequestOption) (*jobv1.Operation, error) {
+func (service *AgentService) operationMutation(ctx context.Context, supplied *commonv1.CommandContext, request proto.Message, method string, options ...RequestOption) (*operationv1.Operation, error) {
 	key := supplied.GetIdempotencyKey()
 	clearCommandContext(request)
 	callContext, metadata, cancel, err := service.client.workflowMutationContext(ctx, key, false, options...)
@@ -344,7 +345,7 @@ func (service *AgentService) operationMutation(ctx context.Context, supplied *co
 		return nil, err
 	}
 	setCommandContext(request, commandContext(service.client.config, callContext, metadata, digest))
-	var operation *jobv1.Operation
+	var operation *operationv1.Operation
 	switch value := request.(type) {
 	case *internalagentv1.CreateAgentDefinitionRequest:
 		response, callErr := service.transport.CreateAgentDefinition(callContext, value)

@@ -12,7 +12,7 @@ from mindclade.artifact.v1 import artifact_reference_pb2, evidence_reference_pb2
 from mindclade.common.v1 import command_context_pb2, pagination_pb2, resource_reference_pb2
 from mindclade.internal.artifact.v1 import artifact_service_pb2
 from mindclade.internal.job.v1 import job_service_pb2
-from mindclade.job.v1 import operation_pb2
+from mindclade.operation.v1 import operation_pb2
 from mindclade_internal_sdk import AccessToken, AsyncClient, CallOptions, Client, ClientConfig
 from mindclade_internal_sdk._invocation import canonical_digest
 from mindclade_internal_sdk.config import RetryPolicy

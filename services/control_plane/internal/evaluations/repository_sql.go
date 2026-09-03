@@ -17,11 +17,12 @@ import (
 	evaluationv1 "github.com/mindclade/mindclade/protocols/generated/go/evaluation/v1"
 	internalevaluationv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/evaluation/v1"
 	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
+	operationv1 "github.com/mindclade/mindclade/protocols/generated/go/operation/v1"
 	jobsapp "github.com/mindclade/mindclade/services/control_plane/internal/jobs"
 	operationsapp "github.com/mindclade/mindclade/services/control_plane/internal/operations"
 )
 
-func (repository SQLRepository) CreateRun(ctx context.Context, identity Identity, request *internalevaluationv1.CreateEvaluationRunRequest, digest string, at time.Time) (*jobv1.Operation, bool, error) {
+func (repository SQLRepository) CreateRun(ctx context.Context, identity Identity, request *internalevaluationv1.CreateEvaluationRunRequest, digest string, at time.Time) (*operationv1.Operation, bool, error) {
 	if err := repository.validate(); err != nil {
 		return nil, false, err
 	}
@@ -242,7 +243,7 @@ func (repository SQLRepository) ListRuns(ctx context.Context, identity Identity,
 	return cloneSlice(values), next, readAt.UTC(), nil
 }
 
-func (repository SQLRepository) CancelRun(ctx context.Context, identity Identity, request *internalevaluationv1.CancelEvaluationRunRequest, digest string, at time.Time) (*jobv1.Operation, bool, error) {
+func (repository SQLRepository) CancelRun(ctx context.Context, identity Identity, request *internalevaluationv1.CancelEvaluationRunRequest, digest string, at time.Time) (*operationv1.Operation, bool, error) {
 	if err := repository.validate(); err != nil {
 		return nil, false, err
 	}
@@ -311,7 +312,7 @@ func (repository SQLRepository) CancelRun(ctx context.Context, identity Identity
 		}
 		return nil, false, ErrInvalidTransition
 	}
-	operation, err := operationsapp.AdvanceTxSQL(ctx, tx, identity.TenantID, identity.ProjectID, row.operationID, current.GetResourceVersion(), current.GetEtag(), jobv1.OperationState_OPERATION_STATE_CANCELLING, at)
+	operation, err := operationsapp.AdvanceTxSQL(ctx, tx, identity.TenantID, identity.ProjectID, row.operationID, current.GetResourceVersion(), current.GetEtag(), operationv1.OperationState_OPERATION_STATE_CANCELLING, at)
 	if err != nil {
 		return nil, false, err
 	}
@@ -491,7 +492,7 @@ func (repository SQLRepository) GetResult(ctx context.Context, identity Identity
 	return clone(value), nil
 }
 
-func (repository SQLRepository) CreatePromotionDecision(ctx context.Context, identity Identity, request *internalevaluationv1.CreatePromotionDecisionRequest, digest string, at time.Time) (*jobv1.Operation, bool, error) {
+func (repository SQLRepository) CreatePromotionDecision(ctx context.Context, identity Identity, request *internalevaluationv1.CreatePromotionDecisionRequest, digest string, at time.Time) (*operationv1.Operation, bool, error) {
 	if err := repository.validate(); err != nil {
 		return nil, false, err
 	}
@@ -608,14 +609,14 @@ func validateCurrentFence(ctx context.Context, tx *sql.Tx, identity Identity, sc
 	return nil
 }
 
-func terminalStates(outcome evaluationv1.EvaluationResultOutcome) (evaluationv1.EvaluationRunState, string, string, string, jobv1.OperationState) {
+func terminalStates(outcome evaluationv1.EvaluationResultOutcome) (evaluationv1.EvaluationRunState, string, string, string, operationv1.OperationState) {
 	switch outcome {
 	case evaluationv1.EvaluationResultOutcome_EVALUATION_RESULT_OUTCOME_CANCELLED:
-		return evaluationv1.EvaluationRunState_EVALUATION_RUN_STATE_CANCELLED, "CANCELLED", "CANCELLED", "CANCELLED", jobv1.OperationState_OPERATION_STATE_CANCELLED
+		return evaluationv1.EvaluationRunState_EVALUATION_RUN_STATE_CANCELLED, "CANCELLED", "CANCELLED", "CANCELLED", operationv1.OperationState_OPERATION_STATE_CANCELLED
 	case evaluationv1.EvaluationResultOutcome_EVALUATION_RESULT_OUTCOME_INVALID:
-		return evaluationv1.EvaluationRunState_EVALUATION_RUN_STATE_FAILED, "FAILED", "FAILED", "FAILED", jobv1.OperationState_OPERATION_STATE_FAILED
+		return evaluationv1.EvaluationRunState_EVALUATION_RUN_STATE_FAILED, "FAILED", "FAILED", "FAILED", operationv1.OperationState_OPERATION_STATE_FAILED
 	default:
-		return evaluationv1.EvaluationRunState_EVALUATION_RUN_STATE_SUCCEEDED, "SUCCEEDED", "SUCCEEDED", "COMPLETED", jobv1.OperationState_OPERATION_STATE_SUCCEEDED
+		return evaluationv1.EvaluationRunState_EVALUATION_RUN_STATE_SUCCEEDED, "SUCCEEDED", "SUCCEEDED", "COMPLETED", operationv1.OperationState_OPERATION_STATE_SUCCEEDED
 	}
 }
 

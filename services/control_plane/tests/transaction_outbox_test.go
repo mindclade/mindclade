@@ -24,6 +24,7 @@ import (
 	artifactv1 "github.com/mindclade/mindclade/protocols/generated/go/artifact/v1"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
+	operationv1 "github.com/mindclade/mindclade/protocols/generated/go/operation/v1"
 	"github.com/mindclade/mindclade/services/control_plane/internal/artifacts"
 	"github.com/mindclade/mindclade/services/control_plane/internal/jobs"
 	"github.com/mindclade/mindclade/services/control_plane/internal/operations"
@@ -107,9 +108,9 @@ func TestOperationAcceptanceCommitsAuditAndOutboxAtomically(t *testing.T) {
 	operation, replay, err := operations.Create(policies.DenyByDefault{}, repository, operations.CreateCommand{
 		Principal: principal, IdempotencyKey: "key-1", RequestDigest: requestDigest,
 		ConfigurationDigest: "sha256:" + strings.Repeat("c", 64),
-		Operation:           &jobv1.Operation{OperationId: "operation-1", TenantId: "tenant-a", ProjectId: "project-a", JobId: "job-1", Etag: "operation-etag-1"},
+		Operation:           &operationv1.Operation{OperationId: "operation-1", TenantId: "tenant-a", ProjectId: "project-a", JobId: "job-1", Etag: "operation-etag-1"},
 	})
-	if err != nil || replay || operation.GetState() != jobv1.OperationState_OPERATION_STATE_PENDING {
+	if err != nil || replay || operation.GetState() != operationv1.OperationState_OPERATION_STATE_PENDING {
 		t.Fatalf("unexpected operation result: %#v replay=%v err=%v", operation, replay, err)
 	}
 	envelopes := repository.OutboxEnvelopes()
@@ -140,7 +141,7 @@ func TestOutboxDispatcherRetriesThenAcknowledgesRegisteredEvent(t *testing.T) {
 	_, _, err := operations.Create(policies.DenyByDefault{}, repository, operations.CreateCommand{
 		Principal: principal, IdempotencyKey: "key-dispatch", RequestDigest: "sha256:" + strings.Repeat("a", 64),
 		ConfigurationDigest: "sha256:" + strings.Repeat("c", 64),
-		Operation:           &jobv1.Operation{OperationId: "operation-dispatch", TenantId: "tenant-a", ProjectId: "project-a", JobId: "job-dispatch", Etag: "operation-etag-1"},
+		Operation:           &operationv1.Operation{OperationId: "operation-dispatch", TenantId: "tenant-a", ProjectId: "project-a", JobId: "job-dispatch", Etag: "operation-etag-1"},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -185,7 +186,7 @@ func TestOutboxDispatcherRepublishesStableEventAfterPublishBeforeAckCrash(t *tes
 	_, _, err := operations.Create(policies.DenyByDefault{}, repository, operations.CreateCommand{
 		Principal: principal, IdempotencyKey: "key-crash", RequestDigest: "sha256:" + strings.Repeat("a", 64),
 		ConfigurationDigest: "sha256:" + strings.Repeat("c", 64),
-		Operation:           &jobv1.Operation{OperationId: "operation-crash", TenantId: "tenant-crash", ProjectId: "project-crash", JobId: "job-crash", Etag: "operation-etag-1"},
+		Operation:           &operationv1.Operation{OperationId: "operation-crash", TenantId: "tenant-crash", ProjectId: "project-crash", JobId: "job-crash", Etag: "operation-etag-1"},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -225,7 +226,7 @@ func TestOutboxDoesNotClaimAnAggregateSuccessorBeforeItsPredecessor(t *testing.T
 	_, _, err := operations.Create(policies.DenyByDefault{}, repository, operations.CreateCommand{
 		Principal: principal, IdempotencyKey: "key-order", RequestDigest: "sha256:" + strings.Repeat("a", 64),
 		ConfigurationDigest: "sha256:" + strings.Repeat("c", 64),
-		Operation:           &jobv1.Operation{OperationId: "operation-order", TenantId: "tenant-order", ProjectId: "project-order", JobId: "job-order", Etag: "operation-etag-1"},
+		Operation:           &operationv1.Operation{OperationId: "operation-order", TenantId: "tenant-order", ProjectId: "project-order", JobId: "job-order", Etag: "operation-etag-1"},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -272,7 +273,7 @@ func TestOutboxQuarantinesAfterBoundedPublishAttempts(t *testing.T) {
 	_, _, err := operations.Create(policies.DenyByDefault{}, repository, operations.CreateCommand{
 		Principal: principal, IdempotencyKey: "key-dlq", RequestDigest: "sha256:" + strings.Repeat("a", 64),
 		ConfigurationDigest: "sha256:" + strings.Repeat("c", 64),
-		Operation:           &jobv1.Operation{OperationId: "operation-dlq", TenantId: "tenant-dlq", ProjectId: "project-dlq", JobId: "job-dlq", Etag: "operation-etag-1"},
+		Operation:           &operationv1.Operation{OperationId: "operation-dlq", TenantId: "tenant-dlq", ProjectId: "project-dlq", JobId: "job-dlq", Etag: "operation-etag-1"},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -415,9 +416,9 @@ func TestPostgresKernelJourney(t *testing.T) {
 	}
 	operationsSQL := operations.SQLRepository{DB: db}
 	operationTarget := &commonv1.ResourceRef{ResourceType: "training_run", ResourceId: "training-" + unique, TenantId: tenantID, ProjectId: "project-integration", ResourceVersion: 3, Name: "trainingRuns/training-" + unique, Etag: "training-etag-3"}
-	operationInput := &jobv1.Operation{OperationId: operationID, TenantId: tenantID, ProjectId: "project-integration", JobId: jobID, Etag: "operation-etag-1", Result: configuration, Error: richError, Target: operationTarget}
+	operationInput := &operationv1.Operation{OperationId: operationID, TenantId: tenantID, ProjectId: "project-integration", JobId: jobID, Etag: "operation-etag-1", Result: configuration, Error: richError, Target: operationTarget}
 	operation, replay, err := operationsSQL.CreateAtomicallySQL(testContext, operationInput, requestHash, "journey-key", "integration-principal")
-	if err != nil || replay || operation.GetState() != jobv1.OperationState_OPERATION_STATE_PENDING {
+	if err != nil || replay || operation.GetState() != operationv1.OperationState_OPERATION_STATE_PENDING {
 		t.Fatalf("PostgreSQL operation acceptance failed: operation=%#v replay=%v err=%v", operation, replay, err)
 	}
 	var auditEnvelopeBytes []byte
@@ -435,11 +436,11 @@ func TestPostgresKernelJourney(t *testing.T) {
 	if err != nil || !replay || replayed.GetProjectId() != operationInput.GetProjectId() || replayed.GetEtag() != operationInput.GetEtag() || !proto.Equal(replayed.GetResult(), configuration) || !proto.Equal(replayed.GetError(), richError) || !proto.Equal(replayed.GetTarget(), operationTarget) {
 		t.Fatalf("PostgreSQL idempotency replay failed: replay=%v err=%v", replay, err)
 	}
-	advanced, err := operationsSQL.AdvanceSQL(testContext, tenantID, "project-integration", operationID, operation.GetResourceVersion(), operation.GetEtag(), jobv1.OperationState_OPERATION_STATE_RUNNING)
+	advanced, err := operationsSQL.AdvanceSQL(testContext, tenantID, "project-integration", operationID, operation.GetResourceVersion(), operation.GetEtag(), operationv1.OperationState_OPERATION_STATE_RUNNING)
 	if err != nil || advanced.GetResourceVersion() != 2 || advanced.GetEtag() == operation.GetEtag() || !proto.Equal(advanced.GetTarget(), operationTarget) {
 		t.Fatalf("PostgreSQL conditional operation advance failed: operation=%v err=%v", advanced, err)
 	}
-	if _, err = operationsSQL.AdvanceSQL(testContext, tenantID, "project-integration", operationID, operation.GetResourceVersion(), operation.GetEtag(), jobv1.OperationState_OPERATION_STATE_SUCCEEDED); !errors.Is(err, operations.ErrVersionConflict) {
+	if _, err = operationsSQL.AdvanceSQL(testContext, tenantID, "project-integration", operationID, operation.GetResourceVersion(), operation.GetEtag(), operationv1.OperationState_OPERATION_STATE_SUCCEEDED); !errors.Is(err, operations.ErrVersionConflict) {
 		t.Fatalf("PostgreSQL stale operation advance error=%v", err)
 	}
 	persistedJob, err := jobsSQL.GetJobSQL(testContext, tenantID, "project-integration", jobID)
@@ -746,7 +747,7 @@ func TestPostgresKernelJourney(t *testing.T) {
 		t.Fatalf("PostgreSQL generated attempt/run completion round trip: attempt=%v run=%v err=%v", acceptedAttempt, acceptedRun, completionErr)
 	}
 	failedOperation, operationErr := operationsSQL.GetSQL(testContext, tenantID, "project-integration", operationID)
-	if operationErr != nil || failedOperation.GetState() != jobv1.OperationState_OPERATION_STATE_FAILED || !failedOperation.GetDone() || failedOperation.GetResult() != nil || !proto.Equal(failedOperation.GetError(), completionError) {
+	if operationErr != nil || failedOperation.GetState() != operationv1.OperationState_OPERATION_STATE_FAILED || !failedOperation.GetDone() || failedOperation.GetResult() != nil || !proto.Equal(failedOperation.GetError(), completionError) {
 		t.Fatalf("PostgreSQL terminal attempt error was not propagated to the operation: operation=%v err=%v", failedOperation, operationErr)
 	}
 
@@ -859,7 +860,7 @@ func TestPostgresGenericJobSchedulerLifecycle(t *testing.T) {
 	requested, err := repository.RequestJobSQL(ctx, &jobv1.Job{
 		JobId: jobID, TenantId: tenantID, ProjectId: projectID, JobKind: "generic.test",
 		Input: input, Configuration: configuration, Etag: "job-etag-1",
-	}, &jobv1.Operation{
+	}, &operationv1.Operation{
 		OperationId: operationID, TenantId: tenantID, ProjectId: projectID, JobId: jobID, Etag: "operation-etag-1",
 	}, jobs.JobCommandMetadata{
 		TenantID: tenantID, ProjectID: projectID, PrincipalID: "scheduler-test-principal",
@@ -904,7 +905,7 @@ func TestPostgresGenericJobSchedulerLifecycle(t *testing.T) {
 		t.Fatalf("generic scheduler Job not queued: job=%v err=%v", queuedJob, err)
 	}
 	queuedOperation, err := (operations.SQLRepository{DB: db}).GetSQL(ctx, tenantID, projectID, operationID)
-	if err != nil || queuedOperation.GetState() != jobv1.OperationState_OPERATION_STATE_PENDING {
+	if err != nil || queuedOperation.GetState() != operationv1.OperationState_OPERATION_STATE_PENDING {
 		t.Fatalf("generic scheduler Operation advanced before acquisition: operation=%v err=%v", queuedOperation, err)
 	}
 
@@ -927,7 +928,7 @@ func TestPostgresGenericJobSchedulerLifecycle(t *testing.T) {
 		t.Fatalf("lease did not advance Job: job=%v err=%v", runningJob, err)
 	}
 	runningOperation, err := (operations.SQLRepository{DB: db}).GetSQL(ctx, tenantID, projectID, operationID)
-	if err != nil || runningOperation.GetState() != jobv1.OperationState_OPERATION_STATE_RUNNING || runningOperation.GetDone() {
+	if err != nil || runningOperation.GetState() != operationv1.OperationState_OPERATION_STATE_RUNNING || runningOperation.GetDone() {
 		t.Fatalf("lease did not advance Operation: operation=%v err=%v", runningOperation, err)
 	}
 	if replay, replayErr := repository.AcquireLeaseSQL(ctx, acquire); replayErr != nil || !replay.Replay {
@@ -958,7 +959,7 @@ func TestPostgresGenericJobSchedulerLifecycle(t *testing.T) {
 		t.Fatalf("completion did not terminally advance Job: job=%v err=%v", terminalJob, err)
 	}
 	terminalOperation, err := (operations.SQLRepository{DB: db}).GetSQL(ctx, tenantID, projectID, operationID)
-	if err != nil || terminalOperation.GetState() != jobv1.OperationState_OPERATION_STATE_SUCCEEDED || !terminalOperation.GetDone() ||
+	if err != nil || terminalOperation.GetState() != operationv1.OperationState_OPERATION_STATE_SUCCEEDED || !terminalOperation.GetDone() ||
 		!proto.Equal(terminalOperation.GetResult(), configuration) || terminalOperation.GetError() != nil ||
 		terminalOperation.GetTarget().GetResourceType() != "run" || terminalOperation.GetTarget().GetResourceId() != strings.TrimPrefix(runID, "runs/") ||
 		terminalOperation.GetTarget().GetResourceVersion() != completed.Run.GetResourceVersion() || terminalOperation.GetTarget().GetEtag() != completed.Run.GetEtag() {
@@ -1011,7 +1012,7 @@ func TestPostgresCancellationExpiryFinalizesSchedulerLifecycle(t *testing.T) {
 	requested, err := repository.RequestJobSQL(ctx, &jobv1.Job{
 		JobId: jobID, TenantId: tenantID, ProjectId: projectID, JobKind: "generic.test",
 		Configuration: configuration, Etag: "job-etag-1",
-	}, &jobv1.Operation{
+	}, &operationv1.Operation{
 		OperationId: operationID, TenantId: tenantID, ProjectId: projectID, JobId: jobID, Etag: "operation-etag-1",
 	}, jobs.JobCommandMetadata{
 		TenantID: tenantID, ProjectID: projectID, PrincipalID: "scheduler-test-principal",
@@ -1061,7 +1062,7 @@ func TestPostgresCancellationExpiryFinalizesSchedulerLifecycle(t *testing.T) {
 		TenantID: tenantID, ProjectID: projectID, PrincipalID: "scheduler-test-principal",
 		IdempotencyKey: "cancel-expiry-job", RequestDigest: "sha256:" + strings.Repeat("1", 64), ObservedAt: leaseAt.Add(time.Second),
 	})
-	if err != nil || cancelled.Job.GetState() != jobv1.JobState_JOB_STATE_CANCELLING || cancelled.Operation.GetState() != jobv1.OperationState_OPERATION_STATE_CANCELLING {
+	if err != nil || cancelled.Job.GetState() != jobv1.JobState_JOB_STATE_CANCELLING || cancelled.Operation.GetState() != operationv1.OperationState_OPERATION_STATE_CANCELLING {
 		t.Fatalf("request cancellation before expiry: result=%v err=%v", cancelled, err)
 	}
 	renewAt := leaseAt.Add(2 * time.Second)
@@ -1104,7 +1105,7 @@ func TestPostgresCancellationExpiryFinalizesSchedulerLifecycle(t *testing.T) {
 		t.Fatalf("expiry did not cancel Job: job=%v err=%v", terminalJob, err)
 	}
 	terminalOperation, err := (operations.SQLRepository{DB: db}).GetSQL(ctx, tenantID, projectID, operationID)
-	if err != nil || terminalOperation.GetState() != jobv1.OperationState_OPERATION_STATE_CANCELLED || !terminalOperation.GetDone() ||
+	if err != nil || terminalOperation.GetState() != operationv1.OperationState_OPERATION_STATE_CANCELLED || !terminalOperation.GetDone() ||
 		!proto.Equal(terminalOperation.GetError(), terminalRun.GetError()) || terminalOperation.GetTarget().GetResourceType() != "run" ||
 		terminalOperation.GetTarget().GetResourceVersion() != terminalRun.GetResourceVersion() || terminalOperation.GetTarget().GetEtag() != terminalRun.GetEtag() {
 		t.Fatalf("expiry did not cancel Operation: operation=%v err=%v", terminalOperation, err)

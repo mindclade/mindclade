@@ -11,8 +11,8 @@ import (
 	platformdb "github.com/mindclade/mindclade/libs/go/persistence"
 	artifactv1 "github.com/mindclade/mindclade/protocols/generated/go/artifact/v1"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
-	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
 	modelv1 "github.com/mindclade/mindclade/protocols/generated/go/model/v1"
+	operationv1 "github.com/mindclade/mindclade/protocols/generated/go/operation/v1"
 )
 
 type (
@@ -188,7 +188,7 @@ func scanOperation(row scanner) (operationRow, error) {
 	return v, err
 }
 
-func operationProto(ctx context.Context, tx *sql.Tx, row operationRow) (*jobv1.Operation, error) {
+func operationProto(ctx context.Context, tx *sql.Tx, row operationRow) (*operationv1.Operation, error) {
 	result, err := platformdb.LoadArtifactRef(ctx, tx, row.tenant, row.result)
 	if err != nil {
 		return nil, err
@@ -197,31 +197,31 @@ func operationProto(ctx context.Context, tx *sql.Tx, row operationRow) (*jobv1.O
 	if err != nil {
 		return nil, err
 	}
-	var state jobv1.OperationState
+	var state operationv1.OperationState
 	switch row.status {
 	case "PENDING":
-		state = jobv1.OperationState_OPERATION_STATE_PENDING
+		state = operationv1.OperationState_OPERATION_STATE_PENDING
 	case "RUNNING":
-		state = jobv1.OperationState_OPERATION_STATE_RUNNING
+		state = operationv1.OperationState_OPERATION_STATE_RUNNING
 	case "SUCCEEDED":
-		state = jobv1.OperationState_OPERATION_STATE_SUCCEEDED
+		state = operationv1.OperationState_OPERATION_STATE_SUCCEEDED
 	case "FAILED":
-		state = jobv1.OperationState_OPERATION_STATE_FAILED
+		state = operationv1.OperationState_OPERATION_STATE_FAILED
 	case "CANCELLING":
-		state = jobv1.OperationState_OPERATION_STATE_CANCELLING
+		state = operationv1.OperationState_OPERATION_STATE_CANCELLING
 	case "CANCELLED":
-		state = jobv1.OperationState_OPERATION_STATE_CANCELLED
+		state = operationv1.OperationState_OPERATION_STATE_CANCELLED
 	default:
 		return nil, ErrInvalidArgument
 	}
-	value := &jobv1.Operation{OperationId: row.id, TenantId: row.tenant, ProjectId: row.project, JobId: row.job, State: state, ResourceVersion: row.version, Done: row.done, Etag: row.etag, Result: result, Error: detail, CreatedAt: timestamppb.New(row.created.UTC()), UpdatedAt: timestamppb.New(row.updated.UTC())}
+	value := &operationv1.Operation{OperationId: row.id, TenantId: row.tenant, ProjectId: row.project, JobId: row.job, State: state, ResourceVersion: row.version, Done: row.done, Etag: row.etag, Result: result, Error: detail, CreatedAt: timestamppb.New(row.created.UTC()), UpdatedAt: timestamppb.New(row.updated.UTC())}
 	if row.targetPresent {
 		value.Target = &commonv1.ResourceRef{ResourceType: row.targetType, ResourceId: row.targetID, TenantId: row.targetTenant, ProjectId: row.targetProject, ResourceVersion: row.targetVersion, Name: row.targetName, Etag: row.targetETag}
 	}
 	return value, nil
 }
 
-func getOperationTx(ctx context.Context, tx *sql.Tx, identity Identity, id string) (*jobv1.Operation, error) {
+func getOperationTx(ctx context.Context, tx *sql.Tx, identity Identity, id string) (*operationv1.Operation, error) {
 	row, err := scanOperation(tx.QueryRowContext(ctx, `SELECT `+operationColumns+` FROM operations WHERE tenant_id=$1 AND project_id=$2 AND id=$3`, identity.TenantID, identity.ProjectID, id))
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNotFound

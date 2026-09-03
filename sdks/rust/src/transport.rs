@@ -3425,7 +3425,7 @@ mod message_size_tests {
     use super::*;
     use mindclade_protocols::{
         internal::job::v1::operation_service_server::{OperationService, OperationServiceServer},
-        job::v1::Operation,
+        operation::v1::Operation,
     };
     use tonic::codegen::tokio_stream;
     use tonic::transport::Server;

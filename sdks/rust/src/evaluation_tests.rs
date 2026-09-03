@@ -15,7 +15,8 @@ use mindclade_protocols::{
         GetEvaluationRunResponse, GetPromotionDecisionRequest, GetPromotionDecisionResponse,
         ListEvaluationRunsRequest, ListEvaluationRunsResponse,
     },
-    job::v1::{LeaseFence, Operation},
+    job::v1::LeaseFence,
+    operation::v1::Operation,
 };
 use prost_types::Timestamp;
 use tonic::{Request, Response, Status, codegen::async_trait};

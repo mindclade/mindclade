@@ -9,7 +9,7 @@ from typing import cast
 from mindclade.admin.v1 import audit_query_pb2, project_pb2, tenant_pb2
 from mindclade.common.v1 import resource_reference_pb2
 from mindclade.internal.admin.v1 import admin_service_pb2
-from mindclade.job.v1 import operation_pb2
+from mindclade.operation.v1 import operation_pb2
 
 from ._invocation import AsyncInvoker, SyncInvoker, canonical_digest, command_context
 from ._validation import required_response_message, required_text

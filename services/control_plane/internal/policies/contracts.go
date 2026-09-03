@@ -17,7 +17,7 @@ import (
 	artifactv1 "github.com/mindclade/mindclade/protocols/generated/go/artifact/v1"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	internalpolicyv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/policy/v1"
-	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
+	operationv1 "github.com/mindclade/mindclade/protocols/generated/go/operation/v1"
 	policyv1 "github.com/mindclade/mindclade/protocols/generated/go/policy/v1"
 )
 
@@ -91,21 +91,21 @@ func (d DenyAllEvaluator) Evaluate(context.Context, Identity, *internalpolicyv1.
 
 type Repository interface {
 	EvaluateAuthorization(context.Context, Identity, *internalpolicyv1.EvaluateAuthorizationRequest, string, time.Time) (*policyv1.AuthorizationDecision, bool, error)
-	CreateUsePolicy(context.Context, Identity, *internalpolicyv1.CreateUsePolicyRequest, string, time.Time) (*jobv1.Operation, bool, error)
-	UpdateUsePolicy(context.Context, Identity, *internalpolicyv1.UpdateUsePolicyRequest, string, time.Time) (*jobv1.Operation, bool, error)
+	CreateUsePolicy(context.Context, Identity, *internalpolicyv1.CreateUsePolicyRequest, string, time.Time) (*operationv1.Operation, bool, error)
+	UpdateUsePolicy(context.Context, Identity, *internalpolicyv1.UpdateUsePolicyRequest, string, time.Time) (*operationv1.Operation, bool, error)
 	GetUsePolicy(context.Context, Identity, string) (*policyv1.UsePolicy, error)
 	ListUsePolicies(context.Context, Identity, PolicyPage) ([]*policyv1.UsePolicy, string, time.Time, error)
-	ActivateUsePolicy(context.Context, Identity, *internalpolicyv1.ActivateUsePolicyRequest, string, time.Time) (*jobv1.Operation, bool, error)
-	RevokeUsePolicy(context.Context, Identity, *internalpolicyv1.RevokeUsePolicyRequest, string, time.Time) (*jobv1.Operation, bool, error)
+	ActivateUsePolicy(context.Context, Identity, *internalpolicyv1.ActivateUsePolicyRequest, string, time.Time) (*operationv1.Operation, bool, error)
+	RevokeUsePolicy(context.Context, Identity, *internalpolicyv1.RevokeUsePolicyRequest, string, time.Time) (*operationv1.Operation, bool, error)
 	ResolvePolicySnapshot(context.Context, Identity, string, time.Time) (*policyv1.PolicyReference, error)
 }
 
 type EventFactory interface {
 	DecisionRecorded(Identity, *policyv1.AuthorizationDecision, *commonv1.CommandContext, time.Time) (*commonv1.EventEnvelope, error)
-	PolicyCreated(Identity, *policyv1.UsePolicy, *jobv1.Operation, *commonv1.CommandContext, time.Time) (*commonv1.EventEnvelope, error)
-	PolicyUpdated(Identity, *policyv1.UsePolicy, []string, *jobv1.Operation, *commonv1.CommandContext, time.Time) (*commonv1.EventEnvelope, error)
-	PolicyActivated(Identity, *policyv1.UsePolicy, *jobv1.Operation, *commonv1.CommandContext, time.Time) (*commonv1.EventEnvelope, error)
-	PolicyRevoked(Identity, *policyv1.UsePolicy, string, *jobv1.Operation, *commonv1.CommandContext, time.Time) (*commonv1.EventEnvelope, error)
+	PolicyCreated(Identity, *policyv1.UsePolicy, *operationv1.Operation, *commonv1.CommandContext, time.Time) (*commonv1.EventEnvelope, error)
+	PolicyUpdated(Identity, *policyv1.UsePolicy, []string, *operationv1.Operation, *commonv1.CommandContext, time.Time) (*commonv1.EventEnvelope, error)
+	PolicyActivated(Identity, *policyv1.UsePolicy, *operationv1.Operation, *commonv1.CommandContext, time.Time) (*commonv1.EventEnvelope, error)
+	PolicyRevoked(Identity, *policyv1.UsePolicy, string, *operationv1.Operation, *commonv1.CommandContext, time.Time) (*commonv1.EventEnvelope, error)
 }
 
 type SQLRepository struct {
@@ -283,7 +283,7 @@ func usePolicyResource(identity Identity, value *policyv1.UsePolicy) *commonv1.R
 	}
 }
 
-func operationResource(value *jobv1.Operation) *commonv1.ResourceRef {
+func operationResource(value *operationv1.Operation) *commonv1.ResourceRef {
 	if value == nil {
 		return nil
 	}

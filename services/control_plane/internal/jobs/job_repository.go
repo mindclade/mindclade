@@ -24,6 +24,7 @@ import (
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	featurev1 "github.com/mindclade/mindclade/protocols/generated/go/feature/v1"
 	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
+	operationv1 "github.com/mindclade/mindclade/protocols/generated/go/operation/v1"
 	transformv1 "github.com/mindclade/mindclade/protocols/generated/go/transform/v1"
 	operationsapp "github.com/mindclade/mindclade/services/control_plane/internal/operations"
 	"github.com/mindclade/mindclade/services/control_plane/internal/tenants"
@@ -39,7 +40,7 @@ type JobCommandMetadata struct {
 
 type JobMutationResult struct {
 	Job       *jobv1.Job
-	Operation *jobv1.Operation
+	Operation *operationv1.Operation
 	Replay    bool
 }
 
@@ -737,14 +738,14 @@ func validateJobCommand(value JobCommandMetadata) error {
 
 // RequestJobSQL commits Job, Operation, idempotency, audit, history, and
 // JobRequested outbox state through the shared Operation acceptance boundary.
-func (r SQLRepository) RequestJobSQL(ctx context.Context, job *jobv1.Job, operation *jobv1.Operation, command JobCommandMetadata) (*JobMutationResult, error) {
+func (r SQLRepository) RequestJobSQL(ctx context.Context, job *jobv1.Job, operation *operationv1.Operation, command JobCommandMetadata) (*JobMutationResult, error) {
 	if r.DB == nil || job == nil || operation == nil || validateJobCommand(command) != nil ||
 		job.GetTenantId() != command.TenantID || job.GetProjectId() != command.ProjectID ||
 		operation.GetTenantId() != command.TenantID || operation.GetProjectId() != command.ProjectID || operation.GetJobId() != job.GetJobId() {
 		return nil, ErrInvalidJobCommand
 	}
 	accepted, replay, err := (operationsapp.SQLRepository{DB: r.DB}).CreateJobAndOperationSQL(
-		ctx, cloneJob(job), proto.Clone(operation).(*jobv1.Operation), command.RequestDigest,
+		ctx, cloneJob(job), proto.Clone(operation).(*operationv1.Operation), command.RequestDigest,
 		command.IdempotencyKey, command.PrincipalID, command.ObservedAt.UTC(),
 	)
 	if err != nil {
@@ -754,7 +755,7 @@ func (r SQLRepository) RequestJobSQL(ctx context.Context, job *jobv1.Job, operat
 	if err != nil {
 		return nil, err
 	}
-	return &JobMutationResult{Job: cloneJob(persisted), Operation: proto.Clone(accepted).(*jobv1.Operation), Replay: replay}, nil
+	return &JobMutationResult{Job: cloneJob(persisted), Operation: proto.Clone(accepted).(*operationv1.Operation), Replay: replay}, nil
 }
 
 // ListJobsSQL returns a stable keyset page from one repeatable-read snapshot.
@@ -841,7 +842,7 @@ func (r SQLRepository) CancelJobSQL(ctx context.Context, jobID, expectedETag, re
 		if loadErr != nil {
 			return nil, loadErr
 		}
-		return &JobMutationResult{Job: cloneJob(job), Operation: proto.Clone(operation).(*jobv1.Operation), Replay: true}, nil
+		return &JobMutationResult{Job: cloneJob(job), Operation: proto.Clone(operation).(*operationv1.Operation), Replay: true}, nil
 	}
 	if !errors.Is(err, sql.ErrNoRows) {
 		return nil, err
@@ -884,7 +885,7 @@ func (r SQLRepository) CancelJobSQL(ctx context.Context, jobID, expectedETag, re
 		}
 		return nil, ErrVersionConflict
 	}
-	operation, err := operationsapp.AdvanceTxSQL(ctx, tx, command.TenantID, command.ProjectID, operationID, operationVersion, operationETag, jobv1.OperationState_OPERATION_STATE_CANCELLING, command.ObservedAt.UTC())
+	operation, err := operationsapp.AdvanceTxSQL(ctx, tx, command.TenantID, command.ProjectID, operationID, operationVersion, operationETag, operationv1.OperationState_OPERATION_STATE_CANCELLING, command.ObservedAt.UTC())
 	if err != nil {
 		return nil, mapOperationError(err)
 	}
@@ -916,7 +917,7 @@ func (r SQLRepository) CancelJobSQL(ctx context.Context, jobID, expectedETag, re
 	if err = tx.Commit(); err != nil {
 		return nil, err
 	}
-	return &JobMutationResult{Job: cloneJob(job), Operation: proto.Clone(operation).(*jobv1.Operation)}, nil
+	return &JobMutationResult{Job: cloneJob(job), Operation: proto.Clone(operation).(*operationv1.Operation)}, nil
 }
 
 func newJobCancellationAuditEnvelope(job *jobv1.Job, principalID string, at time.Time) (*commonv1.EventEnvelope, error) {
@@ -1003,15 +1004,15 @@ func schedulerJobTransition(current, target string) (bool, error) {
 	return false, ErrTerminalMutation
 }
 
-func schedulerOperationState(state jobv1.OperationState) string {
+func schedulerOperationState(state operationv1.OperationState) string {
 	switch state {
-	case jobv1.OperationState_OPERATION_STATE_RUNNING:
+	case operationv1.OperationState_OPERATION_STATE_RUNNING:
 		return "RUNNING"
-	case jobv1.OperationState_OPERATION_STATE_SUCCEEDED:
+	case operationv1.OperationState_OPERATION_STATE_SUCCEEDED:
 		return "SUCCEEDED"
-	case jobv1.OperationState_OPERATION_STATE_FAILED:
+	case operationv1.OperationState_OPERATION_STATE_FAILED:
 		return "FAILED"
-	case jobv1.OperationState_OPERATION_STATE_CANCELLED:
+	case operationv1.OperationState_OPERATION_STATE_CANCELLED:
 		return "CANCELLED"
 	default:
 		return ""
@@ -1049,7 +1050,7 @@ func advanceSchedulerLifecycleTx(
 	tenantID, projectID string,
 	job *schedulerLifecycleRow,
 	jobState string,
-	operationState jobv1.OperationState,
+	operationState operationv1.OperationState,
 	at time.Time,
 ) error {
 	if job == nil || at.IsZero() {
@@ -1109,16 +1110,16 @@ func advanceSchedulerLifecycleTx(
 	return nil
 }
 
-func schedulerTerminalLifecycle(attemptState jobv1.AttemptState) (string, jobv1.OperationState, error) {
+func schedulerTerminalLifecycle(attemptState jobv1.AttemptState) (string, operationv1.OperationState, error) {
 	switch attemptState {
 	case jobv1.AttemptState_ATTEMPT_STATE_SUCCEEDED:
-		return "SUCCEEDED", jobv1.OperationState_OPERATION_STATE_SUCCEEDED, nil
+		return "SUCCEEDED", operationv1.OperationState_OPERATION_STATE_SUCCEEDED, nil
 	case jobv1.AttemptState_ATTEMPT_STATE_FAILED, jobv1.AttemptState_ATTEMPT_STATE_TIMED_OUT:
-		return "FAILED", jobv1.OperationState_OPERATION_STATE_FAILED, nil
+		return "FAILED", operationv1.OperationState_OPERATION_STATE_FAILED, nil
 	case jobv1.AttemptState_ATTEMPT_STATE_CANCELLED:
-		return "CANCELLED", jobv1.OperationState_OPERATION_STATE_CANCELLED, nil
+		return "CANCELLED", operationv1.OperationState_OPERATION_STATE_CANCELLED, nil
 	default:
-		return "", jobv1.OperationState_OPERATION_STATE_UNSPECIFIED, ErrInvalidOutcome
+		return "", operationv1.OperationState_OPERATION_STATE_UNSPECIFIED, ErrInvalidOutcome
 	}
 }
 
@@ -1141,7 +1142,7 @@ func bindSchedulerTerminalOperationTx(
 	runID string,
 	runVersion int64,
 	runETag string,
-	state jobv1.OperationState,
+	state operationv1.OperationState,
 	resultRefID, errorDetailID sql.NullInt64,
 ) error {
 	if job == nil || job.operationID == "" {
@@ -1150,7 +1151,7 @@ func bindSchedulerTerminalOperationTx(
 	if runID == "" || runVersion < 1 || runETag == "" {
 		return ErrTerminalMutation
 	}
-	if state == jobv1.OperationState_OPERATION_STATE_SUCCEEDED {
+	if state == operationv1.OperationState_OPERATION_STATE_SUCCEEDED {
 		errorDetailID = sql.NullInt64{}
 	} else {
 		resultRefID = sql.NullInt64{}
@@ -1566,7 +1567,7 @@ INSERT INTO attempts (
 		}
 		return nil, ErrVersionConflict
 	}
-	if err = advanceSchedulerLifecycleTx(ctx, tx, command.TenantID, command.Command.ProjectID, &lifecycle, "RUNNING", jobv1.OperationState_OPERATION_STATE_RUNNING, command.Now); err != nil {
+	if err = advanceSchedulerLifecycleTx(ctx, tx, command.TenantID, command.Command.ProjectID, &lifecycle, "RUNNING", operationv1.OperationState_OPERATION_STATE_RUNNING, command.Now); err != nil {
 		return nil, err
 	}
 	attempt, err := getAttemptTx(ctx, tx, command.TenantID, command.Command.ProjectID, command.AttemptID)
@@ -1809,10 +1810,10 @@ func (r SQLRepository) CancelAttemptSQL(ctx context.Context, command CancelAttem
 	if _, err = tx.ExecContext(ctx, `UPDATE runs SET status='CANCELLED',version=$4,etag=$5,error_detail_id=$6,completed_at=$7,updated_at=$7 WHERE tenant_id=$1 AND project_id=$2 AND id=$3 AND lease_epoch=$8 AND version=$9`, credentials.TenantID, credentials.ProjectID, runID, nextRunVersion, nextRunETag, cancellationErrorID, at.UTC(), credentials.Epoch, runVersion); err != nil {
 		return nil, err
 	}
-	if err = bindSchedulerTerminalOperationTx(ctx, tx, credentials.TenantID, credentials.ProjectID, &lifecycle, runID, nextRunVersion, nextRunETag, jobv1.OperationState_OPERATION_STATE_CANCELLED, sql.NullInt64{}, cancellationErrorID); err != nil {
+	if err = bindSchedulerTerminalOperationTx(ctx, tx, credentials.TenantID, credentials.ProjectID, &lifecycle, runID, nextRunVersion, nextRunETag, operationv1.OperationState_OPERATION_STATE_CANCELLED, sql.NullInt64{}, cancellationErrorID); err != nil {
 		return nil, err
 	}
-	if err = advanceSchedulerLifecycleTx(ctx, tx, credentials.TenantID, credentials.ProjectID, &lifecycle, "CANCELLED", jobv1.OperationState_OPERATION_STATE_CANCELLED, at); err != nil {
+	if err = advanceSchedulerLifecycleTx(ctx, tx, credentials.TenantID, credentials.ProjectID, &lifecycle, "CANCELLED", operationv1.OperationState_OPERATION_STATE_CANCELLED, at); err != nil {
 		return nil, err
 	}
 	attempt, run, err := recordAttemptCompletedEvent(ctx, tx, credentials.TenantID, credentials.ProjectID, credentials.AttemptID, runID, command.Command, at)
@@ -1927,10 +1928,10 @@ func (r SQLRepository) ExpireLeasesSQL(ctx context.Context, command ExpireLeases
 			if _, err = tx.ExecContext(ctx, `UPDATE runs SET status='CANCELLED',version=$4,etag=$5,error_detail_id=$6,completed_at=$7,updated_at=$7 WHERE tenant_id=$1 AND project_id=$2 AND id=$3 AND lease_epoch=$8 AND version=$9`, tenantID, command.Command.ProjectID, value.runID, nextRunVersion, nextRunETag, cancellationErrorID, at.UTC(), value.epoch, runVersion); err != nil {
 				return nil, err
 			}
-			if err = bindSchedulerTerminalOperationTx(ctx, tx, tenantID, command.Command.ProjectID, &lifecycle, value.runID, nextRunVersion, nextRunETag, jobv1.OperationState_OPERATION_STATE_CANCELLED, sql.NullInt64{}, cancellationErrorID); err != nil {
+			if err = bindSchedulerTerminalOperationTx(ctx, tx, tenantID, command.Command.ProjectID, &lifecycle, value.runID, nextRunVersion, nextRunETag, operationv1.OperationState_OPERATION_STATE_CANCELLED, sql.NullInt64{}, cancellationErrorID); err != nil {
 				return nil, err
 			}
-			if err = advanceSchedulerLifecycleTx(ctx, tx, tenantID, command.Command.ProjectID, &lifecycle, "CANCELLED", jobv1.OperationState_OPERATION_STATE_CANCELLED, at); err != nil {
+			if err = advanceSchedulerLifecycleTx(ctx, tx, tenantID, command.Command.ProjectID, &lifecycle, "CANCELLED", operationv1.OperationState_OPERATION_STATE_CANCELLED, at); err != nil {
 				return nil, err
 			}
 		} else {

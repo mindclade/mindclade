@@ -56,11 +56,12 @@ use mindclade_protocols::{
         },
         training::v1::{CreateTrainingRunRequest, CreateTrainingRunResponse},
     },
-    job::v1::{LeaseFence, Operation, OperationState},
+    job::v1::LeaseFence,
     model::v1::{
         Model, ModelRelease, PromoteModelReleaseCommand, RegisterModelCommand,
         RegisterModelReleaseCommand, RevokeModelReleaseCommand,
     },
+    operation::v1::{Operation, OperationState},
     training::v1::CreateTrainingRunCommand,
 };
 use prost_types::Timestamp;

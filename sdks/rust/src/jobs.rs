@@ -5,7 +5,8 @@ use mindclade_protocols::{
     internal::job::v1::{
         CancelJobRequest, GetJobRequest, ListJobsRequest, ListJobsResponse, RequestJobRequest,
     },
-    job::v1::{Job, Operation, RequestJobCommand},
+    job::v1::{Job, RequestJobCommand},
+    operation::v1::Operation,
 };
 use prost::Message;
 use sha2::{Digest, Sha256};

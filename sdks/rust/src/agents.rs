@@ -10,7 +10,8 @@ use mindclade_protocols::{
         ListAgentRunsRequest, ListAgentRunsResponse, ListAgentStepsRequest, ListAgentStepsResponse,
         StartAgentRunRequest, UpdateAgentDefinitionRequest,
     },
-    job::v1::{LeaseFence, Operation},
+    job::v1::LeaseFence,
+    operation::v1::Operation,
 };
 use prost::Message;
 use sha2::{Digest, Sha256};

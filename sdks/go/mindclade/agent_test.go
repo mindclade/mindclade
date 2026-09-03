@@ -22,6 +22,7 @@ import (
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	internalagentv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/agent/v1"
 	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
+	operationv1 "github.com/mindclade/mindclade/protocols/generated/go/operation/v1"
 )
 
 type agentSDKServer struct {
@@ -40,7 +41,7 @@ func (server *agentSDKServer) capture(ctx context.Context, command *commonv1.Com
 	server.leases = append(server.leases, strings.Join(values.Get("x-mindclade-lease-token"), ""))
 }
 
-func agentOperation(id string) *jobv1.Operation { return &jobv1.Operation{OperationId: id} }
+func agentOperation(id string) *operationv1.Operation { return &operationv1.Operation{OperationId: id} }
 
 func (server *agentSDKServer) CreateAgentDefinition(ctx context.Context, request *internalagentv1.CreateAgentDefinitionRequest) (*internalagentv1.CreateAgentDefinitionResponse, error) {
 	server.capture(ctx, request.GetContext())

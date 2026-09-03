@@ -16,7 +16,8 @@ use mindclade_protocols::{
         StartAgentRunRequest, StartAgentRunResponse, UpdateAgentDefinitionRequest,
         UpdateAgentDefinitionResponse,
     },
-    job::v1::{LeaseFence, Operation},
+    job::v1::LeaseFence,
+    operation::v1::Operation,
 };
 use prost_types::{FieldMask, Timestamp};
 use sha2::{Digest, Sha256};

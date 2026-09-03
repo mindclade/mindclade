@@ -6,7 +6,7 @@ from collections.abc import Iterable
 from typing import Any, cast
 
 import grpc
-from mindclade.job.v1 import operation_pb2
+from mindclade.operation.v1 import operation_pb2
 from mindclade.workflow.v1 import workflow_run_pb2
 
 RETRYABLE_CODES = frozenset(

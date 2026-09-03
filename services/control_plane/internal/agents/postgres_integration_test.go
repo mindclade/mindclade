@@ -22,7 +22,7 @@ import (
 	artifactv1 "github.com/mindclade/mindclade/protocols/generated/go/artifact/v1"
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	internalagentv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/agent/v1"
-	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
+	operationv1 "github.com/mindclade/mindclade/protocols/generated/go/operation/v1"
 	policyv1 "github.com/mindclade/mindclade/protocols/generated/go/policy/v1"
 	"github.com/mindclade/mindclade/services/control_plane/internal/jobs"
 )
@@ -252,7 +252,7 @@ func TestPostgresAgentJourneyIsNormalizedFencedIdempotentAndEventBacked(t *testi
 	}
 	cancelRequest.Context.CanonicalRequestDigest = cancelDigest
 	cancelOperation, replayedCancel, err := repository.CancelRun(ctx, identity, cancelRequest, cancelDigest, cancelAt)
-	if err != nil || replayedCancel || cancelOperation.GetState() != jobv1.OperationState_OPERATION_STATE_CANCELLING {
+	if err != nil || replayedCancel || cancelOperation.GetState() != operationv1.OperationState_OPERATION_STATE_CANCELLING {
 		t.Fatalf("cancel operation=%v replay=%v err=%v", cancelOperation, replayedCancel, err)
 	}
 	cancelReplay, replayedCancel, err := repository.CancelRun(ctx, identity, clone(cancelRequest), cancelDigest, cancelAt.Add(time.Second))

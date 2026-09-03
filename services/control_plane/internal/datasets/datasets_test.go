@@ -17,7 +17,7 @@ import (
 	commonv1 "github.com/mindclade/mindclade/protocols/generated/go/common/v1"
 	datasetv1 "github.com/mindclade/mindclade/protocols/generated/go/dataset/v1"
 	internaldatasetv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/dataset/v1"
-	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
+	operationv1 "github.com/mindclade/mindclade/protocols/generated/go/operation/v1"
 )
 
 var testTime = time.Date(2026, 9, 1, 12, 0, 0, 0, time.UTC)
@@ -38,7 +38,7 @@ type fakeRepository struct {
 	release *datasetv1.DatasetRelease
 }
 
-func (*fakeRepository) CreateDataset(context.Context, Identity, *datasetv1.CreateDatasetCommand, string, time.Time) (*jobv1.Operation, bool, error) {
+func (*fakeRepository) CreateDataset(context.Context, Identity, *datasetv1.CreateDatasetCommand, string, time.Time) (*operationv1.Operation, bool, error) {
 	return nil, false, missingEvent(CreateEventContract)
 }
 
@@ -53,15 +53,15 @@ func (r *fakeRepository) ListDatasets(context.Context, Identity, DatasetPage) ([
 	return []*datasetv1.Dataset{clone(r.dataset)}, "", testTime, nil
 }
 
-func (*fakeRepository) UpdateDataset(context.Context, Identity, *datasetv1.UpdateDatasetCommand, string, time.Time) (*jobv1.Operation, bool, error) {
+func (*fakeRepository) UpdateDataset(context.Context, Identity, *datasetv1.UpdateDatasetCommand, string, time.Time) (*operationv1.Operation, bool, error) {
 	return nil, false, missingEvent(UpdateEventContract)
 }
 
-func (*fakeRepository) PublishDatasetRelease(context.Context, Identity, *datasetv1.PublishDatasetReleaseCommand, string, time.Time) (*jobv1.Operation, bool, error) {
+func (*fakeRepository) PublishDatasetRelease(context.Context, Identity, *datasetv1.PublishDatasetReleaseCommand, string, time.Time) (*operationv1.Operation, bool, error) {
 	return nil, false, missingEvent(PublishEventContract)
 }
 
-func (*fakeRepository) RevokeDatasetRelease(context.Context, Identity, *datasetv1.RevokeDatasetReleaseCommand, string, time.Time) (*jobv1.Operation, bool, error) {
+func (*fakeRepository) RevokeDatasetRelease(context.Context, Identity, *datasetv1.RevokeDatasetReleaseCommand, string, time.Time) (*operationv1.Operation, bool, error) {
 	return nil, false, missingEvent(RevokeEventContract)
 }
 
@@ -167,7 +167,7 @@ func TestGeneratedDatasetEventsAreRegistryValidatedAndDecodable(t *testing.T) {
 		PolicyClassification: "internal",
 		CreateTime:           timestamppb.New(testTime),
 	}
-	operation := &jobv1.Operation{OperationId: "operations/op-1", TenantId: identity.TenantID, ProjectId: identity.ProjectID, ResourceVersion: 1, Etag: resourceETag("operations/op-1", 1)}
+	operation := &operationv1.Operation{OperationId: "operations/op-1", TenantId: identity.TenantID, ProjectId: identity.ProjectID, ResourceVersion: 1, Etag: resourceETag("operations/op-1", 1)}
 	command := &commonv1.CommandContext{RequestId: "request-1", TraceId: "trace-1"}
 	factory := GeneratedEventFactory{}
 	created, err := factory.Created(identity, dataset, operation, command, testTime)

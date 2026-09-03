@@ -134,6 +134,7 @@
     {"compatibility": "additive-only", "consumer_profile": "internal-transport", "message": "GetWorkflowDefinitionRequest", "module": "mindclade.internal.workflow.v1.workflow_service_pb2", "name": "mindclade.internal.workflow.v1"},
     {"compatibility": "additive-only", "consumer_profile": "domain-roundtrip", "message": "Job", "module": "mindclade.job.v1.job_pb2", "name": "mindclade.job.v1"},
     {"compatibility": "additive-only", "consumer_profile": "domain-roundtrip", "message": "Model", "module": "mindclade.model.v1.model_pb2", "name": "mindclade.model.v1"},
+    {"compatibility": "additive-only", "consumer_profile": "domain-roundtrip", "message": "Operation", "module": "mindclade.operation.v1.operation_pb2", "name": "mindclade.operation.v1"},
     {"compatibility": "additive-only", "consumer_profile": "domain-roundtrip", "message": "PolicyReference", "module": "mindclade.policy.v1.policy_reference_pb2", "name": "mindclade.policy.v1"},
     {"compatibility": "additive-only", "consumer_profile": "domain-roundtrip", "message": "TrainingRun", "module": "mindclade.training.v1.training_run_pb2", "name": "mindclade.training.v1"},
     {"compatibility": "additive-only", "consumer_profile": "domain-roundtrip", "message": "TransformExecution", "module": "mindclade.transform.v1.transform_execution_pb2", "name": "mindclade.transform.v1"},

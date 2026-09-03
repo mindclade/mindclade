@@ -11,7 +11,7 @@ import (
 	"google.golang.org/grpc/status"
 
 	internaltrainingv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/training/v1"
-	jobv1 "github.com/mindclade/mindclade/protocols/generated/go/job/v1"
+	operationv1 "github.com/mindclade/mindclade/protocols/generated/go/operation/v1"
 	trainingv1 "github.com/mindclade/mindclade/protocols/generated/go/training/v1"
 )
 
@@ -134,9 +134,9 @@ func TestLongRunningDefaultsAndTerminalFailuresAreBounded(t *testing.T) {
 	if !ok || time.Until(deadline) > defaultOperationTimeout || time.Until(deadline) < defaultOperationTimeout-time.Second {
 		t.Fatalf("unexpected operation deadline: %v, %v", deadline, ok)
 	}
-	operation := &jobv1.Operation{
+	operation := &operationv1.Operation{
 		OperationId: "operations/failed-a",
-		State:       jobv1.OperationState_OPERATION_STATE_FAILED,
+		State:       operationv1.OperationState_OPERATION_STATE_FAILED,
 		Done:        true,
 	}
 	if err := validateTerminalOperation(operation); err != nil {
