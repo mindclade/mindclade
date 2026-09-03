@@ -1022,6 +1022,13 @@ WAVE_ONE_REQUIRED_ADDITIONS = (
 # keeps this list complete.
 LATE_ACTIVATION_WAVE_ONE_PATHS: tuple[str, ...] = ()
 
+# The same hook for the ADR-0015 all-contract lane. A path reaches Bazel through
+# whichever filegroup actually lists it, and for the SDK examples and the SDK
+# conformance gates that is `//:all_contract_sources` -- `//:wave1_sources`
+# contains neither `//examples` nor the SDK facades they read. Declaring the
+# wave-one target for them was a claim about a closure they are not in.
+LATE_ACTIVATION_ALL_CONTRACT_PATHS: tuple[str, ...] = ()
+
 REQUIRED_ADDITIONS = (
     *WAVE_ZERO_REQUIRED_ADDITIONS,
     *WAVE_ONE_REQUIRED_ADDITIONS,
@@ -2124,6 +2131,7 @@ def is_wave_zero_path(path: str) -> bool:
         "docs/architecture/repository-path-manifest.schema.json",
         "docs/architecture/repository-drift-baseline.md",
         "docs/architecture/dependency-law.md",
+        "docs/architecture/internal-sdk-conformance-contract.md",
         "docs/architecture/trust-boundaries.md",
         "docs/BUILD.bazel",
         "docs/README.md",
@@ -2323,6 +2331,8 @@ def is_all_contract_baseline_path(path: str) -> bool:
     if path in ALL_CONTRACT_GRPC_ADDITIONS:
         return True
     if path in CONTRACT_VENDORED_IMPORT_PATHS:
+        return True
+    if path in LATE_ACTIVATION_ALL_CONTRACT_PATHS:
         return True
     parts = PurePosixPath(path).parts
     if len(parts) >= 3 and parts[:2] in {
@@ -3401,6 +3411,10 @@ LATE_ACTIVATION_WAVE_ONE_PATHS = (  # pyright: ignore[reportConstantRedefinition
     *LATE_ACTIVATION_WAVE_ONE_PATHS,
     *SDK_PARITY_PATHS,
 )
+LATE_ACTIVATION_ALL_CONTRACT_PATHS = (  # pyright: ignore[reportConstantRedefinition]
+    *LATE_ACTIVATION_ALL_CONTRACT_PATHS,
+    *SDK_PARITY_PATHS,
+)
 CANONICAL_FILE_COUNT = (  # pyright: ignore[reportConstantRedefinition]
     CANONICAL_FILE_COUNT + 58
 )
@@ -3429,10 +3443,6 @@ SDK_CONFORMANCE_CONTRACT_PATHS: tuple[str, ...] = (
 )
 REQUIRED_ADDITIONS = (  # pyright: ignore[reportConstantRedefinition]
     *REQUIRED_ADDITIONS,
-    *SDK_CONFORMANCE_CONTRACT_PATHS,
-)
-LATE_ACTIVATION_WAVE_ONE_PATHS = (  # pyright: ignore[reportConstantRedefinition]
-    *LATE_ACTIVATION_WAVE_ONE_PATHS,
     *SDK_CONFORMANCE_CONTRACT_PATHS,
 )
 CANONICAL_FILE_COUNT = (  # pyright: ignore[reportConstantRedefinition]

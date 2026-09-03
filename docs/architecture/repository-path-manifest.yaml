@@ -53442,13 +53442,13 @@
       "activation_wave": "1",
       "source_authority": "hand-authored",
       "build_targets": [
-        "//:wave1_sources"
+        "//:all_contract_sources"
       ],
       "test_targets": [
-        "//:wave1_tests"
+        "//:all_contract_tests"
       ],
       "public_surface": false,
-      "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
       "path": "tests/integration/local_stack_test.py",
@@ -57098,16 +57098,15 @@
       "owner": "architecture",
       "component": "docs-architecture",
       "status": "active",
-      "activation_wave": "1",
+      "activation_wave": "0",
       "source_authority": "hand-authored",
       "build_targets": [
-        "//:wave1_sources"
+        "//:wave0_governance_sources"
       ],
       "test_targets": [
-        "//:wave1_tests"
+        "//:wave0_tests"
       ],
-      "public_surface": false,
-      "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
+      "public_surface": false
     },
     {
       "path": "docs/adr/0001-repository-identity-and-ownership.md",
@@ -58488,13 +58487,13 @@
       "activation_wave": "1",
       "source_authority": "hand-authored",
       "build_targets": [
-        "//:wave1_sources"
+        "//:all_contract_sources"
       ],
       "test_targets": [
-        "//:wave1_tests"
+        "//:all_contract_tests"
       ],
       "public_surface": false,
-      "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
       "path": "examples/sdk/handle_errors.py",
@@ -58505,13 +58504,13 @@
       "activation_wave": "1",
       "source_authority": "hand-authored",
       "build_targets": [
-        "//:wave1_sources"
+        "//:all_contract_sources"
       ],
       "test_targets": [
-        "//:wave1_tests"
+        "//:all_contract_tests"
       ],
       "public_surface": false,
-      "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
       "path": "examples/sdk/list_operations.py",
@@ -58522,13 +58521,13 @@
       "activation_wave": "1",
       "source_authority": "hand-authored",
       "build_targets": [
-        "//:wave1_sources"
+        "//:all_contract_sources"
       ],
       "test_targets": [
-        "//:wave1_tests"
+        "//:all_contract_tests"
       ],
       "public_surface": false,
-      "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
       "path": "examples/sdk/read_request_id.ts",
@@ -58539,13 +58538,13 @@
       "activation_wave": "1",
       "source_authority": "hand-authored",
       "build_targets": [
-        "//:wave1_sources"
+        "//:all_contract_sources"
       ],
       "test_targets": [
-        "//:wave1_tests"
+        "//:all_contract_tests"
       ],
       "public_surface": false,
-      "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
       "path": "examples/sdk/sdk_examples.test.ts",
@@ -58556,13 +58555,13 @@
       "activation_wave": "1",
       "source_authority": "hand-authored",
       "build_targets": [
-        "//:wave1_sources"
+        "//:all_contract_sources"
       ],
       "test_targets": [
-        "//:wave1_tests"
+        "//:all_contract_tests"
       ],
       "public_surface": false,
-      "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
       "path": "examples/data_connector/connector.py",

@@ -91,6 +91,22 @@ py_test(
 )
 
 py_test(
+    name = "sdk_retry_safety_parity_test",
+    srcs = ["conformance/test_sdk_retry_safety_parity.py"],
+    data = [
+        "//:internal_sdk_root_sources",
+        "//internal/sdk/go/mindclade:governed_sources",
+        "//internal/sdk/python:governed_sources",
+        "//internal/sdk/rust:governed_sources",
+        "//internal/sdk/typescript:governed_sources",
+    ],
+    imports = [".."],
+    legacy_create_init = 0,
+    main = "conformance/test_sdk_retry_safety_parity.py",
+    python_version = "PY3",
+)
+
+py_test(
     name = "internal_sdk_application_consumers_test",
     srcs = ["conformance/test_internal_sdk_application_consumers.py"],
     data = [
@@ -271,6 +287,7 @@ filegroup(
         "conformance/generated_typescript_roundtrip_test.ts",
         "conformance/test_generated_package_consumers.py",
         "conformance/test_internal_sdk_application_consumers.py",
+        "conformance/test_sdk_retry_safety_parity.py",
         ":wave1_contract_sources",
     ],
     visibility = ["//visibility:public"],
@@ -297,6 +314,7 @@ test_suite(
         ":generated_rust_roundtrip_test",
         ":generated_typescript_roundtrip_test",
         ":internal_sdk_application_consumers_test",
+        ":sdk_retry_safety_parity_test",
         ":wave1_contract_tests",
         "//apps/console:operation_flow_test",
         "//examples:tests",
