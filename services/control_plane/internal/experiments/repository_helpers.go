@@ -71,15 +71,7 @@ func recordMutation(ctx context.Context, tx *sql.Tx, identity Identity, action, 
 	if _, err = tx.ExecContext(ctx, `INSERT INTO audit_events(id,tenant_id,actor_id,action,subject_id,occurred_at,details_digest,event_version,payload_digest,envelope_bytes) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`, auditEvent.GetEventId(), identity.TenantID, identity.Principal, action, resourceName, at.UTC(), digest, auditEvent.GetEventVersion(), auditEvent.GetPayloadDigest(), auditBytes); err != nil {
 		return err
 	}
-	eventBytes, err := queue.MarshalEnvelope(event)
-	if err != nil {
-		return err
-	}
-	aggregateType, aggregateID, err := queue.AggregateIdentity(event)
-	if err != nil {
-		return err
-	}
-	if _, err = tx.ExecContext(ctx, `INSERT INTO outbox_messages(id,tenant_id,event_type,event_version,aggregate_type,aggregate_id,aggregate_sequence,payload_digest,envelope_bytes,next_attempt_at,created_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$10)`, event.GetEventId(), identity.TenantID, event.GetEventType(), event.GetEventVersion(), aggregateType, aggregateID, event.GetAggregateSequence(), event.GetPayloadDigest(), eventBytes, at.UTC()); err != nil {
+	if err := queue.InsertOutboxMessage(ctx, tx, event, at); err != nil {
 		return err
 	}
 	_, err = tx.ExecContext(ctx, `INSERT INTO experiment_command_receipts(tenant_id,project_id,principal_id,action,idempotency_key,request_digest,resource_type,resource_name,resource_revision,created_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`, identity.TenantID, identity.ProjectID, identity.Principal, action, key, digest, resourceType, resourceName, revision, at.UTC())

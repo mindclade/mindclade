@@ -88,14 +88,6 @@ func (r SQLRepository) CreateAtomicallySQL(ctx context.Context, operation *jobv1
 	if err != nil {
 		return nil, false, err
 	}
-	envelopeBytes, err := queue.MarshalEnvelope(envelope)
-	if err != nil {
-		return nil, false, fmt.Errorf("marshal outbox envelope: %w", err)
-	}
-	aggregateType, aggregateID, err := queue.AggregateIdentity(envelope)
-	if err != nil {
-		return nil, false, fmt.Errorf("resolve outbox aggregate identity: %w", err)
-	}
 	auditEnvelopeBytes, err := queue.MarshalEnvelope(auditEnvelope)
 	if err != nil {
 		return nil, false, fmt.Errorf("marshal audit envelope: %w", err)
@@ -141,7 +133,7 @@ error_detail_id, request_hash, created_at, updated_at
 	if _, err = tx.ExecContext(ctx, `INSERT INTO audit_events (id, tenant_id, actor_id, action, subject_id, occurred_at, details_digest, event_version, payload_digest, envelope_bytes) VALUES ($1, $2, $3, 'operations.create', $4, $5, $6, $7, $8, $9)`, auditEnvelope.GetEventId(), row.tenantID, actorID, row.operationID, now, requestDigest, auditEnvelope.GetEventVersion(), auditEnvelope.GetPayloadDigest(), auditEnvelopeBytes); err != nil {
 		return nil, false, err
 	}
-	if _, err = tx.ExecContext(ctx, `INSERT INTO outbox_messages (id, tenant_id, event_type, event_version, aggregate_type, aggregate_id, aggregate_sequence, payload_digest, envelope_bytes, next_attempt_at, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $10)`, envelope.GetEventId(), row.tenantID, envelope.GetEventType(), envelope.GetEventVersion(), aggregateType, aggregateID, envelope.GetAggregateSequence(), envelope.GetPayloadDigest(), envelopeBytes, now); err != nil {
+	if err = queue.InsertOutboxMessage(ctx, tx, envelope, now); err != nil {
 		return nil, false, err
 	}
 	if err = tx.Commit(); err != nil {
@@ -234,14 +226,6 @@ input_ref_id,configuration_ref_id,configuration_digest,etag,created_at,updated_a
 	if err != nil {
 		return nil, false, err
 	}
-	envelopeBytes, err := queue.MarshalEnvelope(envelope)
-	if err != nil {
-		return nil, false, fmt.Errorf("marshal outbox envelope: %w", err)
-	}
-	aggregateType, aggregateID, err := queue.AggregateIdentity(envelope)
-	if err != nil {
-		return nil, false, fmt.Errorf("resolve outbox aggregate identity: %w", err)
-	}
 	auditEnvelopeBytes, err := queue.MarshalEnvelope(auditEnvelope)
 	if err != nil {
 		return nil, false, fmt.Errorf("marshal audit envelope: %w", err)
@@ -279,7 +263,7 @@ version,done,etag,result_ref_id,error_detail_id,request_hash,created_at,updated_
 	if _, err = tx.ExecContext(ctx, `INSERT INTO audit_events (id,tenant_id,actor_id,action,subject_id,occurred_at,details_digest,event_version,payload_digest,envelope_bytes) VALUES ($1,$2,$3,'operations.create',$4,$5,$6,$7,$8,$9)`, auditEnvelope.GetEventId(), row.tenantID, actorID, row.operationID, at, requestDigest, auditEnvelope.GetEventVersion(), auditEnvelope.GetPayloadDigest(), auditEnvelopeBytes); err != nil {
 		return nil, false, err
 	}
-	if _, err = tx.ExecContext(ctx, `INSERT INTO outbox_messages (id,tenant_id,event_type,event_version,aggregate_type,aggregate_id,aggregate_sequence,payload_digest,envelope_bytes,next_attempt_at,created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$10)`, envelope.GetEventId(), row.tenantID, envelope.GetEventType(), envelope.GetEventVersion(), aggregateType, aggregateID, envelope.GetAggregateSequence(), envelope.GetPayloadDigest(), envelopeBytes, at); err != nil {
+	if err = queue.InsertOutboxMessage(ctx, tx, envelope, at); err != nil {
 		return nil, false, err
 	}
 	if err = tx.Commit(); err != nil {

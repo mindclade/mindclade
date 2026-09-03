@@ -28,7 +28,7 @@ func (repository SQLRepository) CreateDefinition(ctx context.Context, identity I
 	if request == nil || request.GetParent() != projectParent(identity) || !validID(request.GetAgentDefinitionId()) {
 		return nil, false, ErrInvalidArgument
 	}
-	if err := validateDefinition(identity, request.GetAgentDefinition(), true); err != nil {
+	if err := validateDefinition(identity, request.GetAgentDefinition()); err != nil {
 		return nil, false, err
 	}
 	if err := validateRepositoryCommand(identity, request, request.GetContext(), at, digest); err != nil {
@@ -221,7 +221,7 @@ func (repository SQLRepository) UpdateDefinition(ctx context.Context, identity I
 			return nil, false, ErrInvalidArgument
 		}
 	}
-	if err = validateDefinition(identity, after, false); err != nil {
+	if err = validateDefinition(identity, after); err != nil {
 		return nil, false, err
 	}
 	after.Revision = before.GetRevision() + 1

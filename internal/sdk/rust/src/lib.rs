@@ -12,6 +12,7 @@ mod approvals;
 mod artifacts;
 mod auth;
 mod config;
+mod cross_field_generated;
 mod datasets;
 mod error;
 mod evaluations;
@@ -46,6 +47,11 @@ mod policy_admin_tests;
 mod training_tests;
 #[cfg(test)]
 mod workflow_tests;
+
+pub use cross_field_generated::{
+    CROSS_FIELD_RULES, CrossFieldError, CrossFieldRule, check as check_cross_field,
+    rules_for as cross_field_rules_for,
+};
 
 pub use admin::Admin;
 pub use agents::Agents;

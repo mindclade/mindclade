@@ -22,12 +22,6 @@ spec:
       owner: developer-experience
       justification: The worker uses the governed ergonomic Rust facade over generated transports.
       scope: assignment retrieval and verified artifact access
-    - component: protobuf-job-events
-      kind: protocol
-      visibility: repository
-      owner: architecture
-      justification: Immutable typed job events are the authoritative assignment-delivery contract.
-      scope: Pub/Sub assignment intake
   provides:
     - verified-ingestion-assignment-intake
   release:

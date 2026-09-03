@@ -93,6 +93,22 @@ func projectFixture() *adminv1.Project {
 	return &adminv1.Project{Name: name, Uid: "project-uid", Revision: 1, Etag: resourceETag(name, 1), Tenant: &commonv1.ResourceRef{ResourceType: "tenant", ResourceId: "tenant-1", TenantId: "tenant-1", ResourceVersion: 2, Name: "tenants/tenant-1"}, DisplayName: "Project", Purpose: "research", State: adminv1.ProjectState_PROJECT_STATE_PROVISIONING, CreateTime: timestamppb.New(fixtureTime), UpdateTime: timestamppb.New(fixtureTime)}
 }
 
+// createProjectFixture is projectFixture with the server-assigned fields
+// cleared. Sending them on a create is now rejected by the generated
+// cross-field rule, and it always was meaningless: the server derives the name
+// from parent and project_id and ignores whatever the caller supplied.
+func createProjectFixture() *adminv1.Project {
+	project := projectFixture()
+	project.Name = ""
+	project.Uid = ""
+	project.Revision = 0
+	project.Etag = ""
+	project.CreateTime = nil
+	project.UpdateTime = nil
+	project.DeleteTime = nil
+	return project
+}
+
 func exportFixture() *adminv1.AuditExport {
 	name := "tenants/tenant-1/projects/project-1/auditExports/export-1"
 	return &adminv1.AuditExport{Name: name, Uid: "export-1", Revision: 1, Etag: resourceETag(name, 1), State: adminv1.AuditExportState_AUDIT_EXPORT_STATE_FAILED, FailureCode: "EXPORTER_NOT_CONFIGURED", QueryDigest: "sha256:" + strings.Repeat("a", 64), CreateTime: timestamppb.New(fixtureTime), UpdateTime: timestamppb.New(fixtureTime), ExpireTime: timestamppb.New(fixtureTime.Add(time.Hour))}
@@ -127,7 +143,7 @@ func TestAdminServerClonesAndBindsAuthenticatedCommand(t *testing.T) {
 	operation := &jobv1.Operation{OperationId: "operations/1", TenantId: "tenant-1", ProjectId: "project-1", State: jobv1.OperationState_OPERATION_STATE_SUCCEEDED, Done: true}
 	repository := &fakeRepository{operation: operation}
 	server := serverFixture(t, repository)
-	request := &internaladminv1.CreateProjectRequest{Parent: "tenants/tenant-1", ProjectId: "project-1", Project: projectFixture()}
+	request := &internaladminv1.CreateProjectRequest{Parent: "tenants/tenant-1", ProjectId: "project-1", Project: createProjectFixture()}
 	request.Context = adminContext(request, "project-1")
 	response, err := server.CreateProject(context.Background(), request)
 	if err != nil {
@@ -252,7 +268,7 @@ func TestAdminGeneratedNetworkGRPCService(t *testing.T) {
 	if _, err = client.UpdateTenant(context.Background(), updateTenant); err != nil {
 		t.Fatal(err)
 	}
-	createProject := &internaladminv1.CreateProjectRequest{Parent: "tenants/tenant-1", ProjectId: "project-1", Project: projectFixture()}
+	createProject := &internaladminv1.CreateProjectRequest{Parent: "tenants/tenant-1", ProjectId: "project-1", Project: createProjectFixture()}
 	createProject.Context = adminContext(createProject, "project-1")
 	if _, err = client.CreateProject(context.Background(), createProject); err != nil {
 		t.Fatal(err)

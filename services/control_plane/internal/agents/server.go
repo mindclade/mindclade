@@ -63,7 +63,7 @@ func (server *Server) CreateAgentDefinition(ctx context.Context, request *intern
 	if request == nil || request.GetContext() == nil || request.GetParent() != projectParent(identity) || !validID(request.GetAgentDefinitionId()) {
 		return nil, rpcError(ErrInvalidArgument)
 	}
-	if err = validateDefinition(identity, request.GetAgentDefinition(), true); err != nil {
+	if err = validateDefinition(identity, request.GetAgentDefinition()); err != nil {
 		return nil, rpcError(err)
 	}
 	now := server.clock.Now()

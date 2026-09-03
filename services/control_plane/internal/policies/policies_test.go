@@ -134,6 +134,22 @@ func policyFixture() *policyv1.UsePolicy {
 	return &policyv1.UsePolicy{Name: name, Uid: "policy-uid", Revision: 1, Etag: resourceETag(name, 1), TenantId: identity.TenantID, ProjectId: identity.ProjectID, DisplayName: "Safe use", State: policyv1.UsePolicyState_USE_POLICY_STATE_DRAFT, PolicyDocument: artifactFixture("a"), PermittedPurposes: []string{"research"}, CreateTime: timestamppb.New(fixtureTime), UpdateTime: timestamppb.New(fixtureTime)}
 }
 
+// createPolicyFixture is policyFixture with the server-assigned fields cleared.
+// Sending them on a create is now rejected by the generated cross-field rule.
+func createPolicyFixture() *policyv1.UsePolicy {
+	policy := policyFixture()
+	policy.Name = ""
+	policy.Uid = ""
+	policy.Revision = 0
+	policy.Etag = ""
+	policy.TenantId = ""
+	policy.ProjectId = ""
+	policy.CreateTime = nil
+	policy.UpdateTime = nil
+	policy.DeleteTime = nil
+	return policy
+}
+
 func serverFixture(t *testing.T, repository Repository) *Server {
 	t.Helper()
 	codec, err := NewPageTokenCodec([]byte(strings.Repeat("p", 32)))
@@ -151,7 +167,7 @@ func TestPolicyServerClonesAndBindsAuthenticatedCommand(t *testing.T) {
 	operation := &jobv1.Operation{OperationId: "operations/1", TenantId: "tenant-1", ProjectId: "project-1", State: jobv1.OperationState_OPERATION_STATE_SUCCEEDED, Done: true}
 	repository := &fakeRepository{operation: operation}
 	server := serverFixture(t, repository)
-	request := &internalpolicyv1.CreateUsePolicyRequest{Parent: projectParent(identityFixture()), UsePolicyId: "safe", UsePolicy: policyFixture()}
+	request := &internalpolicyv1.CreateUsePolicyRequest{Parent: projectParent(identityFixture()), UsePolicyId: "safe", UsePolicy: createPolicyFixture()}
 	request.Context = commandContext(request)
 	response, err := server.CreateUsePolicy(context.Background(), request)
 	if err != nil {
@@ -240,7 +256,8 @@ func TestPolicyGeneratedNetworkGRPCService(t *testing.T) {
 	if _, err = client.ResolvePolicySnapshot(context.Background(), &internalpolicyv1.ResolvePolicySnapshotRequest{Name: policy.GetName(), EffectiveTime: timestamppb.New(fixtureTime)}); err != nil {
 		t.Fatal(err)
 	}
-	create := &internalpolicyv1.CreateUsePolicyRequest{Parent: projectParent(identityFixture()), UsePolicyId: "safe", UsePolicy: policy}
+	// A create carries no server-assigned identity; the update below still does.
+	create := &internalpolicyv1.CreateUsePolicyRequest{Parent: projectParent(identityFixture()), UsePolicyId: "safe", UsePolicy: createPolicyFixture()}
 	create.Context = commandContext(create)
 	if _, err = client.CreateUsePolicy(context.Background(), create); err != nil {
 		t.Fatal(err)

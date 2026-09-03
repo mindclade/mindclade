@@ -82,7 +82,7 @@ func (server *Server) CreateWorkflowDefinition(ctx context.Context, request *int
 	if request == nil || request.GetContext() == nil || request.GetParent() != projectParent(identity) || !validID(request.GetWorkflowDefinitionId()) {
 		return nil, rpcError(ErrInvalidArgument)
 	}
-	if err = validateWorkflowDefinition(identity, request.GetWorkflowDefinition(), true); err != nil {
+	if err = validateWorkflowDefinition(identity, request.GetWorkflowDefinition()); err != nil {
 		return nil, rpcError(err)
 	}
 	now := server.clock.Now()

@@ -9,10 +9,15 @@ filegroup(
         "README.md",
     ] + glob([
         "proto/**/*.proto",
+        # The vendored third-party import closure (ADR-0024). Without it the
+        # descriptor's own inputs sit in no Bazel target.
+        "google/**/*.proto",
         "events/**/*.proto",
         "events/**/*.yaml",
         "schemas/**/*.json",
         "openapi/**/*.yaml",
+        "constraints/*.json",
+        "constraints/*.yaml",
         "compatibility/baselines/*.json",
         "compatibility/tests/*.py",
     ]) + ["//protocols/generated:generated_sources"],

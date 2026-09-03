@@ -91,6 +91,57 @@ py_test(
 )
 
 py_test(
+    name = "cross_field_constraints_test",
+    srcs = ["conformance/test_cross_field_constraints.py"],
+    # The test reads all five emitted validators, so all five must be inputs.
+    data = [
+        "//internal/sdk/go/mindclade:governed_sources",
+        "//internal/sdk/python:governed_sources",
+        "//internal/sdk/rust:governed_sources",
+        "//internal/sdk/typescript:governed_sources",
+        "//protocols:wave1_contract_sources",
+        "//services/control_plane:control_plane_sources",
+        "//tools:wave1_codegen_sources",
+    ],
+    imports = [".."],
+    legacy_create_init = 0,
+    main = "conformance/test_cross_field_constraints.py",
+    python_version = "PY3",
+    deps = [
+        "@mindclade_pypi//jsonschema",
+        "@mindclade_pypi//protobuf",
+        "@mindclade_pypi//pyyaml",
+    ],
+)
+
+py_test(
+    name = "crud_chain_completeness_test",
+    srcs = ["conformance/test_crud_chain_completeness.py"],
+    data = ["//protocols:wave1_contract_sources"],
+    imports = [".."],
+    legacy_create_init = 0,
+    main = "conformance/test_crud_chain_completeness.py",
+    python_version = "PY3",
+    deps = ["@mindclade_pypi//protobuf"],
+)
+
+py_test(
+    name = "sdk_retry_safety_parity_test",
+    srcs = ["conformance/test_sdk_retry_safety_parity.py"],
+    data = [
+        "//:internal_sdk_root_sources",
+        "//internal/sdk/go/mindclade:governed_sources",
+        "//internal/sdk/python:governed_sources",
+        "//internal/sdk/rust:governed_sources",
+        "//internal/sdk/typescript:governed_sources",
+    ],
+    imports = [".."],
+    legacy_create_init = 0,
+    main = "conformance/test_sdk_retry_safety_parity.py",
+    python_version = "PY3",
+)
+
+py_test(
     name = "internal_sdk_application_consumers_test",
     srcs = ["conformance/test_internal_sdk_application_consumers.py"],
     data = [
@@ -269,8 +320,11 @@ filegroup(
         "conformance/generated_go_roundtrip_test.go",
         "conformance/generated_rust_roundtrip_test.rs",
         "conformance/generated_typescript_roundtrip_test.ts",
+        "conformance/test_cross_field_constraints.py",
+        "conformance/test_crud_chain_completeness.py",
         "conformance/test_generated_package_consumers.py",
         "conformance/test_internal_sdk_application_consumers.py",
+        "conformance/test_sdk_retry_safety_parity.py",
         ":wave1_contract_sources",
     ],
     visibility = ["//visibility:public"],
@@ -292,11 +346,14 @@ test_suite(
 test_suite(
     name = "all_contract_tests",
     tests = [
+        ":cross_field_constraints_test",
+        ":crud_chain_completeness_test",
         ":generated_go_roundtrip_test",
         ":generated_package_consumers_test",
         ":generated_rust_roundtrip_test",
         ":generated_typescript_roundtrip_test",
         ":internal_sdk_application_consumers_test",
+        ":sdk_retry_safety_parity_test",
         ":wave1_contract_tests",
         "//apps/console:operation_flow_test",
         "//examples:tests",

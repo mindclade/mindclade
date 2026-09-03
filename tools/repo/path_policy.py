@@ -977,6 +977,7 @@ WAVE_ONE_REWAVE_PATHS = frozenset(
         "services/control_plane/internal/platform/queue/dead_letter.go",
         "services/control_plane/internal/platform/queue/delivery.go",
         "services/control_plane/internal/platform/queue/event_registry_generated.go",
+        "services/control_plane/internal/platform/queue/outbox_producer.go",
         "services/control_plane/internal/platform/queue/transport.go",
         "services/control_plane/internal/platform/storage/artifact_catalog.go",
         "services/control_plane/internal/platform/storage/object_store.go",
@@ -991,6 +992,7 @@ WAVE_ONE_REWAVE_PATHS = frozenset(
         "services/control_plane/migrations/migration_policy.yaml",
         "services/control_plane/tests/idempotency_test.go",
         "services/control_plane/tests/lease_fencing_test.go",
+        "services/control_plane/tests/outbox_producer_test.go",
         "services/control_plane/tests/tenant_isolation_test.go",
         "services/control_plane/tests/transaction_outbox_test.go",
         "protocols/events/registry.yaml",
@@ -1005,6 +1007,27 @@ WAVE_ONE_REQUIRED_ADDITIONS = (
     *GENERATED_PACKAGE_AUTHORITY_ADDITIONS,
     *SDK_GENERATOR_ADDITIONS,
 )
+
+# Paths activated into wave one by a reconciliation block declared further down
+# this module. `REQUIRED_ADDITIONS` only puts a path into the canonical set; it
+# says nothing about the path's wave, so a block that registers a file without
+# also naming it here leaves the generator classifying an existing, built,
+# tested file as an unactivated `target`. That is not a harmless label: a target
+# entry carries no build or test target, so the file drops out of every Bazel
+# closure, and `validate_populated_paths` reports it as premature. Fourteen
+# entries had drifted that way before this register existed, and were being kept
+# correct only by editing the generated manifest -- which is exactly the failure
+# the manifest exists to prevent.
+# `test_the_working_tree_declares_no_premature_or_unknown_path` is the gate that
+# keeps this list complete.
+LATE_ACTIVATION_WAVE_ONE_PATHS: tuple[str, ...] = ()
+
+# The same hook for the ADR-0015 all-contract lane. A path reaches Bazel through
+# whichever filegroup actually lists it, and for the SDK examples and the SDK
+# conformance gates that is `//:all_contract_sources` -- `//:wave1_sources`
+# contains neither `//examples` nor the SDK facades they read. Declaring the
+# wave-one target for them was a claim about a closure they are not in.
+LATE_ACTIVATION_ALL_CONTRACT_PATHS: tuple[str, ...] = ()
 
 REQUIRED_ADDITIONS = (
     *WAVE_ZERO_REQUIRED_ADDITIONS,
@@ -1196,7 +1219,9 @@ def reconcile_authority_paths(source_paths: Sequence[str]) -> list[str]:
         raise PolicyError(f"ADR reconciliation sources are absent: {sorted(missing)!r}")
     missing_retired = set(RETIRED_PATHS) - source_set
     if missing_retired:
-        raise PolicyError(f"retired paths are absent from source authority: {sorted(missing_retired)!r}")
+        raise PolicyError(
+            f"retired paths are absent from source authority: {sorted(missing_retired)!r}"
+        )
     if set(REQUIRED_ADDITIONS) & source_set:
         raise PolicyError("required reconciliation addition already exists in source authority")
 
@@ -1422,7 +1447,7 @@ def infer_kind(path: str) -> str:
         return "configuration"
     if suffix in {".bzl", ".bazel"} or name in {"BUILD", "BUILD.bazel", "MODULE.bazel"}:
         return "build"
-    if "/tests/" in f"/{path}/" or name.startswith("test_") or "_test." in name:
+    if "/tests/" in f"/{path}/" or name.startswith("test_") or "_test." in name or ".test." in name:
         return "test"
     if suffix in {".md", ".rst"}:
         return "documentation"
@@ -1447,9 +1472,14 @@ def infer_wave(path: str) -> str:
         return activation_bundle.activation_wave
     if path == "buf.lock":
         return "0"
+    if path in CONTRACT_VENDORED_IMPORT_PATHS:
+        # The vendored closure is waved with the contract that imports it, not
+        # with its own `protocols/google/...` prefix, which no wave rule covers.
+        return "4"
     if (
         path in WAVE_ONE_REWAVE_PATHS
         or path in WAVE_ONE_REQUIRED_ADDITIONS
+        or path in LATE_ACTIVATION_WAVE_ONE_PATHS
         or path in CONTRACT_RUNTIME_ADDITIONS
         or path in SCHEMA_BINDING_ADDITIONS
         or path in ALL_CONTRACT_CONSUMER_ADDITIONS
@@ -2098,6 +2128,7 @@ def is_wave_zero_path(path: str) -> bool:
         "docs/architecture/repository-path-manifest.schema.json",
         "docs/architecture/repository-drift-baseline.md",
         "docs/architecture/dependency-law.md",
+        "docs/architecture/internal-sdk-conformance-contract.md",
         "docs/architecture/trust-boundaries.md",
         "docs/BUILD.bazel",
         "docs/README.md",
@@ -2114,9 +2145,16 @@ def infer_source_authority(path: str) -> str:
         "protocols/compatibility/baselines/openapi.lock.json",
         "protocols/compatibility/baselines/protobuf.candidate.json",
         "protocols/compatibility/baselines/protobuf.lock.json",
-        "services/control_plane/internal/platform/queue/event_registry_generated.go",
         *OPENAPI_STAGE_ARTIFACT_ADDITIONS,
+        *SDK_API_REFERENCE_DOCUMENT_PATHS,
     }:
+        return "reviewed-generated"
+    # A Python module name and a Rust `mod` name cannot contain a dot, so the
+    # `.generated.` marker their siblings use is unspellable in those two
+    # languages. Accepting a `_generated` stem as the same marker covers every
+    # such projection rather than naming each file as it appears -- which is how
+    # `event_registry_generated.go` came to be a hand-listed exception.
+    if PurePosixPath(path).stem.endswith("_generated"):
         return "reviewed-generated"
     generated_markers = (
         "/generated/",
@@ -2294,6 +2332,10 @@ def is_all_contract_baseline_path(path: str) -> bool:
     if path in ALL_CONTRACT_RUST_PLUGIN_PATHS:
         return True
     if path in ALL_CONTRACT_GRPC_ADDITIONS:
+        return True
+    if path in CONTRACT_VENDORED_IMPORT_PATHS:
+        return True
+    if path in LATE_ACTIVATION_ALL_CONTRACT_PATHS:
         return True
     parts = PurePosixPath(path).parts
     if len(parts) >= 3 and parts[:2] in {
@@ -3294,7 +3336,7 @@ CANONICAL_PATH_SET_SHA256 = (  # pyright: ignore[reportConstantRedefinition]
 _adr0023_reconciliation_addition_reason = _reconciliation_addition_reason
 
 
-def _reconciliation_addition_reason(path: str) -> str:
+def _reconciliation_addition_reason(path: str) -> str:  # pyright: ignore[reportRedeclaration]
     if path == ESTATE_BUILD_OPTIMIZATION_ADR:
         return (
             "ADR-0023 records the source-only hermetic toolchain, offline vendor, "
@@ -3340,7 +3382,7 @@ CANONICAL_PATH_SET_SHA256 = (  # pyright: ignore[reportConstantRedefinition]
 _sdk_api_reference_addition_reason = _reconciliation_addition_reason
 
 
-def _reconciliation_addition_reason(path: str) -> str:
+def _reconciliation_addition_reason(path: str) -> str:  # pyright: ignore[reportRedeclaration]
     if path in SDK_API_REFERENCE_TOOLING_PATHS:
         return (
             "The internal SDK API reference is rendered from the governed RPC-coverage "
@@ -3368,6 +3410,14 @@ REQUIRED_ADDITIONS = (  # pyright: ignore[reportConstantRedefinition]
     *REQUIRED_ADDITIONS,
     *SDK_PARITY_PATHS,
 )
+LATE_ACTIVATION_WAVE_ONE_PATHS = (  # pyright: ignore[reportConstantRedefinition]
+    *LATE_ACTIVATION_WAVE_ONE_PATHS,
+    *SDK_PARITY_PATHS,
+)
+LATE_ACTIVATION_ALL_CONTRACT_PATHS = (  # pyright: ignore[reportConstantRedefinition]
+    *LATE_ACTIVATION_ALL_CONTRACT_PATHS,
+    *SDK_PARITY_PATHS,
+)
 CANONICAL_FILE_COUNT = (  # pyright: ignore[reportConstantRedefinition]
     CANONICAL_FILE_COUNT + 58
 )
@@ -3378,7 +3428,7 @@ CANONICAL_PATH_SET_SHA256 = (  # pyright: ignore[reportConstantRedefinition]
 _sdk_parity_addition_reason = _reconciliation_addition_reason
 
 
-def _reconciliation_addition_reason(path: str) -> str:
+def _reconciliation_addition_reason(path: str) -> str:  # pyright: ignore[reportRedeclaration]
     if path in SDK_PARITY_PATHS:
         return (
             "Stage 7 four-language SDK parity and its Stage 8 worked consumers: "
@@ -3408,7 +3458,7 @@ CANONICAL_PATH_SET_SHA256 = (  # pyright: ignore[reportConstantRedefinition]
 _sdk_conformance_contract_addition_reason = _reconciliation_addition_reason
 
 
-def _reconciliation_addition_reason(path: str) -> str:
+def _reconciliation_addition_reason(path: str) -> str:  # pyright: ignore[reportRedeclaration]
     if path in SDK_CONFORMANCE_CONTRACT_PATHS:
         return (
             "The behaviour contract the four internal SDK facades are held to, naming "
@@ -3464,7 +3514,7 @@ CANONICAL_PATH_SET_SHA256 = (  # pyright: ignore[reportConstantRedefinition]
 _contract_vendored_import_addition_reason = _reconciliation_addition_reason
 
 
-def _reconciliation_addition_reason(path: str) -> str:
+def _reconciliation_addition_reason(path: str) -> str:  # pyright: ignore[reportRedeclaration]
     if path == CONTRACT_VENDORED_IMPORT_ADR:
         return "ADR-0024 records why the contract build vendors its third-party import closure."
     if path in CONTRACT_VENDORED_IMPORT_PATHS:
@@ -3474,6 +3524,190 @@ def _reconciliation_addition_reason(path: str) -> str:
             "schema-registry dependency without changing the descriptor digest."
         )
     return _contract_vendored_import_addition_reason(path)
+
+
+# The single transactional-outbox producer, extracted from fourteen hand-copied
+# INSERT statements that had drifted apart: one dropped the resource_id fallback
+# and would have written an empty aggregate_id for a subject carrying no name,
+# one sourced the tenant from its command rather than from the envelope the row
+# carries, and none bounded the envelope size, so an oversized event failed at
+# the relay -- asynchronously, in quarantine -- instead of at the write that
+# produced it. One producer makes those three properties structural.
+# Both sit beside files already named in WAVE_ONE_REWAVE_PATHS, which is where
+# they are waved; this block only carries them into the canonical path set.
+OUTBOX_PRODUCER_PATHS: tuple[str, ...] = (
+    "services/control_plane/internal/platform/queue/outbox_producer.go",
+    "services/control_plane/tests/outbox_producer_test.go",
+)
+REQUIRED_ADDITIONS = (  # pyright: ignore[reportConstantRedefinition]
+    *REQUIRED_ADDITIONS,
+    *OUTBOX_PRODUCER_PATHS,
+)
+CANONICAL_FILE_COUNT = (  # pyright: ignore[reportConstantRedefinition]
+    CANONICAL_FILE_COUNT + len(OUTBOX_PRODUCER_PATHS)
+)
+CANONICAL_PATH_SET_SHA256 = (  # pyright: ignore[reportConstantRedefinition]
+    "82cae7e754e9f58589463af3f96bc7c87724dd247f664624678896d97c2520e9"
+)
+
+_outbox_producer_addition_reason = _reconciliation_addition_reason
+
+
+def _reconciliation_addition_reason(path: str) -> str:  # pyright: ignore[reportRedeclaration]
+    if path in OUTBOX_PRODUCER_PATHS:
+        return (
+            "The single transactional-outbox producer and its unit tests; it replaces "
+            "fourteen hand-copied INSERT statements so the envelope-derived routing "
+            "columns, the validation gate, and the envelope size bound cannot be "
+            "omitted by one call site."
+        )
+    return _outbox_producer_addition_reason(path)
+
+
+# The gate that asks whether the CRUD methods compose. Every other contract gate
+# reads one method at a time -- the RPC-coverage projection binds each method's
+# existence to the descriptor, the retry table binds its replay classification --
+# so nothing asked whether a caller holding only a create response can then read,
+# update, or delete what it just made. That failure is invisible inside any single
+# method and shows up in all four SDKs at once.
+CRUD_CHAIN_COMPLETENESS_PATHS: tuple[str, ...] = (
+    "tests/conformance/test_crud_chain_completeness.py",
+)
+REQUIRED_ADDITIONS = (  # pyright: ignore[reportConstantRedefinition]
+    *REQUIRED_ADDITIONS,
+    *CRUD_CHAIN_COMPLETENESS_PATHS,
+)
+# It reads the candidate descriptor, so it belongs to the all-contract lane
+# beside the other descriptor-bound conformance gates, carrying their wave label.
+LATE_ACTIVATION_WAVE_ONE_PATHS = (  # pyright: ignore[reportConstantRedefinition]
+    *LATE_ACTIVATION_WAVE_ONE_PATHS,
+    *CRUD_CHAIN_COMPLETENESS_PATHS,
+)
+LATE_ACTIVATION_ALL_CONTRACT_PATHS = (  # pyright: ignore[reportConstantRedefinition]
+    *LATE_ACTIVATION_ALL_CONTRACT_PATHS,
+    *CRUD_CHAIN_COMPLETENESS_PATHS,
+)
+CANONICAL_FILE_COUNT = (  # pyright: ignore[reportConstantRedefinition]
+    CANONICAL_FILE_COUNT + len(CRUD_CHAIN_COMPLETENESS_PATHS)
+)
+CANONICAL_PATH_SET_SHA256 = (  # pyright: ignore[reportConstantRedefinition]
+    "8d6540ccf1d90a353418c022cb45f924ba20d10a3ed3f68aef6b97e0f75f22e7"
+)
+
+_crud_chain_completeness_addition_reason = _reconciliation_addition_reason
+
+
+def _reconciliation_addition_reason(path: str) -> str:  # pyright: ignore[reportRedeclaration]
+    if path in CRUD_CHAIN_COMPLETENESS_PATHS:
+        return (
+            "The descriptor-bound gate holding every create/read/update/delete chain "
+            "to closure, so a read cannot require identity the create response never "
+            "returned."
+        )
+    return _crud_chain_completeness_addition_reason(path)
+
+
+# The Rust facade's component declaration. Go, Python and TypeScript each
+# declared one; Rust did not, so `internal-sdk-rust` was a name no component
+# answered to -- and the ingestion worker, whose only first-party Cargo
+# dependency is that facade, carried a dependency edge the graph could not
+# resolve. It reaches Bazel through the `internal/sdk/rust` glob already.
+SDK_RUST_COMPONENT_PATHS: tuple[str, ...] = ("internal/sdk/rust/component.yaml",)
+REQUIRED_ADDITIONS = (  # pyright: ignore[reportConstantRedefinition]
+    *REQUIRED_ADDITIONS,
+    *SDK_RUST_COMPONENT_PATHS,
+)
+# Waved and targeted with the three sibling facade declarations.
+LATE_ACTIVATION_WAVE_ONE_PATHS = (  # pyright: ignore[reportConstantRedefinition]
+    *LATE_ACTIVATION_WAVE_ONE_PATHS,
+    *SDK_RUST_COMPONENT_PATHS,
+)
+LATE_ACTIVATION_ALL_CONTRACT_PATHS = (  # pyright: ignore[reportConstantRedefinition]
+    *LATE_ACTIVATION_ALL_CONTRACT_PATHS,
+    *SDK_RUST_COMPONENT_PATHS,
+)
+CANONICAL_FILE_COUNT = (  # pyright: ignore[reportConstantRedefinition]
+    CANONICAL_FILE_COUNT + len(SDK_RUST_COMPONENT_PATHS)
+)
+CANONICAL_PATH_SET_SHA256 = (  # pyright: ignore[reportConstantRedefinition]
+    "9f16310364fdbf5a4519135c28740b196090c5c6400a1fba58e86952834cf07c"
+)
+
+_sdk_rust_component_addition_reason = _reconciliation_addition_reason
+
+
+def _reconciliation_addition_reason(path: str) -> str:  # pyright: ignore[reportRedeclaration]
+    if path in SDK_RUST_COMPONENT_PATHS:
+        return (
+            "The Rust facade's component declaration, so the fourth internal SDK is a "
+            "resolvable dependency-graph identity like the other three."
+        )
+    return _sdk_rust_component_addition_reason(path)
+
+
+# One definition for the invariants that relate two or more sibling fields of a
+# request. Single-field validation belongs to each server validator, but a rule
+# spanning two fields has no field to live on, so it was written into whichever
+# validator noticed it first and then copied: three services enumerated the
+# fields a caller may not set on a create, and three more create requests
+# embedding a resource had no such check at all. The table is resolved against
+# the committed descriptor and projected into the server and all four facades,
+# so a rule cannot be enforced in one language and forgotten in another.
+CROSS_FIELD_CONSTRAINT_PATHS: tuple[str, ...] = (
+    "protocols/constraints/cross-field.yaml",
+    "protocols/constraints/cross-field.schema.json",
+    "tools/codegen/generate_cross_field_constraints.py",
+    "services/control_plane/internal/platform/validation/cross_field.generated.go",
+    "internal/sdk/go/mindclade/cross_field.generated.go",
+    "internal/sdk/python/mindclade_internal_sdk/cross_field_generated.py",
+    "internal/sdk/typescript/src/crossField.generated.ts",
+    "internal/sdk/rust/src/cross_field_generated.rs",
+    "tests/conformance/test_cross_field_constraints.py",
+    "internal/sdk/typescript/tests/cross_field.test.ts",
+)
+# ADR-0025 records that the side-car is transitional and names the trigger
+# that retires it, so "transitional" cannot quietly become the permanent shape.
+CROSS_FIELD_CONSTRAINT_ADR = (
+    "docs/adr/0025-cross-field-constraints-as-a-transitional-side-car.md",
+)
+REQUIRED_ADDITIONS = (  # pyright: ignore[reportConstantRedefinition]
+    *REQUIRED_ADDITIONS,
+    *CROSS_FIELD_CONSTRAINT_PATHS,
+    *CROSS_FIELD_CONSTRAINT_ADR,
+)
+# The table is bound to the candidate descriptor, so it belongs to the
+# all-contract lane beside the other descriptor-bound gates.
+LATE_ACTIVATION_WAVE_ONE_PATHS = (  # pyright: ignore[reportConstantRedefinition]
+    *LATE_ACTIVATION_WAVE_ONE_PATHS,
+    *CROSS_FIELD_CONSTRAINT_PATHS,
+)
+LATE_ACTIVATION_ALL_CONTRACT_PATHS = (  # pyright: ignore[reportConstantRedefinition]
+    *LATE_ACTIVATION_ALL_CONTRACT_PATHS,
+    *CROSS_FIELD_CONSTRAINT_PATHS,
+)
+CANONICAL_FILE_COUNT = (  # pyright: ignore[reportConstantRedefinition]
+    CANONICAL_FILE_COUNT + len(CROSS_FIELD_CONSTRAINT_PATHS) + len(CROSS_FIELD_CONSTRAINT_ADR)
+)
+CANONICAL_PATH_SET_SHA256 = (  # pyright: ignore[reportConstantRedefinition]
+    "70c4d496424a6377a3d80037612607fc2470e06a9a05f6d61921a5ac1ca517a8"
+)
+
+_cross_field_constraint_addition_reason = _reconciliation_addition_reason
+
+
+def _reconciliation_addition_reason(path: str) -> str:
+    if path in CROSS_FIELD_CONSTRAINT_ADR:
+        return (
+            "ADR-0025 records why cross-field constraints live in a side-car rather "
+            "than the descriptor, and names the trigger that retires it."
+        )
+    if path in CROSS_FIELD_CONSTRAINT_PATHS:
+        return (
+            "The single cross-field constraint table, its generator, and the five "
+            "validators it projects, so an invariant relating two sibling fields "
+            "cannot be enforced in one language and forgotten in another."
+        )
+    return _cross_field_constraint_addition_reason(path)
 
 
 if __name__ == "__main__":

@@ -1,0 +1,132 @@
+# Cross-field constraints: relationships between sibling fields of one request.
+#
+# Single-field validation lives in the server's own validators and is not
+# expressed here. This file holds only invariants that relate two or more
+# fields, because those are the ones no single field's check can hold and the
+# ones that were being hand-copied from one service to the next.
+#
+# Every constraint is resolved against the committed descriptor named by
+# `descriptor_digest`, so a contract change that renames or removes a field
+# breaks this file loudly instead of leaving a validator checking a field that
+# no longer exists.
+#
+# Presence is proto3 presence: a field is *set* when it is not its zero value --
+# a non-empty string, a non-zero number, a true bool, a non-nil message. A field
+# explicitly assigned its zero value is indistinguishable from an unset one.
+# That is proto3, not a shortcut: the hand-written validators these constraints
+# were extracted from already test exactly this way (`GetEtag() == ""`,
+# `GetRevision() != 0`, `GetCreateTime() != nil`).
+#
+# `origin` records where a constraint came from:
+#   extracted  - it mirrors validation that already existed at `evidence`, and
+#                generating it changes no behavior.
+#   introduced - it is new enforcement. A previously accepted request is now
+#                rejected, so each one names why the estate was inconsistent
+#                without it.
+schema_version: mindclade.cross-field-constraints/v1
+descriptor_digest: sha256:46514bdee27df6f41f03b63f050b2cfcb95867fc8f291fe943eaf2019693c0ed
+constraints:
+  - id: agent-definition-create-rejects-output-only-fields
+    message: mindclade.internal.agent.v1.CreateAgentDefinitionRequest
+    rule: output-only
+    fields:
+      - agent_definition.name
+      - agent_definition.uid
+      - agent_definition.revision
+      - agent_definition.etag
+      - agent_definition.tenant_id
+      - agent_definition.project_id
+      - agent_definition.create_time
+      - agent_definition.update_time
+      - agent_definition.delete_time
+    origin: extracted
+    evidence:
+      source: services/control_plane/internal/agents/validation.go
+      symbol: validateDefinition
+    reason: >
+      The server assigns identity, revision, scope and timestamps when it
+      creates the definition. A caller that sends them has misunderstood the
+      call, and silently discarding them hides that.
+
+  - id: workflow-definition-create-rejects-output-only-fields
+    message: mindclade.internal.workflow.v1.CreateWorkflowDefinitionRequest
+    rule: output-only
+    fields:
+      - workflow_definition.name
+      - workflow_definition.uid
+      - workflow_definition.revision
+      - workflow_definition.etag
+      - workflow_definition.tenant_id
+      - workflow_definition.project_id
+      - workflow_definition.create_time
+      - workflow_definition.update_time
+      - workflow_definition.delete_time
+    origin: extracted
+    evidence:
+      source: services/control_plane/internal/workflows/validation.go
+      symbol: validateWorkflowDefinition
+    reason: >
+      The same rule as the agent definition, hand-copied to a second service.
+      Two copies of one list is how the third came to be written differently.
+
+  - id: approval-request-create-rejects-output-only-fields
+    message: mindclade.internal.workflow.v1.RequestApprovalRequest
+    rule: output-only
+    fields:
+      - approval_request.name
+      - approval_request.uid
+      - approval_request.revision
+      - approval_request.etag
+      - approval_request.tenant_id
+      - approval_request.project_id
+      - approval_request.requested_at
+    origin: extracted
+    evidence:
+      source: services/control_plane/internal/workflows/validation.go
+      symbol: validateApproval
+    reason: >
+      The third copy, and the one that proves the point: it ends at
+      `requested_at` rather than the create/update/delete triple, because an
+      approval request carries a different timestamp. Correct here, and
+      unverifiable against its siblings while each list lived in its own file.
+
+  - id: project-create-rejects-output-only-fields
+    message: mindclade.internal.admin.v1.CreateProjectRequest
+    rule: output-only
+    fields:
+      - project.name
+      - project.uid
+      - project.revision
+      - project.etag
+      - project.create_time
+      - project.update_time
+      - project.delete_time
+    origin: introduced
+    reason: >
+      Structurally identical to the agent and workflow definitions -- a create
+      request embedding a resource whose identity the server assigns -- but
+      `validateProject` never checked it. The server derives the name from
+      `parent` and `project_id` and ignores whatever the caller sent, so a
+      caller naming its own project was told nothing. `Project` scopes itself
+      through a `tenant` reference rather than `tenant_id`/`project_id`, which
+      is why this list is seven fields and not nine.
+
+  - id: use-policy-create-rejects-output-only-fields
+    message: mindclade.internal.policy.v1.CreateUsePolicyRequest
+    rule: output-only
+    fields:
+      - use_policy.name
+      - use_policy.uid
+      - use_policy.revision
+      - use_policy.etag
+      - use_policy.tenant_id
+      - use_policy.project_id
+      - use_policy.create_time
+      - use_policy.update_time
+      - use_policy.delete_time
+    origin: introduced
+    reason: >
+      The fourth create request embedding a full resource, and the second with
+      no output-only check. A use policy is an authorization object, so a
+      caller that believes it supplied the policy's identity has the most to
+      lose from being told nothing.

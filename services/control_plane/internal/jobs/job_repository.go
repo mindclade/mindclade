@@ -900,17 +900,13 @@ func (r SQLRepository) CancelJobSQL(ctx context.Context, jobID, expectedETag, re
 	if err != nil {
 		return nil, err
 	}
-	aggregateType, aggregateID, err := queue.AggregateIdentity(auditEnvelope)
-	if err != nil {
-		return nil, err
-	}
 	if _, err = tx.ExecContext(ctx, `INSERT INTO idempotency_records (tenant_id,project_id,command_key,request_hash,operation_id,created_at) VALUES ($1,$2,$3,$4,$5,$6)`, command.TenantID, command.ProjectID, command.IdempotencyKey, command.RequestDigest, operationID, command.ObservedAt.UTC()); err != nil {
 		return nil, err
 	}
 	if _, err = tx.ExecContext(ctx, `INSERT INTO audit_events (id,tenant_id,actor_id,action,subject_id,occurred_at,details_digest,event_version,payload_digest,envelope_bytes) VALUES ($1,$2,$3,'jobs.cancel',$4,$5,$6,$7,$8,$9)`, auditEnvelope.GetEventId(), command.TenantID, command.PrincipalID, jobID, command.ObservedAt.UTC(), command.RequestDigest, auditEnvelope.GetEventVersion(), auditEnvelope.GetPayloadDigest(), envelopeBytes); err != nil {
 		return nil, err
 	}
-	if _, err = tx.ExecContext(ctx, `INSERT INTO outbox_messages (id,tenant_id,event_type,event_version,aggregate_type,aggregate_id,aggregate_sequence,payload_digest,envelope_bytes,next_attempt_at,created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$10)`, auditEnvelope.GetEventId(), command.TenantID, auditEnvelope.GetEventType(), auditEnvelope.GetEventVersion(), aggregateType, aggregateID, auditEnvelope.GetAggregateSequence(), auditEnvelope.GetPayloadDigest(), envelopeBytes, command.ObservedAt.UTC()); err != nil {
+	if err = queue.InsertOutboxMessage(ctx, tx, auditEnvelope, command.ObservedAt); err != nil {
 		return nil, err
 	}
 	if err = tx.Commit(); err != nil {

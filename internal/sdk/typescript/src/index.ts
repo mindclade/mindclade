@@ -105,6 +105,12 @@ export {
 	type RetryPolicy,
 	validateAttempts,
 } from "./config.js";
+export {
+	CROSS_FIELD_RULES,
+	CrossFieldError,
+	type CrossFieldRule,
+	validateCrossField,
+} from "./crossField.generated.js";
 export { Datasets } from "./datasets.js";
 export {
 	clientConfigFromEnvironment,

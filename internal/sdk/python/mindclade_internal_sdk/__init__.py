@@ -43,6 +43,11 @@ from .auth import (
 from .calls import CallOptions, Observer, PaginationLimits, RpcObservation, apaginate, paginate
 from .client import AsyncClient, Client
 from .config import ClientConfig, ConfigurationError, Environment, RetryPolicy
+from .cross_field_generated import (
+    CROSS_FIELD_RULES,
+    CrossFieldError,
+    validate_cross_field,
+)
 from .datasets import AsyncDatasets, Datasets
 from .errors import (
     AuthenticationError,
@@ -91,6 +96,7 @@ from .workflows import Approvals, AsyncApprovals, AsyncWorkflows, Workflows
 
 __all__ = [
     "CREDENTIAL_METADATA_KEYS",
+    "CROSS_FIELD_RULES",
     "DEFAULT_JITTER",
     "ENVIRONMENT_VARIABLES",
     "LOGGER_NAME",
@@ -138,6 +144,7 @@ __all__ = [
     "ConfigurationError",
     "ConflictError",
     "CredentialShield",
+    "CrossFieldError",
     "Datasets",
     "DeadlineExceededError",
     "Environment",
@@ -203,4 +210,5 @@ __all__ = [
     "paginate",
     "resources",
     "testing",
+    "validate_cross_field",
 ]

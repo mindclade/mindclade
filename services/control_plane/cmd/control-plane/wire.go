@@ -31,6 +31,8 @@ import (
 	"google.golang.org/protobuf/types/dynamicpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	"github.com/mindclade/mindclade/services/control_plane/internal/platform/validation"
+
 	apiv1 "github.com/mindclade/mindclade/protocols/generated/go/api/v1"
 	internaladminv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/admin/v1"
 	internalagentv1 "github.com/mindclade/mindclade/protocols/generated/go/internalrpc/agent/v1"
@@ -282,7 +284,44 @@ func (a bearerAuthorizer) unary(
 	if err != nil {
 		return nil, err
 	}
+	// Cross-field constraints are declared once, in
+	// protocols/constraints/cross-field.yaml, and generated into the server and
+	// all four facades. Checking them here rather than in each handler is what
+	// makes the table's reach match its claim: a rule added for any message is
+	// enforced for every RPC that carries it, and a new handler cannot forget
+	// the call. The validator dispatches on the message's own descriptor name,
+	// so a message with no rules costs one map lookup.
+	//
+	// After authorization deliberately: an unauthenticated caller learns
+	// nothing about the shape of a request it may not make.
+	if message, ok := request.(proto.Message); ok {
+		if err = validation.ValidateCrossField(message); err != nil {
+			return nil, crossFieldStatus(err)
+		}
+	}
 	return handler(authenticated, request)
+}
+
+// crossFieldStatus names the violated constraint in the returned status.
+//
+// The identifier is the same string the four facades report, so a caller that
+// pre-validated with its SDK can match the server's rejection to the rule its
+// own facade would have raised. The public HTTP gateway sanitizes messages, so
+// this detail reaches internal gRPC callers only -- which is who these
+// internalrpc services serve.
+func crossFieldStatus(err error) error {
+	violation := new(validation.CrossFieldError)
+	if errors.As(err, &violation) {
+		return status.Errorf(
+			codes.InvalidArgument,
+			"%s: %s on %s: %s",
+			violation.Constraint,
+			violation.Rule,
+			violation.Message,
+			strings.Join(violation.Fields, ", "),
+		)
+	}
+	return status.Error(codes.InvalidArgument, "invalid request")
 }
 
 func (a bearerAuthorizer) stream(

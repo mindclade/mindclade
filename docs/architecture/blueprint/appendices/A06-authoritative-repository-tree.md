@@ -1654,10 +1654,13 @@ mindclade/
 │   │       └── test_openapi_compatibility.py
 │   ├── BUILD.bazel
 │   ├── README.md
-│   └── google/
-│       └── api/
-│           ├── annotations.proto
-│           └── http.proto
+│   ├── google/
+│   │   └── api/
+│   │       ├── annotations.proto
+│   │       └── http.proto
+│   └── constraints/
+│       ├── cross-field.yaml
+│       └── cross-field.schema.json
 ├── libs/
 │   ├── python/
 │   │   ├── artifacts/
@@ -3441,7 +3444,8 @@ mindclade/
 │   │   │   │   │   ├── transport.go
 │   │   │   │   │   ├── delivery.go
 │   │   │   │   │   ├── dead_letter.go
-│   │   │   │   │   └── event_registry_generated.go
+│   │   │   │   │   ├── event_registry_generated.go
+│   │   │   │   │   └── outbox_producer.go
 │   │   │   │   ├── storage/
 │   │   │   │   │   ├── artifact_catalog.go
 │   │   │   │   │   ├── object_store.go
@@ -3455,10 +3459,12 @@ mindclade/
 │   │   │   │   │   └── audit_store.go
 │   │   │   │   ├── inbox/
 │   │   │   │   │   └── inbox_store.go
-│   │   │   │   └── eventprojection/
-│   │   │   │       ├── BUILD.bazel
-│   │   │   │       ├── projection.go
-│   │   │   │       └── projection_test.go
+│   │   │   │   ├── eventprojection/
+│   │   │   │   │   ├── BUILD.bazel
+│   │   │   │   │   ├── projection.go
+│   │   │   │   │   └── projection_test.go
+│   │   │   │   └── validation/
+│   │   │   │       └── cross_field.generated.go
 │   │   │   ├── operations/
 │   │   │   │   ├── operation_commands.go
 │   │   │   │   ├── operation_repository.go
@@ -3536,7 +3542,8 @@ mindclade/
 │   │   │   ├── idempotency_test.go
 │   │   │   ├── lease_fencing_test.go
 │   │   │   ├── tenant_isolation_test.go
-│   │   │   └── reliability_harness_test.go
+│   │   │   ├── reliability_harness_test.go
+│   │   │   └── outbox_producer_test.go
 │   │   ├── BUILD.bazel
 │   │   ├── component.yaml
 │   │   ├── README.md
@@ -4018,7 +4025,9 @@ mindclade/
 │   │   ├── generated_rust_roundtrip_test.rs
 │   │   ├── generated_typescript_roundtrip_test.ts
 │   │   ├── test_generated_package_consumers.py
-│   │   └── test_sdk_retry_safety_parity.py
+│   │   ├── test_sdk_retry_safety_parity.py
+│   │   ├── test_crud_chain_completeness.py
+│   │   └── test_cross_field_constraints.py
 │   ├── integration/
 │   │   ├── local_stack_test.py
 │   │   ├── control_worker_test.py
@@ -4103,7 +4112,8 @@ mindclade/
 │   │   │           ├── protoc-gen-prost.rs
 │   │   │           └── protoc-gen-tonic.rs
 │   │   ├── generate_sdk_coverage.py
-│   │   └── generate_grpc_implementation_coverage.py
+│   │   ├── generate_grpc_implementation_coverage.py
+│   │   └── generate_cross_field_constraints.py
 │   ├── docs/
 │   │   ├── render_architecture_blueprint.py
 │   │   ├── validate_blueprint_sources.py
@@ -4343,7 +4353,8 @@ mindclade/
 │   │   ├── 0021-jit-06-triangle-multiplication-sm90a-sm100a.md
 │   │   ├── 0022-native-signed-qualification-and-production-admission-source-activation.md
 │   │   ├── 0023-estate-nix-bazel-hermeticity-and-cache-preparation.md
-│   │   └── 0024-vendored-contract-import-closure.md
+│   │   ├── 0024-vendored-contract-import-closure.md
+│   │   └── 0025-cross-field-constraints-as-a-transitional-side-car.md
 │   ├── domains/
 │   │   ├── bio.md
 │   │   ├── data.md
@@ -4537,7 +4548,8 @@ mindclade/
 │       │   │   ├── runs.go
 │       │   │   ├── training_lifecycle_test.go
 │       │   │   ├── experiments.go
-│       │   │   └── experiments_test.go
+│       │   │   ├── experiments_test.go
+│       │   │   └── cross_field.generated.go
 │       │   └── api.md
 │       ├── python/
 │       │   ├── BUILD.bazel
@@ -4583,7 +4595,8 @@ mindclade/
 │       │   │   ├── jobs.py
 │       │   │   ├── runs.py
 │       │   │   ├── experiments.py
-│       │   │   └── resources.py
+│       │   │   ├── resources.py
+│       │   │   └── cross_field_generated.py
 │       │   ├── pyproject.toml
 │       │   ├── scripts/
 │       │   │   ├── bootstrap
@@ -4623,40 +4636,42 @@ mindclade/
 │       │   │   ├── format
 │       │   │   ├── lint
 │       │   │   └── test
-│       │   └── src/
-│       │       ├── admin.rs
-│       │       ├── agent_tests.rs
-│       │       ├── agents.rs
-│       │       ├── approvals.rs
-│       │       ├── artifacts.rs
-│       │       ├── auth.rs
-│       │       ├── config.rs
-│       │       ├── datasets.rs
-│       │       ├── error.rs
-│       │       ├── events.rs
-│       │       ├── inference.rs
-│       │       ├── lib.rs
-│       │       ├── models.rs
-│       │       ├── operations.rs
-│       │       ├── policies.rs
-│       │       ├── policy_admin_tests.rs
-│       │       ├── request.rs
-│       │       ├── retry.rs
-│       │       ├── tests.rs
-│       │       ├── testing.rs
-│       │       ├── training.rs
-│       │       ├── transport.rs
-│       │       ├── workflow_tests.rs
-│       │       ├── workflows.rs
-│       │       ├── artifact_operation_gap_tests.rs
-│       │       ├── evaluation_tests.rs
-│       │       ├── evaluations.rs
-│       │       ├── job_run_tests.rs
-│       │       ├── jobs.rs
-│       │       ├── runs.rs
-│       │       ├── training_tests.rs
-│       │       ├── experiments.rs
-│       │       └── experiment_tests.rs
+│       │   ├── src/
+│       │   │   ├── admin.rs
+│       │   │   ├── agent_tests.rs
+│       │   │   ├── agents.rs
+│       │   │   ├── approvals.rs
+│       │   │   ├── artifacts.rs
+│       │   │   ├── auth.rs
+│       │   │   ├── config.rs
+│       │   │   ├── datasets.rs
+│       │   │   ├── error.rs
+│       │   │   ├── events.rs
+│       │   │   ├── inference.rs
+│       │   │   ├── lib.rs
+│       │   │   ├── models.rs
+│       │   │   ├── operations.rs
+│       │   │   ├── policies.rs
+│       │   │   ├── policy_admin_tests.rs
+│       │   │   ├── request.rs
+│       │   │   ├── retry.rs
+│       │   │   ├── tests.rs
+│       │   │   ├── testing.rs
+│       │   │   ├── training.rs
+│       │   │   ├── transport.rs
+│       │   │   ├── workflow_tests.rs
+│       │   │   ├── workflows.rs
+│       │   │   ├── artifact_operation_gap_tests.rs
+│       │   │   ├── evaluation_tests.rs
+│       │   │   ├── evaluations.rs
+│       │   │   ├── job_run_tests.rs
+│       │   │   ├── jobs.rs
+│       │   │   ├── runs.rs
+│       │   │   ├── training_tests.rs
+│       │   │   ├── experiments.rs
+│       │   │   ├── experiment_tests.rs
+│       │   │   └── cross_field_generated.rs
+│       │   └── component.yaml
 │       ├── typescript/
 │       │   ├── BUILD.bazel
 │       │   ├── CHANGELOG.md
@@ -4708,7 +4723,8 @@ mindclade/
 │       │   │   ├── evaluations.ts
 │       │   │   ├── jobs.ts
 │       │   │   ├── runs.ts
-│       │   │   └── experiments.ts
+│       │   │   ├── experiments.ts
+│       │   │   └── crossField.generated.ts
 │       │   ├── tests/
 │       │   │   ├── configuration.test.ts
 │       │   │   ├── errors.test.ts
@@ -4722,7 +4738,8 @@ mindclade/
 │       │   │   ├── evaluations.test.ts
 │       │   │   ├── job_run.test.ts
 │       │   │   ├── training.test.ts
-│       │   │   └── experiments.test.ts
+│       │   │   ├── experiments.test.ts
+│       │   │   └── cross_field.test.ts
 │       │   └── tsconfig.json
 │       ├── rpc-coverage.yaml
 │       └── rpc-coverage.generated.json

@@ -222,11 +222,8 @@ func validateFence(identity Identity, value *jobv1.LeaseFence, now time.Time) er
 	return nil
 }
 
-func validateDefinition(identity Identity, value *agentv1.AgentDefinition, creating bool) error {
+func validateDefinition(identity Identity, value *agentv1.AgentDefinition) error {
 	if value == nil || value.GetDisplayName() == "" || value.GetSemanticVersion() == "" || value.GetState() == agentv1.AgentDefinitionState_AGENT_DEFINITION_STATE_UNSPECIFIED || value.GetPurpose() == "" || value.GetModelCapability() == "" || value.GetQualificationLevel() == "" || value.GetBudget() == nil || value.GetLimits() == nil || len(value.GetNonGoals()) > 128 || len(value.GetEligibleTools()) == 0 || len(value.GetEligibleTools()) > 256 || len(value.GetPolicySnapshots()) == 0 || len(value.GetPolicySnapshots()) > 64 {
-		return ErrInvalidArgument
-	}
-	if creating && (value.GetName() != "" || value.GetUid() != "" || value.GetRevision() != 0 || value.GetEtag() != "" || value.GetTenantId() != "" || value.GetProjectId() != "" || value.GetCreateTime() != nil || value.GetUpdateTime() != nil || value.GetDeleteTime() != nil) {
 		return ErrInvalidArgument
 	}
 	budget := value.GetBudget()

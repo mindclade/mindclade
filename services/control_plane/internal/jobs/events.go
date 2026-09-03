@@ -218,18 +218,7 @@ func newAttemptEvent(
 }
 
 func insertAttemptOutbox(ctx context.Context, tx *sql.Tx, envelope *commonv1.EventEnvelope, at time.Time) error {
-	encoded, err := queue.MarshalEnvelope(envelope)
-	if err != nil {
-		return err
-	}
-	aggregateType, aggregateID, err := queue.AggregateIdentity(envelope)
-	if err != nil {
-		return err
-	}
-	_, err = tx.ExecContext(ctx, `INSERT INTO outbox_messages (id,tenant_id,event_type,event_version,aggregate_type,aggregate_id,aggregate_sequence,payload_digest,envelope_bytes,next_attempt_at,created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$10)`,
-		envelope.GetEventId(), envelope.GetTenantId(), envelope.GetEventType(), envelope.GetEventVersion(),
-		aggregateType, aggregateID, envelope.GetAggregateSequence(), envelope.GetPayloadDigest(), encoded, at.UTC())
-	return err
+	return queue.InsertOutboxMessage(ctx, tx, envelope, at)
 }
 
 func attemptResourceName(attempt *jobv1.Attempt) string {

@@ -5085,8 +5085,16 @@
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
+          "path": "internal/sdk/go/mindclade/CHANGELOG.md",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
           "path": "internal/sdk/go/mindclade/README.md",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/go/api.md",
+          "reason": "Committed per-language API reference derived from the candidate descriptor and drift-checked by `just docs`."
         },
         {
           "path": "internal/sdk/go/mindclade/admin.go",
@@ -5122,6 +5130,10 @@
         },
         {
           "path": "internal/sdk/go/mindclade/client_test.go",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/go/mindclade/component.yaml",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
@@ -5189,6 +5201,30 @@
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
+          "path": "internal/sdk/go/mindclade/scripts/bootstrap",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/go/mindclade/scripts/build",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/go/mindclade/scripts/common.sh",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/go/mindclade/scripts/format",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/go/mindclade/scripts/lint",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/go/mindclade/scripts/test",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
           "path": "internal/sdk/go/mindclade/training.go",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
@@ -5209,7 +5245,19 @@
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
+          "path": "internal/sdk/python/CHANGELOG.md",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
           "path": "internal/sdk/python/README.md",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/python/api.md",
+          "reason": "Committed per-language API reference derived from the candidate descriptor and drift-checked by `just docs`."
+        },
+        {
+          "path": "internal/sdk/python/component.yaml",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
@@ -5217,11 +5265,47 @@
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
+          "path": "internal/sdk/python/mindclade_internal_sdk/_env.py",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
           "path": "internal/sdk/python/mindclade_internal_sdk/_invocation.py",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
+          "path": "internal/sdk/python/mindclade_internal_sdk/_logging.py",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/python/mindclade_internal_sdk/_metadata.py",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/python/mindclade_internal_sdk/_middleware.py",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/python/mindclade_internal_sdk/_platform.py",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/python/mindclade_internal_sdk/_raw.py",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/python/mindclade_internal_sdk/_retry.py",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
           "path": "internal/sdk/python/mindclade_internal_sdk/_validation.py",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/python/mindclade_internal_sdk/_version.py",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/python/mindclade_internal_sdk/_watch.py",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
@@ -5285,6 +5369,10 @@
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
+          "path": "internal/sdk/python/mindclade_internal_sdk/pagination.py",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
           "path": "internal/sdk/python/mindclade_internal_sdk/policies.py",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
@@ -5309,6 +5397,38 @@
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
+          "path": "internal/sdk/python/scripts/bootstrap",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/python/scripts/build",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/python/scripts/common.sh",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/python/scripts/format",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/python/scripts/lint",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/python/scripts/test",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/python/tests/test_configuration_env.py",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/python/tests/test_error_hierarchy.py",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
           "path": "internal/sdk/python/tests/test_internal_sdk.py",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
@@ -5321,7 +5441,31 @@
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
+          "path": "internal/sdk/python/tests/test_observability.py",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/python/tests/test_packaging.py",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/python/tests/test_pagination.py",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
           "path": "internal/sdk/python/tests/test_policy_admin.py",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/python/tests/test_raw_response.py",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/python/tests/test_retry_policy.py",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/python/tests/test_watchers.py",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
@@ -5338,6 +5482,34 @@
         },
         {
           "path": "internal/sdk/rust/README.md",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/rust/api.md",
+          "reason": "Committed per-language API reference derived from the candidate descriptor and drift-checked by `just docs`."
+        },
+        {
+          "path": "internal/sdk/rust/scripts/bootstrap",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/rust/scripts/build",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/rust/scripts/common.sh",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/rust/scripts/format",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/rust/scripts/lint",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/rust/scripts/test",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
@@ -5441,8 +5613,16 @@
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
+          "path": "internal/sdk/typescript/CHANGELOG.md",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
           "path": "internal/sdk/typescript/README.md",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/typescript/api.md",
+          "reason": "Committed per-language API reference derived from the candidate descriptor and drift-checked by `just docs`."
         },
         {
           "path": "internal/sdk/typescript/bazel/package.json",
@@ -5453,7 +5633,31 @@
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
+          "path": "internal/sdk/typescript/component.yaml",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
           "path": "internal/sdk/typescript/package.json",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/typescript/scripts/bootstrap",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/typescript/scripts/build",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/typescript/scripts/format",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/typescript/scripts/lint",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/typescript/scripts/test",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
@@ -5493,6 +5697,10 @@
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
+          "path": "internal/sdk/typescript/src/environment.ts",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
           "path": "internal/sdk/typescript/src/error.ts",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
@@ -5513,7 +5721,19 @@
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
+          "path": "internal/sdk/typescript/src/observability.ts",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
           "path": "internal/sdk/typescript/src/operations.ts",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/typescript/src/pagination.ts",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/typescript/src/platform.ts",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
@@ -5526,6 +5746,10 @@
         },
         {
           "path": "internal/sdk/typescript/src/request.ts",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/typescript/src/response.ts",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
@@ -5553,7 +5777,27 @@
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
+          "path": "internal/sdk/typescript/src/watch.ts",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
           "path": "internal/sdk/typescript/src/workflows.ts",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/typescript/tests/configuration.test.ts",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/typescript/tests/errors.test.ts",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/typescript/tests/pagination_response.test.ts",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/typescript/tests/retry_policy.test.ts",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
@@ -5566,6 +5810,10 @@
         },
         {
           "path": "internal/sdk/typescript/tests/agents.test.ts",
+          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
+        },
+        {
+          "path": "internal/sdk/typescript/tests/watch_lro.test.ts",
           "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
         },
         {
@@ -6913,6 +7161,114 @@
           "reason": "ADR-0023 activates deterministic build-contract tooling while keeping connected cache writes and remote execution fail closed."
         },
         {
+          "path": "tools/docs/render_sdk_api_reference.py",
+          "reason": "The internal SDK API reference is rendered from the governed RPC-coverage projection so a facade cannot document a method the descriptor never declared."
+        },
+        {
+          "path": "tools/docs/tests/test_render_sdk_api_reference.py",
+          "reason": "The internal SDK API reference is rendered from the governed RPC-coverage projection so a facade cannot document a method the descriptor never declared."
+        },
+        {
+          "path": "examples/sdk/configure_client.ts",
+          "reason": "Stage 7 four-language SDK parity and its Stage 8 worked consumers: packaging scripts, revision-keyed changelogs, and the conformance gate binding every SDK retry-safety table to the descriptor."
+        },
+        {
+          "path": "examples/sdk/handle_errors.py",
+          "reason": "Stage 7 four-language SDK parity and its Stage 8 worked consumers: packaging scripts, revision-keyed changelogs, and the conformance gate binding every SDK retry-safety table to the descriptor."
+        },
+        {
+          "path": "examples/sdk/list_operations.py",
+          "reason": "Stage 7 four-language SDK parity and its Stage 8 worked consumers: packaging scripts, revision-keyed changelogs, and the conformance gate binding every SDK retry-safety table to the descriptor."
+        },
+        {
+          "path": "examples/sdk/read_request_id.ts",
+          "reason": "Stage 7 four-language SDK parity and its Stage 8 worked consumers: packaging scripts, revision-keyed changelogs, and the conformance gate binding every SDK retry-safety table to the descriptor."
+        },
+        {
+          "path": "examples/sdk/sdk_examples.test.ts",
+          "reason": "Stage 7 four-language SDK parity and its Stage 8 worked consumers: packaging scripts, revision-keyed changelogs, and the conformance gate binding every SDK retry-safety table to the descriptor."
+        },
+        {
+          "path": "tests/conformance/test_sdk_retry_safety_parity.py",
+          "reason": "Stage 7 four-language SDK parity and its Stage 8 worked consumers: packaging scripts, revision-keyed changelogs, and the conformance gate binding every SDK retry-safety table to the descriptor."
+        },
+        {
+          "path": "docs/architecture/internal-sdk-conformance-contract.md",
+          "reason": "The behaviour contract the four internal SDK facades are held to, naming the gate that proves each property so a claim cannot outlive its check."
+        },
+        {
+          "path": "protocols/google/api/annotations.proto",
+          "reason": "Apache-2.0 upstream proto vendored so the contract descriptor resolves every import from the working tree; it removes the contract build's only schema-registry dependency without changing the descriptor digest."
+        },
+        {
+          "path": "protocols/google/api/http.proto",
+          "reason": "Apache-2.0 upstream proto vendored so the contract descriptor resolves every import from the working tree; it removes the contract build's only schema-registry dependency without changing the descriptor digest."
+        },
+        {
+          "path": "docs/adr/0024-vendored-contract-import-closure.md",
+          "reason": "ADR-0024 records why the contract build vendors its third-party import closure."
+        },
+        {
+          "path": "services/control_plane/internal/platform/queue/outbox_producer.go",
+          "reason": "The single transactional-outbox producer and its unit tests; it replaces fourteen hand-copied INSERT statements so the envelope-derived routing columns, the validation gate, and the envelope size bound cannot be omitted by one call site."
+        },
+        {
+          "path": "services/control_plane/tests/outbox_producer_test.go",
+          "reason": "The single transactional-outbox producer and its unit tests; it replaces fourteen hand-copied INSERT statements so the envelope-derived routing columns, the validation gate, and the envelope size bound cannot be omitted by one call site."
+        },
+        {
+          "path": "tests/conformance/test_crud_chain_completeness.py",
+          "reason": "The descriptor-bound gate holding every create/read/update/delete chain to closure, so a read cannot require identity the create response never returned."
+        },
+        {
+          "path": "internal/sdk/rust/component.yaml",
+          "reason": "The Rust facade's component declaration, so the fourth internal SDK is a resolvable dependency-graph identity like the other three."
+        },
+        {
+          "path": "protocols/constraints/cross-field.yaml",
+          "reason": "The single cross-field constraint table, its generator, and the five validators it projects, so an invariant relating two sibling fields cannot be enforced in one language and forgotten in another."
+        },
+        {
+          "path": "protocols/constraints/cross-field.schema.json",
+          "reason": "The single cross-field constraint table, its generator, and the five validators it projects, so an invariant relating two sibling fields cannot be enforced in one language and forgotten in another."
+        },
+        {
+          "path": "tools/codegen/generate_cross_field_constraints.py",
+          "reason": "The single cross-field constraint table, its generator, and the five validators it projects, so an invariant relating two sibling fields cannot be enforced in one language and forgotten in another."
+        },
+        {
+          "path": "services/control_plane/internal/platform/validation/cross_field.generated.go",
+          "reason": "The single cross-field constraint table, its generator, and the five validators it projects, so an invariant relating two sibling fields cannot be enforced in one language and forgotten in another."
+        },
+        {
+          "path": "internal/sdk/go/mindclade/cross_field.generated.go",
+          "reason": "The single cross-field constraint table, its generator, and the five validators it projects, so an invariant relating two sibling fields cannot be enforced in one language and forgotten in another."
+        },
+        {
+          "path": "internal/sdk/python/mindclade_internal_sdk/cross_field_generated.py",
+          "reason": "The single cross-field constraint table, its generator, and the five validators it projects, so an invariant relating two sibling fields cannot be enforced in one language and forgotten in another."
+        },
+        {
+          "path": "internal/sdk/typescript/src/crossField.generated.ts",
+          "reason": "The single cross-field constraint table, its generator, and the five validators it projects, so an invariant relating two sibling fields cannot be enforced in one language and forgotten in another."
+        },
+        {
+          "path": "internal/sdk/rust/src/cross_field_generated.rs",
+          "reason": "The single cross-field constraint table, its generator, and the five validators it projects, so an invariant relating two sibling fields cannot be enforced in one language and forgotten in another."
+        },
+        {
+          "path": "tests/conformance/test_cross_field_constraints.py",
+          "reason": "The single cross-field constraint table, its generator, and the five validators it projects, so an invariant relating two sibling fields cannot be enforced in one language and forgotten in another."
+        },
+        {
+          "path": "internal/sdk/typescript/tests/cross_field.test.ts",
+          "reason": "The single cross-field constraint table, its generator, and the five validators it projects, so an invariant relating two sibling fields cannot be enforced in one language and forgotten in another."
+        },
+        {
+          "path": "docs/adr/0025-cross-field-constraints-as-a-transitional-side-car.md",
+          "reason": "ADR-0025 records why cross-field constraints live in a side-car rather than the descriptor, and names the trigger that retires it."
+        },
+        {
           "path": "docs/adr/0001-repository-identity-and-ownership.md",
           "replaces": "docs/adr/0001-repository-identity.md",
           "reason": "Sections 1-18 and Section 14.1 take precedence over the stale A6 short ADR name."
@@ -6951,306 +7307,10 @@
           "path": ".github/renovate.json",
           "replaces": ".github/dependabot.yml",
           "reason": "Dependabot is retired estate-wide; Renovate configuration extending the organization preset in mindclade/.github replaces it."
-        },
-        {
-          "path": "internal/sdk/go/api.md",
-          "reason": "Committed per-language API reference derived from the candidate descriptor and drift-checked by `just docs`."
-        },
-        {
-          "path": "internal/sdk/python/api.md",
-          "reason": "Committed per-language API reference derived from the candidate descriptor and drift-checked by `just docs`."
-        },
-        {
-          "path": "internal/sdk/rust/api.md",
-          "reason": "Committed per-language API reference derived from the candidate descriptor and drift-checked by `just docs`."
-        },
-        {
-          "path": "internal/sdk/typescript/api.md",
-          "reason": "Committed per-language API reference derived from the candidate descriptor and drift-checked by `just docs`."
-        },
-        {
-          "path": "tools/docs/render_sdk_api_reference.py",
-          "reason": "The internal SDK API reference is rendered from the governed RPC-coverage projection so a facade cannot document a method the descriptor never declared."
-        },
-        {
-          "path": "tools/docs/tests/test_render_sdk_api_reference.py",
-          "reason": "The internal SDK API reference is rendered from the governed RPC-coverage projection so a facade cannot document a method the descriptor never declared."
-        },
-        {
-          "path": "examples/sdk/configure_client.ts",
-          "reason": "Stage 7 four-language SDK parity and its Stage 8 worked consumers: packaging scripts, revision-keyed changelogs, and the conformance gate binding every SDK retry-safety table to the descriptor."
-        },
-        {
-          "path": "examples/sdk/handle_errors.py",
-          "reason": "Stage 7 four-language SDK parity and its Stage 8 worked consumers: packaging scripts, revision-keyed changelogs, and the conformance gate binding every SDK retry-safety table to the descriptor."
-        },
-        {
-          "path": "examples/sdk/list_operations.py",
-          "reason": "Stage 7 four-language SDK parity and its Stage 8 worked consumers: packaging scripts, revision-keyed changelogs, and the conformance gate binding every SDK retry-safety table to the descriptor."
-        },
-        {
-          "path": "examples/sdk/read_request_id.ts",
-          "reason": "Stage 7 four-language SDK parity and its Stage 8 worked consumers: packaging scripts, revision-keyed changelogs, and the conformance gate binding every SDK retry-safety table to the descriptor."
-        },
-        {
-          "path": "examples/sdk/sdk_examples.test.ts",
-          "reason": "Stage 7 four-language SDK parity and its Stage 8 worked consumers: packaging scripts, revision-keyed changelogs, and the conformance gate binding every SDK retry-safety table to the descriptor."
-        },
-        {
-          "path": "internal/sdk/go/mindclade/CHANGELOG.md",
-          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
-        },
-        {
-          "path": "internal/sdk/go/mindclade/component.yaml",
-          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
-        },
-        {
-          "path": "internal/sdk/go/mindclade/scripts/bootstrap",
-          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
-        },
-        {
-          "path": "internal/sdk/go/mindclade/scripts/build",
-          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
-        },
-        {
-          "path": "internal/sdk/go/mindclade/scripts/common.sh",
-          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
-        },
-        {
-          "path": "internal/sdk/go/mindclade/scripts/format",
-          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
-        },
-        {
-          "path": "internal/sdk/go/mindclade/scripts/lint",
-          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
-        },
-        {
-          "path": "internal/sdk/go/mindclade/scripts/test",
-          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
-        },
-        {
-          "path": "internal/sdk/python/CHANGELOG.md",
-          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
-        },
-        {
-          "path": "internal/sdk/python/component.yaml",
-          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
-        },
-        {
-          "path": "internal/sdk/python/mindclade_internal_sdk/_env.py",
-          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
-        },
-        {
-          "path": "internal/sdk/python/mindclade_internal_sdk/_logging.py",
-          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
-        },
-        {
-          "path": "internal/sdk/python/mindclade_internal_sdk/_metadata.py",
-          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
-        },
-        {
-          "path": "internal/sdk/python/mindclade_internal_sdk/_middleware.py",
-          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
-        },
-        {
-          "path": "internal/sdk/python/mindclade_internal_sdk/_platform.py",
-          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
-        },
-        {
-          "path": "internal/sdk/python/mindclade_internal_sdk/_raw.py",
-          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
-        },
-        {
-          "path": "internal/sdk/python/mindclade_internal_sdk/_retry.py",
-          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
-        },
-        {
-          "path": "internal/sdk/python/mindclade_internal_sdk/_version.py",
-          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
-        },
-        {
-          "path": "internal/sdk/python/mindclade_internal_sdk/_watch.py",
-          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
-        },
-        {
-          "path": "internal/sdk/python/mindclade_internal_sdk/pagination.py",
-          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
-        },
-        {
-          "path": "internal/sdk/python/scripts/bootstrap",
-          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
-        },
-        {
-          "path": "internal/sdk/python/scripts/build",
-          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
-        },
-        {
-          "path": "internal/sdk/python/scripts/common.sh",
-          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
-        },
-        {
-          "path": "internal/sdk/python/scripts/format",
-          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
-        },
-        {
-          "path": "internal/sdk/python/scripts/lint",
-          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
-        },
-        {
-          "path": "internal/sdk/python/scripts/test",
-          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
-        },
-        {
-          "path": "internal/sdk/python/tests/test_configuration_env.py",
-          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
-        },
-        {
-          "path": "internal/sdk/python/tests/test_error_hierarchy.py",
-          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
-        },
-        {
-          "path": "internal/sdk/python/tests/test_observability.py",
-          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
-        },
-        {
-          "path": "internal/sdk/python/tests/test_packaging.py",
-          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
-        },
-        {
-          "path": "internal/sdk/python/tests/test_pagination.py",
-          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
-        },
-        {
-          "path": "internal/sdk/python/tests/test_raw_response.py",
-          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
-        },
-        {
-          "path": "internal/sdk/python/tests/test_retry_policy.py",
-          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
-        },
-        {
-          "path": "internal/sdk/python/tests/test_watchers.py",
-          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
-        },
-        {
-          "path": "internal/sdk/typescript/CHANGELOG.md",
-          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
-        },
-        {
-          "path": "internal/sdk/typescript/component.yaml",
-          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
-        },
-        {
-          "path": "internal/sdk/typescript/scripts/bootstrap",
-          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
-        },
-        {
-          "path": "internal/sdk/typescript/scripts/build",
-          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
-        },
-        {
-          "path": "internal/sdk/typescript/scripts/format",
-          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
-        },
-        {
-          "path": "internal/sdk/typescript/scripts/lint",
-          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
-        },
-        {
-          "path": "internal/sdk/typescript/scripts/test",
-          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
-        },
-        {
-          "path": "internal/sdk/typescript/src/environment.ts",
-          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
-        },
-        {
-          "path": "internal/sdk/typescript/src/observability.ts",
-          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
-        },
-        {
-          "path": "internal/sdk/typescript/src/pagination.ts",
-          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
-        },
-        {
-          "path": "internal/sdk/typescript/src/platform.ts",
-          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
-        },
-        {
-          "path": "internal/sdk/typescript/src/response.ts",
-          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
-        },
-        {
-          "path": "internal/sdk/typescript/src/watch.ts",
-          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
-        },
-        {
-          "path": "internal/sdk/typescript/tests/configuration.test.ts",
-          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
-        },
-        {
-          "path": "internal/sdk/typescript/tests/errors.test.ts",
-          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
-        },
-        {
-          "path": "internal/sdk/typescript/tests/pagination_response.test.ts",
-          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
-        },
-        {
-          "path": "internal/sdk/typescript/tests/retry_policy.test.ts",
-          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
-        },
-        {
-          "path": "internal/sdk/typescript/tests/watch_lro.test.ts",
-          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
-        },
-        {
-          "path": "tests/conformance/test_sdk_retry_safety_parity.py",
-          "reason": "Stage 7 four-language SDK parity and its Stage 8 worked consumers: packaging scripts, revision-keyed changelogs, and the conformance gate binding every SDK retry-safety table to the descriptor."
-        },
-        {
-          "path": "docs/architecture/internal-sdk-conformance-contract.md",
-          "reason": "The behaviour contract the four internal SDK facades are held to, naming the gate that proves each property so a claim cannot outlive its check."
-        },
-        {
-          "path": "internal/sdk/rust/scripts/bootstrap",
-          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
-        },
-        {
-          "path": "internal/sdk/rust/scripts/build",
-          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
-        },
-        {
-          "path": "internal/sdk/rust/scripts/common.sh",
-          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
-        },
-        {
-          "path": "internal/sdk/rust/scripts/format",
-          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
-        },
-        {
-          "path": "internal/sdk/rust/scripts/lint",
-          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
-        },
-        {
-          "path": "internal/sdk/rust/scripts/test",
-          "reason": "Private ergonomic SDK facades wrap Buf-generated native transports without redefining wire models."
-        },
-        {
-          "path": "protocols/google/api/annotations.proto",
-          "reason": "Apache-2.0 upstream proto vendored so the contract descriptor resolves every import from the working tree; it removes the contract build's only schema-registry dependency without changing the descriptor digest."
-        },
-        {
-          "path": "protocols/google/api/http.proto",
-          "reason": "Apache-2.0 upstream proto vendored so the contract descriptor resolves every import from the working tree; it removes the contract build's only schema-registry dependency without changing the descriptor digest."
-        },
-        {
-          "path": "docs/adr/0024-vendored-contract-import-closure.md",
-          "reason": "ADR-0024 records why the contract build vendors its third-party import closure."
         }
       ],
-      "canonical_file_count": 3639,
-      "canonical_path_set_sha256": "4ea057c0574249516036099dceaff5b0ea4e03e25c2a43215c1caf422c50de17"
+      "canonical_file_count": 3654,
+      "canonical_path_set_sha256": "70c4d496424a6377a3d80037612607fc2470e06a9a05f6d61921a5ac1ca517a8"
     },
     "owners": {
       "agent-platform": {
@@ -27408,8 +27468,8 @@
       "test_targets": [
         "//:all_contract_tests"
       ],
-      "public_surface": false,
-      "activation_criterion": "Apache-2.0 upstream import vendored verbatim so the contract descriptor resolves without a schema registry; fidelity is proven by the descriptor digest being unchanged, and it grants no Mindclade public surface."
+      "public_surface": true,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
       "path": "protocols/google/api/http.proto",
@@ -27425,8 +27485,42 @@
       "test_targets": [
         "//:all_contract_tests"
       ],
-      "public_surface": false,
-      "activation_criterion": "Apache-2.0 upstream import vendored verbatim so the contract descriptor resolves without a schema registry; fidelity is proven by the descriptor digest being unchanged, and it grants no Mindclade public surface."
+      "public_surface": true,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/constraints/cross-field.yaml",
+      "kind": "configuration",
+      "owner": "contract-governance",
+      "component": "protocols-constraints",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": true,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "protocols/constraints/cross-field.schema.json",
+      "kind": "schema",
+      "owner": "contract-governance",
+      "component": "protocols-constraints",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": true,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
       "path": "libs/python/artifacts/__init__.py",
@@ -46943,6 +47037,23 @@
       "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
     },
     {
+      "path": "services/control_plane/internal/platform/queue/outbox_producer.go",
+      "kind": "source",
+      "owner": "platform-control-plane",
+      "component": "services-control-plane",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:wave1_sources"
+      ],
+      "test_targets": [
+        "//:wave1_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
+    },
+    {
       "path": "services/control_plane/internal/platform/storage/artifact_catalog.go",
       "kind": "source",
       "owner": "platform-control-plane",
@@ -47137,6 +47248,23 @@
       ],
       "public_surface": false,
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "services/control_plane/internal/platform/validation/cross_field.generated.go",
+      "kind": "source",
+      "owner": "platform-control-plane",
+      "component": "services-control-plane",
+      "status": "generated",
+      "activation_wave": "1",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
       "path": "services/control_plane/internal/operations/operation_commands.go",
@@ -48344,6 +48472,23 @@
       ],
       "public_surface": false,
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "services/control_plane/tests/outbox_producer_test.go",
+      "kind": "test",
+      "owner": "platform-control-plane",
+      "component": "services-control-plane",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:wave1_sources"
+      ],
+      "test_targets": [
+        "//:wave1_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activate only in the declared wave with a concrete consumer, owner, real target, tests, and qualification evidence."
     },
     {
       "path": "services/control_plane/BUILD.bazel",
@@ -53394,16 +53539,50 @@
     {
       "path": "tests/conformance/test_sdk_retry_safety_parity.py",
       "kind": "test",
-      "owner": "contract-governance",
-      "component": "mindclade",
+      "owner": "developer-platform",
+      "component": "tests-conformance",
       "status": "active",
       "activation_wave": "1",
       "source_authority": "hand-authored",
       "build_targets": [
-        "//:wave1_sources"
+        "//:all_contract_sources"
       ],
       "test_targets": [
-        "//:wave1_tests"
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "tests/conformance/test_crud_chain_completeness.py",
+      "kind": "test",
+      "owner": "developer-platform",
+      "component": "tests-conformance",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "tests/conformance/test_cross_field_constraints.py",
+      "kind": "test",
+      "owner": "developer-platform",
+      "component": "tests-conformance",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
       ],
       "public_surface": false,
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
@@ -54367,6 +54546,23 @@
     },
     {
       "path": "tools/codegen/generate_grpc_implementation_coverage.py",
+      "kind": "source",
+      "owner": "developer-platform",
+      "component": "tools-codegen",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "tools/codegen/generate_cross_field_constraints.py",
       "kind": "source",
       "owner": "developer-platform",
       "component": "tools-codegen",
@@ -57056,16 +57252,15 @@
       "owner": "architecture",
       "component": "docs-architecture",
       "status": "active",
-      "activation_wave": "1",
+      "activation_wave": "0",
       "source_authority": "hand-authored",
       "build_targets": [
-        "//:wave1_sources"
+        "//:wave0_governance_sources"
       ],
       "test_targets": [
-        "//:wave1_tests"
+        "//:wave0_tests"
       ],
-      "public_surface": false,
-      "activation_criterion": "Records the behaviour contract the four activated internal SDK facades already satisfy and names the gate proving each property; it grants no new surface."
+      "public_surface": false
     },
     {
       "path": "docs/adr/0001-repository-identity-and-ownership.md",
@@ -57469,6 +57664,22 @@
     },
     {
       "path": "docs/adr/0024-vendored-contract-import-closure.md",
+      "kind": "documentation",
+      "owner": "architecture",
+      "component": "docs-adr",
+      "status": "active",
+      "activation_wave": "0",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:wave0_governance_sources"
+      ],
+      "test_targets": [
+        "//:wave0_tests"
+      ],
+      "public_surface": false
+    },
+    {
+      "path": "docs/adr/0025-cross-field-constraints-as-a-transitional-side-car.md",
       "kind": "documentation",
       "owner": "architecture",
       "component": "docs-adr",
@@ -58405,7 +58616,7 @@
     },
     {
       "path": "examples/sdk/follow_operation.test.ts",
-      "kind": "source",
+      "kind": "test",
       "owner": "developer-platform",
       "component": "examples-sdk",
       "status": "active",
@@ -58440,16 +58651,16 @@
     {
       "path": "examples/sdk/configure_client.ts",
       "kind": "source",
-      "owner": "developer-experience",
-      "component": "mindclade",
+      "owner": "developer-platform",
+      "component": "examples-sdk",
       "status": "active",
       "activation_wave": "1",
       "source_authority": "hand-authored",
       "build_targets": [
-        "//:wave1_sources"
+        "//:all_contract_sources"
       ],
       "test_targets": [
-        "//:wave1_tests"
+        "//:all_contract_tests"
       ],
       "public_surface": false,
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
@@ -58457,16 +58668,16 @@
     {
       "path": "examples/sdk/handle_errors.py",
       "kind": "source",
-      "owner": "developer-experience",
-      "component": "mindclade",
+      "owner": "developer-platform",
+      "component": "examples-sdk",
       "status": "active",
       "activation_wave": "1",
       "source_authority": "hand-authored",
       "build_targets": [
-        "//:wave1_sources"
+        "//:all_contract_sources"
       ],
       "test_targets": [
-        "//:wave1_tests"
+        "//:all_contract_tests"
       ],
       "public_surface": false,
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
@@ -58474,16 +58685,16 @@
     {
       "path": "examples/sdk/list_operations.py",
       "kind": "source",
-      "owner": "developer-experience",
-      "component": "mindclade",
+      "owner": "developer-platform",
+      "component": "examples-sdk",
       "status": "active",
       "activation_wave": "1",
       "source_authority": "hand-authored",
       "build_targets": [
-        "//:wave1_sources"
+        "//:all_contract_sources"
       ],
       "test_targets": [
-        "//:wave1_tests"
+        "//:all_contract_tests"
       ],
       "public_surface": false,
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
@@ -58491,16 +58702,16 @@
     {
       "path": "examples/sdk/read_request_id.ts",
       "kind": "source",
-      "owner": "developer-experience",
-      "component": "mindclade",
+      "owner": "developer-platform",
+      "component": "examples-sdk",
       "status": "active",
       "activation_wave": "1",
       "source_authority": "hand-authored",
       "build_targets": [
-        "//:wave1_sources"
+        "//:all_contract_sources"
       ],
       "test_targets": [
-        "//:wave1_tests"
+        "//:all_contract_tests"
       ],
       "public_surface": false,
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
@@ -58508,16 +58719,16 @@
     {
       "path": "examples/sdk/sdk_examples.test.ts",
       "kind": "test",
-      "owner": "developer-experience",
-      "component": "mindclade",
+      "owner": "developer-platform",
+      "component": "examples-sdk",
       "status": "active",
       "activation_wave": "1",
       "source_authority": "hand-authored",
       "build_targets": [
-        "//:wave1_sources"
+        "//:all_contract_sources"
       ],
       "test_targets": [
-        "//:wave1_tests"
+        "//:all_contract_tests"
       ],
       "public_surface": false,
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
@@ -60002,6 +60213,23 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
+      "path": "internal/sdk/go/mindclade/cross_field.generated.go",
+      "kind": "source",
+      "owner": "developer-experience",
+      "component": "internal-sdk-go",
+      "status": "generated",
+      "activation_wave": "1",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
       "path": "internal/sdk/go/api.md",
       "kind": "documentation",
       "owner": "developer-experience",
@@ -60016,7 +60244,7 @@
         "//:all_contract_tests"
       ],
       "public_surface": false,
-      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
       "path": "internal/sdk/python/BUILD.bazel",
@@ -60084,7 +60312,7 @@
         "//:all_contract_tests"
       ],
       "public_surface": false,
-      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
       "path": "internal/sdk/python/component.yaml",
@@ -60750,6 +60978,23 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
+      "path": "internal/sdk/python/mindclade_internal_sdk/cross_field_generated.py",
+      "kind": "source",
+      "owner": "developer-experience",
+      "component": "internal-sdk-python",
+      "status": "generated",
+      "activation_wave": "1",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
       "path": "internal/sdk/python/pyproject.toml",
       "kind": "configuration",
       "owner": "developer-experience",
@@ -61240,7 +61485,7 @@
         "//:all_contract_tests"
       ],
       "public_surface": false,
-      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
       "path": "internal/sdk/rust/scripts/bootstrap",
@@ -61906,6 +62151,40 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
+      "path": "internal/sdk/rust/src/cross_field_generated.rs",
+      "kind": "source",
+      "owner": "developer-experience",
+      "component": "internal-sdk-rust",
+      "status": "generated",
+      "activation_wave": "1",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "internal/sdk/rust/component.yaml",
+      "kind": "configuration",
+      "owner": "developer-experience",
+      "component": "internal-sdk-rust",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
       "path": "internal/sdk/typescript/BUILD.bazel",
       "kind": "build",
       "owner": "developer-experience",
@@ -61971,7 +62250,7 @@
         "//:all_contract_tests"
       ],
       "public_surface": false,
-      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
       "path": "internal/sdk/typescript/bazel/package.json",
@@ -62722,6 +63001,23 @@
       "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
     },
     {
+      "path": "internal/sdk/typescript/src/crossField.generated.ts",
+      "kind": "source",
+      "owner": "developer-experience",
+      "component": "internal-sdk-typescript",
+      "status": "generated",
+      "activation_wave": "1",
+      "source_authority": "reviewed-generated",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Generated from the ADR-0015 clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
       "path": "internal/sdk/typescript/tests/configuration.test.ts",
       "kind": "test",
       "owner": "developer-experience",
@@ -62927,6 +63223,23 @@
     },
     {
       "path": "internal/sdk/typescript/tests/experiments.test.ts",
+      "kind": "test",
+      "owner": "developer-experience",
+      "component": "internal-sdk-typescript",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "internal/sdk/typescript/tests/cross_field.test.ts",
       "kind": "test",
       "owner": "developer-experience",
       "component": "internal-sdk-typescript",

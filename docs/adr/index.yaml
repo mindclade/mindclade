@@ -170,3 +170,10 @@ spec:
       path: docs/adr/0024-vendored-contract-import-closure.md
       owners: [contract-governance, developer-platform]
       specificationAccepted: "2026-09-02"
+    - id: ADR-0025
+      title: Cross-field constraints as a transitional side-car
+      status: accepted-in-specification
+      connectedRatification: not-required
+      path: docs/adr/0025-cross-field-constraints-as-a-transitional-side-car.md
+      owners: [contract-governance, developer-platform]
+      specificationAccepted: "2026-09-03"

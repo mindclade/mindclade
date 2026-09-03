@@ -26,6 +26,7 @@ go_library(
         "//services/control_plane:database",
         "//services/control_plane:queue",
         "//services/control_plane:tenants",
+        "//services/control_plane:validation",
         "@org_golang_google_grpc//:grpc",
         "@org_golang_google_grpc//codes",
         "@org_golang_google_grpc//status",
