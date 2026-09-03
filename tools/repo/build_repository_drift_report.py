@@ -1760,6 +1760,25 @@ def report_exit_code(report: Mapping[str, object], *, allow_inconclusive: bool) 
     return 0 if allow_inconclusive else 3
 
 
+# Two lines of the baseline describe the moment it was generated rather than the
+# observation it records: the commit HEAD was on, and whether the tree was dirty.
+# Committing the file necessarily changes both -- the write happens before the
+# commit that contains it, and the tree is dirty at that instant and clean
+# afterwards -- so comparing them made the baseline report itself stale forever,
+# on any clean checkout, no matter what the observation said. The staleness check
+# is about drift in the observation, so it compares everything else exactly.
+_GENERATION_MOMENT_FIELDS = ("- Base commit: ", "- Working tree state: ")
+
+
+def _observation_differs(committed: str, rendered: str) -> bool:
+    def observation(text: str) -> list[str]:
+        return [
+            line for line in text.splitlines() if not line.startswith(_GENERATION_MOMENT_FIELDS)
+        ]
+
+    return observation(committed) != observation(rendered)
+
+
 def write_report_outputs(
     output_json: Path,
     output_markdown: Path,
@@ -1773,9 +1792,8 @@ def write_report_outputs(
     output_json.parent.mkdir(parents=True, exist_ok=True)
     output_json.write_text(json_text, encoding="utf-8")
     if check:
-        if (
-            not output_markdown.exists()
-            or output_markdown.read_text(encoding="utf-8") != markdown_text
+        if not output_markdown.exists() or _observation_differs(
+            output_markdown.read_text(encoding="utf-8"), markdown_text
         ):
             return [str(output_markdown)]
         return []
