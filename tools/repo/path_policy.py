@@ -3550,7 +3550,7 @@ CANONICAL_PATH_SET_SHA256 = (  # pyright: ignore[reportConstantRedefinition]
 _outbox_producer_addition_reason = _reconciliation_addition_reason
 
 
-def _reconciliation_addition_reason(path: str) -> str:
+def _reconciliation_addition_reason(path: str) -> str:  # pyright: ignore[reportRedeclaration]
     if path in OUTBOX_PRODUCER_PATHS:
         return (
             "The single transactional-outbox producer and its unit tests; it replaces "
@@ -3559,6 +3559,49 @@ def _reconciliation_addition_reason(path: str) -> str:
             "omitted by one call site."
         )
     return _outbox_producer_addition_reason(path)
+
+
+# The gate that asks whether the CRUD methods compose. Every other contract gate
+# reads one method at a time -- the RPC-coverage projection binds each method's
+# existence to the descriptor, the retry table binds its replay classification --
+# so nothing asked whether a caller holding only a create response can then read,
+# update, or delete what it just made. That failure is invisible inside any single
+# method and shows up in all four SDKs at once.
+CRUD_CHAIN_COMPLETENESS_PATHS: tuple[str, ...] = (
+    "tests/conformance/test_crud_chain_completeness.py",
+)
+REQUIRED_ADDITIONS = (  # pyright: ignore[reportConstantRedefinition]
+    *REQUIRED_ADDITIONS,
+    *CRUD_CHAIN_COMPLETENESS_PATHS,
+)
+# It reads the candidate descriptor, so it belongs to the all-contract lane
+# beside the other descriptor-bound conformance gates, carrying their wave label.
+LATE_ACTIVATION_WAVE_ONE_PATHS = (  # pyright: ignore[reportConstantRedefinition]
+    *LATE_ACTIVATION_WAVE_ONE_PATHS,
+    *CRUD_CHAIN_COMPLETENESS_PATHS,
+)
+LATE_ACTIVATION_ALL_CONTRACT_PATHS = (  # pyright: ignore[reportConstantRedefinition]
+    *LATE_ACTIVATION_ALL_CONTRACT_PATHS,
+    *CRUD_CHAIN_COMPLETENESS_PATHS,
+)
+CANONICAL_FILE_COUNT = (  # pyright: ignore[reportConstantRedefinition]
+    CANONICAL_FILE_COUNT + len(CRUD_CHAIN_COMPLETENESS_PATHS)
+)
+CANONICAL_PATH_SET_SHA256 = (  # pyright: ignore[reportConstantRedefinition]
+    "8d6540ccf1d90a353418c022cb45f924ba20d10a3ed3f68aef6b97e0f75f22e7"
+)
+
+_crud_chain_completeness_addition_reason = _reconciliation_addition_reason
+
+
+def _reconciliation_addition_reason(path: str) -> str:
+    if path in CRUD_CHAIN_COMPLETENESS_PATHS:
+        return (
+            "The descriptor-bound gate holding every create/read/update/delete chain "
+            "to closure, so a read cannot require identity the create response never "
+            "returned."
+        )
+    return _crud_chain_completeness_addition_reason(path)
 
 
 if __name__ == "__main__":

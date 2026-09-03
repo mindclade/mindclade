@@ -7981,7 +7981,8 @@ mindclade/
 │   │   ├── generated_rust_roundtrip_test.rs
 │   │   ├── generated_typescript_roundtrip_test.ts
 │   │   ├── test_generated_package_consumers.py
-│   │   └── test_sdk_retry_safety_parity.py
+│   │   ├── test_sdk_retry_safety_parity.py
+│   │   └── test_crud_chain_completeness.py
 │   ├── integration/
 │   │   ├── local_stack_test.py
 │   │   ├── control_worker_test.py

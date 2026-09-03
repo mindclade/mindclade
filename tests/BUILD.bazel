@@ -91,6 +91,17 @@ py_test(
 )
 
 py_test(
+    name = "crud_chain_completeness_test",
+    srcs = ["conformance/test_crud_chain_completeness.py"],
+    data = ["//protocols:wave1_contract_sources"],
+    imports = [".."],
+    legacy_create_init = 0,
+    main = "conformance/test_crud_chain_completeness.py",
+    python_version = "PY3",
+    deps = ["@mindclade_pypi//protobuf"],
+)
+
+py_test(
     name = "sdk_retry_safety_parity_test",
     srcs = ["conformance/test_sdk_retry_safety_parity.py"],
     data = [
@@ -285,6 +296,7 @@ filegroup(
         "conformance/generated_go_roundtrip_test.go",
         "conformance/generated_rust_roundtrip_test.rs",
         "conformance/generated_typescript_roundtrip_test.ts",
+        "conformance/test_crud_chain_completeness.py",
         "conformance/test_generated_package_consumers.py",
         "conformance/test_internal_sdk_application_consumers.py",
         "conformance/test_sdk_retry_safety_parity.py",
@@ -309,6 +321,7 @@ test_suite(
 test_suite(
     name = "all_contract_tests",
     tests = [
+        ":crud_chain_completeness_test",
         ":generated_go_roundtrip_test",
         ":generated_package_consumers_test",
         ":generated_rust_roundtrip_test",

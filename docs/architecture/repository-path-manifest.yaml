@@ -7217,6 +7217,10 @@
           "reason": "The single transactional-outbox producer and its unit tests; it replaces fourteen hand-copied INSERT statements so the envelope-derived routing columns, the validation gate, and the envelope size bound cannot be omitted by one call site."
         },
         {
+          "path": "tests/conformance/test_crud_chain_completeness.py",
+          "reason": "The descriptor-bound gate holding every create/read/update/delete chain to closure, so a read cannot require identity the create response never returned."
+        },
+        {
           "path": "docs/adr/0001-repository-identity-and-ownership.md",
           "replaces": "docs/adr/0001-repository-identity.md",
           "reason": "Sections 1-18 and Section 14.1 take precedence over the stale A6 short ADR name."
@@ -7257,8 +7261,8 @@
           "reason": "Dependabot is retired estate-wide; Renovate configuration extending the organization preset in mindclade/.github replaces it."
         }
       ],
-      "canonical_file_count": 3641,
-      "canonical_path_set_sha256": "82cae7e754e9f58589463af3f96bc7c87724dd247f664624678896d97c2520e9"
+      "canonical_file_count": 3642,
+      "canonical_path_set_sha256": "8d6540ccf1d90a353418c022cb45f924ba20d10a3ed3f68aef6b97e0f75f22e7"
     },
     "owners": {
       "agent-platform": {
@@ -53435,6 +53439,23 @@
     },
     {
       "path": "tests/conformance/test_sdk_retry_safety_parity.py",
+      "kind": "test",
+      "owner": "developer-platform",
+      "component": "tests-conformance",
+      "status": "active",
+      "activation_wave": "1",
+      "source_authority": "hand-authored",
+      "build_targets": [
+        "//:all_contract_sources"
+      ],
+      "test_targets": [
+        "//:all_contract_tests"
+      ],
+      "public_surface": false,
+      "activation_criterion": "Activated by ADR-0015 in the one-time clean-v1 contract baseline; the original wave remains design-sequencing provenance."
+    },
+    {
+      "path": "tests/conformance/test_crud_chain_completeness.py",
       "kind": "test",
       "owner": "developer-platform",
       "component": "tests-conformance",
