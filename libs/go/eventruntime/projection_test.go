@@ -459,9 +459,14 @@ func readEventProjectionMigration(t *testing.T, direction string) string {
 		t.Fatalf("invalid event projection migration direction %q", direction)
 	}
 	name := "000009_event_audit_projection." + direction + ".sql"
+	// The first candidate resolves under Bazel, whose runfiles root is the
+	// workspace root. The second is the `go test` fallback, which runs with the
+	// package directory as its working directory: from libs/go/eventruntime the
+	// migrations are three levels up and then under services/control_plane, not
+	// at the repository root.
 	candidates := []string{
 		"services/control_plane/migrations/" + name,
-		"../../../migrations/" + name,
+		"../../../services/control_plane/migrations/" + name,
 	}
 	if runfiles, workspace := os.Getenv("TEST_SRCDIR"), os.Getenv("TEST_WORKSPACE"); runfiles != "" && workspace != "" {
 		candidates = append(candidates, filepath.Join(runfiles, workspace, "services/control_plane/migrations", name))
